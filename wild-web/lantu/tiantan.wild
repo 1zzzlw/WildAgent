@@ -1,0 +1,55 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "祈年殿·简化版"
+  },
+  "geometry": {
+    "elements": [
+      {"type":"floor","id":"base_1","from":[0,0.4,0],"thickness":0.4,"shape":"circle","radius":8,"segments":36,"material":"marble"},
+      {"type":"floor","id":"base_2","from":[0,0.8,0],"thickness":0.4,"shape":"circle","radius":7,"segments":36,"material":"marble"},
+      {"type":"floor","id":"base_3","from":[0,1.2,0],"thickness":0.4,"shape":"circle","radius":6,"segments":36,"material":"marble"},
+
+      {"type":"wall","id":"main_wall","from":[5.8,1.2,0],"to":[5.8,7.7,0],"thickness":0.25,"material":"wall_red",
+        "curve":{"type":"arc","center":[0,0,0],"sweep":360,"segments":48}},
+
+      {"type":"opening","id":"door_N","parentWall":"main_wall","from":[1.52,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_E","parentWall":"main_wall","from":[10.63,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_S","parentWall":"main_wall","from":[19.74,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_W","parentWall":"main_wall","from":[28.85,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+
+      {"type":"column","id":"col_0","base":[5.5,1.2,0],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_1","base":[4.763,1.2,2.75],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_2","base":[2.75,1.2,4.763],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_3","base":[0,1.2,5.5],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_4","base":[-2.75,1.2,4.763],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_5","base":[-4.763,1.2,2.75],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_6","base":[-5.5,1.2,0],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_7","base":[-4.763,1.2,-2.75],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_8","base":[-2.75,1.2,-4.763],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_9","base":[0,1.2,-5.5],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_10","base":[2.75,1.2,-4.763],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+      {"type":"column","id":"col_11","base":[4.763,1.2,-2.75],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
+
+      {"type":"column","id":"in_col_0","base":[1.768,1.2,1.768],"height":8,"bottomRadius":0.2,"topRadius":0.16,"style":"modern","material":"column_red"},
+      {"type":"column","id":"in_col_1","base":[-1.768,1.2,1.768],"height":8,"bottomRadius":0.2,"topRadius":0.16,"style":"modern","material":"column_red"},
+      {"type":"column","id":"in_col_2","base":[-1.768,1.2,-1.768],"height":8,"bottomRadius":0.2,"topRadius":0.16,"style":"modern","material":"column_red"},
+      {"type":"column","id":"in_col_3","base":[1.768,1.2,-1.768],"height":8,"bottomRadius":0.2,"topRadius":0.16,"style":"modern","material":"column_red"},
+
+      {"type":"roof","id":"main_roof","roofType":"chinese_pagoda","span":11,"depth":11,"height":6,
+        "tiers":3,"tierHeight":2,"eaveOutset":1,"shrinkFactor":0.65,"thickness":0.15,"material":"roof_blue",
+        "position":[0,9.2,0]},
+
+      {"type":"roof","id":"finial","roofType":"dome","span":1,"depth":1,"height":0.8,"thickness":0.1,
+        "material":"gold","position":[0,15,0]}
+    ]
+  },
+  "materials": {
+    "marble": {"baseColor":[0.95,0.93,0.88],"roughness":0.25,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
+    "wall_red": {"baseColor":[0.85,0.25,0.1],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
+    "column_red": {"baseColor":[0.8,0.2,0.1],"roughness":0.65,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
+    "roof_blue": {"baseColor":[0.12,0.22,0.48],"roughness":0.85,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
+    "gold": {"baseColor":[1,0.85,0.4],"roughness":0.15,"metallic":1,"albedo":1,"lightingCondition":"D65_noon"},
+    "wood_door": {"baseColor":[0.45,0.25,0.12],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}
+  }
+}
