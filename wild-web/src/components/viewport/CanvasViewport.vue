@@ -1,5 +1,6 @@
 <template>
   <div class="canvas-viewport" ref="containerRef">
+    <!-- 展示3D视图的区域 -->
     <canvas ref="canvasRef"></canvas>
     <div class="viewport-overlay">
       <div class="stats">
@@ -25,6 +26,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { MaterialCache } from '../../renderer/materialAdapter'
 import { updateSceneGroup } from '../../renderer/renderEntity'
+import { createTestScene, clearTestScene } from '../../utils/simpleSceneTest'
 
 const containerRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
@@ -32,12 +34,13 @@ const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
 
 let renderer: THREE.WebGLRenderer | null = null
-let scene: THREE.Scene | null = null
+let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera | null = null
 let controls: OrbitControls | null = null
 let animationFrameId: number | null = null
 let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
+let gridHelper: THREE.GridHelper | null = null
 
 onMounted(() => {
   initThreeJS()
@@ -71,9 +74,26 @@ function initThreeJS() {
   controls.target.set(0, 1.5, 0)
   controls.update()
 
+  // 测试：检查GridHelper是否正确添加
+  console.log('Scene children after init:', scene.children.map(c => ({ type: c.type, name: c.name })));
+
+  // 暴露到window用于调试
+  (window as any).debugScene = {
+    scene,
+    camera,
+    renderer,
+    controls,
+    testScene: () => createTestScene(scene),
+    clearTest: () => clearTestScene(scene)
+  };
+  console.log('💡 调试工具已挂载到 window.debugScene');
+  console.log('  - debugScene.testScene() : 创建测试场景');
+  console.log('  - debugScene.clearTest() : 清除测试场景');
+
+  // 自然光
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.4)
   scene.add(ambientLight)
-
+  // 平行光
   const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8)
   directionalLight.position.set(10, 20, 10)
   directionalLight.castShadow = true
@@ -84,15 +104,26 @@ function initThreeJS() {
   directionalLight.shadow.camera.top = 20
   directionalLight.shadow.camera.bottom = -20
   scene.add(directionalLight)
-
-  const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x333333)
+  
+  // 创建GridHelper并保持引用，确保不会被误删除
+  // 添加到场景根层级，不是sceneGroup
+  gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x333333)
+  gridHelper.name = 'GridHelper'
+  gridHelper.position.y = 0  // 确保在地面
   scene.add(gridHelper)
+  console.log('GridHelper added to scene at root level');
 
   materialCache = new MaterialCache()
-
+  // 创建名为 WildScene 的空分组容器，加入场景统一管理多个模型物体。
   sceneGroup = new THREE.Group()
   sceneGroup.name = 'WildScene'
   scene.add(sceneGroup)
+  
+  console.log('Scene structure:', {
+    children: scene.children.length,
+    hasGrid: scene.children.some(c => c.name === 'GridHelper'),
+    hasWildScene: scene.children.some(c => c.name === 'WildScene')
+  });
 
   window.addEventListener('resize', handleResize)
   handleResize()
@@ -121,10 +152,19 @@ function updateScene() {
 
   const entity = sceneStore.reconstructed
   if (!entity) {
+    // 清空sceneGroup，但保留scene中的其他对象（灯光、GridHelper等）
     while (sceneGroup.children.length > 0) {
       const child = sceneGroup.children[0]
       sceneGroup.remove(child)
       if (child instanceof THREE.Mesh) child.geometry.dispose()
+    }
+    console.log('Scene cleared, GridHelper should remain visible');
+    
+    // 重置相机到初始位置，确保GridHelper可见
+    if (controls && camera) {
+      controls.target.set(0, 0, 0)
+      camera.position.set(12, 10, 12)
+      controls.update()
     }
     return
   }
@@ -155,6 +195,12 @@ function updateScene() {
       )
       controls.update()
     }
+  }
+  
+  // 确保GridHelper始终可见
+  if (gridHelper && !scene.children.includes(gridHelper)) {
+    console.warn('GridHelper was removed, re-adding');
+    scene.add(gridHelper);
   }
 }
 
@@ -202,7 +248,7 @@ canvas {
   font-family: monospace;
 }
 
-.stats > div {
+.stats>div {
   margin: 2px 0;
 }
 </style>

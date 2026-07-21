@@ -58,18 +58,20 @@ export function parseWildBlueprint(jsonText: string): Blueprint {
  */
 export async function reconstructWildEntity(blueprint: Blueprint): Promise<ReconstructedEntity> {
   try {
+    // 添加调试输出
+    import('../utils/debugRender').then(({ logBlueprintInfo, logEntityInfo, logResolverChanges }) => {
+      logBlueprintInfo(blueprint);
+    });
+    
     // 调用 wild-core 的重建函数
-    // 它会：
-    // 1. 展开模板（templates -> instances）
-    // 2. 解析空间关系（opening 找 parentWall）
-    // 3. 展开 placement（批量放置）
-    // 4. 构建几何（每个构件类型有专门的构建器）
-    // 5. 应用材质和程序化效果
-    // 6. 计算边界盒
     const coreEntity = await coreReconstructEntity(blueprint as any)
+    
+    // 调试：输出重建后的信息
+    import('../utils/debugRender').then(({ logEntityInfo, logResolverChanges }) => {
+      logResolverChanges(blueprint);
+      logEntityInfo(coreEntity as unknown as ReconstructedEntity);
+    });
 
-    // wild-core 返回的类型和我们的前端类型兼容
-    // 直接使用即可
     return coreEntity as unknown as ReconstructedEntity
   } catch (error) {
     console.error('重建场景失败:', error)

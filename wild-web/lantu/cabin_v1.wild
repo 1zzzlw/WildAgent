@@ -1,0 +1,323 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "小木屋（高地基）",
+    "style": "rustic-cabin",
+    "seed": 42
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "foundation",
+        "from": [-0.3, 0.5, -0.3],
+        "to": [6.3, 0.5, 5.3],
+        "thickness": 0.5,
+        "material": "granite",
+        "surfaces": {
+          "top": { "pattern": "stone_block", "blockSize": [0.4, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] },
+          "bottom": { "pattern": "stone_block", "blockSize": [0.4, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] },
+          "front": { "pattern": "stone_block", "blockSize": [0.35, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] },
+          "back": { "pattern": "stone_block", "blockSize": [0.35, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] },
+          "left": { "pattern": "stone_block", "blockSize": [0.2, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] },
+          "right": { "pattern": "stone_block", "blockSize": [0.2, 0.2], "jointWidth": 0.1, "mortarColor": [0.6, 0.55, 0.5] }
+        }
+      },
+      {
+        "type": "stair",
+        "id": "entrance_stair",
+        "from": [2.4, 0, -1.2],
+        "to": [2.4, 0.5, -0.15],
+        "width": 1.5,
+        "material": "granite"
+      },
+      {
+        "type": "wall",
+        "id": "front_wall",
+        "from": [0, 0.5, 0],
+        "to": [6, 3.5, 0],
+        "thickness": 0.2,
+        "material": "wood"
+      },
+      {
+        "type": "wall",
+        "id": "back_wall",
+        "from": [0, 0.5, 5],
+        "to": [6, 3.5, 5],
+        "thickness": 0.2,
+        "material": "wood"
+      },
+      {
+        "type": "wall",
+        "id": "left_wall",
+        "from": [0, 0.5, 0],
+        "to": [0, 3.5, 5],
+        "thickness": 0.2,
+        "material": "wood"
+      },
+      {
+        "type": "wall",
+        "id": "right_wall",
+        "from": [6, 0.5, 0],
+        "to": [6, 3.5, 5],
+        "thickness": 0.2,
+        "material": "wood"
+      },
+      {
+        "type": "floor",
+        "id": "base_floor",
+        "from": [0, 0.65, 0],
+        "to": [6, 0.65, 5],
+        "thickness": 0.15,
+        "material": "floor_wood"
+      },
+      {
+        "type": "roof",
+        "id": "main_roof",
+        "roofType": "gable",
+        "span": 7,
+        "depth": 6,
+        "height": 2.5,
+        "thickness": 0.15,
+        "material": "roof_structure"
+      },
+      {
+        "type": "opening",
+        "id": "front_door",
+        "parentWall": "front_wall",
+        "from": [2.4, 0.5, 0],
+        "width": 1.2,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "back_door",
+        "parentWall": "back_wall",
+        "from": [1.2, 0.5, 0],
+        "width": 1.2,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "left_window",
+        "parentWall": "left_wall",
+        "from": [2, 1.5, 0],
+        "width": 1,
+        "height": 1.2,
+        "style": "rectangular",
+        "material": "glass"
+      },
+      {
+        "type": "opening",
+        "id": "right_window",
+        "parentWall": "right_wall",
+        "from": [2, 1.5, 0],
+        "width": 1,
+        "height": 1.2,
+        "style": "rectangular",
+        "material": "glass"
+      },
+      {
+        "type": "opening",
+        "id": "back_window",
+        "parentWall": "back_wall",
+        "from": [4.5, 1.7, 0],
+        "width": 1,
+        "height": 1,
+        "style": "rectangular",
+        "material": "glass"
+      },
+      {
+        "type": "column",
+        "id": "corner_pillar_1",
+        "base": [0, 0.5, 0],
+        "height": 3,
+        "bottomRadius": 0.12,
+        "topRadius": 0.1,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "corner_pillar_2",
+        "base": [6, 0.5, 0],
+        "height": 3,
+        "bottomRadius": 0.12,
+        "topRadius": 0.1,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "corner_pillar_3",
+        "base": [0, 0.5, 5],
+        "height": 3,
+        "bottomRadius": 0.12,
+        "topRadius": 0.1,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "corner_pillar_4",
+        "base": [6, 0.5, 5],
+        "height": 3,
+        "bottomRadius": 0.12,
+        "topRadius": 0.1,
+        "style": "modern",
+        "material": "wood"
+      }
+    ],
+    "templates": {
+      "roof_tile": {
+        "type": "furniture",
+        "subtype": "tile",
+        "dimensions": { "width": 1, "depth": 1, "height": 0.015 },
+        "material": "roof_tile"
+      }
+    },
+    "placements": [
+      {
+        "id": "roof_tiles",
+        "template": "roof_tile",
+        "onSurface": { "parent": "main_roof", "face": ["left", "right"] },
+        "layout": {
+          "type": "grid",
+          "columns": 13,
+          "rows": 17,
+          "rowSpacing": 0.27,
+          "colSpacing": 0.45,
+          "overlap": 0.04,
+          "gapWidth": 0.015,
+          "cellMaterials": { "3_5": "broken_tile", "8_2": "broken_tile" }
+        }
+      }
+    ]
+  },
+  "materials": {
+    "granite": {
+      "baseColor": [0.62, 0.59, 0.55],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        { "type": "grain", "intensity": 0.05, "scale": 0.1 },
+        {
+          "type": "weathering",
+          "dustColor": [0.45, 0.4, 0.35],
+          "dustOpacity": 0.2,
+          "crackIntensity": 0.15,
+          "colorFade": 0.15
+        }
+      ]
+    },
+    "wood": {
+      "baseColor": [0.55, 0.35, 0.15],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 0.9,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        { "type": "grain", "intensity": 0.15, "scale": 0.05 },
+        {
+          "type": "weathering",
+          "dustColor": [0.3, 0.25, 0.2],
+          "dustOpacity": 0.35,
+          "crackIntensity": 0.2,
+          "colorFade": 0.15
+        },
+        {
+          "type": "moss",
+          "mossColor": [0.2, 0.4, 0.12],
+          "coverage": 0.25,
+          "pattern": "base_up"
+        }
+      ]
+    },
+    "floor_wood": {
+      "baseColor": [0.6, 0.4, 0.2],
+      "roughness": 0.75,
+      "metallic": 0.0,
+      "albedo": 0.85,
+      "lightingCondition": "D65_noon"
+    },
+    "roof_tile": {
+      "baseColor": [0.7, 0.35, 0.2],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "broken_tile": {
+      "baseColor": [0.5, 0.25, 0.12],
+      "roughness": 0.95,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        { "type": "weathering", "dustColor": [0.3, 0.2, 0.1], "dustOpacity": 0.8, "crackIntensity": 1.0, "colorFade": 0.5 }
+      ]
+    },
+    "roof_structure": {
+      "baseColor": [0.4, 0.3, 0.2],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "oak_door": {
+      "baseColor": [0.5, 0.3, 0.1],
+      "roughness": 0.6,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "edgeWear",
+          "wearColor": [0.65, 0.5, 0.3],
+          "intensity": 0.5
+        }
+      ]
+    },
+    "glass": {
+      "baseColor": [0.7, 0.85, 0.95],
+      "roughness": 0.05,
+      "metallic": 0.0,
+      "albedo": 0.3,
+      "opacity": 0.4,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {
+    "scripts": [
+      {
+        "on_click": {
+          "actions": [
+            { "type": "toggle_hinge", "target": "front_door" }
+          ]
+        }
+      },
+      {
+        "on_click": {
+          "actions": [
+            { "type": "toggle_hinge", "target": "back_door" }
+          ]
+        }
+      }
+    ],
+    "physics": {
+      "mass": 0,
+      "collisionShape": "box",
+      "constraints": [
+        { "type": "hinge", "target": "front_door", "axis": "y", "limit": [0, 90] },
+        { "type": "hinge", "target": "back_door", "axis": "y", "limit": [0, 90] }
+      ]
+    }
+  }
+}

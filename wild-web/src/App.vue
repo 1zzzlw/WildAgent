@@ -26,9 +26,11 @@ const uiStore = useUIStore()
 const sceneStore = useSceneStore()
 
 onMounted(() => {
-  // 初始化空场景
+  // 初始化空场景（构件库需要document存在）
   const emptyDoc = sceneStore.createEmptyDocument()
-  sceneStore.loadBlueprint(emptyDoc.blueprint, emptyDoc.name)
+  // 只设置document，不调用loadBlueprint（避免自动reconstruct）
+  sceneStore.document = emptyDoc
+  console.log('App mounted - Empty document created, GridHelper should be visible');
 })
 </script>
 

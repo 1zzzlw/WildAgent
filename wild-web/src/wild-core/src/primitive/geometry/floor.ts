@@ -26,7 +26,7 @@ export function buildFloor(params: FloorParams): MeshData[] {
       const sb = subdivideBoxShared(w, t, d, pat);
       const midX = (from[0] + to[0]) / 2, midZ = (from[2] + to[2]) / 2;
       return [{ geometry: sb.geometry, indices: sb.indices, vertexColors: sb.vertexColors,
-        transform: { position: [midX, from[1]-t/2, midZ], rotation: [0,0,0], scale: [1,1,1] },
+        transform: { position: [midX, from[1] + t/2, midZ], rotation: [0,0,0], scale: [1,1,1] },
         materialRef: material || 'default', patternMortarColor: sb.mortarColor }];
     }
   }
@@ -41,7 +41,7 @@ export function buildFloor(params: FloorParams): MeshData[] {
   const midZ = (from[2] + to[2]) / 2;
   return [{
     geometry, indices: new Uint32Array(indices),
-    transform: { position: [midX, isSolid ? from[1]-effectiveThick/2 : from[1], midZ], rotation: [0,0,0], scale: [1,1,1] },
+    transform: { position: [midX, isSolid ? from[1] + effectiveThick/2 : from[1], midZ], rotation: [0,0,0], scale: [1,1,1] },
     materialRef: material || 'default'
   }];
 }
@@ -55,8 +55,8 @@ function buildCircularFloor(params: FloorParams): MeshData[] {
   const effectiveThick = thickness || 0;
   const isSolid = effectiveThick > 0.01;
   const cx = from[0], cz = from[2];
-  const centerY = from[1] - effectiveThick / 2; // 顶面 Y 居中
-  const yBot = from[1] - effectiveThick;
+  const centerY = from[1] + effectiveThick / 2; // 地板向下延伸
+  const yBot = from[1];
   const verts: number[] = [];
   const idx: number[] = [];
 

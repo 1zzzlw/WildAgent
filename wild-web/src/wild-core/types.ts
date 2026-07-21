@@ -13,18 +13,6 @@ export type Vec3 = [number, number, number];
 /** RGB 颜色值，范围 0.0–1.0 */
 export type Color = [number, number, number];
 
-// ========== 元数据 ==========
-
-export interface Meta {
-  version: string;           // "1.0"
-  type: 'building' | 'avatar';
-  name: string;
-  author?: string;
-  createdAt?: number;
-  style?: string;
-  seed?: number;
-}
-
 /** 路径曲线类型（用于 wall、beam 等线性构件） */
 export type CurveSegment = LineCurve | ArcCurve | EllipseCurve | CatenaryCurve;
 
@@ -53,8 +41,20 @@ export interface CatenaryCurve {
   segments?: number;
 }
 
-// ========== 几何构件 ==========
+/** 所有几何构件的联合类型 */
+export type GeometryElement =
+  | WallParams
+  | FloorParams
+  | ColumnParams
+  | BeamParams
+  | RoofParams
+  | OpeningParams
+  | StairParams
+  | FurnitureParams
+  | DenseBrickParams
+  | BodyParams;
 
+// ========== 几何构件 ==========
 export interface WallParams {
   type: 'wall';
   id: string;
@@ -136,6 +136,7 @@ export interface RoofParams {
   material?: string;
 }
 
+// 管理门的开闭状态
 export interface OpeningParams {
   type: 'opening';
   id: string;
@@ -147,6 +148,7 @@ export interface OpeningParams {
   material?: string;
 }
 
+// 楼梯参数
 export interface StairParams {
   type: 'stair';
   id: string;
@@ -159,6 +161,7 @@ export interface StairParams {
   material?: string;
 }
 
+// 家具参数
 export interface FurnitureParams {
   type: 'furniture';
   id: string;
@@ -169,6 +172,7 @@ export interface FurnitureParams {
   material?: string;
 }
 
+// 致密砖的参数
 export interface DenseBrickParams {
   type: 'dense_brick';
   id: string;
@@ -181,6 +185,7 @@ export interface DenseBrickParams {
   attachment?: { parent: string; mapping: 'planar' | 'cylindrical' | 'spherical' };
 }
 
+// 肢体参数
 export interface BodyParams {
   type: 'body';
   id: string;
@@ -194,21 +199,7 @@ export interface BodyParams {
   material?: string;
 }
 
-/** 所有几何构件的联合类型 */
-export type GeometryElement =
-  | WallParams
-  | FloorParams
-  | ColumnParams
-  | BeamParams
-  | RoofParams
-  | OpeningParams
-  | StairParams
-  | FurnitureParams
-  | DenseBrickParams
-  | BodyParams;
-
 // ========== 材质系统 ==========
-
 export interface WeatheringEffect {
   type: 'weathering';
   dustColor: Color;
@@ -251,7 +242,6 @@ export interface MaterialDef {
 }
 
 // ========== 动态系统 ==========
-
 export interface PhysicsData {
   mass: number;
   collisionShape: 'box' | 'sphere' | 'capsule' | 'mesh';
@@ -302,20 +292,47 @@ export interface ActionData {
   destination?: Vec3;
 }
 
-// ========== 蓝图顶层结构 ==========
+// ========== 元数据 ==========
+export interface Meta {
+  version: string;           // "1.0"
+  // 场景类型："building"（建筑）或 "avatar"（虚拟角色）
+  type: 'building' | 'avatar';
+  // 	场景名称，如 "中式凉亭"
+  name: string;
+  // 作者名（可选）
+  author?: string;
+  // 创建时间戳（可选）
+  createdAt?: number;
+  // 	风格标签，如 "chinese_classical"（可选）
+  style?: string;
+  // 随机种子，用于程序化生成的可复现性
+  seed?: number;
+}
 
+// ========== 蓝图顶层结构 ==========
 export interface Blueprint {
+  // 元数据
   meta: Meta;
+  // 几何定义
   geometry: {
+    // 直接构件数组。存放场景中每个独立物体（墙、柱、地板、房顶、家具等），每个元素是一个 GeometryElement 联合类型，必须带唯一的 id。这是一般场景最主要的填充内容
     elements?: GeometryElement[];
+    // 构件模板字典。key → GeometryElement 的映射。模板本身不直接渲染，它定义了一个"原型构件"。与 instances 组合使用：同一模板可被多个实例引用，类似于"定义了一个柱子原型，然后在地图上放置 20 个"。避免重复定义相同的构件参数
     templates?: Record<string, GeometryElement>;
+    // 模板实例数组。每个 InstanceRef 通过 ref 指向 templates 中的某个模板，并指定自己的 position/rotation/scale 和可选的 materialOverride（对模板中的某些材质做替换）。由 expander 展开为实际构件后交给几何构建器
     instances?: InstanceRef[];
+    // 批量放置规则。定义如何在某个父构件的表面上按网格（grid）自动排布模板实例。例如："在这面墙（parent）的正面（face）上用 3 列 × 4 行的网格放置窗户模板"。比手动写 instances 更高效，也是由 expander 展开
     placements?: Placement[];
   };
+  // 材质定义
   materials?: Record<string, MaterialDef>;
+  // 动态行为，定义场景的物理、脚本和动画行为，不属于几何本身，但附加在场景上：
   behaviors?: {
+    // 物理属性
     physics?: PhysicsData;
+    // 交互脚本数组
     scripts?: ScriptData[];
+    // 动画参数
     animation?: AnimationParams;
   };
 }

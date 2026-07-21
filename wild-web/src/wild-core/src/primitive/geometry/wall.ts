@@ -17,6 +17,20 @@ export function buildWall(params: WallParams): MeshData[] {
   const dz = to[2] - from[2];
   const length = Math.sqrt(dx * dx + dz * dz);
   const height = Math.abs(to[1] - from[1]);
+  
+  // 调试：检查异常长度
+  if (length > 20 || cutouts?.length > 0) {
+    console.log(`🧱 buildWall ${(params as any).id}`);
+    console.log(`  from: [${from.join(', ')}]`);
+    console.log(`  to: [${to.join(', ')}]`);
+    console.log(`  length: ${length.toFixed(2)}m, height: ${height.toFixed(2)}m`);
+    console.log(`  cutouts: ${cutouts?.length || 0}`);
+    if (cutouts) {
+      cutouts.forEach((c: any) => {
+        console.log(`    - localX=${c.localX.toFixed(2)}, localW=${c.localW.toFixed(2)}`);
+      });
+    }
+  }
 
   let geometry: Float32Array, indices: Uint16Array;
   if (cutouts?.length) {

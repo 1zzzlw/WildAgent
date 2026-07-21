@@ -2,9 +2,10 @@
   "meta": {
     "version": "1.0",
     "type": "building",
-    "name": "荒原别墅",
-    "author": "wild-core",
-    "createdAt": 1778402494274
+    "name": "荒原别墅（正确格式）",
+    "author": "Kiro AI Assistant",
+    "createdAt": 1721548800000,
+    "style": "rustic-villa"
   },
   "geometry": {
     "elements": [
@@ -382,7 +383,11 @@
         "subtype": "table",
         "position": [-1.5, 0.0, -2.0],
         "style": "rustic_wooden",
-        "dimensions": { "width": 2.0, "depth": 1.2, "height": 0.75 },
+        "dimensions": {
+          "width": 2.0,
+          "depth": 1.2,
+          "height": 0.75
+        },
         "material": "oak_furniture"
       },
       {
@@ -391,7 +396,11 @@
         "subtype": "chair",
         "position": [-2.5, 0.0, -1.5],
         "style": "rustic_wooden",
-        "dimensions": { "width": 0.6, "depth": 0.6, "height": 0.9 },
+        "dimensions": {
+          "width": 0.6,
+          "depth": 0.6,
+          "height": 0.9
+        },
         "material": "oak_furniture"
       },
       {
@@ -400,7 +409,11 @@
         "subtype": "chair",
         "position": [-0.5, 0.0, -1.5],
         "style": "rustic_wooden",
-        "dimensions": { "width": 0.6, "depth": 0.6, "height": 0.9 },
+        "dimensions": {
+          "width": 0.6,
+          "depth": 0.6,
+          "height": 0.9
+        },
         "material": "oak_furniture"
       },
       {
@@ -409,7 +422,11 @@
         "subtype": "bed",
         "position": [5.0, 3.0, -3.0],
         "style": "rustic_wooden",
-        "dimensions": { "width": 2.0, "depth": 2.2, "height": 0.6 },
+        "dimensions": {
+          "width": 2.0,
+          "depth": 2.2,
+          "height": 0.6
+        },
         "material": "oak_furniture"
       }
     ]
@@ -569,8 +586,14 @@
         "on_click": {
           "condition": "event.target == 'front_door'",
           "actions": [
-            { "type": "toggle_hinge", "target": "front_door" },
-            { "type": "play_sound", "sound": "wooden_door_open" }
+            {
+              "type": "toggle_hinge",
+              "target": "front_door"
+            },
+            {
+              "type": "play_sound",
+              "sound": "wooden_door_open"
+            }
           ]
         }
       }

@@ -1,0 +1,1011 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "荒野豪华别墅",
+    "author": "wild-agent",
+    "createdAt": 1753113600000,
+    "style": "modern_european"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "ground_floor",
+        "from": [-7.0, 0.0, -6.0],
+        "to": [7.0, 0.0, 6.0],
+        "thickness": 0.35,
+        "material": "stone_floor"
+      },
+
+      {
+        "type": "wall",
+        "id": "wall_front_gf",
+        "from": [-7.0, 0.0, -6.0],
+        "to": [7.0, 3.2, -6.0],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_back_gf",
+        "from": [-7.0, 0.0, 6.0],
+        "to": [7.0, 3.2, 6.0],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_left_gf",
+        "from": [-7.0, 0.0, -5.65],
+        "to": [-7.0, 3.2, 5.65],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_right_gf",
+        "from": [7.0, 0.0, -5.65],
+        "to": [7.0, 3.2, 5.65],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+
+      {
+        "type": "wall",
+        "id": "wall_central_gf",
+        "from": [0.0, 0.0, -5.65],
+        "to": [0.0, 3.2, 5.65],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+      {
+        "type": "wall",
+        "id": "wall_cross_left_gf",
+        "from": [-7.0, 0.0, 0.0],
+        "to": [0.0, 3.2, 0.0],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+      {
+        "type": "wall",
+        "id": "wall_cross_right_gf",
+        "from": [0.0, 0.0, 0.0],
+        "to": [7.0, 3.2, 0.0],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+      {
+        "type": "wall",
+        "id": "wall_kitchen_divider",
+        "from": [-7.0, 0.0, 3.2],
+        "to": [-3.5, 3.2, 3.2],
+        "thickness": 0.15,
+        "material": "interior_wall"
+      },
+
+      {
+        "type": "opening",
+        "id": "front_door",
+        "parentWall": "wall_front_gf",
+        "from": [-0.7, 0.0, -6.0],
+        "width": 1.6,
+        "height": 2.6,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "window_living_left",
+        "parentWall": "wall_front_gf",
+        "from": [-4.5, 1.1, -6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_living_right",
+        "parentWall": "wall_front_gf",
+        "from": [4.5, 1.1, -6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_dining_left",
+        "parentWall": "wall_back_gf",
+        "from": [-4.5, 1.1, 6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_dining_right",
+        "parentWall": "wall_back_gf",
+        "from": [4.5, 1.1, 6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_kitchen",
+        "parentWall": "wall_back_gf",
+        "from": [-1.8, 1.1, 6.0],
+        "width": 1.5,
+        "height": 1.2,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_study",
+        "parentWall": "wall_right_gf",
+        "from": [7.0, 1.1, -3.5],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_left_gf_1",
+        "parentWall": "wall_left_gf",
+        "from": [-7.0, 1.1, -3.0],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_left_gf_2",
+        "parentWall": "wall_left_gf",
+        "from": [-7.0, 1.1, 3.0],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+
+      {
+        "type": "opening",
+        "id": "door_living_to_hall",
+        "parentWall": "wall_cross_left_gf",
+        "from": [-1.0, 0.0, 0.0],
+        "width": 1.0,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "door_dining_to_kitchen",
+        "parentWall": "wall_kitchen_divider",
+        "from": [-5.0, 0.0, 3.2],
+        "width": 0.9,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "door_study_to_hall",
+        "parentWall": "wall_cross_right_gf",
+        "from": [3.0, 0.0, 0.0],
+        "width": 1.0,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+
+      {
+        "type": "column",
+        "id": "column_portico_left",
+        "base": [-1.2, 0.0, -6.35],
+        "height": 3.0,
+        "bottomRadius": 0.22,
+        "topRadius": 0.18,
+        "style": "modern",
+        "flutes": 12,
+        "material": "marble_white"
+      },
+      {
+        "type": "column",
+        "id": "column_portico_right",
+        "base": [1.2, 0.0, -6.35],
+        "height": 3.0,
+        "bottomRadius": 0.22,
+        "topRadius": 0.18,
+        "style": "modern",
+        "flutes": 12,
+        "material": "marble_white"
+      },
+
+      {
+        "type": "beam",
+        "id": "portico_beam",
+        "from": [-1.5, 3.0, -6.35],
+        "to": [1.5, 3.0, -6.35],
+        "crossSection": "rect",
+        "width": 0.3,
+        "height": 0.2,
+        "material": "marble_white"
+      },
+      {
+        "type": "floor",
+        "id": "portico_roof",
+        "from": [-2.0, 3.0, -7.5],
+        "to": [2.0, 3.0, -6.0],
+        "thickness": 0.1,
+        "material": "marble_white"
+      },
+
+      {
+        "type": "stair",
+        "id": "main_stair",
+        "from": [2.5, 0.0, 0.2],
+        "to": [2.5, 3.2, 3.8],
+        "width": 1.3,
+        "material": "oak_stair"
+      },
+
+      {
+        "type": "beam",
+        "id": "ring_beam_front_gf",
+        "from": [-7.0, 3.2, -6.0],
+        "to": [7.0, 3.2, -6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_back_gf",
+        "from": [-7.0, 3.2, 6.0],
+        "to": [7.0, 3.2, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_left_gf",
+        "from": [-7.0, 3.2, -6.0],
+        "to": [-7.0, 3.2, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_right_gf",
+        "from": [7.0, 3.2, -6.0],
+        "to": [7.0, 3.2, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+
+      {
+        "type": "floor",
+        "id": "upper_floor",
+        "from": [-7.0, 3.2, -6.0],
+        "to": [7.0, 3.2, 6.0],
+        "thickness": 0.25,
+        "material": "wood_floor"
+      },
+
+      {
+        "type": "wall",
+        "id": "wall_front_1f",
+        "from": [-7.0, 3.2, -6.0],
+        "to": [7.0, 6.0, -6.0],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_back_1f",
+        "from": [-7.0, 3.2, 6.0],
+        "to": [7.0, 6.0, 6.0],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_left_1f",
+        "from": [-7.0, 3.2, -5.65],
+        "to": [-7.0, 6.0, 5.65],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_right_1f",
+        "from": [7.0, 3.2, -5.65],
+        "to": [7.0, 6.0, 5.65],
+        "thickness": 0.35,
+        "material": "exterior_stone"
+      },
+
+      {
+        "type": "wall",
+        "id": "wall_central_1f",
+        "from": [0.0, 3.2, -5.65],
+        "to": [0.0, 6.0, 5.65],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+      {
+        "type": "wall",
+        "id": "wall_cross_left_1f",
+        "from": [-7.0, 3.2, 1.5],
+        "to": [0.0, 6.0, 1.5],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+      {
+        "type": "wall",
+        "id": "wall_cross_right_1f",
+        "from": [0.0, 3.2, 0.5],
+        "to": [7.0, 6.0, 0.5],
+        "thickness": 0.2,
+        "material": "interior_wall"
+      },
+
+      {
+        "type": "opening",
+        "id": "window_master_front",
+        "parentWall": "wall_front_1f",
+        "from": [-4.0, 4.3, -6.0],
+        "width": 2.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_guest1_front",
+        "parentWall": "wall_front_1f",
+        "from": [4.0, 4.3, -6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_master_back",
+        "parentWall": "wall_back_1f",
+        "from": [-4.0, 4.3, 6.0],
+        "width": 2.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_guest2_back",
+        "parentWall": "wall_back_1f",
+        "from": [4.0, 4.3, 6.0],
+        "width": 2.0,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_master_left",
+        "parentWall": "wall_left_1f",
+        "from": [-7.0, 4.3, -3.0],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_guest_left",
+        "parentWall": "wall_left_1f",
+        "from": [-7.0, 4.3, 3.5],
+        "width": 1.2,
+        "height": 1.2,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+      {
+        "type": "opening",
+        "id": "window_guest1_right",
+        "parentWall": "wall_right_1f",
+        "from": [7.0, 4.3, -3.0],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "window_glass"
+      },
+
+      {
+        "type": "opening",
+        "id": "door_master_bedroom",
+        "parentWall": "wall_central_1f",
+        "from": [0.0, 3.2, -3.5],
+        "width": 0.9,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "door_guest1",
+        "parentWall": "wall_cross_right_1f",
+        "from": [3.0, 3.2, 0.5],
+        "width": 0.9,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+      {
+        "type": "opening",
+        "id": "door_guest2",
+        "parentWall": "wall_central_1f",
+        "from": [0.0, 3.2, 3.0],
+        "width": 0.9,
+        "height": 2.2,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+
+      {
+        "type": "beam",
+        "id": "ring_beam_front_1f",
+        "from": [-7.0, 6.0, -6.0],
+        "to": [7.0, 6.0, -6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_back_1f",
+        "from": [-7.0, 6.0, 6.0],
+        "to": [7.0, 6.0, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_left_1f",
+        "from": [-7.0, 6.0, -6.0],
+        "to": [-7.0, 6.0, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_right_1f",
+        "from": [7.0, 6.0, -6.0],
+        "to": [7.0, 6.0, 6.0],
+        "crossSection": "rect",
+        "width": 0.35,
+        "height": 0.3,
+        "material": "concrete_beam"
+      },
+
+      {
+        "type": "floor",
+        "id": "balcony_floor",
+        "from": [-3.5, 3.2, 6.0],
+        "to": [3.5, 3.2, 8.5],
+        "thickness": 0.15,
+        "material": "stone_floor"
+      },
+      {
+        "type": "wall",
+        "id": "balcony_railing_left",
+        "from": [-3.5, 3.2, 6.0],
+        "to": [-3.5, 4.2, 8.5],
+        "thickness": 0.06,
+        "material": "wrought_iron"
+      },
+      {
+        "type": "wall",
+        "id": "balcony_railing_right",
+        "from": [3.5, 3.2, 6.0],
+        "to": [3.5, 4.2, 8.5],
+        "thickness": 0.06,
+        "material": "wrought_iron"
+      },
+      {
+        "type": "wall",
+        "id": "balcony_railing_front",
+        "from": [-3.5, 3.2, 8.5],
+        "to": [3.5, 4.2, 8.5],
+        "thickness": 0.06,
+        "material": "wrought_iron"
+      },
+      {
+        "type": "opening",
+        "id": "balcony_door",
+        "parentWall": "wall_back_1f",
+        "from": [0.0, 3.2, 6.0],
+        "width": 1.5,
+        "height": 2.4,
+        "style": "rectangular",
+        "material": "oak_door"
+      },
+
+      {
+        "type": "roof",
+        "id": "main_roof",
+        "roofType": "gable",
+        "span": 15.5,
+        "depth": 14.5,
+        "height": 4.0,
+        "thickness": 0.3,
+        "material": "roof_tile_red"
+      },
+
+      {
+        "type": "column",
+        "id": "chimney",
+        "base": [4.5, 6.0, -2.0],
+        "height": 2.5,
+        "bottomRadius": 0.3,
+        "topRadius": 0.25,
+        "style": "modern",
+        "material": "brick_chimney"
+      },
+
+      {
+        "type": "furniture",
+        "id": "sofa_1",
+        "subtype": "chair",
+        "position": [-5.0, 0.0, -4.5],
+        "style": "modern",
+        "dimensions": { "width": 2.2, "depth": 0.9, "height": 0.85 },
+        "material": "fabric_beige"
+      },
+      {
+        "type": "furniture",
+        "id": "sofa_2",
+        "subtype": "chair",
+        "position": [-3.0, 0.0, -5.0],
+        "style": "modern",
+        "dimensions": { "width": 2.2, "depth": 0.9, "height": 0.85 },
+        "material": "fabric_beige"
+      },
+      {
+        "type": "furniture",
+        "id": "coffee_table",
+        "subtype": "table",
+        "position": [-4.0, 0.0, -4.2],
+        "style": "modern",
+        "dimensions": { "width": 1.4, "depth": 0.8, "height": 0.45 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "tv_stand",
+        "subtype": "table",
+        "position": [-4.0, 0.0, -2.5],
+        "style": "modern",
+        "dimensions": { "width": 2.5, "depth": 0.5, "height": 0.55 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "bookshelf_living",
+        "subtype": "bookshelf",
+        "position": [-6.5, 0.0, -3.5],
+        "style": "modern",
+        "dimensions": { "width": 0.8, "depth": 0.4, "height": 2.2 },
+        "material": "oak_furniture"
+      },
+
+      {
+        "type": "furniture",
+        "id": "dining_table",
+        "subtype": "table",
+        "position": [-4.0, 0.0, 4.5],
+        "style": "rustic_wooden",
+        "dimensions": { "width": 2.5, "depth": 1.0, "height": 0.75 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "dining_chair_1",
+        "subtype": "chair",
+        "position": [-5.5, 0.0, 4.2],
+        "style": "rustic_wooden",
+        "dimensions": { "width": 0.5, "depth": 0.5, "height": 0.9 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "dining_chair_2",
+        "subtype": "chair",
+        "position": [-2.5, 0.0, 4.2],
+        "style": "rustic_wooden",
+        "dimensions": { "width": 0.5, "depth": 0.5, "height": 0.9 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "dining_chair_3",
+        "subtype": "chair",
+        "position": [-4.0, 0.0, 5.3],
+        "style": "rustic_wooden",
+        "dimensions": { "width": 0.5, "depth": 0.5, "height": 0.9 },
+        "material": "oak_furniture"
+      },
+
+      {
+        "type": "furniture",
+        "id": "kitchen_counter",
+        "subtype": "table",
+        "position": [-5.5, 0.0, 1.2],
+        "style": "modern",
+        "dimensions": { "width": 3.0, "depth": 0.65, "height": 0.9 },
+        "material": "marble_white"
+      },
+      {
+        "type": "furniture",
+        "id": "kitchen_island",
+        "subtype": "table",
+        "position": [-2.5, 0.0, 1.8],
+        "style": "modern",
+        "dimensions": { "width": 1.5, "depth": 0.8, "height": 0.9 },
+        "material": "marble_white"
+      },
+
+      {
+        "type": "furniture",
+        "id": "desk_study",
+        "subtype": "table",
+        "position": [4.0, 0.0, 4.0],
+        "style": "modern",
+        "dimensions": { "width": 1.6, "depth": 0.7, "height": 0.75 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "chair_study",
+        "subtype": "chair",
+        "position": [3.2, 0.0, 3.8],
+        "style": "modern",
+        "dimensions": { "width": 0.6, "depth": 0.6, "height": 0.95 },
+        "material": "fabric_beige"
+      },
+      {
+        "type": "furniture",
+        "id": "bookshelf_study",
+        "subtype": "bookshelf",
+        "position": [5.0, 0.0, 5.2],
+        "style": "modern",
+        "dimensions": { "width": 2.0, "depth": 0.4, "height": 2.5 },
+        "material": "oak_furniture"
+      },
+
+      {
+        "type": "furniture",
+        "id": "bed_master",
+        "subtype": "bed",
+        "position": [-4.0, 3.2, -3.5],
+        "style": "modern",
+        "dimensions": { "width": 2.0, "depth": 2.2, "height": 0.55 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "wardrobe_master",
+        "subtype": "bookshelf",
+        "position": [-6.2, 3.2, -2.0],
+        "style": "modern",
+        "dimensions": { "width": 1.5, "depth": 0.6, "height": 2.3 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "nightstand_master",
+        "subtype": "table",
+        "position": [-2.0, 3.2, -4.0],
+        "style": "modern",
+        "dimensions": { "width": 0.5, "depth": 0.4, "height": 0.5 },
+        "material": "oak_furniture"
+      },
+
+      {
+        "type": "furniture",
+        "id": "bed_guest1",
+        "subtype": "bed",
+        "position": [4.0, 3.2, -3.5],
+        "style": "modern",
+        "dimensions": { "width": 1.8, "depth": 2.0, "height": 0.5 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "desk_guest1",
+        "subtype": "table",
+        "position": [5.5, 3.2, -5.2],
+        "style": "modern",
+        "dimensions": { "width": 1.0, "depth": 0.5, "height": 0.75 },
+        "material": "oak_furniture"
+      },
+
+      {
+        "type": "furniture",
+        "id": "bed_guest2",
+        "subtype": "bed",
+        "position": [4.0, 3.2, 4.0],
+        "style": "modern",
+        "dimensions": { "width": 1.8, "depth": 2.0, "height": 0.5 },
+        "material": "oak_furniture"
+      },
+      {
+        "type": "furniture",
+        "id": "wardrobe_guest2",
+        "subtype": "bookshelf",
+        "position": [6.2, 3.2, 2.5],
+        "style": "modern",
+        "dimensions": { "width": 1.2, "depth": 0.6, "height": 2.2 },
+        "material": "oak_furniture"
+      }
+    ]
+  },
+
+  "materials": {
+    "exterior_stone": {
+      "baseColor": [0.72, 0.68, 0.64],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.48, 0.45, 0.40],
+          "dustOpacity": 0.25,
+          "crackIntensity": 0.08,
+          "colorFade": 0.1
+        }
+      ]
+    },
+    "interior_wall": {
+      "baseColor": [0.88, 0.85, 0.80],
+      "roughness": 0.65,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "stone_floor": {
+      "baseColor": [0.50, 0.48, 0.45],
+      "roughness": 0.8,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "edgeWear",
+          "wearColor": [0.58, 0.55, 0.50],
+          "intensity": 0.25
+        },
+        {
+          "type": "weathering",
+          "dustColor": [0.42, 0.40, 0.38],
+          "dustOpacity": 0.2,
+          "crackIntensity": 0.05,
+          "colorFade": 0.08
+        }
+      ]
+    },
+    "wood_floor": {
+      "baseColor": [0.42, 0.25, 0.15],
+      "roughness": 0.55,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "edgeWear",
+          "wearColor": [0.52, 0.32, 0.20],
+          "intensity": 0.3
+        }
+      ]
+    },
+    "oak_door": {
+      "baseColor": [0.38, 0.20, 0.10],
+      "roughness": 0.65,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.32, 0.18, 0.08],
+          "dustOpacity": 0.15,
+          "crackIntensity": 0.04,
+          "colorFade": 0.08
+        }
+      ]
+    },
+    "window_glass": {
+      "baseColor": [0.82, 0.88, 0.94],
+      "roughness": 0.08,
+      "metallic": 0.05,
+      "albedo": 0.9,
+      "opacity": 0.35,
+      "lightingCondition": "D65_noon"
+    },
+    "oak_stair": {
+      "baseColor": [0.38, 0.20, 0.10],
+      "roughness": 0.7,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "edgeWear",
+          "wearColor": [0.50, 0.30, 0.18],
+          "intensity": 0.45
+        }
+      ]
+    },
+    "concrete_beam": {
+      "baseColor": [0.62, 0.60, 0.58],
+      "roughness": 0.75,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "roof_tile_red": {
+      "baseColor": [0.48, 0.18, 0.10],
+      "roughness": 0.75,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.35, 0.20, 0.12],
+          "dustOpacity": 0.35,
+          "crackIntensity": 0.1,
+          "colorFade": 0.12
+        },
+        {
+          "type": "moss",
+          "mossColor": [0.15, 0.35, 0.12],
+          "coverage": 0.15,
+          "pattern": "edge"
+        }
+      ]
+    },
+    "marble_white": {
+      "baseColor": [0.88, 0.86, 0.82],
+      "roughness": 0.3,
+      "metallic": 0.05,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.65, 0.63, 0.60],
+          "dustOpacity": 0.15,
+          "crackIntensity": 0.03,
+          "colorFade": 0.05
+        }
+      ]
+    },
+    "oak_furniture": {
+      "baseColor": [0.45, 0.25, 0.15],
+      "roughness": 0.55,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "edgeWear",
+          "wearColor": [0.55, 0.35, 0.20],
+          "intensity": 0.2
+        }
+      ]
+    },
+    "fabric_beige": {
+      "baseColor": [0.78, 0.72, 0.63],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "wrought_iron": {
+      "baseColor": [0.15, 0.14, 0.13],
+      "roughness": 0.5,
+      "metallic": 0.8,
+      "albedo": 0.85,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.25, 0.20, 0.15],
+          "dustOpacity": 0.4,
+          "crackIntensity": 0.02,
+          "colorFade": 0.05
+        }
+      ]
+    },
+    "brick_chimney": {
+      "baseColor": [0.55, 0.32, 0.22],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "weathering",
+          "dustColor": [0.35, 0.25, 0.20],
+          "dustOpacity": 0.5,
+          "crackIntensity": 0.12,
+          "colorFade": 0.1
+        }
+      ]
+    }
+  },
+
+  "behaviors": {
+    "physics": {
+      "mass": 0,
+      "collisionShape": "mesh",
+      "constraints": [
+        {
+          "type": "hinge",
+          "target": "front_door",
+          "axis": "z",
+          "limit": [0, 100]
+        },
+        {
+          "type": "hinge",
+          "target": "balcony_door",
+          "axis": "z",
+          "limit": [0, 90]
+        }
+      ]
+    },
+    "scripts": [
+      {
+        "on_click": {
+          "condition": "event.target == 'front_door'",
+          "actions": [
+            { "type": "toggle_hinge", "target": "front_door" },
+            { "type": "play_sound", "sound": "wooden_door_open" }
+          ]
+        }
+      },
+      {
+        "on_click": {
+          "condition": "event.target == 'balcony_door'",
+          "actions": [
+            { "type": "toggle_hinge", "target": "balcony_door" },
+            { "type": "play_sound", "sound": "glass_door_open" }
+          ]
+        }
+      }
+    ]
+  }
+}

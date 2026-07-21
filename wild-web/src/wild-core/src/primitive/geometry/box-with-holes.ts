@@ -24,6 +24,16 @@ export function boxWithHoles(length: number, height: number, thickness: number, 
   const hh = height / 2;
   const ht = thickness / 2;
 
+  // 调试：检查异常情况
+  if (length > 20 || cutouts.length > 0) {
+    console.log(`📦 boxWithHoles: L=${length.toFixed(2)}, H=${height.toFixed(2)}, T=${thickness.toFixed(2)}`);
+    console.log(`  hl=${hl.toFixed(2)}, hh=${hh.toFixed(2)}, ht=${ht.toFixed(2)}`);
+    console.log(`  cutouts: ${cutouts.length}`);
+    cutouts.forEach((c, i) => {
+      console.log(`    [${i}] localX=${c.localX.toFixed(2)}, localY=${c.localY.toFixed(2)}, W=${c.localW.toFixed(2)}, H=${c.localH.toFixed(2)}`);
+    });
+  }
+
   // 将 cutout 从墙局部坐标转换到盒体中心坐标
   const holes = cutouts.map(c => ({
     x1: c.localX - c.localW / 2 - hl,
@@ -31,6 +41,14 @@ export function boxWithHoles(length: number, height: number, thickness: number, 
     y1: c.localY - hh,
     y2: c.localY + c.localH - hh,
   }));
+  
+  // 调试：检查转换后的洞口坐标
+  if (length > 20 || cutouts.length > 0) {
+    console.log(`  转换后的holes:`);
+    holes.forEach((h, i) => {
+      console.log(`    [${i}] x1=${h.x1.toFixed(2)}, x2=${h.x2.toFixed(2)}, y1=${h.y1.toFixed(2)}, y2=${h.y2.toFixed(2)}`);
+    });
+  }
 
   // 辅助：推一个三角形
   function tri(x1: number, y1: number, z1: number,

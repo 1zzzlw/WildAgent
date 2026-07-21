@@ -1,52 +1,33 @@
 /**
-
  * 原语引擎入口 — reconstructEntity
-
  * 
-
  * 将 .wild 蓝图编译为可渲染的几何体与材质参数。
-
  * 这是引擎的唯一公开入口。
-
  */
 import type { Blueprint, ReconstructedEntity, AABB, MeshData, MaterialParams } from './types';
-
 import { expandTemplates, expandPlacements } from './expander';
-
 import { resolveSpatialRelations } from './resolver';
-
 import { buildWall, buildColumn, buildFloor, buildBeam, buildRoof, buildOpening, buildStair, buildFurniture, buildDenseBrick, buildBody } from './geometry';
-
 import { applyMaterials } from './materials/apply';
-
-
-
 export { parseBlueprint } from './parser';
 export type { Blueprint, ReconstructedEntity, MeshData } from './types';
 
-
-
 // ─── 世界空间包围盒计算 ─────────────────────────────
-
 /** 对网格的所有顶点应用 TRS 变换，返回世界空间包围盒 */
-
 function computeWorldAABB(meshes: MeshData[]): AABB {
 
   let minX = Infinity, minY = Infinity, minZ = Infinity;
-
   let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
   for (const m of meshes) {
     const { position, rotation, scale } = m.transform;
     const [sx, sy, sz] = scale;
     const [px, py, pz] = position;
-
     // 欧拉角 XYZ 顺序 → 旋转矩阵
     const rx = rotation[0], ry = rotation[1], rz = rotation[2];
     const cx = Math.cos(rx), sx_ = Math.sin(rx);
     const cy = Math.cos(ry), sy_ = Math.sin(ry);
     const cz = Math.cos(rz), sz_ = Math.sin(rz);
-
     // Ry * Rx * Rz (Three.js 默认 XYZ 顺序)
     const m00 = cy * cz;
     const m01 = -cy * sz_;
@@ -57,7 +38,6 @@ function computeWorldAABB(meshes: MeshData[]): AABB {
     const m20 = -cx * sy_ * cz + sx_ * sz_;
     const m21 = cx * sy_ * sz_ + sx_ * cz;
     const m22 = cx * cy;
-
     const verts = m.geometry;
     for (let i = 0; i < verts.length; i += 3) {
       // 先缩放
@@ -78,9 +58,7 @@ function computeWorldAABB(meshes: MeshData[]): AABB {
     }
 
   }
-
   return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
-
 }
 
 /** 简单 3D 噪声（用于程序化纹理）*/
@@ -198,8 +176,6 @@ function bakeProceduralColors(meshes: MeshData[], materialParams: MaterialParams
   }
 }
 
-
-
 // ─── 主入口 ───────────────────────────────────────
 export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEntity> {
   // 1. 展开模板
@@ -258,6 +234,8 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   // 3.5 合并瓦片网格（materialRef=roof_tile）。
   // 网格瓦片（_tileGrid）已由 buildTileGrid 合并为一个世界坐标网格，
   // 直接放行；单个瓦片需要合并为一个大网格以减少 draw call。
+  // 
+  // 注意：只合并小瓦片（placement生成的），不合并屋顶主体
   const tileVerts: number[] = [], tileIdx: number[] = [], tileCols: number[] = [], tileNorms: number[] = [];
   let tileMortarColor: [number, number, number] | undefined;
 
@@ -273,6 +251,13 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
         continue;
       }
 
+      // 屋顶主体：有elementId且几何较大（> 20顶点）→ 保留原样，不合并
+      if (m.elementId && m.geometry.length / 3 > 20) {
+        otherMeshes.push(m);
+        continue;
+      }
+
+      // 小瓦片：合并到世界坐标
       const base = tileVerts.length / 3;
 
       for (let i = 0; i < m.geometry.length; i += 3) {

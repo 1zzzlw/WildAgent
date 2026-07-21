@@ -22,7 +22,6 @@ export function resolveSpatialRelations(elements: GeometryElement[]): GeometryEl
 }
 
 // ─── 空间索引 ────────────────────────────────
-
 function buildSpatialIndex(elements: GeometryElement[]): SpatialIndex {
   const byId = new Map<string, GeometryElement>();
   const grid = new Map<string, Set<string>>();
@@ -64,7 +63,6 @@ function getCellForElement(el: GeometryElement, cellSize: number): string {
 }
 
 // ─── 墙角连接 ────────────────────────────────
-
 function resolveWallJoints(elements: GeometryElement[], index: SpatialIndex): void {
   const walls = elements.filter(e => e.type === 'wall') as any[];
   for (const wall of walls) {
@@ -109,7 +107,6 @@ function adjustWallJoint(wall: any, neighbor: any): void {
 }
 
 // ─── 梁定位 ────────────────────────────────
-
 function resolveBeamSupports(elements: GeometryElement[], index: SpatialIndex): void {
   const beams = elements.filter(e => e.type === 'beam') as any[];
   const columns = elements.filter(e => e.type === 'column') as any[];
@@ -138,17 +135,34 @@ function resolveBeamSupports(elements: GeometryElement[], index: SpatialIndex): 
 }
 
 // ─── 屋顶适配 ────────────────────────────────
-
 function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): void {
   const roofs = elements.filter(e => e.type === 'roof') as any[];
   const walls = elements.filter(e => e.type === 'wall') as any[];
 
   for (const roof of roofs) {
     if (walls.length < 3) continue;
+
+    // 计算所有墙的最大高度，用于过滤栏杆/装饰矮墙
+    // 矮墙（如阳台栏杆 < 1.5m）不应参与屋顶包围盒计算，否则会导致屋顶偏移
+    let maxWallHeight = 0;
+    for (const wall of walls) {
+      const h = Math.abs(wall.to[1] - wall.from[1]);
+      if (h > maxWallHeight) maxWallHeight = h;
+    }
+
+    // 只取高度 >= 最大高度 50% 的结构墙，过滤栏杆等矮墙
+    const heightThreshold = maxWallHeight * 0.5;
+    const structuralWalls = walls.filter(w =>
+      Math.abs(w.to[1] - w.from[1]) >= heightThreshold
+    );
+
+    // 过滤后墙太少（如凉亭只有矮墙），退回使用全部墙
+    const effectiveWalls = structuralWalls.length >= 3 ? structuralWalls : walls;
+
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     let maxY = -Infinity;
 
-    for (const wall of walls) {
+    for (const wall of effectiveWalls) {
       minX = Math.min(minX, wall.from[0], wall.to[0]);
       maxX = Math.max(maxX, wall.from[0], wall.to[0]);
       minZ = Math.min(minZ, wall.from[2], wall.to[2]);
@@ -166,7 +180,6 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
 }
 
 // ─── 地板填充 ────────────────────────────────
-
 function resolveFloorRegions(elements: GeometryElement[], index: SpatialIndex): void {
   const existingFloors = elements.filter(e => e.type === 'floor') as any[];
   if (existingFloors.length > 0) return;
@@ -196,51 +209,49 @@ function resolveFloorRegions(elements: GeometryElement[], index: SpatialIndex): 
 }
 
 // ─── 楼梯步数计算 ─────────────────────────────
-
 function resolveStairSteps(elements: GeometryElement[]): void {
   const stairs = elements.filter(e => e.type === 'stair') as any[];
   for (const stair of stairs) {
     if (stair.stepCount && stair.stepCount > 0) continue;
 
     const totalRise = stair.to[1] - stair.from[1];
-    const totalDepth = Math.abs(stair.to[0] - stair.from[0]) + Math.abs(stair.to[2] - stair.from[2]);
+    // 欧几里得水平距离（之前是 Manhattan 距离，对角线楼梯会偏大 ~41%）
+    const totalDepth = Math.sqrt(
+      Math.pow(stair.to[0] - stair.from[0], 2) + Math.pow(stair.to[2] - stair.from[2], 2)
+    );
 
     const targetStepHeight = 0.18;
     const targetStepDepth = 0.30;
-    const minStepHeight = 0.15;
-    const maxStepHeight = 0.20;
-    const minStepDepth = 0.26;
-    const maxStepDepth = 0.35;
 
-    let bestCount = Math.round(totalRise / targetStepHeight);
-    if (bestCount < 1) bestCount = 1;
-
-    let stepHeight = totalRise / bestCount;
-    let stepDepth = totalDepth / bestCount;
-
-    if (stepHeight < minStepHeight || stepHeight > maxStepHeight) {
-      bestCount = Math.max(1, Math.round(totalRise / targetStepHeight));
-      stepHeight = totalRise / bestCount;
-      stepDepth = totalDepth / bestCount;
+    // 总升幅太小：单步即可
+    if (totalRise <= 0.25 || totalDepth <= 0.25) {
+      stair.stepCount = 1;
+      stair.stepHeight = Math.max(0.05, totalRise);
+      stair.stepDepth = Math.max(0.05, totalDepth);
+      continue;
     }
 
-    stepHeight = Math.max(minStepHeight, Math.min(maxStepHeight, stepHeight));
-    stepDepth = Math.max(minStepDepth, Math.min(maxStepDepth, stepDepth));
+    // 从步高和步深两个维度分别估算步数，取平均以平衡二者
+    const countByRise = Math.max(1, Math.round(totalRise / targetStepHeight));
+    const countByDepth = Math.max(1, Math.round(totalDepth / targetStepDepth));
+    let bestCount = Math.round((countByRise + countByDepth) / 2);
+    if (bestCount < 1) bestCount = 1;
 
+    // stepHeight * count == totalRise, stepDepth * count == totalDepth
+    // 不 clamp 单个值——保持这个恒等式，踏步尺寸与间距始终一致
+    // 否则 stair builder 中 step box 尺寸与 step spacing 脱节，产生重叠/缝隙
     stair.stepCount = bestCount;
-    stair.stepHeight = stepHeight;
-    stair.stepDepth = stepDepth;
+    stair.stepHeight = totalRise / bestCount;
+    stair.stepDepth = totalDepth / bestCount;
   }
 }
 
 // ─── 柱网偏移 ────────────────────────────────
-
 function resolveColumnOffsets(elements: GeometryElement[], index: SpatialIndex): void {
   const columns = elements.filter(e => e.type === 'column') as any[];
   const walls = elements.filter(e => e.type === 'wall') as any[];
 
   for (const col of columns) {
-    const colR = col.bottomRadius || 0.1;
     for (const wall of walls) {
       const wx = wall.from[0], wz = wall.from[2];
       const dx = wall.to[0] - wx, dz = wall.to[2] - wz;
@@ -254,9 +265,10 @@ function resolveColumnOffsets(elements: GeometryElement[], index: SpatialIndex):
       // 柱子 base 到墙中心线的有符号垂直距离
       const perpDist = ((col.base[0] - wx) * nx + (col.base[2] - wz) * nz);
 
-      // 检查柱子是否在墙体的厚度范围内（含柱子半径容差）
+      // 仅当柱子中心在墙体厚度范围内（嵌入墙内）时才对齐到中心线
+      // 之前用 wallHalfThick + colR 容差过大，会把门廊柱等有意 offset 的柱子吸入墙内
       const wallHalfThick = wall.thickness / 2;
-      if (Math.abs(perpDist) > wallHalfThick + colR) continue;
+      if (Math.abs(perpDist) > wallHalfThick + 0.02) continue;
 
       // 检查柱子 XZ 投影是否在墙体线段范围内
       const alongT = ((col.base[0] - wx) * dx + (col.base[2] - wz) * dz) / (len * len);
@@ -272,8 +284,16 @@ function resolveColumnOffsets(elements: GeometryElement[], index: SpatialIndex):
 }
 
 // ─── 开口定位 ───────────────────────────────
-
-/** 根据父墙体，在墙体上标记开孔信息，并计算开口世界坐标 */
+/**
+ * 根据父墙体，在墙体上标记开孔信息，并计算开口世界坐标。
+ *
+ * opening.from 格式：[沿墙距离, 开口底部世界Y坐标, 法向偏移]
+ *   - from[0]: 从墙起点沿墙方向的距离（米），不是世界X/Z坐标
+ *   - from[1]: 开口底部的世界Y坐标（米）
+ *   - from[2]: 法向偏移（米），通常为0（在墙面中心线上）
+ *
+ * 直线墙的沿墙距离计算：distance = dot(opening_world_pos - wall_from, wall_direction)
+ */
 function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void {
   for (const el of elements) {
     if (el.type !== 'opening') continue;
@@ -285,20 +305,20 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
     const wallTo = (wall as any).to;
     const wallCurve = (wall as any).curve;
 
-    // 在墙体上存储开孔信息（墙体生成器切孔用）
-    if (!wall._cutouts) wall._cutouts = [];
-    wall._cutouts.push({
-      localX: opening.from[0],
-      localY: opening.from[1],
-      localW: opening.width,
-      localH: opening.height,
-    });
-
     if (wallCurve && wallCurve.type === 'arc') {
-      // 弧形墙体：从弧参数计算门的准确位置
+      // 弧形墙体：opening.from[0] 已经是弧长，不需要转换
+      if (!wall._cutouts) wall._cutouts = [];
+      wall._cutouts.push({
+        localX: opening.from[0],
+        localY: opening.from[1],  // 弧形墙：from[1] 是相对墙底偏移
+        localW: opening.width,
+        localH: opening.height,
+      });
+
+      // 弧形墙体：从弧参数计算门的准确世界位置
       const center = wallCurve.center;
-      const radius = Math.sqrt((wallFrom[0]-center[0])**2 + (wallFrom[2]-center[2])**2);
-      const startRad = Math.atan2(wallFrom[2]-center[2], wallFrom[0]-center[0]);
+      const radius = Math.sqrt((wallFrom[0] - center[0]) ** 2 + (wallFrom[2] - center[2]) ** 2);
+      const startRad = Math.atan2(wallFrom[2] - center[2], wallFrom[0] - center[0]);
       const angle = startRad + opening.from[0] / radius;
       const nx = Math.cos(angle), nz = Math.sin(angle); // 径向（法线方向）
       const offset = opening.from[2] || 0;
@@ -307,23 +327,47 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       opening._worldPos = [worldX, wallFrom[1] + opening.from[1], worldZ];
       opening._wallRotation = Math.atan2(nx, nz);
     } else {
-      // 直线墙体
+      // ─── 直线墙 ─────────────────────────────
+      // opening.from[0] = 沿墙距离（局部坐标）
+      // opening.from[1] = 开口底部的世界Y坐标
+      // opening.from[2] = 法向偏移（通常为0）
+
       const wallDx = wallTo[0] - wallFrom[0];
       const wallDz = wallTo[2] - wallFrom[2];
-      const len = Math.sqrt(wallDx * wallDx + wallDz * wallDz);
-      if (len < 0.001) continue;
-      const dirX = wallDx / len, dirZ = wallDz / len;
+      const wallLen = Math.sqrt(wallDx * wallDx + wallDz * wallDz);
+      if (wallLen < 0.001) continue;
+
+      // 墙方向单位向量
+      const dirX = wallDx / wallLen;
+      const dirZ = wallDz / wallLen;
+      // 墙法线方向（右手法则：沿墙方向看时右侧为法线正方向）
       const nx = -dirZ, nz = dirX;
-      const worldX = wallFrom[0] + opening.from[0] * dirX + opening.from[2] * nx;
-      const worldZ = wallFrom[2] + opening.from[0] * dirZ + opening.from[2] * nz;
-      opening._worldPos = [worldX, wallFrom[1] + opening.from[1], worldZ];
+
+      // 1. 在墙体上存储开孔信息（墙体生成器 boxWithHoles 使用局部坐标）
+      //    from[0] 已经是沿墙距离，from[1] 是世界Y需要转为相对墙底偏移
+      const localX = opening.from[0];        // 沿墙距离（局部坐标）
+      const localY = opening.from[1] - wallFrom[1]; // 开口底部相对墙底高度
+
+      if (!wall._cutouts) wall._cutouts = [];
+      wall._cutouts.push({
+        localX: localX,
+        localY: localY,
+        localW: opening.width,
+        localH: opening.height,
+      });
+
+      // 2. 计算开口实体的世界位置
+      //    世界位置 = 墙起点 + 沿墙投影 + 法向偏移
+      const worldX = wallFrom[0] + localX * dirX + opening.from[2] * nx;
+      const worldZ = wallFrom[2] + localX * dirZ + opening.from[2] * nz;
+      //    from[1] 是世界Y坐标（开口底部），直接使用
+      opening._worldPos = [worldX, opening.from[1], worldZ];
       opening._wallRotation = Math.atan2(nx, nz);
     }
   }
 }
 
 // ─── 辅助函数 ────────────────────────────────
-
 function distance2D(a: Vec3, b: Vec3): number {
   const dx = a[0] - b[0];
   const dz = a[2] - b[2];

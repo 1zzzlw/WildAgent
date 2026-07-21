@@ -1,0 +1,232 @@
+[2026-07-21T05:33:08.625Z] [debug] [vite] connecting...
+[2026-07-21T05:33:08.630Z] [debug] [vite] connected.
+[2026-07-21T05:33:08.720Z] [log] Scene children after init: []
+[2026-07-21T05:33:08.720Z] [log] 💡 调试工具已挂载到 window.debugScene
+[2026-07-21T05:33:08.722Z] [log]   - debugScene.testScene() : 创建测试场景
+[2026-07-21T05:33:08.722Z] [log]   - debugScene.clearTest() : 清除测试场景
+[2026-07-21T05:33:08.722Z] [log] GridHelper added to scene at root level
+[2026-07-21T05:33:08.722Z] [log] Scene structure: {children: 4, hasGrid: true, hasWildScene: true}
+[2026-07-21T05:33:08.730Z] [log] App mounted - Empty document created, GridHelper should be visible
+[2026-07-21T05:33:08.750Z] [warning] [.WebGL-0x350c0011a900]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[2026-07-21T05:33:08.754Z] [warning] [.WebGL-0x350c0011a900]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[2026-07-21T05:33:08.771Z] [warning] [.WebGL-0x350c0011a900]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+[2026-07-21T05:33:08.786Z] [warning] [.WebGL-0x350c0011a900]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+[2026-07-21T05:33:13.844Z] [log] 开始重建场景... Proxy(Object)
+[2026-07-21T05:33:13.844Z] [log] loaded bieshu.wild: 44 elements
+[2026-07-21T05:33:13.863Z] [log] 🧱 buildWall wall_front
+[2026-07-21T05:33:13.863Z] [log]   from: [-8, 0, -6]
+[2026-07-21T05:33:13.863Z] [log]   to: [8, 3, -6]
+[2026-07-21T05:33:13.863Z] [log]   length: 16.00m, height: 3.00m
+[2026-07-21T05:33:13.864Z] [log]   cutouts: 3
+[2026-07-21T05:33:13.864Z] [log]     - localX=8.00, localW=1.20
+[2026-07-21T05:33:13.864Z] [log]     - localX=3.00, localW=1.50
+[2026-07-21T05:33:13.864Z] [log]     - localX=13.00, localW=1.50
+[2026-07-21T05:33:13.864Z] [log] 📦 boxWithHoles: L=16.00, H=3.00, T=0.30
+[2026-07-21T05:33:13.864Z] [log]   hl=8.00, hh=1.50, ht=0.15
+[2026-07-21T05:33:13.864Z] [log]   cutouts: 3
+[2026-07-21T05:33:13.865Z] [log]     [0] localX=8.00, localY=0.00, W=1.20, H=2.40
+[2026-07-21T05:33:13.865Z] [log]     [1] localX=3.00, localY=1.00, W=1.50, H=1.20
+[2026-07-21T05:33:13.865Z] [log]     [2] localX=13.00, localY=1.00, W=1.50, H=1.20
+[2026-07-21T05:33:13.865Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.865Z] [log]     [0] x1=-0.60, x2=0.60, y1=-1.50, y2=0.90
+[2026-07-21T05:33:13.865Z] [log]     [1] x1=-5.75, x2=-4.25, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.865Z] [log]     [2] x1=4.25, x2=5.75, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.865Z] [log] 🧱 buildWall wall_back
+[2026-07-21T05:33:13.865Z] [log]   from: [-8, 0, 8]
+[2026-07-21T05:33:13.865Z] [log]   to: [8, 3, 8]
+[2026-07-21T05:33:13.865Z] [log]   length: 16.00m, height: 3.00m
+[2026-07-21T05:33:13.865Z] [log]   cutouts: 3
+[2026-07-21T05:33:13.865Z] [log]     - localX=8.00, localW=2.00
+[2026-07-21T05:33:13.865Z] [log]     - localX=3.00, localW=1.20
+[2026-07-21T05:33:13.865Z] [log]     - localX=13.00, localW=1.20
+[2026-07-21T05:33:13.865Z] [log] 📦 boxWithHoles: L=16.00, H=3.00, T=0.30
+[2026-07-21T05:33:13.865Z] [log]   hl=8.00, hh=1.50, ht=0.15
+[2026-07-21T05:33:13.865Z] [log]   cutouts: 3
+[2026-07-21T05:33:13.865Z] [log]     [0] localX=8.00, localY=1.00, W=2.00, H=1.50
+[2026-07-21T05:33:13.865Z] [log]     [1] localX=3.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.865Z] [log]     [2] localX=13.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.865Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.865Z] [log]     [0] x1=-1.00, x2=1.00, y1=-0.50, y2=1.00
+[2026-07-21T05:33:13.865Z] [log]     [1] x1=-5.60, x2=-4.40, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.865Z] [log]     [2] x1=4.40, x2=5.60, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.865Z] [log] 🧱 buildWall wall_left
+[2026-07-21T05:33:13.865Z] [log]   from: [-8, 0, -6]
+[2026-07-21T05:33:13.865Z] [log]   to: [-8, 3, 8]
+[2026-07-21T05:33:13.865Z] [log]   length: 14.00m, height: 3.00m
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.866Z] [log]     - localX=4.00, localW=1.20
+[2026-07-21T05:33:13.866Z] [log] 📦 boxWithHoles: L=14.00, H=3.00, T=0.30
+[2026-07-21T05:33:13.866Z] [log]   hl=7.00, hh=1.50, ht=0.15
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.866Z] [log]     [0] localX=4.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.866Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.866Z] [log]     [0] x1=-3.60, x2=-2.40, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.866Z] [log] 🧱 buildWall wall_right
+[2026-07-21T05:33:13.866Z] [log]   from: [8, 0, -6]
+[2026-07-21T05:33:13.866Z] [log]   to: [8, 3, 8]
+[2026-07-21T05:33:13.866Z] [log]   length: 14.00m, height: 3.00m
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.866Z] [log]     - localX=8.00, localW=1.20
+[2026-07-21T05:33:13.866Z] [log] 📦 boxWithHoles: L=14.00, H=3.00, T=0.30
+[2026-07-21T05:33:13.866Z] [log]   hl=7.00, hh=1.50, ht=0.15
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.866Z] [log]     [0] localX=8.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.866Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.866Z] [log]     [0] x1=0.40, x2=1.60, y1=-0.50, y2=0.70
+[2026-07-21T05:33:13.866Z] [log] 🧱 buildWall wall_interior_ground
+[2026-07-21T05:33:13.866Z] [log]   from: [-3, 0, -6]
+[2026-07-21T05:33:13.866Z] [log]   to: [-3, 3, 8]
+[2026-07-21T05:33:13.866Z] [log]   length: 14.00m, height: 3.00m
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.866Z] [log]     - localX=6.00, localW=1.00
+[2026-07-21T05:33:13.866Z] [log] 📦 boxWithHoles: L=14.00, H=3.00, T=0.20
+[2026-07-21T05:33:13.866Z] [log]   hl=7.00, hh=1.50, ht=0.10
+[2026-07-21T05:33:13.866Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.867Z] [log]     [0] localX=6.00, localY=0.00, W=1.00, H=2.20
+[2026-07-21T05:33:13.868Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.868Z] [log]     [0] x1=-1.50, x2=-0.50, y1=-1.50, y2=0.70
+[2026-07-21T05:33:13.868Z] [log] 🧱 buildWall wall_upper_front
+[2026-07-21T05:33:13.868Z] [log]   from: [-8, 3, -6]
+[2026-07-21T05:33:13.868Z] [log]   to: [8, 5.8, -6]
+[2026-07-21T05:33:13.868Z] [log]   length: 16.00m, height: 2.80m
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     - localX=8.00, localW=2.00
+[2026-07-21T05:33:13.868Z] [log] 📦 boxWithHoles: L=16.00, H=2.80, T=0.30
+[2026-07-21T05:33:13.868Z] [log]   hl=8.00, hh=1.40, ht=0.15
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     [0] localX=8.00, localY=1.00, W=2.00, H=1.50
+[2026-07-21T05:33:13.868Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.868Z] [log]     [0] x1=-1.00, x2=1.00, y1=-0.40, y2=1.10
+[2026-07-21T05:33:13.868Z] [log] 🧱 buildWall wall_upper_back
+[2026-07-21T05:33:13.868Z] [log]   from: [-8, 3, 8]
+[2026-07-21T05:33:13.868Z] [log]   to: [8, 5.8, 8]
+[2026-07-21T05:33:13.868Z] [log]   length: 16.00m, height: 2.80m
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     - localX=8.00, localW=1.50
+[2026-07-21T05:33:13.868Z] [log] 📦 boxWithHoles: L=16.00, H=2.80, T=0.30
+[2026-07-21T05:33:13.868Z] [log]   hl=8.00, hh=1.40, ht=0.15
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     [0] localX=8.00, localY=0.00, W=1.50, H=2.20
+[2026-07-21T05:33:13.868Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.868Z] [log]     [0] x1=-0.75, x2=0.75, y1=-1.40, y2=0.80
+[2026-07-21T05:33:13.868Z] [log] 🧱 buildWall wall_upper_left
+[2026-07-21T05:33:13.868Z] [log]   from: [-8, 3, -6]
+[2026-07-21T05:33:13.868Z] [log]   to: [-8, 5.8, 8]
+[2026-07-21T05:33:13.868Z] [log]   length: 14.00m, height: 2.80m
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     - localX=4.00, localW=1.20
+[2026-07-21T05:33:13.868Z] [log] 📦 boxWithHoles: L=14.00, H=2.80, T=0.30
+[2026-07-21T05:33:13.868Z] [log]   hl=7.00, hh=1.40, ht=0.15
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     [0] localX=4.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.868Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.868Z] [log]     [0] x1=-3.60, x2=-2.40, y1=-0.40, y2=0.80
+[2026-07-21T05:33:13.868Z] [log] 🧱 buildWall wall_upper_right
+[2026-07-21T05:33:13.868Z] [log]   from: [8, 3, -6]
+[2026-07-21T05:33:13.868Z] [log]   to: [8, 5.8, 8]
+[2026-07-21T05:33:13.868Z] [log]   length: 14.00m, height: 2.80m
+[2026-07-21T05:33:13.868Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.868Z] [log]     - localX=8.00, localW=1.20
+[2026-07-21T05:33:13.868Z] [log] 📦 boxWithHoles: L=14.00, H=2.80, T=0.30
+[2026-07-21T05:33:13.868Z] [log]   hl=7.00, hh=1.40, ht=0.15
+[2026-07-21T05:33:13.869Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.869Z] [log]     [0] localX=8.00, localY=1.00, W=1.20, H=1.20
+[2026-07-21T05:33:13.869Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.869Z] [log]     [0] x1=0.40, x2=1.60, y1=-0.40, y2=0.80
+[2026-07-21T05:33:13.869Z] [log] 🧱 buildWall wall_upper_interior
+[2026-07-21T05:33:13.869Z] [log]   from: [-3, 3, -6]
+[2026-07-21T05:33:13.869Z] [log]   to: [-3, 5.8, 8]
+[2026-07-21T05:33:13.869Z] [log]   length: 14.00m, height: 2.80m
+[2026-07-21T05:33:13.869Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.869Z] [log]     - localX=8.00, localW=0.80
+[2026-07-21T05:33:13.869Z] [log] 📦 boxWithHoles: L=14.00, H=2.80, T=0.20
+[2026-07-21T05:33:13.869Z] [log]   hl=7.00, hh=1.40, ht=0.10
+[2026-07-21T05:33:13.869Z] [log]   cutouts: 1
+[2026-07-21T05:33:13.869Z] [log]     [0] localX=8.00, localY=0.00, W=0.80, H=2.00
+[2026-07-21T05:33:13.869Z] [log]   转换后的holes:
+[2026-07-21T05:33:13.869Z] [log]     [0] x1=0.60, x2=1.40, y1=-1.40, y2=0.60
+[2026-07-21T05:33:13.871Z] [log] 场景重建成功 {meshCount: 57, materialCount: 57, boundingBox: Object}
+[2026-07-21T05:33:13.874Z] [log] 场景组更新成功: 57 个网格
+[2026-07-21T05:33:14.021Z] [startGroup] 🔍 蓝图信息
+[2026-07-21T05:33:14.021Z] [log] 元素数量: 44
+[2026-07-21T05:33:14.021Z] [startGroupCollapsed] 墙体 (12个)
+[2026-07-21T05:33:14.021Z] [log] wall_front                Y: 0.0 → 3.0 (3.0m)
+[2026-07-21T05:33:14.021Z] [log] wall_back                 Y: 0.0 → 3.0 (3.0m)
+[2026-07-21T05:33:14.021Z] [log] wall_left                 Y: 0.0 → 3.0 (3.0m)
+[2026-07-21T05:33:14.021Z] [log] wall_right                Y: 0.0 → 3.0 (3.0m)
+[2026-07-21T05:33:14.021Z] [log] wall_interior_ground      Y: 0.0 → 3.0 (3.0m)
+[2026-07-21T05:33:14.021Z] [log] wall_upper_front          Y: 3.0 → 5.8 (2.8m)
+[2026-07-21T05:33:14.021Z] [log] wall_upper_back           Y: 3.0 → 5.8 (2.8m)
+[2026-07-21T05:33:14.021Z] [log] wall_upper_left           Y: 3.0 → 5.8 (2.8m)
+[2026-07-21T05:33:14.021Z] [log] wall_upper_right          Y: 3.0 → 5.8 (2.8m)
+[2026-07-21T05:33:14.021Z] [log] wall_upper_interior       Y: 3.0 → 5.8 (2.8m)
+[2026-07-21T05:33:14.021Z] [log] balcony_railing_left      Y: 3.0 → 3.8 (0.8m)
+[2026-07-21T05:33:14.021Z] [log] balcony_railing_right     Y: 3.0 → 3.8 (0.8m)
+[2026-07-21T05:33:14.021Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.021Z] [startGroupCollapsed] 屋顶 (1个)
+[2026-07-21T05:33:14.021Z] [log] main_roof: span=17, depth=15, height=3
+[2026-07-21T05:33:14.021Z] [log]   position: [0,5.8,1]
+[2026-07-21T05:33:14.021Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.021Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.021Z] [startGroup] 🔧 Resolver修改
+[2026-07-21T05:33:14.022Z] [log] 屋顶position: [0,5.8,1]
+[2026-07-21T05:33:14.022Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.022Z] [startGroup] 📦 渲染实体
+[2026-07-21T05:33:14.022Z] [log] 网格数量: 57
+[2026-07-21T05:33:14.022Z] [log] 材质数量: 57
+[2026-07-21T05:33:14.022Z] [log] 边界盒: {min: Array(3), max: Array(3)}
+[2026-07-21T05:33:14.022Z] [log] 边界盒尺寸: X=17.0m, Y=9.1m, Z=18.3m
+[2026-07-21T05:33:14.022Z] [log] 网格分布: {ground_floor: 1, wall_front: 1, wall_back: 1, wall_left: 1, wall_right: 1}
+[2026-07-21T05:33:14.022Z] [log] 边界盒详情:
+[2026-07-21T05:33:14.022Z] [log]   min: [-8.50, -0.30, -6.50]
+[2026-07-21T05:33:14.022Z] [log]   max: [8.50, 8.80, 11.75]
+[2026-07-21T05:33:14.022Z] [startGroupCollapsed] 🔍 检查异常mesh
+[2026-07-21T05:33:14.023Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.023Z] [startGroupCollapsed] 屋顶网格 (1个)
+[2026-07-21T05:33:14.023Z] [log] #0: main_roof
+[2026-07-21T05:33:14.023Z] [log]   materialRef: roof_tile
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 5.80, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 0.00, 0.00]
+[2026-07-21T05:33:14.023Z] [log]   scale: [1.00, 1.00, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   vertices: 24
+[2026-07-21T05:33:14.023Z] [log]   geometry Y range: 0.00 to 3.00
+[2026-07-21T05:33:14.023Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.023Z] [startGroupCollapsed] 墙体网格 (10个)
+[2026-07-21T05:33:14.023Z] [log] #0: wall_front
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 1.50, -6.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 0.00, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #1: wall_back
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 1.50, 8.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 0.00, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #2: wall_left
+[2026-07-21T05:33:14.023Z] [log]   position: [-8.00, 1.50, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #3: wall_right
+[2026-07-21T05:33:14.023Z] [log]   position: [8.00, 1.50, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #4: wall_interior_ground
+[2026-07-21T05:33:14.023Z] [log]   position: [-3.00, 1.50, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #5: wall_upper_front
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 4.40, -6.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 0.00, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #6: wall_upper_back
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 4.40, 8.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 0.00, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #7: wall_upper_left
+[2026-07-21T05:33:14.023Z] [log]   position: [-8.00, 4.40, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #8: wall_upper_right
+[2026-07-21T05:33:14.023Z] [log]   position: [8.00, 4.40, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [log] #9: wall_upper_interior
+[2026-07-21T05:33:14.023Z] [log]   position: [-3.00, 4.40, 1.00]
+[2026-07-21T05:33:14.023Z] [log]   rotation: [0.00, 1.57, 0.00]
+[2026-07-21T05:33:14.023Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.023Z] [startGroupCollapsed] 地板网格 (2个)
+[2026-07-21T05:33:14.023Z] [log] #0: ground_floor
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, -0.15, 1.00]
+[2026-07-21T05:33:14.023Z] [log] #1: upper_floor
+[2026-07-21T05:33:14.023Z] [log]   position: [0.00, 2.90, 1.00]
+[2026-07-21T05:33:14.023Z] [endGroup] console.groupEnd
+[2026-07-21T05:33:14.023Z] [endGroup] console.groupEnd

@@ -13,10 +13,10 @@
       {"type":"wall","id":"main_wall","from":[5.8,1.2,0],"to":[5.8,7.7,0],"thickness":0.25,"material":"wall_red",
         "curve":{"type":"arc","center":[0,0,0],"sweep":360,"segments":48}},
 
-      {"type":"opening","id":"door_N","parentWall":"main_wall","from":[1.52,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
-      {"type":"opening","id":"door_E","parentWall":"main_wall","from":[10.63,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
-      {"type":"opening","id":"door_S","parentWall":"main_wall","from":[19.74,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
-      {"type":"opening","id":"door_W","parentWall":"main_wall","from":[28.85,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_N","parentWall":"main_wall","from":[0,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_E","parentWall":"main_wall","from":[9.11,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_S","parentWall":"main_wall","from":[18.22,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
+      {"type":"opening","id":"door_W","parentWall":"main_wall","from":[27.33,0,0],"width":1.5,"height":2.4,"style":"arched","material":"wood_door"},
 
       {"type":"column","id":"col_0","base":[5.5,1.2,0],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
       {"type":"column","id":"col_1","base":[4.763,1.2,2.75],"height":6.5,"bottomRadius":0.15,"topRadius":0.12,"style":"modern","material":"column_red"},
