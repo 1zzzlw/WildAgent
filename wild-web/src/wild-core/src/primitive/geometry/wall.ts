@@ -131,12 +131,12 @@ function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: stri
 export function createBoxGeometry(w: number, h: number, d: number): Float32Array {
   const hw=w/2, hh=h/2, hd=d/2;
   return new Float32Array([
-    -hw,-hh,hd,hw,-hh,hd,hw,hh,hd,-hw,-hh,hd,hw,hh,hd,-hw,hh,hd,
-    hw,-hh,-hd,-hw,-hh,-hd,-hw,hh,-hd,hw,-hh,-hd,-hw,hh,-hd,hw,hh,-hd,
-    -hw,hh,hd,-hw,hh,-hd,hw,hh,-hd,-hw,hh,hd,hw,hh,-hd,hw,hh,hd,
-    -hw,-hh,-hd,-hw,-hh,hd,hw,-hh,hd,-hw,-hh,-hd,hw,-hh,hd,hw,-hh,-hd,
-    hw,-hh,hd,hw,-hh,-hd,hw,hh,-hd,hw,-hh,hd,hw,hh,-hd,hw,hh,hd,
-    -hw,-hh,-hd,-hw,-hh,hd,-hw,hh,hd,-hw,-hh,-hd,-hw,hh,hd,-hw,hh,-hd
+    -hw,-hh,hd, hw,-hh,hd, hw,hh,hd, -hw,-hh,hd, hw,hh,hd, -hw,hh,hd,   // +Z (front)
+    hw,-hh,-hd, -hw,-hh,-hd, -hw,hh,-hd, hw,-hh,-hd, -hw,hh,-hd, hw,hh,-hd,  // -Z (back)
+    -hw,hh,-hd, -hw,hh,hd, hw,hh,hd, -hw,hh,-hd, hw,hh,hd, hw,hh,-hd,   // +Y (top) — fixed winding
+    -hw,-hh,hd, -hw,-hh,-hd, hw,-hh,-hd, -hw,-hh,hd, hw,-hh,-hd, hw,-hh,hd,  // -Y (bottom) — fixed winding
+    hw,-hh,hd, hw,-hh,-hd, hw,hh,-hd, hw,-hh,hd, hw,hh,-hd, hw,hh,hd,   // +X (right)
+    -hw,-hh,-hd, -hw,-hh,hd, -hw,hh,hd, -hw,-hh,-hd, -hw,hh,hd, -hw,hh,-hd  // -X (left)
   ]);
 }
 
@@ -154,9 +154,13 @@ export function subdivideBox(w: number, h: number, d: number, step: number): Flo
       verts.push(x0,y0,z0,x1,y1,z1,x2,y2,z2); verts.push(x0,y0,z0,x2,y2,z2,x3,y3,z3);
     }
   }
-  face(0,0,hd,w,0,0,0,h,0,nx,ny); face(0,0,-hd,-w,0,0,0,h,0,nx,ny);
-  face(0,hh,0,w,0,0,0,0,d,nx,nz); face(0,-hh,0,w,0,0,0,0,-d,nx,nz);
-  face(hw,0,0,0,0,-d,0,h,0,nz,ny); face(-hw,0,0,0,0,d,0,h,0,nz,ny);
+  // All faces centered at origin with correct outward-facing winding
+  face(-hw,-hh,hd, w,0,0, 0,h,0, nx,ny);   // +Z: corner(-hw,-hh,hd), u=+X, v=+Y → normal +Z
+  face( hw,-hh,-hd,-w,0,0, 0,h,0, nx,ny);   // -Z: corner(hw,-hh,-hd), u=-X, v=+Y → normal -Z
+  face( hw, hh,-hd,-w,0,0, 0,0,d, nx,nz);   // +Y: corner(hw,hh,-hd), u=-X, v=+Z → normal +Y (fixed)
+  face(-hw,-hh,-hd, w,0,0, 0,0,d, nx,nz);   // -Y: corner(-hw,-hh,-hd), u=+X, v=+Z → normal -Y (fixed)
+  face( hw,-hh, hd, 0,0,-d, 0,h,0, nz,ny);  // +X: corner(hw,-hh,hd), u=-Z, v=+Y → normal +X
+  face(-hw,-hh,-hd, 0,0, d, 0,h,0, nz,ny);  // -X: corner(-hw,-hh,-hd), u=+Z, v=+Y → normal -X
   return new Float32Array(verts);
 }
 

@@ -203,18 +203,23 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   for (const el of elements) {
     let meshes: MeshData[];
 
-    switch (el.type) {
-      case 'wall': meshes = buildWall(el); break;
-      case 'floor': meshes = buildFloor(el); break;
-      case 'column': meshes = buildColumn(el); break;
-      case 'beam': meshes = buildBeam(el); break;
-      case 'roof': meshes = buildRoof(el); break;
-      case 'opening': meshes = buildOpening(el); break;
-      case 'stair': meshes = buildStair(el); break;
-      case 'furniture': meshes = buildFurniture(el); break;
-      case 'dense_brick': meshes = buildDenseBrick(el); break;
-      case 'body': meshes = buildBody(el); break;
-      default: console.warn(`Unknown element type: ${(el as any).type}`); continue;
+    try {
+      switch (el.type) {
+        case 'wall': meshes = buildWall(el); break;
+        case 'floor': meshes = buildFloor(el); break;
+        case 'column': meshes = buildColumn(el); break;
+        case 'beam': meshes = buildBeam(el); break;
+        case 'roof': meshes = buildRoof(el); break;
+        case 'opening': meshes = buildOpening(el); break;
+        case 'stair': meshes = buildStair(el); break;
+        case 'furniture': meshes = buildFurniture(el); break;
+        case 'dense_brick': meshes = buildDenseBrick(el); break;
+        case 'body': meshes = buildBody(el); break;
+        default: console.warn(`Unknown element type: ${(el as any).type}`); continue;
+      }
+    } catch (buildError) {
+      console.warn(`跳过无法重建的构件 [${el.id}] (type=${el.type}):`, buildError)
+      continue
     }
 
     // 为每个网格绑定 elementId 和 interactive 标记

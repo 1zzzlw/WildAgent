@@ -1,39 +1,40 @@
 <template>
   <div class="top-bar">
     <div class="toolbar-section">
-      <button @click="handleNew" class="toolbar-btn" title="新建场景">
+      <el-button class="toolbar-btn" size="small" @click="handleNew" title="新建场景">
         <span>新建</span>
-      </button>
-      <button @click="handleOpen" class="toolbar-btn" title="打开场景">
+      </el-button>
+      <el-button class="toolbar-btn" size="small" @click="handleOpen" title="打开场景">
         <span>打开</span>
-      </button>
-      <button @click="handleSave" class="toolbar-btn" :disabled="!sceneStore.document?.dirty" title="保存场景">
+      </el-button>
+      <el-button class="toolbar-btn" size="small" @click="handleSave" :disabled="!sceneStore.document?.dirty"
+        title="保存场景">
         <span>保存</span>
-      </button>
-      <button @click="handleExport" class="toolbar-btn" title="导出 .wild 文件">
+      </el-button>
+      <el-button class="toolbar-btn" size="small" @click="handleExport" title="导出 .wild 文件">
         <span>导出</span>
-      </button>
+      </el-button>
     </div>
 
     <div class="toolbar-section">
-      <button @click="handleUndo" class="toolbar-btn" :disabled="!historyStore.canUndo" title="撤销">
+      <el-button class="toolbar-btn" size="small" @click="handleUndo" :disabled="!historyStore.canUndo" title="撤销">
         <span>撤销</span>
-      </button>
-      <button @click="handleRedo" class="toolbar-btn" :disabled="!historyStore.canRedo" title="重做">
+      </el-button>
+      <el-button class="toolbar-btn" size="small" @click="handleRedo" :disabled="!historyStore.canRedo" title="重做">
         <span>重做</span>
-      </button>
+      </el-button>
     </div>
 
     <div class="toolbar-section">
-      <button @click="handleValidate" class="toolbar-btn" title="运行校验">
+      <el-button class="toolbar-btn" size="small" @click="handleValidate" title="运行校验">
         <span>校验</span>
-      </button>
+      </el-button>
     </div>
 
     <div class="toolbar-section">
-      <button @click="handleToggleAIPanel" class="toolbar-btn" title="切换 AI 对话面板">
+      <el-button class="toolbar-btn" size="small" @click="handleToggleAIPanel" title="切换 AI 对话面板">
         <span>{{ uiStore.bottomPanelVisible ? '隐藏 AI' : '显示 AI' }}</span>
-      </button>
+      </el-button>
     </div>
 
     <div class="scene-info">
@@ -46,6 +47,7 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -54,11 +56,19 @@ const sceneStore = useSceneStore()
 const historyStore = useHistoryStore()
 const uiStore = useUIStore()
 
-function handleNew() {
-  if (confirm('创建新场景将清空当前内容，是否继续？')) {
+async function handleNew() {
+  try {
+    await ElMessageBox.confirm('创建新场景将清空当前内容，是否继续？', '确认操作', {
+      confirmButtonText: '继续',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
     const doc = sceneStore.createEmptyDocument()
     sceneStore.loadBlueprint(doc.blueprint, doc.name)
     historyStore.clear()
+  } catch {
+    // 用户取消
   }
 }
 
@@ -74,8 +84,8 @@ function handleOpen() {
         const blueprint = JSON.parse(text)
         sceneStore.loadBlueprint(blueprint, file.name)
         historyStore.clear()
-      } catch (error) {
-        alert('文件格式错误')
+      } catch {
+        ElMessage.error('文件格式错误')
       }
     }
   }

@@ -12,11 +12,11 @@
           <div class="section-title">基本信息</div>
           <div class="property-row">
             <label>ID</label>
-            <input type="text" :value="selectedElement.id" readonly />
+            <el-input :model-value="selectedElement.id" readonly />
           </div>
           <div class="property-row">
             <label>类型</label>
-            <input type="text" :value="selectedElement.type" readonly />
+            <el-input :model-value="selectedElement.type" readonly />
           </div>
         </div>
 
@@ -24,18 +24,18 @@
           <div class="section-title">柱子参数</div>
           <div class="property-row">
             <label>高度</label>
-            <input type="number" :value="(selectedElement as any).height" @input="handleChange('height', $event)"
-              step="0.1" />
+            <el-input-number :model-value="(selectedElement as any).height" :step="0.1"
+              @update:model-value="(value: string | number | null | undefined) => handleChange('height', value)" />
           </div>
           <div class="property-row">
             <label>底部半径</label>
-            <input type="number" :value="(selectedElement as any).bottomRadius"
-              @input="handleChange('bottomRadius', $event)" step="0.1" />
+            <el-input-number :model-value="(selectedElement as any).bottomRadius" :step="0.1"
+              @update:model-value="(value: string | number | null | undefined) => handleChange('bottomRadius', value)" />
           </div>
           <div class="property-row">
             <label>顶部半径</label>
-            <input type="number" :value="(selectedElement as any).topRadius" @input="handleChange('topRadius', $event)"
-              step="0.1" />
+            <el-input-number :model-value="(selectedElement as any).topRadius" :step="0.1"
+              @update:model-value="(value: string | number | null | undefined) => handleChange('topRadius', value)" />
           </div>
         </div>
 
@@ -43,13 +43,13 @@
           <div class="section-title">墙体参数</div>
           <div class="property-row">
             <label>高度</label>
-            <input type="number" :value="(selectedElement as any).height" @input="handleChange('height', $event)"
-              step="0.1" />
+            <el-input-number :model-value="(selectedElement as any).height" :step="0.1"
+              @update:model-value="(value: string | number | null | undefined) => handleChange('height', value)" />
           </div>
           <div class="property-row">
             <label>厚度</label>
-            <input type="number" :value="(selectedElement as any).thickness" @input="handleChange('thickness', $event)"
-              step="0.01" />
+            <el-input-number :model-value="(selectedElement as any).thickness" :step="0.01"
+              @update:model-value="(value: string | number | null | undefined) => handleChange('thickness', value)" />
           </div>
         </div>
       </div>
@@ -72,18 +72,17 @@ const selectedElement = computed(() => {
   return sceneStore.document.blueprint.geometry.elements.find(e => e.id === id)
 })
 
-function handleChange(key: string, event: Event) {
-  const target = event.target as HTMLInputElement
-  const value = parseFloat(target.value)
+function handleChange(key: string, value: string | number | null | undefined) {
+  const numericValue = typeof value === 'number' ? value : parseFloat(String(value ?? ''))
 
-  if (!selectedElement.value || !sceneStore.document) return
+  if (!Number.isFinite(numericValue) || !selectedElement.value || !sceneStore.document) return
 
   const patch = createPatch(
     sceneStore.document.revision,
     [{
       op: 'update_element',
       id: selectedElement.value.id,
-      changes: { [key]: value }
+      changes: { [key]: numericValue }
     }],
     'user'
   )
@@ -146,23 +145,33 @@ function handleChange(key: string, event: Event) {
   font-size: 12px;
 }
 
-.property-row input {
+.property-row :deep(.el-input),
+.property-row :deep(.el-input-number) {
   flex: 1;
-  height: 24px;
-  padding: 0 8px;
+}
+
+.property-row :deep(.el-input__wrapper) {
   background: #1e1e1e;
   border: 1px solid #3e3e42;
   color: #cccccc;
   font-size: 12px;
   border-radius: 2px;
+  box-shadow: none;
+  height: 28px;
 }
 
-.property-row input:focus {
-  outline: none;
+.property-row :deep(.el-input__wrapper:hover),
+.property-row :deep(.el-input__wrapper.is-focus) {
   border-color: #007acc;
+  box-shadow: 0 0 0 1px #007acc inset;
 }
 
-.property-row input[readonly] {
-  opacity: 0.6;
+.property-row :deep(.el-input__inner) {
+  color: #cccccc;
+  background: transparent;
+}
+
+.property-row :deep(.el-input-number .el-input__wrapper) {
+  padding-right: 8px;
 }
 </style>

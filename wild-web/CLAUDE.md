@@ -76,17 +76,29 @@ WildAgent/
 │   │   │   ├── viewport/              # CanvasViewport（Three.js 渲染 + 灯光 + 控制器）
 │   │   │   └── panels/                # SceneTree / BlockLibrary / PropertyPanel / ValidationPanel / AIChatPanel
 │   │   ├── agent/              # Agent 通信
-│   │   │   ├── agentBridge.ts         # WebSocket 桥接（待接入后端）
+│   │   │   ├── agentBridge.ts         # WebSocket 桥接（心跳 + 自动重连 + 页面可见性检测）
 │   │   │   └── protocol.ts
 │   │   └── utils/common.ts
 │   └── docs/
 │       ├── FRONTEND_API.md            # 前后端接口文档
 │       └── 渲染引擎死循环问题修复报告.md
 │
-├── wild-server/                # 🚧 后端服务（骨架已建，待开发）
-│   ├── main.py                 # 当前仅 Hello World
+├── wild-server/                # 🚧 后端 Agent 服务
+│   ├── main.py                 # FastAPI 入口（uvicorn）
+│   ├── config.py               # 配置
 │   ├── pyproject.toml          # Python 3.12+ 项目配置
-│   └── .venv/
+│   └── app/
+│       ├── api/
+│       │   ├── ws_agent.py            # Agent WebSocket 端点（心跳 pong / 消息分发 / 并发锁）
+│       │   └── scenes.py
+│       ├── services/
+│       │   ├── agent_service.py       # Agent 服务（LangChain agent 调用）
+│       │   └── session_service.py
+│       ├── agent/
+│       │   ├── graph.py               # LangGraph Agent 图定义
+│       │   └── model_client.py        # LLM 模型客户端
+│       └── utils/
+│           └── ws_heartbeat.py        # WebSocket 心跳监控器（可复用工具类）
 │
 ├── README.md
 └── 架构设计方案.md
@@ -159,12 +171,14 @@ interface ScenePatch {
 - [x] **wild-core 渲染适配层**（wildCoreAdapter → meshDataToGeometry → materialAdapter → renderEntity）
 - [x] Three.js 视口（灯光 / 阴影 / 轨道控制 / 响应式 / 场景重建观察器）
 - [x] wild-core 引擎内嵌（parser / expander / resolver / 10 种几何构建器 / 材质系统）
+- [x] **WebSocket 通信**（心跳 ping/pong / 自动重连 / 页面可见性检测 / 指数退避）
+- [x] **后端 Agent 服务骨架**（FastAPI + WebSocket 端点 + LangGraph Agent + 心跳监控工具类）
 
 ### 🚧 进行中 / 待开发
 
 - [ ] **3D 交互增强**：点击拾取 / 选中高亮 / Transform Gizmo
-- [ ] **后端 Agent 服务**：wild-server 仅骨架，待实现 FastAPI + WebSocket + LangGraph Agent
-- [ ] **Agent 集成**：WebSocket 通信 / 流式响应 / Patch 确认 UI
+- [ ] **Agent AI 能力接入**：真实 LLM 生成 Blueprint / ScenePatch
+- [ ] **Patch 确认 UI**：Agent 建议 → 预览 → 应用/拒绝
 - [ ] 后端场景保存 API
 - [ ] 局部重建优化
 - [ ] 更多构件类型支持
@@ -240,11 +254,11 @@ npm run dev        # 访问 http://localhost:5173
 3. 点击构件，右侧「属性」面板修改参数
 4. 「保存」导出 .wild 文件，「打开」加载已有 .wild 文件
 
-### 启动后端（骨架）
+### 启动后端
 
 ```bash
 cd wild-server
-python main.py     # 目前仅输出 Hello World
+python main.py     # 启动 FastAPI + WebSocket 服务，监听 ws://localhost:8000/ws/agent
 ```
 
 ---
@@ -271,9 +285,19 @@ python main.py     # 目前仅输出 Hello World
 | `src/renderer/renderEntity.ts` | 场景 → Three.js 转换 |
 | `src/renderer/materialAdapter.ts` | 材质转换 + 缓存 |
 | `src/components/viewport/CanvasViewport.vue` | 3D 视口 |
-| `src/agent/agentBridge.ts` | Agent 通信 |
+| `src/agent/agentBridge.ts` | Agent WebSocket 通信（心跳 + 自动重连 + 页面可见性检测） |
+
+### 后端核心代码
+
+| 文件 | 说明 |
+|---|---|
+| `app/api/ws_agent.py` | Agent WebSocket 端点（消息分发 + 并发锁） |
+| `app/utils/ws_heartbeat.py` | WebSocket 心跳监控器（可复用工具类） |
+| `app/services/agent_service.py` | Agent 服务（LangChain agent 调用） |
+| `app/agent/graph.py` | LangGraph Agent 图定义 |
+| `main.py` | FastAPI 入口（uvicorn） |
 
 ---
 
-**最后更新**: 2026-07-15  
+**最后更新**: 2026-07-22  
 **项目阶段**: Phase 1 完成，Phase 2 起步

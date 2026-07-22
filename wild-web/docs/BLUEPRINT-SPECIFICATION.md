@@ -708,6 +708,49 @@ if (Math.abs(opening.from[2]) > wallThickness) {
 - `cabin_v1.wild` - 正确格式的简单小屋
 - `villa_correct.wild` - 正确格式的别墅
 
+**构件库默认值**：
+编辑器构件库使用的默认参数（可作为快速参考）：
+
+```json
+// 墙体 (4米长, 3米高)
+{
+  "type": "wall",
+  "from": [0, 0, 0],
+  "to": [4, 3, 0],
+  "thickness": 0.24,
+  "material": "default"
+}
+
+// 地板 (4米×4米矩形)
+{
+  "type": "floor",
+  "from": [0, 0, 0],
+  "to": [4, 0, 4],
+  "thickness": 0.2,
+  "material": "default"
+}
+
+// 柱子 (3米高)
+{
+  "type": "column",
+  "base": [0, 0, 0],
+  "height": 3,
+  "bottomRadius": 0.2,
+  "topRadius": 0.2,
+  "material": "default"
+}
+
+// 屋顶 (双坡, 8米跨度)
+{
+  "type": "roof",
+  "roofType": "gable",
+  "span": 8,
+  "depth": 6,
+  "height": 3,
+  "material": "default"
+}
+```
+
 ---
 
 ## 版本历史

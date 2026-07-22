@@ -32,12 +32,12 @@ export function subdivideBoxShared(w:number,h:number,d:number,p?:((FacePattern|n
 
   // 盒体 6 面
   const Fdefs=[
-    [-hw,-hh,hd, w,0,0, 0,h,0, 0,0,1],
-    [ hw,-hh,-hd, -w,0,0, 0,h,0, 0,0,-1],
-    [-hw,hh,-hd, w,0,0, 0,0,d, 0,1,0],
-    [-hw,-hh,hd, w,0,0, 0,0,-d, 0,-1,0],
-    [ hw,-hh,hd, 0,0,-d, 0,h,0, 1,0,0],
-    [-hw,-hh,-hd, 0,0,d, 0,h,0, -1,0,0],
+    [-hw,-hh,hd, w,0,0, 0,h,0, 0,0,1],    // +Z: corner(-hw,-hh,hd), u=+X, v=+Y → normal +Z
+    [ hw,-hh,-hd, -w,0,0, 0,h,0, 0,0,-1],  // -Z: corner(hw,-hh,-hd), u=-X, v=+Y → normal -Z
+    [ hw, hh,-hd, -w,0,0, 0,0,d, 0,1,0],   // +Y: corner(hw,hh,-hd), u=-X, v=+Z → normal +Y (fixed)
+    [-hw,-hh,-hd, w,0,0, 0,0,d, 0,-1,0],   // -Y: corner(-hw,-hh,-hd), u=+X, v=+Z → normal -Y (fixed)
+    [ hw,-hh,hd, 0,0,-d, 0,h,0, 1,0,0],    // +X: corner(hw,-hh,hd), u=-Z, v=+Y → normal +X
+    [-hw,-hh,-hd, 0,0,d, 0,h,0, -1,0,0],   // -X: corner(-hw,-hh,-hd), u=+Z, v=+Y → normal -X
   ];
 
   const verts:number[]=[], cols:number[]=[], idx:number[]=[];

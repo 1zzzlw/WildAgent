@@ -40,28 +40,28 @@ const basicBlocks: BlockTemplate[] = [
     label: '墙体',
     icon: '▭',
     description: '创建墙体',
-    defaults: { type: 'wall', from: [0, 0, 0], to: [4, 0, 0], height: 3, thickness: 0.24 }
+    defaults: { type: 'wall', from: [0, 0, 0], to: [4, 3, 0], thickness: 0.24, material: 'default' }
   },
   {
     type: 'column',
     label: '柱子',
     icon: '║',
     description: '创建柱子',
-    defaults: { type: 'column', base: [0, 0, 0], height: 3, bottomRadius: 0.2, topRadius: 0.2 }
+    defaults: { type: 'column', base: [0, 0, 0], height: 3, bottomRadius: 0.2, topRadius: 0.2, material: 'default' }
   },
   {
     type: 'floor',
     label: '地板',
     icon: '□',
     description: '创建地板',
-    defaults: { type: 'floor', region: [[0, 0, 0], [4, 0, 0], [4, 0, 4], [0, 0, 4]], thickness: 0.2 }
+    defaults: { type: 'floor', from: [0, 0, 0], to: [4, 0, 4], thickness: 0.2, material: 'default' }
   },
   {
     type: 'roof',
     label: '屋顶',
     icon: '▲',
     description: '创建屋顶',
-    defaults: { type: 'roof', roofType: 'gable', span: 8, depth: 6, height: 3 }
+    defaults: { type: 'roof', roofType: 'gable', span: 8, depth: 6, height: 3, material: 'default' }
   }
 ]
 

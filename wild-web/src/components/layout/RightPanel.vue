@@ -1,14 +1,14 @@
 <template>
   <div class="right-panel" :style="{ width: `${width}px` }">
     <div class="panel-tabs">
-      <button :class="['tab', { active: uiStore.rightActivePanel === 'properties' }]"
+      <el-button class="tab" :class="{ active: uiStore.rightActivePanel === 'properties' }"
         @click="uiStore.setRightActivePanel('properties')">
         属性
-      </button>
-      <button :class="['tab', { active: uiStore.rightActivePanel === 'validation' }]"
+      </el-button>
+      <el-button class="tab" :class="{ active: uiStore.rightActivePanel === 'validation' }"
         @click="uiStore.setRightActivePanel('validation')">
         校验
-      </button>
+      </el-button>
     </div>
     <div class="panel-content">
       <PropertyPanel v-if="uiStore.rightActivePanel === 'properties'" />

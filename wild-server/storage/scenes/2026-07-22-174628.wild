@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "name": "Simple Table",
+    "description": "一张简单的木制桌子",
+    "version": "1.0",
+    "type": "building"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "column",
+        "id": "leg_1",
+        "base": [
+          -0.55,
+          0,
+          -0.35
+        ],
+        "height": 0.75,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_2",
+        "base": [
+          0.55,
+          0,
+          -0.35
+        ],
+        "height": 0.75,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_3",
+        "base": [
+          -0.55,
+          0,
+          0.35
+        ],
+        "height": 0.75,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_4",
+        "base": [
+          0.55,
+          0,
+          0.35
+        ],
+        "height": 0.75,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "floor",
+        "id": "tabletop",
+        "from": [
+          -0.6,
+          0.75,
+          -0.4
+        ],
+        "to": [
+          0.6,
+          0.8,
+          0.4
+        ],
+        "thickness": 0.05,
+        "material": "wood"
+      }
+    ]
+  },
+  "materials": {
+    "wood": {
+      "baseColor": [
+        0.55,
+        0.27,
+        0.07
+      ],
+      "roughness": 0.7,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  }
+}

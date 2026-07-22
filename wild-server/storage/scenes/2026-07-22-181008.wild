@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "name": "中式凉亭",
+    "description": "四柱支撑的中式休闲凉亭",
+    "version": "1.0",
+    "type": "building"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "base_floor",
+        "from": [
+          -2.2,
+          0,
+          -2.2
+        ],
+        "to": [
+          2.2,
+          0.1,
+          2.2
+        ],
+        "thickness": 0.1,
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "pillar_1",
+        "base": [
+          -2,
+          0.1,
+          -2
+        ],
+        "height": 3,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "traditional",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "pillar_2",
+        "base": [
+          2,
+          0.1,
+          -2
+        ],
+        "height": 3,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "traditional",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "pillar_3",
+        "base": [
+          -2,
+          0.1,
+          2
+        ],
+        "height": 3,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "traditional",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "pillar_4",
+        "base": [
+          2,
+          0.1,
+          2
+        ],
+        "height": 3,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "traditional",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "beam_1",
+        "from": [
+          -2,
+          3.1,
+          -2
+        ],
+        "to": [
+          2,
+          3.1,
+          -2
+        ],
+        "crossSection": "rectangular",
+        "width": 0.2,
+        "height": 0.25,
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "beam_2",
+        "from": [
+          -2,
+          3.1,
+          2
+        ],
+        "to": [
+          2,
+          3.1,
+          2
+        ],
+        "crossSection": "rectangular",
+        "width": 0.2,
+        "height": 0.25,
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "beam_3",
+        "from": [
+          -2,
+          3.1,
+          -2
+        ],
+        "to": [
+          -2,
+          3.1,
+          2
+        ],
+        "crossSection": "rectangular",
+        "width": 0.2,
+        "height": 0.25,
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "beam_4",
+        "from": [
+          2,
+          3.1,
+          -2
+        ],
+        "to": [
+          2,
+          3.1,
+          2
+        ],
+        "crossSection": "rectangular",
+        "width": 0.2,
+        "height": 0.25,
+        "material": "wood"
+      },
+      {
+        "type": "roof",
+        "id": "main_roof",
+        "roofType": "hip",
+        "span": 5,
+        "depth": 5,
+        "height": 1.2,
+        "thickness": 0.15,
+        "material": "roof_tile",
+        "position": [
+          0,
+          3.35,
+          0
+        ]
+      }
+    ]
+  },
+  "materials": {
+    "wood": {
+      "baseColor": [
+        0.55,
+        0.27,
+        0.07
+      ],
+      "roughness": 0.7,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "roof_tile": {
+      "baseColor": [
+        0.35,
+        0.35,
+        0.38
+      ],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  }
+}

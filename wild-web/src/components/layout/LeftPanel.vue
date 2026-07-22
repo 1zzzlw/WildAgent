@@ -1,14 +1,14 @@
 <template>
   <div class="left-panel" :style="{ width: `${width}px` }">
     <div class="panel-tabs">
-      <button :class="['tab', { active: uiStore.leftActivePanel === 'sceneTree' }]"
+      <el-button class="tab" :class="{ active: uiStore.leftActivePanel === 'sceneTree' }"
         @click="uiStore.setLeftActivePanel('sceneTree')">
         场景树
-      </button>
-      <button :class="['tab', { active: uiStore.leftActivePanel === 'blockLibrary' }]"
+      </el-button>
+      <el-button class="tab" :class="{ active: uiStore.leftActivePanel === 'blockLibrary' }"
         @click="uiStore.setLeftActivePanel('blockLibrary')">
         构件库
-      </button>
+      </el-button>
     </div>
     <div class="panel-content">
       <SceneTree v-if="uiStore.leftActivePanel === 'sceneTree'" />

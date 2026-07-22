@@ -1,20 +1,26 @@
 /**
  * Agent 通信协议类型定义
- * 
+ *
  * 定义前后端 WebSocket 通信的消息格式：
- * 
+ *
  * 前端发送：
  * - UserMessageRequest: 用户输入的消息 + 场景上下文
- * 
+ * - PingMessage: 心跳 ping
+ *
  * 后端返回：
  * - AgentStepResponse: Agent 执行步骤（可选，用于显示进度）
  * - PatchProposalResponse: 场景修改提案
  * - AgentReplyResponse: 文本回复
  * - ErrorResponse: 错误信息
- * 
+ * - PongMessage: 心跳 pong
+ * - NetworkErrorResponse: 心跳超时导致的网络错误
+ *
  * 会话管理：
  * - ChatMessage: 聊天消息（用户/Agent/系统）
  * - AgentSession: 会话状态（session_id, messages, connected）
+ *
+ * 连接状态：
+ * - ConnectionStatus: 详细连接状态枚举
  */
 
 import type { ScenePatch } from './scenePatch'
@@ -23,12 +29,19 @@ import type { SceneSummary } from './scene'
 // 重新导出SceneSummary以便在protocol.ts中使用
 export type { SceneSummary }
 
+/** WebSocket 连接状态 */
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+
 export type AgentMessage =
   | UserMessageRequest
   | AgentStepResponse
   | PatchProposalResponse
   | AgentReplyResponse
+  | BlueprintGeneratedResponse
   | ErrorResponse
+  | PingMessage
+  | PongMessage
+  | NetworkErrorResponse
 
 export interface UserMessageRequest {
   type: 'user_message'
@@ -64,6 +77,33 @@ export interface ErrorResponse {
   type: 'error'
   request_id: string
   error: string
+}
+
+/** 心跳 ping（前端 → 后端） */
+export interface PingMessage {
+  type: 'ping'
+  timestamp: number
+}
+
+/** 心跳 pong（后端 → 前端） */
+export interface PongMessage {
+  type: 'pong'
+  timestamp: number
+}
+
+/** 心跳超时导致的网络错误（后端 → 前端） */
+export interface NetworkErrorResponse {
+  type: 'network_error'
+  error: string
+  reason: 'heartbeat_timeout' | 'connection_lost'
+}
+
+/** AI 生成的 Blueprint（后端 → 前端，通过 HTTP 拉取文件） */
+export interface BlueprintGeneratedResponse {
+  type: 'blueprint_generated'
+  request_id: string
+  filename: string
+  file_url: string
 }
 
 export interface ChatMessage {
