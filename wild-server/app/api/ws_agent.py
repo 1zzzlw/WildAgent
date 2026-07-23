@@ -171,15 +171,51 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     await send_step("analyzing", "正在分析您的建筑需求...")
     await send_step("generating", "正在调用 AI 生成建筑蓝图，请耐心等待...")
 
-    # ===== Phase 2: LLM 查询 =====
-    result = await agent_service.query_structured(message)
+    # ===== Phase 2: LLM 查询 + 等待期假进度 =====
+    # LLM 生成期间每隔几秒推一条思考动画，让用户感知到系统在工作
+    THINKING_MESSAGES = [
+        "理解建筑需求，规划构件组合...",
+        "计算空间布局与构件尺寸...",
+        "生成墙体、楼板、屋顶参数...",
+        "处理门窗坐标与材质定义...",
+        "完善细节构件与约束关系...",
+        "即将完成，正在整理输出...",
+    ]
+
+    async def thinking_ticker():
+        """LLM 生成期间每 8 秒推一条思考进度，直到被取消"""
+        for msg in THINKING_MESSAGES:
+            await asyncio.sleep(8)
+            try:
+                await send_step("generating", msg)
+            except Exception:
+                break
+
+    ticker_task = asyncio.create_task(thinking_ticker())
+    try:
+        result = await agent_service.query_structured(message)
+    finally:
+        ticker_task.cancel()
+        try:
+            await ticker_task
+        except asyncio.CancelledError:
+            pass
 
     # ===== Phase 3: 提取 Blueprint 后处理 =====
     if result.blueprint is not None:
-        await send_step("validating", "正在校验蓝图数据结构...")
+        # 把流水线各步骤逐一推给前端
+        for pr in result.pipeline_results:
+            # 跳过的步骤不推送（减少噪音）
+            if pr.output.startswith("⏭️"):
+                continue
+            status = "❌" if pr.has_error else "⚠️" if pr.has_warning else "✅"
+            await send_step(
+                "validating",
+                f"{status} [{pr.step}] {pr.name}: {pr.output[:120]}"
+            )
 
         if result.error:
-            logger.warning(f"[{request_id}] Blueprint 结构警告: {result.error}")
+            logger.warning(f"[{request_id}] 流水线校验警告: {result.error}")
 
         await send_step("saving", "正在保存蓝图文件...")
 

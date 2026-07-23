@@ -1,18 +1,16 @@
 {
   "meta": {
-    "name": "Simple Table",
-    "description": "一张简单的木质桌子",
     "version": "1.0",
-    "author": "WildAgent",
-    "type": "building"
+    "type": "building",
+    "name": "桌子"
   },
   "geometry": {
     "elements": [
       {
         "type": "column",
-        "id": "leg_1",
+        "id": "leg_fl",
         "base": [
-          -0.6,
+          1.5,
           0,
           -0.4
         ],
@@ -24,9 +22,9 @@
       },
       {
         "type": "column",
-        "id": "leg_2",
+        "id": "leg_fr",
         "base": [
-          0.6,
+          2.7,
           0,
           -0.4
         ],
@@ -38,9 +36,9 @@
       },
       {
         "type": "column",
-        "id": "leg_3",
+        "id": "leg_bl",
         "base": [
-          -0.6,
+          1.5,
           0,
           0.4
         ],
@@ -52,9 +50,9 @@
       },
       {
         "type": "column",
-        "id": "leg_4",
+        "id": "leg_br",
         "base": [
-          0.6,
+          2.7,
           0,
           0.4
         ],
@@ -68,12 +66,12 @@
         "type": "floor",
         "id": "tabletop",
         "from": [
-          -0.65,
+          1.4,
           0.75,
           -0.45
         ],
         "to": [
-          0.65,
+          2.8,
           0.8,
           0.45
         ],
@@ -94,5 +92,6 @@
       "albedo": 1.0,
       "lightingCondition": "D65_noon"
     }
-  }
+  },
+  "behaviors": {}
 }

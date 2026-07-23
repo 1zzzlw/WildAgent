@@ -85,20 +85,31 @@ WildAgent/
 │
 ├── wild-server/                # 🚧 后端 Agent 服务
 │   ├── main.py                 # FastAPI 入口（uvicorn）
-│   ├── config.py               # 配置
+│   ├── config.py               # Pydantic Settings 配置
 │   ├── pyproject.toml          # Python 3.12+ 项目配置
+│   ├── storage/
+│   │   ├── knowledge_base/     # 规范文档（BLUEPRINT-SPEC-MINIMAL.md 等）
+│   │   ├── scenes/             # 生成的 .wild 文件存储
+│   │   └── sessions/           # 会话数据
 │   └── app/
 │       ├── api/
-│       │   ├── ws_agent.py            # Agent WebSocket 端点（心跳 pong / 消息分发 / 并发锁）
-│       │   └── scenes.py
+│       │   ├── ws_agent.py            # WebSocket 端点（心跳 / 消息分发 / 并发锁 / 思考动画）
+│       │   └── scenes.py              # 场景 HTTP API（GET /api/scenes/{filename}）
 │       ├── services/
-│       │   ├── agent_service.py       # Agent 服务（LangChain agent 调用）
+│       │   ├── agent_service.py       # Agent 服务（核心：15 步校验流水线 + create_agent）
 │       │   └── session_service.py
 │       ├── agent/
-│       │   ├── graph.py               # LangGraph Agent 图定义
-│       │   └── model_client.py        # LLM 模型客户端
-│       └── utils/
-│           └── ws_heartbeat.py        # WebSocket 心跳监控器（可复用工具类）
+│       │   ├── graph.py               # LangGraph Agent 图定义（预留）
+│       │   ├── prompts.py             # System Prompt 组装（8 条空间铁律 + 工作流程）
+│       │   └── model_client.py        # LLM 模型客户端（OpenAI 兼容工厂）
+│       ├── tools/
+│       │   └── spatial_tools.py       # 16 个空间工具（1 查询 + 9 检测 + 6 修正）
+│       ├── spec/
+│       │   └── loader.py              # SpecLoader 抽象 + FileSpecLoader（预留 RAG 接口）
+│       ├── utils/
+│       │   ├── blueprint_parser.py    # Blueprint 提取/校验/保存
+│       │   └── ws_heartbeat.py        # WebSocket 心跳监控器
+│       └── rag/                       # RAG 向量索引库（预留）
 │
 ├── README.md
 └── 架构设计方案.md
@@ -211,14 +222,16 @@ wild-core 是**核心资产**：已实现复杂几何算法、确定性的（同
 
 前端编辑器完整搭建：状态管理、ScenePatch 协议、UI 组件、wild-core 接入、Three.js 渲染。
 
-### Phase 2: 后端 Agent MVP 🚧（当前）
+### Phase 2: 后端 Agent MVP 🚧（当前，接近完成）
 
-目标：AI 能生成简单的 patch。
+目标：AI 能根据自然语言生成完整的 Blueprint JSON。
 
-- 搭建 FastAPI + WebSocket（`wild-server/`）
-- 实现 LangGraph Agent + 基础工具
-- 前后端 WebSocket 联通
-- 端到端对话测试
+- ✅ FastAPI + WebSocket 端点（心跳 / 消息分发 / 并发锁 / 思考动画）
+- ✅ 16 个空间工具（1 查询 + 9 检测 + 6 修正）
+- ✅ 15 步服务端校验流水线（Structure → Schema → Reference → Geometry → Fix → Collision）
+- ✅ LangChain Agent + 知识库规范文档加载
+- ✅ 前后端 WebSocket 联通 + 端到端对话测试
+- 🚧 RAG 索引向量库（提高 AI 建模精度）
 
 ### Phase 3: 完整编辑工作流
 
@@ -291,13 +304,16 @@ python main.py     # 启动 FastAPI + WebSocket 服务，监听 ws://localhost:8
 
 | 文件 | 说明 |
 |---|---|
-| `app/api/ws_agent.py` | Agent WebSocket 端点（消息分发 + 并发锁） |
-| `app/utils/ws_heartbeat.py` | WebSocket 心跳监控器（可复用工具类） |
-| `app/services/agent_service.py` | Agent 服务（LangChain agent 调用） |
-| `app/agent/graph.py` | LangGraph Agent 图定义 |
+| `app/api/ws_agent.py` | Agent WebSocket 端点（消息分发 + 并发锁 + 思考动画） |
+| `app/services/agent_service.py` | Agent 服务（15 步校验流水线 + create_agent） |
+| `app/tools/spatial_tools.py` | 16 个空间工具（get_wall_bounding_box / validate_*/fix_*） |
+| `app/agent/prompts.py` | System Prompt 组装（8 条空间铁律 + 工作流） |
+| `app/agent/model_client.py` | LLM 模型客户端（OpenAI 兼容工厂） |
+| `app/spec/loader.py` | 规范文档加载器（FileSpecLoader + RAG 预留接口） |
+| `app/utils/blueprint_parser.py` | Blueprint 提取/校验/保存 |
 | `main.py` | FastAPI 入口（uvicorn） |
 
 ---
 
-**最后更新**: 2026-07-22  
-**项目阶段**: Phase 1 完成，Phase 2 起步
+**最后更新**: 2026-07-22
+**项目阶段**: Phase 1 完成，Phase 2 接近完成（15 步校验流水线 + 16 个工具已就绪，下一步 RAG 向量库）

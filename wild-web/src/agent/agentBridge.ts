@@ -36,6 +36,7 @@
  * - AI 对话面板的实时通信
  * - Agent 流式响应显示
  * - Patch 提案推送
+ * 
  */
 
 import { useAgentStore } from '../stores/agentStore'
@@ -247,6 +248,7 @@ export class AgentBridge {
     )
 
     this.ws.send(JSON.stringify(request))
+    agentStore.clearPipelineSteps()
     agentStore.setProcessing(true)
   }
 
@@ -257,6 +259,15 @@ export class AgentBridge {
     switch (message.type) {
       case 'agent_step':
         agentStore.setProcessing(true, message.content)
+        // validating 阶段的步骤单独存入流水线列表
+        if (message.stage === 'validating') {
+          const content = message.content
+          const status = content.startsWith('❌') ? 'error'
+            : content.startsWith('⚠️') ? 'warn'
+              : content.startsWith('⏭️') ? 'skip'
+                : 'ok'
+          agentStore.addPipelineStep(content, status)
+        }
         break
 
       case 'patch_proposal':

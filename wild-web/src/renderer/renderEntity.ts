@@ -31,6 +31,31 @@ function createMeshFromMeshData(
   materialParams: any[],
   materialIndex: number
 ): THREE.Mesh {
+  // ── 顶点数保护：异常几何直接用占位 mesh 替代，防止浏览器卡死 ──
+  const MAX_VERTICES = 50000
+  const rawPositions = (meshData as any).geometry || meshData.positions
+  if (rawPositions && rawPositions.length / 3 > MAX_VERTICES) {
+    console.warn(
+      `[renderEntity] ${meshData.elementId} 顶点数 ${rawPositions.length / 3} 超过上限 ${MAX_VERTICES}，` +
+      `已替换为占位网格（可能是 opening 坐标错误导致几何爆炸）`
+    )
+    // 用一个小的红色线框 box 作为占位，让用户知道该构件有问题
+    const placeholder = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0xff4444, wireframe: true, transparent: true, opacity: 0.6 })
+    )
+    placeholder.name = meshData.elementId || 'unnamed'
+    placeholder.userData.elementId  = meshData.elementId
+    placeholder.userData.isError    = true
+    placeholder.userData.errorReason = 'vertex_overflow'
+    if (meshData.transform) {
+      const { position, rotation, scale } = meshData.transform
+      placeholder.position.set(position[0], position[1], position[2])
+      placeholder.rotation.set(rotation[0], rotation[1], rotation[2])
+    }
+    return placeholder
+  }
+
   // 1. 转换几何数据
   // 注意：wild-core 的 MeshData.geometry 实际上是顶点位置
   const geometry = new THREE.BufferGeometry()

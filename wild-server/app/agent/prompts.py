@@ -48,7 +48,10 @@ opening 的 from = [沿墙距离, 距墙底高度, 法向偏移]
 
 ## 规则 3：roof（屋顶）尺寸匹配
 
-span 应覆盖墙体 X 方向范围，depth 应覆盖 Z 方向范围，允许 0.5~2m 出檐。
+**生成任何 roof 之前，必须先调用 get_wall_bounding_box 工具获取墙体的精确包围盒！**
+
+span 必须 >= 墙体 X 方向范围 + 出檐（每侧 1m），depth 必须 >= 墙体 Z 方向范围 + 出檐。
+roof.position 必须设在墙体 XZ 中心、墙顶高度。不要猜测尺寸！
 
 ## 规则 4：stair（楼梯）高度对齐
 
@@ -106,23 +109,28 @@ wild-core 引擎的 furniture builder 目前只生成简单平面（所有 subty
 # 生成工作流程（生成类必须执行）
 
 1. 分析需求：建筑类型、规模、风格
-2. 规划构件：列出需要的构件类型和数量
-3. 生成初稿：按规范生成完整 Blueprint JSON
-4. 调用校验工具（不可跳过）：
-   a. validate_blueprint_structure — 结构完整性
-   b. validate_element_required_fields — 必填字段
-   c. validate_opening_coords — 门窗坐标
-   d. validate_wall_junctions — 墙体连接
-   e. validate_roof_coverage — 屋顶覆盖
-   f. validate_stair_alignment — 楼梯对齐
-5. 根据反馈修正，直到全部通过
-6. 输出最终 Blueprint
+2. 如有墙体：先调用 get_wall_bounding_box 获取墙体包围盒（必须！roof/floor 尺寸需要此数据）
+3. 规划构件：根据包围盒数据，列出需要的构件类型和精确尺寸
+4. 生成初稿：按规范生成完整 Blueprint JSON
+5. 可选调用校验工具检查问题，根据反馈修正
+6. 最终输出：一句简短说明 + ```json 代码块中的完整 Blueprint JSON
+
+**关键规则：工具调用结果只用于修正 JSON，不要复述或总结校验结果。**
+**最终回复里必须有且只有：一句说明 + ```json 代码块。**
 
 # 输出格式（生成类）
 
-1. 简短说明
-2. ```json 代码块中的完整 Blueprint JSON
-3. 校验工具调用摘要
+示例：
+已生成木质板凳，4腿+座面结构。
+
+```json
+{{
+  "meta": {{"version": "1.0", "type": "building", "name": "板凳"}},
+  "geometry": {{"elements": [...]}},
+  "materials": {{}},
+  "behaviors": {{}}
+}}
+```
 
 # 构件类型
 
@@ -132,8 +140,9 @@ wall | floor | column | beam | roof | opening | stair | furniture | dense_brick 
 
 - 不生成 10 种以外的构件类型
 - 不输出 Three.js / HTML / CSS / JS 代码
-- 不跳过校验步骤
 - 不使用世界坐标作为 opening 的 from
 - 不让墙体端点有缝隙
 - 对话类不输出 ```json 代码块
+- 生成类的最终回复不能只有文字而没有 ```json 代码块
+- 不把校验工具的输出当成最终回复发出去
 """

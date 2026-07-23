@@ -1,80 +1,79 @@
 {
   "meta": {
-    "name": "Simple Table",
-    "description": "一张简单的木制桌子",
     "version": "1.0",
-    "type": "building"
+    "type": "building",
+    "name": "板凳"
   },
   "geometry": {
     "elements": [
       {
         "type": "column",
-        "id": "leg_1",
+        "id": "leg_fl",
         "base": [
-          -0.55,
+          -0.45,
           0,
-          -0.35
+          -0.12
         ],
-        "height": 0.75,
-        "bottomRadius": 0.03,
+        "height": 0.42,
+        "bottomRadius": 0.035,
         "topRadius": 0.03,
         "style": "modern",
         "material": "wood"
       },
       {
         "type": "column",
-        "id": "leg_2",
+        "id": "leg_fr",
         "base": [
-          0.55,
+          0.45,
           0,
-          -0.35
+          -0.12
         ],
-        "height": 0.75,
-        "bottomRadius": 0.03,
+        "height": 0.42,
+        "bottomRadius": 0.035,
         "topRadius": 0.03,
         "style": "modern",
         "material": "wood"
       },
       {
         "type": "column",
-        "id": "leg_3",
+        "id": "leg_bl",
         "base": [
-          -0.55,
+          -0.45,
           0,
-          0.35
+          0.12
         ],
-        "height": 0.75,
-        "bottomRadius": 0.03,
+        "height": 0.42,
+        "bottomRadius": 0.035,
         "topRadius": 0.03,
         "style": "modern",
         "material": "wood"
       },
       {
         "type": "column",
-        "id": "leg_4",
+        "id": "leg_br",
         "base": [
-          0.55,
+          0.45,
           0,
-          0.35
+          0.12
         ],
-        "height": 0.75,
-        "bottomRadius": 0.03,
+        "height": 0.42,
+        "bottomRadius": 0.035,
         "topRadius": 0.03,
         "style": "modern",
         "material": "wood"
       },
       {
         "type": "floor",
-        "id": "tabletop",
+        "id": "seat",
         "from": [
-          -0.6,
-          0.75,
-          -0.4
+          -0.5,
+          0.42,
+          -0.15
         ],
         "to": [
-          0.6,
-          0.8,
-          0.4
+          0.5,
+          0.47,
+          0.15
         ],
         "thickness": 0.05,
         "material": "wood"
@@ -93,5 +92,6 @@
       "albedo": 1.0,
       "lightingCondition": "D65_noon"
     }
-  }
+  },
+  "behaviors": {}
 }

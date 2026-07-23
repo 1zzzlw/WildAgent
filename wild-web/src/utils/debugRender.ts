@@ -44,8 +44,13 @@ export function logEntityInfo(entity: ReconstructedEntity) {
   };
   console.log(`边界盒尺寸: X=${size.x.toFixed(1)}m, Y=${size.y.toFixed(1)}m, Z=${size.z.toFixed(1)}m`);
   
-  if (size.x > 25 || size.y > 15 || size.z > 25) {
-    console.warn('⚠️ 边界盒异常大！可能有mesh坐标错误');
+  // 阈值基于合理建筑上限：大型宫殿/寺庙可达 100m+ 面阔
+  // 只在明显异常时警告（>200m 或单维度超过 100m 且与其他维度比例严重失衡）
+  const isHuge = size.x > 200 || size.y > 100 || size.z > 200;
+  const isLopsided = (size.x > 100 && size.y < 2) || (size.z > 100 && size.y < 2);
+  if (isHuge || isLopsided) {
+    console.warn('⚠️ 边界盒异常！可能原因：mesh坐标错误 或 超大建筑（如属实请忽略）');
+    console.log(`  提示：当前建筑 X=${size.x.toFixed(1)}m Y=${size.y.toFixed(1)}m Z=${size.z.toFixed(1)}m`);
   }
   
   // 按elementId分组统计

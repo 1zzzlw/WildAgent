@@ -46,6 +46,13 @@ export const useAgentStore = defineStore('agent', () => {
   const isProcessing = ref(false)
   const currentStep = ref<string>('')
 
+  /** 校验流水线步骤列表（每次生成任务独立一组） */
+  interface PipelineStep {
+    label: string
+    status: 'ok' | 'warn' | 'error' | 'skip'
+  }
+  const pipelineSteps = ref<PipelineStep[]>([])
+
   /** Blueprint 加载成功标记（用于 AIChatPanel 显示成功动画，5 秒后自动清除） */
   const blueprintLoaded = ref(false)
   const lastBlueprintPath = ref<string>('')
@@ -91,6 +98,20 @@ export const useAgentStore = defineStore('agent', () => {
     if (step !== undefined) {
       currentStep.value = step
     }
+    // 开始新任务时清空流水线步骤
+    if (processing && !step) {
+      pipelineSteps.value = []
+    }
+  }
+
+  /** 追加一条流水线校验步骤 */
+  function addPipelineStep(label: string, status: 'ok' | 'warn' | 'error' | 'skip') {
+    pipelineSteps.value.push({ label, status })
+  }
+
+  /** 清空流水线步骤（新任务开始时） */
+  function clearPipelineSteps() {
+    pipelineSteps.value = []
   }
 
   function setPendingPatch(patch: ScenePatch | null) {
@@ -178,5 +199,8 @@ export const useAgentStore = defineStore('agent', () => {
     lastBlueprintPath,
     setBlueprintLoaded,
     clearBlueprintLoaded,
+    pipelineSteps,
+    addPipelineStep,
+    clearPipelineSteps,
   }
 })
