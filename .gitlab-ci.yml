@@ -60,7 +60,7 @@ variables:
     - master
   before_script:
     - cd wild-server
-    - pip install uv
+    - pip install uv -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
   script:
     # 检查 Python 语法是否正确，依赖是否能解析
     - python -m compileall app/
@@ -75,7 +75,7 @@ variables:
   stage: build
   services:
     - name: docker:dind
-      command: ["--registry-mirror=${REGISTRY_MIRROR}"]
+      command: ["--registry-mirror=https://docker.m.daocloud.io"]
   only:
     - main
     - master
@@ -101,7 +101,7 @@ variables:
   stage: build
   services:
     - name: docker:dind
-      command: ["--registry-mirror=${REGISTRY_MIRROR}"]
+      command: ["--registry-mirror=https://docker.m.daocloud.io"]
   only:
     - main
     - master
