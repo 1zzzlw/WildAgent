@@ -3,88 +3,179 @@ stages:
   - deploy
 
 variables:
-  SERVER_IMAGE: $CI_REGISTRY_IMAGE/wild-server
-  WEB_IMAGE: $CI_REGISTRY_IMAGE/wild-web
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
+  SERVER_IMAGE: "$CI_REGISTRY_IMAGE/wild-server"
+  WEB_IMAGE: "$CI_REGISTRY_IMAGE/wild-web"
+  DEPLOY_SSH_USER: "root"
+  DEPLOY_SSH_HOST: "39.106.183.13"
+  DEPLOY_SSH_PORT: "22"
+  DEPLOY_DATA_DIR: "/opt/wild-agent/storage"
 
-# ==================== 构建后端 wild-server ====================
+.docker-build:
+  stage: build
+  image: docker:27.5.1
+  services:
+    - name: docker:27.5.1-dind
+      alias: docker
+  before_script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build --pull -t "$IMAGE_NAME:$CI_COMMIT_SHA" -f "$DOCKERFILE" "$CONTEXT"
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHA"
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        docker tag "$IMAGE_NAME:$CI_COMMIT_SHA" "$IMAGE_NAME:latest"
+        docker push "$IMAGE_NAME:latest"
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
 
 build-server:
-  stage: build
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - docker build -t $SERVER_IMAGE:$CI_COMMIT_SHA -t $SERVER_IMAGE:latest -f wild-server/Dockerfile wild-server/
-    - docker push $SERVER_IMAGE:$CI_COMMIT_SHA
-    - docker push $SERVER_IMAGE:latest
-  rules:
-    - changes:
-        - wild-server/**/*
-
-# ==================== 构建前端 wild-web ====================
+  extends: .docker-build
+  variables:
+    IMAGE_NAME: "$SERVER_IMAGE"
+    DOCKERFILE: "wild-server/Dockerfile"
+    CONTEXT: "wild-server"
 
 build-web:
-  stage: build
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - docker build -t $WEB_IMAGE:$CI_COMMIT_SHA -t $WEB_IMAGE:latest -f wild-web/Dockerfile wild-web/
-    - docker push $WEB_IMAGE:$CI_COMMIT_SHA
-    - docker push $WEB_IMAGE:latest
-  rules:
-    - changes:
-        - wild-web/**/*
-
-# ==================== 部署 ====================
-
-deploy:
-  stage: deploy
-  image: alpine:latest
+  extends: .docker-build
   variables:
-    DEPLOY_HOST: "root@39.106.183.13"
-    CHAT_NAME: "$CHAT__NAME"
-    CHAT_API_KEY: "$CHAT__API_KEY"
-    CHAT_BASE_URL: "$CHAT__BASE_URL"
-    EMBEDDING_NAME: "$EMBEDDING__NAME"
-    EMBEDDING_API_KEY: "$EMBEDDING__API_KEY"
-    EMBEDDING_BASE_URL: "$EMBEDDING__BASE_URL"
+    IMAGE_NAME: "$WEB_IMAGE"
+    DOCKERFILE: "wild-web/Dockerfile"
+    CONTEXT: "wild-web"
+
+deploy-production:
+  stage: deploy
+  image: alpine:3.20
+  needs:
+    - build-server
+    - build-web
+  resource_group: production
   before_script:
     - apk add --no-cache openssh-client
+    - test -n "$SSH_PRIVATE_KEY" || (echo "ERROR: set SSH_PRIVATE_KEY in GitLab CI/CD variables" && exit 1)
+    - test -n "$DEPLOY_SSH_HOST" || (echo "ERROR: set DEPLOY_SSH_HOST in GitLab CI/CD variables" && exit 1)
     - mkdir -p ~/.ssh
-    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-    - chmod 600 ~/.ssh/id_ed25519
-    - echo "key file size=$(wc -c < ~/.ssh/id_ed25519) bytes"
-  script:
-    - echo "===== 步骤1：测试 SSH 连接 ====="
-    - echo "SSH_PRIVATE_KEY path= $SSH_PRIVATE_KEY"
-    - chmod 600 ~/.ssh/id_ed25519
-    - ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo connected"
-    - echo "===== 步骤2：生成部署脚本 ====="
     - |
-      cat > /tmp/deploy.sh << 'EOF'
-      #!/bin/bash
-      set -e
-      docker login --username "$REG_USER" --password "$REG_PASS" "$REG_URL"
-      docker pull "$SERVER_IMAGE":latest
-      docker pull "$WEB_IMAGE":latest
-      docker rm -f wild-server wild-web 2>/dev/null || true
-      docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
-        -e CHAT__NAME="$CHAT_NAME" \
-        -e CHAT__API_KEY="$CHAT_API_KEY" \
-        -e CHAT__BASE_URL="$CHAT_BASE_URL" \
-        -e EMBEDDING__NAME="$EMBEDDING_NAME" \
-        -e EMBEDDING__API_KEY="$EMBEDDING_API_KEY" \
-        -e EMBEDDING__BASE_URL="$EMBEDDING_BASE_URL" \
-        "$SERVER_IMAGE":latest
-      docker run -d --name wild-web --restart unless-stopped -p 80:80 "$WEB_IMAGE":latest
-      docker ps | grep -E "wild-server|wild-web"
-      echo "===== done ====="
-      EOF
-      chmod +x /tmp/deploy.sh
-    - echo "===== 步骤3：上传脚本 ====="
-    - scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
-    - echo "===== 步骤4：执行部署 ====="
-    - ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $DEPLOY_HOST "REG_USER='$CI_REGISTRY_USER' REG_PASS='$CI_REGISTRY_PASSWORD' REG_URL='$CI_REGISTRY' SERVER_IMAGE='$SERVER_IMAGE' WEB_IMAGE='$WEB_IMAGE' CHAT_NAME='$CHAT_NAME' CHAT_API_KEY='$CHAT_API_KEY' CHAT_BASE_URL='$CHAT_BASE_URL' EMBEDDING_NAME='$EMBEDDING_NAME' EMBEDDING_API_KEY='$EMBEDDING_API_KEY' EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' bash /tmp/deploy.sh"
+      if [ -f "$SSH_PRIVATE_KEY" ]; then
+        cp "$SSH_PRIVATE_KEY" ~/.ssh/id_ed25519
+      else
+        printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+      fi
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -p "$DEPLOY_SSH_PORT" -H "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+  script:
+    - DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+    - SSH_OPTS="-i ${HOME}/.ssh/id_ed25519 -p ${DEPLOY_SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=3"
+    - SCP_OPTS="-i ${HOME}/.ssh/id_ed25519 -P ${DEPLOY_SSH_PORT} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20"
+    - echo "Testing SSH connection to ${DEPLOY_TARGET}:${DEPLOY_SSH_PORT}"
+    - ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version && docker info >/dev/null"
+    - |
+      {
+        printf 'CI_REGISTRY=%s\n' "$CI_REGISTRY"
+        printf 'CI_REGISTRY_USER=%s\n' "$CI_REGISTRY_USER"
+        printf 'CI_REGISTRY_PASSWORD=%s\n' "$CI_REGISTRY_PASSWORD"
+        printf 'SERVER_IMAGE=%s\n' "$SERVER_IMAGE"
+        printf 'WEB_IMAGE=%s\n' "$WEB_IMAGE"
+        printf 'IMAGE_TAG=%s\n' "$CI_COMMIT_SHA"
+        printf 'DEPLOY_DATA_DIR=%s\n' "$DEPLOY_DATA_DIR"
+      } > /tmp/wild-deploy.env
+    - |
+      {
+        printf 'CHAT__NAME=%s\n' "$CHAT__NAME"
+        printf 'CHAT__API_KEY=%s\n' "$CHAT__API_KEY"
+        printf 'CHAT__BASE_URL=%s\n' "$CHAT__BASE_URL"
+        printf 'EMBEDDING__NAME=%s\n' "$EMBEDDING__NAME"
+        printf 'EMBEDDING__API_KEY=%s\n' "$EMBEDDING__API_KEY"
+        printf 'EMBEDDING__BASE_URL=%s\n' "$EMBEDDING__BASE_URL"
+      } > /tmp/wild-runtime.env
+    - |
+      cat > /tmp/wild-deploy.sh <<'REMOTE_SCRIPT'
+      #!/usr/bin/env sh
+      set -eu
+
+      DEPLOY_ENV="/tmp/wild-deploy.env"
+      RUNTIME_ENV="/tmp/wild-runtime.env"
+
+      read_env() {
+        grep -m 1 "^$1=" "$DEPLOY_ENV" | cut -d '=' -f 2-
+      }
+
+      CI_REGISTRY="$(read_env CI_REGISTRY)"
+      CI_REGISTRY_USER="$(read_env CI_REGISTRY_USER)"
+      CI_REGISTRY_PASSWORD="$(read_env CI_REGISTRY_PASSWORD)"
+      SERVER_IMAGE="$(read_env SERVER_IMAGE)"
+      WEB_IMAGE="$(read_env WEB_IMAGE)"
+      IMAGE_TAG="$(read_env IMAGE_TAG)"
+      DEPLOY_DATA_DIR="$(read_env DEPLOY_DATA_DIR)"
+
+      echo "Remote host: $(hostname)"
+      echo "Docker version: $(docker --version)"
+      echo "Deploying image tag: ${IMAGE_TAG}"
+
+      if ! docker info >/dev/null 2>&1; then
+        echo "ERROR: Docker daemon is not available on the remote server."
+        exit 10
+      fi
+
+      mkdir -p "$DEPLOY_DATA_DIR"
+
+      echo "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+      docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
+
+      docker pull "${SERVER_IMAGE}:${IMAGE_TAG}"
+      docker pull "${WEB_IMAGE}:${IMAGE_TAG}"
+
+      docker rm -f wild-server wild-web >/dev/null 2>&1 || true
+
+      docker run -d \
+        --name wild-server \
+        --restart unless-stopped \
+        --network wild-net \
+        -p 8000:8000 \
+        -v "${DEPLOY_DATA_DIR}:/app/storage" \
+        --env-file "$RUNTIME_ENV" \
+        "${SERVER_IMAGE}:${IMAGE_TAG}"
+
+      docker run -d \
+        --name wild-web \
+        --restart unless-stopped \
+        --network wild-net \
+        -p 80:80 \
+        "${WEB_IMAGE}:${IMAGE_TAG}"
+
+      sleep 5
+
+      if ! docker ps --format '{{.Names}}' | grep -qx wild-server; then
+        echo "ERROR: wild-server is not running. Last logs:"
+        docker logs --tail=200 wild-server || true
+        exit 20
+      fi
+
+      if ! docker ps --format '{{.Names}}' | grep -qx wild-web; then
+        echo "ERROR: wild-web is not running. Last logs:"
+        docker logs --tail=200 wild-web || true
+        exit 21
+      fi
+
+      echo "Running containers:"
+      docker ps --filter "name=wild-" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+
+      echo "wild-server logs:"
+      docker logs --tail=80 wild-server || true
+
+      echo "wild-web logs:"
+      docker logs --tail=80 wild-web || true
+
+      docker logout "$CI_REGISTRY" >/dev/null 2>&1 || true
+      rm -f "$DEPLOY_ENV" "$RUNTIME_ENV" /tmp/wild-deploy.sh
+      REMOTE_SCRIPT
+      chmod +x /tmp/wild-deploy.sh
+    - scp $SCP_OPTS /tmp/wild-deploy.env /tmp/wild-runtime.env /tmp/wild-deploy.sh "$DEPLOY_TARGET:/tmp/"
+    - ssh $SSH_OPTS "$DEPLOY_TARGET" "sh /tmp/wild-deploy.sh"
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
