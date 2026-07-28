@@ -1,183 +1,237 @@
+# ============================================================
+# 全局 before_script，会在各阶段 script 之前运行
+# 如果某个 job 里定义了 before_script，则以 job 里的为准
+# ============================================================
+before_script:
+  # 定义唯一的 Docker 镜像标签，每次提交构建的镜像都是唯一的
+  - export IMAGE_SERVER_NAME=${CI_REGISTRY_IMAGE}/wild-server:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+  - export IMAGE_WEB_NAME=${CI_REGISTRY_IMAGE}/wild-web:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+  - export IMAGE_SERVER_LATEST=${CI_REGISTRY_IMAGE}/wild-server:latest
+  - export IMAGE_WEB_LATEST=${CI_REGISTRY_IMAGE}/wild-web:latest
+
+# ============================================================
+# 定义 CI 阶段执行顺序
+# ============================================================
 stages:
-  - deploy
+  - validate    # 第1步：验证代码能否正常编译
+  - build       # 第2步：构建 Docker 镜像并推送到仓库
+  - deploy      # 第3步：在远程服务器上拉取镜像并运行
 
+# ============================================================
+# 全局变量
+# ============================================================
 variables:
-  DEPLOY_SSH_USER: "root"
-  DEPLOY_SSH_HOST: "39.106.183.13"
-  DEPLOY_SSH_PORT: "22"
-  DEPLOY_BASE_DIR: "/opt/wild-agent"
-  DEPLOY_DATA_DIR: "/opt/wild-agent/storage"
-  PYTHON_BASE_IMAGE: "python:3.12-slim"
-  NODE_BASE_IMAGE: "node:22-alpine"
-  NGINX_BASE_IMAGE: "nginx:alpine"
-  UV_BASE_IMAGE: "ghcr.io/astral-sh/uv:latest"
+  PROJECT: "wild-agent"
+  # Docker-in-Docker 需要的配置
+  DOCKER_HOST: "tcp://docker:2375"
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_DRIVER: overlay2
 
-deploy-production:
-  stage: deploy
-  image: alpine:3.20
-  resource_group: production
+# ============================================================
+# Stage 1: 验证代码（仿照样例中的 compile 阶段）
+# ============================================================
+前端编译检查:
+  image: node:22-alpine
+  stage: validate
+  allow_failure: false
+  only:
+    - main
+    - master
+  tags:
+    - test
   before_script:
-    - apk add --no-cache openssh-client tar gzip
+    - cd wild-web
+  script:
+    - npm ci
+    - npm run build
+  # 构建产物，供后续阶段使用（类似于 Maven 的 target/*.jar）
+  artifacts:
+    name: "$PROJECT-web-dist"
+    expire_in: 1 day
+    paths:
+      - wild-web/dist/
+
+后端语法检查:
+  image: python:3.12-slim
+  stage: validate
+  allow_failure: false
+  only:
+    - main
+    - master
+  tags:
+    - test
+  before_script:
+    - cd wild-server
+    - pip install uv
+  script:
+    # 检查 Python 语法是否正确，依赖是否能解析
+    - python -m compileall app/
+    - python -c "import ast; ast.parse(open('main.py').read()); print('main.py OK')"
+    - uv lock --check 2>/dev/null || echo "uv.lock 不是最新的，但不阻塞 CI"
+
+# ============================================================
+# Stage 2: 构建镜像并推送（仿照样例中的 build 阶段）
+# ============================================================
+构建后端镜像:
+  image: docker:stable
+  stage: build
+  services:
+    - docker:dind
+  only:
+    - main
+    - master
+  tags:
+    - test
+  script:
+    # 登录 GitLab Container Registry
+    - docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    # 构建 wild-server 镜像
+    - docker build
+      --build-arg PYTHON_BASE_IMAGE=${PYTHON_BASE_IMAGE:-python:3.12-slim}
+      --build-arg UV_BASE_IMAGE=${UV_BASE_IMAGE:-ghcr.io/astral-sh/uv:latest}
+      -t $IMAGE_SERVER_NAME
+      -t $IMAGE_SERVER_LATEST
+      -f wild-server/Dockerfile
+      wild-server
+    # 推送到仓库
+    - docker push $IMAGE_SERVER_NAME
+    - docker push $IMAGE_SERVER_LATEST
+    # 清理
+    - docker rmi $IMAGE_SERVER_NAME $IMAGE_SERVER_LATEST || true
+
+构建前端镜像:
+  image: docker:stable
+  stage: build
+  services:
+    - docker:dind
+  only:
+    - main
+    - master
+  tags:
+    - test
+  script:
+    - docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    # 构建 wild-web 镜像
+    - docker build
+      --build-arg NODE_BASE_IMAGE=${NODE_BASE_IMAGE:-node:22-alpine}
+      --build-arg NGINX_BASE_IMAGE=${NGINX_BASE_IMAGE:-nginx:alpine}
+      -t $IMAGE_WEB_NAME
+      -t $IMAGE_WEB_LATEST
+      -f wild-web/Dockerfile
+      wild-web
+    # 推送到仓库
+    - docker push $IMAGE_WEB_NAME
+    - docker push $IMAGE_WEB_LATEST
+    # 清理
+    - docker rmi $IMAGE_WEB_NAME $IMAGE_WEB_LATEST || true
+
+# ============================================================
+# Stage 3: 部署到远程服务器（仿照样例中的 run 阶段）
+# ============================================================
+部署到生产:
+  image: alpine:3.20
+  stage: deploy
+  resource_group: production   # 防止多个 pipeline 同时部署
+  only:
+    - main
+    - master
+  tags:
+    - test
+  variables:
+    DEPLOY_SSH_USER: "root"
+    DEPLOY_SSH_HOST: "39.106.183.13"
+    DEPLOY_SSH_PORT: "22"
+    DEPLOY_DATA_DIR: "/opt/wild-agent/storage"
+  before_script:
+    # 安装 SSH 客户端
+    - apk add --no-cache openssh-client
+    # 检查必要变量
     - |
       if [ -z "$SSH_PRIVATE_KEY" ]; then
-        echo "ERROR - set SSH_PRIVATE_KEY in GitLab CI/CD variables"
+        echo "ERROR: 请在 GitLab CI/CD 变量中设置 SSH_PRIVATE_KEY"
         exit 1
       fi
-    - |
-      if [ -z "$DEPLOY_SSH_HOST" ]; then
-        echo "ERROR - set DEPLOY_SSH_HOST in GitLab CI/CD variables"
-        exit 1
-      fi
+    # 配置 SSH 密钥
     - mkdir -p ~/.ssh
-    - |
-      if [ -f "$SSH_PRIVATE_KEY" ]; then
-        cp "$SSH_PRIVATE_KEY" ~/.ssh/id_ed25519
-      else
-        printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
-      fi
+    - chmod 700 ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
     - chmod 600 ~/.ssh/id_ed25519
-    - ssh-keyscan -p "$DEPLOY_SSH_PORT" -H "$DEPLOY_SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+    - ssh-keyscan -p $DEPLOY_SSH_PORT -H $DEPLOY_SSH_HOST >> ~/.ssh/known_hosts 2>/dev/null
   script:
     - DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-    - SSH_OPTS="-i ${HOME}/.ssh/id_ed25519 -p ${DEPLOY_SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=3"
-    - SCP_OPTS="-i ${HOME}/.ssh/id_ed25519 -P ${DEPLOY_SSH_PORT} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20"
-    - echo "Testing SSH connection"
-    - ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version && docker info >/dev/null"
+    - SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p $DEPLOY_SSH_PORT"
     - |
-      tar \
-        --exclude='.git' \
-        --exclude='.gstack' \
-        --exclude='.env' \
-        --exclude='wild-server/.env' \
-        --exclude='wild-web/.env' \
-        --exclude='wild-web/node_modules' \
-        --exclude='wild-web/dist' \
-        --exclude='wild-server/.venv' \
-        --exclude='wild-server/storage' \
-        -czf /tmp/wild-agent-source.tar.gz .
+      echo "=== 测试 SSH 连接 ==="
+      ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version"
     - |
-      {
-        printf 'CI_COMMIT_SHA=%s\n' "$CI_COMMIT_SHA"
-        printf 'DEPLOY_BASE_DIR=%s\n' "$DEPLOY_BASE_DIR"
-        printf 'DEPLOY_DATA_DIR=%s\n' "$DEPLOY_DATA_DIR"
-        printf 'PYTHON_BASE_IMAGE=%s\n' "$PYTHON_BASE_IMAGE"
-        printf 'NODE_BASE_IMAGE=%s\n' "$NODE_BASE_IMAGE"
-        printf 'NGINX_BASE_IMAGE=%s\n' "$NGINX_BASE_IMAGE"
-        printf 'UV_BASE_IMAGE=%s\n' "$UV_BASE_IMAGE"
-      } > /tmp/wild-deploy.env
+      echo "=== 登录远程 Docker Registry ==="
+      ssh $SSH_OPTS "$DEPLOY_TARGET" "
+        docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      "
     - |
-      {
-        printf 'CHAT__NAME=%s\n' "$CHAT__NAME"
-        printf 'CHAT__API_KEY=%s\n' "$CHAT__API_KEY"
-        printf 'CHAT__BASE_URL=%s\n' "$CHAT__BASE_URL"
-        printf 'EMBEDDING__NAME=%s\n' "$EMBEDDING__NAME"
-        printf 'EMBEDDING__API_KEY=%s\n' "$EMBEDDING__API_KEY"
-        printf 'EMBEDDING__BASE_URL=%s\n' "$EMBEDDING__BASE_URL"
-      } > /tmp/wild-runtime.env
+      echo "=== 拉取最新镜像 ==="
+      ssh $SSH_OPTS "$DEPLOY_TARGET" "
+        docker pull $IMAGE_SERVER_NAME && docker pull $IMAGE_WEB_NAME
+      "
     - |
-      cat > /tmp/wild-remote-deploy.sh <<'REMOTE_SCRIPT'
-      #!/usr/bin/env sh
-      set -eu
+      echo "=== 重建容器 ==="
+      ssh $SSH_OPTS "$DEPLOY_TARGET" "
+        # 确保网络存在
+        docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
 
-      DEPLOY_ENV="/tmp/wild-deploy.env"
-      RUNTIME_ENV="/tmp/wild-runtime.env"
-      SOURCE_ARCHIVE="/tmp/wild-agent-source.tar.gz"
+        # 停止并删除旧容器
+        docker rm -f wild-server wild-web 2>/dev/null || true
 
-      read_env() {
-        grep -m 1 "^$1=" "$DEPLOY_ENV" | cut -d '=' -f 2-
-      }
+        # 确保数据目录存在
+        mkdir -p $DEPLOY_DATA_DIR
 
-      CI_COMMIT_SHA="$(read_env CI_COMMIT_SHA)"
-      DEPLOY_BASE_DIR="$(read_env DEPLOY_BASE_DIR)"
-      DEPLOY_DATA_DIR="$(read_env DEPLOY_DATA_DIR)"
-      PYTHON_BASE_IMAGE="$(read_env PYTHON_BASE_IMAGE)"
-      NODE_BASE_IMAGE="$(read_env NODE_BASE_IMAGE)"
-      NGINX_BASE_IMAGE="$(read_env NGINX_BASE_IMAGE)"
-      UV_BASE_IMAGE="$(read_env UV_BASE_IMAGE)"
+        # 启动后端
+        docker run -d \
+          --name wild-server \
+          --restart unless-stopped \
+          --network wild-net \
+          -p 8000:8000 \
+          -v ${DEPLOY_DATA_DIR}:/app/storage \
+          $IMAGE_SERVER_NAME
 
-      RELEASE_DIR="${DEPLOY_BASE_DIR}/releases/${CI_COMMIT_SHA}"
-
-      echo "Remote host: $(hostname)"
-      echo "Docker version: $(docker --version)"
-      echo "Deploying commit: ${CI_COMMIT_SHA}"
-
-      if ! docker info >/dev/null 2>&1; then
-        echo "ERROR - Docker daemon is not available on the remote server"
-        exit 10
-      fi
-
-      mkdir -p "$RELEASE_DIR" "$DEPLOY_DATA_DIR"
-      tar -xzf "$SOURCE_ARCHIVE" -C "$RELEASE_DIR"
-
-      cd "$RELEASE_DIR"
-
-      echo "Building wild-server image on remote server"
-      docker build --pull \
-        --build-arg PYTHON_BASE_IMAGE="$PYTHON_BASE_IMAGE" \
-        --build-arg UV_BASE_IMAGE="$UV_BASE_IMAGE" \
-        -t "wild-server:${CI_COMMIT_SHA}" \
-        -t "wild-server:latest" \
-        -f wild-server/Dockerfile \
-        wild-server
-
-      echo "Building wild-web image on remote server"
-      docker build --pull \
-        --build-arg NODE_BASE_IMAGE="$NODE_BASE_IMAGE" \
-        --build-arg NGINX_BASE_IMAGE="$NGINX_BASE_IMAGE" \
-        -t "wild-web:${CI_COMMIT_SHA}" \
-        -t "wild-web:latest" \
-        -f wild-web/Dockerfile \
-        wild-web
-
-      docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
-
-      docker rm -f wild-server wild-web >/dev/null 2>&1 || true
-
-      docker run -d \
-        --name wild-server \
-        --restart unless-stopped \
-        --network wild-net \
-        -p 8000:8000 \
-        -v "${DEPLOY_DATA_DIR}:/app/storage" \
-        --env-file "$RUNTIME_ENV" \
-        "wild-server:${CI_COMMIT_SHA}"
-
-      docker run -d \
-        --name wild-web \
-        --restart unless-stopped \
-        --network wild-net \
-        -p 80:80 \
-        "wild-web:${CI_COMMIT_SHA}"
-
+        # 启动前端
+        docker run -d \
+          --name wild-web \
+          --restart unless-stopped \
+          --network wild-net \
+          -p 80:80 \
+          $IMAGE_WEB_NAME
+      "
+    - |
+      echo "=== 等待容器启动 ==="
       sleep 5
+    - |
+      echo "=== 检查容器状态 ==="
+      ssh $SSH_OPTS "$DEPLOY_TARGET" "
+        echo '--- 运行中的 wild 容器 ---'
+        docker ps --filter 'name=wild-' --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
 
-      if ! docker ps --format '{{.Names}}' | grep -qx wild-server; then
-        echo "ERROR - wild-server is not running. Last logs:"
-        docker logs --tail=200 wild-server || true
-        exit 20
-      fi
+        echo ''
+        echo '--- wild-server 最近日志 ---'
+        docker logs --tail=30 wild-server 2>&1 || echo '(容器未运行)'
 
-      if ! docker ps --format '{{.Names}}' | grep -qx wild-web; then
-        echo "ERROR - wild-web is not running. Last logs:"
-        docker logs --tail=200 wild-web || true
-        exit 21
-      fi
+        echo ''
+        echo '--- wild-web 最近日志 ---'
+        docker logs --tail=30 wild-web 2>&1 || echo '(容器未运行)'
 
-      ln -sfn "$RELEASE_DIR" "${DEPLOY_BASE_DIR}/current"
+        echo ''
+        if docker ps --format '{{.Names}}' | grep -qx wild-server; then
+          echo '✅ wild-server 运行正常'
+        else
+          echo '❌ wild-server 未运行！'
+          exit 1
+        fi
 
-      echo "Running containers:"
-      docker ps --filter "name=wild-" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
-
-      echo "wild-server logs:"
-      docker logs --tail=80 wild-server || true
-
-      echo "wild-web logs:"
-      docker logs --tail=80 wild-web || true
-
-      rm -f "$DEPLOY_ENV" "$RUNTIME_ENV" "$SOURCE_ARCHIVE" /tmp/wild-remote-deploy.sh
-      REMOTE_SCRIPT
-      chmod +x /tmp/wild-remote-deploy.sh
-    - scp $SCP_OPTS /tmp/wild-agent-source.tar.gz /tmp/wild-deploy.env /tmp/wild-runtime.env /tmp/wild-remote-deploy.sh "$DEPLOY_TARGET:/tmp/"
-    - ssh $SSH_OPTS "$DEPLOY_TARGET" "sh /tmp/wild-remote-deploy.sh"
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+        if docker ps --format '{{.Names}}' | grep -qx wild-web; then
+          echo '✅ wild-web 运行正常'
+        else
+          echo '❌ wild-web 未运行！'
+          exit 1
+        fi
+      "
+    - echo "✅ 部署完成！"
