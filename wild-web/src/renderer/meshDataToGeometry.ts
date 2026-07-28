@@ -29,7 +29,7 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   
   // 1. 设置顶点位置
   // MeshData.geometry 是 Float32Array [x,y,z, x,y,z, ...]
-  geometry.setAttribute('position', new THREE.BufferAttribute(meshData.positions, 3))
+  geometry.setAttribute('position', new THREE.BufferAttribute(meshData.geometry, 3))
   
   // 2. 设置索引（如果有）
   if (meshData.indices) {
@@ -46,8 +46,8 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   
   // 4. 设置顶点颜色（如果有）
   // wild-core 会生成程序化颜色（木纹、石材纹理、苔藓等）
-  if (meshData.colors) {
-    geometry.setAttribute('color', new THREE.BufferAttribute(meshData.colors, 3))
+  if (meshData.vertexColors) {
+    geometry.setAttribute('color', new THREE.BufferAttribute(meshData.vertexColors, 3))
   }
   
   // 5. 计算边界球（用于视锥体剔除优化）

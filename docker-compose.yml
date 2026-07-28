@@ -1,0 +1,18 @@
+services:
+  server:
+    build: ./wild-server
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./wild-server/storage:/app/storage
+    env_file:
+      - ./wild-server/.env
+    restart: unless-stopped
+
+  web:
+    build: ./wild-web
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped

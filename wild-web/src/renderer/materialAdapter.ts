@@ -55,7 +55,7 @@ export function createMaterialFromParams(
   const isTransparent = params.opacity !== undefined && params.opacity < 0.99
   if (isTransparent) {
     material.transparent = true
-    material.opacity = params.opacity
+    material.opacity = params.opacity!
     material.depthWrite = false  // 半透明物体不写深度，避免遮挡后面的半透明物体
   } else {
     material.transparent = false

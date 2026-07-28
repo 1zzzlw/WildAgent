@@ -21,13 +21,14 @@ export interface SceneDocument {
 
 /**
  * wild-core 重建后的完整实体
- * 
- * 注意：这里的类型定义要匹配 wild-core/src/primitive/types.ts 的 ReconstructedEntity
+ *
+ * 注意：这里的类型定义匹配 wild-core/src/primitive/types.ts 的 ReconstructedEntity
+ * materialParams 和 boundingBox 在 wild-core 中始终存在
  */
 export interface ReconstructedEntity {
   meshes: MeshData[]
-  materialParams?: MaterialParams[]
-  boundingBox?: BoundingBox
+  materialParams: MaterialParams[]
+  boundingBox: BoundingBox
   physics?: unknown
   scripts?: unknown[]
   animations?: unknown
@@ -35,20 +36,19 @@ export interface ReconstructedEntity {
 
 /**
  * 网格数据
- * 
- * 注意：wild-core 输出的 MeshData.geometry 字段名实际上是顶点位置数组
- * 我们在前端重命名为 positions 更清晰
+ *
+ * 字段名与 wild-core/src/primitive/types.ts 的 MeshData 保持一致
  */
 export interface MeshData {
   id?: string
   elementId?: string
-  positions: Float32Array          // wild-core 的 geometry 字段
+  geometry: Float32Array
   normals?: Float32Array
   uvs?: Float32Array
   indices?: Uint32Array
-  colors?: Float32Array            // wild-core 的 vertexColors 字段
-  materialRef: string              // wild-core 的 materialRef 字段
-  transform?: {                    // wild-core 的 transform 字段
+  vertexColors?: Float32Array
+  materialRef: string
+  transform: {
     position: [number, number, number]
     rotation: [number, number, number]
     scale: [number, number, number]
@@ -66,8 +66,8 @@ export interface MaterialParams {
   roughness: number
   metallic: number
   albedo: number
-  emissive?: [number, number, number]
-  opacity?: number
+  emissive: [number, number, number]
+  opacity: number
   effects?: unknown[]
   lightingCondition?: string
 }

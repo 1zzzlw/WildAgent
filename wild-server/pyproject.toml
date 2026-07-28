@@ -11,3 +11,5 @@ dependencies = [
     "langchain-openai>=1.4.0",
     "loguru>=0.7.3",
 ]
+
+

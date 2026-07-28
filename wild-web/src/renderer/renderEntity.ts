@@ -33,10 +33,9 @@ function createMeshFromMeshData(
 ): THREE.Mesh {
   // ── 顶点数保护：异常几何直接用占位 mesh 替代，防止浏览器卡死 ──
   const MAX_VERTICES = 50000
-  const rawPositions = (meshData as any).geometry || meshData.positions
-  if (rawPositions && rawPositions.length / 3 > MAX_VERTICES) {
+  if (meshData.geometry.length / 3 > MAX_VERTICES) {
     console.warn(
-      `[renderEntity] ${meshData.elementId} 顶点数 ${rawPositions.length / 3} 超过上限 ${MAX_VERTICES}，` +
+      `[renderEntity] ${meshData.elementId} 顶点数 ${meshData.geometry.length / 3} 超过上限 ${MAX_VERTICES}，` +
       `已替换为占位网格（可能是 opening 坐标错误导致几何爆炸）`
     )
     // 用一个小的红色线框 box 作为占位，让用户知道该构件有问题
@@ -48,21 +47,16 @@ function createMeshFromMeshData(
     placeholder.userData.elementId  = meshData.elementId
     placeholder.userData.isError    = true
     placeholder.userData.errorReason = 'vertex_overflow'
-    if (meshData.transform) {
-      const { position, rotation, scale } = meshData.transform
-      placeholder.position.set(position[0], position[1], position[2])
-      placeholder.rotation.set(rotation[0], rotation[1], rotation[2])
-    }
+    const { position, rotation, scale } = meshData.transform
+    placeholder.position.set(position[0], position[1], position[2])
+    placeholder.rotation.set(rotation[0], rotation[1], rotation[2])
     return placeholder
   }
 
   // 1. 转换几何数据
-  // 注意：wild-core 的 MeshData.geometry 实际上是顶点位置
   const geometry = new THREE.BufferGeometry()
-  
-  // wild-core实际输出的字段是geometry(不是positions)
-  const positions = (meshData as any).geometry || meshData.positions
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+  geometry.setAttribute('position', new THREE.BufferAttribute(meshData.geometry, 3))
   
   if (meshData.indices) {
     geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1))
@@ -74,17 +68,15 @@ function createMeshFromMeshData(
     geometry.computeVertexNormals()
   }
   
-  // wild-core实际输出的字段是vertexColors(不是colors)
-  const colors = (meshData as any).vertexColors || meshData.colors
-  if (colors) {
-    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  if (meshData.vertexColors) {
+    geometry.setAttribute('color', new THREE.BufferAttribute(meshData.vertexColors, 3))
   }
   
   geometry.computeBoundingSphere()
   
   // 2. 获取或创建材质
   const matParams = materialParams[materialIndex]
-  const hasVertexColors = !!colors
+  const hasVertexColors = !!meshData.vertexColors
   const material = matParams
     ? materialCache.getOrCreate(meshData.materialRef, matParams, hasVertexColors)
     : new THREE.MeshStandardMaterial({ color: 0x808080 }) // 默认灰色
@@ -93,12 +85,10 @@ function createMeshFromMeshData(
   const mesh = new THREE.Mesh(geometry, material)
   
   // 4. 应用 transform
-  if (meshData.transform) {
-    const { position, rotation, scale } = meshData.transform
-    mesh.position.set(position[0], position[1], position[2])
-    mesh.rotation.set(rotation[0], rotation[1], rotation[2])
-    mesh.scale.set(scale[0], scale[1], scale[2])
-  }
+  const { position, rotation, scale } = meshData.transform
+  mesh.position.set(position[0], position[1], position[2])
+  mesh.rotation.set(rotation[0], rotation[1], rotation[2])
+  mesh.scale.set(scale[0], scale[1], scale[2])
   
   // 5. 设置阴影
   mesh.castShadow = true
@@ -137,7 +127,7 @@ export function createSceneGroupFromEntity(
       const mesh = createMeshFromMeshData(
         meshData,
         cache,
-        entity.materialParams || [],
+        entity.materialParams,
         index
       )
       group.add(mesh)
@@ -188,7 +178,7 @@ export function updateSceneGroup(
       const mesh = createMeshFromMeshData(
         meshData,
         materialCache,
-        entity.materialParams || [],
+        entity.materialParams,
         index
       )
       group.add(mesh)

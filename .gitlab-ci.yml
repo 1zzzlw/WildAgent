@@ -1,0 +1,32 @@
+stages:
+  - build
+
+variables:
+  SERVER_IMAGE: $CI_REGISTRY_IMAGE/wild-server
+  WEB_IMAGE: $CI_REGISTRY_IMAGE/wild-web
+
+build-server:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $SERVER_IMAGE:$CI_COMMIT_SHA -t $SERVER_IMAGE:latest -f wild-server/Dockerfile wild-server/
+    - docker push $SERVER_IMAGE:$CI_COMMIT_SHA
+    - docker push $SERVER_IMAGE:latest
+  only:
+    changes:
+      - wild-server/**/*
+
+build-web:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -t $WEB_IMAGE:$CI_COMMIT_SHA -t $WEB_IMAGE:latest -f wild-web/Dockerfile wild-web/
+    - docker push $WEB_IMAGE:$CI_COMMIT_SHA
+    - docker push $WEB_IMAGE:latest
+  only:
+    changes:
+      - wild-web/**/*
