@@ -1,104 +1,23 @@
 stages:
-  - build
   - deploy
 
 variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
-  DOCKER_DRIVER: overlay2
-  SERVER_IMAGE: "$CI_REGISTRY_IMAGE/wild-server"
-  WEB_IMAGE: "$CI_REGISTRY_IMAGE/wild-web"
   DEPLOY_SSH_USER: "root"
   DEPLOY_SSH_HOST: "39.106.183.13"
   DEPLOY_SSH_PORT: "22"
+  DEPLOY_BASE_DIR: "/opt/wild-agent"
   DEPLOY_DATA_DIR: "/opt/wild-agent/storage"
-
-.docker-build:
-  stage: build
-  image: docker:27.5.1
-  services:
-    - name: docker:27.5.1-dind
-      alias: docker
-  before_script:
-    - docker info
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - |
-      if [ -n "$CI_DEPENDENCY_PROXY_SERVER" ] && [ -n "$CI_DEPENDENCY_PROXY_USER" ] && [ -n "$CI_DEPENDENCY_PROXY_PASSWORD" ]; then
-        echo "$CI_DEPENDENCY_PROXY_PASSWORD" | docker login -u "$CI_DEPENDENCY_PROXY_USER" --password-stdin "$CI_DEPENDENCY_PROXY_SERVER"
-      fi
-  script:
-    - |
-      if [ -n "$CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX" ]; then
-        DEFAULT_PYTHON_BASE_IMAGE="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/python:3.12-slim"
-        DEFAULT_NODE_BASE_IMAGE="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/node:22-alpine"
-        DEFAULT_NGINX_BASE_IMAGE="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/nginx:alpine"
-      else
-        DEFAULT_PYTHON_BASE_IMAGE="python:3.12-slim"
-        DEFAULT_NODE_BASE_IMAGE="node:22-alpine"
-        DEFAULT_NGINX_BASE_IMAGE="nginx:alpine"
-      fi
-
-      PYTHON_BASE_IMAGE="${PYTHON_BASE_IMAGE:-$DEFAULT_PYTHON_BASE_IMAGE}"
-      NODE_BASE_IMAGE="${NODE_BASE_IMAGE:-$DEFAULT_NODE_BASE_IMAGE}"
-      NGINX_BASE_IMAGE="${NGINX_BASE_IMAGE:-$DEFAULT_NGINX_BASE_IMAGE}"
-      UV_BASE_IMAGE="${UV_BASE_IMAGE:-ghcr.io/astral-sh/uv:latest}"
-
-      echo "Using base images:"
-      echo "  PYTHON_BASE_IMAGE=${PYTHON_BASE_IMAGE}"
-      echo "  NODE_BASE_IMAGE=${NODE_BASE_IMAGE}"
-      echo "  NGINX_BASE_IMAGE=${NGINX_BASE_IMAGE}"
-      echo "  UV_BASE_IMAGE=${UV_BASE_IMAGE}"
-
-      attempt=1
-      until docker build --pull \
-        --build-arg PYTHON_BASE_IMAGE="$PYTHON_BASE_IMAGE" \
-        --build-arg NODE_BASE_IMAGE="$NODE_BASE_IMAGE" \
-        --build-arg NGINX_BASE_IMAGE="$NGINX_BASE_IMAGE" \
-        --build-arg UV_BASE_IMAGE="$UV_BASE_IMAGE" \
-        -t "$IMAGE_NAME:$CI_COMMIT_SHA" \
-        -f "$DOCKERFILE" \
-        "$CONTEXT"; do
-        status=$?
-        if [ "$attempt" -ge 3 ]; then
-          echo "Docker build failed after ${attempt} attempts"
-          exit "$status"
-        fi
-        echo "Docker build failed on attempt ${attempt}; retrying in 20 seconds"
-        attempt=$((attempt + 1))
-        sleep 20
-      done
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHA"
-    - |
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        docker tag "$IMAGE_NAME:$CI_COMMIT_SHA" "$IMAGE_NAME:latest"
-        docker push "$IMAGE_NAME:latest"
-      fi
-  rules:
-    - if: '$CI_COMMIT_BRANCH'
-
-build-server:
-  extends: .docker-build
-  variables:
-    IMAGE_NAME: "$SERVER_IMAGE"
-    DOCKERFILE: "wild-server/Dockerfile"
-    CONTEXT: "wild-server"
-
-build-web:
-  extends: .docker-build
-  variables:
-    IMAGE_NAME: "$WEB_IMAGE"
-    DOCKERFILE: "wild-web/Dockerfile"
-    CONTEXT: "wild-web"
+  PYTHON_BASE_IMAGE: "python:3.12-slim"
+  NODE_BASE_IMAGE: "node:22-alpine"
+  NGINX_BASE_IMAGE: "nginx:alpine"
+  UV_BASE_IMAGE: "ghcr.io/astral-sh/uv:latest"
 
 deploy-production:
   stage: deploy
   image: alpine:3.20
-  needs:
-    - build-server
-    - build-web
   resource_group: production
   before_script:
-    - apk add --no-cache openssh-client
+    - apk add --no-cache openssh-client tar gzip
     - |
       if [ -z "$SSH_PRIVATE_KEY" ]; then
         echo "ERROR - set SSH_PRIVATE_KEY in GitLab CI/CD variables"
@@ -122,17 +41,29 @@ deploy-production:
     - DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
     - SSH_OPTS="-i ${HOME}/.ssh/id_ed25519 -p ${DEPLOY_SSH_PORT} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=3"
     - SCP_OPTS="-i ${HOME}/.ssh/id_ed25519 -P ${DEPLOY_SSH_PORT} -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20"
-    - echo "Testing SSH connection to ${DEPLOY_TARGET}:${DEPLOY_SSH_PORT}"
+    - echo "Testing SSH connection"
     - ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version && docker info >/dev/null"
     - |
+      tar \
+        --exclude='.git' \
+        --exclude='.gstack' \
+        --exclude='.env' \
+        --exclude='wild-server/.env' \
+        --exclude='wild-web/.env' \
+        --exclude='wild-web/node_modules' \
+        --exclude='wild-web/dist' \
+        --exclude='wild-server/.venv' \
+        --exclude='wild-server/storage' \
+        -czf /tmp/wild-agent-source.tar.gz .
+    - |
       {
-        printf 'CI_REGISTRY=%s\n' "$CI_REGISTRY"
-        printf 'CI_REGISTRY_USER=%s\n' "$CI_REGISTRY_USER"
-        printf 'CI_REGISTRY_PASSWORD=%s\n' "$CI_REGISTRY_PASSWORD"
-        printf 'SERVER_IMAGE=%s\n' "$SERVER_IMAGE"
-        printf 'WEB_IMAGE=%s\n' "$WEB_IMAGE"
-        printf 'IMAGE_TAG=%s\n' "$CI_COMMIT_SHA"
+        printf 'CI_COMMIT_SHA=%s\n' "$CI_COMMIT_SHA"
+        printf 'DEPLOY_BASE_DIR=%s\n' "$DEPLOY_BASE_DIR"
         printf 'DEPLOY_DATA_DIR=%s\n' "$DEPLOY_DATA_DIR"
+        printf 'PYTHON_BASE_IMAGE=%s\n' "$PYTHON_BASE_IMAGE"
+        printf 'NODE_BASE_IMAGE=%s\n' "$NODE_BASE_IMAGE"
+        printf 'NGINX_BASE_IMAGE=%s\n' "$NGINX_BASE_IMAGE"
+        printf 'UV_BASE_IMAGE=%s\n' "$UV_BASE_IMAGE"
       } > /tmp/wild-deploy.env
     - |
       {
@@ -144,42 +75,61 @@ deploy-production:
         printf 'EMBEDDING__BASE_URL=%s\n' "$EMBEDDING__BASE_URL"
       } > /tmp/wild-runtime.env
     - |
-      cat > /tmp/wild-deploy.sh <<'REMOTE_SCRIPT'
+      cat > /tmp/wild-remote-deploy.sh <<'REMOTE_SCRIPT'
       #!/usr/bin/env sh
       set -eu
 
       DEPLOY_ENV="/tmp/wild-deploy.env"
       RUNTIME_ENV="/tmp/wild-runtime.env"
+      SOURCE_ARCHIVE="/tmp/wild-agent-source.tar.gz"
 
       read_env() {
         grep -m 1 "^$1=" "$DEPLOY_ENV" | cut -d '=' -f 2-
       }
 
-      CI_REGISTRY="$(read_env CI_REGISTRY)"
-      CI_REGISTRY_USER="$(read_env CI_REGISTRY_USER)"
-      CI_REGISTRY_PASSWORD="$(read_env CI_REGISTRY_PASSWORD)"
-      SERVER_IMAGE="$(read_env SERVER_IMAGE)"
-      WEB_IMAGE="$(read_env WEB_IMAGE)"
-      IMAGE_TAG="$(read_env IMAGE_TAG)"
+      CI_COMMIT_SHA="$(read_env CI_COMMIT_SHA)"
+      DEPLOY_BASE_DIR="$(read_env DEPLOY_BASE_DIR)"
       DEPLOY_DATA_DIR="$(read_env DEPLOY_DATA_DIR)"
+      PYTHON_BASE_IMAGE="$(read_env PYTHON_BASE_IMAGE)"
+      NODE_BASE_IMAGE="$(read_env NODE_BASE_IMAGE)"
+      NGINX_BASE_IMAGE="$(read_env NGINX_BASE_IMAGE)"
+      UV_BASE_IMAGE="$(read_env UV_BASE_IMAGE)"
+
+      RELEASE_DIR="${DEPLOY_BASE_DIR}/releases/${CI_COMMIT_SHA}"
 
       echo "Remote host: $(hostname)"
       echo "Docker version: $(docker --version)"
-      echo "Deploying image tag: ${IMAGE_TAG}"
+      echo "Deploying commit: ${CI_COMMIT_SHA}"
 
       if ! docker info >/dev/null 2>&1; then
-        echo "ERROR: Docker daemon is not available on the remote server."
+        echo "ERROR - Docker daemon is not available on the remote server"
         exit 10
       fi
 
-      mkdir -p "$DEPLOY_DATA_DIR"
+      mkdir -p "$RELEASE_DIR" "$DEPLOY_DATA_DIR"
+      tar -xzf "$SOURCE_ARCHIVE" -C "$RELEASE_DIR"
 
-      echo "$CI_REGISTRY_PASSWORD" | docker login --username "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+      cd "$RELEASE_DIR"
+
+      echo "Building wild-server image on remote server"
+      docker build --pull \
+        --build-arg PYTHON_BASE_IMAGE="$PYTHON_BASE_IMAGE" \
+        --build-arg UV_BASE_IMAGE="$UV_BASE_IMAGE" \
+        -t "wild-server:${CI_COMMIT_SHA}" \
+        -t "wild-server:latest" \
+        -f wild-server/Dockerfile \
+        wild-server
+
+      echo "Building wild-web image on remote server"
+      docker build --pull \
+        --build-arg NODE_BASE_IMAGE="$NODE_BASE_IMAGE" \
+        --build-arg NGINX_BASE_IMAGE="$NGINX_BASE_IMAGE" \
+        -t "wild-web:${CI_COMMIT_SHA}" \
+        -t "wild-web:latest" \
+        -f wild-web/Dockerfile \
+        wild-web
 
       docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
-
-      docker pull "${SERVER_IMAGE}:${IMAGE_TAG}"
-      docker pull "${WEB_IMAGE}:${IMAGE_TAG}"
 
       docker rm -f wild-server wild-web >/dev/null 2>&1 || true
 
@@ -190,28 +140,30 @@ deploy-production:
         -p 8000:8000 \
         -v "${DEPLOY_DATA_DIR}:/app/storage" \
         --env-file "$RUNTIME_ENV" \
-        "${SERVER_IMAGE}:${IMAGE_TAG}"
+        "wild-server:${CI_COMMIT_SHA}"
 
       docker run -d \
         --name wild-web \
         --restart unless-stopped \
         --network wild-net \
         -p 80:80 \
-        "${WEB_IMAGE}:${IMAGE_TAG}"
+        "wild-web:${CI_COMMIT_SHA}"
 
       sleep 5
 
       if ! docker ps --format '{{.Names}}' | grep -qx wild-server; then
-        echo "ERROR: wild-server is not running. Last logs:"
+        echo "ERROR - wild-server is not running. Last logs:"
         docker logs --tail=200 wild-server || true
         exit 20
       fi
 
       if ! docker ps --format '{{.Names}}' | grep -qx wild-web; then
-        echo "ERROR: wild-web is not running. Last logs:"
+        echo "ERROR - wild-web is not running. Last logs:"
         docker logs --tail=200 wild-web || true
         exit 21
       fi
+
+      ln -sfn "$RELEASE_DIR" "${DEPLOY_BASE_DIR}/current"
 
       echo "Running containers:"
       docker ps --filter "name=wild-" --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
@@ -222,11 +174,10 @@ deploy-production:
       echo "wild-web logs:"
       docker logs --tail=80 wild-web || true
 
-      docker logout "$CI_REGISTRY" >/dev/null 2>&1 || true
-      rm -f "$DEPLOY_ENV" "$RUNTIME_ENV" /tmp/wild-deploy.sh
+      rm -f "$DEPLOY_ENV" "$RUNTIME_ENV" "$SOURCE_ARCHIVE" /tmp/wild-remote-deploy.sh
       REMOTE_SCRIPT
-      chmod +x /tmp/wild-deploy.sh
-    - scp $SCP_OPTS /tmp/wild-deploy.env /tmp/wild-runtime.env /tmp/wild-deploy.sh "$DEPLOY_TARGET:/tmp/"
-    - ssh $SSH_OPTS "$DEPLOY_TARGET" "sh /tmp/wild-deploy.sh"
+      chmod +x /tmp/wild-remote-deploy.sh
+    - scp $SCP_OPTS /tmp/wild-agent-source.tar.gz /tmp/wild-deploy.env /tmp/wild-runtime.env /tmp/wild-remote-deploy.sh "$DEPLOY_TARGET:/tmp/"
+    - ssh $SSH_OPTS "$DEPLOY_TARGET" "sh /tmp/wild-remote-deploy.sh"
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
