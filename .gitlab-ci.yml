@@ -75,7 +75,7 @@ variables:
   stage: build
   services:
     - name: docker:dind
-      command: ["--registry-mirror=https://docker.m.daocloud.io"]
+      command: ["--registry-mirror=https://hub-mirror.c.163.com", "--registry-mirror=https://docker.m.daocloud.io"]
   only:
     - main
     - master
@@ -86,6 +86,7 @@ variables:
     - docker build
       --build-arg PYTHON_BASE_IMAGE=${PYTHON_BASE_IMAGE:-python:3.12-slim}
       --build-arg UV_BASE_IMAGE=${UV_BASE_IMAGE:-ghcr.io/astral-sh/uv:latest}
+      --build-arg UV_INDEX_URL=${UV_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
       -t $IMAGE_SERVER_NAME
       -t $IMAGE_SERVER_LATEST
       -f wild-server/Dockerfile
@@ -101,7 +102,7 @@ variables:
   stage: build
   services:
     - name: docker:dind
-      command: ["--registry-mirror=https://docker.m.daocloud.io"]
+      command: ["--registry-mirror=https://hub-mirror.c.163.com", "--registry-mirror=https://docker.m.daocloud.io"]
   only:
     - main
     - master

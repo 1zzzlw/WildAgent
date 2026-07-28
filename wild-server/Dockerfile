@@ -8,8 +8,10 @@ WORKDIR /app
 
 COPY --from=uv /uv /usr/local/bin/uv
 
+ARG UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ENV PATH="/app/.venv/bin:${PATH}" \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_INDEX_URL=${UV_INDEX_URL}
 
 # Install dependencies first so Docker can reuse the layer when only app code changes.
 COPY pyproject.toml uv.lock ./
