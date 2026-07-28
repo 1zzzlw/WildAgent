@@ -56,8 +56,16 @@ deploy-production:
   resource_group: production
   before_script:
     - apk add --no-cache openssh-client
-    - test -n "$SSH_PRIVATE_KEY" || (echo "ERROR: set SSH_PRIVATE_KEY in GitLab CI/CD variables" && exit 1)
-    - test -n "$DEPLOY_SSH_HOST" || (echo "ERROR: set DEPLOY_SSH_HOST in GitLab CI/CD variables" && exit 1)
+    - |
+      if [ -z "$SSH_PRIVATE_KEY" ]; then
+        echo "ERROR - set SSH_PRIVATE_KEY in GitLab CI/CD variables"
+        exit 1
+      fi
+    - |
+      if [ -z "$DEPLOY_SSH_HOST" ]; then
+        echo "ERROR - set DEPLOY_SSH_HOST in GitLab CI/CD variables"
+        exit 1
+      fi
     - mkdir -p ~/.ssh
     - |
       if [ -f "$SSH_PRIVATE_KEY" ]; then
