@@ -51,11 +51,15 @@ deploy:
     EMBEDDING_BASE_URL: "$EMBEDDING__BASE_URL"
   before_script:
     - apk add --no-cache openssh-client
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - echo "key file size=$(wc -c < ~/.ssh/id_ed25519) bytes"
   script:
     - echo "===== 步骤1：测试 SSH 连接 ====="
     - echo "SSH_PRIVATE_KEY path= $SSH_PRIVATE_KEY"
-    - chmod 600 "$SSH_PRIVATE_KEY"
-    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo connected"
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo connected"
     - echo "===== 步骤2：生成部署脚本 ====="
     - |
       cat > /tmp/deploy.sh << 'EOF'
@@ -79,8 +83,8 @@ deploy:
       EOF
       chmod +x /tmp/deploy.sh
     - echo "===== 步骤3：上传脚本 ====="
-    - scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
+    - scp -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
     - echo "===== 步骤4：执行部署 ====="
-    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST "REG_USER='$CI_REGISTRY_USER' REG_PASS='$CI_REGISTRY_PASSWORD' REG_URL='$CI_REGISTRY' SERVER_IMAGE='$SERVER_IMAGE' WEB_IMAGE='$WEB_IMAGE' CHAT_NAME='$CHAT_NAME' CHAT_API_KEY='$CHAT_API_KEY' CHAT_BASE_URL='$CHAT_BASE_URL' EMBEDDING_NAME='$EMBEDDING_NAME' EMBEDDING_API_KEY='$EMBEDDING_API_KEY' EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' bash /tmp/deploy.sh"
+    - ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no $DEPLOY_HOST "REG_USER='$CI_REGISTRY_USER' REG_PASS='$CI_REGISTRY_PASSWORD' REG_URL='$CI_REGISTRY' SERVER_IMAGE='$SERVER_IMAGE' WEB_IMAGE='$WEB_IMAGE' CHAT_NAME='$CHAT_NAME' CHAT_API_KEY='$CHAT_API_KEY' CHAT_BASE_URL='$CHAT_BASE_URL' EMBEDDING_NAME='$EMBEDDING_NAME' EMBEDDING_API_KEY='$EMBEDDING_API_KEY' EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' bash /tmp/deploy.sh"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
