@@ -26,6 +26,8 @@ variables:
   DOCKER_HOST: "tcp://docker:2375"
   DOCKER_TLS_CERTDIR: ""
   DOCKER_DRIVER: overlay2
+  # Docker Hub 国内镜像加速（可替换为你自己的镜像地址）
+  REGISTRY_MIRROR: "https://docker.m.daocloud.io"
 
 # ============================================================
 # Stage 1: 验证代码（仿照样例中的 compile 阶段）
@@ -72,7 +74,8 @@ variables:
   image: docker:stable
   stage: build
   services:
-    - docker:dind
+    - name: docker:dind
+      command: ["--registry-mirror=${REGISTRY_MIRROR}"]
   only:
     - main
     - master
@@ -97,7 +100,8 @@ variables:
   image: docker:stable
   stage: build
   services:
-    - docker:dind
+    - name: docker:dind
+      command: ["--registry-mirror=${REGISTRY_MIRROR}"]
   only:
     - main
     - master
