@@ -1,8 +1,12 @@
-FROM python:3.12-slim
+ARG UV_BASE_IMAGE=ghcr.io/astral-sh/uv:latest
+ARG PYTHON_BASE_IMAGE=python:3.12-slim
+
+FROM ${UV_BASE_IMAGE} AS uv
+FROM ${PYTHON_BASE_IMAGE}
 
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+COPY --from=uv /uv /usr/local/bin/uv
 
 ENV PATH="/app/.venv/bin:${PATH}" \
     UV_LINK_MODE=copy
