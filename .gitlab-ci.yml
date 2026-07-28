@@ -46,23 +46,33 @@ deploy:
     - echo "$SSH_PRIVATE_KEY" | sed 's/\\n/\n/g' > /tmp/deploy_key
     - chmod 600 /tmp/deploy_key
   script:
+    # SSH 连接测试
+    - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@39.106.183.13 "echo =====SSH连接成功====="
+    # 部署：<<-EOF 不带引号，变量在 CI Runner 本地展开后再发给服务器
     - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no root@39.106.183.13 <<-EOF
-        set -e
-        docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
-        docker pull $SERVER_IMAGE:latest
-        docker pull $WEB_IMAGE:latest
-        docker rm -f wild-server wild-web 2>/dev/null || true
+      	set -e
+      	echo "=====登录镜像仓库====="
+      	docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      	echo "=====拉取后端镜像====="
+      	docker pull $SERVER_IMAGE:latest
+      	echo "=====拉取前端镜像====="
+      	docker pull $WEB_IMAGE:latest
+      	echo "=====清理旧容器====="
+      	docker rm -f wild-server wild-web 2>/dev/null || true
 
-        docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
-          -e CHAT__NAME="$CHAT__NAME" \
-          -e CHAT__API_KEY="$CHAT__API_KEY" \
-          -e CHAT__BASE_URL="$CHAT__BASE_URL" \
-          -e EMBEDDING__NAME="$EMBEDDING__NAME" \
-          -e EMBEDDING__API_KEY="$EMBEDDING__API_KEY" \
-          -e EMBEDDING__BASE_URL="$EMBEDDING__BASE_URL" \
-          $SERVER_IMAGE:latest
+      	echo "=====启动 wild-server====="
+      	docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
+      		-e CHAT__NAME="$CHAT__NAME" \
+      		-e CHAT__API_KEY="$CHAT__API_KEY" \
+      		-e CHAT__BASE_URL="$CHAT__BASE_URL" \
+      		-e EMBEDDING__NAME="$EMBEDDING__NAME" \
+      		-e EMBEDDING__API_KEY="$EMBEDDING__API_KEY" \
+      		-e EMBEDDING__BASE_URL="$EMBEDDING__BASE_URL" \
+      		$SERVER_IMAGE:latest
 
-        docker run -d --name wild-web --restart unless-stopped -p 80:80 $WEB_IMAGE:latest
+      	echo "=====启动 wild-web====="
+      	docker run -d --name wild-web --restart unless-stopped -p 80:80 $WEB_IMAGE:latest
+      	echo "=====部署完成====="
       EOF
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
