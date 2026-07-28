@@ -87,19 +87,6 @@ deploy:
     - echo "===== 步骤3：上传脚本到服务器 ====="
     - scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
     - echo "===== 步骤4：执行部署 ====="
-    - |
-      ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST \
-        "export CI_REGISTRY_USER='$CI_REGISTRY_USER' && \
-         export CI_REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && \
-         export CI_REGISTRY='$CI_REGISTRY' && \
-         export SERVER_IMAGE='$SERVER_IMAGE' && \
-         export WEB_IMAGE='$WEB_IMAGE' && \
-         export CHAT_NAME='$CHAT_NAME' && \
-         export CHAT_API_KEY='$CHAT_API_KEY' && \
-         export CHAT_BASE_URL='$CHAT_BASE_URL' && \
-         export EMBEDDING_NAME='$EMBEDDING_NAME' && \
-         export EMBEDDING_API_KEY='$EMBEDDING_API_KEY' && \
-         export EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' && \
-         bash /tmp/deploy.sh"
+    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST "export CI_REGISTRY_USER='$CI_REGISTRY_USER' && export CI_REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && export CI_REGISTRY='$CI_REGISTRY' && export SERVER_IMAGE='$SERVER_IMAGE' && export WEB_IMAGE='$WEB_IMAGE' && export CHAT_NAME='$CHAT_NAME' && export CHAT_API_KEY='$CHAT_API_KEY' && export CHAT_BASE_URL='$CHAT_BASE_URL' && export EMBEDDING_NAME='$EMBEDDING_NAME' && export EMBEDDING_API_KEY='$EMBEDDING_API_KEY' && export EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' && bash /tmp/deploy.sh"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
