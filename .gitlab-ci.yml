@@ -42,37 +42,53 @@ deploy:
   stage: deploy
   image: alpine:latest
   before_script:
-    - apk add --no-cache openssh-client
-    - echo "$SSH_PRIVATE_KEY" | sed 's/\\n/\n/g' > /tmp/deploy_key
-    - chmod 600 /tmp/deploy_key
+    - apk add --no-cache openssh-client sshpass
   script:
-    # SSH 连接测试
-    - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@39.106.183.13 "echo =====SSH连接成功====="
-    # 部署：<<-EOF 不带引号，变量在 CI Runner 本地展开后再发给服务器
-    - ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no root@39.106.183.13 <<-EOF
-      	set -e
-      	echo "=====登录镜像仓库====="
-      	docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
-      	echo "=====拉取后端镜像====="
-      	docker pull $SERVER_IMAGE:latest
-      	echo "=====拉取前端镜像====="
-      	docker pull $WEB_IMAGE:latest
-      	echo "=====清理旧容器====="
-      	docker rm -f wild-server wild-web 2>/dev/null || true
-
-      	echo "=====启动 wild-server====="
-      	docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
-      		-e CHAT__NAME="$CHAT__NAME" \
-      		-e CHAT__API_KEY="$CHAT__API_KEY" \
-      		-e CHAT__BASE_URL="$CHAT__BASE_URL" \
-      		-e EMBEDDING__NAME="$EMBEDDING__NAME" \
-      		-e EMBEDDING__API_KEY="$EMBEDDING__API_KEY" \
-      		-e EMBEDDING__BASE_URL="$EMBEDDING__BASE_URL" \
-      		$SERVER_IMAGE:latest
-
-      	echo "=====启动 wild-web====="
-      	docker run -d --name wild-web --restart unless-stopped -p 80:80 $WEB_IMAGE:latest
-      	echo "=====部署完成====="
-      EOF
+    - echo "===== 步骤1：测试 SSH 连接 ====="
+    - sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@39.106.183.13 "echo SSH连接成功"
+    - echo "===== 步骤2：生成部署脚本 ====="
+    - |
+      cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
+      #!/bin/bash
+      set -e
+      echo ">>> 登录镜像仓库"
+      docker login --username "$REGISTRY_USER" --password "$REGISTRY_PASSWORD" "$REGISTRY"
+      echo ">>> 拉取镜像"
+      docker pull "$SERVER_IMAGE":latest
+      docker pull "$WEB_IMAGE":latest
+      echo ">>> 清理旧容器"
+      docker rm -f wild-server wild-web 2>/dev/null || echo "没有旧容器"
+      echo ">>> 启动 wild-server"
+      docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
+        -e CHAT__NAME="$CHAT_NAME" \
+        -e CHAT__API_KEY="$CHAT_API_KEY" \
+        -e CHAT__BASE_URL="$CHAT_BASE_URL" \
+        -e EMBEDDING__NAME="$EMBEDDING_NAME" \
+        -e EMBEDDING__API_KEY="$EMBEDDING_API_KEY" \
+        -e EMBEDDING__BASE_URL="$EMBEDDING_BASE_URL" \
+        "$SERVER_IMAGE":latest
+      echo ">>> 启动 wild-web"
+      docker run -d --name wild-web --restart unless-stopped -p 80:80 "$WEB_IMAGE":latest
+      echo ">>> 容器状态"
+      docker ps | grep -E "wild-server|wild-web"
+      echo "===== 部署完成 ====="
+      DEPLOY_SCRIPT
+    - echo "===== 步骤3：上传脚本到服务器 ====="
+    - sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no /tmp/deploy.sh root@39.106.183.13:/tmp/deploy.sh
+    - echo "===== 步骤4：执行部署 ====="
+    - |
+      sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no root@39.106.183.13 \
+        "export REGISTRY_USER='$CI_REGISTRY_USER' && \
+         export REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && \
+         export REGISTRY='$CI_REGISTRY' && \
+         export SERVER_IMAGE='$SERVER_IMAGE' && \
+         export WEB_IMAGE='$WEB_IMAGE' && \
+         export CHAT_NAME='$CHAT__NAME' && \
+         export CHAT_API_KEY='$CHAT__API_KEY' && \
+         export CHAT_BASE_URL='$CHAT__BASE_URL' && \
+         export EMBEDDING_NAME='$EMBEDDING__NAME' && \
+         export EMBEDDING_API_KEY='$EMBEDDING__API_KEY' && \
+         export EMBEDDING_BASE_URL='$EMBEDDING__BASE_URL' && \
+         bash /tmp/deploy.sh"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
