@@ -41,18 +41,29 @@ build-web:
 deploy:
   stage: deploy
   image: alpine:latest
+  variables:
+    DEPLOY_HOST: "root@39.106.183.13"
+    CHAT_NAME: "$CHAT__NAME"
+    CHAT_API_KEY: "$CHAT__API_KEY"
+    CHAT_BASE_URL: "$CHAT__BASE_URL"
+    EMBEDDING_NAME: "$EMBEDDING__NAME"
+    EMBEDDING_API_KEY: "$EMBEDDING__API_KEY"
+    EMBEDDING_BASE_URL: "$EMBEDDING__BASE_URL"
   before_script:
     - apk add --no-cache openssh-client
   script:
     - echo "===== 步骤1：测试 SSH 连接 ====="
-    - ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10 root@39.106.183.13 "echo SSH连接成功"
+    - echo "SSH_PRIVATE_KEY 路径: $SSH_PRIVATE_KEY"
+    - ls -la $SSH_PRIVATE_KEY
+    - chmod 600 $SSH_PRIVATE_KEY
+    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo SSH连接成功"
     - echo "===== 步骤2：生成部署脚本 ====="
     - |
       cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
       #!/bin/bash
       set -e
       echo ">>> 登录镜像仓库"
-      docker login --username "$REGISTRY_USER" --password "$REGISTRY_PASSWORD" "$REGISTRY"
+      docker login --username "$CI_REGISTRY_USER" --password "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
       echo ">>> 拉取镜像"
       docker pull "$SERVER_IMAGE":latest
       docker pull "$WEB_IMAGE":latest
@@ -74,21 +85,21 @@ deploy:
       echo "===== 部署完成 ====="
       DEPLOY_SCRIPT
     - echo "===== 步骤3：上传脚本到服务器 ====="
-    - scp -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=no /tmp/deploy.sh root@39.106.183.13:/tmp/deploy.sh
+    - scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
     - echo "===== 步骤4：执行部署 ====="
     - |
-      ssh -i $SSH_PRIVATE_KEY -o StrictHostKeyChecking=no root@39.106.183.13 \
-        "export REGISTRY_USER='$CI_REGISTRY_USER' && \
-         export REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && \
-         export REGISTRY='$CI_REGISTRY' && \
+      ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST \
+        "export CI_REGISTRY_USER='$CI_REGISTRY_USER' && \
+         export CI_REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && \
+         export CI_REGISTRY='$CI_REGISTRY' && \
          export SERVER_IMAGE='$SERVER_IMAGE' && \
          export WEB_IMAGE='$WEB_IMAGE' && \
-         export CHAT_NAME='$CHAT__NAME' && \
-         export CHAT_API_KEY='$CHAT__API_KEY' && \
-         export CHAT_BASE_URL='$CHAT__BASE_URL' && \
-         export EMBEDDING_NAME='$EMBEDDING__NAME' && \
-         export EMBEDDING_API_KEY='$EMBEDDING__API_KEY' && \
-         export EMBEDDING_BASE_URL='$EMBEDDING__BASE_URL' && \
+         export CHAT_NAME='$CHAT_NAME' && \
+         export CHAT_API_KEY='$CHAT_API_KEY' && \
+         export CHAT_BASE_URL='$CHAT_BASE_URL' && \
+         export EMBEDDING_NAME='$EMBEDDING_NAME' && \
+         export EMBEDDING_API_KEY='$EMBEDDING_API_KEY' && \
+         export EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' && \
          bash /tmp/deploy.sh"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
