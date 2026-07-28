@@ -111,15 +111,8 @@ export const useSceneStore = defineStore('scene', () => {
 
     isReconstructing.value = true
     try {
-      // 调用 wild-core 重建场景
-      console.log('开始重建场景...', document.value.blueprint)
       const { reconstructWildEntity } = await import('../renderer/wildCoreAdapter')
       const entity = await reconstructWildEntity(document.value.blueprint)
-      console.log('场景重建成功', {
-        meshCount: entity.meshes.length,
-        materialCount: entity.materialParams?.length || 0,
-        boundingBox: entity.boundingBox
-      })
       reconstructed.value = entity
     } catch (error) {
       console.error('重建失败', error)

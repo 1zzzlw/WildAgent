@@ -1,5 +1,36 @@
 <template>
   <div class="ai-chat-panel">
+    <!-- 会话切换栏 -->
+    <div class="session-bar">
+      <el-select
+        v-model="agentStore.currentSessionId"
+        class="session-select"
+        size="small"
+        popper-class="session-popper"
+        @change="handleSessionSwitch"
+        placeholder="选择会话"
+      >
+        <el-option
+          v-for="s in agentStore.sessions"
+          :key="s.session_id"
+          :label="`${s.name} (${s.elements_count} 构件)`"
+          :value="s.session_id"
+        />
+      </el-select>
+      <el-button class="session-new-btn" size="small" @click="handleNewSession">
+        + 新建
+      </el-button>
+      <el-button
+        class="session-del-btn"
+        size="small"
+        :disabled="agentStore.sessions.length <= 1"
+        :title="agentStore.sessions.length <= 1 ? '至少保留一个会话' : '删除当前会话'"
+        @click="handleDeleteSession"
+      >
+        删除
+      </el-button>
+    </div>
+
     <div class="messages-container" ref="messagesRef">
 
       <!-- 聊天消息 -->
@@ -8,7 +39,7 @@
           <span class="message-role">{{ getRoleLabel(message.role) }}</span>
           <span class="message-time">{{ formatTime(message.timestamp) }}</span>
         </div>
-        <div class="message-content">{{ message.content }}</div>
+        <div class="message-content" v-html="renderMarkdown(message.content)"></div>
         <div v-if="message.patch" class="message-patch">
           <div class="patch-summary">{{ message.patch.summary }}</div>
           <el-button class="patch-btn" size="small" @click="handleApplyPatch(message.patch!)">
@@ -70,7 +101,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { ElNotification } from 'element-plus'
+import { ElNotification, ElMessageBox } from 'element-plus'
+import MarkdownIt from 'markdown-it'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/vs2015.css'
 import {
   Loading, Promotion, Connection, Link, WarningFilled, CircleCheckFilled,
 } from '@element-plus/icons-vue'
@@ -78,6 +112,25 @@ import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { agentBridge } from '../../agent/agentBridge'
 import type { ScenePatch } from '../../types/scenePatch'
+
+// ── Markdown 渲染 ──
+const md = new MarkdownIt({
+  html: false,
+  breaks: true,
+  linkify: true,
+  highlight(str: string, lang: string): string {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return `<pre class="hljs"><code>${hljs.highlight(str, { language: lang, ignoreIllegals: true }).value}</code></pre>`
+      } catch { /* fallthrough */ }
+    }
+    return `<pre class="hljs"><code>${md.utils.escapeHtml(str)}</code></pre>`
+  },
+})
+
+function renderMarkdown(content: string): string {
+  return md.render(content)
+}
 
 const agentStore = useAgentStore()
 const sceneStore = useSceneStore()
@@ -173,7 +226,10 @@ watch(() => agentStore.networkError, (error) => {
 })
 
 // ---------- 生命周期 ----------
-onMounted(() => agentBridge.connect())
+onMounted(() => {
+  agentBridge.connect()
+  restoreLastSession()
+})
 onUnmounted(() => agentBridge.disconnect())
 
 watch(() => agentStore.blueprintLoaded, (loaded) => {
@@ -189,9 +245,91 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString('zh-CN')
 }
 
-function handleApplyPatch(patch: ScenePatch) {
-  sceneStore.applyPatch(patch)
-  agentStore.addSystemMessage('已应用修改')
+async function handleApplyPatch(patch: ScenePatch) {
+  const ok = await sceneStore.applyPatch(patch)
+  if (ok) {
+    agentStore.addSystemMessage('✅ 已应用修改')
+    // 同步更新后的蓝图到后端
+    if (sceneStore.document) {
+      agentBridge.syncBlueprintToBackend(
+        sceneStore.document.blueprint as Record<string, unknown>
+      )
+      // 更新会话信息
+      const bp = sceneStore.document.blueprint
+      const name = bp.meta?.name || '未命名建筑'
+      const count = bp.geometry?.elements?.length || 0
+      agentStore.updateSessionInfo(agentStore.currentSessionId, name, count)
+    }
+  } else {
+    agentStore.addSystemMessage('❌ 应用修改失败，可能版本已过期')
+  }
+}
+
+// ── 会话切换 ──
+async function handleSessionSwitch(sessionId: string) {
+  agentStore.switchToSession(sessionId)
+  const bp = await agentBridge.loadSessionBlueprint(sessionId)
+  if (bp) {
+    sceneStore.loadBlueprint(bp as any)
+    const name = (bp as any).meta?.name || '未命名建筑'
+    const count = (bp as any).geometry?.elements?.length || 0
+    agentStore.updateSessionInfo(sessionId, name, count)
+    agentStore.addSystemMessage(`✅ 已切换到: ${name}`)
+  } else {
+    // 文件不存在，创建空场景
+    const doc = sceneStore.createEmptyDocument()
+    sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  }
+}
+
+function handleNewSession() {
+  const newId = agentStore.createSession()
+  agentStore.switchToSession(newId)
+  const doc = sceneStore.createEmptyDocument()
+  sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  agentStore.addSystemMessage('✨ 新会话已创建，输入建筑需求开始')
+}
+
+async function handleDeleteSession() {
+  const sid = agentStore.currentSessionId
+  if (agentStore.sessions.length <= 1) return
+
+  try {
+    await ElMessageBox.confirm(
+      '删除当前会话将永久移除该建筑及其蓝图文件，不可恢复。确定继续？',
+      '确认删除',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return // 用户取消
+  }
+
+  await agentBridge.deleteSessionBlueprint(sid)
+  agentStore.removeSession(sid)
+  // 切换到下一个会话
+  const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
+  if (bp) {
+    sceneStore.loadBlueprint(bp as any)
+  } else {
+    const doc = sceneStore.createEmptyDocument()
+    sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  }
+  agentStore.addSystemMessage('🗑️ 会话已删除')
+}
+
+// ── 页面初始化：恢复上次会话 ──
+async function restoreLastSession() {
+  const sessionId = agentStore.currentSessionId
+  if (!sessionId) return
+
+  // 只在会话已有构件时才从后端加载（空会话无对应 .wild 文件）
+  const info = agentStore.sessions.find(s => s.session_id === sessionId)
+  if (!info || info.elements_count === 0) return
+
+  const bp = await agentBridge.loadSessionBlueprint(sessionId)
+  if (bp) {
+    sceneStore.loadBlueprint(bp as any)
+  }
 }
 </script>
 
@@ -201,6 +339,35 @@ function handleApplyPatch(patch: ScenePatch) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 会话切换栏 */
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #252526;
+  border-bottom: 1px solid #3e3e42;
+  flex-shrink: 0;
+}
+.session-select {
+  flex: 1;
+  min-width: 0;
+}
+.session-new-btn {
+  height: 28px;
+  padding: 0 10px;
+  background: #0e639c;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.session-new-btn:hover {
+  background: #1177bb;
 }
 
 .messages-container {
@@ -232,6 +399,77 @@ function handleApplyPatch(patch: ScenePatch) {
 }
 .message-role   { font-weight: 500; }
 .message-content { font-size: 13px; line-height: 1.5; }
+
+/* ── Markdown 渲染样式 ── */
+.message-content :deep(h1),
+.message-content :deep(h2),
+.message-content :deep(h3),
+.message-content :deep(h4) {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.message-content :deep(h1) { font-size: 1.4em; }
+.message-content :deep(h2) { font-size: 1.25em; border-bottom: 1px solid #3e3e42; padding-bottom: 4px; }
+.message-content :deep(h3) { font-size: 1.1em; }
+.message-content :deep(h4) { font-size: 1em; color: #aaa; }
+
+.message-content :deep(p) { margin: 4px 0; }
+.message-content :deep(ul),
+.message-content :deep(ol) { margin: 4px 0; padding-left: 20px; }
+.message-content :deep(li) { margin: 2px 0; }
+.message-content :deep(blockquote) {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 3px solid #007acc;
+  background: #1e1e1e;
+  color: #999;
+}
+.message-content :deep(code) {
+  font-family: 'Consolas', 'Menlo', monospace;
+  font-size: 12px;
+  background: #1e1e1e;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #ce9178;
+}
+.message-content :deep(pre.hljs) {
+  margin: 8px 0;
+  padding: 10px;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.message-content :deep(pre.hljs code) {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.message-content :deep(table) {
+  margin: 8px 0;
+  border-collapse: collapse;
+  font-size: 12px;
+  width: 100%;
+}
+.message-content :deep(th),
+.message-content :deep(td) {
+  border: 1px solid #3e3e42;
+  padding: 4px 8px;
+  text-align: left;
+}
+.message-content :deep(th) { background: #2d2d30; font-weight: 600; }
+.message-content :deep(a) { color: #4ea1f3; text-decoration: none; }
+.message-content :deep(a:hover) { text-decoration: underline; }
+.message-content :deep(hr) {
+  margin: 12px 0;
+  border: none;
+  border-top: 1px solid #3e3e42;
+}
+.message-content :deep(strong) { font-weight: 600; color: #e0e0e0; }
+.message-content :deep(em) { font-style: italic; }
 
 .message-patch  { margin-top: 8px; padding-top: 8px; border-top: 1px solid #3e3e42; }
 .patch-summary  { font-size: 12px; color: #4ec9b0; margin-bottom: 8px; }

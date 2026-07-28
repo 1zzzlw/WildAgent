@@ -42,6 +42,33 @@ def extract_blueprint_from_text(text: str) -> dict | None:
         return None
 
 
+def extract_patch_from_text(text: str) -> dict | None:
+    """从 LLM 回复文本中提取 ScenePatch JSON
+
+    ScenePatch 格式：
+      ```json
+      { "operations": [...], "summary": "..." }
+      ```
+
+    校验：返回的 dict 必须包含 "operations" 字段且为非空数组。
+
+    Returns:
+        解析后的 ScenePatch dict，如果未找到或解析失败或结构不对则返回 None
+    """
+    data = extract_blueprint_from_text(text)  # 复用 JSON 提取逻辑
+    if data is None:
+        return None
+    if "operations" not in data:
+        return None
+    ops = data["operations"]
+    if not isinstance(ops, list) or len(ops) == 0:
+        return None
+    # 确保有 summary
+    if "summary" not in data:
+        data["summary"] = "修改场景"
+    return data
+
+
 # ---------- 结构校验 ----------
 
 def validate_blueprint_schema(blueprint: dict) -> list[str]:
@@ -105,7 +132,7 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
 # ---------- 文件保存 ----------
 
 def save_blueprint_file(blueprint: dict, directory: Path) -> str:
-    """保存 Blueprint 到磁盘
+    """保存 Blueprint 到磁盘（时间戳命名）
 
     文件名格式: YYYY-MM-DD-HHMMSS.wild
     内容: 格式化 JSON (indent=2, ensure_ascii=False)
@@ -120,6 +147,28 @@ def save_blueprint_file(blueprint: dict, directory: Path) -> str:
     directory.mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now()
     filename = now.strftime("%Y-%m-%d-%H%M%S") + ".wild"
+    file_path = directory / filename
+    file_path.write_text(
+        json.dumps(blueprint, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return str(file_path.resolve())
+
+
+def save_blueprint_file_as(blueprint: dict, directory: Path, filename: str) -> str:
+    """保存 Blueprint 到磁盘（自定义文件名）
+
+    用于场景持久化——相同文件名会被覆盖，实现同一场景的更新。
+
+    Args:
+        blueprint: Blueprint dict
+        directory: 保存目录
+        filename: 自定义文件名（如 "session_xxx.wild"）
+
+    Returns:
+        保存文件的绝对路径字符串
+    """
+    directory.mkdir(parents=True, exist_ok=True)
     file_path = directory / filename
     file_path.write_text(
         json.dumps(blueprint, indent=2, ensure_ascii=False),

@@ -244,7 +244,8 @@ export class AgentBridge {
       sceneStore.document.id,
       sceneStore.document.revision,
       sceneSummary,
-      selection
+      selection,
+      sceneStore.document.blueprint as Record<string, unknown>
     )
 
     this.ws.send(JSON.stringify(request))
@@ -271,6 +272,10 @@ export class AgentBridge {
         break
 
       case 'patch_proposal':
+        agentStore.addAgentMessage(
+          message.patch.summary || 'AI 提出了修改建议',
+          message.patch
+        )
         agentStore.setPendingPatch(message.patch)
         agentStore.setProcessing(false)
         break
@@ -324,6 +329,12 @@ export class AgentBridge {
         : 'AI 生成'
 
       sceneStore.loadBlueprint(blueprint, name)
+
+      // 更新会话信息
+      const elementsCount = blueprint.geometry?.elements?.length || 0
+      const displayName = blueprint.meta?.name || '未命名建筑'
+      agentStore.updateSessionInfo(agentStore.currentSessionId, displayName, elementsCount)
+
       agentStore.addSystemMessage(`✅ Blueprint 已加载（${filename}）`)
       agentStore.setBlueprintLoaded(filename)
     } catch (err) {
@@ -331,6 +342,70 @@ export class AgentBridge {
       agentStore.addSystemMessage(`❌ 加载蓝图失败: ${filename}`)
     } finally {
       agentStore.setProcessing(false)
+    }
+  }
+
+  /** 同步当前 Blueprint 到后端（PUT 覆盖写入） */
+  async syncBlueprintToBackend(blueprint: Record<string, unknown>) {
+    const agentStore = useAgentStore()
+    const sessionId = agentStore.currentSessionId
+
+    try {
+      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blueprint),
+      })
+      if (!response.ok) {
+        console.error('[AgentBridge] 同步蓝图失败:', response.status)
+      }
+    } catch (err) {
+      console.error('[AgentBridge] 同步蓝图异常:', err)
+    }
+  }
+
+  /** 从后端加载会话对应的蓝图 */
+  async loadSessionBlueprint(sessionId: string): Promise<Record<string, unknown> | null> {
+    try {
+      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`)
+      if (!response.ok) {
+        return null
+      }
+      return await response.json()
+    } catch (err) {
+      console.error('[AgentBridge] 加载会话蓝图失败:', err)
+      return null
+    }
+  }
+
+  /** 删除后端会话蓝图文件 */
+  async deleteSessionBlueprint(sessionId: string) {
+    try {
+      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
+        method: 'DELETE',
+      })
+      return response.ok
+    } catch (err) {
+      console.error('[AgentBridge] 删除蓝图失败:', err)
+      return false
+    }
+  }
+
+  /** 从后端获取所有已保存的场景列表 */
+  async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number }>> {
+    try {
+      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const response = await fetch(`${baseUrl}/api/scenes`)
+      if (!response.ok) {
+        return []
+      }
+      return await response.json()
+    } catch (err) {
+      console.error('[AgentBridge] 获取场景列表失败:', err)
+      return []
     }
   }
 

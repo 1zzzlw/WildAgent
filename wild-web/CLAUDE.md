@@ -183,7 +183,9 @@ interface ScenePatch {
 - [x] Three.js 视口（灯光 / 阴影 / 轨道控制 / 响应式 / 场景重建观察器）
 - [x] wild-core 引擎内嵌（parser / expander / resolver / 10 种几何构建器 / 材质系统）
 - [x] **WebSocket 通信**（心跳 ping/pong / 自动重连 / 页面可见性检测 / 指数退避）
-- [x] **后端 Agent 服务骨架**（FastAPI + WebSocket 端点 + LangGraph Agent + 心跳监控工具类）
+- [x] **后端 Agent 服务**（FastAPI + WebSocket 端点 + 16 工具 + 15 步校验流水线 + 统一 prompt）
+- [x] **AI 增量修改**（patch_proposal → 前端"应用修改"按钮 → 累加到同一蓝图 → 后端同步）
+- [x] **会话管理**（会话列表 + localStorage 持久化 + 多会话切换 + 刷新恢复 + 蓝图文件按 session_id 命名）
 
 ### 🚧 进行中 / 待开发
 

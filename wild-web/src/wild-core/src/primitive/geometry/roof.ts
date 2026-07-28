@@ -90,22 +90,36 @@ function buildPagoda(params: RoofParams, pos: number[]): MeshData[] {
 function buildGable(hw: number, hd: number, h: number, t: number): Float32Array {
   const ridge = h, eaves = 0;
   return new Float32Array([
+    // 前坡
     -hw,eaves,hd, hw,eaves,hd, 0,ridge,hd,
+    // 后坡
     -hw,eaves,-hd, 0,ridge,-hd, hw,eaves,-hd,
+    // 左坡
     0,ridge,hd, 0,ridge,-hd, -hw,eaves,-hd,
     -hw,eaves,hd, 0,ridge,hd, -hw,eaves,-hd,
+    // 右坡
     hw,eaves,-hd, 0,ridge,-hd, 0,ridge,hd,
     hw,eaves,-hd, 0,ridge,hd, hw,eaves,hd,
-    -hw,eaves,-hd, hw,eaves,-hd, hw,eaves,hd,
-    -hw,eaves,-hd, hw,eaves,hd, -hw,eaves,hd,
+    // 底面（封口，朝下）
+    -hw,eaves,-hd, hw,eaves,hd, hw,eaves,-hd,
+    -hw,eaves,-hd, -hw,eaves,hd, hw,eaves,hd,
   ]);
 }
 
 function buildHip(hw: number, hd: number, h: number, t: number): Float32Array {
   const v: number[] = [];
-  const peak: [number,number,number] = [0,h,0];
+  const peak: [number,number,number] = [0, h, 0];
   const corners: [number,number,number][] = [[-hw,0,-hd],[hw,0,-hd],[hw,0,hd],[-hw,0,hd]];
-  for (let i=0;i<4;i++){const j=(i+1)%4;const a=corners[i],b=corners[j];v.push(a[0],a[1],a[2],b[0],b[1],b[2],peak[0],peak[1],peak[2]);}
+  // 四个坡面（各一个三角形，顶点到屋脊）
+  for (let i = 0; i < 4; i++) {
+    const j = (i + 1) % 4;
+    const a = corners[i], b = corners[j];
+    v.push(a[0],a[1],a[2], b[0],b[1],b[2], peak[0],peak[1],peak[2]);
+  }
+  // 底面封口（朝下，顶点顺序翻转）
+  const [c0, c1, c2, c3] = corners;
+  v.push(c0[0],c0[1],c0[2], c2[0],c2[1],c2[2], c1[0],c1[1],c1[2]);
+  v.push(c0[0],c0[1],c0[2], c3[0],c3[1],c3[2], c2[0],c2[1],c2[2]);
   return new Float32Array(v);
 }
 
@@ -116,5 +130,37 @@ function buildDome(hw: number, hd: number, h: number, t: number): Float32Array {
 }
 
 function buildFlat(hw: number, hd: number, t: number): Float32Array {
-  return new Float32Array([-hw,0,-hd,hw,0,-hd,hw,0,hd,-hw,0,-hd,hw,0,hd,-hw,0,hd]);
+  // 当 thickness 有效时生成有厚度的实体盒子（上面+底面+四个侧面），否则退化为单面
+  const thick = t > 0.01 ? t : 0;
+  const yTop = 0;
+  const yBot = -thick;
+
+  if (thick <= 0) {
+    // 无厚度：单面朝上（原行为）
+    return new Float32Array([
+      -hw, 0, -hd,  hw, 0, -hd,  hw, 0,  hd,
+      -hw, 0, -hd,  hw, 0,  hd, -hw, 0,  hd,
+    ]);
+  }
+
+  return new Float32Array([
+    // 顶面（朝上，法线 +Y）
+    -hw, yTop, -hd,   hw, yTop, -hd,   hw, yTop,  hd,
+    -hw, yTop, -hd,   hw, yTop,  hd,  -hw, yTop,  hd,
+    // 底面（朝下，法线 -Y，顶点顺序翻转）
+    -hw, yBot,  hd,   hw, yBot,  hd,   hw, yBot, -hd,
+    -hw, yBot,  hd,   hw, yBot, -hd,  -hw, yBot, -hd,
+    // 前侧面（Z+）
+    -hw, yBot,  hd,   hw, yBot,  hd,   hw, yTop,  hd,
+    -hw, yBot,  hd,   hw, yTop,  hd,  -hw, yTop,  hd,
+    // 后侧面（Z-）
+     hw, yBot, -hd,  -hw, yBot, -hd,  -hw, yTop, -hd,
+     hw, yBot, -hd,  -hw, yTop, -hd,   hw, yTop, -hd,
+    // 左侧面（X-）
+    -hw, yBot, -hd,  -hw, yBot,  hd,  -hw, yTop,  hd,
+    -hw, yBot, -hd,  -hw, yTop,  hd,  -hw, yTop, -hd,
+    // 右侧面（X+）
+     hw, yBot,  hd,   hw, yBot, -hd,   hw, yTop, -hd,
+     hw, yBot,  hd,   hw, yTop, -hd,   hw, yTop,  hd,
+  ]);
 }

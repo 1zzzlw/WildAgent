@@ -58,8 +58,12 @@ watch(() => sceneStore.reconstructed, () => {
 function initThreeJS() {
   if (!canvasRef.value || !containerRef.value) return
 
-  renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true })
-  renderer.setPixelRatio(window.devicePixelRatio)
+  renderer = new THREE.WebGLRenderer({
+    canvas: canvasRef.value,
+    antialias: true,
+    logarithmicDepthBuffer: true,
+  })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
@@ -67,7 +71,7 @@ function initThreeJS() {
   scene.background = new THREE.Color(0x1a1a1a)
 
   const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
-  camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000)
+  camera = new THREE.PerspectiveCamera(50, aspect, 0.5, 200)
   camera.position.set(12, 10, 12)
 
   controls = new OrbitControls(camera, renderer.domElement)
@@ -147,7 +151,15 @@ function startRenderLoop() {
   animate()
 }
 
-function updateScene() {
+function ensureGridVisible() {
+	  if (!gridHelper || !scene) return
+	  if (!scene.children.includes(gridHelper)) {
+	    scene.add(gridHelper)
+	  }
+	  gridHelper.visible = true
+	}
+
+	function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
 
   const entity = sceneStore.reconstructed
@@ -166,10 +178,22 @@ function updateScene() {
       camera.position.set(12, 10, 12)
       controls.update()
     }
+    ensureGridVisible()
     return
   }
 
   updateSceneGroup(sceneGroup, entity, materialCache)
+
+  // 空场景（0 个构件）：重置相机到初始位置，防止上次的 camera 位置导致 grid 不可见
+  if (!entity.meshes || entity.meshes.length === 0) {
+    if (controls && camera) {
+      controls.target.set(0, 0, 0)
+      camera.position.set(12, 10, 12)
+      controls.update()
+    }
+    ensureGridVisible()
+    return
+  }
 
   if (entity.boundingBox) {
     const bbox = entity.boundingBox
@@ -197,11 +221,7 @@ function updateScene() {
     }
   }
   
-  // 确保GridHelper始终可见
-  if (gridHelper && !scene.children.includes(gridHelper)) {
-    console.warn('GridHelper was removed, re-adding');
-    scene.add(gridHelper);
-  }
+  ensureGridVisible()
 }
 
 function cleanup() {

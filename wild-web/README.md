@@ -164,7 +164,7 @@ async function applyPatch(patch: ScenePatch): Promise<boolean> {
 |---|---|---|---|
 | [PropertyPanel.vue](src/components/panels/PropertyPanel.vue) | 属性面板改参数 | `'user'` | ✅ 已生效 |
 | [BlockLibrary.vue](src/components/panels/BlockLibrary.vue) | 构件库点击添加构件 | `'user'` | ⚠️ 代码已接入，待验证 |
-| [AIChatPanel.vue](src/components/panels/AIChatPanel.vue) | AI 增量修改建议 | `'agent'` | 🔜 预留（AI 尚无增量修改能力） |
+| [AIChatPanel.vue](src/components/panels/AIChatPanel.vue) | AI 增量修改建议 | `'agent'` | ✅ 前端已接通，待后端实现增量修改 |
 
 > **注意**：AI 从零生成完整蓝图时**不走 ScenePatch**。后端保存 `.wild` 文件后，前端通过 HTTP 拉取 JSON，直接调用 `loadBlueprint()` 替换整个场景——跟本地导入 `.wild` 文件走的是同一个函数。ScenePatch 只用于增量修改，不会用于完整场景替换。
 
@@ -221,14 +221,28 @@ npm run dev
 npm run build
 ```
 
-## 需要安装的依赖
+## 依赖说明
+
+| 依赖 | 作用 |
+|---|---|
+| **vue** | 前端框架（组合式 API + TypeScript） |
+| **pinia** | 状态管理（sceneStore / agentStore 等 5 个 Store） |
+| **three** | 3D 渲染引擎（视口中的建筑模型实时渲染） |
+| **element-plus** | UI 组件库（按钮 / 输入框 / 通知 / 确认框等） |
+| **markdown-it** | Markdown 解析器 —— 将 AI 回复的 Markdown 文本渲染为富文本，支持标题、列表、表格、代码块、引用等 |
+| **highlight.js** | 代码语法高亮 —— 为 markdown-it 渲染的代码块提供配色方案（使用 vs2015 暗色主题） |
+
+### 安装命令
 
 ```bash
-npm install pinia three
-npm install -D @types/three
+# 生产依赖
+npm install vue pinia three element-plus markdown-it highlight.js
+
+# 开发依赖
+npm install -D @types/three @types/markdown-it
 ```
 
-或者使用 package.json 中已更新的依赖版本直接安装。
+或者直接 `npm install` 使用 package.json 中已配置的依赖版本。
 
 ## 待实现功能
 
@@ -263,6 +277,9 @@ npm install -D @types/three
 - **Vite**: 构建工具
 - **Pinia**: 状态管理
 - **Three.js**: 3D 渲染
+- **Element Plus**: UI 组件库
+- **markdown-it**: AI 回复 Markdown 渲染
+- **highlight.js**: 代码块语法高亮
 - **WebSocket**: Agent 实时通信
 
 ## 关键设计决策

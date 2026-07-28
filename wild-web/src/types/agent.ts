@@ -52,6 +52,7 @@ export interface UserMessageRequest {
   message: string
   scene_summary?: SceneSummary
   selection: string[]
+  blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
 }
 
 export interface AgentStepResponse {
@@ -118,4 +119,13 @@ export interface AgentSession {
   session_id: string
   messages: ChatMessage[]
   connected: boolean
+}
+
+/** 会话列表项（Pinia + localStorage 持久化） */
+export interface SessionInfo {
+  session_id: string
+  name: string           // 从 blueprint.meta.name 提取
+  created_at: number
+  updated_at: number
+  elements_count: number
 }

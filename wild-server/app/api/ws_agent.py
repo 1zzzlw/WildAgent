@@ -47,7 +47,7 @@ from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from app.services.agent_service import agent_service
-from app.utils.blueprint_parser import save_blueprint_file, SCENES_DIR
+from app.utils.blueprint_parser import save_blueprint_file_as, SCENES_DIR
 from app.utils.ws_heartbeat import WebSocketHeartbeat
 
 router = APIRouter()
@@ -155,11 +155,12 @@ async def agent_websocket(ws: WebSocket):
 async def _handle_user_message(ws: WebSocket, data: dict):
     request_id = data.get("request_id", "")
     message = data.get("message", "")
+    current_blueprint = data.get("blueprint")
+    session_id = data.get("session_id", request_id)  # 用 session_id 做文件名
 
     logger.info(f"[{request_id}] 收到用户消息: {message[:80]}...")
 
     async def send_step(stage: str, content: str):
-        """发送 agent_step 进度消息"""
         await ws.send_json({
             "type": "agent_step",
             "request_id": request_id,
@@ -167,33 +168,14 @@ async def _handle_user_message(ws: WebSocket, data: dict):
             "content": content,
         })
 
-    # ===== Phase 1: 分析 + 生成（LLM 调用前发送进度） =====
-    await send_step("analyzing", "正在分析您的建筑需求...")
-    await send_step("generating", "正在调用 AI 生成建筑蓝图，请耐心等待...")
+    # ===== Phase 1: 分析 + 生成 =====
+    await send_step("analyzing", "正在分析您的需求...")
+    await send_step("generating", "正在调用 AI 处理，请耐心等待...")
 
-    # ===== Phase 2: LLM 查询 + 等待期假进度 =====
-    # LLM 生成期间每隔几秒推一条思考动画，让用户感知到系统在工作
-    THINKING_MESSAGES = [
-        "理解建筑需求，规划构件组合...",
-        "计算空间布局与构件尺寸...",
-        "生成墙体、楼板、屋顶参数...",
-        "处理门窗坐标与材质定义...",
-        "完善细节构件与约束关系...",
-        "即将完成，正在整理输出...",
-    ]
-
-    async def thinking_ticker():
-        """LLM 生成期间每 8 秒推一条思考进度，直到被取消"""
-        for msg in THINKING_MESSAGES:
-            await asyncio.sleep(8)
-            try:
-                await send_step("generating", msg)
-            except Exception:
-                break
-
-    ticker_task = asyncio.create_task(thinking_ticker())
+    # ===== Phase 2: LLM 查询（统一入口，AI 自行判断意图）=====
+    ticker_task = asyncio.create_task(_thinking_ticker(send_step))
     try:
-        result = await agent_service.query_structured(message)
+        result = await agent_service.query_structured(message, current_blueprint)
     finally:
         ticker_task.cancel()
         try:
@@ -201,17 +183,16 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         except asyncio.CancelledError:
             pass
 
-    # ===== Phase 3: 提取 Blueprint 后处理 =====
+    # ===== Phase 3: 处理结果（按 AI 输出的格式分发）=====
     if result.blueprint is not None:
-        # 把流水线各步骤逐一推给前端
+        # ── 生成类：完整 Blueprint ──────────────────────────
         for pr in result.pipeline_results:
-            # 跳过的步骤不推送（减少噪音）
             if pr.output.startswith("⏭️"):
                 continue
             status = "❌" if pr.has_error else "⚠️" if pr.has_warning else "✅"
             await send_step(
                 "validating",
-                f"{status} [{pr.step}] {pr.name}: {pr.output[:120]}"
+                f"{status} [{pr.step}] {pr.name}: {pr.output[:300]}"
             )
 
         if result.error:
@@ -220,13 +201,14 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         await send_step("saving", "正在保存蓝图文件...")
 
         try:
-            file_path = save_blueprint_file(result.blueprint, SCENES_DIR)
+            file_path = save_blueprint_file_as(
+                result.blueprint, SCENES_DIR, f"{session_id}.wild"
+            )
             logger.info(f"[{request_id}] Blueprint 已保存: {file_path}")
         except Exception as e:
             logger.error(f"[{request_id}] 保存 Blueprint 失败: {e}")
-            file_path = ""  # 保存失败不阻塞，前端仍可加载数据
+            file_path = ""
 
-        # 发送 blueprint_generated（只发文件路径，前端通过 HTTP 拉取）
         filename = Path(file_path).name if file_path else ""
         await ws.send_json({
             "type": "blueprint_generated",
@@ -234,14 +216,82 @@ async def _handle_user_message(ws: WebSocket, data: dict):
             "filename": filename,
             "file_url": f"/api/scenes/{filename}" if filename else "",
         })
-    else:
-        logger.warning(f"[{request_id}] 未从回复中提取到 Blueprint: {result.error}")
 
-    # ===== Phase 4: 发送文本回复 =====
-    await ws.send_json({
-        "type": "agent_reply",
-        "request_id": request_id,
-        "content": result.text,
-    })
+        await ws.send_json({
+            "type": "agent_reply",
+            "request_id": request_id,
+            "content": result.text,
+        })
+
+    elif result.patch is not None:
+        # ── 修改类：ScenePatch ──────────────────────────────
+        for pr in result.pipeline_results:
+            if pr.output.startswith("⏭️"):
+                continue
+            status = "❌" if pr.has_error else "⚠️" if pr.has_warning else "✅"
+            await send_step(
+                "validating",
+                f"{status} [{pr.step}] {pr.name}: {pr.output[:300]}"
+            )
+
+        # 有 ❌ 级别错误则不发送 patch，改为错误提示
+        if result.error:
+            logger.warning(f"[{request_id}] Patch 校验失败，不发送: {result.error}")
+            await ws.send_json({
+                "type": "agent_reply",
+                "request_id": request_id,
+                "content": f"生成的修改方案存在问题，无法应用：\n\n{result.error}\n\n请重新描述你的需求。",
+            })
+        else:
+            await ws.send_json({
+                "type": "patch_proposal",
+                "request_id": request_id,
+                "patch": {
+                    "type": "scene_patch",
+                    "patch_id": f"patch_{request_id}",
+                    "base_revision": data.get("scene_revision", 0),
+                    "source": "agent",
+                    "mode": "proposal",
+                    "requires_confirmation": True,
+                    "operations": result.patch.get("operations", []),
+                    "summary": result.patch.get("summary", "AI 修改建议"),
+                },
+            })
+            logger.info(
+                f"[{request_id}] Patch 已发送, "
+                f"operations={len(result.patch.get('operations', []))}"
+            )
+
+            await ws.send_json({
+                "type": "agent_reply",
+                "request_id": request_id,
+                "content": result.text,
+            })
+
+    else:
+        # ── 对话类：纯文本 ──────────────────────────────────
+        await ws.send_json({
+            "type": "agent_reply",
+            "request_id": request_id,
+            "content": result.text,
+        })
 
     logger.info(f"[{request_id}] 处理完成")
+
+
+async def _thinking_ticker(send_step):
+    """LLM 生成期间每 8 秒推一条思考进度，直到被取消"""
+    THINKING_MESSAGES = [
+        "理解建筑需求，规划构件组合...",
+        "计算空间布局与构件尺寸...",
+        "生成墙体、楼板、屋顶参数...",
+        "处理门窗坐标与材质定义...",
+        "完善细节构件与约束关系...",
+        "即将完成，正在整理输出...",
+    ]
+    for msg in THINKING_MESSAGES:
+        await asyncio.sleep(8)
+        try:
+            await send_step("generating", msg)
+        except Exception:
+            break

@@ -51,29 +51,31 @@ export function createMaterialFromParams(
   material.roughness = params.roughness
   material.metalness = params.metallic
   
-  // 3. 透明度
-  if (params.opacity !== undefined && params.opacity < 1.0) {
+  // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）
+  const isTransparent = params.opacity !== undefined && params.opacity < 0.99
+  if (isTransparent) {
     material.transparent = true
     material.opacity = params.opacity
+    material.depthWrite = false  // 半透明物体不写深度，避免遮挡后面的半透明物体
+  } else {
+    material.transparent = false
+    material.depthWrite = true   // 不透明物体必须写深度，保证正确遮挡
   }
-  
+
   // 4. 自发光
   if (params.emissive) {
     const [er, eg, eb] = params.emissive
     material.emissive = new THREE.Color(er, eg, eb)
     material.emissiveIntensity = 1.0
   }
-  
+
   // 5. 顶点颜色
-  // wild-core 会生成程序化颜色（木纹、石材纹理、苔藓、风化等）
   if (hasVertexColors) {
     material.vertexColors = true
   }
-  
-  // 6. 双面渲染（用于薄墙、玻璃等）
-  if (params.opacity !== undefined && params.opacity < 0.9) {
-    material.side = THREE.DoubleSide
-  }
+
+  // 6. 双面渲染：建筑构件需要从任意角度都可见（包括仰视屋顶底面、俯视地板等）
+  material.side = THREE.DoubleSide
   
   return material
 }

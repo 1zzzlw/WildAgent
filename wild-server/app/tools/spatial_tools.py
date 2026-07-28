@@ -340,8 +340,9 @@ def validate_stair_alignment(blueprint: dict) -> str:
     floor_heights: list[float] = []
     for f in floors:
         fy = f.get("from", [0, 0, 0])[1]
+        thickness = f.get("thickness", 0.0)
         if isinstance(fy, (int, float)):
-            floor_heights.append(float(fy))
+            floor_heights.append(float(fy) + float(thickness))
 
     wall_top_heights: list[float] = []
     for w in walls:
@@ -562,9 +563,7 @@ def fix_opening_coords(blueprint: dict) -> str:
     return "已自动修正以下 opening 坐标：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # 引用完整性校验 —— Step 3 in pipeline
-# ============================================================
 
 @tool
 def validate_reference_integrity(blueprint: dict) -> str:
@@ -640,9 +639,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
     return "\n".join(issues)
 
 
-# ============================================================
 # 碰撞 / 空间冲突检测 —— Step 9 in pipeline
-# ============================================================
 
 def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
     """
@@ -825,12 +822,14 @@ def validate_collision(blueprint: dict) -> str:
                     )
 
     # --- 4. 悬空检测：column / stair / furniture 底部 Y 应不低于地板 ---
+    # 注意：floor 顶面 = from[1] + thickness（floor.from[1] 是底面 Y，不是顶面 Y）
     floors = by_type.get("floor", [])
     floor_top_ys: list[float] = []
     for f in floors:
         fy = f.get("from", [0, 0, 0])[1]
+        thickness = f.get("thickness", 0.0)
         if isinstance(fy, (int, float)):
-            floor_top_ys.append(float(fy))
+            floor_top_ys.append(float(fy) + float(thickness))
     floor_top_ys = sorted(set([0.0] + floor_top_ys))
 
     FLOATING_TYPES = {
@@ -844,7 +843,7 @@ def validate_collision(blueprint: dict) -> str:
             # 找最近的楼板高度
             nearest_floor = min(floor_top_ys, key=lambda fy: abs(fy - bottom_y))
             gap = bottom_y - nearest_floor
-            if gap > 0.3:
+            if gap > 0.31:  # 0.31 留出浮点误差余量，与 fix_element_elevations 的阈值对齐
                 issues.append(
                     f"⚠️  [{el.get('id','?')}]（{t}）底部 Y={bottom_y:.2f}，"
                     f"距最近楼板 Y={nearest_floor:.2f} 相差 {gap:.2f}m，可能悬空"
@@ -1407,8 +1406,9 @@ def fix_stair_alignment(blueprint: dict) -> str:
     for el in elements:
         if el.get("type") == "floor":
             fy = el.get("from", [0, 0, 0])[1]
+            thickness = el.get("thickness", 0.0)
             if isinstance(fy, (int, float)):
-                ref_ys.append(float(fy))
+                ref_ys.append(float(fy) + float(thickness))  # 楼板顶面
         elif el.get("type") == "wall":
             ty = el.get("to", [0, 0, 0])[1]
             if isinstance(ty, (int, float)):
@@ -1557,3 +1557,81 @@ def fix_element_dimensions(blueprint: dict) -> str:
     if not fixes:
         return "✅ 所有构件尺寸在合理范围内，无需修正。"
     return "已自动修正以下构件尺寸异常：\n" + "\n".join(fixes)
+
+
+# ============================================================
+# P1：竖向构件高程自动修正（继 validate_collision 悬空检测）
+# ============================================================
+
+@tool
+def fix_element_elevations(blueprint: dict) -> str:
+    """
+    自动修正竖向构件底部 Y 坐标，使其对齐到最近的楼板顶面（含地面 Y=0）。
+
+    修正对象：
+      - column：base[1]（柱子底面 Y）
+      - stair：from[1]（楼梯起点 Y）
+      - furniture：position[1]（家具底面 Y）
+
+    修正阈值：
+      - gap > 0.3m（悬空超过容差）→ 修正到最近楼板 Y
+      - gap < -0.1m（穿入楼板）    → 修正到最近楼板 Y
+
+    仅修改底部锚点 Y 坐标，不触碰其他任何字段。
+
+    参数 blueprint: 完整的 Blueprint dict（直接修改，原地更新）
+    """
+    elements = _get_elements(blueprint)
+
+    # 收集楼板参考高度（floor 顶面 = from[1] + thickness）+ 地面 Y=0
+    # 注意：floor.from[1] 是底面 Y，顶面需要加上 thickness
+    floor_ys: list[float] = [0.0]
+    for el in elements:
+        if el.get("type") == "floor":
+            fy = el.get("from", [0, 0, 0])
+            if len(fy) > 1 and isinstance(fy[1], (int, float)):
+                thickness = float(el.get("thickness", 0.0))
+                floor_ys.append(float(fy[1]) + thickness)
+    ref_ys = sorted(set(floor_ys))
+
+    FLOAT_THRESH = 0.31  # 悬空超过 0.31m 才修正（略大于 validate_collision 的 0.3m 容差，避免浮点误差边界触发）
+    EMBED_THRESH = 0.1   # 穿入超过 0.1m 才修正
+
+    # 各类型的底部 Y 获取/设置方式
+    TYPE_CONFIG = {
+        "column":    ("base",     1),
+        "stair":     ("from",     1),
+        "furniture": ("position", 1),
+    }
+
+    fixes: list[str] = []
+
+    for el in elements:
+        t = el.get("type", "")
+        if t not in TYPE_CONFIG:
+            continue
+
+        field, idx = TYPE_CONFIG[t]
+        coord = el.get(field)
+        if not coord or len(coord) <= idx:
+            continue  # 坐标缺失，跳过
+
+        bottom_y = float(coord[idx])
+        nearest_floor = min(ref_ys, key=lambda h: abs(h - bottom_y))
+        gap = bottom_y - nearest_floor
+
+        if gap > FLOAT_THRESH or gap < -EMBED_THRESH:
+            eid = el.get("id", "?")
+            coord[idx] = nearest_floor
+            fixes.append(
+                f"🔧 [{eid}]（{t}）底部 Y: {bottom_y:.3f} → {nearest_floor:.3f}"
+                f"（{'悬空' if gap > 0 else '穿入'} {abs(gap):.3f}m，对齐到楼板 Y={nearest_floor:.3f}）"
+            )
+
+    if not fixes:
+        ref_str = ", ".join(f"{h:.2f}" for h in ref_ys)
+        return f"✅ 所有竖向构件底部 Y 均已对齐楼板，无需修正。（参考高度: [{ref_str}]）"
+    return (
+        f"已自动修正 {len(fixes)} 个竖向构件的高程：\n"
+        + "\n".join(fixes)
+    )

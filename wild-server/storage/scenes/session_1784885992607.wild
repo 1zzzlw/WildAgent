@@ -1,0 +1,213 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "木质板凳"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "column",
+        "id": "leg_fl",
+        "base": [
+          -0.45,
+          0,
+          -0.1
+        ],
+        "height": 0.42,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_fr",
+        "base": [
+          0.45,
+          0,
+          -0.1
+        ],
+        "height": 0.42,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_bl",
+        "base": [
+          -0.45,
+          0,
+          0.1
+        ],
+        "height": 0.42,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "leg_br",
+        "base": [
+          0.45,
+          0,
+          0.1
+        ],
+        "height": 0.42,
+        "bottomRadius": 0.03,
+        "topRadius": 0.03,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "floor",
+        "id": "seat",
+        "from": [
+          -0.5,
+          0.42,
+          -0.15
+        ],
+        "to": [
+          0.5,
+          0.42,
+          0.15
+        ],
+        "thickness": 0.05,
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "table_leg_fl",
+        "base": [
+          1.2,
+          0,
+          -0.3
+        ],
+        "height": 0.72,
+        "bottomRadius": 0.04,
+        "topRadius": 0.04,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "table_leg_fr",
+        "base": [
+          2.2,
+          0,
+          -0.3
+        ],
+        "height": 0.72,
+        "bottomRadius": 0.04,
+        "topRadius": 0.04,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "table_leg_bl",
+        "base": [
+          1.2,
+          0,
+          0.3
+        ],
+        "height": 0.72,
+        "bottomRadius": 0.04,
+        "topRadius": 0.04,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "table_leg_br",
+        "base": [
+          2.2,
+          0,
+          0.3
+        ],
+        "height": 0.72,
+        "bottomRadius": 0.04,
+        "topRadius": 0.04,
+        "style": "modern",
+        "material": "wood"
+      },
+      {
+        "type": "floor",
+        "id": "table_top",
+        "from": [
+          1.1,
+          0.72,
+          -0.4
+        ],
+        "to": [
+          2.3,
+          0.76,
+          0.4
+        ],
+        "thickness": 0.04,
+        "material": "wood"
+      },
+      {
+        "type": "column",
+        "id": "vase_body",
+        "base": [
+          1.7,
+          0.76,
+          1
+        ],
+        "height": 0.25,
+        "bottomRadius": 0.06,
+        "topRadius": 0.04,
+        "style": "modern",
+        "material": "ceramic"
+      },
+      {
+        "type": "column",
+        "id": "vase_neck",
+        "base": [
+          1.7,
+          1.01,
+          1
+        ],
+        "height": 0.08,
+        "bottomRadius": 0.04,
+        "topRadius": 0.05,
+        "style": "modern",
+        "material": "ceramic"
+      },
+      {
+        "type": "body",
+        "id": "person_1",
+        "position": [
+          2.6,
+          0,
+          0.8
+        ],
+        "height": 1.75,
+        "build": "average",
+        "headShape": "round",
+        "armLength": 0.6,
+        "legLength": 0.9,
+        "cloakLength": 0,
+        "hoodUp": false
+      }
+    ]
+  },
+  "materials": {
+    "wood": {
+      "baseColor": [
+        0.55,
+        0.27,
+        0.07
+      ],
+      "roughness": 0.7,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {}
+}

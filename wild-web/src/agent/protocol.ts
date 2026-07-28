@@ -29,7 +29,8 @@ export function createUserMessageRequest(
   sceneId: string | undefined,
   sceneRevision: number,
   sceneSummary: SceneSummary,
-  selection: string[]
+  selection: string[],
+  blueprint?: Record<string, unknown>
 ): UserMessageRequest {
   return {
     type: 'user_message',
@@ -39,6 +40,7 @@ export function createUserMessageRequest(
     scene_revision: sceneRevision,
     message,
     scene_summary: sceneSummary,
-    selection
+    selection,
+    blueprint,
   }
 }

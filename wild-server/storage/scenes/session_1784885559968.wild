@@ -1,0 +1,627 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "故宫太和殿"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "platform_1",
+        "from": [
+          8,
+          0,
+          2
+        ],
+        "to": [
+          52,
+          0.8,
+          38
+        ],
+        "thickness": 0.8,
+        "material": "marble"
+      },
+      {
+        "type": "floor",
+        "id": "platform_2",
+        "from": [
+          12,
+          0.8,
+          6
+        ],
+        "to": [
+          48,
+          1.6,
+          34
+        ],
+        "thickness": 0.8,
+        "material": "marble"
+      },
+      {
+        "type": "floor",
+        "id": "platform_3",
+        "from": [
+          15,
+          1.6,
+          9
+        ],
+        "to": [
+          45,
+          2.4,
+          31
+        ],
+        "thickness": 0.8,
+        "material": "marble"
+      },
+      {
+        "type": "wall",
+        "id": "wall_outer_s",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          60,
+          5,
+          0
+        ],
+        "thickness": 1.0,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_outer_e",
+        "from": [
+          60,
+          0,
+          0
+        ],
+        "to": [
+          60,
+          5,
+          40
+        ],
+        "thickness": 1.0,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_outer_n",
+        "from": [
+          60,
+          0,
+          40
+        ],
+        "to": [
+          0,
+          5,
+          40
+        ],
+        "thickness": 1.0,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_outer_w",
+        "from": [
+          0,
+          0,
+          40
+        ],
+        "to": [
+          0,
+          5,
+          0
+        ],
+        "thickness": 1.0,
+        "material": "palace_red"
+      },
+      {
+        "type": "opening",
+        "id": "gate_meridian",
+        "parentWall": "wall_outer_s",
+        "from": [
+          26.0,
+          0.0,
+          0
+        ],
+        "width": 8.0,
+        "height": 4.5,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "gate_divine_might",
+        "parentWall": "wall_outer_n",
+        "from": [
+          26.0,
+          0.0,
+          0
+        ],
+        "width": 8.0,
+        "height": 4.5,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "floor",
+        "id": "hall_floor",
+        "from": [
+          18,
+          2.4,
+          11
+        ],
+        "to": [
+          42,
+          2.4,
+          29
+        ],
+        "thickness": 0.2,
+        "material": "wood"
+      },
+      {
+        "type": "wall",
+        "id": "wall_hall_s",
+        "from": [
+          18,
+          2.4,
+          11
+        ],
+        "to": [
+          42,
+          8,
+          11
+        ],
+        "thickness": 0.5,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_hall_e",
+        "from": [
+          42,
+          2.4,
+          11
+        ],
+        "to": [
+          42,
+          8,
+          29
+        ],
+        "thickness": 0.5,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_hall_n",
+        "from": [
+          42,
+          2.4,
+          29
+        ],
+        "to": [
+          18,
+          8,
+          29
+        ],
+        "thickness": 0.5,
+        "material": "palace_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_hall_w",
+        "from": [
+          18,
+          2.4,
+          29
+        ],
+        "to": [
+          18,
+          8,
+          11
+        ],
+        "thickness": 0.5,
+        "material": "palace_red"
+      },
+      {
+        "type": "opening",
+        "id": "hall_door",
+        "parentWall": "wall_hall_s",
+        "from": [
+          11.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 3.2,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "hall_win_s1",
+        "parentWall": "wall_hall_s",
+        "from": [
+          4.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.0,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "hall_win_s2",
+        "parentWall": "wall_hall_s",
+        "from": [
+          18.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.0,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "hall_win_e",
+        "parentWall": "wall_hall_e",
+        "from": [
+          8.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.0,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "hall_win_n",
+        "parentWall": "wall_hall_n",
+        "from": [
+          11.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.0,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "opening",
+        "id": "hall_win_w",
+        "parentWall": "wall_hall_w",
+        "from": [
+          8.0,
+          2.5,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.0,
+        "style": "rectangular",
+        "material": "wood"
+      },
+      {
+        "type": "roof",
+        "id": "roof_lower_eave",
+        "roofType": "hip",
+        "span": 62.0,
+        "depth": 42.0,
+        "height": 3.5,
+        "thickness": 0.4,
+        "material": "imperial_yellow",
+        "position": [
+          30,
+          7.5,
+          20
+        ]
+      },
+      {
+        "type": "roof",
+        "id": "roof_upper_eave",
+        "roofType": "hip",
+        "span": 62.0,
+        "depth": 42.0,
+        "height": 4.0,
+        "thickness": 0.4,
+        "material": "imperial_yellow",
+        "position": [
+          30,
+          10.5,
+          20
+        ]
+      },
+      {
+        "type": "column",
+        "id": "col_s1",
+        "base": [
+          18,
+          2.4,
+          9
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_s2",
+        "base": [
+          24,
+          2.4,
+          9
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_s3",
+        "base": [
+          30,
+          2.4,
+          9
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_s4",
+        "base": [
+          36,
+          2.4,
+          9
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_s5",
+        "base": [
+          42,
+          2.4,
+          9
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_n1",
+        "base": [
+          18,
+          2.4,
+          31
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_n2",
+        "base": [
+          24,
+          2.4,
+          31
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_n3",
+        "base": [
+          30,
+          2.4,
+          31
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_n4",
+        "base": [
+          36,
+          2.4,
+          31
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_n5",
+        "base": [
+          42,
+          2.4,
+          31
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_e1",
+        "base": [
+          44,
+          2.4,
+          15
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_e2",
+        "base": [
+          44,
+          2.4,
+          20
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_e3",
+        "base": [
+          44,
+          2.4,
+          25
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_w1",
+        "base": [
+          16,
+          2.4,
+          15
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_w2",
+        "base": [
+          16,
+          2.4,
+          20
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_w3",
+        "base": [
+          16,
+          2.4,
+          25
+        ],
+        "height": 5.6,
+        "bottomRadius": 0.25,
+        "topRadius": 0.2,
+        "style": "classical",
+        "material": "pillar_red"
+      }
+    ]
+  },
+  "materials": {
+    "marble": {
+      "baseColor": [
+        0.92,
+        0.91,
+        0.87
+      ],
+      "roughness": 0.3,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "palace_red": {
+      "baseColor": [
+        0.65,
+        0.12,
+        0.08
+      ],
+      "roughness": 0.6,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "pillar_red": {
+      "baseColor": [
+        0.7,
+        0.15,
+        0.1
+      ],
+      "roughness": 0.5,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "imperial_yellow": {
+      "baseColor": [
+        0.85,
+        0.65,
+        0.13
+      ],
+      "roughness": 0.4,
+      "metallic": 0.1,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "wood": {
+      "baseColor": [
+        0.55,
+        0.27,
+        0.07
+      ],
+      "roughness": 0.7,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {}
+}

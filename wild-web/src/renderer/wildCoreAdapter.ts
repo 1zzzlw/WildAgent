@@ -58,19 +58,8 @@ export function parseWildBlueprint(jsonText: string): Blueprint {
  */
 export async function reconstructWildEntity(blueprint: Blueprint): Promise<ReconstructedEntity> {
   try {
-    // 添加调试输出
-    import('../utils/debugRender').then(({ logBlueprintInfo, logEntityInfo, logResolverChanges }) => {
-      logBlueprintInfo(blueprint);
-    });
-    
     // 调用 wild-core 的重建函数
     const coreEntity = await coreReconstructEntity(blueprint as any)
-    
-    // 调试：输出重建后的信息
-    import('../utils/debugRender').then(({ logEntityInfo, logResolverChanges }) => {
-      logResolverChanges(blueprint);
-      logEntityInfo(coreEntity as unknown as ReconstructedEntity);
-    });
 
     return coreEntity as unknown as ReconstructedEntity
   } catch (error) {
