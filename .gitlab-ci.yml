@@ -37,8 +37,6 @@ variables:
   only:
     - main
     - master
-  tags:
-    - test
   before_script:
     - cd wild-web
   script:
@@ -58,8 +56,6 @@ variables:
   only:
     - main
     - master
-  tags:
-    - test
   before_script:
     - cd wild-server
     - pip install uv
@@ -80,8 +76,6 @@ variables:
   only:
     - main
     - master
-  tags:
-    - test
   script:
     # 登录 GitLab Container Registry
     - docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
@@ -107,8 +101,6 @@ variables:
   only:
     - main
     - master
-  tags:
-    - test
   script:
     - docker login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
     # 构建 wild-web 镜像
@@ -135,8 +127,6 @@ variables:
   only:
     - main
     - master
-  tags:
-    - test
   variables:
     DEPLOY_SSH_USER: "root"
     DEPLOY_SSH_HOST: "39.106.183.13"
