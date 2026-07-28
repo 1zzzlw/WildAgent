@@ -53,23 +53,18 @@ deploy:
     - apk add --no-cache openssh-client
   script:
     - echo "===== 步骤1：测试 SSH 连接 ====="
-    - echo "SSH_PRIVATE_KEY 路径: $SSH_PRIVATE_KEY"
-    - ls -la $SSH_PRIVATE_KEY
-    - chmod 600 $SSH_PRIVATE_KEY
-    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo SSH连接成功"
+    - echo "SSH_PRIVATE_KEY path= $SSH_PRIVATE_KEY"
+    - chmod 600 "$SSH_PRIVATE_KEY"
+    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=10 $DEPLOY_HOST "echo connected"
     - echo "===== 步骤2：生成部署脚本 ====="
     - |
-      cat > /tmp/deploy.sh << 'DEPLOY_SCRIPT'
+      cat > /tmp/deploy.sh << 'EOF'
       #!/bin/bash
       set -e
-      echo ">>> 登录镜像仓库"
-      docker login --username "$CI_REGISTRY_USER" --password "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-      echo ">>> 拉取镜像"
+      docker login --username "$REG_USER" --password "$REG_PASS" "$REG_URL"
       docker pull "$SERVER_IMAGE":latest
       docker pull "$WEB_IMAGE":latest
-      echo ">>> 清理旧容器"
-      docker rm -f wild-server wild-web 2>/dev/null || echo "没有旧容器"
-      echo ">>> 启动 wild-server"
+      docker rm -f wild-server wild-web 2>/dev/null || true
       docker run -d --name wild-server --restart unless-stopped -p 8000:8000 \
         -e CHAT__NAME="$CHAT_NAME" \
         -e CHAT__API_KEY="$CHAT_API_KEY" \
@@ -78,15 +73,14 @@ deploy:
         -e EMBEDDING__API_KEY="$EMBEDDING_API_KEY" \
         -e EMBEDDING__BASE_URL="$EMBEDDING_BASE_URL" \
         "$SERVER_IMAGE":latest
-      echo ">>> 启动 wild-web"
       docker run -d --name wild-web --restart unless-stopped -p 80:80 "$WEB_IMAGE":latest
-      echo ">>> 容器状态"
       docker ps | grep -E "wild-server|wild-web"
-      echo "===== 部署完成 ====="
-      DEPLOY_SCRIPT
-    - echo "===== 步骤3：上传脚本到服务器 ====="
+      echo "===== done ====="
+      EOF
+      chmod +x /tmp/deploy.sh
+    - echo "===== 步骤3：上传脚本 ====="
     - scp -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no /tmp/deploy.sh $DEPLOY_HOST:/tmp/deploy.sh
     - echo "===== 步骤4：执行部署 ====="
-    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST "export CI_REGISTRY_USER='$CI_REGISTRY_USER' && export CI_REGISTRY_PASSWORD='$CI_REGISTRY_PASSWORD' && export CI_REGISTRY='$CI_REGISTRY' && export SERVER_IMAGE='$SERVER_IMAGE' && export WEB_IMAGE='$WEB_IMAGE' && export CHAT_NAME='$CHAT_NAME' && export CHAT_API_KEY='$CHAT_API_KEY' && export CHAT_BASE_URL='$CHAT_BASE_URL' && export EMBEDDING_NAME='$EMBEDDING_NAME' && export EMBEDDING_API_KEY='$EMBEDDING_API_KEY' && export EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' && bash /tmp/deploy.sh"
+    - ssh -i "$SSH_PRIVATE_KEY" -o StrictHostKeyChecking=no $DEPLOY_HOST "REG_USER='$CI_REGISTRY_USER' REG_PASS='$CI_REGISTRY_PASSWORD' REG_URL='$CI_REGISTRY' SERVER_IMAGE='$SERVER_IMAGE' WEB_IMAGE='$WEB_IMAGE' CHAT_NAME='$CHAT_NAME' CHAT_API_KEY='$CHAT_API_KEY' CHAT_BASE_URL='$CHAT_BASE_URL' EMBEDDING_NAME='$EMBEDDING_NAME' EMBEDDING_API_KEY='$EMBEDDING_API_KEY' EMBEDDING_BASE_URL='$EMBEDDING_BASE_URL' bash /tmp/deploy.sh"
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
