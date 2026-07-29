@@ -190,6 +190,15 @@ variables:
           --network wild-net \
           -p 8000:8000 \
           -v ${DEPLOY_DATA_DIR}:/app/storage \
+          -e CHAT__NAME \
+          -e CHAT__API_KEY \
+          -e CHAT__BASE_URL \
+          -e EMBEDDING__NAME \
+          -e EMBEDDING__API_KEY \
+          -e EMBEDDING__BASE_URL \
+          -e RERANK__NAME \
+          -e RERANK__API_KEY \
+          -e RERANK__BASE_URL \
           $IMAGE_SERVER_NAME
 
         # 启动前端
