@@ -81,8 +81,14 @@ export class AgentBridge {
   private lastHiddenTime: number = 0
 
 
-  constructor(url: string = 'ws://localhost:8000/ws/agent') {
-    this.url = url
+  constructor(url?: string) {
+    this.url = url ?? this.buildDefaultUrl()
+  }
+
+  /** 根据当前页面地址生成 WebSocket URL，通过 nginx /ws/ 代理 */
+  private buildDefaultUrl(): string {
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${wsProtocol}//${window.location.host}/ws/agent`
   }
 
   /** 初始化连接 */
@@ -253,6 +259,14 @@ export class AgentBridge {
     agentStore.setProcessing(true)
   }
 
+  /** 从 WebSocket URL 提取 HTTP Base URL */
+  private get httpBaseUrl(): string {
+    return this.url
+      .replace(/\/ws\/agent$/, '')
+      .replace(/^ws:\/\//, 'http://')
+      .replace(/^wss:\/\//, 'https://')
+  }
+
   /** 处理后端返回的业务消息 */
   private handleMessage(message: AgentMessage) {
     const agentStore = useAgentStore()
@@ -317,7 +331,7 @@ export class AgentBridge {
 
     try {
       // 通过 HTTP 拉取蓝图 JSON
-      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}${fileUrl}`)
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
@@ -351,7 +365,7 @@ export class AgentBridge {
     const sessionId = agentStore.currentSessionId
 
     try {
-      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -368,7 +382,7 @@ export class AgentBridge {
   /** 从后端加载会话对应的蓝图 */
   async loadSessionBlueprint(sessionId: string): Promise<Record<string, unknown> | null> {
     try {
-      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`)
       if (!response.ok) {
         return null
@@ -383,7 +397,7 @@ export class AgentBridge {
   /** 删除后端会话蓝图文件 */
   async deleteSessionBlueprint(sessionId: string) {
     try {
-      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
         method: 'DELETE',
       })
@@ -397,7 +411,7 @@ export class AgentBridge {
   /** 从后端获取所有已保存的场景列表 */
   async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number }>> {
     try {
-      const baseUrl = this.url.replace('/ws/agent', '').replace('ws://', 'http://')
+      const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/scenes`)
       if (!response.ok) {
         return []

@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir uv
 
 # Install dependencies first so Docker can reuse the layer when only app code changes.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --no-dev --no-install-project --index-url ${UV_INDEX_URL}
 
 COPY . .
 
