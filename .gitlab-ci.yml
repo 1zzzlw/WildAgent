@@ -28,6 +28,7 @@ variables:
   DOCKER_DRIVER: overlay2
   # Docker Hub 国内镜像加速（可替换为你自己的镜像地址）
   REGISTRY_MIRROR: "https://docker.m.daocloud.io"
+  NPM_REGISTRY: "https://registry.npmmirror.com"
 
 # ============================================================
 # Stage 1: 验证代码（仿照样例中的 compile 阶段）
@@ -41,6 +42,7 @@ variables:
     - master
   before_script:
     - cd wild-web
+    - npm config set registry $NPM_REGISTRY
   script:
     - npm ci
     - npm run build
@@ -111,6 +113,7 @@ variables:
     - docker build
       --build-arg NODE_BASE_IMAGE=${NODE_BASE_IMAGE:-node:22-alpine}
       --build-arg NGINX_BASE_IMAGE=${NGINX_BASE_IMAGE:-nginx:alpine}
+      --build-arg NPM_REGISTRY=${NPM_REGISTRY:-https://registry.npmmirror.com}
       -t $IMAGE_WEB_NAME
       -t $IMAGE_WEB_LATEST
       -f wild-web/Dockerfile
@@ -179,8 +182,9 @@ variables:
         # 停止并删除旧容器
         docker rm -f wild-server wild-web 2>/dev/null || true
 
-        # 确保数据目录存在
-        mkdir -p $DEPLOY_DATA_DIR
+        # 确保运行时数据目录存在。不要挂载整个 /app/storage，
+        # 否则会遮住镜像内置的 storage/knowledge_base RAG 文档。
+        mkdir -p $DEPLOY_DATA_DIR/scenes $DEPLOY_DATA_DIR/sessions $DEPLOY_DATA_DIR/chroma
 
         # 启动后端
         docker run -d \
@@ -188,7 +192,9 @@ variables:
           --restart unless-stopped \
           --network wild-net \
           -p 8000:8000 \
-          -v ${DEPLOY_DATA_DIR}:/app/storage \
+          -v ${DEPLOY_DATA_DIR}/scenes:/app/storage/scenes \
+          -v ${DEPLOY_DATA_DIR}/sessions:/app/storage/sessions \
+          -v ${DEPLOY_DATA_DIR}/chroma:/app/storage/chroma \
           -e CHAT__NAME="${CHAT__NAME}" \
           -e CHAT__API_KEY="${CHAT__API_KEY}" \
           -e CHAT__BASE_URL="${CHAT__BASE_URL}" \

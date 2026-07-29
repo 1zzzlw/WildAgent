@@ -25,9 +25,14 @@ from copy import deepcopy
 from langchain.agents import create_agent
 from loguru import logger
 
+from config import config
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_system_prompt
-from app.spec.loader import FileSpecLoader
+from app.spec.loader import (
+    FileSpecLoader,
+    RAGSpecLoader,
+    create_embedding_function,
+)
 from app.tools.spatial_tools import (
     fix_element_dimensions,
     fix_element_elevations,
@@ -57,8 +62,13 @@ from app.utils.blueprint_parser import (
 _SERVER_ROOT = Path(__file__).resolve().parent.parent.parent  # wild-server/
 _KB = _SERVER_ROOT / "storage" / "knowledge_base"
 
-SPEC_PATHS = [
+BASE_SPEC_PATHS = [
     _KB / "BLUEPRINT-SPEC-MINIMAL.md",
+]
+
+RAG_SPEC_PATHS = [
+    _KB / "BLUEPRINT-SPEC-FULL.md",
+    _KB / "BUILDING-TYPES-REFERENCE.md",
 ]
 
 
@@ -375,24 +385,20 @@ class AgentService:
     """
 
     def __init__(self):
-        # ===== 1. 加载规范文档 =====
-        self.spec_loader = FileSpecLoader([str(p) for p in SPEC_PATHS])
-        spec_text = self.spec_loader.load()
+        # ===== 1. 创建规范加载器（优先 RAG，失败则退回文件读取）=====
+        self.spec_loader = self._create_spec_loader()
+        self._dynamic_prompt = isinstance(self.spec_loader, RAGSpecLoader)
         logger.info(
-            f"SpecLoader: 已加载 {len(self.spec_loader.list_sources())} 个文档, "
-            f"总计 {len(spec_text):,} 字符"
+            f"SpecLoader: {type(self.spec_loader).__name__}, "
+            f"sources={len(self.spec_loader.list_sources())}"
         )
 
         # ===== 2. 创建 LLM =====
         self.llm = create_llm()
         logger.info("LLM 已创建")
 
-        # ===== 3. 组装 System Prompt（一份 prompt 覆盖生成+修改+聊天）=====
-        system_prompt = build_system_prompt(spec_text)
-        logger.info(f"System Prompt: 总计 {len(system_prompt):,} 字符")
-
-        # ===== 4. 注册 Tools（所有意图通用）=====
-        tools = [
+        # ===== 3. 注册 Tools（所有意图通用）=====
+        self.tools = [
             get_wall_bounding_box,
             validate_blueprint_structure,
             validate_element_required_fields,
@@ -412,15 +418,86 @@ class AgentService:
             fix_wall_junctions,
             validate_collision,
         ]
-        logger.info(f"已注册 {len(tools)} 个工具: {[t.name for t in tools]}")
+        logger.info(f"已注册 {len(self.tools)} 个工具: {[t.name for t in self.tools]}")
 
-        # ===== 5. 创建 Agent（单例，复用）=====
-        self.agent = create_agent(
+        # ===== 4. 非 RAG 模式创建静态 Agent；RAG 模式每次 query 动态创建 =====
+        self.agent = None
+        if not self._dynamic_prompt:
+            spec_text = self.spec_loader.load()
+            self.agent = self._create_agent(spec_text)
+            logger.info("AgentService: 使用静态规范上下文")
+
+        logger.info("AgentService 初始化完成")
+
+    def _create_spec_loader(self):
+        if config.rag.enabled:
+            try:
+                persist_dir = Path(config.rag.persist_dir)
+                if not persist_dir.is_absolute():
+                    persist_dir = _SERVER_ROOT / persist_dir
+
+                embedding_function = create_embedding_function(
+                    api_key=config.embedding.api_key,
+                    base_url=config.embedding.base_url,
+                    model_name=config.embedding.name,
+                    allow_hash_fallback=config.rag.allow_hash_fallback,
+                )
+                loader = RAGSpecLoader(
+                    base_paths=[str(p) for p in BASE_SPEC_PATHS],
+                    rag_paths=[str(p) for p in RAG_SPEC_PATHS],
+                    persist_dir=str(persist_dir),
+                    collection_name=config.rag.collection_name,
+                    embedding_function=embedding_function,
+                    top_k=config.rag.top_k,
+                    chunk_size=config.rag.chunk_size,
+                    chunk_overlap=config.rag.chunk_overlap,
+                    max_context_chars=config.rag.max_context_chars,
+                )
+                logger.info(
+                    f"RAGSpecLoader: 已启用 Chroma, persist_dir={persist_dir}, "
+                    f"collection={config.rag.collection_name}"
+                )
+                if isinstance(embedding_function, object) and embedding_function.__class__.__name__ == "HashEmbeddingFunction":
+                    logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
+                return loader
+            except Exception as exc:
+                logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}")
+
+        return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
+
+    def _create_agent(self, spec_text: str):
+        system_prompt = build_system_prompt(spec_text)
+        logger.info(f"System Prompt: 总计 {len(system_prompt):,} 字符")
+        return create_agent(
             model=self.llm,
-            tools=tools,
+            tools=self.tools,
             system_prompt=system_prompt,
         )
-        logger.info("AgentService 初始化完成")
+
+    def _agent_for_query(self, rag_query: str):
+        if not self._dynamic_prompt:
+            return self.agent
+
+        spec_text = self.spec_loader.load(query=rag_query)
+        if isinstance(self.spec_loader, RAGSpecLoader):
+            hits = [
+                f"{hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}"
+                for hit in self.spec_loader.last_results
+            ]
+            logger.info(f"RAG 检索 query={rag_query[:120]!r}, hits={hits}")
+        return self._create_agent(spec_text)
+
+    def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
+        parts = [message]
+        if current_blueprint:
+            meta = current_blueprint.get("meta", {})
+            elements = current_blueprint.get("geometry", {}).get("elements", [])
+            types = sorted({str(el.get("type")) for el in elements if el.get("type")})
+            if meta.get("name"):
+                parts.append(f"场景名称: {meta.get('name')}")
+            if types:
+                parts.append(f"当前构件类型: {', '.join(types)}")
+        return "\n".join(parts)
 
     async def query_structured(
         self, message: str, current_blueprint: dict | None = None
@@ -444,7 +521,9 @@ class AgentService:
                 logger.info(f"[query] 注入场景上下文, 构件数={len(elements)}")
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
-        result = await self.agent.ainvoke({
+        rag_query = self._build_rag_query(message, current_blueprint)
+        agent = self._agent_for_query(rag_query)
+        result = await agent.ainvoke({
             "messages": [{"role": "user", "content": user_message}]
         })
         reply = result["messages"][-1].content

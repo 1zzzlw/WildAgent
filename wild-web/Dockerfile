@@ -2,11 +2,12 @@ ARG NODE_BASE_IMAGE=node:22-alpine
 ARG NGINX_BASE_IMAGE=nginx:alpine
 
 FROM ${NODE_BASE_IMAGE} AS builder
+ARG NPM_REGISTRY=https://registry.npmmirror.com
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci --registry=${NPM_REGISTRY}
 
 COPY . .
 RUN npm run build

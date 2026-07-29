@@ -9,6 +9,18 @@ class ModelConfig(BaseModel):
     base_url: str = ""
 
 
+class RAGConfig(BaseModel):
+    """RAG 检索配置"""
+    enabled: bool = True
+    persist_dir: str = "storage/chroma"
+    collection_name: str = "wild_knowledge_base"
+    chunk_size: int = 900
+    chunk_overlap: int = 150
+    top_k: int = 6
+    max_context_chars: int = 18000
+    allow_hash_fallback: bool = True
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -20,6 +32,7 @@ class Settings(BaseSettings):
     chat: ModelConfig = Field(default_factory=ModelConfig)
     embedding: ModelConfig = Field(default_factory=ModelConfig)
     rerank: ModelConfig = Field(default_factory=ModelConfig)
+    rag: RAGConfig = Field(default_factory=RAGConfig)
 
 
 config = Settings()
