@@ -138,6 +138,9 @@ variables:
     DEPLOY_SSH_PORT: "22"
     DEPLOY_DATA_DIR: "/opt/wild-agent/storage"
   before_script:
+    # 定义镜像名称（因为全局 before_script 被 job 级别的覆盖了）
+    - export IMAGE_SERVER_NAME=${CI_REGISTRY_IMAGE}/wild-server:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
+    - export IMAGE_WEB_NAME=${CI_REGISTRY_IMAGE}/wild-web:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
     # 安装 SSH 客户端
     - apk add --no-cache openssh-client
     # 检查必要变量
