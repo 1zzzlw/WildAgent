@@ -1,17 +1,17 @@
-ARG UV_BASE_IMAGE=ghcr.io/astral-sh/uv:latest
 ARG PYTHON_BASE_IMAGE=python:3.12-slim
 
-FROM ${UV_BASE_IMAGE} AS uv
 FROM ${PYTHON_BASE_IMAGE}
 
 WORKDIR /app
 
-COPY --from=uv /uv /usr/local/bin/uv
-
 ARG UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
-ENV PATH="/app/.venv/bin:${PATH}" \
-    UV_LINK_MODE=copy \
-    UV_INDEX_URL=${UV_INDEX_URL}
+ENV UV_INDEX_URL=${UV_INDEX_URL} \
+    PIP_INDEX_URL=${UV_INDEX_URL} \
+    PATH="/app/.venv/bin:${PATH}" \
+    UV_LINK_MODE=copy
+
+# 通过 pip 安装 uv（走 PyPI 镜像，避免从 ghcr.io 慢速拉取）
+RUN pip install --no-cache-dir uv
 
 # Install dependencies first so Docker can reuse the layer when only app code changes.
 COPY pyproject.toml uv.lock ./

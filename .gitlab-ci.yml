@@ -85,7 +85,6 @@ variables:
     # 构建 wild-server 镜像
     - docker build
       --build-arg PYTHON_BASE_IMAGE=${PYTHON_BASE_IMAGE:-python:3.12-slim}
-      --build-arg UV_BASE_IMAGE=${UV_BASE_IMAGE:-ghcr.io/astral-sh/uv:latest}
       --build-arg UV_INDEX_URL=${UV_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
       -t $IMAGE_SERVER_NAME
       -t $IMAGE_SERVER_LATEST
@@ -190,15 +189,15 @@ variables:
           --network wild-net \
           -p 8000:8000 \
           -v ${DEPLOY_DATA_DIR}:/app/storage \
-          -e CHAT__NAME \
-          -e CHAT__API_KEY \
-          -e CHAT__BASE_URL \
-          -e EMBEDDING__NAME \
-          -e EMBEDDING__API_KEY \
-          -e EMBEDDING__BASE_URL \
-          -e RERANK__NAME \
-          -e RERANK__API_KEY \
-          -e RERANK__BASE_URL \
+          -e CHAT__NAME="${CHAT__NAME}" \
+          -e CHAT__API_KEY="${CHAT__API_KEY}" \
+          -e CHAT__BASE_URL="${CHAT__BASE_URL}" \
+          -e EMBEDDING__NAME="${EMBEDDING__NAME}" \
+          -e EMBEDDING__API_KEY="${EMBEDDING__API_KEY}" \
+          -e EMBEDDING__BASE_URL="${EMBEDDING__BASE_URL}" \
+          -e RERANK__NAME="${RERANK__NAME}" \
+          -e RERANK__API_KEY="${RERANK__API_KEY}" \
+          -e RERANK__BASE_URL="${RERANK__BASE_URL}" \
           $IMAGE_SERVER_NAME
 
         # 启动前端
