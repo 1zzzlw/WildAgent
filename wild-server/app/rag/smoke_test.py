@@ -8,21 +8,22 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from app.spec.loader import HashEmbeddingFunction, RAGSpecLoader
+from app.spec.loader import HashEmbeddingFunction, RAGSpecLoader, collect_markdown_paths
 
 
 SERVER_ROOT = Path(__file__).resolve().parents[2]
 KB = SERVER_ROOT / "storage" / "knowledge_base"
+BASE_SPEC_PATHS = [
+    KB / "BLUEPRINT-SPEC-MINIMAL.md",
+]
+RAG_SPEC_PATHS = collect_markdown_paths(KB, exclude=BASE_SPEC_PATHS)
 
 
 def main() -> None:
     with TemporaryDirectory(ignore_cleanup_errors=True) as tmp_dir:
         loader = RAGSpecLoader(
-            base_paths=[str(KB / "BLUEPRINT-SPEC-MINIMAL.md")],
-            rag_paths=[
-                str(KB / "BLUEPRINT-SPEC-FULL.md"),
-                str(KB / "BUILDING-TYPES-REFERENCE.md"),
-            ],
+            base_paths=[str(path) for path in BASE_SPEC_PATHS],
+            rag_paths=[str(path) for path in RAG_SPEC_PATHS],
             persist_dir=tmp_dir,
             collection_name="wild_rag_smoke",
             embedding_function=HashEmbeddingFunction(),

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wild Knowledge Ingest"
+  short_description: "Classify, merge, and dedupe WILD knowledge docs"
+  default_prompt: "Use $wild-knowledge-ingest to classify and integrate this WILD knowledge document into the project knowledge base."

@@ -82,7 +82,7 @@ AI 生成时优先看：
 
 - `wild-server/storage/knowledge_base/BLUEPRINT-SPEC-MINIMAL.md`
 - `wild-server/storage/knowledge_base/BLUEPRINT-SPEC-FULL.md`
-- `wild-server/storage/knowledge_base/BUILDING-TYPES-REFERENCE.md`
+- `wild-server/storage/knowledge_base/building_types/catalog/`
 - `wild-web/wild-lang/SPEC.md`
 - `wild-web/wild-lang/PRIMITIVES.md`
 - `wild-web/wild-lang/MATERIALS.md`

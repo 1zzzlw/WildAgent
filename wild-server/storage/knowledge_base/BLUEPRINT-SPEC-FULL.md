@@ -37,15 +37,15 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 ### 字段说明
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| version | string | ✓ | 蓝图格式版本，当前为"1.0" |
-| type | string | ✓ | 类型，通常为"building" |
-| name | string | ✓ | 建筑物名称 |
-| author | string | ✗ | 作者 |
-| createdAt | number | ✗ | 创建时间戳（毫秒） |
-| style | string | ✗ | 建筑风格 |
-| seed | number | ✗ | 随机种子 |
+| 字段      | 类型   | 必需 | 说明                      |
+| --------- | ------ | ---- | ------------------------- |
+| version   | string | ✓    | 蓝图格式版本，当前为"1.0" |
+| type      | string | ✓    | 类型，通常为"building"    |
+| name      | string | ✓    | 建筑物名称                |
+| author    | string | ✗    | 作者                      |
+| createdAt | number | ✗    | 创建时间戳（毫秒）        |
+| style     | string | ✗    | 建筑风格                  |
+| seed      | number | ✗    | 随机种子                  |
 
 ---
 
@@ -86,15 +86,15 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 **字段说明**：
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| type | "wall" | ✓ | 固定值 |
-| id | string | ✓ | 唯一标识符 |
-| from | [number, number, number] | ✓ | 起点世界坐标[X,Y,Z] |
-| to | [number, number, number] | ✓ | 终点世界坐标[X,Y,Z] |
-| thickness | number | ✓ | 墙厚度（米） |
-| material | string | ✓ | 材质ID |
-| curve | object | ✗ | 弧形墙定义（见弧形墙） |
+| 字段      | 类型                     | 必需 | 说明                   |
+| --------- | ------------------------ | ---- | ---------------------- |
+| type      | "wall"                   | ✓    | 固定值                 |
+| id        | string                   | ✓    | 唯一标识符             |
+| from      | [number, number, number] | ✓    | 起点世界坐标[X,Y,Z]    |
+| to        | [number, number, number] | ✓    | 终点世界坐标[X,Y,Z]    |
+| thickness | number                   | ✓    | 墙厚度（米）           |
+| material  | string                   | ✓    | 材质ID                 |
+| curve     | object                   | ✗    | 弧形墙定义（见弧形墙） |
 
 **示例**：
 ```json
@@ -140,12 +140,12 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 **curve字段**：
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| type | "arc" | 弧形类型 |
-| center | [number, number, number] | 圆心世界坐标 |
-| sweep | number | 扫掠角度（度），360为完整圆 |
-| segments | number | 细分段数，影响平滑度 |
+| 字段     | 类型                     | 说明                        |
+| -------- | ------------------------ | --------------------------- |
+| type     | "arc"                    | 弧形类型                    |
+| center   | [number, number, number] | 圆心世界坐标                |
+| sweep    | number                   | 扫掠角度（度），360为完整圆 |
+| segments | number                   | 细分段数，影响平滑度        |
 
 #### 2.2.3 开口 (Opening) - 门窗
 
@@ -205,16 +205,16 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 **字段说明**：
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| type | "opening" | ✓ | 固定值 |
-| id | string | ✓ | 唯一标识符 |
-| parentWall | string | ✓ | 所属墙体的ID |
-| from | [number, number, number] | ✓ | [沿墙距离, Y坐标, 法向偏移] |
-| width | number | ✓ | 宽度（米） |
-| height | number | ✓ | 高度（米） |
-| style | string | ✓ | 样式："rectangular" 等 |
-| material | string | ✓ | 材质ID |
+| 字段       | 类型                     | 必需 | 说明                        |
+| ---------- | ------------------------ | ---- | --------------------------- |
+| type       | "opening"                | ✓    | 固定值                      |
+| id         | string                   | ✓    | 唯一标识符                  |
+| parentWall | string                   | ✓    | 所属墙体的ID                |
+| from       | [number, number, number] | ✓    | [沿墙距离, Y坐标, 法向偏移] |
+| width      | number                   | ✓    | 宽度（米）                  |
+| height     | number                   | ✓    | 高度（米）                  |
+| style      | string                   | ✓    | 样式："rectangular" 等      |
+| material   | string                   | ✓    | 材质ID                      |
 
 **完整示例**：
 
@@ -272,12 +272,12 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 **字段说明**：
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| from | [number, number, number] | ✓ | 区域角点1 |
-| to | [number, number, number] | ✓ | 区域角点2 |
-| thickness | number | ✓ | 厚度（米） |
-| material | string | ✓ | 材质ID |
+| 字段      | 类型                     | 必需 | 说明       |
+| --------- | ------------------------ | ---- | ---------- |
+| from      | [number, number, number] | ✓    | 区域角点1  |
+| to        | [number, number, number] | ✓    | 区域角点2  |
+| thickness | number                   | ✓    | 厚度（米） |
+| material  | string                   | ✓    | 材质ID     |
 
 #### 2.2.5 屋顶 (Roof)
 
@@ -302,15 +302,15 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 **字段说明**：
 
-| 字段 | 类型 | 必需 | 说明 |
-|------|------|------|------|
-| roofType | string | ✓ | 屋顶类型 |
-| span | number | ✓ | 跨度（X方向，米） |
-| depth | number | ✓ | 进深（Z方向，米） |
-| height | number | ✓ | 高度（米） |
-| thickness | number | ✗ | 厚度（米） |
-| material | string | ✓ | 材质ID |
-| position | [number, number, number] | ✗ | 位置（自动计算时可省略） |
+| 字段      | 类型                     | 必需 | 说明                     |
+| --------- | ------------------------ | ---- | ------------------------ |
+| roofType  | string                   | ✓    | 屋顶类型                 |
+| span      | number                   | ✓    | 跨度（X方向，米）        |
+| depth     | number                   | ✓    | 进深（Z方向，米）        |
+| height    | number                   | ✓    | 高度（米）               |
+| thickness | number                   | ✗    | 厚度（米）               |
+| material  | string                   | ✓    | 材质ID                   |
+| position  | [number, number, number] | ✗    | 位置（自动计算时可省略） |
 
 #### 2.2.6 柱子 (Column)
 
@@ -395,14 +395,14 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 ### 3.1 材质参数
 
-| 字段 | 类型 | 范围 | 说明 |
-|------|------|------|------|
-| baseColor | [R, G, B] | 0.0-1.0 | 基础颜色（RGB） |
-| roughness | number | 0.0-1.0 | 粗糙度（0=光滑，1=粗糙） |
-| metallic | number | 0.0-1.0 | 金属度 |
-| albedo | number | 0.0-1.0 | 反照率 |
-| opacity | number | 0.0-1.0 | 不透明度（可选） |
-| lightingCondition | string | - | 光照条件："D65_noon" 等 |
+| 字段              | 类型      | 范围    | 说明                     |
+| ----------------- | --------- | ------- | ------------------------ |
+| baseColor         | [R, G, B] | 0.0-1.0 | 基础颜色（RGB）          |
+| roughness         | number    | 0.0-1.0 | 粗糙度（0=光滑，1=粗糙） |
+| metallic          | number    | 0.0-1.0 | 金属度                   |
+| albedo            | number    | 0.0-1.0 | 反照率                   |
+| opacity           | number    | 0.0-1.0 | 不透明度（可选）         |
+| lightingCondition | string    | -       | 光照条件："D65_noon" 等  |
 
 ### 3.2 材质效果
 
@@ -575,16 +575,16 @@ opening.from = [alongWall, opening.worldY, 0]
 
 **住宅常用尺寸**：
 
-| 构件 | 典型尺寸 |
-|------|---------|
-| 墙高 | 2.8-3.5米（层高） |
-| 墙厚 | 0.2-0.4米 |
-| 门宽 | 0.9-1.2米 |
-| 门高 | 2.0-2.4米 |
-| 窗宽 | 1.0-1.8米 |
-| 窗高 | 1.0-1.5米 |
-| 窗台高 | 0.9-1.2米 |
-| 地板厚 | 0.15-0.3米 |
+| 构件     | 典型尺寸          |
+| -------- | ----------------- |
+| 墙高     | 2.8-3.5米（层高） |
+| 墙厚     | 0.2-0.4米         |
+| 门宽     | 0.9-1.2米         |
+| 门高     | 2.0-2.4米         |
+| 窗宽     | 1.0-1.8米         |
+| 窗高     | 1.0-1.5米         |
+| 窗台高   | 0.9-1.2米         |
+| 地板厚   | 0.15-0.3米        |
 | 屋顶坡度 | 高度=跨度×0.3-0.5 |
 
 ### 6.3 构件顺序
@@ -722,20 +722,14 @@ if (Math.abs(opening.from[2]) > wallThickness) {
 
 ### 墙体开口坐标转换表
 
-| 墙体方向 | 墙定义 | 开口世界坐标 | 开口from[0]计算 |
-|---------|--------|------------|----------------|
-| X轴正向 | from=[0,y,z], to=[6,y,z] | world_x=2.4 | 2.4 - 0 = 2.4 |
-| X轴负向 | from=[6,y,z], to=[0,y,z] | world_x=2.4 | 反转后计算 |
-| Z轴正向 | from=[x,y,0], to=[x,y,5] | world_z=2 | 2 - 0 = 2 |
-| Z轴负向 | from=[x,y,5], to=[x,y,0] | world_z=2 | 反转后计算 |
+| 墙体方向 | 墙定义                   | 开口世界坐标 | 开口from[0]计算 |
+| -------- | ------------------------ | ------------ | --------------- |
+| X轴正向  | from=[0,y,z], to=[6,y,z] | world_x=2.4  | 2.4 - 0 = 2.4   |
+| X轴负向  | from=[6,y,z], to=[0,y,z] | world_x=2.4  | 反转后计算      |
+| Z轴正向  | from=[x,y,0], to=[x,y,5] | world_z=2    | 2 - 0 = 2       |
+| Z轴负向  | from=[x,y,5], to=[x,y,0] | world_z=2    | 反转后计算      |
 
 **通用公式**：
 ```
 沿墙距离 = |开口世界坐标 - 墙起点坐标| 在墙方向上的投影
 ```
-
----
-
-**文档完成时间**: 2026-07-21  
-**适用引擎版本**: wild-core v1.0  
-**文档状态**: 可用于RAG向量库索引

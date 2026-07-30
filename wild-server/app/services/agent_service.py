@@ -31,6 +31,7 @@ from app.agent.prompts import build_system_prompt
 from app.spec.loader import (
     FileSpecLoader,
     RAGSpecLoader,
+    collect_markdown_paths,
     create_embedding_function,
 )
 from app.tools.spatial_tools import (
@@ -66,10 +67,8 @@ BASE_SPEC_PATHS = [
     _KB / "BLUEPRINT-SPEC-MINIMAL.md",
 ]
 
-RAG_SPEC_PATHS = [
-    _KB / "BLUEPRINT-SPEC-FULL.md",
-    _KB / "BUILDING-TYPES-REFERENCE.md",
-]
+def get_rag_spec_paths() -> list[Path]:
+    return collect_markdown_paths(_KB, exclude=BASE_SPEC_PATHS)
 
 
 @dataclass
@@ -442,9 +441,10 @@ class AgentService:
                     model_name=config.embedding.name,
                     allow_hash_fallback=config.rag.allow_hash_fallback,
                 )
+                rag_spec_paths = get_rag_spec_paths()
                 loader = RAGSpecLoader(
                     base_paths=[str(p) for p in BASE_SPEC_PATHS],
-                    rag_paths=[str(p) for p in RAG_SPEC_PATHS],
+                    rag_paths=[str(p) for p in rag_spec_paths],
                     persist_dir=str(persist_dir),
                     collection_name=config.rag.collection_name,
                     embedding_function=embedding_function,

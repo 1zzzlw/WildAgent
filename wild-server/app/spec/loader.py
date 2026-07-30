@@ -19,6 +19,28 @@ from pathlib import Path
 from typing import Any
 
 
+def _normalize_path(path: Path) -> str:
+    try:
+        return str(path.resolve()).casefold()
+    except OSError:
+        return str(path.absolute()).casefold()
+
+
+def collect_markdown_paths(root: str | Path, exclude: list[str | Path] | None = None) -> list[Path]:
+    """递归收集知识库 Markdown 文件，用于 RAG 建索引。"""
+    root_path = Path(root)
+    if not root_path.exists():
+        return []
+
+    excluded = {_normalize_path(Path(path)) for path in (exclude or [])}
+    paths = [
+        path
+        for path in root_path.rglob("*.md")
+        if path.is_file() and _normalize_path(path) not in excluded
+    ]
+    return sorted(paths, key=lambda path: path.relative_to(root_path).as_posix().casefold())
+
+
 class SpecLoader:
     """规范文档加载器抽象基类"""
 
