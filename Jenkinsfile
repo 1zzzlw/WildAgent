@@ -26,7 +26,7 @@ pipeline {
     PYTHON_BASE_IMAGE = 'python:3.12-slim'
     NODE_BASE_IMAGE = 'node:22-alpine'
     NGINX_BASE_IMAGE = 'nginx:alpine'
-    PATH+GITSSH = 'D:\\software\\Git\\usr\\bin'
+    PATH = "D:\\software\\Git\\usr\\bin;${env.PATH}"
 
     DEPLOY_SSH_USER = "${params.DEPLOY_SSH_USER}"
     DEPLOY_SSH_HOST = "${params.DEPLOY_SSH_HOST}"
