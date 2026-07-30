@@ -8,7 +8,7 @@ pipeline {
   }
 
   parameters {
-    string(name: 'DEPLOY_SSH_KEY_FILE', defaultValue: 'D:/jenkins-data/ssh/wild_agent_deploy', description: 'Jenkins Windows 机器上的固定 SSH 私钥路径')
+    string(name: 'SSH_CREDENTIALS_ID', defaultValue: 'wild-agent-prod-ssh', description: 'Jenkins UI 中配置的 SSH 私钥凭据 ID')
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
     booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: true, description: '是否在远程服务器用 Docker 执行前后端验证')
     string(name: 'DEPLOY_SSH_USER', defaultValue: 'root', description: '部署服务器 SSH 用户')
@@ -27,7 +27,6 @@ pipeline {
     NODE_BASE_IMAGE = 'node:22-alpine'
     NGINX_BASE_IMAGE = 'nginx:alpine'
 
-    DEPLOY_SSH_KEY_FILE = "${params.DEPLOY_SSH_KEY_FILE}"
     DEPLOY_SSH_USER = "${params.DEPLOY_SSH_USER}"
     DEPLOY_SSH_HOST = "${params.DEPLOY_SSH_HOST}"
     DEPLOY_SSH_PORT = "${params.DEPLOY_SSH_PORT}"
@@ -68,34 +67,30 @@ pipeline {
         expression { return env.IS_PULL_REQUEST != 'true' }
       }
       steps {
-        sh '''
-          set -eu
-          DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-          SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
-
-          test -f "$DEPLOY_SSH_KEY_FILE" || {
-            echo "找不到 SSH 私钥文件: $DEPLOY_SSH_KEY_FILE"
-            echo "请先在 Jenkins Windows 机器上创建该文件，并把公钥加入远程服务器 authorized_keys"
-            exit 1
-          }
-
-          echo "=== 测试 SSH 连接 ==="
-          ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version"
-
-          echo "=== 准备远程构建目录 ==="
-          ssh $SSH_OPTS "$DEPLOY_TARGET" "
+        sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+          sh '''
             set -eu
-            mkdir -p '$REMOTE_WORK_DIR'
-            case '$REMOTE_RELEASE_DIR' in
-              '$REMOTE_WORK_DIR'/*) rm -rf '$REMOTE_RELEASE_DIR' ;;
-              *) echo '非法远程构建目录: $REMOTE_RELEASE_DIR'; exit 1 ;;
-            esac
-            mkdir -p '$REMOTE_RELEASE_DIR'
-          "
+            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+            SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
-          echo "=== 上传当前 Git 提交源码 ==="
-          git archive --format=tar HEAD | ssh $SSH_OPTS "$DEPLOY_TARGET" "tar -xf - -C '$REMOTE_RELEASE_DIR'"
-        '''
+            echo "=== 测试 SSH 连接 ==="
+            ssh $SSH_OPTS "$DEPLOY_TARGET" "hostname && docker --version"
+
+            echo "=== 准备远程构建目录 ==="
+            ssh $SSH_OPTS "$DEPLOY_TARGET" "
+              set -eu
+              mkdir -p '$REMOTE_WORK_DIR'
+              case '$REMOTE_RELEASE_DIR' in
+                '$REMOTE_WORK_DIR'/*) rm -rf '$REMOTE_RELEASE_DIR' ;;
+                *) echo '非法远程构建目录: $REMOTE_RELEASE_DIR'; exit 1 ;;
+              esac
+              mkdir -p '$REMOTE_RELEASE_DIR'
+            "
+
+            echo "=== 上传当前 Git 提交源码 ==="
+            git archive --format=tar HEAD | ssh $SSH_OPTS "$DEPLOY_TARGET" "tar -xf - -C '$REMOTE_RELEASE_DIR'"
+          '''
+        }
       }
     }
 
@@ -107,13 +102,14 @@ pipeline {
         }
       }
       steps {
-        sh '''
-          set -eu
-          DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-          SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
+        sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+          sh '''
+            set -eu
+            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+            SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
-          ssh $SSH_OPTS "$DEPLOY_TARGET" \
-            "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR/wild-web"
 docker run --rm \
@@ -123,7 +119,8 @@ docker run --rm \
   "$NODE_BASE_IMAGE" \
   sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
 REMOTE_SCRIPT
-        '''
+          '''
+        }
       }
     }
 
@@ -135,13 +132,14 @@ REMOTE_SCRIPT
         }
       }
       steps {
-        sh '''
-          set -eu
-          DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-          SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
+        sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+          sh '''
+            set -eu
+            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+            SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
-          ssh $SSH_OPTS "$DEPLOY_TARGET" \
-            "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' /bin/sh -s" <<'REMOTE_SCRIPT'
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR/wild-server"
 docker run --rm \
@@ -157,7 +155,8 @@ docker run --rm \
     uv lock --check 2>/dev/null || echo "uv.lock 不是最新的，但不阻塞 CI"
   '
 REMOTE_SCRIPT
-        '''
+          '''
+        }
       }
     }
 
@@ -166,13 +165,14 @@ REMOTE_SCRIPT
         expression { return env.IS_RELEASE_BRANCH == 'true' }
       }
       steps {
-        sh '''
-          set -eu
-          DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-          SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
+        sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+          sh '''
+            set -eu
+            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+            SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
-          ssh $SSH_OPTS "$DEPLOY_TARGET" \
-            "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR"
 
@@ -193,7 +193,8 @@ docker build \
   -f wild-web/Dockerfile \
   wild-web
 REMOTE_SCRIPT
-        '''
+          '''
+        }
       }
     }
 
@@ -205,13 +206,14 @@ REMOTE_SCRIPT
         }
       }
       steps {
-        sh '''
-          set -eu
-          DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-          SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
+        sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+          sh '''
+            set -eu
+            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+            SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
-          ssh $SSH_OPTS "$DEPLOY_TARGET" \
-            "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' /bin/sh -s" <<'REMOTE_SCRIPT'
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 
 docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
@@ -246,11 +248,11 @@ docker run -d \
   "$IMAGE_WEB_NAME"
 REMOTE_SCRIPT
 
-          echo "=== 等待容器启动 ==="
-          sleep 5
+            echo "=== 等待容器启动 ==="
+            sleep 5
 
-          echo "=== 检查容器状态 ==="
-          ssh $SSH_OPTS "$DEPLOY_TARGET" /bin/sh <<'REMOTE_SCRIPT'
+            echo "=== 检查容器状态 ==="
+            ssh $SSH_OPTS "$DEPLOY_TARGET" /bin/sh <<'REMOTE_SCRIPT'
 set -eu
 
 echo "--- 运行中的 wild 容器 ---"
@@ -280,8 +282,9 @@ else
 fi
 REMOTE_SCRIPT
 
-          echo "部署完成"
-        '''
+            echo "部署完成"
+          '''
+        }
       }
     }
   }
@@ -290,17 +293,19 @@ REMOTE_SCRIPT
     always {
       script {
         if (env.REMOTE_RELEASE_DIR && env.IS_PULL_REQUEST != 'true') {
-          sh '''
-            set +e
-            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-            SSH_OPTS="-i ${DEPLOY_SSH_KEY_FILE} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
-            ssh $SSH_OPTS "$DEPLOY_TARGET" "
-              case '$REMOTE_RELEASE_DIR' in
-                '$REMOTE_WORK_DIR'/*) rm -rf '$REMOTE_RELEASE_DIR' ;;
-              esac
-            " >/dev/null 2>&1 || true
-            exit 0
-          '''
+          sshagent(credentials: [params.SSH_CREDENTIALS_ID]) {
+            sh '''
+              set +e
+              DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
+              SSH_OPTS="-o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
+              ssh $SSH_OPTS "$DEPLOY_TARGET" "
+                case '$REMOTE_RELEASE_DIR' in
+                  '$REMOTE_WORK_DIR'/*) rm -rf '$REMOTE_RELEASE_DIR' ;;
+                esac
+              " >/dev/null 2>&1 || true
+              exit 0
+            '''
+          }
         }
       }
     }
