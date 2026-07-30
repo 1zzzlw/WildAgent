@@ -64,6 +64,18 @@ pipeline {
         withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
           sh '''
             set -eu
+            fix_ssh_key_permissions() {
+              chmod 600 "$SSH_KEY" 2>/dev/null || true
+              if command -v cmd.exe >/dev/null 2>&1; then
+                CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                if [ -n "$CURRENT_USER" ]; then
+                  cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                fi
+              fi
+            }
+            fix_ssh_key_permissions
 
             DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
             SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
@@ -100,6 +112,18 @@ pipeline {
         withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
           sh '''
             set -eu
+            fix_ssh_key_permissions() {
+              chmod 600 "$SSH_KEY" 2>/dev/null || true
+              if command -v cmd.exe >/dev/null 2>&1; then
+                CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                if [ -n "$CURRENT_USER" ]; then
+                  cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                fi
+              fi
+            }
+            fix_ssh_key_permissions
 
             DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
             SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
@@ -131,6 +155,18 @@ REMOTE_SCRIPT
         withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
           sh '''
             set -eu
+            fix_ssh_key_permissions() {
+              chmod 600 "$SSH_KEY" 2>/dev/null || true
+              if command -v cmd.exe >/dev/null 2>&1; then
+                CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                if [ -n "$CURRENT_USER" ]; then
+                  cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                fi
+              fi
+            }
+            fix_ssh_key_permissions
 
             DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
             SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
@@ -165,6 +201,18 @@ REMOTE_SCRIPT
         withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
           sh '''
             set -eu
+            fix_ssh_key_permissions() {
+              chmod 600 "$SSH_KEY" 2>/dev/null || true
+              if command -v cmd.exe >/dev/null 2>&1; then
+                CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                if [ -n "$CURRENT_USER" ]; then
+                  cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                fi
+              fi
+            }
+            fix_ssh_key_permissions
 
             DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
             SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
@@ -207,6 +255,18 @@ REMOTE_SCRIPT
         withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
           sh '''
             set -eu
+            fix_ssh_key_permissions() {
+              chmod 600 "$SSH_KEY" 2>/dev/null || true
+              if command -v cmd.exe >/dev/null 2>&1; then
+                CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                if [ -n "$CURRENT_USER" ]; then
+                  cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                fi
+              fi
+            }
+            fix_ssh_key_permissions
 
             DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
             SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
@@ -295,6 +355,18 @@ REMOTE_SCRIPT
           withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
             sh '''
               set +e
+              fix_ssh_key_permissions() {
+                chmod 600 "$SSH_KEY" 2>/dev/null || true
+                if command -v cmd.exe >/dev/null 2>&1; then
+                  CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
+                  cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
+                  cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                  if [ -n "$CURRENT_USER" ]; then
+                    cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
+                  fi
+                fi
+              }
+              fix_ssh_key_permissions
               DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
               SSH_OPTS="-i ${SSH_KEY} -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
               ssh $SSH_OPTS "$DEPLOY_TARGET" "
