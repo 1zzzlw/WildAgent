@@ -301,7 +301,8 @@ REMOTE_SCRIPT
                 case '$REMOTE_RELEASE_DIR' in
                   '$REMOTE_WORK_DIR'/*) rm -rf '$REMOTE_RELEASE_DIR' ;;
                 esac
-              " >/dev/null 2>&1
+              " >/dev/null 2>&1 || true
+              exit 0
             '''
           }
         }
