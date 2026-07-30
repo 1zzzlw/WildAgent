@@ -66,10 +66,26 @@ pipeline {
             set -eu
             fix_ssh_key_permissions() {
               chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+              if command -v powershell.exe >/dev/null 2>&1; then
+                SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+              fi
+
               if command -v cmd.exe >/dev/null 2>&1; then
                 CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                 cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                 if [ -n "$CURRENT_USER" ]; then
                   cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                 fi
@@ -114,10 +130,26 @@ pipeline {
             set -eu
             fix_ssh_key_permissions() {
               chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+              if command -v powershell.exe >/dev/null 2>&1; then
+                SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+              fi
+
               if command -v cmd.exe >/dev/null 2>&1; then
                 CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                 cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                 if [ -n "$CURRENT_USER" ]; then
                   cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                 fi
@@ -157,10 +189,26 @@ REMOTE_SCRIPT
             set -eu
             fix_ssh_key_permissions() {
               chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+              if command -v powershell.exe >/dev/null 2>&1; then
+                SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+              fi
+
               if command -v cmd.exe >/dev/null 2>&1; then
                 CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                 cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                 if [ -n "$CURRENT_USER" ]; then
                   cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                 fi
@@ -203,10 +251,26 @@ REMOTE_SCRIPT
             set -eu
             fix_ssh_key_permissions() {
               chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+              if command -v powershell.exe >/dev/null 2>&1; then
+                SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+              fi
+
               if command -v cmd.exe >/dev/null 2>&1; then
                 CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                 cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                 if [ -n "$CURRENT_USER" ]; then
                   cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                 fi
@@ -257,10 +321,26 @@ REMOTE_SCRIPT
             set -eu
             fix_ssh_key_permissions() {
               chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+              if command -v powershell.exe >/dev/null 2>&1; then
+                SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+              fi
+
               if command -v cmd.exe >/dev/null 2>&1; then
                 CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                 cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                 if [ -n "$CURRENT_USER" ]; then
                   cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                 fi
@@ -357,10 +437,26 @@ REMOTE_SCRIPT
               set +e
               fix_ssh_key_permissions() {
                 chmod 600 "$SSH_KEY" 2>/dev/null || true
+
+                if command -v powershell.exe >/dev/null 2>&1; then
+                  SSH_KEY_PATH="$SSH_KEY" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command '
+$path = $env:SSH_KEY_PATH
+$acl = Get-Acl -LiteralPath $path
+$acl.SetAccessRuleProtection($true, $false)
+foreach ($rule in @($acl.Access)) {
+  [void]$acl.RemoveAccessRuleAll($rule)
+}
+$current = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule($current, "FullControl", "Allow")
+$acl.SetAccessRule($rule)
+Set-Acl -LiteralPath $path -AclObject $acl
+' >/dev/null 2>&1 || true
+                fi
+
                 if command -v cmd.exe >/dev/null 2>&1; then
                   CURRENT_USER="$(whoami 2>/dev/null || printf '%s' "${USERNAME:-}")"
                   cmd.exe /c icacls "$SSH_KEY" /inheritance:r >/dev/null 2>&1 || true
-                  cmd.exe /c icacls "$SSH_KEY" /remove:g "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
+                  cmd.exe /c icacls "$SSH_KEY" /remove:g "*S-1-5-11" "*S-1-5-32-545" "*S-1-1-0" "NT AUTHORITY\\Authenticated Users" "BUILTIN\\Users" "Everyone" >/dev/null 2>&1 || true
                   if [ -n "$CURRENT_USER" ]; then
                     cmd.exe /c icacls "$SSH_KEY" /grant:r "$CURRENT_USER:F" >/dev/null 2>&1 || true
                   fi
