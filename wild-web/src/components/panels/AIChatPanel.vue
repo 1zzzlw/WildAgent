@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { ElNotification, ElMessageBox } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -227,10 +227,8 @@ watch(() => agentStore.networkError, (error) => {
 
 // ---------- 生命周期 ----------
 onMounted(() => {
-  agentBridge.connect()
   restoreLastSession()
 })
-onUnmounted(() => agentBridge.disconnect())
 
 watch(() => agentStore.blueprintLoaded, (loaded) => {
   if (loaded) setTimeout(() => agentStore.clearBlueprintLoaded(), 5000)

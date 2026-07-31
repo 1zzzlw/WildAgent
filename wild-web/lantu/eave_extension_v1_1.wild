@@ -1,0 +1,181 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "中式曲面屋檐扩展示例",
+    "style": "chinese_classical"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "platform",
+        "from": [-3.8, 0, -2.8],
+        "to": [3.8, 0, 2.8],
+        "thickness": 0.35,
+        "material": "stone"
+      },
+      {
+        "type": "column",
+        "id": "column_fl",
+        "base": [-2.8, 0.35, 1.9],
+        "height": 3.25,
+        "bottomRadius": 0.24,
+        "topRadius": 0.2,
+        "style": "chinese_wooden",
+        "entasis": 0.025,
+        "inclination": 0.004,
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "column_fr",
+        "base": [2.8, 0.35, 1.9],
+        "height": 3.25,
+        "bottomRadius": 0.24,
+        "topRadius": 0.2,
+        "style": "chinese_wooden",
+        "entasis": 0.025,
+        "inclination": 0.004,
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "column_bl",
+        "base": [-2.8, 0.35, -1.9],
+        "height": 3.25,
+        "bottomRadius": 0.24,
+        "topRadius": 0.2,
+        "style": "chinese_wooden",
+        "entasis": 0.025,
+        "inclination": 0.004,
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "column_br",
+        "base": [2.8, 0.35, -1.9],
+        "height": 3.25,
+        "bottomRadius": 0.24,
+        "topRadius": 0.2,
+        "style": "chinese_wooden",
+        "entasis": 0.025,
+        "inclination": 0.004,
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "front_beam",
+        "from": [-3.1, 3.55, 2.05],
+        "to": [3.1, 3.55, 2.05],
+        "crossSection": "rect",
+        "width": 0.22,
+        "height": 0.32,
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "back_beam",
+        "from": [-3.1, 3.55, -2.05],
+        "to": [3.1, 3.55, -2.05],
+        "crossSection": "rect",
+        "width": 0.22,
+        "height": 0.32,
+        "material": "wood_red"
+      },
+      {
+        "type": "roof",
+        "id": "curved_roof",
+        "roofType": "chinese_curved",
+        "span": 8.2,
+        "depth": 6.4,
+        "height": 2.25,
+        "thickness": 0.16,
+        "eaveCurveHeight": 0.62,
+        "curveProfile": "gentle",
+        "position": [0, 3.72, 0],
+        "material": "roof_tile"
+      },
+      {
+        "type": "primitive",
+        "id": "front_eave_profile",
+        "shape": "profile_sweep",
+        "profile": [
+          [-0.07, -0.09],
+          [0.07, -0.09],
+          [0.09, 0.02],
+          [0, 0.08],
+          [-0.09, 0.02]
+        ],
+        "path": [
+          [-4.1, 3.72, 3.2],
+          [-3.1, 3.79, 3.2],
+          [-2.05, 3.74, 3.2],
+          [-1.02, 3.7, 3.2],
+          [0, 3.68, 3.2],
+          [1.02, 3.7, 3.2],
+          [2.05, 3.74, 3.2],
+          [3.1, 3.79, 3.2],
+          [4.1, 3.72, 3.2]
+        ],
+        "material": "eave_gold"
+      },
+      {
+        "type": "primitive",
+        "id": "ridge",
+        "shape": "profile_sweep",
+        "radius": 0.105,
+        "segments": 10,
+        "path": [
+          [0, 5.97, -3.2],
+          [0, 5.97, 0],
+          [0, 5.97, 3.2]
+        ],
+        "material": "ridge_blue"
+      }
+    ]
+  },
+  "materials": {
+    "stone": {
+      "baseColor": [0.48, 0.5, 0.49],
+      "roughness": 0.88,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        { "type": "grain", "intensity": 0.08, "scale": 0.09 }
+      ]
+    },
+    "wood_red": {
+      "baseColor": [0.48, 0.055, 0.035],
+      "roughness": 0.5,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        { "type": "grain", "intensity": 0.07, "scale": 0.035 }
+      ]
+    },
+    "roof_tile": {
+      "baseColor": [0.04, 0.2, 0.24],
+      "roughness": 0.38,
+      "metallic": 0.08,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "ridge_blue": {
+      "baseColor": [0.025, 0.14, 0.2],
+      "roughness": 0.32,
+      "metallic": 0.12,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "eave_gold": {
+      "baseColor": [0.82, 0.55, 0.08],
+      "roughness": 0.36,
+      "metallic": 0.58,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    }
+  }
+}

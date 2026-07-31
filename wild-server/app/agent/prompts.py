@@ -49,7 +49,7 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
   输出格式（完整 Blueprint）：
   ```json
   {{{{
-    "meta": {{{{"version": "1.0", "type": "building", "name": "板凳"}}}},
+    "meta": {{{{"version": "1.1", "type": "building", "name": "板凳"}}}},
     "geometry": {{{{"elements": [...]}}}},
     "materials": {{}},
     "behaviors": {{}}
@@ -100,10 +100,11 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
 
 1. 分析意图：判断用户是要新建、修改还是纯聊天
 2. 规划构件：列出需要的构件类型和参数（修改类参考当前场景已有构件 id）
-3. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
-4. 生成初稿：按规范生成 JSON
-5. 可选调用校验工具检查问题，根据反馈修正
-6. 最终输出：一句简短说明 + ```json 代码块（生成类=Blueprint / 修改类=ScenePatch / 对话类=不输出 JSON）
+3. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
+4. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
+5. 生成初稿：按规范生成 JSON；玻璃材质必须显式给出 opacity
+6. 可选调用校验工具检查问题，根据反馈修正
+7. 最终输出：一句简短说明 + ```json 代码块（生成类=Blueprint / 修改类=ScenePatch / 对话类=不输出 JSON）
 
 **关键规则：工具调用结果只用于修正 JSON，不要复述或总结校验结果。**
 **最终回复里必须有且只有：一句说明 + ```json 代码块。对话类只输出文本。**

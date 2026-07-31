@@ -16,6 +16,9 @@
 import * as THREE from 'three'
 import type { ReconstructedEntity, MeshData } from '../types/scene'
 import { MaterialCache } from './materialAdapter'
+import { meshDataToGeometry } from './meshDataToGeometry'
+
+const MAX_VERTICES = 50000
 
 /**
  * 将 wild-core 的 MeshData 转换为 Three.js Mesh
@@ -32,7 +35,6 @@ function createMeshFromMeshData(
   materialIndex: number
 ): THREE.Mesh {
   // ── 顶点数保护：异常几何直接用占位 mesh 替代，防止浏览器卡死 ──
-  const MAX_VERTICES = 50000
   if (meshData.geometry.length / 3 > MAX_VERTICES) {
     console.warn(
       `[renderEntity] ${meshData.elementId} 顶点数 ${meshData.geometry.length / 3} 超过上限 ${MAX_VERTICES}，` +
@@ -54,25 +56,7 @@ function createMeshFromMeshData(
   }
 
   // 1. 转换几何数据
-  const geometry = new THREE.BufferGeometry()
-
-  geometry.setAttribute('position', new THREE.BufferAttribute(meshData.geometry, 3))
-  
-  if (meshData.indices) {
-    geometry.setIndex(new THREE.BufferAttribute(meshData.indices, 1))
-  }
-  
-  if (meshData.normals) {
-    geometry.setAttribute('normal', new THREE.BufferAttribute(meshData.normals, 3))
-  } else {
-    geometry.computeVertexNormals()
-  }
-  
-  if (meshData.vertexColors) {
-    geometry.setAttribute('color', new THREE.BufferAttribute(meshData.vertexColors, 3))
-  }
-  
-  geometry.computeBoundingSphere()
+  const geometry = meshDataToGeometry(meshData)
   
   // 2. 获取或创建材质
   const matParams = materialParams[materialIndex]
@@ -105,6 +89,119 @@ function createMeshFromMeshData(
   return mesh
 }
 
+function createInstancedMesh(
+  entries: Array<{ meshData: MeshData; materialIndex: number }>,
+  materialCache: MaterialCache,
+  materialParams: any[],
+): THREE.InstancedMesh {
+  const first = entries[0]
+  const geometry = meshDataToGeometry(first.meshData)
+  const params = materialParams[first.materialIndex]
+  const material = params
+    ? materialCache.getOrCreate(first.meshData.materialRef, params, !!first.meshData.vertexColors)
+    : new THREE.MeshStandardMaterial({ color: 0x808080 })
+  const instanced = new THREE.InstancedMesh(geometry, material, entries.length)
+  const matrix = new THREE.Matrix4()
+  const position = new THREE.Vector3()
+  const quaternion = new THREE.Quaternion()
+  const scale = new THREE.Vector3()
+  const euler = new THREE.Euler()
+
+  entries.forEach(({ meshData }, index) => {
+    position.fromArray(meshData.transform.position)
+    euler.set(
+      meshData.transform.rotation[0],
+      meshData.transform.rotation[1],
+      meshData.transform.rotation[2],
+      'XYZ',
+    )
+    quaternion.setFromEuler(euler)
+    scale.fromArray(meshData.transform.scale)
+    matrix.compose(position, quaternion, scale)
+    instanced.setMatrixAt(index, matrix)
+  })
+  instanced.instanceMatrix.needsUpdate = true
+  instanced.castShadow = true
+  instanced.receiveShadow = true
+  instanced.name = `Instanced:${first.meshData.materialRef}`
+  instanced.userData.instanceElementIds = entries.map(entry => entry.meshData.elementId)
+  instanced.userData.materialRef = first.meshData.materialRef
+  return instanced
+}
+
+function populateSceneGroup(
+  group: THREE.Group,
+  entity: ReconstructedEntity,
+  materialCache: MaterialCache,
+): void {
+  const buckets = new Map<string, Array<{ meshData: MeshData; materialIndex: number }>>()
+
+  entity.meshes.forEach((meshData, materialIndex) => {
+    const canInstance = !meshData.interactive && meshData.geometry.length / 3 <= MAX_VERTICES
+    const key = canInstance
+      ? meshSignature(meshData, entity.materialParams[materialIndex])
+      : `single:${materialIndex}`
+    const bucket = buckets.get(key) || []
+    bucket.push({ meshData, materialIndex })
+    buckets.set(key, bucket)
+  })
+
+  for (const entries of buckets.values()) {
+    if (entries.length >= 3 && !entries[0].meshData.interactive) {
+      try {
+        group.add(createInstancedMesh(entries, materialCache, entity.materialParams))
+        continue
+      } catch (error) {
+        console.warn('创建 InstancedMesh 失败，回退为普通 Mesh', error)
+      }
+    }
+    for (const entry of entries) {
+      try {
+        group.add(createMeshFromMeshData(
+          entry.meshData,
+          materialCache,
+          entity.materialParams,
+          entry.materialIndex,
+        ))
+      } catch (error) {
+        console.error('创建 mesh 失败', entry.meshData, error)
+      }
+    }
+  }
+}
+
+function meshSignature(meshData: MeshData, params: any): string {
+  return [
+    meshData.materialRef,
+    meshData.geometry.length,
+    meshData.indices?.length || 0,
+    meshData.vertexColors ? 1 : 0,
+    hashTypedArray(meshData.geometry),
+    meshData.indices ? hashTypedArray(meshData.indices) : 0,
+    meshData.normals ? hashTypedArray(meshData.normals) : 0,
+    meshData.uvs ? hashTypedArray(meshData.uvs) : 0,
+    meshData.vertexColors ? hashTypedArray(meshData.vertexColors) : 0,
+    JSON.stringify([
+      params?.baseColor,
+      params?.roughness,
+      params?.metallic,
+      params?.opacity,
+    ]),
+  ].join(':')
+}
+
+function hashTypedArray(array: Float32Array | Uint32Array): number {
+  let hash = 2166136261
+  const words = array instanceof Float32Array
+    ? new Uint32Array(array.buffer, array.byteOffset, array.length)
+    : array
+  for (let index = 0; index < words.length; index++) {
+    hash ^= words[index]
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
 /**
  * 从 ReconstructedEntity 创建 Three.js Group
  * 
@@ -121,20 +218,7 @@ export function createSceneGroupFromEntity(
   
   const cache = materialCache || new MaterialCache()
   
-  // 转换所有网格
-  entity.meshes.forEach((meshData, index) => {
-    try {
-      const mesh = createMeshFromMeshData(
-        meshData,
-        cache,
-        entity.materialParams,
-        index
-      )
-      group.add(mesh)
-    } catch (error) {
-      console.error('创建 mesh 失败', meshData, error)
-    }
-  })
+  populateSceneGroup(group, entity, cache)
   
   // 存储边界盒信息
   if (entity.boundingBox) {
@@ -172,20 +256,7 @@ export function updateSceneGroup(
     }
   }
   
-  // 添加新对象
-  entity.meshes.forEach((meshData, index) => {
-    try {
-      const mesh = createMeshFromMeshData(
-        meshData,
-        materialCache,
-        entity.materialParams,
-        index
-      )
-      group.add(mesh)
-    } catch (error) {
-      console.error('创建 mesh 失败', meshData, error)
-    }
-  })
+  populateSceneGroup(group, entity, materialCache)
   
   // 更新边界盒
   if (entity.boundingBox) {

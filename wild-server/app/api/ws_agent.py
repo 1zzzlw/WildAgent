@@ -52,6 +52,35 @@ from app.utils.ws_heartbeat import WebSocketHeartbeat
 
 router = APIRouter()
 
+
+async def _process_user_message_safely(
+    ws: WebSocket, data: dict, heartbeat: WebSocketHeartbeat
+):
+    """处理单条消息，并将连接断开视为正常的任务结束。"""
+    request_id = data.get("request_id", "")
+    heartbeat.is_processing = True
+    try:
+        await _handle_user_message(ws, data)
+    except asyncio.CancelledError:
+        logger.info(f"[{request_id}] WebSocket 已断开，取消生成任务")
+        raise
+    except WebSocketDisconnect:
+        logger.info(f"[{request_id}] WebSocket 已断开，停止发送生成结果")
+    except Exception as exc:
+        logger.exception(f"[{request_id}] Agent 消息处理失败: {exc}")
+        try:
+            await ws.send_json({
+                "type": "error",
+                "request_id": request_id,
+                "error": f"Agent 处理失败: {str(exc)}",
+            })
+        except Exception:
+            pass
+    finally:
+        heartbeat.is_processing = False
+        heartbeat.touch()
+
+
 @router.websocket("/ws/agent")
 async def agent_websocket(ws: WebSocket):
     await ws.accept()
@@ -83,16 +112,12 @@ async def agent_websocket(ws: WebSocket):
 
     # ---------- 消息处理锁 ----------
     processing_lock = asyncio.Lock()
+    active_message_task: asyncio.Task | None = None
 
     async def handle_user_message_safe(data: dict):
         """在锁保护下处理用户消息，同时更新心跳标记"""
         async with processing_lock:
-            heartbeat.is_processing = True
-            try:
-                await _handle_user_message(ws, data)
-            finally:
-                heartbeat.is_processing = False
-                heartbeat.touch()  # 处理完成后刷新心跳计时
+            await _process_user_message_safely(ws, data, heartbeat)
 
     # ---------- 消息接收循环 ----------
     try:
@@ -119,14 +144,16 @@ async def agent_websocket(ws: WebSocket):
                 })
 
             elif msg_type == "user_message":
-                if processing_lock.locked():
+                if active_message_task is not None and not active_message_task.done():
                     await ws.send_json({
                         "type": "error",
                         "request_id": data.get("request_id"),
                         "error": "正在处理上一条消息，请稍后再发送"
                     })
                 else:
-                    asyncio.create_task(handle_user_message_safe(data))
+                    active_message_task = asyncio.create_task(
+                        handle_user_message_safe(data)
+                    )
 
             else:
                 await ws.send_json({
@@ -149,6 +176,13 @@ async def agent_websocket(ws: WebSocket):
             pass
     finally:
         connection_alive = False
+        if active_message_task is not None:
+            if not active_message_task.done():
+                active_message_task.cancel()
+            try:
+                await active_message_task
+            except asyncio.CancelledError:
+                pass
         await heartbeat.stop()
 
 

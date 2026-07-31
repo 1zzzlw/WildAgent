@@ -65,17 +65,17 @@ WildAgent/
 
 核心字段：
 
-- `meta.version`：当前主要是 `"1.0"`，语言规范遵循“永不删除”向后兼容承诺。
-- `meta.type`：`building` 或 `avatar`。
+- `meta.version`：引擎支持 `"1.0"` 与 `"1.1"`；使用 `primitive` 或 v1.1 PBR 纹理字段时声明 `"1.1"`。
+- `meta.type`：`building`、`avatar`、`asset` 或 `scene`。
 - `geometry.elements`：构件列表，每个元素必须有唯一 `id` 和 `type`。
-- `materials`：PBR 数值材质，不依赖外部纹理；`baseColor` 必须是 `[R,G,B]` 数组，不能用 `#RRGGBB`。
+- `materials`：基础 PBR 数值材质；v1.1 可使用内嵌 baseColor / normal / roughness / metalness / AO 纹理。`baseColor` 必须是 `[R,G,B]` 数组，不能用 `#RRGGBB`。
 - `behaviors`：物理、动画和有限交互脚本。
 - `editor`：前端私有元数据，不影响渲染。
 
 当前标准构件：
 
 ```text
-wall / floor / column / beam / roof / opening / stair / furniture / dense_brick / body
+wall / floor / column / beam / roof / opening / stair / furniture / dense_brick / body / primitive
 ```
 
 AI 生成时优先看：
@@ -495,4 +495,3 @@ EMBEDDING__BASE_URL
 5. 若是渲染错位，先确认 Blueprint 是否合法，再判断是 `wild-core`、renderer 适配还是 Three.js 视口问题。
 6. 若新增构件，路线是：规范文档 -> TypeScript 类型 -> `wild-core` geometry builder -> renderer / validator -> Agent 知识库。
 7. 改完前端至少跑 `npm run build`；改后端至少跑相关 Python 测试或最小导入/接口 smoke test。
-

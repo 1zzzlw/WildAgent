@@ -8,7 +8,7 @@
 
 ```json
 {
-  "meta": { "version": "1.0", "type": "building", "name": "建筑名称" },
+  "meta": { "version": "1.1", "type": "building", "name": "建筑名称" },
   "geometry": { "elements": [] },
   "materials": {},
   "behaviors": {}
@@ -28,7 +28,7 @@
 
 ---
 
-## 10 种构件必填字段速查
+## 11 种构件必填字段速查
 
 ### wall（墙体）
 ```json
@@ -58,7 +58,7 @@
   "style": "modern", "material": "wood"
 }
 ```
-- style 可选值：modern / classical / rustic
+- style 可选值：doric / ionic / corinthian / modern / chinese_wooden
 
 ### beam（梁）
 ```json
@@ -80,7 +80,7 @@
   "position": [3, 3, 2.5]
 }
 ```
-- roofType 可选：gable（双坡） / hip（四坡） / flat（平顶）
+- roofType 可选：gable（双坡） / hip（四坡） / dome（穹顶） / flat（平顶） / chinese_curved（中式曲面） / chinese_pagoda（多层塔顶）
 - span 覆盖 X 方向，depth 覆盖 Z 方向，必须大于等于墙体范围
 
 ### opening（门窗）⚠️ 坐标最容易出错
@@ -108,7 +108,7 @@
 ```
 - from[1] = 下层地板 Y，to[1] = 上层地板 Y，from[1] < to[1]
 
-### furniture（仅用于灯具/瓦片）
+### furniture（参数化家具）
 ```json
 {
   "type": "furniture", "id": "lamp_1",
@@ -118,35 +118,40 @@
   "material": "metal"
 }
 ```
-- ⚠️ 凳子/椅子/桌子/床 禁止用 furniture，必须用 column + floor 组合搭建
-- 桌子：使用 column 作为桌腿、floor 作为桌面
-- 椅子：在板凳结构上增加靠背支撑柱和靠背板
-- 书架：使用 floor 作为层板、wall 作为两侧板
-- furniture 仅用于灯具（lamp）或瓦片（tile + placements）等引擎已直接支持的类型
+- subtype 可选：table / chair / bookshelf / bed / lamp / tile。
+- `furniture` 适合中低细节参数化家具；需要特殊结构时再用基础构件或 `primitive` 组合。
 
 ### dense_brick（体素）
-```json
-{
-  "type": "dense_brick", "id": "voxel_1",
-  "resolution": [4, 4, 4],
-  "origin": [0, 0, 0],
-  "data": [1,1,1,1, 1,0,0,1, 1,0,0,1, 1,1,1,1,
-           0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-           0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0,
-           1,1,1,1, 1,0,0,1, 1,0,0,1, 1,1,1,1]
-}
-```
+
+当前参考引擎状态为 `experimental`，体素解压与等值面提取尚未实现。AI 不应生成 `dense_brick`；如确实需要，先向用户说明该构件会产生 `ELEMENT_BUILD_FAILED` 诊断。
 
 ### body（化身）
 ```json
 {
   "type": "body", "id": "avatar_1",
-  "height": 1.75, "build": "average",
+  "height": 1.75, "build": "athletic",
   "headShape": "round",
   "armLength": 0.6, "legLength": 0.9,
   "cloakLength": 0, "hoodUp": false
 }
 ```
+
+### primitive（v1.1 通用形体）
+
+```json
+{
+  "type": "primitive", "id": "ball_body",
+  "shape": "sphere", "position": [0, 0.12, 0],
+  "radius": 0.12, "segments": 32, "heightSegments": 20,
+  "material": "orange_rubber"
+}
+```
+
+- shape 可选：box / sphere / cylinder / profile_sweep。
+- box 使用 `dimensions: [width, height, depth]`。
+- cylinder 使用 `height` 和 `radius`，或 `radiusTop` / `radiusBottom`。
+- profile_sweep 使用 `path: Vec3[]`，可选闭合 `profile: [number, number][]`；未给 profile 时可用 `radius` + `segments` 生成圆截面。
+- 不要为篮球、花瓶、檐口等名词发明新 type；优先由多个 primitive、模板和已有构件组合。
 
 ---
 
@@ -157,10 +162,14 @@
   "wood":  { "baseColor": [0.55, 0.27, 0.07], "roughness": 0.7, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
   "stone": { "baseColor": [0.62, 0.59, 0.55], "roughness": 0.9, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
   "tile":  { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-  "metal": { "baseColor": [0.7, 0.7, 0.7],   "roughness": 0.3,  "metallic": 0.9, "albedo": 1.0, "lightingCondition": "D65_noon" }
+  "metal": { "baseColor": [0.7, 0.7, 0.7],   "roughness": 0.3,  "metallic": 0.9, "albedo": 1.0, "lightingCondition": "D65_noon" },
+  "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
 }
 ```
 - baseColor 必须是 [R, G, B] 数组（0.0~1.0），**绝对禁止** "#RRGGBB" 字符串
+- baseColor、emissive 和效果层中的数值颜色统一按 sRGB authored value 表达，由渲染器转换到线性工作空间
+- 用户未指定颜色时，必须采用检索到的建筑类型默认配色；墙、楼板、屋顶、门、玻璃应使用角色独立的材质名
+- 不要默认把墙、楼板和屋顶全部设成同一个 `concrete`；玻璃材质必须显式给出 `opacity`
 
 ---
 

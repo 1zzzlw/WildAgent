@@ -5,23 +5,37 @@
  * 实例覆盖模板中的位置、旋转、缩放和材质。
  */
 
-import type { Blueprint, GeometryElement, InstanceRef, Placement } from './types';
+import type { Blueprint, EngineDiagnostic, GeometryElement, Placement } from './types';
 
-export function expandTemplates(bp: Blueprint): GeometryElement[] {
-  const elements = [...(bp.geometry.elements || [])];
+export function expandTemplates(bp: Blueprint, diagnostics: EngineDiagnostic[] = []): GeometryElement[] {
+  // resolver 会在元素上附加 _cutouts / _worldPos 等仅供本轮重建使用的字段。
+  // 必须克隆源元素，避免内部状态泄漏到 Store、自动保存和最终 WILD 文件。
+  const elements = (bp.geometry.elements || []).map(
+    element => JSON.parse(JSON.stringify(element)) as GeometryElement,
+  );
   const templates = bp.geometry.templates || {};
   const instances = bp.geometry.instances || [];
 
-  for (const inst of instances) {
+  for (const [instanceIndex, inst] of instances.entries()) {
     const template = templates[inst.ref];
     if (!template) {
-      console.warn(`Template "${inst.ref}" not found`);
+      diagnostics.push({
+        level: 'error',
+        code: 'TEMPLATE_NOT_FOUND',
+        message: `实例引用的模板 "${inst.ref}" 不存在`,
+        elementId: (inst as any).id,
+      });
       continue;
     }
 
     // 深拷贝模板
     const elem = JSON.parse(JSON.stringify(template)) as GeometryElement;
-    applyInstanceTransform(elem, inst);
+    elem.id = (inst as any).id || `${inst.ref}_${instanceIndex}`;
+    (elem as any)._instanceTransform = {
+      position: inst.position,
+      rotation: inst.rotation || [0, 0, 0],
+      scale: inst.scale || [1, 1, 1],
+    };
 
     // 处理材质覆盖
     if (inst.materialOverride && (elem as any).material) {
@@ -37,74 +51,51 @@ export function expandTemplates(bp: Blueprint): GeometryElement[] {
   return elements;
 }
 
-function applyInstanceTransform(elem: GeometryElement, inst: InstanceRef): void {
-  const pos = inst.position;
-
-  switch (elem.type) {
-    case 'column':
-      elem.base = pos;
-      break;
-    case 'wall':
-      // 墙体实例化需同时偏移 from 和 to
-      {
-        const dx = pos[0] - elem.from[0];
-        const dy = pos[1] - elem.from[1];
-        const dz = pos[2] - elem.from[2];
-        elem.from = [elem.from[0] + dx, elem.from[1] + dy, elem.from[2] + dz];
-        elem.to = [elem.to[0] + dx, elem.to[1] + dy, elem.to[2] + dz];
-      }
-      break;
-    case 'floor':
-    case 'beam':
-    case 'stair':
-      {
-        const dx = pos[0] - elem.from[0];
-        const dy = pos[1] - elem.from[1];
-        const dz = pos[2] - elem.from[2];
-        elem.from = pos;
-        elem.to = [elem.to[0] + dx, elem.to[1] + dy, elem.to[2] + dz];
-      }
-      break;
-    case 'roof':
-    case 'furniture':
-    case 'dense_brick':
-    case 'body':
-      (elem as any).position = pos;
-      break;
-    case 'opening':
-      elem.from = pos;
-      break;
-    default:
-      break;
-  }
-
-  // 旋转与缩放（预留）
-  if (inst.rotation) {
-    (elem as any).rotation = inst.rotation;
-  }
-  if (inst.scale) {
-    (elem as any).scale = inst.scale;
-  }
-}
-
 /**
  * 在空间关系解析后展开 placements。
  * 此时父构件已获得正确 position，瓦片位置基于父构件世界坐标计算。
  */
-export function expandPlacements(bp: Blueprint, elements: GeometryElement[]): void {
+export function expandPlacements(
+  bp: Blueprint,
+  elements: GeometryElement[],
+  diagnostics: EngineDiagnostic[] = [],
+): void {
   const templates = bp.geometry.templates || {};
   const placements = bp.geometry.placements || [];
   for (const pl of placements) {
     const template = templates[pl.template];
-    if (!template) { console.warn(`Placement "${pl.id}" template "${pl.template}" not found`); continue; }
+    if (!template) {
+      diagnostics.push({
+        level: 'error',
+        code: 'PLACEMENT_TEMPLATE_NOT_FOUND',
+        message: `排布 "${pl.id}" 引用的模板 "${pl.template}" 不存在`,
+        elementId: pl.id,
+      });
+      continue;
+    }
     const parent = elements.find(e => e.id === pl.onSurface.parent);
-    if (!parent) { console.warn(`Placement "${pl.id}" parent "${pl.onSurface.parent}" not found`); continue; }
-    _expandPlacement(pl, template, parent, elements, bp.materials || {});
+    if (!parent) {
+      diagnostics.push({
+        level: 'error',
+        code: 'PLACEMENT_PARENT_NOT_FOUND',
+        message: `排布 "${pl.id}" 的父构件 "${pl.onSurface.parent}" 不存在`,
+        elementId: pl.id,
+      });
+      continue;
+    }
+    _expandPlacement(pl, template, parent, elements, bp.materials || {}, diagnostics);
   }
 }
 
 /** 展开一条 placement 为瓦片网格（单个元素，批处理生成所有瓦片）*/
-function _expandPlacement(pl: Placement, template: GeometryElement, parent: GeometryElement, elements: GeometryElement[], bpMaterials: Record<string, any>): void {
+function _expandPlacement(
+  pl: Placement,
+  template: GeometryElement,
+  parent: GeometryElement,
+  elements: GeometryElement[],
+  bpMaterials: Record<string, any>,
+  diagnostics: EngineDiagnostic[],
+): void {
   const faces = typeof pl.onSurface.face === 'string' ? [pl.onSurface.face] : pl.onSurface.face;
   const l = pl.layout;
   let faceIndex = 0;
@@ -116,7 +107,16 @@ function _expandPlacement(pl: Placement, template: GeometryElement, parent: Geom
 
   for (const face of faces) {
     const surface = getSurfaceCorners(parent, face);
-    if (!surface) { console.warn(`Placement "${pl.id}" face "${face}" not found on "${pl.onSurface.parent}"`); continue; }
+    if (!surface) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'PLACEMENT_SURFACE_UNSUPPORTED',
+        message: `排布 "${pl.id}" 无法解析 "${pl.onSurface.parent}" 的 "${face}" 表面`,
+        elementId: pl.id,
+        elementType: parent.type,
+      });
+      continue;
+    }
     const { corners, normal } = surface;
     const [bl, br, tr, tl] = corners;
     const uVec = [br[0]-bl[0], br[1]-bl[1], br[2]-bl[2]];

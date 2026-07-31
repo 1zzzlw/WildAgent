@@ -18,20 +18,6 @@ export function buildWall(params: WallParams): MeshData[] {
   const length = Math.sqrt(dx * dx + dz * dz);
   const height = Math.abs(to[1] - from[1]);
   
-  // 调试：检查异常长度
-  if (length > 20 || cutouts?.length > 0) {
-    console.log(`🧱 buildWall ${(params as any).id}`);
-    console.log(`  from: [${from.join(', ')}]`);
-    console.log(`  to: [${to.join(', ')}]`);
-    console.log(`  length: ${length.toFixed(2)}m, height: ${height.toFixed(2)}m`);
-    console.log(`  cutouts: ${cutouts?.length || 0}`);
-    if (cutouts) {
-      cutouts.forEach((c: any) => {
-        console.log(`    - localX=${c.localX.toFixed(2)}, localW=${c.localW.toFixed(2)}`);
-      });
-    }
-  }
-
   let geometry: Float32Array, indices: Uint16Array;
   if (cutouts?.length) {
     const r = boxWithHoles(length, height, thickness, cutouts);
@@ -45,7 +31,10 @@ export function buildWall(params: WallParams): MeshData[] {
   const midX = (from[0] + to[0]) / 2;
   const midZ = (from[2] + to[2]) / 2;
   const midY = (from[1] + to[1]) / 2;
-  const angle = Math.atan2(dz, dx);
+  // Three.js 绕 Y 轴旋转时，局部 +X 会映射到 (cosθ, -sinθ)。
+  // 因此墙体要沿世界方向 (dx, dz) 放置，旋转角必须取负值。
+  // 该约定与 resolver 中 opening 的局部坐标转换保持一致。
+  const angle = -Math.atan2(dz, dx);
 
   return [{
     geometry, indices: new Uint32Array(indices),

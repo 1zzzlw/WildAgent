@@ -29,16 +29,8 @@ function bakeEffects(base: MaterialDef): MaterialParams {
         r = Math.min(1, r + (fx.crackIntensity || 0) * 0.3);
       }
 
-      if (fx.type === 'moss') {
-        // 苔藓：mossColor 按 coverage 混合进 baseColor（均匀近似)
-        const c = fx.coverage || 0;
-        bc = [
-          bc[0] * (1 - c) + fx.mossColor[0] * c,
-          bc[1] * (1 - c) + fx.mossColor[1] * c,
-          bc[2] * (1 - c) + fx.mossColor[2] * c,
-        ];
-        r = Math.min(1, r + c * 0.2);
-      }
+      // moss 的分布依赖世界高度/噪声，只在逐顶点阶段处理，避免重复混色。
+      if (fx.type === 'moss') r = Math.min(1, r + (fx.coverage || 0) * 0.2);
 
       if (fx.type === 'edgeWear') {
         // 边缘磨损：wearColor 提高亮度（全局近似，真实需几何边缘检测）
@@ -62,6 +54,9 @@ function bakeEffects(base: MaterialDef): MaterialParams {
     effects: base.effects || [],
     lightingCondition: base.lightingCondition,
     embeddedImage: base.embeddedImage,
+    textures: base.textures,
+    normalScale: base.normalScale,
+    uvScale: base.uvScale,
   };
 }
 

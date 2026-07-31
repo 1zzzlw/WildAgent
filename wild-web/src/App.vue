@@ -13,7 +13,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import { agentBridge } from './agent/agentBridge'
 import { useUIStore } from './stores/uiStore'
 import { useSceneStore } from './stores/sceneStore'
 import EditorTopBar from './components/layout/EditorTopBar.vue'
@@ -30,8 +31,11 @@ onMounted(() => {
   const emptyDoc = sceneStore.createEmptyDocument()
   // 只设置document，不调用loadBlueprint（避免自动reconstruct）
   sceneStore.document = emptyDoc
+  agentBridge.connect()
   console.log('App mounted - Empty document created, GridHelper should be visible');
 })
+
+onUnmounted(() => agentBridge.disconnect())
 </script>
 
 <style scoped>

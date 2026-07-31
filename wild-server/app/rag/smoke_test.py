@@ -34,6 +34,10 @@ def main() -> None:
 
         checks = [
             ("生成一个中式四角凉亭", ["凉亭", "Pavilion"]),
+            (
+                "生成一个别墅 默认材质 配色 外墙 屋顶 门窗 玻璃透明度",
+                ["wall_plaster", "默认配色", "opacity"],
+            ),
             ("opening 坐标 parentWall from[0]", ["opening", "parentWall", "from[0]"]),
             ("屋顶 span depth 覆盖墙体", ["屋顶", "span", "depth"]),
         ]

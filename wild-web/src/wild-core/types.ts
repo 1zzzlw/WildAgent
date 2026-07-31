@@ -52,7 +52,8 @@ export type GeometryElement =
   | StairParams
   | FurnitureParams
   | DenseBrickParams
-  | BodyParams;
+  | BodyParams
+  | PrimitiveParams;
 
 // ========== 几何构件 ==========
 export interface WallParams {
@@ -77,7 +78,7 @@ export interface FloorParams {
   type: 'floor';
   id: string;
   from: Vec3;
-  to: Vec3;
+  to?: Vec3;
   thickness: number;
   material?: string;
   /** "rect"（默认）或 "circle" */
@@ -133,6 +134,7 @@ export interface RoofParams {
   eaveOutset?: number;
   /** 每层缩比 0-1，默认 0.7 */
   shrinkFactor?: number;
+  position?: Vec3;
   material?: string;
 }
 
@@ -196,7 +198,40 @@ export interface BodyParams {
   legLength: number;
   cloakLength: number;
   hoodUp: boolean;
+  position?: Vec3;
   material?: string;
+}
+
+/**
+ * 通用参数化形体（WILD v1.1）。
+ *
+ * 用少量可组合的数学形体表达篮球、檐口线脚等对象，避免为每个现实
+ * 名词增加一个专用 element type。
+ */
+export interface PrimitiveParams {
+  type: 'primitive';
+  id: string;
+  shape: 'box' | 'sphere' | 'cylinder' | 'profile_sweep';
+  position?: Vec3;
+  rotation?: Vec3;
+  scale?: Vec3;
+  material?: string;
+
+  /** box: [宽, 高, 深] */
+  dimensions?: Vec3;
+
+  /** sphere / cylinder / profile_sweep 默认截面半径 */
+  radius?: number;
+  radiusTop?: number;
+  radiusBottom?: number;
+  height?: number;
+  segments?: number;
+  heightSegments?: number;
+
+  /** profile_sweep: 二维截面点 [u, v] 与三维路径点 */
+  profile?: Array<[number, number]>;
+  path?: Vec3[];
+  closedProfile?: boolean;
 }
 
 // ========== 材质系统 ==========
@@ -221,7 +256,13 @@ export interface EdgeWearEffect {
   intensity: number;
 }
 
-export type EffectLayer = WeatheringEffect | MossEffect | EdgeWearEffect;
+export interface GrainEffect {
+  type: 'grain';
+  intensity: number;
+  scale: number;
+}
+
+export type EffectLayer = WeatheringEffect | MossEffect | EdgeWearEffect | GrainEffect;
 
 export interface EmbeddedImageData {
   encoding: 'base64';
@@ -239,6 +280,16 @@ export interface MaterialDef {
   lightingCondition: 'D65_noon';
   effects?: EffectLayer[];
   embeddedImage?: EmbeddedImageData;
+  /** WILD v1.1：可选的内嵌 PBR 纹理通道 */
+  textures?: {
+    baseColor?: EmbeddedImageData;
+    normal?: EmbeddedImageData;
+    roughness?: EmbeddedImageData;
+    metalness?: EmbeddedImageData;
+    ambientOcclusion?: EmbeddedImageData;
+  };
+  normalScale?: number;
+  uvScale?: [number, number];
 }
 
 // ========== 动态系统 ==========
@@ -296,7 +347,7 @@ export interface ActionData {
 export interface Meta {
   version: string;           // "1.0"
   // 场景类型："building"（建筑）或 "avatar"（虚拟角色）
-  type: 'building' | 'avatar';
+  type: 'building' | 'avatar' | 'asset' | 'scene';
   // 	场景名称，如 "中式凉亭"
   name: string;
   // 作者名（可选）
@@ -338,6 +389,7 @@ export interface Blueprint {
 }
 
 export interface InstanceRef {
+  id?: string;
   ref: string;
   position: Vec3;
   rotation?: Vec3;

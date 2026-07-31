@@ -174,9 +174,11 @@
       }
     ],
     "templates": {
-      "roof_tile": {
-        "type": "furniture",
-        "subtype": "tile",
+    "roof_tile": {
+      "type": "furniture",
+      "id": "roof_tile_template",
+      "subtype": "tile",
+      "position": [0, 0, 0],
         "dimensions": { "width": 1, "depth": 1, "height": 0.015 },
         "material": "roof_tile"
       }

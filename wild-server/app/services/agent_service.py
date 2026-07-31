@@ -496,6 +496,15 @@ class AgentService:
 
     def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
         parts = [message]
+        generation_keywords = (
+            "生成", "建造", "创建", "建一个", "做一个",
+            "画一个", "搭一个", "来一个", "设计一个",
+        )
+        if not current_blueprint and any(keyword in message for keyword in generation_keywords):
+            parts.append(
+                "同时检索：对象的默认变体、最少可行版本、默认材质、配色、"
+                "PBR 参数；建筑还需检索外墙、楼板、屋顶、门窗和玻璃透明度"
+            )
         if current_blueprint:
             meta = current_blueprint.get("meta", {})
             elements = current_blueprint.get("geometry", {}).get("elements", [])

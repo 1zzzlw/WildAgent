@@ -27,7 +27,7 @@ import type { Blueprint } from '../types/blueprint'
 export function createEmptyBlueprint(name: string = '未命名建筑'): Blueprint {
   return {
     meta: {
-      version: '1.0',
+      version: '1.1',
       type: 'building',
       name
     },
@@ -43,8 +43,7 @@ export function getElementDefaults(type: string): Record<string, unknown> {
   const defaults: Record<string, Record<string, unknown>> = {
     wall: {
       from: [0, 0, 0],
-      to: [4, 0, 0],
-      height: 3,
+      to: [4, 3, 0],
       thickness: 0.24
     },
     column: {
@@ -52,15 +51,17 @@ export function getElementDefaults(type: string): Record<string, unknown> {
       height: 3,
       bottomRadius: 0.2,
       topRadius: 0.2,
-      style: 'plain'
+      style: 'modern'
     },
     floor: {
-      region: [[0, 0, 0], [4, 0, 0], [4, 0, 4], [0, 0, 4]],
+      from: [0, 0, 0],
+      to: [4, 0, 4],
       thickness: 0.2
     },
     beam: {
       from: [0, 3, 0],
       to: [4, 3, 0],
+      crossSection: 'rect',
       width: 0.2,
       height: 0.3
     },
@@ -73,15 +74,21 @@ export function getElementDefaults(type: string): Record<string, unknown> {
     },
     opening: {
       parentWall: '',
-      from: 0,
+      from: [1, 0, 0],
       width: 1.2,
       height: 2.4,
-      style: 'door'
+      style: 'rectangular'
     },
     furniture: {
       subtype: 'table',
       position: [0, 0, 0],
-      dimensions: [1, 0.8, 1]
+      dimensions: { width: 1, depth: 0.8, height: 1 }
+    },
+    primitive: {
+      shape: 'sphere',
+      position: [0, 0.5, 0],
+      radius: 0.5,
+      segments: 32
     }
   }
 

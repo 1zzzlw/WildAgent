@@ -21,7 +21,8 @@ import type { ReconstructedEntity } from '../types/scene'
 // 注意：wild-core 使用的是 wild-lang/types.ts 的类型定义
 import {
   parseBlueprint as coreParseBlueprint,
-  reconstructEntity as coreReconstructEntity
+  reconstructEntity as coreReconstructEntity,
+  getEngineCapabilities,
 } from '../wild-core/src/primitive/index'
 
 /**
@@ -60,6 +61,10 @@ export async function reconstructWildEntity(blueprint: Blueprint): Promise<Recon
   try {
     // 调用 wild-core 的重建函数
     const coreEntity = await coreReconstructEntity(blueprint as any)
+    const errors = coreEntity.diagnostics.filter(item => item.level === 'error')
+    if (errors.length > 0) {
+      console.warn('WILD 重建完成，但存在构件错误:', errors)
+    }
 
     return coreEntity as unknown as ReconstructedEntity
   } catch (error) {
@@ -89,11 +94,9 @@ export async function loadWildScene(jsonText: string): Promise<{
  */
 export function getWildCoreInfo() {
   return {
-    version: '1.0',
-    supportedVersion: '1.0',
-    geometryTypes: [
-      'wall', 'floor', 'column', 'beam', 'roof',
-      'opening', 'stair', 'furniture', 'dense_brick', 'body'
-    ]
+    version: '1.1.0',
+    supportedVersion: '1.1',
+    geometryTypes: getEngineCapabilities().map(item => item.type),
+    capabilities: getEngineCapabilities(),
   }
 }

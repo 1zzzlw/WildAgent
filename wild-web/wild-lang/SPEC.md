@@ -1,4 +1,4 @@
-# 原语语言规范 v1.0
+# 原语语言规范 v1.1
 
 ## 一、文件格式
 
@@ -19,8 +19,8 @@
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `version` | string | 是 | 原语版本，当前 "1.0" |
-| `type` | string | 是 | "building" 或 "avatar" |
+| `version` | string | 是 | `"1.0"` 或 `"1.1"`；使用 `primitive`/PBR 纹理时必须为 `"1.1"` |
+| `type` | string | 是 | `"building"`、`"avatar"`、`"asset"` 或 `"scene"` |
 | `name` | string | 是 | 实体名称 |
 | `author` | string | 否 | 创建者地址 |
 | `createdAt` | number | 否 | 创建时间戳 |
@@ -40,7 +40,33 @@
 
 参见 [PRIMITIVES.md](PRIMITIVES.md)。
 
-### 3.3 高分辨率体积砖块 (dense_brick)
+### 3.3 通用程序化形体 (primitive，v1.1)
+
+`primitive` 用少量可组合的数学形体表达物件与构件细节，避免为“篮球”“檐口”等每个现实名词增加专用类型。
+
+```json
+{
+  "type": "primitive",
+  "id": "ball_body",
+  "shape": "sphere",
+  "position": [0, 0.12, 0],
+  "radius": 0.12,
+  "segments": 32,
+  "heightSegments": 20,
+  "material": "orange_rubber"
+}
+```
+
+当前稳定 shape：
+
+- `box`：使用 `dimensions`；
+- `sphere`：使用 `radius`、`segments`、`heightSegments`；
+- `cylinder`：使用 `radius` 或 `radiusTop`/`radiusBottom`、`height`、`segments`；
+- `profile_sweep`：将 `profile` 截面沿 `path` 扫掠。
+
+详细字段与扩展示例参见 [PRIMITIVES.md](PRIMITIVES.md)。
+
+### 3.4 高分辨率体积砖块 (dense_brick)
 
 ```json
 {
@@ -57,8 +83,9 @@
 - `data`：体素数据，使用 RLE 或八叉树压缩后再 gzip 压缩，Base64 编码。
 - `method`：重建算法，可选 "marching_cubes"（平滑）或 "dual_contouring"（保留锐边）。若不指定，引擎自动选择。
 - 体积砖块可携带颜色信息：每个体素除了密度值还可包含 RGBA 通道。此时 `material` 可省略，颜色由体素数据直接提供。
+- 当前参考引擎将该能力标记为 `experimental`，尚未实现体素解压与等值面提取；使用时会返回明确诊断，不再静默输出空网格。
 
-### 3.4 骨架变形 (body，化身专用)
+### 3.5 骨架变形 (body，化身专用)
 
 ```json
 {
@@ -75,14 +102,18 @@
 }
 ```
 
-### 3.5 模板与实例
+### 3.6 模板与实例
 
 蓝图可以包含 `templates` 字典和 `instances` 数组：
 
 ```json
 {
   "templates": {
-    "pillar": { "type": "column", "height": 3.3, "radius": 0.15, "material": "wood" }
+    "pillar": {
+      "type": "column", "id": "pillar_template", "base": [0, 0, 0],
+      "height": 3.3, "bottomRadius": 0.16, "topRadius": 0.14,
+      "style": "chinese_wooden", "material": "wood"
+    }
   },
   "instances": [
     { "ref": "pillar", "position": [0, 0, 0] },
@@ -99,7 +130,7 @@
 "materialOverride": { "column": "stone" }
 ```
 
-### 3.6 布局放置 (placements)
+### 3.7 布局放置 (placements)
 
 `placements` 数组提供了一种用数学规则批量生成构件实例的方式。与 `instances` 逐个指定位置不同，`placements` 通过父构件表面 + 网格布局参数自动计算每个实例的位置和朝向。
 
@@ -185,9 +216,9 @@
 
 ## 六、版本兼容
 
-引擎在解析蓝图时验证 `meta.version`。若版本不兼容，引擎拒绝解析并返回错误。
+引擎在解析蓝图时验证 `meta.version`，当前支持 WILD 1.0 与 1.1。若版本不兼容，引擎拒绝解析并返回错误。
 
-原语语言规范遵循"永不删除"原则：更高版本只增加新构件类型、新字段、新效果层和新指令，不删除或修改任何已定义内容。v1.0 中合法的蓝图在 v2.0 中继续有效且语义不变。
+原语语言规范遵循"永不删除"原则：更高版本只增加新构件类型、新字段、新效果层和新指令，不删除或修改任何已定义内容。v1.1 只增量增加通用形体、材质纹理通道和元数据类型，v1.0 蓝图继续有效。
 
 ## 七、合规性
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://wild.io/wild-lang/v1.0/schema.json",
-  "title": "原语蓝图 v1.0 Schema",
+  "$id": "https://wild.io/wild-lang/v1.1/schema.json",
+  "title": "原语蓝图 v1.1 Schema（兼容 v1.0）",
   "description": "用于校验 .wild 蓝图文件语法合法性的 JSON Schema",
   "type": "object",
   "required": ["meta", "geometry"],
@@ -10,8 +10,8 @@
       "type": "object",
       "required": ["version", "type", "name"],
       "properties": {
-        "version": { "type": "string", "description": "原语语言版本，当前为 '1.0'", "const": "1.0" },
-        "type": { "type": "string", "enum": ["building", "avatar"] },
+        "version": { "type": "string", "description": "原语语言版本", "enum": ["1.0", "1.1"] },
+        "type": { "type": "string", "enum": ["building", "avatar", "asset", "scene"] },
         "name": { "type": "string", "minLength": 1 },
         "author": { "type": "string" },
         "createdAt": { "type": "number" },
@@ -54,7 +54,7 @@
         { "$ref": "#/$defs/wall" }, { "$ref": "#/$defs/floor" }, { "$ref": "#/$defs/column" },
         { "$ref": "#/$defs/beam" }, { "$ref": "#/$defs/roof" }, { "$ref": "#/$defs/opening" },
         { "$ref": "#/$defs/stair" }, { "$ref": "#/$defs/furniture" }, { "$ref": "#/$defs/denseBrick" },
-        { "$ref": "#/$defs/body" }
+        { "$ref": "#/$defs/body" }, { "$ref": "#/$defs/primitive" }
       ]
     },
     "wall": {
@@ -64,11 +64,11 @@
         "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
         "thickness": { "type": "number", "exclusiveMinimum": 0 },
         "material": { "type": "string" },
-        "curve": { "$ref": "#/$defs/curveSegment" }
+        "curve": { "oneOf": [{ "$ref": "#/$defs/curveSegment" }, { "type": "array", "items": { "$ref": "#/$defs/curveSegment" }, "minItems": 1 }] }
       }
     },
     "floor": {
-      "type": "object", "required": ["type","id","from","to","thickness"],
+      "type": "object", "required": ["type","id","from","thickness"],
       "properties": {
         "type": { "const": "floor" }, "id": { "type": "string" },
         "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
@@ -77,7 +77,11 @@
         "shape": { "enum": ["rect","circle"], "default": "rect" },
         "radius": { "type": "number", "exclusiveMinimum": 0 },
         "segments": { "type": "integer", "minimum": 3, "default": 32 }
-      }
+      },
+      "oneOf": [
+        { "required": ["to"], "properties": { "shape": { "enum": ["rect"] } } },
+        { "required": ["radius"], "properties": { "shape": { "const": "circle" } } }
+      ]
     },
     "column": {
       "type": "object", "required": ["type","id","base","height","bottomRadius","topRadius","style"],
@@ -102,7 +106,7 @@
         "width": { "type": "number", "exclusiveMinimum": 0 },
         "height": { "type": "number", "exclusiveMinimum": 0 },
         "material": { "type": "string" },
-        "curve": { "$ref": "#/$defs/curveSegment" }
+        "curve": { "oneOf": [{ "$ref": "#/$defs/curveSegment" }, { "type": "array", "items": { "$ref": "#/$defs/curveSegment" }, "minItems": 1 }] }
       }
     },
     "roof": {
@@ -120,6 +124,7 @@
         "tierHeight": { "type": "number", "exclusiveMinimum": 0 },
         "eaveOutset": { "type": "number", "minimum": 0, "default": 0.5 },
         "shrinkFactor": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.7 },
+        "position": { "$ref": "#/$defs/vec3" },
         "material": { "type": "string" }
       }
     },
@@ -150,7 +155,7 @@
       "type": "object", "required": ["type","id","subtype","position","dimensions"],
       "properties": {
         "type": { "const": "furniture" }, "id": { "type": "string" },
-        "subtype": { "enum": ["table","chair","bookshelf","bed","lamp"] },
+        "subtype": { "enum": ["table","chair","bookshelf","bed","lamp","tile"] },
         "position": { "$ref": "#/$defs/vec3" },
         "style": { "type": "string" },
         "dimensions": {
@@ -189,10 +194,55 @@
         "material": { "type": "string" }
       }
     },
+    "primitive": {
+      "type": "object",
+      "required": ["type","id","shape"],
+      "properties": {
+        "type": { "const": "primitive" },
+        "id": { "type": "string" },
+        "shape": { "enum": ["box","sphere","cylinder","profile_sweep"] },
+        "position": { "$ref": "#/$defs/vec3" },
+        "rotation": { "$ref": "#/$defs/vec3" },
+        "scale": { "$ref": "#/$defs/vec3" },
+        "material": { "type": "string" },
+        "dimensions": { "$ref": "#/$defs/vec3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "radiusTop": { "type": "number", "exclusiveMinimum": 0 },
+        "radiusBottom": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "segments": { "type": "integer", "minimum": 3, "maximum": 128 },
+        "heightSegments": { "type": "integer", "minimum": 2, "maximum": 64 },
+        "profile": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "number" }
+          }
+        },
+        "path": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/vec3" } },
+        "closedProfile": { "type": "boolean", "default": true }
+      },
+      "oneOf": [
+        { "required": ["dimensions"], "properties": { "shape": { "const": "box" } } },
+        { "required": ["radius"], "properties": { "shape": { "const": "sphere" } } },
+        {
+          "required": ["height"],
+          "properties": { "shape": { "const": "cylinder" } },
+          "oneOf": [
+            { "required": ["radius"] },
+            { "required": ["radiusTop","radiusBottom"] }
+          ]
+        },
+        { "required": ["path"], "properties": { "shape": { "const": "profile_sweep" } } }
+      ]
+    },
     "instanceRef": {
       "type": "object", "required": ["ref","position"],
       "properties": {
-        "ref": { "type": "string" }, "position": { "$ref": "#/$defs/vec3" },
+        "id": { "type": "string" }, "ref": { "type": "string" }, "position": { "$ref": "#/$defs/vec3" },
         "rotation": { "$ref": "#/$defs/vec3" }, "scale": { "$ref": "#/$defs/vec3" },
         "materialOverride": { "type": "object", "additionalProperties": { "type": "string" } }
       }
@@ -222,14 +272,30 @@
         "opacity": { "type": "number", "minimum": 0, "maximum": 1, "default": 1.0 },
         "lightingCondition": { "const": "D65_noon" },
         "effects": { "type": "array", "items": { "$ref": "#/$defs/effectLayer" } },
-        "embeddedImage": { "$ref": "#/$defs/embeddedImage" }
+        "embeddedImage": { "$ref": "#/$defs/embeddedImage" },
+        "textures": {
+          "type": "object",
+          "properties": {
+            "baseColor": { "$ref": "#/$defs/embeddedImage" },
+            "normal": { "$ref": "#/$defs/embeddedImage" },
+            "roughness": { "$ref": "#/$defs/embeddedImage" },
+            "metalness": { "$ref": "#/$defs/embeddedImage" },
+            "ambientOcclusion": { "$ref": "#/$defs/embeddedImage" }
+          }
+        },
+        "normalScale": { "type": "number", "minimum": 0 },
+        "uvScale": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        }
       }
     },
     "effectLayer": {
       "oneOf": [
         { "type": "object", "required": ["type","dustColor","dustOpacity","crackIntensity","colorFade"], "properties": { "type": { "const": "weathering" }, "dustColor": { "$ref": "#/$defs/color" }, "dustOpacity": { "type": "number","minimum":0,"maximum":1 }, "crackIntensity": { "type": "number","minimum":0,"maximum":1 }, "colorFade": { "type": "number","minimum":0,"maximum":1 } } },
         { "type": "object", "required": ["type","mossColor","coverage","pattern"], "properties": { "type": { "const": "moss" }, "mossColor": { "$ref": "#/$defs/color" }, "coverage": { "type": "number","minimum":0,"maximum":1 }, "pattern": { "enum": ["base_up","patchy","edge"] } } },
-        { "type": "object", "required": ["type","wearColor","intensity"], "properties": { "type": { "const": "edgeWear" }, "wearColor": { "$ref": "#/$defs/color" }, "intensity": { "type": "number","minimum":0,"maximum":1 } } }
+        { "type": "object", "required": ["type","wearColor","intensity"], "properties": { "type": { "const": "edgeWear" }, "wearColor": { "$ref": "#/$defs/color" }, "intensity": { "type": "number","minimum":0,"maximum":1 } } },
+        { "type": "object", "required": ["type","intensity","scale"], "properties": { "type": { "const": "grain" }, "intensity": { "type": "number","minimum":0,"maximum":1 }, "scale": { "type": "number","exclusiveMinimum":0 } } }
       ]
     },
     "embeddedImage": { "type": "object", "required": ["encoding","mimeType","data"], "properties": { "encoding": { "const": "base64" }, "mimeType": { "type": "string" }, "data": { "type": "string" } } },

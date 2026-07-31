@@ -19,8 +19,8 @@ export interface Blueprint {
 }
 
 export interface BlueprintMeta {
-  version: string
-  type: string
+  version: '1.0' | '1.1'
+  type: 'building' | 'avatar' | 'asset' | 'scene'
   name: string
   author?: string
   description?: string
@@ -50,19 +50,40 @@ export type GeometryElementType =
   | 'furniture'
   | 'dense_brick'
   | 'body'
+  | 'primitive'
 
 export interface MaterialDef {
-  name: string
-  baseColor?: [number, number, number]
-  metallic?: number
-  roughness?: number
+  baseColor: [number, number, number]
+  roughness: number
+  metallic: number
+  albedo: number
+  lightingCondition: 'D65_noon'
+  emissive?: [number, number, number]
+  opacity?: number
+  effects?: Array<Record<string, unknown>>
+  embeddedImage?: EmbeddedImageData
+  textures?: {
+    baseColor?: EmbeddedImageData
+    normal?: EmbeddedImageData
+    roughness?: EmbeddedImageData
+    metalness?: EmbeddedImageData
+    ambientOcclusion?: EmbeddedImageData
+  }
+  normalScale?: number
+  uvScale?: [number, number]
   [key: string]: unknown
+}
+
+export interface EmbeddedImageData {
+  encoding: 'base64'
+  mimeType: string
+  data: string
 }
 
 export interface BehaviorsSection {
   physics?: unknown
   scripts?: unknown
-  animations?: unknown
+  animation?: unknown
   [key: string]: unknown
 }
 
@@ -91,11 +112,12 @@ export interface AgentMetadata {
 }
 
 export interface InstanceRef {
-  id: string
-  template: string
-  position?: [number, number, number]
+  id?: string
+  ref: string
+  position: [number, number, number]
   rotation?: [number, number, number]
   scale?: [number, number, number]
+  materialOverride?: Record<string, string>
 }
 
 export interface Placement {

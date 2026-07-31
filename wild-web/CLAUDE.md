@@ -63,7 +63,7 @@ WildAgent/
 │   │   │       ├── parser.ts          # .wild JSON 解析
 │   │   │       ├── expander.ts        # 模板展开 + placement 展开
 │   │   │       ├── resolver.ts        # 空间关系解析
-│   │   │       ├── geometry/          # 几何构建器（wall/floor/column/beam/roof/stair/opening/furniture/body/denseBrick）
+│   │   │       ├── geometry/          # 几何构建器（含 primitive 通用形体）
 │   │   │       ├── materials/apply.ts # 材质应用 + 程序化效果
 │   │   │       └── behaviors/scripts.ts
 │   │   ├── renderer/           # ✅ 渲染适配层（已完成）

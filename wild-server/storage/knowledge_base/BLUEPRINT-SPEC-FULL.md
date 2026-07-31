@@ -24,7 +24,7 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 ```json
 {
   "meta": {
-    "version": "1.0",
+    "version": "1.1",
     "type": "building",
     "name": "建筑名称",
     "author": "作者名称",
@@ -39,8 +39,8 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 | 字段      | 类型   | 必需 | 说明                      |
 | --------- | ------ | ---- | ------------------------- |
-| version   | string | ✓    | 蓝图格式版本，当前为"1.0" |
-| type      | string | ✓    | 类型，通常为"building"    |
+| version   | string | ✓    | `"1.0"` 或 `"1.1"`；使用 primitive/PBR 纹理时为 `"1.1"` |
+| type      | string | ✓    | `"building"` / `"avatar"` / `"asset"` / `"scene"` |
 | name      | string | ✓    | 建筑物名称                |
 | author    | string | ✗    | 作者                      |
 | createdAt | number | ✗    | 创建时间戳（毫秒）        |
@@ -373,6 +373,32 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 }
 ```
 
+#### 2.2.10 通用程序化形体 (Primitive，WILD v1.1)
+
+`primitive` 是几何能力，不是业务名词。篮球、花瓶、檐口等物件应优先由它与现有构件组合，不要发明 `type: "basketball"`。
+
+```json
+{
+  "type": "primitive",
+  "id": "ball_body",
+  "shape": "sphere",
+  "position": [0, 0.12, 0],
+  "radius": 0.12,
+  "segments": 32,
+  "heightSegments": 20,
+  "material": "orange_rubber"
+}
+```
+
+| shape | 关键字段 | 用途 |
+|------|----------|------|
+| `box` | `dimensions: [width, height, depth]` | 板、盒、简单构件 |
+| `sphere` | `radius`、可选 `segments` / `heightSegments` | 球体、圆头 |
+| `cylinder` | `height`、`radius` 或上下半径 | 杆、管、锥台 |
+| `profile_sweep` | `path`、可选 `profile` 或 `radius` | 檐口、屋脊、接缝、线脚 |
+
+所有 shape 还可使用 `position`、`rotation`、`scale` 和 `material`。`rotation` 为 XYZ 欧拉角，单位弧度。
+
 ---
 
 ## 3. Materials 材质定义
@@ -397,12 +423,17 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 | 字段              | 类型      | 范围    | 说明                     |
 | ----------------- | --------- | ------- | ------------------------ |
-| baseColor         | [R, G, B] | 0.0-1.0 | 基础颜色（RGB）          |
+| baseColor         | [R, G, B] | 0.0-1.0 | sRGB 基础颜色            |
 | roughness         | number    | 0.0-1.0 | 粗糙度（0=光滑，1=粗糙） |
 | metallic          | number    | 0.0-1.0 | 金属度                   |
 | albedo            | number    | 0.0-1.0 | 反照率                   |
 | opacity           | number    | 0.0-1.0 | 不透明度（可选）         |
 | lightingCondition | string    | -       | 光照条件："D65_noon" 等  |
+| textures          | object    | -       | v1.1 内嵌 PBR 通道：baseColor / normal / roughness / metalness / ambientOcclusion |
+| normalScale       | number    | -       | 法线纹理强度，默认 1 |
+| uvScale           | [number, number] | >0 | UV 重复次数，默认 `[1,1]` |
+
+所有数值颜色均按 sRGB authored value 表达。渲染器负责在线性工作空间中进行光照计算；基础色纹理按 sRGB 解码，法线、粗糙度、金属度和 AO 作为非颜色数据读取。
 
 ### 3.2 材质效果
 

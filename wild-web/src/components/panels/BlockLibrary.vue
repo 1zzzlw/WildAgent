@@ -47,7 +47,7 @@ const basicBlocks: BlockTemplate[] = [
     label: '柱子',
     icon: '║',
     description: '创建柱子',
-    defaults: { type: 'column', base: [0, 0, 0], height: 3, bottomRadius: 0.2, topRadius: 0.2, material: 'default' }
+    defaults: { type: 'column', base: [0, 0, 0], height: 3, bottomRadius: 0.2, topRadius: 0.2, style: 'modern', material: 'default' }
   },
   {
     type: 'floor',
@@ -61,7 +61,14 @@ const basicBlocks: BlockTemplate[] = [
     label: '屋顶',
     icon: '▲',
     description: '创建屋顶',
-    defaults: { type: 'roof', roofType: 'gable', span: 8, depth: 6, height: 3, material: 'default' }
+    defaults: { type: 'roof', roofType: 'gable', span: 8, depth: 6, height: 3, thickness: 0.18, material: 'default' }
+  },
+  {
+    type: 'primitive',
+    label: '通用球体',
+    icon: '●',
+    description: '创建可扩展的通用参数化球体',
+    defaults: { type: 'primitive', shape: 'sphere', position: [0, 0.5, 0], radius: 0.5, segments: 32, material: 'default' }
   }
 ]
 

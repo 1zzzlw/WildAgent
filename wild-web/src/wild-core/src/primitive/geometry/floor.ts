@@ -11,6 +11,9 @@ export function buildFloor(params: FloorParams): MeshData[] {
   if (shape === 'circle') {
     return buildCircularFloor(params);
   }
+  if (!to) {
+    throw new Error('floor.to is required when shape is rect');
+  }
 
   const surfaces = (params as any).surfaces;
   if (surfaces) {

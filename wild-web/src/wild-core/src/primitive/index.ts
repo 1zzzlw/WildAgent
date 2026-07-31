@@ -4,13 +4,15 @@
  * 将 .wild 蓝图编译为可渲染的几何体与材质参数。
  * 这是引擎的唯一公开入口。
  */
-import type { Blueprint, ReconstructedEntity, AABB, MeshData, MaterialParams } from './types';
+import type { Blueprint, ReconstructedEntity, AABB, MeshData, MaterialParams, EngineDiagnostic, Vec3 } from './types';
 import { expandTemplates, expandPlacements } from './expander';
 import { resolveSpatialRelations } from './resolver';
-import { buildWall, buildColumn, buildFloor, buildBeam, buildRoof, buildOpening, buildStair, buildFurniture, buildDenseBrick, buildBody } from './geometry';
+import { generatePlanarUVs } from './geometry/mesh-helper';
 import { applyMaterials } from './materials/apply';
+import { getElementBuilder } from './registry';
 export { parseBlueprint } from './parser';
-export type { Blueprint, ReconstructedEntity, MeshData } from './types';
+export { getEngineCapabilities, registerElementBuilder } from './registry';
+export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';
 
 // ─── 世界空间包围盒计算 ─────────────────────────────
 /** 对网格的所有顶点应用 TRS 变换，返回世界空间包围盒 */
@@ -58,7 +60,54 @@ function computeWorldAABB(meshes: MeshData[]): AABB {
     }
 
   }
+  if (!Number.isFinite(minX)) {
+    return { min: [0, 0, 0], max: [0, 0, 0] };
+  }
   return { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] };
+}
+
+function applyInstanceTransform(mesh: MeshData, element: any): void {
+  const instance = element._instanceTransform;
+  if (!instance) return;
+
+  const instancePosition = (instance.position || [0, 0, 0]) as Vec3;
+  const instanceRotation = (instance.rotation || [0, 0, 0]) as Vec3;
+  const instanceScale = (instance.scale || [1, 1, 1]) as Vec3;
+  const localPosition: Vec3 = [
+    mesh.transform.position[0] * instanceScale[0],
+    mesh.transform.position[1] * instanceScale[1],
+    mesh.transform.position[2] * instanceScale[2],
+  ];
+  const rotated = rotateEulerXYZ(localPosition, instanceRotation);
+
+  mesh.transform.position = [
+    rotated[0] + instancePosition[0],
+    rotated[1] + instancePosition[1],
+    rotated[2] + instancePosition[2],
+  ];
+  mesh.transform.rotation = [
+    mesh.transform.rotation[0] + instanceRotation[0],
+    mesh.transform.rotation[1] + instanceRotation[1],
+    mesh.transform.rotation[2] + instanceRotation[2],
+  ];
+  mesh.transform.scale = [
+    mesh.transform.scale[0] * instanceScale[0],
+    mesh.transform.scale[1] * instanceScale[1],
+    mesh.transform.scale[2] * instanceScale[2],
+  ];
+}
+
+function rotateEulerXYZ(point: Vec3, rotation: Vec3): Vec3 {
+  const [x, y, z] = point;
+  const [rx, ry, rz] = rotation;
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  const cz = Math.cos(rz), sz = Math.sin(rz);
+  return [
+    cy * cz * x - cy * sz * y + sy * z,
+    (sx * sy * cz + cx * sz) * x + (-sx * sy * sz + cx * cz) * y - sx * cy * z,
+    (-cx * sy * cz + sx * sz) * x + (cx * sy * sz + sx * cz) * y + cx * cy * z,
+  ];
 }
 
 /** 简单 3D 噪声（用于程序化纹理）*/
@@ -92,7 +141,9 @@ function bakeProceduralColors(meshes: MeshData[], materialParams: MaterialParams
 
     // 读取 grain 参数
     const grainFx = mp.effects?.find((e: any) => e.type === 'grain') as any;
-    const grainIntensity = grainFx?.intensity ?? 0.25;
+    const hasMoss = mp.effects?.some((e: any) => e.type === 'moss');
+    if (!grainFx && !hasMoss) continue;
+    const grainIntensity = grainFx?.intensity ?? 0;
     const grainScale = grainFx?.scale ?? 0.04;
     const { position, rotation, scale } = m.transform;
     const [sx, sy, sz] = scale;
@@ -107,7 +158,6 @@ function bakeProceduralColors(meshes: MeshData[], materialParams: MaterialParams
     const m20 = -cx * sy_ * cz + sx_ * sz_, m21 = cx * sy_ * sz_ + sx_ * cz, m22 = cx * cy;
     const verts = m.geometry;
     const colors = new Float32Array(verts.length);
-    const hasMoss = mp.effects?.some((e: any) => e.type === 'moss');
     const moss = hasMoss ? mp.effects!.find((e: any) => e.type === 'moss') as any : null;
 
     // 计算网格的 Y 范围（用于高度渐变）
@@ -178,14 +228,15 @@ function bakeProceduralColors(meshes: MeshData[], materialParams: MaterialParams
 
 // ─── 主入口 ───────────────────────────────────────
 export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEntity> {
+  const diagnostics: EngineDiagnostic[] = [];
   // 1. 展开模板
-  let elements = expandTemplates(bp);
+  let elements = expandTemplates(bp, diagnostics);
 
   // 2. 空间关系解析
   elements = resolveSpatialRelations(elements);
 
   // 2.5 展开 placement（此时父构件已定位）
-  expandPlacements(bp, elements);
+  expandPlacements(bp, elements, diagnostics);
 
 
   // 收集 physics constraints 的目标构件 ID（用于标记交互）
@@ -199,27 +250,53 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
 
   // 3. 同步重建每种构件的几何体 + 绑定 elementId
   const rawEntries: { elId: string; meshes: MeshData[] }[] = [];
+  const reportedCapabilityTypes = new Set<string>();
 
   for (const el of elements) {
     let meshes: MeshData[];
+    const registration = getElementBuilder((el as any).type);
+    if (!registration) {
+      diagnostics.push({
+        level: 'error',
+        code: 'UNSUPPORTED_ELEMENT_TYPE',
+        message: `没有注册构件类型 "${(el as any).type}" 的 builder`,
+        elementId: el.id,
+        elementType: (el as any).type,
+      });
+      continue;
+    }
+
+    if (registration.status !== 'stable' && !reportedCapabilityTypes.has(registration.type)) {
+      diagnostics.push({
+        level: registration.status === 'experimental' ? 'warning' : 'info',
+        code: 'PARTIAL_CAPABILITY',
+        message: `${registration.type}: ${registration.description}`,
+        elementType: registration.type,
+      });
+      reportedCapabilityTypes.add(registration.type);
+    }
 
     try {
-      switch (el.type) {
-        case 'wall': meshes = buildWall(el); break;
-        case 'floor': meshes = buildFloor(el); break;
-        case 'column': meshes = buildColumn(el); break;
-        case 'beam': meshes = buildBeam(el); break;
-        case 'roof': meshes = buildRoof(el); break;
-        case 'opening': meshes = buildOpening(el); break;
-        case 'stair': meshes = buildStair(el); break;
-        case 'furniture': meshes = buildFurniture(el); break;
-        case 'dense_brick': meshes = buildDenseBrick(el); break;
-        case 'body': meshes = buildBody(el); break;
-        default: console.warn(`Unknown element type: ${(el as any).type}`); continue;
-      }
+      meshes = registration.build(el);
     } catch (buildError) {
-      console.warn(`跳过无法重建的构件 [${el.id}] (type=${el.type}):`, buildError)
-      continue
+      diagnostics.push({
+        level: 'error',
+        code: 'ELEMENT_BUILD_FAILED',
+        message: buildError instanceof Error ? buildError.message : String(buildError),
+        elementId: el.id,
+        elementType: el.type,
+      });
+      continue;
+    }
+
+    if (meshes.length === 0 || meshes.every(mesh => mesh.geometry.length === 0)) {
+      diagnostics.push({
+        level: 'warning',
+        code: 'EMPTY_GEOMETRY',
+        message: `构件 "${el.id}" 没有生成可渲染几何`,
+        elementId: el.id,
+        elementType: el.type,
+      });
     }
 
     // 为每个网格绑定 elementId 和 interactive 标记
@@ -228,6 +305,8 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
     for (const m of meshes) {
       m.elementId = el.id;
       if (isInteractive) m.interactive = true;
+      if (!m.uvs) m.uvs = generatePlanarUVs(m.geometry);
+      applyInstanceTransform(m, el);
     }
 
     rawEntries.push({ elId: el.id, meshes });
@@ -241,7 +320,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   // 直接放行；单个瓦片需要合并为一个大网格以减少 draw call。
   // 
   // 注意：只合并小瓦片（placement生成的），不合并屋顶主体
-  const tileVerts: number[] = [], tileIdx: number[] = [], tileCols: number[] = [], tileNorms: number[] = [];
+  const tileVerts: number[] = [], tileIdx: number[] = [], tileCols: number[] = [], tileNorms: number[] = [], tileUvs: number[] = [];
   let tileMortarColor: [number, number, number] | undefined;
 
   const otherMeshes: MeshData[] = [];
@@ -269,9 +348,14 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
         tileVerts.push(m.geometry[i] + px, m.geometry[i + 1] + py, m.geometry[i + 2] + pz);
       }
 
-      for (let i = 0; i < m.indices!.length; i++) tileIdx.push(m.indices![i] + base);
+      if (m.indices) {
+        for (let i = 0; i < m.indices.length; i++) tileIdx.push(m.indices[i] + base);
+      } else {
+        for (let i = 0; i < m.geometry.length / 3; i++) tileIdx.push(base + i);
+      }
       if (m.vertexColors) for (let i = 0; i < m.vertexColors.length; i++) tileCols.push(m.vertexColors[i]);
       if (m.normals) for (let i = 0; i < m.normals.length; i++) tileNorms.push(m.normals[i]);
+      if (m.uvs) for (let i = 0; i < m.uvs.length; i++) tileUvs.push(m.uvs[i]);
       if (m.patternMortarColor && !tileMortarColor) tileMortarColor = m.patternMortarColor;
     } else {
       otherMeshes.push(m);
@@ -283,10 +367,12 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
       geometry: new Float32Array(tileVerts),
       indices: new Uint32Array(tileIdx),
       normals: tileNorms.length > 0 ? new Float32Array(tileNorms) : undefined,
+      uvs: tileUvs.length > 0 ? new Float32Array(tileUvs) : undefined,
       vertexColors: tileCols.length > 0 ? new Float32Array(tileCols) : undefined,
       transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
       materialRef: 'roof_tile',
       patternMortarColor: tileMortarColor,
+      elementId: '__merged_roof_tiles__',
     });
   }
   const meshes = otherMeshes;
@@ -303,7 +389,8 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
     boundingBox,
     physics: bp.behaviors?.physics,
     scripts: bp.behaviors?.scripts,
-    animation: bp.behaviors?.animation
+    animation: bp.behaviors?.animation,
+    diagnostics,
   };
 
 }

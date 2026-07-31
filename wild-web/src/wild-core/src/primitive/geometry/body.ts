@@ -1,57 +1,93 @@
-import type { BodyParams, MeshData } from '../types';
-import { indexTriList, finalizeCylinder } from './mesh-helper';
+import type { BodyParams, MeshData, Vec3 } from '../types';
+import { buildPrimitive } from './primitive';
 
 export function buildBody(params: BodyParams): MeshData[] {
-  const { height, material } = params;
-  const headRadius = height * 0.12;
-  const bodyHeight = height * 0.4;
-  const bodyRadius = height * 0.08;
+  const {
+    height,
+    build,
+    headShape,
+    armLength,
+    legLength,
+    cloakLength,
+    hoodUp,
+    material,
+  } = params;
+  if (height <= 0) throw new Error('body height must be greater than zero');
 
-  const { geometry: headGeo, indices: headIdx } = indexTriList(createSphereGeometry(headRadius, 12));
-  const { geometry: bodyGeo, indices: bodyIdx } = finalizeCylinder(createCylinderGeometry(bodyRadius, bodyRadius, bodyHeight, 16), 16);
+  const origin = params.position || [0, 0, 0];
+  const materialRef = material || 'default';
+  const buildScale = build === 'lean' ? 0.82 : build === 'stout' ? 1.18 : 1;
+  const headRadius = height * 0.075;
+  const legHeight = height * 0.42 * legLength;
+  const torsoHeight = height * 0.35;
+  const torsoRadius = height * 0.085 * buildScale;
+  const shoulderY = legHeight + torsoHeight * 0.82;
+  const armHeight = height * 0.28 * armLength;
+  const limbRadius = height * 0.032 * buildScale;
+  const meshes: MeshData[] = [];
 
-  return [
-    {
-      geometry: bodyGeo,
-      indices: new Uint32Array(bodyIdx),
-      transform: { position: [0, bodyHeight / 2, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-      materialRef: material || 'default'
-    },
-    {
-      geometry: headGeo,
-      indices: new Uint32Array(headIdx),
-      transform: { position: [0, bodyHeight + headRadius, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-      materialRef: material || 'default'
+  const add = (definition: Parameters<typeof buildPrimitive>[0]) => {
+    for (const mesh of buildPrimitive(definition)) {
+      mesh.transform.position = addVec3(mesh.transform.position, origin);
+      meshes.push(mesh);
     }
-  ];
+  };
+
+  add({
+    type: 'primitive', id: `${params.id}_torso`, shape: 'cylinder',
+    radiusBottom: torsoRadius * 0.82, radiusTop: torsoRadius,
+    height: torsoHeight, position: [0, legHeight + torsoHeight / 2, 0],
+    material: materialRef,
+  });
+  add({
+    type: 'primitive', id: `${params.id}_head`, shape: 'sphere',
+    radius: headRadius, position: [0, legHeight + torsoHeight + headRadius * 1.18, 0],
+    scale: headScale(headShape), material: materialRef,
+  });
+
+  for (const side of [-1, 1]) {
+    add({
+      type: 'primitive', id: `${params.id}_leg_${side}`, shape: 'cylinder',
+      radius: limbRadius, height: legHeight,
+      position: [side * torsoRadius * 0.48, legHeight / 2, 0],
+      material: materialRef,
+    });
+    add({
+      type: 'primitive', id: `${params.id}_arm_${side}`, shape: 'cylinder',
+      radius: limbRadius * 0.86, height: armHeight,
+      position: [side * (torsoRadius + armHeight / 2), shoulderY, 0],
+      rotation: [0, 0, Math.PI / 2],
+      material: materialRef,
+    });
+  }
+
+  if (cloakLength > 0.3) {
+    add({
+      type: 'primitive', id: `${params.id}_cloak`, shape: 'box',
+      dimensions: [torsoRadius * 2.25, height * 0.32 * cloakLength, height * 0.025],
+      position: [0, legHeight + torsoHeight * 0.48, -torsoRadius * 0.92],
+      material: materialRef,
+    });
+  }
+  if (hoodUp) {
+    add({
+      type: 'primitive', id: `${params.id}_hood`, shape: 'sphere',
+      radius: headRadius * 1.22,
+      position: [0, legHeight + torsoHeight + headRadius * 1.18, -headRadius * 0.2],
+      scale: [1, 1.08, 0.82],
+      material: materialRef,
+    });
+  }
+
+  return meshes;
 }
 
-function createSphereGeometry(radius: number, seg: number): Float32Array {
-  const v: number[] = [];
-  for (let i = 0; i < seg; i++) {
-    const lat1 = (i / seg) * Math.PI - Math.PI / 2;
-    const lat2 = ((i + 1) / seg) * Math.PI - Math.PI / 2;
-    for (let j = 0; j < seg; j++) {
-      const lon1 = (j / seg) * Math.PI * 2;
-      const lon2 = ((j + 1) / seg) * Math.PI * 2;
-      const x1 = Math.cos(lat1) * Math.cos(lon1) * radius;
-      const y1 = Math.sin(lat1) * radius;
-      const z1 = Math.cos(lat1) * Math.sin(lon1) * radius;
-      v.push(x1, y1, z1);
-    }
-  }
-  return new Float32Array(v);
+function headScale(shape: BodyParams['headShape']): Vec3 {
+  if (shape === 'oval') return [0.9, 1.16, 0.9];
+  if (shape === 'angular') return [1, 1, 0.88];
+  return [1, 1, 1];
 }
 
-function createCylinderGeometry(r1: number, r2: number, h: number, seg: number): Float32Array {
-  const v: number[] = [];
-  const hh = h / 2;
-  for (let i = 0; i <= seg; i++) {
-    const angle = (i / seg) * Math.PI * 2;
-    const x = Math.cos(angle);
-    const z = Math.sin(angle);
-    v.push(x * r1, -hh, z * r1);
-    v.push(x * r2,  hh, z * r2);
-  }
-  return new Float32Array(v);
+function addVec3(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 }

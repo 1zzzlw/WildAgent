@@ -8,3 +8,4 @@ export { buildStair } from './stair';
 export { buildFurniture } from './furniture';
 export { buildDenseBrick } from './denseBrick';
 export { buildBody } from './body';
+export { buildPrimitive } from './primitive';

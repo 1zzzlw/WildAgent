@@ -31,7 +31,8 @@ export interface ReconstructedEntity {
   boundingBox: BoundingBox
   physics?: unknown
   scripts?: unknown[]
-  animations?: unknown
+  animation?: unknown
+  diagnostics: EngineDiagnostic[]
 }
 
 /**
@@ -70,6 +71,30 @@ export interface MaterialParams {
   opacity: number
   effects?: unknown[]
   lightingCondition?: string
+  embeddedImage?: EmbeddedImageData
+  textures?: {
+    baseColor?: EmbeddedImageData
+    normal?: EmbeddedImageData
+    roughness?: EmbeddedImageData
+    metalness?: EmbeddedImageData
+    ambientOcclusion?: EmbeddedImageData
+  }
+  normalScale?: number
+  uvScale?: [number, number]
+}
+
+export interface EmbeddedImageData {
+  encoding: 'base64'
+  mimeType: string
+  data: string
+}
+
+export interface EngineDiagnostic {
+  level: 'info' | 'warning' | 'error'
+  code: string
+  message: string
+  elementId?: string
+  elementType?: string
 }
 
 export interface BoundingBox {

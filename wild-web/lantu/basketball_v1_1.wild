@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "asset",
+    "name": "参数化篮球",
+    "style": "sports_equipment"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "primitive",
+        "id": "basketball_body",
+        "shape": "sphere",
+        "position": [0, 0.121, 0],
+        "radius": 0.12,
+        "segments": 40,
+        "heightSegments": 24,
+        "material": "basketball_orange"
+      },
+      {
+        "type": "primitive",
+        "id": "basketball_seam_horizontal",
+        "shape": "profile_sweep",
+        "radius": 0.0018,
+        "segments": 6,
+        "path": [
+          [0.1215, 0.121, 0],
+          [0.1123, 0.121, 0.0465],
+          [0.0859, 0.121, 0.0859],
+          [0.0465, 0.121, 0.1123],
+          [0, 0.121, 0.1215],
+          [-0.0465, 0.121, 0.1123],
+          [-0.0859, 0.121, 0.0859],
+          [-0.1123, 0.121, 0.0465],
+          [-0.1215, 0.121, 0],
+          [-0.1123, 0.121, -0.0465],
+          [-0.0859, 0.121, -0.0859],
+          [-0.0465, 0.121, -0.1123],
+          [0, 0.121, -0.1215],
+          [0.0465, 0.121, -0.1123],
+          [0.0859, 0.121, -0.0859],
+          [0.1123, 0.121, -0.0465],
+          [0.1215, 0.121, 0]
+        ],
+        "material": "basketball_seam"
+      },
+      {
+        "type": "primitive",
+        "id": "basketball_seam_vertical",
+        "shape": "profile_sweep",
+        "radius": 0.0018,
+        "segments": 6,
+        "path": [
+          [0.1215, 0.121, 0],
+          [0.1123, 0.1675, 0],
+          [0.0859, 0.2069, 0],
+          [0.0465, 0.2333, 0],
+          [0, 0.2425, 0],
+          [-0.0465, 0.2333, 0],
+          [-0.0859, 0.2069, 0],
+          [-0.1123, 0.1675, 0],
+          [-0.1215, 0.121, 0],
+          [-0.1123, 0.0745, 0],
+          [-0.0859, 0.0351, 0],
+          [-0.0465, 0.0087, 0],
+          [0, -0.0005, 0],
+          [0.0465, 0.0087, 0],
+          [0.0859, 0.0351, 0],
+          [0.1123, 0.0745, 0],
+          [0.1215, 0.121, 0]
+        ],
+        "material": "basketball_seam"
+      }
+    ]
+  },
+  "materials": {
+    "basketball_orange": {
+      "baseColor": [0.86, 0.24, 0.035],
+      "roughness": 0.78,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "effects": [
+        {
+          "type": "grain",
+          "intensity": 0.09,
+          "scale": 0.006
+        }
+      ]
+    },
+    "basketball_seam": {
+      "baseColor": [0.018, 0.014, 0.012],
+      "roughness": 0.92,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    }
+  }
+}

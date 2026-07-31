@@ -384,6 +384,7 @@ type GeometryElementType =
   | 'furniture'
   | 'dense_brick'
   | 'body'
+  | 'primitive'
 ```
 
 ### 常用构件参数
@@ -798,22 +799,22 @@ interface ScenePatch {
 
 | 类型 | 中文名 | 主要参数 |
 |---|---|---|
-| wall | 墙体 | from, to, height, thickness |
-| floor | 地板 | region, thickness |
-| column | 柱子 | base, height, bottomRadius, topRadius |
-| beam | 梁 | from, to, width, height |
-| roof | 屋顶 | roofType, span, depth, height |
-| opening | 门窗 | parentWall, from, width, height |
-| stair | 楼梯 | from, to, steps, width |
+| wall | 墙体 | from, to, thickness |
+| floor | 地板 | from, to 或 shape/radius, thickness |
+| column | 柱子 | base, height, bottomRadius, topRadius, style |
+| beam | 梁 | from, to, crossSection, width, height |
+| roof | 屋顶 | roofType, span, depth, height, thickness |
+| opening | 门窗 | parentWall, from, width, height, style |
+| stair | 楼梯 | from, to, stepCount, width |
 | furniture | 家具 | subtype, position, dimensions |
-| dense_brick | 密集砖块 | region, brickSize |
-| body | 化身 | bodyParts |
+| dense_brick | 实验体素 | resolution, origin, data |
+| body | 化身 | height, build, headShape, 四肢/斗篷参数 |
+| primitive | 通用形体 | shape, position，以及各 shape 参数 |
 
 ### B. 常用材质参数
 
 ```typescript
 {
-  name: string,
   baseColor: [number, number, number],  // RGB [0-1]
   metallic: number,                     // 0-1
   roughness: number,                    // 0-1

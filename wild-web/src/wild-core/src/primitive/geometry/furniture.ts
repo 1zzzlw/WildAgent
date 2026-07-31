@@ -1,5 +1,7 @@
 import type { FurnitureParams, MeshData } from '../types';
 import { indexTriList } from './mesh-helper';
+import { createBoxGeometry } from './wall';
+import { buildPrimitive } from './primitive';
 
 export function buildFurniture(params: FurnitureParams): MeshData[] {
   const tileGrid = (params as any)._tileGrid;
@@ -9,11 +11,27 @@ export function buildFurniture(params: FurnitureParams): MeshData[] {
   const pos = params.position ?? [0, 0, 0];
   const rot = (params as any).rotation ?? [0, 0, 0];
   const ms = buildSubtype(subtype, width, depth, height, material || 'default');
-  for (const m of ms) { m.transform.position = [pos[0], pos[1], pos[2]]; m.transform.rotation = [rot[0], rot[1], rot[2]]; }
+  for (const m of ms) {
+    const local = rotateEulerXYZ(m.transform.position, rot);
+    m.transform.position = [pos[0] + local[0], pos[1] + local[1], pos[2] + local[2]];
+    m.transform.rotation = [
+      m.transform.rotation[0] + rot[0],
+      m.transform.rotation[1] + rot[1],
+      m.transform.rotation[2] + rot[2],
+    ];
+  }
   return ms;
 }
 function buildSubtype(s: string, w: number, d: number, h: number, mat: string): MeshData[] {
-  return buildTable(w, d, h, mat);
+  switch (s) {
+    case 'table': return buildTable(w, d, h, mat);
+    case 'chair': return buildChair(w, d, h, mat);
+    case 'bookshelf': return buildBookshelf(w, d, h, mat);
+    case 'bed': return buildBed(w, d, h, mat);
+    case 'lamp': return buildLamp(w, d, h, mat);
+    case 'tile': return [boxMesh(w, Math.max(h, 0.015), d, [0, Math.max(h, 0.015) / 2, 0], mat)];
+    default: throw new Error(`Unsupported furniture subtype: ${s}`);
+  }
 }
 
 interface TileGrid {
@@ -123,6 +141,111 @@ function computeTileNormals(verts: number[], idx: number[]): Float32Array {
 }
 
 function buildTable(w: number, d: number, h: number, mat: string): MeshData[] {
-  const { geometry, indices } = indexTriList(new Float32Array([-w/2,h*0.85,-d/2,w/2,h*0.85,-d/2,w/2,h*0.85,d/2,-w/2,h*0.85,-d/2,w/2,h*0.85,d/2,-w/2,h*0.85,d/2]));
-  return [{ geometry, indices: new Uint32Array(indices), transform: { position: [0,0,0], rotation: [0,0,0], scale: [1,1,1] }, materialRef: mat }];
+  const topThickness = Math.max(h * 0.1, 0.04);
+  const legWidth = Math.max(Math.min(w, d) * 0.09, 0.035);
+  const legHeight = Math.max(h - topThickness, 0.04);
+  const insetX = Math.max(w / 2 - legWidth, 0);
+  const insetZ = Math.max(d / 2 - legWidth, 0);
+  return [
+    boxMesh(w, topThickness, d, [0, h - topThickness / 2, 0], mat),
+    ...cornerLegs(insetX, insetZ, legWidth, legHeight, mat),
+  ];
+}
+
+function buildChair(w: number, d: number, h: number, mat: string): MeshData[] {
+  const seatY = h * 0.45;
+  const thickness = Math.max(h * 0.08, 0.035);
+  const legWidth = Math.max(Math.min(w, d) * 0.1, 0.03);
+  const insetX = Math.max(w / 2 - legWidth, 0);
+  const insetZ = Math.max(d / 2 - legWidth, 0);
+  return [
+    boxMesh(w, thickness, d, [0, seatY, 0], mat),
+    ...cornerLegs(insetX, insetZ, legWidth, seatY - thickness / 2, mat),
+    boxMesh(w, h - seatY, thickness, [0, (h + seatY) / 2, -d / 2 + thickness / 2], mat),
+  ];
+}
+
+function buildBookshelf(w: number, d: number, h: number, mat: string): MeshData[] {
+  const board = Math.max(Math.min(w, d) * 0.07, 0.035);
+  const result = [
+    boxMesh(board, h, d, [-w / 2 + board / 2, h / 2, 0], mat),
+    boxMesh(board, h, d, [w / 2 - board / 2, h / 2, 0], mat),
+    boxMesh(w, board, d, [0, board / 2, 0], mat),
+    boxMesh(w, board, d, [0, h - board / 2, 0], mat),
+    boxMesh(w - board * 2, h - board * 2, board, [0, h / 2, -d / 2 + board / 2], mat),
+  ];
+  for (const ratio of [0.33, 0.66]) {
+    result.push(boxMesh(w - board * 2, board, d, [0, h * ratio, 0], mat));
+  }
+  return result;
+}
+
+function buildBed(w: number, d: number, h: number, mat: string): MeshData[] {
+  const frameHeight = Math.max(h * 0.28, 0.12);
+  const mattressHeight = Math.max(h * 0.32, 0.12);
+  return [
+    boxMesh(w, frameHeight, d, [0, frameHeight / 2, 0], mat),
+    boxMesh(w * 0.94, mattressHeight, d * 0.94, [0, frameHeight + mattressHeight / 2, 0], mat),
+    boxMesh(w, h, Math.max(d * 0.06, 0.06), [0, h / 2, -d / 2], mat),
+  ];
+}
+
+function buildLamp(w: number, d: number, h: number, mat: string): MeshData[] {
+  const radius = Math.max(Math.min(w, d) / 2, 0.04);
+  const baseHeight = Math.max(h * 0.08, 0.03);
+  return [
+    ...buildPrimitive({ type: 'primitive', id: 'lamp_base', shape: 'cylinder', radius, height: baseHeight, position: [0, baseHeight / 2, 0], material: mat }),
+    ...buildPrimitive({ type: 'primitive', id: 'lamp_stand', shape: 'cylinder', radius: radius * 0.12, height: h * 0.62, position: [0, h * 0.36, 0], material: mat }),
+    ...buildPrimitive({
+      type: 'primitive', id: 'lamp_shade', shape: 'cylinder',
+      radiusBottom: radius, radiusTop: radius * 0.55, height: h * 0.3,
+      position: [0, h * 0.82, 0], material: mat,
+    }),
+  ];
+}
+
+function cornerLegs(insetX: number, insetZ: number, width: number, height: number, mat: string): MeshData[] {
+  const y = height / 2;
+  return [
+    boxMesh(width, height, width, [-insetX, y, -insetZ], mat),
+    boxMesh(width, height, width, [insetX, y, -insetZ], mat),
+    boxMesh(width, height, width, [-insetX, y, insetZ], mat),
+    boxMesh(width, height, width, [insetX, y, insetZ], mat),
+  ];
+}
+
+function boxMesh(
+  width: number,
+  height: number,
+  depth: number,
+  position: [number, number, number],
+  materialRef: string,
+): MeshData {
+  const indexed = indexTriList(createBoxGeometry(
+    Math.max(width, 0.001),
+    Math.max(height, 0.001),
+    Math.max(depth, 0.001),
+  ));
+  return {
+    geometry: indexed.geometry,
+    indices: new Uint32Array(indexed.indices),
+    transform: { position, rotation: [0, 0, 0], scale: [1, 1, 1] },
+    materialRef,
+  };
+}
+
+function rotateEulerXYZ(
+  point: [number, number, number],
+  rotation: [number, number, number],
+): [number, number, number] {
+  const [x, y, z] = point;
+  const [rx, ry, rz] = rotation;
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  const cz = Math.cos(rz), sz = Math.sin(rz);
+  return [
+    cy * cz * x - cy * sz * y + sy * z,
+    (sx * sy * cz + cx * sz) * x + (-sx * sy * sz + cx * cz) * y - sx * cy * z,
+    (-cx * sy * cz + sx * sz) * x + (cx * sy * sz + sx * cz) * y + cx * cy * z,
+  ];
 }

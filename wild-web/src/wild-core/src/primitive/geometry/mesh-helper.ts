@@ -66,3 +66,37 @@ export function finalizeCylinder(vertices: Float32Array, seg: number): { geometr
 
   return { geometry: new Float32Array(arr), indices: new Uint16Array(idx) };
 }
+
+/**
+ * 为没有专用展开方式的旧构建器生成稳定的平面 UV。
+ *
+ * 选择局部包围盒跨度最大的两个轴进行投影。它不是复杂建筑表面的最终
+ * UV 方案，但能保证所有 MeshData 都具备可用 UV，供内嵌 PBR 纹理和
+ * 材质预览使用。新构建器应优先输出自己的语义 UV。
+ */
+export function generatePlanarUVs(vertices: Float32Array): Float32Array {
+  const uvs = new Float32Array((vertices.length / 3) * 2);
+  if (vertices.length === 0) return uvs;
+
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < vertices.length; i += 3) {
+    for (let axis = 0; axis < 3; axis++) {
+      const value = vertices[i + axis];
+      min[axis] = Math.min(min[axis], value);
+      max[axis] = Math.max(max[axis], value);
+    }
+  }
+
+  const axes = [0, 1, 2].sort((a, b) => (max[b] - min[b]) - (max[a] - min[a]));
+  const uAxis = axes[0];
+  const vAxis = axes[1];
+  const uRange = Math.max(max[uAxis] - min[uAxis], 1e-6);
+  const vRange = Math.max(max[vAxis] - min[vAxis], 1e-6);
+
+  for (let vi = 0, ui = 0; vi < vertices.length; vi += 3, ui += 2) {
+    uvs[ui] = (vertices[vi + uAxis] - min[uAxis]) / uRange;
+    uvs[ui + 1] = (vertices[vi + vAxis] - min[vAxis]) / vRange;
+  }
+  return uvs;
+}

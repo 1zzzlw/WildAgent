@@ -10,7 +10,8 @@ import type {
   PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams,
   OpeningParams, StairParams, FurnitureParams, DenseBrickParams, BodyParams,
-  WeatheringEffect, MossEffect, EdgeWearEffect, EffectLayer,
+  PrimitiveParams,
+  WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
   ScriptCondition, ActionData,
   InstanceRef
@@ -21,7 +22,8 @@ export type {
   Vec3, Color, Meta, GeometryElement, MaterialDef, PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams, OpeningParams, StairParams,
   FurnitureParams, DenseBrickParams, BodyParams,
-  WeatheringEffect, MossEffect, EdgeWearEffect, EffectLayer,
+  PrimitiveParams,
+  WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
   ScriptCondition, ActionData,
   InstanceRef
@@ -33,6 +35,8 @@ export interface MeshData {
   indices?: Uint32Array;
   /** 法线（逐顶点，同 geometry 长度） */
   normals?: Float32Array;
+  /** UV（逐顶点，每个顶点 2 个分量） */
+  uvs?: Float32Array;
   /** 逐顶点颜色 [R,G,B,...]，用于程序化纹理 */
   vertexColors?: Float32Array;
   transform: {
@@ -64,6 +68,23 @@ export interface MaterialParams {
   effects: import('../../types').EffectLayer[];
   lightingCondition: string;
   embeddedImage?: import('../../types').EmbeddedImageData;
+  textures?: import('../../types').MaterialDef['textures'];
+  normalScale?: number;
+  uvScale?: [number, number];
+}
+
+export interface EngineDiagnostic {
+  level: 'info' | 'warning' | 'error';
+  code: string;
+  message: string;
+  elementId?: string;
+  elementType?: string;
+}
+
+export interface EngineCapability {
+  type: string;
+  status: 'stable' | 'partial' | 'experimental';
+  description: string;
 }
 
 /** 轴对齐包围盒 */
@@ -80,6 +101,7 @@ export interface ReconstructedEntity {
   physics?: PhysicsData;
   scripts?: ScriptData[];
   animation?: AnimationParams;
+  diagnostics: EngineDiagnostic[];
 }
 
 /** 空间索引：快速查找相邻构件 */

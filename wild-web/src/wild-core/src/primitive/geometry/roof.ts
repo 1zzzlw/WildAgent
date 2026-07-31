@@ -7,6 +7,7 @@ export function buildRoof(params: RoofParams): MeshData[] {
   const pos = (params as any).position ?? [0, 0, 0];
 
   if (roofType === 'chinese_pagoda') return buildPagoda(params, pos);
+  if (roofType === 'chinese_curved') return buildChineseCurved(params, pos);
 
   let geometry: Float32Array;
   switch (roofType) {
@@ -14,12 +15,111 @@ export function buildRoof(params: RoofParams): MeshData[] {
     case 'hip':     geometry = buildHip(hw, hd, height, thickness); break;
     case 'dome':    geometry = buildDome(hw, hd, height, thickness); break;
     case 'flat':    geometry = buildFlat(hw, hd, thickness); break;
-    default:        geometry = buildGable(hw, hd, height, thickness);
+    default:        throw new Error(`Unsupported roofType: ${roofType}`);
   }
 
   const { geometry: geo, indices } = indexTriList(geometry);
   return [{
     geometry: geo, indices: new Uint32Array(indices),
+    transform: { position: [pos[0], pos[1], pos[2]], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    materialRef: material || 'default',
+  }];
+}
+
+/** 中式曲面屋顶：举折曲线 + 四角飞檐 + 有厚度内表面 */
+function buildChineseCurved(params: RoofParams, pos: number[]): MeshData[] {
+  const { span, depth, height, thickness, material } = params;
+  const hw = span / 2, hd = depth / 2;
+  const crossSegments = 18;
+  const depthSegments = 12;
+  const eaveLift = params.eaveCurveHeight ?? Math.min(height * 0.18, 0.8);
+  const profilePower = params.curveProfile === 'steep'
+    ? 1.55
+    : params.curveProfile === 'gentle' ? 1.15 : 1.32;
+  const roofThickness = Math.max(thickness, 0.02);
+  const vertices: number[] = [];
+  const uvs: number[] = [];
+
+  const point = (side: -1 | 1, crossIndex: number, depthIndex: number, inner: boolean): [number, number, number] => {
+    const t = crossIndex / crossSegments;
+    const zRatio = depthIndex / depthSegments * 2 - 1;
+    const x = side * hw * t;
+    const cornerLift = eaveLift * Math.pow(Math.abs(zRatio), 4) * Math.pow(t, 4);
+    const y = height * Math.pow(1 - t, profilePower) + cornerLift - (inner ? roofThickness : 0);
+    return [x, y, zRatio * hd];
+  };
+
+  const push = (p: number[], uv: [number, number]) => {
+    vertices.push(p[0], p[1], p[2]);
+    uvs.push(uv[0], uv[1]);
+  };
+  const quad = (
+    a: number[], b: number[], c: number[], d: number[],
+    uvA: [number, number], uvB: [number, number], uvC: [number, number], uvD: [number, number],
+    reverse = false,
+  ) => {
+    if (reverse) {
+      push(a, uvA); push(c, uvC); push(b, uvB);
+      push(a, uvA); push(d, uvD); push(c, uvC);
+    } else {
+      push(a, uvA); push(b, uvB); push(c, uvC);
+      push(a, uvA); push(c, uvC); push(d, uvD);
+    }
+  };
+
+  for (const side of [-1, 1] as const) {
+    for (let ci = 0; ci < crossSegments; ci++) {
+      const u0 = ci / crossSegments, u1 = (ci + 1) / crossSegments;
+      for (let di = 0; di < depthSegments; di++) {
+        const v0 = di / depthSegments, v1 = (di + 1) / depthSegments;
+        const a = point(side, ci, di, false);
+        const b = point(side, ci + 1, di, false);
+        const c = point(side, ci + 1, di + 1, false);
+        const d = point(side, ci, di + 1, false);
+        quad(a, b, c, d, [u0, v0], [u1, v0], [u1, v1], [u0, v1], side === -1);
+
+        const ai = point(side, ci, di, true);
+        const bi = point(side, ci + 1, di, true);
+        const ci2 = point(side, ci + 1, di + 1, true);
+        const di2 = point(side, ci, di + 1, true);
+        quad(ai, bi, ci2, di2, [u0, v0], [u1, v0], [u1, v1], [u0, v1], side === 1);
+      }
+    }
+
+    // 檐口封边
+    for (let di = 0; di < depthSegments; di++) {
+      const v0 = di / depthSegments, v1 = (di + 1) / depthSegments;
+      quad(
+        point(side, crossSegments, di, false),
+        point(side, crossSegments, di + 1, false),
+        point(side, crossSegments, di + 1, true),
+        point(side, crossSegments, di, true),
+        [0, v0], [0, v1], [1, v1], [1, v0],
+        side === -1,
+      );
+    }
+
+    // 前后山面封边
+    for (const depthIndex of [0, depthSegments]) {
+      for (let ci = 0; ci < crossSegments; ci++) {
+        quad(
+          point(side, ci, depthIndex, false),
+          point(side, ci + 1, depthIndex, false),
+          point(side, ci + 1, depthIndex, true),
+          point(side, ci, depthIndex, true),
+          [ci / crossSegments, 0], [(ci + 1) / crossSegments, 0],
+          [(ci + 1) / crossSegments, 1], [ci / crossSegments, 1],
+          (depthIndex === 0) !== (side === -1),
+        );
+      }
+    }
+  }
+
+  const geometry = new Float32Array(vertices);
+  return [{
+    geometry,
+    indices: Uint32Array.from({ length: geometry.length / 3 }, (_, index) => index),
+    uvs: new Float32Array(uvs),
     transform: { position: [pos[0], pos[1], pos[2]], rotation: [0, 0, 0], scale: [1, 1, 1] },
     materialRef: material || 'default',
   }];
@@ -108,13 +208,28 @@ function buildGable(hw: number, hd: number, h: number, t: number): Float32Array 
 
 function buildHip(hw: number, hd: number, h: number, t: number): Float32Array {
   const v: number[] = [];
-  const peak: [number,number,number] = [0, h, 0];
   const corners: [number,number,number][] = [[-hw,0,-hd],[hw,0,-hd],[hw,0,hd],[-hw,0,hd]];
-  // 四个坡面（各一个三角形，顶点到屋脊）
-  for (let i = 0; i < 4; i++) {
-    const j = (i + 1) % 4;
-    const a = corners[i], b = corners[j];
-    v.push(a[0],a[1],a[2], b[0],b[1],b[2], peak[0],peak[1],peak[2]);
+  const pushTri = (a:number[],b:number[],c:number[]) => v.push(...a,...b,...c);
+  const pushQuad = (a:number[],b:number[],c:number[],d:number[]) => {
+    pushTri(a,b,c); pushTri(a,c,d);
+  };
+
+  if (hd >= hw) {
+    const ridgeHalf = Math.max(0, hd - hw);
+    const r0: [number,number,number] = [0,h,-ridgeHalf];
+    const r1: [number,number,number] = [0,h,ridgeHalf];
+    pushTri(corners[0], corners[1], r0);
+    pushQuad(corners[1], corners[2], r1, r0);
+    pushTri(corners[2], corners[3], r1);
+    pushQuad(corners[3], corners[0], r0, r1);
+  } else {
+    const ridgeHalf = Math.max(0, hw - hd);
+    const r0: [number,number,number] = [-ridgeHalf,h,0];
+    const r1: [number,number,number] = [ridgeHalf,h,0];
+    pushQuad(corners[0], corners[1], r1, r0);
+    pushTri(corners[1], corners[2], r1);
+    pushQuad(corners[2], corners[3], r0, r1);
+    pushTri(corners[3], corners[0], r0);
   }
   // 底面封口（朝下，顶点顺序翻转）
   const [c0, c1, c2, c3] = corners;
@@ -125,7 +240,16 @@ function buildHip(hw: number, hd: number, h: number, t: number): Float32Array {
 
 function buildDome(hw: number, hd: number, h: number, t: number): Float32Array {
   const seg=16,v:number[]=[],r=Math.min(hw,hd);
-  for(let i=0;i<seg;i++){const a1=i/seg*Math.PI*2,a2=(i+1)/seg*Math.PI*2;for(let j=0;j<seg/2;j++){const p1=j/(seg/2)*Math.PI/2,p2=(j+1)/(seg/2)*Math.PI/2;const r1=r*Math.cos(p1),r2=r*Math.cos(p2),y1=h*Math.sin(p1),y2=h*Math.sin(p2);v.push(Math.cos(a1)*r1,y1,Math.sin(a1)*r1,Math.cos(a2)*r1,y1,Math.sin(a2)*r1,Math.cos(a1)*r2,y2,Math.sin(a1)*r2);}}
+  for(let i=0;i<seg;i++){
+    const a1=i/seg*Math.PI*2,a2=(i+1)/seg*Math.PI*2;
+    for(let j=0;j<seg/2;j++){
+      const p1=j/(seg/2)*Math.PI/2,p2=(j+1)/(seg/2)*Math.PI/2;
+      const r1=r*Math.cos(p1),r2=r*Math.cos(p2),y1=h*Math.sin(p1),y2=h*Math.sin(p2);
+      const p00=[Math.cos(a1)*r1,y1,Math.sin(a1)*r1],p10=[Math.cos(a2)*r1,y1,Math.sin(a2)*r1];
+      const p11=[Math.cos(a2)*r2,y2,Math.sin(a2)*r2],p01=[Math.cos(a1)*r2,y2,Math.sin(a1)*r2];
+      v.push(...p00,...p11,...p10,...p00,...p01,...p11);
+    }
+  }
   return new Float32Array(v);
 }
 

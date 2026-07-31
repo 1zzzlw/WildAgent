@@ -48,7 +48,7 @@ function getCellForElement(el: GeometryElement, cellSize: number): string {
       x = Math.floor(el.base[0] / cellSize);
       z = Math.floor(el.base[2] / cellSize);
       break;
-    case 'roof': case 'furniture': case 'dense_brick': case 'body':
+    case 'roof': case 'furniture': case 'dense_brick': case 'body': case 'primitive':
       x = Math.floor((el as any).position?.[0] / cellSize) || 0;
       z = Math.floor((el as any).position?.[2] / cellSize) || 0;
       break;
@@ -295,6 +295,15 @@ function resolveColumnOffsets(elements: GeometryElement[], index: SpatialIndex):
  * 直线墙的沿墙距离计算：distance = dot(opening_world_pos - wall_from, wall_direction)
  */
 function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void {
+  // 清除旧版本可能误写回 WILD 的内部状态，保证重复重建是幂等的。
+  for (const el of elements) {
+    if (el.type === 'wall') delete (el as any)._cutouts;
+    if (el.type === 'opening') {
+      delete (el as any)._worldPos;
+      delete (el as any)._wallRotation;
+    }
+  }
+
   for (const el of elements) {
     if (el.type !== 'opening') continue;
     const opening = el as any;

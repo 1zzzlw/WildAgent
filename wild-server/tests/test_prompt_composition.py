@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 
 from app.agent.prompts import build_system_prompt
+from app.services.agent_service import AgentService
 
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +34,24 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertIn("get_wall_bounding_box", minimal_spec)
         self.assertIn("from[0] = 沿墙距离", minimal_spec)
         self.assertIn("baseColor 必须是 [R, G, B] 数组", minimal_spec)
+        self.assertIn("sRGB authored value", minimal_spec)
+        self.assertIn("玻璃材质必须显式给出 `opacity`", minimal_spec)
+
+    def test_generation_prompt_requires_role_based_materials(self):
+        prompt = build_system_prompt("UNIQUE_SPEC_MARKER")
+
+        self.assertIn("墙、楼板、屋顶、门、玻璃使用角色独立的材质名", prompt)
+        self.assertIn("玻璃材质必须显式给出 opacity", prompt)
+
+    def test_generation_rag_query_includes_appearance_terms(self):
+        service = AgentService.__new__(AgentService)
+
+        generation_query = service._build_rag_query("生成一个别墅", None)
+        chat_query = service._build_rag_query("什么是别墅", None)
+
+        self.assertIn("默认材质", generation_query)
+        self.assertIn("玻璃透明度", generation_query)
+        self.assertNotIn("默认材质", chat_query)
 
 
 if __name__ == "__main__":

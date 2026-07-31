@@ -77,9 +77,13 @@ def validate_blueprint_structure(blueprint: dict) -> str:
     else:
         meta = blueprint["meta"]
         if "version" not in meta:
-            issues.append("❌ meta.version 缺失（应为 '1.0'）")
+            issues.append("❌ meta.version 缺失（当前支持 '1.0' / '1.1'）")
+        elif meta["version"] not in {"1.0", "1.1"}:
+            issues.append(f"❌ meta.version='{meta['version']}' 不受支持")
         if "type" not in meta:
-            issues.append("❌ meta.type 缺失（应为 'building' 或 'avatar'）")
+            issues.append("❌ meta.type 缺失（应为 building / avatar / asset / scene）")
+        elif meta["type"] not in {"building", "avatar", "asset", "scene"}:
+            issues.append(f"❌ meta.type='{meta['type']}' 不受支持")
         if "name" not in meta:
             issues.append("⚠️  meta.name 缺失（建议填写建筑名称）")
 
@@ -402,19 +406,20 @@ def validate_element_required_fields(blueprint: dict) -> str:
 
     各构件类型的必填字段：
       wall:    from, to, thickness
-      floor:   from, to, thickness
+      floor:   from, thickness；矩形需要 to，圆形需要 radius
       column:  base, height, bottomRadius, topRadius, style
       beam:    from, to, crossSection, width, height
       roof:    roofType, span, depth, height, thickness
       opening: parentWall, from, width, height, style
       stair:   from, to, width
       furniture: subtype, position, dimensions { width, depth, height }
+      primitive: shape，以及对应 shape 的几何参数
 
     参数 blueprint: 完整的 Blueprint dict
     """
     REQUIRED = {
         "wall":      ["from", "to", "thickness"],
-        "floor":     ["from", "to", "thickness"],
+        "floor":     ["from", "thickness"],
         "column":    ["base", "height", "bottomRadius", "topRadius", "style"],
         "beam":      ["from", "to", "crossSection", "width", "height"],
         "roof":      ["roofType", "span", "depth", "height", "thickness"],
@@ -423,6 +428,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
         "furniture": ["subtype", "position", "dimensions"],
         "dense_brick": ["resolution", "origin", "data"],
         "body":      ["height", "build", "headShape", "armLength", "legLength", "cloakLength", "hoodUp"],
+        "primitive": ["shape"],
     }
 
     # 合法枚举值
@@ -430,6 +436,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
     VALID_ROOF_TYPES = {"gable", "hip", "dome", "flat", "chinese_curved", "chinese_pagoda"}
     VALID_COLUMN_STYLES = {"doric", "ionic", "corinthian", "modern", "chinese_wooden"}
     VALID_OPENING_STYLES = {"rectangular", "arched", "gothic", "circular"}
+    VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
 
     # 蓝图顶层只允许这些 key
     VALID_ROOT_KEYS = {"meta", "geometry", "materials", "behaviors", "editor"}
@@ -489,6 +496,37 @@ def validate_element_required_fields(blueprint: dict) -> str:
                     issues.append(
                         f"❌ [{eid}] (type=furniture) dimensions 必须是对象，实际为 {type(dims).__name__}"
                     )
+
+        if etype == "floor":
+            shape = el.get("shape", "rect")
+            if shape == "circle":
+                if "radius" not in el:
+                    issues.append(f"❌ [{eid}] 圆形 floor 缺少 radius")
+            elif "to" not in el:
+                issues.append(f"❌ [{eid}] 矩形 floor 缺少 to")
+
+        if etype == "primitive":
+            shape = el.get("shape", "")
+            if shape and shape not in VALID_PRIMITIVE_SHAPES:
+                issues.append(
+                    f"❌ [{eid}] primitive shape='{shape}' 无效。"
+                    f"合法值: {VALID_PRIMITIVE_SHAPES}"
+                )
+            if shape == "box" and "dimensions" not in el:
+                issues.append(f"❌ [{eid}] primitive box 缺少 dimensions")
+            if shape == "sphere" and "radius" not in el:
+                issues.append(f"❌ [{eid}] primitive sphere 缺少 radius")
+            if shape == "cylinder":
+                if "height" not in el:
+                    issues.append(f"❌ [{eid}] primitive cylinder 缺少 height")
+                if "radius" not in el and not (
+                    "radiusTop" in el and "radiusBottom" in el
+                ):
+                    issues.append(
+                        f"❌ [{eid}] primitive cylinder 需要 radius，或同时提供 radiusTop/radiusBottom"
+                    )
+            if shape == "profile_sweep" and "path" not in el:
+                issues.append(f"❌ [{eid}] primitive profile_sweep 缺少 path")
 
     if not issues:
         types_found = set(el.get("type", "?") for el in elements)

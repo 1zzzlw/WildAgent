@@ -1,4 +1,4 @@
-原语构件库 v1.0
+原语构件库 v1.1
 
 本文档定义原语语言中所有标准参数化构件的类型、字段和语义。每个构件是一组数学参数集合，由原语引擎编译为三维网格。
 
@@ -58,6 +58,8 @@
   "thickness": 0.3,
   "material": "stone"
 }
+```
+
 引擎处理说明：
 
 墙体是一个长方体，底面从 from 沿 XZ 平面延伸到 to。
@@ -91,7 +93,7 @@
 type	string	是	固定值 "floor"
 id	string	是	构件唯一标识
 from	Vec3	是	矩形对角线一端，顶面高度；或圆形时，底面中心
-to	Vec3	是	矩形对角线另一端，顶面高度。Y 应与 from.y 一致。圆形时忽略
+to	Vec3	矩形时是	矩形对角线另一端，顶面高度。Y 应与 from.y 一致。圆形时省略
 thickness	number	是	楼板厚度（米），>0
 shape	string	否	形状，默认 "rect"。可选 "circle"
 radius	number	否	圆形半径（米），仅在 shape="circle" 时必需
@@ -478,8 +480,63 @@ json
 
 具体身体比例生成规则参见 wild-core 引擎参考实现。
 
+十一、primitive — 通用程序化形体（v1.1）
+
+语义：提供少量可复用数学形体，用于组合资产与构件细节。`primitive` 描述几何方式，不描述“篮球”“花瓶”等业务名词。
+
+公共参数：
+
+| 字段 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| `type` | string | 是 | 固定值 `"primitive"` |
+| `id` | string | 是 | 构件唯一标识 |
+| `shape` | string | 是 | `box` / `sphere` / `cylinder` / `profile_sweep` |
+| `position` | Vec3 | 否 | 世界坐标，默认 `[0,0,0]` |
+| `rotation` | Vec3 | 否 | XYZ 欧拉角，单位弧度 |
+| `scale` | Vec3 | 否 | XYZ 缩放，默认 `[1,1,1]` |
+| `material` | string | 否 | 引用材质名 |
+
+shape 参数：
+
+| shape | 参数 |
+|------|------|
+| `box` | `dimensions: [width, height, depth]` |
+| `sphere` | `radius`，可选 `segments`、`heightSegments` |
+| `cylinder` | `height`，以及 `radius` 或 `radiusTop`/`radiusBottom`；可选 `segments` |
+| `profile_sweep` | `path: Vec3[]`；可选 `profile: [x,y][]`、`radius`、`segments`、`closedProfile` |
+
+篮球球体示例：
+
+```json
+{
+  "type": "primitive",
+  "id": "basketball_body",
+  "shape": "sphere",
+  "position": [0, 0.12, 0],
+  "radius": 0.12,
+  "segments": 40,
+  "heightSegments": 24,
+  "material": "orange_rubber"
+}
+```
+
+檐口扫掠示例：
+
+```json
+{
+  "type": "primitive",
+  "id": "front_eave_profile",
+  "shape": "profile_sweep",
+  "path": [[-3.8, 3.75, -2.9], [0, 3.58, -3.05], [3.8, 3.75, -2.9]],
+  "profile": [[-0.08, -0.06], [0.08, -0.06], [0.08, 0.06], [-0.08, 0.06]],
+  "material": "dark_wood"
+}
+```
+
+当前参考引擎为所有通用形体生成 position、normal、index 与 UV。复杂语义物件应优先由多个 `primitive`、现有构件和模板组合；只有需要新的数学成形算法时才增加 builder。
+
 版本兼容
-本文件定义的所有构件类型均为 v1.0 标准。未来版本可能增加新的构件类型、新字段或新的 style/subtype 枚举值，但不会删除或修改任何已有定义。
+v1.0 定义原有十类构件；v1.1 增加 `primitive`，且不改变 v1.0 字段语义。未来版本可以增量增加构件、字段或枚举值，但不会删除已有定义。
 
 许可
 本构件库定义以 MIT 协议开源。任何原语引擎实现可自由引用本文档定义的构件参数和语义。

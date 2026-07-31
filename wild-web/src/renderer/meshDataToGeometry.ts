@@ -47,11 +47,34 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   // 4. 设置顶点颜色（如果有）
   // wild-core 会生成程序化颜色（木纹、石材纹理、苔藓等）
   if (meshData.vertexColors) {
-    geometry.setAttribute('color', new THREE.BufferAttribute(meshData.vertexColors, 3))
+    // WILD 中所有数值颜色均按 sRGB authored value 表达；Three.js 顶点色
+    // 必须处于线性工作空间。转换副本，避免修改 core 的确定性输出。
+    const linearColors = new Float32Array(meshData.vertexColors.length)
+    const color = new THREE.Color()
+    for (let i = 0; i < meshData.vertexColors.length; i += 3) {
+      color.setRGB(
+        meshData.vertexColors[i],
+        meshData.vertexColors[i + 1],
+        meshData.vertexColors[i + 2],
+        THREE.SRGBColorSpace,
+      )
+      linearColors[i] = color.r
+      linearColors[i + 1] = color.g
+      linearColors[i + 2] = color.b
+    }
+    geometry.setAttribute('color', new THREE.BufferAttribute(linearColors, 3))
+  }
+
+  if (meshData.uvs) {
+    const uvAttribute = new THREE.BufferAttribute(meshData.uvs, 2)
+    geometry.setAttribute('uv', uvAttribute)
+    // Three.js 的 aoMap 读取第二套 UV。当前 WILD v1.1 先复用主 UV。
+    geometry.setAttribute('uv2', uvAttribute.clone())
   }
   
   // 5. 计算边界球（用于视锥体剔除优化）
   geometry.computeBoundingSphere()
+  geometry.computeBoundingBox()
   
   return geometry
 }
