@@ -1,6 +1,7 @@
 import unittest
 
 from app.utils.blueprint_parser import normalize_blueprint_input, validate_blueprint_schema
+from app.tools.spatial_tools import validate_element_required_fields
 
 
 class BlueprintMaterialValidationTest(unittest.TestCase):
@@ -42,6 +43,48 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
 
         self.assertEqual(wall["to"][1], 6.2)
         self.assertNotIn("height", wall)
+
+    def test_known_furniture_aliases_are_normalized(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "test"},
+            "geometry": {
+                "elements": [
+                    {
+                        "id": "sofa",
+                        "type": "furniture",
+                        "subtype": "sofa",
+                        "position": [0, 0, 0],
+                        "dimensions": {"width": 2, "depth": 1, "height": 0.8},
+                    },
+                    {
+                        "id": "counter",
+                        "type": "furniture",
+                        "subtype": "counter",
+                        "position": [3, 0, 0],
+                        "dimensions": {"width": 2, "depth": 0.6, "height": 0.9},
+                    },
+                    {
+                        "id": "bed",
+                        "type": "furniture",
+                        "subtype": "bed",
+                        "position": [0, 0, 2],
+                        "dimensions": {"width": 2, "depth": 2, "height": 0.5},
+                    },
+                ],
+            },
+            "materials": {},
+        }
+
+        normalized = normalize_blueprint_input(blueprint)
+        subtypes = [
+            element["subtype"]
+            for element in normalized["geometry"]["elements"]
+        ]
+
+        self.assertEqual(subtypes, ["chair", "table", "bed"])
+        self.assertEqual(blueprint["geometry"]["elements"][0]["subtype"], "sofa")
+        validation = validate_element_required_fields.func(normalized)
+        self.assertNotIn("❌", validation)
 
     def test_missing_base_color_is_rejected(self):
         blueprint = {

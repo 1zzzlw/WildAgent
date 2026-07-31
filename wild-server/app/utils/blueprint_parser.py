@@ -21,6 +21,11 @@ _APP_DIR = _UTILS_DIR.parent                     # app/
 _SERVER_ROOT = _APP_DIR.parent                   # wild-server/
 SCENES_DIR = _SERVER_ROOT / "storage" / "scenes"  # 后端自己的存储目录
 
+_FURNITURE_SUBTYPE_ALIASES = {
+    "sofa": "chair",
+    "counter": "table",
+}
+
 
 # ---------- JSON 提取 ----------
 
@@ -122,6 +127,10 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
                     start[1] = 0.9
         elif element.get("type") == "column" and element.get("style") == "round":
             element["style"] = "modern"
+        elif element.get("type") == "furniture":
+            subtype = element.get("subtype")
+            if subtype in _FURNITURE_SUBTYPE_ALIASES:
+                element["subtype"] = _FURNITURE_SUBTYPE_ALIASES[subtype]
 
     return normalized
 

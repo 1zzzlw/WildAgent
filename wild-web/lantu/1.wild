@@ -1,0 +1,866 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "新中式别墅"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "id": "platform",
+        "type": "floor",
+        "from": [
+          -9,
+          -0.45,
+          -8.5
+        ],
+        "to": [
+          9,
+          -0.45,
+          7
+        ],
+        "thickness": 0.45,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "floor_ground",
+        "type": "floor",
+        "from": [
+          -8,
+          0,
+          -6
+        ],
+        "to": [
+          8,
+          0,
+          6
+        ],
+        "thickness": 0.15,
+        "material": "mat_wood_floor"
+      },
+      {
+        "id": "floor_porch",
+        "type": "floor",
+        "from": [
+          -5,
+          0,
+          -8
+        ],
+        "to": [
+          5,
+          0,
+          -6
+        ],
+        "thickness": 0.15,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "step_1",
+        "type": "floor",
+        "from": [
+          -1.5,
+          -0.15,
+          -8.6
+        ],
+        "to": [
+          1.5,
+          -0.15,
+          -8
+        ],
+        "thickness": 0.15,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "step_2",
+        "type": "floor",
+        "from": [
+          -1.5,
+          -0.3,
+          -9.2
+        ],
+        "to": [
+          1.5,
+          -0.3,
+          -8.6
+        ],
+        "thickness": 0.15,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "step_3",
+        "type": "floor",
+        "from": [
+          -1.5,
+          -0.45,
+          -9.8
+        ],
+        "to": [
+          1.5,
+          -0.45,
+          -9.2
+        ],
+        "thickness": 0.15,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "wall_south",
+        "type": "wall",
+        "from": [
+          -8,
+          0,
+          -6
+        ],
+        "to": [
+          8,
+          3.5,
+          -6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall_north",
+        "type": "wall",
+        "from": [
+          -8,
+          0,
+          6
+        ],
+        "to": [
+          8,
+          3.5,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall_west",
+        "type": "wall",
+        "from": [
+          -8,
+          0,
+          -6
+        ],
+        "to": [
+          -8,
+          3.5,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall_east",
+        "type": "wall",
+        "from": [
+          8,
+          0,
+          -6
+        ],
+        "to": [
+          8,
+          3.5,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall_int_h",
+        "type": "wall",
+        "from": [
+          -7.875,
+          0,
+          0
+        ],
+        "to": [
+          -1,
+          3.5,
+          0
+        ],
+        "thickness": 0.2,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall_int_v",
+        "type": "wall",
+        "from": [
+          0,
+          0,
+          0.1
+        ],
+        "to": [
+          0,
+          3.5,
+          5.875
+        ],
+        "thickness": 0.2,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "floor_second",
+        "type": "floor",
+        "from": [
+          -8,
+          3.5,
+          -6
+        ],
+        "to": [
+          8,
+          3.5,
+          6
+        ],
+        "thickness": 0.2,
+        "material": "mat_concrete"
+      },
+      {
+        "id": "floor_balcony",
+        "type": "floor",
+        "from": [
+          -4,
+          3.5,
+          -8
+        ],
+        "to": [
+          4,
+          3.5,
+          -6
+        ],
+        "thickness": 0.2,
+        "material": "mat_wood_floor"
+      },
+      {
+        "id": "wall2_south",
+        "type": "wall",
+        "from": [
+          -8,
+          3.7,
+          -6
+        ],
+        "to": [
+          8,
+          7.0,
+          -6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall2_north",
+        "type": "wall",
+        "from": [
+          -8,
+          3.7,
+          6
+        ],
+        "to": [
+          8,
+          7.0,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall2_west",
+        "type": "wall",
+        "from": [
+          -8,
+          3.7,
+          -6
+        ],
+        "to": [
+          -8,
+          7.0,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall2_east",
+        "type": "wall",
+        "from": [
+          8,
+          3.7,
+          -6
+        ],
+        "to": [
+          8,
+          7.0,
+          6
+        ],
+        "thickness": 0.25,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall2_int_1",
+        "type": "wall",
+        "from": [
+          -2,
+          3.7,
+          -5.875
+        ],
+        "to": [
+          -2,
+          7.0,
+          5.875
+        ],
+        "thickness": 0.2,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "wall2_int_2",
+        "type": "wall",
+        "from": [
+          3,
+          3.7,
+          -5.875
+        ],
+        "to": [
+          3,
+          7.0,
+          5.875
+        ],
+        "thickness": 0.2,
+        "material": "mat_wall_white"
+      },
+      {
+        "id": "col_1",
+        "type": "column",
+        "base": [
+          -4.5,
+          0,
+          -7.5
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.2,
+        "topRadius": 0.18,
+        "style": "modern",
+        "material": "mat_wood_red"
+      },
+      {
+        "id": "col_2",
+        "type": "column",
+        "base": [
+          -1.5,
+          0,
+          -7.5
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.2,
+        "topRadius": 0.18,
+        "style": "modern",
+        "material": "mat_wood_red"
+      },
+      {
+        "id": "col_3",
+        "type": "column",
+        "base": [
+          1.5,
+          0,
+          -7.5
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.2,
+        "topRadius": 0.18,
+        "style": "modern",
+        "material": "mat_wood_red"
+      },
+      {
+        "id": "col_4",
+        "type": "column",
+        "base": [
+          4.5,
+          0,
+          -7.5
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.2,
+        "topRadius": 0.18,
+        "style": "modern",
+        "material": "mat_wood_red"
+      },
+      {
+        "id": "beam_porch",
+        "type": "beam",
+        "from": [
+          -5,
+          3.3,
+          -7.5
+        ],
+        "to": [
+          5,
+          3.3,
+          -7.5
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "mat_wood_red"
+      },
+      {
+        "id": "railing_front",
+        "type": "wall",
+        "from": [
+          -4,
+          3.7,
+          -8
+        ],
+        "to": [
+          4,
+          4.7,
+          -8
+        ],
+        "thickness": 0.08,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "railing_left",
+        "type": "wall",
+        "from": [
+          -4,
+          3.7,
+          -8
+        ],
+        "to": [
+          -4,
+          4.7,
+          -6
+        ],
+        "thickness": 0.08,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "railing_right",
+        "type": "wall",
+        "from": [
+          4,
+          3.7,
+          -8
+        ],
+        "to": [
+          4,
+          4.7,
+          -6
+        ],
+        "thickness": 0.08,
+        "material": "mat_stone_base"
+      },
+      {
+        "id": "door_main",
+        "type": "opening",
+        "parentWall": "wall_south",
+        "from": [
+          7,
+          0,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.8,
+        "style": "double",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_s1",
+        "type": "opening",
+        "parentWall": "wall_south",
+        "from": [
+          2,
+          0.9,
+          0
+        ],
+        "width": 1.6,
+        "height": 1.8,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_s2",
+        "type": "opening",
+        "parentWall": "wall_south",
+        "from": [
+          12,
+          0.9,
+          0
+        ],
+        "width": 1.6,
+        "height": 1.8,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_n1",
+        "type": "opening",
+        "parentWall": "wall_north",
+        "from": [
+          2.5,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.8,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_n2",
+        "type": "opening",
+        "parentWall": "wall_north",
+        "from": [
+          7.25,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.8,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_n3",
+        "type": "opening",
+        "parentWall": "wall_north",
+        "from": [
+          12,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.8,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_w1",
+        "type": "opening",
+        "parentWall": "wall_west",
+        "from": [
+          2.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_w2",
+        "type": "opening",
+        "parentWall": "wall_west",
+        "from": [
+          8,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_e1",
+        "type": "opening",
+        "parentWall": "wall_east",
+        "from": [
+          2.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win_e2",
+        "type": "opening",
+        "parentWall": "wall_east",
+        "from": [
+          8,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "door_balcony",
+        "type": "opening",
+        "parentWall": "wall2_south",
+        "from": [
+          7,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.8,
+        "height": 2.4,
+        "style": "double",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_s1",
+        "type": "opening",
+        "parentWall": "wall2_south",
+        "from": [
+          2,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.6,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_s2",
+        "type": "opening",
+        "parentWall": "wall2_south",
+        "from": [
+          12,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.6,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_n1",
+        "type": "opening",
+        "parentWall": "wall2_north",
+        "from": [
+          2.5,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.6,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_n2",
+        "type": "opening",
+        "parentWall": "wall2_north",
+        "from": [
+          7.25,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.6,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_n3",
+        "type": "opening",
+        "parentWall": "wall2_north",
+        "from": [
+          12,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.6,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_w1",
+        "type": "opening",
+        "parentWall": "wall2_west",
+        "from": [
+          2.5,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_w2",
+        "type": "opening",
+        "parentWall": "wall2_west",
+        "from": [
+          8,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_e1",
+        "type": "opening",
+        "parentWall": "wall2_east",
+        "from": [
+          2.5,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "win2_e2",
+        "type": "opening",
+        "parentWall": "wall2_east",
+        "from": [
+          8,
+          3.8000000000000003,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "style": "lattice",
+        "material": "mat_wood_dark"
+      },
+      {
+        "id": "stair_1",
+        "type": "stair",
+        "from": [
+          5.5,
+          0,
+          0.5
+        ],
+        "to": [
+          5.5,
+          3.7,
+          5.5
+        ],
+        "width": 1.2,
+        "material": "mat_wood_floor"
+      },
+      {
+        "id": "roof_main",
+        "type": "roof",
+        "roofType": "hip",
+        "span": 18,
+        "depth": 14,
+        "height": 3.5,
+        "thickness": 0.25,
+        "position": [
+          0,
+          7,
+          0
+        ],
+        "material": "mat_tile_gray"
+      },
+      {
+        "id": "roof_porch",
+        "type": "roof",
+        "roofType": "hip",
+        "span": 18.0,
+        "depth": 16.0,
+        "height": 1.2,
+        "thickness": 0.15,
+        "position": [
+          0,
+          3.5,
+          -1.0
+        ],
+        "material": "mat_tile_gray"
+      }
+    ]
+  },
+  "materials": {
+    "mat_wall_white": {
+      "roughness": 0.85,
+      "metalness": 0,
+      "baseColor": [
+        0.9607843137254902,
+        0.9411764705882353,
+        0.9098039215686274
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_tile_gray": {
+      "roughness": 0.55,
+      "metalness": 0.1,
+      "baseColor": [
+        0.1843137254901961,
+        0.1843137254901961,
+        0.1843137254901961
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_wood_red": {
+      "roughness": 0.45,
+      "metalness": 0.05,
+      "baseColor": [
+        0.5450980392156862,
+        0.10196078431372549,
+        0.10196078431372549
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_wood_dark": {
+      "roughness": 0.5,
+      "metalness": 0.05,
+      "baseColor": [
+        0.2901960784313726,
+        0.1843137254901961,
+        0.10588235294117647
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_wood_floor": {
+      "roughness": 0.6,
+      "metalness": 0,
+      "baseColor": [
+        0.7686274509803922,
+        0.6274509803921569,
+        0.4392156862745098
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_stone_base": {
+      "roughness": 0.9,
+      "metalness": 0,
+      "baseColor": [
+        0.5490196078431373,
+        0.5490196078431373,
+        0.5019607843137255
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "mat_concrete": {
+      "roughness": 0.8,
+      "metalness": 0,
+      "baseColor": [
+        0.6901960784313725,
+        0.6901960784313725,
+        0.6588235294117647
+      ],
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {}
+}

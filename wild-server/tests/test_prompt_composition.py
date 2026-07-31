@@ -44,6 +44,7 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertIn("玻璃材质必须显式给出 opacity", prompt)
         self.assertIn("不得只照抄建筑类型文档的最小组合而忽略组件文档", prompt)
         self.assertIn("窗型 → opening + 玻璃材质", prompt)
+        self.assertIn("严禁发明 sofa、counter 等值", prompt)
 
     def test_generation_rag_query_includes_appearance_terms(self):
         service = AgentService.__new__(AgentService)

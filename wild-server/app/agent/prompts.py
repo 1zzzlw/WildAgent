@@ -106,6 +106,7 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
    - 门型 → opening + 门材质；门板或门框细节按需用 primitive 组合
    - cornice/canopy/railing → 用 primitive、beam 或低矮 wall 实现
    元素 id 应体现选型，例如 window_fixed_、window_casement_、door_panel_，让蓝图仍保留组件语义
+   - furniture.subtype 只能是 table、chair、bookshelf、bed、lamp、tile，严禁发明 sofa、counter 等值；沙发用 primitive box 组合坐垫、靠背和扶手，厨房柜台用 primitive box 组合柜体与台面
 5. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
 6. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
 7. 生成初稿：按规范生成 JSON；玻璃材质必须显式给出 opacity
