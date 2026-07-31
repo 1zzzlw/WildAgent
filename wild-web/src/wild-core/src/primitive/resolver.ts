@@ -287,7 +287,7 @@ function resolveColumnOffsets(elements: GeometryElement[], index: SpatialIndex):
 /**
  * 根据父墙体，在墙体上标记开孔信息，并计算开口世界坐标。
  *
- * opening.from 格式：[沿墙距离, 开口底部世界Y坐标, 法向偏移]
+ * opening.from 格式：[开口左边缘沿墙距离, 开口底部世界Y坐标, 法向偏移]
  *   - from[0]: 从墙起点沿墙方向的距离（米），不是世界X/Z坐标
  *   - from[1]: 开口底部的世界Y坐标（米）
  *   - from[2]: 法向偏移（米），通常为0（在墙面中心线上）
@@ -315,10 +315,11 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
     const wallCurve = (wall as any).curve;
 
     if (wallCurve && wallCurve.type === 'arc') {
-      // 弧形墙体：opening.from[0] 已经是弧长，不需要转换
+      // 弧形墙体：from[0] 是开口左边缘的弧长，切孔和覆盖面使用中心弧长
+      const centerAlong = opening.from[0] + opening.width / 2;
       if (!wall._cutouts) wall._cutouts = [];
       wall._cutouts.push({
-        localX: opening.from[0],
+        localX: centerAlong,
         localY: opening.from[1],  // 弧形墙：from[1] 是相对墙底偏移
         localW: opening.width,
         localH: opening.height,
@@ -328,7 +329,7 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       const center = wallCurve.center;
       const radius = Math.sqrt((wallFrom[0] - center[0]) ** 2 + (wallFrom[2] - center[2]) ** 2);
       const startRad = Math.atan2(wallFrom[2] - center[2], wallFrom[0] - center[0]);
-      const angle = startRad + opening.from[0] / radius;
+      const angle = startRad + centerAlong / radius;
       const nx = Math.cos(angle), nz = Math.sin(angle); // 径向（法线方向）
       const offset = opening.from[2] || 0;
       const worldX = center[0] + (radius + offset) * nx;
@@ -337,7 +338,7 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       opening._wallRotation = Math.atan2(nx, nz);
     } else {
       // ─── 直线墙 ─────────────────────────────
-      // opening.from[0] = 沿墙距离（局部坐标）
+      // opening.from[0] = 开口左边缘沿墙距离（局部坐标）
       // opening.from[1] = 开口底部的世界Y坐标
       // opening.from[2] = 法向偏移（通常为0）
 
@@ -354,7 +355,7 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
 
       // 1. 在墙体上存储开孔信息（墙体生成器 boxWithHoles 使用局部坐标）
       //    from[0] 已经是沿墙距离，from[1] 是世界Y需要转为相对墙底偏移
-      const localX = opening.from[0];        // 沿墙距离（局部坐标）
+      const localX = opening.from[0] + opening.width / 2; // 开口中心沿墙距离
       const localY = opening.from[1] - wallFrom[1]; // 开口底部相对墙底高度
 
       if (!wall._cutouts) wall._cutouts = [];

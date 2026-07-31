@@ -178,6 +178,25 @@ async function assertSideWallOpeningAlignment(core) {
           style: 'rectangular',
           material: 'glass',
         },
+        {
+          type: 'wall',
+          id: 'curved_wall',
+          from: [5, 0, 0],
+          to: [5, 3, 0],
+          thickness: 0.3,
+          curve: { type: 'arc', center: [0, 0, 0], sweep: 360, segments: 32 },
+          material: 'wall',
+        },
+        {
+          type: 'opening',
+          id: 'curved_window',
+          parentWall: 'curved_wall',
+          from: [0, 0.9, 0],
+          width: 2,
+          height: 1.2,
+          style: 'rectangular',
+          material: 'glass',
+        },
       ],
     },
     materials: {
@@ -212,8 +231,10 @@ async function assertSideWallOpeningAlignment(core) {
   }
 
   const wallLength = 6;
-  const openingAlongWall = 2.5;
-  const localX = openingAlongWall - wallLength / 2;
+  const openingStartAlongWall = 2.5;
+  const openingWidth = 1.2;
+  const openingCenterAlongWall = openingStartAlongWall + openingWidth / 2;
+  const localX = openingCenterAlongWall - wallLength / 2;
   const angle = wallMesh.transform.rotation[1];
   const cutoutCenter = [
     wallMesh.transform.position[0] + Math.cos(angle) * localX,
@@ -232,6 +253,35 @@ async function assertSideWallOpeningAlignment(core) {
     throw new Error(
       `Side-wall opening misaligned by ${error.toFixed(3)}m: `
       + `cutout=${JSON.stringify(cutoutCenter)}, pane=${JSON.stringify(paneCenter)}`,
+    );
+  }
+
+  if (Math.abs(paneCenter[1] - openingCenterAlongWall) > 1e-6) {
+    throw new Error(
+      `Side-wall opening center should be ${openingCenterAlongWall}m along the wall, `
+      + `received ${paneCenter[1]}m`,
+    );
+  }
+
+  const radius = 5;
+  const curvedOpeningWidth = 2;
+  const curvedOpeningMesh = entity.meshes.find(mesh => mesh.elementId === 'curved_window');
+  if (!curvedOpeningMesh) {
+    throw new Error('Curved-wall opening regression scene did not produce an opening mesh');
+  }
+
+  const centerAlong = curvedOpeningWidth / 2;
+  const curvedAngle = centerAlong / radius;
+  const expected = [radius * Math.cos(curvedAngle), radius * Math.sin(curvedAngle)];
+  const actual = [
+    curvedOpeningMesh.transform.position[0],
+    curvedOpeningMesh.transform.position[2],
+  ];
+  const curvedError = Math.hypot(actual[0] - expected[0], actual[1] - expected[1]);
+  if (curvedError > 1e-6) {
+    throw new Error(
+      `Curved-wall opening misaligned by ${curvedError.toFixed(3)}m: `
+      + `expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`,
     );
   }
 }

@@ -293,7 +293,7 @@ chinese_pagoda 示例：
 chinese_pagoda 从底层到顶层按 tiers 层递减收缩。每层为一个独立坡面 + 檐口底面。底层跨度由 baseSpan/depth 或 span/depth 确定，上层按 shrinkFactor 逐层缩小。tierHeight 为各层层高。eaveOutset 控制檐口外挑宽度。
 
 六、opening — 门窗洞口
-语义：在指定墙体上穿透一个洞口，用于放置门或窗。洞口底面中点位于 from，方向沿父墙体的法向。
+语义：在指定墙体上穿透一个洞口，用于放置门或窗。from 表示洞口底边的沿墙起点，方向沿父墙体的法向。
 
 参数：
 
@@ -301,7 +301,7 @@ chinese_pagoda 从底层到顶层按 tiers 层递减收缩。每层为一个独�
 type	string	是	固定值 "opening"
 id	string	是	构件唯一标识
 parentWall	string	是	父墙体 ID
-from	Vec3	是	洞口底面中点的局部坐标
+from	Vec3	是	[左边缘沿墙距离, 底部世界 Y, 法向偏移]
 width	number	是	洞口宽度（米）
 height	number	是	洞口高度（米）
 style	string	是	洞口样式，见下方枚举
