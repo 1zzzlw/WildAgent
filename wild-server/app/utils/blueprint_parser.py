@@ -11,6 +11,8 @@ Blueprint Parser —— LLM 回复解析 + 结构校验 + 文件保存
 import json
 import re
 import datetime
+import math
+from copy import deepcopy
 from pathlib import Path
 
 # ---------- 路径常量 ----------
@@ -71,6 +73,52 @@ def extract_patch_from_text(text: str) -> dict | None:
 
 # ---------- 结构校验 ----------
 
+def normalize_blueprint_input(blueprint: dict) -> dict:
+    """将模型常见简写转换为标准 WILD 1.1 字段。"""
+    normalized = deepcopy(blueprint)
+
+    for material in normalized.get("materials", {}).values():
+        if not isinstance(material, dict):
+            continue
+        if "baseColor" not in material:
+            base_color = _parse_hex_color(material.get("color"))
+            if base_color is not None:
+                material["baseColor"] = base_color
+        if "baseColor" in material:
+            material.setdefault("roughness", 0.8)
+            material.setdefault("metallic", 0.0)
+            material.setdefault("albedo", 1.0)
+            material["lightingCondition"] = "D65_noon"
+            material.pop("color", None)
+
+    elements = normalized.get("geometry", {}).get("elements", [])
+    for element in elements:
+        if not isinstance(element, dict):
+            continue
+        if element.get("type") == "opening" and element.get("style") in {"door", "window"}:
+            role = element["style"]
+            element["style"] = "rectangular"
+            if element.get("height", 0) <= 0.1:
+                element["height"] = 2.1 if role == "door" else 1.2
+            if role == "window":
+                start = element.get("from")
+                if isinstance(start, list) and len(start) == 3 and start[1] <= 0.1:
+                    start[1] = 0.9
+        elif element.get("type") == "column" and element.get("style") == "round":
+            element["style"] = "modern"
+
+    return normalized
+
+
+def _parse_hex_color(value: object) -> list[float] | None:
+    if not isinstance(value, str) or re.fullmatch(r"#[0-9a-fA-F]{6}", value) is None:
+        return None
+    return [
+        int(value[1:3], 16) / 255,
+        int(value[3:5], 16) / 255,
+        int(value[5:7], 16) / 255,
+    ]
+
 def validate_blueprint_schema(blueprint: dict) -> list[str]:
     """轻量级 Blueprint 结构校验
 
@@ -125,6 +173,32 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                 for el in elements:
                     if isinstance(el, dict) and "type" not in el:
                         issues.append(f"元素缺少 'type' 字段: id={el.get('id', '?')}")
+
+    # materials
+    materials = blueprint.get("materials", {})
+    if not isinstance(materials, dict):
+        issues.append("'materials' 必须是对象")
+    else:
+        for name, material in materials.items():
+            if not isinstance(material, dict):
+                issues.append(f"材质 '{name}' 必须是对象")
+                continue
+            base_color = material.get("baseColor")
+            valid_base_color = (
+                isinstance(base_color, list)
+                and len(base_color) == 3
+                and all(
+                    isinstance(channel, (int, float))
+                    and not isinstance(channel, bool)
+                    and math.isfinite(channel)
+                    and 0 <= channel <= 1
+                    for channel in base_color
+                )
+            )
+            if not valid_base_color:
+                issues.append(
+                    f"材质 '{name}'.baseColor 必须是 3 个 0–1 数值"
+                )
 
     return issues
 

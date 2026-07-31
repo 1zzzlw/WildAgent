@@ -16,6 +16,8 @@ export function parseBlueprint(json: string): Blueprint {
     throw new Error('Invalid blueprint: JSON parse error');
   }
 
+  obj = normalizeBlueprintInput(obj);
+
   if (!obj.meta) throw new Error('Invalid blueprint: missing meta');
   if (!obj.geometry) throw new Error('Invalid blueprint: missing geometry');
 
@@ -44,4 +46,92 @@ export function parseBlueprint(json: string): Blueprint {
   }
 
   return obj as Blueprint;
+}
+
+/** 将模型常见简写转换为标准 WILD 1.1 字段，不修改输入对象。 */
+export function normalizeBlueprintInput(value: any): any {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+
+  const elements = Array.isArray(value.geometry?.elements)
+    ? value.geometry.elements.map(normalizeElement)
+    : value.geometry?.elements;
+  const materials = value.materials && typeof value.materials === 'object'
+    ? Object.fromEntries(
+        Object.entries(value.materials).map(([name, material]) => [
+          name,
+          normalizeMaterial(material),
+        ]),
+      )
+    : value.materials;
+
+  return {
+    ...value,
+    geometry: value.geometry && typeof value.geometry === 'object'
+      ? { ...value.geometry, elements }
+      : value.geometry,
+    materials,
+  };
+}
+
+function normalizeElement(element: any): any {
+  if (!element || typeof element !== 'object' || Array.isArray(element)) {
+    return element;
+  }
+
+  if (element.type === 'opening' && (element.style === 'door' || element.style === 'window')) {
+    const role = element.style;
+    const from = Array.isArray(element.from) ? [...element.from] : element.from;
+    if (role === 'window' && Array.isArray(from) && from[1] <= 0.1) from[1] = 0.9;
+    return {
+      ...element,
+      from,
+      style: 'rectangular',
+      height: element.height <= 0.1 ? (role === 'door' ? 2.1 : 1.2) : element.height,
+    };
+  }
+
+  if (element.type === 'column' && element.style === 'round') {
+    return { ...element, style: 'modern' };
+  }
+
+  return { ...element };
+}
+
+function normalizeMaterial(value: any): any {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const baseColor = isColor(value.baseColor)
+    ? [...value.baseColor]
+    : parseHexColor(value.color);
+  if (!baseColor) return { ...value };
+
+  const normalized = {
+    ...value,
+    baseColor,
+    roughness: validUnit(value.roughness) ? value.roughness : 0.8,
+    metallic: validUnit(value.metallic) ? value.metallic : 0,
+    albedo: validUnit(value.albedo) ? value.albedo : 1,
+    lightingCondition: 'D65_noon',
+  };
+  delete normalized.color;
+  return normalized;
+}
+
+function parseHexColor(value: unknown): [number, number, number] | undefined {
+  if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) return undefined;
+  return [
+    Number.parseInt(value.slice(1, 3), 16) / 255,
+    Number.parseInt(value.slice(3, 5), 16) / 255,
+    Number.parseInt(value.slice(5, 7), 16) / 255,
+  ];
+}
+
+function isColor(value: unknown): value is [number, number, number] {
+  return Array.isArray(value) && value.length === 3 && value.every(validUnit);
+}
+
+function validUnit(value: unknown): value is number {
+  return typeof value === 'number'
+    && Number.isFinite(value)
+    && value >= 0
+    && value <= 1;
 }

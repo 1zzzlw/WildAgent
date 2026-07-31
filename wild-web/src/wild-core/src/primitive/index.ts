@@ -10,6 +10,7 @@ import { resolveSpatialRelations } from './resolver';
 import { generatePlanarUVs } from './geometry/mesh-helper';
 import { applyMaterials } from './materials/apply';
 import { getElementBuilder } from './registry';
+import { normalizeBlueprintInput } from './parser';
 export { parseBlueprint } from './parser';
 export { getEngineCapabilities, registerElementBuilder } from './registry';
 export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';
@@ -228,6 +229,7 @@ function bakeProceduralColors(meshes: MeshData[], materialParams: MaterialParams
 
 // ─── 主入口 ───────────────────────────────────────
 export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEntity> {
+  bp = normalizeBlueprintInput(bp) as Blueprint;
   const diagnostics: EngineDiagnostic[] = [];
   // 1. 展开模板
   let elements = expandTemplates(bp, diagnostics);

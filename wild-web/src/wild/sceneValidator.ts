@@ -68,6 +68,25 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
 
   // 校验材质引用
   const materialNames = new Set(Object.keys(blueprint.materials || {}))
+  for (const [name, material] of Object.entries(blueprint.materials || {})) {
+    const baseColor = (material as any)?.baseColor
+    const validBaseColor = Array.isArray(baseColor)
+      && baseColor.length === 3
+      && baseColor.every(
+        value => typeof value === 'number'
+          && Number.isFinite(value)
+          && value >= 0
+          && value <= 1
+      )
+    if (!validBaseColor) {
+      issues.push({
+        level: 'error',
+        message: `材质 ${name} 的 baseColor 必须是 3 个 0–1 数值`,
+        path: `materials.${name}.baseColor`
+      })
+    }
+  }
+
   for (const element of blueprint.geometry.elements || []) {
     const mat = (element as any).material
     if (mat && typeof mat === 'string' && !materialNames.has(mat)) {

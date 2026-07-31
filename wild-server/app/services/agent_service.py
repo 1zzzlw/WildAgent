@@ -56,6 +56,7 @@ from app.tools.spatial_tools import (
 )
 from app.utils.blueprint_parser import (
     extract_blueprint_from_text,
+    normalize_blueprint_input,
     validate_blueprint_schema,
 )
 
@@ -552,6 +553,7 @@ class AgentService:
             # Blueprint 有 "meta" 字段，ScenePatch 有 "operations" 字段
             if "meta" in json_data:
                 # ── 生成类：完整 Blueprint ──────────────────────
+                json_data = normalize_blueprint_input(json_data)
                 pre_issues = validate_blueprint_schema(json_data)
                 if pre_issues:
                     return QueryResult(
@@ -581,6 +583,17 @@ class AgentService:
                 # ── 修改类：ScenePatch ──────────────────────────
                 patch = json_data
                 modified_bp = _apply_patch_to_blueprint(current_blueprint, patch)
+                modified_bp = normalize_blueprint_input(modified_bp)
+                pre_issues = validate_blueprint_schema(modified_bp)
+                if pre_issues:
+                    return QueryResult(
+                        text=reply,
+                        patch=patch,
+                        error=(
+                            "Patch 应用后的 Blueprint 结构预检未通过: "
+                            + "; ".join(pre_issues)
+                        ),
+                    )
                 pipeline_results = run_validation_pipeline(modified_bp)
 
                 fatal_steps = _final_errors(pipeline_results)

@@ -22,6 +22,7 @@ import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch, ValidationIssue } from '../types/scenePatch'
 import { applyPatchToBlueprint } from '../wild/scenePatch'
 import { validateBlueprint } from '../wild/sceneValidator'
+import { normalizeBlueprintInput } from '../wild-core/src/primitive/parser'
 
 export const useSceneStore = defineStore('scene', () => {
   // 当前编辑的场景文档
@@ -54,11 +55,12 @@ export const useSceneStore = defineStore('scene', () => {
 
   // 加载蓝图文件，导入文件
   function loadBlueprint(bp: Blueprint, name?: string) {
+    const normalizedBlueprint = normalizeBlueprintInput(bp) as Blueprint
     document.value = {
       id: `scene_${Date.now()}`,
-      name: name || bp.meta.name || '未命名建筑',
+      name: name || normalizedBlueprint.meta.name || '未命名建筑',
       revision: 1,
-      blueprint: bp,
+      blueprint: normalizedBlueprint,
       dirty: false
     }
     reconstruct()
@@ -81,7 +83,9 @@ export const useSceneStore = defineStore('scene', () => {
 
     try {
       // 应用到副本
-      const newBlueprint = applyPatchToBlueprint(document.value.blueprint, patch)
+      const newBlueprint = normalizeBlueprintInput(
+        applyPatchToBlueprint(document.value.blueprint, patch)
+      ) as Blueprint
 
       // 校验
       const issues = validateBlueprint(newBlueprint)

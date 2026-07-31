@@ -80,11 +80,42 @@ try {
 
   assertInvalidBlueprintIsRejected(core.parseBlueprint);
   await assertSideWallOpeningAlignment(core);
+  await assertInvalidRuntimeMaterialFallsBack(core);
 
   console.table(results);
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertInvalidRuntimeMaterialFallsBack(core) {
+  const entity = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'building', name: 'invalid-material-runtime' },
+    geometry: {
+      elements: [{
+        type: 'floor',
+        id: 'test-floor',
+        from: [0, 0, 0],
+        to: [2, 0, 2],
+        thickness: 0.2,
+        material: 'broken',
+      }],
+    },
+    materials: {
+      broken: {
+        roughness: 0.9,
+        metallic: 0,
+        albedo: 1,
+        lightingCondition: 'D65_noon',
+      },
+    },
+    behaviors: {},
+  });
+
+  const baseColor = entity.materialParams[0]?.baseColor;
+  if (JSON.stringify(baseColor) !== JSON.stringify([0.5, 0.5, 0.5])) {
+    throw new Error(`Invalid runtime material did not use fallback: ${JSON.stringify(baseColor)}`);
+  }
 }
 
 function validateMesh(mesh) {

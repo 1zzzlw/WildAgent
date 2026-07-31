@@ -2,10 +2,10 @@ import type { MaterialDef, MaterialParams, MeshData } from '../types';
 
 /** 烘焙效果层到基础材质参数 */
 function bakeEffects(base: MaterialDef): MaterialParams {
-  let bc = [...base.baseColor] as [number, number, number];
-  let r = base.roughness;
-  let m = base.metallic;
-  const emissive = base.emissive ? [...base.emissive] as [number, number, number] : [0, 0, 0];
+  let bc = normalizeColor(base.baseColor, [0.5, 0.5, 0.5]);
+  let r = normalizeUnit(base.roughness, 0.8);
+  const m = normalizeUnit(base.metallic, 0);
+  const emissive = normalizeColor(base.emissive, [0, 0, 0]);
 
   if (base.effects) {
     for (const fx of base.effects) {
@@ -64,10 +64,68 @@ export function applyMaterials(
   materials: Record<string, MaterialDef>,
   meshes: MeshData[]
 ): MaterialParams[] {
+  const normalizedMaterials = new Map<string, MaterialDef>();
+
   return meshes.map(mesh => {
-    const mat = materials[mesh.materialRef] || defaultMaterial();
+    let mat = normalizedMaterials.get(mesh.materialRef);
+    if (!mat) {
+      const source = materials[mesh.materialRef];
+      if (source && !isColor(source.baseColor)) {
+        console.warn(
+          `WILD 材质 "${mesh.materialRef}" 的 baseColor 非法，已使用默认颜色`,
+        );
+      }
+      mat = normalizeMaterial(source);
+      normalizedMaterials.set(mesh.materialRef, mat);
+    }
     return bakeEffects(mat);
   });
+}
+
+function normalizeMaterial(value: MaterialDef | undefined): MaterialDef {
+  const fallback = defaultMaterial();
+  if (!value || typeof value !== 'object') return fallback;
+
+  return {
+    ...fallback,
+    ...value,
+    baseColor: normalizeColor(value.baseColor, fallback.baseColor),
+    roughness: normalizeUnit(value.roughness, fallback.roughness),
+    metallic: normalizeUnit(value.metallic, fallback.metallic),
+    albedo: normalizeUnit(value.albedo, fallback.albedo),
+    emissive: value.emissive
+      ? normalizeColor(value.emissive, [0, 0, 0])
+      : undefined,
+    opacity: normalizeUnit(value.opacity, 1),
+    effects: Array.isArray(value.effects) ? value.effects : [],
+  };
+}
+
+function normalizeColor(
+  value: unknown,
+  fallback: [number, number, number],
+): [number, number, number] {
+  return isColor(value) ? [...value] : [...fallback];
+}
+
+function isColor(value: unknown): value is [number, number, number] {
+  return Array.isArray(value)
+    && value.length === 3
+    && value.every(
+      channel => typeof channel === 'number'
+        && Number.isFinite(channel)
+        && channel >= 0
+        && channel <= 1,
+    );
+}
+
+function normalizeUnit(value: unknown, fallback: number): number {
+  return typeof value === 'number'
+    && Number.isFinite(value)
+    && value >= 0
+    && value <= 1
+    ? value
+    : fallback;
 }
 
 function defaultMaterial(): MaterialDef {
