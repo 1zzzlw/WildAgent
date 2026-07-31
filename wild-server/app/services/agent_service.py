@@ -457,6 +457,13 @@ class AgentService:
                     f"RAGSpecLoader: 已启用 Chroma, persist_dir={persist_dir}, "
                     f"collection={config.rag.collection_name}"
                 )
+                sync_stats = loader.last_sync_stats
+                logger.info(
+                    "RAG 索引同步: "
+                    f"total={sync_stats['total']}, "
+                    f"updated={sync_stats['updated']}, "
+                    f"deleted={sync_stats['deleted']}"
+                )
                 if isinstance(embedding_function, object) and embedding_function.__class__.__name__ == "HashEmbeddingFunction":
                     logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
                 return loader

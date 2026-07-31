@@ -11,6 +11,7 @@ Spec Document Loader —— 规范文档加载器
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import re
 import time
@@ -381,6 +382,7 @@ class RAGSpecLoader(SpecLoader):
         self._chunker = MarkdownChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self._loaded_at: float | None = None
         self._last_results: list[RetrievedSpecChunk] = []
+        self._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
         self._client: Any | None = None
         self._collection: Any | None = None
 
@@ -414,27 +416,47 @@ class RAGSpecLoader(SpecLoader):
     def last_results(self) -> list[RetrievedSpecChunk]:
         return self._last_results
 
+    @property
+    def last_sync_stats(self) -> dict[str, int]:
+        return dict(self._last_sync_stats)
+
     def sync_index(self) -> int:
-        """重建当前 namespace 的 Chroma 索引，返回写入 chunk 数。"""
+        """增量同步当前 namespace，返回本次新增或变化的 chunk 数。"""
         collection = self._get_collection()
         chunks = self._build_chunks()
+        chunks_by_id = {chunk.id: chunk for chunk in chunks}
 
-        try:
-            collection.delete(where={"namespace": self._namespace})
-        except Exception:
-            # 空 collection 或不同 Chroma 版本的 delete 行为不应阻断重建。
-            pass
+        existing = collection.get(
+            where={"namespace": self._namespace},
+            include=["metadatas"],
+        )
+        existing_ids = set(existing.get("ids") or [])
+        current_ids = set(chunks_by_id)
+
+        stale_ids = sorted(existing_ids - current_ids)
+        pending_chunks = [
+            chunks_by_id[chunk_id]
+            for chunk_id in sorted(current_ids - existing_ids)
+        ]
 
         batch_size = 10
-        for start in range(0, len(chunks), batch_size):
-            batch = chunks[start:start + batch_size]
+        for start in range(0, len(stale_ids), batch_size):
+            collection.delete(ids=stale_ids[start:start + batch_size])
+
+        for start in range(0, len(pending_chunks), batch_size):
+            batch = pending_chunks[start:start + batch_size]
             collection.upsert(
                 ids=[chunk.id for chunk in batch],
                 documents=[chunk.document for chunk in batch],
                 metadatas=[chunk.metadata for chunk in batch],
             )
 
-        return len(chunks)
+        self._last_sync_stats = {
+            "total": len(chunks),
+            "updated": len(pending_chunks),
+            "deleted": len(stale_ids),
+        }
+        return len(pending_chunks)
 
     def retrieve(self, query: str) -> list[RetrievedSpecChunk]:
         collection = self._get_collection()
@@ -485,16 +507,42 @@ class RAGSpecLoader(SpecLoader):
 
         self._persist_dir.mkdir(parents=True, exist_ok=True)
         self._client = chromadb.PersistentClient(path=str(self._persist_dir))
-        self._collection = self._client.get_or_create_collection(
+        collection_metadata = {
+            "project": "WildAgent",
+            "namespace": self._namespace,
+            "version": "2",
+            "index_signature": self._index_signature(),
+        }
+        collection = self._client.get_or_create_collection(
             name=self._collection_name,
-            metadata={
-                "project": "WildAgent",
-                "namespace": self._namespace,
-                "version": "1",
-            },
+            metadata=collection_metadata,
             embedding_function=self._embedding_function,
         )
+
+        existing_signature = (collection.metadata or {}).get("index_signature")
+        if existing_signature != collection_metadata["index_signature"]:
+            self._client.delete_collection(name=self._collection_name)
+            collection = self._client.get_or_create_collection(
+                name=self._collection_name,
+                metadata=collection_metadata,
+                embedding_function=self._embedding_function,
+            )
+
+        self._collection = collection
         return self._collection
+
+    def _index_signature(self) -> str:
+        get_config = getattr(self._embedding_function, "get_config", None)
+        embedding_config = get_config() if callable(get_config) else {}
+        signature_data = {
+            "version": 2,
+            "embedding_function": self._embedding_function.__class__.__name__,
+            "embedding_config": embedding_config,
+            "chunk_size": self._chunker.chunk_size,
+            "chunk_overlap": self._chunker.chunk_overlap,
+        }
+        payload = json.dumps(signature_data, sort_keys=True, ensure_ascii=True)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
     def _load_base_text(self) -> str:
         return FileSpecLoader([str(p) for p in self._base_paths]).load()
