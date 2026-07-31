@@ -482,17 +482,23 @@ class AgentService:
             system_prompt=system_prompt,
         )
 
-    def _agent_for_query(self, rag_query: str):
+    def _agent_for_query(self, rag_query: str | list[str]):
         if not self._dynamic_prompt:
             return self.agent
 
-        spec_text = self.spec_loader.load(query=rag_query)
+        if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
+            spec_text = self.spec_loader.load_many(rag_query, per_query=1)
+            query_log = " | ".join(rag_query)
+        else:
+            query_text = rag_query[0] if isinstance(rag_query, list) else rag_query
+            spec_text = self.spec_loader.load(query=query_text)
+            query_log = query_text
         if isinstance(self.spec_loader, RAGSpecLoader):
             hits = [
                 f"{hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}"
                 for hit in self.spec_loader.last_results
             ]
-            logger.info(f"RAG 检索 query={rag_query[:120]!r}, hits={hits}")
+            logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
         return self._create_agent(spec_text)
 
     def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
@@ -516,6 +522,41 @@ class AgentService:
                 parts.append(f"当前构件类型: {', '.join(types)}")
         return "\n".join(parts)
 
+    def _build_rag_queries(
+        self,
+        message: str,
+        current_blueprint: dict | None,
+    ) -> list[str]:
+        """为建筑生成拆分主体和组件检索意图，保证关键组件文档进入上下文。"""
+        primary_query = self._build_rag_query(message, current_blueprint)
+        if current_blueprint:
+            return [primary_query]
+
+        generation_keywords = (
+            "生成", "建造", "创建", "建一个", "做一个",
+            "画一个", "搭一个", "来一个", "设计一个",
+        )
+        building_keywords = (
+            "别墅", "住宅", "房", "建筑", "小屋", "木屋", "亭",
+            "楼", "酒店", "宿舍", "办公", "学校", "商场", "医院",
+            "车站", "工厂", "仓库", "庭院", "四合院", "塔", "庙",
+            "宫殿", "教堂",
+        )
+        is_building_generation = (
+            any(keyword in message for keyword in generation_keywords)
+            and any(keyword in message for keyword in building_keywords)
+        )
+        if not is_building_generation:
+            return [primary_query]
+
+        return [
+            primary_query,
+            f"{message}\n构件-建筑类型速查矩阵：opening、door、window、roof、stair、railing 的推荐组合",
+            f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",
+            f"{message}\n门构件分类与组装规则：door、opening、panel、glass、门型选择",
+            f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
+        ]
+
     async def query_structured(
         self, message: str, current_blueprint: dict | None = None
     ) -> QueryResult:
@@ -538,8 +579,8 @@ class AgentService:
                 logger.info(f"[query] 注入场景上下文, 构件数={len(elements)}")
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
-        rag_query = self._build_rag_query(message, current_blueprint)
-        agent = self._agent_for_query(rag_query)
+        rag_queries = self._build_rag_queries(message, current_blueprint)
+        agent = self._agent_for_query(rag_queries)
         result = await agent.ainvoke({
             "messages": [{"role": "user", "content": user_message}]
         })

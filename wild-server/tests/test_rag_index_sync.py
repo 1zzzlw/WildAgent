@@ -25,6 +25,42 @@ def make_loader(existing_ids: list[str], chunks: list[SpecChunk]):
 
 
 class RAGIndexSyncTest(unittest.TestCase):
+    def test_retrieve_many_keeps_one_result_per_query(self):
+        collection = Mock()
+        collection.count.return_value = 4
+        collection.query.return_value = {
+            "documents": [
+                ["villa content", "fallback content"],
+                ["window content", "other content"],
+            ],
+            "metadatas": [
+                [
+                    {"source": "villas.md", "content_hash": "villa"},
+                    {"source": "fallback.md", "content_hash": "fallback"},
+                ],
+                [
+                    {"source": "windows.md", "content_hash": "window"},
+                    {"source": "other.md", "content_hash": "other"},
+                ],
+            ],
+            "distances": [[0.1, 0.2], [0.1, 0.2]],
+        }
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        loader._last_results = []
+        loader._get_collection = Mock(return_value=collection)
+
+        results = loader.retrieve_many(["villa", "window"], per_query=1)
+
+        self.assertEqual(
+            [result.metadata["source"] for result in results],
+            ["villas.md", "windows.md"],
+        )
+        self.assertEqual(
+            collection.query.call_args.kwargs["query_texts"],
+            ["villa", "window"],
+        )
+
     def test_unchanged_chunks_skip_embedding_upsert(self):
         loader, collection = make_loader(["a", "b"], [make_chunk("a"), make_chunk("b")])
 

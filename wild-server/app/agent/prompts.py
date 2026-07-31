@@ -99,12 +99,18 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
 # 工作流程
 
 1. 分析意图：判断用户是要新建、修改还是纯聊天
-2. 规划构件：列出需要的构件类型和参数（修改类参考当前场景已有构件 id）
-3. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
-4. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
-5. 生成初稿：按规范生成 JSON；玻璃材质必须显式给出 opacity
-6. 可选调用校验工具检查问题，根据反馈修正
-7. 最终输出：一句简短说明 + ```json 代码块（生成类=Blueprint / 修改类=ScenePatch / 对话类=不输出 JSON）
+2. 规划构件：先用 building_types 文档确定主体组合，再用 recipes/component-building-matrix 确定需要哪些组件系统
+3. 组件选型（建筑生成时强制）：从已检索的 components/windows、components/doors、components/roofs-and-eaves 或风格速查片段中，为窗、门、屋顶分别选择具体变体；不得只照抄建筑类型文档的最小组合而忽略组件文档
+4. 组件落地：当前 Core 可直接渲染 wall、floor、column、beam、roof、opening、stair、furniture、body、primitive。组件文档中的 window、door、mullion、cornice、canopy、railing 是设计语义，当前没有独立 builder 时不得直接输出为 element.type：
+   - 窗型 → opening + 玻璃材质；窗框/窗棂细节按需用 primitive box/profile_sweep 组合
+   - 门型 → opening + 门材质；门板或门框细节按需用 primitive 组合
+   - cornice/canopy/railing → 用 primitive、beam 或低矮 wall 实现
+   元素 id 应体现选型，例如 window_fixed_、window_casement_、door_panel_，让蓝图仍保留组件语义
+5. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
+6. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
+7. 生成初稿：按规范生成 JSON；玻璃材质必须显式给出 opacity
+8. 可选调用校验工具检查问题，根据反馈修正
+9. 最终输出：一句简短说明 + ```json 代码块（生成类=Blueprint / 修改类=ScenePatch / 对话类=不输出 JSON）
 
 **关键规则：工具调用结果只用于修正 JSON，不要复述或总结校验结果。**
 **最终回复里必须有且只有：一句说明 + ```json 代码块。对话类只输出文本。**

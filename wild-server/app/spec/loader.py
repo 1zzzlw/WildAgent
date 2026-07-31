@@ -392,6 +392,19 @@ class RAGSpecLoader(SpecLoader):
     def load(self, query: str = "") -> str:
         base_text = self._load_base_text()
         retrieved = self.retrieve(query) if query.strip() else []
+        return self._compose_context(base_text, retrieved)
+
+    def load_many(self, queries: list[str], per_query: int = 1) -> str:
+        """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
+        base_text = self._load_base_text()
+        retrieved = self.retrieve_many(queries, per_query=per_query)
+        return self._compose_context(base_text, retrieved)
+
+    def _compose_context(
+        self,
+        base_text: str,
+        retrieved: list[RetrievedSpecChunk],
+    ) -> str:
         rag_text = self._format_retrieved(retrieved)
         self._loaded_at = time.time()
 
@@ -492,6 +505,64 @@ class RAGSpecLoader(SpecLoader):
             ))
             if len(retrieved) >= self._top_k:
                 break
+
+        self._last_results = retrieved
+        return retrieved
+
+    def retrieve_many(
+        self,
+        queries: list[str],
+        per_query: int = 1,
+    ) -> list[RetrievedSpecChunk]:
+        """批量检索多个意图，每个意图保留固定数量并全局去重。"""
+        clean_queries = [query.strip() for query in queries if query.strip()]
+        if not clean_queries:
+            self._last_results = []
+            return []
+
+        collection = self._get_collection()
+        count = collection.count()
+        if count == 0:
+            self._last_results = []
+            return []
+
+        limit = max(1, per_query)
+        n_results = min(max(limit * 2, 2), count)
+        result = collection.query(
+            query_texts=clean_queries,
+            n_results=n_results,
+            where={"namespace": self._namespace},
+            include=["documents", "metadatas", "distances"],
+        )
+
+        document_groups = result.get("documents", []) or []
+        metadata_groups = result.get("metadatas", []) or []
+        distance_groups = result.get("distances", []) or []
+        retrieved: list[RetrievedSpecChunk] = []
+        seen_hashes: set[str] = set()
+
+        for query_index in range(len(clean_queries)):
+            documents = document_groups[query_index] if query_index < len(document_groups) else []
+            metadatas = metadata_groups[query_index] if query_index < len(metadata_groups) else []
+            distances = distance_groups[query_index] if query_index < len(distance_groups) else []
+            selected = 0
+            for index, document in enumerate(documents or []):
+                metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+                content_hash = str(
+                    metadata.get("content_hash")
+                    or hashlib.sha256((document or "").encode("utf-8")).hexdigest()[:16]
+                )
+                if content_hash in seen_hashes:
+                    continue
+                seen_hashes.add(content_hash)
+                retrieved.append(RetrievedSpecChunk(
+                    document=document or "",
+                    metadata=metadata,
+                    distance=distances[index] if index < len(distances) else None,
+                ))
+                selected += 1
+                if selected >= limit:
+                    break
 
         self._last_results = retrieved
         return retrieved
