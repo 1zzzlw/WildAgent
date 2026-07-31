@@ -419,7 +419,7 @@ def validate_stair_alignment(blueprint: dict) -> str:
     return "\n".join(issues)
 
 
-# 修正类 Tool —— 自动计算并修改，返回修正结果
+# 字段校验与修正 Tool —— 以下函数先检查渲染必需字段，再进入原地修正步骤
 
 @tool
 def validate_element_required_fields(blueprint: dict) -> str:
@@ -1298,7 +1298,7 @@ def fix_wall_junctions(blueprint: dict) -> str:
       对每个孤立端点，找距离最近的其他墙体端点；
       若距离在 (TOLERANCE, MAX_SNAP] 范围内，则把孤立端点坐标对齐到目标端点。
       - TOLERANCE = 0.15m（已在容差内的不处理）
-      - MAX_SNAP   = 1.5m（超过此距离不自动对齐，避免误操作）
+      - MAX_SNAP   = 0.5m（超过此距离不自动对齐，避免误操作）
 
     参数 blueprint: 完整的 Blueprint dict
     """
@@ -1475,7 +1475,7 @@ def fix_stair_alignment(blueprint: dict) -> str:
 
     修正逻辑：
       - 收集所有可用参考高度（地板顶面Y、墙体顶部Y、地面Y=0）
-      - 将 stair.from.y 对齐到最近的参考高度（容差 0.2m 内才修正）
+      - 将 stair.from.y 对齐到最近的参考高度（偏差超过 0.2m 才修正）
       - 将 stair.to.y 对齐到下一个更高的参考高度
       - 确保 from.y < to.y（楼梯向上）
 
@@ -1500,7 +1500,7 @@ def fix_stair_alignment(blueprint: dict) -> str:
                 ref_ys.append(float(ty))
     ref_ys = sorted(set(ref_ys))
 
-    TOL = 0.2  # 2cm 容差，小于此值时视为已对齐
+    TOL = 0.2  # 20cm 容差，小于此值时视为已对齐
 
     fixes: list[str] = []
     for s in stairs:

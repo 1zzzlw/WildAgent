@@ -1,3 +1,22 @@
+---
+doc_type: blueprint_spec
+doc_scope: generation
+knowledge_layer: wild_schema
+entity_type: schema
+entity_name: blueprint_spec_full
+topic: schema
+wild_version: "1.1"
+status: supported
+authority: schema
+source: BLUEPRINT-SPEC-FULL.md
+keywords:
+  - WILD
+  - Blueprint
+  - schema
+  - geometry
+  - materials
+---
+
 # Wild建筑蓝图规范文档 (Blueprint Specification)
 
 ## 概述

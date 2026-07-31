@@ -5,6 +5,10 @@ GET    /api/scenes              — 列出所有已保存的蓝图文件
 GET    /api/scenes/{filename}   — 获取已保存的蓝图文件
 PUT    /api/scenes/{filename}   — 更新/保存蓝图文件
 DELETE /api/scenes/{filename}   — 删除蓝图文件
+
+当前实现以 ``storage/scenes`` 文件夹代替数据库：一个 ``.wild`` 文件对应一个场景，
+文件修改时间充当列表接口的更新时间。接口只做轻量结构检查，完整校验发生在 Agent
+生成流水线中。
 """
 import json
 from pathlib import Path
@@ -27,21 +31,25 @@ async def list_scenes():
     scenes = []
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
 
+    # 最近修改的场景排在最前；glob 限制列表只展示 .wild 文件。
     for file_path in sorted(SCENES_DIR.glob("*.wild"), key=lambda p: p.stat().st_mtime, reverse=True):
         try:
             data = json.loads(file_path.read_text(encoding="utf-8"))
+            # 列表只提取前端卡片所需摘要，不返回完整几何数据。
             name = data.get("meta", {}).get("name", file_path.stem)
             elements_count = len(data.get("geometry", {}).get("elements", []))
             scenes.append({
                 "filename": file_path.name,
                 "name": name,
                 "elements_count": elements_count,
+                # 前端使用毫秒时间戳，文件系统提供的是秒。
                 "updated_at": int(file_path.stat().st_mtime * 1000),
             })
         except (json.JSONDecodeError, KeyError):
             # 跳过损坏或非 Blueprint 文件
             continue
 
+    # 显式 JSONResponse 保证顶层数组按原样返回。
     return JSONResponse(content=scenes)
 
 
@@ -58,6 +66,7 @@ async def get_scene(filename: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"文件不存在: {filename}")
 
+    # 让响应层流式发送文件，避免先把大型场景整体读入 Python 内存。
     return FileResponse(
         path=str(file_path),
         media_type="application/json",
@@ -84,14 +93,16 @@ async def update_scene(filename: str, request: Request):
         raise HTTPException(status_code=400, detail="文件名必须以 .wild 结尾")
 
     try:
+        # FastAPI 在这里异步读取并解析整个 JSON 请求体。
         blueprint = await request.json()
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="请求体必须是有效的 JSON")
 
-    # 基本结构校验
+    # 这里只保证文件仍像 Blueprint；字段级和空间级校验不在此接口重复执行。
     if not isinstance(blueprint, dict) or "meta" not in blueprint or "geometry" not in blueprint:
         raise HTTPException(status_code=400, detail="JSON 必须是包含 meta 和 geometry 的 Blueprint 对象")
 
+    # 自定义保存函数采用覆盖语义，因此 PUT 同时支持创建和更新。
     saved_path = save_blueprint_file_as(blueprint, SCENES_DIR, filename)
     return JSONResponse(content={"status": "ok", "path": saved_path})
 
@@ -116,5 +127,6 @@ async def delete_scene(filename: str):
     if not file_path.exists():
         raise HTTPException(status_code=404, detail=f"文件不存在: {filename}")
 
+    # 当前没有回收站或数据库软删除，unlink 后只能依赖外部备份恢复。
     file_path.unlink()
     return JSONResponse(content={"status": "deleted", "filename": filename})

@@ -46,12 +46,16 @@ class WebSocketHeartbeat:
     """
 
     def __init__(self, timeout: float = 90, check_interval: float = 10):
+        """保存检查参数并初始化尚未启动的监控状态。"""
         self.timeout = timeout
         self.check_interval = check_interval
+        # 这是由调用方维护的协作标记，不代表后台任务自身正在执行。
         self.is_processing: bool = False
 
+        # 使用墙上时钟记录最近活动；elapsed 属性和检查循环采用同一时间源。
         self._last_message_time: float = time.time()
         self._alive: bool = False
+        # 每个 Heartbeat 实例至多持有一个监控 Task。
         self._task: asyncio.Task | None = None
 
     @property
@@ -76,6 +80,7 @@ class WebSocketHeartbeat:
                         回调内部负责具体的断开逻辑，如果回调抛出异常，
                         监控器会记录日志并停止。
         """
+        # 每次 start 都从当前时刻重新计时，构造对象到启动之间的耗时不算空闲。
         self._last_message_time = time.time()
         self._alive = True
         self._task = asyncio.create_task(self._monitor(on_timeout))
@@ -84,14 +89,17 @@ class WebSocketHeartbeat:
         """停止心跳监控，取消后台任务"""
         self._alive = False
         if self._task is not None:
+            # sleep 中的任务只有通过 cancel 才能立即结束，不必等待 check_interval。
             self._task.cancel()
             try:
                 await self._task
             except asyncio.CancelledError:
+                # stop 主动取消属于正常控制流，不向上游暴露异常。
                 pass
             self._task = None
 
     async def _monitor(self, on_timeout: Callable[[float], Awaitable[None]]):
+        """循环检查空闲时长；首次超时回调完成后终止监控。"""
         try:
             while self._alive:
                 await asyncio.sleep(self.check_interval)
@@ -113,9 +121,12 @@ class WebSocketHeartbeat:
                     except Exception as exc:
                         logger.error(f"心跳超时回调执行异常: {exc}")
                     finally:
+                        # 无论回调成功与否都只触发一次，防止重复关闭同一连接。
                         self._alive = False
                     break
         except asyncio.CancelledError:
+            # stop() 或连接清理触发的取消是预期退出路径。
             pass
         except Exception as exc:
+            # 监控器自身失败不应击穿 WebSocket 端点，只记录诊断日志。
             logger.error(f"心跳监控异常: {exc}")

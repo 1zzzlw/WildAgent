@@ -1,3 +1,21 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: courtyard
+topic: definition
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/catalog/courtyards.md
+keywords:
+  - 院落
+  - 庭院
+  - courtyard
+  - 四合院
+---
+
 # 轻量建筑分类：院落 / 庭院（Courtyard）
 
 > 来源：从旧版根目录轻量建筑类型参考库拆分。

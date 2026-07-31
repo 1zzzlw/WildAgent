@@ -12,9 +12,16 @@ def make_chunk(chunk_id: str) -> SpecChunk:
     )
 
 
-def make_loader(existing_ids: list[str], chunks: list[SpecChunk]):
+def make_loader(
+    existing_ids: list[str],
+    chunks: list[SpecChunk],
+    existing_metadatas: list[dict] | None = None,
+):
     collection = Mock()
-    collection.get.return_value = {"ids": existing_ids, "metadatas": []}
+    collection.get.return_value = {
+        "ids": existing_ids,
+        "metadatas": existing_metadatas or [],
+    }
 
     loader = object.__new__(RAGSpecLoader)
     loader._namespace = "test"
@@ -62,17 +69,41 @@ class RAGIndexSyncTest(unittest.TestCase):
         )
 
     def test_unchanged_chunks_skip_embedding_upsert(self):
-        loader, collection = make_loader(["a", "b"], [make_chunk("a"), make_chunk("b")])
+        chunks = [make_chunk("a"), make_chunk("b")]
+        loader, collection = make_loader(
+            ["a", "b"],
+            chunks,
+            [chunk.metadata for chunk in chunks],
+        )
 
         updated = loader.sync_index()
 
         self.assertEqual(updated, 0)
         collection.upsert.assert_not_called()
+        collection.update.assert_not_called()
         collection.delete.assert_not_called()
         self.assertEqual(
             loader.last_sync_stats,
             {"total": 2, "updated": 0, "deleted": 0},
         )
+
+    def test_metadata_change_updates_without_reembedding(self):
+        chunk = make_chunk("a")
+        loader, collection = make_loader(
+            ["a"],
+            [chunk],
+            [{"namespace": "test", "content_hash": "a", "doc_type": "knowledge"}],
+        )
+
+        updated = loader.sync_index()
+
+        self.assertEqual(updated, 1)
+        collection.update.assert_called_once_with(
+            ids=["a"],
+            metadatas=[chunk.metadata],
+        )
+        collection.upsert.assert_not_called()
+        collection.delete.assert_not_called()
 
     def test_changed_chunk_deletes_old_id_and_upserts_new_id(self):
         loader, collection = make_loader(["old"], [make_chunk("new")])

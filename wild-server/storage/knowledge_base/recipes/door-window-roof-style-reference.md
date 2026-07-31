@@ -1,3 +1,22 @@
+---
+doc_type: recipe
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: assembly
+entity_name: envelope_style_reference
+topic: matrix
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: recipes/door-window-roof-style-reference.md
+keywords:
+  - 门窗风格
+  - 屋顶类型
+  - door
+  - window
+  - roofType
+---
+
 # 门窗与屋顶风格速查
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -6,6 +25,15 @@
 
 ---
 ## 5.3 门窗风格速查
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: door_window_style_reference
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 门窗风格, door style, window style, building type
+-->
 
 | 建筑类型 | opening style | door style | window sashType | mullion pattern |
 |:---:|:---:|:---:|:---:|:---:|
@@ -23,6 +51,15 @@
 | 哥特教堂 | gothic | panel(尖拱) | fixed(彩色玻璃) | custom(花窗) |
 
 ## 5.4 屋顶类型速查
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: roof_style_reference
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 屋顶选型, roofType, roof style, building type
+-->
 
 | 屋顶类型 | roofType | 适用建筑 |
 |:---:|:---:|:---|

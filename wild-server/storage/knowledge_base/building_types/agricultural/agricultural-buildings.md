@@ -1,3 +1,23 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: agricultural_building_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/agricultural/agricultural-buildings.md
+keywords:
+  - 农业建筑
+  - 温室
+  - greenhouse
+  - 养殖场
+  - 粮仓
+  - 农机站
+---
+
 # 农业建筑：温室、养殖场、粮仓、农机站
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -10,6 +30,15 @@
 ---
 
 ### 4.1 设施温室
+
+<!-- rag-meta
+entity_type: building
+entity_name: greenhouse
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 设施温室, greenhouse, 采光顶
+-->
 
 > 图示：温室结构示意图（原始资源：`docs/建筑类型分类体系_images/05_温室.png`）
 
@@ -47,6 +76,15 @@
 
 ### 4.2 畜禽饲养场
 
+<!-- rag-meta
+entity_type: building
+entity_name: livestock_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 畜禽饲养场, livestock building, 养殖场
+-->
+
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|
 | 外围护墙 | `wall` | 保温夹芯板, thickness=0.08m, 隔温防腐蚀 |
@@ -64,6 +102,15 @@
 
 ### 4.3 粮仓
 
+<!-- rag-meta
+entity_type: building
+entity_name: granary
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 粮仓, granary, 筒仓
+-->
+
 | 类型 | 构件 | WILD type | 精确参数 |
 |:---:|:---|:---:|:---|
 | 筒仓 | 仓壁 | `wall` | curve=arc, sweep=360°, height=10~30m, 直径6~15m |
@@ -78,6 +125,15 @@
 ---
 
 ### 4.4 农机站
+
+<!-- rag-meta
+entity_type: building
+entity_name: agricultural_machinery_station
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 农机站, agricultural machinery station, 大开间钢架
+-->
 
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|

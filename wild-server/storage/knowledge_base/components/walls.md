@@ -1,3 +1,22 @@
+---
+doc_type: component
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: wall
+entity_name: wall_family
+topic: parameters
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: components/walls.md
+keywords:
+  - 墙体
+  - wall
+  - thickness
+  - height
+  - material
+---
+
 # 墙体构件分类与规则
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

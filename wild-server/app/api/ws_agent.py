@@ -56,8 +56,13 @@ router = APIRouter()
 async def _process_user_message_safely(
     ws: WebSocket, data: dict, heartbeat: WebSocketHeartbeat
 ):
-    """处理单条消息，并将连接断开视为正常的任务结束。"""
+    """在后台任务边界处理单条用户消息。
+
+    这里统一维护心跳的 ``is_processing`` 状态，并把浏览器主动断开视为正常结束；
+    其他异常尽量转成协议内的 ``error`` 消息，避免异常逃逸并终止接收循环。
+    """
     request_id = data.get("request_id", "")
+    # LLM 可能运行较久，处理期间不应因为没有收到新消息而触发心跳超时。
     heartbeat.is_processing = True
     try:
         await _handle_user_message(ws, data)
@@ -75,14 +80,22 @@ async def _process_user_message_safely(
                 "error": f"Agent 处理失败: {str(exc)}",
             })
         except Exception:
+            # 发送错误时连接也可能已经断开，此时无需再次抛出。
             pass
     finally:
+        # 无论成功、失败还是取消，都恢复心跳监控并刷新空闲计时起点。
         heartbeat.is_processing = False
         heartbeat.touch()
 
 
 @router.websocket("/ws/agent")
 async def agent_websocket(ws: WebSocket):
+    """维护一个 Agent WebSocket 连接的完整生命周期。
+
+    接收循环始终保持轻量，只负责解析协议、回复 ping 和启动后台生成任务；
+    耗时的 LLM 请求不会阻塞心跳。函数退出前会取消仍在运行的生成任务，并停止
+    此连接专属的心跳监控器。
+    """
     await ws.accept()
     logger.info("Agent WebSocket 客户端已连接")
 
@@ -102,6 +115,7 @@ async def agent_websocket(ws: WebSocket):
             })
         except Exception:
             pass
+        # 先翻转循环条件，再主动关闭 socket，让阻塞中的 receive_text() 退出。
         connection_alive = False
         try:
             await ws.close()
@@ -110,7 +124,8 @@ async def agent_websocket(ws: WebSocket):
 
     await heartbeat.start(on_heartbeat_timeout)
 
-    # ---------- 消息处理锁 ----------
+    # ---------- 消息处理状态 ----------
+    # 锁保护真正的处理区；active_message_task 让接收循环能立即拒绝并发请求。
     processing_lock = asyncio.Lock()
     active_message_task: asyncio.Task | None = None
 
@@ -122,7 +137,9 @@ async def agent_websocket(ws: WebSocket):
     # ---------- 消息接收循环 ----------
     try:
         while connection_alive:
+            # receive_text 在没有消息时挂起，但不占用事件循环线程。
             raw = await ws.receive_text()
+            # 任意合法/非法文本都表示连接仍活跃，应刷新最后消息时间。
             heartbeat.touch()
 
             try:
@@ -138,6 +155,7 @@ async def agent_websocket(ws: WebSocket):
             msg_type = data.get("type")
 
             if msg_type == "ping":
+                # 原样回传前端时间戳，便于前端计算往返延迟。
                 await ws.send_json({
                     "type": "pong",
                     "timestamp": data.get("timestamp", int(time.time() * 1000))
@@ -151,6 +169,7 @@ async def agent_websocket(ws: WebSocket):
                         "error": "正在处理上一条消息，请稍后再发送"
                     })
                 else:
+                    # 后台执行保证接收循环继续响应 ping；任务引用用于退出时取消。
                     active_message_task = asyncio.create_task(
                         handle_user_message_safe(data)
                     )
@@ -178,6 +197,7 @@ async def agent_websocket(ws: WebSocket):
         connection_alive = False
         if active_message_task is not None:
             if not active_message_task.done():
+                # 客户端离开后生成结果已无接收者，及时取消下游 LLM 任务。
                 active_message_task.cancel()
             try:
                 await active_message_task
@@ -187,14 +207,21 @@ async def agent_websocket(ws: WebSocket):
 
 
 async def _handle_user_message(ws: WebSocket, data: dict):
+    """执行一次用户请求，并把 QueryResult 翻译成 WebSocket 协议消息。
+
+    根据 AgentService 的结构化结果分成三条出口：
+    完整 Blueprint 会落盘，ScenePatch 等待前端确认，普通对话只返回文本。
+    """
     request_id = data.get("request_id", "")
     message = data.get("message", "")
     current_blueprint = data.get("blueprint")
-    session_id = data.get("session_id", request_id)  # 用 session_id 做文件名
+    # 相同 session_id 使用同一个文件名，因此后续生成会更新该会话的场景文件。
+    session_id = data.get("session_id", request_id)
 
     logger.info(f"[{request_id}] 收到用户消息: {message[:80]}...")
 
     async def send_step(stage: str, content: str):
+        """发送一条仅用于前端展示进度的 agent_step 消息。"""
         await ws.send_json({
             "type": "agent_step",
             "request_id": request_id,
@@ -207,6 +234,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     await send_step("generating", "正在调用 AI 处理，请耐心等待...")
 
     # ===== Phase 2: LLM 查询（统一入口，AI 自行判断意图）=====
+    # ticker 与真实查询并行，只负责在长等待期间提供阶段性反馈。
     ticker_task = asyncio.create_task(_thinking_ticker(send_step))
     try:
         result = await agent_service.query_structured(message, current_blueprint)
@@ -220,6 +248,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     # ===== Phase 3: 处理结果（按 AI 输出的格式分发）=====
     if result.blueprint is not None:
         # ── 生成类：完整 Blueprint ──────────────────────────
+        # 跳过项不展示；其余校验结果统一映射成前端可读的状态行。
         for pr in result.pipeline_results:
             if pr.output.startswith("⏭️"):
                 continue
@@ -235,6 +264,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         await send_step("saving", "正在保存蓝图文件...")
 
         try:
+            # 完整蓝图由服务端保存，前端通过 scenes REST API 再读取文件。
             file_path = save_blueprint_file_as(
                 result.blueprint, SCENES_DIR, f"{session_id}.wild"
             )
@@ -277,6 +307,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
                 "content": f"生成的修改方案存在问题，无法应用：\n\n{result.error}\n\n请重新描述你的需求。",
             })
         else:
+            # Patch 只是 proposal，前端必须让用户确认后才能真正应用到当前场景。
             await ws.send_json({
                 "type": "patch_proposal",
                 "request_id": request_id,
@@ -315,6 +346,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
 
 async def _thinking_ticker(send_step):
     """LLM 生成期间每 8 秒推一条思考进度，直到被取消"""
+    # 文案数量有限；全部发送完后协程自然结束，不会循环重复。
     THINKING_MESSAGES = [
         "理解建筑需求，规划构件组合...",
         "计算空间布局与构件尺寸...",

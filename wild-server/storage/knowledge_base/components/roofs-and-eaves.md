@@ -1,3 +1,23 @@
+---
+doc_type: component
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: roof
+entity_name: roof_and_eaves_family
+topic: parameters
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: components/roofs-and-eaves.md
+keywords:
+  - 屋顶
+  - 屋檐
+  - roof
+  - cornice
+  - canopy
+  - roofType
+---
+
 # 屋顶、屋檐与顶部围护构件
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

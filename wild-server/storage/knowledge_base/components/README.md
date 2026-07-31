@@ -1,3 +1,20 @@
+---
+doc_type: index
+doc_scope: index
+knowledge_layer: navigation
+entity_type: index
+entity_name: components_index
+topic: navigation
+wild_version: "1.1"
+status: supported
+authority: maintainer
+source: components/README.md
+keywords:
+  - 构件索引
+  - components
+  - WILD type
+---
+
 # 构件知识索引
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

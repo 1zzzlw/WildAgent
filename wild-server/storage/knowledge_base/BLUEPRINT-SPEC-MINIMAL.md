@@ -1,3 +1,22 @@
+---
+doc_type: blueprint_spec
+doc_scope: system
+knowledge_layer: wild_schema
+entity_type: schema
+entity_name: blueprint_spec_minimal
+topic: constraints
+wild_version: "1.1"
+status: supported
+authority: schema
+source: BLUEPRINT-SPEC-MINIMAL.md
+keywords:
+  - WILD
+  - Blueprint
+  - 系统铁律
+  - 空间规则
+  - 必填字段
+---
+
 # Wild 蓝图规范（精简版 · AI 生成专用）
 
 > 完整规范见 BLUEPRINT-SPEC-FULL.md（用于 RAG 检索）。本文档只含 AI 生成必需的最小信息。

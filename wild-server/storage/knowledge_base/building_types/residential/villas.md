@@ -1,3 +1,22 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: villa
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/residential/villas.md
+keywords:
+  - 别墅
+  - villa
+  - 现代别墅
+  - 中式传统别墅
+  - 新中式别墅
+---
+
 # 居住建筑：别墅
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -12,6 +31,15 @@
 ---
 
 ### 1.1.1 现代别墅（架空层）
+
+<!-- rag-meta
+entity_type: building
+entity_name: modern_villa
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 现代别墅, modern villa, 架空层
+-->
 
 > 图示：现代别墅结构示意图（原始资源：`docs/建筑类型分类体系_images/01_现代别墅.png`）
 
@@ -67,6 +95,15 @@ column(架空柱) ─→ floor(底层架空板) ─→ wall(外围护墙) ─→
 
 ### 1.1.2 中式传统别墅（四合院/江南民居）
 
+<!-- rag-meta
+entity_type: building
+entity_name: traditional_chinese_villa
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 中式传统别墅, Chinese villa, 四合院, 江南民居
+-->
+
 > 图示：中式别墅结构示意图（原始资源：`docs/建筑类型分类体系_images/06_中式别墅.png`）
 
 > 依据：《清式营造则例》、GB 50352-2019。传统中式别墅采用**木构架承重体系**，"墙倒屋不塌"。
@@ -115,6 +152,15 @@ column(架空柱) ─→ floor(底层架空板) ─→ wall(外围护墙) ─→
 ---
 
 ### 1.1.3 新中式别墅（现代材料+传统美学）
+
+<!-- rag-meta
+entity_type: building
+entity_name: new_chinese_villa
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 新中式别墅, new Chinese villa, 现代材料
+-->
 
 > 图示：新中式别墅结构示意图（原始资源：`docs/建筑类型分类体系_images/07_新中式别墅.png`）
 

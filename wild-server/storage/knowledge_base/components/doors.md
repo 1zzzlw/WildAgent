@@ -1,3 +1,22 @@
+---
+doc_type: component
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: door
+entity_name: door_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: components/doors.md
+keywords:
+  - 门
+  - door
+  - opening
+  - leafCount
+  - hingeSide
+---
+
 # 门构件分类与组装规则
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -10,6 +29,15 @@
 门在 WILD 中有两个关键构件：**`opening`**（洞口）定义墙上的开洞尺寸和形状，**`door`**（门扇）定义可开合实体。复杂造型的门 = `opening` + `door` + `mullion` + `window`（门亮子）+ `cornice`（门楣装饰）。
 
 ### X.2.1 按开启方式分类
+
+<!-- rag-meta
+entity_type: door
+entity_name: door_opening_modes
+topic: classification
+status: experimental
+authority: domain_reference
+keywords: 门开启方式, door opening, leafCount, hingeSide
+-->
 
 | 开启方式 | WILD door.leafCount | hingeSide | 特点 | 适用场景 |
 |:---|:---:|:---|:---|:---|
@@ -31,6 +59,15 @@
 | `material` | 材质 | `wood_oak` / `steel` / `glass_tempered` / `aluminum` |
 
 ### X.2.2 中式传统门 —— 构件组装公式
+
+<!-- rag-meta
+entity_type: door
+entity_name: traditional_chinese_door_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 中式门, traditional Chinese door, opening, door
+-->
 
 > 图示：中式传统门示意图（原始资源：`docs/建筑类型分类体系_images/08_中式传统门.png`）
 
@@ -168,6 +205,15 @@
 ```
 
 ### X.2.3 欧式古典门 —— 构件组装公式
+
+<!-- rag-meta
+entity_type: door
+entity_name: classical_european_door_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 欧式门, classical European door, panel door, arched door
+-->
 
 > 图示：欧式古典门示意图（原始资源：`docs/建筑类型分类体系_images/09_欧式古典门.png`）
 
@@ -322,6 +368,15 @@
 
 ### X.2.4 现代门 —— 构件组装公式
 
+<!-- rag-meta
+entity_type: door
+entity_name: modern_door_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 现代门, modern door, sliding glass door, revolving door
+-->
+
 > 图示：现代门示意图（原始资源：`docs/建筑类型分类体系_images/10_现代门.png`）
 
 ---
@@ -437,6 +492,15 @@
 
 ### X.2.5 门-构件组装关系总表
 
+<!-- rag-meta
+entity_type: door
+entity_name: door_component_matrix
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 门构件矩阵, door component matrix, opening, door, mullion
+-->
+
 | 门型 | opening.style | door.style | door.leafCount | mullion | cornice/placement | 子构件数 |
 |:---|:---:|:---:|:---:|:---:|:---:|:---:|
 | **实榻门(宫殿)** | rectangular | panel | 2 | — | placement(门钉)+cornice(门楣) | 4 |
@@ -458,6 +522,15 @@
 > **图例**：子构件数 = opening + door + mullion + 装饰件(cornice/placement/roof) 合计。
 
 ### X.2.6 门型与建筑类型速配
+
+<!-- rag-meta
+entity_type: door
+entity_name: door_building_style_matrix
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 门型速配, door style, building type
+-->
 
 | 建筑类型 | 推荐门型 | 说明 |
 |:---|:---|:---|

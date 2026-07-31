@@ -1,3 +1,20 @@
+---
+doc_type: index
+doc_scope: index
+knowledge_layer: navigation
+entity_type: index
+entity_name: recipes_index
+topic: navigation
+wild_version: "1.1"
+status: supported
+authority: maintainer
+source: recipes/README.md
+keywords:
+  - 组装配方索引
+  - recipes
+  - assembly
+---
+
 # 组装配方索引
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

@@ -1,3 +1,22 @@
+---
+doc_type: component
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: structural_component
+entity_name: structural_component_family
+topic: parameters
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: components/structural-components.md
+keywords:
+  - 结构构件
+  - column
+  - beam
+  - floor
+  - truss
+---
+
 # 结构构件：柱、梁、楼板、桁架
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

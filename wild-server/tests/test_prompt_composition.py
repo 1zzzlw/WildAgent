@@ -70,6 +70,23 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertIn("屋顶屋檐构件规则", combined)
         self.assertEqual(len(asset_queries), 1)
 
+    def test_building_queries_receive_business_metadata_filters(self):
+        service = AgentService.__new__(AgentService)
+        queries = service._build_rag_queries("生成一个别墅", None)
+
+        filtered_queries = service._build_filtered_rag_queries(queries)
+
+        self.assertEqual(
+            [query.metadata_filter for query in filtered_queries],
+            [
+                {"doc_type": "building_type"},
+                {"doc_type": "recipe"},
+                {"doc_type": "component", "entity_type": "window"},
+                {"doc_type": "component", "entity_type": "door"},
+                {"doc_type": "component", "entity_type": "roof"},
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

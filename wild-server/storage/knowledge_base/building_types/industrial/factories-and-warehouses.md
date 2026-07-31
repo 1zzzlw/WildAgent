@@ -1,3 +1,22 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: industrial_building_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/industrial/factories-and-warehouses.md
+keywords:
+  - 工业建筑
+  - 厂房
+  - factory
+  - 仓储
+  - warehouse
+---
+
 # 工业建筑：厂房、工业上楼、仓储
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -10,6 +29,15 @@
 ---
 
 ### 3.1 单层重工业厂房
+
+<!-- rag-meta
+entity_type: building
+entity_name: heavy_industrial_factory
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 重工业厂房, industrial factory, 单层厂房
+-->
 
 > 图示：工业厂房结构示意图（原始资源：`docs/建筑类型分类体系_images/04_工业厂房.png`）
 
@@ -52,6 +80,15 @@
 
 ### 3.2 工业上楼（4F+ 高层厂房）
 
+<!-- rag-meta
+entity_type: building
+entity_name: multistory_industrial_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 工业上楼, multistory factory, 高层厂房
+-->
+
 **构件清单**
 
 | 构件 | WILD type | 精确参数 |
@@ -72,6 +109,15 @@
 ---
 
 ### 3.3 仓储建筑
+
+<!-- rag-meta
+entity_type: building
+entity_name: warehouse
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 仓储建筑, warehouse, 仓库
+-->
 
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|

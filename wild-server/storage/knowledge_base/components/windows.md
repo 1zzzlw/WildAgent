@@ -1,3 +1,22 @@
+---
+doc_type: component
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: window
+entity_name: window_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: components/windows.md
+keywords:
+  - 窗
+  - window
+  - opening
+  - mullion
+  - sashType
+---
+
 # 窗构件分类与组装规则
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -22,6 +41,15 @@
 
 ### X.3.1 按开启方式分类 —— window.sashType 映射
 
+<!-- rag-meta
+entity_type: window
+entity_name: window_opening_modes
+topic: classification
+status: experimental
+authority: domain_reference
+keywords: 窗开启方式, window opening, sashType
+-->
+
 | 开启方式 | sashType | 特征 | 通风效率 | 密封 | 典型应用 |
 |:---|:---:|:---|:---:|:---:|:---|
 | **固定窗** | `fixed` | 不可开启，仅采光观景 | — | ★★★★★ | 高层幕墙、天窗 |
@@ -35,6 +63,15 @@
 | **立转窗** | `pivot_vertical` | 垂直中轴旋转 | ★★★★ | ★★ | 特殊建筑 |
 
 ### X.3.2 中式传统窗 —— 构件组装公式
+
+<!-- rag-meta
+entity_type: window
+entity_name: traditional_chinese_window_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 中式窗, traditional Chinese window, mullion, 支摘窗, 漏窗
+-->
 
 > 图示：中式窗示意图（直棂·一码三箭·槛窗·支摘窗）（原始资源：`docs/建筑类型分类体系_images/11_中式窗_直棂槛窗支摘.png`）
 
@@ -246,6 +283,15 @@
 
 ### X.3.3 欧式古典窗 —— 构件组装公式
 
+<!-- rag-meta
+entity_type: window
+entity_name: classical_european_window_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 欧式窗, classical European window, rose window, bay window
+-->
+
 > 图示：欧式古典窗示意图（原始资源：`docs/建筑类型分类体系_images/13_欧式古典窗.png`）
 
 ---
@@ -384,6 +430,15 @@
 
 ### X.3.4 现代窗 —— 构件组装公式
 
+<!-- rag-meta
+entity_type: window
+entity_name: modern_window_family
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 现代窗, modern window, curtain wall, corner window
+-->
+
 > 图示：现代窗示意图（原始资源：`docs/建筑类型分类体系_images/14_现代窗.png`）
 
 ---
@@ -487,6 +542,15 @@
 
 ### X.3.5 窗-构件组装关系总表
 
+<!-- rag-meta
+entity_type: window
+entity_name: window_component_matrix
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 窗构件矩阵, window component matrix, opening, mullion
+-->
+
 **这张表是本章的核心产出**——按照 WILD 子构件组合方式，你将知道如何用底层组件拼出任何想要的窗型。
 
 | 窗型 | opening.style | window.sashType | mullion.pattern | cornice | 子构件数 |
@@ -515,6 +579,15 @@
 ---
 
 ### X.3.6 窗型与建筑类型速配
+
+<!-- rag-meta
+entity_type: window
+entity_name: window_building_style_matrix
+topic: matrix
+status: experimental
+authority: domain_reference
+keywords: 窗型速配, window style, building type
+-->
 
 | 建筑类型 | 推荐窗型 | 说明 |
 |:---|:---|:---|

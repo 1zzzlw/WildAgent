@@ -1,3 +1,23 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: residential_accommodation_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/residential/housing-dormitories-hotels.md
+keywords:
+  - 住宅
+  - housing
+  - 宿舍
+  - dormitory
+  - 酒店
+  - hotel
+---
+
 # 居住与类居住建筑：住宅、宿舍、酒店
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -6,6 +26,15 @@
 
 ---
 ## 1.2 普通住宅（低层~超高层）
+
+<!-- rag-meta
+entity_type: building
+entity_name: residential_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 普通住宅, residential building, 低层住宅, 高层住宅
+-->
 
 **构件清单（按层数分级）**
 
@@ -51,6 +80,15 @@
 
 ## 1.3 宿舍（≤9F）
 
+<!-- rag-meta
+entity_type: building
+entity_name: dormitory
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 宿舍, dormitory, 学生宿舍
+-->
+
 > 规范依据：JGJ 36《宿舍建筑设计规范》，层数多 ≤9 层（给排水水压限制）
 
 **构件清单**
@@ -71,6 +109,15 @@
 ---
 
 ## 1.4 宾馆/酒店
+
+<!-- rag-meta
+entity_type: building
+entity_name: hotel
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 宾馆, 酒店, hotel, guest room
+-->
 
 > 规范依据：JGJ 62-2014《旅馆建筑设计规范》
 

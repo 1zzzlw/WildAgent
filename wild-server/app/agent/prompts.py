@@ -20,9 +20,18 @@ Agent System Prompt Builder —— 装配完整的 LLM System Prompt
 
 
 def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str:
-    """组装统一的 System Prompt"""
+    """把检索到的 WILD 规范与固定行为规则组装成 System Prompt。
 
-    # ── 场景上下文（如有，注入到 prompt 开头）──
+    Args:
+        spec_text: FileSpecLoader 或 RAGSpecLoader 生成的规范上下文。
+        scene_summary: 可选的场景摘要。当前主调用链通常把场景放在 user message；
+            保留此参数是为了兼容其他调用方。
+
+    Returns:
+        可直接传给 LangChain Agent 的完整 system prompt 字符串。
+    """
+
+    # 仅在调用方明确传入时插入；空字符串不会额外占用上下文。
     scene_block = ""
     if scene_summary:
         scene_block = f"""
@@ -32,6 +41,7 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
 
 """
 
+    # 双重大括号用于在 f-string 中输出 JSON 所需的字面量大括号。
     return f"""你是 WILD 蓝图生成与修改专家。根据用户自然语言描述，生成符合 WILD 语言规范的输出。
 
 {scene_block}# 规范文档

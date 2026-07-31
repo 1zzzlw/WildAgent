@@ -1,3 +1,21 @@
+---
+doc_type: recipe
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: assembly
+entity_name: component_building_matrix
+topic: matrix
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: recipes/component-building-matrix.md
+keywords:
+  - 构件矩阵
+  - 建筑类型矩阵
+  - component
+  - building type
+---
+
 # 构件-建筑类型速查矩阵
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

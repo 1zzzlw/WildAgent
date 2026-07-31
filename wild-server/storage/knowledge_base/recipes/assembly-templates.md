@@ -1,3 +1,22 @@
+---
+doc_type: recipe
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: assembly
+entity_name: building_assembly_templates
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: recipes/assembly-templates.md
+keywords:
+  - 组装模板
+  - assembly
+  - 低层建筑
+  - 高层建筑
+  - 大跨公建
+---
+
 # 四大构件组装模板
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。

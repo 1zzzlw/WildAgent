@@ -31,6 +31,7 @@ from app.agent.prompts import build_system_prompt
 from app.spec.loader import (
     FileSpecLoader,
     RAGSpecLoader,
+    SpecQuery,
     collect_markdown_paths,
     create_embedding_function,
 )
@@ -69,6 +70,7 @@ BASE_SPEC_PATHS = [
 ]
 
 def get_rag_spec_paths() -> list[Path]:
+    """扫描知识库 Markdown，并排除已经完整注入的最小规范。"""
     return collect_markdown_paths(_KB, exclude=BASE_SPEC_PATHS)
 
 
@@ -118,6 +120,7 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     results: list[PipelineStepResult] = []
 
     def run_step(step: int, name: str, tool_fn, bp: dict) -> PipelineStepResult:
+        """执行校验工具，把文本标记转换成统一的步骤状态。"""
         output = _run_tool(tool_fn, bp)
         has_error = "❌" in output
         has_warning = "⚠️" in output
@@ -131,6 +134,7 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
         return r
 
     def skip_step(step: int, name: str, reason: str) -> PipelineStepResult:
+        """记录因上游条件不满足而未执行的步骤，保持流水线可追踪。"""
         r = PipelineStepResult(step=step, name=name,
                                output=f"⏭️  跳过（{reason}）",
                                has_error=False, has_warning=False)
@@ -430,6 +434,7 @@ class AgentService:
         logger.info("AgentService 初始化完成")
 
     def _create_spec_loader(self):
+        """按配置创建 RAG Loader，初始化失败时降级为基础文件 Loader。"""
         if config.rag.enabled:
             try:
                 persist_dir = Path(config.rag.persist_dir)
@@ -474,6 +479,7 @@ class AgentService:
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
     def _create_agent(self, spec_text: str):
+        """用当前 LLM、工具集和本次规范上下文创建无会话状态的 Agent。"""
         system_prompt = build_system_prompt(spec_text)
         logger.info(f"System Prompt: 总计 {len(system_prompt):,} 字符")
         return create_agent(
@@ -483,11 +489,13 @@ class AgentService:
         )
 
     def _agent_for_query(self, rag_query: str | list[str]):
+        """为一次查询准备 Agent；RAG 模式会先动态组装本次 System Prompt。"""
         if not self._dynamic_prompt:
             return self.agent
 
         if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
-            spec_text = self.spec_loader.load_many(rag_query, per_query=1)
+            filtered_queries = self._build_filtered_rag_queries(rag_query)
+            spec_text = self.spec_loader.load_many(filtered_queries, per_query=1)
             query_log = " | ".join(rag_query)
         else:
             query_text = rag_query[0] if isinstance(rag_query, list) else rag_query
@@ -501,7 +509,25 @@ class AgentService:
             logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
         return self._create_agent(spec_text)
 
+    def _build_filtered_rag_queries(self, queries: list[str]) -> list[SpecQuery]:
+        """为建筑生成的五类检索意图附加业务 metadata 过滤条件。"""
+        if len(queries) != 5:
+            return [SpecQuery(text=query) for query in queries]
+
+        filters = [
+            {"doc_type": "building_type"},
+            {"doc_type": "recipe"},
+            {"doc_type": "component", "entity_type": "window"},
+            {"doc_type": "component", "entity_type": "door"},
+            {"doc_type": "component", "entity_type": "roof"},
+        ]
+        return [
+            SpecQuery(text=query, metadata_filter=metadata_filter)
+            for query, metadata_filter in zip(queries, filters)
+        ]
+
     def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
+        """把用户文本与场景线索拼成单个向量检索查询。"""
         parts = [message]
         generation_keywords = (
             "生成", "建造", "创建", "建一个", "做一个",
@@ -662,5 +688,5 @@ class AgentService:
         return QueryResult(text=reply)
 
 
-# 模块级单例
+# 模块级单例：导入 ws_agent 时完成配置、知识库索引和模型客户端初始化。
 agent_service = AgentService()

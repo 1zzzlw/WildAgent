@@ -1,3 +1,23 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: education_office_culture_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/public/education-office-culture.md
+keywords:
+  - 教育建筑
+  - 学校
+  - 办公建筑
+  - 博物馆
+  - 剧院
+  - 图书馆
+---
+
 # 公共建筑：教育、办公、文化
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -10,6 +30,15 @@
 ---
 
 ### 2.1 教育建筑
+
+<!-- rag-meta
+entity_type: building
+entity_name: education_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 教育建筑, school, classroom, 学校
+-->
 
 > 规范依据：GB 50099-2011《中小学校设计规范》
 
@@ -53,6 +82,15 @@
 
 ### 2.2 办公建筑
 
+<!-- rag-meta
+entity_type: building
+entity_name: office_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 办公建筑, office building, 写字楼
+-->
+
 > 图示：超高层写字楼结构示意图（原始资源：`docs/建筑类型分类体系_images/02_超高层写字楼.png`）
 
 **构件清单**
@@ -92,9 +130,27 @@
 
 ### 2.3 文化建筑
 
+<!-- rag-meta
+entity_type: building
+entity_name: cultural_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 文化建筑, cultural building, 博物馆, 剧院, 图书馆
+-->
+
 **按子类构件清单**
 
 #### 博物馆
+
+<!-- rag-meta
+entity_type: building
+entity_name: museum
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 博物馆, museum, 展厅
+-->
 
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|
@@ -108,6 +164,15 @@
 
 #### 剧院/音乐厅
 
+<!-- rag-meta
+entity_type: building
+entity_name: theater_concert_hall
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 剧院, 音乐厅, theater, concert hall
+-->
+
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|
 | 观众厅围合墙 | `wall` | curve=arc(弧形声学造型), thickness=0.3m |
@@ -120,6 +185,15 @@
 > **关键规则**：剧院**不做高层**——主舞台上部需 2.5 倍台口高度用于布景升降，天然大跨单层。
 
 #### 图书馆
+
+<!-- rag-meta
+entity_type: building
+entity_name: library
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 图书馆, library, 书架区
+-->
 
 | 构件 | WILD type | 精确参数 |
 |:---:|:---:|:---|

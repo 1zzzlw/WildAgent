@@ -1,3 +1,20 @@
+---
+doc_type: index
+doc_scope: index
+knowledge_layer: navigation
+entity_type: index
+entity_name: building_catalog_index
+topic: navigation
+wild_version: "1.1"
+status: supported
+authority: maintainer
+source: building_types/catalog/README.md
+keywords:
+  - 轻量建筑目录
+  - building catalog
+  - 默认建筑
+---
+
 # 轻量建筑类型目录
 
 > 用途：存放用户用一个建筑名模糊请求时的默认语义入口，例如别墅、凉亭、木屋、庭院、塔楼。

@@ -1,3 +1,23 @@
+---
+doc_type: building_type
+doc_scope: generation
+knowledge_layer: architecture
+entity_type: building
+entity_name: public_building_family
+topic: assembly
+wild_version: "1.1"
+status: experimental
+authority: domain_reference
+source: building_types/public/commercial-sports-medical-transport-other.md
+keywords:
+  - 商业建筑
+  - 体育建筑
+  - 医疗建筑
+  - 交通建筑
+  - 园林建筑
+  - 司法建筑
+---
+
 # 公共建筑：商业、体育、医疗、交通、园林纪念司法
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
@@ -6,6 +26,15 @@
 
 ---
 ## 2.4 商业建筑
+
+<!-- rag-meta
+entity_type: building
+entity_name: commercial_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 商业建筑, commercial building, 购物中心, 超市
+-->
 
 **构件清单**
 
@@ -44,6 +73,15 @@
 ---
 
 ## 2.5 体育建筑
+
+<!-- rag-meta
+entity_type: building
+entity_name: sports_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 体育建筑, sports building, 体育场, 体育馆
+-->
 
 > 图示：体育场结构示意图（原始资源：`docs/建筑类型分类体系_images/03_体育场.png`）
 
@@ -89,6 +127,15 @@
 
 ## 2.6 医疗建筑
 
+<!-- rag-meta
+entity_type: building
+entity_name: medical_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 医疗建筑, hospital, 医院
+-->
+
 > 规范依据：GB 51039-2014《综合医院建筑设计标准》（原 JGJ 49）
 
 **功能区构件清单**
@@ -125,6 +172,15 @@
 
 ## 2.7 交通建筑
 
+<!-- rag-meta
+entity_type: building
+entity_name: transport_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 交通建筑, transport building, 航站楼, 车站
+-->
+
 **构件清单**
 
 | 子类 | 构件 | WILD type | 精确参数 |
@@ -147,6 +203,15 @@
 ---
 
 ## 2.8 园林/纪念/司法
+
+<!-- rag-meta
+entity_type: building
+entity_name: garden_memorial_judicial_building
+topic: assembly
+status: experimental
+authority: domain_reference
+keywords: 园林建筑, 纪念建筑, 司法建筑, garden, memorial
+-->
 
 **园林建筑构件清单**（联网搜索中国传统建筑数据）
 
