@@ -21,6 +21,28 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
         self.assertEqual(material["albedo"], 1.0)
         self.assertNotIn("color", material)
 
+    def test_wall_height_shorthand_is_normalized(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "test"},
+            "geometry": {
+                "elements": [{
+                    "id": "wall",
+                    "type": "wall",
+                    "from": [0, 3.2, 0],
+                    "to": [12, 3.2, 0],
+                    "height": 3,
+                    "thickness": 0.25,
+                }],
+            },
+            "materials": {},
+        }
+
+        normalized = normalize_blueprint_input(blueprint)
+        wall = normalized["geometry"]["elements"][0]
+
+        self.assertEqual(wall["to"][1], 6.2)
+        self.assertNotIn("height", wall)
+
     def test_missing_base_color_is_rejected(self):
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "test"},

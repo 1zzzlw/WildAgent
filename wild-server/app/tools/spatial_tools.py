@@ -48,6 +48,26 @@ def _wall_length(wall: dict) -> float:
     dz = t[2] - f[2]
     return math.sqrt(dx * dx + dz * dz)
 
+
+def _wall_vertical_range(wall: dict) -> tuple[float, float]:
+    """返回墙体世界坐标中的底部和顶部 Y。"""
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    bottom = min(float(start[1]), float(end[1]))
+    height = wall.get("height")
+    if isinstance(height, (int, float)) and not isinstance(height, bool) and height > 0:
+        return bottom, bottom + float(height)
+    return bottom, max(float(start[1]), float(end[1]))
+
+
+def _is_structural_wall(wall: dict) -> bool:
+    """低矮、纤细的 wall 通常用于栏杆或装饰，不参与结构墙闭合检查。"""
+    bottom, top = _wall_vertical_range(wall)
+    return (
+        top - bottom >= 1.8
+        and float(wall.get("thickness", 0)) >= 0.1
+    )
+
 def _wall_direction_xz(wall: dict) -> tuple[float, float]:
     """返回墙体在 XZ 平面上的单位方向向量"""
     f = wall.get("from", [0, 0, 0])
@@ -191,7 +211,10 @@ def validate_wall_junctions(blueprint: dict) -> str:
     参数 blueprint: 完整的 Blueprint dict
     """
     elements = _get_elements(blueprint)
-    walls = [el for el in elements if el.get("type") == "wall"]
+    walls = [
+        el for el in elements
+        if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
 
     if len(walls) < 2:
         return "✅ 少于 2 面墙，跳过连接检查。"
@@ -687,21 +710,47 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
     """
     t = el.get("type", "")
 
-    if t in ("wall", "floor", "beam"):
+    if t == "wall":
         f = el.get("from", [])
         to = el.get("to", [])
         if len(f) < 3 or len(to) < 3:
             return None
-        thickness = el.get("thickness", el.get("width", 0.2))
-        # 对于 wall/beam，XZ 方向有厚度，需向两侧各扩半个厚度
+        thickness = el.get("thickness", 0.2)
         half_t = thickness / 2.0
+        min_y, max_y = _wall_vertical_range(el)
         min_x = min(f[0], to[0]) - half_t
         max_x = max(f[0], to[0]) + half_t
-        min_y = min(f[1], to[1])
-        max_y = max(f[1], to[1])
         min_z = min(f[2], to[2]) - half_t
         max_z = max(f[2], to[2]) + half_t
         return (min_x, max_x, min_y, max_y, min_z, max_z)
+
+    if t == "floor":
+        f = el.get("from", [])
+        to = el.get("to", [])
+        if len(f) < 3 or len(to) < 3:
+            return None
+        thickness = float(el.get("thickness", 0))
+        return (
+            min(f[0], to[0]), max(f[0], to[0]),
+            float(f[1]), float(f[1]) + thickness,
+            min(f[2], to[2]), max(f[2], to[2]),
+        )
+
+    if t == "beam":
+        f = el.get("from", [])
+        to = el.get("to", [])
+        if len(f) < 3 or len(to) < 3:
+            return None
+        half_width = float(el.get("width", 0.2)) / 2.0
+        beam_height = float(el.get("height", 0.2))
+        return (
+            min(f[0], to[0]) - half_width,
+            max(f[0], to[0]) + half_width,
+            min(f[1], to[1]) - beam_height / 2.0,
+            max(f[1], to[1]) + beam_height / 2.0,
+            min(f[2], to[2]) - half_width,
+            max(f[2], to[2]) + half_width,
+        )
 
     if t == "column":
         base = el.get("base", [])
@@ -935,10 +984,7 @@ def validate_opening_fit(blueprint: dict) -> str:
             continue  # 已由 validate_reference_integrity 覆盖
 
         wl = _wall_length(parent)
-        wall_bottom_y = min(parent.get("from", [0, 0, 0])[1],
-                            parent.get("to",   [0, 0, 0])[1])
-        wall_top_y    = max(parent.get("from", [0, 0, 0])[1],
-                            parent.get("to",   [0, 0, 0])[1])
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
         wall_height   = wall_top_y - wall_bottom_y
 
         along = float(from_vec[0])
@@ -1007,7 +1053,7 @@ def validate_element_dimensions(blueprint: dict) -> str:
         if t == "wall":
             length = _wall_length(el)
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            h = abs(to[1] - f[1])
+            h = el.get("height", abs(to[1] - f[1]))
             th = el.get("thickness", 0)
             if not (0.1 <= length <= 500):
                 issues.append(f"⚠️  [{eid}] wall 长度={length:.1f}m，建议在 0.1~500m")
@@ -1103,7 +1149,10 @@ def get_wall_bounding_box(blueprint: dict) -> str:
     参数 blueprint: 完整的 Blueprint dict
     """
     elements = _get_elements(blueprint)
-    walls = [el for el in elements if el.get("type") == "wall"]
+    walls = [
+        el for el in elements
+        if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
 
     if not walls:
         return "⚠️  场景中没有墙体，无法计算包围盒。"
@@ -1260,7 +1309,7 @@ def fix_wall_junctions(blueprint: dict) -> str:
         return "✅ 少于 2 面墙，跳过端点对齐。"
 
     TOLERANCE = 0.15
-    MAX_SNAP  = 1.5
+    MAX_SNAP  = 0.5
 
     # 收集所有端点
     endpoints: list[dict] = []
@@ -1349,9 +1398,7 @@ def fix_opening_fit(blueprint: dict) -> str:
             continue
 
         wl = _wall_length(parent)
-        f, t = parent.get("from", [0, 0, 0]), parent.get("to", [0, 0, 0])
-        wall_bottom_y = min(f[1], t[1])
-        wall_top_y    = max(f[1], t[1])
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
         wall_height   = wall_top_y - wall_bottom_y
 
         along = op.get("from", [0, 0, 0])[0]
@@ -1541,7 +1588,7 @@ def fix_element_dimensions(blueprint: dict) -> str:
         if t == "wall":
             length = _wall_length(el)
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            height = abs(to[1] - f[1])
+            height = el.get("height", abs(to[1] - f[1]))
             thickness = el.get("thickness", 0)
 
             lo, hi = RULES[t]["length"]
@@ -1554,10 +1601,9 @@ def fix_element_dimensions(blueprint: dict) -> str:
 
             lo, hi = RULES[t]["height"]
             if height > hi * 2:
-                # 降低高度，保持厚度比例
+                # 降低高度，保持 WILD 的显式 height 表达
                 new_height = hi * 0.9
-                scale = new_height / height
-                el["to"][1] = f[1] + (to[1] - f[1]) * scale
+                el["height"] = new_height
                 changed.append(f"高度 {height:.1f} → {new_height:.1f}m")
 
             lo, hi = RULES[t]["thickness"]

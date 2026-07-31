@@ -95,7 +95,23 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     for element in elements:
         if not isinstance(element, dict):
             continue
-        if element.get("type") == "opening" and element.get("style") in {"door", "window"}:
+        if element.get("type") == "wall":
+            start = element.get("from")
+            end = element.get("to")
+            height = element.get("height")
+            if (
+                isinstance(start, list)
+                and isinstance(end, list)
+                and len(start) == 3
+                and len(end) == 3
+                and isinstance(height, (int, float))
+                and not isinstance(height, bool)
+                and height > 0
+                and abs(end[1] - start[1]) < 1e-6
+            ):
+                end[1] = start[1] + height
+            element.pop("height", None)
+        elif element.get("type") == "opening" and element.get("style") in {"door", "window"}:
             role = element["style"]
             element["style"] = "rectangular"
             if element.get("height", 0) <= 0.1:

@@ -78,6 +78,23 @@ function normalizeElement(element: any): any {
     return element;
   }
 
+  if (element.type === 'wall' && Number.isFinite(element.height) && element.height > 0) {
+    const from = Array.isArray(element.from) ? [...element.from] : element.from;
+    const to = Array.isArray(element.to) ? [...element.to] : element.to;
+    if (
+      Array.isArray(from)
+      && Array.isArray(to)
+      && from.length === 3
+      && to.length === 3
+      && Math.abs(to[1] - from[1]) < 1e-6
+    ) {
+      to[1] = from[1] + element.height;
+    }
+    const normalized = { ...element, from, to };
+    delete normalized.height;
+    return normalized;
+  }
+
   if (element.type === 'opening' && (element.style === 'door' || element.style === 'window')) {
     const role = element.style;
     const from = Array.isArray(element.from) ? [...element.from] : element.from;
