@@ -3,7 +3,7 @@
  *
  * 管理 AI Agent 会话和消息：
  * - session: 会话信息（session_id, messages, connected）
- * - sessions: 会话列表（Pinia + localStorage 持久化）
+ * - sessions: 从后端 storage/scenes 文件列表恢复的会话列表
  * - connectionStatus: 详细连接状态
  * - pendingPatch: 待用户确认的 Patch
  * - isProcessing: Agent 是否正在处理
@@ -31,54 +31,23 @@ import type { ScenePatch } from '../types/scenePatch'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
-const STORAGE_KEY_SESSIONS = 'wild_sessions'
-const STORAGE_KEY_CURRENT = 'wild_current_session'
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
-
-function loadSessions(): SessionInfo[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SESSIONS)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveSessions(sessions: SessionInfo[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(sessions))
-  } catch { /* ignore quota errors */ }
-}
-
-function loadCurrentSessionId(): string | null {
-  return localStorage.getItem(STORAGE_KEY_CURRENT)
-}
-
-function saveCurrentSessionId(id: string) {
-  localStorage.setItem(STORAGE_KEY_CURRENT, id)
-}
 
 function loadThinkingMode(): boolean {
   return localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true'
 }
 
 export const useAgentStore = defineStore('agent', () => {
-  // ── 会话列表（从 localStorage 恢复）──
-  const sessions = ref<SessionInfo[]>(loadSessions())
-  const currentSessionId = ref<string>(loadCurrentSessionId() || '')
+  // ── 会话列表（页面启动后由后端 storage/scenes 文件列表填充）──
+  const sessions = ref<SessionInfo[]>([])
+  const currentSessionId = ref<string>('')
 
   // ── 当前会话 ──
   const session = ref<AgentSession>({
-    session_id: currentSessionId.value || `session_${Date.now()}`,
+    session_id: `session_${Date.now()}`,
     messages: [],
     connected: false
   })
-
-  // 初始化：如果还没有当前会话，创建一个
-  if (!currentSessionId.value) {
-    currentSessionId.value = session.value.session_id
-    saveCurrentSessionId(currentSessionId.value)
-  }
 
   /** 详细连接状态 */
   const connectionStatus = ref<ConnectionStatus>('disconnected')
@@ -217,6 +186,11 @@ export const useAgentStore = defineStore('agent', () => {
 
   // ── 会话管理 ──
 
+  /** 用服务器场景文件摘要整体替换会话列表。 */
+  function replaceSessions(serverSessions: SessionInfo[]) {
+    sessions.value = serverSessions
+  }
+
   function createSession(name?: string): string {
     const id = `session_${Date.now()}`
     const info: SessionInfo = {
@@ -227,7 +201,6 @@ export const useAgentStore = defineStore('agent', () => {
       elements_count: 0,
     }
     sessions.value.unshift(info)
-    saveSessions(sessions.value)
     return id
   }
 
@@ -246,8 +219,6 @@ export const useAgentStore = defineStore('agent', () => {
     }
 
     currentSessionId.value = sessionId
-    saveCurrentSessionId(sessionId)
-    saveSessions(sessions.value)
 
     // 重置当前会话状态（消息清空，蓝图由外部加载）
     session.value = {
@@ -276,12 +247,10 @@ export const useAgentStore = defineStore('agent', () => {
         elements_count: elementsCount,
       })
     }
-    saveSessions(sessions.value)
   }
 
   function removeSession(sessionId: string) {
     sessions.value = sessions.value.filter(s => s.session_id !== sessionId)
-    saveSessions(sessions.value)
 
     if (currentSessionId.value === sessionId) {
       const next = sessions.value[0]
@@ -324,6 +293,7 @@ export const useAgentStore = defineStore('agent', () => {
     // 会话列表
     sessions,
     currentSessionId,
+    replaceSessions,
     createSession,
     switchToSession,
     updateSessionInfo,

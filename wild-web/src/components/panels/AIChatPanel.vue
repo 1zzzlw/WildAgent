@@ -266,7 +266,7 @@ watch(() => agentStore.networkError, (error) => {
 
 // ---------- 生命周期 ----------
 onMounted(() => {
-  restoreLastSession()
+  restoreSessionsFromServer()
 })
 
 watch(() => agentStore.blueprintLoaded, (loaded) => {
@@ -319,12 +319,17 @@ async function handleSessionSwitch(sessionId: string) {
   }
 }
 
-function handleNewSession() {
+async function handleNewSession() {
   const newId = agentStore.createSession()
   agentStore.switchToSession(newId)
   const doc = sceneStore.createEmptyDocument()
   sceneStore.loadBlueprint(doc.blueprint, doc.name)
-  agentStore.addSystemMessage('✨ 新会话已创建，输入建筑需求开始')
+  const saved = await agentBridge.syncBlueprintToBackend(
+    doc.blueprint as unknown as Record<string, unknown>
+  )
+  agentStore.addSystemMessage(saved
+    ? '✨ 新会话已创建并保存到服务器，输入建筑需求开始'
+    : '⚠️ 新会话已创建，但暂时无法保存到服务器')
 }
 
 async function handleDeleteSession() {
@@ -341,7 +346,11 @@ async function handleDeleteSession() {
     return // 用户取消
   }
 
-  await agentBridge.deleteSessionBlueprint(sid)
+  const deleted = await agentBridge.deleteSessionBlueprint(sid)
+  if (!deleted) {
+    agentStore.addSystemMessage('❌ 服务器删除失败，会话仍然保留')
+    return
+  }
   agentStore.removeSession(sid)
   // 切换到下一个会话
   const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
@@ -354,18 +363,42 @@ async function handleDeleteSession() {
   agentStore.addSystemMessage('🗑️ 会话已删除')
 }
 
-// ── 页面初始化：恢复上次会话 ──
-async function restoreLastSession() {
-  const sessionId = agentStore.currentSessionId
-  if (!sessionId) return
+// ── 页面初始化：以服务器 storage/scenes/*.wild 为会话事实来源 ──
+async function restoreSessionsFromServer() {
+  const serverScenes = await agentBridge.fetchSessionList()
+  if (serverScenes === null) {
+    // 后端暂不可用时保留一个临时空会话，避免发送消息时使用空 session_id。
+    const newId = agentStore.createSession()
+    agentStore.switchToSession(newId)
+    const doc = sceneStore.createEmptyDocument()
+    sceneStore.loadBlueprint(doc.blueprint, doc.name)
+    agentStore.addSystemMessage('❌ 无法从服务器读取会话列表，当前会话尚未持久化')
+    return
+  }
 
-  // 只在会话已有构件时才从后端加载（空会话无对应 .wild 文件）
-  const info = agentStore.sessions.find(s => s.session_id === sessionId)
-  if (!info || info.elements_count === 0) return
+  const serverSessions = serverScenes.map(scene => ({
+    session_id: scene.filename.replace(/\.wild$/, ''),
+    name: scene.name,
+    // 现有 .wild 文件没有单独保存创建时间，暂用文件更新时间填充。
+    created_at: scene.updated_at,
+    updated_at: scene.updated_at,
+    elements_count: scene.elements_count,
+  }))
+  agentStore.replaceSessions(serverSessions)
 
+  if (serverSessions.length === 0) {
+    await handleNewSession()
+    return
+  }
+
+  // 接口已按文件修改时间倒序返回，因此默认恢复服务器上最近更新的场景。
+  const sessionId = serverSessions[0].session_id
+  agentStore.switchToSession(sessionId)
   const bp = await agentBridge.loadSessionBlueprint(sessionId)
   if (bp) {
     sceneStore.loadBlueprint(bp as any)
+  } else {
+    agentStore.addSystemMessage(`❌ 无法读取服务器会话文件: ${sessionId}.wild`)
   }
 }
 </script>

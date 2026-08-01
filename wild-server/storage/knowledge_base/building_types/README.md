@@ -17,98 +17,35 @@ keywords:
 
 # 建筑类型知识索引
 
-> 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 用途：记录“生成什么建筑”时的语义分类、默认构件组合和建筑大类入口。
-> RAG 关键词：建筑类型、居住建筑、公共建筑、工业建筑、农业建筑、分类体系
+> 分类来源：用户提供的《建筑类型分类体系_总目录.md》及现有建筑类型文档。
+> 用途：供维护者查看分类覆盖和详细配方位置；本 README 不进入普通生成召回。
 
----
-## 建筑分类思维导图
+## 七大建筑分类与当前覆盖
 
-```mermaid
-mindmap
-  root((建筑类型<br/>分类体系))
-    居住建筑
-      别墅
-        现代别墅_架空层_1~3F
-        中式传统别墅_砖木_1~2F
-        新中式别墅_框架_1~3F
-      普通住宅
-        低层住宅_砖混_1~3F
-        多层住宅_砖混框架_4~7F
-        中高层住宅_框架_8~18F
-        超高层住宅_剪力墙_>33F
-      宿舍_9F
-      宾馆酒店
-        经济型_旅馆_≤7F
-        商务酒店_8~15F
-        五星酒店_>24m
-    公共建筑
-      教育建筑
-        幼儿园_≤3F
-        中小学_≤6F
-        大学教学楼_≤8F
-        图书馆_多高层
-      办公建筑
-        低层办公_≤3F
-        多层办公_4~7F
-        高层写字楼_8~32F
-        超高层写字楼_>100m
-      文化建筑
-        博物馆
-        剧院
-        宗教建筑
-          中式庙宇
-          哥特教堂
-      商业建筑
-        社区商业_≤2F
-        商场百货_3~6F
-        综合体_超高
-      体育建筑
-        中小型体育馆
-        大型体育场
-        室内游泳馆
-      医疗建筑
-        社区医院_≤3F
-        综合医院_≤12F
-      交通建筑
-        小型客运站
-        大型航站楼
-      园林建筑
-        苏州园林
-        皇家园林
-    工业建筑
-      单层厂房
-        轻钢结构_6~12m高
-        混凝土排架_12~15m高
-      多层厂房
-        电子厂房_4~6F
-        工业上楼_>8F
-      仓储建筑
-        平房仓_单层
-        筒仓_超高
-        冷链仓库
-    农业建筑
-      温室
-        日光温室
-        连栋温室
-      养殖场
-        平养鸡舍
-        猪舍_密闭
-        牛舍_开敞
-      粮仓_圆形平房
-      农机站_单层框架
-```
+| 建筑大类 | 轻量分类入口 | 当前详细配方覆盖 |
+|---|---|---|
+| 居住建筑 | `catalog/building-type-taxonomy.md` | `residential/villas.md`、`residential/housing-dormitories-hotels.md`、`residential/extended-residential-types.md` |
+| 公共建筑 | `catalog/building-type-taxonomy.md` | `public/education-office-culture.md`、`public/commercial-sports-medical-transport-other.md` |
+| 工业建筑 | `catalog/building-type-taxonomy.md` | `industrial/factories-and-warehouses.md` |
+| 农业建筑 | `catalog/building-type-taxonomy.md` | `agricultural/agricultural-buildings.md` |
+| 市政基础设施 | `catalog/building-type-taxonomy.md` | 尚无详细生成配方 |
+| 景观小品与纪念性建筑 | `catalog/building-type-taxonomy.md` | 凉亭、塔楼可参考 `catalog/pavilions.md`、`catalog/towers.md` |
+| 特殊专项建筑 | `catalog/building-type-taxonomy.md` | 尚无详细生成配方 |
 
-> 四大类 → 16 种子类 → 各自按**层高**和**风格**继续下钻。每种子类在本手册中对应一套完整的 WILD 构件配方。
-
----
-
-## 当前拆分
+## 目录职责
 
 | 子目录 | 内容 |
 |---|---|
-| `catalog/` | 轻量建筑类型入口：别墅、木屋、凉亭、庭院、塔楼等默认参考 |
+| `catalog/` | 模糊建筑名称的默认语义、分类词典和详细文档路由 |
 | `residential/` | 别墅、普通住宅、宿舍、酒店等居住或类居住建筑 |
-| `public/` | 教育、办公、文化、商业、体育、医疗、交通、园林纪念司法等公共建筑 |
-| `industrial/` | 单层重工业厂房、工业上楼、仓储建筑 |
-| `agricultural/` | 温室、畜禽饲养场、粮仓、农机站 |
+| `public/` | 教育、办公、文化、商业、体育、医疗、交通等公共建筑 |
+| `industrial/` | 厂房、工业上楼和仓储建筑 |
+| `agricultural/` | 温室、畜禽饲养场、粮仓和农机站 |
+
+## 使用约束
+
+本索引只说明知识文件的覆盖范围，不参与普通蓝图生成；需要生成时应继续读取相应的轻量分类或详细配方文档。
+
+- 分类目录中的建筑名称不等于 WILD `type`。
+- “已收录分类”不等于“已有完整生成配方”，详细覆盖以上表为准。
+- 模板 A～Y 目前只有目录名称，没有足够事实形成正式 `recipes/` 文档。

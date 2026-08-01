@@ -375,7 +375,7 @@ export class AgentBridge {
   }
 
   /** 同步当前 Blueprint 到后端（PUT 覆盖写入） */
-  async syncBlueprintToBackend(blueprint: Record<string, unknown>) {
+  async syncBlueprintToBackend(blueprint: Record<string, unknown>): Promise<boolean> {
     const agentStore = useAgentStore()
     const sessionId = agentStore.currentSessionId
 
@@ -388,9 +388,12 @@ export class AgentBridge {
       })
       if (!response.ok) {
         console.error('[AgentBridge] 同步蓝图失败:', response.status)
+        return false
       }
+      return true
     } catch (err) {
       console.error('[AgentBridge] 同步蓝图异常:', err)
+      return false
     }
   }
 
@@ -424,17 +427,17 @@ export class AgentBridge {
   }
 
   /** 从后端获取所有已保存的场景列表 */
-  async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number }>> {
+  async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number }> | null> {
     try {
       const baseUrl = this.httpBaseUrl
       const response = await fetch(`${baseUrl}/api/scenes`)
       if (!response.ok) {
-        return []
+        return null
       }
       return await response.json()
     } catch (err) {
       console.error('[AgentBridge] 获取场景列表失败:', err)
-      return []
+      return null
     }
   }
 

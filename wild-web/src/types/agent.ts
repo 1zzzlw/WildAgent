@@ -140,7 +140,7 @@ export interface AgentSession {
   connected: boolean
 }
 
-/** 会话列表项（Pinia + localStorage 持久化） */
+/** 会话列表项（由后端 storage/scenes 文件摘要生成） */
 export interface SessionInfo {
   session_id: string
   name: string           // 从 blueprint.meta.name 提取
