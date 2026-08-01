@@ -33,6 +33,21 @@ def _get_elements(bp: dict) -> list[dict]:
         return []
     return bp.get("geometry", {}).get("elements", [])
 
+
+def _is_finite_vector3(value: object) -> bool:
+    """判断构件坐标是否能被空间工具安全地当作三维向量读取。"""
+    return (
+        isinstance(value, list)
+        and len(value) == 3
+        and all(
+            isinstance(coordinate, (int, float))
+            and not isinstance(coordinate, bool)
+            and math.isfinite(coordinate)
+            for coordinate in value
+        )
+    )
+
+
 def _get_by_id(bp: dict, eid: str) -> dict | None:
     """按 id 查找元素"""
     for el in _get_elements(bp):
@@ -1049,6 +1064,19 @@ def validate_element_dimensions(blueprint: dict) -> str:
     for el in elements:
         t   = el.get("type", "")
         eid = el.get("id", "?")
+
+        if t in {"wall", "floor", "beam", "stair"}:
+            invalid_fields = [
+                field
+                for field in ("from", "to")
+                if not _is_finite_vector3(el.get(field))
+            ]
+            if invalid_fields:
+                issues.extend(
+                    f"❌ [{eid}.{field}] 必须是包含 3 个有限数字的数组"
+                    for field in invalid_fields
+                )
+                continue
 
         if t == "wall":
             length = _wall_length(el)

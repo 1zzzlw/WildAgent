@@ -369,6 +369,14 @@ async def _handle_user_message(ws: WebSocket, data: dict):
                 "content": result.text,
             })
 
+    elif result.error:
+        # JSON 已被识别但结构预检失败时，不把无效 Blueprint 当作普通聊天回复。
+        await ws.send_json({
+            "type": "agent_reply",
+            "request_id": request_id,
+            "content": f"生成结果未通过结构预检：\n\n{result.error}",
+        })
+
     else:
         # ── 对话类：纯文本 ──────────────────────────────────
         await ws.send_json({

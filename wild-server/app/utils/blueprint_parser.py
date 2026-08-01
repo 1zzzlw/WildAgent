@@ -169,6 +169,20 @@ def _parse_hex_color(value: object) -> list[float] | None:
     ]
 
 
+def _is_finite_vector3(value: object) -> bool:
+    """判断值是否为 JSON 可表示的三维有限数值坐标。"""
+    return (
+        isinstance(value, list)
+        and len(value) == 3
+        and all(
+            isinstance(coordinate, (int, float))
+            and not isinstance(coordinate, bool)
+            and math.isfinite(coordinate)
+            for coordinate in value
+        )
+    )
+
+
 def validate_blueprint_schema(blueprint: dict) -> list[str]:
     """轻量级 Blueprint 结构校验
 
@@ -222,8 +236,19 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                     issues.append(f"重复的构件 ID: {dupes}")
                 # 更细的逐类型必填字段由 spatial_tools 中的校验器负责。
                 for el in elements:
-                    if isinstance(el, dict) and "type" not in el:
-                        issues.append(f"元素缺少 'type' 字段: id={el.get('id', '?')}")
+                    if not isinstance(el, dict):
+                        continue
+                    element_id = el.get("id", "?")
+                    if "type" not in el:
+                        issues.append(f"元素缺少 'type' 字段: id={element_id}")
+                    for coordinate_field in ("from", "to"):
+                        if (
+                            coordinate_field in el
+                            and not _is_finite_vector3(el[coordinate_field])
+                        ):
+                            issues.append(
+                                f"{element_id}.{coordinate_field} 必须是包含 3 个有限数字的数组"
+                            )
 
     # ---------- 材质结构与颜色通道 ----------
     materials = blueprint.get("materials", {})

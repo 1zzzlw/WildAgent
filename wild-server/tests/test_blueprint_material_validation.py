@@ -124,3 +124,24 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
         issues = validate_blueprint_schema(blueprint)
 
         self.assertFalse(any("baseColor" in issue for issue in issues))
+
+    def test_invalid_element_coordinate_is_rejected(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "test"},
+            "geometry": {
+                "elements": [{
+                    "id": "floor_bad",
+                    "type": "floor",
+                    "from": [-7, 0, -2.5],
+                    "to": [7, 10.5],
+                    "thickness": 0.2,
+                }],
+            },
+            "materials": {},
+        }
+
+        issues = validate_blueprint_schema(blueprint)
+
+        self.assertTrue(
+            any("floor_bad.to" in issue and "3 个有限数字" in issue for issue in issues)
+        )

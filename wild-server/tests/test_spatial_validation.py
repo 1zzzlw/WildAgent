@@ -5,6 +5,7 @@ from app.tools.spatial_tools import (
     fix_opening_fit,
     fix_wall_junctions,
     validate_collision,
+    validate_element_dimensions,
     validate_opening_fit,
     validate_wall_junctions,
 )
@@ -15,6 +16,25 @@ def run_tool(tool, blueprint):
 
 
 class SpatialValidationTest(unittest.TestCase):
+    def test_dimension_validator_reports_invalid_vectors_without_crashing(self):
+        for element_type in ("wall", "floor", "beam", "stair"):
+            with self.subTest(element_type=element_type):
+                blueprint = {
+                    "geometry": {
+                        "elements": [{
+                            "id": f"{element_type}_bad",
+                            "type": element_type,
+                            "from": [-7, 0, -2.5],
+                            "to": [7, 10.5],
+                        }],
+                    },
+                }
+
+                result = run_tool(validate_element_dimensions, blueprint)
+
+                self.assertIn("❌", result)
+                self.assertIn(f"{element_type}_bad.to", result)
+
     def test_openings_fit_walls_with_explicit_height(self):
         blueprint = {
             "geometry": {

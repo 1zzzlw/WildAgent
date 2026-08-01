@@ -123,7 +123,6 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
         messages = await self._run_request(False)
 
         self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))
-
     async def test_enabled_mode_streams_real_reasoning_content(self):
         messages = await self._run_request(True, "模型实际返回的思考")
         deltas = [msg for msg in messages if msg["type"] == "thinking_delta"]
@@ -143,3 +142,33 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
         messages = await self._run_request("true")
 
         self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))
+
+
+class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
+    async def test_schema_error_is_returned_as_readable_reply(self):
+        ws = Mock()
+        ws.send_json = AsyncMock()
+
+        with patch(
+            "app.api.ws_agent.agent_service.query_structured",
+            AsyncMock(return_value=QueryResult(
+                text="模型生成的无效 JSON",
+                error=(
+                    "Blueprint 结构预检未通过: "
+                    "floor_bad.to 必须是包含 3 个有限数字的数组"
+                ),
+            )),
+        ):
+            await _handle_user_message(ws, {
+                "request_id": "req_invalid_coordinate",
+                "session_id": "session_invalid_coordinate",
+                "message": "生成一座别墅",
+                "thinking_mode": False,
+            })
+
+        messages = [call.args[0] for call in ws.send_json.await_args_list]
+        replies = [msg for msg in messages if msg["type"] == "agent_reply"]
+
+        self.assertEqual(len(replies), 1)
+        self.assertIn("生成结果未通过结构预检", replies[0]["content"])
+        self.assertIn("floor_bad.to", replies[0]["content"])
