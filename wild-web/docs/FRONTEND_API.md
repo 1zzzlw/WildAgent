@@ -46,7 +46,7 @@ ws://localhost:8000/ws/agent
 前端 connect() 
   -> 后端 onopen 
   -> 前端发送 user_message 
-  -> 后端返回 agent_step / patch_proposal / agent_reply
+  -> 后端返回 agent_step / thinking_delta + thinking_status（按需）/ patch_proposal / agent_reply
   -> 前端应用 patch 或确认
 ```
 
@@ -77,7 +77,8 @@ ws://localhost:8000/ws/agent
     },
     materials?: string[]
   },
-  selection: string[]        // 当前选中的构件 ID 列表
+  selection: string[],       // 当前选中的构件 ID 列表
+  thinking_mode?: boolean    // 是否让模型开启思考并流式返回 reasoning_content
 }
 ```
 
@@ -99,7 +100,8 @@ ws://localhost:8000/ws/agent
       "max": [8, 8, 10]
     }
   },
-  "selection": []
+  "selection": [],
+  "thinking_mode": true
 }
 ```
 
@@ -135,7 +137,42 @@ ws://localhost:8000/ws/agent
 }
 ```
 
-#### 2. Patch 提案
+#### 2. 模型思考流
+
+**类型**: `thinking_delta` / `thinking_status`
+
+**何时发送**: 当前请求的 `thinking_mode` 为 JSON 布尔值 `true` 时。后端向模型传递 `enable_thinking=true`，并实时转发模型接口实际返回的 `reasoning_content`；关闭时传递 `enable_thinking=false`，且不发送思考事件。
+
+**数据结构**:
+
+```typescript
+{
+  type: 'thinking_delta',
+  request_id: string,
+  delta: string
+}
+
+{
+  type: 'thinking_status',
+  request_id: string,
+  status: 'thinking' | 'completed' | 'unsupported' | 'error',
+  content?: string
+}
+```
+
+**示例**:
+
+```json
+{
+  "type": "thinking_delta",
+  "request_id": "req_1704067200000_abc123",
+  "delta": "需要先确定建筑的主体尺寸，再安排墙体和屋顶关系。"
+}
+```
+
+若模型服务成功返回最终答案但没有提供 `reasoning_content`，后端会发送 `status: "unsupported"`，不会使用固定文案冒充模型思考。
+
+#### 3. Patch 提案
 
 **类型**: `patch_proposal`
 
@@ -183,7 +220,7 @@ ws://localhost:8000/ws/agent
 }
 ```
 
-#### 3. Agent 文本回复
+#### 4. Agent 文本回复
 
 **类型**: `agent_reply`
 
@@ -209,7 +246,7 @@ ws://localhost:8000/ws/agent
 }
 ```
 
-#### 4. 错误响应
+#### 5. 错误响应
 
 **类型**: `error`
 

@@ -29,8 +29,11 @@ import { ref, computed } from 'vue'
 import type { ChatMessage, AgentSession, ConnectionStatus, SessionInfo } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
+type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
+
 const STORAGE_KEY_SESSIONS = 'wild_sessions'
 const STORAGE_KEY_CURRENT = 'wild_current_session'
+const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 
 function loadSessions(): SessionInfo[] {
   try {
@@ -53,6 +56,10 @@ function loadCurrentSessionId(): string | null {
 
 function saveCurrentSessionId(id: string) {
   localStorage.setItem(STORAGE_KEY_CURRENT, id)
+}
+
+function loadThinkingMode(): boolean {
+  return localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true'
 }
 
 export const useAgentStore = defineStore('agent', () => {
@@ -82,6 +89,12 @@ export const useAgentStore = defineStore('agent', () => {
   const pendingPatch = ref<ScenePatch | null>(null)
   const isProcessing = ref(false)
   const currentStep = ref<string>('')
+
+  /** 用户偏好与模型接口实际返回的思考内容 */
+  const thinkingMode = ref(loadThinkingMode())
+  const thinkingContent = ref('')
+  const thinkingStatus = ref<ThinkingStatus>('idle')
+  const thinkingNotice = ref('')
 
   /** 校验流水线步骤列表（每次生成任务独立一组） */
   interface PipelineStep {
@@ -148,6 +161,29 @@ export const useAgentStore = defineStore('agent', () => {
 
   function clearPipelineSteps() {
     pipelineSteps.value = []
+  }
+
+  function setThinkingMode(enabled: boolean) {
+    thinkingMode.value = enabled
+    localStorage.setItem(STORAGE_KEY_THINKING_MODE, String(enabled))
+    if (!enabled) {
+      clearThinkingState()
+    }
+  }
+
+  function appendThinkingContent(delta: string) {
+    thinkingContent.value += delta
+  }
+
+  function setThinkingStatus(status: Exclude<ThinkingStatus, 'idle'>, content = '') {
+    thinkingStatus.value = status
+    thinkingNotice.value = content
+  }
+
+  function clearThinkingState() {
+    thinkingContent.value = ''
+    thinkingStatus.value = 'idle'
+    thinkingNotice.value = ''
   }
 
   function setPendingPatch(patch: ScenePatch | null) {
@@ -221,6 +257,7 @@ export const useAgentStore = defineStore('agent', () => {
     }
     pendingPatch.value = null
     pipelineSteps.value = []
+    clearThinkingState()
     blueprintLoaded.value = false
   }
 
@@ -269,6 +306,7 @@ export const useAgentStore = defineStore('agent', () => {
     pendingPatch.value = null
     isProcessing.value = false
     currentStep.value = ''
+    clearThinkingState()
     blueprintLoaded.value = false
     lastBlueprintPath.value = ''
   }
@@ -320,5 +358,13 @@ export const useAgentStore = defineStore('agent', () => {
     pipelineSteps,
     addPipelineStep,
     clearPipelineSteps,
+    thinkingMode,
+    thinkingContent,
+    thinkingStatus,
+    thinkingNotice,
+    setThinkingMode,
+    appendThinkingContent,
+    setThinkingStatus,
+    clearThinkingState,
   }
 })

@@ -84,8 +84,11 @@ keywords: 支摘窗, zhizhai window, opening
 
 - 普通蓝图生成默认排除 `doc_scope=index`。
 - `status=proposed` 和 `authority=inferred` 默认不进入正式生成上下文。
+- `experimental` 可以进入召回，但 Loader 必须把 `status` 和 `authority` 明确显示给模型。
 - 精确构件查询先按 `doc_type`、`entity_type` 缩小范围，再做向量相似度召回。
 - 建筑生成分别召回建筑类型、构件和 recipe，不能让所有文档无条件竞争一个 `top_k`。
+- 命中带 `parent_chunk_id` 的长度子片时，补充相邻 `part_index`，但不跨业务实体扩展。
+- 跨来源去重使用不含祖先知识路径的正文哈希，避免相同表格因 H1 不同重复进入上下文。
 - `BLUEPRINT-SPEC-MINIMAL.md` 继续作为 system 上下文，不依赖向量召回。
 
 ## 合并条件

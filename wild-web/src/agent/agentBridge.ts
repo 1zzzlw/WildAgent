@@ -27,6 +27,7 @@
  *
  * 消息处理：
  * - agent_step: 更新执行步骤显示
+ * - thinking_delta / thinking_status: 追加模型真实思考内容并更新状态
  * - patch_proposal: 设置待确认 Patch
  * - agent_reply: 添加 Agent 回复消息
  * - error: 显示错误信息
@@ -251,11 +252,13 @@ export class AgentBridge {
       sceneStore.document.revision,
       sceneSummary,
       selection,
-      sceneStore.document.blueprint as Record<string, unknown>
+      sceneStore.document.blueprint as Record<string, unknown>,
+      agentStore.thinkingMode
     )
 
     this.ws.send(JSON.stringify(request))
     agentStore.clearPipelineSteps()
+    agentStore.clearThinkingState()
     agentStore.setProcessing(true)
   }
 
@@ -282,6 +285,18 @@ export class AgentBridge {
               : content.startsWith('⏭️') ? 'skip'
                 : 'ok'
           agentStore.addPipelineStep(content, status)
+        }
+        break
+
+      case 'thinking_delta':
+        if (agentStore.thinkingMode) {
+          agentStore.appendThinkingContent(message.delta)
+        }
+        break
+
+      case 'thinking_status':
+        if (agentStore.thinkingMode) {
+          agentStore.setThinkingStatus(message.status, message.content || '')
         }
         break
 

@@ -1,4 +1,4 @@
 interface:
-  display_name: "Wild RAG 文档编写"
-  short_description: "编写、审查和重构适合 RAG 检索的 WILD 知识文档"
-  default_prompt: "使用 $wild-knowledge-ingest 审查并重构这份 WildAgent 知识文档，使其事实可验证、分片自洽且 metadata 完整。"
+  display_name: "Wild RAG 知识入库"
+  short_description: "把原始资料转换为可验证、可分片的 WILD RAG 知识"
+  default_prompt: "使用 $wild-knowledge-ingest 将这份原始资料事实审查、分类和重构为符合项目真实分片契约的知识库文档，并预览最终 chunks。"

@@ -7,7 +7,7 @@ entity_name: building_assembly_templates
 topic: assembly
 wild_version: "1.1"
 status: experimental
-authority: domain_reference
+authority: maintainer
 source: recipes/assembly-templates.md
 keywords:
   - 组装模板
@@ -17,38 +17,82 @@ keywords:
   - 大跨公建
 ---
 
-# 四大构件组装模板
+# WILD v1.1 建筑组装模板
 
-> 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 用途：整理低层建筑、高层建筑、大跨公建、温室/养殖等跨建筑复用组装顺序。
-> RAG 关键词：组装模板、低层建筑、高层建筑、大跨公建、温室、养殖、column、floor、wall、roof、truss
+> 依据：当前 Schema 与引擎能力边界；建筑类型顺序属于维护者建议。
+> 用途：只使用 WILD v1.1 已注册类型给出可执行的基线流程；专业构件扩展另列为 proposed。
+> RAG 关键词：组装模板、低层建筑、高层建筑、大跨公建、温室、养殖、column、floor、wall、opening、roof、primitive
 
 ---
-## 五、构件组装规则总表
+## 低层建筑基线
 
-### 5.1 四大组装模板
+<!-- rag-meta
+entity_type: assembly
+entity_name: low_rise_supported_baseline
+topic: assembly
+status: experimental
+authority: maintainer
+keywords: 低层建筑, low rise, floor, wall, opening, roof, stair
+-->
 
-**模板 A：低层建筑**（别墅/园林/纪念/农机站）
-
-```
-column → floor(地基) → wall(围护) → opening(洞口) → door+window → stair → roof → railing
-```
-
-**模板 B：高层建筑**（住宅/办公/酒店/住院楼）
-
-```
-wall(核心筒) → column(外框) → beam(主梁) → floor(楼板) → wall(隔墙) → opening → door+window
-→ stair → [避难层floor] → 逐层重复
-```
-
-**模板 C：大跨公建**（体育场/航站楼/剧院/厂房）
+适用于别墅、小屋、园林和低层公共建筑的起点：
 
 ```
-column(巨柱) → truss(桁架/网壳) → roof(屋面) → wall(局部围护) → floor(看台/地坪) → stair → railing
+floor(地基/首层板) → column/beam(按需) → wall(围护) → opening(门窗洞口) → stair(按需) → roof
 ```
 
-**模板 D：温室/养殖**（轻钢农业）
+门扇、窗框、栏杆和装饰构件若需要静态外观，用 `primitive` 或现有结构类型显式组合；不要输出不存在的 `door`、`window`、`railing` 类型。
+
+## 多层建筑基线
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: multi_storey_supported_baseline
+topic: assembly
+status: experimental
+authority: maintainer
+keywords: 多层建筑, multi storey, column, beam, floor, wall, opening, stair
+-->
 
 ```
-column(钢立柱) → truss(拱形轻桁架) → wall(透明/夹芯板) → roof(采光顶) → opening(通风) → furniture(苗床)
+column/beam(骨架) → floor(本层楼板) → wall(本层围护与分隔) → opening(本层门窗洞口) → stair(连接层间) → 逐层重复 → roof
 ```
+
+引擎不会自动设计核心筒、避难层或结构体系；层高、标高、构件尺寸和结构安全仍需外部规则或人工校验。
+
+## 大跨与轻型建筑降级基线
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: long_span_supported_fallback
+topic: assembly
+status: experimental
+authority: maintainer
+keywords: 大跨建筑, 温室, 厂房, long span, beam, primitive, roof
+-->
+
+```
+column(支点) → beam/primitive(显式杆件网络) → roof(基础屋面) → wall(局部围护) → floor(地坪/平台) → opening(通风或出入口)
+```
+
+该模板只能生成几何近似，不能把 `truss`、网壳、膜结构、自动栏杆或专业设备当作已实现能力。
+
+## 专业构件增强提案
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: proposed_professional_assembly
+topic: assembly
+status: proposed
+authority: domain_reference
+keywords: truss, railing, door, window, ramp, 专业构件
+-->
+
+```
+opening → door/window/mullion
+stair/floor → railing
+column/roof → truss
+floor → ramp
+```
+
+这些关系来自领域资料和扩展规范，但相应专用类型及自动 resolver 尚未实现，默认生成必须使用前述降级基线。

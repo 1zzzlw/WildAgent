@@ -21,8 +21,11 @@ AI 在 prompt 内自行判断意图，选择输出格式。场景上下文通过
 from dataclasses import dataclass, field
 from pathlib import Path
 from copy import deepcopy
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from langchain.agents import create_agent
+from langchain_core.callbacks import AsyncCallbackHandler
 from loguru import logger
 
 from config import config
@@ -73,7 +76,6 @@ def get_rag_spec_paths() -> list[Path]:
     """扫描知识库 Markdown，并排除已经完整注入的最小规范。"""
     return collect_markdown_paths(_KB, exclude=BASE_SPEC_PATHS)
 
-
 @dataclass
 class PipelineStepResult:
     """单个流水线步骤的执行结果"""
@@ -82,7 +84,6 @@ class PipelineStepResult:
     output: str
     has_error: bool
     has_warning: bool
-
 
 @dataclass
 class QueryResult:
@@ -99,6 +100,41 @@ class QueryResult:
     patch: dict | None = None
     error: str | None = None
     pipeline_results: list[PipelineStepResult] = field(default_factory=list)
+
+
+class _ReasoningStreamCallback(AsyncCallbackHandler):
+    """从模型 token 回调中提取并适度合并真实 ``reasoning_content``。"""
+
+    def __init__(self, emit: Callable[[str], Awaitable[None]]):
+        self._emit = emit
+        self._buffer = ""
+
+    async def on_llm_new_token(
+        self,
+        token: str,
+        *,
+        chunk: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        message = getattr(chunk, "message", None)
+        additional_kwargs = getattr(message, "additional_kwargs", {})
+        reasoning_delta = additional_kwargs.get("reasoning_content", "")
+        if not reasoning_delta:
+            return
+
+        self._buffer += reasoning_delta
+        if len(self._buffer) >= 24 or self._buffer.endswith(("\n", "。", "！", "？")):
+            await self.flush()
+
+    async def on_llm_end(self, response: Any, **kwargs: Any) -> None:
+        await self.flush()
+
+    async def flush(self) -> None:
+        if not self._buffer:
+            return
+        delta = self._buffer
+        self._buffer = ""
+        await self._emit(delta)
 
 
 def _run_tool(tool_fn, blueprint: dict) -> str:
@@ -398,8 +434,11 @@ class AgentService:
         )
 
         # ===== 2. 创建 LLM =====
-        self.llm = create_llm()
-        logger.info("LLM 已创建")
+        # 非思考模式显式关闭 DashScope 的默认思考；思考模型使用流式响应，
+        # 以便通过回调实时取得 reasoning_content。
+        self.llm = create_llm(enable_thinking=False)
+        self.thinking_llm = create_llm(enable_thinking=True, streaming=True)
+        logger.info("LLM 已创建（普通模式 + 流式思考模式）")
 
         # ===== 3. 注册 Tools（所有意图通用）=====
         self.tools = [
@@ -478,20 +517,26 @@ class AgentService:
 
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
-    def _create_agent(self, spec_text: str):
+    def _create_agent(self, spec_text: str, thinking_mode: bool = False):
         """用当前 LLM、工具集和本次规范上下文创建无会话状态的 Agent。"""
         system_prompt = build_system_prompt(spec_text)
         logger.info(f"System Prompt: 总计 {len(system_prompt):,} 字符")
         return create_agent(
-            model=self.llm,
+            model=self.thinking_llm if thinking_mode else self.llm,
             tools=self.tools,
             system_prompt=system_prompt,
         )
 
-    def _agent_for_query(self, rag_query: str | list[str]):
+    def _agent_for_query(
+        self,
+        rag_query: str | list[str],
+        thinking_mode: bool = False,
+    ):
         """为一次查询准备 Agent；RAG 模式会先动态组装本次 System Prompt。"""
         if not self._dynamic_prompt:
-            return self.agent
+            if not thinking_mode:
+                return self.agent
+            return self._create_agent(self.spec_loader.load(), thinking_mode=True)
 
         if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
             filtered_queries = self._build_filtered_rag_queries(rag_query)
@@ -507,16 +552,18 @@ class AgentService:
                 for hit in self.spec_loader.last_results
             ]
             logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
-        return self._create_agent(spec_text)
+        return self._create_agent(spec_text, thinking_mode=thinking_mode)
 
     def _build_filtered_rag_queries(self, queries: list[str]) -> list[SpecQuery]:
-        """为建筑生成的五类检索意图附加业务 metadata 过滤条件。"""
-        if len(queries) != 5:
+        """为建筑生成的七类检索意图附加业务 metadata 过滤条件。"""
+        if len(queries) != 7:
             return [SpecQuery(text=query) for query in queries]
 
         filters = [
             {"doc_type": "building_type"},
             {"doc_type": "recipe"},
+            {"doc_type": "component", "entity_type": "structural_component"},
+            {"doc_type": "component", "entity_type": "wall"},
             {"doc_type": "component", "entity_type": "window"},
             {"doc_type": "component", "entity_type": "door"},
             {"doc_type": "component", "entity_type": "roof"},
@@ -578,13 +625,20 @@ class AgentService:
         return [
             primary_query,
             f"{message}\n构件-建筑类型速查矩阵：opening、door、window、roof、stair、railing 的推荐组合",
+            f"{message}\n结构构件规则：柱梁楼板桁架、column、beam、floor、truss 的参数与组合",
+            f"{message}\n墙体构件参数与围护规则：wall、thickness、height、material、opening 承载关系",
             f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",
             f"{message}\n门构件分类与组装规则：door、opening、panel、glass、门型选择",
             f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
         ]
 
     async def query_structured(
-        self, message: str, current_blueprint: dict | None = None
+        self,
+        message: str,
+        current_blueprint: dict | None = None,
+        *,
+        thinking_mode: bool = False,
+        on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
     ) -> QueryResult:
         """统一入口：一次调用覆盖生成/修改/聊天三种意图。
 
@@ -606,10 +660,21 @@ class AgentService:
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
         rag_queries = self._build_rag_queries(message, current_blueprint)
-        agent = self._agent_for_query(rag_queries)
-        result = await agent.ainvoke({
-            "messages": [{"role": "user", "content": user_message}]
-        })
+        agent = self._agent_for_query(rag_queries, thinking_mode=thinking_mode)
+        reasoning_callback = None
+        invoke_config = None
+        if thinking_mode and on_reasoning_delta is not None:
+            reasoning_callback = _ReasoningStreamCallback(on_reasoning_delta)
+            invoke_config = {"callbacks": [reasoning_callback]}
+
+        try:
+            result = await agent.ainvoke(
+                {"messages": [{"role": "user", "content": user_message}]},
+                config=invoke_config,
+            )
+        finally:
+            if reasoning_callback is not None:
+                await reasoning_callback.flush()
         reply = result["messages"][-1].content
         logger.info(f"Agent 回复: {reply[:200]}...")
 

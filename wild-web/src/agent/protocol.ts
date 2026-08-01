@@ -13,6 +13,7 @@
  * - scene_summary: 场景摘要（元素数量、类型、边界等）
  * - selection: 当前选中的构件 ID
  * - scene_revision: 当前场景版本号
+ * - thinking_mode: 是否让模型开启思考并流式返回 reasoning_content
  * 
  * 这些上下文信息帮助 Agent：
  * - 快速了解场景状态
@@ -30,7 +31,8 @@ export function createUserMessageRequest(
   sceneRevision: number,
   sceneSummary: SceneSummary,
   selection: string[],
-  blueprint?: Record<string, unknown>
+  blueprint?: Record<string, unknown>,
+  thinkingMode: boolean = false
 ): UserMessageRequest {
   return {
     type: 'user_message',
@@ -42,5 +44,6 @@ export function createUserMessageRequest(
     scene_summary: sceneSummary,
     selection,
     blueprint,
+    thinking_mode: thinkingMode,
   }
 }

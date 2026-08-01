@@ -43,7 +43,7 @@ keywords:
 | 用户确认的项目经验 | `pattern` | 对应业务实体 | `generation` |
 | 各级 README | `index` | `index` | `index` |
 
-现有建筑、构件和配方资料来自领域整理，尚未逐项通过当前引擎验证，因此统一标记为 `status: experimental`、`authority: domain_reference`。只有当前 Schema 文档标记为 `supported`。
+当前 Schema、构件注册表、resolver 和经过源码核对的能力边界标记为 `supported`。建筑类型、风格和尺寸建议通常是 `experimental/domain_reference`；尚未进入 Schema 的专用构件及自动组合机制一律标为 `proposed`，默认生成检索会排除它们。
 
 ## 新增文档模板
 

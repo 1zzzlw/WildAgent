@@ -68,6 +68,41 @@ class RAGIndexSyncTest(unittest.TestCase):
             ["villa", "window"],
         )
 
+    def test_retrieve_many_expands_adjacent_parent_parts(self):
+        collection = Mock()
+        collection.count.return_value = 3
+        collection.query.return_value = {
+            "documents": [["part one"]],
+            "metadatas": [[{
+                "source": "windows.md",
+                "body_hash": "part-1",
+                "parent_chunk_id": "parent",
+                "part_index": 1,
+            }]],
+            "distances": [[0.1]],
+        }
+        collection.get.return_value = {
+            "ids": ["p0", "p1", "p2"],
+            "documents": ["part zero", "part one", "part two"],
+            "metadatas": [
+                {"source": "windows.md", "body_hash": "part-0", "parent_chunk_id": "parent", "part_index": 0},
+                {"source": "windows.md", "body_hash": "part-1", "parent_chunk_id": "parent", "part_index": 1},
+                {"source": "windows.md", "body_hash": "part-2", "parent_chunk_id": "parent", "part_index": 2},
+            ],
+        }
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        loader._last_results = []
+        loader._get_collection = Mock(return_value=collection)
+
+        results = loader.retrieve_many(["支摘窗"], per_query=1)
+
+        self.assertEqual(
+            [result.metadata["part_index"] for result in results],
+            [0, 1, 2],
+        )
+        collection.get.assert_called_once()
+
     def test_unchanged_chunks_skip_embedding_upsert(self):
         chunks = [make_chunk("a"), make_chunk("b")]
         loader, collection = make_loader(

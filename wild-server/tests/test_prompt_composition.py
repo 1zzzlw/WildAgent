@@ -63,8 +63,10 @@ class PromptCompositionTest(unittest.TestCase):
         asset_queries = service._build_rag_queries("生成一个篮球", None)
         combined = "\n".join(queries)
 
-        self.assertEqual(len(queries), 5)
+        self.assertEqual(len(queries), 7)
         self.assertIn("构件-建筑类型速查矩阵", combined)
+        self.assertIn("柱梁楼板桁架", combined)
+        self.assertIn("墙体构件参数与围护规则", combined)
         self.assertIn("窗构件分类与组装规则", combined)
         self.assertIn("门构件分类与组装规则", combined)
         self.assertIn("屋顶屋檐构件规则", combined)
@@ -81,6 +83,8 @@ class PromptCompositionTest(unittest.TestCase):
             [
                 {"doc_type": "building_type"},
                 {"doc_type": "recipe"},
+                {"doc_type": "component", "entity_type": "structural_component"},
+                {"doc_type": "component", "entity_type": "wall"},
                 {"doc_type": "component", "entity_type": "window"},
                 {"doc_type": "component", "entity_type": "door"},
                 {"doc_type": "component", "entity_type": "roof"},

@@ -32,7 +32,7 @@ keywords:
 
 ### X.1 墙体分类
 
-墙体在 WILD 中 type=**`wall`**，核心参数是 `thickness`（厚度）、`curve`（曲线形状）、`height`（高度）和 `material`（材质）。不同建筑对墙体的需求差异极大——从 120mm 隔墙到 500mm 防辐射混凝土墙，参数跨度 4 倍以上。
+墙体在 WILD 中使用 `type: "wall"`，必填 `id`、`from`、`to`、`thickness`；`material` 和 `curve` 可选。当前没有独立 `height` 字段，墙高由 `from[1]` 与 `to[1]` 的差值表达。不同建筑对墙厚的领域需求差异很大，但这些尺寸建议不能覆盖当前 Schema。
 
 #### X.1.1 按受力角色分类
 
@@ -43,26 +43,35 @@ keywords:
 | **非承重·填充墙** | `wall` 嵌于柱间 | 200~240mm | 框架结构外部/内部 | 与柱梁柔性连接 |
 | **幕墙** | `wall` 悬挂于外部骨架 | 不计厚度(玻璃+龙骨) | 高层公建、商业 | 承受风荷载，需 pre-glazed |
 
-**WILD JSON 示例**：
+**WILD JSON 示例**：以下是 `geometry.elements` 片段；墙高由 `from[1]` 与 `to[1]` 的差值表达，直墙省略 `curve`。
 
 ```json
-/* 承重实墙 — 中式青砖 */
-{ "type": "wall", "id": "bearing_wall_01",
-  "from": [0, 0, 0], "to": [8, 0, 0],
-  "height": 4.5, "thickness": 0.24,
-  "curve": "line", "material": "grey_brick" }
-
-/* 轻质隔墙 — 加气混凝土 */
-{ "type": "wall", "id": "partition_01",
-  "from": [3, 0, 0], "to": [3, 0, 6],
-  "height": 3.0, "thickness": 0.12,
-  "curve": "line", "material": "aac_block" }
-
-/* 玻璃幕墙 — 悬挂式 */
-{ "type": "wall", "id": "curtain_wall_01",
-  "from": [0, 0, 0], "to": [18, 0, 0],
-  "height": 30.0, "thickness": 0.02,
-  "curve": "line", "material": "glass_curtain" }
+[
+  {
+    "type": "wall",
+    "id": "bearing_wall_01",
+    "from": [0, 0, 0],
+    "to": [8, 4.5, 0],
+    "thickness": 0.24,
+    "material": "grey_brick"
+  },
+  {
+    "type": "wall",
+    "id": "partition_01",
+    "from": [3, 0, 0],
+    "to": [3, 3.0, 6],
+    "thickness": 0.12,
+    "material": "aac_block"
+  },
+  {
+    "type": "wall",
+    "id": "curtain_wall_01",
+    "from": [0, 0, 0],
+    "to": [18, 30.0, 0],
+    "thickness": 0.02,
+    "material": "glass_curtain"
+  }
+]
 ```
 
 #### X.1.2 按材料分类

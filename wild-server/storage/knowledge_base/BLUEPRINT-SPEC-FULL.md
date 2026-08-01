@@ -25,7 +25,7 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 ## 文件结构
 
-```json
+```text
 {
   "meta": { /* 元数据 */ },
   "geometry": { /* 几何定义 */ },
@@ -72,7 +72,7 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 
 ### 2.1 结构
 
-```json
+```text
 {
   "geometry": {
     "elements": [ /* 构件列表 */ ],
@@ -116,7 +116,7 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 | curve     | object                   | ✗    | 弧形墙定义（见弧形墙） |
 
 **示例**：
-```json
+```text
 // 沿X轴的墙（前墙）
 {
   "type": "wall",
@@ -237,7 +237,7 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 **完整示例**：
 
-```json
+```text
 // 墙体：前墙，X轴从0到6，长6米，高3米
 {
   "type": "wall",
@@ -422,7 +422,7 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 ## 3. Materials 材质定义
 
-```json
+```text
 {
   "materials": {
     "material_id": {
@@ -507,7 +507,7 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 
 ## 4. Behaviors 行为定义
 
-```json
+```text
 {
   "behaviors": {
     "physics": { /* 物理属性 */ },
@@ -659,7 +659,7 @@ opening.from = [alongWall, opening.worldY, 0]
 
 这是最常见的错误，会导致**所有门窗模型悬浮脱离墙体、窗框/玻璃游离于墙体表面之外**。
 
-```json
+```text
 // 墙：沿X轴，长度16m
 {"id": "wall_front", "from": [-8, 0, -6], "to": [8, 3, -6]}
 
@@ -673,7 +673,7 @@ opening.from = [alongWall, opening.worldY, 0]
 - 窗框和玻璃呈现为"悬浮在墙体表面之外"的错位效果
 
 ✓ **正确：使用沿墙距离**
-```json
+```text
 // from[0] = (-5) - (-8) = 3（沿墙距离），from[2] = 0（法向偏移）
 {"id": "window", "parentWall": "wall_front", "from": [3, 1, 0]}
 ```
@@ -681,28 +681,28 @@ opening.from = [alongWall, opening.worldY, 0]
 > **AI生成专用规则**：生成opening时，**严禁**直接将墙体世界坐标填入from字段。必须以from[0]=沿墙距离、from[2]=法向偏移(通常为0)的格式填写。
 
 ❌ **错误2：墙角坐标不对齐**
-```json
+```text
 {"id": "wall_front", "from": [-8, 0, -6], "to": [8, 3, -6]},
 {"id": "wall_left", "from": [-8, 0, -5.7], "to": [-8, 3, 8]}
 // Z坐标不匹配：-6 vs -5.7
 ```
 
 ✓ **正确：墙角对齐**
-```json
+```text
 {"id": "wall_front", "from": [-8, 0, -6], "to": [8, 3, -6]},
 {"id": "wall_left", "from": [-8, 0, -6], "to": [-8, 3, 8]}
 // Z坐标匹配：都是-6
 ```
 
 ❌ **错误3：Y坐标混用**
-```json
+```text
 // 墙体：from[1]=3, to[1]=5.8
 {"type": "opening", "from": [2.4, 1.5, 0]}  
 // 不清楚1.5是世界坐标还是相对墙底的偏移
 ```
 
 ✓ **正确：明确使用世界Y坐标**
-```json
+```text
 // 墙体：from[1]=3, to[1]=5.8
 {"type": "opening", "from": [2.4, 4.0, 0]}
 // 4.0是世界Y坐标（墙底3 + 偏移1 = 4）

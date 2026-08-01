@@ -5,7 +5,12 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi import WebSocketDisconnect
 
-from app.api.ws_agent import agent_websocket, _process_user_message_safely
+from app.api.ws_agent import (
+    _handle_user_message,
+    _process_user_message_safely,
+    agent_websocket,
+)
+from app.services.agent_service import QueryResult
 
 
 class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
@@ -85,3 +90,56 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(heartbeat.is_processing)
         heartbeat.touch.assert_called_once_with()
+
+
+class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
+    async def _run_request(self, thinking_mode, reasoning_delta=None):
+        ws = Mock()
+        ws.send_json = AsyncMock()
+        data = {
+            "type": "user_message",
+            "request_id": "req_thinking",
+            "session_id": "session_thinking",
+            "scene_revision": 0,
+            "message": "介绍一下当前场景",
+            "thinking_mode": thinking_mode,
+        }
+
+        async def query_structured(*args, **kwargs):
+            callback = kwargs.get("on_reasoning_delta")
+            if reasoning_delta and callback:
+                await callback(reasoning_delta)
+            return QueryResult(text="处理完成")
+
+        with patch(
+            "app.api.ws_agent.agent_service.query_structured",
+            side_effect=query_structured,
+        ):
+            await _handle_user_message(ws, data)
+
+        return [call.args[0] for call in ws.send_json.await_args_list]
+
+    async def test_disabled_mode_sends_no_thinking_logs(self):
+        messages = await self._run_request(False)
+
+        self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))
+
+    async def test_enabled_mode_streams_real_reasoning_content(self):
+        messages = await self._run_request(True, "模型实际返回的思考")
+        deltas = [msg for msg in messages if msg["type"] == "thinking_delta"]
+        statuses = [msg for msg in messages if msg["type"] == "thinking_status"]
+
+        self.assertEqual([msg["delta"] for msg in deltas], ["模型实际返回的思考"])
+        self.assertEqual([msg["status"] for msg in statuses], ["thinking", "completed"])
+
+    async def test_enabled_mode_reports_missing_reasoning_content(self):
+        messages = await self._run_request(True)
+        statuses = [msg for msg in messages if msg["type"] == "thinking_status"]
+
+        self.assertEqual([msg["status"] for msg in statuses], ["thinking", "unsupported"])
+        self.assertFalse(any(msg["type"] == "thinking_delta" for msg in messages))
+
+    async def test_only_literal_true_enables_thinking_mode(self):
+        messages = await self._run_request("true")
+
+        self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))

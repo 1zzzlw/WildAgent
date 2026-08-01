@@ -22,6 +22,7 @@ keywords:
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
 > 用途：整理建筑类型与 opening/door/window/mullion/roofType 的速配关系。
 > RAG 关键词：门窗风格、屋顶类型、opening style、door style、window sashType、mullion pattern、roofType
+> 能力边界：门窗专用类型尚未实现；第一节只作未来需求映射，第二节的 `roofType` 枚举由当前 Schema 支持。
 
 ---
 ## 5.3 门窗风格速查
@@ -30,7 +31,7 @@ keywords:
 entity_type: assembly
 entity_name: door_window_style_reference
 topic: matrix
-status: experimental
+status: proposed
 authority: domain_reference
 keywords: 门窗风格, door style, window style, building type
 -->

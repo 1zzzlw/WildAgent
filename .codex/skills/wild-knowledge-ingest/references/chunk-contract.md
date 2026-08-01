@@ -1,0 +1,72 @@
+# Skill 与 RAG Loader 分片契约
+
+这份契约定义 Skill 产出的 Markdown 如何被 `wild-server/app/spec/loader.py` 转换成向量 chunk。
+
+## 职责边界
+
+| 阶段 | 负责内容 | 不负责内容 |
+|---|---|---|
+| Skill | 事实审查、去重、分类、实体边界、标题、metadata、原子示例 | embedding、向量写入、相似度排序 |
+| Loader | 解析标题和 `rag-meta`、结构保护、有限长度兜底、索引、过滤与召回 | 猜测粗体列表的业务语义、修复错误事实 |
+
+## 三层分片
+
+1. **文件分类**：Skill 把原始资料拆分或合并到 `building_types / components / recipes / patterns / blueprint_spec`。
+2. **业务实体分块**：Skill 在目标 Markdown 中用真实标题和 `rag-meta` 建立可独立召回的实体。
+3. **物理长度分片**：Loader 对实体内仍过长的普通文本生成 `part_index`；代码块和表格保持原子。
+
+前两层决定语义质量，第三层只保证索引尺寸。不要把原始长文直接交给第三层补救。
+
+## Loader 可识别结构
+
+- H1～H5 是可分片标题。
+- 文件 frontmatter 提供默认 metadata。
+- 标题后的 `<!-- rag-meta ... -->` 覆盖该标题及其子标题。
+- fenced code 是原子块，不做字符切断。
+- Markdown 表格按行组拆分，子表重复表头。
+- 普通长文本才使用 `chunk_size=900`、`chunk_overlap=150` 兜底。
+- 每个物理子片重复知识路径，并带 `parent_chunk_id`、`part_index`。
+- README/index 不进入普通生成召回。
+
+## Skill 必须产出的语义结构
+
+```text
+# 文档领域
+## 可独立召回的实体或规范大类
+### 实体主题：定义 / 参数 / 组装 / 约束
+#### 具体变体或规则
+##### 变体的示例或错误（内容较长时）
+```
+
+每个具体变体必须使用真实标题。`**A. 支摘窗**`、`**模板 A**` 和纯分隔标题不是业务边界。
+
+## 原子知识单元
+
+一个原子单元应包含理解它所需的最小上下文：
+
+1. 明确实体或变体标题；
+2. 一句定义或适用范围；
+3. 参数、表格或组装公式；
+4. 对应 JSON；
+5. 必要约束或降级说明。
+
+不要让说明段以“JSON 如下：”结束而代码块落入另一个长度 part。若原子单元接近 900 字符，优先增加 `##### 参数`、`##### 示例` 等真实标题；不要调大 overlap。
+
+## 入库门槛
+
+- 去掉标题、空行和分隔线后，Loader 不得产出空正文 chunk；纯父级标题可以保留为路径，但不会单独入索引。
+- 单个 chunk 必须能说明自己属于哪个实体。
+- 多 part 实体的每个 part 都应有可理解正文；命中时 Loader 会补充相邻 part，但这不能替代正确标题。
+- 有效 JSON 必须严格可解析；带注释的演示改用 `text` 代码块。
+- `status=proposed` 或 `authority=inferred` 不进入正式生成召回。
+- `experimental` 内容允许召回，但必须把可信度显示给模型。
+- 同一正文即使标题路径不同也应判重，不保留竞争性副本。
+
+## 验收命令
+
+```powershell
+python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <target.md>
+python .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py <target.md>
+```
+
+先修复 error；warning 需要逐项判断并在交付中解释。

@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
-from app.spec.loader import MarkdownChunker, RAGSpecLoader
+from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
 
 
 class RAGSemanticChunkingTest(unittest.TestCase):
@@ -121,6 +121,52 @@ keywords: 支摘窗, zhizhai window, opening
         self.assertTrue(all(chunk.metadata["doc_type"] == "index" for chunk in chunks))
         self.assertTrue(all(chunk.metadata["doc_scope"] == "index" for chunk in chunks))
 
+    def test_empty_container_heading_is_not_indexed(self):
+        chunks = self._split(
+            "public.md",
+            """# 公共建筑
+
+## 二、公共建筑
+
+---
+
+### 教育建筑
+
+教育建筑需要明确教室、走廊和楼梯等业务构件。
+""",
+        )
+
+        headings = [chunk.metadata["heading"] for chunk in chunks]
+        self.assertNotIn("公共建筑 > 二、公共建筑", headings)
+        self.assertTrue(any("教育建筑" in heading for heading in headings))
+
+    def test_body_hash_ignores_repeated_knowledge_path_prefix(self):
+        first = self._split(
+            "first.md",
+            """# 屋顶构件
+
+## 屋顶类型速查
+
+| 类型 | roofType |
+|---|---|
+| 人字坡顶 | gable |
+""",
+        )[-1]
+        second = self._split(
+            "second.md",
+            """# 风格配方
+
+## 屋顶类型速查
+
+| 类型 | roofType |
+|---|---|
+| 人字坡顶 | gable |
+""",
+        )[-1]
+
+        self.assertNotEqual(first.metadata["content_hash"], second.metadata["content_hash"])
+        self.assertEqual(first.metadata["body_hash"], second.metadata["body_hash"])
+
     def test_retrieve_combines_namespace_scope_and_business_filters(self):
         collection = Mock()
         collection.count.return_value = 3
@@ -146,11 +192,53 @@ keywords: 支摘窗, zhizhai window, opening
                 "$and": [
                     {"namespace": "test"},
                     {"doc_scope": {"$ne": "index"}},
+                    {"status": {"$ne": "proposed"}},
+                    {"authority": {"$ne": "inferred"}},
                     {"doc_type": "component"},
                     {"entity_type": "window"},
                 ]
             },
         )
+
+    def test_context_limit_keeps_retrieved_chunks_atomic(self):
+        loader = object.__new__(RAGSpecLoader)
+        loader._max_context_chars = 360
+        loader._loaded_at = None
+        chunks = [
+            RetrievedSpecChunk(
+                document="```json\n{\"id\": \"one\", \"value\": \"" + "x" * 90 + "\"}\n```",
+                metadata={
+                    "source": "one.md",
+                    "heading": "示例一",
+                    "doc_type": "component",
+                    "entity_name": "one",
+                    "status": "supported",
+                    "authority": "schema",
+                },
+                distance=0.1,
+            ),
+            RetrievedSpecChunk(
+                document="```json\n{\"id\": \"two\", \"value\": \"" + "y" * 180 + "\"}\n```",
+                metadata={
+                    "source": "two.md",
+                    "heading": "示例二",
+                    "doc_type": "component",
+                    "entity_name": "two",
+                    "status": "supported",
+                    "authority": "schema",
+                },
+                distance=0.2,
+            ),
+        ]
+
+        context = loader._compose_context("BASE", chunks)
+
+        self.assertIn('"id": "one"', context)
+        self.assertNotIn('"id": "two"', context)
+        self.assertIn("status=supported", context)
+        self.assertIn("authority=schema", context)
+        self.assertEqual(context.count("```"), 2)
+        self.assertIn("完整片段数量受上下文上限限制", context)
 
 
 if __name__ == "__main__":

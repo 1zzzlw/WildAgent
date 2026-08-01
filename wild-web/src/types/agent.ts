@@ -9,6 +9,8 @@
  *
  * 后端返回：
  * - AgentStepResponse: Agent 执行步骤（可选，用于显示进度）
+ * - ThinkingDeltaResponse: 模型接口实际返回的思考内容片段
+ * - ThinkingStatusResponse: 思考请求状态
  * - PatchProposalResponse: 场景修改提案
  * - AgentReplyResponse: 文本回复
  * - ErrorResponse: 错误信息
@@ -35,6 +37,8 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 're
 export type AgentMessage =
   | UserMessageRequest
   | AgentStepResponse
+  | ThinkingDeltaResponse
+  | ThinkingStatusResponse
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
@@ -53,6 +57,7 @@ export interface UserMessageRequest {
   scene_summary?: SceneSummary
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
+  thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
 }
 
 export interface AgentStepResponse {
@@ -60,6 +65,20 @@ export interface AgentStepResponse {
   request_id: string
   stage: string
   content: string
+}
+
+/** 模型接口实际返回的 reasoning_content 增量 */
+export interface ThinkingDeltaResponse {
+  type: 'thinking_delta'
+  request_id: string
+  delta: string
+}
+
+export interface ThinkingStatusResponse {
+  type: 'thinking_status'
+  request_id: string
+  status: 'thinking' | 'completed' | 'unsupported' | 'error'
+  content?: string
 }
 
 export interface PatchProposalResponse {

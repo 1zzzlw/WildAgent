@@ -21,6 +21,7 @@ keywords:
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
 > 用途：整理不同建筑类型对 column/wall/floor/roof/opening/door/window/truss/stair/railing 的依赖强度。
 > RAG 关键词：构件矩阵、建筑类型矩阵、column、wall、floor、roof、opening、door、window、truss、stair、railing
+> 能力边界：表中的 door、window、truss、railing 表示建筑语义需求，不代表当前 WILD `type`；正式生成必须按 `engine-capability-boundaries.md` 降级。
 
 ---
 ## 5.2 构件-建筑类型速查矩阵

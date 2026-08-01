@@ -13,6 +13,7 @@ Agent WebSocket API
     "scene_id": "scene_xxx",
     "scene_revision": 8,
     "message": "生成一座中式凉亭",
+    "thinking_mode": false,
     "scene_summary": { "elements_count": 42, "types": [...], "bbox": {...} },
     "selection": []
   }
@@ -22,6 +23,8 @@ Agent WebSocket API
 
 后端 -> 前端:
   agent_step:          { "type": "agent_step", "request_id": "...", "stage": "analyzing", "content": "..." }
+  thinking_delta:      { "type": "thinking_delta", "request_id": "...", "delta": "..." }
+  thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
   blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "blueprint": {...}, "file_path": "..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
   error:               { "type": "error", "request_id": "...", "error": "..." }
@@ -215,6 +218,8 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     request_id = data.get("request_id", "")
     message = data.get("message", "")
     current_blueprint = data.get("blueprint")
+    # 只有 JSON 布尔值 true 才开启，避免字符串 "true" 等意外触发日志。
+    thinking_mode = data.get("thinking_mode") is True
     # 相同 session_id 使用同一个文件名，因此后续生成会更新该会话的场景文件。
     session_id = data.get("session_id", request_id)
 
@@ -229,21 +234,52 @@ async def _handle_user_message(ws: WebSocket, data: dict):
             "content": content,
         })
 
+    reasoning_received = False
+
+    async def send_reasoning_delta(delta: str):
+        """实时转发模型接口实际返回的 reasoning_content。"""
+        nonlocal reasoning_received
+        reasoning_received = True
+        await ws.send_json({
+            "type": "thinking_delta",
+            "request_id": request_id,
+            "delta": delta,
+        })
+
+    async def send_thinking_status(status: str, content: str = ""):
+        await ws.send_json({
+            "type": "thinking_status",
+            "request_id": request_id,
+            "status": status,
+            "content": content,
+        })
+
     # ===== Phase 1: 分析 + 生成 =====
     await send_step("analyzing", "正在分析您的需求...")
     await send_step("generating", "正在调用 AI 处理，请耐心等待...")
 
     # ===== Phase 2: LLM 查询（统一入口，AI 自行判断意图）=====
-    # ticker 与真实查询并行，只负责在长等待期间提供阶段性反馈。
-    ticker_task = asyncio.create_task(_thinking_ticker(send_step))
+    if thinking_mode:
+        await send_thinking_status("thinking")
     try:
-        result = await agent_service.query_structured(message, current_blueprint)
-    finally:
-        ticker_task.cancel()
-        try:
-            await ticker_task
-        except asyncio.CancelledError:
-            pass
+        result = await agent_service.query_structured(
+            message,
+            current_blueprint,
+            thinking_mode=thinking_mode,
+            on_reasoning_delta=send_reasoning_delta if thinking_mode else None,
+        )
+    except Exception:
+        if thinking_mode:
+            await send_thinking_status("error", "模型思考请求失败。")
+        raise
+
+    if thinking_mode and reasoning_received:
+        await send_thinking_status("completed")
+    elif thinking_mode:
+        await send_thinking_status(
+            "unsupported",
+            "当前模型接口没有返回 reasoning_content。",
+        )
 
     # ===== Phase 3: 处理结果（按 AI 输出的格式分发）=====
     if result.blueprint is not None:
@@ -342,22 +378,3 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         })
 
     logger.info(f"[{request_id}] 处理完成")
-
-
-async def _thinking_ticker(send_step):
-    """LLM 生成期间每 8 秒推一条思考进度，直到被取消"""
-    # 文案数量有限；全部发送完后协程自然结束，不会循环重复。
-    THINKING_MESSAGES = [
-        "理解建筑需求，规划构件组合...",
-        "计算空间布局与构件尺寸...",
-        "生成墙体、楼板、屋顶参数...",
-        "处理门窗坐标与材质定义...",
-        "完善细节构件与约束关系...",
-        "即将完成，正在整理输出...",
-    ]
-    for msg in THINKING_MESSAGES:
-        await asyncio.sleep(8)
-        try:
-            await send_step("generating", msg)
-        except Exception:
-            break

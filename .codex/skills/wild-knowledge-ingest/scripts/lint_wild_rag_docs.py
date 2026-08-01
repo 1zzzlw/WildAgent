@@ -38,7 +38,7 @@ ALLOWED_VALUES = {
 }
 
 PSEUDO_HEADING_RE = re.compile(
-    r"^\s*\*\*(?:[A-ZＡ-Ｚ]|\d+|[一二三四五六七八九十]+)[.、．:：]\s*.+?\*\*\s*[：:]?\s*$"
+    r"^\s*\*\*(?:[A-ZＡ-Ｚ]|\d+|[一二三四五六七八九十]+)[.、．:：]\s*.+?\*\*.*$"
 )
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 FENCE_RE = re.compile(r"^\s*(```+|~~~+)\s*([A-Za-z0-9_-]*)")
@@ -239,24 +239,51 @@ def structure_issues(
             )
         seen_paths.add(heading_path)
 
-        if heading.level >= 2 and heading.chars > max_section_chars:
+        section_lines = lines[heading.line:heading.end_line]
+        semantic_lines: list[str] = []
+        inside_rag_meta = False
+        for line in section_lines:
+            stripped = line.strip()
+            if stripped.startswith("<!-- rag-meta"):
+                inside_rag_meta = "-->" not in stripped
+                continue
+            if inside_rag_meta:
+                if "-->" in stripped:
+                    inside_rag_meta = False
+                continue
+            if not stripped or re.fullmatch(r"(?:-{3,}|\*{3,}|_{3,})", stripped):
+                continue
+            semantic_lines.append(stripped)
+        semantic_chars = len("\n".join(semantic_lines))
+
+        if heading.level >= 2 and semantic_chars == 0:
+            issues.append(
+                Issue(
+                    "warning",
+                    "empty_container_heading",
+                    str(path),
+                    heading.line,
+                    "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径",
+                )
+            )
+        if heading.level >= 2 and semantic_chars > max_section_chars:
             issues.append(
                 Issue(
                     "warning",
                     "long_section",
                     str(path),
                     heading.line,
-                    f"标题块 {heading.chars} 字符，建议增加业务子标题",
+                    f"标题块有效正文 {semantic_chars} 字符，建议增加业务子标题",
                 )
             )
-        if heading.level >= 2 and 0 < heading.chars < min_section_chars:
+        if heading.level >= 2 and 0 < semantic_chars < min_section_chars:
             issues.append(
                 Issue(
                     "warning",
                     "short_section",
                     str(path),
                     heading.line,
-                    f"标题块仅 {heading.chars} 字符，确认其能独立回答问题",
+                    f"标题块有效正文仅 {semantic_chars} 字符，确认其能独立回答问题",
                 )
             )
 

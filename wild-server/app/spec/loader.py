@@ -356,7 +356,11 @@ class MarkdownChunker:
                 section_metadata.update(entity_metadata.get(heading_path[:depth], {}))
 
             context_line = f"> 知识路径：{heading}"
-            section_parts = self._split_section(document.page_content, context_line)
+            section_parts = [
+                part
+                for part in self._split_section(document.page_content, context_line)
+                if self._has_meaningful_payload(part)
+            ]
             parent_digest = hashlib.sha256(
                 f"{namespace}:{source_path}:{section_index}:{heading}".encode("utf-8")
             ).hexdigest()[:16]
@@ -368,6 +372,9 @@ class MarkdownChunker:
                 if not content:
                     continue
                 content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
+                # body_hash 忽略祖先标题路径，但保留当前标题，识别跨文件重复业务正文。
+                body_hash_source = self._body_hash_source(part, heading_path)
+                body_hash = hashlib.sha256(body_hash_source.encode("utf-8")).hexdigest()[:16]
                 chunk_id = f"{parent_chunk_id}:{part_index}:{content_hash}"
                 metadata: dict[str, str | int | float | bool] = {
                     "namespace": namespace,
@@ -383,6 +390,7 @@ class MarkdownChunker:
                     "part_index": part_index,
                     "chunk_index": chunk_index,
                     "content_hash": content_hash,
+                    "body_hash": body_hash,
                     "mtime": mtime,
                 }
                 if declared_source:
@@ -411,9 +419,25 @@ class MarkdownChunker:
         heading_stack: list[str] = []
         lines = text.splitlines()
         index = 0
+        active_fence: str | None = None
 
         while index < len(lines):
             line = lines[index]
+            fence_match = self._FENCE_PATTERN.match(line)
+            if fence_match:
+                fence_char = fence_match.group(1)[0]
+                if active_fence is None:
+                    active_fence = fence_char
+                elif fence_char == active_fence:
+                    active_fence = None
+                output.append(line)
+                index += 1
+                continue
+            if active_fence is not None:
+                output.append(line)
+                index += 1
+                continue
+
             heading_match = self._HEADING_PATTERN.match(line)
             if heading_match:
                 level = len(heading_match.group(1))
@@ -584,6 +608,26 @@ class MarkdownChunker:
         flush()
         return [part for part in parts if part]
 
+    def _has_meaningful_payload(self, text: str) -> bool:
+        """过滤只有标题、空行或 Markdown 分隔线的目录壳 section。"""
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped or self._HEADING_PATTERN.match(stripped):
+                continue
+            if re.fullmatch(r"(?:-{3,}|\*{3,}|_{3,})", stripped):
+                continue
+            return True
+        return False
+
+    def _body_hash_source(self, text: str, heading_path: tuple[str, ...]) -> str:
+        payload_lines = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and not self._HEADING_PATTERN.match(line.strip())
+        ]
+        current_heading = heading_path[-1] if heading_path else ""
+        return f"{current_heading}\n{'\n'.join(payload_lines)}".strip()
+
     def _markdown_blocks(self, text: str) -> list[tuple[str, str]]:
         """识别 fenced code、表格和普通段落，保护结构化内容不被字符切断。"""
         if not text:
@@ -744,9 +788,18 @@ class RAGSpecLoader(SpecLoader):
         if len(spec_text) <= self._max_context_chars:
             return spec_text
 
-        # 基础规范不可截断，剩余字符预算全部留给按相关度排列的 RAG 片段。
-        allowed_rag_chars = max(0, self._max_context_chars - len(base_text) - 16)
-        return f"{base_text}\n\n---\n\n{rag_text[:allowed_rag_chars]}\n\n<!-- RAG 上下文已按长度上限截断 -->"
+        # 基础规范和单个 RAG chunk 都不可截断；按排名贪心选择能完整放入预算的片段。
+        marker = "<!-- RAG 完整片段数量受上下文上限限制 -->"
+        selected: list[RetrievedSpecChunk] = []
+        for chunk in retrieved:
+            candidate = self._format_retrieved([*selected, chunk])
+            composed = f"{base_text}\n\n---\n\n{candidate}\n\n{marker}"
+            if len(composed) <= self._max_context_chars:
+                selected.append(chunk)
+
+        if not selected:
+            return f"{base_text}\n\n{marker}"
+        return f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
 
     def list_sources(self) -> list[str]:
         return [str(p) for p in [*self._base_paths, *self._rag_paths]]
@@ -860,10 +913,10 @@ class RAGSpecLoader(SpecLoader):
         for index, document in enumerate(documents):
             metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
-            content_hash = str(metadata.get("content_hash") or hashlib.sha256((document or "").encode("utf-8")).hexdigest()[:16])
-            if content_hash in seen_hashes:
+            dedupe_hash = self._retrieval_hash(document or "", metadata)
+            if dedupe_hash in seen_hashes:
                 continue
-            seen_hashes.add(content_hash)
+            seen_hashes.add(dedupe_hash)
             retrieved.append(RetrievedSpecChunk(
                 document=document or "",
                 metadata=metadata,
@@ -873,6 +926,7 @@ class RAGSpecLoader(SpecLoader):
             if len(retrieved) >= self._top_k:
                 break
 
+        retrieved = self._expand_parent_neighbors(collection, retrieved)
         self._last_results = retrieved
         return retrieved
 
@@ -953,13 +1007,10 @@ class RAGSpecLoader(SpecLoader):
             selected = 0
             for index, document in enumerate(documents or []):
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
-                content_hash = str(
-                    metadata.get("content_hash")
-                    or hashlib.sha256((document or "").encode("utf-8")).hexdigest()[:16]
-                )
-                if content_hash in seen_hashes:
+                dedupe_hash = self._retrieval_hash(document or "", metadata)
+                if dedupe_hash in seen_hashes:
                     continue
-                seen_hashes.add(content_hash)
+                seen_hashes.add(dedupe_hash)
                 retrieved.append(RetrievedSpecChunk(
                     document=document or "",
                     metadata=metadata,
@@ -970,8 +1021,71 @@ class RAGSpecLoader(SpecLoader):
                 if selected >= limit:
                     break
 
+        retrieved = self._expand_parent_neighbors(collection, retrieved)
         self._last_results = retrieved
         return retrieved
+
+    def _retrieval_hash(self, document: str, metadata: dict[str, Any]) -> str:
+        """优先按无知识路径前缀的正文哈希去重，兼容旧索引 metadata。"""
+        return str(
+            metadata.get("body_hash")
+            or metadata.get("content_hash")
+            or hashlib.sha256(document.encode("utf-8")).hexdigest()[:16]
+        )
+
+    def _expand_parent_neighbors(
+        self,
+        collection: Any,
+        chunks: list[RetrievedSpecChunk],
+        neighbor_parts: int = 1,
+    ) -> list[RetrievedSpecChunk]:
+        """命中长度子片时补充同一父块的相邻 part，避免说明与示例脱节。"""
+        expanded: list[RetrievedSpecChunk] = []
+        seen_hashes: set[str] = set()
+
+        for hit in chunks:
+            parent_id = hit.metadata.get("parent_chunk_id")
+            part_index = hit.metadata.get("part_index")
+            candidates = [hit]
+            if parent_id and isinstance(part_index, int):
+                siblings = collection.get(
+                    where=self._query_where({"parent_chunk_id": parent_id}),
+                    include=["documents", "metadatas"],
+                )
+                if isinstance(siblings, dict):
+                    documents = siblings.get("documents") or []
+                    metadatas = siblings.get("metadatas") or []
+                    candidates = []
+                    for index, document in enumerate(documents):
+                        metadata = (
+                            metadatas[index]
+                            if index < len(metadatas) and metadatas[index]
+                            else {}
+                        )
+                        sibling_index = metadata.get("part_index")
+                        if (
+                            isinstance(sibling_index, int)
+                            and abs(sibling_index - part_index) <= neighbor_parts
+                        ):
+                            candidates.append(RetrievedSpecChunk(
+                                document=document or "",
+                                metadata=metadata,
+                                distance=hit.distance if sibling_index == part_index else None,
+                            ))
+                    candidates.sort(key=lambda item: int(item.metadata.get("part_index") or 0))
+                    if not candidates:
+                        candidates = [hit]
+
+            for candidate in candidates:
+                dedupe_hash = self._retrieval_hash(
+                    candidate.document,
+                    candidate.metadata,
+                )
+                if dedupe_hash in seen_hashes:
+                    continue
+                seen_hashes.add(dedupe_hash)
+                expanded.append(candidate)
+        return expanded
 
     def _query_where(
         self,
@@ -982,6 +1096,10 @@ class RAGSpecLoader(SpecLoader):
             {"namespace": self._namespace},
             {"doc_scope": {"$ne": "index"}},
         ]
+        if "status" not in (metadata_filter or {}):
+            conditions.append({"status": {"$ne": "proposed"}})
+        if "authority" not in (metadata_filter or {}):
+            conditions.append({"authority": {"$ne": "inferred"}})
         conditions.extend(
             {key: value}
             for key, value in (metadata_filter or {}).items()
@@ -1067,11 +1185,17 @@ class RAGSpecLoader(SpecLoader):
                 chunk.metadata.get("source", "unknown"),
             )
             heading = chunk.metadata.get("heading", "")
+            metadata_text = ", ".join(
+                f"{key}={chunk.metadata[key]}"
+                for key in ("doc_type", "entity_name", "topic", "status", "authority")
+                if chunk.metadata.get(key)
+            )
             distance = chunk.distance
             # 距离只作为诊断信息展示，不在 Loader 内再做阈值过滤或重排。
             distance_text = f", distance={distance:.4f}" if isinstance(distance, float) else ""
             parts.append(
                 f"### 片段 {index}: {source} / {heading}{distance_text}\n\n"
+                f"> metadata: {metadata_text}\n\n"
                 f"{chunk.document}"
             )
         return "\n\n".join(parts)

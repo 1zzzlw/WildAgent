@@ -1,13 +1,13 @@
 ---
 name: wild-knowledge-ingest
-description: Write, review, refactor, classify, merge, and validate WildAgent RAG knowledge Markdown for WILD generation. Use when the user asks to add or revise building types, components such as doors/windows/walls/roofs/stairs/furniture, assembly recipes, verified patterns, blueprint rules, or metadata; convert research notes into retrieval-ready knowledge; inspect whether Markdown is safe for semantic chunking; verify WILD fields against current engine/schema/validators; or integrate an approved document into E:\AgentProject\WildAgent\wild-server\storage\knowledge_base.
+description: Convert raw notes and supplied documents into verified, classified, retrieval-ready WildAgent Markdown whose headings, business entities, atomic JSON/tables, and metadata match the project's real RAG chunker; preview actual chunks; merge and deduplicate approved knowledge; and integrate it into E:\AgentProject\WildAgent\wild-server\storage\knowledge_base. Use for buildings, doors/windows/walls/roofs/stairs/furniture, recipes, patterns, blueprint rules, knowledge-base audits, metadata, semantic chunking, or any request to feed knowledge into WildAgent RAG.
 ---
 
 # Wild RAG Knowledge Author
 
 ## 目标
 
-产出事实受当前 WildAgent 引擎约束、结构对应语义知识块、可被 metadata 过滤、适合向量召回的 Markdown。不要负责向量入库，不要用润色掩盖事实冲突，不要把建筑概念直接发明成 WILD 字段。
+把原始资料转换为事实受当前 WildAgent 引擎约束、结构对应业务实体、可被 metadata 过滤且经过真实 Loader 预览的 Markdown。Skill 负责语义分块和入库前验收；Loader 负责确定性物理分片、索引和召回。不要手工写向量数据库，不要用润色掩盖事实冲突，不要把建筑概念直接发明成 WILD 字段。
 
 ## 默认位置
 
@@ -27,7 +27,17 @@ description: Write, review, refactor, classify, merge, and validate WildAgent RA
 - 分类或决定目标路径：读取 `references/classification-taxonomy.md`。
 - 新建、重构文档：读取 `references/document-templates.md`。
 - 编写或检查 metadata：读取 `references/metadata-schema.md`。
+- 编写、重构或验收任何 RAG 文档：读取 `references/chunk-contract.md`。
 - 所有交付前检查：读取 `references/rag-readiness-checklist.md`。
+
+## Skill 与 Loader 的边界
+
+必须遵守 `references/chunk-contract.md`：
+
+- Skill 把用户资料拆成真实 Markdown 标题下的业务实体，保证单个实体可独立召回。
+- Skill 把说明、参数、表格和 JSON 放在同一实体路径中，不让 Loader 猜测它们属于谁。
+- Loader 只按标题/实体 metadata 切分，保护代码块和表格，并对普通长文本长度兜底。
+- 不用增大 `chunk_size` 掩盖文档结构问题；实际 chunk 不自包含时先重构文档。
 
 ## 事实优先级
 
@@ -60,7 +70,11 @@ description: Write, review, refactor, classify, merge, and validate WildAgent RA
 
 不要为了一个窗型加载全部建筑知识。
 
-### 3. 运行静态审计
+### 3. 保留原始资料并运行初检
+
+把用户提供的文件视为来源，不原地覆盖。先确认目标知识库中是否已有相同实体，再决定合并、新建或报告冲突。
+
+对已有 RAG 文档运行静态审计；原始资料尚无 frontmatter 时，允许初检报告格式问题：
 
 本地可执行时运行：
 
@@ -86,14 +100,14 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 
 无法从更高优先级来源解决的冲突，不得静默写成确定事实。
 
-### 5. 分类并规划知识块
+### 5. 分类并规划业务实体
 
 读取分类引用，选择 `blueprint_spec / component / building_type / recipe / pattern`。在写正文前规划每个可独立召回的业务实体：
 
 | chunk_id | 标题路径 | 回答的问题 | 父块 | metadata |
 |---|---|---|---|---|
 
-一个块只解决一个完整问题。门与窗、不同变体、不同版本、不同 status 或不同 authority 不得为了凑长度合并。
+一个实体块只解决一个完整问题。门与窗、具体变体、不同版本、不同 status 或不同 authority 不得为了凑长度合并。为每个独立实体选择稳定的 `entity_name`；不要把 A/B/C 粗体项目当作实体边界。
 
 ### 6. 按模板编写
 
@@ -107,6 +121,8 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 - 标题必须包含实体名称或继承后仍能形成明确标题路径；
 - JSON、表格、公式和对应解释保持原子性；
 - 每个实体块正文可脱离相邻块独立理解。
+
+当一个变体包含定义、参数、组装公式和 JSON 时，用 `####`/`#####` 建立真实边界；禁止让一个 part 以“WILD JSON：”结束、下一个 part 才出现代码块。
 
 使用文档级 YAML frontmatter；多实体文档使用实体标题后的 `rag-meta` 注释覆盖 metadata。具体格式读取 metadata 引用。
 
@@ -123,7 +139,16 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 
 错误示例单独标记，不能与正确示例放在同一个代码块。当前不支持的能力分成“当前能力、可用降级、未来提案”，不得伪装成正式语法。
 
-### 8. 执行 RAG 就绪检查
+### 8. 执行静态检查和真实分片预览
+
+先运行 linter，再调用项目真实 `MarkdownChunker` 预览：
+
+```powershell
+python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <target.md>
+python .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py <target.md>
+```
+
+预览失败或出现空壳 chunk、脱离实体的 JSON/表格、缺失 metadata 时，返回第 5～7 步重构。不要用臆测代替真实预览。
 
 读取检查清单并逐项确认。至少检查：
 
@@ -135,7 +160,7 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 - metadata 是否足够过滤版本、状态、权限和实体；
 - 是否存在重复、冲突或不受支持的 WILD 示例。
 
-修改后再次运行 linter。存在错误时不要入库。
+修改后再次运行 linter 和 preview。存在错误时不要入库；只有明确标注并经用户接受的历史遗留问题可以作为例外，且必须在交付中列出。
 
 ### 9. 仅在授权时集成
 
@@ -146,6 +171,7 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 3. 新建文件时更新必要的目录索引，但让 README 保持 `doc_scope: index`。
 4. 不手动写 Chroma，不主动删除持久化索引；项目 Loader 负责同步。
 5. 保留无关文件和用户已有改动。
+6. 集成后对最终文件重新运行 linter 和真实 chunk 预览。
 
 ## 固定输出
 

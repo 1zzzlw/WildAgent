@@ -54,6 +54,18 @@
         <span>{{ agentStore.currentStep || '处理中...' }}</span>
       </div>
 
+      <!-- DashScope/OpenAI-compatible 接口实际返回的 reasoning_content -->
+      <div v-if="agentStore.thinkingMode && agentStore.thinkingStatus !== 'idle'" class="thinking-stream">
+        <div class="thinking-stream-title">
+          <span>模型思考内容</span>
+          <span :class="['thinking-status', `status-${agentStore.thinkingStatus}`]">
+            {{ getThinkingStatusLabel(agentStore.thinkingStatus) }}
+          </span>
+        </div>
+        <div v-if="agentStore.thinkingContent" class="thinking-content">{{ agentStore.thinkingContent }}</div>
+        <div v-if="agentStore.thinkingNotice" class="thinking-notice">{{ agentStore.thinkingNotice }}</div>
+      </div>
+
       <!-- 校验流水线：逐条流式展示，直接内联在消息流里 -->
       <div v-if="agentStore.pipelineSteps.length > 0" class="pipeline-stream">
         <div class="pipeline-stream-title">校验流水线</div>
@@ -80,6 +92,18 @@
         <component :is="connectionIcon" />
       </el-icon>
       <span class="connection-text">{{ connectionStatusText }}</span>
+      <div
+        class="thinking-toggle"
+        title="请求模型开启思考，并实时展示接口返回的 reasoning_content"
+      >
+        <span>思考模式</span>
+        <el-switch
+          :model-value="agentStore.thinkingMode"
+          size="small"
+          :disabled="agentStore.isProcessing"
+          @change="handleThinkingModeChange"
+        />
+      </div>
       <el-button v-if="agentStore.connectionStatus === 'disconnected'" text size="small"
         class="reconnect-btn" @click="handleReconnect">
         重新连接
@@ -149,6 +173,8 @@ function scrollToBottom() {
 // 消息或流水线步骤有变化时自动滚动
 watch(() => agentStore.session.messages.length, scrollToBottom)
 watch(() => agentStore.pipelineSteps.length, scrollToBottom)
+watch(() => agentStore.thinkingContent.length, scrollToBottom)
+watch(() => agentStore.thinkingStatus, scrollToBottom)
 watch(() => agentStore.isProcessing, scrollToBottom)
 watch(() => agentStore.blueprintLoaded, scrollToBottom)
 
@@ -175,6 +201,19 @@ function handleSend() {
 
 function handleReconnect() {
   agentBridge.connect()
+}
+
+function handleThinkingModeChange(value: boolean | string | number) {
+  agentStore.setThinkingMode(Boolean(value))
+}
+
+function getThinkingStatusLabel(status: string) {
+  return ({
+    thinking: '思考中',
+    completed: '已完成',
+    unsupported: '不支持',
+    error: '失败',
+  } as Record<string, string>)[status] || ''
 }
 
 // ---------- 连接状态 ----------
@@ -529,6 +568,41 @@ async function restoreLastSession() {
 .pipeline-line.status-error { color: #f48771; }
 .pipeline-line.status-skip  { color: #555; }
 
+/* 用户可选的模型真实思考流 */
+.thinking-stream {
+  align-self: stretch;
+  background: #20202a;
+  border: 1px solid #3d3d55;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.thinking-stream-title {
+  color: #9a9ac7;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  display: flex;
+  justify-content: space-between;
+}
+
+.thinking-content {
+  color: #c5c5dc;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.thinking-notice { color: #dcdcaa; }
+.thinking-status.status-thinking { color: #4ea1f3; }
+.thinking-status.status-completed { color: #4ec9b0; }
+.thinking-status.status-unsupported,
+.thinking-status.status-error { color: #f48771; }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateX(-4px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -568,6 +642,7 @@ async function restoreLastSession() {
 }
 .connection-icon { font-size: 14px; flex-shrink: 0; }
 .connection-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thinking-toggle { display: flex; align-items: center; gap: 6px; color: #b8b8b8; flex-shrink: 0; }
 .reconnect-btn   { flex-shrink: 0; color: #4ec9b0; font-size: 12px; padding: 0 4px; height: auto; }
 
 .connection-bar.status-connected                          { color: #4ec9b0; }
