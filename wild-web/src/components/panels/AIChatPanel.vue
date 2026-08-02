@@ -361,12 +361,14 @@ async function restoreSessionsFromServer() {
   }
 
   const serverSessions = serverScenes.map(scene => {
-    // filename 可能是新格式 "2026-08-02/session_xxx_名称.wild" 或旧格式 "session_xxx.wild"
-    // session_id 取最后一段去掉扩展名后、第一个 _ 分割的前半部分
+    // filename 格式：
+    //   新格式：2026-08-02/session_1234567890_建筑名.wild
+    //   旧格式：session_1234567890.wild
+    // session_id 固定格式是 session_<timestamp>，从 basename 里精确提取
     const basename = scene.filename.split('/').pop()!.replace(/\.wild$/, '')
-    // 新格式: session_1234567890_建筑名  ->  session_id = "session_1234567890"
-    // 旧格式: session_1234567890          ->  session_id = "session_1234567890"
-    const session_id = basename.replace(/_[^_].*$/, '') || basename
+    // 匹配 session_ 开头 + 纯数字的部分作为 session_id
+    const match = basename.match(/^(session_\d+)/)
+    const session_id = match ? match[1] : basename
     return {
       session_id,
       filename: scene.filename,   // 保留完整相对路径供 load/delete 使用

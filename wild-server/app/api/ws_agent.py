@@ -311,16 +311,34 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         await send_step("saving", "正在保存蓝图文件...")
 
         try:
+            # 用日期子目录格式保存：YYYY-MM-DD/{session_id}_{meta.name}.wild
+            import datetime as _dt
+            import re as _re
+
+            def _slug(name: str, max_len: int = 40) -> str:
+                s = _re.sub(r"[^\w\u4e00-\u9fff]", "_", name, flags=_re.UNICODE)
+                s = _re.sub(r"_+", "_", s).strip("_")
+                return s[:max_len]
+
+            today = _dt.date.today().strftime("%Y-%m-%d")
+            meta_name = result.blueprint.get("meta", {}).get("name", "") or ""
+            slug = _slug(meta_name)
+            wild_filename = f"{session_id}_{slug}.wild" if slug else f"{session_id}.wild"
+            rel_path = f"{today}/{wild_filename}"
+
             # 完整蓝图由服务端保存，前端通过 scenes REST API 再读取文件。
             file_path = save_blueprint_file_as(
-                result.blueprint, SCENES_DIR, f"{session_id}.wild"
+                result.blueprint, SCENES_DIR, rel_path
             )
             logger.info(f"[{request_id}] Blueprint 已保存: {file_path}")
         except Exception as e:
             logger.error(f"[{request_id}] 保存 Blueprint 失败: {e}")
+            rel_path = ""
+            wild_filename = ""
             file_path = ""
 
-        filename = Path(file_path).name if file_path else ""
+        # filename 返回完整相对路径（含日期目录），前端凭此拼接 GET/DELETE URL
+        filename = rel_path if rel_path else ""
         await ws.send_json({
             "type": "blueprint_generated",
             "request_id": request_id,

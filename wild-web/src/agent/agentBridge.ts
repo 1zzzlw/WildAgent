@@ -424,8 +424,10 @@ export class AgentBridge {
     const sceneStore = useSceneStore()
     const agentStore = useAgentStore()
     const { filename, file_url: fileUrl } = message
-    const targetSessionId = message.session_id
-      || filename.replace(/\.wild$/, '')
+    // session_id 优先取消息里的字段，回退时从 filename basename 里精确提取
+    const basename = filename.split('/').pop()?.replace(/\.wild$/, '') ?? ''
+    const match = basename.match(/^(session_\d+)/)
+    const targetSessionId = message.session_id || (match ? match[1] : basename)
 
     if (!fileUrl) {
       agentStore.addSystemMessage('错误: 未收到蓝图文件地址')
