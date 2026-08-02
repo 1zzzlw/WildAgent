@@ -69,10 +69,17 @@ export function normalizeBlueprintInput(value: any): any {
       )
     : value.materials;
 
+  // 修正 wall-attached 构件的 from[1]：
+  // 模型有时误把 from[1] 写成相对父墙底部的局部偏移，而系统约定是世界坐标。
+  // 当 from[1] < 父墙底部 Y 时，推断为局部坐标并自动加上 wallBottom。
+  const normalizedComponents = Array.isArray(components)
+    ? fixComponentFromY(components, Array.isArray(elements) ? elements : [])
+    : components;
+
   const normalized = {
     ...value,
     geometry: value.geometry && typeof value.geometry === 'object'
-      ? { ...value.geometry, elements, components }
+      ? { ...value.geometry, elements, components: normalizedComponents }
       : value.geometry,
     materials,
   };
@@ -94,6 +101,47 @@ function normalizeComponent(component: any): any {
   }
 
   return { ...component };
+}
+
+/**
+ * 修正 wall-attached 构件的 from[1] 坐标。
+ *
+ * 系统约定 from[1] 是世界坐标 Y，但模型常误用相对父墙底部的局部偏移。
+ * 当 from[1] 明显小于父墙底部 Y（超过 0.5m）时，推断为局部坐标并加上 wallBottom。
+ */
+function fixComponentFromY(components: any[], elements: any[]): any[] {
+  // 建立 wallId -> wallBottom 映射
+  const wallBottomMap = new Map<string, number>();
+  for (const el of elements) {
+    if (el?.type === 'wall' && el.id && Array.isArray(el.from) && Array.isArray(el.to)) {
+      const bottom = Math.min(el.from[1], el.to[1]);
+      if (Number.isFinite(bottom)) wallBottomMap.set(el.id, bottom);
+    }
+  }
+
+  return components.map((component: any) => {
+    if (
+      !component
+      || typeof component !== 'object'
+      || !['door', 'window', 'canopy', 'balcony', 'bay_window'].includes(component.type)
+      || typeof component.parentWall !== 'string'
+      || !Array.isArray(component.from)
+      || component.from.length !== 3
+    ) {
+      return component;
+    }
+    const wallBottom = wallBottomMap.get(component.parentWall);
+    if (wallBottom === undefined || wallBottom < 1e-6) return component; // 一楼墙无需修正
+
+    const fromY = component.from[1];
+    // from[1] 明显小于 wallBottom，判定为局部偏移，补正为世界坐标
+    if (Number.isFinite(fromY) && fromY < wallBottom - 0.5) {
+      const corrected = [...component.from];
+      corrected[1] = wallBottom + fromY;
+      return { ...component, from: corrected };
+    }
+    return component;
+  });
 }
 
 function normalizeElement(element: any): any {

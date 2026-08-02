@@ -20,8 +20,14 @@ from pathlib import Path
 # ---------- 路径常量 ----------
 _UTILS_DIR = Path(__file__).resolve().parent    # app/utils/
 _APP_DIR = _UTILS_DIR.parent                     # app/
-_SERVER_ROOT = _APP_DIR.parent                   # wild-server/
-SCENES_DIR = _SERVER_ROOT / "storage" / "scenes"  # 后端自己的存储目录
+_SERVER_ROOT = _APP_DIR.parent                   # wild-server/ 或容器内 /app
+
+# SCENES_DIR 优先从环境变量 WILD_SCENES_DIR 读取，方便在不同部署环境中覆盖。
+# 容器内：WORKDIR=/app，挂载 $DEPLOY_DATA_DIR/scenes:/app/storage/scenes，
+#          所以默认值 /app/storage/scenes 与 Jenkins 部署脚本一致。
+# 本地开发：wild-server/storage/scenes（相对项目根推导）。
+import os as _os
+SCENES_DIR = Path(_os.environ.get("WILD_SCENES_DIR", "") or (_SERVER_ROOT / "storage" / "scenes"))
 
 # 将 wild-core 暂不支持的模型常见叫法收敛到可渲染的 furniture subtype。
 _FURNITURE_SUBTYPE_ALIASES = {
@@ -171,6 +177,46 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
                 ]
                 if all(_is_positive_finite_number(value) for value in ordered_dimensions):
                     element["dimensions"] = ordered_dimensions
+
+    # ---------- 组合构件 from[1] 修正 ----------
+    # 系统约定 component.from[1] 是世界坐标 Y，但模型常误用相对父墙底部的局部偏移。
+    # 当 from[1] 明显小于父墙底部 Y（超过 0.5m）时，推断为局部坐标并加上 wallBottom。
+    wall_bottom_map: dict[str, float] = {}
+    for element in elements:
+        if (
+            isinstance(element, dict)
+            and element.get("type") == "wall"
+            and isinstance(element.get("id"), str)
+            and isinstance(element.get("from"), list)
+            and isinstance(element.get("to"), list)
+            and len(element["from"]) == 3
+            and len(element["to"]) == 3
+        ):
+            bottom = min(element["from"][1], element["to"][1])
+            if math.isfinite(bottom):
+                wall_bottom_map[element["id"]] = bottom
+
+    _WALL_ATTACHED_TYPES = {"door", "window", "canopy", "balcony", "bay_window"}
+    components = normalized.get("geometry", {}).get("components", [])
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        if component.get("type") not in _WALL_ATTACHED_TYPES:
+            continue
+        parent_wall = component.get("parentWall")
+        if not isinstance(parent_wall, str) or parent_wall not in wall_bottom_map:
+            continue
+        wall_bottom = wall_bottom_map[parent_wall]
+        if wall_bottom < 1e-6:
+            continue  # 一楼墙无需修正
+        from_coord = component.get("from")
+        if not isinstance(from_coord, list) or len(from_coord) != 3:
+            continue
+        from_y = from_coord[1]
+        if isinstance(from_y, (int, float)) and not isinstance(from_y, bool) and math.isfinite(from_y):
+            if from_y < wall_bottom - 0.5:
+                # 明确是局部偏移，补正为世界坐标
+                component["from"] = [from_coord[0], wall_bottom + from_y, from_coord[2]]
 
     return normalized
 

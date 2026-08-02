@@ -122,8 +122,10 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
 
   const compilation = compileBlueprintComponents(blueprint as any)
   for (const diagnostic of compilation.diagnostics) {
+    // 编译诊断降级为 warning：构件编译失败不应冻结整个蓝图的编辑能力。
+    // 空间/几何约束错误由用户或 Agent 修正，但不阻止其他参数的调节。
     issues.push({
-      level: 'error',
+      level: 'warning',
       message: diagnostic.message,
       elementId: diagnostic.elementId,
       path: `geometry.components.${diagnostic.elementId}`
