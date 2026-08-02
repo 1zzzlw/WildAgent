@@ -360,14 +360,22 @@ async function restoreSessionsFromServer() {
     return
   }
 
-  const serverSessions = serverScenes.map(scene => ({
-    session_id: scene.filename.replace(/\.wild$/, ''),
-    name: scene.name,
-    // 现有 .wild 文件没有单独保存创建时间，暂用文件更新时间填充。
-    created_at: scene.updated_at,
-    updated_at: scene.updated_at,
-    elements_count: scene.elements_count,
-  }))
+  const serverSessions = serverScenes.map(scene => {
+    // filename 可能是新格式 "2026-08-02/session_xxx_名称.wild" 或旧格式 "session_xxx.wild"
+    // session_id 取最后一段去掉扩展名后、第一个 _ 分割的前半部分
+    const basename = scene.filename.split('/').pop()!.replace(/\.wild$/, '')
+    // 新格式: session_1234567890_建筑名  ->  session_id = "session_1234567890"
+    // 旧格式: session_1234567890          ->  session_id = "session_1234567890"
+    const session_id = basename.replace(/_[^_].*$/, '') || basename
+    return {
+      session_id,
+      filename: scene.filename,   // 保留完整相对路径供 load/delete 使用
+      name: scene.name,
+      created_at: scene.updated_at,
+      updated_at: scene.updated_at,
+      elements_count: scene.elements_count,
+    }
+  })
   agentStore.replaceSessions(serverSessions)
 
   if (serverSessions.length === 0) {

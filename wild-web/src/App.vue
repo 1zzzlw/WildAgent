@@ -1,5 +1,6 @@
 <template>
-  <div class="wild-editor">
+  <VisitorNameGate v-if="!editorReady" @confirmed="enterEditor" />
+  <div v-else class="wild-editor">
     <EditorTopBar />
     <div class="editor-main">
       <LeftPanel v-if="uiStore.leftPanelVisible" :width="uiStore.leftPanelWidth" />
@@ -13,8 +14,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { agentBridge } from './agent/agentBridge'
+import VisitorNameGate from './extensions/presence/VisitorNameGate.vue'
+import { usePresenceStore } from './extensions/presence/store'
 import { useUIStore } from './stores/uiStore'
 import { useSceneStore } from './stores/sceneStore'
 import EditorTopBar from './components/layout/EditorTopBar.vue'
@@ -25,14 +28,22 @@ import CanvasViewport from './components/viewport/CanvasViewport.vue'
 
 const uiStore = useUIStore()
 const sceneStore = useSceneStore()
+const presenceStore = usePresenceStore()
+const editorReady = ref(false)
 
-onMounted(() => {
+function enterEditor() {
+  if (editorReady.value) return
+  editorReady.value = true
   // 初始化空场景（构件库需要document存在）
   const emptyDoc = sceneStore.createEmptyDocument()
   // 只设置document，不调用loadBlueprint（避免自动reconstruct）
   sceneStore.document = emptyDoc
   agentBridge.connect()
   console.log('App mounted - Empty document created, GridHelper should be visible');
+}
+
+onMounted(() => {
+  if (presenceStore.hasVisitorName) enterEditor()
 })
 
 onUnmounted(() => agentBridge.disconnect())

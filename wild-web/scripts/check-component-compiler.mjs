@@ -514,6 +514,7 @@ async function assertGeneratedBlueprintLoadsFreshFile(compiler) {
 function assertPresenceUpdate(compiler) {
   const originalLocalStorage = globalThis.localStorage
   const storedValues = new Map()
+  storedValues.set('wild_presence_visitor_name', '  张工  ')
   globalThis.localStorage = {
     getItem: key => storedValues.get(key) ?? null,
     setItem: (key, value) => storedValues.set(key, String(value)),
@@ -524,18 +525,24 @@ function assertPresenceUpdate(compiler) {
   try {
     compiler.setActivePinia(compiler.createPinia())
     const presenceStore = compiler.usePresenceStore()
+    assertEqual(presenceStore.visitorName, '张工', '首次加载没有读取 localStorage 访客名称')
+    assertEqual(presenceStore.hasVisitorName, true, '已有访客名称仍会触发首次输入页')
     const bridge = new compiler.AgentBridge('ws://localhost/ws/agent')
     bridge.handleMessage({
       type: 'presence_update',
       online_count: 2,
       clients: [
-        { id: 'client_a', masked_ip: '113.96.*.*', region: '广东省', connected_at: 1 },
-        { id: 'client_b', masked_ip: '1.2.*.*', region: '北京市', connected_at: 2 },
+        { id: 'client_a', display_name: '张工', masked_ip: '113.96.*.*', region: '广东省', connected_at: 1 },
+        { id: 'client_b', display_name: '李工', masked_ip: '1.2.*.*', region: '北京市', connected_at: 2 },
       ],
     })
     assertEqual(presenceStore.onlineCount, 2, '在线人数没有写入 Presence Store')
     assertEqual(presenceStore.onlineClients.length, 2, '在线列表没有写入 Presence Store')
+    assertEqual(presenceStore.onlineClients[0].display_name, '张工', '在线列表没有访客名称')
     assertEqual(presenceStore.onlineClients[0].masked_ip, '113.96.*.*', '前端在线列表 IP 不是脱敏值')
+
+    if (!presenceStore.setVisitorName('  王 工  ')) throw new Error('合法访客名称设置失败')
+    assertEqual(presenceStore.visitorName, '王 工', '访客名称没有规范化保存')
 
     bridge.disconnect()
     assertEqual(presenceStore.onlineCount, 0, 'WebSocket 断开后在线人数没有归零')

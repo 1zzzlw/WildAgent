@@ -167,6 +167,13 @@ async def agent_websocket(ws: WebSocket):
                     "timestamp": data.get("timestamp", int(time.time() * 1000))
                 })
 
+            elif msg_type == "presence_identify":
+                # 展示名仅交给可选 Presence 扩展，不进入 Agent 或会话数据。
+                await presence_service.update_display_name(
+                    ws,
+                    data.get("display_name"),
+                )
+
             elif msg_type == "user_message":
                 if active_message_task is not None and not active_message_task.done():
                     await ws.send_json({

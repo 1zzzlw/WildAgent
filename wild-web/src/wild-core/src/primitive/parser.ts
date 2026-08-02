@@ -57,6 +57,9 @@ export function normalizeBlueprintInput(value: any): any {
   const elements = Array.isArray(value.geometry?.elements)
     ? value.geometry.elements.map(normalizeElement)
     : value.geometry?.elements;
+  const components = Array.isArray(value.geometry?.components)
+    ? value.geometry.components.map(normalizeComponent)
+    : value.geometry?.components;
   const materials = value.materials && typeof value.materials === 'object'
     ? Object.fromEntries(
         Object.entries(value.materials).map(([name, material]) => [
@@ -69,11 +72,28 @@ export function normalizeBlueprintInput(value: any): any {
   const normalized = {
     ...value,
     geometry: value.geometry && typeof value.geometry === 'object'
-      ? { ...value.geometry, elements }
+      ? { ...value.geometry, elements, components }
       : value.geometry,
     materials,
   };
   return migrateBlueprintToLatest(normalized).blueprint;
+}
+
+/** 规范化 geometry.components 中的单个构件（如 light 的颜色格式）。 */
+function normalizeComponent(component: any): any {
+  if (!component || typeof component !== 'object' || Array.isArray(component)) {
+    return component;
+  }
+
+  // 将 light 的 color 字段从 hex 字符串统一转换为 [R, G, B] 数组
+  if (component.type === 'light' && typeof component.color === 'string') {
+    const parsed = parseHexColor(component.color);
+    if (parsed) {
+      return { ...component, color: parsed };
+    }
+  }
+
+  return { ...component };
 }
 
 function normalizeElement(element: any): any {

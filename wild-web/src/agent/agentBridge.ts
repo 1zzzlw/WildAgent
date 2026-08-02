@@ -44,6 +44,7 @@ import { useAgentStore } from '../stores/agentStore'
 import { useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
 import { usePresenceStore } from '../extensions/presence/store'
+import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { createUserMessageRequest } from './protocol'
 import type { AgentMessage, BlueprintGeneratedResponse } from '../types/agent'
@@ -64,6 +65,31 @@ const HEARTBEAT_CONFIG = {
   timeout: 10000         // pong 超时 10s
 } as const
 
+/**
+ * 将 meta.name 转换为安全的文件名片段（与后端 _safe_name_slug 对齐）。
+ * 保留中文、字母、数字，其余替换为 _，最长 40 字符。
+ */
+function safeNameSlug(name: string): string {
+  return name
+    .replace(/[^\w\u4e00-\u9fff]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40)
+}
+
+/**
+ * 构建蓝图保存的相对路径：YYYY-MM-DD/{sessionId}_{nameSlug}.wild
+ * 格式与后端存储结构对应，方便按日期浏览文件。
+ */
+function buildSceneRelPath(sessionId: string, blueprint: Record<string, unknown>): string {
+  const today = new Date().toISOString().slice(0, 10)  // YYYY-MM-DD
+  const meta = blueprint.meta as Record<string, unknown> | undefined
+  const name = typeof meta?.name === 'string' ? meta.name : ''
+  const slug = safeNameSlug(name)
+  const filename = slug ? `${sessionId}_${slug}.wild` : `${sessionId}.wild`
+  return `${today}/${filename}`
+}
+
 export class AgentBridge {
   private ws: WebSocket | null = null
   private url: string
@@ -83,6 +109,7 @@ export class AgentBridge {
   // 页面可见性变化处理（解决浏览器后台标签页节流 setInterval 导致心跳中断的问题）
   private visibilityChangeHandler: (() => void) | null = null
   private lastHiddenTime: number = 0
+  private visitorNameChangeHandler: EventListener | null = null
 
 
   constructor(url?: string) {
@@ -96,6 +123,13 @@ export class AgentBridge {
     return `${wsProtocol}//${window.location.host}/ws/agent`
   }
 
+  /** Presence 展示名只作为连接参数，不参与 Agent 请求。 */
+  private buildConnectionUrl(visitorName: string): string {
+    if (!visitorName) return this.url
+    const separator = this.url.includes('?') ? '&' : '?'
+    return `${this.url}${separator}visitor_name=${encodeURIComponent(visitorName)}`
+  }
+
   /** 初始化连接 */
   connect() {
     const agentStore = useAgentStore()
@@ -106,7 +140,8 @@ export class AgentBridge {
     agentStore.setConnectionStatus('connecting')
 
     try {
-      this.ws = new WebSocket(this.url)
+      this.setupVisitorNameListener()
+      this.ws = new WebSocket(this.buildConnectionUrl(presenceStore.visitorName))
 
       this.ws.onopen = () => {
         console.log('[AgentBridge] WebSocket 已连接')
@@ -219,6 +254,36 @@ export class AgentBridge {
     }
   }
 
+  /** 名称修改后只更新 Presence 快照，不重建 Agent 会话。 */
+  private setupVisitorNameListener() {
+    this.removeVisitorNameListener()
+    this.visitorNameChangeHandler = (event: Event) => {
+      const visitorName = (event as CustomEvent<unknown>).detail
+      if (
+        typeof visitorName !== 'string'
+        || !this.ws
+        || this.ws.readyState !== WebSocket.OPEN
+      ) return
+      this.ws.send(JSON.stringify({
+        type: 'presence_identify',
+        display_name: visitorName,
+      }))
+    }
+    window.addEventListener(
+      PRESENCE_VISITOR_NAME_CHANGED_EVENT,
+      this.visitorNameChangeHandler,
+    )
+  }
+
+  private removeVisitorNameListener() {
+    if (!this.visitorNameChangeHandler) return
+    window.removeEventListener(
+      PRESENCE_VISITOR_NAME_CHANGED_EVENT,
+      this.visitorNameChangeHandler,
+    )
+    this.visitorNameChangeHandler = null
+  }
+
   /** 断开连接（主动，不触发重连） */
   disconnect() {
     this.manualDisconnect = true
@@ -226,6 +291,7 @@ export class AgentBridge {
     // 清除所有定时器 + 页面可见性监听
     this.clearAllTimers()
     this.removeVisibilityListener()
+    this.removeVisitorNameListener()
 
     if (this.ws) {
       this.ws.close()
@@ -415,14 +481,15 @@ export class AgentBridge {
     }
   }
 
-  /** 同步当前 Blueprint 到后端（PUT 覆盖写入） */
+  /** 同步当前 Blueprint 到后端（PUT 覆盖写入，日期子目录格式） */
   async syncBlueprintToBackend(blueprint: Record<string, unknown>): Promise<boolean> {
     const agentStore = useAgentStore()
     const sessionId = agentStore.currentSessionId
 
     try {
       const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
+      const relPath = buildSceneRelPath(sessionId, blueprint)
+      const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(blueprint),
@@ -442,7 +509,11 @@ export class AgentBridge {
   async loadSessionBlueprint(sessionId: string): Promise<Record<string, unknown> | null> {
     try {
       const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`)
+      // 优先从 sessions 列表找已知的带日期路径 filename，兼容旧格式
+      const agentStore = useAgentStore()
+      const session = agentStore.sessions.find(s => s.session_id === sessionId)
+      const relPath = session?.filename ?? `${sessionId}.wild`
+      const response = await fetch(`${baseUrl}/api/scenes/${relPath}`)
       if (!response.ok) {
         return null
       }
@@ -457,7 +528,10 @@ export class AgentBridge {
   async deleteSessionBlueprint(sessionId: string) {
     try {
       const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
+      const agentStore = useAgentStore()
+      const session = agentStore.sessions.find(s => s.session_id === sessionId)
+      const relPath = session?.filename ?? `${sessionId}.wild`
+      const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
         method: 'DELETE',
       })
       // 未保存的新会话没有服务端文件，删除客户端会话同样视为成功。

@@ -101,17 +101,32 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
         second = Mock()
         second.send_json = AsyncMock()
 
-        await registry.connect(first, client_ip="113.96.1.8", region="广东省")
+        await registry.connect(
+            first,
+            client_ip="113.96.1.8",
+            region="广东省",
+            display_name=" 张 工 ",
+        )
         self.assertEqual(registry.online_count, 1)
         first_payload = first.send_json.await_args_list[-1].args[0]
         self.assertEqual(first_payload["online_count"], 1)
         self.assertEqual(first_payload["clients"][0]["masked_ip"], "113.96.*.*")
         self.assertEqual(first_payload["clients"][0]["region"], "广东省")
+        self.assertEqual(first_payload["clients"][0]["display_name"], "张 工")
 
-        await registry.connect(second, client_ip="1.2.3.4", region="北京市")
+        await registry.connect(
+            second,
+            client_ip="1.2.3.4",
+            region="北京市",
+            display_name="李工",
+        )
         self.assertEqual(registry.online_count, 2)
         self.assertEqual(first.send_json.await_args_list[-1].args[0]["online_count"], 2)
         self.assertEqual(second.send_json.await_args_list[-1].args[0]["online_count"], 2)
+
+        await registry.update_display_name(first, "王工")
+        clients = first.send_json.await_args_list[-1].args[0]["clients"]
+        self.assertEqual(clients[0]["display_name"], "王工")
 
         await registry.disconnect(second)
         self.assertEqual(registry.online_count, 1)
@@ -127,6 +142,24 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(registry.online_count, 0)
         ws.send_json.assert_not_awaited()
+
+    async def test_blank_or_long_visitor_name_is_normalized(self):
+        registry = WebSocketConnectionRegistry()
+        ws = Mock()
+        ws.send_json = AsyncMock()
+
+        await registry.connect(
+            ws,
+            client_ip="113.96.1.8",
+            region="广东省",
+            display_name="   ",
+        )
+        payload = ws.send_json.await_args_list[-1].args[0]
+        self.assertEqual(payload["clients"][0]["display_name"], "访客")
+
+        await registry.update_display_name(ws, "很长的访客名称" * 10)
+        payload = ws.send_json.await_args_list[-1].args[0]
+        self.assertLessEqual(len(payload["clients"][0]["display_name"]), 24)
 
 
 class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):

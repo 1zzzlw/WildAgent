@@ -620,8 +620,11 @@ const componentInteraction = computed(() => {
 })
 const lightColorHex = computed(() => {
   if (selectedComponent.value?.type !== 'light') return '#ffd194'
-  const color = selectedComponent.value.color || [1, 0.82, 0.58]
-  return `#${color.map(channel => Math.round(channel * 255).toString(16).padStart(2, '0')).join('')}`
+  const raw = selectedComponent.value.color
+  // 容错：color 可能是未经规范化的 hex 字符串
+  if (typeof raw === 'string' && /^#[0-9a-f]{6}$/i.test(raw)) return raw
+  const color = Array.isArray(raw) && raw.length === 3 ? raw : [1, 0.82, 0.58]
+  return `#${color.map((channel: number) => Math.round(channel * 255).toString(16).padStart(2, '0')).join('')}`
 })
 const pathPoints = computed(() => {
   if (selectedComponent.value?.type === 'railing' || selectedComponent.value?.type === 'cornice') {

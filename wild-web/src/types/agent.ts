@@ -147,6 +147,8 @@ export interface AgentSession {
 /** 会话列表项（由后端 storage/scenes 文件摘要生成） */
 export interface SessionInfo {
   session_id: string
+  /** 后端文件相对路径，如 "2026-08-02/session_xxx_名称.wild"，新格式含日期目录 */
+  filename?: string
   name: string           // 从 blueprint.meta.name 提取
   created_at: number
   updated_at: number
