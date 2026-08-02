@@ -45,7 +45,13 @@ export function buildPrimitive(params: PrimitiveParams): MeshData[] {
 }
 
 function buildBox(params: PrimitiveParams): GeometryBuffers {
-  const [width, height, depth] = params.dimensions || [1, 1, 1];
+  const dimensions = params.dimensions || [1, 1, 1];
+  if (!Array.isArray(dimensions) || dimensions.length !== 3) {
+    throw new Error(
+      'primitive box dimensions must be [width, height, depth] with three positive finite numbers',
+    );
+  }
+  const [width, height, depth] = dimensions;
   assertPositive(width, 'dimensions[0]');
   assertPositive(height, 'dimensions[1]');
   assertPositive(depth, 'dimensions[2]');

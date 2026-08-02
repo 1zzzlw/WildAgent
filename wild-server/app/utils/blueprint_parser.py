@@ -154,6 +154,19 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
             if subtype in _FURNITURE_SUBTYPE_ALIASES:
                 # 仅转换上面白名单中的已知别名，不猜测其他未知家具类型。
                 element["subtype"] = _FURNITURE_SUBTYPE_ALIASES[subtype]
+        elif element.get("type") == "primitive" and element.get("shape") == "box":
+            dimensions = element.get("dimensions")
+            if isinstance(dimensions, dict):
+                # furniture 使用尺寸对象，而 primitive.box 的 WILD 1.1 标准格式是
+                # [width, height, depth]。只在三个字段都明确且为正数时兼容转换，
+                # 缺字段或非法数值继续交给校验器报告，避免猜测尺寸。
+                ordered_dimensions = [
+                    dimensions.get("width"),
+                    dimensions.get("height"),
+                    dimensions.get("depth"),
+                ]
+                if all(_is_positive_finite_number(value) for value in ordered_dimensions):
+                    element["dimensions"] = ordered_dimensions
 
     return normalized
 
@@ -180,6 +193,25 @@ def _is_finite_vector3(value: object) -> bool:
             and math.isfinite(coordinate)
             for coordinate in value
         )
+    )
+
+
+def _is_positive_finite_number(value: object) -> bool:
+    """判断值是否为可安全用于几何尺寸的正有限数。"""
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+        and value > 0
+    )
+
+
+def _is_positive_vector3(value: object) -> bool:
+    """判断值是否为 primitive.box 所需的三个正数尺寸。"""
+    return (
+        isinstance(value, list)
+        and len(value) == 3
+        and all(_is_positive_finite_number(dimension) for dimension in value)
     )
 
 
@@ -241,6 +273,15 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                     element_id = el.get("id", "?")
                     if "type" not in el:
                         issues.append(f"元素缺少 'type' 字段: id={element_id}")
+                    if (
+                        el.get("type") == "primitive"
+                        and el.get("shape") == "box"
+                        and not _is_positive_vector3(el.get("dimensions"))
+                    ):
+                        issues.append(
+                            f"{element_id}.dimensions 必须是 "
+                            "[width, height, depth] 三个正有限数字"
+                        )
                     for coordinate_field in ("from", "to"):
                         if (
                             coordinate_field in el

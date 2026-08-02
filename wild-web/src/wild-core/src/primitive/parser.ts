@@ -111,6 +111,22 @@ function normalizeElement(element: any): any {
     return { ...element, style: 'modern' };
   }
 
+  if (element.type === 'primitive' && element.shape === 'box') {
+    const dimensions = element.dimensions;
+    if (dimensions && typeof dimensions === 'object' && !Array.isArray(dimensions)) {
+      const orderedDimensions = [
+        dimensions.width,
+        dimensions.height,
+        dimensions.depth,
+      ];
+      // furniture 的 dimensions 是对象，primitive.box 则要求三元素数组。
+      // 只兼容能够无歧义转换的对象；不完整对象仍由 Schema/构建器明确报错。
+      if (orderedDimensions.every(isPositiveFiniteNumber)) {
+        return { ...element, dimensions: orderedDimensions };
+      }
+    }
+  }
+
   return { ...element };
 }
 
@@ -151,4 +167,8 @@ function validUnit(value: unknown): value is number {
     && Number.isFinite(value)
     && value >= 0
     && value <= 1;
+}
+
+function isPositiveFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }

@@ -550,8 +550,17 @@ def validate_element_required_fields(blueprint: dict) -> str:
                     f"❌ [{eid}] primitive shape='{shape}' 无效。"
                     f"合法值: {VALID_PRIMITIVE_SHAPES}"
                 )
-            if shape == "box" and "dimensions" not in el:
-                issues.append(f"❌ [{eid}] primitive box 缺少 dimensions")
+            if shape == "box":
+                dimensions = el.get("dimensions")
+                valid_dimensions = (
+                    _is_finite_vector3(dimensions)
+                    and all(value > 0 for value in dimensions)
+                )
+                if not valid_dimensions:
+                    issues.append(
+                        f"❌ [{eid}] primitive box 的 dimensions 必须是 "
+                        "[width, height, depth] 三个正有限数字"
+                    )
             if shape == "sphere" and "radius" not in el:
                 issues.append(f"❌ [{eid}] primitive sphere 缺少 radius")
             if shape == "cylinder":

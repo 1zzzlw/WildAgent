@@ -86,6 +86,57 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
         validation = validate_element_required_fields.func(normalized)
         self.assertNotIn("❌", validation)
 
+    def test_primitive_box_object_dimensions_are_normalized(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "asset", "name": "sofa"},
+            "geometry": {
+                "elements": [{
+                    "id": "sofa_base",
+                    "type": "primitive",
+                    "shape": "box",
+                    "position": [0, 0.15, 0],
+                    "dimensions": {"width": 2.2, "height": 0.3, "depth": 0.9},
+                }],
+            },
+            "materials": {},
+        }
+
+        normalized = normalize_blueprint_input(blueprint)
+        dimensions = normalized["geometry"]["elements"][0]["dimensions"]
+
+        self.assertEqual(dimensions, [2.2, 0.3, 0.9])
+        self.assertEqual(
+            blueprint["geometry"]["elements"][0]["dimensions"],
+            {"width": 2.2, "height": 0.3, "depth": 0.9},
+        )
+        self.assertEqual(validate_blueprint_schema(normalized), [])
+        self.assertNotIn("❌", validate_element_required_fields.func(normalized))
+
+    def test_invalid_primitive_box_dimensions_are_rejected(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "asset", "name": "broken box"},
+            "geometry": {
+                "elements": [{
+                    "id": "broken_box",
+                    "type": "primitive",
+                    "shape": "box",
+                    "dimensions": {"width": 2.2, "height": 0.3},
+                }],
+            },
+            "materials": {},
+        }
+
+        normalized = normalize_blueprint_input(blueprint)
+        schema_issues = validate_blueprint_schema(normalized)
+        field_issues = validate_element_required_fields.func(normalized)
+
+        self.assertTrue(
+            any("broken_box.dimensions" in issue for issue in schema_issues)
+        )
+        self.assertIn("❌", field_issues)
+        self.assertIn("broken_box", field_issues)
+        self.assertIn("[width, height, depth]", field_issues)
+
     def test_missing_base_color_is_rejected(self):
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "test"},

@@ -44,6 +44,7 @@ try {
   });
 
   const core = await import(`${pathToFileURL(join(outputDirectory, 'wild-core-smoke.mjs')).href}?t=${Date.now()}`);
+  await assertPrimitiveBoxDimensionCompatibility(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
     .filter(name => name.endsWith('.wild'))
@@ -86,6 +87,54 @@ try {
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertPrimitiveBoxDimensionCompatibility(core) {
+  const source = {
+    meta: { version: '1.1', type: 'asset', name: 'primitive-box-dimensions' },
+    geometry: {
+      elements: [{
+        type: 'primitive',
+        id: 'sofa_base',
+        shape: 'box',
+        position: [0, 0.15, 0],
+        dimensions: { width: 2.2, height: 0.3, depth: 0.9 },
+      }],
+    },
+    materials: {},
+    behaviors: {},
+  };
+
+  const blueprint = core.parseBlueprint(JSON.stringify(source));
+  const dimensions = blueprint.geometry.elements[0].dimensions;
+  if (JSON.stringify(dimensions) !== JSON.stringify([2.2, 0.3, 0.9])) {
+    throw new Error(`primitive box dimensions were not normalized: ${JSON.stringify(dimensions)}`);
+  }
+
+  const entity = await core.reconstructEntity(source);
+  const errors = entity.diagnostics.filter(diagnostic => diagnostic.level === 'error');
+  if (errors.length > 0 || entity.meshes.length !== 1) {
+    throw new Error(`normalized primitive box did not reconstruct: ${JSON.stringify(errors)}`);
+  }
+
+  const invalidEntity = await core.reconstructEntity({
+    ...source,
+    geometry: {
+      elements: [{
+        ...source.geometry.elements[0],
+        id: 'broken_box',
+        dimensions: { width: 2.2, height: 0.3 },
+      }],
+    },
+  });
+  const invalidDiagnostic = invalidEntity.diagnostics.find(
+    diagnostic => diagnostic.elementId === 'broken_box' && diagnostic.level === 'error',
+  );
+  if (!invalidDiagnostic?.message.includes('[width, height, depth]')) {
+    throw new Error(
+      `invalid primitive box did not report a readable dimensions error: ${JSON.stringify(invalidDiagnostic)}`,
+    );
+  }
 }
 
 async function assertInvalidRuntimeMaterialFallsBack(core) {
