@@ -12,3 +12,19 @@ GeoIP 是 Presence 在线列表的可选增强，不属于 Agent、RAG 或 Bluep
 6. 按 GeoLite 许可要求定期更新数据库。
 
 `.mmdb` 不提交 Git，客户端 IP 也不会发送给第三方查询服务。设置 `PRESENCE__ENABLED=false` 可以连同后端统计和前端入口一起关闭整个扩展。
+
+## Jenkins 远程部署
+
+生产部署默认从宿主机 `/opt/wild-agent/storage/geoip/GeoLite2-City.mmdb` 读取数据库。Jenkins 会把该目录只读挂载到容器的 `/app/storage/geoip`，并向后端注入：
+
+```env
+PRESENCE__GEOIP_DB=/app/storage/geoip/GeoLite2-City.mmdb
+```
+
+因此首次启用地区显示时，只需要把下载并解压后的文件上传到远程服务器：
+
+```text
+/opt/wild-agent/storage/geoip/GeoLite2-City.mmdb
+```
+
+如果修改了 Jenkins 参数 `DEPLOY_DATA_DIR`，宿主机目录会跟随它变化；如果修改了 `PRESENCE_GEOIP_DB`，应确保它仍与容器挂载目录中的实际文件位置一致。

@@ -17,6 +17,7 @@ pipeline {
     string(name: 'REMOTE_WORK_DIR', defaultValue: '/opt/wild-agent/builds', description: '远程服务器临时构建目录')
     string(name: 'DEPLOY_DATA_DIR', defaultValue: '/opt/wild-agent/storage', description: '远程服务器运行时数据目录')
     string(name: 'DEPLOY_ENV_FILE', defaultValue: '/opt/wild-agent/.env', description: '远程服务器后端容器 env 文件；不存在时仍会启动')
+    string(name: 'PRESENCE_GEOIP_DB', defaultValue: '/app/storage/geoip/GeoLite2-City.mmdb', description: '后端容器内 GeoLite2 City 数据库路径')
   }
 
   environment {
@@ -34,6 +35,7 @@ pipeline {
     REMOTE_WORK_DIR = "${params.REMOTE_WORK_DIR}"
     DEPLOY_DATA_DIR = "${params.DEPLOY_DATA_DIR}"
     DEPLOY_ENV_FILE = "${params.DEPLOY_ENV_FILE}"
+    PRESENCE_GEOIP_DB = "${params.PRESENCE_GEOIP_DB}"
   }
 
   stages {
@@ -214,14 +216,14 @@ REMOTE_SCRIPT
             SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' PRESENCE_GEOIP_DB='$PRESENCE_GEOIP_DB' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 
 docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
 docker rm -f wild-server wild-web 2>/dev/null || true
 
-# 只挂载运行时数据目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
-mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma"
+# 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
+mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/geoip"
 
 ENV_FILE_ARGS=""
 if [ -f "$DEPLOY_ENV_FILE" ]; then
@@ -238,7 +240,9 @@ docker run -d \
   -v "$DEPLOY_DATA_DIR/scenes:/app/storage/scenes" \
   -v "$DEPLOY_DATA_DIR/sessions:/app/storage/sessions" \
   -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
+  -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
   $ENV_FILE_ARGS \
+  -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \
   "$IMAGE_SERVER_NAME"
 
 docker run -d \

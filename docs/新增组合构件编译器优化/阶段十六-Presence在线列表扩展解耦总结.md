@@ -28,6 +28,13 @@
 - 默认数据库路径为 `wild-server/storage/geoip/GeoLite2-City.mmdb`，也可通过 `PRESENCE__GEOIP_DB` 指定。
 - 只有来自 `PRESENCE__TRUSTED_PROXY_CIDRS` 的可信反向代理连接，才会读取转发的真实 IP 请求头。
 
+### Jenkins 远程部署
+
+- Jenkins 新增 `PRESENCE_GEOIP_DB` 参数，默认指向容器内 `/app/storage/geoip/GeoLite2-City.mmdb`。
+- 生产部署会自动创建宿主机 `$DEPLOY_DATA_DIR/geoip`，并只读挂载到容器的 `/app/storage/geoip`。
+- 启动后端容器时显式注入应用环境变量 `PRESENCE__GEOIP_DB`。
+- 数据库文件仍由部署人员放入远程持久化目录，不写入镜像，也不会因发布新版本而丢失。
+
 ## 模块边界
 
 Presence 只依赖 WebSocket 连接生命周期，不依赖 Agent、RAG、会话文件、蓝图编译器或渲染引擎。关闭或移除 Presence 时，核心聊天与建模流程仍可正常运行。
