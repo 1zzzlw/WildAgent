@@ -44,6 +44,8 @@ keywords:
 - 生成屋顶前应先使用 `get_wall_bounding_box` 获取墙体包围盒，不要猜测尺寸。
 - `roof.span` 必须覆盖墙体 X 方向范围，`roof.depth` 必须覆盖墙体 Z 方向范围；需要出檐时在两侧增加相应余量。
 - `roof.position` 应位于墙体 XZ 中心和墙顶高度。
+- **`roof.roofType` 的 6 个合法值**：`gable`（双坡）/ `hip`（四坡）/ `dome`（穹顶）/ `flat`（平顶）/ `chinese_curved`（中式曲面）/ `chinese_pagoda`（多层塔顶）。
+- **严禁使用**：pitched、sloped、gabled、hipped、shed、mono-pitch 等建筑术语（这些词虽然是有效的建筑学概念，但不是 WILD Schema 的枚举值）。
 
 ---
 
@@ -99,7 +101,14 @@ keywords:
   "position": [3, 3, 2.5]
 }
 ```
-- roofType 可选：gable（双坡） / hip（四坡） / dome（穹顶） / flat（平顶） / chinese_curved（中式曲面） / chinese_pagoda（多层塔顶）
+- roofType **只能且必须**使用以下 6 个标准值之一：
+  * `gable` — 双坡屋顶（人字形）
+  * `hip` — 四坡屋顶（四面坡）
+  * `dome` — 穹顶
+  * `flat` — 平顶
+  * `chinese_curved` — 中式曲面屋顶
+  * `chinese_pagoda` — 中式多层塔顶
+- **严禁使用以下建筑术语**：pitched、sloped、gabled、hipped、shed、mono-pitch 等（系统已自动转换历史数据，但新生成必须直接使用标准值）
 - span 覆盖 X 方向，depth 覆盖 Z 方向，必须大于等于墙体范围
 
 ### opening（墙体洞口）⚠️ 坐标最容易出错

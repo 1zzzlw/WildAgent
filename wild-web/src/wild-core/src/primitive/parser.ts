@@ -188,6 +188,22 @@ function normalizeElement(element: any): any {
     return { ...element, style: 'modern' };
   }
 
+  if (element.type === 'roof') {
+    // 兼容模型常用的建筑术语，统一转换为 WILD 1.1 标准枚举值
+    const roofType = element.roofType;
+    if (roofType === 'pitched' || roofType === 'sloped' || roofType === 'gabled') {
+      // pitched/sloped 是通用坡屋顶术语，默认映射为双坡（gable）
+      return { ...element, roofType: 'gable' };
+    }
+    if (roofType === 'hipped') {
+      return { ...element, roofType: 'hip' };
+    }
+    if (roofType === 'shed' || roofType === 'mono-pitch') {
+      // 单坡屋顶在当前引擎中用 gable + 适当参数模拟
+      return { ...element, roofType: 'gable' };
+    }
+  }
+
   if (element.type === 'primitive' && element.shape === 'box') {
     const dimensions = element.dimensions;
     if (dimensions && typeof dimensions === 'object' && !Array.isArray(dimensions)) {

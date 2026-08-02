@@ -159,6 +159,17 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
         elif element.get("type") == "column" and element.get("style") == "round":
             # round 描述截面形状，但不属于柱式枚举；modern 是最接近的兜底值。
             element["style"] = "modern"
+        elif element.get("type") == "roof":
+            # 兼容模型常用的建筑术语，统一转换为 WILD 1.1 标准枚举值
+            roof_type = element.get("roofType")
+            if roof_type in {"pitched", "sloped", "gabled"}:
+                # pitched/sloped 是通用坡屋顶术语，默认映射为双坡（gable）
+                element["roofType"] = "gable"
+            elif roof_type in {"hipped"}:
+                element["roofType"] = "hip"
+            elif roof_type in {"shed", "mono-pitch"}:
+                # 单坡屋顶在当前引擎中用 gable + 适当参数模拟
+                element["roofType"] = "gable"
         elif element.get("type") == "furniture":
             subtype = element.get("subtype")
             if subtype in _FURNITURE_SUBTYPE_ALIASES:
