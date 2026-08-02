@@ -48,6 +48,35 @@ function applyOperation(blueprint: Blueprint, op: SceneOperation) {
       blueprint.geometry.elements = blueprint.geometry.elements.filter(e => e.id !== op.id)
       break
 
+    case 'add_component':
+      if (!blueprint.geometry.components) {
+        blueprint.geometry.components = []
+      }
+      blueprint.geometry.components.push(op.component)
+      break
+
+    case 'update_component': {
+      const component = blueprint.geometry.components?.find(item => item.id === op.id)
+      if (component) {
+        for (const [key, value] of Object.entries(op.changes)) {
+          if (value === undefined) {
+            delete (component as unknown as Record<string, unknown>)[key]
+          } else {
+            (component as unknown as Record<string, unknown>)[key] = value
+          }
+        }
+      }
+      break
+    }
+
+    case 'remove_component':
+      if (blueprint.geometry.components) {
+        blueprint.geometry.components = blueprint.geometry.components.filter(
+          component => component.id !== op.id
+        )
+      }
+      break
+
     case 'upsert_material':
       if (!blueprint.materials) {
         blueprint.materials = {}

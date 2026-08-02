@@ -7,9 +7,9 @@
       <el-button class="toolbar-btn" size="small" @click="handleOpen" title="打开场景">
         <span>打开</span>
       </el-button>
-      <el-button class="toolbar-btn" size="small" @click="handleSave" :disabled="!sceneStore.document?.dirty"
-        title="保存场景">
-        <span>保存</span>
+      <el-button class="toolbar-btn save-btn" type="primary" size="small" @click="handleSave"
+        :loading="isSaving" :disabled="!sceneStore.document?.dirty || isSaving" title="保存到服务器">
+        <span>{{ isSaving ? '保存中' : '保存' }}</span>
       </el-button>
       <el-button class="toolbar-btn" size="small" @click="handleExport" title="导出 .wild 文件">
         <span>导出</span>
@@ -47,7 +47,10 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { agentBridge } from '../../agent/agentBridge'
+import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -55,6 +58,8 @@ import { useUIStore } from '../../stores/uiStore'
 const sceneStore = useSceneStore()
 const historyStore = useHistoryStore()
 const uiStore = useUIStore()
+const agentStore = useAgentStore()
+const isSaving = ref(false)
 
 async function handleNew() {
   try {
@@ -92,7 +97,40 @@ function handleOpen() {
   input.click()
 }
 
-function handleSave() {
+async function handleSave() {
+  if (!sceneStore.document || !agentStore.currentSessionId) {
+    ElMessage.error('当前场景没有对应的服务器会话，无法保存')
+    return
+  }
+  const issues = sceneStore.validate()
+  if (issues.some(issue => issue.level === 'error')) {
+    ElMessage.error('场景校验存在错误，请修复后再保存')
+    return
+  }
+
+  isSaving.value = true
+  const saved = await agentBridge.syncBlueprintToBackend(
+    sceneStore.document.blueprint as unknown as Record<string, unknown>,
+  )
+  isSaving.value = false
+  if (!saved) {
+    ElMessage.error('保存到服务器失败，本地草稿仍然保留')
+    return
+  }
+
+  const blueprint = sceneStore.document.blueprint
+  const elementsCount = (blueprint.geometry.elements?.length || 0)
+    + (blueprint.geometry.components?.length || 0)
+  agentStore.updateSessionInfo(
+    agentStore.currentSessionId,
+    blueprint.meta.name || sceneStore.document.name,
+    elementsCount,
+  )
+  sceneStore.markSaved()
+  ElMessage.success('场景已保存到服务器')
+}
+
+function handleExport() {
   const content = sceneStore.exportWild()
   const blob = new Blob([content], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
@@ -101,24 +139,20 @@ function handleSave() {
   a.download = `${sceneStore.document?.name || 'scene'}.wild`
   a.click()
   URL.revokeObjectURL(url)
-  sceneStore.markSaved()
+  ElMessage.success('已导出当前草稿，服务端文件未修改')
 }
 
-function handleExport() {
-  handleSave()
-}
-
-function handleUndo() {
+async function handleUndo() {
   const entry = historyStore.undo()
-  if (entry && sceneStore.document) {
-    sceneStore.loadBlueprint(entry.before)
+  if (entry) {
+    await sceneStore.restoreBlueprint(entry.before)
   }
 }
 
-function handleRedo() {
+async function handleRedo() {
   const entry = historyStore.redo()
-  if (entry && sceneStore.document) {
-    sceneStore.loadBlueprint(entry.after)
+  if (entry) {
+    await sceneStore.restoreBlueprint(entry.after)
   }
 }
 
@@ -162,6 +196,17 @@ function handleToggleAIPanel() {
 .toolbar-btn:hover:not(:disabled) {
   background: #3e3e42;
   border-color: #4e4e52;
+}
+
+.save-btn:not(:disabled) {
+  border-color: #168bc2;
+  background: #137fac;
+  color: #ffffff;
+}
+
+.save-btn:hover:not(:disabled) {
+  border-color: #35bfe8;
+  background: #1593c7;
 }
 
 .toolbar-btn:disabled {

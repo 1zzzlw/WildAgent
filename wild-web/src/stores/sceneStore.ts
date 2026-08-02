@@ -23,6 +23,9 @@ import type { ScenePatch, ValidationIssue } from '../types/scenePatch'
 import { applyPatchToBlueprint } from '../wild/scenePatch'
 import { validateBlueprint } from '../wild/sceneValidator'
 import { normalizeBlueprintInput } from '../wild-core/src/primitive/parser'
+import { deepClone } from '../utils/common'
+import { useHistoryStore } from './historyStore'
+import { reconstructScene } from '../renderer/reconstructionClient'
 
 export const useSceneStore = defineStore('scene', () => {
   // 当前编辑的场景文档
@@ -30,6 +33,7 @@ export const useSceneStore = defineStore('scene', () => {
   const reconstructed = ref<ReconstructedEntity | null>(null)
   const validationIssues = ref<ValidationIssue[]>([])
   const isReconstructing = ref(false)
+  let reconstructionRequest = 0
 
   // 创建一个新的空场景文档，用来初始化和新建
   function createEmptyDocument(): SceneDocument {
@@ -54,7 +58,7 @@ export const useSceneStore = defineStore('scene', () => {
   }
 
   // 加载蓝图文件，导入文件
-  function loadBlueprint(bp: Blueprint, name?: string) {
+  async function loadBlueprint(bp: Blueprint, name?: string): Promise<boolean> {
     const normalizedBlueprint = normalizeBlueprintInput(bp) as Blueprint
     document.value = {
       id: `scene_${Date.now()}`,
@@ -63,7 +67,8 @@ export const useSceneStore = defineStore('scene', () => {
       blueprint: normalizedBlueprint,
       dirty: false
     }
-    reconstruct()
+    validationIssues.value = validateBlueprint(normalizedBlueprint)
+    return await reconstruct()
   }
 
   async function applyPatch(patch: ScenePatch): Promise<boolean> {
@@ -82,6 +87,7 @@ export const useSceneStore = defineStore('scene', () => {
     }
 
     try {
+      const before = deepClone(document.value.blueprint)
       // 应用到副本
       const newBlueprint = normalizeBlueprintInput(
         applyPatchToBlueprint(document.value.blueprint, patch)
@@ -103,6 +109,13 @@ export const useSceneStore = defineStore('scene', () => {
       document.value.dirty = true
 
       await reconstruct()
+      useHistoryStore().push({
+        label: patch.summary || '修改场景',
+        before,
+        after: deepClone(newBlueprint),
+        patch,
+        timestamp: Date.now(),
+      })
       return true
     } catch (error) {
       console.error('应用 patch 失败', error)
@@ -110,19 +123,37 @@ export const useSceneStore = defineStore('scene', () => {
     }
   }
 
-  async function reconstruct() {
-    if (!document.value) return
+  /** 恢复历史快照，不再次写入历史记录。 */
+  async function restoreBlueprint(bp: Blueprint): Promise<boolean> {
+    if (!document.value) return false
+    const normalizedBlueprint = normalizeBlueprintInput(deepClone(bp)) as Blueprint
+    const issues = validateBlueprint(normalizedBlueprint)
+    validationIssues.value = issues
+    if (issues.some(issue => issue.level === 'error')) return false
 
+    document.value.blueprint = normalizedBlueprint
+    document.value.revision++
+    document.value.dirty = true
+    await reconstruct()
+    return true
+  }
+
+  async function reconstruct(): Promise<boolean> {
+    if (!document.value) return false
+
+    const requestId = ++reconstructionRequest
     isReconstructing.value = true
     try {
-      const { reconstructWildEntity } = await import('../renderer/wildCoreAdapter')
-      const entity = await reconstructWildEntity(document.value.blueprint)
+      const entity = await reconstructScene(document.value.blueprint)
+      if (requestId !== reconstructionRequest) return false
       reconstructed.value = entity
+      return true
     } catch (error) {
       console.error('重建失败', error)
-      reconstructed.value = null
+      if (requestId === reconstructionRequest) reconstructed.value = null
+      return false
     } finally {
-      isReconstructing.value = false
+      if (requestId === reconstructionRequest) isReconstructing.value = false
     }
   }
 
@@ -154,6 +185,7 @@ export const useSceneStore = defineStore('scene', () => {
     createEmptyDocument,
     loadBlueprint,
     applyPatch,
+    restoreBlueprint,
     reconstruct,
     validate,
     exportWild,

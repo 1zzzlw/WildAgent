@@ -16,6 +16,10 @@
 
 import type { Blueprint } from '../types/blueprint'
 import type { ReconstructedEntity } from '../types/scene'
+import {
+  compileBlueprintComponents,
+  getComponentCapabilities,
+} from '../wild-compiler'
 
 // 导入 wild-core 的函数
 // 注意：wild-core 使用的是 wild-lang/types.ts 的类型定义
@@ -59,14 +63,22 @@ export function parseWildBlueprint(jsonText: string): Blueprint {
  */
 export async function reconstructWildEntity(blueprint: Blueprint): Promise<ReconstructedEntity> {
   try {
-    // 调用 wild-core 的重建函数
-    const coreEntity = await coreReconstructEntity(blueprint as any)
+    // 高级组合构件先展开为 Core 已支持的基础元素；源 Blueprint 保持不变。
+    const compilation = compileBlueprintComponents(blueprint as any)
+    const coreEntity = await coreReconstructEntity(compilation.blueprint)
+    coreEntity.diagnostics = [
+      ...compilation.diagnostics,
+      ...coreEntity.diagnostics,
+    ]
     const errors = coreEntity.diagnostics.filter(item => item.level === 'error')
     if (errors.length > 0) {
       console.warn('WILD 重建完成，但存在构件错误:', errors)
     }
 
-    return coreEntity as unknown as ReconstructedEntity
+    return {
+      ...coreEntity,
+      componentMapping: compilation.mapping,
+    } as unknown as ReconstructedEntity
   } catch (error) {
     console.error('重建场景失败:', error)
     throw error
@@ -93,10 +105,13 @@ export async function loadWildScene(jsonText: string): Promise<{
  * 获取 wild-core 引擎信息
  */
 export function getWildCoreInfo() {
+  const componentCapabilities = getComponentCapabilities()
   return {
     version: '1.1.0',
     supportedVersion: '1.1',
     geometryTypes: getEngineCapabilities().map(item => item.type),
     capabilities: getEngineCapabilities(),
+    componentTypes: componentCapabilities.map(item => item.type),
+    componentCapabilities,
   }
 }

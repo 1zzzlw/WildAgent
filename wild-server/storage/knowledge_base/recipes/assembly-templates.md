@@ -41,7 +41,7 @@ keywords: 低层建筑, low rise, floor, wall, opening, roof, stair
 floor(地基/首层板) → column/beam(按需) → wall(围护) → opening(门窗洞口) → stair(按需) → roof
 ```
 
-门扇、窗框、栏杆和装饰构件若需要静态外观，用 `primitive` 或现有结构类型显式组合；不要输出不存在的 `door`、`window`、`railing` 类型。
+标准静态门、窗和路径栏杆优先写入 `geometry.components`，分别使用 `door`、`window`、`railing`；这些名称不能写入 `geometry.elements`。超出编译器边界的装饰细节继续用 `primitive` 或现有结构类型显式组合。
 
 ## 多层建筑基线
 
@@ -77,6 +77,24 @@ column(支点) → beam/primitive(显式杆件网络) → roof(基础屋面) →
 
 该模板只能生成几何近似，不能把 `truss`、网壳、膜结构、自动栏杆或专业设备当作已实现能力。
 
+## 已支持的基础组合构件
+
+<!-- rag-meta
+entity_type: assembly
+entity_name: supported_composite_assembly
+topic: assembly
+status: supported
+authority: engine
+keywords: geometry.components, door, window, railing, 组合构件
+-->
+
+```text
+wall → geometry.components.door/window
+explicit path → geometry.components.railing
+```
+
+门窗必须提供直线 `parentWall` 和墙体局部 `from`；栏杆必须显式提供世界坐标 `path`。编译器只负责静态几何，不会自动选择开启方式、楼梯边界或建筑规范参数。
+
 ## 专业构件增强提案
 
 <!-- rag-meta
@@ -85,14 +103,14 @@ entity_name: proposed_professional_assembly
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: truss, railing, door, window, ramp, 专业构件
+keywords: truss, ramp, canopy, chimney, 专业构件
 -->
 
 ```
-opening → door/window/mullion
-stair/floor → railing
 column/roof → truss
 floor → ramp
+wall/opening → canopy/cornice
+roof → chimney penetration
 ```
 
-这些关系来自领域资料和扩展规范，但相应专用类型及自动 resolver 尚未实现，默认生成必须使用前述降级基线。
+这些关系来自领域资料和扩展规范，但相应专用类型及自动 resolver 尚未实现，默认生成必须使用前述降级基线。门、窗和显式路径栏杆不属于本提案块，它们已经由基础组合构件编译器支持。

@@ -14,7 +14,13 @@
  * Patch 包含 revision 机制，类似 Git 的版本控制，防止冲突。
  */
 
-import type { GeometryElement, MaterialDef, InstanceRef, Placement } from './blueprint'
+import type {
+  ComponentSpec,
+  GeometryElement,
+  MaterialDef,
+  InstanceRef,
+  Placement,
+} from './blueprint'
 
 export interface ScenePatch {
   type: 'scene_patch'
@@ -31,6 +37,9 @@ export type SceneOperation =
   | AddElementOperation
   | UpdateElementOperation
   | RemoveElementOperation
+  | AddComponentOperation
+  | UpdateComponentOperation
+  | RemoveComponentOperation
   | UpsertMaterialOperation
   | AddTemplateOperation
   | UpdateTemplateOperation
@@ -53,6 +62,22 @@ export interface UpdateElementOperation {
 
 export interface RemoveElementOperation {
   op: 'remove_element'
+  id: string
+}
+
+export interface AddComponentOperation {
+  op: 'add_component'
+  component: ComponentSpec
+}
+
+export interface UpdateComponentOperation {
+  op: 'update_component'
+  id: string
+  changes: Record<string, unknown>
+}
+
+export interface RemoveComponentOperation {
+  op: 'remove_component'
   id: string
 }
 

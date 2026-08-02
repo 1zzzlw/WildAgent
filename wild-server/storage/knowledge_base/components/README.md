@@ -56,12 +56,13 @@ keywords:
 
 | 系统 | 所在位置 | 当前边界 |
 |---|---|---|
+| 组合构件 | `geometry.components` | 支持 door/window/railing/canopy/balcony/ramp/bay_window/cornice/chimney；渲染前展开为 Core 元素 |
 | 模板 | `geometry.templates` + `geometry.instances` | 引用模板并应用实例变换 |
 | 表面排布 | `geometry.placements` | 当前只解析 gable 屋顶 left/right 表面 |
 
 ### 尚未实现的专用类型
 
-`door`、`window`、`mullion`、`truss`、`ramp`、`railing`、`cornice`、`terrain`、`chimney`、`canopy` 均为 `proposed`，不能直接写入正式 WILD。需求分类与降级方式见 `proposed-component-extensions.md`。
+`mullion`（作为独立类型）、`truss` 和 `terrain` 仍为 `proposed`，不能写入正式 WILD。9 类组合组件只能写入 `geometry.components`，不能写入 `geometry.elements`。屋顶真实穿透、通用 CSG 和复杂地形仍未实现。
 
 ## 当前拆分
 
@@ -71,6 +72,10 @@ keywords:
 | `proposed-component-extensions.md` | 未实现专用类型和自动组合机制提案 |
 | `structural-components.md` | 柱、梁、楼板和桁架降级方式 |
 | `walls.md` | 墙体分类、受力角色、材料、构造方式、模数规格 |
-| `doors.md` | 门型领域资料和未来专用 door 组装提案 |
-| `windows.md` | 窗型领域资料和未来专用 window/mullion 组装提案 |
+| `doors-supported.md` | 当前受支持的基础静态 door 参数、示例与能力边界 |
+| `doors.md` | 基础静态 door 之外的门型领域资料和未来扩展提案 |
+| `windows-supported.md` | 当前受支持的基础静态 window 参数、示例与能力边界 |
+| `windows.md` | 基础静态 window 之外的窗型与 mullion 图案扩展提案 |
+| `railings.md` | 当前受支持的显式路径 railing 参数、示例与能力边界 |
+| `composite-components-second-batch.md` | 雨棚、阳台、坡道、凸窗、檐口、烟囱的正式 Schema 与边界 |
 | `roofs-and-eaves.md` | 已支持屋顶与檐口、雨棚、烟囱提案边界 |

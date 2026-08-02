@@ -70,8 +70,13 @@ function buildCurvedBeam(from: number[], to: number[], crossSection: string, wid
 }
 
 function directionRotation(dx: number, dy: number, dz: number): [number, number, number] {
-  const horizontal = Math.hypot(dx, dz);
-  return [-Math.atan2(dy, horizontal), Math.atan2(dx, dz), 0];
+  // Beam 几何的长度轴是局部 +Z，而 renderer 使用 Three.js 默认 XYZ 欧拉角。
+  // 不能把水平偏航与俯仰简单写成 [pitch, yaw, 0]：当梁主要沿 X 延伸时
+  // 会进入欧拉角奇异位置并丢掉 Y 分量，表现为斜栏杆被渲染成水平杆。
+  const length = Math.hypot(dx, dy, dz);
+  const rotationY = Math.asin(Math.max(-1, Math.min(1, dx / length)));
+  const rotationX = Math.hypot(dy, dz) < 1e-9 ? 0 : Math.atan2(-dy, dz);
+  return [rotationX, rotationY, 0];
 }
 
 function boxMesh(
@@ -102,12 +107,15 @@ function boxMesh(
 
 function rotateEulerXYZ(point: [number, number, number], rotation: [number, number, number]): [number, number, number] {
   const [x, y, z] = point;
-  const [rx, ry] = rotation;
+  const [rx, ry, rz] = rotation;
   const cx = Math.cos(rx), sx = Math.sin(rx);
   const cy = Math.cos(ry), sy = Math.sin(ry);
-  const y1 = y * cx - z * sx;
-  const z1 = y * sx + z * cx;
-  return [x * cy + z1 * sy, y1, -x * sy + z1 * cy];
+  const cz = Math.cos(rz), sz = Math.sin(rz);
+  return [
+    cy * cz * x - cy * sz * y + sy * z,
+    (cx * sz + sx * cz * sy) * x + (cx * cz - sx * sz * sy) * y - sx * cy * z,
+    (sx * sz - cx * cz * sy) * x + (sx * cz + cx * sz * sy) * y + cx * cy * z,
+  ];
 }
 
 function createCylinderGeometry(radius: number, length: number): Float32Array {

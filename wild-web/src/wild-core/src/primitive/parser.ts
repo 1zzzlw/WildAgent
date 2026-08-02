@@ -7,6 +7,8 @@
 
 import type { Blueprint } from './types';
 import { validateBlueprintSchema } from './schema-validator';
+import { migrateBlueprintToLatest } from './migrations';
+export { migrateBlueprintToLatest } from './migrations';
 
 export function parseBlueprint(json: string): Blueprint {
   let obj: any;
@@ -64,13 +66,14 @@ export function normalizeBlueprintInput(value: any): any {
       )
     : value.materials;
 
-  return {
+  const normalized = {
     ...value,
     geometry: value.geometry && typeof value.geometry === 'object'
       ? { ...value.geometry, elements }
       : value.geometry,
     materials,
   };
+  return migrateBlueprintToLatest(normalized).blueprint;
 }
 
 function normalizeElement(element: any): any {
@@ -105,6 +108,12 @@ function normalizeElement(element: any): any {
       style: 'rectangular',
       height: element.height <= 0.1 ? (role === 'door' ? 2.1 : 1.2) : element.height,
     };
+  }
+
+  if (element.type === 'opening' && (element.style === 'double' || element.style === 'lattice')) {
+    // 旧样例曾把门扇/窗格外观写入 opening.style；几何轮廓都可无歧义地
+    // 收敛为矩形，具体门窗细节现在由 geometry.components 表达。
+    return { ...element, style: 'rectangular' };
   }
 
   if (element.type === 'column' && element.style === 'round') {

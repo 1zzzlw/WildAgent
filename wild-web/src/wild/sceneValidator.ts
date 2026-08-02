@@ -21,6 +21,7 @@
 
 import type { Blueprint } from '../types/blueprint'
 import type { ValidationIssue } from '../types/scenePatch'
+import { compileBlueprintComponents } from '../wild-compiler'
 
 export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   const issues: ValidationIssue[] = []
@@ -98,6 +99,37 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
     }
   }
 
+  // 组合构件与基础元素共享 ID 命名空间；编译器会进一步校验尺寸和空间关系。
+  const componentIds = new Set<string>()
+  for (const component of blueprint.geometry.components || []) {
+    if (!component.id) {
+      issues.push({
+        level: 'error',
+        message: '组合构件缺少 id',
+        path: 'geometry.components'
+      })
+      continue
+    }
+    if (componentIds.has(component.id) || elementIds.has(component.id)) {
+      issues.push({
+        level: 'error',
+        message: `构件 id 重复: ${component.id}`,
+        elementId: component.id
+      })
+    }
+    componentIds.add(component.id)
+  }
+
+  const compilation = compileBlueprintComponents(blueprint as any)
+  for (const diagnostic of compilation.diagnostics) {
+    issues.push({
+      level: 'error',
+      message: diagnostic.message,
+      elementId: diagnostic.elementId,
+      path: `geometry.components.${diagnostic.elementId}`
+    })
+  }
+
   // 校验 opening.parentWall
   for (const element of blueprint.geometry.elements || []) {
     if (element.type === 'opening') {
@@ -107,6 +139,28 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
           level: 'error',
           message: `opening ${element.id} 的 parentWall 不存在: ${parentWall}`,
           elementId: element.id
+        })
+      }
+    }
+  }
+
+  for (const component of blueprint.geometry.components || []) {
+    const materialFields = [
+      'material',
+      'frameMaterial',
+      'leafMaterial',
+      'glassMaterial',
+      'supportMaterial',
+      'railingMaterial',
+      'capMaterial',
+    ] as const
+    for (const field of materialFields) {
+      const material = (component as unknown as Record<string, unknown>)[field]
+      if (typeof material === 'string' && !materialNames.has(material)) {
+        issues.push({
+          level: 'warning',
+          message: `组合构件 ${component.id} 引用了不存在的材质: ${material}`,
+          elementId: component.id
         })
       }
     }

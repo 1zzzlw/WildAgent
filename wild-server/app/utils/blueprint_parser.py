@@ -146,6 +146,10 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
                 # 窗台未给高度时抬到常用的 0.9m；门仍允许从墙底开始。
                 if isinstance(start, list) and len(start) == 3 and start[1] <= 0.1:
                     start[1] = 0.9
+        elif element.get("type") == "opening" and element.get("style") in {"double", "lattice"}:
+            # 旧蓝图把门扇数量或窗格外观写进 opening.style；几何轮廓均为矩形。
+            # 新蓝图的详细静态门窗应改用 geometry.components。
+            element["style"] = "rectangular"
         elif element.get("type") == "column" and element.get("style") == "round":
             # round 描述截面形状，但不属于柱式枚举；modern 是最接近的兜底值。
             element["style"] = "modern"
@@ -252,44 +256,187 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
         geo = blueprint["geometry"]
         if not isinstance(geo, dict):
             issues.append("'geometry' 必须是对象")
-        elif "elements" not in geo:
-            issues.append("geometry.elements 缺失")
         else:
-            elements = geo["elements"]
+            elements = geo.get("elements")
+            components = geo.get("components", [])
             if not isinstance(elements, list):
                 issues.append("geometry.elements 必须是数组")
-            elif len(elements) == 0:
-                issues.append("geometry.elements 为空——建筑至少需要一个构件")
-            else:
-                # 空字符串也参与重复检查，因此多个缺失 ID 会形成明确问题。
-                ids = [el.get("id", "") for el in elements if isinstance(el, dict)]
-                dupes = {eid for eid in ids if ids.count(eid) > 1}
-                if dupes:
-                    issues.append(f"重复的构件 ID: {dupes}")
-                # 更细的逐类型必填字段由 spatial_tools 中的校验器负责。
-                for el in elements:
-                    if not isinstance(el, dict):
-                        continue
-                    element_id = el.get("id", "?")
-                    if "type" not in el:
-                        issues.append(f"元素缺少 'type' 字段: id={element_id}")
+                elements = []
+            if not isinstance(components, list):
+                issues.append("geometry.components 必须是数组")
+                components = []
+            if len(elements) == 0 and len(components) == 0:
+                issues.append("geometry.elements 和 geometry.components 不能同时为空")
+
+            # 基础元素和高级组件共享同一个 ID 命名空间，避免编译后冲突。
+            ids = [
+                item.get("id", "")
+                for item in [*elements, *components]
+                if isinstance(item, dict)
+            ]
+            dupes = {item_id for item_id in ids if item_id and ids.count(item_id) > 1}
+            if dupes:
+                issues.append(f"重复的构件 ID: {dupes}")
+
+            # 更细的基础元素必填字段由 spatial_tools 中的校验器负责。
+            for el in elements:
+                if not isinstance(el, dict):
+                    issues.append("geometry.elements 中的每一项都必须是对象")
+                    continue
+                element_id = el.get("id", "?")
+                if not el.get("id"):
+                    issues.append("元素缺少非空 'id' 字段")
+                if "type" not in el:
+                    issues.append(f"元素缺少 'type' 字段: id={element_id}")
+                if (
+                    el.get("type") == "primitive"
+                    and el.get("shape") == "box"
+                    and not _is_positive_vector3(el.get("dimensions"))
+                ):
+                    issues.append(
+                        f"{element_id}.dimensions 必须是 "
+                        "[width, height, depth] 三个正有限数字"
+                    )
+                for coordinate_field in ("from", "to"):
                     if (
-                        el.get("type") == "primitive"
-                        and el.get("shape") == "box"
-                        and not _is_positive_vector3(el.get("dimensions"))
+                        coordinate_field in el
+                        and not _is_finite_vector3(el[coordinate_field])
                     ):
                         issues.append(
-                            f"{element_id}.dimensions 必须是 "
-                            "[width, height, depth] 三个正有限数字"
+                            f"{element_id}.{coordinate_field} 必须是包含 3 个有限数字的数组"
                         )
-                    for coordinate_field in ("from", "to"):
-                        if (
-                            coordinate_field in el
-                            and not _is_finite_vector3(el[coordinate_field])
-                        ):
-                            issues.append(
-                                f"{element_id}.{coordinate_field} 必须是包含 3 个有限数字的数组"
-                            )
+
+            component_required = {
+                "door": ("parentWall", "from", "width", "height"),
+                "window": ("parentWall", "from", "width", "height"),
+                "railing": ("path", "height"),
+                "canopy": ("parentWall", "from", "width", "depth", "thickness"),
+                "balcony": ("parentWall", "from", "width", "depth", "slabThickness"),
+                "ramp": ("from", "to", "width", "thickness"),
+                "bay_window": ("parentWall", "from", "width", "height", "projectionDepth"),
+                "cornice": ("path", "profile"),
+                "chimney": ("position", "width", "depth", "height"),
+                "light": ("position",),
+            }
+            component_allowed = {
+                "door": {
+                    "type", "id", "parentWall", "from", "width", "height",
+                    "frameWidth", "frameDepth", "frameMaterial", "leafMaterial",
+                    "interaction", "draggable",
+                },
+                "window": {
+                    "type", "id", "parentWall", "from", "width", "height",
+                    "frameWidth", "frameDepth", "verticalMullions",
+                    "horizontalMullions", "frameMaterial", "glassMaterial",
+                    "interaction", "draggable",
+                },
+                "railing": {
+                    "type", "id", "path", "height", "postSpacing", "postRadius",
+                    "railRadius", "railLevels", "material", "parentFloor", "draggable",
+                },
+                "canopy": {
+                    "type", "id", "parentWall", "from", "width", "depth",
+                    "thickness", "supportCount", "supportSize", "material",
+                    "supportMaterial", "draggable",
+                },
+                "balcony": {
+                    "type", "id", "parentWall", "from", "width", "depth",
+                    "slabThickness", "railingHeight", "postSpacing", "material",
+                    "railingMaterial", "draggable",
+                },
+                "ramp": {
+                    "type", "id", "from", "to", "width", "thickness",
+                    "railingSides", "railingHeight", "postSpacing", "material",
+                    "railingMaterial", "parentFloor", "draggable",
+                },
+                "bay_window": {
+                    "type", "id", "parentWall", "from", "width", "height",
+                    "projectionDepth", "frameWidth", "frameDepth", "frameMaterial",
+                    "glassMaterial", "draggable",
+                },
+                "cornice": {
+                    "type", "id", "path", "profile", "closedProfile", "material",
+                    "parentRoof", "draggable",
+                },
+                "chimney": {
+                    "type", "id", "position", "width", "depth", "height",
+                    "wallThickness", "capHeight", "material", "capMaterial",
+                    "parentRoof", "draggable",
+                },
+                "light": {
+                    "type", "id", "position", "fixtureType", "lightType", "color",
+                    "lowIntensity", "highIntensity", "distance", "angle",
+                    "initiallyOn", "bulbRadius", "baseHeight", "height",
+                    "shadeRadius", "material", "baseMaterial", "shadeMaterial",
+                    "draggable",
+                },
+            }
+            for component in components:
+                if not isinstance(component, dict):
+                    issues.append("geometry.components 中的每一项都必须是对象")
+                    continue
+                component_id = component.get("id", "?")
+                component_type = component.get("type")
+                if not component.get("id"):
+                    issues.append("组合构件缺少非空 'id' 字段")
+                if component_type not in component_required:
+                    issues.append(
+                        f"组合构件 {component_id}.type 必须是 "
+                        f"{'/'.join(component_required)}"
+                    )
+                    continue
+                unknown_fields = sorted(
+                    set(component) - component_allowed[component_type]
+                )
+                if unknown_fields:
+                    issues.append(
+                        f"组合构件 {component_id} 包含不支持的字段: {unknown_fields}"
+                    )
+                for field in component_required[component_type]:
+                    if field not in component:
+                        issues.append(f"组合构件 {component_id} 缺少字段 '{field}'")
+                if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
+                    if not _is_finite_vector3(component.get("from")):
+                        issues.append(f"组合构件 {component_id}.from 必须是三维有限数组")
+                    positive_fields = {
+                        "door": ("width", "height"),
+                        "window": ("width", "height"),
+                        "canopy": ("width", "depth", "thickness"),
+                        "balcony": ("width", "depth", "slabThickness"),
+                        "bay_window": ("width", "height", "projectionDepth"),
+                    }[component_type]
+                    for field in positive_fields:
+                        if not _is_positive_finite_number(component.get(field)):
+                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+                elif component_type in {"railing", "cornice"}:
+                    path_points = component.get("path")
+                    if (
+                        not isinstance(path_points, list)
+                        or len(path_points) < 2
+                        or not all(_is_finite_vector3(point) for point in path_points)
+                    ):
+                        issues.append(f"组合构件 {component_id}.path 至少需要两个三维有限坐标")
+                    if component_type == "railing" and not _is_positive_finite_number(component.get("height")):
+                        issues.append(f"组合构件 {component_id}.height 必须是正有限数字")
+                elif component_type == "ramp":
+                    for field in ("from", "to"):
+                        if not _is_finite_vector3(component.get(field)):
+                            issues.append(f"组合构件 {component_id}.{field} 必须是三维有限数组")
+                    for field in ("width", "thickness"):
+                        if not _is_positive_finite_number(component.get(field)):
+                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+                elif component_type in {"chimney", "light"}:
+                    if not _is_finite_vector3(component.get("position")):
+                        issues.append(f"组合构件 {component_id}.position 必须是三维有限数组")
+                    required_numbers = ("width", "depth", "height") if component_type == "chimney" else ()
+                    for field in required_numbers:
+                        if not _is_positive_finite_number(component.get(field)):
+                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+                    if component_type == "light":
+                        if component.get("fixtureType", "bulb") not in {"bulb", "table_lamp"}:
+                            issues.append(f"组合构件 {component_id}.fixtureType 必须是 bulb/table_lamp")
+                        if component.get("lightType", "point") not in {"point", "spot"}:
+                            issues.append(f"组合构件 {component_id}.lightType 必须是 point/spot")
 
     # ---------- 材质结构与颜色通道 ----------
     materials = blueprint.get("materials", {})

@@ -12,6 +12,7 @@ import { applyMaterials } from './materials/apply';
 import { getElementBuilder } from './registry';
 import { normalizeBlueprintInput } from './parser';
 export { parseBlueprint } from './parser';
+export { migrateBlueprintToLatest } from './migrations';
 export { getEngineCapabilities, registerElementBuilder } from './registry';
 export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';
 
@@ -302,11 +303,15 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
     }
 
     // 为每个网格绑定 elementId 和 interactive 标记
-    const isInteractive = constrainedTargets.has(el.id);
+    const interaction = (el as any)._interaction;
+    const isDraggable = (el as any)._draggable === true;
+    const isInteractive = constrainedTargets.has(el.id) || !!interaction || isDraggable;
 
     for (const m of meshes) {
       m.elementId = el.id;
       if (isInteractive) m.interactive = true;
+      if (interaction) m.interaction = interaction;
+      if (isDraggable) m.draggable = true;
       if (!m.uvs) m.uvs = generatePlanarUVs(m.geometry);
       applyInstanceTransform(m, el);
     }

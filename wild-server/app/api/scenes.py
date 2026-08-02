@@ -37,7 +37,11 @@ async def list_scenes():
             data = json.loads(file_path.read_text(encoding="utf-8"))
             # 列表只提取前端卡片所需摘要，不返回完整几何数据。
             name = data.get("meta", {}).get("name", file_path.stem)
-            elements_count = len(data.get("geometry", {}).get("elements", []))
+            geometry = data.get("geometry", {})
+            elements_count = (
+                len(geometry.get("elements", []))
+                + len(geometry.get("components", []))
+            )
             scenes.append({
                 "filename": file_path.name,
                 "name": name,
@@ -50,7 +54,10 @@ async def list_scenes():
             continue
 
     # 显式 JSONResponse 保证顶层数组按原样返回。
-    return JSONResponse(content=scenes)
+    return JSONResponse(
+        content=scenes,
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 
 @router.get("/{filename}")
@@ -71,6 +78,7 @@ async def get_scene(filename: str):
         path=str(file_path),
         media_type="application/json",
         filename=filename,
+        headers={"Cache-Control": "no-store, max-age=0"},
     )
 
 

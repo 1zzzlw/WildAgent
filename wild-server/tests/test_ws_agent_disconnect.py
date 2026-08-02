@@ -172,3 +172,39 @@ class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(replies), 1)
         self.assertIn("生成结果未通过结构预检", replies[0]["content"])
         self.assertIn("floor_bad.to", replies[0]["content"])
+
+
+class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
+    async def test_generated_event_carries_session_and_file_reference(self):
+        ws = Mock()
+        ws.send_json = AsyncMock()
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "缓存回归建筑"},
+            "geometry": {"elements": []},
+            "materials": {},
+            "behaviors": {},
+        }
+
+        with (
+            patch(
+                "app.api.ws_agent.agent_service.query_structured",
+                AsyncMock(return_value=QueryResult(text="生成完成", blueprint=blueprint)),
+            ),
+            patch(
+                "app.api.ws_agent.save_blueprint_file_as",
+                return_value="storage/scenes/session_cache.wild",
+            ),
+        ):
+            await _handle_user_message(ws, {
+                "request_id": "req_cache",
+                "session_id": "session_cache",
+                "message": "生成一栋建筑",
+                "thinking_mode": False,
+            })
+
+        messages = [call.args[0] for call in ws.send_json.await_args_list]
+        generated = next(msg for msg in messages if msg["type"] == "blueprint_generated")
+        self.assertEqual(generated["session_id"], "session_cache")
+        self.assertEqual(generated["filename"], "session_cache.wild")
+        self.assertEqual(generated["file_url"], "/api/scenes/session_cache.wild")
+        self.assertNotIn("blueprint", generated)

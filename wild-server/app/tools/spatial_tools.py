@@ -130,14 +130,23 @@ def validate_blueprint_structure(blueprint: dict) -> str:
             issues.append("❌ geometry.elements 缺失")
         else:
             elements = geo["elements"]
+            components = geo.get("components", [])
             if not isinstance(elements, list):
                 issues.append(f"❌ geometry.elements 应为数组，实际为 {type(elements).__name__}")
-            elif len(elements) == 0:
-                issues.append("⚠️  geometry.elements 为空，建筑没有任何构件")
+                elements = []
+            if not isinstance(components, list):
+                issues.append(f"❌ geometry.components 应为数组，实际为 {type(components).__name__}")
+                components = []
+            if len(elements) == 0 and len(components) == 0:
+                issues.append("⚠️  geometry.elements 与 geometry.components 同时为空")
             else:
                 # 检查 ID 唯一性
-                ids = [el.get("id", "") for el in elements]
-                dupes = {eid for eid in ids if ids.count(eid) > 1}
+                all_items = [
+                    item for item in [*elements, *components]
+                    if isinstance(item, dict)
+                ]
+                ids = [item.get("id", "") for item in all_items]
+                dupes = {eid for eid in ids if eid and ids.count(eid) > 1}
                 if dupes:
                     issues.append(f"❌ 重复的构件 ID: {dupes}")
 
@@ -147,6 +156,19 @@ def validate_blueprint_structure(blueprint: dict) -> str:
                         issues.append(f"❌ 元素缺少 'type' 字段: id={el.get('id', '?')}")
                     if "id" not in el:
                         issues.append("❌ 元素缺少 'id' 字段")
+                for component in components:
+                    if not isinstance(component, dict):
+                        issues.append("❌ geometry.components 中的项目必须是对象")
+                        continue
+                    if component.get("type") not in {
+                        "door", "window", "railing", "canopy", "balcony", "ramp",
+                        "bay_window", "cornice", "chimney", "light",
+                    }:
+                        issues.append(
+                            f"❌ 组合构件类型无效: {component.get('type', '?')}"
+                        )
+                    if not component.get("id"):
+                        issues.append("❌ 组合构件缺少非空 'id' 字段")
 
     if not issues:
         elements_count = len(_get_elements(blueprint))
@@ -479,7 +501,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
     # 蓝图顶层只允许这些 key
     VALID_ROOT_KEYS = {"meta", "geometry", "materials", "behaviors", "editor"}
     # geometry 内部只允许这些 key
-    VALID_GEOMETRY_KEYS = {"elements", "templates", "instances", "placements"}
+    VALID_GEOMETRY_KEYS = {"elements", "components", "templates", "instances", "placements"}
 
     issues: list[str] = []
 
@@ -496,9 +518,10 @@ def validate_element_required_fields(blueprint: dict) -> str:
             issues.append(f"❌ geometry 内部出现非法字段: {extra_geo}。只允许: {VALID_GEOMETRY_KEYS}")
 
     elements = _get_elements(blueprint)
-    if not elements:
+    components = geo.get("components", []) if isinstance(geo, dict) else []
+    if not elements and not components:
         if not issues:
-            return "✅ 没有构件，跳过必填字段检查。"
+            return "✅ 没有基础构件或组合构件，跳过必填字段检查。"
         return "\n".join(issues)
 
     for el in elements:
@@ -575,9 +598,77 @@ def validate_element_required_fields(blueprint: dict) -> str:
             if shape == "profile_sweep" and "path" not in el:
                 issues.append(f"❌ [{eid}] primitive profile_sweep 缺少 path")
 
+    component_required = {
+        "door": ["parentWall", "from", "width", "height"],
+        "window": ["parentWall", "from", "width", "height"],
+        "railing": ["path", "height"],
+        "canopy": ["parentWall", "from", "width", "depth", "thickness"],
+        "balcony": ["parentWall", "from", "width", "depth", "slabThickness"],
+        "ramp": ["from", "to", "width", "thickness"],
+        "bay_window": ["parentWall", "from", "width", "height", "projectionDepth"],
+        "cornice": ["path", "profile"],
+        "chimney": ["position", "width", "depth", "height"],
+        "light": ["position"],
+    }
+    for component in components:
+        if not isinstance(component, dict):
+            issues.append("❌ geometry.components 中的项目必须是对象")
+            continue
+        component_id = component.get("id", "?")
+        component_type = component.get("type", "")
+        required = component_required.get(component_type)
+        if required is None:
+            issues.append(f"❌ [{component_id}] 未知组合构件类型 '{component_type}'")
+            continue
+        for field in required:
+            if field not in component or component[field] is None:
+                issues.append(
+                    f"❌ [{component_id}] (component={component_type}) 缺少必填字段 '{field}'"
+                )
+        if component_type in {"door", "window", "canopy", "balcony", "bay_window"}:
+            if not _is_finite_vector3(component.get("from")):
+                issues.append(f"❌ [{component_id}] from 必须是三维有限坐标")
+            numeric_fields = [
+                field for field in required
+                if field not in {"parentWall", "from"}
+            ]
+            for field in numeric_fields:
+                value = component.get(field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        elif component_type in {"railing", "cornice"}:
+            path = component.get("path")
+            if (
+                not isinstance(path, list)
+                or len(path) < 2
+                or not all(_is_finite_vector3(point) for point in path)
+            ):
+                issues.append(f"❌ [{component_id}] path 至少需要两个三维有限坐标")
+        elif component_type == "ramp":
+            for field in ("from", "to"):
+                if not _is_finite_vector3(component.get(field)):
+                    issues.append(f"❌ [{component_id}] {field} 必须是三维有限坐标")
+            for field in ("width", "thickness"):
+                value = component.get(field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        elif component_type in {"chimney", "light"}:
+            if not _is_finite_vector3(component.get("position")):
+                issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+            for field in required:
+                if field == "position":
+                    continue
+                value = component.get(field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
+
     if not issues:
         types_found = set(el.get("type", "?") for el in elements)
-        return f"✅ 所有 {len(elements)} 个构件的必填字段完整（类型: {types_found}）"
+        component_types = set(item.get("type", "?") for item in components)
+        return (
+            f"✅ 所有 {len(elements)} 个基础构件和 {len(components)} 个组合构件"
+            f"的必填字段完整（基础类型: {types_found}，组合类型: {component_types}）"
+        )
     return "\n".join(issues)
 
 @tool
@@ -667,6 +758,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     element_ids = {el.get("id") for el in elements if el.get("id")}
     wall_ids = {el.get("id") for el in elements if el.get("type") == "wall"}
+    components = blueprint.get("geometry", {}).get("components", []) or []
 
     # --- 1. opening.parentWall 校验 ---
     for el in elements:
@@ -681,6 +773,23 @@ def validate_reference_integrity(blueprint: dict) -> str:
         elif parent not in wall_ids:
             issues.append(
                 f"❌ [{eid}] parentWall='{parent}' 引用的构件不是 wall 类型"
+            )
+
+    # --- 1b. door/window 组合构件的 parentWall 校验 ---
+    for component in components:
+        if component.get("type") not in {"door", "window"}:
+            continue
+        component_id = component.get("id", "?")
+        parent = component.get("parentWall", "")
+        if not parent:
+            issues.append(f"❌ [component:{component_id}] 缺少 parentWall 字段")
+        elif parent not in element_ids:
+            issues.append(
+                f"❌ [component:{component_id}] parentWall='{parent}' 引用的构件不存在"
+            )
+        elif parent not in wall_ids:
+            issues.append(
+                f"❌ [component:{component_id}] parentWall='{parent}' 不是 wall 类型"
             )
 
     # --- 2. instances.templateId 校验 ---
@@ -719,7 +828,8 @@ def validate_reference_integrity(blueprint: dict) -> str:
     if not issues:
         return (
             f"✅ 引用完整性通过。"
-            f"（{len(elements)} 个构件，{len(templates)} 个模板，{len(instances)} 个实例）"
+            f"（{len(elements)} 个基础构件，{len(components)} 个组合构件，"
+            f"{len(templates)} 个模板，{len(instances)} 个实例）"
         )
     return "\n".join(issues)
 

@@ -8,7 +8,7 @@ topic: constraints
 wild_version: "1.1"
 status: supported
 authority: engine
-source: wild-web/src/wild-core/src/primitive/registry.ts
+source: wild-web/wild-lang/schema.json
 keywords:
   - 引擎能力边界
   - engine capability
@@ -47,7 +47,34 @@ keywords: geometry.elements, supported type, WILD type, 构件类型
 | `body` | partial | 简化参数化人物 |
 | `primitive` | stable | 通用 `box`、`sphere`、`cylinder`、`profile_sweep` |
 
-`geometry.templates`、`geometry.instances` 和 `geometry.placements` 是蓝图顶层的复用或排布系统，不是 `geometry.elements` 中的独立 `type`。`placement` 不能写成元素对象。
+`geometry.components`、`geometry.templates`、`geometry.instances` 和 `geometry.placements` 是 `geometry` 下的高级组合或排布系统，不是 `geometry.elements` 中的独立 `type`。所有组合组件和 `placement` 都不能写成元素对象。
+
+## 当前可写入 geometry.components 的类型
+
+<!-- rag-meta
+entity_type: component
+entity_name: supported_composite_component_types
+topic: schema
+status: supported
+authority: engine
+keywords: geometry.components, component compiler, door, window, railing, 组合构件编译器
+-->
+
+当前组合构件编译器支持 9 类组件。它们在进入 wild-core 前展开为 `opening`、`primitive`、`beam` 等基础元素，不会在构件注册表中增加同名 builder。
+
+| `component.type` | 必填字段 | 编译结果摘要 |
+|---|---|---|
+| `door` | `id`、`parentWall`、`from`、`width`、`height` | `opening` 与三段 `primitive.box` 门框 |
+| `window` | `id`、`parentWall`、`from`、`width`、`height` | `opening`、四边窗框和可选窗棂 |
+| `railing` | `id`、`path`、`height` | 等距 `primitive.cylinder` 立杆和分段 `beam` 横杆 |
+| `canopy` | `id`、`parentWall`、`from`、`width`、`depth`、`thickness` | 雨棚板和可选支柱 |
+| `balcony` | `id`、`parentWall`、`from`、`width`、`depth`、`slabThickness` | 悬挑板和 U 形栏杆 |
+| `ramp` | `id`、`from`、`to`、`width`、`thickness` | 直线坡面和可选双侧栏杆 |
+| `bay_window` | `id`、`parentWall`、`from`、`width`、`height`、`projectionDepth` | 墙洞、窗框和投影窗体 |
+| `cornice` | `id`、`path`、`profile` | `primitive.profile_sweep` 檐口 |
+| `chimney` | `id`、`position`、`width`、`depth`、`height` | 四面薄壁烟囱和压顶 |
+
+基础元素和组合构件共享 ID 命名空间。组合构件源数据保留在 Blueprint 中，渲染时对副本展开；生成后的子元素 ID 由组件 ID 确定性派生。
 
 ## 柱、梁、楼板与桁架边界
 
@@ -76,7 +103,9 @@ authority: engine
 keywords: 门, door, opening, primitive, parentWall, 门扇
 -->
 
-WILD v1.1 没有 `type: "door"`。门洞使用 `opening`，其 `style` 只能是 `rectangular`、`arched`、`gothic`、`circular`。需要静态门扇外观时，可在洞口位置组合 `primitive`；`leafCount`、`hingeSide`、`openAngle` 和 `parentOpening` 不是当前 `opening` 字段，不能当作已支持能力输出。
+`geometry.elements` 仍然没有 `type: "door"`。标准门应在 `geometry.components` 中写 `type: "door"`；编译器生成矩形 `opening` 和三段门框。`from` 固定为 `[沿父墙弧长距离, 底部世界Y, 墙体法向偏移]`，支持直线墙和单段曲线墙。
+
+门组件可选 `interaction`，支持 `swing` 或 `slide`、左右方向、最大开角/位移和初始开启状态。前端左键仍负责选择高亮，右键命中门面执行开合；运行时动画进度不写回 Blueprint。当前仍不支持多门扇、碰撞或独立厚门扇。
 
 ## 窗与窗棂的当前表达边界
 
@@ -89,9 +118,26 @@ authority: engine
 keywords: 窗, window, opening, mullion, primitive, parentWall
 -->
 
-WILD v1.1 没有 `type: "window"` 或 `type: "mullion"`。窗洞使用 `opening`；静态窗框、玻璃和分格可用 `primitive` 组合近似。`sashType`、`sashCount`、`muntinPattern`、`cols`、`rows` 和 `parentOpening` 均不是当前 `opening` 字段。
+`geometry.elements` 没有 `type: "window"` 或 `type: "mullion"`。标准静态窗应写入 `geometry.components`，其中 `verticalMullions` 和 `horizontalMullions` 控制横竖窗棂数量；窗棂不是独立组件类型。
+
+窗组件可依附直线墙或单段曲线墙，并可选与门相同的 `interaction` 右键开合配置。当前仍不支持多窗扇独立状态、复杂窗格图案、碰撞或 `parentOpening`；玻璃由 `opening` 覆盖面表达。
 
 `opening` 只能引用 `parentWall`，不能通过 `parentRoof` 在屋顶上开天窗。当前天窗只能用屋顶上方的近似几何表达，不能声称完成屋顶布尔裁切。
+
+## 栏杆组合构件的当前边界
+
+<!-- rag-meta
+entity_type: railing
+entity_name: railing_component_boundary
+topic: constraints
+status: supported
+authority: engine
+keywords: railing, geometry.components, path, postSpacing, railLevels, 栏杆
+-->
+
+标准静态栏杆可以写入 `geometry.components`。默认 `path` 使用世界坐标；指定 `parentFloor` 后，路径相对父楼板左下角顶面。`height` 是每个路径点上方的栏杆高度；`postSpacing` 控制立杆最大间距，`railLevels` 使用 `(0, 1]` 比例定义横杆高度。
+
+当前栏杆不会自动读取 stair、floor 或 ramp 边界，也不执行建筑规范校核。需要楼梯栏杆时，调用方必须显式提供随楼梯升高的路径。
 
 ## 屋顶、檐口、雨棚与烟囱边界
 
@@ -105,8 +151,8 @@ keywords: roof, cornice, canopy, chimney, profile_sweep, 屋顶, 檐口, 雨棚,
 -->
 
 - `roof` 是当前类型，六种 `roofType` 由 Schema 支持，但注册表将整体能力标为 partial。
-- `cornice`、`canopy`、`chimney` 不是当前类型。静态檐口适合用 `primitive.shape: "profile_sweep"`，雨棚和烟囱可用 `primitive`、`beam`、`column` 组合近似。
-- 当前引擎没有 `resolveCornicePath`、`resolveDoorCanopy` 或 `resolveChimneyPenetration`，因此不会自动沿墙挤出檐口，也不会自动生成雨棚或在屋顶上做烟囱布尔裁切。
+- `cornice`、`canopy`、`chimney` 已是 `geometry.components` 支持类型；分别展开为 `profile_sweep`、板/柱和薄壁筒体。
+- `cornice` 与 `chimney` 可依附 `flat`、`gable`、`hip` 屋顶的局部坐标。烟囱只完成贴合定位和外观，尚不执行屋顶布尔裁切。
 
 ## 当前实际运行的空间解析机制
 

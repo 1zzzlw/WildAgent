@@ -24,10 +24,12 @@ import type { SceneSummary } from '../types/scene'
 
 export function generateSceneSummary(blueprint: Blueprint): SceneSummary {
   const elements = blueprint.geometry.elements || []
+  const components = blueprint.geometry.components || []
   
   // 统计元素类型
   const typeSet = new Set<string>()
   elements.forEach(e => typeSet.add(e.type))
+  components.forEach(component => typeSet.add(`component:${component.type}`))
 
   // 计算边界盒
   let minX = Infinity, minY = Infinity, minZ = Infinity
@@ -54,7 +56,7 @@ export function generateSceneSummary(blueprint: Blueprint): SceneSummary {
   } : undefined
 
   return {
-    elements_count: elements.length,
+    elements_count: elements.length + components.length,
     types: Array.from(typeSet),
     bbox,
     materials: Object.keys(blueprint.materials || {})

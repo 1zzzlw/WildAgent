@@ -10,6 +10,9 @@
  * 这些类型是整个项目的基础，所有场景数据都基于此结构。
  */
 
+import type { ComponentSpec } from '../wild-core/types'
+export type { ComponentSpec } from '../wild-core/types'
+
 export interface Blueprint {
   meta: BlueprintMeta
   geometry: GeometrySection
@@ -28,6 +31,7 @@ export interface BlueprintMeta {
 
 export interface GeometrySection {
   elements: GeometryElement[]
+  components?: ComponentSpec[]
   templates?: Record<string, GeometryElement>
   instances?: InstanceRef[]
   placements?: Placement[]

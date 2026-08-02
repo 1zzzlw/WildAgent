@@ -5,7 +5,8 @@
     <div class="viewport-overlay">
       <div class="stats">
         <div v-if="sceneStore.document">
-          元素: {{ sceneStore.document.blueprint.geometry.elements?.length || 0 }}
+          基础: {{ sceneStore.document.blueprint.geometry.elements?.length || 0 }} ·
+          组合: {{ sceneStore.document.blueprint.geometry.components?.length || 0 }}
         </div>
         <div v-if="sceneStore.reconstructed">
           网格: {{ sceneStore.reconstructed.meshes.length }}
@@ -35,18 +36,24 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useUIStore } from '../../stores/uiStore'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { MaterialCache } from '../../renderer/materialAdapter'
-import { updateSceneGroup } from '../../renderer/renderEntity'
+import { toggleRuntimeInteraction, updateSceneGroup } from '../../renderer/renderEntity'
 import { createTestScene, clearTestScene } from '../../utils/simpleSceneTest'
+import { getRenderedElementIds, resolveSelectableId } from '../../wild/componentSelection'
+import { createComponentTranslationChanges } from '../../wild/componentDrag'
+import { createPatch } from '../../wild/scenePatch'
 
 const containerRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
+const uiStore = useUIStore()
 
 type TimeOfDay = 'day' | 'sunset' | 'night'
 
@@ -142,6 +149,7 @@ let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera | null = null
 let controls: OrbitControls | null = null
+let transformControls: TransformControls | null = null
 let animationFrameId: number | null = null
 let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
@@ -152,9 +160,20 @@ let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
 const sunDirection = new THREE.Vector3()
 const lightingCenter = new THREE.Vector3()
+const raycaster = new THREE.Raycaster()
+const pointer = new THREE.Vector2()
+const instanceMatrix = new THREE.Matrix4()
+const instanceWorldMatrix = new THREE.Matrix4()
 let lightingExtent = 8
 let hasFramedScene = false
 let needsRender = true
+let pointerDownPosition: { x: number; y: number } | null = null
+let selectionHelpers: THREE.Box3Helper[] = []
+let dragAnchor: THREE.Object3D | null = null
+let dragStartPosition: THREE.Vector3 | null = null
+let dragComponentId: string | null = null
+let dragTargetPositions = new Map<THREE.Object3D, THREE.Vector3>()
+let suppressSelectionClick = false
 
 onMounted(() => {
   initThreeJS()
@@ -170,6 +189,10 @@ watch(() => sceneStore.reconstructed, () => {
 })
 watch(() => sceneStore.document?.id, () => {
   hasFramedScene = false
+})
+watch(() => [...selectionStore.selectedIds], () => {
+  syncSelectionHighlights()
+  syncComponentTransformControl()
 })
 
 function initThreeJS() {
@@ -200,6 +223,20 @@ function initThreeJS() {
   controls.dampingFactor = 0.08
   controls.addEventListener('change', markNeedsRender)
   controls.update()
+
+  transformControls = new TransformControls(camera, renderer.domElement)
+  transformControls.setMode('translate')
+  transformControls.setSpace('world')
+  transformControls.setSize(0.72)
+  transformControls.addEventListener('mouseDown', handleTransformMouseDown)
+  transformControls.addEventListener('objectChange', handleTransformObjectChange)
+  transformControls.addEventListener('mouseUp', handleTransformMouseUp)
+  transformControls.addEventListener('dragging-changed', handleTransformDraggingChanged)
+  scene.add(transformControls)
+
+  renderer.domElement.addEventListener('pointerdown', handlePointerDown)
+  renderer.domElement.addEventListener('pointerup', handlePointerUp)
+  renderer.domElement.addEventListener('contextmenu', handleContextMenu)
 
   // 测试：检查GridHelper是否正确添加
   console.log('Scene children after init:', scene.children.map(c => ({ type: c.type, name: c.name })));
@@ -329,6 +366,8 @@ function ensureGridVisible() {
     }
     hasFramedScene = false
     ensureGridVisible()
+    syncSelectionHighlights()
+    syncComponentTransformControl()
     markNeedsRender()
     return
   }
@@ -343,6 +382,8 @@ function ensureGridVisible() {
       controls.update()
     }
     ensureGridVisible()
+    syncSelectionHighlights()
+    syncComponentTransformControl()
     return
   }
 
@@ -376,7 +417,273 @@ function ensureGridVisible() {
   }
   
   ensureGridVisible()
+  syncSelectionHighlights()
+  syncComponentTransformControl()
   markNeedsRender()
+}
+
+function handlePointerDown(event: PointerEvent) {
+  // 选择只响应主按键。右键由 contextmenu 独占，不能先改变选中高亮。
+  if (event.button !== 0) {
+    pointerDownPosition = null
+    return
+  }
+  pointerDownPosition = { x: event.clientX, y: event.clientY }
+}
+
+function handlePointerUp(event: PointerEvent) {
+  if (suppressSelectionClick) {
+    suppressSelectionClick = false
+    pointerDownPosition = null
+    return
+  }
+  if (event.button !== 0) {
+    pointerDownPosition = null
+    return
+  }
+  if (!pointerDownPosition || !renderer || !camera || !sceneGroup) return
+  const distance = Math.hypot(
+    event.clientX - pointerDownPosition.x,
+    event.clientY - pointerDownPosition.y,
+  )
+  pointerDownPosition = null
+  if (distance > 5) return
+
+  const rect = renderer.domElement.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return
+  pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, camera)
+
+  const hit = raycaster.intersectObjects(sceneGroup.children, true)
+    .find(intersection => Boolean(getIntersectionElementId(intersection)))
+  const elementId = hit ? getIntersectionElementId(hit) : null
+  if (!elementId) {
+    if (!event.shiftKey) selectionStore.clearSelection()
+    return
+  }
+
+  const mapping = sceneStore.reconstructed?.componentMapping
+  const selectableId = mapping ? resolveSelectableId(elementId, mapping) : elementId
+  selectionStore.select(selectableId, event.shiftKey)
+  uiStore.setRightActivePanel('properties')
+}
+
+/** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
+function handleContextMenu(event: MouseEvent) {
+  if (!renderer || !camera || !sceneGroup) return
+  const rect = renderer.domElement.getBoundingClientRect()
+  pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, camera)
+  const intersections = raycaster.intersectObjects(sceneGroup.children, true)
+  let interactionObject = intersections
+    .find(intersection => intersection.object.userData.interaction)
+    ?.object
+
+  // 灯座与灯泡属于同一组件；右键命中灯座时转发给灯泡。窗户不做这种
+  // 转发，确保点击左/右窗扇时只开合实际命中的那一扇。
+  if (!interactionObject) {
+    const mapping = sceneStore.reconstructed?.componentMapping
+    const clickedElementId = intersections
+      .map(getIntersectionElementId)
+      .find((elementId): elementId is string => Boolean(elementId))
+    if (mapping && clickedElementId) {
+      const selectableId = resolveSelectableId(clickedElementId, mapping)
+      const component = sceneStore.document?.blueprint.geometry.components
+        ?.find(item => item.id === selectableId)
+      if (component?.type === 'light') {
+        sceneGroup.traverse(object => {
+          if (interactionObject || object.userData.interaction?.kind !== 'light') return
+          const elementId = typeof object.userData.elementId === 'string'
+            ? object.userData.elementId
+            : null
+          if (elementId && resolveSelectableId(elementId, mapping) === selectableId) {
+            interactionObject = object
+          }
+        })
+      }
+    }
+  }
+
+  if (interactionObject && toggleRuntimeInteraction(interactionObject, markNeedsRender)) {
+    event.preventDefault()
+  }
+}
+
+function getIntersectionElementId(intersection: THREE.Intersection): string | null {
+  const object = intersection.object
+  if (object instanceof THREE.InstancedMesh && typeof intersection.instanceId === 'number') {
+    return object.userData.instanceElementIds?.[intersection.instanceId] || null
+  }
+  return typeof object.userData.elementId === 'string' ? object.userData.elementId : null
+}
+
+function syncSelectionHighlights() {
+  clearSelectionHelpers()
+  if (!scene || !sceneGroup || !sceneStore.reconstructed) {
+    markNeedsRender()
+    return
+  }
+
+  const mapping = sceneStore.reconstructed.componentMapping
+  sceneGroup.updateMatrixWorld(true)
+  for (const selectedId of selectionStore.selectedIds) {
+    const renderedIds = new Set(getRenderedElementIds(selectedId, mapping))
+    const box = collectElementBounds(renderedIds)
+    if (box.isEmpty()) continue
+    const helper = new THREE.Box3Helper(box, 0x35d7ff)
+    const material = helper.material as THREE.LineBasicMaterial
+    helper.name = `Selection:${selectedId}`
+    material.depthTest = false
+    material.transparent = true
+    material.opacity = 0.95
+    helper.renderOrder = 999
+    selectionHelpers.push(helper)
+    scene.add(helper)
+  }
+  markNeedsRender()
+}
+
+function collectElementBounds(elementIds: Set<string>): THREE.Box3 {
+  const bounds = new THREE.Box3()
+  if (!sceneGroup) return bounds
+
+  sceneGroup.traverse(object => {
+    if (object instanceof THREE.InstancedMesh) {
+      const ids = object.userData.instanceElementIds as Array<string | undefined> | undefined
+      if (!ids) return
+      object.geometry.computeBoundingBox()
+      const geometryBounds = object.geometry.boundingBox
+      if (!geometryBounds) return
+      ids.forEach((elementId, index) => {
+        if (!elementId || !elementIds.has(elementId)) return
+        object.getMatrixAt(index, instanceMatrix)
+        instanceWorldMatrix.multiplyMatrices(object.matrixWorld, instanceMatrix)
+        bounds.union(geometryBounds.clone().applyMatrix4(instanceWorldMatrix))
+      })
+      return
+    }
+    if (!(object instanceof THREE.Mesh)) return
+    const elementId = object.userData.elementId
+    if (typeof elementId !== 'string' || !elementIds.has(elementId)) return
+    object.geometry.computeBoundingBox()
+    if (object.geometry.boundingBox) {
+      bounds.union(object.geometry.boundingBox.clone().applyMatrix4(object.matrixWorld))
+    }
+  })
+  return bounds
+}
+
+function clearSelectionHelpers() {
+  for (const helper of selectionHelpers) {
+    scene?.remove(helper)
+    helper.geometry.dispose()
+    const materials = Array.isArray(helper.material) ? helper.material : [helper.material]
+    materials.forEach(material => material.dispose())
+  }
+  selectionHelpers = []
+}
+
+/** 仅给显式开启 draggable 的单选组合构件显示 Element 编辑器的三轴移动控件。 */
+function syncComponentTransformControl() {
+  clearComponentTransformControl()
+  if (
+    !scene
+    || !sceneGroup
+    || !transformControls
+    || !sceneStore.reconstructed
+    || selectionStore.selectedIds.length !== 1
+  ) return
+  const componentId = selectionStore.selectedIds[0]
+  const component = sceneStore.document?.blueprint.geometry.components
+    ?.find(item => item.id === componentId)
+  if (!component?.draggable) return
+
+  const renderedIds = new Set(getRenderedElementIds(
+    componentId,
+    sceneStore.reconstructed.componentMapping,
+  ))
+  const targets: THREE.Object3D[] = []
+  sceneGroup.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || !object.userData.draggable) return
+    const elementId = object.userData.elementId
+    if (typeof elementId === 'string' && renderedIds.has(elementId)) targets.push(object)
+  })
+  if (targets.length === 0) return
+
+  const bounds = collectElementBounds(renderedIds)
+  if (bounds.isEmpty()) return
+  dragAnchor = new THREE.Object3D()
+  dragAnchor.name = `DragAnchor:${componentId}`
+  bounds.getCenter(dragAnchor.position)
+  scene.add(dragAnchor)
+  transformControls.attach(dragAnchor)
+  markNeedsRender()
+}
+
+function clearComponentTransformControl() {
+  transformControls?.detach()
+  if (dragAnchor?.parent) dragAnchor.parent.remove(dragAnchor)
+  dragAnchor = null
+  dragStartPosition = null
+  dragComponentId = null
+  dragTargetPositions.clear()
+}
+
+function handleTransformMouseDown() {
+  if (!dragAnchor || selectionStore.selectedIds.length !== 1 || !sceneGroup) return
+  suppressSelectionClick = true
+  dragStartPosition = dragAnchor.position.clone()
+  dragComponentId = selectionStore.selectedIds[0]
+  dragTargetPositions.clear()
+  const mapping = sceneStore.reconstructed?.componentMapping
+  if (!mapping) return
+  const renderedIds = new Set(getRenderedElementIds(dragComponentId, mapping))
+  sceneGroup.traverse(object => {
+    if (!(object instanceof THREE.Mesh) || !object.userData.draggable) return
+    const elementId = object.userData.elementId
+    if (typeof elementId === 'string' && renderedIds.has(elementId)) {
+      dragTargetPositions.set(object, object.position.clone())
+    }
+  })
+}
+
+function handleTransformObjectChange() {
+  if (!dragAnchor || !dragStartPosition) return
+  const delta = dragAnchor.position.clone().sub(dragStartPosition)
+  for (const [object, start] of dragTargetPositions) object.position.copy(start).add(delta)
+  syncSelectionHighlights()
+  markNeedsRender()
+}
+
+function handleTransformDraggingChanged(event: { value?: unknown }) {
+  if (controls) controls.enabled = event.value !== true
+}
+
+function handleTransformMouseUp() {
+  if (!dragAnchor || !dragStartPosition || !dragComponentId || !sceneStore.document) return
+  const delta = dragAnchor.position.clone().sub(dragStartPosition)
+  if (delta.lengthSq() < 1e-10) return
+  const component = sceneStore.document.blueprint.geometry.components
+    ?.find(item => item.id === dragComponentId)
+  if (!component) return
+  const changes = createComponentTranslationChanges(
+    component,
+    [delta.x, delta.y, delta.z],
+    sceneStore.document.blueprint.geometry.elements,
+  )
+  const patch = createPatch(
+    sceneStore.document.revision,
+    [{ op: 'update_component', id: component.id, changes }],
+    'user',
+    false,
+    `拖动${component.id}`,
+  )
+  transformControls?.detach()
+  void sceneStore.applyPatch(patch).then(applied => {
+    if (!applied) updateScene()
+  })
 }
 
 function cycleTimeOfDay() {
@@ -444,11 +751,20 @@ function markNeedsRender() {
 function cleanup() {
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
   window.removeEventListener('resize', handleResize)
+  renderer?.domElement.removeEventListener('pointerdown', handlePointerDown)
+  renderer?.domElement.removeEventListener('pointerup', handlePointerUp)
+  renderer?.domElement.removeEventListener('contextmenu', handleContextMenu)
+  clearSelectionHelpers()
+  clearComponentTransformControl()
   if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
   environmentTarget?.dispose()
   if (renderer) renderer.dispose()
   if (controls) controls.dispose()
+  if (transformControls) {
+    scene?.remove(transformControls)
+    transformControls.dispose()
+  }
 }
 </script>
 

@@ -9,6 +9,8 @@
  */
 
 import type { Blueprint } from './blueprint'
+import type { ComponentCompilationMapping } from '../wild-compiler'
+import type { InteractiveElementBehavior } from '../wild-core/types'
 
 export interface SceneDocument {
   id: string
@@ -33,6 +35,8 @@ export interface ReconstructedEntity {
   scripts?: unknown[]
   animation?: unknown
   diagnostics: EngineDiagnostic[]
+  /** 组合构件与临时 Core 元素的双向映射，不会写回 Blueprint。 */
+  componentMapping: ComponentCompilationMapping
 }
 
 /**
@@ -56,6 +60,8 @@ export interface MeshData {
   }
   patternMortarColor?: [number, number, number]
   interactive?: boolean
+  interaction?: InteractiveElementBehavior
+  draggable?: boolean
 }
 
 /**

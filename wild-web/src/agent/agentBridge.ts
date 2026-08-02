@@ -42,9 +42,11 @@
 
 import { useAgentStore } from '../stores/agentStore'
 import { useSceneStore } from '../stores/sceneStore'
+import { useSelectionStore } from '../stores/selectionStore'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { createUserMessageRequest } from './protocol'
-import type { AgentMessage } from '../types/agent'
+import type { AgentMessage, BlueprintGeneratedResponse } from '../types/agent'
+import type { Blueprint } from '../types/blueprint'
 
 /** 重连配置 */
 const RECONNECT_CONFIG = {
@@ -88,6 +90,7 @@ export class AgentBridge {
 
   /** 根据当前页面地址生成 WebSocket URL，通过 nginx /ws/ 代理 */
   private buildDefaultUrl(): string {
+    if (typeof window === 'undefined') return 'ws://localhost/ws/agent'
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     return `${wsProtocol}//${window.location.host}/ws/agent`
   }
@@ -231,6 +234,7 @@ export class AgentBridge {
   sendUserMessage(message: string) {
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
+    const selectionStore = useSelectionStore()
 
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       agentStore.addSystemMessage('未连接到 Agent 服务')
@@ -243,7 +247,7 @@ export class AgentBridge {
     }
 
     const sceneSummary = generateSceneSummary(sceneStore.document.blueprint)
-    const selection: string[] = [] // TODO: 从 selectionStore 获取
+    const selection = [...selectionStore.selectedIds]
 
     const request = createUserMessageRequest(
       message,
@@ -310,7 +314,7 @@ export class AgentBridge {
         break
 
       case 'blueprint_generated':
-        this.handleBlueprintGenerated(message.filename, message.file_url)
+        void this.handleBlueprintGenerated(message)
         break
 
       case 'agent_reply':
@@ -333,10 +337,13 @@ export class AgentBridge {
     agentStore.addSystemMessage(`⚠️ 网络异常: ${error}`)
   }
 
-  /** 处理 AI 生成的 Blueprint：通过 HTTP 拉取文件 → 加载到场景 + 触发渲染 */
-  private async handleBlueprintGenerated(filename: string, fileUrl: string) {
+  /** 处理 AI 生成的 Blueprint：绕过缓存读取服务端文件并等待重建完成。 */
+  private async handleBlueprintGenerated(message: BlueprintGeneratedResponse) {
     const sceneStore = useSceneStore()
     const agentStore = useAgentStore()
+    const { filename, file_url: fileUrl } = message
+    const targetSessionId = message.session_id
+      || filename.replace(/\.wild$/, '')
 
     if (!fileUrl) {
       agentStore.addSystemMessage('错误: 未收到蓝图文件地址')
@@ -345,24 +352,42 @@ export class AgentBridge {
     }
 
     try {
-      // 通过 HTTP 拉取蓝图 JSON
-      const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}${fileUrl}`)
+      // 禁用缓存，避免同名会话文件从空 Blueprint 更新后仍返回旧内容。
+      const separator = fileUrl.includes('?') ? '&' : '?'
+      const response = await fetch(
+        `${this.httpBaseUrl}${fileUrl}${separator}request_id=${encodeURIComponent(message.request_id)}`,
+        { cache: 'no-store' },
+      )
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`)
       }
       const blueprint = await response.json()
 
-      const name = blueprint.meta?.name
-        ? `AI 生成 - ${blueprint.meta.name}`
+      if (!blueprint || typeof blueprint !== 'object' || !('meta' in blueprint) || !('geometry' in blueprint)) {
+        throw new Error('响应不是有效的 Blueprint 对象')
+      }
+
+      const typedBlueprint = blueprint as unknown as Blueprint
+      const name = typedBlueprint.meta?.name
+        ? `AI 生成 - ${typedBlueprint.meta.name}`
         : 'AI 生成'
 
-      sceneStore.loadBlueprint(blueprint, name)
-
       // 更新会话信息
-      const elementsCount = blueprint.geometry?.elements?.length || 0
-      const displayName = blueprint.meta?.name || '未命名建筑'
-      agentStore.updateSessionInfo(agentStore.currentSessionId, displayName, elementsCount)
+      const elementsCount = (typedBlueprint.geometry?.elements?.length || 0)
+        + (typedBlueprint.geometry?.components?.length || 0)
+      const displayName = typedBlueprint.meta?.name || '未命名建筑'
+      agentStore.updateSessionInfo(targetSessionId, displayName, elementsCount)
+
+      // 用户在生成期间切换了会话时，不允许迟到结果覆盖当前画布。
+      if (targetSessionId !== agentStore.currentSessionId) {
+        agentStore.addSystemMessage(`✅ ${displayName} 已生成；切换到对应会话后查看`)
+        return
+      }
+
+      const reconstructed = await sceneStore.loadBlueprint(typedBlueprint, name)
+      if (!reconstructed) {
+        throw new Error('Blueprint 已读取，但场景重建失败')
+      }
 
       agentStore.addSystemMessage(`✅ Blueprint 已加载（${filename}）`)
       agentStore.setBlueprintLoaded(filename)
@@ -419,7 +444,8 @@ export class AgentBridge {
       const response = await fetch(`${baseUrl}/api/scenes/${sessionId}.wild`, {
         method: 'DELETE',
       })
-      return response.ok
+      // 未保存的新会话没有服务端文件，删除客户端会话同样视为成功。
+      return response.ok || response.status === 404
     } catch (err) {
       console.error('[AgentBridge] 删除蓝图失败:', err)
       return false

@@ -60,7 +60,7 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
   ```json
   {{{{
     "meta": {{{{"version": "1.1", "type": "building", "name": "板凳"}}}},
-    "geometry": {{{{"elements": [...]}}}},
+    "geometry": {{{{"elements": [...], "components": [...]}}}},
     "materials": {{}},
     "behaviors": {{}}
   }}}}
@@ -75,6 +75,7 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
   {{{{
     "operations": [
       {{{{"op": "add_element", "element": {{{{"id": "new_01", "type": "column", ...}}}}}}}},
+      {{{{"op": "add_component", "component": {{{{"id": "door_01", "type": "door", ...}}}}}}}},
       {{{{"op": "update_element", "id": "existing_id", "changes": {{{{"height": 4.0}}}}}}}},
       {{{{"op": "remove_element", "id": "to_remove_id"}}}}
     ],
@@ -84,6 +85,9 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
   add_element: element 含完整构件定义（id + type + 必填参数），id 不能与已有重复
   update_element: id 指向已有构件，changes 只含要改的字段
   remove_element: id 指向已有构件
+  add_component: component 含完整组合构件定义，type 只能是 door、window、railing、canopy、balcony、ramp、bay_window、cornice、chimney、light
+  update_component: id 指向 geometry.components 中的已有组合构件
+  remove_component: id 指向 geometry.components 中的已有组合构件
 
 **澄清类** — 当前场景已有构件，但用户的需求模糊，无法判断是"重新生成"还是"在现有基础上修改"。
   **必须主动询问用户意图，不要猜测！**
@@ -111,11 +115,18 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
 1. 分析意图：判断用户是要新建、修改还是纯聊天
 2. 规划构件：先用 building_types 文档确定主体组合，再用 recipes/component-building-matrix 确定需要哪些组件系统
 3. 组件选型（建筑生成时强制）：从已检索的 components/windows、components/doors、components/roofs-and-eaves 或风格速查片段中，为窗、门、屋顶分别选择具体变体；不得只照抄建筑类型文档的最小组合而忽略组件文档
-4. 组件落地：当前 Core 可直接渲染 wall、floor、column、beam、roof、opening、stair、furniture、body、primitive。组件文档中的 window、door、mullion、cornice、canopy、railing 是设计语义，当前没有独立 builder 时不得直接输出为 element.type：
-   - 窗型 → opening + 玻璃材质；窗框/窗棂细节按需用 primitive box/profile_sweep 组合
-   - 门型 → opening + 门材质；门板或门框细节按需用 primitive 组合
-   - cornice/canopy/railing → 用 primitive、beam 或低矮 wall 实现
-   元素 id 应体现选型，例如 window_fixed_、window_casement_、door_panel_，让蓝图仍保留组件语义
+4. 组件落地：当前 Core 可直接渲染 wall、floor、column、beam、roof、opening、stair、furniture、body、primitive。`door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney`、`light` 已由组合构件编译器支持，但只能写入 `geometry.components`，绝不能写入 `geometry.elements`：
+   - door → 必填 id、parentWall、from、width、height；可选 frameWidth/frameDepth/frameMaterial/leafMaterial
+   - window → 必填 id、parentWall、from、width、height；可选 verticalMullions/horizontalMullions/frameWidth/frameDepth/frameMaterial/glassMaterial
+   - railing → 必填 id、path、height；可选 postSpacing/postRadius/railRadius/railLevels/material
+   - canopy/balcony/bay_window → 必须提供 parentWall、from 和各自尺寸字段
+   - ramp → 必填 id、from、to、width、thickness；cornice → 必填 id、path、profile
+   - chimney → 必填 id、position、width、depth、height
+   - light → 必填 id、position；fixtureType=bulb 表示裸灯泡，fixtureType=table_lamp 表示带底座/灯杆/灯罩的发光台灯；lightType=point/spot 表示光源算法；可选 color、lowIntensity、highIntensity、distance、initiallyOn、draggable
+   - 用户要求台灯、亮灯、发光或可开关灯具时，必须使用 geometry.components 中的 light；furniture.subtype=lamp 只是旧版静态家具占位，不产生真实光照
+   - door/window 的 from 固定为 [沿父墙起点的距离, 底部世界Y, 墙体法向偏移]，第一版只依附直线墙
+   - mullion 不是独立 component.type，通过 window 的 verticalMullions/horizontalMullions 生成
+   组合构件 id 应体现选型，例如 window_fixed_、window_casement_、door_panel_，编译器会据此生成稳定的子元素 id
    - furniture.subtype 只能是 table、chair、bookshelf、bed、lamp、tile，严禁发明 sofa、counter 等值；沙发用 primitive box 组合坐垫、靠背和扶手，厨房柜台用 primitive box 组合柜体与台面
 5. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
 6. 如有墙体：先调用 get_wall_bounding_box 获取包围盒

@@ -170,13 +170,26 @@ function buildCylinder(params: PrimitiveParams): GeometryBuffers {
 function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
   const path = params.path || [];
   if (path.length < 2) throw new Error('profile_sweep requires at least two path points');
+  path.forEach((point, index) => assertFiniteVec3(point, `path[${index}]`));
+  for (let index = 0; index < path.length - 1; index++) {
+    if (distance(path[index], path[index + 1]) < 1e-6) {
+      throw new Error(`profile_sweep path[${index}] and path[${index + 1}] must not overlap`);
+    }
+  }
 
   const profile = params.profile?.length
     ? params.profile
     : createCircularProfile(params.radius ?? 0.05, clampInteger(params.segments ?? 12, 3, 64));
-  if (profile.length < 2) throw new Error('profile_sweep requires at least two profile points');
-
   const closed = params.closedProfile !== false;
+  if (profile.length < (closed ? 3 : 2)) {
+    throw new Error(`profile_sweep requires at least ${closed ? 3 : 2} profile points`);
+  }
+  profile.forEach((point, index) => {
+    if (!Array.isArray(point) || point.length !== 2 || !point.every(Number.isFinite)) {
+      throw new Error(`profile_sweep profile[${index}] must contain two finite numbers`);
+    }
+  });
+
   const edgeCount = closed ? profile.length : profile.length - 1;
   const frames = path.map((_, index) => createPathFrame(path, index));
   const cumulative = [0];
@@ -281,6 +294,12 @@ function distance(a: Vec3, b: Vec3): number {
 function assertPositive(value: number, field: string): void {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${field} must be a positive finite number`);
+  }
+}
+
+function assertFiniteVec3(value: Vec3, field: string): void {
+  if (!Array.isArray(value) || value.length !== 3 || !value.every(Number.isFinite)) {
+    throw new Error(`${field} must contain three finite numbers`);
   }
 }
 

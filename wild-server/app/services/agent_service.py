@@ -349,8 +349,10 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
 
 def _build_scene_summary(blueprint: dict) -> str:
     """从 Blueprint 生成场景摘要文本（注入 user message 供 AI 参考）"""
-    elements = blueprint.get("geometry", {}).get("elements", [])
-    lines = [f"当前场景包含 {len(elements)} 个构件："]
+    geometry = blueprint.get("geometry", {})
+    elements = geometry.get("elements", [])
+    components = geometry.get("components", [])
+    lines = [f"当前场景包含 {len(elements)} 个基础构件和 {len(components)} 个组合构件："]
     for el in elements:
         el_id = el.get("id", "?")
         el_type = el.get("type", "?")
@@ -374,6 +376,19 @@ def _build_scene_summary(blueprint: dict) -> str:
             f"  - [{el_id}] type={el_type}"
             + (f" ({'; '.join(extras)})" if extras else "")
         )
+    for component in components:
+        component_id = component.get("id", "?")
+        component_type = component.get("type", "?")
+        extras = []
+        if component_type in {"door", "window"}:
+            extras.append(f"parentWall={component.get('parentWall', '?')}")
+            extras.append(f"from={component.get('from', '?')}")
+        elif component_type == "railing":
+            extras.append(f"pathPoints={len(component.get('path', []))}")
+        lines.append(
+            f"  - [component:{component_id}] type={component_type}"
+            + (f" ({'; '.join(extras)})" if extras else "")
+        )
     materials = blueprint.get("materials", {})
     if materials:
         lines.append(f"已有材质: {', '.join(materials.keys())}")
@@ -383,10 +398,11 @@ def _build_scene_summary(blueprint: dict) -> str:
 def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
     """将 ScenePatch 应用到 Blueprint 深拷贝，返回修改后的 Blueprint
 
-    支持: add_element / update_element / remove_element / upsert_material
+    支持基础构件、组合构件和材质的增量修改。
     """
     bp = deepcopy(blueprint)
     elements = bp.setdefault("geometry", {}).setdefault("elements", [])
+    components = bp["geometry"].setdefault("components", [])
 
     for op in patch.get("operations", []):
         op_type = op.get("op")
@@ -405,6 +421,24 @@ def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
             el_id = op.get("id")
             bp["geometry"]["elements"] = [e for e in elements if e.get("id") != el_id]
             elements = bp["geometry"]["elements"]
+        elif op_type == "add_component":
+            component = op.get("component")
+            if component and isinstance(component, dict):
+                components.append(component)
+        elif op_type == "update_component":
+            component_id = op.get("id")
+            changes = op.get("changes", {})
+            for component in components:
+                if component.get("id") == component_id:
+                    component.update(changes)
+                    break
+        elif op_type == "remove_component":
+            component_id = op.get("id")
+            bp["geometry"]["components"] = [
+                component for component in components
+                if component.get("id") != component_id
+            ]
+            components = bp["geometry"]["components"]
         elif op_type == "upsert_material":
             name = op.get("name")
             material = op.get("material")
@@ -555,8 +589,8 @@ class AgentService:
         return self._create_agent(spec_text, thinking_mode=thinking_mode)
 
     def _build_filtered_rag_queries(self, queries: list[str]) -> list[SpecQuery]:
-        """为建筑生成的七类检索意图附加业务 metadata 过滤条件。"""
-        if len(queries) != 7:
+        """为建筑生成的八类检索意图附加业务 metadata 过滤条件。"""
+        if len(queries) != 8:
             return [SpecQuery(text=query) for query in queries]
 
         filters = [
@@ -566,6 +600,7 @@ class AgentService:
             {"doc_type": "component", "entity_type": "wall"},
             {"doc_type": "component", "entity_type": "window"},
             {"doc_type": "component", "entity_type": "door"},
+            {"doc_type": "component", "entity_type": "railing"},
             {"doc_type": "component", "entity_type": "roof"},
         ]
         return [
@@ -629,6 +664,7 @@ class AgentService:
             f"{message}\n墙体构件参数与围护规则：wall、thickness、height、material、opening 承载关系",
             f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",
             f"{message}\n门构件分类与组装规则：door、opening、panel、glass、门型选择",
+            f"{message}\n栏杆构件参数与路径规则：railing、path、postSpacing、railLevels、楼梯与阳台栏杆",
             f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
         ]
 

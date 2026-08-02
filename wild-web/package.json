@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "check:core": "node scripts/check-wild-core.mjs",
+    "check:compiler": "node scripts/check-component-compiler.mjs",
+    "eval:components": "node scripts/check-component-compiler.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

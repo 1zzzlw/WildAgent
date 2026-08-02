@@ -45,6 +45,8 @@ try {
 
   const core = await import(`${pathToFileURL(join(outputDirectory, 'wild-core-smoke.mjs')).href}?t=${Date.now()}`);
   await assertPrimitiveBoxDimensionCompatibility(core);
+  await assertProfileSweepValidation(core);
+  await assertSlopedBeamDirection(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
     .filter(name => name.endsWith('.wild'))
@@ -80,6 +82,7 @@ try {
   }
 
   assertInvalidBlueprintIsRejected(core.parseBlueprint);
+  assertVersionMigration(core.parseBlueprint);
   await assertSideWallOpeningAlignment(core);
   await assertInvalidRuntimeMaterialFallsBack(core);
 
@@ -87,6 +90,76 @@ try {
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertProfileSweepValidation(core) {
+  const valid = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'asset', name: 'profile-sweep-check' },
+    geometry: { elements: [{
+      type: 'primitive', id: 'cornice_sweep', shape: 'profile_sweep',
+      path: [[0, 0, 0], [2, 0, 0], [2, 0, 1]],
+      profile: [[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]],
+    }] },
+    materials: {}, behaviors: {},
+  });
+  if (valid.diagnostics.some(item => item.level === 'error') || valid.meshes.length !== 1) {
+    throw new Error(`profile_sweep 合法用例失败: ${JSON.stringify(valid.diagnostics)}`);
+  }
+  const invalid = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'asset', name: 'profile-sweep-invalid' },
+    geometry: { elements: [{
+      type: 'primitive', id: 'broken_sweep', shape: 'profile_sweep',
+      path: [[0, 0, 0], [0, 0, 0]],
+      profile: [[0, 0], [1, 0], [0, 1]],
+    }] },
+    materials: {}, behaviors: {},
+  });
+  if (!invalid.diagnostics.some(item => item.elementId === 'broken_sweep' && item.level === 'error')) {
+    throw new Error('profile_sweep 重复路径点未产生可读错误');
+  }
+}
+
+async function assertSlopedBeamDirection(core) {
+  const from = [0, 0, 0];
+  const to = [5.4, 0.45, 0];
+  const entity = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'asset', name: 'sloped-beam-direction' },
+    geometry: { elements: [{
+      type: 'beam', id: 'sloped_handrail', from, to,
+      crossSection: 'circular', width: 0.08, height: 0.08,
+    }] },
+    materials: {}, behaviors: {},
+  });
+  const mesh = entity.meshes.find(item => item.elementId === 'sloped_handrail');
+  if (!mesh) throw new Error('斜梁没有生成 mesh');
+
+  const [rx, ry] = mesh.transform.rotation;
+  const actualAxis = [
+    Math.sin(ry),
+    -Math.sin(rx) * Math.cos(ry),
+    Math.cos(rx) * Math.cos(ry),
+  ];
+  const length = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]);
+  const expectedAxis = [
+    (to[0] - from[0]) / length,
+    (to[1] - from[1]) / length,
+    (to[2] - from[2]) / length,
+  ];
+  const error = Math.hypot(...actualAxis.map((value, index) => value - expectedAxis[index]));
+  if (error > 1e-9) {
+    throw new Error(`斜梁轴线没有对齐 from→to: ${JSON.stringify({ actualAxis, expectedAxis })}`);
+  }
+}
+
+function assertVersionMigration(parseBlueprint) {
+  const migrated = parseBlueprint(JSON.stringify({
+    meta: { version: '1.0', type: 'building', name: 'migration-check' },
+    geometry: { elements: [] },
+    materials: {},
+  }));
+  if (migrated.meta.version !== '1.1') {
+    throw new Error(`WILD 1.0 未显式迁移到 1.1: ${migrated.meta.version}`);
+  }
 }
 
 async function assertPrimitiveBoxDimensionCompatibility(core) {

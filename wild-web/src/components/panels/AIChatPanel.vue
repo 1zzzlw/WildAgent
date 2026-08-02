@@ -285,18 +285,7 @@ function formatTime(ts: number) {
 async function handleApplyPatch(patch: ScenePatch) {
   const ok = await sceneStore.applyPatch(patch)
   if (ok) {
-    agentStore.addSystemMessage('✅ 已应用修改')
-    // 同步更新后的蓝图到后端
-    if (sceneStore.document) {
-      agentBridge.syncBlueprintToBackend(
-        sceneStore.document.blueprint as Record<string, unknown>
-      )
-      // 更新会话信息
-      const bp = sceneStore.document.blueprint
-      const name = bp.meta?.name || '未命名建筑'
-      const count = bp.geometry?.elements?.length || 0
-      agentStore.updateSessionInfo(agentStore.currentSessionId, name, count)
-    }
+    agentStore.addSystemMessage('✅ 已应用到当前草稿；点击顶部“保存”后才会写入服务器')
   } else {
     agentStore.addSystemMessage('❌ 应用修改失败，可能版本已过期')
   }
@@ -323,13 +312,8 @@ async function handleNewSession() {
   const newId = agentStore.createSession()
   agentStore.switchToSession(newId)
   const doc = sceneStore.createEmptyDocument()
-  sceneStore.loadBlueprint(doc.blueprint, doc.name)
-  const saved = await agentBridge.syncBlueprintToBackend(
-    doc.blueprint as unknown as Record<string, unknown>
-  )
-  agentStore.addSystemMessage(saved
-    ? '✨ 新会话已创建并保存到服务器，输入建筑需求开始'
-    : '⚠️ 新会话已创建，但暂时无法保存到服务器')
+  await sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  agentStore.addSystemMessage('✨ 新会话草稿已创建；生成建筑或点击顶部“保存”后才会写入服务器')
 }
 
 async function handleDeleteSession() {

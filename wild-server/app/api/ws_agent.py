@@ -313,6 +313,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
         await ws.send_json({
             "type": "blueprint_generated",
             "request_id": request_id,
+            "session_id": session_id,
             "filename": filename,
             "file_url": f"/api/scenes/{filename}" if filename else "",
         })

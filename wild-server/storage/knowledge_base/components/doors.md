@@ -22,7 +22,7 @@ keywords:
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
 > 用途：整理 door/opening/mullion/column/beam 等组合形成门型的规则。
 > RAG 关键词：door、opening、门、隔扇门、板门、玻璃门、拱门、旋转门、折叠门、门型速配
-> 能力边界：当前 WILD v1.1 没有独立 `door`、`mullion`、`cornice` 类型。本文已整体标为 `proposed`，用于保留门型需求，不参与默认正式生成；可执行降级方式见 `engine-capability-boundaries.md`。
+> 能力边界：`geometry.elements` 没有 `door`、`mullion`、`cornice` 类型；`geometry.components` 只支持基础静态 `door`，不支持本文的 `leafCount`、`hingeSide`、`swingDirection` 等详细字段。本文仍整体标为 `proposed`，用于保留门型需求，不参与默认正式生成；可执行基础门语法见 `engine-capability-boundaries.md`。
 
 ---
 ## X.2 门分类

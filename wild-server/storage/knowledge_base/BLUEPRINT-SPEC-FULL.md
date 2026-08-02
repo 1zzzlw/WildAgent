@@ -76,7 +76,9 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 {
   "geometry": {
     "elements": [ /* 构件列表 */ ],
+    "components": [ /* 组合构件列表 */ ],
     "templates": { /* 模板定义 */ },
+    "instances": [ /* 模板实例 */ ],
     "placements": [ /* 放置规则 */ ]
   }
 }
@@ -417,6 +419,124 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 | `profile_sweep` | `path`、可选 `profile` 或 `radius` | 檐口、屋脊、接缝、线脚 |
 
 所有 shape 还可使用 `position`、`rotation`、`scale` 和 `material`。`rotation` 为 XYZ 欧拉角，单位弧度。
+
+### 2.3 组合构件 (Components，WILD v1.1)
+
+`geometry.components` 是组合构件编译器的高级输入，不是 renderer builder 列表。当前支持 `door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney` 和 `light`，渲染前会展开成 `opening`、`primitive`、`beam` 等基础类型。
+
+基础元素和组合构件共享 ID 命名空间。组件编译使用 Blueprint 副本，不会把生成的子元素写回源 `geometry.elements`。
+
+#### 2.3.1 门组件 (Door Component)
+
+以下对象是 `geometry.components` 数组中的片段，不是完整 `.wild` 文件：
+
+```json
+{
+  "type": "door",
+  "id": "front_door",
+  "parentWall": "wall_front",
+  "from": [2.4, 0.0, 0],
+  "width": 1.2,
+  "height": 2.2,
+  "frameWidth": 0.08,
+  "frameDepth": 0.34,
+  "frameMaterial": "door_frame",
+  "leafMaterial": "door_leaf",
+  "interaction": {
+    "mode": "swing",
+    "hingeSide": "left",
+    "openAngle": 90,
+    "initiallyOpen": false
+  }
+}
+```
+
+`from` 使用 opening 相同的墙体局部坐标：`[沿父墙弧长距离, 底部世界Y, 墙体法向偏移]`。支持直线墙和单段曲线墙。可选 `interaction.mode` 为 `swing` 或 `slide`；前端左键选择，右键执行开合。当前不支持碰撞、多门扇或独立厚门扇。
+
+#### 2.3.2 窗组件 (Window Component)
+
+以下对象是 `geometry.components` 数组中的片段，不是完整 `.wild` 文件：
+
+```json
+{
+  "type": "window",
+  "id": "living_window",
+  "parentWall": "wall_front",
+  "from": [4.0, 0.9, 0],
+  "width": 1.5,
+  "height": 1.2,
+  "verticalMullions": 1,
+  "horizontalMullions": 1,
+  "frameMaterial": "window_frame",
+  "glassMaterial": "glass"
+}
+```
+
+`verticalMullions` 和 `horizontalMullions` 是 0–32 的整数。`mullion` 不是独立元素或组件类型。窗也支持单段曲线父墙和与门相同的可选 `interaction`；交互式双窗扇可分别右键开合，也可同时处于打开状态。
+
+#### 2.3.3 栏杆组件 (Railing Component)
+
+以下对象是 `geometry.components` 数组中的片段，不是完整 `.wild` 文件：
+
+```json
+{
+  "type": "railing",
+  "id": "terrace_railing",
+  "path": [[0, 3, 0], [4, 3, 0]],
+  "height": 1.1,
+  "postSpacing": 0.8,
+  "postRadius": 0.035,
+  "railRadius": 0.045,
+  "railLevels": [0.5, 1.0],
+  "material": "metal"
+}
+```
+
+`path` 至少包含两个不重合点；`railLevels` 中每个值位于 `(0, 1]`。默认使用世界坐标，指定 `parentFloor` 后使用父楼板局部坐标。编译器不会从 stair 或 ramp 自动推导路径，也不执行无障碍或防护规范校核。
+
+#### 2.3.4 第二批组合构件
+
+| `component.type` | 必填字段 | 定位与编译结果 |
+|---|---|---|
+| `canopy` | `id,parentWall,from,width,depth,thickness` | 墙体弧长坐标；顶板和可选支柱 |
+| `balcony` | `id,parentWall,from,width,depth,slabThickness` | 墙体弧长坐标；悬挑板和 U 形栏杆 |
+| `ramp` | `id,from,to,width,thickness` | 世界坐标或可选 `parentFloor` 局部坐标；坡面和可选栏杆 |
+| `bay_window` | `id,parentWall,from,width,height,projectionDepth` | 墙体弧长坐标；墙洞、框架和投影窗体 |
+| `cornice` | `id,path,profile` | 世界坐标或可选 `parentRoof` 局部坐标；`profile_sweep` |
+| `chimney` | `id,position,width,depth,height` | 世界坐标或可选 `parentRoof` 局部坐标；薄壁筒体和压顶 |
+
+`parentRoof` 局部依附当前只支持 `flat`、`gable`、`hip`。烟囱不会在屋顶上执行布尔穿透；当前也没有通用 CSG、地形贴合或结构安全求解。每类完整字段和严格 JSON 示例见 `components/composite-components-second-batch.md`。
+
+#### 2.3.5 可交互灯具组件 (Light Component)
+
+<!-- rag-meta
+entity_type: light
+entity_name: interactive_light_fixture
+topic: schema
+status: supported
+authority: schema
+keywords: 灯具, 台灯, 灯泡, light, table_lamp, fixtureType, lightType
+-->
+
+以下对象是 `geometry.components` 数组中的台灯片段，不是完整 `.wild` 文件：
+
+```json
+{
+  "type": "light",
+  "id": "desk_lamp",
+  "fixtureType": "table_lamp",
+  "position": [1.5, 0.75, 1.0],
+  "lightType": "point",
+  "lowIntensity": 18,
+  "highIntensity": 65,
+  "initiallyOn": false,
+  "draggable": true
+}
+```
+
+`fixtureType` 是 `bulb/table_lamp` 外观类型；`lightType` 是 `point/spot` 光源算法。发光或可开关台灯必须使用 `geometry.components` 中的 `light`；旧版 `furniture.subtype: "lamp"` 不产生光照。`table_lamp.position` 是底座支承面锚点，`bulb.position` 是灯泡中心；台灯展开为灯泡、底座、灯杆和灯罩。外观和光照还可设置 `color`、`distance`、`height`、`shadeRadius`、`baseHeight` 与材质字段。
+
+右键循环关灯/弱光/强光；运行时级别不持久化，`initiallyOn` 只存初始状态。`draggable` 仅允许手动拖动，不提供自动吸附或碰撞校验。
 
 ---
 

@@ -43,7 +43,10 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertIn("墙、楼板、屋顶、门、玻璃使用角色独立的材质名", prompt)
         self.assertIn("玻璃材质必须显式给出 opacity", prompt)
         self.assertIn("不得只照抄建筑类型文档的最小组合而忽略组件文档", prompt)
-        self.assertIn("窗型 → opening + 玻璃材质", prompt)
+        self.assertIn("`cornice`、`chimney`、`light` 已由组合构件编译器支持", prompt)
+        self.assertIn("fixtureType=table_lamp", prompt)
+        self.assertIn("furniture.subtype=lamp 只是旧版静态家具占位", prompt)
+        self.assertIn("只能写入 `geometry.components`", prompt)
         self.assertIn("严禁发明 sofa、counter 等值", prompt)
 
     def test_generation_rag_query_includes_appearance_terms(self):
@@ -63,12 +66,13 @@ class PromptCompositionTest(unittest.TestCase):
         asset_queries = service._build_rag_queries("生成一个篮球", None)
         combined = "\n".join(queries)
 
-        self.assertEqual(len(queries), 7)
+        self.assertEqual(len(queries), 8)
         self.assertIn("构件-建筑类型速查矩阵", combined)
         self.assertIn("柱梁楼板桁架", combined)
         self.assertIn("墙体构件参数与围护规则", combined)
         self.assertIn("窗构件分类与组装规则", combined)
         self.assertIn("门构件分类与组装规则", combined)
+        self.assertIn("栏杆构件参数与路径规则", combined)
         self.assertIn("屋顶屋檐构件规则", combined)
         self.assertEqual(len(asset_queries), 1)
 
@@ -87,6 +91,7 @@ class PromptCompositionTest(unittest.TestCase):
                 {"doc_type": "component", "entity_type": "wall"},
                 {"doc_type": "component", "entity_type": "window"},
                 {"doc_type": "component", "entity_type": "door"},
+                {"doc_type": "component", "entity_type": "railing"},
                 {"doc_type": "component", "entity_type": "roof"},
             ],
         )

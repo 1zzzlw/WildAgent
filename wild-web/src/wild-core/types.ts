@@ -55,6 +55,222 @@ export type GeometryElement =
   | BodyParams
   | PrimitiveParams;
 
+/**
+ * 组合构件不是新的渲染原语。它们会在进入 wild-core 前被编译为
+ * GeometryElement[]，因此 renderer 不需要为 door/window/railing 注册 builder。
+ */
+export type ComponentSpec = (
+  | DoorComponent
+  | WindowComponent
+  | RailingComponent
+  | CanopyComponent
+  | BalconyComponent
+  | RampComponent
+  | BayWindowComponent
+  | CorniceComponent
+  | ChimneyComponent
+  | LightComponent
+) & {
+  /** 编辑器中是否允许通过三轴控件拖动；关闭时只允许属性面板编辑。 */
+  draggable?: boolean;
+};
+
+/** 门窗静态蓝图中持久化的交互配置；实际动画进度只存在于前端运行时。 */
+export interface OpeningInteractionSpec {
+  mode: 'swing' | 'slide';
+  hingeSide?: 'left' | 'right';
+  /** swing 模式的最大开角，单位为度。 */
+  openAngle?: number;
+  /** slide 模式的位移，单位为米；省略时按构件宽度计算。 */
+  openDistance?: number;
+  initiallyOpen?: boolean;
+}
+
+/** 编译器写入基础元素、Core 透传给 renderer 的内部交互描述。 */
+export interface OpeningElementBehavior {
+  kind: 'opening';
+  mode: 'swing' | 'slide';
+  pivot: Vec3;
+  closedPosition: Vec3;
+  closedRotation: Vec3;
+  openRotation?: Vec3;
+  openOffset?: Vec3;
+  initiallyOpen: boolean;
+}
+
+/** 灯具静态蓝图中持久化的光源参数；右键循环状态只存在于前端运行时。 */
+export interface LightComponent {
+  type: 'light';
+  id: string;
+  position: Vec3;
+  /** 灯具业务外观；与 point/spot 光源算法分开表达。 */
+  fixtureType?: 'bulb' | 'table_lamp';
+  lightType?: 'point' | 'spot';
+  color?: Color;
+  lowIntensity?: number;
+  highIntensity?: number;
+  distance?: number;
+  /** 聚光灯锥角，单位为度。 */
+  angle?: number;
+  initiallyOn?: boolean;
+  bulbRadius?: number;
+  baseHeight?: number;
+  height?: number;
+  shadeRadius?: number;
+  material?: string;
+  baseMaterial?: string;
+  shadeMaterial?: string;
+}
+
+/** 编译器写入灯泡网格、Core 透传给 renderer 的灯光交互描述。 */
+export interface LightElementBehavior {
+  kind: 'light';
+  lightType: 'point' | 'spot';
+  color: Color;
+  lowIntensity: number;
+  highIntensity: number;
+  distance: number;
+  angle: number;
+  initiallyOn: boolean;
+}
+
+export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior;
+
+export interface DoorComponent {
+  type: 'door';
+  id: string;
+  parentWall: string;
+  /** [沿父墙距离, 底部世界 Y, 墙体法向偏移] */
+  from: Vec3;
+  width: number;
+  height: number;
+  frameWidth?: number;
+  frameDepth?: number;
+  frameMaterial?: string;
+  leafMaterial?: string;
+  interaction?: OpeningInteractionSpec;
+}
+
+export interface WindowComponent {
+  type: 'window';
+  id: string;
+  parentWall: string;
+  /** [沿父墙距离, 底部世界 Y, 墙体法向偏移] */
+  from: Vec3;
+  width: number;
+  height: number;
+  frameWidth?: number;
+  frameDepth?: number;
+  verticalMullions?: number;
+  horizontalMullions?: number;
+  frameMaterial?: string;
+  glassMaterial?: string;
+  interaction?: OpeningInteractionSpec;
+}
+
+export interface RailingComponent {
+  type: 'railing';
+  id: string;
+  /** 栏杆基线的世界坐标路径，允许水平或随楼梯升降。 */
+  path: Vec3[];
+  height: number;
+  postSpacing?: number;
+  postRadius?: number;
+  railRadius?: number;
+  /** 横杆相对栏杆高度的比例，范围 (0, 1]，默认只有顶部扶手。 */
+  railLevels?: number[];
+  material?: string;
+  /** 指定后，path 使用父楼板左下角和顶面作为局部原点。 */
+  parentFloor?: string;
+}
+
+export interface CanopyComponent {
+  type: 'canopy';
+  id: string;
+  parentWall: string;
+  /** [沿父墙距离, 安装高度, 墙体法向偏移] */
+  from: Vec3;
+  width: number;
+  depth: number;
+  thickness: number;
+  supportCount?: number;
+  supportSize?: number;
+  material?: string;
+  supportMaterial?: string;
+}
+
+export interface BalconyComponent {
+  type: 'balcony';
+  id: string;
+  parentWall: string;
+  /** [沿父墙距离, 楼板顶面高度, 墙体法向偏移] */
+  from: Vec3;
+  width: number;
+  depth: number;
+  slabThickness: number;
+  railingHeight?: number;
+  postSpacing?: number;
+  material?: string;
+  railingMaterial?: string;
+}
+
+export interface RampComponent {
+  type: 'ramp';
+  id: string;
+  from: Vec3;
+  to: Vec3;
+  width: number;
+  thickness: number;
+  railingSides?: 'none' | 'left' | 'right' | 'both';
+  railingHeight?: number;
+  postSpacing?: number;
+  material?: string;
+  railingMaterial?: string;
+  /** 指定后，from/to 使用父楼板左下角和顶面作为局部原点。 */
+  parentFloor?: string;
+}
+
+export interface BayWindowComponent {
+  type: 'bay_window';
+  id: string;
+  parentWall: string;
+  /** [沿父墙距离, 窗洞底部高度, 墙体法向偏移] */
+  from: Vec3;
+  width: number;
+  height: number;
+  projectionDepth: number;
+  frameWidth?: number;
+  frameDepth?: number;
+  frameMaterial?: string;
+  glassMaterial?: string;
+}
+
+export interface CorniceComponent {
+  type: 'cornice';
+  id: string;
+  path: Vec3[];
+  profile: Array<[number, number]>;
+  closedProfile?: boolean;
+  material?: string;
+  /** 指定后，path 使用屋顶中心和计算后的屋面高度作为局部坐标。 */
+  parentRoof?: string;
+}
+
+export interface ChimneyComponent {
+  type: 'chimney';
+  id: string;
+  position: Vec3;
+  width: number;
+  depth: number;
+  height: number;
+  wallThickness?: number;
+  capHeight?: number;
+  material?: string;
+  capMaterial?: string;
+  /** 指定后，position 使用屋顶中心和计算后的屋面高度作为局部坐标。 */
+  parentRoof?: string;
+}
+
 // ========== 几何构件 ==========
 export interface WallParams {
   type: 'wall';
@@ -138,7 +354,7 @@ export interface RoofParams {
   material?: string;
 }
 
-// 管理门的开闭状态
+// 墙体开口与覆盖面；门窗开合由组合组件的 interaction 编译为运行时行为。
 export interface OpeningParams {
   type: 'opening';
   id: string;
@@ -148,6 +364,8 @@ export interface OpeningParams {
   height: number;
   style: 'rectangular' | 'arched' | 'gothic' | 'circular';
   material?: string;
+  /** 仅供组合编译器和 renderer 使用，不属于可手写的 WILD opening 字段。 */
+  _interaction?: InteractiveElementBehavior;
 }
 
 // 楼梯参数
@@ -232,6 +450,8 @@ export interface PrimitiveParams {
   profile?: Array<[number, number]>;
   path?: Vec3[];
   closedProfile?: boolean;
+  /** 仅供组合编译器和 renderer 使用。 */
+  _interaction?: InteractiveElementBehavior;
 }
 
 // ========== 材质系统 ==========
@@ -368,6 +588,8 @@ export interface Blueprint {
   geometry: {
     // 直接构件数组。存放场景中每个独立物体（墙、柱、地板、房顶、家具等），每个元素是一个 GeometryElement 联合类型，必须带唯一的 id。这是一般场景最主要的填充内容
     elements?: GeometryElement[];
+    // 高级组合构件。渲染前由 wild-compiler 展开为现有 GeometryElement。
+    components?: ComponentSpec[];
     // 构件模板字典。key → GeometryElement 的映射。模板本身不直接渲染，它定义了一个"原型构件"。与 instances 组合使用：同一模板可被多个实例引用，类似于"定义了一个柱子原型，然后在地图上放置 20 个"。避免重复定义相同的构件参数
     templates?: Record<string, GeometryElement>;
     // 模板实例数组。每个 InstanceRef 通过 ref 指向 templates 中的某个模板，并指定自己的 position/rotation/scale 和可选的 materialOverride（对模板中的某些材质做替换）。由 expander 展开为实际构件后交给几何构建器

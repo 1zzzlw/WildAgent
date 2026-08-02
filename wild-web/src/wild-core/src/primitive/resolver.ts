@@ -312,7 +312,10 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
 
     const wallFrom = (wall as any).from;
     const wallTo = (wall as any).to;
-    const wallCurve = (wall as any).curve;
+    const wallCurveValue = (wall as any).curve;
+    const wallCurve = Array.isArray(wallCurveValue) && wallCurveValue.length === 1
+      ? wallCurveValue[0]
+      : wallCurveValue;
 
     if (wallCurve && wallCurve.type === 'arc') {
       // 弧形墙体：from[0] 是开口左边缘的弧长，切孔和覆盖面使用中心弧长
@@ -320,7 +323,7 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       if (!wall._cutouts) wall._cutouts = [];
       wall._cutouts.push({
         localX: centerAlong,
-        localY: opening.from[1],  // 弧形墙：from[1] 是相对墙底偏移
+        localY: opening.from[1] - wallFrom[1],
         localW: opening.width,
         localH: opening.height,
       });
@@ -334,7 +337,7 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       const offset = opening.from[2] || 0;
       const worldX = center[0] + (radius + offset) * nx;
       const worldZ = center[2] + (radius + offset) * nz;
-      opening._worldPos = [worldX, wallFrom[1] + opening.from[1], worldZ];
+      opening._worldPos = [worldX, opening.from[1], worldZ];
       opening._wallRotation = Math.atan2(nx, nz);
     } else {
       // ─── 直线墙 ─────────────────────────────

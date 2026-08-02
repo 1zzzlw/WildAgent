@@ -22,7 +22,7 @@ keywords:
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
 > 用途：整理 window/opening/mullion 等组合形成窗型的规则。
 > RAG 关键词：window、opening、mullion、窗、槛窗、支摘窗、漏窗、欧式窗、现代窗、sashType、muntinPattern
-> 能力边界：当前 WILD v1.1 没有独立 `window`、`mullion` 类型，`opening` 也不能引用屋顶。本文已整体标为 `proposed`，用于保留窗型需求，不参与默认正式生成；可执行降级方式见 `engine-capability-boundaries.md`。
+> 能力边界：`geometry.elements` 没有 `window`、`mullion` 类型；`geometry.components` 只支持基础静态 `window` 及横竖窗棂数量，不支持本文的 `sashType`、`muntinPattern` 和开启机制，`opening` 也不能引用屋顶。本文仍整体标为 `proposed`，用于保留窗型需求，不参与默认正式生成；可执行基础窗语法见 `engine-capability-boundaries.md`。
 
 ---
 ## X.3 窗分类（核心）

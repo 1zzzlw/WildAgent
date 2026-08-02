@@ -11,6 +11,7 @@ import type {
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams,
   OpeningParams, StairParams, FurnitureParams, DenseBrickParams, BodyParams,
   PrimitiveParams,
+  InteractiveElementBehavior,
   WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
   ScriptCondition, ActionData,
@@ -23,6 +24,7 @@ export type {
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams, OpeningParams, StairParams,
   FurnitureParams, DenseBrickParams, BodyParams,
   PrimitiveParams,
+  InteractiveElementBehavior,
   WeatheringEffect, MossEffect, EdgeWearEffect, GrainEffect, EffectLayer,
   ConstraintData, HingeConstraint, SliderConstraint,
   ScriptCondition, ActionData,
@@ -55,6 +57,10 @@ export interface MeshData {
    * viewer 无需猜测。
    */
   interactive?: boolean;
+  /** renderer 用于右键开合门窗的确定性变换。 */
+  interaction?: InteractiveElementBehavior;
+  /** 编辑器可将同一组合构件的网格作为整体拖动。 */
+  draggable?: boolean;
 }
 
 /** 引擎输出的材质参数 */

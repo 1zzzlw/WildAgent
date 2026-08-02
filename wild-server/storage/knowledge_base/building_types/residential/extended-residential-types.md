@@ -38,9 +38,9 @@ authority: engine
 keywords: 居住建筑降级, residential fallback, WILD v1.1, opening, primitive
 -->
 
-当前正式元素类型以引擎注册表为准。居住建筑外壳优先使用 `floor`、`wall`、`opening`、`roof`，骨架使用 `column`、`beam`，层间交通使用 `stair`，特殊静态外形使用 `primitive`。门窗都先表达为引用 `parentWall` 的 `opening`；需要门扇、窗框、格栅、栏杆、雨棚、烟囱或坡道外观时，用 `primitive`、`beam`、`column` 组合近似，不能输出不存在的专用类型。
+当前正式元素类型以引擎注册表为准。居住建筑外壳优先使用 `floor`、`wall`、`opening`、`roof`，骨架使用 `column`、`beam`，层间交通使用 `stair`，特殊静态外形使用 `primitive`。标准静态门、窗和显式路径栏杆写入 `geometry.components`；雨棚、烟囱、坡道和其他未接入组件继续用 `primitive`、`beam`、`column` 组合近似。
 
-原文中的 `terrain`、`door`、`window`、`mullion`、`railing`、`ramp`、`canopy`、`chimney` 和 `cornice` 均不能写入当前 `geometry.elements`。`column` 只有圆形参数化柱，方柱改用 `primitive.shape: box`；`roof` 用 `height` 表达起坡高度，不使用不存在的 `slope` 字段；`floor.autoRailing`、`stair.autoRailing` 也不是当前字段。涉及电梯、消防、无障碍、挡土、隔声、防爆或设备工艺时，只能表达空间外形，不得声称完成专业设计。
+原文中的 `terrain`、`door`、`window`、`mullion`、`railing`、`ramp`、`canopy`、`chimney` 和 `cornice` 均不能写入当前 `geometry.elements`。其中只有 `door`、`window`、`railing` 可以写入 `geometry.components`，窗棂通过 window 的数量参数生成。`column` 只有圆形参数化柱，方柱改用 `primitive.shape: box`；`roof` 用 `height` 表达起坡高度，不使用不存在的 `slope` 字段；`floor.autoRailing`、`stair.autoRailing` 也不是当前字段。涉及电梯、消防、无障碍、挡土、隔声、防爆或设备工艺时，只能表达空间外形，不得声称完成专业设计。
 
 ## 联排别墅
 
@@ -66,7 +66,7 @@ authority: maintainer
 keywords: 联排别墅组合, row house assembly, wall, floor, opening, roof
 -->
 
-先为单元生成 `floor`，再用连续的 `wall` 表达左右山墙和前后围护；逐层添加 `floor`、本层 `wall` 与引用外墙的 `opening`，用 `stair` 连接相邻标高，最后用一个连续 `gable` 屋顶或各单元独立 `gable` 屋顶形成重复节奏。阳台使用悬挑 `floor`，栏杆用细 `primitive box` 或 `beam` 显式排列。需要批量复制单元时使用合法的 `geometry.templates` 字典和带 `ref` 的 `geometry.instances`，不要沿用原文中的数组式模板伪语法。
+先为单元生成 `floor`，再用连续的 `wall` 表达左右山墙和前后围护；逐层添加 `floor`、本层 `wall` 与引用外墙的门窗组件，用 `stair` 连接相邻标高，最后用一个连续 `gable` 屋顶或各单元独立 `gable` 屋顶形成重复节奏。阳台使用悬挑 `floor`，栏杆使用带显式世界坐标 `path` 的 `geometry.components.railing`。需要批量复制单元时使用合法的 `geometry.templates` 字典和带 `ref` 的 `geometry.instances`，不要沿用原文中的数组式模板伪语法。
 
 ### 联排别墅的当前能力降级
 
@@ -79,7 +79,7 @@ authority: engine
 keywords: 联排别墅降级, shared wall, balcony fallback, primitive
 -->
 
-当前引擎不会理解“共用山墙”的产权或结构语义，只会渲染输入墙体；相邻单元应复用同一条边界墙坐标，避免生成两面重叠墙。车库门、院门和住宅门均先用 `opening` 表达，门扇外观用 `primitive` 近似。玻璃栏杆、屋面烟囱和入口雨棚没有自动 resolver，必须显式组合或省略，且不能使用 `autoRailing`、`penetrateRoof`、`parentOpening` 等未支持字段。
+当前引擎不会理解“共用山墙”的产权或结构语义，只会渲染输入墙体；相邻单元应复用同一条边界墙坐标，避免生成两面重叠墙。标准矩形车库门、院门和住宅门可用 `geometry.components.door` 表达，但目前只有单个静态覆盖面和门框。玻璃栏杆可以使用基础 railing 的路径、尺寸和材质近似；屋面烟囱和入口雨棚仍需显式组合或省略，且不能使用 `autoRailing`、`penetrateRoof`、`parentOpening` 等未支持字段。
 
 ## 叠拼别墅
 
@@ -158,7 +158,7 @@ authority: engine
 keywords: 保障房降级, elevator fallback, corridor, WILD constraints
 -->
 
-当前没有电梯、管井设备、预制叠合板、消防分区、避难层或住宅单元语义。可以用 `wall` 表达电梯井和管井外壳，但不能声称电梯可运行。重复阳台的栏杆需显式使用受支持构件近似；防盗门、推拉窗和玻璃栏板只是视觉需求，不是可直接写入的 `type` 或枚举。
+当前没有电梯、管井设备、预制叠合板、消防分区、避难层或住宅单元语义。可以用 `wall` 表达电梯井和管井外壳，但不能声称电梯可运行。重复阳台的栏杆可使用 `geometry.components.railing`；防盗、推拉和玻璃栏板等专业语义仍只是视觉需求，不是当前受支持的枚举或性能结论。
 
 ## 公寓系列
 
@@ -275,7 +275,7 @@ authority: engine
 keywords: 宿舍降级, bathroom equipment, railing fallback, temporary building
 -->
 
-当前 WILD 不表达房间人数、隔声分贝、洁具、防水构造、军械存储安全或临时结构连接节点。外廊栏杆和雨棚需要用 `primitive`、`beam`、`column` 显式近似，门窗开启方式不受支持。工地临建的材料名只控制视觉参数，不能证明夹芯板耐火、保温或可拆装性能。
+当前 WILD 不表达房间人数、隔声分贝、洁具、防水构造、军械存储安全或临时结构连接节点。外廊栏杆可使用显式路径 `geometry.components.railing`，雨棚仍需用 `primitive`、`beam`、`column` 近似，门窗开启方式不受支持。工地临建的材料名只控制视觉参数，不能证明夹芯板耐火、保温或可拆装性能。
 
 ## 旅居度假居住系列
 

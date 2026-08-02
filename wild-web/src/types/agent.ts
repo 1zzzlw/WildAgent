@@ -122,6 +122,8 @@ export interface NetworkErrorResponse {
 export interface BlueprintGeneratedResponse {
   type: 'blueprint_generated'
   request_id: string
+  /** 生成请求所属会话；旧后端可能不提供，前端会从 filename 回退推断。 */
+  session_id?: string
   filename: string
   file_url: string
 }

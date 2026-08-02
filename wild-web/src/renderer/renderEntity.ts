@@ -15,6 +15,7 @@
 
 import * as THREE from 'three'
 import type { ReconstructedEntity, MeshData } from '../types/scene'
+import type { LightElementBehavior } from '../wild-core/types'
 import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
 
@@ -61,9 +62,10 @@ function createMeshFromMeshData(
   // 2. 获取或创建材质
   const matParams = materialParams[materialIndex]
   const hasVertexColors = !!meshData.vertexColors
-  const material = matParams
+  let material = matParams
     ? materialCache.getOrCreate(meshData.materialRef, matParams, hasVertexColors)
     : new THREE.MeshStandardMaterial({ color: 0x808080 }) // 默认灰色
+  if (meshData.interaction?.kind === 'light') material = material.clone()
   
   // 3. 创建 Mesh
   const mesh = new THREE.Mesh(geometry, material)
@@ -82,11 +84,215 @@ function createMeshFromMeshData(
   mesh.userData.elementId = meshData.elementId
   mesh.userData.materialRef = meshData.materialRef
   mesh.userData.interactive = meshData.interactive || false
+  mesh.userData.draggable = meshData.draggable || false
+  if (meshData.interaction) {
+    mesh.userData.interaction = {
+      ...meshData.interaction,
+      closedPosition: [...meshData.transform.position],
+      closedRotation: [...meshData.transform.rotation],
+    }
+    if (meshData.interaction.kind === 'opening') {
+      mesh.userData.interactionOpen = false
+      if (meshData.interaction.initiallyOpen) setOpeningInteractionProgress(mesh, 1)
+    } else {
+      mesh.userData.ownsMaterial = true
+      initializeLightInteraction(mesh, meshData.interaction)
+    }
+  }
   
   // 7. 设置名称（用于调试和选择）
   mesh.name = meshData.elementId || 'unnamed'
   
   return mesh
+}
+
+/** 右键命中门窗覆盖面时切换开合；动画每帧通知按需渲染器重绘。 */
+export function toggleOpeningInteraction(
+  object: THREE.Object3D,
+  requestRender: () => void = () => {},
+): boolean {
+  if (
+    !(object instanceof THREE.Mesh)
+    || object.userData.interaction?.kind !== 'opening'
+  ) return false
+  const opening = object as THREE.Mesh
+  const currentTarget = opening.userData.interactionTargetOpen
+    ?? opening.userData.interactionOpen
+    ?? false
+  const targetOpen = !currentTarget
+  const token = (opening.userData.interactionAnimationToken || 0) + 1
+  opening.userData.interactionAnimationToken = token
+  opening.userData.interactionTargetOpen = targetOpen
+  const startedAt = performance.now()
+  const from = opening.userData.interactionProgress || 0
+  const to = targetOpen ? 1 : 0
+  // 按剩余路程缩放时长，反向切换不会突然变慢；完整开合约 300ms。
+  const duration = 300 * Math.max(0.15, Math.abs(to - from))
+
+  const tick = (now: number) => {
+    if (opening.userData.interactionAnimationToken !== token) return
+    const linear = Math.min(1, (now - startedAt) / duration)
+    const eased = linear * linear * (3 - 2 * linear)
+    setOpeningInteractionProgress(opening, from + (to - from) * eased)
+    requestRender()
+    if (linear < 1) requestAnimationFrame(tick)
+    else {
+      opening.userData.interactionOpen = targetOpen
+      opening.userData.interactionTargetOpen = targetOpen
+    }
+  }
+  requestRender()
+  requestAnimationFrame(tick)
+  return true
+}
+
+/** 根据运行时交互类型分派右键操作。 */
+export function toggleRuntimeInteraction(
+  object: THREE.Object3D,
+  requestRender: () => void = () => {},
+): boolean {
+  if (!(object instanceof THREE.Mesh)) return false
+  if (object.userData.interaction?.kind === 'opening') {
+    return toggleOpeningInteraction(object, requestRender)
+  }
+  if (object.userData.interaction?.kind === 'light') {
+    return toggleLightInteraction(object, requestRender)
+  }
+  return false
+}
+
+/** 右键让灯具按“关闭 → 弱光 → 强光 → 关闭”循环，并平滑过渡亮度。 */
+export function toggleLightInteraction(
+  object: THREE.Object3D,
+  requestRender: () => void = () => {},
+): boolean {
+  if (
+    !(object instanceof THREE.Mesh)
+    || object.userData.interaction?.kind !== 'light'
+  ) return false
+  const mesh = object as THREE.Mesh
+  const interaction = mesh.userData.interaction as LightElementBehavior
+  const currentTarget = mesh.userData.lightTargetLevel
+    ?? mesh.userData.lightLevel
+    ?? (interaction.initiallyOn ? 1 : 0)
+  const targetLevel = (currentTarget + 1) % 3
+  const from = currentLightIntensity(mesh)
+  const to = lightIntensityAt(interaction, targetLevel)
+  const token = (mesh.userData.lightAnimationToken || 0) + 1
+  mesh.userData.lightAnimationToken = token
+  mesh.userData.lightTargetLevel = targetLevel
+  const startedAt = performance.now()
+  const duration = 220
+
+  const tick = (now: number) => {
+    if (mesh.userData.lightAnimationToken !== token) return
+    const linear = Math.min(1, (now - startedAt) / duration)
+    const eased = linear * linear * (3 - 2 * linear)
+    setLightIntensity(mesh, from + (to - from) * eased)
+    requestRender()
+    if (linear < 1) requestAnimationFrame(tick)
+    else {
+      mesh.userData.lightLevel = targetLevel
+      mesh.userData.lightTargetLevel = targetLevel
+    }
+  }
+  requestRender()
+  requestAnimationFrame(tick)
+  return true
+}
+
+function initializeLightInteraction(
+  mesh: THREE.Mesh,
+  interaction: LightElementBehavior,
+): void {
+  const color = new THREE.Color().setRGB(...interaction.color)
+  const light = interaction.lightType === 'spot'
+    ? new THREE.SpotLight(
+        color,
+        0,
+        interaction.distance,
+        THREE.MathUtils.degToRad(interaction.angle),
+        0.35,
+        1.5,
+      )
+    : new THREE.PointLight(color, 0, interaction.distance, 1.5)
+  light.name = `${mesh.name || mesh.userData.elementId}:LightSource`
+  light.userData.fixtureLight = true
+  light.castShadow = false
+  if (light instanceof THREE.SpotLight) {
+    light.target.position.set(0, -1, 0)
+    mesh.add(light.target)
+  }
+  mesh.add(light)
+  const initialLevel = interaction.initiallyOn ? 1 : 0
+  mesh.userData.lightLevel = initialLevel
+  mesh.userData.lightTargetLevel = initialLevel
+  setLightIntensity(mesh, lightIntensityAt(interaction, initialLevel))
+}
+
+function lightIntensityAt(interaction: LightElementBehavior, level: number): number {
+  if (level === 1) return interaction.lowIntensity
+  if (level === 2) return interaction.highIntensity
+  return 0
+}
+
+function currentLightIntensity(mesh: THREE.Mesh): number {
+  return findFixtureLight(mesh)?.intensity || 0
+}
+
+function setLightIntensity(mesh: THREE.Mesh, intensity: number): void {
+  const light = findFixtureLight(mesh)
+  if (light) light.intensity = Math.max(0, intensity)
+  const interaction = mesh.userData.interaction as LightElementBehavior
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  for (const material of materials) {
+    if (!(material instanceof THREE.MeshStandardMaterial)) continue
+    material.emissive.setRGB(...interaction.color)
+    material.emissiveIntensity = intensity <= 0
+      ? 0.03
+      : Math.min(2, 0.3 + intensity / Math.max(interaction.highIntensity, 1) * 1.4)
+    material.needsUpdate = true
+  }
+}
+
+function findFixtureLight(mesh: THREE.Mesh): THREE.Light | undefined {
+  return mesh.children.find(child => child.userData.fixtureLight) as THREE.Light | undefined
+}
+
+function setOpeningInteractionProgress(mesh: THREE.Mesh, progress: number): void {
+  const interaction = mesh.userData.interaction
+  if (!interaction) return
+  const value = Math.max(0, Math.min(1, progress))
+  const closedPosition = interaction.closedPosition as [number, number, number]
+  const closedRotation = interaction.closedRotation as [number, number, number]
+
+  if (interaction.mode === 'swing' && interaction.openRotation) {
+    const deltaY = (interaction.openRotation[1] - closedRotation[1]) * value
+    const dx = closedPosition[0] - interaction.pivot[0]
+    const dz = closedPosition[2] - interaction.pivot[2]
+    const cosine = Math.cos(deltaY)
+    const sine = Math.sin(deltaY)
+    mesh.position.set(
+      interaction.pivot[0] + dx * cosine + dz * sine,
+      closedPosition[1],
+      interaction.pivot[2] - dx * sine + dz * cosine,
+    )
+    mesh.rotation.set(
+      closedRotation[0],
+      closedRotation[1] + deltaY,
+      closedRotation[2],
+    )
+  } else {
+    const offset = interaction.openOffset || [0, 0, 0]
+    mesh.position.set(
+      closedPosition[0] + offset[0] * value,
+      closedPosition[1] + offset[1] * value,
+      closedPosition[2] + offset[2] * value,
+    )
+    mesh.rotation.fromArray(closedRotation)
+  }
+  mesh.userData.interactionProgress = value
+  mesh.userData.interactionOpen = value >= 0.999
 }
 
 function createInstancedMesh(
@@ -252,6 +458,10 @@ export function updateSceneGroup(
     // 释放资源
     if (child instanceof THREE.Mesh) {
       child.geometry.dispose()
+      if (child.userData.ownsMaterial) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach(material => material.dispose())
+      }
       // 注意：材质由 materialCache 管理，不在这里释放
     }
   }
