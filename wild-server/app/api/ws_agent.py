@@ -32,6 +32,7 @@ Agent WebSocket API
   心跳:
   pong:           { "type": "pong", "timestamp": 1234567890 }
   network_error:  { "type": "network_error", "error": "心跳超时，连接即将关闭", "reason": "heartbeat_timeout" }
+  presence_update:{ "type": "presence_update", "online_count": 2, "clients": [{ "masked_ip": "113.96.*.*", "region": "广东省", ... }] }
 
 心跳机制：
 - 前端每 15s 发送 ping，后端立即回复 pong
@@ -50,6 +51,7 @@ from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from app.services.agent_service import agent_service
+from app.extensions.presence import presence_service
 from app.utils.blueprint_parser import save_blueprint_file_as, SCENES_DIR
 from app.utils.ws_heartbeat import WebSocketHeartbeat
 
@@ -126,6 +128,7 @@ async def agent_websocket(ws: WebSocket):
             pass
 
     await heartbeat.start(on_heartbeat_timeout)
+    await presence_service.connect(ws)
 
     # ---------- 消息处理状态 ----------
     # 锁保护真正的处理区；active_message_task 让接收循环能立即拒绝并发请求。
@@ -207,6 +210,7 @@ async def agent_websocket(ws: WebSocket):
             except asyncio.CancelledError:
                 pass
         await heartbeat.stop()
+        await presence_service.disconnect(ws)
 
 
 async def _handle_user_message(ws: WebSocket, data: dict):

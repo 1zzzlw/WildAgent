@@ -17,6 +17,7 @@ const renderEntityPath = join(root, 'src/renderer/renderEntity.ts').replaceAll('
 const componentDragPath = join(root, 'src/wild/componentDrag.ts').replaceAll('\\', '/')
 const agentBridgePath = join(root, 'src/agent/agentBridge.ts').replaceAll('\\', '/')
 const agentStorePath = join(root, 'src/stores/agentStore.ts').replaceAll('\\', '/')
+const presenceStorePath = join(root, 'src/extensions/presence/store.ts').replaceAll('\\', '/')
 const geometryEvaluationCases = JSON.parse(await readFile(
   join(root, 'scripts/fixtures/component-geometry-eval-cases.json'),
   'utf8',
@@ -33,6 +34,7 @@ export { createSceneGroupFromEntity, toggleOpeningInteraction, toggleRuntimeInte
 export { createComponentTranslationChanges } from 'wildsrc:component-drag';
 export { AgentBridge, agentBridge } from 'wildsrc:agent-bridge';
 export { useAgentStore } from 'wildsrc:agent-store';
+export { usePresenceStore } from 'wildsrc:presence-store';
 export { BoxGeometry, Mesh, MeshBasicMaterial, PointLight, SpotLight } from 'three';
 export { createPinia, setActivePinia } from 'pinia';
 export { reactive } from 'vue';
@@ -57,6 +59,7 @@ try {
         if (id === 'wildsrc:component-drag') return componentDragPath
         if (id === 'wildsrc:agent-bridge') return agentBridgePath
         if (id === 'wildsrc:agent-store') return agentStorePath
+        if (id === 'wildsrc:presence-store') return presenceStorePath
       },
       load(id) {
         if (id === '\0virtual:wild-component-compiler') return virtualEntry
@@ -99,6 +102,7 @@ try {
   assertOpeningAnimationFrames(compiler)
   assertComponentTranslation(compiler)
   await assertGeneratedBlueprintLoadsFreshFile(compiler)
+  assertPresenceUpdate(compiler)
   await assertExplicitServerSave(compiler)
   console.log('Component compiler check passed: 10 component types, attachments, cache and interaction.')
 } finally {
@@ -502,6 +506,41 @@ async function assertGeneratedBlueprintLoadsFreshFile(compiler) {
   } finally {
     if (originalFetch === undefined) delete globalThis.fetch
     else globalThis.fetch = originalFetch
+    if (originalLocalStorage === undefined) delete globalThis.localStorage
+    else globalThis.localStorage = originalLocalStorage
+  }
+}
+
+function assertPresenceUpdate(compiler) {
+  const originalLocalStorage = globalThis.localStorage
+  const storedValues = new Map()
+  globalThis.localStorage = {
+    getItem: key => storedValues.get(key) ?? null,
+    setItem: (key, value) => storedValues.set(key, String(value)),
+    removeItem: key => storedValues.delete(key),
+    clear: () => storedValues.clear(),
+  }
+
+  try {
+    compiler.setActivePinia(compiler.createPinia())
+    const presenceStore = compiler.usePresenceStore()
+    const bridge = new compiler.AgentBridge('ws://localhost/ws/agent')
+    bridge.handleMessage({
+      type: 'presence_update',
+      online_count: 2,
+      clients: [
+        { id: 'client_a', masked_ip: '113.96.*.*', region: '广东省', connected_at: 1 },
+        { id: 'client_b', masked_ip: '1.2.*.*', region: '北京市', connected_at: 2 },
+      ],
+    })
+    assertEqual(presenceStore.onlineCount, 2, '在线人数没有写入 Presence Store')
+    assertEqual(presenceStore.onlineClients.length, 2, '在线列表没有写入 Presence Store')
+    assertEqual(presenceStore.onlineClients[0].masked_ip, '113.96.*.*', '前端在线列表 IP 不是脱敏值')
+
+    bridge.disconnect()
+    assertEqual(presenceStore.onlineCount, 0, 'WebSocket 断开后在线人数没有归零')
+    assertEqual(presenceStore.onlineClients.length, 0, 'WebSocket 断开后在线列表没有清空')
+  } finally {
     if (originalLocalStorage === undefined) delete globalThis.localStorage
     else globalThis.localStorage = originalLocalStorage
   }

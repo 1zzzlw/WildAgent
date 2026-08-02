@@ -1,0 +1,14 @@
+# GeoIP 数据目录
+
+GeoIP 是 Presence 在线列表的可选增强，不属于 Agent、RAG 或 Blueprint 主链路。没有数据库时不需要做任何配置：在线人数、脱敏 IP 和连接时间仍然正常，公网地区显示“地区库未配置”。
+
+如果需要显示省份：
+
+1. 在 MaxMind 官网注册免费账号并接受 GeoLite 许可。
+2. 进入下载页面，下载 GeoLite2 City 的 MMDB 压缩包。
+3. 解压并找到 `GeoLite2-City.mmdb`，复制到本目录。
+4. 重启后端；默认路径无需再修改 `.env`。
+5. 如果想把数据库放在其他目录，通过 `PRESENCE__GEOIP_DB` 指向它。
+6. 按 GeoLite 许可要求定期更新数据库。
+
+`.mmdb` 不提交 Git，客户端 IP 也不会发送给第三方查询服务。设置 `PRESENCE__ENABLED=false` 可以连同后端统计和前端入口一起关闭整个扩展。

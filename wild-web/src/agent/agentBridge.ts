@@ -43,6 +43,7 @@
 import { useAgentStore } from '../stores/agentStore'
 import { useSceneStore } from '../stores/sceneStore'
 import { useSelectionStore } from '../stores/selectionStore'
+import { usePresenceStore } from '../extensions/presence/store'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { createUserMessageRequest } from './protocol'
 import type { AgentMessage, BlueprintGeneratedResponse } from '../types/agent'
@@ -98,8 +99,10 @@ export class AgentBridge {
   /** 初始化连接 */
   connect() {
     const agentStore = useAgentStore()
+    const presenceStore = usePresenceStore()
 
     this.manualDisconnect = false
+    presenceStore.setConnectionStatus('connecting')
     agentStore.setConnectionStatus('connecting')
 
     try {
@@ -107,6 +110,7 @@ export class AgentBridge {
 
       this.ws.onopen = () => {
         console.log('[AgentBridge] WebSocket 已连接')
+        presenceStore.setConnectionStatus('connected')
         agentStore.setConnectionStatus('connected')
         agentStore.clearNetworkError()
 
@@ -151,6 +155,9 @@ export class AgentBridge {
       this.ws.onclose = () => {
         console.log('[AgentBridge] WebSocket 已断开')
         this.stopHeartbeat()
+        presenceStore.setConnectionStatus(
+          this.manualDisconnect ? 'disconnected' : 'reconnecting',
+        )
 
         if (!this.manualDisconnect) {
           // 不在此处设 disconnected，交给 scheduleReconnect 统一管理状态
@@ -226,7 +233,9 @@ export class AgentBridge {
     }
 
     const agentStore = useAgentStore()
+    const presenceStore = usePresenceStore()
     agentStore.setConnectionStatus('disconnected')
+    presenceStore.setConnectionStatus('disconnected')
     agentStore.clearNetworkError()
   }
 
@@ -277,6 +286,7 @@ export class AgentBridge {
   /** 处理后端返回的业务消息 */
   private handleMessage(message: AgentMessage) {
     const agentStore = useAgentStore()
+    const presenceStore = usePresenceStore()
 
     switch (message.type) {
       case 'agent_step':
@@ -322,6 +332,10 @@ export class AgentBridge {
         agentStore.setProcessing(false)
         break
 
+      case 'presence_update':
+        presenceStore.updatePresence(message.online_count, message.clients)
+        break
+
       case 'error':
         agentStore.addSystemMessage(`错误: ${message.error}`)
         agentStore.setProcessing(false)
@@ -333,7 +347,9 @@ export class AgentBridge {
   private handleNetworkError(error: string) {
     console.warn('[AgentBridge] 收到网络错误:', error)
     const agentStore = useAgentStore()
+    const presenceStore = usePresenceStore()
     agentStore.setNetworkError(error)
+    presenceStore.setConnectionStatus('disconnected')
     agentStore.addSystemMessage(`⚠️ 网络异常: ${error}`)
   }
 
@@ -535,13 +551,17 @@ export class AgentBridge {
     if (this.reconnectAttempts >= RECONNECT_CONFIG.maxAttempts) {
       console.warn('[AgentBridge] 已达最大重试次数，停止重连')
       const agentStore = useAgentStore()
+      const presenceStore = usePresenceStore()
       agentStore.setConnectionStatus('disconnected')
+      presenceStore.setConnectionStatus('disconnected')
       agentStore.setNetworkError('无法连接到服务器，请检查网络后手动重连')
       return
     }
 
     const agentStore = useAgentStore()
+    const presenceStore = usePresenceStore()
     agentStore.setConnectionStatus('reconnecting')
+    presenceStore.setConnectionStatus('reconnecting')
 
     // 指数退避 + 抖动
     const delay = Math.min(

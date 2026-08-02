@@ -27,6 +27,7 @@
 
 import type { ScenePatch } from './scenePatch'
 import type { SceneSummary } from './scene'
+import type { PresenceUpdateResponse } from '../extensions/presence/types'
 
 // 重新导出SceneSummary以便在protocol.ts中使用
 export type { SceneSummary }
@@ -46,6 +47,7 @@ export type AgentMessage =
   | PingMessage
   | PongMessage
   | NetworkErrorResponse
+  | PresenceUpdateResponse
 
 export interface UserMessageRequest {
   type: 'user_message'

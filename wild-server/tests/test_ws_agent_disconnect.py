@@ -10,6 +10,7 @@ from app.api.ws_agent import (
     _process_user_message_safely,
     agent_websocket,
 )
+from app.extensions.presence import WebSocketConnectionRegistry
 from app.services.agent_service import QueryResult
 
 
@@ -90,6 +91,42 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(heartbeat.is_processing)
         heartbeat.touch.assert_called_once_with()
+
+
+class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
+    async def test_connect_and_disconnect_broadcast_online_count(self):
+        registry = WebSocketConnectionRegistry()
+        first = Mock()
+        first.send_json = AsyncMock()
+        second = Mock()
+        second.send_json = AsyncMock()
+
+        await registry.connect(first, client_ip="113.96.1.8", region="广东省")
+        self.assertEqual(registry.online_count, 1)
+        first_payload = first.send_json.await_args_list[-1].args[0]
+        self.assertEqual(first_payload["online_count"], 1)
+        self.assertEqual(first_payload["clients"][0]["masked_ip"], "113.96.*.*")
+        self.assertEqual(first_payload["clients"][0]["region"], "广东省")
+
+        await registry.connect(second, client_ip="1.2.3.4", region="北京市")
+        self.assertEqual(registry.online_count, 2)
+        self.assertEqual(first.send_json.await_args_list[-1].args[0]["online_count"], 2)
+        self.assertEqual(second.send_json.await_args_list[-1].args[0]["online_count"], 2)
+
+        await registry.disconnect(second)
+        self.assertEqual(registry.online_count, 1)
+        self.assertEqual(first.send_json.await_args_list[-1].args[0]["online_count"], 1)
+
+    async def test_disabled_extension_does_not_touch_websocket(self):
+        registry = WebSocketConnectionRegistry(enabled=False)
+        ws = Mock()
+        ws.send_json = AsyncMock()
+
+        await registry.connect(ws, client_ip="113.96.1.8", region="广东省")
+        await registry.disconnect(ws)
+
+        self.assertEqual(registry.online_count, 0)
+        ws.send_json.assert_not_awaited()
 
 
 class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):

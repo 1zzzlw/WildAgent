@@ -6,6 +6,7 @@
 wild-server/storage/chroma/
 wild-server/storage/scenes/
 wild-server/storage/sessions/
+wild-server/storage/geoip/*.mmdb
 
 # Node
 node_modules/

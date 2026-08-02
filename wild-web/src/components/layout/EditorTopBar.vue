@@ -43,6 +43,8 @@
         <span v-if="sceneStore.document.dirty" class="dirty-indicator">*</span>
       </span>
     </div>
+
+    <OnlinePresence />
   </div>
 </template>
 
@@ -54,6 +56,7 @@ import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useUIStore } from '../../stores/uiStore'
+import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
 
 const sceneStore = useSceneStore()
 const historyStore = useHistoryStore()

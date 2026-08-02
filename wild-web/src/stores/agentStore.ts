@@ -26,7 +26,12 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ChatMessage, AgentSession, ConnectionStatus, SessionInfo } from '../types/agent'
+import type {
+  ChatMessage,
+  AgentSession,
+  ConnectionStatus,
+  SessionInfo,
+} from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
