@@ -116,8 +116,8 @@ def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str
 2. 规划构件：先用 building_types 文档确定主体组合，再用 recipes/component-building-matrix 确定需要哪些组件系统
 3. 组件选型（建筑生成时强制）：从已检索的 components/windows、components/doors、components/roofs-and-eaves 或风格速查片段中，为窗、门、屋顶分别选择具体变体；不得只照抄建筑类型文档的最小组合而忽略组件文档
 4. 组件落地：当前 Core 可直接渲染 wall、floor、column、beam、roof、opening、stair、furniture、body、primitive。`door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney`、`light` 已由组合构件编译器支持，但只能写入 `geometry.components`，绝不能写入 `geometry.elements`：
-   - door → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使门可开合**，默认 `{"mode": "swing", "hingeSide": "left", "openAngle": 90}`；可选 frameWidth/frameDepth/frameMaterial/leafMaterial
-   - window → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使窗可开合**，默认 `{"mode": "swing", "hingeSide": "left", "openAngle": 60}`；可选 verticalMullions/horizontalMullions/frameWidth/frameDepth/frameMaterial/glassMaterial
+   - door → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使门可开合**，默认 `{{"mode": "swing", "hingeSide": "left", "openAngle": 90}}`；可选 frameWidth/frameDepth/frameMaterial/leafMaterial
+   - window → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使窗可开合**，默认 `{{"mode": "swing", "hingeSide": "left", "openAngle": 60}}`；可选 verticalMullions/horizontalMullions/frameWidth/frameDepth/frameMaterial/glassMaterial
    - railing → 必填 id、path、height；可选 postSpacing/postRadius/railRadius/railLevels/material
    - canopy/balcony/bay_window → 必须提供 parentWall、from 和各自尺寸字段；**balcony 的 slabThickness 是必填项**
    - ramp → 必填 id、from、to、width、thickness；cornice → 必填 id、path、profile
