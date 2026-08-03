@@ -95,11 +95,13 @@
         "from": { "$ref": "#/$defs/vec3" },
         "width": { "type": "number", "exclusiveMinimum": 0 },
         "height": { "type": "number", "exclusiveMinimum": 0 },
-        "frameWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameWidth": { "type": "number", "minimum": 0 },
         "frameDepth": { "type": "number", "exclusiveMinimum": 0 },
         "frameMaterial": { "type": "string" },
         "leafMaterial": { "type": "string" },
         "interaction": { "$ref": "#/$defs/openingInteractionSpec" },
+        "openingStyle": { "enum": ["rectangular", "arched"] },
+        "doorStyle": { "enum": ["single", "double"] },
         "draggable": { "type": "boolean" }
       }
     },

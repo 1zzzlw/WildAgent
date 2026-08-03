@@ -193,9 +193,11 @@ export function assertFrameDimensions(
   frameWidth: number,
   frameDepth: number,
 ): void {
-  assertPositive(frameWidth, 'frameWidth')
+  if (frameWidth < 0 || !Number.isFinite(frameWidth)) {
+    throw new ComponentCompileError('frameWidth 必须为非负有限数字', 'frameWidth')
+  }
   assertPositive(frameDepth, 'frameDepth')
-  if (frameWidth * 2 >= component.width || frameWidth >= component.height) {
+  if (frameWidth > 0 && (frameWidth * 2 >= component.width || frameWidth >= component.height)) {
     throw new ComponentCompileError(
       `组件 "${component.id}" 的 frameWidth 必须小于宽度的一半且小于高度`,
       'frameWidth',

@@ -149,6 +149,10 @@ export interface DoorComponent {
   frameMaterial?: string;
   leafMaterial?: string;
   interaction?: OpeningInteractionSpec;
+  /** 洞口形状，默认 "rectangular"。设为 "arched" 可生成拱形门洞。 */
+  openingStyle?: 'rectangular' | 'arched';
+  /** 门扇布局，默认 "single"。"double" 生成双开布局（两个洞口+四段框）。 */
+  doorStyle?: 'single' | 'double';
 }
 
 export interface WindowComponent {
