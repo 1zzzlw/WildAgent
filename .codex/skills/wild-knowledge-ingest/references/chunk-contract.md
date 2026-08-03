@@ -62,6 +62,18 @@
 - `experimental` 内容允许召回，但必须把可信度显示给模型。
 - 同一正文即使标题路径不同也应判重，不保留竞争性副本。
 
+## 跨文档一致性
+
+Skill 产出的所有文档必须保持事实一致。当多个文档描述同一能力时：
+
+- 类型列表：`engine-capability-boundaries.md` 中 `geometry.elements` 和 `geometry.components` 的类型列表必须与 `BLUEPRINT-SPEC-MINIMAL.md`、`types.ts` 和 `registry.ts` 完全一致。
+- 数量声明：任何文档中声称的数字（如"支持 X 类组件"）必须与对应表格/列表的实际行数匹配。
+- 枚举值：文档中列出的枚举值（`roofType`、`column.style`、`furniture.subtype`、`opening.style`、`beam.crossSection` 等）必须与 `wild-web/src/wild-core/types.ts` 中的类型字面量联合和 `wild-web/wild-lang/schema.json` 中的定义一致。
+- 必填字段：同一组件的必填字段列表在所有文档中保持相同。
+- 降级策略：同一不支持能力的降级方式在不同文档中的描述不得矛盾。
+
+修改涉及类型列表或枚举值的文档后，必须同时检查所有引用了这些值的其他文档，确保描述一致。
+
 ## 验收命令
 
 ```powershell

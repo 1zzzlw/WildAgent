@@ -183,6 +183,55 @@ keywords:
 
 ---
 
+## ⚠️ 枚举陷阱速查（容易出错的字段值）
+
+LLM 经常把建筑学概念当作 WILD 枚举值。以下字段**只能使用列出的值**，其他任何术语都是错误的。
+
+### roof.roofType（6 个合法值）
+
+| ✅ 合法值 | 含义 | ❌ 常见错误（严禁使用） |
+|---|---|---|
+| `gable` | 双坡屋顶 | pitched, sloped, gabled |
+| `hip` | 四坡屋顶 | hipped |
+| `dome` | 穹顶 | domed, spherical |
+| `flat` | 平顶 | level, horizontal |
+| `chinese_curved` | 中式曲面 | curved, traditional |
+| `chinese_pagoda` | 多层塔顶 | pagoda, tiered |
+
+### column.style（5 个合法值）
+
+`doric` / `ionic` / `corinthian` / `modern` / `chinese_wooden`
+
+严禁使用：round、square、classical、greek、roman、chinese、traditional、pillar。
+
+### furniture.subtype（6 个合法值）
+
+`table` / `chair` / `bookshelf` / `bed` / `lamp` / `tile`
+
+严禁使用：sofa、desk、cabinet、stool、bench、couch、drawer、closet。
+
+> 注意：`furniture.subtype: "lamp"` 只是静态家具占位，**不发光**。需要可开关灯具时必须使用 `geometry.components` 中的 `light`。
+
+### opening.style（4 个合法值）
+
+`rectangular` / `arched` / `gothic` / `circular`
+
+严禁使用：square、round、arch、pointed、rectangle、oval、semicircular。
+
+### beam.crossSection（3 个合法值）
+
+`rect` / `circular` / `i-beam`
+
+严禁使用：rectangle、round、h-beam、box、square。
+
+### 通用原则
+
+- **Schema 枚举 ≠ 建筑学术语**。即使某个词在建筑领域是正确的（如 `hipped`），只要不在 Schema 枚举中就是错误。
+- 不确定某个值是否合法时，查询 `engine-capability-boundaries.md` 或当前 Schema 源码。
+- 不要为现实物体（篮球、花瓶、沙发）发明新的 `type` 值，用 `primitive` 组合表达。
+
+---
+
 ## 10 种组合构件（只能写入 geometry.components）
 
 `door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney`、`light` 是组合构件编译器输入，不是 `geometry.elements` 类型。编译器会在渲染前把它们转换为 Core 基础元素。

@@ -43,6 +43,17 @@
 - [ ] 引用目标存在，尺寸、坐标与文字一致。
 - [ ] 示例能够通过项目确定性校验。
 
+## 语义一致性（交叉验证）
+
+- [ ] 文档中声称的数字（如"9 类组件"、"11 种构件"）与对应表格/列表的实际行数一致。
+- [ ] 同一概念在多个文档中的数量、名称和描述一致（如 `geometry.components` 的类型列表在 `engine-capability-boundaries.md` 和 `BLUEPRINT-SPEC-MINIMAL.md` 中数量和名称相同）。
+- [ ] 所有 WILD `type` 值在 `wild-web/src/wild-core/src/primitive/registry.ts` 的 `registerBuiltins()` 中有对应注册。
+- [ ] 所有组合组件 `type` 值在 `wild-web/src/wild-core/types.ts` 的 `ComponentSpec` 联合类型中有对应定义。
+- [ ] 所有枚举值（`roofType`、`column.style`、`furniture.subtype`、`opening.style`、`beam.crossSection` 等）与 `wild-web/src/wild-core/types.ts` 中的类型字面量一致。
+- [ ] "严禁使用"或"常见错误"清单覆盖了最近实际遇到的错误值（检查 git log 中的归一化映射记录）。
+- [ ] `status: supported` 的能力描述没有与 `status: proposed` 或 `experimental` 文档中的内容矛盾。
+- [ ] 运行 `lint_wild_rag_docs.py --cross-check` 无错误。
+
 ## 检索污染与重复
 
 - [ ] README、Mermaid 和大型导航表不会作为普通生成知识。

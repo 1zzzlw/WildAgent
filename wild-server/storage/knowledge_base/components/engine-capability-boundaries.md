@@ -60,7 +60,7 @@ authority: engine
 keywords: geometry.components, component compiler, door, window, railing, 组合构件编译器
 -->
 
-当前组合构件编译器支持 9 类组件。它们在进入 wild-core 前展开为 `opening`、`primitive`、`beam` 等基础元素，不会在构件注册表中增加同名 builder。
+当前组合构件编译器支持 10 类组件。它们在进入 wild-core 前展开为 `opening`、`primitive`、`beam` 等基础元素，不会在构件注册表中增加同名 builder。
 
 | `component.type` | 必填字段 | 编译结果摘要 |
 |---|---|---|
@@ -73,6 +73,7 @@ keywords: geometry.components, component compiler, door, window, railing, 组合
 | `bay_window` | `id`、`parentWall`、`from`、`width`、`height`、`projectionDepth` | 墙洞、窗框和投影窗体 |
 | `cornice` | `id`、`path`、`profile` | `primitive.profile_sweep` 檐口 |
 | `chimney` | `id`、`position`、`width`、`depth`、`height` | 四面薄壁烟囱和压顶 |
+| `light` | `id`、`position`、`fixtureType`、`lightType`、`initiallyOn` | 灯泡/台灯网格、光源参数和右键循环开关 |
 
 基础元素和组合构件共享 ID 命名空间。组合构件源数据保留在 Blueprint 中，渲染时对副本展开；生成后的子元素 ID 由组件 ID 确定性派生。
 

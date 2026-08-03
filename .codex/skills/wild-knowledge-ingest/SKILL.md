@@ -137,9 +137,35 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 - 能通过已有确定性校验；
 - 片段明确标注“不是完整 `.wild` 文件”。
 
-错误示例单独标记，不能与正确示例放在同一个代码块。当前不支持的能力分成“当前能力、可用降级、未来提案”，不得伪装成正式语法。
+错误示例单独标记，不能与正确示例放在同一个代码块。当前不支持的能力分成”当前能力、可用降级、未来提案”，不得伪装成正式语法。
 
-### 8. 执行静态检查和真实分片预览
+### 8. 交叉验证：数量、类型与枚举值
+
+在运行静态检查之前，先做一轮语义级交叉验证，防止”写对了格式但写错了事实”：
+
+**数量一致性**：
+- 表格实际行数与文档中声称的数字（如”9 类组件”、”11 种构件”）必须一致。
+- 列表项数与介绍性文字中的计数必须一致。
+- 多个文档描述同一事物（如 `geometry.components` 的类型列表）时，所有文档的数量和名称必须一致。
+
+**类型与枚举值验证**：
+- 文档中列出的所有 WILD `type`、`subtype`、`style`、`roofType`、`crossSection`、`shape`、`fixtureType` 等枚举值必须在当前源码中存在：
+  - `geometry.elements` 的 `type`：对照 `wild-web/src/wild-core/src/primitive/registry.ts` 的 `registerBuiltins()`。
+  - `geometry.components` 的 `type`：对照 `wild-web/src/wild-core/types.ts` 的 `ComponentSpec` 联合类型。
+  - 字段枚举值：对照 `wild-web/src/wild-core/types.ts` 中的类型字面量联合和 `wild-web/wild-lang/schema.json` 中的 `enum`/`const`。
+- 文档中列出的”严禁使用”或”常见错误”清单必须包含最近实际遇到的错误值（参考 git log 中的归一化映射）。
+
+**跨文档一致性**：
+- 同一能力在不同文档中的描述不得矛盾（如 A 文档说”9 类组件”而 B 文档列出了 10 个）。
+- 同一实体的必填字段、约束和降级方案在所有文档中保持一致。
+
+**工具辅助**：linter 已支持部分交叉验证（如表格行数 vs 声称数字），但源码级别的类型校验仍需人工对照。修改涉及类型列表或枚举值的文档后，必须运行：
+
+```powershell
+python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <target.md> --cross-check
+```
+
+### 9. 执行静态检查和真实分片预览
 
 先运行 linter，再调用项目真实 `MarkdownChunker` 预览：
 
@@ -148,7 +174,7 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <target
 python .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py <target.md>
 ```
 
-预览失败或出现空壳 chunk、脱离实体的 JSON/表格、缺失 metadata 时，返回第 5～7 步重构。不要用臆测代替真实预览。
+预览失败或出现空壳 chunk、脱离实体的 JSON/表格、缺失 metadata 时，返回第 5～8 步重构。不要用臆测代替真实预览。
 
 读取检查清单并逐项确认。至少检查：
 
@@ -162,7 +188,7 @@ python .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py <t
 
 修改后再次运行 linter 和 preview。存在错误时不要入库；只有明确标注并经用户接受的历史遗留问题可以作为例外，且必须在交付中列出。
 
-### 9. 仅在授权时集成
+### 10. 仅在授权时集成
 
 用户明确要求写入知识库时：
 

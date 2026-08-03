@@ -43,6 +43,12 @@ PSEUDO_HEADING_RE = re.compile(
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 FENCE_RE = re.compile(r"^\s*(```+|~~~+)\s*([A-Za-z0-9_-]*)")
 RAG_META_START_RE = re.compile(r"^\s*<!--\s*rag-meta\s*$")
+# 匹配 "X 类/种/个/款" 计数声明（如 "支持 9 类组件"、"11 种构件"）
+COUNT_CLAIM_RE = re.compile(
+    r"(?:支持\s*)?(\d+|[一二三四五六七八九十]+)\s*(?:类|种|个|款)\s*(?:组件|构件|类型|事物|能力)"
+)
+CN_NUM = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9, "十": 10}
+TABLE_ROW_RE = re.compile(r"^\s*\|[^|]+\|.*\|\s*$")
 
 
 @dataclass(frozen=True)
@@ -367,6 +373,66 @@ def lint_file(path: Path, min_section_chars: int, max_section_chars: int) -> lis
     ]
 
 
+def cross_check_issues(path: Path) -> list[Issue]:
+    """检查文档中声称的数字是否与紧随的表格/列表实际行数一致。"""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    issues: list[Issue] = []
+
+    for line_number, raw_line in enumerate(lines, start=1):
+        line = raw_line.strip()
+        match = COUNT_CLAIM_RE.search(line)
+        if not match:
+            continue
+        claimed_str = match.group(1)
+        claimed = CN_NUM.get(claimed_str, None)
+        if claimed is None:
+            try:
+                claimed = int(claimed_str)
+            except ValueError:
+                continue
+
+        # 在后续 10 行内找最近的表格
+        actual = 0
+        found_table = False
+        table_start = 0
+        for offset in range(1, min(11, len(lines) - line_number)):
+            next_line = lines[line_number - 1 + offset].strip()
+            # 表格分隔行（|---|---|）标志着一个表的存在
+            if re.match(r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$", next_line):
+                found_table = True
+                table_start = line_number + offset
+                # 统计表头行之前的行是否也算是表行？回溯找表头
+                if offset >= 1:
+                    prev_line = lines[line_number - 1 + offset - 1].strip()
+                    if TABLE_ROW_RE.match(prev_line):
+                        actual = 1  # 表头
+                # 从分隔行之后统计数据行
+                for data_offset in range(1, min(51, len(lines) - table_start)):
+                    data_line = lines[table_start + data_offset].strip()
+                    if TABLE_ROW_RE.match(data_line):
+                        actual += 1
+                    elif not data_line or data_line.startswith("#") or data_line.startswith(">"):
+                        break
+                    else:
+                        if not data_line.startswith("|"):
+                            break
+                break
+            # 如果 3 行内找不到表格，跳过此计数声明
+            if offset >= 3:
+                break
+
+        if found_table and actual != claimed:
+            issues.append(Issue(
+                "error",
+                "count_mismatch",
+                str(path),
+                line_number,
+                f"声称 {claimed} 类/种/个，但紧随的表格实际有 {actual} 行数据",
+            ))
+
+    return issues
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Lint WildAgent RAG Markdown documents.")
     parser.add_argument("paths", nargs="+", type=Path)
@@ -374,6 +440,7 @@ def main() -> int:
     parser.add_argument("--max-section-chars", type=int, default=1600)
     parser.add_argument("--json", action="store_true", dest="as_json")
     parser.add_argument("--strict", action="store_true", help="Treat warnings as failures.")
+    parser.add_argument("--cross-check", action="store_true", help="Check claimed counts against actual table rows.")
     args = parser.parse_args()
 
     files = iter_markdown_files(args.paths)
@@ -386,6 +453,12 @@ def main() -> int:
         for path in files
         for issue in lint_file(path, args.min_section_chars, args.max_section_chars)
     ]
+    if args.cross_check:
+        issues.extend([
+            issue
+            for path in files
+            for issue in cross_check_issues(path)
+        ])
 
     if args.as_json:
         print(json.dumps([asdict(issue) for issue in issues], ensure_ascii=False, indent=2))
