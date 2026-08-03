@@ -3,131 +3,127 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
-entity_name: industrial_building_family
+entity_name: industrial_building
 topic: assembly
 wild_version: "1.1"
-status: experimental
-authority: domain_reference
+status: supported
+authority: engine
 source: building_types/industrial/factories-and-warehouses.md
 keywords:
   - 工业建筑
   - 厂房
-  - factory
   - 仓储
-  - warehouse
+  - 单层厂房
+  - 工业上楼
+  - 仓库
 ---
 
-# 工业建筑：厂房、工业上楼、仓储
+# 工业建筑：厂房 / 仓储
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 用途：整理单层重工业厂房、工业上楼、高层厂房、仓储建筑的构件配方。
-> RAG 关键词：工业建筑、厂房、重工业厂房、工业上楼、高层厂房、仓库、仓储、门式刚架、桁架
-
----
-## 三、工业建筑
+> 所有 JSON 示例只使用当前引擎支持的字段。
 
 ---
 
-### 3.1 单层重工业厂房
+## 1. 单层轻钢厂（12×24m）
 
 <!-- rag-meta
 entity_type: building
-entity_name: heavy_industrial_factory
+entity_name: steel_factory
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 重工业厂房, industrial factory, 单层厂房
+status: supported
+authority: engine
+keywords: 厂房, factory, 轻钢, steel, 单层, 工业
 -->
 
-> 图示：工业厂房结构示意图（原始资源：`docs/建筑类型分类体系_images/04_工业厂房.png`）
+### 构件清单
 
-**构件清单**
+| 构件 | WILD type | 参数 |
+|---|---|---|
+| 地基楼板 | `floor` | shape=rect, thickness=0.2, 全场地 |
+| 钢柱 | `column` | style=modern, bottomRadius=0.15, topRadius=0.12, height=8 |
+| 屋面梁 | `beam` | crossSection=i-beam, width=0.2, height=0.6 |
+| 墙檩 | `beam` | crossSection=rect, 水平间距 1.5m |
+| 外墙板 | `wall` | thickness=0.15, height=8 |
+| 屋顶 | `roof` | roofType=gable, span=13, depth=25 |
+| 卷帘门 | `door` 组件 | width=3, height=4, interaction.slide |
+| 高窗 | `window` 组件 | 墙顶带状窗 |
 
-| 构件 | WILD type | 精确参数 | 数量 |
-|:---:|:---:|:---|:---:|
-| 排架柱(阶形) | `column` | crossSection=rectangular, 上柱0.4×0.6m/下柱0.6×1.0m, height=12~25m, style=modern | 20~60 |
-| 屋架桁架 | `truss` | trussType=howe/pratt, from/to=柱顶, height=2~4m, span=18~36m, panelCount=4~6 | 10~30 |
-| 吊车梁 | `beam` | crossSection=i-beam, 承受50~150t动荷载, height=0.8~1.5m | 15~40 |
-| 柱间支撑 | `beam` | 斜撑, X形交叉, crossSection=rect 0.2×0.3m | 10~20 |
-| 屋盖支撑 | `beam` | 水平/垂直支撑, crossSection=rect 0.15×0.2m | 10~20 |
-| 外围护墙 | `wall` | 彩钢夹芯板, thickness=0.05~0.08m(夹芯板) | 8~16 |
-| 屋面 | `roof` | roofType=gable, 压型钢板, 有檩体系, 檩距1.5~3m | 1~3 |
-| 天窗 | `opening` | parentWall=roof, style=rectangular, 屋脊排烟 | 2~6 |
-| 工业大门 | `opening`+`door` | w=3~6m, h=4~6m, door:flush(推拉/卷帘), leafCount=2+ | 2~6 |
-| 屋瓦贴附 | `placement` | onSurface.parent=roof, rows×cols网格 | 1 |
-
-**排架柱 WILD JSON 示例**
+### 最少可行 Blueprint
 
 ```json
 {
-  "type": "column", "id": "frame_col_01",
-  "base": [0, 0, 0], "height": 18.0,
-  "crossSection": "rectangular",
-  "bottomWidth": 0.6, "bottomDepth": 1.0,
-  "topWidth": 0.4, "topDepth": 0.6,
-  "style": "modern",
-  "material": "grey_concrete"
+  "meta": { "version": "1.1", "type": "building", "name": "轻钢厂" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [12, 0, 24], "thickness": 0.2, "material": "concrete" },
+      { "type": "column", "id": "col_a1", "base": [0.5, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "column", "id": "col_a2", "base": [6, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "column", "id": "col_a3", "base": [11.5, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "column", "id": "col_b1", "base": [0.5, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "column", "id": "col_b2", "base": [6, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "column", "id": "col_b3", "base": [11.5, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
+      { "type": "beam", "id": "beam_roof_01", "from": [0.5, 8, 0.5], "to": [0.5, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
+      { "type": "beam", "id": "beam_roof_02", "from": [6, 8, 0.5], "to": [6, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
+      { "type": "beam", "id": "beam_roof_03", "from": [11.5, 8, 0.5], "to": [11.5, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
+      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [12, 8, 0], "thickness": 0.15, "material": "metal_panel" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 24], "to": [12, 8, 24], "thickness": 0.15, "material": "metal_panel" },
+      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 8, 24], "thickness": 0.15, "material": "metal_panel" },
+      { "type": "wall", "id": "wall_right", "from": [12, 0, 0], "to": [12, 8, 24], "thickness": 0.15, "material": "metal_panel" },
+      { "type": "roof", "id": "roof_main", "roofType": "gable", "span": 13, "depth": 25, "height": 3, "thickness": 0.15, "material": "metal_panel", "position": [6, 8, 12] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_roller", "parentWall": "wall_front", "from": [4, 0, 0], "width": 4, "height": 4.5, "frameMaterial": "steel", "leafMaterial": "metal_panel", "interaction": { "mode": "slide", "hingeSide": "right", "openDistance": 4 } },
+      { "type": "window", "id": "win_high_01", "parentWall": "wall_left", "from": [3, 5, 0], "width": 2, "height": 1.5, "verticalMullions": 0, "horizontalMullions": 0, "frameMaterial": "steel", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } },
+      { "type": "window", "id": "win_high_02", "parentWall": "wall_right", "from": [3, 5, 0], "width": 2, "height": 1.5, "verticalMullions": 0, "horizontalMullions": 0, "frameMaterial": "steel", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.78, 0.76, 0.74], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
+    "metal_panel": { "baseColor": [0.55, 0.55, 0.58], "roughness": 0.4, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" },
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
 }
 ```
 
-**组装顺序**：column(排架柱) → beam(柱间支撑) → beam(吊车梁) → truss(屋架) → beam(屋盖支撑) → roof(屋面) → wall(彩钢板围护) → opening(天窗/大门) → door
-
-**总构件数**：约 **60~150 个**
-
-**典型案例**：宝钢热轧车间、特斯拉超级工厂（Gigafactory 3）
-
 ---
 
-### 3.2 工业上楼（4F+ 高层厂房）
-
-<!-- rag-meta
-entity_type: building
-entity_name: multistory_industrial_building
-topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 工业上楼, multistory factory, 高层厂房
--->
-
-**构件清单**
-
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 框架柱 | `column` | crossSection=square, side≥0.6m, style=modern, 首层层高≥6m |
-| 承重楼板 | `floor` | thickness=0.20~0.30m, 首层荷载≥12kN/m², 2~3层≥8kN/m² |
-| 主梁 | `beam` | rect 0.4×0.8m, 柱距≥8.4m |
-| 货梯井 | `wall` | 围合竖井, thickness=0.20m, ≥2台/层, 载重≥3t |
-| 装卸坡道 | `ramp` | width=4.0m, slope=1:8, surface=grooved |
-| 设备管井 | `wall` | 密集竖井, 给排水/强弱电/压缩空气 |
-| 外围护墙 | `wall` | 轻质, 大尺寸可开启窗 |
-| 货梯门 | `door` | w=2.5m, h=3.0m, flush(工业门) |
-
-**关键参数**：首层≥6m / 标准层≥4.5m / 柱距≥8.4m / 标准层面积≥2000m² / 限高≤100m
-
-**典型案例**：深圳光明生物医药工业大厦（12F）
-
----
-
-### 3.3 仓储建筑
+## 2. 仓储建筑
 
 <!-- rag-meta
 entity_type: building
 entity_name: warehouse
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 仓储建筑, warehouse, 仓库
+status: supported
+authority: engine
+keywords: 仓储, warehouse, 平房仓, 筒仓, 冷链
 -->
 
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 外围护墙 | `wall` | height=6~24m, 无窗或少窗 |
-| 大跨屋盖 | `roof` + `truss` | roofType=gable, trussType=pratt, span=20~60m |
-| 装卸平台 | `floor` | 1.2m高台, 与货车车厢平齐 |
-| 雨棚 | `canopy` | parentWall=wall, supportType=post, projection=3m |
-| 装卸门 | `door` | w=3.0m, h=3.5m, flush(卷帘门) |
-| 排烟天窗 | `opening` | 顶部, style=rectangular |
-
-**典型案例**：京东"亚洲一号"智能物流仓库（AS/RS 立体库，高度 24m）
+仓储建筑与单层厂结构相似，差异：
+- 平房仓：减少 window（防潮），门更宽（叉车通行 ≥3m）
+- 筒仓：用 `wall` 弧形围合（`curve={type:"arc"}`）+ `roof` dome
+- 冷链仓库：wall thickness=0.24（保温），增加 inner wall 隔层
 
 ---
+
+## 3. 工业上楼（4F+ 高层厂房）
+
+多层的厂房，每层荷载大。构件参数上调：
+- `column` bottomRadius=0.25~0.35（大截面柱）
+- `beam` crossSection=rect, width=0.3, height=0.7
+- `floor` thickness=0.2（重载楼板）
+- `stair` width=1.8 + 货梯井（wall 围合）
+
+其他结构与办公楼相似，逐层重复。
+
+### 常见字段错误
+
+| 源文档写法 ❌ | WILD Schema ✅ |
+|---|---|
+| `column.crossSection: "square"` | 不存在，用 `style: "modern"` |
+| `floor.surfaces: "hardener"` | 不存在，用 `material` |
+| `wall.curve: "line"` | 不写 curve 默认直线，弧形用 `{type:"arc",...}` |
+| `beam.crossSection: "h-beam"` | 用 `"i-beam"`（H 型钢的 WILD 名称） |
+| `roof.autoRailing` | 不存在 |

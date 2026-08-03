@@ -3,171 +3,204 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
-entity_name: residential_accommodation_family
+entity_name: housing_dormitory_hotel
 topic: assembly
 wild_version: "1.1"
-status: experimental
-authority: domain_reference
+status: supported
+authority: engine
 source: building_types/residential/housing-dormitories-hotels.md
 keywords:
-  - 住宅
-  - housing
+  - 普通住宅
   - 宿舍
-  - dormitory
   - 酒店
-  - hotel
+  - 宾馆
+  - 高层住宅
+  - 标准层
 ---
 
-# 居住与类居住建筑：住宅、宿舍、酒店
+# 居住建筑：普通住宅 / 宿舍 / 酒店
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 用途：整理普通住宅、宿舍、宾馆酒店等居住或类居住建筑的构件配方。
-> RAG 关键词：普通住宅、低层住宅、多层住宅、高层住宅、宿舍、宾馆、酒店、剪力墙、客房、走廊
+> 所有 JSON 示例只使用当前引擎支持的字段。
 
 ---
-## 1.2 普通住宅（低层~超高层）
+
+## 1. 普通住宅（低层~高层）
 
 <!-- rag-meta
 entity_type: building
 entity_name: residential_building
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 普通住宅, residential building, 低层住宅, 高层住宅
+status: supported
+authority: engine
+keywords: 普通住宅, residential, 多层, 高层, 剪力墙, 框架
 -->
 
-**构件清单（按层数分级）**
+### 按层数分级的构件参数
 
-| 构件 | WILD type | 低层(1~3F) | 多层(4~6F) | 高层(10~33F) | 超高层(>100m) |
-|:---:|:---:|:---|:---|:---|:---|
-| 承重外墙 | `wall` | thickness=0.24m(砖混) | 0.24m(砖混) | 0.20m(剪力墙) | 0.20~0.30m(剪力墙) |
-| 内隔墙 | `wall` | 0.12m | 0.12m | 0.10m | 0.10m |
-| 框架柱 | `column` | 无(砖混) | 无/构造柱 | crossSection=square, side=0.3~0.5m, style=modern | side=0.4~0.8m, CFT钢管混凝土 |
-| 楼板 | `floor` | thickness=0.12m | 0.12~0.15m | 0.15m | 0.15~0.20m |
-| 梁 | `beam` | rect 0.2×0.3m | 0.25×0.5m | 0.3×0.6m | 0.4×0.7m |
-| 屋顶 | `roof` | gable(坡顶) | gable/flat | flat | flat |
-| 楼梯 | `stair` | width=0.9m | 1.1m, autoRailing | 1.2m, 加压送风 | 1.4m, 避难层 |
+| 构件 | 低层(1~3F) | 多层(4~6F) | 高层(10~33F) |
+|---|---|---|---|
+| 承重外墙 `wall` | thickness=0.24 | thickness=0.24 | thickness=0.20 |
+| 内隔墙 `wall` | thickness=0.12 | thickness=0.12 | thickness=0.10 |
+| 框架柱 `column` | 砖混无柱 | style=modern | style=modern, bottomRadius=0.15~0.25 |
+| 楼板 `floor` | thickness=0.12 | thickness=0.12~0.15 | thickness=0.15 |
+| 梁 `beam` | crossSection=rect, 0.2×0.3m | rect 0.25×0.5m | rect 0.3×0.6m |
+| 屋顶 `roof` | roofType=gable | gable/flat | flat |
 
-**标准层门窗规格**
-
-| 部位 | opening | door | window | 尺寸 |
-|:---:|:---|:---|:---|:---|
-| 入户门 | rectangular | panel, leafCount=1, hingeSide=left | — | w=1.0m, h=2.1m |
-| 室内门 | rectangular | flush, leafCount=1 | — | w=0.9m, h=2.1m |
-| 采光窗 | rectangular | — | sliding, sashCount=2, glassOpacity=0.35 | w=1.5~2.4m, h=1.5m |
-| 阳台门 | rectangular | glass, leafCount=2 | sliding | w=2.4m, h=2.4m |
-
-**阳台构件**
+### 最少可行 Blueprint（6×8m 两层住宅）
 
 ```json
 {
-  "type": "floor", "id": "balcony_slab",
-  "from": [6.0, 3.0, 0], "to": [7.2, 3.15, 4.0],
-  "thickness": 0.15, "shape": "rect",
-  "autoRailing": { "edges": ["north", "east", "south"], "height": 1.1 }
+  "meta": { "version": "1.1", "type": "building", "name": "两层住宅" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_ground", "from": [0, 0, 0], "to": [6, 0, 8], "thickness": 0.15, "material": "concrete" },
+      { "type": "floor", "id": "floor_upper", "from": [0, 3, 0], "to": [6, 3, 8], "thickness": 0.15, "material": "concrete" },
+      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [6, 6, 0], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 8], "to": [6, 6, 8], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 6, 8], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_right", "from": [6, 0, 0], "to": [6, 6, 8], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_inner", "from": [3, 0, 0], "to": [3, 6, 8], "thickness": 0.12, "material": "brick" },
+      { "type": "stair", "id": "stair_main", "from": [4, 0, 3], "to": [4, 3, 6], "width": 0.9, "material": "concrete" },
+      { "type": "roof", "id": "roof_main", "roofType": "gable", "span": 7, "depth": 9, "height": 2, "thickness": 0.2, "material": "tile", "position": [3, 6, 4] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_entry", "parentWall": "wall_front", "from": [2.5, 0, 0], "width": 1, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "window", "id": "win_left", "parentWall": "wall_front", "from": [0.5, 0.9, 0], "width": 1.5, "height": 1.5, "verticalMullions": 1, "horizontalMullions": 0, "frameMaterial": "wood", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } },
+      { "type": "window", "id": "win_right", "parentWall": "wall_front", "from": [4, 0.9, 0], "width": 1.5, "height": 1.5, "verticalMullions": 1, "horizontalMullions": 0, "frameMaterial": "wood", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.82, 0.80, 0.78], "roughness": 0.65, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "brick": { "baseColor": [0.65, 0.40, 0.25], "roughness": 0.8, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "tile": { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
 }
 ```
 
-> `autoRailing` 自动生成 `railing`：height=1.1m, infill=vertical_bar, material=steel_railing
-
-**组装顺序**：wall(核心筒/楼梯间) → wall(分户墙) → floor(楼板) → opening(门窗洞) → door + window → floor(阳台, autoRailing) → stair → 逐层重复
-
-**标准层构件数**：wall 8~12 + floor 1 + opening 6~10 + column 0~8 = **约 20~30 个/层**
-
-**典型案例**：城市商品住宅塔楼（33 层卡 99m 红线）、杭州良渚天空之城
-
 ---
 
-## 1.3 宿舍（≤9F）
+## 2. 宿舍（≤9F）
 
 <!-- rag-meta
 entity_type: building
 entity_name: dormitory
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 宿舍, dormitory, 学生宿舍
+status: supported
+authority: engine
+keywords: 宿舍, dormitory, 走廊式, 公共卫生间
 -->
 
-> 规范依据：JGJ 36《宿舍建筑设计规范》，层数多 ≤9 层（给排水水压限制）
-
-**构件清单**
-
-| 构件 | WILD type | 精确参数 | 说明 |
-|:---:|:---:|:---|:---|
-| 走廊两侧隔墙 | `wall` | thickness=0.12m, 开间3.6m, 进深6~8m | 密集排布 |
-| 公共卫生间墙 | `wall` + `floor` | wall=0.12m, floor 防水 surfaces=stone_block | 上下对齐 |
-| 宿舍门 | `opening` + `door` | opening: rectangular, w=0.9m, h=2.1m; door: flush, leafCount=1 | 沿走廊均匀排布 |
-| 走廊窗 | `opening` + `window` | window: sliding, sashCount=2 | w=1.5m, h=1.5m |
-| 公共楼梯 | `stair` | width=1.4m, 两端各一, autoRailing=true | 疏散双楼梯 |
-| 管道井 | `wall` | 围合竖井, thickness=0.12m | 卫生间对位 |
-
-**组装顺序**：wall(外墙) → wall(走廊隔墙) → wall(卫生间) → floor → opening(宿舍门) → door → opening(窗) → window → stair → 逐层
-
-**典型案例**：清华大学紫荆公寓（6F）、华为松山湖员工宿舍
-
----
-
-## 1.4 宾馆/酒店
-
-<!-- rag-meta
-entity_type: building
-entity_name: hotel
-topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 宾馆, 酒店, hotel, guest room
--->
-
-> 规范依据：JGJ 62-2014《旅馆建筑设计规范》
-
-**客房标准尺寸**（联网搜索 GB/JGJ 数据）
-
-| 酒店类型 | 开间 | 进深 | 层高 | 客房面积 |
-|:---:|:---:|:---:|:---:|:---:|
-| 快捷酒店 | 3.2~3.8m | 6.0~6.2m | 3.0m | 19~24 m² |
-| 商务酒店 | 3.7~4.2m | 7.2~8.4m | 3.0~3.9m | 26~35 m² |
-| 五星级酒店 | 4.5~4.8m | 9.0~9.8m | 3.9~4.2m | 40~48 m² |
-| 度假酒店 | 5.1~6.0m | 8.1~11.6m | 3.3~3.6m | 50~60 m² |
-
-**构件清单**
-
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 客房隔墙 | `wall` | thickness=0.12m, 隔声处理, 开间3.7~4.5m |
-| 客房门 | `opening` + `door` | w=0.9m, h=2.1m; door: panel, leafCount=1, 观察窗 |
-| 卫生间门 | `opening` + `door` | w=0.75m, h=2.0m; door: flush |
-| 落地窗 | `opening` + `window` | w≥2.7m, h=2.4m; window: fixed, glassOpacity=0.35 |
-| 大堂通高空间 | `wall`(首层) + `column` | 2~3层通高, column: modern, r=0.3m |
-| 宴会厅大跨 | `beam` + `roof` | beam: i-beam, 大跨无柱; roof: flat |
-| 玻璃幕墙 | `wall` | material=glass, 外立面 |
-| 屋顶泳池 | `floor` + `railing` | autoRailing: height=1.1, infill=glass |
-| 客房层楼梯 | `stair` | width=1.2m, autoRailing=true |
-| 电梯井 | `wall` | 核心筒围合, thickness=0.20m, 分区运行 |
-
-**WILD JSON 示例（客房标准层单元）**
+### 最少可行 Blueprint（单层走廊式，12×8m）
 
 ```json
 {
-  "templates": [
-    { "name": "guest_room_unit", "type": "group", "components": [
-      { "type": "wall", "id": "room_wall_l", "from": [0,0,0], "to": [0,3.0,7.5], "thickness": 0.12 },
-      { "type": "opening", "id": "room_door", "parentWall": "room_wall_l", "from": [3.0,0,0], "width": 0.9, "height": 2.1, "style": "rectangular" },
-      { "type": "door", "id": "door_1", "parentOpening": "room_door", "style": "panel", "leafCount": 1, "hingeSide": "right" },
-      { "type": "opening", "id": "room_win", "parentWall": "room_wall_l", "from": [5.0,0.9,0], "width": 2.7, "height": 2.4, "style": "rectangular" },
-      { "type": "window", "id": "win_1", "parentOpening": "room_win", "sashType": "fixed", "glassOpacity": 0.35 }
-    ]}
-  ],
-  "instances": [
-    { "template": "guest_room_unit", "position": [0, 0, 0] },
-    { "template": "guest_room_unit", "position": [4.2, 0, 0] },
-    { "template": "guest_room_unit", "position": [8.4, 0, 0] }
-  ]
+  "meta": { "version": "1.1", "type": "building", "name": "走廊式宿舍" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [12, 0, 8], "thickness": 0.15, "material": "concrete" },
+      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [12, 3, 0], "thickness": 0.24, "material": "concrete" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 8], "to": [12, 3, 8], "thickness": 0.24, "material": "concrete" },
+      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 3, 8], "thickness": 0.24, "material": "concrete" },
+      { "type": "wall", "id": "wall_right", "from": [12, 0, 0], "to": [12, 3, 8], "thickness": 0.24, "material": "concrete" },
+      { "type": "wall", "id": "wall_corridor_n", "from": [0, 0, 2.5], "to": [12, 3, 2.5], "thickness": 0.12, "material": "concrete" },
+      { "type": "wall", "id": "wall_corridor_s", "from": [0, 0, 5.5], "to": [12, 3, 5.5], "thickness": 0.12, "material": "concrete" },
+      { "type": "stair", "id": "stair_west", "from": [0.5, 0, 2.5], "to": [0.5, 3, 5.5], "width": 1.4, "material": "concrete" },
+      { "type": "stair", "id": "stair_east", "from": [11.5, 0, 2.5], "to": [11.5, 3, 5.5], "width": 1.4, "material": "concrete" },
+      { "type": "roof", "id": "roof_main", "roofType": "flat", "span": 13, "depth": 9, "height": 0.2, "thickness": 0.15, "material": "concrete", "position": [6, 3, 4] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_01", "parentWall": "wall_corridor_n", "from": [1, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "door", "id": "door_02", "parentWall": "wall_corridor_n", "from": [4.6, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "door", "id": "door_03", "parentWall": "wall_corridor_s", "from": [1, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "right", "openAngle": 90 } },
+      { "type": "door", "id": "door_04", "parentWall": "wall_corridor_s", "from": [4.6, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "right", "openAngle": 90 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.82, 0.80, 0.78], "roughness": 0.65, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
 }
 ```
 
-> 用 `templates` + `instances` 批量复用客房单元，走廊两侧镜像排布
-
-**典型案例**：香山饭店（贝聿铭，多层文旅）、上海 J 酒店（632m 超高层地标）
-
 ---
+
+## 3. 酒店标准层
+
+<!-- rag-meta
+entity_type: building
+entity_name: hotel_floor
+topic: assembly
+status: supported
+authority: engine
+keywords: 酒店, hotel, 标准层, 客房, 走廊
+-->
+
+### 客房标准尺寸参考
+
+| 酒店类型 | 开间 | 进深 | 层高 |
+|---|---|---|---|
+| 快捷酒店 | 3.2~3.8m | 6.0~6.2m | 3.0m |
+| 商务酒店 | 3.7~4.2m | 7.2~8.4m | 3.0~3.9m |
+| 五星级酒店 | 4.5~4.8m | 9.0~9.8m | 3.9~4.2m |
+
+### 最少可行 Blueprint（快捷酒店标准层，20×16m）
+
+```json
+{
+  "meta": { "version": "1.1", "type": "building", "name": "快捷酒店标准层" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [20, 0, 16], "thickness": 0.15, "material": "concrete" },
+      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [20, 3, 0], "thickness": 0.20, "material": "concrete" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 16], "to": [20, 3, 16], "thickness": 0.20, "material": "concrete" },
+      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 3, 16], "thickness": 0.20, "material": "concrete" },
+      { "type": "wall", "id": "wall_right", "from": [20, 0, 0], "to": [20, 3, 16], "thickness": 0.20, "material": "concrete" },
+      { "type": "wall", "id": "wall_corridor", "from": [0, 0, 8], "to": [20, 3, 8], "thickness": 0.12, "material": "concrete" },
+      { "type": "column", "id": "col_lobby_01", "base": [9, 0, 7], "height": 3, "bottomRadius": 0.25, "topRadius": 0.25, "style": "modern", "material": "concrete" },
+      { "type": "column", "id": "col_lobby_02", "base": [11, 0, 7], "height": 3, "bottomRadius": 0.25, "topRadius": 0.25, "style": "modern", "material": "concrete" },
+      { "type": "stair", "id": "stair_fire", "from": [18, 0, 1], "to": [18, 3, 6], "width": 1.2, "material": "concrete" },
+      { "type": "roof", "id": "roof_main", "roofType": "flat", "span": 21, "depth": 17, "height": 0.2, "thickness": 0.15, "material": "concrete", "position": [10, 3, 8] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_lobby", "parentWall": "wall_corridor", "from": [9.5, 0, 0], "width": 1.5, "height": 2.4, "doorStyle": "double", "frameWidth": 0, "frameMaterial": "metal", "leafMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "door", "id": "door_n01", "parentWall": "wall_front", "from": [1, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "door", "id": "door_n02", "parentWall": "wall_front", "from": [4.6, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } },
+      { "type": "door", "id": "door_s01", "parentWall": "wall_back", "from": [1, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "right", "openAngle": 90 } },
+      { "type": "door", "id": "door_s02", "parentWall": "wall_back", "from": [4.6, 0, 0], "width": 0.9, "height": 2.1, "frameMaterial": "wood", "leafMaterial": "wood", "interaction": { "mode": "swing", "hingeSide": "right", "openAngle": 90 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.85, 0.83, 0.80], "roughness": 0.55, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "metal": { "baseColor": [0.15, 0.15, 0.15], "roughness": 0.35, "metallic": 0.65, "albedo": 1, "lightingCondition": "D65_noon" },
+    "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
+}
+```
+
+### 当前不支持的能力
+
+| 需求 | 降级方案 |
+|---|---|
+| 电梯井 | 4 面 `wall` 围合竖井 |
+| 玻璃幕墙 | `wall` + `material=glass`（近似，非 true curtain wall） |
+| `stair.autoRailing` | 不存在，手动加 `railing` 组件 |
+| `floor.autoRailing`（阳台） | 不存在，手动加 `railing` |
+| `window.sashType`, `sashCount` | 不存在，用 `verticalMullions` + `interaction.mode` |
+| `door.style: "panel"/"flush"/"glass"` | 不存在，用 `leafMaterial` + `openingStyle` |
+
+### 常见字段错误
+
+| 源文档写法 ❌ | WILD Schema ✅ |
+|---|---|
+| `column.crossSection: "square"` | column 用 `style: "modern"`（无 crossSection 字段） |
+| `window.sashType: "sliding"` | 用 `interaction.mode: "slide"` |
+| `window.glassOpacity` | 不存在，材质中设 `opacity` |
+| `stair.autoRailing: true` | 手动加 `railing` 组件 |
+| `door.style: "panel"` | 用 `leafMaterial` 控制外观 |

@@ -3,143 +3,163 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
-entity_name: agricultural_building_family
+entity_name: agricultural_building
 topic: assembly
 wild_version: "1.1"
-status: experimental
-authority: domain_reference
+status: supported
+authority: engine
 source: building_types/agricultural/agricultural-buildings.md
 keywords:
   - 农业建筑
   - 温室
-  - greenhouse
   - 养殖场
   - 粮仓
   - 农机站
 ---
 
-# 农业建筑：温室、养殖场、粮仓、农机站
+# 农业建筑：温室 / 养殖 / 粮仓 / 农机
 
 > 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 用途：整理设施温室、畜禽饲养场、粮仓、农机站等农业建筑构件配方。
-> RAG 关键词：农业建筑、温室、设施温室、养殖场、粮仓、农机站、轻钢、采光顶、通风
-
----
-## 四、农业建筑
+> 所有 JSON 示例只使用当前引擎支持的字段。
 
 ---
 
-### 4.1 设施温室
+## 1. 日光温室（10×6m，单栋）
 
 <!-- rag-meta
 entity_type: building
 entity_name: greenhouse
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 设施温室, greenhouse, 采光顶
+status: supported
+authority: engine
+keywords: 温室, greenhouse, solar, 日光温室, 连栋温室
 -->
 
-> 图示：温室结构示意图（原始资源：`docs/建筑类型分类体系_images/05_温室.png`）
-
-**构件清单**
-
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 主立柱 | `column` | crossSection=square, side=0.12m(热镀锌矩形管120×120×3mm), height=3~6m, 间距4m, style=modern |
-| 拱形桁架 | `truss` | trussType=warren(轻型), span=8~12m, height=1.5~2.5m, memberProfile=rect 0.04×0.06m |
-| 透明覆盖墙 | `wall` | thickness=0.004~0.016m(玻璃/PC板/薄膜), material=glass, opacity=0.3 |
-| 采光屋顶 | `roof` | roofType=flat(连栋) / gable(单栋), material=glass |
-| 外遮阳骨架 | `beam` | 上部网格, 高于屋面 |
-| 天沟排水 | `beam` | U形截面, 2.5‰坡度 |
-| 湿帘开口 | `opening` | 侧墙, style=rectangular, 强制降温 |
-| 风机开口 | `opening` | 对侧山墙, 负压通风 |
-| 内保温幕 | `roof`(内层) | 轻质, 冬季保温 |
-| 苗床 | `furniture` | subtype=table, 可移动 |
-
-**温室 WILD JSON 示例**
+### 最少可行 Blueprint
 
 ```json
 {
-  "type": "column", "id": "gh_post_01",
-  "base": [0, 0, 0], "height": 4.0,
-  "crossSection": "square",
-  "bottomSide": 0.12, "topSide": 0.12,
-  "style": "modern",
-  "material": "galvanized_steel"
+  "meta": { "version": "1.1", "type": "building", "name": "日光温室" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_ground", "from": [0, 0, 0], "to": [10, 0, 6], "thickness": 0.12, "material": "soil" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 0], "to": [10, 2.5, 0], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 2.5, 6], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_right", "from": [10, 0, 0], "to": [10, 2.5, 6], "thickness": 0.24, "material": "brick" },
+      { "type": "wall", "id": "wall_front_low", "from": [0, 0, 6], "to": [10, 0.8, 6], "thickness": 0.24, "material": "brick" },
+      { "type": "beam", "id": "beam_ridge", "from": [0, 2.5, 0], "to": [5, 2.5, 3], "crossSection": "rect", "width": 0.1, "height": 0.15, "material": "steel" },
+      { "type": "beam", "id": "beam_ridge_r", "from": [5, 2.5, 3], "to": [10, 2.5, 0], "crossSection": "rect", "width": 0.1, "height": 0.15, "material": "steel" },
+      { "type": "beam", "id": "beam_slope", "from": [5, 2.5, 3], "to": [5, 0.8, 6], "crossSection": "rect", "width": 0.1, "height": 0.15, "material": "steel" },
+      { "type": "roof", "id": "roof_cover", "roofType": "gable", "span": 11, "depth": 7, "height": 0.1, "thickness": 0.05, "material": "plastic_film", "position": [5, 1.65, 3] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_entry", "parentWall": "wall_left", "from": [2.5, 0, 0], "width": 1.2, "height": 2.2, "frameMaterial": "steel", "leafMaterial": "plastic_film", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } }
+    ]
+  },
+  "materials": {
+    "soil": { "baseColor": [0.35, 0.25, 0.15], "roughness": 0.95, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "brick": { "baseColor": [0.65, 0.40, 0.25], "roughness": 0.8, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
+    "plastic_film": { "baseColor": [0.85, 0.90, 0.88], "roughness": 0.2, "metallic": 0, "albedo": 1, "opacity": 0.5, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
 }
 ```
 
-**典型案例**：内蒙古赤峰松山区智慧农业园、荷兰 Venlo 型温室群
+> `plastic_film` 材质用半透明 `opacity: 0.5` 模拟温室覆膜效果。
 
 ---
 
-### 4.2 畜禽饲养场
+## 2. 畜禽饲养场（鸡舍，12×8m）
 
 <!-- rag-meta
 entity_type: building
-entity_name: livestock_building
+entity_name: livestock_barn
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 畜禽饲养场, livestock building, 养殖场
+status: supported
+authority: engine
+keywords: 养殖场, livestock, 鸡舍, poultry, 猪舍, 牛舍
 -->
 
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 外围护墙 | `wall` | 保温夹芯板, thickness=0.08m, 隔温防腐蚀 |
-| 轻钢门式刚架 | `column`+`beam` | column: square 0.15m; beam: rect 0.2×0.4m(弧形) |
-| 屋面 | `roof` | roofType=gable, 彩钢板+保温棉, 通风屋脊 |
-| 漏缝地板 | `floor` | 带缝隙, 粪尿自动分离, surfaces=custom |
-| 通风风机 | `opening` | 山墙, 负压通风 |
-| 湿帘 | `opening` | 对侧山墙 |
-| 栏位隔断 | `wall` | 低矮0.8~1.2m, 金属管, thickness=0.05m |
-| 喂料线 | `furniture` | (设备构件) |
+与单厂结构相似，低矮宽大。差异：
+- wall 低矮，height=2.5~3m
+- wall 两侧下部用短 wall（围栏）替代全高墙
+- roof=gable，大 span 低 height
+- door 宽 2m+（机械进出）
 
-**典型案例**：牧原股份楼房养猪（≤4F）、浙江婺城湖羊智慧养殖基地（双层）
+### 最少可行 Blueprint
+
+```json
+{
+  "meta": { "version": "1.1", "type": "building", "name": "鸡舍" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [12, 0, 8], "thickness": 0.12, "material": "concrete" },
+      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [12, 2.5, 0], "thickness": 0.2, "material": "concrete" },
+      { "type": "wall", "id": "wall_back", "from": [0, 0, 8], "to": [12, 2.5, 8], "thickness": 0.2, "material": "concrete" },
+      { "type": "wall", "id": "wall_left_half", "from": [0, 0, 0], "to": [0, 1.2, 3], "thickness": 0.2, "material": "concrete" },
+      { "type": "wall", "id": "wall_right_half", "from": [12, 0, 0], "to": [12, 1.2, 3], "thickness": 0.2, "material": "concrete" },
+      { "type": "roof", "id": "roof_main", "roofType": "gable", "span": 13, "depth": 9, "height": 2, "thickness": 0.15, "material": "metal_panel", "position": [6, 2.5, 4] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_front", "parentWall": "wall_front", "from": [5, 0, 0], "width": 2, "height": 2.2, "doorStyle": "double", "frameWidth": 0, "frameMaterial": "steel", "leafMaterial": "metal_panel", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.80, 0.78, 0.75], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
+    "metal_panel": { "baseColor": [0.55, 0.55, 0.58], "roughness": 0.4, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
+}
+```
 
 ---
 
-### 4.3 粮仓
+## 3. 粮仓（圆形平房仓，d=8m）
 
 <!-- rag-meta
 entity_type: building
 entity_name: granary
 topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 粮仓, granary, 筒仓
+status: supported
+authority: engine
+keywords: 粮仓, granary, 筒仓, silo, 圆形
 -->
 
-| 类型 | 构件 | WILD type | 精确参数 |
-|:---:|:---|:---:|:---|
-| 筒仓 | 仓壁 | `wall` | curve=arc, sweep=360°, height=10~30m, 直径6~15m |
-| | 仓顶 | `roof` | roofType=dome/flat, 密封防水 |
-| | 输送栈桥 | `beam`+`floor` | 高架通道 |
-| 平房仓 | 墙体 | `wall` | thickness=0.30m+, 保温, 跨度18~30m |
-| | 屋盖 | `truss`+`roof` | trussType=pratt, roofType=gable |
-| 烘干塔 | 塔身 | `column`+`wall` | 围合竖塔, height=15~25m |
+圆形粮仓 = 弧形 `wall`（`curve={type:"arc", sweep:360}`）+ `floor` 圆形 + `roof` dome。
 
-**典型案例**：四川德阳旌耘粮仓（2022 NDA 金奖）
+```json
+{
+  "meta": { "version": "1.1", "type": "building", "name": "圆形粮仓" },
+  "geometry": {
+    "elements": [
+      { "type": "floor", "id": "floor_main", "from": [-4, 0, -4], "to": [4, 0, 4], "thickness": 0.2, "material": "concrete" },
+      { "type": "wall", "id": "wall_silo", "from": [4, 0, 0], "to": [4, 6, 0], "thickness": 0.24, "material": "concrete", "curve": [{ "type": "arc", "center": [0, 0, 0], "sweep": 360, "segments": 32 }] },
+      { "type": "roof", "id": "roof_dome", "roofType": "dome", "span": 9, "depth": 9, "height": 2, "thickness": 0.2, "material": "metal_panel", "position": [0, 6, 0] }
+    ],
+    "components": [
+      { "type": "door", "id": "door_granary", "parentWall": "wall_silo", "from": [0, 0, 0], "width": 1.2, "height": 2.2, "frameMaterial": "steel", "leafMaterial": "metal_panel", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 90 } }
+    ]
+  },
+  "materials": {
+    "concrete": { "baseColor": [0.80, 0.78, 0.75], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
+    "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
+    "metal_panel": { "baseColor": [0.55, 0.55, 0.58], "roughness": 0.4, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" }
+  },
+  "behaviors": {}
+}
+```
 
 ---
 
-### 4.4 农机站
+## 4. 农机站（单层框架，15×8m）
 
-<!-- rag-meta
-entity_type: building
-entity_name: agricultural_machinery_station
-topic: assembly
-status: experimental
-authority: domain_reference
-keywords: 农机站, agricultural machinery station, 大开间钢架
--->
+与单层厂结构相似。差异：层高 4~5m（农机高度），door 宽 4m+（拖拉机通行）。使用 `column` + `beam` 框架 + `wall` 围护 + `roof` gable。
 
-| 构件 | WILD type | 精确参数 |
-|:---:|:---:|:---|
-| 大开间钢架 | `column`+`truss` | column: square 0.2m; truss: warren, span=12~18m |
-| 大型推拉门 | `opening`+`door` | w=4~6m, h=4m, door:flush, leafCount=4 |
-| 混凝土地坪 | `floor` | thickness=0.20m, 耐磨 |
-| 维修地沟 | `floor`(下沉) | 车底检修 |
+### 常见字段错误
 
----
+| 源文档写法 ❌ | WILD Schema ✅ |
+|---|---|
+| `wall.curve: "arc"` 字符串 | `curve: [{"type":"arc","center":[...],"sweep":360}]` 数组 |
+| `roof.roofType: "arch"` | 用 `"gable"` 或 `"dome"` |

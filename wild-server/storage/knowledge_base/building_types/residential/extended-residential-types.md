@@ -6,8 +6,8 @@ entity_type: building
 entity_name: extended_residential_building_family
 topic: definition
 wild_version: "1.1"
-status: experimental
-authority: domain_reference
+status: supported
+authority: engine
 source: building_types/residential/extended-residential-types.md
 keywords:
   - 居住建筑
