@@ -175,9 +175,26 @@ REMOTE_SCRIPT
             SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' PROJECT='$PROJECT' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR"
+
+echo "=== 清理旧镜像 ==="
+
+# 1. 先清理悬空镜像（无 tag 的中间层）
+docker image prune -f 2>/dev/null || true
+
+# 2. 删除该项目的旧版本镜像（保留 latest 和当前运行的版本）
+for repo in "${PROJECT}/wild-server" "${PROJECT}/wild-web"; do
+  docker images --format '{{.Repository}} {{.Tag}} {{.ID}}' "$repo" 2>/dev/null | while read r tag id; do
+    if [ "$tag" = "latest" ]; then continue; fi
+    if docker ps --format '{{.Image}}' | grep -qF "$id"; then continue; fi
+    echo "  删除旧镜像: $r:$tag ($id)"
+    docker rmi "$id" 2>/dev/null || true
+  done
+done
+
+echo "=== 开始构建新镜像 ==="
 
 docker build \
   --build-arg PYTHON_BASE_IMAGE="$PYTHON_BASE_IMAGE" \
@@ -286,6 +303,18 @@ else
   exit 1
 fi
 REMOTE_SCRIPT
+
+            echo "=== 部署后清理旧镜像 ==="
+            ssh $SSH_OPTS "$DEPLOY_TARGET" "
+              docker image prune -f 2>/dev/null || true
+              for repo in '${PROJECT}/wild-server' '${PROJECT}/wild-web'; do
+                docker images --format '{{.Repository}} {{.Tag}} {{.ID}}' \"\$repo\" 2>/dev/null | while read r tag id; do
+                  if [ \"\$tag\" = 'latest' ]; then continue; fi
+                  if docker ps --format '{{.Image}}' | grep -qF \"\$id\"; then continue; fi
+                  docker rmi \"\$id\" 2>/dev/null || true
+                done
+              done
+            "
 
             echo "部署完成"
           '''
