@@ -32,7 +32,8 @@ export function createUserMessageRequest(
   sceneSummary: SceneSummary,
   selection: string[],
   blueprint?: Record<string, unknown>,
-  thinkingMode: boolean = false
+  thinkingMode: boolean = false,
+  precisionMode: boolean = false
 ): UserMessageRequest {
   return {
     type: 'user_message',
@@ -45,5 +46,6 @@ export function createUserMessageRequest(
     selection,
     blueprint,
     thinking_mode: thinkingMode,
+    precision_mode: precisionMode,
   }
 }

@@ -1,0 +1,647 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "中式庭院骨架"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "floor_base",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          10,
+          0,
+          8
+        ],
+        "thickness": 0.2,
+        "material": "stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_front",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          10,
+          3.5,
+          0
+        ],
+        "thickness": 0.3,
+        "material": "brick_grey"
+      },
+      {
+        "type": "wall",
+        "id": "wall_right",
+        "from": [
+          10,
+          0,
+          0
+        ],
+        "to": [
+          10,
+          3.5,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "brick_grey"
+      },
+      {
+        "type": "wall",
+        "id": "wall_back",
+        "from": [
+          10,
+          0,
+          8
+        ],
+        "to": [
+          0,
+          3.5,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "brick_grey"
+      },
+      {
+        "type": "wall",
+        "id": "wall_left",
+        "from": [
+          0,
+          0,
+          8
+        ],
+        "to": [
+          0,
+          3.5,
+          0
+        ],
+        "thickness": 0.3,
+        "material": "brick_grey"
+      },
+      {
+        "type": "opening",
+        "id": "front_door",
+        "parentWall": "wall_front",
+        "from": [
+          4.0,
+          0.0,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.8,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "front_win_1",
+        "parentWall": "wall_front",
+        "from": [
+          1.0,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "front_win_2",
+        "parentWall": "wall_front",
+        "from": [
+          7.5,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "back_door",
+        "parentWall": "wall_back",
+        "from": [
+          4.0,
+          0.0,
+          0
+        ],
+        "width": 2.0,
+        "height": 2.8,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "back_win_1",
+        "parentWall": "wall_back",
+        "from": [
+          7.5,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "back_win_2",
+        "parentWall": "wall_back",
+        "from": [
+          1.0,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "right_win_1",
+        "parentWall": "wall_right",
+        "from": [
+          1.5,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "right_win_2",
+        "parentWall": "wall_right",
+        "from": [
+          5.0,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "left_win_1",
+        "parentWall": "wall_left",
+        "from": [
+          6.5,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "opening",
+        "id": "left_win_2",
+        "parentWall": "wall_left",
+        "from": [
+          3.0,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "style": "rectangular",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_fl",
+        "base": [
+          0,
+          0,
+          0
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_fr",
+        "base": [
+          10,
+          0,
+          0
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_br",
+        "base": [
+          10,
+          0,
+          8
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_bl",
+        "base": [
+          0,
+          0,
+          8
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_fm",
+        "base": [
+          5,
+          0,
+          0
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "column",
+        "id": "col_bm",
+        "base": [
+          5,
+          0,
+          8
+        ],
+        "height": 3.5,
+        "bottomRadius": 0.15,
+        "topRadius": 0.12,
+        "style": "chinese_wooden",
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "beam_front",
+        "from": [
+          0,
+          3.5,
+          0
+        ],
+        "to": [
+          10,
+          3.5,
+          0
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "beam_right",
+        "from": [
+          10,
+          3.5,
+          0
+        ],
+        "to": [
+          10,
+          3.5,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "beam_back",
+        "from": [
+          10,
+          3.5,
+          8
+        ],
+        "to": [
+          0,
+          3.5,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "wood_red"
+      },
+      {
+        "type": "beam",
+        "id": "beam_left",
+        "from": [
+          0,
+          3.5,
+          8
+        ],
+        "to": [
+          0,
+          3.5,
+          0
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "wood_red"
+      },
+      {
+        "type": "roof",
+        "id": "roof_main",
+        "parentWall": "wall_front",
+        "roofType": "chinese_curved",
+        "span": 12.0,
+        "depth": 10.0,
+        "height": 3.0,
+        "thickness": 0.3,
+        "material": "tile",
+        "position": [
+          5.0,
+          3.5,
+          4.0
+        ]
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "door_front",
+        "parentWall": "wall_front",
+        "from": [
+          4.4,
+          0.0,
+          0
+        ],
+        "width": 1.2,
+        "height": 2.4,
+        "frameMaterial": "wood",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_back",
+        "parentWall": "wall_back",
+        "from": [
+          4.4,
+          0.0,
+          0
+        ],
+        "width": 1.2,
+        "height": 2.4,
+        "frameMaterial": "wood",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_front_1",
+        "parentWall": "wall_front",
+        "from": [
+          1.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_front_2",
+        "parentWall": "wall_front",
+        "from": [
+          7.3,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_right_1",
+        "parentWall": "wall_right",
+        "from": [
+          1.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_right_2",
+        "parentWall": "wall_right",
+        "from": [
+          5.3,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_back_1",
+        "parentWall": "wall_back",
+        "from": [
+          1.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_back_2",
+        "parentWall": "wall_back",
+        "from": [
+          7.3,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_left_1",
+        "parentWall": "wall_left",
+        "from": [
+          1.5,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_left_2",
+        "parentWall": "wall_left",
+        "from": [
+          5.3,
+          0.9,
+          0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "verticalMullions": 3,
+        "horizontalMullions": 3,
+        "frameMaterial": "wood",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      }
+    ]
+  },
+  "materials": {
+    "stone": {
+      "baseColor": [
+        0.62,
+        0.59,
+        0.55
+      ],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "brick_grey": {
+      "baseColor": [
+        0.4,
+        0.42,
+        0.44
+      ],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "wood_red": {
+      "baseColor": [
+        0.55,
+        0.22,
+        0.12
+      ],
+      "roughness": 0.7,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {}
+}

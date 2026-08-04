@@ -1,0 +1,281 @@
+"""
+组件注册表 —— 所有组件类型的元数据中心
+
+基于 wild-compiler/componentRegistry.ts 的 10 种已注册组件。
+新增组件只需在此添加一行配置。
+所有 10 种组件均已实现（Phase 2 扩展完成）。
+"""
+from dataclasses import dataclass, field
+
+
+@dataclass
+class ComponentConfig:
+    """单个组件类型的完整配置"""
+
+    # ── 标识 ──
+    component_type: str                    # "door", "window", ...
+    label: str                             # 中文标签："门", "窗", ...
+
+    # ── RAG 配置 ──
+    entity_type: str                       # Chroma metadata filter: entity_type
+    rag_extra_queries: list[str] = field(default_factory=list)
+
+    # ── 输出配置 ──
+    output_key: str = ""                   # state 字段名，如 "door_fragments"
+    is_list: bool = True                   # True=输出数组，False=输出单个对象
+    is_element: bool = False               # True=写入 elements（如 roof）
+
+    # ── 校验配置 ──
+    required_fields: list[str] = field(default_factory=list)
+    optional_fields: list[str] = field(default_factory=list)
+
+    # ── 触发配置 ──
+    skip_keywords: list[str] = field(default_factory=list)
+    need_keywords: list[str] = field(default_factory=list)
+
+    # ── Prompt 增强 ──
+    extra_rules: str = ""
+    output_format_hint: str = ""
+
+    # ── 依赖与优先级 ──
+    priority: int = 5
+    dependencies: list[str] = field(default_factory=list)
+
+    # ── 状态 ──
+    implemented: bool = True
+
+
+# ── 每个组件的专属规则（来自设计文档 02-节点详细设计.md 3.2 节）──
+
+_COMPONENT_RULES: dict[str, str] = {
+    "door": (
+        "- from[0] 是沿墙距离（单位米），范围: 0 ≤ from[0] ≤ 墙长-门宽\n"
+        "- from[1] 是底部世界 Y 坐标（通常为 0）\n"
+        "- from[2] 是法向偏移（通常为 0）\n"
+        '- interaction 必填: {"mode":"swing","hingeSide":"left"|"right","openAngle":90}\n'
+        "- 门宽建议 0.9~1.2m，门高建议 2.0~2.4m\n"
+        "- 编译后产出: opening + primitive.box×3（门框）"
+    ),
+    "window": (
+        "- from[0] 是沿墙距离，from[1] 是离地高度（通常 0.8~1.0m）\n"
+        "- verticalMullions 范围 0~32，horizontalMullions 范围 0~32\n"
+        "- width 建议 0.8~2.0m，height 建议 1.0~2.0m\n"
+        "- 编译后产出: opening + primitive.box×N（窗框+窗棂）"
+    ),
+    "roof": (
+        "- roof 是 geometry.elements 原生类型，不是 components\n"
+        "- roofType 支持 6 个值: gable/hip/flat/shed/mansard/pyramid\n"
+        "- span 和 depth 应覆盖整个建筑的包围盒\n"
+        "- position 是屋顶中心世界坐标"
+    ),
+    "railing": (
+        "- path 至少 2 个点，定义栏杆走向\n"
+        "- 可指定 parentFloor 关联到楼板\n"
+        "- 编译后产出: primitive.cylinder×N + beam×M\n"
+        "- 栏杆高度通常 0.9~1.1m"
+    ),
+    "canopy": (
+        "- parentWall 必须存在\n"
+        "- depth 和 thickness 必填\n"
+        "- 编译后产出: primitive.box（板）+ primitive.cylinder×4（支柱）"
+    ),
+    "balcony": (
+        "- slabThickness 必填\n"
+        "- 内部自动调用 railing 编译器 → 依赖 railing 先实现\n"
+        "- 编译后产出: floor（悬挑板）+ railing（内嵌）"
+    ),
+    "ramp": (
+        "- from/to 必须有高度差\n"
+        "- width 和 thickness 必填\n"
+        "- 编译后产出: primitive.box（坡面）+ 可选 railing"
+    ),
+    "bay_window": (
+        "- projectionDepth 必填\n"
+        "- parentWall 必须存在\n"
+        "- 编译后产出: opening + primitive.box×N（投影+窗框）"
+    ),
+    "cornice": (
+        "- path 至少 2 个点\n"
+        "- profile 必填（截面点数组）\n"
+        "- 编译后产出: primitive.profile_sweep（飞檐轮廓）"
+    ),
+    "chimney": (
+        "- position、width、depth、height 必填\n"
+        "- 编译后产出: primitive.cylinder（筒体）+ primitive.box（压顶）"
+    ),
+    "light": (
+        "- initiallyOn 必填\n"
+        "- 附带 behaviors.interactive（可交互行为）\n"
+        "- 编译后产出: primitive.sphere（灯泡）+ primitive.cylinder（灯座）+ behavior"
+    ),
+}
+
+
+# ── 注册表：全部 10 种组件（全部已实现）──
+
+COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
+    # ── P0: 建筑三要素 ──
+    "door": ComponentConfig(
+        component_type="door",
+        label="门",
+        entity_type="door",
+        rag_extra_queries=["door interaction opening"],
+        output_key="door_fragments",
+        is_list=True,
+        required_fields=["type", "id", "parentWall", "from", "width", "height", "interaction"],
+        optional_fields=["frameMaterial", "leafMaterial", "glassPanel"],
+        skip_keywords=["不要门", "没有门", "无门", "不需要门"],
+        extra_rules=_COMPONENT_RULES["door"],
+        priority=0,
+    ),
+    "window": ComponentConfig(
+        component_type="window",
+        label="窗",
+        entity_type="window",
+        rag_extra_queries=["window lighting ventilation"],
+        output_key="window_fragments",
+        is_list=True,
+        required_fields=["type", "id", "parentWall", "from", "width", "height"],
+        optional_fields=["verticalMullions", "horizontalMullions", "frameMaterial", "glassMaterial"],
+        skip_keywords=["不要窗", "没有窗", "无窗", "不需要窗"],
+        extra_rules=_COMPONENT_RULES["window"],
+        priority=0,
+    ),
+    "roof": ComponentConfig(
+        component_type="roof",
+        label="屋顶",
+        entity_type="roof",
+        rag_extra_queries=["roof coverage gable hip"],
+        output_key="roof_fragment",
+        is_list=False,
+        is_element=True,
+        required_fields=["type", "id", "roofType", "span", "depth", "height"],
+        optional_fields=["thickness", "material", "position"],
+        skip_keywords=["不要屋顶", "没有屋顶", "无屋顶", "不需要屋顶", "平顶"],
+        extra_rules=_COMPONENT_RULES["roof"],
+        priority=0,
+    ),
+    # ── P1: 常见附属（被 balcony 依赖）──
+    "railing": ComponentConfig(
+        component_type="railing",
+        label="栏杆",
+        entity_type="railing",
+        rag_extra_queries=["railing balcony stair path"],
+        output_key="railing_fragments",
+        is_list=True,
+        required_fields=["type", "id", "path"],
+        optional_fields=["height", "parentFloor", "postSpacing"],
+        skip_keywords=["不要栏杆", "没有栏杆", "无栏杆", "不需要栏杆"],
+        need_keywords=["栏杆", "护栏", "扶手", "阳台", "楼梯"],
+        extra_rules=_COMPONENT_RULES["railing"],
+        priority=1,
+    ),
+    # ── P2: 装饰型 ──
+    "canopy": ComponentConfig(
+        component_type="canopy",
+        label="雨棚",
+        entity_type="canopy",
+        rag_extra_queries=["canopy awning entrance"],
+        output_key="canopy_fragments",
+        is_list=True,
+        required_fields=["type", "id", "parentWall", "depth", "thickness"],
+        skip_keywords=["不要雨棚", "没有雨棚", "不需要雨棚"],
+        need_keywords=["雨棚", "雨篷", "遮阳", "入口遮"],
+        extra_rules=_COMPONENT_RULES["canopy"],
+        priority=2,
+        dependencies=["railing"],
+    ),
+    "balcony": ComponentConfig(
+        component_type="balcony",
+        label="阳台",
+        entity_type="balcony",
+        rag_extra_queries=["balcony slab railing"],
+        output_key="balcony_fragments",
+        is_list=True,
+        required_fields=["type", "id", "parentWall", "slabThickness"],
+        skip_keywords=["不要阳台", "没有阳台", "不需要阳台"],
+        need_keywords=["阳台", "露台", "挑台"],
+        extra_rules=_COMPONENT_RULES["balcony"],
+        priority=2,
+        dependencies=["railing"],
+    ),
+    # ── P3: 交互型 ──
+    "light": ComponentConfig(
+        component_type="light",
+        label="灯具",
+        entity_type="light",
+        rag_extra_queries=["light behavior interactive"],
+        output_key="light_fragments",
+        is_list=True,
+        required_fields=["type", "id", "position", "initiallyOn"],
+        skip_keywords=["不要灯", "没有灯", "不需要灯"],
+        need_keywords=["灯", "照明", "光源", "吊灯", "壁灯", "台灯", "灯具",
+                       "家具", "装修", "装饰", "室内", "温馨", "明亮"],
+        extra_rules=_COMPONENT_RULES["light"],
+        priority=3,
+    ),
+    # ── P4: 特殊场景 ──
+    "ramp": ComponentConfig(
+        component_type="ramp",
+        label="坡道",
+        entity_type="ramp",
+        rag_extra_queries=["ramp slope accessibility"],
+        output_key="ramp_fragments",
+        is_list=True,
+        required_fields=["type", "id", "from", "to", "width", "thickness"],
+        skip_keywords=["不要坡道", "没有坡道", "不需要坡道"],
+        need_keywords=["坡道", "斜坡", "无障碍", "车道"],
+        extra_rules=_COMPONENT_RULES["ramp"],
+        priority=4,
+    ),
+    "bay_window": ComponentConfig(
+        component_type="bay_window",
+        label="凸窗",
+        entity_type="bay_window",
+        rag_extra_queries=["bay window projection"],
+        output_key="bay_window_fragments",
+        is_list=True,
+        required_fields=["type", "id", "parentWall", "projectionDepth"],
+        skip_keywords=["不要凸窗", "没有凸窗", "不需要凸窗"],
+        need_keywords=["凸窗", "飘窗", "bay window"],
+        extra_rules=_COMPONENT_RULES["bay_window"],
+        priority=4,
+    ),
+    # ── P5: 中式建筑特有 ──
+    "cornice": ComponentConfig(
+        component_type="cornice",
+        label="檐口",
+        entity_type="cornice",
+        rag_extra_queries=["cornice eave traditional"],
+        output_key="cornice_fragments",
+        is_list=True,
+        required_fields=["type", "id", "path", "profile"],
+        skip_keywords=["不要檐口", "没有檐口", "不需要檐口"],
+        need_keywords=["檐口", "飞檐", "挑檐"],
+        extra_rules=_COMPONENT_RULES["cornice"],
+        priority=5,
+    ),
+    "chimney": ComponentConfig(
+        component_type="chimney",
+        label="烟囱",
+        entity_type="chimney",
+        rag_extra_queries=["chimney flue"],
+        output_key="chimney_fragments",
+        is_list=True,
+        required_fields=["type", "id", "position", "width", "depth", "height"],
+        skip_keywords=["不要烟囱", "没有烟囱", "不需要烟囱"],
+        need_keywords=["烟囱", "壁炉", "排烟"],
+        extra_rules=_COMPONENT_RULES["chimney"],
+        priority=5,
+    ),
+}
+
+
+def get_implemented_components() -> list[ComponentConfig]:
+    """获取所有已实现的组件配置"""
+    return [c for c in COMPONENT_REGISTRY.values() if c.implemented]
+
+
+def get_component_config(component_type: str) -> ComponentConfig | None:
+    """获取指定类型的组件配置"""
+    return COMPONENT_REGISTRY.get(component_type)

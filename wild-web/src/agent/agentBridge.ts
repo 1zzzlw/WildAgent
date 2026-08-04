@@ -332,12 +332,14 @@ export class AgentBridge {
       sceneSummary,
       selection,
       sceneStore.document.blueprint as Record<string, unknown>,
-      agentStore.thinkingMode
+      agentStore.thinkingMode,
+      agentStore.precisionMode
     )
 
     this.ws.send(JSON.stringify(request))
     agentStore.clearPipelineSteps()
     agentStore.clearThinkingState()
+    agentStore.clearDebugLogs()
     agentStore.setProcessing(true)
   }
 
@@ -366,11 +368,23 @@ export class AgentBridge {
                 : 'ok'
           agentStore.addPipelineStep(content, status)
         }
+        // 精密模式：更新节点生成进度
+        if (agentStore.precisionMode && message.stage === 'generating') {
+          agentStore.updateGeneratingNode(message.content)
+        }
+        break
+
+      case 'debug_log':
+        if (message.category === 'session_metrics') {
+          agentStore.setSessionMetrics(message.data as any)
+        } else {
+          agentStore.addDebugLog(message.category, message.data)
+        }
         break
 
       case 'thinking_delta':
-        if (agentStore.thinkingMode) {
-          agentStore.appendThinkingContent(message.delta)
+        if (agentStore.thinkingMode || agentStore.precisionMode) {
+          agentStore.appendThinkingContent(message.delta, message.node)
         }
         break
 

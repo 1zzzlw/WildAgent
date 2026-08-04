@@ -221,6 +221,309 @@ async def agent_websocket(ws: WebSocket):
 
 
 async def _handle_user_message(ws: WebSocket, data: dict):
+    """前端传 precision_mode=true → LangGraph 精密模式; 否则 → LangChain 快速模式"""
+    precision_mode = data.get("precision_mode") is True
+    if precision_mode:
+        await _handle_with_langgraph(ws, data)
+    else:
+        await _handle_with_langchain(ws, data)
+
+
+# ── 节点名 → 展示标签 ──
+_NODE_LABELS = {
+    "skeleton": "骨架",
+    "door": "门", "window": "窗", "roof": "屋顶",
+    "railing": "栏杆", "canopy": "雨棚", "balcony": "阳台",
+    "light": "灯具", "ramp": "坡道", "bay_window": "凸窗",
+    "cornice": "檐口", "chimney": "烟囱",
+    "merge": "合并", "validate": "校验", "callback": "修正",
+}
+
+
+async def _handle_with_langgraph(ws: WebSocket, data: dict):
+    """LangGraph 精密模式：分片并行 + 每节点实时推送 RAG/LLM/思考诊断 + 性能汇总"""
+    from app.agent.graph import build_generation_graph
+    from app.agent.graph_state import GenerationState
+
+    request_id = data.get("request_id", "")
+    message = data.get("message", "")
+    current_blueprint = data.get("blueprint")
+    session_id = data.get("session_id", request_id)
+    thinking_mode = data.get("thinking_mode") is True
+
+    logger.info(f"[{request_id}] [precision] 收到: {message[:80]}...")
+
+    async def send_step(stage: str, content: str):
+        await ws.send_json({
+            "type": "agent_step", "request_id": request_id,
+            "stage": stage, "content": content,
+        })
+
+    async def send_debug(category: str, data_obj: dict):
+        await ws.send_json({
+            "type": "debug_log", "request_id": request_id,
+            "category": category, "data": data_obj,
+        })
+    
+    async def send_thinking_delta(node_name: str, delta: str):
+        """实时推送节点的思考内容给前端（带节点标识）"""
+        await ws.send_json({
+            "type": "thinking_delta",
+            "request_id": request_id,
+            "node": node_name,  # 标记是哪个节点的思考
+            "delta": delta,
+        })
+
+    # ── 初始状态 ──
+    initial_state: GenerationState = {
+        "user_message": message,
+        "building_type": _detect_building_type(message),
+        "session_id": session_id,
+        "current_blueprint": current_blueprint,
+        "thinking_mode": thinking_mode,
+        "on_reasoning_delta": send_thinking_delta if thinking_mode else None,
+        "max_retries": 3,
+        "retry_count": 0,
+    }
+
+    # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
+    graph = build_generation_graph(enable_callback=False)
+    all_diags: dict[str, dict] = {}
+    final_state = None
+    total_tokens = {"input": 0, "output": 0}
+    suggested_components = []  # 存储骨架节点建议的组件列表
+
+    _OUR_NODES = {"skeleton", "door", "window", "roof", "railing",
+                  "canopy", "balcony", "light", "ramp", "bay_window",
+                  "cornice", "chimney", "merge"}
+
+    try:
+        async for event in graph.astream_events(initial_state, version="v2"):
+            kind = event.get("event")
+            node_name = event.get("name", "")
+            if node_name not in _OUR_NODES:
+                continue
+
+            label = _NODE_LABELS.get(node_name, node_name)
+
+            # ── 节点开始 ──
+            if kind == "on_chain_start":
+                # skeleton 总是显示
+                if node_name == "skeleton":
+                    await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM规划中...")
+                # merge/validate/callback 不显示 running 状态
+                elif node_name not in ("merge", "validate", "callback"):
+                    # 只有在建议列表中的组件才显示 running 状态
+                    # 如果还没获取到建议列表，所有组件都显示（第一轮）
+                    if not suggested_components or node_name in suggested_components:
+                        await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM思考生成中...")
+
+            # ── 节点结束 ──
+            elif kind == "on_chain_end":
+                node_output = event.get("data", {}).get("output", {})
+
+                # ── skeleton 节点：提取建议的组件列表 ──
+                if node_name == "skeleton":
+                    suggested_components = node_output.get("suggested_components", [])
+                    logger.info(f"[{request_id}] 骨架节点建议组件: {suggested_components}")
+
+                # 提取诊断数据（现在 State 已声明所有 _diag 字段）
+                diag_key = f"{node_name}_diag"
+                diag = node_output.get(diag_key, {})
+                if diag:
+                    all_diags[node_name] = diag
+
+                tu = diag.get("token_usage")
+                if tu:
+                    total_tokens["input"] += tu.get("input", 0)
+                    total_tokens["output"] += tu.get("output", 0)
+
+                # ── skeleton ──
+                if node_name == "skeleton":
+                    if node_output.get("error"):
+                        await send_step("generating", f"{node_name}:error:{node_output['error']}")
+                    else:
+                        ec = diag.get("element_count", "?")
+                        rc = diag.get("reasoning_chars", 0)
+                        await send_step("generating",
+                            f"{node_name}:done:骨架 {ec}构件 | RAG {diag.get('rag_chars',0)}字 {diag.get('rag_ms',0)}ms | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字 | 建议组件: {', '.join(suggested_components)}")
+                        await send_debug("node", {
+                            "node": node_name, "label": label, "stage": "done",
+                            "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
+                            "prompt_chars": diag.get("prompt_chars"),
+                            "llm_chars": diag.get("llm_chars"), "llm_ms": diag.get("llm_ms"),
+                            "token_usage": diag.get("token_usage"),
+                            "element_count": diag.get("element_count"),
+                            "reasoning_chars": rc,
+                            "reasoning_preview": diag.get("reasoning_preview"),
+                            "total_ms": diag.get("total_ms"),
+                            "suggested_components": suggested_components,
+                        })
+
+                elif node_name == "merge":
+                    await send_step("generating", f"{node_name}:done:合并完成")
+
+                else:
+                    # ── 组件节点 ──
+                    if diag.get("skipped"):
+                        # 已建议但被跳过的组件（用户明确排除）
+                        await send_step("generating",
+                            f"{node_name}:skipped:{label} 跳过 ({diag.get('reason','')})")
+                    elif diag.get("error"):
+                        await send_step("generating",
+                            f"{node_name}:error:{diag['error']}")
+                    else:
+                        fc = diag.get("fragment_count", 0)
+                        rc = diag.get("reasoning_chars", 0)
+                        await send_step("generating",
+                            f"{node_name}:done:{label} {fc}个 | RAG {diag.get('rag_chars',0)}字 {diag.get('rag_ms',0)}ms | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字")
+                        await send_debug("node", {
+                            "node": node_name, "label": label, "stage": "done",
+                            "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
+                            "prompt_chars": diag.get("prompt_chars"),
+                            "llm_chars": diag.get("llm_chars"), "llm_ms": diag.get("llm_ms"),
+                            "token_usage": diag.get("token_usage"),
+                            "reasoning_chars": rc,
+                            "reasoning_preview": diag.get("reasoning_preview"),
+                            "fragment_count": fc, "total_ms": diag.get("total_ms"),
+                        })
+
+                final_state = node_output
+
+    except Exception as e:
+        logger.exception(f"[{request_id}] LangGraph 异常: {e}")
+        await ws.send_json({"type": "error", "request_id": request_id, "error": str(e)})
+        return
+
+    if final_state is None:
+        await ws.send_json({"type": "error", "request_id": request_id, "error": "未返回结果"})
+        return
+
+    # ── 校验流水线（手动执行，每步实时推进度）──
+    merged_blueprint = final_state.get("merged_blueprint")
+    if not merged_blueprint:
+        await ws.send_json({"type": "error", "request_id": request_id, "error": "合并后的 Blueprint 缺失"})
+        return
+
+    await send_step("generating", "validate:running:启动 15 步校验流水线...")
+
+    from app.services.agent_service import run_validation_pipeline, _final_errors
+    try:
+        pipeline_results = run_validation_pipeline(merged_blueprint)
+    except Exception as e:
+        logger.exception(f"[{request_id}] 校验流水线执行失败: {e}")
+        await ws.send_json({"type": "error", "request_id": request_id, "error": f"校验失败: {e}"})
+        return
+
+    # 逐步推送校验进度
+    final_errors_list = _final_errors(pipeline_results)
+    error_step_names = {r.name for r in final_errors_list}
+    for pr in pipeline_results:
+        output_text = pr.output
+        if output_text.startswith("⏭️"):
+            await send_step("generating",
+                f"validate:running:[{pr.step}] {pr.name}: ⏭️ 跳过")
+            continue
+        if pr.name in error_step_names:
+            await send_step("generating",
+                f"validate:running:[{pr.step}] {pr.name}: ❌ {output_text[:150]}")
+        elif pr.has_warning:
+            await send_step("generating",
+                f"validate:running:[{pr.step}] {pr.name}: ⚠️ {output_text[:150]}")
+        else:
+            await send_step("generating",
+                f"validate:running:[{pr.step}] {pr.name}: ✅")
+
+    # 汇总
+    total_steps = len(pipeline_results)
+    validation_errors = len(final_errors_list)
+    validation_warnings = sum(1 for r in pipeline_results if r.has_warning and r.name not in error_step_names)
+    validation_passed = total_steps - validation_errors - validation_warnings
+    await send_step("generating",
+        f"validate:done:校验 {total_steps}步 {validation_passed}✓ {validation_warnings}⚠ {validation_errors}✗")
+
+    # ── 保存 Blueprint ──
+    await send_step("generating", "saving:running:保存蓝图文件...")
+
+    meta_name = merged_blueprint.get("meta", {}).get("name", "") or ""
+    elements = merged_blueprint.get("geometry", {}).get("elements", [])
+    components = merged_blueprint.get("geometry", {}).get("components", [])
+
+    try:
+        import datetime as _dt, re as _re
+        def _slug(name, max_len=40):
+            s = _re.sub(r"[^\w一-鿿]", "_", name, flags=_re.UNICODE)
+            return _re.sub(r"_+", "_", s).strip("_")[:max_len]
+        today = _dt.date.today().strftime("%Y-%m-%d")
+        slug = _slug(meta_name)
+        wild_filename = f"{session_id}_{slug}.wild" if slug else f"{session_id}.wild"
+        rel_path = f"{today}/{wild_filename}"
+        save_blueprint_file_as(merged_blueprint, SCENES_DIR, rel_path)
+    except Exception as e:
+        logger.error(f"[{request_id}] 保存失败: {e}")
+        rel_path = ""
+
+    if rel_path:
+        await ws.send_json({
+            "type": "blueprint_generated", "request_id": request_id,
+            "session_id": session_id, "filename": rel_path,
+            "file_url": f"/api/scenes/{rel_path}",
+        })
+
+    final_status = "complete" if validation_errors == 0 else "partial"
+    await ws.send_json({
+        "type": "agent_reply", "request_id": request_id,
+        "content": f"已生成 {meta_name or '建筑'}（{len(elements)}元素 + {len(components)}组件, 校验 {final_status}: {validation_passed}✓ {validation_warnings}⚠ {validation_errors}✗）",
+    })
+
+    # ── 性能汇总 ──
+    active_diags = {k: v for k, v in all_diags.items() if not v.get("skipped")}
+    total_rag_ms = sum(v.get("rag_ms", 0) for v in active_diags.values())
+    total_llm_ms = sum(v.get("llm_ms", 0) for v in active_diags.values())
+    fragment_total = sum(v.get("fragment_count", 0) for v in active_diags.values())
+    await send_debug("session_metrics", {
+        "node_count": len(all_diags),
+        "active_nodes": len(active_diags),
+        "skipped_nodes": len(all_diags) - len(active_diags),
+        "suggested_components": suggested_components,
+        "total_rag_ms": total_rag_ms,
+        "total_llm_ms": total_llm_ms,
+        "total_tokens": {
+            "input": total_tokens["input"],
+            "output": total_tokens["output"],
+            "total": total_tokens["input"] + total_tokens["output"],
+        },
+        "fragment_total": fragment_total,
+        "validation_steps": len(pipeline_results),
+        "validation_errors": validation_errors,
+        "retry_count": 0,
+        "max_retries": 3,
+        "status": final_state.get("status", "?"),
+    })
+
+    logger.info(f"[{request_id}] [precision] 完成: {len(active_diags)}活跃节点, "
+                f"建议组件: {suggested_components}, "
+                f"RAG {total_rag_ms}ms, LLM {total_llm_ms}ms, "
+                f"tokens {total_tokens['input']+total_tokens['output']}")
+
+
+
+def _detect_building_type(message: str) -> str:
+    """从用户消息推断建筑类型"""
+    type_keywords = {
+        "chinese_courtyard": ["中式庭院", "庭院", "四合院", "中式"],
+        "pavilion": ["凉亭", "亭子", "亭"],
+        "modern_house": ["现代", "别墅", "住宅", "房屋"],
+        "garage": ["车库"],
+        "tower": ["塔", "楼", "高楼", "大厦"],
+    }
+    for btype, keywords in type_keywords.items():
+        if any(kw in message for kw in keywords):
+            return btype
+    return "building"
+
+
+async def _handle_with_langchain(ws: WebSocket, data: dict):
     """执行一次用户请求，并把 QueryResult 翻译成 WebSocket 协议消息。
 
     根据 AgentService 的结构化结果分成三条出口：

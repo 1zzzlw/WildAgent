@@ -1,148 +1,258 @@
 """
-Agent System Prompt Builder —— 装配完整的 LLM System Prompt
-
-职责：
-  1. 接收 SpecLoader 加载的规范文档文本
-  2. 拼接意图分类、工作流程和输出格式要求
-  3. 返回完整的 System Prompt 字符串
-
-设计：纯函数，不依赖任何外部状态。
-  build_system_prompt(spec_text, scene_summary=None)
-  一份 prompt 同时覆盖三种意图：
-    - 生成类（从零创建） → 输出完整 Blueprint JSON
-    - 修改类（增量修改） → 输出 ScenePatch JSON
-    - 对话类（纯聊天） → 纯文本
-  AI 自行判断意图。场景摘要通过 user message 注入，不在 system prompt 里。
-
-升级路径：
-  - LangGraph 各节点按需取用不同的 prompt 片段
+拆分的 Prompt 片段，每个节点使用独立的 prompt
 """
 
 
-def build_system_prompt(spec_text: str, scene_summary: str | None = None) -> str:
-    """把检索到的 WILD 规范与固定行为规则组装成 System Prompt。
+def build_system_prompt(spec_text: str) -> str:
+    """原始的完整 System Prompt（保持向后兼容）"""
+    return f"""你是 WILD 蓝图生成专家。你可以根据用户需求生成完整的建筑蓝图、修改现有场景或回答问题。
 
-    Args:
-        spec_text: FileSpecLoader 或 RAGSpecLoader 生成的规范上下文。
-        scene_summary: 可选的场景摘要。当前主调用链通常把场景放在 user message；
-            保留此参数是为了兼容其他调用方。
+# 输出意图判断
 
-    Returns:
-        可直接传给 LangChain Agent 的完整 system prompt 字符串。
-    """
+根据用户输入自行判断意图，选择对应的输出格式：
 
-    # 仅在调用方明确传入时插入；空字符串不会额外占用上下文。
-    scene_block = ""
-    if scene_summary:
-        scene_block = f"""
-# 当前场景
+1. **生成类**（从零创建）→ 输出完整 Blueprint JSON
+2. **修改类**（增量修改）→ 输出 ScenePatch JSON（operations + summary）
+3. **对话类**（纯聊天）→ 纯文本回复
 
-{scene_summary}
+# 规则
 
-"""
+- 墙、楼板、屋顶、门、玻璃使用角色独立的材质名
+- 墙体转角处端点坐标精确一致
+- opening/door/window 的 from[0] 是沿墙距离，不是世界坐标
 
-    # 双重大括号用于在 f-string 中输出 JSON 所需的字面量大括号。
-    return f"""你是 WILD 蓝图生成与修改专家。根据用户自然语言描述，生成符合 WILD 语言规范的输出。
-
-{scene_block}# 规范文档
-
-以下是 WILD 语言规范。你必须严格遵守所有字段、类型、参数和约束。
+# WILD 规范
 
 {spec_text}
 
-# 意图分类（首先判断！）
+# 输出格式
 
-**生成类** — 用户要求生成/建造/创建一个新的建筑或物体，输出完整 Blueprint JSON。
-  关键词：生成、建造、创建、建一个、做一个、画一个、搭一个、来一个、设计一个、重新生成
-  示例："生成凉亭"、"建别墅"、"做板凳"、"重新生成一个中式庭院"
+生成类输出完整 Blueprint JSON：
+```json
+{{
+  "meta": {{"version": "1.1", "type": "building", "name": "..."}},
+  "geometry": {{"elements": [...], "components": [...]}},
+  "materials": {{...}}
+}}
+```
 
-  输出格式（完整 Blueprint）：
-  ```json
-  {{{{
-    "meta": {{{{"version": "1.1", "type": "building", "name": "板凳"}}}},
-    "geometry": {{{{"elements": [...], "components": [...]}}}},
-    "materials": {{}},
-    "behaviors": {{}}
-  }}}}
-  ```
+修改类输出 ScenePatch JSON：
+```json
+{{
+  "operations": [
+    {{"op": "add_element", "element": {{...}}}},
+    {{"op": "update_element", "id": "...", "changes": {{...}}}}
+  ],
+  "summary": "修改了..."
+}}
+```
 
-**修改类** — 用户想在现有建筑基础上添加/修改/删除构件，输出 ScenePatch JSON。
-  关键词：加、添加、改、修改、删、删除、在旁边、在上面、调整、挪、移
-  示例："在房子右边加个凉亭"、"把柱子加粗"、"删除那面墙"
+对话类直接文本回复。
+"""
 
-  输出格式（ScenePatch）：
-  ```json
-  {{{{
-    "operations": [
-      {{{{"op": "add_element", "element": {{{{"id": "new_01", "type": "column", ...}}}}}}}},
-      {{{{"op": "add_component", "component": {{{{"id": "door_01", "type": "door", ...}}}}}}}},
-      {{{{"op": "update_element", "id": "existing_id", "changes": {{{{"height": 4.0}}}}}}}},
-      {{{{"op": "remove_element", "id": "to_remove_id"}}}}
+
+def build_skeleton_prompt(spec_text: str) -> str:
+    """Layer 0: 骨架生成专用 prompt
+    
+    职责：
+    1. 理解建筑类型（通过 building_types/ 知识库）
+    2. 丰富用户需求描述（比如"欧式别墅应该有大门、落地窗、坡屋顶"）
+    3. 生成基础骨架结构（walls、floors、columns、beams）
+    4. 不生成组件（door、window、roof 等留给后续专用节点）
+    """
+    return f"""你是建筑规划专家。你的任务是理解用户需求，规划建筑结构，并生成骨架。
+
+# 你的任务
+
+1. **理解建筑类型**：根据用户描述（如"欧式别墅"、"中式庭院"），从知识库中找到对应的建筑特征
+2. **丰富需求描述**：基于建筑类型，补充细节描述，例如：
+   - 欧式别墅 → 应有对称布局、大门、落地窗、四坡屋顶、柱廊
+   - 中式庭院 → 应有院墙、月亮门、木窗、坡屋顶、飞檐
+   - 现代建筑 → 应有大面积玻璃窗、简约线条、平屋顶
+3. **生成骨架结构**：只生成 walls（墙）、floors（楼板）、columns（柱）、beams（梁）
+5. **分析需要的组件**：根据用户需求判断哪些组件是必需的（如"家具"→light, "中式"→cornice）
+4. **不生成组件**：不要生成 door（门）、window（窗）、roof（屋顶）等，这些由后续专用节点负责
+
+# 输出格式要求
+
+在 JSON 前先输出 `_components: door, window, roof`（逗号分隔，列出所有需要的组件类型）。
+可用组件: door, window, roof, railing, canopy, balcony, light, ramp, bay_window, cornice, chimney
+
+你必须输出完整的 Blueprint JSON，但 `geometry.components` **必须为空数组**。
+
+# 规则
+
+1. **墙体闭合**：墙体转角处共享端点坐标（精确到小数点后 2 位）
+2. **楼板覆盖**：floor 应覆盖整个建筑底面
+3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
+4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
+
+# WILD 规范参考
+
+{spec_text}
+
+# 输出示例
+
+假设用户说"生成一个中式庭院"，你应该在思考时描述：
+- "中式庭院通常有院墙围合、月亮门入口、木质花窗、坡屋顶配青瓦、飞檐翘角"
+- 然后生成墙体、楼板结构
+
+```json
+{{
+  "meta": {{
+    "version": "1.1",
+    "type": "building",
+    "name": "中式庭院",
+    "description": "传统中式庭院，院墙围合，预留月亮门、木窗、坡屋顶等构件位置"
+  }},
+  "geometry": {{
+    "elements": [
+      {{"type": "floor", "id": "floor_ground", "from": [0, 0, 0], "to": [10, 0, 8], "thickness": 0.2, "material": "stone_grey"}},
+      {{"type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [10, 3.5, 0], "thickness": 0.3, "material": "brick_red"}},
+      {{"type": "wall", "id": "wall_back", "from": [0, 0, 8], "to": [10, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
+      {{"type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
+      {{"type": "wall", "id": "wall_right", "from": [10, 0, 0], "to": [10, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
+      {{"type": "column", "id": "col_fl", "base": [0, 0, 0], "height": 3.5, "bottomRadius": 0.2, "topRadius": 0.18, "style": "square", "material": "wood_oak"}},
+      {{"type": "column", "id": "col_fr", "base": [10, 0, 0], "height": 3.5, "bottomRadius": 0.2, "topRadius": 0.18, "style": "square", "material": "wood_oak"}}
     ],
-    "summary": "简短描述修改内容（给用户看的）"
-  }}}}
-  ```
-  add_element: element 含完整构件定义（id + type + 必填参数），id 不能与已有重复
-  update_element: id 指向已有构件，changes 只含要改的字段
-  remove_element: id 指向已有构件
-  add_component: component 含完整组合构件定义，type 只能是 door、window、railing、canopy、balcony、ramp、bay_window、cornice、chimney、light
-  update_component: id 指向 geometry.components 中的已有组合构件
-  remove_component: id 指向 geometry.components 中的已有组合构件
+    "components": []
+  }},
+  "materials": {{
+    "stone_grey": {{"baseColor": [0.5, 0.5, 0.5], "roughness": 0.8}},
+    "brick_red": {{"baseColor": [0.6, 0.2, 0.15], "roughness": 0.9}},
+    "wood_oak": {{"baseColor": [0.55, 0.27, 0.07], "roughness": 0.7}}
+  }},
+  "behaviors": {{}}
+}}
+```
 
-**澄清类** — 当前场景已有构件，但用户的需求模糊，无法判断是"重新生成"还是"在现有基础上修改"。
-  **必须主动询问用户意图，不要猜测！**
+**重要**：components 数组必须为空！门、窗、屋顶等由后续节点生成。
+"""
 
-  触发条件（任一满足即触发）：
-  - 用户用了"生成/建一个/做一个"等关键词，但当前场景非空（可能是想替换，也可能是想追加）
-  - 用户的描述没有明确指向现有构件，也没有明确说"重新"/"替换"
 
-  回复格式（纯文本，不输出 JSON）：
-  > 当前场景已有：[简要列出已有构件]。
-  > 你是想：
-  > 1. 在当前场景上**追加**（保留现有，新增你描述的物体）
-  > 2. **重新生成**（替换当前场景，只生成你描述的物体）
-  >
-  > 请告诉我选 1 还是 2。
+_COMPONENT_LABELS = {
+    "door": "门",
+    "window": "窗",
+    "roof": "屋顶",
+    "railing": "栏杆",
+    "canopy": "雨棚",
+    "balcony": "阳台",
+    "ramp": "坡道",
+    "bay_window": "凸窗",
+    "cornice": "檐口",
+    "chimney": "烟囱",
+    "light": "灯具",
+}
 
-  示例场景：用户之前已生成板凳，现在说"生成一个桌子"
-  → 触发澄清：当前场景已有 5 个构件（4柱+1地板=板凳）。你是想在板凳旁边追加桌子，还是重新生成只保留桌子？
 
-**对话类** — 用户只是提问、聊天、寻求建议，只回复文本，不输出任何 JSON。
-  示例："你能做什么？"、"柱子多高合适？"、"什么是 .wild？"
+def build_component_prompt(
+    spec_text: str,
+    component_type: str,
+    skeleton_summary: str,
+    extra_rules: str = "",
+) -> str:
+    """Layer 1: 单个组件类型专用 prompt
 
-# 工作流程
+    Args:
+        spec_text: RAG 检索到的规范文本
+        component_type: 组件类型（如 "door", "window"）
+        skeleton_summary: 骨架摘要
+        extra_rules: 组件专属规则（来自 ComponentConfig.extra_rules）
+    """
+    label = _COMPONENT_LABELS.get(component_type, component_type)
 
-1. 分析意图：判断用户是要新建、修改还是纯聊天
-2. 规划构件：先用 building_types 文档确定主体组合，再用 recipes/component-building-matrix 确定需要哪些组件系统
-3. 组件选型（建筑生成时强制）：从已检索的 components/windows、components/doors、components/roofs-and-eaves 或风格速查片段中，为窗、门、屋顶分别选择具体变体；不得只照抄建筑类型文档的最小组合而忽略组件文档
-4. 组件落地：当前 Core 可直接渲染 wall、floor、column、beam、roof、opening、stair、furniture、body、primitive。`door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney`、`light` 已由组合构件编译器支持，但只能写入 `geometry.components`，绝不能写入 `geometry.elements`：
-   - door → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使门可开合**，默认 `{{"mode": "swing", "hingeSide": "left", "openAngle": 90}}`；可选 frameWidth/frameDepth/frameMaterial/leafMaterial
-   - window → 必填 id、parentWall、from、width、height；**必须包含 interaction 字段使窗可开合**，默认 `{{"mode": "swing", "hingeSide": "left", "openAngle": 60}}`；可选 verticalMullions/horizontalMullions/frameWidth/frameDepth/frameMaterial/glassMaterial
-   - railing → 必填 id、path、height；可选 postSpacing/postRadius/railRadius/railLevels/material
-   - canopy/balcony/bay_window → 必须提供 parentWall、from 和各自尺寸字段；**balcony 的 slabThickness 是必填项**
-   - ramp → 必填 id、from、to、width、thickness；cornice → 必填 id、path、profile
-   - chimney → 必填 id、position、width、depth、height
-   - light → 必填 id、position；**必须包含 initiallyOn 字段**（默认 true 表示默认亮灯）；fixtureType=bulb 表示裸灯泡，fixtureType=table_lamp 表示带底座/灯杆/灯罩的发光台灯；lightType=point/spot 表示光源算法；可选 color、lowIntensity、highIntensity、distance、draggable
-   - 用户要求台灯、亮灯、发光或可开关灯具时，必须使用 geometry.components 中的 light；furniture.subtype=lamp 只是旧版静态家具占位，不产生真实光照
-   - door/window 的 from 固定为 [沿父墙起点的距离, 底部世界Y, 墙体法向偏移]，第一版只依附直线墙
-   - mullion 不是独立 component.type，通过 window 的 verticalMullions/horizontalMullions 生成
-   组合构件 id 应体现选型，例如 window_fixed_、window_casement_、door_panel_，编译器会据此生成稳定的子元素 id
-   - furniture.subtype 只能是 table、chair、bookshelf、bed、lamp、tile，严禁发明 sofa、counter 等值；沙发用 primitive box 组合坐垫、靠背和扶手，厨房柜台用 primitive box 组合柜体与台面
-5. 规划外观：用户未指定风格或颜色时，必须采用规范文档中对应对象的默认材质配色；墙、楼板、屋顶、门、玻璃使用角色独立的材质名，不能默认全部复用 concrete
-6. 如有墙体：先调用 get_wall_bounding_box 获取包围盒
-7. 生成初稿：按规范生成 JSON；玻璃材质必须显式给出 opacity
-8. 可选调用校验工具检查问题，根据反馈修正
-9. 最终输出：一句简短说明 + ```json 代码块（生成类=Blueprint / 修改类=ScenePatch / 对话类=不输出 JSON）
+    # 组件专属规则段落
+    rules_section = ""
+    if extra_rules:
+        rules_section = f"""
+# {label} 专属规则
 
-**关键规则：工具调用结果只用于修正 JSON，不要复述或总结校验结果。**
-**最终回复里必须有且只有：一句说明 + ```json 代码块。对话类只输出文本。**
+{extra_rules}
+"""
 
-# 禁止行为
+    return f"""你是 {label} 组件生成专家。只生成 {component_type} 组合构件。
 
-- 不输出 Three.js / HTML / CSS / JS 代码
-- 不把校验工具的输出当成最终回复发出去
-- 生成类/修改类的最终回复不能只有文字而没有 ```json 代码块
-- 修改类不输出完整 Blueprint（只输出 ScenePatch）
-- 生成类不输出 ScenePatch（只输出完整 Blueprint）
-- 意图模糊时（无法判断生成还是修改）**不猜测**，主动询问用户选择
+# 已知场景骨架
+
+{skeleton_summary}
+
+# 通用规则
+
+1. **只生成 {component_type}**：不要生成其他类型的组件
+2. **写入 geometry.components**：不是 geometry.elements（roof 除外）
+3. **parentWall / parentFloor 必须存在**：从骨架信息中选择真实的 wall/floor id
+4. **ID 前缀**：使用 `{component_type}_` 前缀避免冲突
+{rules_section}
+# WILD 规范
+
+{spec_text}
+
+# 输出格式
+
+只输出 {label} 的 JSON，不要重复骨架内容：
+
+```json
+[
+  {{"type": "{component_type}", "id": "{component_type}_01", "parentWall": "wall_front", ...}}
+]
+```
+"""
+
+
+def build_callback_prompt(
+    spec_text: str,
+    skeleton_summary: str,
+    failed_components: list[dict],
+    passed_component_ids: list[str],
+) -> str:
+    """回调修正专用 prompt
+
+    Args:
+        spec_text: 回调时精准 RAG 检索到的规范文本
+        skeleton_summary: 当前骨架摘要
+        failed_components: 需要修正的组件列表（含错误详情）
+        passed_component_ids: 已通过校验的组件 ID（LLM 不得修改）
+    """
+    failed_text = ""
+    for fc in failed_components:
+        failed_text += (
+            f"\n### {fc.get('component_id')} ({fc.get('component_type')})\n"
+            f"- 错误: {fc.get('error_message', '?')}\n"
+            f"- 当前参数: {fc.get('current_params', {})}\n"
+        )
+
+    passed_text = ", ".join(passed_component_ids) if passed_component_ids else "无"
+
+    return f"""你是 WILD 蓝图修正专家。以下是上一轮生成的组件校验错误，请逐一修正。
+
+## 场景骨架（只读）
+
+{skeleton_summary}
+
+## 需要修正的组件
+
+{failed_text}
+
+## 已通过校验（不要修改）
+
+{passed_text}
+
+## 相关规范知识
+
+{spec_text}
+
+## 规则
+
+1. 只修正上面列出的失败组件，不要改动已通过的组件
+2. 使用骨架信息中列出的真实 wall/floor id 作为 parentWall/parentFloor
+3. 每个组件只输出 JSON 对象，不要输出完整 Blueprint
+
+## 输出格式
+
+```json
+[
+  {{"type":"door","id":"door_front","parentWall":"wall_front","from":[3.0,0,0],...}},
+  {{"type":"window","id":"window_right",...}}
+]
+```
 """

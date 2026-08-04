@@ -43,6 +43,7 @@ export type AgentMessage =
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
+  | DebugLogResponse
   | ErrorResponse
   | PingMessage
   | PongMessage
@@ -60,6 +61,7 @@ export interface UserMessageRequest {
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
+  precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
 }
 
 export interface AgentStepResponse {
@@ -73,6 +75,7 @@ export interface AgentStepResponse {
 export interface ThinkingDeltaResponse {
   type: 'thinking_delta'
   request_id: string
+  node?: string  // 精密模式下，标识是哪个节点的思考内容
   delta: string
 }
 
@@ -142,6 +145,62 @@ export interface AgentSession {
   session_id: string
   messages: ChatMessage[]
   connected: boolean
+}
+
+/** 精密模式：后端推送的节点诊断日志 */
+export interface DebugLogResponse {
+  type: 'debug_log'
+  request_id: string
+  category: 'node' | 'error' | 'session_metrics'
+  data: NodeDiagnostic | ErrorDiagnostic | SessionMetrics
+}
+
+export interface NodeDiagnostic {
+  node: string
+  stage: 'done' | 'skipped'
+  label?: string
+  rag_chars?: number
+  rag_ms?: number
+  prompt_chars?: number
+  llm_chars?: number
+  llm_ms?: number
+  token_usage?: { input: number; output: number; total: number } | null
+  reasoning_chars?: number
+  reasoning_preview?: string
+  fragment_count?: number
+  element_count?: number
+  total_ms?: number
+  reason?: string
+  error?: string
+}
+
+export interface ErrorDiagnostic {
+  node: string
+  error: string
+}
+
+export interface SessionMetrics {
+  node_count: number
+  active_nodes: number
+  skipped_nodes: number
+  suggested_components?: string[]
+  total_rag_ms: number
+  total_llm_ms: number
+  total_tokens: { input: number; output: number; total: number }
+  fragment_total: number
+  validation_steps: number
+  validation_errors: number
+  retry_count?: number
+  max_retries?: number
+  status: string
+}
+
+/** 精密模式：节点生成进度 */
+export interface GeneratingNode {
+  name: string
+  label: string
+  status: 'running' | 'done' | 'skipped' | 'error'
+  detail: string
 }
 
 /** 会话列表项（由后端 storage/scenes 文件摘要生成） */

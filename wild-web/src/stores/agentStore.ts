@@ -31,15 +31,24 @@ import type {
   AgentSession,
   ConnectionStatus,
   SessionInfo,
+  GeneratingNode,
+  NodeDiagnostic,
+  ErrorDiagnostic,
+  SessionMetrics,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
+const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 
 function loadThinkingMode(): boolean {
   return localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true'
+}
+
+function loadPrecisionMode(): boolean {
+  return localStorage.getItem(STORAGE_KEY_PRECISION_MODE) === 'true'
 }
 
 export const useAgentStore = defineStore('agent', () => {
@@ -69,6 +78,14 @@ export const useAgentStore = defineStore('agent', () => {
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
+  
+  /** 精密模式：按节点分组的思考内容 */
+  interface NodeThinking {
+    node: string
+    content: string
+    status: 'thinking' | 'completed'
+  }
+  const nodeThinkingMap = ref<Map<string, NodeThinking>>(new Map())
 
   /** 校验流水线步骤列表（每次生成任务独立一组） */
   interface PipelineStep {
@@ -80,6 +97,18 @@ export const useAgentStore = defineStore('agent', () => {
   /** Blueprint 加载成功标记（用于 AIChatPanel 显示成功动画，5 秒后自动清除） */
   const blueprintLoaded = ref(false)
   const lastBlueprintPath = ref<string>('')
+
+  /** 精密模式：LangGraph 分片并行 + 详细诊断日志 */
+  const precisionMode = ref(loadPrecisionMode())
+
+  /** 精密模式：节点生成进度列表 */
+  const generatingNodes = ref<GeneratingNode[]>([])
+
+  /** 精密模式：调试日志（节点诊断 RAG/LLM 数据） */
+  const debugLogs = ref<Array<{ category: string; data: NodeDiagnostic | ErrorDiagnostic }>>([])
+
+  /** 精密模式：最终性能汇总 */
+  const sessionMetrics = ref<SessionMetrics | null>(null)
 
   const hasMessages = computed(() => session.value.messages.length > 0)
   const hasPendingPatch = computed(() => pendingPatch.value !== null)
@@ -145,8 +174,34 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  function appendThinkingContent(delta: string) {
-    thinkingContent.value += delta
+  function appendThinkingContent(delta: string, nodeName?: string) {
+    if (precisionMode.value && nodeName) {
+      // 精密模式：按节点分组存储
+      const existing = nodeThinkingMap.value.get(nodeName)
+      if (existing) {
+        existing.content += delta
+        existing.status = 'thinking'
+      } else {
+        nodeThinkingMap.value.set(nodeName, {
+          node: nodeName,
+          content: delta,
+          status: 'thinking'
+        })
+      }
+      // 触发响应式更新
+      nodeThinkingMap.value = new Map(nodeThinkingMap.value)
+    } else {
+      // 非精密模式：累加到单一内容
+      thinkingContent.value += delta
+    }
+  }
+  
+  function completeNodeThinking(nodeName: string) {
+    const thinking = nodeThinkingMap.value.get(nodeName)
+    if (thinking) {
+      thinking.status = 'completed'
+      nodeThinkingMap.value = new Map(nodeThinkingMap.value)
+    }
   }
 
   function setThinkingStatus(status: Exclude<ThinkingStatus, 'idle'>, content = '') {
@@ -158,6 +213,7 @@ export const useAgentStore = defineStore('agent', () => {
     thinkingContent.value = ''
     thinkingStatus.value = 'idle'
     thinkingNotice.value = ''
+    nodeThinkingMap.value.clear()
   }
 
   function setPendingPatch(patch: ScenePatch | null) {
@@ -294,6 +350,79 @@ export const useAgentStore = defineStore('agent', () => {
     blueprintLoaded.value = false
   }
 
+  // ── 精密模式 ──
+
+  function setPrecisionMode(enabled: boolean) {
+    precisionMode.value = enabled
+    localStorage.setItem(STORAGE_KEY_PRECISION_MODE, String(enabled))
+    if (!enabled) {
+      clearPrecisionState()
+    }
+  }
+
+  function updateGeneratingNode(content: string) {
+    // 新格式: "{node_name}:{status}:{detail}"
+    // 示例: "skeleton:done:骨架 25构件 | RAG 18000字 200ms | LLM 3000字 15000ms | 思考 3421字"
+    //       "door:done:门 2个 | RAG 500字 50ms | LLM 800字 3000ms | 思考 856字"
+    //       "chimney:skipped:烟囱 跳过 (用户未提及)"
+    const parts = content.split(':')
+    let nodeName = 'unknown'
+    let status: GeneratingNode['status'] = 'running'
+    let detail = content
+
+    if (parts.length >= 3) {
+      nodeName = parts[0]
+      status = (parts[1] as GeneratingNode['status']) || 'running'
+      detail = parts.slice(2).join(':')
+    } else if (content.includes('✅')) {
+      status = 'done'
+    } else if (content.includes('❌')) {
+      status = 'error'
+    } else if (content.includes('⏭️')) {
+      status = 'skipped'
+    }
+
+    const label = _NODE_LABELS[nodeName] || nodeName
+
+    const existing = generatingNodes.value.find(n => n.name === nodeName)
+    if (existing) {
+      existing.status = status
+      existing.detail = detail
+      existing.label = label
+    } else {
+      generatingNodes.value.push({ name: nodeName, label, status, detail })
+    }
+  }
+
+  // 节点名→中文标签（与后端 _NODE_LABELS 对应）
+  const _NODE_LABELS: Record<string, string> = {
+    skeleton: '骨架',
+    door: '门', window: '窗', roof: '屋顶',
+    railing: '栏杆', canopy: '雨棚', balcony: '阳台',
+    light: '灯具', ramp: '坡道', bay_window: '凸窗',
+    cornice: '檐口', chimney: '烟囱',
+    merge: '合并', validate: '校验', callback: '修正',
+  }
+
+  function addDebugLog(category: string, data: any) {
+    debugLogs.value.push({ category, data })
+  }
+
+  function setSessionMetrics(metrics: SessionMetrics) {
+    sessionMetrics.value = metrics
+  }
+
+  function clearPrecisionState() {
+    generatingNodes.value = []
+    debugLogs.value = []
+    sessionMetrics.value = null
+  }
+
+  function clearDebugLogs() {
+    debugLogs.value = []
+    sessionMetrics.value = null
+  }
+
   return {
     // 会话列表
     sessions,
@@ -337,9 +466,22 @@ export const useAgentStore = defineStore('agent', () => {
     thinkingContent,
     thinkingStatus,
     thinkingNotice,
+    nodeThinkingMap,
     setThinkingMode,
     appendThinkingContent,
+    completeNodeThinking,
     setThinkingStatus,
     clearThinkingState,
+    // 精密模式
+    precisionMode,
+    generatingNodes,
+    debugLogs,
+    sessionMetrics,
+    setPrecisionMode,
+    updateGeneratingNode,
+    addDebugLog,
+    setSessionMetrics,
+    clearPrecisionState,
+    clearDebugLogs,
   }
 })
