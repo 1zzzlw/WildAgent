@@ -305,16 +305,18 @@ fi
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="
-            ssh $SSH_OPTS "$DEPLOY_TARGET" "
-              docker image prune -f 2>/dev/null || true
-              for repo in '${PROJECT}/wild-server' '${PROJECT}/wild-web'; do
-                docker images --format '{{.Repository}} {{.Tag}} {{.ID}}' \"\$repo\" 2>/dev/null | while read r tag id; do
-                  if [ \"\$tag\" = 'latest' ]; then continue; fi
-                  if docker ps --format '{{.Image}}' | grep -qF \"\$id\"; then continue; fi
-                  docker rmi \"\$id\" 2>/dev/null || true
-                done
-              done
-            "
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "PROJECT='$PROJECT' /bin/sh -s" <<'REMOTE_SCRIPT'
+set -eu
+docker image prune -f 2>/dev/null || true
+for repo in "$PROJECT/wild-server" "$PROJECT/wild-web"; do
+  docker images --format '{{.Repository}} {{.Tag}} {{.ID}}' "$repo" 2>/dev/null | while read r tag id; do
+    if [ "$tag" = 'latest' ]; then continue; fi
+    if docker ps --format '{{.Image}}' | grep -qF "$id"; then continue; fi
+    docker rmi "$id" 2>/dev/null || true
+  done
+done
+REMOTE_SCRIPT
 
             echo "部署完成"
           '''
