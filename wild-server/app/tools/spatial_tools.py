@@ -758,6 +758,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     element_ids = {el.get("id") for el in elements if el.get("id")}
     wall_ids = {el.get("id") for el in elements if el.get("type") == "wall"}
+    wall_map = {el["id"]: el for el in elements if el.get("type") == "wall"}
     components = blueprint.get("geometry", {}).get("components", []) or []
 
     # --- 1. opening.parentWall 校验 ---
@@ -775,7 +776,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
                 f"❌ [{eid}] parentWall='{parent}' 引用的构件不是 wall 类型"
             )
 
-    # --- 1b. door/window 组合构件的 parentWall 校验 ---
+    # --- 1b. door/window 组合构件的 parentWall 校验 + 越界检测 ---
     for component in components:
         if component.get("type") not in {"door", "window"}:
             continue
@@ -783,14 +784,49 @@ def validate_reference_integrity(blueprint: dict) -> str:
         parent = component.get("parentWall", "")
         if not parent:
             issues.append(f"❌ [component:{component_id}] 缺少 parentWall 字段")
-        elif parent not in element_ids:
+            continue
+        if parent not in element_ids:
             issues.append(
                 f"❌ [component:{component_id}] parentWall='{parent}' 引用的构件不存在"
             )
-        elif parent not in wall_ids:
+            continue
+        if parent not in wall_ids:
             issues.append(
                 f"❌ [component:{component_id}] parentWall='{parent}' 不是 wall 类型"
             )
+            continue
+
+        # 检查门窗是否超出父墙边界（这是渲染崩溃的常见原因）
+        wall = wall_map[parent] if parent in wall_map else None
+        if wall:
+            wf = wall.get("from", [0, 0, 0])
+            wt = wall.get("to", [0, 0, 0])
+            wl = ((wt[0] - wf[0])**2 + (wt[2] - wf[2])**2)**0.5
+            wb = min(wf[1], wt[1])
+            wt_y = max(wf[1], wt[1])
+
+            comp_from = component.get("from", [0, 0, 0])
+            along = comp_from[0] if len(comp_from) > 0 else 0
+            base_y = comp_from[1] if len(comp_from) > 1 else 0
+            cw = component.get("width", 0)
+            ch = component.get("height", 0)
+
+            if along < -1e-6:
+                issues.append(
+                    f"❌ [component:{component_id}] from[0]={along:.2f} < 0，"
+                    f"开口起点超出父墙左端（parentWall='{parent}' 墙长={wl:.2f}m）"
+                )
+            elif along + cw > wl + 1e-6:
+                issues.append(
+                    f"❌ [component:{component_id}] from[0]={along:.2f}+width={cw:.2f}"
+                    f"={along+cw:.2f} > 墙长{wl:.2f}m，"
+                    f"开口超出父墙右端（parentWall='{parent}'）"
+                )
+            if ch > 0 and base_y + ch > wt_y + 1e-6:
+                issues.append(
+                    f"❌ [component:{component_id}] 顶部 Y={base_y+ch:.2f} > "
+                    f"墙顶 Y={wt_y:.2f}，开口超出父墙顶部"
+                )
 
     # --- 2. instances.templateId 校验 ---
     geo = blueprint.get("geometry", {})
@@ -1152,8 +1188,54 @@ def validate_opening_fit(blueprint: dict) -> str:
         if height <= 0:
             issues.append(f"❌ [{oid}] height={height} 无效，必须 > 0")
 
+    # ── 同样检查 door/window 组合构件 ──
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
+
+    for comp in door_windows:
+        cid = comp.get("id", "?")
+        parent_id = comp.get("parentWall", "")
+        from_vec = comp.get("from", [0, 0, 0])
+        width = comp.get("width", 0)
+        height = comp.get("height", 0)
+
+        parent = walls.get(parent_id)
+        if not parent:
+            continue  # 已由 validate_reference_integrity 覆盖
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+        wall_height = wall_top_y - wall_bottom_y
+
+        along = float(from_vec[0])
+        base_y = float(from_vec[1]) if len(from_vec) > 1 else wall_bottom_y
+
+        if along < -0.05:
+            issues.append(
+                f"❌ [component:{cid}] 沿墙起点 {along:.2f} < 0，超出父墙左端"
+            )
+        if along + width > wl + 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 沿墙终点 {along+width:.2f} > 墙长 {wl:.2f}，超出父墙右端"
+            )
+
+        if base_y < wall_bottom_y - 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 底部 Y={base_y:.2f} 低于墙底 Y={wall_bottom_y:.2f}"
+            )
+        if height > 0 and base_y + height > wall_top_y + 0.05:
+            issues.append(
+                f"❌ [component:{cid}] 顶部 Y={base_y+height:.2f} 超出墙顶 Y={wall_top_y:.2f}"
+            )
+
+        if width <= 0:
+            issues.append(f"❌ [component:{cid}] width={width} 无效")
+        if height <= 0:
+            issues.append(f"❌ [component:{cid}] height={height} 无效")
+
+    total = len(openings) + len(door_windows)
     if not issues:
-        return f"✅ 所有 {len(openings)} 个 opening 均在 parentWall 范围内。"
+        return f"✅ 所有 {total} 个 opening/门窗组件均在 parentWall 范围内。"
     return "\n".join(issues)
 
 
@@ -1606,9 +1688,54 @@ def fix_opening_fit(blueprint: dict) -> str:
         if changed:
             fixes.append(f"🔧 [{oid}]: " + "; ".join(changed))
 
+    # ── 同样修正 door/window 组合构件（components，非 elements）──
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
+
+    for comp in door_windows:
+        cid = comp.get("id", "?")
+        parent_id = comp.get("parentWall", "")
+        parent = walls.get(parent_id)
+        if not parent:
+            continue
+
+        wl = _wall_length(parent)
+        wall_bottom_y, wall_top_y = _wall_vertical_range(parent)
+
+        along = comp.get("from", [0, 0, 0])[0]
+        base_y = comp.get("from", [0, 0, 0])[1] if len(comp["from"]) > 1 else wall_bottom_y
+        width  = comp.get("width", 1.0)
+        height = comp.get("height", 1.0)
+
+        changed: list[str] = []
+
+        # 沿墙方向修正
+        if along < -THRESHOLD:
+            comp["from"][0] = 0.0
+            changed.append(f"from[0] {along:.2f} → 0（左越界）")
+        if along + width > wl + THRESHOLD:
+            max_width = wl - max(along, 0)
+            if max_width < width:
+                comp["width"] = round(max_width, 2)
+                changed.append(f"宽度 {width:.2f} → {max_width:.2f}（超出墙体 {wl:.2f}m）")
+            if along + width > wl + 0.01:
+                new_along = max(0.0, wl - comp.get("width", width))
+                comp["from"][0] = round(new_along, 2)
+                changed.append(f"from[0] {along:.2f} → {new_along:.2f}（右越界）")
+
+        # 高度方向修正
+        if height > 0 and base_y + height > wall_top_y + THRESHOLD:
+            max_height = wall_top_y - max(base_y, wall_bottom_y)
+            if max_height > 0.1:
+                comp["height"] = round(max_height, 2)
+                changed.append(f"高度 {height:.2f} → {max_height:.2f}（超出墙顶）")
+
+        if changed:
+            fixes.append(f"🔧 [component:{cid}]: " + "; ".join(changed))
+
     if not fixes:
-        return "✅ 所有 opening 均在 parentWall 合理范围内，无需修正。"
-    return "已自动修正以下 opening 越界问题：\n" + "\n".join(fixes)
+        return "✅ 所有 opening/门窗组件均在 parentWall 合理范围内，无需修正。"
+    return "已自动修正以下 opening/门窗组件越界问题：\n" + "\n".join(fixes)
 
 
 # ============================================================

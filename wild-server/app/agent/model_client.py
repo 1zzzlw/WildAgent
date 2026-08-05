@@ -38,12 +38,13 @@ class ReasoningChatOpenAI(ChatOpenAI):
             generation_chunk.message.additional_kwargs["reasoning_content"] = reasoning_delta
         return generation_chunk
 
-    def _create_chat_result(self, response: dict) -> Any:
+    def _create_chat_result(self, response: dict, *args: Any, **kwargs: Any) -> Any:
         """非流式路径：补回 reasoning_content 到最终消息
-        
-        注意：LangChain 0.3+ 修改了方法签名，只接收 response 参数
+
+        使用 *args/**kwargs 兼容 LangChain 不同版本的签名差异（0.2: 3 参数，
+        0.3+: 2 参数）。多余的参数原样转发给父类。
         """
-        result = super()._create_chat_result(response)
+        result = super()._create_chat_result(response, *args, **kwargs)
 
         choices = response.get("choices") or []
         if choices:

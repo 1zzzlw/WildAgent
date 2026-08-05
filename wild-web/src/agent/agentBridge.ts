@@ -339,7 +339,8 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     agentStore.clearPipelineSteps()
     agentStore.clearThinkingState()
-    agentStore.clearDebugLogs()
+    agentStore.clearPrecisionState()
+    // 重置组件级思考面板状态
     agentStore.setProcessing(true)
   }
 

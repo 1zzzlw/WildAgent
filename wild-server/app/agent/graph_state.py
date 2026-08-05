@@ -39,19 +39,30 @@ class GenerationState(TypedDict, total=False):
     chimney_fragments: list[dict]
     light_fragments: list[dict]
 
-    # ── Layer 1 诊断字段（必须在 State 中声明，否则 LangGraph 丢弃）──
+    # ── Layer 1 诊断字段（gen + val 分离）──
     skeleton_diag: dict
-    door_diag: dict
-    window_diag: dict
-    roof_diag: dict
-    railing_diag: dict
-    canopy_diag: dict
-    balcony_diag: dict
-    light_diag: dict
-    ramp_diag: dict
-    bay_window_diag: dict
-    cornice_diag: dict
-    chimney_diag: dict
+    door_gen_diag: dict
+    door_val_diag: dict
+    window_gen_diag: dict
+    window_val_diag: dict
+    roof_gen_diag: dict
+    roof_val_diag: dict
+    railing_gen_diag: dict
+    railing_val_diag: dict
+    canopy_gen_diag: dict
+    canopy_val_diag: dict
+    balcony_gen_diag: dict
+    balcony_val_diag: dict
+    light_gen_diag: dict
+    light_val_diag: dict
+    ramp_gen_diag: dict
+    ramp_val_diag: dict
+    bay_window_gen_diag: dict
+    bay_window_val_diag: dict
+    cornice_gen_diag: dict
+    cornice_val_diag: dict
+    chimney_gen_diag: dict
+    chimney_val_diag: dict
 
     # ── Layer 2: 合并与校验 ──
     merged_blueprint: dict

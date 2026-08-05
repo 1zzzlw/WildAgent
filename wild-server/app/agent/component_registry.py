@@ -60,6 +60,9 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[0] 是沿墙距离，from[1] 是离地高度（通常 0.8~1.0m）\n"
         "- verticalMullions 范围 0~32，horizontalMullions 范围 0~32\n"
         "- width 建议 0.8~2.0m，height 建议 1.0~2.0m\n"
+        "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
+        "- glassMaterial 指向的材质必须含 opacity（0.3~0.5 半透明模拟玻璃），否则窗户不透明\n"
+        "- 如果骨架 materials 没有半透明玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
         "- 编译后产出: opening + primitive.box×N（窗框+窗棂）"
     ),
     "roof": (
@@ -92,6 +95,7 @@ _COMPONENT_RULES: dict[str, str] = {
     "bay_window": (
         "- projectionDepth 必填\n"
         "- parentWall 必须存在\n"
+        "- glassMaterial 必须引用 materials 中的 `\"glass\"`（opacity 0.35）\n"
         "- 编译后产出: opening + primitive.box×N（投影+窗框）"
     ),
     "cornice": (

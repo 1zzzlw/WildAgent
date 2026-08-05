@@ -44,6 +44,8 @@ const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 
 function loadThinkingMode(): boolean {
+  // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
+  if (loadPrecisionMode()) return true
   return localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true'
 }
 
@@ -175,7 +177,9 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   function appendThinkingContent(delta: string, nodeName?: string) {
+    // 调试：确认 thinking_delta 消息是否到达前端
     if (precisionMode.value && nodeName) {
+      console.log(`[agentStore] appendThinking node=${nodeName} delta=${delta.slice(0, 80)}...`)
       // 精密模式：按节点分组存储
       const existing = nodeThinkingMap.value.get(nodeName)
       if (existing) {
@@ -361,6 +365,9 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   function updateGeneratingNode(content: string) {
+    // 调试：确认组件节点的 agent_step 消息是否到达前端
+    console.log('[agentStore] updateGeneratingNode:', content)
+
     // 新格式: "{node_name}:{status}:{detail}"
     // 示例: "skeleton:done:骨架 25构件 | RAG 18000字 200ms | LLM 3000字 15000ms | 思考 3421字"
     //       "door:done:门 2个 | RAG 500字 50ms | LLM 800字 3000ms | 思考 856字"
@@ -382,7 +389,7 @@ export const useAgentStore = defineStore('agent', () => {
       status = 'skipped'
     }
 
-    const label = _NODE_LABELS[nodeName] || nodeName
+    const label = _resolveLabel(nodeName)
 
     const existing = generatingNodes.value.find(n => n.name === nodeName)
     if (existing) {
@@ -394,14 +401,24 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  // 节点名→中文标签（与后端 _NODE_LABELS 对应）
-  const _NODE_LABELS: Record<string, string> = {
-    skeleton: '骨架',
+  // 节点名→中文标签（与后端 _node_label 对应）
+  const _COMP_LABELS: Record<string, string> = {
     door: '门', window: '窗', roof: '屋顶',
     railing: '栏杆', canopy: '雨棚', balcony: '阳台',
     light: '灯具', ramp: '坡道', bay_window: '凸窗',
     cornice: '檐口', chimney: '烟囱',
-    merge: '合并', validate: '校验', callback: '修正',
+  }
+  const _NODE_LABELS: Record<string, string> = {
+    skeleton: '骨架',
+    merge: '合并', final_validate: '最终校验', callback: '修正',
+  }
+  function _resolveLabel(nodeName: string): string {
+    if (_NODE_LABELS[nodeName]) return _NODE_LABELS[nodeName]
+    for (const [ct, cl] of Object.entries(_COMP_LABELS)) {
+      if (nodeName === `${ct}_gen`) return `${cl}·生成`
+      if (nodeName === `${ct}_val`) return `${cl}·校验`
+    }
+    return nodeName
   }
 
   function addDebugLog(category: string, data: any) {

@@ -220,10 +220,29 @@ async def agent_websocket(ws: WebSocket):
         await presence_service.disconnect(ws)
 
 
+def _is_generation_or_modification(message: str) -> bool:
+    """判断用户消息是否是生成/修改建筑的意图（否则为普通对话）"""
+    gen_keywords = [
+        "生成", "建造", "创建", "建一个", "做一个", "画一个", "搭一个",
+        "来一个", "设计一个", "帮我", "我要", "我想要", "请帮我",
+    ]
+    mod_keywords = [
+        "修改", "改", "加一个", "删", "去掉", "换成", "调整", "增加",
+        "删除", "移除", "变大", "变小", "加高", "加宽", "换个",
+    ]
+    return any(kw in message for kw in gen_keywords + mod_keywords)
+
+
 async def _handle_user_message(ws: WebSocket, data: dict):
-    """前端传 precision_mode=true → LangGraph 精密模式; 否则 → LangChain 快速模式"""
+    """前端传 precision_mode=true → LangGraph 精密模式; 否则 → LangChain 快速模式
+
+    精密模式下也会先做意图判断：普通对话（"在吗"、"你好"等）退回快速模式，
+    避免为一句问候启动整个骨架→组件管线。
+    """
     precision_mode = data.get("precision_mode") is True
-    if precision_mode:
+    message = data.get("message", "")
+
+    if precision_mode and _is_generation_or_modification(message):
         await _handle_with_langgraph(ws, data)
     else:
         await _handle_with_langchain(ws, data)
@@ -232,12 +251,24 @@ async def _handle_user_message(ws: WebSocket, data: dict):
 # ── 节点名 → 展示标签 ──
 _NODE_LABELS = {
     "skeleton": "骨架",
-    "door": "门", "window": "窗", "roof": "屋顶",
-    "railing": "栏杆", "canopy": "雨棚", "balcony": "阳台",
-    "light": "灯具", "ramp": "坡道", "bay_window": "凸窗",
-    "cornice": "檐口", "chimney": "烟囱",
-    "merge": "合并", "validate": "校验", "callback": "修正",
+    "merge": "合并", "final_validate": "最终校验", "callback": "修正",
 }
+# gen/val 标签动态生成: _node_label("door_gen") → "门·生成"
+def _node_label(name: str) -> str:
+    if name in _NODE_LABELS:
+        return _NODE_LABELS[name]
+    comp_labels = {
+        "door": "门", "window": "窗", "roof": "屋顶",
+        "railing": "栏杆", "canopy": "雨棚", "balcony": "阳台",
+        "light": "灯具", "ramp": "坡道", "bay_window": "凸窗",
+        "cornice": "檐口", "chimney": "烟囱",
+    }
+    for ct, cl in comp_labels.items():
+        if name == f"{ct}_gen":
+            return f"{cl}·生成"
+        if name == f"{ct}_val":
+            return f"{cl}·校验"
+    return name
 
 
 async def _handle_with_langgraph(ws: WebSocket, data: dict):
@@ -249,7 +280,8 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     message = data.get("message", "")
     current_blueprint = data.get("blueprint")
     session_id = data.get("session_id", request_id)
-    thinking_mode = data.get("thinking_mode") is True
+    # 精密模式下强制开启思考（前端已做联动，此处兜底防止 localStorage 状态不一致）
+    thinking_mode = data.get("thinking_mode") is True or data.get("precision_mode") is True
 
     logger.info(f"[{request_id}] [precision] 收到: {message[:80]}...")
 
@@ -293,42 +325,57 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     total_tokens = {"input": 0, "output": 0}
     suggested_components = []  # 存储骨架节点建议的组件列表
 
-    _OUR_NODES = {"skeleton", "door", "window", "roof", "railing",
-                  "canopy", "balcony", "light", "ramp", "bay_window",
-                  "cornice", "chimney", "merge"}
+    # 生成所有可能的节点名（gen + val + 固定节点）
+    _COMP_TYPES = {"door", "window", "roof", "railing", "canopy",
+                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
+    _OUR_NODES = {"skeleton", "merge", "final_validate"}
+    for ct in _COMP_TYPES:
+        _OUR_NODES.add(f"{ct}_gen")
+        _OUR_NODES.add(f"{ct}_val")
 
     try:
         async for event in graph.astream_events(initial_state, version="v2"):
             kind = event.get("event")
             node_name = event.get("name", "")
+            if kind in ("on_chain_start", "on_chain_end"):
+                logger.info(f"[DEBUG astream] kind={kind}, name={node_name!r}")
             if node_name not in _OUR_NODES:
                 continue
 
-            label = _NODE_LABELS.get(node_name, node_name)
+            label = _node_label(node_name)
+            is_gen = node_name.endswith("_gen")
+            is_val = node_name.endswith("_val")
+            comp_type = node_name[:-4] if is_gen or is_val else node_name
 
             # ── 节点开始 ──
             if kind == "on_chain_start":
-                # skeleton 总是显示
                 if node_name == "skeleton":
-                    await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM规划中...")
-                # merge/validate/callback 不显示 running 状态
-                elif node_name not in ("merge", "validate", "callback"):
-                    # 只有在建议列表中的组件才显示 running 状态
-                    # 如果还没获取到建议列表，所有组件都显示（第一轮）
-                    if not suggested_components or node_name in suggested_components:
-                        await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM思考生成中...")
+                    await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM丰富描述+规划中...")
+                elif node_name == "merge":
+                    await send_step("generating", f"{node_name}:running:{label} 正在合并所有组件分片...")
+                elif node_name == "final_validate":
+                    await send_step("generating", f"{node_name}:running:{label} 执行15步校验流水线...")
+                elif is_gen:
+                    await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM思考生成中...")
+                elif is_val:
+                    await send_step("generating", f"{node_name}:running:{label} 工具校验中...")
 
             # ── 节点结束 ──
             elif kind == "on_chain_end":
                 node_output = event.get("data", {}).get("output", {})
 
-                # ── skeleton 节点：提取建议的组件列表 ──
+                # skeleton：提取组件建议
                 if node_name == "skeleton":
                     suggested_components = node_output.get("suggested_components", [])
-                    logger.info(f"[{request_id}] 骨架节点建议组件: {suggested_components}")
+                    logger.info(f"[{request_id}] 骨架建议组件: {suggested_components}")
 
-                # 提取诊断数据（现在 State 已声明所有 _diag 字段）
-                diag_key = f"{node_name}_diag"
+                # 收集诊断（gen_diag 和 val_diag）
+                if is_gen:
+                    diag_key = f"{comp_type}_gen_diag"
+                elif is_val:
+                    diag_key = f"{comp_type}_val_diag"
+                else:
+                    diag_key = f"{node_name}_diag"
                 diag = node_output.get(diag_key, {})
                 if diag:
                     all_diags[node_name] = diag
@@ -338,7 +385,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                     total_tokens["input"] += tu.get("input", 0)
                     total_tokens["output"] += tu.get("output", 0)
 
-                # ── skeleton ──
+                # ── 节点完成处理 ──
                 if node_name == "skeleton":
                     if node_output.get("error"):
                         await send_step("generating", f"{node_name}:error:{node_output['error']}")
@@ -346,7 +393,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                         ec = diag.get("element_count", "?")
                         rc = diag.get("reasoning_chars", 0)
                         await send_step("generating",
-                            f"{node_name}:done:骨架 {ec}构件 | RAG {diag.get('rag_chars',0)}字 {diag.get('rag_ms',0)}ms | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字 | 建议组件: {', '.join(suggested_components)}")
+                            f"{node_name}:done:{label} {ec}构件 | RAG {diag.get('rag_chars',0)}字 | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字 | 建议: {', '.join(suggested_components)}")
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
                             "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
@@ -361,22 +408,45 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                         })
 
                 elif node_name == "merge":
-                    await send_step("generating", f"{node_name}:done:合并完成")
+                    merged = node_output.get("merged_blueprint", {})
+                    geom = merged.get("geometry", {})
+                    e_count = len(geom.get("elements", []))
+                    c_count = len(geom.get("components", []))
+                    await send_step("generating", f"{node_name}:done:{label} {e_count}元素 + {c_count}组件")
 
-                else:
-                    # ── 组件节点 ──
-                    if diag.get("skipped"):
-                        # 已建议但被跳过的组件（用户明确排除）
-                        await send_step("generating",
-                            f"{node_name}:skipped:{label} 跳过 ({diag.get('reason','')})")
-                    elif diag.get("error"):
-                        await send_step("generating",
-                            f"{node_name}:error:{diag['error']}")
+                elif node_name == "final_validate":
+                    # 校验流水线结果
+                    validation_results = node_output.get("validation_results", [])
+                    failed = node_output.get("failed_components", [])
+                    err_count = len(failed)
+                    warn_count = sum(1 for r in validation_results if r.get("has_warning"))
+                    ok_count = len(validation_results) - err_count - warn_count
+                    await send_step("generating",
+                        f"{node_name}:done:{label} {len(validation_results)}步 {ok_count}✓ {warn_count}⚠ {err_count}✗")
+                    # 逐步推送校验详情
+                    for vr in validation_results:
+                        out = vr.get("output", "")
+                        if out.startswith("⏭️"):
+                            await send_step("generating",
+                                f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ⏭️ 跳过")
+                        elif vr.get("has_error"):
+                            await send_step("generating",
+                                f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ❌ {out[:150]}")
+                        elif vr.get("has_warning"):
+                            await send_step("generating",
+                                f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ⚠️ {out[:150]}")
+                        else:
+                            await send_step("generating",
+                                f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ✅")
+
+                elif is_gen:
+                    if diag.get("error"):
+                        await send_step("generating", f"{node_name}:error:{diag['error']}")
                     else:
                         fc = diag.get("fragment_count", 0)
                         rc = diag.get("reasoning_chars", 0)
                         await send_step("generating",
-                            f"{node_name}:done:{label} {fc}个 | RAG {diag.get('rag_chars',0)}字 {diag.get('rag_ms',0)}ms | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字")
+                            f"{node_name}:done:{label} {fc}个 | RAG {diag.get('rag_chars',0)}字 | LLM {diag.get('llm_chars',0)}字 {diag.get('llm_ms',0)}ms | 思考 {rc}字")
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
                             "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
@@ -387,6 +457,13 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                             "reasoning_preview": diag.get("reasoning_preview"),
                             "fragment_count": fc, "total_ms": diag.get("total_ms"),
                         })
+
+                elif is_val:
+                    fc = diag.get("fragment_count", 0)
+                    fixed = diag.get("validation_applied", False)
+                    status = "已修复" if fixed else "通过"
+                    await send_step("generating",
+                        f"{node_name}:done:{label} {fc}个 {status} | {diag.get('total_ms', 0)}ms")
 
                 final_state = node_output
 
@@ -399,52 +476,23 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         await ws.send_json({"type": "error", "request_id": request_id, "error": "未返回结果"})
         return
 
-    # ── 校验流水线（手动执行，每步实时推进度）──
+    # ── 最终结果来自 final_validate 节点 ──
+    # validate_node 已经将结果写入 state，从 final_state 提取
     merged_blueprint = final_state.get("merged_blueprint")
     if not merged_blueprint:
-        await ws.send_json({"type": "error", "request_id": request_id, "error": "合并后的 Blueprint 缺失"})
+        # fallback: 直接从 state 取（final_validate 可能没设置）
+        merged_blueprint = final_state.get("final_blueprint")
+    if not merged_blueprint:
+        await ws.send_json({"type": "error", "request_id": request_id, "error": "最终 Blueprint 缺失"})
         return
 
-    await send_step("generating", "validate:running:启动 15 步校验流水线...")
+    # 校验统计（已在 final_validate 节点中完成）
+    validation_results = final_state.get("validation_results", [])
+    validation_errors = len(final_state.get("failed_components", []))
+    validation_warnings = sum(1 for r in validation_results if r.get("has_warning") and not r.get("has_error"))
+    validation_passed = len(validation_results) - validation_errors - validation_warnings
 
-    from app.services.agent_service import run_validation_pipeline, _final_errors
-    try:
-        pipeline_results = run_validation_pipeline(merged_blueprint)
-    except Exception as e:
-        logger.exception(f"[{request_id}] 校验流水线执行失败: {e}")
-        await ws.send_json({"type": "error", "request_id": request_id, "error": f"校验失败: {e}"})
-        return
-
-    # 逐步推送校验进度
-    final_errors_list = _final_errors(pipeline_results)
-    error_step_names = {r.name for r in final_errors_list}
-    for pr in pipeline_results:
-        output_text = pr.output
-        if output_text.startswith("⏭️"):
-            await send_step("generating",
-                f"validate:running:[{pr.step}] {pr.name}: ⏭️ 跳过")
-            continue
-        if pr.name in error_step_names:
-            await send_step("generating",
-                f"validate:running:[{pr.step}] {pr.name}: ❌ {output_text[:150]}")
-        elif pr.has_warning:
-            await send_step("generating",
-                f"validate:running:[{pr.step}] {pr.name}: ⚠️ {output_text[:150]}")
-        else:
-            await send_step("generating",
-                f"validate:running:[{pr.step}] {pr.name}: ✅")
-
-    # 汇总
-    total_steps = len(pipeline_results)
-    validation_errors = len(final_errors_list)
-    validation_warnings = sum(1 for r in pipeline_results if r.has_warning and r.name not in error_step_names)
-    validation_passed = total_steps - validation_errors - validation_warnings
-    await send_step("generating",
-        f"validate:done:校验 {total_steps}步 {validation_passed}✓ {validation_warnings}⚠ {validation_errors}✗")
-
-    # ── 保存 Blueprint ──
-    await send_step("generating", "saving:running:保存蓝图文件...")
-
+    # ── 静默保存 Blueprint ──
     meta_name = merged_blueprint.get("meta", {}).get("name", "") or ""
     elements = merged_blueprint.get("geometry", {}).get("elements", [])
     components = merged_blueprint.get("geometry", {}).get("components", [])
@@ -494,7 +542,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
             "total": total_tokens["input"] + total_tokens["output"],
         },
         "fragment_total": fragment_total,
-        "validation_steps": len(pipeline_results),
+        "validation_steps": len(validation_results),
         "validation_errors": validation_errors,
         "retry_count": 0,
         "max_retries": 3,

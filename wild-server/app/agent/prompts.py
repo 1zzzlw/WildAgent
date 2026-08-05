@@ -86,6 +86,8 @@ def build_skeleton_prompt(spec_text: str) -> str:
 2. **楼板覆盖**：floor 应覆盖整个建筑底面
 3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
 4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
+5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，必须设置 `"opacity": 0.35`，
+   否则 windows 将不透明（参考：`"glass": {{"baseColor":[0.55,0.72,0.82],"roughness":0.12,"metallic":0,"albedo":1,"opacity":0.35}}`）
 
 # WILD 规范参考
 

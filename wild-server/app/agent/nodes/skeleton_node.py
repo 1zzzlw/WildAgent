@@ -205,29 +205,30 @@ async def skeleton_generator(state: GenerationState) -> dict:
 def _parse_components_from_reply(reply_text: str) -> list[str]:
     """从 LLM 回复中解析 `_components: door, window, roof` 行
 
-    LLM 自由判断用户需求需要哪些组件，不再用硬编码关键词。
+    AI 自由判断用户需求需要哪些组件。未匹配到 _components: 时用关键词 fallback。
     """
     import re
-    # 匹配 _components: xxx 行
-    m = re.search(r'_components:\s*(.+)', reply_text)
-    if not m:
-        # 降级：没找到就默认 door + window + roof
-        return ["door", "window", "roof"]
-
-    raw = m.group(1).strip()
     # 支持所有可用组件类型
     valid_types = {"door", "window", "roof", "railing", "canopy",
                    "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
+
+    m = re.search(r'_components:\s*(.+)', reply_text)
+    if not m:
+        # AI 没输出 _components: 标签 → 关键词 fallback
+        # 这个 fallback 与 graph.py 的 _keyword_fallback 呼应，
+        # 但这里返回的是 skeleton 的 suggested_components，影响 graph 派发
+        return []  # 返回空列表，让 graph.py 的 _dispatch_components 做关键词 fallback
+
+    raw = m.group(1).strip()
     components = []
     for token in re.split(r'[,，\s]+', raw):
         token = token.strip().lower()
         if token in valid_types and token not in components:
             components.append(token)
 
-    # 确保基础三件套
-    for essential in ("door", "window", "roof"):
-        if essential not in components:
-            components.append(essential)
+    # AI 的选择就是最终结果，不再强制补全
+    if not components:
+        return []
 
     return components
 

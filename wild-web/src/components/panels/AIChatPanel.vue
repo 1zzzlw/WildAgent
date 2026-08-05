@@ -15,6 +15,7 @@
         删除
       </el-button>
     </div>
+    <div v-if="sessionHint" class="session-hint">{{ sessionHint }}</div>
 
     <div class="messages-container" ref="messagesRef">
 
@@ -74,131 +75,96 @@
         </div>
       </div>
 
-      <!-- 精密模式：思考流对话模式 -->
-      <div v-if="agentStore.precisionMode && agentStore.generatingNodes.length > 0" class="precision-panel">
+      <!-- 精密模式：Claude 风格 Thinking... 折叠面板 -->
+      <div v-if="agentStore.precisionMode && agentStore.generatingNodes.length > 0" class="thinking-panel">
 
-        <!-- 每个节点的思考块 -->
-        <div v-for="node in agentStore.generatingNodes" :key="node.name"
-          :class="['thought-block', `status-${node.status}`]">
-          <!-- 思考块头部 -->
-          <div class="thought-header" @click="toggleNodeExpand(node.name)">
-            <div class="thought-icon">
-              <el-icon v-if="node.status === 'running'" class="is-loading">
-                <Loading />
-              </el-icon>
-              <span v-else>{{ statusEmoji(node.status) }}</span>
-            </div>
-            <div class="thought-meta">
-              <div class="thought-title">
-                <span class="thought-label">{{ node.label }}</span>
-                <span class="thought-status">{{ getStatusLabel(node.status) }}</span>
-              </div>
-              <div class="thought-summary">{{ node.detail }}</div>
-            </div>
-            <div class="thought-toggle">
-              <el-icon>
-                <component :is="expandedNodes.has(node.name) ? 'ArrowDown' : 'ArrowRight'" />
-              </el-icon>
-            </div>
-          </div>
-
-          <!-- 思考过程内容区（可折叠） -->
-          <transition name="thought-expand">
-            <div v-if="expandedNodes.has(node.name)" class="thought-content">
-
-              <!-- 实时思考流（打字机效果 + Markdown 渲染） -->
-              <div v-if="getNodeThinking(node.name)" class="reasoning-section">
-                <div class="reasoning-header">
-                  <el-icon class="reasoning-icon">
-                    <ChatDotRound />
-                  </el-icon>
-                  <span class="reasoning-title">推理过程</span>
-                  <span v-if="node.status === 'running'" class="reasoning-badge">思考中...</span>
-                  <span v-else class="reasoning-badge completed">已完成</span>
-                </div>
-                <div class="reasoning-content typewriter" v-html="renderMarkdown(getNodeThinking(node.name))"></div>
-              </div>
-
-              <!-- 诊断信息（完成后显示） -->
-              <div v-if="getNodeDiag(node.name)" class="diagnostics-section">
-                <div class="diagnostics-header">
-                  <el-icon class="diagnostics-icon">
-                    <DataAnalysis />
-                  </el-icon>
-                  <span class="diagnostics-title">执行诊断</span>
-                </div>
-                <div class="diagnostics-grid">
-                  <div v-if="getNodeDiag(node.name).rag_chars" class="diag-card">
-                    <div class="diag-card-label">RAG 检索</div>
-                    <div class="diag-card-value">{{ getNodeDiag(node.name).rag_chars }} 字</div>
-                    <div class="diag-card-sub">{{ getNodeDiag(node.name).rag_ms }}ms</div>
-                  </div>
-                  <div v-if="getNodeDiag(node.name).llm_chars" class="diag-card">
-                    <div class="diag-card-label">LLM 生成</div>
-                    <div class="diag-card-value">{{ getNodeDiag(node.name).llm_chars }} 字</div>
-                    <div class="diag-card-sub">{{ getNodeDiag(node.name).llm_ms }}ms</div>
-                  </div>
-                  <div v-if="getNodeDiag(node.name).token_usage" class="diag-card">
-                    <div class="diag-card-label">Token 消耗</div>
-                    <div class="diag-card-value">{{ getNodeDiag(node.name).token_usage.total }}</div>
-                    <div class="diag-card-sub">↑{{ getNodeDiag(node.name).token_usage.input }} ↓{{
-                      getNodeDiag(node.name).token_usage.output }}</div>
-                  </div>
-                  <div v-if="getNodeDiag(node.name).fragment_count" class="diag-card">
-                    <div class="diag-card-label">生成结果</div>
-                    <div class="diag-card-value">{{ getNodeDiag(node.name).fragment_count }} 个</div>
-                    <div class="diag-card-sub">组件</div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </transition>
+        <!-- DEBUG: 原始数据 -->
+        <div style="padding:4px 14px;font-size:10px;color:#666;background:rgba(0,0,0,0.15);font-family:monospace">
+          nodes={{ agentStore.generatingNodes.map(n => n.name + ':' + n.status).join(', ') }},
+          expanded={{ thinkingExpanded }},
+          mapSize={{ agentStore.nodeThinkingMap.size }}
         </div>
 
-        <!-- 性能汇总卡片 -->
-        <div v-if="agentStore.sessionMetrics" class="metrics-card">
-          <div class="metrics-header">
-            <el-icon class="metrics-icon">
-              <DataLine />
+        <!-- 统一的思考头（点击展开/收起） -->
+        <div class="thinking-panel-header" @click="thinkingExpanded = !thinkingExpanded">
+          <div class="thinking-panel-indicator">
+            <el-icon v-if="hasRunningNodes" class="is-loading thinking-spinner">
+              <Loading />
             </el-icon>
-            <span class="metrics-title">性能汇总</span>
+            <span v-else class="thinking-dot">✦</span>
           </div>
-          <div class="metrics-body">
-            <div class="metric-row">
-              <span class="metric-label">节点执行</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.active_nodes }}/{{
-                agentStore.sessionMetrics.node_count }} 个</span>
+          <span class="thinking-panel-title">
+            {{ hasRunningNodes ? '正在思考...' : `已思考 ${thinkingDuration}s` }}
+          </span>
+          <span class="thinking-node-list">
+            <template v-for="(node, i) in agentStore.generatingNodes" :key="node.name">
+              <span v-if="i > 0" class="thinking-sep">·</span>
+              <span :class="['thinking-node-tag', `tag-${node.status}`]">{{ node.label }}</span>
+            </template>
+          </span>
+          <el-icon class="thinking-panel-toggle">
+            <component :is="thinkingExpanded ? 'ArrowDown' : 'ArrowRight'" />
+          </el-icon>
+        </div>
+
+        <!-- 展开的思考内容 -->
+        <transition name="thinking-expand">
+          <div v-if="thinkingExpanded" class="thinking-panel-body">
+
+            <!-- 每个节点的推理 + 诊断 -->
+            <div v-for="node in agentStore.generatingNodes" :key="node.name" class="thinking-node">
+              <div class="thinking-node-bar">
+                <span :class="['thinking-node-dot', `dot-${node.status}`]"></span>
+                <span class="thinking-node-label">{{ node.label }}</span>
+                <span class="thinking-node-detail">{{ node.detail }}</span>
+              </div>
+
+              <!-- 推理内容 -->
+              <div v-if="getNodeThinking(node.name)" class="reasoning-block">
+                <div class="reasoning-block-text" v-html="renderMarkdown(getNodeThinking(node.name))"></div>
+              </div>
+
+              <!-- 诊断卡片 -->
+              <div v-if="getNodeDiag(node.name)" class="diag-row">
+                <div v-if="getNodeDiag(node.name).rag_chars" class="diag-chip">
+                  <span class="diag-chip-num">{{ getNodeDiag(node.name).rag_chars }}</span>
+                  <span class="diag-chip-label">RAG字</span>
+                </div>
+                <div v-if="getNodeDiag(node.name).llm_chars" class="diag-chip">
+                  <span class="diag-chip-num">{{ getNodeDiag(node.name).llm_chars }}</span>
+                  <span class="diag-chip-label">LLM字</span>
+                </div>
+                <div v-if="getNodeDiag(node.name).token_usage" class="diag-chip">
+                  <span class="diag-chip-num">{{ getNodeDiag(node.name).token_usage.total }}</span>
+                  <span class="diag-chip-label">tokens</span>
+                </div>
+                <div v-if="getNodeDiag(node.name).fragment_count" class="diag-chip">
+                  <span class="diag-chip-num">{{ getNodeDiag(node.name).fragment_count }}</span>
+                  <span class="diag-chip-label">个</span>
+                </div>
+              </div>
             </div>
-            <div class="metric-row">
-              <span class="metric-label">Token 消耗</span>
-              <span class="metric-value">{{ (agentStore.sessionMetrics.total_tokens?.total || 0).toLocaleString()
-              }}</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">RAG 检索</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.total_rag_ms }}ms</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">LLM 生成</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.total_llm_ms }}ms</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">组件总数</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.fragment_total }} 个</span>
-            </div>
-            <div class="metric-row">
-              <span class="metric-label">校验状态</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.validation_steps }}步 · {{
+
+            <!-- 性能汇总 -->
+            <div v-if="agentStore.sessionMetrics" class="metrics-inline">
+              <span class="metrics-inline-label">总计</span>
+              <span class="metrics-inline-item">{{ agentStore.sessionMetrics.active_nodes }}/{{
+                agentStore.sessionMetrics.node_count }} 节点</span>
+              <span class="metrics-inline-sep">·</span>
+              <span class="metrics-inline-item">{{ (agentStore.sessionMetrics.total_tokens?.total || 0).toLocaleString()
+              }}
+                tokens</span>
+              <span class="metrics-inline-sep">·</span>
+              <span class="metrics-inline-item">RAG {{ agentStore.sessionMetrics.total_rag_ms }}ms</span>
+              <span class="metrics-inline-sep">·</span>
+              <span class="metrics-inline-item">LLM {{ agentStore.sessionMetrics.total_llm_ms }}ms</span>
+              <span class="metrics-inline-sep">·</span>
+              <span class="metrics-inline-item">校验 {{ agentStore.sessionMetrics.validation_steps }}步{{
                 agentStore.sessionMetrics.validation_errors }}错</span>
             </div>
-            <div v-if="agentStore.sessionMetrics.retry_count !== undefined" class="metric-row">
-              <span class="metric-label">回调重试</span>
-              <span class="metric-value">{{ agentStore.sessionMetrics.retry_count }}/{{
-                agentStore.sessionMetrics.max_retries || 3 }} 次</span>
-            </div>
+
           </div>
-        </div>
+        </transition>
 
       </div>
 
@@ -229,10 +195,11 @@
         <component :is="connectionIcon" />
       </el-icon>
       <span class="connection-text">{{ connectionStatusText }}</span>
-      <div class="thinking-toggle" title="请求模型开启思考，并实时展示接口返回的 reasoning_content">
+      <div class="thinking-toggle"
+        :title="agentStore.precisionMode ? '精密模式下自动开启思考，不可关闭' : '请求模型开启思考，并实时展示接口返回的 reasoning_content'">
         <span>思考</span>
-        <el-switch :model-value="agentStore.thinkingMode" size="small" :disabled="agentStore.isProcessing"
-          @change="handleThinkingModeChange" />
+        <el-switch :model-value="agentStore.precisionMode ? true : agentStore.thinkingMode" size="small"
+          :disabled="agentStore.isProcessing || agentStore.precisionMode" @change="handleThinkingModeChange" />
       </div>
       <div class="thinking-toggle precision-toggle"
         :title="agentStore.precisionMode ? 'LangGraph 精密模式：分片并行 + RAG/LLM 详细诊断' : 'LangChain 快速模式：单体 Agent'">
@@ -271,7 +238,7 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/vs2015.css'
 import {
   Loading, Promotion, Connection, Link, WarningFilled, CircleCheckFilled,
-  ArrowDown, ArrowRight, ChatDotRound, DataAnalysis, DataLine,
+  ArrowDown, ArrowRight,
 } from '@element-plus/icons-vue'
 import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
@@ -301,7 +268,28 @@ const agentStore = useAgentStore()
 const sceneStore = useSceneStore()
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
-const expandedNodes = ref(new Set<string>())
+const sessionHint = ref('')
+
+// ── 精密模式：Claude 风格 Thinking... 面板 ──
+const thinkingExpanded = ref(false)
+const thinkingStartTime = ref(0)
+
+const hasRunningNodes = computed(() =>
+  agentStore.generatingNodes.some(n => n.status === 'running')
+)
+
+/** 思考耗时（秒），实时更新 */
+const thinkingDuration = computed(() => {
+  if (hasRunningNodes.value && thinkingStartTime.value > 0) {
+    return Math.floor((Date.now() - thinkingStartTime.value) / 1000)
+  }
+  // 已完成时用最后一个节点完成的时间
+  const nodes = agentStore.generatingNodes
+  if (nodes.length > 0 && !hasRunningNodes.value && thinkingStartTime.value > 0) {
+    return Math.floor((Date.now() - thinkingStartTime.value) / 1000)
+  }
+  return 0
+})
 
 // 用户滚动检测
 const isUserScrolling = ref(false)
@@ -378,35 +366,10 @@ const nonUserMessages = computed(() => {
   return agentStore.session.messages.filter(m => m.role !== 'user')
 })
 
-// ── 精密模式：展开/收起 + 诊断数据获取 ──
-function statusEmoji(status: string) {
-  return { done: '✅', skipped: '⏭️', error: '❌', running: '🔄' }[status] || '🔄'
-}
-
-function getStatusLabel(status: string) {
-  return { done: '已完成', skipped: '已跳过', error: '执行失败', running: '执行中...' }[status] || status
-}
-
+// ── 精密模式：诊断数据获取 ──
 function getNodeThinking(nodeName: string): string {
   const thinking = agentStore.nodeThinkingMap.get(nodeName)
   return thinking?.content || ''
-}
-
-function formatThinkingTime(nodeName: string): string {
-  const thinking = agentStore.nodeThinkingMap.get(nodeName)
-  if (!thinking) return ''
-  const charCount = thinking.content.length
-  if (charCount === 0) return ''
-  // 估算耗时：假设平均每秒生成50个字符
-  const estimatedSeconds = Math.ceil(charCount / 50)
-  return `${estimatedSeconds}s`
-}
-
-function getNodeReasoning(nodeName: string): string {
-  const diag = agentStore.debugLogs.find(
-    d => d.category === 'node' && (d.data as any).node === nodeName
-  )
-  return (diag?.data as any)?.reasoning_preview || ''
 }
 
 function getNodeDiag(nodeName: string): any {
@@ -414,13 +377,6 @@ function getNodeDiag(nodeName: string): any {
     d => d.category === 'node' && (d.data as any).node === nodeName
   )
   return diag?.data || null
-}
-
-function toggleNodeExpand(nodeName: string) {
-  const s = new Set(expandedNodes.value)
-  if (s.has(nodeName)) s.delete(nodeName)
-  else s.add(nodeName)
-  expandedNodes.value = s
 }
 
 function handleSend() {
@@ -440,10 +396,11 @@ function handleThinkingModeChange(value: boolean | string | number) {
 }
 
 function handlePrecisionModeChange(value: boolean | string | number) {
-  agentStore.setPrecisionMode(Boolean(value))
-  // 精密模式开启时自动关闭思考模式（两者展示内容不同，避免混淆）
-  if (Boolean(value) && agentStore.thinkingMode) {
-    agentStore.setThinkingMode(false)
+  const enabled = Boolean(value)
+  agentStore.setPrecisionMode(enabled)
+  // 精密模式依赖思考流展示每个节点的推理过程，强制开启思考
+  if (enabled) {
+    agentStore.setThinkingMode(true)
   }
 }
 
@@ -504,6 +461,17 @@ watch(() => agentStore.networkError, (error) => {
     ElNotification({ title: '网络异常', message: error, type: 'error', duration: 8000 })
 })
 
+// 精密模式 Thinking... 计时 + 默认展开
+watch(() => agentStore.generatingNodes.length, (len) => {
+  if (len > 0 && thinkingStartTime.value === 0) {
+    thinkingStartTime.value = Date.now()
+    thinkingExpanded.value = true   // 开始生成时默认展开，直接看到思考内容
+  } else if (len === 0) {
+    thinkingStartTime.value = 0
+    thinkingExpanded.value = false
+  }
+})
+
 // 监听滚动事件
 onMounted(() => {
   if (messagesRef.value) {
@@ -545,6 +513,7 @@ async function handleApplyPatch(patch: ScenePatch) {
 
 // ── 会话切换 ──
 async function handleSessionSwitch(sessionId: string) {
+  sessionHint.value = ''  // 切换到已有会话时清除提示
   agentStore.switchToSession(sessionId)
   const bp = await agentBridge.loadSessionBlueprint(sessionId)
   if (bp) {
@@ -565,7 +534,8 @@ async function handleNewSession() {
   agentStore.switchToSession(newId)
   const doc = sceneStore.createEmptyDocument()
   await sceneStore.loadBlueprint(doc.blueprint, doc.name)
-  agentStore.addSystemMessage('✨ 新会话草稿已创建；生成建筑或点击顶部“保存”后才会写入服务器')
+  sessionHint.value = '草稿模式：生成建筑或点击顶部”保存”后才会写入服务器'
+  setTimeout(() => { if (sessionHint.value === '草稿模式：生成建筑或点击顶部”保存”后才会写入服务器') sessionHint.value = '' }, 8000)
 }
 
 async function handleDeleteSession() {
@@ -608,7 +578,7 @@ async function restoreSessionsFromServer() {
     agentStore.switchToSession(newId)
     const doc = sceneStore.createEmptyDocument()
     sceneStore.loadBlueprint(doc.blueprint, doc.name)
-    agentStore.addSystemMessage('❌ 无法从服务器读取会话列表，当前会话尚未持久化')
+    sessionHint.value = '无法连接服务器，当前会话尚未持久化'
     return
   }
 
@@ -634,6 +604,7 @@ async function restoreSessionsFromServer() {
 
   if (serverSessions.length === 0) {
     await handleNewSession()
+    sessionHint.value = '草稿模式：生成建筑或点击顶部"保存"后才会写入服务器'
     return
   }
 
@@ -652,24 +623,22 @@ async function restoreSessionsFromServer() {
 <style scoped>
 /* ── 基础变量 ── */
 .ai-chat-panel {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #202020;
-  --bg-tertiary: #262626;
-  --bg-hover: #2a2a2a;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  --text-primary: #e8e8e8;
-  --text-secondary: #999;
-  --text-muted: #666;
-  --accent: #4ea1f3;
-  --accent-soft: rgba(78, 161, 243, 0.12);
-  --success: #4ec9b0;
-  --warn: #dcdcaa;
-  --error: #f48771;
-  --user-bubble: rgba(78, 161, 243, 0.15);
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --bg-primary: #1e1e20;
+  --bg-secondary: #252528;
+  --bg-tertiary: #2c2c30;
+  --bg-hover: #323236;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.08);
+  --text-primary: #e4e4e7;
+  --text-secondary: #a0a0a8;
+  --text-muted: #6b6b75;
+  --accent: #6899d4;
+  --accent-soft: rgba(104, 153, 212, 0.10);
+  --accent-border: rgba(104, 153, 212, 0.18);
+  --success: #6bbf9b;
+  --warn: #d4b871;
+  --error: #e07060;
+  --user-bubble: rgba(104, 153, 212, 0.12);
 
   height: 100%;
   display: flex;
@@ -677,22 +646,9 @@ async function restoreSessionsFromServer() {
   overflow: hidden;
   background: var(--bg-primary);
   color: var(--text-primary);
-}
-
-/* 会话切换栏 */
-.session-bar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #252526;
-  border-bottom: 1px solid #3e3e42;
-  flex-shrink: 0;
-}
-
-.session-select {
-  flex: 1;
-  min-width: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.5;
 }
 
 /* ── Session Bar ── */
@@ -700,9 +656,8 @@ async function restoreSessionsFromServer() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  padding: 10px 16px 10px 16px;
+  background: var(--bg-primary);
   flex-shrink: 0;
 }
 
@@ -711,45 +666,78 @@ async function restoreSessionsFromServer() {
   min-width: 0;
 }
 
+/* Element Plus select override */
+.session-bar :deep(.el-select .el-input__wrapper) {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 0.15s;
+}
+
+.session-bar :deep(.el-select .el-input__wrapper:hover) {
+  border-color: var(--border-strong);
+}
+
 .session-new-btn {
-  height: 28px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 14px;
   font-size: 12px;
+  font-weight: 500;
   flex-shrink: 0;
   background: var(--accent-soft);
-  border: 1px solid rgba(78, 161, 243, 0.2);
+  border: 1px solid var(--accent-border);
   color: var(--accent);
   cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s;
+  border-radius: 8px;
+  transition: background 0.15s;
+  letter-spacing: 0.01em;
 }
 
 .session-new-btn:hover {
-  background: rgba(78, 161, 243, 0.2);
+  background: rgba(104, 153, 212, 0.18);
 }
 
 .session-del-btn {
   font-size: 12px;
   color: var(--text-muted);
-  padding: 0 6px;
-  height: 28px;
+  padding: 0 8px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s;
+}
+
+.session-del-btn:hover {
+  color: var(--text-secondary);
+}
+
+/* ── Session Hint ── */
+.session-hint {
+  padding: 5px 16px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* ── Messages Container ── */
 .messages-container {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 16px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   min-height: 0;
 }
 
 /* ── Message Bubbles ── */
 .message {
   padding: 12px 16px;
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   max-width: 85%;
   animation: msgIn 0.2s ease-out;
   line-height: 1.6;
@@ -758,6 +746,7 @@ async function restoreSessionsFromServer() {
 .message.user {
   align-self: flex-end;
   background: var(--user-bubble);
+  border: 1px solid var(--accent-border);
   border-bottom-right-radius: 4px;
 }
 
@@ -767,14 +756,31 @@ async function restoreSessionsFromServer() {
   border-bottom-left-radius: 4px;
 }
 
+/* ── System Message: 居中、降权、克制 ── */
 .message.system {
   align-self: center;
   background: transparent;
-  font-size: 11px;
+  font-size: 11.5px;
   max-width: 70%;
   color: var(--text-muted);
   text-align: center;
-  padding: 4px 12px;
+  padding: 6px 16px;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: msgIn 0.25s ease-out;
+}
+
+.message.system .message-header {
+  display: none;
+}
+
+.message.system::before {
+  content: "✦";
+  font-size: 9px;
+  color: rgba(212, 184, 113, 0.45);
+  flex-shrink: 0;
 }
 
 .message-header {
@@ -783,16 +789,24 @@ async function restoreSessionsFromServer() {
   margin-bottom: 6px;
   font-size: 11px;
   color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 .message-role {
   font-weight: 600;
   letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.message-time {
+  font-size: 10.5px;
+  color: var(--text-muted);
 }
 
 .message-content {
   font-size: 13.5px;
   line-height: 1.65;
+  color: var(--text-primary);
 }
 
 @keyframes msgIn {
@@ -962,7 +976,7 @@ async function restoreSessionsFromServer() {
   gap: 10px;
   padding: 10px 16px;
   background: var(--bg-tertiary);
-  border-radius: var(--radius-md);
+  border-radius: 12px;
   font-size: 13px;
   color: var(--text-secondary);
   align-self: flex-start;
@@ -974,13 +988,13 @@ async function restoreSessionsFromServer() {
   color: var(--accent);
 }
 
-/* ── Pipeline Stream (LangChain) ── */
+/* ── Pipeline Stream ── */
 .pipeline-stream {
   align-self: stretch;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 12px 14px;
   font-size: 12px;
   font-family: 'JetBrains Mono', 'Consolas', monospace;
   display: flex;
@@ -1015,16 +1029,16 @@ async function restoreSessionsFromServer() {
 }
 
 .pipeline-line.status-skip {
-  color: #555;
+  color: var(--text-muted);
 }
 
-/* ── Thinking Stream (LangChain) ── */
+/* ── Thinking Stream ── */
 .thinking-stream {
   align-self: stretch;
-  background: rgba(78, 161, 243, 0.04);
-  border: 1px solid rgba(78, 161, 243, 0.12);
-  border-radius: var(--radius-sm);
-  padding: 10px 12px;
+  background: rgba(104, 153, 212, 0.05);
+  border: 1px solid rgba(104, 153, 212, 0.10);
+  border-radius: 8px;
+  padding: 12px 14px;
   font-size: 12px;
   display: flex;
   flex-direction: column;
@@ -1034,7 +1048,7 @@ async function restoreSessionsFromServer() {
 .thinking-stream-title {
   color: var(--accent);
   font-size: 11px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   display: flex;
   justify-content: space-between;
 }
@@ -1081,9 +1095,9 @@ async function restoreSessionsFromServer() {
   align-items: center;
   gap: 10px;
   padding: 12px 16px;
-  background: rgba(78, 201, 176, 0.08);
-  border: 1px solid rgba(78, 201, 176, 0.2);
-  border-radius: var(--radius-sm);
+  background: rgba(107, 191, 155, 0.07);
+  border: 1px solid rgba(107, 191, 155, 0.15);
+  border-radius: 8px;
   font-size: 13px;
   color: var(--success);
   align-self: stretch;
@@ -1112,15 +1126,15 @@ async function restoreSessionsFromServer() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 7px 16px;
   font-size: 11px;
-  border-top: 1px solid var(--border);
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   flex-shrink: 0;
+  border-top: 1px solid var(--border);
 }
 
 .connection-icon {
-  font-size: 13px;
+  font-size: 12px;
   flex-shrink: 0;
 }
 
@@ -1129,23 +1143,31 @@ async function restoreSessionsFromServer() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-secondary);
 }
 
 .thinking-toggle,
 .precision-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
-  color: var(--text-secondary);
+  gap: 5px;
+  color: var(--text-muted);
   flex-shrink: 0;
   font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.thinking-toggle :deep(.el-switch.is-checked .el-switch__core),
+.precision-toggle :deep(.el-switch.is-checked .el-switch__core) {
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 .reconnect-btn {
   flex-shrink: 0;
   color: var(--accent);
   font-size: 11px;
-  padding: 0 4px;
+  padding: 0 6px;
   height: auto;
 }
 
@@ -1164,8 +1186,8 @@ async function restoreSessionsFromServer() {
 
 /* ── Input ── */
 .input-container {
-  padding: 14px;
-  background: var(--bg-secondary);
+  padding: 14px 16px;
+  background: var(--bg-primary);
   border-top: 1px solid var(--border);
   display: flex;
   gap: 10px;
@@ -1177,14 +1199,14 @@ async function restoreSessionsFromServer() {
 }
 
 .input-container :deep(.el-textarea__inner) {
-  min-height: 80px;
-  padding: 10px 12px;
-  background: var(--bg-primary);
+  min-height: 76px;
+  padding: 10px 14px;
+  background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-primary);
   font-size: 13.5px;
   font-family: inherit;
-  border-radius: var(--radius-sm);
+  border-radius: 8px;
   resize: none;
   line-height: 1.6;
   transition: border-color 0.15s;
@@ -1192,7 +1214,7 @@ async function restoreSessionsFromServer() {
 
 .input-container :deep(.el-textarea__inner):focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--accent-border);
 }
 
 .input-container :deep(.el-textarea__inner)::placeholder {
@@ -1210,406 +1232,260 @@ async function restoreSessionsFromServer() {
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  border-radius: var(--radius-sm);
-  transition: all 0.15s;
+  border-radius: 8px;
+  transition: opacity 0.15s, transform 0.1s;
   flex-shrink: 0;
+  letter-spacing: 0.01em;
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #5ab1ff;
+  opacity: 0.88;
+  transform: scale(1.01);
 }
 
 .send-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-/* ================================================
-   Precision Mode - Thought Blocks
-   ================================================ */
-.precision-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-self: stretch;
-  background: transparent;
-  border: none;
-  padding: 0;
-}
 
-.thought-block {
-  background: var(--bg-tertiary);
+/* ================================================
+   Claude-style Thinking Panel
+   ================================================ */
+.thinking-panel {
+  align-self: stretch;
+  background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 10px;
   overflow: hidden;
-  transition: border-color 0.2s;
   animation: thoughtIn 0.3s ease-out;
 }
 
-.thought-block:hover {
-  border-color: var(--border-strong);
-}
-
-.thought-block.status-running {
-  border-left: 3px solid var(--accent);
-}
-
-.thought-block.status-done {
-  border-left: 3px solid var(--success);
-}
-
-.thought-block.status-error {
-  border-left: 3px solid var(--error);
-}
-
-.thought-block.status-skipped {
-  opacity: 0.5;
-}
-
-@keyframes thoughtIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.thought-header {
+.thinking-panel-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 11px 14px;
   cursor: pointer;
   user-select: none;
   transition: background 0.15s;
 }
-
-.thought-header:hover {
+.thinking-panel-header:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.thought-icon {
+.thinking-panel-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   flex-shrink: 0;
-  font-size: 15px;
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: var(--radius-sm);
 }
-
-.thought-icon .is-loading {
+.thinking-spinner {
+  font-size: 16px;
   color: var(--accent);
 }
-
-.thought-meta {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.thinking-dot {
+  font-size: 14px;
+  color: rgba(212, 184, 113, 0.5);
 }
 
-.thought-title {
+.thinking-panel-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.thinking-node-list {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  min-width: 0;
+}
+.thinking-sep {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.thinking-node-tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  transition: color 0.2s;
+}
+.thinking-node-tag.tag-running { color: var(--accent); }
+.thinking-node-tag.tag-done    { color: var(--text-secondary); }
+.thinking-node-tag.tag-error   { color: var(--error); }
+.thinking-node-tag.tag-skipped { color: var(--text-muted); text-decoration: line-through; }
+
+.thinking-panel-toggle {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.thinking-panel-body {
+  padding: 4px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--border);
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.thinking-expand-enter-active,
+.thinking-expand-leave-active {
+  transition: opacity 0.2s ease;
+}
+.thinking-expand-enter-from,
+.thinking-expand-leave-to {
+  opacity: 0;
+}
+.thinking-expand-enter-to,
+.thinking-expand-leave-from {
+  opacity: 1;
+}
+
+.thinking-node {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+.thinking-node:last-child { border-bottom: none; }
+
+.thinking-node-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
 }
+.thinking-node-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.thinking-node-dot.dot-running { background: var(--accent); }
+.thinking-node-dot.dot-done    { background: var(--success); }
+.thinking-node-dot.dot-error   { background: var(--error); }
+.thinking-node-dot.dot-skipped { background: var(--text-muted); }
 
-.thought-label {
+.thinking-node-label {
   font-weight: 600;
   color: var(--text-primary);
+  flex-shrink: 0;
 }
-
-.thought-status {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.thought-summary {
+.thinking-node-detail {
   font-size: 11px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.thought-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.thought-content {
-  padding: 0 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.thought-expand-enter-active,
-.thought-expand-leave-active {
-  transition: all 0.25s ease;
-  overflow: hidden;
-}
-
-.thought-expand-enter-from,
-.thought-expand-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-
-.thought-expand-enter-to,
-.thought-expand-leave-from {
-  opacity: 1;
-  max-height: 1200px;
-}
-
-.reasoning-section {
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.reasoning-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+/* Reasoning text */
+.reasoning-block {
+  margin-top: 6px;
+  padding: 8px 12px;
   background: rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
-
-.reasoning-icon {
-  font-size: 13px;
-  color: var(--accent);
-}
-
-.reasoning-title {
-  flex: 1;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.reasoning-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: rgba(78, 161, 243, 0.12);
-  color: var(--accent);
-  border-radius: 3px;
-}
-
-.reasoning-badge.completed {
-  background: rgba(78, 201, 176, 0.12);
-  color: var(--success);
-}
-
-.reasoning-content {
-  padding: 12px;
+.reasoning-block-text {
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-secondary);
   font-family: 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
-  max-height: 380px;
+  max-height: 320px;
   overflow-y: auto;
 }
-
-.reasoning-content :deep(p) {
-  margin: 6px 0;
-}
-
-.reasoning-content :deep(ul),
-.reasoning-content :deep(ol) {
-  margin: 6px 0;
-  padding-left: 20px;
-}
-
-.reasoning-content :deep(li) {
-  margin: 3px 0;
-}
-
-.reasoning-content :deep(code) {
-  background: rgba(255, 255, 255, 0.06);
-  padding: 2px 5px;
+.reasoning-block-text :deep(p)  { margin: 4px 0; }
+.reasoning-block-text :deep(ul),
+.reasoning-block-text :deep(ol) { margin: 4px 0; padding-left: 18px; }
+.reasoning-block-text :deep(li) { margin: 2px 0; }
+.reasoning-block-text :deep(code) {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
   border-radius: 3px;
   color: #ce9178;
   font-size: 11px;
 }
-
-.reasoning-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.3);
+.reasoning-block-text :deep(pre) {
+  background: rgba(0, 0, 0, 0.2);
   padding: 8px;
-  border-radius: var(--radius-sm);
+  border-radius: 5px;
   overflow-x: auto;
-  margin: 8px 0;
+  margin: 4px 0;
 }
-
-.reasoning-content :deep(pre code) {
-  background: transparent;
-  padding: 0;
-}
-
-.reasoning-content :deep(strong) {
-  color: var(--success);
-  font-weight: 600;
-}
-
-.reasoning-content :deep(em) {
-  color: var(--warn);
-}
-
-.reasoning-content :deep(h1),
-.reasoning-content :deep(h2),
-.reasoning-content :deep(h3) {
-  margin: 10px 0 6px;
+.reasoning-block-text :deep(pre code) { background: transparent; padding: 0; }
+.reasoning-block-text :deep(strong) { color: var(--success); font-weight: 600; }
+.reasoning-block-text :deep(em)     { color: var(--warn);    }
+.reasoning-block-text :deep(h1),
+.reasoning-block-text :deep(h2),
+.reasoning-block-text :deep(h3) {
+  margin: 8px 0 4px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.diagnostics-section {
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.diagnostics-header {
+/* Diagnosis chips */
+.diag-row {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  background: rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid var(--border);
-}
-
-.diagnostics-icon {
-  font-size: 13px;
-  color: var(--warn);
-}
-
-.diagnostics-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.diagnostics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 6px;
-  padding: 10px;
-}
-
-.diag-card {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  transition: all 0.15s;
-}
-
-.diag-card:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: var(--border-strong);
-}
-
-.diag-card-label {
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.diag-card-value {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--success);
-}
-
-.diag-card-sub {
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-.metrics-card {
-  background: linear-gradient(135deg, rgba(78, 161, 243, 0.04), rgba(78, 201, 176, 0.04));
-  border: 1px solid rgba(78, 201, 176, 0.15);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.metrics-header {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(78, 201, 176, 0.1);
+  margin-top: 6px;
+  flex-wrap: wrap;
 }
-
-.metrics-icon {
-  font-size: 15px;
-  color: var(--success);
-}
-
-.metrics-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--success);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.metrics-body {
-  padding: 12px 14px;
+.diag-chip {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.metric-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.metric-row:last-child {
-  border-bottom: none;
-}
-
-.metric-row .metric-label {
+  align-items: baseline;
+  gap: 3px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 5px;
   font-size: 11px;
-  color: var(--text-secondary);
 }
-
-.metric-row .metric-value {
-  font-size: 12px;
+.diag-chip-num {
   font-weight: 600;
   color: var(--success);
   font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+.diag-chip-label {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* Inline metrics footer */
+.metrics-inline {
+  margin-top: 4px;
+  padding: 8px 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.metrics-inline-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-right: 4px;
+}
+.metrics-inline-item {
+  color: var(--text-secondary);
+}
+.metrics-inline-sep {
+  color: rgba(255, 255, 255, 0.1);
+  font-size: 8px;
+}
+
+@keyframes thoughtIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 </style>
