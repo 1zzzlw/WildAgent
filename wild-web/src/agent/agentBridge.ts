@@ -47,7 +47,7 @@ import { usePresenceStore } from '../extensions/presence/store'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { createUserMessageRequest } from './protocol'
-import type { AgentMessage, BlueprintGeneratedResponse } from '../types/agent'
+import type { AgentMessage, AgentReplyResponse, BlueprintGeneratedResponse } from '../types/agent'
 import type { Blueprint } from '../types/blueprint'
 
 /** 重连配置 */
@@ -372,6 +372,14 @@ export class AgentBridge {
         // 精密模式：更新节点生成进度
         if (agentStore.precisionMode && message.stage === 'generating') {
           agentStore.updateGeneratingNode(message.content)
+          const parts = message.content.split(':')
+          if (parts.length >= 3) {
+            const nodeName = parts[0]
+            const nodeStatus = parts[1]
+            if (nodeStatus === 'done' || nodeStatus === 'error' || nodeStatus === 'skipped') {
+              agentStore.completeNodeThinking(nodeName)
+            }
+          }
         }
         break
 
@@ -390,8 +398,14 @@ export class AgentBridge {
         break
 
       case 'thinking_status':
-        if (agentStore.thinkingMode) {
+        if (agentStore.thinkingMode || agentStore.precisionMode) {
           agentStore.setThinkingStatus(message.status, message.content || '')
+        }
+        if (message.status === 'completed') {
+          agentStore.completeAllGeneratingNodes()
+        }
+        if (message.status === 'error' || message.status === 'unsupported') {
+          agentStore.setProcessing(false)
         }
         break
 
@@ -409,8 +423,7 @@ export class AgentBridge {
         break
 
       case 'agent_reply':
-        agentStore.addAgentMessage(message.content)
-        agentStore.setProcessing(false)
+        void this.handleAgentReply(message)
         break
 
       case 'presence_update':
@@ -432,6 +445,27 @@ export class AgentBridge {
     agentStore.setNetworkError(error)
     presenceStore.setConnectionStatus('disconnected')
     agentStore.addSystemMessage(`⚠️ 网络异常: ${error}`)
+  }
+
+  /** 处理 AI 回复文本：尝试解析内嵌 ```json Blueprint 并自动加载（快速通道）。 */
+  private async handleAgentReply(message: AgentReplyResponse) {
+    const agentStore = useAgentStore()
+    const jsonMatch = message.content.match(/```json\s*([\s\S]*?)```/)
+    if (jsonMatch) {
+      try {
+        const bp = JSON.parse(jsonMatch[1])
+        if (bp && typeof bp === 'object' && 'meta' in bp && 'geometry' in bp) {
+          const typed = bp as unknown as Blueprint
+          const name = typed.meta?.name ? `AI 生成 - ${typed.meta.name}` : 'AI 生成'
+          await useSceneStore().loadBlueprint(typed, name)
+          agentStore.setBlueprintLoaded('inline')
+        }
+      } catch {
+        // JSON 解析失败或蓝图非法则按普通文本展示
+      }
+    }
+    agentStore.addAgentMessage(message.content)
+    agentStore.setProcessing(false)
   }
 
   /** 处理 AI 生成的 Blueprint：绕过缓存读取服务端文件并等待重建完成。 */
@@ -471,11 +505,15 @@ export class AgentBridge {
         ? `AI 生成 - ${typedBlueprint.meta.name}`
         : 'AI 生成'
 
-      // 更新会话信息
+      // 更新会话信息（含组件数和建筑类型）
       const elementsCount = (typedBlueprint.geometry?.elements?.length || 0)
-        + (typedBlueprint.geometry?.components?.length || 0)
+      const componentsCount = (typedBlueprint.geometry?.components?.length || 0)
       const displayName = typedBlueprint.meta?.name || '未命名建筑'
-      agentStore.updateSessionInfo(targetSessionId, displayName, elementsCount)
+      agentStore.updateSessionInfo(targetSessionId, displayName, elementsCount + componentsCount, componentsCount)
+      agentStore.setSessionSaved(targetSessionId)
+
+      // 异步同步消息到后端（不阻塞 UI）
+      this.syncMessagesToServer(targetSessionId, agentStore.session.messages).catch(() => {})
 
       // 用户在生成期间切换了会话时，不允许迟到结果覆盖当前画布。
       if (targetSessionId !== agentStore.currentSessionId) {
@@ -559,18 +597,60 @@ export class AgentBridge {
     }
   }
 
-  /** 从后端获取所有已保存的场景列表 */
-  async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number }> | null> {
+  /** 从后端获取所有会话列表（优先新接口，fallback 旧接口） */
+  async fetchSessionList(): Promise<Array<{ filename: string; name: string; elements_count: number; updated_at: number; components_count?: number; message_count?: number; status?: string; building_type?: string }> | null> {
     try {
       const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}/api/scenes`)
+
+      // 优先使用新 sessions API
+      let response = await fetch(`${baseUrl}/api/sessions`)
+      if (response.ok) {
+        return await response.json()
+      }
+
+      // fallback: 旧 scenes 文件列表
+      // （旧接口返回格式不含 status/building_type/components_count 等新字段）
+      response = await fetch(`${baseUrl}/api/scenes`)
       if (!response.ok) {
         return null
       }
-      return await response.json()
+      const scenes = await response.json()
+      return scenes.map((s: any) => ({ ...s, status: 'saved' }))
     } catch (err) {
-      console.error('[AgentBridge] 获取场景列表失败:', err)
+      console.error('[AgentBridge] 获取会话列表失败:', err)
       return null
+    }
+  }
+
+  /** 同步消息到后端 */
+  async syncMessagesToServer(sessionId: string, messages: Array<{ id: string; role: string; content: string; timestamp: number }>): Promise<boolean> {
+    try {
+      const baseUrl = this.httpBaseUrl
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(messages),
+      })
+      return response.ok
+    } catch (err) {
+      console.error('[AgentBridge] 同步消息失败:', err)
+      return false
+    }
+  }
+
+  /** 更新会话元数据（名称等） */
+  async updateSessionMeta(sessionId: string, updates: { name?: string; building_type?: string }): Promise<boolean> {
+    try {
+      const baseUrl = this.httpBaseUrl
+      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      return response.ok
+    } catch (err) {
+      console.error('[AgentBridge] 更新会话元数据失败:', err)
+      return false
     }
   }
 

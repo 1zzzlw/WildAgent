@@ -44,9 +44,40 @@ function applyOperation(blueprint: Blueprint, op: SceneOperation) {
       break
     }
 
-    case 'remove_element':
-      blueprint.geometry.elements = blueprint.geometry.elements.filter(e => e.id !== op.id)
+    case 'remove_element': {
+      // 级联删除：收集所有引用目标元素的子节点（opening.parentWall、组件 parentWall、
+      // 全局物理约束 target），一并删除，避免悬空引用导致校验失败。
+      const idsToRemove = new Set<string>([op.id])
+      let foundNew = true
+      while (foundNew) {
+        foundNew = false
+        for (const el of blueprint.geometry.elements) {
+          if (idsToRemove.has(el.id)) continue
+          const parentWall = (el as unknown as Record<string, unknown>).parentWall as string | undefined
+          if (parentWall && idsToRemove.has(parentWall)) {
+            idsToRemove.add(el.id)
+            foundNew = true
+          }
+        }
+        for (const comp of blueprint.geometry.components || []) {
+          if (idsToRemove.has(comp.id)) continue
+          const parentWall = (comp as unknown as Record<string, unknown>).parentWall as string | undefined
+          if (parentWall && idsToRemove.has(parentWall)) {
+            idsToRemove.add(comp.id)
+            foundNew = true
+          }
+        }
+      }
+      blueprint.geometry.elements = blueprint.geometry.elements.filter(
+        e => !idsToRemove.has(e.id)
+      )
+      if (blueprint.geometry.components) {
+        blueprint.geometry.components = blueprint.geometry.components.filter(
+          c => !idsToRemove.has(c.id)
+        )
+      }
       break
+    }
 
     case 'add_component':
       if (!blueprint.geometry.components) {

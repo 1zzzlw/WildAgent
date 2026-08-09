@@ -54,7 +54,12 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[2] 是法向偏移（通常为 0）\n"
         '- interaction 必填: {"mode":"swing","hingeSide":"left"|"right","openAngle":90}\n'
         "- 门宽建议 0.9~1.2m，门高建议 2.0~2.4m\n"
-        "- 编译后产出: opening + primitive.box×3（门框）"
+        "- 编译后产出: opening + primitive.box×3（门框）\n"
+        "\n**数量与位置约束（必须遵守）**：\n"
+        "- 一栋建筑通常只有 1~2 个门：1 个正门（放在正面墙 wall_front 居中），可选 1 个后门/侧门\n"
+        "- 绝对不要每面墙都放门！内墙不要放门\n"
+        "- 正门放在正面墙（通常是 wall_front 或最长的面朝道路的墙）的居中位置\n"
+        "- 如果建筑有明确的「入口」、「主入口」语义，只生成 1 个门\n"
     ),
     "window": (
         "- from[0] 是沿墙距离，from[1] 是离地高度（通常 0.8~1.0m）\n"
@@ -63,7 +68,12 @@ _COMPONENT_RULES: dict[str, str] = {
         "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
         "- glassMaterial 指向的材质必须含 opacity（0.3~0.5 半透明模拟玻璃），否则窗户不透明\n"
         "- 如果骨架 materials 没有半透明玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
-        "- 编译后产出: opening + primitive.box×N（窗框+窗棂）"
+        "- 编译后产出: opening + primitive.box×N（窗框+窗棂）\n"
+        "\n**数量与位置约束（必须遵守）**：\n"
+        "- 每面墙最多 2~3 个窗，根据墙长合理分布（墙长 <4m 放 1 个，4~8m 放 2 个，>8m 放 3 个）\n"
+        "- 窗户沿墙均匀分布，间距 ≥1.0m，边缘距墙角 ≥0.5m\n"
+        "- 正面墙（wall_front）可以多放窗以增加采光，背面/侧面适当减少\n"
+        "- 不要在有门的墙上放太多窗（门+窗总数 ≤ 墙长/1.8）\n"
     ),
     "roof": (
         "- roof 是 geometry.elements 原生类型，不是 components\n"
@@ -75,7 +85,12 @@ _COMPONENT_RULES: dict[str, str] = {
         "- path 至少 2 个点，定义栏杆走向\n"
         "- 可指定 parentFloor 关联到楼板\n"
         "- 编译后产出: primitive.cylinder×N + beam×M\n"
-        "- 栏杆高度通常 0.9~1.1m"
+        "- 栏杆高度通常 0.9~1.1m\n"
+        "\n**位置约束（必须遵守）**：\n"
+        "- 栏杆只放在有高差的地方：阳台边缘、楼梯两侧、露台边缘、二层平台\n"
+        "- 绝对不要在地面层的外墙位置放栏杆！地面层外墙本身就是围护结构\n"
+        "- 如果没有阳台/楼梯/露台等构件，不要生成栏杆\n"
+        "- path 坐标必须在对应楼板范围内，不能飘在空中\n"
     ),
     "canopy": (
         "- parentWall 必须存在\n"

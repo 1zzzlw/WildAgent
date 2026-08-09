@@ -91,41 +91,77 @@ def _step_to_dict(step_result) -> dict:
 
 
 def _trace_errors_to_components(errors, blueprint: dict) -> list[dict]:
-    """从错误信息中追溯到具体的组件 ID
-    
-    简化版：只提取错误信息中提到的 ID
+    """从校验错误信息中追溯到具体组件，提取结构化失败信息
+
+    策略：
+    1. 优先用正则匹配 ❌/⚠️ [component_id] 格式（精确）
+    2. Fallback：词边界包含匹配（加边界检查避免 "door" 误匹配 "door_frame"）
+    3. 附带组件的完整 current_params，供回调节点使用
     """
-    failed = []
-    
+    import re
+
     components = blueprint.get("geometry", {}).get("components", [])
     elements = blueprint.get("geometry", {}).get("elements", [])
-    
+    all_entities: dict[str, dict] = {}
+    for e in elements + components:
+        eid = e.get("id")
+        if eid:
+            all_entities[eid] = e
+
+    # ── 模式1：精确匹配结构化标记 ❌ [id] 或 ⚠️ [id] ──
+    marker_pattern = re.compile(r'[❌⚠️]\s*\[(\w+)\]')
+
+    failed: list[dict] = []
+    seen_ids: set[str] = set()
+
     for error_result in errors:
         output = error_result.output
-        
-        # 查找所有组件 ID
-        for comp in components:
-            comp_id = comp.get("id", "")
-            if comp_id and comp_id in output:
-                failed.append({
-                    "component_id": comp_id,
-                    "component_type": comp.get("type", "?"),
-                    "error_step": error_result.name,
-                    "error_message": output[:200],  # 截取前200字符
-                })
-        
-        # 查找所有元素 ID
-        for el in elements:
-            el_id = el.get("id", "")
-            if el_id and el_id in output:
-                failed.append({
-                    "component_id": el_id,
-                    "component_type": el.get("type", "?"),
-                    "error_step": error_result.name,
-                    "error_message": output[:200],
-                })
-    
+
+        for match in marker_pattern.finditer(output):
+            comp_id = match.group(1)
+            if comp_id in seen_ids:
+                continue
+            seen_ids.add(comp_id)
+
+            entity = all_entities.get(comp_id)
+            if entity is None:
+                continue
+
+            failed.append({
+                "component_id": comp_id,
+                "component_type": entity.get("type", "?"),
+                "current_params": entity,
+                "error_step": error_result.name,
+                "error_message": _extract_error_context(output, comp_id),
+            })
+
+    # ── 模式2（fallback）：词边界包含匹配 ──
+    if not failed:
+        for error_result in errors:
+            output = error_result.output
+            for comp_id, entity in all_entities.items():
+                if comp_id in seen_ids:
+                    continue
+                if re.search(r'\b' + re.escape(comp_id) + r'\b', output):
+                    seen_ids.add(comp_id)
+                    failed.append({
+                        "component_id": comp_id,
+                        "component_type": entity.get("type", "?"),
+                        "current_params": entity,
+                        "error_step": error_result.name,
+                        "error_message": _extract_error_context(output, comp_id),
+                    })
+
     return failed
+
+
+def _extract_error_context(output: str, comp_id: str) -> str:
+    """从校验输出中提取与指定组件 ID 相关的错误行（最多300字符）"""
+    lines = output.split("\n")
+    relevant = [line.strip() for line in lines if comp_id in line]
+    if not relevant:
+        return output[:300]
+    return "\n".join(relevant)[:300]
 
 
 def _get_all_component_ids(blueprint: dict) -> list[str]:

@@ -209,7 +209,11 @@ export interface SessionInfo {
   /** 后端文件相对路径，如 "2026-08-02/session_xxx_名称.wild"，新格式含日期目录 */
   filename?: string
   name: string           // 从 blueprint.meta.name 提取
+  building_type?: string // 建筑类型（如 "chinese_courtyard", "modern_house"）
   created_at: number
   updated_at: number
   elements_count: number
+  components_count?: number  // 组件数量（区别于 elements）
+  message_count?: number     // 消息数量
+  status: 'saved' | 'draft' | 'generating'  // 会话状态
 }

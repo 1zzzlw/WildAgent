@@ -10,10 +10,15 @@
  * - currentStep: 当前执行步骤（用于显示进度）
  * - networkError: 最近一次网络错误信息
  *
+ * 消息持久化：
+ * - 每次 addMessage 即时写入 localStorage（key: wild_msgs_{sessionId}）
+ * - switchToSession 时自动从 localStorage 恢复消息
+ * - 草稿会话存 localStorage（key: wild_draft_sessions）
+ *
  * 核心方法：
  * - addUserMessage() / addAgentMessage() / addSystemMessage(): 添加消息
  * - setPendingPatch(): 设置待确认的 Patch
- * - createSession() / switchSession() / removeSession(): 会话管理
+ * - createSession() / switchToSession() / removeSession(): 会话管理
  * - updateSessionInfo(): 从 blueprint 更新会话元数据
  *
  * 用于：
@@ -42,6 +47,9 @@ type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error
 
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
+const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
+const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
+const MSG_STORAGE_PREFIX = 'wild_msgs_'
 
 function loadThinkingMode(): boolean {
   // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
@@ -51,6 +59,63 @@ function loadThinkingMode(): boolean {
 
 function loadPrecisionMode(): boolean {
   return localStorage.getItem(STORAGE_KEY_PRECISION_MODE) === 'true'
+}
+
+// ── 消息持久化工具 ──
+
+function saveMessagesToLocal(sessionId: string, messages: ChatMessage[]) {
+  try {
+    localStorage.setItem(MSG_STORAGE_PREFIX + sessionId, JSON.stringify(messages))
+  } catch { /* localStorage 满或不可用，静默失败 */ }
+}
+
+function loadMessagesFromLocal(sessionId: string): ChatMessage[] {
+  try {
+    const raw = localStorage.getItem(MSG_STORAGE_PREFIX + sessionId)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function removeMessagesFromLocal(sessionId: string) {
+  try {
+    localStorage.removeItem(MSG_STORAGE_PREFIX + sessionId)
+  } catch { /* ignore */ }
+}
+
+function saveDraftSessions(sessions: SessionInfo[]) {
+  try {
+    const drafts = sessions.filter(s => s.status === 'draft')
+    localStorage.setItem(STORAGE_KEY_DRAFT_SESSIONS, JSON.stringify(drafts))
+  } catch { /* ignore */ }
+}
+
+function loadDraftSessions(): SessionInfo[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DRAFT_SESSIONS)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveLastSession(sessionId: string) {
+  try { localStorage.setItem(STORAGE_KEY_LAST_SESSION, sessionId) } catch { /* ignore */ }
+}
+
+function loadLastSession(): string | null {
+  try { return localStorage.getItem(STORAGE_KEY_LAST_SESSION) } catch { return null }
+}
+
+/** 相对时间格式化（"刚刚" / "5分钟前" / "2小时前" / "3天前"） */
+export function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts
+  if (diff < 60_000) return '刚刚'
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}分钟前`
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}小时前`
+  if (diff < 604800_000) return `${Math.floor(diff / 86400_000)}天前`
+  return new Date(ts).toLocaleDateString('zh-CN')
 }
 
 export const useAgentStore = defineStore('agent', () => {
@@ -80,7 +145,7 @@ export const useAgentStore = defineStore('agent', () => {
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
-  
+
   /** 精密模式：按节点分组的思考内容 */
   interface NodeThinking {
     node: string
@@ -120,6 +185,8 @@ export const useAgentStore = defineStore('agent', () => {
 
   function addMessage(message: ChatMessage) {
     session.value.messages.push(message)
+    // 即时持久化到 localStorage
+    saveMessagesToLocal(currentSessionId.value, session.value.messages)
   }
 
   function addUserMessage(content: string) {
@@ -199,13 +266,28 @@ export const useAgentStore = defineStore('agent', () => {
       thinkingContent.value += delta
     }
   }
-  
+
   function completeNodeThinking(nodeName: string) {
     const thinking = nodeThinkingMap.value.get(nodeName)
     if (thinking) {
       thinking.status = 'completed'
       nodeThinkingMap.value = new Map(nodeThinkingMap.value)
     }
+  }
+
+  function completeAllGeneratingNodes() {
+    generatingNodes.value = generatingNodes.value.map(node => {
+      if (node.status === 'running') {
+        return { ...node, status: 'done' }
+      }
+      return node
+    })
+    nodeThinkingMap.value.forEach((thinking, node) => {
+      if (thinking.status === 'thinking') {
+        thinking.status = 'completed'
+      }
+    })
+    nodeThinkingMap.value = new Map(nodeThinkingMap.value)
   }
 
   function setThinkingStatus(status: Exclude<ThinkingStatus, 'idle'>, content = '') {
@@ -247,14 +329,42 @@ export const useAgentStore = defineStore('agent', () => {
 
   function clearMessages() {
     session.value.messages = []
+    saveMessagesToLocal(currentSessionId.value, [])
+  }
+
+  // ── 会话扩展操作 ──
+
+  function renameSession(sessionId: string, newName: string) {
+    const info = sessions.value.find(s => s.session_id === sessionId)
+    if (info) {
+      info.name = newName
+      info.updated_at = Date.now()
+    }
+  }
+
+  function setSessionGenerating(sessionId: string) {
+    const info = sessions.value.find(s => s.session_id === sessionId)
+    if (info) {
+      info.status = 'generating'
+    }
+  }
+
+  function setSessionSaved(sessionId: string) {
+    const info = sessions.value.find(s => s.session_id === sessionId)
+    if (info) {
+      info.status = 'saved'
+    }
+  }
+
+  /** 用服务器场景文件摘要整体替换会话列表（保留本地草稿）。 */
+  function replaceSessions(serverSessions: SessionInfo[]) {
+    // 保留本地草稿（未同步到服务端的会话）
+    const localDrafts = sessions.value.filter(s => s.status === 'draft' && !serverSessions.find(ss => ss.session_id === s.session_id))
+    sessions.value = [...serverSessions, ...localDrafts]
+    saveDraftSessions(sessions.value)
   }
 
   // ── 会话管理 ──
-
-  /** 用服务器场景文件摘要整体替换会话列表。 */
-  function replaceSessions(serverSessions: SessionInfo[]) {
-    sessions.value = serverSessions
-  }
 
   function createSession(name?: string): string {
     const id = `session_${Date.now()}`
@@ -264,13 +374,20 @@ export const useAgentStore = defineStore('agent', () => {
       created_at: Date.now(),
       updated_at: Date.now(),
       elements_count: 0,
+      status: 'draft',
     }
     sessions.value.unshift(info)
+    saveDraftSessions(sessions.value)
     return id
   }
 
   function switchToSession(sessionId: string) {
-    // 找到或创建会话记录
+    // 1. 保存当前会话消息到 localStorage（防止丢失）
+    if (currentSessionId.value) {
+      saveMessagesToLocal(currentSessionId.value, session.value.messages)
+    }
+
+    // 2. 找到或创建会话记录
     let info = sessions.value.find(s => s.session_id === sessionId)
     if (!info) {
       info = {
@@ -279,30 +396,40 @@ export const useAgentStore = defineStore('agent', () => {
         created_at: Date.now(),
         updated_at: Date.now(),
         elements_count: 0,
+        status: 'draft',
       }
       sessions.value.unshift(info)
     }
 
+    // 3. 切换 session_id
     currentSessionId.value = sessionId
+    saveLastSession(sessionId)
 
-    // 重置当前会话状态（消息清空，蓝图由外部加载）
+    // 4. 从 localStorage 恢复目标会话消息（而不是丢弃！）
+    const savedMessages = loadMessagesFromLocal(sessionId)
     session.value = {
       session_id: sessionId,
-      messages: [],
+      messages: savedMessages,
       connected: session.value.connected,
     }
+
+    // 5. 清除运行时状态（思考/进度——这些不应持久化）
     pendingPatch.value = null
     pipelineSteps.value = []
     clearThinkingState()
     blueprintLoaded.value = false
   }
 
-  function updateSessionInfo(sessionId: string, name: string, elementsCount: number) {
+  function updateSessionInfo(sessionId: string, name: string, elementsCount: number, componentsCount?: number, buildingType?: string) {
     const info = sessions.value.find(s => s.session_id === sessionId)
     if (info) {
       info.name = name
       info.elements_count = elementsCount
+      if (componentsCount !== undefined) info.components_count = componentsCount
+      if (buildingType) info.building_type = buildingType
       info.updated_at = Date.now()
+      // 有蓝图保存后标记为已保存
+      if (elementsCount > 0) info.status = 'saved'
     } else {
       sessions.value.unshift({
         session_id: sessionId,
@@ -310,19 +437,28 @@ export const useAgentStore = defineStore('agent', () => {
         created_at: Date.now(),
         updated_at: Date.now(),
         elements_count: elementsCount,
+        components_count: componentsCount,
+        building_type: buildingType,
+        status: elementsCount > 0 ? 'saved' : 'draft',
       })
     }
   }
 
   function removeSession(sessionId: string) {
+    // 清理 localStorage 中的消息
+    removeMessagesFromLocal(sessionId)
+
     sessions.value = sessions.value.filter(s => s.session_id !== sessionId)
+    saveDraftSessions(sessions.value)
 
     if (currentSessionId.value === sessionId) {
-      const next = sessions.value[0]
+      // 优先跳转到最近使用的会话，否则第一个，否则新建
+      const lastId = loadLastSession()
+      const next = sessions.value.find(s => s.session_id === lastId && s.session_id !== sessionId)
+        || sessions.value[0]
       if (next) {
         switchToSession(next.session_id)
       } else {
-        // 无会话了，创建新的
         const newId = createSession()
         switchToSession(newId)
       }
@@ -431,6 +567,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   function clearPrecisionState() {
     generatingNodes.value = []
+    nodeThinkingMap.value.clear()
     debugLogs.value = []
     sessionMetrics.value = null
   }
@@ -449,6 +586,9 @@ export const useAgentStore = defineStore('agent', () => {
     switchToSession,
     updateSessionInfo,
     removeSession,
+    renameSession,
+    setSessionGenerating,
+    setSessionSaved,
     // 原有
     session,
     connectionStatus,
@@ -487,6 +627,7 @@ export const useAgentStore = defineStore('agent', () => {
     setThinkingMode,
     appendThinkingContent,
     completeNodeThinking,
+    completeAllGeneratingNodes,
     setThinkingStatus,
     clearThinkingState,
     // 精密模式

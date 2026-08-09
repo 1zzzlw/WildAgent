@@ -20,11 +20,19 @@ class GenerationState(TypedDict, total=False):
     # ── 流式思考回调（node_name, delta_text）──
     on_reasoning_delta: Callable[[str, str], Awaitable[None]] | None
 
+    # ── Layer -1: 意图分类 ──
+    intent: str  # "generate" | "chat"
+
+    # ── Layer -1: 知识问答输出 ──
+    chat_reply: str       # 知识问答的文本回复
+    chat_diag: dict       # 知识问答的诊断数据
+
     # ── Layer 0: 骨架 ──
     skeleton_blueprint: dict
     skeleton_summary: str
     wall_bounding_box: dict
     suggested_components: list[str]  # 骨架节点建议的组件列表
+    design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
 
     # ── Layer 1: 组件分片（并行）──
     door_fragments: list[dict]
@@ -66,11 +74,13 @@ class GenerationState(TypedDict, total=False):
 
     # ── Layer 2: 合并与校验 ──
     merged_blueprint: dict
+    merge_diag: dict  # 合并节点的校验→修复循环诊断
     validation_results: list[dict]
     failed_components: list[dict]
     passed_component_ids: list[str]
     retry_count: int
     max_retries: int
+    component_retry_counts: dict[str, int]  # per-component 重试计数 {component_id: count}
 
     # ── 回调上下文 ──
     callback_context: dict

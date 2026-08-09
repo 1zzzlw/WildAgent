@@ -48,6 +48,27 @@ def _is_finite_vector3(value: object) -> bool:
     )
 
 
+def _safe_coords(vec, field_name: str = "") -> list[float]:
+    """将坐标或尺寸强制转为 float 列表，非数值元素抛可定位异常。
+
+    若 LLM 输出了字符串坐标（如 ``from: ["3","0","0"]``）
+    或嵌套数组（如 ``from: [[1,0],[2,0]]``），此函数抛出包含字段名
+    和具体索引的 ValueError，供上层工具将其转为 ❌ 诊断而非 TypeError 崩溃。
+    """
+    if not isinstance(vec, (list, tuple)):
+        raise ValueError(f"期望数组，实际为 {type(vec).__name__}: {vec!r}")
+    result: list[float] = []
+    prefix = f"{field_name} " if field_name else ""
+    for i, v in enumerate(vec):
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            result.append(float(v))
+        else:
+            raise ValueError(
+                f"{prefix}坐标[{i}]={v!r}（类型 {type(v).__name__}）不是有效数值"
+            )
+    return result
+
+
 def _get_by_id(bp: dict, eid: str) -> dict | None:
     """按 id 查找元素"""
     for el in _get_elements(bp):
@@ -214,8 +235,14 @@ def validate_opening_coords(blueprint: dict) -> str:
             continue
 
         wl = _wall_length(parent)
-        along_dist = from_vec[0]
-        normal_offset = from_vec[2] if len(from_vec) > 2 else 0
+        # 类型保护：将 from_vec 安全转为 float 列表，捕获 LLM 输出的非数值坐标
+        try:
+            coords = _safe_coords(from_vec, f"[{oid}] from")
+            along_dist = coords[0] if len(coords) >= 1 else 0.0
+            normal_offset = coords[2] if len(coords) >= 3 else 0.0
+        except ValueError as e:
+            issues.append(f"❌ [{oid}] from 字段格式错误: {e}")
+            continue
 
         # 沿墙距离检查
         if along_dist < -0.3 or along_dist > wl + 0.3:
@@ -1898,6 +1925,14 @@ def fix_element_dimensions(blueprint: dict) -> str:
                 el["to"][2] = f[2] + dz * scale
                 changed.append(f"长度 {length:.1f} → {length*scale:.1f}m")
 
+        # 楼板 / 楼梯：通用字段修正
+        elif t in ("floor", "stair"):
+            for field, (lo, hi) in RULES[t].items():
+                val = el.get(field)
+                if val is not None and isinstance(val, (int, float)) and val > hi * 2:
+                    el[field] = hi * 0.9
+                    changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
+
         # 屋顶修正（已在 fix_roof_coverage 中处理，这里只兜底极端值）
         elif t == "roof":
             for field, (lo, hi) in [("span", RULES[t]["span"]),
@@ -1908,6 +1943,14 @@ def fix_element_dimensions(blueprint: dict) -> str:
                     if val > hi * 3:  # 极端异常才修
                         el[field] = hi * 0.9
                         changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
+
+        # 其余类型（column, opening 等）：通用字段兜底修正
+        else:
+            for field, (lo, hi) in RULES[t].items():
+                val = el.get(field)
+                if val is not None and isinstance(val, (int, float)) and val > hi * 2:
+                    el[field] = hi * 0.9
+                    changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
 
         if changed:
             fixes.append(f"🔧 [{eid}]: " + "; ".join(changed))

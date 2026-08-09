@@ -24,28 +24,56 @@ async def callback_node(state: GenerationState) -> dict:
     """对校验失败的组件进行精确修正重试
 
     流程:
-    1. 从 failed_components 提取失败信息
+    1. 从 failed_components 提取失败信息（含 current_params）
     2. 精准 RAG（按错误类型检索）
-    3. 构建 callback_payload（含骨架上下文 + 工具建议）
-    4. LLM 只输出修正后的组件（支持流式思考）
-    5. 更新对应的 fragments
-    6. 递增 retry_count
+    3. 运行组件工具获取空间约束数据（tools 提供"具体错在哪里"）
+    4. 构建 callback_payload（含骨架上下文 + 当前参数 + 工具建议 + RAG）
+    5. LLM 只输出修正后的组件（支持流式思考）
+    6. 更新对应的 fragments
+    7. 递增 retry_count
     """
     failed_components = state.get("failed_components", [])
     if not failed_components:
         logger.info("[callback_node] 无失败组件，跳过")
         return {"retry_count": state.get("retry_count", 0) + 1}
 
-    logger.info(f"[callback_node] 开始修正 {len(failed_components)} 个失败组件")
+    # ── 0. per-component 重试过滤 ──
+    max_retries = state.get("max_retries", 3)
+    comp_retries = dict(state.get("component_retry_counts", {}))
+    retryable: list[dict] = []
+    skipped_exhausted: list[str] = []
+
+    for fc in failed_components:
+        comp_id = fc.get("component_id", "")
+        current = comp_retries.get(comp_id, 0)
+        if current >= max_retries:
+            skipped_exhausted.append(comp_id)
+            logger.warning(f"[callback_node] {comp_id} 已达 per-component 重试上限 ({current}/{max_retries}), 跳过")
+        else:
+            comp_retries[comp_id] = current + 1
+            retryable.append(fc)
+
+    if skipped_exhausted:
+        logger.info(f"[callback_node] 跳过 {len(skipped_exhausted)} 个耗尽重试的组件: {skipped_exhausted}")
+
+    if not retryable:
+        logger.info("[callback_node] 所有失败组件均已耗尽重试")
+        return {
+            "retry_count": state.get("retry_count", 0) + 1,
+            "component_retry_counts": comp_retries,
+        }
+
+    logger.info(f"[callback_node] 开始修正 {len(retryable)} 个失败组件 (已跳过 {len(skipped_exhausted)} 个)")
 
     skeleton_summary = state.get("skeleton_summary", "")
+    skeleton_blueprint = state.get("skeleton_blueprint", {})
     passed_ids = state.get("passed_component_ids", [])
     retry_count = state.get("retry_count", 0)
     thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = state.get("on_reasoning_delta")
 
-    # ── 1. 精准 RAG（按失败组件类型检索）──
-    failed_types = list({fc.get("component_type", "") for fc in failed_components})
+    # ── 1. 精准 RAG + 工具数据（按失败组件类型检索）──
+    failed_types = list({fc.get("component_type", "") for fc in retryable})
     queries = []
     for ftype in failed_types:
         if ftype:
@@ -60,15 +88,45 @@ async def callback_node(state: GenerationState) -> dict:
     spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
     logger.info(f"[callback_node] RAG 上下文: {len(spec_text)} 字符")
 
-    # ── 2. 构建 callback prompt ──
+    # ── 2. 运行组件工具，获取空间约束数据 ──
+    # 为每个可重试的失败组件构建临时 blueprint 并跑 validate 工具
+    enriched_failed = []
+    for fc in retryable:
+        enriched = dict(fc)  # 拷贝原始失败信息
+        comp_type = fc.get("component_type", "")
+
+        # 尝试运行组件校验工具获取精确空间数据
+        tool_context = ""
+        try:
+            from app.tools.component_tools import validate_component
+
+            # 构建只包含该组件的临时 blueprint
+            temp_bp = {
+                "meta": skeleton_blueprint.get("meta", {"version": "1.1", "type": "building"}),
+                "geometry": {
+                    "elements": skeleton_blueprint.get("geometry", {}).get("elements", []).copy(),
+                    "components": [fc.get("current_params", {})] if fc.get("current_params") else [],
+                },
+                "materials": skeleton_blueprint.get("materials", {}),
+            }
+            tool_context = validate_component(comp_type, temp_bp)
+            if tool_context:
+                logger.info(f"[callback_node] 工具数据 ({comp_type}): {len(tool_context)} 字符")
+        except Exception as e:
+            logger.warning(f"[callback_node] 工具调用失败 ({comp_type}): {e}")
+
+        enriched["tool_data"] = tool_context
+        enriched_failed.append(enriched)
+
+    # ── 3. 构建 callback prompt ──
     system_prompt = build_callback_prompt(
         spec_text=spec_text,
         skeleton_summary=skeleton_summary,
-        failed_components=failed_components,
+        failed_components=enriched_failed,
         passed_component_ids=passed_ids,
     )
 
-    # ── 3. LLM 修正（支持流式思考）──
+    # ── 4. LLM 修正（支持流式思考）──
     use_streaming = thinking_mode and on_reasoning_delta is not None
     llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
 
@@ -77,7 +135,7 @@ async def callback_node(state: GenerationState) -> dict:
         {
             "role": "user",
             "content": (
-                f"请修正以下 {len(failed_components)} 个失败组件。"
+                f"请修正以下 {len(enriched_failed)} 个失败组件。"
                 f"只输出 JSON 数组，包含每个修正后的组件对象。"
             ),
         },
@@ -116,7 +174,7 @@ async def callback_node(state: GenerationState) -> dict:
         return {"retry_count": retry_count + 1}
 
     # ── 5. 按组件类型分组，更新对应的 fragments ──
-    updates = _apply_fixes_to_state(state, fixed_fragments, failed_components)
+    updates = _apply_fixes_to_state(state, fixed_fragments, enriched_failed)
 
     new_retry_count = retry_count + 1
     logger.info(
@@ -127,6 +185,7 @@ async def callback_node(state: GenerationState) -> dict:
     return {
         **updates,
         "retry_count": new_retry_count,
+        "component_retry_counts": comp_retries,
     }
 
 

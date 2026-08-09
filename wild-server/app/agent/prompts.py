@@ -57,10 +57,11 @@ def build_skeleton_prompt(spec_text: str) -> str:
     职责：
     1. 理解建筑类型（通过 building_types/ 知识库）
     2. 丰富用户需求描述（比如"欧式别墅应该有大门、落地窗、坡屋顶"）
-    3. 生成基础骨架结构（walls、floors、columns、beams）
-    4. 不生成组件（door、window、roof 等留给后续专用节点）
+    3. 生成基础骨架结构（walls、floors、columns、beams、stair）
+    4. **输出 facade_plan + component_quota 设计清单**，为后续节点提供刚约束
+    5. 不生成组件（door、window、roof 等留给后续专用节点）
     """
-    return f"""你是建筑规划专家。你的任务是理解用户需求，规划建筑结构，并生成骨架。
+    return f"""你是建筑规划专家。你的任务是理解用户需求，规划建筑结构，生成骨架和设计清单。
 
 # 你的任务
 
@@ -69,16 +70,51 @@ def build_skeleton_prompt(spec_text: str) -> str:
    - 欧式别墅 → 应有对称布局、大门、落地窗、四坡屋顶、柱廊
    - 中式庭院 → 应有院墙、月亮门、木窗、坡屋顶、飞檐
    - 现代建筑 → 应有大面积玻璃窗、简约线条、平屋顶
-3. **生成骨架结构**：只生成 walls（墙）、floors（楼板）、columns（柱）、beams（梁）
-5. **分析需要的组件**：根据用户需求判断哪些组件是必需的（如"家具"→light, "中式"→cornice）
-4. **不生成组件**：不要生成 door（门）、window（窗）、roof（屋顶）等，这些由后续专用节点负责
+3. **生成骨架结构**：只生成 walls（墙）、floors（楼板）、columns（柱）、beams（梁）、stair（楼梯）
+4. **输出设计清单**：在后处理阶段，你必须输出一个JSON段，指定 facade_plan 和 component_quota
+5. **不生成组件**：不要生成 door（门）、window（窗）、roof（屋顶）等，这些由后续专用节点负责
+
+# 设计清单规范（MANDATORY）
+
+在 JSON Blueprint 之后，你必须输出一段 `DESIGN_BRIEF:` 标记，内容为设计清单 JSON：
+
+```json
+DESIGN_BRIEF:
+{{
+  "facade_plan": {{
+    "<wall_id>": {{
+      "facing": "front|back|left|right",
+      "intent": "主立面，正门+两个水平长窗",
+      "max_openings": 3,
+      "is_main_facade": true
+    }}
+  }},
+  "component_quota": {{
+    "door": {{ "min": 1, "max": 2, "note": "主入口+可选后门" }},
+    "window": {{ "min": 2, "max": 6, "note": "主立面水平长窗为主，侧墙可留空" }},
+    "roof": {{ "type": "flat|gable|hip", "note": "严格按RAG最少可行模板" }},
+    "stair": {{ "count": 1, "note": "多层建筑必须含室内楼梯" }},
+    "railing": {{ "min": 0, "max": 2, "note": "仅阳台/楼梯高差处，无高差则不生成" }}
+  }},
+  "rag_reference": "（复述RAG最少可行模板中的关键构件清单：尺寸、数量、类型）"
+}}
+```
+
+**重要**：
+- facade_plan 必须包含所有墙体，每面墙标注 facing 和 intent
+- component_quota 中每个组件给出 min/max 范围，作为后续节点的硬约束
+- 现代别墅不需要外露角柱（可省略 column）
+- 多层建筑（≥2层）必须在 component_quota 中包含 stair
 
 # 输出格式要求
 
-在 JSON 前先输出 `_components: door, window, roof`（逗号分隔，列出所有需要的组件类型）。
-可用组件: door, window, roof, railing, canopy, balcony, light, ramp, bay_window, cornice, chimney
+先输出 `_components: door, window, roof, stair`（列出所有需要的组件类型）。
+可用组件: door, window, roof, railing, canopy, balcony, light, ramp, bay_window, cornice, chimney, stair
 
-你必须输出完整的 Blueprint JSON，但 `geometry.components` **必须为空数组**。
+然后输出完整的 Blueprint JSON，`geometry.components` **必须为空数组**。
+Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
+
+最后输出 `DESIGN_BRIEF:` JSON。
 
 # 规则
 
@@ -86,8 +122,9 @@ def build_skeleton_prompt(spec_text: str) -> str:
 2. **楼板覆盖**：floor 应覆盖整个建筑底面
 3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
 4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
-5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，必须设置 `"opacity": 0.35`，
-   否则 windows 将不透明（参考：`"glass": {{"baseColor":[0.55,0.72,0.82],"roughness":0.12,"metallic":0,"albedo":1,"opacity":0.35}}`）
+5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，必须设置 `"opacity": 0.35`
+6. **楼梯必须**：两层以上建筑必须包含 `stair` 元素
+7. **柱子克制**：现代别墅/住宅不需要外露角柱，仅门廊或大跨结构按需使用
 
 # WILD 规范参考
 
@@ -95,40 +132,37 @@ def build_skeleton_prompt(spec_text: str) -> str:
 
 # 输出示例
 
-假设用户说"生成一个中式庭院"，你应该在思考时描述：
-- "中式庭院通常有院墙围合、月亮门入口、木质花窗、坡屋顶配青瓦、飞檐翘角"
-- 然后生成墙体、楼板结构
+假设用户说"生成一个现代别墅"，骨架结构为 8×6m 两层：
 
-```json
+```
+_components: door, window, roof, stair
+
+（Blueprint JSON...）
+
+DESIGN_BRIEF:
 {{
-  "meta": {{
-    "version": "1.1",
-    "type": "building",
-    "name": "中式庭院",
-    "description": "传统中式庭院，院墙围合，预留月亮门、木窗、坡屋顶等构件位置"
+  "facade_plan": {{
+    "wall_front_1": {{"facing": "front", "intent": "主立面，正门居中+两侧水平长窗", "max_openings": 3, "is_main_facade": true}},
+    "wall_back_1": {{"facing": "back", "intent": "背面，仅后门+1小窗", "max_openings": 2, "is_main_facade": false}},
+    "wall_left_1": {{"facing": "left", "intent": "侧面，留空", "max_openings": 0, "is_main_facade": false}},
+    "wall_right_1": {{"facing": "right", "intent": "侧面，留空", "max_openings": 0, "is_main_facade": false}},
+    "wall_front_2": {{"facing": "front", "intent": "二层主立面，2个窗", "max_openings": 2, "is_main_facade": true}},
+    "wall_back_2": {{"facing": "back", "intent": "二层背面，1个窗", "max_openings": 1, "is_main_facade": false}},
+    "wall_left_2": {{"facing": "left", "intent": "二层侧面，留空", "max_openings": 0, "is_main_facade": false}},
+    "wall_right_2": {{"facing": "right", "intent": "二层侧面，留空", "max_openings": 0, "is_main_facade": false}}
   }},
-  "geometry": {{
-    "elements": [
-      {{"type": "floor", "id": "floor_ground", "from": [0, 0, 0], "to": [10, 0, 8], "thickness": 0.2, "material": "stone_grey"}},
-      {{"type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [10, 3.5, 0], "thickness": 0.3, "material": "brick_red"}},
-      {{"type": "wall", "id": "wall_back", "from": [0, 0, 8], "to": [10, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
-      {{"type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
-      {{"type": "wall", "id": "wall_right", "from": [10, 0, 0], "to": [10, 3.5, 8], "thickness": 0.3, "material": "brick_red"}},
-      {{"type": "column", "id": "col_fl", "base": [0, 0, 0], "height": 3.5, "bottomRadius": 0.2, "topRadius": 0.18, "style": "square", "material": "wood_oak"}},
-      {{"type": "column", "id": "col_fr", "base": [10, 0, 0], "height": 3.5, "bottomRadius": 0.2, "topRadius": 0.18, "style": "square", "material": "wood_oak"}}
-    ],
-    "components": []
+  "component_quota": {{
+    "door": {{"min": 1, "max": 2, "note": "正门+可选后门"}},
+    "window": {{"min": 2, "max": 6, "note": "主立面长窗，总共≤6"}},
+    "roof": {{"type": "flat", "note": "现代别墅平屋顶，span≤9m，高度≤0.5m"}},
+    "stair": {{"count": 1, "note": "一层到二层室内楼梯"}},
+    "railing": {{"min": 0, "max": 0, "note": "无露台/阳台，不需要栏杆"}}
   }},
-  "materials": {{
-    "stone_grey": {{"baseColor": [0.5, 0.5, 0.5], "roughness": 0.8}},
-    "brick_red": {{"baseColor": [0.6, 0.2, 0.15], "roughness": 0.9}},
-    "wood_oak": {{"baseColor": [0.55, 0.27, 0.07], "roughness": 0.7}}
-  }},
-  "behaviors": {{}}
+  "rag_reference": "RAG 最少可行模板：10×8m 现代别墅，1正门+2水平长窗(宽3m)+flat roof+楼梯+入口雨棚+无障碍坡道。缩放至 8×6m 时保持门窗数量不变。"
 }}
 ```
 
-**重要**：components 数组必须为空！门、窗、屋顶等由后续节点生成。
+**重要**：components 数组必须为空！门、窗、屋顶等由后续节点生成。但 stair 元素必须放在 geometry.elements 中。
 """
 
 
@@ -144,6 +178,7 @@ _COMPONENT_LABELS = {
     "cornice": "檐口",
     "chimney": "烟囱",
     "light": "灯具",
+    "stair": "楼梯",
 }
 
 
@@ -152,6 +187,7 @@ def build_component_prompt(
     component_type: str,
     skeleton_summary: str,
     extra_rules: str = "",
+    design_brief: dict | None = None,
 ) -> str:
     """Layer 1: 单个组件类型专用 prompt
 
@@ -160,7 +196,9 @@ def build_component_prompt(
         component_type: 组件类型（如 "door", "window"）
         skeleton_summary: 骨架摘要
         extra_rules: 组件专属规则（来自 ComponentConfig.extra_rules）
+        design_brief: 骨架输出的设计清单（含 facade_plan + component_quota）
     """
+    import json as _json
     label = _COMPONENT_LABELS.get(component_type, component_type)
 
     # 组件专属规则段落
@@ -172,18 +210,55 @@ def build_component_prompt(
 {extra_rules}
 """
 
+    # ── 构建 facade_plan 和 quota 约束段 ──
+    quota_section = ""
+    facade_section = ""
+    if design_brief:
+        quota = design_brief.get("component_quota", {})
+        comp_quota = quota.get(component_type, {})
+        if comp_quota:
+            min_n = comp_quota.get("min", "")
+            max_n = comp_quota.get("max", "")
+            note = comp_quota.get("note", "")
+            quota_section = f"\n# 数量硬约束（来自骨架设计清单）\n\n{label}总数: {min_n}~{max_n} 个\n{note}\n**必须严格遵守此数量范围，不要超出。**\n"
+
+        # facade_plan 给窗/门节点分配具体开窗墙面
+        if component_type in ("window", "door"):
+            fplan = design_brief.get("facade_plan", {})
+            facade_lines = []
+            for wall_id, plan in fplan.items():
+                facing = plan.get("facing", "?")
+                intent = plan.get("intent", "")
+                max_o = plan.get("max_openings", 0)
+                is_main = "主立面" if plan.get("is_main_facade") else "非主立面"
+                facade_lines.append(f"  - [{wall_id}] ({facing}, {is_main}): {intent}, 最多 {max_o} 个开口")
+            if facade_lines:
+                facade_section = (
+                    "\n# 各墙面开口方案（来自骨架设计清单）\n\n"
+                    + "\n".join(facade_lines)
+                    + "\n\n**必须严格按照上述方案生成：只在 intent 要求开窗/开门的墙上生成，"
+                      "max_openings=0 的墙必须留空。**\n"
+                )
+
+    rag_section = ""
+    if design_brief and design_brief.get("rag_reference"):
+        rag_section = f"\n# RAG 最少可行模板参考\n\n{design_brief['rag_reference']}\n"
+
     return f"""你是 {label} 组件生成专家。只生成 {component_type} 组合构件。
 
 # 已知场景骨架
 
 {skeleton_summary}
-
+{facade_section}
+{quota_section}
+{rag_section}
 # 通用规则
 
 1. **只生成 {component_type}**：不要生成其他类型的组件
 2. **写入 geometry.components**：不是 geometry.elements（roof 除外）
 3. **parentWall / parentFloor 必须存在**：从骨架信息中选择真实的 wall/floor id
 4. **ID 前缀**：使用 `{component_type}_` 前缀避免冲突
+5. **数量严格受限**：如果有数量硬约束，必须严格遵守 min/max 范围
 {rules_section}
 # WILD 规范
 
@@ -212,16 +287,30 @@ def build_callback_prompt(
     Args:
         spec_text: 回调时精准 RAG 检索到的规范文本
         skeleton_summary: 当前骨架摘要
-        failed_components: 需要修正的组件列表（含错误详情）
+        failed_components: 需要修正的组件列表（含 error_message、current_params、tool_data）
         passed_component_ids: 已通过校验的组件 ID（LLM 不得修改）
     """
+    import json as _json
+
     failed_text = ""
     for fc in failed_components:
-        failed_text += (
-            f"\n### {fc.get('component_id')} ({fc.get('component_type')})\n"
-            f"- 错误: {fc.get('error_message', '?')}\n"
-            f"- 当前参数: {fc.get('current_params', {})}\n"
-        )
+        comp_id = fc.get("component_id", "?")
+        comp_type = fc.get("component_type", "?")
+        error_msg = fc.get("error_message", "?")
+        current_params = fc.get("current_params", {})
+        tool_data = fc.get("tool_data", "")
+
+        # 格式化当前参数（排除大型嵌套，只保留关键字段）
+        params_display = _json.dumps(current_params, ensure_ascii=False, indent=2) if current_params else "（无）"
+
+        failed_text += f"\n### {comp_id} ({comp_type})\n"
+        failed_text += f"- 错误: {error_msg}\n"
+        failed_text += f"- 当前参数:\n```json\n{params_display}\n```\n"
+
+        if tool_data:
+            # 工具数据截断到 500 字符防止 prompt 膨胀
+            tool_short = tool_data[:500] + ("..." if len(tool_data) > 500 else "")
+            failed_text += f"- 工具校验数据:\n```\n{tool_short}\n```\n"
 
     passed_text = ", ".join(passed_component_ids) if passed_component_ids else "无"
 
@@ -247,7 +336,9 @@ def build_callback_prompt(
 
 1. 只修正上面列出的失败组件，不要改动已通过的组件
 2. 使用骨架信息中列出的真实 wall/floor id 作为 parentWall/parentFloor
-3. 每个组件只输出 JSON 对象，不要输出完整 Blueprint
+3. 利用「当前参数」中的坐标/尺寸作为起点，只修正报错的字段
+4. 参考「工具校验数据」中的空间约束（墙长、有效范围等）确定正确值
+5. 每个组件只输出 JSON 对象，不要输出完整 Blueprint
 
 ## 输出格式
 

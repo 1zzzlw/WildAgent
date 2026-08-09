@@ -36,6 +36,7 @@ def create_component_generator(config: ComponentConfig):
         t0 = _time.time()
         user_message = state["user_message"]
         skeleton_summary = state.get("skeleton_summary", "")
+        design_brief = state.get("design_brief")  # ← 骨架设计清单
         output_key = config.output_key
         gen_diag_key = f"{config.component_type}_gen_diag"
 
@@ -45,6 +46,10 @@ def create_component_generator(config: ComponentConfig):
         rag_t0 = _time.time()
         queries = [
             SpecQuery(user_message, {"entity_type": config.entity_type}),
+            SpecQuery(
+                f"{user_message}\n{config.label}构件参数与位置规则：{config.component_type} 的推荐数量、位置、尺寸",
+                {"doc_type": "component"},
+            ),
         ]
         for extra_query in config.rag_extra_queries:
             queries.append(SpecQuery(extra_query, {"doc_type": "component"}))
@@ -59,6 +64,7 @@ def create_component_generator(config: ComponentConfig):
             component_type=config.component_type,
             skeleton_summary=skeleton_summary,
             extra_rules=config.extra_rules,
+            design_brief=design_brief,
         )
         prompt_chars = len(system_prompt)
 
@@ -71,7 +77,7 @@ def create_component_generator(config: ComponentConfig):
 
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": _build_user_message(config, skeleton_summary)},
+            {"role": "user", "content": _build_user_message(config, skeleton_summary, design_brief)},
         ]
 
         llm_t0 = _time.time()
@@ -87,9 +93,24 @@ def create_component_generator(config: ComponentConfig):
                             reasoning_delta = chunk.additional_kwargs.get("reasoning_content", "")
                             if reasoning_delta:
                                 reasoning += reasoning_delta
-                                await on_reasoning_delta(config.component_type, reasoning_delta)
+                                await on_reasoning_delta(f"{config.component_type}_gen", reasoning_delta)
                         if hasattr(chunk, "content") and chunk.content:
                             reply_text += chunk.content
+                        # 捕获流式 usage（最终 chunk 带 usage 字段）
+                        if hasattr(chunk, "response_metadata") and chunk.response_metadata:
+                            usage = chunk.response_metadata.get("usage")
+                            if usage:
+                                token_usage = {
+                                    "input": usage.get("prompt_tokens", 0),
+                                    "output": usage.get("completion_tokens", 0),
+                                    "total": usage.get("total_tokens", 0),
+                                }
+                        if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
+                            token_usage = {
+                                "input": chunk.usage_metadata.get("input_tokens", 0),
+                                "output": chunk.usage_metadata.get("output_tokens", 0),
+                                "total": chunk.usage_metadata.get("total_tokens", 0),
+                            }
                 else:
                     response = await llm.ainvoke(messages)
                     reply_text = response.content if hasattr(response, "content") else str(response)
@@ -255,19 +276,31 @@ def _validate_fragments(fragments: list[dict], config: ComponentConfig) -> list[
     return valid
 
 
-def _build_user_message(config: ComponentConfig, skeleton_summary: str = "") -> str:
+def _build_user_message(config: ComponentConfig, skeleton_summary: str = "", design_brief: dict | None = None) -> str:
     """构建发给 LLM 的用户消息"""
     label = config.label
+    # 从设计清单提取当前组件的配额约束
+    quota_note = ""
+    if design_brief:
+        quota = design_brief.get("component_quota", {}).get(config.component_type, {})
+        if quota:
+            min_n = quota.get("min", "?")
+            max_n = quota.get("max", "?")
+            note = quota.get("note", "")
+            quota_note = f"，精确数量范围: {min_n}~{max_n} 个 ({note})"
+
     if config.is_list:
         return (
-            f"用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】中列出的"
-            f"墙体、楼板、柱子信息，为每面墙/每个位置生成合适的 {label} 组件。\n\n"
+            f"用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】和【立面开口方案 / 构件配额】"
+            f"生成**合适数量**的 {label} 组件{quota_note}。\n\n"
+            f"重要：请仔细阅读 facade_plan（立面开口方案），严格按照每面墙的 max_openings 和 intent 生成。"
+            f"max_openings=0 的墙必须留空。\n\n"
             f"只输出 JSON 数组，不要其他文字。"
         )
     else:
         return (
-            f"用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】中列出的"
-            f"信息生成 {label} 构件。\n\n"
+            f"用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】"
+            f"生成 {label} 构件。\n\n"
             f"只输出单个 JSON 对象，不要数组，不要其他文字。"
         )
 

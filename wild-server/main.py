@@ -15,6 +15,7 @@ from loguru import logger
 
 from app.api.ws_agent import router as ws_router
 from app.api.scenes import router as scenes_router
+from app.api.sessions import router as sessions_router
 
 
 @asynccontextmanager
@@ -68,6 +69,7 @@ app.add_middleware(
 # 路由实现留在各自模块；入口只负责把它们挂到同一个应用上。
 app.include_router(ws_router, tags=["ws连接初始化"])
 app.include_router(scenes_router, tags=["场景API"])
+app.include_router(sessions_router, tags=["会话API"])
 
 
 @app.get("/")

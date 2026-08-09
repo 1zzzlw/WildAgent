@@ -25,7 +25,7 @@ Agent WebSocket API
   agent_step:          { "type": "agent_step", "request_id": "...", "stage": "analyzing", "content": "..." }
   thinking_delta:      { "type": "thinking_delta", "request_id": "...", "delta": "..." }
   thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
-  blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "blueprint": {...}, "file_path": "..." }
+  blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
   error:               { "type": "error", "request_id": "...", "error": "..." }
 
@@ -250,6 +250,8 @@ async def _handle_user_message(ws: WebSocket, data: dict):
 
 # ── 节点名 → 展示标签 ──
 _NODE_LABELS = {
+    "classifier": "意图分类",
+    "chat": "知识问答",
     "skeleton": "骨架",
     "merge": "合并", "final_validate": "最终校验", "callback": "修正",
 }
@@ -306,6 +308,14 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
             "delta": delta,
         })
 
+    async def send_thinking_status(status: str, content: str = ''):
+        await ws.send_json({
+            "type": "thinking_status",
+            "request_id": request_id,
+            "status": status,
+            "content": content,
+        })
+
     # ── 初始状态 ──
     initial_state: GenerationState = {
         "user_message": message,
@@ -318,8 +328,12 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         "retry_count": 0,
     }
 
+    if thinking_mode:
+        await send_thinking_status("thinking", "正在收集节点思考内容")
+
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
-    graph = build_generation_graph(enable_callback=False)
+    from app.agent.graph import get_graph
+    graph = get_graph(enable_callback=True)
     all_diags: dict[str, dict] = {}
     final_state = None
     total_tokens = {"input": 0, "output": 0}
@@ -328,7 +342,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     # 生成所有可能的节点名（gen + val + 固定节点）
     _COMP_TYPES = {"door", "window", "roof", "railing", "canopy",
                    "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
-    _OUR_NODES = {"skeleton", "merge", "final_validate"}
+    _OUR_NODES = {"classifier", "chat", "skeleton", "merge", "final_validate", "callback"}
     for ct in _COMP_TYPES:
         _OUR_NODES.add(f"{ct}_gen")
         _OUR_NODES.add(f"{ct}_val")
@@ -349,12 +363,18 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
 
             # ── 节点开始 ──
             if kind == "on_chain_start":
-                if node_name == "skeleton":
+                if node_name == "classifier":
+                    await send_step("generating", f"{node_name}:running:{label} 分析用户意图...")
+                elif node_name == "chat":
+                    await send_step("generating", f"{node_name}:running:{label} RAG检索知识库 → 生成回答...")
+                elif node_name == "skeleton":
                     await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM丰富描述+规划中...")
                 elif node_name == "merge":
                     await send_step("generating", f"{node_name}:running:{label} 正在合并所有组件分片...")
                 elif node_name == "final_validate":
                     await send_step("generating", f"{node_name}:running:{label} 执行15步校验流水线...")
+                elif node_name == "callback":
+                    await send_step("generating", f"{node_name}:running:{label} 失败组件修正中...")
                 elif is_gen:
                     await send_step("generating", f"{node_name}:running:{label} RAG检索 → LLM思考生成中...")
                 elif is_val:
@@ -367,7 +387,11 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                 # skeleton：提取组件建议
                 if node_name == "skeleton":
                     suggested_components = node_output.get("suggested_components", [])
+                    design_brief = node_output.get("design_brief", {})
                     logger.info(f"[{request_id}] 骨架建议组件: {suggested_components}")
+                    if design_brief:
+                        quota = design_brief.get("component_quota", {})
+                        logger.info(f"[{request_id}] 设计清单配额: {quota}")
 
                 # 收集诊断（gen_diag 和 val_diag）
                 if is_gen:
@@ -386,7 +410,40 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                     total_tokens["output"] += tu.get("output", 0)
 
                 # ── 节点完成处理 ──
-                if node_name == "skeleton":
+                if node_name == "classifier":
+                    intent = node_output.get("intent", "generate")
+                    intent_label = "生成建筑" if intent == "generate" else "知识问答"
+                    await send_step("generating", f"{node_name}:done:{label} 意图={intent_label}")
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        "intent": intent,
+                    })
+
+                elif node_name == "chat":
+                    chat_reply = node_output.get("chat_reply", "")
+                    chat_diag = node_output.get("chat_diag", {})
+                    await send_step("generating",
+                        f"{node_name}:done:{label} {len(chat_reply)}字符 | "
+                        f"RAG {chat_diag.get('rag_chars', 0)}字 | LLM {chat_diag.get('llm_ms', 0)}ms")
+                    # 如果是 chat 意图，发送 agent_reply 给前端显示回答
+                    await ws.send_json({
+                        "type": "agent_reply",
+                        "request_id": request_id,
+                        "content": chat_reply,
+                        "content_type": "chat",
+                        "node": node_name,
+                    })
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        "rag_chars": chat_diag.get("rag_chars"),
+                        "rag_ms": chat_diag.get("rag_ms"),
+                        "llm_chars": chat_diag.get("llm_chars"),
+                        "llm_ms": chat_diag.get("llm_ms"),
+                        "token_usage": chat_diag.get("token_usage"),
+                        "total_ms": chat_diag.get("total_ms"),
+                    })
+
+                elif node_name == "skeleton":
                     if node_output.get("error"):
                         await send_step("generating", f"{node_name}:error:{node_output['error']}")
                     else:
@@ -412,7 +469,25 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                     geom = merged.get("geometry", {})
                     e_count = len(geom.get("elements", []))
                     c_count = len(geom.get("components", []))
-                    await send_step("generating", f"{node_name}:done:{label} {e_count}元素 + {c_count}组件")
+                    merge_diag = node_output.get("merge_diag", {})
+                    iters = merge_diag.get("iterations", [])
+                    iter_summary = ""
+                    if iters:
+                        last_iter = iters[-1]
+                        iter_summary = f" | {len(iters)}轮校验 {last_iter['passed']}✓ {last_iter['errors']}✗"
+                    await send_step("generating",
+                        f"{node_name}:done:{label} {e_count}元素 + {c_count}组件{iter_summary}")
+                    # 收集 merge 诊断到 all_diags
+                    if merge_diag:
+                        all_diags[node_name] = merge_diag
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        "element_count": e_count,
+                        "component_count": c_count,
+                        "iterations": iters,
+                        "final_errors": merge_diag.get("final_errors", 0),
+                        "total_ms": merge_diag.get("total_ms"),
+                    })
 
                 elif node_name == "final_validate":
                     # 校验流水线结果
@@ -427,16 +502,16 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                     for vr in validation_results:
                         out = vr.get("output", "")
                         if out.startswith("⏭️"):
-                            await send_step("generating",
+                            await send_step("validating",
                                 f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ⏭️ 跳过")
                         elif vr.get("has_error"):
-                            await send_step("generating",
+                            await send_step("validating",
                                 f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ❌ {out[:150]}")
                         elif vr.get("has_warning"):
-                            await send_step("generating",
+                            await send_step("validating",
                                 f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ⚠️ {out[:150]}")
                         else:
-                            await send_step("generating",
+                            await send_step("validating",
                                 f"validate:running:[{vr.get('step','?')}] {vr.get('name','?')}: ✅")
 
                 elif is_gen:
@@ -458,6 +533,18 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                             "fragment_count": fc, "total_ms": diag.get("total_ms"),
                         })
 
+                elif node_name == "callback":
+                    retry_number = node_output.get("retry_count", 0)
+                    if node_output.get("error"):
+                        await send_step("generating", f"{node_name}:error:{label} 修正失败: {node_output['error']}")
+                    else:
+                        await send_step("generating",
+                            f"{node_name}:done:{label} 已发起重试 {retry_number}/{initial_state.get('max_retries', 3)}")
+                        await send_debug("node", {
+                            "node": node_name, "label": label, "stage": "done",
+                            "retry_count": retry_number,
+                        })
+
                 elif is_val:
                     fc = diag.get("fragment_count", 0)
                     fixed = diag.get("validation_applied", False)
@@ -469,11 +556,37 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
 
     except Exception as e:
         logger.exception(f"[{request_id}] LangGraph 异常: {e}")
+        if thinking_mode:
+            await send_thinking_status("error", str(e))
         await ws.send_json({"type": "error", "request_id": request_id, "error": str(e)})
         return
 
     if final_state is None:
         await ws.send_json({"type": "error", "request_id": request_id, "error": "未返回结果"})
+        return
+
+    # ── 知识问答路径：已发送 agent_reply，只需发送性能汇总 ──
+    if final_state.get("intent") == "chat":
+        chat_diag = final_state.get("chat_diag", {})
+        total_rag_ms = chat_diag.get("rag_ms", 0)
+        total_llm_ms = chat_diag.get("llm_ms", 0)
+        session_metrics = {
+            "node_count": 2,
+            "active_nodes": 2,
+            "total_rag_ms": total_rag_ms,
+            "total_llm_ms": total_llm_ms,
+            "total_tokens": {
+                "input": total_tokens["input"],
+                "output": total_tokens["output"],
+                "total": total_tokens["input"] + total_tokens["output"],
+            },
+            "validation_steps": 0,
+            "validation_errors": 0,
+            "status": "complete",
+            "chat_mode": True,
+        }
+        await send_debug("session_metrics", session_metrics)
+        await send_step("finished", "")
         return
 
     # ── 最终结果来自 final_validate 节点 ──
@@ -519,20 +632,17 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         })
 
     final_status = "complete" if validation_errors == 0 else "partial"
-    await ws.send_json({
-        "type": "agent_reply", "request_id": request_id,
-        "content": f"已生成 {meta_name or '建筑'}（{len(elements)}元素 + {len(components)}组件, 校验 {final_status}: {validation_passed}✓ {validation_warnings}⚠ {validation_errors}✗）",
-    })
 
-    # ── 性能汇总 ──
+    # ── 性能汇总（只发送一次 session_metrics，保留正确的 retry_count）──
     active_diags = {k: v for k, v in all_diags.items() if not v.get("skipped")}
     total_rag_ms = sum(v.get("rag_ms", 0) for v in active_diags.values())
     total_llm_ms = sum(v.get("llm_ms", 0) for v in active_diags.values())
     fragment_total = sum(v.get("fragment_count", 0) for v in active_diags.values())
-    await send_debug("session_metrics", {
-        "node_count": len(all_diags),
+
+    session_metrics = {
+        "node_count": len(active_diags),
         "active_nodes": len(active_diags),
-        "skipped_nodes": len(all_diags) - len(active_diags),
+        "skipped_nodes": sum(1 for diag in all_diags.values() if diag.get("stage") == "skipped"),
         "suggested_components": suggested_components,
         "total_rag_ms": total_rag_ms,
         "total_llm_ms": total_llm_ms,
@@ -544,9 +654,23 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         "fragment_total": fragment_total,
         "validation_steps": len(validation_results),
         "validation_errors": validation_errors,
-        "retry_count": 0,
-        "max_retries": 3,
-        "status": final_state.get("status", "?"),
+        "retry_count": final_state.get("retry_count", 0),
+        "max_retries": initial_state.get("max_retries", 3),
+        "status": final_state.get("status", "unknown"),
+    }
+    await send_debug("session_metrics", session_metrics)
+
+    if thinking_mode:
+        await ws.send_json({
+            "type": "thinking_status",
+            "request_id": request_id,
+            "status": "completed",
+            "content": "思考已完成",
+        })
+
+    await ws.send_json({
+        "type": "agent_reply", "request_id": request_id,
+        "content": f"已生成 {meta_name or '建筑'}（{len(elements)}元素 + {len(components)}组件, 校验 {final_status}: {validation_passed}✓ {validation_warnings}⚠ {validation_errors}✗）",
     })
 
     logger.info(f"[{request_id}] [precision] 完成: {len(active_diags)}活跃节点, "
@@ -646,7 +770,23 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
     # ===== Phase 3: 处理结果（按 AI 输出的格式分发）=====
     if result.blueprint is not None:
         # ── 生成类：完整 Blueprint ──────────────────────────
-        # 跳过项不展示；其余校验结果统一映射成前端可读的状态行。
+        # ── 致命错误检查：has_error 的步骤先拦截，不下发蓝图 ──
+        fatal_errors = [pr for pr in result.pipeline_results 
+                        if pr.has_error and not pr.output.startswith("⏭️")]
+        if fatal_errors:
+            error_lines = []
+            for pr in fatal_errors:
+                error_lines.append(f"❌ [{pr.step}] {pr.name}: {pr.output[:200]}")
+            error_text = "\n".join(error_lines)
+            logger.warning(f"[{request_id}] 蓝图校验未通过，拒绝下发:\n{error_text}")
+            await ws.send_json({
+                "type": "agent_reply",
+                "request_id": request_id,
+                "content": f"生成的蓝图未通过校验，无法加载到场景：\n\n{error_text}\n\n请重新描述你的需求或修正参数后重试。",
+            })
+            return
+
+        # 非致命步骤展示（warnings, ok 及跳过项）
         for pr in result.pipeline_results:
             if pr.output.startswith("⏭️"):
                 continue

@@ -103,12 +103,21 @@ export const useSceneStore = defineStore('scene', () => {
         return false
       }
 
-      // 应用成功
+      // 应用成功前，先做重建 smoke test（不 gate 提交则重建失败会导致画布变空）
+      const previousBlueprint = document.value.blueprint
       document.value.blueprint = newBlueprint
+      const rebuilt = await reconstruct()
+      if (!rebuilt) {
+        // 重建失败：回滚 blueprint，不提交 patch
+        document.value.blueprint = previousBlueprint
+        console.error('重建 smoke test 失败，已回滚 Blueprint', newBlueprint)
+        return false
+      }
+
+      // 重建成功，正式提交
       document.value.revision++
       document.value.dirty = true
 
-      await reconstruct()
       useHistoryStore().push({
         label: patch.summary || '修改场景',
         before,

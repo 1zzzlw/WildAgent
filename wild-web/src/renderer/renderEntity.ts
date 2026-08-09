@@ -50,6 +50,7 @@ function createMeshFromMeshData(
     placeholder.userData.elementId  = meshData.elementId
     placeholder.userData.isError    = true
     placeholder.userData.errorReason = 'vertex_overflow'
+    placeholder.userData.ownsMaterial = true
     const { position, rotation, scale } = meshData.transform
     placeholder.position.set(position[0], position[1], position[2])
     placeholder.rotation.set(rotation[0], rotation[1], rotation[2])

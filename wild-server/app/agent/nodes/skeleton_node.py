@@ -23,7 +23,7 @@ from app.services.agent_service import agent_service
 
 
 async def skeleton_generator(state: GenerationState) -> dict:
-    """生成建筑骨架（walls + floors + columns + beams）"""
+    """生成建筑骨架（walls + floors + columns + beams + stair）并输出设计清单"""
     t0 = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
@@ -51,7 +51,6 @@ async def skeleton_generator(state: GenerationState) -> dict:
     prompt_chars = len(system_prompt)
 
     # ── 3. LLM 调用（流式或非流式）──
-    # 如果需要思考且有回调，使用流式；否则非流式
     use_streaming = thinking_mode and on_reasoning_delta is not None
     llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
 
@@ -67,33 +66,37 @@ async def skeleton_generator(state: GenerationState) -> dict:
     
     try:
         if use_streaming:
-            # 流式调用：逐 chunk 收集 content 和 reasoning_content
             async for chunk in llm.astream(messages):
-                # 提取思考内容
                 if hasattr(chunk, "additional_kwargs"):
                     reasoning_delta = chunk.additional_kwargs.get("reasoning_content", "")
                     if reasoning_delta:
                         reasoning += reasoning_delta
-                        # 实时推送给前端
                         await on_reasoning_delta("skeleton", reasoning_delta)
-                
-                # 收集正文内容
                 if hasattr(chunk, "content") and chunk.content:
                     reply_text += chunk.content
+                if hasattr(chunk, "response_metadata") and chunk.response_metadata:
+                    usage = chunk.response_metadata.get("usage")
+                    if usage:
+                        token_usage = {
+                            "input": usage.get("prompt_tokens", 0),
+                            "output": usage.get("completion_tokens", 0),
+                            "total": usage.get("total_tokens", 0),
+                        }
+                if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
+                    token_usage = {
+                        "input": chunk.usage_metadata.get("input_tokens", 0),
+                        "output": chunk.usage_metadata.get("output_tokens", 0),
+                        "total": chunk.usage_metadata.get("total_tokens", 0),
+                    }
             
             logger.info(f"[skeleton] LLM 流式完成: {len(reply_text)} 字符")
         else:
-            # 非流式调用
             response = await llm.ainvoke(messages)
             reply_text = response.content if hasattr(response, "content") else str(response)
-            
-            # 提取模型思考内容（多个来源都尝试）
             if hasattr(response, "additional_kwargs"):
                 reasoning = response.additional_kwargs.get("reasoning_content", "") or ""
             if not reasoning and hasattr(response, "response_metadata"):
                 reasoning = response.response_metadata.get("reasoning_content", "") or ""
-            
-            # 提取 token 用量
             if hasattr(response, "response_metadata"):
                 usage = response.response_metadata.get("token_usage", {})
                 if usage:
@@ -125,8 +128,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
         + (f", tokens={token_usage['total']}" if token_usage else "")
     )
 
-    # ── 4. 从 LLM 回复中提取组件建议 + Blueprint JSON ──
+    # ── 4. 从 LLM 回复中提取组件建议 + DESIGN_BRIEF + Blueprint JSON ──
     suggested_components = _parse_components_from_reply(reply_text)
+    design_brief = _parse_design_brief(reply_text)
     blueprint = extract_blueprint_from_text(reply_text)
 
     if not blueprint:
@@ -174,19 +178,23 @@ async def skeleton_generator(state: GenerationState) -> dict:
     except Exception as e:
         logger.error(f"[skeleton] 包围盒计算失败: {e}")
 
-    # ── 7. 生成骨架摘要 ──
-    summary = _build_skeleton_summary(blueprint)
+    # ── 7. 生成骨架摘要（仅几何轮廓，不含机械开口方案）──
+    summary = _build_skeleton_summary(blueprint, design_brief)
     
     elements = blueprint.get("geometry", {}).get("elements", [])
     total_ms = int((_time.time() - t0) * 1000)
 
     logger.info(f"[skeleton] 骨架生成完成: {len(elements)} 个构件, 建议组件: {suggested_components}, {total_ms}ms")
+    if design_brief:
+        quota = design_brief.get("component_quota", {})
+        logger.info(f"[skeleton] 设计清单: {_json.dumps(quota, ensure_ascii=False, default=str)}")
 
     return {
         "skeleton_blueprint": blueprint,
         "skeleton_summary": summary,
         "wall_bounding_box": bbox_result,
-        "suggested_components": suggested_components,  # ← 新增：建议的组件列表
+        "suggested_components": suggested_components,
+        "design_brief": design_brief,
         "skeleton_diag": {
             "rag_chars": rag_chars,
             "rag_ms": rag_ms,
@@ -202,22 +210,35 @@ async def skeleton_generator(state: GenerationState) -> dict:
     }
 
 
-def _parse_components_from_reply(reply_text: str) -> list[str]:
-    """从 LLM 回复中解析 `_components: door, window, roof` 行
-
-    AI 自由判断用户需求需要哪些组件。未匹配到 _components: 时用关键词 fallback。
-    """
+def _parse_design_brief(reply_text: str) -> dict | None:
+    """从 LLM 回复中解析 DESIGN_BRIEF: JSON 段"""
     import re
-    # 支持所有可用组件类型
+    import json as _json
+
+    m = re.search(r'DESIGN_BRIEF:\s*(\{[\s\S]*?\})\s*(?:$|\n\n)', reply_text)
+    if not m:
+        logger.warning("[skeleton] 未找到 DESIGN_BRIEF: 标记，骨架不会传递设计约束")
+        return None
+
+    try:
+        brief = _json.loads(m.group(1))
+        logger.info(f"[skeleton] 解析 DESIGN_BRIEF 成功: facade_plan={len(brief.get('facade_plan', {}))}面墙, "
+                     f"component_quota={list(brief.get('component_quota', {}).keys())}")
+        return brief
+    except _json.JSONDecodeError as e:
+        logger.warning(f"[skeleton] DESIGN_BRIEF JSON 解析失败: {e}")
+        return None
+
+
+def _parse_components_from_reply(reply_text: str) -> list[str]:
+    """从 LLM 回复中解析 `_components: door, window, roof` 行"""
+    import re
     valid_types = {"door", "window", "roof", "railing", "canopy",
-                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
+                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney", "stair"}
 
     m = re.search(r'_components:\s*(.+)', reply_text)
     if not m:
-        # AI 没输出 _components: 标签 → 关键词 fallback
-        # 这个 fallback 与 graph.py 的 _keyword_fallback 呼应，
-        # 但这里返回的是 skeleton 的 suggested_components，影响 graph 派发
-        return []  # 返回空列表，让 graph.py 的 _dispatch_components 做关键词 fallback
+        return []
 
     raw = m.group(1).strip()
     components = []
@@ -226,23 +247,21 @@ def _parse_components_from_reply(reply_text: str) -> list[str]:
         if token in valid_types and token not in components:
             components.append(token)
 
-    # AI 的选择就是最终结果，不再强制补全
-    if not components:
-        return []
-
     return components
 
 
-def _build_skeleton_summary(blueprint: dict) -> str:
-    """生成骨架摘要供后续节点使用（包含墙体详细信息用于门窗定位）"""
+def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -> str:
+    """生成骨架摘要供后续节点使用（几何轮廓 + 设计清单）"""
+    import json as _json
     elements = blueprint.get("geometry", {}).get("elements", [])
     walls = [e for e in elements if e.get("type") == "wall"]
     floors = [e for e in elements if e.get("type") == "floor"]
     columns = [e for e in elements if e.get("type") == "column"]
+    stairs = [e for e in elements if e.get("type") == "stair"]
 
     lines = [f"当前场景包含 {len(elements)} 个结构元素："]
     
-    # 墙体详细信息（供门窗节点使用）
+    # 墙体详细信息
     lines.append("\n【墙体详情】用于门窗定位：")
     for wall in walls:
         wid = wall.get("id", "?")
@@ -252,7 +271,6 @@ def _build_skeleton_summary(blueprint: dict) -> str:
         height = wall.get("height", to[1] - frm[1])
         thickness = wall.get("thickness", 0.3)
         
-        # 计算墙体方向
         dx = to[0] - frm[0]
         dz = to[2] - frm[2]
         if abs(dx) > abs(dz):
@@ -287,35 +305,53 @@ def _build_skeleton_summary(blueprint: dict) -> str:
             height = col.get("height", 3.0)
             lines.append(f"  - [{cid}] 位置=[{base[0]:.2f}, {base[2]:.2f}], 高度={height:.2f}m")
 
-    # ── 门/窗定位指引 ──
+    # 楼梯信息
+    if stairs:
+        lines.append(f"\n【楼梯】：{len(stairs)} 个")
+        for s in stairs:
+            sid = s.get("id", "?")
+            frm = s.get("from", [0, 0, 0])
+            to = s.get("to", [0, 0, 0])
+            width = s.get("width", 1.0)
+            lines.append(f"  - [{sid}] from={frm} to={to}, width={width:.2f}m")
+
+    # ── 设计清单（来自 DESIGN_BRIEF）──
+    if design_brief:
+        lines.append("\n【设计清单 — 来自骨架设计规划】：")
+        
+        quota = design_brief.get("component_quota", {})
+        if quota:
+            lines.append("\n构件配额（必须遵守）：")
+            for comp_type, q in quota.items():
+                min_n = q.get("min", "?")
+                max_n = q.get("max", "?")
+                note = q.get("note", "")
+                roof_type = q.get("type", "")
+                if roof_type:
+                    note = f"类型={roof_type}, " + note
+                lines.append(f"  - {comp_type}: {min_n}~{max_n} 个 ({note})")
+
+        fplan = design_brief.get("facade_plan", {})
+        if fplan:
+            lines.append("\n立面开口方案（严格遵照）：")
+            for wall_id, plan in fplan.items():
+                facing = plan.get("facing", "?")
+                intent = plan.get("intent", "")
+                max_o = plan.get("max_openings", "")
+                is_main = "主立面" if plan.get("is_main_facade") else "非主立面"
+                lines.append(f"  - [{wall_id}] ({facing}, {is_main}): {intent}, 最多 {max_o} 个开口")
+
+        rag_ref = design_brief.get("rag_reference", "")
+        if rag_ref:
+            lines.append(f"\nRAG 参考模板: {rag_ref}")
+
+    # ── 门/窗定位基本规则 ──
     if walls:
-        lines.append("\n【门/窗定位规则 — 请严格遵守】：")
-        lines.append("  1. 门的 from[0] = 沿墙距离(米)，from[1] = 底部离地高度(门=0, 窗=0.9~1.1)")
-        lines.append("  2. 门通常放在墙的中间或偏移 1/3 处，宽度 0.9~1.2m，高度 2.0~2.4m")
-        lines.append("  3. 窗通常均匀分布，宽度 1.0~2.0m，高度 1.2~1.8m，间距 ≥0.5m")
-        lines.append("  4. 同一面墙上的门+窗总数不宜超过 墙长/1.5 个")
-        lines.append("  5. 门和窗之间的间距不少于 0.5m，避免重叠")
-        lines.append("  6. 开口边缘距墙角 ≥0.3m（留出结构余量）")
-
-        # 计算每面墙的建议开口数量和位置
-        lines.append("\n【每面墙的建议开口方案】：")
-        for wall in walls:
-            wid = wall.get("id", "?")
-            frm = wall.get("from", [0, 0, 0])
-            to = wall.get("to", [0, 0, 0])
-            length = ((to[0] - frm[0])**2 + (to[2] - frm[2])**2)**0.5
-
-            # 估算该墙可容纳的开口数
-            max_openings = max(1, int(length / 1.8))
-            suggested_count = min(max_openings, 3)  # 每面墙最多建议3个开口
-
-            if suggested_count <= 1:
-                pos = round(length / 2, 1)
-                lines.append(f"  - [{wid}] 长{length:.1f}m, 建议 1 个开口，位置约 from[0]={pos}m（居中）")
-            else:
-                gap = length / (suggested_count + 1)
-                positions = [round(gap * (i + 1), 1) for i in range(suggested_count)]
-                pos_str = ", ".join(f"{p}m" for p in positions)
-                lines.append(f"  - [{wid}] 长{length:.1f}m, 建议 {suggested_count} 个开口，位置约 from[0]={pos_str}")
+        lines.append("\n【门/窗定位基本规则】：")
+        lines.append("  1. from[0] = 沿墙距离(m)，from[1] = 离地高度(门=0, 窗=0.9~1.1)")
+        lines.append("  2. 门宽 0.9~1.2m，高 2.0~2.4m；窗宽 1.0~2.0m，高 1.2~1.8m")
+        lines.append("  3. 开口边缘距墙角 ≥0.3m，相邻开口间距 ≥0.5m")
+        lines.append("  4. from 第3个坐标(z或x)必须与 parentWall 的平面坐标一致（如背墙z=6则from[2]=6）")
+        lines.append("  5. facade_plan 中 max_openings=0 的墙面不要放置任何开口")
 
     return "\n".join(lines)

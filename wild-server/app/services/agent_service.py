@@ -60,6 +60,7 @@ from app.tools.spatial_tools import (
 )
 from app.utils.blueprint_parser import (
     extract_blueprint_from_text,
+    extract_patch_from_text,
     normalize_blueprint_input,
     validate_blueprint_schema,
 )
@@ -547,7 +548,15 @@ class AgentService:
                     logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
                 return loader
             except Exception as exc:
-                logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}")
+                logger.warning(
+                    "⚠️  RAG 向量索引不可用，已降级为全量文件注入模式（FileSpecLoader）。"
+                )
+                logger.warning(f"  原因: {type(exc).__name__}: {exc}")
+                logger.warning(
+                    "  请检查: EMBEDDING__NAME / EMBEDDING__API_KEY / EMBEDDING__BASE_URL"
+                    " 配置是否正确，以及 embedding 服务是否可达。"
+                )
+                logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}", exc_info=True)
 
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
@@ -747,9 +756,9 @@ class AgentService:
                     pipeline_results=pipeline_results,
                 )
 
-            elif "operations" in json_data and current_blueprint:
+            elif (patch_data := extract_patch_from_text(reply)) and current_blueprint:
                 # ── 修改类：ScenePatch ──────────────────────────
-                patch = json_data
+                patch = patch_data
                 modified_bp = _apply_patch_to_blueprint(current_blueprint, patch)
                 modified_bp = normalize_blueprint_input(modified_bp)
                 pre_issues = validate_blueprint_schema(modified_bp)

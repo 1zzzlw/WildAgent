@@ -123,11 +123,12 @@ async function handleSave() {
 
   const blueprint = sceneStore.document.blueprint
   const elementsCount = (blueprint.geometry.elements?.length || 0)
-    + (blueprint.geometry.components?.length || 0)
+  const componentsCount = (blueprint.geometry.components?.length || 0)
   agentStore.updateSessionInfo(
     agentStore.currentSessionId,
     blueprint.meta.name || sceneStore.document.name,
-    elementsCount,
+    elementsCount + componentsCount,
+    componentsCount,
   )
   sceneStore.markSaved()
   ElMessage.success('场景已保存到服务器')

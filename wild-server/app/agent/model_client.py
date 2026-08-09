@@ -11,10 +11,12 @@ from config import config, ModelConfig
 
 
 class ReasoningChatOpenAI(ChatOpenAI):
-    """捕获 reasoning_content（DashScope/OpenAI-compatible 服务扩展字段）。
+    """捕获 reasoning_content（DashScope/OpenAI-compatible 服务扩展字段）+ 流式 usage。
 
     覆盖两个路径：
     1. 流式：_convert_chunk_to_generation_chunk  处理每个 chunk
+       - 补回 reasoning_content 到 chunk
+       - 捕获最终 chunk 中的 usage（DashScope 在最后一条 chunk 带 usage）
     2. 非流式：_create_chat_result                处理完整响应
     """
 
@@ -24,7 +26,7 @@ class ReasoningChatOpenAI(ChatOpenAI):
         default_chunk_class: type,
         base_generation_info: dict | None,
     ):
-        """流式路径：补回 reasoning_content 到每个 chunk"""
+        """流式路径：补回 reasoning_content + 捕获 usage"""
         generation_chunk = super()._convert_chunk_to_generation_chunk(
             chunk, default_chunk_class, base_generation_info,
         )
@@ -36,6 +38,13 @@ class ReasoningChatOpenAI(ChatOpenAI):
         reasoning_delta = delta.get("reasoning_content")
         if reasoning_delta:
             generation_chunk.message.additional_kwargs["reasoning_content"] = reasoning_delta
+
+        # 捕获 usage（OpenAI-compatible 最终 chunk 带空 choices + usage 字段）
+        usage = chunk.get("usage")
+        if usage:
+            generation_chunk.generation_info = generation_chunk.generation_info or {}
+            generation_chunk.generation_info["usage"] = usage
+
         return generation_chunk
 
     def _create_chat_result(self, response: dict, *args: Any, **kwargs: Any) -> Any:
@@ -83,4 +92,5 @@ def create_llm(
         base_url=model_cfg.base_url or None,
         extra_body={"enable_thinking": enable_thinking},
         streaming=streaming,
+        stream_usage=streaming,
     )
