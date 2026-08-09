@@ -2,23 +2,37 @@
 
 最后核对：2026-08-09。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
 
-## 1. 只选择一种部署方式
+## 1. 生产事实来源：Jenkins
 
-项目曾同时使用 Compose 和手工 `docker run`，两者的环境文件位置与容器命名不同。不要混用：
+生产环境由仓库根目录的 `Jenkinsfile` 构建和部署。Jenkins 不会替开发者创建 Git 提交；它只会检出已经提交的 `HEAD`，通过 `git archive HEAD` 上传源码，再以提交短哈希构建唯一镜像。
 
-| 方式 | 环境文件 | 后端标识 | 当前建议 |
+| 场景 | 环境文件 | 后端标识 | 用途 |
 | --- | --- | --- | --- |
-| Docker Compose | `<repo>/wild-server/.env` | 服务名 `server`，网络别名 `wild-server` | 推荐 |
-| 旧版手工 `docker run` | 由 `--env-file` 指定，旧服务器通常为 `<repo>/.env` | 容器名 `wild-server` | 仅兼容存量环境 |
+| Jenkins 生产部署 | `DEPLOY_ENV_FILE`，默认 `/opt/wild-agent/.env` | 容器名 `wild-server` | 生产唯一主路径 |
+| Docker Compose | `<repo>/wild-server/.env` | 服务名 `server`，网络别名 `wild-server` | 本地或临时部署 |
 
-文档所在目录不会影响程序读取配置。真正的配置来源是 Compose 的 `env_file` 或 `docker run --env-file` 参数；修改另一份同名文件不会生效。
+文档所在目录不会影响程序读取配置。生产环境修改 `wild-server/.env` 不会生效，除非 Jenkins 参数也改为该路径；默认只读取 `/opt/wild-agent/.env`。
 
-## 2. 推荐：Docker Compose
+Jenkins 生产流程为：
 
-在服务器仓库根目录创建 `wild-server/.env`，不要提交该文件：
+```text
+检出提交 HEAD
+  -> 上传该提交源码到远程临时目录
+  -> 前端编译 + 后端语法/单元测试
+  -> 构建 <branch>-<commit> 唯一镜像
+  -> 删除旧容器
+  -> 使用 /opt/wild-agent/.env 创建新容器
+  -> 校验容器、镜像标签、模型名和后端 HTTP
+```
+
+只有 main/master 的非 Pull Request 构建会部署。流水线失败时，必须以 Jenkins 的具体 stage 为准，不能只看 GitHub 已经出现提交。
+
+## 2. Jenkins 环境文件
+
+默认生产文件为 `/opt/wild-agent/.env`：
 
 ```dotenv
-CHAT__NAME=glm-5.2
+CHAT__NAME=replace-with-your-chat-model-id
 CHAT__API_KEY=replace-me
 CHAT__BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
@@ -30,7 +44,45 @@ RAG__ENABLED=true
 RAG__ALLOW_HASH_FALLBACK=false
 ```
 
-构建并强制重建：
+该文件不进入 Git。修改后触发一次 main/master Jenkins 部署，流水线会删除并重新创建容器；无需在服务器手工执行 `docker restart`。
+
+Jenkins 部署后可安全核对实际配置，不输出 API Key：
+
+```bash
+docker exec wild-server python -c "import os,hashlib; k=os.environ.get('CHAT__API_KEY',''); print('model=',os.environ.get('CHAT__NAME')); print('base_url=',os.environ.get('CHAT__BASE_URL')); print('key_fingerprint=',hashlib.sha256(k.encode()).hexdigest()[:8])"
+```
+
+模型 ID 必须与百炼控制台完全一致；不要把控制台展示名称或口头简称直接写入配置。
+
+## 3. 如何确认某次提交已经部署
+
+本地或 GitHub 的提交哈希并不能单独证明部署完成。Jenkins 日志应同时满足：
+
+- `初始化` stage 显示预期 `commit=<短哈希>`；
+- `远程后端语法检查` 中全部测试通过；
+- `远程构建 Docker 镜像` 的标签包含同一短哈希；
+- `远程部署到生产` 显示两个容器运行、镜像匹配和 `backend_http_status=200`。
+
+服务器可查看当前运行镜像：
+
+```bash
+docker inspect -f '{{.Config.Image}}' wild-server
+docker inspect -f '{{.Config.Image}}' wild-web
+docker logs --tail=100 wild-server
+```
+
+镜像标签格式为：
+
+```text
+wild-agent/wild-server:<branch>-<commit-short>
+wild-agent/wild-web:<branch>-<commit-short>
+```
+
+如果显示 `latest` 或旧提交标签，说明对应流水线没有成功走完部署 stage。
+
+## 4. Docker Compose 仅用于本地或备用部署
+
+Compose 读取仓库内的 `wild-server/.env`：
 
 ```bash
 docker compose up -d --build --force-recreate server web
@@ -38,48 +90,9 @@ docker compose ps
 docker compose logs --tail=100 server
 ```
 
-只执行 `docker compose restart` 不保证重新注入修改后的 `.env`。环境变量发生变化时必须重建容器。
+`wild-web/nginx.conf` 使用 `wild-server:8000`。Compose 已给 `server` 声明 `wild-server` 网络别名，但 Compose 容器不应与 Jenkins 生产容器同时运行在同一端口。
 
-`wild-web/nginx.conf` 使用 `wild-server:8000`。Compose 已给 `server` 服务声明同名网络别名，因此与旧版命名容器都兼容。
-
-## 3. 旧版手工容器
-
-如果服务器仍由 `docker run` 管理，以实际启动参数为准：
-
-```bash
-docker inspect wild-server --format '{{json .Config.Env}}'
-docker inspect wild-server --format '{{json .HostConfig.Binds}}'
-docker network inspect wild-net
-```
-
-旧方式必须同时满足：
-
-- 后端容器名或网络别名为 `wild-server`，否则 Nginx 无法解析上游；
-- `--env-file` 指向真正维护的服务器环境文件；
-- `storage` 挂载到 `/app/storage`，否则场景、会话和 Chroma 索引不会持久化；
-- 前后端加入同一个 Docker 网络。
-
-建议迁移到 Compose。迁移前先备份服务器 `.env` 与 `storage`，不要直接删除仍承载数据的旧容器或卷。
-
-## 4. 确认服务器运行的代码和配置
-
-服务器仓库提交应与 GitHub `main` 一致：
-
-```bash
-git status --short --branch
-git rev-parse HEAD
-git ls-remote WildAgent refs/heads/main
-```
-
-如果服务器远端名称不是 `WildAgent`，用 `git remote -v` 查询真实名称。提交一致但行为仍旧，通常是镜像没有重新构建。
-
-不要输出完整 API Key。Compose 环境可用以下命令核对模型、Endpoint 和 Key 指纹：
-
-```bash
-docker compose exec server python -c "import os,hashlib; k=os.environ.get('CHAT__API_KEY',''); print('model=',os.environ.get('CHAT__NAME')); print('base_url=',os.environ.get('CHAT__BASE_URL')); print('key_fingerprint=',hashlib.sha256(k.encode()).hexdigest()[:8])"
-```
-
-GLM 在百炼中的模型 ID 使用 `glm-5.2`，不是 `glm5.2`。
+仓库中的 `.gitlab-ci.yml` 是另一套独立流水线。未明确启用 GitLab/JihuLab Runner 时不要同时开启它和 Jenkins 的生产 deploy job，否则两个系统会竞争删除、重建同名容器。
 
 ## 5. 生成中断排查
 

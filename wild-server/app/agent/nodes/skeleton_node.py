@@ -165,7 +165,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             design_brief = design_brief or _parse_design_brief(reasoning)
             logger.warning("[skeleton] 最终 Blueprint 来自 reasoning_content 兼容回退")
 
-    # GLM 等混合思考模型偶尔会正确输出 DESIGN_BRIEF，却漏掉、截断或包装
+    # Qwen/GLM 等混合思考模型偶尔会正确输出 DESIGN_BRIEF，却漏掉、截断或包装
     # Blueprint。先由确定性解析器处理常见包装；仍失败时只补做一次非思考调用，
     # 要求返回单一 JSON 对象，避免整条 LangGraph 在昂贵的首轮调用后直接短路。
     recovery_diag = None

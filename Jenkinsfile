@@ -16,7 +16,7 @@ pipeline {
     string(name: 'DEPLOY_SSH_PORT', defaultValue: '22', description: '部署服务器 SSH 端口')
     string(name: 'REMOTE_WORK_DIR', defaultValue: '/opt/wild-agent/builds', description: '远程服务器临时构建目录')
     string(name: 'DEPLOY_DATA_DIR', defaultValue: '/opt/wild-agent/storage', description: '远程服务器运行时数据目录')
-    string(name: 'DEPLOY_ENV_FILE', defaultValue: '/opt/wild-agent/.env', description: '远程服务器后端容器 env 文件；不存在时仍会启动')
+    string(name: 'DEPLOY_ENV_FILE', defaultValue: '/opt/wild-agent/.env', description: '远程服务器后端容器 env 文件；不存在时部署失败并保留旧容器')
     string(name: 'PRESENCE_GEOIP_DB', defaultValue: '/app/storage/geoip/GeoLite2-City.mmdb', description: '后端容器内 GeoLite2 City 数据库路径')
   }
 
@@ -155,7 +155,8 @@ docker run --rm \
     pip install --no-cache-dir uv -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
     python -m compileall app/
     python -m py_compile main.py
-    uv lock --check 2>/dev/null || echo "uv.lock 不是最新的，但不阻塞 CI"
+    uv lock --check
+    uv run --locked --with pytest python -m pytest tests -q
   '
 REMOTE_SCRIPT
           '''
@@ -237,17 +238,17 @@ REMOTE_SCRIPT
 set -eu
 
 docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
-docker rm -f wild-server wild-web 2>/dev/null || true
+
+# 生产模型配置缺失时必须在删除旧容器前终止，避免用镜像默认值启动坏实例。
+if [ ! -f "$DEPLOY_ENV_FILE" ]; then
+  echo "ERROR: 未找到生产环境文件 $DEPLOY_ENV_FILE"
+  exit 1
+fi
 
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
 mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/geoip"
 
-ENV_FILE_ARGS=""
-if [ -f "$DEPLOY_ENV_FILE" ]; then
-  ENV_FILE_ARGS="--env-file $DEPLOY_ENV_FILE"
-else
-  echo "WARN: 未找到 $DEPLOY_ENV_FILE，后端将使用镜像默认环境变量"
-fi
+docker rm -f wild-server wild-web 2>/dev/null || true
 
 docker run -d \
   --name wild-server \
@@ -258,7 +259,7 @@ docker run -d \
   -v "$DEPLOY_DATA_DIR/sessions:/app/storage/sessions" \
   -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
   -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
-  $ENV_FILE_ARGS \
+  --env-file "$DEPLOY_ENV_FILE" \
   -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \
   "$IMAGE_SERVER_NAME"
 
@@ -274,7 +275,8 @@ REMOTE_SCRIPT
             sleep 5
 
             echo "=== 检查容器状态 ==="
-            ssh $SSH_OPTS "$DEPLOY_TARGET" /bin/sh <<'REMOTE_SCRIPT'
+            ssh $SSH_OPTS "$DEPLOY_TARGET" \
+              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 
 echo "--- 运行中的 wild 容器 ---"
@@ -302,6 +304,20 @@ else
   echo "wild-web 未运行"
   exit 1
 fi
+
+actual_server_image=$(docker inspect -f '{{.Config.Image}}' wild-server)
+actual_web_image=$(docker inspect -f '{{.Config.Image}}' wild-web)
+if [ "$actual_server_image" != "$IMAGE_SERVER_NAME" ]; then
+  echo "wild-server 镜像不匹配: actual=$actual_server_image expected=$IMAGE_SERVER_NAME"
+  exit 1
+fi
+if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
+  echo "wild-web 镜像不匹配: actual=$actual_web_image expected=$IMAGE_WEB_NAME"
+  exit 1
+fi
+
+docker exec wild-server python -c "import os; model=os.environ.get('CHAT__NAME',''); base=os.environ.get('CHAT__BASE_URL',''); print('model='+model); print('base_url='+base); assert model, 'CHAT__NAME missing'"
+docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/', timeout=10); print('backend_http_status='+str(response.status)); assert response.status == 200"
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="

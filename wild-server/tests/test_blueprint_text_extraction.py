@@ -3,6 +3,7 @@ import unittest
 from app.utils.blueprint_parser import (
     extract_blueprint_from_text,
     extract_patch_from_text,
+    normalize_blueprint_input,
 )
 from app.agent.nodes.skeleton_node import (
     _parse_components_from_reply,
@@ -59,6 +60,17 @@ class BlueprintTextExtractionTest(unittest.TestCase):
 
         self.assertIsNotNone(blueprint)
         self.assertEqual(blueprint["meta"]["name"], "包装骨架")
+
+    def test_normalization_fills_deterministic_blueprint_metadata(self):
+        normalized = normalize_blueprint_input({
+            "meta": {"type": "building"},
+            "geometry": {"elements": [], "components": []},
+            "materials": {},
+        })
+
+        self.assertEqual(normalized["meta"]["version"], "1.1")
+        self.assertEqual(normalized["meta"]["type"], "building")
+        self.assertEqual(normalized["meta"]["name"], "AI生成建筑")
 
     def test_reasoning_markers_skip_planning_mentions_and_parse_final_values(self):
         text = """

@@ -127,6 +127,19 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     """
     normalized = deepcopy(blueprint)
 
+    # ---------- 固定元数据补全 ----------
+    # WILD 协议版本、文档类型和兜底名称不需要模型推理。让模型偶发漏掉这些
+    # 非几何字段时继续进入昂贵的修复或直接阻断没有收益，因此在结构校验前
+    # 确定性补齐；meta 类型本身非法时仍交给校验器报告。
+    meta = normalized.get("meta")
+    if isinstance(meta, dict):
+        if not isinstance(meta.get("version"), str) or not meta["version"].strip():
+            meta["version"] = "1.1"
+        if not isinstance(meta.get("type"), str) or not meta["type"].strip():
+            meta["type"] = "building"
+        if not isinstance(meta.get("name"), str) or not meta["name"].strip():
+            meta["name"] = "AI生成建筑"
+
     # ---------- 材质归一化 ----------
     for material in normalized.get("materials", {}).values():
         if not isinstance(material, dict):
@@ -329,11 +342,11 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
             issues.append("'meta' 必须是对象")
         else:
             if "version" not in meta:
-                issues.append("meta.version 缺失")
+                issues.append("`meta.version` 缺失")
             if "type" not in meta:
-                issues.append("meta.type 缺失")
+                issues.append("`meta.type` 缺失")
             if "name" not in meta:
-                issues.append("meta.name 缺失")
+                issues.append("`meta.name` 缺失")
 
     # ---------- 几何容器与构件基本身份 ----------
     if "geometry" not in blueprint:

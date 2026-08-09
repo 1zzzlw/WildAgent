@@ -138,3 +138,4 @@ docker compose logs -f server
 7. 控制台出现场景 404 时先检查该会话是否实际拥有 `filename`；draft 会话没有 `.wild` 属于正常状态，前端不应发起场景请求。
 8. 问答显示 `'ChatCompletion' object has no attribute 'get'` 时，表示模型 SDK 响应适配层版本不兼容，不代表 Chroma 或知识文档损坏。`model_client.py` 必须先把 Pydantic 响应通过 `model_dump()` 转为映射；用 `python -m app.rag.smoke_test` 可独立验证不调用远程模型的检索链路。
 9. 精密模式出现“最终 Blueprint 缺失”时，先看 skeleton 节点的具体错误。当前实现支持从普通内容、`reasoning_content` 和常见 `blueprint/result/data` 包装对象提取；首次提取失败会自动执行一次非思考格式恢复。日志中的 `finish_reason`、`meta_marker`、`geometry_marker` 和 `recovery` 用于区分截断、漏输出和 JSON 格式错误。
+10. Qwen、GLM 等模型漏掉 `meta.version`、`meta.type` 或 `meta.name` 时由归一化层补齐固定默认值，不属于 Linux 文件路径问题。界面若把 `meta.name` 显示为链接，只是 Markdown 自动识别 `.name` 域名；错误字段名必须使用反引号显示。
