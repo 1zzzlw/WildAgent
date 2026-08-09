@@ -62,10 +62,34 @@ def _extract_json_dicts(text: str):
 
 
 def extract_blueprint_from_text(text: str) -> dict | None:
-    """从 fenced 或未 fenced 的模型文本中提取完整 Blueprint 对象。"""
+    """从 fenced、未 fenced 或常见包装对象中提取完整 Blueprint。
+
+    部分 OpenAI-compatible 模型会把要求的对象包装成
+    ``{"blueprint": {...}}`` 或 ``{"result": {"blueprint": {...}}}``。
+    只递归检查少量语义明确的包装字段，避免把 DESIGN_BRIEF 等普通对象误判为
+    Blueprint。
+    """
     for data in _extract_json_dicts(text):
-        if isinstance(data.get("meta"), dict) and isinstance(data.get("geometry"), dict):
-            return data
+        blueprint = _find_wrapped_blueprint(data)
+        if blueprint is not None:
+            return blueprint
+    return None
+
+
+def _find_wrapped_blueprint(data: object, depth: int = 0) -> dict | None:
+    """在模型常见包装字段中查找 Blueprint，限制深度避免任意递归。"""
+    if not isinstance(data, dict) or depth > 2:
+        return None
+    if isinstance(data.get("meta"), dict) and isinstance(data.get("geometry"), dict):
+        return data
+
+    wrapper_keys = {"blueprint", "skeleton_blueprint", "result", "data", "output"}
+    for key, value in data.items():
+        if str(key).lower() not in wrapper_keys:
+            continue
+        nested = _find_wrapped_blueprint(value, depth + 1)
+        if nested is not None:
+            return nested
     return None
 
 

@@ -41,6 +41,25 @@ class BlueprintTextExtractionTest(unittest.TestCase):
         self.assertEqual(patch["summary"], "修改场景")
         self.assertEqual(patch["operations"][0]["id"], "wall_old")
 
+    def test_blueprint_is_found_inside_common_model_wrapper(self):
+        text = """
+        {
+          "result": {
+            "blueprint": {
+              "meta": {"version": "1.1", "type": "building", "name": "包装骨架"},
+              "geometry": {"elements": [{"id": "floor_1", "type": "floor"}], "components": []},
+              "materials": {}
+            }
+          },
+          "design_brief": {"component_quota": {"door": {"min": 1}}}
+        }
+        """
+
+        blueprint = extract_blueprint_from_text(text)
+
+        self.assertIsNotNone(blueprint)
+        self.assertEqual(blueprint["meta"]["name"], "包装骨架")
+
     def test_reasoning_markers_skip_planning_mentions_and_parse_final_values(self):
         text = """
         需要输出：_components: 列表（door, window, roof）

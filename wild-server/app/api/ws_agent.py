@@ -756,14 +756,15 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     final_state = node_outputs.get("final_validate", final_state)
     merged_blueprint = final_state.get("final_blueprint") or final_state.get("merged_blueprint")
     if not merged_blueprint:
+        upstream_failure = _generation_failure_message(node_outputs, final_state)
         await _send_event(ws, {
             "type": "error",
             "request_id": request_id,
             "session_id": session_id,
-            "error": "最终 Blueprint 缺失",
+            "error": upstream_failure,
         })
         await send_step(
-            "finished", "finished", "error", "生成失败", "最终 Blueprint 缺失",
+            "finished", "finished", "error", "生成失败", upstream_failure,
         )
         return
 
@@ -871,6 +872,16 @@ def _detect_building_type(message: str) -> str:
         if any(kw in message for kw in keywords):
             return btype
     return "building"
+
+
+def _generation_failure_message(node_outputs: dict, final_state: dict) -> str:
+    """优先返回真实上游错误，避免骨架失败被笼统的 Blueprint 缺失覆盖。"""
+    return (
+        node_outputs.get("skeleton", {}).get("error")
+        or node_outputs.get("merge", {}).get("error")
+        or final_state.get("error")
+        or "最终 Blueprint 缺失"
+    )
 
 
 async def _handle_with_langchain(ws: WebSocket, data: dict):

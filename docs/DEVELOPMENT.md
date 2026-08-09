@@ -1,4 +1,4 @@
-# 开发与部署
+# 开发与测试
 
 最后核对：2026-08-09。命令默认从仓库根目录 `E:\AgentProject\WildAgent` 执行。
 
@@ -104,7 +104,7 @@ Agent/协议相关变更至少覆盖：
 
 知识库修改应额外预览实际 RAG 分片并验证索引同步。
 
-## 5. Docker 部署
+## 5. Docker 本地部署
 
 仓库根目录的 `docker-compose.yml` 定义：
 
@@ -115,6 +115,9 @@ Agent/协议相关变更至少覆盖：
 docker compose up -d --build
 docker compose logs -f server
 ```
+
+服务器的环境文件位置、旧版手工容器兼容方式和上线核对步骤统一见
+[服务器部署与运维](DEPLOYMENT.md)。不要把 `docs-dev` 中的归档手册作为当前部署依据。
 
 生产部署前确认：
 
@@ -134,3 +137,4 @@ docker compose logs -f server
 6. 前端是否因用户切换会话而主动阻止迟到结果覆盖画布。
 7. 控制台出现场景 404 时先检查该会话是否实际拥有 `filename`；draft 会话没有 `.wild` 属于正常状态，前端不应发起场景请求。
 8. 问答显示 `'ChatCompletion' object has no attribute 'get'` 时，表示模型 SDK 响应适配层版本不兼容，不代表 Chroma 或知识文档损坏。`model_client.py` 必须先把 Pydantic 响应通过 `model_dump()` 转为映射；用 `python -m app.rag.smoke_test` 可独立验证不调用远程模型的检索链路。
+9. 精密模式出现“最终 Blueprint 缺失”时，先看 skeleton 节点的具体错误。当前实现支持从普通内容、`reasoning_content` 和常见 `blueprint/result/data` 包装对象提取；首次提取失败会自动执行一次非思考格式恢复。日志中的 `finish_reason`、`meta_marker`、`geometry_marker` 和 `recovery` 用于区分截断、漏输出和 JSON 格式错误。

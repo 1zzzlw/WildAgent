@@ -82,7 +82,8 @@ LLM 结构化结果
 - 确定性修复没有实际改变蓝图时立即停止空转，交给最终校验和按组件回调；错误归零前禁止保存与加载。
 - `wall.from[1]` 是墙底、`wall.to[1]` 是墙顶。墙高为零时，在派发门窗节点前优先按上一层楼板标高或已知层高补全；不能让组件回调反复修改门窗去适配一个无效父墙。
 - 引用完整性只负责父对象、模板、行为和材质引用；门窗越界与重叠统一由开口几何校验负责，避免同一个根因重复计为两个错误。
-- 流式模型若把最终 Blueprint 放入 `reasoning_content` 且普通 `content` 为空，骨架节点允许从 reasoning 兼容提取完整的 `meta + geometry` 对象；提取器同时支持 fenced 和未 fenced JSON，并按对象结构选择 Blueprint。
+- 流式模型若把最终 Blueprint 放入 `reasoning_content` 且普通 `content` 为空，骨架节点允许从 reasoning 兼容提取完整的 `meta + geometry` 对象；提取器同时支持 fenced、未 fenced JSON，以及 `blueprint/result/data` 等常见包装对象，并按对象结构选择 Blueprint。
+- 首轮回复已经包含 DESIGN_BRIEF、但 Blueprint 缺失或 JSON 无效时，骨架节点只追加一次非思考格式恢复调用，强制模型只返回单一 Blueprint JSON；恢复仍失败才终止图。前端必须显示 skeleton 的真实错误，不能再用笼统的“最终 Blueprint 缺失”覆盖根因。
 - 骨架派发组件前修正唯一可判定的材质简称（如仅存在 `wood_oak` 时将 `wood` 映射到它）；候选不唯一则保留错误并阻断，禁止猜测。
 
 `2026-08-08/session_1786189311071_现代别墅.wild` 是门窗坐标回归样本：`door_back_service.from=[3.4,0,6]` 会被识别为离背墙 6 米，确定性修复结果应为 `[3.4,0,0]`。原始样本还包含未定义的屋顶、门框/门扇和窗框材质引用，新的完整性门禁会阻止其直接下发。

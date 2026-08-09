@@ -7,6 +7,11 @@ services:
       - ./wild-server/storage:/app/storage
     env_file:
       - ./wild-server/.env
+    networks:
+      default:
+        aliases:
+          # nginx.conf 同时兼容 Compose 与旧版手工 docker run 部署。
+          - wild-server
     restart: unless-stopped
 
   web:

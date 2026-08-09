@@ -70,6 +70,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     reply_text = ""
     reasoning = ""
     token_usage = None
+    finish_reason = None
     
     try:
         if use_streaming:
@@ -82,6 +83,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 if hasattr(chunk, "content") and chunk.content:
                     reply_text += chunk.content
                 if hasattr(chunk, "response_metadata") and chunk.response_metadata:
+                    finish_reason = (
+                        chunk.response_metadata.get("finish_reason")
+                        or chunk.response_metadata.get("stop_reason")
+                        or finish_reason
+                    )
                     usage = chunk.response_metadata.get("usage")
                     if usage:
                         token_usage = {
@@ -105,6 +111,10 @@ async def skeleton_generator(state: GenerationState) -> dict:
             if not reasoning and hasattr(response, "response_metadata"):
                 reasoning = response.response_metadata.get("reasoning_content", "") or ""
             if hasattr(response, "response_metadata"):
+                finish_reason = (
+                    response.response_metadata.get("finish_reason")
+                    or response.response_metadata.get("stop_reason")
+                )
                 usage = response.response_metadata.get("token_usage", {})
                 if usage:
                     token_usage = {
@@ -133,6 +143,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
         f"[skeleton] LLM 回复: {llm_chars} 字符, {llm_ms}ms"
         + (f", thinking={reasoning_chars}字符" if reasoning_chars else "")
         + (f", tokens={token_usage['total']}" if token_usage else "")
+        + (f", finish_reason={finish_reason}" if finish_reason else "")
     )
 
     # ── 4. 从 LLM 回复中提取组件建议 + DESIGN_BRIEF + Blueprint JSON ──
@@ -154,10 +165,45 @@ async def skeleton_generator(state: GenerationState) -> dict:
             design_brief = design_brief or _parse_design_brief(reasoning)
             logger.warning("[skeleton] 最终 Blueprint 来自 reasoning_content 兼容回退")
 
+    # GLM 等混合思考模型偶尔会正确输出 DESIGN_BRIEF，却漏掉、截断或包装
+    # Blueprint。先由确定性解析器处理常见包装；仍失败时只补做一次非思考调用，
+    # 要求返回单一 JSON 对象，避免整条 LangGraph 在昂贵的首轮调用后直接短路。
+    recovery_diag = None
     if not blueprint:
-        logger.error("[skeleton] 未能提取 Blueprint JSON")
+        has_meta_marker = '"meta"' in reply_text
+        has_geometry_marker = '"geometry"' in reply_text
+        logger.warning(
+            "[skeleton] Blueprint 首次提取失败: "
+            f"meta_marker={has_meta_marker}, "
+            f"geometry_marker={has_geometry_marker}, "
+            f"code_fence={'```' in reply_text}, finish_reason={finish_reason}"
+        )
+        if on_reasoning_delta is not None:
+            await on_reasoning_delta(
+                "skeleton",
+                "\nBlueprint 结构化输出缺失或格式无效，正在进行一次定向格式恢复...\n",
+            )
+        blueprint, recovery_diag = await _recover_blueprint_json(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            failed_reply=reply_text,
+            design_brief=design_brief,
+        )
+        token_usage = _merge_token_usage(
+            token_usage,
+            recovery_diag.get("token_usage"),
+        )
+        if blueprint:
+            logger.warning(
+                "[skeleton] Blueprint 定向格式恢复成功: "
+                f"{recovery_diag.get('llm_chars', 0)} 字符, "
+                f"{recovery_diag.get('llm_ms', 0)}ms"
+            )
+
+    if not blueprint:
+        logger.error("[skeleton] 未能提取 Blueprint JSON，定向格式恢复也未成功")
         return {
-            "error": "骨架生成失败：LLM 未返回有效的 Blueprint JSON",
+            "error": "骨架生成失败：模型未返回有效的 Blueprint JSON，自动格式恢复仍未成功",
             "status": "failed",
             "skeleton_diag": {
                 "rag_chars": rag_chars,
@@ -166,6 +212,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 "llm_chars": llm_chars,
                 "llm_ms": llm_ms,
                 "token_usage": token_usage,
+                "finish_reason": finish_reason,
+                "recovery": recovery_diag,
                 "error": "JSON 提取失败",
             },
         }
@@ -275,6 +323,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "llm_chars": llm_chars,
             "llm_ms": llm_ms,
             "token_usage": token_usage,
+            "finish_reason": finish_reason,
+            "recovery": recovery_diag,
             "reasoning_chars": reasoning_chars,
             "reasoning_preview": reasoning[:800] if reasoning else "",
             "reasoning_fallback": used_reasoning_fallback,
@@ -283,6 +333,91 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "material_fix": material_fix_output,
             "total_ms": total_ms,
         },
+    }
+
+
+async def _recover_blueprint_json(
+    *,
+    system_prompt: str,
+    user_message: str,
+    failed_reply: str,
+    design_brief: dict | None,
+) -> tuple[dict | None, dict]:
+    """用一次非思考调用把缺失或无效的骨架回复恢复为单一 Blueprint JSON。"""
+    recovery_t0 = _time.time()
+    recovery_llm = create_llm(enable_thinking=False, streaming=False)
+    brief_text = json.dumps(design_brief or {}, ensure_ascii=False)
+    # Blueprint 在原提示词中位于 DESIGN_BRIEF 之前，保留失败回复的前部最有机会
+    # 包含可修复的几何；限制长度避免把一次恢复再次膨胀为长上下文任务。
+    failed_excerpt = failed_reply[:12000]
+    recovery_instruction = """
+
+# Blueprint 格式恢复（覆盖前面的输出格式要求）
+
+这是一次失败恢复，不要重新解释设计过程。你只能输出一个严格合法的 JSON 对象：
+- 顶层必须直接包含 meta、geometry、materials；
+- geometry.elements 必须包含完整建筑骨架；
+- geometry.components 必须是空数组；
+- 不要输出 `_components`、DESIGN_BRIEF、Markdown 围栏、注释或额外文本；
+- 如果上一轮 Blueprint 缺失或 JSON 不完整，根据原始需求和设计清单补全。
+"""
+    recovery_user = f"""原始用户需求：
+{user_message}
+
+已解析设计清单：
+{brief_text}
+
+上一轮无效输出（仅供修复，不要照抄其额外说明）：
+{failed_excerpt}
+"""
+
+    try:
+        response = await recovery_llm.ainvoke(
+            [
+                {"role": "system", "content": system_prompt + recovery_instruction},
+                {"role": "user", "content": recovery_user},
+            ]
+        )
+        recovery_text = response.content if hasattr(response, "content") else str(response)
+        metadata = getattr(response, "response_metadata", {}) or {}
+        usage = metadata.get("token_usage") or metadata.get("usage") or {}
+        token_usage = None
+        if usage:
+            token_usage = {
+                "input": usage.get("prompt_tokens", 0),
+                "output": usage.get("completion_tokens", 0),
+                "total": usage.get("total_tokens", 0),
+            }
+        diag = {
+            "attempted": True,
+            "success": False,
+            "llm_chars": len(recovery_text),
+            "llm_ms": int((_time.time() - recovery_t0) * 1000),
+            "token_usage": token_usage,
+            "finish_reason": metadata.get("finish_reason") or metadata.get("stop_reason"),
+        }
+        blueprint = extract_blueprint_from_text(recovery_text)
+        diag["success"] = blueprint is not None
+        return blueprint, diag
+    except Exception as exc:
+        logger.error(f"[skeleton] Blueprint 定向格式恢复调用失败: {exc}")
+        return None, {
+            "attempted": True,
+            "success": False,
+            "llm_ms": int((_time.time() - recovery_t0) * 1000),
+            "error": str(exc),
+        }
+
+
+def _merge_token_usage(primary: dict | None, recovery: dict | None) -> dict | None:
+    """合并首次生成和格式恢复的 token 统计。"""
+    if not primary and not recovery:
+        return None
+    primary = primary or {}
+    recovery = recovery or {}
+    return {
+        key: primary.get(key, 0) + recovery.get(key, 0)
+        for key in ("input", "output", "total")
     }
 
 

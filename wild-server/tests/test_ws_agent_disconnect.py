@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from fastapi import WebSocketDisconnect
 
 from app.api.ws_agent import (
+    _generation_failure_message,
     _handle_user_message,
     _process_user_message_safely,
     agent_websocket,
@@ -246,6 +247,18 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
 
 
 class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
+    def test_langgraph_preserves_skeleton_failure_reason(self):
+        error = _generation_failure_message(
+            {
+                "skeleton": {
+                    "error": "骨架生成失败：模型未返回有效的 Blueprint JSON"
+                }
+            },
+            {"status": "failed"},
+        )
+
+        self.assertIn("模型未返回有效的 Blueprint JSON", error)
+
     async def test_schema_error_is_returned_as_readable_reply(self):
         ws = Mock()
         ws.send_json = AsyncMock()
