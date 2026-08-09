@@ -158,8 +158,10 @@ docker run --rm \
     pip install --no-cache-dir "uv==$UV_VERSION" -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
     python -m compileall app/
     python -m py_compile main.py
-    uv lock --check
-    uv run --locked --with pytest python -m pytest tests -q
+    # 上传目录是本次构建的临时副本；在 Linux 上补齐平台锁信息，后续 Docker
+    # 构建继续使用同一份临时 uv.lock，不修改 Git 仓库中的工作区。
+    uv lock
+    uv run --frozen --with pytest python -m pytest tests -q
   '
 REMOTE_SCRIPT
           '''

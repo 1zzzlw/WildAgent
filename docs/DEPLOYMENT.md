@@ -27,7 +27,7 @@ Jenkins 生产流程为：
 
 只有 main/master 的非 Pull Request 构建会部署。流水线失败时，必须以 Jenkins 的具体 stage 为准，不能只看 GitHub 已经出现提交。
 
-构建工具 uv 固定为 `0.11.14`，与仓库 `uv.lock` 的生成版本一致。禁止在流水线中使用无版本号的 `pip install uv`，否则 uv 自动升级后可能在业务代码未变化时把锁文件判定为过期。
+构建工具 uv 固定为 `0.11.14`。Jenkins 上传的是一次性远程构建目录；后端验证会先在该临时目录执行 `uv lock`，补齐 Linux 平台解析结果，再以 `--frozen` 运行测试，后续 Docker 构建继续使用同一份临时锁文件。该过程不会修改 GitHub 工作区，也不需要维护 Windows/Linux 两份锁文件。禁止在流水线中使用无版本号的 `pip install uv`，否则构建工具自动升级仍可能导致解析行为漂移。
 
 ## 2. Jenkins 环境文件
 
