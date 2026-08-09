@@ -1,0 +1,41 @@
+"""Agent 意图与组件派发的关键回归测试。"""
+
+from app.agent.component_registry import resolve_component_suggestions
+from app.agent.graph import _classifier_dispatch
+from app.agent.nodes.classifier_node import _keyword_classify
+
+
+def test_edit_keyword_routes_to_patch_when_scene_exists():
+    assert _keyword_classify("把正门加宽到 1.2 米", has_current_scene=True) == "EDIT"
+    assert _classifier_dispatch({"intent": "edit"}) == "patch"
+
+
+def test_edit_like_request_does_not_edit_without_scene():
+    assert _keyword_classify("把正门加宽到 1.2 米", has_current_scene=False) == "CHAT"
+
+
+def test_component_suggestions_filter_unknown_and_negated_types():
+    assert resolve_component_suggestions(
+        ["door", "window", "unknown", "door"],
+        "生成一个没有窗的小屋",
+    ) == ["door"]
+
+
+def test_empty_suggestions_keep_base_components_and_explicit_extras():
+    assert resolve_component_suggestions([], "生成一个带烟囱的房子") == [
+        "door",
+        "window",
+        "roof",
+        "chimney",
+    ]
+
+
+def test_balcony_does_not_duplicate_embedded_railing():
+    assert resolve_component_suggestions(
+        ["balcony", "railing"],
+        "生成一个带阳台的房子",
+    ) == ["balcony"]
+    assert resolve_component_suggestions(
+        ["balcony", "railing"],
+        "生成一个带阳台和独立护栏的房子",
+    ) == ["balcony", "railing"]

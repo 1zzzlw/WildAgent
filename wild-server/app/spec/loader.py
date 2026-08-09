@@ -767,6 +767,7 @@ class RAGSpecLoader(SpecLoader):
         retrieved = self.retrieve(query) if query.strip() else []
         return self._compose_context(base_text, retrieved)
 
+    # per_query 参数控制每个检索意图返回的片段数，避免建筑类型文档挤掉组件文档。
     def load_many(self, queries: list[str | SpecQuery], per_query: int = 1) -> str:
         """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
         base_text = self._load_base_text()

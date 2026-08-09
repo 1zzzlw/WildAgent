@@ -38,26 +38,35 @@ _FURNITURE_SUBTYPE_ALIASES = {
 
 # ---------- JSON 提取 ----------
 
+def _extract_json_dicts(text: str):
+    """依次提取代码块和普通文本中的完整 JSON 对象。"""
+    if not isinstance(text, str) or not text.strip():
+        return
+
+    code_blocks = re.findall(r'```(?:json)?\s*\n(.*?)\n```', text, re.DOTALL)
+    decoder = json.JSONDecoder()
+    seen: set[str] = set()
+    for source in [*code_blocks, text]:
+        for match in re.finditer(r'\{', source):
+            try:
+                value, end = decoder.raw_decode(source[match.start():])
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(value, dict):
+                continue
+            raw = source[match.start():match.start() + end]
+            if raw in seen:
+                continue
+            seen.add(raw)
+            yield value
+
+
 def extract_blueprint_from_text(text: str) -> dict | None:
-    """从 LLM 回复文本中提取第一个 ```json 代码块并解析为 dict
-
-    支持的格式：
-      ```json
-      { ... }
-      ```
-
-    Returns:
-        解析后的 dict，如果未找到或解析失败则返回 None
-    """
-    # 非贪婪匹配保证回复中有多个代码块时只读取第一个 json 块。
-    match = re.search(r'```json\s*\n(.*?)\n```', text, re.DOTALL)
-    if not match:
-        return None
-    try:
-        # 这里只负责 JSON 语法解析，Blueprint 结构由后续校验函数检查。
-        return json.loads(match.group(1))
-    except json.JSONDecodeError:
-        return None
+    """从 fenced 或未 fenced 的模型文本中提取完整 Blueprint 对象。"""
+    for data in _extract_json_dicts(text):
+        if isinstance(data.get("meta"), dict) and isinstance(data.get("geometry"), dict):
+            return data
+    return None
 
 
 def extract_patch_from_text(text: str) -> dict | None:
@@ -73,19 +82,15 @@ def extract_patch_from_text(text: str) -> dict | None:
     Returns:
         解析后的 ScenePatch dict，如果未找到或解析失败或结构不对则返回 None
     """
-    # ScenePatch 和 Blueprint 使用相同的代码块格式，因此复用底层 JSON 提取。
-    data = extract_blueprint_from_text(text)
-    if data is None:
-        return None
-    if "operations" not in data:
-        return None
-    ops = data["operations"]
-    if not isinstance(ops, list) or len(ops) == 0:
-        return None
-    # summary 只用于向用户说明修改内容；缺失时补一个稳定默认值。
-    if "summary" not in data:
-        data["summary"] = "修改场景"
-    return data
+    for data in _extract_json_dicts(text):
+        ops = data.get("operations")
+        if not isinstance(ops, list) or len(ops) == 0:
+            continue
+        # summary 只用于向用户说明修改内容；缺失时补一个稳定默认值。
+        if "summary" not in data:
+            data["summary"] = "修改场景"
+        return data
+    return None
 
 
 # ---------- 结构校验 ----------

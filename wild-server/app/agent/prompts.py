@@ -18,8 +18,13 @@ def build_system_prompt(spec_text: str) -> str:
 # 规则
 
 - 墙、楼板、屋顶、门、玻璃使用角色独立的材质名
+- 玻璃材质必须显式给出 opacity
 - 墙体转角处端点坐标精确一致
 - opening/door/window 的 from[0] 是沿墙距离，不是世界坐标
+- 不得只照抄建筑类型文档的最小组合而忽略组件文档
+- `cornice`、`chimney`、`light` 已由组合构件编译器支持，只能写入 `geometry.components`
+- 台灯使用 light 组件并设置 fixtureType=table_lamp；furniture.subtype=lamp 只是旧版静态家具占位
+- 组件 type 严格服从 WILD Schema，严禁发明 sofa、counter 等值
 
 # WILD 规范
 
@@ -125,6 +130,8 @@ Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
 5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，必须设置 `"opacity": 0.35`
 6. **楼梯必须**：两层以上建筑必须包含 `stair` 元素
 7. **柱子克制**：现代别墅/住宅不需要外露角柱，仅门廊或大跨结构按需使用
+8. **墙高不可为零**：wall.from[1] 是墙底、wall.to[1] 是墙顶，必须满足 `to[1] > from[1]`；例如一层墙 `[0,0,0] -> [8,3,0]`，二层墙 `[0,3,0] -> [8,6,0]`
+9. **材质引用闭合**：elements 中所有 material 必须精确引用 Blueprint.materials 已定义的 ID，不得使用未定义的简称
 
 # WILD 规范参考
 
@@ -259,6 +266,7 @@ def build_component_prompt(
 3. **parentWall / parentFloor 必须存在**：从骨架信息中选择真实的 wall/floor id
 4. **ID 前缀**：使用 `{component_type}_` 前缀避免冲突
 5. **数量严格受限**：如果有数量硬约束，必须严格遵守 min/max 范围
+6. **材质引用必须存在**：material/frameMaterial/leafMaterial/glassMaterial 只能使用骨架摘要列出的可用材质 ID，不得创造新 ID
 {rules_section}
 # WILD 规范
 
@@ -291,6 +299,7 @@ def build_callback_prompt(
         passed_component_ids: 已通过校验的组件 ID（LLM 不得修改）
     """
     import json as _json
+    from app.agent.repair_tools import REPAIR_TOOL_SPECS
 
     failed_text = ""
     for fc in failed_components:
@@ -299,12 +308,20 @@ def build_callback_prompt(
         error_msg = fc.get("error_message", "?")
         current_params = fc.get("current_params", {})
         tool_data = fc.get("tool_data", "")
+        issues = fc.get("issues", [])
+        suggested_tools = fc.get("suggested_tools", [])
 
         # 格式化当前参数（排除大型嵌套，只保留关键字段）
         params_display = _json.dumps(current_params, ensure_ascii=False, indent=2) if current_params else "（无）"
 
         failed_text += f"\n### {comp_id} ({comp_type})\n"
         failed_text += f"- 错误: {error_msg}\n"
+        if issues:
+            failed_text += "- 结构化问题:\n```json\n"
+            failed_text += _json.dumps(issues, ensure_ascii=False, indent=2)
+            failed_text += "\n```\n"
+        if suggested_tools:
+            failed_text += f"- 建议工具: {', '.join(suggested_tools)}\n"
         failed_text += f"- 当前参数:\n```json\n{params_display}\n```\n"
 
         if tool_data:
@@ -313,6 +330,7 @@ def build_callback_prompt(
             failed_text += f"- 工具校验数据:\n```\n{tool_short}\n```\n"
 
     passed_text = ", ".join(passed_component_ids) if passed_component_ids else "无"
+    tool_specs = _json.dumps(REPAIR_TOOL_SPECS, ensure_ascii=False, indent=2)
 
     return f"""你是 WILD 蓝图修正专家。以下是上一轮生成的组件校验错误，请逐一修正。
 
@@ -332,20 +350,37 @@ def build_callback_prompt(
 
 {spec_text}
 
+## 可用修复工具
+
+```json
+{tool_specs}
+```
+
 ## 规则
 
-1. 只修正上面列出的失败组件，不要改动已通过的组件
+1. 只允许调用上面列出的修复工具，只修正明确失败的组件
 2. 使用骨架信息中列出的真实 wall/floor id 作为 parentWall/parentFloor
-3. 利用「当前参数」中的坐标/尺寸作为起点，只修正报错的字段
+3. 利用「当前参数」作为起点，只提交解决错误所需的最小动作
 4. 参考「工具校验数据」中的空间约束（墙长、有效范围等）确定正确值
-5. 每个组件只输出 JSON 对象，不要输出完整 Blueprint
+5. 不要输出完整组件或完整 Blueprint，不得修改 id/type
+6. 门窗 from[1] 是底部世界 Y：门使用父墙底 Y，窗使用父墙底 Y + 窗台高度；不是相对楼层的局部高度
+7. 每个动作必须含 tool、arguments 和简短 reason；普通动作的 arguments.entity_id 必须来自失败组件
+8. 只有出现 `design:<type>` 缺失配额目标时才能调用 add_entity；repair_target 必须原样使用该目标，entity 使用新的唯一 id
 
 ## 输出格式
 
 ```json
 [
-  {{"type":"door","id":"door_front","parentWall":"wall_front","from":[3.0,0,0],...}},
-  {{"type":"window","id":"window_right",...}}
+  {{
+    "tool": "move_opening",
+    "arguments": {{"entity_id": "door_front", "along": 3.0, "elevation": 0.0}},
+    "reason": "将门移动到父墙有效范围内"
+  }},
+  {{
+    "tool": "resize_opening",
+    "arguments": {{"entity_id": "window_right", "width": 1.2}},
+    "reason": "缩小宽度以消除与相邻窗的重叠"
+  }}
 ]
 ```
 """

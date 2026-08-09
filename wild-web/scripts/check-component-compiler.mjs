@@ -601,7 +601,10 @@ async function assertExplicitServerSave(compiler) {
     )
     if (!saved) throw new Error('显式保存请求失败')
     assertEqual(requests.length, 1, '显式保存应只产生一次服务器请求')
-    if (!requests[0].url.endsWith(`/api/scenes/${sessionId}.wild`)) {
+    const saveUrl = new URL(requests[0].url)
+    const expectedSuffix = `/${sessionId}_component_compiler_check.wild`
+    if (!/^\/api\/scenes\/\d{4}-\d{2}-\d{2}\//.test(saveUrl.pathname)
+      || !saveUrl.pathname.endsWith(expectedSuffix)) {
       throw new Error(`保存目标会话错误: ${requests[0].url}`)
     }
     assertEqual(requests[0].options.method, 'PUT', '保存接口必须使用 PUT 覆盖语义')

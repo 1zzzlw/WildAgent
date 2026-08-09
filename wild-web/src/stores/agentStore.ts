@@ -40,6 +40,8 @@ import type {
   NodeDiagnostic,
   ErrorDiagnostic,
   SessionMetrics,
+  AgentTurn,
+  AgentTurnStep,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
@@ -50,6 +52,7 @@ const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
+const TURN_STORAGE_PREFIX = 'wild_turns_'
 
 function loadThinkingMode(): boolean {
   // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
@@ -82,6 +85,48 @@ function removeMessagesFromLocal(sessionId: string) {
   try {
     localStorage.removeItem(MSG_STORAGE_PREFIX + sessionId)
   } catch { /* ignore */ }
+}
+
+function saveTurnsToLocal(sessionId: string, turns: AgentTurn[]) {
+  try {
+    localStorage.setItem(TURN_STORAGE_PREFIX + sessionId, JSON.stringify(turns))
+  } catch { /* ignore */ }
+}
+
+function loadTurnsFromLocal(sessionId: string): AgentTurn[] {
+  try {
+    const raw = localStorage.getItem(TURN_STORAGE_PREFIX + sessionId)
+    return normalizeLoadedTurns(raw ? JSON.parse(raw) : [])
+  } catch {
+    return []
+  }
+}
+
+function normalizeLoadedTurns(value: unknown, interruptRunning = true): AgentTurn[] {
+  if (!Array.isArray(value)) return []
+  const now = Date.now()
+  return value
+    .filter((turn): turn is AgentTurn => Boolean(
+      turn && typeof turn === 'object' && typeof turn.request_id === 'string',
+    ))
+    .map(turn => {
+    if (!interruptRunning || turn.status !== 'running') return turn
+      return {
+        ...turn,
+        status: 'error' as const,
+        completed_at: now,
+        interruption_reason: '页面刷新或连接中断，任务状态无法继续恢复',
+        thinking_status: 'error' as const,
+        steps: (turn.steps || []).map(step => ({
+          ...step,
+          status: step.status === 'running' ? 'error' as const : step.status,
+        })),
+      }
+    })
+}
+
+function removeTurnsFromLocal(sessionId: string) {
+  try { localStorage.removeItem(TURN_STORAGE_PREFIX + sessionId) } catch { /* ignore */ }
 }
 
 function saveDraftSessions(sessions: SessionInfo[]) {
@@ -122,6 +167,9 @@ export const useAgentStore = defineStore('agent', () => {
   // ── 会话列表（页面启动后由后端 storage/scenes 文件列表填充）──
   const sessions = ref<SessionInfo[]>([])
   const currentSessionId = ref<string>('')
+  /** 每个会话独立保存执行轮次；运行事件不再依附于全局浮动面板。 */
+  const turnsBySession = ref<Record<string, AgentTurn[]>>({})
+  const currentTurns = computed(() => turnsBySession.value[currentSessionId.value] || [])
 
   // ── 当前会话 ──
   const session = ref<AgentSession>({
@@ -184,9 +232,249 @@ export const useAgentStore = defineStore('agent', () => {
   // ── 消息管理 ──
 
   function addMessage(message: ChatMessage) {
+    if (session.value.messages.some(existing => existing.id === message.id)) return
     session.value.messages.push(message)
     // 即时持久化到 localStorage
     saveMessagesToLocal(currentSessionId.value, session.value.messages)
+  }
+
+  function addMessageToSession(sessionId: string, message: ChatMessage) {
+    if (sessionId === currentSessionId.value) {
+      addMessage(message)
+    } else {
+      const messages = loadMessagesFromLocal(sessionId)
+      if (!messages.some(existing => existing.id === message.id)) {
+        messages.push(message)
+        saveMessagesToLocal(sessionId, messages)
+      }
+    }
+
+    const info = sessions.value.find(item => item.session_id === sessionId)
+    if (info) {
+      info.message_count = (info.message_count || 0) + 1
+      info.updated_at = Date.now()
+    }
+  }
+
+  function getMessagesForSession(sessionId: string): ChatMessage[] {
+    return sessionId === currentSessionId.value
+      ? session.value.messages
+      : loadMessagesFromLocal(sessionId)
+  }
+
+  function mergeMessagesForSession(sessionId: string, serverMessages: ChatMessage[]) {
+    const localMessages = getMessagesForSession(sessionId)
+    const merged = new Map<string, ChatMessage>()
+    for (const message of [...serverMessages, ...localMessages]) {
+      if (message?.id) merged.set(message.id, message)
+    }
+    const messages = [...merged.values()].sort((a, b) => a.timestamp - b.timestamp)
+    saveMessagesToLocal(sessionId, messages)
+    if (sessionId === currentSessionId.value) session.value.messages = messages
+  }
+
+  function ensureTurns(sessionId: string): AgentTurn[] {
+    if (!turnsBySession.value[sessionId]) {
+      turnsBySession.value = {
+        ...turnsBySession.value,
+        [sessionId]: loadTurnsFromLocal(sessionId),
+      }
+    }
+    return turnsBySession.value[sessionId]
+  }
+
+  function getTurnsForSession(sessionId: string): AgentTurn[] {
+    return ensureTurns(sessionId)
+  }
+
+  function mergeTurnsForSession(sessionId: string, serverTurns: AgentTurn[]) {
+    const merged = new Map<string, AgentTurn>()
+    for (const turn of [...normalizeLoadedTurns(serverTurns, false), ...ensureTurns(sessionId)]) {
+      merged.set(turn.request_id, turn)
+    }
+    const turns = [...merged.values()].sort((a, b) => a.started_at - b.started_at)
+    turnsBySession.value = { ...turnsBySession.value, [sessionId]: turns }
+    saveTurnsToLocal(sessionId, turns)
+  }
+
+  function persistTurns(sessionId: string) {
+    saveTurnsToLocal(sessionId, ensureTurns(sessionId))
+  }
+
+  function findTurn(sessionId: string, requestId: string): AgentTurn | undefined {
+    return ensureTurns(sessionId).find(turn => turn.request_id === requestId)
+  }
+
+  function startTurn(requestId: string, sessionId: string, content: string): AgentTurn {
+    const message: ChatMessage = {
+      id: `msg_${requestId}_user`,
+      role: 'user',
+      content,
+      timestamp: Date.now(),
+      request_id: requestId,
+      turn_id: requestId,
+    }
+    addMessageToSession(sessionId, message)
+
+    const turn: AgentTurn = {
+      turn_id: requestId,
+      request_id: requestId,
+      session_id: sessionId,
+      user_message_id: message.id,
+      status: 'running',
+      started_at: Date.now(),
+      steps: [],
+      validation_steps: [],
+    }
+    const turns = ensureTurns(sessionId)
+    const existingIndex = turns.findIndex(item => item.request_id === requestId)
+    if (existingIndex >= 0) turns.splice(existingIndex, 1, turn)
+    else turns.push(turn)
+    persistTurns(sessionId)
+    return turn
+  }
+
+  function addAgentMessageForTurn(
+    sessionId: string,
+    requestId: string,
+    content: string,
+    patch?: ScenePatch,
+  ) {
+    addMessageToSession(sessionId, {
+      id: `msg_${requestId}_${patch ? 'artifact' : 'agent'}`,
+      role: 'agent',
+      content,
+      timestamp: Date.now(),
+      patch,
+      request_id: requestId,
+      turn_id: requestId,
+    })
+  }
+
+  function addSystemMessageForTurn(sessionId: string, requestId: string, content: string) {
+    addMessageToSession(sessionId, {
+      id: `msg_${requestId}_system_${Date.now()}`,
+      role: 'system',
+      content,
+      timestamp: Date.now(),
+      request_id: requestId,
+      turn_id: requestId,
+    })
+  }
+
+  function updateTurnStep(
+    sessionId: string,
+    requestId: string,
+    step: Omit<AgentTurnStep, 'thinking'> & { thinking?: string },
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    const existing = turn.steps.find(item => item.node === step.node)
+    if (existing) {
+      Object.assign(existing, step)
+    } else {
+      turn.steps.push({ ...step, thinking: step.thinking || '' })
+    }
+    turn.status = step.status === 'error' ? 'error' : turn.status
+  }
+
+  function appendTurnThinking(
+    sessionId: string,
+    requestId: string,
+    node: string,
+    delta: string,
+    channel: 'reasoning' | 'progress' = 'reasoning',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    let step = turn.steps.find(item => item.node === node)
+    if (!step) {
+      step = {
+        node,
+        label: _resolveLabel(node),
+        stage: 'generating',
+        status: 'running',
+        detail: '',
+        thinking: '',
+      }
+      turn.steps.push(step)
+    }
+    step.thinking += delta
+    step.thinking_channel = channel
+  }
+
+  function addTurnValidationStep(
+    sessionId: string,
+    requestId: string,
+    label: string,
+    status: 'ok' | 'warn' | 'error' | 'skip',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (turn) turn.validation_steps.push({ label, status })
+  }
+
+  function setTurnDiagnostic(
+    sessionId: string,
+    requestId: string,
+    diagnostic: NodeDiagnostic,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    const node = diagnostic.node
+    let step = turn.steps.find(item => item.node === node)
+    if (!step) {
+      step = {
+        node,
+        label: diagnostic.label || _resolveLabel(node),
+        stage: 'generating',
+        status: diagnostic.error ? 'error' : 'done',
+        detail: '',
+        thinking: '',
+      }
+      turn.steps.push(step)
+    }
+    step.diagnostic = diagnostic
+  }
+
+  function setTurnMetrics(sessionId: string, requestId: string, metrics: SessionMetrics) {
+    const turn = findTurn(sessionId, requestId)
+    if (turn) turn.metrics = metrics
+  }
+
+  function setTurnThinkingStatus(
+    sessionId: string,
+    requestId: string,
+    status: 'thinking' | 'completed' | 'unsupported' | 'error',
+    notice = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.thinking_status = status
+    turn.thinking_notice = notice
+    if (status === 'error') turn.status = 'error'
+    if (status !== 'thinking') persistTurns(sessionId)
+  }
+
+  function completeTurn(
+    sessionId: string,
+    requestId: string,
+    status: 'completed' | 'error' = 'completed',
+    interruptionReason?: string,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = status
+    turn.completed_at = Date.now()
+    if (interruptionReason) turn.interruption_reason = interruptionReason
+    turn.steps.forEach(step => {
+      if (step.status === 'running') step.status = status === 'error' ? 'error' : 'done'
+    })
+    persistTurns(sessionId)
+  }
+
+  function getTurnForMessage(message: ChatMessage): AgentTurn | undefined {
+    if (!message.turn_id) return undefined
+    return currentTurns.value.find(turn => turn.turn_id === message.turn_id)
   }
 
   function addUserMessage(content: string) {
@@ -244,9 +532,7 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   function appendThinkingContent(delta: string, nodeName?: string) {
-    // 调试：确认 thinking_delta 消息是否到达前端
     if (precisionMode.value && nodeName) {
-      console.log(`[agentStore] appendThinking node=${nodeName} delta=${delta.slice(0, 80)}...`)
       // 精密模式：按节点分组存储
       const existing = nodeThinkingMap.value.get(nodeName)
       if (existing) {
@@ -330,6 +616,8 @@ export const useAgentStore = defineStore('agent', () => {
   function clearMessages() {
     session.value.messages = []
     saveMessagesToLocal(currentSessionId.value, [])
+    turnsBySession.value = { ...turnsBySession.value, [currentSessionId.value]: [] }
+    saveTurnsToLocal(currentSessionId.value, [])
   }
 
   // ── 会话扩展操作 ──
@@ -404,6 +692,7 @@ export const useAgentStore = defineStore('agent', () => {
     // 3. 切换 session_id
     currentSessionId.value = sessionId
     saveLastSession(sessionId)
+    ensureTurns(sessionId)
 
     // 4. 从 localStorage 恢复目标会话消息（而不是丢弃！）
     const savedMessages = loadMessagesFromLocal(sessionId)
@@ -417,6 +706,7 @@ export const useAgentStore = defineStore('agent', () => {
     pendingPatch.value = null
     pipelineSteps.value = []
     clearThinkingState()
+    clearPrecisionState()
     blueprintLoaded.value = false
   }
 
@@ -447,6 +737,10 @@ export const useAgentStore = defineStore('agent', () => {
   function removeSession(sessionId: string) {
     // 清理 localStorage 中的消息
     removeMessagesFromLocal(sessionId)
+    removeTurnsFromLocal(sessionId)
+    const nextTurns = { ...turnsBySession.value }
+    delete nextTurns[sessionId]
+    turnsBySession.value = nextTurns
 
     sessions.value = sessions.value.filter(s => s.session_id !== sessionId)
     saveDraftSessions(sessions.value)
@@ -476,6 +770,7 @@ export const useAgentStore = defineStore('agent', () => {
     pendingPatch.value = null
     isProcessing.value = false
     currentStep.value = ''
+    turnsBySession.value = {}
     clearThinkingState()
     blueprintLoaded.value = false
     lastBlueprintPath.value = ''
@@ -500,32 +795,12 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  function updateGeneratingNode(content: string) {
-    // 调试：确认组件节点的 agent_step 消息是否到达前端
-    console.log('[agentStore] updateGeneratingNode:', content)
-
-    // 新格式: "{node_name}:{status}:{detail}"
-    // 示例: "skeleton:done:骨架 25构件 | RAG 18000字 200ms | LLM 3000字 15000ms | 思考 3421字"
-    //       "door:done:门 2个 | RAG 500字 50ms | LLM 800字 3000ms | 思考 856字"
-    //       "chimney:skipped:烟囱 跳过 (用户未提及)"
-    const parts = content.split(':')
-    let nodeName = 'unknown'
-    let status: GeneratingNode['status'] = 'running'
-    let detail = content
-
-    if (parts.length >= 3) {
-      nodeName = parts[0]
-      status = (parts[1] as GeneratingNode['status']) || 'running'
-      detail = parts.slice(2).join(':')
-    } else if (content.includes('✅')) {
-      status = 'done'
-    } else if (content.includes('❌')) {
-      status = 'error'
-    } else if (content.includes('⏭️')) {
-      status = 'skipped'
-    }
-
-    const label = _resolveLabel(nodeName)
+  function updateGeneratingNode(
+    nodeName: string,
+    status: GeneratingNode['status'],
+    detail: string,
+    label = _resolveLabel(nodeName),
+  ) {
 
     const existing = generatingNodes.value.find(n => n.name === nodeName)
     if (existing) {
@@ -581,6 +856,8 @@ export const useAgentStore = defineStore('agent', () => {
     // 会话列表
     sessions,
     currentSessionId,
+    turnsBySession,
+    currentTurns,
     replaceSessions,
     createSession,
     switchToSession,
@@ -600,9 +877,25 @@ export const useAgentStore = defineStore('agent', () => {
     hasPendingPatch,
     isConnected,
     addMessage,
+    addMessageToSession,
+    getMessagesForSession,
+    getTurnsForSession,
+    mergeMessagesForSession,
+    mergeTurnsForSession,
     addUserMessage,
     addAgentMessage,
     addSystemMessage,
+    startTurn,
+    addAgentMessageForTurn,
+    addSystemMessageForTurn,
+    updateTurnStep,
+    appendTurnThinking,
+    addTurnValidationStep,
+    setTurnDiagnostic,
+    setTurnMetrics,
+    setTurnThinkingStatus,
+    completeTurn,
+    getTurnForMessage,
     setProcessing,
     setPendingPatch,
     confirmPatch,

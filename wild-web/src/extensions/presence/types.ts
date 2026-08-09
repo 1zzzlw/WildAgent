@@ -13,6 +13,7 @@ export interface OnlineClientInfo {
 }
 
 export interface PresenceUpdateResponse {
+  protocol_version: '1.0'
   type: 'presence_update'
   online_count: number
   clients: OnlineClientInfo[]

@@ -173,6 +173,7 @@ async function assertPrimitiveBoxDimensionCompatibility(core) {
         position: [0, 0.15, 0],
         dimensions: { width: 2.2, height: 0.3, depth: 0.9 },
       }],
+      components: [],
     },
     materials: {},
     behaviors: {},
@@ -198,6 +199,7 @@ async function assertPrimitiveBoxDimensionCompatibility(core) {
         id: 'broken_box',
         dimensions: { width: 2.2, height: 0.3 },
       }],
+      components: [],
     },
   });
   const invalidDiagnostic = invalidEntity.diagnostics.find(

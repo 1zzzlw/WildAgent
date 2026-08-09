@@ -57,9 +57,12 @@ export function normalizeBlueprintInput(value: any): any {
   const elements = Array.isArray(value.geometry?.elements)
     ? value.geometry.elements.map(normalizeElement)
     : value.geometry?.elements;
-  const components = Array.isArray(value.geometry?.components)
-    ? value.geometry.components.map(normalizeComponent)
-    : value.geometry?.components;
+  const rawComponents = value.geometry?.components;
+  const components = rawComponents === undefined
+    ? []
+    : Array.isArray(rawComponents)
+      ? rawComponents.map(normalizeComponent)
+      : rawComponents;
   const materials = value.materials && typeof value.materials === 'object'
     ? Object.fromEntries(
         Object.entries(value.materials).map(([name, material]) => [

@@ -2,7 +2,7 @@
 Layer 2 扩展: 回调重试节点
 
 校验失败后，对每个失败组件做精准修正：
-  RAG(错误类型) + 工具数据 + 骨架上下文 → LLM 只修正失败组件 → 更新对应 fragment
+  结构化错误 + RAG + 工具数据 → LLM 选择白名单修复工具 → 程序执行并复检
 
 这是 LangGraph 架构中最关键的创新点，详见设计文档 03-回调与重试机制.md。
 """
@@ -12,8 +12,9 @@ from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.agent.model_client import create_llm
 from app.agent.component_registry import COMPONENT_REGISTRY
+from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
+from app.agent.validation_issues import compare_issue_sets, validation_issues_from_results
 from app.spec.loader import SpecQuery
-from app.utils.json_extractor import extract_json_array
 
 
 # 模块级导入
@@ -28,9 +29,9 @@ async def callback_node(state: GenerationState) -> dict:
     2. 精准 RAG（按错误类型检索）
     3. 运行组件工具获取空间约束数据（tools 提供"具体错在哪里"）
     4. 构建 callback_payload（含骨架上下文 + 当前参数 + 工具建议 + RAG）
-    5. LLM 只输出修正后的组件（支持流式思考）
-    6. 更新对应的 fragments
-    7. 递增 retry_count
+    5. LLM 只输出白名单修复动作（支持流式思考）
+    6. 程序执行动作并用全量校验比较错误数
+    7. 仅在错误数下降时提交到对应 fragments
     """
     failed_components = state.get("failed_components", [])
     if not failed_components:
@@ -136,7 +137,7 @@ async def callback_node(state: GenerationState) -> dict:
             "role": "user",
             "content": (
                 f"请修正以下 {len(enriched_failed)} 个失败组件。"
-                f"只输出 JSON 数组，包含每个修正后的组件对象。"
+                f"只输出 JSON 数组，包含需要执行的修复工具动作。"
             ),
         },
     ]
@@ -162,87 +163,251 @@ async def callback_node(state: GenerationState) -> dict:
             # 非流式调用
             response = await llm.ainvoke(messages)
             reply_text = response.content if hasattr(response, "content") else str(response)
+            if hasattr(response, "additional_kwargs"):
+                reasoning = response.additional_kwargs.get("reasoning_content", "") or ""
+            if not reasoning and hasattr(response, "response_metadata"):
+                reasoning = response.response_metadata.get("reasoning_content", "") or ""
             logger.info(f"[callback_node] LLM 修正回复: {len(reply_text)} 字符")
     except Exception as e:
         logger.error(f"[callback_node] LLM 调用失败: {e}")
         return {"retry_count": retry_count + 1}
 
-    # ── 4. 提取修正后的组件 ──
-    fixed_fragments = extract_json_array(reply_text)
-    if not fixed_fragments:
-        logger.warning("[callback_node] 未能从 LLM 回复中提取修正组件")
-        return {"retry_count": retry_count + 1}
+    # ── 5. 提取并执行修复工具动作 ──
+    repair_actions = extract_repair_actions(reply_text)
+    if not repair_actions and reasoning:
+        repair_actions = extract_repair_actions(reasoning)
+    if not repair_actions:
+        logger.warning("[callback_node] 未能从 LLM 回复中提取修复工具动作")
+        return {
+            "retry_count": retry_count + 1,
+            "component_retry_counts": comp_retries,
+            "repair_audit": {
+                "accepted": False,
+                "reason": "模型未返回可解析的修复动作",
+            },
+        }
 
-    # ── 5. 按组件类型分组，更新对应的 fragments ──
-    updates = _apply_fixes_to_state(state, fixed_fragments, enriched_failed)
+    allowed_ids = {
+        item.get("component_id") for item in enriched_failed
+        if item.get("component_id") and not item.get("is_design_target")
+    }
+    allowed_add_types = {
+        item.get("component_type") for item in enriched_failed
+        if item.get("is_design_target") and item.get("component_type")
+    }
+    candidate, action_reports = execute_repair_actions(
+        state.get("merged_blueprint", {}),
+        repair_actions,
+        allowed_entity_ids=allowed_ids,
+        allowed_add_types=allowed_add_types,
+    )
+    changed_ids = {
+        report["entity_id"] for report in action_reports
+        if report.get("success") and report.get("entity_id")
+    }
+    if not changed_ids:
+        logger.warning("[callback_node] 模型动作均未通过修复工具白名单校验")
+        if on_reasoning_delta:
+            await on_reasoning_delta(
+                "callback",
+                f"\n没有可执行的定向修复动作，"
+                f"{len(action_reports)} 个动作均被白名单拒绝。\n",
+            )
+        return {
+            "retry_count": retry_count + 1,
+            "component_retry_counts": comp_retries,
+            "repair_audit": {
+                "accepted": False,
+                "reason": "没有成功执行的修复动作",
+                "actions": action_reports,
+            },
+        }
+    if on_reasoning_delta:
+        succeeded = [
+            f"{report.get('tool')}({report.get('entity_id')})"
+            for report in action_reports if report.get("success")
+        ]
+        rejected = sum(1 for report in action_reports if not report.get("success"))
+        await on_reasoning_delta(
+            "callback",
+            "\n**定向修复工具执行**\n"
+            f"- 已执行: {', '.join(succeeded)}\n"
+            f"- 被白名单拒绝: {rejected}\n"
+            "- 正在进行修复后全量复检...\n",
+        )
+
+    # ── 6. 全量复检；错误没有严格减少就回滚（candidate 尚未写回 state）──
+    from app.services.agent_service import _final_errors, run_validation_pipeline
+
+    before_issues = list(state.get("validation_issues", []))
+    if not before_issues:
+        before_issues = validation_issues_from_results(
+            [
+                result for result in state.get("validation_results", [])
+                if result.get("has_error")
+            ],
+            state.get("merged_blueprint", {}),
+        )
+    candidate_results = run_validation_pipeline(candidate)
+    candidate_errors = _final_errors(candidate_results)
+    after_issues = validation_issues_from_results(candidate_errors, candidate)
+    from app.agent.nodes.merge_node import _validate_design_brief_constraints
+    after_design_errors = _validate_design_brief_constraints(
+        candidate,
+        state.get("design_brief"),
+    )
+    if after_design_errors:
+        after_issues.extend(validation_issues_from_results([{
+            "name": "validate_design_brief",
+            "output": "\n".join(
+                f"❌ [design] {message}" for message in after_design_errors
+            ),
+            "has_error": True,
+        }], candidate))
+    progress = compare_issue_sets(before_issues, after_issues)
+    introduced_issues = progress["introduced_issues"]
+
+    if not progress["accepted"]:
+        logger.warning(
+            "[callback_node] 修复动作未安全改善错误集合，回滚: "
+            f"{len(before_issues)} → {len(after_issues)}, "
+            f"新增={introduced_issues}"
+        )
+        if on_reasoning_delta:
+            await on_reasoning_delta(
+                "callback",
+                f"复检未改善：错误 {len(before_issues)} → {len(after_issues)}，"
+                "本轮修改已回滚。\n",
+            )
+        return {
+            "retry_count": retry_count + 1,
+            "component_retry_counts": comp_retries,
+            "repair_audit": {
+                "accepted": False,
+                "reason": "复检错误数没有严格下降或引入了新错误，已回滚",
+                "before_issue_count": len(before_issues),
+                "after_issue_count": len(after_issues),
+                "introduced_issues": introduced_issues,
+                "actions": action_reports,
+            },
+        }
+
+    # ── 7. 只把通过复检的实体写回骨架/组件分片，下一轮 merge 会重新提交 ──
+    updates = _state_updates_from_candidate(state, candidate, changed_ids)
+    if on_reasoning_delta:
+        await on_reasoning_delta(
+            "callback",
+            f"复检通过：错误 {len(before_issues)} → {len(after_issues)}，"
+            "本轮局部修改已提交。\n",
+        )
 
     new_retry_count = retry_count + 1
     logger.info(
         f"[callback_node] 修正完成 ({new_retry_count}/{state.get('max_retries', 3)}): "
-        f"处理了 {len(fixed_fragments)} 个修正"
+        f"执行了 {len(changed_ids)} 个实体的定向修复，"
+        f"错误 {len(before_issues)} → {len(after_issues)}"
     )
 
     return {
         **updates,
         "retry_count": new_retry_count,
         "component_retry_counts": comp_retries,
+        "repair_audit": {
+            "accepted": True,
+            "before_issue_count": len(before_issues),
+            "after_issue_count": len(after_issues),
+            "actions": action_reports,
+        },
     }
 
 
-def _apply_fixes_to_state(
+def _state_updates_from_candidate(
     state: GenerationState,
-    fixed_fragments: list[dict],
-    failed_components: list[dict],
+    candidate: dict,
+    changed_ids: set[str],
 ) -> dict:
-    """将 LLM 修正后的组件写回对应的 state 字段
+    """把候选蓝图中通过复检的实体同步回下一轮 merge 的源分片。"""
+    from copy import deepcopy
 
-    策略: 用修正后的 fragment 替换同 ID 的旧 fragment。
-    未匹配到的修正视为新增。
-    """
-    # 建立修正组件 ID → 修正后对象的映射
-    fix_map: dict[str, dict] = {}
-    for frag in fixed_fragments:
-        frag_id = frag.get("id")
-        if frag_id:
-            fix_map[frag_id] = frag
-
-    # 找出失败组件的类型 → state key 映射
-    failed_ids = {fc.get("component_id") for fc in failed_components if fc.get("component_id")}
-
+    geometry = candidate.get("geometry", {})
+    candidate_entities = {
+        entity["id"]: entity
+        for entity in [
+            *geometry.get("elements", []),
+            *geometry.get("components", []),
+        ]
+        if isinstance(entity, dict) and entity.get("id") in changed_ids
+    }
     updates: dict = {}
 
-    # 遍历所有已实现的组件类型，更新包含失败 ID 的 fragments
-    for comp_type, cfg in COMPONENT_REGISTRY.items():
-        if not cfg.implemented:
+    skeleton = deepcopy(state.get("skeleton_blueprint", {}))
+    skeleton_changed = False
+    skeleton_geometry = skeleton.get("geometry", {})
+    for bucket in ("elements", "components"):
+        items = skeleton_geometry.get(bucket, [])
+        for index, item in enumerate(items):
+            entity_id = item.get("id") if isinstance(item, dict) else None
+            if entity_id in candidate_entities:
+                items[index] = deepcopy(candidate_entities[entity_id])
+                skeleton_changed = True
+    existing_skeleton_ids = {
+        item.get("id")
+        for bucket in ("elements", "components")
+        for item in skeleton_geometry.get(bucket, [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    candidate_element_ids = {
+        item.get("id")
+        for item in geometry.get("elements", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    registered_types = {
+        config.component_type for config in COMPONENT_REGISTRY.values()
+        if config.implemented
+    }
+    for entity_id in changed_ids & candidate_element_ids:
+        entity = candidate_entities[entity_id]
+        if entity_id not in existing_skeleton_ids and entity.get("type") not in registered_types:
+            skeleton_geometry.setdefault("elements", []).append(
+                deepcopy(entity)
+            )
+            skeleton_changed = True
+    if skeleton_changed:
+        updates["skeleton_blueprint"] = skeleton
+
+    for config in COMPONENT_REGISTRY.values():
+        if not config.implemented:
             continue
-
-        old_fragments = state.get(cfg.output_key)
-
-        if cfg.is_list and isinstance(old_fragments, list):
-            new_list = []
-            for frag in old_fragments:
-                frag_id = frag.get("id", "")
-                if frag_id in fix_map:
-                    # 用修正后的版本替换
-                    new_list.append(fix_map[frag_id])
-                    logger.info(f"[callback_node] 更新 {cfg.label}: {frag_id}")
+        old_value = state.get(config.output_key)
+        matching_entities = [
+            entity for entity in candidate_entities.values()
+            if entity.get("type") == config.component_type
+        ]
+        if config.is_list:
+            old_list = old_value if isinstance(old_value, list) else []
+            new_value = []
+            changed = False
+            old_ids = {
+                fragment.get("id") for fragment in old_list
+                if isinstance(fragment, dict) and fragment.get("id")
+            }
+            for fragment in old_list:
+                entity_id = fragment.get("id") if isinstance(fragment, dict) else None
+                if entity_id in candidate_entities:
+                    new_value.append(deepcopy(candidate_entities[entity_id]))
+                    changed = True
                 else:
-                    new_list.append(frag)
-
-            # 修正中有新增的同类型组件（未匹配到旧 ID）
-            for fix_id, fix_frag in fix_map.items():
-                if fix_frag.get("type") == comp_type and fix_id not in {
-                    f.get("id") for f in old_fragments
-                }:
-                    new_list.append(fix_frag)
-                    logger.info(f"[callback_node] 新增 {cfg.label}: {fix_id}")
-
-            updates[cfg.output_key] = new_list
-
-        elif not cfg.is_list and isinstance(old_fragments, dict):
-            frag_id = old_fragments.get("id", "")
-            if frag_id in fix_map:
-                updates[cfg.output_key] = fix_map[frag_id]
-                logger.info(f"[callback_node] 更新 {cfg.label}: {frag_id}")
+                    new_value.append(fragment)
+            for entity in matching_entities:
+                if entity.get("id") not in old_ids:
+                    new_value.append(deepcopy(entity))
+                    changed = True
+            if changed:
+                updates[config.output_key] = new_value
+        elif not config.is_list:
+            if isinstance(old_value, dict) and old_value.get("id") in candidate_entities:
+                updates[config.output_key] = deepcopy(candidate_entities[old_value["id"]])
+            elif matching_entities:
+                updates[config.output_key] = deepcopy(matching_entities[0])
 
     return updates

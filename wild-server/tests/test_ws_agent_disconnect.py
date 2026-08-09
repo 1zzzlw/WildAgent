@@ -15,6 +15,36 @@ from app.services.agent_service import QueryResult
 
 
 class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
+    async def test_incompatible_protocol_version_is_rejected(self):
+        class IncompatibleWebSocket:
+            def __init__(self):
+                self.accept = AsyncMock()
+                self.send_json = AsyncMock()
+                self.receive_count = 0
+
+            async def receive_text(self):
+                self.receive_count += 1
+                if self.receive_count == 1:
+                    return json.dumps({
+                        "protocol_version": "9.9",
+                        "type": "user_message",
+                        "request_id": "req_version",
+                        "session_id": "session_version",
+                        "message": "hello",
+                    })
+                raise WebSocketDisconnect()
+
+        ws = IncompatibleWebSocket()
+        await agent_websocket(ws)
+
+        error = next(
+            call.args[0]
+            for call in ws.send_json.await_args_list
+            if call.args[0].get("code") == "unsupported_protocol_version"
+        )
+        self.assertEqual(error["protocol_version"], "1.0")
+        self.assertEqual(error["request_id"], "req_version")
+
     async def test_endpoint_cancels_active_generation_after_disconnect(self):
         generation_started = asyncio.Event()
         generation_cancelled = asyncio.Event()
@@ -110,6 +140,7 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(registry.online_count, 1)
         first_payload = first.send_json.await_args_list[-1].args[0]
         self.assertEqual(first_payload["online_count"], 1)
+        self.assertEqual(first_payload["protocol_version"], "1.0")
         self.assertEqual(first_payload["clients"][0]["masked_ip"], "113.96.*.*")
         self.assertEqual(first_payload["clients"][0]["region"], "广东省")
         self.assertEqual(first_payload["clients"][0]["display_name"], "张 工")
@@ -261,7 +292,7 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
                 AsyncMock(return_value=QueryResult(text="生成完成", blueprint=blueprint)),
             ),
             patch(
-                "app.api.ws_agent.save_blueprint_file_as",
+                "app.services.agent_delivery.save_blueprint_file_as",
                 return_value="storage/scenes/session_cache.wild",
             ),
         ):
@@ -275,6 +306,10 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
         messages = [call.args[0] for call in ws.send_json.await_args_list]
         generated = next(msg for msg in messages if msg["type"] == "blueprint_generated")
         self.assertEqual(generated["session_id"], "session_cache")
-        self.assertEqual(generated["filename"], "session_cache.wild")
-        self.assertEqual(generated["file_url"], "/api/scenes/session_cache.wild")
+        self.assertRegex(
+            generated["filename"],
+            r"^\d{4}-\d{2}-\d{2}/session_cache_缓存回归建筑\.wild$",
+        )
+        self.assertEqual(generated["file_url"], f"/api/scenes/{generated['filename']}")
         self.assertNotIn("blueprint", generated)
+        self.assertTrue(all(msg["protocol_version"] == "1.0" for msg in messages))

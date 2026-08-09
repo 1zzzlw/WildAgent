@@ -9,6 +9,8 @@ import time
 
 from fastapi import WebSocket
 
+from app.agent.protocol import versioned_event
+
 from .geoip import extract_client_ip, geoip_resolver, mask_ip
 
 MAX_VISITOR_NAME_LENGTH = 24
@@ -97,11 +99,11 @@ class WebSocketConnectionRegistry:
             (client.copy() for client in self._connections.values()),
             key=lambda client: client["connected_at"],
         )
-        return {
+        return versioned_event({
             "type": "presence_update",
             "online_count": len(clients),
             "clients": clients,
-        }
+        })
 
     async def _broadcast_locked(self):
         payload = self._presence_payload()

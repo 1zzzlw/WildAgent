@@ -8,6 +8,7 @@
 策略：在节点生成后立即调用，确保对齐
 """
 from loguru import logger
+from app.tools.spatial_tools import MAX_OPENING_NORMAL_OFFSET
 
 
 def validate_door_placement(blueprint: dict) -> str:
@@ -41,6 +42,14 @@ def validate_door_placement(blueprint: dict) -> str:
             issues.append(f"❌ [{door_id}] parentWall '{parent_wall}' 不存在")
             continue
         
+        if (
+            not isinstance(door_from, list)
+            or len(door_from) != 3
+            or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in door_from)
+        ):
+            issues.append(f"❌ [{door_id}] from 必须是 3 个数值组成的局部坐标")
+            continue
+
         wall = walls[parent_wall]
         wall_from = wall.get("from", [0, 0, 0])
         wall_to = wall.get("to", [0, 0, 0])
@@ -56,6 +65,11 @@ def validate_door_placement(blueprint: dict) -> str:
         # 检查 3: 门是否超出墙体末端
         if door_pos + door_width > wall_length:
             issues.append(f"❌ [{door_id}] 门末端 {door_pos + door_width:.2f}m 超出墙长 {wall_length:.2f}m")
+        if abs(float(door_from[2])) > MAX_OPENING_NORMAL_OFFSET:
+            issues.append(
+                f"❌ [{door_id}] from[2]={door_from[2]} 是过大的法向偏移；"
+                "不能填写父墙世界坐标，门应贴合父墙且通常为 0"
+            )
     
     if not issues:
         return f"✅ 门位置校验通过 ({len(doors)} 个门)"
@@ -99,6 +113,31 @@ def fix_door_placement(blueprint: dict) -> str:
         wall_from = wall.get("from", [0, 0, 0])
         wall_to = wall.get("to", [0, 0, 0])
         wall_length = ((wall_to[0] - wall_from[0])**2 + (wall_to[2] - wall_from[2])**2)**0.5
+
+        if (
+            not isinstance(door_from, list)
+            or len(door_from) != 3
+            or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in door_from)
+        ):
+            door_from = [(wall_length - door_width) / 2, min(wall_from[1], wall_to[1]), 0.0]
+            door["from"] = door_from
+            fixes.append(f"🔧 [{door_id}] from 重建为局部门窗坐标 {door_from}")
+
+        if abs(float(door_from[2])) > MAX_OPENING_NORMAL_OFFSET:
+            dx = wall_to[0] - wall_from[0]
+            dz = wall_to[2] - wall_from[2]
+            dir_x = dx / wall_length if wall_length else 0.0
+            dir_z = dz / wall_length if wall_length else 0.0
+            projected = (
+                (float(door_from[0]) - float(wall_from[0])) * dir_x
+                + (float(door_from[2]) - float(wall_from[2])) * dir_z
+            )
+            old_offset = door_from[2]
+            if -0.3 <= projected <= wall_length + 0.3:
+                door_from[0] = round(max(0.0, min(projected, wall_length)), 2)
+            door_from[2] = 0.0
+            door["from"] = door_from
+            fixes.append(f"🔧 [{door_id}] from[2] {old_offset} → 0，重新投影到父墙")
         
         # 修复 2: 位置超出或宽度超出
         door_pos = door_from[0] if isinstance(door_from, list) else door_from
@@ -145,6 +184,14 @@ def validate_window_placement(blueprint: dict) -> str:
             issues.append(f"❌ [{window_id}] parentWall '{parent_wall}' 不存在")
             continue
         
+        if (
+            not isinstance(window_from, list)
+            or len(window_from) != 3
+            or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in window_from)
+        ):
+            issues.append(f"❌ [{window_id}] from 必须是 3 个数值组成的局部坐标")
+            continue
+
         wall = walls[parent_wall]
         wall_from = wall.get("from", [0, 0, 0])
         wall_to = wall.get("to", [0, 0, 0])
@@ -157,6 +204,11 @@ def validate_window_placement(blueprint: dict) -> str:
         
         if window_pos + window_width > wall_length:
             issues.append(f"❌ [{window_id}] 窗末端 {window_pos + window_width:.2f}m 超出墙长 {wall_length:.2f}m")
+        if abs(float(window_from[2])) > MAX_OPENING_NORMAL_OFFSET:
+            issues.append(
+                f"❌ [{window_id}] from[2]={window_from[2]} 是过大的法向偏移；"
+                "不能填写父墙世界坐标，窗应贴合父墙且通常为 0"
+            )
     
     if not issues:
         return f"✅ 窗位置校验通过 ({len(windows)} 个窗)"
@@ -193,6 +245,31 @@ def fix_window_placement(blueprint: dict) -> str:
         wall_from = wall.get("from", [0, 0, 0])
         wall_to = wall.get("to", [0, 0, 0])
         wall_length = ((wall_to[0] - wall_from[0])**2 + (wall_to[2] - wall_from[2])**2)**0.5
+
+        if (
+            not isinstance(window_from, list)
+            or len(window_from) != 3
+            or not all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in window_from)
+        ):
+            window_from = [(wall_length - window_width) / 2, min(wall_from[1], wall_to[1]) + 0.9, 0.0]
+            window["from"] = window_from
+            fixes.append(f"🔧 [{window_id}] from 重建为局部门窗坐标 {window_from}")
+
+        if abs(float(window_from[2])) > MAX_OPENING_NORMAL_OFFSET:
+            dx = wall_to[0] - wall_from[0]
+            dz = wall_to[2] - wall_from[2]
+            dir_x = dx / wall_length if wall_length else 0.0
+            dir_z = dz / wall_length if wall_length else 0.0
+            projected = (
+                (float(window_from[0]) - float(wall_from[0])) * dir_x
+                + (float(window_from[2]) - float(wall_from[2])) * dir_z
+            )
+            old_offset = window_from[2]
+            if -0.3 <= projected <= wall_length + 0.3:
+                window_from[0] = round(max(0.0, min(projected, wall_length)), 2)
+            window_from[2] = 0.0
+            window["from"] = window_from
+            fixes.append(f"🔧 [{window_id}] from[2] {old_offset} → 0，重新投影到父墙")
         
         window_pos = window_from[0] if isinstance(window_from, list) else window_from
         margin = 0.3

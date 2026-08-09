@@ -10,6 +10,21 @@ from langchain_core.messages import AIMessageChunk
 from config import config, ModelConfig
 
 
+def _response_mapping(value: Any) -> dict:
+    """兼容 OpenAI SDK 的 Pydantic 响应对象和旧版字典响应。"""
+    if isinstance(value, dict):
+        return value
+    model_dump = getattr(value, "model_dump", None)
+    if callable(model_dump):
+        dumped = model_dump()
+        return dumped if isinstance(dumped, dict) else {}
+    legacy_dict = getattr(value, "dict", None)
+    if callable(legacy_dict):
+        dumped = legacy_dict()
+        return dumped if isinstance(dumped, dict) else {}
+    return {}
+
+
 class ReasoningChatOpenAI(ChatOpenAI):
     """捕获 reasoning_content（DashScope/OpenAI-compatible 服务扩展字段）+ 流式 usage。
 
@@ -33,21 +48,23 @@ class ReasoningChatOpenAI(ChatOpenAI):
         if generation_chunk is None:
             return None
 
-        choices = chunk.get("choices") or chunk.get("chunk", {}).get("choices") or []
+        chunk_data = _response_mapping(chunk)
+        nested_chunk = _response_mapping(chunk_data.get("chunk", {}))
+        choices = chunk_data.get("choices") or nested_chunk.get("choices") or []
         delta: dict[str, Any] = (choices[0].get("delta") or {}) if choices else {}
         reasoning_delta = delta.get("reasoning_content")
         if reasoning_delta:
             generation_chunk.message.additional_kwargs["reasoning_content"] = reasoning_delta
 
         # 捕获 usage（OpenAI-compatible 最终 chunk 带空 choices + usage 字段）
-        usage = chunk.get("usage")
+        usage = chunk_data.get("usage")
         if usage:
             generation_chunk.generation_info = generation_chunk.generation_info or {}
             generation_chunk.generation_info["usage"] = usage
 
         return generation_chunk
 
-    def _create_chat_result(self, response: dict, *args: Any, **kwargs: Any) -> Any:
+    def _create_chat_result(self, response: Any, *args: Any, **kwargs: Any) -> Any:
         """非流式路径：补回 reasoning_content 到最终消息
 
         使用 *args/**kwargs 兼容 LangChain 不同版本的签名差异（0.2: 3 参数，
@@ -55,7 +72,8 @@ class ReasoningChatOpenAI(ChatOpenAI):
         """
         result = super()._create_chat_result(response, *args, **kwargs)
 
-        choices = response.get("choices") or []
+        response_data = _response_mapping(response)
+        choices = response_data.get("choices") or []
         if choices:
             message = choices[0].get("message") or {}
             reasoning = message.get("reasoning_content")

@@ -8,21 +8,10 @@
     />
 
     <div class="messages-container" ref="messagesRef">
-
-      <!-- 精密模式：只显示用户消息（AI 回复在精密面板后） -->
-      <div v-if="agentStore.precisionMode">
-        <div v-for="message in userMessagesOnly" :key="message.id" :class="['message', message.role]">
-          <div class="message-header">
-            <span class="message-role">{{ getRoleLabel(message.role) }}</span>
-            <span class="message-time">{{ formatTime(message.timestamp) }}</span>
-          </div>
-          <div class="message-content" v-html="renderMarkdown(message.content)"></div>
-        </div>
-      </div>
-
-      <!-- 非精密模式：显示所有消息 -->
-      <div v-else>
-        <div v-for="message in agentStore.session.messages" :key="message.id" :class="['message', message.role]">
+      <div class="messages-timeline" ref="timelineRef">
+      <!-- 所有模式共用同一条时间线；执行过程绑定到发起它的用户消息。 -->
+      <template v-for="message in agentStore.session.messages" :key="message.id">
+        <div :class="['message', message.role]">
           <div class="message-header">
             <span class="message-role">{{ getRoleLabel(message.role) }}</span>
             <span class="message-time">{{ formatTime(message.timestamp) }}</span>
@@ -38,48 +27,21 @@
                 @click="handleRejectPatch(message.patch!)">
                 拒绝
               </el-button>
+              </div>
             </div>
-          </div>
         </div>
-      </div>
+        <AgentExecutionPanel
+          v-if="message.role === 'user' && agentStore.getTurnForMessage(message)"
+          :turn="agentStore.getTurnForMessage(message)!"
+        />
+      </template>
 
-      <!-- 处理中指示器 -->
-      <div v-if="agentStore.isProcessing && !agentStore.precisionMode" class="processing">
+      <!-- 兼容没有 request_id 的旧后端事件。 -->
+      <div v-if="agentStore.isProcessing && !hasRunningTurn" class="processing">
         <el-icon class="processing-icon is-loading">
           <Loading />
         </el-icon>
         <span>{{ agentStore.currentStep || '处理中...' }}</span>
-      </div>
-
-      <!-- LangChain 思考模式 -->
-      <div v-if="agentStore.thinkingMode && agentStore.thinkingStatus !== 'idle'" class="thinking-stream">
-        <div class="thinking-stream-title">
-          <span>模型思考内容</span>
-          <span :class="['thinking-status', `status-${agentStore.thinkingStatus}`]">
-            {{ getThinkingStatusLabel(agentStore.thinkingStatus) }}
-          </span>
-        </div>
-        <div v-if="agentStore.thinkingContent" class="thinking-content">{{ agentStore.thinkingContent }}</div>
-        <div v-if="agentStore.thinkingNotice" class="thinking-notice">{{ agentStore.thinkingNotice }}</div>
-      </div>
-
-      <!-- LangChain 校验流水线 -->
-      <div v-if="!agentStore.precisionMode && agentStore.pipelineSteps.length > 0" class="pipeline-stream">
-        <div class="pipeline-stream-title">校验流水线</div>
-        <div v-for="(step, i) in agentStore.pipelineSteps" :key="i" :class="['pipeline-line', `status-${step.status}`]">
-          {{ step.label }}
-        </div>
-      </div>
-
-      <!-- 精密模式：AI 回复和系统消息（在用户消息后） -->
-      <div v-if="agentStore.precisionMode && nonUserMessages.length > 0">
-        <div v-for="message in nonUserMessages" :key="message.id" :class="['message', message.role]">
-          <div class="message-header">
-            <span class="message-role">{{ getRoleLabel(message.role) }}</span>
-            <span class="message-time">{{ formatTime(message.timestamp) }}</span>
-          </div>
-          <div class="message-content" v-html="renderMarkdown(message.content)"></div>
-        </div>
       </div>
 
       <!-- Blueprint 加载成功 -->
@@ -89,126 +51,12 @@
         </el-icon>
         <span>Blueprint 已加载到场景</span>
       </div>
-
+      </div>
     </div>
 
-    <!-- 精密模式：Claude 风格 Thinking 面板（独立区域，不在 messages-container 内） -->
-    <div v-if="agentStore.precisionMode && agentStore.generatingNodes.length > 0"
-      class="thinking-panel">
-
-        <!-- DEBUG: 原始数据 -->
-        <div style="padding:4px 14px;font-size:10px;color:#666;background:rgba(0,0,0,0.15);font-family:monospace">
-          nodes={{agentStore.generatingNodes.map(n => n.name + ':' + n.status).join(', ')}},
-          expanded={{ thinkingExpanded }},
-          mapSize={{ agentStore.nodeThinkingMap.size }}
-        </div>
-
-        <!-- 统一的思考头（点击展开/收起） -->
-        <div class="thinking-panel-header" @click="thinkingExpanded = !thinkingExpanded">
-          <div class="thinking-panel-indicator">
-            <el-icon v-if="hasRunningNodes" class="is-loading thinking-spinner">
-              <Loading />
-            </el-icon>
-            <span v-else class="thinking-dot">✦</span>
-          </div>
-          <span class="thinking-panel-title">
-            {{ thinkingPanelTitle }}
-          </span>
-          <span class="thinking-node-list">
-            <template v-for="(node, i) in agentStore.generatingNodes" :key="node.name">
-              <span v-if="i > 0" class="thinking-sep">·</span>
-              <span :class="['thinking-node-tag', `tag-${node.status}`]">{{ node.label }}</span>
-            </template>
-          </span>
-          <el-icon class="thinking-panel-toggle">
-            <component :is="thinkingExpanded ? 'ArrowDown' : 'ArrowRight'" />
-          </el-icon>
-        </div>
-
-        <!-- 展开的思考内容 -->
-        <transition name="thinking-expand">
-          <div v-if="thinkingExpanded" class="thinking-panel-body">
-
-            <!-- 每个节点的推理 + 诊断（可独立折叠） -->
-            <div v-for="node in agentStore.generatingNodes" :key="node.name" class="thinking-node">
-              <div class="thinking-node-bar" @click="toggleNodeCollapse(node.name)">
-                <span :class="['thinking-node-dot', `dot-${node.status}`]"></span>
-                <span class="thinking-node-label">{{ node.label }}</span>
-                <span class="thinking-node-detail">{{ node.detail }}</span>
-                <el-icon class="thinking-node-chevron">
-                  <component :is="collapsedNodes.has(node.name) ? 'ArrowRight' : 'ArrowDown'" />
-                </el-icon>
-              </div>
-
-              <transition name="node-collapse">
-                <div v-if="!collapsedNodes.has(node.name)" class="thinking-node-content">
-                  <!-- 推理内容：优先实时流；若模型未回流 reasoning_content，则回退显示节点诊断里的 reasoning_preview -->
-                  <div v-if="getNodeThinking(node.name)" class="reasoning-block">
-                    <div class="reasoning-block-text" v-html="renderMarkdown(getNodeThinking(node.name))"></div>
-                  </div>
-                  <div v-else-if="getNodeDiag(node.name)?.reasoning_preview" class="reasoning-block preview">
-                    <div class="reasoning-block-text">{{ getNodeDiag(node.name).reasoning_preview }}</div>
-                  </div>
-
-                  <!-- 诊断卡片 -->
-                  <div v-if="getNodeDiag(node.name)" class="diag-row">
-                    <div v-if="getNodeDiag(node.name).rag_chars" class="diag-chip">
-                      <span class="diag-chip-num">{{ getNodeDiag(node.name).rag_chars }}</span>
-                      <span class="diag-chip-label">RAG字</span>
-                    </div>
-                    <div v-if="getNodeDiag(node.name).llm_chars" class="diag-chip">
-                      <span class="diag-chip-num">{{ getNodeDiag(node.name).llm_chars }}</span>
-                      <span class="diag-chip-label">LLM字</span>
-                    </div>
-                    <div v-if="getNodeDiag(node.name).token_usage" class="diag-chip">
-                      <span class="diag-chip-num">{{ getNodeDiag(node.name).token_usage.total }}</span>
-                      <span class="diag-chip-label">tokens</span>
-                    </div>
-                    <div v-if="getNodeDiag(node.name).fragment_count" class="diag-chip">
-                      <span class="diag-chip-num">{{ getNodeDiag(node.name).fragment_count }}</span>
-                      <span class="diag-chip-label">个</span>
-                    </div>
-                  </div>
-                </div>
-              </transition>
-            </div>
-
-            <!-- 性能汇总 -->
-            <div v-if="agentStore.sessionMetrics" class="metrics-inline">
-              <span class="metrics-inline-label">总计</span>
-              <span class="metrics-inline-item">{{ agentStore.sessionMetrics.active_nodes }}/{{
-                agentStore.sessionMetrics.node_count }} 节点</span>
-              <span class="metrics-inline-sep">·</span>
-              <span class="metrics-inline-item">{{ (agentStore.sessionMetrics.total_tokens?.total || 0).toLocaleString()
-                }}
-                tokens</span>
-              <span class="metrics-inline-sep">·</span>
-              <span class="metrics-inline-item">RAG {{ agentStore.sessionMetrics.total_rag_ms }}ms</span>
-              <span class="metrics-inline-sep">·</span>
-              <span class="metrics-inline-item">LLM {{ agentStore.sessionMetrics.total_llm_ms }}ms</span>
-              <span class="metrics-inline-sep">·</span>
-              <span class="metrics-inline-item">校验 {{ agentStore.sessionMetrics.validation_steps }}步{{
-                agentStore.sessionMetrics.validation_errors }}错</span>
-              <span v-if="agentStore.sessionMetrics.retry_count !== undefined" class="metrics-inline-sep">·</span>
-              <span v-if="agentStore.sessionMetrics.retry_count !== undefined" class="metrics-inline-item">
-                重试 {{ agentStore.sessionMetrics.retry_count }}/{{ agentStore.sessionMetrics.max_retries || 3 }}
-              </span>
-            </div>
-
-            <!-- 精密模式：校验流水线列表 -->
-            <div v-if="agentStore.precisionMode && agentStore.pipelineSteps.length > 0"
-              class="pipeline-stream precision-pipeline">
-              <div class="pipeline-stream-title">校验流水线</div>
-              <div v-for="(step, i) in agentStore.pipelineSteps" :key="i"
-                :class="['pipeline-line', `status-${step.status}`]">
-                {{ step.label }}
-              </div>
-            </div>
-
-          </div>
-        </transition>
-
-      </div>
+    <button v-if="isUserScrolling" class="jump-latest" type="button" @click="resumeAutoScroll">
+      回到最新
+    </button>
 
     <!-- 连接状态栏 -->
     <div class="connection-bar" :class="connectionStatusClass">
@@ -259,12 +107,12 @@ import hljs from 'highlight.js'
 import 'highlight.js/styles/vs2015.css'
 import {
   Loading, Promotion, Connection, Link, WarningFilled, CircleCheckFilled,
-  ArrowDown, ArrowRight,
 } from '@element-plus/icons-vue'
 import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
+import AgentExecutionPanel from './AgentExecutionPanel.vue'
 import type { ScenePatch } from '../../types/scenePatch'
 
 // ── Markdown 渲染 ──
@@ -290,73 +138,32 @@ const agentStore = useAgentStore()
 const sceneStore = useSceneStore()
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
+const timelineRef = ref<HTMLElement | null>(null)
 const sessionHint = ref('')
-
-// ── 精密模式：Claude 风格 Thinking... 面板 ──
-const thinkingExpanded = ref(false)
-const thinkingStartTime = ref(0)
-
-// ── 各步骤节点独立折叠 ──
-const collapsedNodes = ref<Set<string>>(new Set())
-function toggleNodeCollapse(name: string) {
-  const next = new Set(collapsedNodes.value)
-  if (next.has(name)) {
-    next.delete(name)
-  } else {
-    next.add(name)
-  }
-  collapsedNodes.value = next
-}
-
-const hasRunningNodes = computed(() =>
-  agentStore.generatingNodes.some(n => n.status === 'running')
-)
-
-// 思考开始时自动展开面板
-watch(hasRunningNodes, (running) => {
-  if (running) thinkingExpanded.value = true
-})
-
-const thinkingPanelTitle = computed(() => {
-  if (hasRunningNodes.value) return '正在思考...'
-  switch (agentStore.thinkingStatus) {
-    case 'completed':
-      return `思考已完成 ${thinkingDuration.value}s`
-    case 'error':
-      return `思考失败 ${thinkingDuration.value}s`
-    case 'unsupported':
-      return `思考不支持 ${thinkingDuration.value}s`
-    default:
-      return `已思考 ${thinkingDuration.value}s`
-  }
-})
-
-/** 思考耗时（秒），实时更新 */
-const thinkingDuration = computed(() => {
-  if (hasRunningNodes.value && thinkingStartTime.value > 0) {
-    return Math.floor((Date.now() - thinkingStartTime.value) / 1000)
-  }
-  // 已完成时用最后一个节点完成的时间
-  const nodes = agentStore.generatingNodes
-  if (nodes.length > 0 && !hasRunningNodes.value && thinkingStartTime.value > 0) {
-    return Math.floor((Date.now() - thinkingStartTime.value) / 1000)
-  }
-  return 0
-})
 
 // 用户滚动检测
 const isUserScrolling = ref(false)
-const scrollTimeout = ref<number | null>(null)
+const hasRunningTurn = computed(() =>
+  agentStore.currentTurns.some(turn => turn.status === 'running')
+)
 
-// 自动滚动到底部
-function scrollToBottom() {
-  // 如果用户正在滚动，不要自动滚动
-  if (isUserScrolling.value) return
+let scrollFrame: number | null = null
+let timelineResizeObserver: ResizeObserver | null = null
 
-  nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
-    }
+// 所有流式内容只使用主消息区这一层滚动。等 DOM 和 Markdown 完成布局后再贴底，
+// 避免连续 thinking_delta 到达时 scrollHeight 仍是上一帧的值。
+function scrollToBottom(force = false) {
+  if (!force && isUserScrolling.value) return
+
+  void nextTick().then(() => {
+    if (!force && isUserScrolling.value) return
+    if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame)
+    scrollFrame = window.requestAnimationFrame(() => {
+      scrollFrame = null
+      const container = messagesRef.value
+      if (!container || (!force && isUserScrolling.value)) return
+      container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight)
+    })
   })
 }
 
@@ -365,41 +172,26 @@ function handleUserScroll() {
   if (!messagesRef.value) return
 
   const container = messagesRef.value
-  const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
+  const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight <= 80
 
-  // 如果不在底部，说明用户在向上滚动
-  if (!isAtBottom) {
-    isUserScrolling.value = true
-  } else {
-    // 如果在底部，允许自动滚动
-    isUserScrolling.value = false
-  }
+  isUserScrolling.value = !isAtBottom
+}
 
-  // 清除之前的定时器
-  if (scrollTimeout.value) {
-    clearTimeout(scrollTimeout.value)
-  }
-
-  // 2秒后如果用户没有继续滚动，恢复自动滚动
-  scrollTimeout.value = window.setTimeout(() => {
-    isUserScrolling.value = false
-  }, 2000)
+function resumeAutoScroll() {
+  isUserScrolling.value = false
+  scrollToBottom(true)
 }
 
 // 消息或流水线步骤有变化时自动滚动（只在必要时触发）
-watch(() => agentStore.session.messages.length, scrollToBottom)
-watch(() => agentStore.blueprintLoaded, scrollToBottom)
-
-// 精密模式下，只在生成节点数量变化（新节点开始）时滚动，避免思考内容更新时频繁触发
-watch(() => agentStore.generatingNodes.length, scrollToBottom)
-
-// 非精密模式下的滚动触发器
-watch(() => agentStore.pipelineSteps.length, () => {
-  if (!agentStore.precisionMode) scrollToBottom()
-})
-watch(() => agentStore.thinkingContent.length, () => {
-  if (!agentStore.precisionMode) scrollToBottom()
-})
+watch(() => agentStore.session.messages.length, () => scrollToBottom(), { flush: 'post' })
+watch(() => agentStore.blueprintLoaded, () => scrollToBottom(), { flush: 'post' })
+watch(
+  () => agentStore.currentTurns.map(turn =>
+    `${turn.turn_id}:${turn.status}:${turn.steps.length}:${turn.steps.map(step => step.thinking.length).join(',')}`
+  ).join('|'),
+  () => scrollToBottom(),
+  { flush: 'post' },
+)
 
 // ---------- 发送 ----------
 const canSend = computed(() =>
@@ -414,34 +206,12 @@ const sendButtonTitle = computed(() => {
   return '发送 (Ctrl+Enter)'
 })
 
-// ── 精密模式：消息拆分 ──
-const userMessagesOnly = computed(() => {
-  return agentStore.session.messages.filter(m => m.role === 'user')
-})
-
-const nonUserMessages = computed(() => {
-  return agentStore.session.messages.filter(m => m.role !== 'user')
-})
-
-// ── 精密模式：诊断数据获取 ──
-function getNodeThinking(nodeName: string): string {
-  const thinking = agentStore.nodeThinkingMap.get(nodeName)
-  return thinking?.content || ''
-}
-
-function getNodeDiag(nodeName: string): any {
-  const diag = agentStore.debugLogs.find(
-    d => d.category === 'node' && (d.data as any).node === nodeName
-  )
-  return diag?.data || null
-}
-
 function handleSend() {
   if (!canSend.value) return
   const message = inputText.value.trim()
-  agentStore.addUserMessage(message)
-  agentBridge.sendUserMessage(message)
-  inputText.value = ''
+  resumeAutoScroll()
+  const requestId = agentBridge.sendUserMessage(message)
+  if (requestId) inputText.value = ''
 }
 
 function handleReconnect() {
@@ -459,15 +229,6 @@ function handlePrecisionModeChange(value: boolean | string | number) {
   if (enabled) {
     agentStore.setThinkingMode(true)
   }
-}
-
-function getThinkingStatusLabel(status: string) {
-  return ({
-    thinking: '思考中',
-    completed: '已完成',
-    unsupported: '不支持',
-    error: '失败',
-  } as Record<string, string>)[status] || ''
 }
 
 // ---------- 连接状态 ----------
@@ -518,32 +279,24 @@ watch(() => agentStore.networkError, (error) => {
     ElNotification({ title: '网络异常', message: error, type: 'error', duration: 8000 })
 })
 
-// 精密模式 Thinking... 计时 + 默认展开
-watch(() => agentStore.generatingNodes.length, (len) => {
-  if (len > 0 && thinkingStartTime.value === 0) {
-    thinkingStartTime.value = Date.now()
-    thinkingExpanded.value = true   // 开始生成时默认展开，直接看到思考内容
-  } else if (len === 0) {
-    thinkingStartTime.value = 0
-    thinkingExpanded.value = false
-  }
-})
-
 // 监听滚动事件
 onMounted(() => {
   if (messagesRef.value) {
     messagesRef.value.addEventListener('scroll', handleUserScroll)
   }
-  restoreSessionsFromServer()
+  if (timelineRef.value && typeof ResizeObserver !== 'undefined') {
+    timelineResizeObserver = new ResizeObserver(() => scrollToBottom())
+    timelineResizeObserver.observe(timelineRef.value)
+  }
+  void restoreSessionsFromServer().finally(() => resumeAutoScroll())
 })
 
 onUnmounted(() => {
   if (messagesRef.value) {
     messagesRef.value.removeEventListener('scroll', handleUserScroll)
   }
-  if (scrollTimeout.value) {
-    clearTimeout(scrollTimeout.value)
-  }
+  timelineResizeObserver?.disconnect()
+  if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame)
 })
 
 watch(() => agentStore.blueprintLoaded, (loaded) => {
@@ -577,10 +330,17 @@ function handleRejectPatch(patch: ScenePatch) {
 // ── 会话切换 ──
 async function handleSessionSwitch(sessionId: string) {
   if (sessionId === agentStore.currentSessionId) return
+  resumeAutoScroll()
   agentStore.switchToSession(sessionId)
+  const [serverMessages, serverTurns] = await Promise.all([
+    agentBridge.fetchSessionMessages(sessionId),
+    agentBridge.fetchSessionTurns(sessionId),
+  ])
+  if (serverMessages) agentStore.mergeMessagesForSession(sessionId, serverMessages)
+  if (serverTurns) agentStore.mergeTurnsForSession(sessionId, serverTurns)
   const bp = await agentBridge.loadSessionBlueprint(sessionId)
   if (bp) {
-    sceneStore.loadBlueprint(bp as any)
+    await sceneStore.loadBlueprint(bp as any)
     const name = (bp as any).meta?.name || '未命名建筑'
     const count = (bp as any).geometry?.elements?.length || 0
     const compCount = (bp as any).geometry?.components?.length || 0
@@ -588,11 +348,12 @@ async function handleSessionSwitch(sessionId: string) {
     agentStore.addSystemMessage(`✅ 已切换到: ${name}`)
   } else {
     const doc = sceneStore.createEmptyDocument()
-    sceneStore.loadBlueprint(doc.blueprint, doc.name)
+    await sceneStore.loadBlueprint(doc.blueprint, doc.name)
   }
 }
 
 async function handleNewSession() {
+  resumeAutoScroll()
   const newId = agentStore.createSession()
   agentStore.switchToSession(newId)
   const doc = sceneStore.createEmptyDocument()
@@ -638,18 +399,22 @@ async function restoreSessionsFromServer() {
     return
   }
 
-  const serverSessions = serverScenes.map(scene => {
-    const basename = scene.filename.split('/').pop()!.replace(/\.wild$/, '')
+  const serverSessions = serverScenes.map((scene, index) => {
+    const filename = scene.filename || ''
+    const basename = filename.split(/[\\/]/).pop()?.replace(/\.wild$/, '') || ''
     const match = basename.match(/^(session_\d+)/)
-    const session_id = match ? match[1] : basename
+    const session_id = scene.session_id || (match ? match[1] : basename) || `session_restored_${index}`
     return {
       session_id,
-      filename: scene.filename,
+      filename: filename || undefined,
       name: scene.name,
-      created_at: scene.updated_at,
+      created_at: scene.created_at || scene.updated_at,
       updated_at: scene.updated_at,
       elements_count: scene.elements_count,
-      status: 'saved' as const,
+      components_count: scene.components_count || 0,
+      message_count: scene.message_count || 0,
+      building_type: scene.building_type,
+      status: scene.status === 'draft' ? 'draft' as const : 'saved' as const,
     }
   })
   agentStore.replaceSessions(serverSessions)
@@ -666,6 +431,12 @@ async function restoreSessionsFromServer() {
     : serverSessions[0].session_id
 
   agentStore.switchToSession(targetId)
+  const [serverMessages, serverTurns] = await Promise.all([
+    agentBridge.fetchSessionMessages(targetId),
+    agentBridge.fetchSessionTurns(targetId),
+  ])
+  if (serverMessages) agentStore.mergeMessagesForSession(targetId, serverMessages)
+  if (serverTurns) agentStore.mergeTurnsForSession(targetId, serverTurns)
   const bp = await agentBridge.loadSessionBlueprint(targetId)
   if (bp) {
     sceneStore.loadBlueprint(bp as any)
@@ -674,7 +445,13 @@ async function restoreSessionsFromServer() {
     const compCount = (bp as any).geometry?.components?.length || 0
     agentStore.updateSessionInfo(targetId, name, count, compCount)
   } else {
-    agentStore.addSystemMessage(`❌ 无法读取服务器会话文件`)
+    const sessionInfo = agentStore.sessions.find(item => item.session_id === targetId)
+    if (sessionInfo?.status === 'draft') {
+      const doc = sceneStore.createEmptyDocument()
+      await sceneStore.loadBlueprint(doc.blueprint, doc.name)
+    } else {
+      agentStore.addSystemMessage(`❌ 无法读取服务器会话文件`)
+    }
   }
 }
 
@@ -749,15 +526,20 @@ function loadDraftSessionsFromLocal(): any[] {
   flex: 1;
   overflow-y: auto;
   padding: 24px 20px;
+  min-height: 0;
+  overflow-anchor: none;
+}
+
+.messages-timeline {
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  min-height: 0;
 }
 
 /* 底部锚定：内容少时对话贴底（输入上方），避免下方大片空白；
    内容溢出时该占位 flex 收缩为 0，正常滚动。 */
-.messages-container::before {
+.messages-timeline::before {
   content: '';
   flex: 1 1 auto;
   min-height: 0;
@@ -1295,361 +1077,23 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 
-/* ================================================
-   Claude-style Thinking Panel
-   ================================================ */
-/* 浮动覆盖在消息区上方，不挤占对话区的 flex 高度（避免“对话框上移 / 对话区变小”） */
-.thinking-panel {
+.jump-latest {
   position: absolute;
-  top: 44px;
-  left: 8px;
-  right: 8px;
-  z-index: 5;
-  max-height: 46vh;
-  overflow-y: auto;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  animation: thoughtIn 0.3s ease-out;
-}
-
-/* 消息区在 thinking 展开时收缩为紧凑预览 */
-.messages-compact {
-  flex: 0 1 auto !important;
-  max-height: 25vh;
-  min-height: 60px;
-}
-
-.thinking-panel-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 14px;
+  right: 18px;
+  bottom: 128px;
+  z-index: 8;
+  padding: 7px 12px;
+  color: var(--text-primary);
+  background: rgba(44, 44, 48, 0.96);
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
   cursor: pointer;
-  user-select: none;
-  transition: background 0.15s;
-}
-
-.thinking-panel-header:hover {
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.thinking-panel-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.thinking-spinner {
-  font-size: 16px;
-  color: var(--accent);
-}
-
-.thinking-dot {
-  font-size: 14px;
-  color: rgba(212, 184, 113, 0.5);
-}
-
-.thinking-panel-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-  flex-shrink: 0;
-}
-
-.thinking-node-list {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  min-width: 0;
-}
-
-.thinking-sep {
-  color: var(--text-muted);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.thinking-node-tag {
-  font-size: 11px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  transition: color 0.2s;
-}
-
-.thinking-node-tag.tag-running {
-  color: var(--accent);
-}
-
-.thinking-node-tag.tag-done {
-  color: var(--text-secondary);
-}
-
-.thinking-node-tag.tag-error {
-  color: var(--error);
-}
-
-.thinking-node-tag.tag-skipped {
-  color: var(--text-muted);
-  text-decoration: line-through;
-}
-
-.thinking-panel-toggle {
   font-size: 12px;
-  color: var(--text-muted);
-  flex-shrink: 0;
 }
 
-.thinking-panel-body {
-  padding: 4px 14px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-top: 1px solid var(--border);
-  /* 不设置 overflow，让内容自然流动，由外层容器处理滚动 */
+.jump-latest:hover {
+  border-color: var(--accent);
 }
 
-.thinking-expand-enter-active,
-.thinking-expand-leave-active {
-  transition: opacity 0.2s ease;
-}
-
-.thinking-expand-enter-from,
-.thinking-expand-leave-to {
-  opacity: 0;
-}
-
-.thinking-expand-enter-to,
-.thinking-expand-leave-from {
-  opacity: 1;
-}
-
-.thinking-node {
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.thinking-node:last-child {
-  border-bottom: none;
-}
-
-.thinking-node-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.thinking-node-chevron {
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-/* 节点折叠/展开过渡 */
-.node-collapse-enter-active,
-.node-collapse-leave-active {
-  transition: opacity 0.2s ease, max-height 0.25s ease;
-  overflow: hidden;
-  max-height: 600px;
-}
-
-.node-collapse-enter-from,
-.node-collapse-leave-to {
-  opacity: 0;
-  max-height: 0;
-}
-
-.thinking-node-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  background: var(--text-muted);
-}
-
-.thinking-node-dot.dot-running {
-  background: var(--accent);
-}
-
-.thinking-node-dot.dot-done {
-  background: var(--success);
-}
-
-.thinking-node-dot.dot-error {
-  background: var(--error);
-}
-
-.thinking-node-dot.dot-skipped {
-  background: var(--text-muted);
-}
-
-.thinking-node-label {
-  font-weight: 600;
-  color: var(--text-primary);
-  flex-shrink: 0;
-}
-
-.thinking-node-detail {
-  font-size: 11px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Reasoning text */
-.reasoning-block {
-  margin-top: 6px;
-  padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-/* 非实时流的回退预览（模型未回流 reasoning_content 时） */
-.reasoning-block.preview {
-  opacity: 0.85;
-  border-style: dashed;
-}
-
-.reasoning-block-text {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--text-secondary);
-  font-family: 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.reasoning-block-text :deep(p) {
-  margin: 4px 0;
-}
-
-.reasoning-block-text :deep(ul),
-.reasoning-block-text :deep(ol) {
-  margin: 4px 0;
-  padding-left: 18px;
-}
-
-.reasoning-block-text :deep(li) {
-  margin: 2px 0;
-}
-
-.reasoning-block-text :deep(code) {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 1px 5px;
-  border-radius: 3px;
-  color: #ce9178;
-  font-size: 11px;
-}
-
-.reasoning-block-text :deep(pre) {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px;
-  border-radius: 5px;
-  overflow-x: auto;
-  margin: 4px 0;
-}
-
-.reasoning-block-text :deep(pre code) {
-  background: transparent;
-  padding: 0;
-}
-
-.reasoning-block-text :deep(strong) {
-  color: var(--success);
-  font-weight: 600;
-}
-
-.reasoning-block-text :deep(em) {
-  color: var(--warn);
-}
-
-.reasoning-block-text :deep(h1),
-.reasoning-block-text :deep(h2),
-.reasoning-block-text :deep(h3) {
-  margin: 8px 0 4px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-/* Diagnosis chips */
-.diag-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.diag-chip {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  font-size: 11px;
-}
-
-.diag-chip-num {
-  font-weight: 600;
-  color: var(--success);
-  font-family: 'JetBrains Mono', 'Consolas', monospace;
-}
-
-.diag-chip-label {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-/* Inline metrics footer */
-.metrics-inline {
-  margin-top: 4px;
-  padding: 8px 0;
-  font-size: 11px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.metrics-inline-label {
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-right: 4px;
-}
-
-.metrics-inline-item {
-  color: var(--text-secondary);
-}
-
-.metrics-inline-sep {
-  color: rgba(255, 255, 255, 0.1);
-  font-size: 8px;
-}
-
-@keyframes thoughtIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 </style>

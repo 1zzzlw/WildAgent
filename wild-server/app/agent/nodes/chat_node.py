@@ -6,7 +6,7 @@ Layer -1: RAG 知识问答节点
 
 特性：
 - 多角度 RAG 检索（建筑类型、构件规则、设计原则）
-- 流式输出回复内容到前端
+- 输出正式回答，不把回答正文混入思考事件
 - 不消耗 thinking tokens
 """
 import time as _time
@@ -38,11 +38,10 @@ _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精�
 
 async def chat_node(state: dict) -> dict:
     """RAG 知识问答：全面扫描知识库 + LLM 生成专业回答"""
-
+    # 计算回答总耗时
     t0 = _time.time()
-    user_message = state.get("user_message", "")
-    on_reasoning_delta = state.get("on_reasoning_delta")
 
+    user_message = state.get("user_message", "")
     logger.info(f"[chat] 知识问答: {user_message[:80]}...")
 
     # ── 1. 全面 RAG 检索 ──
@@ -66,9 +65,7 @@ async def chat_node(state: dict) -> dict:
 
     # ── 2. LLM 生成回答 ──
     system_prompt = _CHAT_SYSTEM_PROMPT.format(spec_text=spec_text)
-    use_streaming = on_reasoning_delta is not None
-
-    llm = create_llm(enable_thinking=False, streaming=use_streaming)
+    llm = create_llm(enable_thinking=False, streaming=False)
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -80,39 +77,16 @@ async def chat_node(state: dict) -> dict:
     token_usage = None
 
     try:
-        if use_streaming:
-            async for chunk in llm.astream(messages):
-                if hasattr(chunk, "content") and chunk.content:
-                    delta = chunk.content
-                    reply_text += delta
-                    # 流式推送给前端（使用 chat_reply 作为 node_name）
-                    await on_reasoning_delta("chat", delta)
-                # 捕获 token usage
-                if hasattr(chunk, "response_metadata") and chunk.response_metadata:
-                    usage = chunk.response_metadata.get("usage")
-                    if usage:
-                        token_usage = {
-                            "input": usage.get("prompt_tokens", 0),
-                            "output": usage.get("completion_tokens", 0),
-                            "total": usage.get("total_tokens", 0),
-                        }
-                if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
-                    token_usage = {
-                        "input": chunk.usage_metadata.get("input_tokens", 0),
-                        "output": chunk.usage_metadata.get("output_tokens", 0),
-                        "total": chunk.usage_metadata.get("total_tokens", 0),
-                    }
-        else:
-            response = await llm.ainvoke(messages)
-            reply_text = response.content if hasattr(response, "content") else str(response)
-            if hasattr(response, "response_metadata"):
-                usage = response.response_metadata.get("token_usage", {})
-                if usage:
-                    token_usage = {
-                        "input": usage.get("prompt_tokens", 0),
-                        "output": usage.get("completion_tokens", 0),
-                        "total": usage.get("total_tokens", 0),
-                    }
+        response = await llm.ainvoke(messages)
+        reply_text = response.content if hasattr(response, "content") else str(response)
+        if hasattr(response, "response_metadata"):
+            usage = response.response_metadata.get("token_usage", {})
+            if usage:
+                token_usage = {
+                    "input": usage.get("prompt_tokens", 0),
+                    "output": usage.get("completion_tokens", 0),
+                    "total": usage.get("total_tokens", 0),
+                }
 
     except Exception as e:
         logger.error(f"[chat] LLM 调用失败: {e}")

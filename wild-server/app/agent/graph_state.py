@@ -21,11 +21,16 @@ class GenerationState(TypedDict, total=False):
     on_reasoning_delta: Callable[[str, str], Awaitable[None]] | None
 
     # ── Layer -1: 意图分类 ──
-    intent: str  # "generate" | "chat"
+    intent: str  # "generate" | "edit" | "chat"
 
     # ── Layer -1: 知识问答输出 ──
     chat_reply: str       # 知识问答的文本回复
     chat_diag: dict       # 知识问答的诊断数据
+
+    # ── Layer -1: 增量修改输出 ──
+    scene_patch: dict
+    patch_reply: str
+    patch_diag: dict
 
     # ── Layer 0: 骨架 ──
     skeleton_blueprint: dict
@@ -76,6 +81,9 @@ class GenerationState(TypedDict, total=False):
     merged_blueprint: dict
     merge_diag: dict  # 合并节点的校验→修复循环诊断
     validation_results: list[dict]
+    validation_issues: list[dict]
+    validation_error_count: int
+    validation_warning_count: int
     failed_components: list[dict]
     passed_component_ids: list[str]
     retry_count: int
@@ -84,6 +92,7 @@ class GenerationState(TypedDict, total=False):
 
     # ── 回调上下文 ──
     callback_context: dict
+    repair_audit: dict
 
     # ── 最终输出 ──
     final_blueprint: dict

@@ -93,6 +93,8 @@ export interface BehaviorsSection {
 
 export interface EditorMetadata {
   version?: string
+  /** 场景版本号，随 save/load 持久化，供 AI 生成/加载后保持 revision 连续性 */
+  revision?: number
   groups?: Record<string, EditorGroup>
   view?: EditorView
   agent?: AgentMetadata

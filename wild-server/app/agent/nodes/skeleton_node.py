@@ -12,7 +12,13 @@ from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
 from app.spec.loader import SpecQuery
-from app.tools.spatial_tools import get_wall_bounding_box
+from app.tools.spatial_tools import (
+    fix_element_dimensions,
+    fix_material_references,
+    get_wall_bounding_box,
+    validate_element_dimensions,
+    validate_reference_integrity,
+)
 from app.utils.blueprint_parser import (
     extract_blueprint_from_text,
     normalize_blueprint_input,
@@ -28,11 +34,12 @@ async def skeleton_generator(state: GenerationState) -> dict:
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = state.get("on_reasoning_delta")
-    
+
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
 
     # ── 1. RAG 检索（专注建筑类型知识）──
     rag_t0 = _time.time()
+
     queries = [
         # 主查询：建筑类型特征（如"欧式别墅"、"中式庭院"）
         SpecQuery(user_message, {"doc_type": "building_type"}),
@@ -133,6 +140,20 @@ async def skeleton_generator(state: GenerationState) -> dict:
     design_brief = _parse_design_brief(reply_text)
     blueprint = extract_blueprint_from_text(reply_text)
 
+    # 部分 OpenAI-compatible 模型在流式思考模式下会把最终结构化输出放进
+    # reasoning_content，而 content 为空。只在正常 content 提取失败时回退，
+    # 避免“界面看得到 JSON、服务端却判定 Blueprint 缺失”。
+    used_reasoning_fallback = False
+    if not blueprint and reasoning:
+        blueprint = extract_blueprint_from_text(reasoning)
+        if blueprint:
+            used_reasoning_fallback = True
+            suggested_components = (
+                suggested_components or _parse_components_from_reply(reasoning)
+            )
+            design_brief = design_brief or _parse_design_brief(reasoning)
+            logger.warning("[skeleton] 最终 Blueprint 来自 reasoning_content 兼容回退")
+
     if not blueprint:
         logger.error("[skeleton] 未能提取 Blueprint JSON")
         return {
@@ -169,6 +190,58 @@ async def skeleton_generator(state: GenerationState) -> dict:
             },
         }
 
+    # 模型偶尔把 wall.to[1] 写成与 from[1] 相同，导致墙高为 0。组件节点若继续
+    # 使用这种骨架，门窗无论重试多少次都不可能落入父墙。派发组件前先确定性补全。
+    dimension_fix_fn = getattr(fix_element_dimensions, "func", fix_element_dimensions)
+    dimension_validate_fn = getattr(
+        validate_element_dimensions,
+        "func",
+        validate_element_dimensions,
+    )
+    dimension_fix_output = dimension_fix_fn(blueprint)
+    dimension_validation = dimension_validate_fn(blueprint)
+    if "❌" in dimension_validation:
+        logger.warning(f"[skeleton] 几何尺寸预检失败: {dimension_validation}")
+        return {
+            "error": f"骨架几何预检未通过: {dimension_validation}",
+            "status": "failed",
+            "skeleton_diag": {
+                "rag_chars": rag_chars,
+                "rag_ms": rag_ms,
+                "prompt_chars": prompt_chars,
+                "llm_chars": llm_chars,
+                "llm_ms": llm_ms,
+                "token_usage": token_usage,
+                "dimension_fix": dimension_fix_output,
+                "dimension_validation": dimension_validation,
+            },
+        }
+
+    material_fix_fn = getattr(fix_material_references, "func", fix_material_references)
+    reference_validate_fn = getattr(
+        validate_reference_integrity,
+        "func",
+        validate_reference_integrity,
+    )
+    material_fix_output = material_fix_fn(blueprint)
+    reference_validation = reference_validate_fn(blueprint)
+    if "❌" in reference_validation:
+        logger.warning(f"[skeleton] 引用预检失败: {reference_validation}")
+        return {
+            "error": f"骨架引用预检未通过: {reference_validation}",
+            "status": "failed",
+            "skeleton_diag": {
+                "rag_chars": rag_chars,
+                "rag_ms": rag_ms,
+                "prompt_chars": prompt_chars,
+                "llm_chars": llm_chars,
+                "llm_ms": llm_ms,
+                "token_usage": token_usage,
+                "material_fix": material_fix_output,
+                "reference_validation": reference_validation,
+            },
+        }
+
     # ── 6. 工具调用：计算墙体包围盒 ──
     bbox_result = {}
     try:
@@ -187,7 +260,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     logger.info(f"[skeleton] 骨架生成完成: {len(elements)} 个构件, 建议组件: {suggested_components}, {total_ms}ms")
     if design_brief:
         quota = design_brief.get("component_quota", {})
-        logger.info(f"[skeleton] 设计清单: {_json.dumps(quota, ensure_ascii=False, default=str)}")
+        logger.info(f"[skeleton] 设计清单: {json.dumps(quota, ensure_ascii=False, default=str)}")
 
     return {
         "skeleton_blueprint": blueprint,
@@ -204,7 +277,10 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "token_usage": token_usage,
             "reasoning_chars": reasoning_chars,
             "reasoning_preview": reasoning[:800] if reasoning else "",
+            "reasoning_fallback": used_reasoning_fallback,
             "element_count": len(elements),
+            "dimension_fix": dimension_fix_output,
+            "material_fix": material_fix_output,
             "total_ms": total_ms,
         },
     }
@@ -215,19 +291,25 @@ def _parse_design_brief(reply_text: str) -> dict | None:
     import re
     import json as _json
 
-    m = re.search(r'DESIGN_BRIEF:\s*(\{[\s\S]*?\})\s*(?:$|\n\n)', reply_text)
-    if not m:
-        logger.warning("[skeleton] 未找到 DESIGN_BRIEF: 标记，骨架不会传递设计约束")
-        return None
-
-    try:
-        brief = _json.loads(m.group(1))
+    decoder = _json.JSONDecoder()
+    for marker in re.finditer(r'DESIGN_BRIEF:\s*', reply_text):
+        tail = reply_text[marker.end():].lstrip()
+        if not tail.startswith("{"):
+            continue
+        try:
+            brief, _ = decoder.raw_decode(tail)
+        except _json.JSONDecodeError:
+            continue
+        if not isinstance(brief, dict):
+            continue
+        if "facade_plan" not in brief and "component_quota" not in brief:
+            continue
         logger.info(f"[skeleton] 解析 DESIGN_BRIEF 成功: facade_plan={len(brief.get('facade_plan', {}))}面墙, "
-                     f"component_quota={list(brief.get('component_quota', {}).keys())}")
+                    f"component_quota={list(brief.get('component_quota', {}).keys())}")
         return brief
-    except _json.JSONDecodeError as e:
-        logger.warning(f"[skeleton] DESIGN_BRIEF JSON 解析失败: {e}")
-        return None
+
+    logger.warning("[skeleton] 未找到可解析的 DESIGN_BRIEF，骨架不会传递设计约束")
+    return None
 
 
 def _parse_components_from_reply(reply_text: str) -> list[str]:
@@ -236,18 +318,21 @@ def _parse_components_from_reply(reply_text: str) -> list[str]:
     valid_types = {"door", "window", "roof", "railing", "canopy",
                    "balcony", "light", "ramp", "bay_window", "cornice", "chimney", "stair"}
 
-    m = re.search(r'_components:\s*(.+)', reply_text)
-    if not m:
-        return []
-
-    raw = m.group(1).strip()
-    components = []
-    for token in re.split(r'[,，\s]+', raw):
-        token = token.strip().lower()
-        if token in valid_types and token not in components:
-            components.append(token)
-
-    return components
+    for match in re.finditer(r'_components:\s*(.+)', reply_text):
+        raw = match.group(1).strip()
+        first_token = re.split(r'[,，\s]+', raw, maxsplit=1)[0].strip().lower()
+        # 只接受标记后直接跟组件 ID 的正式行；跳过“_components: 格式要求”
+        # 或“_components: 列表（...）”等思考过程中的提及。
+        if first_token not in valid_types:
+            continue
+        components = []
+        for token in re.split(r'[,，\s]+', raw):
+            token = token.strip().lower()
+            if token in valid_types and token not in components:
+                components.append(token)
+        if components:
+            return components
+    return []
 
 
 def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -> str:
@@ -258,6 +343,7 @@ def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -
     floors = [e for e in elements if e.get("type") == "floor"]
     columns = [e for e in elements if e.get("type") == "column"]
     stairs = [e for e in elements if e.get("type") == "stair"]
+    materials = blueprint.get("materials", {})
 
     lines = [f"当前场景包含 {len(elements)} 个结构元素："]
     
@@ -315,6 +401,13 @@ def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -
             width = s.get("width", 1.0)
             lines.append(f"  - [{sid}] from={frm} to={to}, width={width:.2f}m")
 
+    if materials:
+        material_names = ", ".join(sorted(materials))
+        lines.append(
+            f"\n【可用材质 ID】：{material_names}\n"
+            "组件的 material/frameMaterial/leafMaterial/glassMaterial 只能引用以上 ID。"
+        )
+
     # ── 设计清单（来自 DESIGN_BRIEF）──
     if design_brief:
         lines.append("\n【设计清单 — 来自骨架设计规划】：")
@@ -348,10 +441,16 @@ def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -
     # ── 门/窗定位基本规则 ──
     if walls:
         lines.append("\n【门/窗定位基本规则】：")
-        lines.append("  1. from[0] = 沿墙距离(m)，from[1] = 离地高度(门=0, 窗=0.9~1.1)")
+        lines.append(
+            "  1. from[0] = 沿墙距离(m)；from[1] = 底部世界Y："
+            "门=父墙底Y，窗=父墙底Y+0.9~1.1m"
+        )
         lines.append("  2. 门宽 0.9~1.2m，高 2.0~2.4m；窗宽 1.0~2.0m，高 1.2~1.8m")
         lines.append("  3. 开口边缘距墙角 ≥0.3m，相邻开口间距 ≥0.5m")
-        lines.append("  4. from 第3个坐标(z或x)必须与 parentWall 的平面坐标一致（如背墙z=6则from[2]=6）")
+        lines.append(
+            "  4. from=[沿墙距离, 底部世界Y, 局部法向偏移]；from[2] 不是世界 X/Z。"
+            "门窗通常必须为 0（即使背墙世界 z=6，仍写 from[2]=0）"
+        )
         lines.append("  5. facade_plan 中 max_openings=0 的墙面不要放置任何开口")
 
     return "\n".join(lines)

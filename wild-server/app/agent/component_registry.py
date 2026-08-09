@@ -1,7 +1,7 @@
 """
 组件注册表 —— 所有组件类型的元数据中心
 
-基于 wild-compiler/componentRegistry.ts 的 10 种已注册组件。
+基于 wild-compiler/componentRegistry.ts 的已注册组件。
 新增组件只需在此添加一行配置。
 所有 10 种组件均已实现（Phase 2 扩展完成）。
 """
@@ -62,7 +62,7 @@ _COMPONENT_RULES: dict[str, str] = {
         "- 如果建筑有明确的「入口」、「主入口」语义，只生成 1 个门\n"
     ),
     "window": (
-        "- from[0] 是沿墙距离，from[1] 是离地高度（通常 0.8~1.0m）\n"
+        "- from[0] 是沿墙距离；from[1] 是底部世界 Y（父墙底 Y + 通常 0.8~1.0m 的窗台高度）\n"
         "- verticalMullions 范围 0~32，horizontalMullions 范围 0~32\n"
         "- width 建议 0.8~2.0m，height 建议 1.0~2.0m\n"
         "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
@@ -130,7 +130,7 @@ _COMPONENT_RULES: dict[str, str] = {
 }
 
 
-# ── 注册表：全部 10 种组件（全部已实现）──
+# ── 注册表：全部组件（均已实现）──
 
 COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
     # ── P0: 建筑三要素 ──
@@ -298,3 +298,44 @@ def get_implemented_components() -> list[ComponentConfig]:
 def get_component_config(component_type: str) -> ComponentConfig | None:
     """获取指定类型的组件配置"""
     return COMPONENT_REGISTRY.get(component_type)
+
+
+def resolve_component_suggestions(
+    suggested: list[str],
+    user_message: str,
+) -> list[str]:
+    """把模型建议归一化为可安全派发的组件列表。
+
+    - 丢弃未注册或未实现的类型，避免 ``Send`` 派发到不存在的节点。
+    - 尊重每个组件的否定关键词。
+    - 当骨架没有给出建议时，保留门、窗、屋顶三个基础组件，并按关键词补充。
+    - 阳台编译器已经内嵌栏杆；用户没有单独要求栏杆时避免重复生成。
+    """
+    requested = [item for item in suggested if isinstance(item, str)]
+    if not requested:
+        requested = ["door", "window", "roof"]
+        requested.extend(
+            config.component_type
+            for config in get_implemented_components()
+            if any(keyword in user_message for keyword in config.need_keywords)
+        )
+
+    resolved: list[str] = []
+    for component_type in requested:
+        config = COMPONENT_REGISTRY.get(component_type)
+        if config is None or not config.implemented:
+            continue
+        if any(keyword in user_message for keyword in config.skip_keywords):
+            continue
+        if component_type not in resolved:
+            resolved.append(component_type)
+
+    # “阳台/楼梯”会触发栏杆的自动建议，但不代表用户要求再生成一个独立栏杆。
+    # balcony 编译器已有内嵌栏杆，只有明确提到栏杆语义时才保留两者。
+    railing_explicitly_requested = any(
+        keyword in user_message for keyword in ("栏杆", "护栏", "扶手")
+    )
+    if "balcony" in resolved and "railing" in resolved and not railing_explicitly_requested:
+        resolved.remove("railing")
+
+    return resolved

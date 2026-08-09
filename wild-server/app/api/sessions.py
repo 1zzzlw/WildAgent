@@ -9,6 +9,8 @@ DELETE /api/sessions/{session_id}          — 删除会话及其蓝图文件
 
 POST   /api/sessions/{session_id}/messages — 追加消息
 GET    /api/sessions/{session_id}/messages — 获取消息历史
+PUT    /api/sessions/{session_id}/turns    — 替换 Agent Turn 历史
+GET    /api/sessions/{session_id}/turns    — 获取 Agent Turn 历史
 
 存储结构：
   storage/sessions/
@@ -70,23 +72,25 @@ def _find_blueprint_for_session(session_id: str) -> Optional[dict]:
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
     for wild_file in SCENES_DIR.rglob("*.wild"):
         basename = wild_file.stem  # 如 "session_1234567890_建筑名"
-        if basename.startswith(session_id):
-            rel = wild_file.relative_to(SCENES_DIR).as_posix()
-            try:
-                data = json.loads(wild_file.read_text(encoding="utf-8"))
-                name = data.get("meta", {}).get("name", basename)
-                geometry = data.get("geometry", {})
-                elements_count = len(geometry.get("elements", []))
-                components_count = len(geometry.get("components", []))
-                return {
-                    "filename": rel,
-                    "name": name,
-                    "elements_count": elements_count,
-                    "components_count": components_count,
-                    "updated_at": int(wild_file.stat().st_mtime * 1000),
-                }
-            except (json.JSONDecodeError, KeyError, ValueError):
-                pass
+        # 精确匹配本会话，避免 session_123 误命中 session_1234 的文件
+        if basename != session_id and not basename.startswith(session_id + "_"):
+            continue
+        rel = wild_file.relative_to(SCENES_DIR).as_posix()
+        try:
+            data = json.loads(wild_file.read_text(encoding="utf-8"))
+            name = data.get("meta", {}).get("name", basename)
+            geometry = data.get("geometry", {})
+            elements_count = len(geometry.get("elements", []))
+            components_count = len(geometry.get("components", []))
+            return {
+                "filename": rel,
+                "name": name,
+                "elements_count": elements_count,
+                "components_count": components_count,
+                "updated_at": int(wild_file.stat().st_mtime * 1000),
+            }
+        except (json.JSONDecodeError, KeyError, ValueError):
+            pass
     return None
 
 
@@ -103,6 +107,7 @@ def _build_session_info(session_id: str, meta: dict) -> dict:
         "elements_count": bp.get("elements_count", 0) if bp else meta.get("elements_count", 0),
         "components_count": bp.get("components_count", 0) if bp else meta.get("components_count", 0),
         "message_count": len(meta.get("messages", [])),
+        "turn_count": len(meta.get("turns", [])),
         "status": "saved" if bp else ("draft" if meta.get("messages") else "draft"),
     }
 
@@ -217,18 +222,20 @@ async def delete_session(session_id: str):
     if meta_path.exists():
         meta_path.unlink()
 
-    # 删除关联的蓝图文件
+    # 删除关联的蓝图文件（精确匹配本会话，避免误删前缀相似的会话文件）
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
     deleted_files = []
     for wild_file in SCENES_DIR.rglob("*.wild"):
-        if wild_file.stem.startswith(session_id):
-            wild_file.unlink()
-            deleted_files.append(wild_file.relative_to(SCENES_DIR).as_posix())
-            # 清理空目录
-            try:
-                wild_file.parent.rmdir()
-            except OSError:
-                pass
+        basename = wild_file.stem
+        if basename != session_id and not basename.startswith(session_id + "_"):
+            continue
+        wild_file.unlink()
+        deleted_files.append(wild_file.relative_to(SCENES_DIR).as_posix())
+        # 清理空目录
+        try:
+            wild_file.parent.rmdir()
+        except OSError:
+            pass
 
     logger.info(f"[sessions] 删除会话 {session_id}, 蓝图文件: {deleted_files}")
     return JSONResponse(content={
@@ -243,6 +250,8 @@ async def delete_session(session_id: str):
 # ═══════════════════════════════════════════════════════════════════
 
 MAX_MESSAGES_PER_SESSION = 200
+MAX_TURNS_PER_SESSION = 100
+SERVER_INSTANCE_ID = uuid.uuid4().hex
 
 
 @router.get("/{session_id}/messages")
@@ -273,7 +282,18 @@ async def add_messages(session_id: str, request: Request):
 
     new_messages = body if isinstance(body, list) else [body]
     messages = meta.get("messages", [])
-    messages.extend(new_messages)
+
+    # 按消息 id 去重：前端每次同步会传完整消息数组，纯 extend 会导致刷新后消息重复累积
+    existing_ids = {m.get("id") for m in messages if isinstance(m, dict) and m.get("id")}
+    for message in new_messages:
+        if not isinstance(message, dict):
+            continue
+        message_id = message.get("id")
+        if message_id and message_id in existing_ids:
+            continue
+        messages.append(message)
+        if message_id:
+            existing_ids.add(message_id)
 
     # 限制最大消息数
     if len(messages) > MAX_MESSAGES_PER_SESSION:
@@ -285,4 +305,86 @@ async def add_messages(session_id: str, request: Request):
     return JSONResponse(content={
         "status": "ok",
         "message_count": len(messages),
+    })
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Agent Turn 管理
+# ═══════════════════════════════════════════════════════════════════
+
+def _normalize_turns(turns: object, *, interrupt_running: bool) -> tuple[list[dict], bool]:
+    """过滤不可信 Turn，并在恢复时把遗留 running 状态标记为中断。"""
+    if not isinstance(turns, list):
+        return [], False
+
+    normalized: list[dict] = []
+    changed = False
+    now = int(time.time() * 1000)
+    for value in turns[-MAX_TURNS_PER_SESSION:]:
+        if not isinstance(value, dict):
+            changed = True
+            continue
+        request_id = value.get("request_id")
+        if not isinstance(request_id, str) or not request_id:
+            changed = True
+            continue
+        turn = dict(value)
+        if (
+            interrupt_running
+            and turn.get("status") == "running"
+            and turn.get("server_instance_id") != SERVER_INSTANCE_ID
+        ):
+            turn["status"] = "error"
+            turn["completed_at"] = now
+            turn["interruption_reason"] = "页面刷新或连接中断，任务状态无法继续恢复"
+            turn["thinking_status"] = "error"
+            for step in turn.get("steps", []):
+                if isinstance(step, dict) and step.get("status") == "running":
+                    step["status"] = "error"
+            changed = True
+        normalized.append(turn)
+    return normalized, changed
+
+
+@router.get("/{session_id}/turns")
+async def get_turns(session_id: str):
+    """获取执行轮次；服务重启或刷新遗留的 running Turn 会恢复为已中断。"""
+    meta = _read_session_meta(session_id)
+    if meta is None:
+        return JSONResponse(content=[])
+    turns, changed = _normalize_turns(meta.get("turns", []), interrupt_running=True)
+    if changed:
+        meta["turns"] = turns
+        _write_session_meta(session_id, meta)
+    return JSONResponse(content=turns)
+
+
+@router.put("/{session_id}/turns")
+async def replace_turns(session_id: str, request: Request):
+    """用前端当前快照替换 Turn 历史，按 request_id 去重。"""
+    meta = _read_session_meta(session_id)
+    if meta is None:
+        meta = {
+            "name": "新建筑",
+            "created_at": int(time.time() * 1000),
+            "messages": [],
+        }
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="请求体必须是有效的 JSON")
+
+    raw_turns = body.get("turns", []) if isinstance(body, dict) else body
+    turns, _ = _normalize_turns(raw_turns, interrupt_running=False)
+    for turn in turns:
+        if turn.get("status") == "running":
+            turn["server_instance_id"] = SERVER_INSTANCE_ID
+        else:
+            turn.pop("server_instance_id", None)
+    deduplicated = {turn["request_id"]: turn for turn in turns}
+    meta["turns"] = list(deduplicated.values())[-MAX_TURNS_PER_SESSION:]
+    _write_session_meta(session_id, meta)
+    return JSONResponse(content={
+        "status": "ok",
+        "turn_count": len(meta["turns"]),
     })

@@ -41,6 +41,7 @@ from app.spec.loader import (
 from app.tools.spatial_tools import (
     fix_element_dimensions,
     fix_element_elevations,
+    fix_material_references,
     fix_opening_coords,
     fix_opening_fit,
     fix_roof_coverage,
@@ -205,7 +206,18 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     r2 = run_step(2, "validate_element_required_fields", validate_element_required_fields, blueprint)
 
     # ── Step 3: 引用完整性 ──
-    run_step(3, "validate_reference_integrity", validate_reference_integrity, blueprint)
+    r3 = run_step(3, "validate_reference_integrity", validate_reference_integrity, blueprint)
+    if r3.has_error:
+        fix_output = _run_tool(fix_material_references, blueprint)
+        results.append(PipelineStepResult(
+            step="3b", name="fix_material_references", output=fix_output,
+            has_error="❌" in fix_output, has_warning="⚠️" in fix_output,
+        ))
+        reference_output = _run_tool(validate_reference_integrity, blueprint)
+        results.append(PipelineStepResult(
+            step="3c", name="validate_reference_integrity [recheck]", output=reference_output,
+            has_error="❌" in reference_output, has_warning="⚠️" in reference_output,
+        ))
 
     if r2.has_error:
         for s, n in [
@@ -487,6 +499,7 @@ class AgentService:
             validate_stair_alignment,
             validate_roof_coverage,
             validate_element_dimensions,
+            fix_material_references,
             fix_element_dimensions,
             fix_element_elevations,
             fix_opening_coords,

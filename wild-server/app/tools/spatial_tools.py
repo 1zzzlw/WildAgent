@@ -26,6 +26,11 @@ import math
 from langchain.tools import tool
 
 
+# 门窗洞口必须与父墙中心面保持接近；超过该值通常意味着 LLM 把世界 X/Z
+# 误写进了局部法向偏移 from[2]。
+MAX_OPENING_NORMAL_OFFSET = 0.25
+
+
 # 辅助函数 —— 不对外暴露，只在本模块内复用
 def _get_elements(bp: dict) -> list[dict]:
     """安全获取 elements 列表"""
@@ -94,6 +99,49 @@ def _wall_vertical_range(wall: dict) -> tuple[float, float]:
     if isinstance(height, (int, float)) and not isinstance(height, bool) and height > 0:
         return bottom, bottom + float(height)
     return bottom, max(float(start[1]), float(end[1]))
+
+
+def _infer_story_height(elements: list[dict]) -> float:
+    """从楼板标高和已有墙高中推断常用层高；信息不足时使用 3m。"""
+    candidates: list[float] = []
+    floor_levels = sorted({
+        float(coord[1])
+        for element in elements
+        if element.get("type") == "floor"
+        for coord in (element.get("from"), element.get("to"))
+        if _is_finite_vector3(coord)
+    })
+    candidates.extend(
+        upper - lower
+        for lower, upper in zip(floor_levels, floor_levels[1:])
+        if 1.8 <= upper - lower <= 6.0
+    )
+    for element in elements:
+        if element.get("type") != "wall":
+            continue
+        start = element.get("from")
+        end = element.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        height = abs(float(end[1]) - float(start[1]))
+        if 1.8 <= height <= 6.0:
+            candidates.append(height)
+    if not candidates:
+        return 3.0
+    candidates.sort()
+    return candidates[len(candidates) // 2]
+
+
+def _infer_wall_top(elements: list[dict], bottom: float) -> float:
+    """优先对齐上一层楼板；顶层墙则沿用推断出的常用层高。"""
+    upper_floors = sorted({
+        float(coord[1])
+        for element in elements
+        if element.get("type") == "floor"
+        for coord in (element.get("from"), element.get("to"))
+        if _is_finite_vector3(coord) and 0.1 < float(coord[1]) - bottom <= 50.0
+    })
+    return upper_floors[0] if upper_floors else bottom + _infer_story_height(elements)
 
 
 def _is_structural_wall(wall: dict) -> bool:
@@ -203,9 +251,9 @@ def validate_opening_coords(blueprint: dict) -> str:
     """
     检查所有 opening（门窗洞口）的 from 字段是否正确使用了沿墙距离格式。
 
-    正确格式：from = [沿墙距离, 距墙底高度, 法向偏移]
+    正确格式：from = [沿墙距离, 底部世界Y, 法向偏移]
       沿墙距离：从 parentWall.from 点开始，沿墙体方向的偏移量（米）
-      距墙底高度：从墙底向上的高度（米）
+      底部世界Y：门窗底边在场景中的世界高度（米）
       法向偏移：垂直于墙面的偏移，默认 0
 
     错误格式：from = [世界坐标X, 高度Y, 世界坐标Z]
@@ -215,48 +263,58 @@ def validate_opening_coords(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        component
+        for component in components
+        if component.get("type") in {"door", "window"}
+    ]
 
-    if not openings:
-        return "✅ 没有 opening 构件，跳过检查。"
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过检查。"
 
     issues: list[str] = []
-    for op in openings:
+    for op in openings + door_windows:
         oid = op.get("id", "?")
+        prefix = "component:" if op.get("type") in {"door", "window"} else ""
         parent_id = op.get("parentWall", "")
         from_vec = op.get("from", [0, 0, 0])
 
         if not parent_id:
-            issues.append(f"❌ [{oid}] 缺少 parentWall 字段")
+            issues.append(f"❌ [{prefix}{oid}] 缺少 parentWall 字段")
             continue
 
         parent = walls.get(parent_id)
         if not parent:
-            issues.append(f"❌ [{oid}] parentWall='{parent_id}' 不存在于 elements 中")
+            issues.append(f"❌ [{prefix}{oid}] parentWall='{parent_id}' 不存在于 elements 中")
             continue
 
         wl = _wall_length(parent)
         # 类型保护：将 from_vec 安全转为 float 列表，捕获 LLM 输出的非数值坐标
         try:
-            coords = _safe_coords(from_vec, f"[{oid}] from")
+            coords = _safe_coords(from_vec, f"[{prefix}{oid}] from")
+            if len(coords) != 3:
+                raise ValueError(f"必须包含 3 个坐标，实际为 {len(coords)} 个")
             along_dist = coords[0] if len(coords) >= 1 else 0.0
             normal_offset = coords[2] if len(coords) >= 3 else 0.0
         except ValueError as e:
-            issues.append(f"❌ [{oid}] from 字段格式错误: {e}")
+            issues.append(f"❌ [{prefix}{oid}] from 字段格式错误: {e}")
             continue
 
         # 沿墙距离检查
         if along_dist < -0.3 or along_dist > wl + 0.3:
             issues.append(
-                f"⚠️  [{oid}] from[0]={along_dist} 超出墙体长度 [0, {wl:.1f}]。"
+                f"❌ [{prefix}{oid}] from[0]={along_dist} 超出墙体长度 [0, {wl:.1f}]。"
                 f"可能使用了世界坐标而非沿墙距离。"
                 f"parentWall='{parent_id}' 从 {parent['from']} 到 {parent['to']}。"
             )
 
         # 法向偏移检查
-        if abs(normal_offset) > 0.5:
+        if abs(normal_offset) > MAX_OPENING_NORMAL_OFFSET:
             issues.append(
-                f"⚠️  [{oid}] from[2]={normal_offset} 法向偏移偏大，"
-                f"通常应为 0（门窗在墙面上）"
+                f"❌ [{prefix}{oid}] from[2]={normal_offset} 法向偏移超出 "
+                f"±{MAX_OPENING_NORMAL_OFFSET}m；该字段是局部法向偏移，不是父墙世界 X/Z，"
+                "门窗通常应为 0"
             )
 
     if not issues:
@@ -715,13 +773,20 @@ def fix_opening_coords(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [
+        component
+        for component in components
+        if component.get("type") in {"door", "window"}
+    ]
 
-    if not openings:
-        return "✅ 没有 opening 需要修正。"
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件需要修正。"
 
     fixes: list[str] = []
-    for op in openings:
+    for op in openings + door_windows:
         oid = op.get("id", "?")
+        prefix = "component:" if op.get("type") in {"door", "window"} else ""
         parent_id = op.get("parentWall", "")
         from_vec = op.get("from", [0, 0, 0])
 
@@ -729,41 +794,58 @@ def fix_opening_coords(blueprint: dict) -> str:
         if not parent:
             continue
 
+        try:
+            coords = _safe_coords(from_vec, f"[{prefix}{oid}] from")
+            if len(coords) != 3:
+                continue
+        except ValueError:
+            continue
+
+        # 统一为可原地修改的三元列表，避免外部调用传入 tuple 时修复失败。
+        op["from"] = list(coords)
+
         wl = _wall_length(parent)
-        along_dist = float(from_vec[0])
-
-        # 判断是否可能在合理范围外
-        if -0.3 <= along_dist <= wl + 0.3:
-            continue  # 已经在合理范围
-
-        # 尝试换算
+        along_dist = coords[0]
+        normal_offset = coords[2]
         wf = parent.get("from", [0, 0, 0])
         dx, dz = _wall_direction_xz(parent)
+        changes: list[str] = []
 
-        # 计算当前 from_vec 在墙起点基础上的偏移
-        world_x = float(from_vec[0])
-        world_z = float(from_vec[2]) if len(from_vec) > 2 else 0.0
+        # from[2] 明显偏大时，整组坐标很可能是世界 [X,Y,Z]。先将世界点
+        # 投影到父墙，恢复正确的沿墙距离，再把局部法向偏移归零。
+        if abs(normal_offset) > MAX_OPENING_NORMAL_OFFSET:
+            projected_along = (
+                (coords[0] - float(wf[0])) * dx
+                + (coords[2] - float(wf[2])) * dz
+            )
+            if -0.3 <= projected_along <= wl + 0.3:
+                new_along = max(0.0, min(projected_along, wl))
+                if abs(new_along - along_dist) > 1e-6:
+                    op["from"][0] = round(new_along, 2)
+                    changes.append(f"from[0] {along_dist:.2f} → {new_along:.2f}（世界坐标投影）")
+                    along_dist = new_along
+            op["from"][2] = 0.0
+            changes.append(f"from[2] {normal_offset:.2f} → 0（贴合父墙中心面）")
 
-        if abs(dx) > abs(dz):
-            # 墙体主要沿 X 方向
-            new_along = (world_x - wf[0]) if dx > 0 else (wf[0] - world_x)
-        else:
-            # 墙体主要沿 Z 方向
-            new_along = (world_z - wf[2]) if dz > 0 else (wf[2] - world_z)
+        # 沿墙距离本身越界时，也按世界点到父墙方向的投影尝试恢复。
+        if along_dist < -0.3 or along_dist > wl + 0.3:
+            projected_along = (
+                (coords[0] - float(wf[0])) * dx
+                + (coords[2] - float(wf[2])) * dz
+            )
+            new_along = max(0.1, min(projected_along, wl - 0.1))
+            op["from"][0] = round(new_along, 2)
+            changes.append(f"from[0] {along_dist:.2f} → {new_along:.2f}（沿墙距离）")
 
-        new_along = max(0.1, min(abs(new_along), wl - 0.1))
-
-        old_val = from_vec[0]
-        op["from"][0] = round(new_along, 2)
-
-        fixes.append(
-            f"🔧 [{oid}]: from[0] {old_val} → {new_along:.2f}（沿墙距离）\n"
-            f"   parentWall='{parent_id}' 墙长={wl:.1f} 方向={'X' if abs(dx) > abs(dz) else 'Z'}"
-        )
+        if changes:
+            fixes.append(
+                f"🔧 [{prefix}{oid}]: " + "; ".join(changes)
+                + f"；parentWall='{parent_id}' 墙长={wl:.1f}m"
+            )
 
     if not fixes:
-        return "✅ 所有 opening 坐标已在合理范围，无需修正。"
-    return "已自动修正以下 opening 坐标：\n" + "\n".join(fixes)
+        return "✅ 所有 opening/门窗组件坐标已在合理范围，无需修正。"
+    return "已自动修正以下 opening/门窗组件坐标：\n" + "\n".join(fixes)
 
 
 # 引用完整性校验 —— Step 3 in pipeline
@@ -778,6 +860,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
       2. geometry.instances[*].templateId 必须存在于 geometry.templates
       3. behaviors.physics.constraints[*].target 必须是已存在的构件 id
       4. 不允许循环引用（template 引用自身）
+      5. 构件声明的材质 ID 必须存在于 Blueprint.materials
 
     参数 blueprint: 完整的 Blueprint dict
     """
@@ -785,7 +868,6 @@ def validate_reference_integrity(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     element_ids = {el.get("id") for el in elements if el.get("id")}
     wall_ids = {el.get("id") for el in elements if el.get("type") == "wall"}
-    wall_map = {el["id"]: el for el in elements if el.get("type") == "wall"}
     components = blueprint.get("geometry", {}).get("components", []) or []
 
     # --- 1. opening.parentWall 校验 ---
@@ -803,7 +885,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
                 f"❌ [{eid}] parentWall='{parent}' 引用的构件不是 wall 类型"
             )
 
-    # --- 1b. door/window 组合构件的 parentWall 校验 + 越界检测 ---
+    # --- 1b. door/window 组合构件的 parentWall 校验 ---
     for component in components:
         if component.get("type") not in {"door", "window"}:
             continue
@@ -821,38 +903,32 @@ def validate_reference_integrity(blueprint: dict) -> str:
             issues.append(
                 f"❌ [component:{component_id}] parentWall='{parent}' 不是 wall 类型"
             )
-            continue
 
-        # 检查门窗是否超出父墙边界（这是渲染崩溃的常见原因）
-        wall = wall_map[parent] if parent in wall_map else None
-        if wall:
-            wf = wall.get("from", [0, 0, 0])
-            wt = wall.get("to", [0, 0, 0])
-            wl = ((wt[0] - wf[0])**2 + (wt[2] - wf[2])**2)**0.5
-            wb = min(wf[1], wt[1])
-            wt_y = max(wf[1], wt[1])
-
-            comp_from = component.get("from", [0, 0, 0])
-            along = comp_from[0] if len(comp_from) > 0 else 0
-            base_y = comp_from[1] if len(comp_from) > 1 else 0
-            cw = component.get("width", 0)
-            ch = component.get("height", 0)
-
-            if along < -1e-6:
+    # --- 1c. 元素与组合构件的材质引用必须存在 ---
+    materials = blueprint.get("materials", {}) or {}
+    material_ids = set(materials) if isinstance(materials, dict) else set()
+    material_fields = ("material", "frameMaterial", "leafMaterial", "glassMaterial")
+    for entity in elements:
+        entity_id = entity.get("id", "?")
+        for field in material_fields:
+            material_id = entity.get(field)
+            if not material_id:
+                continue
+            if not isinstance(material_id, str) or material_id not in material_ids:
                 issues.append(
-                    f"❌ [component:{component_id}] from[0]={along:.2f} < 0，"
-                    f"开口起点超出父墙左端（parentWall='{parent}' 墙长={wl:.2f}m）"
+                    f"❌ [{entity_id}] {field}='{material_id}' "
+                    "未在 Blueprint.materials 中定义"
                 )
-            elif along + cw > wl + 1e-6:
+    for entity in components:
+        entity_id = entity.get("id", "?")
+        for field in material_fields:
+            material_id = entity.get(field)
+            if not material_id:
+                continue
+            if not isinstance(material_id, str) or material_id not in material_ids:
                 issues.append(
-                    f"❌ [component:{component_id}] from[0]={along:.2f}+width={cw:.2f}"
-                    f"={along+cw:.2f} > 墙长{wl:.2f}m，"
-                    f"开口超出父墙右端（parentWall='{parent}'）"
-                )
-            if ch > 0 and base_y + ch > wt_y + 1e-6:
-                issues.append(
-                    f"❌ [component:{component_id}] 顶部 Y={base_y+ch:.2f} > "
-                    f"墙顶 Y={wt_y:.2f}，开口超出父墙顶部"
+                    f"❌ [component:{entity_id}] {field}='{material_id}' "
+                    "未在 Blueprint.materials 中定义"
                 )
 
     # --- 2. instances.templateId 校验 ---
@@ -895,6 +971,52 @@ def validate_reference_integrity(blueprint: dict) -> str:
             f"{len(templates)} 个模板，{len(instances)} 个实例）"
         )
     return "\n".join(issues)
+
+
+@tool
+def fix_material_references(blueprint: dict) -> str:
+    """修正唯一可判定的材质别名，例如 wood -> wood_oak。"""
+    materials = blueprint.get("materials", {}) or {}
+    if not isinstance(materials, dict) or not materials:
+        return "⚠️ Blueprint.materials 为空，没有可用于修正引用的材质"
+
+    material_ids = list(materials)
+    fields = ("material", "frameMaterial", "leafMaterial", "glassMaterial")
+    geometry = blueprint.get("geometry", {})
+    entities = [
+        *(geometry.get("elements", []) or []),
+        *(geometry.get("components", []) or []),
+    ]
+    fixes: list[str] = []
+    for entity in entities:
+        if not isinstance(entity, dict):
+            continue
+        entity_id = entity.get("id", "?")
+        for field in fields:
+            reference = entity.get(field)
+            if not isinstance(reference, str) or reference in materials:
+                continue
+            normalized = reference.lower()
+            candidates = [
+                material_id
+                for material_id in material_ids
+                if material_id.lower() == normalized
+                or material_id.lower().startswith(normalized + "_")
+                or normalized.startswith(material_id.lower() + "_")
+            ]
+            if field == "glassMaterial" and "glass" in materials:
+                candidates = ["glass"]
+            candidates = list(dict.fromkeys(candidates))
+            if len(candidates) != 1:
+                continue
+            entity[field] = candidates[0]
+            fixes.append(
+                f"🔧 [{entity_id}] {field}: '{reference}' → '{candidates[0]}'"
+            )
+
+    if not fixes:
+        return "✅ 没有可唯一判定的材质别名需要修正。"
+    return "已修正以下材质引用：\n" + "\n".join(fixes)
 
 
 # 碰撞 / 空间冲突检测 —— Step 9 in pipeline
@@ -1164,9 +1286,11 @@ def validate_opening_fit(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
 
-    if not openings:
-        return "✅ 没有 opening 构件，跳过检查。"
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过检查。"
 
     issues: list[str] = []
     for op in openings:
@@ -1216,9 +1340,6 @@ def validate_opening_fit(blueprint: dict) -> str:
             issues.append(f"❌ [{oid}] height={height} 无效，必须 > 0")
 
     # ── 同样检查 door/window 组合构件 ──
-    components = blueprint.get("geometry", {}).get("components", [])
-    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
-
     for comp in door_windows:
         cid = comp.get("id", "?")
         parent_id = comp.get("parentWall", "")
@@ -1259,6 +1380,50 @@ def validate_opening_fit(blueprint: dict) -> str:
             issues.append(f"❌ [component:{cid}] width={width} 无效")
         if height <= 0:
             issues.append(f"❌ [component:{cid}] height={height} 无效")
+
+    # 同一父墙上的开口不能占用相同的二维区域。只比较沿墙方向和高度方向
+    # 都有实际交叠的对象，允许高窗位于门的正上方。
+    opening_boxes: list[tuple[str, str, float, float, float, float]] = []
+    for op in openings:
+        from_vec = op.get("from", [])
+        if len(from_vec) < 2:
+            continue
+        opening_boxes.append((
+            str(op.get("id", "?")),
+            str(op.get("parentWall", "")),
+            float(from_vec[0]),
+            float(from_vec[1]),
+            float(op.get("width", 0)),
+            float(op.get("height", 0)),
+        ))
+    for comp in door_windows:
+        from_vec = comp.get("from", [])
+        if len(from_vec) < 2:
+            continue
+        opening_boxes.append((
+            f"component:{comp.get('id', '?')}",
+            str(comp.get("parentWall", "")),
+            float(from_vec[0]),
+            float(from_vec[1]),
+            float(comp.get("width", 0)),
+            float(comp.get("height", 0)),
+        ))
+
+    for index, first in enumerate(opening_boxes):
+        first_id, first_wall, first_x, first_y, first_w, first_h = first
+        if not first_wall or first_w <= 0 or first_h <= 0:
+            continue
+        for second in opening_boxes[index + 1:]:
+            second_id, second_wall, second_x, second_y, second_w, second_h = second
+            if first_wall != second_wall or second_w <= 0 or second_h <= 0:
+                continue
+            horizontal_overlap = min(first_x + first_w, second_x + second_w) - max(first_x, second_x)
+            vertical_overlap = min(first_y + first_h, second_y + second_h) - max(first_y, second_y)
+            if horizontal_overlap > 0.05 and vertical_overlap > 0.05:
+                issues.append(
+                    f"❌ [{first_id}] 与 ❌ [{second_id}] 在父墙 [{first_wall}] 上重叠 "
+                    f"({horizontal_overlap:.2f}m × {vertical_overlap:.2f}m)"
+                )
 
     total = len(openings) + len(door_windows)
     if not issues:
@@ -1313,7 +1478,11 @@ def validate_element_dimensions(blueprint: dict) -> str:
             th = el.get("thickness", 0)
             if not (0.1 <= length <= 500):
                 issues.append(f"⚠️  [{eid}] wall 长度={length:.1f}m，建议在 0.1~500m")
-            if h > 0 and not (0.1 <= h <= 50):
+            if h <= 0.01:
+                issues.append(
+                    f"❌ [{eid}] wall 高度={h:.1f}m；from[1] 必须是墙底、to[1] 必须是墙顶"
+                )
+            elif not (0.1 <= h <= 50):
                 issues.append(f"⚠️  [{eid}] wall 高度={h:.1f}m，建议在 0.1~50m")
             if th > 0 and not (0.01 <= th <= 5):
                 issues.append(f"⚠️  [{eid}] wall thickness={th}m，建议在 0.01~5m")
@@ -1639,9 +1808,11 @@ def fix_opening_fit(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
+    components = blueprint.get("geometry", {}).get("components", [])
+    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
 
-    if not openings:
-        return "✅ 没有 opening 构件，跳过修正。"
+    if not openings and not door_windows:
+        return "✅ 没有 opening/门窗组件，跳过修正。"
 
     THRESHOLD = 0.5  # 只修正超出 0.5m 的情况，避免过度干扰用户设计意图
 
@@ -1716,9 +1887,6 @@ def fix_opening_fit(blueprint: dict) -> str:
             fixes.append(f"🔧 [{oid}]: " + "; ".join(changed))
 
     # ── 同样修正 door/window 组合构件（components，非 elements）──
-    components = blueprint.get("geometry", {}).get("components", [])
-    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
-
     for comp in door_windows:
         cid = comp.get("id", "?")
         parent_id = comp.get("parentWall", "")
@@ -1901,7 +2069,15 @@ def fix_element_dimensions(blueprint: dict) -> str:
                 changed.append(f"长度 {length:.1f} → {length*scale:.1f}m")
 
             lo, hi = RULES[t]["height"]
-            if height > hi * 2:
+            if height <= 0.01:
+                bottom = min(float(f[1]), float(to[1]))
+                new_top = _infer_wall_top(elements, bottom)
+                el["from"][1] = bottom
+                el["to"][1] = round(new_top, 2)
+                changed.append(
+                    f"高度 {height:.1f} → {new_top - bottom:.1f}m（按楼板标高/常用层高补全）"
+                )
+            elif height > hi * 2:
                 # 降低高度，保持 WILD 的显式 height 表达
                 new_height = hi * 0.9
                 el["height"] = new_height

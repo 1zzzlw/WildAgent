@@ -24,6 +24,8 @@
 
 import type { UserMessageRequest, SceneSummary } from '../types/agent'
 
+export const AGENT_PROTOCOL_VERSION = '1.0' as const
+
 export function createUserMessageRequest(
   message: string,
   sessionId: string,
@@ -36,6 +38,7 @@ export function createUserMessageRequest(
   precisionMode: boolean = false
 ): UserMessageRequest {
   return {
+    protocol_version: AGENT_PROTOCOL_VERSION,
     type: 'user_message',
     request_id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     session_id: sessionId,

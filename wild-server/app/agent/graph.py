@@ -6,6 +6,7 @@ LangGraph 图定义 —— 意图分类 → 骨架驱动 + Send 动态并行派�
     → GENERATE: skeleton (RAG+丰富描述) → 建议组件列表
                   → Send 动态派发 gen→val 链（并行）
                   → merge → final_validate → done
+    → EDIT:     patch (统一 ScenePatch 生成与校验) → done
     → CHAT:     chat (RAG知识问答) → done
 
 每个组件 gen 节点调用 LLM（有思考内容），val 节点调用工具校验。
@@ -16,10 +17,14 @@ from langgraph.types import Send
 from loguru import logger
 
 from app.agent.graph_state import GenerationState
-from app.agent.component_registry import get_implemented_components, COMPONENT_REGISTRY
+from app.agent.component_registry import (
+    get_implemented_components,
+    resolve_component_suggestions,
+)
 from app.agent.nodes import (
     classifier_node,
     chat_node,
+    patch_node,
     skeleton_generator,
     merge_fragments_node,
 )
@@ -29,45 +34,16 @@ from app.agent.nodes.base_component_node import (
     create_component_validator,
 )
 
-# ── 关键词 fallback ──
-_COMPONENT_KEYWORDS: dict[str, list[str]] = {
-    "door": ["门", "入口", "大门"],
-    "window": ["窗", "窗户", "玻璃"],
-    "roof": ["屋顶", "房顶", "顶"],
-    "railing": ["栏杆", "护栏", "扶手", "阳台", "楼梯", "露台"],
-    "canopy": ["雨棚", "雨篷", "遮阳", "入口遮", "门廊"],
-    "balcony": ["阳台", "露台", "挑台", "凉台"],
-    "light": ["灯", "照明", "光源", "吊灯", "壁灯", "室内", "温馨"],
-    "ramp": ["坡道", "斜坡", "无障碍", "车道"],
-    "bay_window": ["凸窗", "飘窗", "bay window"],
-    "cornice": ["檐口", "飞檐", "挑檐", "中式", "传统", "古建", "斗拱"],
-    "chimney": ["烟囱", "壁炉", "排烟", "欧式"],
-}
-
-
-def _keyword_fallback(user_message: str) -> list[str]:
-    """骨架未输出 _components: 时，用关键词匹配作为兜底"""
-    components = ["door", "window", "roof"]
-    for comp_type, keywords in _COMPONENT_KEYWORDS.items():
-        if comp_type in components:
-            continue
-        if any(kw in user_message for kw in keywords):
-            components.append(comp_type)
-    logger.info(f"[Graph] 关键词 fallback: {components}")
-    return components
-
-
 def _dispatch_components(state: GenerationState):
     """骨架完成后，动态派发到 gen 节点（每个组件 gen→val 链的入口）"""
     if state.get("error") or state.get("status") == "failed":
         logger.warning("[Graph] 骨架生成失败，短路终止")
         return "fail"
 
-    suggested = state.get("suggested_components", [])
-
-    if not suggested:
-        user_msg = state.get("user_message", "")
-        suggested = _keyword_fallback(user_msg)
+    suggested = resolve_component_suggestions(
+        state.get("suggested_components", []),
+        state.get("user_message", ""),
+    )
 
     if not suggested:
         logger.warning("[Graph] 无可用组件，直接跳到合并")
@@ -83,11 +59,13 @@ def _dispatch_components(state: GenerationState):
 
 
 def _classifier_dispatch(state: GenerationState):
-    """意图分类后路由：generate → skeleton, chat → chat_node"""
+    """意图分类后路由：generate → skeleton, edit → patch, chat → chat。"""
     intent = state.get("intent", "generate")
     logger.info(f"[Graph] 分类完成, intent={intent}")
     if intent == "chat":
         return "chat"
+    if intent == "edit":
+        return "patch"
     return "skeleton"
 
 
@@ -140,7 +118,7 @@ def _final_validate_dispatch(state: GenerationState):
 def build_generation_graph(enable_callback: bool = False):
     """构建 LangGraph 生成流程图
 
-    classifier → (generate → skeleton → ...) | (chat → END)
+    classifier → (generate → skeleton → ...) | (edit → patch → END) | (chat → END)
     skeleton → Send 派发 gen→val 链（并行） → merge → final_validate
     """
     graph = StateGraph(GenerationState)
@@ -148,6 +126,7 @@ def build_generation_graph(enable_callback: bool = False):
     # ── Layer -1: 意图分类 ──
     graph.add_node("classifier", classifier_node)
     graph.add_node("chat", chat_node)
+    graph.add_node("patch", patch_node)
 
     # ── Layer 0: 骨架 ──
     graph.add_node("skeleton", skeleton_generator)
@@ -184,12 +163,15 @@ def build_generation_graph(enable_callback: bool = False):
 
     # ── 路由 ──
     graph.set_entry_point("classifier")
+
     graph.add_conditional_edges(
         "classifier",
         _classifier_dispatch,
-        {"skeleton": "skeleton", "chat": "chat"},
+        {"skeleton": "skeleton", "patch": "patch", "chat": "chat"},
     )
+
     graph.add_edge("chat", END)
+    graph.add_edge("patch", END)
 
     graph.add_conditional_edges(
         "skeleton",
@@ -216,8 +198,6 @@ def build_generation_graph(enable_callback: bool = False):
             lambda state: END,
             {END: END},
         )
-    graph.set_finish_point("final_validate")
-
     compiled = graph.compile()
     component_list = ", ".join(
         f"{c.label}({c.component_type}_gen→{c.component_type}_val)" for c in implemented
@@ -226,6 +206,7 @@ def build_generation_graph(enable_callback: bool = False):
     logger.info(
         f"LangGraph 图编译完成: 分类 → "
         f"(生成: 骨架 → Send 动态派发 [{component_list}] → merge → final_validate) | "
+        f"(编辑: patch → END) | "
         f"(问答: chat → END) "
         f"(回调: {callback_status})"
     )

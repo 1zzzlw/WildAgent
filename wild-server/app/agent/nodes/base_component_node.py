@@ -25,9 +25,7 @@ from app.services.agent_service import agent_service
 _LLM_SEMAPHORE = asyncio.Semaphore(3)
 
 
-# ═══════════════════════════════════════════════════════════════
 # 生成器工厂（LLM 调用，有思考内容）
-# ═══════════════════════════════════════════════════════════════
 
 def create_component_generator(config: ComponentConfig):
     """创建组件生成节点（只做 LLM 生成，不做工具校验）"""
