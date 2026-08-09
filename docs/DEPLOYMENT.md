@@ -27,6 +27,8 @@ Jenkins 生产流程为：
 
 只有 main/master 的非 Pull Request 构建会部署。流水线失败时，必须以 Jenkins 的具体 stage 为准，不能只看 GitHub 已经出现提交。
 
+构建工具 uv 固定为 `0.11.14`，与仓库 `uv.lock` 的生成版本一致。禁止在流水线中使用无版本号的 `pip install uv`，否则 uv 自动升级后可能在业务代码未变化时把锁文件判定为过期。
+
 ## 2. Jenkins 环境文件
 
 默认生产文件为 `/opt/wild-agent/.env`：

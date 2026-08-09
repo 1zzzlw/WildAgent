@@ -29,6 +29,7 @@ variables:
   # Docker Hub 国内镜像加速（可替换为你自己的镜像地址）
   REGISTRY_MIRROR: "https://docker.m.daocloud.io"
   NPM_REGISTRY: "https://registry.npmmirror.com"
+  UV_VERSION: "0.11.14"
 
 # ============================================================
 # Stage 1: 验证代码（仿照样例中的 compile 阶段）
@@ -62,7 +63,7 @@ variables:
     - master
   before_script:
     - cd wild-server
-    - pip install uv -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+    - pip install "uv==$UV_VERSION" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
   script:
     # 检查 Python 语法是否正确，依赖是否能解析
     - python -m compileall app/
@@ -88,6 +89,7 @@ variables:
     - docker build
       --build-arg PYTHON_BASE_IMAGE=${PYTHON_BASE_IMAGE:-python:3.12-slim}
       --build-arg UV_INDEX_URL=${UV_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+      --build-arg UV_VERSION=${UV_VERSION:-0.11.14}
       -t $IMAGE_SERVER_NAME
       -t $IMAGE_SERVER_LATEST
       -f wild-server/Dockerfile

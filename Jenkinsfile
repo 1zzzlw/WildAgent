@@ -24,6 +24,7 @@ pipeline {
     PROJECT = 'wild-agent'
     NPM_REGISTRY = 'https://registry.npmmirror.com'
     UV_INDEX_URL = 'https://mirrors.aliyun.com/pypi/simple/'
+    UV_VERSION = '0.11.14'
     PYTHON_BASE_IMAGE = 'python:3.12-slim'
     NODE_BASE_IMAGE = 'node:22-alpine'
     NGINX_BASE_IMAGE = 'nginx:alpine'
@@ -142,17 +143,19 @@ REMOTE_SCRIPT
             SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' UV_VERSION='$UV_VERSION' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR/wild-server"
 docker run --rm \
   -e PYTHONDONTWRITEBYTECODE=1 \
   -e UV_INDEX_URL="$UV_INDEX_URL" \
+  -e UV_VERSION="$UV_VERSION" \
   -v "$PWD:/app" \
   -w /app \
   "$PYTHON_BASE_IMAGE" \
   sh -lc '
-    pip install --no-cache-dir uv -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
+    set -eu
+    pip install --no-cache-dir "uv==$UV_VERSION" -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
     python -m compileall app/
     python -m py_compile main.py
     uv lock --check
@@ -176,7 +179,7 @@ REMOTE_SCRIPT
             SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' PROJECT='$PROJECT' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' IMAGE_SERVER_LATEST='$IMAGE_SERVER_LATEST' IMAGE_WEB_LATEST='$IMAGE_WEB_LATEST' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' UV_VERSION='$UV_VERSION' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NGINX_BASE_IMAGE='$NGINX_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' PROJECT='$PROJECT' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 cd "$REMOTE_RELEASE_DIR"
 
@@ -200,6 +203,7 @@ echo "=== 开始构建新镜像 ==="
 docker build \
   --build-arg PYTHON_BASE_IMAGE="$PYTHON_BASE_IMAGE" \
   --build-arg UV_INDEX_URL="$UV_INDEX_URL" \
+  --build-arg UV_VERSION="$UV_VERSION" \
   -t "$IMAGE_SERVER_NAME" \
   -t "$IMAGE_SERVER_LATEST" \
   -f wild-server/Dockerfile \
