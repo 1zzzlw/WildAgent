@@ -82,7 +82,7 @@ _PATCH_FIELDS = {
     "roofType", "parentWall", "parentFloor", "material", "frameMaterial",
     "leafMaterial", "glassMaterial", "crossSection", "dimensions", "overhang",
     "pitch", "rotation", "segmentCount", "steps", "stepCount", "stepHeight",
-    "stepDepth",
+    "stepDepth", "frameWidth", "frameDepth", "leafDepth", "glassDepth",
 }
 
 

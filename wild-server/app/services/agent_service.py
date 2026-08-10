@@ -19,6 +19,7 @@ AI 在 prompt 内自行判断意图，选择输出格式。场景上下文通过
   以后2  → LangGraph graph.ainvoke()（只改编排，tools + pipeline 复用）
 """
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 from copy import deepcopy
 from collections.abc import Awaitable, Callable
@@ -30,7 +31,11 @@ from loguru import logger
 
 from config import config
 from app.agent.model_client import create_llm
-from app.agent.prompts import build_patch_recovery_prompt, build_system_prompt
+from app.agent.prompts import (
+    build_material_optimization_prompt,
+    build_patch_recovery_prompt,
+    build_system_prompt,
+)
 from app.spec.loader import (
     FileSpecLoader,
     RAGSpecLoader,
@@ -427,7 +432,59 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     return results
 
 
-def _build_scene_summary(blueprint: dict) -> str:
+_MATERIAL_REFERENCE_FIELDS = (
+    "material", "frameMaterial", "leafMaterial", "glassMaterial",
+    "supportMaterial", "railingMaterial", "capMaterial",
+    "baseMaterial", "shadeMaterial",
+)
+_TUNABLE_MATERIAL_FIELDS = (
+    "baseColor", "roughness", "metallic", "albedo", "emissive",
+    "opacity", "normalScale", "uvScale",
+)
+_MATERIAL_OPTIMIZATION_SUBJECTS = (
+    "材质", "纹理", "贴图", "质感", "PBR", "pbr", "粗糙度",
+    "金属度", "法线强度", "纹理比例",
+)
+_MATERIAL_OPTIMIZATION_ACTIONS = (
+    "优化", "提升", "增强", "调整", "改善", "升级", "更真实", "真实一点",
+)
+
+
+def _is_material_optimization_request(message: str) -> bool:
+    return (
+        any(subject in message for subject in _MATERIAL_OPTIMIZATION_SUBJECTS)
+        and any(action in message for action in _MATERIAL_OPTIMIZATION_ACTIONS)
+    )
+
+
+def _normalized_selection(selection: list[str] | None) -> list[str]:
+    result: list[str] = []
+    for item in selection or []:
+        if isinstance(item, str) and item.strip() and item not in result:
+            result.append(item)
+    return result
+
+
+def _material_display_fields(material: object) -> dict:
+    """只把可调数值和资产引用交给模型，不暴露 Base64 或图片 URL。"""
+    if not isinstance(material, dict):
+        return {}
+    fields = {
+        key: material[key]
+        for key in (*_TUNABLE_MATERIAL_FIELDS, "textureSet")
+        if key in material
+    }
+    if isinstance(material.get("textures"), dict):
+        fields["textureChannels"] = sorted(material["textures"])
+    if material.get("embeddedImage"):
+        fields["embeddedImage"] = "legacy-present"
+    return fields
+
+
+def _build_scene_summary(
+    blueprint: dict,
+    selection: list[str] | None = None,
+) -> str:
     """从 Blueprint 生成场景摘要文本（注入 user message 供 AI 参考）"""
     geometry = blueprint.get("geometry", {})
     elements = geometry.get("elements", [])
@@ -481,7 +538,133 @@ def _build_scene_summary(blueprint: dict) -> str:
     materials = blueprint.get("materials", {})
     if materials:
         lines.append(f"已有材质: {', '.join(materials.keys())}")
+    assets = blueprint.get("assets", {})
+    if assets:
+        lines.append(f"已有 PBR 资产: {', '.join(assets.keys())}")
+    selected_ids = _normalized_selection(selection)
+    if selected_ids:
+        lines.append(f"当前选中构件: {', '.join(selected_ids)}")
+        entities = {
+            item.get("id"): item
+            for item in [*elements, *components]
+            if isinstance(item, dict) and item.get("id")
+        }
+        for entity_id in selected_ids:
+            entity = entities.get(entity_id)
+            if entity is None:
+                lines.append(f"  - [{entity_id}] 不存在于当前 Blueprint")
+                continue
+            material_refs = {
+                field_name: entity[field_name]
+                for field_name in _MATERIAL_REFERENCE_FIELDS
+                if isinstance(entity.get(field_name), str) and entity[field_name]
+            }
+            lines.append(
+                f"  - [{entity_id}] 可调材质字段: "
+                + (str(material_refs) if material_refs else "无")
+            )
+            for field_name, material_name in material_refs.items():
+                material = materials.get(material_name)
+                lines.append(
+                    f"    {field_name}={material_name}: "
+                    f"{_material_display_fields(material)}"
+                )
+                texture_set = material.get("textureSet") if isinstance(material, dict) else None
+                asset = assets.get(texture_set) if isinstance(texture_set, str) else None
+                if isinstance(asset, dict):
+                    lines.append(
+                        f"      asset={texture_set}, maps={sorted(asset.get('maps', {}))}, "
+                        f"license={asset.get('license', '?')}"
+                    )
     return "\n".join(lines)
+
+
+def _is_finite_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and math.isfinite(value)
+    )
+
+
+def _validate_material_tuning_changes(changes: object, prefix: str) -> list[str]:
+    if not isinstance(changes, dict) or not changes:
+        return [f"{prefix} 必须是非空对象"]
+    issues: list[str] = []
+    unknown = sorted(set(changes) - set(_TUNABLE_MATERIAL_FIELDS))
+    if unknown:
+        issues.append(f"{prefix} 包含不允许的字段: {unknown}")
+
+    for field_name in ("roughness", "metallic", "albedo", "opacity"):
+        if field_name in changes and not (
+            _is_finite_number(changes[field_name])
+            and 0 <= changes[field_name] <= 1
+        ):
+            issues.append(f"{prefix}.{field_name} 必须是 0–1 有限数字")
+    if "normalScale" in changes and not (
+        _is_finite_number(changes["normalScale"])
+        and 0 <= changes["normalScale"] <= 4
+    ):
+        issues.append(f"{prefix}.normalScale 必须是 0–4 有限数字")
+    for field_name in ("baseColor", "emissive"):
+        value = changes.get(field_name)
+        if field_name in changes and not (
+            isinstance(value, list)
+            and len(value) == 3
+            and all(_is_finite_number(channel) and 0 <= channel <= 1 for channel in value)
+        ):
+            issues.append(f"{prefix}.{field_name} 必须是 3 个 0–1 有限数字")
+    uv_scale = changes.get("uvScale")
+    if "uvScale" in changes and not (
+        isinstance(uv_scale, list)
+        and len(uv_scale) == 2
+        and all(_is_finite_number(value) and 0 < value <= 64 for value in uv_scale)
+    ):
+        issues.append(f"{prefix}.uvScale 必须是两个 0–64 的正有限数字")
+    return issues
+
+
+def _validate_material_optimization_patch(
+    patch: dict,
+    selection: list[str],
+) -> list[str]:
+    """材质优化模式只能作用于选中目标，并且只能使用 tune_material。"""
+    selected_ids = set(selection)
+    if not selected_ids:
+        return ["材质优化前必须先选中一个构件"]
+    issues: list[str] = []
+    for index, operation in enumerate(patch.get("operations", []), start=1):
+        prefix = f"operations[{index}]"
+        if not isinstance(operation, dict) or operation.get("op") != "tune_material":
+            issues.append(f"{prefix} 材质优化模式只允许 tune_material")
+        elif operation.get("id") not in selected_ids:
+            issues.append(f"{prefix}.id 必须是当前选中构件")
+    return issues
+
+
+def _enrich_material_tuning_operations(blueprint: dict, patch: dict) -> None:
+    """补入由当前 Blueprint 推导的只读前值，供确认界面稳定展示差异。"""
+    geometry = blueprint.get("geometry", {})
+    entities = {
+        item.get("id"): item
+        for item in [
+            *geometry.get("elements", []),
+            *geometry.get("components", []),
+        ]
+        if isinstance(item, dict) and item.get("id")
+    }
+    materials = blueprint.get("materials", {})
+    for operation in patch.get("operations", []):
+        if not isinstance(operation, dict) or operation.get("op") != "tune_material":
+            continue
+        entity = entities.get(operation.get("id"))
+        material_field = operation.get("material_field", "material")
+        source_name = entity.get(material_field) if isinstance(entity, dict) else None
+        source = materials.get(source_name) if isinstance(materials, dict) else None
+        changes = operation.get("changes")
+        if isinstance(source_name, str) and isinstance(source, dict) and isinstance(changes, dict):
+            operation["source_name"] = source_name
+            operation["before"] = {key: source.get(key) for key in changes}
 
 
 def _validate_scene_patch_operations(blueprint: dict, patch: dict) -> list[str]:
@@ -493,6 +676,17 @@ def _validate_scene_patch_operations(blueprint: dict, patch: dict) -> list[str]:
     }
     component_ids = {
         item.get("id") for item in geometry.get("components", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    asset_ids = set(blueprint.get("assets", {}))
+    materials = blueprint.get("materials", {})
+    material_names = set(materials) if isinstance(materials, dict) else set()
+    elements_by_id = {
+        item.get("id"): item for item in geometry.get("elements", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    components_by_id = {
+        item.get("id"): item for item in geometry.get("components", [])
         if isinstance(item, dict) and item.get("id")
     }
     errors: list[str] = []
@@ -544,8 +738,84 @@ def _validate_scene_patch_operations(blueprint: dict, patch: dict) -> list[str]:
         if op_type == "upsert_material":
             if not isinstance(operation.get("name"), str) or not operation["name"].strip():
                 errors.append(f"{prefix}.name 缺失")
-            if not isinstance(operation.get("material"), dict):
+            material = operation.get("material")
+            if not isinstance(material, dict):
                 errors.append(f"{prefix}.material 必须是对象")
+            elif material.get("textureSet") and material["textureSet"] not in asset_ids:
+                errors.append(
+                    f"{prefix}.material.textureSet 资产不存在: "
+                    f"{material['textureSet']}"
+                )
+            if isinstance(operation.get("name"), str) and operation["name"].strip():
+                material_names.add(operation["name"])
+            continue
+
+        if op_type == "tune_material":
+            entity_id = operation.get("id")
+            entity = elements_by_id.get(entity_id) or components_by_id.get(entity_id)
+            if entity is None:
+                errors.append(f"{prefix} 目标不存在: {entity_id!r}")
+                continue
+            material_field = operation.get("material_field", "material")
+            if material_field not in _MATERIAL_REFERENCE_FIELDS:
+                errors.append(f"{prefix}.material_field 不受支持: {material_field!r}")
+                continue
+            source_name = entity.get(material_field)
+            source_material = (
+                materials.get(source_name)
+                if isinstance(materials, dict) and isinstance(source_name, str)
+                else None
+            )
+            if not isinstance(source_material, dict):
+                errors.append(
+                    f"{prefix} 目标字段 {material_field} 没有可克隆的现有材质"
+                )
+            new_name = operation.get("new_name")
+            if not isinstance(new_name, str) or not new_name.strip():
+                errors.append(f"{prefix}.new_name 缺失")
+            elif new_name in material_names:
+                errors.append(f"{prefix}.new_name 已存在: {new_name}")
+            else:
+                material_names.add(new_name)
+            changes = operation.get("changes")
+            errors.extend(_validate_material_tuning_changes(
+                changes,
+                f"{prefix}.changes",
+            ))
+            if isinstance(source_material, dict) and isinstance(changes, dict):
+                if all(source_material.get(key) == value for key, value in changes.items()):
+                    errors.append(f"{prefix}.changes 没有产生任何材质参数变化")
+                texture_set = source_material.get("textureSet")
+                texture_asset = (
+                    blueprint.get("assets", {}).get(texture_set)
+                    if isinstance(texture_set, str)
+                    else None
+                )
+                has_normal_map = bool(
+                    isinstance(source_material.get("textures"), dict)
+                    and source_material["textures"].get("normal")
+                ) or bool(
+                    isinstance(texture_asset, dict)
+                    and isinstance(texture_asset.get("maps"), dict)
+                    and texture_asset["maps"].get("normal")
+                )
+                if "normalScale" in changes and not has_normal_map:
+                    errors.append(
+                        f"{prefix}.changes.normalScale 无法生效：当前材质没有 normal 纹理"
+                    )
+            continue
+
+        if op_type == "upsert_asset":
+            asset_id = operation.get("asset_id")
+            asset = operation.get("asset")
+            if not isinstance(asset_id, str) or not asset_id.strip():
+                errors.append(f"{prefix}.asset_id 缺失")
+            elif not isinstance(asset, dict):
+                errors.append(f"{prefix}.asset 必须是对象")
+            elif asset.get("assetId") != asset_id:
+                errors.append(f"{prefix}.asset.assetId 必须与 asset_id 一致")
+            else:
+                asset_ids.add(asset_id)
             continue
 
         errors.append(f"{prefix}.op 不受支持: {op_type!r}")
@@ -556,7 +826,7 @@ def _validate_scene_patch_operations(blueprint: dict, patch: dict) -> list[str]:
 def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
     """将 ScenePatch 应用到 Blueprint 深拷贝，返回修改后的 Blueprint
 
-    支持基础构件、组合构件和材质的增量修改。
+    支持基础构件、组合构件、材质和资产清单的增量修改。
     """
     bp = deepcopy(blueprint)
     elements = bp.setdefault("geometry", {}).setdefault("elements", [])
@@ -602,6 +872,31 @@ def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
             material = op.get("material")
             if name and isinstance(material, dict):
                 bp.setdefault("materials", {})[name] = material
+        elif op_type == "tune_material":
+            entity_id = op.get("id")
+            material_field = op.get("material_field", "material")
+            entity = next(
+                (
+                    item for item in [*elements, *components]
+                    if isinstance(item, dict) and item.get("id") == entity_id
+                ),
+                None,
+            )
+            if entity is not None:
+                source_name = entity.get(material_field)
+                source = bp.get("materials", {}).get(source_name)
+                new_name = op.get("new_name")
+                changes = op.get("changes")
+                if isinstance(source, dict) and new_name and isinstance(changes, dict):
+                    tuned = deepcopy(source)
+                    tuned.update(changes)
+                    bp.setdefault("materials", {})[new_name] = tuned
+                    entity[material_field] = new_name
+        elif op_type == "upsert_asset":
+            asset_id = op.get("asset_id")
+            asset = op.get("asset")
+            if asset_id and isinstance(asset, dict):
+                bp.setdefault("assets", {})[asset_id] = asset
 
     return bp
 
@@ -840,13 +1135,17 @@ class AgentService:
         message: str,
         current_blueprint: dict,
         previous_reply: str,
+        selection: list[str] | None = None,
+        material_optimization: bool = False,
     ) -> tuple[dict | None, str, str | None]:
         """用一次非思考调用把错误格式恢复为单一 ScenePatch。"""
         recovery_prompt = build_patch_recovery_prompt(
             message,
-            _build_scene_summary(current_blueprint),
+            _build_scene_summary(current_blueprint, selection),
             previous_reply,
         )
+        if material_optimization:
+            recovery_prompt += build_material_optimization_prompt(selection or [])
         response = await self.llm.ainvoke([
             {
                 "role": "system",
@@ -869,6 +1168,7 @@ class AgentService:
         message: str,
         current_blueprint: dict | None = None,
         *,
+        selection: list[str] | None = None,
         thinking_mode: bool = False,
         on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
         expected_output: Literal["auto", "patch"] = "auto",
@@ -879,12 +1179,24 @@ class AgentService:
         2. LLM 自行判断意图，输出 Blueprint 或 ScenePatch 或纯文本
         3. 从回复提取 JSON → 校验流水线 → 返回 QueryResult
         """
+        selected_ids = _normalized_selection(selection)
+        material_optimization = bool(
+            current_blueprint and _is_material_optimization_request(message)
+        )
+        if material_optimization and not selected_ids:
+            return QueryResult(
+                text="请先在场景中选中需要优化材质的构件，再重新发送请求。",
+                error="材质优化前必须先选中一个构件",
+            )
+        if material_optimization:
+            expected_output = "patch"
+
         # ── 场景上下文（如有）注入 user message ──────────────────
         user_message = message
         if current_blueprint:
             elements = current_blueprint.get("geometry", {}).get("elements", [])
             if elements:
-                scene_summary = _build_scene_summary(current_blueprint)
+                scene_summary = _build_scene_summary(current_blueprint, selected_ids)
                 user_message = (
                     f"# 当前场景（你可以修改它）\n\n{scene_summary}\n\n"
                     f"# 用户请求\n\n{message}"
@@ -896,6 +1208,8 @@ class AgentService:
                 "上游已经判定这是增量修改。只输出一个 ScenePatch JSON 对象，"
                 "必须包含非空 operations 数组和 summary；不要输出完整 Blueprint。"
             )
+        if material_optimization:
+            user_message += build_material_optimization_prompt(selected_ids)
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
         rag_queries = self._build_rag_queries(message, current_blueprint)
@@ -937,6 +1251,8 @@ class AgentService:
                         message,
                         current_blueprint,
                         reply or reasoning,
+                        selected_ids,
+                        material_optimization,
                     )
                 )
                 recovery_used = True
@@ -961,6 +1277,11 @@ class AgentService:
                 current_blueprint,
                 patch_data,
             )
+            if material_optimization:
+                operation_issues.extend(_validate_material_optimization_patch(
+                    patch_data,
+                    selected_ids,
+                ))
             if operation_issues:
                 return QueryResult(
                     text=reply,
@@ -969,6 +1290,8 @@ class AgentService:
                     structured_source=structured_source,
                     structured_recovery_used=recovery_used,
                 )
+
+            _enrich_material_tuning_operations(current_blueprint, patch_data)
 
             modified_bp = _apply_patch_to_blueprint(current_blueprint, patch_data)
             if modified_bp == current_blueprint:

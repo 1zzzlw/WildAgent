@@ -18,6 +18,7 @@ import type {
   ComponentSpec,
   GeometryElement,
   MaterialDef,
+  PBRTextureSetAsset,
   InstanceRef,
   Placement,
 } from './blueprint'
@@ -41,6 +42,8 @@ export type SceneOperation =
   | UpdateComponentOperation
   | RemoveComponentOperation
   | UpsertMaterialOperation
+  | TuneMaterialOperation
+  | UpsertAssetOperation
   | AddTemplateOperation
   | UpdateTemplateOperation
   | RemoveTemplateOperation
@@ -85,6 +88,35 @@ export interface UpsertMaterialOperation {
   op: 'upsert_material'
   name: string
   material: MaterialDef
+}
+
+export interface TuneMaterialOperation {
+  op: 'tune_material'
+  id: string
+  material_field?: 'material' | 'frameMaterial' | 'leafMaterial' | 'glassMaterial'
+    | 'supportMaterial' | 'railingMaterial' | 'capMaterial' | 'baseMaterial' | 'shadeMaterial'
+  new_name: string
+  /** 后端根据当前 Blueprint 补入，仅用于确认界面展示。 */
+  source_name?: string
+  /** 与 changes 同键的调优前值；不参与 Patch 应用。 */
+  before?: Record<string, unknown>
+  changes: {
+    baseColor?: [number, number, number]
+    roughness?: number
+    metallic?: number
+    albedo?: number
+    emissive?: [number, number, number]
+    opacity?: number
+    normalScale?: number
+    uvScale?: [number, number]
+  }
+  rationale?: string
+}
+
+export interface UpsertAssetOperation {
+  op: 'upsert_asset'
+  asset_id: string
+  asset: PBRTextureSetAsset
 }
 
 export interface AddTemplateOperation {

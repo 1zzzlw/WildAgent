@@ -34,6 +34,7 @@ async def patch_node(state: GenerationState) -> dict:
         result = await agent_service.query_structured(
             state.get("user_message", ""),
             current_blueprint,
+            selection=state.get("selection", []),
             thinking_mode=state.get("thinking_mode", False),
             on_reasoning_delta=emit_reasoning if on_reasoning_delta else None,
             expected_output="patch",

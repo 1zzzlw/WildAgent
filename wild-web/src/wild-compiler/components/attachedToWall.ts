@@ -205,6 +205,44 @@ export function assertFrameDimensions(
   }
 }
 
+/** 校验门窗深度与父墙仍有实体交叠，防止门框、门扇或玻璃悬在墙面之外。 */
+export function assertWallDepthAlignment(
+  component: WallAttachedComponent & { height: number },
+  wallThickness: number,
+  frameDepth: number,
+  panelDepth: number,
+  panelField: 'leafDepth' | 'glassDepth',
+): void {
+  assertPositive(wallThickness, 'parentWall.thickness')
+  assertPositive(panelDepth, panelField)
+  if (frameDepth > wallThickness + 0.12 + 1e-9) {
+    throw new ComponentCompileError(
+      `组件 "${component.id}" 的 frameDepth 最多只能比父墙厚 0.12m`,
+      'frameDepth',
+    )
+  }
+  if (panelDepth > frameDepth + 1e-9) {
+    throw new ComponentCompileError(
+      `组件 "${component.id}" 的 ${panelField} 不能大于 frameDepth`,
+      panelField,
+    )
+  }
+
+  const normalOffset = Math.abs(component.from[2])
+  if (normalOffset >= (wallThickness + frameDepth) / 2 - 1e-6) {
+    throw new ComponentCompileError(
+      `组件 "${component.id}" 的门窗框深度与父墙没有实体交叠`,
+      'from',
+    )
+  }
+  if (normalOffset >= (wallThickness + panelDepth) / 2 - 1e-6) {
+    throw new ComponentCompileError(
+      `组件 "${component.id}" 的 ${panelField} 与父墙没有实体交叠`,
+      'from',
+    )
+  }
+}
+
 function sampleWallPath(wall: WallParams): Vec3[] {
   const curves = wall.curve
     ? (Array.isArray(wall.curve) ? wall.curve : [wall.curve])

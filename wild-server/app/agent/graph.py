@@ -3,7 +3,7 @@ LangGraph 图定义 —— 意图分类 → 骨架驱动 + Send 动态并行派�
 
 流程:
   classifier (意图分类)
-    → GENERATE: skeleton (RAG+丰富描述) → 建议组件列表
+    → GENERATE: architecture (方案候选+评分) → skeleton (受方案约束) → 建议组件列表
                   → Send 动态派发 gen→val 链（并行）
                   → merge → final_validate → done
     → EDIT:     patch (统一 ScenePatch 生成与校验) → done
@@ -25,6 +25,7 @@ from app.agent.nodes import (
     classifier_node,
     chat_node,
     patch_node,
+    architecture_planner,
     skeleton_generator,
     merge_fragments_node,
 )
@@ -66,7 +67,7 @@ def _classifier_dispatch(state: GenerationState):
         return "chat"
     if intent == "edit":
         return "patch"
-    return "skeleton"
+    return "architecture"
 
 
 def _final_validate_dispatch(state: GenerationState):
@@ -118,8 +119,8 @@ def _final_validate_dispatch(state: GenerationState):
 def build_generation_graph(enable_callback: bool = False):
     """构建 LangGraph 生成流程图
 
-    classifier → (generate → skeleton → ...) | (edit → patch → END) | (chat → END)
-    skeleton → Send 派发 gen→val 链（并行） → merge → final_validate
+    classifier → (generate → architecture → skeleton → ...) | (edit → patch → END) | (chat → END)
+    architecture → skeleton → Send 派发 gen→val 链（并行） → merge → final_validate
     """
     graph = StateGraph(GenerationState)
 
@@ -127,6 +128,9 @@ def build_generation_graph(enable_callback: bool = False):
     graph.add_node("classifier", classifier_node)
     graph.add_node("chat", chat_node)
     graph.add_node("patch", patch_node)
+
+    # ── Layer -0.5: 建筑方案 ──
+    graph.add_node("architecture", architecture_planner)
 
     # ── Layer 0: 骨架 ──
     graph.add_node("skeleton", skeleton_generator)
@@ -167,11 +171,12 @@ def build_generation_graph(enable_callback: bool = False):
     graph.add_conditional_edges(
         "classifier",
         _classifier_dispatch,
-        {"skeleton": "skeleton", "patch": "patch", "chat": "chat"},
+        {"architecture": "architecture", "patch": "patch", "chat": "chat"},
     )
 
     graph.add_edge("chat", END)
     graph.add_edge("patch", END)
+    graph.add_edge("architecture", "skeleton")
 
     graph.add_conditional_edges(
         "skeleton",
@@ -205,7 +210,7 @@ def build_generation_graph(enable_callback: bool = False):
     callback_status = "启用" if enable_callback else "关闭"
     logger.info(
         f"LangGraph 图编译完成: 分类 → "
-        f"(生成: 骨架 → Send 动态派发 [{component_list}] → merge → final_validate) | "
+        f"(生成: 方案 → 骨架 → Send 动态派发 [{component_list}] → merge → final_validate) | "
         f"(编辑: patch → END) | "
         f"(问答: chat → END) "
         f"(回调: {callback_status})"

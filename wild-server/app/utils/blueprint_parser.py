@@ -379,6 +379,46 @@ def _is_positive_vector3(value: object) -> bool:
     )
 
 
+_PBR_CHANNEL_COLOR_SPACES = {
+    "baseColor": "srgb",
+    "normal": "linear",
+    "roughness": "linear",
+    "metalness": "linear",
+    "ambientOcclusion": "linear",
+}
+
+
+def _validate_asset_image(value: object, path: str) -> list[str]:
+    """校验 WILD 中的 URL 纹理引用，不允许把新资产内嵌为 Base64。"""
+    if not isinstance(value, dict):
+        return [f"{path} 必须是 URL 图片引用对象"]
+    issues: list[str] = []
+    if value.get("encoding") != "url":
+        issues.append(f"{path}.encoding 必须是 url")
+    uri = value.get("uri")
+    valid_uri = (
+        isinstance(uri, str)
+        and bool(uri.strip())
+        and (
+            re.fullmatch(r"https?://[^\s]+", uri.strip()) is not None
+            or (uri.startswith("/") and not uri.startswith("//"))
+        )
+    )
+    if not valid_uri:
+        issues.append(f"{path}.uri 必须是站内绝对路径或 http(s) URL")
+    if value.get("mimeType") not in {"image/png", "image/jpeg", "image/webp"}:
+        issues.append(f"{path}.mimeType 必须是 PNG/JPEG/WebP")
+    digest = value.get("sha256")
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        issues.append(f"{path}.sha256 必须是 64 位小写十六进制摘要")
+    byte_size = value.get("byteSize")
+    if byte_size is not None and (
+        not isinstance(byte_size, int) or isinstance(byte_size, bool) or byte_size <= 0
+    ):
+        issues.append(f"{path}.byteSize 必须是正整数")
+    return issues
+
+
 def _as_finite_vector3(value: object) -> list[int | float] | None:
     """兼容模型常见的 ``[x,y,z]`` 和 ``{x,y,z}`` 坐标表达。"""
     if isinstance(value, (list, tuple)) and len(value) == 3:
@@ -578,12 +618,12 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
             component_allowed = {
                 "door": {
                     "type", "id", "parentWall", "from", "width", "height",
-                    "frameWidth", "frameDepth", "frameMaterial", "leafMaterial",
-                    "interaction", "draggable",
+                    "frameWidth", "frameDepth", "leafDepth", "frameMaterial", "leafMaterial",
+                    "interaction", "openingStyle", "doorStyle", "draggable",
                 },
                 "window": {
                     "type", "id", "parentWall", "from", "width", "height",
-                    "frameWidth", "frameDepth", "verticalMullions",
+                    "frameWidth", "frameDepth", "glassDepth", "verticalMullions",
                     "horizontalMullions", "frameMaterial", "glassMaterial",
                     "interaction", "draggable",
                 },
@@ -665,6 +705,16 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                     for field in positive_fields:
                         if not _is_positive_finite_number(component.get(field)):
                             issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+                    optional_positive_fields = {
+                        "door": ("frameDepth", "leafDepth"),
+                        "window": ("frameDepth", "glassDepth"),
+                        "canopy": (),
+                        "balcony": (),
+                        "bay_window": ("frameDepth",),
+                    }[component_type]
+                    for field in optional_positive_fields:
+                        if field in component and not _is_positive_finite_number(component.get(field)):
+                            issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
                 elif component_type in {"railing", "cornice"}:
                     path_points = component.get("path")
                     if (
@@ -695,6 +745,53 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                         if component.get("lightType", "point") not in {"point", "spot"}:
                             issues.append(f"组合构件 {component_id}.lightType 必须是 point/spot")
 
+    # ---------- PBR 资产清单 ----------
+    assets = blueprint.get("assets", {})
+    if not isinstance(assets, dict):
+        issues.append("'assets' 必须是对象")
+        assets = {}
+    else:
+        for asset_id, asset in assets.items():
+            path = f"assets.{asset_id}"
+            if re.fullmatch(r"pbr_[0-9a-f]{24}", str(asset_id)) is None:
+                issues.append(f"{path} 的 assetId key 格式无效")
+            if not isinstance(asset, dict):
+                issues.append(f"{path} 必须是对象")
+                continue
+            if asset.get("assetId") != asset_id:
+                issues.append(f"{path}.assetId 必须与资产 key 一致")
+            if asset.get("kind") != "pbr_texture_set":
+                issues.append(f"{path}.kind 必须是 pbr_texture_set")
+            content_hash = asset.get("contentHash")
+            if (
+                not isinstance(content_hash, str)
+                or re.fullmatch(r"sha256:[0-9a-f]{64}", content_hash) is None
+            ):
+                issues.append(f"{path}.contentHash 格式无效")
+            if not isinstance(asset.get("license"), str) or not asset["license"].strip():
+                issues.append(f"{path}.license 不能为空")
+            maps = asset.get("maps")
+            if not isinstance(maps, dict):
+                issues.append(f"{path}.maps 必须是对象")
+                continue
+            if "baseColor" not in maps:
+                issues.append(f"{path}.maps.baseColor 缺失")
+            unknown_channels = sorted(set(maps) - set(_PBR_CHANNEL_COLOR_SPACES))
+            if unknown_channels:
+                issues.append(f"{path}.maps 包含不支持的通道: {unknown_channels}")
+            for channel, image in maps.items():
+                image_path = f"{path}.maps.{channel}"
+                issues.extend(_validate_asset_image(image, image_path))
+                if (
+                    channel in _PBR_CHANNEL_COLOR_SPACES
+                    and isinstance(image, dict)
+                    and image.get("colorSpace") != _PBR_CHANNEL_COLOR_SPACES[channel]
+                ):
+                    issues.append(
+                        f"{image_path}.colorSpace 必须是 "
+                        f"{_PBR_CHANNEL_COLOR_SPACES[channel]}"
+                    )
+
     # ---------- 材质结构与颜色通道 ----------
     materials = blueprint.get("materials", {})
     if not isinstance(materials, dict):
@@ -720,6 +817,13 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
             if not valid_base_color:
                 issues.append(
                     f"材质 '{name}'.baseColor 必须是 3 个 0–1 数值"
+                )
+            texture_set = material.get("textureSet")
+            if texture_set is not None and (
+                not isinstance(texture_set, str) or texture_set not in assets
+            ):
+                issues.append(
+                    f"材质 '{name}'.textureSet 引用了不存在的资产: {texture_set}"
                 )
 
     return issues

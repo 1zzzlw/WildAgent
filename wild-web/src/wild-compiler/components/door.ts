@@ -6,6 +6,7 @@ import type {
 import type { ComponentCompileContext } from '../types'
 import {
   assertFrameDimensions,
+  assertWallDepthAlignment,
   createBox,
   createOpeningInteraction,
   resolveStraightWallFrame,
@@ -39,8 +40,10 @@ function compileSingleDoor(
   openingStyle: 'rectangular' | 'arched',
 ): GeometryElement[] {
   const frameWidth = component.frameWidth ?? 0.08
-  const frameDepth = component.frameDepth ?? frame.wall.thickness + 0.04
+  const frameDepth = component.frameDepth ?? frame.wall.thickness
+  const leafDepth = component.leafDepth ?? Math.min(0.04, frameDepth)
   assertFrameDimensions(component, frameWidth, frameDepth)
+  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
 
   const [along, bottomY, normalOffset] = component.from
   const opening = withMaterial<OpeningParams>({
@@ -50,6 +53,7 @@ function compileSingleDoor(
     from: [...component.from],
     width: component.width,
     height: component.height,
+    depth: leafDepth,
     style: openingStyle,
   }, component.leafMaterial)
   opening._interaction = createOpeningInteraction(
@@ -95,9 +99,12 @@ function compileDoubleDoor(
   openingStyle: 'rectangular' | 'arched',
 ): GeometryElement[] {
   const frameWidth = component.frameWidth ?? 0.08
-  const frameDepth = component.frameDepth ?? frame.wall.thickness + 0.04
+  const frameDepth = component.frameDepth ?? frame.wall.thickness
+  const leafDepth = component.leafDepth ?? Math.min(0.04, frameDepth)
   // 双开门的内侧框可设为 0（两扇之间无缝），但仍需验证外侧框尺寸
   const halfWidth = component.width / 2
+  assertFrameDimensions(component, frameWidth, frameDepth)
+  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
 
   const [along, bottomY, normalOffset] = component.from
   const opening = withMaterial<OpeningParams>({
@@ -107,6 +114,7 @@ function compileDoubleDoor(
     from: [...component.from],
     width: component.width,
     height: component.height,
+    depth: leafDepth,
     style: openingStyle,
   }, component.leafMaterial)
 

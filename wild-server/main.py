@@ -17,6 +17,7 @@ from loguru import logger
 from app.api.ws_agent import router as ws_router
 from app.api.scenes import router as scenes_router
 from app.api.sessions import router as sessions_router
+from app.api.assets import router as assets_router
 from app.services.agent_service import agent_service
 from config import config
 
@@ -73,6 +74,7 @@ app.add_middleware(
 app.include_router(ws_router, tags=["ws连接初始化"])
 app.include_router(scenes_router, tags=["场景API"])
 app.include_router(sessions_router, tags=["会话API"])
+app.include_router(assets_router, tags=["资产API"])
 
 
 @app.get("/")

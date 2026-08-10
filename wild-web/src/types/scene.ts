@@ -8,7 +8,7 @@
  * - SceneSummary: 场景摘要（用于 Agent 快速了解场景状态）
  */
 
-import type { Blueprint } from './blueprint'
+import type { Blueprint, EmbeddedImageData, TextureImageData } from './blueprint'
 import type { ComponentCompilationMapping } from '../wild-compiler'
 import type { InteractiveElementBehavior } from '../wild-core/types'
 
@@ -105,20 +105,14 @@ export interface MaterialParams {
   lightingCondition?: string
   embeddedImage?: EmbeddedImageData
   textures?: {
-    baseColor?: EmbeddedImageData
-    normal?: EmbeddedImageData
-    roughness?: EmbeddedImageData
-    metalness?: EmbeddedImageData
-    ambientOcclusion?: EmbeddedImageData
+    baseColor?: TextureImageData
+    normal?: TextureImageData
+    roughness?: TextureImageData
+    metalness?: TextureImageData
+    ambientOcclusion?: TextureImageData
   }
   normalScale?: number
   uvScale?: [number, number]
-}
-
-export interface EmbeddedImageData {
-  encoding: 'base64'
-  mimeType: string
-  data: string
 }
 
 export interface EngineDiagnostic {

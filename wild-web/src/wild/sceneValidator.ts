@@ -69,6 +69,55 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
 
   // 校验材质引用
   const materialNames = new Set(Object.keys(blueprint.materials || {}))
+  const assetNames = new Set(Object.keys(blueprint.assets || {}))
+  for (const [assetId, rawAsset] of Object.entries(blueprint.assets || {})) {
+    const asset = rawAsset as any
+    const path = `assets.${assetId}`
+    if (!/^pbr_[0-9a-f]{24}$/.test(assetId) || asset?.assetId !== assetId) {
+      issues.push({ level: 'error', message: `PBR 资产 ${assetId} 标识无效`, path })
+    }
+    if (asset?.kind !== 'pbr_texture_set' || !/^sha256:[0-9a-f]{64}$/.test(asset?.contentHash || '')) {
+      issues.push({ level: 'error', message: `PBR 资产 ${assetId} 清单无效`, path })
+    }
+    if (typeof asset?.license !== 'string' || !asset.license.trim()) {
+      issues.push({ level: 'error', message: `PBR 资产 ${assetId} 缺少授权信息`, path: `${path}.license` })
+    }
+    if (!asset?.maps?.baseColor) {
+      issues.push({ level: 'error', message: `PBR 资产 ${assetId} 缺少 baseColor`, path: `${path}.maps.baseColor` })
+    }
+    const supportedChannels = new Set([
+      'baseColor', 'normal', 'roughness', 'metalness', 'ambientOcclusion',
+    ])
+    for (const [channel, image] of Object.entries(asset?.maps || {})) {
+      const ref = image as any
+      if (!supportedChannels.has(channel)) {
+        issues.push({ level: 'error', message: `PBR 资产 ${assetId} 包含未知通道: ${channel}`, path: `${path}.maps.${channel}` })
+        continue
+      }
+      const validUri = typeof ref?.uri === 'string'
+        && (/^https?:\/\/\S+$/.test(ref.uri) || (/^\//.test(ref.uri) && !/^\/\//.test(ref.uri)))
+      if (
+        ref?.encoding !== 'url'
+        || !validUri
+        || !/^image\/(png|jpeg|webp)$/.test(ref?.mimeType || '')
+        || !/^[0-9a-f]{64}$/.test(ref?.sha256 || '')
+      ) {
+        issues.push({
+          level: 'error',
+          message: `PBR 资产 ${assetId} 的 ${channel} URL 引用无效`,
+          path: `${path}.maps.${channel}`
+        })
+      }
+      const expectedColorSpace = channel === 'baseColor' ? 'srgb' : 'linear'
+      if (ref?.colorSpace !== expectedColorSpace) {
+        issues.push({
+          level: 'error',
+          message: `PBR 资产 ${assetId} 的 ${channel} colorSpace 必须是 ${expectedColorSpace}`,
+          path: `${path}.maps.${channel}.colorSpace`
+        })
+      }
+    }
+  }
   for (const [name, material] of Object.entries(blueprint.materials || {})) {
     const baseColor = (material as any)?.baseColor
     const validBaseColor = Array.isArray(baseColor)
@@ -84,6 +133,14 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
         level: 'error',
         message: `材质 ${name} 的 baseColor 必须是 3 个 0–1 数值`,
         path: `materials.${name}.baseColor`
+      })
+    }
+    const textureSet = (material as any)?.textureSet
+    if (textureSet && !assetNames.has(textureSet)) {
+      issues.push({
+        level: 'error',
+        message: `材质 ${name} 引用了不存在的 PBR 资产: ${textureSet}`,
+        path: `materials.${name}.textureSet`
       })
     }
   }

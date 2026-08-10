@@ -62,7 +62,9 @@ authority: engine
 keywords: 阳台, balcony, slabThickness, railingHeight
 -->
 
-`balcony` 依附墙体，编译为悬挑楼板和 U 形路径栏杆。`from` 是 `[沿父墙距离, 楼板顶面世界Y, 墙体法向偏移]`；必填 `width`、`depth`、`slabThickness`。`railingHeight` 和 `postSpacing` 控制防护外观，但不代表通过建筑规范校核。
+`balcony` 依附墙体，编译为悬挑楼板和 U 形路径栏杆。`from` 是 `[沿父墙距离, 楼板顶面世界Y, 墙体法向偏移]`；通常令 `from[2]=0`，编译器根据宿主墙相对建筑水平包围盒中心的位置推断室外方向，并让正数 `depth` 始终向室外悬挑。必填 `width`、`depth`、`slabThickness`。`railingHeight` 和 `postSpacing` 控制防护外观，但不代表通过建筑规范校核。
+
+同一阳台只能保留一个 `balcony` 组件。组件自身已经包含悬挑板和三面 U 形栏杆，不得再生成与其重合的独立 `floor` 或三段 `railing`；合并阶段会清理这种重复表达。只有不属于该阳台的连续露台或其他真实临空边，才单独使用楼板和栏杆。
 
 以下是 `geometry.components` 数组片段，不是完整 `.wild` 文件；假定 `front_wall` 已存在：
 

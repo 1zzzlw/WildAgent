@@ -4,7 +4,7 @@
       <span>校验结果</span>
     </div>
     <div class="panel-body">
-      <div v-if="issues.length === 0 && reconstructionIssues.length === 0" class="success-state">
+      <div v-if="issues.length === 0 && reconstructionIssues.length === 0 && textureFailures.length === 0" class="success-state">
         ✓ 场景校验通过
       </div>
       <div v-else class="issues-list">
@@ -39,6 +39,19 @@
             </div>
           </div>
         </div>
+        <div class="diagnostic-section" v-if="textureFailures.length > 0">
+          <div class="diagnostic-title">PBR 纹理加载失败 · {{ textureFailures.length }} 项</div>
+          <div v-for="item in textureFailures" :key="`${item.channel}:${item.uri}`" class="issue-item error">
+            <span class="issue-icon">✕</span>
+            <div class="issue-content">
+              <div class="issue-message">{{ item.channel }} 纹理未能加载</div>
+              <div class="issue-meta">
+                <span>地址: {{ item.uri }}</span>
+                <span v-if="item.detail">原因: {{ item.detail }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <details v-if="reconstructionObservations.length > 0" class="reconstruction-report">
         <summary>
@@ -68,10 +81,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useSceneStore } from '../../stores/sceneStore'
+import {
+  getTextureLoadRecords,
+  subscribeTextureLoads,
+  type TextureLoadRecord,
+} from '../../renderer/textureLoadMonitor'
 
 const sceneStore = useSceneStore()
+const textureLoads = ref<TextureLoadRecord[]>(getTextureLoadRecords())
+let unsubscribeTextureLoads: (() => void) | undefined
+
+onMounted(() => {
+  unsubscribeTextureLoads = subscribeTextureLoads(records => { textureLoads.value = records })
+})
+onBeforeUnmount(() => unsubscribeTextureLoads?.())
 
 const issues = computed(() => sceneStore.validationIssues)
 const reconstructionIssues = computed(() => (
@@ -80,6 +105,7 @@ const reconstructionIssues = computed(() => (
 const reconstructionObservations = computed(() => (
   sceneStore.reconstructed?.reconstructionReport.observations ?? []
 ))
+const textureFailures = computed(() => textureLoads.value.filter(item => item.state === 'error'))
 
 function formatBounds(bounds: { min: [number, number, number]; max: [number, number, number] }): string {
   const point = (value: [number, number, number]) => value.map(item => item.toFixed(2)).join(', ')

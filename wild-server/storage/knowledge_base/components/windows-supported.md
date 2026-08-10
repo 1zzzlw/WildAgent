@@ -34,9 +34,13 @@ keywords:
 | `from` | `[沿墙弧长距离, 窗台世界Y, 法向偏移]` |
 | `width`, `height` | 正数，且不能超出父墙 |
 | `verticalMullions`, `horizontalMullions` | 可选，分别为 0–32 的整数 |
-| `frameWidth`, `frameDepth` | 可选正数 |
+| `frameWidth` | 可选正数，默认 0.06m |
+| `frameDepth` | 可选正数，默认等于父墙 `thickness` |
+| `glassDepth` | 可选正数，默认 `min(0.012, frameDepth)`，且不能大于 `frameDepth` |
 | `frameMaterial`, `glassMaterial` | 可选，必须引用已有材质 |
 | `interaction` | 可选；`mode` 为 `swing/slide`，可设方向、角度/距离和初始状态 |
+
+窗框和玻璃以 `from[2]` 为中心沿父墙法向放置，必须与父墙厚度范围产生实体交叠。通常保持 `from[2] = 0` 并省略深度字段；编译后的玻璃是有厚度的封闭网格，不再是零厚平面。
 
 ### 有效 JSON 片段
 

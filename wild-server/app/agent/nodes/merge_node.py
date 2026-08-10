@@ -8,6 +8,7 @@ Layer 2: 分片合并节点（含校验 + 修复 + 循环）
 每次迭代通过 on_reasoning_delta 发射思考内容，让前端能看到合并推理过程。
 """
 import time as _time
+from math import isfinite
 from copy import deepcopy
 from loguru import logger
 
@@ -82,7 +83,19 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     components = merged_blueprint.get("geometry", {}).get("components", [])
     logger.info(f"[merge] 初次合并: {len(elements)} elements, {len(components)} components")
 
-    # ── 2.5 设计配额比对：超额组件按优先级剔除 ──
+    # ── 2.5 同一阳台只能保留一种表达：balcony 组件拥有自己的楼板和 U 形栏杆 ──
+    balcony_cleanup = _deduplicate_balcony_representations(merged_blueprint)
+    if balcony_cleanup["removed_floor_ids"]:
+        elements = merged_blueprint.get("geometry", {}).get("elements", [])
+        components = merged_blueprint.get("geometry", {}).get("components", [])
+        logger.info(f"[merge] 阳台重复表达清理: {balcony_cleanup}")
+
+    ground_railing_cleanup = _remove_ground_level_railings(merged_blueprint)
+    if ground_railing_cleanup["removed_railing_ids"]:
+        components = merged_blueprint.get("geometry", {}).get("components", [])
+        logger.info(f"[merge] 地面平台冗余栏杆清理: {ground_railing_cleanup}")
+
+    # ── 2.6 设计配额比对：超额组件按优先级剔除 ──
     quota_pruned = 0
     if design_brief:
         quota = design_brief.get("component_quota", {})
@@ -93,6 +106,20 @@ async def merge_fragments_node(state: GenerationState) -> dict:
                 merged_blueprint["geometry"]["components"] = components
                 logger.info(f"[merge] 配额强制: 移除了 {quota_pruned} 个超额组件")
 
+    # ── 2.7 门窗按方案槽位确定性吸附；模型缺少下限数量时补齐最小安全构件 ──
+    opening_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
+    if design_brief:
+        from app.agent.architecture_plan import conform_openings_to_slots
+
+        components, opening_layout = conform_openings_to_slots(
+            components,
+            design_brief,
+            merged_blueprint.get("materials", {}),
+        )
+        merged_blueprint["geometry"]["components"] = components
+        if any(opening_layout.values()):
+            logger.info(f"[merge] 立面槽位对齐: {opening_layout}")
+
     design_errors = _validate_design_brief_constraints(merged_blueprint, design_brief)
 
     if on_reasoning_delta:
@@ -100,6 +127,20 @@ async def merge_fragments_node(state: GenerationState) -> dict:
             "merge",
             f"初次合并完成: {len(elements)} 个结构元素, {len(components)} 个组件"
             + (f"（配额比对后剔除 {quota_pruned} 个超额组件）" if quota_pruned else "")
+            + (
+                f"（清理重复阳台楼板 {len(balcony_cleanup['removed_floor_ids'])}、"
+                f"栏杆 {balcony_cleanup['removed_railing_count']}）"
+                if balcony_cleanup["removed_floor_ids"] else ""
+            )
+            + (
+                f"（清理地面平台栏杆 {len(ground_railing_cleanup['removed_railing_ids'])}）"
+                if ground_railing_cleanup["removed_railing_ids"] else ""
+            )
+            + (
+                f"（槽位吸附 {opening_layout['snapped']}，补齐 {opening_layout['synthesized']}，"
+                f"剔除无槽位开口 {opening_layout['pruned']}）"
+                if any(opening_layout.values()) else ""
+            )
             + (
                 f"\n设计约束预检发现 {len(design_errors)} 个问题。"
                 if design_errors else "\n设计约束预检通过。"
@@ -116,6 +157,9 @@ async def merge_fragments_node(state: GenerationState) -> dict:
         "fragment_summary": summary_text,
         "element_count": len(elements),
         "component_count": len(components),
+        "opening_layout": opening_layout,
+        "balcony_cleanup": balcony_cleanup,
+        "ground_railing_cleanup": ground_railing_cleanup,
         "design_errors": design_errors,
         "iterations": [],
     }
@@ -280,6 +324,8 @@ def _validate_design_brief_constraints(
         entity_type = entity.get("type")
         if entity_type:
             counts[entity_type] = counts.get(entity_type, 0) + 1
+    # balcony 编译器内嵌一套 U 形栏杆，设计配额不能要求再生成重复 railing 组件。
+    counts["railing"] = counts.get("railing", 0) + counts.get("balcony", 0)
 
     errors: list[str] = []
     for component_type, limits in design_brief.get("component_quota", {}).items():
@@ -316,6 +362,218 @@ def _validate_design_brief_constraints(
             )
 
     return errors
+
+
+def _deduplicate_balcony_representations(blueprint: dict) -> dict:
+    """移除与 balcony 组件同 footprint 的手写 floor 及其独立 railing。
+
+    骨架模型偶尔会先用 floor 表达阳台，阳台节点又生成 balcony 组件。后者已经
+    内嵌悬挑板和 U 形栏杆；两套同时保留会产生重叠楼板和密集杆件。
+    """
+    geometry = blueprint.get("geometry", {})
+    elements = geometry.get("elements", [])
+    components = geometry.get("components", [])
+    walls = {
+        item.get("id"): item
+        for item in elements
+        if isinstance(item, dict) and item.get("type") == "wall" and item.get("id")
+    }
+    wall_points = [
+        point
+        for wall in walls.values()
+        for point in (wall.get("from"), wall.get("to"))
+        if _finite_vec3(point)
+    ]
+    if not wall_points:
+        return {"removed_floor_ids": [], "removed_railing_count": 0}
+
+    building_center = (
+        (min(point[0] for point in wall_points) + max(point[0] for point in wall_points)) / 2,
+        (min(point[2] for point in wall_points) + max(point[2] for point in wall_points)) / 2,
+    )
+    expected_footprints = []
+    for component in components:
+        if not isinstance(component, dict) or component.get("type") != "balcony":
+            continue
+        footprint = _balcony_footprint(component, walls.get(component.get("parentWall")), building_center)
+        if footprint:
+            expected_footprints.append(footprint)
+
+    removed_floor_ids: set[str] = set()
+    for element in elements:
+        if not isinstance(element, dict) or element.get("type") != "floor":
+            continue
+        element_id = element.get("id")
+        floor_from = element.get("from")
+        floor_to = element.get("to")
+        if not element_id or not _finite_vec3(floor_from) or not _finite_vec3(floor_to):
+            continue
+        floor_bounds = (
+            min(floor_from[0], floor_to[0]), max(floor_from[0], floor_to[0]),
+            min(floor_from[2], floor_to[2]), max(floor_from[2], floor_to[2]),
+        )
+        floor_y = (floor_from[1] + floor_to[1]) / 2
+        if any(
+            abs(floor_y - footprint["top_y"]) <= 0.05
+            and _footprint_iou(floor_bounds, footprint["bounds"]) >= 0.75
+            for footprint in expected_footprints
+        ):
+            removed_floor_ids.add(str(element_id))
+
+    if not removed_floor_ids:
+        return {"removed_floor_ids": [], "removed_railing_count": 0}
+
+    kept_components = []
+    removed_railing_count = 0
+    for component in components:
+        if (
+            isinstance(component, dict)
+            and component.get("type") == "railing"
+            and component.get("parentFloor") in removed_floor_ids
+        ):
+            removed_railing_count += 1
+            continue
+        kept_components.append(component)
+
+    geometry["elements"] = [
+        element for element in elements
+        if not isinstance(element, dict) or element.get("id") not in removed_floor_ids
+    ]
+    geometry["components"] = kept_components
+    return {
+        "removed_floor_ids": sorted(removed_floor_ids),
+        "removed_railing_count": removed_railing_count,
+    }
+
+
+def _balcony_footprint(
+    component: dict,
+    wall: dict | None,
+    building_center: tuple[float, float],
+) -> dict | None:
+    if not isinstance(wall, dict):
+        return None
+    wall_from = wall.get("from")
+    wall_to = wall.get("to")
+    component_from = component.get("from")
+    if not _finite_vec3(wall_from) or not _finite_vec3(wall_to) or not _finite_vec3(component_from):
+        return None
+    width = component.get("width")
+    depth = component.get("depth")
+    if not _positive_number(width) or not _positive_number(depth):
+        return None
+
+    dx = wall_to[0] - wall_from[0]
+    dz = wall_to[2] - wall_from[2]
+    wall_length = (dx * dx + dz * dz) ** 0.5
+    if wall_length <= 1e-6:
+        return None
+    direction = (dx / wall_length, dz / wall_length)
+    normal = (-direction[1], direction[0])
+    along, top_y, normal_offset = component_from
+    center_along = along + width / 2
+    wall_center = (
+        wall_from[0] + direction[0] * center_along,
+        wall_from[2] + direction[1] * center_along,
+    )
+    outward_dot = (
+        (wall_center[0] - building_center[0]) * normal[0]
+        + (wall_center[1] - building_center[1]) * normal[1]
+    )
+    exterior_sign = 1 if outward_dot > 1e-6 else -1
+    start = (
+        wall_from[0] + direction[0] * along + normal[0] * normal_offset,
+        wall_from[2] + direction[1] * along + normal[1] * normal_offset,
+    )
+    end = (start[0] + direction[0] * width, start[1] + direction[1] * width)
+    outside_start = (
+        start[0] + normal[0] * exterior_sign * depth,
+        start[1] + normal[1] * exterior_sign * depth,
+    )
+    outside_end = (
+        end[0] + normal[0] * exterior_sign * depth,
+        end[1] + normal[1] * exterior_sign * depth,
+    )
+    points = (start, end, outside_start, outside_end)
+    return {
+        "top_y": top_y,
+        "bounds": (
+            min(point[0] for point in points), max(point[0] for point in points),
+            min(point[1] for point in points), max(point[1] for point in points),
+        ),
+    }
+
+
+def _remove_ground_level_railings(blueprint: dict) -> dict:
+    """地面标高附近的门廊/平台不存在需要防坠的高差，不生成围挡入口的栏杆。"""
+    geometry = blueprint.get("geometry", {})
+    elements = geometry.get("elements", [])
+    components = geometry.get("components", [])
+    floor_tops: dict[str, float] = {}
+    for element in elements:
+        if not isinstance(element, dict) or element.get("type") != "floor":
+            continue
+        floor_from = element.get("from")
+        floor_to = element.get("to")
+        thickness = element.get("thickness", 0)
+        if (
+            element.get("id")
+            and _finite_vec3(floor_from)
+            and _finite_vec3(floor_to)
+            and isinstance(thickness, (int, float))
+            and not isinstance(thickness, bool)
+            and isfinite(thickness)
+        ):
+            floor_tops[str(element["id"])] = max(floor_from[1], floor_to[1]) + max(0, thickness)
+
+    removed_ids: list[str] = []
+    kept_components = []
+    for component in components:
+        parent_floor = component.get("parentFloor") if isinstance(component, dict) else None
+        floor_top = floor_tops.get(parent_floor)
+        if (
+            isinstance(component, dict)
+            and component.get("type") == "railing"
+            and floor_top is not None
+            and floor_top <= 0.35
+        ):
+            removed_ids.append(str(component.get("id", "?")))
+            continue
+        kept_components.append(component)
+    geometry["components"] = kept_components
+    return {"removed_railing_ids": removed_ids}
+
+
+def _footprint_iou(first: tuple, second: tuple) -> float:
+    ix = max(0.0, min(first[1], second[1]) - max(first[0], second[0]))
+    iz = max(0.0, min(first[3], second[3]) - max(first[2], second[2]))
+    intersection = ix * iz
+    first_area = max(0.0, first[1] - first[0]) * max(0.0, first[3] - first[2])
+    second_area = max(0.0, second[1] - second[0]) * max(0.0, second[3] - second[2])
+    union = first_area + second_area - intersection
+    return intersection / union if union > 1e-9 else 0.0
+
+
+def _finite_vec3(value: object) -> bool:
+    return (
+        isinstance(value, list)
+        and len(value) == 3
+        and all(
+            isinstance(item, (int, float))
+            and not isinstance(item, bool)
+            and isfinite(item)
+            for item in value
+        )
+    )
+
+
+def _positive_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and isfinite(value)
+        and value > 0
+    )
 
 
 def _enforce_component_quota(

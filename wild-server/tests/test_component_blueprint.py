@@ -38,6 +38,23 @@ class ComponentBlueprintTest(unittest.TestCase):
 
         self.assertTrue(any("不支持的字段" in issue for issue in issues))
 
+    def test_door_and_window_depth_fields_are_supported(self):
+        blueprint = make_blueprint()
+        door, window = blueprint["geometry"]["components"][:2]
+        door.update({
+            "frameDepth": 0.24,
+            "leafDepth": 0.04,
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+        })
+        window.update({"frameDepth": 0.24, "glassDepth": 0.012})
+
+        self.assertEqual(validate_blueprint_schema(blueprint), [])
+
+        door["leafDepth"] = 0
+        issues = validate_blueprint_schema(blueprint)
+        self.assertTrue(any("leafDepth 必须是正有限数字" in issue for issue in issues))
+
     def test_scene_patch_can_add_update_and_remove_component(self):
         blueprint = make_blueprint()
         blueprint["geometry"]["components"] = []

@@ -30,11 +30,16 @@ Agent 的价值不是单次输出 JSON，而是把不稳定的模型输出约束
 
 增量编辑注入的场景摘要必须保留完整 X/Y/Z 坐标和关键尺寸，不能只给墙体 X/Y 而丢掉 Z，否则“在建筑旁边新增”无法确定真实边界。提案应用前先校验操作白名单、必填字段、目标 ID、新增 ID 唯一性以及是否产生实际变化，再在 Blueprint 副本上执行完整校验；前端仍需用户确认后才修改当前场景。模型常用的 `add_material` 会确定性归一化为正式协议的 `upsert_material`（同时兼容 `material_id/id` 到 `name`），发送给前端的始终是标准操作。`patch_diag.structured_source` 记录产物来自 `content/reasoning/recovery_*`，`structured_recovery_used` 标记是否使用了格式恢复。
 
+PBR 上传不交给建筑对话模型生成 URL 或 Base64，而走独立资产图；成功后先发 `upsert_asset` 写入已校验的不可变清单，再发 `upsert_material` 用 `textureSet` 引用它。主 Agent 的普通增量回复不能凭空构造资产清单，只有资产 API 或以后受信任的搜索/生成适配器可以注册新 `assetId`。
+
+“优化选中墙面的纹理质感”属于受限 EDIT。快速和精密模式都把前端 `selection` 注入 Patch 上下文；没有选择时直接提示用户先选中，不消耗一次材质模型调用。该模式只接受 `tune_material`，模型提供目标材质字段和参数差异，程序负责克隆现有材质并补入可信的 `source_name/before` 供确认界面显示。服务端拒绝 `upsert_asset/upsert_material`、几何操作、未选中目标、越界数值、无实际变化，以及在没有 normal 贴图时调整 `normalScale`。因此这里提升的是现有纹理的 PBR 渲染质感，不是图片超分、修复或生成。
+
 ### 精密模式
 
 ```text
 classifier
-  ├── GENERATE -> skeleton
+  ├── GENERATE -> architecture（2 个方案候选 + 确定性评分）
+  │                -> skeleton（只落实结构骨架）
   │                -> Send(component_gen -> component_val) × N
   │                -> merge
   │                -> final_validate
@@ -45,6 +50,12 @@ classifier
 ```
 
 组件建议在派发前统一过滤：未知或未实现的类型被丢弃，用户明确否定的组件不生成，空建议保留门、窗、屋顶基础集合，阳台的内嵌栏杆不会被无意重复生成。
+
+`architecture` 与 `skeleton` 可以复用同一个模型，但职责必须分开。前者只输出紧凑方案协议：体量尺寸、层数、立面轴数、每个轴位的 `door/window/empty` 模式、屋顶和构件配额；一次返回两个候选，由程序按用户明确层数、风格、入口、对称性和完整度评分选择。模型调用或 JSON 解析失败时使用受范围约束的确定性默认方案，不让整条生成链短路。后者只把批准方案落实为 walls/floors/columns/beams/stair，不再同时发明一份新的立面清单。
+
+方案节点为了稳定结构化输出，固定使用非思考、非流式调用，不把供应商相关的原始 `reasoning_content` 当作产品能力。执行面板改为展示可控的方案过程摘要：每个候选的概念、体量、层数、主立面轴数、屋顶、确定性评分，以及最终选择和设计依据。这样即使切换到不支持 thinking token 的模型，用户仍能看到一致、可核对的“为什么选择这个方案”。
+
+骨架生成后，程序按墙体包围盒把真实墙映射为 `front/back/left/right`，再按立面轴数计算 `opening_slots`。每个槽位直接给出真实 `wall_id`、局部 `from`、`width`、`height`；门窗节点必须复制槽位，合并阶段还会二次吸附。模型漏掉设计下限内的门窗时，程序用最小安全构件补齐；无槽位的多余开口会剔除。因此模型负责建筑意图和构件外观参数，程序负责容易出错的坐标与对齐。
 
 ## 3. 生成安全闭环
 
@@ -82,13 +93,14 @@ LLM 结构化结果
 - 门窗 `from` 的契约固定为 `[沿父墙距离, 底部世界Y, 局部法向偏移]`。第三项不是世界 X/Z，通常必须为 `0`；明显误用世界坐标时先投影回父墙，再归零法向偏移。
 - `opening` 基础元素和 `door/window` 组合构件必须同时参与坐标、墙体范围和同墙重叠校验，不能因其中一类为空而跳过另一类。
 - 合并结果必须满足设计清单中的组件最小/最大数量，以及每面立面的最大开口数；缺门、缺窗不能以“JSON 已合并”作为成功。
+- 合并前门窗必须按 `opening_slots` 吸附；同一槽位只允许一个构件。槽位由实际墙长、墙高、楼层标高和轴数计算，不依赖模型再次心算坐标。
 - 构件使用的 `material/frameMaterial/leafMaterial/glassMaterial` 必须存在于 `Blueprint.materials`。
 - 确定性修复没有实际改变蓝图时立即停止空转，交给最终校验和按组件回调；错误归零前禁止保存与加载。
 - `wall.from[1]` 是墙底、`wall.to[1]` 是墙顶。墙高为零时，在派发门窗节点前优先按上一层楼板标高或已知层高补全；不能让组件回调反复修改门窗去适配一个无效父墙。
 - `floor.from/to` 必须是两个三维数组，Y 表示楼板底标高。模型输出坐标对象或漏掉坐标时，只在有效墙体能够确定 X/Z 包围盒和楼层底标高的情况下补全；例如两层墙底标高为 0/3 时，按楼板顺序补为 `[minX,0,minZ] -> [maxX,0,maxZ]` 和 `[minX,3,minZ] -> [maxX,3,maxZ]`。没有可靠墙体边界时继续阻断，禁止根据名称猜尺寸。
 - 引用完整性只负责父对象、模板、行为和材质引用；门窗越界与重叠统一由开口几何校验负责，避免同一个根因重复计为两个错误。
 - 流式模型若把最终 Blueprint 放入 `reasoning_content` 且普通 `content` 为空，骨架节点允许从 reasoning 兼容提取完整的 `meta + geometry` 对象；提取器同时支持 fenced、未 fenced JSON，以及 `blueprint/result/data` 等常见包装对象，并按对象结构选择 Blueprint。
-- 首轮回复已经包含 DESIGN_BRIEF、但 Blueprint 缺失或 JSON 无效时，骨架节点只追加一次非思考格式恢复调用，强制模型只返回单一 Blueprint JSON；恢复仍失败才终止图。前端必须显示 skeleton 的真实错误，不能再用笼统的“最终 Blueprint 缺失”覆盖根因。
+- 首轮 Blueprint 缺失或 JSON 无效时，骨架节点只追加一次非思考格式恢复调用，强制模型只返回单一 Blueprint JSON；恢复仍失败才终止图。立面设计已来自上游批准方案，不要求恢复调用再输出 DESIGN_BRIEF。前端必须显示 skeleton 的真实错误，不能再用笼统的“最终 Blueprint 缺失”覆盖根因。
 - `meta.version`、`meta.type` 和空缺的 `meta.name` 属于可确定元数据，在 Schema 校验前分别补为 `1.1`、`building` 和 `AI生成建筑`；这类非几何字段不再浪费一次模型重试。`meta` 本身不是对象时仍会被结构校验阻断。
 - 骨架派发组件前修正唯一可判定的材质简称（如仅存在 `wood_oak` 时将 `wood` 映射到它）；候选不唯一则保留错误并阻断，禁止猜测。
 

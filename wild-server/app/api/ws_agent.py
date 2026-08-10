@@ -265,6 +265,7 @@ _NODE_LABELS = {
     "classifier": "意图分类",
     "chat": "知识问答",
     "patch": "场景修改",
+    "architecture": "建筑方案",
     "skeleton": "骨架",
     "merge": "合并", "final_validate": "最终校验", "callback": "修正",
 }
@@ -293,6 +294,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     request_id = data.get("request_id", "")
     message = data.get("message", "")
     current_blueprint = data.get("blueprint")
+    selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
     # 精密模式下强制开启思考（前端已做联动，此处兜底防止 localStorage 状态不一致）
     thinking_mode = data.get("thinking_mode") is True or data.get("precision_mode") is True
@@ -332,7 +334,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
             "request_id": request_id,
             "session_id": session_id,
             "node": node_name,  # 标记是哪个节点的思考
-            "channel": "progress" if node_name in {"merge", "final_validate"} or node_name.endswith("_val") else "reasoning",
+            "channel": "progress" if node_name in {"architecture", "merge", "final_validate"} or node_name.endswith("_val") else "reasoning",
             "delta": delta,
         })
 
@@ -351,6 +353,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         "building_type": _detect_building_type(message),
         "session_id": session_id,
         "current_blueprint": current_blueprint,
+        "selection": selection,
         "thinking_mode": thinking_mode,
         "on_reasoning_delta": send_thinking_delta if thinking_mode else None,
         "max_retries": 3,
@@ -373,7 +376,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     # 生成所有可能的节点名（gen + val + 固定节点）
     _COMP_TYPES = {"door", "window", "roof", "railing", "canopy",
                    "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
-    _OUR_NODES = {"classifier", "chat", "patch", "skeleton", "merge", "final_validate", "callback"}
+    _OUR_NODES = {"classifier", "chat", "patch", "architecture", "skeleton", "merge", "final_validate", "callback"}
     for ct in _COMP_TYPES:
         _OUR_NODES.add(f"{ct}_gen")
         _OUR_NODES.add(f"{ct}_val")
@@ -398,6 +401,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                     "classifier": "分析用户意图",
                     "chat": "RAG 检索知识库并生成回答",
                     "patch": "分析当前场景并生成修改提案",
+                    "architecture": "生成建筑方案候选并执行确定性评分",
                     "skeleton": "RAG 检索并规划建筑骨架",
                     "merge": "合并所有组件分片",
                     "final_validate": "执行最终校验流水线",
@@ -505,6 +509,27 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                             "stage": "done",
                             **patch_diag,
                         })
+
+                elif node_name == "architecture":
+                    plan = node_output.get("architecture_plan", {})
+                    massing = plan.get("massing", {})
+                    selected = diag.get("selected_index", 0) + 1
+                    candidate_count = diag.get("candidate_count", 1)
+                    fallback_note = " · 使用安全回退" if diag.get("used_fallback") else ""
+                    await send_step(
+                        "generating", node_name, "done", label,
+                        f"候选 {selected}/{candidate_count} · "
+                        f"{massing.get('width', '?')}×{massing.get('depth', '?')}m · "
+                        f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶"
+                        f"{fallback_note}",
+                    )
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        **diag,
+                        "concept": plan.get("concept"),
+                        "massing": massing,
+                        "roof": plan.get("roof"),
+                    })
 
                 elif node_name == "skeleton":
                     if node_output.get("error"):
@@ -904,6 +929,7 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
     request_id = data.get("request_id", "")
     message = data.get("message", "")
     current_blueprint = data.get("blueprint")
+    selection = data.get("selection", [])
     # 只有 JSON 布尔值 true 才开启，避免字符串 "true" 等意外触发日志。
     thinking_mode = data.get("thinking_mode") is True
     # 相同 session_id 使用同一个文件名，因此后续生成会更新该会话的场景文件。
@@ -975,6 +1001,7 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
         result = await agent_service.query_structured(
             message,
             current_blueprint,
+            selection=selection,
             thinking_mode=thinking_mode,
             on_reasoning_delta=send_reasoning_delta if thinking_mode else None,
         )
@@ -1101,12 +1128,20 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
 
     elif result.error:
         # JSON 已被识别但结构预检失败时，不把无效 Blueprint 当作普通聊天回复。
-        await send_step("finished", result.error, status="error", label="结构预检失败")
+        needs_selection = result.error == "材质优化前必须先选中一个构件"
+        await send_step(
+            "finished",
+            result.error,
+            status="error",
+            label="需要选择构件" if needs_selection else "结构预检失败",
+        )
         await _send_event(ws, {
             "type": "agent_reply",
             "request_id": request_id,
             "session_id": session_id,
-            "content": f"生成结果未通过结构预检：\n\n{result.error}",
+            "content": result.text if needs_selection else (
+                f"生成结果未通过结构预检：\n\n{result.error}"
+            ),
         })
 
     else:

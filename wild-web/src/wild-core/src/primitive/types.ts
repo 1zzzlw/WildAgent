@@ -7,6 +7,7 @@
 
 import type {
   Vec3, Color, Meta, GeometryElement, MaterialDef,
+  PBRTextureSetAsset,
   PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams,
   OpeningParams, StairParams, FurnitureParams, DenseBrickParams, BodyParams,
@@ -20,7 +21,7 @@ import type {
 
 // 重新导出语言规范类型,供引擎其他模块使用
 export type {
-  Vec3, Color, Meta, GeometryElement, MaterialDef, PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
+  Vec3, Color, Meta, GeometryElement, MaterialDef, PBRTextureSetAsset, PhysicsData, ScriptData, AnimationParams, Blueprint, Placement,
   WallParams, FloorParams, ColumnParams, BeamParams, RoofParams, OpeningParams, StairParams,
   FurnitureParams, DenseBrickParams, BodyParams,
   PrimitiveParams,

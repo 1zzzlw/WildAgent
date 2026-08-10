@@ -66,28 +66,19 @@ function getCellForElement(el: GeometryElement, cellSize: number): string {
 function resolveWallJoints(elements: GeometryElement[], index: SpatialIndex): void {
   const walls = elements.filter(e => e.type === 'wall') as any[];
   for (const wall of walls) {
-    const fromKey = `${wall.from[0]},${wall.from[2]}`;
-    const toKey = `${wall.to[0]},${wall.to[2]}`;
-    const neighbors = findNeighborWalls(wall, walls);
-    for (const neighbor of neighbors) {
-      adjustWallJoint(wall, neighbor);
+    delete wall._jointExtensions;
+  }
+  for (let first = 0; first < walls.length; first++) {
+    for (let second = first + 1; second < walls.length; second++) {
+      adjustWallJoint(walls[first], walls[second]);
     }
   }
 }
 
-function findNeighborWalls(wall: any, walls: any[]): any[] {
-  const tolerance = 0.01;
-  return walls.filter(other => {
-    if (other.id === wall.id) return false;
-    const distFF = distance2D(other.from, wall.from);
-    const distFT = distance2D(other.from, wall.to);
-    const distTF = distance2D(other.to, wall.from);
-    const distTT = distance2D(other.to, wall.to);
-    return distFF < tolerance || distFT < tolerance || distTF < tolerance || distTT < tolerance;
-  });
-}
+type WallEndpoint = 'from' | 'to';
 
 function adjustWallJoint(wall: any, neighbor: any): void {
+  if (!haveOverlappingVerticalRanges(wall, neighbor)) return;
   const dFF = distance2D(wall.from, neighbor.from);
   const dFT = distance2D(wall.from, neighbor.to);
   const dTF = distance2D(wall.to, neighbor.from);
@@ -95,15 +86,55 @@ function adjustWallJoint(wall: any, neighbor: any): void {
   const tolerance = 0.01;
 
   // 墙角斜接：只合并 XZ，Y 各自保留（fromY 是墙底、toY 是墙顶，不能混用）
+  let wallEndpoint: WallEndpoint | undefined;
+  let neighborEndpoint: WallEndpoint | undefined;
   if (dFF < tolerance) {
-    joinXZ(wall.from, neighbor.from);
+    wallEndpoint = 'from'; neighborEndpoint = 'from';
   } else if (dFT < tolerance) {
-    joinXZ(wall.from, neighbor.to);
+    wallEndpoint = 'from'; neighborEndpoint = 'to';
   } else if (dTF < tolerance) {
-    joinXZ(wall.to, neighbor.from);
+    wallEndpoint = 'to'; neighborEndpoint = 'from';
   } else if (dTT < tolerance) {
-    joinXZ(wall.to, neighbor.to);
+    wallEndpoint = 'to'; neighborEndpoint = 'to';
   }
+  if (!wallEndpoint || !neighborEndpoint) return;
+
+  joinXZ(wall[wallEndpoint], neighbor[neighborEndpoint]);
+  if (!isNearRightAngle(wall, neighbor)) return;
+
+  extendWallEndpoint(wall, wallEndpoint, Number(neighbor.thickness) / 2);
+  extendWallEndpoint(neighbor, neighborEndpoint, Number(wall.thickness) / 2);
+}
+
+function haveOverlappingVerticalRanges(wall: any, neighbor: any): boolean {
+  const wallBottom = Math.min(wall.from[1], wall.to[1]);
+  const wallTop = Math.max(wall.from[1], wall.to[1]);
+  const neighborBottom = Math.min(neighbor.from[1], neighbor.to[1]);
+  const neighborTop = Math.max(neighbor.from[1], neighbor.to[1]);
+  return Math.min(wallTop, neighborTop) - Math.max(wallBottom, neighborBottom) > 0.01;
+}
+
+/** 第一阶段只处理直线墙的近似直角端点，避免曲墙和斜角被错误拉长。 */
+function isNearRightAngle(wall: any, neighbor: any): boolean {
+  if (wall.curve || neighbor.curve) return false;
+  const wallDx = wall.to[0] - wall.from[0];
+  const wallDz = wall.to[2] - wall.from[2];
+  const neighborDx = neighbor.to[0] - neighbor.from[0];
+  const neighborDz = neighbor.to[2] - neighbor.from[2];
+  const wallLength = Math.hypot(wallDx, wallDz);
+  const neighborLength = Math.hypot(neighborDx, neighborDz);
+  if (wallLength < 1e-6 || neighborLength < 1e-6) return false;
+  const absoluteDot = Math.abs(
+    (wallDx * neighborDx + wallDz * neighborDz) / (wallLength * neighborLength),
+  );
+  return absoluteDot <= Math.sin(5 * Math.PI / 180);
+}
+
+function extendWallEndpoint(wall: any, endpoint: WallEndpoint, extension: number): void {
+  if (!Number.isFinite(extension) || extension <= 0) return;
+  wall._jointExtensions ??= { start: 0, end: 0 };
+  const key = endpoint === 'from' ? 'start' : 'end';
+  wall._jointExtensions[key] = Math.max(wall._jointExtensions[key], extension);
 }
 
 // ─── 梁定位 ────────────────────────────────

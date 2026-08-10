@@ -15,6 +15,15 @@
  */
 
 import * as THREE from 'three'
+import type { EmbeddedImageData, TextureImageData } from '../types/blueprint'
+import { recordTextureLoad } from './textureLoadMonitor'
+
+let textureAnisotropy = 4
+
+/** 使用当前 GPU 能力设置纹理过滤上限，避免在低端设备上硬编码高采样。 */
+export function configureMaterialRendering(maxAnisotropy: number): void {
+  textureAnisotropy = Math.max(1, Math.min(16, Math.floor(maxAnisotropy || 1)))
+}
 
 /**
  * wild-core 材质参数（简化版）
@@ -30,20 +39,14 @@ export interface MaterialParams {
   lightingCondition?: string
   embeddedImage?: EmbeddedImageData
   textures?: {
-    baseColor?: EmbeddedImageData
-    normal?: EmbeddedImageData
-    roughness?: EmbeddedImageData
-    metalness?: EmbeddedImageData
-    ambientOcclusion?: EmbeddedImageData
+    baseColor?: TextureImageData
+    normal?: TextureImageData
+    roughness?: TextureImageData
+    metalness?: TextureImageData
+    ambientOcclusion?: TextureImageData
   }
   normalScale?: number
   uvScale?: [number, number]
-}
-
-interface EmbeddedImageData {
-  encoding: 'base64'
-  mimeType: string
-  data: string
 }
 
 /**
@@ -73,6 +76,7 @@ export function createMaterialFromParams(
   // 2. 粗糙度和金属度
   material.roughness = params.roughness
   material.metalness = params.metallic
+  material.envMapIntensity = Math.min(1.5, 0.82 + params.metallic * 0.45)
   
   // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）
   const isTransparent = params.opacity !== undefined && params.opacity < 0.99
@@ -80,6 +84,7 @@ export function createMaterialFromParams(
     material.transparent = true
     material.opacity = params.opacity!
     material.depthWrite = false  // 半透明物体不写深度，避免遮挡后面的半透明物体
+    material.envMapIntensity = Math.max(material.envMapIntensity, 1.05)
   } else {
     material.transparent = false
     material.depthWrite = true   // 不透明物体必须写深度，保证正确遮挡
@@ -104,20 +109,20 @@ export function createMaterialFromParams(
 
   // 6. 内嵌 PBR 纹理。TextureLoader 可直接读取 data URL，加载完成后
   // Three.js 会自动触发材质更新，不阻塞场景重建。
-  if (baseTexture) material.map = createEmbeddedTexture(baseTexture, true, params.uvScale)
+  if (baseTexture) material.map = createTexture(baseTexture, 'baseColor', true, params.uvScale)
   if (params.textures?.normal) {
-    material.normalMap = createEmbeddedTexture(params.textures.normal, false, params.uvScale)
+    material.normalMap = createTexture(params.textures.normal, 'normal', false, params.uvScale)
     const normalScale = params.normalScale ?? 1
     material.normalScale.set(normalScale, normalScale)
   }
   if (params.textures?.roughness) {
-    material.roughnessMap = createEmbeddedTexture(params.textures.roughness, false, params.uvScale)
+    material.roughnessMap = createTexture(params.textures.roughness, 'roughness', false, params.uvScale)
   }
   if (params.textures?.metalness) {
-    material.metalnessMap = createEmbeddedTexture(params.textures.metalness, false, params.uvScale)
+    material.metalnessMap = createTexture(params.textures.metalness, 'metalness', false, params.uvScale)
   }
   if (params.textures?.ambientOcclusion) {
-    material.aoMap = createEmbeddedTexture(params.textures.ambientOcclusion, false, params.uvScale)
+    material.aoMap = createTexture(params.textures.ambientOcclusion, 'ambientOcclusion', false, params.uvScale)
   }
 
   // 7. 双面渲染：兼容当前仍包含单面网格的旧构建器。
@@ -182,24 +187,44 @@ export class MaterialCache {
   }
 }
 
-function createEmbeddedTexture(
-  image: EmbeddedImageData,
+function createTexture(
+  image: TextureImageData,
+  channel: string,
   isColorTexture: boolean,
   uvScale: [number, number] = [1, 1],
 ): THREE.Texture {
-  const url = `data:${image.mimeType};base64,${image.data}`
-  const texture = new THREE.TextureLoader().load(url)
+  const url = image.encoding === 'url'
+    ? image.uri
+    : `data:${image.mimeType};base64,${image.data}`
+  if (image.encoding === 'url') recordTextureLoad(url, channel, 'loading')
+  const texture = new THREE.TextureLoader().load(
+    url,
+    () => {
+      if (image.encoding === 'url') recordTextureLoad(url, channel, 'loaded')
+    },
+    undefined,
+    error => {
+      if (image.encoding === 'url') {
+        const detail = error instanceof Error ? error.message : 'HTTP 或图片解码失败'
+        recordTextureLoad(url, channel, 'error', detail)
+      }
+    },
+  )
   texture.colorSpace = isColorTexture ? THREE.SRGBColorSpace : THREE.NoColorSpace
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
   texture.repeat.set(uvScale[0], uvScale[1])
-  texture.anisotropy = 4
+  texture.anisotropy = textureAnisotropy
   return texture
 }
 
 function materialSignature(params: MaterialParams): string {
-  const imageSignature = (image?: EmbeddedImageData) =>
-    image ? `${image.mimeType}:${hashString(image.data)}` : ''
+  const imageSignature = (image?: TextureImageData) => {
+    if (!image) return ''
+    return image.encoding === 'url'
+      ? `${image.uri}:${image.sha256}`
+      : `${image.mimeType}:${hashString(image.data)}`
+  }
   return JSON.stringify({
     baseColor: params.baseColor,
     roughness: params.roughness,

@@ -36,7 +36,7 @@ Jenkins 生产流程为：
 
 部署前 smoke test 与单元测试不同：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，检查 Chat 配置、RAG/Embedding 必填项，向实际 Chat 服务发送一个最多 16 token 的最小请求，并用实际 Embedding 服务生成一个测试向量。该步骤在删除旧容器之前执行，90 秒内没有成功就终止部署，因此能够提前发现错误 Key、额度耗尽、模型 ID 不存在、兼容参数不支持、Embedding 配置失效和服务器无法访问模型服务等问题，同时保留旧服务。日志只输出模型、Base URL、RAG 开关、Embedding 名称、响应字符数和向量维度，不输出 API Key、模型回复内容或向量内容。
 
-`storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库。Docker 构建与部署前预检都会要求镜像内存在 `BLUEPRINT-SPEC-MINIMAL.md` 且知识库 Markdown 不少于 30 个；日志必须出现 `knowledge_base_files=<数量>`。否则构建立即失败，不允许空知识库容器启动后把持久化 Chroma 分片删除。
+`storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/assets/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库；其中 `assets` 保存 PBR 图片和不可变清单，重新部署不能删除。Docker 构建与部署前预检都会要求镜像内存在 `BLUEPRINT-SPEC-MINIMAL.md` 且知识库 Markdown 不少于 30 个；日志必须出现 `knowledge_base_files=<数量>`。否则构建立即失败，不允许空知识库容器启动后把持久化 Chroma 分片删除。
 
 后端每次启动都会执行 Chroma 增量同步：内容或 metadata 变化时更新对应分片，文件删除时移除旧分片，Embedding/分块索引签名变化时重建 collection。修复空知识库镜像后的第一次生产启动会重新写入完整索引，`RAG 索引同步` 日志中的 `total` 和 `updated` 应恢复为知识库实际分片数；后续没有知识变更时 `updated=0` 属于正常复用，不代表未更新。
 
@@ -59,7 +59,13 @@ EMBEDDING__BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 RAG__ENABLED=true
 RAG__ALLOW_HASH_FALLBACK=false
+
+ASSETS__BACKEND=local
+ASSETS__ROOT_DIR=storage/assets
+ASSETS__PUBLIC_BASE_URL=/api/assets
 ```
+
+当前 `ASSETS__PUBLIC_BASE_URL=/api/assets` 让 `.wild` 保存站内 URL。迁移对象存储/CDN 时，把它改为公开 HTTPS 前缀，并确保对象路径仍为 `{assetId}/files/{filename}`、CDN CORS 允许前端站点读取图片；不要把宿主机文件路径或 `file://` 地址写进 Blueprint。
 
 该文件不进入 Git。修改后触发一次 main/master Jenkins 部署，流水线会删除并重新创建容器；无需在服务器手工执行 `docker restart`。
 
@@ -131,6 +137,7 @@ docker compose logs --tail=100 server
 - 实际使用的 `.env`（放入安全凭据系统，不进入 Git）；
 - `wild-server/storage/scenes`；
 - `wild-server/storage/sessions`；
+- `wild-server/storage/assets`（PBR 图片和 `manifest.json`）；
 - `wild-server/storage/knowledge_base` 与需要保留的 Chroma 索引。
 
 上线前记录当前提交哈希和镜像 ID。代码回滚不能覆盖或删除 `storage`；环境文件和模型计费开关也不随 Git 提交回滚。

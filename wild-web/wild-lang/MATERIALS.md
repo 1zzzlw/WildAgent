@@ -1,6 +1,6 @@
 # 原语材质系统 v1.1
 
-本文档定义原语语言中材质和效果层的参数、语义及渲染规则。v1.0 材质可以完全由数值和程序化效果表达；v1.1 允许可选的内嵌 PBR 纹理通道。纹理是画质增强能力，不改变几何语义。
+本文档定义原语语言中材质和效果层的参数、语义及渲染规则。v1.0 材质可以完全由数值和程序化效果表达；v1.1 允许可选的 PBR 纹理通道和内容寻址资产引用。纹理是画质增强能力，不改变几何语义。
 
 ---
 
@@ -216,19 +216,57 @@ json
 
 3.4 v1.1 PBR 纹理通道
 
-`embeddedImage` 继续作为基础色纹理的兼容字段。v1.1 推荐使用 `textures`：
+`embeddedImage` 继续作为基础色纹理的兼容字段。v1.1 材质可以直接使用 `textures`，或使用正式资产清单的 `textureSet`：
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `textures.baseColor` | EmbeddedImage | 基础色纹理，按 sRGB 解码 |
-| `textures.normal` | EmbeddedImage | 切线空间法线纹理 |
-| `textures.roughness` | EmbeddedImage | 粗糙度纹理 |
-| `textures.metalness` | EmbeddedImage | 金属度纹理 |
-| `textures.ambientOcclusion` | EmbeddedImage | 环境遮蔽纹理，使用 UV2 |
+| `textures.baseColor` | TextureImage | 基础色纹理，按 sRGB 解码 |
+| `textures.normal` | TextureImage | 切线空间法线纹理 |
+| `textures.roughness` | TextureImage | 粗糙度纹理 |
+| `textures.metalness` | TextureImage | 金属度纹理 |
+| `textures.ambientOcclusion` | TextureImage | 环境遮蔽纹理，使用 UV2 |
+| `textureSet` | string | 引用顶层 `assets` 中的 `pbr_texture_set`；存在时优先于内联 `textures` |
 | `normalScale` | number | 法线强度，默认 1 |
 | `uvScale` | [number, number] | 纹理重复次数，默认 `[1,1]` |
 
-每个纹理通道均使用与 `embeddedImage` 相同的 `{ encoding, mimeType, data }` 数据结构。当前版本只接受 `encoding: "base64"`，不在 WILD 中保存任意远程 URL。
+`TextureImage` 可以是旧版 `{ encoding:"base64", mimeType, data }`，也可以是受校验的 `{ encoding:"url", uri, mimeType, sha256, byteSize, colorSpace }`。新生产流程不得写入 Base64，只能通过资产清单生成 URL 引用；读取器继续兼容旧 Base64 文件。
+
+### 3.5 PBR 资产清单
+
+顶层 `assets` 按不可变 `assetId` 保存清单，图片二进制保存在本地资产服务或对象存储/CDN：
+
+```json
+{
+  "assets": {
+    "pbr_0123456789abcdef01234567": {
+      "schemaVersion": "1.0",
+      "assetId": "pbr_0123456789abcdef01234567",
+      "kind": "pbr_texture_set",
+      "name": "浅灰石材",
+      "contentHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "source": { "type": "local_upload" },
+      "license": "CC0",
+      "maps": {
+        "baseColor": {
+          "encoding": "url",
+          "uri": "/api/assets/pbr_0123456789abcdef01234567/files/baseColor.png",
+          "mimeType": "image/png",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "byteSize": 1024,
+          "colorSpace": "srgb"
+        }
+      },
+      "createdAt": "2026-08-10T00:00:00Z"
+    }
+  }
+}
+```
+
+- `assetId` 固定为 `pbr_` 加内容哈希前 24 位；对象 key 与内部 `assetId` 必须相同。
+- `baseColor` 必需，`normal/roughness/metalness/ambientOcclusion` 可选。
+- `baseColor.colorSpace` 必须为 `srgb`，其余通道必须为 `linear`。
+- `uri` 只能是站内绝对路径或 HTTP(S) URL；禁止 `file:`、`data:` 和宿主机路径。
+- 材质引用的 `textureSet` 必须存在；ScenePatch 先 `upsert_asset`，再 `upsert_material`。
 
 四、标准光照模型
 所有合规客户端在渲染基础材质时，必须以 baseColor 在 D65_noon 光照下为基准。实时光照（如黄昏暖光、夜晚月光）作为偏移量叠加到 baseColor 上，以确保所有客户端在标准光照下渲染一致，在实时光照下按各自客户端的渲染风格自然偏移。

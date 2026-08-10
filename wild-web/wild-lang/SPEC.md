@@ -4,13 +4,14 @@
 
 原语蓝图使用 JSON 编码。文件扩展名 `.wild`。
 
-顶层结构必须包含 `meta` 和 `geometry`，可选 `materials` 和 `behaviors`。
+顶层结构必须包含 `meta` 和 `geometry`，可选 `materials`、`assets` 和 `behaviors`。
 
 ```json
 {
   "meta": { ... },
   "geometry": { ... },
   "materials": { ... },
+  "assets": { ... },
   "behaviors": { ... }
 }
 ```
@@ -39,6 +40,17 @@
 ### 3.2 构件类型定义
 
 参见 [PRIMITIVES.md](PRIMITIVES.md)。
+
+#### 3.2.1 门窗组合构件的深度约定
+
+`geometry.components` 中的 `door` 与 `window` 依附 `parentWall`。二者的 `from` 均为 `[沿墙距离, 底部世界 Y, 墙体法向偏移]`，深度沿父墙法向计算。
+
+| 构件 | 框深度 | 面板深度 | 约束 |
+|---|---|---|---|
+| `door` | `frameDepth`，默认父墙 `thickness` | `leafDepth`，默认 `min(0.04, frameDepth)` | `leafDepth > 0` 且不大于 `frameDepth` |
+| `window` | `frameDepth`，默认父墙 `thickness` | `glassDepth`，默认 `min(0.012, frameDepth)` | `glassDepth > 0` 且不大于 `frameDepth` |
+
+门框、窗框、门扇和玻璃都必须与父墙厚度范围存在实体交叠。省略这些可选字段即可使用安全默认值；显式设置主要用于特殊构造。
 
 ### 3.3 通用程序化形体 (primitive，v1.1)
 

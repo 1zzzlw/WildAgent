@@ -100,3 +100,55 @@ export function generatePlanarUVs(vertices: Float32Array): Float32Array {
   }
   return uvs;
 }
+
+/**
+ * 为由独立三角面组成的建筑表面生成硬边法线和按米展开的逐面 UV。
+ *
+ * 与整网格只选一组投影轴不同，这里按每个三角面的朝向选择 XY/XZ/ZY，
+ * 因此墙正反面、顶面和门窗洞口侧壁都有稳定纹理密度，不会被压成细线。
+ */
+export function generateArchitecturalSurfaceAttributes(vertices: Float32Array): {
+  normals: Float32Array;
+  uvs: Float32Array;
+} {
+  const normals = new Float32Array(vertices.length);
+  const uvs = new Float32Array((vertices.length / 3) * 2);
+
+  for (let offset = 0; offset + 8 < vertices.length; offset += 9) {
+    const ax = vertices[offset], ay = vertices[offset + 1], az = vertices[offset + 2];
+    const bx = vertices[offset + 3], by = vertices[offset + 4], bz = vertices[offset + 5];
+    const cx = vertices[offset + 6], cy = vertices[offset + 7], cz = vertices[offset + 8];
+    const abx = bx - ax, aby = by - ay, abz = bz - az;
+    const acx = cx - ax, acy = cy - ay, acz = cz - az;
+    let nx = aby * acz - abz * acy;
+    let ny = abz * acx - abx * acz;
+    let nz = abx * acy - aby * acx;
+    const length = Math.hypot(nx, ny, nz) || 1;
+    nx /= length; ny /= length; nz /= length;
+
+    const dominant = Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz)
+      ? 'x'
+      : Math.abs(ny) >= Math.abs(nz) ? 'y' : 'z';
+    for (let vertex = 0; vertex < 3; vertex++) {
+      const positionOffset = offset + vertex * 3;
+      const uvOffset = (positionOffset / 3) * 2;
+      const x = vertices[positionOffset];
+      const y = vertices[positionOffset + 1];
+      const z = vertices[positionOffset + 2];
+      normals[positionOffset] = nx;
+      normals[positionOffset + 1] = ny;
+      normals[positionOffset + 2] = nz;
+      if (dominant === 'x') {
+        uvs[uvOffset] = z;
+        uvs[uvOffset + 1] = y;
+      } else if (dominant === 'y') {
+        uvs[uvOffset] = x;
+        uvs[uvOffset + 1] = z;
+      } else {
+        uvs[uvOffset] = x;
+        uvs[uvOffset + 1] = y;
+      }
+    }
+  }
+  return { normals, uvs };
+}

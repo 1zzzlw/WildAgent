@@ -439,7 +439,8 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
   "width": 1.2,
   "height": 2.2,
   "frameWidth": 0.08,
-  "frameDepth": 0.34,
+  "frameDepth": 0.24,
+  "leafDepth": 0.04,
   "frameMaterial": "door_frame",
   "leafMaterial": "door_leaf",
   "interaction": {
@@ -451,7 +452,7 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 }
 ```
 
-`from` 使用 opening 相同的墙体局部坐标：`[沿父墙弧长距离, 底部世界Y, 墙体法向偏移]`。支持直线墙和单段曲线墙。可选 `interaction.mode` 为 `swing` 或 `slide`；前端左键选择，右键执行开合。当前不支持碰撞、多门扇或独立厚门扇。
+`from` 使用 opening 相同的墙体局部坐标：`[沿父墙弧长距离, 底部世界Y, 墙体法向偏移]`。支持直线墙和单段曲线墙。`frameDepth` 默认等于父墙厚度，`leafDepth` 默认 `min(0.04, frameDepth)`；门框和门扇必须与父墙厚度范围相交。可选 `interaction.mode` 为 `swing` 或 `slide`；前端左键选择，右键执行开合。当前不支持碰撞。
 
 #### 2.3.2 窗组件 (Window Component)
 
@@ -465,6 +466,8 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
   "from": [4.0, 0.9, 0],
   "width": 1.5,
   "height": 1.2,
+  "frameDepth": 0.24,
+  "glassDepth": 0.012,
   "verticalMullions": 1,
   "horizontalMullions": 1,
   "frameMaterial": "window_frame",
@@ -472,7 +475,7 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 }
 ```
 
-`verticalMullions` 和 `horizontalMullions` 是 0–32 的整数。`mullion` 不是独立元素或组件类型。窗也支持单段曲线父墙和与门相同的可选 `interaction`；交互式双窗扇可分别右键开合，也可同时处于打开状态。
+`verticalMullions` 和 `horizontalMullions` 是 0–32 的整数。`frameDepth` 默认等于父墙厚度，`glassDepth` 默认 `min(0.012, frameDepth)`；玻璃会编译为有实体厚度的封闭网格。`mullion` 不是独立元素或组件类型。窗也支持单段曲线父墙和与门相同的可选 `interaction`；交互式双窗扇可分别右键开合，也可同时处于打开状态。
 
 #### 2.3.3 栏杆组件 (Railing Component)
 
@@ -499,13 +502,13 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 | `component.type` | 必填字段 | 定位与编译结果 |
 |---|---|---|
 | `canopy` | `id,parentWall,from,width,depth,thickness` | 墙体弧长坐标；顶板和可选支柱 |
-| `balcony` | `id,parentWall,from,width,depth,slabThickness` | 墙体弧长坐标；悬挑板和 U 形栏杆 |
+| `balcony` | `id,parentWall,from,width,depth,slabThickness` | 墙体弧长坐标；按宿主墙推断室外方向，生成悬挑板和 U 形栏杆 |
 | `ramp` | `id,from,to,width,thickness` | 世界坐标或可选 `parentFloor` 局部坐标；坡面和可选栏杆 |
 | `bay_window` | `id,parentWall,from,width,height,projectionDepth` | 墙体弧长坐标；墙洞、框架和投影窗体 |
 | `cornice` | `id,path,profile` | 世界坐标或可选 `parentRoof` 局部坐标；`profile_sweep` |
 | `chimney` | `id,position,width,depth,height` | 世界坐标或可选 `parentRoof` 局部坐标；薄壁筒体和压顶 |
 
-`parentRoof` 局部依附当前只支持 `flat`、`gable`、`hip`。烟囱不会在屋顶上执行布尔穿透；当前也没有通用 CSG、地形贴合或结构安全求解。每类完整字段和严格 JSON 示例见 `components/composite-components-second-batch.md`。
+`balcony` 是同一阳台楼板和三面栏杆的唯一表达，不得再配套生成重合的独立 `floor` 或 `railing`。`parentRoof` 局部依附当前只支持 `flat`、`gable`、`hip`。烟囱不会在屋顶上执行布尔穿透；当前也没有通用 CSG、地形贴合或结构安全求解。每类完整字段和严格 JSON 示例见 `components/composite-components-second-batch.md`。
 
 #### 2.3.5 可交互灯具组件 (Light Component)
 

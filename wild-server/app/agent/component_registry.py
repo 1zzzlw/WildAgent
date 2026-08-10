@@ -54,6 +54,8 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[2] 是法向偏移（通常为 0）\n"
         '- interaction 必填: {"mode":"swing","hingeSide":"left"|"right","openAngle":90}\n'
         "- 门宽建议 0.9~1.2m，门高建议 2.0~2.4m\n"
+        "- frameDepth 默认等于父墙 thickness；leafDepth 默认 min(0.04, frameDepth)，通常不必显式填写\n"
+        "- 自定义 leafDepth 必须为正数且不大于 frameDepth，门框和门扇必须与父墙厚度范围相交\n"
         "- 编译后产出: opening + primitive.box×3（门框）\n"
         "\n**数量与位置约束（必须遵守）**：\n"
         "- 一栋建筑通常只有 1~2 个门：1 个正门（放在正面墙 wall_front 居中），可选 1 个后门/侧门\n"
@@ -66,6 +68,8 @@ _COMPONENT_RULES: dict[str, str] = {
         "- verticalMullions 范围 0~32，horizontalMullions 范围 0~32\n"
         "- width 建议 0.8~2.0m，height 建议 1.0~2.0m\n"
         "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
+        "- frameDepth 默认等于父墙 thickness；glassDepth 默认 min(0.012, frameDepth)，通常不必显式填写\n"
+        "- 自定义 glassDepth 必须为正数且不大于 frameDepth，窗框和玻璃必须与父墙厚度范围相交\n"
         "- glassMaterial 指向的材质必须含 opacity（0.3~0.5 半透明模拟玻璃），否则窗户不透明\n"
         "- 如果骨架 materials 没有半透明玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
         "- 编译后产出: opening + primitive.box×N（窗框+窗棂）\n"
@@ -88,6 +92,7 @@ _COMPONENT_RULES: dict[str, str] = {
         "- 栏杆高度通常 0.9~1.1m\n"
         "\n**位置约束（必须遵守）**：\n"
         "- 栏杆只放在有高差的地方：阳台边缘、楼梯两侧、露台边缘、二层平台\n"
+        "- 如果同轮还会生成 balcony，禁止再为该阳台生成独立 railing；balcony 已内嵌 U 形栏杆\n"
         "- 绝对不要在地面层的外墙位置放栏杆！地面层外墙本身就是围护结构\n"
         "- 如果没有阳台/楼梯/露台等构件，不要生成栏杆\n"
         "- path 坐标必须在对应楼板范围内，不能飘在空中\n"
@@ -99,6 +104,8 @@ _COMPONENT_RULES: dict[str, str] = {
     ),
     "balcony": (
         "- slabThickness 必填\n"
+        "- from[2] 通常为 0；depth 表示向建筑外侧的悬挑深度，方向由编译器根据建筑中心确定\n"
+        "- balcony 已内嵌悬挑板和 U 形栏杆，禁止同时生成同位置 floor 或独立 railing\n"
         "- 内部自动调用 railing 编译器 → 依赖 railing 先实现\n"
         "- 编译后产出: floor（悬挑板）+ railing（内嵌）"
     ),
@@ -142,7 +149,10 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         output_key="door_fragments",
         is_list=True,
         required_fields=["type", "id", "parentWall", "from", "width", "height", "interaction"],
-        optional_fields=["frameMaterial", "leafMaterial", "glassPanel"],
+        optional_fields=[
+            "frameWidth", "frameDepth", "leafDepth", "frameMaterial", "leafMaterial",
+            "openingStyle", "doorStyle",
+        ],
         skip_keywords=["不要门", "没有门", "无门", "不需要门"],
         extra_rules=_COMPONENT_RULES["door"],
         priority=0,
@@ -155,7 +165,10 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         output_key="window_fragments",
         is_list=True,
         required_fields=["type", "id", "parentWall", "from", "width", "height"],
-        optional_fields=["verticalMullions", "horizontalMullions", "frameMaterial", "glassMaterial"],
+        optional_fields=[
+            "frameWidth", "frameDepth", "glassDepth", "verticalMullions",
+            "horizontalMullions", "frameMaterial", "glassMaterial",
+        ],
         skip_keywords=["不要窗", "没有窗", "无窗", "不需要窗"],
         extra_rules=_COMPONENT_RULES["window"],
         priority=0,

@@ -115,6 +115,28 @@ function applyOperation(blueprint: Blueprint, op: SceneOperation) {
       blueprint.materials[op.name] = op.material
       break
 
+    case 'tune_material': {
+      const materialField = op.material_field || 'material'
+      const element = blueprint.geometry.elements.find(item => item.id === op.id)
+      const component = blueprint.geometry.components?.find(item => item.id === op.id)
+      const target = (element || component) as unknown as Record<string, unknown> | undefined
+      const sourceName = target?.[materialField]
+      const source = typeof sourceName === 'string' ? blueprint.materials?.[sourceName] : undefined
+      if (target && source && !blueprint.materials?.[op.new_name]) {
+        if (!blueprint.materials) blueprint.materials = {}
+        blueprint.materials[op.new_name] = { ...source, ...op.changes }
+        target[materialField] = op.new_name
+      }
+      break
+    }
+
+    case 'upsert_asset':
+      if (!blueprint.assets) {
+        blueprint.assets = {}
+      }
+      blueprint.assets[op.asset_id] = op.asset
+      break
+
     case 'add_template':
       if (!blueprint.geometry.templates) {
         blueprint.geometry.templates = {}

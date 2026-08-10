@@ -147,6 +147,24 @@ class TargetedRepairToolsTest(unittest.TestCase):
         self.assertEqual(door["width"], 1.0)
         self.assertTrue(all(report["success"] for report in reports))
 
+    def test_patch_entity_can_repair_door_depth_fields(self):
+        candidate, reports = execute_repair_actions(
+            _blueprint(),
+            [{
+                "tool": "patch_entity",
+                "arguments": {
+                    "entity_id": "door_front",
+                    "changes": {"frameDepth": 0.2, "leafDepth": 0.04},
+                },
+            }],
+            allowed_entity_ids={"door_front"},
+        )
+
+        door = candidate["geometry"]["components"][0]
+        self.assertTrue(reports[0]["success"])
+        self.assertEqual(door["frameDepth"], 0.2)
+        self.assertEqual(door["leafDepth"], 0.04)
+
     def test_add_entity_is_limited_to_missing_design_type(self):
         candidate, reports = execute_repair_actions(
             _blueprint(),

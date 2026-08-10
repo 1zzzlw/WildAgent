@@ -265,7 +265,7 @@ timeout -k 10s 90s docker run --rm \
   python -c "from pathlib import Path; from config import config; from app.agent.model_client import create_llm; from app.spec.loader import create_embedding_function; kb_root=Path('storage/knowledge_base'); kb_files=list(kb_root.rglob('*.md')); assert (kb_root / 'BLUEPRINT-SPEC-MINIMAL.md').is_file(), 'minimal blueprint spec missing from image'; assert len(kb_files) >= 30, 'incomplete knowledge base in image'; print('knowledge_base_files='+str(len(kb_files))); assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'; embedding_required=config.rag.enabled and not config.rag.allow_hash_fallback; assert (not embedding_required) or (config.embedding.name.strip() and config.embedding.api_key.strip()), 'EMBEDDING config missing while RAG hash fallback is disabled'; print('preflight_model='+config.chat.name); print('preflight_base_url='+(config.chat.base_url or '(default)')); print('preflight_rag_enabled='+str(config.rag.enabled).lower()); print('preflight_embedding='+config.embedding.name); response=create_llm().bind(max_tokens=16).invoke('Reply with WILD_OK only.'); content=response.content if isinstance(response.content, str) else str(response.content); assert content.strip(), 'model returned empty content'; print('model_smoke=ok response_chars='+str(len(content))); embedding=create_embedding_function(config.embedding.api_key, config.embedding.base_url, config.embedding.name, config.rag.allow_hash_fallback) if config.rag.enabled else None; vector=embedding.embed_query('WildAgent deployment smoke') if embedding else []; assert (not embedding) or (vector and isinstance(vector[0], (int, float))), 'embedding returned invalid vector'; print('embedding_smoke=ok dimensions='+str(len(vector)) if embedding else 'embedding_smoke=skipped')"
 
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
-mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/geoip"
+mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/assets" "$DEPLOY_DATA_DIR/geoip"
 
 old_server_image="$(docker inspect -f '{{.Config.Image}}' wild-server 2>/dev/null || true)"
 old_web_image="$(docker inspect -f '{{.Config.Image}}' wild-web 2>/dev/null || true)"
@@ -280,6 +280,7 @@ start_server() {
     -v "$DEPLOY_DATA_DIR/scenes:/app/storage/scenes" \
     -v "$DEPLOY_DATA_DIR/sessions:/app/storage/sessions" \
     -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
+    -v "$DEPLOY_DATA_DIR/assets:/app/storage/assets" \
     -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
     --env-file "$DEPLOY_ENV_FILE" \
     -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \

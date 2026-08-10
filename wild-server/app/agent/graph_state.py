@@ -15,6 +15,7 @@ class GenerationState(TypedDict, total=False):
     building_type: str
     session_id: str
     current_blueprint: dict | None
+    selection: list[str]
     thinking_mode: bool
     
     # ── 流式思考回调（node_name, delta_text）──
@@ -22,6 +23,10 @@ class GenerationState(TypedDict, total=False):
 
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
+
+    # ── Layer -0.5: 建筑方案（生成分支）──
+    architecture_plan: dict
+    architecture_diag: dict
 
     # ── Layer -1: 知识问答输出 ──
     chat_reply: str       # 知识问答的文本回复

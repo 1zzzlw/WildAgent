@@ -42,7 +42,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
-import { MaterialCache } from '../../renderer/materialAdapter'
+import { configureMaterialRendering, MaterialCache } from '../../renderer/materialAdapter'
 import { toggleRuntimeInteraction, updateSceneGroup } from '../../renderer/renderEntity'
 import { createTestScene, clearTestScene } from '../../utils/simpleSceneTest'
 import { getRenderedElementIds, resolveSelectableId } from '../../wild/componentSelection'
@@ -158,6 +158,7 @@ let environmentTarget: THREE.WebGLRenderTarget | null = null
 let sky: Sky | null = null
 let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
+let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
 const sunDirection = new THREE.Vector3()
 const lightingCenter = new THREE.Vector3()
 const raycaster = new THREE.Raycaster()
@@ -209,6 +210,7 @@ function initThreeJS() {
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
+  configureMaterialRendering(renderer.capabilities.getMaxAnisotropy())
 
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0xb9c9d8)
@@ -273,6 +275,7 @@ function initThreeJS() {
   directionalLight.shadow.mapSize.height = 2048
   directionalLight.shadow.bias = -0.0002
   directionalLight.shadow.normalBias = 0.025
+  directionalLight.shadow.radius = 2
   directionalLight.shadow.camera.left = -20
   directionalLight.shadow.camera.right = 20
   directionalLight.shadow.camera.top = 20
@@ -281,15 +284,15 @@ function initThreeJS() {
   scene.add(directionalLight.target)
   applyTimePreset()
 
-  const ground = new THREE.Mesh(
+  shadowGround = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 400),
     new THREE.ShadowMaterial({ color: 0x26352d, opacity: 0.2 }),
   )
-  ground.name = 'ShadowGround'
-  ground.rotation.x = -Math.PI / 2
-  ground.position.y = -0.002
-  ground.receiveShadow = true
-  scene.add(ground)
+  shadowGround.name = 'ShadowGround'
+  shadowGround.rotation.x = -Math.PI / 2
+  shadowGround.position.y = -0.002
+  shadowGround.receiveShadow = true
+  scene.add(shadowGround)
   
   // 创建GridHelper并保持引用，确保不会被误删除
   // 添加到场景根层级，不是sceneGroup
@@ -400,18 +403,13 @@ function ensureGridVisible() {
       bbox.max[2] - bbox.min[2]
     )
     const maxDim = Math.max(size.x, size.y, size.z)
-    const distance = maxDim * 1.5
 
     updateLightingToBounds(center, maxDim)
+    if (shadowGround) shadowGround.position.y = bbox.min[1] - 0.002
+    if (gridHelper) gridHelper.position.y = bbox.min[1]
 
     if (!hasFramedScene && controls && camera) {
-      controls.target.copy(center)
-      camera.position.set(
-        center.x + distance,
-        center.y + distance * 0.7,
-        center.z + distance
-      )
-      controls.update()
+      frameCameraToBounds(center, size)
       hasFramedScene = true
     }
   }
@@ -720,6 +718,10 @@ function applyTimePreset() {
   hemisphereLight.intensity = preset.hemisphereIntensity
   directionalLight.color.setHex(preset.directionalColor)
   directionalLight.intensity = preset.directionalIntensity
+  if (shadowGround) {
+    shadowGround.material.opacity = timeOfDay.value === 'night' ? 0.1 : timeOfDay.value === 'sunset' ? 0.24 : 0.2
+    shadowGround.material.needsUpdate = true
+  }
 
   updateLightingToBounds(lightingCenter, lightingExtent)
   markNeedsRender()
@@ -728,7 +730,8 @@ function applyTimePreset() {
 function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   if (!directionalLight) return
   lightingCenter.copy(center)
-  lightingExtent = Math.max(maxDim, 8)
+  // 阴影相机只覆盖模型附近，提升同一张 2048 阴影图的有效像素密度。
+  lightingExtent = Math.max(maxDim * 0.68, 4)
   const lightDistance = lightingExtent * 2.5
 
   directionalLight.position.copy(center).addScaledVector(sunDirection, lightDistance)
@@ -742,6 +745,26 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   shadowCamera.near = 0.1
   shadowCamera.far = lightDistance + lightingExtent * 2
   shadowCamera.updateProjectionMatrix()
+  directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
+  directionalLight.shadow.needsUpdate = true
+}
+
+function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
+  if (!camera || !controls) return
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov)
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect)
+  const verticalDistance = size.y / Math.max(2 * Math.tan(verticalFov / 2), 0.01)
+  const horizontalDistance = Math.max(size.x, size.z) / Math.max(2 * Math.tan(horizontalFov / 2), 0.01)
+  const distance = Math.max(verticalDistance, horizontalDistance, 2) * 1.55
+  const viewDirection = new THREE.Vector3(1, 0.72, 1).normalize()
+  controls.target.copy(center)
+  controls.minDistance = Math.max(0.2, distance * 0.08)
+  controls.maxDistance = Math.max(50, distance * 8)
+  camera.position.copy(center).addScaledVector(viewDirection, distance)
+  camera.near = Math.max(0.03, distance / 500)
+  camera.far = Math.max(500, distance * 20)
+  camera.updateProjectionMatrix()
+  controls.update()
 }
 
 function markNeedsRender() {
@@ -759,6 +782,8 @@ function cleanup() {
   if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
   environmentTarget?.dispose()
+  shadowGround?.geometry.dispose()
+  shadowGround?.material.dispose()
   if (renderer) renderer.dispose()
   if (controls) controls.dispose()
   if (transformControls) {

@@ -146,6 +146,8 @@ export interface DoorComponent {
   height: number;
   frameWidth?: number;
   frameDepth?: number;
+  /** 门扇实体厚度，默认不超过 0.04m，并受门框深度约束。 */
+  leafDepth?: number;
   frameMaterial?: string;
   leafMaterial?: string;
   interaction?: OpeningInteractionSpec;
@@ -165,6 +167,8 @@ export interface WindowComponent {
   height: number;
   frameWidth?: number;
   frameDepth?: number;
+  /** 玻璃实体厚度，默认不超过 0.012m，并受窗框深度约束。 */
+  glassDepth?: number;
   verticalMullions?: number;
   horizontalMullions?: number;
   frameMaterial?: string;
@@ -292,6 +296,8 @@ export interface WallParams {
     localW: number;
     localH: number;
   }>;
+  /** 内部使用：直角墙角为消除厚墙接缝而增加的渲染长度，不改变蓝图中心线。 */
+  _jointExtensions?: { start: number; end: number };
 }
 
 export interface FloorParams {
@@ -366,6 +372,8 @@ export interface OpeningParams {
   from: Vec3;
   width: number;
   height: number;
+  /** 覆盖面实体厚度；组合门窗会分别传入门扇或玻璃厚度。 */
+  depth?: number;
   style: 'rectangular' | 'arched' | 'gothic' | 'circular';
   material?: string;
   /** 仅供组合编译器和 renderer 使用，不属于可手写的 WILD opening 字段。 */
@@ -494,6 +502,35 @@ export interface EmbeddedImageData {
   data: string;
 }
 
+export interface ReferencedImageData {
+  encoding: 'url';
+  uri: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  sha256: string;
+  byteSize?: number;
+  colorSpace: 'srgb' | 'linear';
+}
+
+export type TextureImageData = EmbeddedImageData | ReferencedImageData;
+
+export interface PBRTextureSetAsset {
+  schemaVersion: '1.0';
+  assetId: string;
+  kind: 'pbr_texture_set';
+  name: string;
+  contentHash: string;
+  source: { type: string; uri?: string };
+  license: string;
+  maps: {
+    baseColor: ReferencedImageData;
+    normal?: ReferencedImageData;
+    roughness?: ReferencedImageData;
+    metalness?: ReferencedImageData;
+    ambientOcclusion?: ReferencedImageData;
+  };
+  createdAt: string;
+}
+
 export interface MaterialDef {
   baseColor: Color;
   roughness: number;
@@ -504,14 +541,15 @@ export interface MaterialDef {
   lightingCondition: 'D65_noon';
   effects?: EffectLayer[];
   embeddedImage?: EmbeddedImageData;
-  /** WILD v1.1：可选的内嵌 PBR 纹理通道 */
+  /** WILD v1.1：可选的内嵌或 URL PBR 纹理通道 */
   textures?: {
-    baseColor?: EmbeddedImageData;
-    normal?: EmbeddedImageData;
-    roughness?: EmbeddedImageData;
-    metalness?: EmbeddedImageData;
-    ambientOcclusion?: EmbeddedImageData;
+    baseColor?: TextureImageData;
+    normal?: TextureImageData;
+    roughness?: TextureImageData;
+    metalness?: TextureImageData;
+    ambientOcclusion?: TextureImageData;
   };
+  textureSet?: string;
   normalScale?: number;
   uvScale?: [number, number];
 }
@@ -603,6 +641,7 @@ export interface Blueprint {
   };
   // 材质定义
   materials?: Record<string, MaterialDef>;
+  assets?: Record<string, PBRTextureSetAsset>;
   // 动态行为，定义场景的物理、脚本和动画行为，不属于几何本身，但附加在场景上：
   behaviors?: {
     // 物理属性

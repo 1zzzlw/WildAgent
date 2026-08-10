@@ -37,6 +37,64 @@ def _design_brief(minimum_doors: int = 1) -> dict:
 
 
 class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_balcony_component_removes_duplicate_floor_and_railings(self):
+        skeleton = {
+            "meta": {"version": "1.1", "type": "building", "name": "balcony-dedup"},
+            "geometry": {
+                "elements": [
+                    {"type": "wall", "id": "wall_front", "from": [0, 3.2, 0], "to": [8, 6.4, 0], "thickness": 0.3},
+                    {"type": "wall", "id": "wall_back", "from": [0, 3.2, 6], "to": [8, 6.4, 6], "thickness": 0.3},
+                    {"type": "wall", "id": "wall_left", "from": [0, 3.2, 0], "to": [0, 6.4, 6], "thickness": 0.3},
+                    {"type": "wall", "id": "wall_right", "from": [8, 3.2, 0], "to": [8, 6.4, 6], "thickness": 0.3},
+                    {"type": "floor", "id": "floor_second", "from": [0, 3.2, 0], "to": [8, 3.2, 6], "thickness": 0.2},
+                    {"type": "floor", "id": "floor_portico", "from": [2.8, 0, -1.5], "to": [5.2, 0, 0], "thickness": 0.2},
+                    {"type": "floor", "id": "floor_balcony", "from": [2.8, 3.2, -1.5], "to": [5.2, 3.2, 0], "thickness": 0.2},
+                ],
+                "components": [],
+            },
+            "materials": {},
+            "behaviors": {},
+        }
+        result = await merge_fragments_node({
+            "skeleton_blueprint": skeleton,
+            "design_brief": {
+                "component_quota": {
+                    "balcony": {"min": 1, "max": 1},
+                    "railing": {"min": 1, "max": 2},
+                },
+                "facade_plan": {},
+            },
+            "balcony_fragments": [{
+                "type": "balcony", "id": "balcony_main", "parentWall": "wall_front",
+                "from": [2.8, 3.2, 0], "width": 2.4, "depth": 1.5,
+                "slabThickness": 0.2,
+            }],
+            "railing_fragments": [
+                {"type": "railing", "id": "balcony_front", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.1},
+                {"type": "railing", "id": "balcony_left", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [0, 0, 1.5]], "height": 1.1},
+                {"type": "railing", "id": "portico_front", "parentFloor": "floor_portico", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.0},
+                {"type": "railing", "id": "stair_guard", "path": [[0, 0, 4], [2, 2, 4]], "height": 1.0},
+            ],
+        })
+
+        blueprint = result["merged_blueprint"]
+        self.assertEqual(
+            [item["id"] for item in blueprint["geometry"]["elements"] if item["type"] == "floor"],
+            ["floor_second", "floor_portico"],
+        )
+        self.assertCountEqual(
+            [item["id"] for item in blueprint["geometry"]["components"]],
+            ["balcony_main", "stair_guard"],
+        )
+        self.assertEqual(result["merge_diag"]["balcony_cleanup"], {
+            "removed_floor_ids": ["floor_balcony"],
+            "removed_railing_count": 2,
+        })
+        self.assertEqual(result["merge_diag"]["ground_railing_cleanup"], {
+            "removed_railing_ids": ["portico_front"],
+        })
+        self.assertEqual(result["merge_diag"]["design_errors"], [])
+
     async def test_merge_repairs_world_coordinate_normal_offset(self):
         result = await merge_fragments_node({
             "skeleton_blueprint": _skeleton(),

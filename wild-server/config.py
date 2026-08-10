@@ -39,6 +39,16 @@ class RAGConfig(BaseModel):
     allow_hash_fallback: bool = True
 
 
+class AssetConfig(BaseModel):
+    """PBR 资产本地入库与公开地址配置。"""
+
+    backend: str = "local"
+    root_dir: str = "storage/assets"
+    public_base_url: str = "/api/assets"
+    max_file_bytes: int = 20 * 1024 * 1024
+    max_total_bytes: int = 80 * 1024 * 1024
+
+
 class Settings(BaseSettings):
     """整个后端进程使用的顶层配置对象。"""
 
@@ -57,6 +67,7 @@ class Settings(BaseSettings):
     embedding: ModelConfig = Field(default_factory=ModelConfig)
     rerank: ModelConfig = Field(default_factory=ModelConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
+    assets: AssetConfig = Field(default_factory=AssetConfig)
 
 
 # 导入 config.py 时完成一次解析；业务模块不应在运行中修改这个对象。

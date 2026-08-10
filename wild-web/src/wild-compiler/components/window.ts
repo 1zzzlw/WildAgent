@@ -6,6 +6,7 @@ import type {
 import type { ComponentCompileContext } from '../types'
 import {
   assertFrameDimensions,
+  assertWallDepthAlignment,
   assertNonNegativeInteger,
   createBox,
   createOpeningInteraction,
@@ -20,10 +21,12 @@ export function compileWindow(
 ): GeometryElement[] {
   const frame = resolveStraightWallFrame(component, context)
   const frameWidth = component.frameWidth ?? 0.06
-  const frameDepth = component.frameDepth ?? frame.wall.thickness + 0.03
+  const frameDepth = component.frameDepth ?? frame.wall.thickness
+  const glassDepth = component.glassDepth ?? Math.min(0.012, frameDepth)
   const verticalMullions = component.verticalMullions ?? 0
   const horizontalMullions = component.horizontalMullions ?? 0
   assertFrameDimensions(component, frameWidth, frameDepth)
+  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, glassDepth, 'glassDepth')
   assertNonNegativeInteger(verticalMullions, 'verticalMullions')
   assertNonNegativeInteger(horizontalMullions, 'horizontalMullions')
 
@@ -38,6 +41,7 @@ export function compileWindow(
       from: [sashAlong, bottomY, normalOffset],
       width: sashWidth,
       height: component.height,
+      depth: glassDepth,
       style: 'rectangular',
     }, component.glassMaterial)
   )

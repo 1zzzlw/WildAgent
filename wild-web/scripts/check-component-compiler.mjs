@@ -18,6 +18,7 @@ const componentDragPath = join(root, 'src/wild/componentDrag.ts').replaceAll('\\
 const agentBridgePath = join(root, 'src/agent/agentBridge.ts').replaceAll('\\', '/')
 const agentStorePath = join(root, 'src/stores/agentStore.ts').replaceAll('\\', '/')
 const presenceStorePath = join(root, 'src/extensions/presence/store.ts').replaceAll('\\', '/')
+const materialAdapterPath = join(root, 'src/renderer/materialAdapter.ts').replaceAll('\\', '/')
 const geometryEvaluationCases = JSON.parse(await readFile(
   join(root, 'scripts/fixtures/component-geometry-eval-cases.json'),
   'utf8',
@@ -35,7 +36,8 @@ export { createComponentTranslationChanges } from 'wildsrc:component-drag';
 export { AgentBridge, agentBridge } from 'wildsrc:agent-bridge';
 export { useAgentStore } from 'wildsrc:agent-store';
 export { usePresenceStore } from 'wildsrc:presence-store';
-export { BoxGeometry, Mesh, MeshBasicMaterial, PointLight, SpotLight } from 'three';
+export { createMaterialFromParams } from 'wildsrc:material-adapter';
+export { BoxGeometry, Mesh, MeshBasicMaterial, PointLight, SpotLight, Texture, TextureLoader } from 'three';
 export { createPinia, setActivePinia } from 'pinia';
 export { reactive } from 'vue';
 `
@@ -60,6 +62,7 @@ try {
         if (id === 'wildsrc:agent-bridge') return agentBridgePath
         if (id === 'wildsrc:agent-store') return agentStorePath
         if (id === 'wildsrc:presence-store') return presenceStorePath
+        if (id === 'wildsrc:material-adapter') return materialAdapterPath
       },
       load(id) {
         if (id === '\0virtual:wild-component-compiler') return virtualEntry
@@ -86,6 +89,7 @@ try {
   assertCapabilities(compiler)
   assertGeometryEvaluationCases(compiler)
   assertRepresentativeComponents(compiler)
+  await assertDoorWindowDepthAlignment(compiler)
   await assertInteractiveWindowSashes(compiler)
   await assertInteractiveLight(compiler)
   await assertSecondBatchComponents(compiler)
@@ -98,6 +102,8 @@ try {
   await assertReconstructionDiagnostics(compiler)
   assertInvalidComponentSchemaIsRejected(compiler)
   assertScenePatchIntegration(compiler)
+  assertMaterialTuningPatch(compiler)
+  await assertPbrAssetIntegration(compiler)
   await assertComponentEditingHistory(compiler)
   await assertReactiveBlueprintWorkerTransfer(compiler)
   assertOpeningAnimationFrames(compiler)
@@ -108,6 +114,96 @@ try {
   console.log('Component compiler check passed: 10 component types, attachments, cache and interaction.')
 } finally {
   await rm(outputDirectory, { recursive: true, force: true })
+}
+
+function assertMaterialTuningPatch(compiler) {
+  const source = createBlueprint()
+  source.materials = {
+    stone_shared: {
+      baseColor: [1, 1, 1], roughness: 0.55, metallic: 0, albedo: 1,
+      lightingCondition: 'D65_noon', textureSet: 'pbr_0123456789abcdef01234567',
+      normalScale: 1, uvScale: [1, 1],
+    },
+  }
+  source.geometry.elements[0].material = 'stone_shared'
+  source.geometry.elements[1].material = 'stone_shared'
+  const result = compiler.applyPatchToBlueprint(source, {
+    type: 'scene_patch', patch_id: 'material-tuning-eval', base_revision: 1,
+    source: 'agent', mode: 'proposal', requires_confirmation: true,
+    operations: [{
+      op: 'tune_material', id: 'front_wall', material_field: 'material',
+      new_name: 'stone_front_tuned',
+      changes: { roughness: 0.82, normalScale: 1.35, uvScale: [2, 2] },
+      rationale: '增强石材表面层次',
+    }],
+  })
+  assertEqual(result.geometry.elements[0].material, 'stone_front_tuned', '选中墙没有绑定调优材质')
+  assertEqual(result.geometry.elements[1].material, 'stone_shared', '调优意外影响了共享材质的其他墙')
+  assertEqual(result.materials.stone_shared.roughness, 0.55, '原共享材质被修改')
+  assertEqual(result.materials.stone_front_tuned.textureSet, 'pbr_0123456789abcdef01234567', '调优丢失纹理资产引用')
+  assertEqual(result.materials.stone_front_tuned.roughness, 0.82, '调优参数未应用')
+}
+
+async function assertPbrAssetIntegration(compiler) {
+  const source = createBlueprint()
+  const assetId = 'pbr_0123456789abcdef01234567'
+  const image = {
+    encoding: 'url',
+    uri: `/api/assets/${assetId}/files/baseColor.png`,
+    mimeType: 'image/png',
+    sha256: 'a'.repeat(64),
+    byteSize: 128,
+    colorSpace: 'srgb',
+  }
+  const asset = {
+    schemaVersion: '1.0', assetId, kind: 'pbr_texture_set', name: 'Stone',
+    contentHash: `sha256:${'b'.repeat(64)}`,
+    source: { type: 'local_upload' }, license: 'CC0',
+    maps: { baseColor: image }, createdAt: '2026-08-10T00:00:00Z',
+  }
+  const patched = compiler.applyPatchToBlueprint(source, {
+    type: 'scene_patch', patch_id: 'pbr-eval', base_revision: 1,
+    source: 'user', mode: 'apply', requires_confirmation: false,
+    operations: [
+      { op: 'upsert_asset', asset_id: assetId, asset },
+      {
+        op: 'upsert_material', name: 'stone_pbr',
+        material: {
+          baseColor: [1, 1, 1], roughness: 0.75, metallic: 0, albedo: 1,
+          lightingCondition: 'D65_noon', textureSet: assetId, uvScale: [2, 2],
+        },
+      },
+      { op: 'update_element', id: 'front_wall', changes: { material: 'stone_pbr' } },
+    ],
+  })
+  if (patched.assets?.[assetId]?.maps.baseColor.uri !== image.uri) {
+    throw new Error('ScenePatch 没有写入 PBR 资产清单')
+  }
+
+  const entity = await compiler.reconstructWildEntity(patched)
+  const meshIndex = entity.meshes.findIndex(mesh => mesh.elementId === 'front_wall')
+  const resolved = entity.materialParams[meshIndex]?.textures?.baseColor
+  if (resolved?.encoding !== 'url' || resolved.uri !== image.uri) {
+    throw new Error(`wild-core 没有解析 textureSet: ${JSON.stringify(resolved)}`)
+  }
+
+  const loadedUrls = []
+  const originalLoad = compiler.TextureLoader.prototype.load
+  compiler.TextureLoader.prototype.load = function (url, onLoad) {
+    loadedUrls.push(url)
+    const texture = new compiler.Texture()
+    onLoad?.(texture)
+    return texture
+  }
+  try {
+    const material = compiler.createMaterialFromParams(entity.materialParams[meshIndex])
+    if (material.map === null || !loadedUrls.includes(image.uri)) {
+      throw new Error(`Three.js 没有通过 URL 加载 PBR 纹理: ${JSON.stringify(loadedUrls)}`)
+    }
+    material.dispose()
+  } finally {
+    compiler.TextureLoader.prototype.load = originalLoad
+  }
 }
 
 function assertCapabilities(compiler) {
@@ -160,6 +256,20 @@ async function assertSecondBatchComponents(compiler) {
   for (const component of source.geometry.components) {
     const generated = result.mapping.generatedElementIdsByComponentId[component.id]
     if (!generated?.length) throw new Error(`${component.type} 没有生成基础元素`)
+  }
+  const balconyIds = new Set(result.mapping.generatedElementIdsByComponentId.test_balcony)
+  const balconyElements = result.blueprint.geometry.elements.filter(element => balconyIds.has(element.id))
+  const balconySlab = balconyElements.find(element => element.id === 'test_balcony__slab')
+  if (!balconySlab || Math.abs(balconySlab.position[2] + 0.6) > 1e-9) {
+    throw new Error(`正立面阳台没有向建筑外侧悬挑: ${JSON.stringify(balconySlab)}`)
+  }
+  const balconyZCoordinates = balconyElements.flatMap(element => {
+    if (element.type === 'primitive' && Array.isArray(element.position)) return [element.position[2]]
+    if (element.type === 'beam') return [element.from[2], element.to[2]]
+    return []
+  })
+  if (Math.max(...balconyZCoordinates) > 1e-9) {
+    throw new Error(`阳台或内嵌栏杆进入了建筑内部: ${JSON.stringify(balconyZCoordinates)}`)
   }
   const entity = await compiler.reconstructWildEntity(parsed)
   const errors = entity.diagnostics.filter(item => item.level === 'error')
@@ -365,6 +475,56 @@ async function assertInteractiveWindowSashes(compiler) {
     ['interactive_window__sash_left', 'interactive_window__sash_right'],
     '左右窗扇都应分别参与交互',
   )
+}
+
+async function assertDoorWindowDepthAlignment(compiler) {
+  const source = createBlueprint()
+  const result = compiler.compileBlueprintComponents(source)
+  assertEqual(result.diagnostics, [], '默认门窗深度不应产生编译诊断')
+
+  const doorFrame = result.blueprint.geometry.elements.find(
+    element => element.id === 'front_door__frame_left',
+  )
+  const doorLeaf = result.blueprint.geometry.elements.find(
+    element => element.id === 'front_door__opening',
+  )
+  const windowFrame = result.blueprint.geometry.elements.find(
+    element => element.id === 'side_window__frame_left',
+  )
+  const windowGlass = result.blueprint.geometry.elements.find(
+    element => element.id === 'side_window__opening',
+  )
+  assertEqual(doorFrame?.dimensions?.[2], 0.24, '门框默认深度必须继承父墙厚度')
+  assertEqual(windowFrame?.dimensions?.[2], 0.24, '窗框默认深度必须继承父墙厚度')
+  assertEqual(doorLeaf?.depth, 0.04, '门扇默认厚度错误')
+  assertEqual(windowGlass?.depth, 0.012, '玻璃默认厚度错误')
+
+  const entity = await compiler.reconstructWildEntity(source)
+  const doorMesh = entity.meshes.find(mesh => mesh.elementId === 'front_door__opening')
+  const glassMesh = entity.meshes.find(mesh => mesh.elementId === 'side_window__opening')
+  assertEqual(localAxisExtent(doorMesh, 2), 0.04, '门扇没有生成真实厚度')
+  assertEqual(localAxisExtent(glassMesh, 2), 0.012, '玻璃没有生成真实厚度')
+
+  const invalid = createBlueprint()
+  invalid.geometry.components = [{
+    type: 'door', id: 'invalid_depth_door', parentWall: 'front_wall',
+    from: [1, 0, 0], width: 1, height: 2.1,
+    frameDepth: 0.03, leafDepth: 0.05,
+  }]
+  const invalidResult = compiler.compileBlueprintComponents(invalid)
+  if (!invalidResult.diagnostics.some(item => (
+    item.elementId === 'invalid_depth_door' && item.message.includes('leafDepth')
+  ))) {
+    throw new Error('门扇厚于门框时没有产生可读编译诊断')
+  }
+}
+
+function localAxisExtent(mesh, axis) {
+  if (!mesh) throw new Error('深度回归场景缺少预期网格')
+  const values = []
+  for (let index = axis; index < mesh.geometry.length; index += 3) values.push(mesh.geometry[index])
+  const extent = Math.max(...values) - Math.min(...values)
+  return Math.round(extent * 1_000_000) / 1_000_000
 }
 
 async function assertInteractiveLight(compiler) {

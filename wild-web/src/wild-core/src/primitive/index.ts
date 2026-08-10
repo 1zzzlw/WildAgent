@@ -385,7 +385,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   const meshes = otherMeshes;
 
   // 4. 材质应用（效果层烘焙：调色类）
-  const materialParams = applyMaterials(bp.materials || {}, meshes);
+  const materialParams = applyMaterials(bp.materials || {}, bp.assets || {}, meshes);
   // 5. 计算世界空间包围盒
   const boundingBox = computeWorldAABB(meshes);
   // 6. 烘焙逐顶点程序化纹理颜色

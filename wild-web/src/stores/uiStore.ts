@@ -21,7 +21,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type PanelType = 'sceneTree' | 'blockLibrary' | 'properties' | 'validation' | 'aiChat'
+export type PanelType = 'sceneTree' | 'blockLibrary' | 'properties' | 'validation' | 'assets' | 'aiChat'
 
 export const useUIStore = defineStore('ui', () => {
   const leftPanelVisible = ref(true)
@@ -29,7 +29,7 @@ export const useUIStore = defineStore('ui', () => {
   const bottomPanelVisible = ref(true)
   
   const leftActivePanel = ref<'sceneTree' | 'blockLibrary'>('sceneTree')
-  const rightActivePanel = ref<'properties' | 'validation'>('properties')
+  const rightActivePanel = ref<'properties' | 'validation' | 'assets'>('properties')
 
   const leftPanelWidth = ref(280)
   const rightPanelWidth = ref(320)
@@ -52,7 +52,7 @@ export const useUIStore = defineStore('ui', () => {
     leftPanelVisible.value = true
   }
 
-  function setRightActivePanel(panel: 'properties' | 'validation') {
+  function setRightActivePanel(panel: 'properties' | 'validation' | 'assets') {
     rightActivePanel.value = panel
     rightPanelVisible.value = true
   }

@@ -33,6 +33,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = state.get("on_reasoning_delta")
+    architecture_plan = state.get("architecture_plan")
 
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
 
@@ -65,7 +66,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     )
 
     # ── 2. 构建 Prompt ──
-    system_prompt = build_skeleton_prompt(spec_text)
+    system_prompt = build_skeleton_prompt(spec_text, architecture_plan)
     prompt_chars = len(system_prompt)
 
     # ── 3. LLM 调用（流式或非流式）──
@@ -158,8 +159,12 @@ async def skeleton_generator(state: GenerationState) -> dict:
     )
 
     # ── 4. 从 LLM 回复中提取组件建议 + DESIGN_BRIEF + Blueprint JSON ──
-    suggested_components = _parse_components_from_reply(reply_text)
-    design_brief = _parse_design_brief(reply_text)
+    suggested_components = (
+        list(architecture_plan.get("required_components", []))
+        if isinstance(architecture_plan, dict)
+        else _parse_components_from_reply(reply_text)
+    )
+    design_brief = None if architecture_plan else _parse_design_brief(reply_text)
     blueprint = extract_blueprint_from_text(reply_text)
 
     # 部分 OpenAI-compatible 模型在流式思考模式下会把最终结构化输出放进
@@ -173,7 +178,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
             suggested_components = (
                 suggested_components or _parse_components_from_reply(reasoning)
             )
-            design_brief = design_brief or _parse_design_brief(reasoning)
+            if not architecture_plan:
+                design_brief = design_brief or _parse_design_brief(reasoning)
             logger.warning("[skeleton] 最终 Blueprint 来自 reasoning_content 兼容回退")
 
     # Qwen/GLM 等混合思考模型偶尔会正确输出 DESIGN_BRIEF，却漏掉、截断或包装
@@ -329,7 +335,16 @@ async def skeleton_generator(state: GenerationState) -> dict:
     except Exception as e:
         logger.error(f"[skeleton] 包围盒计算失败: {e}")
 
-    # ── 7. 生成骨架摘要（仅几何轮廓，不含机械开口方案）──
+    # ── 6.5 把抽象轴网解析为真实 wall id 和精确局部门窗槽位 ──
+    if isinstance(architecture_plan, dict):
+        from app.agent.architecture_plan import resolve_facade_layout
+
+        design_brief = resolve_facade_layout(blueprint, architecture_plan)
+        logger.info(
+            f"[skeleton] 立面槽位解析完成: {len(design_brief.get('opening_slots', []))} 个槽位"
+        )
+
+    # ── 7. 生成骨架摘要（几何轮廓 + 确定性开口方案）──
     summary = _build_skeleton_summary(blueprint, design_brief)
     
     elements = blueprint.get("geometry", {}).get("elements", [])
@@ -361,6 +376,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "reasoning_preview": reasoning[:800] if reasoning else "",
             "reasoning_fallback": used_reasoning_fallback,
             "element_count": len(elements),
+            "opening_slot_count": len((design_brief or {}).get("opening_slots", [])),
             "floor_coordinates": floor_coordinates,
             "dimension_fix": dimension_fix_output,
             "material_fix": material_fix_output,

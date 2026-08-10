@@ -26,6 +26,7 @@ import { normalizeBlueprintInput } from '../wild-core/src/primitive/parser'
 import { deepClone } from '../utils/common'
 import { useHistoryStore } from './historyStore'
 import { reconstructScene } from '../renderer/reconstructionClient'
+import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 
 export const useSceneStore = defineStore('scene', () => {
   // 当前编辑的场景文档
@@ -157,6 +158,7 @@ export const useSceneStore = defineStore('scene', () => {
     if (!document.value) return false
 
     const requestId = ++reconstructionRequest
+    clearTextureLoadRecords()
     isReconstructing.value = true
     try {
       const entity = await reconstructScene(document.value.blueprint)

@@ -17,6 +17,7 @@ export interface Blueprint {
   meta: BlueprintMeta
   geometry: GeometrySection
   materials?: Record<string, MaterialDef>
+  assets?: Record<string, PBRTextureSetAsset>
   behaviors?: BehaviorsSection
   editor?: EditorMetadata
 }
@@ -67,12 +68,13 @@ export interface MaterialDef {
   effects?: Array<Record<string, unknown>>
   embeddedImage?: EmbeddedImageData
   textures?: {
-    baseColor?: EmbeddedImageData
-    normal?: EmbeddedImageData
-    roughness?: EmbeddedImageData
-    metalness?: EmbeddedImageData
-    ambientOcclusion?: EmbeddedImageData
+    baseColor?: TextureImageData
+    normal?: TextureImageData
+    roughness?: TextureImageData
+    metalness?: TextureImageData
+    ambientOcclusion?: TextureImageData
   }
+  textureSet?: string
   normalScale?: number
   uvScale?: [number, number]
   [key: string]: unknown
@@ -82,6 +84,35 @@ export interface EmbeddedImageData {
   encoding: 'base64'
   mimeType: string
   data: string
+}
+
+export interface ReferencedImageData {
+  encoding: 'url'
+  uri: string
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+  sha256: string
+  byteSize?: number
+  colorSpace: 'srgb' | 'linear'
+}
+
+export type TextureImageData = EmbeddedImageData | ReferencedImageData
+
+export interface PBRTextureSetAsset {
+  schemaVersion: '1.0'
+  assetId: string
+  kind: 'pbr_texture_set'
+  name: string
+  contentHash: string
+  source: { type: string; uri?: string }
+  license: string
+  maps: {
+    baseColor: ReferencedImageData
+    normal?: ReferencedImageData
+    roughness?: ReferencedImageData
+    metalness?: ReferencedImageData
+    ambientOcclusion?: ReferencedImageData
+  }
+  createdAt: string
 }
 
 export interface BehaviorsSection {

@@ -9,10 +9,15 @@
         @click="uiStore.setRightActivePanel('validation')">
         校验
       </el-button>
+      <el-button class="tab" :class="{ active: uiStore.rightActivePanel === 'assets' }"
+        @click="uiStore.setRightActivePanel('assets')">
+        素材
+      </el-button>
     </div>
     <div class="panel-content">
       <PropertyPanel v-if="uiStore.rightActivePanel === 'properties'" />
       <ValidationPanel v-if="uiStore.rightActivePanel === 'validation'" />
+      <PBRAssetPanel v-if="uiStore.rightActivePanel === 'assets'" />
     </div>
   </div>
 </template>
@@ -21,6 +26,7 @@
 import { useUIStore } from '../../stores/uiStore'
 import PropertyPanel from '../panels/PropertyPanel.vue'
 import ValidationPanel from '../panels/ValidationPanel.vue'
+import PBRAssetPanel from '../panels/PBRAssetPanel.vue'
 
 defineProps<{
   width: number

@@ -847,6 +847,7 @@ export const useAgentStore = defineStore('agent', () => {
     cornice: '檐口', chimney: '烟囱',
   }
   const _NODE_LABELS: Record<string, string> = {
+    architecture: '建筑方案',
     skeleton: '骨架',
     merge: '合并', final_validate: '最终校验', callback: '修正',
   }

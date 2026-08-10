@@ -1,6 +1,6 @@
 import type { WallParams, MeshData, Vec3 } from '../types';
 import { boxWithHoles } from './box-with-holes';
-import { indexTriList } from './mesh-helper';
+import { generateArchitecturalSurfaceAttributes, indexTriList } from './mesh-helper';
 
 const TARGET_TEXEL = 0.4;
 
@@ -17,27 +17,41 @@ export function buildWall(params: WallParams): MeshData[] {
   const dz = to[2] - from[2];
   const length = Math.sqrt(dx * dx + dz * dz);
   const height = Math.abs(to[1] - from[1]);
+  const startExtension = Math.max(0, params._jointExtensions?.start ?? 0);
+  const endExtension = Math.max(0, params._jointExtensions?.end ?? 0);
+  const renderLength = length + startExtension + endExtension;
+  const renderCutouts = cutouts?.map((cutout: any) => ({
+    ...cutout,
+    localX: cutout.localX + startExtension,
+  }));
   
   let geometry: Float32Array, indices: Uint16Array;
-  if (cutouts?.length) {
-    const r = boxWithHoles(length, height, thickness, cutouts);
+  if (renderCutouts?.length) {
+    const r = boxWithHoles(renderLength, height, thickness, renderCutouts);
     geometry = r.geometry; indices = r.indices;
   } else {
-    const raw = subdivideBox(length, height, thickness, TARGET_TEXEL);
+    const raw = subdivideBox(renderLength, height, thickness, TARGET_TEXEL);
     const i = indexTriList(raw);
     geometry = i.geometry; indices = i.indices;
   }
 
-  const midX = (from[0] + to[0]) / 2;
-  const midZ = (from[2] + to[2]) / 2;
+  const directionX = length > 1e-9 ? dx / length : 0;
+  const directionZ = length > 1e-9 ? dz / length : 0;
+  const centerShift = (endExtension - startExtension) / 2;
+  const midX = (from[0] + to[0]) / 2 + directionX * centerShift;
+  const midZ = (from[2] + to[2]) / 2 + directionZ * centerShift;
   const midY = (from[1] + to[1]) / 2;
   // Three.js 绕 Y 轴旋转时，局部 +X 会映射到 (cosθ, -sinθ)。
   // 因此墙体要沿世界方向 (dx, dz) 放置，旋转角必须取负值。
   // 该约定与 resolver 中 opening 的局部坐标转换保持一致。
   const angle = -Math.atan2(dz, dx);
+  const attributes = generateArchitecturalSurfaceAttributes(geometry);
 
   return [{
-    geometry, indices: new Uint32Array(indices),
+    geometry,
+    indices: new Uint32Array(indices),
+    normals: attributes.normals,
+    uvs: attributes.uvs,
     transform: { position: [midX, midY, midZ], rotation: [0, angle, 0], scale: [1, 1, 1] },
     materialRef: material || 'default'
   }];
@@ -57,8 +71,10 @@ function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: stri
       if (segLen < 0.001) continue;
       const raw = createBoxGeometry(segLen, height, thickness);
       const { geometry, indices } = indexTriList(raw);
+      const attributes = generateArchitecturalSurfaceAttributes(geometry);
       meshes.push({
         geometry, indices: new Uint32Array(indices),
+        normals: attributes.normals, uvs: attributes.uvs,
         transform: { position: [(x1+x2)/2, baseY+height/2, (z1+z2)/2], rotation: [0, Math.atan2(z2-z1, x2-x1), 0], scale: [1,1,1] },
         materialRef: material,
       });
@@ -82,7 +98,7 @@ function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: stri
   }));
 
   // 顶点 + 法线（每角度 4 个：内下/内上/外下/外上）
-  const verts: number[] = [], normals: number[] = [];
+  const verts: number[] = [], normals: number[] = [], uvs: number[] = [];
   for (let i = 0; i <= arcSegCount; i++) {
     const t = i / arcSegCount, a = startRad + t * sweepRad;
     const ca = Math.cos(a), sa = Math.sin(a);
@@ -90,6 +106,8 @@ function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: stri
     const xo = center[0] + outerR * ca, zo = center[2] + outerR * sa;
     verts.push(xi, baseY, zi, xi, baseY + height, zi, xo, baseY, zo, xo, baseY + height, zo);
     normals.push(-ca, 0, -sa, -ca, 0, -sa, ca, 0, sa, ca, 0, sa);
+    const arcDistance = Math.abs(t * sweepRad * radius);
+    uvs.push(arcDistance, 0, arcDistance, height, arcDistance, 0, arcDistance, height);
   }
 
   // 纯索引三角形
@@ -111,6 +129,7 @@ function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: stri
   if (idx.length === 0) return [];
   return [{
     geometry: new Float32Array(verts), normals: new Float32Array(normals),
+    uvs: new Float32Array(uvs),
     indices: new Uint32Array(idx),
     transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
     materialRef: material,

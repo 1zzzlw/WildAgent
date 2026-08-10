@@ -1,7 +1,15 @@
-import type { MaterialDef, MaterialParams, MeshData } from '../types';
+import type {
+  MaterialDef,
+  MaterialParams,
+  MeshData,
+  PBRTextureSetAsset,
+} from '../types';
 
 /** 烘焙效果层到基础材质参数 */
-function bakeEffects(base: MaterialDef): MaterialParams {
+function bakeEffects(
+  base: MaterialDef,
+  assets: Record<string, PBRTextureSetAsset>,
+): MaterialParams {
   let bc = normalizeColor(base.baseColor, [0.5, 0.5, 0.5]);
   let r = normalizeUnit(base.roughness, 0.8);
   const m = normalizeUnit(base.metallic, 0);
@@ -54,7 +62,9 @@ function bakeEffects(base: MaterialDef): MaterialParams {
     effects: base.effects || [],
     lightingCondition: base.lightingCondition,
     embeddedImage: base.embeddedImage,
-    textures: base.textures,
+    textures: base.textureSet
+      ? assets[base.textureSet]?.maps || base.textures
+      : base.textures,
     normalScale: base.normalScale,
     uvScale: base.uvScale,
   };
@@ -62,6 +72,7 @@ function bakeEffects(base: MaterialDef): MaterialParams {
 
 export function applyMaterials(
   materials: Record<string, MaterialDef>,
+  assets: Record<string, PBRTextureSetAsset>,
   meshes: MeshData[]
 ): MaterialParams[] {
   const normalizedMaterials = new Map<string, MaterialDef>();
@@ -78,7 +89,7 @@ export function applyMaterials(
       mat = normalizeMaterial(source);
       normalizedMaterials.set(mesh.materialRef, mat);
     }
-    return bakeEffects(mat);
+    return bakeEffects(mat, assets);
   });
 }
 

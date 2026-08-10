@@ -84,6 +84,8 @@ try {
   assertInvalidBlueprintIsRejected(core.parseBlueprint);
   assertVersionMigration(core.parseBlueprint);
   await assertSideWallOpeningAlignment(core);
+  await assertRightAngleWallJointCoverage(core);
+  await assertArchitecturalWallAttributes(core);
   await assertInvalidRuntimeMaterialFallsBack(core);
 
   console.table(results);
@@ -257,6 +259,95 @@ function validateMesh(mesh) {
   return finiteGeometry && validIndices && validNormals && validUvs && finiteTransform;
 }
 
+async function assertRightAngleWallJointCoverage(core) {
+  const source = {
+    meta: { version: '1.1', type: 'building', name: 'right-angle-wall-joint' },
+    geometry: {
+      elements: [
+        {
+          type: 'wall', id: 'front_wall', from: [0, 0, 0], to: [8, 3, 0],
+          thickness: 0.24, material: 'wall',
+        },
+        {
+          type: 'wall', id: 'side_wall', from: [8, 0, 0], to: [8, 3, 6],
+          thickness: 0.3, material: 'wall',
+        },
+        {
+          type: 'wall', id: 'upper_side_wall', from: [8, 3, 0], to: [8, 6, 6],
+          thickness: 0.8, material: 'wall',
+        },
+        {
+          type: 'opening', id: 'front_door', parentWall: 'front_wall',
+          from: [2, 0, 0], width: 1, height: 2.1, depth: 0.04,
+          style: 'rectangular', material: 'door',
+        },
+      ],
+    },
+    materials: {},
+    behaviors: {},
+  };
+  const sourceBefore = JSON.stringify(source);
+  const entity = await core.reconstructEntity(source);
+  if (JSON.stringify(source) !== sourceBefore) {
+    throw new Error('直角墙角解析修改了源蓝图中心线');
+  }
+
+  const front = entity.meshes.find(mesh => mesh.elementId === 'front_wall');
+  const side = entity.meshes.find(mesh => mesh.elementId === 'side_wall');
+  const door = entity.meshes.find(mesh => mesh.elementId === 'front_door');
+  if (!front || !side || !door) throw new Error('直角墙角回归场景缺少预期网格');
+
+  assertNear(front.transform.position[0], 4.075, '前墙端点没有按相邻墙半厚延伸');
+  assertNear(side.transform.position[2], 2.94, '侧墙起点没有按相邻墙半厚延伸');
+  assertNear(door.transform.position[0], 2.5, '墙角延伸错误移动了门的位置');
+  assertNear(door.transform.position[2], 0, '墙角延伸错误改变了门的法向位置');
+
+  const frontBounds = meshWorldBounds(front);
+  const sideBounds = meshWorldBounds(side);
+  assertNear(frontBounds.max[0], 8.15, '前墙渲染端没有覆盖侧墙全厚');
+  assertNear(sideBounds.min[2], -0.12, '侧墙渲染端没有覆盖前墙全厚');
+
+  const oblique = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'building', name: 'oblique-wall-joint' },
+    geometry: { elements: [
+      { type: 'wall', id: 'wall_a', from: [0, 0, 0], to: [4, 3, 0], thickness: 0.24 },
+      { type: 'wall', id: 'wall_b', from: [4, 0, 0], to: [6, 3, 3.464], thickness: 0.24 },
+    ] },
+    materials: {}, behaviors: {},
+  });
+  const obliqueWall = oblique.meshes.find(mesh => mesh.elementId === 'wall_a');
+  if (!obliqueWall) throw new Error('斜角墙回归场景缺少 wall_a');
+  assertNear(obliqueWall.transform.position[0], 2, '非直角墙被错误执行渲染延伸');
+}
+
+function assertNear(actual, expected, message, tolerance = 1e-5) {
+  if (Math.abs(actual - expected) > tolerance) {
+    throw new Error(`${message}: actual=${actual}, expected=${expected}`);
+  }
+}
+
+function meshWorldBounds(mesh) {
+  const [px, py, pz] = mesh.transform.position;
+  const [rx, ry, rz] = mesh.transform.rotation;
+  if (Math.abs(rx) > 1e-9 || Math.abs(rz) > 1e-9) {
+    throw new Error('墙角回归仅支持绕 Y 轴旋转的测试网格');
+  }
+  const cosine = Math.cos(ry);
+  const sine = Math.sin(ry);
+  const bounds = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+  for (let index = 0; index < mesh.geometry.length; index += 3) {
+    const x = mesh.geometry[index];
+    const y = mesh.geometry[index + 1];
+    const z = mesh.geometry[index + 2];
+    const world = [cosine * x + sine * z + px, y + py, -sine * x + cosine * z + pz];
+    for (let axis = 0; axis < 3; axis++) {
+      bounds.min[axis] = Math.min(bounds.min[axis], world[axis]);
+      bounds.max[axis] = Math.max(bounds.max[axis], world[axis]);
+    }
+  }
+  return bounds;
+}
+
 function assertInvalidBlueprintIsRejected(parseBlueprint) {
   const invalidBlueprint = {
     meta: { version: '1.1', type: 'asset', name: 'invalid-radius-test' },
@@ -408,4 +499,28 @@ async function assertSideWallOpeningAlignment(core) {
       + `expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`,
     );
   }
+}
+
+async function assertArchitecturalWallAttributes(core) {
+  const entity = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'building', name: 'wall-surface-attributes' },
+    geometry: {
+      elements: [
+        { type: 'wall', id: 'wall', from: [0, 0, 0], to: [8, 3, 0], thickness: 0.3, material: 'wall' },
+        { type: 'opening', id: 'opening', parentWall: 'wall', from: [3, 0.9, 0], width: 1.5, height: 1.2 },
+      ],
+      components: [],
+    },
+    materials: { wall: { baseColor: [0.8, 0.8, 0.8], roughness: 0.8, metallic: 0, albedo: 1 } },
+    behaviors: {},
+  });
+  const wall = entity.meshes.find(mesh => mesh.elementId === 'wall');
+  if (!wall?.uvs || wall.uvs.length !== wall.geometry.length / 3 * 2) {
+    throw new Error('墙体没有生成完整逐面 UV');
+  }
+  if (!wall.normals || wall.normals.length !== wall.geometry.length) {
+    throw new Error('墙体没有生成硬边法线');
+  }
+  const uSpan = Math.max(...wall.uvs) - Math.min(...wall.uvs);
+  if (uSpan < 2) throw new Error(`墙体 UV 未按米展开: span=${uSpan}`);
 }

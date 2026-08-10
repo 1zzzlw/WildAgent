@@ -19,6 +19,15 @@
           <div class="message-content" v-html="renderMarkdown(message.content)"></div>
           <div v-if="message.patch" class="message-patch">
             <div class="patch-summary">{{ message.patch.summary }}</div>
+            <div v-if="getMaterialTunings(message).length" class="material-tuning-list">
+              <div v-for="tuning in getMaterialTunings(message)" :key="`${tuning.id}:${tuning.newName}`" class="material-tuning-item">
+                <div class="material-tuning-title">
+                  {{ tuning.id }} · {{ tuning.field }} · {{ tuning.sourceName || '当前材质' }} → {{ tuning.newName }}
+                </div>
+                <div class="material-tuning-values">{{ tuning.values }}</div>
+                <div v-if="tuning.rationale" class="material-tuning-reason">{{ tuning.rationale }}</div>
+              </div>
+            </div>
             <div class="patch-actions">
               <el-button
                 class="patch-btn"
@@ -337,6 +346,29 @@ function getPatchActionLabel(message: ChatMessage): string {
     rejected: '已拒绝',
     expired: '已失效',
   } as const)[getPatchStatus(message)]
+}
+
+function getMaterialTunings(message: ChatMessage) {
+  const labels: Record<string, string> = {
+    baseColor: '基础色', roughness: '粗糙度', metallic: '金属度', albedo: '反照率',
+    emissive: '自发光', opacity: '透明度', normalScale: '法线强度', uvScale: '纹理比例',
+  }
+  return (message.patch?.operations || [])
+    .filter(operation => operation.op === 'tune_material')
+    .map(operation => ({
+      id: operation.id,
+      field: operation.material_field || 'material',
+      sourceName: operation.source_name,
+      newName: operation.new_name,
+      rationale: operation.rationale,
+      values: Object.entries(operation.changes)
+        .map(([key, value]) => {
+          const format = (item: unknown) => Array.isArray(item) ? item.join(' × ') : String(item)
+          const before = operation.before?.[key]
+          return `${labels[key] || key}: ${before === undefined ? '' : `${format(before)} → `}${format(value)}`
+        })
+        .join('；'),
+    }))
 }
 
 function setPatchStatus(
@@ -812,6 +844,25 @@ function loadDraftSessionsFromLocal(): any[] {
   color: var(--success);
   margin-bottom: 8px;
 }
+
+.material-tuning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.material-tuning-item {
+  padding: 7px 8px;
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: rgba(78, 161, 243, 0.07);
+  font-size: 11px;
+}
+
+.material-tuning-title { color: var(--text-primary); }
+.material-tuning-values { margin-top: 3px; color: var(--text-secondary); line-height: 1.5; }
+.material-tuning-reason { margin-top: 3px; color: var(--text-muted); }
 
 .patch-btn {
   padding: 4px 12px;

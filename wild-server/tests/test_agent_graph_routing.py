@@ -10,6 +10,10 @@ def test_edit_keyword_routes_to_patch_when_scene_exists():
     assert _classifier_dispatch({"intent": "edit"}) == "patch"
 
 
+def test_generate_routes_to_architecture_plan_first():
+    assert _classifier_dispatch({"intent": "generate"}) == "architecture"
+
+
 def test_edit_like_request_does_not_edit_without_scene():
     assert _keyword_classify("把正门加宽到 1.2 米", has_current_scene=False) == "CHAT"
 

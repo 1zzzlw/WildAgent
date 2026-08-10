@@ -26,6 +26,7 @@ def build_system_prompt(spec_text: str) -> str:
 - 台灯使用 light 组件并设置 fixtureType=table_lamp；furniture.subtype=lamp 只是旧版静态家具占位
 - 组件 type 严格服从 WILD Schema，严禁发明 sofa、counter 等值
 - 新增或更新材质统一使用 `upsert_material`，不存在 `add_material` 操作
+- 只优化已有纹理质感时使用 `tune_material`；该操作只克隆当前材质并调整受控数值，严禁修改图片 URL、`textureSet` 或资产清单
 
 # WILD 规范
 
@@ -90,12 +91,83 @@ def build_patch_recovery_prompt(
 - `update_component`: `{{"op":"update_component","id":"现有ID","changes":{{...}}}}`
 - `remove_component`: `{{"op":"remove_component","id":"现有ID"}}`
 - `upsert_material`: `{{"op":"upsert_material","name":"材质ID","material":{{...}}}}`
+- `tune_material`: `{{"op":"tune_material","id":"选中构件ID","material_field":"material","new_name":"唯一材质ID","changes":{{"roughness":0.8,"normalScale":1.2,"uvScale":[2,2]}},"rationale":"调整理由"}}`
 
 在原建筑旁边新增对象时只使用 add 操作，不要顺带修改原建筑。所有新增 ID 必须唯一。
 """
 
 
-def build_skeleton_prompt(spec_text: str) -> str:
+def build_material_optimization_prompt(selection: list[str]) -> str:
+    """限制文本模型只优化已有材质参数，不接触图片或几何。"""
+    selected = ", ".join(selection)
+    return f"""
+
+# 本次任务：现有纹理的材质质感优化（强制）
+
+当前选中构件：{selected}
+
+只允许输出 `tune_material` 操作。每项操作必须满足：
+
+- `id` 必须是上述选中构件之一；不要修改任何未选中构件。
+- `material_field` 必须是场景摘要中该构件已有的材质字段。
+- `new_name` 必须是未使用的语义化材质 ID；系统会克隆原材质，避免影响共享同一材质的其他构件。
+- `changes` 只能包含 `baseColor`、`roughness`、`metallic`、`albedo`、`emissive`、`opacity`、`normalScale`、`uvScale`。
+- 0–1 参数必须在范围内；`normalScale` 为 0–4；`uvScale` 为两个 0–64 的正数。
+- 只有场景摘要的 `maps` 或 `textureChannels` 明确包含 `normal` 时才能调整 `normalScale`；不要输出与当前值完全相同的参数。
+- 只根据材料语义调整渲染参数。不得声称提高了图片分辨率、修复了接缝或生成了新纹理。
+- 严禁输出 `upsert_asset`、`upsert_material`、`update_element`、`update_component`，严禁修改几何、图片 URL、Base64、纹理通道或 `textureSet`。
+- `rationale` 用一句中文说明参数调整依据。
+
+只输出一个 ScenePatch JSON 对象，包含非空 `operations` 和准确的 `summary`。
+"""
+
+
+def build_architecture_plan_prompt(spec_text: str) -> str:
+    """生成路径第一阶段：只做建筑方案，不写 Blueprint 坐标。"""
+    return f"""你是建筑方案主创建筑师。先做体量、立面轴网和构件配额，不生成 WILD Blueprint。
+
+# 任务
+
+- 给出 2 个可实施候选，差异必须体现在体量比例、立面节奏或屋顶上。
+- 方案要忠于用户层数、风格、功能和知识库；不要为了复杂而堆构件。
+- front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
+- ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
+- 门只能出现在 ground_pattern，front 必须有且只有一个主门槽位。
+- component_quota 必须与立面 pattern 能容纳的数量一致。
+
+# 输出协议
+
+只输出一个 JSON 对象，不要 Markdown 或解释：
+{{
+  "candidates": [
+    {{
+      "concept": "方案概念",
+      "massing": {{"shape":"rectangle|l_shape|stepped|courtyard","width":12,"depth":9,"floors":2,"floor_height":3.2,"symmetry":true}},
+      "facades": {{
+        "front": {{"bays":5,"entrance_bay":3,"ground_pattern":["window","empty","door","empty","window"],"upper_pattern":["window","empty","window","empty","window"]}},
+        "back":  {{"bays":4,"ground_pattern":["window","empty","empty","window"],"upper_pattern":["window","empty","empty","window"]}},
+        "left":  {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}},
+        "right": {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}}
+      }},
+      "roof": {{"type":"flat|gable|hip|shed|mansard|pyramid","ridge_axis":"x|z","overhang":0.55}},
+      "component_quota": {{
+        "door": {{"min":1,"max":2,"note":"..."}},
+        "window": {{"min":6,"max":14,"note":"..."}},
+        "roof": {{"min":1,"max":1,"type":"hip","note":"..."}}
+      }},
+      "required_components": ["door","window","roof"],
+      "design_rationale": ["入口与轴网关系", "上下层对齐关系", "屋顶与体量关系"]
+    }}
+  ]
+}}
+
+# 知识库参考
+
+{spec_text}
+"""
+
+
+def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None) -> str:
     """Layer 0: 骨架生成专用 prompt
     
     职责：
@@ -105,7 +177,44 @@ def build_skeleton_prompt(spec_text: str) -> str:
     4. **输出 facade_plan + component_quota 设计清单**，为后续节点提供刚约束
     5. 不生成组件（door、window、roof 等留给后续专用节点）
     """
-    return f"""你是建筑规划专家。你的任务是理解用户需求，规划建筑结构，生成骨架和设计清单。
+    import json as _json
+    if architecture_plan:
+        return f"""你是 WILD 建筑结构骨架工程师。把已批准方案落实为可校验的结构骨架。
+
+# 已批准建筑方案（硬约束）
+
+{_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
+
+# 职责边界
+
+- 严格服从 massing 的尺寸、层数和层高；不得重新做方案选择。
+- 只生成 wall、floor、column、beam、stair；door、window、roof 由后续节点生成。
+- 如果方案要求 balcony，不得用额外 floor 或 railing 预先模拟阳台；悬挑板和 U 形栏杆由 balcony 节点唯一负责。
+- `geometry.components` 必须是空数组。
+- 不输出 `_components`、DESIGN_BRIEF、Markdown、解释或多个 JSON。
+- 只输出一个顶层直接包含 `meta`、`geometry`、`materials` 的 Blueprint JSON 对象。
+
+# 几何硬规则
+
+1. 每层外墙闭合，共享转角端点；wall.from[1] 是墙底，wall.to[1] 是墙顶且必须更大。
+2. 每个 floor 同时使用三维 `from`/`to`，两个 Y 相同并等于该层底标高。
+3. 两层以上必须包含至少一个 stair 元素；楼梯上下标高与相邻楼层一致。
+4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和 opacity=0.35 的玻璃角色材质，供后续节点引用。
+5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
+6. 现代住宅不滥用外露角柱；只在方案或真实门廊/大跨需要时增加柱梁。
+
+# WILD 规范参考
+
+{spec_text}
+"""
+
+    plan_section = ""
+    brief_instruction = "4. **输出设计清单**：在后处理阶段，你必须输出一个JSON段，指定 facade_plan 和 component_quota"
+    output_tail = "最后输出 `DESIGN_BRIEF:` JSON。"
+    final_override = ""
+
+    return f"""你是建筑结构骨架专家。你的任务是把已批准方案落实为稳定的 WILD 骨架。
+{plan_section}
 
 # 你的任务
 
@@ -115,7 +224,7 @@ def build_skeleton_prompt(spec_text: str) -> str:
    - 中式庭院 → 应有院墙、月亮门、木窗、坡屋顶、飞檐
    - 现代建筑 → 应有大面积玻璃窗、简约线条、平屋顶
 3. **生成骨架结构**：只生成 walls（墙）、floors（楼板）、columns（柱）、beams（梁）、stair（楼梯）
-4. **输出设计清单**：在后处理阶段，你必须输出一个JSON段，指定 facade_plan 和 component_quota
+{brief_instruction}
 5. **不生成组件**：不要生成 door（门）、window（窗）、roof（屋顶）等，这些由后续专用节点负责
 
 # 设计清单规范（MANDATORY）
@@ -158,7 +267,7 @@ DESIGN_BRIEF:
 然后输出完整的 Blueprint JSON，`geometry.components` **必须为空数组**。
 Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
 
-最后输出 `DESIGN_BRIEF:` JSON。
+{output_tail}
 
 # 规则
 
@@ -172,6 +281,7 @@ Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
 8. **墙高不可为零**：wall.from[1] 是墙底、wall.to[1] 是墙顶，必须满足 `to[1] > from[1]`；例如一层墙 `[0,0,0] -> [8,3,0]`，二层墙 `[0,3,0] -> [8,6,0]`
 9. **材质引用闭合**：elements 中所有 material 必须精确引用 Blueprint.materials 已定义的 ID，不得使用未定义的简称
 10. **楼板坐标格式**：每个 floor 必须同时包含三维数组 `from` 和 `to`，Y 值相同并表示楼板底标高；例如一层楼板 `"from":[0,0,0], "to":[8,0,6]`，二层楼板 `"from":[0,3,0], "to":[8,3,6]`。禁止用 position、size、polygon 或二维坐标替代
+11. **阳台单一表达**：需要 balcony 时，不得再用 `floor_balcony` 或独立 railing 重复表达同一阳台
 
 # WILD 规范参考
 
@@ -210,6 +320,7 @@ DESIGN_BRIEF:
 ```
 
 **重要**：components 数组必须为空！门、窗、屋顶等由后续节点生成。但 stair 元素必须放在 geometry.elements 中。
+{final_override}
 """
 
 
@@ -260,6 +371,7 @@ def build_component_prompt(
     # ── 构建 facade_plan 和 quota 约束段 ──
     quota_section = ""
     facade_section = ""
+    slot_section = ""
     if design_brief:
         quota = design_brief.get("component_quota", {})
         comp_quota = quota.get(component_type, {})
@@ -286,6 +398,17 @@ def build_component_prompt(
                     + "\n\n**必须严格按照上述方案生成：只在 intent 要求开窗/开门的墙上生成，"
                       "max_openings=0 的墙必须留空。**\n"
                 )
+            exact_slots = [
+                slot for slot in design_brief.get("opening_slots", [])
+                if isinstance(slot, dict) and slot.get("type") == component_type
+            ]
+            if exact_slots:
+                slot_section = (
+                    "\n# 程序解析的精确开口槽位（最高优先级）\n\n"
+                    + _json.dumps(exact_slots, ensure_ascii=False, indent=2)
+                    + "\n\n每个输出必须选择一个不同槽位，并逐字复制该槽位的 wall_id→parentWall、"
+                      "from、width、height。不要自行计算或微调坐标；合并阶段会再次吸附。\n"
+                )
 
     rag_section = ""
     if design_brief and design_brief.get("rag_reference"):
@@ -297,6 +420,7 @@ def build_component_prompt(
 
 {skeleton_summary}
 {facade_section}
+{slot_section}
 {quota_section}
 {rag_section}
 # 通用规则

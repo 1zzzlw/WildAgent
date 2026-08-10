@@ -91,6 +91,11 @@
           <div v-if="selectedComponent.type === 'door'" class="property-section">
             <div class="section-title">门</div>
             <div class="property-row">
+              <label>门扇厚度</label>
+              <el-input-number :model-value="componentOptionalNumber('leafDepth')" :min="0.005" :step="0.005"
+                @change="(value: number | undefined) => handleComponentNumberChange('leafDepth', value)" />
+            </div>
+            <div class="property-row">
               <label>门扇材质</label>
               <el-select :model-value="componentString('leafMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('leafMaterial', value)">
@@ -101,6 +106,11 @@
 
           <div v-if="selectedComponent.type === 'window'" class="property-section">
             <div class="section-title">窗</div>
+            <div class="property-row">
+              <label>玻璃厚度</label>
+              <el-input-number :model-value="componentOptionalNumber('glassDepth')" :min="0.002" :step="0.002"
+                @change="(value: number | undefined) => handleComponentNumberChange('glassDepth', value)" />
+            </div>
             <div class="property-row">
               <label>竖窗棂</label>
               <el-input-number :model-value="componentNumber('verticalMullions', 0)" :min="0" :max="32" :step="1"

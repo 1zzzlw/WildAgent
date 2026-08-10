@@ -23,7 +23,7 @@ keywords:
 
 # 门组合构件（当前引擎支持）
 
-`type: "door"` 必须写入 `geometry.components`，不能写入 `geometry.elements`。编译器将其展开为 1 个 `opening`（矩形洞口）+ 3 段 `primitive.box`（左/右/顶门框）。
+`type: "door"` 必须写入 `geometry.components`，不能写入 `geometry.elements`。编译器将其展开为 1 个有实体厚度的门扇 `opening` + 3 段 `primitive.box`（左/右/顶门框）。
 
 ---
 
@@ -39,9 +39,12 @@ keywords:
 | `height` | ✅ | 正数，门高建议 2.0~2.4m |
 | `interaction` | ✅ | `{"mode":"swing","hingeSide":"left","openAngle":90}` |
 | `frameWidth` | 可选 | 门框宽度，默认 0.08m |
-| `frameDepth` | 可选 | 门框深度，默认墙厚+0.04m |
+| `frameDepth` | 可选 | 门框深度，默认等于父墙 `thickness` |
+| `leafDepth` | 可选 | 门扇实体厚度，默认 `min(0.04, frameDepth)`，必须为正数且不大于 `frameDepth` |
 | `frameMaterial` | 可选 | 门框材质名 |
 | `leafMaterial` | 可选 | 门扇覆盖面材质名（控制门的外观颜色） |
+
+门框和门扇以 `from[2]` 为中心沿父墙法向放置，二者都必须与父墙厚度范围产生实体交叠。通常保持 `from[2] = 0` 并省略深度字段；只有确需单面偏置或特殊构造时才显式填写。
 
 **`interaction` 子字段**：
 

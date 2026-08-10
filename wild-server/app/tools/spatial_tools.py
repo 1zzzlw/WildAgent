@@ -584,7 +584,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
     VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
 
     # 蓝图顶层只允许这些 key
-    VALID_ROOT_KEYS = {"meta", "geometry", "materials", "behaviors", "editor"}
+    VALID_ROOT_KEYS = {"meta", "geometry", "materials", "assets", "behaviors", "editor"}
     # geometry 内部只允许这些 key
     VALID_GEOMETRY_KEYS = {"elements", "components", "templates", "instances", "placements"}
 

@@ -68,7 +68,9 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   if (meshData.uvs) {
     const uvAttribute = new THREE.BufferAttribute(meshData.uvs, 2)
     geometry.setAttribute('uv', uvAttribute)
-    // Three.js 的 aoMap 读取第二套 UV。当前 WILD v1.1 先复用主 UV。
+    // 不同 Three.js 小版本分别使用 uv1 / uv2 表示第二套 UV；两者都提供，
+    // 当前 WILD v1.1 复用主 UV，确保 aoMap 在部署版本中稳定生效。
+    geometry.setAttribute('uv1', uvAttribute.clone())
     geometry.setAttribute('uv2', uvAttribute.clone())
   }
   
