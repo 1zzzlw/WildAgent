@@ -27,6 +27,31 @@ export interface SceneDocument {
  * 注意：这里的类型定义匹配 wild-core/src/primitive/types.ts 的 ReconstructedEntity
  * materialParams 和 boundingBox 在 wild-core 中始终存在
  */
+export interface ReconstructionBounds {
+  min: [number, number, number]
+  max: [number, number, number]
+}
+
+export interface ReconstructionObservation {
+  sourceId: string
+  sourceType: string
+  renderedElementIds: string[]
+  meshCount: number
+  status: 'ok' | 'warning' | 'error'
+  expectedRelation: 'self' | 'attached_to_parent' | 'covers_walls'
+  targetId?: string
+  expectedBounds?: ReconstructionBounds
+  actualBounds?: ReconstructionBounds
+  separation?: number
+  message?: string
+}
+
+export interface ReconstructionReport {
+  observations: ReconstructionObservation[]
+  errorCount: number
+  warningCount: number
+}
+
 export interface ReconstructedEntity {
   meshes: MeshData[]
   materialParams: MaterialParams[]
@@ -35,6 +60,7 @@ export interface ReconstructedEntity {
   scripts?: unknown[]
   animation?: unknown
   diagnostics: EngineDiagnostic[]
+  reconstructionReport: ReconstructionReport
   /** 组合构件与临时 Core 元素的双向映射，不会写回 Blueprint。 */
   componentMapping: ComponentCompilationMapping
 }
@@ -101,6 +127,8 @@ export interface EngineDiagnostic {
   message: string
   elementId?: string
   elementType?: string
+  expectedBounds?: ReconstructionBounds
+  actualBounds?: ReconstructionBounds
 }
 
 export interface BoundingBox {

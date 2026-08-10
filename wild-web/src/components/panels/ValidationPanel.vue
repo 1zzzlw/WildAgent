@@ -4,7 +4,7 @@
       <span>校验结果</span>
     </div>
     <div class="panel-body">
-      <div v-if="issues.length === 0" class="success-state">
+      <div v-if="issues.length === 0 && reconstructionIssues.length === 0" class="success-state">
         ✓ 场景校验通过
       </div>
       <div v-else class="issues-list">
@@ -18,7 +18,51 @@
             </div>
           </div>
         </div>
+        <div class="diagnostic-section" v-if="reconstructionIssues.length > 0">
+          <div class="diagnostic-title">
+            wild-core 重建诊断 · {{ reconstructionIssues.length }} 项
+          </div>
+          <div
+            v-for="issue in reconstructionIssues"
+            :key="`${issue.code}:${issue.elementId}`"
+            :class="['issue-item', issue.level]"
+          >
+            <span class="issue-icon">{{ issue.level === 'error' ? '✕' : '⚠' }}</span>
+            <div class="issue-content">
+              <div class="issue-message">{{ issue.message }}</div>
+              <div class="issue-meta">
+                <span v-if="issue.elementId">元素: {{ issue.elementId }}</span>
+                <span>代码: {{ issue.code }}</span>
+                <span v-if="issue.expectedBounds">预期: {{ formatBounds(issue.expectedBounds) }}</span>
+                <span v-if="issue.actualBounds">实际: {{ formatBounds(issue.actualBounds) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+      <details v-if="reconstructionObservations.length > 0" class="reconstruction-report">
+        <summary>
+          重建映射 {{ reconstructionObservations.length }} 项
+          · {{ sceneStore.reconstructed?.reconstructionReport.errorCount ?? 0 }} 错误
+          · {{ sceneStore.reconstructed?.reconstructionReport.warningCount ?? 0 }} 警告
+        </summary>
+        <div
+          v-for="observation in reconstructionObservations"
+          :key="observation.sourceId"
+          :class="['observation-item', observation.status]"
+        >
+          <div class="observation-title">
+            <span>{{ observation.sourceId }}</span>
+            <span>{{ observation.sourceType }}</span>
+          </div>
+          <div class="issue-meta">
+            <span v-if="observation.targetId">宿主: {{ observation.targetId }}</span>
+            <span>网格: {{ observation.meshCount }}</span>
+            <span v-if="observation.actualBounds">实际: {{ formatBounds(observation.actualBounds) }}</span>
+            <span v-if="observation.expectedBounds">参照: {{ formatBounds(observation.expectedBounds) }}</span>
+          </div>
+        </div>
+      </details>
     </div>
   </div>
 </template>
@@ -30,6 +74,17 @@ import { useSceneStore } from '../../stores/sceneStore'
 const sceneStore = useSceneStore()
 
 const issues = computed(() => sceneStore.validationIssues)
+const reconstructionIssues = computed(() => (
+  sceneStore.reconstructed?.diagnostics.filter(issue => issue.level !== 'info') ?? []
+))
+const reconstructionObservations = computed(() => (
+  sceneStore.reconstructed?.reconstructionReport.observations ?? []
+))
+
+function formatBounds(bounds: { min: [number, number, number]; max: [number, number, number] }): string {
+  const point = (value: [number, number, number]) => value.map(item => item.toFixed(2)).join(', ')
+  return `[${point(bounds.min)}] → [${point(bounds.max)}]`
+}
 </script>
 
 <style scoped>
@@ -63,6 +118,53 @@ const issues = computed(() => sceneStore.validationIssues)
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.diagnostic-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #3e3e42;
+}
+
+.diagnostic-title {
+  padding: 2px 4px 6px;
+  color: #c8c8c8;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.reconstruction-report {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #3e3e42;
+  color: #85858e;
+  font-size: 11px;
+}
+
+.reconstruction-report > summary {
+  cursor: pointer;
+}
+
+.observation-item {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #252528;
+  border-left: 2px solid #4ec9b0;
+  border-radius: 3px;
+}
+
+.observation-item.warning { border-left-color: #dcdcaa; }
+.observation-item.error { border-left-color: #f48771; }
+
+.observation-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: #c8c8c8;
 }
 
 .issue-item {

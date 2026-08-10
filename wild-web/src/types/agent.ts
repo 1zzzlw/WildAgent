@@ -216,6 +216,12 @@ export interface NodeDiagnostic {
   label?: string
   rag_chars?: number
   rag_ms?: number
+  rag_hits?: Array<{
+    source: string
+    heading: string
+    doc_type: string
+    entity_type: string
+  }>
   prompt_chars?: number
   llm_chars?: number
   llm_ms?: number

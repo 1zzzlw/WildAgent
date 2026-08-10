@@ -9,6 +9,7 @@
     "check:core": "node scripts/check-wild-core.mjs",
     "check:compiler": "node scripts/check-component-compiler.mjs",
     "eval:components": "node scripts/check-component-compiler.mjs",
+    "eval:phase3a": "node scripts/check-component-compiler.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

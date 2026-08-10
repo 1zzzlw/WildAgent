@@ -36,6 +36,7 @@ class GenerationState(TypedDict, total=False):
     skeleton_blueprint: dict
     skeleton_summary: str
     wall_bounding_box: dict
+    spatial_invariants: dict
     suggested_components: list[str]  # 骨架节点建议的组件列表
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
 

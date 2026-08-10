@@ -1561,6 +1561,42 @@ def validate_element_dimensions(blueprint: dict) -> str:
 # 查询类 Tool —— 不修改 Blueprint，只返回场景信息供 LLM 参考
 # ============================================================
 
+def compute_wall_bounding_box(blueprint: dict) -> dict:
+    """返回结构墙体的机器可读包围盒，供状态图和组件节点共享。"""
+    walls = [
+        element
+        for element in _get_elements(blueprint)
+        if isinstance(element, dict)
+        and element.get("type") == "wall"
+        and _is_structural_wall(element)
+    ]
+    points: list[list[float]] = []
+    for wall in walls:
+        for field in ("from", "to"):
+            value = wall.get(field)
+            if not isinstance(value, list) or len(value) != 3:
+                continue
+            try:
+                point = [float(value[0]), float(value[1]), float(value[2])]
+            except (TypeError, ValueError):
+                continue
+            if all(number == number and abs(number) != float("inf") for number in point):
+                points.append(point)
+
+    if not points:
+        return {}
+
+    minimum = [min(point[index] for point in points) for index in range(3)]
+    maximum = [max(point[index] for point in points) for index in range(3)]
+    return {
+        "min": minimum,
+        "max": maximum,
+        "center": [(minimum[index] + maximum[index]) / 2 for index in range(3)],
+        "size": [maximum[index] - minimum[index] for index in range(3)],
+        "wall_count": len(walls),
+    }
+
+
 @tool
 def get_wall_bounding_box(blueprint: dict) -> str:
     """

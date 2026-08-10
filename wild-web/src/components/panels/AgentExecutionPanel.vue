@@ -42,6 +42,17 @@
           <span v-if="step.diagnostic.token_usage">
             {{ step.diagnostic.token_usage.total }} tokens
           </span>
+          <details v-if="step.diagnostic.rag_hits?.length" class="rag-trace">
+            <summary>命中 {{ step.diagnostic.rag_hits.length }} 条知识</summary>
+            <div
+              v-for="(hit, index) in step.diagnostic.rag_hits"
+              :key="`${hit.source}:${hit.heading}:${index}`"
+              class="rag-hit"
+            >
+              <span>{{ hit.heading || '未命名片段' }}</span>
+              <span>{{ hit.source }}</span>
+            </div>
+          </details>
         </div>
       </details>
 
@@ -270,6 +281,29 @@ onUnmounted(() => {
   margin: 0 0 8px 14px;
   color: #6f6f79;
   font-size: 10.5px;
+}
+
+.rag-trace {
+  flex-basis: 100%;
+}
+
+.rag-trace > summary {
+  cursor: pointer;
+  color: #85858e;
+}
+
+.rag-hit {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(120px, 1.4fr);
+  gap: 8px;
+  padding: 3px 0 0 10px;
+}
+
+.rag-hit span:last-child {
+  overflow: hidden;
+  color: #5f5f68;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .validation-details,

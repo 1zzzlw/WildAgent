@@ -9,6 +9,7 @@
     door_val = create_component_validator(COMPONENT_REGISTRY["door"])
 """
 import asyncio
+import json
 import time as _time
 from loguru import logger
 
@@ -34,6 +35,12 @@ def create_component_generator(config: ComponentConfig):
         t0 = _time.time()
         user_message = state["user_message"]
         skeleton_summary = state.get("skeleton_summary", "")
+        spatial_invariants = state.get("spatial_invariants", {})
+        if spatial_invariants:
+            skeleton_summary = (
+                f"{skeleton_summary}\n\n【确定性空间不变量（必须遵守，不得自行改写）】\n"
+                f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
+            )
         design_brief = state.get("design_brief")  # ← 骨架设计清单
         output_key = config.output_key
         gen_diag_key = f"{config.component_type}_gen_diag"
@@ -55,6 +62,15 @@ def create_component_generator(config: ComponentConfig):
         spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
         rag_ms = int((_time.time() - rag_t0) * 1000)
         rag_chars = len(spec_text)
+        rag_hits = [
+            {
+                "source": hit.metadata.get("source", "?"),
+                "heading": hit.metadata.get("heading", "?"),
+                "doc_type": hit.metadata.get("doc_type", "?"),
+                "entity_type": hit.metadata.get("entity_type", "?"),
+            }
+            for hit in getattr(agent_service.spec_loader, "last_results", [])
+        ]
 
         # ── 2. 构建 Prompt ──
         system_prompt = build_component_prompt(
@@ -131,7 +147,7 @@ def create_component_generator(config: ComponentConfig):
                 output_key: [] if config.is_list else None,
                 gen_diag_key: {
                     "label": config.label,
-                    "rag_chars": rag_chars, "rag_ms": rag_ms,
+                    "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
                     "error": str(e),
                 },
             }
@@ -158,7 +174,7 @@ def create_component_generator(config: ComponentConfig):
                 output_key: [] if config.is_list else None,
                 gen_diag_key: {
                     "label": config.label,
-                    "rag_chars": rag_chars, "rag_ms": rag_ms,
+                    "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
                     "prompt_chars": prompt_chars,
                     "llm_chars": llm_chars, "llm_ms": llm_ms,
                     "token_usage": token_usage,
@@ -178,7 +194,7 @@ def create_component_generator(config: ComponentConfig):
             output_key: valid if config.is_list else (valid[0] if valid else None),
             gen_diag_key: {
                 "label": config.label,
-                "rag_chars": rag_chars, "rag_ms": rag_ms,
+                "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
                 "prompt_chars": prompt_chars,
                 "llm_chars": llm_chars, "llm_ms": llm_ms,
                 "token_usage": token_usage,
@@ -218,13 +234,14 @@ def create_component_validator(config: ComponentConfig):
                     "label": config.label,
                     "fragment_count": 0,
                     "validation_applied": False,
+                    "validation_passed": True,
                 },
             }
 
         logger.info(f"[{config.component_type}_val] 校验 {len(fragments)} 个 {config.label}")
 
         skeleton_blueprint = state.get("skeleton_blueprint", {})
-        validated, fixed = _validate_and_fix_with_tools(
+        validated, fixed, validation_passed = _validate_and_fix_with_tools(
             fragments,
             config.component_type,
             skeleton_blueprint,
@@ -244,6 +261,7 @@ def create_component_validator(config: ComponentConfig):
                 "label": config.label,
                 "fragment_count": len(validated),
                 "validation_applied": fixed,
+                "validation_passed": validation_passed,
                 "total_ms": total_ms,
             },
         }
@@ -308,16 +326,16 @@ def _validate_and_fix_with_tools(
     component_type: str,
     skeleton_blueprint: dict,
     is_element: bool
-) -> tuple[list[dict], bool]:
+) -> tuple[list[dict], bool, bool]:
     """使用专用工具校验并修复组件"""
     if not fragments:
-        return [], False
+        return [], False, True
 
     try:
         from app.tools.component_tools import validate_component, fix_component
     except ImportError:
         logger.warning(f"[{component_type}] 组件工具未找到，跳过校验修复")
-        return fragments, False
+        return fragments, False, False
 
     temp_blueprint = {
         "meta": skeleton_blueprint.get("meta", {"version": "1.1", "type": "building"}),
@@ -345,6 +363,14 @@ def _validate_and_fix_with_tools(
         else:
             fixed_fragments = temp_blueprint["geometry"]["components"][-len(fragments):]
 
-        return fixed_fragments, True
+        recheck_result = validate_component(component_type, temp_blueprint)
+        recheck_text = str(recheck_result)
+        if "❌" in recheck_text:
+            logger.warning(
+                "[%s] 工具修复后复检仍未通过: %s",
+                component_type,
+                recheck_text,
+            )
+        return fixed_fragments, True, "❌" not in recheck_text
 
-    return fragments, False
+    return fragments, False, True

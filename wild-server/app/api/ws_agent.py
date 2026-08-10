@@ -524,6 +524,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
                             "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
+                            "rag_hits": diag.get("rag_hits", []),
                             "prompt_chars": diag.get("prompt_chars"),
                             "llm_chars": diag.get("llm_chars"), "llm_ms": diag.get("llm_ms"),
                             "token_usage": diag.get("token_usage"),
@@ -629,6 +630,7 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
                             "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
+                            "rag_hits": diag.get("rag_hits", []),
                             "prompt_chars": diag.get("prompt_chars"),
                             "llm_chars": diag.get("llm_chars"), "llm_ms": diag.get("llm_ms"),
                             "token_usage": diag.get("token_usage"),
@@ -657,9 +659,12 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                 elif is_val:
                     fc = diag.get("fragment_count", 0)
                     fixed = diag.get("validation_applied", False)
-                    result_label = "已修复" if fixed else "通过"
+                    passed = diag.get("validation_passed", True)
+                    result_label = "已修复并通过复检" if fixed and passed else (
+                        "修复后复检仍有错误" if not passed else "通过"
+                    )
                     await send_step(
-                        "generating", node_name, "done", label,
+                        "generating", node_name, "done" if passed else "error", label,
                         f"{fc} 个 · {result_label} · {diag.get('total_ms', 0)}ms",
                     )
 

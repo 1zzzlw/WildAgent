@@ -95,6 +95,7 @@ try {
   assertComponentMapping(compiler)
   assertReadableCompileFailure(compiler)
   await assertRenderIntegration(compiler)
+  await assertReconstructionDiagnostics(compiler)
   assertInvalidComponentSchemaIsRejected(compiler)
   assertScenePatchIntegration(compiler)
   await assertComponentEditingHistory(compiler)
@@ -696,6 +697,44 @@ async function assertRenderIntegration(compiler) {
   if (!interactiveDoor?.interactive || interactiveDoor.interaction?.mode !== 'swing') {
     throw new Error(`门窗交互描述未透传到 renderer: ${JSON.stringify(interactiveDoor?.interaction)}`)
   }
+}
+
+async function assertReconstructionDiagnostics(compiler) {
+  const validEntity = await compiler.reconstructWildEntity(createBlueprint())
+  const door = validEntity.reconstructionReport.observations.find(
+    item => item.sourceId === 'front_door',
+  )
+  const window = validEntity.reconstructionReport.observations.find(
+    item => item.sourceId === 'side_window',
+  )
+  if (!door?.actualBounds || door.expectedRelation !== 'attached_to_parent') {
+    throw new Error(`门组件缺少宿主墙重建诊断: ${JSON.stringify(door)}`)
+  }
+  if (!window?.actualBounds || window.targetId !== 'side_wall') {
+    throw new Error(`窗组件缺少宿主墙重建诊断: ${JSON.stringify(window)}`)
+  }
+
+  const broken = createBlueprint()
+  broken.geometry.components = [{
+    type: 'door', id: 'detached_door', parentWall: 'missing_wall',
+    from: [1, 0, 0], width: 1, height: 2.2,
+  }]
+  const brokenEntity = await compiler.reconstructWildEntity(broken)
+  const diagnostic = brokenEntity.diagnostics.find(
+    item => item.code === 'RECONSTRUCTION_MISSING_MESH' && item.elementId === 'detached_door',
+  )
+  if (!diagnostic || brokenEntity.reconstructionReport.errorCount !== 1) {
+    throw new Error(`缺失网格没有形成结构化重建诊断: ${JSON.stringify(brokenEntity.diagnostics)}`)
+  }
+  compiler.setActivePinia(compiler.createPinia())
+  const sceneStore = compiler.useSceneStore()
+  if (await sceneStore.loadBlueprint(broken, 'broken-reconstruction')) {
+    throw new Error('含重建错误的蓝图被 sceneStore 当作加载成功')
+  }
+  if (!sceneStore.reconstructed?.diagnostics.some(item => item.code === 'RECONSTRUCTION_MISSING_MESH')) {
+    throw new Error('重建失败后前端没有保留可展示的结构化诊断')
+  }
+  console.log('Phase 3A reconstruction evaluation passed: attached door/window and missing mesh detection.')
 }
 
 function assertInvalidComponentSchemaIsRejected(compiler) {

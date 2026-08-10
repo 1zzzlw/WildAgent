@@ -15,7 +15,6 @@ from app.spec.loader import SpecQuery
 from app.tools.spatial_tools import (
     fix_element_dimensions,
     fix_material_references,
-    get_wall_bounding_box,
     validate_element_dimensions,
     validate_reference_integrity,
 )
@@ -319,9 +318,13 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 6. 工具调用：计算墙体包围盒 ──
     bbox_result = {}
+    spatial_invariants = {}
     try:
-        bbox_fn = getattr(get_wall_bounding_box, "func", get_wall_bounding_box)
-        bbox_result_str = bbox_fn(blueprint)
+        from app.tools.spatial_tools import compute_wall_bounding_box
+        from app.agent.spatial_invariants import build_spatial_invariants
+
+        bbox_result = compute_wall_bounding_box(blueprint)
+        spatial_invariants = build_spatial_invariants(blueprint, bbox_result)
         logger.info("[skeleton] 墙体包围盒计算完成")
     except Exception as e:
         logger.error(f"[skeleton] 包围盒计算失败: {e}")
@@ -341,6 +344,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
         "skeleton_blueprint": blueprint,
         "skeleton_summary": summary,
         "wall_bounding_box": bbox_result,
+        "spatial_invariants": spatial_invariants,
         "suggested_components": suggested_components,
         "design_brief": design_brief,
         "skeleton_diag": {

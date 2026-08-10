@@ -115,6 +115,7 @@ export const useSceneStore = defineStore('scene', () => {
       if (!rebuilt) {
         // 重建失败：回滚 blueprint，不提交 patch
         document.value.blueprint = previousBlueprint
+        await reconstruct()
         console.error('重建 smoke test 失败，已回滚 Blueprint', newBlueprint)
         return false
       }
@@ -161,7 +162,7 @@ export const useSceneStore = defineStore('scene', () => {
       const entity = await reconstructScene(document.value.blueprint)
       if (requestId !== reconstructionRequest) return false
       reconstructed.value = entity
-      return true
+      return !entity.diagnostics.some(issue => issue.level === 'error')
     } catch (error) {
       console.error('重建失败', error)
       if (requestId === reconstructionRequest) reconstructed.value = null
