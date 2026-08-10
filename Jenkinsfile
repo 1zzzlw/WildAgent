@@ -262,7 +262,7 @@ echo "=== 部署前校验生产配置与模型连通性 ==="
 timeout -k 10s 90s docker run --rm \
   --env-file "$DEPLOY_ENV_FILE" \
   "$IMAGE_SERVER_NAME" \
-  python scripts/deployment_preflight.py
+python -m scripts.deployment_preflight
 
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
 mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/assets" "$DEPLOY_DATA_DIR/geoip"
