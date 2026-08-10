@@ -36,6 +36,9 @@ _TOOL_HINTS = {
 }
 
 _MISSING_QUOTA = re.compile(r"\b([a-z_]+)\s+数量\s+\d+\s+少于设计下限")
+_FACADE_OVERAGE = re.compile(
+    r"墙\s+([\w.-]+)\s+有\s+\d+\s+个门窗，超过立面上限\s+\d+"
+)
 
 
 def _field(result: object, name: str, default=None):
@@ -76,13 +79,33 @@ def validation_issues_from_results(
             error_lines = [output.strip() or f"{validator} 校验失败"]
 
         for line in error_lines:
+            facade_match = (
+                _FACADE_OVERAGE.search(line)
+                if validator == "validate_design_brief"
+                else None
+            )
             marker = _ENTITY_MARKER.search(line)
-            marker_id = marker.group(1) if marker else None
+            marker_id = facade_match.group(1) if facade_match else (
+                marker.group(1) if marker else None
+            )
             entity_id = marker_id if marker_id in entities else None
             entity = entities.get(entity_id or "", {})
             message = line[:800]
             quota_match = _MISSING_QUOTA.search(message) if validator == "validate_design_brief" else None
             target_type = quota_match.group(1) if quota_match else None
+            related_entity_ids = []
+            if facade_match and entity_id:
+                related_entity_ids = [
+                    candidate_id
+                    for candidate_id, candidate in entities.items()
+                    if candidate.get("type") in {"door", "window"}
+                    and candidate.get("parentWall") == entity_id
+                ]
+            suggested_tools = (
+                ["remove_entity", "reparent_opening"]
+                if facade_match
+                else list(_TOOL_HINTS.get(validator, ["patch_entity"]))
+            )
             key = (validator, entity_id, message)
             if key in seen:
                 continue
@@ -93,9 +116,10 @@ def validation_issues_from_results(
                 "severity": "error",
                 "entity_id": entity_id,
                 "entity_type": entity.get("type") if entity else None,
+                "related_entity_ids": related_entity_ids,
                 "message": message,
                 "repair_mode": "model_tool" if entity_id or target_type else "manual",
-                "suggested_tools": list(_TOOL_HINTS.get(validator, ["patch_entity"])),
+                "suggested_tools": suggested_tools,
                 "repair_target": f"design:{target_type}" if target_type else None,
                 "target_type": target_type,
             })

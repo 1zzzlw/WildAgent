@@ -18,6 +18,13 @@ REPAIR_TOOL_SPECS = [
         },
     },
     {
+        "name": "remove_entity",
+        "description": "只删除本轮结构化问题明确列出的超额实体，删除后必须通过全量复检。",
+        "arguments": {
+            "entity_id": "string",
+        },
+    },
+    {
         "name": "move_opening",
         "description": "移动一个 door/window/opening，只修改沿墙距离和高程。",
         "arguments": {
@@ -226,6 +233,7 @@ def execute_repair_actions(
     *,
     allowed_entity_ids: set[str],
     allowed_add_types: set[str] | None = None,
+    allowed_remove_ids: set[str] | None = None,
 ) -> tuple[dict, list[dict]]:
     """在副本上执行模型动作；单个动作失败时自动回滚该动作。"""
     candidate = deepcopy(blueprint)
@@ -275,6 +283,29 @@ def execute_repair_actions(
                 continue
             if not entity_id or entity_id not in allowed_entity_ids:
                 raise ValueError("只能修复本轮明确失败的实体")
+            if tool_name == "remove_entity":
+                if entity_id not in (allowed_remove_ids or set()):
+                    raise ValueError("只能删除本轮明确列出的关联超额实体")
+                removed = False
+                geometry = candidate.get("geometry", {})
+                for bucket in ("elements", "components"):
+                    entities = geometry.get(bucket, [])
+                    kept = [
+                        entity for entity in entities
+                        if not (
+                            isinstance(entity, dict)
+                            and entity.get("id") == entity_id
+                        )
+                    ]
+                    if len(kept) != len(entities):
+                        geometry[bucket] = kept
+                        removed = True
+                if not removed:
+                    raise ValueError("目标实体不存在")
+                report["success"] = True
+                report["changed_fields"] = ["<removed>"]
+                reports.append(report)
+                continue
             entity = _entity_index(candidate).get(entity_id)
             if entity is None:
                 raise ValueError("目标实体不存在")

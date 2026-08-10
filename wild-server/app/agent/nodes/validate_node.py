@@ -74,6 +74,11 @@ async def validate_node(state: GenerationState) -> dict:
         # 计算通过的组件 ID
         all_component_ids = _get_all_component_ids(merged_blueprint)
         failed_component_ids = {fc["component_id"] for fc in failed_components}
+        failed_component_ids.update(
+            related_id
+            for failed in failed_components
+            for related_id in failed.get("related_entity_ids", [])
+        )
         passed_component_ids = [cid for cid in all_component_ids if cid not in failed_component_ids]
         
         # 决定状态
@@ -151,10 +156,14 @@ def _trace_errors_to_components(
             if entity is None:
                 continue
             tools = []
+            related_entity_ids = []
             for issue in entity_issues:
                 for tool_name in issue.get("suggested_tools", []):
                     if tool_name not in tools:
                         tools.append(tool_name)
+                for related_id in issue.get("related_entity_ids", []):
+                    if related_id not in related_entity_ids:
+                        related_entity_ids.append(related_id)
             failed.append({
                 "component_id": component_id,
                 "component_type": entity.get("type", "?"),
@@ -167,6 +176,12 @@ def _trace_errors_to_components(
                 )[:1200],
                 "issues": entity_issues,
                 "suggested_tools": tools,
+                "related_entity_ids": related_entity_ids,
+                "related_entities": [
+                    all_entities[related_id]
+                    for related_id in related_entity_ids
+                    if related_id in all_entities
+                ],
             })
 
     # 设计配额缺失没有现成实体 ID，用稳定的 design:<type> 作为修复目标，

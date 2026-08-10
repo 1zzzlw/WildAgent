@@ -323,6 +323,22 @@ def build_callback_prompt(
             failed_text += "\n```\n"
         if suggested_tools:
             failed_text += f"- 建议工具: {', '.join(suggested_tools)}\n"
+        related_entity_ids = fc.get("related_entity_ids", [])
+        if related_entity_ids:
+            failed_text += (
+                "- 允许修改的关联实体: "
+                + ", ".join(related_entity_ids)
+                + "\n"
+            )
+            related_entities = fc.get("related_entities", [])
+            if related_entities:
+                failed_text += "- 关联实体当前参数:\n```json\n"
+                failed_text += _json.dumps(
+                    related_entities,
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                failed_text += "\n```\n"
         failed_text += f"- 当前参数:\n```json\n{params_display}\n```\n"
 
         if tool_data:
@@ -365,8 +381,9 @@ def build_callback_prompt(
 4. 参考「工具校验数据」中的空间约束（墙长、有效范围等）确定正确值
 5. 不要输出完整组件或完整 Blueprint，不得修改 id/type
 6. 门窗 from[1] 是底部世界 Y：门使用父墙底 Y，窗使用父墙底 Y + 窗台高度；不是相对楼层的局部高度
-7. 每个动作必须含 tool、arguments 和简短 reason；普通动作的 arguments.entity_id 必须来自失败组件
+7. 每个动作必须含 tool、arguments 和简短 reason；普通动作的 arguments.entity_id 必须来自失败组件或该问题列出的「允许修改的关联实体」
 8. 只有出现 `design:<type>` 缺失配额目标时才能调用 add_entity；repair_target 必须原样使用该目标，entity 使用新的唯一 id
+9. `remove_entity` 仅用于删除明确列出的关联超额实体；删除后仍必须满足全局最小配额和其他立面约束
 
 ## 输出格式
 

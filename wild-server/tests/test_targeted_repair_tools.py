@@ -75,6 +75,47 @@ class TargetedRepairToolsTest(unittest.TestCase):
         self.assertIn("move_opening", failed[0]["suggested_tools"])
         self.assertIn("resize_opening", failed[0]["suggested_tools"])
 
+    def test_facade_overage_exposes_attached_openings_as_repair_targets(self):
+        blueprint = _blueprint()
+        blueprint["geometry"]["components"].append({
+            "id": "window_front",
+            "type": "window",
+            "parentWall": "wall_front",
+            "from": [3.0, 0.9, 0],
+            "width": 1.2,
+            "height": 1.2,
+        })
+        results = [SimpleNamespace(
+            name="validate_design_brief",
+            output="❌ [design] 墙 wall_front 有 2 个门窗，超过立面上限 1",
+            has_error=True,
+        )]
+
+        issues = validation_issues_from_results(results, blueprint)
+        failed = _trace_errors_to_components(
+            results,
+            blueprint,
+            validation_issues=issues,
+        )
+
+        self.assertEqual(issues[0]["entity_id"], "wall_front")
+        self.assertEqual(
+            set(issues[0]["related_entity_ids"]),
+            {"door_front", "window_front"},
+        )
+        self.assertEqual(
+            issues[0]["suggested_tools"],
+            ["remove_entity", "reparent_opening"],
+        )
+        self.assertEqual(
+            set(failed[0]["related_entity_ids"]),
+            {"door_front", "window_front"},
+        )
+        self.assertEqual(
+            {item["type"] for item in failed[0]["related_entities"]},
+            {"door", "window"},
+        )
+
     def test_model_actions_modify_only_allowed_failed_entity(self):
         original = _blueprint()
         candidate, reports = execute_repair_actions(
@@ -130,6 +171,42 @@ class TargetedRepairToolsTest(unittest.TestCase):
         self.assertTrue(reports[0]["success"])
         self.assertEqual(len(candidate["geometry"]["components"]), 2)
         self.assertEqual(candidate["geometry"]["components"][1]["id"], "window_front")
+
+    def test_remove_entity_is_limited_to_related_overage_ids(self):
+        original = _blueprint()
+        original["geometry"]["components"].append({
+            "id": "window_front",
+            "type": "window",
+            "parentWall": "wall_front",
+            "from": [3.0, 0.9, 0],
+            "width": 1.2,
+            "height": 1.2,
+        })
+
+        candidate, reports = execute_repair_actions(
+            original,
+            [
+                {
+                    "tool": "remove_entity",
+                    "arguments": {"entity_id": "wall_front"},
+                },
+                {
+                    "tool": "remove_entity",
+                    "arguments": {"entity_id": "window_front"},
+                },
+            ],
+            allowed_entity_ids={"wall_front", "window_front"},
+            allowed_remove_ids={"window_front"},
+        )
+
+        self.assertFalse(reports[0]["success"])
+        self.assertTrue(reports[1]["success"])
+        self.assertEqual(candidate["geometry"]["elements"][0]["id"], "wall_front")
+        self.assertEqual(
+            [item["id"] for item in candidate["geometry"]["components"]],
+            ["door_front"],
+        )
+        self.assertEqual(len(original["geometry"]["components"]), 2)
 
     def test_action_cannot_touch_passed_entity_or_identity_fields(self):
         candidate, reports = execute_repair_actions(

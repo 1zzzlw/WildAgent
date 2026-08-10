@@ -397,6 +397,13 @@ export class AgentBridge {
         const detail = message.detail || message.content
         const label = message.label || this.stageLabel(message.stage)
 
+        // callback 后会再次进入 final_validate；每轮以最新完整结果替换上一轮，
+        // 避免把 18 步重复累计成 36/54/72 步和多个相同错误。
+        if (message.stage === 'generating' && nodeName === 'final_validate') {
+          agentStore.clearPipelineSteps()
+          agentStore.clearTurnValidationSteps(sessionId, message.request_id)
+        }
+
         // validating 阶段的步骤单独存入流水线列表。
         if (message.stage === 'validating') {
           const validationStatus = nodeStatus === 'error' ? 'error'

@@ -191,6 +191,13 @@ async def callback_node(state: GenerationState) -> dict:
         item.get("component_id") for item in enriched_failed
         if item.get("component_id") and not item.get("is_design_target")
     }
+    related_ids = {
+        related_id
+        for item in enriched_failed
+        for related_id in item.get("related_entity_ids", [])
+        if related_id
+    }
+    allowed_ids.update(related_ids)
     allowed_add_types = {
         item.get("component_type") for item in enriched_failed
         if item.get("is_design_target") and item.get("component_type")
@@ -200,6 +207,7 @@ async def callback_node(state: GenerationState) -> dict:
         repair_actions,
         allowed_entity_ids=allowed_ids,
         allowed_add_types=allowed_add_types,
+        allowed_remove_ids=related_ids,
     )
     changed_ids = {
         report["entity_id"] for report in action_reports
@@ -345,11 +353,19 @@ def _state_updates_from_candidate(
     skeleton_geometry = skeleton.get("geometry", {})
     for bucket in ("elements", "components"):
         items = skeleton_geometry.get(bucket, [])
-        for index, item in enumerate(items):
+        new_items = []
+        for item in items:
             entity_id = item.get("id") if isinstance(item, dict) else None
             if entity_id in candidate_entities:
-                items[index] = deepcopy(candidate_entities[entity_id])
+                new_items.append(deepcopy(candidate_entities[entity_id]))
                 skeleton_changed = True
+            elif entity_id in changed_ids:
+                # changed_ids 中不存在于 candidate 的实体已被受限 remove_entity 删除。
+                skeleton_changed = True
+            else:
+                new_items.append(item)
+        if skeleton_changed:
+            skeleton_geometry[bucket] = new_items
     existing_skeleton_ids = {
         item.get("id")
         for bucket in ("elements", "components")
@@ -396,6 +412,8 @@ def _state_updates_from_candidate(
                 if entity_id in candidate_entities:
                     new_value.append(deepcopy(candidate_entities[entity_id]))
                     changed = True
+                elif entity_id in changed_ids:
+                    changed = True
                 else:
                     new_value.append(fragment)
             for entity in matching_entities:
@@ -407,6 +425,8 @@ def _state_updates_from_candidate(
         elif not config.is_list:
             if isinstance(old_value, dict) and old_value.get("id") in candidate_entities:
                 updates[config.output_key] = deepcopy(candidate_entities[old_value["id"]])
+            elif isinstance(old_value, dict) and old_value.get("id") in changed_ids:
+                updates[config.output_key] = None
             elif matching_entities:
                 updates[config.output_key] = deepcopy(matching_entities[0])
 

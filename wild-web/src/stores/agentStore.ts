@@ -413,6 +413,11 @@ export const useAgentStore = defineStore('agent', () => {
     if (turn) turn.validation_steps.push({ label, status })
   }
 
+  function clearTurnValidationSteps(sessionId: string, requestId: string) {
+    const turn = findTurn(sessionId, requestId)
+    if (turn) turn.validation_steps = []
+  }
+
   function setTurnDiagnostic(
     sessionId: string,
     requestId: string,
@@ -891,6 +896,7 @@ export const useAgentStore = defineStore('agent', () => {
     updateTurnStep,
     appendTurnThinking,
     addTurnValidationStep,
+    clearTurnValidationSteps,
     setTurnDiagnostic,
     setTurnMetrics,
     setTurnThinkingStatus,
