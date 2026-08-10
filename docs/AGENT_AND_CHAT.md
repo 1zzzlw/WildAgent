@@ -1,6 +1,6 @@
 # Agent 与 AI 对话设计
 
-最后核对：2026-08-09。
+最后核对：2026-08-10。
 
 ## 1. 设计目标
 
@@ -81,6 +81,7 @@ LLM 结构化结果
 - 构件使用的 `material/frameMaterial/leafMaterial/glassMaterial` 必须存在于 `Blueprint.materials`。
 - 确定性修复没有实际改变蓝图时立即停止空转，交给最终校验和按组件回调；错误归零前禁止保存与加载。
 - `wall.from[1]` 是墙底、`wall.to[1]` 是墙顶。墙高为零时，在派发门窗节点前优先按上一层楼板标高或已知层高补全；不能让组件回调反复修改门窗去适配一个无效父墙。
+- `floor.from/to` 必须是两个三维数组，Y 表示楼板底标高。模型输出坐标对象或漏掉坐标时，只在有效墙体能够确定 X/Z 包围盒和楼层底标高的情况下补全；例如两层墙底标高为 0/3 时，按楼板顺序补为 `[minX,0,minZ] -> [maxX,0,maxZ]` 和 `[minX,3,minZ] -> [maxX,3,maxZ]`。没有可靠墙体边界时继续阻断，禁止根据名称猜尺寸。
 - 引用完整性只负责父对象、模板、行为和材质引用；门窗越界与重叠统一由开口几何校验负责，避免同一个根因重复计为两个错误。
 - 流式模型若把最终 Blueprint 放入 `reasoning_content` 且普通 `content` 为空，骨架节点允许从 reasoning 兼容提取完整的 `meta + geometry` 对象；提取器同时支持 fenced、未 fenced JSON，以及 `blueprint/result/data` 等常见包装对象，并按对象结构选择 Blueprint。
 - 首轮回复已经包含 DESIGN_BRIEF、但 Blueprint 缺失或 JSON 无效时，骨架节点只追加一次非思考格式恢复调用，强制模型只返回单一 Blueprint JSON；恢复仍失败才终止图。前端必须显示 skeleton 的真实错误，不能再用笼统的“最终 Blueprint 缺失”覆盖根因。
@@ -149,3 +150,11 @@ Turn 同时写入浏览器本地副本和 `/api/sessions/{session_id}/turns`。�
 - callback 工具动作被拒绝、复检未改善或引入新错误时不得写回源分片；`repair_audit` 必须记录动作、前后错误数和回滚原因。
 - WebSocket 中断会把当前连接上的活动 Turn 标为失败并同步；页面刷新或服务重启遗留的运行态恢复为“已中断”。
 - 同一会话的 Turn 服务端快照必须串行提交，禁止旧状态覆盖新状态。
+
+## 8. 本地与生产输出一致性
+
+“同一个 Chat 模型和同一句输入”不代表 Agent 的实际输入相同。骨架 System Prompt 还包含 RAG 召回内容，生产与本地必须同时核对：运行镜像提交、`CHAT__NAME/BASE_URL`、`EMBEDDING__NAME/BASE_URL`、`RAG__ENABLED`、`RAG__ALLOW_HASH_FALLBACK`、collection、分块参数和持久化 Chroma 索引。任何一项不同都可能让模型稳定输出不同的几何表达。
+
+骨架日志必须记录 `rag_chars`、实际命中的 `source/heading/doc_type/entity_type`，以及规范化后的每个 floor `from/to`。若本地成功而生产稳定失败，先比较这些确定性诊断；生产 RAG 字符数明显偏小或命中为空时，应检查 Embedding 配置与索引同步，不能仅用“模型名相同”排除环境差异。
+
+生产镜像必须包含 `storage/knowledge_base`。曾经使用整目录 `.dockerignore: storage` 时，Jenkins 虽然上传了 Git 中的 37 个知识文件，Docker 构建仍会把它们全部排除；容器启动后扫描到空知识库，并把持久化 Chroma 旧分片作为 stale 删除，最终只向骨架 Prompt 注入约百字符的“规范文件缺失”提示。本地不经过 Docker 构建所以不会复现。现在只忽略四个运行时子目录，并在镜像构建和部署预检中强制核对知识库数量。

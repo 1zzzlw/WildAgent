@@ -36,6 +36,12 @@ Jenkins 生产流程为：
 
 部署前 smoke test 与单元测试不同：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，检查 Chat 配置、RAG/Embedding 必填项，向实际 Chat 服务发送一个最多 16 token 的最小请求，并用实际 Embedding 服务生成一个测试向量。该步骤在删除旧容器之前执行，90 秒内没有成功就终止部署，因此能够提前发现错误 Key、额度耗尽、模型 ID 不存在、兼容参数不支持、Embedding 配置失效和服务器无法访问模型服务等问题，同时保留旧服务。日志只输出模型、Base URL、RAG 开关、Embedding 名称、响应字符数和向量维度，不输出 API Key、模型回复内容或向量内容。
 
+`storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库。Docker 构建与部署前预检都会要求镜像内存在 `BLUEPRINT-SPEC-MINIMAL.md` 且知识库 Markdown 不少于 30 个；日志必须出现 `knowledge_base_files=<数量>`。否则构建立即失败，不允许空知识库容器启动后把持久化 Chroma 分片删除。
+
+后端每次启动都会执行 Chroma 增量同步：内容或 metadata 变化时更新对应分片，文件删除时移除旧分片，Embedding/分块索引签名变化时重建 collection。修复空知识库镜像后的第一次生产启动会重新写入完整索引，`RAG 索引同步` 日志中的 `total` 和 `updated` 应恢复为知识库实际分片数；后续没有知识变更时 `updated=0` 属于正常复用，不代表未更新。
+
+Docker 与 Jenkins 使用 `/health/ready` 而不是普通首页判断后端就绪。该接口读取当前服务进程中的真实 Loader：生产开启 RAG 时必须满足 `loader=RAGSpecLoader`、`source_count>=30` 且 `sync.total>0`；Embedding 或 Chroma 初始化失败后若代码降级成 `FileSpecLoader`，接口返回 503，部署会输出日志并恢复旧镜像。只有显式配置 `RAG__ENABLED=false` 时，文件 Loader 才被视为健康。
+
 后端启动时需要加载应用、同步 Chroma 知识库并创建模型客户端，5 秒内未监听端口并不等于启动失败。Jenkins 不再固定 `sleep 5` 后只探测一次，而是轮询容器状态和 HTTP；新后端超过 180 秒仍未就绪、前端超过 40 秒仍未就绪或容器提前退出时，会打印新容器日志并使用部署前记录的版本镜像恢复旧容器。后端镜像也包含 Docker `HEALTHCHECK`，便于部署后持续查看健康状态。
 
 ## 2. Jenkins 环境文件
@@ -72,7 +78,7 @@ docker exec wild-server python -c "import os,hashlib; k=os.environ.get('CHAT__AP
 - `初始化` stage 显示预期 `commit=<短哈希>`；
 - `远程后端语法检查` 中全部测试通过；
 - `远程构建 Docker 镜像` 的标签包含同一短哈希；
-- `远程部署到生产` 显示 `model_smoke=ok`、`embedding_smoke=ok`、两个容器已就绪、镜像匹配和 `backend_http_status=200`。
+- `远程部署到生产` 显示 `knowledge_base_files`、`model_smoke=ok`、`embedding_smoke=ok`、两个容器已就绪、镜像匹配和 `backend_http_status=200`。
 
 服务器可查看当前运行镜像：
 

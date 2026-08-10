@@ -10,12 +10,15 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
 
 from app.api.ws_agent import router as ws_router
 from app.api.scenes import router as scenes_router
 from app.api.sessions import router as sessions_router
+from app.services.agent_service import agent_service
+from config import config
 
 
 @asynccontextmanager
@@ -78,6 +81,40 @@ async def root():
     return {"Hello": "World"}
 
 
+@app.get("/health/ready")
+async def readiness():
+    """报告当前进程真实的 RAG 初始化状态，供 Docker/Jenkins 就绪探测。"""
+    loader = agent_service.spec_loader
+    loader_name = type(loader).__name__
+    source_count = len(loader.list_sources())
+    sync_stats = getattr(loader, "last_sync_stats", None)
+    if callable(sync_stats):
+        sync_stats = sync_stats()
+    if not isinstance(sync_stats, dict):
+        sync_stats = {"total": 0, "updated": 0, "deleted": 0}
+
+    rag_ready = (
+        not config.rag.enabled
+        or (
+            loader_name == "RAGSpecLoader"
+            and source_count >= 30
+            and sync_stats.get("total", 0) > 0
+        )
+    )
+    payload = {
+        "status": "ready" if rag_ready else "not_ready",
+        "rag": {
+            "enabled": config.rag.enabled,
+            "ready": rag_ready,
+            "loader": loader_name,
+            "source_count": source_count,
+            "collection": config.rag.collection_name,
+            "sync": sync_stats,
+        },
+    }
+    return JSONResponse(status_code=200 if rag_ready else 503, content=payload)
+
+
 if __name__ == "__main__":
     # 支持直接执行 ``python main.py``；生产部署通常使用外部 uvicorn 命令。
     import uvicorn
@@ -87,4 +124,3 @@ if __name__ == "__main__":
         log_level="info",
         reload=True
     )
-

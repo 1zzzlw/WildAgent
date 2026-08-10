@@ -51,7 +51,19 @@ async def skeleton_generator(state: GenerationState) -> dict:
     spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
     rag_ms = int((_time.time() - rag_t0) * 1000)
     rag_chars = len(spec_text)
-    logger.info(f"[skeleton] RAG 完成（建筑类型知识）: {rag_chars} 字符, {rag_ms}ms")
+    rag_hits = [
+        {
+            "source": hit.metadata.get("source", "?"),
+            "heading": hit.metadata.get("heading", "?"),
+            "doc_type": hit.metadata.get("doc_type", "?"),
+            "entity_type": hit.metadata.get("entity_type", "?"),
+        }
+        for hit in getattr(agent_service.spec_loader, "last_results", [])
+    ]
+    logger.info(
+        f"[skeleton] RAG 完成（建筑类型知识）: {rag_chars} 字符, {rag_ms}ms, "
+        f"hits={json.dumps(rag_hits, ensure_ascii=False, default=str)}"
+    )
 
     # ── 2. 构建 Prompt ──
     system_prompt = build_skeleton_prompt(spec_text)
@@ -220,6 +232,19 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 5. 归一化和 Schema 校验 ──
     blueprint = normalize_blueprint_input(blueprint)
+    floor_coordinates = {
+        element.get("id", "?"): {
+            "from": element.get("from"),
+            "to": element.get("to"),
+        }
+        for element in blueprint.get("geometry", {}).get("elements", [])
+        if isinstance(element, dict) and element.get("type") == "floor"
+    }
+    if floor_coordinates:
+        logger.info(
+            "[skeleton] 楼板坐标规范化结果: "
+            + json.dumps(floor_coordinates, ensure_ascii=False, default=str)
+        )
     schema_issues = validate_blueprint_schema(blueprint)
 
     if schema_issues:
@@ -260,6 +285,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 "llm_chars": llm_chars,
                 "llm_ms": llm_ms,
                 "token_usage": token_usage,
+                "rag_hits": rag_hits,
+                "floor_coordinates": floor_coordinates,
                 "dimension_fix": dimension_fix_output,
                 "dimension_validation": dimension_validation,
             },
@@ -319,6 +346,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
         "skeleton_diag": {
             "rag_chars": rag_chars,
             "rag_ms": rag_ms,
+            "rag_hits": rag_hits,
             "prompt_chars": prompt_chars,
             "llm_chars": llm_chars,
             "llm_ms": llm_ms,
@@ -329,6 +357,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "reasoning_preview": reasoning[:800] if reasoning else "",
             "reasoning_fallback": used_reasoning_fallback,
             "element_count": len(elements),
+            "floor_coordinates": floor_coordinates,
             "dimension_fix": dimension_fix_output,
             "material_fix": material_fix_output,
             "total_ms": total_ms,

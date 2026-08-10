@@ -262,7 +262,7 @@ echo "=== 部署前校验生产配置与模型连通性 ==="
 timeout -k 10s 90s docker run --rm \
   --env-file "$DEPLOY_ENV_FILE" \
   "$IMAGE_SERVER_NAME" \
-  python -c "from config import config; from app.agent.model_client import create_llm; from app.spec.loader import create_embedding_function; assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'; embedding_required=config.rag.enabled and not config.rag.allow_hash_fallback; assert (not embedding_required) or (config.embedding.name.strip() and config.embedding.api_key.strip()), 'EMBEDDING config missing while RAG hash fallback is disabled'; print('preflight_model='+config.chat.name); print('preflight_base_url='+(config.chat.base_url or '(default)')); print('preflight_rag_enabled='+str(config.rag.enabled).lower()); print('preflight_embedding='+config.embedding.name); response=create_llm().bind(max_tokens=16).invoke('Reply with WILD_OK only.'); content=response.content if isinstance(response.content, str) else str(response.content); assert content.strip(), 'model returned empty content'; print('model_smoke=ok response_chars='+str(len(content))); embedding=create_embedding_function(config.embedding.api_key, config.embedding.base_url, config.embedding.name, config.rag.allow_hash_fallback) if config.rag.enabled else None; vector=embedding.embed_query('WildAgent deployment smoke') if embedding else []; assert (not embedding) or (vector and isinstance(vector[0], (int, float))), 'embedding returned invalid vector'; print('embedding_smoke=ok dimensions='+str(len(vector)) if embedding else 'embedding_smoke=skipped')"
+  python -c "from pathlib import Path; from config import config; from app.agent.model_client import create_llm; from app.spec.loader import create_embedding_function; kb_root=Path('storage/knowledge_base'); kb_files=list(kb_root.rglob('*.md')); assert (kb_root / 'BLUEPRINT-SPEC-MINIMAL.md').is_file(), 'minimal blueprint spec missing from image'; assert len(kb_files) >= 30, 'incomplete knowledge base in image'; print('knowledge_base_files='+str(len(kb_files))); assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'; embedding_required=config.rag.enabled and not config.rag.allow_hash_fallback; assert (not embedding_required) or (config.embedding.name.strip() and config.embedding.api_key.strip()), 'EMBEDDING config missing while RAG hash fallback is disabled'; print('preflight_model='+config.chat.name); print('preflight_base_url='+(config.chat.base_url or '(default)')); print('preflight_rag_enabled='+str(config.rag.enabled).lower()); print('preflight_embedding='+config.embedding.name); response=create_llm().bind(max_tokens=16).invoke('Reply with WILD_OK only.'); content=response.content if isinstance(response.content, str) else str(response.content); assert content.strip(), 'model returned empty content'; print('model_smoke=ok response_chars='+str(len(content))); embedding=create_embedding_function(config.embedding.api_key, config.embedding.base_url, config.embedding.name, config.rag.allow_hash_fallback) if config.rag.enabled else None; vector=embedding.embed_query('WildAgent deployment smoke') if embedding else []; assert (not embedding) or (vector and isinstance(vector[0], (int, float))), 'embedding returned invalid vector'; print('embedding_smoke=ok dimensions='+str(len(vector)) if embedding else 'embedding_smoke=skipped')"
 
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
 mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/geoip"
@@ -330,7 +330,7 @@ while [ "$attempt" -le 60 ]; do
     rollback_deployment "新版 wild-server 在启动阶段退出"
   fi
 
-  if docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3); assert response.status == 200" >/dev/null 2>&1; then
+  if docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3); assert response.status == 200" >/dev/null 2>&1; then
     server_ready=1
     echo "wild-server 已就绪（attempt=$attempt）"
     break
@@ -415,7 +415,7 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
 fi
 
 docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower()); assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'"
-docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/', timeout=10); print('backend_http_status='+str(response.status)); assert response.status == 200"
+docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10); body=response.read().decode('utf-8'); print('backend_http_status='+str(response.status)); print('backend_readiness='+body); assert response.status == 200"
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="

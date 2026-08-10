@@ -231,6 +231,11 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
                 if all(_is_positive_finite_number(value) for value in ordered_dimensions):
                     element["dimensions"] = ordered_dimensions
 
+    # floor 的标准表达是两个三维角点。部分模型稳定输出坐标对象，或只给楼板 ID、
+    # 厚度和材质；只要墙体已经明确给出建筑 X/Z 边界及各层底标高，就可以无歧义
+    # 地恢复矩形楼板。无法从楼板自身或墙体确定范围时保持原值，让校验器继续报错。
+    _normalize_floor_coordinates(elements)
+
     # ---------- 组合构件 from[1] 修正 ----------
     # 系统约定 component.from[1] 是世界坐标 Y，但模型常误用相对父墙底部的局部偏移。
     # 当 from[1] 明显小于父墙底部 Y（超过 0.5m）时，推断为局部坐标并加上 wallBottom。
@@ -316,6 +321,103 @@ def _is_positive_vector3(value: object) -> bool:
         and len(value) == 3
         and all(_is_positive_finite_number(dimension) for dimension in value)
     )
+
+
+def _as_finite_vector3(value: object) -> list[int | float] | None:
+    """兼容模型常见的 ``[x,y,z]`` 和 ``{x,y,z}`` 坐标表达。"""
+    if isinstance(value, (list, tuple)) and len(value) == 3:
+        coordinates = list(value)
+    elif isinstance(value, dict):
+        coordinates = [
+            value.get("x", value.get("X")),
+            value.get("y", value.get("Y")),
+            value.get("z", value.get("Z")),
+        ]
+    else:
+        return None
+
+    if all(
+        isinstance(coordinate, (int, float))
+        and not isinstance(coordinate, bool)
+        and math.isfinite(coordinate)
+        for coordinate in coordinates
+    ):
+        return coordinates
+    return None
+
+
+def _normalize_floor_coordinates(elements: list) -> None:
+    """把可确定恢复的矩形楼板坐标统一为 WILD ``from/to``。
+
+    恢复边界优先使用骨架墙体的 X/Z 包围盒，因为骨架 Prompt 明确要求楼板覆盖
+    整个建筑底面；楼板标高优先使用自身坐标/显式 elevation，其次按楼板顺序
+    对应墙体底标高。没有墙体或有效角点时不创建坐标。
+    """
+    walls: list[tuple[list[int | float], list[int | float]]] = []
+    floors: list[dict] = []
+    for element in elements:
+        if not isinstance(element, dict):
+            continue
+        if element.get("type") == "wall":
+            start = _as_finite_vector3(element.get("from"))
+            end = _as_finite_vector3(element.get("to"))
+            if start is not None and end is not None:
+                walls.append((start, end))
+        elif element.get("type") == "floor":
+            floors.append(element)
+
+    wall_bounds: tuple[int | float, int | float, int | float, int | float] | None = None
+    wall_levels: list[int | float] = []
+    if walls:
+        xs = [coordinate for start, end in walls for coordinate in (start[0], end[0])]
+        zs = [coordinate for start, end in walls for coordinate in (start[2], end[2])]
+        min_x, max_x = min(xs), max(xs)
+        min_z, max_z = min(zs), max(zs)
+        if max_x - min_x >= 0.1 and max_z - min_z >= 0.1:
+            wall_bounds = (min_x, max_x, min_z, max_z)
+        wall_levels = sorted({min(start[1], end[1]) for start, end in walls})
+
+    for index, floor in enumerate(floors):
+        start = _as_finite_vector3(floor.get("from"))
+        end = _as_finite_vector3(floor.get("to"))
+        if start is not None and end is not None:
+            floor["from"] = start
+            floor["to"] = end
+            continue
+
+        elevation = None
+        if start is not None:
+            elevation = start[1]
+        elif end is not None:
+            elevation = end[1]
+        else:
+            for field in ("elevation", "baseY", "y"):
+                value = floor.get(field)
+                if (
+                    isinstance(value, (int, float))
+                    and not isinstance(value, bool)
+                    and math.isfinite(value)
+                ):
+                    elevation = value
+                    break
+        if elevation is None and wall_levels:
+            elevation = wall_levels[min(index, len(wall_levels) - 1)]
+
+        if wall_bounds is None or elevation is None:
+            # 没有可靠建筑边界时不根据 ID 或常见尺寸盲猜。
+            if start is not None:
+                floor["from"] = start
+            if end is not None:
+                floor["to"] = end
+            continue
+
+        min_x, max_x, min_z, max_z = wall_bounds
+        floor["from"] = [min_x, elevation, min_z]
+        floor["to"] = [max_x, elevation, max_z]
+        # 仅在成功生成标准坐标后移除已被吸收的非标准标高字段。
+        floor.pop("elevation", None)
+        floor.pop("baseY", None)
+        floor.pop("y", None)
 
 
 def validate_blueprint_schema(blueprint: dict) -> list[str]:
