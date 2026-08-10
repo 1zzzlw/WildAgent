@@ -42,6 +42,43 @@ class BlueprintTextExtractionTest(unittest.TestCase):
         self.assertEqual(patch["summary"], "修改场景")
         self.assertEqual(patch["operations"][0]["id"], "wall_old")
 
+    def test_patch_is_found_inside_common_model_wrapper(self):
+        text = '''
+        {"result":{"scenePatch":{
+          "operations":[{"op":"update_element","id":"wall_1","changes":{"thickness":0.3}}],
+          "summary":"加厚墙体"
+        }}}
+        '''
+
+        patch = extract_patch_from_text(text)
+
+        self.assertEqual(patch["summary"], "加厚墙体")
+        self.assertEqual(patch["operations"][0]["op"], "update_element")
+
+    def test_patch_accepts_same_line_fence_with_operation_array(self):
+        text = '```json [{"op":"add_element","element":{"id":"box_1","type":"primitive"}}] ```'
+
+        patch = extract_patch_from_text(text)
+
+        self.assertEqual(patch["summary"], "修改场景")
+        self.assertEqual(patch["operations"][0]["element"]["id"], "box_1")
+
+    def test_patch_normalizes_add_material_alias(self):
+        text = '''{
+          "operations":[{
+            "op":"add_material",
+            "material_id":"fabric_blue",
+            "material":{"baseColor":[0.1,0.2,0.8]}
+          }],
+          "summary":"新增家具材质"
+        }'''
+
+        patch = extract_patch_from_text(text)
+
+        self.assertEqual(patch["operations"][0]["op"], "upsert_material")
+        self.assertEqual(patch["operations"][0]["name"], "fabric_blue")
+        self.assertNotIn("material_id", patch["operations"][0])
+
     def test_blueprint_is_found_inside_common_model_wrapper(self):
         text = """
         {

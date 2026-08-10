@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from copy import deepcopy
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 
 from langchain.agents import create_agent
 from langchain_core.callbacks import AsyncCallbackHandler
@@ -30,7 +30,7 @@ from loguru import logger
 
 from config import config
 from app.agent.model_client import create_llm
-from app.agent.prompts import build_system_prompt
+from app.agent.prompts import build_patch_recovery_prompt, build_system_prompt
 from app.spec.loader import (
     FileSpecLoader,
     RAGSpecLoader,
@@ -102,6 +102,73 @@ class QueryResult:
     patch: dict | None = None
     error: str | None = None
     pipeline_results: list[PipelineStepResult] = field(default_factory=list)
+    structured_source: str | None = None
+    structured_recovery_used: bool = False
+
+
+def _content_as_text(value: object) -> str:
+    """兼容字符串和 OpenAI 多内容块消息。"""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(
+            text for item in value
+            if (text := _content_as_text(item))
+        )
+    if isinstance(value, dict):
+        for key in ("text", "content", "output_text"):
+            text = _content_as_text(value.get(key))
+            if text:
+                return text
+    return ""
+
+
+def _message_texts(message: object) -> tuple[str, str]:
+    """返回模型消息的普通内容和兼容推理内容。"""
+    if isinstance(message, dict):
+        content = _content_as_text(message.get("content"))
+        additional = message.get("additional_kwargs", {})
+        metadata = message.get("response_metadata", {})
+    else:
+        content = _content_as_text(getattr(message, "content", ""))
+        additional = getattr(message, "additional_kwargs", {})
+        metadata = getattr(message, "response_metadata", {})
+    reasoning = ""
+    if isinstance(additional, dict):
+        reasoning = _content_as_text(additional.get("reasoning_content"))
+    if not reasoning and isinstance(metadata, dict):
+        reasoning = _content_as_text(metadata.get("reasoning_content"))
+    return content, reasoning
+
+
+def _extract_response_artifacts(
+    content: str,
+    reasoning: str,
+    *,
+    prefer_patch: bool = False,
+) -> tuple[dict | None, dict | None, str | None]:
+    """独立提取 Blueprint/ScenePatch，避免用 Blueprint 结果门控 Patch。"""
+    patches: list[tuple[str, dict]] = []
+    blueprints: list[tuple[str, dict]] = []
+    for source, text in (("content", content), ("reasoning", reasoning)):
+        patch = extract_patch_from_text(text) if text else None
+        if patch is not None:
+            patches.append((source, patch))
+        if not text:
+            continue
+        blueprint = extract_blueprint_from_text(text)
+        if blueprint is not None:
+            blueprints.append((source, blueprint))
+    if prefer_patch and patches:
+        source, patch = patches[0]
+        return None, patch, source
+    if blueprints:
+        source, blueprint = blueprints[0]
+        return blueprint, None, source
+    if patches:
+        source, patch = patches[0]
+        return None, patch, source
+    return None, None, None
 
 
 class _ReasoningStreamCallback(AsyncCallbackHandler):
@@ -371,20 +438,26 @@ def _build_scene_summary(blueprint: dict) -> str:
         el_type = el.get("type", "?")
         extras = []
         if el_type == "wall":
-            frm = el.get("from", [])
-            to = el.get("to", [])
-            extras.append(f"from={frm[:2] if len(frm)>=2 else frm}, to={to[:2] if len(to)>=2 else to}")
+            extras.append(f"from={el.get('from', '?')}, to={el.get('to', '?')}")
+            extras.append(f"thickness={el.get('thickness', '?')}")
         elif el_type == "column":
-            base = el.get("base", [])
-            extras.append(f"base={base[:2] if len(base)>=2 else base}, height={el.get('height','?')}")
+            extras.append(f"base={el.get('base', '?')}, height={el.get('height','?')}")
         elif el_type == "roof":
-            extras.append(f"span={el.get('span','?')}, depth={el.get('depth','?')}")
+            extras.append(
+                f"position={el.get('position', '?')}, "
+                f"span={el.get('span','?')}, depth={el.get('depth','?')}"
+            )
         elif el_type == "floor":
-            frm = el.get("from", [])
-            to = el.get("to", [])
-            extras.append(f"from={frm[:2] if len(frm)>=2 else frm}, to={to[:2] if len(to)>=2 else to}")
+            extras.append(f"from={el.get('from', '?')}, to={el.get('to', '?')}")
         elif el_type == "opening":
-            extras.append(f"parentWall={el.get('parentWall','?')}, from={el.get('from','?')}")
+            extras.append(
+                f"parentWall={el.get('parentWall','?')}, from={el.get('from','?')}, "
+                f"width={el.get('width','?')}, height={el.get('height','?')}"
+            )
+        else:
+            for field_name in ("position", "base", "dimensions", "width", "height", "depth"):
+                if field_name in el:
+                    extras.append(f"{field_name}={el[field_name]}")
         lines.append(
             f"  - [{el_id}] type={el_type}"
             + (f" ({'; '.join(extras)})" if extras else "")
@@ -396,6 +469,9 @@ def _build_scene_summary(blueprint: dict) -> str:
         if component_type in {"door", "window"}:
             extras.append(f"parentWall={component.get('parentWall', '?')}")
             extras.append(f"from={component.get('from', '?')}")
+            extras.append(
+                f"width={component.get('width', '?')}, height={component.get('height', '?')}"
+            )
         elif component_type == "railing":
             extras.append(f"pathPoints={len(component.get('path', []))}")
         lines.append(
@@ -406,6 +482,75 @@ def _build_scene_summary(blueprint: dict) -> str:
     if materials:
         lines.append(f"已有材质: {', '.join(materials.keys())}")
     return "\n".join(lines)
+
+
+def _validate_scene_patch_operations(blueprint: dict, patch: dict) -> list[str]:
+    """在应用前校验操作名、必填参数、目标和新增 ID。"""
+    geometry = blueprint.get("geometry", {})
+    element_ids = {
+        item.get("id") for item in geometry.get("elements", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    component_ids = {
+        item.get("id") for item in geometry.get("components", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    errors: list[str] = []
+
+    for index, operation in enumerate(patch.get("operations", []), start=1):
+        prefix = f"operations[{index}]"
+        if not isinstance(operation, dict):
+            errors.append(f"{prefix} 必须是对象")
+            continue
+        op_type = operation.get("op")
+
+        if op_type in {"add_element", "add_component"}:
+            field_name = "element" if op_type == "add_element" else "component"
+            entity = operation.get(field_name)
+            if not isinstance(entity, dict):
+                errors.append(f"{prefix}.{field_name} 必须是完整对象")
+                continue
+            entity_id = entity.get("id")
+            if not isinstance(entity_id, str) or not entity_id.strip():
+                errors.append(f"{prefix}.{field_name}.id 缺失")
+                continue
+            if not isinstance(entity.get("type"), str) or not entity["type"].strip():
+                errors.append(f"{prefix}.{field_name}.type 缺失")
+            if entity_id in element_ids or entity_id in component_ids:
+                errors.append(f"{prefix} 新增 ID 已存在: {entity_id}")
+                continue
+            (element_ids if op_type == "add_element" else component_ids).add(entity_id)
+            continue
+
+        if op_type in {
+            "update_element", "remove_element",
+            "update_component", "remove_component",
+        }:
+            entity_id = operation.get("id")
+            target_ids = element_ids if op_type.endswith("element") else component_ids
+            if not isinstance(entity_id, str) or entity_id not in target_ids:
+                errors.append(f"{prefix} 目标不存在: {entity_id!r}")
+                continue
+            if op_type.startswith("update_"):
+                changes = operation.get("changes")
+                if not isinstance(changes, dict) or not changes:
+                    errors.append(f"{prefix}.changes 必须是非空对象")
+                elif {"id", "type"} & set(changes):
+                    errors.append(f"{prefix}.changes 不允许修改 id/type")
+            else:
+                target_ids.remove(entity_id)
+            continue
+
+        if op_type == "upsert_material":
+            if not isinstance(operation.get("name"), str) or not operation["name"].strip():
+                errors.append(f"{prefix}.name 缺失")
+            if not isinstance(operation.get("material"), dict):
+                errors.append(f"{prefix}.material 必须是对象")
+            continue
+
+        errors.append(f"{prefix}.op 不受支持: {op_type!r}")
+
+    return errors
 
 
 def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
@@ -690,6 +835,35 @@ class AgentService:
             f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
         ]
 
+    async def _recover_scene_patch(
+        self,
+        message: str,
+        current_blueprint: dict,
+        previous_reply: str,
+    ) -> tuple[dict | None, str, str | None]:
+        """用一次非思考调用把错误格式恢复为单一 ScenePatch。"""
+        recovery_prompt = build_patch_recovery_prompt(
+            message,
+            _build_scene_summary(current_blueprint),
+            previous_reply,
+        )
+        response = await self.llm.ainvoke([
+            {
+                "role": "system",
+                "content": "你是 ScenePatch 格式恢复器，只返回请求指定的 JSON。",
+            },
+            {"role": "user", "content": recovery_prompt},
+        ])
+        content, reasoning = _message_texts(response)
+        for source, text in (
+            ("recovery_content", content),
+            ("recovery_reasoning", reasoning),
+        ):
+            patch = extract_patch_from_text(text)
+            if patch is not None:
+                return patch, content or reasoning, source
+        return None, content or reasoning, None
+
     async def query_structured(
         self,
         message: str,
@@ -697,6 +871,7 @@ class AgentService:
         *,
         thinking_mode: bool = False,
         on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
+        expected_output: Literal["auto", "patch"] = "auto",
     ) -> QueryResult:
         """统一入口：一次调用覆盖生成/修改/聊天三种意图。
 
@@ -715,6 +890,12 @@ class AgentService:
                     f"# 用户请求\n\n{message}"
                 )
                 logger.info(f"[query] 注入场景上下文, 构件数={len(elements)}")
+        if expected_output == "patch":
+            user_message += (
+                "\n\n# 本次输出协议（强制）\n\n"
+                "上游已经判定这是增量修改。只输出一个 ScenePatch JSON 对象，"
+                "必须包含非空 operations 数组和 summary；不要输出完整 Blueprint。"
+            )
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
         rag_queries = self._build_rag_queries(message, current_blueprint)
@@ -733,79 +914,137 @@ class AgentService:
         finally:
             if reasoning_callback is not None:
                 await reasoning_callback.flush()
-        reply = result["messages"][-1].content
-        logger.info(f"Agent 回复: {reply[:200]}...")
+        final_message = result["messages"][-1]
+        reply, reasoning = _message_texts(final_message)
+        logger.info(
+            f"Agent 回复: content={len(reply)}字符, reasoning={len(reasoning)}字符, "
+            f"preview={(reply or reasoning)[:200]}..."
+        )
 
-        # ── 提取 JSON 并判断类型 ──────────────────────────────
-        json_data = extract_blueprint_from_text(reply)
-        if json_data is not None:
-            # 判断是 Blueprint 还是 ScenePatch
-            # Blueprint 有 "meta" 字段，ScenePatch 有 "operations" 字段
-            if "meta" in json_data:
-                # ── 生成类：完整 Blueprint ──────────────────────
-                json_data = normalize_blueprint_input(json_data)
-                pre_issues = validate_blueprint_schema(json_data)
-                if pre_issues:
-                    return QueryResult(
-                        text=reply,
-                        error=f"Blueprint 结构预检未通过: {'; '.join(pre_issues)}",
+        # Blueprint 与 ScenePatch 必须独立提取。旧逻辑先要求 Blueprint 提取成功，
+        # 导致合法 ScenePatch 永远无法进入 patch 分支。
+        blueprint_data, patch_data, structured_source = _extract_response_artifacts(
+            reply,
+            reasoning,
+            prefer_patch=expected_output == "patch" or current_blueprint is not None,
+        )
+        recovery_used = False
+        if expected_output == "patch" and patch_data is None and current_blueprint:
+            logger.warning("[query] 首次回复未提取到 ScenePatch，执行一次定向格式恢复")
+            try:
+                recovered_patch, recovered_text, recovery_source = (
+                    await self._recover_scene_patch(
+                        message,
+                        current_blueprint,
+                        reply or reasoning,
                     )
+                )
+                recovery_used = True
+                if recovered_patch is not None:
+                    patch_data = recovered_patch
+                    structured_source = recovery_source
+                    if recovered_text:
+                        reply = recovered_text
+            except Exception as exc:
+                logger.warning(f"[query] ScenePatch 定向格式恢复失败: {exc}")
 
-                # 重新检验和修复将大模型生成的结果
-                pipeline_results = run_validation_pipeline(json_data)
-
-                fatal_steps = _final_errors(pipeline_results)
-                
-                error_summary = None
-                if fatal_steps:
-                    error_summary = "校验流水线存在错误: " + "; ".join(
-                        f"Step{r.step}({r.name})" for r in fatal_steps
-                    )
-
+        if patch_data is not None:
+            if not current_blueprint:
                 return QueryResult(
                     text=reply,
-                    blueprint=json_data,
-                    error=error_summary,
-                    pipeline_results=pipeline_results,
+                    error="ScenePatch 缺少可应用的当前 Blueprint",
+                    structured_source=structured_source,
+                    structured_recovery_used=recovery_used,
                 )
 
-            elif (patch_data := extract_patch_from_text(reply)) and current_blueprint:
-                # ── 修改类：ScenePatch ──────────────────────────
-                patch = patch_data
-                modified_bp = _apply_patch_to_blueprint(current_blueprint, patch)
-                modified_bp = normalize_blueprint_input(modified_bp)
-                pre_issues = validate_blueprint_schema(modified_bp)
-                if pre_issues:
-                    return QueryResult(
-                        text=reply,
-                        patch=patch,
-                        error=(
-                            "Patch 应用后的 Blueprint 结构预检未通过: "
-                            + "; ".join(pre_issues)
-                        ),
-                    )
-                pipeline_results = run_validation_pipeline(modified_bp)
-
-                fatal_steps = _final_errors(pipeline_results)
-                error_summary = None
-                if fatal_steps:
-                    error_summary = "校验流水线存在错误: " + "; ".join(
-                        f"Step{r.step}({r.name})" for r in fatal_steps
-                    )
-
+            operation_issues = _validate_scene_patch_operations(
+                current_blueprint,
+                patch_data,
+            )
+            if operation_issues:
                 return QueryResult(
                     text=reply,
-                    patch=patch,
-                    error=error_summary,
-                    pipeline_results=pipeline_results,
+                    patch=patch_data,
+                    error="ScenePatch 操作预检未通过: " + "; ".join(operation_issues),
+                    structured_source=structured_source,
+                    structured_recovery_used=recovery_used,
                 )
 
-            else:
-                # JSON 不匹配任何已知格式
+            modified_bp = _apply_patch_to_blueprint(current_blueprint, patch_data)
+            if modified_bp == current_blueprint:
                 return QueryResult(
                     text=reply,
-                    error="回复中的 JSON 不包含 'meta'（非 Blueprint）也不包含 'operations'（非 ScenePatch）",
+                    patch=patch_data,
+                    error="ScenePatch 未产生任何实际修改",
+                    structured_source=structured_source,
+                    structured_recovery_used=recovery_used,
                 )
+            modified_bp = normalize_blueprint_input(modified_bp)
+            pre_issues = validate_blueprint_schema(modified_bp)
+            if pre_issues:
+                return QueryResult(
+                    text=reply,
+                    patch=patch_data,
+                    error=(
+                        "Patch 应用后的 Blueprint 结构预检未通过: "
+                        + "; ".join(pre_issues)
+                    ),
+                    structured_source=structured_source,
+                    structured_recovery_used=recovery_used,
+                )
+            pipeline_results = run_validation_pipeline(modified_bp)
+            fatal_steps = _final_errors(pipeline_results)
+            error_summary = None
+            if fatal_steps:
+                error_summary = "校验流水线存在错误: " + "; ".join(
+                    f"Step{r.step}({r.name})" for r in fatal_steps
+                )
+            return QueryResult(
+                text=reply,
+                patch=patch_data,
+                error=error_summary,
+                pipeline_results=pipeline_results,
+                structured_source=structured_source,
+                structured_recovery_used=recovery_used,
+            )
+
+        if blueprint_data is not None:
+            if expected_output == "patch":
+                return QueryResult(
+                    text=reply,
+                    error="增量修改节点返回了完整 Blueprint，而不是 ScenePatch",
+                    structured_source=structured_source,
+                    structured_recovery_used=recovery_used,
+                )
+            blueprint_data = normalize_blueprint_input(blueprint_data)
+            pre_issues = validate_blueprint_schema(blueprint_data)
+            if pre_issues:
+                return QueryResult(
+                    text=reply,
+                    error=f"Blueprint 结构预检未通过: {'; '.join(pre_issues)}",
+                    structured_source=structured_source,
+                )
+            pipeline_results = run_validation_pipeline(blueprint_data)
+            fatal_steps = _final_errors(pipeline_results)
+            error_summary = None
+            if fatal_steps:
+                error_summary = "校验流水线存在错误: " + "; ".join(
+                    f"Step{r.step}({r.name})" for r in fatal_steps
+                )
+            return QueryResult(
+                text=reply,
+                blueprint=blueprint_data,
+                error=error_summary,
+                pipeline_results=pipeline_results,
+                structured_source=structured_source,
+            )
+
+        if expected_output == "patch":
+            return QueryResult(
+                text=reply,
+                error="模型两次回复均未返回可解析的 ScenePatch",
+                structured_recovery_used=recovery_used,
+            )
 
         # ── 纯文本（对话类）─────────────────────────────────────
         return QueryResult(text=reply)

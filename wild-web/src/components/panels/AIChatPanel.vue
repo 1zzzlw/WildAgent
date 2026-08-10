@@ -20,11 +20,21 @@
           <div v-if="message.patch" class="message-patch">
             <div class="patch-summary">{{ message.patch.summary }}</div>
             <div class="patch-actions">
-              <el-button class="patch-btn" size="small" @click="handleApplyPatch(message.patch!)">
-                应用修改
+              <el-button
+                class="patch-btn"
+                size="small"
+                :disabled="getPatchStatus(message) !== 'pending'"
+                :loading="getPatchStatus(message) === 'applying'"
+                @click="handleApplyPatch(message)"
+              >
+                {{ getPatchActionLabel(message) }}
               </el-button>
-              <el-button v-if="message.patch.requires_confirmation" class="patch-btn reject-btn" size="small"
-                @click="handleRejectPatch(message.patch!)">
+              <el-button
+                v-if="message.patch.requires_confirmation && getPatchStatus(message) === 'pending'"
+                class="patch-btn reject-btn"
+                size="small"
+                @click="handleRejectPatch(message)"
+              >
                 拒绝
               </el-button>
               </div>
@@ -113,7 +123,7 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
 import AgentExecutionPanel from './AgentExecutionPanel.vue'
-import type { ScenePatch } from '../../types/scenePatch'
+import type { ChatMessage } from '../../types/agent'
 
 // ── Markdown 渲染 ──
 const md = new MarkdownIt({
@@ -312,18 +322,56 @@ function formatTime(ts: number) {
   return new Date(ts).toLocaleTimeString('zh-CN')
 }
 
-async function handleApplyPatch(patch: ScenePatch) {
+function getPatchStatus(message: ChatMessage): NonNullable<ChatMessage['patch_status']> {
+  if (message.patch_status) return message.patch_status
+  return agentStore.pendingPatch?.patch_id === message.patch?.patch_id
+    ? 'pending'
+    : 'expired'
+}
+
+function getPatchActionLabel(message: ChatMessage): string {
+  return ({
+    pending: '应用修改',
+    applying: '正在应用',
+    applied: '已应用',
+    rejected: '已拒绝',
+    expired: '已失效',
+  } as const)[getPatchStatus(message)]
+}
+
+function setPatchStatus(
+  message: ChatMessage,
+  status: NonNullable<ChatMessage['patch_status']>,
+) {
+  // 兼容本次开发热更新前已经创建的旧 Pinia Store 实例。
+  // 新实例通过 action 同步 localStorage；旧实例至少能立即更新按钮状态并避免运行时异常。
+  if (typeof agentStore.setPatchMessageStatus === 'function' && message.patch) {
+    agentStore.setPatchMessageStatus(message.patch.patch_id, status)
+    return
+  }
+  message.patch_status = status
+}
+
+async function handleApplyPatch(message: ChatMessage) {
+  const patch = message.patch
+  if (!patch || getPatchStatus(message) !== 'pending') return
+  setPatchStatus(message, 'applying')
   const ok = await sceneStore.applyPatch(patch)
   if (ok) {
+    setPatchStatus(message, 'applied')
     agentStore.addSystemMessage('✅ 已应用到当前草稿；点击顶部“保存”后才会写入服务器')
-    agentStore.confirmPatch()
+    agentStore.confirmPatch(patch.patch_id)
   } else {
+    setPatchStatus(message, 'pending')
     agentStore.addSystemMessage('❌ 应用修改失败，可能版本已过期')
   }
 }
 
-function handleRejectPatch(patch: ScenePatch) {
-  agentStore.rejectPatch()
+function handleRejectPatch(message: ChatMessage) {
+  const patch = message.patch
+  if (!patch || getPatchStatus(message) !== 'pending') return
+  setPatchStatus(message, 'rejected')
+  agentStore.rejectPatch(patch.patch_id)
   agentStore.addSystemMessage('🚫 已拒绝该修改建议')
 }
 

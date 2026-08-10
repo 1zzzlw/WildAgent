@@ -1,6 +1,6 @@
 """LangGraph 增量修改节点。
 
-复用当前已经过 Blueprint 预检和 15 步流水线验证的统一 Agent 入口，
+复用当前已经过 Blueprint 预检和完整校验流水线验证的统一 Agent 入口，
 但只接受 ScenePatch 结果。这样精密模式和快速模式拥有一致的编辑语义，
 同时保持 Patch 必须由前端确认后才能应用。
 """
@@ -36,6 +36,7 @@ async def patch_node(state: GenerationState) -> dict:
             current_blueprint,
             thinking_mode=state.get("thinking_mode", False),
             on_reasoning_delta=emit_reasoning if on_reasoning_delta else None,
+            expected_output="patch",
         )
     except Exception as exc:
         logger.exception(f"[patch] 增量修改失败: {exc}")
@@ -54,6 +55,8 @@ async def patch_node(state: GenerationState) -> dict:
             "patch_diag": {
                 "error": result.error,
                 "validation_steps": len(result.pipeline_results),
+                "structured_source": result.structured_source,
+                "structured_recovery_used": result.structured_recovery_used,
                 "total_ms": elapsed_ms,
             },
         }
@@ -63,7 +66,12 @@ async def patch_node(state: GenerationState) -> dict:
             "error": "模型未返回 ScenePatch，未对当前场景执行任何修改",
             "status": "failed",
             "patch_reply": result.text,
-            "patch_diag": {"error": "scene_patch missing", "total_ms": elapsed_ms},
+            "patch_diag": {
+                "error": "scene_patch missing",
+                "structured_source": result.structured_source,
+                "structured_recovery_used": result.structured_recovery_used,
+                "total_ms": elapsed_ms,
+            },
         }
 
     operations = result.patch.get("operations", [])
@@ -75,6 +83,8 @@ async def patch_node(state: GenerationState) -> dict:
         "patch_diag": {
             "operation_count": len(operations),
             "validation_steps": len(result.pipeline_results),
+            "structured_source": result.structured_source,
+            "structured_recovery_used": result.structured_recovery_used,
             "total_ms": elapsed_ms,
         },
     }

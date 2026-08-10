@@ -158,6 +158,8 @@ export interface ChatMessage {
   content: string
   timestamp: number
   patch?: ScenePatch
+  /** ScenePatch 提案只能被处理一次；用于禁用历史消息中的重复操作按钮。 */
+  patch_status?: 'pending' | 'applying' | 'applied' | 'rejected' | 'expired'
   /** 将消息绑定到一次用户请求，保证过程、回复和产物保持在同一轮。 */
   request_id?: string
   turn_id?: string

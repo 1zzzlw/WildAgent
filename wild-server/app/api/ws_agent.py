@@ -487,6 +487,12 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
                             "generating", node_name, "error", label,
                             node_output.get("error", "未生成修改提案"),
                         )
+                        await send_debug("node", {
+                            "node": node_name,
+                            "label": label,
+                            "stage": "error",
+                            **patch_diag,
+                        })
                     else:
                         operation_count = patch_diag.get("operation_count", len(patch.get("operations", [])))
                         await send_step(

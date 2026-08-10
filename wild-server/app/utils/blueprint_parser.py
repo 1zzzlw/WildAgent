@@ -38,26 +38,33 @@ _FURNITURE_SUBTYPE_ALIASES = {
 
 # ---------- JSON 提取 ----------
 
-def _extract_json_dicts(text: str):
-    """依次提取代码块和普通文本中的完整 JSON 对象。"""
+def _extract_json_values(text: str):
+    """依次提取代码块和普通文本中的完整 JSON 对象或数组。"""
     if not isinstance(text, str) or not text.strip():
         return
 
-    code_blocks = re.findall(r'```(?:json)?\s*\n(.*?)\n```', text, re.DOTALL)
+    code_blocks = re.findall(r'```(?:json)?\s*(.*?)\s*```', text, re.DOTALL)
     decoder = json.JSONDecoder()
     seen: set[str] = set()
     for source in [*code_blocks, text]:
-        for match in re.finditer(r'\{', source):
+        for match in re.finditer(r'[\{\[]', source):
             try:
                 value, end = decoder.raw_decode(source[match.start():])
             except json.JSONDecodeError:
                 continue
-            if not isinstance(value, dict):
+            if not isinstance(value, (dict, list)):
                 continue
             raw = source[match.start():match.start() + end]
             if raw in seen:
                 continue
             seen.add(raw)
+            yield value
+
+
+def _extract_json_dicts(text: str):
+    """兼容旧调用方，只返回提取结果中的 JSON 对象。"""
+    for value in _extract_json_values(text):
+        if isinstance(value, dict):
             yield value
 
 
@@ -106,15 +113,64 @@ def extract_patch_from_text(text: str) -> dict | None:
     Returns:
         解析后的 ScenePatch dict，如果未找到或解析失败或结构不对则返回 None
     """
-    for data in _extract_json_dicts(text):
-        ops = data.get("operations")
-        if not isinstance(ops, list) or len(ops) == 0:
-            continue
-        # summary 只用于向用户说明修改内容；缺失时补一个稳定默认值。
-        if "summary" not in data:
-            data["summary"] = "修改场景"
-        return data
+    for data in _extract_json_values(text):
+        patch = _find_wrapped_patch(data)
+        if patch is not None:
+            return patch
     return None
+
+
+def _find_wrapped_patch(data: object, depth: int = 0) -> dict | None:
+    """提取直接、包装或仅操作数组形式的 ScenePatch。"""
+    if depth > 2:
+        return None
+    if isinstance(data, list):
+        if data and all(
+            isinstance(operation, dict)
+            and isinstance(operation.get("op"), str)
+            for operation in data
+        ):
+            return _normalize_scene_patch({
+                "operations": data,
+                "summary": "修改场景",
+            })
+        return None
+    if not isinstance(data, dict):
+        return None
+
+    operations = data.get("operations")
+    if isinstance(operations, list) and operations:
+        patch = deepcopy(data)
+        patch.setdefault("summary", "修改场景")
+        return _normalize_scene_patch(patch)
+
+    wrapper_keys = {
+        "patch", "scene_patch", "scenepatch", "result", "data", "output",
+    }
+    for key, value in data.items():
+        if str(key).lower() not in wrapper_keys:
+            continue
+        nested = _find_wrapped_patch(value, depth + 1)
+        if nested is not None:
+            return nested
+    return None
+
+
+def _normalize_scene_patch(patch: dict) -> dict:
+    """把语义唯一的常见操作别名归一化为正式 ScenePatch 协议。"""
+    normalized = deepcopy(patch)
+    for operation in normalized.get("operations", []):
+        if not isinstance(operation, dict):
+            continue
+        if operation.get("op") == "add_material":
+            operation["op"] = "upsert_material"
+            if "name" not in operation:
+                material_id = operation.get("material_id") or operation.get("id")
+                if isinstance(material_id, str) and material_id:
+                    operation["name"] = material_id
+            operation.pop("material_id", None)
+            operation.pop("id", None)
+    return normalized
 
 
 # ---------- 结构校验 ----------

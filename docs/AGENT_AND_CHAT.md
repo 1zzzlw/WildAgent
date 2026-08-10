@@ -26,6 +26,10 @@ Agent 的价值不是单次输出 JSON，而是把不稳定的模型输出约束
 - `EDIT`：基于当前 Blueprint 生成 ScenePatch，经前端确认后应用。
 - `CHAT`：建筑知识问答，仅返回文本。
 
+精密模式的 `patch` 节点已经由分类器确定为 EDIT，因此会向统一入口显式声明 `expected_output=patch`，不再让模型二次猜测输出类型。Blueprint 与 ScenePatch 必须由两个独立提取器解析；禁止先以 Blueprint 提取成功作为进入 ScenePatch 分支的条件，否则合法 Patch 因没有 `meta + geometry` 会被稳定丢弃。ScenePatch 可从普通 `content` 或 `reasoning_content` 提取，并兼容 `patch/scene_patch/scenePatch/result/data/output` 包装对象及仅操作数组。首次无法提取时，只追加一次非思考格式恢复调用；恢复仍失败才返回错误。
+
+增量编辑注入的场景摘要必须保留完整 X/Y/Z 坐标和关键尺寸，不能只给墙体 X/Y 而丢掉 Z，否则“在建筑旁边新增”无法确定真实边界。提案应用前先校验操作白名单、必填字段、目标 ID、新增 ID 唯一性以及是否产生实际变化，再在 Blueprint 副本上执行完整校验；前端仍需用户确认后才修改当前场景。模型常用的 `add_material` 会确定性归一化为正式协议的 `upsert_material`（同时兼容 `material_id/id` 到 `name`），发送给前端的始终是标准操作。`patch_diag.structured_source` 记录产物来自 `content/reasoning/recovery_*`，`structured_recovery_used` 标记是否使用了格式恢复。
+
 ### 精密模式
 
 ```text
@@ -114,6 +118,8 @@ AgentTurn
 `AIChatPanel.vue` 负责统一时间线，`AgentExecutionPanel.vue` 负责单个 Turn 的折叠执行过程。消息、步骤和流式过程共用主时间线唯一滚动容器，步骤内容不再创建嵌套滚动条。时间线尺寸变化后在下一渲染帧贴底；用户向上滚动后自动跟随暂停，只有回到底部、点击“回到最新”、主动发送消息或切换会话时恢复。
 
 callback 每次返回 `final_validate` 都代表一次新的完整复检。前端收到该轮摘要时先清空该 Turn 的旧 `validation_steps`，再写入最新步骤，因此 4 轮各 18 步不会累计显示成“72 步、4 个相同错误”；最终面板只呈现最后一轮的 18 步和真实剩余错误。
+
+每条 ScenePatch 提案消息保存 `pending/applying/applied/rejected/expired` 状态。点击应用时先同步切换为 `applying` 以阻止双击；场景重建成功后标记为 `applied`，按钮显示“已应用”并永久禁用；应用失败才恢复为 `pending`。拒绝或被新提案取代的消息分别标记为 `rejected/expired`，历史消息不能再次应用。
 
 Turn 同时写入浏览器本地副本和 `/api/sessions/{session_id}/turns`。前端按 `request_id` 合并两端快照；同一会话的 PUT 串行执行，保证完成态不会被较早发出的运行态覆盖。页面刷新时，本地未完成 Turn 显示为“已中断”；服务重启后，服务端也会清理不属于当前服务实例的遗留运行态。
 

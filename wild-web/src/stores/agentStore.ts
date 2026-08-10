@@ -29,7 +29,7 @@
  * - 处理需要用户确认的 Patch
  */
 
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type {
   ChatMessage,
@@ -346,6 +346,7 @@ export const useAgentStore = defineStore('agent', () => {
       content,
       timestamp: Date.now(),
       patch,
+      patch_status: patch ? 'pending' : undefined,
       request_id: requestId,
       turn_id: requestId,
     })
@@ -497,7 +498,8 @@ export const useAgentStore = defineStore('agent', () => {
       role: 'agent',
       content,
       timestamp: Date.now(),
-      patch
+      patch,
+      patch_status: patch ? 'pending' : undefined,
     })
   }
 
@@ -593,16 +595,36 @@ export const useAgentStore = defineStore('agent', () => {
     nodeThinkingMap.value.clear()
   }
 
+  function setPatchMessageStatus(
+    patchId: string,
+    status: NonNullable<ChatMessage['patch_status']>,
+  ) {
+    const message = session.value.messages.find(
+      item => item.patch?.patch_id === patchId,
+    )
+    if (!message) return
+    message.patch_status = status
+    saveMessagesToLocal(currentSessionId.value, session.value.messages)
+  }
+
   function setPendingPatch(patch: ScenePatch | null) {
+    if (
+      pendingPatch.value
+      && pendingPatch.value.patch_id !== patch?.patch_id
+    ) {
+      setPatchMessageStatus(pendingPatch.value.patch_id, 'expired')
+    }
     pendingPatch.value = patch
   }
 
-  function confirmPatch() {
-    pendingPatch.value = null
+  function confirmPatch(patchId: string) {
+    setPatchMessageStatus(patchId, 'applied')
+    if (pendingPatch.value?.patch_id === patchId) pendingPatch.value = null
   }
 
-  function rejectPatch() {
-    pendingPatch.value = null
+  function rejectPatch(patchId: string) {
+    setPatchMessageStatus(patchId, 'rejected')
+    if (pendingPatch.value?.patch_id === patchId) pendingPatch.value = null
   }
 
   function setConnectionStatus(status: ConnectionStatus) {
@@ -903,6 +925,7 @@ export const useAgentStore = defineStore('agent', () => {
     completeTurn,
     getTurnForMessage,
     setProcessing,
+    setPatchMessageStatus,
     setPendingPatch,
     confirmPatch,
     rejectPatch,
@@ -942,3 +965,7 @@ export const useAgentStore = defineStore('agent', () => {
     clearDebugLogs,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useAgentStore, import.meta.hot))
+}
