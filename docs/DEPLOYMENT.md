@@ -1,6 +1,6 @@
 # 服务器部署与运维
 
-最后核对：2026-08-09。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
+最后核对：2026-08-10。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
 
 ## 1. 生产事实来源：Jenkins
 
@@ -20,9 +20,12 @@ Jenkins 生产流程为：
   -> 上传该提交源码到远程临时目录
   -> 前端编译 + 后端语法/单元测试
   -> 构建 <branch>-<commit> 唯一镜像
+  -> 新镜像读取生产 .env，校验必填配置并执行一次最小真实模型请求
   -> 删除旧容器
   -> 使用 /opt/wild-agent/.env 创建新容器
-  -> 校验容器、镜像标签、模型名和后端 HTTP
+  -> 等待后端（最多 180 秒）与前端（最多 40 秒）真正就绪
+  -> 校验容器、镜像标签、模型/RAG 配置和后端 HTTP
+  -> 新版本启动失败时恢复旧版本镜像
 ```
 
 只有 main/master 的非 Pull Request 构建会部署。流水线失败时，必须以 Jenkins 的具体 stage 为准，不能只看 GitHub 已经出现提交。
@@ -30,6 +33,10 @@ Jenkins 生产流程为：
 构建工具 uv 固定为 `0.11.14`。Jenkins 上传的是一次性远程构建目录；后端验证会先在该临时目录执行 `uv lock`，补齐 Linux 平台解析结果，再以 `--frozen` 运行测试，后续 Docker 构建继续使用同一份临时锁文件。该过程不会修改 GitHub 工作区，也不需要维护 Windows/Linux 两份锁文件。禁止在流水线中使用无版本号的 `pip install uv`，否则构建工具自动升级仍可能导致解析行为漂移。
 
 后端验证容器不会挂载生产 `/opt/wild-agent/.env`。测试收集会导入全局 `AgentService`，因此 Jenkins 只为该临时容器注入 `ci-placeholder` 占位 Key，并把模型地址指向不可用的本机端口 `127.0.0.1:9`；这既满足客户端初始化，也能让误发起的真实模型调用立即失败，不会泄露或消耗生产凭据。RAG 在该阶段显式使用 hash fallback，并将临时 Chroma 数据写入容器 `/tmp`。正式部署容器仍只读取 `DEPLOY_ENV_FILE` 指定的服务器环境文件。
+
+部署前 smoke test 与单元测试不同：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，检查 Chat 配置、RAG/Embedding 必填项，向实际 Chat 服务发送一个最多 16 token 的最小请求，并用实际 Embedding 服务生成一个测试向量。该步骤在删除旧容器之前执行，90 秒内没有成功就终止部署，因此能够提前发现错误 Key、额度耗尽、模型 ID 不存在、兼容参数不支持、Embedding 配置失效和服务器无法访问模型服务等问题，同时保留旧服务。日志只输出模型、Base URL、RAG 开关、Embedding 名称、响应字符数和向量维度，不输出 API Key、模型回复内容或向量内容。
+
+后端启动时需要加载应用、同步 Chroma 知识库并创建模型客户端，5 秒内未监听端口并不等于启动失败。Jenkins 不再固定 `sleep 5` 后只探测一次，而是轮询容器状态和 HTTP；新后端超过 180 秒仍未就绪、前端超过 40 秒仍未就绪或容器提前退出时，会打印新容器日志并使用部署前记录的版本镜像恢复旧容器。后端镜像也包含 Docker `HEALTHCHECK`，便于部署后持续查看健康状态。
 
 ## 2. Jenkins 环境文件
 
@@ -65,7 +72,7 @@ docker exec wild-server python -c "import os,hashlib; k=os.environ.get('CHAT__AP
 - `初始化` stage 显示预期 `commit=<短哈希>`；
 - `远程后端语法检查` 中全部测试通过；
 - `远程构建 Docker 镜像` 的标签包含同一短哈希；
-- `远程部署到生产` 显示两个容器运行、镜像匹配和 `backend_http_status=200`。
+- `远程部署到生产` 显示 `model_smoke=ok`、`embedding_smoke=ok`、两个容器已就绪、镜像匹配和 `backend_http_status=200`。
 
 服务器可查看当前运行镜像：
 

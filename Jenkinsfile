@@ -256,34 +256,121 @@ if [ ! -f "$DEPLOY_ENV_FILE" ]; then
   exit 1
 fi
 
+echo "=== 部署前校验生产配置与模型连通性 ==="
+# 使用本次新镜像和生产 env 做最小真实请求；不输出 Key，也不初始化完整 Agent/RAG。
+# 失败时旧容器尚未删除，因此配额、模型 ID、兼容参数或远程网络异常不会造成停机。
+timeout -k 10s 90s docker run --rm \
+  --env-file "$DEPLOY_ENV_FILE" \
+  "$IMAGE_SERVER_NAME" \
+  python -c "from config import config; from app.agent.model_client import create_llm; from app.spec.loader import create_embedding_function; assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'; embedding_required=config.rag.enabled and not config.rag.allow_hash_fallback; assert (not embedding_required) or (config.embedding.name.strip() and config.embedding.api_key.strip()), 'EMBEDDING config missing while RAG hash fallback is disabled'; print('preflight_model='+config.chat.name); print('preflight_base_url='+(config.chat.base_url or '(default)')); print('preflight_rag_enabled='+str(config.rag.enabled).lower()); print('preflight_embedding='+config.embedding.name); response=create_llm().bind(max_tokens=16).invoke('Reply with WILD_OK only.'); content=response.content if isinstance(response.content, str) else str(response.content); assert content.strip(), 'model returned empty content'; print('model_smoke=ok response_chars='+str(len(content))); embedding=create_embedding_function(config.embedding.api_key, config.embedding.base_url, config.embedding.name, config.rag.allow_hash_fallback) if config.rag.enabled else None; vector=embedding.embed_query('WildAgent deployment smoke') if embedding else []; assert (not embedding) or (vector and isinstance(vector[0], (int, float))), 'embedding returned invalid vector'; print('embedding_smoke=ok dimensions='+str(len(vector)) if embedding else 'embedding_smoke=skipped')"
+
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
 mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/geoip"
 
+old_server_image="$(docker inspect -f '{{.Config.Image}}' wild-server 2>/dev/null || true)"
+old_web_image="$(docker inspect -f '{{.Config.Image}}' wild-web 2>/dev/null || true)"
+
+start_server() {
+  server_image="$1"
+  docker run -d \
+    --name wild-server \
+    --restart unless-stopped \
+    --network wild-net \
+    -p 8000:8000 \
+    -v "$DEPLOY_DATA_DIR/scenes:/app/storage/scenes" \
+    -v "$DEPLOY_DATA_DIR/sessions:/app/storage/sessions" \
+    -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
+    -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
+    --env-file "$DEPLOY_ENV_FILE" \
+    -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \
+    "$server_image"
+}
+
+start_web() {
+  web_image="$1"
+  docker run -d \
+    --name wild-web \
+    --restart unless-stopped \
+    --network wild-net \
+    -p 80:80 \
+    "$web_image"
+}
+
+rollback_deployment() {
+  reason="$1"
+  echo "ERROR: $reason"
+  echo "--- 新版 wild-server 日志 ---"
+  docker logs --tail=100 wild-server 2>&1 || true
+  echo "--- 新版 wild-web 日志 ---"
+  docker logs --tail=100 wild-web 2>&1 || true
+  docker rm -f wild-server wild-web 2>/dev/null || true
+
+  if [ -n "$old_server_image" ]; then
+    echo "恢复旧后端镜像: $old_server_image"
+    start_server "$old_server_image" || true
+  fi
+  if [ -n "$old_web_image" ]; then
+    echo "恢复旧前端镜像: $old_web_image"
+    start_web "$old_web_image" || true
+  fi
+  exit 1
+}
+
 docker rm -f wild-server wild-web 2>/dev/null || true
 
-docker run -d \
-  --name wild-server \
-  --restart unless-stopped \
-  --network wild-net \
-  -p 8000:8000 \
-  -v "$DEPLOY_DATA_DIR/scenes:/app/storage/scenes" \
-  -v "$DEPLOY_DATA_DIR/sessions:/app/storage/sessions" \
-  -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
-  -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
-  --env-file "$DEPLOY_ENV_FILE" \
-  -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \
-  "$IMAGE_SERVER_NAME"
+if ! start_server "$IMAGE_SERVER_NAME"; then
+  rollback_deployment "新版 wild-server 容器创建失败"
+fi
 
-docker run -d \
-  --name wild-web \
-  --restart unless-stopped \
-  --network wild-net \
-  -p 80:80 \
-  "$IMAGE_WEB_NAME"
+echo "=== 等待新版 wild-server HTTP 就绪（最多 180 秒） ==="
+server_ready=0
+attempt=1
+while [ "$attempt" -le 60 ]; do
+  if [ "$(docker inspect -f '{{.State.Running}}' wild-server 2>/dev/null || true)" != "true" ]; then
+    rollback_deployment "新版 wild-server 在启动阶段退出"
+  fi
+
+  if docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/', timeout=3); assert response.status == 200" >/dev/null 2>&1; then
+    server_ready=1
+    echo "wild-server 已就绪（attempt=$attempt）"
+    break
+  fi
+
+  if [ $((attempt % 10)) -eq 0 ]; then
+    echo "wild-server 仍在初始化（attempt=$attempt/60）"
+  fi
+  attempt=$((attempt + 1))
+  sleep 3
+done
+
+if [ "$server_ready" -ne 1 ]; then
+  rollback_deployment "新版 wild-server 在 180 秒内未就绪"
+fi
+
+if ! start_web "$IMAGE_WEB_NAME"; then
+  rollback_deployment "新版 wild-web 容器创建失败"
+fi
+
+echo "=== 等待新版 wild-web 就绪（最多 40 秒） ==="
+web_ready=0
+attempt=1
+while [ "$attempt" -le 20 ]; do
+  if [ "$(docker inspect -f '{{.State.Running}}' wild-web 2>/dev/null || true)" != "true" ]; then
+    rollback_deployment "新版 wild-web 在启动阶段退出"
+  fi
+  if docker exec wild-web wget -q -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
+    web_ready=1
+    echo "wild-web 已就绪（attempt=$attempt）"
+    break
+  fi
+  attempt=$((attempt + 1))
+  sleep 2
+done
+
+if [ "$web_ready" -ne 1 ]; then
+  rollback_deployment "新版 wild-web 在 40 秒内未就绪"
+fi
 REMOTE_SCRIPT
-
-            echo "=== 等待容器启动 ==="
-            sleep 5
 
             echo "=== 检查容器状态 ==="
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
@@ -327,7 +414,7 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
   exit 1
 fi
 
-docker exec wild-server python -c "import os; model=os.environ.get('CHAT__NAME',''); base=os.environ.get('CHAT__BASE_URL',''); print('model='+model); print('base_url='+base); assert model, 'CHAT__NAME missing'"
+docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower()); assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'"
 docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/', timeout=10); print('backend_http_status='+str(response.status)); assert response.status == 200"
 REMOTE_SCRIPT
 
