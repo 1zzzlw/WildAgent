@@ -150,6 +150,11 @@ docker run --rm \
   -e PYTHONDONTWRITEBYTECODE=1 \
   -e UV_INDEX_URL="$UV_INDEX_URL" \
   -e UV_VERSION="$UV_VERSION" \
+  -e CHAT__NAME=ci-dummy-chat \
+  -e CHAT__API_KEY=ci-placeholder \
+  -e CHAT__BASE_URL=http://127.0.0.1:9/v1 \
+  -e RAG__ALLOW_HASH_FALLBACK=true \
+  -e RAG__PERSIST_DIR=/tmp/wild-agent-ci-chroma \
   -v "$PWD:/app" \
   -w /app \
   "$PYTHON_BASE_IMAGE" \

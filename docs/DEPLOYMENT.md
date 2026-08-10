@@ -29,6 +29,8 @@ Jenkins 生产流程为：
 
 构建工具 uv 固定为 `0.11.14`。Jenkins 上传的是一次性远程构建目录；后端验证会先在该临时目录执行 `uv lock`，补齐 Linux 平台解析结果，再以 `--frozen` 运行测试，后续 Docker 构建继续使用同一份临时锁文件。该过程不会修改 GitHub 工作区，也不需要维护 Windows/Linux 两份锁文件。禁止在流水线中使用无版本号的 `pip install uv`，否则构建工具自动升级仍可能导致解析行为漂移。
 
+后端验证容器不会挂载生产 `/opt/wild-agent/.env`。测试收集会导入全局 `AgentService`，因此 Jenkins 只为该临时容器注入 `ci-placeholder` 占位 Key，并把模型地址指向不可用的本机端口 `127.0.0.1:9`；这既满足客户端初始化，也能让误发起的真实模型调用立即失败，不会泄露或消耗生产凭据。RAG 在该阶段显式使用 hash fallback，并将临时 Chroma 数据写入容器 `/tmp`。正式部署容器仍只读取 `DEPLOY_ENV_FILE` 指定的服务器环境文件。
+
 ## 2. Jenkins 环境文件
 
 默认生产文件为 `/opt/wild-agent/.env`：
