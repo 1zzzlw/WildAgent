@@ -25,6 +25,41 @@ def _response_mapping(value: Any) -> dict:
     return {}
 
 
+def content_as_text(value: object) -> str:
+    """兼容字符串和 OpenAI 多内容块消息。"""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(
+            text for item in value
+            if (text := content_as_text(item))
+        )
+    if isinstance(value, dict):
+        for key in ("text", "content", "output_text"):
+            text = content_as_text(value.get(key))
+            if text:
+                return text
+    return ""
+
+
+def message_texts(message: object) -> tuple[str, str]:
+    """返回模型消息的普通内容和兼容推理内容。"""
+    if isinstance(message, dict):
+        content = content_as_text(message.get("content"))
+        additional = message.get("additional_kwargs", {})
+        metadata = message.get("response_metadata", {})
+    else:
+        content = content_as_text(getattr(message, "content", ""))
+        additional = getattr(message, "additional_kwargs", {})
+        metadata = getattr(message, "response_metadata", {})
+    reasoning = ""
+    if isinstance(additional, dict):
+        reasoning = content_as_text(additional.get("reasoning_content"))
+    if not reasoning and isinstance(metadata, dict):
+        reasoning = content_as_text(metadata.get("reasoning_content"))
+    return content, reasoning
+
+
 class ReasoningChatOpenAI(ChatOpenAI):
     """捕获 reasoning_content（DashScope/OpenAI-compatible 服务扩展字段）+ 流式 usage。
 

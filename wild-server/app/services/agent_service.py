@@ -30,7 +30,7 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from loguru import logger
 
 from config import config
-from app.agent.model_client import create_llm
+from app.agent.model_client import create_llm, message_texts as _message_texts
 from app.agent.prompts import (
     build_material_optimization_prompt,
     build_patch_recovery_prompt,
@@ -109,41 +109,6 @@ class QueryResult:
     pipeline_results: list[PipelineStepResult] = field(default_factory=list)
     structured_source: str | None = None
     structured_recovery_used: bool = False
-
-
-def _content_as_text(value: object) -> str:
-    """兼容字符串和 OpenAI 多内容块消息。"""
-    if isinstance(value, str):
-        return value
-    if isinstance(value, list):
-        return "\n".join(
-            text for item in value
-            if (text := _content_as_text(item))
-        )
-    if isinstance(value, dict):
-        for key in ("text", "content", "output_text"):
-            text = _content_as_text(value.get(key))
-            if text:
-                return text
-    return ""
-
-
-def _message_texts(message: object) -> tuple[str, str]:
-    """返回模型消息的普通内容和兼容推理内容。"""
-    if isinstance(message, dict):
-        content = _content_as_text(message.get("content"))
-        additional = message.get("additional_kwargs", {})
-        metadata = message.get("response_metadata", {})
-    else:
-        content = _content_as_text(getattr(message, "content", ""))
-        additional = getattr(message, "additional_kwargs", {})
-        metadata = getattr(message, "response_metadata", {})
-    reasoning = ""
-    if isinstance(additional, dict):
-        reasoning = _content_as_text(additional.get("reasoning_content"))
-    if not reasoning and isinstance(metadata, dict):
-        reasoning = _content_as_text(metadata.get("reasoning_content"))
-    return content, reasoning
 
 
 def _extract_response_artifacts(
