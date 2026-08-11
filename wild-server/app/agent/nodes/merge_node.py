@@ -340,6 +340,8 @@ def _validate_design_brief_constraints(
             counts[entity_type] = counts.get(entity_type, 0) + 1
     # balcony 编译器内嵌一套 U 形栏杆，设计配额不能要求再生成重复 railing 组件。
     counts["railing"] = counts.get("railing", 0) + counts.get("balcony", 0)
+    # 凸窗会占用并替换一个普通窗槽位，因此也满足立面窗数量要求。
+    counts["window"] = counts.get("window", 0) + counts.get("bay_window", 0)
 
     errors: list[str] = []
     for component_type, limits in design_brief.get("component_quota", {}).items():
@@ -359,7 +361,7 @@ def _validate_design_brief_constraints(
 
     openings_by_wall: dict[str, int] = {}
     for component in geometry.get("components", []):
-        if component.get("type") not in {"door", "window"}:
+        if component.get("type") not in {"door", "window", "bay_window"}:
             continue
         parent_wall = component.get("parentWall")
         if parent_wall:

@@ -88,3 +88,44 @@ def test_required_boolean_false_is_not_treated_as_missing() -> None:
 def test_structured_validation_result_is_supported() -> None:
     assert _validation_has_error({"has_error": True, "errors": ["bad"]}) is True
     assert _validation_has_error({"has_error": False, "errors": []}) is False
+
+
+def test_ground_level_balcony_is_relocated_to_upper_wall() -> None:
+    skeleton = _skeleton()
+    skeleton["geometry"]["elements"].extend([
+        {
+            "id": "wall_upper_front",
+            "type": "wall",
+            "from": [0, 3.2, 0],
+            "to": [8, 6.4, 0],
+            "thickness": 0.24,
+        },
+        {
+            "id": "wall_upper_back",
+            "type": "wall",
+            "from": [8, 3.2, 6],
+            "to": [0, 6.4, 6],
+            "thickness": 0.24,
+        },
+    ])
+    fragments = [{
+        "id": "balcony_ground",
+        "type": "balcony",
+        "parentWall": "wall_front",
+        "from": [3, 0, 0],
+        "width": 2.4,
+        "depth": 1.2,
+        "slabThickness": 0.18,
+    }]
+
+    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+        fragments,
+        "balcony",
+        skeleton,
+        False,
+    )
+
+    assert repair_applied is True
+    assert validation_passed is True
+    assert fixed[0]["parentWall"].startswith("wall_upper_")
+    assert fixed[0]["from"][1] == 3.2

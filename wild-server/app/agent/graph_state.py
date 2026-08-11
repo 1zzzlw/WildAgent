@@ -31,6 +31,7 @@ class GenerationState(TypedDict, total=False):
 
     # ── Layer -0.5: 建筑方案（生成分支）──
     architecture_plan: dict
+    complexity_profile: dict
     architecture_diag: dict
     material_plan: dict
     material_diag: dict

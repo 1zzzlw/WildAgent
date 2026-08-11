@@ -254,10 +254,11 @@ function buildDome(hw: number, hd: number, h: number, t: number): Float32Array {
 }
 
 function buildFlat(hw: number, hd: number, t: number): Float32Array {
-  // 当 thickness 有效时生成有厚度的实体盒子（上面+底面+四个侧面），否则退化为单面
+  // position.y 表示屋顶支承标高。实体必须从墙顶向上增厚；旧实现向下增厚并
+  // 把可见顶面留在墙顶标高，会与实体墙的顶面共面产生 Z-fighting。
   const thick = t > 0.01 ? t : 0;
-  const yTop = 0;
-  const yBot = -thick;
+  const yBot = 0;
+  const yTop = thick;
 
   if (thick <= 0) {
     // 无厚度：单面朝上（原行为）

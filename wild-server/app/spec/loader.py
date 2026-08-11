@@ -125,6 +125,30 @@ class SpecQuery:
     metadata_filter: dict[str, Any] | None = None
 
 
+def _retrieval_priority_score(
+    distance: float | None,
+    metadata: dict[str, Any],
+) -> float:
+    """在语义距离上施加有限的知识成熟度惩罚，不让实验片段轻易挤掉规范片段。"""
+    status_penalty = {
+        "supported": 0.0,
+        "experimental": 0.06,
+        "proposed": 0.12,
+        "deprecated": 0.18,
+    }.get(str(metadata.get("status") or "").lower(), 0.04)
+    authority_penalty = {
+        "schema": 0.0,
+        "engine": 0.0,
+        "verified": 0.005,
+        "maintainer": 0.01,
+        "domain": 0.025,
+        "imported": 0.04,
+        "inferred": 0.10,
+    }.get(str(metadata.get("authority") or "").lower(), 0.03)
+    semantic_distance = float(distance) if isinstance(distance, (int, float)) else 999.0
+    return semantic_distance + status_penalty + authority_penalty
+
+
 class HashEmbeddingFunction:
     """开发环境兜底 embedding。
 
@@ -341,7 +365,9 @@ class MarkdownChunker:
 
         chunks: list[SpecChunk] = []
         # mtime 仅供追踪来源状态，不参与分片 ID 或判重。
-        mtime = path.stat().st_mtime
+        # Chroma 会把浮点 metadata 归一化到约 6 位小数；预先对齐可避免每次启动
+        # 都把仅有亚微秒差异的 mtime 误判为 metadata 变化。
+        mtime = round(path.stat().st_mtime, 6)
         source_path = path.resolve().as_posix()
         # source_hash 区分不同文件；相同内容位于不同文件时仍会拥有不同 ID。
         source_hash = hashlib.sha256(f"{namespace}:{source_path}".encode("utf-8")).hexdigest()[:12]
@@ -911,7 +937,15 @@ class RAGSpecLoader(SpecLoader):
         # 去重键不包含文件路径，因此相同内容来自不同文件时只返回排名最高的一份。
         seen_hashes: set[str] = set()
 
-        for index, document in enumerate(documents):
+        ranked_indices = sorted(
+            range(len(documents)),
+            key=lambda index: _retrieval_priority_score(
+                distances[index] if index < len(distances) else None,
+                metadatas[index] if index < len(metadatas) and metadatas[index] else {},
+            ),
+        )
+        for index in ranked_indices:
+            document = documents[index]
             metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
             dedupe_hash = self._retrieval_hash(document or "", metadata)
@@ -923,7 +957,7 @@ class RAGSpecLoader(SpecLoader):
                 metadata=metadata,
                 distance=distances[index] if index < len(distances) else None,
             ))
-            # 去重后达到 top_k 就停止，保持 Chroma 原始相关度顺序。
+            # 去重后达到 top_k 就停止；顺序已综合语义距离和知识成熟度。
             if len(retrieved) >= self._top_k:
                 break
 
@@ -1006,7 +1040,15 @@ class RAGSpecLoader(SpecLoader):
                 ([], [], []),
             )
             selected = 0
-            for index, document in enumerate(documents or []):
+            ranked_indices = sorted(
+                range(len(documents or [])),
+                key=lambda index: _retrieval_priority_score(
+                    distances[index] if index < len(distances) else None,
+                    metadatas[index] if index < len(metadatas) and metadatas[index] else {},
+                ),
+            )
+            for index in ranked_indices:
+                document = documents[index]
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
                 dedupe_hash = self._retrieval_hash(document or "", metadata)
                 if dedupe_hash in seen_hashes:
@@ -1192,7 +1234,7 @@ class RAGSpecLoader(SpecLoader):
                 if chunk.metadata.get(key)
             )
             distance = chunk.distance
-            # 距离只作为诊断信息展示，不在 Loader 内再做阈值过滤或重排。
+            # 展示原始距离；实际排序还叠加了有限的 status/authority 成熟度惩罚。
             distance_text = f", distance={distance:.4f}" if isinstance(distance, float) else ""
             parts.append(
                 f"### 片段 {index}: {source} / {heading}{distance_text}\n\n"

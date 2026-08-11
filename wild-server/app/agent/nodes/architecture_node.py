@@ -7,7 +7,11 @@ import time as _time
 
 from loguru import logger
 
-from app.agent.architecture_plan import detect_architecture_profile, select_architecture_plan
+from app.agent.architecture_plan import (
+    detect_architecture_profile,
+    resolve_complexity_profile,
+    select_architecture_plan,
+)
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_architecture_plan_prompt
@@ -22,6 +26,11 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     started = _time.time()
     user_message = state["user_message"]
+    thinking_mode = state.get("thinking_mode", False)
+    complexity_profile = resolve_complexity_profile(
+        user_message,
+        precision_mode=thinking_mode,
+    )
     on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
         await on_reasoning_delta("architecture", "正在制定建筑体量、立面轴网和屋顶方案...\n")
@@ -32,6 +41,10 @@ async def architecture_planner(state: GenerationState) -> dict:
         spec_text = agent_service.spec_loader.load_many([
             SpecQuery(user_message, {"doc_type": "building_type"}),
             SpecQuery(user_message, {"doc_type": "recipe"}),
+            SpecQuery(
+                f"{user_message} 组合体量 退台 结构轴网 立面进深 细部构件",
+                {"doc_type": "pattern", "entity_type": "building"},
+            ),
         ], per_query=2)
     except Exception as exc:
         spec_text = ""
@@ -39,7 +52,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         logger.warning(f"[architecture] RAG 检索失败，继续使用内置 profile: {exc}")
     rag_ms = int((_time.time() - rag_started) * 1000)
     profile = detect_architecture_profile(user_message)
-    prompt = build_architecture_plan_prompt(spec_text, profile)
+    prompt = build_architecture_plan_prompt(spec_text, profile, complexity_profile)
     raw_plan = None
     llm_chars = 0
     llm_ms = 0
@@ -47,7 +60,10 @@ async def architecture_planner(state: GenerationState) -> dict:
     token_usage = None
     try:
         llm_started = _time.time()
-        response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
+        response = await create_llm(
+            enable_thinking=thinking_mode,
+            streaming=False,
+        ).ainvoke([
             {"role": "system", "content": prompt},
             {"role": "user", "content": user_message},
         ])
@@ -67,7 +83,11 @@ async def architecture_planner(state: GenerationState) -> dict:
         error = str(exc)
         logger.warning(f"[architecture] 方案模型调用失败，使用确定性回退: {exc}")
 
-    plan, selection_diag = select_architecture_plan(raw_plan, user_message)
+    plan, selection_diag = select_architecture_plan(
+        raw_plan,
+        user_message,
+        complexity_profile,
+    )
     if raw_plan is None:
         selection_diag["used_fallback"] = True
     if on_reasoning_delta:
@@ -81,6 +101,7 @@ async def architecture_planner(state: GenerationState) -> dict:
                 f"{candidate.get('concept') or '未命名方案'}；"
                 f"{candidate_massing.get('width', '?')}×{candidate_massing.get('depth', '?')}m，"
                 f"{candidate_massing.get('floors', '?')}层，"
+                f"{candidate.get('volume_count', '?')}个体量，"
                 f"主立面 {candidate.get('front_bays', '?')} 轴，"
                 f"{candidate_roof.get('type', '?')} 屋顶。"
             )
@@ -88,6 +109,9 @@ async def architecture_planner(state: GenerationState) -> dict:
         comparison_lines.extend([
             "",
             f"**选择结果：候选 {selection_diag['selected_index'] + 1}**",
+            f"- 复杂度目标：{complexity_profile['level']}；"
+            f"至少 {complexity_profile['min_volumes']} 个体量、"
+            f"{complexity_profile['min_detail_packages']} 个细部包。",
             *[f"- {item}" for item in rationale],
             "- 下一步由骨架节点落实结构，门窗坐标随后由程序按真实墙体和立面轴网计算。",
         ])
@@ -106,6 +130,7 @@ async def architecture_planner(state: GenerationState) -> dict:
     )
     return {
         "architecture_plan": plan,
+        "complexity_profile": complexity_profile,
         "architecture_diag": {
             **selection_diag,
             "rag_chars": len(spec_text),
@@ -116,6 +141,8 @@ async def architecture_planner(state: GenerationState) -> dict:
             "llm_ms": llm_ms,
             "token_usage": token_usage,
             "error": error,
+            "thinking_enabled": thinking_mode,
+            "complexity_profile": complexity_profile,
             "total_ms": total_ms,
         },
     }

@@ -1,0 +1,1001 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "现代别墅 L形退台"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "floor_1_base",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          18,
+          0,
+          8
+        ],
+        "thickness": 0.2,
+        "material": "floor_finish"
+      },
+      {
+        "type": "floor",
+        "id": "floor_1_side",
+        "from": [
+          12,
+          0,
+          8
+        ],
+        "to": [
+          18,
+          0,
+          12
+        ],
+        "thickness": 0.2,
+        "material": "floor_finish"
+      },
+      {
+        "type": "floor",
+        "id": "floor_2_upper",
+        "from": [
+          0,
+          3.2,
+          0
+        ],
+        "to": [
+          12,
+          3.2,
+          8
+        ],
+        "thickness": 0.2,
+        "material": "floor_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_front",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          18,
+          3.2,
+          0
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_back",
+        "from": [
+          0,
+          0,
+          8
+        ],
+        "to": [
+          12,
+          3.2,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_left",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          0,
+          3.2,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_right",
+        "from": [
+          18,
+          0,
+          0
+        ],
+        "to": [
+          18,
+          3.2,
+          12
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_inner",
+        "from": [
+          12,
+          0,
+          8
+        ],
+        "to": [
+          18,
+          3.2,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_base_side_back",
+        "from": [
+          12,
+          0,
+          12
+        ],
+        "to": [
+          18,
+          3.2,
+          12
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_upper_front",
+        "from": [
+          0,
+          3.2,
+          0
+        ],
+        "to": [
+          12,
+          6.4,
+          0
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_upper_back",
+        "from": [
+          0,
+          3.2,
+          8
+        ],
+        "to": [
+          12,
+          6.4,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_upper_left",
+        "from": [
+          0,
+          3.2,
+          0
+        ],
+        "to": [
+          0,
+          6.4,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_upper_right",
+        "from": [
+          12,
+          3.2,
+          0
+        ],
+        "to": [
+          12,
+          6.4,
+          8
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      },
+      {
+        "type": "column",
+        "id": "col_1_0_0",
+        "base": [
+          0,
+          0,
+          0
+        ],
+        "height": 6.4,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_6_0",
+        "base": [
+          6,
+          0,
+          0
+        ],
+        "height": 6.4,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_12_0",
+        "base": [
+          12,
+          0,
+          0
+        ],
+        "height": 6.4,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_18_0",
+        "base": [
+          18,
+          0,
+          0
+        ],
+        "height": 3.2,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_0_8",
+        "base": [
+          0,
+          0,
+          8
+        ],
+        "height": 6.4,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_6_8",
+        "base": [
+          6,
+          0,
+          8
+        ],
+        "height": 6.4,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_12_8",
+        "base": [
+          12,
+          0,
+          8
+        ],
+        "height": 3.2,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_18_8",
+        "base": [
+          18,
+          0,
+          8
+        ],
+        "height": 3.2,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_18_12",
+        "base": [
+          18,
+          0,
+          12
+        ],
+        "height": 3.2,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "column",
+        "id": "col_1_12_12",
+        "base": [
+          12,
+          0,
+          12
+        ],
+        "height": 3.2,
+        "bottomRadius": 0.15,
+        "topRadius": 0.15,
+        "style": "modern",
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_1_front",
+        "from": [
+          0,
+          3.2,
+          0
+        ],
+        "to": [
+          18,
+          3.2,
+          0
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_1_back",
+        "from": [
+          0,
+          3.2,
+          8
+        ],
+        "to": [
+          12,
+          3.2,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_1_side_back",
+        "from": [
+          12,
+          3.2,
+          12
+        ],
+        "to": [
+          18,
+          3.2,
+          12
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_1_inner",
+        "from": [
+          12,
+          3.2,
+          8
+        ],
+        "to": [
+          18,
+          3.2,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_2_front",
+        "from": [
+          0,
+          6.4,
+          0
+        ],
+        "to": [
+          12,
+          6.4,
+          0
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_2_back",
+        "from": [
+          0,
+          6.4,
+          8
+        ],
+        "to": [
+          12,
+          6.4,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "beam",
+        "id": "beam_2_right",
+        "from": [
+          12,
+          6.4,
+          0
+        ],
+        "to": [
+          12,
+          6.4,
+          8
+        ],
+        "crossSection": "rect",
+        "width": 0.2,
+        "height": 0.3,
+        "material": "concrete"
+      },
+      {
+        "type": "stair",
+        "id": "stair_main",
+        "from": [
+          9,
+          0,
+          4
+        ],
+        "to": [
+          9,
+          3.2,
+          6
+        ],
+        "width": 1.2,
+        "material": "floor_finish"
+      },
+      {
+        "type": "roof",
+        "id": "roof_01",
+        "roofType": "flat",
+        "span": 13.2,
+        "depth": 9.2,
+        "height": 0.3,
+        "thickness": 0.3,
+        "material": "roof",
+        "position": [
+          6.0,
+          6.4,
+          4.0
+        ]
+      },
+      {
+        "type": "wall",
+        "id": "wall_repair_1",
+        "from": [
+          12.0,
+          0.0,
+          12.0
+        ],
+        "to": [
+          12.0,
+          3.2,
+          8.0
+        ],
+        "thickness": 0.3,
+        "material": "wall_finish"
+      }
+    ],
+    "components": [
+      {
+        "type": "canopy",
+        "id": "canopy_entry",
+        "parentWall": "wall_base_front",
+        "from": [
+          8.4,
+          2.6,
+          0
+        ],
+        "width": 2.4,
+        "depth": 1.4,
+        "thickness": 0.12,
+        "supportCount": 2,
+        "supportSize": 0.06,
+        "material": "metal"
+      },
+      {
+        "type": "balcony",
+        "id": "balcony_01",
+        "parentWall": "wall_upper_front",
+        "from": [
+          4.0,
+          3.2,
+          0
+        ],
+        "width": 3.0,
+        "depth": 1.2,
+        "slabThickness": 0.18,
+        "railingHeight": 1.1,
+        "postSpacing": 0.9,
+        "material": "concrete"
+      },
+      {
+        "type": "balcony",
+        "id": "balcony_02",
+        "parentWall": "wall_upper_back",
+        "from": [
+          8.7,
+          3.2,
+          0.0
+        ],
+        "width": 3.0,
+        "depth": 1.2,
+        "slabThickness": 0.18,
+        "railingHeight": 1.1,
+        "postSpacing": 0.9,
+        "material": "concrete"
+      },
+      {
+        "type": "bay_window",
+        "id": "bay_window_01",
+        "parentWall": "wall_base_front",
+        "from": [
+          4.5,
+          0.9,
+          0
+        ],
+        "width": 1.8,
+        "height": 1.5,
+        "projectionDepth": 0.5,
+        "frameWidth": 0.06,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "bay_window",
+        "id": "bay_window_02",
+        "parentWall": "wall_upper_front",
+        "from": [
+          4.5,
+          4.1,
+          0
+        ],
+        "width": 1.8,
+        "height": 1.5,
+        "projectionDepth": 0.5,
+        "frameWidth": 0.06,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "door_01",
+        "parentWall": "wall_base_front",
+        "from": [
+          2.375,
+          0.0,
+          0.0
+        ],
+        "width": 1.25,
+        "height": 2.35,
+        "frameMaterial": "wood",
+        "leafMaterial": "wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_01",
+        "parentWall": "wall_upper_front",
+        "from": [
+          0.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_02",
+        "parentWall": "wall_base_front",
+        "from": [
+          7.9,
+          0.96,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_03",
+        "parentWall": "wall_base_front",
+        "from": [
+          13.9,
+          0.96,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_04",
+        "parentWall": "wall_upper_front",
+        "from": [
+          8.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_05",
+        "parentWall": "wall_base_side_back",
+        "from": [
+          0.38,
+          0.96,
+          0.0
+        ],
+        "width": 1.24,
+        "height": 1.55,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_06",
+        "parentWall": "wall_upper_back",
+        "from": [
+          0.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_07",
+        "parentWall": "wall_base_side_back",
+        "from": [
+          4.38,
+          0.96,
+          0.0
+        ],
+        "width": 1.24,
+        "height": 1.55,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_08",
+        "parentWall": "wall_upper_back",
+        "from": [
+          8.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_09",
+        "parentWall": "wall_base_left",
+        "from": [
+          0.9,
+          0.96,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_10",
+        "parentWall": "wall_upper_left",
+        "from": [
+          4.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_11",
+        "parentWall": "wall_upper_right",
+        "from": [
+          0.9,
+          4.16,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_12",
+        "parentWall": "wall_base_right",
+        "from": [
+          7.9,
+          0.96,
+          0.0
+        ],
+        "width": 2.2,
+        "height": 1.55,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 60
+        }
+      }
+    ]
+  },
+  "materials": {
+    "wall_finish": {
+      "baseColor": [
+        0.82,
+        0.8,
+        0.76
+      ],
+      "roughness": 0.72,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete": {
+      "baseColor": [
+        0.65,
+        0.66,
+        0.67
+      ],
+      "roughness": 0.76,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "floor_finish": {
+      "baseColor": [
+        0.5,
+        0.5,
+        0.5
+      ],
+      "roughness": 0.8,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "metal": {
+      "baseColor": [
+        0.12,
+        0.13,
+        0.14
+      ],
+      "roughness": 0.3,
+      "metallic": 0.8,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "wood": {
+      "baseColor": [
+        0.35,
+        0.2,
+        0.1
+      ],
+      "roughness": 0.62,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.72,
+        0.88,
+        0.96
+      ],
+      "roughness": 0.08,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "side": "double",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012,
+      "attenuationColor": [
+        0.82,
+        0.94,
+        1.0
+      ],
+      "attenuationDistance": 6.0,
+      "clearcoat": 0.08,
+      "clearcoatRoughness": 0.12
+    },
+    "roof": {
+      "baseColor": [
+        0.25,
+        0.26,
+        0.28
+      ],
+      "roughness": 0.76,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "ground": {
+      "baseColor": [
+        0.34,
+        0.38,
+        0.33
+      ],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "accent": {
+      "baseColor": [
+        0.42,
+        0.2,
+        0.09
+      ],
+      "roughness": 0.5,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {},
+  "assets": {}
+}

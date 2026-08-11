@@ -1,8 +1,10 @@
 from app.agent.architecture_plan import (
     build_deterministic_skeleton,
     conform_openings_to_slots,
+    evaluate_skeleton_complexity,
     normalize_architecture_plan,
     resolve_facade_layout,
+    resolve_complexity_profile,
     select_architecture_plan,
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
@@ -65,6 +67,34 @@ def test_merge_conformance_snaps_and_fills_minimum_openings() -> None:
     assert door["from"][2] == 0
     assert len(windows) == brief["component_quota"]["window"]["min"]
     assert stats["synthesized"] == len(windows)
+
+
+def test_bay_window_claims_a_window_slot_without_duplicate_plain_window() -> None:
+    blueprint = _two_storey_blueprint()
+    plan, _ = select_architecture_plan({}, "生成带凸窗的两层欧式别墅")
+    brief = resolve_facade_layout(blueprint, plan)
+    target_slot = next(slot for slot in brief["opening_slots"] if slot["type"] == "window")
+
+    components, _ = conform_openings_to_slots([{
+        "id": "bay",
+        "type": "bay_window",
+        "parentWall": target_slot["wall_id"],
+        "from": target_slot["from"],
+        "width": target_slot["width"],
+        "height": target_slot["height"],
+        "projectionDepth": 0.8,
+    }], brief, blueprint["materials"])
+
+    bay = next(item for item in components if item["type"] == "bay_window")
+    windows = [item for item in components if item["type"] == "window"]
+    assert bay["parentWall"] == target_slot["wall_id"]
+    assert bay["from"] == target_slot["from"]
+    assert len(windows) + 1 == brief["component_quota"]["window"]["min"]
+    assert not any(
+        window["parentWall"] == bay["parentWall"]
+        and window["from"] == bay["from"]
+        for window in windows
+    )
 
 
 def test_high_rise_keeps_semantic_floor_count_and_uses_schematic_geometry() -> None:
@@ -134,3 +164,103 @@ def test_underground_transport_does_not_force_entrance_or_roof() -> None:
     assert plan["required_components"] == ["light"]
     assert plan["component_quota"]["roof"]["max"] == 0
     assert plan["component_quota"]["door"]["min"] == 0
+
+
+def test_precision_mode_compiles_detailed_plan_into_articulated_skeleton() -> None:
+    message = "生成一座现代两层别墅，立面丰富、有层次感"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+
+    assert complexity["level"] == "detailed"
+    assert plan["massing"]["shape"] == "stepped"
+    assert len(plan["volumes"]) >= 2
+    assert len(plan["detail_packages"]) >= 3
+    assert {"balcony", "canopy", "bay_window"}.issubset(plan["required_components"])
+
+    blueprint = build_deterministic_skeleton(plan, message)
+    assert validate_blueprint_schema(blueprint) == []
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+    assert evaluation["meets_target"] is True
+    assert evaluation["volume_footprint_count"] >= 2
+    assert evaluation["element_type_counts"]["column"] >= 4
+    assert evaluation["element_type_counts"]["beam"] >= 2
+
+    transition_floors = [
+        element for element in blueprint["geometry"]["elements"]
+        if element["type"] == "floor" and element["from"][1] == 3.2
+    ]
+    assert len(transition_floors) == 1
+    assert transition_floors[0]["from"] == [0.0, 3.2, 0.0]
+    assert transition_floors[0]["to"] == [12.0, 3.2, 9.0]
+
+    brief = resolve_facade_layout(blueprint, plan)
+    assert brief["facade_plan"]["wall_front_2_upper_setback"]["max_openings"] > 0
+
+
+def test_detailed_plan_rejects_plain_low_complexity_shell() -> None:
+    message = "生成一座复杂的现代两层别墅"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+
+    evaluation = evaluate_skeleton_complexity(_two_storey_blueprint(), plan)
+
+    assert evaluation["meets_target"] is False
+    assert evaluation["checks"]["structural_element_target"] is False
+    assert evaluation["checks"]["volume_footprint_target"] is False
+
+
+def test_detailed_plan_rejects_floor_outside_volume_floor_range() -> None:
+    message = "生成一座复杂的现代两层别墅"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+    blueprint = build_deterministic_skeleton(plan, message)
+    blueprint["geometry"]["elements"].append({
+        "id": "floor_outside_supported_transition",
+        "type": "floor",
+        "from": [-1, 3.2, -1],
+        "to": [13, 3.2, 10],
+        "thickness": 0.2,
+        "material": "concrete",
+    })
+
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+
+    assert evaluation["meets_target"] is False
+    assert evaluation["checks"]["volume_plan_conformance"] is False
+
+
+def test_standard_plan_rejects_missing_interstorey_cap_floor() -> None:
+    message = "生成一座普通两层现代住宅"
+    plan = normalize_architecture_plan({}, message)
+    blueprint = build_deterministic_skeleton(plan, message)
+    blueprint["geometry"]["elements"] = [
+        element for element in blueprint["geometry"]["elements"]
+        if not (element["type"] == "floor" and element["from"][1] == 3.2)
+    ]
+
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+
+    assert evaluation["meets_target"] is False
+    assert evaluation["checks"]["volume_plan_conformance"] is False
+
+
+def test_single_storey_detailed_wings_remain_distinct_volume_footprints() -> None:
+    message = "生成一座复杂的单层错落别墅"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+    blueprint = build_deterministic_skeleton(plan, message)
+
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+
+    assert evaluation["meets_target"] is True
+    assert evaluation["volume_footprint_count"] >= 2
+
+
+def test_explicit_simple_request_overrides_precision_default() -> None:
+    message = "生成一个简单方盒子住宅，不要复杂装饰"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+
+    assert complexity["level"] == "simple"
+    assert len(plan["volumes"]) == 1
+    assert plan["detail_packages"] == []

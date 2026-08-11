@@ -95,7 +95,16 @@ function inferRoofOrigin(context: ComponentCompileContext): Vec3 {
   const structuralWalls = walls.filter(
     wall => Math.abs(wall.to[1] - wall.from[1]) >= maximumHeight * 0.5,
   )
-  const effectiveWalls = structuralWalls.length >= 3 ? structuralWalls : walls
+  const structuralCandidates = structuralWalls.length >= 3 ? structuralWalls : walls
+  const highestWallTop = Math.max(
+    ...structuralCandidates.map(wall => Math.max(wall.from[1], wall.to[1])),
+  )
+  const topSupportWalls = structuralCandidates.filter(
+    wall => Math.abs(Math.max(wall.from[1], wall.to[1]) - highestWallTop) <= 0.05,
+  )
+  const effectiveWalls = topSupportWalls.length >= 3
+    ? topSupportWalls
+    : structuralCandidates
   const xs = effectiveWalls.flatMap(wall => [wall.from[0], wall.to[0]])
   const zs = effectiveWalls.flatMap(wall => [wall.from[2], wall.to[2]])
   const topY = Math.max(...effectiveWalls.flatMap(wall => [wall.from[1], wall.to[1]]))

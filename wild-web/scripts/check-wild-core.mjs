@@ -47,6 +47,7 @@ try {
   await assertPrimitiveBoxDimensionCompatibility(core);
   await assertProfileSweepValidation(core);
   await assertSlopedBeamDirection(core);
+  await assertSteppedFlatRoofBoundary(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
     .filter(name => name.endsWith('.wild'))
@@ -92,6 +93,71 @@ try {
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertSteppedFlatRoofBoundary(core) {
+  const walls = [
+    { type: 'wall', id: 'base_front', from: [0, 0, 0], to: [18, 3.2, 0], thickness: 0.24 },
+    { type: 'wall', id: 'base_right', from: [18, 0, 0], to: [18, 3.2, 12], thickness: 0.24 },
+    { type: 'wall', id: 'base_back', from: [18, 0, 12], to: [0, 3.2, 12], thickness: 0.24 },
+    { type: 'wall', id: 'base_left', from: [0, 0, 12], to: [0, 3.2, 0], thickness: 0.24 },
+    { type: 'wall', id: 'upper_front', from: [3, 3.2, 0.8], to: [15, 6.4, 0.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_right', from: [15, 3.2, 0.8], to: [15, 6.4, 10.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_back', from: [15, 3.2, 10.8], to: [3, 6.4, 10.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_left', from: [3, 3.2, 10.8], to: [3, 6.4, 0.8], thickness: 0.24 },
+  ];
+  const reconstruct = roof => core.reconstructEntity({
+    meta: { version: '1.1', type: 'building', name: 'stepped-flat-roof-check' },
+    geometry: { elements: [...walls, roof] },
+    materials: {}, behaviors: {},
+  });
+
+  const explicit = await reconstruct({
+    type: 'roof', id: 'roof_explicit', roofType: 'flat',
+    span: 13.2, depth: 11.2, height: 0.3, thickness: 0.3,
+    position: [9, 6.4, 5.8],
+  });
+  assertRoofMesh(explicit, 'roof_explicit', {
+    localMin: [-6.6, 0, -5.6], localMax: [6.6, 0.3, 5.6],
+    position: [9, 6.4, 5.8],
+  });
+
+  const inferred = await reconstruct({
+    type: 'roof', id: 'roof_inferred', roofType: 'flat',
+    span: 1, depth: 1, height: 0.3, thickness: 0.3,
+  });
+  assertRoofMesh(inferred, 'roof_inferred', {
+    localMin: [-6.5, 0, -5.5], localMax: [6.5, 0.3, 5.5],
+    position: [9, 6.4, 5.8],
+  });
+}
+
+function assertRoofMesh(entity, elementId, expected) {
+  const mesh = entity.meshes.find(item => item.elementId === elementId);
+  if (!mesh) throw new Error(`${elementId} 没有生成屋顶 mesh`);
+  const bounds = localBounds(mesh.geometry);
+  for (const [label, actual, wanted] of [
+    ['localMin', bounds.min, expected.localMin],
+    ['localMax', bounds.max, expected.localMax],
+    ['position', mesh.transform.position, expected.position],
+  ]) {
+    const error = Math.max(...actual.map((value, index) => Math.abs(value - wanted[index])));
+    if (error > 1e-5) {
+      throw new Error(`${elementId} ${label} 错误: ${JSON.stringify({ actual, wanted })}`);
+    }
+  }
+}
+
+function localBounds(geometry) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let index = 0; index < geometry.length; index += 3) {
+    for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], geometry[index + axis]);
+      max[axis] = Math.max(max[axis], geometry[index + axis]);
+    }
+  }
+  return { min, max };
 }
 
 async function assertProfileSweepValidation(core) {

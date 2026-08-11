@@ -30,6 +30,10 @@ from langchain.tools import tool
 # 误写进了局部法向偏移 from[2]。
 MAX_OPENING_NORMAL_OFFSET = 0.25
 
+# 这三类组件都会在父墙上切出真实洞口。校验和修复必须把它们作为同一类
+# 空间对象处理，否则凸窗节点可与门窗节点各自“校验通过”，合并后却重复切洞。
+WALL_OPENING_COMPONENT_TYPES = {"door", "window", "bay_window"}
+
 
 # 辅助函数 —— 不对外暴露，只在本模块内复用
 def _get_elements(bp: dict) -> list[dict]:
@@ -80,6 +84,125 @@ def _get_by_id(bp: dict, eid: str) -> dict | None:
         if el.get("id") == eid:
             return el
     return None
+
+
+def _component_opening_box(component: dict) -> tuple[str, float, float, float, float] | None:
+    """返回墙附着组件在父墙局部平面中的二维包围盒。"""
+    from_vec = component.get("from")
+    if not isinstance(from_vec, (list, tuple)) or len(from_vec) < 2:
+        return None
+    try:
+        wall_id = str(component.get("parentWall", ""))
+        along = float(from_vec[0])
+        base_y = float(from_vec[1])
+        width = float(component.get("width", 0))
+        height = float(component.get("height", 0))
+    except (TypeError, ValueError):
+        return None
+    if not wall_id or width <= 0 or height <= 0:
+        return None
+    return wall_id, along, base_y, width, height
+
+
+def _wall_openings_overlap(first: dict, second: dict, tolerance: float = 0.05) -> bool:
+    """判断两个组件是否在同一父墙的局部二维平面内实际重叠。"""
+    first_box = _component_opening_box(first)
+    second_box = _component_opening_box(second)
+    if first_box is None or second_box is None or first_box[0] != second_box[0]:
+        return False
+    _, first_x, first_y, first_w, first_h = first_box
+    _, second_x, second_y, second_w, second_h = second_box
+    horizontal = min(first_x + first_w, second_x + second_w) - max(first_x, second_x)
+    vertical = min(first_y + first_h, second_y + second_h) - max(first_y, second_y)
+    return horizontal > tolerance and vertical > tolerance
+
+
+def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
+    """按“门 > 凸窗 > 普通窗”的优先级消除墙洞重叠。
+
+    凸窗与门重叠时，优先占用一个安全的普通窗位置；找不到位置才删除凸窗。
+    凸窗占位后会替换同位置的普通窗，避免同一处被两套编译器重复切洞。
+    """
+    geometry = blueprint.get("geometry", {})
+    components = geometry.get("components", [])
+    if not isinstance(components, list):
+        return {
+            "relocated_bay_windows": [],
+            "replaced_windows": [],
+            "pruned_bay_windows": [],
+        }
+
+    doors = [item for item in components if item.get("type") == "door"]
+    windows = [item for item in components if item.get("type") == "window"]
+    bay_windows = [item for item in components if item.get("type") == "bay_window"]
+    removed_ids: set[int] = set()
+    kept_bays: list[dict] = []
+    relocated: list[str] = []
+    replaced: list[str] = []
+    pruned: list[str] = []
+
+    def available_window_candidates(bay: dict) -> list[dict]:
+        candidates = [
+            window for window in windows
+            if id(window) not in removed_ids
+            and _component_opening_box(window) is not None
+            and not any(_wall_openings_overlap(window, door) for door in doors)
+            and not any(_wall_openings_overlap(window, kept) for kept in kept_bays)
+        ]
+        bay_box = _component_opening_box(bay)
+        bay_wall = bay_box[0] if bay_box else ""
+        bay_center = bay_box[1] + bay_box[3] / 2 if bay_box else 0.0
+        bay_y = bay_box[2] if bay_box else 0.0
+
+        def rank(window: dict) -> tuple[int, float, float, str]:
+            box = _component_opening_box(window)
+            assert box is not None
+            wall_id, along, base_y, width, _ = box
+            return (
+                0 if wall_id == bay_wall else 1,
+                abs(base_y - bay_y),
+                abs(along + width / 2 - bay_center),
+                str(window.get("id", "")),
+            )
+
+        return sorted(candidates, key=rank)
+
+    for bay in bay_windows:
+        conflicts_with_priority = any(
+            _wall_openings_overlap(bay, other)
+            for other in [*doors, *kept_bays]
+        )
+        if conflicts_with_priority:
+            candidates = available_window_candidates(bay)
+            if not candidates:
+                removed_ids.add(id(bay))
+                pruned.append(str(bay.get("id", "?")))
+                continue
+            target = candidates[0]
+            bay["parentWall"] = target.get("parentWall")
+            bay["from"] = list(target.get("from", [0, 0, 0]))
+            bay["width"] = target.get("width")
+            bay["height"] = target.get("height")
+            removed_ids.add(id(target))
+            relocated.append(str(bay.get("id", "?")))
+            replaced.append(str(target.get("id", "?")))
+
+        for window in windows:
+            if id(window) in removed_ids:
+                continue
+            if _wall_openings_overlap(bay, window):
+                removed_ids.add(id(window))
+                replaced.append(str(window.get("id", "?")))
+        kept_bays.append(bay)
+
+    if removed_ids:
+        geometry["components"] = [item for item in components if id(item) not in removed_ids]
+
+    return {
+        "relocated_bay_windows": relocated,
+        "replaced_windows": list(dict.fromkeys(replaced)),
+        "pruned_bay_windows": pruned,
+    }
 
 def _wall_length(wall: dict) -> float:
     """计算墙体在 XZ 平面上的长度（沿墙距离）"""
@@ -322,6 +445,28 @@ def validate_opening_coords(blueprint: dict) -> str:
     return "\n".join(issues)
 
 
+def _plan_point_on_wall_segment(
+    x: float,
+    z: float,
+    wall: dict,
+    tolerance: float = 0.15,
+) -> bool:
+    """判断 XZ 点是否落在另一面墙的线段上，用于识别合法 T 形连接。"""
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    dx = float(end[0]) - float(start[0])
+    dz = float(end[2]) - float(start[2])
+    length_sq = dx * dx + dz * dz
+    if length_sq <= 1e-9:
+        return False
+    projection = ((x - float(start[0])) * dx + (z - float(start[2])) * dz) / length_sq
+    if projection < -0.01 or projection > 1.01:
+        return False
+    nearest_x = float(start[0]) + projection * dx
+    nearest_z = float(start[2]) + projection * dz
+    return math.hypot(x - nearest_x, z - nearest_z) < tolerance
+
+
 @tool
 def validate_wall_junctions(blueprint: dict) -> str:
     """
@@ -341,19 +486,21 @@ def validate_wall_junctions(blueprint: dict) -> str:
     if len(walls) < 2:
         return "✅ 少于 2 面墙，跳过连接检查。"
 
-    # 收集所有端点：(wall_id, which, x, z)
+    # 收集所有端点；除共享端点外，端点落在另一墙线段上的 T 形连接也合法。
     endpoints: list[dict] = []
     for w in walls:
         f = w.get("from", [0, 0, 0])
         t = w.get("to", [0, 0, 0])
         endpoints.append({
             "wall_id": w.get("id", "?"),
+            "wall": w,
             "which": "from",
             "x": float(f[0]),
             "z": float(f[2]),
         })
         endpoints.append({
             "wall_id": w.get("id", "?"),
+            "wall": w,
             "which": "to",
             "x": float(t[0]),
             "z": float(t[2]),
@@ -363,11 +510,16 @@ def validate_wall_junctions(blueprint: dict) -> str:
     isolated: list[str] = []
     for ep in endpoints:
         has_neighbor = False
-        for other in endpoints:
-            if other["wall_id"] == ep["wall_id"]:
+        source_wall = ep["wall"]
+        source_bottom, source_top = _wall_vertical_range(source_wall)
+        for other_wall in walls:
+            if other_wall is source_wall:
                 continue
-            dist = math.sqrt((ep["x"] - other["x"])**2 + (ep["z"] - other["z"])**2)
-            if dist < TOLERANCE:
+            other_bottom, other_top = _wall_vertical_range(other_wall)
+            same_level = min(source_top, other_top) - max(source_bottom, other_bottom) > 0.15
+            if same_level and _plan_point_on_wall_segment(
+                ep["x"], ep["z"], other_wall, TOLERANCE,
+            ):
                 has_neighbor = True
                 break
         if not has_neighbor:
@@ -382,6 +534,46 @@ def validate_wall_junctions(blueprint: dict) -> str:
         + "\n".join(isolated)
         + "\n\n建议：确保相邻墙体端点坐标精确一致。"
     )
+
+
+def get_roof_support_bounds(
+    walls: list[dict],
+    roof: dict | None = None,
+) -> dict[str, float]:
+    """返回屋顶所在标高实际承托墙体的 XZ 包围盒，而不是整栋建筑首层外包框。"""
+    if not walls:
+        return {
+            "min_x": 0.0, "max_x": 0.0, "min_z": 0.0, "max_z": 0.0,
+            "span": 0.0, "depth": 0.0, "center_x": 0.0, "center_z": 0.0,
+            "support_y": 0.0,
+        }
+    wall_tops = [(_wall_vertical_range(wall)[1], wall) for wall in walls]
+    position = (roof or {}).get("position")
+    roof_y = (
+        float(position[1])
+        if isinstance(position, list) and len(position) >= 3
+        and isinstance(position[1], (int, float))
+        else max(top for top, _ in wall_tops)
+    )
+    support_y = min((top for top, _ in wall_tops), key=lambda top: abs(top - roof_y))
+    support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    all_x: list[float] = []
+    all_z: list[float] = []
+    for wall in support_walls:
+        start = wall.get("from", [0, 0, 0])
+        end = wall.get("to", [0, 0, 0])
+        all_x.extend([float(start[0]), float(end[0])])
+        all_z.extend([float(start[2]), float(end[2])])
+    min_x, max_x = min(all_x), max(all_x)
+    min_z, max_z = min(all_z), max(all_z)
+    return {
+        "min_x": min_x, "max_x": max_x,
+        "min_z": min_z, "max_z": max_z,
+        "span": max_x - min_x, "depth": max_z - min_z,
+        "center_x": (min_x + max_x) / 2,
+        "center_z": (min_z + max_z) / 2,
+        "support_y": support_y,
+    }
 
 
 @tool
@@ -405,23 +597,16 @@ def validate_roof_coverage(blueprint: dict) -> str:
     if not walls:
         return "⚠️  有屋顶但没有墙体，无法判断覆盖范围。请确认设计意图。"
 
-    # 计算所有墙体的 XZ 包围盒
-    all_x: list[float] = []
-    all_z: list[float] = []
-    for w in walls:
-        f = w.get("from", [0, 0, 0])
-        t = w.get("to", [0, 0, 0])
-        all_x.extend([f[0], t[0]])
-        all_z.extend([f[2], t[2]])
-
-    wall_span = max(all_x) - min(all_x)  # X 方向跨度
-    wall_depth = max(all_z) - min(all_z)  # Z 方向跨度
-
     issues: list[str] = []
+    last_bounds: dict[str, float] | None = None
     for r in roofs:
         rid = r.get("id", "?")
         span = r.get("span", 0)
         depth = r.get("depth", 0)
+        bounds = get_roof_support_bounds(walls, r)
+        last_bounds = bounds
+        wall_span = bounds["span"]
+        wall_depth = bounds["depth"]
 
         # 合理范围：墙体范围 + 0~2m 出檐空间
         if span < wall_span * 0.5:
@@ -457,9 +642,10 @@ def validate_roof_coverage(blueprint: dict) -> str:
             )
 
     if not issues:
+        bounds = last_bounds or get_roof_support_bounds(walls)
         return (
             f"✅ 屋顶尺寸合理。"
-            f"（墙体宽度={wall_span:.1f}, 进深={wall_depth:.1f}）"
+            f"（承托墙宽度={bounds['span']:.1f}, 进深={bounds['depth']:.1f}）"
         )
     return "\n".join(issues)
 
@@ -1133,7 +1319,7 @@ def validate_collision(blueprint: dict) -> str:
     检查项：
       1. 同类型构件之间不应有实质性重叠（如两根柱子、两段楼梯）
       2. opening 不应与其他 opening 重叠（同一面墙上）
-      3. column / furniture / stair 不应穿插进 wall 内部（允许贴靠）
+      3. furniture / stair 不应穿插进 wall 内部（结构柱嵌入墙体属于合法节点）
       4. column / stair / furniture 底部 Y 不应悬空
          （base[1] 或 from[1] 应 >= 最近楼板顶面，容差 0.3m）
 
@@ -1154,7 +1340,7 @@ def validate_collision(blueprint: dict) -> str:
         by_type.setdefault(t, []).append(el)
 
     # --- 1. 同类型非 wall 构件之间重叠检测 ---
-    CHECK_SELF_COLLISION = ("column", "stair", "furniture", "beam", "floor")
+    CHECK_SELF_COLLISION = ("column", "stair", "furniture", "floor")
     for t in CHECK_SELF_COLLISION:
         group = by_type.get(t, [])
         for i in range(len(group)):
@@ -1167,6 +1353,31 @@ def validate_collision(blueprint: dict) -> str:
                         f"⚠️  [{a.get('id','?')}] 与 [{b.get('id','?')}]"
                         f"（均为 {t}）存在重叠/穿插，请检查坐标"
                     )
+
+    # 梁的端部相接、T 形连接和十字相交都是合法结构节点；只报告同轴的实质重叠。
+    beams = by_type.get("beam", [])
+    for index, beam_a in enumerate(beams):
+        for beam_b in beams[index + 1:]:
+            start_a, end_a = beam_a.get("from", []), beam_a.get("to", [])
+            start_b, end_b = beam_b.get("from", []), beam_b.get("to", [])
+            if any(len(point) < 3 for point in (start_a, end_a, start_b, end_b)):
+                continue
+            axis_a = "x" if abs(end_a[0] - start_a[0]) >= abs(end_a[2] - start_a[2]) else "z"
+            axis_b = "x" if abs(end_b[0] - start_b[0]) >= abs(end_b[2] - start_b[2]) else "z"
+            if axis_a != axis_b or abs(float(start_a[1]) - float(start_b[1])) > 0.15:
+                continue
+            cross_a = float(start_a[2] if axis_a == "x" else start_a[0])
+            cross_b = float(start_b[2] if axis_b == "x" else start_b[0])
+            if abs(cross_a - cross_b) > 0.15:
+                continue
+            interval_a = sorted((float(start_a[0 if axis_a == "x" else 2]), float(end_a[0 if axis_a == "x" else 2])))
+            interval_b = sorted((float(start_b[0 if axis_b == "x" else 2]), float(end_b[0 if axis_b == "x" else 2])))
+            overlap = min(interval_a[1], interval_b[1]) - max(interval_a[0], interval_b[0])
+            if overlap > 0.15:
+                issues.append(
+                    f"⚠️  [{beam_a.get('id','?')}] 与 [{beam_b.get('id','?')}]"
+                    f"（均为 beam）同轴重叠 {overlap:.2f}m，请检查是否重复生成"
+                )
 
     # --- 2. 同一面墙上的 opening 重叠检测 ---
     openings = by_type.get("opening", [])
@@ -1208,10 +1419,10 @@ def validate_collision(blueprint: dict) -> str:
                         f"沿墙区间 [{a_along_min:.2f},{a_along_max:.2f}] ∩ [{b_along_min:.2f},{b_along_max:.2f}]"
                     )
 
-    # --- 3. column / stair / furniture 不应穿插入 wall 内部 ---
+    # --- 3. stair / furniture 不应穿插入 wall 内部 ---
     # 允许贴靠（margin 收紧到 0.15m，避免合理贴墙被误报）
     walls = by_type.get("wall", [])
-    INTRUDE_TYPES = ("column", "stair", "furniture")
+    INTRUDE_TYPES = ("stair", "furniture")
     for t in INTRUDE_TYPES:
         for el in by_type.get(t, []):
             el_bb = _aabb(el)
@@ -1261,7 +1472,7 @@ def validate_collision(blueprint: dict) -> str:
                 )
 
     if not issues:
-        checked = sum(len(by_type.get(t, [])) for t in (*CHECK_SELF_COLLISION, "opening"))
+        checked = sum(len(by_type.get(t, [])) for t in (*CHECK_SELF_COLLISION, "beam", "opening"))
         return f"✅ 碰撞检测通过，共检查 {checked} 个构件，未发现空间冲突。"
     return f"发现 {len(issues)} 处空间冲突：\n" + "\n".join(issues)
 
@@ -1287,7 +1498,10 @@ def validate_opening_fit(blueprint: dict) -> str:
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
     components = blueprint.get("geometry", {}).get("components", [])
-    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
+    door_windows = [
+        c for c in components
+        if c.get("type") in WALL_OPENING_COMPONENT_TYPES
+    ]
 
     if not openings and not door_windows:
         return "✅ 没有 opening/门窗组件，跳过检查。"
@@ -1339,7 +1553,7 @@ def validate_opening_fit(blueprint: dict) -> str:
         if height <= 0:
             issues.append(f"❌ [{oid}] height={height} 无效，必须 > 0")
 
-    # ── 同样检查 door/window 组合构件 ──
+    # ── 同样检查 door/window/bay_window 组合构件 ──
     for comp in door_windows:
         cid = comp.get("id", "?")
         parent_id = comp.get("parentWall", "")
@@ -1661,12 +1875,11 @@ def get_wall_bounding_box(blueprint: dict) -> str:
 @tool
 def fix_roof_coverage(blueprint: dict) -> str:
     """
-    自动修正屋顶的 span/depth/position，使其合理覆盖墙体包围盒。
+    自动修正屋顶的 span/depth/position，使其合理覆盖屋顶标高处的承托墙体。
 
     修正逻辑：
-      1. 计算所有 wall 的 XZ 包围盒（minX/maxX/minZ/maxZ）
-      2. span  = wall X 跨度 + 出檐（默认 1.0m 每侧）
-      3. depth = wall Z 跨度 + 出檐（默认 1.0m 每侧）
+      1. 按 roof.position.y 选择同标高的承托墙体
+      2. span/depth = 承托墙跨度 + 出檐（默认 0.6m 每侧）
       4. position.x = wall X 中心
       5. position.z = wall Z 中心
       6. position.y 保持不变（由 LLM 生成，通常是墙顶高度）
@@ -1684,30 +1897,20 @@ def fix_roof_coverage(blueprint: dict) -> str:
     if not walls:
         return "⚠️  没有 wall 构件，无法计算屋顶目标尺寸。"
 
-    # 计算墙体 XZ 包围盒
-    all_x, all_z = [], []
-    for w in walls:
-        f, t = w.get("from", [0,0,0]), w.get("to", [0,0,0])
-        all_x += [f[0], t[0]]
-        all_z += [f[2], t[2]]
-
-    min_x, max_x = min(all_x), max(all_x)
-    min_z, max_z = min(all_z), max(all_z)
-    wall_span  = max_x - min_x
-    wall_depth = max_z - min_z
-    center_x   = (min_x + max_x) / 2
-    center_z   = (min_z + max_z) / 2
-
-    EAVE = 1.0   # 出檐 1m
-    target_span  = round(wall_span  + EAVE * 2, 2)
-    target_depth = round(wall_depth + EAVE * 2, 2)
-
+    EAVE = 0.6
     fixes: list[str] = []
     for r in roofs:
         rid   = r.get("id", "?")
         span  = r.get("span",  0)
         depth = r.get("depth", 0)
-        pos   = r.get("position", [center_x, 0, center_z])
+        bounds = get_roof_support_bounds(walls, r)
+        wall_span = bounds["span"]
+        wall_depth = bounds["depth"]
+        center_x = bounds["center_x"]
+        center_z = bounds["center_z"]
+        target_span = round(wall_span + EAVE * 2, 2)
+        target_depth = round(wall_depth + EAVE * 2, 2)
+        pos = r.get("position", [center_x, bounds["support_y"], center_z])
 
         changed: list[str] = []
 
@@ -1721,12 +1924,12 @@ def fix_roof_coverage(blueprint: dict) -> str:
             r["depth"] = target_depth
             changed.append(f"depth {depth} → {target_depth}")
 
-        # position.x / position.z 修正到墙体中心（偏差 > 5m 才动）
+        # 退台建筑的顶层中心可能与首层相差数米，中心偏差超过 0.25m 即修正。
         if isinstance(pos, list) and len(pos) >= 3:
-            if abs(pos[0] - center_x) > 5.0:
+            if abs(pos[0] - center_x) > 0.25:
                 changed.append(f"position.x {pos[0]} → {center_x:.2f}")
                 pos[0] = round(center_x, 2)
-            if abs(pos[2] - center_z) > 5.0:
+            if abs(pos[2] - center_z) > 0.25:
                 changed.append(f"position.z {pos[2]} → {center_z:.2f}")
                 pos[2] = round(center_z, 2)
             r["position"] = pos
@@ -1735,20 +1938,52 @@ def fix_roof_coverage(blueprint: dict) -> str:
             fixes.append(f"🔧 [{rid}]: " + ", ".join(changed))
 
     if not fixes:
-        return (
-            f"✅ 所有屋顶尺寸已合理（墙体跨度 {wall_span:.1f}×{wall_depth:.1f}m，"
-            f"目标 {target_span:.1f}×{target_depth:.1f}m），无需修正。"
-        )
-    return (
-        f"已自动修正屋顶覆盖范围（墙体 {wall_span:.1f}×{wall_depth:.1f}m，"
-        f"目标 {target_span:.1f}×{target_depth:.1f}m）：\n"
-        + "\n".join(fixes)
-    )
+        return "✅ 所有屋顶均已匹配各自标高处的承托墙体，无需修正。"
+    return "已按屋顶标高处的承托墙体修正覆盖范围：\n" + "\n".join(fixes)
 
 
 # ============================================================
 # P1：墙体端点自动对齐
 # ============================================================
+
+def _segment_is_floor_boundary(
+    start: tuple[float, float],
+    end: tuple[float, float],
+    base_y: float,
+    floors: list[dict],
+) -> bool:
+    """判断一条轴对齐线段是否位于同层矩形楼板并集的外边界。"""
+    level_floors = [
+        floor for floor in floors
+        if abs(float(floor.get("from", [0, 0, 0])[1]) - base_y) <= 0.25
+    ]
+    if not level_floors:
+        return False
+    x1, z1 = start
+    x2, z2 = end
+    if abs(x1 - x2) > 0.15 and abs(z1 - z2) > 0.15:
+        return False
+
+    def covered(x: float, z: float) -> bool:
+        for floor in level_floors:
+            floor_from = floor.get("from", [0, 0, 0])
+            floor_to = floor.get("to", [0, 0, 0])
+            min_x, max_x = sorted((float(floor_from[0]), float(floor_to[0])))
+            min_z, max_z = sorted((float(floor_from[2]), float(floor_to[2])))
+            if min_x - 0.01 <= x <= max_x + 0.01 and min_z - 0.01 <= z <= max_z + 0.01:
+                return True
+        return False
+
+    mid_x, mid_z = (x1 + x2) / 2, (z1 + z2) / 2
+    offset = 0.05
+    if abs(x1 - x2) <= 0.15:
+        side_a = covered(mid_x - offset, mid_z)
+        side_b = covered(mid_x + offset, mid_z)
+    else:
+        side_a = covered(mid_x, mid_z - offset)
+        side_b = covered(mid_x, mid_z + offset)
+    return side_a != side_b
+
 
 @tool
 def fix_wall_junctions(blueprint: dict) -> str:
@@ -1756,7 +1991,9 @@ def fix_wall_junctions(blueprint: dict) -> str:
     自动对齐孤立的墙体端点，消除墙体转角缝隙。
 
     修正逻辑：
-      对每个孤立端点，找距离最近的其他墙体端点；
+      1. 对近距离孤立端点执行吸附；
+      2. 合法 T 形连接不修改；
+      3. 若剩余孤立端点之间的轴对齐缺口位于楼板并集外边界，补建缺失墙段。
       若距离在 (TOLERANCE, MAX_SNAP] 范围内，则把孤立端点坐标对齐到目标端点。
       - TOLERANCE = 0.15m（已在容差内的不处理）
       - MAX_SNAP   = 0.5m（超过此距离不自动对齐，避免误操作）
@@ -1764,7 +2001,11 @@ def fix_wall_junctions(blueprint: dict) -> str:
     参数 blueprint: 完整的 Blueprint dict
     """
     elements = _get_elements(blueprint)
-    walls = [el for el in elements if el.get("type") == "wall"]
+    walls = [
+        el for el in elements
+        if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+    floors = [el for el in elements if el.get("type") == "floor"]
 
     if len(walls) < 2:
         return "✅ 少于 2 面墙，跳过端点对齐。"
@@ -1777,17 +2018,26 @@ def fix_wall_junctions(blueprint: dict) -> str:
     for w in walls:
         f = w.get("from", [0, 0, 0])
         t = w.get("to",   [0, 0, 0])
-        endpoints.append({"wall": w, "which": "from", "x": float(f[0]), "z": float(f[2])})
-        endpoints.append({"wall": w, "which": "to",   "x": float(t[0]), "z": float(t[2])})
+        bottom, top = _wall_vertical_range(w)
+        endpoints.append({
+            "wall": w, "which": "from", "x": float(f[0]), "z": float(f[2]),
+            "bottom": bottom, "top": top,
+        })
+        endpoints.append({
+            "wall": w, "which": "to", "x": float(t[0]), "z": float(t[2]),
+            "bottom": bottom, "top": top,
+        })
 
     fixes: list[str] = []
 
     for ep in endpoints:
         # 检查是否已有邻居
         has_neighbor = any(
-            other["wall"] is not ep["wall"] and
-            math.sqrt((ep["x"]-other["x"])**2 + (ep["z"]-other["z"])**2) < TOLERANCE
-            for other in endpoints
+            other_wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(other_wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(other_wall)[0]) > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], other_wall, TOLERANCE)
+            for other_wall in walls
         )
         if has_neighbor:
             continue
@@ -1812,6 +2062,8 @@ def fix_wall_junctions(blueprint: dict) -> str:
             coord = wall[which]  # list [x, y, z]
             coord[0] = new_x
             coord[2] = new_z
+            ep["x"] = new_x
+            ep["z"] = new_z
 
             fixes.append(
                 f"🔧 [{wall.get('id','?')}.{which}]: "
@@ -1819,9 +2071,63 @@ def fix_wall_junctions(blueprint: dict) -> str:
                 f"dist={dist:.3f}m"
             )
 
+    # 吸附后重新识别孤立端点，只对楼板外边界上的轴对齐缺口补墙。
+    isolated = []
+    for ep in endpoints:
+        connected = any(
+            other_wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(other_wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(other_wall)[0]) > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], other_wall, TOLERANCE)
+            for other_wall in walls
+        )
+        if not connected:
+            isolated.append(ep)
+
+    used_ids = {str(element.get("id")) for element in elements}
+    for ep in isolated:
+        candidates: list[tuple[float, dict]] = []
+        for other in endpoints:
+            if other["wall"] is ep["wall"]:
+                continue
+            same_level = abs(ep["bottom"] - other["bottom"]) <= 0.15
+            aligned = abs(ep["x"] - other["x"]) <= 0.15 or abs(ep["z"] - other["z"]) <= 0.15
+            distance = math.hypot(ep["x"] - other["x"], ep["z"] - other["z"])
+            if same_level and aligned and distance > TOLERANCE:
+                candidates.append((distance, other))
+        for distance, other in sorted(candidates, key=lambda item: item[0]):
+            if not _segment_is_floor_boundary(
+                (ep["x"], ep["z"]),
+                (other["x"], other["z"]),
+                ep["bottom"],
+                floors,
+            ):
+                continue
+            repair_index = 1
+            repair_id = f"wall_repair_{repair_index}"
+            while repair_id in used_ids:
+                repair_index += 1
+                repair_id = f"wall_repair_{repair_index}"
+            new_wall = {
+                "type": "wall",
+                "id": repair_id,
+                "from": [round(ep["x"], 3), ep["bottom"], round(ep["z"], 3)],
+                "to": [round(other["x"], 3), ep["top"], round(other["z"], 3)],
+                "thickness": float(ep["wall"].get("thickness", 0.24)),
+                "material": ep["wall"].get("material", "wall_finish"),
+            }
+            elements.append(new_wall)
+            walls.append(new_wall)
+            used_ids.add(repair_id)
+            fixes.append(
+                f"🔧 [{repair_id}] 补齐楼板外边界墙段: "
+                f"({ep['x']:.2f}, {ep['z']:.2f}) → ({other['x']:.2f}, {other['z']:.2f})"
+            )
+            break
+
     if not fixes:
-        return "✅ 所有墙体端点已对齐，无需修正。"
-    return "已自动对齐以下墙体端点：\n" + "\n".join(fixes)
+        return "✅ 所有墙体端点及合法 T 形连接均已闭合，无需修正。"
+    return "已自动修复墙体连接：\n" + "\n".join(fixes)
 
 
 # ============================================================
@@ -1845,7 +2151,10 @@ def fix_opening_fit(blueprint: dict) -> str:
     walls = {el["id"]: el for el in elements if el.get("type") == "wall"}
     openings = [el for el in elements if el.get("type") == "opening"]
     components = blueprint.get("geometry", {}).get("components", [])
-    door_windows = [c for c in components if c.get("type") in {"door", "window"}]
+    door_windows = [
+        c for c in components
+        if c.get("type") in WALL_OPENING_COMPONENT_TYPES
+    ]
 
     if not openings and not door_windows:
         return "✅ 没有 opening/门窗组件，跳过修正。"
@@ -1922,7 +2231,7 @@ def fix_opening_fit(blueprint: dict) -> str:
         if changed:
             fixes.append(f"🔧 [{oid}]: " + "; ".join(changed))
 
-    # ── 同样修正 door/window 组合构件（components，非 elements）──
+    # ── 同样修正 door/window/bay_window 组合构件（components，非 elements）──
     for comp in door_windows:
         cid = comp.get("id", "?")
         parent_id = comp.get("parentWall", "")
@@ -1963,6 +2272,17 @@ def fix_opening_fit(blueprint: dict) -> str:
 
         if changed:
             fixes.append(f"🔧 [component:{cid}]: " + "; ".join(changed))
+
+    conflict_stats = _resolve_wall_opening_component_conflicts(blueprint)
+    relocated = conflict_stats["relocated_bay_windows"]
+    replaced = conflict_stats["replaced_windows"]
+    pruned = conflict_stats["pruned_bay_windows"]
+    if relocated:
+        fixes.append("🔧 凸窗移至安全窗位: " + ", ".join(relocated))
+    if replaced:
+        fixes.append("🔧 移除被门/凸窗替换的普通窗: " + ", ".join(replaced))
+    if pruned:
+        fixes.append("🔧 无安全窗位，移除冲突凸窗: " + ", ".join(pruned))
 
     if not fixes:
         return "✅ 所有 opening/门窗组件均在 parentWall 合理范围内，无需修正。"

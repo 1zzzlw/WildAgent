@@ -9,7 +9,10 @@ import json
 from loguru import logger
 
 from app.agent.graph_state import GenerationState
-from app.agent.architecture_plan import build_deterministic_skeleton
+from app.agent.architecture_plan import (
+    build_deterministic_skeleton,
+    evaluate_skeleton_complexity,
+)
 from app.agent.nodes.material_plan_node import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
@@ -48,6 +51,10 @@ async def skeleton_generator(state: GenerationState) -> dict:
         SpecQuery(user_message, {"doc_type": "building_type"}),
         # 补充：建筑配方和结构组件通用规范
         SpecQuery(user_message, {"doc_type": "recipe"}),
+        SpecQuery(
+            f"{user_message} 组合体量 退台 结构轴网 立面进深",
+            {"doc_type": "pattern", "entity_type": "building"},
+        ),
         SpecQuery("墙体 楼板 柱子 梁", {"entity_type": "structural_component"}),
     ]
 
@@ -94,6 +101,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     finish_reason = None
     blueprint = None
     deterministic_fallback_reason = None
+    complexity_diag = None
     
     try:
         if use_streaming:
@@ -285,6 +293,31 @@ async def skeleton_generator(state: GenerationState) -> dict:
         deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
         schema_issues = validate_blueprint_schema(blueprint)
 
+    if not schema_issues and isinstance(architecture_plan, dict):
+        complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
+        if (
+            not complexity_diag["meets_target"]
+            and not deterministic_fallback_reason
+        ):
+            logger.warning(
+                "[skeleton] 模型骨架未兑现高复杂度方案，切换到体量化确定性骨架: "
+                f"{json.dumps(complexity_diag, ensure_ascii=False, default=str)}"
+            )
+            if on_reasoning_delta is not None:
+                await on_reasoning_delta(
+                    "skeleton",
+                    "\n模型骨架未达到组合体量与结构数量目标，正在启用体量化安全回退...\n",
+                )
+            blueprint = apply_resolved_material_plan(
+                normalize_blueprint_input(
+                    build_deterministic_skeleton(architecture_plan, user_message)
+                ),
+                material_plan,
+            )
+            deterministic_fallback_reason = "模型骨架未达到高复杂度方案目标"
+            schema_issues = validate_blueprint_schema(blueprint)
+            complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
+
     if schema_issues:
         logger.warning(f"[skeleton] Schema 校验失败: {schema_issues[:3]}")
         return {
@@ -300,6 +333,15 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 "schema_issues": schema_issues[:5],
             },
         }
+
+    floor_coordinates = {
+        element.get("id", "?"): {
+            "from": element.get("from"),
+            "to": element.get("to"),
+        }
+        for element in blueprint.get("geometry", {}).get("elements", [])
+        if isinstance(element, dict) and element.get("type") == "floor"
+    }
 
     # 模型偶尔把 wall.to[1] 写成与 from[1] 相同，导致墙高为 0。组件节点若继续
     # 使用这种骨架，门窗无论重试多少次都不可能落入父墙。派发组件前先确定性补全。
@@ -411,6 +453,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "reasoning_fallback": used_reasoning_fallback,
             "deterministic_fallback": bool(deterministic_fallback_reason),
             "deterministic_fallback_reason": deterministic_fallback_reason,
+            "complexity": complexity_diag,
             "element_count": len(elements),
             "opening_slot_count": len((design_brief or {}).get("opening_slots", [])),
             "floor_coordinates": floor_coordinates,

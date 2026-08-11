@@ -104,6 +104,8 @@ _COMPONENT_RULES: dict[str, str] = {
     ),
     "balcony": (
         "- slabThickness 必填\n"
+        "- from[1] 是阳台板世界标高，必须 ≥1.8m 并落在父墙竖向范围内；严禁在 Y=0 地面层生成阳台\n"
+        "- 优先挂接二层及以上外墙；若建筑没有上层或真实高差，不要生成 balcony\n"
         "- from[2] 通常为 0；depth 表示向建筑外侧的悬挑深度，方向由编译器根据建筑中心确定\n"
         "- balcony 已内嵌悬挑板和 U 形栏杆，禁止同时生成同位置 floor 或独立 railing\n"
         "- 内部自动调用 railing 编译器 → 依赖 railing 先实现\n"
@@ -117,6 +119,7 @@ _COMPONENT_RULES: dict[str, str] = {
     "bay_window": (
         "- projectionDepth 必填\n"
         "- parentWall 必须存在\n"
+        "- 凸窗是实际墙洞，必须占用并替换一个普通窗位；严禁与 door、window 或其他 bay_window 重叠\n"
         "- glassMaterial 必须引用 materials 中的 `\"glass\"`（opacity 0.35）\n"
         "- 编译后产出: opening + primitive.box×N（投影+窗框）"
     ),

@@ -320,6 +320,33 @@ function assertArchitecturalRampAndCornice(compiler) {
     '未显式设置 position 的屋顶无法正确定位檐口',
   )
 
+  const steppedCorniceSource = createBlueprint()
+  steppedCorniceSource.geometry.elements = [
+    { type: 'wall', id: 'base_n', from: [0, 0, 0], to: [18, 3.2, 0], thickness: 0.24 },
+    { type: 'wall', id: 'base_e', from: [18, 0, 0], to: [18, 3.2, 12], thickness: 0.24 },
+    { type: 'wall', id: 'base_s', from: [18, 0, 12], to: [0, 3.2, 12], thickness: 0.24 },
+    { type: 'wall', id: 'base_w', from: [0, 0, 12], to: [0, 3.2, 0], thickness: 0.24 },
+    { type: 'wall', id: 'upper_n', from: [3, 3.2, 0.8], to: [15, 6.4, 0.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_e', from: [15, 3.2, 0.8], to: [15, 6.4, 10.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_s', from: [15, 3.2, 10.8], to: [3, 6.4, 10.8], thickness: 0.24 },
+    { type: 'wall', id: 'upper_w', from: [3, 3.2, 10.8], to: [3, 6.4, 0.8], thickness: 0.24 },
+    { type: 'roof', id: 'stepped_roof', roofType: 'flat', span: 13, depth: 11, height: 0.3, thickness: 0.3 },
+  ]
+  steppedCorniceSource.geometry.components = [{
+    type: 'cornice', id: 'stepped_cornice', parentRoof: 'stepped_roof',
+    path: [[-6.5, 0, -5.5], [-6.5, 0, 5.5]],
+    profile: [[-0.1, -0.1], [0.1, -0.1], [0.1, 0.1], [-0.1, 0.1]],
+  }]
+  const steppedCorniceResult = compiler.compileBlueprintComponents(steppedCorniceSource)
+  const steppedSweep = steppedCorniceResult.blueprint.geometry.elements.find(
+    element => element.id === 'stepped_cornice__sweep',
+  )
+  assertVec3ArrayClose(
+    steppedSweep?.path,
+    [[2.5, 6.7, 0.3], [2.5, 6.7, 11.3]],
+    '退台屋顶檐口仍错误使用首层总包围盒定位',
+  )
+
   compiler.clearComponentCompilationCache()
   compiler.compileBlueprintComponents(corniceSource)
   corniceSource.geometry.elements[0].to[0] = 10
@@ -1190,6 +1217,17 @@ function assertTypesByPrefix(elements, prefix, expected) {
 
 function assertEqual(actual, expected, message) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${message}: expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`)
+  }
+}
+
+function assertVec3ArrayClose(actual, expected, message) {
+  const flatActual = actual?.flat() || []
+  const flatExpected = expected.flat()
+  if (
+    flatActual.length !== flatExpected.length
+    || flatActual.some((value, index) => Math.abs(value - flatExpected[index]) > 1e-9)
+  ) {
     throw new Error(`${message}: expected=${JSON.stringify(expected)}, actual=${JSON.stringify(actual)}`)
   }
 }

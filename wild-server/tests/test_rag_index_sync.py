@@ -32,6 +32,36 @@ def make_loader(
 
 
 class RAGIndexSyncTest(unittest.TestCase):
+    def test_supported_maintainer_chunk_can_outrank_nearby_experimental_chunk(self):
+        collection = Mock()
+        collection.count.return_value = 2
+        collection.query.return_value = {
+            "documents": [["short experiment", "maintained pattern"]],
+            "metadatas": [[
+                {
+                    "source": "experiment.md",
+                    "content_hash": "experiment",
+                    "status": "experimental",
+                    "authority": "domain",
+                },
+                {
+                    "source": "pattern.md",
+                    "content_hash": "pattern",
+                    "status": "supported",
+                    "authority": "maintainer",
+                },
+            ]],
+            "distances": [[0.10, 0.14]],
+        }
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        loader._last_results = []
+        loader._get_collection = Mock(return_value=collection)
+
+        results = loader.retrieve_many(["复杂建筑"], per_query=1)
+
+        self.assertEqual(results[0].metadata["source"], "pattern.md")
+
     def test_retrieve_many_keeps_one_result_per_query(self):
         collection = Mock()
         collection.count.return_value = 4

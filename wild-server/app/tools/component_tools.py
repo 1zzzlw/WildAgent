@@ -8,7 +8,7 @@
 策略：在节点生成后立即调用，确保对齐
 """
 from loguru import logger
-from app.tools.spatial_tools import MAX_OPENING_NORMAL_OFFSET
+from app.tools.spatial_tools import MAX_OPENING_NORMAL_OFFSET, get_roof_support_bounds
 
 
 def validate_door_placement(blueprint: dict) -> str:
@@ -301,36 +301,29 @@ def validate_roof_coverage(blueprint: dict) -> str:
     if not roofs:
         return "⚠️ 没有屋顶"
     
-    # 计算建筑包围盒
     walls = [e for e in elements if e.get("type") == "wall"]
     if not walls:
         return "⚠️ 没有墙体，无法校验屋顶"
-    
-    min_x = min_z = float('inf')
-    max_x = max_z = float('-inf')
-    
-    for wall in walls:
-        frm = wall.get("from", [0, 0, 0])
-        to = wall.get("to", [0, 0, 0])
-        min_x = min(min_x, frm[0], to[0])
-        max_x = max(max_x, frm[0], to[0])
-        min_z = min(min_z, frm[2], to[2])
-        max_z = max(max_z, frm[2], to[2])
-    
-    building_width = max_x - min_x
-    building_depth = max_z - min_z
     
     issues = []
     for roof in roofs:
         roof_id = roof.get("id", "?")
         roof_span = roof.get("span", 0)
         roof_depth = roof.get("depth", 0)
+        bounds = get_roof_support_bounds(walls, roof)
+        building_width = bounds["span"]
+        building_depth = bounds["depth"]
         
         if roof_span < building_width * 0.9:
             issues.append(f"❌ [{roof_id}] span {roof_span:.2f}m < 建筑宽度 {building_width:.2f}m")
         
         if roof_depth < building_depth * 0.9:
             issues.append(f"❌ [{roof_id}] depth {roof_depth:.2f}m < 建筑深度 {building_depth:.2f}m")
+        if roof_span > building_width + 4.0 or roof_depth > building_depth + 4.0:
+            issues.append(
+                f"❌ [{roof_id}] 屋顶 {roof_span:.2f}×{roof_depth:.2f}m "
+                f"远大于顶层承托墙 {building_width:.2f}×{building_depth:.2f}m"
+            )
     
     if not issues:
         return f"✅ 屋顶覆盖校验通过 ({len(roofs)} 个屋顶)"
@@ -350,38 +343,21 @@ def fix_roof_coverage(blueprint: dict) -> str:
     if not walls:
         return "⚠️ 没有墙体"
     
-    # 计算建筑包围盒
-    min_x = min_z = float('inf')
-    max_x = max_z = float('-inf')
-    max_y = 0
-    
-    for wall in walls:
-        frm = wall.get("from", [0, 0, 0])
-        to = wall.get("to", [0, 0, 0])
-        min_x = min(min_x, frm[0], to[0])
-        max_x = max(max_x, frm[0], to[0])
-        min_z = min(min_z, frm[2], to[2])
-        max_z = max(max_z, frm[2], to[2])
-        max_y = max(max_y, frm[1], to[1])
-    
-    building_width = max_x - min_x
-    building_depth = max_z - min_z
-    center_x = (min_x + max_x) / 2
-    center_z = (min_z + max_z) / 2
-    
     fixes = []
     for roof in roofs:
         roof_id = roof.get("id", "?")
-        
-        # 扩大 10% 确保覆盖
-        roof["span"] = building_width * 1.1
-        roof["depth"] = building_depth * 1.1
-        
-        # 设置中心位置
-        if not roof.get("position"):
-            roof["position"] = [center_x, max_y, center_z]
-        
-        fixes.append(f"🔧 [{roof_id}] 调整为 {roof['span']:.2f}×{roof['depth']:.2f}m, 中心=[{center_x:.2f}, {max_y:.2f}, {center_z:.2f}]")
+        bounds = get_roof_support_bounds(walls, roof)
+        roof["span"] = round(bounds["span"] + 1.2, 2)
+        roof["depth"] = round(bounds["depth"] + 1.2, 2)
+        roof["position"] = [
+            round(bounds["center_x"], 2),
+            round(bounds["support_y"], 2),
+            round(bounds["center_z"], 2),
+        ]
+        fixes.append(
+            f"🔧 [{roof_id}] 调整为 {roof['span']:.2f}×{roof['depth']:.2f}m, "
+            f"中心={roof['position']}"
+        )
     
     return "\n".join(fixes)
 
@@ -513,7 +489,7 @@ def fix_canopy_placement(blueprint: dict) -> str:
 
 
 def validate_balcony_placement(blueprint: dict) -> str:
-    """校验阳台配置"""
+    """校验阳台父墙、尺寸与标高；地面标高的“阳台”属于无效构件。"""
     elements = blueprint.get("geometry", {}).get("elements", [])
     components = blueprint.get("geometry", {}).get("components", [])
     
@@ -528,12 +504,38 @@ def validate_balcony_placement(blueprint: dict) -> str:
         balcony_id = balcony.get("id", "?")
         parent_wall = balcony.get("parentWall")
         slab_thickness = balcony.get("slabThickness", 0)
+        balcony_from = balcony.get("from", [])
         
         if not parent_wall or parent_wall not in walls:
             issues.append(f"❌ [{balcony_id}] parentWall '{parent_wall}' 不存在")
-        
+            continue
         if slab_thickness <= 0:
             issues.append(f"❌ [{balcony_id}] slabThickness {slab_thickness} 必须大于 0")
+        if not isinstance(balcony_from, list) or len(balcony_from) != 3:
+            issues.append(f"❌ [{balcony_id}] from 必须是 [沿墙距离, 世界Y, 法向偏移]")
+            continue
+        wall = walls[parent_wall]
+        wall_from = wall.get("from", [0, 0, 0])
+        wall_to = wall.get("to", [0, 0, 0])
+        wall_bottom = min(float(wall_from[1]), float(wall_to[1]))
+        wall_top = max(float(wall_from[1]), float(wall_to[1]))
+        if wall_top - wall_bottom < 0.5:
+            wall_top = wall_bottom + float(wall.get("height", 0))
+        balcony_y = float(balcony_from[1])
+        if balcony_y < 1.8:
+            issues.append(f"❌ [{balcony_id}] 阳台标高 Y={balcony_y:.2f}m 位于地面层")
+        if balcony_y < wall_bottom - 0.25 or balcony_y > wall_top + 0.25:
+            issues.append(
+                f"❌ [{balcony_id}] 阳台标高 Y={balcony_y:.2f}m "
+                f"超出父墙竖向范围 {wall_bottom:.2f}~{wall_top:.2f}m"
+            )
+        wall_length = (
+            (float(wall_to[0]) - float(wall_from[0])) ** 2
+            + (float(wall_to[2]) - float(wall_from[2])) ** 2
+        ) ** 0.5
+        width = float(balcony.get("width", 0))
+        if float(balcony_from[0]) < 0 or float(balcony_from[0]) + width > wall_length:
+            issues.append(f"❌ [{balcony_id}] 阳台沿墙范围超出父墙长度 {wall_length:.2f}m")
     
     if not issues:
         return f"✅ 阳台校验通过 ({len(balconies)} 个阳台)"
@@ -552,12 +554,29 @@ def fix_balcony_placement(blueprint: dict) -> str:
     
     balconies = [c for c in components if c.get("type") == "balcony"]
     
+    def wall_metrics(wall: dict) -> tuple[float, float, float]:
+        start = wall.get("from", [0, 0, 0])
+        end = wall.get("to", [0, 0, 0])
+        length = (
+            (float(end[0]) - float(start[0])) ** 2
+            + (float(end[2]) - float(start[2])) ** 2
+        ) ** 0.5
+        bottom = min(float(start[1]), float(end[1]))
+        top = max(float(start[1]), float(end[1]))
+        if top - bottom < 0.5:
+            top = bottom + float(wall.get("height", 0))
+        return length, bottom, top
+
     fixes = []
+    wall_usage: dict[str, int] = {}
+    for balcony in balconies:
+        parent = str(balcony.get("parentWall") or "")
+        wall_usage[parent] = wall_usage.get(parent, 0) + 1
     for balcony in balconies:
         balcony_id = balcony.get("id", "?")
         parent_wall = balcony.get("parentWall")
-        
-        if not parent_wall or parent_wall not in walls:
+        invalid_parent = not parent_wall or parent_wall not in walls
+        if invalid_parent:
             new_wall = list(walls.keys())[0]
             balcony["parentWall"] = new_wall
             fixes.append(f"🔧 [{balcony_id}] parentWall 修正为 {new_wall}")
@@ -565,6 +584,55 @@ def fix_balcony_placement(blueprint: dict) -> str:
         if balcony.get("slabThickness", 0) <= 0:
             balcony["slabThickness"] = 0.15
             fixes.append(f"🔧 [{balcony_id}] slabThickness 设置为 0.15m")
+
+        balcony_from = balcony.get("from")
+        current_wall = walls.get(str(balcony.get("parentWall") or ""))
+        invalid_elevation = (
+            invalid_parent
+            or not isinstance(balcony_from, list)
+            or len(balcony_from) != 3
+            or float(balcony_from[1]) < 1.8
+        )
+        if current_wall and not invalid_elevation:
+            _, wall_bottom, wall_top = wall_metrics(current_wall)
+            invalid_elevation = not (
+                wall_bottom - 0.25 <= float(balcony_from[1]) <= wall_top + 0.25
+            )
+        if not invalid_elevation:
+            continue
+
+        width = max(0.8, float(balcony.get("width", 2.4)))
+        candidates = []
+        for wall_id, wall in walls.items():
+            wall_length, wall_bottom, wall_top = wall_metrics(wall)
+            if wall_length >= width + 0.6 and wall_top >= 1.8:
+                anchor_y = wall_bottom if wall_bottom >= 1.8 else wall_top
+                candidates.append((
+                    0 if wall_bottom >= 1.8 else 1,
+                    wall_usage.get(wall_id, 0),
+                    -wall_length,
+                    wall_id,
+                    wall_length,
+                    anchor_y,
+                ))
+        if not candidates:
+            continue
+        _, _, _, target_id, target_length, anchor_y = min(candidates)
+        old_parent = balcony.get("parentWall")
+        old_y = balcony_from[1] if isinstance(balcony_from, list) and len(balcony_from) == 3 else "?"
+        along = (
+            float(balcony_from[0])
+            if isinstance(balcony_from, list) and len(balcony_from) == 3
+            else (target_length - width) / 2
+        )
+        along = round(max(0.3, min(along, target_length - width - 0.3)), 2)
+        balcony["parentWall"] = target_id
+        balcony["from"] = [along, round(anchor_y, 2), 0.0]
+        wall_usage[target_id] = wall_usage.get(target_id, 0) + 1
+        fixes.append(
+            f"🔧 [{balcony_id}] 从地面/越界位置 {old_parent}@Y={old_y} "
+            f"迁移到 {target_id}@Y={anchor_y:.2f}"
+        )
     
     if not fixes:
         return f"✅ 阳台无需修复 ({len(balconies)} 个阳台)"

@@ -122,20 +122,28 @@ def build_material_optimization_prompt(selection: list[str]) -> str:
 """
 
 
-def build_architecture_plan_prompt(spec_text: str, profile: dict | None = None) -> str:
+def build_architecture_plan_prompt(
+    spec_text: str,
+    profile: dict | None = None,
+    complexity_profile: dict | None = None,
+) -> str:
     """生成路径第一阶段：只做建筑方案，不写 Blueprint 坐标。"""
     import json as _json
     profile_payload = dict(profile or {})
     if isinstance(profile_payload.get("shapes"), set):
         profile_payload["shapes"] = sorted(profile_payload["shapes"])
     profile_text = _json.dumps(profile_payload, ensure_ascii=False)
+    complexity_text = _json.dumps(complexity_profile or {}, ensure_ascii=False)
     return f"""你是建筑方案主创建筑师。先做体量、立面轴网和构件配额，不生成 WILD Blueprint。
 
 # 任务
 
 - 给出 2 个可实施候选，差异必须体现在体量比例、立面节奏或屋顶上。
-- 方案要忠于用户层数、风格、功能和知识库；不要为了复杂而堆构件。
+- 方案要忠于用户层数、风格、功能和知识库；复杂度必须来自可建模的体量转折、结构轴网、立面进深和有功能的细部构件，不能只靠增加门窗数量。
 - 当前规划 profile 是：{profile_text}。尺寸、层数、形状和基础组件必须服从该 profile。
+- 本次复杂度目标是：{complexity_text}。
+- `level=detailed` 时，每个候选至少包含 `min_volumes` 个可落地体量、`min_detail_packages` 个互补细部包，并明确 structural_grid；优先使用退台、错动、主次翼或入口体量形成真实阴影层次。
+- `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
 - ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
@@ -151,6 +159,12 @@ def build_architecture_plan_prompt(spec_text: str, profile: dict | None = None) 
     {{
       "concept": "方案概念",
       "massing": {{"shape":"profile允许值","width":12,"depth":9,"floors":2,"modeled_floors":2,"representation_mode":"full|schematic","floor_height":3.2,"symmetry":true}},
+      "volumes": [
+        {{"id":"base","role":"primary","x":0,"z":0,"width":12,"depth":9,"start_floor":1,"end_floor":1}},
+        {{"id":"upper_setback","role":"secondary","x":1,"z":0.6,"width":9.5,"depth":7,"start_floor":2,"end_floor":2}}
+      ],
+      "structural_grid": {{"system":"wall_bearing|frame|hybrid|long_span|shell","x_bays":3,"z_bays":2}},
+      "detail_packages": ["balcony","canopy","bay_window"],
       "facades": {{
         "front": {{"bays":5,"entrance_bay":3,"ground_pattern":["window","empty","door","empty","window"],"upper_pattern":["window","empty","window","empty","window"]}},
         "back":  {{"bays":4,"ground_pattern":["window","empty","empty","window"],"upper_pattern":["window","empty","empty","window"]}},
@@ -163,8 +177,8 @@ def build_architecture_plan_prompt(spec_text: str, profile: dict | None = None) 
         "window": {{"min":6,"max":14,"note":"..."}},
         "roof": {{"min":1,"max":1,"type":"hip","note":"..."}}
       }},
-      "required_components": ["door","window","roof"],
-      "design_rationale": ["入口与轴网关系", "上下层对齐关系", "屋顶与体量关系"]
+      "required_components": ["door","window","roof","balcony","canopy","bay_window"],
+      "design_rationale": ["入口与轴网关系", "主次体量与退台关系", "细部构件与体量转折的功能关系"]
     }}
   ]
 }}
@@ -259,6 +273,9 @@ def build_skeleton_prompt(
 # 职责边界
 
 - 严格服从 massing 的尺寸、层数和层高；不得重新做方案选择。
+- `volumes` 是必须落实的体量分解：外墙只按该层处于 start_floor..end_floor 范围内的体量生成；每个层间标高的 floor 必须覆盖“下层体量封顶 ∪ 上层体量底板”，退台外露部分必须形成完整露台，且同一标高被大楼板包含的较小楼板不得重复生成。
+- `structural_grid` 是结构组织硬约束；frame、hybrid、long_span 应用柱梁表达主要轴网，wall_bearing 也必须让承重墙和跨距与轴网一致。
+- `complexity.level=detailed` 时，结构元素数量不得低于 `target_structural_elements`，并且必须能从逐层外墙轮廓识别出至少 `min_volumes` 个体量。复杂度来自退台、错动、主次体量和合理柱梁，不得靠复制重叠墙体凑数。
 - `representation_mode=full` 时逐层落实 `modeled_floors`；`schematic` 时不得复制全部高层，只生成基座、完整总高度外壳、代表性楼板和顶部体量，总高度仍按 `floors × floor_height` 表达。
 - 只生成 wall、floor、column、beam、stair；door、window、roof 由后续节点生成。
 - 如果方案要求 balcony，不得用额外 floor 或 railing 预先模拟阳台；悬挑板和 U 形栏杆由 balcony 节点唯一负责。
@@ -273,7 +290,8 @@ def build_skeleton_prompt(
 3. `full` 模式两层以上必须包含至少一个 stair 元素；`schematic` 高层不要求用一部长楼梯跨越全部高度。
 4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和物理玻璃角色材质，供后续节点引用。
 5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
-6. 现代住宅不滥用外露角柱；只在方案或真实门廊/大跨需要时增加柱梁。
+6. 现代住宅不滥用装饰性外露角柱；但当 structural_grid 为 frame/hybrid 或复杂度目标明确要求时，必须生成承担体量与跨距关系的真实柱梁。
+7. 退台交接层必须由下层完整顶板封闭；不得只画上层较小底板而让下层外围空间敞口，也不得叠放两块共面 floor。
 
 # WILD 规范参考
 
@@ -348,7 +366,7 @@ Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
 # 规则
 
 1. **墙体闭合**：墙体转角处共享端点坐标（精确到小数点后 2 位）
-2. **楼板覆盖**：floor 应覆盖整个建筑底面
+2. **楼板覆盖**：floor 应覆盖整个建筑底面；退台交接层必须覆盖下层完整体量并形成露台，不能只覆盖上层较小体量
 3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
 4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
 5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，使用 `materialClass=glass`、`transmission`、`ior` 和 `thickness`

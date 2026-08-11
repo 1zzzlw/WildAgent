@@ -171,6 +171,16 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
   const walls = elements.filter(e => e.type === 'wall') as any[];
 
   for (const roof of roofs) {
+    // Blueprint 已明确给出完整定位时，尺寸与位置就是设计结果。再次按所有楼层
+    // 墙体包围盒扩张，会把退台顶层屋顶错误放大成首层总屋面。
+    const explicitPosition = Array.isArray(roof.position)
+      && roof.position.length === 3
+      && roof.position.every(Number.isFinite);
+    if (
+      explicitPosition
+      && Number.isFinite(roof.span) && roof.span > 0
+      && Number.isFinite(roof.depth) && roof.depth > 0
+    ) continue;
     if (walls.length < 3) continue;
 
     // 计算所有墙的最大高度，用于过滤栏杆/装饰矮墙
@@ -187,8 +197,19 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
       Math.abs(w.to[1] - w.from[1]) >= heightThreshold
     );
 
-    // 过滤后墙太少（如凉亭只有矮墙），退回使用全部墙
-    const effectiveWalls = structuralWalls.length >= 3 ? structuralWalls : walls;
+    // 屋顶只能适配最高标高处的支承墙。退台建筑的首层外墙虽然与二层同高，
+    // 但墙顶标高更低，不能参与顶层屋顶边界计算。
+    const structuralCandidates = structuralWalls.length >= 3 ? structuralWalls : walls;
+    const highestWallTop = Math.max(...structuralCandidates.map(wall => (
+      Math.max(wall.from[1], wall.to[1])
+    )));
+    const topSupportWalls = structuralCandidates.filter(wall => (
+      Math.abs(Math.max(wall.from[1], wall.to[1]) - highestWallTop) <= 0.05
+    ));
+    // 顶层支承墙不足时才回退到原集合，兼容开放式雨棚等不闭合结构。
+    const effectiveWalls = topSupportWalls.length >= 3
+      ? topSupportWalls
+      : structuralCandidates;
 
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     let maxY = -Infinity;
