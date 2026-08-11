@@ -818,6 +818,49 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                 issues.append(
                     f"材质 '{name}'.baseColor 必须是 3 个 0–1 数值"
                 )
+            for field in (
+                "roughness", "metallic", "albedo", "opacity", "transmission",
+                "clearcoat", "clearcoatRoughness", "sheen",
+            ):
+                value = material.get(field)
+                if value is not None and (
+                    not isinstance(value, (int, float))
+                    or isinstance(value, bool)
+                    or not math.isfinite(value)
+                    or not 0 <= value <= 1
+                ):
+                    issues.append(f"材质 '{name}'.{field} 必须是 0–1 有限数字")
+            material_class = material.get("materialClass")
+            if material_class is not None and material_class not in {
+                "standard", "glass", "clearcoat", "fabric",
+            }:
+                issues.append(
+                    f"材质 '{name}'.materialClass 必须是 standard/glass/clearcoat/fabric"
+                )
+            if material.get("side") not in {None, "front", "double"}:
+                issues.append(f"材质 '{name}'.side 必须是 front/double")
+            ior = material.get("ior")
+            if ior is not None and (
+                not isinstance(ior, (int, float))
+                or isinstance(ior, bool)
+                or not math.isfinite(ior)
+                or not 1 <= ior <= 2.333
+            ):
+                issues.append(f"材质 '{name}'.ior 必须是 1–2.333 有限数字")
+            for field in ("thickness", "attenuationDistance", "emissiveIntensity"):
+                value = material.get(field)
+                if value is not None and (
+                    not isinstance(value, (int, float))
+                    or isinstance(value, bool)
+                    or not math.isfinite(value)
+                    or value < 0
+                ):
+                    issues.append(f"材质 '{name}'.{field} 必须是非负有限数字")
+            if material_class == "glass":
+                if not isinstance(material.get("transmission"), (int, float)) or material.get("transmission", 0) <= 0:
+                    issues.append(f"材质 '{name}' 的物理玻璃必须提供 transmission > 0")
+                if material.get("opacity", 1) != 1:
+                    issues.append(f"材质 '{name}' 的物理玻璃 opacity 必须为 1 或省略")
             texture_set = material.get("textureSet")
             if texture_set is not None and (
                 not isinstance(texture_set, str) or texture_set not in assets

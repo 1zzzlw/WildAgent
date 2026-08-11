@@ -41,7 +41,7 @@ class PromptCompositionTest(unittest.TestCase):
         prompt = build_system_prompt("UNIQUE_SPEC_MARKER")
 
         self.assertIn("墙、楼板、屋顶、门、玻璃使用角色独立的材质名", prompt)
-        self.assertIn("玻璃材质必须显式给出 opacity", prompt)
+        self.assertIn("新生成玻璃使用受控物理材质", prompt)
         self.assertIn("不得只照抄建筑类型文档的最小组合而忽略组件文档", prompt)
         self.assertIn("`cornice`、`chimney`、`light` 已由组合构件编译器支持", prompt)
         self.assertIn("fixtureType=table_lamp", prompt)

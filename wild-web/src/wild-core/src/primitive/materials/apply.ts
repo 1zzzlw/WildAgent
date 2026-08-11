@@ -67,6 +67,18 @@ function bakeEffects(
       : base.textures,
     normalScale: base.normalScale,
     uvScale: base.uvScale,
+    materialClass: base.materialClass,
+    side: base.side,
+    transmission: base.transmission,
+    ior: base.ior,
+    thickness: base.thickness,
+    attenuationColor: base.attenuationColor,
+    attenuationDistance: base.attenuationDistance,
+    clearcoat: base.clearcoat,
+    clearcoatRoughness: base.clearcoatRoughness,
+    sheen: base.sheen,
+    sheenColor: base.sheenColor,
+    emissiveIntensity: base.emissiveIntensity,
   };
 }
 
@@ -108,6 +120,20 @@ function normalizeMaterial(value: MaterialDef | undefined): MaterialDef {
       ? normalizeColor(value.emissive, [0, 0, 0])
       : undefined,
     opacity: normalizeUnit(value.opacity, 1),
+    transmission: normalizeUnit(value.transmission, 0),
+    clearcoat: normalizeUnit(value.clearcoat, 0),
+    clearcoatRoughness: normalizeUnit(value.clearcoatRoughness, 0),
+    sheen: normalizeUnit(value.sheen, 0),
+    ior: normalizeRange(value.ior, 1, 2.333, 1.5),
+    thickness: normalizeNonNegative(value.thickness, 0),
+    attenuationDistance: normalizePositive(value.attenuationDistance),
+    attenuationColor: value.attenuationColor
+      ? normalizeColor(value.attenuationColor, [1, 1, 1])
+      : undefined,
+    sheenColor: value.sheenColor
+      ? normalizeColor(value.sheenColor, [1, 1, 1])
+      : undefined,
+    emissiveIntensity: normalizeNonNegative(value.emissiveIntensity, 1),
     effects: Array.isArray(value.effects) ? value.effects : [],
   };
 }
@@ -137,6 +163,24 @@ function normalizeUnit(value: unknown, fallback: number): number {
     && value <= 1
     ? value
     : fallback;
+}
+
+function normalizeRange(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
+}
+
+function normalizeNonNegative(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value
+    : fallback;
+}
+
+function normalizePositive(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : undefined;
 }
 
 function defaultMaterial(): MaterialDef {

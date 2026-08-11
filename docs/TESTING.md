@@ -14,7 +14,7 @@
 | `wild-server/test_*.py` | 否 | 是 | 旧版真实模型/人工观察脚本 |
 | `wild-web/test/*` | 否 | 视文件而定 | 历史修复验证与调试材料 |
 
-当前自动化基线：后端 `166 passed, 4 subtests passed`。前端以 `build`、`check:core` 和 `check:compiler` 三条命令共同作为最低门禁。
+当前自动化基线：后端 `169 passed`。前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。
 
 ## 2. 日常完整回归
 
@@ -34,6 +34,7 @@ npm install
 npm run build
 npm run check:core
 npm run check:compiler
+npm run check:rendering
 ```
 
 只运行一个后端文件或一个用例：
@@ -72,6 +73,7 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/test_ip_geolocation.py` | 验证 IP 脱敏、GeoIP 缺失回退、可信代理头和伪造代理头防护。 |
 | `tests/test_langgraph_checkpoint_resume.py` | 使用临时 SQLite checkpointer 验证恢复时跳过已完成节点，只重跑失败或未完成节点。 |
 | `tests/test_material_tuning.py` | 验证材质优化意图、必须先选择构件、Patch 安全边界、材质克隆、纹理资产保留和无效参数拒绝。 |
+| `tests/test_material_plan.py` | 验证 AI 材质方案只能选择真实且角色匹配的 PBR 资产、提示词不暴露纹理 URL、物理玻璃预设和骨架材质/资产引用闭合。 |
 | `tests/test_merge_precision.py` | 验证合并阶段的空间硬约束：世界/局部坐标修复、开口重叠阻断、配额缺失和阳台重复几何清理。 |
 | `tests/test_model_client_compat.py` | 验证 OpenAI-compatible 对象响应、内容块、空 content + reasoning 以及非流式响应的兼容转换。 |
 | `tests/test_pbr_assets.py` | 验证 PBR 资产图、本地内容寻址存储、图片类型校验、上传 API 和材质 Patch 引用闭合。 |
@@ -166,6 +168,17 @@ npm run check:compiler
 
 `eval:components`、`eval:phase3a`、`eval:pbr` 当前都是这个同一脚本的别名，并不是三个独立的子测试集。
 
+### `wild-web/scripts/check-rendering-pipeline.mjs`
+
+运行：
+
+```powershell
+cd E:\AgentProject\WildAgent\wild-web
+npm run check:rendering
+```
+
+作用：通过 Vite 加载真实渲染模块，验证历史构件兼容模式默认 DoubleSide、已验证封闭实体可显式使用 FrontSide、玻璃使用 `MeshPhysicalMaterial` 及受控 transmission/IOR/thickness，并确认 AO 所需的 `uv1` 与兼容 `uv2` 均存在。
+
 ### 生产构建检查
 
 `npm run build` 虽然不对应单一测试文件，但必须与上面两个脚本一起运行。它执行 `vue-tsc -b` 和 Vite 生产构建，用于发现类型错误、模块引用错误和生产打包失败。
@@ -191,7 +204,7 @@ npm run check:compiler
 | LangGraph 节点、路由、State | 后端完整回归 + `show_langgraph_graph.py --no-serve` |
 | checkpointer、WebSocket、断线恢复 | `test_generation_job_service.py`、`test_langgraph_checkpoint_resume.py`、`test_ws_agent_disconnect.py` |
 | Blueprint Schema、空间与校验 | `test_blueprint_material_validation.py`、`test_spatial_validation.py`、`test_merge_precision.py`、`npm run check:core` |
-| 组件或渲染 | 相关后端组件测试 + `npm run check:compiler` + `npm run check:core` |
+| 组件或渲染 | 相关后端组件测试 + `npm run check:compiler` + `npm run check:core` + `npm run check:rendering` |
 | RAG 文档、分片、metadata | 两个 RAG 自动测试 + `evaluate_component_rag.py` |
 | 前端 Agent 协议或状态 | 后端 WebSocket 测试 + `npm run build` + `npm run check:compiler` |
 | 部署就绪与模型响应兼容 | `test_deployment_preflight.py`、`test_readiness.py`、`test_model_client_compat.py` |

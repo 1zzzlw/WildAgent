@@ -14,6 +14,10 @@ from app.services.asset_storage import AssetStorageError, asset_storage
 router = APIRouter(prefix="/api/assets", tags=["assets"])
 
 
+def _split_terms(value: str) -> list[str]:
+    return [item.strip() for item in value.replace("，", ",").split(",") if item.strip()]
+
+
 async def _read_upload(upload: UploadFile | None) -> dict | None:
     if upload is None:
         return None
@@ -35,8 +39,14 @@ async def upload_pbr_asset(
     source_uri: Annotated[str | None, Form()] = None,
     roughness: Annotated[float, Form()] = 0.8,
     metallic: Annotated[float, Form()] = 0.0,
+    normal_scale: Annotated[float, Form()] = 1.0,
     uv_scale_x: Annotated[float, Form()] = 1.0,
     uv_scale_y: Annotated[float, Form()] = 1.0,
+    material_class: Annotated[str, Form()] = "other",
+    tags: Annotated[str, Form()] = "",
+    recommended_roles: Annotated[str, Form()] = "",
+    real_world_width: Annotated[float, Form()] = 1.0,
+    real_world_height: Annotated[float, Form()] = 1.0,
     base_color: Annotated[UploadFile | None, File()] = None,
     normal: Annotated[UploadFile | None, File()] = None,
     roughness_map: Annotated[UploadFile | None, File()] = None,
@@ -62,7 +72,12 @@ async def upload_pbr_asset(
             "sourceUri": source_uri,
             "roughness": roughness,
             "metallic": metallic,
+            "normalScale": normal_scale,
             "uvScale": [uv_scale_x, uv_scale_y],
+            "materialClass": material_class,
+            "tags": _split_terms(tags),
+            "recommendedRoles": _split_terms(recommended_roles),
+            "realWorldSizeMeters": [real_world_width, real_world_height],
             "baseRevision": base_revision,
         },
         maps,

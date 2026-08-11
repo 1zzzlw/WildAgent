@@ -113,6 +113,18 @@ export interface MaterialParams {
   }
   normalScale?: number
   uvScale?: [number, number]
+  materialClass?: 'standard' | 'glass' | 'clearcoat' | 'fabric'
+  side?: 'front' | 'double'
+  transmission?: number
+  ior?: number
+  thickness?: number
+  attenuationColor?: [number, number, number]
+  attenuationDistance?: number
+  clearcoat?: number
+  clearcoatRoughness?: number
+  sheen?: number
+  sheenColor?: [number, number, number]
+  emissiveIntensity?: number
 }
 
 export interface EngineDiagnostic {

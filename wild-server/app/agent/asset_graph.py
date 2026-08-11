@@ -27,11 +27,17 @@ def extract_material_intent(state: AssetWorkflowState) -> dict[str, Any]:
     try:
         roughness = float(request.get("roughness", 0.8))
         metallic = float(request.get("metallic", 0.0))
+        normal_scale = float(request.get("normalScale", 1.0))
         uv_scale = [float(value) for value in request.get("uvScale", [1, 1])]
+        real_world_size = [float(value) for value in request.get("realWorldSizeMeters", [1, 1])]
         if not 0 <= roughness <= 1 or not 0 <= metallic <= 1:
             raise AssetStorageError("roughness/metallic 必须在 0–1 范围")
+        if not 0 <= normal_scale <= 4:
+            raise AssetStorageError("normalScale 必须在 0–4 范围")
         if len(uv_scale) != 2 or any(value <= 0 for value in uv_scale):
             raise AssetStorageError("uvScale 必须是两个正数")
+        if len(real_world_size) != 2 or any(value <= 0 for value in real_world_size):
+            raise AssetStorageError("realWorldSizeMeters 必须是两个正数")
         material_name = str(request.get("materialName") or request.get("name") or "pbr_material").strip()
         if not material_name:
             raise AssetStorageError("materialName 不能为空")
@@ -43,7 +49,12 @@ def extract_material_intent(state: AssetWorkflowState) -> dict[str, Any]:
             "sourceUri": request.get("sourceUri"),
             "roughness": roughness,
             "metallic": metallic,
+            "normalScale": normal_scale,
             "uvScale": uv_scale,
+            "realWorldSizeMeters": real_world_size,
+            "materialClass": str(request.get("materialClass", "other")),
+            "tags": list(request.get("tags") or []),
+            "recommendedRoles": list(request.get("recommendedRoles") or []),
             "baseRevision": int(request.get("baseRevision", 1)),
         }
         return {
@@ -69,6 +80,14 @@ def validate_asset(state: AssetWorkflowState) -> dict[str, Any]:
             license_name=intent["license"],
             source_type=intent["sourceType"],
             source_uri=intent.get("sourceUri"),
+            material_class=intent["materialClass"],
+            tags=intent["tags"],
+            recommended_roles=intent["recommendedRoles"],
+            real_world_size_meters=intent["realWorldSizeMeters"],
+            roughness=intent["roughness"],
+            metallic=intent["metallic"],
+            normal_scale=intent["normalScale"],
+            uv_scale=intent["uvScale"],
         )
         return {
             "prepared": prepared,
@@ -123,6 +142,7 @@ def propose_wild_patch(state: AssetWorkflowState) -> dict[str, Any]:
                     "albedo": 1,
                     "lightingCondition": "D65_noon",
                     "textureSet": asset["assetId"],
+                    "normalScale": intent["normalScale"],
                     "uvScale": intent["uvScale"],
                 },
             },

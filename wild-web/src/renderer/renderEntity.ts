@@ -78,7 +78,7 @@ function createMeshFromMeshData(
   mesh.scale.set(scale[0], scale[1], scale[2])
   
   // 5. 设置阴影
-  mesh.castShadow = true
+  mesh.castShadow = !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
   mesh.receiveShadow = true
   
   // 6. 存储元数据
@@ -328,7 +328,7 @@ function createInstancedMesh(
     instanced.setMatrixAt(index, matrix)
   })
   instanced.instanceMatrix.needsUpdate = true
-  instanced.castShadow = true
+  instanced.castShadow = !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
   instanced.receiveShadow = true
   instanced.name = `Instanced:${first.meshData.materialRef}`
   instanced.userData.instanceElementIds = entries.map(entry => entry.meshData.elementId)

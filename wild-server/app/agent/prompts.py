@@ -18,7 +18,7 @@ def build_system_prompt(spec_text: str) -> str:
 # 规则
 
 - 墙、楼板、屋顶、门、玻璃使用角色独立的材质名
-- 玻璃材质必须显式给出 opacity
+- 新生成玻璃使用受控物理材质：materialClass=glass、transmission、ior、thickness；不得仅靠低 opacity 模拟
 - 墙体转角处端点坐标精确一致
 - opening/door/window 的 from[0] 是沿墙距离，不是世界坐标
 - 不得只照抄建筑类型文档的最小组合而忽略组件文档
@@ -175,7 +175,57 @@ def build_architecture_plan_prompt(spec_text: str, profile: dict | None = None) 
 """
 
 
-def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None) -> str:
+def build_material_plan_prompt(
+    architecture_plan: dict,
+    available_assets: list[dict],
+) -> str:
+    """让模型设计材质意图，但只能引用服务端提供的 PBR 资产。"""
+    import json as _json
+    return f"""你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。
+
+# 已批准建筑方案
+
+{_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
+
+# AVAILABLE_PBR_ASSETS（唯一允许引用的纹理资产）
+
+{_json.dumps(available_assets, ensure_ascii=False, indent=2)}
+
+# 强制规则
+
+1. 你只设计材质意图，不生成纹理、不输出 URL、不修改灯光、曝光或阴影。
+2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值；没有合适资产必须使用 null，严禁猜测 ID。
+3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；ground 和 accent 可选。
+4. 单个角色最多选择一个资产，总体保持主材、辅材、点缀的层级，不制造随机拼贴。
+5. stone/concrete/brick/wood/plaster/tile 的 metallic 不得超过 0.15；metal 的 metallic 应为 0.5–1。
+6. glass 不选择纹理资产，不设置 opacity；系统会应用受控物理玻璃预设。
+7. 若资产声明 recommendedRoles，只能用于其中列出的角色。
+8. baseColor 是 3 个 0–1 数值；roughness、metallic 是 0–1 数值。
+
+# 输出协议
+
+只输出一个 JSON 对象，不要 Markdown：
+{{
+  "concept": "一句话材质概念",
+  "palette": ["主色", "辅色", "点缀色"],
+  "roles": [
+    {{"role":"facade_primary","assetId":null,"baseColor":[0.82,0.8,0.76],"roughness":0.72,"metallic":0}},
+    {{"role":"structure","assetId":null,"baseColor":[0.65,0.66,0.67],"roughness":0.76,"metallic":0}},
+    {{"role":"floor","assetId":null,"baseColor":[0.5,0.5,0.5],"roughness":0.8,"metallic":0}},
+    {{"role":"frame","assetId":null,"baseColor":[0.12,0.13,0.14],"roughness":0.3,"metallic":0.8}},
+    {{"role":"door","assetId":null,"baseColor":[0.35,0.2,0.1],"roughness":0.62,"metallic":0}},
+    {{"role":"glass","assetId":null,"baseColor":[0.72,0.88,0.96],"roughness":0.08,"metallic":0}},
+    {{"role":"roof","assetId":null,"baseColor":[0.25,0.26,0.28],"roughness":0.76,"metallic":0}}
+  ]
+}}
+"""
+
+
+def build_skeleton_prompt(
+    spec_text: str,
+    architecture_plan: dict | None = None,
+    material_plan: dict | None = None,
+) -> str:
     """Layer 0: 骨架生成专用 prompt
     
     职责：
@@ -187,11 +237,24 @@ def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None)
     """
     import json as _json
     if architecture_plan:
+        material_section = ""
+        if material_plan:
+            material_section = f"""
+
+# 已批准材质方案（硬约束）
+
+{_json.dumps(material_plan, ensure_ascii=False, indent=2)}
+
+- `materials` 必须使用材质方案中的固定材质 ID 和参数，不得新增或改名。
+- `assets` 只可包含材质方案 resolvedAssets 中的资产；不得生成 URL 或 assetId。
+- 玻璃使用 `materialClass=glass`、`transmission`、`ior` 和 `thickness`，不得退回 opacity=0.35。
+"""
         return f"""你是 WILD 建筑结构骨架工程师。把已批准方案落实为可校验的结构骨架。
 
 # 已批准建筑方案（硬约束）
 
 {_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
+{material_section}
 
 # 职责边界
 
@@ -208,13 +271,17 @@ def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None)
 1. 每层外墙闭合，共享转角端点；wall.from[1] 是墙底，wall.to[1] 是墙顶且必须更大。
 2. 每个 floor 同时使用三维 `from`/`to`，两个 Y 相同并等于该层底标高。
 3. `full` 模式两层以上必须包含至少一个 stair 元素；`schematic` 高层不要求用一部长楼梯跨越全部高度。
-4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和 opacity=0.35 的玻璃角色材质，供后续节点引用。
+4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和物理玻璃角色材质，供后续节点引用。
 5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
 6. 现代住宅不滥用外露角柱；只在方案或真实门廊/大跨需要时增加柱梁。
 
 # WILD 规范参考
 
 {spec_text}
+
+# 本次材质协议最终覆盖
+
+若旧规范示例仍用 `opacity=0.35` 表达玻璃，以本次已批准材质方案为准：新玻璃必须使用物理透射字段，不得退回旧透明度写法。
 """
 
     plan_section = ""
@@ -284,7 +351,7 @@ Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
 2. **楼板覆盖**：floor 应覆盖整个建筑底面
 3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
 4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
-5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，必须设置 `"opacity": 0.35`
+5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，使用 `materialClass=glass`、`transmission`、`ior` 和 `thickness`
 6. **楼梯必须**：两层以上建筑必须包含 `stair` 元素
 7. **柱子克制**：现代别墅/住宅不需要外露角柱，仅门廊或大跨结构按需使用
 8. **墙高不可为零**：wall.from[1] 是墙底、wall.to[1] 是墙顶，必须满足 `to[1] > from[1]`；例如一层墙 `[0,0,0] -> [8,3,0]`，二层墙 `[0,3,0] -> [8,6,0]`

@@ -3,7 +3,8 @@ LangGraph 图定义 —— 意图分类 → 骨架驱动 + Send 动态并行派�
 
 流程:
   classifier (意图分类)
-    → GENERATE: architecture (方案候选+评分) → skeleton (受方案约束) → 建议组件列表
+    → GENERATE: architecture (方案候选+评分) → material_plan (材质意图+资产解析)
+                  → skeleton (受方案与材质约束) → 建议组件列表
                   → Send 动态派发 gen→val 链（并行）
                   → merge → final_validate → done
     → EDIT:     patch (统一 ScenePatch 生成与校验) → done
@@ -26,6 +27,7 @@ from app.agent.nodes import (
     chat_node,
     patch_node,
     architecture_planner,
+    material_planner,
     skeleton_generator,
     merge_fragments_node,
 )
@@ -119,8 +121,8 @@ def _final_validate_dispatch(state: GenerationState):
 def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     """构建 LangGraph 生成流程图
 
-    classifier → (generate → architecture → skeleton → ...) | (edit → patch → END) | (chat → END)
-    architecture → skeleton → Send 派发 gen→val 链（并行） → merge → final_validate
+    classifier → (generate → architecture → material_plan → skeleton → ...) | (edit → patch → END) | (chat → END)
+    architecture → material_plan → skeleton → Send 派发 gen→val 链（并行） → merge → final_validate
     """
     graph = StateGraph(GenerationState)
 
@@ -131,6 +133,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
 
     # ── Layer -0.5: 建筑方案 ──
     graph.add_node("architecture", architecture_planner)
+    graph.add_node("material_plan", material_planner)
 
     # ── Layer 0: 骨架 ──
     graph.add_node("skeleton", skeleton_generator)
@@ -176,7 +179,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
 
     graph.add_edge("chat", END)
     graph.add_edge("patch", END)
-    graph.add_edge("architecture", "skeleton")
+    graph.add_edge("architecture", "material_plan")
+    graph.add_edge("material_plan", "skeleton")
 
     graph.add_conditional_edges(
         "skeleton",
@@ -210,7 +214,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     callback_status = "启用" if enable_callback else "关闭"
     logger.info(
         f"LangGraph 图编译完成: 分类 → "
-        f"(生成: 方案 → 骨架 → Send 动态派发 [{component_list}] → merge → final_validate) | "
+        f"(生成: 方案 → 材质 → 骨架 → Send 动态派发 [{component_list}] → merge → final_validate) | "
         f"(编辑: patch → END) | "
         f"(问答: chat → END) "
         f"(回调: {callback_status})"

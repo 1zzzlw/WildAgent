@@ -3,7 +3,7 @@
     <!-- 展示3D视图的区域 -->
     <canvas ref="canvasRef"></canvas>
     <div class="viewport-overlay">
-      <div class="stats">
+      <div v-if="viewMode === 'editor'" class="stats">
         <div v-if="sceneStore.document">
           基础: {{ sceneStore.document.blueprint.geometry.elements?.length || 0 }} ·
           组合: {{ sceneStore.document.blueprint.geometry.components?.length || 0 }}
@@ -18,16 +18,44 @@
           重建中...
         </div>
       </div>
-      <button
-        type="button"
-        class="time-toggle"
-        :title="`切换到${nextTimePreset.label}`"
-        :aria-label="`当前${activeTimePreset.label}，切换到${nextTimePreset.label}`"
-        @click="cycleTimeOfDay"
-      >
-        <span aria-hidden="true">{{ activeTimePreset.icon }}</span>
-        <span>{{ activeTimePreset.label }}</span>
-      </button>
+      <div class="viewport-toolbar">
+        <button
+          type="button"
+          class="viewport-action"
+          :title="`切换到${nextTimePreset.label}`"
+          :aria-label="`当前${activeTimePreset.label}，切换到${nextTimePreset.label}`"
+          @click="cycleTimeOfDay"
+        >
+          <span aria-hidden="true">{{ activeTimePreset.icon }}</span>
+          <span>{{ activeTimePreset.label }}</span>
+        </button>
+        <button
+          type="button"
+          class="viewport-action"
+          :title="`切换场景，当前为${activeEnvironmentPreset.label}`"
+          :aria-label="`当前${activeEnvironmentPreset.label}场景，切换到下一个场景`"
+          @click="cycleEnvironmentPreset"
+        >
+          <span aria-hidden="true">{{ activeEnvironmentPreset.icon }}</span>
+          <span>{{ activeEnvironmentPreset.label }}</span>
+        </button>
+        <button type="button" class="viewport-action" @click="cycleCameraPreset">
+          <span aria-hidden="true">📷</span>
+          <span>{{ activeCameraPreset.label }}</span>
+        </button>
+        <button type="button" class="viewport-action" @click="cycleQuality">
+          <span aria-hidden="true">◆</span>
+          <span>{{ activeQualityPreset.label }}</span>
+        </button>
+        <button
+          type="button"
+          :class="['viewport-action', { active: viewMode === 'presentation' }]"
+          @click="toggleViewMode"
+        >
+          <span aria-hidden="true">{{ viewMode === 'presentation' ? '▣' : '▢' }}</span>
+          <span>{{ viewMode === 'presentation' ? '展示' : '编辑' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -40,11 +68,16 @@ import { useUIStore } from '../../stores/uiStore'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
+import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import { configureMaterialRendering, MaterialCache } from '../../renderer/materialAdapter'
 import { toggleRuntimeInteraction, updateSceneGroup } from '../../renderer/renderEntity'
-import { createTestScene, clearTestScene } from '../../utils/simpleSceneTest'
 import { getRenderedElementIds, resolveSelectableId } from '../../wild/componentSelection'
 import { createComponentTranslationChanges } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
@@ -56,6 +89,10 @@ const selectionStore = useSelectionStore()
 const uiStore = useUIStore()
 
 type TimeOfDay = 'day' | 'sunset' | 'night'
+type ViewMode = 'editor' | 'presentation'
+type QualityLevel = 'low' | 'medium' | 'high'
+type CameraPresetId = 'corner' | 'human' | 'bird' | 'front'
+type EnvironmentPresetId = 'minimal' | 'meadow' | 'alpine' | 'desert' | 'autumn'
 
 interface TimePreset {
   label: string
@@ -74,7 +111,28 @@ interface TimePreset {
   hemisphereSkyColor: number
   hemisphereGroundColor: number
   hemisphereIntensity: number
-  useEnvironment: boolean
+  groundColor: number
+  fogColor: number
+}
+
+interface QualityPreset {
+  label: string
+  pixelRatio: number
+  shadowMapSize: number
+  ssao: boolean
+  bloom: boolean
+}
+
+interface CameraPreset {
+  label: string
+  direction: [number, number, number]
+}
+
+interface EnvironmentPreset {
+  label: string
+  icon: string
+  groundColor: number
+  fogColor: number
 }
 
 const TIME_ORDER: TimeOfDay[] = ['day', 'sunset', 'night']
@@ -96,7 +154,8 @@ const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
     hemisphereSkyColor: 0xddeeff,
     hemisphereGroundColor: 0x665544,
     hemisphereIntensity: 0.75,
-    useEnvironment: true,
+    groundColor: 0x7c8378,
+    fogColor: 0xb9c9d8,
   },
   sunset: {
     label: '黄昏',
@@ -115,7 +174,8 @@ const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
     hemisphereSkyColor: 0xffa27d,
     hemisphereGroundColor: 0x34283f,
     hemisphereIntensity: 0.45,
-    useEnvironment: true,
+    groundColor: 0x5b4b48,
+    fogColor: 0x6f4054,
   },
   night: {
     label: '夜晚',
@@ -127,19 +187,49 @@ const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
     rayleigh: 0.2,
     mieCoefficient: 0.001,
     mieDirectionalG: 0.7,
-    sunPhi: 55,
+    sunPhi: 108,
     sunTheta: 220,
     directionalColor: 0x9dbbff,
     directionalIntensity: 0.32,
     hemisphereSkyColor: 0x182442,
     hemisphereGroundColor: 0x08070d,
     hemisphereIntensity: 0.2,
-    useEnvironment: false,
+    groundColor: 0x111722,
+    fogColor: 0x050914,
   },
 }
 
+const QUALITY_ORDER: QualityLevel[] = ['low', 'medium', 'high']
+const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
+  low: { label: '流畅', pixelRatio: 1, shadowMapSize: 1024, ssao: false, bloom: false },
+  medium: { label: '均衡', pixelRatio: 1.5, shadowMapSize: 2048, ssao: true, bloom: false },
+  high: { label: '精细', pixelRatio: 2, shadowMapSize: 4096, ssao: true, bloom: true },
+}
+const CAMERA_ORDER: CameraPresetId[] = ['corner', 'human', 'bird', 'front']
+const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
+  corner: { label: '街角', direction: [1, 0.62, 1] },
+  human: { label: '人视', direction: [1, 0.18, 1] },
+  bird: { label: '鸟瞰', direction: [0.8, 1.25, 0.8] },
+  front: { label: '正立面', direction: [0, 0.12, 1] },
+}
+const ENVIRONMENT_ORDER: EnvironmentPresetId[] = ['minimal', 'meadow', 'alpine', 'desert', 'autumn']
+const ENVIRONMENT_PRESETS: Record<EnvironmentPresetId, EnvironmentPreset> = {
+  minimal: { label: '极简', icon: '◻️', groundColor: 0x7c8378, fogColor: 0xb9c9d8 },
+  meadow: { label: '草地', icon: '🌿', groundColor: 0x668653, fogColor: 0xb8cdb6 },
+  alpine: { label: '雪山', icon: '🏔️', groundColor: 0xd7dee2, fogColor: 0xc9d6df },
+  desert: { label: '沙漠', icon: '🏜️', groundColor: 0xc99b61, fogColor: 0xd9b98b },
+  autumn: { label: '秋林', icon: '🍂', groundColor: 0x756a43, fogColor: 0xbca783 },
+}
+
 const timeOfDay = ref<TimeOfDay>('day')
+const viewMode = ref<ViewMode>('editor')
+const qualityLevel = ref<QualityLevel>('medium')
+const cameraPresetId = ref<CameraPresetId>('corner')
+const environmentPresetId = ref<EnvironmentPresetId>('minimal')
 const activeTimePreset = computed(() => TIME_PRESETS[timeOfDay.value])
+const activeQualityPreset = computed(() => QUALITY_PRESETS[qualityLevel.value])
+const activeCameraPreset = computed(() => CAMERA_PRESETS[cameraPresetId.value])
+const activeEnvironmentPreset = computed(() => ENVIRONMENT_PRESETS[environmentPresetId.value])
 const nextTimePreset = computed(() => {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
   return TIME_PRESETS[TIME_ORDER[nextIndex]]
@@ -155,17 +245,30 @@ let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
 let gridHelper: THREE.GridHelper | null = null
 let environmentTarget: THREE.WebGLRenderTarget | null = null
+let pmremGenerator: THREE.PMREMGenerator | null = null
+let environmentScene: THREE.Scene | null = null
+let environmentSky: Sky | null = null
 let sky: Sky | null = null
 let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
 let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
+let presentationGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
+let builtInEnvironment: THREE.Group | null = null
+let composer: EffectComposer | null = null
+let ssaoPass: SSAOPass | null = null
+let bloomPass: UnrealBloomPass | null = null
+let fxaaPass: ShaderPass | null = null
 const sunDirection = new THREE.Vector3()
 const lightingCenter = new THREE.Vector3()
+const sceneBoundsCenter = new THREE.Vector3()
+const sceneBoundsSize = new THREE.Vector3(8, 4, 8)
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 const instanceMatrix = new THREE.Matrix4()
 const instanceWorldMatrix = new THREE.Matrix4()
 let lightingExtent = 8
+let environmentGroundY = 0
+let hasSceneBounds = false
 let hasFramedScene = false
 let needsRender = true
 let pointerDownPosition: { x: number; y: number } | null = null
@@ -201,16 +304,15 @@ function initThreeJS() {
 
   renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
-    antialias: true,
-    logarithmicDepthBuffer: true,
+    antialias: false,
+    powerPreference: 'high-performance',
   })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
-  configureMaterialRendering(renderer.capabilities.getMaxAnisotropy())
+  configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
 
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0xb9c9d8)
@@ -218,6 +320,19 @@ function initThreeJS() {
   const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
   camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 2000)
   camera.position.set(12, 10, 12)
+
+  composer = new EffectComposer(renderer)
+  composer.addPass(new RenderPass(scene, camera))
+  ssaoPass = new SSAOPass(scene, camera, 1, 1)
+  ssaoPass.kernelRadius = 10
+  ssaoPass.minDistance = 0.002
+  ssaoPass.maxDistance = 0.14
+  composer.addPass(ssaoPass)
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
+  composer.addPass(bloomPass)
+  composer.addPass(new OutputPass())
+  fxaaPass = new ShaderPass(FXAAShader)
+  composer.addPass(fxaaPass)
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 1.5, 0)
@@ -240,30 +355,16 @@ function initThreeJS() {
   renderer.domElement.addEventListener('pointerup', handlePointerUp)
   renderer.domElement.addEventListener('contextmenu', handleContextMenu)
 
-  // 测试：检查GridHelper是否正确添加
-  console.log('Scene children after init:', scene.children.map(c => ({ type: c.type, name: c.name })));
-
-  // 暴露到window用于调试
-  (window as any).debugScene = {
-    scene,
-    camera,
-    renderer,
-    controls,
-    testScene: () => createTestScene(scene),
-    clearTest: () => clearTestScene(scene)
-  };
-  console.log('💡 调试工具已挂载到 window.debugScene');
-  console.log('  - debugScene.testScene() : 创建测试场景');
-  console.log('  - debugScene.clearTest() : 清除测试场景');
-
-  const pmremGenerator = new THREE.PMREMGenerator(renderer)
-  environmentTarget = pmremGenerator.fromScene(new RoomEnvironment(renderer), 0.04)
-  scene.environment = environmentTarget.texture
-  pmremGenerator.dispose()
-
   sky = new Sky()
   sky.scale.setScalar(450)
   scene.add(sky)
+
+  pmremGenerator = new THREE.PMREMGenerator(renderer)
+  pmremGenerator.compileCubemapShader()
+  environmentScene = new THREE.Scene()
+  environmentSky = new Sky()
+  environmentSky.scale.setScalar(450)
+  environmentScene.add(environmentSky)
 
   hemisphereLight = new THREE.HemisphereLight(0xddeeff, 0x665544, 0.75)
   scene.add(hemisphereLight)
@@ -293,6 +394,29 @@ function initThreeJS() {
   shadowGround.position.y = -0.002
   shadowGround.receiveShadow = true
   scene.add(shadowGround)
+
+  presentationGround = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshStandardMaterial({
+      color: TIME_PRESETS.day.groundColor,
+      roughness: 0.92,
+      metalness: 0,
+    }),
+  )
+  presentationGround.name = 'PresentationGround'
+  presentationGround.rotation.x = -Math.PI / 2
+  presentationGround.position.y = -0.004
+  presentationGround.scale.set(200, 200, 1)
+  presentationGround.receiveShadow = true
+  presentationGround.visible = false
+  scene.add(presentationGround)
+
+  builtInEnvironment = new THREE.Group()
+  builtInEnvironment.name = 'BuiltInEnvironment'
+  builtInEnvironment.visible = false
+  scene.add(builtInEnvironment)
+  rebuildBuiltInEnvironment()
+  applyEnvironmentAppearance()
   
   // 创建GridHelper并保持引用，确保不会被误删除
   // 添加到场景根层级，不是sceneGroup
@@ -300,21 +424,15 @@ function initThreeJS() {
   gridHelper.name = 'GridHelper'
   gridHelper.position.y = 0  // 确保在地面
   scene.add(gridHelper)
-  console.log('GridHelper added to scene at root level');
-
   materialCache = new MaterialCache()
   // 创建名为 WildScene 的空分组容器，加入场景统一管理多个模型物体。
   sceneGroup = new THREE.Group()
   sceneGroup.name = 'WildScene'
   scene.add(sceneGroup)
   
-  console.log('Scene structure:', {
-    children: scene.children.length,
-    hasGrid: scene.children.some(c => c.name === 'GridHelper'),
-    hasWildScene: scene.children.some(c => c.name === 'WildScene')
-  });
-
   window.addEventListener('resize', handleResize)
+  applyQualityPreset()
+  applyViewMode()
   handleResize()
 }
 
@@ -325,6 +443,14 @@ function handleResize() {
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
+  composer?.setSize(width, height)
+  if (fxaaPass) {
+    const pixelRatio = renderer.getPixelRatio()
+    fxaaPass.material.uniforms.resolution.value.set(
+      1 / Math.max(width * pixelRatio, 1),
+      1 / Math.max(height * pixelRatio, 1),
+    )
+  }
   markNeedsRender()
 }
 
@@ -333,7 +459,8 @@ function startRenderLoop() {
     animationFrameId = requestAnimationFrame(animate)
     if (controls) controls.update()
     if (needsRender && renderer && scene && camera) {
-      renderer.render(scene, camera)
+      if (composer) composer.render()
+      else renderer.render(scene, camera)
       needsRender = false
     }
   }
@@ -345,8 +472,23 @@ function ensureGridVisible() {
 	  if (!scene.children.includes(gridHelper)) {
 	    scene.add(gridHelper)
 	  }
-	  gridHelper.visible = true
+	  gridHelper.visible = viewMode.value === 'editor'
 	}
+
+function resetSceneBounds() {
+  hasSceneBounds = false
+  lightingExtent = 8
+  environmentGroundY = 0
+  sceneBoundsCenter.set(0, 0, 0)
+  sceneBoundsSize.set(8, 4, 8)
+  if (shadowGround) shadowGround.position.y = -0.002
+  if (presentationGround) {
+    presentationGround.position.y = -0.004
+    presentationGround.scale.set(200, 200, 1)
+  }
+  if (gridHelper) gridHelper.position.y = 0
+  rebuildBuiltInEnvironment()
+}
 
 	function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
@@ -359,8 +501,6 @@ function ensureGridVisible() {
       sceneGroup.remove(child)
       if (child instanceof THREE.Mesh) child.geometry.dispose()
     }
-    console.log('Scene cleared, GridHelper should remain visible');
-    
     // 重置相机到初始位置，确保GridHelper可见
     if (controls && camera) {
       controls.target.set(0, 0, 0)
@@ -368,6 +508,7 @@ function ensureGridVisible() {
       controls.update()
     }
     hasFramedScene = false
+    resetSceneBounds()
     ensureGridVisible()
     syncSelectionHighlights()
     syncComponentTransformControl()
@@ -384,6 +525,7 @@ function ensureGridVisible() {
       camera.position.set(12, 10, 12)
       controls.update()
     }
+    resetSceneBounds()
     ensureGridVisible()
     syncSelectionHighlights()
     syncComponentTransformControl()
@@ -404,9 +546,20 @@ function ensureGridVisible() {
     )
     const maxDim = Math.max(size.x, size.y, size.z)
 
+    sceneBoundsCenter.copy(center)
+    sceneBoundsSize.copy(size)
+    hasSceneBounds = true
+    environmentGroundY = bbox.min[1]
+
     updateLightingToBounds(center, maxDim)
     if (shadowGround) shadowGround.position.y = bbox.min[1] - 0.002
+    if (presentationGround) {
+      presentationGround.position.y = bbox.min[1] - 0.004
+      const groundSize = Math.max(200, maxDim * 12)
+      presentationGround.scale.set(groundSize, groundSize, 1)
+    }
     if (gridHelper) gridHelper.position.y = bbox.min[1]
+    rebuildBuiltInEnvironment()
 
     if (!hasFramedScene && controls && camera) {
       frameCameraToBounds(center, size)
@@ -415,12 +568,12 @@ function ensureGridVisible() {
   }
   
   ensureGridVisible()
-  syncSelectionHighlights()
-  syncComponentTransformControl()
+  applyViewMode()
   markNeedsRender()
 }
 
 function handlePointerDown(event: PointerEvent) {
+  if (viewMode.value === 'presentation') return
   // 选择只响应主按键。右键由 contextmenu 独占，不能先改变选中高亮。
   if (event.button !== 0) {
     pointerDownPosition = null
@@ -430,6 +583,7 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  if (viewMode.value === 'presentation') return
   if (suppressSelectionClick) {
     suppressSelectionClick = false
     pointerDownPosition = null
@@ -469,6 +623,7 @@ function handlePointerUp(event: PointerEvent) {
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
 function handleContextMenu(event: MouseEvent) {
+  if (viewMode.value === 'presentation') return
   if (!renderer || !camera || !sceneGroup) return
   const rect = renderer.domElement.getBoundingClientRect()
   pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1
@@ -519,7 +674,7 @@ function getIntersectionElementId(intersection: THREE.Intersection): string | nu
 
 function syncSelectionHighlights() {
   clearSelectionHelpers()
-  if (!scene || !sceneGroup || !sceneStore.reconstructed) {
+  if (viewMode.value === 'presentation' || !scene || !sceneGroup || !sceneStore.reconstructed) {
     markNeedsRender()
     return
   }
@@ -587,6 +742,8 @@ function clearSelectionHelpers() {
 function syncComponentTransformControl() {
   clearComponentTransformControl()
   if (
+    viewMode.value === 'presentation'
+    ||
     !scene
     || !sceneGroup
     || !transformControls
@@ -684,6 +841,183 @@ function handleTransformMouseUp() {
   })
 }
 
+function cycleEnvironmentPreset() {
+  const nextIndex = (ENVIRONMENT_ORDER.indexOf(environmentPresetId.value) + 1) % ENVIRONMENT_ORDER.length
+  environmentPresetId.value = ENVIRONMENT_ORDER[nextIndex]
+  rebuildBuiltInEnvironment()
+  applyEnvironmentAppearance()
+  applyViewMode()
+}
+
+function environmentColor(kind: 'groundColor' | 'fogColor') {
+  const environmentColorValue = ENVIRONMENT_PRESETS[environmentPresetId.value][kind]
+  const timeColorValue = TIME_PRESETS[timeOfDay.value][kind]
+  const timeBlend = timeOfDay.value === 'night' ? 0.76 : timeOfDay.value === 'sunset' ? 0.42 : 0.08
+  return new THREE.Color(environmentColorValue).lerp(new THREE.Color(timeColorValue), timeBlend)
+}
+
+function applyEnvironmentAppearance() {
+  if (presentationGround) {
+    presentationGround.material.color.copy(environmentColor('groundColor'))
+    presentationGround.material.needsUpdate = true
+  }
+  if (scene?.fog instanceof THREE.Fog) {
+    scene.fog.color.copy(environmentColor('fogColor'))
+  }
+}
+
+function clearBuiltInEnvironment() {
+  if (!builtInEnvironment) return
+  const geometries = new Set<THREE.BufferGeometry>()
+  const materials = new Set<THREE.Material>()
+  builtInEnvironment.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return
+    geometries.add(object.geometry)
+    const objectMaterials = Array.isArray(object.material) ? object.material : [object.material]
+    objectMaterials.forEach(material => materials.add(material))
+  })
+  builtInEnvironment.clear()
+  geometries.forEach(geometry => geometry.dispose())
+  materials.forEach(material => material.dispose())
+}
+
+function addRollingHills(group: THREE.Group, radius: number, colors: number[], count = 9) {
+  const geometry = new THREE.SphereGeometry(1, 20, 10)
+  const materials = colors.map(color => new THREE.MeshStandardMaterial({
+    color,
+    roughness: 1,
+    metalness: 0,
+  }))
+  for (let index = 0; index < count; index += 1) {
+    const angle = index / count * Math.PI * 2 + (index % 2) * 0.12
+    const distance = radius * (0.82 + (index % 3) * 0.08)
+    const width = radius * (0.28 + (index % 2) * 0.08)
+    const height = radius * (0.12 + (index % 3) * 0.025)
+    const hill = new THREE.Mesh(geometry, materials[index % materials.length])
+    hill.position.set(Math.cos(angle) * distance, -height * 0.62, Math.sin(angle) * distance)
+    hill.scale.set(width, height, width * (0.62 + (index % 2) * 0.12))
+    hill.rotation.y = angle * 0.7
+    hill.receiveShadow = true
+    group.add(hill)
+  }
+}
+
+function addTreeRing(group: THREE.Group, radius: number, colors: number[], count: number) {
+  const treeScale = Math.max(0.85, Math.min(2.8, lightingExtent / 6))
+  const trunkGeometry = new THREE.CylinderGeometry(0.13, 0.18, 1.6, 7)
+  const crownGeometry = new THREE.ConeGeometry(0.82, 2.25, 9)
+  const trunks = new THREE.InstancedMesh(
+    trunkGeometry,
+    new THREE.MeshStandardMaterial({ color: 0x6b4930, roughness: 1 }),
+    count,
+  )
+  const crowns = new THREE.InstancedMesh(
+    crownGeometry,
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96 }),
+    count,
+  )
+  const transform = new THREE.Object3D()
+  for (let index = 0; index < count; index += 1) {
+    const angle = index / count * Math.PI * 2 + Math.sin(index * 2.7) * 0.18
+    const distance = radius * (0.58 + (index % 4) * 0.055)
+    const scale = treeScale * (0.78 + (index % 5) * 0.075)
+    const x = Math.cos(angle) * distance
+    const z = Math.sin(angle) * distance
+
+    transform.position.set(x, 0.8 * scale, z)
+    transform.scale.setScalar(scale)
+    transform.updateMatrix()
+    trunks.setMatrixAt(index, transform.matrix)
+
+    transform.position.set(x, 2.58 * scale, z)
+    transform.rotation.y = angle
+    transform.updateMatrix()
+    crowns.setMatrixAt(index, transform.matrix)
+    crowns.setColorAt(index, new THREE.Color(colors[index % colors.length]))
+  }
+  trunks.instanceMatrix.needsUpdate = true
+  crowns.instanceMatrix.needsUpdate = true
+  if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true
+  trunks.receiveShadow = true
+  crowns.receiveShadow = true
+  group.add(trunks, crowns)
+}
+
+function addAlpineMountains(group: THREE.Group, radius: number) {
+  const mountainGeometry = new THREE.ConeGeometry(1, 1, 7)
+  const snowGeometry = new THREE.ConeGeometry(1, 1, 7)
+  const rockMaterials = [0x66727a, 0x77838a, 0x58656d].map(color => (
+    new THREE.MeshStandardMaterial({ color, roughness: 0.98 })
+  ))
+  const snowMaterial = new THREE.MeshStandardMaterial({ color: 0xf2f6f8, roughness: 0.82 })
+  const count = 10
+  for (let index = 0; index < count; index += 1) {
+    const angle = index / count * Math.PI * 2 + (index % 2) * 0.14
+    const distance = radius * (0.82 + (index % 3) * 0.1)
+    const base = radius * (0.2 + (index % 3) * 0.035)
+    const height = radius * (0.46 + (index % 4) * 0.07)
+    const mountain = new THREE.Mesh(mountainGeometry, rockMaterials[index % rockMaterials.length])
+    mountain.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance)
+    mountain.scale.set(base, height, base)
+    mountain.rotation.y = angle
+    mountain.receiveShadow = true
+    group.add(mountain)
+
+    const capHeight = height * 0.38
+    const snowCap = new THREE.Mesh(snowGeometry, snowMaterial)
+    snowCap.position.set(mountain.position.x, height - capHeight / 2, mountain.position.z)
+    snowCap.scale.set(base * 0.42, capHeight, base * 0.42)
+    snowCap.rotation.y = angle
+    group.add(snowCap)
+  }
+}
+
+function addDesertRocks(group: THREE.Group, radius: number) {
+  const geometry = new THREE.DodecahedronGeometry(1, 0)
+  const materials = [0x8f5f3d, 0xa8744c, 0x74503b].map(color => (
+    new THREE.MeshStandardMaterial({ color, roughness: 1 })
+  ))
+  for (let index = 0; index < 11; index += 1) {
+    const angle = index / 11 * Math.PI * 2 + 0.2
+    const distance = radius * (0.48 + (index % 4) * 0.075)
+    const size = Math.max(0.45, Math.min(2.3, lightingExtent / 8)) * (0.7 + (index % 3) * 0.28)
+    const rock = new THREE.Mesh(geometry, materials[index % materials.length])
+    rock.position.set(Math.cos(angle) * distance, size * 0.55, Math.sin(angle) * distance)
+    rock.scale.set(size * 1.25, size, size * 0.85)
+    rock.rotation.set(index * 0.17, angle, index * 0.11)
+    rock.receiveShadow = true
+    group.add(rock)
+  }
+}
+
+function rebuildBuiltInEnvironment() {
+  if (!builtInEnvironment) return
+  clearBuiltInEnvironment()
+  builtInEnvironment.position.set(sceneBoundsCenter.x, environmentGroundY, sceneBoundsCenter.z)
+  const presetId = environmentPresetId.value
+  builtInEnvironment.visible = presetId !== 'minimal'
+  if (presetId === 'minimal') {
+    markNeedsRender()
+    return
+  }
+
+  const radius = Math.max(22, lightingExtent * 2.7)
+  if (presetId === 'meadow') {
+    addRollingHills(builtInEnvironment, radius, [0x527c46, 0x668d55, 0x789a61])
+    addTreeRing(builtInEnvironment, radius, [0x3f713b, 0x568144, 0x6c934f], 22)
+  } else if (presetId === 'alpine') {
+    addAlpineMountains(builtInEnvironment, radius)
+    addTreeRing(builtInEnvironment, radius, [0x294f45, 0x356456, 0x436f5f], 15)
+  } else if (presetId === 'desert') {
+    addRollingHills(builtInEnvironment, radius, [0xb9824e, 0xca965b, 0xd4aa6d], 11)
+    addDesertRocks(builtInEnvironment, radius)
+  } else {
+    addRollingHills(builtInEnvironment, radius, [0x6b663d, 0x817242, 0x695a35])
+    addTreeRing(builtInEnvironment, radius, [0xa14e24, 0xc06a2b, 0xd69235, 0x7d3825], 26)
+  }
+  markNeedsRender()
+}
+
 function cycleTimeOfDay() {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
   timeOfDay.value = TIME_ORDER[nextIndex]
@@ -693,7 +1027,6 @@ function cycleTimeOfDay() {
 function applyTimePreset() {
   if (!renderer || !scene || !sky || !hemisphereLight || !directionalLight) return
   const preset = TIME_PRESETS[timeOfDay.value]
-  const skyUniforms = sky.material.uniforms
 
   sunDirection.setFromSphericalCoords(
     1,
@@ -701,16 +1034,10 @@ function applyTimePreset() {
     THREE.MathUtils.degToRad(preset.sunTheta),
   )
   sky.visible = preset.skyVisible
-  skyUniforms.turbidity.value = preset.turbidity
-  skyUniforms.rayleigh.value = preset.rayleigh
-  skyUniforms.mieCoefficient.value = preset.mieCoefficient
-  skyUniforms.mieDirectionalG.value = preset.mieDirectionalG
-  skyUniforms.sunPosition.value.copy(sunDirection)
+  syncSkyPreset(sky, preset)
 
   scene.background = new THREE.Color(preset.background)
-  scene.environment = preset.useEnvironment && environmentTarget
-    ? environmentTarget.texture
-    : null
+  rebuildEnvironment(preset)
   renderer.toneMappingExposure = preset.exposure
 
   hemisphereLight.color.setHex(preset.hemisphereSkyColor)
@@ -718,13 +1045,109 @@ function applyTimePreset() {
   hemisphereLight.intensity = preset.hemisphereIntensity
   directionalLight.color.setHex(preset.directionalColor)
   directionalLight.intensity = preset.directionalIntensity
+  applyEnvironmentAppearance()
+  if (bloomPass) {
+    bloomPass.enabled = QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
+  }
   if (shadowGround) {
     shadowGround.material.opacity = timeOfDay.value === 'night' ? 0.1 : timeOfDay.value === 'sunset' ? 0.24 : 0.2
     shadowGround.material.needsUpdate = true
   }
 
-  updateLightingToBounds(lightingCenter, lightingExtent)
+  updateLightingToBounds(lightingCenter, Math.max(sceneBoundsSize.x, sceneBoundsSize.y, sceneBoundsSize.z))
+  applyViewMode()
   markNeedsRender()
+}
+
+function syncSkyPreset(target: Sky, preset: TimePreset) {
+  const uniforms = target.material.uniforms
+  uniforms.turbidity.value = preset.turbidity
+  uniforms.rayleigh.value = preset.rayleigh
+  uniforms.mieCoefficient.value = preset.mieCoefficient
+  uniforms.mieDirectionalG.value = preset.mieDirectionalG
+  uniforms.sunPosition.value.copy(sunDirection)
+}
+
+function rebuildEnvironment(preset: TimePreset) {
+  if (!scene || !pmremGenerator || !environmentScene || !environmentSky) return
+  syncSkyPreset(environmentSky, preset)
+  environmentScene.background = new THREE.Color(preset.background)
+  const nextTarget = pmremGenerator.fromScene(
+    environmentScene,
+    timeOfDay.value === 'night' ? 0.16 : 0.045,
+    0.1,
+    1000,
+  )
+  const previousTarget = environmentTarget
+  environmentTarget = nextTarget
+  scene.environment = nextTarget.texture
+  previousTarget?.dispose()
+}
+
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'editor' ? 'presentation' : 'editor'
+  applyViewMode()
+}
+
+function applyViewMode() {
+  if (!scene) return
+  const presenting = viewMode.value === 'presentation'
+  const scenic = environmentPresetId.value !== 'minimal'
+  if (gridHelper) gridHelper.visible = !presenting
+  if (shadowGround) shadowGround.visible = !presenting && !scenic
+  if (presentationGround) presentationGround.visible = presenting || scenic
+  if (builtInEnvironment) builtInEnvironment.visible = scenic
+  if (transformControls) transformControls.visible = !presenting
+  if (presenting) {
+    clearSelectionHelpers()
+    clearComponentTransformControl()
+  } else {
+    syncSelectionHighlights()
+    syncComponentTransformControl()
+  }
+  if (presenting || scenic) {
+    const fogNear = Math.max(25, lightingExtent * 3)
+    scene.fog = new THREE.Fog(
+      environmentColor('fogColor'),
+      fogNear,
+      fogNear + Math.max(80, lightingExtent * 8),
+    )
+  } else {
+    scene.fog = null
+  }
+  markNeedsRender()
+}
+
+function cycleQuality() {
+  const nextIndex = (QUALITY_ORDER.indexOf(qualityLevel.value) + 1) % QUALITY_ORDER.length
+  qualityLevel.value = QUALITY_ORDER[nextIndex]
+  applyQualityPreset()
+}
+
+function applyQualityPreset() {
+  if (!renderer) return
+  const preset = QUALITY_PRESETS[qualityLevel.value]
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, preset.pixelRatio)
+  renderer.setPixelRatio(pixelRatio)
+  composer?.setPixelRatio(pixelRatio)
+  if (directionalLight) {
+    const shadowSize = Math.min(preset.shadowMapSize, renderer.capabilities.maxTextureSize)
+    if (directionalLight.shadow.mapSize.width !== shadowSize) {
+      directionalLight.shadow.map?.dispose()
+      directionalLight.shadow.map = null
+      directionalLight.shadow.mapSize.set(shadowSize, shadowSize)
+    }
+  }
+  if (ssaoPass) ssaoPass.enabled = preset.ssao
+  if (bloomPass) bloomPass.enabled = preset.bloom && timeOfDay.value === 'night'
+  configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
+  handleResize()
+}
+
+function cycleCameraPreset() {
+  const nextIndex = (CAMERA_ORDER.indexOf(cameraPresetId.value) + 1) % CAMERA_ORDER.length
+  cameraPresetId.value = CAMERA_ORDER[nextIndex]
+  if (hasSceneBounds) frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
 }
 
 function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
@@ -747,6 +1170,11 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   shadowCamera.updateProjectionMatrix()
   directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
   directionalLight.shadow.needsUpdate = true
+  if (scene?.fog instanceof THREE.Fog) {
+    const fogNear = Math.max(25, lightingExtent * 3)
+    scene.fog.near = fogNear
+    scene.fog.far = fogNear + Math.max(80, lightingExtent * 8)
+  }
 }
 
 function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
@@ -756,11 +1184,16 @@ function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   const verticalDistance = size.y / Math.max(2 * Math.tan(verticalFov / 2), 0.01)
   const horizontalDistance = Math.max(size.x, size.z) / Math.max(2 * Math.tan(horizontalFov / 2), 0.01)
   const distance = Math.max(verticalDistance, horizontalDistance, 2) * 1.55
-  const viewDirection = new THREE.Vector3(1, 0.72, 1).normalize()
-  controls.target.copy(center)
+  const preset = CAMERA_PRESETS[cameraPresetId.value]
+  const viewDirection = new THREE.Vector3(...preset.direction).normalize()
+  const target = center.clone()
+  if (cameraPresetId.value === 'human') {
+    target.y = center.y - size.y / 2 + Math.min(1.7, Math.max(0.8, size.y * 0.25))
+  }
+  controls.target.copy(target)
   controls.minDistance = Math.max(0.2, distance * 0.08)
   controls.maxDistance = Math.max(50, distance * 8)
-  camera.position.copy(center).addScaledVector(viewDirection, distance)
+  camera.position.copy(target).addScaledVector(viewDirection, distance)
   camera.near = Math.max(0.03, distance / 500)
   camera.far = Math.max(500, distance * 20)
   camera.updateProjectionMatrix()
@@ -782,8 +1215,21 @@ function cleanup() {
   if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
   environmentTarget?.dispose()
+  pmremGenerator?.dispose()
+  sky?.geometry.dispose()
+  sky?.material.dispose()
+  environmentSky?.geometry.dispose()
+  environmentSky?.material.dispose()
+  clearBuiltInEnvironment()
   shadowGround?.geometry.dispose()
   shadowGround?.material.dispose()
+  presentationGround?.geometry.dispose()
+  presentationGround?.material.dispose()
+  ssaoPass?.dispose()
+  bloomPass?.dispose()
+  fxaaPass?.material.dispose()
+  composer?.dispose()
+  configureMaterialRendering(1)
   if (renderer) renderer.dispose()
   if (controls) controls.dispose()
   if (transformControls) {
@@ -832,14 +1278,21 @@ canvas {
   margin: 2px 0;
 }
 
-.time-toggle {
+.viewport-toolbar {
   position: absolute;
   top: 12px;
   right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.viewport-action {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-width: 92px;
+  min-width: 76px;
   padding: 8px 12px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
@@ -848,23 +1301,36 @@ canvas {
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
-  pointer-events: auto;
   backdrop-filter: blur(8px);
   transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
 }
 
-.time-toggle:hover {
+.viewport-action:hover,
+.viewport-action.active {
   background: rgba(28, 36, 50, 0.92);
   border-color: rgba(255, 255, 255, 0.36);
 }
 
-.time-toggle:active {
+.viewport-action:active {
   transform: translateY(1px);
 }
 
-.time-toggle:focus-visible {
+.viewport-action:focus-visible {
   outline: 2px solid #8fc7ff;
   outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .viewport-toolbar {
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .viewport-action {
+    min-width: 70px;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
 }
 
 .diagnostics {

@@ -77,6 +77,19 @@ export interface MaterialDef {
   textureSet?: string
   normalScale?: number
   uvScale?: [number, number]
+  /** 渲染器材质模型；缺省时保持标准 metallic-roughness PBR。 */
+  materialClass?: 'standard' | 'glass' | 'clearcoat' | 'fabric'
+  side?: 'front' | 'double'
+  transmission?: number
+  ior?: number
+  thickness?: number
+  attenuationColor?: [number, number, number]
+  attenuationDistance?: number
+  clearcoat?: number
+  clearcoatRoughness?: number
+  sheen?: number
+  sheenColor?: [number, number, number]
+  emissiveIntensity?: number
   [key: string]: unknown
 }
 
@@ -111,6 +124,18 @@ export interface PBRTextureSetAsset {
     roughness?: ReferencedImageData
     metalness?: ReferencedImageData
     ambientOcclusion?: ReferencedImageData
+  }
+  classification?: {
+    materialClass?: string
+    tags?: string[]
+    recommendedRoles?: string[]
+  }
+  realWorldSizeMeters?: [number, number]
+  defaults?: {
+    roughness?: number
+    metallic?: number
+    normalScale?: number
+    uvScale?: [number, number]
   }
   createdAt: string
 }

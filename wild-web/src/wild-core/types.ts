@@ -528,6 +528,18 @@ export interface PBRTextureSetAsset {
     metalness?: ReferencedImageData;
     ambientOcclusion?: ReferencedImageData;
   };
+  classification?: {
+    materialClass?: string;
+    tags?: string[];
+    recommendedRoles?: string[];
+  };
+  realWorldSizeMeters?: [number, number];
+  defaults?: {
+    roughness?: number;
+    metallic?: number;
+    normalScale?: number;
+    uvScale?: [number, number];
+  };
   createdAt: string;
 }
 
@@ -552,6 +564,18 @@ export interface MaterialDef {
   textureSet?: string;
   normalScale?: number;
   uvScale?: [number, number];
+  materialClass?: 'standard' | 'glass' | 'clearcoat' | 'fabric';
+  side?: 'front' | 'double';
+  transmission?: number;
+  ior?: number;
+  thickness?: number;
+  attenuationColor?: Color;
+  attenuationDistance?: number;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  sheen?: number;
+  sheenColor?: Color;
+  emissiveIntensity?: number;
 }
 
 // ========== 动态系统 ==========

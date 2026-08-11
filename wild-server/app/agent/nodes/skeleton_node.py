@@ -10,6 +10,7 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.architecture_plan import build_deterministic_skeleton
+from app.agent.nodes.material_plan_node import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
 from app.agent.runtime_context import get_reasoning_callback
@@ -35,6 +36,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = get_reasoning_callback()
     architecture_plan = state.get("architecture_plan")
+    material_plan = state.get("material_plan")
 
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
 
@@ -73,7 +75,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     )
 
     # ── 2. 构建 Prompt ──
-    system_prompt = build_skeleton_prompt(spec_text, architecture_plan)
+    system_prompt = build_skeleton_prompt(spec_text, architecture_plan, material_plan)
     prompt_chars = len(system_prompt)
 
     # ── 3. LLM 调用（流式或非流式）──
@@ -256,6 +258,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 5. 归一化和 Schema 校验 ──
     blueprint = normalize_blueprint_input(blueprint)
+    blueprint = apply_resolved_material_plan(blueprint, material_plan)
     floor_coordinates = {
         element.get("id", "?"): {
             "from": element.get("from"),
@@ -273,8 +276,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     if schema_issues and isinstance(architecture_plan, dict) and not deterministic_fallback_reason:
         logger.warning("[skeleton] 模型骨架 Schema 无效，切换到确定性骨架回退")
-        blueprint = normalize_blueprint_input(
-            build_deterministic_skeleton(architecture_plan, user_message)
+        blueprint = apply_resolved_material_plan(
+            normalize_blueprint_input(
+                build_deterministic_skeleton(architecture_plan, user_message)
+            ),
+            material_plan,
         )
         deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
         schema_issues = validate_blueprint_schema(blueprint)

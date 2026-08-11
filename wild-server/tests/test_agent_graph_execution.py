@@ -30,6 +30,10 @@ async def _architecture(_state: dict) -> dict:
     return {"architecture_plan": {"required_components": []}}
 
 
+async def _material_plan(_state: dict) -> dict:
+    return {"material_plan": {"roles": [], "resolvedAssets": {}}}
+
+
 async def _skeleton(_state: dict) -> dict:
     return {
         "skeleton_blueprint": {"meta": {"name": "graph"}, "geometry": {"elements": []}},
@@ -59,6 +63,7 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             patch.object(graph_module, "chat_node", _chat),
             patch.object(graph_module, "patch_node", _patch),
             patch.object(graph_module, "architecture_planner", _architecture),
+            patch.object(graph_module, "material_planner", _material_plan),
             patch.object(graph_module, "skeleton_generator", _skeleton),
             patch.object(graph_module, "merge_fragments_node", _merge),
             patch.object(graph_module, "get_implemented_components", return_value=[]),

@@ -69,6 +69,9 @@ def test_local_storage_registers_immutable_content_addressed_asset(tmp_path):
     assert first["contentHash"].startswith("sha256:")
     assert first["maps"]["baseColor"]["uri"].startswith("/api/assets/pbr_")
     assert first["maps"]["baseColor"]["encoding"] == "url"
+    assert first["classification"]["materialClass"] == "other"
+    assert first["realWorldSizeMeters"] == [1.0, 1.0]
+    assert first["defaults"]["normalScale"] == 1.0
     assert storage.resolve_file(first["assetId"], "baseColor.png").read_bytes() == PNG_BYTES
 
 

@@ -10,7 +10,12 @@ export interface PBRUploadRequest {
   baseRevision: number
   roughness: number
   metallic: number
+  normalScale: number
   uvScale: [number, number]
+  materialClass: string
+  tags: string[]
+  recommendedRoles: string[]
+  realWorldSizeMeters: [number, number]
   files: {
     baseColor: File
     normal?: File
@@ -53,8 +58,14 @@ export const useAssetStore = defineStore('assets', () => {
       form.set('base_revision', String(request.baseRevision))
       form.set('roughness', String(request.roughness))
       form.set('metallic', String(request.metallic))
+      form.set('normal_scale', String(request.normalScale))
       form.set('uv_scale_x', String(request.uvScale[0]))
       form.set('uv_scale_y', String(request.uvScale[1]))
+      form.set('material_class', request.materialClass)
+      form.set('tags', request.tags.join(','))
+      form.set('recommended_roles', request.recommendedRoles.join(','))
+      form.set('real_world_width', String(request.realWorldSizeMeters[0]))
+      form.set('real_world_height', String(request.realWorldSizeMeters[1]))
       form.set('base_color', request.files.baseColor)
       if (request.files.normal) form.set('normal', request.files.normal)
       if (request.files.roughness) form.set('roughness_map', request.files.roughness)

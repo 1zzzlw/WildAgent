@@ -32,6 +32,8 @@ class GenerationState(TypedDict, total=False):
     # ── Layer -0.5: 建筑方案（生成分支）──
     architecture_plan: dict
     architecture_diag: dict
+    material_plan: dict
+    material_diag: dict
 
     # ── Layer -1: 知识问答输出 ──
     chat_reply: str       # 知识问答的文本回复

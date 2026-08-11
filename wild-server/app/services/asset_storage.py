@@ -26,6 +26,11 @@ CHANNELS = {
     "metalness": "linear",
     "ambientOcclusion": "linear",
 }
+MATERIAL_CLASSES = {"stone", "concrete", "brick", "wood", "metal", "plaster", "tile", "fabric", "other"}
+MATERIAL_ROLES = {
+    "facade_primary", "facade_secondary", "structure", "floor", "frame",
+    "door", "roof", "ground", "accent",
+}
 _ASSET_ID_RE = re.compile(r"^pbr_[0-9a-f]{24}$")
 
 
@@ -52,6 +57,30 @@ def _safe_text(value: str, field: str, maximum: int) -> str:
     return normalized
 
 
+def _safe_terms(values: list[str] | None, field: str, maximum: int = 12) -> list[str]:
+    terms: list[str] = []
+    for value in values or []:
+        normalized = re.sub(r"[^a-z0-9_-]+", "_", str(value).strip().lower()).strip("_")
+        if not normalized or normalized in terms:
+            continue
+        if len(normalized) > 40:
+            raise AssetStorageError(f"{field} 单项最长 40 个字符")
+        terms.append(normalized)
+        if len(terms) > maximum:
+            raise AssetStorageError(f"{field} 最多 {maximum} 项")
+    return terms
+
+
+def _positive_pair(value: list[float] | tuple[float, float], field: str) -> list[float]:
+    try:
+        pair = [float(item) for item in value]
+    except (TypeError, ValueError) as exc:
+        raise AssetStorageError(f"{field} 必须是两个正数") from exc
+    if len(pair) != 2 or any(not 0 < item <= 1000 for item in pair):
+        raise AssetStorageError(f"{field} 必须是两个 0–1000 的正数")
+    return pair
+
+
 class LocalAssetStorage:
     """本地不可变资产目录；相同纹理通道内容自动去重。"""
 
@@ -75,11 +104,39 @@ class LocalAssetStorage:
         license_name: str,
         source_type: str = "local_upload",
         source_uri: str | None = None,
+        material_class: str = "other",
+        tags: list[str] | None = None,
+        recommended_roles: list[str] | None = None,
+        real_world_size_meters: list[float] | tuple[float, float] = (1.0, 1.0),
+        roughness: float = 0.8,
+        metallic: float = 0.0,
+        normal_scale: float = 1.0,
+        uv_scale: list[float] | tuple[float, float] = (1.0, 1.0),
     ) -> dict[str, Any]:
         """校验上传并生成确定性的内容 ID；此步骤不写磁盘。"""
         name = _safe_text(name, "name", 120)
         license_name = _safe_text(license_name, "license", 100)
         source_type = _safe_text(source_type, "source_type", 60)
+        material_class = str(material_class or "other").strip().lower()
+        if material_class not in MATERIAL_CLASSES:
+            raise AssetStorageError(f"material_class 必须是: {', '.join(sorted(MATERIAL_CLASSES))}")
+        safe_tags = _safe_terms(tags, "tags")
+        safe_roles = _safe_terms(recommended_roles, "recommended_roles")
+        unknown_roles = sorted(set(safe_roles) - MATERIAL_ROLES)
+        if unknown_roles:
+            raise AssetStorageError(f"recommended_roles 包含未知角色: {', '.join(unknown_roles)}")
+        real_size = _positive_pair(real_world_size_meters, "real_world_size_meters")
+        resolved_uv_scale = _positive_pair(uv_scale, "uv_scale")
+        try:
+            roughness = float(roughness)
+            metallic = float(metallic)
+            normal_scale = float(normal_scale)
+        except (TypeError, ValueError) as exc:
+            raise AssetStorageError("默认材质参数必须是数字") from exc
+        if not 0 <= roughness <= 1 or not 0 <= metallic <= 1:
+            raise AssetStorageError("roughness/metallic 必须在 0–1 范围")
+        if not 0 <= normal_scale <= 4:
+            raise AssetStorageError("normal_scale 必须在 0–4 范围")
         unknown = sorted(set(maps) - set(CHANNELS))
         if unknown:
             raise AssetStorageError(f"不支持的 PBR 通道: {', '.join(unknown)}")
@@ -130,6 +187,18 @@ class LocalAssetStorage:
                 "type": source_type,
                 **({"uri": source_uri.strip()} if source_uri and source_uri.strip() else {}),
             },
+            "classification": {
+                "materialClass": material_class,
+                "tags": safe_tags,
+                "recommendedRoles": safe_roles,
+            },
+            "realWorldSizeMeters": real_size,
+            "defaults": {
+                "roughness": roughness,
+                "metallic": metallic,
+                "normalScale": normal_scale,
+                "uvScale": resolved_uv_scale,
+            },
             "maps": prepared_maps,
         }
 
@@ -167,6 +236,9 @@ class LocalAssetStorage:
                 "source": prepared["source"],
                 "license": prepared["license"],
                 "maps": public_maps,
+                "classification": prepared.get("classification", {}),
+                "realWorldSizeMeters": prepared.get("realWorldSizeMeters", [1.0, 1.0]),
+                "defaults": prepared.get("defaults", {}),
                 "createdAt": datetime.now(timezone.utc).isoformat(),
             }
             (temp_dir / "manifest.json").write_text(

@@ -8,6 +8,7 @@
     "build": "vue-tsc -b && vite build",
     "check:core": "node scripts/check-wild-core.mjs",
     "check:compiler": "node scripts/check-component-compiler.mjs",
+    "check:rendering": "node scripts/check-rendering-pipeline.mjs",
     "eval:components": "node scripts/check-component-compiler.mjs",
     "eval:phase3a": "node scripts/check-component-compiler.mjs",
     "eval:pbr": "node scripts/check-component-compiler.mjs",

@@ -19,10 +19,24 @@ import type { EmbeddedImageData, TextureImageData } from '../types/blueprint'
 import { recordTextureLoad } from './textureLoadMonitor'
 
 let textureAnisotropy = 4
+let requestMaterialRender: () => void = () => {}
+
+export type PBRMaterial = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial
+
+type TextureFactory = (
+  image: TextureImageData,
+  channel: string,
+  isColorTexture: boolean,
+  uvScale?: [number, number],
+) => THREE.Texture
 
 /** 使用当前 GPU 能力设置纹理过滤上限，避免在低端设备上硬编码高采样。 */
-export function configureMaterialRendering(maxAnisotropy: number): void {
+export function configureMaterialRendering(
+  maxAnisotropy: number,
+  invalidate: () => void = () => {},
+): void {
   textureAnisotropy = Math.max(1, Math.min(16, Math.floor(maxAnisotropy || 1)))
+  requestMaterialRender = invalidate
 }
 
 /**
@@ -47,6 +61,18 @@ export interface MaterialParams {
   }
   normalScale?: number
   uvScale?: [number, number]
+  materialClass?: 'standard' | 'glass' | 'clearcoat' | 'fabric'
+  side?: 'front' | 'double'
+  transmission?: number
+  ior?: number
+  thickness?: number
+  attenuationColor?: [number, number, number]
+  attenuationDistance?: number
+  clearcoat?: number
+  clearcoatRoughness?: number
+  sheen?: number
+  sheenColor?: [number, number, number]
+  emissiveIntensity?: number
 }
 
 /**
@@ -58,9 +84,18 @@ export interface MaterialParams {
  */
 export function createMaterialFromParams(
   params: MaterialParams,
-  hasVertexColors: boolean = false
-): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial()
+  hasVertexColors: boolean = false,
+  textureFactory: TextureFactory = createTexture,
+): PBRMaterial {
+  const usePhysicalMaterial = params.materialClass === 'glass'
+    || params.materialClass === 'clearcoat'
+    || params.materialClass === 'fabric'
+    || (params.transmission ?? 0) > 0
+    || (params.clearcoat ?? 0) > 0
+    || (params.sheen ?? 0) > 0
+  const material: PBRMaterial = usePhysicalMaterial
+    ? new THREE.MeshPhysicalMaterial()
+    : new THREE.MeshStandardMaterial()
   const baseTexture = params.textures?.baseColor || params.embeddedImage
   
   // 1. 基础颜色
@@ -79,7 +114,34 @@ export function createMaterialFromParams(
   material.envMapIntensity = Math.min(1.5, 0.82 + params.metallic * 0.45)
   
   // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）
-  const isTransparent = params.opacity !== undefined && params.opacity < 0.99
+  if (material instanceof THREE.MeshPhysicalMaterial) {
+    const isGlass = params.materialClass === 'glass'
+    material.transmission = params.transmission ?? (isGlass ? 0.92 : 0)
+    material.ior = params.ior ?? (isGlass ? 1.5 : 1.5)
+    material.thickness = params.thickness ?? (isGlass ? 0.012 : 0)
+    material.attenuationDistance = params.attenuationDistance ?? (isGlass ? 6 : Infinity)
+    if (params.attenuationColor || isGlass) {
+      material.attenuationColor = new THREE.Color().setRGB(
+        ...(params.attenuationColor ?? [0.82, 0.94, 1]),
+        THREE.SRGBColorSpace,
+      )
+    }
+    material.clearcoat = params.clearcoat ?? (isGlass ? 0.08 : 0)
+    material.clearcoatRoughness = params.clearcoatRoughness ?? 0.12
+    material.sheen = params.sheen ?? (params.materialClass === 'fabric' ? 0.35 : 0)
+    if (params.sheenColor) {
+      material.sheenColor = new THREE.Color().setRGB(
+        ...params.sheenColor,
+        THREE.SRGBColorSpace,
+      )
+    }
+  }
+
+  const usesTransmission = material instanceof THREE.MeshPhysicalMaterial
+    && material.transmission > 0
+  const isTransparent = !usesTransmission
+    && params.opacity !== undefined
+    && params.opacity < 0.99
   if (isTransparent) {
     material.transparent = true
     material.opacity = params.opacity!
@@ -87,7 +149,8 @@ export function createMaterialFromParams(
     material.envMapIntensity = Math.max(material.envMapIntensity, 1.05)
   } else {
     material.transparent = false
-    material.depthWrite = true   // 不透明物体必须写深度，保证正确遮挡
+    material.opacity = 1
+    material.depthWrite = true   // 不透明/透射物体写深度，保证正确遮挡
   }
 
   // 4. 自发光
@@ -99,7 +162,7 @@ export function createMaterialFromParams(
       eb,
       THREE.SRGBColorSpace,
     )
-    material.emissiveIntensity = 1.0
+    material.emissiveIntensity = params.emissiveIntensity ?? 1.0
   }
 
   // 5. 顶点颜色
@@ -109,24 +172,25 @@ export function createMaterialFromParams(
 
   // 6. 内嵌 PBR 纹理。TextureLoader 可直接读取 data URL，加载完成后
   // Three.js 会自动触发材质更新，不阻塞场景重建。
-  if (baseTexture) material.map = createTexture(baseTexture, 'baseColor', true, params.uvScale)
+  if (baseTexture) material.map = textureFactory(baseTexture, 'baseColor', true, params.uvScale)
   if (params.textures?.normal) {
-    material.normalMap = createTexture(params.textures.normal, 'normal', false, params.uvScale)
+    material.normalMap = textureFactory(params.textures.normal, 'normal', false, params.uvScale)
     const normalScale = params.normalScale ?? 1
     material.normalScale.set(normalScale, normalScale)
   }
   if (params.textures?.roughness) {
-    material.roughnessMap = createTexture(params.textures.roughness, 'roughness', false, params.uvScale)
+    material.roughnessMap = textureFactory(params.textures.roughness, 'roughness', false, params.uvScale)
   }
   if (params.textures?.metalness) {
-    material.metalnessMap = createTexture(params.textures.metalness, 'metalness', false, params.uvScale)
+    material.metalnessMap = textureFactory(params.textures.metalness, 'metalness', false, params.uvScale)
   }
   if (params.textures?.ambientOcclusion) {
-    material.aoMap = createTexture(params.textures.ambientOcclusion, 'ambientOcclusion', false, params.uvScale)
+    material.aoMap = textureFactory(params.textures.ambientOcclusion, 'ambientOcclusion', false, params.uvScale)
   }
 
-  // 7. 双面渲染：兼容当前仍包含单面网格的旧构建器。
-  material.side = THREE.DoubleSide
+  // 7. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
+  // 只有已经验证为封闭实体的材质才通过 side: 'front' 显式开启背面剔除。
+  material.side = params.side === 'front' ? THREE.FrontSide : THREE.DoubleSide
   
   return material
 }
@@ -136,8 +200,9 @@ export function createMaterialFromParams(
  * 相同参数的材质可以复用，节省内存
  */
 export class MaterialCache {
-  private cache = new Map<string, THREE.MeshStandardMaterial>()
+  private cache = new Map<string, PBRMaterial>()
   private currentKeyBySlot = new Map<string, string>()
+  private textureCache = new Map<string, THREE.Texture>()
   
   /**
    * 获取或创建材质
@@ -149,19 +214,28 @@ export class MaterialCache {
     materialName: string,
     params: MaterialParams,
     hasVertexColors: boolean
-  ): THREE.MeshStandardMaterial {
+  ): PBRMaterial {
     const slot = `${materialName}_${hasVertexColors}`
     const key = `${slot}_${materialSignature(params)}`
     const oldKey = this.currentKeyBySlot.get(slot)
 
     if (oldKey && oldKey !== key) {
       const stale = this.cache.get(oldKey)
-      if (stale) disposeMaterial(stale)
+      if (stale) disposeMaterial(stale, false)
       this.cache.delete(oldKey)
     }
     
     if (!this.cache.has(key)) {
-      const material = createMaterialFromParams(params, hasVertexColors)
+      const material = createMaterialFromParams(
+        params,
+        hasVertexColors,
+        (image, channel, isColorTexture, uvScale) => this.getOrCreateTexture(
+          image,
+          channel,
+          isColorTexture,
+          uvScale,
+        ),
+      )
       material.name = materialName
       this.cache.set(key, material)
     }
@@ -174,9 +248,11 @@ export class MaterialCache {
    * 清空缓存（场景切换时调用）
    */
   clear() {
-    this.cache.forEach(disposeMaterial)
+    this.cache.forEach(material => disposeMaterial(material, false))
     this.cache.clear()
     this.currentKeyBySlot.clear()
+    this.textureCache.forEach(texture => texture.dispose())
+    this.textureCache.clear()
   }
   
   /**
@@ -184,6 +260,23 @@ export class MaterialCache {
    */
   get size() {
     return this.cache.size
+  }
+
+  private getOrCreateTexture(
+    image: TextureImageData,
+    channel: string,
+    isColorTexture: boolean,
+    uvScale: [number, number] = [1, 1],
+  ): THREE.Texture {
+    const source = image.encoding === 'url'
+      ? `${image.uri}:${image.sha256}`
+      : `${image.mimeType}:${hashString(image.data)}`
+    const key = `${source}:${channel}:${isColorTexture ? 'srgb' : 'linear'}:${uvScale.join(',')}`
+    const cached = this.textureCache.get(key)
+    if (cached) return cached
+    const texture = createTexture(image, channel, isColorTexture, uvScale)
+    this.textureCache.set(key, texture)
+    return texture
   }
 }
 
@@ -201,6 +294,7 @@ function createTexture(
     url,
     () => {
       if (image.encoding === 'url') recordTextureLoad(url, channel, 'loaded')
+      requestMaterialRender()
     },
     undefined,
     error => {
@@ -208,6 +302,7 @@ function createTexture(
         const detail = error instanceof Error ? error.message : 'HTTP 或图片解码失败'
         recordTextureLoad(url, channel, 'error', detail)
       }
+      requestMaterialRender()
     },
   )
   texture.colorSpace = isColorTexture ? THREE.SRGBColorSpace : THREE.NoColorSpace
@@ -231,9 +326,21 @@ function materialSignature(params: MaterialParams): string {
     metallic: params.metallic,
     albedo: params.albedo,
     emissive: params.emissive,
+    emissiveIntensity: params.emissiveIntensity,
     opacity: params.opacity,
     normalScale: params.normalScale,
     uvScale: params.uvScale,
+    materialClass: params.materialClass,
+    side: params.side,
+    transmission: params.transmission,
+    ior: params.ior,
+    thickness: params.thickness,
+    attenuationColor: params.attenuationColor,
+    attenuationDistance: params.attenuationDistance,
+    clearcoat: params.clearcoat,
+    clearcoatRoughness: params.clearcoatRoughness,
+    sheen: params.sheen,
+    sheenColor: params.sheenColor,
     embeddedImage: imageSignature(params.embeddedImage),
     textures: params.textures && {
       baseColor: imageSignature(params.textures.baseColor),
@@ -254,11 +361,13 @@ function hashString(value: string): string {
   return (hash >>> 0).toString(16)
 }
 
-function disposeMaterial(material: THREE.MeshStandardMaterial): void {
-  material.map?.dispose()
-  material.normalMap?.dispose()
-  material.roughnessMap?.dispose()
-  material.metalnessMap?.dispose()
-  material.aoMap?.dispose()
+function disposeMaterial(material: PBRMaterial, disposeTextures = true): void {
+  if (disposeTextures) {
+    material.map?.dispose()
+    material.normalMap?.dispose()
+    material.roughnessMap?.dispose()
+    material.metalnessMap?.dispose()
+    material.aoMap?.dispose()
+  }
   material.dispose()
 }

@@ -78,6 +78,18 @@ export interface MaterialParams {
   textures?: import('../../types').MaterialDef['textures'];
   normalScale?: number;
   uvScale?: [number, number];
+  materialClass?: import('../../types').MaterialDef['materialClass'];
+  side?: import('../../types').MaterialDef['side'];
+  transmission?: number;
+  ior?: number;
+  thickness?: number;
+  attenuationColor?: import('../../types').Color;
+  attenuationDistance?: number;
+  clearcoat?: number;
+  clearcoatRoughness?: number;
+  sheen?: number;
+  sheenColor?: import('../../types').Color;
+  emissiveIntensity?: number;
 }
 
 export interface EngineDiagnostic {
