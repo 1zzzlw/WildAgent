@@ -9,12 +9,10 @@
     "check:core": "node scripts/check-wild-core.mjs",
     "check:compiler": "node scripts/check-component-compiler.mjs",
     "check:rendering": "node scripts/check-rendering-pipeline.mjs",
-    "eval:components": "node scripts/check-component-compiler.mjs",
-    "eval:phase3a": "node scripts/check-component-compiler.mjs",
-    "eval:pbr": "node scripts/check-component-compiler.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
     "element-plus": "^2.14.3",
     "highlight.js": "^11.11.1",
     "markdown-it": "^14.3.0",

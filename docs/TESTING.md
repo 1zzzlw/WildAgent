@@ -1,6 +1,6 @@
 # 测试文件使用指南
 
-最后核对：2026-08-11。本文覆盖仓库内当前可见的自动化测试、评测脚本、图展示工具和历史手工测试文件。命令默认使用 Windows PowerShell；路径从仓库根目录 `E:\AgentProject\WildAgent` 开始。
+最后核对：2026-08-11。本文覆盖仓库内当前可见的自动化测试、评测脚本、图展示工具和人工模型冒烟文件。命令默认使用 Windows PowerShell；路径从仓库根目录 `E:\AgentProject\WildAgent` 开始。
 
 ## 1. 测试分层
 
@@ -11,10 +11,9 @@
 | `wild-web` 生产构建 | 是 | 否 | TypeScript、Vue 和 Vite 构建检查 |
 | `scripts/evaluate_component_rag.py` | 建议用于知识库变更 | 否 | 固定题集评估 RAG 检索命中 |
 | `tests/show_langgraph_graph.py` | 结构变更时使用 | HTML 渲染需要 CDN | 校验并展示实际编译的 LangGraph |
-| `wild-server/test_*.py` | 否 | 是 | 旧版真实模型/人工观察脚本 |
-| `wild-web/test/*` | 否 | 视文件而定 | 历史修复验证与调试材料 |
+| `wild-server/test_graph_minimal.py` | 否 | 是 | 真实模型完整图人工冒烟 |
 
-当前自动化基线：后端 `169 passed`。前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。
+当前自动化基线：后端 `189 passed, 4 subtests passed`。前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。
 
 ## 2. 日常完整回归
 
@@ -129,18 +128,14 @@ cd E:\AgentProject\WildAgent\wild-server
 
 它使用固定问题集、临时 Chroma 集合和本地 HashEmbeddingFunction，检查真实分片、metadata 过滤、召回和排序；不需要 API Key，也不会修改 `storage/chroma`。知识库、分片器、metadata 或检索策略变更后应运行。
 
-## 6. 后端根目录旧集成脚本
+## 6. 后端根目录人工模型脚本
 
 这些文件不属于自动化套件，不应被无路径 `pytest` 收集。
 
 | 文件 | 原始作用与运行方式 | 当前状态 |
 |---|---|---|
 | `wild-server/test_graph_minimal.py` | 在 `wild-server` 执行 `.venv\Scripts\python.exe -B test_graph_minimal.py`，调用真实模型跑完整图，并可能写出 `test_output_blueprint.json`。 | 可作为人工模型冒烟；需要有效 `.env`，会产生模型费用，异常被脚本捕获后未必返回非零退出码，不能作为 CI 门禁。 |
-| `wild-server/test_callback_thinking.py` | 原用于观察 callback 思考流和重试次数。 | 已过时：仍把 `on_reasoning_delta` 放入 LangGraph State，而当前实现已改用进程内 runtime context。 |
-| `wild-server/test_suggested_components.py` | 原用于真实模型生成多个建筑并人工观察建议组件和思考内容。 | 部分过时：真实生成仍可能运行，但 State 内思考回调已失效，诊断字段名也沿用旧格式。 |
-| `wild-server/test_thinking_stream.py` | 原用于人工观察骨架与组件的流式思考。 | 已过时：仍使用已经移出可持久化 State 的回调字段。 |
-
-需要真实模型的当前验证应优先从 WebSocket 精密模式发起；它与生产使用同一 runtime callback、checkpointer 和事件协议。
+需要真实模型的当前验证可使用保留的完整图冒烟脚本，或优先从 WebSocket 精密模式发起；后者与生产使用同一 runtime callback、checkpointer 和事件协议。
 
 ## 7. 前端自动检查逐文件说明
 
@@ -166,8 +161,6 @@ npm run check:compiler
 
 作用：临时编译组件编译器和前端集成模块，覆盖组件能力、几何评测样本、门窗深度、可交互窗扇与灯具、坡道/檐口/曲墙、缓存、Schema 拒绝、渲染、ScenePatch、材质优化、PBR、撤销历史、Worker 传输、拖拽、生成文件无缓存加载、Presence 和显式保存。
 
-`eval:components`、`eval:phase3a`、`eval:pbr` 当前都是这个同一脚本的别名，并不是三个独立的子测试集。
-
 ### `wild-web/scripts/check-rendering-pipeline.mjs`
 
 运行：
@@ -183,21 +176,7 @@ npm run check:rendering
 
 `npm run build` 虽然不对应单一测试文件，但必须与上面两个脚本一起运行。它执行 `vue-tsc -b` 和 Vite 生产构建，用于发现类型错误、模块引用错误和生产打包失败。
 
-## 8. `wild-web/test` 历史手工测试
-
-该目录来自早期开口和蓝图渲染问题排查，不是当前自动化体系。
-
-| 文件 | 原始用途 | 当前可用性 |
-|---|---|---|
-| `test/validate-opening-fix.js` | 用 3 个固定样本验证世界坐标投影为墙体局部开口坐标。运行：在 `wild-web` 执行 `node test/validate-opening-fix.js`。 | 可以运行，但复制了一份算法，失败时也没有设置非零退出码，只能作为说明性检查。 |
-| `test/verify-fix.js` | 验证 cabin、bieshu、tiantan 的墙角 gap 和弧墙开口。 | 当前不能直接运行：脚本读取 `test/lantu`，仓库实际样本位于 `wild-web/lantu`。请使用 `npm run check:core`。 |
-| `test/debug-bieshu.js` | 打印别墅墙、屋顶、网格和包围盒。 | 当前不能直接运行：脚本导入不存在的源码 `.js` 文件，而实际源文件是 TypeScript。请使用 `check:core` 或开发界面。 |
-| `test/test-render.html` | 早期 Three.js 蓝图人工渲染页面。 | 当前不是有效 Vite 测试入口：模块路径和裸模块导入不符合现有目录结构。不要把页面能否打开作为当前回归结论。 |
-| `test/TEST-INSTRUCTIONS.md` | 早期开口坐标和屋顶问题的人工验收步骤。 | 历史参考，部分日志与目录已经失效。 |
-| `test/README-FIX.md` | 早期蓝图修复说明。 | 历史参考，不是当前规范。 |
-| `test/修复总结.txt` | 早期修复结果记录。 | 历史记录，不可作为自动化测试证据。 |
-
-## 9. 变更类型与最低测试
+## 8. 变更类型与最低测试
 
 | 变更范围 | 最低测试 |
 |---|---|
@@ -209,7 +188,7 @@ npm run check:rendering
 | 前端 Agent 协议或状态 | 后端 WebSocket 测试 + `npm run build` + `npm run check:compiler` |
 | 部署就绪与模型响应兼容 | `test_deployment_preflight.py`、`test_readiness.py`、`test_model_client_compat.py` |
 
-## 10. Checkpointer 部署说明
+## 9. Checkpointer 部署说明
 
 LangGraph SQLite 文件由服务首次启动自动创建在：
 

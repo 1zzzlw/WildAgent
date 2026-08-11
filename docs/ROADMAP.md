@@ -37,7 +37,7 @@
 - RAG 节点诊断增加命中文档来源与标题，执行面板可以展开查看本轮究竟使用了哪些知识片段。
 - wild-core 适配层增加结构化重建报告，把源构件、展开后的元素 ID、网格数量、宿主关系、预期/实际包围盒和空间间距关联起来；缺失网格、脱离宿主和屋顶覆盖不足会进入校验面板。
 - `sceneStore` 不再把“返回了重建实体”等同于成功：存在重建级错误时加载返回失败；ScenePatch 会回滚 Blueprint 并恢复上一版网格，不会提交错误构件。
-- 固定评测入口增加 `npm run eval:phase3a`，覆盖门窗宿主映射、实际网格包围盒及缺失网格识别。
+- 固定评测入口 `npm run check:compiler` 覆盖门窗宿主映射、实际网格包围盒及缺失网格识别。
 - Phase 3B PBR 最短闭环完成：新增独立资产 LangGraph，按“意图提取 → 文件校验 → 内容寻址入库 → 资产/材质 ScenePatch”运行，不让主建筑生成图直接处理二进制图片。
 - PBR 图片本体写入 `storage/assets/{assetId}`，`.wild` 只保存不可变 `assetId`、SHA-256、来源、授权和 URL；不再把新图片编码为 Base64。`ASSETS__PUBLIC_BASE_URL` 可从当前站内路径切换到对象存储/CDN，而不改变 WILD 协议。
 - WILD 增加可选顶层 `assets` 与 `materials.*.textureSet`；前后端结构校验、ScenePatch 预检和 Core 重建均会阻止悬空资产引用，`upsert_asset` 必须先于引用它的 `upsert_material`。
@@ -63,9 +63,9 @@
 
 ## 当前验收基线
 
-- 后端：`tests/` 下 `152 passed`；新增方案候选归一化/选择、立面槽位解析、门窗吸附/补齐、门窗深度字段、定向深度修复、阳台重复表达清理以及部署预检多内容块/推理字段兼容回归。仓库根目录 4 个真实模型异步脚本仍按独立集成测试运行，不计入 pytest 单元测试数字。
+- 后端：`tests/` 下 `189 passed, 4 subtests passed`；覆盖方案候选、立面槽位、门窗吸附/补齐、定向修复、断线恢复、checkpointer 与部署预检等回归。仓库根目录仅保留 1 个真实模型完整图冒烟脚本，不计入 pytest 单元测试数字。
 - 前端：`npm run build` 通过，Vue/TypeScript 编译无错误。
-- 引擎：`check:core` 通过 6 份样本及墙体法线/逐面 UV 回归；`eval:pbr` 继续覆盖 12 个固定组件几何用例、10 类组件编译、门窗贴墙/缺失网格诊断，并验证 `upsert_asset → textureSet → wild-core → Three.js URL` 完整链路。
+- 引擎：`check:core` 通过 6 份样本及墙体法线/逐面 UV 回归；`check:compiler` 继续覆盖 12 个固定组件几何用例、10 类组件编译、门窗贴墙/缺失网格诊断，并验证 `upsert_asset → textureSet → wild-core → Three.js URL` 完整链路。
 - 仍需人工视觉验收不同面板宽度下的执行步骤折叠、长文本滚动和“回到最新”；本轮运行环境未提供可用的应用内浏览器。
 
 ## Phase 3B PBR 人工验收门禁（当前停点）
@@ -86,7 +86,7 @@ cd wild-server
 python -m pytest -q tests
 
 cd ../wild-web
-npm run eval:pbr
+npm run check:compiler
 npm run build
 ```
 

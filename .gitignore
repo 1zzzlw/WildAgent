@@ -1,6 +1,7 @@
 # Python
 /__pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 .env
 wild-server/storage/chroma/
@@ -12,6 +13,10 @@ wild-server/storage/geoip/*.mmdb
 # Node
 node_modules/
 dist/
+wild-server/test_output_blueprint.json
+
+# Local browser/debug output
+.gstack/browse-*
 
 # IDE
 .idea/
