@@ -130,8 +130,15 @@ def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
             "relocated_bay_windows": [],
             "replaced_windows": [],
             "pruned_bay_windows": [],
+            "relocated_windows": [],
+            "pruned_windows": [],
         }
 
+    walls = {
+        item.get("id"): item
+        for item in geometry.get("elements", [])
+        if isinstance(item, dict) and item.get("type") == "wall" and item.get("id")
+    }
     doors = [item for item in components if item.get("type") == "door"]
     windows = [item for item in components if item.get("type") == "window"]
     bay_windows = [item for item in components if item.get("type") == "bay_window"]
@@ -140,6 +147,8 @@ def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
     relocated: list[str] = []
     replaced: list[str] = []
     pruned: list[str] = []
+    relocated_windows: list[str] = []
+    pruned_windows: list[str] = []
 
     def available_window_candidates(bay: dict) -> list[dict]:
         candidates = [
@@ -195,6 +204,63 @@ def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
                 replaced.append(str(window.get("id", "?")))
         kept_bays.append(bay)
 
+    # 普通窗按原有顺序处理；若与先前普通窗冲突，优先在同一父墙寻找最近
+    # 的安全位置，短墙确实放不下时才删除后出现的窗。门/凸窗仍沿用上面的
+    # 专用优先级逻辑，避免扩大既有自动修复范围。
+    kept_windows: list[dict] = []
+
+    def relocate_plain_window(window: dict, blockers: list[dict]) -> bool:
+        box = _component_opening_box(window)
+        if box is None:
+            return False
+        wall_id, original_along, _, width, _ = box
+        wall = walls.get(wall_id)
+        if wall is None:
+            return False
+        max_along = _wall_length(wall) - width
+        if max_along < -1e-6:
+            return False
+
+        candidates = [0.1, max(0.0, max_along - 0.1)]
+        for blocker in blockers:
+            blocker_box = _component_opening_box(blocker)
+            if blocker_box is None or blocker_box[0] != wall_id:
+                continue
+            blocker_along, blocker_width = blocker_box[1], blocker_box[3]
+            candidates.extend([
+                blocker_along + blocker_width + 0.1,
+                blocker_along - width - 0.1,
+            ])
+
+        position = window.get("from")
+        if not isinstance(position, list) or len(position) != 3:
+            return False
+        for candidate in sorted(
+            {round(value, 3) for value in candidates},
+            key=lambda value: (abs(value - original_along), value),
+        ):
+            if candidate < -1e-6 or candidate > max_along + 1e-6:
+                continue
+            position[0] = max(0.0, min(max_along, candidate))
+            if not any(_wall_openings_overlap(window, blocker) for blocker in blockers):
+                return True
+        position[0] = original_along
+        return False
+
+    for window in windows:
+        if id(window) in removed_ids:
+            continue
+        blockers = list(kept_windows)
+        if any(_wall_openings_overlap(window, blocker) for blocker in blockers):
+            if relocate_plain_window(window, blockers):
+                relocated_windows.append(str(window.get("id", "?")))
+                kept_windows.append(window)
+            else:
+                removed_ids.add(id(window))
+                pruned_windows.append(str(window.get("id", "?")))
+            continue
+        kept_windows.append(window)
+
     if removed_ids:
         geometry["components"] = [item for item in components if id(item) not in removed_ids]
 
@@ -202,6 +268,8 @@ def _resolve_wall_opening_component_conflicts(blueprint: dict) -> dict:
         "relocated_bay_windows": relocated,
         "replaced_windows": list(dict.fromkeys(replaced)),
         "pruned_bay_windows": pruned,
+        "relocated_windows": relocated_windows,
+        "pruned_windows": pruned_windows,
     }
 
 def _wall_length(wall: dict) -> float:
@@ -2277,12 +2345,18 @@ def fix_opening_fit(blueprint: dict) -> str:
     relocated = conflict_stats["relocated_bay_windows"]
     replaced = conflict_stats["replaced_windows"]
     pruned = conflict_stats["pruned_bay_windows"]
+    relocated_windows = conflict_stats["relocated_windows"]
+    pruned_windows = conflict_stats["pruned_windows"]
     if relocated:
         fixes.append("🔧 凸窗移至安全窗位: " + ", ".join(relocated))
     if replaced:
         fixes.append("🔧 移除被门/凸窗替换的普通窗: " + ", ".join(replaced))
     if pruned:
         fixes.append("🔧 无安全窗位，移除冲突凸窗: " + ", ".join(pruned))
+    if relocated_windows:
+        fixes.append("🔧 普通窗移至同墙安全位置: " + ", ".join(relocated_windows))
+    if pruned_windows:
+        fixes.append("🔧 同墙无安全位置，移除重叠普通窗: " + ", ".join(pruned_windows))
 
     if not fixes:
         return "✅ 所有 opening/门窗组件均在 parentWall 合理范围内，无需修正。"

@@ -169,3 +169,39 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
             result["merged_blueprint"]
         )
         self.assertIn("重叠", output)
+
+    async def test_overlapping_plain_windows_are_fixed_in_merge(self):
+        skeleton = {
+            "meta": {"version": "1.1", "type": "building", "name": "short-wall"},
+            "geometry": {
+                "elements": [{
+                    "id": "wall_short", "type": "wall",
+                    "from": [0, 0, 0], "to": [1, 3.2, 0],
+                    "thickness": 0.24,
+                }],
+                "components": [],
+            },
+            "materials": {},
+            "behaviors": {},
+        }
+        result = await merge_fragments_node({
+            "skeleton_blueprint": skeleton,
+            "window_fragments": [
+                {
+                    "id": "window_05", "type": "window",
+                    "parentWall": "wall_short", "from": [0.18, 0.96, 0],
+                    "width": 0.5, "height": 1.55,
+                },
+                {
+                    "id": "window_06", "type": "window",
+                    "parentWall": "wall_short", "from": [0.32, 0.96, 0],
+                    "width": 0.5, "height": 1.55,
+                },
+            ],
+        })
+
+        self.assertEqual(result["merge_diag"]["final_errors"], 0)
+        self.assertEqual(
+            [item["id"] for item in result["merged_blueprint"]["geometry"]["components"]],
+            ["window_05"],
+        )

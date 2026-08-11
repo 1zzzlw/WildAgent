@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from app.agent.nodes.callback_node import callback_node
 from app.agent.nodes.validate_node import validate_node
+from app.agent.graph import build_generation_graph
 
 
 def _state_blueprint() -> dict:
@@ -91,8 +92,29 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["repair_audit"]["accepted"])
         self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
         self.assertEqual(result["door_fragments"][0]["from"][0], 0.5)
+        self.assertEqual(
+            result["merged_blueprint"]["geometry"]["components"][0]["from"][0],
+            0.5,
+        )
         self.assertNotIn("window_fragments", result)
         self.assertEqual(state["window_fragments"][0]["from"][0], 2.8)
+
+    async def test_validate_node_preserves_retry_metrics(self):
+        result = await validate_node({
+            "merged_blueprint": _state_blueprint(),
+            "retry_count": 2,
+            "max_retries": 3,
+        })
+
+        self.assertEqual(result["retry_count"], 2)
+        self.assertEqual(result["max_retries"], 3)
+
+    def test_callback_routes_to_validation_without_remerge(self):
+        graph = build_generation_graph(enable_callback=True).get_graph()
+        edges = {(edge.source, edge.target) for edge in graph.edges}
+
+        self.assertIn(("callback", "final_validate"), edges)
+        self.assertNotIn(("callback", "merge"), edges)
 
     async def test_callback_can_add_component_required_by_design_quota(self):
         blueprint = _state_blueprint()

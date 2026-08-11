@@ -276,6 +276,47 @@ class SpatialValidationTest(unittest.TestCase):
         self.assertIn("❌ [component:window]", result)
         self.assertIn("重叠", result)
 
+    def test_overlapping_plain_windows_are_relocated_or_pruned(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{
+                    "id": "wall_short",
+                    "type": "wall",
+                    "from": [0, 0, 0],
+                    "to": [1, 3.2, 0],
+                    "height": 3.2,
+                }],
+                "components": [
+                    {
+                        "id": "window_05",
+                        "type": "window",
+                        "parentWall": "wall_short",
+                        "from": [0.18, 0.96, 0],
+                        "width": 0.5,
+                        "height": 1.55,
+                    },
+                    {
+                        "id": "window_06",
+                        "type": "window",
+                        "parentWall": "wall_short",
+                        "from": [0.32, 0.96, 0],
+                        "width": 0.5,
+                        "height": 1.55,
+                    },
+                ],
+            },
+        }
+
+        self.assertIn("0.36m × 1.55m", run_tool(validate_opening_fit, blueprint))
+        fix_result = run_tool(fix_opening_fit, blueprint)
+
+        self.assertIn("普通窗", fix_result)
+        self.assertNotIn("❌", run_tool(validate_opening_fit, blueprint))
+        self.assertEqual(
+            [item["id"] for item in blueprint["geometry"]["components"]],
+            ["window_05"],
+        )
+
     def test_bay_window_overlapping_door_moves_to_safe_window_slot(self):
         blueprint = {
             "geometry": {

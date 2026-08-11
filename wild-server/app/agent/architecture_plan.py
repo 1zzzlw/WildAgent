@@ -1240,6 +1240,41 @@ def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _opening_slots_overlap(
+    first: dict[str, Any],
+    second: dict[str, Any],
+    *,
+    horizontal_clearance: float = 0.0,
+) -> bool:
+    """判断同一父墙上的两个门窗槽位是否在墙面矩形中相交。"""
+    if first.get("wall_id") != second.get("wall_id"):
+        return False
+    try:
+        first_from = first["from"]
+        second_from = second["from"]
+        first_left = float(first_from[0])
+        first_bottom = float(first_from[1])
+        second_left = float(second_from[0])
+        second_bottom = float(second_from[1])
+        first_width = float(first["width"])
+        first_height = float(first["height"])
+        second_width = float(second["width"])
+        second_height = float(second["height"])
+    except (KeyError, TypeError, ValueError, IndexError):
+        return True
+    if min(first_width, first_height, second_width, second_height) <= 0:
+        return True
+    vertical_overlap = (
+        first_bottom < second_bottom + second_height
+        and second_bottom < first_bottom + first_height
+    )
+    horizontal_overlap = (
+        first_left < second_left + second_width + horizontal_clearance
+        and second_left < first_left + first_width + horizontal_clearance
+    )
+    return vertical_overlap and horizontal_overlap
+
+
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     walls = []
@@ -1317,6 +1352,15 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 "width": round(width, 3),
                 "height": round(max(0.8, height), 3),
             }
+            if any(
+                _opening_slots_overlap(
+                    slot,
+                    existing,
+                    horizontal_clearance=0.1,
+                )
+                for existing in wall_slots
+            ):
+                continue
             wall_slots.append(slot)
             slots.append(slot)
         facade_plan[str(wall["id"])] = {
@@ -1375,7 +1419,19 @@ def conform_openings_to_slots(
     result_openings: list[dict[str, Any]] = []
     stats = {"snapped": 0, "synthesized": 0, "pruned": 0}
     quotas = design_brief.get("component_quota", {})
-    all_slots = design_brief["opening_slots"]
+    all_slots: list[dict[str, Any]] = []
+    for raw_slot in design_brief["opening_slots"]:
+        if (
+            not isinstance(raw_slot, dict)
+            or raw_slot.get("type") not in {"door", "window"}
+            or not raw_slot.get("id")
+            or not raw_slot.get("wall_id")
+        ):
+            continue
+        slot = deepcopy(raw_slot)
+        if any(_opening_slots_overlap(slot, existing) for existing in all_slots):
+            continue
+        all_slots.append(slot)
 
     # 凸窗本质上也是父墙洞口。先让它占用最近的普通窗槽位，后续普通窗只能
     # 使用剩余槽位，从源头避免独立节点生成的凸窗和门窗在合并后重复切洞。

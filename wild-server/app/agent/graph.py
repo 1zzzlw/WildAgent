@@ -166,7 +166,9 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     if enable_callback:
         # ── Layer 4: 校验失败回调重试 ──
         graph.add_node("callback", callback_node)
-        graph.add_edge("callback", "merge")
+        # callback 已对候选蓝图执行全量复检；直接进入最终校验，避免 merge
+        # 再次按旧槽位覆盖已经通过复检的定向修复。
+        graph.add_edge("callback", "final_validate")
 
     # ── 路由 ──
     graph.set_entry_point("classifier")

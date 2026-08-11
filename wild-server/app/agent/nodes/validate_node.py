@@ -109,6 +109,8 @@ async def validate_node(state: GenerationState) -> dict:
             "status": status,
             "error": error_summary,
             "final_blueprint": merged_blueprint,  # 通过校验后的最终结果
+            "retry_count": state.get("retry_count", 0),
+            "max_retries": state.get("max_retries", 3),
         }
     
     except Exception as e:

@@ -303,7 +303,7 @@ async def callback_node(state: GenerationState) -> dict:
             },
         }
 
-    # ── 7. 只把通过复检的实体写回骨架/组件分片，下一轮 merge 会重新提交 ──
+    # ── 7. 把通过复检的完整候选蓝图与实体分片一起提交 ──
     updates = _state_updates_from_candidate(state, candidate, changed_ids)
     if on_reasoning_delta:
         await on_reasoning_delta(
@@ -337,7 +337,7 @@ def _state_updates_from_candidate(
     candidate: dict,
     changed_ids: set[str],
 ) -> dict:
-    """把候选蓝图中通过复检的实体同步回下一轮 merge 的源分片。"""
+    """提交通过复检的候选蓝图，并同步相关骨架/组件源分片。"""
     from copy import deepcopy
 
     geometry = candidate.get("geometry", {})
@@ -349,7 +349,7 @@ def _state_updates_from_candidate(
         ]
         if isinstance(entity, dict) and entity.get("id") in changed_ids
     }
-    updates: dict = {}
+    updates: dict = {"merged_blueprint": deepcopy(candidate)}
     fragment_updates: dict = {}
     generic_fragments = state.get("component_fragments", {})
 

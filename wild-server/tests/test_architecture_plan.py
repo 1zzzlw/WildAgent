@@ -53,6 +53,72 @@ def test_facade_layout_resolves_exact_non_overlapping_slots() -> None:
     assert doors[0]["from"][2] == 0
     assert brief["facade_plan"]["wall_front_2"]["max_openings"] == 3
 
+    for index, slot in enumerate(brief["opening_slots"]):
+        for other in brief["opening_slots"][index + 1:]:
+            if slot["wall_id"] != other["wall_id"]:
+                continue
+            slot_right = slot["from"][0] + slot["width"]
+            other_right = other["from"][0] + other["width"]
+            assert slot_right <= other["from"][0] or other_right <= slot["from"][0]
+
+
+def test_short_wall_does_not_emit_overlapping_facade_slots() -> None:
+    blueprint = {
+        "geometry": {
+            "elements": [{
+                "id": "wall_front_short",
+                "type": "wall",
+                "from": [0, 0, 0],
+                "to": [1, 3.2, 0],
+                "thickness": 0.24,
+            }],
+            "components": [],
+        },
+    }
+    plan = {
+        "facades": {
+            "front": {
+                "bays": 3,
+                "ground_pattern": ["window", "window", "window"],
+                "upper_pattern": [],
+            },
+        },
+        "component_quota": {"window": {"min": 0, "max": 3}},
+    }
+
+    brief = resolve_facade_layout(blueprint, plan)
+    slots = brief["opening_slots"]
+
+    assert len(slots) == 1
+    assert brief["facade_plan"]["wall_front_short"]["max_openings"] == 1
+
+
+def test_conformance_rejects_overlapping_legacy_slots() -> None:
+    brief = {
+        "opening_slots": [
+            {
+                "id": "short:window:1", "type": "window",
+                "wall_id": "short", "from": [0.18, 0.96, 0],
+                "width": 0.5, "height": 1.55,
+            },
+            {
+                "id": "short:window:2", "type": "window",
+                "wall_id": "short", "from": [0.32, 0.96, 0],
+                "width": 0.5, "height": 1.55,
+            },
+        ],
+        "component_quota": {"window": {"min": 0, "max": 2}},
+    }
+    components, stats = conform_openings_to_slots([
+        {"id": "window_05", "type": "window", "parentWall": "short"},
+        {"id": "window_06", "type": "window", "parentWall": "short"},
+    ], brief)
+
+    windows = [item for item in components if item["type"] == "window"]
+    assert len(windows) == 1
+    assert windows[0]["id"] == "window_05"
+    assert stats["pruned"] == 1
+
 
 def test_merge_conformance_snaps_and_fills_minimum_openings() -> None:
     blueprint = _two_storey_blueprint()
