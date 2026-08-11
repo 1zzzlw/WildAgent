@@ -133,6 +133,11 @@ interface EnvironmentPreset {
   icon: string
   groundColor: number
   fogColor: number
+  sunAzimuthOffset: number
+  directLightScale: number
+  ambientLightScale: number
+  exposureScale: number
+  shadowOpacity: number
 }
 
 const TIME_ORDER: TimeOfDay[] = ['day', 'sunset', 'night']
@@ -214,11 +219,31 @@ const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
 }
 const ENVIRONMENT_ORDER: EnvironmentPresetId[] = ['minimal', 'meadow', 'alpine', 'desert', 'autumn']
 const ENVIRONMENT_PRESETS: Record<EnvironmentPresetId, EnvironmentPreset> = {
-  minimal: { label: '极简', icon: '◻️', groundColor: 0x7c8378, fogColor: 0xb9c9d8 },
-  meadow: { label: '草地', icon: '🌿', groundColor: 0x668653, fogColor: 0xb8cdb6 },
-  alpine: { label: '雪山', icon: '🏔️', groundColor: 0xd7dee2, fogColor: 0xc9d6df },
-  desert: { label: '沙漠', icon: '🏜️', groundColor: 0xc99b61, fogColor: 0xd9b98b },
-  autumn: { label: '秋林', icon: '🍂', groundColor: 0x756a43, fogColor: 0xbca783 },
+  minimal: {
+    label: '极简', icon: '◻️', groundColor: 0x747b73, fogColor: 0xb9c9d8,
+    sunAzimuthOffset: 0, directLightScale: 1, ambientLightScale: 0.9, exposureScale: 1,
+    shadowOpacity: 0.22,
+  },
+  meadow: {
+    label: '草地', icon: '🌿', groundColor: 0x526d42, fogColor: 0xadc2ae,
+    sunAzimuthOffset: -18, directLightScale: 1.16, ambientLightScale: 0.72, exposureScale: 0.96,
+    shadowOpacity: 0.28,
+  },
+  alpine: {
+    label: '雪山', icon: '🏔️', groundColor: 0xc9d1d5, fogColor: 0xc6d2da,
+    sunAzimuthOffset: 16, directLightScale: 1.22, ambientLightScale: 0.82, exposureScale: 0.92,
+    shadowOpacity: 0.3,
+  },
+  desert: {
+    label: '沙漠', icon: '🏜️', groundColor: 0xb9844f, fogColor: 0xd2ad7f,
+    sunAzimuthOffset: 30, directLightScale: 1.3, ambientLightScale: 0.66, exposureScale: 0.92,
+    shadowOpacity: 0.34,
+  },
+  autumn: {
+    label: '秋林', icon: '🍂', groundColor: 0x665c3d, fogColor: 0xb39a78,
+    sunAzimuthOffset: -32, directLightScale: 1.18, ambientLightScale: 0.68, exposureScale: 0.92,
+    shadowOpacity: 0.32,
+  },
 }
 
 const timeOfDay = ref<TimeOfDay>('day')
@@ -387,11 +412,12 @@ function initThreeJS() {
 
   shadowGround = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 400),
-    new THREE.ShadowMaterial({ color: 0x26352d, opacity: 0.2 }),
+    new THREE.ShadowMaterial({ color: 0x26352d, opacity: ENVIRONMENT_PRESETS.minimal.shadowOpacity }),
   )
   shadowGround.name = 'ShadowGround'
   shadowGround.rotation.x = -Math.PI / 2
   shadowGround.position.y = -0.002
+  shadowGround.renderOrder = 2
   shadowGround.receiveShadow = true
   scene.add(shadowGround)
 
@@ -407,7 +433,8 @@ function initThreeJS() {
   presentationGround.rotation.x = -Math.PI / 2
   presentationGround.position.y = -0.004
   presentationGround.scale.set(200, 200, 1)
-  presentationGround.receiveShadow = true
+  // 地面本体负责受光，透明 ShadowMaterial 单独叠加可控的建筑投影，避免阴影重复变黑。
+  presentationGround.receiveShadow = false
   presentationGround.visible = false
   scene.add(presentationGround)
 
@@ -845,8 +872,7 @@ function cycleEnvironmentPreset() {
   const nextIndex = (ENVIRONMENT_ORDER.indexOf(environmentPresetId.value) + 1) % ENVIRONMENT_ORDER.length
   environmentPresetId.value = ENVIRONMENT_ORDER[nextIndex]
   rebuildBuiltInEnvironment()
-  applyEnvironmentAppearance()
-  applyViewMode()
+  applyTimePreset()
 }
 
 function environmentColor(kind: 'groundColor' | 'fogColor') {
@@ -881,29 +907,28 @@ function clearBuiltInEnvironment() {
   materials.forEach(material => material.dispose())
 }
 
-function addRollingHills(group: THREE.Group, radius: number, colors: number[], count = 9) {
-  const geometry = new THREE.SphereGeometry(1, 20, 10)
+function addDistantHills(group: THREE.Group, radius: number, colors: number[], count = 3) {
+  const geometry = new THREE.SphereGeometry(1, 24, 12)
   const materials = colors.map(color => new THREE.MeshStandardMaterial({
     color,
     roughness: 1,
     metalness: 0,
   }))
   for (let index = 0; index < count; index += 1) {
-    const angle = index / count * Math.PI * 2 + (index % 2) * 0.12
-    const distance = radius * (0.82 + (index % 3) * 0.08)
-    const width = radius * (0.28 + (index % 2) * 0.08)
-    const height = radius * (0.12 + (index % 3) * 0.025)
+    const angle = index / count * Math.PI * 2 + 0.35
+    const distance = radius * (1.04 + (index % 2) * 0.08)
+    const width = radius * (0.36 + (index % 2) * 0.07)
+    const height = radius * (0.065 + (index % 3) * 0.012)
     const hill = new THREE.Mesh(geometry, materials[index % materials.length])
-    hill.position.set(Math.cos(angle) * distance, -height * 0.62, Math.sin(angle) * distance)
-    hill.scale.set(width, height, width * (0.62 + (index % 2) * 0.12))
+    hill.position.set(Math.cos(angle) * distance, -height * 0.72, Math.sin(angle) * distance)
+    hill.scale.set(width, height, width * (0.72 + (index % 2) * 0.08))
     hill.rotation.y = angle * 0.7
-    hill.receiveShadow = true
     group.add(hill)
   }
 }
 
-function addTreeRing(group: THREE.Group, radius: number, colors: number[], count: number) {
-  const treeScale = Math.max(0.85, Math.min(2.8, lightingExtent / 6))
+function addSparseTrees(group: THREE.Group, radius: number, colors: number[], count: number) {
+  const treeScale = Math.max(0.75, Math.min(2.2, lightingExtent / 7))
   const trunkGeometry = new THREE.CylinderGeometry(0.13, 0.18, 1.6, 7)
   const crownGeometry = new THREE.ConeGeometry(0.82, 2.25, 9)
   const trunks = new THREE.InstancedMesh(
@@ -918,9 +943,9 @@ function addTreeRing(group: THREE.Group, radius: number, colors: number[], count
   )
   const transform = new THREE.Object3D()
   for (let index = 0; index < count; index += 1) {
-    const angle = index / count * Math.PI * 2 + Math.sin(index * 2.7) * 0.18
-    const distance = radius * (0.58 + (index % 4) * 0.055)
-    const scale = treeScale * (0.78 + (index % 5) * 0.075)
+    const angle = index / count * Math.PI * 2 + 0.5 + Math.sin(index * 2.7) * 0.12
+    const distance = radius * (0.88 + (index % 3) * 0.08)
+    const scale = treeScale * (0.82 + (index % 3) * 0.09)
     const x = Math.cos(angle) * distance
     const z = Math.sin(angle) * distance
 
@@ -938,8 +963,6 @@ function addTreeRing(group: THREE.Group, radius: number, colors: number[], count
   trunks.instanceMatrix.needsUpdate = true
   crowns.instanceMatrix.needsUpdate = true
   if (crowns.instanceColor) crowns.instanceColor.needsUpdate = true
-  trunks.receiveShadow = true
-  crowns.receiveShadow = true
   group.add(trunks, crowns)
 }
 
@@ -950,17 +973,16 @@ function addAlpineMountains(group: THREE.Group, radius: number) {
     new THREE.MeshStandardMaterial({ color, roughness: 0.98 })
   ))
   const snowMaterial = new THREE.MeshStandardMaterial({ color: 0xf2f6f8, roughness: 0.82 })
-  const count = 10
+  const count = 5
   for (let index = 0; index < count; index += 1) {
-    const angle = index / count * Math.PI * 2 + (index % 2) * 0.14
-    const distance = radius * (0.82 + (index % 3) * 0.1)
-    const base = radius * (0.2 + (index % 3) * 0.035)
-    const height = radius * (0.46 + (index % 4) * 0.07)
+    const angle = index / count * Math.PI * 2 + 0.28
+    const distance = radius * (1.02 + (index % 2) * 0.1)
+    const base = radius * (0.18 + (index % 3) * 0.03)
+    const height = radius * (0.38 + (index % 3) * 0.06)
     const mountain = new THREE.Mesh(mountainGeometry, rockMaterials[index % rockMaterials.length])
     mountain.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance)
     mountain.scale.set(base, height, base)
     mountain.rotation.y = angle
-    mountain.receiveShadow = true
     group.add(mountain)
 
     const capHeight = height * 0.38
@@ -977,15 +999,14 @@ function addDesertRocks(group: THREE.Group, radius: number) {
   const materials = [0x8f5f3d, 0xa8744c, 0x74503b].map(color => (
     new THREE.MeshStandardMaterial({ color, roughness: 1 })
   ))
-  for (let index = 0; index < 11; index += 1) {
-    const angle = index / 11 * Math.PI * 2 + 0.2
-    const distance = radius * (0.48 + (index % 4) * 0.075)
+  for (let index = 0; index < 3; index += 1) {
+    const angle = index / 3 * Math.PI * 2 + 0.65
+    const distance = radius * (0.78 + (index % 2) * 0.1)
     const size = Math.max(0.45, Math.min(2.3, lightingExtent / 8)) * (0.7 + (index % 3) * 0.28)
     const rock = new THREE.Mesh(geometry, materials[index % materials.length])
     rock.position.set(Math.cos(angle) * distance, size * 0.55, Math.sin(angle) * distance)
     rock.scale.set(size * 1.25, size, size * 0.85)
     rock.rotation.set(index * 0.17, angle, index * 0.11)
-    rock.receiveShadow = true
     group.add(rock)
   }
 }
@@ -1001,19 +1022,19 @@ function rebuildBuiltInEnvironment() {
     return
   }
 
-  const radius = Math.max(22, lightingExtent * 2.7)
+  // 环境只提供远处轮廓，主体观感由天空、主光与软阴影承担。
+  const radius = Math.max(30, lightingExtent * 3.6)
   if (presetId === 'meadow') {
-    addRollingHills(builtInEnvironment, radius, [0x527c46, 0x668d55, 0x789a61])
-    addTreeRing(builtInEnvironment, radius, [0x3f713b, 0x568144, 0x6c934f], 22)
+    addDistantHills(builtInEnvironment, radius, [0x45613d, 0x56734a, 0x678058], 3)
+    addSparseTrees(builtInEnvironment, radius, [0x315d32, 0x426d39, 0x537b43], 4)
   } else if (presetId === 'alpine') {
     addAlpineMountains(builtInEnvironment, radius)
-    addTreeRing(builtInEnvironment, radius, [0x294f45, 0x356456, 0x436f5f], 15)
   } else if (presetId === 'desert') {
-    addRollingHills(builtInEnvironment, radius, [0xb9824e, 0xca965b, 0xd4aa6d], 11)
+    addDistantHills(builtInEnvironment, radius, [0xa76c3d, 0xbc8047, 0xc99458], 4)
     addDesertRocks(builtInEnvironment, radius)
   } else {
-    addRollingHills(builtInEnvironment, radius, [0x6b663d, 0x817242, 0x695a35])
-    addTreeRing(builtInEnvironment, radius, [0xa14e24, 0xc06a2b, 0xd69235, 0x7d3825], 26)
+    addDistantHills(builtInEnvironment, radius, [0x595534, 0x6a5d35, 0x766440], 3)
+    addSparseTrees(builtInEnvironment, radius, [0x8b3c20, 0xaa5524, 0xc4772d, 0x71321f], 5)
   }
   markNeedsRender()
 }
@@ -1027,30 +1048,32 @@ function cycleTimeOfDay() {
 function applyTimePreset() {
   if (!renderer || !scene || !sky || !hemisphereLight || !directionalLight) return
   const preset = TIME_PRESETS[timeOfDay.value]
+  const environmentPreset = ENVIRONMENT_PRESETS[environmentPresetId.value]
 
   sunDirection.setFromSphericalCoords(
     1,
     THREE.MathUtils.degToRad(preset.sunPhi),
-    THREE.MathUtils.degToRad(preset.sunTheta),
+    THREE.MathUtils.degToRad(preset.sunTheta + environmentPreset.sunAzimuthOffset),
   )
   sky.visible = preset.skyVisible
   syncSkyPreset(sky, preset)
 
   scene.background = new THREE.Color(preset.background)
   rebuildEnvironment(preset)
-  renderer.toneMappingExposure = preset.exposure
+  renderer.toneMappingExposure = preset.exposure * environmentPreset.exposureScale
 
   hemisphereLight.color.setHex(preset.hemisphereSkyColor)
   hemisphereLight.groundColor.setHex(preset.hemisphereGroundColor)
-  hemisphereLight.intensity = preset.hemisphereIntensity
+  hemisphereLight.intensity = preset.hemisphereIntensity * environmentPreset.ambientLightScale
   directionalLight.color.setHex(preset.directionalColor)
-  directionalLight.intensity = preset.directionalIntensity
+  directionalLight.intensity = preset.directionalIntensity * environmentPreset.directLightScale
   applyEnvironmentAppearance()
   if (bloomPass) {
     bloomPass.enabled = QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
   }
   if (shadowGround) {
-    shadowGround.material.opacity = timeOfDay.value === 'night' ? 0.1 : timeOfDay.value === 'sunset' ? 0.24 : 0.2
+    const timeShadowScale = timeOfDay.value === 'night' ? 0.36 : timeOfDay.value === 'sunset' ? 0.88 : 1
+    shadowGround.material.opacity = environmentPreset.shadowOpacity * timeShadowScale
     shadowGround.material.needsUpdate = true
   }
 
@@ -1094,7 +1117,7 @@ function applyViewMode() {
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
   if (gridHelper) gridHelper.visible = !presenting
-  if (shadowGround) shadowGround.visible = !presenting && !scenic
+  if (shadowGround) shadowGround.visible = true
   if (presentationGround) presentationGround.visible = presenting || scenic
   if (builtInEnvironment) builtInEnvironment.visible = scenic
   if (transformControls) transformControls.visible = !presenting
@@ -1105,12 +1128,12 @@ function applyViewMode() {
     syncSelectionHighlights()
     syncComponentTransformControl()
   }
-  if (presenting || scenic) {
-    const fogNear = Math.max(25, lightingExtent * 3)
+  if (presenting) {
+    const fogNear = Math.max(60, lightingExtent * 5)
     scene.fog = new THREE.Fog(
       environmentColor('fogColor'),
       fogNear,
-      fogNear + Math.max(80, lightingExtent * 8),
+      fogNear + Math.max(180, lightingExtent * 16),
     )
   } else {
     scene.fog = null
@@ -1171,9 +1194,9 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
   directionalLight.shadow.needsUpdate = true
   if (scene?.fog instanceof THREE.Fog) {
-    const fogNear = Math.max(25, lightingExtent * 3)
+    const fogNear = Math.max(60, lightingExtent * 5)
     scene.fog.near = fogNear
-    scene.fog.far = fogNear + Math.max(80, lightingExtent * 8)
+    scene.fog.far = fogNear + Math.max(180, lightingExtent * 16)
   }
 }
 
