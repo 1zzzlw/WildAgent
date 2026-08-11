@@ -39,10 +39,14 @@ export type AgentProtocolVersion = '1.0'
 
 export interface AgentProtocolEnvelope {
   protocol_version: AgentProtocolVersion
+  /** 持久化关键事件的单调序号，用于重连补发去重。 */
+  event_seq?: number
 }
 
 export type AgentMessage =
   | UserMessageRequest
+  | ResumeGenerationRequest
+  | GenerationResumedResponse
   | AgentStepResponse
   | ThinkingDeltaResponse
   | ThinkingStatusResponse
@@ -68,6 +72,21 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
   precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
+}
+
+export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
+  type: 'resume_generation'
+  request_id?: string
+  session_id: string
+  last_event_seq?: number
+}
+
+export interface GenerationResumedResponse extends AgentProtocolEnvelope {
+  type: 'generation_resumed'
+  request_id: string
+  session_id: string
+  status: 'running' | 'completed' | 'failed'
+  last_event_seq: number
 }
 
 export interface AgentStepResponse extends AgentProtocolEnvelope {

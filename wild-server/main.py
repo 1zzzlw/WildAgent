@@ -14,7 +14,11 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from loguru import logger
 
-from app.api.ws_agent import router as ws_router
+from app.api.ws_agent import (
+    router as ws_router,
+    shutdown_generation_jobs,
+    startup_generation_jobs,
+)
 from app.api.scenes import router as scenes_router
 from app.api.sessions import router as sessions_router
 from app.api.assets import router as assets_router
@@ -32,12 +36,15 @@ async def lifespan(app: FastAPI):
     # 启动阶段：先输出启动日志，再初始化未来可能加入的外部连接。
     print_log()
     init_connect()
+    await startup_generation_jobs()
 
     # 控制权交还给 FastAPI；应用会在这里持续运行，直到收到关闭信号。
-    yield
-
-    # 关闭阶段：统一释放数据库、缓存或其他长连接。目前只有占位日志。
-    close_connect()
+    try:
+        yield
+    finally:
+        # 先暂停持久化任务并关闭 SQLite，再释放其他外部连接。
+        await shutdown_generation_jobs()
+        close_connect()
 
 
 def print_log():

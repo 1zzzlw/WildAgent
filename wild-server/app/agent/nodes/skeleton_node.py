@@ -9,8 +9,10 @@ import json
 from loguru import logger
 
 from app.agent.graph_state import GenerationState
+from app.agent.architecture_plan import build_deterministic_skeleton
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
+from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
 from app.tools.spatial_tools import (
     fix_element_dimensions,
@@ -24,15 +26,14 @@ from app.utils.blueprint_parser import (
     validate_blueprint_schema,
 )
 
-from app.services.agent_service import agent_service
-
-
 async def skeleton_generator(state: GenerationState) -> dict:
     """生成建筑骨架（walls + floors + columns + beams + stair）并输出设计清单"""
+    from app.services.agent_service import agent_service
+
     t0 = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
-    on_reasoning_delta = state.get("on_reasoning_delta")
+    on_reasoning_delta = get_reasoning_callback()
     architecture_plan = state.get("architecture_plan")
 
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
@@ -48,10 +49,16 @@ async def skeleton_generator(state: GenerationState) -> dict:
         SpecQuery("墙体 楼板 柱子 梁", {"entity_type": "structural_component"}),
     ]
 
-    spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+    rag_error = None
+    try:
+        spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+    except Exception as exc:
+        spec_text = ""
+        rag_error = str(exc)
+        logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
     rag_ms = int((_time.time() - rag_t0) * 1000)
     rag_chars = len(spec_text)
-    rag_hits = [
+    rag_hits = [] if rag_error else [
         {
             "source": hit.metadata.get("source", "?"),
             "heading": hit.metadata.get("heading", "?"),
@@ -83,6 +90,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
     reasoning = ""
     token_usage = None
     finish_reason = None
+    blueprint = None
+    deterministic_fallback_reason = None
     
     try:
         if use_streaming:
@@ -136,16 +145,20 @@ async def skeleton_generator(state: GenerationState) -> dict:
                     }
     
     except Exception as e:
-        logger.error(f"[skeleton] LLM 调用失败: {e}")
-        return {
-            "error": f"骨架生成失败: {str(e)}",
-            "status": "failed",
-            "skeleton_diag": {
-                "rag_chars": rag_chars,
-                "rag_ms": rag_ms,
-                "error": str(e),
-            },
-        }
+        logger.error(f"[skeleton] LLM 调用失败，尝试确定性骨架回退: {e}")
+        if isinstance(architecture_plan, dict):
+            blueprint = build_deterministic_skeleton(architecture_plan, user_message)
+            deterministic_fallback_reason = f"LLM 调用失败: {e}"
+        else:
+            return {
+                "error": f"骨架生成失败: {str(e)}",
+                "status": "failed",
+                "skeleton_diag": {
+                    "rag_chars": rag_chars,
+                    "rag_ms": rag_ms,
+                    "error": str(e),
+                },
+            }
 
     llm_ms = int((_time.time() - llm_t0) * 1000)
     llm_chars = len(reply_text)
@@ -165,7 +178,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
         else _parse_components_from_reply(reply_text)
     )
     design_brief = None if architecture_plan else _parse_design_brief(reply_text)
-    blueprint = extract_blueprint_from_text(reply_text)
+    if blueprint is None:
+        blueprint = extract_blueprint_from_text(reply_text)
 
     # 部分 OpenAI-compatible 模型在流式思考模式下会把最终结构化输出放进
     # reasoning_content，而 content 为空。只在正常 content 提取失败时回退，
@@ -218,22 +232,27 @@ async def skeleton_generator(state: GenerationState) -> dict:
             )
 
     if not blueprint:
-        logger.error("[skeleton] 未能提取 Blueprint JSON，定向格式恢复也未成功")
-        return {
-            "error": "骨架生成失败：模型未返回有效的 Blueprint JSON，自动格式恢复仍未成功",
-            "status": "failed",
-            "skeleton_diag": {
-                "rag_chars": rag_chars,
-                "rag_ms": rag_ms,
-                "prompt_chars": prompt_chars,
-                "llm_chars": llm_chars,
-                "llm_ms": llm_ms,
-                "token_usage": token_usage,
-                "finish_reason": finish_reason,
-                "recovery": recovery_diag,
-                "error": "JSON 提取失败",
-            },
-        }
+        if isinstance(architecture_plan, dict):
+            logger.error("[skeleton] 模型格式恢复失败，使用确定性骨架回退")
+            blueprint = build_deterministic_skeleton(architecture_plan, user_message)
+            deterministic_fallback_reason = "模型未返回有效 Blueprint，格式恢复仍未成功"
+        else:
+            logger.error("[skeleton] 未能提取 Blueprint JSON，定向格式恢复也未成功")
+            return {
+                "error": "骨架生成失败：模型未返回有效的 Blueprint JSON，自动格式恢复仍未成功",
+                "status": "failed",
+                "skeleton_diag": {
+                    "rag_chars": rag_chars,
+                    "rag_ms": rag_ms,
+                    "prompt_chars": prompt_chars,
+                    "llm_chars": llm_chars,
+                    "llm_ms": llm_ms,
+                    "token_usage": token_usage,
+                    "finish_reason": finish_reason,
+                    "recovery": recovery_diag,
+                    "error": "JSON 提取失败",
+                },
+            }
 
     # ── 5. 归一化和 Schema 校验 ──
     blueprint = normalize_blueprint_input(blueprint)
@@ -251,6 +270,14 @@ async def skeleton_generator(state: GenerationState) -> dict:
             + json.dumps(floor_coordinates, ensure_ascii=False, default=str)
         )
     schema_issues = validate_blueprint_schema(blueprint)
+
+    if schema_issues and isinstance(architecture_plan, dict) and not deterministic_fallback_reason:
+        logger.warning("[skeleton] 模型骨架 Schema 无效，切换到确定性骨架回退")
+        blueprint = normalize_blueprint_input(
+            build_deterministic_skeleton(architecture_plan, user_message)
+        )
+        deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
+        schema_issues = validate_blueprint_schema(blueprint)
 
     if schema_issues:
         logger.warning(f"[skeleton] Schema 校验失败: {schema_issues[:3]}")
@@ -366,6 +393,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "rag_chars": rag_chars,
             "rag_ms": rag_ms,
             "rag_hits": rag_hits,
+            "rag_error": rag_error,
             "prompt_chars": prompt_chars,
             "llm_chars": llm_chars,
             "llm_ms": llm_ms,
@@ -375,6 +403,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "reasoning_chars": reasoning_chars,
             "reasoning_preview": reasoning[:800] if reasoning else "",
             "reasoning_fallback": used_reasoning_fallback,
+            "deterministic_fallback": bool(deterministic_fallback_reason),
+            "deterministic_fallback_reason": deterministic_fallback_reason,
             "element_count": len(elements),
             "opening_slot_count": len((design_brief or {}).get("opening_slots", [])),
             "floor_coordinates": floor_coordinates,

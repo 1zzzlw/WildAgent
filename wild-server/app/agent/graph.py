@@ -116,7 +116,7 @@ def _final_validate_dispatch(state: GenerationState):
     return "callback" if retryable else END
 
 
-def build_generation_graph(enable_callback: bool = False):
+def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     """构建 LangGraph 生成流程图
 
     classifier → (generate → architecture → skeleton → ...) | (edit → patch → END) | (chat → END)
@@ -203,7 +203,7 @@ def build_generation_graph(enable_callback: bool = False):
             lambda state: END,
             {END: END},
         )
-    compiled = graph.compile()
+    compiled = graph.compile(checkpointer=checkpointer)
     component_list = ", ".join(
         f"{c.label}({c.component_type}_gen→{c.component_type}_val)" for c in implemented
     )
@@ -221,11 +221,15 @@ def build_generation_graph(enable_callback: bool = False):
 
 # ── 全局单例 ──
 
-_graphs: dict[bool, object] = {}
+_graphs: dict[tuple[bool, int | None], object] = {}
 
 
-def get_graph(enable_callback: bool = False):
+def get_graph(enable_callback: bool = False, *, checkpointer=None):
     """获取编译后的图单例，支持 callback 开关"""
-    if enable_callback not in _graphs:
-        _graphs[enable_callback] = build_generation_graph(enable_callback=enable_callback)
-    return _graphs[enable_callback]
+    cache_key = (enable_callback, id(checkpointer) if checkpointer is not None else None)
+    if cache_key not in _graphs:
+        _graphs[cache_key] = build_generation_graph(
+            enable_callback=enable_callback,
+            checkpointer=checkpointer,
+        )
+    return _graphs[cache_key]

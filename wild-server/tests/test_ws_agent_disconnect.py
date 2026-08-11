@@ -13,6 +13,7 @@ from app.api.ws_agent import (
 )
 from app.extensions.presence import WebSocketConnectionRegistry
 from app.services.agent_service import QueryResult
+from app.services.generation_job_service import GenerationJob
 
 
 class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
@@ -83,6 +84,52 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
             await agent_websocket(ws)
 
         self.assertTrue(generation_cancelled.is_set())
+
+    async def test_precision_generation_is_detached_instead_of_cancelled(self):
+        class DisconnectingWebSocket:
+            def __init__(self):
+                self.accept = AsyncMock()
+                self.send_json = AsyncMock()
+                self.receive_count = 0
+
+            async def receive_text(self):
+                self.receive_count += 1
+                if self.receive_count == 1:
+                    return json.dumps({
+                        "type": "user_message",
+                        "request_id": "req_durable",
+                        "session_id": "session_durable",
+                        "message": "生成别墅",
+                        "precision_mode": True,
+                    })
+                raise WebSocketDisconnect()
+
+        job = GenerationJob(
+            request_id="req_durable",
+            session_id="session_durable",
+            payload={},
+            status="running",
+        )
+        ws = DisconnectingWebSocket()
+        with (
+            patch(
+                "app.api.ws_agent.generation_job_service.start_job",
+                AsyncMock(return_value=(job, True)),
+            ) as start_job,
+            patch(
+                "app.api.ws_agent.generation_job_service.detach",
+                AsyncMock(),
+            ) as detach,
+            patch(
+                "app.api.ws_agent._handle_user_message",
+                AsyncMock(),
+            ) as direct_handler,
+        ):
+            await agent_websocket(ws)
+
+        start_job.assert_awaited_once()
+        detach.assert_awaited_once_with(ws)
+        direct_handler.assert_not_awaited()
 
     async def test_disconnect_is_handled_and_heartbeat_is_reset(self):
         ws = Mock()

@@ -30,9 +30,16 @@ async def validate_node(state: GenerationState) -> dict:
     from app.services.agent_service import PipelineStepResult, run_validation_pipeline, _final_errors
     
     try:
-        # 执行完整的 15 步校验流水线
-        pipeline_results = run_validation_pipeline(merged_blueprint)
-        design_errors = state.get("merge_diag", {}).get("design_errors", [])
+        merge_diag = state.get("merge_diag", {})
+        cached_results = merge_diag.get("validation_results", [])
+        cache_reused = bool(cached_results) and merge_diag.get("final_errors") == 0
+        if cache_reused:
+            pipeline_results = [PipelineStepResult(**result) for result in cached_results]
+            logger.info("[validate_node] 复用 merge 节点最后一轮校验结果")
+        else:
+            # merge 后若仍有错误，重新执行以保持回调输入与当前蓝图完全一致。
+            pipeline_results = run_validation_pipeline(merged_blueprint)
+        design_errors = merge_diag.get("design_errors", [])
         if design_errors:
             pipeline_results.append(PipelineStepResult(
                 step="design",
@@ -95,6 +102,7 @@ async def validate_node(state: GenerationState) -> dict:
             "validation_results": [_step_to_dict(r) for r in pipeline_results],
             "validation_error_count": error_steps,
             "validation_warning_count": warning_steps,
+            "validation_cache_reused": cache_reused,
             "validation_issues": validation_issues,
             "failed_components": failed_components,
             "passed_component_ids": passed_component_ids,

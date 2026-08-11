@@ -59,6 +59,7 @@ from app.services.agent_delivery import (
     final_validation_results,
     prepare_blueprint_delivery,
 )
+from app.services.generation_job_service import generation_job_service
 from app.extensions.presence import presence_service
 from app.utils.ws_heartbeat import WebSocketHeartbeat
 
@@ -68,6 +69,21 @@ router = APIRouter()
 async def _send_event(ws: WebSocket, payload: dict) -> None:
     """为所有后端事件附加统一协议版本。"""
     await ws.send_json(versioned_event(payload))
+
+
+async def _run_persistent_langgraph(sink, payload: dict, resume: bool) -> None:
+    """持久化任务 runner：事件写入 durable sink，不绑定某条物理连接。"""
+    await _handle_with_langgraph(sink, payload, resume=resume)
+
+
+async def startup_generation_jobs() -> None:
+    """初始化 checkpointer，并恢复上次服务退出时未完成的精密模式任务。"""
+    await generation_job_service.startup(_run_persistent_langgraph)
+
+
+async def shutdown_generation_jobs() -> None:
+    """在进程退出前暂停任务；checkpoint 和 running 状态保留用于下次恢复。"""
+    await generation_job_service.shutdown()
 
 
 async def _process_user_message_safely(
@@ -110,8 +126,8 @@ async def agent_websocket(ws: WebSocket):
     """维护一个 Agent WebSocket 连接的完整生命周期。
 
     接收循环始终保持轻量，只负责解析协议、回复 ping 和启动后台生成任务；
-    耗时的 LLM 请求不会阻塞心跳。函数退出前会取消仍在运行的生成任务，并停止
-    此连接专属的心跳监控器。
+    耗时的 LLM 请求不会阻塞心跳。快速模式任务仍跟随连接生命周期；精密模式
+    任务由持久化服务托管，断线后继续运行并在重连时补发关键事件。
     """
     await ws.accept()
     logger.info("Agent WebSocket 客户端已连接")
@@ -201,7 +217,16 @@ async def agent_websocket(ws: WebSocket):
                 )
 
             elif msg_type == "user_message":
-                if active_message_task is not None and not active_message_task.done():
+                if data.get("precision_mode") is True:
+                    job, created = await generation_job_service.start_job(data, ws)
+                    if not created:
+                        await generation_job_service.resume_or_replay(
+                            ws,
+                            request_id=job.request_id,
+                            session_id=job.session_id,
+                            after_seq=int(data.get("last_event_seq") or 0),
+                        )
+                elif active_message_task is not None and not active_message_task.done():
                     await _send_event(ws, {
                         "type": "error",
                         "request_id": data.get("request_id"),
@@ -212,6 +237,14 @@ async def agent_websocket(ws: WebSocket):
                     active_message_task = asyncio.create_task(
                         handle_user_message_safe(data)
                     )
+
+            elif msg_type == "resume_generation":
+                await generation_job_service.resume_or_replay(
+                    ws,
+                    request_id=data.get("request_id"),
+                    session_id=str(data.get("session_id") or ""),
+                    after_seq=int(data.get("last_event_seq") or 0),
+                )
 
             else:
                 await _send_event(ws, {
@@ -234,9 +267,10 @@ async def agent_websocket(ws: WebSocket):
             pass
     finally:
         connection_alive = False
+        await generation_job_service.detach(ws)
         if active_message_task is not None:
             if not active_message_task.done():
-                # 客户端离开后生成结果已无接收者，及时取消下游 LLM 任务。
+                # 快速模式没有持久化边界，连接断开时仍取消下游 LLM 任务。
                 active_message_task.cancel()
             try:
                 await active_message_task
@@ -273,13 +307,10 @@ _NODE_LABELS = {
 def _node_label(name: str) -> str:
     if name in _NODE_LABELS:
         return _NODE_LABELS[name]
-    comp_labels = {
-        "door": "门", "window": "窗", "roof": "屋顶",
-        "railing": "栏杆", "canopy": "雨棚", "balcony": "阳台",
-        "light": "灯具", "ramp": "坡道", "bay_window": "凸窗",
-        "cornice": "檐口", "chimney": "烟囱",
-    }
-    for ct, cl in comp_labels.items():
+    from app.agent.component_registry import get_implemented_components
+
+    for config in get_implemented_components():
+        ct, cl = config.component_type, config.label
         if name == f"{ct}_gen":
             return f"{cl}·生成"
         if name == f"{ct}_val":
@@ -287,7 +318,7 @@ def _node_label(name: str) -> str:
     return name
 
 
-async def _handle_with_langgraph(ws: WebSocket, data: dict):
+async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     """LangGraph 精密模式：分片并行 + 每节点实时推送 RAG/LLM/思考诊断 + 性能汇总"""
     from app.agent.graph_state import GenerationState
 
@@ -349,15 +380,17 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
 
     # ── 初始状态 ──
     initial_state: GenerationState = {
+        "request_id": request_id,
         "user_message": message,
         "building_type": _detect_building_type(message),
         "session_id": session_id,
         "current_blueprint": current_blueprint,
         "selection": selection,
         "thinking_mode": thinking_mode,
-        "on_reasoning_delta": send_thinking_delta if thinking_mode else None,
         "max_retries": 3,
         "retry_count": 0,
+        "component_fragments": {},
+        "component_diagnostics": {},
     }
 
     if thinking_mode:
@@ -365,7 +398,19 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
 
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
     from app.agent.graph import get_graph
-    graph = get_graph(enable_callback=True)
+    from app.agent.runtime_context import (
+        bind_reasoning_callback,
+        reset_reasoning_callback,
+    )
+
+    await generation_job_service.initialize()
+    graph = get_graph(
+        enable_callback=True,
+        checkpointer=generation_job_service.checkpointer,
+    )
+    graph_config = {
+        "configurable": {"thread_id": f"generation:{request_id}"},
+    }
     all_diags: dict[str, dict] = {}
     final_state = None
     resolved_intent = "generate"
@@ -374,15 +419,59 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
     suggested_components = []  # 存储骨架节点建议的组件列表
 
     # 生成所有可能的节点名（gen + val + 固定节点）
-    _COMP_TYPES = {"door", "window", "roof", "railing", "canopy",
-                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney"}
+    from app.agent.component_registry import get_implemented_components
+
+    _COMP_TYPES = {
+        config.component_type for config in get_implemented_components()
+    }
     _OUR_NODES = {"classifier", "chat", "patch", "architecture", "skeleton", "merge", "final_validate", "callback"}
     for ct in _COMP_TYPES:
         _OUR_NODES.add(f"{ct}_gen")
         _OUR_NODES.add(f"{ct}_val")
 
+    reasoning_token = bind_reasoning_callback(
+        send_thinking_delta if thinking_mode else None
+    )
     try:
-        async for event in graph.astream_events(initial_state, version="v2"):
+        graph_input = initial_state
+        if resume:
+            snapshot = await graph.aget_state(graph_config)
+            if snapshot.values:
+                resolved_intent = snapshot.values.get("intent", "generate")
+                suggested_components = snapshot.values.get(
+                    "suggested_components", []
+                )
+                if snapshot.next:
+                    graph_input = None
+                    logger.info(
+                        f"[{request_id}] 从 checkpoint 恢复，待执行节点: "
+                        f"{', '.join(snapshot.next)}"
+                    )
+                else:
+                    # 图已经结束但进程可能在结果落盘/发事件前退出；直接从最终状态交付。
+                    final_state = dict(snapshot.values)
+                    output_key = {
+                        "chat": "chat",
+                        "edit": "patch",
+                    }.get(resolved_intent, "final_validate")
+                    node_outputs[output_key] = final_state
+                    graph_input = None
+                    logger.info(f"[{request_id}] checkpoint 已完成，继续结果交付")
+
+        async def empty_event_stream():
+            if False:
+                yield {}
+
+        event_stream = (
+            graph.astream_events(
+                graph_input,
+                config=graph_config,
+                version="v2",
+            )
+            if final_state is None
+            else empty_event_stream()
+        )
+        async for event in event_stream:
             kind = event.get("event")
             node_name = event.get("name", "")
             if kind in ("on_chain_start", "on_chain_end"):
@@ -707,6 +796,8 @@ async def _handle_with_langgraph(ws: WebSocket, data: dict):
         })
         await send_step("finished", "finished", "error", "处理失败", str(e))
         return
+    finally:
+        reset_reasoning_callback(reasoning_token)
 
     if final_state is None:
         await _send_event(ws, {

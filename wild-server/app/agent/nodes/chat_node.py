@@ -13,7 +13,6 @@ import time as _time
 from loguru import logger
 
 from app.agent.model_client import create_llm
-from app.services.agent_service import agent_service
 
 _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精通以下领域：
 
@@ -38,6 +37,8 @@ _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精�
 
 async def chat_node(state: dict) -> dict:
     """RAG 知识问答：全面扫描知识库 + LLM 生成专业回答"""
+    from app.services.agent_service import agent_service
+
     # 计算回答总耗时
     t0 = _time.time()
 

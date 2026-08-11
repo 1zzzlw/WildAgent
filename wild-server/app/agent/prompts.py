@@ -122,18 +122,26 @@ def build_material_optimization_prompt(selection: list[str]) -> str:
 """
 
 
-def build_architecture_plan_prompt(spec_text: str) -> str:
+def build_architecture_plan_prompt(spec_text: str, profile: dict | None = None) -> str:
     """生成路径第一阶段：只做建筑方案，不写 Blueprint 坐标。"""
+    import json as _json
+    profile_payload = dict(profile or {})
+    if isinstance(profile_payload.get("shapes"), set):
+        profile_payload["shapes"] = sorted(profile_payload["shapes"])
+    profile_text = _json.dumps(profile_payload, ensure_ascii=False)
     return f"""你是建筑方案主创建筑师。先做体量、立面轴网和构件配额，不生成 WILD Blueprint。
 
 # 任务
 
 - 给出 2 个可实施候选，差异必须体现在体量比例、立面节奏或屋顶上。
 - 方案要忠于用户层数、风格、功能和知识库；不要为了复杂而堆构件。
+- 当前规划 profile 是：{profile_text}。尺寸、层数、形状和基础组件必须服从该 profile。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
 - ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
-- 门只能出现在 ground_pattern，front 必须有且只有一个主门槽位。
+- 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
 - component_quota 必须与立面 pattern 能容纳的数量一致。
+- required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
+- `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
 
 # 输出协议
 
@@ -142,14 +150,14 @@ def build_architecture_plan_prompt(spec_text: str) -> str:
   "candidates": [
     {{
       "concept": "方案概念",
-      "massing": {{"shape":"rectangle|l_shape|stepped|courtyard","width":12,"depth":9,"floors":2,"floor_height":3.2,"symmetry":true}},
+      "massing": {{"shape":"profile允许值","width":12,"depth":9,"floors":2,"modeled_floors":2,"representation_mode":"full|schematic","floor_height":3.2,"symmetry":true}},
       "facades": {{
         "front": {{"bays":5,"entrance_bay":3,"ground_pattern":["window","empty","door","empty","window"],"upper_pattern":["window","empty","window","empty","window"]}},
         "back":  {{"bays":4,"ground_pattern":["window","empty","empty","window"],"upper_pattern":["window","empty","empty","window"]}},
         "left":  {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}},
         "right": {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}}
       }},
-      "roof": {{"type":"flat|gable|hip|shed|mansard|pyramid","ridge_axis":"x|z","overhang":0.55}},
+      "roof": {{"type":"flat|gable|hip|dome|chinese_curved|chinese_pagoda","ridge_axis":"x|z","overhang":0.55}},
       "component_quota": {{
         "door": {{"min":1,"max":2,"note":"..."}},
         "window": {{"min":6,"max":14,"note":"..."}},
@@ -188,6 +196,7 @@ def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None)
 # 职责边界
 
 - 严格服从 massing 的尺寸、层数和层高；不得重新做方案选择。
+- `representation_mode=full` 时逐层落实 `modeled_floors`；`schematic` 时不得复制全部高层，只生成基座、完整总高度外壳、代表性楼板和顶部体量，总高度仍按 `floors × floor_height` 表达。
 - 只生成 wall、floor、column、beam、stair；door、window、roof 由后续节点生成。
 - 如果方案要求 balcony，不得用额外 floor 或 railing 预先模拟阳台；悬挑板和 U 形栏杆由 balcony 节点唯一负责。
 - `geometry.components` 必须是空数组。
@@ -198,7 +207,7 @@ def build_skeleton_prompt(spec_text: str, architecture_plan: dict | None = None)
 
 1. 每层外墙闭合，共享转角端点；wall.from[1] 是墙底，wall.to[1] 是墙顶且必须更大。
 2. 每个 floor 同时使用三维 `from`/`to`，两个 Y 相同并等于该层底标高。
-3. 两层以上必须包含至少一个 stair 元素；楼梯上下标高与相邻楼层一致。
+3. `full` 模式两层以上必须包含至少一个 stair 元素；`schematic` 高层不要求用一部长楼梯跨越全部高度。
 4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和 opacity=0.35 的玻璃角色材质，供后续节点引用。
 5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
 6. 现代住宅不滥用外露角柱；只在方案或真实门廊/大跨需要时增加柱梁。

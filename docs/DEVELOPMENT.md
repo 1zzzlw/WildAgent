@@ -57,6 +57,9 @@ npm run dev
 
 ## 4. 变更验证
 
+全部测试文件的逐项作用、单文件命令、LangGraph 图展示、RAG 评测和历史脚本状态见
+[测试文件使用指南](TESTING.md)。
+
 前端最低检查：
 
 ```powershell

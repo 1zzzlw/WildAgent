@@ -3,7 +3,7 @@
 
 基于 wild-compiler/componentRegistry.ts 的已注册组件。
 新增组件只需在此添加一行配置。
-所有 10 种组件均已实现（Phase 2 扩展完成）。
+所有 11 种组件均已实现（Phase 2 扩展完成）。
 """
 from dataclasses import dataclass, field
 
@@ -81,7 +81,7 @@ _COMPONENT_RULES: dict[str, str] = {
     ),
     "roof": (
         "- roof 是 geometry.elements 原生类型，不是 components\n"
-        "- roofType 支持 6 个值: gable/hip/flat/shed/mansard/pyramid\n"
+        "- roofType 支持 6 个值: gable/hip/flat/dome/chinese_curved/chinese_pagoda\n"
         "- span 和 depth 应覆盖整个建筑的包围盒\n"
         "- position 是屋顶中心世界坐标"
     ),
@@ -112,7 +112,7 @@ _COMPONENT_RULES: dict[str, str] = {
     "ramp": (
         "- from/to 必须有高度差\n"
         "- width 和 thickness 必填\n"
-        "- 编译后产出: primitive.box（坡面）+ 可选 railing"
+        "- 编译后产出: primitive.profile_sweep（坡面）+ 可选 railing"
     ),
     "bay_window": (
         "- projectionDepth 必填\n"
@@ -127,7 +127,7 @@ _COMPONENT_RULES: dict[str, str] = {
     ),
     "chimney": (
         "- position、width、depth、height 必填\n"
-        "- 编译后产出: primitive.cylinder（筒体）+ primitive.box（压顶）"
+        "- 编译后产出: primitive.box×4（薄壁筒体）+ primitive.box（压顶），不对屋顶做布尔穿透"
     ),
     "light": (
         "- initiallyOn 必填\n"
@@ -181,9 +181,9 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         output_key="roof_fragment",
         is_list=False,
         is_element=True,
-        required_fields=["type", "id", "roofType", "span", "depth", "height"],
-        optional_fields=["thickness", "material", "position"],
-        skip_keywords=["不要屋顶", "没有屋顶", "无屋顶", "不需要屋顶", "平顶"],
+        required_fields=["type", "id", "roofType", "span", "depth", "height", "thickness"],
+        optional_fields=["material", "position"],
+        skip_keywords=["不要屋顶", "没有屋顶", "无屋顶", "不需要屋顶"],
         extra_rules=_COMPONENT_RULES["roof"],
         priority=0,
     ),
@@ -195,8 +195,8 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["railing balcony stair path"],
         output_key="railing_fragments",
         is_list=True,
-        required_fields=["type", "id", "path"],
-        optional_fields=["height", "parentFloor", "postSpacing"],
+        required_fields=["type", "id", "path", "height"],
+        optional_fields=["parentFloor", "postSpacing"],
         skip_keywords=["不要栏杆", "没有栏杆", "无栏杆", "不需要栏杆"],
         need_keywords=["栏杆", "护栏", "扶手", "阳台", "楼梯"],
         extra_rules=_COMPONENT_RULES["railing"],
@@ -210,12 +210,11 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["canopy awning entrance"],
         output_key="canopy_fragments",
         is_list=True,
-        required_fields=["type", "id", "parentWall", "depth", "thickness"],
+        required_fields=["type", "id", "parentWall", "from", "width", "depth", "thickness"],
         skip_keywords=["不要雨棚", "没有雨棚", "不需要雨棚"],
         need_keywords=["雨棚", "雨篷", "遮阳", "入口遮"],
         extra_rules=_COMPONENT_RULES["canopy"],
         priority=2,
-        dependencies=["railing"],
     ),
     "balcony": ComponentConfig(
         component_type="balcony",
@@ -224,7 +223,7 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["balcony slab railing"],
         output_key="balcony_fragments",
         is_list=True,
-        required_fields=["type", "id", "parentWall", "slabThickness"],
+        required_fields=["type", "id", "parentWall", "from", "width", "depth", "slabThickness"],
         skip_keywords=["不要阳台", "没有阳台", "不需要阳台"],
         need_keywords=["阳台", "露台", "挑台"],
         extra_rules=_COMPONENT_RULES["balcony"],
@@ -239,7 +238,8 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["light behavior interactive"],
         output_key="light_fragments",
         is_list=True,
-        required_fields=["type", "id", "position", "initiallyOn"],
+        required_fields=["type", "id", "position"],
+        optional_fields=["fixtureType", "lightType", "color", "lowIntensity", "highIntensity", "distance", "angle", "initiallyOn"],
         skip_keywords=["不要灯", "没有灯", "不需要灯"],
         need_keywords=["灯", "照明", "光源", "吊灯", "壁灯", "台灯", "灯具",
                        "家具", "装修", "装饰", "室内", "温馨", "明亮"],
@@ -259,6 +259,7 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         need_keywords=["坡道", "斜坡", "无障碍", "车道"],
         extra_rules=_COMPONENT_RULES["ramp"],
         priority=4,
+        dependencies=["railing"],
     ),
     "bay_window": ComponentConfig(
         component_type="bay_window",
@@ -267,7 +268,7 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["bay window projection"],
         output_key="bay_window_fragments",
         is_list=True,
-        required_fields=["type", "id", "parentWall", "projectionDepth"],
+        required_fields=["type", "id", "parentWall", "from", "width", "height", "projectionDepth"],
         skip_keywords=["不要凸窗", "没有凸窗", "不需要凸窗"],
         need_keywords=["凸窗", "飘窗", "bay window"],
         extra_rules=_COMPONENT_RULES["bay_window"],

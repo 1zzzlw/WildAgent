@@ -82,7 +82,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch("app.agent.nodes.callback_node.create_llm", return_value=_FakeLLM()),
             patch(
-                "app.agent.nodes.callback_node.agent_service.spec_loader.load_many",
+                "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
             ),
         ):
@@ -139,7 +139,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch("app.agent.nodes.callback_node.create_llm", return_value=_FakeLLM(action)),
             patch(
-                "app.agent.nodes.callback_node.agent_service.spec_loader.load_many",
+                "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
             ),
         ):
@@ -194,7 +194,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch("app.agent.nodes.callback_node.create_llm", return_value=_FakeLLM(action)),
             patch(
-                "app.agent.nodes.callback_node.agent_service.spec_loader.load_many",
+                "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
             ),
         ):

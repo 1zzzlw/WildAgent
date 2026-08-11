@@ -4,7 +4,14 @@ LangGraph State 定义
 所有节点通过这个 State 通信，只在内存中传递。
 诊断字段均已声明，确保 LangGraph 不会丢弃 astream 中的诊断数据。
 """
-from typing import TypedDict, Callable, Awaitable
+from typing import Annotated, Any, TypedDict
+
+
+def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
+    """合并并行组件节点写入的通用 State 映射。"""
+    merged = dict(left or {})
+    merged.update(right or {})
+    return merged
 
 
 class GenerationState(TypedDict, total=False):
@@ -12,15 +19,13 @@ class GenerationState(TypedDict, total=False):
 
     # ── 输入 ──
     user_message: str
+    request_id: str
     building_type: str
     session_id: str
     current_blueprint: dict | None
     selection: list[str]
     thinking_mode: bool
     
-    # ── 流式思考回调（node_name, delta_text）──
-    on_reasoning_delta: Callable[[str, str], Awaitable[None]] | None
-
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
 
@@ -58,6 +63,10 @@ class GenerationState(TypedDict, total=False):
     chimney_fragments: list[dict]
     light_fragments: list[dict]
 
+    # 新组件优先写入通用映射；上面的旧字段保留，兼容既有节点、测试和前端。
+    component_fragments: Annotated[dict[str, Any], merge_state_mapping]
+    component_diagnostics: Annotated[dict[str, dict], merge_state_mapping]
+
     # ── Layer 1 诊断字段（gen + val 分离）──
     skeleton_diag: dict
     door_gen_diag: dict
@@ -90,6 +99,7 @@ class GenerationState(TypedDict, total=False):
     validation_issues: list[dict]
     validation_error_count: int
     validation_warning_count: int
+    validation_cache_reused: bool
     failed_components: list[dict]
     passed_component_ids: list[str]
     retry_count: int

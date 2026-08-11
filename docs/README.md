@@ -2,15 +2,17 @@
 
 这里仅保存与当前代码一致、需要持续维护的正式文档。历史方案、阶段总结、修复记录和已失效设计统一放在 [`docs-dev/`](../docs-dev/README.md)，不能作为当前实现依据。
 
-最后核对：2026-08-10。
+最后核对：2026-08-11。
 
 ## 阅读顺序
 
 1. [架构说明](ARCHITECTURE.md)：项目边界、模块关系和真实数据流。
-2. [Agent 与 AI 对话设计](AGENT_AND_CHAT.md)：Agent 路由、校验闭环、Claude 风格执行过程和事件协议。
-3. [开发与测试](DEVELOPMENT.md)：本地启动、配置和验证要求。
-4. [服务器部署与运维](DEPLOYMENT.md)：Compose、环境文件位置、重建与故障核对。
-5. [优化路线](ROADMAP.md)：本轮结论、已完成优化和后续优先级。
+2. [WILD Blueprint 当前版本规范](WILD_BLUEPRINT_SPEC.md)：`.wild` 结构、字段、坐标、组件、材质、校验和兼容边界。
+3. [Agent 与 AI 对话设计](AGENT_AND_CHAT.md)：Agent 路由、校验闭环、Claude 风格执行过程和事件协议。
+4. [开发与测试](DEVELOPMENT.md)：本地启动、配置和验证要求。
+5. [测试文件使用指南](TESTING.md)：全部自动测试、专项评测、图展示和历史脚本的作用与命令。
+6. [服务器部署与运维](DEPLOYMENT.md)：Compose、环境文件位置、重建与故障核对。
+7. [优化路线](ROADMAP.md)：本轮结论、已完成优化和后续优先级。
 
 ## 事实来源优先级
 

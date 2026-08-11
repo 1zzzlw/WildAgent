@@ -7,30 +7,39 @@ import time as _time
 
 from loguru import logger
 
-from app.agent.architecture_plan import select_architecture_plan
+from app.agent.architecture_plan import detect_architecture_profile, select_architecture_plan
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_architecture_plan_prompt
-from app.services.agent_service import agent_service
+from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
 from app.utils.json_extractor import extract_json_object
 
 
 async def architecture_planner(state: GenerationState) -> dict:
     """输出紧凑方案候选，模型失败时回退到确定性默认方案而不中断生成。"""
+    from app.services.agent_service import agent_service
+
     started = _time.time()
     user_message = state["user_message"]
-    on_reasoning_delta = state.get("on_reasoning_delta")
+    on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
         await on_reasoning_delta("architecture", "正在制定建筑体量、立面轴网和屋顶方案...\n")
 
     rag_started = _time.time()
-    spec_text = agent_service.spec_loader.load_many([
-        SpecQuery(user_message, {"doc_type": "building_type"}),
-        SpecQuery(user_message, {"doc_type": "recipe"}),
-    ], per_query=2)
+    rag_error = None
+    try:
+        spec_text = agent_service.spec_loader.load_many([
+            SpecQuery(user_message, {"doc_type": "building_type"}),
+            SpecQuery(user_message, {"doc_type": "recipe"}),
+        ], per_query=2)
+    except Exception as exc:
+        spec_text = ""
+        rag_error = str(exc)
+        logger.warning(f"[architecture] RAG 检索失败，继续使用内置 profile: {exc}")
     rag_ms = int((_time.time() - rag_started) * 1000)
-    prompt = build_architecture_plan_prompt(spec_text)
+    profile = detect_architecture_profile(user_message)
+    prompt = build_architecture_plan_prompt(spec_text, profile)
     raw_plan = None
     llm_chars = 0
     llm_ms = 0
@@ -101,6 +110,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             **selection_diag,
             "rag_chars": len(spec_text),
             "rag_ms": rag_ms,
+            "rag_error": rag_error,
             "prompt_chars": len(prompt),
             "llm_chars": llm_chars,
             "llm_ms": llm_ms,

@@ -14,6 +14,7 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.component_registry import COMPONENT_REGISTRY
+from app.agent.runtime_context import get_reasoning_callback
 from app.utils.fragment_merger import merge_fragments
 
 MAX_MERGE_ITERATIONS = 3
@@ -34,7 +35,7 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     """合并所有组件分片 —— 校验 → 修复 → 循环"""
 
     t0 = _time.time()
-    on_reasoning_delta = state.get("on_reasoning_delta")
+    on_reasoning_delta = get_reasoning_callback()
 
     logger.info("[merge] 开始合并分片")
 
@@ -51,11 +52,12 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     # ── 1. 收集所有组件分片 ──
     fragments: list[dict] = []
     fragment_summary: list[str] = []
+    generic_fragments = state.get("component_fragments", {})
 
     for comp_type, cfg in COMPONENT_REGISTRY.items():
         if not cfg.implemented:
             continue
-        data = state.get(cfg.output_key)
+        data = generic_fragments.get(comp_type, state.get(cfg.output_key))
         if not data:
             continue
         if cfg.is_list and isinstance(data, list):
@@ -165,6 +167,7 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     }
 
     final_errors: list = []
+    pipeline_results: list = []
 
     for iteration in range(1, MAX_MERGE_ITERATIONS + 1):
         iter_t0 = _time.time()
@@ -294,6 +297,17 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     merge_diag["element_count"] = len(elements)
     merge_diag["component_count"] = len(components)
     merge_diag["final_errors"] = len(final_errors) + len(design_errors)
+    # final_validate 紧接在 merge 之后，蓝图未发生变化时可安全复用这一轮结果。
+    merge_diag["validation_results"] = [
+        {
+            "step": result.step,
+            "name": result.name,
+            "output": result.output,
+            "has_error": result.has_error,
+            "has_warning": result.has_warning,
+        }
+        for result in pipeline_results
+    ]
 
     logger.info(
         f"[merge] 合并完成: {len(elements)} elements, {len(components)} components, "

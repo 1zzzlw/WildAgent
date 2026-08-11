@@ -25,7 +25,7 @@ keywords:
 | 建筑大类 | 轻量分类入口 | 当前详细配方覆盖 |
 |---|---|---|
 | 居住建筑 | `catalog/building-type-taxonomy.md` | `residential/villas.md`、`residential/housing-dormitories-hotels.md`、`residential/extended-residential-types.md` |
-| 公共建筑 | `catalog/building-type-taxonomy.md` | `public/education-office-culture.md`、`public/commercial-sports-medical-transport-other.md` |
+| 公共建筑 | `catalog/building-type-taxonomy.md` | `public/education-office-culture.md`、`public/commercial-sports-medical-transport-other.md`、`public/public-building-subtypes.md` |
 | 工业建筑 | `catalog/building-type-taxonomy.md` | `industrial/factories-and-warehouses.md` |
 | 农业建筑 | `catalog/building-type-taxonomy.md` | `agricultural/agricultural-buildings.md` |
 | 市政基础设施 | `catalog/building-type-taxonomy.md` | 尚无详细生成配方 |

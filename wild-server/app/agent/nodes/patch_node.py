@@ -10,7 +10,7 @@ import time as _time
 from loguru import logger
 
 from app.agent.graph_state import GenerationState
-from app.services.agent_service import agent_service
+from app.agent.runtime_context import get_reasoning_callback
 
 
 async def patch_node(state: GenerationState) -> dict:
@@ -23,8 +23,10 @@ async def patch_node(state: GenerationState) -> dict:
             "patch_diag": {"error": "current_blueprint missing"},
         }
 
+    from app.services.agent_service import agent_service
+
     started_at = _time.time()
-    on_reasoning_delta = state.get("on_reasoning_delta")
+    on_reasoning_delta = get_reasoning_callback()
 
     async def emit_reasoning(delta: str) -> None:
         if on_reasoning_delta is not None:

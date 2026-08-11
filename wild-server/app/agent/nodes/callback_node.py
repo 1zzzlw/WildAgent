@@ -11,14 +11,11 @@ from loguru import logger
 from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.agent.model_client import create_llm
+from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import COMPONENT_REGISTRY
 from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
 from app.agent.validation_issues import compare_issue_sets, validation_issues_from_results
 from app.spec.loader import SpecQuery
-
-
-# 模块级导入
-from app.services.agent_service import agent_service
 
 
 async def callback_node(state: GenerationState) -> dict:
@@ -71,9 +68,11 @@ async def callback_node(state: GenerationState) -> dict:
     passed_ids = state.get("passed_component_ids", [])
     retry_count = state.get("retry_count", 0)
     thinking_mode = state.get("thinking_mode", False)
-    on_reasoning_delta = state.get("on_reasoning_delta")
+    on_reasoning_delta = get_reasoning_callback()
 
     # ── 1. 精准 RAG + 工具数据（按失败组件类型检索）──
+    from app.services.agent_service import agent_service
+
     failed_types = list({fc.get("component_type", "") for fc in retryable})
     queries = []
     for ftype in failed_types:
@@ -86,7 +85,11 @@ async def callback_node(state: GenerationState) -> dict:
     if not queries:
         queries = [SpecQuery("component rules specification", {})]
 
-    spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+    try:
+        spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+    except Exception as exc:
+        spec_text = ""
+        logger.warning(f"[callback_node] RAG 检索失败，继续使用校验上下文: {exc}")
     logger.info(f"[callback_node] RAG 上下文: {len(spec_text)} 字符")
 
     # ── 2. 运行组件工具，获取空间约束数据 ──
@@ -347,6 +350,8 @@ def _state_updates_from_candidate(
         if isinstance(entity, dict) and entity.get("id") in changed_ids
     }
     updates: dict = {}
+    fragment_updates: dict = {}
+    generic_fragments = state.get("component_fragments", {})
 
     skeleton = deepcopy(state.get("skeleton_blueprint", {}))
     skeleton_changed = False
@@ -394,7 +399,10 @@ def _state_updates_from_candidate(
     for config in COMPONENT_REGISTRY.values():
         if not config.implemented:
             continue
-        old_value = state.get(config.output_key)
+        old_value = generic_fragments.get(
+            config.component_type,
+            state.get(config.output_key),
+        )
         matching_entities = [
             entity for entity in candidate_entities.values()
             if entity.get("type") == config.component_type
@@ -429,5 +437,13 @@ def _state_updates_from_candidate(
                 updates[config.output_key] = None
             elif matching_entities:
                 updates[config.output_key] = deepcopy(matching_entities[0])
+
+        if config.output_key in updates:
+            fragment_updates[config.component_type] = deepcopy(
+                updates[config.output_key]
+            )
+
+    if fragment_updates:
+        updates["component_fragments"] = fragment_updates
 
     return updates

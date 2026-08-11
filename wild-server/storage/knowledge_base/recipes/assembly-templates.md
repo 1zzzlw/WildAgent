@@ -85,32 +85,34 @@ entity_name: supported_composite_assembly
 topic: assembly
 status: supported
 authority: engine
-keywords: geometry.components, door, window, railing, 组合构件
+keywords: geometry.components, door, window, railing, canopy, balcony, ramp, bay_window, cornice, chimney, light, 组合构件
 -->
 
 ```text
-wall → geometry.components.door/window
-explicit path → geometry.components.railing
+wall → geometry.components.door/window/bay_window/canopy/balcony
+floor or explicit path → geometry.components.railing/ramp
+roof or explicit path → geometry.components.cornice/chimney
+world position → geometry.components.light
 ```
 
-门窗必须提供直线 `parentWall` 和墙体局部 `from`；栏杆必须显式提供世界坐标 `path`。编译器只负责静态几何，不会自动选择开启方式、楼梯边界或建筑规范参数。
+门、窗、凸窗、雨棚和阳台必须提供 `parentWall` 与墙体局部 `from`；会形成开口的门、窗和凸窗当前支持直线墙或单段圆弧墙。栏杆和坡道可选 `parentFloor`，檐口和烟囱可选 `parentRoof`。编译器只负责几何展开，不会自动选择建筑规范参数，也不会把烟囱布尔穿透屋顶。
 
-## 专业构件增强提案
+## 仍需降级的专业关系
 
 <!-- rag-meta
 entity_type: assembly
-entity_name: proposed_professional_assembly
+entity_name: proposed_professional_relations
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: truss, ramp, canopy, chimney, 专业构件
+keywords: truss, curtain wall, roof penetration, auto railing, 专业构件
 -->
 
 ```
 column/roof → truss
-floor → ramp
-wall/opening → canopy/cornice
-roof → chimney penetration
+column/beam → curtain wall system
+roof → boolean opening / chimney penetration
+stair/floor edge → automatic code-compliant railing
 ```
 
-这些关系来自领域资料和扩展规范，但相应专用类型及自动 resolver 尚未实现，默认生成必须使用前述降级基线。门、窗和显式路径栏杆不属于本提案块，它们已经由基础组合构件编译器支持。
+这些关系属于建筑专业语义，但当前没有对应专用类型或自动 resolver。默认生成应使用 `beam`/`primitive` 近似桁架，以薄墙与连续窗近似幕墙，显式布置屋顶构件和栏杆。`ramp`、`canopy`、`balcony`、`bay_window`、`cornice`、`chimney` 与 `light` 已由组合构件编译器支持，不属于提案类型。

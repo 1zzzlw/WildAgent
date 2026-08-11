@@ -8,3 +8,6 @@
 uv sync
 uv run uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
+
+cd E:\AgentProject\WildAgent\wild-server
+.venv\Scripts\python.exe -B tests\show_langgraph_graph.py

@@ -16,14 +16,28 @@ from loguru import logger
 from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_component_prompt
 from app.agent.model_client import create_llm
+from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import ComponentConfig
 from app.spec.loader import SpecQuery
 from app.utils.json_extractor import extract_json_array, extract_json_object
 
-from app.services.agent_service import agent_service
-
 # 全局 LLM 并发信号量
 _LLM_SEMAPHORE = asyncio.Semaphore(3)
+
+
+def _component_state_update(
+    config: ComponentConfig,
+    value,
+    diag_key: str,
+    diag: dict,
+) -> dict:
+    """同时写入通用 State 与旧字段，便于渐进迁移现有调用方。"""
+    return {
+        config.output_key: value,
+        diag_key: diag,
+        "component_fragments": {config.component_type: value},
+        "component_diagnostics": {diag_key: diag},
+    }
 
 
 # 生成器工厂（LLM 调用，有思考内容）
@@ -32,6 +46,8 @@ def create_component_generator(config: ComponentConfig):
     """创建组件生成节点（只做 LLM 生成，不做工具校验）"""
 
     async def generator(state: GenerationState) -> dict:
+        from app.services.agent_service import agent_service
+
         t0 = _time.time()
         user_message = state["user_message"]
         skeleton_summary = state.get("skeleton_summary", "")
@@ -59,10 +75,18 @@ def create_component_generator(config: ComponentConfig):
         for extra_query in config.rag_extra_queries:
             queries.append(SpecQuery(extra_query, {"doc_type": "component"}))
 
-        spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+        rag_error = None
+        try:
+            spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+        except Exception as exc:
+            spec_text = ""
+            rag_error = str(exc)
+            logger.warning(
+                f"[{config.component_type}_gen] RAG 检索失败，继续使用骨架约束: {exc}"
+            )
         rag_ms = int((_time.time() - rag_t0) * 1000)
         rag_chars = len(spec_text)
-        rag_hits = [
+        rag_hits = [] if rag_error else [
             {
                 "source": hit.metadata.get("source", "?"),
                 "heading": hit.metadata.get("heading", "?"),
@@ -84,7 +108,7 @@ def create_component_generator(config: ComponentConfig):
 
         # ── 3. LLM 调用（流式）──
         thinking_mode = state.get("thinking_mode", False)
-        on_reasoning_delta = state.get("on_reasoning_delta")
+        on_reasoning_delta = get_reasoning_callback()
         use_streaming = thinking_mode and on_reasoning_delta is not None
 
         llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
@@ -143,14 +167,14 @@ def create_component_generator(config: ComponentConfig):
 
         except Exception as e:
             logger.error(f"[{config.component_type}_gen] LLM 调用失败: {e}")
-            return {
-                output_key: [] if config.is_list else None,
-                gen_diag_key: {
+            empty_value = [] if config.is_list else None
+            diag = {
                     "label": config.label,
                     "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
+                    "rag_error": rag_error,
                     "error": str(e),
-                },
-            }
+                }
+            return _component_state_update(config, empty_value, gen_diag_key, diag)
 
         llm_ms = int((_time.time() - llm_t0) * 1000)
         llm_chars = len(reply_text)
@@ -170,19 +194,19 @@ def create_component_generator(config: ComponentConfig):
 
         if not fragments or (not config.is_list and fragments[0] is None):
             logger.warning(f"[{config.component_type}_gen] 未能提取 JSON")
-            return {
-                output_key: [] if config.is_list else None,
-                gen_diag_key: {
+            empty_value = [] if config.is_list else None
+            diag = {
                     "label": config.label,
                     "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
+                    "rag_error": rag_error,
                     "prompt_chars": prompt_chars,
                     "llm_chars": llm_chars, "llm_ms": llm_ms,
                     "token_usage": token_usage,
                     "reasoning_chars": reasoning_chars,
                     "fragment_count": 0,
                     "error": "JSON 提取失败",
-                },
-            }
+                }
+            return _component_state_update(config, empty_value, gen_diag_key, diag)
 
         # ── 5. 基本校验（类型 + 必填字段）──
         valid = _validate_fragments(fragments, config)
@@ -190,11 +214,11 @@ def create_component_generator(config: ComponentConfig):
 
         logger.info(f"[{config.component_type}_gen] 完成: {len(valid)} 个 {config.label}, {total_ms}ms")
 
-        return {
-            output_key: valid if config.is_list else (valid[0] if valid else None),
-            gen_diag_key: {
+        value = valid if config.is_list else (valid[0] if valid else None)
+        diag = {
                 "label": config.label,
                 "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
+                "rag_error": rag_error,
                 "prompt_chars": prompt_chars,
                 "llm_chars": llm_chars, "llm_ms": llm_ms,
                 "token_usage": token_usage,
@@ -202,8 +226,8 @@ def create_component_generator(config: ComponentConfig):
                 "reasoning_preview": reasoning[:800] if reasoning else "",
                 "fragment_count": len(valid),
                 "total_ms": total_ms,
-            },
-        }
+            }
+        return _component_state_update(config, value, gen_diag_key, diag)
 
     generator.__name__ = f"{config.component_type}_gen"
     return generator
@@ -221,7 +245,10 @@ def create_component_validator(config: ComponentConfig):
         output_key = config.output_key
         val_diag_key = f"{config.component_type}_val_diag"
 
-        fragments = state.get(output_key)
+        fragments = state.get("component_fragments", {}).get(
+            config.component_type,
+            state.get(output_key),
+        )
         if config.is_list:
             fragments = fragments if isinstance(fragments, list) else []
         else:
@@ -229,14 +256,14 @@ def create_component_validator(config: ComponentConfig):
 
         if not fragments:
             logger.info(f"[{config.component_type}_val] 无片段，跳过校验")
-            return {
-                val_diag_key: {
+            diag = {
                     "label": config.label,
                     "fragment_count": 0,
                     "validation_applied": False,
                     "validation_passed": True,
-                },
-            }
+                }
+            value = [] if config.is_list else None
+            return _component_state_update(config, value, val_diag_key, diag)
 
         logger.info(f"[{config.component_type}_val] 校验 {len(fragments)} 个 {config.label}")
 
@@ -255,16 +282,15 @@ def create_component_validator(config: ComponentConfig):
             + f", {total_ms}ms"
         )
 
-        return {
-            output_key: validated if config.is_list else (validated[0] if validated else None),
-            val_diag_key: {
+        value = validated if config.is_list else (validated[0] if validated else None)
+        diag = {
                 "label": config.label,
                 "fragment_count": len(validated),
                 "validation_applied": fixed,
                 "validation_passed": validation_passed,
                 "total_ms": total_ms,
-            },
-        }
+            }
+        return _component_state_update(config, value, val_diag_key, diag)
 
     validator.__name__ = f"{config.component_type}_val"
     return validator
@@ -282,7 +308,11 @@ def _validate_fragments(fragments: list[dict], config: ComponentConfig) -> list[
             continue
         if frag.get("type") != config.component_type:
             continue
-        missing = [f for f in config.required_fields if not frag.get(f)]
+        missing = [
+            field
+            for field in config.required_fields
+            if _is_missing_required_value(frag, field)
+        ]
         if missing:
             logger.warning(
                 f"[{config.component_type}] 跳过 {frag.get('id', '?')}：缺少必填字段 {missing}"
@@ -290,6 +320,33 @@ def _validate_fragments(fragments: list[dict], config: ComponentConfig) -> list[
             continue
         valid.append(frag)
     return valid
+
+
+def _is_missing_required_value(fragment: dict, field: str) -> bool:
+    """必填字段允许合法的 ``False`` 和 ``0``，只拒绝真正缺失或空值。"""
+    if field not in fragment or fragment[field] is None:
+        return True
+    value = fragment[field]
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, (list, dict, tuple, set)):
+        return not value
+    return False
+
+
+def _validation_has_error(result) -> bool:
+    """兼容现有文本工具与后续结构化校验结果。"""
+    if isinstance(result, dict):
+        if result.get("has_error") or result.get("status") == "error":
+            return True
+        if result.get("error_count", 0):
+            return True
+        errors = result.get("errors")
+        if isinstance(errors, (list, tuple, dict, set)) and errors:
+            return True
+    if getattr(result, "has_error", False):
+        return True
+    return "❌" in str(result)
 
 
 def _build_user_message(config: ComponentConfig, skeleton_summary: str = "", design_brief: dict | None = None) -> str:
@@ -353,7 +410,7 @@ def _validate_and_fix_with_tools(
 
     validation_result = validate_component(component_type, temp_blueprint)
 
-    if "❌" in validation_result:
+    if _validation_has_error(validation_result):
         logger.warning(f"[{component_type}_val] 检测到错误，自动修复中...")
         fix_result = fix_component(component_type, temp_blueprint)
         logger.info(f"[{component_type}_val] 修复结果:\n{fix_result}")
@@ -365,12 +422,10 @@ def _validate_and_fix_with_tools(
 
         recheck_result = validate_component(component_type, temp_blueprint)
         recheck_text = str(recheck_result)
-        if "❌" in recheck_text:
+        if _validation_has_error(recheck_result):
             logger.warning(
-                "[%s] 工具修复后复检仍未通过: %s",
-                component_type,
-                recheck_text,
+                f"[{component_type}] 工具修复后复检仍未通过: {recheck_text}"
             )
-        return fixed_fragments, True, "❌" not in recheck_text
+        return fixed_fragments, True, not _validation_has_error(recheck_result)
 
     return fragments, False, True

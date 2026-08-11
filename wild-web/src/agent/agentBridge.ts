@@ -116,7 +116,13 @@ export class AgentBridge {
   private lastHiddenTime: number = 0
   private visitorNameChangeHandler: EventListener | null = null
   /** 将迟到事件路由回发起请求的会话，避免切换会话后串消息。 */
-  private requestContexts = new Map<string, { sessionId: string; turnId: string }>()
+  private requestContexts = new Map<string, {
+    sessionId: string
+    turnId: string
+    durable: boolean
+  }>()
+  /** 每个持久化请求最后处理的关键事件序号，用于补发去重。 */
+  private lastEventSequences = new Map<string, number>()
   /** 产物加载与正式回复可能紧邻到达；回复必须等产物处理完再落盘。 */
   private artifactTasks = new Map<string, Promise<boolean>>()
   /** 同一会话的 Turn 快照必须串行提交，避免旧的 running 覆盖新的 completed。 */
@@ -171,6 +177,7 @@ export class AgentBridge {
           clearTimeout(this.reconnectTimer)
           this.reconnectTimer = null
         }
+        this.resumeActiveGenerations()
       }
 
       this.ws.onmessage = (event) => {
@@ -195,6 +202,17 @@ export class AgentBridge {
             return
           }
 
+          if (
+            'request_id' in message
+            && typeof message.request_id === 'string'
+            && 'event_seq' in message
+            && typeof message.event_seq === 'number'
+          ) {
+            const lastSequence = this.lastEventSequences.get(message.request_id) || 0
+            if (message.event_seq <= lastSequence) return
+            this.lastEventSequences.set(message.request_id, message.event_seq)
+          }
+
           this.handleMessage(message)
         } catch (error) {
           console.error('[AgentBridge] 解析消息失败', error)
@@ -211,7 +229,7 @@ export class AgentBridge {
         presenceStore.setConnectionStatus(
           this.manualDisconnect ? 'disconnected' : 'reconnecting',
         )
-        this.interruptActiveTurns('Agent 连接中断，请重新发送请求')
+        this.interruptNonDurableTurns('Agent 连接中断，请重新发送请求')
 
         if (!this.manualDisconnect) {
           // 不在此处设 disconnected，交给 scheduleReconnect 统一管理状态
@@ -362,7 +380,9 @@ export class AgentBridge {
     this.requestContexts.set(request.request_id, {
       sessionId: request.session_id,
       turnId: request.request_id,
+      durable: request.precision_mode === true,
     })
+    this.lastEventSequences.set(request.request_id, 0)
     agentStore.startTurn(request.request_id, request.session_id, message)
     void this.syncTurnsToServer(
       request.session_id,
@@ -387,6 +407,20 @@ export class AgentBridge {
     const presenceStore = usePresenceStore()
 
     switch (message.type) {
+      case 'generation_resumed':
+        this.requestContexts.set(message.request_id, {
+          sessionId: message.session_id,
+          turnId: message.request_id,
+          durable: true,
+        })
+        if (
+          message.status === 'running'
+          && message.session_id === agentStore.currentSessionId
+        ) {
+          agentStore.setProcessing(true, '正在恢复后台生成任务...')
+        }
+        break
+
       case 'agent_step':
         {
         const context = this.requestContexts.get(message.request_id)
@@ -559,19 +593,58 @@ export class AgentBridge {
     } as Record<string, string>)[stage] || stage
   }
 
-  private interruptActiveTurns(reason: string) {
+  private interruptNonDurableTurns(reason: string) {
     if (this.requestContexts.size === 0) return
     const agentStore = useAgentStore()
     const affectedSessions = new Set<string>()
     for (const [requestId, context] of this.requestContexts) {
+      if (context.durable) continue
       agentStore.addSystemMessageForTurn(context.sessionId, requestId, `错误: ${reason}`)
       agentStore.completeTurn(context.sessionId, requestId, 'error', reason)
       affectedSessions.add(context.sessionId)
+      this.requestContexts.delete(requestId)
+      this.artifactTasks.delete(requestId)
     }
-    agentStore.setProcessing(false)
-    this.requestContexts.clear()
-    this.artifactTasks.clear()
+    if (![...this.requestContexts.values()].some(context => context.durable)) {
+      agentStore.setProcessing(false)
+    }
     for (const sessionId of affectedSessions) void this.syncConversationState(sessionId)
+  }
+
+  /** 重连后重新附着后台任务，并从最后已处理序号继续补发关键事件。 */
+  private resumeActiveGenerations() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return
+
+    const agentStore = useAgentStore()
+    const targets = new Map<string, { requestId?: string; lastEventSeq: number }>()
+    for (const [requestId, context] of this.requestContexts) {
+      if (!context.durable) continue
+      targets.set(context.sessionId, {
+        requestId,
+        lastEventSeq: this.lastEventSequences.get(requestId) || 0,
+      })
+    }
+    if (!targets.has(agentStore.currentSessionId)) {
+      // 页面刷新后从持久化 Turn 找回 request_id；即使服务端已经完成，也能精确补发。
+      const runningTurn = [...agentStore.getTurnsForSession(agentStore.currentSessionId)]
+        .reverse()
+        .find(turn => turn.status === 'running')
+      targets.set(agentStore.currentSessionId, {
+        requestId: runningTurn?.request_id,
+        lastEventSeq: 0,
+      })
+    }
+
+    for (const [sessionId, target] of targets) {
+      if (!sessionId) continue
+      this.ws.send(JSON.stringify({
+        protocol_version: AGENT_PROTOCOL_VERSION,
+        type: 'resume_generation',
+        request_id: target.requestId,
+        session_id: sessionId,
+        last_event_seq: target.lastEventSeq,
+      }))
+    }
   }
 
   /** 处理后端推送的网络错误（心跳超时等） */
