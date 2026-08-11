@@ -57,6 +57,7 @@ from app.tools.spatial_tools import (
     validate_collision,
     validate_element_dimensions,
     validate_element_required_fields,
+    validate_model_quality,
     validate_opening_coords,
     validate_opening_fit,
     validate_reference_integrity,
@@ -281,6 +282,8 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     r7 = run_step(7, "validate_roof_coverage", validate_roof_coverage, blueprint)
     # ── Step 7b: 构件尺寸 ──
     r7b = run_step("7b", "validate_element_dimensions", validate_element_dimensions, blueprint)
+    # ── Step 7c: 重复骨架质量门禁 ──
+    run_step("7c", "validate_model_quality", validate_model_quality, blueprint)
 
     # ── Step 8: 自动修正门窗坐标 ──
     if r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning:
@@ -393,6 +396,47 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
         ))
     else:
         skip_step("9b", "fix_element_elevations", "Step 9 碰撞检测无问题")
+
+    # ── Step 10: 组件专用校验兜底 ──
+    # gen→val 已执行一次，这里针对合并、配额裁剪和自动修正后的最终蓝图复检，
+    # 防止合法引用但超出父墙范围的组件流到前端编译器。
+    from app.tools.component_tools import COMPONENT_TOOLS, fix_component, validate_component
+
+    entity_types = {
+        str(item.get("type"))
+        for item in [
+            *blueprint.get("geometry", {}).get("elements", []),
+            *blueprint.get("geometry", {}).get("components", []),
+        ]
+        if isinstance(item, dict) and item.get("type")
+    }
+    component_types = sorted((entity_types & set(COMPONENT_TOOLS)) - {"roof"})
+    for index, component_type in enumerate(component_types, start=1):
+        validator_name = f"validate_{component_type}_placement"
+        result = run_step(
+            f"10.{index}",
+            validator_name,
+            lambda bp, current=component_type: validate_component(current, bp),
+            blueprint,
+        )
+        if not result.has_error:
+            continue
+        fix_output = fix_component(component_type, blueprint)
+        results.append(PipelineStepResult(
+            step=f"10.{index}",
+            name=f"fix_{component_type}_placement",
+            output=fix_output,
+            has_error="❌" in fix_output,
+            has_warning="⚠️" in fix_output,
+        ))
+        recheck_output = validate_component(component_type, blueprint)
+        results.append(PipelineStepResult(
+            step=f"10.{index}",
+            name=f"{validator_name} [recheck]",
+            output=recheck_output,
+            has_error="❌" in recheck_output,
+            has_warning="⚠️" in recheck_output,
+        ))
 
     return results
 

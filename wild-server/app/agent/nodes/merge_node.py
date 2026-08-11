@@ -338,21 +338,69 @@ def _validate_design_brief_constraints(
         entity_type = entity.get("type")
         if entity_type:
             counts[entity_type] = counts.get(entity_type, 0) + 1
-    # balcony 编译器内嵌一套 U 形栏杆，设计配额不能要求再生成重复 railing 组件。
-    counts["railing"] = counts.get("railing", 0) + counts.get("balcony", 0)
     # 凸窗会占用并替换一个普通窗槽位，因此也满足立面窗数量要求。
     counts["window"] = counts.get("window", 0) + counts.get("bay_window", 0)
 
     errors: list[str] = []
+
+    realization = design_brief.get("realization")
+    if isinstance(realization, dict) and realization.get("representation_mode", "full") == "full":
+        try:
+            modeled_floors = max(1, int(realization.get("modeled_floors", 1)))
+            floor_height = max(0.1, float(realization.get("floor_height", 3.2)))
+        except (TypeError, ValueError):
+            modeled_floors = 1
+            floor_height = 3.2
+        if modeled_floors > 1:
+            walls = [item for item in geometry.get("elements", []) if item.get("type") == "wall"]
+            floors = [item for item in geometry.get("elements", []) if item.get("type") == "floor"]
+            stairs = [item for item in entities if item.get("type") == "stair"]
+            wall_levels = {
+                round(min(float(item["from"][1]), float(item["to"][1])), 2)
+                for item in walls
+                if _finite_vec3(item.get("from")) and _finite_vec3(item.get("to"))
+            }
+            floor_levels = {
+                round(float(item["from"][1]), 2)
+                for item in floors
+                if _finite_vec3(item.get("from"))
+            }
+            expected_levels = [round(index * floor_height, 2) for index in range(modeled_floors)]
+            missing_wall_levels = [
+                level for level in expected_levels
+                if not any(abs(actual - level) <= 0.25 for actual in wall_levels)
+            ]
+            missing_floor_levels = [
+                level for level in expected_levels
+                if not any(abs(actual - level) <= 0.25 for actual in floor_levels)
+            ]
+            if missing_wall_levels:
+                errors.append(
+                    f"建筑方案要求 {modeled_floors} 层，但缺少墙体标高 {missing_wall_levels}"
+                )
+            if missing_floor_levels:
+                errors.append(
+                    f"建筑方案要求 {modeled_floors} 层，但缺少楼板标高 {missing_floor_levels}"
+                )
+            if not stairs:
+                errors.append(f"建筑方案要求 {modeled_floors} 层，但没有 stair 构件")
+
     for component_type, limits in design_brief.get("component_quota", {}).items():
         if not isinstance(limits, dict):
             continue
         actual = counts.get(component_type, 0)
+        # balcony 自带 U 形栏杆，可满足 railing 的最低需求；但它已有独立的
+        # balcony 配额，不能再占用独立 railing 的数量上限。
+        minimum_actual = (
+            actual + counts.get("balcony", 0)
+            if component_type == "railing"
+            else actual
+        )
         minimum = limits.get("min")
         maximum = limits.get("max")
-        if isinstance(minimum, (int, float)) and not isinstance(minimum, bool) and actual < minimum:
+        if isinstance(minimum, (int, float)) and not isinstance(minimum, bool) and minimum_actual < minimum:
             errors.append(
-                f"{component_type} 数量 {actual} 少于设计下限 {minimum}"
+                f"{component_type} 数量 {minimum_actual} 少于设计下限 {minimum}"
             )
         if isinstance(maximum, (int, float)) and not isinstance(maximum, bool) and actual > maximum:
             errors.append(
@@ -414,6 +462,8 @@ def _deduplicate_balcony_representations(blueprint: dict) -> dict:
         footprint = _balcony_footprint(component, walls.get(component.get("parentWall")), building_center)
         if footprint:
             expected_footprints.append(footprint)
+    if not expected_footprints:
+        return {"removed_floor_ids": [], "removed_railing_count": 0}
 
     removed_floor_ids: set[str] = set()
     for element in elements:
@@ -436,17 +486,17 @@ def _deduplicate_balcony_representations(blueprint: dict) -> dict:
         ):
             removed_floor_ids.add(str(element_id))
 
-    if not removed_floor_ids:
-        return {"removed_floor_ids": [], "removed_railing_count": 0}
-
     kept_components = []
     removed_railing_count = 0
     for component in components:
-        if (
-            isinstance(component, dict)
-            and component.get("type") == "railing"
-            and component.get("parentFloor") in removed_floor_ids
-        ):
+        is_duplicate_balcony_railing = False
+        if isinstance(component, dict) and component.get("type") == "railing":
+            component_id = str(component.get("id") or "").lower()
+            is_duplicate_balcony_railing = (
+                component.get("parentFloor") in removed_floor_ids
+                or "balcony" in component_id
+            )
+        if is_duplicate_balcony_railing:
             removed_railing_count += 1
             continue
         kept_components.append(component)

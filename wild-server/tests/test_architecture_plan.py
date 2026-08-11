@@ -52,6 +52,8 @@ def test_facade_layout_resolves_exact_non_overlapping_slots() -> None:
     assert doors[0]["wall_id"] == "wall_front_1"
     assert doors[0]["from"][2] == 0
     assert brief["facade_plan"]["wall_front_2"]["max_openings"] == 3
+    assert brief["realization"]["modeled_floors"] == 2
+    assert brief["realization"]["floor_height"] == 3.2
 
     for index, slot in enumerate(brief["opening_slots"]):
         for other in brief["opening_slots"][index + 1:]:
@@ -308,6 +310,38 @@ def test_standard_plan_rejects_missing_interstorey_cap_floor() -> None:
 
     assert evaluation["meets_target"] is False
     assert evaluation["checks"]["volume_plan_conformance"] is False
+
+
+def test_standard_plan_rejects_missing_vertical_circulation() -> None:
+    message = "生成一座普通两层现代住宅"
+    plan = normalize_architecture_plan({}, message)
+    blueprint = build_deterministic_skeleton(plan, message)
+    blueprint["geometry"]["elements"] = [
+        element for element in blueprint["geometry"]["elements"]
+        if element["type"] != "stair"
+    ]
+
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+
+    assert evaluation["meets_target"] is False
+    assert evaluation["checks"]["vertical_circulation"] is False
+
+
+def test_standard_plan_rejects_exact_duplicate_wall() -> None:
+    message = "生成一座普通单层现代住宅"
+    plan = normalize_architecture_plan({}, message)
+    blueprint = build_deterministic_skeleton(plan, message)
+    wall = next(
+        element for element in blueprint["geometry"]["elements"]
+        if element["type"] == "wall"
+    )
+    blueprint["geometry"]["elements"].append({**wall, "id": "wall_duplicate"})
+
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+
+    assert evaluation["meets_target"] is False
+    assert evaluation["checks"]["duplicate_wall_free"] is False
+    assert evaluation["duplicate_wall_count"] == 1
 
 
 def test_single_storey_detailed_wings_remain_distinct_volume_footprints() -> None:

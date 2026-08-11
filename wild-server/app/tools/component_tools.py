@@ -593,12 +593,17 @@ def fix_balcony_placement(blueprint: dict) -> str:
             or len(balcony_from) != 3
             or float(balcony_from[1]) < 1.8
         )
+        invalid_horizontal = False
         if current_wall and not invalid_elevation:
-            _, wall_bottom, wall_top = wall_metrics(current_wall)
+            current_length, wall_bottom, wall_top = wall_metrics(current_wall)
             invalid_elevation = not (
                 wall_bottom - 0.25 <= float(balcony_from[1]) <= wall_top + 0.25
             )
-        if not invalid_elevation:
+            invalid_horizontal = (
+                float(balcony_from[0]) < 0
+                or float(balcony_from[0]) + float(balcony.get("width", 0)) > current_length
+            )
+        if not invalid_elevation and not invalid_horizontal:
             continue
 
         width = max(0.8, float(balcony.get("width", 2.4)))

@@ -1,5 +1,8 @@
-from app.agent.component_registry import ComponentConfig
+import asyncio
+
+from app.agent.component_registry import COMPONENT_REGISTRY, ComponentConfig
 from app.agent.nodes.base_component_node import (
+    create_component_validator,
     _validate_and_fix_with_tools,
     _validate_fragments,
     _validation_has_error,
@@ -129,3 +132,64 @@ def test_ground_level_balcony_is_relocated_to_upper_wall() -> None:
     assert validation_passed is True
     assert fixed[0]["parentWall"].startswith("wall_upper_")
     assert fixed[0]["from"][1] == 3.2
+
+
+def test_horizontally_overflowing_balcony_is_relocated() -> None:
+    skeleton = _skeleton()
+    skeleton["geometry"]["elements"][0] = {
+        "id": "wall_short",
+        "type": "wall",
+        "from": [0, 0, 0],
+        "to": [1, 3.2, 0],
+        "thickness": 0.24,
+    }
+    skeleton["geometry"]["elements"].append({
+        "id": "wall_long",
+        "type": "wall",
+        "from": [0, 0, 6],
+        "to": [8, 3.2, 6],
+        "thickness": 0.24,
+    })
+    fragments = [{
+        "id": "balcony_overflow",
+        "type": "balcony",
+        "parentWall": "wall_short",
+        "from": [0, 1.8, 0],
+        "width": 1.5,
+        "depth": 1.2,
+        "slabThickness": 0.18,
+    }]
+
+    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+        fragments,
+        "balcony",
+        skeleton,
+        False,
+    )
+
+    assert repair_applied is True
+    assert validation_passed is True
+    assert fixed[0]["parentWall"] == "wall_long"
+    assert fixed[0]["from"][0] + fixed[0]["width"] <= 8
+
+
+def test_failed_component_recheck_is_not_forwarded_to_merge() -> None:
+    validator = create_component_validator(COMPONENT_REGISTRY["door"])
+    invalid = {
+        "id": "oversized_door",
+        "type": "door",
+        "parentWall": "wall_front",
+        "from": [1, 0, 0],
+        "width": 20,
+        "height": 2.2,
+    }
+
+    result = asyncio.run(validator({
+        "skeleton_blueprint": _skeleton(),
+        "component_fragments": {"door": [invalid]},
+    }))
+
+    assert result["door_fragments"] == []
+    assert result["component_fragments"]["door"] == []
+    assert result["door_val_diag"]["validation_passed"] is False
+    assert result["door_val_diag"]["rejected_fragment_count"] == 1

@@ -728,6 +728,21 @@ export class AgentBridge {
       const reconstructed = await sceneStore.loadBlueprint(
         typedBlueprint, name, sceneStore.document?.revision)
       if (!reconstructed) {
+        const entity = sceneStore.reconstructed
+        const reconstructionErrors = entity?.diagnostics.filter(item => item.level === 'error') || []
+        if (entity?.meshes.length && reconstructionErrors.length) {
+          const details = reconstructionErrors
+            .slice(0, 3)
+            .map(item => item.elementId ? `${item.elementId}: ${item.message}` : item.message)
+            .join('；')
+          agentStore.addSystemMessageForTurn(
+            targetSessionId,
+            message.request_id,
+            `⚠️ Blueprint 已部分加载：${reconstructionErrors.length} 个构件重建失败（${details}）`,
+          )
+          agentStore.setBlueprintLoaded(filename)
+          return true
+        }
         throw new Error('Blueprint 已读取，但场景重建失败')
       }
 

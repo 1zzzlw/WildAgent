@@ -899,6 +899,9 @@ def evaluate_skeleton_complexity(
     floor_footprints: set[tuple[float, ...]] = set()
     floor_layouts: set[tuple[float, ...]] = set()
     wall_groups: dict[tuple[float, float], list[dict[str, Any]]] = {}
+    wall_base_levels: set[float] = set()
+    wall_keys: set[tuple[Any, ...]] = set()
+    duplicate_wall_count = 0
     for element in elements:
         element_type = str(element.get("type") or "unknown")
         counts[element_type] = counts.get(element_type, 0) + 1
@@ -918,6 +921,16 @@ def evaluate_skeleton_complexity(
             if isinstance(start, list) and isinstance(end, list) and len(start) == 3 and len(end) == 3:
                 vertical_range = tuple(sorted((round(float(start[1]), 2), round(float(end[1]), 2))))
                 wall_groups.setdefault(vertical_range, []).append(element)
+                wall_base_levels.add(vertical_range[0])
+                horizontal_endpoints = tuple(sorted((
+                    (round(float(start[0]), 2), round(float(start[2]), 2)),
+                    (round(float(end[0]), 2), round(float(end[2]), 2)),
+                )))
+                wall_key = (horizontal_endpoints, vertical_range)
+                if wall_key in wall_keys:
+                    duplicate_wall_count += 1
+                else:
+                    wall_keys.add(wall_key)
 
     volume_footprints: set[tuple[float, ...]] = set()
     for walls in wall_groups.values():
@@ -979,6 +992,9 @@ def evaluate_skeleton_complexity(
         ))
         for plate in _resolve_floor_plate_plan(plan_volumes, modeled_floors, floor_height)
     }
+    expected_wall_base_levels = {
+        round(level * floor_height, 2) for level in range(modeled_floors)
+    }
     checks = {
         "structural_element_target": structural_count >= target,
         "volume_footprint_target": len(volume_footprints) >= volume_target,
@@ -986,11 +1002,20 @@ def evaluate_skeleton_complexity(
             not expected_floor_layouts or floor_layouts == expected_floor_layouts
         ),
         "structural_type_diversity": len([value for value in counts.values() if value]) >= 3,
+        "storey_wall_levels": expected_wall_base_levels.issubset(wall_base_levels),
+        "vertical_circulation": modeled_floors <= 1 or counts.get("stair", 0) > 0,
+        "duplicate_wall_free": duplicate_wall_count == 0,
     }
+    realization_checks = (
+        checks["volume_plan_conformance"],
+        checks["storey_wall_levels"],
+        checks["vertical_circulation"],
+        checks["duplicate_wall_free"],
+    )
     return {
         "level": level,
         "meets_target": (
-            checks["volume_plan_conformance"]
+            all(realization_checks)
             and (level != "detailed" or all(checks.values()))
         ),
         "checks": checks,
@@ -1001,6 +1026,7 @@ def evaluate_skeleton_complexity(
         "floor_layout_count": len(floor_layouts),
         "expected_floor_layout_count": len(expected_floor_layouts),
         "target_volume_footprints": volume_target,
+        "duplicate_wall_count": duplicate_wall_count,
         "element_type_counts": counts,
     }
 
@@ -1277,6 +1303,14 @@ def _opening_slots_overlap(
 
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
+    massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
+    realization = {
+        "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
+        "floor_height": float(massing.get("floor_height") or 3.2),
+        "representation_mode": str(massing.get("representation_mode") or "full"),
+        "shape": str(massing.get("shape") or "rectangle"),
+        "volumes": deepcopy(plan.get("volumes") or []),
+    }
     walls = []
     for element in blueprint.get("geometry", {}).get("elements", []):
         if isinstance(element, dict) and element.get("type") == "wall":
@@ -1284,7 +1318,12 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             if descriptor:
                 walls.append(descriptor)
     if not walls:
-        return {"facade_plan": {}, "component_quota": deepcopy(plan.get("component_quota", {})), "opening_slots": []}
+        return {
+            "facade_plan": {},
+            "component_quota": deepcopy(plan.get("component_quota", {})),
+            "opening_slots": [],
+            "realization": realization,
+        }
 
     min_y = min(wall["base_y"] for wall in walls)
     level_bounds: dict[float, dict[str, float]] = {}
@@ -1390,6 +1429,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         "facade_plan": facade_plan,
         "component_quota": quotas,
         "opening_slots": slots,
+        "realization": realization,
         "rag_reference": "建筑方案节点已确定体量、立面轴网、屋顶类型；门窗坐标由程序解析。",
     }
 

@@ -10,6 +10,7 @@ from app.tools.spatial_tools import (
     fix_wall_junctions,
     validate_collision,
     validate_element_dimensions,
+    validate_model_quality,
     validate_opening_coords,
     validate_opening_fit,
     validate_reference_integrity,
@@ -23,6 +24,40 @@ def run_tool(tool, blueprint):
 
 
 class SpatialValidationTest(unittest.TestCase):
+    def test_duplicate_walls_and_overlapping_columns_are_model_quality_errors(self):
+        blueprint = {
+            "geometry": {
+                "elements": [
+                    {"id": "wall_a", "type": "wall", "from": [0, 0, 0], "to": [6, 3.2, 0], "thickness": 0.24},
+                    {"id": "wall_b", "type": "wall", "from": [6, 0, 0], "to": [0, 3.2, 0], "thickness": 0.24},
+                    {"id": "column_a", "type": "column", "base": [1, 0, 1], "height": 3.2, "bottomRadius": 0.16, "topRadius": 0.16},
+                    {"id": "column_b", "type": "column", "base": [1.1, 0, 1], "height": 3.2, "bottomRadius": 0.16, "topRadius": 0.16},
+                ],
+                "components": [],
+            },
+        }
+
+        result = run_tool(validate_model_quality, blueprint)
+
+        self.assertIn("wall_a, wall_b", result)
+        self.assertIn("column_a / column_b", result)
+        self.assertIn("❌", result)
+
+    def test_separated_structure_passes_model_quality_gate(self):
+        blueprint = {
+            "geometry": {
+                "elements": [
+                    {"id": "wall_a", "type": "wall", "from": [0, 0, 0], "to": [6, 3.2, 0], "thickness": 0.24},
+                    {"id": "wall_b", "type": "wall", "from": [6, 0, 0], "to": [6, 3.2, 5], "thickness": 0.24},
+                    {"id": "column_a", "type": "column", "base": [1, 0, 1], "height": 3.2, "bottomRadius": 0.16, "topRadius": 0.16},
+                    {"id": "column_b", "type": "column", "base": [5, 0, 1], "height": 3.2, "bottomRadius": 0.16, "topRadius": 0.16},
+                ],
+                "components": [],
+            },
+        }
+
+        self.assertNotIn("❌", run_tool(validate_model_quality, blueprint))
+
     def test_component_world_coordinate_is_projected_back_to_parent_wall(self):
         blueprint = {
             "meta": {"version": "1.1", "type": "building"},

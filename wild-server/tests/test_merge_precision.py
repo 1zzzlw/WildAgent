@@ -2,7 +2,11 @@
 
 import unittest
 
-from app.agent.nodes.merge_node import merge_fragments_node
+from app.agent.nodes.merge_node import (
+    _deduplicate_balcony_representations,
+    _validate_design_brief_constraints,
+    merge_fragments_node,
+)
 from app.agent.nodes.validate_node import validate_node
 from app.tools.spatial_tools import validate_opening_fit
 
@@ -37,6 +41,93 @@ def _design_brief(minimum_doors: int = 1) -> dict:
 
 
 class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
+    def test_balcony_named_railing_is_preserved_without_balcony_component(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{
+                    "type": "wall", "id": "wall_front",
+                    "from": [0, 0, 0], "to": [8, 3.2, 0], "thickness": 0.24,
+                }],
+                "components": [{
+                    "type": "railing", "id": "balcony_guard_only",
+                    "path": [[2, 0, 0], [4, 0, 0]], "height": 1.1,
+                }],
+            },
+        }
+
+        result = _deduplicate_balcony_representations(blueprint)
+
+        self.assertEqual(result["removed_railing_count"], 0)
+        self.assertEqual(blueprint["geometry"]["components"][0]["id"], "balcony_guard_only")
+
+    def test_balcony_railing_only_satisfies_minimum_not_standalone_maximum(self):
+        blueprint = {
+            "geometry": {
+                "elements": [],
+                "components": [
+                    {"type": "balcony", "id": "balcony_left"},
+                    {"type": "balcony", "id": "balcony_right"},
+                    {"type": "railing", "id": "stair_guard_left"},
+                    {"type": "railing", "id": "stair_guard_right"},
+                ],
+            },
+        }
+        design_brief = {
+            "component_quota": {
+                "balcony": {"min": 2, "max": 2},
+                "railing": {"min": 2, "max": 2},
+            },
+        }
+
+        self.assertEqual(
+            _validate_design_brief_constraints(blueprint, design_brief),
+            [],
+        )
+
+    def test_embedded_balcony_railing_does_not_require_duplicate_component(self):
+        blueprint = {
+            "geometry": {
+                "elements": [],
+                "components": [{"type": "balcony", "id": "balcony_main"}],
+            },
+        }
+        design_brief = {
+            "component_quota": {
+                "balcony": {"min": 1, "max": 1},
+                "railing": {"min": 1, "max": 0},
+            },
+        }
+
+        self.assertEqual(
+            _validate_design_brief_constraints(blueprint, design_brief),
+            [],
+        )
+
+    def test_missing_second_storey_and_stair_fail_realization_contract(self):
+        blueprint = {
+            "geometry": {
+                "elements": [
+                    {"type": "floor", "id": "floor_ground", "from": [0, 0, 0], "to": [8, 0, 6], "thickness": 0.2},
+                    {"type": "wall", "id": "wall_ground", "from": [0, 0, 0], "to": [8, 3.2, 0], "thickness": 0.24},
+                ],
+                "components": [],
+            },
+        }
+        design_brief = {
+            "component_quota": {},
+            "realization": {
+                "modeled_floors": 2,
+                "floor_height": 3.2,
+                "representation_mode": "full",
+            },
+        }
+
+        errors = _validate_design_brief_constraints(blueprint, design_brief)
+
+        self.assertIn("建筑方案要求 2 层，但缺少墙体标高 [3.2]", errors)
+        self.assertIn("建筑方案要求 2 层，但缺少楼板标高 [3.2]", errors)
+        self.assertIn("建筑方案要求 2 层，但没有 stair 构件", errors)
+
     async def test_balcony_component_removes_duplicate_floor_and_railings(self):
         skeleton = {
             "meta": {"version": "1.1", "type": "building", "name": "balcony-dedup"},
@@ -72,6 +163,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
             "railing_fragments": [
                 {"type": "railing", "id": "balcony_front", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.1},
                 {"type": "railing", "id": "balcony_left", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [0, 0, 1.5]], "height": 1.1},
+                {"type": "railing", "id": "railing_balcony_orphan", "path": [[5.5, 0, 0], [7, 0, -1.5]], "height": 1.1},
                 {"type": "railing", "id": "portico_front", "parentFloor": "floor_portico", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.0},
                 {"type": "railing", "id": "stair_guard", "path": [[0, 0, 4], [2, 2, 4]], "height": 1.0},
             ],
@@ -88,7 +180,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(result["merge_diag"]["balcony_cleanup"], {
             "removed_floor_ids": ["floor_balcony"],
-            "removed_railing_count": 2,
+            "removed_railing_count": 3,
         })
         self.assertEqual(result["merge_diag"]["ground_railing_cleanup"], {
             "removed_railing_ids": ["portico_front"],

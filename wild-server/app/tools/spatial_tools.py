@@ -1380,6 +1380,77 @@ def _aabb_overlap(
 
 
 @tool
+def validate_model_quality(blueprint: dict) -> str:
+    """拦截会产生闪烁或虚假复杂度的重复墙体与重叠柱。"""
+    elements = _get_elements(blueprint)
+    issues: list[str] = []
+
+    wall_groups: dict[tuple, list[str]] = {}
+    for wall in (item for item in elements if item.get("type") == "wall"):
+        start = wall.get("from")
+        end = wall.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        endpoints = sorted((
+            (round(float(start[0]), 3), round(float(start[2]), 3)),
+            (round(float(end[0]), 3), round(float(end[2]), 3)),
+        ))
+        key = (
+            endpoints[0],
+            endpoints[1],
+            round(min(float(start[1]), float(end[1])), 3),
+            round(max(float(start[1]), float(end[1])), 3),
+        )
+        wall_groups.setdefault(key, []).append(str(wall.get("id", "?")))
+    for ids in wall_groups.values():
+        if len(ids) > 1:
+            issues.append(f"❌ 重复墙体共用同一中心线与标高: {', '.join(ids)}")
+
+    columns: list[tuple[str, list[float], float, float]] = []
+    for column in (item for item in elements if item.get("type") == "column"):
+        base = column.get("base")
+        if not _is_finite_vector3(base):
+            continue
+        try:
+            height = float(column.get("height", 0))
+            radius = max(
+                float(column.get("bottomRadius", 0)),
+                float(column.get("topRadius", 0)),
+                float(column.get("radius", 0)),
+                float(column.get("width", 0)) / 2,
+                float(column.get("depth", 0)) / 2,
+                0.01,
+            )
+        except (TypeError, ValueError):
+            continue
+        columns.append((str(column.get("id", "?")), base, height, radius))
+
+    for index, first in enumerate(columns):
+        for second in columns[index + 1:]:
+            first_top = float(first[1][1]) + first[2]
+            second_top = float(second[1][1]) + second[2]
+            vertical_overlap = min(first_top, second_top) - max(
+                float(first[1][1]), float(second[1][1])
+            )
+            horizontal_distance = math.hypot(
+                float(first[1][0]) - float(second[1][0]),
+                float(first[1][2]) - float(second[1][2]),
+            )
+            if vertical_overlap > 0.05 and horizontal_distance < first[3] + second[3] - 0.02:
+                issues.append(
+                    f"❌ 重叠柱应合并为一个轴网节点: {first[0]} / {second[0]} "
+                    f"(中心距 {horizontal_distance:.2f}m)"
+                )
+
+    if not issues:
+        return "✅ 模型质量检查通过：无重复墙体或重叠柱。"
+    visible = issues[:12]
+    if len(issues) > len(visible):
+        visible.append(f"❌ 另有 {len(issues) - len(visible)} 处重复骨架未展开")
+    return f"发现 {len(issues)} 处会造成重影/虚假复杂度的重复骨架：\n" + "\n".join(visible)
+
+
+@tool
 def validate_collision(blueprint: dict) -> str:
     """
     检测构件之间是否存在碰撞、穿插、悬空或不合理重叠。

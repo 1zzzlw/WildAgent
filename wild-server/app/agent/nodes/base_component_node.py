@@ -282,10 +282,14 @@ def create_component_validator(config: ComponentConfig):
             + f", {total_ms}ms"
         )
 
-        value = validated if config.is_list else (validated[0] if validated else None)
+        # 专用工具复检仍失败时，禁止把原始错误分片继续送入 merge。后续设计
+        # 配额校验会把缺失构件交给回调重试，避免无效几何流到前端编译器。
+        deliverable = validated if validation_passed else []
+        value = deliverable if config.is_list else (deliverable[0] if deliverable else None)
         diag = {
                 "label": config.label,
-                "fragment_count": len(validated),
+                "fragment_count": len(deliverable),
+                "rejected_fragment_count": 0 if validation_passed else len(validated),
                 "validation_applied": fixed,
                 "validation_passed": validation_passed,
                 "total_ms": total_ms,
