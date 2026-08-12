@@ -2,6 +2,8 @@
 
 为 `www.zzzlew.asia` 添加 Let's Encrypt 免费 SSL 证书，实现 HTTPS 访问。
 
+**实操环境**：阿里云 ECS `39.106.183.13`，Ubuntu，Docker 部署。
+
 ## 架构概览
 
 ```
@@ -11,7 +13,7 @@
 │   └── live/www.zzzlew.asia/
 │       ├── fullchain.pem
 │       └── privkey.pem
-└── www/                  # ACME webroot 共享目录（续期用）
+└── www/                  # ACME webroot 共享目录
 
 请求流程:
 :443 → wild-web(nginx) → /api/*,/ws/* → wild-server:8000
@@ -20,9 +22,121 @@
      → 其他 → 301 重定向到 HTTPS
 ```
 
-## 一、修改项目文件（3 个文件）
+## 正确顺序
 
-### 1. `wild-web/nginx.conf` → 替换为下面的内容
+```
+① 服务器拿证书 → ② 修改代码 → ③ Jenkins 部署
+```
+
+**原因**：新版 nginx.conf 引用了证书路径，如果证书不存在容器会启动失败。必须先确保证书在宿主机上就位，再部署新配置。
+
+---
+
+## 一、申请证书（服务器上操作）
+
+### 1.1 创建目录
+
+```bash
+ssh root@39.106.183.13
+mkdir -p /opt/wild-agent/certbot/{letsencrypt,www}
+```
+
+### 1.2 安装 certbot
+
+```bash
+sudo apt update
+sudo apt install certbot -y
+```
+
+### 1.3 申请证书
+
+#### 踩坑记录：为什么 HTTP-01 standalone 验证失败了？
+
+最初尝试了多种方式：
+
+| 方式 | 命令 | 结果 |
+|------|------|------|
+| Docker 容器 standalone | `docker run ... certbot/certbot certonly --standalone -p 80:80` | ❌ 403 |
+| Docker `--network host` | 同上加 `--network host` | ❌ 403 |
+| 宿主机原生 certbot | `sudo certbot certonly --standalone` | ❌ 403 |
+
+排查过程：
+
+```bash
+# wild-web 已停，80 端口空闲
+docker ps | grep wild-web    # 无输出
+ss -tlnp | grep :80           # 无监听
+
+# 宿主机没有残留 nginx/apache
+systemctl status nginx    # not found
+systemctl status apache2  # not found
+
+# iptables 规则无明显拦截
+iptables -L -n | head -30
+```
+
+**根因**：阿里云的安全产品（WAF/云防火墙）拦截了 Let's Encrypt 验证服务器的 HTTP 请求，返回 403。即使 80 端口空闲、certbot standalone 正常监听，外部验证流量到服务器之前就被中间层挡掉了。加上 Docker 的 iptables NAT 规则也会干扰流量路由，两个因素叠加导致 HTTP-01 验证不可行。
+
+#### 最终方案：DNS 验证
+
+DNS 验证完全绕过 80 端口和网络层问题，只需要在 DNS 控制台添加一条 TXT 记录。
+
+```bash
+sudo certbot certonly --manual \
+  --preferred-challenges dns \
+  -d www.zzzlew.asia \
+  --email 1400377637@qq.com \
+  --agree-tos \
+  --config-dir /opt/wild-agent/certbot/letsencrypt \
+  --work-dir /opt/wild-agent/certbot/www
+```
+
+执行后会输出类似：
+
+```
+Please deploy a DNS TXT record under the name:
+_acme-challenge.www.zzzlew.asia
+with the following value:
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+去**阿里云 DNS 控制台** → `zzzlew.asia` 的解析记录 → 添加：
+
+| 主机记录 | 类型 | 记录值 |
+|----------|------|--------|
+| `_acme-challenge.www` | TXT | certbot 输出的随机字符串 |
+
+验证 DNS 生效：
+
+```bash
+dig _acme-challenge.www.zzzlew.asia TXT
+# 或
+nslookup -type=TXT _acme-challenge.www.zzzlew.asia
+```
+
+看到返回你添加的记录值后，回到终端按回车。
+
+成功后输出：
+
+```
+Successfully received certificate.
+Certificate is saved at: /opt/wild-agent/certbot/letsencrypt/live/www.zzzlew.asia/fullchain.pem
+Key is saved at:         /opt/wild-agent/certbot/letsencrypt/live/www.zzzlew.asia/privkey.pem
+This certificate expires on 2026-11-10.
+```
+
+### 1.4 确认证书
+
+```bash
+ls /opt/wild-agent/certbot/letsencrypt/live/www.zzzlew.asia/
+# fullchain.pem  privkey.pem  cert.pem  chain.pem  README
+```
+
+---
+
+## 二、修改项目文件（本地操作）
+
+### 2.1 `wild-web/nginx.conf`
 
 ```nginx
 # HTTP：仅保留 ACME challenge 路径供 certbot 续期，其余全部跳转 HTTPS
@@ -85,57 +199,15 @@ server {
 }
 ```
 
-### 2. `wild-web/Dockerfile` → 修改两处
+### 2.2 `wild-web/Dockerfile`
 
-**a) 在 `EXPOSE 80` 下面加一行：**
+在 `EXPOSE 80` 下面加一行：
 
 ```dockerfile
 EXPOSE 443
 ```
 
-**b) 完整修改后的 Dockerfile：**
-
-```dockerfile
-ARG NODE_BASE_IMAGE=node:22-alpine
-ARG NGINX_BASE_IMAGE=nginx:alpine
-
-FROM ${NODE_BASE_IMAGE} AS builder
-ARG NPM_REGISTRY=https://registry.npmmirror.com
-
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci --registry=${NPM_REGISTRY}
-
-COPY . .
-RUN npm run build
-
-FROM ${NGINX_BASE_IMAGE}
-
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-EXPOSE 80
-EXPOSE 443
-```
-
-### 3. `Jenkinsfile` → 修改 `start_web()` 函数
-
-找到 `start_web()` 函数（约第 290 行），当前的代码：
-
-```bash
-start_web() {
-  web_image="$1"
-  docker run -d \
-    --name wild-web \
-    --restart unless-stopped \
-    --network wild-net \
-    -p 80:80 \
-    "$web_image"
-}
-```
-
-改成：
+### 2.3 `Jenkinsfile` → `start_web()` 函数
 
 ```bash
 start_web() {
@@ -152,126 +224,99 @@ start_web() {
 }
 ```
 
----
-
-## 二、服务器一次性初始化
-
-> 在服务器 `39.106.183.13` 上执行，只需做一次。
-> **时机**：等 Jenkins 首次部署完新配置之后再做（因为新版 nginx.conf 配置了 443，但证书还不存在，nginx 会启动失败）。
-
-### 操作步骤
+### 2.4 提交部署
 
 ```bash
-# 1. SSH 登录服务器
-ssh root@39.106.183.13
-
-# 2. 创建目录
-mkdir -p /opt/wild-agent/certbot/{letsencrypt,www}
-
-# 3. 停止 wild-web（释放 80 端口给 certbot 用）
-docker stop wild-web
-
-# 4. 用 certbot 容器申请证书（standalone 模式，临时占用 80 端口）
-docker run --rm \
-  -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt \
-  -v /opt/wild-agent/certbot/www:/var/www/certbot \
-  -p 80:80 \
-  certbot/certbot certonly --standalone \
-  -d www.zzzlew.asia \
-  --email 你的邮箱@example.com \
-  --agree-tos \
-  --non-interactive
-
-# 5. 验证证书生成成功
-ls -la /opt/wild-agent/certbot/letsencrypt/live/www.zzzlew.asia/
-# 应该看到: fullchain.pem  privkey.pem  ...
-
-# 6. 启动 wild-web（现在证书已就位，nginx 可以正常监听 443）
-docker start wild-web
-
-# 7. 等待几秒后验证
-docker exec wild-web nginx -t          # 配置语法检查
-curl -I http://www.zzzlew.asia         # 应返回 301
-curl -I https://www.zzzlew.asia        # 应返回 200
+git add wild-web/nginx.conf wild-web/Dockerfile Jenkinsfile
+git commit -m "添加 HTTPS 支持"
+git push
 ```
 
 ---
 
-## 三、证书自动续期
-
-Let's Encrypt 证书有效期 90 天，需要自动续期。
-
-在服务器上添加 crontab：
+## 三、部署后验证
 
 ```bash
-crontab -e
-```
+# 1. nginx 配置语法
+docker exec wild-web nginx -t
 
-添加下面这行（每天凌晨 3:17 检查一次）：
+# 2. HTTP 重定向
+curl -I http://www.zzzlew.asia
+# 预期: 301 Moved Permanently, Location: https://...
 
-```
-17 3 * * * docker run --rm -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt -v /opt/wild-agent/certbot/www:/var/www/certbot certbot/certbot renew --webroot -w /var/www/certbot --quiet && docker exec wild-web nginx -s reload
-```
+# 3. HTTPS 可访问
+curl -I https://www.zzzlew.asia
+# 预期: 200 OK
 
-> **原理**：certbot 会在证书到期前 30 天内才真正续期，其余时间 `renew` 是空操作。续期成功后自动 reload nginx 使新证书生效。
+# 4. API 代理
+curl https://www.zzzlew.asia/api/health/ready
 
-验证续期 cron 是否配置正确：
-
-```bash
-# 干跑测试（不会真正续期）
-docker run --rm \
-  -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt \
-  -v /opt/wild-agent/certbot/www:/var/www/certbot \
-  certbot/certbot renew --webroot -w /var/www/certbot --dry-run
+# 5. 容器端口
+docker port wild-web
+# 应显示 80/tcp 和 443/tcp
 ```
 
 ---
 
-## 四、验证清单
+## 四、证书续期
 
-部署完成后逐项确认：
+### 4.1 注意事项
 
-| # | 检查项 | 命令 | 预期结果 |
-|---|--------|------|----------|
-| 1 | nginx 配置语法 | `docker exec wild-web nginx -t` | syntax is ok |
-| 2 | HTTP 重定向 | `curl -I http://www.zzzlew.asia` | `301 Moved Permanently`，Location 指向 https |
-| 3 | HTTPS 可访问 | `curl -I https://www.zzzlew.asia` | `200 OK` |
-| 4 | 证书有效 | `curl -I https://www.zzzlew.asia 2>&1 \| grep -i expire` | 证书信息正常 |
-| 5 | API 代理正常 | `curl https://www.zzzlew.asia/api/health/ready` | 返回后端健康状态 |
-| 6 | 容器端口映射 | `docker port wild-web` | 同时显示 80 和 443 |
-| 7 | WebSocket | 浏览器 console 中 WebSocket 连接使用 `wss://` | 连接成功 |
+本次使用的是 `--manual` DNS 验证，certbot 提示：
+
+> This certificate will not be renewed automatically. Autorenewal of --manual certificates requires the use of an authentication hook script.
+
+**证书到期日：2026-11-10**。到期前 30 天需要手动续期。
+
+### 4.2 续期操作
+
+到期前执行同样的 DNS 验证命令，certbot 会自动复用已有配置：
+
+```bash
+sudo certbot renew \
+  --config-dir /opt/wild-agent/certbot/letsencrypt \
+  --work-dir /opt/wild-agent/certbot/www \
+  --dry-run           # 先干跑测试
+
+sudo certbot renew \
+  --config-dir /opt/wild-agent/certbot/letsencrypt \
+  --work-dir /opt/wild-agent/certbot/www
+  # 正式续期，成功后 reload nginx
+docker exec wild-web nginx -s reload
+```
+
+### 4.3 如果后续阿里云防火墙放行了 80 端口
+
+可以在 nginx HTTPS 部署成功后测试 ACME webroot 是否可达：
+
+```bash
+# 从外部测试（不要在服务器上测 localhost）
+curl http://www.zzzlew.asia/.well-known/acme-challenge/test
+```
+
+返回 404（nginx 返回的）说明路径通畅，就可以用 webroot 模式实现全自动续期：
+
+```bash
+# 添加 crontab
+sudo crontab -e
+# 每天凌晨 3:17：
+# 17 3 * * * certbot renew --config-dir /opt/wild-agent/certbot/letsencrypt --work-dir /opt/wild-agent/certbot/www --webroot -w /opt/wild-agent/certbot/www --quiet && docker exec wild-web nginx -s reload
+```
 
 ---
 
-## 五、常见问题
+## 五、踩坑总结
 
-### Q: 如果证书还没申请就部署了新版 Jenkins 怎么办？
+| # | 问题 | 现象 | 根因 | 解决 |
+|---|------|------|------|------|
+| 1 | Docker standalone 验证失败 | 403 | Docker iptables NAT + 阿里云 WAF 拦截 | 改用 DNS 验证 |
+| 2 | `--network host` 也失败 | 403 | 阿里云安全产品仍然拦截 | 同上 |
+| 3 | 宿主机原生 certbot 也失败 | 403 | 确认非 Docker 问题，是云防火墙层面 | 同上 |
+| 4 | 部署顺序 | 先部署会导致容器 crash | nginx 引用证书路径但证书不存在 | 先拿证书再部署 |
+| 5 | `--manual` 不自动续期 | certbot 提示需 manual-auth-hook | DNS manual 模式的设计限制 | 到期前手动续期或改为 webroot 模式 |
 
-nginx 启动时会因为找不到 `/etc/letsencrypt/live/www.zzzlew.asia/fullchain.pem` 而失败，容器无法启动。
+### 核心教训
 
-**解决**：没关系，按「服务器一次性初始化」的步骤操作即可——证书申请完成后 `docker start wild-web`，容器就能正常启动了。
-
-### Q: 如果 443 端口被云服务商防火墙拦截？
-
-阿里云 ECS 默认只开放了常用端口。需要在**阿里云安全组**中放行 443 端口：
-
-1. 登录阿里云控制台 → ECS → 安全组
-2. 添加入方向规则：`端口 443/443`，协议 `TCP`，授权对象 `0.0.0.0/0`
-
-### Q: 续期失败怎么办？
-
-certbot 会在证书过期前 30 天开始尝试续期。如果续期失败，你会在 cron 执行时收到邮件（如果配置了 MAILTO）。也可以手动执行：
-
-```bash
-# 查看所有证书状态
-docker run --rm \
-  -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt \
-  certbot/certbot certificates
-
-# 手动续期
-docker run --rm \
-  -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt \
-  -v /opt/wild-agent/certbot/www:/var/www/certbot \
-  -p 80:80 \
-  certbot/certbot renew --webroot -w /var/www/certbot
-```
+- 阿里云 ECS 上 HTTP-01 验证容易被 WAF/防火墙拦截，**DNS-01 验证最稳**
+- **先拿证书再部署**，避免新版 nginx 因缺证书启动失败
+- Docker 的 iptables 规则会和云防火墙叠加，排查时要从外到内逐层定位
