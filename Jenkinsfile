@@ -362,7 +362,8 @@ while [ "$attempt" -le 20 ]; do
   if [ "$(docker inspect -f '{{.State.Running}}' wild-web 2>/dev/null || true)" != "true" ]; then
     rollback_deployment "新版 wild-web 在启动阶段退出"
   fi
-  if docker exec wild-web wget -q -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
+  # HTTPS 模式下 HTTP 返回 301，wget 视为非 0 退出。改用 docker top 检查 nginx 进程。
+  if docker top wild-web 2>/dev/null | grep -q nginx; then
     web_ready=1
     echo "wild-web 已就绪（attempt=$attempt）"
     break
