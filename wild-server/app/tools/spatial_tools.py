@@ -625,13 +625,54 @@ def get_roof_support_bounds(
     )
     support_y = min((top for top, _ in wall_tops), key=lambda top: abs(top - roof_y))
     support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    roof_span = (roof or {}).get("span")
+    roof_depth = (roof or {}).get("depth")
+    roof_footprint = None
+    if (
+        isinstance(position, list) and len(position) >= 3
+        and isinstance(position[0], (int, float))
+        and isinstance(position[2], (int, float))
+        and isinstance(roof_span, (int, float)) and roof_span > 0
+        and isinstance(roof_depth, (int, float)) and roof_depth > 0
+    ):
+        roof_footprint = (
+            float(position[0]) - float(roof_span) / 2,
+            float(position[0]) + float(roof_span) / 2,
+            float(position[2]) - float(roof_depth) / 2,
+            float(position[2]) + float(roof_depth) / 2,
+        )
     all_x: list[float] = []
     all_z: list[float] = []
     for wall in support_walls:
         start = wall.get("from", [0, 0, 0])
         end = wall.get("to", [0, 0, 0])
-        all_x.extend([float(start[0]), float(end[0])])
-        all_z.extend([float(start[2]), float(end[2])])
+        x0, x1 = sorted((float(start[0]), float(end[0])))
+        z0, z1 = sorted((float(start[2]), float(end[2])))
+        if roof_footprint:
+            roof_x0, roof_x1, roof_z0, roof_z1 = roof_footprint
+            if x1 - x0 >= z1 - z0:
+                wall_z = (z0 + z1) / 2
+                clipped_x0 = max(x0, roof_x0)
+                clipped_x1 = min(x1, roof_x1)
+                if clipped_x1 >= clipped_x0 and roof_z0 - 0.15 <= wall_z <= roof_z1 + 0.15:
+                    all_x.extend([clipped_x0, clipped_x1])
+                    all_z.extend([wall_z, wall_z])
+            else:
+                wall_x = (x0 + x1) / 2
+                clipped_z0 = max(z0, roof_z0)
+                clipped_z1 = min(z1, roof_z1)
+                if clipped_z1 >= clipped_z0 and roof_x0 - 0.15 <= wall_x <= roof_x1 + 0.15:
+                    all_x.extend([wall_x, wall_x])
+                    all_z.extend([clipped_z0, clipped_z1])
+            continue
+        all_x.extend([x0, x1])
+        all_z.extend([z0, z1])
+    if not all_x or not all_z:
+        for wall in support_walls:
+            start = wall.get("from", [0, 0, 0])
+            end = wall.get("to", [0, 0, 0])
+            all_x.extend([float(start[0]), float(end[0])])
+            all_z.extend([float(start[2]), float(end[2])])
     min_x, max_x = min(all_x), max(all_x)
     min_z, max_z = min(all_z), max(all_z)
     return {

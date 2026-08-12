@@ -173,6 +173,39 @@ def test_horizontally_overflowing_balcony_is_relocated() -> None:
     assert fixed[0]["from"][0] + fixed[0]["width"] <= 8
 
 
+def test_two_full_width_balconies_use_distinct_upper_front_walls() -> None:
+    skeleton = _skeleton()
+    skeleton["geometry"]["elements"].extend([
+        {
+            "id": "wall_front_2_left", "type": "wall",
+            "from": [0, 3.2, 0], "to": [1.5, 6.4, 0], "thickness": 0.24,
+        },
+        {
+            "id": "wall_front_2_right", "type": "wall",
+            "from": [3.5, 3.2, 0], "to": [5, 6.4, 0], "thickness": 0.24,
+        },
+    ])
+    fragments = [
+        {
+            "id": f"balcony_{index}", "type": "balcony",
+            "parentWall": "wall_front", "from": [0, 0, 0],
+            "width": 1.5, "depth": 1.5, "slabThickness": 0.18,
+        }
+        for index in (1, 2)
+    ]
+
+    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+        fragments, "balcony", skeleton, False,
+    )
+
+    assert repair_applied is True
+    assert validation_passed is True
+    assert {item["parentWall"] for item in fixed} == {
+        "wall_front_2_left", "wall_front_2_right",
+    }
+    assert all(item["from"] == [0.0, 3.2, 0.0] for item in fixed)
+
+
 def test_failed_component_recheck_is_not_forwarded_to_merge() -> None:
     validator = create_component_validator(COMPONENT_REGISTRY["door"])
     invalid = {

@@ -874,6 +874,18 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
 
 # ---------- 文件保存 ----------
 
+def compact_blueprint_title(name: str, max_len: int = 16) -> str:
+    """把描述性 meta.name 压缩为适合会话列表和文件名的短标题。"""
+    normalized = re.sub(r"\s+", "", str(name or "")).strip()
+    if not normalized:
+        return "未命名建筑"
+    first_clause = next(
+        (part for part in re.split(r"[：:，,；;。\n]", normalized) if part),
+        normalized,
+    )
+    return first_clause if len(first_clause) <= max_len else first_clause[:max_len] + "…"
+
+
 def _safe_name_slug(name: str, max_len: int = 40) -> str:
     """将 meta.name 转换为安全的文件名片段。
 

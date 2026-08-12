@@ -610,10 +610,11 @@ def fix_balcony_placement(blueprint: dict) -> str:
         candidates = []
         for wall_id, wall in walls.items():
             wall_length, wall_bottom, wall_top = wall_metrics(wall)
-            if wall_length >= width + 0.6 and wall_top >= 1.8:
+            if wall_length + 0.01 >= width and wall_top >= 1.8:
                 anchor_y = wall_bottom if wall_bottom >= 1.8 else wall_top
                 candidates.append((
                     0 if wall_bottom >= 1.8 else 1,
+                    0 if "front" in wall_id.lower() else 1,
                     wall_usage.get(wall_id, 0),
                     -wall_length,
                     wall_id,
@@ -622,7 +623,7 @@ def fix_balcony_placement(blueprint: dict) -> str:
                 ))
         if not candidates:
             continue
-        _, _, _, target_id, target_length, anchor_y = min(candidates)
+        _, _, _, _, target_id, target_length, anchor_y = min(candidates)
         old_parent = balcony.get("parentWall")
         old_y = balcony_from[1] if isinstance(balcony_from, list) and len(balcony_from) == 3 else "?"
         along = (
@@ -630,7 +631,9 @@ def fix_balcony_placement(blueprint: dict) -> str:
             if isinstance(balcony_from, list) and len(balcony_from) == 3
             else (target_length - width) / 2
         )
-        along = round(max(0.3, min(along, target_length - width - 0.3)), 2)
+        available = max(0.0, target_length - width)
+        clearance = min(0.3, available / 2)
+        along = round(max(clearance, min(along, available - clearance)), 2)
         balcony["parentWall"] = target_id
         balcony["from"] = [along, round(anchor_y, 2), 0.0]
         wall_usage[target_id] = wall_usage.get(target_id, 0) + 1

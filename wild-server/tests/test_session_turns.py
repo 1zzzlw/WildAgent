@@ -33,6 +33,21 @@ class SessionTurnPersistenceTest(unittest.IsolatedAsyncioTestCase):
         self.sessions_dir_patch.start()
         self.addCleanup(self.sessions_dir_patch.stop)
 
+    def test_blueprint_description_is_compacted_but_manual_session_name_wins(self):
+        blueprint_info = {
+            "filename": "2026-08-12/session_title.wild",
+            "name": "退台新中式别墅：一层矩形基座，二层U形退台，两翼端部设置阳台",
+            "elements_count": 10,
+            "components_count": 4,
+            "updated_at": 1,
+        }
+        with patch.object(sessions, "_find_blueprint_for_session", return_value=blueprint_info):
+            automatic = sessions._build_session_info("session_title", {"name": "新建筑"})
+            manual = sessions._build_session_info("session_title", {"name": "我的方案"})
+
+        assert automatic["name"] == "退台新中式别墅"
+        assert manual["name"] == "我的方案"
+
     async def test_replace_deduplicates_and_round_trips_turns(self):
         response = await sessions.replace_turns(
             "session_turns",

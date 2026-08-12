@@ -1,6 +1,9 @@
 from app.agent.architecture_plan import (
     build_deterministic_skeleton,
+    conform_balconies_to_slots,
     conform_openings_to_slots,
+    conform_railings_to_slots,
+    conform_roofs_to_slots,
     evaluate_skeleton_complexity,
     normalize_architecture_plan,
     resolve_facade_layout,
@@ -8,6 +11,7 @@ from app.agent.architecture_plan import (
     select_architecture_plan,
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
+from app.tools.spatial_tools import validate_model_quality
 
 
 def _two_storey_blueprint() -> dict:
@@ -342,6 +346,166 @@ def test_standard_plan_rejects_exact_duplicate_wall() -> None:
     assert evaluation["meets_target"] is False
     assert evaluation["checks"]["duplicate_wall_free"] is False
     assert evaluation["duplicate_wall_count"] == 1
+
+
+def test_explicit_two_storey_u_shape_overrides_stale_single_storey_plan() -> None:
+    message = (
+        "生成一个有退台表现，一层为矩形，二层为U形的两层新中式别墅，"
+        "别墅二层U形两端分别有一个宽1.5米的带栏杆的阳台，"
+        "阳台突出墙体骨架，阳台后面没有墙体，直接通向室内"
+    )
+    raw = {
+        "massing": {
+            "shape": "stepped", "width": 4, "depth": 9,
+            "floors": 1, "modeled_floors": 1, "floor_height": 3.2,
+        },
+        "volumes": [
+            {"id": "base", "x": 0, "z": 0, "width": 4, "depth": 9, "start_floor": 1, "end_floor": 1},
+            {"id": "left_wing", "x": 0, "z": 0, "width": 3, "depth": 9, "start_floor": 1, "end_floor": 1},
+            {"id": "right_wing", "x": 3, "z": 0, "width": 1, "depth": 9, "start_floor": 1, "end_floor": 1},
+        ],
+    }
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+
+    plan = normalize_architecture_plan(raw, message, complexity)
+
+    assert plan["massing"]["floors"] == 2
+    assert plan["massing"]["modeled_floors"] == 2
+    assert plan["massing"]["shape"] == "u_shape"
+    assert plan["massing"]["width"] >= 5.0
+    assert plan["balcony_access_count"] == 2
+    assert plan["balcony_width"] == 1.5
+    assert plan["component_quota"]["balcony"]["min"] == 2
+    assert plan["component_quota"]["balcony"]["max"] == 2
+    assert {volume["id"] for volume in plan["volumes"]} == {
+        "base", "upper_left_wing", "upper_right_wing", "upper_back_link",
+    }
+    assert any(volume["start_floor"] == 2 for volume in plan["volumes"])
+
+
+def test_balcony_width_is_not_misread_as_building_width() -> None:
+    message = "生成宽12米的两层U形别墅，二层两端分别设置宽1.5米的阳台，阳台直接通向室内"
+
+    plan = normalize_architecture_plan({}, message)
+
+    assert plan["massing"]["width"] == 12.0
+    assert plan["balcony_width"] == 1.5
+
+
+def test_u_shape_skeleton_uses_union_perimeter_and_balcony_access_slots() -> None:
+    message = (
+        "生成一个有退台表现，一层为矩形，二层为U形的两层新中式别墅，"
+        "别墅二层U形两端分别有一个宽1.5米的带栏杆的阳台，"
+        "阳台突出墙体骨架，阳台后面没有墙体，直接通向室内"
+    )
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+    blueprint = build_deterministic_skeleton(plan, message)
+
+    assert validate_blueprint_schema(blueprint) == []
+    quality = getattr(validate_model_quality, "func", validate_model_quality)(blueprint)
+    assert "❌" not in quality
+    evaluation = evaluate_skeleton_complexity(blueprint, plan)
+    assert evaluation["meets_target"] is True
+    assert evaluation["overlapping_column_count"] == 0
+    columns = [
+        element for element in blueprint["geometry"]["elements"]
+        if element.get("type") == "column"
+    ]
+    assert columns
+    assert all(column["base"][0] not in {0.0, 12.0} for column in columns)
+    assert all(column["base"][2] not in {0.0, 9.0} for column in columns)
+
+    upper_front_walls = [
+        element for element in blueprint["geometry"]["elements"]
+        if element["type"] == "wall"
+        and min(element["from"][1], element["to"][1]) == 3.2
+        and element["id"].startswith("wall_front_")
+        and element["from"][2] == 0
+    ]
+    assert len(upper_front_walls) == 2
+
+    brief = resolve_facade_layout(blueprint, plan)
+    access_slots = [
+        slot for slot in brief["opening_slots"]
+        if slot.get("role") == "balcony_access"
+    ]
+    assert len(access_slots) == 2
+    assert all(slot["width"] == 1.5 for slot in access_slots)
+
+    components, stats = conform_openings_to_slots(
+        [], brief, blueprint.get("materials"),
+    )
+    assert stats["synthesized"] >= 3
+    assert len([item for item in components if item.get("role") == "balcony_access"]) == 2
+
+
+def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None:
+    message = (
+        "生成一座两层U形退台新中式别墅，二层两端分别设置宽1.5米的带栏杆阳台，"
+        "阳台直接通向室内，采用平屋顶"
+    )
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan(
+        {"roof": {"type": "flat", "overhang": 0.4}},
+        message,
+        complexity,
+    )
+    blueprint = build_deterministic_skeleton(plan, message)
+    brief = resolve_facade_layout(blueprint, plan)
+
+    assert len(brief["balcony_slots"]) == 2
+    assert len(brief["roof_slots"]) == 3
+    assert len(brief["railing_slots"]) == 1
+    assert brief["component_quota"]["roof"]["min"] == 3
+    assert brief["component_quota"]["roof"]["max"] == 3
+
+    wrong_balconies = [
+        {
+            "type": "balcony", "id": "balcony_left", "parentWall": "wrong_wall",
+            "from": [0.1, 3.2, 0], "width": 2.8, "depth": 1.5,
+            "slabThickness": 0.18, "railingHeight": 1.1,
+        },
+        {
+            "type": "balcony", "id": "balcony_right", "parentWall": "wrong_center_wall",
+            "from": [2.9, 3.2, 0], "width": 2.8, "depth": 1.5,
+            "slabThickness": 0.18, "railingHeight": 1.1,
+        },
+    ]
+    balconies, balcony_stats = conform_balconies_to_slots(wrong_balconies, brief)
+    expected_walls = {slot["wall_id"] for slot in brief["balcony_slots"]}
+
+    assert balcony_stats == {"snapped": 2, "synthesized": 0, "pruned": 0}
+    assert {item["parentWall"] for item in balconies} == expected_walls
+    assert all(item["width"] == 1.5 for item in balconies)
+
+    roof_template = {
+        "type": "roof", "id": "roof_main", "roofType": "flat",
+        "span": 13, "depth": 10, "height": 0, "thickness": 0.3,
+        "material": "roof", "position": [6, 6.4, 4.5],
+    }
+    roofs, roof_stats = conform_roofs_to_slots([roof_template], brief)
+    roof_parts = [item for item in roofs if item.get("type") == "roof"]
+
+    assert roof_stats["split"] == 2
+    assert len(roof_parts) == 3
+    for index, first in enumerate(roof_parts):
+        first_x0 = first["position"][0] - first["span"] / 2
+        first_x1 = first["position"][0] + first["span"] / 2
+        first_z0 = first["position"][2] - first["depth"] / 2
+        first_z1 = first["position"][2] + first["depth"] / 2
+        for second in roof_parts[index + 1:]:
+            second_x0 = second["position"][0] - second["span"] / 2
+            second_x1 = second["position"][0] + second["span"] / 2
+            second_z0 = second["position"][2] - second["depth"] / 2
+            second_z1 = second["position"][2] + second["depth"] / 2
+            overlap_x = min(first_x1, second_x1) - max(first_x0, second_x0)
+            overlap_z = min(first_z1, second_z1) - max(first_z0, second_z0)
+            assert overlap_x <= 0 or overlap_z <= 0
+
+    railings, railing_stats = conform_railings_to_slots([], brief)
+    assert railing_stats["synthesized"] == 1
+    assert railings[0]["path"][0][1] == 3.4
 
 
 def test_single_storey_detailed_wings_remain_distinct_volume_footprints() -> None:

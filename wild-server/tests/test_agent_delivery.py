@@ -11,6 +11,7 @@ from app.services.agent_delivery import (
     prepare_blueprint_delivery,
     summarize_validation,
 )
+from app.utils.blueprint_parser import compact_blueprint_title
 
 
 def _result(name: str, *, error: bool = False, warning: bool = False) -> dict:
@@ -78,6 +79,25 @@ def test_successful_delivery_uses_uniform_file_reference_and_reply():
     assert delivery.components_count == 1
     assert "校验 1✓ 0⚠" in delivery.reply
     save.assert_called_once()
+
+
+def test_long_descriptive_blueprint_name_uses_short_session_title_and_filename():
+    blueprint = _blueprint()
+    blueprint["meta"]["name"] = (
+        "退台新中式别墅：一层矩形基座，二层U形退台，两翼端部各设悬挑阳台"
+    )
+
+    with patch("app.services.agent_delivery.save_blueprint_file_as"):
+        delivery = prepare_blueprint_delivery(
+            blueprint,
+            "session_short_title",
+            [_result("validate_schema")],
+            status="complete",
+        )
+
+    assert compact_blueprint_title(blueprint["meta"]["name"]) == "退台新中式别墅"
+    assert delivery.name == "退台新中式别墅"
+    assert delivery.filename.endswith("/session_short_title_退台新中式别墅.wild")
 
 
 def test_save_failure_has_dedicated_exception():

@@ -4,7 +4,11 @@ from dataclasses import dataclass
 import datetime as _dt
 import re as _re
 
-from app.utils.blueprint_parser import SCENES_DIR, save_blueprint_file_as
+from app.utils.blueprint_parser import (
+    SCENES_DIR,
+    compact_blueprint_title,
+    save_blueprint_file_as,
+)
 
 
 class GenerationRejectedError(RuntimeError):
@@ -109,7 +113,8 @@ def prepare_blueprint_delivery(
         )
 
     meta_name = blueprint.get("meta", {}).get("name", "") or ""
-    slug = _safe_name_slug(meta_name)
+    display_name = compact_blueprint_title(meta_name)
+    slug = _safe_name_slug(display_name)
     filename = f"{session_id}_{slug}.wild" if slug else f"{session_id}.wild"
     rel_path = f"{_dt.date.today():%Y-%m-%d}/{filename}"
 
@@ -122,7 +127,7 @@ def prepare_blueprint_delivery(
     return BlueprintDelivery(
         filename=rel_path,
         file_url=f"/api/scenes/{rel_path}",
-        name=meta_name,
+        name=display_name,
         elements_count=len(geometry.get("elements", [])),
         components_count=len(geometry.get("components", [])),
         validation=summary,

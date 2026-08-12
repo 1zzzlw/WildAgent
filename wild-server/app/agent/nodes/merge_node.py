@@ -108,19 +108,34 @@ async def merge_fragments_node(state: GenerationState) -> dict:
                 merged_blueprint["geometry"]["components"] = components
                 logger.info(f"[merge] 配额强制: 移除了 {quota_pruned} 个超额组件")
 
-    # ── 2.7 门窗按方案槽位确定性吸附；模型缺少下限数量时补齐最小安全构件 ──
+    # ── 2.7 按方案槽位确定性吸附；模型负责风格，程序负责组合关系与安全边界 ──
     opening_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
+    balcony_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
+    roof_layout = {"split": 0, "synthesized": 0}
+    railing_layout = {"synthesized": 0, "replaced": 0}
     if design_brief:
-        from app.agent.architecture_plan import conform_openings_to_slots
+        from app.agent.architecture_plan import (
+            conform_balconies_to_slots,
+            conform_openings_to_slots,
+            conform_railings_to_slots,
+            conform_roofs_to_slots,
+        )
 
         components, opening_layout = conform_openings_to_slots(
             components,
             design_brief,
             merged_blueprint.get("materials", {}),
         )
+        components, balcony_layout = conform_balconies_to_slots(components, design_brief)
+        components, railing_layout = conform_railings_to_slots(components, design_brief)
+        elements, roof_layout = conform_roofs_to_slots(elements, design_brief)
+        merged_blueprint["geometry"]["elements"] = elements
         merged_blueprint["geometry"]["components"] = components
-        if any(opening_layout.values()):
-            logger.info(f"[merge] 立面槽位对齐: {opening_layout}")
+        if any((*opening_layout.values(), *balcony_layout.values(), *roof_layout.values(), *railing_layout.values())):
+            logger.info(
+                f"[merge] 方案槽位对齐: opening={opening_layout}, balcony={balcony_layout}, "
+                f"roof={roof_layout}, railing={railing_layout}"
+            )
 
     design_errors = _validate_design_brief_constraints(merged_blueprint, design_brief)
 
@@ -144,6 +159,18 @@ async def merge_fragments_node(state: GenerationState) -> dict:
                 if any(opening_layout.values()) else ""
             )
             + (
+                f"（阳台对位 {balcony_layout['snapped']}，补齐 {balcony_layout['synthesized']}）"
+                if any(balcony_layout.values()) else ""
+            )
+            + (
+                f"（U 形屋顶拆分新增 {roof_layout['split']} 片）"
+                if any(roof_layout.values()) else ""
+            )
+            + (
+                f"（退台栏杆补齐 {railing_layout['synthesized']}）"
+                if any(railing_layout.values()) else ""
+            )
+            + (
                 f"\n设计约束预检发现 {len(design_errors)} 个问题。"
                 if design_errors else "\n设计约束预检通过。"
             )
@@ -160,6 +187,9 @@ async def merge_fragments_node(state: GenerationState) -> dict:
         "element_count": len(elements),
         "component_count": len(components),
         "opening_layout": opening_layout,
+        "balcony_layout": balcony_layout,
+        "roof_layout": roof_layout,
+        "railing_layout": railing_layout,
         "balcony_cleanup": balcony_cleanup,
         "ground_railing_cleanup": ground_railing_cleanup,
         "design_errors": design_errors,

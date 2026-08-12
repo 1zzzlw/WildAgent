@@ -438,7 +438,9 @@ async function handleSessionSwitch(sessionId: string) {
   const bp = await agentBridge.loadSessionBlueprint(sessionId)
   if (bp) {
     await sceneStore.loadBlueprint(bp as any)
-    const name = (bp as any).meta?.name || '未命名建筑'
+    const name = agentStore.sessions.find(item => item.session_id === sessionId)?.name
+      || (bp as any).meta?.name
+      || '未命名建筑'
     const count = (bp as any).geometry?.elements?.length || 0
     const compCount = (bp as any).geometry?.components?.length || 0
     agentStore.updateSessionInfo(sessionId, name, count, compCount)
@@ -537,7 +539,9 @@ async function restoreSessionsFromServer() {
   const bp = await agentBridge.loadSessionBlueprint(targetId)
   if (bp) {
     sceneStore.loadBlueprint(bp as any)
-    const name = (bp as any).meta?.name || '未命名建筑'
+    const name = agentStore.sessions.find(item => item.session_id === targetId)?.name
+      || (bp as any).meta?.name
+      || '未命名建筑'
     const count = (bp as any).geometry?.elements?.length || 0
     const compCount = (bp as any).geometry?.components?.length || 0
     agentStore.updateSessionInfo(targetId, name, count, compCount)

@@ -27,7 +27,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
-from app.utils.blueprint_parser import SCENES_DIR
+from app.utils.blueprint_parser import SCENES_DIR, compact_blueprint_title
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -97,10 +97,15 @@ def _find_blueprint_for_session(session_id: str) -> Optional[dict]:
 def _build_session_info(session_id: str, meta: dict) -> dict:
     """构建前端需要的 SessionInfo 结构"""
     bp = _find_blueprint_for_session(session_id)
+    meta_name = str(meta.get("name") or "").strip()
+    custom_name = meta_name if meta_name not in {"", "新建筑", "未命名建筑"} else ""
+    display_name = custom_name or compact_blueprint_title(
+        bp.get("name", "") if bp else meta_name
+    )
     return {
         "session_id": session_id,
         "filename": bp.get("filename") if bp else meta.get("filename"),
-        "name": bp.get("name") if bp else meta.get("name", "新建筑"),
+        "name": display_name,
         "building_type": meta.get("building_type"),
         "created_at": meta.get("created_at", meta.get("updated_at", 0)),
         "updated_at": meta.get("updated_at", 0),

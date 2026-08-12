@@ -55,7 +55,7 @@ _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
         "floor_range": (1, 8),
         "default_massing": (12.0, 9.0, 2, 3.2),
         "max_explicit_floors": 6,
-        "shapes": {"rectangle", "l_shape", "stepped", "courtyard"},
+        "shapes": {"rectangle", "l_shape", "u_shape", "stepped", "courtyard"},
         "base_components": ["door", "window", "roof"],
         "require_front_entrance": True,
         "default_roof": "gable",
@@ -67,7 +67,7 @@ _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
         "floor_range": (1, 30),
         "default_massing": (30.0, 22.0, 4, 3.9),
         "max_explicit_floors": 8,
-        "shapes": {"rectangle", "l_shape", "stepped", "courtyard", "linear"},
+        "shapes": {"rectangle", "l_shape", "u_shape", "stepped", "courtyard", "linear"},
         "base_components": ["door", "window", "roof"],
         "require_front_entrance": True,
         "default_roof": "flat",
@@ -148,39 +148,90 @@ def _clamp_number(value: object, low: float, high: float, default: float) -> flo
 
 
 def _requested_floors(user_message: str) -> int | None:
-    match = re.search(r"(?<!\d)(\d{1,3})\s*层", user_message)
-    if match:
-        return max(1, int(match.group(1)))
+    candidates = [
+        max(1, int(match.group(1)))
+        for match in re.finditer(r"(?<!\d)(\d{1,3})\s*层", user_message)
+    ]
     if "单层" in user_message:
-        return 1
-    chinese_match = re.search(r"([零一二两三四五六七八九十百]+)\s*层", user_message)
-    if not chinese_match:
-        return None
+        candidates.append(1)
     digits = {"零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
               "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
-    total = 0
-    current = 0
-    for char in chinese_match.group(1):
-        if char in digits:
-            current = digits[char]
-        elif char == "十":
-            total += (current or 1) * 10
-            current = 0
-        elif char == "百":
-            total += (current or 1) * 100
-            current = 0
-    return max(1, total + current)
+    for chinese_match in re.finditer(r"([零一二两三四五六七八九十百]+)\s*层", user_message):
+        total = 0
+        current = 0
+        for char in chinese_match.group(1):
+            if char in digits:
+                current = digits[char]
+            elif char == "十":
+                total += (current or 1) * 10
+                current = 0
+            elif char == "百":
+                total += (current or 1) * 100
+                current = 0
+        candidates.append(max(1, total + current))
+    return max(candidates) if candidates else None
+
+
+def _requested_shape(user_message: str) -> str | None:
+    """提取用户明确指定的平面/体量形状，优先于模型方案中的旧值。"""
+    if re.search(r"(?:^|[^a-z])u\s*(?:形|型)", user_message, re.I):
+        return "u_shape"
+    if re.search(r"(?:^|[^a-z])l\s*(?:形|型)", user_message, re.I):
+        return "l_shape"
+    if any(word in user_message for word in ("庭院", "合院", "围合院落")):
+        return "courtyard"
+    if "退台" in user_message:
+        return "stepped"
+    if any(word in user_message for word in ("矩形", "方盒子")):
+        return "rectangle"
+    return None
+
+
+def _requested_balcony_access_count(user_message: str) -> int:
+    """识别明确要求阳台与室内直接连通的入口数量。"""
+    if "阳台" not in user_message or not any(
+        phrase in user_message
+        for phrase in ("直接通向室内", "直接通室内", "后面没有墙体", "后面没有墙")
+    ):
+        return 0
+    if "两端分别" in user_message or re.search(r"(?:两个|2\s*个).*阳台", user_message):
+        return 2
+    match = re.search(r"(\d+)\s*个[^，。；]*阳台", user_message)
+    return max(1, min(4, int(match.group(1)))) if match else 1
 
 
 def _requested_dimension(user_message: str, labels: tuple[str, ...]) -> float | None:
     number = r"(\d+(?:\.\d+)?)"
     for label in labels:
-        before = re.search(fr"{label}\s*{number}\s*(?:米|m)?", user_message, re.I)
-        if before:
-            return float(before.group(1))
-        after = re.search(fr"{number}\s*(?:米|m)?\s*{label}", user_message, re.I)
-        if after:
-            return float(after.group(1))
+        for pattern in (fr"{label}\s*{number}\s*(?:米|m)?", fr"{number}\s*(?:米|m)?\s*{label}"):
+            for match in re.finditer(pattern, user_message, re.I):
+                clause_start = max(
+                    user_message.rfind(mark, 0, match.start())
+                    for mark in ("，", "。", "；", ";")
+                ) + 1
+                following = [
+                    position for mark in ("，", "。", "；", ";")
+                    if (position := user_message.find(mark, match.end())) >= 0
+                ]
+                clause_end = min(following) if following else len(user_message)
+                context = user_message[clause_start:clause_end]
+                if any(word in context for word in (
+                    "阳台", "门", "窗", "栏杆", "雨棚", "楼梯", "走廊", "开间", "柱", "梁",
+                )):
+                    continue
+                return float(match.group(1))
+    return None
+
+
+def _requested_balcony_width(user_message: str) -> float | None:
+    patterns = (
+        r"宽\s*(\d+(?:\.\d+)?)\s*(?:米|m)?[^，。；]{0,16}阳台",
+        r"阳台[^，。；]{0,16}?宽\s*(\d+(?:\.\d+)?)\s*(?:米|m)?",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, user_message, re.I)
+        if match:
+            return max(0.8, min(6.0, float(match.group(1))))
     return None
 
 
@@ -268,7 +319,37 @@ def _fallback_volumes(
     depth: float,
     modeled_floors: int,
     complexity: dict[str, Any],
+    shape: str | None = None,
 ) -> list[dict[str, Any]]:
+    if shape == "u_shape" and modeled_floors >= 2:
+        wing_width = min(width * 0.4, max(1.5, width * 0.28))
+        back_depth = min(depth * 0.45, max(1.5, depth * 0.32))
+        center_width = width - wing_width * 2
+        if center_width >= 1.0:
+            return [
+                {
+                    "id": "base", "role": "primary", "x": 0.0, "z": 0.0,
+                    "width": round(width, 2), "depth": round(depth, 2),
+                    "start_floor": 1, "end_floor": 1,
+                },
+                {
+                    "id": "upper_left_wing", "role": "secondary", "x": 0.0, "z": 0.0,
+                    "width": round(wing_width, 2), "depth": round(depth, 2),
+                    "start_floor": 2, "end_floor": modeled_floors,
+                },
+                {
+                    "id": "upper_right_wing", "role": "secondary",
+                    "x": round(width - wing_width, 2), "z": 0.0,
+                    "width": round(wing_width, 2), "depth": round(depth, 2),
+                    "start_floor": 2, "end_floor": modeled_floors,
+                },
+                {
+                    "id": "upper_back_link", "role": "secondary",
+                    "x": round(wing_width, 2), "z": round(depth - back_depth, 2),
+                    "width": round(center_width, 2), "depth": round(back_depth, 2),
+                    "start_floor": 2, "end_floor": modeled_floors,
+                },
+            ]
     if complexity["level"] != "detailed":
         return [{
             "id": "main", "role": "primary", "x": 0.0, "z": 0.0,
@@ -418,7 +499,38 @@ def _fallback_plan(
         component_quota.setdefault(component_type, limits)
         if component_type not in base_components:
             base_components.append(component_type)
-    volumes = _fallback_volumes(width, depth, modeled_floors, complexity)
+    balcony_access_count = (
+        _requested_balcony_access_count(user_message) if modeled_floors >= 2 else 0
+    )
+    balcony_width = _requested_balcony_width(user_message)
+    if balcony_access_count:
+        component_quota["balcony"] = {
+            **component_quota.get("balcony", {}),
+            "min": balcony_access_count,
+            "max": balcony_access_count,
+            "note": "两翼阳台均需与室内直接连通",
+        }
+        entrance_count = 1 if require_entrance else 0
+        component_quota["door"] = {
+            **component_quota.get("door", {}),
+            "min": entrance_count + balcony_access_count,
+            "max": max(
+                entrance_count + balcony_access_count,
+                int(component_quota.get("door", {}).get("max", 0)),
+            ),
+            "note": "含主入口与阳台通室内入口",
+        }
+    requested_shape = _requested_shape(user_message)
+    resolved_shape = (
+        requested_shape
+        if requested_shape in profile["shapes"]
+        else "stepped"
+        if complexity["level"] == "detailed" and "stepped" in profile["shapes"]
+        else "rectangle"
+    )
+    volumes = _fallback_volumes(
+        width, depth, modeled_floors, complexity, resolved_shape,
+    )
     default_x_bays, default_z_bays = complexity["grid_bays"]
     structural_system = (
         "long_span" if profile["id"] == "long_span_public"
@@ -431,11 +543,7 @@ def _fallback_plan(
         "profile": profile["id"],
         "concept": f"{style}、比例清晰、入口有识别度",
         "massing": {
-            "shape": (
-                "stepped"
-                if complexity["level"] == "detailed" and "stepped" in profile["shapes"]
-                else "rectangle"
-            ),
+            "shape": resolved_shape,
             "width": round(width, 2),
             "depth": round(depth, 2),
             "floors": floors,
@@ -477,6 +585,8 @@ def _fallback_plan(
         },
         "roof": {"type": roof_type, "ridge_axis": "x", "overhang": 0.55},
         "component_quota": component_quota,
+        "balcony_access_count": balcony_access_count,
+        "balcony_width": balcony_width,
         "required_components": base_components,
         "design_rationale": [
             "入口位于主立面视觉中心",
@@ -502,7 +612,9 @@ def _normalize_volumes(
     width = float(massing["width"])
     depth = float(massing["depth"])
     modeled_floors = int(massing["modeled_floors"])
-    fallback = _fallback_volumes(width, depth, modeled_floors, complexity)
+    fallback = _fallback_volumes(
+        width, depth, modeled_floors, complexity, str(massing.get("shape") or ""),
+    )
     if not isinstance(raw, list):
         return fallback
 
@@ -530,6 +642,30 @@ def _normalize_volumes(
             "end_floor": end_floor,
         })
     if len(volumes) < int(complexity["min_volumes"]):
+        return fallback
+    if len({volume["id"] for volume in volumes}) != len(volumes):
+        return fallback
+
+    # 同一楼层的正面积重叠会让每个矩形体量各自生成一套墙柱，造成重影。
+    # 相邻体量共享边合法；缺少任一显式楼层的体量则说明旧方案与用户层数冲突。
+    for first_index, first in enumerate(volumes):
+        first_x1 = first["x"] + first["width"]
+        first_z1 = first["z"] + first["depth"]
+        for second in volumes[first_index + 1:]:
+            floors_overlap = (
+                max(first["start_floor"], second["start_floor"])
+                <= min(first["end_floor"], second["end_floor"])
+            )
+            if not floors_overlap:
+                continue
+            overlap_x = min(first_x1, second["x"] + second["width"]) - max(first["x"], second["x"])
+            overlap_z = min(first_z1, second["z"] + second["depth"]) - max(first["z"], second["z"])
+            if overlap_x > 0.01 and overlap_z > 0.01:
+                return fallback
+    if any(
+        not any(volume["start_floor"] <= level <= volume["end_floor"] for volume in volumes)
+        for level in range(1, modeled_floors + 1)
+    ):
         return fallback
     return volumes
 
@@ -564,6 +700,9 @@ def normalize_architecture_plan(
     source = raw if isinstance(raw, dict) else {}
     massing_raw = source.get("massing") if isinstance(source.get("massing"), dict) else {}
     requested_floors = _requested_floors(user_message)
+    requested_shape = _requested_shape(user_message)
+    requested_balcony_width = _requested_balcony_width(user_message)
+    requested_balcony_access_count = _requested_balcony_access_count(user_message)
     requested_width = _requested_dimension(user_message, (r"宽(?:度)?",))
     requested_depth = _requested_dimension(user_message, (r"深(?:度)?", r"长(?:度)?"))
     floors = int(_clamp_number(
@@ -573,13 +712,17 @@ def normalize_architecture_plan(
         fallback["massing"]["floors"],
     ))
     modeled_floors = int(_clamp_number(
-        massing_raw.get("modeled_floors"),
+        min(floors, profile["max_explicit_floors"])
+        if requested_floors is not None
+        else massing_raw.get("modeled_floors"),
         1,
         min(floors, profile["max_explicit_floors"]),
         min(floors, profile["max_explicit_floors"]),
     ))
     massing = {
-        "shape": str(massing_raw.get("shape") or fallback["massing"]["shape"]).lower(),
+        "shape": str(
+            requested_shape or massing_raw.get("shape") or fallback["massing"]["shape"]
+        ).lower(),
         "width": round(_clamp_number(
             requested_width if requested_width is not None else massing_raw.get("width"),
             profile["width_range"][0],
@@ -605,6 +748,16 @@ def normalize_architecture_plan(
     }
     if massing["shape"] not in profile["shapes"]:
         massing["shape"] = "rectangle"
+    if (
+        massing["shape"] == "u_shape"
+        and requested_balcony_width is not None
+        and requested_balcony_access_count >= 2
+    ):
+        minimum_u_width = requested_balcony_width * 2 + max(2.0, requested_balcony_width)
+        target_u_width = minimum_u_width
+        if requested_width is None and massing["width"] <= minimum_u_width + 0.01:
+            target_u_width = max(target_u_width, float(fallback["massing"]["width"]))
+        massing["width"] = round(max(massing["width"], target_u_width), 2)
 
     volumes = _normalize_volumes(source.get("volumes"), massing, complexity)
     structural_grid = _normalize_structural_grid(
@@ -681,6 +834,23 @@ def normalize_architecture_plan(
             component_type,
             deepcopy(_DETAIL_COMPONENT_QUOTAS[component_type]),
         )
+    balcony_access_count = requested_balcony_access_count if modeled_floors >= 2 else 0
+    balcony_width = requested_balcony_width
+    if balcony_access_count:
+        quotas["balcony"] = {
+            **quotas.get("balcony", {}),
+            "min": balcony_access_count,
+            "max": balcony_access_count,
+            "note": "两翼阳台均需与室内直接连通",
+        }
+        entrance_count = 1 if profile["require_front_entrance"] else 0
+        door_target = entrance_count + balcony_access_count
+        quotas["door"] = {
+            **quotas.get("door", {}),
+            "min": max(door_target, int(quotas.get("door", {}).get("min", 0))),
+            "max": max(door_target, int(quotas.get("door", {}).get("max", 0))),
+            "note": "含主入口与阳台通室内入口",
+        }
 
     allowed_components = {
         "door", "window", "roof", "railing", "canopy", "balcony", "light",
@@ -719,6 +889,8 @@ def normalize_architecture_plan(
         "facades": facades,
         "roof": roof,
         "component_quota": quotas,
+        "balcony_access_count": balcony_access_count,
+        "balcony_width": balcony_width,
         "required_components": list(dict.fromkeys(required_components)),
         "design_rationale": [str(item)[:160] for item in rationale[:6]],
     }
@@ -886,6 +1058,79 @@ def _resolve_floor_plate_plan(
     return plates
 
 
+def _resolve_union_wall_segments(
+    volumes: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """把同层正交矩形体量编译成联合外轮廓，去掉共享边和被覆盖的内部边。"""
+    rectangles = [
+        (
+            float(volume["x"]),
+            float(volume["z"]),
+            float(volume["x"]) + float(volume["width"]),
+            float(volume["z"]) + float(volume["depth"]),
+        )
+        for volume in volumes
+    ]
+    xs = sorted({value for rectangle in rectangles for value in (rectangle[0], rectangle[2])})
+    zs = sorted({value for rectangle in rectangles for value in (rectangle[1], rectangle[3])})
+    occupied: set[tuple[int, int]] = set()
+    for x_index in range(len(xs) - 1):
+        for z_index in range(len(zs) - 1):
+            center_x = (xs[x_index] + xs[x_index + 1]) / 2
+            center_z = (zs[z_index] + zs[z_index + 1]) / 2
+            if any(
+                x0 < center_x < x1 and z0 < center_z < z1
+                for x0, z0, x1, z1 in rectangles
+            ):
+                occupied.add((x_index, z_index))
+
+    raw_segments: list[tuple[str, float, float, float]] = []
+    for x_index, z_index in occupied:
+        x0, x1 = xs[x_index], xs[x_index + 1]
+        z0, z1 = zs[z_index], zs[z_index + 1]
+        if (x_index, z_index - 1) not in occupied:
+            raw_segments.append(("front", z0, x0, x1))
+        if (x_index, z_index + 1) not in occupied:
+            raw_segments.append(("back", z1, x0, x1))
+        if (x_index - 1, z_index) not in occupied:
+            raw_segments.append(("left", x0, z0, z1))
+        if (x_index + 1, z_index) not in occupied:
+            raw_segments.append(("right", x1, z0, z1))
+
+    merged: list[tuple[str, float, float, float]] = []
+    for side in ("front", "right", "back", "left"):
+        constants = sorted({segment[1] for segment in raw_segments if segment[0] == side})
+        for constant in constants:
+            intervals = sorted(
+                (segment[2], segment[3])
+                for segment in raw_segments
+                if segment[0] == side and abs(segment[1] - constant) <= 1e-6
+            )
+            if not intervals:
+                continue
+            start, end = intervals[0]
+            for next_start, next_end in intervals[1:]:
+                if next_start <= end + 1e-6:
+                    end = max(end, next_end)
+                else:
+                    merged.append((side, constant, start, end))
+                    start, end = next_start, next_end
+            merged.append((side, constant, start, end))
+
+    segments: list[dict[str, Any]] = []
+    for side, constant, start, end in merged:
+        if side == "front":
+            start_point, end_point = (start, constant), (end, constant)
+        elif side == "back":
+            start_point, end_point = (end, constant), (start, constant)
+        elif side == "left":
+            start_point, end_point = (constant, end), (constant, start)
+        else:
+            start_point, end_point = (constant, start), (constant, end)
+        segments.append({"side": side, "from": start_point, "to": end_point})
+    return segments
+
+
 def evaluate_skeleton_complexity(
     blueprint: dict[str, Any],
     plan: dict[str, Any],
@@ -902,6 +1147,7 @@ def evaluate_skeleton_complexity(
     wall_base_levels: set[float] = set()
     wall_keys: set[tuple[Any, ...]] = set()
     duplicate_wall_count = 0
+    columns: list[tuple[float, float, float, float, float]] = []
     for element in elements:
         element_type = str(element.get("type") or "unknown")
         counts[element_type] = counts.get(element_type, 0) + 1
@@ -931,6 +1177,24 @@ def evaluate_skeleton_complexity(
                     duplicate_wall_count += 1
                 else:
                     wall_keys.add(wall_key)
+        elif element_type == "column":
+            base = element.get("base")
+            if isinstance(base, list) and len(base) == 3:
+                try:
+                    height = float(element.get("height", 0))
+                    radius = max(
+                        float(element.get("bottomRadius", 0)),
+                        float(element.get("topRadius", 0)),
+                        float(element.get("radius", 0)),
+                        float(element.get("width", 0)) / 2,
+                        float(element.get("depth", 0)) / 2,
+                        0.01,
+                    )
+                    columns.append((
+                        float(base[0]), float(base[1]), float(base[2]), height, radius,
+                    ))
+                except (TypeError, ValueError):
+                    pass
 
     volume_footprints: set[tuple[float, ...]] = set()
     for walls in wall_groups.values():
@@ -969,6 +1233,21 @@ def evaluate_skeleton_complexity(
                 min(xs), min(zs), max(xs), max(zs),
             )))
 
+    # 联合外轮廓会把相接矩形编译成一个连通墙组；凹多边形仍代表多个体量层次，
+    # 不能再依赖旧的“重复矩形墙圈数量”来证明复杂度。
+    articulated_levels = sum(1 for walls in wall_groups.values() if len(walls) > 4)
+    resolved_volume_footprint_count = max(
+        len(volume_footprints),
+        1 + articulated_levels if volume_footprints else 0,
+    )
+    overlapping_column_count = 0
+    for index, first in enumerate(columns):
+        for second in columns[index + 1:]:
+            vertical_overlap = min(first[1] + first[3], second[1] + second[3]) - max(first[1], second[1])
+            horizontal_distance = math.hypot(first[0] - second[0], first[2] - second[2])
+            if vertical_overlap > 0.05 and horizontal_distance < first[4] + second[4] - 0.02:
+                overlapping_column_count += 1
+
     complexity = plan.get("complexity", {}) if isinstance(plan, dict) else {}
     level = str(complexity.get("level") or "standard")
     structural_count = sum(
@@ -997,7 +1276,7 @@ def evaluate_skeleton_complexity(
     }
     checks = {
         "structural_element_target": structural_count >= target,
-        "volume_footprint_target": len(volume_footprints) >= volume_target,
+        "volume_footprint_target": resolved_volume_footprint_count >= volume_target,
         "volume_plan_conformance": (
             not expected_floor_layouts or floor_layouts == expected_floor_layouts
         ),
@@ -1005,12 +1284,14 @@ def evaluate_skeleton_complexity(
         "storey_wall_levels": expected_wall_base_levels.issubset(wall_base_levels),
         "vertical_circulation": modeled_floors <= 1 or counts.get("stair", 0) > 0,
         "duplicate_wall_free": duplicate_wall_count == 0,
+        "overlapping_column_free": overlapping_column_count == 0,
     }
     realization_checks = (
         checks["volume_plan_conformance"],
         checks["storey_wall_levels"],
         checks["vertical_circulation"],
         checks["duplicate_wall_free"],
+        checks["overlapping_column_free"],
     )
     return {
         "level": level,
@@ -1022,11 +1303,12 @@ def evaluate_skeleton_complexity(
         "structural_element_count": structural_count,
         "target_structural_elements": target,
         "floor_footprint_count": len(floor_footprints),
-        "volume_footprint_count": len(volume_footprints),
+        "volume_footprint_count": resolved_volume_footprint_count,
         "floor_layout_count": len(floor_layouts),
         "expected_floor_layout_count": len(expected_floor_layouts),
         "target_volume_footprints": volume_target,
         "duplicate_wall_count": duplicate_wall_count,
+        "overlapping_column_count": overlapping_column_count,
         "element_type_counts": counts,
     }
 
@@ -1112,7 +1394,24 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     "thickness": 0.2,
                     "material": "concrete",
                 })
-            for volume_index, volume in enumerate(active_volumes):
+            if len(active_volumes) > 1:
+                side_counts: dict[str, int] = {}
+                for segment in _resolve_union_wall_segments(active_volumes):
+                    side = str(segment["side"])
+                    side_counts[side] = side_counts.get(side, 0) + 1
+                    start_x, start_z = segment["from"]
+                    end_x, end_z = segment["to"]
+                    elements.append({
+                        "type": "wall",
+                        "id": f"wall_{side}_{level}_{side_counts[side]}",
+                        "from": [start_x, base_y, start_z],
+                        "to": [end_x, top_y, end_z],
+                        "thickness": 0.24,
+                        "material": "wall_finish",
+                    })
+                continue
+
+            for volume in active_volumes:
                 volume_id = str(volume["id"])
                 x0 = float(volume["x"])
                 z0 = float(volume["z"])
@@ -1159,12 +1458,18 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
 
     if normalized["complexity"]["level"] == "detailed" and not schematic:
         radius = min(0.35, max(0.16, min(width, depth) * 0.015))
+        column_keys: set[tuple[float, float, float, float]] = set()
         for volume in volumes:
             x0 = float(volume["x"])
             z0 = float(volume["z"])
             x1 = x0 + float(volume["width"])
             z1 = z0 + float(volume["depth"])
-            inset = min(0.35, float(volume["width"]) * 0.08, float(volume["depth"]) * 0.08)
+            beam_inset = min(0.35, float(volume["width"]) * 0.08, float(volume["depth"]) * 0.08)
+            column_inset = min(
+                max(radius + 0.04, 0.18),
+                float(volume["width"]) * 0.2,
+                float(volume["depth"]) * 0.2,
+            )
             base_y = (int(volume["start_floor"]) - 1) * floor_height
             volume_height = (int(volume["end_floor"]) - int(volume["start_floor"]) + 1) * floor_height
             if int(volume["start_floor"]) > 1:
@@ -1172,10 +1477,19 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                 volume_height = max(0.5, volume_height - 0.2)
             volume_id = str(volume["id"])
             corners = (
-                (x0 + inset, z0 + inset), (x1 - inset, z0 + inset),
-                (x1 - inset, z1 - inset), (x0 + inset, z1 - inset),
+                (x0 + column_inset, z0 + column_inset),
+                (x1 - column_inset, z0 + column_inset),
+                (x1 - column_inset, z1 - column_inset),
+                (x0 + column_inset, z1 - column_inset),
             )
             for index, (x, z) in enumerate(corners, start=1):
+                column_key = (
+                    round(x, 3), round(z, 3), round(base_y, 3),
+                    round(base_y + volume_height, 3),
+                )
+                if column_key in column_keys:
+                    continue
+                column_keys.add(column_key)
                 elements.append({
                     "type": "column", "id": f"column_{volume_id}_{index}",
                     "base": [x, base_y, z], "height": volume_height,
@@ -1185,8 +1499,8 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
             beam_y = base_y + volume_height
             elements.append({
                 "type": "beam", "id": f"beam_main_{volume_id}",
-                "from": [x0 + inset, beam_y, (z0 + z1) / 2],
-                "to": [x1 - inset, beam_y, (z0 + z1) / 2],
+                "from": [x0 + beam_inset, beam_y, (z0 + z1) / 2],
+                "to": [x1 - beam_inset, beam_y, (z0 + z1) / 2],
                 "crossSection": "rect", "width": 0.18, "height": 0.28,
                 "material": "concrete",
             })
@@ -1301,6 +1615,118 @@ def _opening_slots_overlap(
     return vertical_overlap and horizontal_overlap
 
 
+def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
+    """为 U 形顶层生成互不重叠的平屋顶分段，避免整块屋面填平凹口。"""
+    roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
+    if realization.get("shape") != "u_shape" or roof.get("type") != "flat":
+        return []
+    modeled_floors = int(realization.get("modeled_floors") or 1)
+    floor_height = float(realization.get("floor_height") or 3.2)
+    volumes = [
+        volume for volume in realization.get("volumes", [])
+        if isinstance(volume, dict)
+        and int(volume.get("start_floor", 1)) <= modeled_floors <= int(volume.get("end_floor", 1))
+    ]
+    if len(volumes) < 2:
+        return []
+
+    rectangles = [
+        (
+            float(volume["x"]),
+            float(volume["z"]),
+            float(volume["x"]) + float(volume["width"]),
+            float(volume["z"]) + float(volume["depth"]),
+        )
+        for volume in volumes
+    ]
+    overhang = max(0.15, min(0.8, float(roof.get("overhang") or 0.35)))
+
+    def has_adjacent(rectangle: tuple[float, float, float, float], edge: str) -> bool:
+        x0, z0, x1, z1 = rectangle
+        for other in rectangles:
+            if other == rectangle:
+                continue
+            ox0, oz0, ox1, oz1 = other
+            if edge == "left" and abs(ox1 - x0) <= 1e-6 and min(z1, oz1) - max(z0, oz0) > 1e-6:
+                return True
+            if edge == "right" and abs(ox0 - x1) <= 1e-6 and min(z1, oz1) - max(z0, oz0) > 1e-6:
+                return True
+            if edge == "front" and abs(oz1 - z0) <= 1e-6 and min(x1, ox1) - max(x0, ox0) > 1e-6:
+                return True
+            if edge == "back" and abs(oz0 - z1) <= 1e-6 and min(x1, ox1) - max(x0, ox0) > 1e-6:
+                return True
+        return False
+
+    slots: list[dict[str, Any]] = []
+    for index, (volume, rectangle) in enumerate(zip(volumes, rectangles), start=1):
+        x0, z0, x1, z1 = rectangle
+        roof_x0 = x0 if has_adjacent(rectangle, "left") else x0 - overhang
+        roof_x1 = x1 if has_adjacent(rectangle, "right") else x1 + overhang
+        roof_z0 = z0 if has_adjacent(rectangle, "front") else z0 - overhang
+        roof_z1 = z1 if has_adjacent(rectangle, "back") else z1 + overhang
+        slots.append({
+            "id": f"roof:{volume.get('id') or index}",
+            "position": [
+                round((roof_x0 + roof_x1) / 2, 3),
+                round(modeled_floors * floor_height, 3),
+                round((roof_z0 + roof_z1) / 2, 3),
+            ],
+            "span": round(roof_x1 - roof_x0, 3),
+            "depth": round(roof_z1 - roof_z0, 3),
+        })
+    return slots
+
+
+def _planned_terrace_railing_slots(
+    blueprint: dict[str, Any],
+    opening_slots: list[dict[str, Any]],
+    realization: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """为 U 形二层退台的临空前缘补一条连续安全栏杆。"""
+    if realization.get("shape") != "u_shape":
+        return []
+    access_slots = [slot for slot in opening_slots if slot.get("role") == "balcony_access"]
+    if len(access_slots) < 2:
+        return []
+    walls = {
+        element.get("id"): element
+        for element in blueprint.get("geometry", {}).get("elements", [])
+        if isinstance(element, dict) and element.get("type") == "wall"
+    }
+    ranges: list[tuple[float, float, float, float]] = []
+    for slot in access_slots:
+        wall = walls.get(slot.get("wall_id"))
+        start = wall.get("from") if isinstance(wall, dict) else None
+        end = wall.get("to") if isinstance(wall, dict) else None
+        if not isinstance(start, list) or not isinstance(end, list) or len(start) != 3 or len(end) != 3:
+            continue
+        if abs(float(start[2]) - float(end[2])) > 1e-6:
+            continue
+        ranges.append((
+            min(float(start[0]), float(end[0])),
+            max(float(start[0]), float(end[0])),
+            float(start[2]),
+            float(slot.get("from", [0, 0, 0])[1]),
+        ))
+    ranges.sort()
+    if len(ranges) < 2:
+        return []
+    left, right = ranges[0], ranges[-1]
+    if abs(left[2] - right[2]) > 0.05 or right[0] - left[1] < 0.8:
+        return []
+    slab_thickness = 0.2
+    for floor in blueprint.get("geometry", {}).get("elements", []):
+        start = floor.get("from") if isinstance(floor, dict) and floor.get("type") == "floor" else None
+        if isinstance(start, list) and len(start) == 3 and abs(float(start[1]) - left[3]) <= 0.05:
+            slab_thickness = max(slab_thickness, float(floor.get("thickness") or 0.0))
+    y = round(left[3] + slab_thickness, 3)
+    return [{
+        "id": "railing:upper_terrace_front",
+        "path": [[round(left[1], 3), y, round(left[2], 3)], [round(right[0], 3), y, round(right[2], 3)]],
+        "height": 1.1,
+    }]
+
+
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
@@ -1318,10 +1744,17 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             if descriptor:
                 walls.append(descriptor)
     if not walls:
+        roof_slots = _planned_roof_slots(plan, realization)
+        quotas = deepcopy(plan.get("component_quota", {}))
+        if roof_slots:
+            quotas["roof"] = {**quotas.get("roof", {}), "min": len(roof_slots), "max": len(roof_slots)}
         return {
             "facade_plan": {},
-            "component_quota": deepcopy(plan.get("component_quota", {})),
+            "component_quota": quotas,
             "opening_slots": [],
+            "balcony_slots": [],
+            "roof_slots": roof_slots,
+            "railing_slots": [],
             "realization": realization,
         }
 
@@ -1340,6 +1773,8 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
 
     facade_plan: dict[str, dict[str, Any]] = {}
     slots: list[dict[str, Any]] = []
+    balcony_access_remaining = max(0, int(plan.get("balcony_access_count") or 0))
+    balcony_width = plan.get("balcony_width")
     for wall in sorted(walls, key=lambda item: (item["base_y"], str(item["id"]))):
         bounds = level_bounds[round(float(wall["base_y"]), 3)]
         span = max(
@@ -1367,7 +1802,37 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         pattern = facade.get(pattern_key, []) if external else []
         bay_width = wall["length"] / bays
         wall_slots: list[dict[str, Any]] = []
+        is_balcony_access_wall = (
+            balcony_access_remaining > 0
+            and not is_ground
+            and external
+            and facing == "front"
+            and wall["axis"] == "x"
+            and wall["length"] >= 1.0
+        )
+        if is_balcony_access_wall:
+            requested_access_width = (
+                float(balcony_width)
+                if isinstance(balcony_width, (int, float)) and not isinstance(balcony_width, bool)
+                else wall["length"] - 0.2
+            )
+            access_width = max(0.8, min(wall["length"], requested_access_width))
+            wall_slots.append({
+                "id": f"{wall['id']}:door:balcony_access",
+                "type": "door",
+                "role": "balcony_access",
+                "wall_id": wall["id"],
+                "facing": facing,
+                "bay": 1,
+                "from": [round((wall["length"] - access_width) / 2, 3), round(wall["base_y"], 3), 0.0],
+                "width": round(access_width, 3),
+                "height": round(max(0.8, min(2.6, wall["height"] - 0.25)), 3),
+            })
+            slots.extend(wall_slots)
+            balcony_access_remaining -= 1
         for bay_index, opening_type in enumerate(pattern[:bays]):
+            if is_balcony_access_wall:
+                break
             if opening_type not in {"door", "window"}:
                 continue
             if opening_type == "door" and not is_ground:
@@ -1404,7 +1869,13 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             slots.append(slot)
         facade_plan[str(wall["id"])] = {
             "facing": facing if external else "internal",
-            "intent": "按建筑方案轴网布置门窗" if external else "内部/退台墙，不自动开口",
+            "intent": (
+                "阳台后方设置通室内入口"
+                if is_balcony_access_wall
+                else "按建筑方案轴网布置门窗"
+                if external
+                else "内部/退台墙，不自动开口"
+            ),
             "max_openings": len(wall_slots),
             "is_main_facade": external and facing == "front",
             "slots": wall_slots,
@@ -1425,10 +1896,33 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         minimum = limits.get("min", 0)
         limits["min"] = min(int(minimum) if isinstance(minimum, (int, float)) else 0, limits["max"])
 
+    balcony_slots = [
+        {
+            "id": str(slot["id"]).replace(":door:", ":balcony:"),
+            "wall_id": slot["wall_id"],
+            "from": deepcopy(slot["from"]),
+            "width": slot["width"],
+        }
+        for slot in slots
+        if slot.get("role") == "balcony_access"
+    ]
+    roof_slots = _planned_roof_slots(plan, realization)
+    if roof_slots:
+        quotas["roof"] = {
+            **quotas.get("roof", {}),
+            "min": len(roof_slots),
+            "max": len(roof_slots),
+            "note": "U 形顶层按体量分段覆盖，不跨越退台凹口",
+        }
+    railing_slots = _planned_terrace_railing_slots(blueprint, slots, realization)
+
     return {
         "facade_plan": facade_plan,
         "component_quota": quotas,
         "opening_slots": slots,
+        "balcony_slots": balcony_slots,
+        "roof_slots": roof_slots,
+        "railing_slots": railing_slots,
         "realization": realization,
         "rag_reference": "建筑方案节点已确定体量、立面轴网、屋顶类型；门窗坐标由程序解析。",
     }
@@ -1548,8 +2042,13 @@ def conform_openings_to_slots(
             used_slots.add(slot["id"])
             index = len(ordered_items) + 1
             if opening_type == "door":
+                is_balcony_access = slot.get("role") == "balcony_access"
                 item = {
-                    "id": f"door_planned_{index:02d}", "type": "door",
+                    "id": (
+                        f"door_balcony_access_{index:02d}"
+                        if is_balcony_access else f"door_planned_{index:02d}"
+                    ),
+                    "type": "door",
                     "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
                     "frameMaterial": frame_material, "leafMaterial": frame_material,
                 }
@@ -1562,6 +2061,8 @@ def conform_openings_to_slots(
             ordered_items.append((item, slot))
             stats["synthesized"] += 1
         for item, slot in ordered_items:
+            if slot.get("role"):
+                item["role"] = slot["role"]
             item["parentWall"] = slot["wall_id"]
             item["from"] = deepcopy(slot["from"])
             item["width"] = slot["width"]
@@ -1569,3 +2070,96 @@ def conform_openings_to_slots(
             result_openings.append(item)
             stats["snapped"] += 1
     return [*non_openings, *result_openings], stats
+
+
+def conform_balconies_to_slots(
+    components: list[dict[str, Any]],
+    design_brief: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """把阳台与阳台门槽位一一绑定，修正挂错墙和宽度漂移。"""
+    slots = design_brief.get("balcony_slots") if isinstance(design_brief, dict) else None
+    if not isinstance(slots, list) or not slots:
+        return components, {"snapped": 0, "synthesized": 0, "pruned": 0}
+    sources = [deepcopy(item) for item in components if item.get("type") == "balcony"]
+    non_balconies = [item for item in components if item.get("type") != "balcony"]
+    stats = {
+        "snapped": min(len(sources), len(slots)),
+        "synthesized": max(0, len(slots) - len(sources)),
+        "pruned": max(0, len(sources) - len(slots)),
+    }
+    balconies: list[dict[str, Any]] = []
+    for index, slot in enumerate(slots, start=1):
+        item = sources[index - 1] if index <= len(sources) else {
+            "type": "balcony",
+            "id": f"balcony_planned_{index:02d}",
+            "depth": 1.5,
+            "slabThickness": 0.18,
+            "railingHeight": 1.1,
+            "postSpacing": 0.9,
+        }
+        item["parentWall"] = slot["wall_id"]
+        item["from"] = deepcopy(slot["from"])
+        item["width"] = slot["width"]
+        item["depth"] = round(max(0.8, min(2.5, float(item.get("depth") or 1.5))), 3)
+        item["slabThickness"] = round(max(0.12, float(item.get("slabThickness") or 0.18)), 3)
+        item["railingHeight"] = round(max(0.9, float(item.get("railingHeight") or 1.1)), 3)
+        balconies.append(item)
+    return [*non_balconies, *balconies], stats
+
+
+def conform_roofs_to_slots(
+    elements: list[dict[str, Any]],
+    design_brief: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """用一个模型屋顶作为风格模板，按已批准的 U 形体量拆成多个无重叠屋面。"""
+    slots = design_brief.get("roof_slots") if isinstance(design_brief, dict) else None
+    if not isinstance(slots, list) or not slots:
+        return elements, {"split": 0, "synthesized": 0}
+    roofs = [deepcopy(item) for item in elements if item.get("type") == "roof"]
+    non_roofs = [item for item in elements if item.get("type") != "roof"]
+    template = roofs[0] if roofs else {
+        "type": "roof", "roofType": "flat", "height": 0,
+        "thickness": 0.25, "material": "default",
+    }
+    planned: list[dict[str, Any]] = []
+    for index, slot in enumerate(slots, start=1):
+        item = deepcopy(template)
+        item["id"] = f"roof_planned_{index:02d}"
+        item["position"] = deepcopy(slot["position"])
+        item["span"] = slot["span"]
+        item["depth"] = slot["depth"]
+        planned.append(item)
+    return [*non_roofs, *planned], {
+        "split": max(0, len(planned) - len(roofs)),
+        "synthesized": 1 if not roofs else 0,
+    }
+
+
+def conform_railings_to_slots(
+    components: list[dict[str, Any]],
+    design_brief: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """补齐方案要求的退台临空栏杆，并优先替换无明确位置的超额栏杆。"""
+    slots = design_brief.get("railing_slots") if isinstance(design_brief, dict) else None
+    if not isinstance(slots, list) or not slots:
+        return components, {"synthesized": 0, "replaced": 0}
+    result = list(components)
+    maximum = int(design_brief.get("component_quota", {}).get("railing", {}).get("max", 4))
+    stats = {"synthesized": 0, "replaced": 0}
+    for index, slot in enumerate(slots, start=1):
+        if any(item.get("type") == "railing" and item.get("path") == slot.get("path") for item in result):
+            continue
+        railing_indices = [i for i, item in enumerate(result) if item.get("type") == "railing"]
+        if maximum >= 0 and len(railing_indices) >= maximum and railing_indices:
+            result.pop(railing_indices[-1])
+            stats["replaced"] += 1
+        result.append({
+            "type": "railing",
+            "id": f"railing_planned_{index:02d}",
+            "path": deepcopy(slot["path"]),
+            "height": float(slot.get("height") or 1.1),
+            "postSpacing": 1.0,
+            "railCount": 2,
+        })
+        stats["synthesized"] += 1
+    return result, stats

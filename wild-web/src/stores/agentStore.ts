@@ -54,6 +54,15 @@ const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
 const TURN_STORAGE_PREFIX = 'wild_turns_'
 
+function compactSessionTitle(name: string, maxLength = 16): string {
+  const normalized = String(name || '').replace(/\s+/g, '')
+  if (!normalized) return '未命名建筑'
+  const firstClause = normalized.split(/[：:，,；;。\n]/).find(Boolean) || normalized
+  return firstClause.length <= maxLength
+    ? firstClause
+    : `${firstClause.slice(0, maxLength)}…`
+}
+
 function loadThinkingMode(): boolean {
   // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
   if (loadPrecisionMode()) return true
@@ -738,9 +747,10 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   function updateSessionInfo(sessionId: string, name: string, elementsCount: number, componentsCount?: number, buildingType?: string) {
+    const displayName = compactSessionTitle(name)
     const info = sessions.value.find(s => s.session_id === sessionId)
     if (info) {
-      info.name = name
+      info.name = displayName
       info.elements_count = elementsCount
       if (componentsCount !== undefined) info.components_count = componentsCount
       if (buildingType) info.building_type = buildingType
@@ -750,7 +760,7 @@ export const useAgentStore = defineStore('agent', () => {
     } else {
       sessions.value.unshift({
         session_id: sessionId,
-        name,
+        name: displayName,
         created_at: Date.now(),
         updated_at: Date.now(),
         elements_count: elementsCount,
