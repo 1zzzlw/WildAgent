@@ -212,15 +212,57 @@ docker port wild-web
 
 ## 四、证书续期
 
-证书到期日 **2026-11-10**。本次使用 `--manual` DNS 验证，**不会自动续期**。到期前需要手动操作：
+证书到期日 **2026-11-10**。推荐用项目自带的续期脚本 + crontab 定时执行。
+
+### 4.1 部署脚本到服务器
 
 ```bash
-# 到期前 30 天内，在服务器上执行：
+scp scripts/cert-renew.sh root@39.106.183.13:/opt/wild-agent/scripts/
+ssh root@39.106.183.13 chmod +x /opt/wild-agent/scripts/cert-renew.sh
+```
+
+### 4.2 添加 crontab
+
+```bash
+crontab -e
+```
+
+加入：
+
+```
+17 3 * * * /bin/bash /opt/wild-agent/scripts/cert-renew.sh >> /var/log/cert-renew.log 2>&1
+```
+
+> `17 3` — 每天凌晨 3:17，错开整点高峰期。
+
+不要用 `echo "..." | crontab -`，会覆盖已有的定时任务。想追加的话用：
+
+```bash
+(crontab -l 2>/dev/null; echo "17 3 * * * /bin/bash /opt/wild-agent/scripts/cert-renew.sh >> /var/log/cert-renew.log 2>&1") | crontab -
+```
+
+### 4.3 脚本逻辑
+
+```
+每天 3:17 执行
+    ↓
+遍历 /opt/wild-agent/certbot/letsencrypt/live/ 下所有域名证书
+    ↓
+检查过期时间 → 剩余 >30 天 → 跳过
+    ↓  剩余 ≤30 天
+certbot renew --webroot → 成功后 docker exec wild-web nginx -s reload
+                        → 失败则提示查看 docs/HTTPS_SETUP.md 手动 DNS 续期
+```
+
+### 4.4 如果 webroot 模式失败
+
+阿里云 WAF 可能仍然拦截 webroot 验证请求。如果 crontab 日志出现失败，到期前手动 DNS 验证续期：
+
+```bash
 sudo certbot renew \
   --config-dir /opt/wild-agent/certbot/letsencrypt \
   --work-dir /opt/wild-agent/certbot/www
 
-# 续期成功后 reload nginx
 docker exec wild-web nginx -s reload
 ```
 
