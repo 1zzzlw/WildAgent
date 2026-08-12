@@ -294,6 +294,9 @@ start_web() {
     --restart unless-stopped \
     --network wild-net \
     -p 80:80 \
+    -p 443:443 \
+    -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt:ro \
+    -v /opt/wild-agent/certbot/www:/var/www/certbot:ro \
     "$web_image"
 }
 
