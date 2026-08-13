@@ -11,6 +11,11 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
+from app.agent.procedural_material_recipes import (
+    compact_procedural_catalog,
+    infer_brick_preset,
+    resolve_brick_preset,
+)
 from app.agent.prompts import build_material_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.services.asset_storage import asset_storage
@@ -71,18 +76,28 @@ def compact_asset_catalog(manifests: list[dict[str, Any]]) -> list[dict[str, Any
     catalog: list[dict[str, Any]] = []
     for manifest in manifests:
         asset_id = manifest.get("assetId")
-        if not isinstance(asset_id, str):
+        maps = manifest.get("maps")
+        if (
+            not isinstance(asset_id, str)
+            or manifest.get("kind") != "pbr_texture_set"
+            or not isinstance(maps, dict)
+            or "baseColor" not in maps
+        ):
             continue
         classification = manifest.get("classification") or {}
+        channels = sorted(maps)
         catalog.append({
             "assetId": asset_id,
+            "kind": "pbr_texture_set",
             "name": str(manifest.get("name") or asset_id),
             "materialClass": classification.get("materialClass", "other"),
             "tags": list(classification.get("tags") or []),
             "recommendedRoles": list(classification.get("recommendedRoles") or []),
             "realWorldSizeMeters": manifest.get("realWorldSizeMeters", [1, 1]),
             "defaults": manifest.get("defaults", {}),
-            "channels": sorted((manifest.get("maps") or {}).keys()),
+            "channels": channels,
+            "baseColorOnly": channels == ["baseColor"],
+            "sourceType": (manifest.get("source") or {}).get("type", "unknown"),
             "license": manifest.get("license", ""),
         })
     return catalog[:80]
@@ -92,6 +107,7 @@ def resolve_material_plan(
     raw_plan: dict[str, Any] | None,
     manifests: list[dict[str, Any]],
     architecture_plan: dict[str, Any] | None = None,
+    user_message: str = "",
 ) -> dict[str, Any]:
     """把模型意图限制为固定角色、真实 assetId 和物理合理参数。"""
     by_id = {
@@ -109,6 +125,16 @@ def resolve_material_plan(
     roles: list[dict[str, Any]] = []
     resolved_assets: dict[str, dict[str, Any]] = {}
     rejected_asset_ids: list[str] = []
+    rejected_procedural_preset_ids: list[str] = []
+    automatic_preset = infer_brick_preset(
+        f"{user_message}\n{json.dumps(architecture_plan or {}, ensure_ascii=False)}"
+    )
+    stable_context = json.dumps(
+        {"architecture": architecture_plan or {}, "request": user_message},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     for role, fallback in ROLE_SPECS.items():
         requested = requested_by_role.get(role, {})
         asset_id = requested.get("assetId")
@@ -124,14 +150,27 @@ def resolve_material_plan(
             rejected_asset_ids.append(str(asset_id))
             asset_id = None
 
+        preset_id = requested.get("proceduralPresetId")
+        if role == "facade_primary" and not preset_id and not requested.get("procedural"):
+            preset_id = automatic_preset
+        recipe = None
+        if role == "facade_primary" and not asset and preset_id:
+            recipe = resolve_brick_preset(
+                preset_id,
+                requested.get("shaderAdjustments"),
+                stable_context=stable_context,
+            )
+            if recipe is None:
+                rejected_procedural_preset_ids.append(str(preset_id))
+
         defaults = (asset or {}).get("defaults") or {}
         material_class = str(classification.get("materialClass") or "other")
         base_color = _safe_color(
-            defaults.get("baseColorTint") if asset else requested.get("baseColor"),
+            defaults.get("baseColorTint") if asset else recipe.get("baseColor") if recipe else requested.get("baseColor"),
             [1.0, 1.0, 1.0] if asset else fallback["baseColor"],
         )
         roughness = _unit(
-            defaults.get("roughness") if asset else requested.get("roughness"),
+            defaults.get("roughness") if asset else recipe.get("roughness") if recipe else requested.get("roughness"),
             fallback["roughness"],
         )
         metallic = _unit(
@@ -157,6 +196,10 @@ def resolve_material_plan(
                 "uvScale": _positive_pair(defaults.get("uvScale"), [1, 1]),
             })
             resolved_assets[str(asset_id)] = deepcopy(asset)
+        elif role == "facade_primary":
+            procedural = recipe.get("procedural") if recipe else _safe_procedural_brick(requested.get("procedural"))
+            if procedural:
+                material["procedural"] = procedural
         if role == "glass":
             material.update({
                 "materialClass": "glass",
@@ -173,6 +216,7 @@ def resolve_material_plan(
             "role": role,
             "materialId": fallback["materialId"],
             "assetId": asset_id,
+            "proceduralPresetId": recipe.get("presetId") if recipe else None,
             "material": material,
         })
 
@@ -186,6 +230,7 @@ def resolve_material_plan(
         "roles": roles,
         "resolvedAssets": resolved_assets,
         "rejectedAssetIds": sorted(set(rejected_asset_ids)),
+        "rejectedProceduralPresetIds": sorted(set(rejected_procedural_preset_ids)),
     }
 
 
@@ -225,13 +270,17 @@ async def material_planner(state: GenerationState) -> dict:
     architecture_plan = state.get("architecture_plan") or {}
     manifests = asset_storage.list_manifests()
     catalog = compact_asset_catalog(manifests)
-    prompt = build_material_plan_prompt(architecture_plan, catalog)
+    procedural_catalog = compact_procedural_catalog()
+    prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
     raw_plan = None
     error = None
     token_usage = None
     callback = get_reasoning_callback()
     if callback:
-        await callback("material_plan", "正在设计材质层级并匹配已入库 PBR 资产...\n")
+        await callback(
+            "material_plan",
+            "正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材与程序化配方...\n",
+        )
     try:
         response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
             {"role": "system", "content": prompt},
@@ -251,21 +300,35 @@ async def material_planner(state: GenerationState) -> dict:
         error = str(exc)
         logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")
 
-    plan = resolve_material_plan(raw_plan, manifests, architecture_plan)
+    plan = resolve_material_plan(
+        raw_plan,
+        manifests,
+        architecture_plan,
+        str(state.get("user_message") or ""),
+    )
     if callback:
         selected = [
             item for item in plan["roles"] if item.get("assetId")
         ]
+        procedural_selected = [
+            item for item in plan["roles"] if item.get("proceduralPresetId")
+        ]
         await callback(
             "material_plan",
-            f"材质方案已确定：{plan['concept']}；匹配 {len(selected)} 个 PBR 资产。\n",
+            f"材质方案已确定：{plan['concept']}；匹配 {len(selected)} 个 PBR 资产，"
+            f"启用 {len(procedural_selected)} 个程序化配方。\n",
         )
     return {
         "material_plan": plan,
         "material_diag": {
             "catalog_count": len(catalog),
+            "procedural_catalog_count": len(procedural_catalog),
             "selected_asset_count": len(plan["resolvedAssets"]),
+            "selected_procedural_count": sum(
+                1 for item in plan["roles"] if item.get("proceduralPresetId")
+            ),
             "rejected_asset_ids": plan["rejectedAssetIds"],
+            "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,
             "error": error,
             "token_usage": token_usage,
@@ -305,6 +368,45 @@ def _positive_pair(value: Any, fallback: list[float]) -> list[float]:
         if all(0 < item <= 64 for item in pair):
             return [round(item, 4) for item in pair]
     return list(fallback)
+
+
+def _safe_procedural_brick(value: Any) -> dict[str, Any] | None:
+    """只接收声明式红砖参数，丢弃未知字段并归一化到渲染器安全范围。"""
+    if not isinstance(value, dict) or value.get("type") != "brick":
+        return None
+
+    raw_size = value.get("brickSize")
+    if isinstance(raw_size, (list, tuple)) and len(raw_size) == 2:
+        brick_size = [
+            _range(raw_size[0], 0.04, 2.0, 0.24),
+            _range(raw_size[1], 0.02, 1.0, 0.065),
+        ]
+    else:
+        brick_size = [0.24, 0.065]
+    max_mortar_width = min(0.03, min(brick_size) / 2 - 0.0001)
+    weathering = value.get("weathering")
+    if not isinstance(weathering, dict):
+        weathering = {}
+
+    return {
+        "type": "brick",
+        "seed": int(_range(value.get("seed"), 0, 2_147_483_647, 1)),
+        "brickSize": brick_size,
+        "mortarWidth": _range(value.get("mortarWidth"), 0.002, max_mortar_width, 0.01),
+        "mortarDepth": _range(value.get("mortarDepth"), 0, 0.02, 0.006),
+        "bond": value.get("bond") if value.get("bond") in {"running", "stack"} else "running",
+        "secondaryColor": _safe_color(value.get("secondaryColor"), [0.68, 0.19, 0.08]),
+        "colorVariation": _unit(value.get("colorVariation"), 0.12),
+        "roughnessVariation": _unit(value.get("roughnessVariation"), 0.12),
+        "edgeWear": _unit(value.get("edgeWear"), 0.05),
+        "weathering": {
+            "amount": _unit(weathering.get("amount"), 0),
+            "scale": _range(weathering.get("scale"), 0.1, 100, 1.8),
+            "efflorescence": _unit(weathering.get("efflorescence"), 0),
+            "verticalStreaks": _unit(weathering.get("verticalStreaks"), 0),
+            "baseDampness": _unit(weathering.get("baseDampness"), 0),
+        },
+    }
 
 
 def _fallback_concept(architecture_plan: dict[str, Any] | None) -> str:

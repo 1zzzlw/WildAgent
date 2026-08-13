@@ -378,6 +378,13 @@ export interface OpeningParams {
   material?: string;
   /** 仅供组合编译器和 renderer 使用，不属于可手写的 WILD opening 字段。 */
   _interaction?: InteractiveElementBehavior;
+  /** 仅供 door 编译器使用；把门板细节合并进同一可交互网格。 */
+  _doorLeafDetail?: {
+    rows: 2 | 3;
+    columns: 1 | 2;
+    hingeSide: 'left' | 'right';
+    doubleDoor: boolean;
+  };
 }
 
 // 楼梯参数
@@ -496,6 +503,30 @@ export interface GrainEffect {
 
 export type EffectLayer = WeatheringEffect | MossEffect | EdgeWearEffect | GrainEffect;
 
+/** 无图片红砖程序化材质；所有尺寸均使用墙面语义 UV 对应的米制单位。 */
+export interface ProceduralBrickMaterial {
+  type: 'brick';
+  seed?: number;
+  brickSize?: [number, number];
+  mortarWidth?: number;
+  mortarDepth?: number;
+  bond?: 'running' | 'stack';
+  secondaryColor?: Color;
+  colorVariation?: number;
+  roughnessVariation?: number;
+  edgeWear?: number;
+  weathering?: {
+    amount?: number;
+    scale?: number;
+    efflorescence?: number;
+    verticalStreaks?: number;
+    baseDampness?: number;
+  };
+}
+
+/** 判别联合只包含已实现的材质族，禁止 Blueprint 携带 Shader 源码。 */
+export type ProceduralMaterial = ProceduralBrickMaterial;
+
 export interface EmbeddedImageData {
   encoding: 'base64';
   mimeType: string;
@@ -577,6 +608,7 @@ export interface MaterialDef {
   sheen?: number;
   sheenColor?: Color;
   emissiveIntensity?: number;
+  procedural?: ProceduralMaterial;
 }
 
 // ========== 动态系统 ==========

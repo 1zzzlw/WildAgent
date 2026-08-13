@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import hashlib
 import math
 import re
 from typing import Any
@@ -1760,6 +1761,18 @@ def _opening_slots_overlap(
     return vertical_overlap and horizontal_overlap
 
 
+def _stable_unit_interval(value: str) -> float:
+    """把稳定标识映射到 [0, 1]，为未指定参数提供可复现的小幅变化。"""
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return int.from_bytes(digest[:4], "big") / 0xFFFFFFFF
+
+
+def _default_entrance_dimensions(slot_id: str, wall_height: float) -> tuple[float, float]:
+    width = 0.9 + _stable_unit_interval(f"{slot_id}:width") * 0.25
+    height = 2.1 + _stable_unit_interval(f"{slot_id}:height") * 0.25
+    return round(width, 3), round(min(height, wall_height - 0.25), 3)
+
+
 def _evenly_spaced_opening_slots(
     slots: list[dict[str, Any]],
     limit: int,
@@ -1941,6 +1954,13 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
 
     facade_plan: dict[str, dict[str, Any]] = {}
     slots: list[dict[str, Any]] = []
+    meta = blueprint.get("meta", {}) if isinstance(blueprint.get("meta"), dict) else {}
+    variation_scope = str(
+        meta.get("seed")
+        or meta.get("name")
+        or plan.get("concept")
+        or "default-building"
+    )
     balcony_access_remaining = max(0, int(plan.get("balcony_access_count") or 0))
     balcony_width = plan.get("balcony_width")
     for wall in sorted(walls, key=lambda item: (item["base_y"], str(item["id"]))):
@@ -2005,15 +2025,34 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 continue
             if opening_type == "door" and not is_ground:
                 continue
-            width_factor = 0.52 if opening_type == "door" else 0.62
-            width_limit = 1.25 if opening_type == "door" else 2.2
-            width_floor = 0.85 if opening_type == "door" else 0.75
-            width = max(width_floor, min(width_limit, bay_width * width_factor))
-            width = min(width, max(0.5, bay_width - 0.35))
+            if opening_type == "door":
+                slot_id = (
+                    f"{wall['id']}:floor_{wall.get('story_index', 1)}:"
+                    f"{opening_type}:{bay_index + 1}"
+                )
+                target_width, target_height = _default_entrance_dimensions(
+                    f"{variation_scope}:{slot_id}",
+                    wall["height"],
+                )
+                # 门可以跨越立面轴网，不能因为单个 bay 偏窄而失去基本通行宽度。
+                available_width = min(wall["length"], max(0.5, wall["length"] - 0.36))
+                if wall["length"] >= 0.9:
+                    available_width = max(0.9, available_width)
+                width = min(target_width, available_width)
+            else:
+                width = max(0.75, min(2.2, bay_width * 0.62))
+                width = min(width, max(0.5, bay_width - 0.35))
             center = bay_width * (bay_index + 0.5)
-            left = max(0.18, min(wall["length"] - width - 0.18, center - width / 2))
+            edge_clearance = min(0.18, max(0.0, (wall["length"] - width) / 2))
+            left = max(
+                edge_clearance,
+                min(wall["length"] - width - edge_clearance, center - width / 2),
+            )
             bottom = wall["base_y"] if opening_type == "door" else wall["base_y"] + min(1.0, wall["height"] * 0.3)
-            height = min(2.35 if opening_type == "door" else 1.55, wall["height"] - (bottom - wall["base_y"]) - 0.25)
+            height = min(
+                target_height if opening_type == "door" else 1.55,
+                wall["height"] - (bottom - wall["base_y"]) - 0.25,
+            )
             slot = {
                 "id": (
                     f"{wall['id']}:floor_{wall.get('story_index', 1)}:"
@@ -2118,9 +2157,17 @@ def conform_openings_to_slots(
         (name for name, value in (materials or {}).items() if "glass" in name.lower() or (isinstance(value, dict) and value.get("opacity", 1) < 0.99)),
         default_material,
     )
-    frame_material = next(
-        (name for name in material_names if any(word in name.lower() for word in ("frame", "wood", "metal"))),
+    fallback_frame_material = next(
+        (name for name in material_names if "wood" in name.lower()),
         default_material,
+    )
+    frame_material = next(
+        (name for name in material_names if any(word in name.lower() for word in ("frame", "metal"))),
+        fallback_frame_material,
+    )
+    leaf_material = next(
+        (name for name in material_names if any(word in name.lower() for word in ("wood", "door", "accent"))),
+        frame_material,
     )
     non_openings = [
         item for item in components
@@ -2228,7 +2275,7 @@ def conform_openings_to_slots(
                     ),
                     "type": "door",
                     "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
-                    "frameMaterial": frame_material, "leafMaterial": frame_material,
+                    "frameMaterial": frame_material, "leafMaterial": leaf_material,
                 }
             else:
                 item = {
@@ -2245,6 +2292,16 @@ def conform_openings_to_slots(
             item["from"] = deepcopy(slot["from"])
             item["width"] = slot["width"]
             item["height"] = slot["height"]
+            if opening_type == "door":
+                variant = _stable_unit_interval(f"{item.get('id', slot['id'])}:frame")
+                item.setdefault("frameWidth", round(0.065 + variant * 0.025, 3))
+                item.setdefault("frameMaterial", frame_material)
+                item.setdefault("leafMaterial", leaf_material)
+                item.setdefault("interaction", {
+                    "mode": "swing",
+                    "hingeSide": "left" if variant < 0.5 else "right",
+                    "openAngle": 90,
+                })
             result_openings.append(item)
             stats["snapped"] += 1
     return [*non_openings, *result_openings], stats

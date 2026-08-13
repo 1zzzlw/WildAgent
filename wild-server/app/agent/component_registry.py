@@ -53,7 +53,9 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[1] 是底部世界 Y 坐标（通常为 0）\n"
         "- from[2] 是法向偏移（通常为 0）\n"
         '- interaction 必填: {"mode":"swing","hingeSide":"left"|"right","openAngle":90}\n'
-        "- 门宽建议 0.9~1.2m，门高建议 2.0~2.4m\n"
+        "- 主入口门宽 0.9~1.2m、门高 2.1~2.4m；不得为了塞进单个立面开间而缩到 0.9m 以下\n"
+        "- 用户未指定外观参数时，在上述范围内选择克制的小幅变化；避免所有建筑机械复用完全相同的门参数\n"
+        "- 优先让 frameMaterial 与 leafMaterial 形成可读层次（如金属框+木门扇），但不得虚构 materials 中不存在的名称\n"
         "- frameDepth 默认等于父墙 thickness；leafDepth 默认 min(0.04, frameDepth)，通常不必显式填写\n"
         "- 自定义 leafDepth 必须为正数且不大于 frameDepth，门框和门扇必须与父墙厚度范围相交\n"
         "- 编译后产出: opening + primitive.box×3（门框）\n"

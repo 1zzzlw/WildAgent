@@ -413,6 +413,49 @@ table | chair | bookshelf | bed | lamp | tile
 - `baseColor.colorSpace` 固定 `srgb`，其余通道固定 `linear`。
 - 旧版 `embeddedImage` 和 Base64 `textures` 仍可兼容读取，但新入库和 Agent 修改不得继续生成 Base64。
 
+### 6.3 无图片程序化红砖
+
+当墙面需要真实砖块比例、砖缝凹陷或连续风化，而项目不使用图片贴图时，材质可声明受控的 `procedural` 参数：
+
+```json
+{
+  "brick_aged": {
+    "baseColor": [0.52, 0.11, 0.055],
+    "roughness": 0.84,
+    "metallic": 0,
+    "albedo": 1,
+    "lightingCondition": "D65_noon",
+    "procedural": {
+      "type": "brick",
+      "seed": 42,
+      "brickSize": [0.24, 0.065],
+      "mortarWidth": 0.01,
+      "mortarDepth": 0.006,
+      "bond": "running",
+      "secondaryColor": [0.68, 0.19, 0.08],
+      "colorVariation": 0.14,
+      "roughnessVariation": 0.16,
+      "edgeWear": 0.06,
+      "weathering": {
+        "amount": 0.28,
+        "scale": 1.8,
+        "efflorescence": 0.1,
+        "verticalStreaks": 0.14,
+        "baseDampness": 0.08
+      }
+    }
+  }
+}
+```
+
+- 第一阶段 `procedural.type` 只允许 `brick`；不允许携带 GLSL 或其他可执行代码。
+- `brickSize`、`mortarWidth`、`mortarDepth` 使用米制墙面 UV；`bond` 只允许 `running/stack`。
+- `seed` 为 `0–2147483647` 的整数；颜色是三个 `0–1` 数值；变化和老化强度均为 `0–1`。
+- `brickSize` 范围为宽 `0.04–2m`、高 `0.02–1m`；`mortarWidth` 为 `0.002–0.03m` 且小于短边一半；`mortarDepth` 为 `0–0.02m`。
+- `weathering.scale` 范围为 `0.1–100`；其余 weathering 字段均为 `0–1`。
+- 第一阶段 `procedural` 与 `textureSet`、`textures`、`embeddedImage` 互斥。
+- 相同 Blueprint 与 seed 必须得到确定结果；程序化材质只改变表面颜色、粗糙度和法线，不改变结构、洞口、碰撞或轮廓。
+
 ## 7. `behaviors` 与 `editor`
 
 `behaviors` 的 Schema 包含：

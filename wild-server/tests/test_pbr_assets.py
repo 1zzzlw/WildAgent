@@ -110,6 +110,28 @@ def test_same_image_can_store_reusable_material_parameter_variants(tmp_path):
     assert len(storage.list_manifests()) == 2
 
 
+def test_manifest_urls_follow_current_public_path_and_fill_new_defaults(tmp_path):
+    original = LocalAssetStorage(tmp_path / "assets", public_base_url="/old/assets")
+    asset = original.register_pbr(
+        {"baseColor": {"data": PNG_BYTES, "mime_type": "image/png"}},
+        name="Legacy Stone",
+        license_name="CC0",
+    )
+    manifest_path = original.root_dir / asset["assetId"] / "manifest.json"
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    raw["defaults"].pop("baseColorTint", None)
+    manifest_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    current = LocalAssetStorage(tmp_path / "assets", public_base_url="/api/assets")
+    migrated = current.get_manifest(asset["assetId"])
+
+    assert migrated["maps"]["baseColor"]["uri"] == (
+        f"/api/assets/{asset['assetId']}/files/baseColor.png"
+    )
+    assert migrated["defaults"]["baseColorTint"] == [1.0, 1.0, 1.0]
+    assert current.list_manifests()[0]["maps"]["baseColor"]["uri"].startswith("/api/assets/")
+
+
 def test_hiding_asset_removes_it_from_library_but_keeps_existing_scene_urls(tmp_path):
     storage = _storage(tmp_path)
     maps = {"baseColor": {"data": PNG_BYTES, "mime_type": "image/png"}}

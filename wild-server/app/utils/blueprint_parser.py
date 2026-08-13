@@ -527,6 +527,107 @@ def _normalize_floor_coordinates(elements: list) -> None:
         floor.pop("y", None)
 
 
+def _validate_procedural_material(name: str, material: dict) -> list[str]:
+    """校验受控程序化材质参数；Blueprint 不能携带任意 Shader 代码。"""
+    procedural = material.get("procedural")
+    if procedural is None:
+        return []
+    path = f"材质 '{name}'.procedural"
+    if not isinstance(procedural, dict):
+        return [f"{path} 必须是对象"]
+
+    issues: list[str] = []
+    allowed = {
+        "type", "seed", "brickSize", "mortarWidth", "mortarDepth", "bond",
+        "secondaryColor", "colorVariation", "roughnessVariation", "edgeWear",
+        "weathering",
+    }
+    unknown = sorted(set(procedural) - allowed)
+    if unknown:
+        issues.append(f"{path} 包含不支持的字段: {unknown}")
+    if procedural.get("type") != "brick":
+        issues.append(f"{path}.type 当前只支持 brick")
+
+    def finite_number(value: object) -> bool:
+        return (
+            isinstance(value, (int, float))
+            and not isinstance(value, bool)
+            and math.isfinite(value)
+        )
+
+    def unit_number(value: object) -> bool:
+        return finite_number(value) and 0 <= value <= 1
+
+    seed = procedural.get("seed")
+    if seed is not None and (
+        not isinstance(seed, int) or isinstance(seed, bool) or not 0 <= seed <= 2_147_483_647
+    ):
+        issues.append(f"{path}.seed 必须是 0–2147483647 的整数")
+
+    brick_size = procedural.get("brickSize", [0.24, 0.065])
+    valid_brick_size = (
+        isinstance(brick_size, list)
+        and len(brick_size) == 2
+        and all(finite_number(value) for value in brick_size)
+        and 0.04 <= brick_size[0] <= 2
+        and 0.02 <= brick_size[1] <= 1
+    )
+    if not valid_brick_size:
+        issues.append(f"{path}.brickSize 必须是 [0.04–2m, 0.02–1m] 的两个有限数字")
+
+    mortar_width = procedural.get("mortarWidth", 0.01)
+    if not finite_number(mortar_width) or not 0.002 <= mortar_width <= 0.03:
+        issues.append(f"{path}.mortarWidth 必须是 0.002–0.03m 的有限数字")
+    elif valid_brick_size and mortar_width >= min(brick_size) / 2:
+        issues.append(f"{path}.mortarWidth 必须小于砖块最短边的一半")
+
+    mortar_depth = procedural.get("mortarDepth")
+    if mortar_depth is not None and (
+        not finite_number(mortar_depth) or not 0 <= mortar_depth <= 0.02
+    ):
+        issues.append(f"{path}.mortarDepth 必须是 0–0.02m 的有限数字")
+    if procedural.get("bond") not in {None, "running", "stack"}:
+        issues.append(f"{path}.bond 必须是 running/stack")
+
+    secondary_color = procedural.get("secondaryColor")
+    if secondary_color is not None and not (
+        isinstance(secondary_color, list)
+        and len(secondary_color) == 3
+        and all(unit_number(channel) for channel in secondary_color)
+    ):
+        issues.append(f"{path}.secondaryColor 必须是 3 个 0–1 数值")
+    for field in ("colorVariation", "roughnessVariation", "edgeWear"):
+        value = procedural.get(field)
+        if value is not None and not unit_number(value):
+            issues.append(f"{path}.{field} 必须是 0–1 有限数字")
+
+    weathering = procedural.get("weathering")
+    if weathering is not None:
+        weather_path = f"{path}.weathering"
+        if not isinstance(weathering, dict):
+            issues.append(f"{weather_path} 必须是对象")
+        else:
+            weather_allowed = {
+                "amount", "scale", "efflorescence", "verticalStreaks", "baseDampness",
+            }
+            weather_unknown = sorted(set(weathering) - weather_allowed)
+            if weather_unknown:
+                issues.append(f"{weather_path} 包含不支持的字段: {weather_unknown}")
+            for field in ("amount", "efflorescence", "verticalStreaks", "baseDampness"):
+                value = weathering.get(field)
+                if value is not None and not unit_number(value):
+                    issues.append(f"{weather_path}.{field} 必须是 0–1 有限数字")
+            scale = weathering.get("scale")
+            if scale is not None and (
+                not finite_number(scale) or not 0.1 <= scale <= 100
+            ):
+                issues.append(f"{weather_path}.scale 必须是 0.1–100m 的有限数字")
+
+    if any(material.get(field) is not None for field in ("textureSet", "textures", "embeddedImage")):
+        issues.append(f"材质 '{name}' 第一版不能同时使用 procedural 与图片纹理")
+    return issues
+
+
 def validate_blueprint_schema(blueprint: dict) -> list[str]:
     """轻量级 Blueprint 结构校验
 
@@ -879,6 +980,7 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                 issues.append(
                     f"材质 '{name}'.textureSet 引用了不存在的资产: {texture_set}"
                 )
+            issues.extend(_validate_procedural_material(name, material))
 
     return issues
 

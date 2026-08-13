@@ -1,6 +1,6 @@
 # 测试文件使用指南
 
-最后核对：2026-08-11。本文覆盖仓库内当前可见的自动化测试、评测脚本、图展示工具和人工模型冒烟文件。命令默认使用 Windows PowerShell；路径从仓库根目录 `E:\AgentProject\WildAgent` 开始。
+最后核对：2026-08-13。本文覆盖仓库内当前可见的自动化测试、评测脚本、图展示工具和人工模型冒烟文件。命令默认使用 Windows PowerShell；路径从仓库根目录 `E:\AgentProject\WildAgent` 开始。
 
 ## 1. 测试分层
 
@@ -13,7 +13,7 @@
 | `tests/show_langgraph_graph.py` | 结构变更时使用 | HTML 渲染需要 CDN | 校验并展示实际编译的 LangGraph |
 | `wild-server/test_graph_minimal.py` | 否 | 是 | 真实模型完整图人工冒烟 |
 
-当前自动化基线：后端 `189 passed, 4 subtests passed`。前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。
+当前自动化基线：后端 `231 passed, 17 subtests passed`。前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。
 
 ## 2. 日常完整回归
 
@@ -61,7 +61,7 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/test_agent_graph_execution.py` | 使用真实编译图和隔离节点验证 `GENERATE`、`EDIT`、`CHAT` 三条执行分支。 |
 | `tests/test_agent_graph_routing.py` | 验证意图路由、生成先进入建筑方案、组件建议过滤、否定词处理及阳台栏杆去重。 |
 | `tests/test_architecture_plan.py` | 验证建筑方案候选评分、中文层数识别、高层示意几何、公共建筑尺度、立面槽位、开口配额和地下交通建筑约束。 |
-| `tests/test_blueprint_material_validation.py` | 验证 Blueprint 字段归一化和 Schema：楼板坐标、墙高简写、primitive box 尺寸、家具别名、材质颜色与非法坐标。 |
+| `tests/test_blueprint_material_validation.py` | 验证 Blueprint 字段归一化和 Schema：楼板坐标、墙高简写、primitive box 尺寸、家具别名、材质颜色，以及程序化红砖的范围、互斥和可执行字段门禁。 |
 | `tests/test_blueprint_text_extraction.py` | 验证从普通内容、`reasoning_content`、代码围栏和常见包装对象中提取 Blueprint/ScenePatch，并补齐确定性元数据。 |
 | `tests/test_callback_targeted_repair.py` | 验证 callback 只提交能减少错误的白名单动作，以及设计配额补件和立面超额开口移除。 |
 | `tests/test_component_blueprint.py` | 验证组件 Schema、组件和 element 共用 ID 命名空间、门窗 depth 字段，以及组件的增删改 Patch。 |
@@ -72,10 +72,10 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/test_ip_geolocation.py` | 验证 IP 脱敏、GeoIP 缺失回退、可信代理头和伪造代理头防护。 |
 | `tests/test_langgraph_checkpoint_resume.py` | 使用临时 SQLite checkpointer 验证恢复时跳过已完成节点，只重跑失败或未完成节点。 |
 | `tests/test_material_tuning.py` | 验证材质优化意图、必须先选择构件、Patch 安全边界、材质克隆、纹理资产保留和无效参数拒绝。 |
-| `tests/test_material_plan.py` | 验证 AI 材质方案只能选择真实且角色匹配的 PBR 资产、提示词不暴露纹理 URL、物理玻璃预设和骨架材质/资产引用闭合。 |
+| `tests/test_material_plan.py` | 验证 AI 材质方案只能选择真实且角色匹配的 PBR 资产或受控程序化红砖、一图 PBR 候选识别、Shader 预设与语义等级展开、稳定 seed、未知 ID 清理、图片资产优先、物理玻璃预设和骨架引用闭合。 |
 | `tests/test_merge_precision.py` | 验证合并阶段的空间硬约束：世界/局部坐标修复、开口重叠阻断、配额缺失和阳台重复几何清理。 |
 | `tests/test_model_client_compat.py` | 验证 OpenAI-compatible 对象响应、内容块、空 content + reasoning 以及非流式响应的兼容转换。 |
-| `tests/test_pbr_assets.py` | 验证 PBR 资产图、本地内容寻址存储、图片类型校验、上传 API 和材质 Patch 引用闭合。 |
+| `tests/test_pbr_assets.py` | 验证 PBR 资产图、本地内容寻址存储、单张 Base Color 入库、旧清单默认值兼容、公开 URL 前缀更新、上传 API 和材质 Patch 引用闭合。 |
 | `tests/test_prompt_composition.py` | 验证最小规范只注入一次、RAG 查询与业务 metadata 过滤、构件检索词和角色材质要求。 |
 | `tests/test_rag_index_sync.py` | 验证 RAG 增量同步：未变分片跳过、正文或 metadata 更新、删除陈旧分片、相邻父分片扩展及多查询去重。 |
 | `tests/test_rag_semantic_chunking.py` | 验证 Markdown 语义分片、标题路径和业务实体 metadata、JSON/表格原子性、README 范围推断与上下文上限。 |
@@ -148,7 +148,7 @@ cd E:\AgentProject\WildAgent\wild-web
 npm run check:core
 ```
 
-作用：临时编译并加载 Wild Core，重建 `lantu/*.wild` 全部样本；检查 mesh、索引、法线、UV、包围盒、版本迁移、primitive box、profile sweep、斜梁方向、侧墙开口、直角墙角、建筑墙属性和非法材质回退。临时构建目录在结束时删除。
+作用：临时编译并加载 Wild Core，重建 `lantu/*.wild` 全部样本；检查 mesh、索引、法线、UV、包围盒、版本迁移、primitive box、profile sweep、斜梁方向、侧墙开口、直角墙角、建筑墙属性、程序化红砖参数透传和非法材质回退。临时构建目录在结束时删除。
 
 ### `wild-web/scripts/check-component-compiler.mjs`
 
@@ -170,7 +170,7 @@ cd E:\AgentProject\WildAgent\wild-web
 npm run check:rendering
 ```
 
-作用：通过 Vite 加载真实渲染模块，验证历史构件兼容模式默认 DoubleSide、已验证封闭实体可显式使用 FrontSide、玻璃使用 `MeshPhysicalMaterial` 及受控 transmission/IOR/thickness，并确认 AO 所需的 `uv1` 与兼容 `uv2` 均存在。
+作用：通过 Vite 加载真实渲染模块，验证历史构件兼容模式默认 DoubleSide、已验证封闭实体可显式使用 FrontSide、玻璃使用 `MeshPhysicalMaterial` 及受控 transmission/IOR/thickness、AO 所需 UV，以及程序化红砖 Shader 注入、uniform、材质签名和 Program cache key。
 
 ### 生产构建检查
 

@@ -99,6 +99,43 @@ def test_short_wall_does_not_emit_overlapping_facade_slots() -> None:
     assert brief["facade_plan"]["wall_front_short"]["max_openings"] == 1
 
 
+def test_dense_facade_keeps_usable_deterministic_entrance_width() -> None:
+    blueprint = {
+        "geometry": {
+            "elements": [{
+                "id": "wall_front_dense",
+                "type": "wall",
+                "from": [0, 0, 0],
+                "to": [4.5, 3.2, 0],
+                "thickness": 0.24,
+            }],
+            "components": [],
+        },
+    }
+    plan = {
+        "profile": "residential_lowrise",
+        "facades": {
+            "front": {
+                "bays": 5,
+                "ground_pattern": ["door", "window", "window", "window", "window"],
+                "upper_pattern": [],
+            },
+        },
+        "component_quota": {
+            "door": {"min": 1, "max": 1},
+            "window": {"min": 0, "max": 4},
+        },
+    }
+
+    first = resolve_facade_layout(blueprint, plan)
+    second = resolve_facade_layout(blueprint, plan)
+    door = next(slot for slot in first["opening_slots"] if slot["type"] == "door")
+
+    assert 0.9 <= door["width"] <= 1.15
+    assert 2.1 <= door["height"] <= 2.35
+    assert first["opening_slots"] == second["opening_slots"]
+
+
 def test_conformance_rejects_overlapping_legacy_slots() -> None:
     brief = {
         "opening_slots": [

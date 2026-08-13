@@ -55,6 +55,7 @@ function compileSingleDoor(
     height: component.height,
     depth: leafDepth,
     style: openingStyle,
+    _doorLeafDetail: createDoorLeafDetail(component, false),
   }, component.leafMaterial)
   opening._interaction = createOpeningInteraction(
     component.interaction,
@@ -116,6 +117,7 @@ function compileDoubleDoor(
     height: component.height,
     depth: leafDepth,
     style: openingStyle,
+    _doorLeafDetail: createDoorLeafDetail(component, true),
   }, component.leafMaterial)
 
   // 双开门：左扇铰链在左，右扇铰链在右
@@ -172,4 +174,28 @@ function compileDoubleDoor(
   ))
 
   return elements
+}
+
+function createDoorLeafDetail(
+  component: DoorComponent,
+  doubleDoor: boolean,
+): NonNullable<OpeningParams['_doorLeafDetail']> {
+  let hash = 2166136261
+  const variationKey = [
+    component.id,
+    component.width,
+    component.height,
+    component.frameMaterial ?? '',
+    component.leafMaterial ?? '',
+  ].join(':')
+  for (const character of variationKey) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return {
+    rows: (Math.abs(hash) % 2 === 0 ? 2 : 3),
+    columns: doubleDoor ? 2 : 1,
+    hingeSide: component.interaction?.hingeSide ?? (Math.abs(hash) % 3 === 0 ? 'right' : 'left'),
+    doubleDoor,
+  }
 }

@@ -583,7 +583,13 @@ async function assertDoorWindowDepthAlignment(compiler) {
   const entity = await compiler.reconstructWildEntity(source)
   const doorMesh = entity.meshes.find(mesh => mesh.elementId === 'front_door__opening')
   const glassMesh = entity.meshes.find(mesh => mesh.elementId === 'side_window__opening')
-  assertEqual(localAxisExtent(doorMesh, 2), 0.04, '门扇没有生成真实厚度')
+  if (!doorMesh || doorMesh.geometry.length <= glassMesh.geometry.length) {
+    throw new Error('门扇没有生成可见的门板与把手细节')
+  }
+  const detailedDoorDepth = localAxisExtent(doorMesh, 2)
+  if (detailedDoorDepth <= 0.04 || detailedDoorDepth > 0.08) {
+    throw new Error(`门扇细节深度不合理: ${detailedDoorDepth}`)
+  }
   assertEqual(localAxisExtent(glassMesh, 2), 0.012, '玻璃没有生成真实厚度')
 
   const invalid = createBlueprint()

@@ -285,7 +285,8 @@ class LocalAssetStorage:
         path = self.root_dir / asset_id / "manifest.json"
         if not path.is_file():
             raise FileNotFoundError(asset_id)
-        return json.loads(path.read_text(encoding="utf-8"))
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        return self._normalize_manifest(manifest, asset_id)
 
     def list_manifests(self) -> list[dict[str, Any]]:
         if not self.root_dir.exists():
@@ -295,10 +296,62 @@ class LocalAssetStorage:
             if (path.parent / _HIDDEN_MARKER).exists():
                 continue
             try:
-                manifests.append(json.loads(path.read_text(encoding="utf-8")))
-            except (json.JSONDecodeError, OSError):
+                manifests.append(self.get_manifest(path.parent.name))
+            except (AssetStorageError, FileNotFoundError, json.JSONDecodeError, OSError):
                 continue
         return sorted(manifests, key=lambda item: item.get("createdAt", ""), reverse=True)
+
+    def _normalize_manifest(self, manifest: dict[str, Any], asset_id: str) -> dict[str, Any]:
+        """兼容旧清单，并按当前公开前缀重建可访问 URL。"""
+        if not isinstance(manifest, dict):
+            raise AssetStorageError("资产 manifest 必须是对象")
+        normalized = dict(manifest)
+        normalized["assetId"] = asset_id
+        normalized.setdefault("kind", "pbr_texture_set")
+        classification = normalized.get("classification")
+        if not isinstance(classification, dict):
+            classification = {}
+        normalized_classification = dict(classification)
+        normalized_classification.setdefault("materialClass", "other")
+        normalized_classification["tags"] = list(classification.get("tags") or [])
+        normalized_classification["recommendedRoles"] = list(
+            classification.get("recommendedRoles") or []
+        )
+        normalized["classification"] = normalized_classification
+        defaults = normalized.get("defaults")
+        if not isinstance(defaults, dict):
+            defaults = {}
+        normalized_defaults = dict(defaults)
+        normalized_defaults.setdefault("baseColorTint", [1.0, 1.0, 1.0])
+        normalized_defaults.setdefault("roughness", 0.8)
+        normalized_defaults.setdefault("metallic", 0.0)
+        normalized_defaults.setdefault("normalScale", 1.0)
+        normalized_defaults.setdefault("uvScale", [1.0, 1.0])
+        normalized["defaults"] = normalized_defaults
+        normalized.setdefault("realWorldSizeMeters", [1.0, 1.0])
+
+        maps = normalized.get("maps")
+        if not isinstance(maps, dict):
+            return normalized
+        public_maps: dict[str, dict[str, Any]] = {}
+        asset_dir = self.root_dir / asset_id
+        for channel, raw_map in maps.items():
+            if channel not in CHANNELS or not isinstance(raw_map, dict):
+                continue
+            item = dict(raw_map)
+            filename = next(
+                (
+                    f"{channel}{extension}"
+                    for extension in (".png", ".jpg", ".webp")
+                    if (asset_dir / f"{channel}{extension}").is_file()
+                ),
+                None,
+            )
+            if filename:
+                item["uri"] = f"{self.public_base_url}/{asset_id}/files/{filename}"
+            public_maps[channel] = item
+        normalized["maps"] = public_maps
+        return normalized
 
     def hide_from_library(self, asset_id: str) -> None:
         """从素材库与 AI 候选清单隐藏资产，同时保留旧蓝图引用的文件。"""

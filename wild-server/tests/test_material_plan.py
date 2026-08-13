@@ -3,6 +3,10 @@ from app.agent.nodes.material_plan_node import (
     compact_asset_catalog,
     resolve_material_plan,
 )
+from app.agent.procedural_material_recipes import (
+    compact_procedural_catalog,
+    resolve_brick_preset,
+)
 from app.agent.prompts import build_material_plan_prompt
 
 
@@ -38,11 +42,29 @@ def _asset(*, roles=None):
 
 def test_prompt_catalog_never_contains_texture_urls():
     catalog = compact_asset_catalog([_asset()])
-    prompt = build_material_plan_prompt({"concept": "modern villa"}, catalog)
+    prompt = build_material_plan_prompt(
+        {"concept": "modern villa"},
+        catalog,
+        compact_procedural_catalog(),
+    )
 
     assert ASSET_ID in prompt
     assert "/secret-texture-url" not in prompt
     assert "严禁猜测 ID" in prompt
+    assert "AVAILABLE_PROCEDURAL_PRESETS" in prompt
+    assert "用户没说材质" in prompt
+    assert "一张 Base Color" in prompt
+    assert "GLSL、Shader 源码" in prompt
+
+
+def test_compact_catalog_recognizes_new_base_color_only_assets():
+    catalog = compact_asset_catalog([_asset(), {"assetId": "invalid"}])
+
+    assert len(catalog) == 1
+    assert catalog[0]["kind"] == "pbr_texture_set"
+    assert catalog[0]["channels"] == ["baseColor"]
+    assert catalog[0]["baseColorOnly"] is True
+    assert catalog[0]["sourceType"] == "local_upload"
 
 
 def test_resolver_accepts_only_existing_role_compatible_assets():
@@ -91,3 +113,177 @@ def test_resolved_plan_rebinds_skeleton_and_closes_asset_references():
     assert result["geometry"]["elements"][1]["material"] == "floor_finish"
     assert result["materials"]["wall_finish"]["textureSet"] == ASSET_ID
     assert list(result["assets"]) == [ASSET_ID]
+
+
+def test_resolver_accepts_only_sanitized_procedural_brick_for_facade():
+    raw = {
+        "roles": [
+            {
+                "role": "facade_primary",
+                "assetId": None,
+                "baseColor": [0.52, 0.11, 0.055],
+                "procedural": {
+                    "type": "brick",
+                    "seed": 42,
+                    "brickSize": [0.24, 0.065],
+                    "mortarWidth": 0.01,
+                    "mortarDepth": 0.006,
+                    "bond": "running",
+                    "secondaryColor": [0.68, 0.19, 0.08],
+                    "colorVariation": 0.14,
+                    "weathering": {
+                        "amount": 0.28,
+                        "scale": 1.8,
+                        "efflorescence": 0.1,
+                        "verticalStreaks": 0.14,
+                        "baseDampness": 0.08,
+                        "shader": "not allowed",
+                    },
+                    "shader": "void main(){}",
+                },
+            },
+            {"role": "roof", "procedural": {"type": "brick"}},
+        ],
+    }
+
+    plan = resolve_material_plan(raw, [])
+    by_role = {item["role"]: item for item in plan["roles"]}
+    procedural = by_role["facade_primary"]["material"]["procedural"]
+
+    assert procedural["type"] == "brick"
+    assert procedural["brickSize"] == [0.24, 0.065]
+    assert procedural["weathering"]["verticalStreaks"] == 0.14
+    assert "shader" not in procedural
+    assert "shader" not in procedural["weathering"]
+    assert "procedural" not in by_role["roof"]["material"]
+
+
+def test_texture_asset_takes_precedence_over_procedural_material():
+    plan = resolve_material_plan({
+        "roles": [{
+            "role": "facade_primary",
+            "assetId": ASSET_ID,
+            "procedural": {"type": "brick"},
+        }],
+    }, [_asset()])
+    facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
+
+    assert facade["material"]["textureSet"] == ASSET_ID
+    assert "procedural" not in facade["material"]
+
+
+def test_resolver_expands_semantic_shader_preset_with_stable_parameters():
+    raw = {
+        "roles": [{
+            "role": "facade_primary",
+            "proceduralPresetId": "brick_aged_red",
+            "shaderAdjustments": {
+                "tone": "dark",
+                "mortarDepth": "deep",
+                "weathering": "moderate",
+                "efflorescence": "subtle",
+                "verticalStreaks": "subtle",
+                "baseDampness": "none",
+                "cleanliness": "clean",
+            },
+        }],
+    }
+    first = resolve_material_plan(raw, [], {"concept": "warm villa"}, "生成一个别墅")
+    second = resolve_material_plan(raw, [], {"concept": "warm villa"}, "生成一个别墅")
+    facade = next(item for item in first["roles"] if item["role"] == "facade_primary")
+    procedural = facade["material"]["procedural"]
+
+    assert facade["proceduralPresetId"] == "brick_aged_red"
+    assert procedural["mortarDepth"] == 0.009
+    assert procedural["weathering"]["amount"] == 0.12
+    assert procedural["weathering"]["efflorescence"] == 0.1
+    assert procedural["weathering"]["verticalStreaks"] == 0.08
+    assert procedural["weathering"]["baseDampness"] == 0
+    assert 1.45 <= procedural["weathering"]["scale"] <= 2.1
+    assert procedural["seed"] == next(
+        item for item in second["roles"] if item["role"] == "facade_primary"
+    )["material"]["procedural"]["seed"]
+    assert facade["material"]["baseColor"][0] < 0.52
+
+
+def test_brick_recipe_varies_visual_parameters_by_stable_context():
+    first = resolve_brick_preset("brick_aged_red", stable_context="villa-a")
+    repeated = resolve_brick_preset("brick_aged_red", stable_context="villa-a")
+    second = resolve_brick_preset("brick_aged_red", stable_context="villa-b")
+
+    assert first == repeated
+    assert first is not None and second is not None
+    first_visual = {
+        "baseColor": first["baseColor"],
+        "roughness": first["roughness"],
+        **{
+            key: value
+            for key, value in first["procedural"].items()
+            if key != "seed"
+        },
+    }
+    second_visual = {
+        "baseColor": second["baseColor"],
+        "roughness": second["roughness"],
+        **{
+            key: value
+            for key, value in second["procedural"].items()
+            if key != "seed"
+        },
+    }
+
+    assert first_visual != second_visual
+
+
+def test_resolver_uses_deterministic_brick_fallback_only_for_explicit_brick_intent():
+    brick_plan = resolve_material_plan(
+        None,
+        [],
+        {"concept": "乡村住宅"},
+        "生成一栋有轻微返碱红砖墙的别墅",
+    )
+    generic_plan = resolve_material_plan(
+        None,
+        [],
+        {"concept": "现代别墅"},
+        "生成一个别墅",
+    )
+    brick_facade = next(item for item in brick_plan["roles"] if item["role"] == "facade_primary")
+    generic_facade = next(item for item in generic_plan["roles"] if item["role"] == "facade_primary")
+
+    assert brick_facade["proceduralPresetId"] == "brick_salt_weathered"
+    assert brick_facade["material"]["procedural"]["type"] == "brick"
+    assert generic_facade["proceduralPresetId"] is None
+    assert "procedural" not in generic_facade["material"]
+
+
+def test_resolver_rejects_unknown_procedural_preset_id():
+    plan = resolve_material_plan({
+        "roles": [{
+            "role": "facade_primary",
+            "proceduralPresetId": "brick_for_one_special_building",
+        }],
+    }, [])
+    facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
+
+    assert facade["proceduralPresetId"] is None
+    assert "procedural" not in facade["material"]
+    assert plan["rejectedProceduralPresetIds"] == ["brick_for_one_special_building"]
+
+
+def test_weathering_none_disables_inherited_weather_effects():
+    plan = resolve_material_plan({
+        "roles": [{
+            "role": "facade_primary",
+            "proceduralPresetId": "brick_aged_red",
+            "shaderAdjustments": {"weathering": "none"},
+        }],
+    }, [])
+    facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
+
+    weathering = facade["material"]["procedural"]["weathering"]
+    assert weathering["amount"] == 0
+    assert weathering["efflorescence"] == 0
+    assert weathering["verticalStreaks"] == 0
+    assert weathering["baseDampness"] == 0
+    assert 1.45 <= weathering["scale"] <= 2.1

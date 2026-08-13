@@ -79,6 +79,9 @@ function bakeEffects(
     sheen: base.sheen,
     sheenColor: base.sheenColor,
     emissiveIntensity: base.emissiveIntensity,
+    procedural: base.procedural
+      ? JSON.parse(JSON.stringify(base.procedural))
+      : undefined,
   };
 }
 
@@ -108,11 +111,12 @@ export function applyMaterials(
 function normalizeMaterial(value: MaterialDef | undefined): MaterialDef {
   const fallback = defaultMaterial();
   if (!value || typeof value !== 'object') return fallback;
+  const baseColor = normalizeColor(value.baseColor, fallback.baseColor);
 
   return {
     ...fallback,
     ...value,
-    baseColor: normalizeColor(value.baseColor, fallback.baseColor),
+    baseColor,
     roughness: normalizeUnit(value.roughness, fallback.roughness),
     metallic: normalizeUnit(value.metallic, fallback.metallic),
     albedo: normalizeUnit(value.albedo, fallback.albedo),
@@ -135,7 +139,48 @@ function normalizeMaterial(value: MaterialDef | undefined): MaterialDef {
       : undefined,
     emissiveIntensity: normalizeNonNegative(value.emissiveIntensity, 1),
     effects: Array.isArray(value.effects) ? value.effects : [],
+    procedural: normalizeProcedural(value.procedural, baseColor),
   };
+}
+
+function normalizeProcedural(
+  value: MaterialDef['procedural'],
+  baseColor: [number, number, number],
+): MaterialDef['procedural'] {
+  if (!value || value.type !== 'brick') return undefined;
+  const brickWidth = normalizeRange(value.brickSize?.[0], 0.04, 2, 0.24);
+  const brickHeight = normalizeRange(value.brickSize?.[1], 0.02, 1, 0.065);
+  const maxMortarWidth = Math.max(0.002, Math.min(0.03, Math.min(brickWidth, brickHeight) * 0.49));
+  const weathering = value.weathering || {};
+  return {
+    type: 'brick',
+    seed: normalizeInteger(value.seed, 0, 2_147_483_647, 1),
+    brickSize: [brickWidth, brickHeight],
+    mortarWidth: normalizeRange(value.mortarWidth, 0.002, maxMortarWidth, Math.min(0.01, maxMortarWidth)),
+    mortarDepth: normalizeRange(value.mortarDepth, 0, 0.02, 0.006),
+    bond: value.bond === 'stack' ? 'stack' : 'running',
+    secondaryColor: value.secondaryColor
+      ? normalizeColor(value.secondaryColor, deriveSecondaryColor(baseColor))
+      : deriveSecondaryColor(baseColor),
+    colorVariation: normalizeUnit(value.colorVariation, 0.12),
+    roughnessVariation: normalizeUnit(value.roughnessVariation, 0.12),
+    edgeWear: normalizeUnit(value.edgeWear, 0.05),
+    weathering: {
+      amount: normalizeUnit(weathering.amount, 0),
+      scale: normalizeRange(weathering.scale, 0.1, 100, 1.8),
+      efflorescence: normalizeUnit(weathering.efflorescence, 0),
+      verticalStreaks: normalizeUnit(weathering.verticalStreaks, 0),
+      baseDampness: normalizeUnit(weathering.baseDampness, 0),
+    },
+  };
+}
+
+function deriveSecondaryColor(baseColor: [number, number, number]): [number, number, number] {
+  return [
+    Math.min(1, baseColor[0] * 1.18 + 0.025),
+    Math.min(1, baseColor[1] * 1.12 + 0.012),
+    Math.min(1, baseColor[2] * 0.96 + 0.008),
+  ];
 }
 
 function normalizeColor(
@@ -167,6 +212,12 @@ function normalizeUnit(value: unknown, fallback: number): number {
 
 function normalizeRange(value: unknown, min: number, max: number, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value)
+    ? Math.min(max, Math.max(min, value))
+    : fallback;
+}
+
+function normalizeInteger(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value)
     ? Math.min(max, Math.max(min, value))
     : fallback;
 }

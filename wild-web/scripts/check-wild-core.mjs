@@ -89,6 +89,7 @@ try {
   await assertRightAngleWallJointCoverage(core);
   await assertArchitecturalWallAttributes(core);
   await assertInvalidRuntimeMaterialFallsBack(core);
+  await assertProceduralBrickMaterialPassesThrough(core);
 
   console.table(results);
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
@@ -330,6 +331,45 @@ async function assertInvalidRuntimeMaterialFallsBack(core) {
   const baseColor = entity.materialParams[0]?.baseColor;
   if (JSON.stringify(baseColor) !== JSON.stringify([0.5, 0.5, 0.5])) {
     throw new Error(`Invalid runtime material did not use fallback: ${JSON.stringify(baseColor)}`);
+  }
+}
+
+async function assertProceduralBrickMaterialPassesThrough(core) {
+  const source = {
+    meta: { version: '1.1', type: 'building', name: 'procedural-brick-runtime' },
+    geometry: {
+      elements: [{
+        type: 'wall', id: 'brick-wall', from: [0, 0, 0], to: [6, 3, 0],
+        thickness: 0.24, material: 'aged-brick',
+      }],
+    },
+    materials: {
+      'aged-brick': {
+        baseColor: [0.52, 0.11, 0.055], roughness: 0.84, metallic: 0, albedo: 1,
+        lightingCondition: 'D65_noon',
+        procedural: {
+          type: 'brick', seed: 42, brickSize: [0.24, 0.065],
+          mortarWidth: 0.01, weathering: { amount: 0.28, efflorescence: 0.22 },
+        },
+      },
+    },
+    behaviors: {},
+  };
+  const snapshot = JSON.stringify(source);
+  const entity = await core.reconstructEntity(source);
+  const procedural = entity.materialParams[0]?.procedural;
+  if (procedural?.type !== 'brick') throw new Error('Core 没有透传程序化红砖材质');
+  if (JSON.stringify(procedural.brickSize) !== JSON.stringify([0.24, 0.065])) {
+    throw new Error(`Core 改变了红砖米制尺寸: ${JSON.stringify(procedural.brickSize)}`);
+  }
+  if (procedural.mortarDepth !== 0.006 || procedural.bond !== 'running') {
+    throw new Error(`Core 没有补齐红砖默认参数: ${JSON.stringify(procedural)}`);
+  }
+  if (procedural.weathering.scale !== 1.8 || procedural.weathering.efflorescence !== 0.22) {
+    throw new Error(`Core 没有规范化风化参数: ${JSON.stringify(procedural.weathering)}`);
+  }
+  if (JSON.stringify(source) !== snapshot) {
+    throw new Error('程序化材质重建修改了源 Blueprint');
   }
 }
 

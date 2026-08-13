@@ -179,6 +179,90 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
 
         self.assertFalse(any("baseColor" in issue for issue in issues))
 
+    def test_valid_procedural_brick_material_is_accepted(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "brick"},
+            "geometry": {"elements": [{"id": "floor", "type": "floor"}]},
+            "materials": {
+                "aged_red_brick": {
+                    "baseColor": [0.52, 0.11, 0.055],
+                    "roughness": 0.84,
+                    "metallic": 0,
+                    "albedo": 1,
+                    "procedural": {
+                        "type": "brick",
+                        "seed": 42,
+                        "brickSize": [0.24, 0.065],
+                        "mortarWidth": 0.01,
+                        "mortarDepth": 0.006,
+                        "bond": "running",
+                        "secondaryColor": [0.68, 0.19, 0.08],
+                        "colorVariation": 0.14,
+                        "roughnessVariation": 0.16,
+                        "edgeWear": 0.06,
+                        "weathering": {
+                            "amount": 0.28,
+                            "scale": 1.8,
+                            "efflorescence": 0.22,
+                            "verticalStreaks": 0.14,
+                            "baseDampness": 0.1,
+                        },
+                    },
+                },
+            },
+        }
+
+        self.assertEqual(validate_blueprint_schema(blueprint), [])
+
+    def test_invalid_or_executable_procedural_material_fields_are_rejected(self):
+        cases = [
+            ({"type": "unknown"}, ".type 当前只支持 brick"),
+            ({"type": "brick", "seed": True}, ".seed 必须是"),
+            ({"type": "brick", "brickSize": [-1, 0.065]}, ".brickSize 必须是"),
+            ({"type": "brick", "brickSize": [0.24, 0.02], "mortarWidth": 0.011}, "最短边的一半"),
+            ({"type": "brick", "mortarDepth": 0.1}, ".mortarDepth 必须是"),
+            ({"type": "brick", "colorVariation": 2}, ".colorVariation 必须是"),
+            ({"type": "brick", "weathering": {"scale": 0}}, ".weathering.scale 必须是"),
+            ({"type": "brick", "shader": "void main(){}"}, "不支持的字段"),
+        ]
+        for procedural, expected in cases:
+            with self.subTest(procedural=procedural):
+                blueprint = {
+                    "meta": {"version": "1.1", "type": "building", "name": "brick"},
+                    "geometry": {"elements": []},
+                    "materials": {
+                        "broken": {
+                            "baseColor": [0.5, 0.1, 0.05],
+                            "roughness": 0.8,
+                            "metallic": 0,
+                            "albedo": 1,
+                            "procedural": procedural,
+                        },
+                    },
+                }
+                issues = validate_blueprint_schema(blueprint)
+                self.assertTrue(any(expected in issue for issue in issues), issues)
+
+    def test_procedural_material_cannot_mix_with_image_textures(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "brick"},
+            "geometry": {"elements": []},
+            "materials": {
+                "mixed": {
+                    "baseColor": [0.5, 0.1, 0.05],
+                    "roughness": 0.8,
+                    "metallic": 0,
+                    "albedo": 1,
+                    "procedural": {"type": "brick"},
+                    "textures": {},
+                },
+            },
+        }
+
+        issues = validate_blueprint_schema(blueprint)
+
+        self.assertTrue(any("不能同时使用 procedural 与图片纹理" in issue for issue in issues))
+
     def test_invalid_element_coordinate_is_rejected(self):
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "test"},

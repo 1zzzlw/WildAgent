@@ -16,7 +16,9 @@
 
 import * as THREE from 'three'
 import type { EmbeddedImageData, TextureImageData } from '../types/blueprint'
+import type { ProceduralMaterial } from '../wild-core/types'
 import { recordTextureLoad } from './textureLoadMonitor'
+import { applyProceduralMaterial } from './proceduralMaterials'
 
 let textureAnisotropy = 4
 let requestMaterialRender: () => void = () => {}
@@ -73,6 +75,7 @@ export interface MaterialParams {
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
+  procedural?: ProceduralMaterial
 }
 
 /**
@@ -188,7 +191,10 @@ export function createMaterialFromParams(
     material.aoMap = textureFactory(params.textures.ambientOcclusion, 'ambientOcclusion', false, params.uvScale)
   }
 
-  // 7. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
+  // 7. 无图片程序化材质只接受受控参数，Shader 实现固定在 renderer 内部。
+  applyProceduralMaterial(material, params.procedural, params.baseColor)
+
+  // 8. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
   // 只有已经验证为封闭实体的材质才通过 side: 'front' 显式开启背面剔除。
   material.side = params.side === 'front' ? THREE.FrontSide : THREE.DoubleSide
   
@@ -341,6 +347,7 @@ function materialSignature(params: MaterialParams): string {
     clearcoatRoughness: params.clearcoatRoughness,
     sheen: params.sheen,
     sheenColor: params.sheenColor,
+    procedural: params.procedural,
     embeddedImage: imageSignature(params.embeddedImage),
     textures: params.textures && {
       baseColor: imageSignature(params.textures.baseColor),

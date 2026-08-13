@@ -90,6 +90,7 @@ export interface MaterialParams {
   sheen?: number;
   sheenColor?: import('../../types').Color;
   emissiveIntensity?: number;
+  procedural?: import('../../types').MaterialDef['procedural'];
 }
 
 export interface EngineDiagnostic {

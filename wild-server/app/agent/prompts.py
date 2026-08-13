@@ -192,8 +192,9 @@ def build_architecture_plan_prompt(
 def build_material_plan_prompt(
     architecture_plan: dict,
     available_assets: list[dict],
+    procedural_presets: list[dict] | None = None,
 ) -> str:
-    """让模型设计材质意图，但只能引用服务端提供的 PBR 资产。"""
+    """让模型设计材质意图，只能引用可信 PBR 资产或受控程序化材质。"""
     import json as _json
     return f"""你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。
 
@@ -205,16 +206,25 @@ def build_material_plan_prompt(
 
 {_json.dumps(available_assets, ensure_ascii=False, indent=2)}
 
+# AVAILABLE_PROCEDURAL_PRESETS（唯一允许选择的程序化配方）
+
+{_json.dumps(procedural_presets or [], ensure_ascii=False, indent=2)}
+
 # 强制规则
 
 1. 你只设计材质意图，不生成纹理、不输出 URL、不修改灯光、曝光或阴影。
-2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值；没有合适资产必须使用 null，严禁猜测 ID。
+2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值；`proceduralPresetId` 只能逐字引用 AVAILABLE_PROCEDURAL_PRESETS 中存在的值；没有合适候选必须使用 null，严禁猜测 ID。
 3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；ground 和 accent 可选。
 4. 单个角色最多选择一个资产，总体保持主材、辅材、点缀的层级，不制造随机拼贴。
 5. stone/concrete/brick/wood/plaster/tile 的 metallic 不得超过 0.15；metal 的 metallic 应为 0.5–1。
 6. glass 不选择纹理资产，不设置 opacity；系统会应用受控物理玻璃预设。
 7. 若资产声明 recommendedRoles，只能用于其中列出的角色。
 8. baseColor 是 3 个 0–1 数值；roughness、metallic 是 0–1 数值。
+9. 用户即使只说“生成一个别墅”，你也必须结合建筑方案主动补齐主材、辅材、点缀、表面新旧程度和整体色板；“用户没说材质”不等于“不做材质设计”。不得反问用户逐项提供 Shader 参数。
+10. PBR 入库现在只要求一张 Base Color；`channels` 只有 `baseColor` 的资产也是完整合法候选。Normal/Roughness 等可选通道只表示增强质量，不能因为缺少它们就忽略该资产。
+11. 对 facade_primary 在 `assetId`、`proceduralPresetId` 和普通无图片材质中三选一。天然纹理、扫描质感或高匹配资产优先 PBR；规则砖墙、明确无贴图或需要可控老化时可选择程序化预设；二者都不合适时使用普通材质。
+12. `shaderAdjustments` 只允许 AVAILABLE_PROCEDURAL_PRESETS 声明的字段。强度只输出 `none/subtle/moderate/strong`；`mortarDepth` 只输出 `shallow/standard/deep`；`tone` 只输出 `default/light/dark/warm`；`cleanliness` 只输出 `clean/natural`。不要输出具体 uniform、GLSL、Shader 源码或未知字段。
+13. 只在建筑类型、风格、环境或材质叙事确实支持砖材时选择红砖预设；现代玻璃幕墙、木屋或石材立面不得为了使用 Shader 强行改成红砖。
 
 # 输出协议
 
@@ -223,7 +233,7 @@ def build_material_plan_prompt(
   "concept": "一句话材质概念",
   "palette": ["主色", "辅色", "点缀色"],
   "roles": [
-    {{"role":"facade_primary","assetId":null,"baseColor":[0.82,0.8,0.76],"roughness":0.72,"metallic":0}},
+    {{"role":"facade_primary","assetId":null,"proceduralPresetId":null,"shaderAdjustments":{{}},"baseColor":[0.82,0.8,0.76],"roughness":0.72,"metallic":0}},
     {{"role":"structure","assetId":null,"baseColor":[0.65,0.66,0.67],"roughness":0.76,"metallic":0}},
     {{"role":"floor","assetId":null,"baseColor":[0.5,0.5,0.5],"roughness":0.8,"metallic":0}},
     {{"role":"frame","assetId":null,"baseColor":[0.12,0.13,0.14],"roughness":0.3,"metallic":0.8}},

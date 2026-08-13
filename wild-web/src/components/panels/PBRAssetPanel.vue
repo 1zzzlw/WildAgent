@@ -8,6 +8,8 @@
         Ctrl + 左键可多选；左键点击视口空白处可取消选择。
       </div>
 
+      <ProceduralMaterialPanel />
+
       <label>素材名称</label>
       <el-input v-model="form.name" size="small" placeholder="例如：浅灰石材" />
       <label>材质 ID</label>
@@ -162,6 +164,8 @@ import { useAssetStore } from '../../stores/assetStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { createPatch } from '../../wild/scenePatch'
+import { createSelectedMaterialBindings } from '../../wild/materialBindings'
+import ProceduralMaterialPanel from './ProceduralMaterialPanel.vue'
 
 type FileKey = 'baseColor' | 'normal' | 'roughness' | 'metalness' | 'ambientOcclusion'
 
@@ -240,29 +244,11 @@ function setFile(key: FileKey, event: Event): void {
 
 function selectedBindings(materialName: string): SceneOperation[] {
   if (!sceneStore.document) return []
-  const selectedIds = new Set(selectionStore.selectedIds)
-  const operations: SceneOperation[] = []
-  for (const element of sceneStore.document.blueprint.geometry.elements) {
-    if (selectedIds.has(element.id)) {
-      operations.push({ op: 'update_element', id: element.id, changes: { material: materialName } })
-    }
-  }
-  for (const component of sceneStore.document.blueprint.geometry.components || []) {
-    if (!selectedIds.has(component.id)) continue
-    const materialField = component.type === 'door'
-      ? 'leafMaterial'
-      : component.type === 'window' || component.type === 'bay_window'
-        ? 'frameMaterial'
-        : component.type === 'light'
-          ? 'shadeMaterial'
-          : 'material'
-    operations.push({
-      op: 'update_component',
-      id: component.id,
-      changes: { [materialField]: materialName },
-    })
-  }
-  return operations
+  return createSelectedMaterialBindings(
+    sceneStore.document.blueprint,
+    selectionStore.selectedIds,
+    materialName,
+  )
 }
 
 async function registerAndApply(): Promise<void> {

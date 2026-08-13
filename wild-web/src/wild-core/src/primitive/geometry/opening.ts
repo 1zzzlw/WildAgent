@@ -43,6 +43,16 @@ export function buildOpening(params: OpeningParams): MeshData[] {
     );
   }
 
+  if (params._doorLeafDetail) {
+    appendDoorLeafDetails(
+      pushTriangle,
+      width,
+      height,
+      halfDepth,
+      params._doorLeafDetail,
+    );
+  }
+
   const geometry = new Float32Array(vertices);
   const indices = Uint32Array.from({ length: geometry.length / 3 }, (_, index) => index);
   const attributes = generateArchitecturalSurfaceAttributes(geometry);
@@ -67,6 +77,97 @@ export function buildOpening(params: OpeningParams): MeshData[] {
     },
     materialRef: material || 'default',
   }];
+}
+
+type TriangleWriter = (
+  a: [number, number, number],
+  b: [number, number, number],
+  c: [number, number, number],
+) => number;
+
+function appendDoorLeafDetails(
+  pushTriangle: TriangleWriter,
+  width: number,
+  height: number,
+  halfDepth: number,
+  detail: NonNullable<OpeningParams['_doorLeafDetail']>,
+): void {
+  const panelRelief = 0.008;
+  const handleRelief = 0.018;
+  const horizontalMargin = Math.max(0.06, Math.min(0.14, width * 0.14));
+  const verticalMargin = Math.max(0.16, Math.min(0.24, height * 0.1));
+  const gap = Math.max(0.04, Math.min(0.07, width * 0.06));
+  const usableWidth = width - horizontalMargin * 2 - gap * (detail.columns - 1);
+  const usableHeight = height - verticalMargin * 2 - gap * (detail.rows - 1);
+  const panelWidth = usableWidth / detail.columns;
+  const panelHeight = usableHeight / detail.rows;
+  if (panelWidth <= 0.04 || panelHeight <= 0.04) return;
+
+  for (const side of [-1, 1] as const) {
+    const panelMinZ = side > 0 ? halfDepth : -halfDepth - panelRelief;
+    const panelMaxZ = side > 0 ? halfDepth + panelRelief : -halfDepth;
+    for (let column = 0; column < detail.columns; column++) {
+      for (let row = 0; row < detail.rows; row++) {
+        const minX = -width / 2 + horizontalMargin + column * (panelWidth + gap);
+        const minY = -height / 2 + verticalMargin + row * (panelHeight + gap);
+        appendBox(
+          pushTriangle,
+          minX,
+          minX + panelWidth,
+          minY,
+          minY + panelHeight,
+          panelMinZ,
+          panelMaxZ,
+        );
+      }
+    }
+
+    const handleXs = detail.doubleDoor
+      ? [-gap * 0.65, gap * 0.65]
+      : [
+          detail.hingeSide === 'left'
+            ? width / 2 - horizontalMargin * 0.65
+            : -width / 2 + horizontalMargin * 0.65,
+        ];
+    const handleMinZ = side > 0 ? halfDepth : -halfDepth - handleRelief;
+    const handleMaxZ = side > 0 ? halfDepth + handleRelief : -halfDepth;
+    for (const handleX of handleXs) {
+      appendBox(
+        pushTriangle,
+        handleX - 0.018,
+        handleX + 0.018,
+        -0.12,
+        0.12,
+        handleMinZ,
+        handleMaxZ,
+      );
+    }
+  }
+}
+
+function appendBox(
+  pushTriangle: TriangleWriter,
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+  minZ: number,
+  maxZ: number,
+): void {
+  const corners: Array<[number, number, number]> = [
+    [minX, minY, minZ], [maxX, minY, minZ],
+    [maxX, maxY, minZ], [minX, maxY, minZ],
+    [minX, minY, maxZ], [maxX, minY, maxZ],
+    [maxX, maxY, maxZ], [minX, maxY, maxZ],
+  ];
+  for (const [a, b, c, d] of [
+    [0, 3, 2, 1], [4, 5, 6, 7],
+    [0, 1, 5, 4], [3, 7, 6, 2],
+    [0, 4, 7, 3], [1, 2, 6, 5],
+  ]) {
+    pushTriangle(corners[a], corners[b], corners[c]);
+    pushTriangle(corners[a], corners[c], corners[d]);
+  }
 }
 
 function buildOpeningContour(

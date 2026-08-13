@@ -9,8 +9,11 @@ const server = await createServer({
 })
 
 try {
-  const { createMaterialFromParams } = await server.ssrLoadModule(
+  const { createMaterialFromParams, MaterialCache } = await server.ssrLoadModule(
     '/src/renderer/materialAdapter.ts',
+  )
+  const { normalizeProceduralBrick } = await server.ssrLoadModule(
+    '/src/renderer/proceduralMaterials/index.ts',
   )
   const { meshDataToGeometry } = await server.ssrLoadModule(
     '/src/renderer/meshDataToGeometry.ts',
@@ -94,6 +97,77 @@ try {
   assert.equal(glass.transparent, false)
   assert.equal(glass.side, 2, '薄玻璃必须双面渲染')
 
+  const brickParams = {
+    baseColor: [0.52, 0.11, 0.055],
+    roughness: 0.84,
+    metallic: 0,
+    albedo: 1,
+    procedural: {
+      type: 'brick',
+      seed: 42,
+      brickSize: [0.24, 0.065],
+      mortarWidth: 0.01,
+      mortarDepth: 0.006,
+      bond: 'running',
+      colorVariation: 0.14,
+      roughnessVariation: 0.16,
+      edgeWear: 0.06,
+      weathering: {
+        amount: 0.28,
+        scale: 1.8,
+        efflorescence: 0.22,
+        verticalStreaks: 0.14,
+        baseDampness: 0.1,
+      },
+    },
+  }
+  const brick = createMaterialFromParams(brickParams)
+  assert.equal(brick.userData.wildProcedural?.type, 'brick')
+  assert.equal(brick.customProgramCacheKey(), 'wild-procedural:brick-v1')
+  const shader = {
+    uniforms: {},
+    vertexShader: '#include <common>\nvoid main() {\n#include <uv_vertex>\n}',
+    fragmentShader: [
+      '#include <common>',
+      'void main() {',
+      '#include <map_fragment>',
+      '#include <roughnessmap_fragment>',
+      '#include <normal_fragment_maps>',
+      '}',
+    ].join('\n'),
+  }
+  brick.onBeforeCompile(shader)
+  assert.ok(shader.vertexShader.includes('vWildSurfaceUv = uv'))
+  assert.ok(shader.fragmentShader.includes('wildMortarMask'))
+  assert.ok(shader.fragmentShader.includes('wildEfflorescenceMask'))
+  assert.ok(shader.fragmentShader.includes('wildSurfaceHeight'))
+  assert.deepEqual(shader.uniforms.wildBrickSize.value.toArray(), [0.24, 0.065])
+  assert.equal(
+    normalizeProceduralBrick({ type: 'brick', brickSize: [2, 1], mortarWidth: 1 }, [0.5, 0.1, 0.05]).mortarWidth,
+    0.03,
+    'renderer 防御性归一化仍必须遵守协议的砖缝宽度上限',
+  )
+
+  const unsupportedProcedural = createMaterialFromParams({
+    baseColor: [0.5, 0.5, 0.5], roughness: 0.8, metallic: 0, albedo: 1,
+    procedural: { type: 'future-material' },
+  })
+  assert.equal(unsupportedProcedural.userData.wildProcedural, undefined)
+
+  const materialCache = new MaterialCache()
+  const cachedBrick = materialCache.getOrCreate('brick', brickParams, false)
+  const changedBrick = materialCache.getOrCreate('brick', {
+    ...brickParams,
+    procedural: { ...brickParams.procedural, brickSize: [0.3, 0.08] },
+  }, false)
+  assert.notEqual(cachedBrick, changedBrick, '程序化参数变化必须更新材质缓存实例')
+  assert.equal(
+    cachedBrick.customProgramCacheKey(),
+    changedBrick.customProgramCacheKey(),
+    '数值参数变化不应生成不同的 GPU Program',
+  )
+  materialCache.clear()
+
   const geometry = meshDataToGeometry({
     geometry: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
     indices: new Uint32Array([0, 1, 2]),
@@ -113,7 +187,9 @@ try {
   auditedSolid.dispose()
   tintedTexture.dispose()
   glass.dispose()
-  console.log('Rendering pipeline check passed: compatible double-sided solids, explicit front-side solids, physical glass and AO UVs.')
+  brick.dispose()
+  unsupportedProcedural.dispose()
+  console.log('Rendering pipeline check passed: solids, physical glass, AO UVs and procedural brick shader.')
 } finally {
   await server.close()
 }

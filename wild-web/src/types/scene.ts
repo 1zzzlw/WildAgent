@@ -125,6 +125,7 @@ export interface MaterialParams {
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
+  procedural?: import('../wild-core/types').ProceduralMaterial
 }
 
 export interface EngineDiagnostic {
