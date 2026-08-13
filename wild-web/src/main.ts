@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import {
   ElButton,
   ElColorPicker,
+  ElDialog,
   ElDropdown,
   ElDropdownItem,
   ElDropdownMenu,
@@ -17,6 +18,7 @@ import {
 } from 'element-plus'
 import 'element-plus/es/components/button/style/css'
 import 'element-plus/es/components/color-picker/style/css'
+import 'element-plus/es/components/dialog/style/css'
 import 'element-plus/es/components/dropdown/style/css'
 import 'element-plus/es/components/icon/style/css'
 import 'element-plus/es/components/input/style/css'
@@ -39,6 +41,7 @@ const pinia = createPinia()
 const elementPlusComponents = [
   ElButton,
   ElColorPicker,
+  ElDialog,
   ElDropdown,
   ElDropdownItem,
   ElDropdownMenu,
