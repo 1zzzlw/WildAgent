@@ -108,6 +108,8 @@ def resolve_material_plan(
     manifests: list[dict[str, Any]],
     architecture_plan: dict[str, Any] | None = None,
     user_message: str = "",
+    *,
+    procedural_materials_enabled: bool = False,
 ) -> dict[str, Any]:
     """把模型意图限制为固定角色、真实 assetId 和物理合理参数。"""
     by_id = {
@@ -126,8 +128,11 @@ def resolve_material_plan(
     resolved_assets: dict[str, dict[str, Any]] = {}
     rejected_asset_ids: list[str] = []
     rejected_procedural_preset_ids: list[str] = []
-    automatic_preset = infer_brick_preset(
-        f"{user_message}\n{json.dumps(architecture_plan or {}, ensure_ascii=False)}"
+    automatic_preset = (
+        infer_brick_preset(
+            f"{user_message}\n{json.dumps(architecture_plan or {}, ensure_ascii=False)}"
+        )
+        if procedural_materials_enabled else None
     )
     stable_context = json.dumps(
         {"architecture": architecture_plan or {}, "request": user_message},
@@ -150,7 +155,7 @@ def resolve_material_plan(
             rejected_asset_ids.append(str(asset_id))
             asset_id = None
 
-        preset_id = requested.get("proceduralPresetId")
+        preset_id = requested.get("proceduralPresetId") if procedural_materials_enabled else None
         if role == "facade_primary" and not preset_id and not requested.get("procedural"):
             preset_id = automatic_preset
         recipe = None
@@ -196,7 +201,7 @@ def resolve_material_plan(
                 "uvScale": _positive_pair(defaults.get("uvScale"), [1, 1]),
             })
             resolved_assets[str(asset_id)] = deepcopy(asset)
-        elif role == "facade_primary":
+        elif role == "facade_primary" and procedural_materials_enabled:
             procedural = recipe.get("procedural") if recipe else _safe_procedural_brick(requested.get("procedural"))
             if procedural:
                 material["procedural"] = procedural
@@ -270,16 +275,18 @@ async def material_planner(state: GenerationState) -> dict:
     architecture_plan = state.get("architecture_plan") or {}
     manifests = asset_storage.list_manifests()
     catalog = compact_asset_catalog(manifests)
-    procedural_catalog = compact_procedural_catalog()
+    procedural_materials_enabled = state.get("procedural_materials_enabled") is True
+    procedural_catalog = compact_procedural_catalog() if procedural_materials_enabled else []
     prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
     raw_plan = None
     error = None
     token_usage = None
     callback = get_reasoning_callback()
     if callback:
+        procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
         await callback(
             "material_plan",
-            "正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材与程序化配方...\n",
+            f"正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材{procedural_detail}...\n",
         )
     try:
         response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
@@ -305,6 +312,7 @@ async def material_planner(state: GenerationState) -> dict:
         manifests,
         architecture_plan,
         str(state.get("user_message") or ""),
+        procedural_materials_enabled=procedural_materials_enabled,
     )
     if callback:
         selected = [
@@ -327,6 +335,7 @@ async def material_planner(state: GenerationState) -> dict:
             "selected_procedural_count": sum(
                 1 for item in plan["roles"] if item.get("proceduralPresetId")
             ),
+            "procedural_materials_enabled": procedural_materials_enabled,
             "rejected_asset_ids": plan["rejectedAssetIds"],
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,

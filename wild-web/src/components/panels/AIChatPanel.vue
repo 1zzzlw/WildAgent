@@ -95,6 +95,12 @@
         <el-switch :model-value="agentStore.precisionMode" size="small" :disabled="agentStore.isProcessing"
           @change="handlePrecisionModeChange" />
       </div>
+      <div class="thinking-toggle shader-toggle"
+        :title="agentStore.proceduralMaterialsEnabled ? '已允许 AI 自动生成程序化纹理 Shader' : '默认关闭；开启后 AI 才能自动生成程序化纹理 Shader'">
+        <span>Shader</span>
+        <el-switch :model-value="agentStore.proceduralMaterialsEnabled" size="small"
+          :disabled="agentStore.isProcessing" @change="handleProceduralMaterialsChange" />
+      </div>
       <el-button v-if="agentStore.connectionStatus === 'disconnected'" text size="small" class="reconnect-btn"
         @click="handleReconnect">
         重新连接
@@ -265,6 +271,10 @@ function handlePrecisionModeChange(value: boolean | string | number) {
   if (enabled) {
     agentStore.setThinkingMode(true)
   }
+}
+
+function handleProceduralMaterialsChange(value: boolean | string | number) {
+  agentStore.setProceduralMaterialsEnabled(Boolean(value))
 }
 
 // ---------- 连接状态 ----------
@@ -1095,7 +1105,8 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .thinking-toggle,
-.precision-toggle {
+.precision-toggle,
+.shader-toggle {
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1106,7 +1117,8 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .thinking-toggle :deep(.el-switch.is-checked .el-switch__core),
-.precision-toggle :deep(.el-switch.is-checked .el-switch__core) {
+.precision-toggle :deep(.el-switch.is-checked .el-switch__core),
+.shader-toggle :deep(.el-switch.is-checked .el-switch__core) {
   background: var(--accent);
   border-color: var(--accent);
 }

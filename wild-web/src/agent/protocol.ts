@@ -14,6 +14,7 @@
  * - selection: 当前选中的构件 ID
  * - scene_revision: 当前场景版本号
  * - thinking_mode: 是否让模型开启思考并流式返回 reasoning_content
+ * - procedural_materials_enabled: 是否允许 AI 自动生成程序化 Shader
  * 
  * 这些上下文信息帮助 Agent：
  * - 快速了解场景状态
@@ -35,7 +36,8 @@ export function createUserMessageRequest(
   selection: string[],
   blueprint?: Record<string, unknown>,
   thinkingMode: boolean = false,
-  precisionMode: boolean = false
+  precisionMode: boolean = false,
+  proceduralMaterialsEnabled: boolean = false,
 ): UserMessageRequest {
   return {
     protocol_version: AGENT_PROTOCOL_VERSION,
@@ -50,5 +52,6 @@ export function createUserMessageRequest(
     blueprint,
     thinking_mode: thinkingMode,
     precision_mode: precisionMode,
+    procedural_materials_enabled: proceduralMaterialsEnabled,
   }
 }

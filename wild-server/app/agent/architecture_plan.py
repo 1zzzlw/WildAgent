@@ -1906,6 +1906,79 @@ def _planned_terrace_railing_slots(
     }]
 
 
+def _derived_balcony_slots(
+    opening_slots: list[dict[str, Any]],
+    walls: list[dict[str, Any]],
+    *,
+    count: int,
+    minimum_y: float,
+    requested_width: float | None,
+) -> list[dict[str, Any]]:
+    """从上层立面开口推导阳台槽位，使悬挑板与入口轴线对齐。"""
+    if count <= 0:
+        return []
+    wall_by_id = {str(wall["id"]): wall for wall in walls}
+    candidates: list[tuple[tuple[int, float, str], dict[str, Any]]] = []
+    for opening in opening_slots:
+        wall = wall_by_id.get(str(opening.get("wall_id") or ""))
+        if (
+            opening.get("type") != "window"
+            or opening.get("role")
+            or not wall
+            or float(wall["base_y"]) <= minimum_y + 0.25
+        ):
+            continue
+        wall_length = float(wall["length"])
+        opening_width = float(opening["width"])
+        target_width = (
+            float(requested_width)
+            if isinstance(requested_width, (int, float)) and not isinstance(requested_width, bool)
+            else max(2.4, min(3.2, opening_width + 1.2))
+        )
+        width = min(wall_length, max(opening_width, target_width))
+        center = float(opening["from"][0]) + opening_width / 2
+        edge_clearance = min(0.18, max(0.0, (wall_length - width) / 2))
+        left = max(
+            edge_clearance,
+            min(wall_length - width - edge_clearance, center - width / 2),
+        )
+        # 夹到墙边时无法保持轴线对齐的候选不自动采用。
+        if abs(left + width / 2 - center) > 0.05:
+            continue
+        facing = str(opening.get("facing") or "")
+        rank = (
+            {"front": 0, "back": 1, "left": 2, "right": 3}.get(facing, 4),
+            abs(center - wall_length / 2),
+            str(opening.get("id") or ""),
+        )
+        candidates.append((rank, {
+            "id": str(opening["id"]).replace(":window:", ":balcony:"),
+            "wall_id": opening["wall_id"],
+            "from": [round(left, 3), round(float(wall["base_y"]), 3), 0.0],
+            "width": round(width, 3),
+            "opening_slot_id": opening["id"],
+        }))
+
+    ordered = [candidate for _, candidate in sorted(candidates, key=lambda item: item[0])]
+    selected: list[dict[str, Any]] = []
+    used_walls: set[str] = set()
+    for candidate in ordered:
+        wall_id = str(candidate["wall_id"])
+        if wall_id in used_walls:
+            continue
+        selected.append(candidate)
+        used_walls.add(wall_id)
+        if len(selected) >= count:
+            return selected
+    for candidate in ordered:
+        if candidate in selected:
+            continue
+        selected.append(candidate)
+        if len(selected) >= count:
+            break
+    return selected
+
+
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
@@ -2121,6 +2194,25 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         for slot in slots
         if slot.get("role") == "balcony_access"
     ]
+    balcony_limits = quotas.get("balcony", {})
+    balcony_minimum = (
+        int(balcony_limits.get("min", 0))
+        if isinstance(balcony_limits, dict)
+        and isinstance(balcony_limits.get("min", 0), (int, float))
+        else 0
+    )
+    if len(balcony_slots) < balcony_minimum:
+        balcony_slots.extend(_derived_balcony_slots(
+            slots,
+            walls,
+            count=balcony_minimum - len(balcony_slots),
+            minimum_y=min_y,
+            requested_width=(
+                float(balcony_width)
+                if isinstance(balcony_width, (int, float)) and not isinstance(balcony_width, bool)
+                else None
+            ),
+        ))
     roof_slots = _planned_roof_slots(plan, realization)
     if roof_slots:
         quotas["roof"] = {

@@ -6,6 +6,7 @@ from app.agent.nodes.material_plan_node import (
 from app.agent.procedural_material_recipes import (
     compact_procedural_catalog,
     resolve_brick_preset,
+    without_procedural_materials,
 )
 from app.agent.prompts import build_material_plan_prompt
 
@@ -146,7 +147,7 @@ def test_resolver_accepts_only_sanitized_procedural_brick_for_facade():
         ],
     }
 
-    plan = resolve_material_plan(raw, [])
+    plan = resolve_material_plan(raw, [], procedural_materials_enabled=True)
     by_role = {item["role"]: item for item in plan["roles"]}
     procedural = by_role["facade_primary"]["material"]["procedural"]
 
@@ -165,7 +166,7 @@ def test_texture_asset_takes_precedence_over_procedural_material():
             "assetId": ASSET_ID,
             "procedural": {"type": "brick"},
         }],
-    }, [_asset()])
+    }, [_asset()], procedural_materials_enabled=True)
     facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
 
     assert facade["material"]["textureSet"] == ASSET_ID
@@ -188,8 +189,14 @@ def test_resolver_expands_semantic_shader_preset_with_stable_parameters():
             },
         }],
     }
-    first = resolve_material_plan(raw, [], {"concept": "warm villa"}, "生成一个别墅")
-    second = resolve_material_plan(raw, [], {"concept": "warm villa"}, "生成一个别墅")
+    first = resolve_material_plan(
+        raw, [], {"concept": "warm villa"}, "生成一个别墅",
+        procedural_materials_enabled=True,
+    )
+    second = resolve_material_plan(
+        raw, [], {"concept": "warm villa"}, "生成一个别墅",
+        procedural_materials_enabled=True,
+    )
     facade = next(item for item in first["roles"] if item["role"] == "facade_primary")
     procedural = facade["material"]["procedural"]
 
@@ -235,18 +242,73 @@ def test_brick_recipe_varies_visual_parameters_by_stable_context():
     assert first_visual != second_visual
 
 
+def test_procedural_shader_requires_explicit_opt_in():
+    raw = {
+        "roles": [{
+            "role": "facade_primary",
+            "proceduralPresetId": "brick_aged_red",
+            "procedural": {"type": "brick"},
+        }],
+    }
+
+    disabled = resolve_material_plan(
+        raw,
+        [],
+        {"concept": "brick villa"},
+        "生成红砖别墅",
+        procedural_materials_enabled=False,
+    )
+    enabled = resolve_material_plan(
+        raw,
+        [],
+        {"concept": "brick villa"},
+        "生成红砖别墅",
+        procedural_materials_enabled=True,
+    )
+    disabled_facade = next(
+        item for item in disabled["roles"] if item["role"] == "facade_primary"
+    )
+    enabled_facade = next(
+        item for item in enabled["roles"] if item["role"] == "facade_primary"
+    )
+
+    assert disabled_facade["proceduralPresetId"] is None
+    assert "procedural" not in disabled_facade["material"]
+    assert enabled_facade["proceduralPresetId"] == "brick_aged_red"
+    assert enabled_facade["material"]["procedural"]["type"] == "brick"
+
+
+def test_delivery_shader_guard_does_not_mutate_source_blueprint():
+    source = {
+        "materials": {
+            "wall": {
+                "baseColor": [0.5, 0.1, 0.05],
+                "procedural": {"type": "brick"},
+            },
+            "roof": {"baseColor": [0.2, 0.2, 0.2]},
+        },
+    }
+
+    guarded = without_procedural_materials(source)
+
+    assert "procedural" not in guarded["materials"]["wall"]
+    assert source["materials"]["wall"]["procedural"] == {"type": "brick"}
+
+
 def test_resolver_uses_deterministic_brick_fallback_only_for_explicit_brick_intent():
     brick_plan = resolve_material_plan(
         None,
         [],
         {"concept": "乡村住宅"},
         "生成一栋有轻微返碱红砖墙的别墅",
+        procedural_materials_enabled=True,
     )
     generic_plan = resolve_material_plan(
         None,
         [],
         {"concept": "现代别墅"},
         "生成一个别墅",
+        procedural_materials_enabled=True,
     )
     brick_facade = next(item for item in brick_plan["roles"] if item["role"] == "facade_primary")
     generic_facade = next(item for item in generic_plan["roles"] if item["role"] == "facade_primary")
@@ -263,7 +325,7 @@ def test_resolver_rejects_unknown_procedural_preset_id():
             "role": "facade_primary",
             "proceduralPresetId": "brick_for_one_special_building",
         }],
-    }, [])
+    }, [], procedural_materials_enabled=True)
     facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
 
     assert facade["proceduralPresetId"] is None
@@ -278,7 +340,7 @@ def test_weathering_none_disables_inherited_weather_effects():
             "proceduralPresetId": "brick_aged_red",
             "shaderAdjustments": {"weathering": "none"},
         }],
-    }, [])
+    }, [], procedural_materials_enabled=True)
     facade = next(item for item in plan["roles"] if item["role"] == "facade_primary")
 
     weathering = facade["material"]["procedural"]["weathering"]

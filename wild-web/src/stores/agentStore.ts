@@ -49,6 +49,7 @@ type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error
 
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
+const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
@@ -71,6 +72,10 @@ function loadThinkingMode(): boolean {
 
 function loadPrecisionMode(): boolean {
   return localStorage.getItem(STORAGE_KEY_PRECISION_MODE) === 'true'
+}
+
+function loadProceduralMaterialsEnabled(): boolean {
+  return localStorage.getItem(STORAGE_KEY_PROCEDURAL_MATERIALS) === 'true'
 }
 
 // ── 消息持久化工具 ──
@@ -224,6 +229,9 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 精密模式：LangGraph 分片并行 + 详细诊断日志 */
   const precisionMode = ref(loadPrecisionMode())
+
+  /** AI 是否允许自动选择程序化 Shader；默认关闭，由用户显式开启。 */
+  const proceduralMaterialsEnabled = ref(loadProceduralMaterialsEnabled())
 
   /** 精密模式：节点生成进度列表 */
   const generatingNodes = ref<GeneratingNode[]>([])
@@ -832,6 +840,11 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
+  function setProceduralMaterialsEnabled(enabled: boolean) {
+    proceduralMaterialsEnabled.value = enabled
+    localStorage.setItem(STORAGE_KEY_PROCEDURAL_MATERIALS, String(enabled))
+  }
+
   function updateGeneratingNode(
     nodeName: string,
     status: GeneratingNode['status'],
@@ -969,6 +982,8 @@ export const useAgentStore = defineStore('agent', () => {
     debugLogs,
     sessionMetrics,
     setPrecisionMode,
+    proceduralMaterialsEnabled,
+    setProceduralMaterialsEnabled,
     updateGeneratingNode,
     addDebugLog,
     setSessionMetrics,

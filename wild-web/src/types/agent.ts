@@ -72,6 +72,7 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
   precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
+  procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
 }
 
 export interface ResumeGenerationRequest extends AgentProtocolEnvelope {

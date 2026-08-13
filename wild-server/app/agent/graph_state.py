@@ -25,6 +25,7 @@ class GenerationState(TypedDict, total=False):
     current_blueprint: dict | None
     selection: list[str]
     thinking_mode: bool
+    procedural_materials_enabled: bool
     
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"

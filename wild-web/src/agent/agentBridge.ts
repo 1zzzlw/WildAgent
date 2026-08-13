@@ -371,7 +371,8 @@ export class AgentBridge {
       selection,
       sceneStore.document.blueprint as Record<string, unknown>,
       agentStore.thinkingMode,
-      agentStore.precisionMode
+      agentStore.precisionMode,
+      agentStore.proceduralMaterialsEnabled,
     )
 
     agentStore.clearPipelineSteps()

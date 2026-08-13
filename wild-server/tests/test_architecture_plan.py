@@ -617,6 +617,52 @@ def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None
     assert railings[0]["path"][0][1] == 3.4
 
 
+def test_regular_balcony_slot_is_centered_on_an_upper_facade_opening() -> None:
+    blueprint = _two_storey_blueprint()
+    plan, _ = select_architecture_plan({}, "生成带阳台的两层现代别墅")
+    plan["component_quota"]["balcony"] = {"min": 1, "max": 2}
+
+    brief = resolve_facade_layout(blueprint, plan)
+    assert len(brief["balcony_slots"]) == 1
+    balcony_slot = brief["balcony_slots"][0]
+    host_openings = [
+        slot for slot in brief["opening_slots"]
+        if slot["wall_id"] == balcony_slot["wall_id"]
+        and slot["type"] in {"door", "window"}
+        and slot["from"][1] > 0
+        and min(
+            slot["from"][0] + slot["width"],
+            balcony_slot["from"][0] + balcony_slot["width"],
+        ) > max(slot["from"][0], balcony_slot["from"][0])
+    ]
+    assert host_openings
+    opening = min(
+        host_openings,
+        key=lambda slot: abs(
+            slot["from"][0] + slot["width"] / 2
+            - balcony_slot["from"][0] - balcony_slot["width"] / 2
+        ),
+    )
+    assert abs(
+        opening["from"][0] + opening["width"] / 2
+        - balcony_slot["from"][0] - balcony_slot["width"] / 2
+    ) < 0.001
+
+    balconies, stats = conform_balconies_to_slots([{
+        "type": "balcony",
+        "id": "misaligned_balcony",
+        "parentWall": balcony_slot["wall_id"],
+        "from": [0.1, 3.2, 0],
+        "width": 3,
+        "depth": 1.3,
+        "slabThickness": 0.18,
+    }], brief)
+
+    assert stats["snapped"] == 1
+    assert balconies[0]["from"] == balcony_slot["from"]
+    assert balconies[0]["width"] == balcony_slot["width"]
+
+
 def test_single_storey_detailed_wings_remain_distinct_volume_footprints() -> None:
     message = "生成一座复杂的单层错落别墅"
     complexity = resolve_complexity_profile(message, precision_mode=True)

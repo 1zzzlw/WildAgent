@@ -52,6 +52,7 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from app.agent.protocol import AGENT_PROTOCOL_VERSION, versioned_event
+from app.agent.procedural_material_recipes import without_procedural_materials
 from app.services.agent_service import agent_service
 from app.services.agent_delivery import (
     ArtifactSaveError,
@@ -387,6 +388,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "current_blueprint": current_blueprint,
         "selection": selection,
         "thinking_mode": thinking_mode,
+        "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
         "max_retries": 3,
         "retry_count": 0,
         "component_fragments": {},
@@ -895,6 +897,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             "finished", "finished", "error", "生成失败", upstream_failure,
         )
         return
+    if data.get("procedural_materials_enabled") is not True:
+        merged_blueprint = without_procedural_materials(merged_blueprint)
 
     validation_results = final_state.get("validation_results", [])
     validation_errors = final_state.get("validation_error_count", 0)
@@ -1127,9 +1131,14 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             )
 
         await send_step("saving", "正在保存蓝图文件...")
+        delivery_blueprint = (
+            result.blueprint
+            if data.get("procedural_materials_enabled") is True
+            else without_procedural_materials(result.blueprint)
+        )
         try:
             delivery = prepare_blueprint_delivery(
-                result.blueprint,
+                delivery_blueprint,
                 session_id,
                 result.pipeline_results,
                 status="failed" if result.error else "complete",

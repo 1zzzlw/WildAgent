@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from typing import Any
 
 
@@ -173,6 +174,18 @@ def infer_brick_preset(text: str) -> str | None:
     if any(term in normalized for term in ("旧", "老", "风化", "年代感", "aged", "weathered")):
         return "brick_aged_red"
     return "brick_new_red"
+
+
+def without_procedural_materials(blueprint: dict[str, Any]) -> dict[str, Any]:
+    """返回移除程序化材质字段的 Blueprint 副本，用于服务端最终兜底。"""
+    result = deepcopy(blueprint)
+    materials = result.get("materials")
+    if not isinstance(materials, dict):
+        return result
+    for material in materials.values():
+        if isinstance(material, dict):
+            material.pop("procedural", None)
+    return result
 
 
 def _level_value(field: str, value: Any) -> float | None:
