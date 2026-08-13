@@ -13,6 +13,7 @@ import {
   compileComponentCached,
   getComponentCompilationCacheStats,
 } from './componentCache'
+import { applyComponentMaterialDefaults, COMPONENT_MATERIAL } from './componentMaterials'
 
 /**
  * 将 geometry.components 展开为 wild-core 已支持的 geometry.elements。
@@ -23,14 +24,16 @@ import {
 export function compileBlueprintComponents(
   source: Blueprint,
 ): ComponentCompilationResult {
-  const components = source.geometry.components || []
-  if (components.length === 0) {
+  if ((source.geometry.components || []).length === 0) {
     return { blueprint: source, diagnostics: [], mapping: createEmptyMapping() }
   }
 
   const blueprint = cloneJson(source)
+  const components = blueprint.geometry.components || []
+  const materials = blueprint.materials || (blueprint.materials = {})
+  applyComponentMaterialDefaults(components, materials)
   const elements = blueprint.geometry.elements || []
-  const sourceElements = source.geometry.elements || []
+  const sourceElements = blueprint.geometry.elements || []
   const diagnostics: ComponentCompileDiagnostic[] = []
   const mapping = createEmptyMapping()
   const usedIds = new Set(elements.map(element => element.id))
@@ -110,6 +113,7 @@ export {
   registerComponentCompiler,
   clearComponentCompilationCache,
   getComponentCompilationCacheStats,
+  COMPONENT_MATERIAL,
 }
 export type {
   ComponentCompilationResult,

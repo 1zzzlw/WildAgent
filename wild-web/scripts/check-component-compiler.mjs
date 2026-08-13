@@ -89,6 +89,7 @@ try {
   assertCapabilities(compiler)
   assertGeometryEvaluationCases(compiler)
   assertRepresentativeComponents(compiler)
+  assertDefaultComponentMaterials(compiler)
   await assertDoorWindowDepthAlignment(compiler)
   await assertInteractiveWindowSashes(compiler)
   await assertInteractiveLight(compiler)
@@ -618,13 +619,16 @@ async function assertInteractiveLight(compiler) {
   const result = compiler.compileBlueprintComponents(parsed)
   assertEqual(result.diagnostics, [], '灯泡不应产生编译诊断')
   const bulb = result.blueprint.geometry.elements.find(element => element.id === 'movable_bulb__bulb')
+  const emitter = result.blueprint.geometry.elements.find(element => element.id === 'movable_bulb__emitter')
   const base = result.blueprint.geometry.elements.find(element => element.id === 'movable_bulb__base')
   if (bulb?._interaction?.kind !== 'light') throw new Error('灯泡缺少灯光交互元数据')
-  if (!bulb?._draggable || !base?._draggable) throw new Error('灯具子网格没有继承拖动开关')
+  if (!bulb?._draggable || !emitter?._draggable || !base?._draggable) throw new Error('灯具子网格没有继承拖动开关')
+  assertEqual(bulb.material, compiler.COMPONENT_MATERIAL.bulbGlass, '灯泡外壳没有使用玻璃材质')
+  assertEqual(emitter?.material, compiler.COMPONENT_MATERIAL.bulbEmitter, '灯泡缺少发光内芯材质')
 
   const entity = await compiler.reconstructWildEntity(parsed)
   const meshes = entity.meshes.filter(mesh => mesh.elementId?.startsWith('movable_bulb__'))
-  if (meshes.length !== 2 || meshes.some(mesh => !mesh.draggable)) {
+  if (meshes.length !== 3 || meshes.some(mesh => !mesh.draggable)) {
     throw new Error('Core 没有透传灯具拖动元数据')
   }
   const group = compiler.createSceneGroupFromEntity(entity)
@@ -641,9 +645,9 @@ async function assertInteractiveLight(compiler) {
   const tableResult = compiler.compileBlueprintComponents(tableSource)
   assertEqual(tableResult.diagnostics, [], '台灯不应产生编译诊断')
   assertTypesByPrefix(tableResult.blueprint.geometry.elements, 'table_lamp__', [
-    'primitive', 'primitive', 'primitive', 'primitive',
+    'primitive', 'primitive', 'primitive', 'primitive', 'primitive',
   ])
-  for (const suffix of ['bulb', 'base', 'stem', 'shade']) {
+  for (const suffix of ['bulb', 'emitter', 'base', 'stem', 'shade']) {
     if (!tableResult.blueprint.geometry.elements.some(element => element.id === `table_lamp__${suffix}`)) {
       throw new Error(`台灯缺少 ${suffix} 子构件`)
     }
@@ -676,6 +680,32 @@ async function assertInteractiveLight(compiler) {
     if (originalRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame
     else globalThis.requestAnimationFrame = originalRequestAnimationFrame
   }
+}
+
+function assertDefaultComponentMaterials(compiler) {
+  const source = createBlueprint()
+  source.geometry.components = [{
+    type: 'window', id: 'default_window', parentWall: 'front_wall',
+    from: [1, 0.9, 0], width: 1.5, height: 1.2,
+  }]
+  const result = compiler.compileBlueprintComponents(source)
+  const frame = result.blueprint.geometry.elements.find(element => element.id === 'default_window__frame_left')
+  const pane = result.blueprint.geometry.elements.find(element => element.id === 'default_window__opening')
+  assertEqual(frame?.material, compiler.COMPONENT_MATERIAL.frame, '默认窗框仍在使用白色回退材质')
+  assertEqual(pane?.material, compiler.COMPONENT_MATERIAL.glass, '默认窗玻璃没有使用玻璃材质')
+  assertEqual(result.blueprint.materials[compiler.COMPONENT_MATERIAL.glass]?.materialClass, 'glass', '玻璃语义材质未注入')
+  if (source.geometry.components[0].frameMaterial || Object.keys(source.materials).length > 0) {
+    throw new Error('组合构件材质补全修改了源 Blueprint')
+  }
+
+  source.geometry.components[0].frameMaterial = 'custom_frame'
+  source.materials.custom_frame = {
+    baseColor: [0.3, 0.2, 0.1], roughness: 0.5, metallic: 0,
+    albedo: 1, lightingCondition: 'D65_noon',
+  }
+  const explicit = compiler.compileBlueprintComponents(source)
+  const explicitFrame = explicit.blueprint.geometry.elements.find(element => element.id === 'default_window__frame_left')
+  assertEqual(explicitFrame?.material, 'custom_frame', '显式窗框材质被默认材质覆盖')
 }
 
 function assertComponentTranslation(compiler) {

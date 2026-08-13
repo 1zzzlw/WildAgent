@@ -5,6 +5,7 @@ import type {
   PrimitiveParams,
 } from '../../wild-core/types'
 import type { ComponentCompileContext } from '../types'
+import { COMPONENT_MATERIAL } from '../componentMaterials'
 import {
   assertNonEmptyString,
   assertPositive,
@@ -62,6 +63,14 @@ export function compileLight(
     segments: 24,
     _interaction: interaction,
   }, component.material)
+  const emitter = withOptionalMaterial<PrimitiveParams>({
+    type: 'primitive',
+    id: `${component.id}__emitter`,
+    shape: 'sphere',
+    position: [...component.position],
+    radius: radius * 0.55,
+    segments: 20,
+  }, COMPONENT_MATERIAL.bulbEmitter)
   const base = withOptionalMaterial<PrimitiveParams>({
     type: 'primitive',
     id: `${component.id}__base`,
@@ -76,7 +85,7 @@ export function compileLight(
     height: baseHeight,
     segments: 20,
   }, component.baseMaterial ?? component.material)
-  return [bulb, base]
+  return [bulb, emitter, base]
 }
 
 function compileTableLamp(
@@ -105,6 +114,14 @@ function compileTableLamp(
     segments: 24,
     _interaction: interaction,
   }, component.material)
+  const emitter = withOptionalMaterial<PrimitiveParams>({
+    type: 'primitive',
+    id: `${component.id}__emitter`,
+    shape: 'sphere',
+    position: [x, bulbCenterY, z],
+    radius: bulbRadius * 0.55,
+    segments: 20,
+  }, COMPONENT_MATERIAL.bulbEmitter)
   const base = withOptionalMaterial<PrimitiveParams>({
     type: 'primitive',
     id: `${component.id}__base`,
@@ -134,7 +151,7 @@ function compileTableLamp(
     height: shadeHeight,
     segments: 28,
   }, component.shadeMaterial ?? component.material)
-  return [bulb, base, stem, shade]
+  return [bulb, emitter, base, stem, shade]
 }
 
 function withOptionalMaterial<T extends GeometryElement>(element: T, material?: string): T {
