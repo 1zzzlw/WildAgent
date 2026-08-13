@@ -27,11 +27,14 @@ def extract_material_intent(state: AssetWorkflowState) -> dict[str, Any]:
     try:
         roughness = float(request.get("roughness", 0.8))
         metallic = float(request.get("metallic", 0.0))
+        base_color_tint = [float(value) for value in request.get("baseColorTint", [1, 1, 1])]
         normal_scale = float(request.get("normalScale", 1.0))
         uv_scale = [float(value) for value in request.get("uvScale", [1, 1])]
         real_world_size = [float(value) for value in request.get("realWorldSizeMeters", [1, 1])]
         if not 0 <= roughness <= 1 or not 0 <= metallic <= 1:
             raise AssetStorageError("roughness/metallic 必须在 0–1 范围")
+        if len(base_color_tint) != 3 or any(not 0 <= value <= 1 for value in base_color_tint):
+            raise AssetStorageError("baseColorTint 必须是三个 0–1 数字")
         if not 0 <= normal_scale <= 4:
             raise AssetStorageError("normalScale 必须在 0–4 范围")
         if len(uv_scale) != 2 or any(value <= 0 for value in uv_scale):
@@ -49,6 +52,7 @@ def extract_material_intent(state: AssetWorkflowState) -> dict[str, Any]:
             "sourceUri": request.get("sourceUri"),
             "roughness": roughness,
             "metallic": metallic,
+            "baseColorTint": base_color_tint,
             "normalScale": normal_scale,
             "uvScale": uv_scale,
             "realWorldSizeMeters": real_world_size,
@@ -86,6 +90,7 @@ def validate_asset(state: AssetWorkflowState) -> dict[str, Any]:
             real_world_size_meters=intent["realWorldSizeMeters"],
             roughness=intent["roughness"],
             metallic=intent["metallic"],
+            base_color_tint=intent["baseColorTint"],
             normal_scale=intent["normalScale"],
             uv_scale=intent["uvScale"],
         )
@@ -136,7 +141,7 @@ def propose_wild_patch(state: AssetWorkflowState) -> dict[str, Any]:
                 "op": "upsert_material",
                 "name": intent["materialName"],
                 "material": {
-                    "baseColor": [1, 1, 1],
+                    "baseColor": intent["baseColorTint"],
                     "roughness": intent["roughness"],
                     "metallic": intent["metallic"],
                     "albedo": 1,

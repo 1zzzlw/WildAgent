@@ -1,7 +1,9 @@
 """Agent 意图与组件派发的关键回归测试。"""
 
 from app.agent.component_registry import resolve_component_suggestions
-from app.agent.graph import _classifier_dispatch
+from langgraph.graph import END
+
+from app.agent.graph import _classifier_dispatch, _final_validate_dispatch
 from app.agent.nodes.classifier_node import _keyword_classify
 
 
@@ -34,6 +36,18 @@ def test_empty_suggestions_keep_base_components_and_explicit_extras():
     ]
 
 
+def test_approved_minimum_quota_is_always_dispatched():
+    assert resolve_component_suggestions(
+        ["door", "window", "roof"],
+        "生成一栋高层住宅塔楼",
+        {
+            "door": {"min": 1, "max": 4},
+            "light": {"min": 2, "max": 8},
+            "chimney": {"min": 0, "max": 1},
+        },
+    ) == ["door", "window", "roof", "light"]
+
+
 def test_balcony_does_not_duplicate_embedded_railing():
     assert resolve_component_suggestions(
         ["balcony", "railing"],
@@ -43,3 +57,18 @@ def test_balcony_does_not_duplicate_embedded_railing():
         ["balcony", "railing"],
         "生成一个带阳台和独立护栏的房子",
     ) == ["balcony", "railing"]
+
+
+def test_retry_budget_is_per_target_not_a_global_round_cutoff():
+    state = {
+        "status": "partial",
+        "retry_count": 3,
+        "max_retries": 3,
+        "component_retry_counts": {"old_window": 3},
+        "failed_components": [{"component_id": "new_roof"}],
+    }
+
+    assert _final_validate_dispatch(state) == "callback"
+
+    state["component_retry_counts"]["new_roof"] = 3
+    assert _final_validate_dispatch(state) == END

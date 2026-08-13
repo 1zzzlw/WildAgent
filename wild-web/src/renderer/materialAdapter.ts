@@ -100,9 +100,9 @@ export function createMaterialFromParams(
   
   // 1. 基础颜色
   const [r, g, b] = params.baseColor
-  // 顶点色由 core 烘焙为绝对颜色；纹理也携带自身颜色。两种情况下
-  // material.color 使用白色，避免 baseColor 被重复相乘导致画面偏暗。
-  material.color = hasVertexColors || baseTexture
+  // 顶点色由 core 烘焙为绝对颜色；颜色贴图则允许与 baseColor 相乘，
+  // 用作非破坏性的材质染色。默认 [1,1,1] 保持图片原色。
+  material.color = hasVertexColors
     ? new THREE.Color(1, 1, 1)
     : new THREE.Color()
         .setRGB(r, g, b, THREE.SRGBColorSpace)

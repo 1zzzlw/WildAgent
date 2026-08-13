@@ -26,6 +26,7 @@ def _asset(*, roles=None):
         },
         "realWorldSizeMeters": [2, 2],
         "defaults": {
+            "baseColorTint": [0.82, 0.72, 0.58],
             "roughness": 0.74,
             "metallic": 0,
             "normalScale": 0.9,
@@ -58,6 +59,7 @@ def test_resolver_accepts_only_existing_role_compatible_assets():
 
     assert by_role["facade_primary"]["assetId"] == ASSET_ID
     assert by_role["facade_primary"]["material"]["textureSet"] == ASSET_ID
+    assert by_role["facade_primary"]["material"]["baseColor"] == [0.82, 0.72, 0.58]
     assert by_role["roof"]["assetId"] is None
     assert by_role["glass"]["assetId"] is None
     assert by_role["glass"]["material"]["materialClass"] == "glass"

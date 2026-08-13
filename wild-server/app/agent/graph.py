@@ -43,9 +43,16 @@ def _dispatch_components(state: GenerationState):
         logger.warning("[Graph] 骨架生成失败，短路终止")
         return "fail"
 
+    design_brief = state.get("design_brief")
+    component_quota = (
+        design_brief.get("component_quota", {})
+        if isinstance(design_brief, dict)
+        else {}
+    )
     suggested = resolve_component_suggestions(
         state.get("suggested_components", []),
         state.get("user_message", ""),
+        component_quota,
     )
 
     if not suggested:
@@ -78,20 +85,14 @@ def _final_validate_dispatch(state: GenerationState):
     per-component 重试策略：
     - 检查 failed_components 中是否还有未达重试上限的组件
     - 如果所有失败组件都已耗尽各自的 retry，不再进入 callback
-    - 全局 retry_count 作为兜底上限
+    - retry_count 只记录修复轮次，不作为提前截断新失败目标的门禁
     """
     status = state.get("status")
-    retry_count = state.get("retry_count", 0)
     max_retries = state.get("max_retries", 3)
     component_retry_counts = state.get("component_retry_counts", {})
 
     if status != "partial":
         logger.info(f"[Graph] 校验完成 (status={status})")
-        return END
-
-    # 全局重试上限兜底
-    if retry_count >= max_retries:
-        logger.info(f"[Graph] 已达全局重试上限 ({retry_count}/{max_retries})")
         return END
 
     # per-component 检查：是否还有可重试的失败组件
@@ -110,7 +111,7 @@ def _final_validate_dispatch(state: GenerationState):
     if retryable:
         logger.info(
             f"[Graph] 校验未通过, {len(retryable)}/{len(failed_components)} 个组件可重试 "
-            f"(全局 {retry_count}/{max_retries})"
+            f"(每目标最多 {max_retries} 次)"
         )
     else:
         logger.info(f"[Graph] 无失败组件, 无需重试")

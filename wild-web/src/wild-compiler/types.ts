@@ -7,6 +7,7 @@ import type {
 /** 单个组合构件编译时可读取的场景上下文。 */
 export interface ComponentCompileContext {
   elements: readonly GeometryElement[]
+  components: readonly ComponentSpec[]
 }
 
 /** 每种组合构件的纯函数编译接口。 */

@@ -1,5 +1,5 @@
 import type { RoofParams, MeshData } from '../types';
-import { indexTriList } from './mesh-helper';
+import { generateArchitecturalSurfaceAttributes, indexTriList } from './mesh-helper';
 
 export function buildRoof(params: RoofParams): MeshData[] {
   const { roofType, span, depth, height, thickness, material } = params;
@@ -40,13 +40,16 @@ function buildChineseCurved(params: RoofParams, pos: number[]): MeshData[] {
   const vertices: number[] = [];
   const uvs: number[] = [];
 
-  const point = (side: -1 | 1, crossIndex: number, depthIndex: number, inner: boolean): [number, number, number] => {
-    const t = crossIndex / crossSegments;
-    const zRatio = depthIndex / depthSegments * 2 - 1;
-    const x = side * hw * t;
+  const profilePoint = (x: number, zRatio: number, inner: boolean): [number, number, number] => {
+    const t = Math.min(1, Math.abs(x) / Math.max(hw, 1e-9));
     const cornerLift = eaveLift * Math.pow(Math.abs(zRatio), 4) * Math.pow(t, 4);
     const y = height * Math.pow(1 - t, profilePower) + cornerLift - (inner ? roofThickness : 0);
     return [x, y, zRatio * hd];
+  };
+  const point = (side: -1 | 1, crossIndex: number, depthIndex: number, inner: boolean): [number, number, number] => {
+    const x = side * hw * (crossIndex / crossSegments);
+    const zRatio = depthIndex / depthSegments * 2 - 1;
+    return profilePoint(x, zRatio, inner);
   };
 
   const push = (p: number[], uv: [number, number]) => {
@@ -116,13 +119,60 @@ function buildChineseCurved(params: RoofParams, pos: number[]): MeshData[] {
   }
 
   const geometry = new Float32Array(vertices);
-  return [{
+  const meshes: MeshData[] = [{
     geometry,
     indices: Uint32Array.from({ length: geometry.length / 3 }, (_, index) => index),
     uvs: new Float32Array(uvs),
     transform: { position: [pos[0], pos[1], pos[2]], rotation: [0, 0, 0], scale: [1, 1, 1] },
     materialRef: material || 'default',
   }];
+
+  // 墙体是矩形，而曲面屋顶的内轮廓在屋脊处升高；没有端部填充时，
+  // 墙顶与屋面之间会出现可见三角空洞。resolver 只为最高承托墙提供
+  // 运行时数据，这里按同一曲线生成两端的实体山墙，并沿墙厚封闭。
+  const gableEnds = (params as any)._gableEnds as Array<{
+    z: number; xMin: number; xMax: number; thickness: number; material: string;
+  }> | undefined;
+  for (const end of gableEnds ?? []) {
+    const zRatio = Math.max(-1, Math.min(1, (end.z - pos[2]) / Math.max(hd, 1e-9)));
+    const xMin = Math.max(-hw, end.xMin - pos[0]);
+    const xMax = Math.min(hw, end.xMax - pos[0]);
+    if (xMax - xMin <= 0.01) continue;
+    const samples = Math.max(2, Math.ceil((xMax - xMin) / (span / crossSegments)));
+    const xs = Array.from({ length: samples + 1 }, (_, index) => (
+      xMin + (xMax - xMin) * index / samples
+    ));
+    const halfThickness = Math.max(0.01, end.thickness / 2);
+    const zFront = zRatio * hd - halfThickness;
+    const zBack = zRatio * hd + halfThickness;
+    const gableVertices: number[] = [];
+    const pushGableQuad = (a: number[], b: number[], c: number[], d: number[]) => {
+      gableVertices.push(...a, ...b, ...c, ...a, ...c, ...d);
+    };
+    for (let index = 0; index < xs.length - 1; index++) {
+      const x0 = xs[index], x1 = xs[index + 1];
+      const y0 = Math.max(0, profilePoint(x0, zRatio, true)[1]);
+      const y1 = Math.max(0, profilePoint(x1, zRatio, true)[1]);
+      // 前后立面和底面形成实体山墙。顶部与屋面内壳贴合，不能再生成
+      // 一层共面接触面，否则深度缓冲会在斜边附近产生条纹闪烁。
+      pushGableQuad([x0, 0, zFront], [x1, 0, zFront], [x1, y1, zFront], [x0, y0, zFront]);
+      pushGableQuad([x1, 0, zBack], [x0, 0, zBack], [x0, y0, zBack], [x1, y1, zBack]);
+      pushGableQuad([x0, 0, zBack], [x1, 0, zBack], [x1, 0, zFront], [x0, 0, zFront]);
+    }
+    if (gableVertices.length === 0) continue;
+    const indexed = indexTriList(new Float32Array(gableVertices));
+    const attributes = generateArchitecturalSurfaceAttributes(indexed.geometry);
+    meshes.push({
+      geometry: indexed.geometry,
+      indices: new Uint32Array(indexed.indices),
+      normals: attributes.normals,
+      uvs: attributes.uvs,
+      transform: { position: [pos[0], pos[1], pos[2]], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      materialRef: end.material || 'default',
+    });
+  }
+
+  return meshes;
 }
 
 /** 中式重檐屋顶 */

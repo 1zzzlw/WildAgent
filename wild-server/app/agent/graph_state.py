@@ -105,8 +105,8 @@ class GenerationState(TypedDict, total=False):
     validation_cache_reused: bool
     failed_components: list[dict]
     passed_component_ids: list[str]
-    retry_count: int
-    max_retries: int
+    retry_count: int  # 已执行的修复轮次，仅用于审计/展示
+    max_retries: int  # 每个失败目标允许的最大修复次数
     component_retry_counts: dict[str, int]  # per-component 重试计数 {component_id: count}
 
     # ── 回调上下文 ──

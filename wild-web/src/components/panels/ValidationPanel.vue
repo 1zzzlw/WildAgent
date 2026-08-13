@@ -33,6 +33,8 @@
               <div class="issue-meta">
                 <span v-if="issue.elementId">元素: {{ issue.elementId }}</span>
                 <span>代码: {{ issue.code }}</span>
+                <span v-if="issue.category">分类: {{ issue.category }}</span>
+                <span v-if="issue.repairLayer">修复层: {{ issue.repairLayer }}</span>
                 <span v-if="issue.expectedBounds">预期: {{ formatBounds(issue.expectedBounds) }}</span>
                 <span v-if="issue.actualBounds">实际: {{ formatBounds(issue.actualBounds) }}</span>
               </div>

@@ -78,7 +78,12 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import { configureMaterialRendering, MaterialCache } from '../../renderer/materialAdapter'
 import { toggleRuntimeInteraction, updateSceneGroup } from '../../renderer/renderEntity'
-import { getRenderedElementIds, resolveSelectableId } from '../../wild/componentSelection'
+import {
+  getRenderedElementIds,
+  resolveSelectableId,
+  selectionAfterClick,
+  type SelectionMode,
+} from '../../wild/componentSelection'
 import { createComponentTranslationChanges } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
 
@@ -638,13 +643,18 @@ function handlePointerUp(event: PointerEvent) {
     .find(intersection => Boolean(getIntersectionElementId(intersection)))
   const elementId = hit ? getIntersectionElementId(hit) : null
   if (!elementId) {
-    if (!event.shiftKey) selectionStore.clearSelection()
+    selectionStore.clearSelection()
     return
   }
 
   const mapping = sceneStore.reconstructed?.componentMapping
   const selectableId = mapping ? resolveSelectableId(elementId, mapping) : elementId
-  selectionStore.select(selectableId, event.shiftKey)
+  const mode: SelectionMode = event.ctrlKey || event.metaKey
+    ? 'toggle'
+    : event.shiftKey
+      ? 'add'
+      : 'replace'
+  selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, selectableId, mode))
   uiStore.setRightActivePanel('properties')
 }
 

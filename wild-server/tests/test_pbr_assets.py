@@ -71,7 +71,9 @@ def test_local_storage_registers_immutable_content_addressed_asset(tmp_path):
     assert first["maps"]["baseColor"]["encoding"] == "url"
     assert first["classification"]["materialClass"] == "other"
     assert first["realWorldSizeMeters"] == [1.0, 1.0]
+    assert first["defaults"]["baseColorTint"] == [1.0, 1.0, 1.0]
     assert first["defaults"]["normalScale"] == 1.0
+    assert list(first["maps"]) == ["baseColor"]
     assert storage.resolve_file(first["assetId"], "baseColor.png").read_bytes() == PNG_BYTES
 
 
@@ -85,6 +87,45 @@ def test_local_storage_rejects_non_image_bytes(tmp_path):
         )
 
 
+def test_same_image_can_store_reusable_material_parameter_variants(tmp_path):
+    storage = _storage(tmp_path)
+    maps = {"baseColor": {"data": PNG_BYTES, "mime_type": "image/png"}}
+
+    neutral = storage.register_pbr(
+        maps,
+        name="Stone Neutral",
+        license_name="CC0",
+    )
+    warm = storage.register_pbr(
+        maps,
+        name="Stone Warm",
+        license_name="CC0",
+        base_color_tint=(0.9, 0.7, 0.5),
+        roughness=0.65,
+    )
+
+    assert neutral["assetId"] != warm["assetId"]
+    assert warm["defaults"]["baseColorTint"] == [0.9, 0.7, 0.5]
+    assert warm["defaults"]["roughness"] == 0.65
+    assert len(storage.list_manifests()) == 2
+
+
+def test_hiding_asset_removes_it_from_library_but_keeps_existing_scene_urls(tmp_path):
+    storage = _storage(tmp_path)
+    maps = {"baseColor": {"data": PNG_BYTES, "mime_type": "image/png"}}
+    asset = storage.register_pbr(maps, name="Stone", license_name="CC0")
+
+    storage.hide_from_library(asset["assetId"])
+
+    assert storage.list_manifests() == []
+    assert storage.get_manifest(asset["assetId"])["assetId"] == asset["assetId"]
+    assert storage.resolve_file(asset["assetId"], "baseColor.png").read_bytes() == PNG_BYTES
+
+    restored = storage.register_pbr(maps, name="Stone", license_name="CC0")
+    assert restored["assetId"] == asset["assetId"]
+    assert [item["assetId"] for item in storage.list_manifests()] == [asset["assetId"]]
+
+
 def test_asset_graph_produces_asset_then_material_patch(tmp_path):
     storage = _storage(tmp_path)
     result = asyncio.run(run_asset_workflow(
@@ -94,6 +135,7 @@ def test_asset_graph_produces_asset_then_material_patch(tmp_path):
             "license": "CC0",
             "roughness": 0.7,
             "metallic": 0,
+            "baseColorTint": [0.8, 0.6, 0.4],
             "uvScale": [2, 2],
             "baseRevision": 3,
         },
@@ -115,6 +157,8 @@ def test_asset_graph_produces_asset_then_material_patch(tmp_path):
         "upsert_material",
     ]
     assert patch["operations"][1]["material"]["textureSet"] == result["asset"]["assetId"]
+    assert patch["operations"][1]["material"]["baseColor"] == [0.8, 0.6, 0.4]
+    assert result["asset"]["defaults"]["baseColorTint"] == [0.8, 0.6, 0.4]
 
 
 def test_pbr_patch_preflight_and_blueprint_schema_close_references(tmp_path):
@@ -172,3 +216,19 @@ def test_pbr_upload_api_returns_patch_and_immutable_file(tmp_path, monkeypatch):
         "baseColor.png",
     ))
     assert file_response.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
+def test_delete_api_hides_asset_without_deleting_files(tmp_path, monkeypatch):
+    storage = _storage(tmp_path)
+    monkeypatch.setattr(assets_api, "asset_storage", storage)
+    asset = storage.register_pbr(
+        {"baseColor": {"data": PNG_BYTES, "mime_type": "image/png"}},
+        name="Stone",
+        license_name="CC0",
+    )
+
+    response = asyncio.run(assets_api.hide_asset(asset["assetId"]))
+
+    assert response is None
+    assert storage.list_manifests() == []
+    assert storage.resolve_file(asset["assetId"], "baseColor.png").is_file()

@@ -39,7 +39,14 @@ async def validate_node(state: GenerationState) -> dict:
         else:
             # merge 后若仍有错误，重新执行以保持回调输入与当前蓝图完全一致。
             pipeline_results = run_validation_pipeline(merged_blueprint)
-        design_errors = merge_diag.get("design_errors", [])
+        # merge_diag 记录的是合并当时的快照。callback 可能已经修改当前蓝图，
+        # 因此设计配额必须对 merged_blueprint 重新计算，不能重复追加旧错误。
+        from app.agent.nodes.merge_node import _validate_design_brief_constraints
+
+        design_errors = _validate_design_brief_constraints(
+            merged_blueprint,
+            state.get("design_brief"),
+        )
         if design_errors:
             pipeline_results.append(PipelineStepResult(
                 step="design",

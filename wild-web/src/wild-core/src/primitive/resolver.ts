@@ -176,11 +176,11 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
     const explicitPosition = Array.isArray(roof.position)
       && roof.position.length === 3
       && roof.position.every(Number.isFinite);
-    if (
+    const hasExplicitBoundary = (
       explicitPosition
       && Number.isFinite(roof.span) && roof.span > 0
       && Number.isFinite(roof.depth) && roof.depth > 0
-    ) continue;
+    );
     if (walls.length < 3) continue;
 
     // 计算所有墙的最大高度，用于过滤栏杆/装饰矮墙
@@ -211,6 +211,27 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
       ? topSupportWalls
       : structuralCandidates;
 
+    // 中式曲面屋顶的坡面会在墙顶上方形成三角形空腔。记录最高承托的
+    // 横向墙体，交给 roof builder 生成运行时山墙填充；不修改 Blueprint
+    // 中心线，也不把低层墙体误当成屋顶端墙。
+    if (roof.roofType === 'chinese_curved') {
+      const gableEnds = effectiveWalls
+        .filter(wall => {
+          const dx = wall.to[0] - wall.from[0];
+          const dz = wall.to[2] - wall.from[2];
+          return Math.abs(dx) > Math.abs(dz) && Math.abs(dx) > 0.01;
+        })
+        .map(wall => ({
+          z: (wall.from[2] + wall.to[2]) / 2,
+          xMin: Math.min(wall.from[0], wall.to[0]),
+          xMax: Math.max(wall.from[0], wall.to[0]),
+          thickness: Number(wall.thickness) || 0.24,
+          material: wall.material || 'default',
+        }))
+        .filter(end => Number.isFinite(end.z) && end.xMax - end.xMin > 0.01);
+      if (gableEnds.length > 0) (roof as any)._gableEnds = gableEnds;
+    }
+
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
     let maxY = -Infinity;
 
@@ -222,8 +243,10 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
       maxY = Math.max(maxY, wall.from[1], wall.to[1]);
     }
 
-    roof.span = Math.max(roof.span, maxX - minX + 1.0);
-    roof.depth = Math.max(roof.depth, maxZ - minZ + 1.0);
+    if (!hasExplicitBoundary) {
+      roof.span = Math.max(roof.span, maxX - minX + 1.0);
+      roof.depth = Math.max(roof.depth, maxZ - minZ + 1.0);
+    }
     const baseY = maxY;
     if (!(roof as any).position) {
       (roof as any).position = [(minX + maxX) / 2, baseY, (minZ + maxZ) / 2];

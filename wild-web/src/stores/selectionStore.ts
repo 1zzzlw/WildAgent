@@ -47,6 +47,10 @@ export const useSelectionStore = defineStore('selection', () => {
     selectedIds.value = []
   }
 
+  function setSelection(ids: string[]) {
+    selectedIds.value = [...new Set(ids)]
+  }
+
   function toggleSelection(id: string) {
     if (selectedIds.value.includes(id)) {
       deselect(id)
@@ -76,6 +80,7 @@ export const useSelectionStore = defineStore('selection', () => {
     select,
     deselect,
     clearSelection,
+    setSelection,
     toggleSelection,
     setHovered,
     isSelected,

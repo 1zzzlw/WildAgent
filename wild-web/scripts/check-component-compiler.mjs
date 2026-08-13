@@ -93,6 +93,7 @@ try {
   await assertInteractiveWindowSashes(compiler)
   await assertInteractiveLight(compiler)
   await assertSecondBatchComponents(compiler)
+  assertCorniceAvoidsWallAttachments(compiler)
   assertArchitecturalRampAndCornice(compiler)
   assertCurvedWallAttachment(compiler)
   assertCompilationCache(compiler)
@@ -111,9 +112,33 @@ try {
   await assertGeneratedBlueprintLoadsFreshFile(compiler)
   assertPresenceUpdate(compiler)
   await assertExplicitServerSave(compiler)
+  await inspectExternalBlueprint(compiler)
   console.log('Component compiler check passed: 10 component types, attachments, cache and interaction.')
 } finally {
   await rm(outputDirectory, { recursive: true, force: true })
+}
+
+async function inspectExternalBlueprint(compiler) {
+  const fixturePath = process.env.WILD_BLUEPRINT_CHECK
+  if (!fixturePath) return
+  // 外部问题样本可能本身包含与当前 Schema 无关的历史字段错误；此入口只诊断
+  // 组件展开和空间占用，不替代正式 parseWildBlueprint 校验。
+  const source = JSON.parse(await readFile(fixturePath, 'utf8'))
+  const result = compiler.compileBlueprintComponents(source)
+  const errors = result.diagnostics.filter(item => item.level === 'error')
+  if (errors.length > 0) {
+    throw new Error(`外部 Blueprint 组件编译失败: ${JSON.stringify(errors)}`)
+  }
+  const balconySlabs = result.blueprint.geometry.elements
+    .filter(element => element.id.endsWith('__slab') && element.id.includes('balcony'))
+    .map(element => ({ id: element.id, position: element.position, dimensions: element.dimensions }))
+  const corniceSweeps = result.blueprint.geometry.elements
+    .filter(element => element.id.includes('cornice') && element.id.includes('__sweep'))
+    .map(element => ({ id: element.id, path: element.path }))
+  console.log('External Blueprint overlap inspection:', JSON.stringify({
+    balconySlabs,
+    corniceSweeps,
+  }))
 }
 
 function assertMaterialTuningPatch(compiler) {
@@ -260,7 +285,7 @@ async function assertSecondBatchComponents(compiler) {
   const balconyIds = new Set(result.mapping.generatedElementIdsByComponentId.test_balcony)
   const balconyElements = result.blueprint.geometry.elements.filter(element => balconyIds.has(element.id))
   const balconySlab = balconyElements.find(element => element.id === 'test_balcony__slab')
-  if (!balconySlab || Math.abs(balconySlab.position[2] + 0.6) > 1e-9) {
+  if (!balconySlab || Math.abs(balconySlab.position[2] + 0.72) > 1e-9) {
     throw new Error(`正立面阳台没有向建筑外侧悬挑: ${JSON.stringify(balconySlab)}`)
   }
   const balconyZCoordinates = balconyElements.flatMap(element => {
@@ -268,14 +293,42 @@ async function assertSecondBatchComponents(compiler) {
     if (element.type === 'beam') return [element.from[2], element.to[2]]
     return []
   })
-  if (Math.max(...balconyZCoordinates) > 1e-9) {
+  if (Math.max(...balconyZCoordinates) > -0.12 + 1e-9) {
     throw new Error(`阳台或内嵌栏杆进入了建筑内部: ${JSON.stringify(balconyZCoordinates)}`)
+  }
+  const corniceElements = result.blueprint.geometry.elements.filter(
+    element => element.id.startsWith('test_cornice__sweep'),
+  )
+  if (corniceElements.length !== 1 || corniceElements[0].id !== 'test_cornice__sweep') {
+    throw new Error('不同标高的檐口被阳台错误裁剪')
   }
   const entity = await compiler.reconstructWildEntity(parsed)
   const errors = entity.diagnostics.filter(item => item.level === 'error')
   if (errors.length > 0) {
     throw new Error(`第二批组合构件渲染失败: ${JSON.stringify(errors)}`)
   }
+}
+
+function assertCorniceAvoidsWallAttachments(compiler) {
+  const source = createBlueprint()
+  source.geometry.components = [
+    {
+      type: 'balcony', id: 'overlap_balcony', parentWall: 'front_wall',
+      from: [2.5, 3, 0], width: 2.5, depth: 1.2, slabThickness: 0.15,
+    },
+    {
+      type: 'cornice', id: 'layer_cornice', path: [[0, 3, -0.42], [8, 3, -0.42]],
+      profile: [[-0.15, -0.05], [0.15, -0.05], [0.15, 0.05], [-0.15, 0.05]],
+      closedProfile: true,
+    },
+  ]
+  const result = compiler.compileBlueprintComponents(source)
+  const sweeps = result.blueprint.geometry.elements.filter(
+    element => element.id.startsWith('layer_cornice__sweep'),
+  )
+  if (sweeps.length !== 2) throw new Error(`檐口没有避让阳台占用区间: ${JSON.stringify(sweeps)}`)
+  const intervals = sweeps.map(element => [element.path[0][0], element.path[1][0]])
+  assertVec3ArrayClose(intervals, [[0, 2.35], [5.15, 8]], '檐口裁剪区间错误')
 }
 
 function assertArchitecturalRampAndCornice(compiler) {

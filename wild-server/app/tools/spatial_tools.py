@@ -1152,7 +1152,7 @@ def validate_reference_integrity(blueprint: dict) -> str:
 
     检查项：
       1. opening.parentWall 必须存在且 type == 'wall'
-      2. geometry.instances[*].templateId 必须存在于 geometry.templates
+      2. geometry.instances[*].ref 必须存在于 geometry.templates
       3. behaviors.physics.constraints[*].target 必须是已存在的构件 id
       4. 不允许循环引用（template 引用自身）
       5. 构件声明的材质 ID 必须存在于 Blueprint.materials
@@ -1226,18 +1226,18 @@ def validate_reference_integrity(blueprint: dict) -> str:
                     "未在 Blueprint.materials 中定义"
                 )
 
-    # --- 2. instances.templateId 校验 ---
+    # --- 2. instances.ref 校验（兼容早期 templateId）---
     geo = blueprint.get("geometry", {})
     templates = geo.get("templates", {}) or {}
     instances = geo.get("instances", []) or []
     for inst in instances:
         iid = inst.get("id", "?")
-        tid = inst.get("templateId", "")
+        tid = inst.get("ref") or inst.get("templateId", "")
         if not tid:
-            issues.append(f"❌ [instance:{iid}] 缺少 templateId 字段")
+            issues.append(f"❌ [instance:{iid}] 缺少 ref 字段")
         elif tid not in templates:
             issues.append(
-                f"❌ [instance:{iid}] templateId='{tid}' 在 geometry.templates 中不存在"
+                f"❌ [instance:{iid}] ref='{tid}' 在 geometry.templates 中不存在"
             )
 
     # --- 3. behaviors.physics.constraints.target 校验 ---
@@ -1868,7 +1868,8 @@ def validate_element_dimensions(blueprint: dict) -> str:
         if t == "wall":
             length = _wall_length(el)
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            h = el.get("height", abs(to[1] - f[1]))
+            endpoint_height = abs(to[1] - f[1])
+            h = el.get("height", endpoint_height)
             th = el.get("thickness", 0)
             if not (0.1 <= length <= 500):
                 issues.append(f"⚠️  [{eid}] wall 长度={length:.1f}m，建议在 0.1~500m")
@@ -1878,6 +1879,17 @@ def validate_element_dimensions(blueprint: dict) -> str:
                 )
             elif not (0.1 <= h <= 50):
                 issues.append(f"⚠️  [{eid}] wall 高度={h:.1f}m，建议在 0.1~50m")
+            if (
+                endpoint_height > 0.01
+                and isinstance(el.get("height"), (int, float))
+                and not isinstance(el.get("height"), bool)
+                and abs(float(el["height"]) - endpoint_height)
+                > max(0.05, endpoint_height * 0.01)
+            ):
+                issues.append(
+                    f"❌ [{eid}] wall height={float(el['height']):.1f}m 与 "
+                    f"from/to 竖向范围={endpoint_height:.1f}m 不一致"
+                )
             if th > 0 and not (0.01 <= th <= 5):
                 issues.append(f"⚠️  [{eid}] wall thickness={th}m，建议在 0.01~5m")
 

@@ -131,6 +131,10 @@ export interface EngineDiagnostic {
   level: 'info' | 'warning' | 'error'
   code: string
   message: string
+  category?: 'schema_contract' | 'coordinate_frame' | 'level_continuity'
+    | 'host_relation' | 'coverage_geometry' | 'compiler_geometry'
+    | 'core_geometry' | 'renderer_only' | 'model_instruction'
+  repairLayer?: 'validator' | 'compiler' | 'core' | 'renderer'
   elementId?: string
   elementType?: string
   expectedBounds?: ReconstructionBounds

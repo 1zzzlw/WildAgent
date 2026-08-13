@@ -15,3 +15,20 @@ export function getRenderedElementIds(
 ): string[] {
   return mapping.generatedElementIdsByComponentId[selectedId] || [selectedId]
 }
+
+export type SelectionMode = 'replace' | 'add' | 'toggle'
+
+/** 统一视口和场景树的点击选择语义，避免两个入口的多选行为漂移。 */
+export function selectionAfterClick(
+  selectedIds: string[],
+  id: string,
+  mode: SelectionMode,
+): string[] {
+  if (mode === 'replace') return [id]
+  if (mode === 'toggle') {
+    return selectedIds.includes(id)
+      ? selectedIds.filter(selectedId => selectedId !== id)
+      : [...selectedIds, id]
+  }
+  return selectedIds.includes(id) ? selectedIds : [...selectedIds, id]
+}

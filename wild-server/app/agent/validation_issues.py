@@ -18,9 +18,34 @@ _VALIDATOR_CODES = {
     "validate_stair_alignment": "STAIR_ALIGNMENT",
     "validate_roof_coverage": "ROOF_COVERAGE",
     "validate_element_dimensions": "ELEMENT_DIMENSIONS",
+    "validate_model_quality": "MODEL_QUALITY",
     "validate_collision": "COLLISION",
     "validate_design_brief": "DESIGN_CONSTRAINT",
 }
+
+_ISSUE_CLASSIFICATION = {
+    "validate_blueprint_structure": ("schema_contract", "validator"),
+    "validate_element_required_fields": ("schema_contract", "prompt"),
+    "validate_reference_integrity": ("host_relation", "validator"),
+    "validate_opening_coords": ("coordinate_frame", "deterministic_fix"),
+    "validate_opening_fit": ("host_relation", "deterministic_fix"),
+    "validate_wall_junctions": ("coordinate_frame", "deterministic_fix"),
+    "validate_stair_alignment": ("level_continuity", "deterministic_fix"),
+    "validate_roof_coverage": ("coverage_geometry", "deterministic_fix"),
+    "validate_element_dimensions": ("schema_contract", "deterministic_fix"),
+    "validate_model_quality": ("model_instruction", "prompt"),
+    "validate_collision": ("coverage_geometry", "deterministic_fix"),
+    "validate_design_brief": ("model_instruction", "prompt"),
+}
+
+
+def classify_validation_issue(validator: str) -> tuple[str, str]:
+    """将不断增长的具体错误收敛到有限根因类别和修复层级。"""
+    if validator in _ISSUE_CLASSIFICATION:
+        return _ISSUE_CLASSIFICATION[validator]
+    if validator.startswith("validate_") and validator.endswith("_placement"):
+        return "host_relation", "deterministic_fix"
+    return "schema_contract", "validator"
 
 _TOOL_HINTS = {
     "validate_element_required_fields": ["patch_entity"],
@@ -73,6 +98,7 @@ def validation_issues_from_results(
         if not _field(result, "has_error", False):
             continue
         validator = str(_field(result, "name", "unknown")).replace(" [recheck]", "")
+        category, repair_level = classify_validation_issue(validator)
         output = str(_field(result, "output", "") or "")
         error_lines = [line.strip() for line in output.splitlines() if "❌" in line]
         if not error_lines:
@@ -112,6 +138,7 @@ def validation_issues_from_results(
             seen.add(key)
             issues.append({
                 "code": _VALIDATOR_CODES.get(validator, validator.upper()),
+                "category": category,
                 "validator": validator,
                 "severity": "error",
                 "entity_id": entity_id,
@@ -119,6 +146,7 @@ def validation_issues_from_results(
                 "related_entity_ids": related_entity_ids,
                 "message": message,
                 "repair_mode": "model_tool" if entity_id or target_type else "manual",
+                "recommended_repair_level": repair_level,
                 "suggested_tools": suggested_tools,
                 "repair_target": f"design:{target_type}" if target_type else None,
                 "target_type": target_type,

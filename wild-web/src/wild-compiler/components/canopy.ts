@@ -5,6 +5,7 @@ import {
   assertNonNegativeInteger,
   assertPositive,
   createBox,
+  exteriorSurfaceOffset,
   resolveStraightWallFrame,
 } from './attachedToWall'
 
@@ -23,9 +24,13 @@ export function compileCanopy(
 
   const [along, mountY, normalOffset] = component.from
   const centerAlong = along + component.width / 2
+  const { exteriorSign, surfaceOffset } = exteriorSurfaceOffset(
+    frame, context, centerAlong, normalOffset,
+  )
+  const outwardDepth = exteriorSign * component.depth
   const elements: GeometryElement[] = [createBox(
     `${component.id}__slab`,
-    frame.pointAt(centerAlong, mountY, normalOffset + component.depth / 2),
+    frame.pointAt(centerAlong, mountY, surfaceOffset + outwardDepth / 2),
     [component.width, component.thickness, component.depth],
     frame.rotationAt(centerAlong),
     component.material,
@@ -45,7 +50,7 @@ export function compileCanopy(
         frame.pointAt(
           supportAlong,
           wallBottom + supportHeight / 2,
-          normalOffset + component.depth - supportSize / 2,
+          surfaceOffset + outwardDepth - exteriorSign * supportSize / 2,
         ),
         [supportSize, supportHeight, supportSize],
         frame.rotationAt(supportAlong),

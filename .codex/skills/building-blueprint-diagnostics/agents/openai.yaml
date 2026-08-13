@@ -1,0 +1,4 @@
+interface:
+  display_name: "建筑蓝图诊断"
+  short_description: "诊断 Blueprint 几何问题并提炼通用修复规则"
+  default_prompt: "使用 $building-blueprint-diagnostics 检查这份建筑 Blueprint 的结构、宿主关系和渲染几何问题。"

@@ -48,6 +48,7 @@ try {
   await assertProfileSweepValidation(core);
   await assertSlopedBeamDirection(core);
   await assertSteppedFlatRoofBoundary(core);
+  await assertChineseCurvedGableFill(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
     .filter(name => name.endsWith('.wild'))
@@ -93,6 +94,28 @@ try {
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertChineseCurvedGableFill(core) {
+  const entity = await core.reconstructEntity({
+    meta: { version: '1.1', type: 'building', name: 'curved-roof-gable-fill' },
+    geometry: { elements: [
+      { type: 'wall', id: 'front_wall', from: [0, 0, 0], to: [8, 3.2, 0], thickness: 0.24, material: 'wall' },
+      { type: 'wall', id: 'right_wall', from: [8, 0, 0], to: [8, 3.2, 6], thickness: 0.24, material: 'wall' },
+      { type: 'wall', id: 'back_wall', from: [8, 0, 6], to: [0, 3.2, 6], thickness: 0.24, material: 'wall' },
+      { type: 'wall', id: 'left_wall', from: [0, 0, 6], to: [0, 3.2, 0], thickness: 0.24, material: 'wall' },
+      { type: 'roof', id: 'roof_main', roofType: 'chinese_curved', span: 8, depth: 6, height: 2.5, thickness: 0.3, position: [4, 3.2, 3], material: 'roof' },
+    ] },
+    materials: {}, behaviors: {},
+  });
+  const gables = entity.meshes.filter(mesh => mesh.elementId === 'roof_main' && mesh.materialRef === 'wall');
+  if (gables.length !== 2) throw new Error(`曲面屋顶没有生成两端山墙填充: ${gables.length}`);
+  for (const mesh of gables) {
+    const bounds = meshWorldBounds(mesh);
+    if (Math.abs(bounds.min[1] - 3.2) > 1e-5 || bounds.max[1] < 5.2) {
+      throw new Error(`山墙填充没有从墙顶连续到屋脊: ${JSON.stringify(bounds)}`);
+    }
+  }
 }
 
 async function assertSteppedFlatRoofBoundary(core) {

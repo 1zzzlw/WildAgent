@@ -27,6 +27,46 @@ export interface StraightWallFrame {
   rotationAt: (along: number) => number
 }
 
+/** 计算墙体法向中背离建筑水平包围盒中心的一侧。 */
+export function resolveExteriorSign(
+  frame: StraightWallFrame,
+  context: ComponentCompileContext,
+  along: number,
+): 1 | -1 {
+  const walls = context.elements.filter(element => element.type === 'wall')
+  const points = walls.flatMap(wall => [wall.from, wall.to])
+  if (points.length === 0) return -1
+
+  const minX = Math.min(...points.map(point => point[0]))
+  const maxX = Math.max(...points.map(point => point[0]))
+  const minZ = Math.min(...points.map(point => point[2]))
+  const maxZ = Math.max(...points.map(point => point[2]))
+  const buildingCenter = [(minX + maxX) / 2, (minZ + maxZ) / 2]
+  const wallPoint = frame.pointAt(along, 0, 0)
+  const normal = frame.normalAt(along)
+  const outwardDot = (
+    (wallPoint[0] - buildingCenter[0]) * normal[0]
+    + (wallPoint[2] - buildingCenter[1]) * normal[2]
+  )
+  if (outwardDot > 1e-6) return 1
+  if (outwardDot < -1e-6) return -1
+  return -1
+}
+
+/** 把附墙悬挑组件的局部起点从墙中心线移动到墙外表面。 */
+export function exteriorSurfaceOffset(
+  frame: StraightWallFrame,
+  context: ComponentCompileContext,
+  along: number,
+  normalOffset: number,
+): { exteriorSign: 1 | -1; surfaceOffset: number } {
+  const exteriorSign = resolveExteriorSign(frame, context, along)
+  return {
+    exteriorSign,
+    surfaceOffset: normalOffset + exteriorSign * frame.wall.thickness / 2,
+  }
+}
+
 /** 查找父墙并建立“弧长方向 + 墙体法线方向”的局部坐标系。 */
 export function resolveStraightWallFrame(
   component: WallAttachedComponent,

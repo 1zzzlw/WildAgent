@@ -3,18 +3,18 @@
     <div class="tree-header">
       <span>场景结构</span>
     </div>
-    <div class="tree-content">
+    <div class="tree-content" @click.self="selectionStore.clearSelection()">
       <div v-if="components.length" class="group-title">组合构件</div>
       <div v-for="component in components" :key="component.id"
         :class="['tree-item', 'component-item', { selected: selectionStore.isSelected(component.id) }]"
-        @click="handleSelect(component.id)">
+        @click="handleSelect(component.id, $event)">
         <span class="element-icon">{{ getIcon(component.type) }}</span>
         <span class="element-name">{{ component.id }}</span>
         <span class="element-type">{{ component.type }}</span>
       </div>
       <div v-if="elements.length" class="group-title">基础构件</div>
       <div v-for="element in elements" :key="element.id"
-        :class="['tree-item', { selected: selectionStore.isSelected(element.id) }]" @click="handleSelect(element.id)">
+        :class="['tree-item', { selected: selectionStore.isSelected(element.id) }]" @click="handleSelect(element.id, $event)">
         <span class="element-icon">{{ getIcon(element.type) }}</span>
         <span class="element-name">{{ element.id }}</span>
         <span class="element-type">{{ element.type }}</span>
@@ -31,6 +31,7 @@ import { computed } from 'vue'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
+import { selectionAfterClick, type SelectionMode } from '../../wild/componentSelection'
 
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
@@ -67,8 +68,13 @@ function getIcon(type: string): string {
   return icons[type] || '●'
 }
 
-function handleSelect(id: string) {
-  selectionStore.select(id)
+function handleSelect(id: string, event: MouseEvent) {
+  const mode: SelectionMode = event.ctrlKey || event.metaKey
+    ? 'toggle'
+    : event.shiftKey
+      ? 'add'
+      : 'replace'
+  selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, id, mode))
   uiStore.setRightActivePanel('properties')
 }
 </script>

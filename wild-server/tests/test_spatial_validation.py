@@ -132,6 +132,25 @@ class SpatialValidationTest(unittest.TestCase):
         self.assertEqual([wall["to"][1] for wall in walls], [3.0, 6.0])
         self.assertNotIn("❌", run_tool(validate_element_dimensions, blueprint))
 
+    def test_wall_declared_height_must_match_endpoint_vertical_range(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{
+                    "id": "wall_conflicting_height",
+                    "type": "wall",
+                    "from": [0, 0, 0],
+                    "to": [12, 90, 0],
+                    "height": 45,
+                    "thickness": 0.2,
+                }],
+            },
+        }
+
+        result = run_tool(validate_element_dimensions, blueprint)
+
+        self.assertIn("❌ [wall_conflicting_height]", result)
+        self.assertIn("height=45.0m 与 from/to 竖向范围=90.0m 不一致", result)
+
     def test_missing_component_material_reference_is_rejected(self):
         blueprint = {
             "geometry": {

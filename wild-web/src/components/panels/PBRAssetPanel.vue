@@ -3,7 +3,9 @@
     <div class="panel-header">PBR 素材入库</div>
     <div class="panel-body">
       <div class="hint">
+        只需一张颜色图片即可入库；法线、粗糙度等专业贴图均为可选增强。
         图片保存到资产目录，WILD 仅记录 URL、哈希和授权信息，不写入 Base64。
+        Ctrl + 左键可多选；左键点击视口空白处可取消选择。
       </div>
 
       <label>素材名称</label>
@@ -32,6 +34,17 @@
         </div>
       </div>
 
+      <div class="color-row">
+        <div>
+          <label>颜色染色</label>
+          <div class="color-control">
+            <el-color-picker v-model="form.colorTint" size="small" />
+            <code>{{ form.colorTint.toUpperCase() }}</code>
+          </div>
+        </div>
+        <div class="parameter-help">与图片颜色相乘；白色保持原图，适合制作同纹理的不同色系。</div>
+      </div>
+
       <div class="number-row">
         <div>
           <label>真实宽度（米）</label>
@@ -53,22 +66,27 @@
           <el-input-number v-model="form.uvScaleY" :min="0.01" :max="64" :step="0.25" size="small" />
         </div>
       </div>
-      <label>法线强度</label>
-      <el-slider v-model="form.normalScale" :min="0" :max="4" :step="0.1" />
+      <label>法线强度 · {{ form.normalScale.toFixed(1) }}</label>
+      <el-slider v-model="form.normalScale" :min="0" :max="4" :step="0.1" show-stops />
+      <div class="parameter-help">需要法线贴图；0 为关闭，1 为物理原始强度，超过 1 会强化凹凸。</div>
 
       <div class="file-list">
-        <label v-for="field in fileFields" :key="field.key" class="file-field">
-          <span>{{ field.label }}<b v-if="field.required"> *</b></span>
-          <input type="file" accept="image/png,image/jpeg,image/webp" @change="setFile(field.key, $event)" />
+        <label class="file-field">
+          <span>颜色图片（Base Color）<b> *</b></span>
+          <input type="file" accept="image/png,image/jpeg,image/webp" @change="setFile('baseColor', $event)" />
         </label>
+        <details>
+          <summary>可选专业贴图</summary>
+          <label v-for="field in optionalFileFields" :key="field.key" class="file-field optional-file">
+            <span>{{ field.label }}</span>
+            <input type="file" accept="image/png,image/jpeg,image/webp" @change="setFile(field.key, $event)" />
+          </label>
+        </details>
       </div>
 
-      <label class="bind-option">
-        <input v-model="bindSelection" type="checkbox" :disabled="!selectionStore.isSingleSelection" />
-        入库后绑定到当前选中构件
-      </label>
-      <div v-if="selectionStore.isSingleSelection" class="selection-tip">
-        当前选中：{{ selectionStore.selectedIds[0] }}
+      <div class="selection-tip">入库后会自动应用到全部已选构件。</div>
+      <div v-if="selectionStore.hasSelection" class="selection-tip">
+        已选 {{ selectionStore.selectedIds.length }} 项：{{ selectionStore.selectedIds.join('、') }}
       </div>
 
       <el-button
@@ -100,8 +118,34 @@
             {{ asset.classification?.materialClass || 'other' }} ·
             {{ Object.keys(asset.maps).join(' / ') }} · {{ asset.license }}
           </div>
+          <div class="asset-parameters">
+            色彩 {{ tintToHex(asset.defaults?.baseColorTint) }} ·
+            粗糙 {{ formatNumber(asset.defaults?.roughness, 0.8) }} ·
+            金属 {{ formatNumber(asset.defaults?.metallic, 0) }} ·
+            法线 {{ formatNumber(asset.defaults?.normalScale, 1) }}
+          </div>
           <div v-if="asset.classification?.tags?.length" class="asset-tags">
             {{ asset.classification.tags.join(' · ') }}
+          </div>
+          <div class="asset-actions">
+            <el-button
+              type="primary"
+              size="small"
+              plain
+              :disabled="!selectionStore.hasSelection || assetStore.loading"
+              @click="applyExistingAsset(asset)"
+            >
+              应用到已选 {{ selectionStore.selectedIds.length || '' }}
+            </el-button>
+            <el-button
+              type="danger"
+              size="small"
+              text
+              :disabled="assetStore.loading"
+              @click="removeAsset(asset)"
+            >
+              从素材库移除
+            </el-button>
           </div>
         </div>
       </div>
@@ -111,17 +155,19 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { ElMessageBox } from 'element-plus'
+import type { MaterialDef, PBRTextureSetAsset } from '../../types/blueprint'
 import type { SceneOperation } from '../../types/scenePatch'
 import { useAssetStore } from '../../stores/assetStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { createPatch } from '../../wild/scenePatch'
 
 type FileKey = 'baseColor' | 'normal' | 'roughness' | 'metalness' | 'ambientOcclusion'
 
 const assetStore = useAssetStore()
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
-const bindSelection = ref(true)
 const baseColorFile = ref<File | null>(null)
 const optionalFiles = reactive<Partial<Record<FileKey, File>>>({})
 const message = ref('')
@@ -133,6 +179,7 @@ const form = reactive({
   license: 'User supplied',
   roughness: 0.8,
   metallic: 0,
+  colorTint: '#ffffff',
   normalScale: 1,
   uvScaleX: 1,
   uvScaleY: 1,
@@ -155,8 +202,7 @@ const materialClasses = [
   { value: 'other', label: '其他' },
 ]
 
-const fileFields: Array<{ key: FileKey; label: string; required?: boolean }> = [
-  { key: 'baseColor', label: 'Base Color', required: true },
+const optionalFileFields: Array<{ key: Exclude<FileKey, 'baseColor'>; label: string }> = [
   { key: 'normal', label: 'Normal' },
   { key: 'roughness', label: 'Roughness' },
   { key: 'metalness', label: 'Metalness' },
@@ -192,19 +238,31 @@ function setFile(key: FileKey, event: Event): void {
   else delete optionalFiles[key]
 }
 
-function selectedBinding(materialName: string): SceneOperation | null {
-  if (!bindSelection.value || !selectionStore.isSingleSelection || !sceneStore.document) return null
-  const id = selectionStore.selectedIds[0]
-  const element = sceneStore.document.blueprint.geometry.elements.find(item => item.id === id)
-  if (element) return { op: 'update_element', id, changes: { material: materialName } }
-  const component = sceneStore.document.blueprint.geometry.components?.find(item => item.id === id)
-  if (!component) return null
-  const materialField = component.type === 'door'
-    ? 'leafMaterial'
-    : component.type === 'window'
-      ? 'frameMaterial'
-      : 'material'
-  return { op: 'update_component', id, changes: { [materialField]: materialName } }
+function selectedBindings(materialName: string): SceneOperation[] {
+  if (!sceneStore.document) return []
+  const selectedIds = new Set(selectionStore.selectedIds)
+  const operations: SceneOperation[] = []
+  for (const element of sceneStore.document.blueprint.geometry.elements) {
+    if (selectedIds.has(element.id)) {
+      operations.push({ op: 'update_element', id: element.id, changes: { material: materialName } })
+    }
+  }
+  for (const component of sceneStore.document.blueprint.geometry.components || []) {
+    if (!selectedIds.has(component.id)) continue
+    const materialField = component.type === 'door'
+      ? 'leafMaterial'
+      : component.type === 'window' || component.type === 'bay_window'
+        ? 'frameMaterial'
+        : component.type === 'light'
+          ? 'shadeMaterial'
+          : 'material'
+    operations.push({
+      op: 'update_component',
+      id: component.id,
+      changes: { [materialField]: materialName },
+    })
+  }
+  return operations
 }
 
 async function registerAndApply(): Promise<void> {
@@ -217,6 +275,7 @@ async function registerAndApply(): Promise<void> {
     baseRevision: sceneStore.document.revision,
     roughness: form.roughness,
     metallic: form.metallic,
+    baseColorTint: hexToTint(form.colorTint),
     normalScale: form.normalScale,
     uvScale: [form.uvScaleX, form.uvScaleY],
     materialClass: form.materialClass,
@@ -232,17 +291,80 @@ async function registerAndApply(): Promise<void> {
     },
   })
   if (!result) return
-  const binding = selectedBinding(form.materialName.trim())
-  if (binding) result.patch.operations.push(binding)
+  const bindings = selectedBindings(form.materialName.trim())
+  result.patch.operations.push(...bindings)
   const applied = await sceneStore.applyPatch(result.patch)
   messageType.value = applied ? 'success' : 'error'
   message.value = applied
-    ? `已入库 ${result.asset.assetId} 并写入当前场景`
+    ? bindings.length > 0
+      ? `已入库 ${result.asset.assetId} 并应用到 ${bindings.length} 个已选构件`
+      : `已入库 ${result.asset.assetId}，可随时从素材库复用`
     : `资产 ${result.asset.assetId} 已入库，但场景补丁未通过，请查看校验面板`
+}
+
+async function applyExistingAsset(asset: PBRTextureSetAsset): Promise<void> {
+  if (!sceneStore.document) return
+  const materialName = asset.assetId
+  const bindings = selectedBindings(materialName)
+  if (bindings.length === 0) {
+    messageType.value = 'error'
+    message.value = '请先在视口或场景树中选择要应用素材的构件'
+    return
+  }
+  const defaults = asset.defaults || {}
+  const material: MaterialDef = {
+    baseColor: defaults.baseColorTint ?? [1, 1, 1],
+    roughness: defaults.roughness ?? 0.8,
+    metallic: defaults.metallic ?? 0,
+    albedo: 1,
+    lightingCondition: 'D65_noon',
+    textureSet: asset.assetId,
+    normalScale: defaults.normalScale ?? 1,
+    uvScale: defaults.uvScale ?? [1, 1],
+  }
+  const patch = createPatch(sceneStore.document.revision, [
+    { op: 'upsert_asset', asset_id: asset.assetId, asset },
+    { op: 'upsert_material', name: materialName, material },
+    ...bindings,
+  ], 'user', false, `复用 PBR 素材 ${asset.name}`)
+  const applied = await sceneStore.applyPatch(patch)
+  messageType.value = applied ? 'success' : 'error'
+  message.value = applied
+    ? `已将 ${asset.name} 应用到 ${bindings.length} 个已选构件`
+    : `素材 ${asset.name} 未能应用，请查看校验面板`
+}
+
+async function removeAsset(asset: PBRTextureSetAsset): Promise<void> {
+  try {
+    await ElMessageBox.confirm(
+      `从素材库移除“${asset.name}”？已有场景仍可继续使用它。`,
+      '移除素材',
+      { confirmButtonText: '移除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+  const removed = await assetStore.removeFromLibrary(asset.assetId)
+  messageType.value = removed ? 'success' : 'error'
+  message.value = removed ? `已从素材库移除 ${asset.name}` : '素材移除失败'
 }
 
 function splitTerms(value: string): string[] {
   return value.split(/[,，]/).map(item => item.trim()).filter(Boolean)
+}
+
+function hexToTint(value: string): [number, number, number] {
+  const normalized = /^#[0-9a-f]{6}$/i.test(value) ? value.slice(1) : 'ffffff'
+  return [0, 2, 4].map(index => Number.parseInt(normalized.slice(index, index + 2), 16) / 255) as [number, number, number]
+}
+
+function tintToHex(value?: [number, number, number]): string {
+  const tint = value ?? [1, 1, 1]
+  return `#${tint.map(channel => Math.round(Math.max(0, Math.min(1, channel)) * 255).toString(16).padStart(2, '0')).join('')}`.toUpperCase()
+}
+
+function formatNumber(value: number | undefined, fallback: number): string {
+  return (value ?? fallback).toFixed(1)
 }
 </script>
 
@@ -254,11 +376,18 @@ function splitTerms(value: string): string[] {
 label { color: #bdbdbd; font-size: 11px; }
 .number-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .number-row > div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.color-row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 8px; align-items: end; }
+.color-row > div:first-child { display: flex; flex-direction: column; gap: 5px; }
+.color-control { display: flex; align-items: center; gap: 8px; }
+.color-control code { color: #9cdcfe; font-size: 10px; }
+.parameter-help { color: #85858e; font-size: 10px; line-height: 1.4; }
 .file-list { display: flex; flex-direction: column; gap: 6px; padding: 7px; background: #2d2d30; border-radius: 4px; }
 .file-field { display: flex; flex-direction: column; gap: 3px; }
+.file-list details { color: #9cdcfe; font-size: 10px; }
+.file-list summary { padding: 3px 0; cursor: pointer; }
+.optional-file { margin-top: 7px; }
 .file-field b { color: #f48771; }
 .file-field input { width: 100%; color: #999; font-size: 10px; }
-.bind-option { display: flex; align-items: center; gap: 6px; }
 .message { padding: 7px; border-radius: 3px; font-size: 11px; line-height: 1.4; }
 .message.success { color: #4ec9b0; background: #20332e; }
 .message.error { color: #f48771; background: #3b2424; }
@@ -270,5 +399,8 @@ label { color: #bdbdbd; font-size: 11px; }
 .asset-title { margin-bottom: 3px; font-size: 12px; }
 .asset-item code { color: #9cdcfe; font-size: 10px; }
 .asset-meta { margin-top: 4px; color: #85858e; font-size: 10px; }
+.asset-parameters { margin-top: 3px; color: #c8c8c8; font-size: 10px; }
 .asset-tags { margin-top: 3px; overflow: hidden; color: #b6a0ff; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.asset-actions { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
+.asset-actions :deep(.el-button + .el-button) { margin-left: 0; }
 </style>

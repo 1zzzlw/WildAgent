@@ -223,6 +223,23 @@ def _requested_dimension(user_message: str, labels: tuple[str, ...]) -> float | 
     return None
 
 
+def _requested_plan_dimensions(user_message: str) -> tuple[float, float] | None:
+    """识别明确描述建筑平面或标准层的 ``宽×深`` 组合尺寸。"""
+    number = r"(\d+(?:\.\d+)?)"
+    pattern = re.compile(fr"{number}\s*[×xX*]\s*{number}\s*(?:米|m)?", re.I)
+    plan_terms = ("标准层", "平面", "占地", "建筑尺寸", "楼体尺寸", "塔楼尺寸")
+    excluded_terms = ("阳台", "门", "窗", "雨棚", "楼梯", "走廊", "开间", "柱", "梁", "房间")
+    for match in pattern.finditer(user_message):
+        local_context = user_message[max(0, match.start() - 18):match.end() + 8]
+        if not any(term in local_context for term in plan_terms):
+            continue
+        prefix = local_context[:local_context.find(match.group(0))]
+        if any(term in prefix for term in excluded_terms):
+            continue
+        return float(match.group(1)), float(match.group(2))
+    return None
+
+
 def _requested_balcony_width(user_message: str) -> float | None:
     patterns = (
         r"宽\s*(\d+(?:\.\d+)?)\s*(?:米|m)?[^，。；]{0,16}阳台",
@@ -427,8 +444,12 @@ def _fallback_plan(
         complexity_profile or resolve_complexity_profile(user_message)
     )
     default_width, default_depth, default_floors, default_floor_height = profile["default_massing"]
+    requested_plan_dimensions = _requested_plan_dimensions(user_message)
     requested_width = _requested_dimension(user_message, (r"宽(?:度)?",))
     requested_depth = _requested_dimension(user_message, (r"深(?:度)?", r"长(?:度)?"))
+    if requested_plan_dimensions:
+        requested_width = requested_width or requested_plan_dimensions[0]
+        requested_depth = requested_depth or requested_plan_dimensions[1]
     width = _clamp_number(
         requested_width,
         profile["width_range"][0],
@@ -472,11 +493,19 @@ def _fallback_plan(
     else:
         component_quota["door"] = {"min": 0, "max": 8, "note": "仅在功能确有入口时生成"}
     if "window" in base_components:
-        component_quota["window"] = {
-            "min": min(12, 4 + max(0, modeled_floors - 1) * 2),
-            "max": 32,
-            "note": "按立面轴线对齐",
-        }
+        if profile["id"] == "high_rise":
+            repeated_window_count = min(160, max(16, floors * 4))
+            component_quota["window"] = {
+                "min": repeated_window_count,
+                "max": repeated_window_count,
+                "note": "按标准层标高与立面轴线均匀重复",
+            }
+        else:
+            component_quota["window"] = {
+                "min": min(12, 4 + max(0, modeled_floors - 1) * 2),
+                "max": 32,
+                "note": "按立面轴线对齐",
+            }
     else:
         component_quota["window"] = {"min": 0, "max": 24, "note": "按建筑功能选用"}
     component_quota["roof"] = {
@@ -703,8 +732,12 @@ def normalize_architecture_plan(
     requested_shape = _requested_shape(user_message)
     requested_balcony_width = _requested_balcony_width(user_message)
     requested_balcony_access_count = _requested_balcony_access_count(user_message)
+    requested_plan_dimensions = _requested_plan_dimensions(user_message)
     requested_width = _requested_dimension(user_message, (r"宽(?:度)?",))
     requested_depth = _requested_dimension(user_message, (r"深(?:度)?", r"长(?:度)?"))
+    if requested_plan_dimensions:
+        requested_width = requested_width or requested_plan_dimensions[0]
+        requested_depth = requested_depth or requested_plan_dimensions[1]
     floors = int(_clamp_number(
         requested_floors if requested_floors is not None else massing_raw.get("floors"),
         profile["floor_range"][0],
@@ -869,6 +902,18 @@ def normalize_architecture_plan(
     for component_type in detail_packages:
         if component_type not in required_components:
             required_components.append(component_type)
+    # component_quota 是批准后的硬约束；若模型漏写 required_components，
+    # 仍必须派发所有最低数量大于零的已实现组件。
+    for component_type, limits in quotas.items():
+        minimum = limits.get("min", 0) if isinstance(limits, dict) else 0
+        if (
+            component_type in allowed_components
+            and isinstance(minimum, (int, float))
+            and not isinstance(minimum, bool)
+            and minimum > 0
+            and component_type not in required_components
+        ):
+            required_components.append(component_type)
     required_components = [
         component_type for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
@@ -916,6 +961,10 @@ def score_architecture_plan(plan: dict[str, Any], user_message: str) -> int:
         score += 8 if any(item == "window" for item in front_ground) else 0
     requested_width = _requested_dimension(user_message, (r"宽(?:度)?",))
     requested_depth = _requested_dimension(user_message, (r"深(?:度)?", r"长(?:度)?"))
+    requested_plan_dimensions = _requested_plan_dimensions(user_message)
+    if requested_plan_dimensions:
+        requested_width = requested_width or requested_plan_dimensions[0]
+        requested_depth = requested_depth or requested_plan_dimensions[1]
     if requested_width is not None:
         score += 6 if abs(massing["width"] - requested_width) <= 0.1 else -6
     if requested_depth is not None:
@@ -1337,6 +1386,8 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
     )
 
     elements: list[dict[str, Any]] = []
+    templates: dict[str, dict[str, Any]] = {}
+    instances: list[dict[str, Any]] = []
     if schematic:
         level_ranges = [(1, 0.0, total_height)]
         for floor_id, elevation in (("floor_ground", 0.0), ("floor_top", total_height)):
@@ -1367,6 +1418,71 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     "type": "wall", "id": "wall_left_shell",
                     "from": [0.0, base_y, depth], "to": [0.0, top_y, 0.0],
                     "thickness": 0.24, "material": "wall_finish",
+                },
+            ])
+
+        if floors > 1:
+            templates["standard_floor_plate"] = {
+                "type": "floor", "id": "standard_floor_plate",
+                "from": [0.0, 0.0, 0.0], "to": [width, 0.0, depth],
+                "thickness": 0.2, "material": "concrete",
+            }
+            instances.extend({
+                "id": f"floor_standard_{level}",
+                "ref": "standard_floor_plate",
+                "position": [0.0, round(level * floor_height, 3), 0.0],
+            } for level in range(1, floors))
+
+            stair_x = max(1.0, min(width - 1.0, width * 0.2))
+            stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
+            stair_z1 = max(stair_z0 + 1.0, min(depth - 0.8, depth * 0.65))
+            templates["standard_storey_stair"] = {
+                "type": "stair", "id": "standard_storey_stair",
+                "from": [stair_x, 0.0, stair_z0],
+                "to": [stair_x, floor_height, stair_z1],
+                "width": min(1.8, max(1.0, width * 0.08)),
+                "material": "concrete",
+            }
+            instances.extend({
+                "id": f"stair_standard_{level}_{level + 1}",
+                "ref": "standard_storey_stair",
+                "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
+            } for level in range(1, floors))
+
+        if normalized["profile"] == "high_rise":
+            core_width = min(width - 2.0, max(4.0, width * 0.24))
+            core_depth = min(depth - 2.0, max(4.0, depth * 0.28))
+            x0 = (width - core_width) / 2
+            x1 = x0 + core_width
+            z0 = (depth - core_depth) / 2
+            z1 = z0 + core_depth
+            core_thickness = 0.2
+            elements.extend([
+                {
+                    "type": "wall", "id": "wall_core_front",
+                    "from": [x0, 0.0, z0], "to": [x1, total_height, z0],
+                    "thickness": core_thickness, "material": "concrete",
+                },
+                {
+                    "type": "wall", "id": "wall_core_right",
+                    "from": [x1, 0.0, z0], "to": [x1, total_height, z1],
+                    "thickness": core_thickness, "material": "concrete",
+                },
+                {
+                    "type": "wall", "id": "wall_core_back",
+                    "from": [x1, 0.0, z1], "to": [x0, total_height, z1],
+                    "thickness": core_thickness, "material": "concrete",
+                },
+                {
+                    "type": "wall", "id": "wall_core_left",
+                    "from": [x0, 0.0, z1], "to": [x0, total_height, z0],
+                    "thickness": core_thickness, "material": "concrete",
+                },
+                {
+                    "type": "wall", "id": "wall_core_partition",
+                    "from": [(x0 + x1) / 2, 0.0, z0],
+                    "to": [(x0 + x1) / 2, total_height, z1],
+                    "thickness": core_thickness, "material": "concrete",
                 },
             ])
     else:
@@ -1527,7 +1643,11 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
             "type": "building",
             "name": str(normalized.get("concept") or "确定性回退建筑")[:80],
         },
-        "geometry": {"elements": elements, "components": []},
+        "geometry": {
+            "elements": elements,
+            "components": [],
+            **({"templates": templates, "instances": instances} if templates else {}),
+        },
         "materials": {
             "concrete": {
                 "baseColor": [0.72, 0.72, 0.72], "roughness": 0.65,
@@ -1580,6 +1700,31 @@ def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
+def _expand_schematic_facade_storeys(
+    walls: list[dict[str, Any]],
+    realization: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """把连续高墙映射为逐层立面区间，宿主仍保持同一真实 wall。"""
+    if realization.get("representation_mode") != "schematic":
+        return walls
+    floors = max(1, int(realization.get("floors") or realization.get("modeled_floors") or 1))
+    floor_height = max(0.1, float(realization.get("floor_height") or 3.2))
+    expected_height = floors * floor_height
+    expanded: list[dict[str, Any]] = []
+    for wall in walls:
+        if wall["height"] < expected_height - max(0.1, floor_height * 0.05):
+            expanded.append(wall)
+            continue
+        for level in range(floors):
+            expanded.append({
+                **wall,
+                "base_y": round(wall["base_y"] + level * floor_height, 3),
+                "height": min(floor_height, wall["height"] - level * floor_height),
+                "story_index": level + 1,
+            })
+    return expanded
+
+
 def _opening_slots_overlap(
     first: dict[str, Any],
     second: dict[str, Any],
@@ -1613,6 +1758,27 @@ def _opening_slots_overlap(
         and second_left < first_left + first_width + horizontal_clearance
     )
     return vertical_overlap and horizontal_overlap
+
+
+def _evenly_spaced_opening_slots(
+    slots: list[dict[str, Any]],
+    limit: int,
+) -> list[dict[str, Any]]:
+    """在配额小于候选槽位时保留覆盖完整标高范围的规则采样。"""
+    if limit <= 0:
+        return []
+    if len(slots) <= limit:
+        return slots
+    ordered = sorted(slots, key=lambda slot: (
+        float(slot.get("from", [0.0, 0.0, 0.0])[1]),
+        {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot.get("facing"), 4),
+        int(slot.get("bay") or 0),
+        str(slot.get("id") or ""),
+    ))
+    if limit == 1:
+        return [ordered[len(ordered) // 2]]
+    last = len(ordered) - 1
+    return [ordered[round(index * last / (limit - 1))] for index in range(limit)]
 
 
 def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1731,6 +1897,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
     realization = {
+        "floors": int(massing.get("floors") or massing.get("modeled_floors") or 1),
         "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
         "floor_height": float(massing.get("floor_height") or 3.2),
         "representation_mode": str(massing.get("representation_mode") or "full"),
@@ -1743,6 +1910,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             descriptor = _wall_descriptor(element)
             if descriptor:
                 walls.append(descriptor)
+    walls = _expand_schematic_facade_storeys(walls, realization)
     if not walls:
         roof_slots = _planned_roof_slots(plan, realization)
         quotas = deepcopy(plan.get("component_quota", {}))
@@ -1818,7 +1986,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             )
             access_width = max(0.8, min(wall["length"], requested_access_width))
             wall_slots.append({
-                "id": f"{wall['id']}:door:balcony_access",
+                "id": f"{wall['id']}:floor_{wall.get('story_index', 1)}:door:balcony_access",
                 "type": "door",
                 "role": "balcony_access",
                 "wall_id": wall["id"],
@@ -1847,7 +2015,10 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             bottom = wall["base_y"] if opening_type == "door" else wall["base_y"] + min(1.0, wall["height"] * 0.3)
             height = min(2.35 if opening_type == "door" else 1.55, wall["height"] - (bottom - wall["base_y"]) - 0.25)
             slot = {
-                "id": f"{wall['id']}:{opening_type}:{bay_index + 1}",
+                "id": (
+                    f"{wall['id']}:floor_{wall.get('story_index', 1)}:"
+                    f"{opening_type}:{bay_index + 1}"
+                ),
                 "type": opening_type,
                 "wall_id": wall["id"],
                 "facing": facing,
@@ -1867,7 +2038,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 continue
             wall_slots.append(slot)
             slots.append(slot)
-        facade_plan[str(wall["id"])] = {
+        wall_plan = facade_plan.setdefault(str(wall["id"]), {
             "facing": facing if external else "internal",
             "intent": (
                 "阳台后方设置通室内入口"
@@ -1876,10 +2047,15 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 if external
                 else "内部/退台墙，不自动开口"
             ),
-            "max_openings": len(wall_slots),
-            "is_main_facade": external and facing == "front",
-            "slots": wall_slots,
-        }
+            "max_openings": 0,
+            "is_main_facade": False,
+            "slots": [],
+        })
+        wall_plan["max_openings"] += len(wall_slots)
+        wall_plan["is_main_facade"] = (
+            wall_plan["is_main_facade"] or (external and facing == "front")
+        )
+        wall_plan["slots"].extend(wall_slots)
 
     slots.sort(key=lambda slot: (
         {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot["facing"], 4),
@@ -2022,6 +2198,8 @@ def conform_openings_to_slots(
             if opening_type == "window" else 0
         )
         maximum = min(len(slots), max(0, int(limits.get("max", len(slots))) - bay_count))
+        slots = _evenly_spaced_opening_slots(slots, maximum)
+        maximum = len(slots)
         minimum = min(maximum, max(0, int(limits.get("min", 0)) - bay_count))
         if len(items) > maximum:
             stats["pruned"] += len(items) - maximum

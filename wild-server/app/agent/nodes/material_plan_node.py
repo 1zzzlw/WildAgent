@@ -126,8 +126,9 @@ def resolve_material_plan(
 
         defaults = (asset or {}).get("defaults") or {}
         material_class = str(classification.get("materialClass") or "other")
-        base_color = [1.0, 1.0, 1.0] if asset else _safe_color(
-            requested.get("baseColor"), fallback["baseColor"]
+        base_color = _safe_color(
+            defaults.get("baseColorTint") if asset else requested.get("baseColor"),
+            [1.0, 1.0, 1.0] if asset else fallback["baseColor"],
         )
         roughness = _unit(
             defaults.get("roughness") if asset else requested.get("roughness"),

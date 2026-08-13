@@ -32,6 +32,7 @@ MATERIAL_ROLES = {
     "door", "roof", "ground", "accent",
 }
 _ASSET_ID_RE = re.compile(r"^pbr_[0-9a-f]{24}$")
+_HIDDEN_MARKER = ".library-hidden"
 
 
 class AssetStorageError(ValueError):
@@ -81,6 +82,16 @@ def _positive_pair(value: list[float] | tuple[float, float], field: str) -> list
     return pair
 
 
+def _unit_color(value: list[float] | tuple[float, float, float], field: str) -> list[float]:
+    try:
+        color = [float(item) for item in value]
+    except (TypeError, ValueError) as exc:
+        raise AssetStorageError(f"{field} 必须是三个 0–1 数字") from exc
+    if len(color) != 3 or any(not 0 <= item <= 1 for item in color):
+        raise AssetStorageError(f"{field} 必须是三个 0–1 数字")
+    return color
+
+
 class LocalAssetStorage:
     """本地不可变资产目录；相同纹理通道内容自动去重。"""
 
@@ -110,6 +121,7 @@ class LocalAssetStorage:
         real_world_size_meters: list[float] | tuple[float, float] = (1.0, 1.0),
         roughness: float = 0.8,
         metallic: float = 0.0,
+        base_color_tint: list[float] | tuple[float, float, float] = (1.0, 1.0, 1.0),
         normal_scale: float = 1.0,
         uv_scale: list[float] | tuple[float, float] = (1.0, 1.0),
     ) -> dict[str, Any]:
@@ -127,6 +139,7 @@ class LocalAssetStorage:
             raise AssetStorageError(f"recommended_roles 包含未知角色: {', '.join(unknown_roles)}")
         real_size = _positive_pair(real_world_size_meters, "real_world_size_meters")
         resolved_uv_scale = _positive_pair(uv_scale, "uv_scale")
+        resolved_base_color_tint = _unit_color(base_color_tint, "base_color_tint")
         try:
             roughness = float(roughness)
             metallic = float(metallic)
@@ -176,6 +189,14 @@ class LocalAssetStorage:
             }
             identity_parts.append(f"{channel}:{digest}")
 
+        identity_parts.append(json.dumps({
+            "baseColorTint": resolved_base_color_tint,
+            "roughness": roughness,
+            "metallic": metallic,
+            "normalScale": normal_scale,
+            "uvScale": resolved_uv_scale,
+        }, sort_keys=True, separators=(",", ":")))
+
         content_hash = hashlib.sha256("\n".join(identity_parts).encode("utf-8")).hexdigest()
         asset_id = f"pbr_{content_hash[:24]}"
         return {
@@ -194,6 +215,7 @@ class LocalAssetStorage:
             },
             "realWorldSizeMeters": real_size,
             "defaults": {
+                "baseColorTint": resolved_base_color_tint,
                 "roughness": roughness,
                 "metallic": metallic,
                 "normalScale": normal_scale,
@@ -210,6 +232,7 @@ class LocalAssetStorage:
         target_dir = self.root_dir / asset_id
         manifest_path = target_dir / "manifest.json"
         if manifest_path.exists():
+            (target_dir / _HIDDEN_MARKER).unlink(missing_ok=True)
             return self.get_manifest(asset_id)
 
         temp_dir = self.root_dir / f".tmp_{asset_id}_{uuid4().hex}"
@@ -269,11 +292,21 @@ class LocalAssetStorage:
             return []
         manifests: list[dict[str, Any]] = []
         for path in self.root_dir.glob("pbr_*/manifest.json"):
+            if (path.parent / _HIDDEN_MARKER).exists():
+                continue
             try:
                 manifests.append(json.loads(path.read_text(encoding="utf-8")))
             except (json.JSONDecodeError, OSError):
                 continue
         return sorted(manifests, key=lambda item: item.get("createdAt", ""), reverse=True)
+
+    def hide_from_library(self, asset_id: str) -> None:
+        """从素材库与 AI 候选清单隐藏资产，同时保留旧蓝图引用的文件。"""
+        self._validate_asset_id(asset_id)
+        asset_dir = self.root_dir / asset_id
+        if not (asset_dir / "manifest.json").is_file():
+            raise FileNotFoundError(asset_id)
+        (asset_dir / _HIDDEN_MARKER).touch(exist_ok=True)
 
     def resolve_file(self, asset_id: str, filename: str) -> Path:
         self._validate_asset_id(asset_id)

@@ -63,7 +63,10 @@ function createCacheKey(
   if (parentRoof && !('position' in parentRoof) && context.elements.some(element => element.type === 'wall')) {
     dependencies.push(...context.elements.filter(element => element.type === 'wall'))
   }
-  return stableSerialize({ component, dependencies })
+  const componentDependencies = component.type === 'cornice'
+    ? context.components.filter(item => item.type === 'balcony' || item.type === 'canopy')
+    : []
+  return stableSerialize({ component, dependencies, componentDependencies })
 }
 
 function stableSerialize(value: unknown): string {

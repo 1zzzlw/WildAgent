@@ -83,7 +83,7 @@
           <span>Token {{ turn.metrics.total_tokens?.total || 0 }}</span>
           <span>校验错误 {{ turn.metrics.validation_errors }}</span>
           <span v-if="turn.metrics.retry_count !== undefined">
-            重试 {{ turn.metrics.retry_count }}/{{ turn.metrics.max_retries || 3 }}
+            修复轮次 {{ turn.metrics.retry_count }}（每目标最多 {{ turn.metrics.max_retries || 3 }} 次）
           </span>
         </div>
       </details>

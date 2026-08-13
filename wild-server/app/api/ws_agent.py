@@ -763,7 +763,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     else:
                         await send_step(
                             "generating", node_name, "done", label,
-                            f"已发起重试 {retry_number}/{initial_state.get('max_retries', 3)}",
+                            f"已发起第 {retry_number} 轮修复（每目标最多 "
+                            f"{initial_state.get('max_retries', 3)} 次）",
                         )
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",

@@ -39,6 +39,9 @@ async def upload_pbr_asset(
     source_uri: Annotated[str | None, Form()] = None,
     roughness: Annotated[float, Form()] = 0.8,
     metallic: Annotated[float, Form()] = 0.0,
+    color_tint_r: Annotated[float, Form()] = 1.0,
+    color_tint_g: Annotated[float, Form()] = 1.0,
+    color_tint_b: Annotated[float, Form()] = 1.0,
     normal_scale: Annotated[float, Form()] = 1.0,
     uv_scale_x: Annotated[float, Form()] = 1.0,
     uv_scale_y: Annotated[float, Form()] = 1.0,
@@ -72,6 +75,7 @@ async def upload_pbr_asset(
             "sourceUri": source_uri,
             "roughness": roughness,
             "metallic": metallic,
+            "baseColorTint": [color_tint_r, color_tint_g, color_tint_b],
             "normalScale": normal_scale,
             "uvScale": [uv_scale_x, uv_scale_y],
             "materialClass": material_class,
@@ -98,6 +102,16 @@ async def list_assets():
         asset_storage.list_manifests(),
         headers={"Cache-Control": "no-store, max-age=0"},
     )
+
+
+@router.delete("/{asset_id}", status_code=204)
+async def hide_asset(asset_id: str):
+    try:
+        asset_storage.hide_from_library(asset_id)
+    except AssetStorageError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="资产不存在") from exc
 
 
 @router.get("/{asset_id}")

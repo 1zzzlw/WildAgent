@@ -15,6 +15,30 @@ try {
   const { meshDataToGeometry } = await server.ssrLoadModule(
     '/src/renderer/meshDataToGeometry.ts',
   )
+  const { selectionAfterClick } = await server.ssrLoadModule(
+    '/src/wild/componentSelection.ts',
+  )
+  const { buildReconstructionDiagnostics } = await server.ssrLoadModule(
+    '/src/renderer/reconstructionDiagnostics.ts',
+  )
+
+  assert.deepEqual(selectionAfterClick(['wall_1'], 'wall_2', 'toggle'), ['wall_1', 'wall_2'])
+  assert.deepEqual(selectionAfterClick(['wall_1', 'wall_2'], 'wall_1', 'toggle'), ['wall_2'])
+  assert.deepEqual(selectionAfterClick(['wall_1', 'wall_2'], 'wall_3', 'replace'), ['wall_3'])
+
+  const missingComponent = buildReconstructionDiagnostics({
+    geometry: {
+      elements: [{ id: 'wall_1', type: 'wall' }],
+      components: [{ id: 'door_1', type: 'door', parentWall: 'wall_1' }],
+    },
+  }, [{
+    elementId: 'wall_1',
+    geometry: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+  }], {
+    generatedElementIdsByComponentId: { door_1: [] },
+  }).diagnostics.find(item => item.code === 'RECONSTRUCTION_MISSING_MESH')
+  assert.equal(missingComponent.category, 'compiler_geometry')
+  assert.equal(missingComponent.repairLayer, 'compiler')
 
   const standard = createMaterialFromParams({
     baseColor: [0.7, 0.7, 0.7],
@@ -34,6 +58,25 @@ try {
     side: 'front',
   })
   assert.equal(auditedSolid.side, 0, '显式验证过的封闭实体应支持 FrontSide')
+
+  const tintedTexture = createMaterialFromParams({
+    baseColor: [0.8, 0.6, 0.4],
+    roughness: 0.7,
+    metallic: 0,
+    albedo: 1,
+    textures: {
+      baseColor: {
+        encoding: 'url',
+        uri: '/texture.png',
+        mimeType: 'image/png',
+        sha256: 'test',
+        colorSpace: 'srgb',
+      },
+    },
+  }, false, () => null)
+  assert.ok(tintedTexture.color.r < 1, '颜色贴图应与材质染色相乘，而不是强制白色')
+  assert.ok(tintedTexture.color.g < tintedTexture.color.r)
+  assert.ok(tintedTexture.color.b < tintedTexture.color.g)
 
   const glass = createMaterialFromParams({
     baseColor: [0.72, 0.88, 0.96],
@@ -68,6 +111,7 @@ try {
   geometry.dispose()
   standard.dispose()
   auditedSolid.dispose()
+  tintedTexture.dispose()
   glass.dispose()
   console.log('Rendering pipeline check passed: compatible double-sided solids, explicit front-side solids, physical glass and AO UVs.')
 } finally {

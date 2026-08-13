@@ -22,6 +22,8 @@ interface DiagnosticLike {
   level: 'warning' | 'error'
   code: string
   message: string
+  category: 'compiler_geometry' | 'core_geometry'
+  repairLayer: 'compiler' | 'core'
   elementId?: string
   expectedBounds?: ReconstructionBounds
   actualBounds?: ReconstructionBounds
@@ -142,6 +144,7 @@ export function buildReconstructionDiagnostics(
     renderedElementIds: string[],
     expectedRelation: ReconstructionObservation['expectedRelation'],
     targetId?: string,
+    diagnosticLayer: 'compiler' | 'core' = 'core',
   ) => {
     const actualBounds = emptyBounds()
     let meshCount = 0
@@ -163,6 +166,8 @@ export function buildReconstructionDiagnostics(
         level: 'error',
         code: 'RECONSTRUCTION_MISSING_MESH',
         message: `[${item.id}] ${message}`,
+        category: diagnosticLayer === 'compiler' ? 'compiler_geometry' : 'core_geometry',
+        repairLayer: diagnosticLayer,
         elementId: item.id,
         expectedBounds: expected,
       })
@@ -173,6 +178,8 @@ export function buildReconstructionDiagnostics(
         level: 'warning',
         code: 'RECONSTRUCTION_PARENT_SEPARATION',
         message: `[${item.id}] ${message}`,
+        category: 'compiler_geometry',
+        repairLayer: 'compiler',
         elementId: item.id,
         expectedBounds: expected,
         actualBounds: actual,
@@ -217,6 +224,8 @@ export function buildReconstructionDiagnostics(
           level: 'warning',
           code: 'RECONSTRUCTION_ROOF_COVERAGE',
           message: `[${element.id}] ${observation.message}`,
+          category: 'core_geometry',
+          repairLayer: 'core',
           elementId: element.id,
           expectedBounds: wallBounds,
           actualBounds: roof,
@@ -229,7 +238,7 @@ export function buildReconstructionDiagnostics(
     if (!component?.id) continue
     const generated = mappingIds(componentMapping, component.id)
     const parentId = parentIdOf(component)
-    addObservation(component, generated, parentId ? 'attached_to_parent' : 'self', parentId)
+    addObservation(component, generated, parentId ? 'attached_to_parent' : 'self', parentId, 'compiler')
   }
 
   return {

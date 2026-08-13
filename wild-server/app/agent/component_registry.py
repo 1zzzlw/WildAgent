@@ -320,15 +320,26 @@ def get_component_config(component_type: str) -> ComponentConfig | None:
 def resolve_component_suggestions(
     suggested: list[str],
     user_message: str,
+    component_quota: dict | None = None,
 ) -> list[str]:
     """把模型建议归一化为可安全派发的组件列表。
 
     - 丢弃未注册或未实现的类型，避免 ``Send`` 派发到不存在的节点。
     - 尊重每个组件的否定关键词。
+    - 设计清单中 ``min > 0`` 的组件必须进入派发，避免批准配额无人生成。
     - 当骨架没有给出建议时，保留门、窗、屋顶三个基础组件，并按关键词补充。
     - 阳台编译器已经内嵌栏杆；用户没有单独要求栏杆时避免重复生成。
     """
     requested = [item for item in suggested if isinstance(item, str)]
+    for component_type, limits in (component_quota or {}).items():
+        minimum = limits.get("min", 0) if isinstance(limits, dict) else 0
+        if (
+            isinstance(minimum, (int, float))
+            and not isinstance(minimum, bool)
+            and minimum > 0
+            and component_type not in requested
+        ):
+            requested.append(component_type)
     if not requested:
         requested = ["door", "window", "roof"]
         requested.extend(

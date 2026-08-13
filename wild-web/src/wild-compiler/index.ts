@@ -69,7 +69,7 @@ export function compileBlueprintComponents(
     try {
       const generated = compileComponentCached(
         component,
-        { elements: sourceElements },
+        { elements: sourceElements, components },
         registration.compile,
       )
       if (component.draggable) {

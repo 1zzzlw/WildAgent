@@ -1,9 +1,26 @@
 import unittest
 
 from app.services.agent_service import _final_errors, run_validation_pipeline
+from app.agent.validation_issues import validation_issues_from_results
 
 
 class ValidationPipelineRepairTest(unittest.TestCase):
+    def test_validation_issue_uses_finite_root_cause_category(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{"id": "roof_1", "type": "roof"}],
+                "components": [],
+            }
+        }
+        issues = validation_issues_from_results([{
+            "name": "validate_roof_coverage",
+            "output": "❌ [roof_1] 屋顶未覆盖最高承托墙",
+            "has_error": True,
+        }], blueprint)
+
+        self.assertEqual(issues[0]["category"], "coverage_geometry")
+        self.assertEqual(issues[0]["recommended_repair_level"], "deterministic_fix")
+
     def test_material_alias_is_repaired_before_final_reference_result(self):
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "alias repair"},

@@ -11,7 +11,7 @@ from app.agent.architecture_plan import (
     select_architecture_plan,
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
-from app.tools.spatial_tools import validate_model_quality
+from app.tools.spatial_tools import validate_model_quality, validate_reference_integrity
 
 
 def _two_storey_blueprint() -> dict:
@@ -236,6 +236,78 @@ def test_underground_transport_does_not_force_entrance_or_roof() -> None:
     assert plan["required_components"] == ["light"]
     assert plan["component_quota"]["roof"]["max"] == 0
     assert plan["component_quota"]["door"]["min"] == 0
+
+
+def test_positive_component_quota_repairs_incomplete_required_component_list() -> None:
+    message = "生成一栋30层高层住宅塔楼"
+    plan = normalize_architecture_plan({
+        "required_components": ["door", "window", "roof"],
+        "component_quota": {
+            "door": {"min": 1, "max": 4},
+            "window": {"min": 8, "max": 32},
+            "roof": {"min": 1, "max": 1},
+            "light": {"min": 2, "max": 8},
+        },
+    }, message)
+
+    assert "light" in plan["required_components"]
+
+
+def test_composite_plan_dimensions_override_profile_defaults() -> None:
+    cases = (
+        ("生成30层住宅塔楼，标准层33×20m，平屋顶", 33.0, 20.0),
+        ("生成18层办公楼，建筑平面 48 x 27 米", 48.0, 27.0),
+    )
+
+    for message, expected_width, expected_depth in cases:
+        plan = normalize_architecture_plan({}, message)
+
+        assert plan["massing"]["width"] == expected_width
+        assert plan["massing"]["depth"] == expected_depth
+
+
+def test_component_dimensions_are_not_misread_as_plan_dimensions() -> None:
+    message = "生成30层住宅塔楼，阳台尺寸3×2m，建筑宽33米、深20米"
+
+    plan = normalize_architecture_plan({}, message)
+
+    assert plan["massing"]["width"] == 33.0
+    assert plan["massing"]["depth"] == 20.0
+
+
+def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() -> None:
+    for message, floors, floor_height in (
+        ("生成30层住宅塔楼，标准层33×20m，平屋顶", 30, 4.0),
+        ("生成18层办公塔楼，建筑平面48×27m，平屋顶", 18, 4.0),
+    ):
+        plan = normalize_architecture_plan({}, message)
+        blueprint = build_deterministic_skeleton(plan, message)
+        geometry = blueprint["geometry"]
+
+        assert "❌" not in validate_reference_integrity.func(blueprint)
+        assert "standard_floor_plate" in geometry["templates"]
+        floor_instances = [
+            instance for instance in geometry["instances"]
+            if instance["ref"] == "standard_floor_plate"
+        ]
+        assert len(floor_instances) == floors - 1
+        assert floor_instances[0]["position"][1] == floor_height
+        assert floor_instances[-1]["position"][1] == (floors - 1) * floor_height
+
+        core_walls = [
+            element for element in geometry["elements"]
+            if element.get("id", "").startswith("wall_core_")
+        ]
+        assert len(core_walls) >= 4
+
+        brief = resolve_facade_layout(blueprint, plan)
+        window_levels = {
+            round(slot["from"][1] // floor_height)
+            for slot in brief["opening_slots"]
+            if slot["type"] == "window"
+        }
+        assert min(window_levels) == 0
+        assert max(window_levels) == floors - 1
 
 
 def test_precision_mode_compiles_detailed_plan_into_articulated_skeleton() -> None:

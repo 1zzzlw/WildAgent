@@ -347,6 +347,7 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     return {
         "merged_blueprint": merged_blueprint,
         "merge_diag": merge_diag,
+        "design_brief": design_brief,
     }
 
 

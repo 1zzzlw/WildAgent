@@ -125,6 +125,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         }
         validation = await validate_node({
             "merged_blueprint": blueprint,
+            "design_brief": design_brief,
             "merge_diag": {
                 "design_errors": ["door 数量 0 少于设计下限 1"],
             },
@@ -179,6 +180,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         }
         validation = await validate_node({
             "merged_blueprint": blueprint,
+            "design_brief": design_brief,
             "merge_diag": {
                 "design_errors": [
                     "墙 wall_front 有 2 个门窗，超过立面上限 1"

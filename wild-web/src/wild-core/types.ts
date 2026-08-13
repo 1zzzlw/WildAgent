@@ -535,6 +535,7 @@ export interface PBRTextureSetAsset {
   };
   realWorldSizeMeters?: [number, number];
   defaults?: {
+    baseColorTint?: Color;
     roughness?: number;
     metallic?: number;
     normalScale?: number;

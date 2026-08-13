@@ -10,6 +10,7 @@ export interface PBRUploadRequest {
   baseRevision: number
   roughness: number
   metallic: number
+  baseColorTint: [number, number, number]
   normalScale: number
   uvScale: [number, number]
   materialClass: string
@@ -58,6 +59,9 @@ export const useAssetStore = defineStore('assets', () => {
       form.set('base_revision', String(request.baseRevision))
       form.set('roughness', String(request.roughness))
       form.set('metallic', String(request.metallic))
+      form.set('color_tint_r', String(request.baseColorTint[0]))
+      form.set('color_tint_g', String(request.baseColorTint[1]))
+      form.set('color_tint_b', String(request.baseColorTint[2]))
       form.set('normal_scale', String(request.normalScale))
       form.set('uv_scale_x', String(request.uvScale[0]))
       form.set('uv_scale_y', String(request.uvScale[1]))
@@ -90,5 +94,26 @@ export const useAssetStore = defineStore('assets', () => {
     }
   }
 
-  return { assets, loading, error, refresh, registerPbr }
+  async function removeFromLibrary(assetId: string): Promise<boolean> {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await fetch(`/api/assets/${encodeURIComponent(assetId)}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.detail || `素材移除失败 (${response.status})`)
+      }
+      assets.value = assets.value.filter(asset => asset.assetId !== assetId)
+      return true
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : String(cause)
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return { assets, loading, error, refresh, registerPbr, removeFromLibrary }
 })
