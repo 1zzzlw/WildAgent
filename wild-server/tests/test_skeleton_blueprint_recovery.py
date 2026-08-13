@@ -30,6 +30,28 @@ class _FakeLLM:
         return _FakeResponse()
 
 
+class _InvalidMaterialsResponse:
+    content = """
+    {
+      "meta": {"version": "1.1", "type": "building", "name": "错误材质容器"},
+      "geometry": {
+        "elements": [{
+          "id": "wall_bad", "type": "wall",
+          "from": [0, 0, 0], "to": [8, 3.2, 0], "thickness": 0.2
+        }],
+        "components": []
+      },
+      "materials": []
+    }
+    """
+    response_metadata = {"finish_reason": "stop", "token_usage": {}}
+
+
+class _InvalidMaterialsLLM:
+    async def ainvoke(self, messages):
+        return _InvalidMaterialsResponse()
+
+
 class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
     async def test_recovery_uses_non_thinking_model_and_extracts_wrapped_blueprint(self):
         fake_llm = _FakeLLM()
@@ -53,6 +75,33 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
             {"input": 5, "output": 7, "total": 12},
         )
         self.assertEqual(merged, {"input": 15, "output": 27, "total": 42})
+
+    async def test_invalid_materials_container_uses_deterministic_skeleton_fallback(self):
+        architecture_plan = {
+            "concept": "低层住宅",
+            "required_components": [],
+        }
+        fake_loader = type("Loader", (), {"last_results": [], "load_many": lambda *_args, **_kwargs: ""})()
+        fake_service = type("Service", (), {"spec_loader": fake_loader})()
+
+        with (
+            patch.object(skeleton_node, "create_llm", return_value=_InvalidMaterialsLLM()),
+            patch("app.services.agent_service.agent_service", fake_service),
+        ):
+            result = await skeleton_node.skeleton_generator({
+                "user_message": "生成一个别墅",
+                "architecture_plan": architecture_plan,
+                "material_plan": {"roles": [], "resolvedAssets": {}},
+                "thinking_mode": False,
+            })
+
+        self.assertNotIn("error", result)
+        self.assertIn("skeleton_blueprint", result)
+        self.assertEqual(
+            result["skeleton_diag"]["deterministic_fallback_reason"],
+            "模型骨架未通过 Schema 预检",
+        )
+        self.assertIsInstance(result["skeleton_blueprint"]["materials"], dict)
 
 
 if __name__ == "__main__":

@@ -266,7 +266,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 5. 归一化和 Schema 校验 ──
     blueprint = normalize_blueprint_input(blueprint)
-    blueprint = apply_resolved_material_plan(blueprint, material_plan)
+    schema_issues = validate_blueprint_schema(blueprint)
+    if not schema_issues:
+        blueprint = apply_resolved_material_plan(blueprint, material_plan)
     floor_coordinates = {
         element.get("id", "?"): {
             "from": element.get("from"),

@@ -4,6 +4,7 @@ from app.utils.blueprint_parser import (
     extract_blueprint_from_text,
     extract_patch_from_text,
     normalize_blueprint_input,
+    validate_blueprint_schema,
 )
 from app.agent.nodes.skeleton_node import (
     _parse_components_from_reply,
@@ -108,6 +109,21 @@ class BlueprintTextExtractionTest(unittest.TestCase):
         self.assertEqual(normalized["meta"]["version"], "1.1")
         self.assertEqual(normalized["meta"]["type"], "building")
         self.assertEqual(normalized["meta"]["name"], "AI生成建筑")
+
+    def test_normalization_preserves_invalid_container_types_for_schema_errors(self):
+        cases = (
+            ({"meta": {}, "geometry": {"elements": []}, "materials": []}, "'materials' 必须是对象"),
+            ({"meta": {}, "geometry": [], "materials": {}}, "'geometry' 必须是对象"),
+            ({"meta": {}, "geometry": {"elements": {}, "components": []}, "materials": {}}, "geometry.elements 必须是数组"),
+            ({"meta": {}, "geometry": {"elements": [], "components": {}}, "materials": {}}, "geometry.components 必须是数组"),
+            ({"meta": {}, "geometry": {"elements": []}, "materials": {}, "assets": []}, "'assets' 必须是对象"),
+        )
+
+        for blueprint, expected_issue in cases:
+            with self.subTest(expected_issue=expected_issue):
+                normalized = normalize_blueprint_input(blueprint)
+
+                self.assertIn(expected_issue, validate_blueprint_schema(normalized))
 
     def test_reasoning_markers_skip_planning_mentions_and_parse_final_values(self):
         text = """

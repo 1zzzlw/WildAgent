@@ -196,8 +196,21 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
         if not isinstance(meta.get("name"), str) or not meta["name"].strip():
             meta["name"] = "AI生成建筑"
 
+    # ---------- 容器门禁 ----------
+    # 非法容器保持原样交给 Schema 校验器报告；规范化层只读取已确认类型，
+    # 避免模型把对象写成数组时在进入确定性回退前触发 AttributeError。
+    materials = normalized.get("materials", {})
+    material_values = materials.values() if isinstance(materials, dict) else ()
+    geometry = normalized.get("geometry", {})
+    elements = geometry.get("elements", []) if isinstance(geometry, dict) else []
+    if not isinstance(elements, list):
+        elements = []
+    components = geometry.get("components", []) if isinstance(geometry, dict) else []
+    if not isinstance(components, list):
+        components = []
+
     # ---------- 材质归一化 ----------
-    for material in normalized.get("materials", {}).values():
+    for material in material_values:
         if not isinstance(material, dict):
             continue
         # 兼容模型常输出的 CSS 十六进制 ``color``，转换成 WILD 的线性范围数组。
@@ -216,7 +229,6 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
             material.pop("color", None)
 
     # ---------- 构件归一化 ----------
-    elements = normalized.get("geometry", {}).get("elements", [])
     for element in elements:
         if not isinstance(element, dict):
             continue
@@ -311,7 +323,6 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
                 wall_bottom_map[element["id"]] = bottom
 
     _WALL_ATTACHED_TYPES = {"door", "window", "canopy", "balcony", "bay_window"}
-    components = normalized.get("geometry", {}).get("components", [])
     for component in components:
         if not isinstance(component, dict):
             continue
