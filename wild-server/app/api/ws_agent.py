@@ -57,8 +57,8 @@ from app.services.agent_service import agent_service
 from app.services.agent_delivery import (
     ArtifactSaveError,
     GenerationRejectedError,
+    commit_generation_result,
     final_validation_results,
-    prepare_blueprint_delivery,
 )
 from app.services.generation_job_service import generation_job_service
 from app.extensions.presence import presence_service
@@ -70,6 +70,90 @@ router = APIRouter()
 async def _send_event(ws: WebSocket, payload: dict) -> None:
     """为所有后端事件附加统一协议版本。"""
     await ws.send_json(versioned_event(payload))
+
+
+async def _emit_agent_step(
+    ws: WebSocket,
+    request_id: str,
+    session_id: str,
+    *,
+    stage: str,
+    node: str,
+    status: str,
+    label: str,
+    detail: str,
+) -> None:
+    """共享的结构化步骤事件；快速与精密模式使用同一 payload 形状。"""
+    await _send_event(ws, {
+        "type": "agent_step",
+        "request_id": request_id,
+        "session_id": session_id,
+        "stage": stage,
+        "step_id": node,
+        "node": node,
+        "status": status,
+        "label": label,
+        "detail": detail,
+        "content": detail,
+    })
+
+
+async def _emit_debug_log(
+    ws: WebSocket,
+    request_id: str,
+    session_id: str,
+    *,
+    category: str,
+    data: dict,
+) -> None:
+    """共享的调试日志事件。"""
+    await _send_event(ws, {
+        "type": "debug_log",
+        "request_id": request_id,
+        "session_id": session_id,
+        "category": category,
+        "data": data,
+    })
+
+
+async def _emit_thinking_delta(
+    ws: WebSocket,
+    request_id: str,
+    session_id: str,
+    *,
+    node: str | None,
+    channel: str,
+    delta: str,
+) -> None:
+    """共享的思考增量事件；``node`` 为空时省略该字段以保持快速模式旧协议形状。"""
+    payload = {
+        "type": "thinking_delta",
+        "request_id": request_id,
+        "session_id": session_id,
+        "channel": channel,
+        "delta": delta,
+    }
+    if node is not None:
+        payload["node"] = node
+    await _send_event(ws, payload)
+
+
+async def _emit_thinking_status(
+    ws: WebSocket,
+    request_id: str,
+    session_id: str,
+    *,
+    status: str,
+    content: str = "",
+) -> None:
+    """共享的思考状态事件。"""
+    await _send_event(ws, {
+        "type": "thinking_status",
+        "request_id": request_id,
+        "session_id": session_id,
+        "status": status,
+        "content": content,
+    })
 
 
 async def _run_persistent_langgraph(sink, payload: dict, resume: bool) -> None:
@@ -340,44 +424,31 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         label: str,
         detail: str,
     ):
-        await _send_event(ws, {
-            "type": "agent_step", "request_id": request_id,
-            "session_id": session_id,
-            "stage": stage,
-            "step_id": node,
-            "node": node,
-            "status": status,
-            "label": label,
-            "detail": detail,
-            "content": detail,
-        })
+        await _emit_agent_step(
+            ws, request_id, session_id,
+            stage=stage, node=node, status=status, label=label, detail=detail,
+        )
 
     async def send_debug(category: str, data_obj: dict):
-        await _send_event(ws, {
-            "type": "debug_log", "request_id": request_id,
-            "session_id": session_id,
-            "category": category, "data": data_obj,
-        })
-    
+        await _emit_debug_log(
+            ws, request_id, session_id, category=category, data=data_obj,
+        )
+
     async def send_thinking_delta(node_name: str, delta: str):
         """实时推送节点的思考内容给前端（带节点标识）"""
-        await _send_event(ws, {
-            "type": "thinking_delta",
-            "request_id": request_id,
-            "session_id": session_id,
-            "node": node_name,  # 标记是哪个节点的思考
-            "channel": "progress" if node_name in {"architecture", "merge", "final_validate"} or node_name.endswith("_val") else "reasoning",
-            "delta": delta,
-        })
+        channel = (
+            "progress"
+            if node_name in {"architecture", "merge", "final_validate"} or node_name.endswith("_val")
+            else "reasoning"
+        )
+        await _emit_thinking_delta(
+            ws, request_id, session_id, node=node_name, channel=channel, delta=delta,
+        )
 
     async def send_thinking_status(status: str, content: str = ''):
-        await _send_event(ws, {
-            "type": "thinking_status",
-            "request_id": request_id,
-            "session_id": session_id,
-            "status": status,
-            "content": content,
-        })
+        await _emit_thinking_status(
+            ws, request_id, session_id, status=status, content=content,
+        )
 
     # ── 初始状态 ──
     initial_state: GenerationState = {
@@ -930,9 +1001,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     await send_debug("session_metrics", session_metrics)
 
     try:
-        delivery = prepare_blueprint_delivery(
-            merged_blueprint,
+        delivery = commit_generation_result(
             session_id,
+            request_id,
+            merged_blueprint,
             validation_results,
             status=final_status,
             error_count=validation_errors,
@@ -1050,18 +1122,11 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             "saving": "保存蓝图",
             "finished": "处理完成",
         }
-        await _send_event(ws, {
-            "type": "agent_step",
-            "request_id": request_id,
-            "session_id": session_id,
-            "stage": stage,
-            "step_id": step_id,
-            "node": step_id,
-            "status": status,
-            "label": label or stage_labels.get(stage, stage),
-            "detail": detail,
-            "content": detail,
-        })
+        await _emit_agent_step(
+            ws, request_id, session_id,
+            stage=stage, node=step_id, status=status,
+            label=label or stage_labels.get(stage, stage), detail=detail,
+        )
 
     reasoning_received = False
 
@@ -1069,22 +1134,14 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
         """实时转发模型接口实际返回的 reasoning_content。"""
         nonlocal reasoning_received
         reasoning_received = True
-        await _send_event(ws, {
-            "type": "thinking_delta",
-            "request_id": request_id,
-            "session_id": session_id,
-            "channel": "reasoning",
-            "delta": delta,
-        })
+        await _emit_thinking_delta(
+            ws, request_id, session_id, node=None, channel="reasoning", delta=delta,
+        )
 
     async def send_thinking_status(status: str, content: str = ""):
-        await _send_event(ws, {
-            "type": "thinking_status",
-            "request_id": request_id,
-            "session_id": session_id,
-            "status": status,
-            "content": content,
-        })
+        await _emit_thinking_status(
+            ws, request_id, session_id, status=status, content=content,
+        )
 
     # ===== Phase 1: 分析 + 生成 =====
     await send_step("analyzing", "正在分析您的需求...")
@@ -1137,9 +1194,10 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             else without_procedural_materials(result.blueprint)
         )
         try:
-            delivery = prepare_blueprint_delivery(
-                delivery_blueprint,
+            delivery = commit_generation_result(
                 session_id,
+                request_id,
+                delivery_blueprint,
                 result.pipeline_results,
                 status="failed" if result.error else "complete",
             )

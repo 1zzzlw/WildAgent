@@ -91,7 +91,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["repair_audit"]["accepted"])
         self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
-        self.assertEqual(result["door_fragments"][0]["from"][0], 0.5)
+        self.assertEqual(result["component_fragments"]["door"][0]["from"][0], 0.5)
         self.assertEqual(
             result["merged_blueprint"]["geometry"]["components"][0]["from"][0],
             0.5,
@@ -170,7 +170,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["repair_audit"]["accepted"])
         self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
-        self.assertEqual(result["door_fragments"][0]["id"], "door_front_added")
+        self.assertEqual(result["component_fragments"]["door"][0]["id"], "door_front_added")
 
     async def test_callback_can_remove_related_opening_for_facade_overage(self):
         blueprint = _state_blueprint()
@@ -226,7 +226,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["repair_audit"]["accepted"])
         self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
-        self.assertEqual(result["window_fragments"], [])
+        self.assertEqual(result["component_fragments"]["window"], [])
         self.assertNotIn("door_fragments", result)
         self.assertEqual(state["door_fragments"][0]["id"], "door_front")
         self.assertEqual(len(state["window_fragments"]), 1)

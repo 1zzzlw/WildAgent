@@ -16,6 +16,12 @@ from app.agent.architecture_plan import (
 from app.agent.nodes.material_plan_node import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import (
+    collect_response,
+    invoke_llm,
+    merge_token_usage,
+    stream_llm,
+)
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
 from app.tools.spatial_tools import (
@@ -105,54 +111,17 @@ async def skeleton_generator(state: GenerationState) -> dict:
     
     try:
         if use_streaming:
-            async for chunk in llm.astream(messages):
-                if hasattr(chunk, "additional_kwargs"):
-                    reasoning_delta = chunk.additional_kwargs.get("reasoning_content", "")
-                    if reasoning_delta:
-                        reasoning += reasoning_delta
-                        await on_reasoning_delta("skeleton", reasoning_delta)
-                if hasattr(chunk, "content") and chunk.content:
-                    reply_text += chunk.content
-                if hasattr(chunk, "response_metadata") and chunk.response_metadata:
-                    finish_reason = (
-                        chunk.response_metadata.get("finish_reason")
-                        or chunk.response_metadata.get("stop_reason")
-                        or finish_reason
-                    )
-                    usage = chunk.response_metadata.get("usage")
-                    if usage:
-                        token_usage = {
-                            "input": usage.get("prompt_tokens", 0),
-                            "output": usage.get("completion_tokens", 0),
-                            "total": usage.get("total_tokens", 0),
-                        }
-                if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
-                    token_usage = {
-                        "input": chunk.usage_metadata.get("input_tokens", 0),
-                        "output": chunk.usage_metadata.get("output_tokens", 0),
-                        "total": chunk.usage_metadata.get("total_tokens", 0),
-                    }
-            
-            logger.info(f"[skeleton] LLM 流式完成: {len(reply_text)} 字符")
+            llm_result = await stream_llm(
+                llm,
+                messages,
+                on_reasoning_delta=lambda delta: on_reasoning_delta("skeleton", delta),
+            )
         else:
-            response = await llm.ainvoke(messages)
-            reply_text = response.content if hasattr(response, "content") else str(response)
-            if hasattr(response, "additional_kwargs"):
-                reasoning = response.additional_kwargs.get("reasoning_content", "") or ""
-            if not reasoning and hasattr(response, "response_metadata"):
-                reasoning = response.response_metadata.get("reasoning_content", "") or ""
-            if hasattr(response, "response_metadata"):
-                finish_reason = (
-                    response.response_metadata.get("finish_reason")
-                    or response.response_metadata.get("stop_reason")
-                )
-                usage = response.response_metadata.get("token_usage", {})
-                if usage:
-                    token_usage = {
-                        "input": usage.get("prompt_tokens", 0),
-                        "output": usage.get("completion_tokens", 0),
-                        "total": usage.get("total_tokens", 0),
-                    }
+            llm_result = await invoke_llm(llm, messages)
+        reply_text = llm_result.content
+        reasoning = llm_result.reasoning
+        token_usage = llm_result.token_usage
+        finish_reason = llm_result.finish_reason
     
     except Exception as e:
         logger.error(f"[skeleton] LLM 调用失败，尝试确定性骨架回退: {e}")
@@ -230,7 +199,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             failed_reply=reply_text,
             design_brief=design_brief,
         )
-        token_usage = _merge_token_usage(
+        token_usage = merge_token_usage(
             token_usage,
             recovery_diag.get("token_usage"),
         )
@@ -508,23 +477,15 @@ async def _recover_blueprint_json(
                 {"role": "user", "content": recovery_user},
             ]
         )
-        recovery_text = response.content if hasattr(response, "content") else str(response)
-        metadata = getattr(response, "response_metadata", {}) or {}
-        usage = metadata.get("token_usage") or metadata.get("usage") or {}
-        token_usage = None
-        if usage:
-            token_usage = {
-                "input": usage.get("prompt_tokens", 0),
-                "output": usage.get("completion_tokens", 0),
-                "total": usage.get("total_tokens", 0),
-            }
+        llm_result = collect_response(response)
+        recovery_text = llm_result.content
         diag = {
             "attempted": True,
             "success": False,
             "llm_chars": len(recovery_text),
             "llm_ms": int((_time.time() - recovery_t0) * 1000),
-            "token_usage": token_usage,
-            "finish_reason": metadata.get("finish_reason") or metadata.get("stop_reason"),
+            "token_usage": llm_result.token_usage,
+            "finish_reason": llm_result.finish_reason,
         }
         blueprint = extract_blueprint_from_text(recovery_text)
         diag["success"] = blueprint is not None
@@ -537,18 +498,6 @@ async def _recover_blueprint_json(
             "llm_ms": int((_time.time() - recovery_t0) * 1000),
             "error": str(exc),
         }
-
-
-def _merge_token_usage(primary: dict | None, recovery: dict | None) -> dict | None:
-    """合并首次生成和格式恢复的 token 统计。"""
-    if not primary and not recovery:
-        return None
-    primary = primary or {}
-    recovery = recovery or {}
-    return {
-        key: primary.get(key, 0) + recovery.get(key, 0)
-        for key in ("input", "output", "total")
-    }
 
 
 def _parse_design_brief(reply_text: str) -> dict | None:

@@ -11,6 +11,7 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import collect_response
 from app.agent.procedural_material_recipes import (
     compact_procedural_catalog,
     infer_brick_preset,
@@ -293,16 +294,9 @@ async def material_planner(state: GenerationState) -> dict:
             {"role": "system", "content": prompt},
             {"role": "user", "content": state.get("user_message", "")},
         ])
-        content = response.content if hasattr(response, "content") else str(response)
-        raw_plan = extract_json_object(content)
-        metadata = getattr(response, "response_metadata", {}) or {}
-        usage = metadata.get("token_usage") or metadata.get("usage") or {}
-        if usage:
-            token_usage = {
-                "input": usage.get("prompt_tokens", 0),
-                "output": usage.get("completion_tokens", 0),
-                "total": usage.get("total_tokens", 0),
-            }
+        llm_result = collect_response(response)
+        raw_plan = extract_json_object(llm_result.content)
+        token_usage = llm_result.token_usage
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")

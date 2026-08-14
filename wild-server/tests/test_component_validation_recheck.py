@@ -222,7 +222,6 @@ def test_failed_component_recheck_is_not_forwarded_to_merge() -> None:
         "component_fragments": {"door": [invalid]},
     }))
 
-    assert result["door_fragments"] == []
     assert result["component_fragments"]["door"] == []
     assert result["door_val_diag"]["validation_passed"] is False
     assert result["door_val_diag"]["rejected_fragment_count"] == 1

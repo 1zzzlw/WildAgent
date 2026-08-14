@@ -13,6 +13,7 @@ import time as _time
 from loguru import logger
 
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import invoke_llm
 
 _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精通以下领域：
 
@@ -78,16 +79,9 @@ async def chat_node(state: dict) -> dict:
     token_usage = None
 
     try:
-        response = await llm.ainvoke(messages)
-        reply_text = response.content if hasattr(response, "content") else str(response)
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("token_usage", {})
-            if usage:
-                token_usage = {
-                    "input": usage.get("prompt_tokens", 0),
-                    "output": usage.get("completion_tokens", 0),
-                    "total": usage.get("total_tokens", 0),
-                }
+        llm_result = await invoke_llm(llm, messages)
+        reply_text = llm_result.content
+        token_usage = llm_result.token_usage
 
     except Exception as e:
         logger.error(f"[chat] LLM 调用失败: {e}")

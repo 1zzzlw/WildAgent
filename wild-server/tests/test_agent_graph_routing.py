@@ -4,11 +4,11 @@ from app.agent.component_registry import resolve_component_suggestions
 from langgraph.graph import END
 
 from app.agent.graph import _classifier_dispatch, _final_validate_dispatch
-from app.agent.nodes.classifier_node import _keyword_classify
+from app.agent.intent_classifier import classify_keywords
 
 
 def test_edit_keyword_routes_to_patch_when_scene_exists():
-    assert _keyword_classify("把正门加宽到 1.2 米", has_current_scene=True) == "EDIT"
+    assert classify_keywords("把正门加宽到 1.2 米", has_current_scene=True) == "edit"
     assert _classifier_dispatch({"intent": "edit"}) == "patch"
 
 
@@ -17,7 +17,7 @@ def test_generate_routes_to_architecture_plan_first():
 
 
 def test_edit_like_request_does_not_edit_without_scene():
-    assert _keyword_classify("把正门加宽到 1.2 米", has_current_scene=False) == "CHAT"
+    assert classify_keywords("把正门加宽到 1.2 米", has_current_scene=False) == "chat"
 
 
 def test_component_suggestions_filter_unknown_and_negated_types():

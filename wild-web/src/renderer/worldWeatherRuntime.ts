@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import type { WorldEnvironmentState } from '../wild-core/src/materials'
+import { getWorldEffectUniforms } from './worldEffectRuntime'
 
 export const WORLD_WEATHER_PRESET_ORDER = [
   'clear',
@@ -112,10 +113,13 @@ export class WorldWeatherVisuals {
   private readonly group = new THREE.Group()
   private readonly rain: THREE.LineSegments
   private readonly snow: THREE.Points
+  private readonly dust: THREE.Points
   private readonly rainSeeds = createSeeds(260, 0x2f6e2b1)
   private readonly snowSeeds = createSeeds(220, 0x531ff09)
+  private readonly dustSeeds = createSeeds(520, 0x7a3c1d1)
   private rainStrength = 0
   private snowStrength = 0
+  private dustStrength = 0
   private wind = 0
 
   constructor(scene: THREE.Scene) {
@@ -146,7 +150,20 @@ export class WorldWeatherVisuals {
     }))
     this.snow.frustumCulled = false
 
-    this.group.add(this.rain, this.snow)
+    const dustGeometry = new THREE.BufferGeometry()
+    dustGeometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.dustSeeds.length), 3))
+    this.dust = new THREE.Points(dustGeometry, new THREE.PointsMaterial({
+      color: 0xb99a72,
+      size: 0.17,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      fog: true,
+    }))
+    this.dust.frustumCulled = false
+
+    this.group.add(this.rain, this.snow, this.dust)
     scene.add(this.group)
   }
 
@@ -160,20 +177,26 @@ export class WorldWeatherVisuals {
   setEnvironment(state: Readonly<WorldEnvironmentState>, enabled: boolean): void {
     this.rainStrength = enabled ? state.rain : 0
     this.snowStrength = enabled ? state.snow : 0
+    this.dustStrength = enabled ? state.dust : 0
     this.wind = enabled ? state.wind : 0
+    const dustEnabled = getWorldEffectUniforms().dustParticles.value > 0.5
     this.rain.visible = this.rainStrength > 0.015
     this.snow.visible = this.snowStrength > 0.015
+    this.dust.visible = this.dustStrength > 0.015 && dustEnabled
     this.rain.geometry.setDrawRange(0, Math.floor(260 * this.rainStrength) * 2)
     this.snow.geometry.setDrawRange(0, Math.floor(220 * this.snowStrength))
+    this.dust.geometry.setDrawRange(0, Math.floor(520 * this.dustStrength))
     ;(this.rain.material as THREE.LineBasicMaterial).opacity = Math.min(0.68, 0.22 + this.rainStrength * 0.5)
     ;(this.snow.material as THREE.PointsMaterial).opacity = Math.min(0.92, 0.38 + this.snowStrength * 0.58)
+    ;(this.dust.material as THREE.PointsMaterial).opacity = Math.min(0.6, 0.18 + this.dustStrength * 0.5)
   }
 
   tick(deltaSeconds: number): boolean {
     const delta = Math.min(0.05, Math.max(0, deltaSeconds))
     if (this.rain.visible) this.updateRain(delta)
     if (this.snow.visible) this.updateSnow(delta)
-    return this.rain.visible || this.snow.visible
+    if (this.dust.visible) this.updateDust(delta)
+    return this.rain.visible || this.snow.visible || this.dust.visible
   }
 
   dispose(): void {
@@ -182,6 +205,8 @@ export class WorldWeatherVisuals {
     ;(this.rain.material as THREE.Material).dispose()
     this.snow.geometry.dispose()
     ;(this.snow.material as THREE.Material).dispose()
+    this.dust.geometry.dispose()
+    ;(this.dust.material as THREE.Material).dispose()
   }
 
   private updateRain(delta: number): void {
@@ -220,6 +245,25 @@ export class WorldWeatherVisuals {
       values[offset] = x
       values[offset + 1] = y
       values[offset + 2] = this.snowSeeds[offset + 2]
+    }
+    positions.needsUpdate = true
+  }
+
+  private updateDust(delta: number): void {
+    const positions = this.dust.geometry.getAttribute('position') as THREE.BufferAttribute
+    const values = positions.array as Float32Array
+    for (let index = 0; index < 520; index++) {
+      const offset = index * 3
+      let x = this.dustSeeds[offset] + delta * this.wind * 0.05
+      let y = this.dustSeeds[offset + 1] - delta * (0.008 + this.dustStrength * 0.02)
+      if (x > 0.5) x -= 1
+      if (x < -0.5) x += 1
+      if (y < 0) y += 1
+      this.dustSeeds[offset] = x
+      this.dustSeeds[offset + 1] = y
+      values[offset] = x
+      values[offset + 1] = y
+      values[offset + 2] = this.dustSeeds[offset + 2]
     }
     positions.needsUpdate = true
   }

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from app.agent.nodes import skeleton_node
+from app.agent.llm_invocation import merge_token_usage
 
 
 class _FakeResponse:
@@ -70,7 +71,7 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("只能输出一个严格合法的 JSON 对象", fake_llm.messages[0]["content"])
 
     def test_token_usage_is_merged(self):
-        merged = skeleton_node._merge_token_usage(
+        merged = merge_token_usage(
             {"input": 10, "output": 20, "total": 30},
             {"input": 5, "output": 7, "total": 12},
         )

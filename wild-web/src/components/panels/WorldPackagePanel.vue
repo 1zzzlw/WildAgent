@@ -70,6 +70,20 @@
           />
         </label>
       </details>
+      <div class="effect-heading">
+        <strong>环境渲染效果</strong>
+        <p>云层、积水、波纹、沙尘、体积雾与反射，默认关闭；开启时会自动提升对应天气参数，积水需展示模式或草地等环境。</p>
+      </div>
+      <div class="effect-grid">
+        <label v-for="effectId in effectOrder" :key="effectId">
+          <span class="effect-name">{{ effectLabels[effectId].icon }} {{ effectLabels[effectId].label }}</span>
+          <el-switch
+            size="small"
+            :model-value="effectState[effectId]"
+            @change="toggleEffect(effectId, $event)"
+          />
+        </label>
+      </div>
     </section>
 
     <div v-if="message" :class="['package-message', messageType]">{{ message }}</div>
@@ -138,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, toRef } from 'vue'
+import { computed, onMounted, reactive, ref, toRef } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import type { MaterialDef, PBRTextureSetAsset, ReferencedImageData } from '../../types/blueprint'
 import type { WorldEnvironmentState, WildMaterialPackageManifest } from '../../wild-core/src/materials'
@@ -154,6 +168,14 @@ import {
   WORLD_WEATHER_PRESETS,
   type WorldWeatherPresetId,
 } from '../../renderer/worldWeatherRuntime'
+import {
+  getWorldEffectState,
+  updateWorldEffectState,
+  WORLD_EFFECT_LABELS,
+  WORLD_EFFECT_ORDER,
+  type WorldEffectId,
+  type WorldEffectState,
+} from '../../renderer/worldEffectRuntime'
 
 type WeatherKey = 'rain' | 'wetness' | 'snow' | 'dust' | 'cloudCoverage' | 'fog' | 'wind'
 
@@ -179,6 +201,9 @@ const weatherControls: Array<{ key: WeatherKey; label: string }> = [
   { key: 'wind', label: '风力' },
 ]
 const activeWeatherPreset = computed(() => matchWorldWeatherPreset(worldStore.environment))
+const effectState = reactive<WorldEffectState>({ ...getWorldEffectState() })
+const effectOrder = WORLD_EFFECT_ORDER
+const effectLabels = WORLD_EFFECT_LABELS
 
 onMounted(() => void worldStore.initialize())
 
@@ -224,6 +249,29 @@ function toggleSurface(value: string | number | boolean): void {
 
 function toggleWeather(value: string | number | boolean): void {
   worldStore.setRendering({ weatherEnabled: Boolean(value) })
+}
+
+function toggleEffect(id: WorldEffectId, value: string | number | boolean): void {
+  const enabled = Boolean(value)
+  effectState[id] = enabled
+  updateWorldEffectState({ [id]: enabled })
+  // 开启效果时若对应天气参数过低，自动提升到可见水平，避免"开了开关却看不到"。
+  if (!enabled) return
+  const boost: Partial<WorldEnvironmentState> = {}
+  if (id === 'clouds' && worldStore.environment.cloudCoverage < 0.35) {
+    boost.cloudCoverage = 0.55
+  }
+  if (id === 'dustParticles' && worldStore.environment.dust < 0.35) {
+    boost.dust = 0.6
+  }
+  if (id === 'volumetricFog' && worldStore.environment.fog < 0.25) {
+    boost.fog = 0.5
+  }
+  if ((id === 'puddles' || id === 'ripples' || id === 'reflections') && worldStore.environment.rain < 0.3) {
+    boost.rain = 0.6
+    if (worldStore.environment.wetness < 0.3) boost.wetness = 0.6
+  }
+  if (Object.keys(boost).length) worldStore.setEnvironment(boost)
 }
 
 async function applyMaterialPackage(manifest: WildMaterialPackageManifest): Promise<void> {
@@ -402,6 +450,14 @@ function trustLabel(trust: 'builtin' | 'verified' | 'unverified'): string {
 .weather-settings { margin-top: 7px; padding: 6px 7px; border-radius: 4px; background: #252a30; }
 .weather-settings summary { color: #9cdcfe; cursor: pointer; font-size: 10px; }
 .weather-settings label { display: block; margin-top: 7px; color: #b9bec7; font-size: 10px; }
+.effect-heading { margin-top: 10px; padding-top: 9px; border-top: 1px solid #3a4655; }
+.effect-heading strong { color: #e8edf4; font-size: 11px; }
+.effect-heading p { margin: 4px 0 0; color: #8f9aa7; font-size: 9px; line-height: 1.5; }
+.effect-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.effect-grid label { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 9px; border: 1px solid #414b58; border-radius: 6px; background: #30363e; color: #cbd0d8; font-size: 10px; cursor: pointer; transition: border-color 120ms ease, background 120ms ease; }
+.effect-grid label:hover { border-color: #6398cf; background: #344353; }
+.effect-grid .effect-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.effect-grid label :deep(.el-switch) { --el-switch-on-color: #3aaed8; --el-switch-off-color: #5b626d; }
 .package-message { padding: 6px 7px; border-radius: 4px; font-size: 10px; line-height: 1.45; }
 .package-message.success { color: #63d6b5; background: #20352f; }
 .package-message.error { color: #f29a8b; background: #3b2828; }

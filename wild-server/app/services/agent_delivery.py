@@ -4,6 +4,8 @@ from dataclasses import dataclass
 import datetime as _dt
 import re as _re
 
+from loguru import logger
+
 from app.utils.blueprint_parser import (
     SCENES_DIR,
     compact_blueprint_title,
@@ -131,4 +133,34 @@ def prepare_blueprint_delivery(
         elements_count=len(geometry.get("elements", [])),
         components_count=len(geometry.get("components", [])),
         validation=summary,
+    )
+
+
+def commit_generation_result(
+    session_id: str,
+    request_id: str,
+    blueprint: dict,
+    validation_results: list[object],
+    *,
+    status: str,
+    error_count: int | None = None,
+    warning_count: int | None = None,
+) -> BlueprintDelivery:
+    """生成结果的单一幂等提交单元。
+
+    - ``session_id`` 决定确定性文件名，``request_id`` 是幂等键：同一会话重复提交
+      覆盖同一文件而非产生副本，因此断线重放或部分失败后的重试是安全的。
+    - 顺序契约：先原子落盘 .wild（``prepare_blueprint_delivery`` 内部保证），再让
+      调用方发布 ``blueprint_generated`` / ``agent_reply`` 终端事件；落盘失败抛
+      ``ArtifactSaveError``，调用方不得继续发成功事件。
+    - 校验门禁不变：``status != "complete"`` 或存在错误时抛 ``GenerationRejectedError``。
+    """
+    logger.info(f"[{request_id}] 提交生成结果: session={session_id}")
+    return prepare_blueprint_delivery(
+        blueprint,
+        session_id,
+        validation_results,
+        status=status,
+        error_count=error_count,
+        warning_count=warning_count,
     )

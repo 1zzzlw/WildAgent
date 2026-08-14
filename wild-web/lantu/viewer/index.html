@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WildAgent 蓝图渲染查看器</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: rgba(20, 24, 31, 0.86);
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #e6e9ef;
+        --muted: #9aa3b0;
+        --accent: #5b9dff;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      #app { position: fixed; inset: 0; }
+      canvas { display: block; }
+      #panel {
+        position: absolute; top: 16px; left: 16px; width: 320px; max-height: calc(100% - 32px);
+        overflow: auto; background: var(--panel); border: 1px solid var(--border);
+        border-radius: 12px; padding: 16px; backdrop-filter: blur(8px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+      }
+      #panel h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: 0.5px; }
+      #panel .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+      .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+      label { font-size: 12px; color: var(--muted); }
+      select, input[type="file"] {
+        width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+        background: #161b22; color: var(--text); font-size: 13px;
+      }
+      .stats { font-size: 12px; line-height: 1.7; border-top: 1px solid var(--border); padding-top: 10px; }
+      .stats b { color: var(--accent); }
+      .ok { color: #5fd38a; }
+      .warn { color: #f2c14e; }
+      .err { color: #ff6b6b; }
+      .controls { display: flex; gap: 10px; margin-top: 10px; }
+      .controls label { display: flex; align-items: center; gap: 6px; color: var(--text); }
+      #hint { position: absolute; bottom: 14px; left: 16px; font-size: 12px; color: var(--muted);
+        background: var(--panel); border: 1px solid var(--border); padding: 6px 10px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="panel">
+      <h1>WildAgent 蓝图渲染查看器</h1>
+      <div class="sub">接入项目渲染引擎 (wild-core + wild-compiler)</div>
+      <div class="row">
+        <label for="bp">选择蓝图 (.wild)</label>
+        <select id="bp"></select>
+      </div>
+      <div class="row">
+        <label for="file">或加载本地文件</label>
+        <input id="file" type="file" accept=".wild,application/json" />
+      </div>
+      <div id="stats" class="stats"></div>
+      <div class="controls">
+        <label><input id="spin" type="checkbox" /> 自动旋转</label>
+        <label><input id="wire" type="checkbox" /> 线框</label>
+      </div>
+    </div>
+    <div id="hint">左键拖拽旋转 · 右键平移 · 滚轮缩放</div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

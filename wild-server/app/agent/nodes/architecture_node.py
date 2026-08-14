@@ -14,6 +14,7 @@ from app.agent.architecture_plan import (
 )
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import collect_response
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
@@ -68,17 +69,11 @@ async def architecture_planner(state: GenerationState) -> dict:
             {"role": "user", "content": user_message},
         ])
         llm_ms = int((_time.time() - llm_started) * 1000)
-        reply_text = response.content if hasattr(response, "content") else str(response)
+        llm_result = collect_response(response)
+        reply_text = llm_result.content
         llm_chars = len(reply_text)
         raw_plan = extract_json_object(reply_text)
-        metadata = getattr(response, "response_metadata", {}) or {}
-        usage = metadata.get("token_usage") or metadata.get("usage") or {}
-        if usage:
-            token_usage = {
-                "input": usage.get("prompt_tokens", 0),
-                "output": usage.get("completion_tokens", 0),
-                "total": usage.get("total_tokens", 0),
-            }
+        token_usage = llm_result.token_usage
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[architecture] 方案模型调用失败，使用确定性回退: {exc}")

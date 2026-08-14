@@ -14,6 +14,7 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.component_registry import COMPONENT_REGISTRY
+from app.agent.diagnostics import blueprint_fingerprint
 from app.agent.runtime_context import get_reasoning_callback
 from app.utils.fragment_merger import merge_fragments
 
@@ -327,7 +328,9 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     merge_diag["element_count"] = len(elements)
     merge_diag["component_count"] = len(components)
     merge_diag["final_errors"] = len(final_errors) + len(design_errors)
-    # final_validate 紧接在 merge 之后，蓝图未发生变化时可安全复用这一轮结果。
+    # final_validate 紧接在 merge 之后，蓝图未发生变化时可安全复用这一轮结果；
+    # 用蓝图指纹显式判断，避免依赖“final_errors==0”这种隐式条件。
+    merge_diag["blueprint_fingerprint"] = blueprint_fingerprint(merged_blueprint)
     merge_diag["validation_results"] = [
         {
             "step": result.step,

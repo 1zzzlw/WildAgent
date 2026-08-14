@@ -56,6 +56,7 @@
           <span>{{ viewMode === 'presentation' ? '展示' : '编辑' }}</span>
         </button>
       </div>
+      <div class="fps-meter" :class="fpsTier" title="实时帧率">FPS {{ fps }}</div>
     </div>
   </div>
 </template>
@@ -103,6 +104,14 @@ import {
   WorldWeatherVisuals,
 } from '../../renderer/worldWeatherRuntime'
 import {
+  getWorldEffectState,
+  getWorldEffectUniforms,
+  setWorldEffectTime,
+  subscribeWorldEffects,
+} from '../../renderer/worldEffectRuntime'
+import { WorldCloudLayer } from '../../renderer/worldCloudLayer'
+import { applyGroundWeatherMaterial } from '../../renderer/groundWeatherMaterial'
+import {
   CAMERA_ORDER,
   CAMERA_PRESETS,
   ENVIRONMENT_ORDER,
@@ -143,6 +152,8 @@ const activeTimePreset = computed(() => TIME_PRESETS[timeOfDay.value])
 const activeQualityPreset = computed(() => QUALITY_PRESETS[qualityLevel.value])
 const activeCameraPreset = computed(() => CAMERA_PRESETS[cameraPresetId.value])
 const activeEnvironmentPreset = computed(() => ENVIRONMENT_PRESETS[environmentPresetId.value])
+const fps = ref(0)
+const fpsTier = computed(() => fps.value >= 50 ? 'good' : fps.value >= 30 ? 'ok' : 'bad')
 const nextTimePreset = computed(() => {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
   return TIME_PRESETS[TIME_ORDER[nextIndex]]
@@ -166,6 +177,7 @@ let sky: Sky | null = null
 let sunBody: THREE.Sprite | null = null
 let moonBody: THREE.Sprite | null = null
 let weatherVisuals: WorldWeatherVisuals | null = null
+let cloudLayer: WorldCloudLayer | null = null
 let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
 let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
@@ -199,6 +211,9 @@ let suppressSelectionClick = false
 let unsubscribeWorldLook: (() => void) | null = null
 let unsubscribeWorldEnvironment: (() => void) | null = null
 let unsubscribeWorldRendering: (() => void) | null = null
+let unsubscribeWorldEffects: (() => void) | null = null
+let effectClock = 0
+let fpsSmoothed = 60
 
 onMounted(() => {
   unsubscribeWorldLook = worldLookRuntime.subscribe(() => {
@@ -214,6 +229,13 @@ onMounted(() => {
     applyTimePreset()
     markNeedsRender()
   })
+  unsubscribeWorldEffects = subscribeWorldEffects(() => {
+    cloudLayer?.setVisible(getWorldEffectState().clouds)
+    weatherVisuals?.setEnvironment(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled)
+    configureSceneFog()
+    applyGroundVisibility()
+    markNeedsRender()
+  })
   initThreeJS()
   void worldPackageStore.initialize().then(() => worldPackageStore.restorePreferredLook())
   startRenderLoop()
@@ -226,6 +248,8 @@ onUnmounted(() => {
   unsubscribeWorldEnvironment = null
   unsubscribeWorldRendering?.()
   unsubscribeWorldRendering = null
+  unsubscribeWorldEffects?.()
+  unsubscribeWorldEffects = null
   cleanup()
 })
 
@@ -311,6 +335,8 @@ function initThreeJS() {
   moonBody = createCelestialBody('moon')
   scene.add(sunBody, moonBody)
   weatherVisuals = new WorldWeatherVisuals(scene)
+  cloudLayer = new WorldCloudLayer(scene)
+  cloudLayer.setVisible(getWorldEffectState().clouds)
 
   pmremGenerator = new THREE.PMREMGenerator(renderer)
   pmremGenerator.compileCubemapShader()
@@ -365,6 +391,7 @@ function initThreeJS() {
   presentationGround.receiveShadow = false
   presentationGround.visible = false
   scene.add(presentationGround)
+  applyGroundWeatherMaterial(presentationGround.material)
 
   builtInEnvironment = new THREE.Group()
   builtInEnvironment.name = 'BuiltInEnvironment'
@@ -428,7 +455,14 @@ function startRenderLoop() {
   function animate() {
     animationFrameId = requestAnimationFrame(animate)
     if (controls) controls.update()
-    if (weatherVisuals?.tick(weatherClock.getDelta())) needsRender = true
+    const delta = weatherClock.getDelta()
+    effectClock += Math.min(0.05, Math.max(0, delta))
+    setWorldEffectTime(effectClock)
+    if (delta > 0.0005) {
+      fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
+      fps.value = Math.round(fpsSmoothed)
+    }
+    if (weatherVisuals?.tick(delta)) needsRender = true
     if (needsRender && renderer && scene && camera) {
       if (composer) composer.render()
       else renderer.render(scene, camera)
@@ -843,7 +877,7 @@ function applyEnvironmentAppearance() {
     presentationGround.material.color.copy(environmentColor('groundColor'))
     presentationGround.material.needsUpdate = true
   }
-  if (scene?.fog instanceof THREE.Fog) {
+  if (scene?.fog) {
     scene.fog.color.copy(environmentColor('fogColor'))
   }
 }
@@ -1120,13 +1154,18 @@ function createCelestialBody(kind: 'sun' | 'moon'): THREE.Sprite {
   const context = canvas.getContext('2d')
   if (context) {
     if (kind === 'sun') {
-      const glow = context.createRadialGradient(64, 64, 8, 64, 64, 62)
-      glow.addColorStop(0, 'rgba(255,255,235,1)')
-      glow.addColorStop(0.28, 'rgba(255,226,142,1)')
-      glow.addColorStop(0.58, 'rgba(255,190,82,0.55)')
-      glow.addColorStop(1, 'rgba(255,174,58,0)')
+      const glow = context.createRadialGradient(64, 64, 4, 64, 64, 62)
+      glow.addColorStop(0, 'rgba(255,255,250,1)')
+      glow.addColorStop(0.3, 'rgba(255,240,200,0.92)')
+      glow.addColorStop(0.55, 'rgba(255,214,130,0.55)')
+      glow.addColorStop(1, 'rgba(255,180,80,0)')
       context.fillStyle = glow
       context.fillRect(0, 0, 128, 128)
+      // 明亮日轮，边缘清晰可见
+      context.fillStyle = 'rgba(255,252,242,1)'
+      context.beginPath()
+      context.arc(64, 64, 24, 0, Math.PI * 2)
+      context.fill()
     } else {
       context.fillStyle = 'rgba(224,232,244,0.96)'
       context.beginPath()
@@ -1168,7 +1207,7 @@ function updateCelestialBodies(center = lightingCenter, extent = lightingExtent)
   const size = Math.max(4.2, radius * 0.055)
   sunBody.position.copy(center).addScaledVector(sunDirection, radius)
   moonBody.position.copy(center).addScaledVector(sunDirection, -radius)
-  sunBody.scale.set(size * 1.35, size * 1.35, 1)
+  sunBody.scale.set(size * 1.62, size * 1.62, 1)
   moonBody.scale.set(size, size, 1)
   sunBody.visible = timeOfDay.value !== 'night'
   moonBody.visible = timeOfDay.value === 'night'
@@ -1187,13 +1226,47 @@ function toggleViewMode() {
   applyViewMode()
 }
 
+function applyGroundVisibility() {
+  if (!presentationGround) return
+  const presenting = viewMode.value === 'presentation'
+  const scenic = environmentPresetId.value !== 'minimal'
+  const effects = getWorldEffectState()
+  presentationGround.visible = presenting || scenic
+    || effects.puddles || effects.ripples || effects.reflections
+}
+
+function configureSceneFog() {
+  if (!scene) return
+  const atmosphere = deriveWorldAtmosphere(
+    getWorldEnvironmentState(),
+    getWorldRenderingState().weatherEnabled,
+  )
+  const presenting = viewMode.value === 'presentation'
+  if (presenting || atmosphere.fog > 0.025) {
+    const baseFogNear = Math.max(60, lightingExtent * 5)
+    const fogNear = baseFogNear * (1 - atmosphere.fog * 0.82)
+    const fogScale = worldLookRuntime.getActiveProfile().appearance?.fogScale ?? 1
+    const fogFar = fogNear + Math.max(180, lightingExtent * 16)
+      * fogScale
+      * Math.max(0.1, 1 - atmosphere.fog * 0.84)
+    const fogColor = environmentColor('fogColor')
+    if (getWorldEffectUniforms().volumetricFog.value > 0.5) {
+      scene.fog = new THREE.FogExp2(fogColor, Math.max(0.0008, 2.4 / Math.max(1, fogFar - fogNear)))
+    } else {
+      scene.fog = new THREE.Fog(fogColor, fogNear, fogFar)
+    }
+  } else {
+    scene.fog = null
+  }
+}
+
 function applyViewMode() {
   if (!scene) return
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
   if (gridHelper) gridHelper.visible = !presenting
   if (shadowGround) shadowGround.visible = true
-  if (presentationGround) presentationGround.visible = presenting || scenic
+  applyGroundVisibility()
   if (builtInEnvironment) builtInEnvironment.visible = scenic
   if (transformControls) transformControls.visible = !presenting
   if (presenting) {
@@ -1203,24 +1276,7 @@ function applyViewMode() {
     syncSelectionHighlights()
     syncComponentTransformControl()
   }
-  const atmosphere = deriveWorldAtmosphere(
-    getWorldEnvironmentState(),
-    getWorldRenderingState().weatherEnabled,
-  )
-  if (presenting || atmosphere.fog > 0.025) {
-    const baseFogNear = Math.max(60, lightingExtent * 5)
-    const fogNear = baseFogNear * (1 - atmosphere.fog * 0.82)
-    const fogScale = worldLookRuntime.getActiveProfile().appearance?.fogScale ?? 1
-    scene.fog = new THREE.Fog(
-      environmentColor('fogColor'),
-      fogNear,
-      fogNear + Math.max(180, lightingExtent * 16)
-        * fogScale
-        * Math.max(0.1, 1 - atmosphere.fog * 0.84),
-    )
-  } else {
-    scene.fog = null
-  }
+  configureSceneFog()
   markNeedsRender()
 }
 
@@ -1282,18 +1338,7 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   directionalLight.shadow.needsUpdate = true
   updateCelestialBodies(center, lightingExtent)
   weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
-  if (scene?.fog instanceof THREE.Fog) {
-    const atmosphere = deriveWorldAtmosphere(
-      getWorldEnvironmentState(),
-      getWorldRenderingState().weatherEnabled,
-    )
-    const fogNear = Math.max(60, lightingExtent * 5) * (1 - atmosphere.fog * 0.82)
-    const fogScale = worldLookRuntime.getActiveProfile().appearance?.fogScale ?? 1
-    scene.fog.near = fogNear
-    scene.fog.far = fogNear + Math.max(180, lightingExtent * 16)
-      * fogScale
-      * Math.max(0.1, 1 - atmosphere.fog * 0.84)
-  }
+  configureSceneFog()
 }
 
 function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
@@ -1338,6 +1383,8 @@ function cleanup() {
   pmremGenerator?.dispose()
   weatherVisuals?.dispose()
   weatherVisuals = null
+  cloudLayer?.dispose()
+  cloudLayer = null
   for (const body of [sunBody, moonBody]) {
     if (!body) continue
     body.removeFromParent()
@@ -1446,6 +1493,28 @@ canvas {
 
 .viewport-action:active {
   transform: translateY(1px);
+}
+
+.fps-meter {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(18, 23, 33, 0.72);
+  color: #8bd450;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+}
+
+.fps-meter.ok {
+  color: #e6c34a;
+}
+
+.fps-meter.bad {
+  color: #e06a5a;
 }
 
 .viewport-action:focus-visible {

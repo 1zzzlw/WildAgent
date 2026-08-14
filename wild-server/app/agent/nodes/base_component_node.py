@@ -16,6 +16,7 @@ from loguru import logger
 from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_component_prompt
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import invoke_llm, stream_llm
 from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import ComponentConfig
 from app.spec.loader import SpecQuery
@@ -31,9 +32,13 @@ def _component_state_update(
     diag_key: str,
     diag: dict,
 ) -> dict:
-    """同时写入通用 State 与旧字段，便于渐进迁移现有调用方。"""
+    """只写入通用 State 映射。
+
+    ``config.output_key``（legacy 分片字段）不再双写；读侧仍以
+    ``component_fragments`` 优先、``output_key`` 作旧 checkpoint 兜底。
+    ``diag_key`` 保留为顶层返回值，供 ws_agent 通过节点输出读取诊断。
+    """
     return {
-        config.output_key: value,
         diag_key: diag,
         "component_fragments": {config.component_type: value},
         "component_diagnostics": {diag_key: diag},
@@ -126,44 +131,18 @@ def create_component_generator(config: ComponentConfig):
         try:
             async with _LLM_SEMAPHORE:
                 if use_streaming:
-                    async for chunk in llm.astream(messages):
-                        if hasattr(chunk, "additional_kwargs"):
-                            reasoning_delta = chunk.additional_kwargs.get("reasoning_content", "")
-                            if reasoning_delta:
-                                reasoning += reasoning_delta
-                                await on_reasoning_delta(f"{config.component_type}_gen", reasoning_delta)
-                        if hasattr(chunk, "content") and chunk.content:
-                            reply_text += chunk.content
-                        # 捕获流式 usage（最终 chunk 带 usage 字段）
-                        if hasattr(chunk, "response_metadata") and chunk.response_metadata:
-                            usage = chunk.response_metadata.get("usage")
-                            if usage:
-                                token_usage = {
-                                    "input": usage.get("prompt_tokens", 0),
-                                    "output": usage.get("completion_tokens", 0),
-                                    "total": usage.get("total_tokens", 0),
-                                }
-                        if hasattr(chunk, "usage_metadata") and chunk.usage_metadata:
-                            token_usage = {
-                                "input": chunk.usage_metadata.get("input_tokens", 0),
-                                "output": chunk.usage_metadata.get("output_tokens", 0),
-                                "total": chunk.usage_metadata.get("total_tokens", 0),
-                            }
+                    llm_result = await stream_llm(
+                        llm,
+                        messages,
+                        on_reasoning_delta=lambda delta: on_reasoning_delta(
+                            f"{config.component_type}_gen", delta
+                        ),
+                    )
                 else:
-                    response = await llm.ainvoke(messages)
-                    reply_text = response.content if hasattr(response, "content") else str(response)
-                    if hasattr(response, "additional_kwargs"):
-                        reasoning = response.additional_kwargs.get("reasoning_content", "") or ""
-                    if not reasoning and hasattr(response, "response_metadata"):
-                        reasoning = response.response_metadata.get("reasoning_content", "") or ""
-                    if hasattr(response, "response_metadata"):
-                        usage = response.response_metadata.get("token_usage", {})
-                        if usage:
-                            token_usage = {
-                                "input": usage.get("prompt_tokens", 0),
-                                "output": usage.get("completion_tokens", 0),
-                                "total": usage.get("total_tokens", 0),
-                            }
+                    llm_result = await invoke_llm(llm, messages)
+                reply_text = llm_result.content
+                reasoning = llm_result.reasoning
+                token_usage = llm_result.token_usage
 
         except Exception as e:
             logger.error(f"[{config.component_type}_gen] LLM 调用失败: {e}")

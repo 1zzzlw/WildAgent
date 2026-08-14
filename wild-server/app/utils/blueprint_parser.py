@@ -1055,8 +1055,11 @@ def save_blueprint_file_as(blueprint: dict, directory: Path, rel_path: str) -> s
     """
     file_path = directory / rel_path
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(
+    # 先写同目录临时文件再原子替换，避免进程在写中途退出留下半写坏的 .wild。
+    temp_path = file_path.with_name(f"{file_path.name}.tmp-{_os.getpid()}")
+    temp_path.write_text(
         json.dumps(blueprint, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
+    _os.replace(temp_path, file_path)
     return str(file_path.resolve())

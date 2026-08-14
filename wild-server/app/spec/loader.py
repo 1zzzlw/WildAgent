@@ -782,6 +782,7 @@ class RAGSpecLoader(SpecLoader):
         self._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
         self._client: Any | None = None
         self._collection: Any | None = None
+        self._retrieval_cache: dict[str, list[RetrievedSpecChunk]] = {}
 
         if auto_sync:
             # 默认在 Loader 构造时同步一次，保证第一次查询即可命中新文档。
@@ -907,6 +908,10 @@ class RAGSpecLoader(SpecLoader):
             "updated": len(pending_chunks) + len(metadata_only_chunks),
             "deleted": len(stale_ids),
         }
+        # 索引内容变化后使检索缓存失效，避免命中过期的召回结果。
+        retrieval_cache = getattr(self, "_retrieval_cache", None)
+        if retrieval_cache is not None:
+            retrieval_cache.clear()
         
         return len(pending_chunks) + len(metadata_only_chunks)
 
@@ -985,6 +990,14 @@ class RAGSpecLoader(SpecLoader):
         if not normalized_queries:
             self._last_results = []
             return []
+
+        cache_key = None
+        retrieval_cache = getattr(self, "_retrieval_cache", None)
+        if retrieval_cache is not None:
+            cache_key = self._retrieval_cache_key(normalized_queries, per_query)
+            if cache_key in retrieval_cache:
+                self._last_results = list(retrieval_cache[cache_key])
+                return self._last_results
 
         collection = self._get_collection()
         count = collection.count()
@@ -1066,7 +1079,33 @@ class RAGSpecLoader(SpecLoader):
 
         retrieved = self._expand_parent_neighbors(collection, retrieved)
         self._last_results = retrieved
+        if retrieval_cache is not None and cache_key is not None:
+            retrieval_cache[cache_key] = list(retrieved)
         return retrieved
+
+    def _retrieval_cache_key(
+        self,
+        normalized_queries: list[tuple[str, dict[str, Any] | None]],
+        per_query: int,
+    ) -> str:
+        """以查询 + 过滤 + 知识库版本 + embedding 版本构造稳定缓存键。"""
+        stats = getattr(self, "_last_sync_stats", {}) or {}
+        revision = (
+            stats.get("total", 0),
+            stats.get("updated", 0),
+            stats.get("deleted", 0),
+        )
+        embedding_function = getattr(self, "_embedding_function", None)
+        payload = json.dumps({
+            "queries": [
+                (text, json.dumps(filt or {}, sort_keys=True, ensure_ascii=True))
+                for text, filt in normalized_queries
+            ],
+            "per_query": per_query,
+            "revision": revision,
+            "embedding": type(embedding_function).__name__ if embedding_function is not None else "none",
+        }, ensure_ascii=True, sort_keys=True)
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     def _retrieval_hash(self, document: str, metadata: dict[str, Any]) -> str:
         """优先按无知识路径前缀的正文哈希去重，兼容旧索引 metadata。"""

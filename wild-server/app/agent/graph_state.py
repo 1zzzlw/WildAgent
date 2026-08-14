@@ -55,6 +55,8 @@ class GenerationState(TypedDict, total=False):
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
 
     # ── Layer 1: 组件分片（并行）──
+    # 以下 legacy 分片字段已不再写入，仅保留用于旧 checkpoint 的读侧兜底；
+    # 权威数据在下面的 component_fragments / component_diagnostics。
     door_fragments: list[dict]
     window_fragments: list[dict]
     roof_fragment: dict | None
@@ -104,6 +106,7 @@ class GenerationState(TypedDict, total=False):
     validation_error_count: int
     validation_warning_count: int
     validation_cache_reused: bool
+    validation_snapshot: dict  # ValidationSnapshot 的 dict 形式，供 callback→final_validate 复用
     failed_components: list[dict]
     passed_component_ids: list[str]
     retry_count: int  # 已执行的修复轮次，仅用于审计/展示

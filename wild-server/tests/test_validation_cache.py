@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import patch
 
+from app.agent.diagnostics import blueprint_fingerprint
 from app.agent.nodes.validate_node import validate_node
 
 
@@ -17,6 +18,7 @@ class ValidationCacheTest(unittest.IsolatedAsyncioTestCase):
             "merged_blueprint": blueprint,
             "merge_diag": {
                 "final_errors": 0,
+                "blueprint_fingerprint": blueprint_fingerprint(blueprint),
                 "design_errors": [],
                 "validation_results": [{
                     "step": 1,

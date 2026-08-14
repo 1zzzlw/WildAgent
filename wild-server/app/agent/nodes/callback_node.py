@@ -6,11 +6,20 @@ Layer 2 扩展: 回调重试节点
 
 这是 LangGraph 架构中最关键的创新点，详见设计文档 03-回调与重试机制.md。
 """
+from dataclasses import asdict
+
 from loguru import logger
 
+from app.agent.diagnostics import (
+    VALIDATOR_VERSION,
+    ValidationSnapshot,
+    blueprint_fingerprint,
+    step_result_to_dict,
+)
 from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.agent.model_client import create_llm
+from app.agent.llm_invocation import invoke_llm, stream_llm
 from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import COMPONENT_REGISTRY
 from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
@@ -150,27 +159,18 @@ async def callback_node(state: GenerationState) -> dict:
     
     try:
         if use_streaming:
-            # 流式调用：实时推送思考内容
-            async for chunk in llm.astream(messages):
-                if hasattr(chunk, "additional_kwargs"):
-                    reasoning_delta = chunk.additional_kwargs.get("reasoning_content", "")
-                    if reasoning_delta:
-                        reasoning += reasoning_delta
-                        await on_reasoning_delta("callback", reasoning_delta)
-                
-                if hasattr(chunk, "content") and chunk.content:
-                    reply_text += chunk.content
-            
-            logger.info(f"[callback_node] LLM 流式修正完成: {len(reply_text)} 字符, thinking={len(reasoning)}字符")
+            llm_result = await stream_llm(
+                llm,
+                messages,
+                on_reasoning_delta=lambda delta: on_reasoning_delta("callback", delta),
+            )
         else:
-            # 非流式调用
-            response = await llm.ainvoke(messages)
-            reply_text = response.content if hasattr(response, "content") else str(response)
-            if hasattr(response, "additional_kwargs"):
-                reasoning = response.additional_kwargs.get("reasoning_content", "") or ""
-            if not reasoning and hasattr(response, "response_metadata"):
-                reasoning = response.response_metadata.get("reasoning_content", "") or ""
-            logger.info(f"[callback_node] LLM 修正回复: {len(reply_text)} 字符")
+            llm_result = await invoke_llm(llm, messages)
+        reply_text = llm_result.content
+        reasoning = llm_result.reasoning
+        logger.info(
+            f"[callback_node] LLM 修正回复: {len(reply_text)} 字符, thinking={len(reasoning)}字符"
+        )
     except Exception as e:
         logger.error(f"[callback_node] LLM 调用失败: {e}")
         return {"retry_count": retry_count + 1}
@@ -319,10 +319,32 @@ async def callback_node(state: GenerationState) -> dict:
         f"错误 {len(before_issues)} → {len(after_issues)}"
     )
 
+    serialized_results = [step_result_to_dict(result) for result in candidate_results]
+    if after_design_errors:
+        serialized_results.append({
+            "step": "design",
+            "name": "validate_design_brief",
+            "output": "\n".join(f"❌ [design] {message}" for message in after_design_errors),
+            "has_error": True,
+            "has_warning": False,
+        })
+    snapshot = ValidationSnapshot(
+        blueprint_fingerprint=blueprint_fingerprint(candidate),
+        validator_version=VALIDATOR_VERSION,
+        status="complete" if not candidate_errors and not after_design_errors else "partial",
+        results=serialized_results,
+        design_errors=after_design_errors,
+        issues=after_issues,
+        error_count=len(candidate_errors) + len(after_design_errors),
+        warning_count=0,
+        elapsed_ms=0,
+        source="callback",
+    )
     return {
         **updates,
         "retry_count": new_retry_count,
         "component_retry_counts": comp_retries,
+        "validation_snapshot": asdict(snapshot),
         "repair_audit": {
             "accepted": True,
             "before_issue_count": len(before_issues),
@@ -429,19 +451,14 @@ def _state_updates_from_candidate(
                     new_value.append(deepcopy(entity))
                     changed = True
             if changed:
-                updates[config.output_key] = new_value
+                fragment_updates[config.component_type] = new_value
         elif not config.is_list:
             if isinstance(old_value, dict) and old_value.get("id") in candidate_entities:
-                updates[config.output_key] = deepcopy(candidate_entities[old_value["id"]])
+                fragment_updates[config.component_type] = deepcopy(candidate_entities[old_value["id"]])
             elif isinstance(old_value, dict) and old_value.get("id") in changed_ids:
-                updates[config.output_key] = None
+                fragment_updates[config.component_type] = None
             elif matching_entities:
-                updates[config.output_key] = deepcopy(matching_entities[0])
-
-        if config.output_key in updates:
-            fragment_updates[config.component_type] = deepcopy(
-                updates[config.output_key]
-            )
+                fragment_updates[config.component_type] = deepcopy(matching_entities[0])
 
     if fragment_updates:
         updates["component_fragments"] = fragment_updates

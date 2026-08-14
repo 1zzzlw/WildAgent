@@ -3,8 +3,16 @@ Layer 2: 校验节点
 
 复用 agent_service.py 的 run_validation_pipeline
 """
+import time as _time
+from dataclasses import asdict
+
 from loguru import logger
 
+from app.agent.diagnostics import (
+    VALIDATOR_VERSION,
+    ValidationSnapshot,
+    blueprint_fingerprint,
+)
 from app.agent.graph_state import GenerationState
 from app.agent.validation_issues import (
     group_issues_by_entity,
@@ -30,31 +38,51 @@ async def validate_node(state: GenerationState) -> dict:
     from app.services.agent_service import PipelineStepResult, run_validation_pipeline, _final_errors
     
     try:
+        t0 = _time.time()
         merge_diag = state.get("merge_diag", {})
-        cached_results = merge_diag.get("validation_results", [])
-        cache_reused = bool(cached_results) and merge_diag.get("final_errors") == 0
-        if cache_reused:
-            pipeline_results = [PipelineStepResult(**result) for result in cached_results]
-            logger.info("[validate_node] 复用 merge 节点最后一轮校验结果")
-        else:
-            # merge 后若仍有错误，重新执行以保持回调输入与当前蓝图完全一致。
-            pipeline_results = run_validation_pipeline(merged_blueprint)
-        # merge_diag 记录的是合并当时的快照。callback 可能已经修改当前蓝图，
-        # 因此设计配额必须对 merged_blueprint 重新计算，不能重复追加旧错误。
-        from app.agent.nodes.merge_node import _validate_design_brief_constraints
+        current_fingerprint = blueprint_fingerprint(merged_blueprint)
 
-        design_errors = _validate_design_brief_constraints(
-            merged_blueprint,
-            state.get("design_brief"),
+        # 1. 优先复用 callback 携带的、指纹一致的校验快照（callback 已做过全量复检）。
+        prior_snapshot = state.get("validation_snapshot") or {}
+        snapshot_reusable = (
+            prior_snapshot.get("blueprint_fingerprint") == current_fingerprint
+            and prior_snapshot.get("validator_version") == VALIDATOR_VERSION
+            and bool(prior_snapshot.get("results"))
         )
-        if design_errors:
-            pipeline_results.append(PipelineStepResult(
-                step="design",
-                name="validate_design_brief",
-                output="\n".join(f"❌ [design] {message}" for message in design_errors),
-                has_error=True,
-                has_warning=False,
-            ))
+        if snapshot_reusable:
+            pipeline_results = [
+                PipelineStepResult(**result) for result in prior_snapshot.get("results", [])
+            ]
+            design_errors = list(prior_snapshot.get("design_errors", []))
+            cache_reused = True
+            logger.info("[validate_node] 复用 callback 校验快照（指纹一致）")
+        else:
+            cached_results = merge_diag.get("validation_results", [])
+            cache_reused = (
+                bool(cached_results)
+                and merge_diag.get("blueprint_fingerprint") == current_fingerprint
+            )
+            if cache_reused:
+                pipeline_results = [PipelineStepResult(**result) for result in cached_results]
+                logger.info("[validate_node] 复用 merge 节点最后一轮校验结果")
+            else:
+                pipeline_results = run_validation_pipeline(merged_blueprint)
+
+            # merge_diag 记录的是合并当时的快照；设计配额必须对当前 Blueprint 重算。
+            from app.agent.nodes.merge_node import _validate_design_brief_constraints
+
+            design_errors = _validate_design_brief_constraints(
+                merged_blueprint,
+                state.get("design_brief"),
+            )
+            if design_errors:
+                pipeline_results.append(PipelineStepResult(
+                    step="design",
+                    name="validate_design_brief",
+                    output="\n".join(f"❌ [design] {message}" for message in design_errors),
+                    has_error=True,
+                    has_warning=False,
+                ))
         
         # 提取最终错误（修复后的 recheck 覆盖初检错误）
         final_errors = _final_errors(pipeline_results)
@@ -105,12 +133,26 @@ async def validate_node(state: GenerationState) -> dict:
             status = "complete"
             error_summary = None
         
+        serialized_results = [_step_to_dict(r) for r in pipeline_results]
+        snapshot = ValidationSnapshot(
+            blueprint_fingerprint=current_fingerprint,
+            validator_version=VALIDATOR_VERSION,
+            status=status,
+            results=serialized_results,
+            design_errors=design_errors,
+            issues=validation_issues,
+            error_count=error_steps,
+            warning_count=warning_steps,
+            elapsed_ms=int((_time.time() - t0) * 1000),
+            source="final_validate",
+        )
         return {
-            "validation_results": [_step_to_dict(r) for r in pipeline_results],
+            "validation_results": serialized_results,
             "validation_error_count": error_steps,
             "validation_warning_count": warning_steps,
             "validation_cache_reused": cache_reused,
             "validation_issues": validation_issues,
+            "validation_snapshot": asdict(snapshot),
             "failed_components": failed_components,
             "passed_component_ids": passed_component_ids,
             "status": status,
