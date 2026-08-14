@@ -95,11 +95,13 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
         continue
       }
       const validUri = typeof ref?.uri === 'string'
-        && (/^https?:\/\/\S+$/.test(ref.uri) || (/^\//.test(ref.uri) && !/^\/\//.test(ref.uri)))
+        && (/^https?:\/\/\S+$/.test(ref.uri)
+          || /^wildpkg:\/\/[a-zA-Z0-9._:/%-]+$/.test(ref.uri)
+          || (/^\//.test(ref.uri) && !/^\/\//.test(ref.uri)))
       if (
         ref?.encoding !== 'url'
         || !validUri
-        || !/^image\/(png|jpeg|webp)$/.test(ref?.mimeType || '')
+        || !/^image\/(png|jpeg|webp|ktx2)$/.test(ref?.mimeType || '')
         || !/^[0-9a-f]{64}$/.test(ref?.sha256 || '')
       ) {
         issues.push({

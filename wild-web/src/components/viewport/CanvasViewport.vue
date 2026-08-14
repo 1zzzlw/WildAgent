@@ -65,6 +65,7 @@ import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
+import { useWorldPackageStore } from '../../stores/worldPackageStore'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
@@ -76,8 +77,47 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
-import { configureMaterialRendering, MaterialCache } from '../../renderer/materialAdapter'
-import { toggleRuntimeInteraction, updateSceneGroup } from '../../renderer/renderEntity'
+import {
+  configureKtx2Rendering,
+  configureMaterialRendering,
+  disposeKtx2Rendering,
+  MaterialCache,
+} from '../../renderer/materialAdapter'
+import { toggleRuntimeInteraction } from '../../renderer/renderEntity'
+import { WorldRuntime } from '../../renderer/worldRuntime'
+import {
+  createEditorWorldDocument,
+  saveWorldDocument,
+} from '../../renderer/worldDocumentPersistence'
+import { worldLookRuntime } from '../../renderer/worldLookRuntime'
+import {
+  getWorldEnvironmentState,
+  getWorldRenderingState,
+  subscribeWorldEnvironment,
+  subscribeWorldRendering,
+  updateWorldEnvironmentState,
+  updateWorldRenderingState,
+} from '../../renderer/worldEnvironmentRuntime'
+import {
+  deriveWorldAtmosphere,
+  WorldWeatherVisuals,
+} from '../../renderer/worldWeatherRuntime'
+import {
+  CAMERA_ORDER,
+  CAMERA_PRESETS,
+  ENVIRONMENT_ORDER,
+  ENVIRONMENT_PRESETS,
+  QUALITY_ORDER,
+  QUALITY_PRESETS,
+  TIME_ORDER,
+  TIME_PRESETS,
+  type CameraPresetId,
+  type EnvironmentPresetId,
+  type QualityLevel,
+  type TimeOfDay,
+  type TimePreset,
+  type ViewMode,
+} from '../../renderer/defaultWorldLook'
 import {
   getRenderedElementIds,
   resolveSelectableId,
@@ -92,164 +132,7 @@ const canvasRef = ref<HTMLCanvasElement>()
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
 const uiStore = useUIStore()
-
-type TimeOfDay = 'day' | 'sunset' | 'night'
-type ViewMode = 'editor' | 'presentation'
-type QualityLevel = 'low' | 'medium' | 'high'
-type CameraPresetId = 'corner' | 'human' | 'bird' | 'front'
-type EnvironmentPresetId = 'minimal' | 'meadow' | 'alpine' | 'desert' | 'autumn'
-
-interface TimePreset {
-  label: string
-  icon: string
-  background: number
-  exposure: number
-  skyVisible: boolean
-  turbidity: number
-  rayleigh: number
-  mieCoefficient: number
-  mieDirectionalG: number
-  sunPhi: number
-  sunTheta: number
-  directionalColor: number
-  directionalIntensity: number
-  hemisphereSkyColor: number
-  hemisphereGroundColor: number
-  hemisphereIntensity: number
-  groundColor: number
-  fogColor: number
-}
-
-interface QualityPreset {
-  label: string
-  pixelRatio: number
-  shadowMapSize: number
-  ssao: boolean
-  bloom: boolean
-}
-
-interface CameraPreset {
-  label: string
-  direction: [number, number, number]
-}
-
-interface EnvironmentPreset {
-  label: string
-  icon: string
-  groundColor: number
-  fogColor: number
-  sunAzimuthOffset: number
-  directLightScale: number
-  ambientLightScale: number
-  exposureScale: number
-  shadowOpacity: number
-}
-
-const TIME_ORDER: TimeOfDay[] = ['day', 'sunset', 'night']
-const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
-  day: {
-    label: '白天',
-    icon: '☀️',
-    background: 0xb9c9d8,
-    exposure: 1.05,
-    skyVisible: true,
-    turbidity: 4,
-    rayleigh: 1.5,
-    mieCoefficient: 0.006,
-    mieDirectionalG: 0.82,
-    sunPhi: 52,
-    sunTheta: 135,
-    directionalColor: 0xfff4df,
-    directionalIntensity: 2.4,
-    hemisphereSkyColor: 0xddeeff,
-    hemisphereGroundColor: 0x665544,
-    hemisphereIntensity: 0.75,
-    groundColor: 0x7c8378,
-    fogColor: 0xb9c9d8,
-  },
-  sunset: {
-    label: '黄昏',
-    icon: '🌇',
-    background: 0x6f4054,
-    exposure: 0.9,
-    skyVisible: true,
-    turbidity: 10,
-    rayleigh: 2.8,
-    mieCoefficient: 0.02,
-    mieDirectionalG: 0.9,
-    sunPhi: 84,
-    sunTheta: 245,
-    directionalColor: 0xff8a4c,
-    directionalIntensity: 1.65,
-    hemisphereSkyColor: 0xffa27d,
-    hemisphereGroundColor: 0x34283f,
-    hemisphereIntensity: 0.45,
-    groundColor: 0x5b4b48,
-    fogColor: 0x6f4054,
-  },
-  night: {
-    label: '夜晚',
-    icon: '🌙',
-    background: 0x050914,
-    exposure: 0.68,
-    skyVisible: false,
-    turbidity: 2,
-    rayleigh: 0.2,
-    mieCoefficient: 0.001,
-    mieDirectionalG: 0.7,
-    sunPhi: 108,
-    sunTheta: 220,
-    directionalColor: 0x9dbbff,
-    directionalIntensity: 0.32,
-    hemisphereSkyColor: 0x182442,
-    hemisphereGroundColor: 0x08070d,
-    hemisphereIntensity: 0.2,
-    groundColor: 0x111722,
-    fogColor: 0x050914,
-  },
-}
-
-const QUALITY_ORDER: QualityLevel[] = ['low', 'medium', 'high']
-const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
-  low: { label: '流畅', pixelRatio: 1, shadowMapSize: 1024, ssao: false, bloom: false },
-  medium: { label: '均衡', pixelRatio: 1.5, shadowMapSize: 2048, ssao: true, bloom: false },
-  high: { label: '精细', pixelRatio: 2, shadowMapSize: 4096, ssao: true, bloom: true },
-}
-const CAMERA_ORDER: CameraPresetId[] = ['corner', 'human', 'bird', 'front']
-const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
-  corner: { label: '街角', direction: [1, 0.62, 1] },
-  human: { label: '人视', direction: [1, 0.18, 1] },
-  bird: { label: '鸟瞰', direction: [0.8, 1.25, 0.8] },
-  front: { label: '正立面', direction: [0, 0.12, 1] },
-}
-const ENVIRONMENT_ORDER: EnvironmentPresetId[] = ['minimal', 'meadow', 'alpine', 'desert', 'autumn']
-const ENVIRONMENT_PRESETS: Record<EnvironmentPresetId, EnvironmentPreset> = {
-  minimal: {
-    label: '极简', icon: '◻️', groundColor: 0x747b73, fogColor: 0xb9c9d8,
-    sunAzimuthOffset: 0, directLightScale: 1, ambientLightScale: 0.9, exposureScale: 1,
-    shadowOpacity: 0.22,
-  },
-  meadow: {
-    label: '草地', icon: '🌿', groundColor: 0x526d42, fogColor: 0xadc2ae,
-    sunAzimuthOffset: -18, directLightScale: 1.16, ambientLightScale: 0.72, exposureScale: 0.96,
-    shadowOpacity: 0.28,
-  },
-  alpine: {
-    label: '雪山', icon: '🏔️', groundColor: 0xc9d1d5, fogColor: 0xc6d2da,
-    sunAzimuthOffset: 16, directLightScale: 1.22, ambientLightScale: 0.82, exposureScale: 0.92,
-    shadowOpacity: 0.3,
-  },
-  desert: {
-    label: '沙漠', icon: '🏜️', groundColor: 0xb9844f, fogColor: 0xd2ad7f,
-    sunAzimuthOffset: 30, directLightScale: 1.3, ambientLightScale: 0.66, exposureScale: 0.92,
-    shadowOpacity: 0.34,
-  },
-  autumn: {
-    label: '秋林', icon: '🍂', groundColor: 0x665c3d, fogColor: 0xb39a78,
-    sunAzimuthOffset: -32, directLightScale: 1.18, ambientLightScale: 0.68, exposureScale: 0.92,
-    shadowOpacity: 0.32,
-  },
-}
+const worldPackageStore = useWorldPackageStore()
 
 const timeOfDay = ref<TimeOfDay>('day')
 const viewMode = ref<ViewMode>('editor')
@@ -273,12 +156,16 @@ let transformControls: TransformControls | null = null
 let animationFrameId: number | null = null
 let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
+let worldRuntime: WorldRuntime | null = null
 let gridHelper: THREE.GridHelper | null = null
 let environmentTarget: THREE.WebGLRenderTarget | null = null
 let pmremGenerator: THREE.PMREMGenerator | null = null
 let environmentScene: THREE.Scene | null = null
 let environmentSky: Sky | null = null
 let sky: Sky | null = null
+let sunBody: THREE.Sprite | null = null
+let moonBody: THREE.Sprite | null = null
+let weatherVisuals: WorldWeatherVisuals | null = null
 let hemisphereLight: THREE.HemisphereLight | null = null
 let directionalLight: THREE.DirectionalLight | null = null
 let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
@@ -289,6 +176,7 @@ let ssaoPass: SSAOPass | null = null
 let bloomPass: UnrealBloomPass | null = null
 let fxaaPass: ShaderPass | null = null
 const sunDirection = new THREE.Vector3()
+const weatherClock = new THREE.Clock()
 const lightingCenter = new THREE.Vector3()
 const sceneBoundsCenter = new THREE.Vector3()
 const sceneBoundsSize = new THREE.Vector3(8, 4, 8)
@@ -308,13 +196,36 @@ let dragStartPosition: THREE.Vector3 | null = null
 let dragComponentId: string | null = null
 let dragTargetPositions = new Map<THREE.Object3D, THREE.Vector3>()
 let suppressSelectionClick = false
+let unsubscribeWorldLook: (() => void) | null = null
+let unsubscribeWorldEnvironment: (() => void) | null = null
+let unsubscribeWorldRendering: (() => void) | null = null
 
 onMounted(() => {
+  unsubscribeWorldLook = worldLookRuntime.subscribe(() => {
+    applyTimePreset()
+    applyQualityPreset()
+  })
+  unsubscribeWorldEnvironment = subscribeWorldEnvironment(() => {
+    syncTimePresetFromWorldEnvironment()
+    applyTimePreset()
+    markNeedsRender()
+  })
+  unsubscribeWorldRendering = subscribeWorldRendering(() => {
+    applyTimePreset()
+    markNeedsRender()
+  })
   initThreeJS()
+  void worldPackageStore.initialize().then(() => worldPackageStore.restorePreferredLook())
   startRenderLoop()
 })
 
 onUnmounted(() => {
+  unsubscribeWorldLook?.()
+  unsubscribeWorldLook = null
+  unsubscribeWorldEnvironment?.()
+  unsubscribeWorldEnvironment = null
+  unsubscribeWorldRendering?.()
+  unsubscribeWorldRendering = null
   cleanup()
 })
 
@@ -328,6 +239,12 @@ watch(() => [...selectionStore.selectedIds], () => {
   syncSelectionHighlights()
   syncComponentTransformControl()
 })
+watch([
+  () => sceneStore.document?.revision,
+  () => worldPackageStore.activeProfileId,
+  () => worldPackageStore.materialPackages.map(item => item.manifest.packageId).join('|'),
+  () => JSON.stringify(worldPackageStore.environment),
+], persistEditorWorldState)
 
 function initThreeJS() {
   if (!canvasRef.value || !containerRef.value) return
@@ -343,9 +260,11 @@ function initThreeJS() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
   configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
+  configureKtx2Rendering(renderer)
 
   scene = new THREE.Scene()
   scene.background = new THREE.Color(0xb9c9d8)
+  worldLookRuntime.setActivationContext({ renderer, scene })
 
   const aspect = containerRef.value.clientWidth / containerRef.value.clientHeight
   camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 2000)
@@ -388,6 +307,10 @@ function initThreeJS() {
   sky = new Sky()
   sky.scale.setScalar(450)
   scene.add(sky)
+  sunBody = createCelestialBody('sun')
+  moonBody = createCelestialBody('moon')
+  scene.add(sunBody, moonBody)
+  weatherVisuals = new WorldWeatherVisuals(scene)
 
   pmremGenerator = new THREE.PMREMGenerator(renderer)
   pmremGenerator.compileCubemapShader()
@@ -456,16 +379,31 @@ function initThreeJS() {
   gridHelper.name = 'GridHelper'
   gridHelper.position.y = 0  // 确保在地面
   scene.add(gridHelper)
-  materialCache = new MaterialCache()
-  // 创建名为 WildScene 的空分组容器，加入场景统一管理多个模型物体。
-  sceneGroup = new THREE.Group()
-  sceneGroup.name = 'WildScene'
-  scene.add(sceneGroup)
+  worldRuntime = new WorldRuntime('editor-world')
+  worldRuntime.loadChunk('editor-active')
+  const activeInstance = worldRuntime.ensureInstance({
+    instanceId: 'editor:active-blueprint',
+    blueprintId: 'editor:current',
+    chunkId: 'editor-active',
+    transform: { position: [0, 0, 0] },
+  })
+  sceneGroup = activeInstance.root
+  materialCache = activeInstance.materialScope
+  scene.add(worldRuntime.root)
   
   window.addEventListener('resize', handleResize)
   applyQualityPreset()
   applyViewMode()
   handleResize()
+}
+
+function persistEditorWorldState(): void {
+  if (!sceneStore.document) return
+  saveWorldDocument(createEditorWorldDocument(sceneStore.document, {
+    materialLibraries: worldPackageStore.materialPackages.map(item => item.manifest.packageId),
+    renderProfile: worldPackageStore.activeProfileId,
+    environment: worldPackageStore.environment,
+  }))
 }
 
 function handleResize() {
@@ -490,6 +428,7 @@ function startRenderLoop() {
   function animate() {
     animationFrameId = requestAnimationFrame(animate)
     if (controls) controls.update()
+    if (weatherVisuals?.tick(weatherClock.getDelta())) needsRender = true
     if (needsRender && renderer && scene && camera) {
       if (composer) composer.render()
       else renderer.render(scene, camera)
@@ -548,7 +487,7 @@ function resetSceneBounds() {
     return
   }
 
-  updateSceneGroup(sceneGroup, entity, materialCache)
+  worldRuntime?.updateInstance('editor:active-blueprint', entity)
 
   // 空场景（0 个构件）：重置相机到初始位置，防止上次的 camera 位置导致 grid 不可见
   if (!entity.meshes || entity.meshes.length === 0) {
@@ -889,7 +828,14 @@ function environmentColor(kind: 'groundColor' | 'fogColor') {
   const environmentColorValue = ENVIRONMENT_PRESETS[environmentPresetId.value][kind]
   const timeColorValue = TIME_PRESETS[timeOfDay.value][kind]
   const timeBlend = timeOfDay.value === 'night' ? 0.76 : timeOfDay.value === 'sunset' ? 0.42 : 0.08
-  return new THREE.Color(environmentColorValue).lerp(new THREE.Color(timeColorValue), timeBlend)
+  const atmosphere = deriveWorldAtmosphere(
+    getWorldEnvironmentState(),
+    getWorldRenderingState().weatherEnabled,
+  )
+  const weatherColor = kind === 'groundColor' ? atmosphere.groundTint : atmosphere.fogColor
+  return new THREE.Color(environmentColorValue)
+    .lerp(new THREE.Color(timeColorValue), timeBlend)
+    .lerp(new THREE.Color(weatherColor), atmosphere.tintStrength)
 }
 
 function applyEnvironmentAppearance() {
@@ -1052,13 +998,33 @@ function rebuildBuiltInEnvironment() {
 function cycleTimeOfDay() {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
   timeOfDay.value = TIME_ORDER[nextIndex]
-  applyTimePreset()
+  updateWorldEnvironmentState({
+    timeOfDay: timeOfDay.value === 'day' ? 12 : timeOfDay.value === 'sunset' ? 18 : 0,
+  })
+}
+
+function syncTimePresetFromWorldEnvironment(): void {
+  const hour = getWorldEnvironmentState().timeOfDay
+  const next: TimeOfDay = hour < 6 || hour >= 21
+    ? 'night'
+    : hour >= 16
+      ? 'sunset'
+      : 'day'
+  if (timeOfDay.value !== next) timeOfDay.value = next
 }
 
 function applyTimePreset() {
   if (!renderer || !scene || !sky || !hemisphereLight || !directionalLight) return
   const preset = TIME_PRESETS[timeOfDay.value]
   const environmentPreset = ENVIRONMENT_PRESETS[environmentPresetId.value]
+  const worldLook = worldLookRuntime.getActiveProfile().appearance
+  const directLightScale = worldLook?.directLightScale ?? 1
+  const ambientLightScale = worldLook?.ambientLightScale ?? 1
+  const exposureScale = worldLook?.exposureScale ?? 1
+  const shadowOpacityScale = worldLook?.shadowOpacity ?? 1
+  const worldEnvironment = getWorldEnvironmentState()
+  const weatherEnabled = getWorldRenderingState().weatherEnabled
+  const atmosphere = deriveWorldAtmosphere(worldEnvironment, weatherEnabled)
 
   sunDirection.setFromSphericalCoords(
     1,
@@ -1066,24 +1032,39 @@ function applyTimePreset() {
     THREE.MathUtils.degToRad(preset.sunTheta + environmentPreset.sunAzimuthOffset),
   )
   sky.visible = preset.skyVisible
-  syncSkyPreset(sky, preset)
+  syncSkyPreset(sky, preset, atmosphere)
 
   scene.background = new THREE.Color(preset.background)
-  rebuildEnvironment(preset)
-  renderer.toneMappingExposure = preset.exposure * environmentPreset.exposureScale
+    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
+  rebuildEnvironment(preset, atmosphere)
+  renderer.toneMappingExposure = preset.exposure
+    * environmentPreset.exposureScale
+    * exposureScale
+    * atmosphere.exposureScale
 
   hemisphereLight.color.setHex(preset.hemisphereSkyColor)
+    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength * 0.38)
   hemisphereLight.groundColor.setHex(preset.hemisphereGroundColor)
-  hemisphereLight.intensity = preset.hemisphereIntensity * environmentPreset.ambientLightScale
+  hemisphereLight.intensity = preset.hemisphereIntensity
+    * environmentPreset.ambientLightScale
+    * ambientLightScale
+    * atmosphere.ambientLightScale
   directionalLight.color.setHex(preset.directionalColor)
-  directionalLight.intensity = preset.directionalIntensity * environmentPreset.directLightScale
+    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength * 0.22)
+  directionalLight.intensity = preset.directionalIntensity
+    * environmentPreset.directLightScale
+    * directLightScale
+    * atmosphere.directLightScale
+  weatherVisuals?.setEnvironment(worldEnvironment, weatherEnabled)
   applyEnvironmentAppearance()
   if (bloomPass) {
     bloomPass.enabled = QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
   }
   if (shadowGround) {
     const timeShadowScale = timeOfDay.value === 'night' ? 0.36 : timeOfDay.value === 'sunset' ? 0.88 : 1
-    shadowGround.material.opacity = environmentPreset.shadowOpacity * timeShadowScale
+    shadowGround.material.opacity = environmentPreset.shadowOpacity
+      * timeShadowScale
+      * shadowOpacityScale
     shadowGround.material.needsUpdate = true
   }
 
@@ -1092,19 +1073,34 @@ function applyTimePreset() {
   markNeedsRender()
 }
 
-function syncSkyPreset(target: Sky, preset: TimePreset) {
+function syncSkyPreset(
+  target: Sky,
+  preset: TimePreset,
+  atmosphere = deriveWorldAtmosphere(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled),
+) {
   const uniforms = target.material.uniforms
   uniforms.turbidity.value = preset.turbidity
-  uniforms.rayleigh.value = preset.rayleigh
-  uniforms.mieCoefficient.value = preset.mieCoefficient
-  uniforms.mieDirectionalG.value = preset.mieDirectionalG
+    + atmosphere.cloud * 7
+    + atmosphere.rain * 3
+    + atmosphere.dust * 9
+    + atmosphere.fog * 4
+  uniforms.rayleigh.value = Math.max(0.08, preset.rayleigh * (1 - atmosphere.cloud * 0.38))
+  uniforms.mieCoefficient.value = Math.min(
+    0.08,
+    preset.mieCoefficient + atmosphere.cloud * 0.012 + atmosphere.fog * 0.018 + atmosphere.dust * 0.026,
+  )
+  uniforms.mieDirectionalG.value = Math.min(0.96, preset.mieDirectionalG + atmosphere.fog * 0.04)
   uniforms.sunPosition.value.copy(sunDirection)
 }
 
-function rebuildEnvironment(preset: TimePreset) {
+function rebuildEnvironment(
+  preset: TimePreset,
+  atmosphere = deriveWorldAtmosphere(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled),
+) {
   if (!scene || !pmremGenerator || !environmentScene || !environmentSky) return
-  syncSkyPreset(environmentSky, preset)
+  syncSkyPreset(environmentSky, preset, atmosphere)
   environmentScene.background = new THREE.Color(preset.background)
+    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
   const nextTarget = pmremGenerator.fromScene(
     environmentScene,
     timeOfDay.value === 'night' ? 0.16 : 0.045,
@@ -1115,6 +1111,75 @@ function rebuildEnvironment(preset: TimePreset) {
   environmentTarget = nextTarget
   scene.environment = nextTarget.texture
   previousTarget?.dispose()
+}
+
+function createCelestialBody(kind: 'sun' | 'moon'): THREE.Sprite {
+  const canvas = document.createElement('canvas')
+  canvas.width = 128
+  canvas.height = 128
+  const context = canvas.getContext('2d')
+  if (context) {
+    if (kind === 'sun') {
+      const glow = context.createRadialGradient(64, 64, 8, 64, 64, 62)
+      glow.addColorStop(0, 'rgba(255,255,235,1)')
+      glow.addColorStop(0.28, 'rgba(255,226,142,1)')
+      glow.addColorStop(0.58, 'rgba(255,190,82,0.55)')
+      glow.addColorStop(1, 'rgba(255,174,58,0)')
+      context.fillStyle = glow
+      context.fillRect(0, 0, 128, 128)
+    } else {
+      context.fillStyle = 'rgba(224,232,244,0.96)'
+      context.beginPath()
+      context.arc(64, 64, 47, 0, Math.PI * 2)
+      context.fill()
+      context.fillStyle = 'rgba(155,169,188,0.28)'
+      for (const [x, y, radius] of [[45, 47, 9], [78, 38, 6], [82, 73, 11], [49, 82, 5]]) {
+        context.beginPath()
+        context.arc(x, y, radius, 0, Math.PI * 2)
+        context.fill()
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    color: 0xffffff,
+    transparent: true,
+    opacity: 1,
+    depthWrite: false,
+    depthTest: true,
+    fog: false,
+    toneMapped: false,
+  })
+  const body = new THREE.Sprite(material)
+  body.name = kind === 'sun' ? 'WorldSun' : 'WorldMoon'
+  body.renderOrder = 3
+  return body
+}
+
+function updateCelestialBodies(center = lightingCenter, extent = lightingExtent): void {
+  if (!sunBody || !moonBody) return
+  const atmosphere = deriveWorldAtmosphere(
+    getWorldEnvironmentState(),
+    getWorldRenderingState().weatherEnabled,
+  )
+  const radius = Math.max(72, extent * 5.5)
+  const size = Math.max(4.2, radius * 0.055)
+  sunBody.position.copy(center).addScaledVector(sunDirection, radius)
+  moonBody.position.copy(center).addScaledVector(sunDirection, -radius)
+  sunBody.scale.set(size * 1.35, size * 1.35, 1)
+  moonBody.scale.set(size, size, 1)
+  sunBody.visible = timeOfDay.value !== 'night'
+  moonBody.visible = timeOfDay.value === 'night'
+  ;(sunBody.material as THREE.SpriteMaterial).opacity = Math.max(
+    0.12,
+    1 - atmosphere.cloud * 0.76 - atmosphere.rain * 0.18 - atmosphere.fog * 0.32,
+  )
+  ;(moonBody.material as THREE.SpriteMaterial).opacity = Math.max(
+    0.2,
+    0.92 - atmosphere.cloud * 0.58 - atmosphere.fog * 0.28,
+  )
 }
 
 function toggleViewMode() {
@@ -1138,12 +1203,20 @@ function applyViewMode() {
     syncSelectionHighlights()
     syncComponentTransformControl()
   }
-  if (presenting) {
-    const fogNear = Math.max(60, lightingExtent * 5)
+  const atmosphere = deriveWorldAtmosphere(
+    getWorldEnvironmentState(),
+    getWorldRenderingState().weatherEnabled,
+  )
+  if (presenting || atmosphere.fog > 0.025) {
+    const baseFogNear = Math.max(60, lightingExtent * 5)
+    const fogNear = baseFogNear * (1 - atmosphere.fog * 0.82)
+    const fogScale = worldLookRuntime.getActiveProfile().appearance?.fogScale ?? 1
     scene.fog = new THREE.Fog(
       environmentColor('fogColor'),
       fogNear,
-      fogNear + Math.max(180, lightingExtent * 16),
+      fogNear + Math.max(180, lightingExtent * 16)
+        * fogScale
+        * Math.max(0.1, 1 - atmosphere.fog * 0.84),
     )
   } else {
     scene.fog = null
@@ -1160,6 +1233,10 @@ function cycleQuality() {
 function applyQualityPreset() {
   if (!renderer) return
   const preset = QUALITY_PRESETS[qualityLevel.value]
+  updateWorldRenderingState({
+    surfaceQuality: qualityLevel.value,
+    weatherQuality: worldLookRuntime.getActiveProfile().quality?.weatherTier || qualityLevel.value,
+  })
   const pixelRatio = Math.min(window.devicePixelRatio || 1, preset.pixelRatio)
   renderer.setPixelRatio(pixelRatio)
   composer?.setPixelRatio(pixelRatio)
@@ -1203,10 +1280,19 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   shadowCamera.updateProjectionMatrix()
   directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
   directionalLight.shadow.needsUpdate = true
+  updateCelestialBodies(center, lightingExtent)
+  weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
   if (scene?.fog instanceof THREE.Fog) {
-    const fogNear = Math.max(60, lightingExtent * 5)
+    const atmosphere = deriveWorldAtmosphere(
+      getWorldEnvironmentState(),
+      getWorldRenderingState().weatherEnabled,
+    )
+    const fogNear = Math.max(60, lightingExtent * 5) * (1 - atmosphere.fog * 0.82)
+    const fogScale = worldLookRuntime.getActiveProfile().appearance?.fogScale ?? 1
     scene.fog.near = fogNear
     scene.fog.far = fogNear + Math.max(180, lightingExtent * 16)
+      * fogScale
+      * Math.max(0.1, 1 - atmosphere.fog * 0.84)
   }
 }
 
@@ -1245,10 +1331,22 @@ function cleanup() {
   renderer?.domElement.removeEventListener('contextmenu', handleContextMenu)
   clearSelectionHelpers()
   clearComponentTransformControl()
-  if (materialCache) materialCache.clear()
+  if (worldRuntime) worldRuntime.dispose()
+  else if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
   environmentTarget?.dispose()
   pmremGenerator?.dispose()
+  weatherVisuals?.dispose()
+  weatherVisuals = null
+  for (const body of [sunBody, moonBody]) {
+    if (!body) continue
+    body.removeFromParent()
+    const material = body.material as THREE.SpriteMaterial
+    material.map?.dispose()
+    material.dispose()
+  }
+  sunBody = null
+  moonBody = null
   sky?.geometry.dispose()
   sky?.material.dispose()
   environmentSky?.geometry.dispose()
@@ -1263,6 +1361,8 @@ function cleanup() {
   fxaaPass?.material.dispose()
   composer?.dispose()
   configureMaterialRendering(1)
+  disposeKtx2Rendering()
+  worldLookRuntime.setActivationContext(undefined)
   if (renderer) renderer.dispose()
   if (controls) controls.dispose()
   if (transformControls) {

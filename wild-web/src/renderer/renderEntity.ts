@@ -424,8 +424,13 @@ export function createSceneGroupFromEntity(
   group.name = 'WildScene'
   
   const cache = materialCache || new MaterialCache()
-  
-  populateSceneGroup(group, entity, cache)
+  group.userData.materialScope = cache
+  cache.beginUpdate()
+  try {
+    populateSceneGroup(group, entity, cache)
+  } finally {
+    cache.endUpdate()
+  }
   
   // 存储边界盒信息
   if (entity.boundingBox) {
@@ -467,7 +472,12 @@ export function updateSceneGroup(
     }
   }
   
-  populateSceneGroup(group, entity, materialCache)
+  materialCache.beginUpdate()
+  try {
+    populateSceneGroup(group, entity, materialCache)
+  } finally {
+    materialCache.endUpdate()
+  }
   
   // 更新边界盒
   if (entity.boundingBox) {

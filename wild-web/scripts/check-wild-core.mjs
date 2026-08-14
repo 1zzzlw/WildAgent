@@ -332,6 +332,10 @@ async function assertInvalidRuntimeMaterialFallsBack(core) {
   if (JSON.stringify(baseColor) !== JSON.stringify([0.5, 0.5, 0.5])) {
     throw new Error(`Invalid runtime material did not use fallback: ${JSON.stringify(baseColor)}`);
   }
+  const descriptor = entity.materialParams[0]?.renderDescriptor;
+  if (descriptor?.family !== 'neutral' || descriptor?.implementation !== 'surface.default.v1') {
+    throw new Error(`默认材质没有生成稳定渲染描述: ${JSON.stringify(descriptor)}`);
+  }
 }
 
 async function assertProceduralBrickMaterialPassesThrough(core) {
@@ -367,6 +371,10 @@ async function assertProceduralBrickMaterialPassesThrough(core) {
   }
   if (procedural.weathering.scale !== 1.8 || procedural.weathering.efflorescence !== 0.22) {
     throw new Error(`Core 没有规范化风化参数: ${JSON.stringify(procedural.weathering)}`);
+  }
+  const descriptor = entity.materialParams[0]?.renderDescriptor;
+  if (descriptor?.family !== 'masonry' || descriptor?.implementation !== 'masonry.brick.v1') {
+    throw new Error(`Core 没有把程序化砖映射为受控实现: ${JSON.stringify(descriptor)}`);
   }
   if (JSON.stringify(source) !== snapshot) {
     throw new Error('程序化材质重建修改了源 Blueprint');

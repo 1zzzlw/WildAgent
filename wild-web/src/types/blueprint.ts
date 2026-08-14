@@ -11,6 +11,10 @@
  */
 
 import type { ComponentSpec, ProceduralMaterial } from '../wild-core/types'
+import type {
+  MaterialEnvironmentResponse,
+  SurfaceFamily,
+} from '../wild-core/src/materials'
 export type { ComponentSpec } from '../wild-core/types'
 
 export interface Blueprint {
@@ -18,6 +22,8 @@ export interface Blueprint {
   geometry: GeometrySection
   materials?: Record<string, MaterialDef>
   assets?: Record<string, PBRTextureSetAsset>
+  materialLibraries?: string[]
+  renderProfile?: string
   behaviors?: BehaviorsSection
   editor?: EditorMetadata
 }
@@ -91,6 +97,9 @@ export interface MaterialDef {
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
   procedural?: ProceduralMaterial
+  surfaceFamily?: SurfaceFamily
+  environmentResponse?: MaterialEnvironmentResponse
+  requiredFeatures?: string[]
   [key: string]: unknown
 }
 
@@ -103,7 +112,7 @@ export interface EmbeddedImageData {
 export interface ReferencedImageData {
   encoding: 'url'
   uri: string
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/ktx2'
   sha256: string
   byteSize?: number
   colorSpace: 'srgb' | 'linear'

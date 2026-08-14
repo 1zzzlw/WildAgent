@@ -8,6 +8,8 @@
         Ctrl + 左键可多选；左键点击视口空白处可取消选择。
       </div>
 
+      <WorldPackagePanel mode="material" />
+
       <ProceduralMaterialPanel />
 
       <label>素材名称</label>
@@ -166,6 +168,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { createPatch } from '../../wild/scenePatch'
 import { createSelectedMaterialBindings } from '../../wild/materialBindings'
 import ProceduralMaterialPanel from './ProceduralMaterialPanel.vue'
+import WorldPackagePanel from './WorldPackagePanel.vue'
 
 type FileKey = 'baseColor' | 'normal' | 'roughness' | 'metalness' | 'ambientOcclusion'
 

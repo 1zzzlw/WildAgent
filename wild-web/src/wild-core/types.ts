@@ -5,6 +5,11 @@
  * 语言规范 (SPEC.md) 为唯一权威来源，本文件仅为辅助工具。
  */
 
+import type {
+  MaterialEnvironmentResponse,
+  SurfaceFamily,
+} from './src/materials/contracts';
+
 // ========== 基础向量与颜色 ==========
 
 /** 三维向量 [x, y, z] */
@@ -536,7 +541,7 @@ export interface EmbeddedImageData {
 export interface ReferencedImageData {
   encoding: 'url';
   uri: string;
-  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/ktx2';
   sha256: string;
   byteSize?: number;
   colorSpace: 'srgb' | 'linear';
@@ -609,6 +614,11 @@ export interface MaterialDef {
   sheenColor?: Color;
   emissiveIntensity?: number;
   procedural?: ProceduralMaterial;
+  /** renderer 无关的表面语义；未填写时由 core 按通用规则推断。 */
+  surfaceFamily?: SurfaceFamily;
+  /** 材质对世界天气的物理响应参数，不包含 Shader 源码。 */
+  environmentResponse?: MaterialEnvironmentResponse;
+  requiredFeatures?: string[];
 }
 
 // ========== 动态系统 ==========
@@ -699,6 +709,10 @@ export interface Blueprint {
   // 材质定义
   materials?: Record<string, MaterialDef>;
   assets?: Record<string, PBRTextureSetAsset>;
+  /** 全局材质库引用；Blueprint 不复制全局资产。 */
+  materialLibraries?: string[];
+  /** 世界光影配置引用；未填写时使用 builtin:default。 */
+  renderProfile?: string;
   // 动态行为，定义场景的物理、脚本和动画行为，不属于几何本身，但附加在场景上：
   behaviors?: {
     // 物理属性

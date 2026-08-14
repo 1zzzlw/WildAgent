@@ -13,11 +13,16 @@
         @click="uiStore.setRightActivePanel('assets')">
         素材
       </el-button>
+      <el-button class="tab" :class="{ active: uiStore.rightActivePanel === 'look' }"
+        @click="uiStore.setRightActivePanel('look')">
+        光影
+      </el-button>
     </div>
     <div class="panel-content">
       <PropertyPanel v-if="uiStore.rightActivePanel === 'properties'" />
       <ValidationPanel v-if="uiStore.rightActivePanel === 'validation'" />
       <PBRAssetPanel v-if="uiStore.rightActivePanel === 'assets'" />
+      <WorldLookPanel v-if="uiStore.rightActivePanel === 'look'" />
     </div>
   </div>
 </template>
@@ -27,6 +32,7 @@ import { useUIStore } from '../../stores/uiStore'
 import PropertyPanel from '../panels/PropertyPanel.vue'
 import ValidationPanel from '../panels/ValidationPanel.vue'
 import PBRAssetPanel from '../panels/PBRAssetPanel.vue'
+import WorldLookPanel from '../panels/WorldLookPanel.vue'
 
 defineProps<{
   width: number

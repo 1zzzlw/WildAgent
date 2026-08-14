@@ -18,6 +18,7 @@ import type {
   ScriptCondition, ActionData,
   InstanceRef
 } from '../../types.ts';
+import type { RenderMaterialDescriptor } from '../materials/contracts';
 
 // 重新导出语言规范类型,供引擎其他模块使用
 export type {
@@ -91,6 +92,7 @@ export interface MaterialParams {
   sheenColor?: import('../../types').Color;
   emissiveIntensity?: number;
   procedural?: import('../../types').MaterialDef['procedural'];
+  renderDescriptor: RenderMaterialDescriptor;
 }
 
 export interface EngineDiagnostic {

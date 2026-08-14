@@ -4,11 +4,13 @@ import type {
   MeshData,
   PBRTextureSetAsset,
 } from '../types';
+import { createRenderMaterialDescriptor } from '../../materials/descriptor';
 
 /** 烘焙效果层到基础材质参数 */
 function bakeEffects(
   base: MaterialDef,
   assets: Record<string, PBRTextureSetAsset>,
+  materialRef: string,
 ): MaterialParams {
   let bc = normalizeColor(base.baseColor, [0.5, 0.5, 0.5]);
   let r = normalizeUnit(base.roughness, 0.8);
@@ -82,6 +84,7 @@ function bakeEffects(
     procedural: base.procedural
       ? JSON.parse(JSON.stringify(base.procedural))
       : undefined,
+    renderDescriptor: createRenderMaterialDescriptor(materialRef, base),
   };
 }
 
@@ -104,7 +107,7 @@ export function applyMaterials(
       mat = normalizeMaterial(source);
       normalizedMaterials.set(mesh.materialRef, mat);
     }
-    return bakeEffects(mat, assets);
+    return bakeEffects(mat, assets, mesh.materialRef);
   });
 }
 
