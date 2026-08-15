@@ -43,6 +43,14 @@ def _dispatch_components(state: GenerationState):
         logger.warning("[Graph] 骨架生成失败，短路终止")
         return "fail"
 
+    # 极简结构（一面墙/一堵墙/单个构件）只保留结构骨架，不派发门/窗/屋顶等组件。
+    architecture_plan = state.get("architecture_plan")
+    if isinstance(architecture_plan, dict):
+        complexity = architecture_plan.get("complexity")
+        if isinstance(complexity, dict) and complexity.get("level") == "minimal":
+            logger.info("[Graph] 极简结构，跳过组件派发")
+            return "merge"
+
     design_brief = state.get("design_brief")
     component_quota = (
         design_brief.get("component_quota", {})

@@ -230,6 +230,8 @@ def resolve_material_plan(
     palette = (raw_plan or {}).get("palette") if isinstance(raw_plan, dict) else []
     if not isinstance(palette, list):
         palette = []
+    # 玻璃幕墙：外墙用物理玻璃近似表达（wall + material=glass），而非不透明墙板。
+    curtain_wall = "玻璃幕墙" in user_message or "玻璃幕" in user_message
     return {
         "concept": concept,
         "palette": [str(item)[:40] for item in palette[:5]],
@@ -237,6 +239,7 @@ def resolve_material_plan(
         "resolvedAssets": resolved_assets,
         "rejectedAssetIds": sorted(set(rejected_asset_ids)),
         "rejectedProceduralPresetIds": sorted(set(rejected_procedural_preset_ids)),
+        "curtainWall": curtain_wall,
     }
 
 
@@ -265,6 +268,11 @@ def apply_resolved_material_plan(blueprint: dict, material_plan: dict | None) ->
         role = ELEMENT_ROLE.get(str(element.get("type")))
         if role and role in role_material_ids:
             element["material"] = role_material_ids[role]
+
+    # 玻璃幕墙（方案 A：wall + window）：外墙宿主保持上面的 facade_primary 不透明中性墙板，
+    # 玻璃与竖梃/横梃由窗构件的 glassMaterial/frameMaterial + mullions 表达。
+    # 既不把整片外墙设成 glass（会变「纯玻璃墙」），也不设成深色金属（会变「纯黑」）。
+    # 因此这里刻意不对 wall 材质做任何额外改写。
 
     resolved_assets = material_plan.get("resolvedAssets") or {}
     blueprint["assets"] = deepcopy(resolved_assets) if isinstance(resolved_assets, dict) else {}

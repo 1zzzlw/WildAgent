@@ -8,6 +8,8 @@ import math
 import re
 from typing import Any
 
+from app.agent.facade_recipe import load_curtain_wall_parameters
+
 
 _FACES = ("front", "back", "left", "right")
 _OPENING_TYPES = {"door", "window", "empty"}
@@ -16,6 +18,12 @@ _SUPPORTED_ROOF_TYPES = {
 }
 
 _COMPLEXITY_PROFILES: dict[str, dict[str, Any]] = {
+    "minimal": {
+        "min_volumes": 1,
+        "min_detail_packages": 0,
+        "target_structural_elements": 1,
+        "grid_bays": (1, 1),
+    },
     "simple": {
         "min_volumes": 1,
         "min_detail_packages": 0,
@@ -259,6 +267,11 @@ def resolve_complexity_profile(
 ) -> dict[str, Any]:
     """把用户表达与运行模式解析为可验证的复杂度目标。"""
     message = user_message.lower()
+    minimal_words = (
+        "一面墙", "一堵墙", "单面墙", "一面幕墙", "单面幕墙", "只要一面",
+        "只要一堵", "单个构件", "单个元素", "一面玻璃", "一块楼板", "一根柱",
+        "一根梁", "一堵",
+    )
     simple_words = (
         "简单", "简易", "基础款", "低复杂度", "方盒子", "单一体量",
         "minimal massing", "simple massing",
@@ -267,7 +280,10 @@ def resolve_complexity_profile(
         "复杂", "高细节", "丰富", "有层次", "层次感", "多体量", "组合体量",
         "退台", "错落", "豪华", "精致", "标志性", "complex", "detailed",
     )
-    if any(word in message for word in simple_words):
+    if any(word in message for word in minimal_words):
+        level = "minimal"
+        reason = "用户明确要求极简结构"
+    elif any(word in message for word in simple_words):
         level = "simple"
         reason = "用户明确要求简化体量"
     elif precision_mode or any(word in message for word in detailed_words):
@@ -304,7 +320,7 @@ def _default_detail_packages(
         for component_type, keywords in explicit_keywords.items()
         if any(keyword in user_message for keyword in keywords)
     ]
-    if complexity["level"] == "simple":
+    if complexity["level"] in ("simple", "minimal"):
         return explicit
 
     is_european = any(word in user_message for word in ("欧式", "法式", "古典"))
@@ -488,6 +504,7 @@ def _fallback_plan(
         if require_entrance else ["empty", "empty", "empty", "empty", "empty"]
     )
     base_components = list(profile["base_components"])
+    curtain_wall = "玻璃幕墙" in user_message or "玻璃幕" in user_message
     component_quota: dict[str, dict[str, Any]] = {}
     if "door" in base_components:
         component_quota["door"] = {"min": 1, "max": 4, "note": "主入口及必要辅助入口"}
@@ -509,6 +526,12 @@ def _fallback_plan(
             }
     else:
         component_quota["window"] = {"min": 0, "max": 24, "note": "按建筑功能选用"}
+    if curtain_wall:
+        component_quota["window"] = {
+            "min": 1,
+            "max": 480,
+            "note": "水平模数化幕墙网格窗，实际数量由立面槽位决定",
+        }
     component_quota["roof"] = {
         "min": 1 if "roof" in base_components else 0,
         "max": 1 if "roof" in base_components else 0,
@@ -590,31 +613,58 @@ def _fallback_plan(
             "z_bays": default_z_bays,
         },
         "detail_packages": detail_packages,
-        "facades": {
-            "front": {
-                "bays": 5,
-                "entrance_bay": 3,
-                "ground_pattern": front_ground,
-                "upper_pattern": ["window", "empty", "window", "empty", "window"],
-            },
-            "back": {
-                "bays": 4,
-                "ground_pattern": ["window", "empty", "empty", "window"],
-                "upper_pattern": ["window", "empty", "empty", "window"],
-            },
-            "left": {
-                "bays": 3,
-                "ground_pattern": ["empty", "window", "empty"],
-                "upper_pattern": ["empty", "window", "empty"],
-            },
-            "right": {
-                "bays": 3,
-                "ground_pattern": ["empty", "window", "empty"],
-                "upper_pattern": ["empty", "window", "empty"],
-            },
-        },
+        "facades": (
+            {
+                "front": {
+                    "bays": 6,
+                    "entrance_bay": 3,
+                    "ground_pattern": ["window", "window", "door", "window", "window", "window"],
+                    "upper_pattern": ["window"] * 6,
+                },
+                "back": {
+                    "bays": 5,
+                    "ground_pattern": ["window"] * 5,
+                    "upper_pattern": ["window"] * 5,
+                },
+                "left": {
+                    "bays": 4,
+                    "ground_pattern": ["window"] * 4,
+                    "upper_pattern": ["window"] * 4,
+                },
+                "right": {
+                    "bays": 4,
+                    "ground_pattern": ["window"] * 4,
+                    "upper_pattern": ["window"] * 4,
+                },
+            }
+            if curtain_wall
+            else {
+                "front": {
+                    "bays": 5,
+                    "entrance_bay": 3,
+                    "ground_pattern": front_ground,
+                    "upper_pattern": ["window", "empty", "window", "empty", "window"],
+                },
+                "back": {
+                    "bays": 4,
+                    "ground_pattern": ["window", "empty", "empty", "window"],
+                    "upper_pattern": ["window", "empty", "empty", "window"],
+                },
+                "left": {
+                    "bays": 3,
+                    "ground_pattern": ["empty", "window", "empty"],
+                    "upper_pattern": ["empty", "window", "empty"],
+                },
+                "right": {
+                    "bays": 3,
+                    "ground_pattern": ["empty", "window", "empty"],
+                    "upper_pattern": ["empty", "window", "empty"],
+                },
+            }
+        ),
         "roof": {"type": roof_type, "ridge_axis": "x", "overhang": 0.55},
         "component_quota": component_quota,
+        "curtain_wall": curtain_wall,
         "balcony_access_count": balcony_access_count,
         "balcony_width": balcony_width,
         "required_components": base_components,
@@ -728,6 +778,7 @@ def normalize_architecture_plan(
     fallback = _fallback_plan(user_message, complexity)
     profile = detect_architecture_profile(user_message)
     source = raw if isinstance(raw, dict) else {}
+    curtain_wall = bool(fallback.get("curtain_wall"))
     massing_raw = source.get("massing") if isinstance(source.get("massing"), dict) else {}
     requested_floors = _requested_floors(user_message)
     requested_shape = _requested_shape(user_message)
@@ -818,10 +869,17 @@ def normalize_architecture_plan(
     for face in _FACES:
         base = fallback["facades"][face]
         item = facade_source.get(face) if isinstance(facade_source.get(face), dict) else {}
-        bays = int(_clamp_number(item.get("bays"), 1, 9, base["bays"]))
-        ground = _normalize_pattern(item.get("ground_pattern"), bays, base["ground_pattern"])
-        upper = _normalize_pattern(item.get("upper_pattern"), bays, base["upper_pattern"])
-        entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
+        if curtain_wall:
+            # 幕墙立面轴网必须密铺；模型输出不得用稀疏「窗/空」模式覆盖默认窗格。
+            bays = int(base["bays"])
+            ground = _normalize_pattern(base["ground_pattern"], bays, base["ground_pattern"])
+            upper = _normalize_pattern(base["upper_pattern"], bays, base["upper_pattern"])
+            entrance_bay = int(base.get("entrance_bay", 1))
+        else:
+            bays = int(_clamp_number(item.get("bays"), 1, 9, base["bays"]))
+            ground = _normalize_pattern(item.get("ground_pattern"), bays, base["ground_pattern"])
+            upper = _normalize_pattern(item.get("upper_pattern"), bays, base["upper_pattern"])
+            entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
         if profile["require_front_entrance"] and face == "front" and "door" not in ground:
             ground[entrance_bay - 1] = "door"
         facades[face] = {
@@ -845,6 +903,9 @@ def normalize_architecture_plan(
     raw_quotas = source.get("component_quota") if isinstance(source.get("component_quota"), dict) else {}
     for component_type, limits in raw_quotas.items():
         if not isinstance(limits, dict):
+            continue
+        if curtain_wall and component_type == "window":
+            # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格。
             continue
         normalized_limits = deepcopy(limits)
         if "min" in limits:
@@ -919,6 +980,8 @@ def normalize_architecture_plan(
         component_type for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
     ]
+    if complexity.get("level") == "minimal":
+        required_components = []
 
     rationale = source.get("design_rationale")
     if not isinstance(rationale, list):
@@ -935,6 +998,7 @@ def normalize_architecture_plan(
         "facades": facades,
         "roof": roof,
         "component_quota": quotas,
+        "curtain_wall": curtain_wall,
         "balcony_access_count": balcony_access_count,
         "balcony_width": balcony_width,
         "required_components": list(dict.fromkeys(required_components)),
@@ -1309,6 +1373,7 @@ def evaluate_skeleton_complexity(
     )
     target = int(complexity.get("target_structural_elements", 6))
     massing = plan.get("massing", {})
+    schematic = str(massing.get("representation_mode") or "full") == "schematic"
     floor_height = float(massing.get("floor_height", 3.2))
     plan_volumes = [
         volume for volume in plan.get("volumes", [])
@@ -1328,10 +1393,14 @@ def evaluate_skeleton_complexity(
         "structural_element_target": structural_count >= target,
         "volume_footprint_target": resolved_volume_footprint_count >= volume_target,
         "volume_plan_conformance": (
-            not expected_floor_layouts or floor_layouts == expected_floor_layouts
+            True if schematic
+            else (not expected_floor_layouts or floor_layouts == expected_floor_layouts)
         ),
         "structural_type_diversity": len([value for value in counts.values() if value]) >= 3,
-        "storey_wall_levels": expected_wall_base_levels.issubset(wall_base_levels),
+        "storey_wall_levels": (
+            True if schematic
+            else expected_wall_base_levels.issubset(wall_base_levels)
+        ),
         "vertical_circulation": modeled_floors <= 1 or counts.get("stair", 0) > 0,
         "duplicate_wall_free": duplicate_wall_count == 0,
         "overlapping_column_free": overlapping_column_count == 0,
@@ -1346,8 +1415,11 @@ def evaluate_skeleton_complexity(
     return {
         "level": level,
         "meets_target": (
-            all(realization_checks)
-            and (level != "detailed" or all(checks.values()))
+            level == "minimal"
+            or (
+                all(realization_checks)
+                and (level != "detailed" or all(checks.values()))
+            )
         ),
         "checks": checks,
         "structural_element_count": structural_count,
@@ -1979,9 +2051,27 @@ def _derived_balcony_slots(
     return selected
 
 
+def _curtain_wall_mullions(span: float, *, pane: float | None = None) -> int:
+    """玻璃幕墙窗格密铺：按知识库配方的分格模数计算竖向/横向梃数量（上限 32）。
+
+    方案 A（``wall + window``）中，窗编译器会按 ``verticalMullions`` 与
+    ``horizontalMullions`` 生成框、竖梃、横梃和玻璃。这里把每个窗切到配方
+    ``pane_module`` 见方的窗格，从而避免「整片纯玻璃墙」的观感。分格模数随
+    知识库 `glass-curtain-wall-assembly.md` 的确定性参数变化，不在代码里写死。
+    """
+    if pane is None:
+        pane = load_curtain_wall_parameters().pane_module
+    if not isinstance(span, (int, float)) or isinstance(span, bool) or span <= 0:
+        return 0
+    panes = max(1, int(round(float(span) / pane)))
+    return min(32, max(0, panes - 1))
+
+
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
+    curtain_wall = bool(plan.get("curtain_wall"))
+    curtain_params = load_curtain_wall_parameters() if curtain_wall else None
     realization = {
         "floors": int(massing.get("floors") or massing.get("modeled_floors") or 1),
         "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
@@ -2112,6 +2202,9 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 if wall["length"] >= 0.9:
                     available_width = max(0.9, available_width)
                 width = min(target_width, available_width)
+            elif curtain_wall:
+                # 幕墙窗带贴合开间，只留配方设定的细窄竖梃缝；不再用固定上限卡宽。
+                width = max(curtain_params.min_window_width, bay_width - curtain_params.mullion_gap)
             else:
                 width = max(0.75, min(2.2, bay_width * 0.62))
                 width = min(width, max(0.5, bay_width - 0.35))
@@ -2121,9 +2214,21 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 edge_clearance,
                 min(wall["length"] - width - edge_clearance, center - width / 2),
             )
-            bottom = wall["base_y"] if opening_type == "door" else wall["base_y"] + min(1.0, wall["height"] * 0.3)
+            if opening_type == "door":
+                bottom = wall["base_y"]
+                height_cap = target_height
+            elif curtain_wall:
+                # 幕墙窗台压薄、窗带加高，缩小层间不透明缝。
+                bottom = wall["base_y"] + min(
+                    curtain_params.sill_height,
+                    wall["height"] * curtain_params.sill_ratio,
+                )
+                height_cap = wall["height"] - (bottom - wall["base_y"]) - curtain_params.top_clearance
+            else:
+                bottom = wall["base_y"] + min(1.0, wall["height"] * 0.3)
+                height_cap = 1.55
             height = min(
-                target_height if opening_type == "door" else 1.55,
+                height_cap,
                 wall["height"] - (bottom - wall["base_y"]) - 0.25,
             )
             slot = {
@@ -2139,6 +2244,9 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 "width": round(width, 3),
                 "height": round(max(0.8, height), 3),
             }
+            if curtain_wall and opening_type == "window":
+                slot["vertical_mullions"] = _curtain_wall_mullions(width)
+                slot["horizontal_mullions"] = _curtain_wall_mullions(height)
             if any(
                 _opening_slots_overlap(
                     slot,
@@ -2179,6 +2287,13 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     for opening_type in ("door", "window"):
         available = sum(1 for slot in slots if slot["type"] == opening_type)
         limits = quotas.setdefault(opening_type, {})
+        if curtain_wall and opening_type == "window":
+            # 幕墙全立面密铺：每个窗槽位都必须有窗。这里忽略模型/回退配额上限，
+            # 直接按实际立面槽位数量补齐，否则按少量配额沿全高抽样会变成
+            # 「每几层才一个窗」的错乱散布。
+            limits["max"] = available
+            limits["min"] = available
+            continue
         maximum = limits.get("max")
         limits["max"] = available if not isinstance(maximum, (int, float)) else min(int(maximum), available)
         minimum = limits.get("min", 0)
@@ -2372,7 +2487,8 @@ def conform_openings_to_slots(
             else:
                 item = {
                     "id": f"window_planned_{index:02d}", "type": "window",
-                    "verticalMullions": 1, "horizontalMullions": 0,
+                    "verticalMullions": int(slot.get("vertical_mullions", 1)),
+                    "horizontalMullions": int(slot.get("horizontal_mullions", 0)),
                     "frameMaterial": frame_material, "glassMaterial": glass_material,
                 }
             ordered_items.append((item, slot))
@@ -2384,6 +2500,12 @@ def conform_openings_to_slots(
             item["from"] = deepcopy(slot["from"])
             item["width"] = slot["width"]
             item["height"] = slot["height"]
+            if opening_type == "window" and "vertical_mullions" in slot:
+                # 幕墙窗格：统一到骨架解析出的分格模数，覆盖模型任意梃数，保证整面密铺。
+                item["verticalMullions"] = int(slot["vertical_mullions"])
+                item["horizontalMullions"] = int(slot.get("horizontal_mullions", 0))
+                item["frameMaterial"] = frame_material
+                item["glassMaterial"] = glass_material
             if opening_type == "door":
                 variant = _stable_unit_interval(f"{item.get('id', slot['id'])}:frame")
                 item.setdefault("frameWidth", round(0.065 + variant * 0.025, 3))

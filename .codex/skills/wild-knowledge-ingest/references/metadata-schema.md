@@ -72,7 +72,7 @@ keywords: 支摘窗, zhizhai window, opening
 | `knowledge_layer` | 知识层 | `architecture / constraint / wild_schema / project_pattern / navigation` |
 | `entity_type` | 业务实体族 | `window / opening / wall / roof / stair / building / material / ...` |
 | `entity_name` | 稳定英文 ID | 小写 snake_case |
-| `topic` | 当前回答的问题 | `definition / schema / parameters / constraints / assembly / example / error / navigation` |
+| `topic` | 当前回答的问题 | `definition / schema / parameters / constraints / composition / assembly / fallback / example / error / navigation` |
 | `wild_version` | 适用版本 | 当前为 `"1.1"` |
 | `status` | 能力状态 | `supported / experimental / proposed / deprecated` |
 | `authority` | 事实依据 | `engine / schema / verified_example / maintainer / domain_reference / inferred` |
@@ -87,6 +87,7 @@ keywords: 支摘窗, zhizhai window, opening
 - `experimental` 可以进入召回，但 Loader 必须把 `status` 和 `authority` 明确显示给模型。
 - 精确构件查询先按 `doc_type`、`entity_type` 缩小范围，再做向量相似度召回。
 - 建筑生成分别召回建筑类型、构件和 recipe，不能让所有文档无条件竞争一个 `top_k`。
+- 建筑类型的默认生成优先召回 `topic=composition`；只有明确低复杂度或失败回退时才使用 `topic=fallback`。不得让 fallback 的短摘要覆盖完整构成合同。
 - 命中带 `parent_chunk_id` 的长度子片时，补充相邻 `part_index`，但不跨业务实体扩展。
 - 跨来源去重使用不含祖先知识路径的正文哈希，避免相同表格因 H1 不同重复进入上下文。
 - `BLUEPRINT-SPEC-MINIMAL.md` 继续作为 system 上下文，不依赖向量召回。

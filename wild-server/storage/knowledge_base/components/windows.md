@@ -567,31 +567,16 @@ keywords: 现代窗, modern window, curtain wall, corner window
 entity_type: window
 entity_name: curtain_wall_window
 topic: assembly
-status: proposed
-authority: domain_reference
-keywords: 幕墙窗, curtain wall grid, fixed window, mullion
+status: experimental
+authority: engine
+keywords: 幕墙窗, curtain wall grid, fixed window, verticalMullions, horizontalMullions
 -->
 
-> 组装公式：**大面积 `wall`(glass_curtain) + `opening`(少数可开启扇) + `window`(awning 通风) + `mullion`(grid, 均匀分格)**
+> 组装公式：**`wall` 宿主 + `window` 网格 + 分离的框/玻璃材质；高细节时改用 `primitive.box` 显式骨架。**
 
-幕墙本身是 wall，但只有个别单元是真正的 opening+window（开启扇），其余是固定玻璃。
+当前 `window` 直接通过 `parentWall` 依附墙体，并由 `verticalMullions`、`horizontalMullions` 生成分格。不要另外创建 `opening` 再让窗引用 `parentOpening`，也不要输出不存在的 `mullion` 类型。
 
-```text
-/* 幕墙 wall + 固定玻璃区(非窗, wall自带) */
-{ "type": "wall", "id": "curtain_wall",
-  "from": [0, 0, 0], "to": [24, 0, 0],
-  "height": 36.0, "thickness": 0.02,
-  "material": "glass_curtain" },
-/* 可开启扇 — 每层每两柱间一个上悬窗 */
-{ "type": "opening", "id": "curtain_opening_01",
-  "parentWall": "curtain_wall", "from": [3.0, 1.0, 0],
-  "width": 1.2, "height": 1.5, "style": "rectangular" },
-{ "type": "window", "id": "curtain_win_01",
-  "parentOpening": "curtain_opening_01",
-  "sashType": "awning" }
-```
-
----
+完整的能力边界见 `components/glass-curtain-walls.md`；整片立面的生成顺序、网格公式、示例和回退见 `recipes/glass-curtain-wall-assembly.md`。
 
 #### 转角窗（Corner Window）——现代别墅标志
 

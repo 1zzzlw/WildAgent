@@ -34,6 +34,183 @@ def _two_storey_blueprint() -> dict:
     }
 
 
+def test_minimal_request_keeps_single_wall() -> None:
+    """用户只要一面墙时，复杂度应判为 minimal，且不触发体量化回退。"""
+    profile = resolve_complexity_profile("生成一个玻璃幕墙，只要一面墙就可以")
+    assert profile["level"] == "minimal"
+    assert profile["target_structural_elements"] == 1
+
+    single_wall = {
+        "meta": {"version": "1.1", "type": "building", "name": "单面玻璃幕墙"},
+        "geometry": {
+            "elements": [
+                {
+                    "id": "curtain_wall_host",
+                    "type": "wall",
+                    "from": [0, 0, 0],
+                    "to": [6, 3, 0],
+                    "thickness": 0.12,
+                    "material": "glass",
+                },
+            ],
+            "components": [],
+        },
+        "materials": {
+            "glass": {
+                "baseColor": [0.65, 0.78, 0.85],
+                "materialClass": "glass",
+                "transmission": 0.92,
+                "ior": 1.5,
+                "thickness": 0.012,
+            },
+        },
+    }
+    plan = {
+        "complexity": {"level": "minimal", "min_volumes": 1, "target_structural_elements": 1},
+    }
+    diag = evaluate_skeleton_complexity(single_wall, plan)
+    assert diag["meets_target"] is True
+
+
+def test_minimal_plan_has_no_required_components() -> None:
+    """极简结构不应强制派发门/窗/屋顶组件。"""
+    plan = normalize_architecture_plan({}, "生成一面玻璃幕墙")
+    assert plan["required_components"] == []
+
+
+def test_curtain_wall_plan_has_dense_facade_pattern() -> None:
+    """玻璃幕墙应使用密集窗格立面（全窗、更多开间）。"""
+    plan = normalize_architecture_plan({}, "生成一个玻璃幕墙办公楼")
+    assert plan["curtain_wall"] is True
+    front = plan["facades"]["front"]
+    assert front["bays"] == 6
+    assert all(item == "window" for item in front["upper_pattern"])
+    assert plan["component_quota"]["window"]["max"] >= 480
+
+
+def test_curtain_wall_facade_pattern_not_overridable_by_model() -> None:
+    """模型输出的稀疏「窗/空」立面模式不能覆盖幕墙的密铺窗格。"""
+    raw = {
+        "facades": {
+            "front": {"bays": 4, "upper_pattern": ["window", "empty", "window", "empty"]},
+            "back": {"bays": 2, "upper_pattern": ["window", "empty"]},
+        },
+    }
+    plan = normalize_architecture_plan(raw, "生成一个玻璃幕墙办公楼")
+    assert plan["curtain_wall"] is True
+    front = plan["facades"]["front"]
+    assert front["bays"] == 6  # 幕墙密铺轴网，模型 4 开间被忽略
+    assert all(item == "window" for item in front["upper_pattern"])
+
+
+def test_curtain_wall_window_quota_not_overridable_by_model() -> None:
+    """模型把窗配额压小（max=14）不能覆盖幕墙的密集窗格配额。"""
+    raw = {
+        "component_quota": {"window": {"min": 0, "max": 14}},
+        "facades": {"front": {"bays": 2, "upper_pattern": ["window", "empty"]}},
+    }
+    plan = normalize_architecture_plan(raw, "生成一个玻璃幕墙办公楼")
+    assert plan["curtain_wall"] is True
+    assert plan["component_quota"]["window"]["max"] >= 480  # 回退值保留，不被 max=14 覆盖
+
+
+def test_curtain_wall_fills_all_facade_slots_regardless_of_quota() -> None:
+    """即使模型把窗配额压小，幕墙仍按实际立面槽位填满，不做沿全高抽样。"""
+    blueprint = {
+        "meta": {"version": "1.1", "type": "building", "name": "玻璃幕墙"},
+        "geometry": {
+            "elements": [
+                {"id": "wall_front", "type": "wall", "from": [0, 0, 0], "to": [24, 3.2, 0], "thickness": 0.24},
+            ],
+            "components": [],
+        },
+        "materials": {},
+    }
+    plan = normalize_architecture_plan(
+        {"component_quota": {"window": {"min": 0, "max": 2}}},
+        "生成一个玻璃幕墙办公楼",
+    )
+    brief = resolve_facade_layout(blueprint, plan)
+    window_slots = [slot for slot in brief["opening_slots"] if slot["type"] == "window"]
+    assert window_slots
+    assert brief["component_quota"]["window"]["min"] == len(window_slots)
+    assert brief["component_quota"]["window"]["max"] == len(window_slots)
+
+
+def test_curtain_wall_slots_carry_mullion_grid() -> None:
+    """玻璃幕墙窗槽位带密铺竖梃/横梃，吸附补齐的窗也保留分格。"""
+    blueprint = {
+        "meta": {"version": "1.1", "type": "building", "name": "玻璃幕墙"},
+        "geometry": {
+            "elements": [
+                {"id": "wall_front", "type": "wall", "from": [0, 0, 0], "to": [24, 3.2, 0], "thickness": 0.24},
+            ],
+            "components": [],
+        },
+        "materials": {},
+    }
+    plan = normalize_architecture_plan({}, "生成一个玻璃幕墙办公楼")
+    brief = resolve_facade_layout(blueprint, plan)
+    window_slots = [slot for slot in brief["opening_slots"] if slot["type"] == "window"]
+    assert window_slots
+    for slot in window_slots:
+        assert slot["vertical_mullions"] >= 1
+        assert slot["horizontal_mullions"] >= 1
+
+    components, stats = conform_openings_to_slots([], brief, blueprint["materials"])
+    windows = [item for item in components if item["type"] == "window"]
+    assert len(windows) == len(window_slots)
+    assert stats["synthesized"] >= len(windows)  # 幕墙窗 + 必要入口门
+    for window in windows:
+        assert window["verticalMullions"] >= 1
+        assert window["horizontalMullions"] >= 1
+        assert window.get("frameMaterial") is not None
+        assert window.get("glassMaterial") is not None
+
+
+def test_schematic_highrise_skips_per_floor_checks() -> None:
+    """schematic 高层用连续外壳墙 + 代表性楼板，不因逐层墙/楼板检查被误判回退。"""
+    elements = [
+        # 裙房（42×36，Y=0~4）
+        {"id": "w_base_f", "type": "wall", "from": [0, 0, 0], "to": [42, 4, 0], "thickness": 0.3, "material": "glass"},
+        {"id": "w_base_b", "type": "wall", "from": [0, 0, 36], "to": [42, 4, 36], "thickness": 0.3, "material": "glass"},
+        {"id": "w_base_l", "type": "wall", "from": [0, 0, 0], "to": [0, 4, 36], "thickness": 0.3, "material": "glass"},
+        {"id": "w_base_r", "type": "wall", "from": [42, 0, 0], "to": [42, 4, 36], "thickness": 0.3, "material": "glass"},
+        # 主塔（34.44×28.08，Y=4~120，连续外壳）
+        {"id": "w_tower_f", "type": "wall", "from": [3.36, 4, 2.16], "to": [37.8, 120, 2.16], "thickness": 0.3, "material": "glass"},
+        {"id": "w_tower_b", "type": "wall", "from": [3.36, 4, 30.24], "to": [37.8, 120, 30.24], "thickness": 0.3, "material": "glass"},
+        {"id": "w_tower_l", "type": "wall", "from": [3.36, 4, 2.16], "to": [3.36, 120, 30.24], "thickness": 0.3, "material": "glass"},
+        {"id": "w_tower_r", "type": "wall", "from": [37.8, 4, 2.16], "to": [37.8, 120, 30.24], "thickness": 0.3, "material": "glass"},
+        # 代表性楼板
+        {"id": "floor_ground", "type": "floor", "from": [0, 0, 0], "to": [42, 0, 36], "thickness": 0.2, "material": "floor_finish"},
+        {"id": "floor_base_top", "type": "floor", "from": [0, 4, 0], "to": [42, 4, 36], "thickness": 0.2, "material": "floor_finish"},
+        {"id": "floor_mid", "type": "floor", "from": [3.36, 60, 2.16], "to": [37.8, 60, 30.24], "thickness": 0.2, "material": "floor_finish"},
+        {"id": "floor_top", "type": "floor", "from": [3.36, 120, 2.16], "to": [37.8, 120, 30.24], "thickness": 0.2, "material": "roof"},
+        {"id": "stair_main", "type": "stair", "from": [20, 0, 16], "to": [20, 4, 16], "width": 1.5, "material": "concrete"},
+    ]
+    for x in (0.5, 14, 28, 41.5):
+        for z in (0.5, 18, 35.5):
+            elements.append({"id": f"col_{x}_{z}", "type": "column", "base": [x, 0, z], "height": 120, "bottomRadius": 0.4, "topRadius": 0.4, "style": "modern", "material": "concrete"})
+    for i in range(6):
+        elements.append({"id": f"beam_{i}", "type": "beam", "from": [0, 4, i * 6], "to": [42, 4, i * 6], "crossSection": "rect", "width": 0.3, "height": 0.5, "material": "metal"})
+
+    blueprint = {
+        "meta": {"version": "1.1", "type": "building", "name": "玻璃幕墙塔楼"},
+        "geometry": {"elements": elements, "components": []},
+        "materials": {},
+    }
+    plan = {
+        "complexity": {"level": "detailed", "min_volumes": 2, "target_structural_elements": 18},
+        "massing": {"floors": 30, "modeled_floors": 10, "floor_height": 4.0, "representation_mode": "schematic"},
+        "volumes": [
+            {"id": "base", "x": 0, "z": 0, "width": 42, "depth": 36, "start_floor": 1, "end_floor": 1},
+            {"id": "tower", "x": 3.36, "z": 2.16, "width": 34.44, "depth": 28.08, "start_floor": 2, "end_floor": 10},
+        ],
+    }
+    diag = evaluate_skeleton_complexity(blueprint, plan)
+    assert diag["meets_target"] is True
+
+
 def test_candidate_selection_respects_explicit_floor_count() -> None:
     raw = {"candidates": [
         {"concept": "单层", "massing": {"floors": 1}},

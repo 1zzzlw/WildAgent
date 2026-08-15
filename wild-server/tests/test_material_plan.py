@@ -349,3 +349,57 @@ def test_weathering_none_disables_inherited_weather_effects():
     assert weathering["verticalStreaks"] == 0
     assert weathering["baseDampness"] == 0
     assert 1.45 <= weathering["scale"] <= 2.1
+
+
+def test_glass_curtain_wall_keeps_opaque_neutral_facade():
+    """玻璃幕墙：外墙宿主保持不透明中性墙板，玻璃由窗构件的 glassMaterial 表达。"""
+    plan = resolve_material_plan(None, [], user_message="生成一个玻璃幕墙商业综合体")
+    assert plan["curtainWall"] is True
+
+    blueprint = {
+        "meta": {"version": "1.1", "type": "building", "name": "玻璃幕墙"},
+        "geometry": {
+            "elements": [
+                {"id": "wall_front", "type": "wall", "from": [0, 0, 0], "to": [42, 120, 0], "thickness": 0.3},
+                {"id": "col_1", "type": "column", "base": [0.5, 0, 0.5], "height": 120, "bottomRadius": 0.4, "topRadius": 0.4},
+            ],
+            "components": [],
+        },
+        "materials": {},
+    }
+    apply_resolved_material_plan(blueprint, plan)
+
+    wall = blueprint["geometry"]["elements"][0]
+    column = blueprint["geometry"]["elements"][1]
+    assert wall["material"] == "wall_finish"  # 外墙宿主保持中性墙板，不是玻璃也不是深色金属
+    assert column["material"] == "concrete"  # 结构柱仍用结构材质
+    assert blueprint["materials"]["glass"].get("materialClass") == "glass"  # 玻璃材质保留给窗
+    assert blueprint["materials"]["glass"].get("transmission") == 0.92
+    assert blueprint["materials"]["metal"]["metallic"] >= 0.5  # 金属框材质保留给窗框
+
+
+def test_non_curtain_wall_keeps_opaque_facade():
+    """非玻璃幕墙请求不应把外墙改成玻璃。"""
+    plan = resolve_material_plan(None, [], user_message="生成一个混凝土办公楼")
+    assert plan.get("curtainWall") is False
+
+
+def test_curtain_wall_keeps_all_walls_neutral():
+    """玻璃幕墙不把任何墙改成玻璃或深色金属，全部保持中性墙板；分格由窗承担。"""
+    plan = resolve_material_plan(None, [], user_message="生成一个玻璃幕墙办公楼")
+    blueprint = {
+        "geometry": {
+            "elements": [
+                {"id": "wall_front", "type": "wall", "from": [0, 0, 0], "to": [42, 120, 0], "thickness": 0.3},
+                {"id": "wall_back", "type": "wall", "from": [0, 0, 36], "to": [42, 120, 36], "thickness": 0.3},
+                {"id": "wall_left", "type": "wall", "from": [0, 0, 0], "to": [0, 120, 36], "thickness": 0.3},
+                {"id": "wall_right", "type": "wall", "from": [42, 0, 0], "to": [42, 120, 36], "thickness": 0.3},
+                {"id": "wall_core", "type": "wall", "from": [21, 0, 16], "to": [21, 120, 20], "thickness": 0.2},
+            ],
+        },
+        "materials": {},
+    }
+    apply_resolved_material_plan(blueprint, plan)
+    by_id = {element["id"]: element for element in blueprint["geometry"]["elements"]}
+    for wall_id in ("wall_front", "wall_back", "wall_left", "wall_right", "wall_core"):
+        assert by_id[wall_id]["material"] == "wall_finish"

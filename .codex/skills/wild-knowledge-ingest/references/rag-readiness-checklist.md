@@ -6,6 +6,18 @@
 - [ ] 低优先级建筑资料没有覆盖引擎或 Schema。
 - [ ] 未验证能力标为 `proposed`，并与 supported 内容分块。
 - [ ] 冲突列出来源、可信结论和待确认项。
+- [ ] 无效字段或 JSON 只影响对应实现声明，没有连带删除仍成立的领域构成语义。
+
+## 来源覆盖与建筑构成
+
+- [ ] 已按实体建立来源声明清单，覆盖 identity、空间、体量、结构、围护、开口、交通、附属、组装、重复、材质、参数、降级和示例。
+- [ ] 每条非重复声明都有 `preserved / normalized / routed / downgraded / deferred_conflict / rejected` disposition。
+- [ ] `routed` 指向具体目标文件/实体；`rejected` 有明确原因，没有静默丢弃。
+- [ ] 每个详细建筑实体有 `topic: composition` 的默认完整构成合同。
+- [ ] 构成合同区分 `required / characteristic / conditional / optional`，并写明条件或省略后果。
+- [ ] 主体骨架、空间/体量、外围护、开口、交通、附属组件、重复模数、依附搭接和降级映射均保留；来源未提供的类别明确标注。
+- [ ] `topic: fallback` 与默认完整构成分开，最小构件集合没有冒充默认生成配方。
+- [ ] 多建筑长文没有被压缩成每类只有一段“视觉特征 + 最小表达”。
 
 ## 标题与语义块
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Wild RAG 知识入库"
   short_description: "把原始资料转换为可验证、可分片的 WILD RAG 知识"
-  default_prompt: "使用 $wild-knowledge-ingest 将这份原始资料事实审查、分类和重构为符合项目真实分片契约的知识库文档，并预览最终 chunks。"
+  default_prompt: "使用 $wild-knowledge-ingest 将这份原始资料逐项做来源覆盖、事实审查、分类和重构，保留建筑构成与组件关系，输出符合项目真实分片契约的知识库文档，并预览最终 chunks。"

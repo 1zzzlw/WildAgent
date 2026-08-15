@@ -56,13 +56,13 @@ keywords:
 
 | 系统 | 所在位置 | 当前边界 |
 |---|---|---|
-| 组合构件 | `geometry.components` | 支持 door/window/railing/canopy/balcony/ramp/bay_window/cornice/chimney；渲染前展开为 Core 元素 |
+| 组合构件 | `geometry.components` | 支持 door/window/railing/canopy/balcony/ramp/bay_window/cornice/chimney/light；渲染前展开为 Core 元素 |
 | 模板 | `geometry.templates` + `geometry.instances` | 引用模板并应用实例变换 |
 | 表面排布 | `geometry.placements` | 当前只解析 gable 屋顶 left/right 表面 |
 
 ### 尚未实现的专用类型
 
-`mullion`（作为独立类型）、`truss` 和 `terrain` 仍为 `proposed`，不能写入正式 WILD。9 类组合组件只能写入 `geometry.components`，不能写入 `geometry.elements`。屋顶真实穿透、通用 CSG 和复杂地形仍未实现。
+`mullion`（作为独立类型）、`truss` 和 `terrain` 仍为 `proposed`，不能写入正式 WILD。10 类组合组件只能写入 `geometry.components`，不能写入 `geometry.elements`。屋顶真实穿透、通用 CSG 和复杂地形仍未实现。
 
 ## 当前拆分
 
@@ -72,6 +72,7 @@ keywords:
 | `proposed-component-extensions.md` | 未实现专用类型和自动组合机制提案 |
 | `structural-components.md` | 柱、梁、楼板和桁架降级方式 |
 | `walls.md` | 墙体分类、受力角色、材料、构造方式、模数规格 |
+| `glass-curtain-walls.md` | 玻璃幕墙定义、当前映射、材料角色、变体和能力边界 |
 | `doors-supported.md` | 当前受支持的基础静态 door 参数、示例与能力边界 |
 | `doors.md` | 基础静态 door 之外的门型领域资料和未来扩展提案 |
 | `windows-supported.md` | 当前受支持的基础静态 window 参数、示例与能力边界 |

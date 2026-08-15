@@ -41,7 +41,7 @@ keywords:
 | **承重墙** | `wall` 直接落地，上方搁楼板/梁 | 240~370mm | 砖混结构、剪力墙 | 不可拆改，开洞需过梁 |
 | **非承重·隔墙** | `wall` 厚度<150mm，重量由楼板/梁承担 | 100~120mm | 框架结构内部 | 轻质材料(加气混凝土/石膏板) |
 | **非承重·填充墙** | `wall` 嵌于柱间 | 200~240mm | 框架结构外部/内部 | 与柱梁柔性连接 |
-| **幕墙** | `wall` 悬挂于外部骨架 | 不计厚度(玻璃+龙骨) | 高层公建、商业 | 承受风荷载，需 pre-glazed |
+| **幕墙** | `wall` 宿主 + `window` 网格，或显式 `primitive` 骨架/玻璃 | 组合体系 | 高层公建、商业 | 非承重视觉近似；真实性能需专项校核 |
 
 **WILD JSON 示例**：以下是 `geometry.elements` 片段；墙高由 `from[1]` 与 `to[1]` 的差值表达，直墙省略 `curve`。
 
@@ -65,11 +65,11 @@ keywords:
   },
   {
     "type": "wall",
-    "id": "curtain_wall_01",
+    "id": "curtain_wall_backing",
     "from": [0, 0, 0],
     "to": [18, 30.0, 0],
-    "thickness": 0.02,
-    "material": "glass_curtain"
+    "thickness": 0.16,
+    "material": "spandrel"
   }
 ]
 ```
@@ -94,7 +94,7 @@ keywords:
 | **实体墙** | 单一材料不留空隙 | 一条 `wall` 即可 |
 | **空斗墙** | 砖砌中留空腔 | `wall` thickness=0.24 + 内部 cavity 标记 |
 | **复合墙** | 两种以上材料叠合 | 两条 `wall` 紧贴（如外砖+内保温层） |
-| **幕墙** | 骨架+面板悬挂 | `wall` + 外侧 `placement` 排列玻璃单元 |
+| **幕墙** | 骨架+面板悬挂 | `wall + window` 网格，或 `primitive.box` 显式骨架与玻璃；详见幕墙配方 |
 
 #### X.1.4 按风格/饰面分类（与建筑类型对照）
 

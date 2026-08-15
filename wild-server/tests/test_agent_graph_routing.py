@@ -3,8 +3,17 @@
 from app.agent.component_registry import resolve_component_suggestions
 from langgraph.graph import END
 
-from app.agent.graph import _classifier_dispatch, _final_validate_dispatch
+from app.agent.graph import _classifier_dispatch, _dispatch_components, _final_validate_dispatch
 from app.agent.intent_classifier import classify_keywords
+
+
+def test_minimal_complexity_skips_component_dispatch():
+    result = _dispatch_components({
+        "architecture_plan": {"complexity": {"level": "minimal"}},
+        "suggested_components": ["door", "window", "roof"],
+        "user_message": "生成一面玻璃幕墙",
+    })
+    assert result == "merge"
 
 
 def test_edit_keyword_routes_to_patch_when_scene_exists():

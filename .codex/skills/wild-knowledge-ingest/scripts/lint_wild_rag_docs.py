@@ -43,6 +43,22 @@ PSEUDO_HEADING_RE = re.compile(
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 FENCE_RE = re.compile(r"^\s*(```+|~~~+)\s*([A-Za-z0-9_-]*)")
 RAG_META_START_RE = re.compile(r"^\s*<!--\s*rag-meta\s*$")
+RAG_META_BLOCK_RE = re.compile(r"<!--\s*rag-meta\s*\n(.*?)-->", re.DOTALL)
+COMPOSITION_HEADING_RE = re.compile(r"(?:默认完整构成|完整构成合同|构件构成|组件构成)")
+FALLBACK_HEADING_RE = re.compile(r"(?:最少可行回退|最小可行回退|失败回退)")
+COMPOSITION_FIELDS = {
+    "识别特征": re.compile(r"(?:识别特征|身份特征|关键视觉)"),
+    "空间与体量": re.compile(r"(?:空间与体量|空间组织|核心空间|体量)"),
+    "主体骨架": re.compile(r"(?:主体骨架|结构骨架|骨架系统)"),
+    "外围护": re.compile(r"(?:外围护|围护系统|外立面)"),
+    "开口组件": re.compile(r"(?:开口组件|门窗组件|门窗系统)"),
+    "交通组件": re.compile(r"(?:交通组件|交通系统|垂直交通)"),
+    "附属组件": re.compile(r"(?:附属组件|辅助构件|附加构件)"),
+    "重复与模数": re.compile(r"(?:重复与模数|标准层|模数|阵列|复用)"),
+    "组装与依附": re.compile(r"(?:组装与依附|组装顺序|依附关系|搭接关系)"),
+    "降级映射": re.compile(r"(?:降级映射|适配备注|不支持.*(?:近似|映射|降级))"),
+    "构件优先级": re.compile(r"(?:required|characteristic|conditional|optional)"),
+}
 # 匹配 "X 类/种/个/款" 计数声明（如 "支持 9 类组件"、"11 种构件"）
 COUNT_CLAIM_RE = re.compile(
     r"(?:支持\s*)?(\d+|[一二三四五六七八九十]+)\s*(?:类|种|个|款)\s*(?:组件|构件|类型|事物|能力)"
@@ -364,12 +380,113 @@ def proposed_claim_issues(path: Path, lines: list[str]) -> list[Issue]:
     return []
 
 
+def _heading_subtree(
+    lines: list[str],
+    headings: list[Heading],
+    index: int,
+) -> tuple[int, list[str]]:
+    heading = headings[index]
+    end_line = len(lines)
+    for candidate in headings[index + 1:]:
+        if candidate.level <= heading.level:
+            end_line = candidate.line - 1
+            break
+    return end_line, lines[heading.line:end_line]
+
+
+def _rag_meta_in_intro(lines: list[str], heading: Heading) -> list[dict[str, object]]:
+    intro = "\n".join(lines[heading.line:heading.end_line])
+    return [
+        parse_simple_yaml(match.group(1).splitlines())
+        for match in RAG_META_BLOCK_RE.finditer(intro)
+    ]
+
+
+def building_composition_issues(path: Path, lines: list[str]) -> list[Issue]:
+    """Warn when a detailed building entity was reduced to a minimal prose summary."""
+    metadata, _ = split_frontmatter(lines)
+    if metadata.get("doc_type") != "building_type" or "catalog" in {
+        part.casefold() for part in path.parts
+    }:
+        return []
+
+    headings, _, _ = scan_structure(lines)
+    entity_indices = [
+        index
+        for index, heading in enumerate(headings)
+        if heading.level == 2
+        and any(meta.get("entity_type") == "building" for meta in _rag_meta_in_intro(lines, heading))
+    ]
+
+    # A single-entity building document can rely on document-level metadata.
+    if not entity_indices and metadata.get("entity_type") == "building":
+        document_text = "\n".join(lines)
+        return _composition_contract_issues(
+            path,
+            int(next((heading.line for heading in headings if heading.level == 1), 1)),
+            str(metadata.get("entity_name") or path.stem),
+            document_text,
+        )
+
+    issues: list[Issue] = []
+    for index in entity_indices:
+        heading = headings[index]
+        _, subtree_lines = _heading_subtree(lines, headings, index)
+        issues.extend(_composition_contract_issues(
+            path,
+            heading.line,
+            heading.title,
+            "\n".join(subtree_lines),
+        ))
+    return issues
+
+
+def _composition_contract_issues(
+    path: Path,
+    line: int,
+    entity: str,
+    text: str,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    if not COMPOSITION_HEADING_RE.search(text):
+        issues.append(Issue(
+            "error",
+            "missing_composition_contract",
+            str(path),
+            line,
+            f"建筑实体 {entity!r} 缺少默认完整构成合同；最小表达或单段摘要不能替代",
+        ))
+        return issues
+
+    missing_fields = [
+        name for name, pattern in COMPOSITION_FIELDS.items() if not pattern.search(text)
+    ]
+    if missing_fields:
+        issues.append(Issue(
+            "error",
+            "incomplete_composition_contract",
+            str(path),
+            line,
+            f"建筑实体 {entity!r} 的构成合同缺少：{', '.join(missing_fields)}",
+        ))
+    if not FALLBACK_HEADING_RE.search(text):
+        issues.append(Issue(
+            "warning",
+            "missing_fallback_contract",
+            str(path),
+            line,
+            f"建筑实体 {entity!r} 缺少独立的最少可行回退，容易让最小集合覆盖默认构成",
+        ))
+    return issues
+
+
 def lint_file(path: Path, min_section_chars: int, max_section_chars: int) -> list[Issue]:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     return [
         *metadata_issues(path, lines),
         *structure_issues(path, lines, min_section_chars, max_section_chars),
         *proposed_claim_issues(path, lines),
+        *building_composition_issues(path, lines),
     ]
 
 

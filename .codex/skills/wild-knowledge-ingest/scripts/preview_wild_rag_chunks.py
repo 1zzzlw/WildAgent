@@ -125,6 +125,15 @@ def audit_chunks(
         first = siblings[0]
         source = str(first.metadata.get("source_file") or first.metadata.get("source") or "unknown")
         heading = str(first.metadata.get("heading") or "")
+        if (
+            first.metadata.get("doc_type") == "building_type"
+            and first.metadata.get("topic") == "composition"
+            and len(siblings) > 1
+        ):
+            issues.append(PreviewIssue(
+                "warning", "composition_contract_split", source, heading, 0,
+                f"默认完整构成合同被拆成 {len(siblings)} 个 part；应压缩合同或增加更合适的原子标题，避免模型只召回部分构件系统",
+            ))
         if len(siblings) > max_parts_per_parent:
             issues.append(PreviewIssue(
                 "warning", "too_many_parts", source, heading, 0,

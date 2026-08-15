@@ -115,4 +115,4 @@ roof → boolean opening / chimney penetration
 stair/floor edge → automatic code-compliant railing
 ```
 
-这些关系属于建筑专业语义，但当前没有对应专用类型或自动 resolver。默认生成应使用 `beam`/`primitive` 近似桁架，以薄墙与连续窗近似幕墙，显式布置屋顶构件和栏杆。`ramp`、`canopy`、`balcony`、`bay_window`、`cornice`、`chimney` 与 `light` 已由组合构件编译器支持，不属于提案类型。
+这些关系属于建筑专业语义，但当前没有对应专用类型或自动 resolver。默认生成应使用 `beam`/`primitive` 近似桁架；幕墙使用 `wall + window` 或显式 `primitive` 骨架/玻璃，并遵循 `recipes/glass-curtain-wall-assembly.md`；屋顶构件和栏杆需显式布置。`ramp`、`canopy`、`balcony`、`bay_window`、`cornice`、`chimney` 与 `light` 已由组合构件编译器支持，不属于提案类型。

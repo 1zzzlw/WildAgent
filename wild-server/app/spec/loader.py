@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 
 def _normalize_path(path: Path) -> str:
     """生成用于路径比较的绝对、大小写不敏感字符串。"""
@@ -791,14 +793,23 @@ class RAGSpecLoader(SpecLoader):
     def load(self, query: str = "") -> str:
         # 基础规范始终完整注入；扩展知识只在有查询时按需召回。
         base_text = self._load_base_text()
-        retrieved = self.retrieve(query) if query.strip() else []
+        try:
+            retrieved = self.retrieve(query) if query.strip() else []
+        except Exception as exc:
+            # Chroma 检索失败时降级为基础规范上下文，避免单个查询让整条链路崩溃。
+            logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
+            retrieved = []
         return self._compose_context(base_text, retrieved)
 
     # per_query 参数控制每个检索意图返回的片段数，避免建筑类型文档挤掉组件文档。
     def load_many(self, queries: list[str | SpecQuery], per_query: int = 1) -> str:
         """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
         base_text = self._load_base_text()
-        retrieved = self.retrieve_many(queries, per_query=per_query)
+        try:
+            retrieved = self.retrieve_many(queries, per_query=per_query)
+        except Exception as exc:
+            logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
+            retrieved = []
         return self._compose_context(base_text, retrieved)
 
     def _compose_context(
@@ -1130,10 +1141,15 @@ class RAGSpecLoader(SpecLoader):
             part_index = hit.metadata.get("part_index")
             candidates = [hit]
             if parent_id and isinstance(part_index, int):
-                siblings = collection.get(
-                    where=self._query_where({"parent_chunk_id": parent_id}),
-                    include=["documents", "metadatas"],
-                )
+                try:
+                    siblings = collection.get(
+                        where=self._query_where({"parent_chunk_id": parent_id}),
+                        include=["documents", "metadatas"],
+                    )
+                except Exception as exc:
+                    # 单个分片的相邻查找失败时仅跳过扩展，不影响整条检索结果。
+                    logger.warning(f"[RAG] 相邻分片检索失败，跳过扩展: {exc}")
+                    siblings = None
                 if isinstance(siblings, dict):
                     documents = siblings.get("documents") or []
                     metadatas = siblings.get("metadatas") or []
