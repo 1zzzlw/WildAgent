@@ -2583,6 +2583,8 @@ def fix_element_dimensions(blueprint: dict) -> str:
       - 超出上限 2 倍以上的尺寸才修正（防止过度干预合理设计）
       - 按合理范围上限的 0.9 倍收缩
       - 保留组件比例（如 wall 的厚度与高度比例）
+      - wall/column 的建议高度上限只产生警告，不改写合法的高层建筑总高度
+      - wall 的 from/to 是 WILD 1.1 高度事实源，移除与其重复或冲突的 height
 
     参数 blueprint: 完整的 Blueprint dict
     """
@@ -2611,7 +2613,14 @@ def fix_element_dimensions(blueprint: dict) -> str:
         if t == "wall":
             length = _wall_length(el)
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            height = el.get("height", abs(to[1] - f[1]))
+            endpoint_height = abs(to[1] - f[1])
+            declared_height = el.get("height")
+            has_declared_height = (
+                isinstance(declared_height, (int, float))
+                and not isinstance(declared_height, bool)
+                and math.isfinite(float(declared_height))
+                and float(declared_height) > 0
+            )
             thickness = el.get("thickness", 0)
 
             lo, hi = RULES[t]["length"]
@@ -2622,20 +2631,30 @@ def fix_element_dimensions(blueprint: dict) -> str:
                 el["to"][2] = f[2] + (to[2] - f[2]) * scale
                 changed.append(f"长度 {length:.1f} → {length*scale:.1f}m")
 
-            lo, hi = RULES[t]["height"]
-            if height <= 0.01:
+            if endpoint_height <= 0.01 and has_declared_height:
+                bottom = min(float(f[1]), float(to[1]))
+                el["from"][1] = bottom
+                el["to"][1] = round(bottom + float(declared_height), 2)
+                el.pop("height", None)
+                changed.append(
+                    f"将 height={float(declared_height):.1f}m 统一为 from/to 竖向范围"
+                )
+            elif endpoint_height <= 0.01:
                 bottom = min(float(f[1]), float(to[1]))
                 new_top = _infer_wall_top(elements, bottom)
                 el["from"][1] = bottom
                 el["to"][1] = round(new_top, 2)
                 changed.append(
-                    f"高度 {height:.1f} → {new_top - bottom:.1f}m（按楼板标高/常用层高补全）"
+                    f"高度 {endpoint_height:.1f} → {new_top - bottom:.1f}m（按楼板标高/常用层高补全）"
                 )
-            elif height > hi * 2:
-                # 降低高度，保持 WILD 的显式 height 表达
-                new_height = hi * 0.9
-                el["height"] = new_height
-                changed.append(f"高度 {height:.1f} → {new_height:.1f}m")
+            elif has_declared_height:
+                # WILD 1.1 使用 from/to 表达墙高。保留端点意味着既不会把百米外壳
+                # 静默压矮，也不会留下 height 与端点范围互相冲突的双重事实源。
+                el.pop("height", None)
+                changed.append(
+                    f"移除重复 height={float(declared_height):.1f}m，"
+                    f"保留 from/to 竖向范围={endpoint_height:.1f}m"
+                )
 
             lo, hi = RULES[t]["thickness"]
             if thickness > hi * 2:
@@ -2674,7 +2693,12 @@ def fix_element_dimensions(blueprint: dict) -> str:
                         el[field] = hi * 0.9
                         changed.append(f"{field} {val:.1f} → {el[field]:.1f}m")
 
-        # 其余类型（column, opening 等）：通用字段兜底修正
+        # 柱高超过建议范围只产生警告。高层建筑的全高柱是合法表达，不能在这里
+        # 静默压成 45m；如需分段，应由标准层模板或明确的结构编译规则负责。
+        elif t == "column":
+            pass
+
+        # 其余类型（opening 等）：通用字段兜底修正
         else:
             for field, (lo, hi) in RULES[t].items():
                 val = el.get(field)

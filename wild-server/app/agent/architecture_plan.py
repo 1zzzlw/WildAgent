@@ -410,7 +410,7 @@ def detect_architecture_profile(user_message: str) -> dict[str, Any]:
     if any(word in message for word in ("地铁", "地下车站", "站台层", "地下站", "隧道")):
         profile_id = "underground_transport"
     elif (
-        any(word in message for word in ("超高层", "摩天", "高层写字楼", "高层办公", "塔楼"))
+        any(word in message for word in ("超高层", "高层", "摩天", "高层写字楼", "高层办公", "塔楼"))
         or (requested_floors is not None and requested_floors >= 20)
     ):
         profile_id = "high_rise"

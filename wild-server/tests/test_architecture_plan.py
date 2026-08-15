@@ -231,6 +231,15 @@ def test_high_rise_keeps_semantic_floor_count_and_uses_schematic_geometry() -> N
     assert fallback_plan["massing"]["depth"] == 45
 
 
+def test_high_rise_commercial_complex_outranks_ordinary_public_profile() -> None:
+    message = "生成一个高层玻璃幕墙商业综合体"
+
+    plan = normalize_architecture_plan({}, message)
+
+    assert plan["profile"] == "high_rise"
+    assert plan["massing"]["representation_mode"] == "schematic"
+
+
 def test_chinese_floor_count_does_not_confuse_twenty_one_with_one() -> None:
     plan, _ = select_architecture_plan({}, "建造二十一层办公楼")
     assert plan["profile"] == "high_rise"

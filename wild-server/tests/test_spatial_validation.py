@@ -151,6 +151,62 @@ class SpatialValidationTest(unittest.TestCase):
         self.assertIn("❌ [wall_conflicting_height]", result)
         self.assertIn("height=45.0m 与 from/to 竖向范围=90.0m 不一致", result)
 
+    def test_dimension_fix_preserves_valid_tall_vertical_structure(self):
+        for total_height in (100.8, 120.0, 150.0):
+            with self.subTest(total_height=total_height):
+                blueprint = {
+                    "geometry": {
+                        "elements": [
+                            {
+                                "id": "wall_shell",
+                                "type": "wall",
+                                "from": [0, 0, 0],
+                                "to": [42, total_height, 0],
+                                "thickness": 0.24,
+                            },
+                            {
+                                "id": "column_full_height",
+                                "type": "column",
+                                "base": [1, 0, 1],
+                                "height": total_height,
+                                "bottomRadius": 0.3,
+                                "topRadius": 0.3,
+                            },
+                        ],
+                    },
+                }
+
+                run_tool(fix_element_dimensions, blueprint)
+
+                wall, column = blueprint["geometry"]["elements"]
+                self.assertEqual(wall["to"][1], total_height)
+                self.assertNotIn("height", wall)
+                self.assertEqual(column["height"], total_height)
+                self.assertNotIn("❌", run_tool(validate_element_dimensions, blueprint))
+
+    def test_dimension_fix_removes_wall_height_conflicting_with_endpoints(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{
+                    "id": "wall_conflicting_height",
+                    "type": "wall",
+                    "from": [0, 0, 0],
+                    "to": [42, 100.8, 0],
+                    "height": 45,
+                    "thickness": 0.24,
+                }],
+            },
+        }
+
+        self.assertIn("❌", run_tool(validate_element_dimensions, blueprint))
+        fix_output = run_tool(fix_element_dimensions, blueprint)
+
+        wall = blueprint["geometry"]["elements"][0]
+        self.assertNotIn("height", wall)
+        self.assertEqual(wall["to"][1], 100.8)
+        self.assertIn("保留 from/to 竖向范围=100.8m", fix_output)
+        self.assertNotIn("❌", run_tool(validate_element_dimensions, blueprint))
+
     def test_missing_component_material_reference_is_rejected(self):
         blueprint = {
             "geometry": {
