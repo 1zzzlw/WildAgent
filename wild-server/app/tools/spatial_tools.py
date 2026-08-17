@@ -2060,9 +2060,7 @@ def get_wall_bounding_box(blueprint: dict) -> str:
     )
 
 
-# ============================================================
 # P0：屋顶自动修正
-# ============================================================
 
 @tool
 def fix_roof_coverage(blueprint: dict) -> str:
@@ -2134,9 +2132,7 @@ def fix_roof_coverage(blueprint: dict) -> str:
     return "已按屋顶标高处的承托墙体修正覆盖范围：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # P1：墙体端点自动对齐
-# ============================================================
 
 def _segment_is_floor_boundary(
     start: tuple[float, float],
@@ -2322,9 +2318,7 @@ def fix_wall_junctions(blueprint: dict) -> str:
     return "已自动修复墙体连接：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # P1：开口越界自动修正（继 validate_opening_fit）
-# ============================================================
 
 @tool
 def fix_opening_fit(blueprint: dict) -> str:
@@ -2487,9 +2481,7 @@ def fix_opening_fit(blueprint: dict) -> str:
     return "已自动修正以下 opening/门窗组件越界问题：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # P1：楼梯端点高度自动对齐
-# ============================================================
 
 @tool
 def fix_stair_alignment(blueprint: dict) -> str:
@@ -2570,9 +2562,7 @@ def fix_stair_alignment(blueprint: dict) -> str:
     return "已自动修正以下 stair 高度对齐：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # P1：构件尺寸自动修正（继 validate_element_dimensions）
-# ============================================================
 
 @tool
 def fix_element_dimensions(blueprint: dict) -> str:
@@ -2714,9 +2704,7 @@ def fix_element_dimensions(blueprint: dict) -> str:
     return "已自动修正以下构件尺寸异常：\n" + "\n".join(fixes)
 
 
-# ============================================================
 # P1：竖向构件高程自动修正（继 validate_collision 悬空检测）
-# ============================================================
 
 @tool
 def fix_element_elevations(blueprint: dict) -> str:

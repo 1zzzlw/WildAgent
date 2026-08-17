@@ -410,6 +410,7 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
         ]
         if isinstance(item, dict) and item.get("type")
     }
+    
     component_types = sorted((entity_types & set(COMPONENT_TOOLS)) - {"roof"})
     for index, component_type in enumerate(component_types, start=1):
         validator_name = f"validate_{component_type}_placement"
