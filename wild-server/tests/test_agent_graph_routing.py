@@ -4,7 +4,7 @@ from app.agent.component_registry import resolve_component_suggestions
 from langgraph.graph import END
 
 from app.agent.graph import _classifier_dispatch, _dispatch_components, _final_validate_dispatch
-from app.agent.intent_classifier import classify_keywords
+from app.agent.intent_classifier import classify_keywords, fast_path_intent
 
 
 def test_minimal_complexity_skips_component_dispatch():
@@ -27,6 +27,24 @@ def test_generate_routes_to_architecture_plan_first():
 
 def test_edit_like_request_does_not_edit_without_scene():
     assert classify_keywords("把正门加宽到 1.2 米", has_current_scene=False) == "chat"
+
+
+def test_fast_path_short_circuits_clear_generate():
+    assert fast_path_intent("生成一个欧式别墅", has_current_scene=False) == "generate"
+    assert fast_path_intent("帮我设计一个小木屋", has_current_scene=False) == "generate"
+
+
+def test_fast_path_short_circuits_clear_edit():
+    assert fast_path_intent("把正门加宽到 1.2 米", has_current_scene=True) == "edit"
+
+
+def test_fast_path_defers_ambiguous_inputs_to_llm():
+    # 无关键词 → 交给 LLM（可能是聊天）
+    assert fast_path_intent("你好", has_current_scene=False) is None
+    # 生成 + 编辑关键词同时出现 → 交给 LLM
+    assert fast_path_intent("把材质改成石材，再生成一栋楼", has_current_scene=True) is None
+    # 编辑词但当前没有场景 → 不构成编辑证据，交给 LLM
+    assert fast_path_intent("把屋顶改成红色", has_current_scene=False) is None
 
 
 def test_component_suggestions_filter_unknown_and_negated_types():

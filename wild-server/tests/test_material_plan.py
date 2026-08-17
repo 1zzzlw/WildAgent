@@ -1,3 +1,6 @@
+import asyncio
+from unittest import mock
+
 from app.agent.nodes.material_plan_node import (
     apply_resolved_material_plan,
     compact_asset_catalog,
@@ -403,3 +406,33 @@ def test_curtain_wall_keeps_all_walls_neutral():
     by_id = {element["id"]: element for element in blueprint["geometry"]["elements"]}
     for wall_id in ("wall_front", "wall_back", "wall_left", "wall_right", "wall_core"):
         assert by_id[wall_id]["material"] == "wall_finish"
+
+
+def test_material_planner_skips_llm_when_no_pbr_assets():
+    """无可匹配 PBR 资产时，材质节点应跳过审美 LLM 调用，直接走确定性方案。"""
+    from app.agent.nodes.material_plan_node import material_planner
+
+    state = {
+        "user_message": "生成一个现代别墅",
+        "architecture_plan": {"massing": {"floors": 2}},
+        "procedural_materials_enabled": False,
+    }
+    with (
+        mock.patch(
+            "app.agent.nodes.material_plan_node.asset_storage"
+        ) as storage,
+        mock.patch(
+            "app.agent.nodes.material_plan_node.create_llm"
+        ) as create_llm_mock,
+        mock.patch(
+            "app.agent.nodes.material_plan_node.get_reasoning_callback",
+            return_value=None,
+        ),
+    ):
+        storage.list_manifests.return_value = []
+        result = asyncio.run(material_planner(state))
+        create_llm_mock.assert_not_called()
+
+    assert result["material_diag"]["skipped_llm"] is True
+    assert result["material_diag"]["used_fallback"] is True
+    assert result["material_plan"]["roles"]

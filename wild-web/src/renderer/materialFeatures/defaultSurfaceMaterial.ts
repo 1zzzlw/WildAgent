@@ -144,37 +144,50 @@ ${PROCEDURAL_NOISE_GLSL}`,
     .replace(
       '#include <map_fragment>',
       `#include <map_fragment>
-vec2 wildDefaultUv = vWildDefaultSurfaceUv * wildSurfaceScale;
-float wildDefaultNoise = wildFbm(wildDefaultUv + vec2(wildSurfaceSeed * 0.0017));
-float wildDefaultDetail = wildFbm(wildDefaultUv * 3.1 + vec2(wildSurfaceSeed * 0.0041));
-float wildDefaultPattern = (wildDefaultNoise - 0.5) * 0.72 + (wildDefaultDetail - 0.5) * 0.28;
-if (wildSurfaceFamily == 2) {
-  float wildWoodWave = sin(
-    wildDefaultUv.y * 7.0 + wildFbm(vec2(wildDefaultUv.x * 0.18, wildDefaultUv.y * 0.7)) * 5.0
-  );
-  wildDefaultPattern = wildDefaultPattern * 0.42 + wildWoodWave * 0.08;
-} else if (wildSurfaceFamily == 3) {
-  float wildMetalBrush = sin(wildDefaultUv.y * 42.0 + wildDefaultDetail * 2.0) * 0.035;
-  wildDefaultPattern = wildDefaultPattern * 0.2 + wildMetalBrush;
-}
 float wildDefaultSurfaceAmount = wildSurfaceEnabled * wildSurfaceQuality;
-diffuseColor.rgb *= 1.0 + wildDefaultPattern * wildSurfaceColorVariation * wildDefaultSurfaceAmount;
 float wildWeatherAmount = wildWeatherEnabled * wildWeatherQuality;
+// 表面微变化噪声只在「表面层启用」或「雪/尘天气启用」时才计算；
+// 关闭功能时通过 uniform 分支直接跳过，输出与原来完全一致。
+float wildDefaultNoise = 0.5;
+float wildDefaultDetail = 0.5;
+float wildDefaultPattern = 0.0;
+if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildWorldDust) > 0.0) {
+  vec2 wildDefaultUv = vWildDefaultSurfaceUv * wildSurfaceScale;
+  wildDefaultNoise = wildFbm(wildDefaultUv + vec2(wildSurfaceSeed * 0.0017));
+  wildDefaultDetail = wildFbm(wildDefaultUv * 3.1 + vec2(wildSurfaceSeed * 0.0041));
+  wildDefaultPattern = (wildDefaultNoise - 0.5) * 0.72 + (wildDefaultDetail - 0.5) * 0.28;
+  if (wildSurfaceFamily == 2) {
+    float wildWoodWave = sin(
+      wildDefaultUv.y * 7.0 + wildFbm(vec2(wildDefaultUv.x * 0.18, wildDefaultUv.y * 0.7)) * 5.0
+    );
+    wildDefaultPattern = wildDefaultPattern * 0.42 + wildWoodWave * 0.08;
+  } else if (wildSurfaceFamily == 3) {
+    float wildMetalBrush = sin(wildDefaultUv.y * 42.0 + wildDefaultDetail * 2.0) * 0.035;
+    wildDefaultPattern = wildDefaultPattern * 0.2 + wildMetalBrush;
+  }
+}
+if (wildDefaultSurfaceAmount > 0.0) {
+  diffuseColor.rgb *= 1.0 + wildDefaultPattern * wildSurfaceColorVariation * wildDefaultSurfaceAmount;
+}
 float wildMaterialWetness = wildWorldWetness * wildWetnessAbsorption * wildWeatherAmount;
 diffuseColor.rgb *= 1.0 - wildMaterialWetness * wildWetnessDarkening;`,
     )
     .replace(
       '#include <color_fragment>',
       `#include <color_fragment>
-float wildVerticalMask = 1.0 - abs(normalize(vWildDefaultWorldNormal).y);
-float wildRainColumns = wildFbm(vec2(
-  vWildDefaultWorldPosition.x * 1.7 + vWildDefaultWorldPosition.z * 0.9,
-  vWildDefaultWorldPosition.y * 0.12 + wildSurfaceSeed * 0.002
-));
-float wildRainMask = smoothstep(0.56, 0.84, wildRainColumns)
-  * wildVerticalMask * wildWorldRain * wildRainStreakStrength * wildWeatherAmount;
+vec3 wildDefaultNormal = normalize(vWildDefaultWorldNormal);
+float wildVerticalMask = 1.0 - abs(wildDefaultNormal.y);
+float wildRainMask = 0.0;
+if (wildWeatherAmount * wildWorldRain * wildRainStreakStrength > 0.0) {
+  float wildRainColumns = wildFbm(vec2(
+    vWildDefaultWorldPosition.x * 1.7 + vWildDefaultWorldPosition.z * 0.9,
+    vWildDefaultWorldPosition.y * 0.12 + wildSurfaceSeed * 0.002
+  ));
+  wildRainMask = smoothstep(0.56, 0.84, wildRainColumns)
+    * wildVerticalMask * wildWorldRain * wildRainStreakStrength * wildWeatherAmount;
+}
 diffuseColor.rgb *= 1.0 - wildRainMask * 0.16;
-float wildUpward = smoothstep(0.28, 0.82, normalize(vWildDefaultWorldNormal).y);
+float wildUpward = smoothstep(0.28, 0.82, wildDefaultNormal.y);
 float wildSnowMask = wildUpward * wildWorldSnow * wildSnowAdhesion * wildWeatherAmount
   * smoothstep(0.2, 0.72, wildDefaultDetail);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.95), clamp(wildSnowMask, 0.0, 0.82));

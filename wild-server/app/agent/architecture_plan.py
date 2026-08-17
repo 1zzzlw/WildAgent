@@ -2556,6 +2556,135 @@ def conform_balconies_to_slots(
     return [*non_balconies, *balconies], stats
 
 
+def _entrance_anchor(
+    design_brief: dict[str, Any] | None,
+    blueprint: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """定位主入口门的墙体、沿墙中心与世界坐标，供雨棚/入口灯对齐。"""
+    if not isinstance(design_brief, dict):
+        return None
+    slots = design_brief.get("opening_slots")
+    if not isinstance(slots, list):
+        return None
+    door_slots = [
+        slot for slot in slots
+        if isinstance(slot, dict)
+        and slot.get("type") == "door"
+        and slot.get("wall_id")
+    ]
+    if not door_slots:
+        return None
+    entrance = min(
+        door_slots,
+        key=lambda slot: (
+            0 if slot.get("facing") == "front" else 1,
+            0 if slot.get("role") != "balcony_access" else 1,
+            str(slot.get("id", "")),
+        ),
+    )
+    wall_id = str(entrance["wall_id"])
+    wall = next(
+        (
+            element for element in (blueprint or {}).get("geometry", {}).get("elements", [])
+            if isinstance(element, dict)
+            and element.get("type") == "wall"
+            and element.get("id") == wall_id
+        ),
+        None,
+    )
+    if not isinstance(wall, dict):
+        return None
+    frm, to = wall.get("from"), wall.get("to")
+    if (
+        not isinstance(frm, list) or len(frm) != 3
+        or not isinstance(to, list) or len(to) != 3
+    ):
+        return None
+    dx = float(to[0]) - float(frm[0])
+    dz = float(to[2]) - float(frm[2])
+    length = (dx * dx + dz * dz) ** 0.5
+    if length < 1e-6:
+        return None
+    ux, uz = dx / length, dz / length
+    door_from = entrance.get("from") or [0.0, 0.0, 0.0]
+    door_width = max(0.0, float(entrance.get("width") or 1.0))
+    along = float(door_from[0]) + door_width / 2.0
+    return {
+        "wall_id": wall_id,
+        "facing": entrance.get("facing"),
+        "along": along,
+        "length": length,
+        "run_x": ux,
+        "run_z": uz,
+        # 墙按逆时针围合建筑，外法向 = 沿墙方向右旋 90°。
+        "normal_x": uz,
+        "normal_z": -ux,
+        "origin_x": float(frm[0]),
+        "origin_z": float(frm[2]),
+        "constant_x": abs(dx) <= abs(dz),  # 沿 Z 走向（左右墙）时为 True
+    }
+
+
+def conform_entrance_accessories(
+    components: list[dict[str, Any]],
+    design_brief: dict[str, Any] | None,
+    blueprint: dict[str, Any] | None,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    """把入口雨棚与入口墙灯具吸附到主入口门，消除模型自由摆放导致的对不齐。
+
+    门/窗由 ``conform_openings_to_slots`` 吸附，而雨棚、灯具此前只做形状校验，
+    模型会随手放到整面墙的几何中心或悬空高度。这里只对齐「与主入口墙同面的」
+    附属件，不越界改动其它墙上的合法构件。
+    """
+    stats = {"canopy_snapped": 0, "light_snapped": 0}
+    anchor = _entrance_anchor(design_brief, blueprint)
+    if anchor is None:
+        return components, stats
+
+    result = deepcopy(components)
+    for comp in result:
+        ctype = comp.get("type")
+
+        if ctype == "canopy" and comp.get("parentWall") == anchor["wall_id"]:
+            width = max(0.0, float(comp.get("width") or 0.0))
+            along = max(0.0, min(anchor["along"] - width / 2.0, anchor["length"] - width))
+            comp_from = comp.get("from")
+            if isinstance(comp_from, list) and len(comp_from) == 3:
+                comp["from"] = [round(along, 3), comp_from[1], comp_from[2]]
+                stats["canopy_snapped"] += 1
+
+        elif ctype == "light":
+            position = comp.get("position")
+            if not isinstance(position, list) or len(position) != 3:
+                continue
+            on_entrance_wall = (
+                abs(float(position[2]) - anchor["origin_z"]) < 0.75
+                if anchor["constant_x"] is False
+                else abs(float(position[0]) - anchor["origin_x"]) < 0.75
+            )
+            # 台灯/落地灯悬浮到半空是常见模型错误，统一落到地面。
+            if float(position[1]) > 2.0:
+                position[1] = 0.0
+            if on_entrance_wall:
+                offset = 0.35
+                position[0] = round(
+                    anchor["origin_x"]
+                    + anchor["run_x"] * anchor["along"]
+                    + anchor["normal_x"] * offset,
+                    3,
+                )
+                position[1] = 0.0
+                position[2] = round(
+                    anchor["origin_z"]
+                    + anchor["run_z"] * anchor["along"]
+                    + anchor["normal_z"] * offset,
+                    3,
+                )
+                stats["light_snapped"] += 1
+
+    return result, stats
+
+
 def conform_roofs_to_slots(
     elements: list[dict[str, Any]],
     design_brief: dict[str, Any] | None,

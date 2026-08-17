@@ -286,28 +286,39 @@ async def material_planner(state: GenerationState) -> dict:
     catalog = compact_asset_catalog(manifests)
     procedural_materials_enabled = state.get("procedural_materials_enabled") is True
     procedural_catalog = compact_procedural_catalog() if procedural_materials_enabled else []
-    prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
     raw_plan = None
     error = None
     token_usage = None
+    skipped_llm = False
     callback = get_reasoning_callback()
-    if callback:
-        procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
-        await callback(
-            "material_plan",
-            f"正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材{procedural_detail}...\n",
+
+    # 确定性优先：没有任何可匹配的 PBR 资产时，LLM 的审美输出会被 ROLE_SPECS
+    # 兜底与白名单几乎全部覆盖（只剩概念文案与颜色微调），不值得付出一次串行 LLM
+    # 往返。此时直接走 resolve_material_plan(None, ...) 的确定性路径。
+    if catalog:
+        prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
+        if callback:
+            procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
+            await callback(
+                "material_plan",
+                f"正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材{procedural_detail}...\n",
+            )
+        try:
+            response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": state.get("user_message", "")},
+            ])
+            llm_result = collect_response(response)
+            raw_plan = extract_json_object(llm_result.content)
+            token_usage = llm_result.token_usage
+        except Exception as exc:
+            error = str(exc)
+            logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")
+    else:
+        skipped_llm = True
+        logger.info(
+            "[material_plan] 无可匹配 PBR 资产，跳过审美 LLM 调用，使用确定性材质方案"
         )
-    try:
-        response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": state.get("user_message", "")},
-        ])
-        llm_result = collect_response(response)
-        raw_plan = extract_json_object(llm_result.content)
-        token_usage = llm_result.token_usage
-    except Exception as exc:
-        error = str(exc)
-        logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")
 
     plan = resolve_material_plan(
         raw_plan,
@@ -341,9 +352,10 @@ async def material_planner(state: GenerationState) -> dict:
             "rejected_asset_ids": plan["rejectedAssetIds"],
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,
+            "skipped_llm": skipped_llm,
             "error": error,
             "token_usage": token_usage,
-            "prompt_chars": len(prompt),
+            "prompt_chars": len(prompt) if catalog else 0,
             "total_ms": int((time.time() - started) * 1000),
         },
     }

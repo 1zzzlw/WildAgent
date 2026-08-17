@@ -98,9 +98,12 @@ float wildGroundRainRipple(vec2 p, float t) {
     .replace(
       '#include <map_fragment>',
       `#include <map_fragment>
-float wildPuddleNoise = wildFbm(vGroundWorldPosition.xz * 0.05 + vec2(7.3, 3.1));
-float wildPuddleMask = smoothstep(0.40, 0.72, 1.0 - wildPuddleNoise)
-  * smoothstep(0.15, 0.5, uGroundRain) * uGroundPuddles;
+float wildPuddleMask = 0.0;
+if (uGroundPuddles * uGroundRain > 0.0) {
+  float wildPuddleNoise = wildFbm(vGroundWorldPosition.xz * 0.05 + vec2(7.3, 3.1));
+  wildPuddleMask = smoothstep(0.40, 0.72, 1.0 - wildPuddleNoise)
+    * smoothstep(0.15, 0.5, uGroundRain) * uGroundPuddles;
+}
 // 积水：变暗并带水的冷色 tint
 diffuseColor.rgb *= 1.0 - wildPuddleMask * 0.5;
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.72, 0.84, 0.96), wildPuddleMask * 0.65);

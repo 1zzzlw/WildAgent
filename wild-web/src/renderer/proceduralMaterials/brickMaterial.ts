@@ -142,17 +142,27 @@ float wildWearBand = (1.0 - wildMortarMask)
   * (1.0 - smoothstep(wildMortarWidth, wildMortarWidth * 2.6, wildDistanceToEdge));
 wildBrickColor = mix(wildBrickColor, min(vec3(1.0), wildBrickColor * 1.16), wildWearBand * wildEdgeWear);
 
-float wildWeatherNoise = wildFbm(
-  wildSurfaceMeters / max(wildWeatherScale, 0.1) + vec2(wildSeed * 0.003)
-);
-float wildWeatherMask = smoothstep(0.42, 0.78, wildWeatherNoise) * wildWeatherAmount;
+float wildGlobalWeatherAmount = wildWeatherEnabled * wildWeatherQuality;
+float wildWeatherNoise = 0.5;
+float wildStreakNoise = 0.5;
+float wildWeatherMask = 0.0;
+float wildStreakMask = 0.0;
+float wildEfflorescenceMask = 0.0;
+float wildDampMask = 0.0;
 float wildBaseMask = 1.0 - smoothstep(0.0, max(0.35, wildWeatherScale * 0.55), max(wildSurfaceMeters.y, 0.0));
-float wildStreakNoise = wildFbm(vec2(wildSurfaceMeters.x * 1.7, wildSurfaceMeters.y * 0.11) + wildSeed * 0.007);
-float wildStreakMask = smoothstep(0.58, 0.82, wildStreakNoise)
-  * wildVerticalStreaks * wildWeatherAmount;
-float wildEfflorescenceMask = wildBaseMask * smoothstep(0.48, 0.76, wildWeatherNoise)
-  * wildEfflorescence * wildWeatherAmount;
-float wildDampMask = wildBaseMask * wildBaseDampness * wildWeatherAmount;
+// 风化/雨痕噪声只在风化量或全局降雨激活时才计算，新砖与晴天场景零成本。
+if (wildWeatherAmount > 0.0 || wildWorldRain * wildGlobalWeatherAmount > 0.0) {
+  wildWeatherNoise = wildFbm(
+    wildSurfaceMeters / max(wildWeatherScale, 0.1) + vec2(wildSeed * 0.003)
+  );
+  wildStreakNoise = wildFbm(vec2(wildSurfaceMeters.x * 1.7, wildSurfaceMeters.y * 0.11) + wildSeed * 0.007);
+  wildWeatherMask = smoothstep(0.42, 0.78, wildWeatherNoise) * wildWeatherAmount;
+  wildStreakMask = smoothstep(0.58, 0.82, wildStreakNoise)
+    * wildVerticalStreaks * wildWeatherAmount;
+  wildEfflorescenceMask = wildBaseMask * smoothstep(0.48, 0.76, wildWeatherNoise)
+    * wildEfflorescence * wildWeatherAmount;
+  wildDampMask = wildBaseMask * wildBaseDampness * wildWeatherAmount;
+}
 
 vec3 wildAgedColor = mix(wildBrickColor, vec3(dot(wildBrickColor, vec3(0.299, 0.587, 0.114))), 0.28);
 wildBrickColor = mix(wildBrickColor, wildAgedColor * 0.92 + vec3(0.035), wildWeatherMask * 0.55);
@@ -160,7 +170,6 @@ wildBrickColor *= 1.0 - wildStreakMask * 0.12;
 wildBrickColor = mix(wildBrickColor, vec3(0.78, 0.75, 0.66), wildEfflorescenceMask * 0.68);
 wildBrickColor *= 1.0 - wildDampMask * 0.24;
 diffuseColor.rgb = mix(wildBrickColor, wildMortarColor, wildMortarMask);
-float wildGlobalWeatherAmount = wildWeatherEnabled * wildWeatherQuality;
 float wildGlobalWetness = wildWorldWetness * 0.62 * wildGlobalWeatherAmount;
 diffuseColor.rgb *= 1.0 - wildGlobalWetness * 0.2;
 vec3 wildBrickNormal = normalize(vWildBrickWorldNormal);

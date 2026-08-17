@@ -1,6 +1,7 @@
 from app.agent.architecture_plan import (
     build_deterministic_skeleton,
     conform_balconies_to_slots,
+    conform_entrance_accessories,
     conform_openings_to_slots,
     conform_railings_to_slots,
     conform_roofs_to_slots,
@@ -869,3 +870,93 @@ def test_explicit_simple_request_overrides_precision_default() -> None:
     assert complexity["level"] == "simple"
     assert len(plan["volumes"]) == 1
     assert plan["detail_packages"] == []
+
+
+def test_entrance_accessories_snap_to_entrance_door() -> None:
+    """入口雨棚与入口灯应对齐到入口门，而非模型随手放的墙中心/悬空高度。"""
+    blueprint = {
+        "geometry": {
+            "elements": [
+                {
+                    "type": "wall", "id": "wall_front_shell",
+                    "from": [0, 0, 0], "to": [45, 136.5, 0], "thickness": 0.24,
+                },
+            ],
+        },
+    }
+    design_brief = {
+        "opening_slots": [
+            {
+                "type": "door", "id": "wall_front_shell:floor_1:door:3",
+                "wall_id": "wall_front_shell", "facing": "front",
+                "from": [18.197, 0.0, 0.0], "width": 1.107, "height": 2.167,
+            },
+        ],
+    }
+    components = [
+        {
+            "type": "canopy", "id": "canopy_main_entrance",
+            "parentWall": "wall_front_shell", "from": [21.0, 0.0, 0],
+            "width": 3.0, "depth": 1.5, "thickness": 0.15,
+        },
+        {
+            "type": "light", "id": "light_main_entrance",
+            "position": [22.5, 2.5, 0.0],
+        },
+    ]
+
+    result, stats = conform_entrance_accessories(components, design_brief, blueprint)
+
+    canopy = next(item for item in result if item["type"] == "canopy")
+    light = next(item for item in result if item["type"] == "light")
+
+    # 门中心 = 18.197 + 1.107/2 = 18.75；雨棚中心应与其重合。
+    door_center = 18.197 + 1.107 / 2
+    assert canopy["from"][0] == round(door_center - 3.0 / 2, 3)
+    # 灯具对齐门中心、落地，并略微外移（正立面朝 -Z）。
+    assert light["position"][0] == round(door_center, 3)
+    assert light["position"][1] == 0.0
+    assert light["position"][2] < 0.0
+    assert stats["canopy_snapped"] == 1
+    assert stats["light_snapped"] == 1
+
+
+def test_entrance_accessories_leave_other_walls_untouched() -> None:
+    """非入口墙上的灯只降高、不横移，避免把合法侧墙/背墙灯误拉到主入口。"""
+    blueprint = {
+        "geometry": {
+            "elements": [
+                {
+                    "type": "wall", "id": "wall_front_shell",
+                    "from": [0, 0, 0], "to": [45, 136.5, 0], "thickness": 0.24,
+                },
+                {
+                    "type": "wall", "id": "wall_back_shell",
+                    "from": [45, 0, 30], "to": [0, 136.5, 30], "thickness": 0.24,
+                },
+            ],
+        },
+    }
+    design_brief = {
+        "opening_slots": [
+            {
+                "type": "door", "id": "wall_front_shell:floor_1:door:3",
+                "wall_id": "wall_front_shell", "facing": "front",
+                "from": [18.197, 0.0, 0.0], "width": 1.107, "height": 2.167,
+            },
+        ],
+    }
+    components = [
+        {
+            "type": "light", "id": "light_back",
+            "position": [22.5, 2.5, 30.0],
+        },
+    ]
+
+    result, stats = conform_entrance_accessories(components, design_brief, blueprint)
+
+    light = next(item for item in result if item["type"] == "light")
+    assert light["position"][0] == 22.5
+    assert light["position"][1] == 0.0
+    assert light["position"][2] == 30.0
+    assert stats["light_snapped"] == 0

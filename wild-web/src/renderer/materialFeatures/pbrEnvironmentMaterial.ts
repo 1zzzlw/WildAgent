@@ -105,13 +105,19 @@ diffuseColor.rgb *= 1.0 - wildPbrWetness * wildWetnessDarkening;`,
       `#include <color_fragment>
 vec3 wildPbrNormal = normalize(vWildPbrWorldNormal);
 float wildPbrUpward = smoothstep(0.28, 0.82, wildPbrNormal.y);
-float wildPbrNoise = wildFbm(vWildPbrWorldPosition.xz * 1.35 + vec2(wildPbrSeed * 0.001));
-float wildPbrColumns = wildFbm(vec2(
-  vWildPbrWorldPosition.x * 1.7 + vWildPbrWorldPosition.z * 0.9,
-  vWildPbrWorldPosition.y * 0.12 + wildPbrSeed * 0.002
-));
-float wildPbrRainMask = smoothstep(0.56, 0.84, wildPbrColumns)
-  * (1.0 - abs(wildPbrNormal.y)) * wildWorldRain * wildRainStreakStrength * wildPbrWeatherAmount;
+float wildPbrNoise = 0.5;
+if (wildPbrWeatherAmount * (wildWorldSnow + wildWorldDust) > 0.0) {
+  wildPbrNoise = wildFbm(vWildPbrWorldPosition.xz * 1.35 + vec2(wildPbrSeed * 0.001));
+}
+float wildPbrRainMask = 0.0;
+if (wildPbrWeatherAmount * wildWorldRain * wildRainStreakStrength > 0.0) {
+  float wildPbrColumns = wildFbm(vec2(
+    vWildPbrWorldPosition.x * 1.7 + vWildPbrWorldPosition.z * 0.9,
+    vWildPbrWorldPosition.y * 0.12 + wildPbrSeed * 0.002
+  ));
+  wildPbrRainMask = smoothstep(0.56, 0.84, wildPbrColumns)
+    * (1.0 - abs(wildPbrNormal.y)) * wildWorldRain * wildRainStreakStrength * wildPbrWeatherAmount;
+}
 diffuseColor.rgb *= 1.0 - wildPbrRainMask * 0.16;
 float wildPbrSnowMask = wildPbrUpward * wildWorldSnow * wildSnowAdhesion * wildPbrWeatherAmount
   * smoothstep(0.2, 0.72, wildPbrNoise);

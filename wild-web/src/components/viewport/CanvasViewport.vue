@@ -280,6 +280,9 @@ function initThreeJS() {
   })
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  // 静态场景 + 轨道相机：阴影只依赖灯光与物体，不依赖相机视角。
+  // 关闭每帧自动重算，仅在内容/灯光变化时按需刷新，消除拖动视角时的阴影重渲开销。
+  renderer.shadowMap.autoUpdate = false
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.toneMapping = THREE.ACESFilmicToneMapping
   renderer.toneMappingExposure = 1.05
@@ -356,6 +359,7 @@ function initThreeJS() {
   directionalLight.shadow.bias = -0.0002
   directionalLight.shadow.normalBias = 0.025
   directionalLight.shadow.radius = 2
+  directionalLight.shadow.autoUpdate = false
   directionalLight.shadow.camera.left = -20
   directionalLight.shadow.camera.right = 20
   directionalLight.shadow.camera.top = 20
@@ -522,6 +526,7 @@ function resetSceneBounds() {
   }
 
   worldRuntime?.updateInstance('editor:active-blueprint', entity)
+  markShadowsDirty()
 
   // 空场景（0 个构件）：重置相机到初始位置，防止上次的 camera 位置导致 grid 不可见
   if (!entity.meshes || entity.meshes.length === 0) {
@@ -820,6 +825,7 @@ function handleTransformObjectChange() {
   for (const [object, start] of dragTargetPositions) object.position.copy(start).add(delta)
   syncSelectionHighlights()
   markNeedsRender()
+  markShadowsDirty()
 }
 
 function handleTransformDraggingChanged(event: { value?: unknown }) {
@@ -1303,6 +1309,7 @@ function applyQualityPreset() {
       directionalLight.shadow.map = null
       directionalLight.shadow.mapSize.set(shadowSize, shadowSize)
     }
+    markShadowsDirty()
   }
   if (ssaoPass) ssaoPass.enabled = preset.ssao
   if (bloomPass) bloomPass.enabled = preset.bloom && timeOfDay.value === 'night'
@@ -1336,6 +1343,7 @@ function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
   shadowCamera.updateProjectionMatrix()
   directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
   directionalLight.shadow.needsUpdate = true
+  markShadowsDirty()
   updateCelestialBodies(center, lightingExtent)
   weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
   configureSceneFog()
@@ -1366,6 +1374,12 @@ function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
 
 function markNeedsRender() {
   needsRender = true
+}
+
+function markShadowsDirty() {
+  if (!renderer || !directionalLight) return
+  renderer.shadowMap.needsUpdate = true
+  directionalLight.shadow.needsUpdate = true
 }
 
 function cleanup() {

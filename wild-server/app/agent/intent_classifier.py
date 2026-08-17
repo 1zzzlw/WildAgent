@@ -65,6 +65,21 @@ def classify_keywords(message: str, has_current_scene: bool = False) -> str:
     return "chat"
 
 
+def fast_path_intent(message: str, has_current_scene: bool = False) -> str | None:
+    """高置信关键词短路：明显生成/编辑直接返回，歧义返回 None 由调用方走 LLM。
+
+    只在“证据单向”时才短路——生成关键词与编辑关键词同时出现、或完全没有
+    关键词时，宁可多花一次 LLM 往返也不误判。
+    """
+    has_generate = any(keyword in message for keyword in GENERATE_KEYWORDS)
+    has_edit = has_current_scene and any(keyword in message for keyword in EDIT_KEYWORDS)
+    if has_edit and not has_generate:
+        return "edit"
+    if has_generate and not has_edit:
+        return "generate"
+    return None
+
+
 def normalize_intent(raw: str, message: str, has_current_scene: bool) -> str:
     """把模型原始回复归一化为小写 intent，无法判定时退回关键词降级。"""
     upper = (raw or "").strip().upper()
@@ -82,7 +97,12 @@ async def classify_intent(
     has_current_scene: bool = False,
     llm=None,
 ) -> str:
-    """LLM 分类 + 关键词降级。``llm`` 可由调用方注入以便测试。"""
+    """LLM 分类 + 关键词降级。高置信关键词先短路，避免为明显意图付出 LLM 往返。"""
+    fast = fast_path_intent(message, has_current_scene)
+    if fast is not None:
+        logger.info(f"[classifier] 意图: {fast} (raw=<keyword-fast-path>)")
+        return fast
+
     llm = llm or create_llm(enable_thinking=False, streaming=False)
 
     try:
