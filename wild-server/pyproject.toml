@@ -29,7 +29,6 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-# 排除特定测试文件（保留用于开发的测试）
 addopts = [
     "-v",
     "--tb=short",
