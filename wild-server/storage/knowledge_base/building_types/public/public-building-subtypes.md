@@ -3,6 +3,7 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
+building_category: public
 entity_name: public_building_subtypes
 topic: composition
 wild_version: "1.1"
@@ -22,6 +23,8 @@ keywords:
 > 来源：用户提供的《WILD蓝图AI提示词与构件规则_公共建筑_当前规范版》。本文保留 38 类建筑的身份、空间、构件链、搭接关系和降级映射；来源中的工程尺寸均按 domain_reference 处理，不能替代结构、防火、疏散、无障碍、医疗或交通专业校核。
 >
 > 来源 JSON 未直接入库：其中混有旧字段、缺失引用和未注册业务类型。无效实现声明被隔离，但其仍成立的建筑构成语义已进入下列合同。玻璃幕墙共性规则路由到 components/glass-curtain-walls.md 与 recipes/glass-curtain-wall-assembly.md。
+>
+> **注意**：本文档包含多种公共建筑子类型，其中商业类建筑（社区商业、购物中心）使用 `building_category: commercial` 的实体级 metadata。
 
 ## 园区独栋办公楼
 
@@ -962,6 +965,7 @@ keywords: 专科医院设备机房单元, fallback, 最少可行回退
 <!-- rag-meta
 entity_type: building
 entity_name: community_commercial
+building_category: commercial
 topic: composition
 status: experimental
 authority: domain_reference
@@ -986,6 +990,7 @@ keywords: 社区商业, neighborhood retail, 沿街商铺, 店面, 默认完整�
 <!-- rag-meta
 entity_type: building
 entity_name: community_commercial
+building_category: commercial
 topic: assembly
 status: experimental
 authority: domain_reference
@@ -1003,6 +1008,7 @@ keywords: 社区商业, 构件搭接, 宿主, 对齐, 碰撞
 <!-- rag-meta
 entity_type: building
 entity_name: community_commercial
+building_category: commercial
 topic: fallback
 status: experimental
 authority: domain_reference
@@ -1019,6 +1025,7 @@ keywords: 社区商业, fallback, 最少可行回退
 <!-- rag-meta
 entity_type: building
 entity_name: shopping_center_standard_floor
+building_category: commercial
 topic: composition
 status: experimental
 authority: domain_reference
@@ -1043,6 +1050,7 @@ keywords: 购物中心, shopping mall, 中庭, 商业标准层, 默认完整构�
 <!-- rag-meta
 entity_type: building
 entity_name: shopping_center_standard_floor
+building_category: commercial
 topic: assembly
 status: experimental
 authority: domain_reference
@@ -1061,6 +1069,7 @@ keywords: 购物中心标准层, 构件搭接, 宿主, 对齐, 碰撞
 <!-- rag-meta
 entity_type: building
 entity_name: shopping_center_standard_floor
+building_category: commercial
 topic: fallback
 status: experimental
 authority: domain_reference

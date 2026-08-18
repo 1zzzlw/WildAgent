@@ -566,6 +566,19 @@ class MarkdownChunker:
             return metadata
         if "building_types" in path_text or "building-types" in path_text:
             metadata.update({"doc_type": "building_type", "entity_type": "building"})
+            # 根据目录路径推断 building_category
+            if "residential" in path_text:
+                metadata["building_category"] = "residential"
+            elif "public" in path_text:
+                # public 目录下需要进一步判断
+                if any(keyword in stem for keyword in ["commercial", "shopping", "retail", "商业", "商场", "商铺"]):
+                    metadata["building_category"] = "commercial"
+                else:
+                    metadata["building_category"] = "public"
+            elif "industrial" in path_text:
+                metadata["building_category"] = "industrial"
+            elif "agricultural" in path_text:
+                metadata["building_category"] = "agricultural"
         elif "recipes" in path_text:
             metadata.update({"doc_type": "recipe", "entity_type": "assembly"})
         elif "patterns" in path_text:

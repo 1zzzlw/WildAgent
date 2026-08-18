@@ -1,0 +1,227 @@
+# 领域 Schema 配置
+# 用于查询改写和结构验证（领域无关框架）
+#
+# 使用说明：
+# 1. 修改 domain 字段为你的领域名称
+# 2. 定义 entity_types（实体类型）及其别名
+# 3. 定义 attributes（属性）及其可选值
+# 4. 定义 features（特性）列表
+#
+# 不同领域只需修改此配置，无需改代码
+
+# 当前领域：建筑设计（示例）
+# 可替换为: "code_generation", "music_composition", "product_design" 等
+domain: "architecture"
+
+# 实体类型定义
+entity_types:
+  # 建筑主体
+  - type: "building"
+    aliases: ["房屋", "建筑物", "楼房"]
+    description: "完整建筑实体"
+    
+  # 结构元素
+  - type: "wall"
+    aliases: ["墙体", "墙面", "隔墙"]
+    description: "墙体结构元素"
+    
+  - type: "floor"
+    aliases: ["楼板", "地板", "层面"]
+    description: "楼板结构元素"
+    
+  - type: "column"
+    aliases: ["柱子", "立柱"]
+    description: "柱子结构元素"
+    
+  - type: "beam"
+    aliases: ["梁", "横梁"]
+    description: "梁结构元素"
+    
+  - type: "stair"
+    aliases: ["楼梯", "台阶"]
+    description: "楼梯元素"
+    
+  # 建筑组件
+  - type: "door"
+    aliases: ["门", "入口门", "房门"]
+    description: "门组件"
+    
+  - type: "window"
+    aliases: ["窗", "窗户", "窗口"]
+    description: "窗户组件"
+    
+  - type: "roof"
+    aliases: ["屋顶", "顶棚"]
+    description: "屋顶组件"
+    
+  - type: "balcony"
+    aliases: ["阳台", "露台"]
+    description: "阳台组件"
+    
+  - type: "canopy"
+    aliases: ["雨棚", "遮阳棚"]
+    description: "雨棚组件"
+
+# 属性定义
+attributes:
+  # 风格属性
+  - name: "style"
+    type: "enum"
+    values: ["modern", "classical", "traditional", "minimalist", "industrial"]
+    aliases:
+      modern: ["现代", "现代风格", "简约现代"]
+      classical: ["古典", "古典风格", "欧式古典"]
+      traditional: ["传统", "中式", "传统中式"]
+      minimalist: ["极简", "简约"]
+      industrial: ["工业", "工业风"]
+    description: "设计风格"
+    
+  # 尺寸属性
+  - name: "size"
+    type: "enum"
+    values: ["small", "medium", "large"]
+    aliases:
+      small: ["小", "小型", "紧凑"]
+      medium: ["中", "中等", "适中"]
+      large: ["大", "大型", "宽敞"]
+    description: "尺寸规格"
+    
+  # 楼层数
+  - name: "floors"
+    type: "integer"
+    aliases: ["层数", "楼层"]
+    description: "建筑层数"
+    
+  # 材质
+  - name: "material"
+    type: "enum"
+    values: ["wood", "metal", "glass", "concrete", "brick"]
+    aliases:
+      wood: ["木", "木材", "木质"]
+      metal: ["金属", "钢", "铝"]
+      glass: ["玻璃", "透明"]
+      concrete: ["混凝土", "水泥"]
+      brick: ["砖", "砖块"]
+    description: "主要材质"
+
+# 特性定义
+features:
+  - name: "decorative"
+    aliases: ["装饰性", "美观", "装饰"]
+    description: "装饰特性"
+    
+  - name: "functional"
+    aliases: ["功能性", "实用"]
+    description: "功能特性"
+    
+  - name: "energy_efficient"
+    aliases: ["节能", "环保", "绿色"]
+    description: "节能特性"
+    
+  - name: "accessible"
+    aliases: ["无障碍", "可达性"]
+    description: "无障碍特性"
+    
+  - name: "symmetrical"
+    aliases: ["对称", "对称性"]
+    description: "对称设计"
+    
+  - name: "open_plan"
+    aliases: ["开放式", "通透"]
+    description: "开放式布局"
+
+# 约束定义（用于事实自检）
+constraints:
+  # 各组件的合理尺寸范围
+  door:
+    width: {min: 0.7, max: 3.0, unit: "m"}
+    height: {min: 1.8, max: 3.5, unit: "m"}
+    
+  window:
+    width: {min: 0.4, max: 4.0, unit: "m"}
+    height: {min: 0.6, max: 3.0, unit: "m"}
+    
+  wall:
+    thickness: {min: 0.15, max: 0.6, unit: "m"}
+    height: {min: 2.4, max: 6.0, unit: "m"}
+    
+  floor:
+    thickness: {min: 0.15, max: 0.4, unit: "m"}
+    
+  column:
+    width: {min: 0.3, max: 1.0, unit: "m"}
+    height: {min: 2.0, max: 12.0, unit: "m"}
+    
+  stair:
+    width: {min: 0.8, max: 3.0, unit: "m"}
+    step_height: {min: 0.14, max: 0.20, unit: "m"}
+
+# 领域特定关系
+relationships:
+  - parent: "wall"
+    children: ["door", "window"]
+    constraint: "子组件必须在父墙体范围内"
+    
+  - parent: "building"
+    children: ["wall", "floor", "column", "roof"]
+    constraint: "结构元素构成建筑"
+
+# ============================================
+# 其他领域配置示例（注释供参考）
+# ============================================
+
+# 示例 1: 代码生成领域
+# domain: "code_generation"
+# entity_types:
+#   - type: "function"
+#     aliases: ["函数", "方法", "procedure"]
+#   - type: "class"
+#     aliases: ["类", "对象类"]
+#   - type: "module"
+#     aliases: ["模块", "包"]
+#
+# attributes:
+#   - name: "language"
+#     values: ["python", "javascript", "java", "cpp"]
+#   - name: "paradigm"
+#     values: ["oop", "functional", "procedural"]
+#
+# features:
+#   - name: "async"
+#   - name: "type_safe"
+#   - name: "testable"
+#
+# constraints:
+#   function:
+#     params_count: {min: 0, max: 10}
+#     complexity: {max: 15}
+#   class:
+#     methods_count: {min: 1, max: 50}
+
+# 示例 2: 音乐创作领域
+# domain: "music_composition"
+# entity_types:
+#   - type: "note"
+#     aliases: ["音符", "tone"]
+#   - type: "chord"
+#     aliases: ["和弦"]
+#   - type: "measure"
+#     aliases: ["小节", "bar"]
+#
+# attributes:
+#   - name: "tempo"
+#     values: ["slow", "moderate", "fast"]
+#   - name: "key"
+#     values: ["C", "D", "E", "F", "G", "A", "B"]
+#
+# features:
+#   - name: "melodic"
+#   - name: "harmonic"
+#   - name: "rhythmic"
+#
+# constraints:
+#   note:
+#     pitch: {min: 0, max: 127}  # MIDI
+#     duration: {min: 0.1, max: 4.0}  # beats
+#   chord:
+#     notes_count: {min: 2, max: 6}

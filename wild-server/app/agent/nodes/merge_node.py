@@ -359,6 +359,20 @@ async def merge_fragments_node(state: GenerationState) -> dict:
         f"{len(merge_diag['iterations'])}轮, {total_ms}ms"
     )
 
+    # ── 5. 归一化蓝图用于交付 ──
+    from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery
+    
+    merged_blueprint, norm_report = normalize_blueprint_for_delivery(merged_blueprint)
+    logger.info(f"[merge] 归一化修复: {norm_report.summary()}")
+    
+    if on_reasoning_delta:
+        if norm_report.stripped_fields or norm_report.repaired_fields or norm_report.dropped_components:
+            await on_reasoning_delta(
+                "merge",
+                f"\n**归一化修复**\n"
+                f"- {norm_report.summary()}\n"
+            )
+
     return {
         "merged_blueprint": merged_blueprint,
         "merge_diag": merge_diag,

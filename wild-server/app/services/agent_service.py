@@ -1350,6 +1350,13 @@ class AgentService:
                     structured_recovery_used=recovery_used,
                 )
             blueprint_data = normalize_blueprint_input(blueprint_data)
+            
+            # 归一化修复（以前端 schema 为单一事实源）
+            from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery
+            blueprint_data, norm_report = normalize_blueprint_for_delivery(blueprint_data)
+            if norm_report.stripped_fields or norm_report.repaired_fields or norm_report.dropped_components:
+                logger.info(f"[query] 归一化修复: {norm_report.summary()}")
+            
             pre_issues = validate_blueprint_schema(blueprint_data)
             if pre_issues:
                 return QueryResult(

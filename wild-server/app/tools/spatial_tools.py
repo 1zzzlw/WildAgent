@@ -2439,15 +2439,24 @@ def fix_opening_fit(blueprint: dict) -> str:
         if along < -THRESHOLD:
             comp["from"][0] = 0.0
             changed.append(f"from[0] {along:.2f} → 0（左越界）")
+        
+        # 修复右越界：先钳位 along，再钳位 width
         if along + width > wl + THRESHOLD:
-            max_width = wl - max(along, 0)
-            if max_width < width:
+            # 先确保 along 不超出墙长
+            clamped_along = min(along, wl - 0.1)
+            if along > clamped_along:
+                comp["from"][0] = round(clamped_along, 2)
+                changed.append(f"from[0] {along:.2f} → {clamped_along:.2f}（起点超出墙长）")
+                along = clamped_along
+            
+            # 再钳位 width
+            max_width = wl - along
+            if max_width < 0.1:
+                max_width = 0.1
+            
+            if width > max_width:
                 comp["width"] = round(max_width, 2)
-                changed.append(f"宽度 {width:.2f} → {max_width:.2f}（超出墙体 {wl:.2f}m）")
-            if along + width > wl + 0.01:
-                new_along = max(0.0, wl - comp.get("width", width))
-                comp["from"][0] = round(new_along, 2)
-                changed.append(f"from[0] {along:.2f} → {new_along:.2f}（右越界）")
+                changed.append(f"宽度 {width:.2f} → {max_width:.2f}（超出墙体）")
 
         # 高度方向修正
         if height > 0 and base_y + height > wall_top_y + THRESHOLD:

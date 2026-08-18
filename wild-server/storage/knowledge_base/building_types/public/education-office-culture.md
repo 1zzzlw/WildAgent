@@ -3,6 +3,7 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
+building_category: public
 entity_name: education_office_culture_family
 topic: assembly
 wild_version: "1.1"

@@ -3,6 +3,7 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
+building_category: residential
 entity_name: villa
 topic: assembly
 wild_version: "1.1"

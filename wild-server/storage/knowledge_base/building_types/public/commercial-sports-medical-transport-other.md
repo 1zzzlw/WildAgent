@@ -3,6 +3,7 @@ doc_type: building_type
 doc_scope: generation
 knowledge_layer: architecture
 entity_type: building
+building_category: commercial
 entity_name: commercial_sports_medical_transport
 topic: assembly
 wild_version: "1.1"

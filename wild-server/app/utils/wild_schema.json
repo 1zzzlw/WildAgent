@@ -1,0 +1,556 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wild.io/wild-lang/v1.1/schema.json",
+  "title": "原语蓝图 v1.1 Schema（兼容 v1.0）",
+  "description": "用于校验 .wild 蓝图文件语法合法性的 JSON Schema",
+  "type": "object",
+  "required": ["meta", "geometry"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["version", "type", "name"],
+      "properties": {
+        "version": { "type": "string", "description": "原语语言版本", "enum": ["1.0", "1.1"] },
+        "type": { "type": "string", "enum": ["building", "avatar", "asset", "scene"] },
+        "name": { "type": "string", "minLength": 1 },
+        "author": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "style": { "type": "string" },
+        "seed": { "type": "number" }
+      }
+    },
+    "geometry": {
+      "type": "object",
+      "properties": {
+        "elements": { "type": "array", "items": { "$ref": "#/$defs/geometryElement" } },
+        "components": { "type": "array", "items": { "$ref": "#/$defs/componentSpec" } },
+        "templates": { "type": "object", "additionalProperties": { "$ref": "#/$defs/geometryElement" } },
+        "instances": { "type": "array", "items": { "$ref": "#/$defs/instanceRef" } },
+        "placements": { "type": "array", "items": { "$ref": "#/$defs/placementRef" } }
+      }
+    },
+    "materials": { "type": "object", "additionalProperties": { "$ref": "#/$defs/materialDef" } },
+    "behaviors": {
+      "type": "object",
+      "properties": {
+        "physics": { "$ref": "#/$defs/physicsData" },
+        "scripts": { "type": "array", "items": { "$ref": "#/$defs/scriptData" } },
+        "animation": { "$ref": "#/$defs/animationParams" }
+      }
+    }
+  },
+  "$defs": {
+    "vec3": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number" } },
+    "color": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+    "curveSegment": {
+      "oneOf": [
+        { "type": "object", "required": ["type"], "properties": { "type": { "const": "line" } } },
+        { "type": "object", "required": ["type","center","sweep"], "properties": { "type": { "const": "arc" }, "center": { "$ref": "#/$defs/vec3" }, "sweep": { "type": "number" }, "segments": { "type": "integer", "minimum": 3, "default": 24 } } },
+        { "type": "object", "required": ["type","center","radiusX","radiusZ"], "properties": { "type": { "const": "ellipse" }, "center": { "$ref": "#/$defs/vec3" }, "radiusX": { "type": "number", "exclusiveMinimum": 0 }, "radiusZ": { "type": "number", "exclusiveMinimum": 0 }, "startAngle": { "type": "number" }, "sweep": { "type": "number" }, "segments": { "type": "integer", "minimum": 3, "default": 32 } } },
+        { "type": "object", "required": ["type","rise"], "properties": { "type": { "const": "catenary" }, "rise": { "type": "number", "minimum": 0 }, "segments": { "type": "integer", "minimum": 3, "default": 16 } } }
+      ]
+    },
+    "geometryElement": {
+      "oneOf": [
+        { "$ref": "#/$defs/wall" }, { "$ref": "#/$defs/floor" }, { "$ref": "#/$defs/column" },
+        { "$ref": "#/$defs/beam" }, { "$ref": "#/$defs/roof" }, { "$ref": "#/$defs/opening" },
+        { "$ref": "#/$defs/stair" }, { "$ref": "#/$defs/furniture" }, { "$ref": "#/$defs/denseBrick" },
+        { "$ref": "#/$defs/body" }, { "$ref": "#/$defs/primitive" }
+      ]
+    },
+    "componentSpec": {
+      "oneOf": [
+        { "$ref": "#/$defs/doorComponent" },
+        { "$ref": "#/$defs/windowComponent" },
+        { "$ref": "#/$defs/railingComponent" },
+        { "$ref": "#/$defs/canopyComponent" },
+        { "$ref": "#/$defs/balconyComponent" },
+        { "$ref": "#/$defs/rampComponent" },
+        { "$ref": "#/$defs/bayWindowComponent" },
+        { "$ref": "#/$defs/corniceComponent" },
+        { "$ref": "#/$defs/chimneyComponent" },
+        { "$ref": "#/$defs/lightComponent" }
+      ]
+    },
+    "openingInteractionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["swing", "slide"] },
+        "hingeSide": { "enum": ["left", "right"] },
+        "openAngle": { "type": "number", "exclusiveMinimum": 0, "maximum": 180 },
+        "openDistance": { "type": "number", "exclusiveMinimum": 0 },
+        "initiallyOpen": { "type": "boolean" }
+      }
+    },
+    "doorComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type","id","parentWall","from","width","height"],
+      "properties": {
+        "type": { "const": "door" },
+        "id": { "type": "string", "minLength": 1 },
+        "parentWall": { "type": "string", "minLength": 1 },
+        "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "frameWidth": { "type": "number", "minimum": 0 },
+        "frameDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "leafDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameMaterial": { "type": "string" },
+        "leafMaterial": { "type": "string" },
+        "interaction": { "$ref": "#/$defs/openingInteractionSpec" },
+        "openingStyle": { "enum": ["rectangular", "arched"] },
+        "doorStyle": { "enum": ["single", "double"] },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "windowComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type","id","parentWall","from","width","height"],
+      "properties": {
+        "type": { "const": "window" },
+        "id": { "type": "string", "minLength": 1 },
+        "parentWall": { "type": "string", "minLength": 1 },
+        "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "frameWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "glassDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "verticalMullions": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "horizontalMullions": { "type": "integer", "minimum": 0, "maximum": 32 },
+        "frameMaterial": { "type": "string" },
+        "glassMaterial": { "type": "string" },
+        "interaction": { "$ref": "#/$defs/openingInteractionSpec" },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "railingComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type","id","path","height"],
+      "properties": {
+        "type": { "const": "railing" },
+        "id": { "type": "string", "minLength": 1 },
+        "path": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/vec3" }
+        },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "postSpacing": { "type": "number", "exclusiveMinimum": 0 },
+        "postRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "railRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "railLevels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 }
+        },
+        "material": { "type": "string" },
+        "parentFloor": { "type": "string", "minLength": 1 },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "canopyComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","parentWall","from","width","depth","thickness"],
+      "properties": {
+        "type": { "const": "canopy" }, "id": { "type": "string", "minLength": 1 },
+        "parentWall": { "type": "string", "minLength": 1 }, "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 }, "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "supportCount": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "supportSize": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" }, "supportMaterial": { "type": "string" },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "balconyComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","parentWall","from","width","depth","slabThickness"],
+      "properties": {
+        "type": { "const": "balcony" }, "id": { "type": "string", "minLength": 1 },
+        "parentWall": { "type": "string", "minLength": 1 }, "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 }, "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "slabThickness": { "type": "number", "exclusiveMinimum": 0 },
+        "railingHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "postSpacing": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" }, "railingMaterial": { "type": "string" },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "rampComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","from","to","width","thickness"],
+      "properties": {
+        "type": { "const": "ramp" }, "id": { "type": "string", "minLength": 1 },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 }, "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "railingSides": { "enum": ["none","left","right","both"] },
+        "railingHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "postSpacing": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" }, "railingMaterial": { "type": "string" },
+        "parentFloor": { "type": "string", "minLength": 1 },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "bayWindowComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","parentWall","from","width","height","projectionDepth"],
+      "properties": {
+        "type": { "const": "bay_window" }, "id": { "type": "string", "minLength": 1 },
+        "parentWall": { "type": "string", "minLength": 1 }, "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 }, "height": { "type": "number", "exclusiveMinimum": 0 },
+        "projectionDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameWidth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "frameMaterial": { "type": "string" }, "glassMaterial": { "type": "string" },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "corniceComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","path","profile"],
+      "properties": {
+        "type": { "const": "cornice" }, "id": { "type": "string", "minLength": 1 },
+        "path": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/vec3" } },
+        "profile": { "type": "array", "minItems": 3, "items": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } } },
+        "closedProfile": { "type": "boolean" }, "material": { "type": "string" },
+        "parentRoof": { "type": "string", "minLength": 1 },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "chimneyComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","position","width","depth","height"],
+      "properties": {
+        "type": { "const": "chimney" }, "id": { "type": "string", "minLength": 1 },
+        "position": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 }, "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "wallThickness": { "type": "number", "exclusiveMinimum": 0 },
+        "capHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" }, "capMaterial": { "type": "string" },
+        "parentRoof": { "type": "string", "minLength": 1 },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "lightComponent": {
+      "type": "object", "additionalProperties": false,
+      "required": ["type","id","position"],
+      "properties": {
+        "type": { "const": "light" }, "id": { "type": "string", "minLength": 1 },
+        "position": { "$ref": "#/$defs/vec3" },
+        "fixtureType": { "enum": ["bulb","table_lamp"] },
+        "lightType": { "enum": ["point","spot"] },
+        "color": { "$ref": "#/$defs/color" },
+        "lowIntensity": { "type": "number", "exclusiveMinimum": 0 },
+        "highIntensity": { "type": "number", "exclusiveMinimum": 0 },
+        "distance": { "type": "number", "exclusiveMinimum": 0 },
+        "angle": { "type": "number", "exclusiveMinimum": 0, "maximum": 90 },
+        "initiallyOn": { "type": "boolean" },
+        "bulbRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "baseHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "shadeRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" },
+        "baseMaterial": { "type": "string" },
+        "shadeMaterial": { "type": "string" },
+        "draggable": { "type": "boolean" }
+      }
+    },
+    "wall": {
+      "type": "object", "required": ["type","id","from","to","thickness"],
+      "properties": {
+        "type": { "const": "wall" }, "id": { "type": "string" },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" },
+        "curve": { "oneOf": [{ "$ref": "#/$defs/curveSegment" }, { "type": "array", "items": { "$ref": "#/$defs/curveSegment" }, "minItems": 1 }] }
+      }
+    },
+    "floor": {
+      "type": "object", "required": ["type","id","from","thickness"],
+      "properties": {
+        "type": { "const": "floor" }, "id": { "type": "string" },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" },
+        "shape": { "enum": ["rect","circle"], "default": "rect" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "segments": { "type": "integer", "minimum": 3, "default": 32 }
+      },
+      "oneOf": [
+        { "required": ["to"], "properties": { "shape": { "enum": ["rect"] } } },
+        { "required": ["radius"], "properties": { "shape": { "const": "circle" } } }
+      ]
+    },
+    "column": {
+      "type": "object", "required": ["type","id","base","height","bottomRadius","topRadius","style"],
+      "properties": {
+        "type": { "const": "column" }, "id": { "type": "string" }, "base": { "$ref": "#/$defs/vec3" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "bottomRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "topRadius": { "type": "number", "exclusiveMinimum": 0 },
+        "style": { "enum": ["doric","ionic","corinthian","modern","chinese_wooden"] },
+        "flutes": { "type": "integer", "minimum": 0 },
+        "entasis": { "type": "number", "minimum": 0 },
+        "inclination": { "type": "number", "minimum": 0 },
+        "material": { "type": "string" }
+      }
+    },
+    "beam": {
+      "type": "object", "required": ["type","id","from","to","crossSection","width","height"],
+      "properties": {
+        "type": { "const": "beam" }, "id": { "type": "string" },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "crossSection": { "enum": ["rect","circular","i-beam"] },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" },
+        "curve": { "oneOf": [{ "$ref": "#/$defs/curveSegment" }, { "type": "array", "items": { "$ref": "#/$defs/curveSegment" }, "minItems": 1 }] }
+      }
+    },
+    "roof": {
+      "type": "object", "required": ["type","id","roofType","span","depth","height","thickness"],
+      "properties": {
+        "type": { "const": "roof" }, "id": { "type": "string" },
+        "roofType": { "enum": ["gable","hip","dome","flat","chinese_curved","chinese_pagoda"] },
+        "span": { "type": "number", "exclusiveMinimum": 0 },
+        "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "thickness": { "type": "number", "exclusiveMinimum": 0 },
+        "eaveCurveHeight": { "type": "number", "minimum": 0 },
+        "curveProfile": { "type": "string" },
+        "tiers": { "type": "integer", "minimum": 1, "default": 3 },
+        "tierHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "eaveOutset": { "type": "number", "minimum": 0, "default": 0.5 },
+        "shrinkFactor": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.7 },
+        "position": { "$ref": "#/$defs/vec3" },
+        "material": { "type": "string" }
+      }
+    },
+    "opening": {
+      "type": "object", "required": ["type","id","parentWall","from","width","height","style"],
+      "properties": {
+        "type": { "const": "opening" }, "id": { "type": "string" }, "parentWall": { "type": "string" },
+        "from": { "$ref": "#/$defs/vec3" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "depth": { "type": "number", "exclusiveMinimum": 0 },
+        "style": { "enum": ["rectangular","arched","gothic","circular"] },
+        "material": { "type": "string" }
+      }
+    },
+    "stair": {
+      "type": "object", "required": ["type","id","from","to","width"],
+      "properties": {
+        "type": { "const": "stair" }, "id": { "type": "string" },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "stepCount": { "type": "integer", "minimum": 0 },
+        "stepDepth": { "type": "number", "exclusiveMinimum": 0 },
+        "stepHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "material": { "type": "string" }
+      }
+    },
+    "furniture": {
+      "type": "object", "required": ["type","id","subtype","position","dimensions"],
+      "properties": {
+        "type": { "const": "furniture" }, "id": { "type": "string" },
+        "subtype": { "enum": ["table","chair","bookshelf","bed","lamp","tile"] },
+        "position": { "$ref": "#/$defs/vec3" },
+        "style": { "type": "string" },
+        "dimensions": {
+          "type": "object", "required": ["width","depth","height"],
+          "properties": {
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "depth": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "material": { "type": "string" }
+      }
+    },
+    "denseBrick": {
+      "type": "object", "required": ["type","id","resolution","origin","data"],
+      "properties": {
+        "type": { "const": "dense_brick" }, "id": { "type": "string" },
+        "resolution": { "type": "array", "minItems": 3, "maxItems": 3, "items": { "type": "integer", "minimum": 8 } },
+        "origin": { "$ref": "#/$defs/vec3" }, "data": { "type": "string" },
+        "material": { "type": "string" },
+        "method": { "enum": ["marching_cubes","dual_contouring"] },
+        "attachment": { "type": "object", "properties": { "parent": { "type": "string" }, "mapping": { "enum": ["planar","cylindrical","spherical"] } } }
+      }
+    },
+    "body": {
+      "type": "object", "required": ["type","id","height","build","headShape","armLength","legLength","cloakLength","hoodUp"],
+      "properties": {
+        "type": { "const": "body" }, "id": { "type": "string" },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "build": { "enum": ["lean","athletic","stout"] },
+        "headShape": { "enum": ["round","oval","angular"] },
+        "armLength": { "type": "number", "minimum": 0.5, "maximum": 1.5 },
+        "legLength": { "type": "number", "minimum": 0.5, "maximum": 1.5 },
+        "cloakLength": { "type": "number", "minimum": 0.3, "maximum": 1.5 },
+        "hoodUp": { "type": "boolean" },
+        "material": { "type": "string" }
+      }
+    },
+    "primitive": {
+      "type": "object",
+      "required": ["type","id","shape"],
+      "properties": {
+        "type": { "const": "primitive" },
+        "id": { "type": "string" },
+        "shape": { "enum": ["box","sphere","cylinder","profile_sweep"] },
+        "position": { "$ref": "#/$defs/vec3" },
+        "rotation": { "$ref": "#/$defs/vec3" },
+        "scale": { "$ref": "#/$defs/vec3" },
+        "material": { "type": "string" },
+        "dimensions": { "$ref": "#/$defs/vec3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "radiusTop": { "type": "number", "exclusiveMinimum": 0 },
+        "radiusBottom": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "segments": { "type": "integer", "minimum": 3, "maximum": 128 },
+        "heightSegments": { "type": "integer", "minimum": 2, "maximum": 64 },
+        "profile": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": { "type": "number" }
+          }
+        },
+        "path": { "type": "array", "minItems": 2, "items": { "$ref": "#/$defs/vec3" } },
+        "closedProfile": { "type": "boolean", "default": true }
+      },
+      "oneOf": [
+        { "required": ["dimensions"], "properties": { "shape": { "const": "box" } } },
+        { "required": ["radius"], "properties": { "shape": { "const": "sphere" } } },
+        {
+          "required": ["height"],
+          "properties": { "shape": { "const": "cylinder" } },
+          "oneOf": [
+            { "required": ["radius"] },
+            { "required": ["radiusTop","radiusBottom"] }
+          ]
+        },
+        { "required": ["path"], "properties": { "shape": { "const": "profile_sweep" } } }
+      ]
+    },
+    "instanceRef": {
+      "type": "object", "required": ["ref","position"],
+      "properties": {
+        "id": { "type": "string" }, "ref": { "type": "string" }, "position": { "$ref": "#/$defs/vec3" },
+        "rotation": { "$ref": "#/$defs/vec3" }, "scale": { "$ref": "#/$defs/vec3" },
+        "materialOverride": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+    "placementRef": {
+      "type": "object", "required": ["id","template","onSurface","layout"],
+      "properties": {
+        "id": { "type": "string" }, "template": { "type": "string" },
+        "onSurface": { "type": "object", "required": ["parent","face"], "properties": { "parent": { "type": "string" }, "face": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] } } },
+        "layout": {
+          "type": "object", "required": ["type","columns","rows","colSpacing","rowSpacing"],
+          "properties": {
+            "type": { "const": "grid" }, "columns": { "type": "integer", "minimum": 1 }, "rows": { "type": "integer", "minimum": 1 },
+            "colSpacing": { "type": "number", "exclusiveMinimum": 0 }, "rowSpacing": { "type": "number", "exclusiveMinimum": 0 },
+            "overlap": { "type": "number", "minimum": 0 }, "gapWidth": { "type": "number", "minimum": 0 },
+            "cellMaterials": { "type": "object", "additionalProperties": { "type": "string" } }
+          }
+        }
+      }
+    },
+    "materialDef": {
+      "type": "object", "required": ["baseColor","roughness","metallic","albedo","lightingCondition"],
+      "properties": {
+        "baseColor": { "$ref": "#/$defs/color" }, "roughness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "metallic": { "type": "number", "minimum": 0, "maximum": 1 }, "albedo": { "type": "number", "minimum": 0, "maximum": 1 },
+        "emissive": { "$ref": "#/$defs/color", "default": [0,0,0] },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1, "default": 1.0 },
+        "lightingCondition": { "const": "D65_noon" },
+        "effects": { "type": "array", "items": { "$ref": "#/$defs/effectLayer" } },
+        "embeddedImage": { "$ref": "#/$defs/embeddedImage" },
+        "textures": {
+          "type": "object",
+          "properties": {
+            "baseColor": { "$ref": "#/$defs/embeddedImage" },
+            "normal": { "$ref": "#/$defs/embeddedImage" },
+            "roughness": { "$ref": "#/$defs/embeddedImage" },
+            "metalness": { "$ref": "#/$defs/embeddedImage" },
+            "ambientOcclusion": { "$ref": "#/$defs/embeddedImage" }
+          }
+        },
+        "normalScale": { "type": "number", "minimum": 0 },
+        "uvScale": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "items": { "type": "number", "exclusiveMinimum": 0 }
+        }
+      }
+    },
+    "effectLayer": {
+      "oneOf": [
+        { "type": "object", "required": ["type","dustColor","dustOpacity","crackIntensity","colorFade"], "properties": { "type": { "const": "weathering" }, "dustColor": { "$ref": "#/$defs/color" }, "dustOpacity": { "type": "number","minimum":0,"maximum":1 }, "crackIntensity": { "type": "number","minimum":0,"maximum":1 }, "colorFade": { "type": "number","minimum":0,"maximum":1 } } },
+        { "type": "object", "required": ["type","mossColor","coverage","pattern"], "properties": { "type": { "const": "moss" }, "mossColor": { "$ref": "#/$defs/color" }, "coverage": { "type": "number","minimum":0,"maximum":1 }, "pattern": { "enum": ["base_up","patchy","edge"] } } },
+        { "type": "object", "required": ["type","wearColor","intensity"], "properties": { "type": { "const": "edgeWear" }, "wearColor": { "$ref": "#/$defs/color" }, "intensity": { "type": "number","minimum":0,"maximum":1 } } },
+        { "type": "object", "required": ["type","intensity","scale"], "properties": { "type": { "const": "grain" }, "intensity": { "type": "number","minimum":0,"maximum":1 }, "scale": { "type": "number","exclusiveMinimum":0 } } }
+      ]
+    },
+    "embeddedImage": { "type": "object", "required": ["encoding","mimeType","data"], "properties": { "encoding": { "const": "base64" }, "mimeType": { "type": "string" }, "data": { "type": "string" } } },
+    "physicsData": {
+      "type": "object", "required": ["mass","collisionShape"],
+      "properties": {
+        "mass": { "type": "number", "minimum": 0 },
+        "collisionShape": { "enum": ["box","sphere","capsule","mesh"] },
+        "constraints": { "type": "array", "items": { "oneOf": [
+          { "type": "object", "required": ["type","target","axis"], "properties": { "type": { "const": "hinge" }, "target": { "type": "string" }, "axis": { "enum": ["x","y","z"] }, "limit": { "type": "array","minItems":2,"maxItems":2,"items":{ "type": "number" } } } },
+          { "type": "object", "required": ["type","target","axis"], "properties": { "type": { "const": "slider" }, "target": { "type": "string" }, "axis": { "enum": ["x","y","z"] }, "limit": { "type": "array","minItems":2,"maxItems":2,"items":{ "type": "number" } } } }
+        ] } }
+      }
+    },
+    "scriptData": {
+      "type": "object",
+      "properties": {
+        "on_click": { "$ref": "#/$defs/scriptCondition" },
+        "on_enter": { "$ref": "#/$defs/scriptCondition" },
+        "on_leave": { "$ref": "#/$defs/scriptCondition" }
+      }
+    },
+    "scriptCondition": {
+      "type": "object",
+      "properties": {
+        "condition": { "type": "string" },
+        "actions": { "type": "array", "items": { "$ref": "#/$defs/actionData" } }
+      }
+    },
+    "actionData": {
+      "type": "object", "required": ["type"],
+      "properties": {
+        "type": { "enum": ["toggle_hinge","play_sound","set_material","show_text","teleport"] },
+        "target": { "type": "string" }, "sound": { "type": "string" },
+        "material": { "type": "string" }, "text": { "type": "string" },
+        "destination": { "$ref": "#/$defs/vec3" }
+      }
+    },
+    "animationParams": {
+      "type": "object",
+      "properties": {
+        "walkStyle": { "type": "number","minimum":0,"maximum":1 },
+        "posture": { "type": "number","minimum":0,"maximum":1 },
+        "clothStiffness": { "type": "number","minimum":0,"maximum":1 },
+        "clothDamping": { "type": "number","minimum":0,"maximum":1 },
+        "windResponse": { "type": "number","minimum":0,"maximum":1 }
+      }
+    }
+  }
+}
