@@ -79,7 +79,7 @@ class TestFactualValidator:
         constraints = {
             "door": {
                 "width": {"min": 0.7, "max": 3.0},
-                "height": {"min": 1.8, "max": 3.5"}
+                "height": {"min": 1.8, "max": 3.5}
             }
         }
         
