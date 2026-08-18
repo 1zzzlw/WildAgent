@@ -2,7 +2,6 @@
 
 AGENT_PROTOCOL_VERSION = "1.0"
 
-
 def versioned_event(payload: dict) -> dict:
     """复制事件并附加当前协议版本，避免调用方原地修改数据。"""
     event = dict(payload)
