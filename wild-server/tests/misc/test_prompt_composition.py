@@ -5,7 +5,7 @@ from app.agent.prompts import build_system_prompt
 from app.services.agent_service import AgentService
 
 
-SERVER_ROOT = Path(__file__).resolve().parents[1]
+SERVER_ROOT = Path(__file__).resolve().parents[2]
 MINIMAL_SPEC = (
     SERVER_ROOT / "storage" / "knowledge_base" / "BLUEPRINT-SPEC-MINIMAL.md"
 )

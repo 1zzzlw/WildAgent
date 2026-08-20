@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from scripts.deployment_preflight import select_smoke_response_text
+from scripts.deploy.deployment_preflight import select_smoke_response_text
 
 
 class DeploymentPreflightTest(unittest.TestCase):

@@ -188,7 +188,7 @@ class TestDomainConfig:
         from pathlib import Path
         
         # 使用项目配置文件
-        config_path = Path(__file__).parent.parent / "config" / "domain_schema.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "config" / "domain_schema.yaml"
         
         config = DomainConfig(config_path)
         
@@ -202,7 +202,7 @@ class TestDomainConfig:
         from app.config import DomainConfig
         from pathlib import Path
         
-        config_path = Path(__file__).parent.parent / "config" / "domain_schema.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "config" / "domain_schema.yaml"
         config = DomainConfig(config_path)
         
         # 测试标准名称

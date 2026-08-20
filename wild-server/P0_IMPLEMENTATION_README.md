@@ -33,7 +33,7 @@
 cd wild-server
 .\.venv\Scripts\activate
 $env:PYTHONPATH="."
-pytest tests/test_p0_implementation.py -v
+python -m pytest tests/test_p0_implementation.py -v
 ```
 
 **结果**: ✅ **9/9 测试通过**

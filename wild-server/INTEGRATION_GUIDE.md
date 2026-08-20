@@ -391,8 +391,8 @@ async def test_skeleton_with_query_rewrite():
 ```bash
 # 运行完整测试套件
 $env:PYTHONPATH="."
-pytest tests/test_p0_implementation.py -v
-pytest tests/test_skeleton_node_p0.py -v  # 如果创建了新测试
+python -m pytest tests/test_p0_implementation.py -v
+python -m pytest tests/test_skeleton_node_p0.py -v  # 如果创建了新测试
 ```
 
 ---
