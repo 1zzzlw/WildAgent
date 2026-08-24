@@ -1,18 +1,14 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 entity_name: tower
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/catalog/towers.md
-keywords:
+primary_terms:
   - 塔楼
-  - tower
   - 石塔
+synonyms:
+  - tower
 ---
 
 # 轻量建筑分类：塔楼（Tower）

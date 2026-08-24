@@ -1,21 +1,17 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: public
 entity_name: public_building_subtypes
 topic: composition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/public/public-building-subtypes.md
-keywords:
+primary_terms:
   - 公共建筑细分类型
-  - public building subtype
   - 默认完整构成合同
   - 组件优先级
   - WILD降级表达
+synonyms:
+  - public building subtype
 ---
 
 # 公共建筑 38 类默认完整构成与组装关系
@@ -34,7 +30,14 @@ entity_name: park_detached_office
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 园区独栋办公, park office, 独栋办公楼, office building, 默认完整构成, composition
+primary_terms:
+  - 园区独栋办公
+  - 独栋办公楼
+  - 默认完整构成
+  - composition
+synonyms:
+  - park office
+  - office building
 -->
 
 默认完整构成合同：
@@ -58,7 +61,13 @@ entity_name: park_detached_office
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 园区独栋办公楼, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 园区独栋办公楼
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -78,7 +87,11 @@ entity_name: park_detached_office
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 园区独栋办公楼, fallback, 最少可行回退
+primary_terms:
+  - 园区独栋办公楼
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -94,7 +107,15 @@ entity_name: business_office_standard_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 商务写字楼, office tower, 标准层, 核心筒, curtain wall, 默认完整构成, composition
+primary_terms:
+  - 商务写字楼
+  - 标准层
+  - 核心筒
+  - curtain wall
+  - 默认完整构成
+  - composition
+synonyms:
+  - office tower
 -->
 
 默认完整构成合同：
@@ -118,7 +139,13 @@ entity_name: business_office_standard_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 商务写字楼标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 商务写字楼标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -137,7 +164,11 @@ entity_name: business_office_standard_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 商务写字楼标准层, fallback, 最少可行回退
+primary_terms:
+  - 商务写字楼标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -153,7 +184,15 @@ entity_name: supertall_office_outrigger_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 超高层写字楼, supertall office, 加强层, 核心筒, 外伸臂, 默认完整构成, composition
+primary_terms:
+  - 超高层写字楼
+  - 加强层
+  - 核心筒
+  - 外伸臂
+  - 默认完整构成
+  - composition
+synonyms:
+  - supertall office
 -->
 
 默认完整构成合同：
@@ -177,7 +216,13 @@ entity_name: supertall_office_outrigger_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 超高层写字楼加强层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 超高层写字楼加强层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -196,7 +241,11 @@ entity_name: supertall_office_outrigger_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 超高层写字楼加强层, fallback, 最少可行回退
+primary_terms:
+  - 超高层写字楼加强层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -212,7 +261,15 @@ entity_name: kindergarten_activity_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 幼儿园, kindergarten, 活动室, 低窗台, 雨棚, 默认完整构成, composition
+primary_terms:
+  - 幼儿园
+  - 活动室
+  - 低窗台
+  - 雨棚
+  - 默认完整构成
+  - composition
+synonyms:
+  - kindergarten
 -->
 
 默认完整构成合同：
@@ -236,7 +293,13 @@ entity_name: kindergarten_activity_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 幼儿园活动室单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 幼儿园活动室单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -255,7 +318,11 @@ entity_name: kindergarten_activity_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 幼儿园活动室单元, fallback, 最少可行回退
+primary_terms:
+  - 幼儿园活动室单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -271,7 +338,15 @@ entity_name: school_teaching_standard_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 中小学教学楼, school building, 标准教室, 外廊, 内廊, 默认完整构成, composition
+primary_terms:
+  - 中小学教学楼
+  - 标准教室
+  - 外廊
+  - 内廊
+  - 默认完整构成
+  - composition
+synonyms:
+  - school building
 -->
 
 默认完整构成合同：
@@ -295,7 +370,13 @@ entity_name: school_teaching_standard_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 中小学教学楼标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 中小学教学楼标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -314,7 +395,11 @@ entity_name: school_teaching_standard_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 中小学教学楼标准层, fallback, 最少可行回退
+primary_terms:
+  - 中小学教学楼标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -330,7 +415,14 @@ entity_name: university_teaching_standard_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 大学教学楼, university teaching building, 合班教室, 教学楼, 默认完整构成, composition
+primary_terms:
+  - 大学教学楼
+  - 合班教室
+  - 教学楼
+  - 默认完整构成
+  - composition
+synonyms:
+  - university teaching building
 -->
 
 默认完整构成合同：
@@ -354,7 +446,13 @@ entity_name: university_teaching_standard_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 大学教学楼标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 大学教学楼标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -372,7 +470,11 @@ entity_name: university_teaching_standard_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 大学教学楼标准层, fallback, 最少可行回退
+primary_terms:
+  - 大学教学楼标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -388,7 +490,15 @@ entity_name: laboratory_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 实验室, laboratory, 实验单元, 服务走廊, 设备带, 默认完整构成, composition
+primary_terms:
+  - 实验室
+  - 实验单元
+  - 服务走廊
+  - 设备带
+  - 默认完整构成
+  - composition
+synonyms:
+  - laboratory
 -->
 
 默认完整构成合同：
@@ -412,7 +522,13 @@ entity_name: laboratory_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 实验室单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 实验室单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -430,7 +546,11 @@ entity_name: laboratory_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 实验室单元, fallback, 最少可行回退
+primary_terms:
+  - 实验室单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -446,7 +566,15 @@ entity_name: museum_gallery
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 博物馆, museum, 展厅, 大空间, 受控采光, 默认完整构成, composition
+primary_terms:
+  - 博物馆
+  - 展厅
+  - 大空间
+  - 受控采光
+  - 默认完整构成
+  - composition
+synonyms:
+  - museum
 -->
 
 默认完整构成合同：
@@ -470,7 +598,13 @@ entity_name: museum_gallery
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 博物馆展厅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 博物馆展厅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -489,7 +623,11 @@ entity_name: museum_gallery
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 博物馆展厅, fallback, 最少可行回退
+primary_terms:
+  - 博物馆展厅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -505,7 +643,15 @@ entity_name: theater_auditorium
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 剧院, theater, 观众厅, 舞台塔, 楼座, 默认完整构成, composition
+primary_terms:
+  - 剧院
+  - 观众厅
+  - 舞台塔
+  - 楼座
+  - 默认完整构成
+  - composition
+synonyms:
+  - theater
 -->
 
 默认完整构成合同：
@@ -529,7 +675,13 @@ entity_name: theater_auditorium
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 剧院观众厅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 剧院观众厅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -548,7 +700,11 @@ entity_name: theater_auditorium
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 剧院观众厅, fallback, 最少可行回退
+primary_terms:
+  - 剧院观众厅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -564,7 +720,15 @@ entity_name: library_standard_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 图书馆, library, 阅览区, 书库, 中庭, 默认完整构成, composition
+primary_terms:
+  - 图书馆
+  - 阅览区
+  - 书库
+  - 中庭
+  - 默认完整构成
+  - composition
+synonyms:
+  - library
 -->
 
 默认完整构成合同：
@@ -588,7 +752,13 @@ entity_name: library_standard_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 图书馆标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 图书馆标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -606,7 +776,11 @@ entity_name: library_standard_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 图书馆标准层, fallback, 最少可行回退
+primary_terms:
+  - 图书馆标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -622,7 +796,15 @@ entity_name: small_medium_gymnasium
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 体育馆, gymnasium, 中小型体育馆, 大跨, 看台, 默认完整构成, composition
+primary_terms:
+  - 体育馆
+  - 中小型体育馆
+  - 大跨
+  - 看台
+  - 默认完整构成
+  - composition
+synonyms:
+  - gymnasium
 -->
 
 默认完整构成合同：
@@ -646,7 +828,13 @@ entity_name: small_medium_gymnasium
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 中小型体育馆, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 中小型体育馆
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -664,7 +852,11 @@ entity_name: small_medium_gymnasium
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 中小型体育馆, fallback, 最少可行回退
+primary_terms:
+  - 中小型体育馆
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -680,7 +872,15 @@ entity_name: stadium_stand_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 体育场, stadium, 看台单元, 罩棚, 场地, 默认完整构成, composition
+primary_terms:
+  - 体育场
+  - 看台单元
+  - 罩棚
+  - 场地
+  - 默认完整构成
+  - composition
+synonyms:
+  - stadium
 -->
 
 默认完整构成合同：
@@ -704,7 +904,13 @@ entity_name: stadium_stand_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 大型体育场看台单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 大型体育场看台单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -722,7 +928,11 @@ entity_name: stadium_stand_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 大型体育场看台单元, fallback, 最少可行回退
+primary_terms:
+  - 大型体育场看台单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -738,7 +948,14 @@ entity_name: indoor_natatorium
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 游泳馆, natatorium, 泳池大厅, 大跨屋顶, 默认完整构成, composition
+primary_terms:
+  - 游泳馆
+  - 泳池大厅
+  - 大跨屋顶
+  - 默认完整构成
+  - composition
+synonyms:
+  - natatorium
 -->
 
 默认完整构成合同：
@@ -762,7 +979,13 @@ entity_name: indoor_natatorium
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 室内游泳馆, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 室内游泳馆
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -780,7 +1003,11 @@ entity_name: indoor_natatorium
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 室内游泳馆, fallback, 最少可行回退
+primary_terms:
+  - 室内游泳馆
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -796,7 +1023,14 @@ entity_name: community_clinic_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 社区医疗, community clinic, 诊室, 候诊区, 默认完整构成, composition
+primary_terms:
+  - 社区医疗
+  - 诊室
+  - 候诊区
+  - 默认完整构成
+  - composition
+synonyms:
+  - community clinic
 -->
 
 默认完整构成合同：
@@ -820,7 +1054,13 @@ entity_name: community_clinic_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 社区医疗诊室单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 社区医疗诊室单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -837,7 +1077,11 @@ entity_name: community_clinic_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 社区医疗诊室单元, fallback, 最少可行回退
+primary_terms:
+  - 社区医疗诊室单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -853,7 +1097,15 @@ entity_name: general_hospital_ward_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 综合医院, general hospital, 住院标准层, 病房, 护士站, 默认完整构成, composition
+primary_terms:
+  - 综合医院
+  - 住院标准层
+  - 病房
+  - 护士站
+  - 默认完整构成
+  - composition
+synonyms:
+  - general hospital
 -->
 
 默认完整构成合同：
@@ -877,7 +1129,13 @@ entity_name: general_hospital_ward_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 综合医院住院标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 综合医院住院标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -895,7 +1153,11 @@ entity_name: general_hospital_ward_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 综合医院住院标准层, fallback, 最少可行回退
+primary_terms:
+  - 综合医院住院标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -911,7 +1173,14 @@ entity_name: specialist_hospital_plant_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 专科医院, specialist hospital, 设备机房, 医疗设备, 默认完整构成, composition
+primary_terms:
+  - 专科医院
+  - 设备机房
+  - 医疗设备
+  - 默认完整构成
+  - composition
+synonyms:
+  - specialist hospital
 -->
 
 默认完整构成合同：
@@ -935,7 +1204,13 @@ entity_name: specialist_hospital_plant_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 专科医院设备机房单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 专科医院设备机房单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -952,7 +1227,11 @@ entity_name: specialist_hospital_plant_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 专科医院设备机房单元, fallback, 最少可行回退
+primary_terms:
+  - 专科医院设备机房单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -969,7 +1248,14 @@ building_category: commercial
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 社区商业, neighborhood retail, 沿街商铺, 店面, 默认完整构成, composition
+primary_terms:
+  - 社区商业
+  - 沿街商铺
+  - 店面
+  - 默认完整构成
+  - composition
+synonyms:
+  - neighborhood retail
 -->
 
 默认完整构成合同：
@@ -994,7 +1280,13 @@ building_category: commercial
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 社区商业, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 社区商业
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1012,7 +1304,11 @@ building_category: commercial
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 社区商业, fallback, 最少可行回退
+primary_terms:
+  - 社区商业
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1029,7 +1325,14 @@ building_category: commercial
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 购物中心, shopping mall, 中庭, 商业标准层, 默认完整构成, composition
+primary_terms:
+  - 购物中心
+  - 中庭
+  - 商业标准层
+  - 默认完整构成
+  - composition
+synonyms:
+  - shopping mall
 -->
 
 默认完整构成合同：
@@ -1054,7 +1357,13 @@ building_category: commercial
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 购物中心标准层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 购物中心标准层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1073,7 +1382,11 @@ building_category: commercial
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 购物中心标准层, fallback, 最少可行回退
+primary_terms:
+  - 购物中心标准层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1089,7 +1402,15 @@ entity_name: supermarket_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 超市, supermarket, 营业厅, 大开间, 货架, 默认完整构成, composition
+primary_terms:
+  - 超市
+  - 营业厅
+  - 大开间
+  - 货架
+  - 默认完整构成
+  - composition
+synonyms:
+  - supermarket
 -->
 
 默认完整构成合同：
@@ -1113,7 +1434,13 @@ entity_name: supermarket_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 超市营业厅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 超市营业厅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1130,7 +1457,11 @@ entity_name: supermarket_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 超市营业厅, fallback, 最少可行回退
+primary_terms:
+  - 超市营业厅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1146,7 +1477,14 @@ entity_name: economy_hotel_guest_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 经济型酒店, economy hotel, 客房层, 双廊客房, 默认完整构成, composition
+primary_terms:
+  - 经济型酒店
+  - 客房层
+  - 双廊客房
+  - 默认完整构成
+  - composition
+synonyms:
+  - economy hotel
 -->
 
 默认完整构成合同：
@@ -1170,7 +1508,13 @@ entity_name: economy_hotel_guest_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 经济型酒店客房层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 经济型酒店客房层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1187,7 +1531,11 @@ entity_name: economy_hotel_guest_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 经济型酒店客房层, fallback, 最少可行回退
+primary_terms:
+  - 经济型酒店客房层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1203,7 +1551,14 @@ entity_name: business_hotel_guest_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 商务酒店, business hotel, 客房层, 电梯厅, 默认完整构成, composition
+primary_terms:
+  - 商务酒店
+  - 客房层
+  - 电梯厅
+  - 默认完整构成
+  - composition
+synonyms:
+  - business hotel
 -->
 
 默认完整构成合同：
@@ -1227,7 +1582,13 @@ entity_name: business_hotel_guest_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 商务酒店客房层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 商务酒店客房层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1244,7 +1605,11 @@ entity_name: business_hotel_guest_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 商务酒店客房层, fallback, 最少可行回退
+primary_terms:
+  - 商务酒店客房层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1260,7 +1625,15 @@ entity_name: luxury_hotel_guest_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 五星级酒店, luxury hotel, 客房层, 套房, 阳台, 默认完整构成, composition
+primary_terms:
+  - 五星级酒店
+  - 客房层
+  - 套房
+  - 阳台
+  - 默认完整构成
+  - composition
+synonyms:
+  - luxury hotel
 -->
 
 默认完整构成合同：
@@ -1284,7 +1657,13 @@ entity_name: luxury_hotel_guest_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 五星级酒店客房层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 五星级酒店客房层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1301,7 +1680,11 @@ entity_name: luxury_hotel_guest_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 五星级酒店客房层, fallback, 最少可行回退
+primary_terms:
+  - 五星级酒店客房层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1317,7 +1700,15 @@ entity_name: resort_hotel_villa
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 度假酒店, resort hotel, 客房别墅, terrace, villa, 默认完整构成, composition
+primary_terms:
+  - 度假酒店
+  - 客房别墅
+  - terrace
+  - villa
+  - 默认完整构成
+  - composition
+synonyms:
+  - resort hotel
 -->
 
 默认完整构成合同：
@@ -1341,7 +1732,13 @@ entity_name: resort_hotel_villa
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 度假酒店客房别墅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 度假酒店客房别墅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1358,7 +1755,11 @@ entity_name: resort_hotel_villa
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 度假酒店客房别墅, fallback, 最少可行回退
+primary_terms:
+  - 度假酒店客房别墅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1374,7 +1775,14 @@ entity_name: coach_station
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 汽车客运站, coach station, 候车大厅, 发车雨棚, 默认完整构成, composition
+primary_terms:
+  - 汽车客运站
+  - 候车大厅
+  - 发车雨棚
+  - 默认完整构成
+  - composition
+synonyms:
+  - coach station
 -->
 
 默认完整构成合同：
@@ -1398,7 +1806,13 @@ entity_name: coach_station
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 汽车客运站, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 汽车客运站
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1415,7 +1829,11 @@ entity_name: coach_station
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 汽车客运站, fallback, 最少可行回退
+primary_terms:
+  - 汽车客运站
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1431,7 +1849,14 @@ entity_name: port_passenger_terminal
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 港口客运站, ferry terminal, 候船厅, 登船廊桥, 默认完整构成, composition
+primary_terms:
+  - 港口客运站
+  - 候船厅
+  - 登船廊桥
+  - 默认完整构成
+  - composition
+synonyms:
+  - ferry terminal
 -->
 
 默认完整构成合同：
@@ -1455,7 +1880,13 @@ entity_name: port_passenger_terminal
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 港口客运站, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 港口客运站
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1472,7 +1903,11 @@ entity_name: port_passenger_terminal
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 港口客运站, fallback, 最少可行回退
+primary_terms:
+  - 港口客运站
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1488,7 +1923,15 @@ entity_name: metro_platform_level
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 地铁站, metro station, 站台层, 屏蔽门, 地下空间, 默认完整构成, composition
+primary_terms:
+  - 地铁站
+  - 站台层
+  - 屏蔽门
+  - 地下空间
+  - 默认完整构成
+  - composition
+synonyms:
+  - metro station
 -->
 
 默认完整构成合同：
@@ -1512,7 +1955,13 @@ entity_name: metro_platform_level
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 地铁站站台层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 地铁站站台层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1530,7 +1979,11 @@ entity_name: metro_platform_level
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 地铁站站台层, fallback, 最少可行回退
+primary_terms:
+  - 地铁站站台层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1546,7 +1999,14 @@ entity_name: high_speed_rail_waiting_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 高铁站, high-speed rail station, 候车大厅, 大跨屋盖, 默认完整构成, composition
+primary_terms:
+  - 高铁站
+  - 候车大厅
+  - 大跨屋盖
+  - 默认完整构成
+  - composition
+synonyms:
+  - high-speed rail station
 -->
 
 默认完整构成合同：
@@ -1570,7 +2030,13 @@ entity_name: high_speed_rail_waiting_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 高铁站候车大厅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 高铁站候车大厅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1588,7 +2054,11 @@ entity_name: high_speed_rail_waiting_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 高铁站候车大厅, fallback, 最少可行回退
+primary_terms:
+  - 高铁站候车大厅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1604,7 +2074,15 @@ entity_name: airport_checkin_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 航站楼, airport terminal, 办票大厅, check-in hall, curtain wall, 默认完整构成, composition
+primary_terms:
+  - 航站楼
+  - 办票大厅
+  - curtain wall
+  - 默认完整构成
+  - composition
+synonyms:
+  - airport terminal
+  - check-in hall
 -->
 
 默认完整构成合同：
@@ -1628,7 +2106,13 @@ entity_name: airport_checkin_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 航站楼办票大厅, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 航站楼办票大厅
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1646,7 +2130,11 @@ entity_name: airport_checkin_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 航站楼办票大厅, fallback, 最少可行回退
+primary_terms:
+  - 航站楼办票大厅
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1662,7 +2150,15 @@ entity_name: courthouse_building
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 法院, courthouse, 审判楼, 门廊, 纪念性入口, 默认完整构成, composition
+primary_terms:
+  - 法院
+  - 审判楼
+  - 门廊
+  - 纪念性入口
+  - 默认完整构成
+  - composition
+synonyms:
+  - courthouse
 -->
 
 默认完整构成合同：
@@ -1686,7 +2182,13 @@ entity_name: courthouse_building
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 法院审判楼, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 法院审判楼
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1704,7 +2206,11 @@ entity_name: courthouse_building
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 法院审判楼, fallback, 最少可行回退
+primary_terms:
+  - 法院审判楼
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1720,7 +2226,15 @@ entity_name: prison_cell_unit
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 监狱, prison, 监舍单元, 围墙, 监控走廊, 默认完整构成, composition
+primary_terms:
+  - 监狱
+  - 监舍单元
+  - 围墙
+  - 监控走廊
+  - 默认完整构成
+  - composition
+synonyms:
+  - prison
 -->
 
 默认完整构成合同：
@@ -1744,7 +2258,13 @@ entity_name: prison_cell_unit
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 监狱监舍单元, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 监狱监舍单元
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1762,7 +2282,11 @@ entity_name: prison_cell_unit
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 监狱监舍单元, fallback, 最少可行回退
+primary_terms:
+  - 监狱监舍单元
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1778,7 +2302,15 @@ entity_name: eldercare_residential_floor
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 养老院, eldercare, 居室层, 护理单元, 阳台, 默认完整构成, composition
+primary_terms:
+  - 养老院
+  - 居室层
+  - 护理单元
+  - 阳台
+  - 默认完整构成
+  - composition
+synonyms:
+  - eldercare
 -->
 
 默认完整构成合同：
@@ -1802,7 +2334,13 @@ entity_name: eldercare_residential_floor
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 养老院居室层, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 养老院居室层
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1820,7 +2358,11 @@ entity_name: eldercare_residential_floor
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 养老院居室层, fallback, 最少可行回退
+primary_terms:
+  - 养老院居室层
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1836,7 +2378,15 @@ entity_name: buddhist_temple_main_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 佛寺, Buddhist temple, 大雄宝殿, 台基, 中式屋顶, 默认完整构成, composition
+primary_terms:
+  - 佛寺
+  - 大雄宝殿
+  - 台基
+  - 中式屋顶
+  - 默认完整构成
+  - composition
+synonyms:
+  - Buddhist temple
 -->
 
 默认完整构成合同：
@@ -1860,7 +2410,13 @@ entity_name: buddhist_temple_main_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 佛寺大雄宝殿, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 佛寺大雄宝殿
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1878,7 +2434,11 @@ entity_name: buddhist_temple_main_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 佛寺大雄宝殿, fallback, 最少可行回退
+primary_terms:
+  - 佛寺大雄宝殿
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1894,7 +2454,15 @@ entity_name: taoist_temple_main_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 道观, Taoist temple, 三清殿, 山门, 中式木构, 默认完整构成, composition
+primary_terms:
+  - 道观
+  - 三清殿
+  - 山门
+  - 中式木构
+  - 默认完整构成
+  - composition
+synonyms:
+  - Taoist temple
 -->
 
 默认完整构成合同：
@@ -1918,7 +2486,13 @@ entity_name: taoist_temple_main_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 道观三清殿, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 道观三清殿
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1935,7 +2509,11 @@ entity_name: taoist_temple_main_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 道观三清殿, fallback, 最少可行回退
+primary_terms:
+  - 道观三清殿
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -1951,7 +2529,15 @@ entity_name: mosque_prayer_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 清真寺, mosque, 礼拜大殿, 穹顶, 宣礼塔, 默认完整构成, composition
+primary_terms:
+  - 清真寺
+  - 礼拜大殿
+  - 穹顶
+  - 宣礼塔
+  - 默认完整构成
+  - composition
+synonyms:
+  - mosque
 -->
 
 默认完整构成合同：
@@ -1975,7 +2561,13 @@ entity_name: mosque_prayer_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 清真寺礼拜大殿, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 清真寺礼拜大殿
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -1993,7 +2585,11 @@ entity_name: mosque_prayer_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 清真寺礼拜大殿, fallback, 最少可行回退
+primary_terms:
+  - 清真寺礼拜大殿
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -2009,7 +2605,15 @@ entity_name: gothic_church_nave
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 哥特式教堂, Gothic church, 中殿, 尖拱, 飞扶壁, 默认完整构成, composition
+primary_terms:
+  - 哥特式教堂
+  - 中殿
+  - 尖拱
+  - 飞扶壁
+  - 默认完整构成
+  - composition
+synonyms:
+  - Gothic church
 -->
 
 默认完整构成合同：
@@ -2033,7 +2637,13 @@ entity_name: gothic_church_nave
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 哥特式教堂中殿, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 哥特式教堂中殿
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -2051,7 +2661,11 @@ entity_name: gothic_church_nave
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 哥特式教堂中殿, fallback, 最少可行回退
+primary_terms:
+  - 哥特式教堂中殿
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -2067,7 +2681,15 @@ entity_name: suzhou_garden_waterside_pavilion
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 苏州园林, Suzhou garden, 水榭, 白墙灰瓦, 漏窗, 默认完整构成, composition
+primary_terms:
+  - 苏州园林
+  - 水榭
+  - 白墙灰瓦
+  - 漏窗
+  - 默认完整构成
+  - composition
+synonyms:
+  - Suzhou garden
 -->
 
 默认完整构成合同：
@@ -2091,7 +2713,13 @@ entity_name: suzhou_garden_waterside_pavilion
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 苏州园林水榭, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 苏州园林水榭
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -2109,7 +2737,11 @@ entity_name: suzhou_garden_waterside_pavilion
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 苏州园林水榭, fallback, 最少可行回退
+primary_terms:
+  - 苏州园林水榭
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -2125,7 +2757,15 @@ entity_name: imperial_garden_main_hall
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 皇家园林, imperial garden, 大殿, 轴线, 琉璃瓦, 默认完整构成, composition
+primary_terms:
+  - 皇家园林
+  - 大殿
+  - 轴线
+  - 琉璃瓦
+  - 默认完整构成
+  - composition
+synonyms:
+  - imperial garden
 -->
 
 默认完整构成合同：
@@ -2149,7 +2789,13 @@ entity_name: imperial_garden_main_hall
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 皇家园林大殿, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 皇家园林大殿
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -2167,7 +2813,11 @@ entity_name: imperial_garden_main_hall
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 皇家园林大殿, fallback, 最少可行回退
+primary_terms:
+  - 皇家园林大殿
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。
@@ -2183,7 +2833,15 @@ entity_name: lingnan_garden_waterside_pavilion
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 岭南园林, Lingnan garden, 水榭, 满洲窗, 灰塑, 默认完整构成, composition
+primary_terms:
+  - 岭南园林
+  - 水榭
+  - 满洲窗
+  - 灰塑
+  - 默认完整构成
+  - composition
+synonyms:
+  - Lingnan garden
 -->
 
 默认完整构成合同：
@@ -2207,7 +2865,13 @@ entity_name: lingnan_garden_waterside_pavilion
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: 岭南园林水榭, 构件搭接, 宿主, 对齐, 碰撞
+primary_terms:
+  - 岭南园林水榭
+  - 构件搭接
+  - 宿主
+  - 对齐
+  - 碰撞
+synonyms: []
 -->
 
 保留来源的空间与搭接意图；锚固、结构、防火、疏散和工艺数值不属于 WILD 自动验证能力。
@@ -2224,7 +2888,11 @@ entity_name: lingnan_garden_waterside_pavilion
 topic: fallback
 status: experimental
 authority: domain_reference
-keywords: 岭南园林水榭, fallback, 最少可行回退
+primary_terms:
+  - 岭南园林水榭
+  - fallback
+  - 最少可行回退
+synonyms: []
 -->
 
 - 触发条件：仅限快速/低复杂度模式、性能预算不足或详细构成确定性失败。

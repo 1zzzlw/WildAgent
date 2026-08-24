@@ -1,21 +1,19 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: roof
 entity_name: roof_and_eaves_family
 topic: parameters
-wild_version: "1.1"
 status: supported
 authority: schema
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 屋顶
   - 屋檐
   - roof
-  - cornice
   - canopy
   - roofType
+  - cornice
+synonyms: []
 ---
 
 # 屋顶、屋檐与顶部围护构件
@@ -33,7 +31,16 @@ entity_name: supported_roof_type
 topic: parameters
 status: supported
 authority: schema
-keywords: roof, roofType, gable, hip, dome, flat, chinese_curved, chinese_pagoda
+primary_terms:
+  - roof
+  - roofType
+  - gable
+  - hip
+  - dome
+  - flat
+  - chinese_curved
+  - chinese_pagoda
+synonyms: []
 -->
 
 | 构件 | type | 核心参数 | 变体 |
@@ -50,7 +57,16 @@ entity_name: roof_type_reference
 topic: classification
 status: experimental
 authority: domain_reference
-keywords: roofType, 屋顶选型, gable, hip, dome, flat, chinese_curved, chinese_pagoda
+primary_terms:
+  - roofType
+  - 屋顶选型
+  - gable
+  - hip
+  - dome
+  - flat
+  - chinese_curved
+  - chinese_pagoda
+synonyms: []
 -->
 
 | 屋顶类型 | roofType | 适用建筑 |
@@ -72,7 +88,14 @@ entity_name: proposed_roof_accessories
 topic: constraints
 status: proposed
 authority: domain_reference
-keywords: cornice, canopy, chimney, 檐口, 雨棚, 烟囱
+primary_terms:
+  - cornice
+  - canopy
+  - chimney
+  - 檐口
+  - 雨棚
+  - 烟囱
+synonyms: []
 -->
 
 `cornice`、`canopy`、`chimney` 目前不是独立 WILD 类型。静态檐口可用 `primitive.profile_sweep`，雨棚和烟囱外观可用 `primitive`、`beam`、`column` 组合；当前没有自动沿墙挤出、门头雨棚注入或屋顶穿孔机制。

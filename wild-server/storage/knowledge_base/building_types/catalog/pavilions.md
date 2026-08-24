@@ -1,19 +1,15 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 entity_name: pavilion
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/catalog/pavilions.md
-keywords:
+primary_terms:
   - 凉亭
-  - pavilion
   - 廊架
   - 中式亭
+synonyms:
+  - pavilion
 ---
 
 # 轻量建筑分类：凉亭（Pavilion）

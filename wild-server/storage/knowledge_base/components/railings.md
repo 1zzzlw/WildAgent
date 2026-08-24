@@ -1,21 +1,19 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: railing
 entity_name: path_railing_component
 topic: schema
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 栏杆
   - railing
   - geometry.components
   - path
   - postSpacing
   - railLevels
+synonyms: []
 ---
 
 # 路径栏杆组合构件

@@ -20,7 +20,7 @@ AIGC:
 | `wild-server/tests/**/test_*.py` | 是 | 否 | 后端确定性单元与集成回归 |
 | `wild-web/scripts/check-*.mjs` | 是 | 否 | 前端核心、编译器、渲染与状态集成回归 |
 | `wild-web` 生产构建 | 是 | 否 | TypeScript、Vue 和 Vite 构建检查 |
-| `scripts/rag/evaluate_component_rag.py` | 建议用于知识库变更 | 否 | 固定题集评估 RAG 检索命中 |
+| `scripts/rag/eval_retrieval.py --embedding hash` | 建议用于知识库变更的本地冒烟 | 否 | 固定题集验证 RAG 分片、过滤与评测流程 |
 | `tests/misc/show_langgraph_graph.py` | 结构变更时使用 | HTML 渲染需要 CDN | 校验并展示实际编译的 LangGraph |
 | `wild-server/test_graph_minimal.py` | 否 | 是 | 真实模型完整图人工冒烟 |
 
@@ -130,14 +130,14 @@ cd E:\AgentProject\WildAgent\wild-server
 
 ## 5. RAG 专项评测
 
-文件：`wild-server/scripts/rag/evaluate_component_rag.py`。
+文件：`wild-server/scripts/rag/eval_retrieval.py`。
 
 ```powershell
 cd E:\AgentProject\WildAgent\wild-server
-.venv\Scripts\python.exe -B scripts\rag\evaluate_component_rag.py
+.venv\Scripts\python.exe -B scripts\rag\eval_retrieval.py --embedding hash
 ```
 
-它使用固定问题集、临时 Chroma 集合和本地 HashEmbeddingFunction，检查真实分片、metadata 过滤、召回和排序；不需要 API Key，也不会修改 `storage/chroma`。知识库、分片器、metadata 或检索策略变更后应运行。
+该命令使用当前统一评测集、临时 Chroma 集合和本地 HashEmbeddingFunction，检查真实分片、metadata 过滤和评测流程；不需要 API Key，也不会修改 `storage/chroma`。Hash 模式不代表真实语义召回质量；需要评估真实召回率时，按 `scripts/rag/README_EVAL_RETRIEVAL.md` 使用默认模式或真实 embedding 临时索引。
 
 ## 6. 后端根目录人工模型脚本
 
@@ -195,7 +195,7 @@ npm run check:rendering
 | checkpointer、WebSocket、断线恢复 | `tests/network/test_generation_job_service.py`、`tests/misc/test_langgraph_checkpoint_resume.py`、`tests/network/test_ws_agent_disconnect.py` |
 | Blueprint Schema、空间与校验 | `tests/blueprint/test_blueprint_material_validation.py`、`tests/validators/test_spatial_validation.py`、`tests/repair/test_merge_precision.py`、`npm run check:core` |
 | 组件或渲染 | 相关后端组件测试 + `npm run check:compiler` + `npm run check:core` + `npm run check:rendering` |
-| RAG 文档、分片、metadata | 两个 RAG 自动测试 + `evaluate_component_rag.py` |
+| RAG 文档、分片、metadata | 两个 RAG 自动测试 + `eval_retrieval.py` |
 | 前端 Agent 协议或状态 | 后端 WebSocket 测试 + `npm run build` + `npm run check:compiler` |
 | 部署就绪与模型响应兼容 | `tests/misc/test_deployment_preflight.py`、`tests/misc/test_readiness.py`、`tests/assets/test_model_client_compat.py` |
 

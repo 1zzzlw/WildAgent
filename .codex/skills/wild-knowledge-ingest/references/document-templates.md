@@ -47,7 +47,11 @@ entity_name: <canonical entity id>
 topic: assembly
 status: supported
 authority: engine
-keywords: <中文名>, <英文名>, <WILD 字段>
+primary_terms:
+  - <正式中文名>
+  - <WILD 类型或字段>
+synonyms:
+  - <英文名或常用别名>
 -->
 
 ##### `<具体变体>` 定义与适用场景
@@ -119,7 +123,12 @@ entity_name: <stable_id>
 topic: composition
 status: <status>
 authority: <authority>
-keywords: <建筑名>, <英文名>, <身份组件>, <WILD 类型>
+primary_terms:
+  - <建筑正式名称>
+  - <身份术语>
+  - <WILD 类型>
+synonyms:
+  - <英文名或常用别名>
 -->
 
 <一句定义，说明该类型区别于相邻类型的核心身份。>

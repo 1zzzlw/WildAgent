@@ -272,6 +272,7 @@ async def agent_websocket(ws: WebSocket):
                 continue
 
             protocol_version = data.get("protocol_version")
+
             if protocol_version not in (None, AGENT_PROTOCOL_VERSION):
                 await _send_event(ws, {
                     "type": "error",
@@ -497,7 +498,9 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     _COMP_TYPES = {
         config.component_type for config in get_implemented_components()
     }
+
     _OUR_NODES = {"classifier", "chat", "patch", "architecture", "skeleton", "merge", "final_validate", "callback"}
+
     for ct in _COMP_TYPES:
         _OUR_NODES.add(f"{ct}_gen")
         _OUR_NODES.add(f"{ct}_val")
@@ -505,6 +508,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     reasoning_token = bind_reasoning_callback(
         send_thinking_delta if thinking_mode else None
     )
+
     try:
         graph_input = initial_state
         if resume:
@@ -544,6 +548,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             if final_state is None
             else empty_event_stream()
         )
+        
         async for event in event_stream:
             kind = event.get("event")
             node_name = event.get("name", "")
@@ -1061,8 +1066,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         f"LLM {total_llm_ms}ms, tokens {total_tokens['input'] + total_tokens['output']}"
     )
 
-
-
 def _detect_building_type(message: str) -> str:
     """从用户消息推断建筑类型"""
     type_keywords = {
@@ -1086,7 +1089,6 @@ def _generation_failure_message(node_outputs: dict, final_state: dict) -> str:
         or final_state.get("error")
         or "最终 Blueprint 缺失"
     )
-
 
 async def _handle_with_langchain(ws: WebSocket, data: dict):
     """执行一次用户请求，并把 QueryResult 翻译成 WebSocket 协议消息。
@@ -1143,11 +1145,11 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             ws, request_id, session_id, status=status, content=content,
         )
 
-    # ===== Phase 1: 分析 + 生成 =====
+    # Phase 1: 分析 + 生成
     await send_step("analyzing", "正在分析您的需求...")
     await send_step("generating", "正在调用 AI 处理，请耐心等待...")
 
-    # ===== Phase 2: LLM 查询（统一入口，AI 自行判断意图）=====
+    # Phase 2: LLM 查询（统一入口，AI 自行判断意图）
     if thinking_mode:
         await send_thinking_status("thinking")
     try:
@@ -1171,7 +1173,7 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             "当前模型接口没有返回 reasoning_content。",
         )
 
-    # ===== Phase 3: 处理结果（按 AI 输出的格式分发）=====
+    # Phase 3: 处理结果（按 AI 输出的格式分发）
     if result.blueprint is not None:
         # ── 生成类：完整 Blueprint ──────────────────────────
         # 只展示每个校验器最后一次结果，修正后的 recheck 覆盖初检。
@@ -1186,7 +1188,7 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
                 status="error" if pr.has_error else "done",
                 label=f"[{pr.step}] {pr.name}",
             )
-
+ 
         await send_step("saving", "正在保存蓝图文件...")
         delivery_blueprint = (
             result.blueprint

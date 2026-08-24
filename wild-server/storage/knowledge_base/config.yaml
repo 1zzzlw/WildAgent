@@ -1,0 +1,60 @@
+# 知识库路径级 metadata 默认值。
+# 合并顺序：defaults → 按书写顺序命中的 mapping_rules → Markdown 文件头。
+# 因此更具体的规则要写在更靠后的位置，文件头可覆盖任何默认值。
+# path_pattern 使用相对路径：* 匹配一层，** 用于递归子目录。
+version: 1
+
+defaults:
+  wild_version: "1.1"
+
+mapping_rules:
+  - path_pattern: "BLUEPRINT-SPEC-*.md"
+    metadata:
+      doc_type: blueprint_spec
+      doc_scope: generation
+      knowledge_layer: wild_schema
+      entity_type: schema
+
+  - path_pattern: "BLUEPRINT-SPEC-MINIMAL.md"
+    metadata:
+      doc_scope: system
+
+  - path_pattern: "building_types/**/*.md"
+    metadata:
+      doc_type: building_type
+      doc_scope: generation
+      knowledge_layer: architecture
+      entity_type: building
+
+  - path_pattern: "components/*.md"
+    metadata:
+      doc_type: component
+      doc_scope: generation
+
+  - path_pattern: "recipes/*.md"
+    metadata:
+      doc_type: recipe
+      doc_scope: generation
+
+  - path_pattern: "patterns/*.md"
+    metadata:
+      doc_type: pattern
+      doc_scope: generation
+      knowledge_layer: project_pattern
+
+  # README 和目录型文档必须放在普通目录规则之后，以覆盖生成类默认值。
+  - path_pattern: "README.md"
+    metadata:
+      doc_type: index
+      doc_scope: index
+      knowledge_layer: navigation
+      entity_type: index
+      topic: navigation
+
+  - path_pattern: "*/README.md"
+    metadata:
+      doc_type: index
+      doc_scope: index
+      knowledge_layer: navigation
+      entity_type: index
+      topic: navigation

@@ -1,15 +1,12 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: door
 entity_name: static_door_component
 topic: schema
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 门
   - door
   - geometry.components
@@ -19,6 +16,7 @@ keywords:
   - 推拉门
   - 双开门
   - 门亮子
+synonyms: []
 ---
 
 # 门组合构件（当前引擎支持）

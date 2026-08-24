@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: structural_component
 entity_name: structural_component_family
 topic: parameters
-wild_version: "1.1"
 status: supported
 authority: schema
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 结构构件
   - column
   - beam
   - floor
   - truss
+synonyms: []
 ---
 
 # 结构构件：柱、梁与楼板
@@ -32,7 +30,15 @@ entity_name: supported_structural_component_types
 topic: parameters
 status: supported
 authority: schema
-keywords: column, beam, floor, primitive, 柱, 梁, 楼板
+primary_terms:
+  - column
+  - beam
+  - floor
+  - primitive
+  - 柱
+  - 梁
+  - 楼板
+synonyms: []
 -->
 
 | 构件 | type | 核心参数 | 变体 |
@@ -52,7 +58,13 @@ entity_name: truss_fallback
 topic: constraints
 status: supported
 authority: engine
-keywords: truss, beam, primitive, 桁架, 降级
+primary_terms:
+  - truss
+  - beam
+  - primitive
+  - 桁架
+  - 降级
+synonyms: []
 -->
 
 当前没有 `type: "truss"`。需要桁架外观时，显式使用多根 `beam` 或 `primitive` 表达上弦、下弦和腹杆；引擎不会根据 `trussType`、`panelCount` 自动生成杆件网络。
@@ -65,7 +77,15 @@ entity_name: proposed_truss_type
 topic: definition
 status: proposed
 authority: domain_reference
-keywords: trussType, king_post, queen_post, fink, howe, pratt, warren
+primary_terms:
+  - trussType
+  - king_post
+  - queen_post
+  - fink
+  - howe
+  - pratt
+  - warren
+synonyms: []
 -->
 
 用户提供的完整规范提出 `truss` 类型以及 king_post、queen_post、fink、howe、pratt、warren 六种形式。该设计尚未进入 WILD v1.1 Schema、构件注册表或 resolver，只保留为扩展需求。

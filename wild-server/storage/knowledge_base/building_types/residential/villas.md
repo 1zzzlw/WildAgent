@@ -1,23 +1,19 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: residential
 entity_name: villa
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/residential/villas.md
-keywords:
+primary_terms:
   - 别墅
-  - villa
   - 现代别墅
   - 中式传统别墅
   - 新中式别墅
   - 四合院
   - 低层住宅
+synonyms:
+  - villa
 ---
 
 # 居住建筑：别墅
@@ -36,7 +32,13 @@ entity_name: modern_villa
 topic: assembly
 status: supported
 authority: engine
-keywords: 现代别墅, modern villa, 架空层, pilotis, 水平长窗
+primary_terms:
+  - 现代别墅
+  - 架空层
+  - 水平长窗
+  - pilotis
+synonyms:
+  - modern villa
 -->
 
 ### 构件清单（仅列当前引擎支持的类型）
@@ -112,7 +114,13 @@ entity_name: chinese_traditional_villa
 topic: assembly
 status: supported
 authority: engine
-keywords: 中式别墅, Chinese traditional villa, 四合院, 江南民居, 木构架
+primary_terms:
+  - 中式别墅
+  - 四合院
+  - 江南民居
+  - 木构架
+synonyms:
+  - Chinese traditional villa
 -->
 
 ### 构件清单
@@ -194,7 +202,12 @@ entity_name: neo_chinese_villa
 topic: assembly
 status: supported
 authority: engine
-keywords: 新中式别墅, neo-Chinese villa, 框架结构, 传统美学
+primary_terms:
+  - 新中式别墅
+  - 框架结构
+  - 传统美学
+synonyms:
+  - neo-Chinese villa
 -->
 
 新中式别墅采用**框架结构 + 传统坡屋顶 + 简化装饰**。构件组合为：

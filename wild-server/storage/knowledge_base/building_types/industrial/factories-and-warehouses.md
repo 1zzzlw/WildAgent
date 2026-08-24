@@ -1,22 +1,18 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: industrial
 entity_name: industrial_building
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/industrial/factories-and-warehouses.md
-keywords:
+primary_terms:
   - 工业建筑
   - 厂房
   - 仓储
   - 单层厂房
   - 工业上楼
   - 仓库
+synonyms: []
 ---
 
 # 工业建筑：厂房 / 仓储
@@ -34,7 +30,14 @@ entity_name: steel_factory
 topic: assembly
 status: supported
 authority: engine
-keywords: 厂房, factory, 轻钢, steel, 单层, 工业
+primary_terms:
+  - 厂房
+  - 轻钢
+  - steel
+  - 单层
+  - 工业
+synonyms:
+  - factory
 -->
 
 ### 构件清单
@@ -99,7 +102,13 @@ entity_name: warehouse
 topic: assembly
 status: supported
 authority: engine
-keywords: 仓储, warehouse, 平房仓, 筒仓, 冷链
+primary_terms:
+  - 仓储
+  - 平房仓
+  - 筒仓
+  - 冷链
+synonyms:
+  - warehouse
 -->
 
 仓储建筑与单层厂结构相似，差异：

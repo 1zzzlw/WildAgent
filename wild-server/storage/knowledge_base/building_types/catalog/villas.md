@@ -1,20 +1,16 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 entity_name: villa
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/catalog/villas.md
-keywords:
+primary_terms:
   - 别墅
-  - villa
   - 现代别墅
   - 中式别墅
   - 欧式别墅
+synonyms:
+  - villa
 ---
 
 # 轻量建筑分类：别墅（Villa）

@@ -1,21 +1,17 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: agricultural
 entity_name: agricultural_building
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/agricultural/agricultural-buildings.md
-keywords:
+primary_terms:
   - 农业建筑
   - 温室
   - 养殖场
   - 粮仓
   - 农机站
+synonyms: []
 ---
 
 # 农业建筑：温室 / 养殖 / 粮仓 / 农机
@@ -33,7 +29,13 @@ entity_name: greenhouse
 topic: assembly
 status: supported
 authority: engine
-keywords: 温室, greenhouse, solar, 日光温室, 连栋温室
+primary_terms:
+  - 温室
+  - 日光温室
+  - 连栋温室
+  - solar
+synonyms:
+  - greenhouse
 -->
 
 ### 最少可行 Blueprint
@@ -79,7 +81,14 @@ entity_name: livestock_barn
 topic: assembly
 status: supported
 authority: engine
-keywords: 养殖场, livestock, 鸡舍, poultry, 猪舍, 牛舍
+primary_terms:
+  - 养殖场
+  - 鸡舍
+  - 猪舍
+  - 牛舍
+synonyms:
+  - livestock
+  - poultry
 -->
 
 与单厂结构相似，低矮宽大。差异：
@@ -125,7 +134,13 @@ entity_name: granary
 topic: assembly
 status: supported
 authority: engine
-keywords: 粮仓, granary, 筒仓, silo, 圆形
+primary_terms:
+  - 粮仓
+  - 筒仓
+  - 圆形
+synonyms:
+  - granary
+  - silo
 -->
 
 圆形粮仓 = 弧形 `wall`（`curve={type:"arc", sweep:360}`）+ `floor` 圆形 + `roof` dome。

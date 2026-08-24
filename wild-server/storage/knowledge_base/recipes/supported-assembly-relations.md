@@ -1,20 +1,18 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: constraint
 entity_type: assembly
 entity_name: supported_assembly_relations
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/src/wild-core/src/primitive/resolver.ts
-keywords:
+primary_terms:
   - 构件组合
   - assembly relation
   - resolver
   - wall opening
   - column beam
+synonyms: []
 ---
 
 # WILD v1.1 已实现的构件组合关系
@@ -29,7 +27,13 @@ entity_name: component_reference_order
 topic: constraints
 status: supported
 authority: engine
-keywords: geometry.components, geometry.elements, reference order, parentWall, 引用顺序
+primary_terms:
+  - geometry.components
+  - geometry.elements
+  - reference order
+  - parentWall
+  - 引用顺序
+synonyms: []
 -->
 
 `geometry.components` 编译时会在完整的 `geometry.elements` 数组中查找父元素，因此组件引用不要求父元素在数组中先出现。引用目标仍必须存在、`id` 必须唯一且类型必须匹配；组件之间不能把另一个组件的编译产物当作父元素。把结构元素写在组件之前可以提高人工可读性，但不是当前编译器的执行约束。
@@ -42,7 +46,14 @@ entity_name: wall_opening_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: wall, opening, parentWall, resolveOpenings, 墙体, 洞口
+primary_terms:
+  - wall
+  - opening
+  - parentWall
+  - resolveOpenings
+  - 墙体
+  - 洞口
+synonyms: []
 -->
 
 `opening.parentWall` 必须引用已存在的 `wall.id`。直墙上 `opening.from[0]` 表示洞口左边缘沿墙方向的距离，`from[1]` 是洞口底部世界 Y；弧墙上 `from[0]` 仍按弧长解释，但 `from[1]` 按相对墙底偏移处理。引擎把洞口写入父墙切口并计算覆盖几何位置。
@@ -55,7 +66,15 @@ entity_name: wall_attached_component_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: door, window, bay_window, canopy, balcony, parentWall, 墙挂组件
+primary_terms:
+  - door
+  - window
+  - bay_window
+  - canopy
+  - balcony
+  - parentWall
+  - 墙挂组件
+synonyms: []
 -->
 
 - `door`、`window` 和 `bay_window` 必须通过 `parentWall` 引用 `wall`，并在父墙上生成开口及附属几何；会形成开口的组件当前只支持直线墙或单段圆弧墙。
@@ -71,7 +90,12 @@ entity_name: wall_joint_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: wall joint, resolveWallJoints, 墙角闭合, XZ
+primary_terms:
+  - wall joint
+  - resolveWallJoints
+  - 墙角闭合
+  - XZ
+synonyms: []
 -->
 
 两面具有重叠竖向范围的墙，其端点 XZ 距离小于 0.01m 时，`resolveWallJoints` 会把对应端点的 XZ 取平均；Y 值各自保留。若两墙接近直角，引擎还会把每面墙的端部沿自身方向延伸另一面墙厚度的一半，以减小直角墙角缝隙。该逻辑只处理端点相交，不会自动解决 T 形中接或任意交叉墙。
@@ -84,7 +108,12 @@ entity_name: column_beam_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: column, beam, resolveBeamSupports, 柱梁吸附
+primary_terms:
+  - column
+  - beam
+  - resolveBeamSupports
+  - 柱梁吸附
+synonyms: []
 -->
 
 梁端在 XZ 平面接近柱顶、且距离小于 `column.bottomRadius + 0.05` 时，`resolveBeamSupports` 会把该梁端的 XYZ 对齐到柱顶。当前逻辑只处理 `beam`，不会处理不存在的 `truss` 类型。
@@ -97,7 +126,15 @@ entity_name: envelope_boundary_completion
 topic: assembly
 status: supported
 authority: engine
-keywords: floor, roof, wall, resolveFloorRegions, resolveRoofBoundary, 楼板, 屋顶
+primary_terms:
+  - floor
+  - roof
+  - wall
+  - resolveFloorRegions
+  - resolveRoofBoundary
+  - 楼板
+  - 屋顶
+synonyms: []
 -->
 
 - 蓝图完全没有 `floor` 且至少有三面墙时，引擎会按全部墙体 XZ 包围盒补一个厚 0.2m 的矩形楼板；已有任意楼板时不再补全。
@@ -112,7 +149,18 @@ entity_name: surface_attached_component_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: railing, ramp, cornice, chimney, parentFloor, parentRoof, 栏杆, 坡道, 檐口, 烟囱
+primary_terms:
+  - railing
+  - ramp
+  - chimney
+  - parentFloor
+  - parentRoof
+  - 栏杆
+  - 坡道
+  - 檐口
+  - 烟囱
+  - cornice
+synonyms: []
 -->
 
 - `railing` 通过世界坐标 `path` 生成立柱与横杆；提供 `parentFloor` 时，路径以父楼板左下角和顶面为局部原点。
@@ -129,7 +177,15 @@ entity_name: template_and_placement_relation
 topic: assembly
 status: supported
 authority: engine
-keywords: templates, instances, placements, expandTemplates, expandPlacements, 模板, 排布
+primary_terms:
+  - templates
+  - instances
+  - placements
+  - expandTemplates
+  - expandPlacements
+  - 模板
+  - 排布
+synonyms: []
 -->
 
 `geometry.instances` 可引用 `geometry.templates`，引擎为实例保存 position、rotation、scale 变换并允许材质覆盖。`geometry.placements` 也引用模板，但当前表面查询只支持 `gable` 屋顶的 `left` 和 `right`；墙、楼板、梁以及其他屋顶面的通用排布仍未实现。

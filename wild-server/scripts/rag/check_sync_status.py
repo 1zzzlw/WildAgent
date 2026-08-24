@@ -1,4 +1,12 @@
-"""检查知识库同步状态"""
+r"""检查知识库同步状态。
+
+在 PowerShell 中进入 ``wild-server`` 目录后运行：
+
+    .\.venv\Scripts\python.exe -m scripts.rag.check_sync_status
+
+注意：导入 ``agent_service`` 会初始化 RAG Loader，并自动执行一次知识库索引同步；
+因此这里显示的是本次同步结果，不只是读取上一次运行留下的历史状态。
+"""
 from app.services.agent_service import agent_service
 
 stats = agent_service.spec_loader.last_sync_stats

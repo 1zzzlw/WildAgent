@@ -63,7 +63,8 @@ METADATA_FIELD_GROUPS = [
     ("内容校验", ["body_hash", "content_hash"]),
     ("时间", ["mtime"]),
     ("文档分类", ["doc_scope", "knowledge_layer", "entity_type", "topic", "wild_version",
-                  "keywords", "building_category", "entity_aliases", "constraint_tags", "role_tags"]),
+                  "primary_terms", "synonyms", "building_category", "entity_aliases",
+                  "constraint_tags", "role_tags", "keywords"]),
 ]
 
 

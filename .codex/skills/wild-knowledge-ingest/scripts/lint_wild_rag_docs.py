@@ -5,8 +5,11 @@ import json
 import re
 import sys
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from functools import lru_cache
+from pathlib import Path, PurePosixPath
 from typing import Iterable
+
+import yaml
 
 
 REQUIRED_METADATA = (
@@ -20,8 +23,8 @@ REQUIRED_METADATA = (
     "status",
     "authority",
     "source",
-    "keywords",
 )
+TERM_FIELDS = {"primary_terms", "synonyms", "keywords"}
 
 ALLOWED_VALUES = {
     "doc_type": {
@@ -111,7 +114,13 @@ def parse_simple_yaml(lines: list[str]) -> dict[str, object]:
             continue
         key, value = pair.groups()
         if value:
-            if key == "keywords" and "," in value:
+            if value == "[]":
+                result[key] = []
+            elif key in TERM_FIELDS and value.startswith("[") and value.endswith("]"):
+                result[key] = [
+                    _scalar(item) for item in value[1:-1].split(",") if item.strip()
+                ]
+            elif key in TERM_FIELDS and "," in value:
                 result[key] = [_scalar(item) for item in value.split(",") if item.strip()]
             else:
                 result[key] = _scalar(value)
@@ -129,6 +138,42 @@ def split_frontmatter(lines: list[str]) -> tuple[dict[str, object], int]:
         if lines[index].strip() == "---":
             return parse_simple_yaml(lines[1:index]), index + 1
     return {}, 0
+
+
+@lru_cache(maxsize=8)
+def _read_metadata_config(config_path: str) -> dict[str, object]:
+    loaded = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")) or {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _path_metadata(path: Path) -> dict[str, object]:
+    """读取最近的 config.yaml，并按 defaults → mapping_rules 解析路径默认值。"""
+    config_path = next(
+        (parent / "config.yaml" for parent in path.resolve().parents if (parent / "config.yaml").is_file()),
+        None,
+    )
+    if config_path is None:
+        return {}
+    config = _read_metadata_config(str(config_path))
+    defaults = config.get("defaults", {})
+    resolved = dict(defaults) if isinstance(defaults, dict) else {}
+    relative_path = path.resolve().relative_to(config_path.parent.resolve()).as_posix()
+    rules = config.get("mapping_rules", [])
+    if not isinstance(rules, list):
+        return resolved
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        pattern = str(rule.get("path_pattern") or "").strip()
+        rule_metadata = rule.get("metadata", {})
+        if pattern and isinstance(rule_metadata, dict) and PurePosixPath(relative_path).match(pattern):
+            resolved.update(rule_metadata)
+    return resolved
+
+
+def _resolved_frontmatter(path: Path, lines: list[str]) -> dict[str, object]:
+    declared, _ = split_frontmatter(lines)
+    return {**_path_metadata(path), **declared}
 
 
 def iter_markdown_files(inputs: Iterable[Path]) -> list[Path]:
@@ -189,14 +234,26 @@ def scan_structure(lines: list[str]) -> tuple[list[Heading], list[tuple[int, str
 
 
 def metadata_issues(path: Path, lines: list[str]) -> list[Issue]:
-    metadata, _ = split_frontmatter(lines)
+    declared, body_start = split_frontmatter(lines)
     issues: list[Issue] = []
-    if not metadata:
+    if not declared:
         return [Issue("error", "missing_frontmatter", str(path), 1, "缺少文档级 YAML frontmatter")]
+    path_metadata = _path_metadata(path)
+    metadata = {**path_metadata, **declared}
+
+    redundant_fields = sorted(
+        key for key, value in declared.items()
+        if key in path_metadata and path_metadata[key] == value
+    )
+    if redundant_fields:
+        issues.append(Issue(
+            "warning", "redundant_path_metadata", str(path), 1,
+            f"以下字段已由 config.yaml 提供，可从文件头删除：{', '.join(redundant_fields)}",
+        ))
 
     for key in REQUIRED_METADATA:
         value = metadata.get(key)
-        if value in (None, "", []):
+        if key not in metadata or value in (None, "", []):
             issues.append(Issue("error", "missing_metadata", str(path), 1, f"metadata 缺少 {key}"))
 
     for key, allowed in ALLOWED_VALUES.items():
@@ -206,14 +263,93 @@ def metadata_issues(path: Path, lines: list[str]) -> list[Issue]:
                 Issue("error", "invalid_metadata_value", str(path), 1, f"{key}={value!r} 不在允许值中")
             )
 
-    keywords = metadata.get("keywords")
-    if keywords not in (None, "") and not isinstance(keywords, list):
-        issues.append(Issue("error", "invalid_keywords", str(path), 1, "keywords 必须是 YAML 列表"))
+    if "keywords" in declared:
+        issues.append(Issue(
+            "error", "legacy_keywords", str(path), 1,
+            "keywords 已停用，请拆成 primary_terms 和 synonyms",
+        ))
+    issues.extend(_term_field_issues(path, metadata, line=1, require_both=True))
+    issues.extend(_term_yaml_syntax_issues(path, lines[1:body_start - 1], line_offset=1))
+
+    text = "\n".join(lines)
+    for match in RAG_META_BLOCK_RE.finditer(text):
+        rag_metadata = parse_simple_yaml(match.group(1).splitlines())
+        line = text[:match.start()].count("\n") + 1
+        if "keywords" in rag_metadata:
+            issues.append(Issue(
+                "error", "legacy_keywords", str(path), line,
+                "rag-meta 中的 keywords 已停用，请拆成 primary_terms 和 synonyms",
+            ))
+        if TERM_FIELDS.intersection(rag_metadata):
+            issues.extend(_term_field_issues(path, rag_metadata, line=line, require_both=True))
+            issues.extend(_term_yaml_syntax_issues(
+                path,
+                match.group(1).splitlines(),
+                line_offset=line + 1,
+            ))
 
     if metadata.get("doc_type") == "index" and metadata.get("doc_scope") != "index":
         issues.append(Issue("error", "index_scope", str(path), 1, "index 文档必须使用 doc_scope: index"))
     if path.name.casefold() == "readme.md" and metadata.get("doc_scope") != "index":
         issues.append(Issue("warning", "readme_scope", str(path), 1, "README 建议使用 doc_scope: index"))
+    return issues
+
+
+def _term_yaml_syntax_issues(
+    path: Path,
+    lines: list[str],
+    *,
+    line_offset: int,
+) -> list[Issue]:
+    """正式知识库必须使用 YAML 数组，而不是逗号分隔的普通字符串。"""
+    issues: list[Issue] = []
+    for index, raw_line in enumerate(lines):
+        match = re.match(r"^\s*(primary_terms|synonyms):\s*(.*?)\s*$", raw_line)
+        if not match:
+            continue
+        value = match.group(2)
+        if value and not (value.startswith("[") and value.endswith("]")):
+            issues.append(Issue(
+                "error", "term_field_not_yaml_array", str(path), line_offset + index,
+                f"{match.group(1)} 必须使用 YAML 数组；推荐换行后逐项写 '- 术语'",
+            ))
+    return issues
+
+
+def _term_field_issues(
+    path: Path,
+    metadata: dict[str, object],
+    *,
+    line: int,
+    require_both: bool,
+) -> list[Issue]:
+    issues: list[Issue] = []
+    primary = metadata.get("primary_terms")
+    synonyms = metadata.get("synonyms")
+    if require_both and "primary_terms" not in metadata:
+        issues.append(Issue("error", "missing_primary_terms", str(path), line, "缺少 primary_terms"))
+    if require_both and "synonyms" not in metadata:
+        issues.append(Issue("error", "missing_synonyms", str(path), line, "缺少 synonyms"))
+    if primary is not None and (not isinstance(primary, list) or not primary):
+        issues.append(Issue(
+            "error", "invalid_primary_terms", str(path), line,
+            "primary_terms 必须是至少包含一个词的 YAML 数组",
+        ))
+    if synonyms is not None and not isinstance(synonyms, list):
+        issues.append(Issue(
+            "error", "invalid_synonyms", str(path), line,
+            "synonyms 必须是 YAML 数组；没有同义词时写 []",
+        ))
+    if isinstance(primary, list) and isinstance(synonyms, list):
+        overlap = sorted(
+            {str(item).casefold() for item in primary}
+            & {str(item).casefold() for item in synonyms}
+        )
+        if overlap:
+            issues.append(Issue(
+                "error", "overlapping_terms", str(path), line,
+                f"主术语与同义词重复：{', '.join(overlap)}",
+            ))
     return issues
 
 
@@ -363,7 +499,7 @@ def structure_issues(
 
 
 def proposed_claim_issues(path: Path, lines: list[str]) -> list[Issue]:
-    metadata, _ = split_frontmatter(lines)
+    metadata = _resolved_frontmatter(path, lines)
     if metadata.get("status") != "proposed":
         return []
     text = "\n".join(lines)
@@ -404,7 +540,7 @@ def _rag_meta_in_intro(lines: list[str], heading: Heading) -> list[dict[str, obj
 
 def building_composition_issues(path: Path, lines: list[str]) -> list[Issue]:
     """Warn when a detailed building entity was reduced to a minimal prose summary."""
-    metadata, _ = split_frontmatter(lines)
+    metadata = _resolved_frontmatter(path, lines)
     if metadata.get("doc_type") != "building_type" or "catalog" in {
         part.casefold() for part in path.parts
     }:

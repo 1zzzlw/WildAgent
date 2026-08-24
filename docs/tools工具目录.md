@@ -125,16 +125,21 @@ python scripts/building/test_building_category.py
 
 ---
 
-### 5. evaluate_component_rag.py
-**功能**：评估组件知识库 RAG 性能
+### 5. eval_retrieval.py
+**功能**：评估知识库 RAG 检索质量
 
 **用途**：
-- 测试 RAG 检索质量
-- 评估不同查询的召回率和精确度
+- 计算 Hit@K、Recall@K 和 MRR
+- 查看逐题 Top-K 命中来源、标题路径和内容摘要
+- 使用真实索引评测，或使用临时 HashEmbedding 做本地流程冒烟
 
 **使用方法**：
 ```bash
-python scripts/rag/evaluate_component_rag.py
+# 当前真实索引评测
+python scripts/rag/eval_retrieval.py
+
+# 无需 API Key 的本地流程冒烟
+python scripts/rag/eval_retrieval.py --embedding hash
 ```
 
 ---
@@ -307,7 +312,7 @@ uv run python -m scripts.deployment_preflight
 | 我想... | 使用工具 |
 |--------|---------|
 | 查看知识库分片 | `inspect_knowledge_chunks.py` |
-| 测试 RAG 检索 | `test_building_category.py` 或 `evaluate_component_rag.py` |
+| 测试 RAG 检索 | `eval_retrieval.py` |
 | 更新建筑分类 | `update_building_category.py` |
 | 检查索引同步 | `check_sync_status.py` |
 | 部署前检查 | `deployment_preflight.py` |

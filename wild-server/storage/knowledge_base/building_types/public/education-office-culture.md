@@ -1,16 +1,11 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: public
 entity_name: education_office_culture_family
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/public/education-office-culture.md
-keywords:
+primary_terms:
   - 教育建筑
   - 学校
   - 办公建筑
@@ -18,6 +13,7 @@ keywords:
   - 博物馆
   - 剧院
   - 图书馆
+synonyms: []
 ---
 
 # 公共建筑：教育 / 办公 / 文化
@@ -35,7 +31,14 @@ entity_name: school_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 学校, school, 教室, 教学楼, 幼儿园, 中小学
+primary_terms:
+  - 学校
+  - 教室
+  - 教学楼
+  - 幼儿园
+  - 中小学
+synonyms:
+  - school
 -->
 
 ### 构件清单
@@ -106,7 +109,12 @@ entity_name: office_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 办公建筑, office, 写字楼, 开敞办公
+primary_terms:
+  - 办公建筑
+  - 写字楼
+  - 开敞办公
+synonyms:
+  - office
 -->
 
 办公楼与教学楼结构相似。主要差异：层高 3.3~3.9m，走廊宽 1.8m，大量使用 `window` 落地玻璃。高层写字楼需 `column` + `beam` 框架 + `roofType=flat`。**最少可行 Blueprint 可将上面的学校示例中的教室隔墙去掉，改为大空间开敞办公。**
@@ -121,7 +129,15 @@ entity_name: cultural_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 博物馆, museum, 剧院, theater, 图书馆, library, 大空间
+primary_terms:
+  - 博物馆
+  - 剧院
+  - 图书馆
+  - 大空间
+synonyms:
+  - museum
+  - theater
+  - library
 -->
 
 ### 三种文化建筑的构件差异

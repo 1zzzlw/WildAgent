@@ -1,20 +1,16 @@
 ---
-doc_type: blueprint_spec
-doc_scope: generation
-knowledge_layer: wild_schema
-entity_type: schema
 entity_name: blueprint_spec_full
 topic: schema
-wild_version: "1.1"
 status: supported
 authority: schema
 source: BLUEPRINT-SPEC-FULL.md
-keywords:
+primary_terms:
   - WILD
   - Blueprint
   - schema
   - geometry
   - materials
+synonyms: []
 ---
 
 # Wild建筑蓝图规范文档 (Blueprint Specification)
@@ -518,7 +514,15 @@ entity_name: interactive_light_fixture
 topic: schema
 status: supported
 authority: schema
-keywords: 灯具, 台灯, 灯泡, light, table_lamp, fixtureType, lightType
+primary_terms:
+  - 灯具
+  - 台灯
+  - 灯泡
+  - light
+  - table_lamp
+  - fixtureType
+  - lightType
+synonyms: []
 -->
 
 以下对象是 `geometry.components` 数组中的台灯片段，不是完整 `.wild` 文件：

@@ -99,7 +99,7 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 | `HashEmbeddingFunction` | 无 Key / 显式 `RAG__ALLOW_HASH_FALLBACK=true` 降级 | 256 |
 
 - 当前 `.env` 为 `RAG__ALLOW_HASH_FALLBACK=false`，不会静默降级。
-- 注意：`evaluate_component_rag.py` 这类**离线评测脚本**会强制用 HashEmbeddingFunction + 临时索引，与线上 embedding 不一致（见 10.3 欠缺项）。
+- 注意：`eval_retrieval.py --embedding hash` 仅用于本地流程冒烟，会使用 HashEmbeddingFunction + 临时索引，结果不能代表线上 embedding 的语义质量。
 
 ---
 
@@ -248,7 +248,6 @@ L2 范数 = 1.0（已归一化）
 | `check_sync_status.py` | 打印同步状态（片段数/更新/删除、loader 类型） | 控制台 | 读线上 |
 | `inspect_knowledge_chunks.py` | 对 md 文件/目录分片，打印分片明细、统计、合法性检查 | 控制台 + `scripts/reports/inspect_chunks_<ts>.md` | 否（纯分片） |
 | `inspect_chunks_demo.py` | 分片展示报告（来源/数量/字符数/内容摘要） | 控制台 + `scripts/reports/chunks_report_<ts>.md` | 否 |
-| `evaluate_component_rag.py` | 组合构件固定评测集：临时 Chroma + **HashEmbedding**，验证分片/metadata 过滤/召回排序 | 控制台 | 否（临时索引，不改线上） |
 | `eval_retrieval.py` | **线上真实链路评测**：`RAGSpecLoader.retrieve` + 真实 embedding + `storage/chroma`；内置 28 问，支持 `--questions/--limit/--top-k/--namespace` | `scripts/reports/eval_retrieval_<ts>.md` + `eval_console_<ts>.txt` | 是（读线上） |
 
 配套文档：`README_INSPECT_CHUNKS.md`（分片工具用法）、`README_EVAL_RETRIEVAL.md`（评测报告怎么看）。
@@ -278,7 +277,6 @@ L2 范数 = 1.0（已归一化）
 | **P1** | **embedding 模型未对比** | 仅 qwen3.7-text-embedding（1024 维）单一选择；无不同模型在同一评测集上的对照 | 编写 embedding 对比脚本：同一 28 问评测集，分别用 qwen/bge-m3/text-embedding-v3 等跑 `eval_retrieval`，比较距离分布与命中质量 |
 | **P1** | **metadata 过滤利用度不足** | 检索只做 `namespace/status/authority/doc_scope` 硬过滤；`doc_type/entity_type/building_category/role_tags/constraint_tags` 等 31 个键基本未参与查询过滤（检索意图拆分后未映射到 metadata filter） | 在 `_build_rag_queries` 中让每个意图携带候选 `entity_type/building_category` 过滤，减少跨域噪声 |
 | **P2** | **混合检索未接入** | `hybrid_retriever.py`（BM25+向量融合）已实现但闲置；纯向量对精确规格词（如 `"thickness": 0.3`）不敏感 | 接入主链路或在评测集中增加"精确术语"类问题对比混合/纯向量 |
-| **P2** | **离线评测 embedding 不一致** | `evaluate_component_rag.py` 用 HashEmbedding(256 维)，与线上 1024 维语义向量不可比 | 统一：离线评测支持 `--embedding real` 或显式标注"仅验证流程不验证质量" |
 | **P2** | **检索可观测性不足** | agent 生产日志不暴露"本次生成本次用了哪些分片、距离多少"，排障依赖重跑评测 | 在 `_agent_for_query` 增加结构化日志（query → Top-K 片段 id/距离） |
 
 ---

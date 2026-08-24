@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: wall
 entity_name: wall_family
 topic: parameters
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: components/walls.md
-keywords:
+primary_terms:
   - 墙体
   - wall
   - thickness
   - height
   - material
+synonyms: []
 ---
 
 # 墙体构件分类与规则

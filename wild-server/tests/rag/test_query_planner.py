@@ -2,10 +2,34 @@ import unittest
 from unittest.mock import Mock
 
 from app.spec.loader import RAGSpecLoader
-from app.spec.query_planner import apply_llm_rewrite, build_query_plan
+from app.spec.query_planner import apply_llm_rewrite, build_alias_catalog, build_query_plan
 
 
 class QueryPlannerTest(unittest.TestCase):
+    def test_alias_catalog_uses_primary_terms_and_synonyms(self):
+        """主术语和同义词都能触发召回，但索引主题词不应成为实体别名。"""
+        catalog = build_alias_catalog([{
+            "entity_name": "zhizhai_window",
+            "entity_type": "window",
+            "primary_terms": "支摘窗, opening, assembly",
+            "synonyms": "zhizhai window, 支摘式窗",
+        }])
+
+        aliases = catalog["zhizhai_window"]["aliases"]
+        self.assertIn("支摘窗", aliases)
+        self.assertIn("opening", aliases)
+        self.assertIn("zhizhai window", aliases)
+        self.assertNotIn("assembly", aliases)
+
+    def test_alias_catalog_keeps_legacy_keywords_compatible(self):
+        """外部旧索引仍可用 keywords，正式知识库则使用两个新字段。"""
+        catalog = build_alias_catalog([{
+            "entity_name": "legacy_window",
+            "keywords": "旧窗名, legacy window",
+        }])
+
+        self.assertIn("legacy window", catalog["legacy_window"]["aliases"])
+
     def test_build_plan_resolves_commercial_alias_without_inventing_facts(self):
         catalog = {
             "retail_building": {

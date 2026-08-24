@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: facade
 entity_name: glass_curtain_wall_family
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: components/glass-curtain-walls.md
-keywords:
+primary_terms:
   - 玻璃幕墙
-  - glass curtain wall
-  - curtain wall
   - 竖梃
   - 横挺
+synonyms:
+  - glass curtain wall
+  - curtain wall
   - glass facade
 ---
 
@@ -30,7 +28,14 @@ entity_name: glass_curtain_wall_definition
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 玻璃幕墙, curtain wall, 非承重外围护, 竖梃, 横挺, 玻璃面板
+primary_terms:
+  - 玻璃幕墙
+  - 非承重外围护
+  - 竖梃
+  - 横挺
+  - 玻璃面板
+synonyms:
+  - curtain wall
 -->
 
 玻璃幕墙是位于主体结构外侧的非承重外围护体系。其视觉组成至少包含竖向骨架、横向骨架、透明玻璃和层间背衬；骨架与面板把自重和环境作用传给主体，但 WILD 只表达几何与材质，不证明真实荷载路径、锚固、气密、水密、热工或防火性能。
@@ -49,7 +54,13 @@ entity_name: glass_curtain_wall_engine_boundary
 topic: constraints
 status: supported
 authority: engine
-keywords: 无 curtain_wall, window mullions, primitive rotation, templates instances, parentWall
+primary_terms:
+  - 无 curtain_wall
+  - window mullions
+  - primitive rotation
+  - templates instances
+  - parentWall
+synonyms: []
 -->
 
 当前注册表没有 `curtain_wall`、`mullion` 或 `transom` 类型；这些词只能作为业务语义和实体名称，最终必须编译成现有元素/组件。
@@ -73,7 +84,14 @@ entity_name: glass_curtain_wall_material_roles
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: 幕墙玻璃, 金属框, spandrel, materialClass glass, transmission, roughness
+primary_terms:
+  - 幕墙玻璃
+  - 金属框
+  - materialClass glass
+  - transmission
+  - roughness
+  - spandrel
+synonyms: []
 -->
 
 幕墙至少使用三种分离的材料角色，避免骨架、玻璃和层间板共享同一材质后失去层次。
@@ -94,7 +112,14 @@ entity_name: glass_curtain_wall_applicability
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 办公塔楼, 商业综合体, 航站楼, 高铁站, 酒店, 中庭
+primary_terms:
+  - 办公塔楼
+  - 商业综合体
+  - 航站楼
+  - 高铁站
+  - 酒店
+  - 中庭
+synonyms: []
 -->
 
 - `characteristic`：商务写字楼、超高层办公、玻璃幕墙商业综合体。
@@ -111,7 +136,15 @@ entity_name: glass_curtain_wall_variants
 topic: composition
 status: experimental
 authority: domain_reference
-keywords: 明框, 隐框, 半隐框, 单元式, 点支式, 双层幕墙, 曲面幕墙
+primary_terms:
+  - 明框
+  - 隐框
+  - 半隐框
+  - 单元式
+  - 点支式
+  - 双层幕墙
+  - 曲面幕墙
+synonyms: []
 -->
 
 下列变体共享“骨架、玻璃、层间背衬分离”的基本合同；差异只体现在框的可见度、面板层数、连接件显式程度和曲面分段方式。选择变体时先满足建筑身份，再控制元素数量与透明叠层。默认只选择一种主变体；局部入口或转角可以使用第二种，但必须保持统一的楼层线和材料角色。
@@ -148,7 +181,12 @@ entity_name: glass_curtain_wall_fallbacks
 topic: fallback
 status: supported
 authority: engine
-keywords: curtain_wall 禁止, mullion 禁止, parentRoof 禁止, 幕墙降级
+primary_terms:
+  - curtain_wall 禁止
+  - mullion 禁止
+  - parentRoof 禁止
+  - 幕墙降级
+synonyms: []
 -->
 
 - 禁止输出 `type: curtain_wall`、`type: mullion` 或 `type: transom`。

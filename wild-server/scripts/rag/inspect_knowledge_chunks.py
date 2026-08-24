@@ -396,7 +396,8 @@ def main():
   python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base --output reports/inspect.md
 """,
     )
-    
+
+    # type 负责“转换格式”（字符串→路径对象），action 负责“触发行为”（存在即 True，不存在即 False）。
     parser.add_argument(
         "path",
         type=Path,
@@ -465,12 +466,15 @@ def main():
         action="store_true",
         help="不保存控制台日志（默认会保存）",
     )
-    
+
+    # 解析参数
     args = parser.parse_args()
     
     # ── 控制台日志双写（Tee）：默认启用，--no-log-output 关闭，--log-output 自定义路径 ──
     timestamp = time.strftime("%Y%m%d_%H%M%S")
+
     log_path = None
+
     if not args.no_log_output:
         if args.log_output:
             log_path = args.log_output.resolve()
@@ -491,7 +495,8 @@ def main():
     if not path.exists():
         print(f"错误: 路径不存在: {path}")
         return 1
-    
+
+    # 如果是文件就直接检查
     if path.is_file():
         chunks = inspect_file(
             path,
@@ -502,6 +507,7 @@ def main():
             show_summary=not args.no_summary,
             table_mode=args.table,
         )
+    # 如果是目录就检查目录下所有 Markdown 文件
     elif path.is_dir():
         chunks = inspect_directory(
             path,

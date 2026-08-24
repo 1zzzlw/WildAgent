@@ -22,7 +22,7 @@ import math
 import re
 import time
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from loguru import logger
@@ -304,6 +304,9 @@ class MarkdownChunker:
         "wild_version",
         "status",
         "authority",
+        "primary_terms",
+        "synonyms",
+        # 兼容尚未迁移的外部文档；正式知识库不再写 legacy keywords。
         "keywords",
     )
     _HEADING_PATTERN = re.compile(r"^(#{1,5})\s+(.+?)\s*#*\s*$")
@@ -313,10 +316,19 @@ class MarkdownChunker:
         r"^\s*\|(?:\s*:?-{3,}:?\s*\|)+\s*$"
     )
 
-    def __init__(self, chunk_size: int = 900, chunk_overlap: int = 150):
+    def __init__(
+        self,
+        chunk_size: int = 900,
+        chunk_overlap: int = 150,
+        metadata_config_path: str | Path | None = None,
+    ):
         self.chunk_size = max(200, chunk_size)
         # overlap 最多为分片长度的一半，避免相邻分片几乎完全重复。
         self.chunk_overlap = max(0, min(chunk_overlap, self.chunk_size // 2))
+        self._metadata_config_path = (
+            Path(metadata_config_path) if metadata_config_path is not None else None
+        )
+        self._metadata_config: dict[str, Any] | None = None
         try:
             from langchain_text_splitters import (
                 MarkdownHeaderTextSplitter,
@@ -360,10 +372,13 @@ class MarkdownChunker:
         # 第一阶段只按标题边界切分，不在不同标题或业务实体之间合并。
         documents = self._markdown_splitter.split_text(body)
         inferred_metadata = self._infer_document_metadata(path, doc_scope)
+        # 配置只提供路径级默认值；文档 frontmatter 始终拥有最高优先级。
+        inferred_metadata.update(self._path_rule_metadata(path))
         declared_source = frontmatter.get("source")
         for field in self._DOCUMENT_METADATA_FIELDS:
             if field in frontmatter:
                 inferred_metadata[field] = frontmatter[field]
+        self._normalize_term_metadata(inferred_metadata)
 
         chunks: list[SpecChunk] = []
         # mtime 仅供追踪来源状态，不参与分片 ID 或判重。
@@ -382,6 +397,7 @@ class MarkdownChunker:
             # 实体 metadata 按标题层级继承；更深层标题上的声明覆盖祖先声明。
             for depth in range(1, len(heading_path) + 1):
                 section_metadata.update(entity_metadata.get(heading_path[:depth], {}))
+            self._normalize_term_metadata(section_metadata)
 
             context_line = f"> 知识路径：{heading}"
             section_parts = [
@@ -534,6 +550,14 @@ class MarkdownChunker:
 
     def _parse_metadata_scalar(self, value: str) -> Any:
         value = value.strip()
+        if value == "[]":
+            return []
+        if value.startswith("[") and value.endswith("]"):
+            return [
+                item.strip().strip("'\"")
+                for item in value[1:-1].split(",")
+                if item.strip()
+            ]
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
             value = value[1:-1]
         lowered = value.casefold()
@@ -542,6 +566,65 @@ class MarkdownChunker:
         if "," in value:
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    def _normalize_term_metadata(self, metadata: dict[str, Any]) -> None:
+        """把 legacy keywords 暴露为新字段，供旧的外部文档平滑迁移。"""
+        if "keywords" not in metadata:
+            return
+        if "primary_terms" not in metadata and "synonyms" not in metadata:
+            metadata["primary_terms"] = metadata["keywords"]
+            metadata["synonyms"] = []
+
+    def _path_rule_metadata(self, path: Path) -> dict[str, Any]:
+        """按 config.yaml 合并 defaults 和命中的 mapping_rules。"""
+        config_path = self._resolve_metadata_config_path(path)
+        if config_path is None:
+            return {}
+        if self._metadata_config is None:
+            try:
+                import yaml
+
+                loaded = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+                self._metadata_config = loaded if isinstance(loaded, dict) else {}
+            except Exception as exc:
+                logger.warning(f"[RAG] 无法读取知识库 metadata 配置 {config_path}: {exc}")
+                self._metadata_config = {}
+
+        config = self._metadata_config
+        defaults = config.get("defaults", {})
+        resolved = dict(defaults) if isinstance(defaults, dict) else {}
+        try:
+            relative_path = path.resolve().relative_to(config_path.parent.resolve()).as_posix()
+        except ValueError:
+            return resolved
+
+        rules = config.get("mapping_rules", [])
+        if not isinstance(rules, list):
+            logger.warning(f"[RAG] {config_path} 的 mapping_rules 必须是列表")
+            return resolved
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+            pattern = str(rule.get("path_pattern") or "").strip()
+            rule_metadata = rule.get("metadata", {})
+            if (
+                pattern
+                and isinstance(rule_metadata, dict)
+                and PurePosixPath(relative_path).match(pattern)
+            ):
+                resolved.update(rule_metadata)
+        return resolved
+
+    def _resolve_metadata_config_path(self, path: Path) -> Path | None:
+        if self._metadata_config_path is not None:
+            return self._metadata_config_path if self._metadata_config_path.is_file() else None
+        # 直接使用 MarkdownChunker 的脚本也能自动发现最近的知识库配置。
+        for parent in path.resolve().parents:
+            candidate = parent / "config.yaml"
+            if candidate.is_file():
+                self._metadata_config_path = candidate
+                return candidate
+        return None
 
     def _infer_document_metadata(self, path: Path, doc_scope: str) -> dict[str, Any]:
         """为旧文档提供可过滤的最小 metadata，新文档可用 frontmatter 覆盖。"""

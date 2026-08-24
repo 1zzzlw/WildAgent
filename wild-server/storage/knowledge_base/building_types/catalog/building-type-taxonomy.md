@@ -1,17 +1,11 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 entity_name: building_type_taxonomy
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/catalog/building-type-taxonomy.md
-keywords:
+primary_terms:
   - 建筑类型分类
-  - building type taxonomy
   - 居住建筑
   - 公共建筑
   - 工业建筑
@@ -19,6 +13,8 @@ keywords:
   - 市政基础设施
   - 景观纪念建筑
   - 特殊专项建筑
+synonyms:
+  - building type taxonomy
 ---
 
 # 建筑类型分类词典与知识路由
@@ -35,7 +31,11 @@ entity_name: building_type_taxonomy_usage
 topic: constraints
 status: supported
 authority: maintainer
-keywords: 建筑分类边界, taxonomy constraints, WILD 能力边界
+primary_terms:
+  - 建筑分类边界
+  - taxonomy constraints
+  - WILD 能力边界
+synonyms: []
 -->
 
 - 本目录中的建筑名称用于意图识别、同义词召回和知识路由，不能直接作为 WILD `type`。
@@ -51,7 +51,15 @@ entity_name: residential_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 居住建筑, residential building, 住宅, 公寓, 宿舍, 民宿, 度假木屋
+primary_terms:
+  - 居住建筑
+  - 住宅
+  - 公寓
+  - 宿舍
+  - 民宿
+  - 度假木屋
+synonyms:
+  - residential building
 -->
 
 居住建筑用于长期或阶段性住宿。现有详细知识主要位于 `residential/`，别墅、普通住宅、宿舍和酒店已有实验性配方；其余名称当前主要用于分类路由。
@@ -90,7 +98,19 @@ entity_name: public_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 公共建筑, public building, 办公, 教育, 文化, 体育, 医疗, 商业, 交通, 宗教, 园林
+primary_terms:
+  - 公共建筑
+  - 办公
+  - 教育
+  - 文化
+  - 体育
+  - 医疗
+  - 商业
+  - 交通
+  - 宗教
+  - 园林
+synonyms:
+  - public building
 -->
 
 公共建筑面向公共服务、办公、商业和交通等活动。现有详细知识主要位于 `public/`；未出现在详细文件中的名称只作为分类入口。
@@ -144,7 +164,14 @@ entity_name: industrial_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 工业建筑, industrial building, 厂房, 仓库, 数据中心, 动力站房
+primary_terms:
+  - 工业建筑
+  - 厂房
+  - 仓库
+  - 数据中心
+  - 动力站房
+synonyms:
+  - industrial building
 -->
 
 工业建筑服务于生产、仓储和工业配套。现有详细知识位于 `industrial/factories-and-warehouses.md`，特殊工业类型目前主要用于意图分类。
@@ -182,7 +209,15 @@ entity_name: agricultural_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 农业建筑, agricultural building, 温室, 养殖场, 粮仓, 农机站, 加工车间
+primary_terms:
+  - 农业建筑
+  - 温室
+  - 养殖场
+  - 粮仓
+  - 农机站
+  - 加工车间
+synonyms:
+  - agricultural building
 -->
 
 农业建筑服务于种植、养殖、仓储、农机和农产品加工。温室、畜禽饲养场、粮仓和农机站已有实验性详细知识，位于 `agricultural/agricultural-buildings.md`。
@@ -219,7 +254,15 @@ entity_name: municipal_infrastructure_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 市政基础设施, municipal infrastructure, 水厂, 泵站, 停车楼, 公共厕所, 综合管廊
+primary_terms:
+  - 市政基础设施
+  - 水厂
+  - 泵站
+  - 停车楼
+  - 公共厕所
+  - 综合管廊
+synonyms:
+  - municipal infrastructure
 -->
 
 市政基础设施服务于城市运行。当前知识库没有对应的详细生成配方，以下名称只用于分类；生成时必须按引擎能力简化，不能假定地下管线、工艺设备或水处理系统已经受支持。
@@ -258,7 +301,17 @@ entity_name: landscape_memorial_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 景观建筑, landscape structure, 纪念碑, 纪念馆, 景观亭, 廊架, 牌坊, 假山, 滨水驿站
+primary_terms:
+  - 景观建筑
+  - 纪念碑
+  - 纪念馆
+  - 景观亭
+  - 廊架
+  - 牌坊
+  - 假山
+  - 滨水驿站
+synonyms:
+  - landscape structure
 -->
 
 景观小品与纪念性建筑面向纪念、游憩和景观标志。凉亭和塔楼可参考 `catalog/pavilions.md`、`catalog/towers.md`；其余名称目前只用于分类，不代表复杂曲面、假山或玻璃平台可直接生成。
@@ -299,7 +352,16 @@ entity_name: special_purpose_building_taxonomy
 topic: definition
 status: experimental
 authority: domain_reference
-keywords: 特殊专项建筑, special-purpose building, 人防工程, 地下建筑, 临时建筑, 历史建筑, 古桥, 城楼
+primary_terms:
+  - 特殊专项建筑
+  - 人防工程
+  - 地下建筑
+  - 临时建筑
+  - 历史建筑
+  - 古桥
+  - 城楼
+synonyms:
+  - special-purpose building
 -->
 
 特殊专项建筑包含安全、地下、临时和历史建造场景。当前知识库没有对应的完整配方；人防、防火、疏散、隧道和文物保护要求不能从本分类目录推导。
@@ -340,7 +402,12 @@ entity_name: assembly_template_index_a_to_y
 topic: constraints
 status: proposed
 authority: domain_reference
-keywords: 构件组装模板, assembly template, 模板A, 模板Y
+primary_terms:
+  - 构件组装模板
+  - assembly template
+  - 模板A
+  - 模板Y
+synonyms: []
 -->
 
 来源目录列出了模板 A～Y 的名称及部分适用建筑，但没有提供完整构件步骤、参数关系、WILD 示例和验证结果。因此这些模板当前不作为正式 recipe 入库；获得原始七份构件清单并完成引擎事实核验后，才可以拆分到 `recipes/`。

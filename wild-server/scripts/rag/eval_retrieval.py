@@ -5,7 +5,7 @@ RAG 检索评测工具
 1. 使用项目真实检索链路（app.spec.loader.RAGSpecLoader + config 中的
    embedding 配置）对内置或外部问题集逐条执行检索
 2. 输出每条问题的 Top-K 命中分片：距离/分数、来源文件、标题路径、实体、内容摘要
-3. 汇总评测统计：总分片数、平均命中距离、Top-1 空召回率、按实体/文件分组命中分布
+3. 有标准答案时计算 Hit@K、Recall@K、MRR；同时保留距离、空召回等诊断指标
 4. 生成 Markdown 评测报告到 scripts/reports/（eval_retrieval_<时间戳>.md），
    控制台输出通过 Tee 双写保存日志（eval_console_<时间戳>.txt）
 
@@ -16,9 +16,8 @@ RAG 检索评测工具
     $env:PYTHONPATH="."; uv run --no-project python scripts/rag/eval_retrieval.py
 
 说明：
-- 默认读取线上持久化索引 storage/chroma（集合 wild_knowledge_base），并使用
-  config.embedding 配置的真实语义 embedding；若 EMBEDDING__API_KEY 缺失或
-  embedding 服务不可达，脚本会给出清晰报错与降级方案。
+- 默认只读已有的 storage/chroma 索引，不会自动同步或改写它。只有显式传入
+  --sync-index 才会先按当前知识库同步线上索引。
 - --embedding hash 会改用本地 HashEmbeddingFunction + 临时目录重建一个临时
   索引（不读线上向量，不污染 storage/chroma），仅用于离线 smoke 场景。
 """
@@ -26,9 +25,10 @@ from __future__ import annotations
 
 import argparse
 import io
+import json
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
@@ -53,6 +53,7 @@ _KB = SERVER_ROOT / "storage" / "knowledge_base"
 BASE_SPEC_PATHS = [
     _KB / "BLUEPRINT-SPEC-MINIMAL.md",
 ]
+DEFAULT_CASES_PATH = SERVER_ROOT / "evals" / "rag_retrieval_cases.json"
 
 
 def get_rag_spec_paths() -> list[Path]:
@@ -87,8 +88,9 @@ class Tee:
         return getattr(self.streams[0], name)
 
 
-# ── 内置问题集（覆盖建筑类型 / 构件组装 / 材质 / 装配关系 / 规格边界等主题） ──────
-# topic 仅为人工标注的主题域，用于报告分组与阅读提示，不参与自动判分。
+# ── 无 JSON 文件时的只读后备问题集 ───────────────────────────────────
+# 正常评测使用 evals/rag_retrieval_cases.json；这里仅保证文件意外缺失时，
+# 脚本仍能展示召回结果。后备问题没有 expectedSources，因此不会伪造 Recall@K。
 DEFAULT_QUESTIONS: list[dict[str, str]] = [
     # 建筑类型
     {"id": "bt_pavilion", "query": "生成一个中式四角凉亭", "topic": "建筑类型-凉亭"},
@@ -125,12 +127,47 @@ DEFAULT_QUESTIONS: list[dict[str, str]] = [
 ]
 
 
-def load_questions(args_questions: str | None, limit: int | None) -> list[dict[str, str]]:
-    """加载问题集：--questions 指定外部文件（每行一条，支持 id|query 或纯 query），否则用内置集。"""
-    if args_questions:
-        path = Path(args_questions).resolve()
+def load_questions(args_questions: str | None, limit: int | None) -> list[dict[str, Any]]:
+    """加载评测问题。
+
+    JSON 文件可以携带 ``expectedSources``，因此能计算真正的 Recall@K/MRR。
+    纯文本文件只有问题，没有标准答案，只能用于人工查看召回结果。
+    """
+    path = Path(args_questions).resolve() if args_questions else DEFAULT_CASES_PATH
+    if path:
         if not path.exists():
-            raise SystemExit(f"错误: 问题文件不存在: {path}")
+            if args_questions:
+                raise SystemExit(f"错误: 问题文件不存在: {path}")
+            questions = list(DEFAULT_QUESTIONS)
+            print(f"警告: 默认 JSON 评测集不存在，改用 {len(questions)} 条无标准答案的后备问题。")
+            return questions[:limit] if limit else questions
+
+        if path.suffix.casefold() == ".json":
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise SystemExit(f"错误: 无法读取 JSON 评测集 {path}: {exc}") from exc
+            questions = payload.get("cases") if isinstance(payload, dict) else None
+            if not isinstance(questions, list) or not questions:
+                raise SystemExit(f"错误: JSON 评测集必须包含非空 cases 数组: {path}")
+            normalized: list[dict[str, Any]] = []
+            for index, case in enumerate(questions, start=1):
+                if not isinstance(case, dict) or not str(case.get("query") or "").strip():
+                    raise SystemExit(f"错误: 第 {index} 条 case 缺少 query: {path}")
+                expected_sources = case.get("expectedSources", [])
+                if not isinstance(expected_sources, list):
+                    raise SystemExit(f"错误: 第 {index} 条 expectedSources 必须是数组: {path}")
+                normalized.append({
+                    **case,
+                    "id": str(case.get("id") or f"q{index}"),
+                    "query": str(case["query"]).strip(),
+                    "topic": str(case.get("topic") or "未分类"),
+                    "expectedSources": [str(item) for item in expected_sources],
+                    "requiredTerms": [str(item) for item in case.get("requiredTerms", [])],
+                })
+            print(f"已加载带标准答案的 JSON 评测集: {len(normalized)} 条，来源 {path}")
+            return normalized[:limit] if limit else normalized
+
         questions: list[dict[str, str]] = []
         for line_no, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
             line = raw.strip()
@@ -146,15 +183,9 @@ def load_questions(args_questions: str | None, limit: int | None) -> list[dict[s
         print(f"已从外部文件加载 {len(questions)} 条问题: {path}")
         return questions[:limit] if limit else questions
 
-    questions = list(DEFAULT_QUESTIONS)
-    if limit:
-        questions = questions[:limit]
-    print(f"使用内置问题集: {len(questions)} 条（可用 --questions 加载自定义问题）")
-    return questions
 
-
-def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Path | None]:
-    """按真实链路装配 RAGSpecLoader；--embedding hash 时使用临时索引（离线 smoke）。"""
+def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Any | None]:
+    """按真实链路装配 Loader，并把实验索引与正式 Chroma 隔离。"""
     try:
         from config import config
     except Exception as exc:
@@ -176,9 +207,7 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Path | None]:
             model_name="",
             allow_hash_fallback=True,
         )
-        persist_dir = str(Path(temp_handle.name))
-        collection_name = f"wild_eval_retrieval_{time.strftime('%Y%m%d_%H%M%S')}"
-        print("警告: --embedding hash 使用临时索引（本地 HashEmbeddingFunction），不读取线上向量。")
+        print("警告: --embedding hash 只验证流程，不代表真实语义召回质量。")
     else:
         embedding_function = create_embedding_function(
             api_key=config.embedding.api_key,
@@ -186,6 +215,19 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Path | None]:
             model_name=config.embedding.name,
             allow_hash_fallback=config.rag.allow_hash_fallback,
         )
+        if type(embedding_function).__name__ == "HashEmbeddingFunction":
+            print(
+                "警告: auto 因配置缺少真实 embedding 凭据而降级为 HashEmbeddingFunction；"
+                "本次结果不能作为语义召回质量结论。"
+            )
+    use_temporary_index = args.embedding == "hash" or args.temporary_index
+    if use_temporary_index:
+        if temp_handle is None:
+            temp_handle = TemporaryDirectory(ignore_cleanup_errors=True)
+        persist_dir = str(Path(temp_handle.name))
+        collection_name = f"wild_eval_retrieval_{time.strftime('%Y%m%d_%H%M%S')}"
+        print("索引模式: 临时重建；退出脚本后自动清理，不修改 storage/chroma。")
+    else:
         persist_dir = str(
             Path(config.rag.persist_dir)
             if Path(config.rag.persist_dir).is_absolute()
@@ -196,6 +238,12 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Path | None]:
     print(f"加载 RAG Loader: persist_dir={persist_dir}, collection={collection_name}, namespace={args.namespace}")
     print(f"embedding: {type(embedding_function).__name__}")
 
+    args.effective_chunk_size = args.chunk_size or config.rag.chunk_size
+    args.effective_chunk_overlap = (
+        args.chunk_overlap
+        if args.chunk_overlap is not None
+        else config.rag.chunk_overlap
+    )
     loader = RAGSpecLoader(
         base_paths=[str(p) for p in BASE_SPEC_PATHS],
         rag_paths=[str(p) for p in rag_spec_paths],
@@ -203,12 +251,74 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Path | None]:
         collection_name=collection_name,
         embedding_function=embedding_function,
         top_k=args.top_k,
-        chunk_size=config.rag.chunk_size,
-        chunk_overlap=config.rag.chunk_overlap,
+        chunk_size=args.effective_chunk_size,
+        chunk_overlap=args.effective_chunk_overlap,
         max_context_chars=config.rag.max_context_chars,
         namespace=args.namespace,
+        # 所有临时索引都必须在本次运行中构建；正式索引只在显式授权时同步。
+        auto_sync=use_temporary_index or args.sync_index,
+    )
+    if not use_temporary_index and not args.sync_index:
+        attach_existing_collection_read_only(loader)
+    args.index_mode = (
+        "临时重建"
+        if use_temporary_index
+        else "同步后评测"
+        if args.sync_index
+        else "只读已有索引"
     )
     return loader, temp_handle
+
+
+def attach_existing_collection_read_only(loader: RAGSpecLoader) -> None:
+    """只打开已有集合，并在签名不兼容时停止，而不是让 Loader 自动重建。
+
+    生产 Loader 的 ``_get_collection()`` 会在 embedding 或分片签名变化时删除旧集合
+    后重建，这是服务启动同步时的正确行为，却不适合默认评测。评测脚本因此先安全
+    挂载已有集合；需要重建时必须显式选择临时索引或 ``--sync-index``。
+    """
+    try:
+        import chromadb
+    except ImportError as exc:
+        raise SystemExit("错误: 缺少 chromadb 依赖，请先安装 wild-server 依赖") from exc
+
+    if not loader._persist_dir.exists():
+        raise SystemExit(
+            f"错误: 正式索引目录不存在: {loader._persist_dir}。"
+            "可使用 --temporary-index 安全构建实验索引。"
+        )
+    client = chromadb.PersistentClient(path=str(loader._persist_dir))
+    try:
+        collection = client.get_collection(
+            name=loader._collection_name,
+            embedding_function=loader._embedding_function,
+        )
+    except Exception as exc:
+        raise SystemExit(
+            f"错误: 无法只读打开已有集合 {loader._collection_name}: {exc}。"
+            "可检查配置，或使用 --temporary-index。"
+        ) from exc
+
+    expected_signature = loader._index_signature()
+    existing_signature = (collection.metadata or {}).get("index_signature")
+    if existing_signature != expected_signature:
+        raise SystemExit(
+            "错误: 当前 embedding/分片配置与已有索引签名不一致。"
+            "默认评测为保护正式索引不会自动重建；请使用 --temporary-index 做实验，"
+            "或确认确需更新正式库后使用 --sync-index。"
+        )
+    loader._client = client
+    loader._collection = collection
+
+
+def indexed_chunk_count(loader: RAGSpecLoader) -> int:
+    """统计当前 namespace 已存在的索引条数，不触发知识库同步。"""
+    collection = loader._get_collection()
+    result = collection.get(
+        where={"namespace": loader._namespace},
+        include=["metadatas"],
+    )
+    return len(result.get("ids") or [])
 
 
 def summarize_document(document: str, max_chars: int = 120) -> str:
@@ -219,7 +329,79 @@ def summarize_document(document: str, max_chars: int = 120) -> str:
     return text
 
 
-def run_eval(loader: RAGSpecLoader, questions: list[dict[str, str]], top_k: int) -> dict[str, Any]:
+def _matches_expected_source(hit: dict[str, Any], expected: str) -> bool:
+    """用文件名或相对路径匹配标准答案，Windows/Linux 路径均可。"""
+    expected_normalized = expected.replace("\\", "/").casefold()
+    source = str(hit.get("source") or "").replace("\\", "/").casefold()
+    source_path = str(hit.get("path") or "").replace("\\", "/").casefold()
+    return source.endswith(expected_normalized) or source_path.endswith(expected_normalized)
+
+
+def score_ranked_hits(
+    hits: list[dict[str, Any]],
+    expected_sources: list[str],
+) -> dict[str, Any] | None:
+    """计算单题的来源级检索指标；没有标准答案时返回 ``None``。
+
+    - Hit@K：Top-K 至少命中一个标准来源。
+    - Recall@K：标准来源中有多少比例出现在 Top-K。
+    - Reciprocal rank：第一个正确来源排名的倒数，供最终计算 MRR。
+    """
+    expected = list(dict.fromkeys(item for item in expected_sources if item))
+    if not expected:
+        return None
+    matched = {
+        source
+        for source in expected
+        if any(_matches_expected_source(hit, source) for hit in hits)
+    }
+    first_rank = next(
+        (
+            rank
+            for rank, hit in enumerate(hits, start=1)
+            if any(_matches_expected_source(hit, source) for source in expected)
+        ),
+        None,
+    )
+    return {
+        "hit": bool(matched),
+        "recall": len(matched) / len(expected),
+        "reciprocal_rank": 0.0 if first_rank is None else 1.0 / first_rank,
+        "first_relevant_rank": first_rank,
+        "matched_sources": sorted(matched),
+        "missing_sources": [source for source in expected if source not in matched],
+    }
+
+
+def select_ranked_parent_groups(
+    hits: list[dict[str, Any]],
+    top_k: int,
+) -> list[dict[str, Any]]:
+    """把相邻 part 折叠回父 section，避免邻片占掉 Top-K 名额。
+
+    ``RAGSpecLoader`` 会在一个语义命中前后补相邻 part。它们属于同一次父块
+    命中，不应该在 Recall@K 里被当成多个独立排名。
+    """
+    selected: list[dict[str, Any]] = []
+    seen_groups: set[str] = set()
+    for index, hit in enumerate(hits):
+        group_id = str(hit.get("parent_chunk_id") or f"standalone:{index}")
+        if group_id in seen_groups:
+            continue
+        seen_groups.add(group_id)
+        selected.append(hit)
+        if len(selected) >= top_k:
+            break
+    return selected
+
+
+def run_eval(
+    loader: RAGSpecLoader,
+    questions: list[dict[str, Any]],
+    top_k: int,
+    *,
+    use_case_filters: bool = True,
+) -> dict[str, Any]:
     """逐条执行检索，返回命中明细与汇总统计。"""
     results: list[dict[str, Any]] = []
     empty_top1 = 0
@@ -233,7 +415,8 @@ def run_eval(loader: RAGSpecLoader, questions: list[dict[str, str]], top_k: int)
         qid = q["id"]
         query = q["query"]
         try:
-            hits = loader.retrieve(query, metadata_filter=None)
+            metadata_filter = q.get("metadataFilter") if use_case_filters else None
+            hits = loader.retrieve(query, metadata_filter=metadata_filter)
         except Exception as exc:
             retrieval_errors += 1
             results.append({**q, "error": f"{type(exc).__name__}: {exc}", "hits": []})
@@ -260,17 +443,32 @@ def run_eval(loader: RAGSpecLoader, questions: list[dict[str, str]], top_k: int)
                         "rank": rank,
                         "distance": distance,
                         "source": source,
+                        "path": str(metadata.get("path") or "-"),
                         "heading": str(metadata.get("heading") or "-"),
                         "heading_path": str(metadata.get("heading_path") or "-"),
                         "entity": entity,
                         "doc_type": str(metadata.get("doc_type") or "-"),
                         "status": str(metadata.get("status") or "-"),
                         "authority": str(metadata.get("authority") or "-"),
+                        "parent_chunk_id": str(metadata.get("parent_chunk_id") or ""),
                         "summary": summarize_document(hit.document),
                     }
                 )
 
-        results.append({**q, "error": None, "hits": entries})
+        # Loader 会补相邻 part；先按 parent_chunk_id 折叠，再取前 K 个语义父块。
+        ranked_entries = select_ranked_parent_groups(entries, top_k)
+        score = score_ranked_hits(ranked_entries, q.get("expectedSources", []))
+        required_terms = q.get("requiredTerms", [])
+        # requiredTerms 检查实际注入上下文；相邻 part 也属于本次 Top-K 命中的补充内容。
+        ranked_text = "\n".join(hit.document for hit in hits).casefold()
+        missing_terms = [term for term in required_terms if term.casefold() not in ranked_text]
+        results.append({
+            **q,
+            "error": None,
+            "hits": entries,
+            "score": score,
+            "missing_terms": missing_terms,
+        })
         if entries:
             top1 = entries[0]
             print(
@@ -291,6 +489,7 @@ def run_eval(loader: RAGSpecLoader, questions: list[dict[str, str]], top_k: int)
             c = Counter(h["source"] for h in r["hits"])
             same_source_ratios.append(c.most_common(1)[0][1] / len(r["hits"]))
 
+    graded_scores = [r["score"] for r in results if r.get("score") is not None]
     stats = {
         "total_questions": total,
         "empty_top1": empty_top1,
@@ -302,6 +501,27 @@ def run_eval(loader: RAGSpecLoader, questions: list[dict[str, str]], top_k: int)
         "avg_same_source_ratio": sum(same_source_ratios) / len(same_source_ratios) if same_source_ratios else None,
         "entity_distribution": entity_counter.most_common(15),
         "source_distribution": source_counter.most_common(15),
+        "graded_questions": len(graded_scores),
+        "hit_at_k": (
+            sum(1 for score in graded_scores if score["hit"]) / len(graded_scores)
+            if graded_scores else None
+        ),
+        "recall_at_k": (
+            sum(score["recall"] for score in graded_scores) / len(graded_scores)
+            if graded_scores else None
+        ),
+        "mrr": (
+            sum(score["reciprocal_rank"] for score in graded_scores) / len(graded_scores)
+            if graded_scores else None
+        ),
+        "term_complete_questions": sum(
+            1
+            for result in results
+            if result.get("requiredTerms")
+            and not result.get("error")
+            and result.get("missing_terms") == []
+        ),
+        "term_graded_questions": sum(1 for result in results if result.get("requiredTerms")),
     }
     return {"results": results, "stats": stats}
 
@@ -333,6 +553,11 @@ def signals_markdown(stats: dict[str, Any]) -> list[str]:
             f"- 平均命中距离 {stats['avg_all_distance']:.3f} 较大：命中分片与问题整体相关度偏低，"
             "可检查 embedding 配置或分片粒度。"
         )
+    if stats["hit_at_k"] is not None and stats["hit_at_k"] < 0.8:
+        lines.append(
+            f"- Hit@K 为 {stats['hit_at_k']:.1%}，低于 80%：优先查看未命中的标准来源，"
+            "再判断是知识缺失、分片语义过弱、过滤条件错误还是 embedding 排序问题。"
+        )
     if not lines:
         lines.append("- 未触发明显异常信号，建议结合逐题明细人工复核命中质量。")
     return lines
@@ -354,8 +579,11 @@ def to_markdown(
         f"- 索引: `{args.namespace}` / collection=`{args.collection_name}`",
         f"- embedding: `{args.embedding_type}`",
         f"- Top-K: {args.top_k}",
+        f"- 分片参数: chunk_size={args.effective_chunk_size}, chunk_overlap={args.effective_chunk_overlap}",
         f"- 问题数: {stats['total_questions']}",
-        f"- 总分片数: {sync.get('total', '-')}（本次同步 updated={sync.get('updated', 0)}, deleted={sync.get('deleted', 0)}）",
+        f"- 索引模式: `{args.index_mode}`",
+        f"- 当前 namespace 分片数: {args.indexed_chunk_count}",
+        f"- 本次同步: updated={sync.get('updated', 0)}, deleted={sync.get('deleted', 0)}",
         "",
     ]
 
@@ -364,6 +592,9 @@ def to_markdown(
         if stats["avg_same_source_ratio"] is None
         else f"{stats['avg_same_source_ratio']:.0%}"
     )
+    hit_text = "-" if stats["hit_at_k"] is None else f"{stats['hit_at_k']:.1%}"
+    recall_text = "-" if stats["recall_at_k"] is None else f"{stats['recall_at_k']:.1%}"
+    mrr_text = "-" if stats["mrr"] is None else f"{stats['mrr']:.3f}"
     lines += [
         "## 汇总统计",
         "",
@@ -377,6 +608,11 @@ def to_markdown(
         f"| 平均 Top-1 距离 | {stats['avg_top1_distance'] if stats['avg_top1_distance'] is not None else '-'} | 首条命中与问题的相关度 |",
         f"| 每问平均命中数 | {stats['avg_hits_per_question']:.2f} | 反映 Top-K 被有效填充的程度 |",
         f"| 平均同源率 | {same_source_text} | 同文件命中占比；过高提示漏召回 |",
+        f"| 已自动判分问题数 | {stats['graded_questions']} | 有 expectedSources 标准答案的问题数 |",
+        f"| Hit@{args.top_k} | {hit_text} | 至少命中一个标准来源的问题比例 |",
+        f"| Recall@{args.top_k} | {recall_text} | 每题标准来源召回比例的宏平均 |",
+        f"| MRR@{args.top_k} | {mrr_text} | 第一条正确结果越靠前，值越接近 1 |",
+        f"| 关键词完整问题 | {stats['term_complete_questions']}/{stats['term_graded_questions']} | requiredTerms 全部出现在 Top-K 的问题数 |",
         "",
     ]
 
@@ -407,6 +643,10 @@ def to_markdown(
         lines.append(f"### Q{idx}. {r['id']} — {r['query']}")
         lines.append("")
         lines.append(f"- 主题: {r['topic']}")
+        if r.get("expectedSources"):
+            lines.append(f"- 标准来源: `{', '.join(r['expectedSources'])}`")
+        if r.get("metadataFilter") and not args.ignore_case_filters:
+            lines.append(f"- 本题过滤条件: `{json.dumps(r['metadataFilter'], ensure_ascii=False)}`")
         if r["error"]:
             lines.append(f"- 检索异常: {r['error']}")
             lines.append("")
@@ -415,6 +655,16 @@ def to_markdown(
             lines.append("- **空召回**：没有命中任何分片。")
             lines.append("")
             continue
+        if r.get("score") is not None:
+            score = r["score"]
+            verdict = "✅ 命中" if score["hit"] else "❌ 未命中"
+            rank_text = score["first_relevant_rank"] if score["first_relevant_rank"] is not None else "-"
+            lines.append(
+                f"- 自动判分: {verdict}；Recall@{args.top_k}={score['recall']:.1%}；"
+                f"第一条正确结果排名={rank_text}"
+            )
+        if r.get("missing_terms"):
+            lines.append(f"- Top-K 缺少要求关键词: `{', '.join(r['missing_terms'])}`")
         lines.append(
             "| 排名 | 距离 | 来源文件 | 标题路径 | 实体 | 内容摘要 |"
         )
@@ -454,6 +704,9 @@ def main() -> int:
   # 离线 smoke：本地 hash embedding + 临时索引，不读线上向量
   python scripts/rag/eval_retrieval.py --embedding hash
 
+  # 真实 embedding + 临时索引，可安全实验分片参数
+  python scripts/rag/eval_retrieval.py --temporary-index --chunk-size 600 --chunk-overlap 100
+
   # 自定义报告与日志输出路径
   python scripts/rag/eval_retrieval.py --output reports/eval.md --log-output reports/eval.log
 
@@ -461,11 +714,32 @@ def main() -> int:
   python scripts/rag/eval_retrieval.py --no-log-output
 """,
     )
-    parser.add_argument("--questions", type=str, help="外部问题文件路径（每行一条，可选 id|query）")
+    parser.add_argument(
+        "--questions",
+        type=str,
+        help="评测集路径；JSON 可带标准答案，纯文本只做人工检查（默认 evals/rag_retrieval_cases.json）",
+    )
     parser.add_argument("--limit", type=int, help="限制评测问题数（默认全部）")
     parser.add_argument("--top-k", type=int, default=5, help="每个问题保留的 Top-K 命中数（默认 5）")
     parser.add_argument("--namespace", type=str, default="wild_spec", help="逻辑命名空间（默认 wild_spec，必须与索引一致）")
     parser.add_argument("--embedding", choices=["auto", "hash"], default="auto", help="embedding 选择：auto 用 config 真实配置（默认）；hash 用本地 HashEmbeddingFunction + 临时索引")
+    parser.add_argument(
+        "--temporary-index",
+        action="store_true",
+        help="用当前知识库重建临时索引；auto 模式会调用真实 embedding，但不修改 storage/chroma",
+    )
+    parser.add_argument("--chunk-size", type=int, help="临时索引分片长度；默认使用 config.rag.chunk_size")
+    parser.add_argument("--chunk-overlap", type=int, help="临时索引普通文本重叠长度；默认使用 config.rag.chunk_overlap")
+    parser.add_argument(
+        "--sync-index",
+        action="store_true",
+        help="评测前同步真实索引（默认只读已有线上索引；hash 临时索引不受此参数影响）",
+    )
+    parser.add_argument(
+        "--ignore-case-filters",
+        action="store_true",
+        help="忽略 JSON case 的 metadataFilter，用于观察纯向量检索基线",
+    )
     parser.add_argument("--output", type=Path, help="报告 Markdown 输出路径（默认 scripts/reports/eval_retrieval_<时间戳>.md）")
     parser.add_argument("--log-output", type=Path, help="控制台日志保存路径（默认 scripts/reports/eval_console_<时间戳>.txt）")
     parser.add_argument("--no-log-output", action="store_true", help="不保存控制台日志（默认会保存）")
@@ -473,6 +747,20 @@ def main() -> int:
 
     if args.top_k < 1:
         raise SystemExit("错误: --top-k 必须 >= 1")
+    if args.limit is not None and args.limit < 1:
+        raise SystemExit("错误: --limit 必须 >= 1")
+    if args.chunk_size is not None and args.chunk_size < 200:
+        raise SystemExit("错误: --chunk-size 必须 >= 200（与 MarkdownChunker 下限一致）")
+    if args.chunk_overlap is not None and args.chunk_overlap < 0:
+        raise SystemExit("错误: --chunk-overlap 必须 >= 0")
+    if (args.chunk_size is not None or args.chunk_overlap is not None) and not (
+        args.temporary_index or args.embedding == "hash"
+    ):
+        raise SystemExit(
+            "错误: 分片参数只对新建索引生效。请加 --temporary-index，避免为实验改写正式索引。"
+        )
+    if args.embedding == "hash" and args.sync_index:
+        print("提示: hash 模式始终只构建临时索引，--sync-index 不会修改线上索引。")
 
     # ── 控制台日志双写（Tee） ──
     timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -497,21 +785,34 @@ def main() -> int:
     args.collection_name = getattr(loader, "_collection_name", "?")
     args.embedding_type = type(loader._embedding_function).__name__ if hasattr(loader, "_embedding_function") else "?"
 
-    # 校验 namespace 下确有分片，避免误用空索引得出无意义结论
-    total_chunks = loader.last_sync_stats.get("total", 0)
+    # 只读模式下 last_sync_stats 仍为 0，因此直接统计当前 namespace 的已有记录。
+    total_chunks = indexed_chunk_count(loader)
+    args.indexed_chunk_count = total_chunks
     if total_chunks == 0:
         print(
             f"错误: namespace='{args.namespace}' 下没有分片（total=0）。"
-            "请检查 --namespace 是否与索引一致（线上默认 wild_spec），或索引是否已构建。"
+            "请检查 --namespace 是否与索引一致；若知识库尚未建索引，可确认配置后显式使用 --sync-index。"
         )
         return 2
 
     print(f"索引就绪: 总分片 {total_chunks}，知识库来源文件 {len(get_rag_spec_paths())} 个")
-    eval_data = run_eval(loader, questions, args.top_k)
+    eval_data = run_eval(
+        loader,
+        questions,
+        args.top_k,
+        use_case_filters=not args.ignore_case_filters,
+    )
     stats = eval_data["stats"]
-    print(f"\n汇总: 空召回 {stats['empty_top1']}/{stats['total_questions']} "
-          f"({stats['empty_top1_rate']:.1%}), 异常 {stats['retrieval_errors']}, "
-          f"平均距离 {stats['avg_all_distance'] if stats['avg_all_distance'] is not None else '-'}")
+    quality_summary = (
+        "未提供标准答案"
+        if stats["hit_at_k"] is None
+        else f"Hit@{args.top_k}={stats['hit_at_k']:.1%}, "
+             f"Recall@{args.top_k}={stats['recall_at_k']:.1%}, MRR={stats['mrr']:.3f}"
+    )
+    print(
+        f"\n汇总: {quality_summary}; 空召回 {stats['empty_top1']}/{stats['total_questions']} "
+        f"({stats['empty_top1_rate']:.1%}), 异常 {stats['retrieval_errors']}"
+    )
 
     # ── 写入 Markdown 报告 ──
     if args.output:

@@ -1,18 +1,13 @@
 ---
-doc_type: index
-doc_scope: index
-knowledge_layer: navigation
-entity_type: index
 entity_name: patterns_index
-topic: navigation
-wild_version: "1.1"
 status: supported
 authority: maintainer
 source: patterns/README.md
-keywords:
+primary_terms:
   - 设计模式
   - 项目案例
   - patterns
+synonyms: []
 ---
 
 # 设计模式与项目案例
@@ -34,19 +29,17 @@ keywords:
 
 ```md
 ---
-doc_type: pattern
-doc_scope: generation
-knowledge_layer: project_pattern
 entity_type: building
 entity_name: confirmed_pattern_name
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: verified_example
 source: patterns/confirmed-pattern-name.md
-keywords:
-  - 用户用词
+primary_terms:
+  - 正式模式名称
   - project pattern
+synonyms:
+  - 用户常用说法
 ---
 
 # 模式名称

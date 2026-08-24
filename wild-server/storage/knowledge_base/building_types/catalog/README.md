@@ -1,18 +1,13 @@
 ---
-doc_type: index
-doc_scope: index
-knowledge_layer: navigation
-entity_type: index
 entity_name: building_catalog_index
-topic: navigation
-wild_version: "1.1"
 status: supported
 authority: maintainer
 source: building_types/catalog/README.md
-keywords:
+primary_terms:
   - 轻量建筑目录
-  - building catalog
   - 默认建筑
+synonyms:
+  - building catalog
 ---
 
 # 轻量建筑类型与分类路由目录

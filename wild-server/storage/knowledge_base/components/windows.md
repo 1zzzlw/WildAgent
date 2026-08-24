@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: window
 entity_name: window_family
 topic: assembly
-wild_version: "1.1"
 status: proposed
 authority: domain_reference
 source: components/windows.md
-keywords:
+primary_terms:
   - 窗
   - window
   - opening
   - mullion
   - sashType
+synonyms: []
 ---
 
 # 窗构件分类与组装规则
@@ -48,7 +46,11 @@ entity_name: window_opening_modes
 topic: classification
 status: proposed
 authority: domain_reference
-keywords: 窗开启方式, window opening, sashType
+primary_terms:
+  - 窗开启方式
+  - window opening
+  - sashType
+synonyms: []
 -->
 
 | 开启方式 | sashType | 特征 | 通风效率 | 密封 | 典型应用 |
@@ -71,7 +73,13 @@ entity_name: traditional_chinese_window_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 中式窗, traditional Chinese window, mullion, 支摘窗, 漏窗
+primary_terms:
+  - 中式窗
+  - mullion
+  - 支摘窗
+  - 漏窗
+synonyms:
+  - traditional Chinese window
 -->
 
 > 图示：中式窗示意图（直棂·一码三箭·槛窗·支摘窗）（原始资源：`docs/建筑类型分类体系_images/11_中式窗_直棂槛窗支摘.png`）
@@ -88,7 +96,12 @@ entity_name: zhiling_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 直棂窗, zhiling window, vertical mullion, window
+primary_terms:
+  - 直棂窗
+  - vertical mullion
+  - window
+synonyms:
+  - zhiling window
 -->
 
 > 组装公式：**`opening`(rectangular) + `window`(fixed) + `mullion`(vertical, 等距排列)**
@@ -129,7 +142,11 @@ entity_name: yima_sanjian_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 一码三箭直棂窗, Chinese lattice window, grid mullion
+primary_terms:
+  - 一码三箭直棂窗
+  - grid mullion
+synonyms:
+  - Chinese lattice window
 -->
 
 > 组装公式：**`opening`(rectangular) + `mullion`(grid, 3 rows × N cols) + `window`(fixed)**
@@ -158,7 +175,12 @@ entity_name: sill_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 槛窗, sill window, geshan door, window
+primary_terms:
+  - 槛窗
+  - window
+  - geshan door
+synonyms:
+  - sill window
 -->
 
 > 组装公式：**`opening`(rectangular, 宽=隔扇门宽, 高=隔扇门高−裙板高) + `mullion`(grid/custom, 与隔扇门棂花一致) + `window`(casement) + `wall`(槛墙, 窗下矮墙)**
@@ -187,7 +209,12 @@ entity_name: zhizhai_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 支摘窗, zhizhai window, casement, opening
+primary_terms:
+  - 支摘窗
+  - opening
+  - casement
+synonyms:
+  - zhizhai window
 -->
 
 > 组装公式：**2 × [opening(上下两层) + window + mullion]** — 上层 awning(支起)，下层 casement(摘下)**
@@ -237,7 +264,12 @@ entity_name: lattice_leak_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 漏窗, 花窗, lattice leak window, mullion
+primary_terms:
+  - 漏窗
+  - 花窗
+  - mullion
+synonyms:
+  - lattice leak window
 -->
 
 > 组装公式：**`opening`(多边形/圆形/扇形, 在砖墙上) + `mullion`(custom, 镂空图案) — 无 window 扇，仅 open frame**
@@ -277,7 +309,12 @@ entity_name: empty_frame_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 空窗, 洞窗, empty frame window, opening
+primary_terms:
+  - 空窗
+  - 洞窗
+  - opening
+synonyms:
+  - empty frame window
 -->
 
 > 组装公式：**仅 `opening`(圆形/多边形) — 无 mullion, 无 window — 纯粹的开洞**
@@ -300,7 +337,12 @@ entity_name: diamond_lattice_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 菱花窗, diamond lattice window, mullion, palace window
+primary_terms:
+  - 菱花窗
+  - mullion
+  - palace window
+synonyms:
+  - diamond lattice window
 -->
 
 > 组装公式：**`opening`(rectangular) + `mullion`(custom, 三交六椀放射状) + `window`(fixed)**
@@ -336,7 +378,11 @@ entity_name: transom_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 横披窗, transom window, fixed window
+primary_terms:
+  - 横披窗
+  - fixed window
+synonyms:
+  - transom window
 -->
 
 > 组装公式：**`opening`(扁长形, 装在门上槛以上) + `window`(fixed)**
@@ -362,7 +408,12 @@ entity_name: classical_european_window_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 欧式窗, classical European window, rose window, bay window
+primary_terms:
+  - 欧式窗
+  - rose window
+  - bay window
+synonyms:
+  - classical European window
 -->
 
 > 图示：欧式古典窗示意图（原始资源：`docs/建筑类型分类体系_images/13_欧式古典窗.png`）
@@ -377,7 +428,12 @@ entity_name: rose_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 玫瑰窗, rose window, Gothic window, radial mullion
+primary_terms:
+  - 玫瑰窗
+  - Gothic window
+  - radial mullion
+synonyms:
+  - rose window
 -->
 
 > 组装公式：**`opening`(circular, 直径 3~13m) + `mullion`(custom, 放射辐条状) + `window`(fixed, 彩色玻璃)**
@@ -417,7 +473,11 @@ entity_name: palladian_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 帕拉第奥窗, Palladian window, Serliana
+primary_terms:
+  - 帕拉第奥窗
+synonyms:
+  - Palladian window
+  - Serliana
 -->
 
 > 组装公式：**1 × opening(arched, 中央大拱) + 2 × opening(rectangular, 两侧小矩形) + 3 × window(fixed) + mullion(分隔) + cornice(拱顶石)**
@@ -470,7 +530,11 @@ entity_name: gothic_pointed_arch_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 尖拱窗, Gothic pointed arch window, opening
+primary_terms:
+  - 尖拱窗
+  - opening
+synonyms:
+  - Gothic pointed arch window
 -->
 
 > 组装公式：**`opening`(gothic, 尖顶双弧) + `window`(fixed) + `mullion`(vertical, 2~3列瘦高棂) + `mullion`(horizontal, 上部玫瑰纹)**
@@ -502,7 +566,11 @@ entity_name: roman_round_arch_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 圆拱窗, Roman round arch window, opening
+primary_terms:
+  - 圆拱窗
+  - opening
+synonyms:
+  - Roman round arch window
 -->
 
 > 组装公式：**`opening`(arched, 半圆拱) + `window`(fixed/casement) — 比哥特窗矮、宽**
@@ -528,7 +596,11 @@ entity_name: lancet_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 柳叶窗, lancet window, Gothic church window
+primary_terms:
+  - 柳叶窗
+synonyms:
+  - lancet window
+  - Gothic church window
 -->
 
 > 组装公式：**`opening`(gothic, 极瘦高, 宽0.3~0.5m, 高3~8m) + `window`(fixed)**
@@ -554,7 +626,12 @@ entity_name: modern_window_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 现代窗, modern window, curtain wall, corner window
+primary_terms:
+  - 现代窗
+  - curtain wall
+  - corner window
+synonyms:
+  - modern window
 -->
 
 > 图示：现代窗示意图（原始资源：`docs/建筑类型分类体系_images/14_现代窗.png`）
@@ -569,7 +646,13 @@ entity_name: curtain_wall_window
 topic: assembly
 status: experimental
 authority: engine
-keywords: 幕墙窗, curtain wall grid, fixed window, verticalMullions, horizontalMullions
+primary_terms:
+  - 幕墙窗
+  - curtain wall grid
+  - verticalMullions
+  - horizontalMullions
+  - fixed window
+synonyms: []
 -->
 
 > 组装公式：**`wall` 宿主 + `window` 网格 + 分离的框/玻璃材质；高细节时改用 `primitive.box` 显式骨架。**
@@ -586,7 +669,11 @@ entity_name: corner_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 转角窗, corner window, modern villa
+primary_terms:
+  - 转角窗
+  - modern villa
+synonyms:
+  - corner window
 -->
 
 > 组装公式：**2 × `opening`(分别在相邻两面墙上, 交汇于阳角) + 2 × `window`(fixed) — 转角处无柱**
@@ -616,7 +703,11 @@ entity_name: ribbon_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 条形窗, ribbon window, strip window
+primary_terms:
+  - 条形窗
+synonyms:
+  - ribbon window
+  - strip window
 -->
 
 > 组装公式：**单个 `opening`(超长, 宽可达整面墙 80%) + `window`(fixed)**
@@ -641,7 +732,11 @@ entity_name: skylight
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 天窗, skylight, roof opening
+primary_terms:
+  - 天窗
+  - roof opening
+synonyms:
+  - skylight
 -->
 
 > 组装公式：**`opening`(parent=roof, 而非 wall) + `window`(fixed/awning)**
@@ -668,7 +763,11 @@ entity_name: floor_to_ceiling_window
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 落地窗, floor-to-ceiling window, fixed window
+primary_terms:
+  - 落地窗
+  - fixed window
+synonyms:
+  - floor-to-ceiling window
 -->
 
 > 组装公式：**`opening`(高=层高, 从地面到梁底) + `window`(fixed/casement) + `railing`(落地护栏)**
@@ -696,7 +795,12 @@ entity_name: window_component_matrix
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 窗构件矩阵, window component matrix, opening, mullion
+primary_terms:
+  - 窗构件矩阵
+  - window component matrix
+  - opening
+  - mullion
+synonyms: []
 -->
 
 **这张表是本章的核心产出**——按照 WILD 子构件组合方式，你将知道如何用底层组件拼出任何想要的窗型。
@@ -734,7 +838,11 @@ entity_name: window_building_style_matrix
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 窗型速配, window style, building type
+primary_terms:
+  - 窗型速配
+  - window style
+  - building type
+synonyms: []
 -->
 
 | 建筑类型 | 推荐窗型 | 说明 |

@@ -1,22 +1,18 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: residential
 entity_name: housing_dormitory_hotel
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/residential/housing-dormitories-hotels.md
-keywords:
+primary_terms:
   - 普通住宅
   - 宿舍
   - 酒店
   - 宾馆
   - 高层住宅
   - 标准层
+synonyms: []
 ---
 
 # 居住建筑：普通住宅 / 宿舍 / 酒店
@@ -34,7 +30,14 @@ entity_name: residential_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 普通住宅, residential, 多层, 高层, 剪力墙, 框架
+primary_terms:
+  - 普通住宅
+  - 多层
+  - 高层
+  - 剪力墙
+  - 框架
+synonyms:
+  - residential
 -->
 
 ### 按层数分级的构件参数
@@ -92,7 +95,12 @@ entity_name: dormitory
 topic: assembly
 status: supported
 authority: engine
-keywords: 宿舍, dormitory, 走廊式, 公共卫生间
+primary_terms:
+  - 宿舍
+  - 走廊式
+  - 公共卫生间
+synonyms:
+  - dormitory
 -->
 
 ### 最少可行 Blueprint（单层走廊式，12×8m）
@@ -138,7 +146,13 @@ entity_name: hotel_floor
 topic: assembly
 status: supported
 authority: engine
-keywords: 酒店, hotel, 标准层, 客房, 走廊
+primary_terms:
+  - 酒店
+  - 标准层
+  - 客房
+  - 走廊
+synonyms:
+  - hotel
 -->
 
 ### 客房标准尺寸参考

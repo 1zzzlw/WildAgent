@@ -40,10 +40,14 @@
 
 ## Metadata
 
-- [ ] 文档级 frontmatter 字段完整。
+- [ ] `config.yaml + frontmatter` 合并后的文档级 metadata 字段完整。
 - [ ] 多实体文档在实体标题后提供 `rag-meta`。
 - [ ] `source` 可追踪。
-- [ ] `keywords` 包含中文、英文和当前 WILD 名称。
+- [ ] `primary_terms` 只包含正式名称、稳定术语和当前 WILD 名称，且至少有一项。
+- [ ] `synonyms` 只包含翻译、别名、俗称或用户输入变体；没有时显式写 `[]`。
+- [ ] 两组术语无重复，相关概念没有冒充同义词，全文不再使用 legacy `keywords`。
+- [ ] 路径公共字段与 `config.yaml` 一致，文件头覆盖只用于真实特例。
+- [ ] 文件头没有重复声明与路径配置完全相同的字段。
 - [ ] README 使用 `doc_type=index`、`doc_scope=index`。
 
 ## JSON

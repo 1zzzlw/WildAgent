@@ -20,8 +20,9 @@
 ## Loader 可识别结构
 
 - H1～H5 是可分片标题。
-- 文件 frontmatter 提供默认 metadata。
+- `config.yaml` 提供路径级默认 metadata，文件 frontmatter 提供内容字段并覆盖路径特例。
 - 标题后的 `<!-- rag-meta ... -->` 覆盖该标题及其子标题。
+- `primary_terms` 与 `synonyms` 分别保存主术语和同义词，实体级声明会随标题路径继承。
 - fenced code 是原子块，不做字符切断。
 - Markdown 表格按行组拆分，子表重复表头。
 - 普通长文本才使用 `chunk_size=900`、`chunk_overlap=150` 兜底。

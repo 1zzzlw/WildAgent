@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: constraint
 entity_type: component
 entity_name: engine_capability_boundaries
 topic: constraints
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 引擎能力边界
   - engine capability
   - supported type
   - proposed type
   - resolver
+synonyms: []
 ---
 
 # WILD v1.1 当前引擎构件能力边界
@@ -30,7 +28,12 @@ entity_name: supported_geometry_element_types
 topic: constraints
 status: supported
 authority: engine
-keywords: geometry.elements, supported type, WILD type, 构件类型
+primary_terms:
+  - geometry.elements
+  - supported type
+  - WILD type
+  - 构件类型
+synonyms: []
 -->
 
 | `type` | 引擎状态 | 当前能力摘要 |
@@ -57,7 +60,14 @@ entity_name: supported_composite_component_types
 topic: schema
 status: supported
 authority: engine
-keywords: geometry.components, component compiler, door, window, railing, 组合构件编译器
+primary_terms:
+  - geometry.components
+  - component compiler
+  - door
+  - window
+  - railing
+  - 组合构件编译器
+synonyms: []
 -->
 
 当前组合构件编译器支持 10 类组件。它们在进入 wild-core 前展开为 `opening`、`primitive`、`beam` 等基础元素，不会在构件注册表中增加同名 builder。
@@ -85,7 +95,14 @@ entity_name: structural_engine_boundaries
 topic: constraints
 status: supported
 authority: engine
-keywords: column, beam, floor, truss, crossSection, 结构构件
+primary_terms:
+  - column
+  - beam
+  - floor
+  - truss
+  - crossSection
+  - 结构构件
+synonyms: []
 -->
 
 - `column` 当前必填 `base`、`height`、`bottomRadius`、`topRadius`、`style`；Schema 没有方柱或矩形柱的 `crossSection`、`bottomSide`、`bottomWidth` 等字段。
@@ -101,7 +118,14 @@ entity_name: door_engine_boundary
 topic: constraints
 status: supported
 authority: engine
-keywords: 门, door, opening, primitive, parentWall, 门扇
+primary_terms:
+  - 门
+  - door
+  - opening
+  - primitive
+  - parentWall
+  - 门扇
+synonyms: []
 -->
 
 `geometry.elements` 仍然没有 `type: "door"`。标准门应在 `geometry.components` 中写 `type: "door"`；编译器生成矩形 `opening` 和三段门框。`from` 固定为 `[沿父墙弧长距离, 底部世界Y, 墙体法向偏移]`，支持直线墙和单段曲线墙。
@@ -116,7 +140,14 @@ entity_name: window_engine_boundary
 topic: constraints
 status: supported
 authority: engine
-keywords: 窗, window, opening, mullion, primitive, parentWall
+primary_terms:
+  - 窗
+  - window
+  - opening
+  - mullion
+  - primitive
+  - parentWall
+synonyms: []
 -->
 
 `geometry.elements` 没有 `type: "window"` 或 `type: "mullion"`。标准静态窗应写入 `geometry.components`，其中 `verticalMullions` 和 `horizontalMullions` 控制横竖窗棂数量；窗棂不是独立组件类型。
@@ -133,7 +164,14 @@ entity_name: railing_component_boundary
 topic: constraints
 status: supported
 authority: engine
-keywords: railing, geometry.components, path, postSpacing, railLevels, 栏杆
+primary_terms:
+  - railing
+  - geometry.components
+  - path
+  - postSpacing
+  - railLevels
+  - 栏杆
+synonyms: []
 -->
 
 标准静态栏杆可以写入 `geometry.components`。默认 `path` 使用世界坐标；指定 `parentFloor` 后，路径相对父楼板左下角顶面。`height` 是每个路径点上方的栏杆高度；`postSpacing` 控制立杆最大间距，`railLevels` 使用 `(0, 1]` 比例定义横杆高度。
@@ -148,7 +186,17 @@ entity_name: roof_engine_boundary
 topic: constraints
 status: supported
 authority: engine
-keywords: roof, cornice, canopy, chimney, profile_sweep, 屋顶, 檐口, 雨棚, 烟囱
+primary_terms:
+  - roof
+  - canopy
+  - chimney
+  - cornice
+  - profile_sweep
+  - 屋顶
+  - 檐口
+  - 雨棚
+  - 烟囱
+synonyms: []
 -->
 
 - `roof` 是当前类型，六种 `roofType` 由 Schema 支持，但注册表将整体能力标为 partial。
@@ -163,7 +211,14 @@ entity_name: implemented_spatial_resolvers
 topic: assembly
 status: supported
 authority: engine
-keywords: resolver, resolveWallJoints, resolveOpenings, resolveBeamSupports, expandTemplates, expandPlacements
+primary_terms:
+  - resolver
+  - resolveWallJoints
+  - resolveOpenings
+  - resolveBeamSupports
+  - expandTemplates
+  - expandPlacements
+synonyms: []
 -->
 
 `resolveSpatialRelations()` 当前依次运行：

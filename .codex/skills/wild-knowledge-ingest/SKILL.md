@@ -12,6 +12,7 @@ description: Convert raw notes and supplied documents into verified, classified,
 ## 默认位置
 
 - 知识库：`wild-server/storage/knowledge_base/`
+- 路径 metadata 配置：`wild-server/storage/knowledge_base/config.yaml`
 - 当前 WILD 规范：`wild-server/storage/knowledge_base/BLUEPRINT-SPEC-FULL.md`
 - 最小铁律：`wild-server/storage/knowledge_base/BLUEPRINT-SPEC-MINIMAL.md`
 - Loader：`wild-server/app/spec/loader.py`
@@ -154,6 +155,15 @@ python .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py <source
 当一个变体包含定义、参数、组装公式和 JSON 时，用 `####`/`#####` 建立真实边界；禁止让一个 part 以“WILD JSON：”结束、下一个 part 才出现代码块。
 
 使用文档级 YAML frontmatter；多实体文档使用实体标题后的 `rag-meta` 注释覆盖 metadata。具体格式读取 metadata 引用。
+
+术语字段必须分开维护：`primary_terms` 只放实体正式名称、稳定领域术语和当前
+WILD 类型/字段；`synonyms` 只放翻译、别名、俗称和用户可能输入的变体。同一个词
+不得同时出现在两组中，相关概念不能冒充同义词。新建或修改的知识文档禁止继续写
+`keywords`；仅在迁移外部旧文档时使用
+`scripts/migrate_keyword_metadata.py`。可由目录稳定推断的公共字段写入知识库
+`config.yaml`，按“全局默认值 → 路径规则 → 文件头”的顺序覆盖；内容相关字段仍写在
+文档或实体 metadata 中。文件头与路径配置值完全相同时删除重复声明；批量清理使用
+`scripts/compact_frontmatter_metadata.py`，并以清理前后最终 metadata 完全一致为门槛。
 
 ### 7. 验证 WILD 示例
 

@@ -1,18 +1,16 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: component
 entity_name: proposed_component_extensions
 topic: constraints
-wild_version: "1.1"
 status: proposed
 authority: domain_reference
 source: WILD蓝图构件与组合方式完整规范(1).md
-keywords:
+primary_terms:
   - 构件扩展提案
   - proposed component
   - truss
+synonyms: []
 ---
 
 # WILD 构件扩展提案分类
@@ -28,7 +26,10 @@ entity_name: proposed_structural_transport_types
 topic: definition
 status: proposed
 authority: domain_reference
-keywords: truss, 桁架
+primary_terms:
+  - truss
+  - 桁架
+synonyms: []
 -->
 
 | 提议类型 | 原文设计意图 | 当前可用降级方式 |
@@ -43,7 +44,10 @@ entity_name: proposed_opening_related_types
 topic: definition
 status: proposed
 authority: domain_reference
-keywords: mullion, 窗棂
+primary_terms:
+  - mullion
+  - 窗棂
+synonyms: []
 -->
 
 | 提议类型 | 原文设计意图 | 当前可用降级方式 |
@@ -58,7 +62,12 @@ entity_name: proposed_site_roof_accessory_types
 topic: definition
 status: proposed
 authority: domain_reference
-keywords: terrain, 地形, roof penetration, CSG
+primary_terms:
+  - terrain
+  - 地形
+  - roof penetration
+  - CSG
+synonyms: []
 -->
 
 | 提议类型 | 原文设计意图 | 当前可用降级方式 |

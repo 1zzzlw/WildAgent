@@ -1,3 +1,8 @@
+"""把 Markdown 分片规则写成可重复验证的例子。
+
+阅读建议：每个测试都遵循“准备输入 → 调用真实代码 → 检查结果”三步。
+这里故意使用临时文件和 Mock（假对象），不会读取或修改正式知识库与 Chroma。
+"""
 import json
 import unittest
 from pathlib import Path
@@ -9,6 +14,7 @@ from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
 
 class RAGSemanticChunkingTest(unittest.TestCase):
     def _split(self, filename: str, text: str, chunk_size: int = 240):
+        """把一段测试 Markdown 写进临时文件，再交给生产 MarkdownChunker。"""
         with TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / filename
             path.write_text(text, encoding="utf-8")
@@ -18,6 +24,7 @@ class RAGSemanticChunkingTest(unittest.TestCase):
             ).split_file(path, namespace="test")
 
     def test_heading_path_and_entity_metadata_reach_every_length_part(self):
+        """长章节拆成多片后，每片仍应知道自己属于哪个实体和标题路径。"""
         chunks = self._split(
             "windows.md",
             """---
@@ -31,8 +38,10 @@ wild_version: "1.1"
 status: supported
 authority: schema
 source: components/windows.md
-keywords:
+primary_terms:
   - 窗
+  - opening
+synonyms:
   - window
 ---
 # 窗构件
@@ -45,7 +54,11 @@ entity_name: zhizhai_window
 topic: constraints
 status: supported
 authority: verified_example
-keywords: 支摘窗, zhizhai window, opening
+primary_terms:
+  - 支摘窗
+  - opening
+synonyms:
+  - zhizhai window
 -->
 
 ### 支摘窗参数与空间约束
@@ -70,10 +83,73 @@ keywords: 支摘窗, zhizhai window, opening
             self.assertEqual(chunk.metadata["entity_type"], "window")
             self.assertEqual(chunk.metadata["entity_name"], "zhizhai_window")
             self.assertEqual(chunk.metadata["topic"], "constraints")
+            self.assertEqual(chunk.metadata["primary_terms"], "支摘窗, opening")
+            self.assertEqual(chunk.metadata["synonyms"], "zhizhai window")
             self.assertIn("窗构件 > 支摘窗 > 支摘窗参数与空间约束", chunk.document)
             self.assertNotIn("rag-meta", chunk.document)
 
+    def test_path_config_supplies_defaults_but_frontmatter_has_final_say(self):
+        """路径配置减少重复字段，文件头仍可覆盖特例。"""
+        with TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            config_path = root / "config.yaml"
+            config_path.write_text(
+                """defaults:
+  wild_version: "1.1"
+mapping_rules:
+  - path_pattern: "components/*.md"
+    metadata:
+      doc_type: component
+      doc_scope: generation
+      status: deprecated
+""",
+                encoding="utf-8",
+            )
+            document_path = root / "components" / "example.md"
+            document_path.parent.mkdir()
+            document_path.write_text(
+                """---
+doc_type: recipe
+status: supported
+---
+# 示例
+
+这里是用于测试路径 metadata 合并顺序的正文。
+""",
+                encoding="utf-8",
+            )
+
+            chunks = MarkdownChunker(
+                chunk_size=240,
+                chunk_overlap=40,
+                metadata_config_path=config_path,
+            ).split_file(document_path, namespace="test")
+
+        self.assertTrue(chunks)
+        self.assertEqual(chunks[0].metadata["wild_version"], "1.1")
+        self.assertEqual(chunks[0].metadata["doc_scope"], "generation")
+        self.assertEqual(chunks[0].metadata["doc_type"], "recipe")
+        self.assertEqual(chunks[0].metadata["status"], "supported")
+
+    def test_legacy_keywords_are_exposed_through_new_term_fields(self):
+        """Loader 只为外部旧文档保留兼容，不要求它们一次性同步迁移。"""
+        chunks = self._split(
+            "legacy.md",
+            """---
+keywords: 旧主词, old alias
+---
+# 旧文档
+
+这是一份尚未迁移的外部知识文档。
+""",
+        )
+
+        self.assertEqual(chunks[0].metadata["keywords"], "旧主词, old alias")
+        self.assertEqual(chunks[0].metadata["primary_terms"], "旧主词, old alias")
+        self.assertEqual(chunks[0].metadata["synonyms"], "")
+
     def test_length_fallback_keeps_json_and_table_structurally_complete(self):
+        """长度兜底可以拆普通文本和表格行，但不能从中间切断 JSON。"""
         long_value = "x" * 420
         rows = "\n".join(f"| 窗型{i} | opening | {i} |" for i in range(18))
         chunks = self._split(
@@ -107,6 +183,7 @@ keywords: 支摘窗, zhizhai window, opening
             self.assertIn("|---|---|---|", chunk.document)
 
     def test_readme_is_inferred_as_index_scope(self):
+        """README 只负责导航，必须标成 index，避免污染建筑生成召回。"""
         chunks = self._split(
             "README.md",
             """# 构件索引
@@ -122,6 +199,7 @@ keywords: 支摘窗, zhizhai window, opening
         self.assertTrue(all(chunk.metadata["doc_scope"] == "index" for chunk in chunks))
 
     def test_empty_container_heading_is_not_indexed(self):
+        """只有标题和分隔线的空章节不应浪费一个向量。"""
         chunks = self._split(
             "public.md",
             """# 公共建筑
@@ -141,6 +219,7 @@ keywords: 支摘窗, zhizhai window, opening
         self.assertTrue(any("教育建筑" in heading for heading in headings))
 
     def test_body_hash_ignores_repeated_knowledge_path_prefix(self):
+        """正文相同但父标题不同的内容应有相同 body_hash，供跨文件判重。"""
         first = self._split(
             "first.md",
             """# 屋顶构件
@@ -168,6 +247,7 @@ keywords: 支摘窗, zhizhai window, opening
         self.assertEqual(first.metadata["body_hash"], second.metadata["body_hash"])
 
     def test_retrieve_combines_namespace_scope_and_business_filters(self):
+        """检索条件必须同时包含索引隔离、安全过滤和调用方业务过滤。"""
         collection = Mock()
         collection.count.return_value = 3
         collection.query.return_value = {
@@ -201,6 +281,7 @@ keywords: 支摘窗, zhizhai window, opening
         )
 
     def test_context_limit_keeps_retrieved_chunks_atomic(self):
+        """Prompt 放不下所有结果时，应舍弃整片，不能截断 JSON 片段。"""
         loader = object.__new__(RAGSpecLoader)
         loader._max_context_chars = 360
         loader._loaded_at = None

@@ -1,21 +1,19 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: material
 entity_name: public_building_material_palette
 topic: parameters
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: recipes/public-building-material-palette.md
-keywords:
+primary_terms:
   - 公共建筑材质
-  - public building materials
   - concrete
   - metal
   - glass
   - roughness
+synonyms:
+  - public building materials
 ---
 
 # 公共建筑视觉材质调色板
@@ -30,7 +28,14 @@ entity_name: public_material_schema_boundary
 topic: constraints
 status: supported
 authority: schema
-keywords: MaterialDef, baseColor, roughness, metallic, albedo, lightingCondition
+primary_terms:
+  - MaterialDef
+  - baseColor
+  - roughness
+  - metallic
+  - albedo
+  - lightingCondition
+synonyms: []
 -->
 
 每个蓝图内材质至少提供 `baseColor`、`roughness`、`metallic`、`albedo` 和 `lightingCondition: D65_noon`。`baseColor` 使用 0～1 的三分量数组；材质名称只是可自定义引用 ID，元素和组件引用必须与其完全一致。
@@ -43,7 +48,13 @@ entity_name: public_solid_metal_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: reinforced_concrete, floor_concrete, wall_ext, metal, steel_railing
+primary_terms:
+  - reinforced_concrete
+  - floor_concrete
+  - wall_ext
+  - metal
+  - steel_railing
+synonyms: []
 -->
 
 | 材质 ID | `baseColor` | `roughness` | `metallic` | 建议角色 |
@@ -64,7 +75,14 @@ entity_name: public_masonry_wood_roof_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: wood_red, wood_plank, stone_rubble, grey_brick, red_brick, grey_tile
+primary_terms:
+  - wood_red
+  - wood_plank
+  - stone_rubble
+  - grey_brick
+  - red_brick
+  - grey_tile
+synonyms: []
 -->
 
 | 材质 ID | `baseColor` | `roughness` | `metallic` | 建议角色 |
@@ -86,10 +104,15 @@ entity_name: public_glass_material
 topic: parameters
 status: experimental
 authority: engine
-keywords: facade_glass, materialClass glass, transmission, ior, opacity
+primary_terms:
+  - facade_glass
+  - materialClass glass
+  - transmission
+  - ior
+  - opacity
+synonyms: []
 -->
 
 来源采用单一 `opacity` 值表达玻璃；当前渲染器已支持更专业的玻璃字段，因此玻璃应规范化为 `materialClass: glass`、`transmission`、`ior`、`thickness` 与低 `roughness` 的组合。幕墙玻璃使用 `recipes/glass-curtain-wall-assembly.md` 的 `facade_glass` 示例，避免同时召回两套互相冲突的透明度参数。
 
 普通门窗玻璃与幕墙玻璃应使用不同材质 ID，以便分别调整色调、透射和粗糙度。材质参数不会自动产生玻璃厚度分层、Low-E 镀膜、隔热、防火或天气响应。
-

@@ -1,0 +1,215 @@
+控制台输出将同时保存到: E:\AgentProject\WildAgent\wild-server\scripts\reports\chunks_console_20260824_180129.txt
+
+处理文件: E:\AgentProject\WildAgent\wild-server\storage\knowledge_base\components\windows-supported.md
+配置: chunk_size=900, chunk_overlap=150
+
+
+================================================================================
+分片 #1
+================================================================================
+ID: test:ddab43919fc6:section:baf752aaf8802f37:0:18f5fd957723f977
+文档长度: 165 字符
+
+Metadata:
+  authority: 'engine'
+  body_hash: '774146a172e62d7a'
+  chunk_index: 0
+  content_hash: '18f5fd957723f977'
+  declared_source: 'wild-web/wild-lang/schema.json'
+  doc_scope: 'generation'
+  doc_type: 'component'
+  entity_name: 'static_window_component'
+  entity_type: 'window'
+  heading: '基础静态窗组合构件 > 当前支持的基础静态窗'
+  heading_path: '基础静态窗组合构件 > 当前支持的基础静态窗'
+  keywords: '基础静态窗, window component, geometry.components, parentWall, verticalMullions, glassMaterial'
+  knowledge_layer: 'wild_schema'
+  mtime: 1786349910.450903
+  namespace: 'test'
+  parent_chunk_id: 'test:ddab43919fc6:section:baf752aaf8802f37'
+  part_index: 0
+  path: 'E:/AgentProject/WildAgent/wild-server/storage/knowledge_base/components/windows-supported.md'
+  source: 'windows-supported.md'
+  source_file: 'windows-supported.md'
+  status: 'supported'
+  topic: 'schema'
+  wild_version: '1.1'
+
+完整内容:
+--------------------------------------------------------------------------------
+> 知识路径：基础静态窗组合构件 > 当前支持的基础静态窗
+
+# 基础静态窗组合构件  
+## 当前支持的基础静态窗  
+基础窗必须写入 `geometry.components`。它可依附直线墙或单段曲线墙，编译为矩形 `opening`、四边窗框和可选横竖窗棂；可选 `interaction` 为窗面增加右键平开或推拉动画。
+--------------------------------------------------------------------------------
+
+================================================================================
+分片 #2
+================================================================================
+ID: test:ddab43919fc6:section:c68425d653bb8c2d:0:ed4ab86f09576add
+文档长度: 657 字符
+
+Metadata:
+  authority: 'engine'
+  body_hash: 'd2ca88ad33698c6e'
+  chunk_index: 1
+  content_hash: 'ed4ab86f09576add'
+  declared_source: 'wild-web/wild-lang/schema.json'
+  doc_scope: 'generation'
+  doc_type: 'component'
+  entity_name: 'static_window_component'
+  entity_type: 'window'
+  heading: '基础静态窗组合构件 > 当前支持的基础静态窗 > 参数契约'
+  heading_path: '基础静态窗组合构件 > 当前支持的基础静态窗 > 参数契约'
+  keywords: '基础静态窗, window component, geometry.components, parentWall, verticalMullions, glassMaterial'
+  knowledge_layer: 'wild_schema'
+  mtime: 1786349910.450903
+  namespace: 'test'
+  parent_chunk_id: 'test:ddab43919fc6:section:c68425d653bb8c2d'
+  part_index: 0
+  path: 'E:/AgentProject/WildAgent/wild-server/storage/knowledge_base/components/windows-supported.md'
+  source: 'windows-supported.md'
+  source_file: 'windows-supported.md'
+  status: 'supported'
+  topic: 'schema'
+  wild_version: '1.1'
+
+完整内容:
+--------------------------------------------------------------------------------
+> 知识路径：基础静态窗组合构件 > 当前支持的基础静态窗 > 参数契约
+
+### 参数契约
+
+| 字段 | 要求 |
+|---|---|
+| `type` | 固定为 `window` |
+| `id` | 非空且与全部元素、组件 ID 唯一 |
+| `parentWall` | 已存在的直线或单段曲线 `wall` ID |
+| `from` | `[沿墙弧长距离, 窗台世界Y, 法向偏移]` |
+| `width`, `height` | 正数，且不能超出父墙 |
+| `verticalMullions`, `horizontalMullions` | 可选，分别为 0–32 的整数 |
+| `frameWidth` | 可选正数，默认 0.06m |
+| `frameDepth` | 可选正数，默认等于父墙 `thickness` |
+| `glassDepth` | 可选正数，默认 `min(0.012, frameDepth)`，且不能大于 `frameDepth` |
+| `frameMaterial`, `glassMaterial` | 可选，必须引用已有材质 |
+| `interaction` | 可选；`mode` 为 `swing/slide`，可设方向、角度/距离和初始状态 |
+
+窗框和玻璃以 `from[2]` 为中心沿父墙法向放置，必须与父墙厚度范围产生实体交叠。通常保持 `from[2] = 0` 并省略深度字段；编译后的玻璃是有厚度的封闭网格，不再是零厚平面。
+--------------------------------------------------------------------------------
+
+================================================================================
+分片 #3
+================================================================================
+ID: test:ddab43919fc6:section:d7f22f5842dcd54a:0:cce7eaef3a5ae1a2
+文档长度: 347 字符
+
+Metadata:
+  authority: 'engine'
+  body_hash: '7c8d7c350d787492'
+  chunk_index: 2
+  content_hash: 'cce7eaef3a5ae1a2'
+  declared_source: 'wild-web/wild-lang/schema.json'
+  doc_scope: 'generation'
+  doc_type: 'component'
+  entity_name: 'static_window_component'
+  entity_type: 'window'
+  heading: '基础静态窗组合构件 > 当前支持的基础静态窗 > 有效 JSON 片段'
+  heading_path: '基础静态窗组合构件 > 当前支持的基础静态窗 > 有效 JSON 片段'
+  keywords: '基础静态窗, window component, geometry.components, parentWall, verticalMullions, glassMaterial'
+  knowledge_layer: 'wild_schema'
+  mtime: 1786349910.450903
+  namespace: 'test'
+  parent_chunk_id: 'test:ddab43919fc6:section:d7f22f5842dcd54a'
+  part_index: 0
+  path: 'E:/AgentProject/WildAgent/wild-server/storage/knowledge_base/components/windows-supported.md'
+  source: 'windows-supported.md'
+  source_file: 'windows-supported.md'
+  status: 'supported'
+  topic: 'schema'
+  wild_version: '1.1'
+
+完整内容:
+--------------------------------------------------------------------------------
+> 知识路径：基础静态窗组合构件 > 当前支持的基础静态窗 > 有效 JSON 片段
+
+### 有效 JSON 片段  
+以下是 `geometry.components` 数组中的一个片段，不是完整 `.wild` 文件：
+
+```json
+{
+"type": "window",
+"id": "living_window",
+"parentWall": "front_wall",
+"from": [3, 0.9, 0],
+"width": 1.8,
+"height": 1.2,
+"verticalMullions": 1,
+"horizontalMullions": 1,
+"frameMaterial": "metal",
+"glassMaterial": "glass"
+}
+```
+--------------------------------------------------------------------------------
+
+================================================================================
+分片 #4
+================================================================================
+ID: test:ddab43919fc6:section:5e30cffada8db03e:0:641f19946f39e3f0
+文档长度: 125 字符
+
+Metadata:
+  authority: 'engine'
+  body_hash: '2c0ca38c671f3cfb'
+  chunk_index: 3
+  content_hash: '641f19946f39e3f0'
+  declared_source: 'wild-web/wild-lang/schema.json'
+  doc_scope: 'generation'
+  doc_type: 'component'
+  entity_name: 'static_window_component'
+  entity_type: 'window'
+  heading: '基础静态窗组合构件 > 当前支持的基础静态窗 > 当前边界'
+  heading_path: '基础静态窗组合构件 > 当前支持的基础静态窗 > 当前边界'
+  keywords: '基础静态窗, window component, geometry.components, parentWall, verticalMullions, glassMaterial'
+  knowledge_layer: 'wild_schema'
+  mtime: 1786349910.450903
+  namespace: 'test'
+  parent_chunk_id: 'test:ddab43919fc6:section:5e30cffada8db03e'
+  part_index: 0
+  path: 'E:/AgentProject/WildAgent/wild-server/storage/knowledge_base/components/windows-supported.md'
+  source: 'windows-supported.md'
+  source_file: 'windows-supported.md'
+  status: 'supported'
+  topic: 'schema'
+  wild_version: '1.1'
+
+完整内容:
+--------------------------------------------------------------------------------
+> 知识路径：基础静态窗组合构件 > 当前支持的基础静态窗 > 当前边界
+
+### 当前边界  
+左键选择高亮，右键才执行开合。`sashType`、多窗扇独立状态、复杂 `muntinPattern`、碰撞和独立 `mullion` 类型仍未实现。
+--------------------------------------------------------------------------------
+
+================================================================================
+统计分析
+================================================================================
+
+总分片数: 4
+
+长度统计:
+  最小: 125 字符
+  最大: 657 字符
+  平均: 323 字符
+  中位数: 347 字符
+
+按文件分组:
+  windows-supported.md: 4 个分片
+
+按实体名称分组:
+  static_window_component: 4 个分片
+
+按文档类型分组:
+  component: 4 个分片
+
+报告文件已生成: E:\AgentProject\WildAgent\wild-server\scripts\reports\inspect_chunks_20260824_180129.md (795 字符)

@@ -1,15 +1,12 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: component
 entity_name: composite_components_second_batch
 topic: schema
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 第二批组合构件
   - composite component
   - canopy
@@ -18,6 +15,7 @@ keywords:
   - bay_window
   - cornice
   - chimney
+synonyms: []
 ---
 
 # WILD 第二批组合构件
@@ -30,7 +28,12 @@ entity_name: wall_canopy_component
 topic: schema
 status: supported
 authority: engine
-keywords: 雨棚, canopy, parentWall, supportCount
+primary_terms:
+  - 雨棚
+  - canopy
+  - parentWall
+  - supportCount
+synonyms: []
 -->
 
 `canopy` 写入 `geometry.components`，依附墙体并编译为一块 `primitive.box` 顶板和可选支柱。`from` 是 `[沿父墙距离, 安装世界Y, 墙体法向偏移]`；必填 `parentWall`、`width`、`depth`、`thickness`。`supportCount` 为 0–16 的可选整数。
@@ -59,7 +62,12 @@ entity_name: wall_balcony_component
 topic: schema
 status: supported
 authority: engine
-keywords: 阳台, balcony, slabThickness, railingHeight
+primary_terms:
+  - 阳台
+  - balcony
+  - slabThickness
+  - railingHeight
+synonyms: []
 -->
 
 `balcony` 依附墙体，编译为悬挑楼板和 U 形路径栏杆。`from` 是 `[沿父墙距离, 楼板顶面世界Y, 墙体法向偏移]`；通常令 `from[2]=0`，编译器根据宿主墙相对建筑水平包围盒中心的位置推断室外方向，并让正数 `depth` 始终向室外悬挑。必填 `width`、`depth`、`slabThickness`。`railingHeight` 和 `postSpacing` 控制防护外观，但不代表通过建筑规范校核。
@@ -90,7 +98,12 @@ entity_name: straight_ramp_component
 topic: schema
 status: supported
 authority: engine
-keywords: 坡道, ramp, railingSides, parentFloor
+primary_terms:
+  - 坡道
+  - ramp
+  - railingSides
+  - parentFloor
+synonyms: []
 -->
 
 `ramp` 使用 `from`、`to` 定义直线坡道上表面中心线，编译为连续 `primitive.profile_sweep` 斜板。选定栏杆侧会同时生成随坡侧缘挡台、竖直立柱和上下两道连续扶手；栏杆基点从挡台顶面计算，不得另猜高度。必填 `width`、`thickness`；`railingSides` 可为 `none`、`left`、`right`、`both`。未指定 `parentFloor` 时坐标是世界坐标；指定后坐标相对父楼板左下角顶面。
@@ -119,7 +132,13 @@ entity_name: projected_bay_window_component
 topic: schema
 status: supported
 authority: engine
-keywords: 凸窗, 飘窗, bay_window, projectionDepth, parentWall
+primary_terms:
+  - 凸窗
+  - 飘窗
+  - bay_window
+  - projectionDepth
+  - parentWall
+synonyms: []
 -->
 
 `bay_window` 依附墙体，编译为 `opening`、基础窗框、上下挑板和投影窗面。墙体定位字段与 `window` 相同，另必填正数 `projectionDepth`。它表达确定性静态凸窗几何，不自动生成室内窗台家具。
@@ -147,7 +166,13 @@ entity_name: profile_sweep_cornice_component
 topic: schema
 status: supported
 authority: engine
-keywords: 檐口, 线脚, cornice, profile_sweep, parentRoof
+primary_terms:
+  - 檐口
+  - 线脚
+  - profile_sweep
+  - parentRoof
+  - cornice
+synonyms: []
 -->
 
 `cornice` 把二维分层线脚 `profile` 沿三维 `path` 编译为 `primitive.profile_sweep`。路径至少两个不重合点，闭合截面至少三个二维点。建筑檐口应优先指定 `parentRoof`：路径 X/Z 相对屋顶中心，Y 是屋面高度偏移，未显式设置屋顶 `position` 时编译器会按结构墙包围盒推导与 Core 一致的屋顶原点。未指定 `parentRoof` 只适用于有意使用世界坐标的独立线脚；编辑器构件库不会再创建无依附的悬空檐口。屋顶依附当前只支持 `flat`、`gable`、`hip`。
@@ -173,7 +198,13 @@ entity_name: hollow_chimney_component
 topic: schema
 status: supported
 authority: engine
-keywords: 烟囱, chimney, parentRoof, wallThickness, capHeight
+primary_terms:
+  - 烟囱
+  - chimney
+  - parentRoof
+  - wallThickness
+  - capHeight
+synonyms: []
 -->
 
 `chimney` 编译为四面薄壁和顶部压顶。必填 `position`、`width`、`depth`、`height`；`wallThickness` 必须小于宽度和深度的一半。指定 `parentRoof` 后，位置相对屋顶中心并贴到已计算屋面；这只完成定位和外观，不执行屋顶布尔穿透。
@@ -201,7 +232,13 @@ entity_name: second_batch_component_boundaries
 topic: constraints
 status: supported
 authority: engine
-keywords: 组合构件边界, roof penetration, CSG, terrain, 能力限制
+primary_terms:
+  - 组合构件边界
+  - roof penetration
+  - CSG
+  - terrain
+  - 能力限制
+synonyms: []
 -->
 
 第二批组件只使用当前 Core 的 `opening`、`primitive`、`beam` 和 `profile_sweep`。当前没有通用 CSG、屋顶真实穿透、复杂曲面屋顶依附、地形贴合、中间坡道平台或结构安全计算。不得把烟囱外观误述为屋顶已开孔，也不得把栏杆参数误述为符合建筑规范。

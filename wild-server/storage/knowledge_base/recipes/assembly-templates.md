@@ -1,20 +1,18 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: assembly
 entity_name: building_assembly_templates
 topic: assembly
-wild_version: "1.1"
 status: experimental
 authority: maintainer
 source: recipes/assembly-templates.md
-keywords:
+primary_terms:
   - 组装模板
   - assembly
   - 低层建筑
   - 高层建筑
   - 大跨公建
+synonyms: []
 ---
 
 # WILD v1.1 建筑组装模板
@@ -32,7 +30,15 @@ entity_name: low_rise_supported_baseline
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 低层建筑, low rise, floor, wall, opening, roof, stair
+primary_terms:
+  - 低层建筑
+  - floor
+  - wall
+  - opening
+  - roof
+  - stair
+synonyms:
+  - low rise
 -->
 
 适用于别墅、小屋、园林和低层公共建筑的起点：
@@ -51,7 +57,16 @@ entity_name: multi_storey_supported_baseline
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 多层建筑, multi storey, column, beam, floor, wall, opening, stair
+primary_terms:
+  - 多层建筑
+  - column
+  - beam
+  - floor
+  - wall
+  - opening
+  - stair
+synonyms:
+  - multi storey
 -->
 
 ```
@@ -68,7 +83,15 @@ entity_name: long_span_supported_fallback
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 大跨建筑, 温室, 厂房, long span, beam, primitive, roof
+primary_terms:
+  - 大跨建筑
+  - 温室
+  - 厂房
+  - beam
+  - primitive
+  - roof
+synonyms:
+  - long span
 -->
 
 ```
@@ -85,7 +108,20 @@ entity_name: supported_composite_assembly
 topic: assembly
 status: supported
 authority: engine
-keywords: geometry.components, door, window, railing, canopy, balcony, ramp, bay_window, cornice, chimney, light, 组合构件
+primary_terms:
+  - geometry.components
+  - door
+  - window
+  - railing
+  - canopy
+  - balcony
+  - ramp
+  - bay_window
+  - cornice
+  - chimney
+  - light
+  - 组合构件
+synonyms: []
 -->
 
 ```text
@@ -105,7 +141,13 @@ entity_name: proposed_professional_relations
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: truss, curtain wall, roof penetration, auto railing, 专业构件
+primary_terms:
+  - truss
+  - roof penetration
+  - 专业构件
+  - curtain wall
+  - auto railing
+synonyms: []
 -->
 
 ```

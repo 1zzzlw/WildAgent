@@ -1,24 +1,20 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: mixed_use
 entity_name: extended_residential_building_types
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/residential/extended-residential-types.md
-keywords:
+primary_terms:
   - 居住建筑
-  - residential building
   - 联排别墅
   - 保障性住房
   - 公寓
   - 乡土民居
   - 宿舍
   - 旅居住宅
+synonyms:
+  - residential building
 ---
 
 # 居住建筑扩展类型与 WILD 1.1 生成规则
@@ -34,7 +30,13 @@ entity_name: residential_engine_adaptation_rules
 topic: constraints
 status: supported
 authority: engine
-keywords: 居住建筑降级, residential fallback, WILD v1.1, geometry.components, balcony
+primary_terms:
+  - 居住建筑降级
+  - WILD v1.1
+  - geometry.components
+  - balcony
+synonyms:
+  - residential fallback
 -->
 
 正式基础元素以引擎注册表为准。居住建筑外壳优先使用 `floor`、`wall`、`roof` 和 `opening`，骨架使用 `column`、`beam`，层间交通使用 `stair`，简化静态细部使用 `primitive`。门、窗、栏杆、雨棚、阳台、坡道、凸窗、檐口和烟囱写入 `geometry.components`，不得继续写成 `geometry.elements`。
@@ -51,7 +53,13 @@ entity_name: row_house
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 联排别墅, row house, townhouse, 共用山墙, 前后院
+primary_terms:
+  - 联排别墅
+  - 共用山墙
+  - 前后院
+synonyms:
+  - row house
+  - townhouse
 -->
 
 联排别墅由多个窄面宽、较大进深的低层住宅单元横向连续排列。核心识别特征是重复开间、相邻单元共用山墙、独立前后入口、统一屋顶节奏和可选二层阳台。来源资料建议 2～4 层、单元面宽约 6～9m、进深约 10～15m，只用于方案初始化。
@@ -68,7 +76,13 @@ entity_name: stacked_villa
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 叠拼别墅, stacked villa, 上叠, 下叠, 露台
+primary_terms:
+  - 叠拼别墅
+  - 上叠
+  - 下叠
+  - 露台
+synonyms:
+  - stacked villa
 -->
 
 叠拼别墅把住宅单元竖向组合在同一建筑体量中。下叠通常强调独立庭院和低层落地开口，上叠强调独立入户、露台和多层平台；来源资料用约 4～5 层作为示意体量。生成时必须保留“上叠/下叠”的分层入口差异，不能退化成普通单户别墅。
@@ -85,7 +99,13 @@ entity_name: public_rental_housing
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 公租房, 廉租房, public rental housing, 标准化开间, 内廊
+primary_terms:
+  - 公租房
+  - 廉租房
+  - 标准化开间
+  - 内廊
+synonyms:
+  - public rental housing
 -->
 
 公租房和廉租房的生成语义是紧凑、标准化、经济耐用和重复模数。立面应使用规整门窗、简洁墙面、连续走廊节奏和数量受控的阳台；来源资料中的层数和规范尺寸只作为参考，不自动成为合规结论。
@@ -102,7 +122,12 @@ entity_name: resettlement_housing
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 安置房, resettlement housing, 多层住宅, 底层商铺
+primary_terms:
+  - 安置房
+  - 多层住宅
+  - 底层商铺
+synonyms:
+  - resettlement housing
 -->
 
 安置房的外观语义是规则开间、经济材料、重复门窗和多层到高层住宅体量。来源资料还给出带底层沿街商业的变体；该变体应表现首层层高和柱网变化，而不是声称已完成结构转换设计。
@@ -119,7 +144,12 @@ entity_name: shared_ownership_housing
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 共有产权房, shared ownership housing, 标准层, 规整立面
+primary_terms:
+  - 共有产权房
+  - 标准层
+  - 规整立面
+synonyms:
+  - shared ownership housing
 -->
 
 共有产权房采用标准层住宅语义，体量通常规整，立面以重复开间、统一门窗和数量受控的阳台形成节奏。产权属性不转化为 WILD 字段。
@@ -136,7 +166,13 @@ entity_name: business_apartment
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 商务公寓, business apartment, 高层高, 玻璃立面, LOFT
+primary_terms:
+  - 商务公寓
+  - 高层高
+  - 玻璃立面
+  - LOFT
+synonyms:
+  - business apartment
 -->
 
 商务公寓强调居住与办公混合的外观语义、高层高、现代玻璃立面和可选夹层。来源资料建议层高约 3.6～4.5m，仅用于体量初始化。
@@ -153,7 +189,12 @@ entity_name: serviced_apartment
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 酒店式公寓, serviced apartment, 重复客房, 独立厨卫
+primary_terms:
+  - 酒店式公寓
+  - 重复客房
+  - 独立厨卫
+synonyms:
+  - serviced apartment
 -->
 
 酒店式公寓的识别特征是重复居住单元、集中交通、统一门窗和可选独立阳台。酒店式管理、厨卫设备和运营能力不属于蓝图几何。
@@ -170,7 +211,13 @@ entity_name: youth_apartment
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 青年公寓, youth apartment, 紧凑型, LOFT, 共享空间
+primary_terms:
+  - 青年公寓
+  - 紧凑型
+  - 共享空间
+  - LOFT
+synonyms:
+  - youth apartment
 -->
 
 青年公寓强调紧凑开间、较高层高、可选 LOFT 夹层和共享空间。来源资料给出约 3.9～4.5m 层高作为示意；共享空间应通过家具和开放体量表达。
@@ -187,7 +234,13 @@ entity_name: loft_apartment
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: Loft 公寓, loft apartment, 高层高, 夹层, 通高窗
+primary_terms:
+  - Loft 公寓
+  - 高层高
+  - 夹层
+  - 通高窗
+synonyms:
+  - loft apartment
 -->
 
 Loft 公寓的关键语义是高层高大开间、局部夹层、通高采光和开放空间。来源资料建议约 4.5～5.4m 层高，夹层只占局部平面，不应错误覆盖整个挑空区。
@@ -204,7 +257,13 @@ entity_name: senior_apartment
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 老年公寓, senior apartment, 无障碍意图, 低窗台, 连续扶手
+primary_terms:
+  - 老年公寓
+  - 无障碍意图
+  - 低窗台
+  - 连续扶手
+synonyms:
+  - senior apartment
 -->
 
 老年公寓的生成意图是低层、宽通道、低窗台、平缓入口和连续扶手。来源资料中的门宽、坡度、楼层限制和电梯要求只能作为待确认设计输入，不能由渲染结果证明合规。
@@ -221,7 +280,13 @@ entity_name: rural_self_built_house
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 农村自建房, rural self-built house, 砖混, 坡屋顶, 院墙
+primary_terms:
+  - 农村自建房
+  - 砖混
+  - 坡屋顶
+  - 院墙
+synonyms:
+  - rural self-built house
 -->
 
 农村自建房通常为 1～3 层低层住宅，视觉特征是规整砖墙、构造柱或框架外观、双坡屋顶、院墙、大院门和可选厨房烟囱。
@@ -238,7 +303,13 @@ entity_name: yaodong_cave_dwelling
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 窑洞, yaodong, cave dwelling, 拱形洞口, 厚土墙
+primary_terms:
+  - 窑洞
+  - 拱形洞口
+  - 厚土墙
+synonyms:
+  - yaodong
+  - cave dwelling
 -->
 
 窑洞强调厚重土体、重复拱形立面洞口和半地下或靠崖视觉，可分为靠崖式、下沉式和独立式语义。源资料中的竖向拱顶不能直接转换为 `wall.curve`。
@@ -255,7 +326,13 @@ entity_name: diaojiaolou_stilt_house
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 吊脚楼, diaojiaolou, stilt house, 干栏式, 穿斗木构架
+primary_terms:
+  - 吊脚楼
+  - 干栏式
+  - 穿斗木构架
+synonyms:
+  - diaojiaolou
+  - stilt house
 -->
 
 吊脚楼是依坡架空的木构住宅语义，核心特征是不等高支柱、高位木楼板、轻质围护、前廊和大出檐坡屋顶。
@@ -272,7 +349,13 @@ entity_name: worker_dormitory
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 职工宿舍, worker dormitory, 单元式, 独立卫生间, 内廊
+primary_terms:
+  - 职工宿舍
+  - 单元式
+  - 独立卫生间
+  - 内廊
+synonyms:
+  - worker dormitory
 -->
 
 职工宿舍偏向单元式重复房间、连续内廊、独立卫生空间外形和统一阳台节奏。房间人数和卫生设备不是几何字段。
@@ -289,7 +372,13 @@ entity_name: campus_dormitory
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 校园宿舍, campus dormitory, 外廊式, 内廊式, 密集开间
+primary_terms:
+  - 校园宿舍
+  - 外廊式
+  - 内廊式
+  - 密集开间
+synonyms:
+  - campus dormitory
 -->
 
 校园宿舍以密集重复房间、外廊或内廊、集中卫生空间和建筑两端交通为主要识别特征。来源资料建议开间和层数只作为示意。
@@ -306,7 +395,13 @@ entity_name: barracks_dormitory
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 军营宿舍, barracks, 营房式, 标准开间, 集合广场
+primary_terms:
+  - 军营宿舍
+  - 营房式
+  - 标准开间
+  - 集合广场
+synonyms:
+  - barracks
 -->
 
 军营宿舍强调标准化营房体量、大房间、统一窗列、集中功能空间和室外集合场地。安全等级和军用功能不转化为 WILD 字段。
@@ -323,7 +418,13 @@ entity_name: construction_site_dormitory
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 工地临建宿舍, construction dormitory, 活动板房, 轻钢, 外廊
+primary_terms:
+  - 工地临建宿舍
+  - 活动板房
+  - 轻钢
+  - 外廊
+synonyms:
+  - construction dormitory
 -->
 
 工地临建宿舍采用轻型模块化外观，重点是细柱梁、薄围护、重复门窗、二层外廊和室外楼梯。材料名称只表达视觉，不证明可拆装或防火性能。
@@ -340,7 +441,14 @@ entity_name: homestay_guesthouse
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 民宿, homestay, guesthouse, 地域材料, 庭院, 观景窗
+primary_terms:
+  - 民宿
+  - 地域材料
+  - 庭院
+  - 观景窗
+synonyms:
+  - homestay
+  - guesthouse
 -->
 
 民宿强调地域材料、院落、观景开口和不同于标准酒店的低层体量。既有建筑改造只是设计语义，不能据此推断原构件真实状态。
@@ -357,7 +465,13 @@ entity_name: wellness_courtyard
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 康养小院, wellness courtyard, 围合庭院, 回廊, 连续通行
+primary_terms:
+  - 康养小院
+  - 围合庭院
+  - 回廊
+  - 连续通行
+synonyms:
+  - wellness courtyard
 -->
 
 康养小院强调围绕安静庭院布置的低层体量、连续回廊、低窗台和平缓通行。药草园、康复和疗愈效果属于场景意图，不是可验证的建筑性能。
@@ -374,7 +488,13 @@ entity_name: mountain_travel_residence
 topic: assembly
 status: experimental
 authority: maintainer
-keywords: 山地旅居住宅, mountain residence, 错层, 退台, 观景窗
+primary_terms:
+  - 山地旅居住宅
+  - 错层
+  - 退台
+  - 观景窗
+synonyms:
+  - mountain residence
 -->
 
 山地旅居住宅强调依坡错层、逐层退台、不等高支撑和面向景观的宽开口。来源资料中的挡土、抗滑和抗倾覆要求不能由 WILD 几何证明。
@@ -391,7 +511,14 @@ entity_name: residential_deduplication_routes
 topic: constraints
 status: supported
 authority: maintainer
-keywords: 居住建筑去重, residential routing, villa, housing, cabin, courtyard
+primary_terms:
+  - 居住建筑去重
+  - residential routing
+  - villa
+  - housing
+  - cabin
+  - courtyard
+synonyms: []
 -->
 
 现代别墅、中式传统别墅和新中式别墅继续以 `residential/villas.md` 为详细配方；普通多层和高层住宅继续使用 `residential/housing-dormitories-hotels.md`；农家宅院的轻量入口使用 `catalog/courtyards.md`；度假木屋的轻量入口使用 `catalog/cabins.md`。本文件不复制这些实体的完整配方和 JSON，避免竞争性重复。当前引擎边界以 `components/engine-capability-boundaries.md`、`components/composite-components-second-batch.md`、TypeScript 类型和 Schema 为准。

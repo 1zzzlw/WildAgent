@@ -1,21 +1,19 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: material
 entity_name: residential_material_palette
 topic: parameters
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: recipes/residential-material-palette.md
-keywords:
+primary_terms:
   - 居住建筑材质
-  - residential material palette
   - baseColor
   - roughness
   - metallic
   - opacity
+synonyms:
+  - residential material palette
 ---
 
 # 居住建筑建议材质调色板
@@ -31,7 +29,14 @@ entity_name: residential_material_schema_rules
 topic: constraints
 status: supported
 authority: schema
-keywords: MaterialDef, baseColor, roughness, metallic, albedo, lightingCondition
+primary_terms:
+  - MaterialDef
+  - baseColor
+  - roughness
+  - metallic
+  - albedo
+  - lightingCondition
+synonyms: []
 -->
 
 每个 `materials.<name>` 至少应提供 `baseColor`、`roughness`、`metallic`、`albedo` 和 `lightingCondition`。下表中的所有材质默认补充 `albedo: 1.0` 与 `lightingCondition: "D65_noon"`；只有玻璃类材质使用小于 1 的 `opacity`。`baseColor` 必须是三个 0～1 数值，材质名可以自由定义，但必须与元素的 `material` 引用完全一致。
@@ -44,7 +49,13 @@ entity_name: modern_residential_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: white_concrete, reinforced_concrete, steel_sandwich, glass_curtain, steel_railing
+primary_terms:
+  - white_concrete
+  - reinforced_concrete
+  - steel_sandwich
+  - glass_curtain
+  - steel_railing
+synonyms: []
 -->
 
 以下数值适合现代别墅、公寓、高层住宅和临建的视觉初始化，不代表真实材料检测结果。玻璃幕墙仅是材质表现，当前引擎没有完整幕墙系统。
@@ -65,7 +76,14 @@ entity_name: residential_wood_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: wood_red, wood_plank, wood_oak, wood_shingle, 木材, 木瓦
+primary_terms:
+  - wood_red
+  - wood_plank
+  - wood_oak
+  - wood_shingle
+  - 木材
+  - 木瓦
+synonyms: []
 -->
 
 木材组用于中式住宅、吊脚楼、木屋和民宿。不同结构角色应使用独立材质名，避免柱梁、楼板、门扇和木瓦全部共享一个表面参数而失去层次。
@@ -85,7 +103,13 @@ entity_name: residential_masonry_earth_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: grey_brick, red_brick, white_plaster, rammed_earth, stone_rubble
+primary_terms:
+  - grey_brick
+  - red_brick
+  - white_plaster
+  - rammed_earth
+  - stone_rubble
+synonyms: []
 -->
 
 砖石与土质组适合中式住宅、农村自建房、民宿和窑洞近似。材质参数只影响渲染外观，不会让墙体自动获得承重、防水、保温或文物保护性能。
@@ -106,7 +130,13 @@ entity_name: residential_roof_site_materials
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: grey_tile, clay_tile, grass_terrain, 屋面材质, 场地材质
+primary_terms:
+  - grey_tile
+  - clay_tile
+  - grass_terrain
+  - 屋面材质
+  - 场地材质
+synonyms: []
 -->
 
 屋面材质应引用当前支持的 `roof`，场地绿色只能作为 `floor` 或 `primitive` 的视觉材质。`grass_terrain` 这个名字不表示存在 `terrain` 元素，也不会生成草地起伏、植被或 heightmap。

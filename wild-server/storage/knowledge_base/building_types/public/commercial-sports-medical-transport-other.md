@@ -1,16 +1,11 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 building_category: commercial
 entity_name: commercial_sports_medical_transport
 topic: assembly
-wild_version: "1.1"
 status: supported
 authority: engine
 source: building_types/public/commercial-sports-medical-transport-other.md
-keywords:
+primary_terms:
   - 商业建筑
   - 商场
   - 体育建筑
@@ -20,6 +15,7 @@ keywords:
   - 交通建筑
   - 车站
   - 园林
+synonyms: []
 ---
 
 # 公共建筑：商业 / 体育 / 医疗 / 交通 / 园林
@@ -37,7 +33,13 @@ entity_name: commercial_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 商业建筑, commercial, 商场, 商铺, 综合体
+primary_terms:
+  - 商业建筑
+  - 商场
+  - 商铺
+  - 综合体
+synonyms:
+  - commercial
 -->
 
 ### 最少可行 Blueprint（社区商铺，8×6m，单层）
@@ -81,7 +83,13 @@ entity_name: sports_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 体育建筑, sports, 体育馆, gymnasium, 大跨
+primary_terms:
+  - 体育建筑
+  - 体育馆
+  - 大跨
+synonyms:
+  - sports
+  - gymnasium
 -->
 
 体育建筑核心特征：**大跨无柱空间**。用 `beam` crossSection=i-beam 或 rect 大截面 + `roof` gable/arch 大跨 + `column` 仅沿周边布置。
@@ -105,7 +113,12 @@ entity_name: medical_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 医疗建筑, hospital, 医院, 社区医院
+primary_terms:
+  - 医疗建筑
+  - 医院
+  - 社区医院
+synonyms:
+  - hospital
 -->
 
 与办公楼结构相似。差异：走廊宽 ≥2.4m（病床通行），门宽 ≥1.2m（轮椅），层高 3.6~4.2m。使用框架 `column` + `beam` + `floor` 多层 + `wall` 隔墙划分诊室/病房。
@@ -120,7 +133,13 @@ entity_name: transport_building
 topic: assembly
 status: supported
 authority: engine
-keywords: 交通建筑, transport, 客运站, 航站楼, station
+primary_terms:
+  - 交通建筑
+  - 客运站
+  - 航站楼
+synonyms:
+  - transport
+  - station
 -->
 
 核心特征：**通高候车大厅**（wall 双层通高 + column 大截面）+ 大面积 `roof` flat/gable + `canopy` 雨棚覆盖上车区。
@@ -169,7 +188,15 @@ entity_name: garden_structure
 topic: assembly
 status: supported
 authority: engine
-keywords: 园林, garden, 亭, pavilion, 廊, 榭, 苏州园林
+primary_terms:
+  - 园林
+  - 亭
+  - 廊
+  - 榭
+  - 苏州园林
+synonyms:
+  - garden
+  - pavilion
 -->
 
 园林建筑核心是 `column` + `roof` + `beam` 组合，通常没有 wall。可用 `railing` 做美人靠。

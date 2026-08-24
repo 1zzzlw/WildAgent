@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "description": "WildAgent 真实向量检索固定评测集。expectedSources 是标准答案，用于计算 Hit@K、Recall@K 和 MRR。",
+  "cases": [
+    {
+      "id": "bt_pavilion",
+      "query": "生成一个中式四角凉亭",
+      "topic": "建筑类型-凉亭",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/catalog/pavilions.md"],
+      "requiredTerms": ["凉亭"]
+    },
+    {
+      "id": "bt_villa",
+      "query": "现代风格的度假别墅怎么生成",
+      "topic": "建筑类型-别墅",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/residential/villas.md"],
+      "requiredTerms": ["别墅"]
+    },
+    {
+      "id": "bt_tower",
+      "query": "塔楼 tower 的生成语义入口与默认结构",
+      "topic": "建筑类型-塔楼",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/catalog/towers.md"],
+      "requiredTerms": ["塔楼"]
+    },
+    {
+      "id": "bt_cabin",
+      "query": "小木屋 cabins 的默认生成方式",
+      "topic": "建筑类型-木屋",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/catalog/cabins.md"],
+      "requiredTerms": ["木屋"]
+    },
+    {
+      "id": "bt_courtyard",
+      "query": "合院 courtyard 建筑如何生成",
+      "topic": "建筑类型-合院",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/catalog/courtyards.md"],
+      "requiredTerms": ["合院"]
+    },
+    {
+      "id": "bt_residential",
+      "query": "三层独栋住宅的默认构件与布局",
+      "topic": "建筑类型-住宅",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/residential/extended-residential-types.md"],
+      "requiredTerms": ["住宅"]
+    },
+    {
+      "id": "bt_dorm_hotel",
+      "query": "宿舍楼和酒店这类居住建筑怎么配置",
+      "topic": "建筑类型-居住",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/residential/housing-dormitories-hotels.md"],
+      "requiredTerms": ["宿舍", "酒店"]
+    },
+    {
+      "id": "bt_office_school",
+      "query": "办公楼和学校的建筑类型语义入口",
+      "topic": "建筑类型-公共",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/public/education-office-culture.md"],
+      "requiredTerms": ["办公", "学校"]
+    },
+    {
+      "id": "bt_commercial",
+      "query": "商业综合体、体育场馆等公共建筑怎么生成",
+      "topic": "建筑类型-公共",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/public/commercial-sports-medical-transport-other.md"],
+      "requiredTerms": ["商业", "体育"]
+    },
+    {
+      "id": "bt_factory",
+      "query": "工厂仓库这类工业建筑的默认生成参数",
+      "topic": "建筑类型-工业",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/industrial/factories-and-warehouses.md"],
+      "requiredTerms": ["工厂", "仓库"]
+    },
+    {
+      "id": "bt_agricultural",
+      "query": "农业建筑 agricultural buildings 的语义入口",
+      "topic": "建筑类型-农业",
+      "metadataFilter": {"doc_type": "building_type"},
+      "expectedSources": ["building_types/agricultural/agricultural-buildings.md"],
+      "requiredTerms": ["农业建筑"]
+    },
+    {
+      "id": "comp_window",
+      "query": "默认窗的 geometry.components 参数有哪些",
+      "topic": "构件-窗",
+      "metadataFilter": {"doc_type": "component", "entity_type": "window"},
+      "expectedSources": ["components/windows-supported.md"],
+      "requiredTerms": ["geometry.components", "parentWall"]
+    },
+    {
+      "id": "comp_door",
+      "query": "默认门的 leafMaterial 和 frameWidth 参数",
+      "topic": "构件-门",
+      "metadataFilter": {"doc_type": "component", "entity_type": "door"},
+      "expectedSources": ["components/doors-supported.md"],
+      "requiredTerms": ["leafMaterial", "frameWidth"]
+    },
+    {
+      "id": "comp_wall",
+      "query": "墙体 wall 的参数与组装约束",
+      "topic": "构件-墙",
+      "metadataFilter": {"doc_type": "component", "entity_type": "wall"},
+      "expectedSources": ["components/walls.md"],
+      "requiredTerms": ["wall"]
+    },
+    {
+      "id": "comp_railing",
+      "query": "路径栏杆 postSpacing 与 railLevels 参数",
+      "topic": "构件-栏杆",
+      "metadataFilter": {"doc_type": "component", "entity_type": "railing"},
+      "expectedSources": ["components/railings.md"],
+      "requiredTerms": ["postSpacing", "railLevels"]
+    },
+    {
+      "id": "comp_roof",
+      "query": "屋顶 span 和 depth 覆盖墙体的规则",
+      "topic": "构件-屋顶",
+      "metadataFilter": {"doc_type": "component", "entity_type": "roof"},
+      "expectedSources": ["components/roofs-and-eaves.md"],
+      "requiredTerms": ["span", "depth"]
+    },
+    {
+      "id": "comp_curtain",
+      "query": "玻璃幕墙怎么组装",
+      "topic": "构件-幕墙",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/glass-curtain-wall-assembly.md"],
+      "requiredTerms": ["玻璃幕墙"]
+    },
+    {
+      "id": "comp_opening",
+      "query": "门窗洞口 opening 与 parentWall 的从属关系",
+      "topic": "构件-洞口",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/supported-assembly-relations.md"],
+      "requiredTerms": ["opening", "parentWall"]
+    },
+    {
+      "id": "comp_canopy",
+      "query": "组合构件 canopy 雨棚怎么生成",
+      "topic": "构件-雨棚",
+      "metadataFilter": {"doc_type": "component", "entity_type": "canopy"},
+      "expectedSources": ["components/composite-components-second-batch.md"],
+      "requiredTerms": ["canopy", "parentWall"]
+    },
+    {
+      "id": "comp_bay_window",
+      "query": "凸窗 bay_window 和飘窗怎么生成",
+      "topic": "构件-凸窗",
+      "metadataFilter": {"doc_type": "component", "entity_type": "bay_window"},
+      "expectedSources": ["components/composite-components-second-batch.md"],
+      "requiredTerms": ["bay_window", "projectionDepth"]
+    },
+    {
+      "id": "comp_structural",
+      "query": "结构构件 structural components 有哪些",
+      "topic": "构件-结构",
+      "metadataFilter": {"doc_type": "component"},
+      "expectedSources": ["components/structural-components.md"],
+      "requiredTerms": ["结构"]
+    },
+    {
+      "id": "boundary_engine",
+      "query": "engine 当前不能写入 geometry.elements 的能力边界",
+      "topic": "规格-能力边界",
+      "metadataFilter": {"doc_type": "component"},
+      "expectedSources": ["components/engine-capability-boundaries.md"],
+      "requiredTerms": ["geometry.elements", "geometry.components"]
+    },
+    {
+      "id": "mat_residential",
+      "query": "住宅默认材质配色 外墙涂料 屋顶瓦片",
+      "topic": "材质-住宅",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/residential-material-palette.md"],
+      "requiredTerms": ["住宅", "材质"]
+    },
+    {
+      "id": "mat_public",
+      "query": "公共建筑材质色板与玻璃幕墙配色",
+      "topic": "材质-公共",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/public-building-material-palette.md"],
+      "requiredTerms": ["公共建筑", "材质"]
+    },
+    {
+      "id": "recipe_assembly",
+      "query": "构件间允许的装配关系有哪些",
+      "topic": "装配关系",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/supported-assembly-relations.md"],
+      "requiredTerms": ["装配"]
+    },
+    {
+      "id": "recipe_template",
+      "query": "组装模板 assembly templates 怎么用",
+      "topic": "装配模板",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/assembly-templates.md"],
+      "requiredTerms": ["assembly"]
+    },
+    {
+      "id": "recipe_style",
+      "query": "门窗屋顶的风格参考",
+      "topic": "风格参考",
+      "metadataFilter": {"doc_type": "recipe"},
+      "expectedSources": ["recipes/door-window-roof-style-reference.md"],
+      "requiredTerms": ["门", "窗", "屋顶"]
+    },
+    {
+      "id": "pattern_high_detail",
+      "query": "高细节建筑生成模式",
+      "topic": "生成模式",
+      "metadataFilter": {"doc_type": "pattern"},
+      "expectedSources": ["patterns/high-detail-architecture-generation.md"],
+      "requiredTerms": ["高细节"]
+    }
+  ]
+}

@@ -1,20 +1,18 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: facade
 entity_name: glass_curtain_wall_assembly
 topic: assembly
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: recipes/glass-curtain-wall-assembly.md
-keywords:
+primary_terms:
   - 玻璃幕墙组装
   - curtain wall assembly
   - window grid
   - primitive mullion
   - facade grid
+synonyms: []
 ---
 
 # 玻璃幕墙骨架—玻璃组装配方
@@ -29,7 +27,13 @@ entity_name: curtain_wall_preconditions
 topic: constraints
 status: supported
 authority: engine
-keywords: parentWall, facade extent, floor level, material reference, 前置条件
+primary_terms:
+  - parentWall
+  - facade extent
+  - floor level
+  - material reference
+  - 前置条件
+synonyms: []
 -->
 
 1. 先完成 `column/beam/floor` 主体骨架和各层标高。
@@ -46,7 +50,13 @@ entity_name: curtain_wall_window_grid_recipe
 topic: assembly
 status: experimental
 authority: engine
-keywords: 方案A, wall window, verticalMullions, horizontalMullions, parentWall
+primary_terms:
+  - 方案A
+  - wall window
+  - verticalMullions
+  - horizontalMullions
+  - parentWall
+synonyms: []
 -->
 
 方案 A 用 `wall + window` 表达整片或分层幕墙。窗编译器生成框、竖梃、横挺和玻璃，是默认的低成本路径。 它适合常规正交立面和标准层批量生成，能把宿主、开洞、框架与玻璃关系收敛到一个组件。入口层、转角和异形区仍应拆开处理，不能用一片超大窗覆盖全部立面。
@@ -84,7 +94,15 @@ entity_name: curtain_wall_deterministic_parameters
 topic: parameters
 status: supported
 authority: engine
-keywords: 确定性参数, pane module, 窗格模数, 竖梃缝, 窗台, mullion gap, sill
+primary_terms:
+  - 确定性参数
+  - pane module
+  - 窗格模数
+  - 竖梃缝
+  - 窗台
+  - mullion gap
+  - sill
+synonyms: []
 -->
 
 下面的 JSON 是方案 A 的确定性生成参数，由生成器在运行时直接解析（`app/agent/facade_recipe.py`）。修改这些数值会立即改变幕墙的窗格模数、竖梃缝、窗台高与层间缝，无需改动代码：
@@ -115,7 +133,14 @@ entity_name: curtain_wall_explicit_grid_recipe
 topic: assembly
 status: experimental
 authority: engine
-keywords: 方案B, primitive box, 显式竖梃, 显式横挺, glass panel, rotation
+primary_terms:
+  - 方案B
+  - primitive box
+  - 显式竖梃
+  - 显式横挺
+  - rotation
+  - glass panel
+synonyms: []
 -->
 
 方案 B 使用两组独立 `primitive`：一组表示竖梃/横挺，另一组表示玻璃。它能表达明显框深、隐框、半隐框、点支和斜向分段，但元素数量与 draw call 更高。 只有当方案 A 无法表达所需层次时才启用，并优先局部使用。生成器必须用统一网格公式计算所有骨架和面板，禁止逐块手调坐标形成不可维护的补丁。
@@ -146,7 +171,14 @@ entity_name: curtain_wall_grid_relations
 topic: assembly
 status: experimental
 authority: domain_reference
-keywords: grid first, reveal, 共面, 层间分隔, 材质分离, 荷载路径
+primary_terms:
+  - grid first
+  - 共面
+  - 层间分隔
+  - 材质分离
+  - 荷载路径
+  - reveal
+synonyms: []
 -->
 
 1. 网格优先：先确定骨架和分格，再求玻璃尺寸。
@@ -165,7 +197,14 @@ entity_name: curtain_wall_variant_selection
 topic: parameters
 status: experimental
 authority: domain_reference
-keywords: 明框参数, 隐框参数, 单元式, 双层, 点支, 曲面
+primary_terms:
+  - 明框参数
+  - 隐框参数
+  - 单元式
+  - 双层
+  - 点支
+  - 曲面
+synonyms: []
 -->
 
 | 变体 | 首选路径 | 参数变化 | 性能代价 |
@@ -186,7 +225,14 @@ entity_name: curtain_wall_validation
 topic: constraints
 status: supported
 authority: engine
-keywords: 幕墙验证, opening fit, parentWall, collision, material reference, z fighting
+primary_terms:
+  - 幕墙验证
+  - opening fit
+  - parentWall
+  - collision
+  - material reference
+  - z fighting
+synonyms: []
 -->
 
 - 所有 ID 唯一；`parentWall` 存在。
@@ -206,7 +252,12 @@ entity_name: curtain_wall_recipe_fallback
 topic: fallback
 status: experimental
 authority: engine
-keywords: 幕墙回退, 减少面板, 方案B转A, 保留立面模数
+primary_terms:
+  - 幕墙回退
+  - 减少面板
+  - 方案B转A
+  - 保留立面模数
+synonyms: []
 -->
 
 - 方案 B 元素过多或碰撞频繁：回退到方案 A 的 `wall + window`，保留分格数和材料角色。

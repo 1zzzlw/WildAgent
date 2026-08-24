@@ -1,20 +1,18 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: door
 entity_name: door_family
 topic: assembly
-wild_version: "1.1"
 status: proposed
 authority: domain_reference
 source: components/doors.md
-keywords:
+primary_terms:
   - 门
   - door
   - opening
   - leafCount
   - hingeSide
+synonyms: []
 ---
 
 # 门构件分类与组装规则
@@ -37,7 +35,12 @@ entity_name: door_opening_modes
 topic: classification
 status: proposed
 authority: domain_reference
-keywords: 门开启方式, door opening, leafCount, hingeSide
+primary_terms:
+  - 门开启方式
+  - door opening
+  - leafCount
+  - hingeSide
+synonyms: []
 -->
 
 | 开启方式 | WILD door.leafCount | hingeSide | 特点 | 适用场景 |
@@ -67,7 +70,12 @@ entity_name: traditional_chinese_door_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 中式门, traditional Chinese door, opening, door
+primary_terms:
+  - 中式门
+  - opening
+  - door
+synonyms:
+  - traditional Chinese door
 -->
 
 > 图示：中式传统门示意图（原始资源：`docs/建筑类型分类体系_images/08_中式传统门.png`）
@@ -80,7 +88,12 @@ entity_name: palace_solid_panel_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 实榻门, palace gate, solid panel door, door
+primary_terms:
+  - 实榻门
+  - door
+synonyms:
+  - palace gate
+  - solid panel door
 -->
 
 > 组装公式：**`opening`(rectangular, 超大) + `door`(leafCount=2, style=panel, 实木厚板) + `placement`(门钉阵列, 铜钉) + `cornice`(门簪)**
@@ -130,7 +143,12 @@ entity_name: geshan_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 隔扇门, geshan door, lattice door, door
+primary_terms:
+  - 隔扇门
+  - door
+synonyms:
+  - geshan door
+  - lattice door
 -->
 
 > 组装公式：**`opening`(rectangular, 瘦高) + `door`(leafCount=4~8, style=panel) + `mullion`(棂花图案, grid/custom) + `placement`(裙板浮雕)**
@@ -177,7 +195,13 @@ entity_name: traditional_chinese_door_quick_reference
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 中式门型, Chinese door, 棋盘门, 垂花门, 屏门
+primary_terms:
+  - 中式门型
+  - 棋盘门
+  - 垂花门
+  - 屏门
+synonyms:
+  - Chinese door
 -->
 
 | 门型 | 组装公式 | leafCount | 特征 |
@@ -240,7 +264,12 @@ entity_name: classical_european_door_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 欧式门, classical European door, panel door, arched door
+primary_terms:
+  - 欧式门
+  - panel door
+  - arched door
+synonyms:
+  - classical European door
 -->
 
 > 图示：欧式古典门示意图（原始资源：`docs/建筑类型分类体系_images/09_欧式古典门.png`）
@@ -255,7 +284,12 @@ entity_name: panel_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 嵌板门, panel door, classical door, door
+primary_terms:
+  - 嵌板门
+  - door
+synonyms:
+  - panel door
+  - classical door
 -->
 
 > 组装公式：**`opening`(rectangular) + `door`(panel, leafCount=1, 横竖框分割 6 嵌板)**
@@ -290,7 +324,12 @@ entity_name: flush_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 平板门, flush door, modern door, door
+primary_terms:
+  - 平板门
+  - door
+synonyms:
+  - flush door
+  - modern door
 -->
 
 > 组装公式：**`opening`(rectangular) + `door`(flush)**
@@ -323,7 +362,12 @@ entity_name: french_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 法式门, French door, glass door, double leaf
+primary_terms:
+  - 法式门
+  - glass door
+  - double leaf
+synonyms:
+  - French door
 -->
 
 > 组装公式：**`opening`(arched/rect) + `mullion`(grid, cols=2 rows=3) + `door`(glass, leafCount=2)**
@@ -363,7 +407,11 @@ entity_name: dutch_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 荷兰门, Dutch door, split door
+primary_terms:
+  - 荷兰门
+synonyms:
+  - Dutch door
+  - split door
 -->
 
 > 组装公式：**2 × `opening`(上下叠加) + 2 × `door`(panel, 上半/下半独立)**
@@ -407,7 +455,12 @@ entity_name: arched_entrance
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 拱形大门, arched entrance, church door, opening
+primary_terms:
+  - 拱形大门
+  - opening
+  - church door
+synonyms:
+  - arched entrance
 -->
 
 > 组装公式：**`opening`(arched, 高宽比 2:1) + `door`(panel, leafCount=2, 厚重木板) + `cornice`(拱顶石)**
@@ -447,7 +500,12 @@ entity_name: modern_door_family
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 现代门, modern door, sliding glass door, revolving door
+primary_terms:
+  - 现代门
+  - sliding glass door
+  - revolving door
+synonyms:
+  - modern door
 -->
 
 > 图示：现代门示意图（原始资源：`docs/建筑类型分类体系_images/10_现代门.png`）
@@ -462,7 +520,12 @@ entity_name: sliding_glass_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 玻璃推拉门, sliding glass door, glass, door
+primary_terms:
+  - 玻璃推拉门
+  - glass
+  - door
+synonyms:
+  - sliding glass door
 -->
 
 > 组装公式：**`opening`(rect, 宽 1.8~3.6m) + `door`(glass, leafCount=2, 滑轨模式)**
@@ -492,7 +555,11 @@ entity_name: automatic_sensor_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 自动感应门, automatic sensor door, sliding door
+primary_terms:
+  - 自动感应门
+  - sliding door
+synonyms:
+  - automatic sensor door
 -->
 
 > 组装公式：**`opening`(rect, 宽 3~6m) + `door`(glass, leafCount=2~4, 传感器+电机驱动)**
@@ -522,7 +589,11 @@ entity_name: roll_up_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 工业卷帘门, roll-up door, industrial door
+primary_terms:
+  - 工业卷帘门
+  - industrial door
+synonyms:
+  - roll-up door
 -->
 
 > 组装公式：**`opening`(rect, 宽 3~8m) + `door`(louvered, 卷轴机构, leafCount=1)**
@@ -552,7 +623,11 @@ entity_name: airtight_medical_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 气密门, 医用密封门, airtight medical door
+primary_terms:
+  - 气密门
+  - 医用密封门
+synonyms:
+  - airtight medical door
 -->
 
 > 组装公式：**`opening`(rect, 标准) + `door`(flush, 密封胶条, 闭门器)**
@@ -583,7 +658,11 @@ entity_name: fire_rated_door
 topic: assembly
 status: proposed
 authority: domain_reference
-keywords: 防火门, fire-rated door, fire door
+primary_terms:
+  - 防火门
+synonyms:
+  - fire-rated door
+  - fire door
 -->
 
 > 组装公式：**`opening`(rect) + `door`(flush, steel, 闭门器+顺位器)**
@@ -616,7 +695,13 @@ entity_name: door_component_matrix
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 门构件矩阵, door component matrix, opening, door, mullion
+primary_terms:
+  - 门构件矩阵
+  - door component matrix
+  - opening
+  - door
+  - mullion
+synonyms: []
 -->
 
 | 门型 | opening.style | door.style | door.leafCount | mullion | cornice/placement | 子构件数 |
@@ -647,7 +732,11 @@ entity_name: door_building_style_matrix
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 门型速配, door style, building type
+primary_terms:
+  - 门型速配
+  - door style
+  - building type
+synonyms: []
 -->
 
 | 建筑类型 | 推荐门型 | 说明 |

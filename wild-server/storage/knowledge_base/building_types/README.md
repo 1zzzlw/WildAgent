@@ -1,18 +1,13 @@
 ---
-doc_type: index
-doc_scope: index
-knowledge_layer: navigation
-entity_type: index
 entity_name: building_types_index
-topic: navigation
-wild_version: "1.1"
 status: supported
 authority: maintainer
 source: building_types/README.md
-keywords:
+primary_terms:
   - 建筑类型索引
-  - building types
   - 建筑分类
+synonyms:
+  - building types
 ---
 
 # 建筑类型知识索引

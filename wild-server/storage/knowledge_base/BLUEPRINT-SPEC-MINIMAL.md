@@ -1,20 +1,16 @@
 ---
-doc_type: blueprint_spec
-doc_scope: system
-knowledge_layer: wild_schema
-entity_type: schema
 entity_name: blueprint_spec_minimal
 topic: constraints
-wild_version: "1.1"
 status: supported
 authority: schema
 source: BLUEPRINT-SPEC-MINIMAL.md
-keywords:
+primary_terms:
   - WILD
   - Blueprint
   - 系统铁律
   - 空间规则
   - 必填字段
+synonyms: []
 ---
 
 # Wild 蓝图规范（精简版 · AI 生成专用）
@@ -324,7 +320,15 @@ entity_name: interactive_light_fixture
 topic: schema
 status: supported
 authority: schema
-keywords: 灯具, 台灯, 灯泡, light, table_lamp, fixtureType, lightType
+primary_terms:
+  - 灯具
+  - 台灯
+  - 灯泡
+  - light
+  - table_lamp
+  - fixtureType
+  - lightType
+synonyms: []
 -->
 
 以下是 `geometry.components` 数组中的台灯片段，不是完整 `.wild` 文件：

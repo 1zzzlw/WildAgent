@@ -1,21 +1,19 @@
 ---
-doc_type: component
-doc_scope: generation
 knowledge_layer: wild_schema
 entity_type: window
 entity_name: static_window_component
 topic: schema
-wild_version: "1.1"
 status: supported
 authority: engine
 source: wild-web/wild-lang/schema.json
-keywords:
+primary_terms:
   - 基础静态窗
   - window component
   - geometry.components
   - parentWall
   - verticalMullions
   - glassMaterial
+synonyms: []
 ---
 
 # 基础静态窗组合构件

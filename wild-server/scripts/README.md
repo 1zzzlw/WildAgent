@@ -51,7 +51,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `rag/check_sync_status.py` | 打印知识库同步状态（总片段数、更新/删除数、RAG 检索能力） |
 | `rag/inspect_knowledge_chunks.py` | 知识库分片检查：分片明细、统计、分片策略验证 |
 | `rag/inspect_chunks_demo.py` | 分片展示报告：控制台展示 + Markdown 报告 + 控制台日志 |
-| `rag/evaluate_component_rag.py` | 组合构件固定 RAG 评测集（临时 Chroma、无需 API Key） |
+| `rag/eval_retrieval.py` | 当前 RAG 召回率评测（Hit@K、Recall@K、MRR、逐题报告） |
 | `rag/README_INSPECT_CHUNKS.md` | `inspect_*` 系列脚本的详细使用文档 |
 | `building/update_building_category.py` | 批量给知识库文档添加 `building_category` 元数据 |
 | `building/test_building_category.py` | 验证带 `building_category` 过滤的 RAG 检索 |
@@ -74,7 +74,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `check_sync_status.py` | `.\.venv\Scripts\python.exe scripts\rag\check_sync_status.py` | 控制台打印知识库同步状态：总片段数 / 已更新 / 已删除 / Spec Loader 类型 / 来源文档数 |
 | `inspect_knowledge_chunks.py` | `.\.venv\Scripts\python.exe scripts\rag\inspect_knowledge_chunks.py storage\knowledge_base --table` | `scripts/reports/inspect_chunks_<时间戳>.md` + `chunks_console_<时间戳>.txt`；报告含分片信息表 / 标题路径 / 统计分析。完整解读见 [README_INSPECT_CHUNKS.md](rag/README_INSPECT_CHUNKS.md) |
 | `inspect_chunks_demo.py` | `.\.venv\Scripts\python.exe scripts\rag\inspect_chunks_demo.py storage\knowledge_base` | `scripts/reports/chunks_report_<时间戳>.md` + `chunks_console_<时间戳>.txt`；报告含每个分片来源 / 字符数 / 内容摘要 / 合法性检查 |
-| `evaluate_component_rag.py` | `.\.venv\Scripts\python.exe scripts\rag\evaluate_component_rag.py` | 控制台输出组合构件固定评测集的召回与排序结果；使用临时 Chroma + 本地 HashEmbedding，无需 API Key，不修改线上索引 |
 | `eval_retrieval.py` | `.\.venv\Scripts\python.exe scripts\rag\eval_retrieval.py` | `scripts/reports/eval_retrieval_<时间戳>.md` + `eval_console_<时间戳>.txt`；报告含汇总统计 / 信号提示 / 分组分布 / 逐题 Top-K 命中明细。完整"报告怎么看"见 [README_EVAL_RETRIEVAL.md](rag/README_EVAL_RETRIEVAL.md) |
 
 ### building/ — 建筑类型分类

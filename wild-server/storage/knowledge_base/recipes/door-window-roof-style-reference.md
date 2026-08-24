@@ -1,20 +1,18 @@
 ---
-doc_type: recipe
-doc_scope: generation
 knowledge_layer: architecture
 entity_type: assembly
 entity_name: envelope_style_reference
 topic: matrix
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: recipes/door-window-roof-style-reference.md
-keywords:
+primary_terms:
   - 门窗风格
   - 屋顶类型
   - door
   - window
   - roofType
+synonyms: []
 ---
 
 # 门窗与屋顶风格速查
@@ -33,7 +31,12 @@ entity_name: door_window_style_reference
 topic: matrix
 status: proposed
 authority: domain_reference
-keywords: 门窗风格, door style, window style, building type
+primary_terms:
+  - 门窗风格
+  - door style
+  - window style
+  - building type
+synonyms: []
 -->
 
 | 建筑类型 | opening style | door style | window sashType | mullion pattern |
@@ -59,7 +62,12 @@ entity_name: roof_style_reference
 topic: matrix
 status: experimental
 authority: domain_reference
-keywords: 屋顶选型, roofType, roof style, building type
+primary_terms:
+  - 屋顶选型
+  - roofType
+  - roof style
+  - building type
+synonyms: []
 -->
 
 | 屋顶类型 | roofType | 适用建筑 |

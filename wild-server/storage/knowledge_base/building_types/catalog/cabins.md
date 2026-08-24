@@ -1,17 +1,13 @@
 ---
-doc_type: building_type
-doc_scope: generation
-knowledge_layer: architecture
-entity_type: building
 entity_name: cabin
 topic: definition
-wild_version: "1.1"
 status: experimental
 authority: domain_reference
 source: building_types/catalog/cabins.md
-keywords:
+primary_terms:
   - 小屋
   - 木屋
+synonyms:
   - cabin
 ---
 

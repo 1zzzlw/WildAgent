@@ -58,7 +58,10 @@ def build_alias_catalog(chunks: Iterable[Any]) -> AliasCatalog:
             "filters": {},
             "constraints": set(),
         })
-        for field_name in ("entity_aliases", "keywords"):
+        # primary_terms 和 synonyms 都能触发实体匹配；分字段保存是为了便于
+        # 审核知识质量，而不是让查询规划器放弃其中一类检索词。
+        # keywords 仅用于兼容尚未迁移的外部索引。
+        for field_name in ("primary_terms", "synonyms", "entity_aliases", "keywords"):
             raw = metadata.get(field_name, [])
             if isinstance(raw, str):
                 values = [item.strip() for item in raw.split(",") if item.strip()]
