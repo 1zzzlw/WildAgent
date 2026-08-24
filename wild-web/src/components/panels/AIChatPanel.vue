@@ -17,6 +17,41 @@
             <span class="message-time">{{ formatTime(message.timestamp) }}</span>
           </div>
           <div class="message-content" v-html="renderMarkdown(message.content)"></div>
+          <div
+            v-if="message.role === 'agent' && (message.cited_chunk_ids?.length || message.evidence_status === 'insufficient')"
+            class="rag-evidence"
+          >
+            <span class="rag-evidence-title">
+              {{ message.evidence_status === 'insufficient' ? '知识库证据不足' : '知识库引用' }}
+            </span>
+            <code
+              v-for="chunkId in message.cited_chunk_ids || []"
+              :key="chunkId"
+              class="rag-chunk-id"
+              :title="chunkId"
+            >{{ chunkId }}</code>
+          </div>
+          <div v-if="message.role === 'agent' && message.request_id && !message.patch" class="rag-feedback">
+            <span>这个回答有帮助吗？</span>
+            <button
+              type="button"
+              class="feedback-button"
+              :class="{ active: message.feedback_rating === 'up' }"
+              :disabled="message.feedback_pending || Boolean(message.feedback_rating)"
+              title="有帮助"
+              @click="handleRagFeedback(message, 'up')"
+            >👍</button>
+            <button
+              type="button"
+              class="feedback-button"
+              :class="{ active: message.feedback_rating === 'down' }"
+              :disabled="message.feedback_pending || Boolean(message.feedback_rating)"
+              title="没有帮助"
+              @click="handleRagFeedback(message, 'down')"
+            >👎</button>
+            <span v-if="message.feedback_pending" class="feedback-status">提交中…</span>
+            <span v-else-if="message.feedback_error" class="feedback-error">{{ message.feedback_error }}</span>
+          </div>
           <div v-if="message.patch" class="message-patch">
             <div class="patch-summary">{{ message.patch.summary }}</div>
             <div v-if="getMaterialTunings(message).length" class="material-tuning-list">
@@ -434,6 +469,27 @@ function handleRejectPatch(message: ChatMessage) {
   agentStore.addSystemMessage('🚫 已拒绝该修改建议')
 }
 
+async function handleRagFeedback(message: ChatMessage, rating: 'up' | 'down') {
+  if (!message.request_id || message.feedback_pending || message.feedback_rating) return
+  const sessionId = agentStore.currentSessionId
+  agentStore.setMessageFeedback(sessionId, message.id, {
+    feedback_pending: true,
+    feedback_error: undefined,
+  })
+  const ok = await agentBridge.submitRagFeedback(sessionId, message.request_id, rating)
+  agentStore.setMessageFeedback(sessionId, message.id, ok
+    ? { feedback_pending: false, feedback_rating: rating, feedback_error: undefined }
+    : { feedback_pending: false, feedback_error: '提交失败，请稍后重试' })
+  if (!ok) {
+    ElNotification({
+      title: '反馈提交失败',
+      message: '没有找到对应的 RAG 追踪记录，请稍后重试。',
+      type: 'warning',
+      duration: 4000,
+    })
+  }
+}
+
 // ── 会话切换 ──
 async function handleSessionSwitch(sessionId: string) {
   if (sessionId === agentStore.currentSessionId) return
@@ -729,6 +785,72 @@ function loadDraftSessionsFromLocal(): any[] {
   font-size: 13.5px;
   line-height: 1.65;
   color: var(--text-primary);
+}
+
+.rag-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px dashed var(--border);
+  font-size: 11px;
+}
+
+.rag-evidence-title {
+  color: var(--text-muted);
+}
+
+.rag-chunk-id {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(78, 161, 243, 0.09);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rag-feedback {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.feedback-button {
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  filter: grayscale(1);
+  opacity: 0.65;
+}
+
+.feedback-button:hover:not(:disabled),
+.feedback-button.active {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+  filter: none;
+  opacity: 1;
+}
+
+.feedback-button:disabled {
+  cursor: default;
+}
+
+.feedback-status {
+  color: var(--text-secondary);
+}
+
+.feedback-error {
+  color: var(--error);
 }
 
 @keyframes msgIn {

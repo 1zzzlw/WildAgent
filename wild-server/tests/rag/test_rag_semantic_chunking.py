@@ -274,6 +274,7 @@ keywords: 旧主词, old alias
                     {"doc_scope": {"$ne": "index"}},
                     {"status": {"$ne": "proposed"}},
                     {"authority": {"$ne": "inferred"}},
+                    {"access_scope": "public"},
                     {"doc_type": "component"},
                     {"entity_type": "window"},
                 ]

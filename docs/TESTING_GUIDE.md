@@ -718,7 +718,7 @@ sh 'uv run --frozen --with pytest python -m pytest tests -q'
 
 ## 📚 相关文档
 
-- **[工具目录](./tools工具目录.md)** - 开发工具和脚本
+- **[工具目录](tools/README.md)** - 开发工具和脚本
 - **[开发指南](./DEVELOPMENT.md)** - 开发环境和工作流
 - **[架构文档](./ARCHITECTURE.md)** - 系统架构设计
 

@@ -11,7 +11,7 @@ from loguru import logger
 
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
-from app.agent.llm_invocation import collect_response
+from app.agent.llm_invocation import invoke_llm
 from app.agent.procedural_material_recipes import (
     compact_procedural_catalog,
     infer_brick_preset,
@@ -304,11 +304,13 @@ async def material_planner(state: GenerationState) -> dict:
                 f"正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材{procedural_detail}...\n",
             )
         try:
-            response = await create_llm(enable_thinking=False, streaming=False).ainvoke([
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": state.get("user_message", "")},
-            ])
-            llm_result = collect_response(response)
+            llm_result = await invoke_llm(
+                create_llm(enable_thinking=False, streaming=False),
+                [
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": state.get("user_message", "")},
+                ],
+            )
             raw_plan = extract_json_object(llm_result.content)
             token_usage = llm_result.token_usage
         except Exception as exc:

@@ -6,6 +6,8 @@ version: 1
 
 defaults:
   wild_version: "1.1"
+  # 当前仓库知识默认公开；未来受限文档必须在文件头显式覆盖，并补 tenant/department。
+  access_scope: public
 
 mapping_rules:
   - path_pattern: "BLUEPRINT-SPEC-*.md"

@@ -14,6 +14,13 @@ from loguru import logger
 
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import invoke_llm
+from app.agent.rag_citations import validate_answer_citations
+from app.agent.rag_gate import RAGRetrievalRejected
+from app.agent.rag_trace import (
+    get_injected_chunk_ids,
+    record_final_answer,
+    record_rag_citations,
+)
 
 _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精通以下领域：
 
@@ -24,7 +31,7 @@ _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精�
 
 # 回答原则
 
-1. **基于知识库**：优先结合提供的参考资料回答，明确标注信息来源
+1. **基于知识库**：只能根据参考资料回答；引用格式必须为 `[引用:chunk_id]`
 2. **专业准确**：使用建筑领域标准术语，数据精确
 3. **结构清晰**：分点阐述，必要时给出对比和示例
 4. **实用导向**：如果用户问题涉及具体参数（尺寸、间距等），给出推荐值范围
@@ -59,7 +66,27 @@ async def chat_node(state: dict) -> dict:
         SpecQuery(f"{user_message} 设计原则 空间布局 规范", {}),
     ]
 
-    spec_text = agent_service.spec_loader.load_many(queries, per_query=3)
+    try:
+        spec_text = agent_service.spec_loader.load_many(
+            queries,
+            per_query=3,
+            purpose="chat",
+        )
+    except RAGRetrievalRejected as exc:
+        refusal = str(exc)
+        record_final_answer(refusal)
+        return {
+            "chat_reply": refusal,
+            "chat_diag": {
+                "label": "知识问答",
+                "rag_chars": 0,
+                "rag_ms": int((_time.time() - rag_t0) * 1000),
+                "retrieval_gate": exc.decision.to_dict(),
+                "cited_chunk_ids": [],
+                "evidence_status": "insufficient",
+            },
+            "status": "refused",
+        }
     rag_ms = int((_time.time() - rag_t0) * 1000)
     rag_chars = len(spec_text)
 
@@ -91,6 +118,18 @@ async def chat_node(state: dict) -> dict:
             "status": "failed",
         }
 
+    citation_result = validate_answer_citations(
+        reply_text,
+        get_injected_chunk_ids(),
+    )
+    reply_text = citation_result.answer
+    record_rag_citations(
+        citation_result.cited_chunk_ids,
+        citation_result.invalid_chunk_ids,
+        citation_result.appended_fallback,
+    )
+    record_final_answer(reply_text)
+
     llm_ms = int((_time.time() - llm_t0) * 1000)
     total_ms = int((_time.time() - t0) * 1000)
 
@@ -105,6 +144,11 @@ async def chat_node(state: dict) -> dict:
             "llm_chars": len(reply_text),
             "llm_ms": llm_ms,
             "token_usage": token_usage,
+            "cited_chunk_ids": list(citation_result.cited_chunk_ids),
+            "invalid_cited_chunk_ids": list(citation_result.invalid_chunk_ids),
+            "evidence_status": (
+                "supported" if citation_result.cited_chunk_ids else "none"
+            ),
             "total_ms": total_ms,
         },
         "status": "complete",

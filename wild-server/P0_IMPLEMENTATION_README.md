@@ -7,7 +7,7 @@
 
 ## 🎯 实施内容
 
-根据 [WildAgent RAG与智能体优化路线图](../docs/WildAgent-RAG与智能体优化路线.md)，我们已完成 **P0 最高优先级方案**：
+根据 [WildAgent RAG与智能体优化路线图](../docs/rag/RAG_AND_AGENT_OPTIMIZATION_ROADMAP.md)，我们已完成 **P0 最高优先级方案**：
 
 ### 1️⃣ 结构自检 (Structure Validator)
 - **位置**: `app/agent/validators/structure_validator.py`
@@ -129,7 +129,7 @@ wild-server/
 
 ## 📚 相关文档
 
-- [优化路线图](../docs/WildAgent-RAG与智能体优化路线.md) - 完整的优化方案
+- [优化路线图](../docs/rag/RAG_AND_AGENT_OPTIMIZATION_ROADMAP.md) - 早期优化方案参考
 - [实施报告](../docs-dev/2026-08-18-p0-implementation-report.md) - 详细的实施说明
 - [测试文件](tests/test_p0_implementation.py) - 测试用例
 - [使用示例](examples/p0_usage_example.py) - 代码示例

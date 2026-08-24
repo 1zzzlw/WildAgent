@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from loguru import logger
 
+from app.agent.llm_invocation import invoke_llm
 from app.agent.model_client import create_llm
 
 CLASSIFIER_PROMPT = """你是建筑领域意图分类器。判断用户输入属于哪一类：
@@ -106,17 +107,20 @@ async def classify_intent(
     llm = llm or create_llm(enable_thinking=False, streaming=False)
 
     try:
-        response = await llm.ainvoke([
-            {"role": "system", "content": CLASSIFIER_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"当前是否存在可编辑场景: {'是' if has_current_scene else '否'}\n"
-                    f"用户输入: {message}"
-                ),
-            },
-        ])
-        raw = response.content if hasattr(response, "content") else str(response)
+        llm_result = await invoke_llm(
+            llm,
+            [
+                {"role": "system", "content": CLASSIFIER_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"当前是否存在可编辑场景: {'是' if has_current_scene else '否'}\n"
+                        f"用户输入: {message}"
+                    ),
+                },
+            ],
+        )
+        raw = llm_result.content
     except Exception as exc:
         logger.error(f"[classifier] LLM 调用失败: {exc}")
         intent = classify_keywords(message, has_current_scene)

@@ -9,19 +9,46 @@
 
 ## 1. 先理解完整流程
 
+一句话概括，当前 RAG 的核心确实是：
+
 ```text
-知识库 Markdown
-  ↓ MarkdownChunker：按标题、实体 metadata、长度兜底分片
-SpecChunk（正文 + 来源 + 标题路径 + entity_type 等 metadata）
-  ↓ embedding：把每个分片变成一组数字
-Chroma 向量索引
-  ↓ 把用户问题也向量化并计算距离
-Top-K 候选
-  ↓ 去重、过滤 proposed/inferred、补相邻 part
-注入 architecture / skeleton / component / callback / chat 节点的 Prompt
+文档切片 → 向量化 → 检索 → 把结果交给 Agent 生成
 ```
 
-可以把 embedding 想成“把句子的意思转换为坐标”。用户问题和某个分片越接近，通常越容易被召回。
+不过运行时应拆成“建立索引”和“用户查询”两条链来看。
+
+### 1.1 建立索引：先把知识存起来
+
+```text
+知识库 Markdown
+  ↓ 读取 config.yaml、frontmatter 和 rag-meta
+MarkdownChunker 按标题和业务实体切片，超长普通正文再按长度兜底
+  ↓ 给每片补充标题路径、来源、entity_type 等 metadata
+SpecChunk
+  ↓ embedding：把每个分片转换成向量
+Chroma：保存分片正文、向量和 metadata
+```
+
+这部分通常在服务初始化或主动同步索引时执行。Loader 会比较分片 ID 和 metadata，只向量化新增或正文改变的分片，并删除已经失效的旧分片。
+
+### 1.2 用户查询：再把相关知识找出来
+
+```text
+用户问题
+  ↓ 按建筑类型、配方、墙、门、窗、屋顶等拆成一个或多个检索意图
+查询文本 + metadata 过滤条件
+  ↓ 用同一 embedding 模型把查询文本转换成向量
+Chroma 向量检索
+  ↓ 按距离和知识状态排序，内容去重，补充同一父章节的相邻 part
+Top-K 知识片段
+  ↓ 与始终完整注入的基础规范一起组装进 Prompt
+architecture / skeleton / component / callback / chat 等 Agent 节点
+  ↓ LLM 根据用户要求和检索知识生成或修改 Blueprint
+```
+
+可以把 embedding 想成“把文字意思转换成坐标”：建立索引时转换知识分片，用户提问时再转换用户问题。两边使用兼容的 embedding 后，Chroma 才能通过向量距离寻找语义接近的分片。
+
+RAG Loader 的职责到“找出并组装知识上下文”为止；真正生成建筑 Blueprint 的是后续 Agent/LLM。因此，“召回正确”不等于“最终建筑一定正确”，还需要另外测试 Agent 是否使用了召回知识。
 
 项目真正使用的分片器是 `app/spec/loader.py` 中的 `MarkdownChunker`。下面的检查脚本直接调用它，不是另写一套简化模拟算法。
 
@@ -33,8 +60,14 @@ Top-K 候选
 | `inspect_chunks_demo.py` | 分片展示 | 与上一个脚本相近，但报告更详细 | 不能计算召回率；功能有部分重复 |
 | `eval_retrieval.py` | 检索质量 | 真实/临时索引的 Hit@K、Recall@K、MRR 和命中明细 | Agent 召回后是否真的采用知识 |
 | `check_sync_status.py` | 运行状态 | 当前服务 Loader 和同步数量 | 分片或召回质量 |
+| `calibrate_retrieval_gate.py` | 门控校准 | 正负样本距离下的建议阈值和误判率 | 不能替代生产 Embedding 实跑 |
+| `check_rag_quality_gate.py` | CI 门禁 | 机器可读评测是否达到固定基线 | 不评价最终回答忠实度 |
+| `judge_rag_answer.py` | 回答质量 | Relevance、Faithfulness、引用质量辅助分 | 不能代替权限和确定性校验 |
+| `summarize_rag_traces.py` | 线上观测汇总 | 空召回、平均距离、P95、Token、成本和反馈 | 不评价单条回答是否正确 |
 
 推荐把 `inspect_knowledge_chunks.py` 当作主要分片工具；`inspect_chunks_demo.py` 暂时保留用于查看更完整的展示报告，不必两个都跑。
+
+`eval_retrieval.py` 即使遇到异常也会先生成排错报告，但只要任一查询发生 embedding 或网络异常，进程就会返回非 0。此时报告中的指标不能作为召回率基线，应先解决异常后重新运行。
 
 ## 3. 第一次运行：只做三个实验
 
@@ -294,6 +327,20 @@ $env:PYTHONPATH="."
 
 单元测试使用临时文件、Mock 或临时索引，不会修改正式 Chroma。详细说明见 `tests/rag/README.md`。
 
+## 9.1 生成门控校准结果
+
+```powershell
+.\.venv\Scripts\python.exe scripts\rag\eval_retrieval.py `
+  --json-output scripts\reports\rag_eval.json `
+  --output scripts\reports\rag_eval.md
+
+.\.venv\Scripts\python.exe scripts\rag\calibrate_retrieval_gate.py `
+  scripts\reports\rag_eval.json `
+  --output scripts\reports\rag_gate_calibration.json
+```
+
+必须使用与部署相同的 Embedding、索引签名和 Top-K。HashEmbedding 的阈值不能复制到真实中文向量模型。
+
 ## 10. 输出文件
 
 默认报告写入 `scripts/reports/`：
@@ -309,3 +356,4 @@ $env:PYTHONPATH="."
 - [README_CHUNK_RESULTS.md](README_CHUNK_RESULTS.md)：拿到分片输出后逐字段怎么判断
 - [README_INSPECT_CHUNKS.md](README_INSPECT_CHUNKS.md)
 - [README_EVAL_RETRIEVAL.md](README_EVAL_RETRIEVAL.md)
+- [RAGTrace 日志阅读指南](../../../docs/rag/RAG_TRACE_GUIDE.md)：真实 Agent 请求中的查询、过滤、chunk_id、距离、耗时和 Token 怎么看

@@ -1,0 +1,8 @@
+{
+  "min_case_count": 50,
+  "min_negative_count": 20,
+  "min_hit_at_k": 0.55,
+  "min_recall_at_k": 0.50,
+  "min_mrr": 0.35,
+  "max_retrieval_errors": 0
+}

@@ -32,4 +32,4 @@ npm run check:core
 npm run check:compiler
 ```
 
-Agent 与对话协议详见 [`../docs/AGENT_AND_CHAT.md`](../docs/AGENT_AND_CHAT.md)。
+Agent 与对话协议详见 [`../docs/agent/AGENT_AND_CHAT.md`](../docs/agent/AGENT_AND_CHAT.md)。

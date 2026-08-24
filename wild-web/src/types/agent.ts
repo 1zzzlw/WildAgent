@@ -133,6 +133,10 @@ export interface AgentReplyResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id?: string
   content: string
+  /** 本次回答实际引用的知识库分片，用于前端展示和追踪闭环。 */
+  cited_chunk_ids?: string[]
+  /** supported=有可验证引用，insufficient=证据不足，none=未使用知识库证据。 */
+  evidence_status?: 'supported' | 'insufficient' | 'none'
 }
 
 export interface ErrorResponse extends AgentProtocolEnvelope {
@@ -183,6 +187,13 @@ export interface ChatMessage {
   /** 将消息绑定到一次用户请求，保证过程、回复和产物保持在同一轮。 */
   request_id?: string
   turn_id?: string
+  /** 后端校验后保留下来的知识库分片引用。 */
+  cited_chunk_ids?: string[]
+  evidence_status?: 'supported' | 'insufficient' | 'none'
+  /** 用户对本轮 RAG 回答的反馈状态。 */
+  feedback_rating?: 'up' | 'down'
+  feedback_pending?: boolean
+  feedback_error?: string
 }
 
 export interface AgentTurnStep {

@@ -47,7 +47,7 @@ import { usePresenceStore } from '../extensions/presence/store'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { AGENT_PROTOCOL_VERSION, createUserMessageRequest } from './protocol'
-import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse } from '../types/agent'
+import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse, ChatMessage } from '../types/agent'
 import type { Blueprint } from '../types/blueprint'
 
 /** 重连配置 */
@@ -664,7 +664,16 @@ export class AgentBridge {
     const context = this.requestContexts.get(message.request_id)
     const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
     const artifactSucceeded = await (this.artifactTasks.get(message.request_id) || Promise.resolve(true))
-    agentStore.addAgentMessageForTurn(sessionId, message.request_id, message.content)
+    agentStore.addAgentMessageForTurn(
+      sessionId,
+      message.request_id,
+      message.content,
+      undefined,
+      {
+        cited_chunk_ids: message.cited_chunk_ids,
+        evidence_status: message.evidence_status,
+      },
+    )
     agentStore.completeTurn(sessionId, message.request_id, artifactSucceeded ? 'completed' : 'error')
     if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
     await this.syncConversationState(sessionId)
@@ -892,7 +901,7 @@ export class AgentBridge {
   }
 
   /** 从服务端恢复会话消息；本地未同步消息由 Store 按 id 合并。 */
-  async fetchSessionMessages(sessionId: string): Promise<Array<{ id: string; role: 'user' | 'agent' | 'system'; content: string; timestamp: number; request_id?: string; turn_id?: string }> | null> {
+  async fetchSessionMessages(sessionId: string): Promise<ChatMessage[] | null> {
     try {
       const response = await fetch(
         `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`,
@@ -904,6 +913,38 @@ export class AgentBridge {
       console.error('[AgentBridge] 获取会话消息失败:', err)
       return null
     }
+  }
+
+  /**
+   * 将用户对 RAG 回答的评价写入对应 RAGTrace。
+   * 回复事件与 Trace 文件落盘时间非常接近，因此 404 时做两次短暂重试。
+   */
+  async submitRagFeedback(
+    sessionId: string,
+    requestId: string,
+    rating: 'up' | 'down',
+  ): Promise<boolean> {
+    const retryDelays = [0, 150, 400]
+    for (const delay of retryDelays) {
+      if (delay > 0) await new Promise(resolve => window.setTimeout(resolve, delay))
+      try {
+        const response = await fetch(`${this.httpBaseUrl}/api/rag/feedback`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            request_id: requestId,
+            rating,
+          }),
+        })
+        if (response.ok) return true
+        if (response.status !== 404) return false
+      } catch (err) {
+        console.error('[AgentBridge] 提交 RAG 反馈失败:', err)
+        return false
+      }
+    }
+    return false
   }
 
   /** 从服务端恢复按请求归档的 Agent Turn。 */

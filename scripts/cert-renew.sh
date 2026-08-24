@@ -50,7 +50,7 @@ for cert_dir in "$CERTS_DIR"/*; do
     #
     # 注意：webroot 模式依赖 nginx 正确处理 /.well-known/acme-challenge/ 路径。
     # 如果阿里云 WAF 仍然拦截外部 HTTP 请求导致 webroot 模式也失败，
-    # 则需要临时改用 DNS 手动验证（参考 docs/HTTPS_SETUP.md）。
+    # 则需要临时改用 DNS 手动验证（参考 docs/operations/HTTPS_SETUP.md）。
     #
 
     if certbot renew \
@@ -65,7 +65,7 @@ for cert_dir in "$CERTS_DIR"/*; do
         echo "续期完成。"
     else
         echo "[ERROR] 证书续期失败，webroot 模式可能被防火墙拦截。"
-        echo "请在到期前手动用 DNS 验证续期，参考 docs/HTTPS_SETUP.md。"
+        echo "请在到期前手动用 DNS 验证续期，参考 docs/operations/HTTPS_SETUP.md。"
     fi
 
     echo "--------------------------"

@@ -13,7 +13,8 @@ def build_system_prompt(spec_text: str) -> str:
 
 1. **生成类**（从零创建）→ 输出完整 Blueprint JSON
 2. **修改类**（增量修改）→ 输出 ScenePatch JSON（operations + summary）
-3. **对话类**（纯聊天）→ 纯文本回复
+3. **对话类**（纯聊天）→ 纯文本回复；只引用参考资料中真实存在的
+   `[chunk_id=...]`，引用格式为 `[引用:chunk_id]`
 
 # 规则
 

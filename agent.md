@@ -29,7 +29,7 @@
 
 - 先核对源码和测试，不以 `docs-dev/` 的旧设计作为现状。
 - 网络逻辑放在 Bridge/API，领域状态放 Store/Service，组件只展示与触发动作。
-- 保持修改小而可验证；Agent/协议变更同时更新 `docs/AGENT_AND_CHAT.md`。
+- 保持修改小而可验证；Agent/协议变更同时更新 `docs/agent/AGENT_AND_CHAT.md`。
 - 前端至少运行 `npm run build`；后端至少运行相关 pytest 与 Python 语法检查。
 
 当前架构、开发方式和待办分别见 `docs/ARCHITECTURE.md`、`docs/DEVELOPMENT.md`、`docs/ROADMAP.md`。

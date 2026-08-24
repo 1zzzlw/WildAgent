@@ -4,8 +4,10 @@
 如果评分公式本身有 bug，那么后面得到的 Recall@K 再高也没有意义。
 """
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from scripts.rag.eval_retrieval import score_ranked_hits, select_ranked_parent_groups
+from scripts.rag.eval_retrieval import main, score_ranked_hits, select_ranked_parent_groups
 
 
 class RetrievalMetricTest(unittest.TestCase):
@@ -54,6 +56,37 @@ class RetrievalMetricTest(unittest.TestCase):
         selected = select_ranked_parent_groups(hits, top_k=2)
 
         self.assertEqual([hit["source"] for hit in selected], ["windows.md", "doors.md"])
+
+    def test_main_returns_nonzero_when_retrieval_has_errors(self):
+        """embedding 或网络失败时可以留排错报告，但不能返回成功退出码。"""
+        loader = SimpleNamespace(
+            _collection_name="test",
+            _embedding_function=object(),
+        )
+        eval_data = {
+            "results": [],
+            "stats": {
+                "hit_at_k": None,
+                "recall_at_k": None,
+                "mrr": None,
+                "empty_top1": 0,
+                "empty_top1_rate": 0.0,
+                "total_questions": 1,
+                "retrieval_errors": 1,
+            },
+        }
+        argv = ["eval_retrieval.py", "--no-log-output", "--output", "report.md"]
+        with (
+            patch("sys.argv", argv),
+            patch("scripts.rag.eval_retrieval.load_questions", return_value=[object()]),
+            patch("scripts.rag.eval_retrieval.build_loader", return_value=(loader, None)),
+            patch("scripts.rag.eval_retrieval.indexed_chunk_count", return_value=1),
+            patch("scripts.rag.eval_retrieval.get_rag_spec_paths", return_value=[]),
+            patch("scripts.rag.eval_retrieval.run_eval", return_value=eval_data),
+            patch("scripts.rag.eval_retrieval.to_markdown", return_value="report"),
+            patch("pathlib.Path.write_text", return_value=6),
+        ):
+            self.assertEqual(main(), 3)
 
 
 if __name__ == "__main__":

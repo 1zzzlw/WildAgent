@@ -27,6 +27,19 @@ from typing import Any
 
 from loguru import logger
 
+from app.agent.rag_gate import (
+    RAGRetrievalRejected,
+    evaluate_retrieval_gate,
+)
+from app.agent.rag_security import split_business_and_access_filters
+from app.agent.rag_trace import (
+    make_query_trace,
+    record_rag_context,
+    record_rag_gate,
+    record_rag_retrieval,
+)
+from config import config
+
 
 def _normalize_path(path: Path) -> str:
     """生成用于路径比较的绝对、大小写不敏感字符串。"""
@@ -117,6 +130,8 @@ class RetrievedSpecChunk:
     document: str
     metadata: dict[str, Any]
     distance: float | None
+    # Chroma 的真实分片 ID，用于日志追踪和后续引用闭环。
+    id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -886,41 +901,82 @@ class RAGSpecLoader(SpecLoader):
             # 默认在 Loader 构造时同步一次，保证第一次查询即可命中新文档。
             self.sync_index()
 
-    def load(self, query: str = "") -> str:
+    def load(self, query: str = "", *, purpose: str = "generation") -> str:
         # 基础规范始终完整注入；扩展知识只在有查询时按需召回。
         base_text = self._load_base_text()
         try:
             retrieved = self.retrieve(query) if query.strip() else []
+            retrieved = self._apply_retrieval_gate(retrieved, purpose=purpose)
+        except RAGRetrievalRejected:
+            raise
         except Exception as exc:
             # Chroma 检索失败时降级为基础规范上下文，避免单个查询让整条链路崩溃。
             logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
-            retrieved = []
-        return self._compose_context(base_text, retrieved)
+            # observe 仍需记录“证据为空”的结论；enforce 下知识问答不能绕过
+            # Gate 后继续让 LLM 根据基础规范猜答，建筑生成则照常降级。
+            retrieved = self._apply_retrieval_gate([], purpose=purpose)
+        return self._compose_context(base_text, retrieved, operation="load")
 
     # per_query 参数控制每个检索意图返回的片段数，避免建筑类型文档挤掉组件文档。
-    def load_many(self, queries: list[str | SpecQuery], per_query: int = 1) -> str:
+    def load_many(
+        self,
+        queries: list[str | SpecQuery],
+        per_query: int = 1,
+        *,
+        purpose: str = "generation",
+    ) -> str:
         """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
         base_text = self._load_base_text()
         try:
             retrieved = self.retrieve_many(queries, per_query=per_query)
+            retrieved = self._apply_retrieval_gate(retrieved, purpose=purpose)
+        except RAGRetrievalRejected:
+            raise
         except Exception as exc:
             logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
-            retrieved = []
-        return self._compose_context(base_text, retrieved)
+            retrieved = self._apply_retrieval_gate([], purpose=purpose)
+        return self._compose_context(base_text, retrieved, operation="load_many")
+
+    def _apply_retrieval_gate(
+        self,
+        retrieved: list[RetrievedSpecChunk],
+        *,
+        purpose: str,
+    ) -> list[RetrievedSpecChunk]:
+        gate = config.rag.retrieval_gate
+        decision = evaluate_retrieval_gate(
+            retrieved,
+            mode=gate.mode,
+            purpose=purpose,
+            max_distance=gate.max_distance,
+            min_hits=gate.min_hits,
+        )
+        record_rag_gate(decision.to_dict())
+        if not decision.enforced:
+            return retrieved
+        if purpose == "chat":
+            raise RAGRetrievalRejected(gate.refusal_message, decision)
+        # 建筑生成不因可选知识不足而整体失败，只降级为基础规范。
+        return []
 
     def _compose_context(
         self,
         base_text: str,
         retrieved: list[RetrievedSpecChunk],
+        operation: str = "compose",
     ) -> str:
         rag_text = self._format_retrieved(retrieved)
         self._loaded_at = time.time()
 
         if not rag_text:
-            return base_text
+            context = base_text
+            selected: list[RetrievedSpecChunk] = []
+            self._record_composed_context(operation, base_text, selected, context)
+            return context
 
         spec_text = f"{base_text}\n\n---\n\n{rag_text}"
         if len(spec_text) <= self._max_context_chars:
+            self._record_composed_context(operation, base_text, retrieved, spec_text)
             return spec_text
 
         # 基础规范和单个 RAG chunk 都不可截断；按排名贪心选择能完整放入预算的片段。
@@ -933,8 +989,28 @@ class RAGSpecLoader(SpecLoader):
                 selected.append(chunk)
 
         if not selected:
-            return f"{base_text}\n\n{marker}"
-        return f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
+            context = f"{base_text}\n\n{marker}"
+            self._record_composed_context(operation, base_text, [], context)
+            return context
+        context = f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
+        self._record_composed_context(operation, base_text, selected, context)
+        return context
+
+    def _record_composed_context(
+        self,
+        operation: str,
+        base_text: str,
+        selected: list[RetrievedSpecChunk],
+        context: str,
+    ) -> None:
+        record_rag_context(
+            operation=operation,
+            base_chars=len(base_text),
+            retrieved_chars=sum(len(item.document) for item in selected),
+            context_chars=len(context),
+            retrieved_count=len(selected),
+            injected_chunk_ids=[item.id for item in selected if item.id],
+        )
 
     def list_sources(self) -> list[str]:
         return [str(p) for p in [*self._base_paths, *self._rag_paths]]
@@ -1027,6 +1103,42 @@ class RAGSpecLoader(SpecLoader):
         query: str,
         metadata_filter: dict[str, Any] | None = None,
     ) -> list[RetrievedSpecChunk]:
+        """执行单意图检索，并把耗时、过滤条件和原始距离写入当前 RAGTrace。"""
+        started = time.perf_counter()
+        business_filter, _, ignored_access_keys = split_business_and_access_filters(
+            metadata_filter
+        )
+        query_trace = make_query_trace(
+            query,
+            metadata_filter=business_filter,
+            effective_filter=self._query_where(metadata_filter),
+            index_signature=self._trace_index_signature(),
+            ignored_access_filter_keys=ignored_access_keys,
+        )
+        try:
+            retrieved = self._retrieve(query, metadata_filter=metadata_filter)
+        except Exception as exc:
+            record_rag_retrieval(
+                operation="retrieve",
+                queries=[query_trace],
+                hits=[],
+                elapsed_ms=round((time.perf_counter() - started) * 1000),
+                error_type=type(exc).__name__,
+            )
+            raise
+        record_rag_retrieval(
+            operation="retrieve",
+            queries=[query_trace],
+            hits=retrieved,
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+        )
+        return retrieved
+
+    def _retrieve(
+        self,
+        query: str,
+        metadata_filter: dict[str, Any] | None = None,
+    ) -> list[RetrievedSpecChunk]:
         collection = self._get_collection()
         count = collection.count()
         if count == 0:
@@ -1045,6 +1157,7 @@ class RAGSpecLoader(SpecLoader):
         documents = result.get("documents", [[]])[0] or []
         metadatas = result.get("metadatas", [[]])[0] or []
         distances = result.get("distances", [[]])[0] or []
+        ids = result.get("ids", [[]])[0] or []
         retrieved: list[RetrievedSpecChunk] = []
         # 去重键不包含文件路径，因此相同内容来自不同文件时只返回排名最高的一份。
         seen_hashes: set[str] = set()
@@ -1068,6 +1181,7 @@ class RAGSpecLoader(SpecLoader):
                 document=document or "",
                 metadata=metadata,
                 distance=distances[index] if index < len(distances) else None,
+                id=str(ids[index]) if index < len(ids) else None,
             ))
             # 去重后达到 top_k 就停止；顺序已综合语义距离和知识成熟度。
             if len(retrieved) >= self._top_k:
@@ -1078,6 +1192,58 @@ class RAGSpecLoader(SpecLoader):
         return retrieved
 
     def retrieve_many(
+        self,
+        queries: list[str | SpecQuery],
+        per_query: int = 1,
+    ) -> list[RetrievedSpecChunk]:
+        """执行多意图检索，并把每个意图和全部命中写入当前 RAGTrace。"""
+        started = time.perf_counter()
+        query_traces: list[dict[str, Any]] = []
+        for query in queries:
+            if isinstance(query, SpecQuery):
+                text = query.text.strip()
+                metadata_filter = query.metadata_filter
+            else:
+                text = query.strip()
+                metadata_filter = None
+            if text:
+                business_filter, _, ignored_access_keys = (
+                    split_business_and_access_filters(metadata_filter)
+                )
+                query_traces.append(make_query_trace(
+                    text,
+                    metadata_filter=business_filter,
+                    effective_filter=self._query_where(metadata_filter),
+                    index_signature=self._trace_index_signature(),
+                    ignored_access_filter_keys=ignored_access_keys,
+                ))
+        try:
+            retrieved = self._retrieve_many(queries, per_query=per_query)
+        except Exception as exc:
+            record_rag_retrieval(
+                operation="retrieve_many",
+                queries=query_traces,
+                hits=[],
+                elapsed_ms=round((time.perf_counter() - started) * 1000),
+                error_type=type(exc).__name__,
+            )
+            raise
+        record_rag_retrieval(
+            operation="retrieve_many",
+            queries=query_traces,
+            hits=retrieved,
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+        )
+        return retrieved
+
+    def _trace_index_signature(self) -> str | None:
+        """测试假 Loader 可能没有完整 embedding/chunker；观测字段缺失不能影响检索。"""
+        try:
+            return self._index_signature()
+        except (AttributeError, TypeError, ValueError):
+            return None
+
+    def _retrieve_many(
         self,
         queries: list[str | SpecQuery],
         per_query: int = 1,
@@ -1130,7 +1296,10 @@ class RAGSpecLoader(SpecLoader):
             )
             group["items"].append((query_index, text))
 
-        raw_results: dict[int, tuple[list[Any], list[Any], list[Any]]] = {}
+        raw_results: dict[
+            int,
+            tuple[list[Any], list[Any], list[Any], list[Any]],
+        ] = {}
         for group in grouped_queries.values():
             items = group["items"]
             result = collection.query(
@@ -1142,11 +1311,13 @@ class RAGSpecLoader(SpecLoader):
             document_groups = result.get("documents", []) or []
             metadata_groups = result.get("metadatas", []) or []
             distance_groups = result.get("distances", []) or []
+            id_groups = result.get("ids", []) or []
             for group_index, (query_index, _) in enumerate(items):
                 raw_results[query_index] = (
                     document_groups[group_index] if group_index < len(document_groups) else [],
                     metadata_groups[group_index] if group_index < len(metadata_groups) else [],
                     distance_groups[group_index] if group_index < len(distance_groups) else [],
+                    id_groups[group_index] if group_index < len(id_groups) else [],
                 )
 
         retrieved: list[RetrievedSpecChunk] = []
@@ -1155,9 +1326,9 @@ class RAGSpecLoader(SpecLoader):
 
         # 即使查询因过滤条件分组执行，最终结果仍按调用方原始查询顺序排列。
         for query_index in range(len(normalized_queries)):
-            documents, metadatas, distances = raw_results.get(
+            documents, metadatas, distances, ids = raw_results.get(
                 query_index,
-                ([], [], []),
+                ([], [], [], []),
             )
             selected = 0
             ranked_indices = sorted(
@@ -1178,6 +1349,7 @@ class RAGSpecLoader(SpecLoader):
                     document=document or "",
                     metadata=metadata,
                     distance=distances[index] if index < len(distances) else None,
+                    id=str(ids[index]) if index < len(ids) else None,
                 ))
                 selected += 1
                 # 每个查询最多贡献 limit 个尚未被其他查询选中的片段。
@@ -1249,6 +1421,7 @@ class RAGSpecLoader(SpecLoader):
                 if isinstance(siblings, dict):
                     documents = siblings.get("documents") or []
                     metadatas = siblings.get("metadatas") or []
+                    ids = siblings.get("ids") or []
                     candidates = []
                     for index, document in enumerate(documents):
                         metadata = (
@@ -1265,6 +1438,7 @@ class RAGSpecLoader(SpecLoader):
                                 document=document or "",
                                 metadata=metadata,
                                 distance=hit.distance if sibling_index == part_index else None,
+                                id=str(ids[index]) if index < len(ids) else None,
                             ))
                     candidates.sort(key=lambda item: int(item.metadata.get("part_index") or 0))
                     if not candidates:
@@ -1286,17 +1460,21 @@ class RAGSpecLoader(SpecLoader):
         metadata_filter: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """组合索引隔离、导航文档排除和调用方业务过滤条件。"""
+        business_filter, access_conditions, _ = split_business_and_access_filters(
+            metadata_filter
+        )
         conditions: list[dict[str, Any]] = [
             {"namespace": self._namespace},
             {"doc_scope": {"$ne": "index"}},
         ]
-        if "status" not in (metadata_filter or {}):
+        if "status" not in business_filter:
             conditions.append({"status": {"$ne": "proposed"}})
-        if "authority" not in (metadata_filter or {}):
+        if "authority" not in business_filter:
             conditions.append({"authority": {"$ne": "inferred"}})
+        conditions.extend(access_conditions)
         conditions.extend(
             {key: value}
-            for key, value in (metadata_filter or {}).items()
+            for key, value in business_filter.items()
         )
         return {"$and": conditions}
 
@@ -1387,8 +1565,10 @@ class RAGSpecLoader(SpecLoader):
             distance = chunk.distance
             # 展示原始距离；实际排序还叠加了有限的 status/authority 成熟度惩罚。
             distance_text = f", distance={distance:.4f}" if isinstance(distance, float) else ""
+            chunk_id_text = chunk.id or "unknown"
             parts.append(
                 f"### 片段 {index}: {source} / {heading}{distance_text}\n\n"
+                f"[chunk_id={chunk_id_text}]\n\n"
                 f"> metadata: {metadata_text}\n\n"
                 f"{chunk.document}"
             )

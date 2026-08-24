@@ -70,6 +70,28 @@ variables:
     - python -c "import ast; ast.parse(open('main.py').read()); print('main.py OK')"
     - uv lock --check 2>/dev/null || echo "uv.lock 不是最新的，但不阻塞 CI"
 
+RAG质量门禁:
+  image: python:3.12-slim
+  stage: validate
+  allow_failure: false
+  only:
+    - main
+    - master
+  before_script:
+    - cd wild-server
+    - pip install "uv==$UV_VERSION" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+    - uv sync --frozen
+  script:
+    - uv run python -m pytest tests/rag -q
+    - uv run python scripts/rag/eval_retrieval.py --embedding hash --top-k 5 --json-output scripts/reports/ci_rag_eval.json --output scripts/reports/ci_rag_eval.md --no-log-output
+    - uv run python scripts/rag/check_rag_quality_gate.py scripts/reports/ci_rag_eval.json
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - wild-server/scripts/reports/ci_rag_eval.json
+      - wild-server/scripts/reports/ci_rag_eval.md
+
 # ============================================================
 # Stage 2: 构建镜像并推送（仿照样例中的 build 阶段）
 # ============================================================

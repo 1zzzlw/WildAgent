@@ -20,6 +20,7 @@ AI 在 prompt 内自行判断意图，选择输出格式。场景上下文通过
 """
 from dataclasses import dataclass, field
 import math
+import time
 from pathlib import Path
 from copy import deepcopy
 from collections.abc import Awaitable, Callable
@@ -31,6 +32,15 @@ from loguru import logger
 
 from config import config
 from app.agent.model_client import create_llm, message_texts as _message_texts
+from app.agent.llm_invocation import collect_response, invoke_llm, merge_token_usage
+from app.agent.rag_citations import validate_answer_citations
+from app.agent.rag_gate import RAGRetrievalRejected, infer_retrieval_purpose
+from app.agent.rag_trace import (
+    get_injected_chunk_ids,
+    record_final_answer,
+    record_rag_citations,
+    record_rag_llm_call,
+)
 from app.agent.prompts import (
     build_material_optimization_prompt,
     build_patch_recovery_prompt,
@@ -110,6 +120,8 @@ class QueryResult:
     pipeline_results: list[PipelineStepResult] = field(default_factory=list)
     structured_source: str | None = None
     structured_recovery_used: bool = False
+    cited_chunk_ids: list[str] = field(default_factory=list)
+    evidence_status: str | None = None
 
 
 def _extract_response_artifacts(
@@ -1037,6 +1049,7 @@ class AgentService:
         self,
         rag_query: str | list[str],
         thinking_mode: bool = False,
+        purpose: str = "generation",
     ):
         """为一次查询准备 Agent；RAG 模式会先动态组装本次 System Prompt。"""
         if not self._dynamic_prompt:
@@ -1046,11 +1059,15 @@ class AgentService:
 
         if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
             filtered_queries = self._build_filtered_rag_queries(rag_query)
-            spec_text = self.spec_loader.load_many(filtered_queries, per_query=1)
+            spec_text = self.spec_loader.load_many(
+                filtered_queries,
+                per_query=1,
+                purpose=purpose,
+            )
             query_log = " | ".join(rag_query)
         else:
             query_text = rag_query[0] if isinstance(rag_query, list) else rag_query
-            spec_text = self.spec_loader.load(query=query_text)
+            spec_text = self.spec_loader.load(query=query_text, purpose=purpose)
             query_log = query_text
         if isinstance(self.spec_loader, RAGSpecLoader):
             hits = [
@@ -1156,14 +1173,17 @@ class AgentService:
         )
         if material_optimization:
             recovery_prompt += build_material_optimization_prompt(selection or [])
-        response = await self.llm.ainvoke([
-            {
-                "role": "system",
-                "content": "你是 ScenePatch 格式恢复器，只返回请求指定的 JSON。",
-            },
-            {"role": "user", "content": recovery_prompt},
-        ])
-        content, reasoning = _message_texts(response)
+        llm_result = await invoke_llm(
+            self.llm,
+            [
+                {
+                    "role": "system",
+                    "content": "你是 ScenePatch 格式恢复器，只返回请求指定的 JSON。",
+                },
+                {"role": "user", "content": recovery_prompt},
+            ],
+        )
+        content, reasoning = llm_result.content, llm_result.reasoning
         for source, text in (
             ("recovery_content", content),
             ("recovery_reasoning", reasoning),
@@ -1223,21 +1243,58 @@ class AgentService:
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
         rag_queries = self._build_rag_queries(message, current_blueprint)
-        agent = self._agent_for_query(rag_queries, thinking_mode=thinking_mode)
+        from app.agent.intent_classifier import fast_path_intent
+
+        fast_intent = fast_path_intent(message, current_blueprint is not None)
+        rag_purpose = infer_retrieval_purpose(message, fast_intent)
+        try:
+            agent = self._agent_for_query(
+                rag_queries,
+                thinking_mode=thinking_mode,
+                purpose=rag_purpose,
+            )
+        except RAGRetrievalRejected as exc:
+            refusal = str(exc)
+            record_final_answer(refusal)
+            return QueryResult(
+                text=refusal,
+                cited_chunk_ids=[],
+                evidence_status="insufficient",
+            )
         reasoning_callback = None
         invoke_config = None
         if thinking_mode and on_reasoning_delta is not None:
             reasoning_callback = _ReasoningStreamCallback(on_reasoning_delta)
             invoke_config = {"callbacks": [reasoning_callback]}
 
+        agent_started = time.perf_counter()
         try:
             result = await agent.ainvoke(
                 {"messages": [{"role": "user", "content": user_message}]},
                 config=invoke_config,
             )
+        except Exception as exc:
+            record_rag_llm_call(
+                mode="agent_invoke",
+                elapsed_ms=round((time.perf_counter() - agent_started) * 1000),
+                token_usage=None,
+                error_type=type(exc).__name__,
+            )
+            raise
         finally:
             if reasoning_callback is not None:
                 await reasoning_callback.flush()
+        agent_token_usage = None
+        for response_message in result.get("messages", []):
+            agent_token_usage = merge_token_usage(
+                agent_token_usage,
+                collect_response(response_message).token_usage,
+            )
+        record_rag_llm_call(
+            mode="agent_invoke",
+            elapsed_ms=round((time.perf_counter() - agent_started) * 1000),
+            token_usage=agent_token_usage,
+        )
         final_message = result["messages"][-1]
         reply, reasoning = _message_texts(final_message)
         logger.info(
@@ -1387,7 +1444,18 @@ class AgentService:
             )
 
         # ── 纯文本（对话类）─────────────────────────────────────
-        return QueryResult(text=reply)
+        citation_result = validate_answer_citations(reply, get_injected_chunk_ids())
+        record_rag_citations(
+            citation_result.cited_chunk_ids,
+            citation_result.invalid_chunk_ids,
+            citation_result.appended_fallback,
+        )
+        record_final_answer(citation_result.answer)
+        return QueryResult(
+            text=citation_result.answer,
+            cited_chunk_ids=list(citation_result.cited_chunk_ids),
+            evidence_status="supported" if citation_result.cited_chunk_ids else "none",
+        )
 
 
 # 模块级单例：导入 ws_agent 时完成配置、知识库索引和模型客户端初始化。

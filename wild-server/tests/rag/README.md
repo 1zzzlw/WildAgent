@@ -33,6 +33,8 @@ $env:PYTHONPATH="."
 | `test_rag_index_sync.py` | Chroma 增量新增、更新、删除与相邻 part | 集合差、假对象、调用参数 |
 | `test_rag_retrieval_cache.py` | 查询缓存键何时相同或失效 | 稳定哈希、输入组合 |
 | `test_query_planner.py` | 查询别名、过滤条件和安全改写 | dataclass、过滤、白名单 |
+| `test_rag_trace.py` | request_id、真实 chunk_id、距离、上下文与 Token 观测 | context manager、dataclass、Mock |
+| `test_rag_runtime_controls.py` | Gate、校准、引用、权限、PII、反馈、Trace 指标、Judge 与 60 题约束 | ContextVar、临时目录、原子文件、正负样本、P95 |
 
 ## 一个测试怎么看
 
@@ -53,7 +55,7 @@ $env:PYTHONPATH="."
 - `ERROR collecting`：测试尚未开始，通常是依赖、导入或本机 Python 环境问题；
 - `ModuleNotFoundError: app`：通常忘了在 `wild-server` 目录运行，或没有设置 `PYTHONPATH="."`。
 
-当前目录共有 27 个用例。新增或删除测试后，以 pytest 最后一行显示的实际数量为准，不需要依赖文档中的固定数字。
+2026-08-24 本轮验证共有 50 个用例。新增或删除测试后，以 pytest 最后一行显示的实际数量为准，不需要依赖文档中的固定数字。
 
 ## 单元测试与召回评测的区别
 

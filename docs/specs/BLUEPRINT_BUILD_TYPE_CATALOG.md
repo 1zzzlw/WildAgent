@@ -1,5 +1,7 @@
 # WILD 蓝图构建类型与引擎能力目录
 
+> 文档分类：WILD 规范与能力目录。返回 [正式文档入口](../README.md)。
+
 最后核对：2026-08-15。  
 源码快照：`8427fd1`。  
 当前蓝图写入版本：WILD `1.1`。
@@ -13,7 +15,7 @@
 3. 渲染引擎怎样把几何、材质、光影和天气组合起来；
 4. AI 所说的“建筑类型”与真正的蓝图构建类型有什么区别。
 
-本文是能力目录，不重复所有字段级规范。字段格式以 [WILD_BLUEPRINT_SPEC.md](./WILD_BLUEPRINT_SPEC.md) 为准，材质世界设计以 [GLOBAL_MATERIAL_WORLD_ARCHITECTURE.md](./GLOBAL_MATERIAL_WORLD_ARCHITECTURE.md) 为准。
+本文是能力目录，不重复所有字段级规范。字段格式以 [WILD_BLUEPRINT_SPEC.md](WILD_BLUEPRINT_SPEC.md) 为准，材质世界设计以 [GLOBAL_MATERIAL_WORLD_ARCHITECTURE.md](../materials/GLOBAL_MATERIAL_WORLD_ARCHITECTURE.md) 为准。
 
 发生冲突时，以当前代码为准，优先级为：Core/Compiler 实现、Schema 与类型、自动化测试、本文档。
 

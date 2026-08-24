@@ -5,10 +5,12 @@
 """
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from app.agent.model_client import content_as_text, message_texts
+from app.agent.rag_trace import record_rag_llm_call
 
 
 @dataclass
@@ -77,8 +79,24 @@ def collect_response(response: Any) -> LlmResult:
 
 async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:
     """统一非流式调用（``on_reasoning_delta`` 兼容签名，但非流式不会逐字回调）。"""
-    response = await llm.ainvoke(messages)
-    return collect_response(response)
+    started = time.perf_counter()
+    try:
+        response = await llm.ainvoke(messages)
+    except Exception as exc:
+        record_rag_llm_call(
+            mode="invoke",
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+            token_usage=None,
+            error_type=type(exc).__name__,
+        )
+        raise
+    result = collect_response(response)
+    record_rag_llm_call(
+        mode="invoke",
+        elapsed_ms=round((time.perf_counter() - started) * 1000),
+        token_usage=result.token_usage,
+    )
+    return result
 
 
 async def stream_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:
@@ -88,33 +106,49 @@ async def stream_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     token_usage: dict[str, int] | None = None
     finish_reason: str | None = None
 
-    async for chunk in llm.astream(messages):
-        if hasattr(chunk, "additional_kwargs"):
-            delta = chunk.additional_kwargs.get("reasoning_content", "") or ""
-            if delta:
-                reasoning_parts.append(delta)
-                if on_reasoning_delta is not None:
-                    await on_reasoning_delta(delta)
+    started = time.perf_counter()
+    try:
+        async for chunk in llm.astream(messages):
+            if hasattr(chunk, "additional_kwargs"):
+                delta = chunk.additional_kwargs.get("reasoning_content", "") or ""
+                if delta:
+                    reasoning_parts.append(delta)
+                    if on_reasoning_delta is not None:
+                        await on_reasoning_delta(delta)
 
-        text = content_as_text(getattr(chunk, "content", ""))
-        if text:
-            content_parts.append(text)
+            text = content_as_text(getattr(chunk, "content", ""))
+            if text:
+                content_parts.append(text)
 
-        metadata = getattr(chunk, "response_metadata", None) or {}
-        if isinstance(metadata, dict):
-            finish_reason = finish_reason or metadata.get("finish_reason") or metadata.get("stop_reason")
-            usage = _normalize_usage(metadata.get("usage"))
-            if usage:
-                token_usage = usage
+            metadata = getattr(chunk, "response_metadata", None) or {}
+            if isinstance(metadata, dict):
+                finish_reason = finish_reason or metadata.get("finish_reason") or metadata.get("stop_reason")
+                usage = _normalize_usage(metadata.get("usage"))
+                if usage:
+                    token_usage = usage
 
-        usage_metadata = getattr(chunk, "usage_metadata", None) or {}
-        normalized = _normalize_usage(usage_metadata)
-        if normalized:
-            token_usage = normalized
+            usage_metadata = getattr(chunk, "usage_metadata", None) or {}
+            normalized = _normalize_usage(usage_metadata)
+            if normalized:
+                token_usage = normalized
+    except Exception as exc:
+        record_rag_llm_call(
+            mode="stream",
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+            token_usage=token_usage,
+            error_type=type(exc).__name__,
+        )
+        raise
 
-    return LlmResult(
+    result = LlmResult(
         content="".join(content_parts),
         reasoning="".join(reasoning_parts),
         token_usage=token_usage,
         finish_reason=finish_reason,
     )
+    record_rag_llm_call(
+        mode="stream",
+        elapsed_ms=round((time.perf_counter() - started) * 1000),
+        token_usage=result.token_usage,
+    )
+    return result

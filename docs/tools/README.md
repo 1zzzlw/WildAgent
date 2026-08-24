@@ -1,5 +1,7 @@
 # WildAgent 工具目录
 
+> 文档分类：工具与脚本。返回 [正式文档入口](../README.md)。
+
 本文档列出 WildAgent 项目中所有可用的开发工具、脚本和测试文件。
 
 ---
@@ -167,7 +169,7 @@ docker run --rm --env-file .env <image> python -m scripts.deployment_preflight
 
 位置：`wild-server/tests/`
 
-测试文件详细说明请参考：**[测试文件说明文档](./TESTING_GUIDE.md)**
+测试文件详细说明请参考：**[测试文件说明文档](../TESTING_GUIDE.md)**
 
 ### 核心功能测试
 - `test_agent_graph_execution.py` - Agent 图执行流程
@@ -300,10 +302,10 @@ uv run python -m scripts.deployment_preflight
 
 ## 📚 相关文档
 
-- **[测试文件说明](./TESTING_GUIDE.md)** - 详细的测试文件说明和使用指南
-- **[开发指南](./DEVELOPMENT.md)** - 开发环境配置和工作流程
-- **[部署指南](./DEPLOYMENT.md)** - 生产部署流程
-- **[架构文档](./ARCHITECTURE.md)** - 系统架构设计
+- **[测试文件说明](../TESTING_GUIDE.md)** - 详细的测试文件说明和使用指南
+- **[开发指南](../DEVELOPMENT.md)** - 开发环境配置和工作流程
+- **[部署指南](../DEPLOYMENT.md)** - 生产部署流程
+- **[架构文档](../ARCHITECTURE.md)** - 系统架构设计
 
 ---
 

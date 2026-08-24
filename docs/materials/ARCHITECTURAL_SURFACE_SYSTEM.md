@@ -1,5 +1,7 @@
 # WILD 建筑表面系统：渲染、程序化材质与 PBR 关系总览
 
+> 文档分类：材质与表面系统。返回 [正式文档入口](../README.md)。
+
 ## 1. 文档目的
 
 本文统一解释 WILD 项目中以下概念的关系：
@@ -15,7 +17,7 @@
 
 本文同时区分“当前已经实现的能力”和“建议的后续架构”。阅读时不要把目标方案误认为已经上线的功能。
 
-更详细的红砖 Shader、参数范围和测试设计见[《WILD 程序化建筑材质扩展方案》](./PROCEDURAL_MATERIALS.md)，正式 Blueprint 字段约束见[《WILD Blueprint 规范》](./WILD_BLUEPRINT_SPEC.md)。
+更详细的红砖 Shader、参数范围和测试设计见[《WILD 程序化建筑材质扩展方案》](PROCEDURAL_MATERIALS.md)，正式 Blueprint 字段约束见[《WILD Blueprint 规范》](../specs/WILD_BLUEPRINT_SPEC.md)。
 
 ## 2. 最重要的结论
 

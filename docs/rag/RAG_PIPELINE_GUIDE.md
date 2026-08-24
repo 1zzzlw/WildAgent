@@ -1,24 +1,16 @@
 ---
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_31198a039c3e11f19155525400826444
-    ReservedCode1: M+VTE5ZdSj/4WSbg4hD8BgnXXE6vGpSn/IGrqKk12+47r7bMnLtZUBtilgnyTpDBJLuXgXj8FbcHmg77OomjuahamQZe7e3qZdReBOX6YVvzAuhO9fMOk732urJy3e660IEopGQG9klVxhr2buXtnvgpnrLsNsyec2M8+NUCnGRyPYOE4N1ds4rq+x8=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_31198a039c3e11f19155525400826444
-    ReservedCode2: M+VTE5ZdSj/4WSbg4hD8BgnXXE6vGpSn/IGrqKk12+47r7bMnLtZUBtilgnyTpDBJLuXgXj8FbcHmg77OomjuahamQZe7e3qZdReBOX6YVvzAuhO9fMOk732urJy3e660IEopGQG9klVxhr2buXtnvgpnrLsNsyec2M8+NUCnGRyPYOE4N1ds4rq+x8=
----
-
 # WildAgent RAG 全链路研究说明书
 
+> 文档分类：RAG 专题。返回 [RAG 文档入口](README.md)。
+
 > 适用对象：第一次接触 WildAgent 知识库 / RAG 链路的开发者、评估者。
-> 本文档基于 **wild-server 当前代码与线上 storage/chroma 索引（2026-08-20 实证）** 编写，所有"实证"结论均来自真实运行结果。
+> 当前代码链路最后核对：2026-08-24。第 7、8、12 节保留的是 2026-08-20 的索引实测快照，只用于讲解存储结构，不代表当前部署配置或当前分片数量。
 
 ---
 
 ## 0. 一句话结论
 
-WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7-text-embedding（DashScope，1024 维）向量化** → **ChromaDB（HNSW 索引）入库** → **RAGSpecLoader.retrieve 语义检索 + 成熟度重排** → **AgentService 将 Top-K 分片注入 System Prompt 的"WILD 规范"段** 被 agent 消费。ChromaDB 中 **存储的是真实 1024 维向量数据**（L2 范数=1.0 的归一化向量），但注意：**新版 Chroma（1.5.9）的 sqlite 中看不到向量明文**，向量本体落在 HNSW 二进制索引文件中，sqlite 里只有 id 与 metadata 关联表。
+WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置的 Embedding 模型向量化** → **ChromaDB 索引** → **RAGSpecLoader 检索、过滤、排序和门控** → **Agent 将完整分片注入 Prompt**。知识问答最终返回经过白名单校验的 `chunk_id` 引用；每次请求的查询、距离、耗时和 Token 会写入 `storage/sessions/rag_traces`。
 
 ---
 
@@ -28,8 +20,8 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 ┌─────────┐  ①分片    ┌──────────┐  ②向量化   ┌───────────────┐  ③入库   ┌────────────────┐
 │ 知识库    │ ───────▶ │  Markdown │ ────────▶ │  ChromaDB      │ ──────▶ │ HNSW 向量索引   │
 │ *.md     │  chunker │  Chunker  │  embed   │ wild_knowledge │  upsert │ + documents/    │
-│ 42 篇    │          │           │          │ _base          │         │ metadata(516)   │
-└─────────┘          └──────────┘           │ 516 分片         │         └────────┬───────┘
+│ 42 篇    │          │           │          │ _base          │         │ metadata       │
+└─────────┘          └──────────┘           │ N 个分片         │         └────────┬───────┘
                                             └────────────────┘                     │
                                                                                   │ ④检索 query(1024d)
 ┌─────────┐  ⑤注入    ┌──────────────────┐  ④Top-K   ┌──────────────┐             │
@@ -47,6 +39,7 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 | ③ 入库 | `app/spec/loader.py` | `RAGSpecLoader.sync_index`（增量 upsert） |
 | ④ 检索 | `app/spec/loader.py` | `RAGSpecLoader.retrieve`（query → 排序去重 → parent 扩展） |
 | ⑤ agent 消费 | `app/services/agent_service.py` | `_create_spec_loader` / `_build_rag_queries` / `_agent_for_query` / `build_system_prompt` |
+| 权限、门控与追踪 | `app/agent/rag_security.py` / `rag_gate.py` / `rag_trace.py` | `AccessContext` / `evaluate_retrieval_gate` / `RAGTrace` |
 | 配置 | `config.py`（RAGConfig / ModelConfig）+ `.env` | `EMBEDDING__NAME`、`RAG__*` 系列 |
 
 ---
@@ -79,7 +72,7 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 1. **按标题层级 + 业务实体分块**：识别 Markdown 标题（`#`/`##`/`####` 等）形成"知识路径"；同一实体/构件条目尽量整块保留（JSON 示例、表格、说明文字一起）。
 2. **前置知识路径头**：每个分片开头注入 `> 知识路径：<文档标题> > <各级标题> > <小节>`，保证脱离上下文后仍能自解释（实证样例见 8.3）。
 3. **长度兜底**：超过 `chunk_size` 的超长块会二次切分，重叠 `chunk_overlap` 保留边界信息，`part_index`/`parent_chunk_id` 标记父子关系。
-4. **metadata 构造**：固定字段 + 条件字段 + 文档级字段，**落库后共 31 个 key**（实证，见 8.4）。
+4. **metadata 构造**：`config.yaml` 路径默认值、文档 frontmatter 和分片级 `rag-meta` 按优先级合并。正式术语字段是 `primary_terms` 与 `synonyms`；`keywords` 只为尚未迁移的外部文档兼容读取。
 
 ---
 
@@ -87,18 +80,18 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 
 ### 3.1 模型与配置来源
 
-- `.env` 中配置：`EMBEDDING__NAME=qwen3.7-text-embedding`、`EMBEDDING__BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1`、API Key 已配置。
-- `config.py` 用 pydantic settings 加载 `ModelConfig(name/api_key/base_url)`，`RAGConfig` 持有 `embedding` 配置。
-- 实证：`EMBEDDING__NAME: qwen3.7-text-embedding`，embedding function 实际为 **`OpenAICompatibleEmbeddingFunction`**（真实语义向量，非降级 hash）。
+- `.env` 或部署环境变量配置 `EMBEDDING__NAME`、`EMBEDDING__BASE_URL` 和 `EMBEDDING__API_KEY`。文档不记录密钥值，也不假定某个部署当前使用哪一个模型。
+- `config.py` 用 Pydantic Settings 加载配置：`Settings.embedding` 保存模型连接参数，`Settings.rag` 保存分片、索引、Gate、Trace 和安全参数。
+- 2026-08-20 快照使用 `qwen3.7-text-embedding` 和 `OpenAICompatibleEmbeddingFunction`；当前环境必须以评测报告中的 embedding 名称和 `index_signature` 为准。
 
 ### 3.2 双实现与降级开关（`create_embedding_function`）
 
 | 实现 | 何时使用 | 向量维度 |
 |---|---|---|
-| `OpenAICompatibleEmbeddingFunction` | 配置了真实 API Key + 模型名（当前线上状态） | **1024（实证）** |
+| `OpenAICompatibleEmbeddingFunction` | 配置了真实 API Key、模型名和兼容服务地址 | 由实际模型决定；2026-08-20 快照为 1024 |
 | `HashEmbeddingFunction` | 无 Key / 显式 `RAG__ALLOW_HASH_FALLBACK=true` 降级 | 256 |
 
-- 当前 `.env` 为 `RAG__ALLOW_HASH_FALLBACK=false`，不会静默降级。
+- `RAG__ALLOW_HASH_FALLBACK` 决定缺少真实 Embedding 配置时是否允许降级。生产环境建议关闭；运行报告必须先确认实际 embedding 类型。
 - 注意：`eval_retrieval.py --embedding hash` 仅用于本地流程冒烟，会使用 HashEmbeddingFunction + 临时索引，结果不能代表线上 embedding 的语义质量。
 
 ---
@@ -109,9 +102,9 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 
 要点：
 1. **增量 upsert**：以 `content_hash` / `body_hash` 判断分片是否变化，只写入"新增/变更"分片，删除已移除分片。实证 `eval_retrieval` 报告显示某次同步 `updated=500, deleted=0`。
-2. **集合元数据**（实证）：`collection.metadata = {'namespace': 'wild_spec', 'project': 'WildAgent', 'version': '3', 'index_signature': 'f58d314dff00b82e'}`。
-3. **入库数据三元组**：`documents`（分片原文）、`embeddings`（1024 维向量）、`metadatas`（31 键）。
-4. 当前 **516 个分片**（实证 `col.count() == 516`）。
+2. **集合元数据**：保存 `namespace/project/version/index_signature`；签名用于判断 Embedding 与分片配置是否兼容。
+3. **入库数据三元组**：`documents`（分片原文）、`embeddings`（模型对应维度的向量）、`metadatas`（分片 metadata）。
+4. 分片数量会随知识库和切片规则变化，使用 `check_sync_status.py` 或分片检查脚本读取当前值；2026-08-20 快照为 516。
 
 ---
 
@@ -121,12 +114,13 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 
 执行流水线：
 1. **query 向量化**：同一 embedding function 对查询文本编码（实证 query 向量维度 1024）。
-2. **Chroma `collection.query`**：默认 `n_results=top_k=6`，余弦距离排序，返回 `(documents, metadatas, distances)`。
+2. **Chroma `collection.query`**：默认 `top_k=6`，返回 `ids/documents/metadatas/distances`；`chunk_id` 使用 Chroma 的真实 ID。
 3. **`_retrieval_priority_score` 排序去重**：语义距离 + **status / authority 成熟度惩罚**（`supported` 优于 `experimental`；`engine` 优于 `schema`/`domain_reference`/`inferred`）。
-4. **强制 namespace 过滤**：仅返回 `namespace=wild_spec` 分片。
-5. **排除三类分片**：`doc_scope=index`、`status=proposed`、`authority=inferred`。
-6. **parent 扩展**：命中子分片时可能回带父分片/相邻 part，保证注入上下文完整。
-7. 返回结构：`RetrievedSpecChunk(document, metadata, distance)` 列表。
+4. **强制服务端过滤**：限定 `namespace=wild_spec`，排除 `doc_scope=index`、`status=proposed`、`authority=inferred`，并追加 `public/tenant/department/clearance_level` 权限条件。调用方传入的权限字段会被移除，不能覆盖服务端 AccessContext。
+5. **业务 metadata 过滤**：查询规划可携带 `doc_type/entity_type/building_category` 等白名单条件，减少跨域噪声。
+6. **parent 扩展**：命中子分片时可能回带父分片/相邻 part，保证注入上下文完整；相邻补片没有独立向量距离。
+7. **Retrieval Gate**：检索后按原始 distance 执行 `off/observe/enforce`。问答证据不足时可拒答；建筑生成只降级为基础规范，不因一个可选知识点缺失而终止整个任务。
+8. 返回结构：`RetrievedSpecChunk(document, metadata, distance, id)` 列表。
 
 **真实检索样例**（本次实证，query="生成一栋现代别墅，包含正门、水平长窗、平屋顶、楼梯和入口雨棚"，Top-6）：
 
@@ -150,16 +144,18 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **qwen3.7
 1. **装配**：`_create_spec_loader()` 用 config 创建 `RAGSpecLoader`（`auto_sync=True` 时启动时自动建索引）。日志实证：`RAGSpecLoader: 已启用 Chroma, persist_dir=...storage\chroma, collection=wild_knowledge_base`。
 2. **意图拆解**：`_build_rag_queries()` 把用户一句话拆成 **1~8 个检索意图**（建筑类型 / 构件 / 材质 / 装配关系等多角度）。
 3. **检索吸收**：`_agent_for_query()` 对每个意图调用 `loader.load / load_many`，得到的分片拼成 `spec_text`。
-4. **注入 prompt**：`build_system_prompt()` 将 `spec_text` 放入 System Prompt 的 **`# WILD 规范`** 段，受 `max_context_chars=18000` 上限约束（超出截断）。
+4. **注入 prompt**：`build_system_prompt()` 将 `spec_text` 放入 System Prompt 的 **`# WILD 规范`** 段。超过 `max_context_chars=18000` 时舍弃放不下的整片，不截断 JSON、表格或单个分片。
 5. 因此 agent 的生成依据是"Top-K 分片原文 + 成熟度排序后的优先采用顺序"，**是否真正采用取决于 LLM 对 prompt 的执行**（这正是欠缺分析中的 P0 项，见 10.1）。
+6. **引用闭环**：注入内容带 `[chunk_id=...]`；知识问答只接受本次实际注入 ID 对应的 `[引用:chunk_id]`，伪造引用会被清除。
+7. **请求追踪**：RAGTrace 记录查询、最终过滤条件、真实 chunk ID、原始距离、实际注入 ID、Gate 结论、LLM 耗时与 Token，并原子写入 `storage/sessions/rag_traces/<session_id>/<request_id>.json`。
 
 ---
 
-## 7. ChromaDB 存储实证（是否向量数据？）
+## 7. ChromaDB 存储实证（2026-08-20 历史快照）
 
 ### 7.1 结论
 
-**是向量数据。** 但必须分清三层事实：
+**是向量数据。** 下表是 2026-08-20 快照，用来解释 Chroma 的存储方式；模型、维度、文件大小和分片数量可能随重新建索引而变化。
 
 | 事实 | 实证 |
 |---|---|
@@ -189,7 +185,7 @@ f7b05c77-…/data_level0.bin + index_metadata.pickle   ~4.6 MB     ← HNSW 索�
 
 ---
 
-## 8. 实证数据附录（真实运行结果）
+## 8. 实证数据附录（2026-08-20 历史运行结果）
 
 ### 8.1 运行环境
 
@@ -222,9 +218,11 @@ $env:PYTHONPATH="."
 **curve字段**：| type | "arc" | … | sweep | number | 扫掠角度（度） | segments | number | 细分段数 |
 ```
 
-### 8.4 metadata 键集合（31 个，516 分片）
+### 8.4 metadata 键集合（历史快照与当前契约）
 
-全量键（516/516）：`wild_version, topic, status, source_file, source, path, part_index, parent_chunk_id, namespace, mtime, knowledge_layer, keywords, heading_path, heading, entity_type, entity_name, doc_type, doc_scope, declared_source, content_hash, chunk_index, chroma:document, body_hash, authority, _source, _file_name, _extension`
+2026-08-20 的 516 分片快照仍使用 legacy `keywords`。当前正式知识库已经拆分为 `primary_terms`（主术语）和 `synonyms`（同义词），并增加服务端权限字段 `access_scope`；受限文档还可包含 `tenant_id/department/clearance_level`。Loader 只为外部旧文档保留 `keywords` 兼容读取。
+
+稳定基础字段包括：`wild_version, topic, status, source_file, source, path, part_index, parent_chunk_id, namespace, mtime, knowledge_layer, primary_terms, synonyms, heading_path, heading, entity_type, entity_name, doc_type, doc_scope, declared_source, content_hash, chunk_index, body_hash, authority, access_scope`。实际键集合以当前分片报告为准，不能继续把历史“31 个键”当成固定 Schema。
 
 条件键（仅部分分片有）：`entity_aliases(500), role_tags(277), constraint_tags(240), building_category(191)`
 
@@ -248,11 +246,15 @@ L2 范数 = 1.0（已归一化）
 | `check_sync_status.py` | 打印同步状态（片段数/更新/删除、loader 类型） | 控制台 | 读线上 |
 | `inspect_knowledge_chunks.py` | 对 md 文件/目录分片，打印分片明细、统计、合法性检查 | 控制台 + `scripts/reports/inspect_chunks_<ts>.md` | 否（纯分片） |
 | `inspect_chunks_demo.py` | 分片展示报告（来源/数量/字符数/内容摘要） | 控制台 + `scripts/reports/chunks_report_<ts>.md` | 否 |
-| `eval_retrieval.py` | **线上真实链路评测**：`RAGSpecLoader.retrieve` + 真实 embedding + `storage/chroma`；内置 28 问，支持 `--questions/--limit/--top-k/--namespace` | `scripts/reports/eval_retrieval_<ts>.md` + `eval_console_<ts>.txt` | 是（读线上） |
+| `eval_retrieval.py` | 运行 60 题 Golden Set（28 正样本 + 32 负样本），计算 Hit@K、Recall@K、MRR 和距离分布 | Markdown + 可选 JSON 报告 | 默认读取现有索引；`--embedding hash` 使用临时索引 |
+| `calibrate_retrieval_gate.py` | 根据正负样本距离校准 Gate 阈值，输出错误拒答率、错误放行率和索引签名 | JSON | 读取评测 JSON，不直接访问索引 |
+| `check_rag_quality_gate.py` | 按 `evals/rag_quality_gate.json` 检查题数、指标和检索异常 | 控制台退出码 | 否 |
+| `summarize_rag_traces.py` | 汇总空召回率、平均距离、强制拒答率、P95 延迟、Token、反馈和可选成本 | 控制台或 JSON | 读取 `storage/sessions/rag_traces` |
+| `judge_rag_answer.py` | 对问题、回答和 Context 做版本化 LLM-as-Judge 辅助评分 | JSON | 需要配置 Judge 使用的聊天模型 |
 
 配套文档：`README_INSPECT_CHUNKS.md`（分片工具用法）、`README_EVAL_RETRIEVAL.md`（评测报告怎么看）。
 
-**评测报告真实样例**（`scripts/reports/eval_retrieval_20260819_101824.md`，28 问 / Top-5 / 516 分片）：
+**历史评测报告样例**（`scripts/reports/eval_retrieval_20260819_101824.md`，当时为 28 问 / Top-5 / 516 分片；不能作为当前 60 题基线）：
 
 | 指标 | 值 | 解读 |
 |---|---|---|
@@ -267,17 +269,19 @@ L2 范数 = 1.0（已归一化）
 
 ---
 
-## 10. 欠缺分析与改进优先级
+## 10. 当前欠缺与 P0～P3 优先级
 
-| 优先级 | 欠缺 | 现状证据 | 建议 |
+步骤 0～7 的运行时底座已经落地，详见 [RAG 能力与演进规划](RAG_CAPABILITIES_AND_EVOLUTION.md)；下面的 P0～P3 是后续生产化优先级，不要再把已经完成的 RAGTrace、引用或离线题集列为缺失。
+
+| 优先级 | 当前缺口 | 现状证据 | 下一步验收 |
 |---|---|---|---|
-| **P0** | **端到端 agent 吸收率评测缺失** | 现有评测只到"检索层"（`eval_retrieval.py` 验证 Top-K 命中），没有验证"注入 prompt 后 agent 是否真正采用、蓝本是否合规"。RAG 价值最终要体现在生成质量 | 新增 E2E 评测：固定 N 个生成任务 → 跑 agent → 校验输出 Blueprint 是否包含知识库要求（构件合法、装配顺序正确、材质可用），统计"知识吸收率/合规率" |
-| **P0** | **知识库文档规范缺失** | 42 篇 md 的 frontmatter/rag-meta 字段（`status/authority/doc_scope/entity_type` 等）靠人工维护，无 schema 校验；字段缺失会静默进入"默认值"，可能被检索过滤掉 | 建立知识库规范模板 + 校验脚本（字段必填/枚举校验、`declared_source` 一致性、`building_category` 与 taxonomy 对齐） |
-| **P1** | **分片参数未对比实验** | `chunk_size=900/overlap=150` 是固定值；`eval_retrieval` 平均同源率 64% 提示漏召回，可能与小分片粒度/标题切分有关 | 用 `inspect_knowledge_chunks.py` + `eval_retrieval.py` 做参数网格（如 600/900/1200 × overlap 100/150/200），比较 Top-1 距离与同源率 |
-| **P1** | **embedding 模型未对比** | 仅 qwen3.7-text-embedding（1024 维）单一选择；无不同模型在同一评测集上的对照 | 编写 embedding 对比脚本：同一 28 问评测集，分别用 qwen/bge-m3/text-embedding-v3 等跑 `eval_retrieval`，比较距离分布与命中质量 |
-| **P1** | **metadata 过滤利用度不足** | 检索只做 `namespace/status/authority/doc_scope` 硬过滤；`doc_type/entity_type/building_category/role_tags/constraint_tags` 等 31 个键基本未参与查询过滤（检索意图拆分后未映射到 metadata filter） | 在 `_build_rag_queries` 中让每个意图携带候选 `entity_type/building_category` 过滤，减少跨域噪声 |
-| **P2** | **混合检索未接入** | `hybrid_retriever.py`（BM25+向量融合）已实现但闲置；纯向量对精确规格词（如 `"thickness": 0.3`）不敏感 | 接入主链路或在评测集中增加"精确术语"类问题对比混合/纯向量 |
-| **P2** | **检索可观测性不足** | agent 生产日志不暴露"本次生成本次用了哪些分片、距离多少"，排障依赖重跑评测 | 在 `_agent_for_query` 增加结构化日志（query → Top-K 片段 id/距离） |
+| **P0** | **生产阈值尚未校准和启用** | Gate 代码支持 `observe/enforce`，但默认阈值为空；HashEmbedding 阈值不能用于真实模型 | 使用部署相同的 Embedding、索引签名和 Top-K 跑 60 题；先 observe 审查误判，再配置 enforce |
+| **P0** | **可信身份代理尚需部署配置** | 后端已强制 AccessContext 和权限过滤，但可信身份头依赖共享密钥及反向代理 | 配置 `RAG__SECURITY__TRUSTED_HEADER_SECRET`，用跨租户/跨部门用例验证越权召回为 0 |
+| **P1** | **端到端知识吸收评测不足** | 当前固定题集主要评价检索；引用校验只能证明 ID 属于 Context，不能证明生成结果真正遵守知识 | 固定生成任务并校验 Blueprint 合规率、引用忠实度和拒答正确率 |
+| **P1** | **分片与 Embedding 缺少对照实验** | 当前参数有可运行基线，但没有持续保存多组 chunk_size/overlap/模型对照 | 在同一 60 题集上比较参数与模型，并保存索引签名和报告 |
+| **P2** | **混合检索尚未接入主链路** | `hybrid_retriever.py` 仍是独立能力；纯向量对精确字段和值可能不敏感 | 增加精确术语题，对比 BM25+向量与纯向量后再决定是否接入 |
+| **P2** | **在线告警与保留策略不足** | Trace 已落盘并可汇总，但尚无自动告警、轮转和保留周期 | 对 P95、空召回率、拒答率和负反馈设置监控；制定 Trace 清理和访问策略 |
+| **P3** | **高级质量与安全服务待接入** | 已有基础 PII/内容安全规则和按需 Judge，不等价于完整生产审核 | 按真实风险决定是否接入 Presidio、外部审核和抽样 LLM-as-Judge，保留人工复核 |
 
 ---
 
@@ -295,7 +299,7 @@ $env:PYTHONPATH="."
 # 2) 看分片长什么样（整库分片体检）
 .\.venv\Scripts\python.exe scripts\rag\inspect_knowledge_chunks.py storage\knowledge_base --table
 
-# 3) 跑线上检索评测（真实 embedding + 线上索引，28 问）
+# 3) 跑线上检索评测（真实 embedding + 线上索引，当前 60 题）
 .\.venv\Scripts\python.exe scripts\rag\eval_retrieval.py
 
 # 4) 打开最新报告
@@ -325,12 +329,11 @@ $env:PYTHONPATH="."
 
 | 步骤 | 命令/脚本 | 结果 |
 |---|---|---|
-| sqlite 实证 | 直连 `chroma.sqlite3` 查 collections/segments/embeddings/embedding_metadata | dimension=1024；embeddings 表 516 行无向量列；metadata 31 键；无 documents 表；HNSW 二进制文件落盘 |
+| sqlite 实证 | 直连 `chroma.sqlite3` 查 collections/segments/embeddings/embedding_metadata | dimension=1024；embeddings 表 516 行无向量列；当时 metadata 31 键；无 documents 表；HNSW 二进制文件落盘 |
 | API 实证 | `verify_chroma_api.py`（真实 embedding + `collection.get`） | count=516；向量 1024 维、float64、L2=1.0；分片样例 748 字符 |
 | 真实检索 | 同脚本 `collection.query`，query=“生成一栋现代别墅…” | Top-6 全部命中 villas.md 现代别墅，distance 0.40–0.61，成熟度排序生效 |
 | 工具链运行 | `check_sync_status.py` | RAGSpecLoader 启用 Chroma，collection=wild_knowledge_base |
 
 ---
 
-*文档生成时间：2026-08-20；数据源：WildAgent wild-server 当前代码 + storage/chroma 线上索引实证。*
-*（内容由AI生成，仅供参考）*
+*历史快照采集时间：2026-08-20；当前代码说明最后核对：2026-08-24。涉及模型、维度、分片数和距离的结论必须用当前环境重新运行后确认。*

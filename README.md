@@ -20,7 +20,7 @@ WildAgent 是 AI 辅助的参数化 3D 建筑编辑器：模型生成可校验�
 
 ## 开始使用
 
-先阅读 [正式文档入口](docs/README.md)。本地启动、配置和测试见 [开发与测试](docs/DEVELOPMENT.md)，服务器环境文件、容器重建和排障见 [部署与运维](docs/DEPLOYMENT.md)，Agent 设计与对话事件见 [Agent 与 AI 对话设计](docs/AGENT_AND_CHAT.md)。
+先阅读 [正式文档入口](docs/README.md)。本地启动、配置和测试见 [开发与测试](docs/DEVELOPMENT.md)，服务器环境文件、容器重建和排障见 [部署与运维](docs/DEPLOYMENT.md)，Agent 设计与对话事件见 [Agent 与 AI 对话设计](docs/agent/AGENT_AND_CHAT.md)，RAG 现状与演进见 [RAG 文档入口](docs/rag/README.md)。
 
 后端：
 

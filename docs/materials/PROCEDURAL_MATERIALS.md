@@ -1,5 +1,7 @@
 # WILD 程序化建筑材质扩展方案
 
+> 文档分类：材质与表面系统。返回 [正式文档入口](../README.md)。
+
 ## 1. 文档目的
 
 本文用于指导 WILD 在不依赖外部图片贴图的情况下，扩展可复用的程序化建筑材质。第一阶段以红砖墙为最小可交付版本，支持砖块错缝、砖缝凹陷、自然色差、风化、盐碱和潮湿痕迹；后续再复用同一架构扩展混凝土、抹灰、石材、木材和金属。
@@ -517,7 +519,7 @@ Shader 片段函数应尽可能拆出可在 JavaScript 中复算的纯函数，�
 - [x] 材质规划 Agent 可选择受控红砖参数，服务端再次白名单化；
 - [x] 运行 `npm run check:core`、`npm run check:compiler`、`npm run check:rendering` 和 `npm run build`；
 - [x] 后端运行材质定向测试与完整测试；
-- [x] 把协议补充进 `WILD_BLUEPRINT_SPEC.md`，把测试说明补充进 `TESTING.md`；
+- [x] 把协议补充进 `docs/specs/WILD_BLUEPRINT_SPEC.md`，把测试说明补充进 `docs/TESTING.md`；
 - [ ] 用直墙、带洞墙、曲墙和多层模板完成固定相机视觉基准；
 - [ ] 在目标部署显卡上记录 GPU 帧耗、Material 和 Program 数量，决定是否需要距离 LOD。
 

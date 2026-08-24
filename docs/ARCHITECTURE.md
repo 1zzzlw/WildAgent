@@ -150,7 +150,7 @@ Blueprint / ScenePatch
 | REST | `/api/assets` | 查询已入库的不可变 PBR 资产清单 |
 | REST | `/api/assets/{assetId}/files/{filename}` | 按长缓存策略读取本地纹理；以后可由 CDN 地址替代 |
 
-具体 Agent 事件见 [Agent 与 AI 对话设计](AGENT_AND_CHAT.md)。
+具体 Agent 事件见 [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md)。
 
 ## 7. 架构评价
 

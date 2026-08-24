@@ -164,6 +164,7 @@ def load_questions(args_questions: str | None, limit: int | None) -> list[dict[s
                     "topic": str(case.get("topic") or "未分类"),
                     "expectedSources": [str(item) for item in expected_sources],
                     "requiredTerms": [str(item) for item in case.get("requiredTerms", [])],
+                    "expectedAction": str(case.get("expectedAction") or "answer").lower(),
                 })
             print(f"已加载带标准答案的 JSON 评测集: {len(normalized)} 条，来源 {path}")
             return normalized[:limit] if limit else normalized
@@ -441,6 +442,7 @@ def run_eval(
                 entries.append(
                     {
                         "rank": rank,
+                        "chunk_id": hit.id,
                         "distance": distance,
                         "source": source,
                         "path": str(metadata.get("path") or "-"),
@@ -490,6 +492,10 @@ def run_eval(
             same_source_ratios.append(c.most_common(1)[0][1] / len(r["hits"]))
 
     graded_scores = [r["score"] for r in results if r.get("score") is not None]
+    negative_results = [
+        result for result in results if result.get("expectedAction") == "reject"
+    ]
+    negative_rejected = sum(1 for result in negative_results if not result.get("hits"))
     stats = {
         "total_questions": total,
         "empty_top1": empty_top1,
@@ -522,6 +528,11 @@ def run_eval(
             and result.get("missing_terms") == []
         ),
         "term_graded_questions": sum(1 for result in results if result.get("requiredTerms")),
+        "negative_questions": len(negative_results),
+        # 没有阈值时这里只统计空召回；真正的 Gate 正确率由校准脚本按阈值计算。
+        "negative_empty_reject_rate": (
+            negative_rejected / len(negative_results) if negative_results else None
+        ),
     }
     return {"results": results, "stats": stats}
 
@@ -613,6 +624,8 @@ def to_markdown(
         f"| Recall@{args.top_k} | {recall_text} | 每题标准来源召回比例的宏平均 |",
         f"| MRR@{args.top_k} | {mrr_text} | 第一条正确结果越靠前，值越接近 1 |",
         f"| 关键词完整问题 | {stats['term_complete_questions']}/{stats['term_graded_questions']} | requiredTerms 全部出现在 Top-K 的问题数 |",
+        f"| 负样本数 | {stats['negative_questions']} | expectedAction=reject 的无关问题数 |",
+        f"| 负样本空召回率 | {stats['negative_empty_reject_rate'] if stats['negative_empty_reject_rate'] is not None else '-'} | 未配置阈值前只表示完全空召回，不等于最终 Gate 正确率 |",
         "",
     ]
 
@@ -741,6 +754,7 @@ def main() -> int:
         help="忽略 JSON case 的 metadataFilter，用于观察纯向量检索基线",
     )
     parser.add_argument("--output", type=Path, help="报告 Markdown 输出路径（默认 scripts/reports/eval_retrieval_<时间戳>.md）")
+    parser.add_argument("--json-output", type=Path, help="同时输出机器可读 JSON，供阈值校准和 CI 门禁使用")
     parser.add_argument("--log-output", type=Path, help="控制台日志保存路径（默认 scripts/reports/eval_console_<时间戳>.txt）")
     parser.add_argument("--no-log-output", action="store_true", help="不保存控制台日志（默认会保存）")
     args = parser.parse_args()
@@ -828,8 +842,32 @@ def main() -> int:
     except OSError as exc:
         print(f"警告: 无法写入报告文件 {report_path}: {exc}")
 
+    if args.json_output:
+        json_payload = {
+            **eval_data,
+            "run": {
+                "embedding": args.embedding_type,
+                "index_signature": loader._index_signature(),
+                "top_k": args.top_k,
+                "chunk_size": args.effective_chunk_size,
+                "chunk_overlap": args.effective_chunk_overlap,
+                "namespace": args.namespace,
+            },
+        }
+        args.json_output.parent.mkdir(parents=True, exist_ok=True)
+        args.json_output.write_text(
+            json.dumps(json_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        print(f"机器可读评测结果已生成: {args.json_output.resolve()}")
+
     if log_path:
         print(f"控制台日志已保存: {log_path}")
+    if stats["retrieval_errors"]:
+        print(
+            "错误: 本次评测存在检索异常，报告仅用于排错，不能作为召回率基线。"
+        )
+        return 3
     return 0
 
 

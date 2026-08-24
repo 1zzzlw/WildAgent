@@ -17,7 +17,6 @@ from app.agent.nodes.material_plan_node import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import (
-    collect_response,
     invoke_llm,
     merge_token_usage,
     stream_llm,
@@ -504,13 +503,13 @@ async def _recover_blueprint_json(
 """
 
     try:
-        response = await recovery_llm.ainvoke(
+        llm_result = await invoke_llm(
+            recovery_llm,
             [
                 {"role": "system", "content": system_prompt + recovery_instruction},
                 {"role": "user", "content": recovery_user},
-            ]
+            ],
         )
-        llm_result = collect_response(response)
         recovery_text = llm_result.content
         diag = {
             "attempted": True,

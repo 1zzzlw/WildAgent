@@ -1,5 +1,7 @@
 # `.wildmat` 材质包与 `.wildlook` 光影包格式规范
 
+> 文档分类：材质与表面系统。返回 [正式文档入口](../README.md)。
+
 本文对应 WildAgent 当前 `1.0` 包协议，说明两种文件如何编写、打包、导入和排错。
 
 - `.wildmat`：世界材质包，提供 PBR 纹理、材质默认参数和天气响应。
@@ -426,4 +428,3 @@ Copy-Item .\manifest.json .\soft_overcast.wildlook
 - `.wildlook` 当前是“已注册光影功能的安全参数配置”，不是任意 Shader 源码容器。
 - 天气的实时数值保存在世界环境状态中，不写入 `.wildlook`，也不写入建筑 Blueprint；`.wildlook` 只决定天气和光照怎样被渲染。
 - `contentHash` 当前用于包身份和去重；纹理通道文件哈希会严格核验。制作工具应对稳定、规范化的材质定义计算内容哈希，避免把文件名或临时路径纳入身份。
-

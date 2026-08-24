@@ -14,7 +14,7 @@ from app.agent.architecture_plan import (
 )
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
-from app.agent.llm_invocation import collect_response
+from app.agent.llm_invocation import invoke_llm
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
@@ -61,15 +61,14 @@ async def architecture_planner(state: GenerationState) -> dict:
     token_usage = None
     try:
         llm_started = _time.time()
-        response = await create_llm(
-            enable_thinking=thinking_mode,
-            streaming=False,
-        ).ainvoke([
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": user_message},
-        ])
+        llm_result = await invoke_llm(
+            create_llm(enable_thinking=thinking_mode, streaming=False),
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": user_message},
+            ],
+        )
         llm_ms = int((_time.time() - llm_started) * 1000)
-        llm_result = collect_response(response)
         reply_text = llm_result.content
         llm_chars = len(reply_text)
         raw_plan = extract_json_object(reply_text)

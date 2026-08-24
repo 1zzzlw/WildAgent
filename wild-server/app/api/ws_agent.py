@@ -51,8 +51,21 @@ import asyncio
 import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
+from config import config
 from app.agent.protocol import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.procedural_material_recipes import without_procedural_materials
+from app.agent.rag_security import (
+    AccessContext,
+    access_context_from_headers,
+    check_content_safety,
+    redact_pii,
+)
+from app.agent.rag_trace import (
+    rag_trace_scope,
+    record_final_answer,
+    record_rag_error,
+    record_rag_safety,
+)
 from app.services.agent_service import agent_service
 from app.services.agent_delivery import (
     ArtifactSaveError,
@@ -69,6 +82,10 @@ router = APIRouter()
 
 async def _send_event(ws: WebSocket, payload: dict) -> None:
     """为所有后端事件附加统一协议版本。"""
+    if payload.get("type") == "agent_reply":
+        record_final_answer(str(payload.get("content") or ""))
+    elif payload.get("type") == "error":
+        record_rag_error(str(payload.get("error") or ""))
     await ws.send_json(versioned_event(payload))
 
 
@@ -156,9 +173,77 @@ async def _emit_thinking_status(
     })
 
 
+def _payload_access_context(payload: dict) -> AccessContext:
+    raw = payload.get("_server_access_context")
+    if not isinstance(raw, dict):
+        return AccessContext()
+    try:
+        return AccessContext(
+            user_id=str(raw.get("user_id") or "anonymous"),
+            tenant_id=raw.get("tenant_id") or None,
+            department=raw.get("department") or None,
+            clearance_level=max(0, int(raw.get("clearance_level") or 0)),
+            scopes=tuple(raw.get("scopes") or ("public",)),
+            authenticated=raw.get("authenticated") is True,
+        )
+    except (TypeError, ValueError):
+        return AccessContext()
+
+
+def _prepare_server_request(data: dict, access: AccessContext) -> dict:
+    """覆盖所有前端自报身份字段，并在进入持久化任务前完成 PII 脱敏。"""
+
+    prepared = dict(data)
+    prepared["_server_access_context"] = access.public_dict()
+    message = str(prepared.get("message") or "")
+    if config.rag.security.pii_redaction_enabled:
+        message, pii_categories = redact_pii(message)
+    else:
+        pii_categories = []
+    prepared["message"] = message
+    safety = (
+        check_content_safety(message)
+        if config.rag.security.content_safety_enabled
+        else {"allowed": True, "category": None, "matched_rule": None, "message": ""}
+    )
+    safety["pii_categories"] = pii_categories
+    prepared["_server_safety"] = safety
+    return prepared
+
+
+async def _emit_safety_refusal_if_needed(sink, payload: dict) -> bool:
+    safety = payload.get("_server_safety")
+    if not isinstance(safety, dict):
+        message = str(payload.get("message") or "")
+        safety = check_content_safety(message)
+        safety["pii_categories"] = []
+    record_rag_safety(safety)
+    if safety.get("allowed") is not False:
+        return False
+    refusal = str(safety.get("message") or "该请求无法继续处理。")
+    record_final_answer(refusal)
+    await _send_event(sink, {
+        "type": "agent_reply",
+        "request_id": payload.get("request_id"),
+        "session_id": payload.get("session_id"),
+        "content": refusal,
+        "safety_category": safety.get("category"),
+        "cited_chunk_ids": [],
+    })
+    return True
+
+
 async def _run_persistent_langgraph(sink, payload: dict, resume: bool) -> None:
     """持久化任务 runner：事件写入 durable sink，不绑定某条物理连接。"""
-    await _handle_with_langgraph(sink, payload, resume=resume)
+    access = _payload_access_context(payload)
+    with rag_trace_scope(
+        str(payload.get("request_id") or "unknown"),
+        session_id=str(payload.get("session_id") or payload.get("request_id") or "unknown"),
+        access_context=access,
+    ):
+        if await _emit_safety_refusal_if_needed(sink, payload):
+            return
+        await _handle_with_langgraph(sink, payload, resume=resume)
 
 
 async def startup_generation_jobs() -> None:
@@ -216,6 +301,10 @@ async def agent_websocket(ws: WebSocket):
     """
     await ws.accept()
     logger.info("Agent WebSocket 客户端已连接")
+    access_context = access_context_from_headers(
+        ws.headers,
+        config.rag.security.trusted_header_secret,
+    )
 
     # ---------- 心跳监控 ----------
     heartbeat = WebSocketHeartbeat(timeout=90, check_interval=10)
@@ -303,6 +392,8 @@ async def agent_websocket(ws: WebSocket):
                 )
 
             elif msg_type == "user_message":
+                # 进入后台任务或持久化队列前，由服务端覆盖身份并脱敏输入。
+                data = _prepare_server_request(data, access_context)
                 if data.get("precision_mode") is True:
                     job, created = await generation_job_service.start_job(data, ws)
                     if not created:
@@ -372,12 +463,20 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     意图判断（生成建筑 vs 普通对话）交由 LangGraph 的 classifier 节点完成，
     精密模式下所有消息都进入 LangGraph 图。
     """
+    if "_server_access_context" not in data:
+        data = _prepare_server_request(data, AccessContext())
     precision_mode = data.get("precision_mode") is True
-
-    if precision_mode:
-        await _handle_with_langgraph(ws, data)
-    else:
-        await _handle_with_langchain(ws, data)
+    with rag_trace_scope(
+        str(data.get("request_id") or "unknown"),
+        session_id=str(data.get("session_id") or data.get("request_id") or "unknown"),
+        access_context=_payload_access_context(data),
+    ):
+        if await _emit_safety_refusal_if_needed(ws, data):
+            return
+        if precision_mode:
+            await _handle_with_langgraph(ws, data)
+        else:
+            await _handle_with_langchain(ws, data)
 
 
 # ── 节点名 → 展示标签 ──
@@ -898,6 +997,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             "session_id": session_id,
             "content": chat_output.get("chat_reply", "未生成回答"),
             "content_type": "chat",
+            "cited_chunk_ids": chat_diag.get("cited_chunk_ids", []),
+            "evidence_status": chat_diag.get("evidence_status", "none"),
         })
         await send_debug("session_metrics", {
             "node_count": 2,
@@ -1313,6 +1414,8 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
             "request_id": request_id,
             "session_id": session_id,
             "content": result.text,
+            "cited_chunk_ids": result.cited_chunk_ids,
+            "evidence_status": result.evidence_status,
         })
 
     logger.info(f"[{request_id}] 处理完成")

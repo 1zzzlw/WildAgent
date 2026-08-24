@@ -20,6 +20,34 @@ class ModelConfig(BaseModel):
     base_url: str = ""
 
 
+class RetrievalGateConfig(BaseModel):
+    """向量召回门控；observe 只记结论，enforce 才影响运行时行为。"""
+
+    mode: str = "observe"
+    # Chroma distance 越小越相关；必须用当前 embedding 的正负样本校准后配置。
+    max_distance: float | None = None
+    min_hits: int = 1
+    refusal_message: str = "知识库中暂无足够可靠的相关信息。"
+
+
+class RAGTraceConfig(BaseModel):
+    """RAG 请求追踪文件设置。"""
+
+    enabled: bool = True
+    root_dir: str = "storage/sessions/rag_traces"
+    query_preview_chars: int = 300
+    answer_preview_chars: int = 10000
+
+
+class RAGSecurityConfig(BaseModel):
+    """服务端身份头、PII 与基础内容安全设置。"""
+
+    # 只有反向代理同时提供正确共享密钥时，身份头才会被视为可信。
+    trusted_header_secret: str = ""
+    pii_redaction_enabled: bool = True
+    content_safety_enabled: bool = True
+
+
 class RAGConfig(BaseModel):
     """Chroma 知识库的分片、召回和持久化参数。"""
 
@@ -37,6 +65,9 @@ class RAGConfig(BaseModel):
     max_context_chars: int = 18000
     # 没配置远程 embedding 时允许使用本地 hash 向量，仅适合开发 smoke test。
     allow_hash_fallback: bool = True
+    retrieval_gate: RetrievalGateConfig = Field(default_factory=RetrievalGateConfig)
+    trace: RAGTraceConfig = Field(default_factory=RAGTraceConfig)
+    security: RAGSecurityConfig = Field(default_factory=RAGSecurityConfig)
 
 
 class AssetConfig(BaseModel):

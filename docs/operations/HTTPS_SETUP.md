@@ -1,5 +1,7 @@
 # HTTPS/SSL 配置指南
 
+> 文档分类：部署与运维专题。返回 [正式文档入口](../README.md)。
+
 为 `www.zzzlew.asia` 添加 Let's Encrypt 免费 SSL 证书。
 
 **环境**：阿里云 ECS `39.106.183.13`，Ubuntu 22.04，Docker 部署。
@@ -251,7 +253,7 @@ crontab -e
 检查过期时间 → 剩余 >30 天 → 跳过
     ↓  剩余 ≤30 天
 certbot renew --webroot → 成功后 docker exec wild-web nginx -s reload
-                        → 失败则提示查看 docs/HTTPS_SETUP.md 手动 DNS 续期
+                        → 失败则提示查看 docs/operations/HTTPS_SETUP.md 手动 DNS 续期
 ```
 
 ### 4.4 如果 webroot 模式失败

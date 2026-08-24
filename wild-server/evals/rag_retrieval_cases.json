@@ -225,6 +225,230 @@
       "metadataFilter": {"doc_type": "pattern"},
       "expectedSources": ["patterns/high-detail-architecture-generation.md"],
       "requiredTerms": ["高细节"]
+    },
+    {
+      "id": "neg_weather",
+      "query": "明天北京会不会下雨",
+      "topic": "负样本-天气",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_stock",
+      "query": "帮我预测下周股票涨跌",
+      "topic": "负样本-金融",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_recipe_food",
+      "query": "红烧肉怎么做才软烂",
+      "topic": "负样本-烹饪",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_medical",
+      "query": "持续头痛应该吃什么药",
+      "topic": "负样本-医疗",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_legal",
+      "query": "劳动合同解除赔偿怎么算",
+      "topic": "负样本-法律",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_python",
+      "query": "Python 装饰器的闭包原理是什么",
+      "topic": "负样本-编程",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_java",
+      "query": "Java 虚拟机垃圾回收器怎么选择",
+      "topic": "负样本-编程",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_database",
+      "query": "MySQL 如何优化慢查询索引",
+      "topic": "负样本-数据库",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_history",
+      "query": "唐朝开元年间发生了哪些大事",
+      "topic": "负样本-历史",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_poem",
+      "query": "写一首描写春天的现代诗",
+      "topic": "负样本-文学",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_translation",
+      "query": "把这句话翻译成法语：今天很开心",
+      "topic": "负样本-翻译",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_travel",
+      "query": "规划一条七天日本旅游路线",
+      "topic": "负样本-旅行",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_movie",
+      "query": "推荐几部最近好看的科幻电影",
+      "topic": "负样本-影视",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_music",
+      "query": "怎样练习钢琴即兴伴奏",
+      "topic": "负样本-音乐",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_fitness",
+      "query": "一个月减脂训练计划怎么安排",
+      "topic": "负样本-健身",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_car",
+      "query": "家用汽车机油多久更换一次",
+      "topic": "负样本-汽车",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_phone",
+      "query": "手机电池续航突然下降怎么办",
+      "topic": "负样本-数码",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_game",
+      "query": "这个游戏的新手阵容如何搭配",
+      "topic": "负样本-游戏",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_accounting",
+      "query": "企业现金流量表应该怎么编制",
+      "topic": "负样本-财务",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_marketing",
+      "query": "短视频账号如何制定营销计划",
+      "topic": "负样本-营销",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_hr",
+      "query": "面试后怎么写候选人评估",
+      "topic": "负样本-人力资源",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_math",
+      "query": "证明勾股定理有哪些方法",
+      "topic": "负样本-数学",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_physics",
+      "query": "量子纠缠的基本概念是什么",
+      "topic": "负样本-物理",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_chemistry",
+      "query": "乙醇氧化反应的化学方程式",
+      "topic": "负样本-化学",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_biology",
+      "query": "细胞有丝分裂包含哪些阶段",
+      "topic": "负样本-生物",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_parenting",
+      "query": "两岁孩子晚上不睡觉怎么办",
+      "topic": "负样本-育儿",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_pet",
+      "query": "猫咪突然不吃猫粮是什么原因",
+      "topic": "负样本-宠物",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_gardening",
+      "query": "多肉植物叶片发黄怎么处理",
+      "topic": "负样本-园艺",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_logistics",
+      "query": "国际海运提单有哪些类型",
+      "topic": "负样本-物流",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_ecommerce",
+      "query": "电商商品详情页怎么提高转化率",
+      "topic": "负样本-电商",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_psychology",
+      "query": "拖延行为背后的心理机制是什么",
+      "topic": "负样本-心理",
+      "expectedAction": "reject",
+      "expectedSources": []
+    },
+    {
+      "id": "neg_general_chat",
+      "query": "给我讲一个有趣的笑话",
+      "topic": "负样本-闲聊",
+      "expectedAction": "reject",
+      "expectedSources": []
     }
   ]
 }

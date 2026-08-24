@@ -23,6 +23,7 @@ from app.api.scenes import router as scenes_router
 from app.api.sessions import router as sessions_router
 from app.api.assets import router as assets_router
 from app.api.config_api import router as config_router
+from app.api.rag_observability import router as rag_observability_router
 from app.services.agent_service import agent_service
 from config import config
 
@@ -84,6 +85,7 @@ app.include_router(scenes_router, tags=["场景API"])
 app.include_router(sessions_router, tags=["会话API"])
 app.include_router(assets_router, tags=["资产API"])
 app.include_router(config_router, tags=["配置管理"])
+app.include_router(rag_observability_router)
 
 
 @app.get("/")

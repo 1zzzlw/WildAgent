@@ -356,6 +356,7 @@ export const useAgentStore = defineStore('agent', () => {
     requestId: string,
     content: string,
     patch?: ScenePatch,
+    ragEvidence?: Pick<ChatMessage, 'cited_chunk_ids' | 'evidence_status'>,
   ) {
     addMessageToSession(sessionId, {
       id: `msg_${requestId}_${patch ? 'artifact' : 'agent'}`,
@@ -366,7 +367,22 @@ export const useAgentStore = defineStore('agent', () => {
       patch_status: patch ? 'pending' : undefined,
       request_id: requestId,
       turn_id: requestId,
+      cited_chunk_ids: ragEvidence?.cited_chunk_ids,
+      evidence_status: ragEvidence?.evidence_status,
     })
+  }
+
+  /** 更新一条回答的反馈状态，并立即写入本地会话快照。 */
+  function setMessageFeedback(
+    sessionId: string,
+    messageId: string,
+    state: Pick<ChatMessage, 'feedback_rating' | 'feedback_pending' | 'feedback_error'>,
+  ) {
+    const messages = getMessagesForSession(sessionId)
+    const message = messages.find(item => item.id === messageId)
+    if (!message) return
+    Object.assign(message, state)
+    saveMessagesToLocal(sessionId, messages)
   }
 
   function addSystemMessageForTurn(sessionId: string, requestId: string, content: string) {
@@ -938,6 +954,7 @@ export const useAgentStore = defineStore('agent', () => {
     addSystemMessage,
     startTurn,
     addAgentMessageForTurn,
+    setMessageFeedback,
     addSystemMessageForTurn,
     updateTurnStep,
     appendTurnThinking,
