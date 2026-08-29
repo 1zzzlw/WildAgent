@@ -45,11 +45,11 @@ python -m pytest tests/network/test_ws_agent_disconnect.py -v
 |---|---|---|---|
 | `test_generation_commit.py` | 2 | 原子写入与幂等提交：保存原子且无临时文件残留、生成结果提交使用单一交付条目 | `python -m pytest tests/network/test_generation_commit.py -v` |
 | `test_session_turns.py` | 4 | Turn 服务端持久化与中断恢复：蓝图描述压缩但手动会话名优先等 | `python -m pytest tests/network/test_session_turns.py -v` |
-| `test_ws_agent_disconnect.py` | 15 | WS 断开场景：断流/提前断开等各类断开下的骨架失败原因保留 | `python -m pytest tests/network/test_ws_agent_disconnect.py -v` |
-| `test_generation_job_service.py` | 4 | 生成任务服务：任务状态机与查询 | `python -m pytest tests/network/test_generation_job_service.py -v` |
+| `test_ws_agent_disconnect.py` | 17 | WS 断开场景：断流/提前断开等各类断开下的骨架失败原因保留 | `python -m pytest tests/network/test_ws_agent_disconnect.py -v` |
+| `test_generation_job_service.py` | 10 | 生成任务持久化、三类审核恢复、事件补发与状态竞争 | `python -m pytest tests/network/test_generation_job_service.py -v` |
 
 **预期结果与结果怎么看**：
-- 四个文件合计 25 个用例，标准环境下应全部 `PASSED`（末尾 `25 passed`）。
+- 四个文件合计 33 个用例，标准环境下应全部 `PASSED`（末尾 `33 passed`）。
 - 失败定位：`FAILED tests/network/<文件>.py::<类名>::<函数>`；原子写入失败多与文件系统/交付协议有关，WS 断开失败多与会话状态清理有关。重跑单条：
   ```bash
   python -m pytest tests/network/test_generation_commit.py::AtomicSaveTest::test_save_is_atomic_and_leaves_no_temp_file -v

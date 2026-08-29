@@ -268,6 +268,44 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await asyncio.sleep(0.02)
         self.assertEqual(resumed, [])
 
+    async def test_generation_pause_does_not_rewrite_persisted_review_status(self):
+        service = self.make_service()
+        waiting_persisted = asyncio.Event()
+        allow_pause = asyncio.Event()
+        status_writes: list[str] = []
+        original_mark_status = service._mark_status
+
+        async def tracking_mark_status(request_id, status, error):
+            status_writes.append(status)
+            await original_mark_status(request_id, status, error)
+
+        service._mark_status = tracking_mark_status
+
+        async def runner(_sink, payload, _resume):
+            await service.mark_waiting_for_review(
+                payload["request_id"],
+                "execution_plan",
+            )
+            waiting_persisted.set()
+            await allow_pause.wait()
+            raise GenerationPaused()
+
+        await service.startup(runner)
+        await service.start_job({
+            "request_id": "req_persisted_pause",
+            "session_id": "session_persisted_pause",
+        }, RecordingSubscriber())
+        await waiting_persisted.wait()
+        active = service._active_tasks["req_persisted_pause"]
+
+        allow_pause.set()
+        await active
+
+        job = await service.get_job("req_persisted_pause")
+        self.assertIsNotNone(job)
+        self.assertEqual(job.status, "waiting_review")
+        self.assertNotIn("waiting_review", status_writes)
+
     async def test_floor_plan_review_pauses_and_resumes_same_job(self):
         service = self.make_service()
         resume_payloads: list[dict] = []
@@ -357,6 +395,15 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_execution_plan_review_pauses_and_resumes_same_job(self):
         service = self.make_service()
         resume_payloads: list[dict] = []
+        allow_pause_to_finish = asyncio.Event()
+        handoff_started = asyncio.Event()
+        original_resume_review_job = service._resume_review_job
+
+        async def tracking_resume_review_job(resumed):
+            handoff_started.set()
+            await original_resume_review_job(resumed)
+
+        service._resume_review_job = tracking_resume_review_job
 
         async def runner(sink, payload, resume):
             if not resume:
@@ -370,6 +417,7 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
                     "session_id": payload["session_id"],
                     "plan": {"version": 1, "steps": []},
                 }))
+                await allow_pause_to_finish.wait()
                 raise GenerationPaused()
             resume_payloads.append(payload["_execution_plan_review"])
 
@@ -382,12 +430,17 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         }, subscriber)
         await self.wait_for_status(service, "req_plan_review", "waiting_review")
 
-        await service.submit_execution_plan_review(
+        submit_task = asyncio.create_task(service.submit_execution_plan_review(
             subscriber,
             request_id="req_plan_review",
             session_id="session_plan_review",
             action="confirm",
-        )
+        ))
+        await handoff_started.wait()
+        self.assertFalse(submit_task.done())
+
+        allow_pause_to_finish.set()
+        await submit_task
         await self.wait_for_status(service, "req_plan_review", "completed")
 
         self.assertEqual(resume_payloads, [{"action": "confirm", "feedback": ""}])

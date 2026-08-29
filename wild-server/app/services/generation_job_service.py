@@ -188,6 +188,17 @@ class GenerationJobService:
             self._spawn(job, resume=True)
         return job
 
+    async def _resume_review_job(self, resumed: GenerationJob) -> None:
+        """等待旧的暂停任务退出后，再以数据库中的最新审核载荷恢复。"""
+
+        active = self._active_tasks.get(resumed.request_id)
+        if active is not None and not active.done():
+            await asyncio.gather(active, return_exceptions=True)
+
+        latest = await self.get_job(resumed.request_id)
+        if latest is not None and latest.status == "running":
+            self._spawn(latest, resume=True)
+
     async def submit_floor_plan_review(
         self,
         subscriber: Any,
@@ -225,20 +236,7 @@ class GenerationJobService:
             last_event_seq=job.last_event_seq,
         )
         await self.attach(request_id, subscriber)
-        active = self._active_tasks.get(request_id)
-        if active is not None and not active.done():
-            async def resume_after_pause() -> None:
-                await asyncio.gather(active, return_exceptions=True)
-                latest = await self.get_job(request_id)
-                if latest is not None and latest.status == "running":
-                    self._spawn(latest, resume=True)
-
-            asyncio.create_task(
-                resume_after_pause(),
-                name=f"langgraph-review-resume:{request_id}",
-            )
-        else:
-            self._spawn(resumed, resume=True)
+        await self._resume_review_job(resumed)
         return resumed
 
     async def submit_style_review(
@@ -289,20 +287,7 @@ class GenerationJobService:
             last_event_seq=job.last_event_seq,
         )
         await self.attach(request_id, subscriber)
-        active = self._active_tasks.get(request_id)
-        if active is not None and not active.done():
-            async def resume_after_pause() -> None:
-                await asyncio.gather(active, return_exceptions=True)
-                latest = await self.get_job(request_id)
-                if latest is not None and latest.status == "running":
-                    self._spawn(latest, resume=True)
-
-            asyncio.create_task(
-                resume_after_pause(),
-                name=f"langgraph-style-review-resume:{request_id}",
-            )
-        else:
-            self._spawn(resumed, resume=True)
+        await self._resume_review_job(resumed)
         return resumed
 
     async def submit_execution_plan_review(
@@ -344,20 +329,7 @@ class GenerationJobService:
             last_event_seq=job.last_event_seq,
         )
         await self.attach(request_id, subscriber)
-        active = self._active_tasks.get(request_id)
-        if active is not None and not active.done():
-            async def resume_after_pause() -> None:
-                await asyncio.gather(active, return_exceptions=True)
-                latest = await self.get_job(request_id)
-                if latest is not None and latest.status == "running":
-                    self._spawn(latest, resume=True)
-
-            asyncio.create_task(
-                resume_after_pause(),
-                name=f"langgraph-plan-review-resume:{request_id}",
-            )
-        else:
-            self._spawn(resumed, resume=True)
+        await self._resume_review_job(resumed)
         return resumed
 
     async def queue_execution_feedback(
@@ -551,6 +523,9 @@ class GenerationJobService:
             raise
         except GenerationPaused:
             current = await self.get_job(job.request_id)
+            pause_already_persisted = (
+                current is not None and current.status == "waiting_review"
+            )
             review_already_submitted = (
                 current is not None
                 and current.status == "running"
@@ -560,7 +535,7 @@ class GenerationJobService:
                     or isinstance(current.payload.get("_execution_plan_review"), dict)
                 )
             )
-            if not review_already_submitted:
+            if not pause_already_persisted and not review_already_submitted:
                 await self._mark_status(job.request_id, "waiting_review", None)
             logger.info(f"[{job.request_id}] 生成流程已暂停，等待用户审核")
         except Exception as exc:

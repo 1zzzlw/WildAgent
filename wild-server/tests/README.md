@@ -73,9 +73,9 @@ python -m pytest tests/rag/test_rag_semantic_chunking.py -v   # 运行单个文�
 | misc | `test_reasoning_stream.py` | 3 | 推理流适配器：thinking 选项、推理内容保留 |
 | misc | `test_scene_patch_generation.py` | 8 | 场景补丁生成：预检、坐标、推理内补丁优先 |
 | network | `test_generation_commit.py` | 2 | 原子写入与幂等提交 |
-| network | `test_generation_job_service.py` | 4 | 生成任务服务 |
+| network | `test_generation_job_service.py` | 10 | 生成任务持久化、三类审核恢复、事件补发与状态竞争 |
 | network | `test_session_turns.py` | 4 | Turn 服务端持久化与描述压缩 |
-| network | `test_ws_agent_disconnect.py` | 15 | WS 断开场景与骨架失败原因保留 |
+| network | `test_ws_agent_disconnect.py` | 17 | WS 断开场景与骨架失败原因保留 |
 | rag | `test_query_planner.py` | 5 | 查询规划：别名解析、过滤优先、检索 many |
 | rag | `test_rag_index_sync.py` | 7 | 索引同步：增量 upsert、parent 扩展、删除失效 |
 | rag | `test_rag_retrieval_cache.py` | 4 | 检索缓存键稳定性 |

@@ -87,7 +87,7 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/components/test_component_state_reducer.py` | 验证 LangGraph 并行组件节点通过通用 State reducer 合并结果，不依赖硬编码字段白名单。 |
 | `tests/components/test_component_validation_recheck.py` | 验证组件修复后必须复检、复检失败不能伪报成功、布尔值 `false` 不等于缺失。 |
 | `tests/misc/test_deployment_preflight.py` | 验证部署预检默认不访问供应商、显式真实模式才调用 Chat/Embedding，并覆盖模型冒烟响应的 content/reasoning 兼容选择。测试本身不访问模型。 |
-| `tests/network/test_generation_job_service.py` | 验证生成任务脱离 WebSocket 后继续、两类人工审核暂停与恢复、事件落库、重启恢复、补发顺序和终态原子落库。 |
+| `tests/network/test_generation_job_service.py` | 验证生成任务脱离 WebSocket 后继续、平面/风格/执行计划三类审核的暂停恢复与状态竞争、事件落库、重启恢复、补发顺序和终态原子落库。 |
 | `tests/misc/test_ip_geolocation.py` | 验证 IP 脱敏、GeoIP 缺失回退、可信代理头和伪造代理头防护。 |
 | `tests/misc/test_langgraph_checkpoint_resume.py` | 使用临时 SQLite checkpointer 验证恢复时跳过已完成节点，只重跑失败或未完成节点。 |
 | `tests/assets/test_material_tuning.py` | 验证材质优化意图、必须先选择构件、Patch 安全边界、材质克隆、纹理资产保留和无效参数拒绝。 |
