@@ -10,7 +10,8 @@ pipeline {
   parameters {
     string(name: 'SSH_CREDENTIALS_ID', defaultValue: 'wild-agent-prod-ssh', description: 'Jenkins UI 中配置的 SSH 私钥凭据 ID')
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
-    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: true, description: '是否在远程服务器用 Docker 执行前后端验证')
+    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: true, description: '是否执行前端编译与后端离线测试；不调用真实模型')
+    booleanParam(name: 'LIVE_PROVIDER_PREFLIGHT_ENABLED', defaultValue: false, description: '部署前是否真实调用 Chat/Embedding；会消耗额度，仅用于手工连通性检查')
     string(name: 'DEPLOY_SSH_USER', defaultValue: 'root', description: '部署服务器 SSH 用户')
     string(name: 'DEPLOY_SSH_HOST', defaultValue: '39.106.183.13', description: '部署服务器地址')
     string(name: 'DEPLOY_SSH_PORT', defaultValue: '22', description: '部署服务器 SSH 端口')
@@ -37,6 +38,7 @@ pipeline {
     DEPLOY_DATA_DIR = "${params.DEPLOY_DATA_DIR}"
     DEPLOY_ENV_FILE = "${params.DEPLOY_ENV_FILE}"
     PRESENCE_GEOIP_DB = "${params.PRESENCE_GEOIP_DB}"
+    LIVE_PROVIDER_PREFLIGHT_ENABLED = "${params.LIVE_PROVIDER_PREFLIGHT_ENABLED}"
   }
 
   stages {
@@ -128,7 +130,7 @@ REMOTE_SCRIPT
       }
     }
 
-    stage('远程后端语法检查') {
+    stage('远程后端离线测试') {
       when {
         allOf {
           expression { return env.IS_PULL_REQUEST != 'true' }
@@ -245,24 +247,31 @@ REMOTE_SCRIPT
             SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
 
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' PRESENCE_GEOIP_DB='$PRESENCE_GEOIP_DB' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_DATA_DIR='$DEPLOY_DATA_DIR' DEPLOY_ENV_FILE='$DEPLOY_ENV_FILE' PRESENCE_GEOIP_DB='$PRESENCE_GEOIP_DB' LIVE_PROVIDER_PREFLIGHT_ENABLED='$LIVE_PROVIDER_PREFLIGHT_ENABLED' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 
 docker network inspect wild-net >/dev/null 2>&1 || docker network create wild-net
 
-# 生产模型配置缺失时必须在删除旧容器前终止，避免用镜像默认值启动坏实例。
+# 生产运行时配置文件缺失时必须在删除旧容器前终止。
 if [ ! -f "$DEPLOY_ENV_FILE" ]; then
   echo "ERROR: 未找到生产环境文件 $DEPLOY_ENV_FILE"
   exit 1
 fi
 
-echo "=== 部署前校验生产配置与模型连通性 ==="
-# 使用本次新镜像和生产 env 做最小真实请求；不输出 Key，也不初始化完整 Agent/RAG。
-# 失败时旧容器尚未删除，因此配额、模型 ID、兼容参数或远程网络异常不会造成停机。
-timeout -k 10s 90s docker run --rm \
-  --env-file "$DEPLOY_ENV_FILE" \
-  "$IMAGE_SERVER_NAME" \
-python -m scripts.deployment_preflight
+echo "=== 部署前校验镜像与知识库（默认离线） ==="
+run_deployment_preflight() {
+  timeout -k 10s 90s docker run --rm \
+    --env-file "$DEPLOY_ENV_FILE" \
+    "$IMAGE_SERVER_NAME" \
+    python -m scripts.deploy.deployment_preflight "$@"
+}
+
+if [ "$LIVE_PROVIDER_PREFLIGHT_ENABLED" = "true" ]; then
+  echo "已启用真实 Chat/Embedding 冒烟；本次检查会消耗供应商额度。"
+  run_deployment_preflight --live-providers
+else
+  run_deployment_preflight
+fi
 
 # 只挂载运行时数据子目录，不挂载整个 /app/storage，避免遮住镜像内置 knowledge_base。
 mkdir -p "$DEPLOY_DATA_DIR/scenes" "$DEPLOY_DATA_DIR/sessions" "$DEPLOY_DATA_DIR/chroma" "$DEPLOY_DATA_DIR/assets" "$DEPLOY_DATA_DIR/geoip"
@@ -419,7 +428,7 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
   exit 1
 fi
 
-docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower()); assert config.chat.name.strip(), 'CHAT__NAME missing'; assert config.chat.api_key.strip(), 'CHAT__API_KEY missing'"
+docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('model_configured='+str(bool(config.chat.name.strip() and config.chat.api_key.strip())).lower()); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower())"
 docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10); body=response.read().decode('utf-8'); print('backend_http_status='+str(response.status)); print('backend_readiness='+body); assert response.status == 200"
 REMOTE_SCRIPT
 

@@ -150,17 +150,20 @@ python scripts/rag/eval_retrieval.py --embedding hash
 **功能**：部署前健康检查
 
 **用途**：
-- 验证生产环境配置
-- 测试 LLM 模型连通性
+- 默认离线检查镜像知识库与配置摘要
+- 可选测试 LLM 与 Embedding 连通性
 - 在 Jenkins 部署流程中自动执行
 
 **使用方法**：
 ```bash
-# 直接运行（需要配置 .env）
-python -m scripts.deployment_preflight
+# 默认离线运行，不消耗供应商额度
+python -m scripts.deploy.deployment_preflight
+
+# 手工排查真实供应商连通性
+python -m scripts.deploy.deployment_preflight --live-providers
 
 # Docker 环境
-docker run --rm --env-file .env <image> python -m scripts.deployment_preflight
+docker run --rm --env-file .env <image> python -m scripts.deploy.deployment_preflight
 ```
 
 ---
@@ -295,7 +298,7 @@ uv run python -m compileall app/
 uv run python -m pytest tests/ -q
 
 # 3. 健康检查
-uv run python -m scripts.deployment_preflight
+uv run python -m scripts.deploy.deployment_preflight
 ```
 
 ---

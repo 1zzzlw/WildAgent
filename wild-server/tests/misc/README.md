@@ -50,7 +50,7 @@ python -m pytest tests/misc/test_scene_patch_generation.py -v
 |---|---|---|---|
 | `test_prompt_composition.py` | 7 | Prompt 组合：spec 注入、用户消息注入、RAG 查询意图数限制、metadata 过滤传递、组件类型、调试保留、系统指令前缀 | `python -m pytest tests/misc/test_prompt_composition.py -v` |
 | `test_diagnostics.py` | 7 | 诊断 Schema：蓝图指纹（含空/非法变体）、校验快照生成、节点诊断构建 | `python -m pytest tests/misc/test_diagnostics.py -v` |
-| `test_deployment_preflight.py` | 3 | 部署冒烟：响应文本选择、超时/无效响应处理 | `python -m pytest tests/misc/test_deployment_preflight.py -v` |
+| `test_deployment_preflight.py` | 5 | 部署预检：默认不访问供应商、显式真实模式调用供应商、响应文本选择与无效响应处理 | `python -m pytest tests/misc/test_deployment_preflight.py -v` |
 | `test_ip_geolocation.py` | 4 | IP 地理位置：掩码计算、代理头信任开关、库缺失回退 | `python -m pytest tests/misc/test_ip_geolocation.py -v` |
 | `test_scene_patch_generation.py` | 8 | 场景补丁生成：预检、坐标拾取、推理内补丁优先 | `python -m pytest tests/misc/test_scene_patch_generation.py -v` |
 | `test_reasoning_stream.py` | 3 | 推理流：thinking 选项注入、推理内容保留 | `python -m pytest tests/misc/test_reasoning_stream.py -v` |

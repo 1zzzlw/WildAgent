@@ -1,6 +1,6 @@
 # 服务器部署与运维
 
-最后核对：2026-08-10。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
+最后核对：2026-08-29。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
 
 ## 1. 生产事实来源：Jenkins
 
@@ -20,11 +20,12 @@ Jenkins 生产流程为：
   -> 上传该提交源码到远程临时目录
   -> 前端编译 + 后端语法/单元测试
   -> 构建 <branch>-<commit> 唯一镜像
-  -> 新镜像读取生产 .env，校验必填配置并执行一次最小真实模型请求
+  -> 新镜像读取生产 .env，离线校验镜像与知识库
+  -> 可选：手工开启 Chat/Embedding 真实连通性冒烟
   -> 删除旧容器
   -> 使用 /opt/wild-agent/.env 创建新容器
   -> 等待后端（最多 180 秒）与前端（最多 40 秒）真正就绪
-  -> 校验容器、镜像标签、模型/RAG 配置和后端 HTTP
+  -> 校验容器、镜像标签、RAG 状态和后端 HTTP
   -> 新版本启动失败时恢复旧版本镜像
 ```
 
@@ -34,7 +35,13 @@ Jenkins 生产流程为：
 
 后端验证容器不会挂载生产 `/opt/wild-agent/.env`。测试收集会导入全局 `AgentService`，因此 Jenkins 只为该临时容器注入 `ci-placeholder` 占位 Key，并把模型地址指向不可用的本机端口 `127.0.0.1:9`；这既满足客户端初始化，也能让误发起的真实模型调用立即失败，不会泄露或消耗生产凭据。RAG 在该阶段显式使用 hash fallback，并将临时 Chroma 数据写入容器 `/tmp`。正式部署容器仍只读取 `DEPLOY_ENV_FILE` 指定的服务器环境文件。
 
-部署前 smoke test 与单元测试不同：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，检查 Chat 配置、RAG/Embedding 必填项，向实际 Chat 服务发送一个最多 128 token 的最小请求，并用实际 Embedding 服务生成一个测试向量。探针复用运行时的多内容块解析，并按 `content → reasoning_content` 回退选择响应；部分推理模型在很小输出预算下只返回推理字段，不会再被误判为模型断连。日志额外输出实际文本来源和 `finish_reason`，但不输出模型回复、API Key 或向量内容。该步骤在删除旧容器之前执行，90 秒内没有成功就终止部署，因此仍能提前发现错误 Key、额度耗尽、模型 ID 不存在、兼容参数不支持、Embedding 配置失效和服务器无法访问模型服务，同时保留旧服务。
+部署预检现在默认是**离线门禁**：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，确认镜像中存在最小规范、知识库文件数量完整，并打印 Chat/RAG/Embedding 配置摘要，但不会向 Chat 或 Embedding 供应商发送请求。日志应出现 `preflight_mode=offline`，以及两个带 `reason=live_provider_preflight_disabled` 的 `smoke=skipped`。因此第三方额度耗尽、限流或短时网络波动不会阻止代码部署。
+
+只有手工勾选 Jenkins 参数 `LIVE_PROVIDER_PREFLIGHT_ENABLED` 时，预检才会进入 `live_providers` 模式：向实际 Chat 服务发送一个最多 128 token 的最小请求，并用实际 Embedding 服务生成测试向量。这个模式用于排查生产凭据、模型 ID、兼容参数和网络，不是每次发布的质量门禁；失败仍会在删除旧容器前终止部署并保留旧服务。
+
+不能把所有测试都跳过。前端编译、Python 语法检查、离线单元测试、镜像知识库检查、容器启动和 `/health/ready` 都是确定性检查，不消耗模型额度，却能阻止语法错误、过期断言、缺文件、坏镜像和启动失败进入生产。应当从强制门禁中移除的是“依赖外部额度的真实模型调用”，而不是这些离线检查。
+
+Jenkins 已有 `REMOTE_VALIDATE_ENABLED=false` 这一紧急开关，可跳过远程前端编译和后端离线测试，但不建议把它作为日常发布方式；镜像构建、知识库检查、容器启动和就绪检查仍会执行。本次日志中的单个过期断言应修正测试契约，而不是靠长期关闭 414 个已通过的回归用例绕过。
 
 `storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/assets/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库；其中 `assets` 保存 PBR 图片和不可变清单，重新部署不能删除。Docker 构建与部署前预检都会要求镜像内存在 `BLUEPRINT-SPEC-MINIMAL.md` 且知识库 Markdown 不少于 30 个；日志必须出现 `knowledge_base_files=<数量>`。否则构建立即失败，不允许空知识库容器启动后把持久化 Chroma 分片删除。
 
@@ -67,6 +74,8 @@ ASSETS__PUBLIC_BASE_URL=/api/assets
 
 当前 `ASSETS__PUBLIC_BASE_URL=/api/assets` 让 `.wild` 保存站内 URL。迁移对象存储/CDN 时，把它改为公开 HTTPS 前缀，并确保对象路径仍为 `{assetId}/files/{filename}`、CDN CORS 允许前端站点读取图片；不要把宿主机文件路径或 `file://` 地址写进 Blueprint。
 
+注意：当前 `/api/config/llm` 修改的是后端进程级 `config.chat`，并写入后端工作目录的 `.env`；它是“全站当前模型配置”，还不是按 `user_id` 隔离的个人密钥仓库。前端让用户替换 Key 并不等于已经实现多用户密钥隔离。无论 Chat Key 是否在部署时配置，服务都可以先完成离线部署；真正调用模型时再由配置测试接口反馈 Key、额度或网络错误。Embedding 仍是服务端 RAG 基础设施配置，不能与用户的 Chat Key 混为一项。
+
 该文件不进入 Git。修改后触发一次 main/master Jenkins 部署，流水线会删除并重新创建容器；无需在服务器手工执行 `docker restart`。
 
 Jenkins 部署后可安全核对实际配置，不输出 API Key：
@@ -82,9 +91,9 @@ docker exec wild-server python -c "import os,hashlib; k=os.environ.get('CHAT__AP
 本地或 GitHub 的提交哈希并不能单独证明部署完成。Jenkins 日志应同时满足：
 
 - `初始化` stage 显示预期 `commit=<短哈希>`；
-- `远程后端语法检查` 中全部测试通过；
+- `远程后端离线测试` 中全部测试通过；
 - `远程构建 Docker 镜像` 的标签包含同一短哈希；
-- `远程部署到生产` 显示 `knowledge_base_files`、`model_smoke=ok`、`embedding_smoke=ok`、两个容器已就绪、镜像匹配和 `backend_http_status=200`。
+- `远程部署到生产` 显示 `knowledge_base_files`、`preflight_mode=offline`、两个供应商冒烟已跳过、两个容器已就绪、镜像匹配和 `backend_http_status=200`。只有手工开启真实冒烟时才要求 `model_smoke=ok`、`embedding_smoke=ok`。
 
 服务器可查看当前运行镜像：
 
@@ -124,7 +133,7 @@ docker compose logs --tail=100 server
 - `AllocationQuota.FreeTierOnly`：百炼免费额度或“仅使用免费额度”开关，和 Blueprint 解析无关；
 - HTTP 429：RPM/TPM 限流；
 - `finish_reason=length`：模型达到输出上限；
-- 部署预检的 `source=reasoning_content`：模型连通，但最小探针的普通 `content` 为空；这对连通性检查是有效响应，正式生成仍会使用相同兼容提取逻辑；
+- 真实供应商预检的 `source=reasoning_content`：模型连通，但最小探针的普通 `content` 为空；这对连通性检查是有效响应，正式生成仍会使用相同兼容提取逻辑；
 - `model returned no text in content or reasoning_content`：Chat 请求返回了响应对象，但两个文本通道都为空，需要结合日志中的 `finish_reason` 检查模型输出上限或供应商兼容性；
 - `Blueprint 首次提取失败`：模型调用成功，但结构化内容缺失、被包装或 JSON 无效；
 - `Blueprint 定向格式恢复成功`：系统已用一次非思考调用补回单一 JSON，可继续组件生成；

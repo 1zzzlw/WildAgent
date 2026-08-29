@@ -48,7 +48,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 
 | 文件 | 作用 |
 |---|---|
-| `deploy/deployment_preflight.py` | 部署前冒烟：模型响应、Embedding、镜像知识库连通性检查 |
+| `deploy/deployment_preflight.py` | 部署前默认离线检查镜像知识库；可选真实 Chat/Embedding 冒烟 |
 | `rag/check_sync_status.py` | 打印知识库同步状态（总片段数、更新/删除数、RAG 检索能力） |
 | `rag/inspect_knowledge_chunks.py` | 知识库分片检查：分片明细、统计、分片策略验证 |
 | `rag/inspect_chunks_demo.py` | 分片展示报告：控制台展示 + Markdown 报告 + 控制台日志 |
@@ -67,7 +67,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 
 | 脚本 | 快速运行 | 产物 / 怎么看 |
 |---|---|---|
-| `deployment_preflight.py` | `.\.venv\Scripts\python.exe scripts\deploy\deployment_preflight.py` | 控制台输出 `preflight_*` 字段（模型名 / base_url / RAG 开关 / embedding 名 / 知识库文件数 / embedding 冒烟维度）。任何断言失败即退出码非 0，需修复后再部署。详见 [deploy/README.md](deploy/README.md) |
+| `deployment_preflight.py` | `.\.venv\Scripts\python.exe scripts\deploy\deployment_preflight.py` | 默认不访问供应商并输出 `preflight_mode=offline`；传入 `--live-providers` 才执行真实 Chat/Embedding 冒烟。详见 [deploy/README.md](deploy/README.md) |
 
 ### rag/ — 分片检查与 RAG 评测
 

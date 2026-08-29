@@ -64,7 +64,7 @@ python -m pytest tests/rag/test_rag_semantic_chunking.py -v   # 运行单个文�
 | components | `test_facade_recipe.py` | 4 | 立面配方参数从知识库加载/钳制 |
 | components | `test_material_plan.py` | 17 | 材质计划：资产解析、程序化砖、幕墙中性立面 |
 | misc | `show_langgraph_graph.py` | — | 辅助脚本：可视化当前 LangGraph 图（非测试） |
-| misc | `test_deployment_preflight.py` | 3 | 部署冒烟响应文本选择 |
+| misc | `test_deployment_preflight.py` | 5 | 部署预检离线/真实模式与冒烟响应文本选择 |
 | misc | `test_diagnostics.py` | 7 | 诊断 Schema：指纹、校验快照、节点诊断 |
 | misc | `test_ip_geolocation.py` | 4 | IP 掩码、代理头信任、库缺失回退 |
 | misc | `test_langgraph_checkpoint_resume.py` | 1 | LangGraph 检查点恢复 |

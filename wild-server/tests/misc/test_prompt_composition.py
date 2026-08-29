@@ -35,7 +35,9 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertIn("from[0] = 沿墙距离", minimal_spec)
         self.assertIn("baseColor 必须是 [R, G, B] 数组", minimal_spec)
         self.assertIn("sRGB authored value", minimal_spec)
-        self.assertIn("玻璃材质必须显式给出 `opacity`", minimal_spec)
+        self.assertIn('物理玻璃必须给出 `materialClass: "glass"`', minimal_spec)
+        self.assertIn("`transmission > 0`", minimal_spec)
+        self.assertIn("`opacity` 必须为 `1` 或省略", minimal_spec)
 
     def test_generation_prompt_requires_role_based_materials(self):
         prompt = build_system_prompt("UNIQUE_SPEC_MARKER")
