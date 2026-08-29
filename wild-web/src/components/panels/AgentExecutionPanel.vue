@@ -19,25 +19,55 @@
       <section v-if="turn.execution_plan" class="execution-plan-review" :class="{ active: isPlanReview }">
         <div class="execution-plan-header">
           <strong>执行计划 v{{ turn.execution_plan.version }}</strong>
-          <span>{{ planStatusLabel(turn.execution_plan.status) }}</span>
+          <span>
+            {{ plannerSourceLabel(turn.execution_plan.planner_source) }}
+            · {{ planStatusLabel(turn.execution_plan.status) }}
+          </span>
         </div>
         <div class="execution-plan-goal">{{ turn.execution_plan.goal }}</div>
-        <div class="execution-plan-steps">
+        <div v-if="turn.execution_plan.planner_summary" class="execution-plan-summary">
+          {{ turn.execution_plan.planner_summary }}
+        </div>
+        <div v-if="turn.execution_plan.change_summary?.length" class="plan-change-summary">
+          <strong>本版变化</strong>
+          <span v-for="item in turn.execution_plan.change_summary" :key="item">{{ item }}</span>
+        </div>
+        <div v-if="turn.execution_plan.dynamic_tasks?.length" class="dynamic-plan-tasks">
+          <div class="plan-section-title">本次建筑任务</div>
           <div
-            v-for="step in turn.execution_plan.steps"
-            :key="step.id"
-            :class="['execution-plan-step', `plan-${step.status}`]"
+            v-for="task in turn.execution_plan.dynamic_tasks"
+            :key="task.id"
+            :class="['dynamic-plan-task', `plan-${task.status}`]"
           >
-            <span class="plan-step-mark">{{ planStepMark(step.status) }}</span>
+            <span class="plan-step-mark">{{ planStepMark(task.status) }}</span>
             <span class="plan-step-main">
-              <strong>{{ step.title }}</strong>
-              <small>{{ step.detail || step.description }}</small>
+              <strong>{{ task.title }}</strong>
+              <small>{{ task.objective }}</small>
+              <em>依据：{{ task.basis }}</em>
+              <em>验收：{{ task.acceptance.join('；') }}</em>
             </span>
-            <span class="plan-permission">{{ step.permission === 'read' ? '只读' : '可变更' }}</span>
+            <span class="plan-phase">{{ planPhaseLabel(task.phase) }}</span>
           </div>
         </div>
         <details class="plan-constraints">
-          <summary>安全约束与验收边界</summary>
+          <summary>系统安全主流程（{{ turn.execution_plan.steps.length }} 步）</summary>
+          <div class="execution-plan-steps">
+            <div
+              v-for="step in turn.execution_plan.steps"
+              :key="step.id"
+              :class="['execution-plan-step', `plan-${step.status}`]"
+            >
+              <span class="plan-step-mark">{{ planStepMark(step.status) }}</span>
+              <span class="plan-step-main">
+                <strong>{{ step.title }}</strong>
+                <small>{{ step.detail || step.description }}</small>
+              </span>
+              <span class="plan-permission">{{ step.permission === 'read' ? '分析/审核' : '写入产物' }}</span>
+            </div>
+          </div>
+        </details>
+        <details class="plan-constraints">
+          <summary>不可绕过的约束</summary>
           <div v-for="constraint in turn.execution_plan.constraints" :key="constraint">· {{ constraint }}</div>
         </details>
         <div v-if="turn.execution_feedback_queued_count" class="floor-plan-note">
@@ -395,6 +425,24 @@ function planStatusLabel(status: string): string {
   } as Record<string, string>)[status] || status
 }
 
+function plannerSourceLabel(source?: string): string {
+  if (source === 'llm') return '模型动态规划'
+  if (source === 'fallback') return '语义回退计划'
+  return '兼容计划'
+}
+
+function planPhaseLabel(phase: string): string {
+  return ({
+    architecture: '总体方案',
+    floor_plan_design: '平面设计',
+    material_plan: '材质方案',
+    skeleton: '主体装配',
+    decor_assembly: '装饰装配',
+    final_validate: '最终校验',
+    patch: '场景修改',
+  } as Record<string, string>)[phase] || phase
+}
+
 const floorPlanSummary = computed(() => {
   const plan = props.turn.floor_plan
   if (!plan) return '等待空间数据'
@@ -546,6 +594,33 @@ onUnmounted(() => {
 .execution-plan-header strong { color: #dedee3; font-size: 12px; }
 .execution-plan-header span { color: #9ca3af; font-size: 10.5px; }
 .execution-plan-goal { color: #aeb7c7; font-size: 11px; line-height: 1.5; }
+.execution-plan-summary {
+  padding: 7px 8px;
+  color: #b9c8dc;
+  font-size: 10.5px;
+  line-height: 1.55;
+  border-left: 2px solid rgba(104, 153, 212, .55);
+  background: rgba(104, 153, 212, .06);
+}
+.plan-change-summary { display: grid; gap: 2px; color: #a8afba; font-size: 10px; }
+.plan-change-summary strong, .plan-section-title { color: #d8d8dd; font-size: 10.5px; }
+.dynamic-plan-tasks { display: grid; gap: 5px; }
+.dynamic-plan-task {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: start;
+  padding: 8px;
+  border: 1px solid rgba(104, 153, 212, .1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .025);
+}
+.dynamic-plan-task.plan-in_progress { border-color: rgba(104, 153, 212, .38); background: rgba(104, 153, 212, .12); }
+.dynamic-plan-task.plan-completed .plan-step-mark { color: #6bbf9b; }
+.dynamic-plan-task.plan-failed .plan-step-mark { color: #e07060; }
+.dynamic-plan-task .plan-step-main small { white-space: normal; }
+.plan-step-main em { color: #697789; font-size: 9.5px; font-style: normal; line-height: 1.4; }
+.plan-phase { color: #7f9dc0; font-size: 9.5px; white-space: nowrap; }
 .execution-plan-steps { display: grid; gap: 4px; }
 .execution-plan-step {
   display: grid;

@@ -24,6 +24,9 @@
           </header>
 
           <div class="config-content">
+            <div class="config-scope-warning">
+              这是当前服务器的全站 Chat 模型配置，会影响所有会话；它不是按用户隔离的个人密钥。
+            </div>
             <div class="config-section">
               <label class="config-label">模型名称</label>
               <input
@@ -73,6 +76,18 @@
                 <div class="config-item">
                   <span class="config-key">Base URL:</span>
                   <span class="config-value">{{ currentConfig.base_url || '默认' }}</span>
+                </div>
+                <div class="config-item">
+                  <span class="config-key">保存位置:</span>
+                  <span class="config-value config-path">
+                    {{ currentConfig.host_storage_path || currentConfig.storage_path || '未声明' }}
+                  </span>
+                </div>
+                <div class="config-item">
+                  <span class="config-key">持久化:</span>
+                  <span :class="['config-value', currentConfig.persistent ? 'config-persistent' : 'config-volatile']">
+                    {{ currentConfig.persistent ? '已映射，重启后保留' : '未确认，容器重建后可能丢失' }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -127,6 +142,9 @@ const currentConfig = ref({
   name: '',
   api_key_set: false,
   base_url: '',
+  storage_path: '',
+  host_storage_path: null as string | null,
+  persistent: false,
 })
 
 const saving = ref(false)
@@ -200,7 +218,9 @@ async function handleSave() {
     const data = await response.json()
     
     if (data.success) {
-      ElMessage.success('配置已保存，将在下次生成时生效')
+      ElMessage.success(data.config?.persistent
+        ? '配置已保存到持久化文件，并已热重载'
+        : '配置已热重载，但当前保存路径未声明为持久化')
       await loadCurrentConfig()
       handleClose()
     } else {
@@ -399,6 +419,29 @@ function handleClose() {
 .config-value {
   color: #e8ebef;
   font-size: 13px;
+}
+
+.config-scope-warning {
+  margin-bottom: 18px;
+  padding: 9px 11px;
+  border: 1px solid rgba(240, 179, 90, 0.28);
+  border-radius: 6px;
+  background: rgba(240, 179, 90, 0.08);
+  color: #d9b77d;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.config-path {
+  overflow-wrap: anywhere;
+}
+
+.config-persistent {
+  color: #6fcf97;
+}
+
+.config-volatile {
+  color: #f0b35a;
 }
 
 .wild-config-modal__footer {

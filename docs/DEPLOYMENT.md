@@ -11,7 +11,7 @@
 | Jenkins 生产部署 | `DEPLOY_ENV_FILE`，默认 `/opt/wild-agent/.env` | 容器名 `wild-server` | 生产唯一主路径 |
 | Docker Compose | `<repo>/wild-server/.env` | 服务名 `server`，网络别名 `wild-server` | 本地或临时部署 |
 
-文档所在目录不会影响程序读取配置。生产环境修改 `wild-server/.env` 不会生效，除非 Jenkins 参数也改为该路径；默认只读取 `/opt/wild-agent/.env`。
+后端不再依赖启动命令的当前目录查找 `.env`。本地默认读取 `wild-server/.env`；生产通过 `WILD_RUNTIME_ENV_FILE=/app/runtime-config/.env` 读取容器内固定路径，并把它映射到宿主机 `DEPLOY_ENV_FILE`。生产环境修改仓库里的 `wild-server/.env` 仍不会生效，默认事实来源是 `/opt/wild-agent/.env`。
 
 Jenkins 生产流程为：
 
@@ -23,7 +23,7 @@ Jenkins 生产流程为：
   -> 新镜像读取生产 .env，离线校验镜像与知识库
   -> 可选：手工开启 Chat/Embedding 真实连通性冒烟
   -> 删除旧容器
-  -> 使用 /opt/wild-agent/.env 创建新容器
+  -> 使用 /opt/wild-agent/.env 创建新容器，并将同一文件可写映射到 /app/runtime-config/.env
   -> 等待后端（最多 180 秒）与前端（最多 40 秒）真正就绪
   -> 校验容器、镜像标签、RAG 状态和后端 HTTP
   -> 新版本启动失败时恢复旧版本镜像
@@ -74,15 +74,20 @@ ASSETS__PUBLIC_BASE_URL=/api/assets
 
 当前 `ASSETS__PUBLIC_BASE_URL=/api/assets` 让 `.wild` 保存站内 URL。迁移对象存储/CDN 时，把它改为公开 HTTPS 前缀，并确保对象路径仍为 `{assetId}/files/{filename}`、CDN CORS 允许前端站点读取图片；不要把宿主机文件路径或 `file://` 地址写进 Blueprint。
 
-注意：当前 `/api/config/llm` 修改的是后端进程级 `config.chat`，并写入后端工作目录的 `.env`；它是“全站当前模型配置”，还不是按 `user_id` 隔离的个人密钥仓库。前端让用户替换 Key 并不等于已经实现多用户密钥隔离。无论 Chat Key 是否在部署时配置，服务都可以先完成离线部署；真正调用模型时再由配置测试接口反馈 Key、额度或网络错误。Embedding 仍是服务端 RAG 基础设施配置，不能与用户的 Chat Key 混为一项。
+`/api/config/llm` 修改的是全站进程级 `config.chat`，不是按 `user_id` 隔离的个人密钥仓库。生产容器会把 `/opt/wild-agent/.env` 映射到 `/app/runtime-config/.env`；配置接口先保存该文件，再更新当前进程环境并重建普通/思考模型客户端。保存失败不会只改一半内存配置；模型客户端重建失败时也会回滚文件和内存。前端会显示宿主机保存位置和持久化状态。
 
-该文件不进入 Git。修改后触发一次 main/master Jenkins 部署，流水线会删除并重新创建容器；无需在服务器手工执行 `docker restart`。
+这解决的是单机、单管理员的全站模型配置。若以后允许互不信任的多用户分别提供 Key，不能继续共用此接口和 `.env`，必须增加身份鉴权、按用户加密存储和按请求选择模型配置。Embedding 仍是服务端 RAG 基础设施配置，不能与用户的 Chat Key 混为一项。
 
-Jenkins 部署后可安全核对实际配置，不输出 API Key：
+该文件不进入 Git。通过网页“配置”保存 Chat 模型后，当前进程会立即热重载，无需执行 `docker restart`；之后 Jenkins 重建容器时也会从已经更新的宿主机文件读取新值。手工修改文件不会主动通知当前进程，仍应重启容器或通过配置界面保存。
+
+Jenkins 部署后可安全核对配置接口看到的实时状态，不输出 API Key：
 
 ```bash
-docker exec wild-server python -c "import os,hashlib; k=os.environ.get('CHAT__API_KEY',''); print('model=',os.environ.get('CHAT__NAME')); print('base_url=',os.environ.get('CHAT__BASE_URL')); print('key_fingerprint=',hashlib.sha256(k.encode()).hexdigest()[:8])"
+curl -fsS http://127.0.0.1:8000/api/config/llm
+stat /opt/wild-agent/.env
 ```
+
+接口应返回 `storage_path=/app/runtime-config/.env`、`host_storage_path=/opt/wild-agent/.env` 和 `persistent=true`。`docker inspect` 或新开的 `docker exec` 进程看到的是容器创建时的环境快照，不适合验证网页热重载后的实时配置；实时值以主服务进程的配置接口为准。
 
 模型 ID 必须与百炼控制台完全一致；不要把控制台展示名称或口头简称直接写入配置。
 
@@ -114,7 +119,7 @@ wild-agent/wild-web:<branch>-<commit-short>
 
 ## 4. Docker Compose 仅用于本地或备用部署
 
-Compose 读取仓库内的 `wild-server/.env`：
+Compose 读取仓库内的 `wild-server/.env`，并把同一文件映射到容器的 `/app/runtime-config/.env`。因此在配置界面保存后，本机 `wild-server/.env` 会同步变化，重建容器不会丢失：
 
 ```bash
 docker compose up -d --build --force-recreate server web

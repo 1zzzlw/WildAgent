@@ -123,6 +123,86 @@ def build_material_optimization_prompt(selection: list[str]) -> str:
 """
 
 
+def build_execution_plan_prompt(
+    *,
+    intent: str,
+    user_message: str,
+    research_context: str,
+    current_scene_summary: str,
+    feedback: str = "",
+    previous_tasks: list[dict] | None = None,
+) -> str:
+    """生成任务专属计划；模型只能选择公开阶段，不能选择代码节点。"""
+    import json as _json
+
+    allowed_phases = (
+        [
+            "architecture",
+            "floor_plan_design",
+            "material_plan",
+            "skeleton",
+            "decor_assembly",
+            "final_validate",
+        ]
+        if intent == "generate"
+        else ["patch"]
+    )
+    revision_section = ""
+    if feedback:
+        revision_section = f"""
+
+# 重新规划意见
+
+用户意见：{feedback}
+
+上一版公开任务：
+{_json.dumps(previous_tasks or [], ensure_ascii=False, indent=2)}
+
+保留未被意见否定的目标，明确修改相关任务及其验收条件。
+"""
+    return f"""你是建筑生成 Agent 的计划架构师。先制定本次任务专属的公开执行计划，不生成 Blueprint，不输出坐标，也不展示隐藏思维链。
+
+# 用户任务
+
+{user_message}
+
+# 当前场景
+
+{current_scene_summary}
+
+# 已检索的建筑知识
+
+{research_context[:6000]}
+{revision_section}
+
+# 可映射阶段
+
+{_json.dumps(allowed_phases, ensure_ascii=False)}
+
+# 强制规则
+
+1. 生成任务输出 3～8 项，修改任务输出 1～4 项；任务必须针对本次建筑，禁止照抄通用流水线名称。
+2. `phase` 只能逐字使用上面的可映射阶段。不得输出 Python 函数、LangGraph 节点、工具名或任意代码。
+3. 生成任务必须至少包含 architecture 和 final_validate；涉及高层时必须规划竖向交通，涉及玻璃幕墙时必须规划真实玻璃与框架关系。
+4. `objective` 说明要解决的建筑问题；`acceptance` 给出 1～4 条可检查的结果，不写“效果好”等空话。
+5. `summary` 用 1～2 句说明本次计划的核心策略。这是给用户看的公开摘要，不要输出逐步推理过程。
+
+只输出一个 JSON 对象，不要 Markdown：
+{{
+  "summary": "本次计划的公开摘要",
+  "tasks": [
+    {{
+      "title": "任务专属标题",
+      "objective": "这一项具体解决什么",
+      "phase": "{allowed_phases[0]}",
+      "acceptance": ["可验证条件"],
+      "basis": "用户需求或知识依据"
+    }}
+  ]
+}}
+"""
+
+
 def build_architecture_plan_prompt(
     spec_text: str,
     profile: dict | None = None,
@@ -146,7 +226,7 @@ def build_architecture_plan_prompt(
         }
         revision_section = f"""
 
-# 本轮是平面方案修订
+# 本轮是建筑方案修订
 
 用户对上一版的修改意见：{revision_feedback}
 

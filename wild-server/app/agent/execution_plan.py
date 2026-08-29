@@ -22,6 +22,28 @@ PLAN_STATUSES = {
     "failed",
 }
 
+DYNAMIC_TASK_PHASES = {
+    "generate": {
+        "architecture",
+        "floor_plan_design",
+        "material_plan",
+        "skeleton",
+        "decor_assembly",
+        "final_validate",
+    },
+    "edit": {"patch"},
+}
+
+_DYNAMIC_PHASE_LABELS = {
+    "architecture": "总体方案",
+    "floor_plan_design": "平面设计",
+    "material_plan": "材质方案",
+    "skeleton": "主体装配",
+    "decor_assembly": "装饰装配",
+    "final_validate": "最终校验",
+    "patch": "场景修改",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class PlanCapability:
@@ -170,6 +192,205 @@ def _step(
     }
 
 
+def _text(value: Any, *, limit: int) -> str:
+    """把模型字段收敛为可展示的单行文本。"""
+
+    return " ".join(str(value or "").split())[:limit]
+
+
+def fallback_dynamic_tasks(user_message: str, intent: str) -> list[dict[str, Any]]:
+    """模型不可用时，根据任务语义生成确定性的本次任务，而不是空计划。"""
+
+    if intent == "edit":
+        return [
+            {
+                "title": "分析并形成安全修改提案",
+                "objective": f"定位当前场景中与“{_text(user_message, limit=100)}”相关的对象和约束，生成可审核的 ScenePatch。",
+                "phase": "patch",
+                "acceptance": ["只修改用户要求的目标", "引用有效且 ScenePatch 可校验"],
+                "basis": "用户修改请求与当前 Blueprint",
+            }
+        ]
+
+    folded = user_message.casefold()
+    is_high_rise = any(
+        term in folded for term in ("高层", "塔楼", "超高层", "high-rise", "tower")
+    )
+    is_glass = any(
+        term in folded for term in ("玻璃", "幕墙", "curtain wall", "glass")
+    )
+    is_commercial = any(
+        term in folded for term in ("商业", "综合体", "办公", "商场", "commercial", "office")
+    )
+
+    tasks: list[dict[str, Any]] = [
+        {
+            "title": "确定建筑体量与约束",
+            "objective": "把层数、功能、场地比例和风格要求转成可建模的体量、轴网与屋顶意图。",
+            "phase": "architecture",
+            "acceptance": ["体量和层数明确", "候选方案可进入平面设计"],
+            "basis": "用户需求与建筑类型知识",
+        },
+        {
+            "title": "组织功能平面与流线",
+            "objective": "按体量边界安排功能分区、入口、门窗、疏散路径与竖向交通。",
+            "phase": "floor_plan_design",
+            "acceptance": ["空间关系可解释", "平面规则检查可通过或给出明确修复"],
+            "basis": "总体方案与平面规则",
+        },
+    ]
+    if is_high_rise:
+        tasks[1]["objective"] = (
+            "按高层体量组织首层入口、标准层功能、疏散楼梯和覆盖全部楼层的电梯竖向交通。"
+        )
+        tasks[1]["acceptance"].append("竖向交通覆盖全部楼层")
+    if is_commercial:
+        tasks[0]["objective"] = (
+            "把商业功能、公共入口、基座与上部体量关系转成可建模的体量、轴网和屋顶意图。"
+        )
+
+    tasks.append(
+        {
+            "title": "建立幕墙与材质系统" if is_glass else "建立统一材质系统",
+            "objective": (
+                "定义真实玻璃、金属龙骨、主体结构与室内楼板的材质角色和引用关系。"
+                if is_glass
+                else "定义立面、结构、门窗、屋顶和楼板的材质角色与资产引用关系。"
+            ),
+            "phase": "material_plan",
+            "acceptance": (
+                ["玻璃使用 transmission 与 ior", "幕墙面板和框架角色清晰"]
+                if is_glass
+                else ["材质角色齐全", "资产引用闭合"]
+            ),
+            "basis": "总体方案与受控材质协议",
+        }
+    )
+    tasks.extend(
+        [
+            {
+                "title": "装配可校验的三维主体",
+                "objective": "从已确认平面确定性装配墙、板、柱梁、门窗、竖向交通和屋顶。",
+                "phase": "skeleton",
+                "acceptance": ["几何来自已确认平面", "主体 G1-G6 全部通过"],
+                "basis": "批准平面与 Plan2Build 装配协议",
+            },
+            {
+                "title": "完成建筑细部表达",
+                "objective": "把用户确认的风格编译为受控装饰构件，并保持与主体槽位和边界一致。",
+                "phase": "decor_assembly",
+                "acceptance": ["装饰构件有合法宿主", "G7 通过"],
+                "basis": "风格包与 Decor IR 协议",
+            },
+            {
+                "title": "验证最终建筑产物",
+                "objective": "检查结构、引用、碰撞、尺寸、设计约束和渲染前置条件。",
+                "phase": "final_validate",
+                "acceptance": ["完整校验零错误", "Blueprint 可以安全保存和加载"],
+                "basis": "WILD Schema 与全量校验器",
+            },
+        ]
+    )
+    return tasks
+
+
+def normalize_dynamic_tasks(
+    raw_tasks: Any,
+    *,
+    user_message: str,
+    intent: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    """把模型任务编译到受控阶段；返回任务和是否使用了回退。"""
+
+    allowed_phases = DYNAMIC_TASK_PHASES.get(intent, set())
+    minimum = 3 if intent == "generate" else 1
+    maximum = 8 if intent == "generate" else 4
+    normalized: list[dict[str, Any]] = []
+    if isinstance(raw_tasks, list):
+        for raw in raw_tasks[:maximum]:
+            if not isinstance(raw, dict):
+                continue
+            phase = _text(raw.get("phase"), limit=40)
+            title = _text(raw.get("title"), limit=80)
+            objective = _text(raw.get("objective"), limit=300)
+            if phase not in allowed_phases or not title or not objective:
+                continue
+            raw_acceptance = raw.get("acceptance")
+            if not isinstance(raw_acceptance, list):
+                raw_acceptance = []
+            acceptance = [
+                _text(item, limit=120)
+                for item in raw_acceptance[:4]
+                if _text(item, limit=120)
+            ]
+            if not acceptance:
+                acceptance = [f"完成{_DYNAMIC_PHASE_LABELS.get(phase, phase)}并通过对应校验"]
+            normalized.append(
+                {
+                    "title": title,
+                    "objective": objective,
+                    "phase": phase,
+                    "acceptance": acceptance,
+                    "basis": _text(raw.get("basis"), limit=160) or "用户需求与研究上下文",
+                }
+            )
+
+    required_phases = {"architecture", "final_validate"} if intent == "generate" else {"patch"}
+    phases = {task["phase"] for task in normalized}
+    used_fallback = len(normalized) < minimum or not required_phases.issubset(phases)
+    if used_fallback:
+        normalized = fallback_dynamic_tasks(user_message, intent)
+    phase_order = {
+        phase: index
+        for index, phase in enumerate(
+            (
+                "architecture",
+                "floor_plan_design",
+                "material_plan",
+                "skeleton",
+                "decor_assembly",
+                "final_validate",
+                "patch",
+            )
+        )
+    }
+    normalized.sort(key=lambda task: phase_order.get(str(task.get("phase")), 99))
+
+    task_ids: list[str] = []
+    tasks: list[dict[str, Any]] = []
+    for index, task in enumerate(normalized[:maximum], start=1):
+        task_id = f"task_{index}"
+        tasks.append(
+            {
+                "id": task_id,
+                **task,
+                "depends_on": [task_ids[-1]] if task_ids else [],
+                "status": "pending",
+                "result_ref": None,
+            }
+        )
+        task_ids.append(task_id)
+    return tasks, used_fallback
+
+
+def execution_plan_phase_guidance(
+    plan: dict[str, Any] | None,
+    phase: str,
+) -> str:
+    """给业务节点提供已批准计划中与当前阶段相关的公开任务说明。"""
+
+    lines: list[str] = []
+    for task in (plan or {}).get("dynamic_tasks", []):
+        if not isinstance(task, dict) or task.get("phase") != phase:
+            continue
+        acceptance = "；".join(str(item) for item in task.get("acceptance") or [])
+        lines.append(
+            f"- {task.get('title')}：{task.get('objective')}"
+            + (f"；验收：{acceptance}" if acceptance else "")
+        )
+    return "\n".join(lines)
+
+
 def build_execution_plan(
     *,
     request_id: str,
@@ -179,8 +400,11 @@ def build_execution_plan(
     research_summary: str = "",
     feedback: str = "",
     previous_plan: dict[str, Any] | None = None,
+    planned_tasks: Any = None,
+    planner_source: str = "fallback",
+    planner_summary: str = "",
 ) -> dict[str, Any]:
-    """构建确定、可校验的计划；LLM 不能添加未知步骤或改变安全顺序。"""
+    """把动态建筑任务编译进确定、可校验的安全主流程。"""
 
     previous_version = int((previous_plan or {}).get("version") or 0)
     version = previous_version + 1
@@ -188,7 +412,7 @@ def build_execution_plan(
     if intent == "generate":
         constraints.extend(
             [
-                "用户确认执行计划后才继续平面与三维链路",
+                "用户确认执行计划后才生成总体方案、平面和三维",
                 "用户确认平面前不得生成三维",
                 "G1-G7 未通过不得保存或加载 Blueprint",
             ]
@@ -210,10 +434,8 @@ def build_execution_plan(
             "architecture",
             depends_on=[research["id"]],
             acceptance=["体量和层数明确", "立面、屋顶和功能层次可进入平面设计"],
-            status="completed" if isinstance(architecture_plan, dict) else "pending",
-            detail=str((architecture_plan or {}).get("concept") or "总体方案待生成")[
-                :300
-            ],
+            status="pending",
+            detail="批准计划后生成总体方案",
         )
         floor_plan = _step(
             "floor_plan_design",
@@ -256,7 +478,7 @@ def build_execution_plan(
             acceptance=["完整校验零错误", "产物可以安全保存和加载"],
         )
         massing = (architecture_plan or {}).get("massing")
-        if isinstance(massing, dict):
+        if isinstance(massing, dict) and not feedback:
             width = massing.get("width", "?")
             depth = massing.get("depth", "?")
             floors = massing.get("floors", "?")
@@ -266,7 +488,7 @@ def build_execution_plan(
             term in user_message.casefold()
             for term in ("玻璃", "curtain wall", "glass")
         ):
-            materials["detail"] = "重点校验玻璃的 transmission、ior、opacity 和幕墙引用"
+            materials["detail"] = "重点校验玻璃的 transmission、ior、thickness 和幕墙引用"
         steps = [
             research,
             architecture,
@@ -295,6 +517,31 @@ def build_execution_plan(
     else:
         raise ValueError(f"执行计划不支持 intent={intent!r}")
 
+    dynamic_tasks, used_fallback = normalize_dynamic_tasks(
+        planned_tasks,
+        user_message=user_message,
+        intent=intent,
+    )
+    actual_source = "fallback" if used_fallback else planner_source
+    previous_titles = [
+        str(task.get("title") or "")
+        for task in (previous_plan or {}).get("dynamic_tasks", [])
+        if isinstance(task, dict)
+    ]
+    current_titles = [str(task.get("title") or "") for task in dynamic_tasks]
+    change_summary: list[str] = []
+    if previous_plan:
+        added = [title for title in current_titles if title not in previous_titles]
+        removed = [title for title in previous_titles if title not in current_titles]
+        if added:
+            change_summary.append("新增任务：" + "、".join(added[:4]))
+        if removed:
+            change_summary.append("移除任务：" + "、".join(removed[:4]))
+        if feedback:
+            change_summary.append("已按本轮意见重新规划：" + _text(feedback, limit=180))
+        if not change_summary:
+            change_summary.append("任务结构未改变，已重新核对目标与验收条件")
+
     return {
         "plan_id": f"plan_{request_id}",
         "version": version,
@@ -308,6 +555,15 @@ def build_execution_plan(
             "计划描述的是公开执行步骤，不包含模型隐藏思维链",
             "相同的批准方案继续交给现有确定性 Plan2Build 执行器",
         ],
+        "planner_source": actual_source,
+        "planner_summary": (
+            "模型不可用或计划不满足安全协议，已按任务语义生成确定性计划"
+            if used_fallback
+            else _text(planner_summary, limit=400) or "已生成任务专属建筑计划"
+        ),
+        "feedback": _text(feedback, limit=500),
+        "change_summary": change_summary,
+        "dynamic_tasks": dynamic_tasks,
         "capabilities": public_capabilities(intent),
         "steps": steps,
         "validation_issues": [],
@@ -326,6 +582,92 @@ def validate_execution_plan(plan: dict[str, Any], intent: str) -> list[dict[str,
         )
     if str(plan.get("status") or "draft") not in PLAN_STATUSES:
         issues.append({"code": "invalid_plan_status", "message": "计划状态不受支持"})
+    if str(plan.get("planner_source") or "") not in {"llm", "fallback"}:
+        issues.append(
+            {"code": "invalid_planner_source", "message": "动态计划来源无效"}
+        )
+
+    dynamic_tasks = plan.get("dynamic_tasks")
+    minimum = 3 if intent == "generate" else 1
+    maximum = 8 if intent == "generate" else 4
+    if not isinstance(dynamic_tasks, list) or not (
+        minimum <= len(dynamic_tasks) <= maximum
+    ):
+        issues.append(
+            {
+                "code": "invalid_dynamic_task_count",
+                "message": f"本次任务数量必须为 {minimum}～{maximum} 项",
+            }
+        )
+    else:
+        dynamic_ids: set[str] = set()
+        allowed_phases = DYNAMIC_TASK_PHASES.get(intent, set())
+        phases: set[str] = set()
+        for index, task in enumerate(dynamic_tasks):
+            if not isinstance(task, dict):
+                issues.append(
+                    {
+                        "code": "invalid_dynamic_task",
+                        "message": f"本次任务第 {index + 1} 项不是对象",
+                    }
+                )
+                continue
+            task_id = str(task.get("id") or "")
+            phase = str(task.get("phase") or "")
+            if not task_id or task_id in dynamic_ids:
+                issues.append(
+                    {
+                        "code": "duplicate_dynamic_task_id",
+                        "message": f"本次任务 ID 缺失或重复：{task_id}",
+                    }
+                )
+            dynamic_ids.add(task_id)
+            if phase not in allowed_phases:
+                issues.append(
+                    {
+                        "code": "unsupported_dynamic_task_phase",
+                        "message": f"本次任务不能映射到阶段：{phase}",
+                    }
+                )
+            phases.add(phase)
+            if not str(task.get("title") or "").strip() or not str(
+                task.get("objective") or ""
+            ).strip():
+                issues.append(
+                    {
+                        "code": "incomplete_dynamic_task",
+                        "message": f"本次任务 {task_id} 缺少标题或目标",
+                    }
+                )
+            if str(task.get("status") or "") not in PLAN_STEP_STATUSES:
+                issues.append(
+                    {
+                        "code": "invalid_dynamic_task_status",
+                        "message": f"本次任务 {task_id} 状态无效",
+                    }
+                )
+            for dependency in task.get("depends_on") or []:
+                if str(dependency) not in dynamic_ids:
+                    issues.append(
+                        {
+                            "code": "invalid_dynamic_task_dependency",
+                            "message": f"本次任务 {task_id} 依赖尚未定义：{dependency}",
+                        }
+                    )
+        required_phases = (
+            {"architecture", "final_validate"} if intent == "generate" else {"patch"}
+        )
+        if not required_phases.issubset(phases):
+            issues.append(
+                {
+                    "code": "missing_dynamic_task_phase",
+                    "message": (
+                        "本次任务缺少总体方案或最终验证阶段"
+                        if intent == "generate"
+                        else "本次任务缺少场景修改阶段"
+                    ),
+                }
+            )
 
     steps = plan.get("steps")
     if not isinstance(steps, list) or not steps:
@@ -462,6 +804,11 @@ def update_plan_step(
             if result_ref is not None:
                 step["result_ref"] = result_ref
             break
+    for task in updated.get("dynamic_tasks", []):
+        if isinstance(task, dict) and task.get("phase") == step_type:
+            task["status"] = status
+            if result_ref is not None:
+                task["result_ref"] = result_ref
     return updated
 
 
@@ -487,6 +834,15 @@ def reset_plan_from(plan: dict[str, Any] | None, step_type: str) -> dict[str, An
             step["status"] = "pending"
             step["result_ref"] = None
             step["detail"] = "等待重新执行"
+    reset_phases = {
+        str(step.get("type"))
+        for step in steps
+        if str(step.get("id")) in target_ids
+    }
+    for task in updated.get("dynamic_tasks", []):
+        if isinstance(task, dict) and task.get("phase") in reset_phases:
+            task["status"] = "pending"
+            task["result_ref"] = None
     updated["status"] = "executing"
     return updated
 

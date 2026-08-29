@@ -291,7 +291,11 @@ start_server() {
     -v "$DEPLOY_DATA_DIR/chroma:/app/storage/chroma" \
     -v "$DEPLOY_DATA_DIR/assets:/app/storage/assets" \
     -v "$DEPLOY_DATA_DIR/geoip:/app/storage/geoip:ro" \
+    -v "$DEPLOY_ENV_FILE:/app/runtime-config/.env" \
     --env-file "$DEPLOY_ENV_FILE" \
+    -e WILD_RUNTIME_ENV_FILE=/app/runtime-config/.env \
+    -e WILD_RUNTIME_ENV_PERSISTENT=true \
+    -e WILD_RUNTIME_ENV_HOST_PATH="$DEPLOY_ENV_FILE" \
     -e PRESENCE__GEOIP_DB="$PRESENCE_GEOIP_DB" \
     "$server_image"
 }
@@ -430,6 +434,7 @@ fi
 
 docker exec wild-server python -c "from config import config; print('model='+config.chat.name); print('model_configured='+str(bool(config.chat.name.strip() and config.chat.api_key.strip())).lower()); print('base_url='+(config.chat.base_url or '(default)')); print('rag_enabled='+str(config.rag.enabled).lower()); print('embedding='+config.embedding.name); print('hash_fallback='+str(config.rag.allow_hash_fallback).lower())"
 docker exec wild-server python -c "import urllib.request; response=urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=10); body=response.read().decode('utf-8'); print('backend_http_status='+str(response.status)); print('backend_readiness='+body); assert response.status == 200"
+docker exec wild-server python -c "import json,urllib.request; data=json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/config/llm', timeout=10)); print('runtime_config_path='+data['storage_path']); print('runtime_config_host_path='+(data.get('host_storage_path') or '(unknown)')); print('runtime_config_persistent='+str(data['persistent']).lower()); assert data['storage_path']=='/app/runtime-config/.env'; assert data['persistent'] is True"
 REMOTE_SCRIPT
 
             echo "=== 部署后清理旧镜像 ==="

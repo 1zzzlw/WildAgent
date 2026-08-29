@@ -1011,10 +1011,18 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
                 elif node_name == "planner":
                     plan = node_output.get("execution_plan", {})
+                    diag = node_output.get("execution_plan_diag", {})
                     await send_step(
                         "planning", node_name, "done", label,
-                        f"计划 v{plan.get('version', 1)} · {len(plan.get('steps', []))} 步",
+                        f"计划 v{plan.get('version', 1)} · "
+                        f"{len(plan.get('dynamic_tasks', []))} 项本次任务 · "
+                        f"{len(plan.get('steps', []))} 步安全主流程",
                     )
+                    if diag:
+                        await send_debug("node", {
+                            "node": node_name, "label": label, "stage": "done",
+                            **diag,
+                        })
 
                 elif node_name == "plan_validator":
                     plan = node_output.get("execution_plan", {})

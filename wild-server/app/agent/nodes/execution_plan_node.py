@@ -19,11 +19,15 @@ from app.agent.execution_plan import (
     validate_execution_plan,
 )
 from app.agent.graph_state import GenerationState
+from app.agent.llm_invocation import invoke_llm
+from app.agent.model_client import create_llm
+from app.agent.prompts import build_execution_plan_prompt
 from app.agent.runtime_context import (
     get_execution_feedback_poller,
     get_reasoning_callback,
 )
 from app.spec.loader import SpecQuery
+from app.utils.json_extractor import extract_json_object
 
 
 async def planning_research(state: GenerationState) -> dict:
@@ -93,9 +97,50 @@ async def planning_research(state: GenerationState) -> dict:
 
 
 async def execution_planner(state: GenerationState) -> dict:
-    """依据分类结果和总体方案生成可审核计划，不允许产生任意节点。"""
+    """让模型规划本次建筑任务，再编译到不可绕过的安全主流程。"""
 
     intent = str(state.get("intent") or "generate")
+    callback = get_reasoning_callback()
+    feedback = str(state.get("plan_feedback") or "").strip()
+    previous = (
+        state.get("execution_plan")
+        if isinstance(state.get("execution_plan"), dict)
+        else None
+    )
+    if callback:
+        action = "根据用户意见重新制定" if feedback else "开始制定"
+        await callback(
+            "planner:progress",
+            f"\n### 动态执行计划\n{action}本次建筑专属任务、阶段映射与验收条件...\n",
+        )
+
+    prompt = build_execution_plan_prompt(
+        intent=intent,
+        user_message=str(state.get("user_message") or ""),
+        research_context=str(state.get("plan_research_context") or ""),
+        current_scene_summary=str(state.get("plan_research_summary") or ""),
+        feedback=feedback,
+        previous_tasks=(previous or {}).get("dynamic_tasks", []),
+    )
+    raw_payload: dict[str, Any] | None = None
+    planner_error = None
+    token_usage = None
+    started = time.time()
+    try:
+        llm_result = await invoke_llm(
+            create_llm(enable_thinking=False, streaming=False),
+            [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": str(state.get("user_message") or "")},
+            ],
+        )
+        parsed = extract_json_object(llm_result.content)
+        raw_payload = parsed if isinstance(parsed, dict) else None
+        token_usage = llm_result.token_usage
+    except Exception as exc:
+        planner_error = str(exc)
+        logger.warning(f"[execution_planner] 模型计划失败，使用任务语义回退: {exc}")
+
     plan = build_execution_plan(
         request_id=str(state.get("request_id") or "unknown"),
         intent=intent,
@@ -106,22 +151,28 @@ async def execution_planner(state: GenerationState) -> dict:
             else None
         ),
         research_summary=str(state.get("plan_research_summary") or ""),
-        feedback=str(state.get("plan_feedback") or ""),
-        previous_plan=(
-            state.get("execution_plan")
-            if isinstance(state.get("execution_plan"), dict)
-            else None
-        ),
+        feedback=feedback,
+        previous_plan=previous,
+        planned_tasks=(raw_payload or {}).get("tasks"),
+        planner_source="llm",
+        planner_summary=str((raw_payload or {}).get("summary") or ""),
     )
-    callback = get_reasoning_callback()
+    if plan.get("planner_source") == "fallback" and planner_error is None:
+        planner_error = "模型计划缺少必要任务或包含不受支持的阶段"
     if callback:
+        source_label = "模型动态规划" if plan["planner_source"] == "llm" else "确定性语义回退"
+        task_lines = [
+            f"- {task['title']} → {task['phase']}：{task['objective']}"
+            for task in plan.get("dynamic_tasks", [])
+        ]
         await callback(
             "planner:progress",
-            f"已生成执行计划 v{plan['version']}，共 {len(plan['steps'])} 步；"
-            "计划只引用服务端白名单能力，正在执行确定性校验。\n",
+            f"已通过{source_label}生成计划 v{plan['version']}，"
+            f"包含 {len(plan['dynamic_tasks'])} 项本次任务。\n"
+            + "\n".join(task_lines)
+            + "\n固定安全主流程将由系统编译并校验，模型不能绕过。\n",
         )
     history = list(state.get("execution_plan_history") or [])
-    previous = state.get("execution_plan")
     if isinstance(previous, dict):
         history.append(
             {
@@ -135,6 +186,14 @@ async def execution_planner(state: GenerationState) -> dict:
         "execution_plan_status": "draft",
         "execution_plan_review_status": "pending",
         "execution_plan_history": history,
+        "execution_plan_diag": {
+            "source": plan.get("planner_source"),
+            "task_count": len(plan.get("dynamic_tasks", [])),
+            "prompt_chars": len(prompt),
+            "token_usage": token_usage,
+            "error": planner_error,
+            "total_ms": int((time.time() - started) * 1000),
+        },
         "plan_feedback": "",
         "current_plan_step_id": "",
         "plan_next_node": "",
@@ -209,7 +268,7 @@ def route_execution_plan_review(state: GenerationState) -> str:
         return "plan_executor"
     if state.get("execution_plan_status") == "failed":
         return "__end__"
-    return "architecture" if state.get("intent") == "generate" else "planner"
+    return "planner"
 
 
 async def execution_plan_executor(state: GenerationState) -> dict:
@@ -241,9 +300,7 @@ async def execution_plan_executor(state: GenerationState) -> dict:
             "execution_plan_review_status": "revise",
             "plan_feedback": feedback,
             "plan_replan_count": replan_count + 1,
-            "plan_next_node": (
-                "architecture" if state.get("intent") == "generate" else "planner"
-            ),
+            "plan_next_node": "planner",
             "current_plan_step_id": "",
         }
 
@@ -316,7 +373,17 @@ def complete_execution_step(
     success = not result.get("error") and result.get("status") != "failed"
     detail = "执行完成"
     result_ref = None
-    if step_type == "floor_plan_design":
+    if step_type == "architecture":
+        success = isinstance(result.get("architecture_plan"), dict) and not result.get(
+            "error"
+        )
+        detail = (
+            "总体体量、功能层次与立面意图已确定"
+            if success
+            else str(result.get("error") or "总体方案未完成")
+        )
+        result_ref = "architecture_plan"
+    elif step_type == "floor_plan_design":
         success = isinstance(result.get("floor_plan"), dict)
         detail = f"已生成平面；{len(result.get('floor_plan_validation', []))} 项待处理"
         result_ref = "floor_plan"

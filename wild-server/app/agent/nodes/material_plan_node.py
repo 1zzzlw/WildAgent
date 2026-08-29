@@ -10,6 +10,7 @@ from typing import Any
 from loguru import logger
 
 from app.agent.graph_state import GenerationState
+from app.agent.execution_plan import execution_plan_phase_guidance
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import invoke_llm
 from app.agent.procedural_material_recipes import (
@@ -321,6 +322,19 @@ async def material_planner(state: GenerationState) -> dict:
     # 往返。此时直接走 resolve_material_plan(None, ...) 的确定性路径。
     if catalog:
         prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
+        phase_guidance = execution_plan_phase_guidance(
+            state.get("execution_plan"),
+            "material_plan",
+        )
+        if phase_guidance:
+            prompt += f"""
+
+# 已批准执行计划中的本阶段任务
+
+{phase_guidance}
+
+材质方案必须落实这些公开任务及验收条件，但不得引用白名单之外的资产或材质字段。
+"""
         if callback:
             procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
             await callback(

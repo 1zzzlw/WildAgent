@@ -33,6 +33,8 @@ RAG__MAX_CONTEXT_CHARS=18000
 RAG__ALLOW_HASH_FALLBACK=true
 ```
 
+后端现在按 `wild-server` 根目录解析默认 `.env`，不受启动命令当前目录影响。编辑器顶部“配置”保存 Chat 模型时也会更新同一个文件并热重载模型客户端；`WILD_RUNTIME_ENV_FILE` 只用于 Docker 等部署层指定挂载后的绝对路径。
+
 空 embedding 配置且允许 hash fallback 时只适合本地冒烟验证，不代表生产语义检索质量。
 
 ## 3. 本地启动

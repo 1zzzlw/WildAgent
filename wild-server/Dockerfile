@@ -20,6 +20,9 @@ RUN uv sync --no-dev --no-install-project --index-url ${UV_INDEX_URL}
 
 COPY . .
 
+# 生产通过单文件 bind mount 把宿主机 .env 映射到此目录；目录必须在镜像中存在。
+RUN mkdir -p /app/runtime-config
+
 # 防止 .dockerignore 或构建上下文误排除生产 RAG 知识库。当前正式知识库不少于
 # 30 个 Markdown；缺失时在镜像构建阶段失败，不能部署一个会清空 Chroma 的镜像。
 RUN python -c "from pathlib import Path; root=Path('storage/knowledge_base'); files=list(root.rglob('*.md')); assert (root / 'BLUEPRINT-SPEC-MINIMAL.md').is_file(), 'minimal blueprint spec missing from image'; assert len(files) >= 30, f'incomplete knowledge base: {len(files)} markdown files'; print(f'knowledge_base_files={len(files)}')"

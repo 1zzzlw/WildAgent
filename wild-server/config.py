@@ -8,6 +8,8 @@
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.utils.runtime_env import runtime_env_path
+
 
 class ModelConfig(BaseModel):
     """一项 OpenAI-compatible 模型服务的连接参数。"""
@@ -83,9 +85,10 @@ class AssetConfig(BaseModel):
 class Settings(BaseSettings):
     """整个后端进程使用的顶层配置对象。"""
 
-    # Pydantic Settings 会先读环境变量，再按配置读取当前工作目录中的 .env。
+    # Pydantic Settings 会先读环境变量，再读取固定的运行时配置文件；默认位于
+    # wild-server/.env，容器可用 WILD_RUNTIME_ENV_FILE 指向宿主机挂载文件。
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(runtime_env_path()),
         env_file_encoding="utf-8",
         # 例如 RAG__TOP_K=8 会映射到 rag.top_k。
         env_nested_delimiter="__",

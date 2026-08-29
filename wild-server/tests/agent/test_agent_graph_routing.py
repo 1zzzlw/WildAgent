@@ -6,10 +6,12 @@ from app.agent.component_registry import resolve_component_suggestions
 from langgraph.graph import END
 
 from app.agent.graph import (
+    _after_architecture,
     _classifier_dispatch,
     _dispatch_components,
     _final_validate_dispatch,
     _merge_dispatch,
+    _planning_research_dispatch,
     generation_recursion_limit,
 )
 import app.agent.intent_classifier as intent_classifier
@@ -53,6 +55,12 @@ def test_edit_keyword_routes_to_patch_when_scene_exists():
 
 def test_generate_routes_to_architecture_plan_first():
     assert _classifier_dispatch({"intent": "generate"}) == "architecture"
+
+
+def test_plan_mode_reviews_dynamic_plan_before_architecture():
+    assert _classifier_dispatch({"intent": "generate", "plan_mode": True}) == "planning_research"
+    assert _planning_research_dispatch({"intent": "generate"}) == "planner"
+    assert _after_architecture({"plan_mode": True}) == "plan_executor"
 
 
 def test_invalid_intent_fails_closed_to_read_only_chat():

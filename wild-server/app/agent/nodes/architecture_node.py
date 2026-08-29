@@ -13,6 +13,7 @@ from app.agent.architecture_plan import (
     select_architecture_plan,
 )
 from app.agent.graph_state import GenerationState
+from app.agent.execution_plan import execution_plan_phase_guidance
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import invoke_llm, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
@@ -28,8 +29,14 @@ async def architecture_planner(state: GenerationState) -> dict:
     started = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
+    execution_plan = state.get("execution_plan")
+    plan_feedback = (
+        str(execution_plan.get("feedback") or "")
+        if isinstance(execution_plan, dict)
+        else ""
+    )
     revision_feedback = str(
-        state.get("plan_feedback") or state.get("floor_plan_feedback") or ""
+        state.get("plan_feedback") or plan_feedback or state.get("floor_plan_feedback") or ""
     ).strip()
     complexity_profile = resolve_complexity_profile(
         user_message,
@@ -37,7 +44,12 @@ async def architecture_planner(state: GenerationState) -> dict:
     )
     on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
-        revision_note = "根据平面修改意见调整总体方案" if revision_feedback else "生成总体方案"
+        if plan_feedback:
+            revision_note = "根据已批准执行计划生成或调整总体方案"
+        elif revision_feedback:
+            revision_note = "根据平面修改意见调整总体方案"
+        else:
+            revision_note = "生成总体方案"
         await on_reasoning_delta(
             "architecture",
             f"\n### 总体建筑方案\n{revision_note}：正在制定建筑体量、立面轴网和屋顶方案...\n",
@@ -72,6 +84,16 @@ async def architecture_planner(state: GenerationState) -> dict:
         current_plan=state.get("architecture_plan"),
         revision_feedback=revision_feedback,
     )
+    phase_guidance = execution_plan_phase_guidance(execution_plan, "architecture")
+    if phase_guidance:
+        prompt += f"""
+
+# 已批准执行计划中的本阶段任务
+
+{phase_guidance}
+
+这些是公开的任务目标和验收条件。总体方案必须落实它们，但仍须服从本提示中的结构化输出协议和安全约束。
+"""
     raw_plan = None
     llm_chars = 0
     llm_ms = 0

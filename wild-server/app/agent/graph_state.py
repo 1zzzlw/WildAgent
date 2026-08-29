@@ -40,6 +40,7 @@ class GenerationState(TypedDict, total=False):
     plan_research_context: str
     plan_research_summary: str
     plan_research_diag: dict
+    execution_plan_diag: dict
     plan_replan_count: int
     max_plan_replans: int
     current_plan_step_id: str

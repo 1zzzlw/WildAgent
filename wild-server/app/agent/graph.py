@@ -3,6 +3,7 @@ LangGraph 图定义 —— 可审核计划层 + Plan2Build 确定性执行链
 
 流程:
   classifier (意图分类)
+    → PLAN:     planning_research → planner → plan_review → plan_executor
     → GENERATE: architecture (总体方案候选) → floor_plan_design (FloorPlanIR v2)
                   → floor_plan_review (确认/修改)
                   → material_plan (材质意图+资产解析)
@@ -141,11 +142,11 @@ def _classifier_dispatch(state: GenerationState):
 
 
 def _planning_research_dispatch(state: GenerationState) -> str:
-    return "architecture" if state.get("intent") == "generate" else "planner"
+    return "planner"
 
 
 def _after_architecture(state: GenerationState) -> str:
-    return "planner" if state.get("plan_mode") else "floor_plan_design"
+    return "plan_executor" if state.get("plan_mode") else "floor_plan_design"
 
 
 def _after_planned_step(state: GenerationState, legacy_next: str) -> str:
@@ -262,7 +263,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_node("plan_executor", execution_plan_executor)
 
     # ── Layer -0.5: 建筑方案 ──
-    graph.add_node("architecture", architecture_planner)
+    graph.add_node("architecture", _planned_node("architecture", architecture_planner))
     graph.add_node("floor_plan_design", _planned_node("floor_plan_design", floor_plan_designer))
     graph.add_node("floor_plan_review", _planned_node("floor_plan_review", floor_plan_review))
     graph.add_node("material_plan", _planned_node("material_plan", material_planner))
@@ -327,12 +328,15 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges(
         "planning_research",
         _planning_research_dispatch,
-        {"architecture": "architecture", "planner": "planner"},
+        {"planner": "planner"},
     )
     graph.add_conditional_edges(
         "architecture",
         _after_architecture,
-        {"planner": "planner", "floor_plan_design": "floor_plan_design"},
+        {
+            "plan_executor": "plan_executor",
+            "floor_plan_design": "floor_plan_design",
+        },
     )
     graph.add_edge("planner", "plan_validator")
     graph.add_edge("plan_validator", "plan_review")
@@ -342,7 +346,6 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         {
             "__end__": END,
             "plan_executor": "plan_executor",
-            "architecture": "architecture",
             "planner": "planner",
         },
     )
@@ -447,7 +450,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     )
     callback_status = "启用" if enable_callback else "关闭"
     logger.info(
-        f"LangGraph 图编译完成: 分类 → "
+        f"LangGraph 图编译完成: 分类 → 可选动态计划审核 → "
         f"(生成: 方案 → 平面审核 → 材质 → 确定性主体 → 风格审核 → 装饰 → merge → final_validate；"
         f"旧兼容组件链 [{component_list}]) | "
         f"(编辑: patch → END) | "

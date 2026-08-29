@@ -12,6 +12,7 @@ from app.agent.floor_plan_rules import (
     evaluate_floor_plan_rules,
 )
 from app.agent.graph_state import GenerationState
+from app.agent.execution_plan import execution_plan_phase_guidance
 from app.agent.llm_invocation import invoke_llm, stream_llm
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_floor_plan_prompt
@@ -76,6 +77,19 @@ async def floor_plan_designer(state: GenerationState) -> dict:
         current_floor_plan=current_floor_plan if isinstance(current_floor_plan, dict) else None,
         revision_feedback=feedback,
     )
+    phase_guidance = execution_plan_phase_guidance(
+        state.get("execution_plan"),
+        "floor_plan_design",
+    )
+    if phase_guidance:
+        prompt += f"""
+
+# 已批准执行计划中的本阶段任务
+
+{phase_guidance}
+
+平面方案必须落实这些公开任务及验收条件，但不得突破 FloorPlanIR 协议和工程预审规则。
+"""
     raw_spatial = None
     error = None
     llm_ms = 0

@@ -146,6 +146,18 @@ export interface ExecutionPlanStep {
   result_ref?: string | null
 }
 
+export interface ExecutionPlanTask {
+  id: string
+  title: string
+  objective: string
+  phase: string
+  depends_on: string[]
+  acceptance: string[]
+  basis: string
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
+  result_ref?: string | null
+}
+
 export interface ExecutionPlan {
   plan_id: string
   version: number
@@ -156,6 +168,11 @@ export interface ExecutionPlan {
   review_status: 'pending' | 'approved' | 'revise'
   constraints: string[]
   assumptions: string[]
+  planner_source: 'llm' | 'fallback'
+  planner_summary: string
+  feedback?: string
+  change_summary: string[]
+  dynamic_tasks: ExecutionPlanTask[]
   steps: ExecutionPlanStep[]
   validation_issues: Array<{ code: string; message: string }>
 }

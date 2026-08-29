@@ -5,8 +5,13 @@ services:
       - "8000:8000"
     volumes:
       - ./wild-server/storage:/app/storage
+      - ./wild-server/.env:/app/runtime-config/.env
     env_file:
       - ./wild-server/.env
+    environment:
+      WILD_RUNTIME_ENV_FILE: /app/runtime-config/.env
+      WILD_RUNTIME_ENV_PERSISTENT: "true"
+      WILD_RUNTIME_ENV_HOST_PATH: ./wild-server/.env
     networks:
       default:
         aliases:

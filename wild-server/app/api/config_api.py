@@ -1,11 +1,18 @@
 """配置管理 API"""
+import os
 from typing import Any
-from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from loguru import logger
 
 from config import config
+from app.utils.runtime_env import (
+    runtime_env_host_path,
+    runtime_env_is_persistent,
+    runtime_env_path,
+    update_runtime_env,
+)
 
 
 router = APIRouter(prefix="/api/config", tags=["config"])
@@ -23,47 +30,9 @@ class ModelConfigResponse(BaseModel):
     name: str
     api_key_set: bool
     base_url: str
-
-
-def update_env_file(key: str, value: str) -> None:
-    """更新 .env 文件中的配置项
-    
-    Args:
-        key: 环境变量键名（如 CHAT__NAME）
-        value: 环境变量值
-    """
-    env_path = Path(".env")
-    
-    # 确保 .env 文件存在
-    if not env_path.exists():
-        env_path.write_text("", encoding="utf-8")
-        logger.info(f"[config] 创建新的 .env 文件")
-    
-    # 读取现有内容
-    lines = env_path.read_text(encoding="utf-8").splitlines()
-    updated = False
-    
-    # 查找并更新已存在的配置项
-    for i, line in enumerate(lines):
-        # 忽略注释和空行
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        
-        # 检查是否匹配目标键
-        if stripped.startswith(f"{key}=") or stripped.split("=")[0].strip() == key:
-            lines[i] = f"{key}={value}"
-            updated = True
-            logger.info(f"[config] 更新 .env 配置: {key}=***")
-            break
-    
-    # 如果不存在，追加到文件末尾
-    if not updated:
-        lines.append(f"{key}={value}")
-        logger.info(f"[config] 新增 .env 配置: {key}=***")
-    
-    # 写回文件
-    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    storage_path: str
+    host_storage_path: str | None = None
+    persistent: bool
 
 
 @router.get("/llm", response_model=ModelConfigResponse)
@@ -73,57 +42,89 @@ async def get_llm_config():
         name=config.chat.name,
         api_key_set=bool(config.chat.api_key),
         base_url=config.chat.base_url or "",
+        storage_path=str(runtime_env_path()),
+        host_storage_path=runtime_env_host_path(),
+        persistent=runtime_env_is_persistent(),
     )
 
 
 @router.post("/llm")
 async def update_llm_config(update: ModelConfigUpdate) -> dict[str, Any]:
-    """更新 LLM 配置（同时更新内存和 .env 文件）"""
+    """持久化全站 Chat 模型配置，并重建当前进程的模型客户端。"""
     try:
-        updated_fields = []
-        
-        # 更新模型名称
+        env_updates: dict[str, str] = {}
+        updated_fields: list[str] = []
         if update.name is not None:
-            config.chat.name = update.name
-            update_env_file("CHAT__NAME", update.name)
+            name = update.name.strip()
+            if not name:
+                raise ValueError("模型名称不能为空")
+            env_updates["CHAT__NAME"] = name
             updated_fields.append("模型名称")
-            logger.info(f"[config] 已更新 LLM 模型名称: {update.name}")
-        
-        # 更新 API Key
         if update.api_key is not None:
-            config.chat.api_key = update.api_key
-            update_env_file("CHAT__API_KEY", update.api_key)
+            env_updates["CHAT__API_KEY"] = update.api_key.strip()
             updated_fields.append("API Key")
-            logger.info(f"[config] 已更新 LLM API Key")
-        
-        # 更新 Base URL
         if update.base_url is not None:
-            config.chat.base_url = update.base_url
-            update_env_file("CHAT__BASE_URL", update.base_url)
+            env_updates["CHAT__BASE_URL"] = update.base_url.strip()
             updated_fields.append("Base URL")
-            logger.info(f"[config] 已更新 LLM Base URL: {update.base_url}")
-        
-        # 清除 LLM 实例缓存（如果有）
-        from app.services.agent_service import agent_service
-        if hasattr(agent_service, '_llm_cache'):
-            agent_service._llm_cache.clear()
-        
-        if not updated_fields:
+
+        if not env_updates:
             return {
                 "success": False,
                 "message": "没有提供任何配置更新",
             }
-        
+
+        previous = {
+            "CHAT__NAME": config.chat.name,
+            "CHAT__API_KEY": config.chat.api_key,
+            "CHAT__BASE_URL": config.chat.base_url or "",
+        }
+        saved_path = update_runtime_env(env_updates)
+        try:
+            if "CHAT__NAME" in env_updates:
+                config.chat.name = env_updates["CHAT__NAME"]
+            if "CHAT__API_KEY" in env_updates:
+                config.chat.api_key = env_updates["CHAT__API_KEY"]
+            if "CHAT__BASE_URL" in env_updates:
+                config.chat.base_url = env_updates["CHAT__BASE_URL"]
+            os.environ.update(env_updates)
+            from app.services.agent_service import agent_service
+
+            agent_service.reload_chat_models()
+        except Exception:
+            rollback = {key: previous[key] for key in env_updates}
+            try:
+                update_runtime_env(rollback, saved_path)
+            finally:
+                config.chat.name = previous["CHAT__NAME"]
+                config.chat.api_key = previous["CHAT__API_KEY"]
+                config.chat.base_url = previous["CHAT__BASE_URL"]
+                os.environ.update(rollback)
+            raise
+
+        logger.info(
+            f"[config] Chat 模型配置已持久化并热重载: path={saved_path}, "
+            f"fields={updated_fields}"
+        )
+        persistent = runtime_env_is_persistent()
         return {
             "success": True,
-            "message": f"配置已保存到 .env 文件并立即生效（已更新: {', '.join(updated_fields)}）",
+            "message": (
+                f"配置已保存并立即生效（已更新: {', '.join(updated_fields)}；"
+                f"路径: {saved_path}）"
+            ),
             "config": {
                 "name": config.chat.name,
                 "api_key_set": bool(config.chat.api_key),
                 "base_url": config.chat.base_url or "",
+                "storage_path": str(saved_path),
+                "host_storage_path": runtime_env_host_path(),
+                "persistent": persistent,
             }
         }
     
+    except ValueError as e:
+        logger.warning(f"[config] 配置输入无效: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"[config] 更新 LLM 配置失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))

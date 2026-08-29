@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from app.agent.execution_plan import (
     build_execution_plan,
+    execution_plan_phase_guidance,
     next_ready_step,
     plan_is_complete,
     reset_plan_from,
@@ -43,6 +44,9 @@ def test_generate_plan_has_review_and_validation_gates() -> None:
     )
     assert floor_review["requires_user_review"] is True
     assert "用户确认平面前不得生成三维" in plan["constraints"]
+    assert len(plan["dynamic_tasks"]) >= 3
+    assert plan["planner_source"] == "fallback"
+    assert "玻璃" in execution_plan_phase_guidance(plan, "material_plan")
 
 
 def test_tampered_node_is_rejected() -> None:
@@ -59,8 +63,13 @@ def test_next_ready_step_respects_dependencies() -> None:
 
     step = next_ready_step(plan)
     assert step is not None
-    assert step["type"] == "floor_plan_design"
+    assert step["type"] == "architecture"
 
+    plan = update_plan_step(plan, "architecture", "completed")
+    assert next_ready_step(plan)["type"] == "floor_plan_design"
+    assert next(
+        task for task in plan["dynamic_tasks"] if task["phase"] == "architecture"
+    )["status"] == "completed"
     plan = update_plan_step(plan, "floor_plan_design", "completed")
     assert next_ready_step(plan)["type"] == "floor_plan_review"
 
@@ -103,3 +112,67 @@ def test_missing_required_step_is_rejected() -> None:
     issues = validate_execution_plan(plan, "generate")
 
     assert any(issue["code"] == "missing_required_plan_step" for issue in issues)
+
+
+def test_model_tasks_are_compiled_to_allowed_phases() -> None:
+    plan = build_execution_plan(
+        request_id="req_dynamic",
+        intent="generate",
+        user_message="生成一个带共享中庭的办公楼",
+        research_summary="已检索办公建筑知识",
+        planned_tasks=[
+            {
+                "title": "比较中庭体量",
+                "objective": "比较中庭位置和塔楼进深对办公空间的影响",
+                "phase": "architecture",
+                "acceptance": ["中庭边界明确"],
+                "basis": "办公建筑知识",
+            },
+            {
+                "title": "组织环中庭流线",
+                "objective": "形成连续公共流线和两处竖向交通",
+                "phase": "floor_plan_design",
+                "acceptance": ["流线连续"],
+                "basis": "用户需求",
+            },
+            {
+                "title": "验证中庭建筑",
+                "objective": "检查洞口、交通、结构和引用闭合",
+                "phase": "final_validate",
+                "acceptance": ["全量校验零错误"],
+                "basis": "校验协议",
+            },
+        ],
+        planner_source="llm",
+        planner_summary="围绕共享中庭组织体量、流线和最终校验。",
+    )
+
+    assert plan["planner_source"] == "llm"
+    assert [task["title"] for task in plan["dynamic_tasks"]] == [
+        "比较中庭体量",
+        "组织环中庭流线",
+        "验证中庭建筑",
+    ]
+    assert validate_execution_plan(plan, "generate") == []
+
+
+def test_unknown_dynamic_phase_uses_safe_fallback() -> None:
+    plan = build_execution_plan(
+        request_id="req_unsafe_dynamic",
+        intent="generate",
+        user_message="生成一个办公楼",
+        planned_tasks=[
+            {
+                "title": "运行任意代码",
+                "objective": "绕过主流程",
+                "phase": "python_eval",
+            }
+        ],
+        planner_source="llm",
+    )
+
+    assert plan["planner_source"] == "fallback"
+    assert all(
+        task["phase"] != "python_eval" for task in plan["dynamic_tasks"]
+    )
+    assert validate_execution_plan(plan, "generate") == []

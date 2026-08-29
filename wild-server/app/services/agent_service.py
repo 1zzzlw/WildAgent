@@ -982,6 +982,26 @@ class AgentService:
 
         logger.info("AgentService 初始化完成")
 
+    def reload_chat_models(self) -> None:
+        """按当前 ``config.chat`` 重建模型客户端，供运行时配置保存后调用。"""
+
+        new_llm = create_llm(enable_thinking=False)
+        new_thinking_llm = create_llm(enable_thinking=True, streaming=True)
+        previous_llm = self.llm
+        previous_thinking_llm = self.thinking_llm
+        previous_agent = self.agent
+        try:
+            self.llm = new_llm
+            self.thinking_llm = new_thinking_llm
+            if not self._dynamic_prompt:
+                self.agent = self._create_agent(self.spec_loader.load())
+        except Exception:
+            self.llm = previous_llm
+            self.thinking_llm = previous_thinking_llm
+            self.agent = previous_agent
+            raise
+        logger.info("LLM 客户端已按运行时配置重新创建")
+
     def _create_spec_loader(self):
         """按配置创建 RAG Loader，初始化失败时降级为基础文件 Loader。"""
         if config.rag.enabled:
