@@ -107,6 +107,7 @@ def make_blueprint():
                     "from": [1, 0, 0],
                     "width": 1,
                     "height": 2.2,
+                    "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
                 },
                 {
                     "type": "window",

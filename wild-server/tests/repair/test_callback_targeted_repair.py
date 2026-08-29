@@ -26,6 +26,7 @@ def _state_blueprint() -> dict:
                     "from": [2.0, 0, 0],
                     "width": 1.2,
                     "height": 2.2,
+                    "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
                 },
                 {
                     "id": "window_front",
@@ -179,7 +180,8 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
               "parentWall": "wall_front",
               "from": [2.5, 0, 0],
               "width": 1.0,
-              "height": 2.2
+              "height": 2.2,
+              "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90}
             }
           },
           "reason": "补齐设计配额要求的主入口"

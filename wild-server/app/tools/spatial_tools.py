@@ -1139,7 +1139,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
                 issues.append(f"❌ [{component_id}] from 必须是三维有限坐标")
             numeric_fields = [
                 field for field in required
-                if field not in {"parentWall", "from"}
+                if field not in {"parentWall", "from", "interaction"}
             ]
             for field in numeric_fields:
                 value = component.get(field)

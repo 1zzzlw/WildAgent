@@ -27,6 +27,7 @@ from app.agent.runtime_context import (
     get_reasoning_callback,
 )
 from app.spec.loader import SpecQuery
+from config import config
 from app.utils.json_extractor import extract_json_object
 
 
@@ -56,8 +57,18 @@ async def planning_research(state: GenerationState) -> dict:
             SpecQuery(user_message, {"doc_type": "component"}),
         ]
     error = None
+    coverage_diag = None
     try:
         context = agent_service.spec_loader.load_many(queries, per_query=2)
+        # 本地知识覆盖判断：检索分片是否覆盖该建筑类型的必备知识主题。
+        # 结果仅记录在诊断中；联网决策由 web_research 分支（若启用）执行。
+        from app.agent.research_evidence_gate import evaluate_knowledge_coverage
+        coverage_diag = evaluate_knowledge_coverage(
+            user_message,
+            state.get("building_type"),
+            agent_service.spec_loader.last_results,
+            coverage_threshold=config.web_research.coverage_threshold,
+        ).to_dict()
     except Exception as exc:
         context = ""
         error = str(exc)
@@ -83,6 +94,15 @@ async def planning_research(state: GenerationState) -> dict:
             "planning_research:progress",
             f"{summary}。下一步将生成可审核的结构化执行计划。\n",
         )
+    # 覆盖不足时，把缺失主题转成研究问题交给 web_research 节点（仅本次 request）。
+    research_queries: list[str] = []
+    research_missing_topics: list[str] = []
+    if coverage_diag and coverage_diag.get("missing_topics"):
+        research_missing_topics = list(coverage_diag["missing_topics"])
+        research_queries = [
+            f"建筑 {topic} 完整构成 规范 组装" for topic in research_missing_topics[:3]
+        ]
+
     return {
         "plan_research_context": context[:6000],
         "plan_research_summary": summary,
@@ -91,8 +111,13 @@ async def planning_research(state: GenerationState) -> dict:
             "rag_error": error,
             "element_count": element_count,
             "component_count": component_count,
+            "coverage": coverage_diag,
             "total_ms": int((time.time() - started) * 1000),
         },
+        "research_queries": research_queries,
+        "research_missing_topics": research_missing_topics,
+        "web_research_context": "",
+        "web_research_diag": None,
     }
 
 
@@ -114,10 +139,18 @@ async def execution_planner(state: GenerationState) -> dict:
             f"\n### 动态执行计划\n{action}本次建筑专属任务、阶段映射与验收条件...\n",
         )
 
+    # 网络研究临时上下文只对本次请求生效；追加到研究上下文，供计划制定参考。
+    web_context = str(state.get("web_research_context") or "").strip()
+    research_text = str(state.get("plan_research_context") or "")
+    if web_context:
+        research_text = (
+            research_text
+            + chr(10) + "# 网络补充知识（临时，来源见链接；仅本次请求参考）" + chr(10) + web_context
+        )
     prompt = build_execution_plan_prompt(
         intent=intent,
         user_message=str(state.get("user_message") or ""),
-        research_context=str(state.get("plan_research_context") or ""),
+        research_context=research_text,
         current_scene_summary=str(state.get("plan_research_summary") or ""),
         feedback=feedback,
         previous_tasks=(previous or {}).get("dynamic_tasks", []),

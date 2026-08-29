@@ -29,6 +29,7 @@ from app.agent.component_registry import (
     resolve_component_suggestions,
 )
 from app.agent.nodes import (
+    web_research_node,
     classifier_node,
     chat_node,
     patch_node,
@@ -142,6 +143,15 @@ def _classifier_dispatch(state: GenerationState):
 
 
 def _planning_research_dispatch(state: GenerationState) -> str:
+    """本地知识充分 -> planner；不足且 web_research 可用 -> web_research。
+
+    覆盖决策记录在 plan_research_diag.coverage；web_research 节点内部会再次
+    检查客户端可用性，未配置 API key 时返回空上下文并回退本地。
+    """
+    diag = state.get("plan_research_diag") or {}
+    coverage = diag.get("coverage") if isinstance(diag, dict) else None
+    if isinstance(coverage, dict) and coverage.get("trigger_web_research"):
+        return "web_research"
     return "planner"
 
 
@@ -257,6 +267,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
 
     # ── 可选计划层：只读研究 → 计划 → 校验 → 人工批准 → 白名单调度 ──
     graph.add_node("planning_research", planning_research)
+    graph.add_node("web_research", web_research_node)
     graph.add_node("planner", execution_planner)
     graph.add_node("plan_validator", execution_plan_validator)
     graph.add_node("plan_review", execution_plan_review)
@@ -328,8 +339,9 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges(
         "planning_research",
         _planning_research_dispatch,
-        {"planner": "planner"},
+        {"planner": "planner", "web_research": "web_research"},
     )
+    graph.add_edge("web_research", "planner")
     graph.add_conditional_edges(
         "architecture",
         _after_architecture,

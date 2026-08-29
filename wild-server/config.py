@@ -72,6 +72,33 @@ class RAGConfig(BaseModel):
     security: RAGSecurityConfig = Field(default_factory=RAGSecurityConfig)
 
 
+class WebResearchConfig(BaseModel):
+    """受控网络研究配置。
+
+    网络研究是 Plan 模式的扩展：本地知识覆盖不足时，经覆盖闸门批准后调用外部
+    搜索服务补充本次请求临时上下文。搜索结果是"临时资料"，不直接写入正式
+    知识库；候选内容进入 staging 隔离区，经审查与人工批准后由 Loader 增量同步。
+
+    默认关闭（enabled=False）：不配置 api_key 时整体不可用，Plan 模式回退为
+    纯本地 RAG，行为与之前完全一致。
+    """
+
+    enabled: bool = False
+    # 外部搜索服务配置。填入 API key 即可启用；搜索客户端按 provider 选择实现。
+    provider: str = "tavily"          # 当前支持 tavily；可扩展 serp/bing
+    api_key: str = ""
+    base_url: str = "https://api.tavily.com/search"
+    # 单次研究最多查询数、最多抓取网页数、单页最大字符数（防上下文爆炸）。
+    max_queries: int = 3
+    max_pages: int = 4
+    max_content_chars: int = 4000
+    timeout_ms: int = 15000
+    # 覆盖比阈值：低于该值触发联网（与 research_evidence_gate 默认一致）。
+    coverage_threshold: float = 0.8
+    # 是否只对"本应联网但未联网"的请求记录日志（阶段1 观察模式）。
+    observe_only: bool = True
+
+
 class AssetConfig(BaseModel):
     """PBR 资产本地入库与公开地址配置。"""
 
@@ -101,6 +128,7 @@ class Settings(BaseSettings):
     embedding: ModelConfig = Field(default_factory=ModelConfig)
     rerank: ModelConfig = Field(default_factory=ModelConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
+    web_research: WebResearchConfig = Field(default_factory=WebResearchConfig)
     assets: AssetConfig = Field(default_factory=AssetConfig)
 
 

@@ -1,0 +1,4 @@
+# 网络研究候选知识目录
+# 此目录内容不自动进入正式 RAG；候选内容经审查/人工批准后由 promote 脚本移入
+# storage/knowledge_base/ 并由 Loader 增量同步。独立 Chroma namespace:
+# wild_knowledge_staging（与正式 wild_spec 隔离）。

@@ -41,6 +41,12 @@ class GenerationState(TypedDict, total=False):
     plan_research_context: str
     plan_research_summary: str
     plan_research_diag: dict
+
+    # ── Plan 模式受控网络研究（本地覆盖不足时临时补充，不写入知识库）──
+    research_queries: list[str]      # 缺失主题生成的研究问题
+    research_missing_topics: list[str]  # 覆盖判断缺失的主题
+    web_research_context: str        # 本次请求临时知识（仅当前 request 生效）
+    web_research_diag: dict          # 搜索/命中/丢弃诊断
     execution_plan_diag: dict
     plan_replan_count: int
     max_plan_replans: int
