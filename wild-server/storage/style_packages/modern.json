@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "modern",
+  "name": "现代简约",
+  "description": "平屋顶、轻薄檐口和金属玻璃入口，保持体块与开口节奏清晰。",
+  "keywords": ["现代", "简约", "极简", "modern"],
+  "tags": ["high_rise", "commercial", "tower"],
+  "roof": {"type": "flat", "height_ratio": 0.02},
+  "palette": {
+    "wall_finish": [0.82, 0.83, 0.84],
+    "roof": [0.18, 0.19, 0.21],
+    "accent": [0.38, 0.42, 0.46]
+  },
+  "decor": {
+    "cornice": {"enabled": true, "width": 0.18, "height": 0.12},
+    "entrance_canopy": {"enabled": true, "depth": 1.35, "thickness": 0.14},
+    "facade_columns": {"enabled": false, "style": "modern"}
+  }
+}

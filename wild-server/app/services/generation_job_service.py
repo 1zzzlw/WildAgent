@@ -25,6 +25,12 @@ DEFAULT_CHECKPOINT_PATH = (
 _PERSISTED_EVENT_TYPES = {
     "agent_step",
     "thinking_status",
+    "floor_plan_ready",
+    "floor_plan_review_required",
+    "execution_plan_ready",
+    "execution_plan_review_required",
+    "execution_feedback_queued",
+    "style_review_required",
     "patch_proposal",
     "blueprint_generated",
     "agent_reply",
@@ -47,6 +53,10 @@ class GenerationJob:
     error: str | None = None
 
 
+class GenerationPaused(Exception):
+    """LangGraph 已持久化暂停点，等待用户输入；不是失败。"""
+
+
 class DurableEventSink:
     """实现 WebSocket 的 send_json 接口，同时持久化并广播事件。"""
 
@@ -64,7 +74,7 @@ class DurableEventSink:
 
 
 class GenerationJobService:
-    """让精密模式生成任务独立于任意一条 WebSocket 连接。"""
+    """让快速与精密模式的图任务独立于任意一条 WebSocket 连接。"""
 
     def __init__(self, database_path: Path = DEFAULT_CHECKPOINT_PATH):
         self.database_path = Path(database_path)
@@ -74,6 +84,7 @@ class GenerationJobService:
         self._active_tasks: dict[str, asyncio.Task] = {}
         self._subscribers: dict[str, dict[int, Any]] = {}
         self._event_locks: dict[str, asyncio.Lock] = {}
+        self._payload_locks: dict[str, asyncio.Lock] = {}
         self._init_lock = asyncio.Lock()
         self._initialized = False
 
@@ -130,9 +141,9 @@ class GenerationJobService:
         if not request_id:
             raise ValueError("request_id 不能为空")
 
-        running = await self.get_running_job_for_session(session_id)
-        if running is not None and running.request_id != request_id:
-            return running, False
+        active = await self.get_active_job_for_session(session_id)
+        if active is not None and active.request_id != request_id:
+            return active, False
 
         existing = await self.get_job(request_id)
         if existing is not None:
@@ -156,7 +167,7 @@ class GenerationJobService:
         await self.initialize()
         job = await self.get_job(request_id) if request_id else None
         if job is None:
-            job = await self.get_running_job_for_session(session_id)
+            job = await self.get_active_job_for_session(session_id)
         if job is None:
             return None
 
@@ -177,6 +188,249 @@ class GenerationJobService:
             self._spawn(job, resume=True)
         return job
 
+    async def submit_floor_plan_review(
+        self,
+        subscriber: Any,
+        *,
+        request_id: str,
+        session_id: str,
+        action: str,
+        feedback: str = "",
+    ) -> GenerationJob:
+        """提交平面确认或修改意见，并从持久化 interrupt 继续。"""
+
+        await self.initialize()
+        job = await self.get_job(request_id)
+        if job is None or job.session_id != session_id:
+            raise ValueError("找不到对应的平面审核任务")
+        if job.status != "waiting_review":
+            raise ValueError("当前任务不在平面审核阶段")
+        waiting_type = str(job.payload.get("_waiting_review_type") or "floor_plan")
+        if waiting_type != "floor_plan":
+            raise ValueError("当前等待的是风格审核，不是平面审核")
+        action = str(action).lower()
+        feedback = str(feedback).strip()
+        if action not in {"confirm", "revise"}:
+            raise ValueError("平面审核 action 只能是 confirm 或 revise")
+        if action == "revise" and not feedback:
+            raise ValueError("提交修改时必须填写具体修改意见")
+        payload = dict(job.payload)
+        payload["_floor_plan_review"] = {"action": action, "feedback": feedback}
+        await self._update_payload_and_status(request_id, payload, "running")
+        resumed = GenerationJob(
+            request_id=request_id,
+            session_id=session_id,
+            payload=payload,
+            status="running",
+            last_event_seq=job.last_event_seq,
+        )
+        await self.attach(request_id, subscriber)
+        active = self._active_tasks.get(request_id)
+        if active is not None and not active.done():
+            async def resume_after_pause() -> None:
+                await asyncio.gather(active, return_exceptions=True)
+                latest = await self.get_job(request_id)
+                if latest is not None and latest.status == "running":
+                    self._spawn(latest, resume=True)
+
+            asyncio.create_task(
+                resume_after_pause(),
+                name=f"langgraph-review-resume:{request_id}",
+            )
+        else:
+            self._spawn(resumed, resume=True)
+        return resumed
+
+    async def submit_style_review(
+        self,
+        subscriber: Any,
+        *,
+        request_id: str,
+        session_id: str,
+        action: str,
+        style_package_id: str = "",
+        feedback: str = "",
+    ) -> GenerationJob:
+        """提交第二次风格确认，并从 style_review interrupt 继续。"""
+
+        await self.initialize()
+        job = await self.get_job(request_id)
+        if job is None or job.session_id != session_id:
+            raise ValueError("找不到对应的风格审核任务")
+        if job.status != "waiting_review":
+            raise ValueError("当前任务不在风格审核阶段")
+        if str(job.payload.get("_waiting_review_type") or "") != "style":
+            raise ValueError("当前等待的是平面审核，不是风格审核")
+        action = str(action).lower()
+        feedback = str(feedback).strip()
+        style_package_id = str(style_package_id).strip().lower()
+        if action not in {"confirm", "revise"}:
+            raise ValueError("风格审核 action 只能是 confirm 或 revise")
+        if action == "confirm" and not style_package_id:
+            raise ValueError("确认风格时必须选择一个风格包")
+        if action == "confirm":
+            from app.agent.plan2build.style_registry import style_registry
+
+            style_registry.get(style_package_id)
+        if action == "revise" and not feedback:
+            raise ValueError("修改风格时必须填写具体意见")
+        payload = dict(job.payload)
+        payload["_style_review"] = {
+            "action": action,
+            "style_package_id": style_package_id,
+            "feedback": feedback,
+        }
+        await self._update_payload_and_status(request_id, payload, "running")
+        resumed = GenerationJob(
+            request_id=request_id,
+            session_id=session_id,
+            payload=payload,
+            status="running",
+            last_event_seq=job.last_event_seq,
+        )
+        await self.attach(request_id, subscriber)
+        active = self._active_tasks.get(request_id)
+        if active is not None and not active.done():
+            async def resume_after_pause() -> None:
+                await asyncio.gather(active, return_exceptions=True)
+                latest = await self.get_job(request_id)
+                if latest is not None and latest.status == "running":
+                    self._spawn(latest, resume=True)
+
+            asyncio.create_task(
+                resume_after_pause(),
+                name=f"langgraph-style-review-resume:{request_id}",
+            )
+        else:
+            self._spawn(resumed, resume=True)
+        return resumed
+
+    async def submit_execution_plan_review(
+        self,
+        subscriber: Any,
+        *,
+        request_id: str,
+        session_id: str,
+        action: str,
+        feedback: str = "",
+    ) -> GenerationJob:
+        """批准或要求修改执行计划，并从持久化 interrupt 继续。"""
+
+        await self.initialize()
+        job = await self.get_job(request_id)
+        if job is None or job.session_id != session_id:
+            raise ValueError("找不到对应的执行计划审核任务")
+        if job.status != "waiting_review":
+            raise ValueError("当前任务不在执行计划审核阶段")
+        if str(job.payload.get("_waiting_review_type") or "") != "execution_plan":
+            raise ValueError("当前等待的不是执行计划审核")
+        action = str(action).lower()
+        feedback = str(feedback).strip()
+        if action not in {"confirm", "revise"}:
+            raise ValueError("执行计划审核 action 只能是 confirm 或 revise")
+        if action == "revise" and not feedback:
+            raise ValueError("要求修改计划时必须填写具体意见")
+        payload = dict(job.payload)
+        payload["_execution_plan_review"] = {
+            "action": action,
+            "feedback": feedback,
+        }
+        await self._update_payload_and_status(request_id, payload, "running")
+        resumed = GenerationJob(
+            request_id=request_id,
+            session_id=session_id,
+            payload=payload,
+            status="running",
+            last_event_seq=job.last_event_seq,
+        )
+        await self.attach(request_id, subscriber)
+        active = self._active_tasks.get(request_id)
+        if active is not None and not active.done():
+            async def resume_after_pause() -> None:
+                await asyncio.gather(active, return_exceptions=True)
+                latest = await self.get_job(request_id)
+                if latest is not None and latest.status == "running":
+                    self._spawn(latest, resume=True)
+
+            asyncio.create_task(
+                resume_after_pause(),
+                name=f"langgraph-plan-review-resume:{request_id}",
+            )
+        else:
+            self._spawn(resumed, resume=True)
+        return resumed
+
+    async def queue_execution_feedback(
+        self,
+        *,
+        request_id: str,
+        session_id: str,
+        feedback: str,
+    ) -> int:
+        """在计划步骤运行期间持久化用户意见，由下一节点边界吸收。"""
+
+        await self.initialize()
+        feedback = str(feedback).strip()
+        if not feedback:
+            raise ValueError("运行中修改意见不能为空")
+        lock = self._payload_locks.setdefault(request_id, asyncio.Lock())
+        async with lock:
+            job = await self.get_job(request_id)
+            if job is None or job.session_id != session_id:
+                raise ValueError("找不到对应的计划任务")
+            if job.status != "running" or job.payload.get("plan_mode") is not True:
+                raise ValueError("当前没有可接收意见的运行中计划")
+            payload = dict(job.payload)
+            pending = [
+                str(item) for item in payload.get("_pending_execution_feedback", [])
+                if str(item).strip()
+            ]
+            pending.append(feedback[:2000])
+            payload["_pending_execution_feedback"] = pending
+            await self._update_payload_and_status(request_id, payload, "running")
+            queued_count = len(pending)
+        await self.publish_event(request_id, versioned_event({
+            "type": "execution_feedback_queued",
+            "request_id": request_id,
+            "session_id": session_id,
+            "queued_count": queued_count,
+        }))
+        return queued_count
+
+    async def drain_execution_feedback(self, request_id: str) -> list[str]:
+        """原子取出并清空当前已排队意见。"""
+
+        lock = self._payload_locks.setdefault(request_id, asyncio.Lock())
+        async with lock:
+            job = await self.get_job(request_id)
+            if job is None:
+                return []
+            payload = dict(job.payload)
+            pending = [
+                str(item).strip()
+                for item in payload.get("_pending_execution_feedback", [])
+                if str(item).strip()
+            ]
+            if not pending:
+                return []
+            payload["_pending_execution_feedback"] = []
+            await self._update_payload_and_status(request_id, payload, job.status)
+            return pending
+
+    async def mark_waiting_for_review(
+        self,
+        request_id: str,
+        review_type: str = "floor_plan",
+    ) -> None:
+        """在向客户端暴露审核按钮前落库，消除快速点击产生的竞态。"""
+
+        job = await self.get_job(request_id)
+        if job is None:
+            raise ValueError("找不到待审核任务")
+        payload = dict(job.payload)
+        payload["_waiting_review_type"] = review_type
+        await self._update_payload_and_status(request_id, payload, "waiting_review")
+
     async def attach(self, request_id: str, subscriber: Any) -> None:
         self._subscribers.setdefault(request_id, {})[id(subscriber)] = subscriber
 
@@ -192,7 +446,14 @@ class GenerationJobService:
 
     async def publish_event(self, request_id: str, payload: dict) -> None:
         event = dict(payload)
-        if event.get("type") in _PERSISTED_EVENT_TYPES:
+        should_persist = (
+            event.get("type") in _PERSISTED_EVENT_TYPES
+            or (
+                event.get("type") == "thinking_delta"
+                and event.get("channel") == "progress"
+            )
+        )
+        if should_persist:
             lock = self._event_locks.setdefault(request_id, asyncio.Lock())
             async with lock:
                 sequence = await self._append_event(request_id, event)
@@ -237,6 +498,21 @@ class GenerationJobService:
             row = await cursor.fetchone()
         return self._row_to_job(row)
 
+    async def get_active_job_for_session(self, session_id: str) -> GenerationJob | None:
+        """同一会话的运行或待审核任务都视为活动任务。"""
+
+        async with aiosqlite.connect(self.database_path) as db:
+            cursor = await db.execute(
+                """SELECT request_id, session_id, payload_json, status,
+                          last_event_seq, error
+                   FROM generation_jobs
+                   WHERE session_id = ? AND status IN ('running', 'waiting_review')
+                   ORDER BY updated_at DESC LIMIT 1""",
+                (session_id,),
+            )
+            row = await cursor.fetchone()
+        return self._row_to_job(row)
+
     async def list_running_jobs(self) -> list[GenerationJob]:
         async with aiosqlite.connect(self.database_path) as db:
             cursor = await db.execute(
@@ -273,6 +549,20 @@ class GenerationJobService:
                 f"[{job.request_id}] 任务随服务关闭暂停，保留 {current_status} 状态"
             )
             raise
+        except GenerationPaused:
+            current = await self.get_job(job.request_id)
+            review_already_submitted = (
+                current is not None
+                and current.status == "running"
+                and (
+                    isinstance(current.payload.get("_floor_plan_review"), dict)
+                    or isinstance(current.payload.get("_style_review"), dict)
+                    or isinstance(current.payload.get("_execution_plan_review"), dict)
+                )
+            )
+            if not review_already_submitted:
+                await self._mark_status(job.request_id, "waiting_review", None)
+            logger.info(f"[{job.request_id}] 生成流程已暂停，等待用户审核")
         except Exception as exc:
             logger.exception(f"[{job.request_id}] 持久化生成任务失败: {exc}")
             await self.publish_event(job.request_id, versioned_event({
@@ -413,6 +703,21 @@ class GenerationJobService:
                 """UPDATE generation_jobs
                    SET status = ?, error = ?, updated_at = ? WHERE request_id = ?""",
                 (status, error, time.time(), request_id),
+            )
+            await db.commit()
+
+    async def _update_payload_and_status(
+        self,
+        request_id: str,
+        payload: dict,
+        status: str,
+    ) -> None:
+        async with aiosqlite.connect(self.database_path) as db:
+            await db.execute(
+                """UPDATE generation_jobs
+                   SET payload_json = ?, status = ?, error = NULL, updated_at = ?
+                   WHERE request_id = ?""",
+                (json.dumps(payload, ensure_ascii=False), status, time.time(), request_id),
             )
             await db.commit()
 

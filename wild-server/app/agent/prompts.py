@@ -127,15 +127,34 @@ def build_architecture_plan_prompt(
     spec_text: str,
     profile: dict | None = None,
     complexity_profile: dict | None = None,
+    current_plan: dict | None = None,
+    revision_feedback: str = "",
 ) -> str:
-    """生成路径第一阶段：只做建筑方案，不写 Blueprint 坐标。"""
+    """生成路径第一阶段：只做总体建筑方案，不设计房间平面。"""
     import json as _json
     profile_payload = dict(profile or {})
     if isinstance(profile_payload.get("shapes"), set):
         profile_payload["shapes"] = sorted(profile_payload["shapes"])
     profile_text = _json.dumps(profile_payload, ensure_ascii=False)
     complexity_text = _json.dumps(complexity_profile or {}, ensure_ascii=False)
-    return f"""你是建筑方案主创建筑师。先做体量、立面轴网和构件配额，不生成 WILD Blueprint。
+    revision_section = ""
+    if current_plan and revision_feedback:
+        previous_plan = {
+            key: value
+            for key, value in current_plan.items()
+            if key != "spatial_plan"
+        }
+        revision_section = f"""
+
+# 本轮是平面方案修订
+
+用户对上一版的修改意见：{revision_feedback}
+
+上一版方案如下。保留未被意见否定的尺寸、风格和设计关系，只修改相关部分；仍需输出两个完整候选，不能只输出差异：
+
+{_json.dumps(previous_plan, ensure_ascii=False, indent=2)}
+"""
+    return f"""你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不输出 spatial_plan。
 
 # 任务
 
@@ -151,6 +170,8 @@ def build_architecture_plan_prompt(
 - component_quota 必须与立面 pattern 能容纳的数量一致。
 - required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
 - `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
+- 房间、内墙、内门、中庭和垂直交通由后续 `floor_plan_design` 节点单独完成；本节点禁止输出 `spatial_plan`。
+{revision_section}
 
 # 输出协议
 
@@ -185,6 +206,80 @@ def build_architecture_plan_prompt(
 }}
 
 # 知识库参考
+
+{spec_text}
+"""
+
+
+def build_floor_plan_prompt(
+    architecture_plan: dict,
+    spec_text: str = "",
+    current_floor_plan: dict | None = None,
+    revision_feedback: str = "",
+) -> str:
+    """独立平面节点：在已批准体量内生成 FloorPlanIR v2。"""
+    import json as _json
+
+    plan_payload = {
+        key: value
+        for key, value in architecture_plan.items()
+        if key != "spatial_plan"
+    }
+    revision_section = ""
+    if current_floor_plan and revision_feedback:
+        revision_section = f"""
+
+# 本轮修改
+
+用户修改意见：{revision_feedback}
+
+上一版平面：
+{_json.dumps(current_floor_plan, ensure_ascii=False, indent=2)}
+
+只改变意见涉及的空间、墙和洞口，未被否定的关系应保留。
+"""
+
+    return f"""你是建筑平面设计师。建筑总体体量已经确定，你只输出一份 FloorPlanIR v2，不得修改总体层数、volumes、facades、屋顶或构件配额。
+
+# 已批准总体建筑方案
+
+{_json.dumps(plan_payload, ensure_ascii=False, indent=2)}
+{revision_section}
+
+# 平面硬规则
+
+1. 平面轴是 X/Z，front=min_z、north=max_z，Y 只表示高度。
+2. 必须覆盖 massing.modeled_floors 的每一层；每层空间完整覆盖该层 volumes 的矩形并集，不得越界、重叠或填平 L/U/回字形凹口。
+3. 空间使用 `bounds:[x0,z0,x1,z1]`、`polygon:[[x,z],...]` 或 `polygons`；任意多边形必须简单且不自交。
+4. 内墙用 `from/to`，可为任意方向；曲墙使用 WILD 原生 `curve.type=arc|ellipse|catenary`。
+5. 内门/内窗必须引用真实 `host_wall_id`；`offset` 沿墙路径弧长计算，`connects` 精确写墙两侧空间，室外使用 `outside`。
+6. 从 `entrance_space_id` 出发必须能经门到达本层全部空间。
+7. 中庭、庭院、挑空和竖井写入 `vertical_spaces`；电梯/楼梯服务关系写入 `vertical_circulation`，并给出 polygon 与楼层列表。
+8. 只在确有用户/建筑类型依据时启用 `review_rules`；可选闸门为 elevator、egress、daylight、symmetry、opening_corner、functional_flow。不得声称完成法定审图。
+9. 无法可靠细分时也必须输出结构完整的最小两区方案，不能只输出空 walls/openings 的占位轮廓。
+
+# 输出格式
+
+只输出一个 JSON 对象，不要 Markdown：
+{{
+  "spatial_plan": {{
+    "review_rules": {{"enabled": []}},
+    "vertical_spaces": [],
+    "vertical_circulation": [],
+    "levels": [{{
+      "level": 1,
+      "entrance_space_id": "living",
+      "spaces": [
+        {{"id":"living","name":"起居室","space_type":"living","bounds":[0,0,7,9]}},
+        {{"id":"service","name":"辅助空间","space_type":"service","bounds":[7,0,12,9]}}
+      ],
+      "walls": [{{"id":"partition_1","kind":"interior","from":[7,0],"to":[7,9],"thickness":0.12}}],
+      "openings": [{{"id":"door_1","type":"door","host_wall_id":"partition_1","offset":3.8,"width":0.9,"height":2.1,"sill_height":0,"connects":["living","service"]}}]
+    }}]
+  }}
+}}
+
+# 知识参考
 
 {spec_text}
 """

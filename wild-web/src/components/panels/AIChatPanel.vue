@@ -85,8 +85,15 @@
             </div>
         </div>
         <AgentExecutionPanel
-          v-if="message.role === 'user' && agentStore.getTurnForMessage(message)"
+          v-if="message.role === 'user' && agentStore.getTurnForMessage(message)?.user_message_id === message.id"
           :turn="agentStore.getTurnForMessage(message)!"
+          @confirm-floor-plan="handleConfirmFloorPlan"
+          @retry-floor-plan="handleRetryFloorPlan"
+          @revise-floor-plan="handleReviseFloorPlan"
+          @confirm-style="handleConfirmStyle"
+          @revise-style="handleReviseStyle"
+          @confirm-execution-plan="handleConfirmExecutionPlan"
+          @revise-execution-plan="handleReviseExecutionPlan"
         />
       </template>
 
@@ -130,6 +137,12 @@
         <el-switch :model-value="agentStore.precisionMode" size="small" :disabled="agentStore.isProcessing"
           @change="handlePrecisionModeChange" />
       </div>
+      <div class="thinking-toggle plan-toggle"
+        :title="agentStore.planMode ? '先研究并审核计划，批准后再执行' : '直接走现有固定流水线'">
+        <span>计划</span>
+        <el-switch :model-value="agentStore.planMode" size="small" :disabled="agentStore.isProcessing"
+          @change="handlePlanModeChange" />
+      </div>
       <div class="thinking-toggle shader-toggle"
         :title="agentStore.proceduralMaterialsEnabled ? '已允许 AI 自动生成程序化纹理 Shader' : '默认关闭；开启后 AI 才能自动生成程序化纹理 Shader'">
         <span>Shader</span>
@@ -144,7 +157,7 @@
 
     <!-- 输入框 -->
     <div class="input-container">
-      <el-input v-model="inputText" type="textarea" placeholder="输入您的建筑需求..." :rows="3" resize="none"
+      <el-input v-model="inputText" type="textarea" :placeholder="inputPlaceholder" :rows="3" resize="none"
         @keydown.enter.ctrl="handleSend" />
       <el-button class="send-btn" @click="handleSend" :disabled="!canSend" :title="sendButtonTitle">
         <el-icon v-if="agentStore.isProcessing" class="is-loading">
@@ -223,6 +236,33 @@ const isUserScrolling = ref(false)
 const hasRunningTurn = computed(() =>
   agentStore.currentTurns.some(turn => turn.status === 'running')
 )
+const pendingFloorPlanReview = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'waiting_review' && turn.floor_plan_review_status === 'pending')
+)
+const pendingStyleReview = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'waiting_review' && turn.style_review_status === 'pending')
+)
+const pendingExecutionPlanReview = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'waiting_review' && turn.execution_plan_review_status === 'pending')
+)
+const activePlanTurn = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'running' && turn.plan_mode && turn.execution_plan)
+)
+const inputPlaceholder = computed(() => {
+  if (pendingExecutionPlanReview.value) return '输入对执行计划的修改意见，或直接点击“批准计划”…'
+  if (pendingStyleReview.value) return '输入对建筑风格的修改意见，例如“改成新中式，屋檐更明显”…'
+  if (pendingFloorPlanReview.value) return '输入对当前平面的修改意见，例如“二层主卧加一扇朝南窗”…'
+  if (activePlanTurn.value) return '输入运行中修改意见，将在下一节点边界重新规划…'
+  return '输入您的建筑需求...'
+})
 
 let scrollFrame: number | null = null
 let timelineResizeObserver: ResizeObserver | null = null
@@ -274,12 +314,16 @@ watch(
 const canSend = computed(() =>
   inputText.value.trim().length > 0
   && agentStore.connectionStatus === 'connected'
-  && !agentStore.isProcessing
+  && (!agentStore.isProcessing || Boolean(activePlanTurn.value))
 )
 
 const sendButtonTitle = computed(() => {
   if (agentStore.connectionStatus !== 'connected') return '未连接到 Agent 服务'
+  if (activePlanTurn.value) return '发送运行中修改意见 (Ctrl+Enter)'
   if (agentStore.isProcessing) return '处理中...'
+  if (pendingExecutionPlanReview.value) return '发送计划修改意见 (Ctrl+Enter)'
+  if (pendingStyleReview.value) return '发送风格修改意见 (Ctrl+Enter)'
+  if (pendingFloorPlanReview.value) return '发送平面修改意见 (Ctrl+Enter)'
   return '发送 (Ctrl+Enter)'
 })
 
@@ -289,6 +333,45 @@ function handleSend() {
   resumeAutoScroll()
   const requestId = agentBridge.sendUserMessage(message)
   if (requestId) inputText.value = ''
+}
+
+function handleConfirmFloorPlan(requestId: string) {
+  resumeAutoScroll()
+  agentBridge.submitFloorPlanReview(requestId, 'confirm')
+}
+
+function handleRetryFloorPlan(requestId: string) {
+  resumeAutoScroll()
+  agentBridge.submitFloorPlanReview(
+    requestId,
+    'revise',
+    '请重新生成一个可以通过确定性校验并允许确认的完整基础平面。',
+  )
+}
+
+function handleReviseFloorPlan(requestId: string, feedback: string) {
+  resumeAutoScroll()
+  agentBridge.submitFloorPlanReview(requestId, 'revise', feedback)
+}
+
+function handleConfirmStyle(requestId: string, stylePackageId: string) {
+  resumeAutoScroll()
+  agentBridge.submitStyleReview(requestId, 'confirm', stylePackageId)
+}
+
+function handleReviseStyle(requestId: string, feedback: string) {
+  resumeAutoScroll()
+  agentBridge.submitStyleReview(requestId, 'revise', '', feedback)
+}
+
+function handleConfirmExecutionPlan(requestId: string) {
+  resumeAutoScroll()
+  agentBridge.submitExecutionPlanReview(requestId, 'confirm')
+}
+
+function handleReviseExecutionPlan(requestId: string, feedback: string) {
+  resumeAutoScroll()
+  agentBridge.submitExecutionPlanReview(requestId, 'revise', feedback)
 }
 
 function handleReconnect() {
@@ -310,6 +393,10 @@ function handlePrecisionModeChange(value: boolean | string | number) {
 
 function handleProceduralMaterialsChange(value: boolean | string | number) {
   agentStore.setProceduralMaterialsEnabled(Boolean(value))
+}
+
+function handlePlanModeChange(value: boolean | string | number) {
+  agentStore.setPlanMode(Boolean(value))
 }
 
 // ---------- 连接状态 ----------
@@ -1228,6 +1315,7 @@ function loadDraftSessionsFromLocal(): any[] {
 
 .thinking-toggle,
 .precision-toggle,
+.plan-toggle,
 .shader-toggle {
   display: flex;
   align-items: center;
@@ -1240,6 +1328,7 @@ function loadDraftSessionsFromLocal(): any[] {
 
 .thinking-toggle :deep(.el-switch.is-checked .el-switch__core),
 .precision-toggle :deep(.el-switch.is-checked .el-switch__core),
+.plan-toggle :deep(.el-switch.is-checked .el-switch__core),
 .shader-toggle :deep(.el-switch.is-checked .el-switch__core) {
   background: var(--accent);
   border-color: var(--accent);

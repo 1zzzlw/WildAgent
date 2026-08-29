@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "european",
+  "name": "欧式古典",
+  "description": "四坡屋顶、分层檐口和入口柱列，以克制比例形成古典秩序。",
+  "keywords": ["欧式", "古典", "法式", "英式", "european", "classical"],
+  "tags": ["residential", "ordinary_public"],
+  "roof": {"type": "hip", "height_ratio": 0.2},
+  "palette": {
+    "wall_finish": [0.84, 0.79, 0.68],
+    "roof": [0.25, 0.2, 0.18],
+    "accent": [0.56, 0.46, 0.3]
+  },
+  "decor": {
+    "cornice": {"enabled": true, "width": 0.3, "height": 0.24},
+    "entrance_canopy": {"enabled": true, "depth": 1.5, "thickness": 0.2},
+    "facade_columns": {"enabled": true, "style": "corinthian", "count": 2, "radius": 0.18}
+  }
+}

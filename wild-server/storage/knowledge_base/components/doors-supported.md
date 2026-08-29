@@ -216,7 +216,7 @@ synonyms: []
 |---|---|---|---|
 | 木门 | `"door_wood"` | `"wood"` | baseColor 偏棕黄，roughness 0.7 |
 | 白漆木门 | `"door_white"` | `"wood_white"` | baseColor [0.9, 0.9, 0.88]，roughness 0.5 |
-| 玻璃门 | `"glass"` | `"metal"` | opacity 0.35，roughness 0.12 |
+| 玻璃门 | `"glass"` | `"metal"` | `materialClass: glass`、`transmission > 0`、有效 `ior`；`opacity` 为 1 或省略 |
 | 金属门 | `"door_metal"` | `"metal"` | metallic 0.9，roughness 0.3 |
 
 > 注意：当前 `DoorComponent` 没有 `style` 字段。不要写 `"style": "glass"` 或 `"style": "panel"`——这些字段不存在，会被 Schema 校验拒绝。门的视觉效果通过 `leafMaterial` 对应的材质定义来控制。

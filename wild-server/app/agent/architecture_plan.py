@@ -9,6 +9,16 @@ import re
 from typing import Any
 
 from app.agent.facade_recipe import load_curtain_wall_parameters
+from app.agent.spatial_plan import (
+    apply_spatial_plan_to_blueprint,
+    fallback_spatial_plan,
+    normalize_spatial_plan,
+    spatial_opening_slots,
+    spatial_plan_summary,
+    validate_spatial_plan,
+)
+from app.agent.floor_plan_rules import evaluate_floor_plan_rules
+from app.agent.spatial_geometry import shared_stair_layout
 
 
 _FACES = ("front", "back", "left", "right")
@@ -187,7 +197,9 @@ def _requested_shape(user_message: str) -> str | None:
         return "u_shape"
     if re.search(r"(?:^|[^a-z])l\s*(?:形|型)", user_message, re.I):
         return "l_shape"
-    if any(word in user_message for word in ("庭院", "合院", "围合院落")):
+    if any(word in user_message for word in (
+        "庭院", "中庭", "合院", "围合院落", "回字形", "回形",
+    )):
         return "courtyard"
     if "退台" in user_message:
         return "stepped"
@@ -355,6 +367,95 @@ def _fallback_volumes(
     complexity: dict[str, Any],
     shape: str | None = None,
 ) -> list[dict[str, Any]]:
+    def volume(
+        volume_id: str,
+        role: str,
+        x: float,
+        z: float,
+        volume_width: float,
+        volume_depth: float,
+        start_floor: int = 1,
+        end_floor: int | None = None,
+    ) -> dict[str, Any]:
+        return {
+            "id": volume_id,
+            "role": role,
+            "x": round(x, 2),
+            "z": round(z, 2),
+            "width": round(volume_width, 2),
+            "depth": round(volume_depth, 2),
+            "start_floor": start_floor,
+            "end_floor": modeled_floors if end_floor is None else end_floor,
+        }
+
+    if shape == "l_shape":
+        wing_width = max(1.5, width * 0.42)
+        return [
+            volume("left_wing", "primary", 0.0, 0.0, wing_width, depth),
+            volume(
+                "front_wing", "secondary", wing_width, 0.0,
+                width - wing_width, max(1.5, depth * 0.42),
+            ),
+        ]
+
+    if shape == "courtyard":
+        side_width = max(1.2, width * 0.22)
+        end_depth = max(1.2, depth * 0.22)
+        inner_width = width - side_width * 2
+        inner_depth = depth - end_depth * 2
+        if inner_width >= 1.0 and inner_depth >= 1.0:
+            return [
+                volume("courtyard_front", "primary", 0.0, 0.0, width, end_depth),
+                volume(
+                    "courtyard_back", "primary", 0.0, depth - end_depth,
+                    width, end_depth,
+                ),
+                volume(
+                    "courtyard_left", "secondary", 0.0, end_depth,
+                    side_width, inner_depth,
+                ),
+                volume(
+                    "courtyard_right", "secondary", width - side_width, end_depth,
+                    side_width, inner_depth,
+                ),
+            ]
+
+    if shape == "stepped" and modeled_floors >= 2:
+        podium_floors = max(1, min(2, round(modeled_floors * 0.2)))
+        tower_width = width * 0.72
+        tower_depth = depth * 0.72
+        return [
+            volume(
+                "base", "primary", 0.0, 0.0, width, depth,
+                end_floor=podium_floors,
+            ),
+            volume(
+                "upper_setback", "secondary",
+                (width - tower_width) / 2,
+                (depth - tower_depth) / 2,
+                tower_width,
+                tower_depth,
+                start_floor=podium_floors + 1,
+            ),
+        ]
+
+    if shape == "u_shape" and modeled_floors == 1:
+        wing_width = min(width * 0.4, max(1.5, width * 0.28))
+        back_depth = min(depth * 0.45, max(1.5, depth * 0.32))
+        center_width = width - wing_width * 2
+        if center_width >= 1.0:
+            return [
+                volume("left_wing", "primary", 0.0, 0.0, wing_width, depth),
+                volume(
+                    "right_wing", "primary", width - wing_width, 0.0,
+                    wing_width, depth,
+                ),
+                volume(
+                    "back_link", "secondary", wing_width, depth - back_depth,
+                    center_width, back_depth,
+                ),
+            ]
+
     if shape == "u_shape" and modeled_floors >= 2:
         wing_width = min(width * 0.4, max(1.5, width * 0.28))
         back_depth = min(depth * 0.45, max(1.5, depth * 0.32))
@@ -577,6 +678,11 @@ def _fallback_plan(
     resolved_shape = (
         requested_shape
         if requested_shape in profile["shapes"]
+        else "stepped"
+        if (
+            profile["id"] == "high_rise"
+            and any(word in user_message for word in ("综合体", "商业基座", "裙房", "基座"))
+        )
         else "stepped"
         if complexity["level"] == "detailed" and "stepped" in profile["shapes"]
         else "rectangle"
@@ -845,6 +951,12 @@ def normalize_architecture_plan(
         massing["width"] = round(max(massing["width"], target_u_width), 2)
 
     volumes = _normalize_volumes(source.get("volumes"), massing, complexity)
+    spatial_plan = normalize_spatial_plan(
+        source.get("spatial_plan"),
+        massing,
+        volumes,
+        source.get("facades") if isinstance(source.get("facades"), dict) else None,
+    )
     structural_grid = _normalize_structural_grid(
         source.get("structural_grid"), fallback["structural_grid"],
     )
@@ -862,6 +974,31 @@ def normalize_architecture_plan(
             *detail_packages,
             *fallback["detail_packages"],
         ]))
+    if complexity["level"] in {"minimal", "simple"}:
+        # 简化模式只保留用户明确点名的细部。fallback 的细部列表在这两种
+        # 模式下只包含显式关键词，可阻止模型自行添加凸窗等装饰硬配额。
+        explicitly_requested = set(fallback["detail_packages"])
+        detail_packages = [
+            item for item in detail_packages
+            if item in explicitly_requested
+        ]
+        detail_packages = list(dict.fromkeys([
+            *detail_packages,
+            *fallback["detail_packages"],
+        ]))
+    if (
+        curtain_wall
+        and profile["id"] == "high_rise"
+        and not any(word in user_message for word in ("凸窗", "飘窗"))
+        and "bay_window" in detail_packages
+    ):
+        # 连续高层幕墙与凸窗是相互冲突的立面系统。模型常为凑足“细部包”
+        # 随手加入 bay_window；未被用户明确要求时改用入口/转折照明。
+        detail_packages = [
+            item for item in detail_packages if item != "bay_window"
+        ]
+        if "light" not in detail_packages:
+            detail_packages.append("light")
     detail_packages = detail_packages[:6]
 
     facade_source = source.get("facades") if isinstance(source.get("facades"), dict) else {}
@@ -899,10 +1036,34 @@ def normalize_architecture_plan(
         "overhang": round(_clamp_number(roof_raw.get("overhang"), 0, 2, fallback["roof"]["overhang"]), 2),
     }
 
-    quotas = deepcopy(fallback["component_quota"])
+    quotas = {
+        component_type: deepcopy(limits)
+        for component_type, limits in fallback["component_quota"].items()
+        if (
+            component_type not in _DETAIL_COMPONENT_QUOTAS
+            or component_type in detail_packages
+        )
+    }
     raw_quotas = source.get("component_quota") if isinstance(source.get("component_quota"), dict) else {}
     for component_type, limits in raw_quotas.items():
         if not isinstance(limits, dict):
+            continue
+        component_type = str(component_type)
+        if (
+            component_type in _DETAIL_COMPONENT_QUOTAS
+            and component_type not in detail_packages
+            and (
+                complexity["level"] in {"minimal", "simple"}
+                or (
+                    curtain_wall
+                    and profile["id"] == "high_rise"
+                    and component_type == "bay_window"
+                )
+            )
+        ):
+            # 简化模式只接受用户明确点名的细部；高层连续幕墙也不能被模型
+            # 通过配额重新塞入未批准的凸窗。其余模式继续兼容“正配额补全
+            # required_components”的既有协议。
             continue
         if curtain_wall and component_type == "window":
             # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格。
@@ -914,7 +1075,7 @@ def normalize_architecture_plan(
             normalized_limits["max"] = int(_clamp_number(limits.get("max"), 0, 32, 32))
         if isinstance(normalized_limits.get("min"), int) and isinstance(normalized_limits.get("max"), int):
             normalized_limits["max"] = max(normalized_limits["min"], normalized_limits["max"])
-        quotas[str(component_type)] = normalized_limits
+        quotas[component_type] = normalized_limits
     roof_required = "roof" in profile["base_components"]
     quotas["roof"] = {
         **quotas.get("roof", {}),
@@ -947,6 +1108,29 @@ def normalize_architecture_plan(
             "note": "含主入口与阳台通室内入口",
         }
 
+    blocked_opening_types = {
+        opening_type
+        for opening_type in ("door", "window")
+        if quotas.get(opening_type, {}).get("max") == 0
+    }
+    if blocked_opening_types:
+        for level in spatial_plan.get("levels", []):
+            level["openings"] = [
+                opening for opening in level.get("openings", [])
+                if opening.get("type") not in blocked_opening_types
+            ]
+        spatial_issues = validate_spatial_plan(spatial_plan)
+        if spatial_issues:
+            blocked = ", ".join(sorted(blocked_opening_types))
+            spatial_plan = fallback_spatial_plan(
+                massing,
+                f"用户构件约束禁用了 {blocked}，原空间关系无法保持连通",
+                volumes,
+            )
+
+    spatial_plan["facades"] = deepcopy(facades)
+    spatial_plan["rule_review"] = evaluate_floor_plan_rules(spatial_plan)
+
     allowed_components = {
         "door", "window", "roof", "railing", "canopy", "balcony", "light",
         "ramp", "bay_window", "cornice", "chimney",
@@ -956,7 +1140,13 @@ def normalize_architecture_plan(
         required = fallback["required_components"]
     required_components = [
         str(item).lower() for item in required
-        if str(item).lower() in allowed_components
+        if (
+            str(item).lower() in allowed_components
+            and (
+                str(item).lower() not in _DETAIL_COMPONENT_QUOTAS
+                or str(item).lower() in detail_packages
+            )
+        )
     ]
     for base_type in profile["base_components"]:
         if base_type not in required_components:
@@ -976,6 +1166,15 @@ def normalize_architecture_plan(
             and component_type not in required_components
         ):
             required_components.append(component_type)
+    planned_opening_types = {
+        str(opening.get("type"))
+        for level in spatial_plan.get("levels", [])
+        for opening in level.get("openings", [])
+        if isinstance(opening, dict)
+    }
+    for opening_type in ("door", "window"):
+        if opening_type in planned_opening_types and opening_type not in required_components:
+            required_components.append(opening_type)
     required_components = [
         component_type for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
@@ -994,6 +1193,7 @@ def normalize_architecture_plan(
         "complexity": complexity,
         "volumes": volumes,
         "structural_grid": structural_grid,
+        "spatial_plan": spatial_plan,
         "detail_packages": detail_packages,
         "facades": facades,
         "roof": roof,
@@ -1036,6 +1236,9 @@ def score_architecture_plan(plan: dict[str, Any], user_message: str) -> int:
         score += 6 if abs(massing["depth"] - requested_depth) <= 0.1 else -6
     score += 8 if plan.get("required_components") else 0
     score += min(12, len(plan.get("design_rationale", [])) * 3)
+    spatial_summary = spatial_plan_summary(plan.get("spatial_plan", {}))
+    if spatial_summary["source"] == "model":
+        score += min(12, 4 + spatial_summary["space_count"])
     if any(word in user_message for word in ("欧式", "法式", "对称")):
         score += 12 if massing["symmetry"] else -8
         score += 8 if plan["roof"]["type"] in {"hip", "gable"} else -6
@@ -1245,6 +1448,113 @@ def _resolve_union_wall_segments(
     return segments
 
 
+def _schematic_volume_ranges(
+    volumes: list[dict[str, Any]],
+    semantic_floors: int,
+    modeled_floors: int,
+) -> list[dict[str, Any]]:
+    """把代表层体量区间映射到完整语义层数，保持基座/塔身连续。
+
+    规划协议中的 volume 楼层范围使用 ``modeled_floors``。示意高层不能直接
+    把这些数字当真实楼层，也不能忽略 volume 退化成整高外包矩形；这里按连续
+    分箱映射，例如 30 层/6 代表层中的第 1 段对应真实 1~5 层。
+    """
+
+    semantic_floors = max(1, int(semantic_floors))
+    modeled_floors = max(1, int(modeled_floors))
+    resolved: list[dict[str, Any]] = []
+    for volume in volumes:
+        start = max(1, min(modeled_floors, int(volume.get("start_floor", 1))))
+        end = max(start, min(modeled_floors, int(volume.get("end_floor", modeled_floors))))
+        semantic_start = math.floor((start - 1) * semantic_floors / modeled_floors) + 1
+        semantic_end = max(
+            semantic_start,
+            math.floor(end * semantic_floors / modeled_floors),
+        )
+        resolved.append({
+            **volume,
+            "semantic_start_floor": semantic_start,
+            "semantic_end_floor": min(semantic_floors, semantic_end),
+        })
+    return resolved
+
+
+def _schematic_volume_zones(
+    volumes: list[dict[str, Any]],
+    semantic_floors: int,
+    modeled_floors: int,
+) -> list[dict[str, Any]]:
+    mapped = _schematic_volume_ranges(volumes, semantic_floors, modeled_floors)
+    boundaries = sorted({
+        1,
+        semantic_floors + 1,
+        *(int(volume["semantic_start_floor"]) for volume in mapped),
+        *(int(volume["semantic_end_floor"]) + 1 for volume in mapped),
+    })
+    zones: list[dict[str, Any]] = []
+    for start, next_start in zip(boundaries, boundaries[1:]):
+        end = next_start - 1
+        active = [
+            volume for volume in mapped
+            if int(volume["semantic_start_floor"]) <= start <= int(volume["semantic_end_floor"])
+        ]
+        if active:
+            zones.append({"start_floor": start, "end_floor": end, "volumes": active})
+    return zones
+
+
+def _append_curtain_wall_grid(
+    elements: list[dict[str, Any]],
+    wall_segments: list[dict[str, Any]],
+    *,
+    base_y: float,
+    top_y: float,
+    start_floor: int,
+    end_floor: int,
+    floor_height: float,
+    facades: dict[str, Any],
+    zone_index: int,
+) -> None:
+    """在连续玻璃外壳外侧生成轻量竖梃与逐层横梃，不再靠六条窗带冒充幕墙。"""
+
+    normals = {
+        "front": (0.0, -0.14), "back": (0.0, 0.14),
+        "left": (-0.14, 0.0), "right": (0.14, 0.0),
+    }
+    for segment_index, segment in enumerate(wall_segments, start=1):
+        side = str(segment["side"])
+        start_x, start_z = (float(value) for value in segment["from"])
+        end_x, end_z = (float(value) for value in segment["to"])
+        normal_x, normal_z = normals[side]
+        ax, az = start_x + normal_x, start_z + normal_z
+        bx, bz = end_x + normal_x, end_z + normal_z
+        bays = max(1, int((facades.get(side) or {}).get("bays", 6)))
+        for bay in range(1, bays):
+            ratio = bay / bays
+            x = ax + (bx - ax) * ratio
+            z = az + (bz - az) * ratio
+            elements.append({
+                "type": "beam",
+                "id": f"curtain_mullion_v_{zone_index}_{segment_index}_{bay}",
+                "from": [round(x, 3), round(base_y, 3), round(z, 3)],
+                "to": [round(x, 3), round(top_y, 3), round(z, 3)],
+                "crossSection": "rect", "width": 0.08, "height": 0.1,
+                "material": "metal",
+            })
+        # 每个语义楼层的顶边都需要一道横梃。坐标必须相对当前分区的 base_y
+        # 计算，不能假定整栋建筑从 0m 起步；分区顶边同时作为封边。
+        for story in range(start_floor, end_floor + 1):
+            y = base_y + (story - start_floor + 1) * floor_height
+            elements.append({
+                "type": "beam",
+                "id": f"curtain_mullion_h_{zone_index}_{segment_index}_{story}",
+                "from": [round(ax, 3), round(y, 3), round(az, 3)],
+                "to": [round(bx, 3), round(y, 3), round(bz, 3)],
+                "crossSection": "rect", "width": 0.08, "height": 0.1,
+                "material": "metal",
+            })
+
+
 def evaluate_skeleton_complexity(
     blueprint: dict[str, Any],
     plan: dict[str, Any],
@@ -1380,6 +1690,17 @@ def evaluate_skeleton_complexity(
         if isinstance(volume, dict)
     ]
     modeled_floors = int(massing.get("modeled_floors", massing.get("floors", 1)))
+    geometry = blueprint.get("geometry", {}) if isinstance(blueprint, dict) else {}
+    templates = geometry.get("templates", {}) if isinstance(geometry, dict) else {}
+    stair_template_ids = {
+        str(template_id)
+        for template_id, template in (templates.items() if isinstance(templates, dict) else [])
+        if isinstance(template, dict) and template.get("type") == "stair"
+    }
+    stair_instance_count = sum(
+        1 for instance in geometry.get("instances", [])
+        if isinstance(instance, dict) and str(instance.get("ref") or "") in stair_template_ids
+    ) if isinstance(geometry, dict) and isinstance(geometry.get("instances"), list) else 0
     expected_floor_layouts = {
         tuple(round(value, 2) for value in (
             plate["elevation"], *plate["bounds"],
@@ -1401,7 +1722,11 @@ def evaluate_skeleton_complexity(
             True if schematic
             else expected_wall_base_levels.issubset(wall_base_levels)
         ),
-        "vertical_circulation": modeled_floors <= 1 or counts.get("stair", 0) > 0,
+        "vertical_circulation": (
+            modeled_floors <= 1
+            or counts.get("stair", 0) > 0
+            or stair_instance_count > 0
+        ),
         "duplicate_wall_free": duplicate_wall_count == 0,
         "overlapping_column_free": overlapping_column_count == 0,
     }
@@ -1457,70 +1782,153 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
     volumes = normalized.get("volumes") or _fallback_volumes(
         width, depth, modeled_floors, normalized["complexity"],
     )
+    spatial_levels = (
+        normalized.get("spatial_plan", {}).get("levels", [])
+        if isinstance(normalized.get("spatial_plan"), dict)
+        else []
+    )
+    stair_layout = shared_stair_layout(
+        [
+            level.get("envelope_regions", [])
+            for level in spatial_levels
+            if isinstance(level, dict)
+        ],
+        floor_height,
+        min(1.8, max(1.0, width * 0.08)),
+    )
 
     elements: list[dict[str, Any]] = []
     templates: dict[str, dict[str, Any]] = {}
     instances: list[dict[str, Any]] = []
+    schematic_zones: list[dict[str, Any]] = []
     if schematic:
-        level_ranges = [(1, 0.0, total_height)]
-        for floor_id, elevation in (("floor_ground", 0.0), ("floor_top", total_height)):
-            elements.append({
-                "type": "floor", "id": floor_id,
-                "from": [0.0, elevation, 0.0],
-                "to": [width, elevation, depth],
-                "thickness": 0.2, "material": "concrete",
-            })
-        for level, base_y, top_y in level_ranges:
-            elements.extend([
-                {
-                    "type": "wall", "id": "wall_front_shell",
-                    "from": [0.0, base_y, 0.0], "to": [width, top_y, 0.0],
-                    "thickness": 0.24, "material": "wall_finish",
-                },
-                {
-                    "type": "wall", "id": "wall_right_shell",
-                    "from": [width, base_y, 0.0], "to": [width, top_y, depth],
-                    "thickness": 0.24, "material": "wall_finish",
-                },
-                {
-                    "type": "wall", "id": "wall_back_shell",
-                    "from": [width, base_y, depth], "to": [0.0, top_y, depth],
-                    "thickness": 0.24, "material": "wall_finish",
-                },
-                {
-                    "type": "wall", "id": "wall_left_shell",
-                    "from": [0.0, base_y, depth], "to": [0.0, top_y, 0.0],
-                    "thickness": 0.24, "material": "wall_finish",
-                },
-            ])
+        schematic_zones = _schematic_volume_zones(volumes, floors, modeled_floors)
+        if not schematic_zones:
+            schematic_zones = [{
+                "start_floor": 1,
+                "end_floor": floors,
+                "volumes": [{
+                    "id": "main", "x": 0.0, "z": 0.0,
+                    "width": width, "depth": depth,
+                    "semantic_start_floor": 1, "semantic_end_floor": floors,
+                }],
+            }]
+        shell_material = "glass" if normalized.get("curtain_wall") else "wall_finish"
+        for zone_index, zone in enumerate(schematic_zones, start=1):
+            base_y = (int(zone["start_floor"]) - 1) * floor_height
+            top_y = int(zone["end_floor"]) * floor_height
+            segments = _resolve_union_wall_segments(zone["volumes"])
+            side_counts: dict[str, int] = {}
+            for segment in segments:
+                side = str(segment["side"])
+                side_counts[side] = side_counts.get(side, 0) + 1
+                start_x, start_z = segment["from"]
+                end_x, end_z = segment["to"]
+                elements.append({
+                    "type": "wall",
+                    "id": f"wall_{side}_shell_{zone_index}_{side_counts[side]}",
+                    "from": [start_x, base_y, start_z],
+                    "to": [end_x, top_y, end_z],
+                    "thickness": 0.24,
+                    "material": shell_material,
+                })
+            if normalized.get("curtain_wall"):
+                _append_curtain_wall_grid(
+                    elements,
+                    segments,
+                    base_y=base_y,
+                    top_y=top_y,
+                    start_floor=int(zone["start_floor"]),
+                    end_floor=int(zone["end_floor"]),
+                    floor_height=floor_height,
+                    facades=normalized.get("facades", {}),
+                    zone_index=zone_index,
+                )
+
+        mapped_volumes = _schematic_volume_ranges(volumes, floors, modeled_floors)
+        ground_volumes = [
+            volume for volume in mapped_volumes
+            if int(volume["semantic_start_floor"]) <= 1 <= int(volume["semantic_end_floor"])
+        ]
+        top_volumes = [
+            volume for volume in mapped_volumes
+            if int(volume["semantic_start_floor"]) <= floors <= int(volume["semantic_end_floor"])
+        ]
+        for label, elevation, active in (
+            ("ground", 0.0, ground_volumes),
+            ("top", total_height, top_volumes),
+        ):
+            for index, volume in enumerate(active, start=1):
+                suffix = "" if len(active) == 1 else f"_{index}"
+                elements.append({
+                    "type": "floor", "id": f"floor_{label}{suffix}",
+                    "from": [float(volume["x"]), elevation, float(volume["z"])],
+                    "to": [
+                        float(volume["x"]) + float(volume["width"]), elevation,
+                        float(volume["z"]) + float(volume["depth"]),
+                    ],
+                    "thickness": 0.2, "material": "concrete",
+                })
 
         if floors > 1:
-            templates["standard_floor_plate"] = {
-                "type": "floor", "id": "standard_floor_plate",
-                "from": [0.0, 0.0, 0.0], "to": [width, 0.0, depth],
-                "thickness": 0.2, "material": "concrete",
-            }
-            instances.extend({
-                "id": f"floor_standard_{level}",
-                "ref": "standard_floor_plate",
-                "position": [0.0, round(level * floor_height, 3), 0.0],
-            } for level in range(1, floors))
+            for volume in mapped_volumes:
+                template_id = (
+                    "standard_floor_plate"
+                    if len(mapped_volumes) == 1
+                    else f"standard_floor_plate_{volume['id']}"
+                )
+                templates[template_id] = {
+                    "type": "floor", "id": template_id,
+                    "from": [0.0, 0.0, 0.0],
+                    "to": [float(volume["width"]), 0.0, float(volume["depth"])],
+                    "thickness": 0.2, "material": "concrete",
+                }
+            for level in range(1, floors):
+                supported_story = level + 1
+                for volume in mapped_volumes:
+                    if not (
+                        int(volume["semantic_start_floor"])
+                        <= supported_story
+                        <= int(volume["semantic_end_floor"])
+                    ):
+                        continue
+                    template_id = (
+                        "standard_floor_plate"
+                        if len(mapped_volumes) == 1
+                        else f"standard_floor_plate_{volume['id']}"
+                    )
+                    instances.append({
+                        "id": f"floor_standard_{level}_{volume['id']}",
+                        "ref": template_id,
+                        "position": [
+                            float(volume["x"]), round(level * floor_height, 3),
+                            float(volume["z"]),
+                        ],
+                    })
 
-            stair_x = max(1.0, min(width - 1.0, width * 0.2))
-            stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
-            stair_z1 = max(stair_z0 + 1.0, min(depth - 0.8, depth * 0.65))
-            templates["standard_storey_stair"] = {
-                "type": "stair", "id": "standard_storey_stair",
-                "from": [stair_x, 0.0, stair_z0],
-                "to": [stair_x, floor_height, stair_z1],
-                "width": min(1.8, max(1.0, width * 0.08)),
-                "material": "concrete",
-            }
-            instances.extend({
-                "id": f"stair_standard_{level}_{level + 1}",
-                "ref": "standard_storey_stair",
-                "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
-            } for level in range(1, floors))
+            if stair_layout:
+                start = stair_layout["start"]
+                end = stair_layout["end"]
+                for direction, lower, upper in (
+                    ("forward", start, end),
+                    ("reverse", end, start),
+                ):
+                    template_id = f"standard_storey_stair_{direction}"
+                    templates[template_id] = {
+                        "type": "stair", "id": template_id,
+                        "from": [lower[0], 0.0, lower[1]],
+                        "to": [upper[0], floor_height, upper[1]],
+                        "width": stair_layout["width"],
+                        "material": "concrete",
+                    }
+                instances.extend({
+                    "id": f"stair_standard_{level}_{level + 1}",
+                    "ref": (
+                        "standard_storey_stair_forward"
+                        if level % 2 else "standard_storey_stair_reverse"
+                    ),
+                    "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
+                } for level in range(1, floors))
 
         if normalized["profile"] == "high_rise":
             core_width = min(width - 2.0, max(4.0, width * 0.24))
@@ -1530,34 +1938,26 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
             z0 = (depth - core_depth) / 2
             z1 = z0 + core_depth
             core_thickness = 0.2
-            elements.extend([
-                {
-                    "type": "wall", "id": "wall_core_front",
-                    "from": [x0, 0.0, z0], "to": [x1, total_height, z0],
-                    "thickness": core_thickness, "material": "concrete",
-                },
-                {
-                    "type": "wall", "id": "wall_core_right",
-                    "from": [x1, 0.0, z0], "to": [x1, total_height, z1],
-                    "thickness": core_thickness, "material": "concrete",
-                },
-                {
-                    "type": "wall", "id": "wall_core_back",
-                    "from": [x1, 0.0, z1], "to": [x0, total_height, z1],
-                    "thickness": core_thickness, "material": "concrete",
-                },
-                {
-                    "type": "wall", "id": "wall_core_left",
-                    "from": [x0, 0.0, z1], "to": [x0, total_height, z0],
-                    "thickness": core_thickness, "material": "concrete",
-                },
-                {
-                    "type": "wall", "id": "wall_core_partition",
-                    "from": [(x0 + x1) / 2, 0.0, z0],
-                    "to": [(x0 + x1) / 2, total_height, z1],
-                    "thickness": core_thickness, "material": "concrete",
-                },
-            ])
+            core_runs = (
+                ("front", x0, z0, x1, z0),
+                ("right", x1, z0, x1, z1),
+                ("back", x1, z1, x0, z1),
+                ("left", x0, z1, x0, z0),
+                ("partition", (x0 + x1) / 2, z0, (x0 + x1) / 2, z1),
+            )
+            core_segment_count = max(1, math.ceil(total_height / 45.0))
+            core_segment_height = total_height / core_segment_count
+            for segment in range(core_segment_count):
+                base_y = segment * core_segment_height
+                top_y = (segment + 1) * core_segment_height
+                suffix = "" if core_segment_count == 1 else f"_{segment + 1}"
+                for side, start_x, start_z, end_x, end_z in core_runs:
+                    elements.append({
+                        "type": "wall", "id": f"wall_core_{side}{suffix}",
+                        "from": [start_x, round(base_y, 3), start_z],
+                        "to": [end_x, round(top_y, 3), end_z],
+                        "thickness": core_thickness, "material": "concrete",
+                    })
     else:
         detailed = normalized["complexity"]["level"] == "detailed"
         floor_plates = _resolve_floor_plate_plan(volumes, modeled_floors, floor_height)
@@ -1630,18 +2030,22 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     },
                 ])
 
-    if not schematic and modeled_floors > 1:
-        stair_x = max(1.0, min(width - 1.0, width * 0.2))
-        stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
-        stair_z1 = max(stair_z0 + 1.0, min(depth - 0.8, depth * 0.65))
+    if not schematic and modeled_floors > 1 and stair_layout:
+        stair_start = stair_layout["start"]
+        stair_end = stair_layout["end"]
         for level in range(modeled_floors - 1):
             base_y = level * floor_height
+            lower, upper = (
+                (stair_start, stair_end)
+                if level % 2 == 0
+                else (stair_end, stair_start)
+            )
             elements.append({
                 "type": "stair",
                 "id": f"stair_{level + 1}_{level + 2}",
-                "from": [stair_x, base_y, stair_z0],
-                "to": [stair_x, base_y + floor_height, stair_z1],
-                "width": min(1.8, max(1.0, width * 0.08)),
+                "from": [lower[0], round(base_y, 3), lower[1]],
+                "to": [upper[0], round(base_y + floor_height, 3), upper[1]],
+                "width": stair_layout["width"],
                 "material": "concrete",
             })
 
@@ -1693,24 +2097,70 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                 "crossSection": "rect", "width": 0.18, "height": 0.28,
                 "material": "concrete",
             })
-    elif schematic or normalized["profile"] in {"long_span_public", "high_rise"}:
+    elif schematic:
+        radius = min(0.6, max(0.2, min(width, depth) * 0.012))
+        column_keys: set[tuple[float, float, float, float]] = set()
+        for zone_index, zone in enumerate(schematic_zones, start=1):
+            base_y = (int(zone["start_floor"]) - 1) * floor_height
+            zone_height = (
+                int(zone["end_floor"]) - int(zone["start_floor"]) + 1
+            ) * floor_height
+            segment_count = max(1, math.ceil(zone_height / 45.0))
+            segment_height = zone_height / segment_count
+            for volume in zone["volumes"]:
+                x0 = float(volume["x"])
+                z0 = float(volume["z"])
+                x1 = x0 + float(volume["width"])
+                z1 = z0 + float(volume["depth"])
+                inset = min(
+                    0.5,
+                    max(radius + 0.04, 0.2),
+                    float(volume["width"]) * 0.2,
+                    float(volume["depth"]) * 0.2,
+                )
+                corners = (
+                    (x0 + inset, z0 + inset),
+                    (x1 - inset, z0 + inset),
+                    (x1 - inset, z1 - inset),
+                    (x0 + inset, z1 - inset),
+                )
+                for part in range(segment_count):
+                    part_base = base_y + part * segment_height
+                    for corner_index, (x, z) in enumerate(corners, start=1):
+                        key = (
+                            round(x, 3), round(z, 3), round(part_base, 3),
+                            round(part_base + segment_height, 3),
+                        )
+                        if key in column_keys:
+                            continue
+                        column_keys.add(key)
+                        elements.append({
+                            "type": "column",
+                            "id": (
+                                f"column_zone_{zone_index}_{volume['id']}_"
+                                f"{part + 1}_{corner_index}"
+                            ),
+                            "base": [x, round(part_base, 3), z],
+                            "height": round(segment_height, 3),
+                            "bottomRadius": radius,
+                            "topRadius": radius,
+                            "style": "modern",
+                            "material": "concrete",
+                        })
+    elif normalized["profile"] in {"long_span_public", "high_rise"}:
         radius = min(0.6, max(0.2, min(width, depth) * 0.012))
         for index, (x, z) in enumerate((
             (0.5, 0.5), (width - 0.5, 0.5),
             (width - 0.5, depth - 0.5), (0.5, depth - 0.5),
         ), start=1):
             elements.append({
-                "type": "column",
-                "id": f"column_corner_{index}",
-                "base": [x, 0.0, z],
-                "height": total_height,
-                "bottomRadius": radius,
-                "topRadius": radius,
-                "style": "modern",
-                "material": "concrete",
+                "type": "column", "id": f"column_corner_{index}",
+                "base": [x, 0.0, z], "height": total_height,
+                "bottomRadius": radius, "topRadius": radius,
+                "style": "modern", "material": "concrete",
             })
 
-    return {
+    blueprint = {
         "meta": {
             "version": "1.1",
             "type": "building",
@@ -1740,7 +2190,9 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
             },
             "glass": {
                 "baseColor": [0.52, 0.70, 0.82], "roughness": 0.12,
-                "metallic": 0.0, "albedo": 1.0, "opacity": 0.35,
+                "metallic": 0.0, "albedo": 1.0,
+                "materialClass": "glass", "transmission": 0.9,
+                "ior": 1.5, "thickness": 0.12,
                 "lightingCondition": "D65_noon",
             },
             "roof": {
@@ -1750,6 +2202,8 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         },
         "behaviors": {},
     }
+    apply_spatial_plan_to_blueprint(blueprint, normalized.get("spatial_plan"))
+    return blueprint
 
 
 def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
@@ -1777,23 +2231,44 @@ def _expand_schematic_facade_storeys(
     walls: list[dict[str, Any]],
     realization: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """把连续高墙映射为逐层立面区间，宿主仍保持同一真实 wall。"""
+    """把连续高墙映射为覆盖全高的代表性楼层，宿主仍是同一真实 wall。
+
+    schematic 只允许 ``modeled_floors`` 个立面采样层；旧实现按语义总层数展开，
+    24 层幕墙会产生数百个真实 window 并集中切割四面通高墙。代表层首尾对齐
+    建筑底部和顶部，中间均匀分布，既保留总高度读数又限制几何复杂度。
+    """
     if realization.get("representation_mode") != "schematic":
         return walls
-    floors = max(1, int(realization.get("floors") or realization.get("modeled_floors") or 1))
+    semantic_floors = max(1, int(realization.get("floors") or realization.get("modeled_floors") or 1))
+    represented_floors = max(
+        1,
+        min(semantic_floors, int(realization.get("modeled_floors") or semantic_floors)),
+    )
     floor_height = max(0.1, float(realization.get("floor_height") or 3.2))
-    expected_height = floors * floor_height
     expanded: list[dict[str, Any]] = []
     for wall in walls:
-        if wall["height"] < expected_height - max(0.1, floor_height * 0.05):
+        wall_story_count = max(1, round(wall["height"] / floor_height))
+        if wall_story_count <= 1:
             expanded.append(wall)
             continue
-        for level in range(floors):
+        wall_represented = max(
+            1,
+            min(
+                wall_story_count,
+                round(represented_floors * wall_story_count / semantic_floors),
+            ),
+        )
+        first_story = max(1, round(wall["base_y"] / floor_height) + 1)
+        last_base_offset = max(0.0, wall["height"] - floor_height)
+        for index in range(wall_represented):
+            ratio = index / (wall_represented - 1) if wall_represented > 1 else 0.0
+            base_offset = last_base_offset * ratio
+            story_index = round(first_story + ratio * (wall_story_count - 1))
             expanded.append({
                 **wall,
-                "base_y": round(wall["base_y"] + level * floor_height, 3),
-                "height": min(floor_height, wall["height"] - level * floor_height),
-                "story_index": level + 1,
+                "base_y": round(wall["base_y"] + base_offset, 3),
+                "height": min(floor_height, wall["height"] - base_offset),
+                "story_index": story_index,
             })
     return expanded
 
@@ -1860,10 +2335,24 @@ def _evenly_spaced_opening_slots(
         int(slot.get("bay") or 0),
         str(slot.get("id") or ""),
     ))
-    if limit == 1:
-        return [ordered[len(ordered) // 2]]
-    last = len(ordered) - 1
-    return [ordered[round(index * last / (limit - 1))] for index in range(limit)]
+    required = [
+        slot for slot in ordered
+        if slot.get("role") in {"interior_plan", "balcony_access"}
+    ]
+    if len(required) >= limit:
+        return required[:limit]
+    optional = [slot for slot in ordered if slot not in required]
+    remaining = limit - len(required)
+    if remaining == 1:
+        sampled = [optional[len(optional) // 2]]
+    else:
+        last = len(optional) - 1
+        sampled = [
+            optional[round(index * last / (remaining - 1))]
+            for index in range(remaining)
+        ]
+    selected_ids = {str(slot.get("id")) for slot in (*required, *sampled)}
+    return [slot for slot in ordered if str(slot.get("id")) in selected_ids]
 
 
 def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1933,7 +2422,54 @@ def _planned_terrace_railing_slots(
     opening_slots: list[dict[str, Any]],
     realization: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """为 U 形二层退台的临空前缘补一条连续安全栏杆。"""
+    """为 U 形或退台体量的可达屋面边缘生成确定性安全栏杆。"""
+    if realization.get("shape") == "stepped":
+        semantic_floors = max(1, int(realization.get("floors") or 1))
+        modeled_floors = max(1, int(realization.get("modeled_floors") or 1))
+        floor_height = max(0.1, float(realization.get("floor_height") or 3.2))
+        raw_volumes = [
+            item for item in realization.get("volumes", [])
+            if isinstance(item, dict)
+        ]
+        volumes = (
+            _schematic_volume_ranges(raw_volumes, semantic_floors, modeled_floors)
+            if realization.get("representation_mode") == "schematic"
+            else [
+                {
+                    **item,
+                    "semantic_start_floor": int(item.get("start_floor", 1)),
+                    "semantic_end_floor": int(item.get("end_floor", modeled_floors)),
+                }
+                for item in raw_volumes
+            ]
+        )
+        for lower in volumes:
+            lower_end = int(lower["semantic_end_floor"])
+            uppers = [
+                item for item in volumes
+                if int(item["semantic_start_floor"]) == lower_end + 1
+                and float(item["width"]) < float(lower["width"]) - 0.1
+                and float(item["depth"]) < float(lower["depth"]) - 0.1
+            ]
+            if not uppers:
+                continue
+            x0 = float(lower["x"])
+            z0 = float(lower["z"])
+            x1 = x0 + float(lower["width"])
+            z1 = z0 + float(lower["depth"])
+            y = round(lower_end * floor_height + 0.2, 3)
+            return [{
+                "id": f"railing:podium_terrace:{lower.get('id') or 'base'}",
+                "path": [
+                    [round(x0, 3), y, round(z0, 3)],
+                    [round(x1, 3), y, round(z0, 3)],
+                    [round(x1, 3), y, round(z1, 3)],
+                    [round(x0, 3), y, round(z1, 3)],
+                    [round(x0, 3), y, round(z0, 3)],
+                ],
+                "height": 1.1,
+            }]
+        return []
     if realization.get("shape") != "u_shape":
         return []
     access_slots = [slot for slot in opening_slots if slot.get("role") == "balcony_access"]
@@ -2072,6 +2608,10 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
     curtain_wall = bool(plan.get("curtain_wall"))
     curtain_params = load_curtain_wall_parameters() if curtain_wall else None
+    # 已确认平面的洞口是唯一事实源：存在平面洞口时，立面轴网 pattern 只作
+    # v1 兜底，不再生成立面网格槽位，避免与平面槽位在同一墙面重叠（否则
+    # conform 去重会丢掉平面槽位、G3 却仍按全量槽位判定“已批准槽位未生成”）。
+    planned_slots = spatial_opening_slots(plan.get("spatial_plan"))
     realization = {
         "floors": int(massing.get("floors") or massing.get("modeled_floors") or 1),
         "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
@@ -2080,9 +2620,22 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         "shape": str(massing.get("shape") or "rectangle"),
         "volumes": deepcopy(plan.get("volumes") or []),
     }
+    spatial_plan = plan.get("spatial_plan") if isinstance(plan.get("spatial_plan"), dict) else {}
+    interior_wall_ids = {
+        str(wall.get("id"))
+        for level in spatial_plan.get("levels", [])
+        if isinstance(level, dict)
+        for wall in level.get("walls", [])
+        if isinstance(wall, dict) and wall.get("kind") == "interior" and wall.get("id")
+    }
     walls = []
     for element in blueprint.get("geometry", {}).get("elements", []):
-        if isinstance(element, dict) and element.get("type") == "wall":
+        if (
+            isinstance(element, dict)
+            and element.get("type") == "wall"
+            and str(element.get("id") or "") not in interior_wall_ids
+            and not str(element.get("id") or "").startswith("wall_core_")
+        ):
             descriptor = _wall_descriptor(element)
             if descriptor:
                 walls.append(descriptor)
@@ -2186,6 +2739,15 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 break
             if opening_type not in {"door", "window"}:
                 continue
+            if (
+                curtain_wall
+                and realization["representation_mode"] == "schematic"
+                and opening_type == "window"
+            ):
+                # 示意高层的连续玻璃墙和龙骨已表达幕墙；不再对通高墙重复切
+                # 数百个 window 洞口，避免墙网格顶点爆炸。空间方案明确批准
+                # 的内部窗稍后仍会作为 planned_slots 保留。
+                continue
             if opening_type == "door" and not is_ground:
                 continue
             if opening_type == "door":
@@ -2277,6 +2839,30 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         )
         wall_plan["slots"].extend(wall_slots)
 
+    if planned_slots:
+        slots.extend(planned_slots)
+        # 已确认平面洞口是唯一事实源：立面网格槽位与平面槽位在同一面墙重叠时，
+        # 保留平面槽位、剔除立面网格槽位。否则 conform 的去重会丢掉平面槽位，
+        # 而 G3 仍按全量槽位判定「已批准槽位未生成对应门窗」。
+        spatial_slots = [slot for slot in slots if slot.get("role") == "interior_plan"]
+        kept: list[dict[str, Any]] = []
+        for slot in slots:
+            if slot.get("role") == "interior_plan":
+                kept.append(slot)
+                continue
+            if any(_opening_slots_overlap(slot, spatial) for spatial in spatial_slots):
+                continue
+            kept.append(slot)
+        slots = kept
+        for slot in planned_slots:
+            facade_plan[str(slot["wall_id"])] = {
+                "facing": "internal",
+                "intent": "按已校验平面设置内部洞口",
+                "max_openings": 1,
+                "is_main_facade": False,
+                "slots": [slot],
+            }
+
     slots.sort(key=lambda slot: (
         {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot["facing"], 4),
         slot["bay"],
@@ -2287,6 +2873,25 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     for opening_type in ("door", "window"):
         available = sum(1 for slot in slots if slot["type"] == opening_type)
         limits = quotas.setdefault(opening_type, {})
+        planned_count = sum(
+            1 for slot in planned_slots if slot["type"] == opening_type
+        )
+        if planned_count:
+            # 平面洞口是原立面配额之外的已批准关系：增加相应容量，但不强制
+            # 把所有可用外立面槽位都填满。槽位采样也会优先保留 interior_plan。
+            original_max = limits.get("max")
+            original_min = limits.get("min", 0)
+            limits["max"] = min(
+                available,
+                int(original_max) + planned_count
+                if isinstance(original_max, (int, float)) else available,
+            )
+            limits["min"] = min(
+                limits["max"],
+                (int(original_min) if isinstance(original_min, (int, float)) else 0)
+                + planned_count,
+            )
+            continue
         if curtain_wall and opening_type == "window":
             # 幕墙全立面密铺：每个窗槽位都必须有窗。这里忽略模型/回退配额上限，
             # 直接按实际立面槽位数量补齐，否则按少量配额沿全高抽样会变成
@@ -2405,6 +3010,27 @@ def conform_openings_to_slots(
     ]
     used_window_slots: set[str] = set()
     bay_windows = [deepcopy(item) for item in components if item.get("type") == "bay_window"]
+    bay_limits = (
+        quotas.get("bay_window", {})
+        if isinstance(quotas.get("bay_window"), dict)
+        else {}
+    )
+    bay_minimum = min(
+        len(window_slots),
+        max(0, int(bay_limits.get("min", 0))),
+    )
+    missing_bay_windows = max(0, bay_minimum - len(bay_windows))
+    for index in range(missing_bay_windows):
+        bay_windows.append({
+            "id": f"bay_window_planned_{len(bay_windows) + 1:02d}",
+            "type": "bay_window",
+            "projectionDepth": 0.8,
+            "frameWidth": 0.08,
+            "frameDepth": 0.12,
+            "frameMaterial": frame_material,
+            "glassMaterial": glass_material,
+        })
+    stats["synthesized"] += missing_bay_windows
     for bay_window in bay_windows:
         available = [slot for slot in window_slots if slot["id"] not in used_window_slots]
         if not available:
@@ -2621,6 +3247,8 @@ def _entrance_anchor(
         "normal_z": -ux,
         "origin_x": float(frm[0]),
         "origin_z": float(frm[2]),
+        "door_base_y": float(door_from[1]),
+        "door_height": max(0.5, float(entrance.get("height") or 2.1)),
         "constant_x": abs(dx) <= abs(dz),  # 沿 Z 走向（左右墙）时为 True
     }
 
@@ -2662,21 +3290,32 @@ def conform_entrance_accessories(
                 if anchor["constant_x"] is False
                 else abs(float(position[0]) - anchor["origin_x"]) < 0.75
             )
-            # 台灯/落地灯悬浮到半空是常见模型错误，统一落到地面。
-            if float(position[1]) > 2.0:
+            fixture_type = str(comp.get("fixtureType") or "table_lamp")
+            # 台灯/落地灯悬浮到半空是常见模型错误，统一落到地面；壁灯保留安装高度。
+            if fixture_type == "table_lamp" and float(position[1]) > 2.0:
                 position[1] = 0.0
             if on_entrance_wall:
                 offset = 0.35
+                along = anchor["along"]
+                if fixture_type == "bulb":
+                    along = (
+                        (float(position[0]) - anchor["origin_x"]) * anchor["run_x"]
+                        + (float(position[2]) - anchor["origin_z"]) * anchor["run_z"]
+                    )
+                    along = max(0.15, min(along, anchor["length"] - 0.15))
                 position[0] = round(
                     anchor["origin_x"]
-                    + anchor["run_x"] * anchor["along"]
+                    + anchor["run_x"] * along
                     + anchor["normal_x"] * offset,
                     3,
                 )
-                position[1] = 0.0
+                position[1] = (
+                    round(max(anchor["door_base_y"] + 1.8, float(position[1])), 3)
+                    if fixture_type == "bulb" else 0.0
+                )
                 position[2] = round(
                     anchor["origin_z"]
-                    + anchor["run_z"] * anchor["along"]
+                    + anchor["run_z"] * along
                     + anchor["normal_z"] * offset,
                     3,
                 )

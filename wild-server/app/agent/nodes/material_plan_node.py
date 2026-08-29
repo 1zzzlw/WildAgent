@@ -71,6 +71,30 @@ ELEMENT_ROLE = {
     "roof": "roof",
 }
 
+# 骨架生成器会先用这些受控材质 ID 标记构件的“用途”：例如玻璃幕墙壳体
+# 是 glass、龙骨是 metal、核心筒是 concrete。材质规划只能替换该用途对应的
+# 具体材质参数，不能再仅凭 element.type 把所有 wall/beam 覆盖成同一种材质。
+MATERIAL_ID_ROLE = {
+    str(spec["materialId"]): role
+    for role, spec in ROLE_SPECS.items()
+}
+
+
+def _element_material_role(element: dict[str, Any], *, curtain_wall: bool) -> str | None:
+    """解析骨架构件的稳定材质角色，并修复已知的类型级错误覆盖。"""
+    element_id = str(element.get("id") or "")
+    element_type = str(element.get("type") or "")
+    if curtain_wall and element_type == "wall" and "_shell_" in element_id:
+        return "glass"
+    if element_id.startswith("curtain_mullion_"):
+        return "frame"
+    if element_type == "wall" and (
+        element_id.startswith("wall_core_") or "shaft_wall" in element_id
+    ):
+        return "structure"
+    explicit_role = MATERIAL_ID_ROLE.get(str(element.get("material")))
+    return explicit_role or ELEMENT_ROLE.get(element_type)
+
 
 def compact_asset_catalog(manifests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """只把选择材质所需的可信元数据交给模型，不暴露 URL。"""
@@ -244,7 +268,7 @@ def resolve_material_plan(
 
 
 def apply_resolved_material_plan(blueprint: dict, material_plan: dict | None) -> dict:
-    """将已解析方案确定性写入骨架，模型无法绕过资产白名单。"""
+    """按骨架已有的语义材质角色写入方案，模型无法绕过资产白名单。"""
     if not isinstance(material_plan, dict):
         return blueprint
     materials = blueprint.setdefault("materials", {})
@@ -265,14 +289,14 @@ def apply_resolved_material_plan(blueprint: dict, material_plan: dict | None) ->
     for element in blueprint.get("geometry", {}).get("elements", []):
         if not isinstance(element, dict):
             continue
-        role = ELEMENT_ROLE.get(str(element.get("type")))
+        # 稳定语义 ID 可修复旧版本留下的错误覆盖；其他构件优先采用骨架明确
+        # 写出的受控材质角色，最后才按元素类型使用旧版默认角色。
+        role = _element_material_role(
+            element,
+            curtain_wall=material_plan.get("curtainWall") is True,
+        )
         if role and role in role_material_ids:
             element["material"] = role_material_ids[role]
-
-    # 玻璃幕墙（方案 A：wall + window）：外墙宿主保持上面的 facade_primary 不透明中性墙板，
-    # 玻璃与竖梃/横梃由窗构件的 glassMaterial/frameMaterial + mullions 表达。
-    # 既不把整片外墙设成 glass（会变「纯玻璃墙」），也不设成深色金属（会变「纯黑」）。
-    # 因此这里刻意不对 wall 材质做任何额外改写。
 
     resolved_assets = material_plan.get("resolvedAssets") or {}
     blueprint["assets"] = deepcopy(resolved_assets) if isinstance(resolved_assets, dict) else {}

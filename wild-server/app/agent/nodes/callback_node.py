@@ -20,6 +20,7 @@ from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import invoke_llm, stream_llm
+from app.agent.model_errors import classify_model_error
 from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import COMPONENT_REGISTRY
 from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
@@ -173,7 +174,19 @@ async def callback_node(state: GenerationState) -> dict:
         )
     except Exception as e:
         logger.error(f"[callback_node] LLM 调用失败: {e}")
-        return {"retry_count": retry_count + 1}
+        model_error = classify_model_error(e)
+        return {
+            "retry_count": retry_count + 1,
+            "component_retry_counts": comp_retries,
+            "terminal_model_error": model_error,
+            "error": model_error["user_message"],
+            "status": "failed",
+            "repair_audit": {
+                "accepted": False,
+                "reason": "模型服务故障，当前修复流程已终止",
+                "model_error": model_error,
+            },
+        }
 
     # ── 5. 提取并执行修复工具动作 ──
     repair_actions = extract_repair_actions(reply_text)

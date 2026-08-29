@@ -370,13 +370,20 @@ table | chair | bookshelf | bed | lamp | tile
 | `albedo` | 必需；`0–1`。 |
 | `lightingCondition` | 必需；固定 `D65_noon`。 |
 | `emissive` | 可选；三个 `0–1` 数值。 |
-| `opacity` | 可选；`0–1`，默认 1。玻璃应显式设置。 |
+| `opacity` | 可选；`0–1`，默认 1。物理玻璃必须为 1 或省略。 |
+| `materialClass` | 可选；`standard/glass/clearcoat/fabric`。物理玻璃使用 `glass`。 |
+| `side` | 可选；`front/double`。薄玻璃通常使用 `double`。 |
+| `transmission` | 可选；`0–1`。物理玻璃必须大于 0。 |
+| `ior` | 可选；`1–2.333`，建筑玻璃通常为 1.5。 |
+| `thickness` | 可选；非负光学厚度。 |
 | `effects` | 可选；`grain/weathering/moss/edgeWear` 效果层。 |
 | `normalScale` | 可选；非负数。 |
 | `uvScale` | 可选；两个正数。 |
 | `textureSet` | 可选；引用 `assets` 中存在的 PBR 资产 ID。 |
 
 解析器可把旧式 `color: "#RRGGBB"` 归一化为 `baseColor` 并补齐基础 PBR 参数，但保存的新蓝图必须直接使用标准字段。
+
+玻璃不得只靠 `opacity: 0.35` 模拟；新蓝图使用 `materialClass: "glass"`、正数 `transmission` 和有效 `ior`，同时省略 `opacity` 或保持为 1。
 
 ### 6.2 URL 型 PBR 资产
 

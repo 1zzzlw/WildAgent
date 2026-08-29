@@ -79,7 +79,7 @@ synonyms:
     "brick": { "baseColor": [0.65, 0.40, 0.25], "roughness": 0.8, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "tile": { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }
@@ -193,7 +193,7 @@ synonyms:
     "concrete": { "baseColor": [0.85, 0.83, 0.80], "roughness": 0.55, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "metal": { "baseColor": [0.15, 0.15, 0.15], "roughness": 0.35, "metallic": 0.65, "albedo": 1, "lightingCondition": "D65_noon" },
     "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }
@@ -216,6 +216,6 @@ synonyms:
 |---|---|
 | `column.crossSection: "square"` | column 用 `style: "modern"`（无 crossSection 字段） |
 | `window.sashType: "sliding"` | 用 `interaction.mode: "slide"` |
-| `window.glassOpacity` | 不存在，材质中设 `opacity` |
+| `window.glassOpacity` | 不存在；玻璃外观由 `glassMaterial` 引用的物理玻璃材质控制，不得在 window 上自造字段 |
 | `stair.autoRailing: true` | 手动加 `railing` 组件 |
 | `door.style: "panel"` | 用 `leafMaterial` 控制外观 |

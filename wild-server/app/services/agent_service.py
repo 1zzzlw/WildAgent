@@ -1201,7 +1201,8 @@ class AgentService:
         selection: list[str] | None = None,
         thinking_mode: bool = False,
         on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
-        expected_output: Literal["auto", "patch"] = "auto",
+        expected_output: Literal["auto", "patch", "blueprint", "text"] = "auto",
+        resolved_intent: Literal["generate", "edit", "chat"] | None = None,
     ) -> QueryResult:
         """统一入口：一次调用覆盖生成/修改/聊天三种意图。
 
@@ -1220,6 +1221,7 @@ class AgentService:
             )
         if material_optimization:
             expected_output = "patch"
+            resolved_intent = "edit"
 
         # ── 场景上下文（如有）注入 user message ──────────────────
         user_message = message
@@ -1238,6 +1240,18 @@ class AgentService:
                 "上游已经判定这是增量修改。只输出一个 ScenePatch JSON 对象，"
                 "必须包含非空 operations 数组和 summary；不要输出完整 Blueprint。"
             )
+        elif expected_output == "blueprint":
+            user_message += (
+                "\n\n# 本次输出协议（强制）\n\n"
+                "上游意图分类器已经判定这是新建筑生成。只输出一个完整 Blueprint "
+                "JSON 对象；不要输出 ScenePatch，也不要只给文字建议。"
+            )
+        elif expected_output == "text":
+            user_message += (
+                "\n\n# 本次输出协议（强制）\n\n"
+                "上游意图分类器已经判定这是知识问答。只输出面向用户的文本回答；"
+                "不要输出 Blueprint、ScenePatch 或启动建筑生成。"
+            )
         if material_optimization:
             user_message += build_material_optimization_prompt(selected_ids)
 
@@ -1245,8 +1259,11 @@ class AgentService:
         rag_queries = self._build_rag_queries(message, current_blueprint)
         from app.agent.intent_classifier import fast_path_intent
 
-        fast_intent = fast_path_intent(message, current_blueprint is not None)
-        rag_purpose = infer_retrieval_purpose(message, fast_intent)
+        retrieval_intent = resolved_intent or fast_path_intent(
+            message,
+            current_blueprint is not None,
+        )
+        rag_purpose = infer_retrieval_purpose(message, retrieval_intent)
         try:
             agent = self._agent_for_query(
                 rag_queries,
@@ -1332,6 +1349,12 @@ class AgentService:
                 logger.warning(f"[query] ScenePatch 定向格式恢复失败: {exc}")
 
         if patch_data is not None:
+            if expected_output in {"blueprint", "text"}:
+                return QueryResult(
+                    text=reply,
+                    error=f"{expected_output} 意图收到不匹配的 ScenePatch",
+                    structured_source=structured_source,
+                )
             if not current_blueprint:
                 return QueryResult(
                     text=reply,
@@ -1399,10 +1422,10 @@ class AgentService:
             )
 
         if blueprint_data is not None:
-            if expected_output == "patch":
+            if expected_output in {"patch", "text"}:
                 return QueryResult(
                     text=reply,
-                    error="增量修改节点返回了完整 Blueprint，而不是 ScenePatch",
+                    error=f"{expected_output} 意图收到不匹配的完整 Blueprint",
                     structured_source=structured_source,
                     structured_recovery_used=recovery_used,
                 )
@@ -1441,6 +1464,11 @@ class AgentService:
                 text=reply,
                 error="模型两次回复均未返回可解析的 ScenePatch",
                 structured_recovery_used=recovery_used,
+            )
+        if expected_output == "blueprint":
+            return QueryResult(
+                text=reply,
+                error="生成意图未返回可解析的完整 Blueprint",
             )
 
         # ── 纯文本（对话类）─────────────────────────────────────

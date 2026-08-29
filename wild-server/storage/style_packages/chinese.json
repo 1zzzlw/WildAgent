@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "id": "chinese",
+  "name": "新中式",
+  "description": "曲面坡屋顶、深色檐口和入口木构柱列，以现有 WILD 构件表达可编译的新中式外观。",
+  "keywords": ["中式", "新中式", "东方", "园林", "chinese"],
+  "tags": ["residential", "garden_structure", "courtyard"],
+  "roof": {"type": "chinese_curved", "height_ratio": 0.18, "eave_curve_height": 0.75},
+  "palette": {
+    "wall_finish": [0.82, 0.78, 0.68],
+    "roof": [0.19, 0.12, 0.09],
+    "accent": [0.36, 0.12, 0.08]
+  },
+  "decor": {
+    "cornice": {"enabled": true, "width": 0.34, "height": 0.2},
+    "entrance_canopy": {"enabled": true, "depth": 1.6, "thickness": 0.18},
+    "facade_columns": {"enabled": true, "style": "chinese_wooden", "count": 2, "radius": 0.16}
+  }
+}

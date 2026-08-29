@@ -17,6 +17,7 @@ from app.agent.graph_state import GenerationState
 from app.agent.prompts import build_component_prompt
 from app.agent.model_client import create_llm
 from app.agent.llm_invocation import invoke_llm, stream_llm
+from app.agent.model_errors import classify_model_error
 from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import ComponentConfig
 from app.spec.loader import SpecQuery
@@ -146,12 +147,14 @@ def create_component_generator(config: ComponentConfig):
 
         except Exception as e:
             logger.error(f"[{config.component_type}_gen] LLM 调用失败: {e}")
+            model_error = classify_model_error(e)
             empty_value = [] if config.is_list else None
             diag = {
                     "label": config.label,
                     "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
                     "rag_error": rag_error,
-                    "error": str(e),
+                    "error": model_error["user_message"],
+                    "model_error": model_error,
                 }
             return _component_state_update(config, empty_value, gen_diag_key, diag)
 

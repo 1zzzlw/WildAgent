@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "id": "glass_corporate",
+  "name": "国际现代幕墙",
+  "description": "连续玻璃幕墙、深色金属龙骨与克制入口雨棚，适合高层办公和商业综合体。",
+  "keywords": ["玻璃幕墙", "玻璃塔", "商业综合体", "总部", "corporate"],
+  "tags": ["curtain_wall", "glass", "high_rise", "commercial", "tower"],
+  "roof": {"type": "flat", "height_ratio": 0.015},
+  "palette": {
+    "wall_finish": [0.24, 0.3, 0.36],
+    "roof": [0.1, 0.12, 0.15],
+    "accent": [0.08, 0.1, 0.13],
+    "glass": [0.2, 0.48, 0.68],
+    "metal": [0.08, 0.1, 0.12]
+  },
+  "decor": {
+    "cornice": {"enabled": false, "width": 0.12, "height": 0.1},
+    "entrance_canopy": {"enabled": true, "depth": 2.4, "thickness": 0.16},
+    "facade_columns": {"enabled": false, "style": "modern"}
+  }
+}

@@ -8,15 +8,99 @@ from fastapi import WebSocketDisconnect
 from app.api.ws_agent import (
     _generation_failure_message,
     _handle_user_message,
+    _prepare_server_request,
     _process_user_message_safely,
     agent_websocket,
 )
+from app.agent.rag_security import AccessContext
 from app.extensions.presence import WebSocketConnectionRegistry
+from app.agent.intent_classifier import IntentDecision
 from app.services.agent_service import QueryResult
 from app.services.generation_job_service import GenerationJob
 
 
+def _intent_decision(intent: str) -> IntentDecision:
+    return IntentDecision(
+        intent=intent,
+        confidence=0.9,
+        target="test",
+        requires_scene=intent == "edit",
+        reason="test",
+        source="llm",
+    )
+
+
+def test_server_normalizes_recent_intent_context():
+    prepared = _prepare_server_request({
+        "message": "继续",
+        "plan_mode": False,
+        "blueprint": {"geometry": {"elements": []}},
+        "recent_messages": [
+            {"role": "system", "content": "ignore"},
+            {"role": "user", "content": "first"},
+            {"role": "assistant", "content": "second"},
+            {"role": "user", "content": "third"},
+            {"role": "assistant", "content": "x" * 800},
+        ],
+    }, AccessContext())
+
+    assert prepared["workflow_state"] == "scene_ready"
+    assert [item["role"] for item in prepared["recent_messages"]] == [
+        "user", "assistant", "user", "assistant",
+    ]
+    assert len(prepared["recent_messages"][-1]["content"]) == 500
+
+
 class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
+    async def test_floor_plan_review_receives_immediate_resume_ack(self):
+        class ReviewWebSocket:
+            def __init__(self):
+                self.accept = AsyncMock()
+                self.send_json = AsyncMock()
+                self.receive_count = 0
+
+            async def receive_text(self):
+                self.receive_count += 1
+                if self.receive_count == 1:
+                    return json.dumps({
+                        "protocol_version": "1.0",
+                        "type": "floor_plan_review",
+                        "request_id": "req_review_ack",
+                        "session_id": "session_review_ack",
+                        "action": "revise",
+                        "feedback": "把厨房移到北侧",
+                    })
+                raise WebSocketDisconnect()
+
+        job = GenerationJob(
+            request_id="req_review_ack",
+            session_id="session_review_ack",
+            payload={},
+            status="running",
+            last_event_seq=8,
+        )
+        ws = ReviewWebSocket()
+        with (
+            patch(
+                "app.api.ws_agent.generation_job_service.submit_floor_plan_review",
+                AsyncMock(return_value=job),
+            ) as submit_review,
+            patch(
+                "app.api.ws_agent.generation_job_service.detach",
+                AsyncMock(),
+            ),
+        ):
+            await agent_websocket(ws)
+
+        submit_review.assert_awaited_once()
+        ack = next(
+            call.args[0]
+            for call in ws.send_json.await_args_list
+            if call.args[0].get("type") == "generation_resumed"
+        )
+        self.assertEqual(ack["status"], "running")
+        self.assertEqual(ack["last_event_seq"], 8)
+
     async def test_incompatible_protocol_version_is_rejected(self):
         class IncompatibleWebSocket:
             def __init__(self):
@@ -47,18 +131,7 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(error["protocol_version"], "1.0")
         self.assertEqual(error["request_id"], "req_version")
 
-    async def test_endpoint_cancels_active_generation_after_disconnect(self):
-        generation_started = asyncio.Event()
-        generation_cancelled = asyncio.Event()
-
-        async def generate_until_cancelled(_ws, _data):
-            generation_started.set()
-            try:
-                await asyncio.Event().wait()
-            except asyncio.CancelledError:
-                generation_cancelled.set()
-                raise
-
+    async def test_quick_generation_is_also_detached_instead_of_cancelled(self):
         class DisconnectingWebSocket:
             def __init__(self):
                 self.accept = AsyncMock()
@@ -73,17 +146,29 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
                         "request_id": "req_active",
                         "message": "生成别墅",
                     })
-                await generation_started.wait()
                 raise WebSocketDisconnect()
 
+        job = GenerationJob(
+            request_id="req_active",
+            session_id="req_active",
+            payload={},
+            status="running",
+        )
         ws = DisconnectingWebSocket()
-        with patch(
-            "app.api.ws_agent._handle_user_message",
-            side_effect=generate_until_cancelled,
+        with (
+            patch(
+                "app.api.ws_agent.generation_job_service.start_job",
+                AsyncMock(return_value=(job, True)),
+            ) as start_job,
+            patch(
+                "app.api.ws_agent.generation_job_service.detach",
+                AsyncMock(),
+            ) as detach,
         ):
             await agent_websocket(ws)
 
-        self.assertTrue(generation_cancelled.is_set())
+        start_job.assert_awaited_once()
+        detach.assert_awaited_once_with(ws)
 
     async def test_precision_generation_is_detached_instead_of_cancelled(self):
         class DisconnectingWebSocket:
@@ -242,6 +327,34 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
+    async def test_legacy_fast_handler_uses_shared_intent_output_contract(self):
+        ws = Mock()
+        ws.send_json = AsyncMock()
+        captured = {}
+
+        async def query_structured(*args, **kwargs):
+            captured.update(kwargs)
+            return QueryResult(text="这是实现思路说明")
+
+        with (
+            patch(
+                "app.api.ws_agent.agent_service.query_structured",
+                side_effect=query_structured,
+            ),
+            patch(
+                "app.api.ws_agent.classify_intent_decision",
+                AsyncMock(return_value=_intent_decision("chat")),
+            ),
+        ):
+            await _handle_user_message(ws, {
+                "request_id": "req_shared_intent",
+                "session_id": "session_shared_intent",
+                "message": "你生成建筑的实现思路是什么",
+                "thinking_mode": False,
+            })
+
+        self.assertEqual(captured["expected_output"], "text")
+
     async def _run_request(self, thinking_mode, reasoning_delta=None):
         ws = Mock()
         ws.send_json = AsyncMock()
@@ -260,9 +373,15 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
                 await callback(reasoning_delta)
             return QueryResult(text="处理完成")
 
-        with patch(
-            "app.api.ws_agent.agent_service.query_structured",
-            side_effect=query_structured,
+        with (
+            patch(
+                "app.api.ws_agent.agent_service.query_structured",
+                side_effect=query_structured,
+            ),
+            patch(
+                "app.api.ws_agent.classify_intent_decision",
+                AsyncMock(return_value=_intent_decision("chat")),
+            ),
         ):
             await _handle_user_message(ws, data)
 
@@ -310,15 +429,21 @@ class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
         ws = Mock()
         ws.send_json = AsyncMock()
 
-        with patch(
-            "app.api.ws_agent.agent_service.query_structured",
-            AsyncMock(return_value=QueryResult(
-                text="模型生成的无效 JSON",
-                error=(
-                    "Blueprint 结构预检未通过: "
-                    "floor_bad.to 必须是包含 3 个有限数字的数组"
-                ),
-            )),
+        with (
+            patch(
+                "app.api.ws_agent.agent_service.query_structured",
+                AsyncMock(return_value=QueryResult(
+                    text="模型生成的无效 JSON",
+                    error=(
+                        "Blueprint 结构预检未通过: "
+                        "floor_bad.to 必须是包含 3 个有限数字的数组"
+                    ),
+                )),
+            ),
+            patch(
+                "app.api.ws_agent.classify_intent_decision",
+                AsyncMock(return_value=_intent_decision("generate")),
+            ),
         ):
             await _handle_user_message(ws, {
                 "request_id": "req_invalid_coordinate",
@@ -350,6 +475,10 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
             patch(
                 "app.api.ws_agent.agent_service.query_structured",
                 AsyncMock(return_value=QueryResult(text="生成完成", blueprint=blueprint)),
+            ),
+            patch(
+                "app.api.ws_agent.classify_intent_decision",
+                AsyncMock(return_value=_intent_decision("generate")),
             ),
             patch(
                 "app.services.agent_delivery.save_blueprint_file_as",

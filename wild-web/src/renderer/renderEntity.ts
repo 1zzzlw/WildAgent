@@ -20,6 +20,7 @@ import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
 
 const MAX_VERTICES = 50000
+const typedArrayHashCache = new WeakMap<Float32Array | Uint32Array, number>()
 
 /**
  * 将 wild-core 的 MeshData 转换为 Three.js Mesh
@@ -39,7 +40,7 @@ function createMeshFromMeshData(
   if (meshData.geometry.length / 3 > MAX_VERTICES) {
     console.warn(
       `[renderEntity] ${meshData.elementId} 顶点数 ${meshData.geometry.length / 3} 超过上限 ${MAX_VERTICES}，` +
-      `已替换为占位网格（可能是 opening 坐标错误导致几何爆炸）`
+      `已替换为占位网格（可能是过密表面细分、洞口组合或坐标错误）`
     )
     // 用一个小的红色线框 box 作为占位，让用户知道该构件有问题
     const placeholder = new THREE.Mesh(
@@ -63,10 +64,14 @@ function createMeshFromMeshData(
   // 2. 获取或创建材质
   const matParams = materialParams[materialIndex]
   const hasVertexColors = !!meshData.vertexColors
+  let ownsMaterial = !matParams
   let material = matParams
     ? materialCache.getOrCreate(meshData.materialRef, matParams, hasVertexColors)
     : new THREE.MeshStandardMaterial({ color: 0x808080 }) // 默认灰色
-  if (meshData.interaction?.kind === 'light') material = material.clone()
+  if (meshData.interaction?.kind === 'light') {
+    material = material.clone()
+    ownsMaterial = true
+  }
   
   // 3. 创建 Mesh
   const mesh = new THREE.Mesh(geometry, material)
@@ -86,6 +91,7 @@ function createMeshFromMeshData(
   mesh.userData.materialRef = meshData.materialRef
   mesh.userData.interactive = meshData.interactive || false
   mesh.userData.draggable = meshData.draggable || false
+  mesh.userData.ownsMaterial = ownsMaterial
   if (meshData.interaction) {
     mesh.userData.interaction = {
       ...meshData.interaction,
@@ -96,7 +102,6 @@ function createMeshFromMeshData(
       mesh.userData.interactionOpen = false
       if (meshData.interaction.initiallyOpen) setOpeningInteractionProgress(mesh, 1)
     } else {
-      mesh.userData.ownsMaterial = true
       initializeLightInteraction(mesh, meshData.interaction)
     }
   }
@@ -333,6 +338,7 @@ function createInstancedMesh(
   instanced.name = `Instanced:${first.meshData.materialRef}`
   instanced.userData.instanceElementIds = entries.map(entry => entry.meshData.elementId)
   instanced.userData.materialRef = first.meshData.materialRef
+  instanced.userData.ownsMaterial = !params
   return instanced
 }
 
@@ -398,6 +404,8 @@ function meshSignature(meshData: MeshData, params: any): string {
 }
 
 function hashTypedArray(array: Float32Array | Uint32Array): number {
+  const cached = typedArrayHashCache.get(array)
+  if (cached !== undefined) return cached
   let hash = 2166136261
   const words = array instanceof Float32Array
     ? new Uint32Array(array.buffer, array.byteOffset, array.length)
@@ -406,7 +414,25 @@ function hashTypedArray(array: Float32Array | Uint32Array): number {
     hash ^= words[index]
     hash = Math.imul(hash, 16777619)
   }
-  return hash >>> 0
+  const result = hash >>> 0
+  typedArrayHashCache.set(array, result)
+  return result
+}
+
+/** 释放一个渲染子树拥有的几何和私有材质；共享材质仍由 MaterialCache 管理。 */
+export function clearSceneObjectResources(root: THREE.Object3D): void {
+  const geometries = new Set<THREE.BufferGeometry>()
+  const materials = new Set<THREE.Material>()
+  root.traverse(object => {
+    if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.InstancedMesh)) return
+    geometries.add(object.geometry)
+    if (!object.userData.ownsMaterial) return
+    const owned = Array.isArray(object.material) ? object.material : [object.material]
+    owned.forEach(material => materials.add(material))
+  })
+  root.clear()
+  geometries.forEach(geometry => geometry.dispose())
+  materials.forEach(material => material.dispose())
 }
 
 /**
@@ -456,21 +482,7 @@ export function updateSceneGroup(
   entity: ReconstructedEntity,
   materialCache: MaterialCache
 ): void {
-  // 清空旧对象
-  while (group.children.length > 0) {
-    const child = group.children[0]
-    group.remove(child)
-    
-    // 释放资源
-    if (child instanceof THREE.Mesh) {
-      child.geometry.dispose()
-      if (child.userData.ownsMaterial) {
-        const materials = Array.isArray(child.material) ? child.material : [child.material]
-        materials.forEach(material => material.dispose())
-      }
-      // 注意：材质由 materialCache 管理，不在这里释放
-    }
-  }
+  clearSceneObjectResources(group)
   
   materialCache.beginUpdate()
   try {

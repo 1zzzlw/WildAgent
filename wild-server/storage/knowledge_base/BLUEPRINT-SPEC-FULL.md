@@ -578,6 +578,13 @@ synonyms: []
 | textures          | object    | -       | v1.1 内嵌 PBR 通道：baseColor / normal / roughness / metalness / ambientOcclusion |
 | normalScale       | number    | -       | 法线纹理强度，默认 1 |
 | uvScale           | [number, number] | >0 | UV 重复次数，默认 `[1,1]` |
+| materialClass     | string    | -       | `standard/glass/clearcoat/fabric`；物理玻璃使用 `glass` |
+| side              | string    | -       | `front/double`；薄玻璃通常使用 `double` |
+| transmission      | number    | 0.0-1.0 | 物理透射率；`materialClass=glass` 时必须大于 0 |
+| ior               | number    | 1.0-2.333 | 折射率；普通建筑玻璃可使用 1.5 |
+| thickness         | number    | >=0     | 光学厚度（米） |
+
+物理玻璃不得再用低 `opacity` 模拟。新蓝图应使用 `materialClass: "glass"`、正数 `transmission` 和有效 `ior`；`opacity` 必须为 `1` 或省略。
 
 所有数值颜色均按 sRGB authored value 表达。渲染器负责在线性工作空间中进行光照计算；基础色纹理按 sRGB 解码，法线、粗糙度、金属度和 AO 作为非颜色数据读取。
 

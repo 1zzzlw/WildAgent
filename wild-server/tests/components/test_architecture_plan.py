@@ -384,6 +384,61 @@ def test_bay_window_claims_a_window_slot_without_duplicate_plain_window() -> Non
     )
 
 
+def test_required_bay_window_is_synthesized_from_an_approved_window_slot() -> None:
+    blueprint = _two_storey_blueprint()
+    plan, _ = select_architecture_plan({}, "生成带凸窗的两层现代别墅")
+    brief = resolve_facade_layout(blueprint, plan)
+
+    components, stats = conform_openings_to_slots(
+        [], brief, blueprint["materials"],
+    )
+
+    bay_windows = [
+        item for item in components if item["type"] == "bay_window"
+    ]
+    windows = [item for item in components if item["type"] == "window"]
+    assert len(bay_windows) == brief["component_quota"]["bay_window"]["min"]
+    assert stats["synthesized"] >= len(bay_windows)
+    assert all(item["parentWall"] for item in bay_windows)
+    assert all(item["projectionDepth"] > 0 for item in bay_windows)
+    assert not any(
+        window["parentWall"] == bay["parentWall"]
+        and window["from"] == bay["from"]
+        for bay in bay_windows
+        for window in windows
+    )
+
+
+def test_simple_plan_rejects_model_invented_detail_quota() -> None:
+    message = "生成一个简单方盒子住宅，不要复杂装饰"
+    plan = normalize_architecture_plan({
+        "detail_packages": ["bay_window"],
+        "component_quota": {
+            "bay_window": {"min": 1, "max": 2},
+        },
+        "required_components": ["door", "window", "roof", "bay_window"],
+    }, message, resolve_complexity_profile(message, precision_mode=True))
+
+    assert plan["complexity"]["level"] == "simple"
+    assert plan["detail_packages"] == []
+    assert "bay_window" not in plan["component_quota"]
+    assert "bay_window" not in plan["required_components"]
+
+
+def test_simple_plan_keeps_explicitly_requested_bay_window() -> None:
+    message = "生成一个简单的带凸窗住宅"
+    plan = normalize_architecture_plan({
+        "detail_packages": [],
+        "component_quota": {
+            "bay_window": {"min": 1, "max": 1},
+        },
+    }, message, resolve_complexity_profile(message, precision_mode=True))
+
+    assert plan["detail_packages"] == ["bay_window"]
+    assert plan["component_quota"]["bay_window"]["min"] == 1
+    assert "bay_window" in plan["required_components"]
+
+
 def test_high_rise_keeps_semantic_floor_count_and_uses_schematic_geometry() -> None:
     message = "建造一栋60层高层办公大厦，宽80米，深45米"
     plan = normalize_architecture_plan({
@@ -532,6 +587,7 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
         }
         assert min(window_levels) == 0
         assert max(window_levels) == floors - 1
+        assert len(window_levels) <= plan["massing"]["modeled_floors"]
 
 
 def test_precision_mode_compiles_detailed_plan_into_articulated_skeleton() -> None:
@@ -627,6 +683,55 @@ def test_standard_plan_rejects_missing_vertical_circulation() -> None:
     assert evaluation["checks"]["vertical_circulation"] is False
 
 
+def test_stepped_building_stairs_stay_in_shared_footprint_and_connect() -> None:
+    message = "生成一座8层退台式商业综合体"
+    plan = normalize_architecture_plan({
+        "massing": {
+            "shape": "stepped",
+            "width": 46,
+            "depth": 34,
+            "floors": 8,
+            "modeled_floors": 8,
+            "representation_mode": "full",
+            "floor_height": 4.2,
+        },
+        "volumes": [
+            {
+                "id": "podium", "x": 0, "z": 0,
+                "width": 46, "depth": 34,
+                "start_floor": 1, "end_floor": 3,
+            },
+            {
+                "id": "tower", "x": 12, "z": 7,
+                "width": 22, "depth": 20,
+                "start_floor": 4, "end_floor": 6,
+            },
+            {
+                "id": "crown", "x": 16, "z": 10,
+                "width": 14, "depth": 14,
+                "start_floor": 7, "end_floor": 8,
+            },
+        ],
+    }, message, resolve_complexity_profile(message, precision_mode=True))
+
+    blueprint = build_deterministic_skeleton(plan, message)
+    stairs = sorted(
+        (
+            item for item in blueprint["geometry"]["elements"]
+            if item.get("type") == "stair"
+        ),
+        key=lambda item: item["from"][1],
+    )
+
+    assert len(stairs) == 7
+    for stair in stairs:
+        for point in (stair["from"], stair["to"]):
+            assert 16 <= point[0] <= 30
+            assert 10 <= point[2] <= 24
+    for previous, current in zip(stairs, stairs[1:]):
+        assert previous["to"] == current["from"]
+
+
 def test_standard_plan_rejects_exact_duplicate_wall() -> None:
     message = "生成一座普通单层现代住宅"
     plan = normalize_architecture_plan({}, message)
@@ -686,6 +791,29 @@ def test_balcony_width_is_not_misread_as_building_width() -> None:
 
     assert plan["massing"]["width"] == 12.0
     assert plan["balcony_width"] == 1.5
+
+
+def test_single_storey_l_u_and_courtyard_shapes_have_deterministic_volumes() -> None:
+    cases = (
+        ("生成一层12米乘9米的L形住宅", "l_shape", {"left_wing", "front_wing"}),
+        ("生成一层12米乘9米的U形住宅", "u_shape", {"left_wing", "right_wing", "back_link"}),
+        (
+            "生成一层12米乘9米的回字形中庭住宅",
+            "courtyard",
+            {"courtyard_front", "courtyard_back", "courtyard_left", "courtyard_right"},
+        ),
+    )
+
+    for message, expected_shape, expected_ids in cases:
+        plan = normalize_architecture_plan({}, message)
+
+        assert plan["massing"]["shape"] == expected_shape
+        assert plan["massing"]["modeled_floors"] == 1
+        assert {volume["id"] for volume in plan["volumes"]} == expected_ids
+        assert all(
+            volume["start_floor"] == 1 and volume["end_floor"] == 1
+            for volume in plan["volumes"]
+        )
 
 
 def test_u_shape_skeleton_uses_union_perimeter_and_balcony_access_slots() -> None:

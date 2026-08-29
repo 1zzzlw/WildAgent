@@ -38,14 +38,17 @@ variables:
   image: node:22-alpine
   stage: validate
   allow_failure: false
-  only:
-    - main
-    - master
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
   before_script:
     - cd wild-web
     - npm config set registry $NPM_REGISTRY
   script:
     - npm ci
+    - npm run check:core
+    - npm run check:compiler
+    - npm run check:rendering
     - npm run build
   # 构建产物，供后续阶段使用（类似于 Maven 的 target/*.jar）
   artifacts:
@@ -58,9 +61,9 @@ variables:
   image: python:3.12-slim
   stage: validate
   allow_failure: false
-  only:
-    - main
-    - master
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
   before_script:
     - cd wild-server
     - pip install "uv==$UV_VERSION" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
@@ -70,13 +73,41 @@ variables:
     - python -c "import ast; ast.parse(open('main.py').read()); print('main.py OK')"
     - uv lock --check 2>/dev/null || echo "uv.lock 不是最新的，但不阻塞 CI"
 
+建筑生成质量门禁:
+  image: python:3.12-slim
+  stage: validate
+  allow_failure: false
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+  before_script:
+    - cd wild-server
+    - pip install "uv==$UV_VERSION" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+    - uv sync --frozen
+  script:
+    - >-
+      uv run python -m pytest -q
+      tests/components/test_architecture_plan.py
+      tests/components/test_floor_plan_design.py
+      tests/components/test_floor_plan_review.py
+      tests/components/test_material_plan.py
+      tests/components/test_plan2build_pipeline.py
+      tests/components/test_spatial_plan.py
+      tests/components/test_style_review.py
+      tests/agent/test_agent_graph_execution.py
+      tests/agent/test_agent_graph_routing.py
+      tests/network/test_generation_job_service.py
+      tests/network/test_ws_agent_disconnect.py
+      tests/repair/test_callback_targeted_repair.py
+      tests/validators/test_spatial_validation.py
+
 RAG质量门禁:
   image: python:3.12-slim
   stage: validate
   allow_failure: false
-  only:
-    - main
-    - master
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
   before_script:
     - cd wild-server
     - pip install "uv==$UV_VERSION" -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com

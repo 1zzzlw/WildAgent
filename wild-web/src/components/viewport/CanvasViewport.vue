@@ -84,7 +84,10 @@ import {
   disposeKtx2Rendering,
   MaterialCache,
 } from '../../renderer/materialAdapter'
-import { toggleRuntimeInteraction } from '../../renderer/renderEntity'
+import {
+  clearSceneObjectResources,
+  toggleRuntimeInteraction,
+} from '../../renderer/renderEntity'
 import { WorldRuntime } from '../../renderer/worldRuntime'
 import {
   createEditorWorldDocument,
@@ -165,6 +168,8 @@ let camera: THREE.PerspectiveCamera | null = null
 let controls: OrbitControls | null = null
 let transformControls: TransformControls | null = null
 let animationFrameId: number | null = null
+let renderLoopActive = false
+let resizeObserver: ResizeObserver | null = null
 let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
 let worldRuntime: WorldRuntime | null = null
@@ -422,7 +427,12 @@ function initThreeJS() {
   materialCache = activeInstance.materialScope
   scene.add(worldRuntime.root)
   
-  window.addEventListener('resize', handleResize)
+  if (typeof ResizeObserver !== 'undefined' && containerRef.value) {
+    resizeObserver = new ResizeObserver(() => handleResize())
+    resizeObserver.observe(containerRef.value)
+  } else {
+    window.addEventListener('resize', handleResize)
+  }
   applyQualityPreset()
   applyViewMode()
   handleResize()
@@ -456,24 +466,43 @@ function handleResize() {
 }
 
 function startRenderLoop() {
-  function animate() {
-    animationFrameId = requestAnimationFrame(animate)
-    if (controls) controls.update()
-    const delta = weatherClock.getDelta()
+  renderLoopActive = true
+  weatherClock.start()
+  markNeedsRender()
+}
+
+function scheduleRenderFrame() {
+  if (!renderLoopActive || animationFrameId !== null) return
+  animationFrameId = requestAnimationFrame(renderFrame)
+}
+
+function renderFrame() {
+  animationFrameId = null
+  if (!renderLoopActive) return
+  const delta = weatherClock.getDelta()
+  const controlsAnimating = controls?.update() ?? false
+  const effects = getWorldEffectState()
+  const effectsAnimating = effects.clouds || effects.ripples
+  if (effectsAnimating) {
     effectClock += Math.min(0.05, Math.max(0, delta))
     setWorldEffectTime(effectClock)
-    if (delta > 0.0005) {
-      fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
-      fps.value = Math.round(fpsSmoothed)
-    }
-    if (weatherVisuals?.tick(delta)) needsRender = true
-    if (needsRender && renderer && scene && camera) {
-      if (composer) composer.render()
-      else renderer.render(scene, camera)
-      needsRender = false
-    }
+    needsRender = true
   }
-  animate()
+  const weatherAnimating = weatherVisuals?.tick(delta) ?? false
+  if (weatherAnimating || controlsAnimating) needsRender = true
+  // 按需渲染休眠后的第一帧包含较长空闲时间，不能拿它计算实时 FPS。
+  if (delta > 0.0005 && delta < 0.25) {
+    fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
+    fps.value = Math.round(fpsSmoothed)
+  }
+  if (needsRender && renderer && scene && camera) {
+    if (composer) composer.render()
+    else renderer.render(scene, camera)
+    needsRender = false
+  }
+  if (controlsAnimating || weatherAnimating || effectsAnimating || needsRender) {
+    scheduleRenderFrame()
+  }
 }
 
 function ensureGridVisible() {
@@ -499,17 +528,14 @@ function resetSceneBounds() {
   rebuildBuiltInEnvironment()
 }
 
-	function updateScene() {
+function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
 
   const entity = sceneStore.reconstructed
   if (!entity) {
-    // 清空sceneGroup，但保留scene中的其他对象（灯光、GridHelper等）
-    while (sceneGroup.children.length > 0) {
-      const child = sceneGroup.children[0]
-      sceneGroup.remove(child)
-      if (child instanceof THREE.Mesh) child.geometry.dispose()
-    }
+    // 清空蓝图实例，但保留场景灯光、地面和 GridHelper。
+    clearSceneObjectResources(sceneGroup)
+    materialCache.clear()
     // 重置相机到初始位置，确保GridHelper可见
     if (controls && camera) {
       controls.target.set(0, 0, 0)
@@ -689,7 +715,12 @@ function getIntersectionElementId(intersection: THREE.Intersection): string | nu
 
 function syncSelectionHighlights() {
   clearSelectionHelpers()
-  if (viewMode.value === 'presentation' || !scene || !sceneGroup || !sceneStore.reconstructed) {
+  if (
+    viewMode.value === 'presentation'
+    || !scene
+    || !sceneGroup
+    || !sceneStore.reconstructed
+  ) {
     markNeedsRender()
     return
   }
@@ -758,8 +789,7 @@ function syncComponentTransformControl() {
   clearComponentTransformControl()
   if (
     viewMode.value === 'presentation'
-    ||
-    !scene
+    || !scene
     || !sceneGroup
     || !transformControls
     || !sceneStore.reconstructed
@@ -1374,6 +1404,7 @@ function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
 
 function markNeedsRender() {
   needsRender = true
+  scheduleRenderFrame()
 }
 
 function markShadowsDirty() {
@@ -1383,7 +1414,11 @@ function markShadowsDirty() {
 }
 
 function cleanup() {
+  renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
+  animationFrameId = null
+  resizeObserver?.disconnect()
+  resizeObserver = null
   window.removeEventListener('resize', handleResize)
   renderer?.domElement.removeEventListener('pointerdown', handlePointerDown)
   renderer?.domElement.removeEventListener('pointerup', handlePointerUp)

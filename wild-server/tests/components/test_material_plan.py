@@ -354,8 +354,8 @@ def test_weathering_none_disables_inherited_weather_effects():
     assert 1.45 <= weathering["scale"] <= 2.1
 
 
-def test_glass_curtain_wall_keeps_opaque_neutral_facade():
-    """玻璃幕墙：外墙宿主保持不透明中性墙板，玻璃由窗构件的 glassMaterial 表达。"""
+def test_glass_curtain_wall_keeps_legacy_wall_without_semantic_material_opaque():
+    """旧骨架未标明幕墙角色时仍按 wall 默认值处理，避免普通墙被误改成玻璃。"""
     plan = resolve_material_plan(None, [], user_message="生成一个玻璃幕墙商业综合体")
     assert plan["curtainWall"] is True
 
@@ -387,25 +387,33 @@ def test_non_curtain_wall_keeps_opaque_facade():
     assert plan.get("curtainWall") is False
 
 
-def test_curtain_wall_keeps_all_walls_neutral():
-    """玻璃幕墙不把任何墙改成玻璃或深色金属，全部保持中性墙板；分格由窗承担。"""
+def test_material_plan_preserves_explicit_skeleton_material_roles():
+    """连续幕墙、龙骨、核心筒和普通墙必须保留各自的语义材质角色。"""
     plan = resolve_material_plan(None, [], user_message="生成一个玻璃幕墙办公楼")
     blueprint = {
         "geometry": {
             "elements": [
-                {"id": "wall_front", "type": "wall", "from": [0, 0, 0], "to": [42, 120, 0], "thickness": 0.3},
-                {"id": "wall_back", "type": "wall", "from": [0, 0, 36], "to": [42, 120, 36], "thickness": 0.3},
-                {"id": "wall_left", "type": "wall", "from": [0, 0, 0], "to": [0, 120, 36], "thickness": 0.3},
-                {"id": "wall_right", "type": "wall", "from": [42, 0, 0], "to": [42, 120, 36], "thickness": 0.3},
-                {"id": "wall_core", "type": "wall", "from": [21, 0, 16], "to": [21, 120, 20], "thickness": 0.2},
+                # 模拟旧版类型级覆盖后的错误输入，应用材质方案时必须可确定性恢复。
+                {"id": "wall_front_shell_1_1", "type": "wall", "material": "wall_finish"},
+                {"id": "curtain_mullion_h_front_1", "type": "beam", "material": "concrete"},
+                {"id": "wall_core_front_1", "type": "wall", "material": "wall_finish"},
+                {"id": "wall_room_1", "type": "wall", "material": "wall_finish"},
+                {"id": "legacy_wall", "type": "wall"},
             ],
         },
         "materials": {},
     }
     apply_resolved_material_plan(blueprint, plan)
     by_id = {element["id"]: element for element in blueprint["geometry"]["elements"]}
-    for wall_id in ("wall_front", "wall_back", "wall_left", "wall_right", "wall_core"):
-        assert by_id[wall_id]["material"] == "wall_finish"
+    assert by_id["wall_front_shell_1_1"]["material"] == "glass"
+    assert by_id["curtain_mullion_h_front_1"]["material"] == "metal"
+    assert by_id["wall_core_front_1"]["material"] == "concrete"
+    assert by_id["wall_room_1"]["material"] == "wall_finish"
+    assert by_id["legacy_wall"]["material"] == "wall_finish"
+    assert blueprint["materials"]["glass"]["materialClass"] == "glass"
+    assert blueprint["materials"]["glass"]["transmission"] == 0.92
+    assert "opacity" not in blueprint["materials"]["glass"]
+    assert blueprint["materials"]["metal"]["metallic"] >= 0.5
 
 
 def test_material_planner_skips_llm_when_no_pbr_assets():

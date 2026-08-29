@@ -94,7 +94,7 @@ synonyms:
   "materials": {
     "concrete": { "baseColor": [0.85, 0.85, 0.82], "roughness": 0.6, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "metal": { "baseColor": [0.15, 0.15, 0.15], "roughness": 0.35, "metallic": 0.65, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }
@@ -173,7 +173,7 @@ synonyms:
     "wood_red": { "baseColor": [0.55, 0.22, 0.12], "roughness": 0.65, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "brick_grey": { "baseColor": [0.42, 0.38, 0.35], "roughness": 0.85, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "tile_grey": { "baseColor": [0.25, 0.25, 0.27], "roughness": 0.75, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }
@@ -255,7 +255,7 @@ column(框架柱) + beam(框架梁) → floor(楼板)
     "concrete_light": { "baseColor": [0.88, 0.86, 0.82], "roughness": 0.55, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "wood_dark": { "baseColor": [0.28, 0.15, 0.08], "roughness": 0.65, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "tile_dark": { "baseColor": [0.2, 0.2, 0.22], "roughness": 0.75, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }

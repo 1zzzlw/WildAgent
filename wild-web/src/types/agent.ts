@@ -11,6 +11,7 @@
  * - AgentStepResponse: Agent 执行步骤（可选，用于显示进度）
  * - ThinkingDeltaResponse: 模型接口实际返回的思考内容片段
  * - ThinkingStatusResponse: 思考请求状态
+ * - FloorPlanReadyResponse / FloorPlanReviewRequiredResponse: 建筑平面审核与暂停
  * - PatchProposalResponse: 场景修改提案
  * - AgentReplyResponse: 文本回复
  * - ErrorResponse: 错误信息
@@ -46,10 +47,20 @@ export interface AgentProtocolEnvelope {
 export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
+  | FloorPlanReviewRequest
+  | StyleReviewRequest
+  | ExecutionPlanReviewRequest
+  | ExecutionFeedbackRequest
   | GenerationResumedResponse
   | AgentStepResponse
   | ThinkingDeltaResponse
   | ThinkingStatusResponse
+  | FloorPlanReadyResponse
+  | FloorPlanReviewRequiredResponse
+  | StyleReviewRequiredResponse
+  | ExecutionPlanReadyResponse
+  | ExecutionPlanReviewRequiredResponse
+  | ExecutionFeedbackQueuedResponse
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
@@ -73,6 +84,12 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
   precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
+  plan_mode?: boolean                    // 是否先研究并审核执行计划
+  /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */
+  recent_messages?: Array<{
+    role: 'user' | 'assistant'
+    content: string
+  }>
 }
 
 export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
@@ -82,11 +99,94 @@ export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
   last_event_seq?: number
 }
 
+export interface FloorPlanReviewRequest extends AgentProtocolEnvelope {
+  type: 'floor_plan_review'
+  request_id: string
+  session_id: string
+  action: 'confirm' | 'revise'
+  feedback?: string
+}
+
+export interface StyleReviewRequest extends AgentProtocolEnvelope {
+  type: 'style_review'
+  request_id: string
+  session_id: string
+  action: 'confirm' | 'revise'
+  style_package_id?: string
+  feedback?: string
+}
+
+export interface ExecutionPlanReviewRequest extends AgentProtocolEnvelope {
+  type: 'execution_plan_review'
+  request_id: string
+  session_id: string
+  action: 'confirm' | 'revise'
+  feedback?: string
+}
+
+export interface ExecutionFeedbackRequest extends AgentProtocolEnvelope {
+  type: 'execution_feedback'
+  request_id: string
+  session_id: string
+  feedback: string
+}
+
+export interface ExecutionPlanStep {
+  id: string
+  type: string
+  node: string
+  title: string
+  description: string
+  depends_on: string[]
+  acceptance: string[]
+  permission: 'read' | 'mutate'
+  requires_user_review: boolean
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
+  detail?: string
+  result_ref?: string | null
+}
+
+export interface ExecutionPlan {
+  plan_id: string
+  version: number
+  intent: 'generate' | 'edit'
+  goal: string
+  status: 'draft' | 'reviewing' | 'approved' | 'executing' | 'revising' | 'completed' | 'failed'
+  valid: boolean
+  review_status: 'pending' | 'approved' | 'revise'
+  constraints: string[]
+  assumptions: string[]
+  steps: ExecutionPlanStep[]
+  validation_issues: Array<{ code: string; message: string }>
+}
+
+export interface ExecutionPlanReadyResponse extends AgentProtocolEnvelope {
+  type: 'execution_plan_ready'
+  request_id: string
+  session_id: string
+  plan: ExecutionPlan
+}
+
+export interface ExecutionPlanReviewRequiredResponse extends AgentProtocolEnvelope {
+  type: 'execution_plan_review_required'
+  request_id: string
+  session_id: string
+  plan: ExecutionPlan
+  version: number
+}
+
+export interface ExecutionFeedbackQueuedResponse extends AgentProtocolEnvelope {
+  type: 'execution_feedback_queued'
+  request_id: string
+  session_id: string
+  queued_count: number
+}
+
 export interface GenerationResumedResponse extends AgentProtocolEnvelope {
   type: 'generation_resumed'
   request_id: string
   session_id: string
-  status: 'running' | 'completed' | 'failed'
+  status: 'running' | 'waiting_review' | 'completed' | 'failed'
   last_event_seq: number
 }
 
@@ -119,6 +219,51 @@ export interface ThinkingStatusResponse extends AgentProtocolEnvelope {
   session_id?: string
   status: 'thinking' | 'completed' | 'unsupported' | 'error'
   content?: string
+}
+
+/** 由同一份 FloorPlanIR 与立面轴网投影得到的审核平面；收到后等待用户确认。 */
+export interface FloorPlanReadyResponse extends AgentProtocolEnvelope {
+  type: 'floor_plan_ready'
+  request_id: string
+  session_id?: string
+  floor_plan: Record<string, unknown>
+  svg: string
+  svgs: Record<string, string>
+  validation: FloorPlanValidationIssue[]
+  notice?: string
+  continues_generation: false
+}
+
+export interface FloorPlanReviewRequiredResponse extends AgentProtocolEnvelope {
+  type: 'floor_plan_review_required'
+  request_id: string
+  session_id: string
+  revision: number
+  can_confirm: boolean
+  fallback_reason?: string
+  notice?: string
+}
+
+export interface FloorPlanValidationIssue {
+  code: string
+  level_id?: string | null
+  entity_id?: string | null
+  message: string
+}
+
+export interface StyleOption {
+  id: string
+  name: string
+  description: string
+}
+
+export interface StyleReviewRequiredResponse extends AgentProtocolEnvelope {
+  type: 'style_review_required'
+  request_id: string
+  session_id: string
+  revision: number
+  selected_style_id: string
+  options: StyleOption[]
 }
 
 export interface PatchProposalResponse extends AgentProtocolEnvelope {
@@ -212,18 +357,37 @@ export interface AgentTurn {
   request_id: string
   session_id: string
   user_message_id: string
-  status: 'running' | 'completed' | 'error'
+  status: 'running' | 'waiting_review' | 'completed' | 'error'
   started_at: number
   completed_at?: number
   interruption_reason?: string
   thinking_status?: 'thinking' | 'completed' | 'unsupported' | 'error'
   thinking_notice?: string
+  plan_mode?: boolean
+  execution_plan?: ExecutionPlan
+  execution_plan_review_status?: 'pending' | 'submitting' | 'approved'
+  execution_feedback_queued_count?: number
   steps: AgentTurnStep[]
   validation_steps: Array<{
     label: string
     status: 'ok' | 'warn' | 'error' | 'skip'
   }>
   metrics?: SessionMetrics
+  /** floor_plan_design 节点输出的空间方案与确定性 SVG。 */
+  floor_plan?: Record<string, unknown>
+  floor_plan_svg?: string
+  floor_plan_svgs?: Record<string, string>
+  floor_plan_validation?: FloorPlanValidationIssue[]
+  floor_plan_review_status?: 'pending' | 'submitting' | 'approved'
+  floor_plan_revision?: number
+  floor_plan_can_confirm?: boolean
+  floor_plan_fallback_reason?: string
+  floor_plan_notice?: string
+  /** G1-G6 主体通过后的第二次风格确认。 */
+  style_review_status?: 'pending' | 'submitting' | 'approved'
+  style_revision?: number
+  selected_style_id?: string
+  style_options?: StyleOption[]
 }
 
 export interface AgentSession {
@@ -284,6 +448,9 @@ export interface SessionMetrics {
   validation_errors: number
   retry_count?: number
   max_retries?: number
+  plan_mode?: boolean
+  plan_version?: number
+  plan_replan_count?: number
   status: string
 }
 

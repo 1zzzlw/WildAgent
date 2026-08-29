@@ -40,6 +40,7 @@ async def patch_node(state: GenerationState) -> dict:
             thinking_mode=state.get("thinking_mode", False),
             on_reasoning_delta=emit_reasoning if on_reasoning_delta else None,
             expected_output="patch",
+            resolved_intent="edit",
         )
     except Exception as exc:
         logger.exception(f"[patch] 增量修改失败: {exc}")

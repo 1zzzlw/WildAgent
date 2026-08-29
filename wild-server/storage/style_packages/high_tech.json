@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "id": "high_tech",
+  "name": "高技派",
+  "description": "强调深色结构框架、幕墙分格和清晰技术节点，适合科技园区与高层塔楼。",
+  "keywords": ["高技派", "科技感", "未来感", "科技园", "high-tech"],
+  "tags": ["curtain_wall", "glass", "high_rise", "long_span_public"],
+  "roof": {"type": "flat", "height_ratio": 0.02},
+  "palette": {
+    "wall_finish": [0.35, 0.38, 0.41],
+    "roof": [0.08, 0.09, 0.11],
+    "accent": [0.12, 0.16, 0.2],
+    "glass": [0.18, 0.42, 0.58],
+    "metal": [0.05, 0.06, 0.08]
+  },
+  "decor": {
+    "cornice": {"enabled": false, "width": 0.1, "height": 0.08},
+    "entrance_canopy": {"enabled": true, "depth": 2.0, "thickness": 0.14},
+    "facade_columns": {"enabled": false, "style": "modern"}
+  }
+}

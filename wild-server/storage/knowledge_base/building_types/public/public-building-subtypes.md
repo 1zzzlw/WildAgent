@@ -734,10 +734,10 @@ synonyms:
 默认完整构成合同：
 
 - 识别特征：少柱阅览大厅；通高中庭；密集书库；天窗漫射光
-- 空间与体量：图书馆，密集书库楼板荷载 ≥12kN/㎡（厚 0.20m），阅览大厅少柱（柱距 9~12m）、大跨梁， 中庭 3~5 层通高 + 玻璃栏板，天窗漫射采光（避免直射），阅览窗玻璃 opacity 0.25，宽大 楼梯。外观文雅厚重、光环境安静。
+- 空间与体量：图书馆，密集书库楼板荷载 ≥12kN/㎡（厚 0.20m），阅览大厅少柱（柱距 9~12m）、大跨梁，中庭 3~5 层通高 + 玻璃栏板，天窗漫射采光（避免直射），阅览窗采用着色物理玻璃并配合遮阳控制直射，宽大楼梯。外观文雅厚重、光环境安静。
 - 主体骨架：`required` — column(0.5) → beam(0.4×0.8) → floor(书库0.20 / 标准0.15) → wall(0.24)
 - 外围护：`required / characteristic` — wall(0.24) → roof(flat/dome)
-- 开口组件：`required / characteristic` — window(阅览窗 fixed opacity0.25 / 天窗) → door(玻璃门)；依附真实 `parentWall`。
+- 开口组件：`required / characteristic` — window(阅览窗 fixed 着色物理玻璃 / 天窗) → door(玻璃门)；依附真实 `parentWall`。
 - 交通组件：`conditional` — 来源未单列；有跨层/高差时再补。
 - 附属组件：`characteristic / conditional` — railing(中庭玻璃栏) → light(阅览灯)
 - 重复与模数：层高 4.2m；中庭各层 floor 留洞（用开洞 floor 表达）；屋顶天窗没有原生 parentRoof 开洞，改用透明 roof 或 primitive 近似
@@ -766,7 +766,7 @@ synonyms: []
 - 中庭 floor ⊗ 楼板：各层环廊板端搭入外墙，临中庭侧 railing 玻璃栏 1.1m（防坠）
 - 书库 floor ⊗ 柱：板端搭于柱侧主梁，荷载≥12kN/㎡ 板厚 0.20
 - 天窗 ⊗ 屋面：天窗框与屋面搭接，泛水卷材上翻 0.25m
-- window ⊗ wall：阅览窗固定扇，玻璃 opacity 0.25 防直射
+- window ⊗ wall：阅览窗固定扇使用着色物理玻璃；防直射仍需遮阳与朝向设计，不能用低 `opacity` 冒充采光性能
 
 ### 图书馆标准层 最少可行回退
 

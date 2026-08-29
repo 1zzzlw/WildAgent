@@ -93,7 +93,7 @@ synonyms:
     "concrete": { "baseColor": [0.85, 0.83, 0.80], "roughness": 0.55, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "wood": { "baseColor": [0.45, 0.25, 0.10], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "metal": { "baseColor": [0.15, 0.15, 0.15], "roughness": 0.35, "metallic": 0.65, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }
@@ -175,7 +175,7 @@ synonyms:
   "materials": {
     "concrete": { "baseColor": [0.88, 0.86, 0.83], "roughness": 0.5, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "metal": { "baseColor": [0.12, 0.12, 0.12], "roughness": 0.3, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }

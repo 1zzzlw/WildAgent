@@ -13,7 +13,7 @@ AIGC:
 
 # scripts/ 脚本目录
 
-wild-server 的辅助脚本目录，按功能分类组织，共 4 个子目录：`deploy/`、`rag/`、`building/`、`reports/`。
+wild-server 的辅助脚本目录，按功能分类组织为 `deploy/`、`rag/`、`building/`、`floor_plan/` 和 `reports/`。
 
 ## 运行前提
 
@@ -41,6 +41,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `deploy/` | 生产部署前检查脚本（模型、Embedding、镜像知识库连通性） |
 | `rag/` | 知识库分片检查 / 展示 / RAG 评测脚本 |
 | `building/` | 建筑类型分类（building_category 元数据）工具与验证脚本 |
+| `floor_plan/` | FloorPlanIR 归一化、校验和 SVG 离线预览 |
 | `reports/` | `inspect_chunks_demo.py` 等脚本生成的报告产物（Markdown 报告 + 控制台日志） |
 
 ## 文件清单
@@ -55,6 +56,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `rag/README_INSPECT_CHUNKS.md` | `inspect_*` 系列脚本的详细使用文档 |
 | `building/update_building_category.py` | 批量给知识库文档添加 `building_category` 元数据 |
 | `building/test_building_category.py` | 验证带 `building_category` 过滤的 RAG 检索 |
+| `floor_plan/preview_floor_plan.py` | 使用内置示例或自定义 JSON 生成确定性平面 SVG |
 | `reports/` | 分片报告与日志产物（`inspect_chunks_*.md`、`chunks_report_*.md`、`chunks_console_*.txt`） |
 
 ## 各脚本详细说明
@@ -82,6 +84,12 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 |---|---|---|
 | `update_building_category.py` | `.\.venv\Scripts\python.exe scripts\building\update_building_category.py` | 控制台逐文件打印 `✅ 已更新 / ⏭️ 跳过 / ❌ 失败`，结尾给"更新 N / 跳过 M"总结；无 CLI 参数 |
 | `test_building_category.py` | `.\.venv\Scripts\python.exe scripts\building\test_building_category.py` | 控制台打印多组查询 × building_category 过滤的 RAG 检索命中情况；分组均命中预期分类即通过。详见 [building/README.md](building/README.md) |
+
+### floor_plan/ — 平面方案预览
+
+| 脚本 | 快速运行 | 产物 / 怎么看 |
+|---|---|---|
+| `preview_floor_plan.py` | `.\.venv\Scripts\python.exe scripts\floor_plan\preview_floor_plan.py` | `storage/sessions/floor_plan_preview.svg`；控制台显示来源和楼层/空间/内墙/洞口数量。详见 [floor_plan/README.md](floor_plan/README.md) |
 
 ## 导入说明
 

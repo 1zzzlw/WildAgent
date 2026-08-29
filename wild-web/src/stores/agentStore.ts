@@ -42,6 +42,9 @@ import type {
   SessionMetrics,
   AgentTurn,
   AgentTurnStep,
+  FloorPlanValidationIssue,
+  StyleOption,
+  ExecutionPlan,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
@@ -50,6 +53,7 @@ type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
+const STORAGE_KEY_PLAN_MODE = 'wild_plan_mode'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
@@ -76,6 +80,11 @@ function loadPrecisionMode(): boolean {
 
 function loadProceduralMaterialsEnabled(): boolean {
   return localStorage.getItem(STORAGE_KEY_PROCEDURAL_MATERIALS) === 'true'
+}
+
+function loadPlanMode(): boolean {
+  // 新用户默认开启；已明确关闭时才走原固定流水线。
+  return localStorage.getItem(STORAGE_KEY_PLAN_MODE) !== 'false'
 }
 
 // ── 消息持久化工具 ──
@@ -232,6 +241,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** AI 是否允许自动选择程序化 Shader；默认关闭，由用户显式开启。 */
   const proceduralMaterialsEnabled = ref(loadProceduralMaterialsEnabled())
+  const planMode = ref(loadPlanMode())
 
   /** 精密模式：节点生成进度列表 */
   const generatingNodes = ref<GeneratingNode[]>([])
@@ -322,7 +332,12 @@ export const useAgentStore = defineStore('agent', () => {
     return ensureTurns(sessionId).find(turn => turn.request_id === requestId)
   }
 
-  function startTurn(requestId: string, sessionId: string, content: string): AgentTurn {
+  function startTurn(
+    requestId: string,
+    sessionId: string,
+    content: string,
+    usePlanMode = false,
+  ): AgentTurn {
     const message: ChatMessage = {
       id: `msg_${requestId}_user`,
       role: 'user',
@@ -342,6 +357,7 @@ export const useAgentStore = defineStore('agent', () => {
       started_at: Date.now(),
       steps: [],
       validation_steps: [],
+      plan_mode: usePlanMode,
     }
     const turns = ensureTurns(sessionId)
     const existingIndex = turns.findIndex(item => item.request_id === requestId)
@@ -473,6 +489,191 @@ export const useAgentStore = defineStore('agent', () => {
       turn.steps.push(step)
     }
     step.diagnostic = diagnostic
+  }
+
+  function setTurnFloorPlan(
+    sessionId: string,
+    requestId: string,
+    floorPlan: Record<string, unknown>,
+    svg: string,
+    svgs: Record<string, string>,
+    validation: FloorPlanValidationIssue[],
+    notice = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.floor_plan = floorPlan
+    turn.floor_plan_svg = svg
+    turn.floor_plan_svgs = svgs
+    turn.floor_plan_validation = validation
+    turn.floor_plan_notice = notice
+    persistTurns(sessionId)
+  }
+
+  function setFloorPlanReviewRequired(
+    sessionId: string,
+    requestId: string,
+    revision: number,
+    canConfirm: boolean,
+    fallbackReason = '',
+    notice = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.floor_plan_review_status = 'pending'
+    turn.floor_plan_revision = revision
+    turn.floor_plan_can_confirm = canConfirm
+    turn.floor_plan_fallback_reason = fallbackReason
+    turn.floor_plan_notice = notice || turn.floor_plan_notice
+    persistTurns(sessionId)
+  }
+
+  function markFloorPlanReviewSubmitted(
+    sessionId: string,
+    requestId: string,
+    action: 'confirm' | 'revise',
+    feedback = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'running'
+    turn.floor_plan_review_status = action === 'confirm' ? 'approved' : 'submitting'
+    if (action === 'revise') {
+      addMessageToSession(sessionId, {
+        id: `msg_${requestId}_revision_${Date.now()}`,
+        role: 'user',
+        content: feedback,
+        timestamp: Date.now(),
+        request_id: requestId,
+        turn_id: requestId,
+      })
+    }
+    persistTurns(sessionId)
+  }
+
+  function restoreFloorPlanReviewAfterError(sessionId: string, requestId: string) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.floor_plan_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
+  function setStyleReviewRequired(
+    sessionId: string,
+    requestId: string,
+    revision: number,
+    selectedStyleId: string,
+    options: StyleOption[],
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.style_review_status = 'pending'
+    turn.style_revision = revision
+    turn.selected_style_id = selectedStyleId
+    turn.style_options = options
+    persistTurns(sessionId)
+  }
+
+  function markStyleReviewSubmitted(
+    sessionId: string,
+    requestId: string,
+    action: 'confirm' | 'revise',
+    stylePackageId = '',
+    feedback = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'running'
+    turn.style_review_status = action === 'confirm' ? 'approved' : 'submitting'
+    if (stylePackageId) turn.selected_style_id = stylePackageId
+    if (action === 'revise') {
+      addMessageToSession(sessionId, {
+        id: `msg_${requestId}_style_revision_${Date.now()}`,
+        role: 'user',
+        content: feedback,
+        timestamp: Date.now(),
+        request_id: requestId,
+        turn_id: requestId,
+      })
+    }
+    persistTurns(sessionId)
+  }
+
+  function restoreStyleReviewAfterError(sessionId: string, requestId: string) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.style_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
+  function setExecutionPlan(
+    sessionId: string,
+    requestId: string,
+    plan: ExecutionPlan,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.execution_plan = plan
+    persistTurns(sessionId)
+  }
+
+  function setExecutionPlanReviewRequired(
+    sessionId: string,
+    requestId: string,
+    plan: ExecutionPlan,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.execution_plan = plan
+    turn.execution_plan_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
+  function markExecutionPlanReviewSubmitted(
+    sessionId: string,
+    requestId: string,
+    action: 'confirm' | 'revise',
+    feedback = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'running'
+    turn.execution_plan_review_status = action === 'confirm' ? 'approved' : 'submitting'
+    if (action === 'revise') {
+      addMessageToSession(sessionId, {
+        id: `msg_${requestId}_plan_revision_${Date.now()}`,
+        role: 'user',
+        content: feedback,
+        timestamp: Date.now(),
+        request_id: requestId,
+        turn_id: requestId,
+      })
+    }
+    persistTurns(sessionId)
+  }
+
+  function restoreExecutionPlanReviewAfterError(sessionId: string, requestId: string) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.execution_plan_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
+  function setExecutionFeedbackQueued(
+    sessionId: string,
+    requestId: string,
+    queuedCount: number,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.execution_feedback_queued_count = queuedCount
+    persistTurns(sessionId)
   }
 
   function setTurnMetrics(sessionId: string, requestId: string, metrics: SessionMetrics) {
@@ -861,6 +1062,11 @@ export const useAgentStore = defineStore('agent', () => {
     localStorage.setItem(STORAGE_KEY_PROCEDURAL_MATERIALS, String(enabled))
   }
 
+  function setPlanMode(enabled: boolean) {
+    planMode.value = enabled
+    localStorage.setItem(STORAGE_KEY_PLAN_MODE, String(enabled))
+  }
+
   function updateGeneratingNode(
     nodeName: string,
     status: GeneratingNode['status'],
@@ -886,8 +1092,17 @@ export const useAgentStore = defineStore('agent', () => {
     cornice: '檐口', chimney: '烟囱',
   }
   const _NODE_LABELS: Record<string, string> = {
-    architecture: '建筑方案',
-    skeleton: '骨架',
+    planning_research: '计划研究',
+    planner: '执行计划',
+    plan_validator: '计划校验',
+    plan_review: '计划审核',
+    plan_executor: '计划调度',
+    architecture: '总体建筑方案',
+    floor_plan_design: '平面设计',
+    floor_plan_review: '平面审核',
+    skeleton: '主体装配',
+    style_review: '风格确认',
+    decor_assembly: '装饰装配',
     merge: '合并', final_validate: '最终校验', callback: '修正',
   }
   function _resolveLabel(nodeName: string): string {
@@ -961,6 +1176,18 @@ export const useAgentStore = defineStore('agent', () => {
     addTurnValidationStep,
     clearTurnValidationSteps,
     setTurnDiagnostic,
+    setTurnFloorPlan,
+    setFloorPlanReviewRequired,
+    markFloorPlanReviewSubmitted,
+    restoreFloorPlanReviewAfterError,
+    setStyleReviewRequired,
+    markStyleReviewSubmitted,
+    restoreStyleReviewAfterError,
+    setExecutionPlan,
+    setExecutionPlanReviewRequired,
+    markExecutionPlanReviewSubmitted,
+    restoreExecutionPlanReviewAfterError,
+    setExecutionFeedbackQueued,
     setTurnMetrics,
     setTurnThinkingStatus,
     completeTurn,
@@ -1001,6 +1228,8 @@ export const useAgentStore = defineStore('agent', () => {
     setPrecisionMode,
     proceduralMaterialsEnabled,
     setProceduralMaterialsEnabled,
+    planMode,
+    setPlanMode,
     updateGeneratingNode,
     addDebugLog,
     setSessionMetrics,

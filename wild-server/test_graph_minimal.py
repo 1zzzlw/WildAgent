@@ -1,5 +1,5 @@
 """
-最小测试：验证 LangGraph 完整流程（骨架 → 并行组件 → 合并 → 校验）
+人工模型冒烟：验证 LangGraph 当前完整流程（平面审核 → 确定性主体 → 风格审核 → 装饰 → 校验）
 
 运行: python test_graph_minimal.py
 """
@@ -21,7 +21,7 @@ async def test_skeleton_and_doors():
         "retry_count": 0,
     }
     
-    print("🚀 开始测试完整流程（骨架 → 并行组件 → 合并 → 校验）...")
+    print("🚀 开始测试当前 Plan2Build 完整流程（包含两次人工审核）...")
     print(f"用户输入: {initial_state['user_message']}")
     print("-" * 60)
     

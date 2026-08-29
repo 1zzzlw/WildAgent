@@ -86,7 +86,7 @@ synonyms:
     "concrete": { "baseColor": [0.78, 0.76, 0.74], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
     "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
     "metal_panel": { "baseColor": [0.55, 0.55, 0.58], "roughness": 0.4, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }

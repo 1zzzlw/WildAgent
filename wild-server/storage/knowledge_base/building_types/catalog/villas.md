@@ -63,7 +63,7 @@ synonyms:
 - 屋顶：深灰防水卷材/瓦 baseColor [0.24, 0.27, 0.31]
 - 门：暖木色 baseColor [0.42, 0.18, 0.07]
 - 窗框：深灰色 baseColor [0.12, 0.15, 0.18]
-- 玻璃：浅蓝灰 baseColor [0.55, 0.72, 0.82]，opacity 0.35
+- 玻璃：浅蓝灰 baseColor [0.55, 0.72, 0.82]，物理玻璃 `materialClass=glass`、`transmission>0`、有效 `ior`，`opacity` 为 1 或省略
 - 墙、楼板、屋顶、门和玻璃必须使用独立材质名，不能全部复用 `concrete`
 
 ---
@@ -140,7 +140,7 @@ synonyms:
 - 楼梯 ×1（室内，宽1.2m）
 - 屋顶 ×1（gable，span 9m，depth 7m，height 2m）
 - 默认配色：暖白外墙 [0.86,0.83,0.78] + 深灰屋顶 [0.24,0.27,0.31] + 暖木门 [0.42,0.18,0.07]
-- 默认玻璃：浅蓝灰 [0.55,0.72,0.82]，roughness 0.12，opacity 0.35
+- 默认玻璃：浅蓝灰 [0.55,0.72,0.82]，roughness 0.12，物理玻璃 `materialClass=glass`、`transmission>0`、有效 `ior`，`opacity` 为 1 或省略
 - 墙/楼板/屋顶/门/玻璃分别使用 `wall_plaster` / `floor_concrete` / `roof_dark` / `door_wood` / `window_glass`
 ```
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import type { ReconstructedEntity } from '../types/scene'
 import { MaterialCache } from './materialAdapter'
-import { updateSceneGroup } from './renderEntity'
+import { clearSceneObjectResources, updateSceneGroup } from './renderEntity'
 
 export interface BlueprintInstanceTransform {
   position?: [number, number, number]
@@ -47,7 +47,7 @@ export class BlueprintRenderInstance {
 
   dispose(): void {
     if (this.disposed) return
-    disposeGeometryTree(this.root)
+    clearSceneObjectResources(this.root)
     this.materialScope.clear()
     this.root.removeFromParent()
     this.disposed = true
@@ -56,19 +56,4 @@ export class BlueprintRenderInstance {
   private assertActive(): void {
     if (this.disposed) throw new Error(`Blueprint render instance is disposed: ${this.instanceId}`)
   }
-}
-
-function disposeGeometryTree(root: THREE.Object3D): void {
-  const geometries = new Set<THREE.BufferGeometry>()
-  root.traverse(object => {
-    if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
-      geometries.add(object.geometry)
-      if (object.userData.ownsMaterial) {
-        const materials = Array.isArray(object.material) ? object.material : [object.material]
-        materials.forEach(material => material.dispose())
-      }
-    }
-  })
-  geometries.forEach(geometry => geometry.dispose())
-  root.clear()
 }

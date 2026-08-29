@@ -2,7 +2,7 @@
 
 这里仅保存与当前代码一致、需要持续维护的正式文档。历史方案、阶段总结、修复记录和已失效设计统一放在 [`docs-dev/`](../docs-dev/README.md)，不能作为当前实现依据。
 
-最后核对：2026-08-24。
+最后核对：2026-08-25。
 
 ## 项目级文档
 
@@ -19,7 +19,7 @@
 
 | 目录 | 内容 | 推荐入口 |
 |---|---|---|
-| [`agent/`](agent/) | Agent 路由、校验闭环、对话与事件协议 | [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md) |
+| [`agent/`](agent/) | Agent 路由、计划审核、校验闭环、建筑平面规划、对话与事件协议 | [建筑生成计划模式与当前优化](agent/建筑生成计划模式与当前优化.md)、[建筑生成设计思路（入门版）](agent/BUILDING_GENERATION_DESIGN_GUIDE.md)、[Plan2Build 当前链路](agent/PLAN2BUILD_PIPELINE.md)、[建筑平面生成与确认](agent/FLOOR_PLAN_GENERATION_MVP.md)、[Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md) |
 | [`rag/`](rag/) | 分片、Embedding、Chroma、检索、评测和演进规划 | [RAG 文档入口](rag/README.md) |
 | [`specs/`](specs/) | `.wild` Blueprint 规范、字段和当前引擎能力目录 | [WILD Blueprint 当前版本规范](specs/WILD_BLUEPRINT_SPEC.md) |
 | [`materials/`](materials/) | PBR、程序化材质、表面系统、`.wildmat` 与 `.wildlook` | [建筑表面系统总览](materials/ARCHITECTURAL_SURFACE_SYSTEM.md) |

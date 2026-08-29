@@ -374,6 +374,26 @@ function assertArchitecturalRampAndCornice(compiler) {
     '未显式设置 position 的屋顶无法正确定位檐口',
   )
 
+  const legacyCorniceSource = createBlueprint()
+  legacyCorniceSource.geometry.elements = [{
+    type: 'roof', id: 'legacy_roof', roofType: 'flat', span: 10.1, depth: 7.1,
+    height: 0.142, thickness: 0.25, position: [6, 6.4, 4.5],
+  }]
+  legacyCorniceSource.geometry.components = [{
+    type: 'cornice', id: 'legacy_world_cornice', parentRoof: 'legacy_roof',
+    path: [[0.95, 6.4, 0.95], [11.05, 6.4, 0.95]],
+    profile: [[0, 0], [0.18, 0], [0.18, 0.12], [0, 0.12]],
+  }]
+  const legacyResult = compiler.compileBlueprintComponents(legacyCorniceSource)
+  const legacySweep = legacyResult.blueprint.geometry.elements.find(
+    element => element.id === 'legacy_world_cornice__sweep',
+  )
+  assertVec3ArrayClose(
+    legacySweep?.path,
+    [[0.95, 6.4, 0.95], [11.05, 6.4, 0.95]],
+    '历史 world-space parentRoof 檐口没有被确定性迁移',
+  )
+
   const steppedCorniceSource = createBlueprint()
   steppedCorniceSource.geometry.elements = [
     { type: 'wall', id: 'base_n', from: [0, 0, 0], to: [18, 3.2, 0], thickness: 0.24 },

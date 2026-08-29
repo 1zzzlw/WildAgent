@@ -61,6 +61,42 @@ def _service(first_message, recovery_message=None) -> AgentService:
 
 
 class ScenePatchGenerationTest(unittest.IsolatedAsyncioTestCase):
+    async def test_text_intent_rejects_model_generated_blueprint(self):
+        message = SimpleNamespace(
+            content='''{
+              "meta":{"version":"1.1","type":"building","name":"wrong"},
+              "geometry":{"elements":[],"components":[]},
+              "materials":{}
+            }''',
+            additional_kwargs={},
+            response_metadata={},
+        )
+        service = _service(message)
+
+        result = await service.query_structured(
+            "你生成建筑的实现思路是什么",
+            expected_output="text",
+        )
+
+        self.assertIsNone(result.blueprint)
+        self.assertIn("text 意图收到不匹配的完整 Blueprint", result.error)
+
+    async def test_blueprint_intent_rejects_plain_text_answer(self):
+        message = SimpleNamespace(
+            content="我可以先介绍一下建筑的设计方法。",
+            additional_kwargs={},
+            response_metadata={},
+        )
+        service = _service(message)
+
+        result = await service.query_structured(
+            "生成一座玻璃幕墙商业综合体",
+            expected_output="blueprint",
+        )
+
+        self.assertIsNone(result.blueprint)
+        self.assertEqual(result.error, "生成意图未返回可解析的完整 Blueprint")
+
     async def test_legal_scene_patch_reaches_patch_branch(self):
         message = SimpleNamespace(
             content='''{

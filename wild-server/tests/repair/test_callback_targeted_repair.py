@@ -56,7 +56,45 @@ class _FakeLLM:
         return SimpleNamespace(content=self.content)
 
 
+class _QuotaError(RuntimeError):
+    status_code = 403
+
+
+class _FailingLLM:
+    async def ainvoke(self, _messages):
+        raise _QuotaError("Free quota exhausted")
+
+
 class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
+    async def test_callback_model_failure_preserves_retry_counts_and_stops(self):
+        blueprint = _state_blueprint()
+        validation = await validate_node({"merged_blueprint": blueprint})
+        state = {
+            **validation,
+            "merged_blueprint": blueprint,
+            "skeleton_blueprint": blueprint,
+            "skeleton_summary": "一面 6m 长墙",
+            "retry_count": 0,
+            "max_retries": 3,
+            "component_retry_counts": {},
+            "thinking_mode": False,
+        }
+
+        with (
+            patch("app.agent.nodes.callback_node.create_llm", return_value=_FailingLLM()),
+            patch(
+                "app.services.agent_service.agent_service.spec_loader.load_many",
+                return_value="",
+            ),
+        ):
+            result = await callback_node(state)
+
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["retry_count"], 1)
+        self.assertTrue(result["component_retry_counts"])
+        self.assertEqual(result["terminal_model_error"]["category"], "quota_exhausted")
+        self.assertNotIn("Free quota", result["error"])
+
     async def test_callback_commits_only_tool_action_that_reduces_errors(self):
         blueprint = _state_blueprint()
         validation = await validate_node({"merged_blueprint": blueprint})

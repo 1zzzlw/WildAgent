@@ -21,7 +21,11 @@ description: Diagnose architectural Blueprint and rendering defects from a .wild
    - **标高连续性**：上层墙底、下层墙顶、楼板支承面和屋顶 `position.y` 必须落在同一承托关系上；允许退台，但退台必须生成可解释的露台/楼板。
    - **宿主关系**：门窗、阳台、檐口、雨棚等必须引用真实父墙；屋顶必须覆盖实际最高承托墙体，而不是只覆盖固定尺寸或模型猜测的中心。
    - **包围盒关系**：计算墙体、楼板、屋顶及组合构件的世界包围盒，检查覆盖、间隙、过度悬挑、穿插和分离。对坡屋顶/曲屋顶，不能只比较平面 X/Z，还要比较屋面在檐口、山墙和脊线处的 Y 范围。
-   - **生成顺序**：确认 `architecture -> skeleton -> components -> merge -> final_validate -> delivery` 中每一层的职责没有越界。
+   - **FloorPlanIR v2 契约**：新建筑先检查已批准平面的 `envelope_regions`、多边形空间、直/曲墙、`vertical_spaces`、`vertical_circulation` 和 `review_rules`。L/U 轮廓必须按矩形并集判断；中庭/井道所在标高不得仍有楼板覆盖；曲墙洞口的 `from[0]` 按路径弧长而不是端点弦长计算。快速与精密模式都必须在用户确认后才进入三维。
+   - **生成顺序**：确认 `architecture -> floor_plan_design -> floor_plan_review -> approved_plan_assembler -> G1-G6 -> style_review -> decor_assembly -> G7 -> merge -> final_validate -> delivery` 中每一层的职责没有越界；审核前只允许输出由 FloorPlanIR 绘制的 SVG，不能生成、发送或保存中间 Blueprint。
+   - **Plan2Build 闸门**：主体问题优先定位到 G1 平面、G2 主体、G3 洞口宿主、G4 竖向交通、G5 屋顶承托、G6 引用闭环；风格/装饰问题定位到 G7。修复后必须重跑对应 GateReport 和最终全量校验。
+   - **模板实例**：检查 G4 或统计构件时，同时解析 `geometry.templates` 与 `geometry.instances`；不能因为楼梯不在 `geometry.elements` 就判定示意高层没有竖向交通。
+   - **屋面依附坐标**：带 `parentRoof` 的檐口 `path` 是屋顶中心局部坐标。先区分 local/world，再判断 `span/depth`；不要把世界坐标直接与局部半宽、半深比较。对编译器不支持局部依附的曲面屋顶，使用受控世界路径且省略 `parentRoof`。
    - **渲染与语义分离**：若 Blueprint 关系正确但画面错误，检查 `wild-core` 几何生成、transform、材质/法线和 renderer；不要为了视觉补丁修改 Blueprint 中心线。
 
 3. **归类根因**
@@ -83,7 +87,7 @@ description: Diagnose architectural Blueprint and rendering defects from a .wild
 ## 与仓库边界保持一致
 
 - `.wild` Blueprint 是事实源；批准方案和材质方案是生成约束，不是可被模型随意改写的建议。
-- 结构骨架只生成 `wall/floor/column/beam/stair`（若当前任务另有明确协议，以任务协议为准）；`door/window/roof` 等由后续节点负责。
+- 已确认 FloorPlanIR 是主体装配事实源；`ApprovedPlanAssembler` 可一次性生成 `wall/floor/column/beam/stair/roof` 与有真实宿主的 `door/window`。风格装饰只能来自已确认 `StylePackage -> Decor IR`，不能由并行模型重新猜坐标。
 - Agent 只提出 Blueprint 或 ScenePatch；不生成 Three.js 代码。
 - 最终校验失败时禁止保存或自动加载；修复后必须重新运行同一校验器。
 - 诊断不等于自动修复。未经用户确认的增量改动必须保持为 proposal。

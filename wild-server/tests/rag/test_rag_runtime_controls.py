@@ -51,6 +51,10 @@ class RAGRuntimeControlsTest(unittest.TestCase):
     def test_fast_mode_gate_purpose_does_not_reject_ambiguous_generation(self):
         self.assertEqual(infer_retrieval_purpose("生成一个别墅", "generate"), "generation")
         self.assertEqual(infer_retrieval_purpose("欧式别墅有什么特点", None), "chat")
+        self.assertEqual(
+            infer_retrieval_purpose("你生成一个建筑的实现思路是什么", None),
+            "chat",
+        )
         self.assertEqual(infer_retrieval_purpose("欧式别墅", None), "generation")
 
     def test_chat_retrieval_error_cannot_bypass_enforced_gate(self):

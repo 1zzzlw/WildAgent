@@ -70,15 +70,34 @@ export function attachPointsToRoof(
   const origin = roof.position ?? inferRoofOrigin(context)
   const halfWidth = roof.span / 2
   const halfDepth = roof.depth / 2
-  return points.map((point, index) => {
-    assertVec3(point, `path[${index}]`)
-    if (Math.abs(point[0]) > halfWidth + 1e-6 || Math.abs(point[2]) > halfDepth + 1e-6) {
-      throw new ComponentCompileError(`path[${index}] 超出父屋顶平面边界`, 'path')
-    }
+  points.forEach((point, index) => assertVec3(point, `path[${index}]`))
+  const isLocalPath = points.every(point => (
+    Math.abs(point[0]) <= halfWidth + 1e-6
+    && Math.abs(point[2]) <= halfDepth + 1e-6
+  ))
+  const isLegacyWorldPath = !isLocalPath && points.every(point => (
+    Math.abs(point[0] - origin[0]) <= halfWidth + 1e-6
+    && Math.abs(point[2] - origin[2]) <= halfDepth + 1e-6
+  ))
+  if (!isLocalPath && !isLegacyWorldPath) {
+    const invalidIndex = points.findIndex(point => (
+      Math.abs(point[0]) > halfWidth + 1e-6
+      || Math.abs(point[2]) > halfDepth + 1e-6
+    ))
+    throw new ComponentCompileError(`path[${Math.max(0, invalidIndex)}] 超出父屋顶平面边界`, 'path')
+  }
+  return points.map(point => {
+    // 兼容 2026-08-26 以前由后端错误写出的 world-space parentRoof
+    // 路径。必须整条路径都能无歧义地落入屋顶世界包围盒才迁移。
+    const localX = isLegacyWorldPath ? point[0] - origin[0] : point[0]
+    const localZ = isLegacyWorldPath ? point[2] - origin[2] : point[2]
+    const localY = isLegacyWorldPath
+      ? point[1] - origin[1] - roofSurfaceHeight(roof, localX, localZ)
+      : point[1]
     return [
-      origin[0] + point[0],
-      origin[1] + roofSurfaceHeight(roof, point[0], point[2]) + point[1],
-      origin[2] + point[2],
+      origin[0] + localX,
+      origin[1] + roofSurfaceHeight(roof, localX, localZ) + localY,
+      origin[2] + localZ,
     ]
   })
 }

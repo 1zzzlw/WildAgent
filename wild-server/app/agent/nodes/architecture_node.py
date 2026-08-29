@@ -14,7 +14,7 @@ from app.agent.architecture_plan import (
 )
 from app.agent.graph_state import GenerationState
 from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm
+from app.agent.llm_invocation import invoke_llm, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
@@ -28,13 +28,20 @@ async def architecture_planner(state: GenerationState) -> dict:
     started = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
+    revision_feedback = str(
+        state.get("plan_feedback") or state.get("floor_plan_feedback") or ""
+    ).strip()
     complexity_profile = resolve_complexity_profile(
         user_message,
         precision_mode=thinking_mode,
     )
     on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
-        await on_reasoning_delta("architecture", "正在制定建筑体量、立面轴网和屋顶方案...\n")
+        revision_note = "根据平面修改意见调整总体方案" if revision_feedback else "生成总体方案"
+        await on_reasoning_delta(
+            "architecture",
+            f"\n### 总体建筑方案\n{revision_note}：正在制定建筑体量、立面轴网和屋顶方案...\n",
+        )
 
     rag_started = _time.time()
     rag_error = None
@@ -52,8 +59,19 @@ async def architecture_planner(state: GenerationState) -> dict:
         rag_error = str(exc)
         logger.warning(f"[architecture] RAG 检索失败，继续使用内置 profile: {exc}")
     rag_ms = int((_time.time() - rag_started) * 1000)
+    if on_reasoning_delta:
+        await on_reasoning_delta(
+            "architecture",
+            f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成并比较候选方案...\n",
+        )
     profile = detect_architecture_profile(user_message)
-    prompt = build_architecture_plan_prompt(spec_text, profile, complexity_profile)
+    prompt = build_architecture_plan_prompt(
+        spec_text,
+        profile,
+        complexity_profile,
+        current_plan=state.get("architecture_plan"),
+        revision_feedback=revision_feedback,
+    )
     raw_plan = None
     llm_chars = 0
     llm_ms = 0
@@ -61,13 +79,21 @@ async def architecture_planner(state: GenerationState) -> dict:
     token_usage = None
     try:
         llm_started = _time.time()
-        llm_result = await invoke_llm(
-            create_llm(enable_thinking=thinking_mode, streaming=False),
-            [
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": user_message},
-            ],
-        )
+        # 精密模式下流式输出思考内容，避免“卡住很久却没有任何思考文本”。
+        use_streaming = thinking_mode and on_reasoning_delta is not None
+        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
+        messages = [
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": user_message},
+        ]
+        if use_streaming:
+            async def emit_reasoning(delta: str) -> None:
+                assert on_reasoning_delta is not None
+                await on_reasoning_delta("architecture", delta)
+
+            llm_result = await stream_llm(llm, messages, on_reasoning_delta=emit_reasoning)
+        else:
+            llm_result = await invoke_llm(llm, messages)
         llm_ms = int((_time.time() - llm_started) * 1000)
         reply_text = llm_result.content
         llm_chars = len(reply_text)
@@ -107,10 +133,10 @@ async def architecture_planner(state: GenerationState) -> dict:
             f"至少 {complexity_profile['min_volumes']} 个体量、"
             f"{complexity_profile['min_detail_packages']} 个细部包。",
             *[f"- {item}" for item in rationale],
-            "- 下一步由骨架节点落实结构，门窗坐标随后由程序按真实墙体和立面轴网计算。",
+            "- 总体方案已确定；下一节点将在这些体量边界内独立设计并校验平面。",
         ])
         if selection_diag.get("used_fallback"):
-            comparison_lines.append("- 模型方案不可用，本次采用了受范围约束的安全回退方案。")
+            comparison_lines.append("- 模型总体方案不可用，本次采用了受 profile 约束的确定性总体方案。")
         await on_reasoning_delta(
             "architecture",
             "\n".join(comparison_lines) + "\n",

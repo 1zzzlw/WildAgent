@@ -27,5 +27,6 @@ synonyms: []
 | `residential-material-palette.md` | 居住建筑材质角色、建议颜色和当前 MaterialDef 约束 |
 | `public-building-material-palette.md` | 公共建筑材质角色与标量视觉参数 |
 | `glass-curtain-wall-assembly.md` | 玻璃幕墙 A/B 组装路径、网格关系、验证与回退 |
+| `plan2build-approved-plan-assembly.md` | 已确认 FloorPlanIR、G1-G7、风格包与 Decor IR 的确定性装配合同 |
 
 后两份领域矩阵仍含未来专用构件，按 `experimental` 使用；任何写入正式 WILD 的结果都必须先受 `engine-capability-boundaries.md` 约束。

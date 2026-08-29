@@ -30,6 +30,17 @@ async def _architecture(_state: dict) -> dict:
     return {"architecture_plan": {"required_components": []}}
 
 
+async def _floor_plan_design(_state: dict) -> dict:
+    return {
+        "floor_plan": {"source": "model", "levels": []},
+        "floor_plan_validation": [],
+    }
+
+
+def _floor_plan_review(_state: dict) -> dict:
+    return {"floor_plan_review_status": "approved"}
+
+
 async def _material_plan(_state: dict) -> dict:
     return {"material_plan": {"roles": [], "resolvedAssets": {}}}
 
@@ -63,6 +74,8 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             patch.object(graph_module, "chat_node", _chat),
             patch.object(graph_module, "patch_node", _patch),
             patch.object(graph_module, "architecture_planner", _architecture),
+            patch.object(graph_module, "floor_plan_designer", _floor_plan_design),
+            patch.object(graph_module, "floor_plan_review", _floor_plan_review),
             patch.object(graph_module, "material_planner", _material_plan),
             patch.object(graph_module, "skeleton_generator", _skeleton),
             patch.object(graph_module, "merge_fragments_node", _merge),

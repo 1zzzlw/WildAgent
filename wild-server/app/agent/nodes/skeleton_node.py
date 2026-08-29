@@ -13,6 +13,7 @@ from app.agent.architecture_plan import (
     build_deterministic_skeleton,
     evaluate_skeleton_complexity,
 )
+from app.agent.spatial_plan import apply_spatial_plan_to_blueprint
 from app.agent.nodes.material_plan_node import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
 from app.agent.model_client import create_llm
@@ -140,6 +141,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     blueprint = None
     deterministic_fallback_reason = None
     complexity_diag = None
+    spatial_plan_compile = {"walls_added": 0, "walls_replaced": 0}
     
     try:
         if use_streaming:
@@ -285,6 +287,15 @@ async def skeleton_generator(state: GenerationState) -> dict:
         )
     schema_issues = validate_blueprint_schema(blueprint)
 
+    # architecture 节点已经决定了空间关系。无论骨架来自模型还是确定性回退，
+    # 都在这里把同一份 FloorPlanIR 编译为真实内墙，避免“预览有房间、最终模型没房间”。
+    if not schema_issues and isinstance(architecture_plan, dict):
+        spatial_plan_compile = apply_spatial_plan_to_blueprint(
+            blueprint,
+            architecture_plan.get("spatial_plan"),
+        )
+        schema_issues = validate_blueprint_schema(blueprint)
+
     if schema_issues and isinstance(architecture_plan, dict) and not deterministic_fallback_reason:
         logger.warning("[skeleton] 模型骨架 Schema 无效，切换到确定性骨架回退")
         blueprint = apply_resolved_material_plan(
@@ -294,6 +305,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
             material_plan,
         )
         deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
+        schema_issues = validate_blueprint_schema(blueprint)
+        spatial_plan_compile = apply_spatial_plan_to_blueprint(
+            blueprint,
+            architecture_plan.get("spatial_plan"),
+        )
         schema_issues = validate_blueprint_schema(blueprint)
 
     if not schema_issues and isinstance(architecture_plan, dict):
@@ -318,6 +334,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 material_plan,
             )
             deterministic_fallback_reason = "模型骨架未达到高复杂度方案目标"
+            schema_issues = validate_blueprint_schema(blueprint)
+            spatial_plan_compile = apply_spatial_plan_to_blueprint(
+                blueprint,
+                architecture_plan.get("spatial_plan"),
+            )
             schema_issues = validate_blueprint_schema(blueprint)
             complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
 
@@ -457,6 +478,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "deterministic_fallback": bool(deterministic_fallback_reason),
             "deterministic_fallback_reason": deterministic_fallback_reason,
             "complexity": complexity_diag,
+            "spatial_plan_compile": spatial_plan_compile,
             "element_count": len(elements),
             "opening_slot_count": len((design_brief or {}).get("opening_slots", [])),
             "floor_coordinates": floor_coordinates,

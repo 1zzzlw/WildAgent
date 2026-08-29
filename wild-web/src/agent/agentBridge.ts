@@ -354,6 +354,28 @@ export class AgentBridge {
       return null
     }
 
+    const pendingReview = [...agentStore.currentTurns]
+      .reverse()
+      .find(turn => turn.status === 'waiting_review')
+    if (pendingReview) {
+      if (pendingReview.execution_plan_review_status === 'pending') {
+        return this.submitExecutionPlanReview(pendingReview.request_id, 'revise', message)
+      }
+      if (pendingReview.style_review_status === 'pending') {
+        return this.submitStyleReview(pendingReview.request_id, 'revise', '', message)
+      }
+      if (pendingReview.floor_plan_review_status === 'pending') {
+        return this.submitFloorPlanReview(pendingReview.request_id, 'revise', message)
+      }
+    }
+
+    const activePlanTurn = [...agentStore.currentTurns]
+      .reverse()
+      .find(turn => turn.status === 'running' && turn.plan_mode && turn.execution_plan)
+    if (activePlanTurn) {
+      return this.submitExecutionFeedback(activePlanTurn.request_id, message)
+    }
+
     if (!sceneStore.document) {
       agentStore.addSystemMessage('无场景文档')
       return null
@@ -361,6 +383,14 @@ export class AgentBridge {
 
     const sceneSummary = generateSceneSummary(sceneStore.document.blueprint)
     const selection = [...selectionStore.selectedIds]
+    const recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = agentStore
+      .getMessagesForSession(agentStore.session.session_id)
+      .filter(item => item.role === 'user' || item.role === 'agent')
+      .slice(-4)
+      .map(item => ({
+        role: item.role === 'agent' ? 'assistant' : 'user',
+        content: item.content.slice(0, 500),
+      }))
 
     const request = createUserMessageRequest(
       message,
@@ -373,6 +403,8 @@ export class AgentBridge {
       agentStore.thinkingMode,
       agentStore.precisionMode,
       agentStore.proceduralMaterialsEnabled,
+      agentStore.planMode,
+      recentMessages,
     )
 
     agentStore.clearPipelineSteps()
@@ -381,10 +413,16 @@ export class AgentBridge {
     this.requestContexts.set(request.request_id, {
       sessionId: request.session_id,
       turnId: request.request_id,
-      durable: request.precision_mode === true,
+      // 快速与精密模式都由服务端持久图托管；断线后都应恢复而不是标记失败。
+      durable: true,
     })
     this.lastEventSequences.set(request.request_id, 0)
-    agentStore.startTurn(request.request_id, request.session_id, message)
+    agentStore.startTurn(
+      request.request_id,
+      request.session_id,
+      message,
+      agentStore.planMode,
+    )
     void this.syncTurnsToServer(
       request.session_id,
       agentStore.getTurnsForSession(request.session_id),
@@ -392,6 +430,181 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     agentStore.setProcessing(true)
     return request.request_id
+  }
+
+  /** 提交平面审核。确认后才继续三维；修改意见仍归属于原生成轮次。 */
+  submitFloorPlanReview(
+    requestId: string,
+    action: 'confirm' | 'revise',
+    feedback = '',
+  ): string | null {
+    const agentStore = useAgentStore()
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      agentStore.addSystemMessage('未连接到 Agent 服务')
+      return null
+    }
+    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
+    if (!turn || turn.status !== 'waiting_review') {
+      agentStore.addSystemMessage('当前没有可提交的平面审核任务')
+      return null
+    }
+    this.requestContexts.set(requestId, {
+      sessionId: turn.session_id,
+      turnId: requestId,
+      durable: true,
+    })
+    agentStore.markFloorPlanReviewSubmitted(
+      turn.session_id,
+      requestId,
+      action,
+      feedback,
+    )
+    this.ws.send(JSON.stringify({
+      protocol_version: AGENT_PROTOCOL_VERSION,
+      type: 'floor_plan_review',
+      request_id: requestId,
+      session_id: turn.session_id,
+      action,
+      feedback: action === 'revise' ? feedback : undefined,
+    }))
+    agentStore.setProcessing(true, action === 'confirm' ? '平面已确认，开始生成三维…' : '正在根据修改意见重做平面…')
+    void this.syncTurnsToServer(
+      turn.session_id,
+      agentStore.getTurnsForSession(turn.session_id),
+    )
+    return requestId
+  }
+
+  /** 提交第二次风格审核；主体已完成，但只有确认后才装配装饰并交付。 */
+  submitStyleReview(
+    requestId: string,
+    action: 'confirm' | 'revise',
+    stylePackageId = '',
+    feedback = '',
+  ): string | null {
+    const agentStore = useAgentStore()
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      agentStore.addSystemMessage('未连接到 Agent 服务')
+      return null
+    }
+    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
+    if (!turn || turn.status !== 'waiting_review' || turn.style_review_status !== 'pending') {
+      agentStore.addSystemMessage('当前没有可提交的风格审核任务')
+      return null
+    }
+    const selectedStyleId = stylePackageId || turn.selected_style_id || ''
+    this.requestContexts.set(requestId, {
+      sessionId: turn.session_id,
+      turnId: requestId,
+      durable: true,
+    })
+    agentStore.markStyleReviewSubmitted(
+      turn.session_id,
+      requestId,
+      action,
+      selectedStyleId,
+      feedback,
+    )
+    this.ws.send(JSON.stringify({
+      protocol_version: AGENT_PROTOCOL_VERSION,
+      type: 'style_review',
+      request_id: requestId,
+      session_id: turn.session_id,
+      action,
+      style_package_id: action === 'confirm' ? selectedStyleId : undefined,
+      feedback: action === 'revise' ? feedback : undefined,
+    }))
+    agentStore.setProcessing(
+      true,
+      action === 'confirm' ? '风格已确认，正在装配装饰…' : '正在根据意见调整风格选择…',
+    )
+    void this.syncTurnsToServer(
+      turn.session_id,
+      agentStore.getTurnsForSession(turn.session_id),
+    )
+    return requestId
+  }
+
+  /** 批准执行计划，或提交意见后重新研究与规划。 */
+  submitExecutionPlanReview(
+    requestId: string,
+    action: 'confirm' | 'revise',
+    feedback = '',
+  ): string | null {
+    const agentStore = useAgentStore()
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      agentStore.addSystemMessage('未连接到 Agent 服务')
+      return null
+    }
+    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
+    if (
+      !turn
+      || turn.status !== 'waiting_review'
+      || turn.execution_plan_review_status !== 'pending'
+    ) {
+      agentStore.addSystemMessage('当前没有可提交的执行计划')
+      return null
+    }
+    this.requestContexts.set(requestId, {
+      sessionId: turn.session_id,
+      turnId: requestId,
+      durable: true,
+    })
+    agentStore.markExecutionPlanReviewSubmitted(
+      turn.session_id,
+      requestId,
+      action,
+      feedback,
+    )
+    this.ws.send(JSON.stringify({
+      protocol_version: AGENT_PROTOCOL_VERSION,
+      type: 'execution_plan_review',
+      request_id: requestId,
+      session_id: turn.session_id,
+      action,
+      feedback: action === 'revise' ? feedback : undefined,
+    }))
+    agentStore.setProcessing(
+      true,
+      action === 'confirm' ? '计划已批准，开始执行…' : '正在根据意见重新规划…',
+    )
+    void this.syncTurnsToServer(
+      turn.session_id,
+      agentStore.getTurnsForSession(turn.session_id),
+    )
+    return requestId
+  }
+
+  /** 运行期间的新意见不启动第二个任务，而是排队到下一节点边界。 */
+  submitExecutionFeedback(requestId: string, feedback: string): string | null {
+    const agentStore = useAgentStore()
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      agentStore.addSystemMessage('未连接到 Agent 服务')
+      return null
+    }
+    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
+    if (!turn || turn.status !== 'running' || !turn.plan_mode) {
+      agentStore.addSystemMessage('当前没有可调整的运行中计划')
+      return null
+    }
+    agentStore.addMessageToSession(turn.session_id, {
+      id: `msg_${requestId}_feedback_${Date.now()}`,
+      role: 'user',
+      content: feedback,
+      timestamp: Date.now(),
+      request_id: requestId,
+      turn_id: requestId,
+    })
+    this.ws.send(JSON.stringify({
+      protocol_version: AGENT_PROTOCOL_VERSION,
+      type: 'execution_feedback',
+      request_id: requestId,
+      session_id: turn.session_id,
+      feedback,
+    }))
+    agentStore.setProcessing(true, '修改意见已发送，将在下一节点边界处理…')
+    void this.syncConversationState(turn.session_id)
+    return requestId
   }
 
   /** 从 WebSocket URL 提取 HTTP Base URL */
@@ -496,12 +709,103 @@ export class AgentBridge {
         break
         }
 
+      case 'execution_plan_ready':
+        agentStore.setExecutionPlan(
+          message.session_id,
+          message.request_id,
+          message.plan,
+        )
+        break
+
+      case 'execution_plan_review_required':
+        agentStore.setExecutionPlanReviewRequired(
+          message.session_id,
+          message.request_id,
+          message.plan,
+        )
+        if (message.session_id === agentStore.currentSessionId) {
+          agentStore.setProcessing(false)
+        }
+        void this.syncTurnsToServer(
+          message.session_id,
+          agentStore.getTurnsForSession(message.session_id),
+        )
+        break
+
+      case 'execution_feedback_queued':
+        agentStore.setExecutionFeedbackQueued(
+          message.session_id,
+          message.request_id,
+          message.queued_count,
+        )
+        break
+
+      case 'floor_plan_ready':
+        {
+        const context = this.requestContexts.get(message.request_id)
+        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        agentStore.setTurnFloorPlan(
+          sessionId,
+          message.request_id,
+          message.floor_plan,
+          message.svg,
+          message.svgs || { '1': message.svg },
+          message.validation,
+          message.notice || '',
+        )
+        break
+        }
+
+      case 'floor_plan_review_required':
+        {
+        const context = this.requestContexts.get(message.request_id)
+        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        agentStore.setFloorPlanReviewRequired(
+          sessionId,
+          message.request_id,
+          message.revision,
+          message.can_confirm,
+          message.fallback_reason || '',
+          message.notice || '',
+        )
+        if (sessionId === agentStore.currentSessionId) {
+          agentStore.setProcessing(false)
+        }
+        void this.syncTurnsToServer(
+          sessionId,
+          agentStore.getTurnsForSession(sessionId),
+        )
+        break
+        }
+
+      case 'style_review_required':
+        {
+        const context = this.requestContexts.get(message.request_id)
+        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        agentStore.setStyleReviewRequired(
+          sessionId,
+          message.request_id,
+          message.revision,
+          message.selected_style_id,
+          message.options,
+        )
+        if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
+        void this.syncTurnsToServer(
+          sessionId,
+          agentStore.getTurnsForSession(sessionId),
+        )
+        break
+        }
+
       case 'thinking_delta':
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        const visibleProgress = message.channel === 'progress'
         if (agentStore.thinkingMode || agentStore.precisionMode) {
           agentStore.appendThinkingContent(message.delta, message.node)
+        }
+        if (visibleProgress || agentStore.thinkingMode || agentStore.precisionMode) {
           agentStore.appendTurnThinking(
             sessionId,
             message.request_id,
@@ -574,6 +878,47 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        if (message.code === 'floor_plan_review_rejected') {
+          agentStore.restoreFloorPlanReviewAfterError(sessionId, message.request_id)
+          agentStore.addSystemMessageForTurn(
+            sessionId,
+            message.request_id,
+            `平面审核提交失败：${message.error}。按钮已恢复，可以重新提交。`,
+          )
+          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
+          void this.syncConversationState(sessionId)
+          break
+        }
+        if (message.code === 'style_review_rejected') {
+          agentStore.restoreStyleReviewAfterError(sessionId, message.request_id)
+          agentStore.addSystemMessageForTurn(
+            sessionId,
+            message.request_id,
+            `风格审核提交失败：${message.error}。选项已恢复，可以重新提交。`,
+          )
+          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
+          void this.syncConversationState(sessionId)
+          break
+        }
+        if (message.code === 'execution_plan_review_rejected') {
+          agentStore.restoreExecutionPlanReviewAfterError(sessionId, message.request_id)
+          agentStore.addSystemMessageForTurn(
+            sessionId,
+            message.request_id,
+            `执行计划提交失败：${message.error}。按钮已恢复。`,
+          )
+          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
+          void this.syncConversationState(sessionId)
+          break
+        }
+        if (message.code === 'execution_feedback_rejected') {
+          agentStore.addSystemMessageForTurn(
+            sessionId,
+            message.request_id,
+            `运行中意见未接收：${message.error}`,
+          )
+          break
+        }
         agentStore.addSystemMessageForTurn(sessionId, message.request_id, `错误: ${message.error}`)
         agentStore.completeTurn(sessionId, message.request_id, 'error')
         if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
@@ -629,7 +974,7 @@ export class AgentBridge {
       // 页面刷新后从持久化 Turn 找回 request_id；即使服务端已经完成，也能精确补发。
       const runningTurn = [...agentStore.getTurnsForSession(agentStore.currentSessionId)]
         .reverse()
-        .find(turn => turn.status === 'running')
+        .find(turn => turn.status === 'running' || turn.status === 'waiting_review')
       targets.set(agentStore.currentSessionId, {
         requestId: runningTurn?.request_id,
         lastEventSeq: 0,

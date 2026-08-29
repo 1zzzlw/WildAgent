@@ -15,6 +15,7 @@ from loguru import logger
 from app.agent.graph_state import GenerationState
 from app.agent.component_registry import COMPONENT_REGISTRY
 from app.agent.diagnostics import blueprint_fingerprint
+from app.agent.model_errors import collect_component_model_errors
 from app.agent.runtime_context import get_reasoning_callback
 from app.utils.fragment_merger import merge_fragments
 
@@ -49,6 +50,41 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     if not skeleton:
         logger.error("[merge] 骨架缺失，无法合并")
         return {"error": "骨架缺失，无法合并组件", "status": "failed"}
+
+    # 模型服务故障不是几何问题。只要任一并行组件节点调用模型失败，
+    # 就停止本次生成，避免用空分片合并后再误入 callback 修复循环。
+    model_failures = collect_component_model_errors(
+        state.get("component_diagnostics", {})
+    )
+    if model_failures:
+        labels = list(dict.fromkeys(item["label"] for item in model_failures))
+        primary = model_failures[0]
+        error_message = primary["user_message"]
+        logger.error(
+            f"[merge] 检测到 {len(model_failures)} 个组件模型故障，停止当前生成: "
+            f"{', '.join(labels)}"
+        )
+        if on_reasoning_delta:
+            await on_reasoning_delta(
+                "merge",
+                f"检测到模型服务故障，已停止合并和自动修复。受影响组件：{', '.join(labels)}。\n",
+            )
+        terminal_error = {
+            **primary,
+            "affected_count": len(model_failures),
+            "affected_components": [item["component_type"] for item in model_failures],
+        }
+        return {
+            "terminal_model_error": terminal_error,
+            "error": error_message,
+            "status": "failed",
+            "merge_diag": {
+                "label": "合并",
+                "model_failures": model_failures,
+                "final_errors": len(model_failures),
+                "iterations": [],
+            },
+        }
 
     # ── 1. 收集所有组件分片 ──
     fragments: list[dict] = []

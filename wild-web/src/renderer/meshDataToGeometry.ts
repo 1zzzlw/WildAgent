@@ -68,10 +68,10 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   if (meshData.uvs) {
     const uvAttribute = new THREE.BufferAttribute(meshData.uvs, 2)
     geometry.setAttribute('uv', uvAttribute)
-    // 不同 Three.js 小版本分别使用 uv1 / uv2 表示第二套 UV；两者都提供，
-    // 当前 WILD v1.1 复用主 UV，确保 aoMap 在部署版本中稳定生效。
-    geometry.setAttribute('uv1', uvAttribute.clone())
-    geometry.setAttribute('uv2', uvAttribute.clone())
+    // WILD v1.1 尚未提供独立光照 UV；三个通道共享同一 BufferAttribute，
+    // 保持 AO 兼容的同时避免把每个网格的 UV 数据复制三份到内存/GPU。
+    geometry.setAttribute('uv1', uvAttribute)
+    geometry.setAttribute('uv2', uvAttribute)
   }
   
   // 5. 计算边界球（用于视锥体剔除优化）

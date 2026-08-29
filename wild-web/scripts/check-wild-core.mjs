@@ -88,6 +88,7 @@ try {
   await assertSideWallOpeningAlignment(core);
   await assertRightAngleWallJointCoverage(core);
   await assertArchitecturalWallAttributes(core);
+  await assertTallWallVertexBudget(core);
   await assertInvalidRuntimeMaterialFallsBack(core);
   await assertProceduralBrickMaterialPassesThrough(core);
 
@@ -660,4 +661,42 @@ async function assertArchitecturalWallAttributes(core) {
   }
   const uSpan = Math.max(...wall.uvs) - Math.min(...wall.uvs);
   if (uSpan < 2) throw new Error(`墙体 UV 未按米展开: span=${uSpan}`);
+}
+
+async function assertTallWallVertexBudget(core) {
+  const source = {
+    meta: { version: '1.1', type: 'building', name: 'tall-wall-vertex-budget' },
+    geometry: {
+      elements: [
+        { type: 'wall', id: 'tall_wall', from: [0, 0, 0], to: [42, 120, 0], thickness: 0.24, material: 'wall' },
+      ],
+      components: [],
+    },
+    materials: { wall: { baseColor: [0.8, 0.8, 0.8], roughness: 0.8, metallic: 0, albedo: 1 } },
+    behaviors: {},
+  }
+  const entity = await core.reconstructEntity(source);
+  const errors = entity.diagnostics.filter(diagnostic => diagnostic.level === 'error');
+  if (errors.length) throw new Error(`通高墙重建失败: ${JSON.stringify(errors)}`);
+  const wall = entity.meshes.find(mesh => mesh.elementId === 'tall_wall');
+  const vertices = wall?.geometry.length ? wall.geometry.length / 3 : 0;
+  if (!wall || vertices <= 0 || vertices > 36000) {
+    throw new Error(`通高墙顶点预算失效: ${vertices}`);
+  }
+
+  source.geometry.elements.push(...Array.from({ length: 60 }, (_, index) => ({
+    type: 'opening',
+    id: `curtain_window_${index + 1}`,
+    parentWall: 'tall_wall',
+    from: [1 + (index % 6) * 6.7, 0.7 + Math.floor(index / 6) * 12.8, 0],
+    width: 3.8,
+    height: 2.8,
+    style: 'rectangular',
+  })))
+  const curtainEntity = await core.reconstructEntity(source)
+  const curtainWall = curtainEntity.meshes.find(mesh => mesh.elementId === 'tall_wall')
+  const curtainVertices = curtainWall?.geometry.length ? curtainWall.geometry.length / 3 : 0
+  if (!curtainWall || curtainVertices <= 0 || curtainVertices > 50000) {
+    throw new Error(`通高幕墙洞口组合超出顶点预算: ${curtainVertices}`)
+  }
 }

@@ -2,11 +2,14 @@ import unittest
 from copy import deepcopy
 
 from app.tools.spatial_tools import (
+    collect_stair_placement_issues,
     fix_element_dimensions,
+    fix_element_elevations,
     fix_material_references,
     fix_opening_coords,
     fix_opening_fit,
     fix_roof_coverage,
+    fix_stair_alignment,
     fix_wall_junctions,
     validate_collision,
     validate_element_dimensions,
@@ -15,6 +18,7 @@ from app.tools.spatial_tools import (
     validate_opening_fit,
     validate_reference_integrity,
     validate_roof_coverage,
+    validate_stair_alignment,
     validate_wall_junctions,
 )
 
@@ -24,6 +28,85 @@ def run_tool(tool, blueprint):
 
 
 class SpatialValidationTest(unittest.TestCase):
+    def test_external_disconnected_stair_stack_is_detected_and_repaired(self):
+        elements = []
+        for level_y, bounds in (
+            (0.0, [0, 0, 12, 9]),
+            (3.2, [4, 3, 12, 9]),
+            (6.4, [4, 3, 12, 9]),
+        ):
+            elements.append({
+                "id": f"floor_{level_y}",
+                "type": "floor",
+                "from": [bounds[0], level_y, bounds[1]],
+                "to": [bounds[2], level_y, bounds[3]],
+                "thickness": 0.2,
+            })
+        elements.extend([
+            {
+                "id": "wall_level_1", "type": "wall",
+                "from": [0, 0, 0], "to": [12, 3.2, 0],
+                "thickness": 0.2,
+            },
+            {
+                "id": "wall_level_2", "type": "wall",
+                "from": [4, 3.2, 3], "to": [12, 6.4, 3],
+                "thickness": 0.2,
+            },
+            {
+                "id": "stair_1_2", "type": "stair",
+                "from": [1, 0, 1], "to": [1, 3.2, 7], "width": 1.6,
+            },
+            {
+                "id": "stair_2_3", "type": "stair",
+                "from": [1, 3.2, 1], "to": [1, 6.4, 7], "width": 1.6,
+            },
+        ])
+        blueprint = {"geometry": {"elements": elements, "components": []}}
+
+        issue_codes = {
+            str(issue["code"])
+            for issue in collect_stair_placement_issues(blueprint)
+        }
+        self.assertIn("stair_start_outside_floor", issue_codes)
+        self.assertIn("disconnected_stair_flights", issue_codes)
+        self.assertIn("❌", run_tool(validate_stair_alignment, blueprint))
+
+        repair = run_tool(fix_stair_alignment, blueprint)
+
+        self.assertIn("共同有效区域", repair)
+        self.assertEqual(collect_stair_placement_issues(blueprint), [])
+        stairs = [
+            item for item in blueprint["geometry"]["elements"]
+            if item.get("type") == "stair"
+        ]
+        self.assertEqual(stairs[0]["to"], stairs[1]["from"])
+
+    def test_instanced_floor_levels_keep_segmented_columns_in_place(self):
+        blueprint = {
+            "geometry": {
+                "elements": [{
+                    "id": "column_upper", "type": "column",
+                    "base": [2, 24, 2], "height": 32,
+                    "bottomRadius": 0.2, "topRadius": 0.2,
+                }],
+                "templates": {
+                    "standard_floor": {
+                        "id": "standard_floor", "type": "floor",
+                        "from": [0, 0, 0], "to": [10, 0, 10], "thickness": 0.2,
+                    },
+                },
+                "instances": [{
+                    "id": "floor_6", "ref": "standard_floor", "position": [0, 24, 0],
+                }],
+                "components": [],
+            },
+        }
+
+        self.assertNotIn("可能悬空", run_tool(validate_collision, blueprint))
+        self.assertIn("无需修正", run_tool(fix_element_elevations, blueprint))
+        self.assertEqual(blueprint["geometry"]["elements"][0]["base"][1], 24)
+
     def test_duplicate_walls_and_overlapping_columns_are_model_quality_errors(self):
         blueprint = {
             "geometry": {

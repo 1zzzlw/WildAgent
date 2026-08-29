@@ -3,6 +3,7 @@ import { boxWithHoles } from './box-with-holes';
 import { generateArchitecturalSurfaceAttributes, indexTriList } from './mesh-helper';
 
 const TARGET_TEXEL = 0.4;
+const TARGET_VERTEX_BUDGET = 36000;
 
 export function buildWall(params: WallParams): MeshData[] {
   const { from, to, thickness, material } = params;
@@ -30,7 +31,11 @@ export function buildWall(params: WallParams): MeshData[] {
     const r = boxWithHoles(renderLength, height, thickness, renderCutouts);
     geometry = r.geometry; indices = r.indices;
   } else {
-    const raw = subdivideBox(renderLength, height, thickness, TARGET_TEXEL);
+    // 小墙维持 0.4m 采样，供逐顶点程序化材质使用；通高墙按预算自适应
+    // 放大采样步长。旧实现对 80~120m 高墙仍固定 0.4m，单墙会生成
+    // 10万到30万顶点并触发渲染保护，即使墙上没有任何洞口。
+    const step = resolveSubdivisionStep(renderLength, height, thickness);
+    const raw = subdivideBox(renderLength, height, thickness, step);
     const i = indexTriList(raw);
     geometry = i.geometry; indices = i.indices;
   }
@@ -55,6 +60,25 @@ export function buildWall(params: WallParams): MeshData[] {
     transform: { position: [midX, midY, midZ], rotation: [0, angle, 0], scale: [1, 1, 1] },
     materialRef: material || 'default'
   }];
+}
+
+function subdivisionVertexCount(w: number, h: number, d: number, step: number): number {
+  const nx = Math.max(1, Math.round(w / step));
+  const ny = Math.max(1, Math.round(h / step));
+  const nz = Math.max(1, Math.round(d / step));
+  return 12 * (nx * ny + nx * nz + ny * nz);
+}
+
+function resolveSubdivisionStep(w: number, h: number, d: number): number {
+  const surfaceTerms = w * h + w * d + h * d;
+  let step = Math.max(
+    TARGET_TEXEL,
+    Math.sqrt(12 * surfaceTerms / TARGET_VERTEX_BUDGET),
+  );
+  while (subdivisionVertexCount(w, h, d, step) > TARGET_VERTEX_BUDGET) {
+    step *= 1.05;
+  }
+  return step;
 }
 
 function buildCurvedWall(from: Vec3, to: Vec3, thickness: number, material: string, curve: any, cutouts?: any[]): MeshData[] {

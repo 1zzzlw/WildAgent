@@ -370,14 +370,14 @@ synonyms: []
   "stone": { "baseColor": [0.62, 0.59, 0.55], "roughness": 0.9, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
   "tile":  { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
   "metal": { "baseColor": [0.7, 0.7, 0.7],   "roughness": 0.3,  "metallic": 0.9, "albedo": 1.0, "lightingCondition": "D65_noon" },
-  "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
+  "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
 }
 }
 ```
 - baseColor 必须是 [R, G, B] 数组（0.0~1.0），**绝对禁止** "#RRGGBB" 字符串
 - baseColor、emissive 和效果层中的数值颜色统一按 sRGB authored value 表达，由渲染器转换到线性工作空间
 - 用户未指定颜色时，必须采用检索到的建筑类型默认配色；墙、楼板、屋顶、门、玻璃应使用角色独立的材质名
-- 不要默认把墙、楼板和屋顶全部设成同一个 `concrete`；玻璃材质必须显式给出 `opacity`
+- 不要默认把墙、楼板和屋顶全部设成同一个 `concrete`；物理玻璃必须给出 `materialClass: "glass"`、`transmission > 0` 和 `ior`，`opacity` 必须为 `1` 或省略
 
 ---
 
@@ -432,7 +432,7 @@ synonyms: []
     "tile":  { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "door_wood": { "baseColor": [0.38, 0.16, 0.06], "roughness": 0.72, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
     "window_frame": { "baseColor": [0.18, 0.18, 0.18], "roughness": 0.35, "metallic": 0.65, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "opacity": 0.35, "lightingCondition": "D65_noon" }
+    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
   },
   "behaviors": {}
 }

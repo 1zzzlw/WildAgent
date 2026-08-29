@@ -56,6 +56,9 @@ try {
   const { meshDataToGeometry } = await server.ssrLoadModule(
     '/src/renderer/meshDataToGeometry.ts',
   )
+  const { clearSceneObjectResources, updateSceneGroup } = await server.ssrLoadModule(
+    '/src/renderer/renderEntity.ts',
+  )
   const { selectionAfterClick } = await server.ssrLoadModule(
     '/src/wild/componentSelection.ts',
   )
@@ -465,6 +468,29 @@ try {
   })
   assert.ok(geometry.getAttribute('uv1'), 'AO 需要 uv1')
   assert.ok(geometry.getAttribute('uv2'), '兼容旧版 Three.js 的 AO UV')
+  assert.equal(geometry.getAttribute('uv'), geometry.getAttribute('uv1'), '复用主 UV，不能复制整份数组')
+  assert.equal(geometry.getAttribute('uv'), geometry.getAttribute('uv2'), '兼容 UV 也必须共享 BufferAttribute')
+
+  const renderGroup = new THREE.Group()
+  const renderCache = new MaterialCache('render-resource-test')
+  updateSceneGroup(renderGroup, {
+    meshes: [{
+      elementId: 'fallback_mesh',
+      geometry: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0]),
+      indices: new Uint32Array([0, 1, 2]),
+      materialRef: 'missing_material',
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    }],
+    materialParams: [],
+  }, renderCache)
+  const fallbackMesh = renderGroup.children[0]
+  assert.equal(fallbackMesh.userData.ownsMaterial, true, '默认兜底材质必须由网格负责释放')
+  let fallbackDisposeCount = 0
+  fallbackMesh.material.addEventListener('dispose', () => { fallbackDisposeCount++ })
+  clearSceneObjectResources(renderGroup)
+  assert.equal(fallbackDisposeCount, 1, '清空场景时必须释放自有材质')
+  assert.equal(renderGroup.children.length, 0)
+  renderCache.clear()
 
   geometry.dispose()
   standard.dispose()

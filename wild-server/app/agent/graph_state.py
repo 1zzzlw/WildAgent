@@ -1,7 +1,7 @@
 """
 LangGraph State 定义
 
-所有节点通过这个 State 通信，只在内存中传递。
+所有节点通过这个 State 通信，并由 LangGraph checkpointer 持久化可序列化字段。
 诊断字段均已声明，确保 LangGraph 不会丢弃 astream 中的诊断数据。
 """
 from typing import Annotated, Any, TypedDict
@@ -24,16 +24,51 @@ class GenerationState(TypedDict, total=False):
     session_id: str
     current_blueprint: dict | None
     selection: list[str]
+    recent_messages: list[dict]
+    workflow_state: str
     thinking_mode: bool
     procedural_materials_enabled: bool
+    plan_mode: bool
+
+    # ── Claude 风格的可审核执行计划 ──
+    execution_plan: dict
+    execution_plan_status: str
+    execution_plan_review_status: str
+    execution_plan_validation: list[dict]
+    execution_plan_history: list[dict]
+    plan_feedback: str
+    plan_research_context: str
+    plan_research_summary: str
+    plan_research_diag: dict
+    plan_replan_count: int
+    max_plan_replans: int
+    current_plan_step_id: str
+    plan_next_node: str
     
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
+    intent_confidence: float
+    intent_target: str
+    intent_requires_scene: bool
+    intent_reason: str
+    intent_source: str
 
     # ── Layer -0.5: 建筑方案（生成分支）──
     architecture_plan: dict
     complexity_profile: dict
     architecture_diag: dict
+    floor_plan_design_diag: dict
+    floor_plan: dict
+    floor_plan_svg: str
+    floor_plan_svgs: dict[str, str]
+    floor_plan_validation: list[dict]
+    floor_plan_notice: str
+    floor_plan_feedback: str
+    floor_plan_revision: int
+    floor_plan_auto_repair_count: int
+    floor_plan_auto_repairing: bool
+    floor_plan_review_status: str  # "pending" | "revise" | "approved"
+    floor_plan_review_history: list[dict]
     material_plan: dict
     material_diag: dict
 
@@ -53,6 +88,17 @@ class GenerationState(TypedDict, total=False):
     spatial_invariants: dict
     suggested_components: list[str]  # 骨架节点建议的组件列表
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
+    body_gate_reports: list[dict]
+    deterministic_body_complete: bool
+
+    # ── Layer 0.5: 第二次风格确认与装饰装配 ──
+    style_review_status: str  # "pending" | "revise" | "approved"
+    style_package_id: str
+    style_feedback: str
+    style_revision: int
+    decor_ir: dict
+    style_gate_report: dict
+    decor_diag: dict
 
     # ── Layer 1: 组件分片（并行）──
     # 以下 legacy 分片字段已不再写入，仅保留用于旧 checkpoint 的读侧兜底；
@@ -116,6 +162,7 @@ class GenerationState(TypedDict, total=False):
     # ── 回调上下文 ──
     callback_context: dict
     repair_audit: dict
+    terminal_model_error: dict  # 模型服务故障；当前图运行必须终止，不进入建筑修复循环
 
     # ── 最终输出 ──
     final_blueprint: dict

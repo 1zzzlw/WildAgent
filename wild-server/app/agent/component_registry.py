@@ -72,8 +72,8 @@ _COMPONENT_RULES: dict[str, str] = {
         "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
         "- frameDepth 默认等于父墙 thickness；glassDepth 默认 min(0.012, frameDepth)，通常不必显式填写\n"
         "- 自定义 glassDepth 必须为正数且不大于 frameDepth，窗框和玻璃必须与父墙厚度范围相交\n"
-        "- glassMaterial 指向的材质必须含 opacity（0.3~0.5 半透明模拟玻璃），否则窗户不透明\n"
-        "- 如果骨架 materials 没有半透明玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
+        "- glassMaterial 指向的材质必须使用 materialClass=glass、transmission>0、有效 ior 的物理玻璃；opacity 必须为 1 或省略\n"
+        "- 如果骨架 materials 没有物理玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
         "- 编译后产出: opening + primitive.box×N（窗框+窗棂）\n"
         "\n**数量与位置约束（必须遵守）**：\n"
         "- 每面墙最多 2~3 个窗，根据墙长合理分布（墙长 <4m 放 1 个，4~8m 放 2 个，>8m 放 3 个）\n"
@@ -122,7 +122,7 @@ _COMPONENT_RULES: dict[str, str] = {
         "- projectionDepth 必填\n"
         "- parentWall 必须存在\n"
         "- 凸窗是实际墙洞，必须占用并替换一个普通窗位；严禁与 door、window 或其他 bay_window 重叠\n"
-        "- glassMaterial 必须引用 materials 中的 `\"glass\"`（opacity 0.35）\n"
+        "- glassMaterial 必须引用 materials 中的 `\"glass\"` 物理玻璃材质，不得用低 opacity 模拟\n"
         "- 编译后产出: opening + primitive.box×N（投影+窗框）"
     ),
     "cornice": (

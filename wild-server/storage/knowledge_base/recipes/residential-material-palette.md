@@ -39,7 +39,7 @@ primary_terms:
 synonyms: []
 -->
 
-每个 `materials.<name>` 至少应提供 `baseColor`、`roughness`、`metallic`、`albedo` 和 `lightingCondition`。下表中的所有材质默认补充 `albedo: 1.0` 与 `lightingCondition: "D65_noon"`；只有玻璃类材质使用小于 1 的 `opacity`。`baseColor` 必须是三个 0～1 数值，材质名可以自由定义，但必须与元素的 `material` 引用完全一致。
+每个 `materials.<name>` 至少应提供 `baseColor`、`roughness`、`metallic`、`albedo` 和 `lightingCondition`。下表中的所有材质默认补充 `albedo: 1.0` 与 `lightingCondition: "D65_noon"`。普通半透明表面可以使用低 `opacity`；物理玻璃必须改用 `materialClass: glass`、正数 `transmission`、有效 `ior` 和非负 `thickness`，其 `opacity` 必须为 1 或省略。`baseColor` 必须是三个 0～1 数值，材质名可以自由定义，但必须与元素的 `material` 引用完全一致。
 
 ## 现代结构、金属与玻璃材质
 
@@ -65,7 +65,7 @@ synonyms: []
 | `white_concrete` | `[0.85, 0.84, 0.82]` | 0.92 | 0.0 | 1.0 | 现代别墅、新中式、保障房墙面 |
 | `reinforced_concrete` | `[0.55, 0.55, 0.53]` | 0.92 | 0.0 | 1.0 | 楼板、墙体与基础体量 |
 | `steel_sandwich` | `[0.65, 0.68, 0.72]` | 0.40 | 0.60 | 1.0 | 工地临建围护视觉 |
-| `glass_curtain` | `[0.60, 0.70, 0.75]` | 0.05 | 0.0 | 0.35 | 公寓玻璃立面近似 |
+| `glass_curtain` | `[0.60, 0.70, 0.75]` | 0.05 | 0.0 | 1.0 或省略 | 公寓玻璃立面近似；另加 `materialClass: glass`、`transmission: 0.92`、`ior: 1.5`、`thickness: 0.012` |
 | `steel_railing` | `[0.60, 0.60, 0.62]` | 0.25 | 0.95 | 1.0 | 金属扶手或细构件近似 |
 
 ## 木材与木瓦材质
