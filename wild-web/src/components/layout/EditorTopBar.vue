@@ -33,7 +33,7 @@
 
     <div class="toolbar-section">
       <el-button class="toolbar-btn" size="small" @click="handleToggleAIPanel" title="切换 AI 对话面板">
-        <span>{{ uiStore.bottomPanelVisible ? '隐藏 AI' : '显示 AI' }}</span>
+        <span>{{ uiStore.aiPanelVisible ? '隐藏 AI' : '显示 AI' }}</span>
       </el-button>
       <el-button class="toolbar-btn" size="small" @click="openConfig" title="LLM 配置">
         <span>配置</span>
@@ -188,7 +188,7 @@ function handleValidate() {
 }
 
 function handleToggleAIPanel() {
-  uiStore.toggleBottomPanel()
+  uiStore.toggleAIPanel()
 }
 </script>
 

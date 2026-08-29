@@ -40,7 +40,7 @@ src/
 │   │   ├── EditorTopBar.vue  # 顶部工具栏
 │   │   ├── LeftPanel.vue     # 左侧面板容器
 │   │   ├── RightPanel.vue    # 右侧面板容器
-│   │   └── BottomPanel.vue   # 底部面板容器
+│   │   └── AIWorkspace.vue   # AI 底部/侧栏/专注三态工作区
 │   ├── viewport/             # 视口组件
 │   │   └── CanvasViewport.vue # Three.js 渲染视口
 │   └── panels/               # 功能面板
@@ -66,7 +66,7 @@ src/
 - **selectionStore**: 选中的构件、hover 状态
 - **historyStore**: 撤销/重做历史
 - **agentStore**: AI 对话消息、WebSocket 连接状态、待确认的 patch
-- **uiStore**: 面板显示状态、尺寸
+- **uiStore**: 面板显示状态、AI 工作区模式与本地布局偏好
 
 ### ScenePatch 协议
 

@@ -7,11 +7,45 @@
       @delete="handleDeleteSession"
     />
 
+    <div class="content-toolbar">
+      <div class="content-filters" role="group" aria-label="对话内容筛选">
+        <button
+          v-for="filter in contentFilters"
+          :key="filter.value"
+          type="button"
+          :class="['content-filter', { active: contentFilter === filter.value }]"
+          :aria-pressed="contentFilter === filter.value"
+          @click="contentFilter = filter.value"
+        >{{ filter.label }}</button>
+      </div>
+      <div class="content-locators">
+        <select
+          v-if="importantTurn?.steps.length"
+          v-model="selectedStepNode"
+          class="step-selector"
+          aria-label="跳转到执行节点"
+          @change="jumpToSelectedStep"
+        >
+          <option value="">跳转节点…</option>
+          <option v-for="step in importantTurn.steps" :key="step.node" :value="step.node">
+            {{ step.status === 'error' ? '! ' : step.status === 'running' ? '→ ' : '' }}{{ step.label }}
+          </option>
+        </select>
+        <button
+          v-if="importantTurn"
+          type="button"
+          class="locate-turn-button"
+          :title="`定位到${importantTurnLabel}`"
+          @click="jumpToImportantTurn"
+        >定位：{{ importantTurnLabel }}</button>
+      </div>
+    </div>
+
     <div class="messages-container" ref="messagesRef">
       <div class="messages-timeline" ref="timelineRef">
       <!-- 所有模式共用同一条时间线；执行过程绑定到发起它的用户消息。 -->
       <template v-for="message in agentStore.session.messages" :key="message.id">
-        <div :class="['message', message.role]">
+        <div v-if="shouldShowMessage()" :class="['message', message.role]">
           <div class="message-header">
             <span class="message-role">{{ getRoleLabel(message.role) }}</span>
             <span class="message-time">{{ formatTime(message.timestamp) }}</span>
@@ -86,6 +120,8 @@
         </div>
         <AgentExecutionPanel
           v-if="message.role === 'user' && agentStore.getTurnForMessage(message)?.user_message_id === message.id"
+          v-show="shouldShowExecution(agentStore.getTurnForMessage(message)!)"
+          :id="turnDomId(agentStore.getTurnForMessage(message)!)"
           :turn="agentStore.getTurnForMessage(message)!"
           @confirm-floor-plan="handleConfirmFloorPlan"
           @retry-floor-plan="handleRetryFloorPlan"
@@ -96,6 +132,10 @@
           @revise-execution-plan="handleReviseExecutionPlan"
         />
       </template>
+
+      <div v-if="visibleContentCount === 0" class="content-empty">
+        当前筛选条件下没有内容
+      </div>
 
       <!-- 兼容没有 request_id 的旧后端事件。 -->
       <div v-if="agentStore.isProcessing && !hasRunningTurn" class="processing">
@@ -194,7 +234,7 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
 import AgentExecutionPanel from './AgentExecutionPanel.vue'
-import type { ChatMessage } from '../../types/agent'
+import type { AgentTurn, ChatMessage } from '../../types/agent'
 
 hljs.registerLanguage('bash', bash)
 hljs.registerLanguage('css', css)
@@ -230,6 +270,91 @@ const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const timelineRef = ref<HTMLElement | null>(null)
 const sessionHint = ref('')
+const selectedStepNode = ref('')
+type ContentFilter = 'all' | 'conversation' | 'execution' | 'review' | 'errors'
+const contentFilter = ref<ContentFilter>('all')
+const contentFilters: Array<{ value: ContentFilter; label: string }> = [
+  { value: 'all', label: '全部' },
+  { value: 'conversation', label: '对话' },
+  { value: 'execution', label: '执行' },
+  { value: 'review', label: '待审核' },
+  { value: 'errors', label: '错误' },
+]
+
+function hasTurnError(turn: AgentTurn): boolean {
+  return turn.status === 'error'
+    || (turn.steps || []).some(step => step.status === 'error')
+    || (turn.validation_steps || []).some(step => step.status === 'error')
+}
+
+function shouldShowMessage(): boolean {
+  return contentFilter.value === 'all' || contentFilter.value === 'conversation'
+}
+
+function shouldShowExecution(turn: AgentTurn): boolean {
+  if (contentFilter.value === 'all' || contentFilter.value === 'execution') return true
+  if (contentFilter.value === 'review') return turn.status === 'waiting_review'
+  if (contentFilter.value === 'errors') return hasTurnError(turn)
+  return false
+}
+
+const visibleContentCount = computed(() => {
+  const messageCount = shouldShowMessage() ? agentStore.session.messages.length : 0
+  const turnCount = agentStore.currentTurns.filter(shouldShowExecution).length
+  return messageCount + turnCount
+})
+
+const importantTurn = computed(() => {
+  const turns = [...agentStore.currentTurns].reverse()
+  return turns.find(turn => turn.status === 'waiting_review')
+    || turns.find(turn => turn.status === 'error')
+    || turns.find(turn => turn.status === 'running')
+    || turns[0]
+})
+
+const importantTurnLabel = computed(() => {
+  if (importantTurn.value?.status === 'waiting_review') return '待审核任务'
+  if (importantTurn.value?.status === 'error') return '失败任务'
+  if (importantTurn.value?.status === 'running') return '当前任务'
+  return '最近任务'
+})
+
+function turnDomId(turn: AgentTurn): string {
+  return `agent-turn-${turn.turn_id}`
+}
+
+function stepDomId(turn: AgentTurn, node: string): string {
+  return `agent-step-${turn.turn_id}-${node}`
+}
+
+function revealTimelineTarget(target: HTMLElement | null) {
+  if (!target) return
+  target.closest('details.execution-panel')?.setAttribute('open', '')
+  if (target.matches('details')) target.setAttribute('open', '')
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function jumpToImportantTurn() {
+  const turn = importantTurn.value
+  if (!turn) return
+  contentFilter.value = 'all'
+  isUserScrolling.value = true
+  void nextTick(() => {
+    revealTimelineTarget(document.getElementById(turnDomId(turn)))
+  })
+}
+
+function jumpToSelectedStep() {
+  const turn = importantTurn.value
+  const node = selectedStepNode.value
+  if (!turn || !node) return
+  contentFilter.value = 'all'
+  isUserScrolling.value = true
+  void nextTick(() => {
+    revealTimelineTarget(document.getElementById(stepDomId(turn, node)))
+    selectedStepNode.value = ''
+  })
+}
 
 // 用户滚动检测
 const isUserScrolling = ref(false)
@@ -775,6 +900,113 @@ function loadDraftSessionsFromLocal(): any[] {
   z-index: 10;
 }
 
+/* ── 长内容导航：筛选对话、执行、审核和错误，不复制任何会话状态 ── */
+.content-toolbar {
+  min-height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.content-filters {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.content-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.content-locators {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.content-filter,
+.locate-turn-button {
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.content-filter {
+  padding: 0 9px;
+}
+
+.content-filter:hover,
+.locate-turn-button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.content-filter.active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: #9fc5ed;
+}
+
+.locate-turn-button {
+  padding: 0 8px;
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.step-selector {
+  width: min(150px, 24vw);
+  height: 26px;
+  padding: 0 24px 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  outline: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.step-selector:focus-visible {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+}
+
+.content-filter:focus-visible,
+.locate-turn-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 720px) {
+  .locate-turn-button {
+    display: none;
+  }
+
+  .step-selector {
+    width: 112px;
+  }
+}
+
 /* ── Messages Container ── */
 .messages-container {
   flex: 1;
@@ -797,6 +1029,13 @@ function loadDraftSessionsFromLocal(): any[] {
   content: '';
   flex: 1 1 auto;
   min-height: 0;
+}
+
+.content-empty {
+  align-self: center;
+  padding: 18px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 /* ── Message Bubbles ── */

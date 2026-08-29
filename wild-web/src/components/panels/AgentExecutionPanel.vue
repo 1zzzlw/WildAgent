@@ -208,6 +208,7 @@
       <details
         v-for="step in turn.steps"
         :key="step.node"
+        :id="`agent-step-${turn.turn_id}-${step.node}`"
         class="execution-step"
         :open="step.status === 'running' || (turn.status === 'waiting_review' && step.node === 'floor_plan_design')"
       >
