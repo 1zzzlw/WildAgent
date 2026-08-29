@@ -15,7 +15,7 @@ from app.agent.architecture_plan import (
 from app.agent.graph_state import GenerationState
 from app.agent.execution_plan import execution_plan_phase_guidance
 from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm, stream_llm
+from app.agent.llm_invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
@@ -83,6 +83,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         complexity_profile,
         current_plan=state.get("architecture_plan"),
         revision_feedback=revision_feedback,
+        style_preference=state.get("style_preference"),
     )
     phase_guidance = execution_plan_phase_guidance(execution_plan, "architecture")
     if phase_guidance:
@@ -99,6 +100,7 @@ async def architecture_planner(state: GenerationState) -> dict:
     llm_ms = 0
     error = None
     token_usage = None
+    recovery_diag = None
     try:
         llm_started = _time.time()
         # 精密模式下流式输出思考内容，避免“卡住很久却没有任何思考文本”。
@@ -121,6 +123,29 @@ async def architecture_planner(state: GenerationState) -> dict:
         llm_chars = len(reply_text)
         raw_plan = extract_json_object(reply_text)
         token_usage = llm_result.token_usage
+
+        # 解析失败时做一次非思考定向格式恢复，避免偶发格式抖动丢弃整份方案。
+        if raw_plan is None and on_reasoning_delta is not None:
+            await on_reasoning_delta(
+                "architecture",
+                "\n总体方案结构化输出缺失或格式无效，正在进行一次定向格式恢复...\n",
+            )
+        if raw_plan is None:
+            from app.agent.format_recovery import recover_single_json
+
+            raw_plan, recovery_diag = await recover_single_json(
+                prompt,
+                user_message,
+                reply_text,
+                object_hint="包含 massing、volumes、facades、roof、component_quota 的建筑方案 JSON 对象",
+                extra_instruction=(
+                    "- 顶层必须直接包含 massing、volumes、facades、roof、component_quota；\n"
+                    "- 不要输出候选数组，只输出最终选定的单一方案对象。"
+                ),
+            )
+            token_usage = merge_token_usage(token_usage, (recovery_diag or {}).get("token_usage"))
+            if raw_plan is not None:
+                logger.warning("[architecture] 总体方案定向格式恢复成功")
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[architecture] 方案模型调用失败，使用确定性回退: {exc}")
@@ -182,6 +207,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             "llm_chars": llm_chars,
             "llm_ms": llm_ms,
             "token_usage": token_usage,
+            "recovery": recovery_diag,
             "error": error,
             "thinking_enabled": thinking_mode,
             "complexity_profile": complexity_profile,

@@ -13,7 +13,7 @@ from app.agent.floor_plan_rules import (
 )
 from app.agent.graph_state import GenerationState
 from app.agent.execution_plan import execution_plan_phase_guidance
-from app.agent.llm_invocation import invoke_llm, stream_llm
+from app.agent.llm_invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_floor_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
@@ -76,6 +76,7 @@ async def floor_plan_designer(state: GenerationState) -> dict:
         spec_text,
         current_floor_plan=current_floor_plan if isinstance(current_floor_plan, dict) else None,
         revision_feedback=feedback,
+        style_preference=state.get("style_preference"),
     )
     phase_guidance = execution_plan_phase_guidance(
         state.get("execution_plan"),
@@ -94,6 +95,7 @@ async def floor_plan_designer(state: GenerationState) -> dict:
     error = None
     llm_ms = 0
     llm_result = None
+    recovery_diag = None
     try:
         llm_started = _time.time()
         use_streaming = thinking_mode and on_reasoning_delta is not None
@@ -115,6 +117,29 @@ async def floor_plan_designer(state: GenerationState) -> dict:
         if isinstance(parsed, dict):
             candidate = parsed.get("spatial_plan", parsed)
             raw_spatial = candidate if isinstance(candidate, dict) else None
+        if raw_spatial is None:
+            # 解析失败时做一次非思考定向格式恢复，避免偶发格式抖动丢弃整份平面。
+            from app.agent.format_recovery import recover_single_json
+
+            recovered, recovery_diag = await recover_single_json(
+                prompt,
+                user_message,
+                llm_result.content,
+                object_hint="包含 levels、walls、spaces、openings、vertical_circulation 的 FloorPlanIR JSON 对象",
+                extra_instruction=(
+                    "- 顶层必须直接包含 levels 数组；\n"
+                    "- 不要输出代码围栏或 Markdown。"
+                ),
+            )
+            if isinstance(recovered, dict):
+                candidate = recovered.get("spatial_plan", recovered)
+                raw_spatial = candidate if isinstance(candidate, dict) else None
+            llm_result.token_usage = merge_token_usage(
+                llm_result.token_usage,
+                (recovery_diag or {}).get("token_usage"),
+            )
+            if raw_spatial is not None:
+                logger.warning("[floor_plan_design] 平面定向格式恢复成功")
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[floor_plan_design] 模型调用失败，使用确定性基础平面: {exc}")
@@ -127,6 +152,8 @@ async def floor_plan_designer(state: GenerationState) -> dict:
         massing,
         volumes,
     )
+    if recovery_diag and spatial_plan.get("source") == "model":
+        recovery_diag["used_recovery"] = True
     if used_confirmable_recovery:
         if error:
             floor_plan_notice = "平面模型调用失败，已生成可直接审核和确认的确定性基础平面。"
@@ -199,6 +226,7 @@ async def floor_plan_designer(state: GenerationState) -> dict:
             "token_usage": llm_result.token_usage if llm_result else None,
             "error": error,
             "used_confirmable_recovery": used_confirmable_recovery,
+            "recovery": recovery_diag,
             "rule_repairs": rule_repairs,
             "floor_plan": summary,
             "total_ms": total_ms,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from typing import Iterable
 
@@ -165,12 +166,24 @@ def group_issues_by_entity(issues: Iterable[dict]) -> dict[str, list[dict]]:
     return grouped
 
 
-def issue_fingerprints(issues: Iterable[dict]) -> set[tuple[str, str | None]]:
+def _issue_fingerprint(issue: dict) -> tuple[str, str | None, str]:
+    """单个问题的稳定指纹。
+
+    仅用 ``(code, entity_id)`` 无法区分同一校验器在同一实体上的不同错误：
+    例如同一扇门“超出墙右端”与修复后新出现的“与窗重叠”都落在
+    ``OPENING_FIT`` 上，旧错误换新错误会通过复检。加入消息哈希后，
+    只有错误消息本身减少才算改善。
+    """
+    code = str(issue.get("code", "UNKNOWN"))
+    entity_id = issue.get("entity_id")
+    message = str(issue.get("message", "") or "")
+    digest = hashlib.sha1(message.encode("utf-8", errors="replace")).hexdigest()[:12]
+    return code, entity_id, digest
+
+
+def issue_fingerprints(issues: Iterable[dict]) -> set[tuple[str, str | None, str]]:
     """返回适合比较修复前后问题集合的稳定指纹。"""
-    return {
-        (str(issue.get("code", "UNKNOWN")), issue.get("entity_id"))
-        for issue in issues
-    }
+    return {_issue_fingerprint(issue) for issue in issues}
 
 
 def compare_issue_sets(before: list[dict], after: list[dict]) -> dict:

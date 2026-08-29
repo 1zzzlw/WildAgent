@@ -19,7 +19,7 @@ from app.agent.execution_plan import (
     validate_execution_plan,
 )
 from app.agent.graph_state import GenerationState
-from app.agent.llm_invocation import invoke_llm
+from app.agent.llm_invocation import invoke_llm, merge_token_usage
 from app.agent.model_client import create_llm
 from app.agent.prompts import build_execution_plan_prompt
 from app.agent.runtime_context import (
@@ -125,6 +125,7 @@ async def execution_planner(state: GenerationState) -> dict:
     raw_payload: dict[str, Any] | None = None
     planner_error = None
     token_usage = None
+    recovery_diag = None
     started = time.time()
     try:
         llm_result = await invoke_llm(
@@ -137,6 +138,27 @@ async def execution_planner(state: GenerationState) -> dict:
         parsed = extract_json_object(llm_result.content)
         raw_payload = parsed if isinstance(parsed, dict) else None
         token_usage = llm_result.token_usage
+        if raw_payload is None:
+            from app.agent.format_recovery import recover_single_json
+
+            recovered, recovery_diag = await recover_single_json(
+                prompt,
+                str(state.get("user_message") or ""),
+                llm_result.content,
+                object_hint="包含 tasks 数组的执行计划 JSON 对象",
+                extra_instruction=(
+                    "- 顶层必须直接包含 tasks 数组；\n"
+                    "- 每个 task 必须包含 title、phase、objective。"
+                ),
+            )
+            if isinstance(recovered, dict):
+                raw_payload = recovered
+            token_usage = merge_token_usage(
+                token_usage,
+                (recovery_diag or {}).get("token_usage"),
+            )
+            if raw_payload is not None:
+                logger.warning("[execution_planner] 执行计划定向格式恢复成功")
     except Exception as exc:
         planner_error = str(exc)
         logger.warning(f"[execution_planner] 模型计划失败，使用任务语义回退: {exc}")
@@ -191,6 +213,7 @@ async def execution_planner(state: GenerationState) -> dict:
             "task_count": len(plan.get("dynamic_tasks", [])),
             "prompt_chars": len(prompt),
             "token_usage": token_usage,
+            "recovery": recovery_diag,
             "error": planner_error,
             "total_ms": int((time.time() - started) * 1000),
         },

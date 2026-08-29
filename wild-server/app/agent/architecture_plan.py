@@ -18,7 +18,7 @@ from app.agent.spatial_plan import (
     validate_spatial_plan,
 )
 from app.agent.floor_plan_rules import evaluate_floor_plan_rules
-from app.agent.spatial_geometry import shared_stair_layout
+from app.agent.spatial_geometry import shared_stair_layout, snap_to_grid
 
 
 _FACES = ("front", "back", "left", "right")
@@ -833,7 +833,11 @@ def _normalize_volumes(
         return fallback
 
     # 同一楼层的正面积重叠会让每个矩形体量各自生成一套墙柱，造成重影。
-    # 相邻体量共享边合法；缺少任一显式楼层的体量则说明旧方案与用户层数冲突。
+    # 相邻体量共享边合法。过去任一重叠即整份回退、丢弃 LLM 全部设计；现在改为
+    # 逐项修复：按优先级保留主体积，把次级体积沿重叠方向推移出界，仍无法修复
+    # 才整体回退。缺层时把最近体积的楼层区间扩展覆盖，避免方案被整份丢弃。
+    volumes = _repair_volume_overlaps(volumes, width, depth)
+    volumes = _repair_volume_floor_gaps(volumes, modeled_floors)
     for first_index, first in enumerate(volumes):
         first_x1 = first["x"] + first["width"]
         first_z1 = first["z"] + first["depth"]
@@ -854,6 +858,75 @@ def _normalize_volumes(
     ):
         return fallback
     return volumes
+
+
+def _repair_volume_overlaps(
+    volumes: list[dict[str, Any]],
+    width: float,
+    depth: float,
+) -> list[dict[str, Any]]:
+    """把同一楼层有正面积重叠的次级体量沿重叠方向推移出主体积。
+
+    主体积（role=primary）优先级最高，不动它；次级体量按“重叠量最小的
+    可推方向”移位。推移后允许与主体积共享边（重叠量收敛到 0）。
+    """
+    repaired = [dict(item) for item in volumes]
+    for first_index, first in enumerate(repaired):
+        if first["role"] != "primary":
+            continue
+        first_x1 = first["x"] + first["width"]
+        first_z1 = first["z"] + first["depth"]
+        for second_index, second in enumerate(repaired):
+            if first_index == second_index or second["role"] == "primary":
+                continue
+            floors_overlap = (
+                max(first["start_floor"], second["start_floor"])
+                <= min(first["end_floor"], second["end_floor"])
+            )
+            if not floors_overlap:
+                continue
+            overlap_x = min(first_x1, second["x"] + second["width"]) - max(first["x"], second["x"])
+            overlap_z = min(first_z1, second["z"] + second["depth"]) - max(first["z"], second["z"])
+            if overlap_x <= 0.01 or overlap_z <= 0.01:
+                continue
+            # 两个可推方向：向右推 overlap_x，或向上推 overlap_z。选位移后
+            # 仍能留在场地范围内的那一个；若都出界则保留原样由调用方整体回退。
+            shift_right_ok = second["x"] + overlap_x + second["width"] <= width + 0.001
+            shift_up_ok = second["z"] + overlap_z + second["depth"] <= depth + 0.001
+            if shift_right_ok and shift_up_ok:
+                # 优先选择位移较小的方向，避免次级体量被大幅移动。
+                if overlap_x <= overlap_z:
+                    second["x"] = round(second["x"] + overlap_x, 2)
+                else:
+                    second["z"] = round(second["z"] + overlap_z, 2)
+            elif shift_right_ok:
+                second["x"] = round(second["x"] + overlap_x, 2)
+            elif shift_up_ok:
+                second["z"] = round(second["z"] + overlap_z, 2)
+    return repaired
+
+
+def _repair_volume_floor_gaps(
+    volumes: list[dict[str, Any]],
+    modeled_floors: int,
+) -> list[dict[str, Any]]:
+    """补齐未被任何体量覆盖的楼层：把最近体量的 end_floor 扩展到该层。"""
+    repaired = [dict(item) for item in volumes]
+    for level in range(1, modeled_floors + 1):
+        if any(volume["start_floor"] <= level <= volume["end_floor"] for volume in repaired):
+            continue
+        # 找 end_floor 距离该层最近、且未覆盖它的体量；优先主体积。
+        def _distance(volume: dict[str, Any]) -> int:
+            return min(abs(volume["end_floor"] - level), abs(volume["start_floor"] - level))
+
+        candidates = [volume for volume in repaired if not (
+            volume["start_floor"] <= level <= volume["end_floor"]
+        )]
+        if not candidates:
+            continue
+        candidates.sort(key=lambda volume: (0 if volume["role"] == "primary" else 1, _distance(volume)))
+        candidates[0]["end_floor"] = max(candidates[0]["end_floor"], level)
+    return repaired
 
 
 def _normalize_structural_grid(
@@ -2603,6 +2676,44 @@ def _curtain_wall_mullions(span: float, *, pane: float | None = None) -> int:
     return min(32, max(0, panes - 1))
 
 
+def _retry_slot_position(
+    slot: dict[str, Any],
+    wall: dict[str, Any],
+    bay_index: int,
+    bays: int,
+    existing_slots: list[dict[str, Any]],
+) -> dict[str, Any] | None:
+    """槽位重叠时向相邻开间重排一次。
+
+    先尝试把窗移动到相邻 bay 的中点（向左再向右），仍与既有槽位重叠则放弃。
+    """
+    candidate = dict(slot)
+    width = float(candidate.get("width") or 1.0)
+    bay_width = float(wall["length"]) / max(1, bays)
+    for direction in (-1, 1):
+        neighbor = bay_index + direction
+        if neighbor < 0 or neighbor >= bays:
+            continue
+        center = bay_width * (neighbor + 0.5)
+        edge_clearance = min(0.18, max(0.0, (float(wall["length"]) - width) / 2))
+        left = max(
+            edge_clearance,
+            min(float(wall["length"]) - width - edge_clearance, center - width / 2),
+        )
+        candidate["from"] = [
+            round(snap_to_grid(left), 3),
+            round(float(slot["from"][1]), 3),
+            round(float(slot["from"][2]), 3),
+        ]
+        candidate["bay"] = neighbor + 1
+        if not any(
+            _opening_slots_overlap(candidate, existing, horizontal_clearance=0.1)
+            for existing in existing_slots
+        ):
+            return candidate
+    return None
+
+
 def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
     """把抽象立面轴网解析成真实 wall id 与精确门窗局部坐标。"""
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
@@ -2770,12 +2881,14 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             else:
                 width = max(0.75, min(2.2, bay_width * 0.62))
                 width = min(width, max(0.5, bay_width - 0.35))
+            width = snap_to_grid(width)
             center = bay_width * (bay_index + 0.5)
             edge_clearance = min(0.18, max(0.0, (wall["length"] - width) / 2))
             left = max(
                 edge_clearance,
                 min(wall["length"] - width - edge_clearance, center - width / 2),
             )
+            left = snap_to_grid(left)
             if opening_type == "door":
                 bottom = wall["base_y"]
                 height_cap = target_height
@@ -2809,6 +2922,8 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             if curtain_wall and opening_type == "window":
                 slot["vertical_mullions"] = _curtain_wall_mullions(width)
                 slot["horizontal_mullions"] = _curtain_wall_mullions(height)
+            # 槽位重叠时先尝试向相邻开间重排一次，而不是直接丢弃，避免开间
+            # 密集时窗户被静默删掉；仍无法安置才放弃该槽位。
             if any(
                 _opening_slots_overlap(
                     slot,
@@ -2817,7 +2932,10 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 )
                 for existing in wall_slots
             ):
-                continue
+                alternative = _retry_slot_position(slot, wall, bay_index, bays, wall_slots)
+                if alternative is None:
+                    continue
+                slot = alternative
             wall_slots.append(slot)
             slots.append(slot)
         wall_plan = facade_plan.setdefault(str(wall["id"]), {
@@ -3182,9 +3300,68 @@ def conform_balconies_to_slots(
     return [*non_balconies, *balconies], stats
 
 
+def _plan_winding(plan: dict[str, Any] | None, frm: list[Any], ux: float, uz: float) -> float:
+    """用体量联合轮廓的有向面积（shoelace）判定建筑平面绕向。
+
+    返回面积为正表示逆时针（右旋法向朝外），为负表示顺时针（需取反）。
+    无法从 plan 恢复轮廓时，退化为沿墙方向右旋的默认假设。
+    """
+    volumes = plan.get("volumes") if isinstance(plan, dict) else None
+    if not isinstance(volumes, list) or not volumes:
+        # 只有单面入口墙时无法判定绕向，保留既有右旋假设（返回正面积）。
+        return 1.0
+    corners: list[tuple[float, float]] = []
+    for volume in volumes:
+        if not isinstance(volume, dict):
+            continue
+        try:
+            x = float(volume.get("x") or 0.0)
+            z = float(volume.get("z") or 0.0)
+            w = float(volume.get("width") or 0.0)
+            d = float(volume.get("depth") or 0.0)
+        except (TypeError, ValueError):
+            continue
+        corners.extend([(x, z), (x + w, z), (x + w, z + d), (x, z + d)])
+    if len(corners) < 3:
+        return 1.0
+    # 用凸包顶点计算有向面积（shoelace 法）。
+    hull = _convex_hull(corners)
+    area2 = 0.0
+    for index in range(len(hull)):
+        x1, z1 = hull[index]
+        x2, z2 = hull[(index + 1) % len(hull)]
+        area2 += x1 * z2 - x2 * z1
+    if abs(area2) < 1e-9:
+        return 1.0
+    return area2
+
+
+def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Andrew 单调链凸包；返回逆时针顶点序列。"""
+    pts = sorted(set(points))
+    if len(pts) <= 1:
+        return pts
+
+    def cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower: list[tuple[float, float]] = []
+    for point in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
+            lower.pop()
+        lower.append(point)
+    upper: list[tuple[float, float]] = []
+    for point in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
+            upper.pop()
+        upper.append(point)
+    return lower[:-1] + upper[:-1]
+
+
 def _entrance_anchor(
     design_brief: dict[str, Any] | None,
     blueprint: dict[str, Any] | None,
+    plan: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """定位主入口门的墙体、沿墙中心与世界坐标，供雨棚/入口灯对齐。"""
     if not isinstance(design_brief, dict):
@@ -3235,6 +3412,11 @@ def _entrance_anchor(
     door_from = entrance.get("from") or [0.0, 0.0, 0.0]
     door_width = max(0.0, float(entrance.get("width") or 1.0))
     along = float(door_from[0]) + door_width / 2.0
+    # 外法向不能假设“墙按逆时针围合”：LLM 的 volumes 组合出顺时针或凹形
+    # 轮廓时，固定右旋 90° 会把入口附属件放到室内一侧。用体量联合轮廓的
+    # 有向面积（shoelace）判定实际绕向：逆时针用右旋，顺时针取反。
+    winding = _plan_winding(plan, frm, ux, uz)
+    normal_sign = 1.0 if winding >= 0 else -1.0
     return {
         "wall_id": wall_id,
         "facing": entrance.get("facing"),
@@ -3242,9 +3424,8 @@ def _entrance_anchor(
         "length": length,
         "run_x": ux,
         "run_z": uz,
-        # 墙按逆时针围合建筑，外法向 = 沿墙方向右旋 90°。
-        "normal_x": uz,
-        "normal_z": -ux,
+        "normal_x": uz * normal_sign,
+        "normal_z": -ux * normal_sign,
         "origin_x": float(frm[0]),
         "origin_z": float(frm[2]),
         "door_base_y": float(door_from[1]),
@@ -3265,7 +3446,7 @@ def conform_entrance_accessories(
     附属件，不越界改动其它墙上的合法构件。
     """
     stats = {"canopy_snapped": 0, "light_snapped": 0}
-    anchor = _entrance_anchor(design_brief, blueprint)
+    anchor = _entrance_anchor(design_brief, blueprint, plan=design_brief)
     if anchor is None:
         return components, stats
 

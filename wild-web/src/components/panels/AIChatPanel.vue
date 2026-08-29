@@ -390,6 +390,7 @@ const inputPlaceholder = computed(() => {
 })
 
 let scrollFrame: number | null = null
+let hasRestoredFromServer = false
 let timelineResizeObserver: ResizeObserver | null = null
 
 // 所有流式内容只使用主消息区这一层滚动。等 DOM 和 Markdown 完成布局后再贴底，
@@ -769,6 +770,15 @@ async function handleDeleteSession(sessionId: string) {
 
 // ── 页面初始化：以服务器 storage/scenes/*.wild 为会话事实来源 ──
 async function restoreSessionsFromServer() {
+  // 面板通过 v-show 保持挂载，恢复逻辑只应在首次挂载执行一次；
+  // 二次触发（未来若改用 v-if 或热重载）时不再切走会话。
+  if (hasRestoredFromServer) return
+  hasRestoredFromServer = true
+  // 有正在执行/待审核的任务时，保持当前会话，避免被服务器快照切走。
+  const hasActiveTask = agentStore.currentTurns.some(
+    turn => turn.status === 'running' || turn.status === 'waiting_review',
+  )
+  if (hasActiveTask) return
   const serverScenes = await agentBridge.fetchSessionList()
   if (serverScenes === null) {
     // 后端暂不可用时，从 localStorage 恢复草稿会话

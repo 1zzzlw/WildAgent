@@ -1,6 +1,6 @@
 ---
 entity_name: pavilion
-topic: definition
+topic: assembly
 status: experimental
 authority: domain_reference
 source: building_types/catalog/pavilions.md
@@ -34,6 +34,20 @@ synonyms:
 | 坐凳 | 可选，台基边缘 | floor（凳面）+ column（凳腿）|
 | 栏杆 | 可选，台基边缘 | column（矮柱）+ beam（横档）|
 
+<!-- rag-meta
+entity_type: building
+entity_name: chinese_square_pavilion
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 中式四角凉亭
+  - 四角亭
+  - 中式凉亭
+synonyms:
+  - chinese square pavilion
+-->
+
 ### 变体 A：中式四角凉亭
 
 **构件清单**：
@@ -55,6 +69,20 @@ synonyms:
 
 ---
 
+<!-- rag-meta
+entity_type: building
+entity_name: chinese_octagonal_pavilion
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 中式八角凉亭
+  - 八角亭
+  - 八角凉亭
+synonyms:
+  - chinese octagonal pavilion
+-->
+
 ### 变体 B：中式八角凉亭
 
 **构件清单**：
@@ -67,6 +95,21 @@ synonyms:
 **说明**：wild-core 暂不支持八边形 floor，用 3~4 个矩形 floor 交叠拼近似八边形。
 
 ---
+
+<!-- rag-meta
+entity_type: building
+entity_name: modern_pergola
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 现代廊架
+  - 廊架
+  - 花园廊架
+  - 停车棚
+synonyms:
+  - pergola
+-->
 
 ### 变体 C：现代简约廊架
 

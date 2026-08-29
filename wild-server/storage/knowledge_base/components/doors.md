@@ -9,9 +9,7 @@ source: components/doors.md
 primary_terms:
   - 门
   - door
-  - opening
-  - leafCount
-  - hingeSide
+  - 门型
 synonyms: []
 ---
 

@@ -661,10 +661,21 @@ def validate_light_placement(blueprint: dict) -> str:
         light_id = light.get("id", "?")
         position = light.get("position", [])
         initially_on = light.get("initiallyOn")
-        
+
         if not position or len(position) != 3:
             issues.append(f"❌ [{light_id}] position 必须是 [x,y,z] 坐标")
-        
+        else:
+            try:
+                coords = [float(value) for value in position]
+            except (TypeError, ValueError):
+                issues.append(f"❌ [{light_id}] position 坐标必须是有限数值")
+                coords = []
+            if coords:
+                if not all(abs(value) <= 1e6 for value in coords):
+                    issues.append(f"❌ [{light_id}] position 坐标超出合理范围")
+                if coords[1] < -0.1:
+                    issues.append(f"❌ [{light_id}] position[1]（高度）为负，灯具埋入地下")
+
         if initially_on is None:
             issues.append(f"❌ [{light_id}] initiallyOn 必填")
     
@@ -829,55 +840,122 @@ def fix_bay_window_placement(blueprint: dict) -> str:
 
 
 def validate_cornice_placement(blueprint: dict) -> str:
-    """校验檐口配置"""
+    """校验檐口配置：path/profile 存在性 + 几何合理性。
+
+    除“至少 N 个点”外，还检查 path 每段长度、profile 是否退化（共线），
+    避免产出“合法但错误”的零长度/退化截面。
+    """
     components = blueprint.get("geometry", {}).get("components", [])
     cornices = [c for c in components if c.get("type") == "cornice"]
-    
+
     if not cornices:
         return "⚠️ 没有檐口"
-    
+
     issues = []
     for cornice in cornices:
         cornice_id = cornice.get("id", "?")
         path = cornice.get("path", [])
         profile = cornice.get("profile", [])
-        
+
         if len(path) < 2:
             issues.append(f"❌ [{cornice_id}] path 至少需要 2 个点，当前: {len(path)}")
-        
+        else:
+            total_length = 0.0
+            for index in range(len(path) - 1):
+                p1, p2 = path[index], path[index + 1]
+                if (
+                    not isinstance(p1, (list, tuple)) or len(p1) < 3
+                    or not isinstance(p2, (list, tuple)) or len(p2) < 3
+                ):
+                    continue
+                seg_length = (
+                    (float(p2[0]) - float(p1[0])) ** 2
+                    + (float(p2[1]) - float(p1[1])) ** 2
+                    + (float(p2[2]) - float(p1[2])) ** 2
+                ) ** 0.5
+                total_length += seg_length
+            if total_length < 0.05:
+                issues.append(
+                    f"❌ [{cornice_id}] path 总长度过短 ({total_length:.2f}m)，"
+                    f"檐口无法形成可见轮廓"
+                )
+
         if len(profile) < 3:
             issues.append(f"❌ [{cornice_id}] profile 至少需要 3 个点，当前: {len(profile)}")
-    
+        elif _profile_is_degenerate(profile):
+            issues.append(f"❌ [{cornice_id}] profile 退化为直线，无法形成飞檐截面")
+
     if not issues:
         return f"✅ 檐口校验通过 ({len(cornices)} 个檐口)"
-    
+
     return "\n".join(issues)
 
 
+def _profile_is_degenerate(profile: list) -> bool:
+    """判断 2D 截面是否退化（所有点共线、面积为零）。"""
+    try:
+        points = [(float(p[0]), float(p[1])) for p in profile if isinstance(p, (list, tuple)) and len(p) >= 2]
+    except (TypeError, ValueError):
+        return True
+    if len(points) < 3:
+        return True
+    area = 0.0
+    for index in range(len(points)):
+        x1, y1 = points[index]
+        x2, y2 = points[(index + 1) % len(points)]
+        area += x1 * y2 - x2 * y1
+    return abs(area) < 1e-6
+
+
 def fix_cornice_placement(blueprint: dict) -> str:
-    """修复檐口配置"""
+    """修复檐口配置：按宿主屋顶范围推导保守默认 path，不再写死任意坐标。"""
     components = blueprint.get("geometry", {}).get("components", [])
     cornices = [c for c in components if c.get("type") == "cornice"]
-    
+
     if not cornices:
         return "⚠️ 没有檐口"
-    
+
+    roofs = [
+        element for element in blueprint.get("geometry", {}).get("elements", [])
+        if isinstance(element, dict) and element.get("type") == "roof"
+    ]
+
+    def _default_path_for(cornice: dict) -> list:
+        # 优先用宿主屋顶的 span/depth 推导；无宿主则退回紧凑默认。
+        parent_roof = cornice.get("parentRoof")
+        for roof in roofs:
+            if parent_roof and str(roof.get("id") or "") != str(parent_roof):
+                continue
+            try:
+                span = float(roof.get("span") or 0.0)
+                depth = float(roof.get("depth") or 0.0)
+                position = roof.get("position")
+                if span > 0.5 and depth > 0.5 and isinstance(position, list) and len(position) >= 3:
+                    half_x = span / 2.0
+                    return [
+                        [round(float(position[0]) - half_x, 3), round(float(position[1]) or 0.0, 3), round(float(position[2]) - depth / 2.0, 3)],
+                        [round(float(position[0]) + half_x, 3), round(float(position[1]) or 0.0, 3), round(float(position[2]) - depth / 2.0, 3)],
+                    ]
+            except (TypeError, ValueError):
+                continue
+        return [[0, 0, 0], [5, 0, 0]]
+
     fixes = []
     for cornice in cornices:
         cornice_id = cornice.get("id", "?")
-        
+
         if len(cornice.get("path", [])) < 2:
-            cornice["path"] = [[0, 0, 0], [5, 0, 0]]
-            fixes.append(f"🔧 [{cornice_id}] 添加默认 path")
-        
+            cornice["path"] = _default_path_for(cornice)
+            fixes.append(f"🔧 [{cornice_id}] 按宿主屋顶范围设置 path")
+
         if len(cornice.get("profile", [])) < 3:
             # 简单的飞檐截面
             cornice["profile"] = [[0, 0], [0.3, 0], [0.3, 0.2], [0, 0.2]]
             fixes.append(f"🔧 [{cornice_id}] 添加默认 profile")
-    
+
     if not fixes:
         return f"✅ 檐口无需修复 ({len(cornices)} 个檐口)"
-    
+
     return "\n".join(fixes)
 
 

@@ -22,6 +22,7 @@ class GenerationState(TypedDict, total=False):
     request_id: str
     building_type: str
     session_id: str
+    style_preference: list[str]  # 分类器规则预选的候选风格 id，供早期节点约束方向
     current_blueprint: dict | None
     selection: list[str]
     recent_messages: list[dict]

@@ -1108,7 +1108,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
                 issues.append(f"❌ [{eid}] primitive profile_sweep 缺少 path")
 
     component_required = {
-        "door": ["parentWall", "from", "width", "height"],
+        "door": ["parentWall", "from", "width", "height", "interaction"],
         "window": ["parentWall", "from", "width", "height"],
         "railing": ["path", "height"],
         "canopy": ["parentWall", "from", "width", "depth", "thickness"],

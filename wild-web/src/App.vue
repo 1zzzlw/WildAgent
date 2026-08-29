@@ -9,7 +9,7 @@
       </div>
       <RightPanel v-if="uiStore.rightPanelVisible" class="right-panel-slot" :width="uiStore.rightPanelWidth" />
     </div>
-    <section v-if="uiStore.aiPanelVisible" class="ai-workspace-slot" :style="aiWorkspaceStyle">
+    <section v-show="uiStore.aiPanelVisible" class="ai-workspace-slot" :style="aiWorkspaceStyle">
       <AIWorkspace />
     </section>
   </div>

@@ -12,7 +12,7 @@ from loguru import logger
 from app.agent.graph_state import GenerationState
 from app.agent.execution_plan import execution_plan_phase_guidance
 from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm
+from app.agent.llm_invocation import invoke_llm, merge_token_usage
 from app.agent.procedural_material_recipes import (
     compact_procedural_catalog,
     infer_brick_preset,
@@ -315,13 +315,19 @@ async def material_planner(state: GenerationState) -> dict:
     error = None
     token_usage = None
     skipped_llm = False
+    recovery_diag = None
     callback = get_reasoning_callback()
 
     # 确定性优先：没有任何可匹配的 PBR 资产时，LLM 的审美输出会被 ROLE_SPECS
     # 兜底与白名单几乎全部覆盖（只剩概念文案与颜色微调），不值得付出一次串行 LLM
     # 往返。此时直接走 resolve_material_plan(None, ...) 的确定性路径。
     if catalog:
-        prompt = build_material_plan_prompt(architecture_plan, catalog, procedural_catalog)
+        prompt = build_material_plan_prompt(
+            architecture_plan,
+            catalog,
+            procedural_catalog,
+            style_preference=state.get("style_preference"),
+        )
         phase_guidance = execution_plan_phase_guidance(
             state.get("execution_plan"),
             "material_plan",
@@ -351,6 +357,28 @@ async def material_planner(state: GenerationState) -> dict:
             )
             raw_plan = extract_json_object(llm_result.content)
             token_usage = llm_result.token_usage
+            if raw_plan is None:
+                # 解析失败时做一次非思考定向格式恢复，避免偶发格式抖动丢弃材质意图。
+                from app.agent.format_recovery import recover_single_json
+
+                recovered, recovery_diag = await recover_single_json(
+                    prompt,
+                    str(state.get("user_message") or ""),
+                    llm_result.content,
+                    object_hint="包含 roles 数组的材质方案 JSON 对象",
+                    extra_instruction=(
+                        "- 顶层必须直接包含 roles 数组；\n"
+                        "- 每个 role 只能使用白名单 assetId 或 proceduralPresetId。"
+                    ),
+                )
+                if isinstance(recovered, dict):
+                    raw_plan = recovered
+                token_usage = merge_token_usage(
+                    token_usage,
+                    (recovery_diag or {}).get("token_usage"),
+                )
+                if raw_plan is not None:
+                    logger.warning("[material_plan] 材质方案定向格式恢复成功")
         except Exception as exc:
             error = str(exc)
             logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")
@@ -393,6 +421,7 @@ async def material_planner(state: GenerationState) -> dict:
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,
             "skipped_llm": skipped_llm,
+            "recovery": recovery_diag,
             "error": error,
             "token_usage": token_usage,
             "prompt_chars": len(prompt) if catalog else 0,

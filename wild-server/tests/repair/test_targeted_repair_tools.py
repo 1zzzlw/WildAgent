@@ -274,22 +274,30 @@ class TargetedRepairToolsTest(unittest.TestCase):
         )
 
     def test_repair_must_reduce_errors_without_introducing_new_issue(self):
+        # 指纹加入消息哈希后，(code, entity_id) 不再足以区分同实体上的不同错误。
+        # 这里给每条 issue 补上 message，保持“换错应被拒绝”的测试意图。
         before = [
-            {"code": "OPENING_FIT", "entity_id": "door_front"},
-            {"code": "OPENING_COORDINATES", "entity_id": "door_front"},
+            {"code": "OPENING_FIT", "entity_id": "door_front", "message": "门超出墙右端"},
+            {"code": "OPENING_COORDINATES", "entity_id": "door_front", "message": "门坐标越界"},
         ]
 
         improved = compare_issue_sets(before, [before[0]])
         replaced = compare_issue_sets(before, [
-            {"code": "COLLISION", "entity_id": "door_front"},
+            {"code": "COLLISION", "entity_id": "door_front", "message": "门与窗重叠"},
+        ])
+        # 同一实体、不同 code：消息不同，指纹必不同，判定为新引入错误而拒绝。
+        same_code_replaced = compare_issue_sets(before, [
+            {"code": "OPENING_FIT", "entity_id": "door_front", "message": "门与窗重叠"},
         ])
 
         self.assertTrue(improved["accepted"])
         self.assertFalse(replaced["accepted"])
-        self.assertEqual(
-            replaced["introduced_issues"],
-            [("COLLISION", "door_front")],
-        )
+        self.assertEqual(len(replaced["introduced_issues"]), 1)
+        self.assertEqual(replaced["introduced_issues"][0][0], "COLLISION")
+        self.assertEqual(replaced["introduced_issues"][0][1], "door_front")
+        # 关键新行为：即使 code/entity 相同，只要错误消息变了就视为新错误。
+        self.assertFalse(same_code_replaced["accepted"])
+        self.assertEqual(len(same_code_replaced["introduced_issues"]), 1)
 
 
 if __name__ == "__main__":

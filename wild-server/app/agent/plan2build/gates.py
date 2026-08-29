@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
@@ -140,6 +141,35 @@ def _wall_shape(wall: dict[str, Any]) -> tuple[float, float, float] | None:
     return length, bottom, bottom + height
 
 
+# G3 槽位→组件匹配的容差（米）：装配/吸附可能引入毫米级漂移，容差比较
+# 比“精确到 3 位小数”更稳健，避免 0.5mm 级位移误判“已批准槽位未生成”。
+_OPENING_SLOT_TOLERANCE = 1e-2
+
+
+def _signature_matches(signature: tuple[str, str, float, float], openings: list[dict[str, Any]]) -> bool:
+    """槽位签名与已生成门窗组件在容差内匹配。
+
+    组件对象用 ``parentWall`` + ``from``（槽位用 ``wall_id`` + ``from``）表达
+    宿主与局部坐标；bay_window 可匹配 window 槽位。
+    """
+    wall_id, slot_type, local_x, local_y = signature
+    for item in openings:
+        item_type = str(item.get("type") or "")
+        accepted_slot_types = ("bay_window", "window") if item_type == "bay_window" else (item_type,)
+        if slot_type not in accepted_slot_types:
+            continue
+        if str(item.get("parentWall") or "") != wall_id:
+            continue
+        item_from = item.get("from")
+        if not isinstance(item_from, list) or len(item_from) < 2:
+            continue
+        if abs(float(item_from[0]) - local_x) <= _OPENING_SLOT_TOLERANCE and abs(
+            float(item_from[1]) - local_y
+        ) <= _OPENING_SLOT_TOLERANCE:
+            return True
+    return False
+
+
 def gate_g3_openings(blueprint: dict[str, Any], design_brief: dict[str, Any]) -> GateReport:
     """G3：每个已批准门窗槽位都必须成为宿主墙内的真实组件。"""
 
@@ -153,24 +183,6 @@ def gate_g3_openings(blueprint: dict[str, Any], design_brief: dict[str, Any]) ->
         if item.get("type") in {"door", "window", "bay_window"}
     ]
     issues: list[GateIssue] = []
-    by_signature: set[tuple[str, str, float, float]] = set()
-    for item in openings:
-        local = item.get("from")
-        if not isinstance(local, list) or len(local) < 2:
-            continue
-        item_type = str(item.get("type") or "")
-        accepted_slot_types = (
-            ("bay_window", "window")
-            if item_type == "bay_window"
-            else (item_type,)
-        )
-        for slot_type in accepted_slot_types:
-            by_signature.add((
-                str(item.get("parentWall") or ""),
-                slot_type,
-                round(float(local[0]), 3),
-                round(float(local[1]), 3),
-            ))
     slots = [
         slot for slot in design_brief.get("opening_slots", [])
         if isinstance(slot, dict) and slot.get("type") in {"door", "window"}
@@ -210,7 +222,7 @@ def gate_g3_openings(blueprint: dict[str, Any], design_brief: dict[str, Any]) ->
             round(float((slot.get("from") or [0, 0, 0])[0]), 3),
             round(float((slot.get("from") or [0, 0, 0])[1]), 3),
         )
-        if signature not in by_signature:
+        if not _signature_matches(signature, openings):
             issues.append(GateIssue(
                 "approved_opening_missing",
                 f"已批准槽位 {slot.get('id', '?')} 未生成对应门窗",
@@ -380,6 +392,58 @@ def gate_g6_references(blueprint: dict[str, Any]) -> GateReport:
     return _report("G6", "引用闭环", issues, entity_count=len(entities), material_count=len(material_ids))
 
 
+_ENTITY_MARKER = re.compile(r"[❌⚠️]\s*\[(?:component:)?([\w.\-]+)\]")
+
+
+def gate_g8_collision(blueprint: dict[str, Any]) -> GateReport:
+    """G8：确定性装配路径也纳入碰撞、悬空与开口法向校验。
+
+    G1-G6 覆盖平面契约、主体完整性、洞口宿主、竖向交通、屋顶与引用闭环，
+    但不含构件间碰撞 / 悬空 / 开口法向偏移。确定性装配坐标由槽位派生，法向
+    恒为 0，风险较低，但合并路径的残留自由组件可能引入这些错误——G8 把它们
+    暴露为报告，不阻塞装配（装配失败已有 fail 路径）。
+    """
+    from app.tools.spatial_tools import validate_collision, validate_opening_coords
+
+    issues: list[GateIssue] = []
+    seen_codes: set[tuple[str, str]] = set()
+
+    def _run_validator(tool: object) -> str:
+        # @tool 装饰的函数是 StructuredTool 对象，需取底层可调用函数。
+        func = getattr(tool, "func", tool)
+        return str(func(blueprint))
+
+    def _append_text_issues(prefix: str, text: object, validator: str) -> None:
+        if not isinstance(text, str):
+            return
+        for line in text.splitlines():
+            marker = "❌" if "❌" in line else ("⚠️" if "⚠️" in line else "")
+            if not marker:
+                continue
+            match = _ENTITY_MARKER.search(line)
+            entity_id = match.group(1) if match else ""
+            code = f"{validator}_{'error' if marker == '❌' else 'warning'}"
+            if (code, entity_id) in seen_codes:
+                continue
+            seen_codes.add((code, entity_id))
+            issues.append(GateIssue(
+                code=code,
+                message=line.strip(),
+                severity="error" if marker == "❌" else "warning",
+                entity_ids=(entity_id,) if entity_id else (),
+                repairable=True,
+            ))
+
+    _append_text_issues("collision", _run_validator(validate_collision), "collision")
+    _append_text_issues("opening_coords", _run_validator(validate_opening_coords), "opening_coords")
+    return _report(
+        "G8",
+        "碰撞与开口坐标",
+        issues,
+        entity_count=len([*_elements(blueprint), *_components(blueprint)]),
+    )
+
+
 def evaluate_body_gates(
     spatial_plan: dict[str, Any] | None,
     blueprint: dict[str, Any],
@@ -393,4 +457,5 @@ def evaluate_body_gates(
         gate_g4_vertical_circulation(blueprint, floor_count),
         gate_g5_roof(blueprint),
         gate_g6_references(blueprint),
+        gate_g8_collision(blueprint),
     ]

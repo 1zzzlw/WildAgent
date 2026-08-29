@@ -13,6 +13,15 @@ from typing import Iterable
 EPSILON = 0.01
 Point = tuple[float, float]
 
+# 构造网格（米）：门窗、墙端等坐标吸附到该网格，保证视觉整齐并避免毫米级
+# 契约漂移。0.1m 是常见建筑模数，足够精细且能显著减少不对齐。
+CONSTRUCTION_GRID = 0.1
+
+
+def snap_to_grid(value: float, step: float = CONSTRUCTION_GRID) -> float:
+    """把数值吸附到构造网格（round 到 step 的整数倍）。"""
+    return round(round(float(value) / step) * step, 6)
+
 
 def rectangle_polygon(bounds: Iterable[float]) -> list[list[float]]:
     x0, z0, x1, z1 = (float(value) for value in bounds)

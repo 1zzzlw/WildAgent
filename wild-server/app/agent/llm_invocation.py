@@ -5,12 +5,24 @@
 """
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from app.agent.model_client import content_as_text, message_texts
 from app.agent.rag_trace import record_rag_llm_call
+
+# 可重试模型错误的退避重试：仅对限流(429)/服务端 5xx/超时等瞬态故障重试，
+# 额度/鉴权等永久错误不重试。重试次数计入诊断，避免静默放大延迟。
+_LLM_RETRY_MAX = 2
+_LLM_RETRY_BASE_DELAY_S = 1.0
+_LLM_RETRY_JITTER_S = 0.5
+
+
+async def _sleep_with_jitter(attempt: int) -> None:
+    delay = _LLM_RETRY_BASE_DELAY_S * (2 ** (attempt - 1)) + (_LLM_RETRY_JITTER_S * attempt)
+    await asyncio.sleep(min(delay, 8.0))
 
 
 @dataclass
@@ -21,6 +33,7 @@ class LlmResult:
     reasoning: str = ""
     token_usage: dict[str, int] | None = None
     finish_reason: str | None = None
+    retry_count: int = 0
 
     @property
     def content_chars(self) -> int:
@@ -78,25 +91,42 @@ def collect_response(response: Any) -> LlmResult:
 
 
 async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:
-    """统一非流式调用（``on_reasoning_delta`` 兼容签名，但非流式不会逐字回调）。"""
+    """统一非流式调用（``on_reasoning_delta`` 兼容签名，但非流式不会逐字回调）。
+
+    对限流/服务端 5xx/超时等瞬态故障做有限指数退避重试；永久错误（额度、
+    鉴权、参数错误）直接抛出。重试次数通过 ``on_reasoning_delta`` 的
+    ``_retry`` 通道由调用方诊断（兼容现有回调签名，忽略即无副作用）。
+    """
     started = time.perf_counter()
-    try:
-        response = await llm.ainvoke(messages)
-    except Exception as exc:
+    last_exc: Exception | None = None
+    for attempt in range(_LLM_RETRY_MAX + 1):
+        try:
+            response = await llm.ainvoke(messages)
+        except Exception as exc:
+            from app.agent.model_errors import classify_model_error
+
+            retryable = bool(classify_model_error(exc).get("retryable"))
+            if not retryable or attempt >= _LLM_RETRY_MAX:
+                record_rag_llm_call(
+                    mode="invoke",
+                    elapsed_ms=round((time.perf_counter() - started) * 1000),
+                    token_usage=None,
+                    error_type=type(exc).__name__,
+                )
+                raise
+            last_exc = exc
+            await _sleep_with_jitter(attempt + 1)
+            continue
+        result = collect_response(response)
         record_rag_llm_call(
             mode="invoke",
             elapsed_ms=round((time.perf_counter() - started) * 1000),
-            token_usage=None,
-            error_type=type(exc).__name__,
+            token_usage=result.token_usage,
         )
-        raise
-    result = collect_response(response)
-    record_rag_llm_call(
-        mode="invoke",
-        elapsed_ms=round((time.perf_counter() - started) * 1000),
-        token_usage=result.token_usage,
-    )
-    return result
+        if last_exc is not None:
+            result.retry_count = attempt
+        return result
+    raise last_exc if last_exc is not None else RuntimeError("invoke_llm 未返回结果")
 
 
 async def stream_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:

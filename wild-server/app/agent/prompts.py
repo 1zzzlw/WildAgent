@@ -203,12 +203,32 @@ def build_execution_plan_prompt(
 """
 
 
+def _style_preference_section(style_preference: list[str] | None) -> str:
+    """把规则预选的候选风格注入早期节点 prompt。
+
+    风格最终在 style_review 由用户确认，但早期节点需要知道设计方向，避免
+    与最终风格包冲突（如平屋顶 vs 中式坡屋顶）。只注入候选 id，不注入细节。
+    """
+    if not style_preference:
+        return ""
+    safe_ids = [str(item) for item in style_preference if str(item).strip()]
+    if not safe_ids:
+        return ""
+    return f"""
+# 候选建筑风格（由系统根据需求预选，最终以风格确认环节为准）
+
+后续风格确认环节会从以下候选中确定最终风格，总体方案应优先服从其屋顶与
+体量倾向：{", ".join(safe_ids)}。不要虚构候选之外的风格细节。
+"""
+
+
 def build_architecture_plan_prompt(
     spec_text: str,
     profile: dict | None = None,
     complexity_profile: dict | None = None,
     current_plan: dict | None = None,
     revision_feedback: str = "",
+    style_preference: list[str] | None = None,
 ) -> str:
     """生成路径第一阶段：只做总体建筑方案，不设计房间平面。"""
     import json as _json
@@ -217,6 +237,7 @@ def build_architecture_plan_prompt(
         profile_payload["shapes"] = sorted(profile_payload["shapes"])
     profile_text = _json.dumps(profile_payload, ensure_ascii=False)
     complexity_text = _json.dumps(complexity_profile or {}, ensure_ascii=False)
+    style_section = _style_preference_section(style_preference)
     revision_section = ""
     if current_plan and revision_feedback:
         previous_plan = {
@@ -252,6 +273,7 @@ def build_architecture_plan_prompt(
 - `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
 - 房间、内墙、内门、中庭和垂直交通由后续 `floor_plan_design` 节点单独完成；本节点禁止输出 `spatial_plan`。
 {revision_section}
+{style_section}
 
 # 输出协议
 
@@ -296,6 +318,7 @@ def build_floor_plan_prompt(
     spec_text: str = "",
     current_floor_plan: dict | None = None,
     revision_feedback: str = "",
+    style_preference: list[str] | None = None,
 ) -> str:
     """独立平面节点：在已批准体量内生成 FloorPlanIR v2。"""
     import json as _json
@@ -305,6 +328,7 @@ def build_floor_plan_prompt(
         for key, value in architecture_plan.items()
         if key != "spatial_plan"
     }
+    style_section = _style_preference_section(style_preference)
     revision_section = ""
     if current_floor_plan and revision_feedback:
         revision_section = f"""
@@ -325,6 +349,7 @@ def build_floor_plan_prompt(
 
 {_json.dumps(plan_payload, ensure_ascii=False, indent=2)}
 {revision_section}
+{style_section}
 
 # 平面硬规则
 
@@ -369,14 +394,17 @@ def build_material_plan_prompt(
     architecture_plan: dict,
     available_assets: list[dict],
     procedural_presets: list[dict] | None = None,
+    style_preference: list[str] | None = None,
 ) -> str:
     """让模型设计材质意图，只能引用可信 PBR 资产或受控程序化材质。"""
     import json as _json
+    style_section = _style_preference_section(style_preference)
     return f"""你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。
 
 # 已批准建筑方案
 
 {_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
+{style_section}
 
 # AVAILABLE_PBR_ASSETS（唯一允许引用的纹理资产）
 

@@ -252,7 +252,7 @@ LLM 经常把建筑学概念当作 WILD 枚举值。以下字段**只能使用�
 
 - 必填：`id`、`parentWall`、`from`、`width`、`height`、**`interaction`**。
 - `from` 与 opening 相同：`[沿父墙弧长距离, 底部世界Y, 法向偏移]`；支持直线墙和单段曲线墙。
-- **`interaction` 是必填项**，不提供则门无法开合；默认使用 `{"mode": "swing", "hingeSide": "left", "openAngle": 90}`；支持 `swing/slide`；前端左键选择、右键开合，不包含碰撞。
+- **`interaction` 是必填项**，不提供则门无法开合；默认使用 `{"mode": "swing", "hingeSide": "left", "openAngle": 90}`；支持 `swing/slide`；前端左键选择、右键开合，不包含碰撞。此必填性与编译器校验一致。
 
 ### window（窗）
 
@@ -274,10 +274,10 @@ LLM 经常把建筑学概念当作 WILD 枚举值。以下字段**只能使用�
 }
 ```
 
-- 必填：`id`、`parentWall`、`from`、`width`、`height`、**`interaction`**。
+- 必填：`id`、`parentWall`、`from`、`width`、`height`。
 - `verticalMullions` 和 `horizontalMullions` 是 0–32 的整数。
 - `mullion` 不是独立 element 或 component 类型。
-- **`interaction` 是必填项**，不提供则窗无法开合；默认使用 `{"mode": "swing", "hingeSide": "left", "openAngle": 60}`；支持直线墙、单段曲线墙。交互式双窗扇可分别右键开合，也可同时处于打开状态。
+- **`interaction` 是推荐可选**：窗的可开合交互由前端提供，编译器不强制；需要开合时使用 `{"mode": "swing", "hingeSide": "left", "openAngle": 60}`；支持直线墙、单段曲线墙。交互式双窗扇可分别右键开合，也可同时处于打开状态。
 
 ### railing（路径栏杆）
 
@@ -354,7 +354,7 @@ synonyms: []
 
 - `fixtureType` 是灯具外观业务类型，只能是 `bulb` 或 `table_lamp`；`lightType` 是发光算法，只能是 `point` 或 `spot`，二者不要混用。
 - 用户要求台灯、亮灯、发光或可开关灯具时，必须使用 `geometry.components` 中的 `light`。旧版 `furniture.subtype: "lamp"` 只是静态家具占位，不产生真实光照。
-- **`initiallyOn` 是必填项**，默认 `true` 表示默认亮灯；`false` 表示默认关灯。
+- **`initiallyOn` 是可选字段**，默认 `true` 表示默认亮灯；`false` 表示默认关灯。编译器不强制，省略时按亮灯处理。
 - `table_lamp` 会编译为灯泡、底座、灯杆和灯罩，`position` 是台灯底座所在支承面的锚点；`bulb` 的 `position` 是灯泡中心。
 - 右键在关灯、弱光和强光之间循环；运行时亮度级别不写回 Blueprint，`initiallyOn` 只保存初始状态。
 - `draggable: true` 只允许用户手动拖动并把位置写回当前草稿，不表示已经实现自动贴桌面或空间碰撞校验。

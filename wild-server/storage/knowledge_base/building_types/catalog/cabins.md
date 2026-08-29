@@ -1,6 +1,6 @@
 ---
 entity_name: cabin
-topic: definition
+topic: assembly
 status: experimental
 authority: domain_reference
 source: building_types/catalog/cabins.md
@@ -28,17 +28,31 @@ synonyms:
 |------|------|---------|
 | 地基 | 底部 | floor × 1 |
 | 外墙 | 四周 | wall × 4 |
-| 门窗 | 外墙开口 | opening：门×1，窗×2~4 |
+| 门窗 | 外墙开口 | door × 1、window × 2~4（组合构件，编译器自动生成 opening）|
 | 屋顶 | 顶部 | roof × 1（gable 双坡为主） |
 | 前廊 | 可选，正面外延 | floor + column × 2 + beam × 1 |
 | 烟囱 | 可选，屋顶侧面 | column（烟囱体）+ floor（顶盖）|
+
+<!-- rag-meta
+entity_type: building
+entity_name: standard_cabin
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 标准木屋
+  - 木屋
+  - 单层木屋
+synonyms:
+  - standard cabin
+-->
 
 ### 变体 A：标准木屋
 
 **构件清单**：
 - floor × 1（地基）
 - wall × 4（外墙，木板材质）
-- opening × 3（正门1 + 前窗1 + 侧窗1）
+- door × 1（正门）+ window × 2（前窗1 + 侧窗1）
 - roof × 1（gable，坡度较陡：height = span × 0.5）
 
 **典型尺寸**：
@@ -51,6 +65,20 @@ synonyms:
 - 地基：石材 baseColor [0.62, 0.59, 0.55]
 
 ---
+
+<!-- rag-meta
+entity_type: building
+entity_name: cabin_with_porch
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 前廊木屋
+  - 带前廊木屋
+  - 木屋前廊
+synonyms:
+  - cabin with porch
+-->
 
 ### 变体 B：带前廊木屋
 
@@ -68,8 +96,8 @@ synonyms:
 单层木屋
 - 地基 floor ×1，5m×4m
 - 外墙 wall ×4
-- 正门 opening ×1（宽0.9m，高2.0m）
-- 前窗 opening ×2（宽1.0m，高0.9m，台高1.0m）
+- 正门 door ×1（宽0.9m，高2.0m，parentWall 正面墙）
+- 前窗 window ×2（宽1.0m，高0.9m，窗台高1.0m）
 - 屋顶 roof ×1，gable，span 6m，depth 5m，height 2.5m
 ```
 

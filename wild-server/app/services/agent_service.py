@@ -203,6 +203,15 @@ def _final_errors(results: list[PipelineStepResult]) -> list[PipelineStepResult]
     return [r for r in last.values() if r.has_error]
 
 
+def _severity_from_text(output: str) -> tuple[bool, bool]:
+    """从校验器文本标记收敛出结构化严重度。
+
+    文本同时包含 ❌ 与 ⚠️ 时按错误计；判定集中在这里，后续如需把特定
+    警告升级为错误只需改这一处，不必逐个触碰校验器输出。
+    """
+    return ("❌" in output, "⚠️" in output)
+
+
 def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     """按固定顺序执行所有校验 + 自动修正步骤，返回每步结果。"""
     results: list[PipelineStepResult] = []
@@ -210,8 +219,7 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     def run_step(step: int, name: str, tool_fn, bp: dict) -> PipelineStepResult:
         """执行校验工具，把文本标记转换成统一的步骤状态。"""
         output = _run_tool(tool_fn, bp)
-        has_error = "❌" in output
-        has_warning = "⚠️" in output
+        has_error, has_warning = _severity_from_text(output)
         r = PipelineStepResult(step=step, name=name, output=output,
                                has_error=has_error, has_warning=has_warning)
         results.append(r)
@@ -259,14 +267,16 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     r3 = run_step(3, "validate_reference_integrity", validate_reference_integrity, blueprint)
     if r3.has_error:
         fix_output = _run_tool(fix_material_references, blueprint)
+        fix_error, fix_warning = _severity_from_text(fix_output)
         results.append(PipelineStepResult(
             step="3b", name="fix_material_references", output=fix_output,
-            has_error="❌" in fix_output, has_warning="⚠️" in fix_output,
+            has_error=fix_error, has_warning=fix_warning,
         ))
         reference_output = _run_tool(validate_reference_integrity, blueprint)
+        recheck_error, recheck_warning = _severity_from_text(reference_output)
         results.append(PipelineStepResult(
             step="3c", name="validate_reference_integrity [recheck]", output=reference_output,
-            has_error="❌" in reference_output, has_warning="⚠️" in reference_output,
+            has_error=recheck_error, has_warning=recheck_warning,
         ))
 
     if r2.has_error:
@@ -435,23 +445,76 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
         if not result.has_error:
             continue
         fix_output = fix_component(component_type, blueprint)
+        fix_error, fix_warning = _severity_from_text(fix_output)
         results.append(PipelineStepResult(
             step=f"10.{index}",
             name=f"fix_{component_type}_placement",
             output=fix_output,
-            has_error="❌" in fix_output,
-            has_warning="⚠️" in fix_output,
+            has_error=fix_error,
+            has_warning=fix_warning,
         ))
         recheck_output = validate_component(component_type, blueprint)
+        recheck_error, recheck_warning = _severity_from_text(recheck_output)
         results.append(PipelineStepResult(
             step=f"10.{index}",
             name=f"{validator_name} [recheck]",
             output=recheck_output,
-            has_error="❌" in recheck_output,
-            has_warning="⚠️" in recheck_output,
+            has_error=recheck_error,
+            has_warning=recheck_warning,
         ))
 
+    # ── Step 11: 领域事实校验（domain_schema.yaml 约束）──
+    # FactualValidator 此前从未接入生成校验；这里用领域约束（门窗/墙/柱/楼梯
+    # 的尺寸范围）兜底几何之外的“事实合理性”，与既有几何校验互补。
+    run_step(11, "validate_domain_facts", _validate_domain_facts, blueprint)
+
     return results
+
+
+def _validate_domain_facts(blueprint: dict) -> str:
+    """按 domain_schema.yaml 的实体尺寸约束校验 Blueprint，返回文本结果。
+
+    直接调用 FactualValidator 的同步校验逻辑（``_validate_ranges`` /
+    ``_validate_enums``），不用 ``validate_batch``——它内部 ``asyncio.run``
+    无法在 LangGraph 的事件循环内执行。
+    """
+    try:
+        from app.agent.validators.factual_validator import FactualValidator
+        from app.config.domain_config import get_domain_config
+
+        constraints = get_domain_config().get_constraints()
+        if not constraints:
+            return "✅ 领域事实校验跳过（无约束配置）"
+        validator = FactualValidator(constraints)
+        geometry = blueprint.get("geometry", {})
+        entities = [
+            *geometry.get("elements", []),
+            *geometry.get("components", []),
+        ]
+        invalid_entities: list[dict] = []
+        for entity in entities:
+            if not isinstance(entity, dict):
+                continue
+            entity_type = entity.get("type")
+            if entity_type not in constraints:
+                continue
+            errors: list[str] = []
+            errors.extend(validator._validate_ranges(entity, entity_type, constraints[entity_type]))
+            errors.extend(validator._validate_enums(entity, entity_type, constraints[entity_type]))
+            if errors:
+                invalid_entities.append({"entity": entity, "errors": errors})
+        if not invalid_entities:
+            return f"✅ 领域事实校验通过（{len(entities)} 个实体）"
+        lines = [f"❌ 领域事实校验发现 {len(invalid_entities)} 个实体不合规："]
+        for item in invalid_entities:
+            entity = item.get("entity") or {}
+            entity_id = str(entity.get("id") or "?")
+            for error in item.get("errors", [])[:6]:
+                lines.append(f"❌ [{entity_id}] {error}")
+        return "\n".join(lines[:30])
+    except Exception as exc:
+        logger.warning(f"[pipeline] 领域事实校验执行失败，跳过: {exc}")
+        return "✅ 领域事实校验跳过（执行异常）"
 
 
 _MATERIAL_REFERENCE_FIELDS = (

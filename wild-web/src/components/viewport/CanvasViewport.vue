@@ -177,6 +177,7 @@ let gridHelper: THREE.GridHelper | null = null
 let environmentTarget: THREE.WebGLRenderTarget | null = null
 let pmremGenerator: THREE.PMREMGenerator | null = null
 let environmentScene: THREE.Scene | null = null
+let environmentSunSprite: THREE.Sprite | null = null
 let environmentSky: Sky | null = null
 let sky: Sky | null = null
 let sunBody: THREE.Sprite | null = null
@@ -219,6 +220,9 @@ let unsubscribeWorldRendering: (() => void) | null = null
 let unsubscribeWorldEffects: (() => void) | null = null
 let effectClock = 0
 let fpsSmoothed = 60
+let adaptiveQualityApplied = false
+let lastShadowDirtyTime = 0
+const SHADOW_DIRTY_THROTTLE_MS = 120
 
 onMounted(() => {
   unsubscribeWorldLook = worldLookRuntime.subscribe(() => {
@@ -304,10 +308,11 @@ function initThreeJS() {
 
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
-  ssaoPass = new SSAOPass(scene, camera, 1, 1)
-  ssaoPass.kernelRadius = 10
+  // SSAO 半分辨率 + 更细核：开销减半，接触阴影更细腻。
+  ssaoPass = new SSAOPass(scene, camera, 0.5, 0.5)
+  ssaoPass.kernelRadius = 4
   ssaoPass.minDistance = 0.002
-  ssaoPass.maxDistance = 0.14
+  ssaoPass.maxDistance = 0.3
   composer.addPass(ssaoPass)
   bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
   composer.addPass(bloomPass)
@@ -352,6 +357,11 @@ function initThreeJS() {
   environmentSky = new Sky()
   environmentSky.scale.setScalar(450)
   environmentScene.add(environmentSky)
+  // 环境贴图内的太阳亮点：让 IBL 反射出现真实太阳镜面高光（材质更立体）。
+  environmentSunSprite = createCelestialBody('sun')
+  environmentSunSprite.scale.setScalar(60)
+  environmentSunSprite.name = 'EnvironmentSun'
+  environmentScene.add(environmentSunSprite)
 
   hemisphereLight = new THREE.HemisphereLight(0xddeeff, 0x665544, 0.75)
   scene.add(hemisphereLight)
@@ -363,7 +373,7 @@ function initThreeJS() {
   directionalLight.shadow.mapSize.height = 2048
   directionalLight.shadow.bias = -0.0002
   directionalLight.shadow.normalBias = 0.025
-  directionalLight.shadow.radius = 2
+  directionalLight.shadow.radius = 4
   directionalLight.shadow.autoUpdate = false
   directionalLight.shadow.camera.left = -20
   directionalLight.shadow.camera.right = 20
@@ -384,14 +394,17 @@ function initThreeJS() {
   shadowGround.receiveShadow = true
   scene.add(shadowGround)
 
+  const groundTexture = createGroundTexture()
   presentationGround = new THREE.Mesh(
     new THREE.PlaneGeometry(1, 1),
     new THREE.MeshStandardMaterial({
+      map: groundTexture,
       color: TIME_PRESETS.day.groundColor,
       roughness: 0.92,
       metalness: 0,
     }),
   )
+  presentationGround.userData.groundTexture = groundTexture
   presentationGround.name = 'PresentationGround'
   presentationGround.rotation.x = -Math.PI / 2
   presentationGround.position.y = -0.004
@@ -494,6 +507,18 @@ function renderFrame() {
   if (delta > 0.0005 && delta < 0.25) {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
     fps.value = Math.round(fpsSmoothed)
+  }
+  // 帧率自适应降级：持续低于 30fps 时关 SSAO/Bloom 并降像素比，保交互流畅。
+  // 只在低档降一次，避免反复切换；手动切换质量档会重置标记。
+  if (!adaptiveQualityApplied && fpsSmoothed < 30 && fpsSmoothed > 0) {
+    adaptiveQualityApplied = true
+    const ratio = renderer?.getPixelRatio() ?? 1
+    if (ratio > 1) renderer?.setPixelRatio(Math.max(1, ratio * 0.66))
+    if (composer) composer?.setPixelRatio(renderer?.getPixelRatio() ?? 1)
+    if (ssaoPass) ssaoPass.enabled = false
+    if (bloomPass) bloomPass.enabled = false
+    if (fxaaPass) fxaaPass.enabled = true
+    handleResize()
   }
   if (needsRender && renderer && scene && camera) {
     if (composer) composer.render()
@@ -855,7 +880,12 @@ function handleTransformObjectChange() {
   for (const [object, start] of dragTargetPositions) object.position.copy(start).add(delta)
   syncSelectionHighlights()
   markNeedsRender()
-  markShadowsDirty()
+  // 拖动时阴影重渲节流：避免每帧重渲整张阴影图，拖动手感更跟手。
+  const now = performance.now()
+  if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS) {
+    lastShadowDirtyTime = now
+    markShadowsDirty()
+  }
 }
 
 function handleTransformDraggingChanged(event: { value?: unknown }) {
@@ -1171,6 +1201,11 @@ function rebuildEnvironment(
   syncSkyPreset(environmentSky, preset, atmosphere)
   environmentScene.background = new THREE.Color(preset.background)
     .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
+  if (environmentSunSprite) {
+    // 沿太阳方向放置亮点（距离远于 PMREM 半径），夜晚隐藏避免月光串色。
+    environmentSunSprite.position.copy(sunDirection).multiplyScalar(380)
+    environmentSunSprite.visible = timeOfDay.value !== 'night'
+  }
   const nextTarget = pmremGenerator.fromScene(
     environmentScene,
     timeOfDay.value === 'night' ? 0.16 : 0.045,
@@ -1180,7 +1215,41 @@ function rebuildEnvironment(
   const previousTarget = environmentTarget
   environmentTarget = nextTarget
   scene.environment = nextTarget.texture
+  // IBL 强度由 materialAdapter 的 envMapIntensity（非金属 1.0 / 金属 1.0~1.5）承担，
+  // 太阳亮点已通过 environmentSunSprite 注入环境贴图，材质反射/高光更立体。
   previousTarget?.dispose()
+}
+
+function createGroundTexture(): THREE.CanvasTexture {
+  // 程序化地面纹理：低分辨率噪点色块，让纯色地面有轻微质感（草/土/石混合），
+  // 128x128 + RepeatWrapping，放大后不显著，成本可忽略。
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const context = canvas.getContext('2d')
+  if (context) {
+    const base = [0x74, 0x7b, 0x73]
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        // 确定性 hash 噪点，避免每个像素随机数开销。
+        const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+        const frac = n - Math.floor(n)
+        const jitter = (frac - 0.5) * 22
+        const r = Math.max(0, Math.min(255, base[0] + jitter))
+        const g = Math.max(0, Math.min(255, base[1] + jitter * 0.9))
+        const b = Math.max(0, Math.min(255, base[2] + jitter * 0.7))
+        context.fillStyle = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`
+        context.fillRect(x, y, 1, 1)
+      }
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(24, 24)
+  return texture
 }
 
 function createCelestialBody(kind: 'sun' | 'moon'): THREE.Sprite {
@@ -1324,6 +1393,8 @@ function cycleQuality() {
 
 function applyQualityPreset() {
   if (!renderer) return
+  // 手动切档会重置自适应降级标记，允许回到更高质量档。
+  adaptiveQualityApplied = false
   const preset = QUALITY_PRESETS[qualityLevel.value]
   updateWorldRenderingState({
     surfaceQuality: qualityLevel.value,
@@ -1447,11 +1518,17 @@ function cleanup() {
   sky?.material.dispose()
   environmentSky?.geometry.dispose()
   environmentSky?.material.dispose()
+  environmentSunSprite?.removeFromParent()
+  environmentSunSprite = null
   clearBuiltInEnvironment()
   shadowGround?.geometry.dispose()
   shadowGround?.material.dispose()
   presentationGround?.geometry.dispose()
-  presentationGround?.material.dispose()
+  const groundMaterial = presentationGround?.material
+  if (groundMaterial && 'map' in groundMaterial) {
+    ;(groundMaterial as THREE.MeshStandardMaterial).map?.dispose()
+  }
+  groundMaterial?.dispose()
   ssaoPass?.dispose()
   bloomPass?.dispose()
   fxaaPass?.material.dispose()

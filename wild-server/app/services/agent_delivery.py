@@ -21,6 +21,11 @@ class ArtifactSaveError(RuntimeError):
     """生成结果有效，但服务端文件保存失败。"""
 
 
+# 交付门禁的警告阈值：超过该值的 Blueprint 判定为“满屏警告”，即使没有 ❌
+# 错误也拒绝交付，要求先进入回调修复；少量警告（正常生成的常见水平）不受影响。
+WARNING_GATE_MAX = 20
+
+
 @dataclass(frozen=True)
 class ValidationSummary:
     total: int
@@ -112,6 +117,11 @@ def prepare_blueprint_delivery(
     if status != "complete" or summary.errors > 0:
         raise GenerationRejectedError(
             f"校验结果：{summary.passed}✓ {summary.warnings}⚠ {summary.errors}✗"
+        )
+    if summary.warnings > WARNING_GATE_MAX:
+        raise GenerationRejectedError(
+            f"校验警告过多（{summary.warnings} > {WARNING_GATE_MAX}），"
+            f"生成结果仍有未解决的几何问题，已阻止保存和加载。"
         )
 
     meta_name = blueprint.get("meta", {}).get("name", "") or ""

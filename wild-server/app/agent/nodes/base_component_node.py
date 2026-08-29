@@ -46,6 +46,49 @@ def _component_state_update(
     }
 
 
+async def _recover_component_json(
+    config: ComponentConfig,
+    system_prompt: str,
+    user_message: str,
+    failed_reply: str,
+) -> tuple[str, int]:
+    """用一次非思考调用把无效的组件回复恢复为单一 JSON 数组/对象。
+
+    返回 (恢复文本, 耗时毫秒)；调用失败返回原失败回复，让调用方走既有空分片路径。
+    """
+    recovery_t0 = _time.time()
+    try:
+        recovery_llm = create_llm(enable_thinking=False, streaming=False)
+        array_note = "一个 JSON 数组" if config.is_list else "单个 JSON 对象"
+        failed_excerpt = failed_reply[:6000]
+        recovery_instruction = f"""
+
+# 组件格式恢复（覆盖前面的输出格式要求）
+
+这是失败恢复，不要重新解释设计过程。你只能输出 {array_note}：
+- 严格合法的 JSON，不要 Markdown 围栏、注释或额外文本；
+- {config.component_type} 必须包含全部必填字段；
+- 如果上一轮输出缺失或 JSON 不完整，根据原始需求和设计清单补全。
+"""
+        recovery_user = f"""原始用户需求：
+{user_message}
+
+上一轮无效输出（仅供修复，不要照抄其额外说明）：
+{failed_excerpt}
+"""
+        result = await invoke_llm(
+            recovery_llm,
+            [
+                {"role": "system", "content": system_prompt + recovery_instruction},
+                {"role": "user", "content": recovery_user},
+            ],
+        )
+        return result.content, int((_time.time() - recovery_t0) * 1000)
+    except Exception as exc:
+        logger.warning(f"[{config.component_type}_gen] 定向格式恢复调用失败: {exc}")
+        return failed_reply, int((_time.time() - recovery_t0) * 1000)
+
+
 # 生成器工厂（LLM 调用，有思考内容）
 
 def create_component_generator(config: ComponentConfig):
@@ -175,20 +218,44 @@ def create_component_generator(config: ComponentConfig):
             fragments = [obj] if obj else []
 
         if not fragments or (not config.is_list and fragments[0] is None):
-            logger.warning(f"[{config.component_type}_gen] 未能提取 JSON")
-            empty_value = [] if config.is_list else None
-            diag = {
-                    "label": config.label,
-                    "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
-                    "rag_error": rag_error,
-                    "prompt_chars": prompt_chars,
-                    "llm_chars": llm_chars, "llm_ms": llm_ms,
-                    "token_usage": token_usage,
-                    "reasoning_chars": reasoning_chars,
-                    "fragment_count": 0,
-                    "error": "JSON 提取失败",
-                }
-            return _component_state_update(config, empty_value, gen_diag_key, diag)
+            # 解析失败不立即判定为组件缺失：做一次非思考定向格式恢复，避免
+            # 偶发格式抖动把整类组件静默丢弃（skeleton 节点已有同类恢复模式）。
+            recovery_text, recovery_ms = await _recover_component_json(
+                config,
+                system_prompt,
+                user_message,
+                reply_text,
+            )
+            if config.is_list:
+                fragments = extract_json_array(recovery_text)
+            else:
+                recovered_obj = extract_json_object(recovery_text)
+                fragments = [recovered_obj] if recovered_obj is not None else []
+            if not fragments or (not config.is_list and fragments[0] is None):
+                logger.warning(f"[{config.component_type}_gen] 未能提取 JSON")
+                empty_value = [] if config.is_list else None
+                diag = {
+                        "label": config.label,
+                        "rag_chars": rag_chars, "rag_ms": rag_ms, "rag_hits": rag_hits,
+                        "rag_error": rag_error,
+                        "prompt_chars": prompt_chars,
+                        "llm_chars": llm_chars, "llm_ms": llm_ms,
+                        "token_usage": token_usage,
+                        "reasoning_chars": reasoning_chars,
+                        "fragment_count": 0,
+                        "recovery_ms": recovery_ms,
+                        "error": "JSON 提取失败",
+                        # 显式标记格式故障：不是服务故障（不设 terminal，merge 不会
+                        # 误判为模型服务中断），但 merge 可据此诊断，避免“静默消失”。
+                        "json_parse_failed": True,
+                        "model_error": {
+                            "category": "json_parse",
+                            "terminal_current_run": False,
+                            "retryable": True,
+                            "user_message": f"{config.label} 结构化输出解析失败",
+                        },
+                    }
+                return _component_state_update(config, empty_value, gen_diag_key, diag)
 
         # ── 5. 基本校验（类型 + 必填字段）──
         valid = _validate_fragments(fragments, config)

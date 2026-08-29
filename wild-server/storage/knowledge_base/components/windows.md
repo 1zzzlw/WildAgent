@@ -9,9 +9,8 @@ source: components/windows.md
 primary_terms:
   - 窗
   - window
-  - opening
-  - mullion
-  - sashType
+  - 窗型
+  - 窗棂
 synonyms: []
 ---
 
@@ -724,34 +723,35 @@ synonyms:
 
 ---
 
-#### 天窗（Skylight）——开在屋顶上
+#### 天窗（Skylight）——屋顶开洞
 
 <!-- rag-meta
 entity_type: window
 entity_name: skylight
 topic: assembly
-status: proposed
-authority: domain_reference
+status: experimental
+authority: engine
 primary_terms:
   - 天窗
-  - roof opening
+  - 屋顶开洞
+  - 采光顶
 synonyms:
   - skylight
 -->
 
-> 组装公式：**`opening`(parent=roof, 而非 wall) + `window`(fixed/awning)**
-
-天窗的特殊之处：`opening` 的 `parentWall` 改为 `parentRoof`。
+> ⚠️ **引擎限制**：`opening` 不能引用 `parentRoof`（`engine-capability-boundaries.md` 明确），天窗不能用"屋顶上的 opening"表达。当前受支持的近似方式是在屋顶上方用 `primitive` 组合一个透光外壳。
 
 ```text
-{ "type": "opening", "id": "skylight_opening",
-  "parentRoof": "flat_roof",
-  "from": [4.0, 0, 3.0],
-  "width": 1.0, "height": 1.0, "style": "rectangular" },
-{ "type": "window", "id": "skylight_win",
-  "parentOpening": "skylight_opening",
-  "sashType": "awning" }
+{ "type": "primitive", "id": "skylight_glass",
+  "shape": "box",
+  "from": [3.6, roof_top_y, 2.6],
+  "to": [4.4, roof_top_y + 0.3, 3.4],
+  "material": "glass" }
 ```
+
+- 透光外壳用 `material: "glass"`（物理玻璃材质），`position` 略高于屋顶表面，模拟凸起天窗。
+- 平屋顶较适合此近似；坡屋顶天窗需贴合屋面坡度摆放，或用 `primitive.profile_sweep` 沿屋面走向挤出。
+- 该方式是**几何近似**，不产生真实开洞；`window` 组件不能挂在 roof 上。
 
 ---
 

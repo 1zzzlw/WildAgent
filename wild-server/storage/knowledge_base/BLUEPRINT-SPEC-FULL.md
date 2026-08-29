@@ -164,7 +164,9 @@ Wild蓝图是描述3D建筑场景的JSON格式文件，扩展名为`.wild`。本
 | sweep    | number                   | 扫掠角度（度），360为完整圆 |
 | segments | number                   | 细分段数，影响平滑度        |
 
-#### 2.2.3 开口 (Opening) - 门窗
+#### 2.2.3 开口 (Opening)
+
+> ⚠️ **作用边界**：`opening` 元素只用于"在墙上裁洞"（如箭孔、天窗近似、洞口），**不是门窗本体**。标准门/窗请使用 `geometry.components` 中的 `door` / `window` 组合构件（见 2.3.1 / 2.3.2），编译器会自动为它们生成对应 opening。下面的 JSON 是裁洞示例，`style: "rectangular"` 与 `material` 属于 v1.0 遗留表达，门/窗组件已不再使用。
 
 **关键规范**：开口坐标使用**相对于墙体的局部坐标**，不是世界坐标！
 
@@ -312,10 +314,13 @@ wall_upper: from=[-8, 3, -6], to=[8, 5.8, -6]  // 墙底Y=3，墙顶Y=5.8
 }
 ```
 
-**roofType类型**：
+**roofType类型**（6 个合法值，与 `BLUEPRINT-SPEC-MINIMAL` 和编译器一致）：
 - `gable`: 双坡屋顶
 - `hip`: 四坡屋顶
+- `dome`: 穹顶
 - `flat`: 平屋顶
+- `chinese_curved`: 中式曲面屋顶
+- `chinese_pagoda`: 多层塔顶（中式塔/楼阁）
 
 **字段说明**：
 
@@ -670,6 +675,8 @@ synonyms: []
 ```
 
 ### 4.2 交互脚本
+
+> ⚠️ **v1.0 遗留**：`behaviors.scripts.on_click` 事件脚本是旧版交互机制，现行引擎已用 `door`/`window` 组件的 `interaction.mode`（`swing`/`slide`）和 `light` 组件的开关循环替代。生成时**不要**输出 `scripts.on_click` 事件脚本；需要可开合门窗用 `interaction`，需要可开关灯具用 `light` 组件。以下示例仅作历史参考：
 
 ```json
 {

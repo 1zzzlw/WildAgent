@@ -86,6 +86,32 @@ async def merge_fragments_node(state: GenerationState) -> dict:
             },
         }
 
+    # JSON 提取失败不是服务故障（不设 terminal），但也不应静默消失：组件配额
+    # min>0 时生成设计配额级错误交给回调 add_entity，否则记诊断告警。格式故障
+    # 与几何问题区分开，避免误判修复对象。
+    json_parse_failures = _collect_json_parse_failures(
+        state.get("component_diagnostics", {})
+    )
+    json_parse_quota_errors: list[str] = []
+    json_parse_dropped: list[str] = []
+    if json_parse_failures:
+        quota = design_brief.get("component_quota", {}) if design_brief else {}
+        for component_type, label in json_parse_failures:
+            minimum = 0
+            if isinstance(quota.get(component_type), dict):
+                raw_min = quota[component_type].get("min", 0)
+                minimum = int(raw_min) if isinstance(raw_min, (int, float)) and not isinstance(raw_min, bool) else 0
+            if minimum > 0:
+                json_parse_quota_errors.append(
+                    f"{label}({component_type}) 结构化输出解析失败，且设计配额下限为 {minimum}"
+                )
+            else:
+                json_parse_dropped.append(f"{label}({component_type})")
+        if json_parse_quota_errors:
+            logger.warning(f"[merge] JSON 解析失败但配额要求存在: {json_parse_quota_errors}")
+        if json_parse_dropped:
+            logger.warning(f"[merge] JSON 解析失败且无配额下限，组件被丢弃: {json_parse_dropped}")
+
     # ── 1. 收集所有组件分片 ──
     fragments: list[dict] = []
     fragment_summary: list[str] = []
@@ -182,6 +208,10 @@ async def merge_fragments_node(state: GenerationState) -> dict:
             )
 
     design_errors = _validate_design_brief_constraints(merged_blueprint, design_brief)
+    # JSON 提取失败且有配额下限的组件，视同配额缺失错误交给回调 add_entity；
+    # 与几何问题区分（repair_target 为 design:<type>，走既有设计配额修复路径）。
+    if json_parse_quota_errors:
+        design_errors = [*json_parse_quota_errors, *design_errors]
 
     if on_reasoning_delta:
         await on_reasoning_delta(
@@ -847,3 +877,21 @@ def _apply_fixes(blueprint: dict, errors: list) -> list[tuple[str, bool]]:
             applied.append((fix_name, False))
 
     return applied
+
+
+def _collect_json_parse_failures(component_diagnostics: object) -> list[tuple[str, str]]:
+    """从并行组件诊断中收集 JSON 解析失败（非服务故障）条目。
+
+    返回 ``[(component_type, label), ...]``，供 merge 决定是否生成配额级错误。
+    """
+    if not isinstance(component_diagnostics, dict):
+        return []
+    failures: list[tuple[str, str]] = []
+    for diag_key, diag in component_diagnostics.items():
+        if not str(diag_key).endswith("_gen_diag") or not isinstance(diag, dict):
+            continue
+        if diag.get("json_parse_failed") is not True:
+            continue
+        component_type = str(diag_key)[:-9]
+        failures.append((component_type, str(diag.get("label") or component_type)))
+    return failures

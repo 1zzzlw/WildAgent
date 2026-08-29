@@ -41,7 +41,7 @@ def test_approved_plan_assembler_is_repeatable_and_passes_g1_to_g6() -> None:
 
     assert first == second
     assert first_brief == second_brief
-    assert [report.gate for report in first_reports] == ["G1", "G2", "G3", "G4", "G5", "G6"]
+    assert [report.gate for report in first_reports] == ["G1", "G2", "G3", "G4", "G5", "G6", "G8"]
     assert all(report.passed for report in first_reports)
     assert all(report.passed for report in second_reports)
     assert any(item["type"] == "door" for item in first["geometry"]["components"])

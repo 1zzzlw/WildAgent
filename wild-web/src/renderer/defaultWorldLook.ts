@@ -78,7 +78,8 @@ export const TIME_PRESETS: Record<TimeOfDay, TimePreset> = {
 export const QUALITY_ORDER: QualityLevel[] = ['low', 'medium', 'high']
 export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
   low: { label: '流畅', pixelRatio: 1, shadowMapSize: 1024, ssao: false, bloom: false },
-  medium: { label: '均衡', pixelRatio: 1.5, shadowMapSize: 2048, ssao: true, bloom: false },
+  // pixelRatio 1.25 + SSAO 半分辨率：默认档清晰度与帧率更平衡。
+  medium: { label: '均衡', pixelRatio: 1.25, shadowMapSize: 2048, ssao: true, bloom: false },
   high: { label: '精细', pixelRatio: 2, shadowMapSize: 4096, ssao: true, bloom: true },
 }
 

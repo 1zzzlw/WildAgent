@@ -1,6 +1,6 @@
 ---
 entity_name: courtyard
-topic: definition
+topic: assembly
 status: experimental
 authority: domain_reference
 source: building_types/catalog/courtyards.md
@@ -28,22 +28,36 @@ synonyms:
 | 区域 | 位置 | 核心构件 |
 |------|------|---------|
 | 院墙 | 外围四周 | wall × 4（围合，矮于建筑本体）|
-| 院门 | 院墙开口 | opening × 1（大门洞，或带门楼）|
+| 院门 | 院墙开口 | door × 1（大门，或带门楼）|
 | 庭院地面 | 围合内部 | floor × 1（铺装地面）|
-| 正房 | 北侧（主屋） | wall × 4 + opening + roof |
-| 厢房 | 东西两侧 | wall + opening + roof（较小）|
-| 倒座 | 南侧（辅屋） | wall + opening + roof（可选）|
+| 正房 | 北侧（主屋） | wall × 4 + door/window + roof |
+| 厢房 | 东西两侧 | wall + door/window + roof（较小）|
+| 倒座 | 南侧（辅屋） | wall + door/window + roof（可选）|
 | 廊道 | 连接各房间 | column + beam + roof（单坡廊）|
 | 景观 | 庭院内 | column（假山柱）、floor（水池）等 |
+
+<!-- rag-meta
+entity_type: building
+entity_name: northern_courtyard
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 北方四合院
+  - 四合院
+  - 北京四合院
+synonyms:
+  - siheyuan
+-->
 
 ### 变体 A：北方四合院（简化版）
 
 **构件清单**：
 - floor × 1（院内地面）
 - wall × 4（院墙，高 2m，厚 0.4m）
-- opening × 1（院门，宽 2m，高 2.5m，居南墙中央）
-- 正房：wall × 4，高 3.5m；opening × 3（中门+两窗）；roof × 1（gable）
-- 东厢房：wall × 4，高 3.2m；opening × 2；roof × 1（gable）
+- door × 1（院门，宽 2m，高 2.5m，居南墙中央）
+- 正房：wall × 4，高 3.5m；door × 1（中门）+ window × 2；roof × 1（gable）
+- 东厢房：wall × 4，高 3.2m；door × 1 + window × 1；roof × 1（gable）
 - 西厢房：同东厢房（镜像）
 - 廊道：column × 6~8（连接正房与厢房的檐廊柱）；beam × 6~8；roof × 2（单坡廊顶）
 
@@ -56,6 +70,19 @@ synonyms:
 
 ---
 
+<!-- rag-meta
+entity_type: building
+entity_name: mediterranean_courtyard
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 地中海庭院
+  - 地中海小庭院
+synonyms:
+  - mediterranean courtyard
+-->
+
 ### 变体 B：地中海小庭院
 
 **构件清单**：
@@ -64,6 +91,6 @@ synonyms:
 - column × 6~8（回廊拱柱，白色，style: classical）
 - beam × 6~8（廊道连梁）
 - roof × 2~4（各房间独立坡顶）
-- opening × 多（窗户较多，拱形风格用 rectangular 近似）
+- window × 多（窗户较多，拱形风格用 rectangular 近似）
 
 ---

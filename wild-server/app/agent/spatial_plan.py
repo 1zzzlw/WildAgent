@@ -34,6 +34,7 @@ from app.agent.spatial_geometry import (
     rectangle_union_area,
     rectangle_union_cells,
     slice_path,
+    snap_to_grid,
 )
 
 
@@ -782,11 +783,14 @@ def apply_spatial_plan_to_blueprint(
         top_y = base_y + float(level["height"])
         for wall in level.get("walls", []):
             start, end = wall["from"], wall["to"]
+            # 内墙端点是 LLM 写的二维坐标；吸附到构造网格保证视觉整齐。注意不
+            # 打断相交墙段：打断会改变墙 id 或产生重复 id，破坏 G2 唯一性与
+            # 洞口宿主引用，收益远低于风险。
             element = {
                 "type": "wall",
                 "id": wall["id"],
-                "from": [float(start[0]), base_y, float(start[1])],
-                "to": [float(end[0]), top_y, float(end[1])],
+                "from": [snap_to_grid(float(start[0])), base_y, snap_to_grid(float(start[1]))],
+                "to": [snap_to_grid(float(end[0])), top_y, snap_to_grid(float(end[1]))],
                 "thickness": float(wall["thickness"]),
                 "material": material,
             }

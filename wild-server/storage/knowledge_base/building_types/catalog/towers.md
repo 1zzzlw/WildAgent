@@ -1,6 +1,6 @@
 ---
 entity_name: tower
-topic: definition
+topic: assembly
 status: experimental
 authority: domain_reference
 source: building_types/catalog/towers.md
@@ -27,17 +27,32 @@ synonyms:
 | 区域 | 层位 | 核心构件 |
 |------|------|---------|
 | 底座 | 底部 1~2层 | floor + wall（较厚，0.5~0.8m）|
-| 标准层 | 中间各层 | wall × 4 + floor + opening（箭孔/窗）|
+| 标准层 | 中间各层 | wall × 4 + floor + opening（箭孔/窗，裁洞）|
 | 顶层 | 最高层 | wall + 垛口（用 column 模拟）|
 | 塔顶 | 屋顶 | roof（gable 或 hip，坡度陡）|
 | 楼梯 | 内部贯通 | stair × (层数-1) |
+
+<!-- rag-meta
+entity_type: building
+entity_name: medieval_stone_tower
+topic: assembly
+status: experimental
+authority: domain_reference
+primary_terms:
+  - 中世纪石塔
+  - 石塔
+  - 塔楼
+  - 箭塔
+synonyms:
+  - stone tower
+-->
 
 ### 变体 A：中世纪石塔（4层）
 
 **构件清单**：
 - floor × 4（每层楼板）
 - wall × 16（每层4面，共4层，越高越薄）
-- opening × 12（每层3个箭孔/窗，底层1个门）
+- opening × 12（每层3个箭孔/窗，裁洞）+ door × 1（底层入口门）
 - stair × 3（连接1-2层、2-3层、3-4层）
 - roof × 1（hip 或 gable，高耸，height = span × 0.8）
 

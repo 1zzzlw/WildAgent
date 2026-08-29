@@ -136,7 +136,8 @@ export function createMaterialFromParams(
   // 2. 粗糙度和金属度
   material.roughness = params.roughness
   material.metalness = params.metallic
-  material.envMapIntensity = Math.min(1.5, 0.82 + params.metallic * 0.45)
+  // IBL 反射基准提高：非金属也有环境反射，金属/光滑面反射更亮；配合 scene.environmentIntensity。
+  material.envMapIntensity = Math.min(1.8, 1.0 + params.metallic * 0.5)
 
   // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）
   if (material instanceof THREE.MeshPhysicalMaterial) {
