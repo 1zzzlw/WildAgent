@@ -332,7 +332,7 @@ def evaluate_floor_plan_rules(plan: dict[str, Any]) -> dict[str, Any]:
 
 def rule_gate_issues(plan: dict[str, Any]) -> list[dict[str, Any]]:
     report = evaluate_floor_plan_rules(plan)
-    return [
+    issues = [
         {
             "code": f"rule_{finding['gate']}",
             "level_id": finding.get("level_id"),
@@ -342,6 +342,13 @@ def rule_gate_issues(plan: dict[str, Any]) -> list[dict[str, Any]]:
         for finding in report["findings"]
         if not finding["passed"]
     ]
+    # 新增平面闸门（FP1/FP4/FP5/FP7/FP8），依赖语义字段。
+    try:
+        from app.agent.floor_plan_gates import evaluate_plan_gates
+        issues.extend(evaluate_plan_gates(plan))
+    except Exception:
+        pass  # 新闸门不阻断既有规则。
+    return issues
 
 
 def _level_regions(level: dict[str, Any]) -> list[list[float]]:

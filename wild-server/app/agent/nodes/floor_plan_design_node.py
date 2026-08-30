@@ -177,6 +177,16 @@ async def floor_plan_designer(state: GenerationState) -> dict:
         floor_plan_notice = " ".join(item for item in (floor_plan_notice, repair_notice) if item)
     elif spatial_issues and not geometry_issues and not floor_plan_notice:
         floor_plan_notice = "平面几何可以预览，但工程预审未通过；请按实测问题修改后再确认。"
+    elif geometry_issues and not floor_plan_notice:
+        # 几何校验失败：没有可预览 SVG，也没有 fallback_reason（source=model）。
+        # 必须给出具体原因，否则前端只剩"重新生成"按钮且无任何解释。
+        issue_codes = "、".join(
+            str(item.get("code") or "") for item in geometry_issues[:6]
+        )
+        floor_plan_notice = (
+            f"平面几何校验未通过（{len(geometry_issues)} 项）：{issue_codes}。"
+            "请按以上问题修改后重新生成。"
+        )
     floor_plan_svgs = architecture_plan_to_svgs(architecture_plan) if not geometry_issues else {}
     floor_plan_svg = floor_plan_svgs.get("1") or next(iter(floor_plan_svgs.values()), "")
     summary = spatial_plan_summary(spatial_plan)

@@ -59,6 +59,21 @@ def _stable_id(prefix: str, value: object, index: int) -> str:
     return raw if raw.startswith(f"{prefix}_") else f"{prefix}_{raw}"
 
 
+
+def _infer_zone(space: dict[str, Any]) -> str:
+    """按 space_type 推断功能分区（未显式提供 zone 时）。
+
+    zone 值：public / semi_private / private / service，用于隐私与流线校验。
+    """
+    space_type = str(space.get("space_type") or "").lower()
+    if space_type in {"bedroom", "master_bedroom", "closet", "study", "children_room"}:
+        return "private"
+    if space_type in {"bathroom", "toilet", "storage", "pantry", "utility", "shaft", "laundry"}:
+        return "service"
+    if space_type in {"living", "living_room", "family_lounge", "dining", "kitchen"}:
+        return "semi_private"
+    return "public"
+
 def _fallback_level(
     level: int,
     envelope: list[float],
@@ -332,6 +347,10 @@ def normalize_spatial_plan(
                 "name": str(item.get("name") or kind)[:80],
                 "polygon": polygon,
                 "levels": served,
+                "edge_protection_required": item.get("edge_protection_required") is not False,
+                "connected_space_by_level": {
+                    str(k): str(v) for k, v in (item.get("connected_space_by_level") or {}).items()
+                } if isinstance(item.get("connected_space_by_level"), dict) else {},
             })
 
     vertical_circulation = []
@@ -351,6 +370,19 @@ def normalize_spatial_plan(
                 "name": str(item.get("name") or ("电梯" if kind == "elevator" else "楼梯"))[:80],
                 "polygon": polygon,
                 "serves_levels": served,
+                "runs": [
+                    {
+                        "from_level": int(_number(run.get("from_level"), level)),
+                        "to_level": int(_number(run.get("to_level"), level + 1)),
+                        "direction": str(run.get("direction") or "")[:16],
+                        "width": round(max(0.8, _number(run.get("width"), 1.1)), 3),
+                    }
+                    for run in (item.get("runs") or []) if isinstance(run, dict)
+                ][:8],
+                "upper_landing_polygon": normalize_polygon(item.get("upper_landing_polygon")),
+                "access_space_by_level": {
+                    str(k): str(v) for k, v in (item.get("access_space_by_level") or {}).items()
+                } if isinstance(item.get("access_space_by_level"), dict) else {},
             })
 
     levels: list[dict[str, Any]] = []
@@ -398,6 +430,12 @@ def normalize_spatial_plan(
                 "name": str(raw_space.get("name") or f"空间 {index}")[:80],
                 "space_type": str(raw_space.get("space_type") or "unspecified")[:48],
                 "daylight_required": raw_space.get("daylight_required") is not False,
+                "zone": str(raw_space.get("zone") or _infer_zone(raw_space))[:24],
+                "privacy_level": int(raw_space.get("privacy_level", 0)),
+                "wet_space": bool(raw_space.get("wet_space", False)),
+                "natural_ventilation_required": raw_space.get("natural_ventilation_required") is not False,
+                "exterior_contact_required": bool(raw_space.get("exterior_contact_required", False)),
+                "served_by_shaft": str(raw_space.get("served_by_shaft") or "")[:48],
                 **geometry,
             })
 
@@ -434,6 +472,26 @@ def normalize_spatial_plan(
                     wall["curve"] = normalized_curve
                 walls.append(wall)
 
+        # 确定性成墙：模型墙吸附到空间公共边界；无墙时从空间公共边界推导。
+        # 这保证墙一定落在空间边界上，消除"墙与房间错位"的根源。
+        from app.agent.wall_derivation import (
+            derive_interior_walls,
+            snap_wall_to_boundary,
+        )
+        derived = derive_interior_walls(spaces)
+        if walls:
+            # 模型提供了墙：吸附内墙到公共边界，保留外墙/井道墙。
+            snapped: list[dict[str, Any]] = []
+            for wall in walls:
+                if str(wall.get("kind") or "interior") == "interior":
+                    snapped.append(snap_wall_to_boundary(wall, spaces))
+                else:
+                    snapped.append(wall)
+            walls = snapped
+        else:
+            # 模型没提供墙：用推导的分隔墙。
+            walls = derived
+
         openings: list[dict[str, Any]] = []
         raw_openings = raw_level.get("openings")
         if isinstance(raw_openings, list):
@@ -461,6 +519,12 @@ def normalize_spatial_plan(
                 })
 
         raw_entrance = str(raw_level.get("entrance_space_id") or "")
+        # 访问起点：一层是入口门，二层及以上通常是楼梯平台/挑空连接空间。
+        raw_access_origins = raw_level.get("access_origins")
+        access_origins = [
+            space_id_map.get(str(item), str(item))
+            for item in (raw_access_origins or []) if isinstance(raw_access_origins, list)
+        ][:8] if isinstance(raw_access_origins, list) else []
         raw_voids = raw_level.get("voids") if isinstance(raw_level.get("voids"), list) else []
         voids = []
         for index, raw_void in enumerate(raw_voids, start=1):
@@ -491,12 +555,32 @@ def normalize_spatial_plan(
                 raw_entrance,
                 spaces[0]["id"] if spaces else "",
             ),
+            "access_origins": access_origins or [space_id_map.get(raw_entrance, spaces[0]["id"] if spaces else "")],
             "spaces": spaces,
             "walls": walls,
             "openings": openings,
             "voids": voids,
         })
 
+    # 外部附属区域：阳台/飘窗/空调板（业务语义保留，装配时降级为受支持构件）。
+    exterior_attachments: list[dict[str, Any]] = []
+    raw_attachments = source.get("exterior_attachments")
+    if isinstance(raw_attachments, list):
+        allowed_types = {"balcony", "bay_window", "equipment_platform"}
+        for index, item in enumerate(raw_attachments[:24], start=1):
+            if not isinstance(item, dict):
+                continue
+            attach_type = str(item.get("type") or "")
+            if attach_type not in allowed_types:
+                continue
+            host_edge = item.get("host_edge_id")
+            exterior_attachments.append({
+                "id": _stable_id("ext", item.get("id"), index),
+                "type": attach_type,
+                "host_space_id": str(item.get("host_space_id") or ""),
+                "host_edge_id": str(host_edge or ""),
+                "projection_depth": round(max(0.3, min(3.0, _number(item.get("projection_depth"), 1.2))), 3),
+            })
     candidate = {
         "schema_version": "2.0",
         "source": "model",
@@ -507,12 +591,63 @@ def normalize_spatial_plan(
         "vertical_circulation": vertical_circulation,
         "review_rules": normalize_review_rules(source.get("review_rules"), symmetry=False),
         "facades": deepcopy(facades or {}),
+        "exterior_attachments": exterior_attachments,
     }
     candidate["rule_review"] = evaluate_floor_plan_rules(candidate)
     issues = validate_spatial_plan(candidate, include_rules=False)
+    if issues:
+        # 局部修复优先：先尝试吸附墙/补墙/修宿主，避免整份回退到通用模板。
+        candidate = _repair_plan_geometry(candidate)
+        candidate["rule_review"] = evaluate_floor_plan_rules(candidate)
+        issues = validate_spatial_plan(candidate, include_rules=False)
     if issues or len(levels) != modeled_floors:
         reason = issues[0]["message"] if issues else "模型未覆盖全部显式楼层"
         return fallback_spatial_plan(massing, reason, volumes)
+    return candidate
+
+
+def _repair_plan_geometry(candidate: dict[str, Any]) -> dict[str, Any]:
+    """局部修复平面几何：把可自动修复的问题修正，避免整份回退。
+
+    可修复（有限、确定）：
+    - 内墙吸附到空间公共边界（复用 wall_derivation）。
+    - 外墙缺失时从空间边界补齐。
+    - 开口宿主墙引用不存在时重定向到最近墙。
+    不可修复（需人工重规划）：空间大面积重叠、空间覆盖缺失。
+    """
+    from app.agent.wall_derivation import derive_interior_walls, snap_wall_to_boundary
+
+    for level in candidate.get("levels", []):
+        spaces = [item for item in level.get("spaces", []) if isinstance(item, dict)]
+        walls = [item for item in level.get("walls", []) if isinstance(item, dict)]
+        if not spaces:
+            continue
+        # 1. 内墙吸附到公共边界；外墙/井道墙保留。
+        repaired: list[dict[str, Any]] = []
+        for wall in walls:
+            if str(wall.get("kind") or "interior") == "interior":
+                repaired.append(snap_wall_to_boundary(wall, spaces))
+            else:
+                repaired.append(wall)
+        # 2. 内墙缺失时从公共边界补齐。
+        interior_count = sum(1 for wall in repaired if str(wall.get("kind") or "interior") == "interior")
+        if interior_count == 0 and len(spaces) >= 2:
+            repaired = derive_interior_walls(spaces) + [
+                wall for wall in repaired
+                if str(wall.get("kind") or "interior") != "interior"
+            ]
+        level["walls"] = repaired
+
+        # 3. 开口宿主修复：宿主墙不存在时，重定向到最近的 interior 墙。
+        existing_ids = {str(wall.get("id")) for wall in repaired}
+        for opening in level.get("openings", []):
+            if not isinstance(opening, dict):
+                continue
+            host = str(opening.get("host_wall_id") or "")
+            if host and host in existing_ids:
+                continue
+            if repaired:
+                opening["host_wall_id"] = str(repaired[0].get("id") or "")
     return candidate
 
 
@@ -1002,6 +1137,7 @@ def spatial_plan_to_svg(
 
     lines = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.1f} {height:.1f}" role="img" aria-label="第{level_number}层平面">',
+    '<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#A78BFA" stroke-width="1.5" opacity="0.4"/></pattern></defs>',
         '<rect width="100%" height="100%" fill="#111118"/>',
         f'<text x="{margin:.1f}" y="28" fill="#e5e7eb" font-size="16">第 {level_number} 层平面（北 ↑）</text>',
         f'<g transform="translate({max(margin, width-178):.1f},18)">',
@@ -1017,11 +1153,18 @@ def spatial_plan_to_svg(
             return space["polygons"]
         return [rectangle_polygon(space["bounds"])]
 
+    # 空间按功能分区着色（private=红 / service=蓝 / semi_private=绿 / public=紫）。
+    zone_colors = {
+        "private": "#F87171", "service": "#60A5FA",
+        "semi_private": "#34D399", "public": "#A78BFA",
+    }
     for space in level["spaces"]:
         polygons = polygons_for_space(space)
+        zone = str(space.get("zone") or "public")
+        zone_color = zone_colors.get(zone, "#A78BFA")
         for polygon in polygons:
             points = " ".join(f"{sx(float(point[0])):.2f},{sy(float(point[1])):.2f}" for point in polygon)
-            lines.append(f'<polygon points="{points}" fill="#FACC15" fill-opacity="0.05" stroke="#475569" stroke-width="0.6"/>')
+            lines.append(f'<polygon points="{points}" fill="{zone_color}" fill-opacity="0.08" stroke="#475569" stroke-width="0.6"/>')
         cx, cz = polygon_centroid(max(polygons, key=polygon_area))
         lines.append(
             f'<text x="{sx(cx):.2f}" y="{sy(cz):.2f}" fill="#cbd5e1" font-size="11" text-anchor="middle">{escape(str(space["name"]))}</text>'
@@ -1127,6 +1270,49 @@ def spatial_plan_to_svg(
         f'<text x="{margin:.1f}" y="{height-9:.1f}" fill="#9CA3AF" font-size="9">X 向右，Z 向北；front = min Z</text>',
         '</svg>',
     ])
+
+    # 外部附属投影（虚线矩形）：阳台/飘窗/空调板。
+    for attachment in plan.get("exterior_attachments", []) or []:
+        if not isinstance(attachment, dict):
+            continue
+        host_space_id = str(attachment.get("host_space_id") or "")
+        host_space = next((s for s in level["spaces"] if str(s.get("id")) == host_space_id), None)
+        if host_space is None:
+            continue
+        host_polys = polygons_for_space(host_space)
+        if not host_polys:
+            continue
+        hb = _rectangle_bounds(max(host_polys, key=polygon_area)) if host_polys else None
+        if hb is None:
+            continue
+        depth = float(attachment.get("projection_depth") or 1.2)
+        ax0, az0, ax1, az1 = hb
+        hx0, hz0, hx1, hz1 = sx(ax0), sy(az0), sx(ax1), sy(az1)
+        proj = f"{hx0:.1f},{hz0:.1f} {hx1:.1f},{hz0:.1f} {hx1:.1f},{hz0+depth*scale:.1f} {hx0:.1f},{hz0+depth*scale:.1f}"
+        label = str(attachment.get("type") or "external")
+        lines.append(f'<polygon points="{proj}" fill="none" stroke="#FBBF24" stroke-width="1.2" stroke-dasharray="6 3"/>')
+        lines.append(f'<text x="{(hx0+hx1)/2:.1f}" y="{hz0+depth*scale*0.5:.1f}" fill="#FBBF24" font-size="9" text-anchor="middle">{escape(label)}</text>')
+
+    # 楼梯方向箭头。
+    for circulation in plan.get("vertical_circulation", []) or []:
+        if not isinstance(circulation, dict):
+            continue
+        served = circulation.get("serves_levels") or []
+        if not served or int(served[0]) != level_number:
+            continue
+        polygon = circulation.get("polygon") or []
+        if len(polygon) >= 2:
+            sx0, sz0 = float(polygon[0][0]), float(polygon[0][1])
+            cx0, cz0 = sx(sx0), sy(sz0)
+            lines.append(f'<text x="{cx0:.1f}" y="{cz0:.1f}" fill="#C4B5FD" font-size="11" text-anchor="middle">↑ {escape(str(circulation.get("type") or "楼梯"))}</text>')
+
+    # 挑空斜线填充：voids 加 hatch pattern。
+    for void in level.get("voids", []):
+        polygon = void.get("polygon", [])
+        if len(polygon) >= 3:
+            points = " ".join(f"{sx(float(point[0])):.2f},{sy(float(point[1])):.2f}" for point in polygon)
+            lines.append(f'<polygon points="{points}" fill="url(#hatch)" stroke="#A78BFA" stroke-width="2" stroke-dasharray="5 3"/>')
+
     return "".join(lines)
 
 

@@ -129,8 +129,13 @@
           </div>
           <div class="floor-plan-note">方案阶段辅助检查，不替代所在地法定施工图审查。</div>
         </details>
-        <div v-if="!turn.floor_plan_can_confirm && turn.floor_plan_fallback_reason" class="floor-plan-warning">
-          当前是不可确认的降级轮廓：{{ turn.floor_plan_fallback_reason }}。请在输入框说明问题，让 Agent 重新生成。
+        <div
+          v-if="!turn.floor_plan_can_confirm && (turn.floor_plan_fallback_reason || !turn.floor_plan_notice)"
+          class="floor-plan-warning"
+        >
+          <template v-if="turn.floor_plan_fallback_reason">当前是不可确认的降级轮廓：{{ turn.floor_plan_fallback_reason }}。</template>
+          <template v-else>当前平面方案未通过校验，暂时不能直接生成三维。</template>
+          请在输入框说明问题，让 Agent 重新生成。
         </div>
         <div v-if="isFloorReview" class="floor-plan-actions">
           <button

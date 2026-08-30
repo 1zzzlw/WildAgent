@@ -375,14 +375,23 @@ def build_floor_plan_prompt(
       "level": 1,
       "entrance_space_id": "living",
       "spaces": [
-        {{"id":"living","name":"起居室","space_type":"living","bounds":[0,0,7,9]}},
-        {{"id":"service","name":"辅助空间","space_type":"service","bounds":[7,0,12,9]}}
+        {{"id":"living","name":"起居室","space_type":"living","zone":"semi_private","privacy_level":1,"wet_space":false,"daylight_required":true,"bounds":[0,0,7,9]}},
+        {{"id":"service","name":"辅助空间","space_type":"service","zone":"service","privacy_level":0,"wet_space":true,"daylight_required":false,"served_by_shaft":"shaft_1","bounds":[7,0,12,9]}}
       ],
       "walls": [{{"id":"partition_1","kind":"interior","from":[7,0],"to":[7,9],"thickness":0.12}}],
       "openings": [{{"id":"door_1","type":"door","host_wall_id":"partition_1","offset":3.8,"width":0.9,"height":2.1,"sill_height":0,"connects":["living","service"]}}]
     }}]
   }}
 }}
+
+# space 语义字段说明（可选，但推荐填写）
+- `zone`: public / semi_private / private / service（功能分区）
+- `privacy_level`: 0~3 隐私等级（越高越私密）
+- `wet_space`: 是否为湿区（卫生间/厨房/洗衣）
+- `daylight_required`: 是否需要采光（卧室/起居室=true）
+- `natural_ventilation_required`: 是否需要自然通风
+- `exterior_contact_required`: 是否必须接触外墙（卧室/起居室=true）
+- `served_by_shaft`: 关联的管井 id（湿区应引用，如 "shaft_1"）
 
 # 知识参考
 
