@@ -40,6 +40,7 @@ from app.agent.rag_trace import (
     record_final_answer,
     record_rag_citations,
     record_rag_llm_call,
+    record_rag_warning,
 )
 from app.agent.prompts import (
     build_material_optimization_prompt,
@@ -1104,6 +1105,11 @@ class AgentService:
                 )
                 if isinstance(embedding_function, object) and embedding_function.__class__.__name__ == "HashEmbeddingFunction":
                     logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
+                    record_rag_warning(
+                        "hash_embedding_fallback",
+                        "当前使用 hash fallback embedding；仅适合本地 smoke test，"
+                        "检索门禁距离阈值在该模式下无效。",
+                    )
                 return loader
             except Exception as exc:
                 logger.warning(
@@ -1113,6 +1119,10 @@ class AgentService:
                 logger.warning(
                     "  请检查: EMBEDDING__NAME / EMBEDDING__API_KEY / EMBEDDING__BASE_URL"
                     " 配置是否正确，以及 embedding 服务是否可达。"
+                )
+                record_rag_warning(
+                    "rag_index_unavailable",
+                    f"RAG 向量索引不可用，已降级为全量文件注入模式：{type(exc).__name__}: {exc}",
                 )
                 logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}", exc_info=True)
 

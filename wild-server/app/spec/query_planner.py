@@ -103,6 +103,7 @@ def build_query_plan(
     rewritten_query: str | None = None,
     source: str = "deterministic",
     confidence: float = 1.0,
+    include_topic_hints: bool = False,
 ) -> QueryPlan:
     """从原句构建安全查询计划，并保留调用方显式过滤条件。"""
     raw_query = (raw_query or "").strip()
@@ -132,9 +133,11 @@ def build_query_plan(
                 filters[key] = values.pop()
 
     entity_names = [entity_name for entity_name, _entry in matches]
-    if len(entity_names) == 1 and "entity_name" not in filters:
+    # 调用方显式传入的 entity_name 必须保留；仅清理 planner 自行推导的值。
+    explicit_entity_name = "entity_name" in filters
+    if len(entity_names) == 1 and not explicit_entity_name:
         filters["entity_name"] = entity_names[0]
-    elif len(entity_names) != 1:
+    elif len(entity_names) != 1 and not explicit_entity_name:
         filters.pop("entity_name", None)
 
     topics: list[str] = []
@@ -147,10 +150,17 @@ def build_query_plan(
     topics = list(dict.fromkeys(topics))
 
     rewritten = (rewritten_query or raw_query).strip()
-    if aliases:
-        rewritten = f"{rewritten}\n检索别名: {', '.join(aliases[:12])}"
-    if topics:
-        rewritten = f"{rewritten}\n检索主题: {', '.join(topics)}"
+    if include_topic_hints:
+        # 主题提示词是给语义 embedding 的额外线索；对字符 bigram 的 hash 向量
+        # 是噪声，调用方可按 embedding 类型决定是否启用。
+        if aliases:
+            rewritten = f"{rewritten}\n检索别名: {', '.join(aliases[:12])}"
+        if topics:
+            rewritten = f"{rewritten}\n检索主题: {', '.join(topics)}"
+    elif aliases:
+        # 只做别名改写：把命中的别名/同义词并进查询文本，改善关键词召回，
+        # 不引入英文术语噪声。
+        rewritten = f"{rewritten} {' '.join(aliases[:12])}".strip()
 
     constraints: list[str] = []
     for _entity_name, entry in matches:

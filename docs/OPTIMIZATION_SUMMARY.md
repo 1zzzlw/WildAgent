@@ -275,8 +275,19 @@ Hit@5=85.7%   Recall@5=85.7%   MRR=0.730   空召回 0/60 (0.0%)   异常 0
 ## 12. 后续方向（明确未做，留待下一阶段）
 
 1. **提交固化**两轮改动（改动面大，建议分批 commit）。
-2. **检索链路增强**：接入 `hybrid_retriever`（BM25+RRF）、落地 `config.rerank`（bge-reranker）、接入 `query_planner`（确定性别名解析）、校准并启用检索门控（`max_distance` 目前为 None，Gate 形同虚设）、处理 hash fallback 静默降级。
+2. **检索链路增强（2026-09-01 已接入部分）**：
+   - ✅ **`query_planner` 接入主链路**（`app/spec/loader.py`）：`retrieve` / `retrieve_many` 对携带过滤的 `SpecQuery` 经 `build_query_plan` 补全粗粒度过滤（`doc_type`/`entity_type`），查询文本保持原文，剔除 planner 推导的 `entity_name`（知识库实体命名粒度不一致，如别墅有 villa/modern_villa/chinese_traditional_villa 多实体，硬过滤会漏召回）。hash 模式不启用。
+   - ✅ **`rerank_enabled` 配置落地**：纯规则重排（权威性 + 与查询字符 bigram 重叠），只调顺序不改变召回集合，组内重排不破坏跨查询顺序。
+   - ✅ **检索门禁校准**：`calibrate_retrieval_gate.py` 支持 `--eval` 一键跑评测并校准，`max_distance` 仍默认 `None`（observe 模式），文档写明校准步骤。
+   - ✅ **hash fallback 显式化**：降级原因（`hash_embedding_fallback` / `rag_index_unavailable`）写入 RAGTrace `warnings`，不再仅日志。
+   - ❌ **未接入 `hybrid_retriever`（BM25+RRF）**：依赖 `langchain_community`/`rank_bm25` 未安装，且 `from_documents` 直接切词对中文效果差，`_rerank_by_relevance` 的 `entity_type==""` 判等是明显未完成痕迹。接入前需先修设计 + 装依赖 + 解决中文分词。
+   - ❌ **未接入 `app/agent/rag/query_rewriter.py`（通用 LLM 改写）**：接口与本项目 `model_client` 不兼容，且写死 schema 与知识库 metadata 体系脱节。
 3. **检索评测 top_k 与生产对齐**（eval 默认 5，生产 6）。
+
+### 评测发现（2026-09-01，真实语义 embedding）
+
+- 用 qwen3.7-text-embedding + 临时索引跑 60 题：**别名改写开启（文本污染）Hit@5=89.3%**，**关闭 Hit@5=96.4%**。结论：把同义词拼进查询文本会拉偏语义重心，属于净伤害；最终方案保持查询原文，只做粗粒度过滤补全。
+- 本环境 DashScope 免费额度在验证中耗尽（`AllocationQuota.FreeTierOnly`），最终方案的完整真实 embedding 评测留待有额度时重跑；hash 模式（85.7%）保持基线，作为 CI 回归基准。
 
 ---
 

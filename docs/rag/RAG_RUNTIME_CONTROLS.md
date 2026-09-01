@@ -97,6 +97,16 @@ $env:PYTHONPATH="."
 
 校准器会比较正样本错误拒答率和负样本错误放行率，选择 balanced accuracy 最高的候选阈值，并把 Embedding 与索引签名写入报告。先保持 observe，人工查看误判题后再切 enforce。
 
+快捷模式：`calibrate_retrieval_gate.py --eval` 会直接复用 eval 的 Loader 装配跑一遍评测再校准，免去先手动输出 JSON 的两步：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\rag\calibrate_retrieval_gate.py `
+  --eval --embedding hash `
+  --output scripts\reports\rag_gate_calibration.json
+```
+
+`--eval` 模式支持与 `eval_retrieval.py` 对齐的 `--questions / --top-k / --namespace / --embedding / --temporary-index / --chunk-size / --chunk-overlap / --sync-index`。评测包含检索异常时脚本会打印警告（异常样本按空召回计入，阈值偏保守）。注意 `--limit` 截断问题集可能抽不到负样本，导致 `阈值校准至少需要一个正样本和一个负样本` 报错；校准应使用完整评测集。
+
 ## 4. chunk_id 引用闭环
 
 Loader 注入格式：

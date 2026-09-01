@@ -37,7 +37,9 @@ from app.agent.rag_trace import (
     record_rag_context,
     record_rag_gate,
     record_rag_retrieval,
+    record_rag_warning,
 )
+from app.spec.query_planner import build_alias_catalog, build_query_plan
 from config import config
 
 
@@ -140,6 +142,23 @@ class SpecQuery:
 
     text: str
     metadata_filter: dict[str, Any] | None = None
+
+
+def _without_derived_entity_name(
+    original_filter: dict[str, Any] | None,
+    planned_filter: dict[str, Any],
+) -> dict[str, Any]:
+    """剔除 query_planner 推导出的 entity_name，保留调用方显式指定的 entity_name。
+
+    planner 把别名命中的实体名当作硬过滤，但知识库实体命名粒度常与别名不完全
+    一致（如"别墅"覆盖 villa / modern_villa / chinese_traditional_villa），
+    硬过滤会漏召回。调用方显式传的 entity_name 是用户意图，必须保留。
+    """
+    result = dict(planned_filter or {})
+    explicit = dict(original_filter or {})
+    if "entity_name" in result and "entity_name" not in explicit:
+        result.pop("entity_name", None)
+    return result
 
 
 def _retrieval_priority_score(
@@ -896,6 +915,16 @@ class RAGSpecLoader(SpecLoader):
         self._client: Any | None = None
         self._collection: Any | None = None
         self._retrieval_cache: dict[str, list[RetrievedSpecChunk]] = {}
+        # 别名目录按知识库版本惰性构建并缓存，供 build_query_plan 使用。
+        self._alias_catalog_cache: dict[str, Any] | None = None
+        self._alias_catalog_revision: tuple[int, int, int] | None = None
+        # hash fallback 只用于开发 smoke test，其 bigram 向量空间里英文别名是噪声，
+        # 因此关闭别名改写；真实语义 embedding 下启用。
+        embedding_name = getattr(embedding_function, "__class__", None)
+        self._query_rewrite_enabled = (
+            embedding_name is None
+            or embedding_name.__name__ != "HashEmbeddingFunction"
+        )
 
         if auto_sync:
             # 默认在 Loader 构造时同步一次，保证第一次查询即可命中新文档。
@@ -1144,13 +1173,40 @@ class RAGSpecLoader(SpecLoader):
         if count == 0:
             self._last_results = []
             return []
+        if not getattr(self, "_query_rewrite_enabled", True):
+            # 检索发生时（请求上下文内）标记 hash 降级，便于 trace 里看到距离阈值失效。
+            record_rag_warning(
+                "hash_embedding_fallback",
+                "当前使用 hash fallback embedding；仅适合本地 smoke test，"
+                "检索门禁距离阈值在该模式下无效。",
+            )
+
+        # 用别名命中补全粗粒度过滤（doc_type/entity_type），但剔除 entity_name：
+        # 别名命中的实体名常与知识库实体命名粒度不一致（如"别墅"有 villa、
+        # modern_villa 多个变体），做硬过滤会漏召回。查询文本保持原文。
+        # hash 模式不启用。
+        if getattr(self, "_query_rewrite_enabled", True):
+            planned = build_query_plan(
+                query,
+                metadata_filter,
+                alias_catalog=self._alias_catalog(),
+                include_topic_hints=False,
+            )
+            query_text = query
+            effective_filter = _without_derived_entity_name(
+                metadata_filter,
+                planned.metadata_filter,
+            )
+        else:
+            query_text = query
+            effective_filter = metadata_filter
 
         # 多取一倍候选，为后面的精确内容去重留出补位空间。
         n_results = min(self._top_k * 2, count)
         result = collection.query(
-            query_texts=[query],
+            query_texts=[query_text],
             n_results=n_results,
-            where=self._query_where(metadata_filter),
+            where=self._query_where(effective_filter),
             include=["documents", "metadatas", "distances"],
         )
 
@@ -1248,7 +1304,15 @@ class RAGSpecLoader(SpecLoader):
         queries: list[str | SpecQuery],
         per_query: int = 1,
     ) -> list[RetrievedSpecChunk]:
-        """批量检索多个意图，每个意图保留固定数量并全局去重。"""
+        """批量检索多个意图，每个意图保留固定数量并全局去重。
+
+        携带显式 metadata_filter 的 SpecQuery 会先经 build_query_plan 做别名过滤
+        补全，再执行向量检索；查询文本保持原文，过滤补全不改变安全过滤。
+        纯 str 查询保持原样，不引入别名目录构建开销。
+        """
+        rewrite_enabled = getattr(self, "_query_rewrite_enabled", True)
+        has_spec_query = any(isinstance(query, SpecQuery) for query in queries)
+        alias_catalog = self._alias_catalog() if (has_spec_query and rewrite_enabled) else {}
         normalized_queries: list[tuple[str, dict[str, Any] | None]] = []
         for query in queries:
             if isinstance(query, SpecQuery):
@@ -1258,7 +1322,23 @@ class RAGSpecLoader(SpecLoader):
                 text = query.strip()
                 metadata_filter = None
             if text:
-                normalized_queries.append((text, metadata_filter))
+                if isinstance(query, SpecQuery) and rewrite_enabled:
+                    planned = build_query_plan(
+                        text,
+                        metadata_filter,
+                        alias_catalog=alias_catalog,
+                        include_topic_hints=False,
+                    )
+                    # 查询文本保持原文；只采纳粗粒度过滤补全（剔除推导的
+                    # entity_name），调用方显式条件始终优先。
+                    normalized_queries.append(
+                        (text, _without_derived_entity_name(
+                            metadata_filter,
+                            planned.metadata_filter,
+                        ))
+                    )
+                else:
+                    normalized_queries.append((text, metadata_filter))
 
         if not normalized_queries:
             self._last_results = []
@@ -1330,6 +1410,7 @@ class RAGSpecLoader(SpecLoader):
                 query_index,
                 ([], [], [], []),
             )
+            query_text = normalized_queries[query_index][0]
             selected = 0
             ranked_indices = sorted(
                 range(len(documents or [])),
@@ -1338,6 +1419,7 @@ class RAGSpecLoader(SpecLoader):
                     metadatas[index] if index < len(metadatas) and metadatas[index] else {},
                 ),
             )
+            query_chunks: list[RetrievedSpecChunk] = []
             for index in ranked_indices:
                 document = documents[index]
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
@@ -1345,7 +1427,7 @@ class RAGSpecLoader(SpecLoader):
                 if dedupe_hash in seen_hashes:
                     continue
                 seen_hashes.add(dedupe_hash)
-                retrieved.append(RetrievedSpecChunk(
+                query_chunks.append(RetrievedSpecChunk(
                     document=document or "",
                     metadata=metadata,
                     distance=distances[index] if index < len(distances) else None,
@@ -1355,6 +1437,10 @@ class RAGSpecLoader(SpecLoader):
                 # 每个查询最多贡献 limit 个尚未被其他查询选中的片段。
                 if selected >= limit:
                     break
+            # 组内重排只影响本查询片段的先后顺序，不改变跨查询的返回顺序。
+            if config.rag.rerank_enabled:
+                query_chunks = self._rerank_retrieved(query_chunks, query_text)
+            retrieved.extend(query_chunks)
 
         retrieved = self._expand_parent_neighbors(collection, retrieved)
         self._last_results = retrieved
@@ -1393,6 +1479,89 @@ class RAGSpecLoader(SpecLoader):
             or metadata.get("content_hash")
             or hashlib.sha256(document.encode("utf-8")).hexdigest()[:16]
         )
+
+    def _rerank_retrieved(
+        self,
+        retrieved: list[RetrievedSpecChunk],
+        query_terms: str,
+    ) -> list[RetrievedSpecChunk]:
+        """纯规则重排：知识权威性优先，其次按与查询的检索词重叠度。
+
+        只调整已去重片段的先后顺序，不改变召回集合与数量。权威性取自 chunk
+        metadata 的 authority 字段；重叠度用查询文本与片段的字符 bigram 交集
+        度量（中文无需分词即可捕捉"雨棚/橱窗"这类双字术语）。
+        """
+        if len(retrieved) <= 1:
+            return retrieved
+
+        authority_rank = {
+            "schema": 0,
+            "engine": 0,
+            "verified": 1,
+            "maintainer": 2,
+            "domain": 3,
+            "imported": 4,
+            "inferred": 5,
+        }
+        query_terms = (query_terms or "").strip()
+        query_bigrams: set[str] = set()
+        if query_terms:
+            query_bigrams = {
+                query_terms[i:i + 2]
+                for i in range(max(0, len(query_terms) - 1))
+                if query_terms[i:i + 2].strip()
+            }
+
+        def _bigrams(text: str) -> set[str]:
+            text = (text or "").strip()
+            return {
+                text[i:i + 2]
+                for i in range(max(0, len(text) - 1))
+                if text[i:i + 2].strip()
+            }
+
+        def rank(chunk: RetrievedSpecChunk) -> tuple[int, int, float, int]:
+            metadata = chunk.metadata or {}
+            authority = str(metadata.get("authority") or "").lower()
+            authority_key = authority_rank.get(authority, 4)
+            chunk_bigrams = _bigrams(chunk.document)
+            overlap = len(query_bigrams & chunk_bigrams) if chunk_bigrams else 0
+            distance = chunk.distance
+            distance_key = float(distance) if isinstance(distance, (int, float)) else 999.0
+            # 权威性 → 重叠度（越多越靠前）→ 原始距离 → 稳定次序。
+            return (authority_key, -overlap, distance_key, id(chunk))
+
+        return sorted(retrieved, key=rank)
+
+    def _alias_catalog(self) -> dict[str, Any]:
+        """按知识库版本惰性构建别名目录，供 build_query_plan 做实体别名改写。
+
+        目录从已索引 chunk 的 entity_name/primary_terms/synonyms 构建。构建失败
+        时静默降级为空目录（等价于不做别名改写），不阻断检索。手工构造的测试
+        Loader 可能缺少这些属性，统一用 getattr 防御。
+        """
+        if not getattr(self, "_query_rewrite_enabled", True):
+            return {}
+        cached = getattr(self, "_alias_catalog_cache", None)
+        cached_revision = getattr(self, "_alias_catalog_revision", None)
+        stats = getattr(self, "_last_sync_stats", None) or {}
+        revision = (stats.get("total", 0), stats.get("updated", 0), stats.get("deleted", 0))
+        if cached is not None and cached_revision == revision:
+            return cached
+        catalog: dict[str, Any] = {}
+        try:
+            collection = self._get_collection()
+            if collection is not None and collection.count() > 0:
+                batch = collection.get(include=["metadatas"])
+                metadatas = batch.get("metadatas", []) or []
+                catalog = build_alias_catalog(metadatas)
+        except Exception as exc:
+            # 别名目录只是检索增强，不参与安全过滤；失败不应阻断检索。
+            logger.warning(f"[RAG] 别名目录构建失败，本次不做别名改写: {exc}")
+            catalog = {}
+        self._alias_catalog_cache = catalog
+        self._alias_catalog_revision = revision
+        return catalog
 
     def _expand_parent_neighbors(
         self,

@@ -19,6 +19,7 @@ from app.agent.rag_trace import (
     record_rag_error,
     record_rag_llm_call,
     record_rag_retrieval,
+    record_rag_warning,
 )
 from app.spec.loader import RAGSpecLoader, RetrievedSpecChunk
 
@@ -72,6 +73,41 @@ class RAGTraceTest(unittest.TestCase):
         self.assertFalse(record_rag_retrieval("retrieve", [], [], 0))
         self.assertFalse(record_rag_context("load", 0, 0, 0, 0))
         self.assertFalse(record_rag_llm_call("invoke", 0, None))
+        self.assertFalse(record_rag_warning("code", "message"))
+
+    def test_warning_is_recorded_into_trace(self):
+        """hash 降级等告警应进入 Trace 的 warnings 列表，供离线排查。"""
+        with rag_trace_scope("req_warning_001", persist=False) as trace:
+            self.assertTrue(record_rag_warning(
+                "hash_embedding_fallback",
+                "当前使用 hash fallback embedding，仅适合本地 smoke test",
+            ))
+        data = trace.to_dict()
+        self.assertEqual(data["warnings"][0]["code"], "hash_embedding_fallback")
+        self.assertIn("hash fallback embedding", data["warnings"][0]["message"])
+
+    def test_hash_retrieval_records_warning_in_trace(self):
+        """hash 模式检索应在请求 trace 中标记 hash_embedding_fallback。"""
+        collection = Mock()
+        collection.count.return_value = 1
+        collection.query.return_value = {
+            "documents": [["villa content"]],
+            "metadatas": [[{"content_hash": "villa"}]],
+            "distances": [[0.1]],
+        }
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        loader._top_k = 1
+        loader._last_results = []
+        loader._retrieval_cache = {}
+        loader._last_sync_stats = {"total": 1, "updated": 0, "deleted": 0}
+        loader._get_collection = Mock(return_value=collection)
+        loader._query_rewrite_enabled = False
+
+        with rag_trace_scope("req_hash_warning_001", persist=False) as trace:
+            loader.retrieve("别墅怎么生成")
+        data = trace.to_dict()
+        self.assertEqual(data["warnings"][0]["code"], "hash_embedding_fallback")
 
     def test_handled_error_event_keeps_trace_error_status(self):
         with rag_trace_scope("req_error_001", persist=False) as trace:

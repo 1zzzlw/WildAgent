@@ -90,6 +90,7 @@ class RAGTrace:
     llm_calls: list[dict[str, Any]] = field(default_factory=list)
     gate_decisions: list[dict[str, Any]] = field(default_factory=list)
     citations: list[dict[str, Any]] = field(default_factory=list)
+    warnings: list[dict[str, Any]] = field(default_factory=list)
     safety: dict[str, Any] | None = None
     final_answer: str | None = None
     status: str = "running"
@@ -150,6 +151,7 @@ class RAGTrace:
             "llm_calls": self.llm_calls,
             "gate_decisions": self.gate_decisions,
             "citations": self.citations,
+            "warnings": self.warnings,
             "safety": self.safety,
             "final_answer": self.final_answer,
             "access_context": self.access_context,
@@ -347,6 +349,24 @@ def record_rag_gate(decision: dict[str, Any]) -> bool:
     if trace is None:
         return False
     trace.gate_decisions.append(dict(decision))
+    return True
+
+
+def record_rag_warning(code: str, message: str) -> bool:
+    """记录不影响请求结果但影响结论可靠性的降级/告警。
+
+    例如使用 hash fallback embedding（只在开发 smoke test 应出现）会使距离阈值
+    失效；这类信息写入 Trace 后，离线校准与人工排查可以看到降级来源。
+    """
+    trace = get_current_rag_trace()
+    if trace is None:
+        return False
+    redacted, _ = redact_pii(str(message or ""))
+    limit = max(0, int(config.rag.trace.query_preview_chars))
+    trace.warnings.append({
+        "code": str(code or ""),
+        "message": redacted[:limit] if limit else "",
+    })
     return True
 
 

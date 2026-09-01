@@ -63,6 +63,9 @@ class RAGConfig(BaseModel):
     chunk_overlap: int = 150
     # 单查询最终保留的唯一分片数；Loader 会多召回一些再按内容哈希去重。
     top_k: int = 6
+    # 是否在去重后按"知识权威性 + 与查询检索词重叠"做纯规则重排。
+    # 纯确定性、零 LLM 调用，只调整片段先后顺序，不改变召回集合。
+    rerank_enabled: bool = True
     # 基础规范与 RAG 片段拼接后的最大字符数，防止 System Prompt 无限增长。
     max_context_chars: int = 18000
     # 没配置远程 embedding 时允许使用本地 hash 向量，仅适合开发 smoke test。
