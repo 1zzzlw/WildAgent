@@ -205,7 +205,9 @@ def _prepare_server_request(data: dict, access: AccessContext) -> dict:
     """覆盖所有前端自报身份字段，并在进入持久化任务前完成 PII 脱敏。"""
 
     prepared = dict(data)
+    # 将字典 prepared 中的 "plan_mode" 值，强制转换成一个“严格的布尔值”（True 或 False），并重新赋值给同一个键
     prepared["plan_mode"] = prepared.get("plan_mode") is True
+    # 覆盖访问身份
     prepared["_server_access_context"] = access.public_dict()
     message = str(prepared.get("message") or "")
     if config.rag.security.pii_redaction_enabled:
@@ -550,6 +552,7 @@ _NODE_LABELS = {
     "skeleton": "主体装配",
     "merge": "合并", "final_validate": "最终校验", "callback": "修正",
 }
+
 # gen/val 标签动态生成: _node_label("door_gen") → "门·生成"
 def _node_label(name: str) -> str:
     if name in _NODE_LABELS:
