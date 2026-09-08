@@ -25,10 +25,8 @@ PLAN_STATUSES = {
 DYNAMIC_TASK_PHASES = {
     "generate": {
         "architecture",
-        "floor_plan_design",
         "material_plan",
         "skeleton",
-        "decor_assembly",
         "final_validate",
     },
     "edit": {"patch"},
@@ -36,10 +34,8 @@ DYNAMIC_TASK_PHASES = {
 
 _DYNAMIC_PHASE_LABELS = {
     "architecture": "总体方案",
-    "floor_plan_design": "平面设计",
     "material_plan": "材质方案",
     "skeleton": "主体装配",
-    "decor_assembly": "装饰装配",
     "final_validate": "最终校验",
     "patch": "场景修改",
 }
@@ -76,23 +72,6 @@ _CAPABILITIES = (
         ("generate",),
     ),
     PlanCapability(
-        "floor_plan_design",
-        "floor_plan_design",
-        "平面设计",
-        "生成 FloorPlanIR，并执行空间、墙体、洞口和工程预审。",
-        True,
-        ("generate",),
-    ),
-    PlanCapability(
-        "floor_plan_review",
-        "floor_plan_review",
-        "平面确认",
-        "暂停并等待用户确认平面；未确认时禁止生成三维。",
-        True,
-        ("generate",),
-        True,
-    ),
-    PlanCapability(
         "material_plan",
         "material_plan",
         "材质方案",
@@ -104,24 +83,7 @@ _CAPABILITIES = (
         "skeleton",
         "skeleton",
         "主体装配",
-        "从批准平面确定性装配墙、板、竖向交通、门窗和屋顶，并执行 G1-G6。",
-        False,
-        ("generate",),
-    ),
-    PlanCapability(
-        "style_review",
-        "style_review",
-        "风格确认",
-        "在主体通过后暂停，等待用户确认受控建筑风格。",
-        True,
-        ("generate",),
-        True,
-    ),
-    PlanCapability(
-        "decor_assembly",
-        "decor_assembly",
-        "装饰装配",
-        "把风格包编译为 Decor IR，参数化装配并执行 G7。",
+        "依据总体方案和材质约束生成主体骨架，并给出后续组件建议。",
         False,
         ("generate",),
     ),
@@ -226,61 +188,38 @@ def fallback_dynamic_tasks(user_message: str, intent: str) -> list[dict[str, Any
     tasks: list[dict[str, Any]] = [
         {
             "title": "确定建筑体量与约束",
-            "objective": "把层数、功能、场地比例和风格要求转成可建模的体量、轴网与屋顶意图。",
+            "objective": "把层数、功能、场地比例和风格要求转成可建模的体量、轴网、屋顶意图与空间关系。",
             "phase": "architecture",
-            "acceptance": ["体量和层数明确", "候选方案可进入平面设计"],
+            "acceptance": ["体量和层数明确", "空间关系可进入材质与骨架阶段"],
             "basis": "用户需求与建筑类型知识",
         },
         {
-            "title": "组织功能平面与流线",
-            "objective": "按体量边界安排功能分区、入口、门窗、疏散路径与竖向交通。",
-            "phase": "floor_plan_design",
-            "acceptance": ["空间关系可解释", "平面规则检查可通过或给出明确修复"],
-            "basis": "总体方案与平面规则",
+            "title": "建立统一材质系统",
+            "objective": "定义立面、结构、门窗、屋顶和楼板的材质角色与资产引用关系。",
+            "phase": "material_plan",
+            "acceptance": ["材质角色齐全", "资产引用闭合"],
+            "basis": "总体方案与受控材质协议",
         },
     ]
     if is_high_rise:
-        tasks[1]["objective"] = (
-            "按高层体量组织首层入口、标准层功能、疏散楼梯和覆盖全部楼层的电梯竖向交通。"
-        )
-        tasks[1]["acceptance"].append("竖向交通覆盖全部楼层")
+        tasks[0]["objective"] += " 按高层体量组织标准层与竖向交通关系。"
+        tasks[0]["acceptance"].append("竖向交通意图明确")
     if is_commercial:
-        tasks[0]["objective"] = (
-            "把商业功能、公共入口、基座与上部体量关系转成可建模的体量、轴网和屋顶意图。"
-        )
+        tasks[0]["objective"] += " 明确商业功能、公共入口、基座与上部体量关系。"
 
-    tasks.append(
-        {
-            "title": "建立幕墙与材质系统" if is_glass else "建立统一材质系统",
-            "objective": (
-                "定义真实玻璃、金属龙骨、主体结构与室内楼板的材质角色和引用关系。"
-                if is_glass
-                else "定义立面、结构、门窗、屋顶和楼板的材质角色与资产引用关系。"
-            ),
-            "phase": "material_plan",
-            "acceptance": (
-                ["玻璃使用 transmission 与 ior", "幕墙面板和框架角色清晰"]
-                if is_glass
-                else ["材质角色齐全", "资产引用闭合"]
-            ),
-            "basis": "总体方案与受控材质协议",
-        }
-    )
+    if is_glass:
+        tasks[1]["title"] = "建立幕墙与材质系统"
+        tasks[1]["objective"] = "定义真实玻璃、金属龙骨、主体结构与室内楼板的材质角色和引用关系。"
+        tasks[1]["acceptance"] = ["玻璃使用 transmission 与 ior", "幕墙面板和框架角色清晰"]
+
     tasks.extend(
         [
             {
-                "title": "装配可校验的三维主体",
-                "objective": "从已确认平面确定性装配墙、板、柱梁、门窗、竖向交通和屋顶。",
+                "title": "生成可校验的三维主体",
+                "objective": "依据总体方案与空间关系生成墙、板、柱梁、楼梯等主体骨架，并列出组件建议清单。",
                 "phase": "skeleton",
-                "acceptance": ["几何来自已确认平面", "主体 G1-G6 全部通过"],
-                "basis": "批准平面与 Plan2Build 装配协议",
-            },
-            {
-                "title": "完成建筑细部表达",
-                "objective": "把用户确认的风格编译为受控装饰构件，并保持与主体槽位和边界一致。",
-                "phase": "decor_assembly",
-                "acceptance": ["装饰构件有合法宿主", "G7 通过"],
-                "basis": "风格包与 Decor IR 协议",
+                "acceptance": ["主体 Schema 预检通过", "结构表达完整且组件建议清单明确"],
+                "basis": "总体方案与建筑类型知识",
             },
             {
                 "title": "验证最终建筑产物",
@@ -345,10 +284,8 @@ def normalize_dynamic_tasks(
         for index, phase in enumerate(
             (
                 "architecture",
-                "floor_plan_design",
                 "material_plan",
                 "skeleton",
-                "decor_assembly",
                 "final_validate",
                 "patch",
             )
@@ -412,9 +349,8 @@ def build_execution_plan(
     if intent == "generate":
         constraints.extend(
             [
-                "用户确认执行计划后才生成总体方案、平面和三维",
-                "用户确认平面前不得生成三维",
-                "G1-G7 未通过不得保存或加载 Blueprint",
+                "用户确认执行计划后才生成总体方案与三维",
+                "完整校验未通过不得保存或加载 Blueprint",
             ]
         )
     else:
@@ -433,43 +369,23 @@ def build_execution_plan(
         architecture = _step(
             "architecture",
             depends_on=[research["id"]],
-            acceptance=["体量和层数明确", "立面、屋顶和功能层次可进入平面设计"],
+            acceptance=["体量和层数明确", "立面、屋顶和空间关系可进入材质与骨架阶段"],
             status="pending",
             detail="批准计划后生成总体方案",
         )
-        floor_plan = _step(
-            "floor_plan_design",
-            depends_on=[architecture["id"]],
-            acceptance=["FloorPlanIR 可解析", "几何检查通过", "工程预审结果可解释"],
-        )
-        floor_review = _step(
-            "floor_plan_review",
-            depends_on=[floor_plan["id"]],
-            acceptance=["用户明确确认当前平面"],
-        )
         materials = _step(
             "material_plan",
-            depends_on=[floor_review["id"]],
+            depends_on=[architecture["id"]],
             acceptance=["材质角色引用闭合", "物理玻璃等关键材质满足真实协议"],
         )
         skeleton = _step(
             "skeleton",
             depends_on=[materials["id"]],
-            acceptance=["主体由批准平面确定性装配", "G1-G6 全部通过"],
-        )
-        style = _step(
-            "style_review",
-            depends_on=[skeleton["id"]],
-            acceptance=["用户确认一个可用风格包"],
-        )
-        decor = _step(
-            "decor_assembly",
-            depends_on=[style["id"]],
-            acceptance=["Decor IR 合法", "G7 通过"],
+            acceptance=["主体 Schema 预检通过", "结构表达完整且组件建议清单明确"],
         )
         merge = _step(
             "merge",
-            depends_on=[decor["id"]],
+            depends_on=[skeleton["id"]],
             acceptance=["引用闭合", "合并后不存在阻断错误"],
         )
         final_validate = _step(
@@ -482,8 +398,7 @@ def build_execution_plan(
             width = massing.get("width", "?")
             depth = massing.get("depth", "?")
             floors = massing.get("floors", "?")
-            floor_plan["detail"] = f"将在 {width}×{depth}m、{floors} 层体量内规划空间"
-            skeleton["detail"] = f"将从批准平面装配 {floors} 层主体"
+            skeleton["detail"] = f"将在 {width}×{depth}m、{floors} 层体量内生成主体骨架"
         if any(
             term in user_message.casefold()
             for term in ("玻璃", "curtain wall", "glass")
@@ -492,12 +407,8 @@ def build_execution_plan(
         steps = [
             research,
             architecture,
-            floor_plan,
-            floor_review,
             materials,
             skeleton,
-            style,
-            decor,
             merge,
             final_validate,
         ]
@@ -553,7 +464,7 @@ def build_execution_plan(
         "constraints": constraints,
         "assumptions": [
             "计划描述的是公开执行步骤，不包含模型隐藏思维链",
-            "相同的批准方案继续交给现有确定性 Plan2Build 执行器",
+            "批准计划由执行器按注册白名单逐步调度节点",
         ],
         "planner_source": actual_source,
         "planner_summary": (
@@ -762,12 +673,8 @@ def validate_execution_plan(plan: dict[str, Any], intent: str) -> list[dict[str,
         {
             "planning_research",
             "architecture",
-            "floor_plan_design",
-            "floor_plan_review",
             "material_plan",
             "skeleton",
-            "style_review",
-            "decor_assembly",
             "merge",
             "final_validate",
         }

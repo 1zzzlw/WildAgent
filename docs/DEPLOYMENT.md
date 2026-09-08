@@ -76,6 +76,12 @@ ASSETS__PUBLIC_BASE_URL=/api/assets
 
 `/api/config/llm` 修改的是全站进程级 `config.chat`，不是按 `user_id` 隔离的个人密钥仓库。生产容器会把 `/opt/wild-agent/.env` 映射到 `/app/runtime-config/.env`；配置接口先保存该文件，再更新当前进程环境并重建普通/思考模型客户端。保存失败不会只改一半内存配置；模型客户端重建失败时也会回滚文件和内存。前端会显示宿主机保存位置和持久化状态。
 
+配置窗口中的“测试连接”测试的是输入框当前候选值，不会写 `.env`、不会热重载正式 Agent。API Key 输入框留空时，测试会继承当前进程已经保存的密钥；模型名和 Base URL 使用输入框值。测试成功后仍需点击“保存”，正式生成链路才会切换配置。旧版测试按钮不发送表单内容，只会重复测试已保存配置，因此把错误模型改正确但尚未保存时仍会返回旧模型 404；该行为已经修正。
+
+连接测试不复用 Agent 的 LangChain/推理客户端，而是直接发送最小 OpenAI-compatible Chat Completions 请求，请求体只有 `model` 和一条 `user` 消息；不包含 `enable_thinking`、流式统计、温度、Token 上限或 Agent Prompt。HTTP 成功即判定连接、鉴权和模型 ID 可用，响应正文为空也不会误判连接失败。
+
+正式生成链路中的 `enable_thinking` 是 DashScope 扩展参数，不是 OpenAI-compatible 标准字段。所有非思考请求不会发送该字段；只有 Base URL 主机名属于 DashScope 且用户开启思考模式时，客户端才发送 `enable_thinking=true`。否则一些模型名、Key 和地址完全正确的第三方服务也会因为未知参数返回 HTTP 400。
+
 这解决的是单机、单管理员的全站模型配置。若以后允许互不信任的多用户分别提供 Key，不能继续共用此接口和 `.env`，必须增加身份鉴权、按用户加密存储和按请求选择模型配置。Embedding 仍是服务端 RAG 基础设施配置，不能与用户的 Chat Key 混为一项。
 
 该文件不进入 Git。通过网页“配置”保存 Chat 模型后，当前进程会立即热重载，无需执行 `docker restart`；之后 Jenkins 重建容器时也会从已经更新的宿主机文件读取新值。手工修改文件不会主动通知当前进程，仍应重启容器或通过配置界面保存。
@@ -144,7 +150,7 @@ docker compose logs --tail=100 server
 - `Blueprint 定向格式恢复成功`：系统已用一次非思考调用补回单一 JSON，可继续组件生成；
 - WebSocket `heartbeat_timeout`：浏览器到 Nginx/后端的连接问题。
 
-一次新建筑生成包含分类、总体方案、平面设计、两次人工确认、确定性主体装配、装饰装配、合并、校验和有限回调。门、窗、楼板、楼梯和屋顶不再分别发起自由坐标模型请求，因此单个组件不会因为模型额度耗尽而成批失败；需要模型的前置节点失败时，仍应以具体节点错误和 HTTP 状态码判断。当前链路见 [Plan2Build 建筑生成链路](agent/PLAN2BUILD_PIPELINE.md)。
+一次新建筑生成包含分类、总体方案、材质方案、LLM 主体骨架、按建议派发的组件生成/校验、合并、最终校验和有限回调；Plan 模式还会在执行前暂停等待用户批准计划。原平面生成、平面审核和 ApprovedPlanAssembler 不再参与当前主链。需要模型的节点失败时，应以具体节点错误和 HTTP 状态码判断。
 
 ## 6. 数据与回滚
 

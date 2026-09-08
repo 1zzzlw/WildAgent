@@ -88,12 +88,7 @@ variables:
     - >-
       uv run python -m pytest -q
       tests/components/test_architecture_plan.py
-      tests/components/test_floor_plan_design.py
-      tests/components/test_floor_plan_review.py
       tests/components/test_material_plan.py
-      tests/components/test_plan2build_pipeline.py
-      tests/components/test_spatial_plan.py
-      tests/components/test_style_review.py
       tests/agent/test_agent_graph_execution.py
       tests/agent/test_agent_graph_routing.py
       tests/network/test_generation_job_service.py

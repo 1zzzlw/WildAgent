@@ -17,7 +17,7 @@
  *
  * 心跳机制：
  * - 每 15 秒发送 ping
- * - 10 秒内未收到 pong 则判定连接断开
+ * - 30 秒内未收到任何服务端消息则判定连接断开
  * - 主动关闭并触发重连
  * - 监听页面可见性变化：恢复可见时立即检测连接状态并补发心跳，避免浏览器后台节流导致误断连
  *
@@ -62,7 +62,7 @@ const RECONNECT_CONFIG = {
 /** 心跳配置 */
 const HEARTBEAT_CONFIG = {
   interval: 15000,       // ping 间隔 15s
-  timeout: 10000         // pong 超时 10s
+  timeout: 30000         // 后端长计算期间允许最多 30s 响应延迟
 } as const
 
 /**
@@ -183,6 +183,9 @@ export class AgentBridge {
       this.ws.onmessage = (event) => {
         try {
           const message: AgentMessage = JSON.parse(event.data)
+
+          // 任意服务端消息都证明连接仍存活，不应只依赖 pong 清理超时。
+          this.handleSocketActivity()
 
           if (message.protocol_version !== AGENT_PROTOCOL_VERSION) {
             agentStore.addSystemMessage(
@@ -361,12 +364,6 @@ export class AgentBridge {
       if (pendingReview.execution_plan_review_status === 'pending') {
         return this.submitExecutionPlanReview(pendingReview.request_id, 'revise', message)
       }
-      if (pendingReview.style_review_status === 'pending') {
-        return this.submitStyleReview(pendingReview.request_id, 'revise', '', message)
-      }
-      if (pendingReview.floor_plan_review_status === 'pending') {
-        return this.submitFloorPlanReview(pendingReview.request_id, 'revise', message)
-      }
     }
 
     const activePlanTurn = [...agentStore.currentTurns]
@@ -430,99 +427,6 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     agentStore.setProcessing(true)
     return request.request_id
-  }
-
-  /** 提交平面审核。确认后才继续三维；修改意见仍归属于原生成轮次。 */
-  submitFloorPlanReview(
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ): string | null {
-    const agentStore = useAgentStore()
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      agentStore.addSystemMessage('未连接到 Agent 服务')
-      return null
-    }
-    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
-    if (!turn || turn.status !== 'waiting_review') {
-      agentStore.addSystemMessage('当前没有可提交的平面审核任务')
-      return null
-    }
-    this.requestContexts.set(requestId, {
-      sessionId: turn.session_id,
-      turnId: requestId,
-      durable: true,
-    })
-    agentStore.markFloorPlanReviewSubmitted(
-      turn.session_id,
-      requestId,
-      action,
-      feedback,
-    )
-    this.ws.send(JSON.stringify({
-      protocol_version: AGENT_PROTOCOL_VERSION,
-      type: 'floor_plan_review',
-      request_id: requestId,
-      session_id: turn.session_id,
-      action,
-      feedback: action === 'revise' ? feedback : undefined,
-    }))
-    agentStore.setProcessing(true, action === 'confirm' ? '平面已确认，开始生成三维…' : '正在根据修改意见重做平面…')
-    void this.syncTurnsToServer(
-      turn.session_id,
-      agentStore.getTurnsForSession(turn.session_id),
-    )
-    return requestId
-  }
-
-  /** 提交第二次风格审核；主体已完成，但只有确认后才装配装饰并交付。 */
-  submitStyleReview(
-    requestId: string,
-    action: 'confirm' | 'revise',
-    stylePackageId = '',
-    feedback = '',
-  ): string | null {
-    const agentStore = useAgentStore()
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      agentStore.addSystemMessage('未连接到 Agent 服务')
-      return null
-    }
-    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
-    if (!turn || turn.status !== 'waiting_review' || turn.style_review_status !== 'pending') {
-      agentStore.addSystemMessage('当前没有可提交的风格审核任务')
-      return null
-    }
-    const selectedStyleId = stylePackageId || turn.selected_style_id || ''
-    this.requestContexts.set(requestId, {
-      sessionId: turn.session_id,
-      turnId: requestId,
-      durable: true,
-    })
-    agentStore.markStyleReviewSubmitted(
-      turn.session_id,
-      requestId,
-      action,
-      selectedStyleId,
-      feedback,
-    )
-    this.ws.send(JSON.stringify({
-      protocol_version: AGENT_PROTOCOL_VERSION,
-      type: 'style_review',
-      request_id: requestId,
-      session_id: turn.session_id,
-      action,
-      style_package_id: action === 'confirm' ? selectedStyleId : undefined,
-      feedback: action === 'revise' ? feedback : undefined,
-    }))
-    agentStore.setProcessing(
-      true,
-      action === 'confirm' ? '风格已确认，正在装配装饰…' : '正在根据意见调整风格选择…',
-    )
-    void this.syncTurnsToServer(
-      turn.session_id,
-      agentStore.getTurnsForSession(turn.session_id),
-    )
-    return requestId
   }
 
   /** 批准执行计划，或提交意见后重新研究与规划。 */
@@ -740,63 +644,6 @@ export class AgentBridge {
         )
         break
 
-      case 'floor_plan_ready':
-        {
-        const context = this.requestContexts.get(message.request_id)
-        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        agentStore.setTurnFloorPlan(
-          sessionId,
-          message.request_id,
-          message.floor_plan,
-          message.svg,
-          message.svgs || { '1': message.svg },
-          message.validation,
-          message.notice || '',
-        )
-        break
-        }
-
-      case 'floor_plan_review_required':
-        {
-        const context = this.requestContexts.get(message.request_id)
-        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        agentStore.setFloorPlanReviewRequired(
-          sessionId,
-          message.request_id,
-          message.revision,
-          message.can_confirm,
-          message.fallback_reason || '',
-          message.notice || '',
-        )
-        if (sessionId === agentStore.currentSessionId) {
-          agentStore.setProcessing(false)
-        }
-        void this.syncTurnsToServer(
-          sessionId,
-          agentStore.getTurnsForSession(sessionId),
-        )
-        break
-        }
-
-      case 'style_review_required':
-        {
-        const context = this.requestContexts.get(message.request_id)
-        const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        agentStore.setStyleReviewRequired(
-          sessionId,
-          message.request_id,
-          message.revision,
-          message.selected_style_id,
-          message.options,
-        )
-        if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
-        void this.syncTurnsToServer(
-          sessionId,
-          agentStore.getTurnsForSession(sessionId),
-        )
-        break
-        }
-
       case 'thinking_delta':
         {
         const context = this.requestContexts.get(message.request_id)
@@ -878,28 +725,6 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        if (message.code === 'floor_plan_review_rejected') {
-          agentStore.restoreFloorPlanReviewAfterError(sessionId, message.request_id)
-          agentStore.addSystemMessageForTurn(
-            sessionId,
-            message.request_id,
-            `平面审核提交失败：${message.error}。按钮已恢复，可以重新提交。`,
-          )
-          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
-          void this.syncConversationState(sessionId)
-          break
-        }
-        if (message.code === 'style_review_rejected') {
-          agentStore.restoreStyleReviewAfterError(sessionId, message.request_id)
-          agentStore.addSystemMessageForTurn(
-            sessionId,
-            message.request_id,
-            `风格审核提交失败：${message.error}。选项已恢复，可以重新提交。`,
-          )
-          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
-          void this.syncConversationState(sessionId)
-          break
-        }
         if (message.code === 'execution_plan_review_rejected') {
           agentStore.restoreExecutionPlanReviewAfterError(sessionId, message.request_id)
           agentStore.addSystemMessageForTurn(
@@ -917,6 +742,21 @@ export class AgentBridge {
             message.request_id,
             `运行中意见未接收：${message.error}`,
           )
+          break
+        }
+        if (message.code === 'model_service_error') {
+          const retryHint = message.retryable
+            ? '请稍后重新生成。'
+            : '请检查模型配置、额度或更换可用模型后重新生成。'
+          agentStore.addSystemMessageForTurn(
+            sessionId,
+            message.request_id,
+            `模型服务不可用，无法继续生成：${message.error}。${retryHint}`,
+          )
+          agentStore.completeTurn(sessionId, message.request_id, 'error')
+          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
+          void this.syncConversationState(sessionId)
+          this.requestContexts.delete(message.request_id)
           break
         }
         agentStore.addSystemMessageForTurn(sessionId, message.request_id, `错误: ${message.error}`)
@@ -1382,6 +1222,8 @@ export class AgentBridge {
     this.stopHeartbeat()
 
     this.heartbeatTimer = setInterval(() => {
+      // 上一次探测仍在等待时不叠加新的 timeout，保持单一在途心跳。
+      if (this.pongTimeoutTimer) return
       this.sendPing()
 
       // 设置 pong 超时
@@ -1418,6 +1260,11 @@ export class AgentBridge {
 
   /** 处理 pong 响应 */
   private handlePong(_timestamp: number) {
+    this.handleSocketActivity()
+  }
+
+  /** 收到任意服务端消息都表示当前连接仍然活跃。 */
+  private handleSocketActivity() {
     // 清除 pong 超时定时器
     if (this.pongTimeoutTimer) {
       clearTimeout(this.pongTimeoutTimer)

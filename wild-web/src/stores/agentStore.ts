@@ -42,8 +42,6 @@ import type {
   SessionMetrics,
   AgentTurn,
   AgentTurnStep,
-  FloorPlanValidationIssue,
-  StyleOption,
   ExecutionPlan,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
@@ -489,125 +487,6 @@ export const useAgentStore = defineStore('agent', () => {
       turn.steps.push(step)
     }
     step.diagnostic = diagnostic
-  }
-
-  function setTurnFloorPlan(
-    sessionId: string,
-    requestId: string,
-    floorPlan: Record<string, unknown>,
-    svg: string,
-    svgs: Record<string, string>,
-    validation: FloorPlanValidationIssue[],
-    notice = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.floor_plan = floorPlan
-    turn.floor_plan_svg = svg
-    turn.floor_plan_svgs = svgs
-    turn.floor_plan_validation = validation
-    turn.floor_plan_notice = notice
-    persistTurns(sessionId)
-  }
-
-  function setFloorPlanReviewRequired(
-    sessionId: string,
-    requestId: string,
-    revision: number,
-    canConfirm: boolean,
-    fallbackReason = '',
-    notice = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.floor_plan_review_status = 'pending'
-    turn.floor_plan_revision = revision
-    turn.floor_plan_can_confirm = canConfirm
-    turn.floor_plan_fallback_reason = fallbackReason
-    turn.floor_plan_notice = notice || turn.floor_plan_notice
-    persistTurns(sessionId)
-  }
-
-  function markFloorPlanReviewSubmitted(
-    sessionId: string,
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'running'
-    turn.floor_plan_review_status = action === 'confirm' ? 'approved' : 'submitting'
-    if (action === 'revise') {
-      addMessageToSession(sessionId, {
-        id: `msg_${requestId}_revision_${Date.now()}`,
-        role: 'user',
-        content: feedback,
-        timestamp: Date.now(),
-        request_id: requestId,
-        turn_id: requestId,
-      })
-    }
-    persistTurns(sessionId)
-  }
-
-  function restoreFloorPlanReviewAfterError(sessionId: string, requestId: string) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.floor_plan_review_status = 'pending'
-    persistTurns(sessionId)
-  }
-
-  function setStyleReviewRequired(
-    sessionId: string,
-    requestId: string,
-    revision: number,
-    selectedStyleId: string,
-    options: StyleOption[],
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.style_review_status = 'pending'
-    turn.style_revision = revision
-    turn.selected_style_id = selectedStyleId
-    turn.style_options = options
-    persistTurns(sessionId)
-  }
-
-  function markStyleReviewSubmitted(
-    sessionId: string,
-    requestId: string,
-    action: 'confirm' | 'revise',
-    stylePackageId = '',
-    feedback = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'running'
-    turn.style_review_status = action === 'confirm' ? 'approved' : 'submitting'
-    if (stylePackageId) turn.selected_style_id = stylePackageId
-    if (action === 'revise') {
-      addMessageToSession(sessionId, {
-        id: `msg_${requestId}_style_revision_${Date.now()}`,
-        role: 'user',
-        content: feedback,
-        timestamp: Date.now(),
-        request_id: requestId,
-        turn_id: requestId,
-      })
-    }
-    persistTurns(sessionId)
-  }
-
-  function restoreStyleReviewAfterError(sessionId: string, requestId: string) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.style_review_status = 'pending'
-    persistTurns(sessionId)
   }
 
   function setExecutionPlan(
@@ -1098,11 +977,7 @@ export const useAgentStore = defineStore('agent', () => {
     plan_review: '计划审核',
     plan_executor: '计划调度',
     architecture: '总体建筑方案',
-    floor_plan_design: '平面设计',
-    floor_plan_review: '平面审核',
     skeleton: '主体装配',
-    style_review: '风格确认',
-    decor_assembly: '装饰装配',
     merge: '合并', final_validate: '最终校验', callback: '修正',
   }
   function _resolveLabel(nodeName: string): string {
@@ -1176,13 +1051,6 @@ export const useAgentStore = defineStore('agent', () => {
     addTurnValidationStep,
     clearTurnValidationSteps,
     setTurnDiagnostic,
-    setTurnFloorPlan,
-    setFloorPlanReviewRequired,
-    markFloorPlanReviewSubmitted,
-    restoreFloorPlanReviewAfterError,
-    setStyleReviewRequired,
-    markStyleReviewSubmitted,
-    restoreStyleReviewAfterError,
     setExecutionPlan,
     setExecutionPlanReviewRequired,
     markExecutionPlanReviewSubmitted,

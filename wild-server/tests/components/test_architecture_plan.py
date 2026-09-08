@@ -79,6 +79,21 @@ def test_minimal_plan_has_no_required_components() -> None:
     assert plan["required_components"] == []
 
 
+def test_architecture_plan_ignores_retired_spatial_plan_payload() -> None:
+    """旧 checkpoint 中的房间布局不能重新进入总体方案或骨架输入。"""
+    plan = normalize_architecture_plan(
+        {"spatial_plan": {"levels": [{"walls": [{"id": "legacy_inner_wall"}]}]}},
+        "生成一座两层住宅",
+    )
+
+    assert "spatial_plan" not in plan
+    blueprint = build_deterministic_skeleton(plan, "生成一座两层住宅")
+    assert all(
+        element.get("id") != "legacy_inner_wall"
+        for element in blueprint["geometry"]["elements"]
+    )
+
+
 def test_curtain_wall_plan_has_dense_facade_pattern() -> None:
     """玻璃幕墙应使用密集窗格立面（全窗、更多开间）。"""
     plan = normalize_architecture_plan({}, "生成一个玻璃幕墙办公楼")

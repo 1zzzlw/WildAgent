@@ -26,7 +26,7 @@ AIGC:
 
 前端以 `build`、`check:core`、`check:compiler` 和 `check:rendering` 四条命令共同作为最低门禁。不要在文档中长期写死 passed 数量；新增或删除测试后数量会变化，应以当次命令的退出码和报告为准。
 
-GitLab 在 Merge Request 以及 `main/master` 分支运行三组 validate 门禁：前端四项最低门禁、建筑生成质量门禁（Plan2Build/平面审核/材质/恢复与空间校验）和 RAG 质量门禁。Docker 构建与生产部署仍只允许 `main/master`，避免功能分支误发布。
+GitLab 在 Merge Request 以及 `main/master` 分支运行三组 validate 门禁：前端四项最低门禁、建筑生成质量门禁（总体方案/材质/骨架/组件/恢复与空间校验）和 RAG 质量门禁。Docker 构建与生产部署仍只允许 `main/master`，避免功能分支误发布。
 
 ## 2. 日常完整回归
 
@@ -74,11 +74,6 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/agent/test_agent_graph_execution.py` | 使用真实编译图和隔离节点验证 `GENERATE`、`EDIT`、`CHAT` 三条执行分支。 |
 | `tests/agent/test_agent_graph_routing.py` | 验证意图路由、生成先进入建筑方案、组件建议过滤、否定词处理及阳台栏杆去重。 |
 | `tests/agent/test_model_errors.py` | 验证额度、鉴权、限流等模型服务异常会转换为稳定中文协议，并与组件建筑校验错误分流。 |
-| `tests/components/test_floor_plan_design.py` | 验证平面设计节点的模型输出、确定性回退、SVG 门窗图例和逐层预览。 |
-| `tests/components/test_floor_plan_review.py` | 验证第一次人工审核可直接确认、修改意见返回同一平面节点，以及预审失败自动重画两轮后有限暂停。 |
-| `tests/components/test_style_review.py` | 验证主体完成后的第二次风格确认和修改循环。 |
-| `tests/components/test_spatial_plan.py` | 验证 FloorPlanIR v2 的矩形、多矩形 L/U 形、斜墙、曲墙、多边形、中庭、跨层空间、全层电梯井自动补全与确定性几何装配。 |
-| `tests/components/test_plan2build_pipeline.py` | 验证 ApprovedPlanAssembler 的确定性、G1-G6、三种 StylePackage、Decor IR、G7，以及中庭和六层住宅 Golden 样例。 |
 | `tests/components/test_architecture_plan.py` | 验证建筑方案候选评分、中文层数识别、高层示意几何、公共建筑尺度、立面槽位、开口配额和地下交通建筑约束。 |
 | `tests/blueprint/test_blueprint_material_validation.py` | 验证 Blueprint 字段归一化和 Schema：楼板坐标、墙高简写、primitive box 尺寸、家具别名、材质颜色，以及程序化红砖的范围、互斥和可执行字段门禁。 |
 | `tests/blueprint/test_blueprint_text_extraction.py` | 验证从普通内容、`reasoning_content`、代码围栏和常见包装对象中提取 Blueprint/ScenePatch，并补齐确定性元数据。 |
@@ -87,7 +82,7 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/components/test_component_state_reducer.py` | 验证 LangGraph 并行组件节点通过通用 State reducer 合并结果，不依赖硬编码字段白名单。 |
 | `tests/components/test_component_validation_recheck.py` | 验证组件修复后必须复检、复检失败不能伪报成功、布尔值 `false` 不等于缺失。 |
 | `tests/misc/test_deployment_preflight.py` | 验证部署预检默认不访问供应商、显式真实模式才调用 Chat/Embedding，并覆盖模型冒烟响应的 content/reasoning 兼容选择。测试本身不访问模型。 |
-| `tests/network/test_generation_job_service.py` | 验证生成任务脱离 WebSocket 后继续、平面/风格/执行计划三类审核的暂停恢复与状态竞争、事件落库、重启恢复、补发顺序和终态原子落库。 |
+| `tests/network/test_generation_job_service.py` | 验证生成任务脱离 WebSocket 后继续、执行计划审核暂停恢复、旧图拓扑隔离、事件落库、重启恢复、补发顺序和终态原子落库。 |
 | `tests/misc/test_ip_geolocation.py` | 验证 IP 脱敏、GeoIP 缺失回退、可信代理头和伪造代理头防护。 |
 | `tests/misc/test_langgraph_checkpoint_resume.py` | 使用临时 SQLite checkpointer 验证恢复时跳过已完成节点，只重跑失败或未完成节点。 |
 | `tests/assets/test_material_tuning.py` | 验证材质优化意图、必须先选择构件、Patch 安全边界、材质克隆、纹理资产保留和无效参数拒绝。 |
@@ -108,7 +103,7 @@ uv run --with pytest python -m pytest <文件路径> -q
 | `tests/repair/test_targeted_repair_tools.py` | 验证错误结构化、修复目标追踪、动作白名单、ID/类型保护、材质存在性、增删实体范围和错误下降原则。 |
 | `tests/validators/test_validation_cache.py` | 验证 merge 已完成且可复用的最终校验不会在 `final_validate` 重复执行。 |
 | `tests/validators/test_validation_pipeline_repairs.py` | 验证校验流水线会在最终引用检查前修复唯一材质别名。 |
-| `tests/network/test_ws_agent_disconnect.py` | 验证 WebSocket 协议版本、心跳、Presence、快速/精密模式断线后持久恢复、平面审核协议、思考事件和生成结果引用。 |
+| `tests/network/test_ws_agent_disconnect.py` | 验证 WebSocket 协议版本、心跳、Presence、快速/精密模式断线后持久恢复、执行计划审核协议、思考事件和生成结果引用。 |
 
 这些测试使用 mock、临时目录或本地确定性实现，不要求 `.env` 中存在有效模型 Key。Chroma 可能输出一条第三方弃用警告；只要 pytest 退出码为 0，就不影响测试通过。
 
@@ -201,7 +196,6 @@ npm run check:rendering
 |---|---|
 | LangGraph 节点、路由、State | 后端完整回归 + `tests/misc/show_langgraph_graph.py --no-serve` |
 | checkpointer、WebSocket、断线恢复 | `tests/network/test_generation_job_service.py`、`tests/misc/test_langgraph_checkpoint_resume.py`、`tests/network/test_ws_agent_disconnect.py` |
-| FloorPlanIR、Plan2Build、两次确认 | `tests/components/test_spatial_plan.py`、`tests/components/test_floor_plan_design.py`、`tests/components/test_floor_plan_review.py`、`tests/components/test_style_review.py`、`tests/components/test_plan2build_pipeline.py` |
 | Blueprint Schema、空间与校验 | `tests/blueprint/test_blueprint_material_validation.py`、`tests/validators/test_spatial_validation.py`、`tests/repair/test_merge_precision.py`、`npm run check:core` |
 | 组件或渲染 | 相关后端组件测试 + `npm run check:compiler` + `npm run check:core` + `npm run check:rendering` |
 | RAG 文档、分片、metadata | 两个 RAG 自动测试 + `eval_retrieval.py` |

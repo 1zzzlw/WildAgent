@@ -88,6 +88,7 @@ class RAGTrace:
     retrievals: list[dict[str, Any]] = field(default_factory=list)
     contexts: list[dict[str, Any]] = field(default_factory=list)
     llm_calls: list[dict[str, Any]] = field(default_factory=list)
+    nodes: list[dict[str, Any]] = field(default_factory=list)
     gate_decisions: list[dict[str, Any]] = field(default_factory=list)
     citations: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
@@ -118,11 +119,13 @@ class RAGTrace:
             elapsed_ms = round((time.perf_counter() - self._started_perf) * 1000)
 
         token_usage = {"input": 0, "output": 0, "total": 0}
+        retry_count = 0
         for call in self.llm_calls:
             usage = call.get("token_usage") or {}
             token_usage["input"] += int(usage.get("input", 0) or 0)
             token_usage["output"] += int(usage.get("output", 0) or 0)
             token_usage["total"] += int(usage.get("total", 0) or 0)
+            retry_count += int(call.get("retry_count") or 0)
 
         context_chars = [int(item.get("context_chars", 0)) for item in self.contexts]
         return {
@@ -142,6 +145,11 @@ class RAGTrace:
                 "llm_calls": len(self.llm_calls),
                 "llm_ms": sum(int(item.get("elapsed_ms", 0)) for item in self.llm_calls),
                 "token_usage": token_usage,
+                "llm_retry_count": retry_count,
+                "node_calls": len(self.nodes),
+                "node_ms": sum(
+                    int(item.get("duration_ms", 0)) for item in self.nodes
+                ),
                 "gate_rejections": sum(
                     1 for item in self.gate_decisions if item.get("decision") == "reject"
                 ),
@@ -149,6 +157,7 @@ class RAGTrace:
             "retrievals": self.retrievals,
             "contexts": self.contexts,
             "llm_calls": self.llm_calls,
+            "nodes": self.nodes,
             "gate_decisions": self.gate_decisions,
             "citations": self.citations,
             "warnings": self.warnings,
@@ -323,8 +332,9 @@ def record_rag_llm_call(
     elapsed_ms: int,
     token_usage: dict[str, int] | None,
     error_type: str | None = None,
+    retry_count: int = 0,
 ) -> bool:
-    """记录一次 LLM 调用耗时和供应商返回的 Token 用量。"""
+    """记录一次 LLM 调用耗时、供应商返回的 Token 用量和退避重试次数。"""
 
     trace = get_current_rag_trace()
     if trace is None:
@@ -334,11 +344,58 @@ def record_rag_llm_call(
             "mode": mode,
             "elapsed_ms": elapsed_ms,
             "error_type": error_type,
+            "retry_count": max(0, int(retry_count or 0)),
             "token_usage": {
                 "input": int((token_usage or {}).get("input", 0) or 0),
                 "output": int((token_usage or {}).get("output", 0) or 0),
                 "total": int((token_usage or {}).get("total", 0) or 0),
             },
+        }
+    )
+    return True
+
+
+def record_node_call(
+    node_name: str,
+    *,
+    started_at: str,
+    completed_at: str,
+    duration_ms: int,
+    llm_ms: int | None = None,
+    rag_ms: int | None = None,
+    token_usage: dict[str, int] | None = None,
+    retry_count: int = 0,
+    output_size: int | None = None,
+    error: str | None = None,
+    model: str | None = None,
+) -> bool:
+    """记录一次 Agent 节点执行的墙钟耗时与来源分解。
+
+    这是请求级可观测性的最小协议：每个 node 一条记录，携带开始/结束时间、
+    节点总耗时、LLM 与 RAG 子耗时、Token 用量、重试次数和输出规模。没有活动
+    请求上下文（如命令行单测）时安全地跳过。
+    """
+
+    trace = get_current_rag_trace()
+    if trace is None:
+        return False
+    trace.nodes.append(
+        {
+            "node_name": str(node_name or "?"),
+            "started_at": started_at,
+            "completed_at": completed_at,
+            "duration_ms": max(0, int(duration_ms or 0)),
+            "llm_ms": llm_ms,
+            "rag_ms": rag_ms,
+            "token_usage": {
+                "input": int((token_usage or {}).get("input", 0) or 0),
+                "output": int((token_usage or {}).get("output", 0) or 0),
+                "total": int((token_usage or {}).get("total", 0) or 0),
+            },
+            "retry_count": max(0, int(retry_count or 0)),
+            "output_size": output_size,
+            "error": error,
+            "model": model,
         }
     )
     return True

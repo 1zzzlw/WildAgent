@@ -12,6 +12,7 @@ from typing import Any, Awaitable, Callable
 
 from app.agent.model_client import content_as_text, message_texts
 from app.agent.rag_trace import record_rag_llm_call
+from config import config
 
 # 可重试模型错误的退避重试：仅对限流(429)/服务端 5xx/超时等瞬态故障重试，
 # 额度/鉴权等永久错误不重试。重试次数计入诊断，避免静默放大延迟。
@@ -99,9 +100,15 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     """
     started = time.perf_counter()
     last_exc: Exception | None = None
+    llm_timeout = float(getattr(config.chat, "timeout", 60.0) or 60.0)
     for attempt in range(_LLM_RETRY_MAX + 1):
         try:
-            response = await llm.ainvoke(messages)
+            if llm_timeout > 0:
+                response = await asyncio.wait_for(
+                    llm.ainvoke(messages), timeout=llm_timeout,
+                )
+            else:
+                response = await llm.ainvoke(messages)
         except Exception as exc:
             from app.agent.model_errors import classify_model_error
 
@@ -112,6 +119,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
                     elapsed_ms=round((time.perf_counter() - started) * 1000),
                     token_usage=None,
                     error_type=type(exc).__name__,
+                    retry_count=attempt,
                 )
                 raise
             last_exc = exc
@@ -122,6 +130,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
             mode="invoke",
             elapsed_ms=round((time.perf_counter() - started) * 1000),
             token_usage=result.token_usage,
+            retry_count=result.retry_count,
         )
         if last_exc is not None:
             result.retry_count = attempt
@@ -129,16 +138,31 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     raise last_exc if last_exc is not None else RuntimeError("invoke_llm 未返回结果")
 
 
-async def stream_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:
-    """统一流式调用：逐字收集 reasoning，末尾收集 content / usage / finish_reason。"""
+async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
+    """统一流式调用：逐字收集 reasoning，末尾收集 content / usage / finish_reason。
+
+    用 asyncio.wait_for 包住每个 chunk 的等待，配置错误或服务端挂起时超时抛错，
+    不再无限等待；异常沿节点 except 进入模型服务故障阻断路径。
+    """
     content_parts: list[str] = []
     reasoning_parts: list[str] = []
     token_usage: dict[str, int] | None = None
     finish_reason: str | None = None
 
     started = time.perf_counter()
+    llm_timeout = float(getattr(config.chat, "timeout", 60.0) or 60.0)
     try:
-        async for chunk in llm.astream(messages):
+        _stream = llm.astream(messages)
+        while True:
+            try:
+                if llm_timeout > 0:
+                    chunk = await asyncio.wait_for(
+                        _stream.__anext__(), timeout=llm_timeout,
+                    )
+                else:
+                    chunk = await _stream.__anext__()
+            except StopAsyncIteration:
+                break
             if hasattr(chunk, "additional_kwargs"):
                 delta = chunk.additional_kwargs.get("reasoning_content", "") or ""
                 if delta:

@@ -11,7 +11,6 @@
  * - AgentStepResponse: Agent 执行步骤（可选，用于显示进度）
  * - ThinkingDeltaResponse: 模型接口实际返回的思考内容片段
  * - ThinkingStatusResponse: 思考请求状态
- * - FloorPlanReadyResponse / FloorPlanReviewRequiredResponse: 建筑平面审核与暂停
  * - PatchProposalResponse: 场景修改提案
  * - AgentReplyResponse: 文本回复
  * - ErrorResponse: 错误信息
@@ -47,17 +46,12 @@ export interface AgentProtocolEnvelope {
 export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
-  | FloorPlanReviewRequest
-  | StyleReviewRequest
   | ExecutionPlanReviewRequest
   | ExecutionFeedbackRequest
   | GenerationResumedResponse
   | AgentStepResponse
   | ThinkingDeltaResponse
   | ThinkingStatusResponse
-  | FloorPlanReadyResponse
-  | FloorPlanReviewRequiredResponse
-  | StyleReviewRequiredResponse
   | ExecutionPlanReadyResponse
   | ExecutionPlanReviewRequiredResponse
   | ExecutionFeedbackQueuedResponse
@@ -97,23 +91,6 @@ export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
   request_id?: string
   session_id: string
   last_event_seq?: number
-}
-
-export interface FloorPlanReviewRequest extends AgentProtocolEnvelope {
-  type: 'floor_plan_review'
-  request_id: string
-  session_id: string
-  action: 'confirm' | 'revise'
-  feedback?: string
-}
-
-export interface StyleReviewRequest extends AgentProtocolEnvelope {
-  type: 'style_review'
-  request_id: string
-  session_id: string
-  action: 'confirm' | 'revise'
-  style_package_id?: string
-  feedback?: string
 }
 
 export interface ExecutionPlanReviewRequest extends AgentProtocolEnvelope {
@@ -238,51 +215,6 @@ export interface ThinkingStatusResponse extends AgentProtocolEnvelope {
   content?: string
 }
 
-/** 由同一份 FloorPlanIR 与立面轴网投影得到的审核平面；收到后等待用户确认。 */
-export interface FloorPlanReadyResponse extends AgentProtocolEnvelope {
-  type: 'floor_plan_ready'
-  request_id: string
-  session_id?: string
-  floor_plan: Record<string, unknown>
-  svg: string
-  svgs: Record<string, string>
-  validation: FloorPlanValidationIssue[]
-  notice?: string
-  continues_generation: false
-}
-
-export interface FloorPlanReviewRequiredResponse extends AgentProtocolEnvelope {
-  type: 'floor_plan_review_required'
-  request_id: string
-  session_id: string
-  revision: number
-  can_confirm: boolean
-  fallback_reason?: string
-  notice?: string
-}
-
-export interface FloorPlanValidationIssue {
-  code: string
-  level_id?: string | null
-  entity_id?: string | null
-  message: string
-}
-
-export interface StyleOption {
-  id: string
-  name: string
-  description: string
-}
-
-export interface StyleReviewRequiredResponse extends AgentProtocolEnvelope {
-  type: 'style_review_required'
-  request_id: string
-  session_id: string
-  revision: number
-  selected_style_id: string
-  options: StyleOption[]
-}
-
 export interface PatchProposalResponse extends AgentProtocolEnvelope {
   type: 'patch_proposal'
   request_id: string
@@ -390,21 +322,6 @@ export interface AgentTurn {
     status: 'ok' | 'warn' | 'error' | 'skip'
   }>
   metrics?: SessionMetrics
-  /** floor_plan_design 节点输出的空间方案与确定性 SVG。 */
-  floor_plan?: Record<string, unknown>
-  floor_plan_svg?: string
-  floor_plan_svgs?: Record<string, string>
-  floor_plan_validation?: FloorPlanValidationIssue[]
-  floor_plan_review_status?: 'pending' | 'submitting' | 'approved'
-  floor_plan_revision?: number
-  floor_plan_can_confirm?: boolean
-  floor_plan_fallback_reason?: string
-  floor_plan_notice?: string
-  /** G1-G6 主体通过后的第二次风格确认。 */
-  style_review_status?: 'pending' | 'submitting' | 'approved'
-  style_revision?: number
-  selected_style_id?: string
-  style_options?: StyleOption[]
 }
 
 export interface AgentSession {

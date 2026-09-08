@@ -1,21 +1,20 @@
 """
-LangGraph 图定义 —— 可审核计划层 + Plan2Build 确定性执行链
+LangGraph 图定义 —— 可审核计划层 + LLM 骨架生成链
 
 流程:
   classifier (意图分类)
     → PLAN:     planning_research → planner → plan_review → plan_executor
-    → GENERATE: architecture (总体方案候选) → floor_plan_design (FloorPlanIR v2)
-                  → floor_plan_review (确认/修改)
+    → GENERATE: architecture (总体方案候选)
                   → material_plan (材质意图+资产解析)
-                  → skeleton/ApprovedPlanAssembler (确定性主体 + G1-G6)
-                  → style_review (第二次确认)
-                  → decor_assembly (StylePackage → Decor IR + G7)
+                  → skeleton (LLM 骨架生成：主体蓝图 + 组件建议)
+                  → Send 动态派发组件 gen→val 链（并行）
                   → merge → final_validate → done
     → EDIT:     patch (统一 ScenePatch 生成与校验) → done
     → CHAT:     chat (RAG知识问答) → done
 
-旧组件 gen→val 节点仍为兼容路径；新建筑主链的主体、门窗、屋顶和装饰不再
-依赖它们自由生成坐标。
+平面设计/确定性装配时代（floor_* 与 approved_plan_assembler）已下线：
+主链骨架节点即 LLM 骨架实现（nodes/skeleton_node.py），组件由骨架建议
+动态派发，gen→val 链仍是当前主链的一部分。
 """
 import inspect
 
@@ -34,15 +33,8 @@ from app.agent.nodes import (
     chat_node,
     patch_node,
     architecture_planner,
-    floor_plan_designer,
-    floor_plan_review,
-    route_floor_plan_review,
     material_planner,
-    approved_plan_assembler,
-    skeleton_generator,  # 旧测试/扩展导入兼容；生成主链已不再调用
-    style_review,
-    route_style_review,
-    decor_assembler,
+    skeleton_generator,
     merge_fragments_node,
     complete_execution_step,
     execution_plan_executor,
@@ -59,12 +51,6 @@ from app.agent.nodes.base_component_node import (
     create_component_validator,
 )
 
-# 保留既有 monkeypatch/扩展点名称；它现在指向确定性主体装配器。
-# 旧 LLM 骨架实现仍可从 nodes.skeleton_node 显式导入，但不在生成主链运行。
-legacy_skeleton_generator = skeleton_generator
-skeleton_generator = approved_plan_assembler
-
-
 def _planned_node(step_type: str, node):
     """包装现有业务节点，仅在 plan_mode 中回写计划步骤状态。"""
 
@@ -80,16 +66,10 @@ def _planned_node(step_type: str, node):
     return run
 
 def _dispatch_components(state: GenerationState):
-    """主体完成后进入风格确认；仅旧兼容输入才动态派发组件节点。"""
+    """LLM 骨架完成后，按组件建议动态派发 gen→val 节点。"""
     if state.get("error") or state.get("status") == "failed":
         logger.warning("[Graph] 骨架生成失败，短路终止")
         return "fail"
-
-    # 已确认方案的主体、门窗、屋顶均由 ApprovedPlanAssembler 一次性确定。
-    # 这里直接进入合并/总校验，避免再次调用各组件 LLM 改写坐标或因额度失败。
-    if state.get("deterministic_body_complete"):
-        logger.info("[Graph] 确定性主体装配完成，进入第二次风格确认")
-        return "style_review"
 
     # 极简结构（一面墙/一堵墙/单个构件）只保留结构骨架，不派发门/窗/屋顶等组件。
     architecture_plan = state.get("architecture_plan")
@@ -126,6 +106,9 @@ def _dispatch_components(state: GenerationState):
 
 def _classifier_dispatch(state: GenerationState):
     """意图分类后路由：generate → architecture, edit → patch, chat → chat。"""
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        logger.warning("[Graph] 意图分类模型不可用，当前请求立即终止")
+        return "__end__"
     intent = state.get("intent")
     logger.info(f"[Graph] 分类完成, intent={intent}")
     if intent not in {"generate", "edit", "chat"}:
@@ -148,6 +131,8 @@ def _planning_research_dispatch(state: GenerationState) -> str:
     覆盖决策记录在 plan_research_diag.coverage；web_research 节点内部会再次
     检查客户端可用性，未配置 API key 时返回空上下文并回退本地。
     """
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        return "__end__"
     diag = state.get("plan_research_diag") or {}
     coverage = diag.get("coverage") if isinstance(diag, dict) else None
     if isinstance(coverage, dict) and coverage.get("trigger_web_research"):
@@ -155,32 +140,39 @@ def _planning_research_dispatch(state: GenerationState) -> str:
     return "planner"
 
 
+def _after_execution_planner(state: GenerationState) -> str:
+    """计划模型失败时直接结束，禁止用空计划继续校验或重规划。"""
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        return "__end__"
+    return "plan_validator"
+
+
+def _after_execution_plan_validator(state: GenerationState) -> str:
+    """计划校验失败是本轮终态，不能自动回到规划器形成无界循环。"""
+    if state.get("execution_plan_status") == "failed" or state.get("error"):
+        return "__end__"
+    return "plan_review"
+
+
 def _after_architecture(state: GenerationState) -> str:
-    return "plan_executor" if state.get("plan_mode") else "floor_plan_design"
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        return "plan_executor" if state.get("plan_mode") else "__end__"
+    return "plan_executor" if state.get("plan_mode") else "material_plan"
 
 
 def _after_planned_step(state: GenerationState, legacy_next: str) -> str:
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        return "plan_executor" if state.get("plan_mode") else "__end__"
     return "plan_executor" if state.get("plan_mode") else legacy_next
 
 
 def _after_skeleton(state: GenerationState):
-    if state.get("plan_mode"):
-        if state.get("error") or state.get("status") == "failed":
-            return "fail"
-        return "plan_executor"
+    """LLM 骨架完成后：错误即终止，否则派发组件 gen→val 链（Plan 模式相同）。
+
+    计划步骤回写由 _planned_node 包装在节点返回时完成；组件链结束后
+    merge 的条件边会把 Plan 模式路由回执行器继续走剩余步骤。
+    """
     return _dispatch_components(state)
-
-
-def _after_floor_plan_review(state: GenerationState) -> str:
-    if state.get("plan_mode"):
-        return "plan_executor"
-    return route_floor_plan_review(state)
-
-
-def _after_style_review(state: GenerationState) -> str:
-    if state.get("plan_mode"):
-        return "plan_executor"
-    return route_style_review(state)
 
 
 def _merge_dispatch(state: GenerationState):
@@ -254,9 +246,9 @@ def _final_validate_dispatch(state: GenerationState):
 def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     """构建 LangGraph 生成流程图
 
-    classifier → (generate → architecture → floor_plan_design → floor_plan_review
-      → material_plan → deterministic skeleton/G1-G6 → style_review
-      → decor_assembly/G7 → merge → final_validate) | (edit → patch → END) | (chat → END)
+    classifier → (generate → architecture → material_plan
+      → LLM skeleton → 动态组件 gen→val → merge → final_validate)
+      | (edit → patch → END) | (chat → END)
     """
     graph = StateGraph(GenerationState)
 
@@ -275,14 +267,10 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
 
     # ── Layer -0.5: 建筑方案 ──
     graph.add_node("architecture", _planned_node("architecture", architecture_planner))
-    graph.add_node("floor_plan_design", _planned_node("floor_plan_design", floor_plan_designer))
-    graph.add_node("floor_plan_review", _planned_node("floor_plan_review", floor_plan_review))
     graph.add_node("material_plan", _planned_node("material_plan", material_planner))
 
-    # ── Layer 0: 骨架 ──
+    # ── Layer 0: 骨架（LLM 实现，输出主体蓝图与组件建议）──
     graph.add_node("skeleton", _planned_node("skeleton", skeleton_generator))
-    graph.add_node("style_review", _planned_node("style_review", style_review))
-    graph.add_node("decor_assembly", _planned_node("decor_assembly", decor_assembler))
 
     # ── Layer 1: 每个组件的 gen→val 链 ──
     implemented = get_implemented_components()
@@ -327,6 +315,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             "planning_research": "planning_research",
             "patch": "patch",
             "chat": "chat",
+            "__end__": END,
         },
     )
 
@@ -339,7 +328,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges(
         "planning_research",
         _planning_research_dispatch,
-        {"planner": "planner", "web_research": "web_research"},
+        {"planner": "planner", "web_research": "web_research", "__end__": END},
     )
     graph.add_edge("web_research", "planner")
     graph.add_conditional_edges(
@@ -347,11 +336,20 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         _after_architecture,
         {
             "plan_executor": "plan_executor",
-            "floor_plan_design": "floor_plan_design",
+            "material_plan": "material_plan",
+            "__end__": END,
         },
     )
-    graph.add_edge("planner", "plan_validator")
-    graph.add_edge("plan_validator", "plan_review")
+    graph.add_conditional_edges(
+        "planner",
+        _after_execution_planner,
+        {"plan_validator": "plan_validator", "__end__": END},
+    )
+    graph.add_conditional_edges(
+        "plan_validator",
+        _after_execution_plan_validator,
+        {"plan_review": "plan_review", "__end__": END},
+    )
     graph.add_conditional_edges(
         "plan_review",
         route_execution_plan_review,
@@ -367,36 +365,17 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         {
             "__end__": END,
             "architecture": "architecture",
-            "planner": "planner",
-            "floor_plan_design": "floor_plan_design",
-            "floor_plan_review": "floor_plan_review",
             "material_plan": "material_plan",
             "skeleton": "skeleton",
-            "style_review": "style_review",
-            "decor_assembly": "decor_assembly",
             "merge": "merge",
             "final_validate": "final_validate",
             "patch": "patch",
         },
     )
     graph.add_conditional_edges(
-        "floor_plan_design",
-        lambda state: _after_planned_step(state, "floor_plan_review"),
-        {"plan_executor": "plan_executor", "floor_plan_review": "floor_plan_review"},
-    )
-    graph.add_conditional_edges(
-        "floor_plan_review",
-        _after_floor_plan_review,
-        {
-            "plan_executor": "plan_executor",
-            "floor_plan_design": "floor_plan_design",
-            "material_plan": "material_plan",
-        },
-    )
-    graph.add_conditional_edges(
         "material_plan",
         lambda state: _after_planned_step(state, "skeleton"),
-        {"plan_executor": "plan_executor", "skeleton": "skeleton"},
+        {"plan_executor": "plan_executor", "skeleton": "skeleton", "__end__": END},
     )
 
     graph.add_conditional_edges(
@@ -404,24 +383,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         _after_skeleton,
         {
             "fail": END,
-            "plan_executor": "plan_executor",
             "merge": "merge",
-            "style_review": "style_review",
         },
-    )
-    graph.add_conditional_edges(
-        "style_review",
-        _after_style_review,
-        {
-            "plan_executor": "plan_executor",
-            "style_review": "style_review",
-            "decor_assembly": "decor_assembly",
-        },
-    )
-    graph.add_conditional_edges(
-        "decor_assembly",
-        lambda state: _after_planned_step(state, "merge"),
-        {"plan_executor": "plan_executor", "merge": "merge"},
     )
 
     # val 节点 → merge（fan-in）
@@ -438,7 +401,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             if _merge_dispatch(state) == END
             else _after_planned_step(state, "final_validate")
         ),
-        {"plan_executor": "plan_executor", "final_validate": "final_validate", END: END},
+        {"plan_executor": "plan_executor", "final_validate": "final_validate", "__end__": END, END: END},
     )
     if enable_callback:
         graph.add_conditional_edges(
@@ -463,8 +426,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     callback_status = "启用" if enable_callback else "关闭"
     logger.info(
         f"LangGraph 图编译完成: 分类 → 可选动态计划审核 → "
-        f"(生成: 方案 → 平面审核 → 材质 → 确定性主体 → 风格审核 → 装饰 → merge → final_validate；"
-        f"旧兼容组件链 [{component_list}]) | "
+        f"(生成: 方案 → 材质 → LLM 骨架 → 组件链 → merge → final_validate；"
+        f"gen→val 链 [{component_list}] 由骨架建议动态派发) | "
         f"(编辑: patch → END) | "
         f"(问答: chat → END) "
         f"(回调: {callback_status})"

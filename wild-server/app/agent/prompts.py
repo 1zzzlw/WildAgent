@@ -138,10 +138,8 @@ def build_execution_plan_prompt(
     allowed_phases = (
         [
             "architecture",
-            "floor_plan_design",
             "material_plan",
             "skeleton",
-            "decor_assembly",
             "final_validate",
         ]
         if intent == "generate"
@@ -206,8 +204,8 @@ def build_execution_plan_prompt(
 def _style_preference_section(style_preference: list[str] | None) -> str:
     """把规则预选的候选风格注入早期节点 prompt。
 
-    风格最终在 style_review 由用户确认，但早期节点需要知道设计方向，避免
-    与最终风格包冲突（如平屋顶 vs 中式坡屋顶）。只注入候选 id，不注入细节。
+    这里只把分类器推断的候选 id 当作设计方向，避免总体方案与材质方案
+    互相冲突，不注入风格包细节。
     """
     if not style_preference:
         return ""
@@ -215,10 +213,10 @@ def _style_preference_section(style_preference: list[str] | None) -> str:
     if not safe_ids:
         return ""
     return f"""
-# 候选建筑风格（由系统根据需求预选，最终以风格确认环节为准）
+# 候选建筑风格（由系统根据需求预选）
 
-后续风格确认环节会从以下候选中确定最终风格，总体方案应优先服从其屋顶与
-体量倾向：{", ".join(safe_ids)}。不要虚构候选之外的风格细节。
+总体方案和材质方案应优先服从以下候选的屋顶、体量与色彩倾向：
+{", ".join(safe_ids)}。不要虚构候选之外的风格细节。
 """
 
 
@@ -240,11 +238,6 @@ def build_architecture_plan_prompt(
     style_section = _style_preference_section(style_preference)
     revision_section = ""
     if current_plan and revision_feedback:
-        previous_plan = {
-            key: value
-            for key, value in current_plan.items()
-            if key != "spatial_plan"
-        }
         revision_section = f"""
 
 # 本轮是建筑方案修订
@@ -253,9 +246,9 @@ def build_architecture_plan_prompt(
 
 上一版方案如下。保留未被意见否定的尺寸、风格和设计关系，只修改相关部分；仍需输出两个完整候选，不能只输出差异：
 
-{_json.dumps(previous_plan, ensure_ascii=False, indent=2)}
+{_json.dumps(current_plan, ensure_ascii=False, indent=2)}
 """
-    return f"""你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不输出 spatial_plan。
+    return f"""你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不设计房间布局。
 
 # 任务
 
@@ -271,7 +264,7 @@ def build_architecture_plan_prompt(
 - component_quota 必须与立面 pattern 能容纳的数量一致。
 - required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
 - `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
-- 房间、内墙、内门、中庭和垂直交通由后续 `floor_plan_design` 节点单独完成；本节点禁止输出 `spatial_plan`。
+- 本节点不设计房间坐标和内部隔墙；骨架节点直接依据总体体量、立面和结构约束生成 Blueprint 主体。
 {revision_section}
 {style_section}
 
@@ -308,92 +301,6 @@ def build_architecture_plan_prompt(
 }}
 
 # 知识库参考
-
-{spec_text}
-"""
-
-
-def build_floor_plan_prompt(
-    architecture_plan: dict,
-    spec_text: str = "",
-    current_floor_plan: dict | None = None,
-    revision_feedback: str = "",
-    style_preference: list[str] | None = None,
-) -> str:
-    """独立平面节点：在已批准体量内生成 FloorPlanIR v2。"""
-    import json as _json
-
-    plan_payload = {
-        key: value
-        for key, value in architecture_plan.items()
-        if key != "spatial_plan"
-    }
-    style_section = _style_preference_section(style_preference)
-    revision_section = ""
-    if current_floor_plan and revision_feedback:
-        revision_section = f"""
-
-# 本轮修改
-
-用户修改意见：{revision_feedback}
-
-上一版平面：
-{_json.dumps(current_floor_plan, ensure_ascii=False, indent=2)}
-
-只改变意见涉及的空间、墙和洞口，未被否定的关系应保留。
-"""
-
-    return f"""你是建筑平面设计师。建筑总体体量已经确定，你只输出一份 FloorPlanIR v2，不得修改总体层数、volumes、facades、屋顶或构件配额。
-
-# 已批准总体建筑方案
-
-{_json.dumps(plan_payload, ensure_ascii=False, indent=2)}
-{revision_section}
-{style_section}
-
-# 平面硬规则
-
-1. 平面轴是 X/Z，front=min_z、north=max_z，Y 只表示高度。
-2. 必须覆盖 massing.modeled_floors 的每一层；每层空间完整覆盖该层 volumes 的矩形并集，不得越界、重叠或填平 L/U/回字形凹口。
-3. 空间使用 `bounds:[x0,z0,x1,z1]`、`polygon:[[x,z],...]` 或 `polygons`；任意多边形必须简单且不自交。
-4. 内墙用 `from/to`，可为任意方向；曲墙使用 WILD 原生 `curve.type=arc|ellipse|catenary`。
-5. 内门/内窗必须引用真实 `host_wall_id`；`offset` 沿墙路径弧长计算，`connects` 精确写墙两侧空间，室外使用 `outside`。
-6. 从 `entrance_space_id` 出发必须能经门到达本层全部空间。
-7. 中庭、庭院、挑空和竖井写入 `vertical_spaces`；电梯/楼梯服务关系写入 `vertical_circulation`，并给出 polygon 与楼层列表。
-8. 只在确有用户/建筑类型依据时启用 `review_rules`；可选闸门为 elevator、egress、daylight、symmetry、opening_corner、functional_flow。不得声称完成法定审图。
-9. 无法可靠细分时也必须输出结构完整的最小两区方案，不能只输出空 walls/openings 的占位轮廓。
-
-# 输出格式
-
-只输出一个 JSON 对象，不要 Markdown：
-{{
-  "spatial_plan": {{
-    "review_rules": {{"enabled": []}},
-    "vertical_spaces": [],
-    "vertical_circulation": [],
-    "levels": [{{
-      "level": 1,
-      "entrance_space_id": "living",
-      "spaces": [
-        {{"id":"living","name":"起居室","space_type":"living","zone":"semi_private","privacy_level":1,"wet_space":false,"daylight_required":true,"bounds":[0,0,7,9]}},
-        {{"id":"service","name":"辅助空间","space_type":"service","zone":"service","privacy_level":0,"wet_space":true,"daylight_required":false,"served_by_shaft":"shaft_1","bounds":[7,0,12,9]}}
-      ],
-      "walls": [{{"id":"partition_1","kind":"interior","from":[7,0],"to":[7,9],"thickness":0.12}}],
-      "openings": [{{"id":"door_1","type":"door","host_wall_id":"partition_1","offset":3.8,"width":0.9,"height":2.1,"sill_height":0,"connects":["living","service"]}}]
-    }}]
-  }}
-}}
-
-# space 语义字段说明（可选，但推荐填写）
-- `zone`: public / semi_private / private / service（功能分区）
-- `privacy_level`: 0~3 隐私等级（越高越私密）
-- `wet_space`: 是否为湿区（卫生间/厨房/洗衣）
-- `daylight_required`: 是否需要采光（卧室/起居室=true）
-- `natural_ventilation_required`: 是否需要自然通风
-- `exterior_contact_required`: 是否必须接触外墙（卧室/起居室=true）
-- `served_by_shaft`: 关联的管井 id（湿区应引用，如 "shaft_1"）
-
-# 知识参考
 
 {spec_text}
 """

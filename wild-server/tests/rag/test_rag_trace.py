@@ -20,6 +20,7 @@ from app.agent.rag_trace import (
     record_rag_llm_call,
     record_rag_retrieval,
     record_rag_warning,
+    record_node_call,
 )
 from app.spec.loader import RAGSpecLoader, RetrievedSpecChunk
 
@@ -68,12 +69,52 @@ class RAGTraceTest(unittest.TestCase):
         self.assertEqual(data["summary"]["token_usage"]["total"], 150)
         self.assertIsNone(get_current_rag_trace())
 
+    def test_node_call_records_wall_clock_and_retry_count(self):
+        """每个节点一条记录：墙钟耗时、LLM/RAG 分解、Token 与重试次数。"""
+        with rag_trace_scope("req_node_001", persist=False) as trace:
+            self.assertTrue(record_node_call(
+                "architecture",
+                started_at="2026-09-03T00:00:00.000+00:00",
+                completed_at="2026-09-03T00:00:01.500+00:00",
+                duration_ms=1500,
+                llm_ms=1200,
+                rag_ms=90,
+                token_usage={"input": 300, "output": 80, "total": 380},
+                retry_count=1,
+                output_size=2048,
+                model="qwen-max",
+            ))
+            # 重试次数同时记录在 LLM 调用上
+            record_rag_llm_call(
+                mode="invoke",
+                elapsed_ms=1500,
+                token_usage={"input": 300, "output": 80, "total": 380},
+                retry_count=1,
+            )
+        data = trace.to_dict()
+        node = data["nodes"][0]
+        self.assertEqual(node["node_name"], "architecture")
+        self.assertEqual(node["duration_ms"], 1500)
+        self.assertEqual(node["llm_ms"], 1200)
+        self.assertEqual(node["rag_ms"], 90)
+        self.assertEqual(node["retry_count"], 1)
+        self.assertEqual(node["output_size"], 2048)
+        self.assertEqual(node["model"], "qwen-max")
+        self.assertEqual(data["summary"]["node_calls"], 1)
+        self.assertEqual(data["summary"]["node_ms"], 1500)
+        self.assertEqual(data["summary"]["llm_retry_count"], 1)
+        self.assertEqual(data["llm_calls"][0]["retry_count"], 1)
+
     def test_record_helpers_are_noop_without_request_scope(self):
         """命令行分片预览等非请求代码没有 trace 时，记录函数不应报错。"""
         self.assertFalse(record_rag_retrieval("retrieve", [], [], 0))
         self.assertFalse(record_rag_context("load", 0, 0, 0, 0))
         self.assertFalse(record_rag_llm_call("invoke", 0, None))
         self.assertFalse(record_rag_warning("code", "message"))
+        self.assertFalse(record_node_call(
+            "architecture",
+            started_at="", completed_at="", duration_ms=0,
+        ))
 
     def test_warning_is_recorded_into_trace(self):
         """hash 降级等告警应进入 Trace 的 warnings 列表，供离线排查。"""

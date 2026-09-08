@@ -65,18 +65,6 @@ class GenerationState(TypedDict, total=False):
     architecture_plan: dict
     complexity_profile: dict
     architecture_diag: dict
-    floor_plan_design_diag: dict
-    floor_plan: dict
-    floor_plan_svg: str
-    floor_plan_svgs: dict[str, str]
-    floor_plan_validation: list[dict]
-    floor_plan_notice: str
-    floor_plan_feedback: str
-    floor_plan_revision: int
-    floor_plan_auto_repair_count: int
-    floor_plan_auto_repairing: bool
-    floor_plan_review_status: str  # "pending" | "revise" | "approved"
-    floor_plan_review_history: list[dict]
     material_plan: dict
     material_diag: dict
 
@@ -96,17 +84,6 @@ class GenerationState(TypedDict, total=False):
     spatial_invariants: dict
     suggested_components: list[str]  # 骨架节点建议的组件列表
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
-    body_gate_reports: list[dict]
-    deterministic_body_complete: bool
-
-    # ── Layer 0.5: 第二次风格确认与装饰装配 ──
-    style_review_status: str  # "pending" | "revise" | "approved"
-    style_package_id: str
-    style_feedback: str
-    style_revision: int
-    decor_ir: dict
-    style_gate_report: dict
-    decor_diag: dict
 
     # ── Layer 1: 组件分片（并行）──
     # 以下 legacy 分片字段已不再写入，仅保留用于旧 checkpoint 的读侧兜底；

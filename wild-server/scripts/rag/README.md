@@ -60,12 +60,31 @@ RAG Loader 的职责到“找出并组装知识上下文”为止；真正生成
 | `inspect_chunks_demo.py` | 分片展示 | 与上一个脚本相近，但报告更详细 | 不能计算召回率；功能有部分重复 |
 | `eval_retrieval.py` | 检索质量 | 真实/临时索引的 Hit@K、Recall@K、MRR 和命中明细 | Agent 召回后是否真的采用知识 |
 | `check_sync_status.py` | 运行状态 | 当前服务 Loader 和同步数量 | 分片或召回质量 |
+| `migrate_embedding_index.py` | 模型迁移 | 单条探针、离线索引审计、独立新集合构建和完整性校验 | 不自动修改 `.env` 或切换线上流量 |
 | `calibrate_retrieval_gate.py` | 门控校准 | 正负样本距离下的建议阈值和误判率 | 不能替代生产 Embedding 实跑 |
 | `check_rag_quality_gate.py` | CI 门禁 | 机器可读评测是否达到固定基线 | 不评价最终回答忠实度 |
 | `judge_rag_answer.py` | 回答质量 | Relevance、Faithfulness、引用质量辅助分 | 不能代替权限和确定性校验 |
 | `summarize_rag_traces.py` | 线上观测汇总 | 空召回、平均距离、P95、Token、成本和反馈 | 不评价单条回答是否正确 |
 
 推荐把 `inspect_knowledge_chunks.py` 当作主要分片工具；`inspect_chunks_demo.py` 暂时保留用于查看更完整的展示报告，不必两个都跑。
+
+### 2.1 切换 Embedding 模型
+
+不要先启动全量建库。按下面顺序执行：
+
+```powershell
+# 只检查候选模型的标准 /embeddings 请求，不打开 Chroma
+.\.venv\Scripts\python.exe -m scripts.rag.migrate_embedding_index probe
+
+# 后端无法启动时，纯离线检查现有集合、签名和文件覆盖
+.\.venv\Scripts\python.exe -m scripts.rag.migrate_embedding_index status
+
+# 探针成功后，构建独立新集合；不会覆盖当前正式集合
+.\.venv\Scripts\python.exe -m scripts.rag.migrate_embedding_index build `
+  --collection-name wild_knowledge_base_new_model_v1
+```
+
+新集合完成数量校验后，脚本才会打印应写入 `.env` 的 `RAG__COLLECTION_NAME`。先评测，再切换；回滚时模型配置和 collection 名必须一起恢复。
 
 `eval_retrieval.py` 即使遇到异常也会先生成排错报告，但只要任一查询发生 embedding 或网络异常，进程就会返回非 0。此时报告中的指标不能作为召回率基线，应先解决异常后重新运行。
 

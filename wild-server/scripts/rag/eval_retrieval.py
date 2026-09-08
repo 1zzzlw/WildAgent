@@ -258,6 +258,9 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Any | None]:
         namespace=args.namespace,
         # 所有临时索引都必须在本次运行中构建；正式索引只在显式授权时同步。
         auto_sync=use_temporary_index or args.sync_index,
+        # --sync-index 是操作者对正式集合原地重建的显式授权；默认只读和临时
+        # 集合都不需要、也不允许误删已有正式集合。
+        allow_destructive_rebuild=bool(args.sync_index and not use_temporary_index),
     )
     if not use_temporary_index and not args.sync_index:
         attach_existing_collection_read_only(loader)
@@ -274,9 +277,8 @@ def build_loader(args: argparse.Namespace) -> tuple[RAGSpecLoader, Any | None]:
 def attach_existing_collection_read_only(loader: RAGSpecLoader) -> None:
     """只打开已有集合，并在签名不兼容时停止，而不是让 Loader 自动重建。
 
-    生产 Loader 的 ``_get_collection()`` 会在 embedding 或分片签名变化时删除旧集合
-    后重建，这是服务启动同步时的正确行为，却不适合默认评测。评测脚本因此先安全
-    挂载已有集合；需要重建时必须显式选择临时索引或 ``--sync-index``。
+    评测脚本先安全挂载已有集合；需要重建时必须显式选择临时索引或
+    ``--sync-index``。普通服务启动同样不会因签名变化自动删除旧集合。
     """
     try:
         import chromadb

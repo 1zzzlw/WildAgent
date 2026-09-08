@@ -14,7 +14,6 @@ from app.agent.execution_plan import (
     build_execution_plan,
     next_ready_step,
     plan_is_complete,
-    reset_plan_from,
     update_plan_step,
     validate_execution_plan,
 )
@@ -194,7 +193,22 @@ async def execution_planner(state: GenerationState) -> dict:
                 logger.warning("[execution_planner] 执行计划定向格式恢复成功")
     except Exception as exc:
         planner_error = str(exc)
-        logger.warning(f"[execution_planner] 模型计划失败，使用任务语义回退: {exc}")
+        logger.warning(f"[execution_planner] 模型计划失败，已阻断: {exc}")
+        from app.agent.model_errors import model_failure_result
+        block = model_failure_result(exc)
+        return {
+            **block,
+            "execution_plan_status": "failed",
+            "execution_plan_review_status": "rejected",
+            "execution_plan_diag": {
+                "source": "model_service_failure",
+                "task_count": 0,
+                "error": planner_error,
+                "total_ms": int((time.time() - started) * 1000),
+            },
+            "current_plan_step_id": "",
+            "plan_next_node": "",
+        }
 
     plan = build_execution_plan(
         request_id=str(state.get("request_id") or "unknown"),
@@ -258,6 +272,18 @@ async def execution_planner(state: GenerationState) -> dict:
 
 def execution_plan_validator(state: GenerationState) -> dict:
     """在人工审核前验证白名单、依赖图和建筑必要步骤。"""
+
+    terminal = state.get("terminal_model_error")
+    if terminal:
+        return {
+            "terminal_model_error": terminal,
+            "execution_plan_status": "failed",
+            "execution_plan_validation": [{
+                "code": "model_service_error",
+                "message": str(terminal.get("user_message") or "模型服务不可用"),
+            }],
+            "error": str(terminal.get("user_message") or "模型服务不可用"),
+        }
 
     intent = str(state.get("intent") or "generate")
     plan = deepcopy(state.get("execution_plan") or {})
@@ -439,45 +465,16 @@ def complete_execution_step(
             else str(result.get("error") or "总体方案未完成")
         )
         result_ref = "architecture_plan"
-    elif step_type == "floor_plan_design":
-        success = isinstance(result.get("floor_plan"), dict)
-        detail = f"已生成平面；{len(result.get('floor_plan_validation', []))} 项待处理"
-        result_ref = "floor_plan"
-    elif step_type == "floor_plan_review":
-        approved = result.get("floor_plan_review_status") == "approved"
-        if not approved:
-            return {
-                "execution_plan": reset_plan_from(plan, "floor_plan_design"),
-                "current_plan_step_id": "",
-            }
-        success = True
-        detail = "用户已确认平面"
-    elif step_type == "style_review":
-        approved = result.get("style_review_status") == "approved"
-        if not approved:
-            return {
-                "execution_plan": reset_plan_from(plan, "style_review"),
-                "current_plan_step_id": "",
-            }
-        success = True
-        detail = f"用户已确认风格：{result.get('style_package_id', '')}"
     elif step_type == "skeleton":
-        success = result.get("deterministic_body_complete") is True and not result.get(
+        success = isinstance(result.get("skeleton_blueprint"), dict) and not result.get(
             "error"
         )
         detail = (
-            "确定性主体与 G1-G6 已完成"
+            "LLM 主体骨架与组件建议已完成"
             if success
-            else str(result.get("error") or "主体装配未完成")
+            else str(result.get("error") or "主体骨架生成未完成")
         )
         result_ref = "skeleton_blueprint"
-    elif step_type == "decor_assembly":
-        detail = (
-            "Decor IR 与 G7 已完成"
-            if success
-            else str(result.get("error") or "装饰装配失败")
-        )
-        result_ref = "decor_ir"
     elif step_type == "merge":
         success = isinstance(result.get("merged_blueprint"), dict) and not result.get(
             "error"

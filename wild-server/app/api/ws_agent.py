@@ -30,7 +30,6 @@ Agent WebSocket API
   thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
   execution_plan_ready:{ "type": "execution_plan_ready", "request_id": "...", "plan": {...} }
   execution_plan_review_required: { "type": "execution_plan_review_required", "request_id": "...", "plan": {...} }
-  floor_plan_ready:    { "type": "floor_plan_ready", "request_id": "...", "floor_plan": {...}, "svg": "<svg...>" }
   blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
   error:               { "type": "error", "request_id": "...", "error": "..." }
@@ -44,7 +43,7 @@ Agent WebSocket API
 - 前端每 15s 发送 ping，后端立即回复 pong
 - 后端监控（WebSocketHeartbeat）：空闲时超过 90s 未收到任何消息 → 发送 network_error → 关闭连接
   （90s 是为了兼容浏览器后台标签页对 setInterval 的节流，浏览器通常节流到 ~60s）
-- AI 查询处理期间（is_processing=True）不触发心跳超时，避免长时间 LLM 调用被误判为断连
+- 持久化生成任务运行期间由 GenerationJobService 动态探针豁免超时；旧直连处理仍使用 is_processing
 - user_message 改为后台任务执行（asyncio.create_task），确保接收循环不被阻塞，ping 能及时响应
 - 同一时间只允许一条 user_message 在处理中（asyncio.Lock），并发请求会收到错误提示
 - 前端收到 network_error 后通过 ElNotification 弹窗提示用户
@@ -68,10 +67,10 @@ from app.agent.rag_security import (
 from app.agent.rag_trace import (
     rag_trace_scope,
     record_final_answer,
+    record_node_call,
     record_rag_error,
     record_rag_safety,
 )
-from app.agent.spatial_plan import is_confirmable_spatial_plan
 from app.services.agent_service import agent_service
 from app.services.agent_delivery import (
     ArtifactSaveError,
@@ -84,6 +83,12 @@ from app.extensions.presence import presence_service
 from app.utils.ws_heartbeat import WebSocketHeartbeat
 
 router = APIRouter()
+
+
+def _utc_now_iso() -> str:
+    """当前 UTC 时间的 ISO 字符串，用于节点观测记录。"""
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
 async def _send_event(ws: WebSocket, payload: dict) -> None:
@@ -176,31 +181,6 @@ async def _emit_thinking_status(
         "session_id": session_id,
         "status": status,
         "content": content,
-    })
-
-
-async def _emit_floor_plan_ready(
-    ws: WebSocket,
-    request_id: str,
-    session_id: str,
-    *,
-    floor_plan: dict,
-    svg: str,
-    svgs: dict[str, str],
-    validation: list[dict],
-    notice: str = "",
-) -> None:
-    """推送由 FloorPlanIR 确定性绘制的完整楼层预览。"""
-    await _send_event(ws, {
-        "type": "floor_plan_ready",
-        "request_id": request_id,
-        "session_id": session_id,
-        "floor_plan": floor_plan,
-        "svg": svg,
-        "svgs": svgs,
-        "validation": validation,
-        "notice": notice,
-        "continues_generation": False,
     })
 
 
@@ -362,7 +342,11 @@ async def agent_websocket(ws: WebSocket):
     )
 
     # ---------- 心跳监控 ----------
-    heartbeat = WebSocketHeartbeat(timeout=90, check_interval=10)
+    heartbeat = WebSocketHeartbeat(
+        timeout=90,
+        check_interval=10,
+        processing_probe=lambda: generation_job_service.has_running_job_for(ws),
+    )
     connection_alive = True
 
     async def on_heartbeat_timeout(elapsed: float):
@@ -455,63 +439,6 @@ async def agent_websocket(ws: WebSocket):
                     session_id=str(data.get("session_id") or ""),
                     after_seq=int(data.get("last_event_seq") or 0),
                 )
-
-            elif msg_type == "floor_plan_review":
-                feedback = str(data.get("feedback") or "")
-                if config.rag.security.pii_redaction_enabled:
-                    feedback, _ = redact_pii(feedback)
-                try:
-                    resumed_job = await generation_job_service.submit_floor_plan_review(
-                        ws,
-                        request_id=str(data.get("request_id") or ""),
-                        session_id=str(data.get("session_id") or ""),
-                        action=str(data.get("action") or ""),
-                        feedback=feedback,
-                    )
-                    await _send_event(ws, {
-                        "type": "generation_resumed",
-                        "request_id": resumed_job.request_id,
-                        "session_id": resumed_job.session_id,
-                        "status": resumed_job.status,
-                        "last_event_seq": resumed_job.last_event_seq,
-                    })
-                except ValueError as exc:
-                    await _send_event(ws, {
-                        "type": "error",
-                        "request_id": data.get("request_id"),
-                        "session_id": data.get("session_id"),
-                        "code": "floor_plan_review_rejected",
-                        "error": str(exc),
-                    })
-
-            elif msg_type == "style_review":
-                feedback = str(data.get("feedback") or "")
-                if config.rag.security.pii_redaction_enabled:
-                    feedback, _ = redact_pii(feedback)
-                try:
-                    resumed_job = await generation_job_service.submit_style_review(
-                        ws,
-                        request_id=str(data.get("request_id") or ""),
-                        session_id=str(data.get("session_id") or ""),
-                        action=str(data.get("action") or ""),
-                        style_package_id=str(data.get("style_package_id") or ""),
-                        feedback=feedback,
-                    )
-                    await _send_event(ws, {
-                        "type": "generation_resumed",
-                        "request_id": resumed_job.request_id,
-                        "session_id": resumed_job.session_id,
-                        "status": resumed_job.status,
-                        "last_event_seq": resumed_job.last_event_seq,
-                    })
-                except ValueError as exc:
-                    await _send_event(ws, {
-                        "type": "error",
-                        "request_id": data.get("request_id"),
-                        "session_id": data.get("session_id"),
-                        "code": "style_review_rejected",
-                        "error": str(exc),
-                    })
 
             elif msg_type == "execution_plan_review":
                 feedback = str(data.get("feedback") or "")
@@ -613,17 +540,14 @@ _NODE_LABELS = {
     "chat": "知识问答",
     "patch": "场景修改",
     "planning_research": "计划研究",
+    "web_research": "网络研究",
     "planner": "执行计划",
     "plan_validator": "计划校验",
     "plan_review": "计划审核",
     "plan_executor": "计划调度",
     "architecture": "总体建筑方案",
-    "floor_plan_design": "平面设计",
-    "floor_plan_review": "平面审核",
     "material_plan": "材质方案",
     "skeleton": "主体装配",
-    "style_review": "风格确认",
-    "decor_assembly": "装饰装配",
     "merge": "合并", "final_validate": "最终校验", "callback": "修正",
 }
 # gen/val 标签动态生成: _node_label("door_gen") → "门·生成"
@@ -710,8 +634,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "max_plan_replans": 3,
         "max_retries": 3,
         "retry_count": 0,
-        "floor_plan_auto_repair_count": 0,
-        "floor_plan_auto_repairing": False,
         "component_fragments": {},
         "component_diagnostics": {},
         "style_revision": 0,
@@ -751,16 +673,17 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     resolved_intent = None
     node_outputs: dict[str, dict] = {}
     total_tokens = {"input": 0, "output": 0}
+    node_starts: dict[str, float] = {}  # 节点名 → perf_counter 起始点
+    node_started_isos: dict[str, str] = {}  # 节点名 → UTC 起始时间
     suggested_components = []  # 存储骨架节点建议的组件列表
 
     # 生成所有可能的节点名（gen + val + 固定节点）
     _COMP_TYPES = set(component_configs)
 
     _OUR_NODES = {
-        "classifier", "chat", "patch", "planning_research", "planner",
+        "classifier", "chat", "patch", "planning_research", "web_research", "planner",
         "plan_validator", "plan_review", "plan_executor", "architecture",
-        "floor_plan_design", "floor_plan_review", "material_plan", "skeleton",
-        "style_review", "decor_assembly", "merge", "final_validate", "callback",
+        "material_plan", "skeleton", "merge", "final_validate", "callback",
     }
 
     for ct in _COMP_TYPES:
@@ -786,16 +709,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "suggested_components", []
                 )
                 if snapshot.next:
-                    review = data.get("_floor_plan_review")
-                    style_review_decision = data.get("_style_review")
                     plan_review_decision = data.get("_execution_plan_review")
                     graph_input = (
                         Command(resume=plan_review_decision)
                         if "plan_review" in snapshot.next and isinstance(plan_review_decision, dict)
-                        else Command(resume=review)
-                        if "floor_plan_review" in snapshot.next and isinstance(review, dict)
-                        else Command(resume=style_review_decision)
-                        if "style_review" in snapshot.next and isinstance(style_review_decision, dict)
                         else None
                     )
                     logger.info(
@@ -844,22 +761,21 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
             # ── 节点开始 ──
             if kind == "on_chain_start":
+                node_starts[node_name] = time.perf_counter()
+                node_started_isos[node_name] = _utc_now_iso()
                 start_details = {
                     "classifier": "分析用户意图",
                     "chat": "RAG 检索知识库并生成回答",
                     "patch": "分析当前场景并生成修改提案",
                     "planning_research": "只读分析需求、当前场景和建筑知识",
+                    "web_research": "仅在本地知识不足且模型服务可用时检索外部资料",
                     "planner": "生成可审核的结构化执行计划",
                     "plan_validator": "检查能力白名单、依赖和安全门禁",
                     "plan_review": "等待用户批准或修改执行计划",
                     "plan_executor": "在节点边界吸收用户意见并调度下一步",
                     "architecture": "生成建筑方案候选并执行确定性评分",
-                    "floor_plan_design": "调用平面模型规划空间、流线、墙体和门窗",
-                    "floor_plan_review": "等待用户确认平面方案",
                     "material_plan": "解析材质角色并匹配受控 PBR 资产",
-                    "skeleton": "按确认平面确定性装配主体并执行 G1-G6",
-                    "style_review": "等待用户选择并确认建筑风格",
-                    "decor_assembly": "按风格包生成 Decor IR 并执行 G7",
+                    "skeleton": "生成主体骨架并输出组件建议清单",
                     "merge": "合并所有组件分片",
                     "final_validate": "执行最终校验流水线",
                     "callback": "修正失败组件",
@@ -878,6 +794,32 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 if not isinstance(node_output, dict):
                     node_output = {}
                 node_outputs[node_name] = node_output
+
+                # ── 请求级节点观测：墙钟耗时 + 子耗时分解 ──
+                # 每个 request 落一条节点记录到 RAGTrace.nodes，供耗时/重试归因。
+                node_started = node_starts.pop(node_name, None)
+                node_started_iso = node_started_isos.pop(node_name, None)
+                node_completed = time.perf_counter()
+                if node_started is not None:
+                    diag_for_trace = node_output.get(f"{node_name}_diag", {})
+                    if not isinstance(diag_for_trace, dict):
+                        diag_for_trace = {}
+                    try:
+                        record_node_call(
+                            node_name,
+                            started_at=node_started_iso or _utc_now_iso(),
+                            completed_at=_utc_now_iso(),
+                            duration_ms=round((node_completed - node_started) * 1000),
+                            llm_ms=diag_for_trace.get("llm_ms"),
+                            rag_ms=diag_for_trace.get("rag_ms"),
+                            token_usage=diag_for_trace.get("token_usage"),
+                            retry_count=diag_for_trace.get("retry_count", 0),
+                            output_size=len(json.dumps(node_output, ensure_ascii=False, default=str)),
+                            error=diag_for_trace.get("error"),
+                            model=getattr(config.chat, "name", None),
+                        )
+                    except Exception as exc:
+                        logger.warning(f"[{request_id}] 节点观测记录失败 ({node_name}): {exc}")
 
                 # skeleton：提取组件建议
                 if node_name == "skeleton":
@@ -916,11 +858,19 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "edit": "修改场景",
                         "chat": "知识问答",
                     }.get(intent, intent)
+                    classifier_error = node_output.get("terminal_model_error")
                     await send_step(
-                        "generating", node_name, "done", label,
-                        f"意图：{intent_label} · "
-                        f"置信度 {float(confidence):.0%} · "
-                        f"{node_output.get('intent_reason', '')}",
+                        "generating",
+                        node_name,
+                        "error" if classifier_error else "done",
+                        label,
+                        (
+                            str(classifier_error.get("user_message") or "意图分类模型不可用")
+                            if isinstance(classifier_error, dict)
+                            else f"意图：{intent_label} · "
+                            f"置信度 {float(confidence):.0%} · "
+                            f"{node_output.get('intent_reason', '')}"
+                        ),
                     )
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
@@ -1009,14 +959,33 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             **research_diag,
                         })
 
+                elif node_name == "web_research":
+                    research_diag = node_output.get("web_research_diag", {})
+                    blocked = research_diag.get("reason") == "blocked_by_terminal_model_error"
+                    await send_step(
+                        "planning",
+                        node_name,
+                        "skipped" if blocked else "done",
+                        label,
+                        (
+                            "上游模型服务不可用，已跳过网络研究"
+                            if blocked
+                            else f"检索 {research_diag.get('search_count', 0)} 条 · "
+                            f"可用声明 {research_diag.get('usable_count', 0)} 条"
+                        ),
+                    )
+
                 elif node_name == "planner":
                     plan = node_output.get("execution_plan", {})
                     diag = node_output.get("execution_plan_diag", {})
+                    planner_error = node_output.get("error")
                     await send_step(
-                        "planning", node_name, "done", label,
-                        f"计划 v{plan.get('version', 1)} · "
-                        f"{len(plan.get('dynamic_tasks', []))} 项本次任务 · "
-                        f"{len(plan.get('steps', []))} 步安全主流程",
+                        "planning", node_name, "error" if planner_error else "done", label,
+                        str(planner_error) if planner_error else (
+                            f"计划 v{plan.get('version', 1)} · "
+                            f"{len(plan.get('dynamic_tasks', []))} 项本次任务 · "
+                            f"{len(plan.get('steps', []))} 步安全主流程"
+                        ),
                     )
                     if diag:
                         await send_debug("node", {
@@ -1065,48 +1034,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             "plan": plan,
                         })
 
-                elif node_name == "floor_plan_design":
-                    floor_plan = node_output.get("floor_plan", {})
-                    floor_diag = node_output.get("floor_plan_design_diag", {})
-                    summary = floor_diag.get("floor_plan", {})
-                    await send_step(
-                        "generating", node_name, "done", label,
-                        f"{summary.get('level_count', '?')} 层 · "
-                        f"{summary.get('space_count', '?')} 个空间 · "
-                        f"{len(node_output.get('floor_plan_validation', []))} 项待处理",
-                    )
-                    floor_plan_svg = str(node_output.get("floor_plan_svg") or "")
-                    if floor_plan_svg:
-                        await _emit_floor_plan_ready(
-                            ws,
-                            request_id,
-                            session_id,
-                            floor_plan=floor_plan,
-                            svg=floor_plan_svg,
-                            svgs=node_output.get("floor_plan_svgs", {}),
-                            validation=node_output.get("floor_plan_validation", []),
-                            notice=str(node_output.get("floor_plan_notice") or ""),
-                        )
-                    await send_debug("node", {
-                        "node": node_name,
-                        "label": label,
-                        "stage": "done",
-                        **floor_diag,
-                    })
-
-                elif node_name == "floor_plan_review":
-                    approved = node_output.get("floor_plan_review_status") == "approved"
-                    automatic = node_output.get("floor_plan_auto_repairing") is True
-                    await send_step(
-                        "generating",
-                        node_name,
-                        "done",
-                        label,
-                        "用户已确认，继续生成三维" if approved
-                        else "工程预审未通过，正在自动修改平面" if automatic
-                        else "已收到修改意见，重新生成平面",
-                    )
-
                 elif node_name == "material_plan":
                     material_diag = node_output.get("material_diag", {})
                     await send_step(
@@ -1129,39 +1056,19 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         )
                     else:
                         ec = diag.get("element_count", "?")
-                        cc = diag.get("component_count", "?")
+                        suggested = node_output.get("suggested_components") or []
                         await send_step(
                             "generating", node_name, "done", label,
-                            f"{ec} 元素 + {cc} 组件 · G1-G6 全部通过 · 确定性装配",
+                            f"已生成 {ec} 个主体元素 · 建议 {len(suggested)} 类后续组件",
                         )
                         await send_debug("node", {
                             "node": node_name, "label": label, "stage": "done",
-                            "llm_ms": 0,
+                            "llm_ms": diag.get("llm_ms"),
                             "token_usage": diag.get("token_usage"),
                             "element_count": diag.get("element_count"),
-                            "component_count": diag.get("component_count"),
-                            "gate_reports": diag.get("gate_reports", []),
+                            "suggested_components": suggested,
+                            "deterministic_fallback": diag.get("deterministic_fallback", False),
                             "total_ms": diag.get("total_ms"),
-                        })
-                elif node_name == "style_review":
-                    approved = node_output.get("style_review_status") == "approved"
-                    await send_step(
-                        "generating", node_name, "done", label,
-                        f"已确认风格：{node_output.get('style_package_id')}" if approved else "已收到风格修改意见",
-                    )
-                elif node_name == "decor_assembly":
-                    decor_diag = node_output.get("decor_diag", {})
-                    await send_step(
-                        "generating", node_name,
-                        "error" if node_output.get("error") else "done",
-                        label,
-                        node_output.get("error") or f"{decor_diag.get('operation_count', 0)} 项参数化操作 · G7 通过",
-                    )
-                    if decor_diag:
-                        all_diags[node_name] = decor_diag
-                        await send_debug("node", {
-                            "node": node_name, "label": label, "stage": "done",
-                            **decor_diag,
                         })
                 elif node_name == "merge":
                     merged = node_output.get("merged_blueprint", {})
@@ -1342,63 +1249,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         })
         raise GenerationPaused()
 
-    if "floor_plan_review" in snapshot.next:
-        values = snapshot.values or {}
-        floor_plan = values.get("floor_plan") or {}
-        revision = int(values.get("floor_plan_revision") or 0)
-        can_confirm = is_confirmable_spatial_plan(
-            floor_plan,
-            values.get("floor_plan_validation"),
-        )
-        await send_step(
-            "reviewing",
-            "floor_plan_review",
-            "done",
-            "平面审核",
-            "等待确认；也可以在输入框继续提交修改意见",
-        )
-        await generation_job_service.mark_waiting_for_review(request_id, "floor_plan")
-        await _send_event(ws, {
-            "type": "floor_plan_review_required",
-            "request_id": request_id,
-            "session_id": session_id,
-            "revision": revision,
-            "can_confirm": can_confirm,
-            "fallback_reason": floor_plan.get("fallback_reason", ""),
-            "notice": values.get("floor_plan_notice", ""),
-        })
-        raise GenerationPaused()
-
-    if "style_review" in snapshot.next:
-        from app.agent.plan2build.style_registry import style_registry
-
-        values = snapshot.values or {}
-        selected = str(values.get("style_package_id") or "") or style_registry.infer(
-            str(values.get("user_message") or "")
-        )
-        packages = style_registry.recommend(
-            str(values.get("user_message") or ""),
-            values.get("architecture_plan"),
-            include_id=selected,
-        )
-        await send_step(
-            "reviewing",
-            "style_review",
-            "done",
-            "风格确认",
-            "主体 G1-G6 已通过；选择风格后才会装配装饰并交付三维",
-        )
-        await generation_job_service.mark_waiting_for_review(request_id, "style")
-        await _send_event(ws, {
-            "type": "style_review_required",
-            "request_id": request_id,
-            "session_id": session_id,
-            "revision": int(values.get("style_revision") or 0),
-            "selected_style_id": selected,
-            "options": style_registry.public_options(packages),
-        })
-        raise GenerationPaused()
-
     if not snapshot.next and snapshot.values:
         # plan_executor 是最后一个调度节点时，业务产物在完整 checkpoint 中。
         final_state = dict(snapshot.values)
@@ -1515,6 +1365,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             error_event["error_category"] = terminal_model_error.get("category")
             error_event["retryable"] = terminal_model_error.get("retryable", False)
         await _send_event(ws, error_event)
+        if thinking_mode:
+            await send_thinking_status("error", upstream_failure)
         await send_step(
             "finished", "finished", "error", "生成失败", upstream_failure,
         )
@@ -1632,6 +1484,9 @@ def _detect_building_type(message: str) -> str:
 
 def _generation_failure_message(node_outputs: dict, final_state: dict) -> str:
     """优先返回真实上游错误，避免骨架失败被笼统的 Blueprint 缺失覆盖。"""
+    terminal_model_error = final_state.get("terminal_model_error")
+    if isinstance(terminal_model_error, dict) and terminal_model_error.get("user_message"):
+        return str(terminal_model_error["user_message"])
     return (
         node_outputs.get("skeleton", {}).get("error")
         or node_outputs.get("merge", {}).get("error")

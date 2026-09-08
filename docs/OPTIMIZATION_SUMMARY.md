@@ -1,5 +1,7 @@
 # WildAgent 两轮优化总结（LangGraph 生成链路 + 知识库/RAG）
 
+> 历史说明（2026-09-08）：本文记录 2026-08-29 当时的实现与验证结果。当前主图已经移除 FloorPlanIR/ApprovedPlanAssembler 链，不能用本文的节点拓扑判断现状；请以 [`ARCHITECTURE.md`](ARCHITECTURE.md) 和代码为准。
+
 > 本文档记录 2026-08-29 完成的两轮优化：**第一轮针对 LangGraph 建筑生成链路**（降低出错率 + 提升精细度），**第二轮针对知识库内容与 RAG 契约**（消除冲突 + 补齐缺口）。全文按"**问题 → 改动 → 验证**"组织，改动均未触碰 `graph.py` 拓扑和 `ws_agent.py` 协议，可逐文件回滚。
 >
 > 最终验证：核心测试套件 7 个目录全绿（`agent/blueprint/components/misc/network/repair/validators` 共 354 passed），RAG 单测 45 passed，RAG 评测 Hit@5=85.7% / Recall@5=85.7% / MRR=0.730。
@@ -288,6 +290,32 @@ Hit@5=85.7%   Recall@5=85.7%   MRR=0.730   空召回 0/60 (0.0%)   异常 0
 
 - 用 qwen3.7-text-embedding + 临时索引跑 60 题：**别名改写开启（文本污染）Hit@5=89.3%**，**关闭 Hit@5=96.4%**。结论：把同义词拼进查询文本会拉偏语义重心，属于净伤害；最终方案保持查询原文，只做粗粒度过滤补全。
 - 本环境 DashScope 免费额度在验证中耗尽（`AllocationQuota.FreeTierOnly`），最终方案的完整真实 embedding 评测留待有额度时重跑；hash 模式（85.7%）保持基线，作为 CI 回归基准。
+
+### 平面设计完整度提升（2026-09-01）
+
+针对"生成的平面空间太少、像两区空壳"的问题，三处收敛：
+
+1. **Prompt 硬规则重写**（`app/agent/prompts.py`）：第 9 条从"最小两区"改为"按建筑类型生成完整功能分区"，居住类每层 ≥3 功能区、面积允许细分到 4~6 个；JSON 示例从 2 空间改为 4 空间（起居/卧室/厨房/卫生间）+ 3 面墙 + 3 扇门。
+2. **确定性兜底升级**（`app/agent/spatial_plan.py`）：`deterministic_baseline_spatial_plan` 从固定两区改为按面积自适应——≥40㎡ 四区（起居/卧室/厨房/卫生间）、≥20㎡ 三区（起居/卧室/厨卫）、<20㎡ 两区。新增 `_fill_three_zone_baseline` / `_fill_four_zone_baseline` / `_door_spec` 辅助。
+3. **电梯修复与多房间模板兼容**（`app/agent/floor_plan_rules.py`）：`_elevator_polygon` 井道改为紧贴外墙角（不留内边距），避免切进内部分隔墙产生墙边空洞；修复后重新吸附内墙。
+
+验证：确定性模板 4 空间 / 4 墙 / 3 门校验通过；电梯修复后四区模板保持完整（新增 `test_four_zone_baseline_survives_elevator_repair`）。
+
+### 模型不可用即阻断（2026-09-02，方案 A）
+
+针对"无大模型时系统静默产出确定性模板"的问题（执行计划显示"语义回退计划"、平面显示"确定性基础方案"，无额度模型也能完整生成），改为**模型服务故障即阻断**：
+
+1. **新增 `model_failure_result`**（`app/agent/model_errors.py`）：LLM 异常经 `classify_model_error` 识别为服务级故障时返回 `terminal_model_error` + `status=failed`。
+2. **六个 LLM 节点 except 阻断**（execution_planner / architecture / floor_plan_design / floor_space_analysis / floor_layout / floor_openings）：模型调用抛异常即阻断，不再回退 `_fallback_*` 模板；仅"模型可用但输出不合法"才走确定性兜底。
+3. **`execution_plan_validator` 透传**：state 已有 terminal_model_error 时直接 failed。
+4. **graph 路由短路**：`_after_architecture` / `_after_planned_step` 在 terminal_model_error 时短路到 `__end__`，条件边补 `"__end__": END`。
+5. **前端**（`agentBridge.ts`）：`case 'error'` 新增 `model_service_error` 分支，按 retryable 提示并 `completeTurn('error')`。
+6. **分类入口阻断**：意图分类失败会保留只读诊断结果，但正式 LangGraph 写入 `terminal_model_error` 并直接结束；不再把 `NotFoundError` 降级成“生成建筑，65%”。
+7. **网络研究防误触发**：分类错误不会进入计划研究；`web_research_node` 也增加上游失败守卫，保证不创建搜索客户端。
+8. **计划层有限出口**：计划模型失败直接结束，不再把空计划交给校验；计划校验失败直接结束，不自动回到规划器。
+9. **执行面板状态闭合**：`web_research` 纳入正式节点事件，计划模型失败显示为失败而非“0 项任务，已完成”。
+
+历史基线验证：全量 472 passed；新增 `test_model_service_block.py`；`test_floor_plan_plan_mode` 改 mock 空内容走确定性兜底；`test_agent_graph_execution` 补新节点 mock。2026-09-02 新增的分类短路、网络零调用和计划失败终止用例已完成语法检查，但当前主机的 Windows Winsock `WinError 10106` 阻止 pytest 进入断言阶段，需在 Jenkins/Linux 或主机网络栈恢复后重跑。
 
 ---
 

@@ -1,0 +1,23 @@
+{
+  "user_message": "生成一个两层现代别墅，一层客厅厨房，二层两个卧室",
+  "request_id": "studio-villa-001",
+  "session_id": "studio-villa-001",
+  "building_type": "villa",
+  "current_blueprint": null,
+  "selection": [],
+  "recent_messages": [],
+  "workflow_state": "idle",
+  "thinking_mode": true,
+  "procedural_materials_enabled": false,
+  "plan_mode": false,
+  "execution_plan_history": [],
+  "plan_replan_count": 0,
+  "max_plan_replans": 3,
+  "max_retries": 3,
+  "retry_count": 0,
+  "floor_plan_auto_repair_count": 0,
+  "floor_plan_auto_repairing": false,
+  "floor_plan_revision": 0,
+  "floor_plan_review_history": [],
+  "status": "running"
+}

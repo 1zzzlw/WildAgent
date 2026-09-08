@@ -35,9 +35,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         if isinstance(execution_plan, dict)
         else ""
     )
-    revision_feedback = str(
-        state.get("plan_feedback") or plan_feedback or state.get("floor_plan_feedback") or ""
-    ).strip()
+    revision_feedback = str(state.get("plan_feedback") or plan_feedback or "").strip()
     complexity_profile = resolve_complexity_profile(
         user_message,
         precision_mode=thinking_mode,
@@ -47,7 +45,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         if plan_feedback:
             revision_note = "根据已批准执行计划生成或调整总体方案"
         elif revision_feedback:
-            revision_note = "根据平面修改意见调整总体方案"
+            revision_note = "根据计划修改意见调整总体方案"
         else:
             revision_note = "生成总体方案"
         await on_reasoning_delta(
@@ -148,7 +146,9 @@ async def architecture_planner(state: GenerationState) -> dict:
                 logger.warning("[architecture] 总体方案定向格式恢复成功")
     except Exception as exc:
         error = str(exc)
-        logger.warning(f"[architecture] 方案模型调用失败，使用确定性回退: {exc}")
+        logger.warning(f"[architecture] 模型服务故障，已阻断: {exc}")
+        from app.agent.model_errors import model_failure_result
+        return model_failure_result(exc)
 
     plan, selection_diag = select_architecture_plan(
         raw_plan,

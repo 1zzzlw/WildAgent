@@ -16,7 +16,7 @@ from app.agent.rag_security import AccessContext
 from app.extensions.presence import WebSocketConnectionRegistry
 from app.agent.intent_classifier import IntentDecision
 from app.services.agent_service import QueryResult
-from app.services.generation_job_service import GenerationJob
+from app.services.generation_job_service import GenerationJob, GenerationJobService
 
 
 def _intent_decision(intent: str) -> IntentDecision:
@@ -52,54 +52,17 @@ def test_server_normalizes_recent_intent_context():
 
 
 class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
-    async def test_floor_plan_review_receives_immediate_resume_ack(self):
-        class ReviewWebSocket:
-            def __init__(self):
-                self.accept = AsyncMock()
-                self.send_json = AsyncMock()
-                self.receive_count = 0
+    async def test_running_durable_job_is_visible_to_heartbeat_probe(self):
+        service = GenerationJobService()
+        subscriber = object()
+        task = Mock()
+        task.done.return_value = False
+        service._subscribers["req_running"] = {id(subscriber): subscriber}
+        service._active_tasks["req_running"] = task
 
-            async def receive_text(self):
-                self.receive_count += 1
-                if self.receive_count == 1:
-                    return json.dumps({
-                        "protocol_version": "1.0",
-                        "type": "floor_plan_review",
-                        "request_id": "req_review_ack",
-                        "session_id": "session_review_ack",
-                        "action": "revise",
-                        "feedback": "把厨房移到北侧",
-                    })
-                raise WebSocketDisconnect()
-
-        job = GenerationJob(
-            request_id="req_review_ack",
-            session_id="session_review_ack",
-            payload={},
-            status="running",
-            last_event_seq=8,
-        )
-        ws = ReviewWebSocket()
-        with (
-            patch(
-                "app.api.ws_agent.generation_job_service.submit_floor_plan_review",
-                AsyncMock(return_value=job),
-            ) as submit_review,
-            patch(
-                "app.api.ws_agent.generation_job_service.detach",
-                AsyncMock(),
-            ),
-        ):
-            await agent_websocket(ws)
-
-        submit_review.assert_awaited_once()
-        ack = next(
-            call.args[0]
-            for call in ws.send_json.await_args_list
-            if call.args[0].get("type") == "generation_resumed"
-        )
-        self.assertEqual(ack["status"], "running")
-        self.assertEqual(ack["last_event_seq"], 8)
+        self.assertTrue(service.has_running_job_for(subscriber))
+        task.done.return_value = True
+        self.assertFalse(service.has_running_job_for(subscriber))
 
     async def test_incompatible_protocol_version_is_rejected(self):
         class IncompatibleWebSocket:

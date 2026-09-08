@@ -86,6 +86,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             patch(
                 "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
+                create=True,  # RAG 关闭时 spec_loader 是 FileSpecLoader（无 load_many）
             ),
         ):
             result = await callback_node(state)
@@ -124,6 +125,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             patch(
                 "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
+                create=True,  # RAG 关闭时 spec_loader 是 FileSpecLoader（无 load_many）
             ),
         ):
             result = await callback_node(state)
@@ -204,6 +206,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             patch(
                 "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
+                create=True,  # RAG 关闭时 spec_loader 是 FileSpecLoader（无 load_many）
             ),
         ):
             result = await callback_node(state)
@@ -260,6 +263,7 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             patch(
                 "app.services.agent_service.agent_service.spec_loader.load_many",
                 return_value="",
+                create=True,  # RAG 关闭时 spec_loader 是 FileSpecLoader（无 load_many）
             ),
         ):
             result = await callback_node(state)

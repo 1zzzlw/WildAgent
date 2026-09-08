@@ -1,6 +1,6 @@
 # WildAgent 架构说明
 
-最后核对：2026-08-25。
+最后核对：2026-09-08。
 
 ## 1. 产品与边界
 
@@ -20,10 +20,10 @@ WildAgent 是 AI 辅助的参数化 3D 建筑编辑器。AI 负责理解需求�
         │
         ├── WebSocket ──> wild-server Agent
         │                    ├── 意图分类
-        │                    ├── RAG + 建筑方案候选/评分
-        │                    ├── 已确认平面 → 确定性主体装配（G1-G6）
-        │                    ├── 风格确认 → Decor IR 装配（G7）
-        │                    ├── 全量确定性校验/修正
+        │                    ├── 可选执行计划研究、审核与白名单调度
+        │                    ├── RAG + 总体方案 + 材质方案
+        │                    ├── LLM 主体骨架 + 动态组件生成/校验
+        │                    ├── 合并 + 全量校验/有限修正
         │                    └── Blueprint / ScenePatch
         │
         └── ScenePatch ──> sceneStore ──> Blueprint
@@ -71,6 +71,7 @@ patch_id + base_revision + source + mode + operations
 - 浏览器保留消息和 Agent Turn 的本地副本，服务器快照是刷新及跨设备恢复入口。
 - 同一会话的 Turn 快照按发送顺序串行写入，避免旧 `running` 快照覆盖新 `completed` 状态。
 - 页面刷新遗留的本地 `running` Turn 会恢复为“已中断”；服务重启后，不属于当前服务实例的服务端 `running` Turn 也会被标记为中断。
+- 持久化生成任务携带 `_pipeline_version`。服务升级后，仍停在旧 Graph 拓扑的运行中或待审核任务会被标记失败并提示重新发起，禁止恢复到已经删除的节点。
 - 迟到的 WebSocket 事件按 `request_id + session_id` 路由，不能覆盖用户已切换到的当前画布。
 
 ### PBR 资产
@@ -115,7 +116,7 @@ Blueprint / ScenePatch
 后端提供两条执行路径：
 
 - 快速模式：统一 Agent 服务完成生成、修改或问答，适合低延迟请求。
-- 快速与精密模式：都由持久化 LangGraph 分类；新建筑先由 `architecture` 选择总体方案，再由独立 `floor_plan_design` 节点生成 FloorPlanIR v2、确定性校验并绘制各层 SVG。随后在 `floor_plan_review` 第一次暂停：合法首版可直接确认，修改意见只重跑平面节点。确认后由 `ApprovedPlanAssembler` 确定性生成主体、门窗和屋顶并执行 G1-G6，不再派发自由门/窗/屋顶模型节点；随后在 `style_review` 第二次暂停，用户确认受控风格包后才执行 Decor IR、G7、合并、最终校验与保存。编辑和问答走各自短路径。详见 [Plan2Build 当前链路](agent/PLAN2BUILD_PIPELINE.md)。
+- 快速与精密模式：都由持久化 LangGraph 分类。新建筑依次执行 `architecture → material_plan → skeleton`；`skeleton` 由 LLM 生成主体 Blueprint 与组件建议，随后按建议动态派发组件 `gen → val`，再进入 `merge → final_validate`。Plan 模式只在执行前增加研究、计划校验和人工批准，不再生成或审核 FloorPlanIR。编辑和问答仍走各自短路径。详见 [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md)。
 - 资产模式：独立 `asset_graph.py` 处理 PBR 上传。最短图只做显式参数提取、文件签名/大小校验、内容寻址入库和 ScenePatch 提案，不调用建筑 LLM，也不进入建筑合并节点。
 - 材质调优仍属于 EDIT 短路径，不增加新的建筑生成节点。前端选择 ID 会进入快速和精密模式的同一 Patch 上下文；没有选择时不调用模型。模型只能建议基础色、粗糙度、金属度、反照率、自发光、透明度、法线强度和 UV 比例，服务端随后按当前材质与实际纹理通道检查其是否安全且能产生效果。
 
@@ -123,9 +124,9 @@ Blueprint / ScenePatch
 
 - `agent_delivery.py` 统一负责复检去重、最终错误门禁、安全文件名、保存和成功摘要。
 - 精密模式在组件派发前先修复/阻断无效骨架（例如墙高为零）；`merge` 只做快速、确定性的归并和语义门禁。门窗局部坐标、父墙范围、同墙重叠、设计数量/立面开口约束及材质引用必须在最终交付前全部成立。合并耗时短不代表校验被省略。
-- 主体装配节点计算结构墙机器可读包围盒，并把墙体局部方向/法向、墙长、楼层标高组成 `spatial_invariants` 写入 LangGraph 状态。新建筑主链的门窗和屋顶直接来自已确认槽位与承托关系；旧组件 `Send` 链只保留为兼容路径，不再改写已确认主体坐标。
-- `architecture_plan` 表达体量、层数、立面轴网和屋顶意图；`floor_plan_design` 再写入 FloorPlanIR v2。平面支持多矩形组合轮廓、多边形空间、斜/曲墙、跨层洞口、电梯井和可配置工程预审；无效模型细分会替换成通过确定性几何校验、可直接确认的基础方案。`resolve_facade_layout()` 把已确认的立面意图和洞口绑定到真实 wall id，生成精确 `opening_slots`。`merge` 会对门窗二次吸附、补足设计下限并剔除无槽位开口，避免并行节点各自猜坐标造成漏门、错窗或重叠。详细协议见 [建筑平面生成与确认](agent/FLOOR_PLAN_GENERATION_MVP.md)。
-- 生成过程中不再把中间 Blueprint 快照发送到画布。审核阶段只展示确定性 SVG；用户确认后继续显示节点过程，直到最终 Blueprint 完成全量校验、保存并一次性加载，避免多个临时重建请求与正式场景发生竞态。
+- `skeleton` 计算结构墙包围盒和 `spatial_invariants`，并输出组件建议；组件节点依据主体与 `opening_slots` 生成和校验门、窗、屋顶等分片。`merge` 再执行引用闭合、槽位约束和确定性归一化，避免各组件自由坐标直接污染最终 Blueprint。
+- `architecture_plan` 只表达体量、层数、立面轴网、屋顶意图和组件配额；`material_plan` 解析受控材质角色，`skeleton` 直接将这些约束转为主体 Blueprint。FloorPlanIR、平面审核、平面规则以及“批准平面再装配 Blueprint”的 Plan2Build 链路已从运行时代码移除。
+- 生成过程中不把中间 Blueprint 快照发送到画布。Plan 模式审核只展示执行计划；批准后继续显示节点过程，直到最终 Blueprint 完成全量校验、保存并一次性加载，避免多个临时重建请求与正式场景发生竞态。
 - 组件专用工具执行修复后，必须立即调用同一校验器复检。诊断分别记录“是否执行修复”和“复检是否通过”；前者不能替代后者，复检失败会以错误步骤进入后续全局修复与最终保存门禁。
 - RAG 诊断保留实际命中的来源、标题和分类元数据，并随请求级步骤事件发送到前端，避免只能看到“召回了多少字符”却无法追溯知识来源。
 - 建筑资料不能直接复制进向量库。知识文档先按 `building_type/component/recipe/pattern` 分类，再以真实标题和 `rag-meta` 拆成 definition、assembly、constraints 等业务块；Loader 只负责保护表格/JSON、长度兜底和增量索引。居住建筑扩展知识已按 20 个独立类型入库，既有别墅、普通住宅、农家宅院和度假木屋继续走原详细配方，避免同一实体重复召回。
@@ -143,7 +144,7 @@ Blueprint / ScenePatch
 
 | 通道 | 路径 | 用途 |
 |---|---|---|
-| WebSocket | `/ws/agent` | Agent 请求、步骤、思考/进度、平面审核/修改/确认、诊断和产物事件 |
+| WebSocket | `/ws/agent` | Agent 请求、步骤、思考/进度、执行计划审核、诊断和产物事件 |
 | REST | `/api/scenes` | `.wild` 文件列表及新旧路径兼容 CRUD |
 | REST | `/api/sessions` | 会话元数据与列表 |
 | REST | `/api/sessions/{id}/messages` | 会话消息历史 |

@@ -14,6 +14,7 @@ from loguru import logger
 
 from app.agent.llm_invocation import invoke_llm
 from app.agent.model_client import create_llm
+from app.agent.model_errors import classify_model_error
 
 IntentName = Literal["generate", "edit", "chat"]
 
@@ -28,6 +29,7 @@ class IntentDecision:
     requires_scene: bool
     reason: str
     source: Literal["llm", "fallback"]
+    model_error: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -328,10 +330,19 @@ async def classify_intent_decision(
         raw = llm_result.content
     except Exception as exc:
         logger.error(f"[classifier] LLM 调用失败: {exc}")
-        decision = _fallback_decision(
+        fallback = _fallback_decision(
             message,
             has_current_scene,
             f"分类模型不可用: {type(exc).__name__}",
+        )
+        decision = IntentDecision(
+            intent=fallback.intent,
+            confidence=fallback.confidence,
+            target=fallback.target,
+            requires_scene=fallback.requires_scene,
+            reason=fallback.reason,
+            source=fallback.source,
+            model_error=classify_model_error(exc),
         )
         logger.info(
             f"[classifier] 意图: {decision.intent}, "

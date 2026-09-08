@@ -7,6 +7,8 @@ from langgraph.graph import END
 
 from app.agent.graph import (
     _after_architecture,
+    _after_execution_plan_validator,
+    _after_execution_planner,
     _classifier_dispatch,
     _dispatch_components,
     _final_validate_dispatch,
@@ -41,11 +43,11 @@ def test_minimal_complexity_skips_component_dispatch():
     assert result == "merge"
 
 
-def test_completed_deterministic_body_routes_to_second_style_review():
+def test_empty_component_suggestions_route_to_merge():
     assert _dispatch_components({
-        "deterministic_body_complete": True,
         "suggested_components": [],
-    }) == "style_review"
+        "user_message": "生成一个简单体块",
+    }) == "merge"
 
 
 def test_edit_keyword_routes_to_patch_when_scene_exists():
@@ -61,6 +63,23 @@ def test_plan_mode_reviews_dynamic_plan_before_architecture():
     assert _classifier_dispatch({"intent": "generate", "plan_mode": True}) == "planning_research"
     assert _planning_research_dispatch({"intent": "generate"}) == "planner"
     assert _after_architecture({"plan_mode": True}) == "plan_executor"
+
+
+def test_terminal_model_error_stops_before_research_and_plan_validation():
+    failed = {
+        "status": "failed",
+        "terminal_model_error": {"category": "model_not_found"},
+    }
+
+    assert _classifier_dispatch(failed) == "__end__"
+    assert _planning_research_dispatch(failed) == "__end__"
+    assert _after_execution_planner(failed) == "__end__"
+    assert _after_execution_plan_validator({"execution_plan_status": "failed"}) == "__end__"
+
+
+def test_valid_plan_continues_through_validator_to_review():
+    assert _after_execution_planner({"execution_plan_status": "draft"}) == "plan_validator"
+    assert _after_execution_plan_validator({"execution_plan_status": "reviewing"}) == "plan_review"
 
 
 def test_invalid_intent_fails_closed_to_read_only_chat():

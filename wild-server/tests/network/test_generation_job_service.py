@@ -4,7 +4,11 @@ import unittest
 from pathlib import Path
 
 from app.agent.protocol import versioned_event
-from app.services.generation_job_service import GenerationJobService, GenerationPaused
+from app.services.generation_job_service import (
+    GENERATION_PIPELINE_VERSION,
+    GenerationJobService,
+    GenerationPaused,
+)
 
 
 class RecordingSubscriber:
@@ -144,6 +148,10 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         paused = await first.get_job("req_restart")
         self.assertIsNotNone(paused)
         self.assertEqual(paused.status, "running")
+        self.assertEqual(
+            paused.payload.get("_pipeline_version"),
+            GENERATION_PIPELINE_VERSION,
+        )
 
         second = self.make_service()
         resume_flags: list[bool] = []
@@ -174,6 +182,32 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
             ["generation_resumed", "agent_reply"],
         )
         self.assertEqual(subscriber.messages[1]["event_seq"], 1)
+
+    async def test_startup_retires_job_from_removed_graph_topology(self):
+        service = self.make_service()
+        await service.initialize()
+        await service._insert_job(
+            "req_old_pipeline",
+            "session_old_pipeline",
+            {
+                "request_id": "req_old_pipeline",
+                "session_id": "session_old_pipeline",
+            },
+        )
+        resumed: list[str] = []
+
+        async def runner(_sink, payload, _resume):
+            resumed.append(payload["request_id"])
+
+        await service.startup(runner)
+
+        job = await service.get_job("req_old_pipeline")
+        self.assertIsNotNone(job)
+        self.assertEqual(job.status, "failed")
+        self.assertIn("流程已升级", job.error)
+        self.assertEqual(resumed, [])
+        events = await service.events_after("req_old_pipeline", 0)
+        self.assertEqual(events[-1]["code"], "generation_pipeline_upgraded")
 
     async def test_replay_finishes_before_new_live_persisted_event(self):
         service = self.make_service()
@@ -305,92 +339,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(job)
         self.assertEqual(job.status, "waiting_review")
         self.assertNotIn("waiting_review", status_writes)
-
-    async def test_floor_plan_review_pauses_and_resumes_same_job(self):
-        service = self.make_service()
-        resume_payloads: list[dict] = []
-
-        async def runner(sink, payload, resume):
-            if not resume:
-                await service.mark_waiting_for_review(payload["request_id"])
-                await sink.send_json(versioned_event({
-                    "type": "floor_plan_review_required",
-                    "request_id": payload["request_id"],
-                    "session_id": payload["session_id"],
-                    "revision": 0,
-                    "can_confirm": True,
-                }))
-                raise GenerationPaused()
-            resume_payloads.append(payload["_floor_plan_review"])
-
-        await service.startup(runner)
-        subscriber = RecordingSubscriber()
-        await service.start_job({
-            "request_id": "req_review",
-            "session_id": "session_review",
-            "precision_mode": True,
-        }, subscriber)
-        await self.wait_for_status(service, "req_review", "waiting_review")
-
-        await service.submit_floor_plan_review(
-            subscriber,
-            request_id="req_review",
-            session_id="session_review",
-            action="revise",
-            feedback="主卧增加一扇朝南窗",
-        )
-        await self.wait_for_status(service, "req_review", "completed")
-
-        self.assertEqual(resume_payloads, [{
-            "action": "revise",
-            "feedback": "主卧增加一扇朝南窗",
-        }])
-        events = await service.events_after("req_review", 0)
-        self.assertEqual(events[0]["type"], "floor_plan_review_required")
-
-    async def test_style_review_pauses_and_resumes_same_job(self):
-        service = self.make_service()
-        resume_payloads: list[dict] = []
-
-        async def runner(sink, payload, resume):
-            if not resume:
-                await service.mark_waiting_for_review(payload["request_id"], "style")
-                await sink.send_json(versioned_event({
-                    "type": "style_review_required",
-                    "request_id": payload["request_id"],
-                    "session_id": payload["session_id"],
-                    "revision": 0,
-                    "selected_style_id": "modern",
-                    "options": [],
-                }))
-                raise GenerationPaused()
-            resume_payloads.append(payload["_style_review"])
-
-        await service.startup(runner)
-        subscriber = RecordingSubscriber()
-        await service.start_job({
-            "request_id": "req_style_review",
-            "session_id": "session_style_review",
-            "precision_mode": True,
-        }, subscriber)
-        await self.wait_for_status(service, "req_style_review", "waiting_review")
-
-        await service.submit_style_review(
-            subscriber,
-            request_id="req_style_review",
-            session_id="session_style_review",
-            action="confirm",
-            style_package_id="chinese",
-        )
-        await self.wait_for_status(service, "req_style_review", "completed")
-
-        self.assertEqual(resume_payloads, [{
-            "action": "confirm",
-            "style_package_id": "chinese",
-            "feedback": "",
-        }])
-        events = await service.events_after("req_style_review", 0)
-        self.assertEqual(events[0]["type"], "style_review_required")
 
     async def test_execution_plan_review_pauses_and_resumes_same_job(self):
         service = self.make_service()

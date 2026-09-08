@@ -4,6 +4,7 @@ import pytest
 
 from app.agent.knowledge_topics import all_topic_keys, topics_for_building_type
 from app.agent.research_evidence_gate import evaluate_knowledge_coverage
+from app.agent.nodes.web_research_node import web_research_node
 from app.agent.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
 from app.agent.web.search_client import MockSearchClient, _validate_public_url
 from app.spec.loader import RetrievedSpecChunk
@@ -52,6 +53,28 @@ def test_unknown_building_type_uses_default_topics():
     # 未知类型走默认主题集（构成 + 组装），无检索时应触发联网。
     assert decision.trigger_web_research is True
     assert "building_type.composition" in decision.missing_topics
+
+
+@pytest.mark.asyncio
+async def test_terminal_model_error_skips_search_client(monkeypatch):
+    calls = []
+
+    def fail_if_created(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("terminal model error 后不应创建网络搜索客户端")
+
+    monkeypatch.setattr(
+        "app.agent.web.create_search_client",
+        fail_if_created,
+    )
+    result = await web_research_node({
+        "status": "failed",
+        "terminal_model_error": {"category": "model_not_found"},
+        "research_queries": ["高层玻璃幕墙规范"],
+    })
+
+    assert calls == []
+    assert result["web_research_diag"]["reason"] == "blocked_by_terminal_model_error"
 
 
 def test_topic_graph_has_no_duplicate_keys():

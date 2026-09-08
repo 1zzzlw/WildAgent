@@ -46,6 +46,19 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "access_denied"
         retryable = False
         user_message = "模型服务拒绝访问，请检查模型权限、账号额度和服务配置。"
+    elif status_code == 404 or _contains_any(
+        lowered,
+        (
+            "model_not_found",
+            "model not found",
+            "notfounderror",
+            "does not exist",
+            "模型不存在",
+        ),
+    ):
+        category = "model_not_found"
+        retryable = False
+        user_message = "未找到配置的模型，请检查模型名称、服务地址和供应商是否匹配。"
     elif status_code == 429 or _contains_any(lowered, ("rate limit", "too many requests", "限流")):
         category = "rate_limited"
         retryable = True
@@ -113,3 +126,18 @@ def _extract_status_code(exc: Exception, lowered_message: str) -> int | None:
 
 def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
     return any(needle in text for needle in needles)
+
+
+def model_failure_result(exc: Exception) -> dict[str, Any]:
+    """把 LLM 服务故障转成可写入 LangGraph state 的阻断结果。
+
+    方案 A：模型不可用（额度/鉴权/超时/限流等）直接阻断生成，不再静默回退到
+    确定性模板。返回的 dict 带 terminal_model_error，下游 merge/validate 节点
+    与 ws_agent 会据此发 model_service_error 事件，前端醒目提示。
+    """
+    info = classify_model_error(exc)
+    return {
+        "terminal_model_error": dict(info),
+        "error": str(info.get("user_message") or exc),
+        "status": "failed",
+    }

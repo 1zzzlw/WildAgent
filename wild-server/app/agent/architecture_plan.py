@@ -9,15 +9,6 @@ import re
 from typing import Any
 
 from app.agent.facade_recipe import load_curtain_wall_parameters
-from app.agent.spatial_plan import (
-    apply_spatial_plan_to_blueprint,
-    fallback_spatial_plan,
-    normalize_spatial_plan,
-    spatial_opening_slots,
-    spatial_plan_summary,
-    validate_spatial_plan,
-)
-from app.agent.floor_plan_rules import evaluate_floor_plan_rules
 from app.agent.spatial_geometry import shared_stair_layout, snap_to_grid
 
 
@@ -1024,12 +1015,6 @@ def normalize_architecture_plan(
         massing["width"] = round(max(massing["width"], target_u_width), 2)
 
     volumes = _normalize_volumes(source.get("volumes"), massing, complexity)
-    spatial_plan = normalize_spatial_plan(
-        source.get("spatial_plan"),
-        massing,
-        volumes,
-        source.get("facades") if isinstance(source.get("facades"), dict) else None,
-    )
     structural_grid = _normalize_structural_grid(
         source.get("structural_grid"), fallback["structural_grid"],
     )
@@ -1181,29 +1166,6 @@ def normalize_architecture_plan(
             "note": "含主入口与阳台通室内入口",
         }
 
-    blocked_opening_types = {
-        opening_type
-        for opening_type in ("door", "window")
-        if quotas.get(opening_type, {}).get("max") == 0
-    }
-    if blocked_opening_types:
-        for level in spatial_plan.get("levels", []):
-            level["openings"] = [
-                opening for opening in level.get("openings", [])
-                if opening.get("type") not in blocked_opening_types
-            ]
-        spatial_issues = validate_spatial_plan(spatial_plan)
-        if spatial_issues:
-            blocked = ", ".join(sorted(blocked_opening_types))
-            spatial_plan = fallback_spatial_plan(
-                massing,
-                f"用户构件约束禁用了 {blocked}，原空间关系无法保持连通",
-                volumes,
-            )
-
-    spatial_plan["facades"] = deepcopy(facades)
-    spatial_plan["rule_review"] = evaluate_floor_plan_rules(spatial_plan)
-
     allowed_components = {
         "door", "window", "roof", "railing", "canopy", "balcony", "light",
         "ramp", "bay_window", "cornice", "chimney",
@@ -1239,15 +1201,6 @@ def normalize_architecture_plan(
             and component_type not in required_components
         ):
             required_components.append(component_type)
-    planned_opening_types = {
-        str(opening.get("type"))
-        for level in spatial_plan.get("levels", [])
-        for opening in level.get("openings", [])
-        if isinstance(opening, dict)
-    }
-    for opening_type in ("door", "window"):
-        if opening_type in planned_opening_types and opening_type not in required_components:
-            required_components.append(opening_type)
     required_components = [
         component_type for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
@@ -1266,7 +1219,6 @@ def normalize_architecture_plan(
         "complexity": complexity,
         "volumes": volumes,
         "structural_grid": structural_grid,
-        "spatial_plan": spatial_plan,
         "detail_packages": detail_packages,
         "facades": facades,
         "roof": roof,
@@ -1309,9 +1261,6 @@ def score_architecture_plan(plan: dict[str, Any], user_message: str) -> int:
         score += 6 if abs(massing["depth"] - requested_depth) <= 0.1 else -6
     score += 8 if plan.get("required_components") else 0
     score += min(12, len(plan.get("design_rationale", [])) * 3)
-    spatial_summary = spatial_plan_summary(plan.get("spatial_plan", {}))
-    if spatial_summary["source"] == "model":
-        score += min(12, 4 + spatial_summary["space_count"])
     if any(word in user_message for word in ("欧式", "法式", "对称")):
         score += 12 if massing["symmetry"] else -8
         score += 8 if plan["roof"]["type"] in {"hip", "gable"} else -6
@@ -1855,20 +1804,32 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
     volumes = normalized.get("volumes") or _fallback_volumes(
         width, depth, modeled_floors, normalized["complexity"],
     )
-    spatial_levels = (
-        normalized.get("spatial_plan", {}).get("levels", [])
-        if isinstance(normalized.get("spatial_plan"), dict)
-        else []
-    )
+    level_regions = []
+    for level in range(1, modeled_floors + 1):
+        level_regions.append([
+            [
+                float(volume.get("x", 0.0)),
+                float(volume.get("z", 0.0)),
+                float(volume.get("x", 0.0)) + float(volume.get("width", width)),
+                float(volume.get("z", 0.0)) + float(volume.get("depth", depth)),
+            ]
+            for volume in volumes
+            if int(volume.get("start_floor", 1)) <= level <= int(volume.get("end_floor", modeled_floors))
+        ])
     stair_layout = shared_stair_layout(
-        [
-            level.get("envelope_regions", [])
-            for level in spatial_levels
-            if isinstance(level, dict)
-        ],
+        level_regions,
         floor_height,
         min(1.8, max(1.0, width * 0.08)),
     )
+    if stair_layout is None:
+        stair_x = max(1.0, min(width - 1.0, width * 0.2))
+        stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
+        stair_z1 = max(stair_z0 + 1.0, min(depth - 0.8, depth * 0.65))
+        stair_layout = {
+            "start": [stair_x, stair_z0],
+            "end": [stair_x, stair_z1],
+            "width": min(1.8, max(1.0, width * 0.08)),
+        }
 
     elements: list[dict[str, Any]] = []
     templates: dict[str, dict[str, Any]] = {}
@@ -2275,7 +2236,6 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         },
         "behaviors": {},
     }
-    apply_spatial_plan_to_blueprint(blueprint, normalized.get("spatial_plan"))
     return blueprint
 
 
@@ -2410,7 +2370,7 @@ def _evenly_spaced_opening_slots(
     ))
     required = [
         slot for slot in ordered
-        if slot.get("role") in {"interior_plan", "balcony_access"}
+        if slot.get("role") == "balcony_access"
     ]
     if len(required) >= limit:
         return required[:limit]
@@ -2719,10 +2679,6 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
     curtain_wall = bool(plan.get("curtain_wall"))
     curtain_params = load_curtain_wall_parameters() if curtain_wall else None
-    # 已确认平面的洞口是唯一事实源：存在平面洞口时，立面轴网 pattern 只作
-    # v1 兜底，不再生成立面网格槽位，避免与平面槽位在同一墙面重叠（否则
-    # conform 去重会丢掉平面槽位、G3 却仍按全量槽位判定“已批准槽位未生成”）。
-    planned_slots = spatial_opening_slots(plan.get("spatial_plan"))
     realization = {
         "floors": int(massing.get("floors") or massing.get("modeled_floors") or 1),
         "modeled_floors": int(massing.get("modeled_floors") or massing.get("floors") or 1),
@@ -2731,20 +2687,11 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         "shape": str(massing.get("shape") or "rectangle"),
         "volumes": deepcopy(plan.get("volumes") or []),
     }
-    spatial_plan = plan.get("spatial_plan") if isinstance(plan.get("spatial_plan"), dict) else {}
-    interior_wall_ids = {
-        str(wall.get("id"))
-        for level in spatial_plan.get("levels", [])
-        if isinstance(level, dict)
-        for wall in level.get("walls", [])
-        if isinstance(wall, dict) and wall.get("kind") == "interior" and wall.get("id")
-    }
     walls = []
     for element in blueprint.get("geometry", {}).get("elements", []):
         if (
             isinstance(element, dict)
             and element.get("type") == "wall"
-            and str(element.get("id") or "") not in interior_wall_ids
             and not str(element.get("id") or "").startswith("wall_core_")
         ):
             descriptor = _wall_descriptor(element)
@@ -2856,8 +2803,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 and opening_type == "window"
             ):
                 # 示意高层的连续玻璃墙和龙骨已表达幕墙；不再对通高墙重复切
-                # 数百个 window 洞口，避免墙网格顶点爆炸。空间方案明确批准
-                # 的内部窗稍后仍会作为 planned_slots 保留。
+                # 数百个 window 洞口，避免墙网格顶点爆炸。
                 continue
             if opening_type == "door" and not is_ground:
                 continue
@@ -2957,30 +2903,6 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         )
         wall_plan["slots"].extend(wall_slots)
 
-    if planned_slots:
-        slots.extend(planned_slots)
-        # 已确认平面洞口是唯一事实源：立面网格槽位与平面槽位在同一面墙重叠时，
-        # 保留平面槽位、剔除立面网格槽位。否则 conform 的去重会丢掉平面槽位，
-        # 而 G3 仍按全量槽位判定「已批准槽位未生成对应门窗」。
-        spatial_slots = [slot for slot in slots if slot.get("role") == "interior_plan"]
-        kept: list[dict[str, Any]] = []
-        for slot in slots:
-            if slot.get("role") == "interior_plan":
-                kept.append(slot)
-                continue
-            if any(_opening_slots_overlap(slot, spatial) for spatial in spatial_slots):
-                continue
-            kept.append(slot)
-        slots = kept
-        for slot in planned_slots:
-            facade_plan[str(slot["wall_id"])] = {
-                "facing": "internal",
-                "intent": "按已校验平面设置内部洞口",
-                "max_openings": 1,
-                "is_main_facade": False,
-                "slots": [slot],
-            }
-
     slots.sort(key=lambda slot: (
         {"front": 0, "back": 1, "left": 2, "right": 3}.get(slot["facing"], 4),
         slot["bay"],
@@ -2991,25 +2913,6 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
     for opening_type in ("door", "window"):
         available = sum(1 for slot in slots if slot["type"] == opening_type)
         limits = quotas.setdefault(opening_type, {})
-        planned_count = sum(
-            1 for slot in planned_slots if slot["type"] == opening_type
-        )
-        if planned_count:
-            # 平面洞口是原立面配额之外的已批准关系：增加相应容量，但不强制
-            # 把所有可用外立面槽位都填满。槽位采样也会优先保留 interior_plan。
-            original_max = limits.get("max")
-            original_min = limits.get("min", 0)
-            limits["max"] = min(
-                available,
-                int(original_max) + planned_count
-                if isinstance(original_max, (int, float)) else available,
-            )
-            limits["min"] = min(
-                limits["max"],
-                (int(original_min) if isinstance(original_min, (int, float)) else 0)
-                + planned_count,
-            )
-            continue
         if curtain_wall and opening_type == "window":
             # 幕墙全立面密铺：每个窗槽位都必须有窗。这里忽略模型/回退配额上限，
             # 直接按实际立面槽位数量补齐，否则按少量配额沿全高抽样会变成

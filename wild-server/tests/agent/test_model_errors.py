@@ -25,6 +25,15 @@ def test_free_quota_error_is_terminal_and_user_friendly():
     assert "Free quota" not in result["user_message"]
 
 
+def test_missing_model_error_points_to_model_configuration():
+    result = classify_model_error(_ProviderError("model does not exist", 404))
+
+    assert result["category"] == "model_not_found"
+    assert result["retryable"] is False
+    assert result["terminal_current_run"] is True
+    assert "模型名称" in result["user_message"]
+
+
 def test_rate_limit_is_retryable_but_still_stops_current_run():
     result = classify_model_error(_ProviderError("Too many requests", 429))
 

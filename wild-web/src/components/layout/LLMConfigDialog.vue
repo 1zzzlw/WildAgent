@@ -60,6 +60,22 @@
               <div class="config-hint">自建或第三方服务地址，例如: https://api.openai.com/v1</div>
             </div>
 
+            <div class="config-section">
+              <label class="config-label">思考预算（Token）</label>
+              <input
+                v-model.number="form.thinking_budget"
+                type="number"
+                class="config-input"
+                min="0"
+                max="262144"
+                step="256"
+              />
+              <div class="config-hint">
+                不关闭精密模式思考。Qwen/部分 Kimi 使用精确预算；DeepSeek、Kimi K3
+                在支持的接口上映射为推理强度；固定思考模型可能不支持限额。0 使用供应商默认值。
+              </div>
+            </div>
+
             <div class="config-divider"></div>
 
             <div class="config-section">
@@ -78,6 +94,12 @@
                   <span class="config-value">{{ currentConfig.base_url || '默认' }}</span>
                 </div>
                 <div class="config-item">
+                  <span class="config-key">思考预算:</span>
+                  <span class="config-value">
+                    {{ currentConfig.thinking_budget === 0 ? '供应商默认' : `${currentConfig.thinking_budget} Token` }}
+                  </span>
+                </div>
+                <div class="config-item">
                   <span class="config-key">保存位置:</span>
                   <span class="config-value config-path">
                     {{ currentConfig.host_storage_path || currentConfig.storage_path || '未声明' }}
@@ -94,14 +116,20 @@
           </div>
 
           <footer class="wild-config-modal__footer">
-            <button type="button" class="btn-secondary" @click="handleTest" :disabled="testing">
+            <button
+              type="button"
+              class="btn-secondary"
+              title="测试当前输入内容，不会保存配置"
+              @click="handleTest"
+              :disabled="testing"
+            >
               {{ testing ? '测试中...' : '测试连接' }}
             </button>
             <div v-if="testResult" class="test-result">
               <span v-if="testResult.success" class="test-success">
-                ✓ 延迟: {{ testResult.latency }}ms
+                ✓ 当前输入可用（尚未保存）· {{ testResult.latency }}ms
               </span>
-              <span v-else class="test-error">
+              <span v-else class="test-error" :title="testResult.message">
                 ✗ {{ testResult.message }}
               </span>
             </div>
@@ -136,12 +164,14 @@ const form = ref({
   name: '',
   api_key: '',
   base_url: '',
+  thinking_budget: 4096,
 })
 
 const currentConfig = ref({
   name: '',
   api_key_set: false,
   base_url: '',
+  thinking_budget: 4096,
   storage_path: '',
   host_storage_path: null as string | null,
   persistent: false,
@@ -175,6 +205,7 @@ async function loadCurrentConfig() {
       name: currentConfig.value.name,
       api_key: '',
       base_url: currentConfig.value.base_url,
+      thinking_budget: currentConfig.value.thinking_budget,
     }
   } catch (error) {
     ElMessage.error('加载配置失败')
@@ -185,7 +216,7 @@ async function loadCurrentConfig() {
 async function handleSave() {
   saving.value = true
   try {
-    const payload: Record<string, string> = {}
+    const payload: Record<string, string | number> = {}
     
     if (form.value.name && form.value.name !== currentConfig.value.name) {
       payload.name = form.value.name
@@ -197,6 +228,10 @@ async function handleSave() {
     
     if (form.value.base_url !== currentConfig.value.base_url) {
       payload.base_url = form.value.base_url
+    }
+
+    if (form.value.thinking_budget !== currentConfig.value.thinking_budget) {
+      payload.thinking_budget = form.value.thinking_budget
     }
     
     if (Object.keys(payload).length === 0) {
@@ -242,6 +277,12 @@ async function handleTest() {
   try {
     const response = await fetch('/api/config/llm/test', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: form.value.name,
+        api_key: form.value.api_key || null,
+        base_url: form.value.base_url,
+      }),
     })
     
     const latency = Date.now() - startTime
@@ -253,9 +294,14 @@ async function handleTest() {
         latency,
       }
     } else {
+      const providerDetail = data.error && data.error !== data.message
+        ? `；供应商返回：${String(data.error).slice(0, 240)}`
+        : ''
       testResult.value = {
         success: false,
-        message: data.message || '连接失败',
+        message: data.tested?.name
+          ? `${data.message || '连接失败'}（测试模型：${data.tested.name}）${providerDetail}`
+          : `${data.message || '连接失败'}${providerDetail}`,
       }
     }
   } catch (error: any) {

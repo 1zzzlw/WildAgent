@@ -1079,6 +1079,8 @@ class AgentService:
                     base_url=config.embedding.base_url,
                     model_name=config.embedding.name,
                     allow_hash_fallback=config.rag.allow_hash_fallback,
+                    timeout=config.embedding.timeout,
+                    max_retries=config.embedding.max_retries,
                 )
                 rag_spec_paths = get_rag_spec_paths()
                 loader = RAGSpecLoader(
@@ -1091,6 +1093,9 @@ class AgentService:
                     chunk_size=config.rag.chunk_size,
                     chunk_overlap=config.rag.chunk_overlap,
                     max_context_chars=config.rag.max_context_chars,
+                    # 索引同步移出模块导入路径：Loader 构造只做本地切分，
+                    # 不发起任何 embedding 请求，服务可立即对外提供。
+                    auto_sync=False,
                 )
                 logger.info(
                     f"RAGSpecLoader: 已启用 Chroma, persist_dir={persist_dir}, "
@@ -1102,6 +1107,7 @@ class AgentService:
                     f"total={sync_stats['total']}, "
                     f"updated={sync_stats['updated']}, "
                     f"deleted={sync_stats['deleted']}"
+                    f"{'（将转入后台线程增量同步，不阻塞服务启动）' if config.rag.auto_sync else '（自动同步已关闭）'}"
                 )
                 if isinstance(embedding_function, object) and embedding_function.__class__.__name__ == "HashEmbeddingFunction":
                     logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
@@ -1110,6 +1116,10 @@ class AgentService:
                         "当前使用 hash fallback embedding；仅适合本地 smoke test，"
                         "检索门禁距离阈值在该模式下无效。",
                     )
+                if config.rag.auto_sync:
+                    # 后台线程完成增量同步；embedding 慢/超时不再阻塞服务启动。
+                    # 同步失败只留下"部分可用"索引，检索自动降级为基础规范。
+                    loader.start_background_sync()
                 return loader
             except Exception as exc:
                 logger.warning(
@@ -1124,7 +1134,10 @@ class AgentService:
                     "rag_index_unavailable",
                     f"RAG 向量索引不可用，已降级为全量文件注入模式：{type(exc).__name__}: {exc}",
                 )
-                logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}", exc_info=True)
+                logger.error(
+                    "RAGSpecLoader 初始化失败，退回 FileSpecLoader: {}: {}",
+                    type(exc).__name__, exc,
+                )
 
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
