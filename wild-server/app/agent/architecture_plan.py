@@ -9,6 +9,8 @@ import re
 from typing import Any
 
 from app.agent.facade_recipe import load_curtain_wall_parameters
+from app.agent.knowledge_policy import term_is_requested
+from app.agent.component_registry import get_implemented_components
 from app.agent.spatial_geometry import shared_stair_layout, snap_to_grid
 
 
@@ -81,6 +83,18 @@ _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
         "base_components": ["door", "window", "roof"],
         "require_front_entrance": True,
         "default_roof": "flat",
+    },
+    "industrial_long_span": {
+        "label": "工业与农业大跨建筑",
+        "width_range": (8.0, 300.0),
+        "depth_range": (8.0, 500.0),
+        "floor_range": (1, 12),
+        "default_massing": (60.0, 40.0, 1, 6.0),
+        "max_explicit_floors": 4,
+        "shapes": {"rectangle", "linear", "stepped"},
+        "base_components": ["door", "window", "roof"],
+        "require_front_entrance": True,
+        "default_roof": "gable",
     },
     "long_span_public": {
         "label": "大跨公共建筑",
@@ -289,14 +303,17 @@ def resolve_complexity_profile(
     elif any(word in message for word in simple_words):
         level = "simple"
         reason = "用户明确要求简化体量"
-    elif precision_mode or any(word in message for word in detailed_words):
+    elif any(word in message for word in detailed_words):
         level = "detailed"
-        reason = "精密模式默认高复杂度" if precision_mode else "用户明确要求高细节"
+        reason = "用户明确要求高细节"
     else:
         level = "standard"
-        reason = "快速模式默认标准复杂度"
+        reason = "未指定体量复杂度；精密模式只提高实现与验证质量"
 
     result = deepcopy(_COMPLEXITY_PROFILES[level])
+    result["min_detail_packages"] = 0
+    if not any(term_is_requested(message, word) for word in ("多体量", "组合体量", "退台", "错落", "主次体量")):
+        result["min_volumes"] = 1
     result.update({"level": level, "reason": reason})
     result["grid_bays"] = list(result["grid_bays"])
     return result
@@ -321,34 +338,11 @@ def _default_detail_packages(
     explicit = [
         component_type
         for component_type, keywords in explicit_keywords.items()
-        if any(keyword in user_message for keyword in keywords)
+        if any(term_is_requested(user_message, keyword) for keyword in keywords)
     ]
-    if complexity["level"] in ("simple", "minimal"):
-        return explicit
+    # 回退仅补用户点名的功能；类型和风格不能触发固定构件套餐。
+    return explicit
 
-    is_european = any(word in user_message for word in ("欧式", "法式", "古典"))
-    is_chinese = any(word in user_message for word in ("中式", "新中式", "庭院"))
-    defaults = {
-        "residential_lowrise": (
-            ["canopy", "cornice", "railing"] if is_chinese
-            else ["balcony", "canopy", "cornice"] if is_european
-            else ["balcony", "canopy", "bay_window"]
-        ),
-        "ordinary_public": ["canopy", "ramp", "light"],
-        "long_span_public": ["canopy", "ramp", "light"],
-        "high_rise": ["canopy", "balcony", "light"],
-        "underground_transport": ["ramp", "light", "railing"],
-        "garden_structure": ["cornice", "railing", "light"],
-        "religious_landmark": ["cornice", "canopy", "railing"],
-    }.get(profile_id, ["canopy", "light", "cornice"])
-    if modeled_floors < 2:
-        defaults = [item for item in defaults if item != "balcony"]
-        if "bay_window" not in defaults and profile_id == "residential_lowrise":
-            defaults.append("bay_window")
-
-    target = int(complexity["min_detail_packages"])
-    merged = list(dict.fromkeys([*explicit, *defaults]))
-    return merged[:max(target, len(explicit))]
 
 
 def _fallback_volumes(
@@ -476,7 +470,7 @@ def _fallback_volumes(
                     "start_floor": 2, "end_floor": modeled_floors,
                 },
             ]
-    if complexity["level"] != "detailed":
+    if int(complexity.get("min_volumes", 1)) <= 1:
         return [{
             "id": "main", "role": "primary", "x": 0.0, "z": 0.0,
             "width": round(width, 2), "depth": round(depth, 2),
@@ -511,7 +505,10 @@ def _fallback_volumes(
     ]
 
 
-def detect_architecture_profile(user_message: str) -> dict[str, Any]:
+def detect_architecture_profile(
+    user_message: str,
+    fallback_profile_id: str | None = None,
+) -> dict[str, Any]:
     """按功能和规模选择确定性规划边界，避免所有建筑退化成低层住宅。"""
     message = user_message.lower()
     requested_floors = _requested_floors(user_message)
@@ -527,6 +524,11 @@ def detect_architecture_profile(user_message: str) -> dict[str, Any]:
         "客运站", "港口客运", "剧院", "音乐厅", "会展", "大会堂",
     )):
         profile_id = "long_span_public"
+    elif any(word in message for word in (
+        "工厂", "厂房", "仓库", "车间", "物流中心", "配送中心", "机库",
+        "温室", "畜舍", "粮仓", "农业建筑",
+    )):
+        profile_id = "industrial_long_span"
     elif any(word in message for word in ("园林", "水榭", "凉亭", "亭子", "游廊", "景观廊")):
         profile_id = "garden_structure"
     elif any(word in message for word in ("佛寺", "寺庙", "道观", "清真寺", "教堂", "礼拜殿")):
@@ -537,7 +539,11 @@ def detect_architecture_profile(user_message: str) -> dict[str, Any]:
     )):
         profile_id = "ordinary_public"
     else:
-        profile_id = "residential_lowrise"
+        profile_id = (
+            fallback_profile_id
+            if fallback_profile_id in _ARCHITECTURE_PROFILES
+            else "residential_lowrise"
+        )
 
     profile = deepcopy(_ARCHITECTURE_PROFILES[profile_id])
     profile["id"] = profile_id
@@ -547,8 +553,9 @@ def detect_architecture_profile(user_message: str) -> dict[str, Any]:
 def _fallback_plan(
     user_message: str,
     complexity_profile: dict[str, Any] | None = None,
+    architecture_profile: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    profile = detect_architecture_profile(user_message)
+    profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
     complexity = deepcopy(
         complexity_profile or resolve_complexity_profile(user_message)
     )
@@ -579,9 +586,9 @@ def _fallback_plan(
         default_floors,
     ))
     modeled_floors = min(floors, profile["max_explicit_floors"])
-    is_european = any(word in user_message for word in ("欧式", "法式", "古典"))
-    is_chinese = any(word in user_message for word in ("中式", "新中式", "庭院"))
-    is_modern = any(word in user_message for word in ("现代", "极简"))
+    is_european = any(term_is_requested(user_message, word) for word in ("欧式", "法式", "古典"))
+    is_chinese = any(term_is_requested(user_message, word) for word in ("中式", "新中式", "庭院"))
+    is_modern = any(term_is_requested(user_message, word) for word in ("现代", "极简"))
     style = (
         "欧式" if is_european else "中式" if is_chinese else "现代" if is_modern
         else profile["label"]
@@ -596,7 +603,10 @@ def _fallback_plan(
         if require_entrance else ["empty", "empty", "empty", "empty", "empty"]
     )
     base_components = list(profile["base_components"])
-    curtain_wall = "玻璃幕墙" in user_message or "玻璃幕" in user_message
+    curtain_wall = (
+        term_is_requested(user_message, "玻璃幕墙")
+        or term_is_requested(user_message, "玻璃幕")
+    )
     component_quota: dict[str, dict[str, Any]] = {}
     if "door" in base_components:
         component_quota["door"] = {"min": 1, "max": 4, "note": "主入口及必要辅助入口"}
@@ -675,7 +685,7 @@ def _fallback_plan(
             and any(word in user_message for word in ("综合体", "商业基座", "裙房", "基座"))
         )
         else "stepped"
-        if complexity["level"] == "detailed" and "stepped" in profile["shapes"]
+        if int(complexity.get("min_volumes", 1)) > 1 and "stepped" in profile["shapes"]
         else "rectangle"
     )
     volumes = _fallback_volumes(
@@ -683,7 +693,7 @@ def _fallback_plan(
     )
     default_x_bays, default_z_bays = complexity["grid_bays"]
     structural_system = (
-        "long_span" if profile["id"] == "long_span_public"
+        "long_span" if profile["id"] in {"long_span_public", "industrial_long_span"}
         else "frame" if profile["id"] in {"ordinary_public", "high_rise"}
         else "hybrid" if complexity["level"] == "detailed"
         else "wall_bearing"
@@ -779,6 +789,27 @@ def _normalize_pattern(value: object, bays: int, fallback: list[str]) -> list[st
     if len(pattern) < bays:
         pattern.extend(["empty"] * (bays - len(pattern)))
     return pattern[:bays]
+
+
+def _facade_opening_counts(
+    facades: dict[str, dict[str, Any]],
+    modeled_floors: int,
+) -> dict[str, int]:
+    """统计归一化立面方案中会实际执行的门窗槽位。"""
+    counts = {"door": 0, "window": 0}
+    upper_repetitions = max(0, int(modeled_floors) - 1)
+    for facade in facades.values():
+        if not isinstance(facade, dict):
+            continue
+        layers = [facade.get("ground_pattern", [])]
+        layers.extend([facade.get("upper_pattern", [])] * upper_repetitions)
+        for pattern in layers:
+            if not isinstance(pattern, list):
+                continue
+            for opening_type in pattern:
+                if opening_type in counts:
+                    counts[opening_type] += 1
+    return counts
 
 
 def _normalize_volumes(
@@ -940,13 +971,14 @@ def normalize_architecture_plan(
     raw: object,
     user_message: str = "",
     complexity_profile: dict[str, Any] | None = None,
+    architecture_profile: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """把模型方案压缩到稳定、有限的架构规划协议。"""
     complexity = deepcopy(
         complexity_profile or resolve_complexity_profile(user_message)
     )
-    fallback = _fallback_plan(user_message, complexity)
-    profile = detect_architecture_profile(user_message)
+    profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
+    fallback = _fallback_plan(user_message, complexity, profile)
     source = raw if isinstance(raw, dict) else {}
     curtain_wall = bool(fallback.get("curtain_wall"))
     massing_raw = source.get("massing") if isinstance(source.get("massing"), dict) else {}
@@ -1102,11 +1134,16 @@ def normalize_architecture_plan(
             or component_type in detail_packages
         )
     }
+    allowed_components = {config.component_type for config in get_implemented_components()}
+    unsupported_component_types = set()
     raw_quotas = source.get("component_quota") if isinstance(source.get("component_quota"), dict) else {}
     for component_type, limits in raw_quotas.items():
         if not isinstance(limits, dict):
             continue
         component_type = str(component_type)
+        if component_type not in allowed_components:
+            unsupported_component_types.add(component_type)
+            continue
         if (
             component_type in _DETAIL_COMPONENT_QUOTAS
             and component_type not in detail_packages
@@ -1134,6 +1171,22 @@ def normalize_architecture_plan(
         if isinstance(normalized_limits.get("min"), int) and isinstance(normalized_limits.get("max"), int):
             normalized_limits["max"] = max(normalized_limits["min"], normalized_limits["max"])
         quotas[component_type] = normalized_limits
+    if (
+        not curtain_wall
+        and complexity.get("level") != "minimal"
+        and massing["representation_mode"] == "full"
+    ):
+        opening_counts = _facade_opening_counts(facades, modeled_floors)
+        for opening_type in ("door", "window"):
+            if opening_type not in profile["base_components"]:
+                continue
+            planned_count = opening_counts[opening_type]
+            quotas[opening_type] = {
+                **quotas.get(opening_type, {}),
+                "min": planned_count,
+                "max": planned_count,
+                "note": "由逐层立面 pattern 解析，槽位与组件一一对应",
+            }
     roof_required = "roof" in profile["base_components"]
     quotas["roof"] = {
         **quotas.get("roof", {}),
@@ -1166,10 +1219,6 @@ def normalize_architecture_plan(
             "note": "含主入口与阳台通室内入口",
         }
 
-    allowed_components = {
-        "door", "window", "roof", "railing", "canopy", "balcony", "light",
-        "ramp", "bay_window", "cornice", "chimney",
-    }
     required = source.get("required_components")
     if not isinstance(required, list):
         required = fallback["required_components"]
@@ -1208,6 +1257,21 @@ def normalize_architecture_plan(
     if complexity.get("level") == "minimal":
         required_components = []
 
+    circulation_source = source.get("circulation") if isinstance(source.get("circulation"), dict) else {}
+    default_vertical_strategy = (
+        "none" if modeled_floors <= 1
+        else "core_and_stair" if profile["id"] == "high_rise"
+        else "stair"
+    )
+    vertical_strategy = str(
+        circulation_source.get("vertical_strategy") or default_vertical_strategy
+    ).lower()
+    if vertical_strategy not in {"none", "stair", "core", "core_and_stair"}:
+        vertical_strategy = default_vertical_strategy
+    if modeled_floors > 1 and vertical_strategy == "none":
+        vertical_strategy = default_vertical_strategy
+    circulation = {"vertical_strategy": vertical_strategy}
+
     rationale = source.get("design_rationale")
     if not isinstance(rationale, list):
         rationale = fallback["design_rationale"]
@@ -1219,6 +1283,7 @@ def normalize_architecture_plan(
         "complexity": complexity,
         "volumes": volumes,
         "structural_grid": structural_grid,
+        "circulation": circulation,
         "detail_packages": detail_packages,
         "facades": facades,
         "roof": roof,
@@ -1227,14 +1292,19 @@ def normalize_architecture_plan(
         "balcony_access_count": balcony_access_count,
         "balcony_width": balcony_width,
         "required_components": list(dict.fromkeys(required_components)),
+        "unsupported_component_types": sorted(unsupported_component_types),
         "design_rationale": [str(item)[:160] for item in rationale[:6]],
     }
 
 
-def score_architecture_plan(plan: dict[str, Any], user_message: str) -> int:
+def score_architecture_plan(
+    plan: dict[str, Any],
+    user_message: str,
+    architecture_profile: dict[str, Any] | None = None,
+) -> int:
     """用可解释规则选择同一模型给出的候选方案。"""
     score = 0
-    profile = detect_architecture_profile(user_message)
+    profile = architecture_profile or detect_architecture_profile(user_message)
     massing = plan["massing"]
     facades = plan["facades"]
     score += 10 if plan.get("concept") else 0
@@ -1261,22 +1331,31 @@ def score_architecture_plan(plan: dict[str, Any], user_message: str) -> int:
         score += 6 if abs(massing["depth"] - requested_depth) <= 0.1 else -6
     score += 8 if plan.get("required_components") else 0
     score += min(12, len(plan.get("design_rationale", [])) * 3)
-    if any(word in user_message for word in ("欧式", "法式", "对称")):
+    if term_is_requested(user_message, "对称") and not term_is_requested(user_message, "非对称"):
         score += 12 if massing["symmetry"] else -8
-        score += 8 if plan["roof"]["type"] in {"hip", "gable"} else -6
-    if any(word in user_message for word in ("现代", "极简")):
-        score += 8 if plan["roof"]["type"] == "flat" else 0
+    elif term_is_requested(user_message, "非对称"):
+        score += 12 if not massing["symmetry"] else -8
+    for term, roof_type in (("平屋顶", "flat"), ("平顶", "flat"), ("双坡顶", "gable"), ("四坡顶", "hip"), ("穹顶", "dome")):
+        if term_is_requested(user_message, term):
+            score += 8 if plan["roof"]["type"] == roof_type else -6
     if profile["id"] == "high_rise":
         score += 10 if massing["representation_mode"] == "schematic" or massing["floors"] <= 10 else 0
     if profile["id"] == "underground_transport":
         score += 10 if "roof" not in plan.get("required_components", []) else -10
     complexity = plan.get("complexity", {})
+    if complexity.get("level") == "standard":
+        volume_count = len(plan.get("volumes", []))
+        detail_count = len(plan.get("detail_packages", []))
+        if massing.get("shape") != "rectangle" or volume_count > 1:
+            score += 5
+        score += min(6, detail_count * 3)
     if complexity.get("level") == "detailed":
         volume_count = len(plan.get("volumes", []))
         detail_count = len(plan.get("detail_packages", []))
         score += 14 if volume_count >= int(complexity.get("min_volumes", 2)) else -24
         score += 12 if detail_count >= int(complexity.get("min_detail_packages", 3)) else -18
-        score += 8 if massing["shape"] != "rectangle" or volume_count > 1 else -12
+        if int(complexity.get("min_volumes", 1)) > 1:
+            score += 8 if volume_count > 1 else -12
         grid = plan.get("structural_grid", {})
         score += 6 if int(grid.get("x_bays", 1)) >= 2 and int(grid.get("z_bays", 1)) >= 2 else -6
     return score
@@ -1286,18 +1365,19 @@ def select_architecture_plan(
     raw: object,
     user_message: str,
     complexity_profile: dict[str, Any] | None = None,
+    architecture_profile: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """归一化候选并以确定性评分选出一个方案。"""
-    profile = detect_architecture_profile(user_message)
+    profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
     source = raw if isinstance(raw, dict) else {}
     candidates_raw = source.get("candidates") if isinstance(source.get("candidates"), list) else [source]
     candidates = [
-        normalize_architecture_plan(item, user_message, complexity_profile)
+        normalize_architecture_plan(item, user_message, complexity_profile, profile)
         for item in candidates_raw[:4]
     ]
     if not candidates:
-        candidates = [normalize_architecture_plan({}, user_message, complexity_profile)]
-    scores = [score_architecture_plan(item, user_message) for item in candidates]
+        candidates = [normalize_architecture_plan({}, user_message, complexity_profile, profile)]
+    scores = [score_architecture_plan(item, user_message, profile) for item in candidates]
     selected_index = max(range(len(candidates)), key=lambda index: scores[index])
     candidate_summaries = [
         {
@@ -1311,6 +1391,7 @@ def select_architecture_plan(
             "complexity": deepcopy(candidate.get("complexity", {})),
             "volume_count": len(candidate.get("volumes", [])),
             "detail_packages": list(candidate.get("detail_packages", [])),
+            "unsupported_component_types": list(candidate.get("unsupported_component_types", [])),
             "rationale": list(candidate.get("design_rationale", [])),
         }
         for index, candidate in enumerate(candidates)
@@ -1593,6 +1674,7 @@ def evaluate_skeleton_complexity(
     wall_base_levels: set[float] = set()
     wall_keys: set[tuple[Any, ...]] = set()
     duplicate_wall_count = 0
+    degenerate_wall_ids: list[str] = []
     columns: list[tuple[float, float, float, float, float]] = []
     for element in elements:
         element_type = str(element.get("type") or "unknown")
@@ -1611,6 +1693,8 @@ def evaluate_skeleton_complexity(
             start = element.get("from")
             end = element.get("to")
             if isinstance(start, list) and isinstance(end, list) and len(start) == 3 and len(end) == 3:
+                if math.hypot(float(end[0]) - float(start[0]), float(end[2]) - float(start[2])) <= 0.01:
+                    degenerate_wall_ids.append(str(element.get("id", "?")))
                 vertical_range = tuple(sorted((round(float(start[1]), 2), round(float(end[1]), 2))))
                 wall_groups.setdefault(vertical_range, []).append(element)
                 wall_base_levels.add(vertical_range[0])
@@ -1723,6 +1807,22 @@ def evaluate_skeleton_complexity(
         1 for instance in geometry.get("instances", [])
         if isinstance(instance, dict) and str(instance.get("ref") or "") in stair_template_ids
     ) if isinstance(geometry, dict) and isinstance(geometry.get("instances"), list) else 0
+    has_stair = counts.get("stair", 0) > 0 or stair_instance_count > 0
+    has_core = any(
+        isinstance(element, dict)
+        and element.get("type") == "wall"
+        and str(element.get("id") or "").startswith("wall_core_")
+        for element in elements
+    )
+    vertical_strategy = str(
+        (plan.get("circulation") or {}).get("vertical_strategy") or "stair"
+    )
+    circulation_valid = (
+        modeled_floors <= 1
+        or vertical_strategy == "stair" and has_stair
+        or vertical_strategy == "core" and has_core
+        or vertical_strategy == "core_and_stair" and has_stair and has_core
+    )
     expected_floor_layouts = {
         tuple(round(value, 2) for value in (
             plate["elevation"], *plate["bounds"],
@@ -1744,12 +1844,9 @@ def evaluate_skeleton_complexity(
             True if schematic
             else expected_wall_base_levels.issubset(wall_base_levels)
         ),
-        "vertical_circulation": (
-            modeled_floors <= 1
-            or counts.get("stair", 0) > 0
-            or stair_instance_count > 0
-        ),
+        "vertical_circulation": circulation_valid,
         "duplicate_wall_free": duplicate_wall_count == 0,
+        "valid_wall_hosts": not degenerate_wall_ids,
         "overlapping_column_free": overlapping_column_count == 0,
     }
     realization_checks = (
@@ -1757,12 +1854,13 @@ def evaluate_skeleton_complexity(
         checks["storey_wall_levels"],
         checks["vertical_circulation"],
         checks["duplicate_wall_free"],
+        checks["valid_wall_hosts"],
         checks["overlapping_column_free"],
     )
     return {
         "level": level,
         "meets_target": (
-            level == "minimal"
+            (level == "minimal" and checks["valid_wall_hosts"])
             or (
                 all(realization_checks)
                 and (level != "detailed" or all(checks.values()))
@@ -1777,9 +1875,45 @@ def evaluate_skeleton_complexity(
         "expected_floor_layout_count": len(expected_floor_layouts),
         "target_volume_footprints": volume_target,
         "duplicate_wall_count": duplicate_wall_count,
+        "degenerate_wall_ids": degenerate_wall_ids,
         "overlapping_column_count": overlapping_column_count,
         "element_type_counts": counts,
     }
+
+
+def _append_vertical_core(
+    elements: list[dict[str, Any]],
+    *,
+    width: float,
+    depth: float,
+    total_height: float,
+) -> None:
+    core_width = min(width - 2.0, max(4.0, width * 0.24))
+    core_depth = min(depth - 2.0, max(4.0, depth * 0.28))
+    x0 = (width - core_width) / 2
+    x1 = x0 + core_width
+    z0 = (depth - core_depth) / 2
+    z1 = z0 + core_depth
+    core_runs = (
+        ("front", x0, z0, x1, z0),
+        ("right", x1, z0, x1, z1),
+        ("back", x1, z1, x0, z1),
+        ("left", x0, z1, x0, z0),
+        ("partition", (x0 + x1) / 2, z0, (x0 + x1) / 2, z1),
+    )
+    segment_count = max(1, math.ceil(total_height / 45.0))
+    segment_height = total_height / segment_count
+    for segment in range(segment_count):
+        base_y = segment * segment_height
+        top_y = (segment + 1) * segment_height
+        suffix = "" if segment_count == 1 else f"_{segment + 1}"
+        for side, start_x, start_z, end_x, end_z in core_runs:
+            elements.append({
+                "type": "wall", "id": f"wall_core_{side}{suffix}",
+                "from": [start_x, round(base_y, 3), start_z],
+                "to": [end_x, round(top_y, 3), end_z],
+                "thickness": 0.2, "material": "concrete",
+            })
 
 
 def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -> dict[str, Any]:
@@ -1804,6 +1938,11 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
     volumes = normalized.get("volumes") or _fallback_volumes(
         width, depth, modeled_floors, normalized["complexity"],
     )
+    vertical_strategy = str(
+        (normalized.get("circulation") or {}).get("vertical_strategy") or "stair"
+    )
+    want_stair = vertical_strategy in {"stair", "core_and_stair"} and floors > 1
+    want_core = vertical_strategy in {"core", "core_and_stair"} and floors > 1
     level_regions = []
     for level in range(1, modeled_floors + 1):
         level_regions.append([
@@ -1820,8 +1959,8 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         level_regions,
         floor_height,
         min(1.8, max(1.0, width * 0.08)),
-    )
-    if stair_layout is None:
+    ) if want_stair else None
+    if want_stair and stair_layout is None:
         stair_x = max(1.0, min(width - 1.0, width * 0.2))
         stair_z0 = max(0.8, min(depth - 2.0, depth * 0.2))
         stair_z1 = max(stair_z0 + 1.0, min(depth - 0.8, depth * 0.65))
@@ -1964,34 +2103,10 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
                 } for level in range(1, floors))
 
-        if normalized["profile"] == "high_rise":
-            core_width = min(width - 2.0, max(4.0, width * 0.24))
-            core_depth = min(depth - 2.0, max(4.0, depth * 0.28))
-            x0 = (width - core_width) / 2
-            x1 = x0 + core_width
-            z0 = (depth - core_depth) / 2
-            z1 = z0 + core_depth
-            core_thickness = 0.2
-            core_runs = (
-                ("front", x0, z0, x1, z0),
-                ("right", x1, z0, x1, z1),
-                ("back", x1, z1, x0, z1),
-                ("left", x0, z1, x0, z0),
-                ("partition", (x0 + x1) / 2, z0, (x0 + x1) / 2, z1),
+        if want_core:
+            _append_vertical_core(
+                elements, width=width, depth=depth, total_height=total_height,
             )
-            core_segment_count = max(1, math.ceil(total_height / 45.0))
-            core_segment_height = total_height / core_segment_count
-            for segment in range(core_segment_count):
-                base_y = segment * core_segment_height
-                top_y = (segment + 1) * core_segment_height
-                suffix = "" if core_segment_count == 1 else f"_{segment + 1}"
-                for side, start_x, start_z, end_x, end_z in core_runs:
-                    elements.append({
-                        "type": "wall", "id": f"wall_core_{side}{suffix}",
-                        "from": [start_x, round(base_y, 3), start_z],
-                        "to": [end_x, round(top_y, 3), end_z],
-                        "thickness": core_thickness, "material": "concrete",
-                    })
     else:
         detailed = normalized["complexity"]["level"] == "detailed"
         floor_plates = _resolve_floor_plate_plan(volumes, modeled_floors, floor_height)
@@ -2063,6 +2178,11 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                         "thickness": 0.24, "material": "wall_finish",
                     },
                 ])
+
+    if not schematic and want_core:
+        _append_vertical_core(
+            elements, width=width, depth=depth, total_height=total_height,
+        )
 
     if not schematic and modeled_floors > 1 and stair_layout:
         stair_start = stair_layout["start"]
@@ -2685,6 +2805,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
         "floor_height": float(massing.get("floor_height") or 3.2),
         "representation_mode": str(massing.get("representation_mode") or "full"),
         "shape": str(massing.get("shape") or "rectangle"),
+        "symmetry": bool(massing.get("symmetry")),
         "volumes": deepcopy(plan.get("volumes") or []),
     }
     walls = []

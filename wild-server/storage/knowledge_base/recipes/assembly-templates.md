@@ -1,160 +1,31 @@
 ---
-knowledge_layer: architecture
 entity_type: assembly
-entity_name: building_assembly_templates
+entity_name: building_assembly_relations
 topic: assembly
-status: experimental
+status: supported
 authority: maintainer
 source: recipes/assembly-templates.md
 primary_terms:
-  - 组装模板
-  - assembly
-  - 低层建筑
-  - 高层建筑
-  - 大跨公建
+  - 建筑组装
+  - 楼层衔接
+  - 体量关系
 synonyms: []
 ---
 
-# WILD v1.1 建筑组装模板
+# 从已选方案落实建筑关系
 
-> 依据：当前 Schema 与引擎能力边界；建筑类型顺序属于维护者建议。
-> 用途：只使用 WILD v1.1 已注册类型给出可执行的基线流程；专业构件扩展另列为 proposed。
-> RAG 关键词：组装模板、低层建筑、高层建筑、大跨公建、温室、养殖、column、floor、wall、opening、roof、primitive
+## 空间系统与生成顺序
 
----
-## 低层建筑基线
+先确定本次体量、楼层标高、结构系统和通行关系，再生成对应 floor/wall/column/beam/roof；门窗等组件引用已存在的原生墙。这个顺序便于建立引用，不规定柱数、外形或数组中的先后。开放亭廊不强制墙体，单层不强制楼梯；选择框架体系时才落实柱梁。
 
-<!-- rag-meta
-entity_type: assembly
-entity_name: low_rise_supported_baseline
-topic: assembly
-status: experimental
-authority: maintainer
-primary_terms:
-  - 低层建筑
-  - floor
-  - wall
-  - opening
-  - roof
-  - stair
-synonyms:
-  - low rise
--->
+## 多层、错层与退台
 
-适用于别墅、小屋、园林和低层公共建筑的起点：
+每层使用统一的标高来源；墙底、墙顶、楼板基准和楼梯端点按当前字段语义推导。相邻层的公共交通需连接，不能复制同一楼梯到所有楼层而保留原标高。只有方案采用退台时才生成退台：层间楼板覆盖下层封顶与上层底板，外露部分形成完整平台；重复覆盖的小板应去重。
 
-```
-floor(地基/首层板) → column/beam(按需) → wall(围护) → opening(门窗洞口) → stair(按需) → roof
-```
+## 开放空间与屋盖
 
-标准静态门、窗和路径栏杆优先写入 `geometry.components`，分别使用 `door`、`window`、`railing`；这些名称不能写入 `geometry.elements`。超出编译器边界的装饰细节继续用 `primitive` 或现有结构类型显式组合。
+中庭、挑空、院落、楼梯洞口按方案保留真实空域，不用整块楼板填满。当前不能表达任意带洞楼板时，使用数块有效 floor 表达洞口周边。多个独立体量分别确定屋盖支撑边界；禁止按全部建筑的包围盒盖住院落。复杂屋盖保留所选轮廓与支点关系，可用多构件显式近似。
 
-## 多层建筑基线
+## 结构几何的能力边界
 
-<!-- rag-meta
-entity_type: assembly
-entity_name: multi_storey_supported_baseline
-topic: assembly
-status: experimental
-authority: maintainer
-primary_terms:
-  - 多层建筑
-  - column
-  - beam
-  - floor
-  - wall
-  - opening
-  - stair
-synonyms:
-  - multi storey
--->
-
-```
-column/beam(骨架) → floor(本层楼板) → wall(本层围护与分隔) → opening(本层门窗洞口) → stair(连接层间) → 逐层重复 → roof
-```
-
-引擎不会自动设计核心筒、避难层或结构体系；层高、标高、构件尺寸和结构安全仍需外部规则或人工校验。
-
-## 大跨与轻型建筑降级基线
-
-<!-- rag-meta
-entity_type: assembly
-entity_name: long_span_supported_fallback
-topic: assembly
-status: experimental
-authority: maintainer
-primary_terms:
-  - 大跨建筑
-  - 温室
-  - 厂房
-  - beam
-  - primitive
-  - roof
-synonyms:
-  - long span
--->
-
-```
-column(支点) → beam/primitive(显式杆件网络) → roof(基础屋面) → wall(局部围护) → floor(地坪/平台) → opening(通风或出入口)
-```
-
-该模板只能生成几何近似，不能把 `truss`、网壳、膜结构、自动栏杆或专业设备当作已实现能力。
-
-## 已支持的基础组合构件
-
-<!-- rag-meta
-entity_type: assembly
-entity_name: supported_composite_assembly
-topic: assembly
-status: supported
-authority: engine
-primary_terms:
-  - geometry.components
-  - door
-  - window
-  - railing
-  - canopy
-  - balcony
-  - ramp
-  - bay_window
-  - cornice
-  - chimney
-  - light
-  - 组合构件
-synonyms: []
--->
-
-```text
-wall → geometry.components.door/window/bay_window/canopy/balcony
-floor or explicit path → geometry.components.railing/ramp
-roof or explicit path → geometry.components.cornice/chimney
-world position → geometry.components.light
-```
-
-门、窗、凸窗、雨棚和阳台必须提供 `parentWall` 与墙体局部 `from`；会形成开口的门、窗和凸窗当前支持直线墙或单段圆弧墙。栏杆和坡道可选 `parentFloor`，檐口和烟囱可选 `parentRoof`。编译器只负责几何展开，不会自动选择建筑规范参数，也不会把烟囱布尔穿透屋顶。
-
-## 仍需降级的专业关系
-
-<!-- rag-meta
-entity_type: assembly
-entity_name: proposed_professional_relations
-topic: assembly
-status: proposed
-authority: domain_reference
-primary_terms:
-  - truss
-  - roof penetration
-  - 专业构件
-  - curtain wall
-  - auto railing
-synonyms: []
--->
-
-```
-column/roof → truss
-column/beam → curtain wall system
-roof → boolean opening / chimney penetration
-stair/floor edge → automatic code-compliant railing
-```
-
-这些关系属于建筑专业语义，但当前没有对应专用类型或自动 resolver。默认生成应使用 `beam`/`primitive` 近似桁架；幕墙使用 `wall + window` 或显式 `primitive` 骨架/玻璃，并遵循 `recipes/glass-curtain-wall-assembly.md`；屋顶构件和栏杆需显式布置。`ramp`、`canopy`、`balcony`、`bay_window`、`cornice`、`chimney` 与 `light` 已由组合构件编译器支持，不属于提案类型。
+大跨、桁架、核心筒和专业设施的几何表达以当前 capability 文档为准。beam/primitive 可以表达弦杆、腹杆和节点位置，但不自动计算截面或承载能力。默认示例尺寸不具有工程权威；已明确尺寸与引擎限制冲突时报告冲突，不能静默套用其他建筑。

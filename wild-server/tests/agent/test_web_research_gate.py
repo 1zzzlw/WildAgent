@@ -33,25 +33,25 @@ def test_coverage_sufficient_when_all_required_hit():
     assert decision.missing_topics == []
 
 
-def test_coverage_triggers_when_core_missing():
+def test_missing_engine_rules_reports_gap_without_web():
     hits = [_chunk("building_type", "composition")]
     decision = evaluate_knowledge_coverage("高层玻璃幕墙", "high_rise", hits)
     assert decision.sufficient is False
-    assert decision.trigger_web_research is True
+    assert decision.trigger_web_research is False
     assert "recipe.assembly" in decision.missing_required
 
 
-def test_coverage_triggers_when_no_retrieval():
+def test_missing_local_retrieval_does_not_request_encyclopedia():
     decision = evaluate_knowledge_coverage("高层玻璃幕墙", "high_rise", [])
     assert decision.sufficient is False
-    assert decision.trigger_web_research is True
+    assert decision.trigger_web_research is False
     assert decision.coverage_ratio == 0.0
 
 
 def test_unknown_building_type_uses_default_topics():
     decision = evaluate_knowledge_coverage("生成一个水电站", "unknown_type", [])
-    # 未知类型走默认主题集（构成 + 组装），无检索时应触发联网。
-    assert decision.trigger_web_research is True
+    # 未知类型复用能力与组装主题；没有类型卡不触发百科研究。
+    assert decision.trigger_web_research is False
     assert "building_type.composition" in decision.missing_topics
 
 

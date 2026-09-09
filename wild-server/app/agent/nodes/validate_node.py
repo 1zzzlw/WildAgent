@@ -41,13 +41,13 @@ async def validate_node(state: GenerationState) -> dict:
     
     merged_blueprint = state.get("merged_blueprint")
     if not merged_blueprint:
-        logger.error(f"[validate_node] merged_blueprint 缺失")
+        logger.error("[validate_node] merged_blueprint 缺失")
         return {
             "error": "merged_blueprint 缺失，无法校验",
             "status": "failed",
         }
     
-    logger.info(f"[validate_node] 开始校验 Blueprint")
+    logger.info("[validate_node] 开始校验 Blueprint")
     
     # 导入并执行校验流水线
     from app.services.agent_delivery import final_validation_results

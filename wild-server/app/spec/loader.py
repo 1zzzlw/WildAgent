@@ -28,6 +28,10 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from loguru import logger
+from app.agent.knowledge_policy import (
+    GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION,
+    knowledge_hit_applies, restrict_building_query,
+)
 
 from app.agent.rag_gate import (
     RAGRetrievalRejected,
@@ -113,6 +117,14 @@ class FileSpecLoader(SpecLoader):
     def list_sources(self) -> list[str]:
         return [str(p) for p in self._paths]
 
+    def load_many(self, queries: list, per_query: int = 1, *, purpose: str = "generation") -> str:
+        """向量不可用时各节点仍获得固定协议；不补入建筑案例。"""
+        return self.load()
+
+    @property
+    def last_results(self) -> list:
+        return []
+
     @property
     def loaded_at(self) -> float | None:
         return self._loaded_at
@@ -160,6 +172,9 @@ def _without_derived_entity_name(
     explicit = dict(original_filter or {})
     if "entity_name" in result and "entity_name" not in explicit:
         result.pop("entity_name", None)
+    # 同一术语可同时有参数、约束和组装章节，别名不是主题硬过滤依据。
+    if "topic" not in explicit:
+        result.pop("topic", None)
     return result
 
 
@@ -445,6 +460,9 @@ class MarkdownChunker:
         "wild_version",
         "status",
         "authority",
+        "knowledge_revision",
+        "knowledge_role",
+        "applies_to",
         "primary_terms",
         "synonyms",
         # 兼容尚未迁移的外部文档；正式知识库不再写 legacy keywords。
@@ -774,6 +792,8 @@ class MarkdownChunker:
         metadata: dict[str, Any] = {
             "doc_type": "knowledge",
             "doc_scope": doc_scope,
+            "knowledge_revision": KNOWLEDGE_REVISION,
+            "knowledge_role": "capability",
             "knowledge_layer": "generation",
             "entity_type": "general",
             "entity_name": path.stem,
@@ -789,7 +809,7 @@ class MarkdownChunker:
             })
             return metadata
         if "building_types" in path_text or "building-types" in path_text:
-            metadata.update({"doc_type": "building_type", "entity_type": "building"})
+            metadata.update({"doc_type": "building_type", "entity_type": "building", "knowledge_role": "identity"})
             # 根据目录路径推断 building_category
             if "residential" in path_text:
                 metadata["building_category"] = "residential"
@@ -1666,6 +1686,7 @@ class RAGSpecLoader(SpecLoader):
             effective_filter = metadata_filter
 
         # 多取一倍候选，为后面的精确内容去重留出补位空间。
+        effective_filter = restrict_building_query(query, effective_filter, self._alias_catalog())
         n_results = min(self._top_k * 2, count)
         result = collection.query(
             query_texts=[query_text],
@@ -1692,6 +1713,8 @@ class RAGSpecLoader(SpecLoader):
         for index in ranked_indices:
             document = documents[index]
             metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+            if not knowledge_hit_applies(query, metadata):
+                continue
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
             dedupe_hash = self._retrieval_hash(document or "", metadata)
             if dedupe_hash in seen_hashes:
@@ -1707,7 +1730,8 @@ class RAGSpecLoader(SpecLoader):
             if len(retrieved) >= self._top_k:
                 break
 
-        retrieved = self._expand_parent_neighbors(collection, retrieved)
+        retrieved = [hit for hit in self._expand_parent_neighbors(collection, retrieved)
+                     if knowledge_hit_applies(query, hit.metadata)]
         self._last_results = retrieved
         return retrieved
 
@@ -1804,6 +1828,10 @@ class RAGSpecLoader(SpecLoader):
                 else:
                     normalized_queries.append((text, metadata_filter))
 
+        normalized_queries = [
+            (text, restrict_building_query(text, metadata, self._alias_catalog()))
+            for text, metadata in normalized_queries
+        ]
         if not normalized_queries:
             self._last_results = []
             return []
@@ -1887,6 +1915,8 @@ class RAGSpecLoader(SpecLoader):
             for index in ranked_indices:
                 document = documents[index]
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+                if not knowledge_hit_applies(query_text, metadata):
+                    continue
                 dedupe_hash = self._retrieval_hash(document or "", metadata)
                 if dedupe_hash in seen_hashes:
                     continue
@@ -1906,7 +1936,9 @@ class RAGSpecLoader(SpecLoader):
                 query_chunks = self._rerank_retrieved(query_chunks, query_text)
             retrieved.extend(query_chunks)
 
-        retrieved = self._expand_parent_neighbors(collection, retrieved)
+        retrieved = [hit for hit in self._expand_parent_neighbors(collection, retrieved)
+                     if any(knowledge_hit_applies(text, hit.metadata)
+                            for text, _ in normalized_queries)]
         self._last_results = retrieved
         if retrieval_cache is not None and cache_key is not None:
             retrieval_cache[cache_key] = list(retrieved)
@@ -2001,11 +2033,9 @@ class RAGSpecLoader(SpecLoader):
         """按知识库版本惰性构建别名目录，供 build_query_plan 做实体别名改写。
 
         目录从已索引 chunk 的 entity_name/primary_terms/synonyms 构建。构建失败
-        时静默降级为空目录（等价于不做别名改写），不阻断检索。手工构造的测试
+        时降级为空目录：通用规则仍可检索，自动类型路由不放行任何类型。手工构造的测试
         Loader 可能缺少这些属性，统一用 getattr 防御。
         """
-        if not getattr(self, "_query_rewrite_enabled", True):
-            return {}
         cached = getattr(self, "_alias_catalog_cache", None)
         cached_revision = getattr(self, "_alias_catalog_revision", None)
         stats = getattr(self, "_last_sync_stats", None) or {}
@@ -2016,11 +2046,11 @@ class RAGSpecLoader(SpecLoader):
         try:
             collection = self._get_collection()
             if collection is not None and collection.count() > 0:
-                batch = collection.get(include=["metadatas"])
+                batch = collection.get(where=self._query_where(), include=["metadatas"])
                 metadatas = batch.get("metadatas", []) or []
                 catalog = build_alias_catalog(metadatas)
         except Exception as exc:
-            # 别名目录只是检索增强，不参与安全过滤；失败不应阻断检索。
+            # 失败时类型路由关闭，通用规则仍可使用。
             logger.warning(f"[RAG] 别名目录构建失败，本次不做别名改写: {exc}")
             catalog = {}
         self._alias_catalog_cache = catalog
@@ -2098,10 +2128,15 @@ class RAGSpecLoader(SpecLoader):
         )
         conditions: list[dict[str, Any]] = [
             {"namespace": self._namespace},
-            {"doc_scope": {"$ne": "index"}},
+            {"knowledge_revision": KNOWLEDGE_REVISION},
         ]
+        # 新版本知识未同步时返回空知识，不能退回旧建筑模板。
+        if "doc_scope" not in business_filter:
+            conditions.append({"doc_scope": "generation"})
+        if "knowledge_role" not in business_filter and business_filter.get("doc_scope") != "reference":
+            conditions.append({"knowledge_role": {"$in": list(GENERATION_ROLES)}})
         if "status" not in business_filter:
-            conditions.append({"status": {"$ne": "proposed"}})
+            conditions.append({"status": {"$in": ["supported", "experimental"]}})
         if "authority" not in business_filter:
             conditions.append({"authority": {"$ne": "inferred"}})
         conditions.extend(access_conditions)
@@ -2190,7 +2225,7 @@ class RAGSpecLoader(SpecLoader):
         if not chunks:
             return ""
 
-        parts = ["## RAG 检索到的相关规范片段"]
+        parts = ["## RAG 检索到的相关规范片段", KNOWLEDGE_GUIDANCE]
         for index, chunk in enumerate(chunks, start=1):
             source = chunk.metadata.get(
                 "source_file",
@@ -2199,7 +2234,7 @@ class RAGSpecLoader(SpecLoader):
             heading = chunk.metadata.get("heading", "")
             metadata_text = ", ".join(
                 f"{key}={chunk.metadata[key]}"
-                for key in ("doc_type", "entity_name", "topic", "status", "authority")
+                for key in ("doc_type", "entity_name", "topic", "knowledge_role", "status", "authority")
                 if chunk.metadata.get(key)
             )
             distance = chunk.distance

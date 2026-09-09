@@ -55,6 +55,7 @@ def build_alias_catalog(chunks: Iterable[Any]) -> AliasCatalog:
             continue
         entry = catalog.setdefault(entity_name, {
             "aliases": set(),
+            "applies_to": set(),
             "filters": {},
             "constraints": set(),
         })
@@ -74,6 +75,10 @@ def build_alias_catalog(chunks: Iterable[Any]) -> AliasCatalog:
                 if value.casefold() not in _INDEX_VOCABULARY_CASEFOLD
             )
         entry["aliases"].add(entity_name)
+        applies_to = metadata.get("applies_to", [])
+        if isinstance(applies_to, str):
+            applies_to = [item.strip() for item in applies_to.split(",") if item.strip()]
+        entry["applies_to"].update(applies_to)
         for key in ("doc_type", "entity_type", "topic"):
             value = metadata.get(key)
             if value and key not in entry["filters"]:

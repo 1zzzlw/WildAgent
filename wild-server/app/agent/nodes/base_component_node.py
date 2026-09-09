@@ -21,6 +21,7 @@ from app.agent.model_errors import classify_model_error
 from app.agent.runtime_context import get_reasoning_callback
 from app.agent.component_registry import ComponentConfig
 from app.spec.loader import SpecQuery
+from app.agent.knowledge_policy import plan_knowledge_query
 from app.utils.json_extractor import extract_json_array, extract_json_object
 
 # 全局 LLM 并发信号量
@@ -107,22 +108,22 @@ def create_component_generator(config: ComponentConfig):
                 f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
             )
         design_brief = state.get("design_brief")  # ← 骨架设计清单
-        output_key = config.output_key
         gen_diag_key = f"{config.component_type}_gen_diag"
 
         logger.info(f"[{config.component_type}_gen] 开始生成 {config.label}")
 
         # ── 1. RAG 检索 ──
         rag_t0 = _time.time()
+        selected_query = plan_knowledge_query(user_message, state.get("architecture_plan"))
         queries = [
-            SpecQuery(user_message, {"entity_type": config.entity_type}),
+            SpecQuery(selected_query, {"doc_type": "component", "entity_type": config.entity_type}),
             SpecQuery(
-                f"{user_message}\n{config.label}构件参数与位置规则：{config.component_type} 的推荐数量、位置、尺寸",
-                {"doc_type": "component"},
+                f"{user_message}\n{config.label}构件参数与位置规则：{config.component_type} 的宿主、局部坐标、字段与边界",
+                {"doc_type": "component", "entity_type": config.entity_type},
             ),
         ]
         for extra_query in config.rag_extra_queries:
-            queries.append(SpecQuery(extra_query, {"doc_type": "component"}))
+            queries.append(SpecQuery(extra_query, {"doc_type": "component", "entity_type": config.entity_type}))
 
         rag_error = None
         try:

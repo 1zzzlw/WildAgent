@@ -5,6 +5,23 @@ from app.agent.validation_issues import validation_issues_from_results
 
 
 class ValidationPipelineRepairTest(unittest.TestCase):
+    def test_wall_repair_refreshes_structural_quality_result(self):
+        blueprint = {
+            "meta": {"version": "1.1", "type": "building", "name": "wall gap"},
+            "geometry": {"elements": [
+                {"id": "plate", "type": "floor", "from": [0, 0, 0], "to": [8, 0, 6], "thickness": 0.2},
+                {"id": "a", "type": "wall", "from": [0, 0, 0], "to": [8, 3, 0], "thickness": 0.3},
+                {"id": "b", "type": "wall", "from": [8, 0, 0], "to": [8, 3, 6], "thickness": 0.3},
+                {"id": "c", "type": "wall", "from": [8, 0, 6], "to": [0, 3, 6], "thickness": 0.3},
+            ], "components": []},
+            "materials": {},
+        }
+        results = run_validation_pipeline(blueprint)
+        quality = [result for result in results if result.name == "validate_model_quality [recheck]"]
+        self.assertEqual(len(quality), 1)
+        self.assertFalse(quality[0].has_error)
+        self.assertEqual(sum(element["type"] == "wall" for element in blueprint["geometry"]["elements"]), 4)
+
     def test_validation_issue_uses_finite_root_cause_category(self):
         blueprint = {
             "geometry": {

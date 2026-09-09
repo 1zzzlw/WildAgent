@@ -1,5 +1,4 @@
 ---
-knowledge_layer: wild_schema
 entity_type: railing
 entity_name: path_railing_component
 topic: schema

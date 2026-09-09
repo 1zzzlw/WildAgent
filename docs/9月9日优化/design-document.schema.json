@@ -1,0 +1,945 @@
+{
+  "$defs": {
+    "ArchitectureDecisions": {
+      "additionalProperties": false,
+      "properties": {
+        "balcony_access_count": {
+          "default": 0,
+          "maximum": 32,
+          "minimum": 0,
+          "title": "Balcony Access Count",
+          "type": "integer"
+        },
+        "balcony_width": {
+          "anyOf": [
+            {
+              "maximum": 6,
+              "minimum": 0.8,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Balcony Width"
+        },
+        "circulation": {
+          "$ref": "#/$defs/CirculationDecision"
+        },
+        "complexity": {
+          "$ref": "#/$defs/ComplexityDecision"
+        },
+        "component_quota": {
+          "additionalProperties": {
+            "$ref": "#/$defs/ComponentQuota"
+          },
+          "title": "Component Quota",
+          "type": "object"
+        },
+        "concept": {
+          "default": "",
+          "maxLength": 240,
+          "title": "Concept",
+          "type": "string"
+        },
+        "design_rationale": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Design Rationale",
+          "type": "array"
+        },
+        "detail_packages": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Detail Packages",
+          "type": "array"
+        },
+        "envelope": {
+          "$ref": "#/$defs/EnvelopeDecision"
+        },
+        "facades": {
+          "additionalProperties": {
+            "$ref": "#/$defs/FacadeDecision"
+          },
+          "propertyNames": {
+            "enum": [
+              "front",
+              "back",
+              "left",
+              "right"
+            ]
+          },
+          "title": "Facades",
+          "type": "object"
+        },
+        "massing": {
+          "$ref": "#/$defs/MassingDecision"
+        },
+        "materials": {
+          "$ref": "#/$defs/MaterialIntent"
+        },
+        "required_components": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Required Components",
+          "type": "array"
+        },
+        "roof": {
+          "$ref": "#/$defs/RoofDecision"
+        },
+        "structural_grid": {
+          "$ref": "#/$defs/StructuralGridDecision"
+        },
+        "unsupported_component_types": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Unsupported Component Types",
+          "type": "array"
+        },
+        "volumes": {
+          "items": {
+            "$ref": "#/$defs/VolumeDecision"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Volumes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "massing",
+        "complexity",
+        "volumes",
+        "structural_grid",
+        "envelope",
+        "facades",
+        "roof"
+      ],
+      "title": "ArchitectureDecisions",
+      "type": "object"
+    },
+    "CirculationDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "vertical_strategy": {
+          "default": "stair",
+          "enum": [
+            "none",
+            "stair",
+            "core",
+            "core_and_stair"
+          ],
+          "title": "Vertical Strategy",
+          "type": "string"
+        }
+      },
+      "title": "CirculationDecision",
+      "type": "object"
+    },
+    "ComplexityDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "grid_bays": {
+          "default": [
+            2,
+            2
+          ],
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "title": "Grid Bays",
+          "type": "array"
+        },
+        "level": {
+          "default": "standard",
+          "enum": [
+            "minimal",
+            "simple",
+            "standard",
+            "detailed"
+          ],
+          "title": "Level",
+          "type": "string"
+        },
+        "min_detail_packages": {
+          "default": 0,
+          "maximum": 12,
+          "minimum": 0,
+          "title": "Min Detail Packages",
+          "type": "integer"
+        },
+        "min_volumes": {
+          "default": 1,
+          "maximum": 8,
+          "minimum": 1,
+          "title": "Min Volumes",
+          "type": "integer"
+        },
+        "reason": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Reason",
+          "type": "string"
+        },
+        "target_structural_elements": {
+          "default": 10,
+          "maximum": 1000,
+          "minimum": 1,
+          "title": "Target Structural Elements",
+          "type": "integer"
+        }
+      },
+      "title": "ComplexityDecision",
+      "type": "object"
+    },
+    "ComponentQuota": {
+      "additionalProperties": false,
+      "properties": {
+        "max": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Max",
+          "type": "integer"
+        },
+        "min": {
+          "default": 0,
+          "maximum": 10000,
+          "minimum": 0,
+          "title": "Min",
+          "type": "integer"
+        },
+        "note": {
+          "default": "",
+          "maxLength": 300,
+          "title": "Note",
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Type"
+        }
+      },
+      "title": "ComponentQuota",
+      "type": "object"
+    },
+    "CurtainWallDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "grid_strategy": {
+          "const": "floor_and_bay_aligned",
+          "default": "floor_and_bay_aligned",
+          "title": "Grid Strategy",
+          "type": "string"
+        }
+      },
+      "title": "CurtainWallDecision",
+      "type": "object"
+    },
+    "DesignConstraint": {
+      "additionalProperties": false,
+      "properties": {
+        "expression": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Expression",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "user_hard",
+            "engine_hard",
+            "system_required",
+            "preference",
+            "reference"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "maxLength": 240,
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "target",
+        "expression"
+      ],
+      "title": "DesignConstraint",
+      "type": "object"
+    },
+    "DesignRequirements": {
+      "additionalProperties": false,
+      "properties": {
+        "building_type": {
+          "default": "building",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Building Type",
+          "type": "string"
+        },
+        "profile": {
+          "default": "residential_lowrise",
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Profile",
+          "type": "string"
+        },
+        "source_request": {
+          "maxLength": 8000,
+          "minLength": 1,
+          "title": "Source Request",
+          "type": "string"
+        },
+        "style_intent": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 12,
+          "title": "Style Intent",
+          "type": "array"
+        }
+      },
+      "required": [
+        "source_request"
+      ],
+      "title": "DesignRequirements",
+      "type": "object"
+    },
+    "EnvelopeDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "curtain_wall": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CurtainWallDecision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "system": {
+          "default": "solid_wall",
+          "enum": [
+            "solid_wall",
+            "curtain_wall"
+          ],
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "title": "EnvelopeDecision",
+      "type": "object"
+    },
+    "FacadeDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "bays": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Bays",
+          "type": "integer"
+        },
+        "entrance_bay": {
+          "anyOf": [
+            {
+              "maximum": 32,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entrance Bay"
+        },
+        "ground_pattern": {
+          "items": {
+            "enum": [
+              "door",
+              "window",
+              "empty"
+            ],
+            "type": "string"
+          },
+          "title": "Ground Pattern",
+          "type": "array"
+        },
+        "upper_pattern": {
+          "items": {
+            "enum": [
+              "door",
+              "window",
+              "empty"
+            ],
+            "type": "string"
+          },
+          "title": "Upper Pattern",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bays",
+        "ground_pattern",
+        "upper_pattern"
+      ],
+      "title": "FacadeDecision",
+      "type": "object"
+    },
+    "MassingDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Depth",
+          "type": "number"
+        },
+        "floor_height": {
+          "exclusiveMinimum": 0.5,
+          "maximum": 20,
+          "title": "Floor Height",
+          "type": "number"
+        },
+        "floors": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Floors",
+          "type": "integer"
+        },
+        "modeled_floors": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Modeled Floors",
+          "type": "integer"
+        },
+        "representation_mode": {
+          "default": "full",
+          "enum": [
+            "full",
+            "schematic"
+          ],
+          "title": "Representation Mode",
+          "type": "string"
+        },
+        "shape": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Shape",
+          "type": "string"
+        },
+        "symmetry": {
+          "default": false,
+          "title": "Symmetry",
+          "type": "boolean"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Width",
+          "type": "number"
+        }
+      },
+      "required": [
+        "shape",
+        "width",
+        "depth",
+        "floors",
+        "modeled_floors",
+        "floor_height"
+      ],
+      "title": "MassingDecision",
+      "type": "object"
+    },
+    "MaterialIntent": {
+      "additionalProperties": false,
+      "properties": {
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Keywords",
+          "type": "array"
+        },
+        "resolved_plan": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResolvedMaterialPlan"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "MaterialIntent",
+      "type": "object"
+    },
+    "ResolvedMaterialPlan": {
+      "additionalProperties": false,
+      "properties": {
+        "concept": {
+          "default": "",
+          "maxLength": 160,
+          "title": "Concept",
+          "type": "string"
+        },
+        "curtainWall": {
+          "default": false,
+          "title": "Curtainwall",
+          "type": "boolean"
+        },
+        "palette": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 5,
+          "title": "Palette",
+          "type": "array"
+        },
+        "rejectedAssetIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejectedassetids",
+          "type": "array"
+        },
+        "rejectedProceduralPresetIds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rejectedproceduralpresetids",
+          "type": "array"
+        },
+        "resolvedAssets": {
+          "additionalProperties": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Resolvedassets",
+          "type": "object"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/ResolvedMaterialRole"
+          },
+          "maxItems": 20,
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "title": "ResolvedMaterialPlan",
+      "type": "object"
+    },
+    "ResolvedMaterialRole": {
+      "additionalProperties": false,
+      "properties": {
+        "assetId": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assetid"
+        },
+        "material": {
+          "additionalProperties": true,
+          "title": "Material",
+          "type": "object"
+        },
+        "materialId": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Materialid",
+          "type": "string"
+        },
+        "proceduralPresetId": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Proceduralpresetid"
+        },
+        "role": {
+          "enum": [
+            "facade_primary",
+            "structure",
+            "floor",
+            "frame",
+            "door",
+            "glass",
+            "roof",
+            "ground",
+            "accent"
+          ],
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "materialId",
+        "material"
+      ],
+      "title": "ResolvedMaterialRole",
+      "type": "object"
+    },
+    "RoofDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "overhang": {
+          "default": 0,
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Overhang",
+          "type": "number"
+        },
+        "ridge_axis": {
+          "default": "x",
+          "enum": [
+            "x",
+            "z"
+          ],
+          "title": "Ridge Axis",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "flat",
+            "gable",
+            "hip",
+            "dome",
+            "chinese_curved",
+            "chinese_pagoda"
+          ],
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "RoofDecision",
+      "type": "object"
+    },
+    "RuleTrace": {
+      "additionalProperties": false,
+      "properties": {
+        "applies_when": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Applies When",
+          "type": "string"
+        },
+        "classification": {
+          "enum": [
+            "engine_hard",
+            "conditional",
+            "preference",
+            "reference",
+            "unsupported"
+          ],
+          "title": "Classification",
+          "type": "string"
+        },
+        "enforcement": {
+          "items": {
+            "enum": [
+              "schema",
+              "planner",
+              "resolver",
+              "compiler",
+              "validator",
+              "none"
+            ],
+            "type": "string"
+          },
+          "title": "Enforcement",
+          "type": "array"
+        },
+        "rule_id": {
+          "maxLength": 160,
+          "minLength": 1,
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "schema_targets": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Schema Targets",
+          "type": "array"
+        },
+        "source": {
+          "default": "",
+          "maxLength": 500,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rule_id",
+        "classification",
+        "enforcement"
+      ],
+      "title": "RuleTrace",
+      "type": "object"
+    },
+    "StructuralGridDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "system": {
+          "enum": [
+            "wall_bearing",
+            "frame",
+            "hybrid",
+            "long_span",
+            "shell"
+          ],
+          "title": "System",
+          "type": "string"
+        },
+        "x_bays": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "X Bays",
+          "type": "integer"
+        },
+        "z_bays": {
+          "maximum": 32,
+          "minimum": 1,
+          "title": "Z Bays",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "system",
+        "x_bays",
+        "z_bays"
+      ],
+      "title": "StructuralGridDecision",
+      "type": "object"
+    },
+    "VolumeDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Depth",
+          "type": "number"
+        },
+        "end_floor": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "End Floor",
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 48,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_\\-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "role": {
+          "default": "primary",
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "start_floor": {
+          "maximum": 200,
+          "minimum": 1,
+          "title": "Start Floor",
+          "type": "integer"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 500,
+          "title": "Width",
+          "type": "number"
+        },
+        "x": {
+          "maximum": 500,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "z": {
+          "maximum": 500,
+          "minimum": 0,
+          "title": "Z",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "z",
+        "width",
+        "depth",
+        "start_floor",
+        "end_floor"
+      ],
+      "title": "VolumeDecision",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approved At"
+    },
+    "constraints": {
+      "items": {
+        "$ref": "#/$defs/DesignConstraint"
+      },
+      "maxItems": 100,
+      "title": "Constraints",
+      "type": "array"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "decisions": {
+      "$ref": "#/$defs/ArchitectureDecisions"
+    },
+    "design_id": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Design Id",
+      "type": "string"
+    },
+    "locks": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100,
+      "title": "Locks",
+      "type": "array"
+    },
+    "requirements": {
+      "$ref": "#/$defs/DesignRequirements"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "rule_trace": {
+      "items": {
+        "$ref": "#/$defs/RuleTrace"
+      },
+      "maxItems": 200,
+      "title": "Rule Trace",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "design/1.0",
+      "default": "design/1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "session_id": {
+      "maxLength": 160,
+      "minLength": 1,
+      "title": "Session Id",
+      "type": "string"
+    },
+    "status": {
+      "default": "draft",
+      "enum": [
+        "draft",
+        "approved",
+        "compiled"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "design_id",
+    "session_id",
+    "revision",
+    "requirements",
+    "decisions"
+  ],
+  "title": "DesignDocument",
+  "type": "object"
+}

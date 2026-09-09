@@ -1,5 +1,4 @@
 ---
-knowledge_layer: wild_schema
 entity_type: component
 entity_name: composite_components_second_batch
 topic: schema

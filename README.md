@@ -41,3 +41,17 @@ npm run dev
 ## 当前状态
 
 已具备 Blueprint 生成、ScenePatch 增量修改、建筑知识问答、快速/精密 Agent 模式、RAG、确定性校验、会话恢复、组合构件编译和 3D 编辑。当前优化重点是协议版本化、双模式执行出口统一、Turn 服务端持久化和图级评测，详见 [优化路线](docs/ROADMAP.md)。
+
+```mermaid
+flowchart LR
+    A[用户需求] --> B[DesignDocument 设计文档]
+    K[知识规则与当前引擎能力] --> B
+    B --> C[ResolvedDesign 几何解析结果]
+    C --> D[SVG 平面图与立面图]
+    D --> E{用户批准?}
+    E -- 修改 --> F[DesignPatch]
+    F --> B
+    E -- 批准 --> G[Blueprint Compiler]
+    G --> H[WILD Blueprint]
+    H --> I[一致性校验与三维渲染]
+```

@@ -10,49 +10,14 @@ primary_terms:
 synonyms: []
 ---
 
-# 设计模式与项目案例
+# patterns 知识索引
 
-> 用途：存放用户确认后的可复用设计模式、项目偏好、场景案例和领域经验。
-> RAG 关键词：设计模式、用户偏好、案例、项目经验、可复用配置、patterns。
-> 当前模式：[高细节建筑生成模式](high-detail-architecture-generation.md)，用于精密模式的组合体量、结构轴网、细部构件包与复杂度降级规则。
+本目录采用 rules-v2：WILD 协议、构件能力与条件组装关系提供实现边界；类型卡只补充点名类型的特征。尺寸、造型、配色与附属系统由本次需求和已批准方案决定。普通生成不召回策略、完整案例、回退或导航内容。
 
-## 适合存放
+## 内容入口
 
-- 用户确认过的建筑组合方案。
-- 某个项目反复使用的材料、比例、构件配置。
-- 从生成结果中沉淀出的稳定案例。
-- 不属于通用规范、但对当前项目有价值的经验。
+- [high-detail-architecture-generation.md](high-detail-architecture-generation.md)
 
-本目录只记录已经验证或由维护者批准的项目模式；未经核验的原始资料应先进入待审区，不能用 pattern 身份覆盖引擎规范、Schema 事实或组件字段定义。
+## 维护与生效
 
-## 条目模板
-
-```md
----
-entity_type: building
-entity_name: confirmed_pattern_name
-topic: assembly
-status: supported
-authority: verified_example
-source: patterns/confirmed-pattern-name.md
-primary_terms:
-  - 正式模式名称
-  - project pattern
-synonyms:
-  - 用户常用说法
----
-
-# 模式名称
-
-> 来源：用户确认 / 项目沉淀。
-> 适用场景：
-> RAG 关键词：
-
-## 设计意图
-
-## 构件组合
-
-## 参数偏好
-
-## 使用限制
-```
+按 wild-knowledge-ingest 技能维护来源、knowledge_role、applies_to 与真实分片。路径公共 metadata 在知识库根 config.yaml；Markdown 链接不会自动追踪。更新内容后由 RAGSpecLoader 同步索引，旧版本向量被 rules-v2 过滤；基础协议始终由文件加载。历史原文在 docs-dev/knowledge-before-rules-v2，不参与扫描。

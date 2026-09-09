@@ -16,6 +16,64 @@
       <div v-if="turn.interruption_reason" class="interruption-notice">
         {{ turn.interruption_reason }}
       </div>
+      <section v-if="turn.design_document" class="design-review" :class="{ active: isDesignReview }">
+        <div class="execution-plan-header">
+          <strong>建筑设计 r{{ turn.design_document.revision }}</strong>
+          <span>{{ designStatusLabel(turn.design_document.status) }}</span>
+        </div>
+        <div class="design-concept">{{ turn.design_document.decisions.concept }}</div>
+        <div class="design-facts">
+          <span>{{ turn.design_document.decisions.massing.width }} × {{ turn.design_document.decisions.massing.depth }}m</span>
+          <span>{{ turn.design_document.decisions.massing.floors }} 层</span>
+          <span>{{ turn.design_document.decisions.volumes.length }} 个体量</span>
+          <span>{{ turn.design_document.decisions.envelope.system }}</span>
+          <span>{{ turn.design_document.decisions.roof.type }} 屋顶</span>
+          <span v-if="designMaterialConcept">{{ designMaterialConcept }}</span>
+        </div>
+        <a
+          v-if="turn.design_preview_url"
+          class="design-preview-link"
+          :href="turn.design_preview_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="在新窗口查看原始 SVG"
+        >
+          <img :src="turn.design_preview_url" alt="建筑体量、主立面和侧立面设计预览" />
+        </a>
+        <details class="design-details">
+          <summary>设计约束与构件计划</summary>
+          <div v-for="constraint in turn.design_document.constraints" :key="constraint.id">
+            <strong>{{ constraint.kind }}</strong> · {{ constraint.expression }}
+          </div>
+          <div class="design-quota">
+            <span
+              v-for="(quota, component) in turn.design_document.decisions.component_quota"
+              :key="component"
+            >{{ component }} {{ quota.min }}–{{ quota.max }}</span>
+          </div>
+        </details>
+        <div v-if="isDesignReview" class="review-actions">
+          <button
+            type="button"
+            class="confirm-plan-btn"
+            @click="$emit('confirm-design', turn.request_id)"
+          >批准此设计并生成 Blueprint</button>
+          <span>Blueprint 将绑定设计 revision 和 hash</span>
+        </div>
+        <div v-if="isDesignReview" class="review-revision">
+          <textarea
+            v-model="designFeedback"
+            rows="3"
+            placeholder="例如：塔楼向后退 2 米；主立面改为非对称；保留层数并减少窗格密度。"
+          ></textarea>
+          <button
+            type="button"
+            class="revise-plan-btn"
+            :disabled="!designFeedback.trim()"
+            @click="submitDesignRevision"
+          >根据意见生成下一版设计</button>
+        </div>
+      </section>
       <section v-if="turn.execution_plan" class="execution-plan-review" :class="{ active: isPlanReview }">
         <div class="execution-plan-header">
           <strong>执行计划 v{{ turn.execution_plan.version }}</strong>
@@ -185,9 +243,12 @@ const props = defineProps<{ turn: AgentTurn }>()
 const emit = defineEmits<{
   (event: 'confirm-execution-plan', requestId: string): void
   (event: 'revise-execution-plan', requestId: string, feedback: string): void
+  (event: 'confirm-design', requestId: string): void
+  (event: 'revise-design', requestId: string, feedback: string): void
 }>()
 const clock = ref(Date.now())
 const planFeedback = ref('')
+const designFeedback = ref('')
 let timer: number | undefined
 
 const md = new MarkdownIt({ html: false, breaks: true, linkify: false })
@@ -200,6 +261,7 @@ const durationMs = computed(() => {
 const summaryTitle = computed(() => {
   if (props.turn.status === 'running') return '正在处理'
   if (isPlanReview.value) return '等待批准执行计划'
+  if (isDesignReview.value) return '等待批准建筑设计'
   if (props.turn.status === 'waiting_review') return '等待用户确认'
   if (props.turn.status === 'error') return '处理未完成'
   return '处理完成'
@@ -208,6 +270,11 @@ const summaryTitle = computed(() => {
 const isPlanReview = computed(() =>
   props.turn.status === 'waiting_review'
   && props.turn.execution_plan_review_status === 'pending',
+)
+
+const isDesignReview = computed(() =>
+  props.turn.status === 'waiting_review'
+  && props.turn.design_review_status === 'pending',
 )
 
 const summaryMeta = computed(() => {
@@ -221,9 +288,17 @@ const validationErrorCount = computed(() =>
   props.turn.validation_steps.filter(step => step.status === 'error').length,
 )
 
+const designMaterialConcept = computed(() => {
+  const plan = props.turn.design_document?.decisions.materials.resolved_plan
+  return typeof plan?.concept === 'string' ? plan.concept : ''
+})
+
 watch(
-  () => [props.turn.request_id, props.turn.execution_plan?.version] as const,
-  () => { planFeedback.value = '' },
+  () => [props.turn.request_id, props.turn.execution_plan?.version, props.turn.design_document?.revision] as const,
+  () => {
+    planFeedback.value = ''
+    designFeedback.value = ''
+  },
 )
 
 function submitPlanRevision() {
@@ -231,6 +306,17 @@ function submitPlanRevision() {
   if (!feedback) return
   emit('revise-execution-plan', props.turn.request_id, feedback)
   planFeedback.value = ''
+}
+
+function submitDesignRevision() {
+  const feedback = designFeedback.value.trim()
+  if (!feedback) return
+  emit('revise-design', props.turn.request_id, feedback)
+  designFeedback.value = ''
+}
+
+function designStatusLabel(status: string): string {
+  return ({ draft: '草案', approved: '已批准', compiled: '已编译' } as Record<string, string>)[status] || status
 }
 
 function planStepMark(status: string): string {
@@ -362,6 +448,35 @@ onUnmounted(() => {
   border-radius: 7px;
   background: rgba(104, 153, 212, .035);
 }
+
+.design-review {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 10px;
+  border: 1px solid rgba(91, 178, 142, .24);
+  border-radius: 7px;
+  background: rgba(91, 178, 142, .04);
+}
+
+.design-review.active { border-color: rgba(250, 204, 21, .42); }
+.design-concept { color: #c7d7cf; font-size: 11px; line-height: 1.5; }
+.design-facts { display: flex; flex-wrap: wrap; gap: 5px; }
+.design-facts span,
+.design-quota span {
+  padding: 2px 6px;
+  color: #aec6b9;
+  border-radius: 4px;
+  background: rgba(91, 178, 142, .1);
+  font-size: 10px;
+}
+.design-preview-link { display: block; overflow: hidden; border-radius: 6px; background: #171a20; }
+.design-preview-link img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.design-details { color: #929da8; font-size: 10.5px; }
+.design-details > summary { cursor: pointer; color: #bac4ce; }
+.design-details > div { padding-top: 4px; }
+.design-details strong { color: #8fbfa9; font-size: 9.5px; }
+.design-quota { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .execution-plan-review.active { border-color: rgba(250, 204, 21, .38); }
 .execution-plan-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

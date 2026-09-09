@@ -7,6 +7,7 @@ from langgraph.graph import END
 
 from app.agent.graph import (
     _after_architecture,
+    _after_material_plan,
     _after_execution_plan_validator,
     _after_execution_planner,
     _classifier_dispatch,
@@ -63,6 +64,13 @@ def test_plan_mode_reviews_dynamic_plan_before_architecture():
     assert _classifier_dispatch({"intent": "generate", "plan_mode": True}) == "planning_research"
     assert _planning_research_dispatch({"intent": "generate"}) == "planner"
     assert _after_architecture({"plan_mode": True}) == "plan_executor"
+
+
+def test_material_plan_waits_for_concrete_design_review():
+    assert _after_architecture({"plan_mode": False}) == "material_plan"
+    assert _after_architecture({"plan_mode": True, "design_document": {"revision": 2}}) == "material_plan"
+    assert _after_material_plan({"plan_mode": False}) == "design_review"
+    assert _after_material_plan({"plan_mode": True}) == "design_review"
 
 
 def test_terminal_model_error_stops_before_research_and_plan_validation():

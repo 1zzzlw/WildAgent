@@ -44,21 +44,22 @@ class PromptCompositionTest(unittest.TestCase):
 
         self.assertIn("墙、楼板、屋顶、门、玻璃使用角色独立的材质名", prompt)
         self.assertIn("新生成玻璃使用受控物理材质", prompt)
-        self.assertIn("不得只照抄建筑类型文档的最小组合而忽略组件文档", prompt)
+        self.assertIn("用户需求和已批准方案决定造型", prompt)
         self.assertIn("`cornice`、`chimney`、`light` 已由组合构件编译器支持", prompt)
         self.assertIn("fixtureType=table_lamp", prompt)
         self.assertIn("furniture.subtype=lamp 只是旧版静态家具占位", prompt)
         self.assertIn("只能写入 `geometry.components`", prompt)
         self.assertIn("严禁发明 sofa、counter 等值", prompt)
 
-    def test_generation_rag_query_includes_appearance_terms(self):
+    def test_generation_rag_query_asks_for_implementation_relations(self):
         service = AgentService.__new__(AgentService)
 
         generation_query = service._build_rag_query("生成一个别墅", None)
         chat_query = service._build_rag_query("什么是别墅", None)
 
-        self.assertIn("默认材质", generation_query)
-        self.assertIn("玻璃透明度", generation_query)
+        self.assertIn("WILD 能力边界", generation_query)
+        self.assertIn("构件宿主和组装关系", generation_query)
+        self.assertNotIn("默认材质", generation_query)
         self.assertNotIn("默认材质", chat_query)
 
     def test_building_generation_uses_component_rag_queries(self):
@@ -69,7 +70,7 @@ class PromptCompositionTest(unittest.TestCase):
         combined = "\n".join(queries)
 
         self.assertEqual(len(queries), 8)
-        self.assertIn("构件-建筑类型速查矩阵", combined)
+        self.assertIn("已选构件的条件关系", combined)
         self.assertIn("柱梁楼板桁架", combined)
         self.assertIn("墙体构件参数与围护规则", combined)
         self.assertIn("窗构件分类与组装规则", combined)
@@ -88,7 +89,7 @@ class PromptCompositionTest(unittest.TestCase):
             [query.metadata_filter for query in filtered_queries],
             [
                 {"doc_type": "building_type"},
-                {"doc_type": "recipe"},
+                {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
                 {"doc_type": "component", "entity_type": "structural_component"},
                 {"doc_type": "component", "entity_type": "wall"},
                 {"doc_type": "component", "entity_type": "window"},

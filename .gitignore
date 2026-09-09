@@ -7,6 +7,7 @@
 wild-server/storage/chroma/
 wild-server/storage/scenes/
 wild-server/storage/sessions/
+wild-server/storage/designs/
 wild-server/storage/assets/
 wild-server/storage/geoip/*.mmdb
 wild-server/.langgraph_api/

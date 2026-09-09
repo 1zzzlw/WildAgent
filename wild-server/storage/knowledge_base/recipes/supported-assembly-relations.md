@@ -1,5 +1,4 @@
 ---
-knowledge_layer: constraint
 entity_type: assembly
 entity_name: supported_assembly_relations
 topic: assembly

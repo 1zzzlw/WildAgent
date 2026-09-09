@@ -28,6 +28,7 @@
 import type { ScenePatch } from './scenePatch'
 import type { SceneSummary } from './scene'
 import type { PresenceUpdateResponse } from '../extensions/presence/types'
+import type { DesignDocument, ResolvedDesign } from './design'
 
 // 重新导出SceneSummary以便在protocol.ts中使用
 export type { SceneSummary }
@@ -47,6 +48,7 @@ export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
   | ExecutionPlanReviewRequest
+  | DesignReviewRequest
   | ExecutionFeedbackRequest
   | GenerationResumedResponse
   | AgentStepResponse
@@ -54,6 +56,7 @@ export type AgentMessage =
   | ThinkingStatusResponse
   | ExecutionPlanReadyResponse
   | ExecutionPlanReviewRequiredResponse
+  | DesignReviewRequiredResponse
   | ExecutionFeedbackQueuedResponse
   | PatchProposalResponse
   | AgentReplyResponse
@@ -98,6 +101,15 @@ export interface ExecutionPlanReviewRequest extends AgentProtocolEnvelope {
   request_id: string
   session_id: string
   action: 'confirm' | 'revise'
+  feedback?: string
+}
+
+export interface DesignReviewRequest extends AgentProtocolEnvelope {
+  type: 'design_review'
+  request_id: string
+  session_id: string
+  action: 'confirm' | 'revise'
+  base_revision: number
   feedback?: string
 }
 
@@ -167,6 +179,15 @@ export interface ExecutionPlanReviewRequiredResponse extends AgentProtocolEnvelo
   session_id: string
   plan: ExecutionPlan
   version: number
+}
+
+export interface DesignReviewRequiredResponse extends AgentProtocolEnvelope {
+  type: 'design_review_required'
+  request_id: string
+  session_id: string
+  document: DesignDocument
+  resolved: ResolvedDesign
+  preview_url: string
 }
 
 export interface ExecutionFeedbackQueuedResponse extends AgentProtocolEnvelope {
@@ -315,6 +336,10 @@ export interface AgentTurn {
   plan_mode?: boolean
   execution_plan?: ExecutionPlan
   execution_plan_review_status?: 'pending' | 'submitting' | 'approved'
+  design_document?: DesignDocument
+  resolved_design?: ResolvedDesign
+  design_preview_url?: string
+  design_review_status?: 'pending' | 'submitting' | 'approved'
   execution_feedback_queued_count?: number
   steps: AgentTurnStep[]
   validation_steps: Array<{

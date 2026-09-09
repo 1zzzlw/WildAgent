@@ -22,7 +22,7 @@ def build_system_prompt(spec_text: str) -> str:
 - 新生成玻璃使用受控物理材质：materialClass=glass、transmission、ior、thickness；不得仅靠低 opacity 模拟
 - 墙体转角处端点坐标精确一致
 - opening/door/window 的 from[0] 是沿墙距离，不是世界坐标
-- 不得只照抄建筑类型文档的最小组合而忽略组件文档
+- 用户需求和已批准方案决定造型；类型知识只补充特征，构件知识提供实现约束
 - `cornice`、`chimney`、`light` 已由组合构件编译器支持，只能写入 `geometry.components`
 - 台灯使用 light 组件并设置 fixtureType=table_lamp；furniture.subtype=lamp 只是旧版静态家具占位
 - 组件 type 严格服从 WILD Schema，严禁发明 sofa、counter 等值
@@ -230,7 +230,8 @@ def build_architecture_plan_prompt(
 ) -> str:
     """生成路径第一阶段：只做总体建筑方案，不设计房间平面。"""
     import json as _json
-    profile_payload = dict(profile or {})
+    profile_payload = {key: value for key, value in (profile or {}).items()
+                       if key not in {"default_massing", "default_roof"}}
     if isinstance(profile_payload.get("shapes"), set):
         profile_payload["shapes"] = sorted(profile_payload["shapes"])
     profile_text = _json.dumps(profile_payload, ensure_ascii=False)
@@ -253,15 +254,17 @@ def build_architecture_plan_prompt(
 # 任务
 
 - 给出 2 个可实施候选，差异必须体现在体量比例、立面节奏或屋顶上。
-- 方案要忠于用户层数、风格、功能和知识库；复杂度必须来自可建模的体量转折、结构轴网、立面进深和有功能的细部构件，不能只靠增加门窗数量。
-- 当前规划 profile 是：{profile_text}。尺寸、层数、形状和基础组件必须服从该 profile。
+- 方案服从用户需求和已批准决定；知识库补充能力与条件关系，不能决定默认造型。复杂度落实为本次所需空间与细节，不靠重复构件凑数。
+- 当前规划 profile 是：{profile_text}。profile 描述当前规划器可表达的范围；它不是默认建筑。明确需求超出范围时报告限制，不能静默改写。
 - 本次复杂度目标是：{complexity_text}。
-- `level=detailed` 时，每个候选至少包含 `min_volumes` 个可落地体量、`min_detail_packages` 个互补细部包，并明确 structural_grid；优先使用退台、错动、主次翼或入口体量形成真实阴影层次。
+- `level=detailed` 时完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
 - `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
+- 除 simple/minimal 外，两个候选中至少一个应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
 - ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
-- component_quota 必须与立面 pattern 能容纳的数量一致。
+- ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
+- 标准和高细节方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
 - required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
 - `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
 - 本节点不设计房间坐标和内部隔墙；骨架节点直接依据总体体量、立面和结构约束生成 Blueprint 主体。
@@ -270,35 +273,19 @@ def build_architecture_plan_prompt(
 
 # 输出协议
 
-只输出一个 JSON 对象，不要 Markdown 或解释：
-{{
-  "candidates": [
-    {{
-      "concept": "方案概念",
-      "massing": {{"shape":"profile允许值","width":12,"depth":9,"floors":2,"modeled_floors":2,"representation_mode":"full|schematic","floor_height":3.2,"symmetry":true}},
-      "volumes": [
-        {{"id":"base","role":"primary","x":0,"z":0,"width":12,"depth":9,"start_floor":1,"end_floor":1}},
-        {{"id":"upper_setback","role":"secondary","x":1,"z":0.6,"width":9.5,"depth":7,"start_floor":2,"end_floor":2}}
-      ],
-      "structural_grid": {{"system":"wall_bearing|frame|hybrid|long_span|shell","x_bays":3,"z_bays":2}},
-      "detail_packages": ["balcony","canopy","bay_window"],
-      "facades": {{
-        "front": {{"bays":5,"entrance_bay":3,"ground_pattern":["window","empty","door","empty","window"],"upper_pattern":["window","empty","window","empty","window"]}},
-        "back":  {{"bays":4,"ground_pattern":["window","empty","empty","window"],"upper_pattern":["window","empty","empty","window"]}},
-        "left":  {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}},
-        "right": {{"bays":3,"ground_pattern":["empty","window","empty"],"upper_pattern":["empty","window","empty"]}}
-      }},
-      "roof": {{"type":"flat|gable|hip|dome|chinese_curved|chinese_pagoda","ridge_axis":"x|z","overhang":0.55}},
-      "component_quota": {{
-        "door": {{"min":1,"max":2,"note":"..."}},
-        "window": {{"min":6,"max":14,"note":"..."}},
-        "roof": {{"min":1,"max":1,"type":"hip","note":"..."}}
-      }},
-      "required_components": ["door","window","roof","balcony","canopy","bay_window"],
-      "design_rationale": ["入口与轴网关系", "主次体量与退台关系", "细部构件与体量转折的功能关系"]
-    }}
-  ]
-}}
+只输出包含 candidates 数组的 JSON 对象，数组中给出两个完整候选。下列是字段契约，不是可以照抄的建筑：
+- concept：本次方案概念字符串。
+- massing：shape 使用 profile 允许值；width/depth/floor_height 为正数，floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；symmetry 为布尔值。
+- volumes：按本次方案输出体量数组，每项包含 id、role(primary/secondary)、x、z、width、depth、start_floor、end_floor；单体也需明确一个完整体量，多层单体不必拆成退台。
+- structural_grid：system 为 wall_bearing/frame/hybrid/long_span/shell；x_bays/z_bays 为正整数。
+- circulation：vertical_strategy 为 none/stair/core/core_and_stair；多层建筑不能为 none。
+- detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
+- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern；主入口面可给 entrance_bay，槽位数量与 bays 一致。
+- roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。
+- component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
+- required_components：本次真正需要的组件名称数组。
+- design_rationale：说明体量、入口、交通与构件选择如何满足用户要求的字符串数组。
+所有数值都必须由本次需求推导；不要输出类型说明文字代替数值。
 
 # 知识库参考
 
@@ -373,8 +360,8 @@ def build_skeleton_prompt(
     """Layer 0: 骨架生成专用 prompt
     
     职责：
-    1. 理解建筑类型（通过 building_types/ 知识库）
-    2. 丰富用户需求描述（比如"欧式别墅应该有大门、落地窗、坡屋顶"）
+    1. 读取已批准方案与对应的 WILD 能力、组装关系
+    2. 保留本次设计决定，不以风格标签补充默认组件
     3. 生成基础骨架结构（walls、floors、columns、beams、stair）
     4. **输出 facade_plan + component_quota 设计清单**，为后续节点提供刚约束
     5. 不生成组件（door、window、roof 等留给后续专用节点）
@@ -417,7 +404,7 @@ def build_skeleton_prompt(
 
 1. 每层外墙闭合，共享转角端点；wall.from[1] 是墙底，wall.to[1] 是墙顶且必须更大。
 2. 每个 floor 同时使用三维 `from`/`to`，两个 Y 相同并等于该层底标高。
-3. `full` 模式两层以上必须包含至少一个 stair 元素；`schematic` 高层不要求用一部长楼梯跨越全部高度。
+3. 按 `circulation.vertical_strategy` 生成 stair、核心筒或二者；多层建筑不能省略所选竖向交通。
 4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和物理玻璃角色材质，供后续节点引用。
 5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
 6. 现代住宅不滥用装饰性外露角柱；但当 structural_grid 为 frame/hybrid 或复杂度目标明确要求时，必须生成承担体量与跨距关系的真实柱梁。
@@ -432,119 +419,17 @@ def build_skeleton_prompt(
 若旧规范示例仍用 `opacity=0.35` 表达玻璃，以本次已批准材质方案为准：新玻璃必须使用物理透射字段，不得退回旧透明度写法。
 """
 
-    plan_section = ""
-    brief_instruction = "4. **输出设计清单**：在后处理阶段，你必须输出一个JSON段，指定 facade_plan 和 component_quota"
-    output_tail = "最后输出 `DESIGN_BRIEF:` JSON。"
-    final_override = ""
+    return f"""你是 WILD 骨架生成器。依据用户需求决定本次体量和空间关系，参考知识只提供能力边界与条件规则。
 
-    return f"""你是建筑结构骨架专家。你的任务是把已批准方案落实为稳定的 WILD 骨架。
-{plan_section}
+- 只生成 wall、floor、column、beam、stair；geometry.components 留空。
+- 层数、尺寸、轮廓和材质来自本次需求；未指定时自行作出有理由的设计决定。
+- 共享墙角、楼层标高、楼板覆盖和交通衔接必须有效；开放亭廊不强加四面墙。
+- 不照搬任何旧建筑案例、固定配色或门窗数量；附属组件只有功能需要才加入设计清单。
+- 输出严格 Blueprint JSON，随后以 DESIGN_BRIEF: 标记输出一个设计清单 JSON。
+- 设计清单包含 facade_plan（各立面的 bays、entrance_bay、window_spacing、ground_pattern、upper_pattern）、component_quota（实际需要组件的 min、max、note；屋顶可给 type）、design_notes（设计理由）、rag_reference（实际使用的能力或关系依据）。槽位与本次墙面和门窗数量一致。
 
-# 你的任务
-
-1. **理解建筑类型**：根据用户描述（如"欧式别墅"、"中式庭院"），从知识库中找到对应的建筑特征
-2. **丰富需求描述**：基于建筑类型，补充细节描述，例如：
-   - 欧式别墅 → 应有对称布局、大门、落地窗、四坡屋顶、柱廊
-   - 中式庭院 → 应有院墙、月亮门、木窗、坡屋顶、飞檐
-   - 现代建筑 → 应有大面积玻璃窗、简约线条、平屋顶
-3. **生成骨架结构**：只生成 walls（墙）、floors（楼板）、columns（柱）、beams（梁）、stair（楼梯）
-{brief_instruction}
-5. **不生成组件**：不要生成 door（门）、window（窗）、roof（屋顶）等，这些由后续专用节点负责
-
-# 设计清单规范（MANDATORY）
-
-在 JSON Blueprint 之后，你必须输出一段 `DESIGN_BRIEF:` 标记，内容为设计清单 JSON：
-
-```json
-DESIGN_BRIEF:
-{{
-  "facade_plan": {{
-    "<wall_id>": {{
-      "facing": "front|back|left|right",
-      "intent": "主立面，正门+两个水平长窗",
-      "max_openings": 3,
-      "is_main_facade": true
-    }}
-  }},
-  "component_quota": {{
-    "door": {{ "min": 1, "max": 2, "note": "主入口+可选后门" }},
-    "window": {{ "min": 2, "max": 6, "note": "主立面水平长窗为主，侧墙可留空" }},
-    "roof": {{ "type": "flat|gable|hip", "note": "严格按RAG最少可行模板" }},
-    "stair": {{ "count": 1, "note": "多层建筑必须含室内楼梯" }},
-    "railing": {{ "min": 0, "max": 2, "note": "仅阳台/楼梯高差处，无高差则不生成" }}
-  }},
-  "rag_reference": "（复述RAG最少可行模板中的关键构件清单：尺寸、数量、类型）"
-}}
-```
-
-**重要**：
-- facade_plan 必须包含所有墙体，每面墙标注 facing 和 intent
-- component_quota 中每个组件给出 min/max 范围，作为后续节点的硬约束
-- 现代别墅不需要外露角柱（可省略 column）
-- 多层建筑（≥2层）必须在 component_quota 中包含 stair
-
-# 输出格式要求
-
-先输出 `_components: door, window, roof, stair`（列出所有需要的组件类型）。
-可用组件: door, window, roof, railing, canopy, balcony, light, ramp, bay_window, cornice, chimney, stair
-
-然后输出完整的 Blueprint JSON，`geometry.components` **必须为空数组**。
-Blueprint 中必须包含 stair（楼梯）元素（如有多层）。
-
-{output_tail}
-
-# 规则
-
-1. **墙体闭合**：墙体转角处共享端点坐标（精确到小数点后 2 位）
-2. **楼板覆盖**：floor 应覆盖整个建筑底面；退台交接层必须覆盖下层完整体量并形成露台，不能只覆盖上层较小体量
-3. **材质命名**：使用角色独立的材质名（如 stone_ashlar、wood_oak）
-4. **ID 规范**：使用语义化 ID（如 wall_front、floor_ground）
-5. **玻璃材质**：必须在 materials 中包含 `"glass"` 材质，使用 `materialClass=glass`、`transmission`、`ior` 和 `thickness`
-6. **楼梯必须**：两层以上建筑必须包含 `stair` 元素
-7. **柱子克制**：现代别墅/住宅不需要外露角柱，仅门廊或大跨结构按需使用
-8. **墙高不可为零**：wall.from[1] 是墙底、wall.to[1] 是墙顶，必须满足 `to[1] > from[1]`；例如一层墙 `[0,0,0] -> [8,3,0]`，二层墙 `[0,3,0] -> [8,6,0]`
-9. **材质引用闭合**：elements 中所有 material 必须精确引用 Blueprint.materials 已定义的 ID，不得使用未定义的简称
-10. **楼板坐标格式**：每个 floor 必须同时包含三维数组 `from` 和 `to`，Y 值相同并表示楼板底标高；例如一层楼板 `"from":[0,0,0], "to":[8,0,6]`，二层楼板 `"from":[0,3,0], "to":[8,3,6]`。禁止用 position、size、polygon 或二维坐标替代
-11. **阳台单一表达**：需要 balcony 时，不得再用 `floor_balcony` 或独立 railing 重复表达同一阳台
-
-# WILD 规范参考
-
+# WILD 参考
 {spec_text}
-
-# 输出示例
-
-假设用户说"生成一个现代别墅"，骨架结构为 8×6m 两层：
-
-```
-_components: door, window, roof, stair
-
-（Blueprint JSON...）
-
-DESIGN_BRIEF:
-{{
-  "facade_plan": {{
-    "wall_front_1": {{"facing": "front", "intent": "主立面，正门居中+两侧水平长窗", "max_openings": 3, "is_main_facade": true}},
-    "wall_back_1": {{"facing": "back", "intent": "背面，仅后门+1小窗", "max_openings": 2, "is_main_facade": false}},
-    "wall_left_1": {{"facing": "left", "intent": "侧面，留空", "max_openings": 0, "is_main_facade": false}},
-    "wall_right_1": {{"facing": "right", "intent": "侧面，留空", "max_openings": 0, "is_main_facade": false}},
-    "wall_front_2": {{"facing": "front", "intent": "二层主立面，2个窗", "max_openings": 2, "is_main_facade": true}},
-    "wall_back_2": {{"facing": "back", "intent": "二层背面，1个窗", "max_openings": 1, "is_main_facade": false}},
-    "wall_left_2": {{"facing": "left", "intent": "二层侧面，留空", "max_openings": 0, "is_main_facade": false}},
-    "wall_right_2": {{"facing": "right", "intent": "二层侧面，留空", "max_openings": 0, "is_main_facade": false}}
-  }},
-  "component_quota": {{
-    "door": {{"min": 1, "max": 2, "note": "正门+可选后门"}},
-    "window": {{"min": 2, "max": 6, "note": "主立面长窗，总共≤6"}},
-    "roof": {{"type": "flat", "note": "现代别墅平屋顶，span≤9m，高度≤0.5m"}},
-    "stair": {{"count": 1, "note": "一层到二层室内楼梯"}},
-    "railing": {{"min": 0, "max": 0, "note": "无露台/阳台，不需要栏杆"}}
-  }},
-  "rag_reference": "RAG 最少可行模板：10×8m 现代别墅，1正门+2水平长窗(宽3m)+flat roof+楼梯+入口雨棚+无障碍坡道。缩放至 8×6m 时保持门窗数量不变。"
-}}
-```
-
-**重要**：components 数组必须为空！门、窗、屋顶等由后续节点生成。但 stair 元素必须放在 geometry.elements 中。
-{final_override}
 """
 
 
@@ -636,7 +521,7 @@ def build_component_prompt(
 
     rag_section = ""
     if design_brief and design_brief.get("rag_reference"):
-        rag_section = f"\n# RAG 最少可行模板参考\n\n{design_brief['rag_reference']}\n"
+        rag_section = f"\n# 本次设计使用的能力与关系依据\n\n{design_brief['rag_reference']}\n"
 
     return f"""你是 {label} 组件生成专家。只生成 {component_type} 组合构件。
 

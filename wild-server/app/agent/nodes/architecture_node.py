@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import time as _time
 
 from loguru import logger
@@ -19,6 +18,7 @@ from app.agent.llm_invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
+from app.agent.knowledge_policy import KNOWLEDGE_GUIDANCE
 from app.utils.json_extractor import extract_json_object
 
 
@@ -35,11 +35,30 @@ async def architecture_planner(state: GenerationState) -> dict:
         if isinstance(execution_plan, dict)
         else ""
     )
-    revision_feedback = str(state.get("plan_feedback") or plan_feedback or "").strip()
-    complexity_profile = resolve_complexity_profile(
-        user_message,
-        precision_mode=thinking_mode,
+    revision_feedback = str(
+        state.get("design_feedback") or state.get("plan_feedback") or plan_feedback or ""
+    ).strip()
+    design_request = (
+        f"{user_message}\n本轮修订意见：{revision_feedback}"
+        if revision_feedback else user_message
     )
+    previous_plan = state.get("architecture_plan")
+    complexity_terms = (
+        "简单", "简易", "极简", "低复杂度", "复杂", "高细节", "丰富",
+        "多体量", "退台", "错落", "simple", "minimal", "complex", "detailed",
+    )
+    if revision_feedback and any(term in revision_feedback.casefold() for term in complexity_terms):
+        complexity_profile = resolve_complexity_profile(
+            revision_feedback,
+            precision_mode=thinking_mode,
+        )
+    elif isinstance(previous_plan, dict) and isinstance(previous_plan.get("complexity"), dict):
+        complexity_profile = dict(previous_plan["complexity"])
+    else:
+        complexity_profile = resolve_complexity_profile(
+            user_message,
+            precision_mode=thinking_mode,
+        )
     on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
         if plan_feedback:
@@ -57,12 +76,9 @@ async def architecture_planner(state: GenerationState) -> dict:
     rag_error = None
     try:
         spec_text = agent_service.spec_loader.load_many([
-            SpecQuery(user_message, {"doc_type": "building_type"}),
-            SpecQuery(user_message, {"doc_type": "recipe"}),
-            SpecQuery(
-                f"{user_message} 组合体量 退台 结构轴网 立面进深 细部构件",
-                {"doc_type": "pattern", "entity_type": "building"},
-            ),
+            SpecQuery(design_request, {"doc_type": "building_type"}),
+            SpecQuery("已选方案的楼层、空间与构件组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+            SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
         ], per_query=2)
     except Exception as exc:
         spec_text = ""
@@ -74,7 +90,15 @@ async def architecture_planner(state: GenerationState) -> dict:
             "architecture",
             f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成并比较候选方案...\n",
         )
-    profile = detect_architecture_profile(user_message)
+    previous_profile_id = (
+        str(previous_plan.get("profile") or "")
+        if isinstance(previous_plan, dict) else ""
+    )
+    normalization_request = revision_feedback or user_message
+    profile = detect_architecture_profile(
+        normalization_request,
+        fallback_profile_id=previous_profile_id or None,
+    )
     prompt = build_architecture_plan_prompt(
         spec_text,
         profile,
@@ -83,6 +107,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         revision_feedback=revision_feedback,
         style_preference=state.get("style_preference"),
     )
+    prompt += "\n" + KNOWLEDGE_GUIDANCE
     phase_guidance = execution_plan_phase_guidance(execution_plan, "architecture")
     if phase_guidance:
         prompt += f"""
@@ -106,7 +131,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
         messages = [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": user_message},
+            {"role": "user", "content": design_request},
         ]
         if use_streaming:
             async def emit_reasoning(delta: str) -> None:
@@ -133,7 +158,7 @@ async def architecture_planner(state: GenerationState) -> dict:
 
             raw_plan, recovery_diag = await recover_single_json(
                 prompt,
-                user_message,
+                design_request,
                 reply_text,
                 object_hint="包含 massing、volumes、facades、roof、component_quota 的建筑方案 JSON 对象",
                 extra_instruction=(
@@ -152,13 +177,13 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     plan, selection_diag = select_architecture_plan(
         raw_plan,
-        user_message,
+        normalization_request,
         complexity_profile,
+        profile,
     )
     if raw_plan is None:
         selection_diag["used_fallback"] = True
     if on_reasoning_delta:
-        massing = plan["massing"]
         comparison_lines = ["\n**建筑方案候选对比**"]
         for candidate in selection_diag.get("candidate_summaries", []):
             candidate_massing = candidate.get("massing", {})
@@ -180,10 +205,15 @@ async def architecture_planner(state: GenerationState) -> dict:
             f"至少 {complexity_profile['min_volumes']} 个体量、"
             f"{complexity_profile['min_detail_packages']} 个细部包。",
             *[f"- {item}" for item in rationale],
-            "- 总体方案已确定；下一节点将在这些体量边界内独立设计并校验平面。",
+            "- 总体方案已确定；下一节点将解析受控材质并生成可审核的设计文档与 SVG。",
         ])
         if selection_diag.get("used_fallback"):
             comparison_lines.append("- 模型总体方案不可用，本次采用了受 profile 约束的确定性总体方案。")
+        if plan.get("unsupported_component_types"):
+            comparison_lines.append(
+                "- 能力限制：模型提出的以下类型尚未注册，未纳入可执行配额，也未自动替换为其他构件："
+                + "、".join(plan["unsupported_component_types"])
+            )
         await on_reasoning_delta(
             "architecture",
             "\n".join(comparison_lines) + "\n",
@@ -195,8 +225,31 @@ async def architecture_planner(state: GenerationState) -> dict:
         f"score={selection_diag['candidate_scores'][selection_diag['selected_index']]}, "
         f"{total_ms}ms"
     )
+    from app.design.resolver import build_design_document, resolve_design
+
+    design_document = build_design_document(
+        plan,
+        session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
+        source_request=user_message,
+        building_type=str(plan.get("profile") or state.get("building_type") or "building"),
+        style_intent=list(state.get("style_preference") or []),
+        previous=state.get("design_document"),
+    )
+    resolved_design = resolve_design(design_document).model_dump(mode="json")
+    material_feedback_terms = (
+        "材质", "材料", "颜色", "配色", "玻璃材质", "幕墙", "金属", "木", "石材",
+        "material", "color", "palette", "texture",
+    )
+    refresh_materials = not isinstance(state.get("design_document"), dict) or any(
+        term in revision_feedback.casefold() for term in material_feedback_terms
+    )
     return {
         "architecture_plan": plan,
+        "design_document": design_document.model_dump(mode="json"),
+        "resolved_design": resolved_design,
+        "design_review_status": "pending",
+        "design_feedback": "",
+        "design_material_refresh": refresh_materials,
         "complexity_profile": complexity_profile,
         "architecture_diag": {
             **selection_diag,

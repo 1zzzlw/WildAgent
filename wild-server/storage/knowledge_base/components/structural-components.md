@@ -1,5 +1,4 @@
 ---
-knowledge_layer: wild_schema
 entity_type: structural_component
 entity_name: structural_component_family
 topic: parameters

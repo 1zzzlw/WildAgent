@@ -1,139 +1,96 @@
 ---
-building_category: industrial
-entity_name: industrial_building
-topic: assembly
+entity_name: factories_and_warehouses
+topic: composition
 status: supported
-authority: engine
+authority: maintainer
 source: building_types/industrial/factories-and-warehouses.md
+building_category: industrial
 primary_terms:
-  - 工业建筑
-  - 厂房
-  - 仓储
-  - 单层厂房
-  - 工业上楼
-  - 仓库
+  - 工业与仓储建筑
 synonyms: []
+applies_to:
+  - 工业与仓储建筑
 ---
 
-# 工业建筑：厂房 / 仓储
+# 工业与仓储建筑：类型特征与条件关系
 
-> 来源：`docs/建筑类型分类体系_构件清单版1.2.md`。
-> 所有 JSON 示例只使用当前引擎支持的字段。
+> 来源：本文件旧版资料的语义审查；旧稿逐节保存在 docs-dev/knowledge-before-rules-v2。仅保留有用的类型差异，示例尺寸、默认配色和整栋蓝图不参与生成。共性字段以 components/ 与 BLUEPRINT-SPEC-FULL.md 为准。
 
----
-
-## 1. 单层轻钢厂（12×24m）
+## 厂房
 
 <!-- rag-meta
 entity_type: building
-entity_name: steel_factory
-topic: assembly
-status: supported
-authority: engine
+entity_name: factory
+topic: composition
+knowledge_role: identity
+authority: domain_reference
 primary_terms:
   - 厂房
-  - 轻钢
-  - steel
-  - 单层
-  - 工业
-synonyms:
-  - factory
+  - 工业建筑
+  - 单层厂房
+  - 轻钢厂房
+synonyms: []
+applies_to:
+  - 厂房
+  - 工业建筑
+  - 单层厂房
+  - 轻钢厂房
 -->
 
-### 构件清单
+- 适用条件：用户或已批准方案明确采用厂房；名称本身不决定全部构件。
+- 类型特征：生产空间、运输路径、围护与支撑体系之间的联系。
+- 条件关系：已指定设备和通行净空不得被柱网占用；跨度、层高与门洞按任务推导；屋盖按真实支点布置。
+- WILD 映射与边界：column/beam/primitive 表达骨架，wall/window/door 表达围护；卷帘门只作外观近似，无卷绕机构。
+- 自由变量：层数、体量轮廓、开间、屋顶形式与材质由本次需求和方案确定。
 
-| 构件 | WILD type | 参数 |
-|---|---|---|
-| 地基楼板 | `floor` | shape=rect, thickness=0.2, 全场地 |
-| 钢柱 | `column` | style=modern, bottomRadius=0.15, topRadius=0.12, height=8 |
-| 屋面梁 | `beam` | crossSection=i-beam, width=0.2, height=0.6 |
-| 墙檩 | `beam` | crossSection=rect, 水平间距 1.5m |
-| 外墙板 | `wall` | thickness=0.15, height=8 |
-| 屋顶 | `roof` | roofType=gable, span=13, depth=25 |
-| 卷帘门 | `door` 组件 | width=3, height=4, interaction.slide |
-| 高窗 | `window` 组件 | 墙顶带状窗 |
-
-### 最少可行 Blueprint
-
-```json
-{
-  "meta": { "version": "1.1", "type": "building", "name": "轻钢厂" },
-  "geometry": {
-    "elements": [
-      { "type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [12, 0, 24], "thickness": 0.2, "material": "concrete" },
-      { "type": "column", "id": "col_a1", "base": [0.5, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "column", "id": "col_a2", "base": [6, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "column", "id": "col_a3", "base": [11.5, 0, 0.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "column", "id": "col_b1", "base": [0.5, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "column", "id": "col_b2", "base": [6, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "column", "id": "col_b3", "base": [11.5, 0, 23.5], "height": 8, "bottomRadius": 0.15, "topRadius": 0.12, "style": "modern", "material": "steel" },
-      { "type": "beam", "id": "beam_roof_01", "from": [0.5, 8, 0.5], "to": [0.5, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
-      { "type": "beam", "id": "beam_roof_02", "from": [6, 8, 0.5], "to": [6, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
-      { "type": "beam", "id": "beam_roof_03", "from": [11.5, 8, 0.5], "to": [11.5, 8, 23.5], "crossSection": "i-beam", "width": 0.2, "height": 0.6, "material": "steel" },
-      { "type": "wall", "id": "wall_front", "from": [0, 0, 0], "to": [12, 8, 0], "thickness": 0.15, "material": "metal_panel" },
-      { "type": "wall", "id": "wall_back", "from": [0, 0, 24], "to": [12, 8, 24], "thickness": 0.15, "material": "metal_panel" },
-      { "type": "wall", "id": "wall_left", "from": [0, 0, 0], "to": [0, 8, 24], "thickness": 0.15, "material": "metal_panel" },
-      { "type": "wall", "id": "wall_right", "from": [12, 0, 0], "to": [12, 8, 24], "thickness": 0.15, "material": "metal_panel" },
-      { "type": "roof", "id": "roof_main", "roofType": "gable", "span": 13, "depth": 25, "height": 3, "thickness": 0.15, "material": "metal_panel", "position": [6, 8, 12] }
-    ],
-    "components": [
-      { "type": "door", "id": "door_roller", "parentWall": "wall_front", "from": [4, 0, 0], "width": 4, "height": 4.5, "frameMaterial": "steel", "leafMaterial": "metal_panel", "interaction": { "mode": "slide", "hingeSide": "right", "openDistance": 4 } },
-      { "type": "window", "id": "win_high_01", "parentWall": "wall_left", "from": [3, 5, 0], "width": 2, "height": 1.5, "verticalMullions": 0, "horizontalMullions": 0, "frameMaterial": "steel", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } },
-      { "type": "window", "id": "win_high_02", "parentWall": "wall_right", "from": [3, 5, 0], "width": 2, "height": 1.5, "verticalMullions": 0, "horizontalMullions": 0, "frameMaterial": "steel", "glassMaterial": "glass", "interaction": { "mode": "swing", "hingeSide": "left", "openAngle": 0 } }
-    ]
-  },
-  "materials": {
-    "concrete": { "baseColor": [0.78, 0.76, 0.74], "roughness": 0.7, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon" },
-    "steel": { "baseColor": [0.25, 0.25, 0.28], "roughness": 0.35, "metallic": 0.85, "albedo": 1, "lightingCondition": "D65_noon" },
-    "metal_panel": { "baseColor": [0.55, 0.55, 0.58], "roughness": 0.4, "metallic": 0.7, "albedo": 1, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
-  },
-  "behaviors": {}
-}
-```
-
----
-
-## 2. 仓储建筑
+## 仓储建筑
 
 <!-- rag-meta
 entity_type: building
 entity_name: warehouse
-topic: assembly
-status: supported
-authority: engine
+topic: composition
+knowledge_role: identity
+authority: domain_reference
 primary_terms:
+  - 仓库
   - 仓储
-  - 平房仓
-  - 筒仓
-  - 冷链
-synonyms:
-  - warehouse
+  - 粮仓
+  - 冷链仓库
+synonyms: []
+applies_to:
+  - 仓库
+  - 仓储
+  - 粮仓
+  - 冷链仓库
 -->
 
-仓储建筑与单层厂结构相似，差异：
-- 平房仓：减少 window（防潮），门更宽（叉车通行 ≥3m）
-- 筒仓：用 `wall` 弧形围合（`curve={type:"arc"}`）+ `roof` dome
-- 冷链仓库：wall thickness=0.24（保温），增加 inner wall 隔层
+- 适用条件：用户或已批准方案明确采用仓储建筑；名称本身不决定全部构件。
+- 类型特征：储存、装卸、交通和围护的联系；储存类型决定是否需要特殊空间。
+- 条件关系：选择筒仓才使用圆形围护；选定冷链分区才表达隔层；开窗和门洞依任务而非固定数量。
+- WILD 映射与边界：wall 曲线与 floor 圆形可表达圆仓；厚墙和材质名称不证明防潮、保温或承载能力。
+- 自由变量：层数、体量轮廓、开间、屋顶形式与材质由本次需求和方案确定。
 
----
+## 工业上楼
 
-## 3. 工业上楼（4F+ 高层厂房）
+<!-- rag-meta
+entity_type: building
+entity_name: multistorey_factory
+topic: composition
+knowledge_role: identity
+authority: domain_reference
+primary_terms:
+  - 工业上楼
+  - 多层厂房
+  - 高层厂房
+synonyms: []
+applies_to:
+  - 工业上楼
+  - 多层厂房
+  - 高层厂房
+-->
 
-多层的厂房，每层荷载大。构件参数上调：
-- `column` bottomRadius=0.25~0.35（大截面柱）
-- `beam` crossSection=rect, width=0.3, height=0.7
-- `floor` thickness=0.2（重载楼板）
-- `stair` width=1.8 + 货梯井（wall 围合）
-
-其他结构与办公楼相似，逐层重复。
-
-### 常见字段错误
-
-| 源文档写法 ❌ | WILD Schema ✅ |
-|---|---|
-| `column.crossSection: "square"` | 不存在，用 `style: "modern"` |
-| `floor.surfaces: "hardener"` | 不存在，用 `material` |
-| `wall.curve: "line"` | 不写 curve 默认直线，弧形用 `{type:"arc",...}` |
-| `beam.crossSection: "h-beam"` | 用 `"i-beam"`（H 型钢的 WILD 名称） |
-| `roof.autoRailing` | 不存在 |
+- 适用条件：用户或已批准方案明确采用工业上楼；名称本身不决定全部构件。
+- 类型特征：竖向叠合生产空间与货运交通的联系。
+- 条件关系：楼层模数与上下支撑协调；货运井、通道和设备净空按任务保留；不因高层自动增大构件截面当作验算。
+- WILD 映射与边界：floor/wall/column/beam/stair 表达几何；货梯井用 wall 围合，不提供荷载分析或运行货梯。
+- 自由变量：层数、体量轮廓、开间、屋顶形式与材质由本次需求和方案确定。

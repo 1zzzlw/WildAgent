@@ -46,7 +46,8 @@ async def planning_research(state: GenerationState) -> dict:
         )
     queries = [
         SpecQuery(user_message, {"doc_type": "building_type"}),
-        SpecQuery(user_message, {"doc_type": "recipe"}),
+        SpecQuery("已选方案的楼层、空间与构件组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+        SpecQuery("WILD 当前构件参数与能力边界", {"doc_type": "component", "topic": "parameters"}),
     ]
     if intent == "edit":
         queries = [
@@ -96,7 +97,7 @@ async def planning_research(state: GenerationState) -> dict:
     # 覆盖不足时，把缺失主题转成研究问题交给 web_research 节点（仅本次 request）。
     research_queries: list[str] = []
     research_missing_topics: list[str] = []
-    if coverage_diag and coverage_diag.get("missing_topics"):
+    if coverage_diag and coverage_diag.get("trigger_web_research"):
         research_missing_topics = list(coverage_diag["missing_topics"])
         research_queries = [
             f"建筑 {topic} 完整构成 规范 组装" for topic in research_missing_topics[:3]

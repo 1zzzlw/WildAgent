@@ -1,5 +1,4 @@
 ---
-knowledge_layer: wild_schema
 entity_type: door
 entity_name: static_door_component
 topic: schema

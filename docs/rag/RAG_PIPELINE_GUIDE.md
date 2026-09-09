@@ -5,6 +5,7 @@
 
 > 适用对象：第一次接触 WildAgent 知识库 / RAG 链路的开发者、评估者。
 > 当前代码链路最后核对：2026-08-24。第 7、8、12 节保留的是 2026-08-20 的索引实测快照，只用于讲解存储结构，不代表当前部署配置或当前分片数量。
+> 2026-09-09 知识职责与召回过滤已更新为 [rules-v2](KNOWLEDGE_RULES_V2.md)。下方历史检索样例中的默认建筑模板不再属于当前普通生成知识。
 
 ---
 
@@ -116,7 +117,7 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置�
 1. **query 向量化**：同一 embedding function 对查询文本编码（实证 query 向量维度 1024）。
 2. **Chroma `collection.query`**：默认 `top_k=6`，返回 `ids/documents/metadatas/distances`；`chunk_id` 使用 Chroma 的真实 ID。
 3. **`_retrieval_priority_score` 排序去重**：语义距离 + **status / authority 成熟度惩罚**（`supported` 优于 `experimental`；`engine` 优于 `schema`/`domain_reference`/`inferred`）。
-4. **强制服务端过滤**：限定 `namespace=wild_spec`，排除 `doc_scope=index`、`status=proposed`、`authority=inferred`，并追加 `public/tenant/department/clearance_level` 权限条件。调用方传入的权限字段会被移除，不能覆盖服务端 AccessContext。
+4. **强制服务端过滤**：限定 namespace 与 `knowledge_revision=rules-v2`，普通生成默认仅包含 generation scope 的 protocol/capability/relation/identity，status 为 supported/experimental，并排除 authority=inferred；类型和专用系统另检查 applies_to。显式参考查询可以指定 reference scope。服务端继续追加 `public/tenant/department/clearance_level` 权限条件，调用方不能覆盖 AccessContext。
 5. **业务 metadata 过滤**：查询规划可携带 `doc_type/entity_type/building_category` 等白名单条件，减少跨域噪声。
 6. **parent 扩展**：命中子分片时可能回带父分片/相邻 part，保证注入上下文完整；相邻补片没有独立向量距离。
 7. **Retrieval Gate**：检索后按原始 distance 执行 `off/observe/enforce`。问答证据不足时可拒答；建筑生成只降级为基础规范，不因一个可选知识点缺失而终止整个任务。

@@ -1,87 +1,15 @@
-# RAG 就绪检查清单
+# 入库验收
 
-## 事实
-
-- [ ] 每个 WILD 类型、字段、枚举和引用规则都有当前源码或规范依据。
-- [ ] 低优先级建筑资料没有覆盖引擎或 Schema。
-- [ ] 未验证能力标为 `proposed`，并与 supported 内容分块。
-- [ ] 冲突列出来源、可信结论和待确认项。
-- [ ] 无效字段或 JSON 只影响对应实现声明，没有连带删除仍成立的领域构成语义。
-
-## 来源覆盖与建筑构成
-
-- [ ] 已按实体建立来源声明清单，覆盖 identity、空间、体量、结构、围护、开口、交通、附属、组装、重复、材质、参数、降级和示例。
-- [ ] 每条非重复声明都有 `preserved / normalized / routed / downgraded / deferred_conflict / rejected` disposition。
-- [ ] `routed` 指向具体目标文件/实体；`rejected` 有明确原因，没有静默丢弃。
-- [ ] 每个详细建筑实体有 `topic: composition` 的默认完整构成合同。
-- [ ] 构成合同区分 `required / characteristic / conditional / optional`，并写明条件或省略后果。
-- [ ] 主体骨架、空间/体量、外围护、开口、交通、附属组件、重复模数、依附搭接和降级映射均保留；来源未提供的类别明确标注。
-- [ ] `topic: fallback` 与默认完整构成分开，最小构件集合没有冒充默认生成配方。
-- [ ] 多建筑长文没有被压缩成每类只有一段“视觉特征 + 最小表达”。
-
-## 标题与语义块
-
-- [ ] 只有一个清晰的 `#` 文档标题。
-- [ ] `##`、`###`、`####` 分别表达实体、大主题和具体规则/变体。
-- [ ] 没有使用粗体 A/B/C 伪装实体标题。
-- [ ] 每个块只回答一个完整问题。
-- [ ] 标题路径或等价上下文会进入每个子片段。
-- [ ] 不同实体、版本、status 或 authority 没有合并。
-- [ ] 去除标题和分隔线后，没有空正文或仅含“如下/清单”的壳 chunk。
-
-## 长度兜底
-
-- [ ] 先按实体和自然主题拆分，再考虑长度。
-- [ ] JSON、表格、公式和解释保持完整。
-- [ ] 超长表格按行组拆分并重复表头。
-- [ ] 超长实体优先增加子标题，而不是调大 overlap。
-- [ ] 子片段继承 metadata、`parent_chunk_id` 和 `part_index`。
-- [ ] 实际运行 `preview_wild_rag_chunks.py`，多 part 边界没有拆散说明与对应 JSON。
-
-## Metadata
-
-- [ ] `config.yaml + frontmatter` 合并后的文档级 metadata 字段完整。
-- [ ] 多实体文档在实体标题后提供 `rag-meta`。
-- [ ] `source` 可追踪。
-- [ ] `primary_terms` 只包含正式名称、稳定术语和当前 WILD 名称，且至少有一项。
-- [ ] `synonyms` 只包含翻译、别名、俗称或用户输入变体；没有时显式写 `[]`。
-- [ ] 两组术语无重复，相关概念没有冒充同义词，全文不再使用 legacy `keywords`。
-- [ ] 路径公共字段与 `config.yaml` 一致，文件头覆盖只用于真实特例。
-- [ ] 文件头没有重复声明与路径配置完全相同的字段。
-- [ ] README 使用 `doc_type=index`、`doc_scope=index`。
-
-## JSON
-
-- [ ] 标为 `json` 的代码块可由严格 JSON 解析器解析。
-- [ ] JSON 不含 `//`、`/* */` 或尾随逗号。
-- [ ] 正确示例与错误示例分开。
-- [ ] 片段明确说明不是完整 `.wild` 文件。
-- [ ] 引用目标存在，尺寸、坐标与文字一致。
-- [ ] 示例能够通过项目确定性校验。
-
-## 语义一致性（交叉验证）
-
-- [ ] 文档中声称的数字（如"9 类组件"、"11 种构件"）与对应表格/列表的实际行数一致。
-- [ ] 同一概念在多个文档中的数量、名称和描述一致（如 `geometry.components` 的类型列表在 `engine-capability-boundaries.md` 和 `BLUEPRINT-SPEC-MINIMAL.md` 中数量和名称相同）。
-- [ ] 所有 WILD `type` 值在 `wild-web/src/wild-core/src/primitive/registry.ts` 的 `registerBuiltins()` 中有对应注册。
-- [ ] 所有组合组件 `type` 值在 `wild-web/src/wild-core/types.ts` 的 `ComponentSpec` 联合类型中有对应定义。
-- [ ] 所有枚举值（`roofType`、`column.style`、`furniture.subtype`、`opening.style`、`beam.crossSection` 等）与 `wild-web/src/wild-core/types.ts` 中的类型字面量一致。
-- [ ] "严禁使用"或"常见错误"清单覆盖了最近实际遇到的错误值（检查 git log 中的归一化映射记录）。
-- [ ] `status: supported` 的能力描述没有与 `status: proposed` 或 `experimental` 文档中的内容矛盾。
-- [ ] 运行 `lint_wild_rag_docs.py --cross-check` 无错误。
-
-## 检索污染与重复
-
-- [ ] README、Mermaid 和大型导航表不会作为普通生成知识。
-- [ ] catalog 只保留轻量默认值，详细规则有单一规范来源。
-- [ ] 重复规则内容一致；旧版本已标记。
-- [ ] 同义词不会制造多份互相竞争的规范。
-- [ ] 文档被召回单个 chunk 时仍可独立理解。
-- [ ] `status`、`authority` 会参与过滤或明确显示给模型。
-
-## 交付
-
-- [ ] linter 已运行并解释未解决项。
-- [ ] 给出实际或建议 chunk 清单。
-- [ ] 给出冲突和待确认项。
-- [ ] 未经用户授权没有写入知识库或修改源文件。
+- 字段、枚举、坐标和引用与当前源码相符；未实现能力不伪装为 supported。
+- 用户需求、设计选择、引擎规则和领域资料的权威分开。
+- 来源声明有处置和目标，旧语法被拒绝时有效空间语义仍被保留或明确路由。
+- 类型卡有明确 applies_to、特征、条件关系、映射边界与自由变量，没有默认整栋布局。
+- 共享规则没有在每个建筑重复；通用常识的保留有具体价值。
+- 完整建筑案例、固定策略与回退不参与普通生成；局部 JSON 有有效前置条件。
+- README/navigation 不参与生成；运行参数与模型参考用途分开。
+- metadata 合并后 role、scope、revision、entity、authority 正确，术语与别名不重叠。
+- linter --cross-check 通过；每个 warning 有具体判断；真实 chunk 预览无空壳、断裂或失去实体上下文。
+- 代码消费者、查询过滤与覆盖判断采用新职责，未知类型不回退到别的建筑模板。
+- 回归覆盖：泛建筑请求、明确类型、否定风格、未知类型、已选方案系统、局部组件及旧版本向量隔离。
+- 文档迁移后的检索评测以所需事实为答案，补充不应召回项；不以旧文件名命中掩盖语义错误。
+- 索引由 Loader 同步，确认索引版本和状态；系统阻断和未跑的 LLM/渲染检查如实列出。

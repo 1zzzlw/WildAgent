@@ -30,6 +30,7 @@ Agent WebSocket API
   thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
   execution_plan_ready:{ "type": "execution_plan_ready", "request_id": "...", "plan": {...} }
   execution_plan_review_required: { "type": "execution_plan_review_required", "request_id": "...", "plan": {...} }
+  design_review_required: { "type": "design_review_required", "request_id": "...", "document": {...}, "preview_url": "..." }
   blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
   error:               { "type": "error", "request_id": "...", "error": "..." }
@@ -56,6 +57,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
 from app.agent.intent_classifier import INTENT_LABELS, classify_intent_decision
+from app.agent.architecture_plan import detect_architecture_profile
 from app.agent.protocol import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.procedural_material_recipes import without_procedural_materials
 from app.agent.rag_security import (
@@ -470,6 +472,35 @@ async def agent_websocket(ws: WebSocket):
                         "error": str(exc),
                     })
 
+            elif msg_type == "design_review":
+                feedback = str(data.get("feedback") or "")
+                if config.rag.security.pii_redaction_enabled:
+                    feedback, _ = redact_pii(feedback)
+                try:
+                    resumed_job = await generation_job_service.submit_design_review(
+                        ws,
+                        request_id=str(data.get("request_id") or ""),
+                        session_id=str(data.get("session_id") or ""),
+                        action=str(data.get("action") or ""),
+                        feedback=feedback,
+                        base_revision=data.get("base_revision"),
+                    )
+                    await _send_event(ws, {
+                        "type": "generation_resumed",
+                        "request_id": resumed_job.request_id,
+                        "session_id": resumed_job.session_id,
+                        "status": resumed_job.status,
+                        "last_event_seq": resumed_job.last_event_seq,
+                    })
+                except ValueError as exc:
+                    await _send_event(ws, {
+                        "type": "error",
+                        "request_id": data.get("request_id"),
+                        "session_id": data.get("session_id"),
+                        "code": "design_review_rejected",
+                        "error": str(exc),
+                    })
+
             elif msg_type == "execution_feedback":
                 feedback = str(data.get("feedback") or "")
                 if config.rag.security.pii_redaction_enabled:
@@ -548,6 +579,7 @@ _NODE_LABELS = {
     "plan_review": "计划审核",
     "plan_executor": "计划调度",
     "architecture": "总体建筑方案",
+    "design_review": "建筑设计审核",
     "material_plan": "材质方案",
     "skeleton": "主体装配",
     "merge": "合并", "final_validate": "最终校验", "callback": "修正",
@@ -623,7 +655,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     initial_state: GenerationState = {
         "request_id": request_id,
         "user_message": message,
-        "building_type": _detect_building_type(message),
+        "building_type": detect_architecture_profile(message)["id"],
         "session_id": session_id,
         "current_blueprint": current_blueprint,
         "selection": selection,
@@ -685,7 +717,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     _OUR_NODES = {
         "classifier", "chat", "patch", "planning_research", "web_research", "planner",
-        "plan_validator", "plan_review", "plan_executor", "architecture",
+        "plan_validator", "plan_review", "plan_executor", "architecture", "design_review",
         "material_plan", "skeleton", "merge", "final_validate", "callback",
     }
 
@@ -716,6 +748,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     graph_input = (
                         Command(resume=plan_review_decision)
                         if "plan_review" in snapshot.next and isinstance(plan_review_decision, dict)
+                        else Command(resume=data.get("_design_review"))
+                        if "design_review" in snapshot.next and isinstance(data.get("_design_review"), dict)
                         else None
                     )
                     logger.info(
@@ -777,6 +811,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "plan_review": "等待用户批准或修改执行计划",
                     "plan_executor": "在节点边界吸收用户意见并调度下一步",
                     "architecture": "生成建筑方案候选并执行确定性评分",
+                    "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
                     "material_plan": "解析材质角色并匹配受控 PBR 资产",
                     "skeleton": "生成主体骨架并输出组件建议清单",
                     "merge": "合并所有组件分片",
@@ -949,6 +984,13 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "massing": massing,
                         "roof": plan.get("roof"),
                     })
+
+                elif node_name == "design_review":
+                    approved = node_output.get("design_review_status") == "approved"
+                    await send_step(
+                        "reviewing", node_name, "done", label,
+                        "建筑设计已批准" if approved else "已收到建筑设计修改意见",
+                    )
 
                 elif node_name == "planning_research":
                     research_diag = node_output.get("plan_research_diag", {})
@@ -1252,6 +1294,31 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         })
         raise GenerationPaused()
 
+    if "design_review" in snapshot.next:
+        values = snapshot.values or {}
+        document = values.get("design_document") or {}
+        resolved = values.get("resolved_design") or {}
+        await send_step(
+            "reviewing",
+            "design_review",
+            "done",
+            "建筑设计审核",
+            "请审阅 SVG、体量和立面；批准后才生成几何与组件",
+        )
+        await generation_job_service.mark_waiting_for_review(
+            request_id,
+            "design_document",
+        )
+        await _send_event(ws, {
+            "type": "design_review_required",
+            "request_id": request_id,
+            "session_id": session_id,
+            "document": document,
+            "resolved": resolved,
+            "preview_url": f"/api/designs/{session_id}/preview.svg?revision={document.get('revision', 1)}",
+        })
+        raise GenerationPaused()
+
     if not snapshot.next and snapshot.values:
         # plan_executor 是最后一个调度节点时，业务产物在完整 checkpoint 中。
         final_state = dict(snapshot.values)
@@ -1447,6 +1514,21 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         await send_step("finished", "finished", "error", "保存失败", str(exc))
         return
 
+    design_document = final_state.get("design_document") or {}
+    design_hash = (merged_blueprint.get("meta") or {}).get("designHash")
+    if isinstance(design_document, dict) and design_hash:
+        try:
+            from app.design.repository import design_repository
+
+            design_repository.mark_compiled(
+                session_id,
+                revision=int(design_document.get("revision") or 0),
+                design_hash=str(design_hash),
+            )
+        except Exception as exc:
+            # Blueprint 已成功原子保存；状态回写失败不应把已交付产物伪装成生成失败。
+            logger.warning(f"[{request_id}] DesignDocument compiled 状态回写失败: {exc}")
+
     await _send_event(ws, {
         "type": "blueprint_generated",
         "request_id": request_id,
@@ -1469,21 +1551,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         f"建议组件: {suggested_components}, RAG {total_rag_ms}ms, "
         f"LLM {total_llm_ms}ms, tokens {total_tokens['input'] + total_tokens['output']}"
     )
-
-def _detect_building_type(message: str) -> str:
-    """从用户消息推断建筑类型"""
-    type_keywords = {
-        "chinese_courtyard": ["中式庭院", "庭院", "四合院", "中式"],
-        "pavilion": ["凉亭", "亭子", "亭"],
-        "modern_house": ["现代", "别墅", "住宅", "房屋"],
-        "garage": ["车库"],
-        "tower": ["塔", "楼", "高楼", "大厦"],
-    }
-    for btype, keywords in type_keywords.items():
-        if any(kw in message for kw in keywords):
-            return btype
-    return "building"
-
 
 def _generation_failure_message(node_outputs: dict, final_state: dict) -> str:
     """优先返回真实上游错误，避免骨架失败被笼统的 Blueprint 缺失覆盖。"""

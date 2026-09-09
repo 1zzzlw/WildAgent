@@ -399,6 +399,11 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
             step="8f", name="validate_wall_junctions [recheck]", output=recheck_out,
             has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
         ))
+        quality_out = _run_tool(validate_model_quality, blueprint)
+        results.append(PipelineStepResult(
+            step="8f", name="validate_model_quality [recheck]", output=quality_out,
+            has_error="❌" in quality_out, has_warning="⚠️" in quality_out,
+        ))
     else:
         skip_step("8f", "fix_wall_junctions", "Step 5 墙体端点无问题")
 
@@ -1190,7 +1195,7 @@ class AgentService:
 
         filters = [
             {"doc_type": "building_type"},
-            {"doc_type": "recipe"},
+            {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
             {"doc_type": "component", "entity_type": "structural_component"},
             {"doc_type": "component", "entity_type": "wall"},
             {"doc_type": "component", "entity_type": "window"},
@@ -1212,8 +1217,8 @@ class AgentService:
         )
         if not current_blueprint and any(keyword in message for keyword in generation_keywords):
             parts.append(
-                "同时检索：对象的默认变体、最少可行版本、默认材质、配色、"
-                "PBR 参数；建筑还需检索外墙、楼板、屋顶、门窗和玻璃透明度"
+                "检索本次对象的 WILD 能力边界、构件宿主和组装关系；"
+                "外形、尺寸与材质由本次需求确定，局部示例不能作为默认建筑"
             )
         if current_blueprint:
             meta = current_blueprint.get("meta", {})
@@ -1254,7 +1259,7 @@ class AgentService:
 
         return [
             primary_query,
-            f"{message}\n构件-建筑类型速查矩阵：opening、door、window、roof、stair、railing 的推荐组合",
+            f"{message}\n已选构件的条件关系：opening、door、window、roof、stair、railing 的宿主与衔接",
             f"{message}\n结构构件规则：柱梁楼板桁架、column、beam、floor、truss 的参数与组合",
             f"{message}\n墙体构件参数与围护规则：wall、thickness、height、material、opening 承载关系",
             f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",

@@ -6,6 +6,8 @@
 
 ## 推荐阅读顺序
 
+先阅读 [知识库优化设计思路](知识库优化设计思路.md)，理解为什么采用条件规则以及如何保留设计自由度。具体知识职责、类型适用过滤、同步和验收见 [WILD 规则知识库 rules-v2](KNOWLEDGE_RULES_V2.md)。
+
 1. [RAG 能力与演进规划](RAG_CAPABILITIES_AND_EVOLUTION.md)：先区分当前已实现能力、部分能力和计划能力。
 2. [RAGTrace 日志阅读指南](RAG_TRACE_GUIDE.md)：学习怎样按 request_id 阅读查询、过滤、chunk_id、距离、耗时和 Token。
 3. [RAG 在线门控、权限、引用与质量控制手册](RAG_RUNTIME_CONTROLS.md)：配置 observe/enforce、权限、反馈、安全、Judge 和 CI。

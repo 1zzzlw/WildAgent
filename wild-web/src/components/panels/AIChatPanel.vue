@@ -125,6 +125,8 @@
           :turn="agentStore.getTurnForMessage(message)!"
           @confirm-execution-plan="handleConfirmExecutionPlan"
           @revise-execution-plan="handleReviseExecutionPlan"
+          @confirm-design="handleConfirmDesign"
+          @revise-design="handleReviseDesign"
         />
       </template>
 
@@ -361,6 +363,11 @@ const pendingExecutionPlanReview = computed(() =>
     .reverse()
     .find(turn => turn.status === 'waiting_review' && turn.execution_plan_review_status === 'pending')
 )
+const pendingDesignReview = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'waiting_review' && turn.design_review_status === 'pending')
+)
 const activePlanTurn = computed(() =>
   [...agentStore.currentTurns]
     .reverse()
@@ -368,6 +375,7 @@ const activePlanTurn = computed(() =>
 )
 const inputPlaceholder = computed(() => {
   if (pendingExecutionPlanReview.value) return '输入对执行计划的修改意见，或直接点击“批准计划”…'
+  if (pendingDesignReview.value) return '输入对建筑设计的修改意见，或直接点击“批准此设计”…'
   if (activePlanTurn.value) return '输入运行中修改意见，将在下一节点边界重新规划…'
   return '输入您的建筑需求...'
 })
@@ -431,6 +439,7 @@ const sendButtonTitle = computed(() => {
   if (activePlanTurn.value) return '发送运行中修改意见 (Ctrl+Enter)'
   if (agentStore.isProcessing) return '处理中...'
   if (pendingExecutionPlanReview.value) return '发送计划修改意见 (Ctrl+Enter)'
+  if (pendingDesignReview.value) return '发送建筑设计修改意见 (Ctrl+Enter)'
   return '发送 (Ctrl+Enter)'
 })
 
@@ -450,6 +459,16 @@ function handleConfirmExecutionPlan(requestId: string) {
 function handleReviseExecutionPlan(requestId: string, feedback: string) {
   resumeAutoScroll()
   agentBridge.submitExecutionPlanReview(requestId, 'revise', feedback)
+}
+
+function handleConfirmDesign(requestId: string) {
+  resumeAutoScroll()
+  agentBridge.submitDesignReview(requestId, 'confirm')
+}
+
+function handleReviseDesign(requestId: string, feedback: string) {
+  resumeAutoScroll()
+  agentBridge.submitDesignReview(requestId, 'revise', feedback)
 }
 
 function handleReconnect() {

@@ -1,6 +1,7 @@
 import asyncio
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from app.agent.protocol import versioned_event
@@ -9,6 +10,32 @@ from app.services.generation_job_service import (
     GenerationJobService,
     GenerationPaused,
 )
+
+
+def _sample_design_plan() -> dict:
+    facade = {"bays": 1, "ground_pattern": ["window"], "upper_pattern": ["window"]}
+    return {
+        "profile": "ordinary_public",
+        "concept": "审核恢复测试",
+        "massing": {
+            "shape": "rectangle", "width": 10, "depth": 8,
+            "floors": 1, "modeled_floors": 1, "representation_mode": "full",
+            "floor_height": 3.5, "symmetry": True,
+        },
+        "complexity": {"level": "simple", "min_volumes": 1,
+                       "min_detail_packages": 0, "target_structural_elements": 4,
+                       "grid_bays": [1, 1], "reason": "test"},
+        "volumes": [{"id": "main", "role": "primary", "x": 0, "z": 0,
+                     "width": 10, "depth": 8, "start_floor": 1, "end_floor": 1}],
+        "structural_grid": {"system": "frame", "x_bays": 1, "z_bays": 1},
+        "facades": {"front": {**facade, "entrance_bay": 1, "ground_pattern": ["door"]},
+                    "back": facade, "left": facade, "right": facade},
+        "roof": {"type": "flat", "ridge_axis": "x", "overhang": 0},
+        "component_quota": {"door": {"min": 1, "max": 1},
+                            "window": {"min": 3, "max": 3},
+                            "roof": {"min": 1, "max": 1, "type": "flat"}},
+        "required_components": ["door", "window", "roof"],
+    }
 
 
 class RecordingSubscriber:
@@ -392,6 +419,71 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await self.wait_for_status(service, "req_plan_review", "completed")
 
         self.assertEqual(resume_payloads, [{"action": "confirm", "feedback": ""}])
+
+    async def test_design_review_pauses_and_resumes_with_persisted_document(self):
+        service = self.make_service()
+        resume_payloads: list[dict] = []
+        allow_pause_to_finish = asyncio.Event()
+        handoff_started = asyncio.Event()
+        original_resume_review_job = service._resume_review_job
+
+        async def tracking_resume_review_job(resumed):
+            handoff_started.set()
+            await original_resume_review_job(resumed)
+
+        service._resume_review_job = tracking_resume_review_job
+
+        from app.design.repository import DesignRepository
+        from app.design.resolver import build_design_document
+        document = build_design_document(
+            _sample_design_plan(),
+            session_id="session_design_review",
+            source_request="生成三层写字楼",
+        )
+        repository = DesignRepository(Path(self.temp_dir.name) / "designs")
+        repository.save(document)
+
+        async def runner(sink, payload, resume):
+            if not resume:
+                await service.mark_waiting_for_review(
+                    payload["request_id"],
+                    "design_document",
+                )
+                await sink.send_json(versioned_event({
+                    "type": "design_review_required",
+                    "request_id": payload["request_id"],
+                    "session_id": payload["session_id"],
+                    "document": document.model_dump(mode="json"),
+                }))
+                await allow_pause_to_finish.wait()
+                raise GenerationPaused()
+            resume_payloads.append(payload["_design_review"])
+
+        await service.startup(runner)
+        subscriber = RecordingSubscriber()
+        await service.start_job({
+            "request_id": "req_design_review",
+            "session_id": "session_design_review",
+        }, subscriber)
+        await self.wait_for_status(service, "req_design_review", "waiting_review")
+
+        with patch("app.design.repository.design_repository", repository):
+            submit_task = asyncio.create_task(service.submit_design_review(
+                subscriber,
+                request_id="req_design_review",
+                session_id="session_design_review",
+                action="confirm",
+                base_revision=document.revision,
+            ))
+            await handoff_started.wait()
+            self.assertFalse(submit_task.done())
+
+            allow_pause_to_finish.set()
+            await submit_task
+        await self.wait_for_status(service, "req_design_review", "completed")
+
+        self.assertEqual(resume_payloads[0]["action"], "confirm")
+        self.assertEqual(resume_payloads[0]["document"]["revision"], 1)
 
     async def test_running_execution_feedback_is_persisted_and_drained_once(self):
         service = self.make_service()

@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
 from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
+from app.agent.knowledge_policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
 
 
 class RAGSemanticChunkingTest(unittest.TestCase):
@@ -271,8 +272,10 @@ keywords: 旧主词, old alias
             {
                 "$and": [
                     {"namespace": "test"},
-                    {"doc_scope": {"$ne": "index"}},
-                    {"status": {"$ne": "proposed"}},
+                    {"knowledge_revision": KNOWLEDGE_REVISION},
+                    {"doc_scope": "generation"},
+                    {"knowledge_role": {"$in": list(GENERATION_ROLES)}},
+                    {"status": {"$in": ["supported", "experimental"]}},
                     {"authority": {"$ne": "inferred"}},
                     {"access_scope": "public"},
                     {"doc_type": "component"},
@@ -281,10 +284,45 @@ keywords: 旧主词, old alias
             },
         )
 
+    def test_type_route_is_applied_before_query_and_global_hits_are_checked(self):
+        collection = Mock()
+        collection.count.return_value = 2
+        collection.query.return_value = {
+            "documents": [["villa rules", "wall rules"]],
+            "metadatas": [[
+                {"doc_type": "building_type", "applies_to": "别墅", "entity_name": "villa"},
+                {"doc_type": "component", "entity_name": "wall"},
+            ]],
+            "distances": [[0.1, 0.2]],
+        }
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        loader._top_k = 2
+        loader._query_rewrite_enabled = False
+        loader._get_collection = Mock(return_value=collection)
+        loader._alias_catalog = Mock(return_value={
+            "villa": {"filters": {"doc_type": "building_type"}, "applies_to": ["别墅"]},
+        })
+        hits = loader._retrieve("自由形态建筑")
+        self.assertEqual([hit.document for hit in hits], ["wall rules"])
+        collection.query.return_value = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
+        loader._retrieve("自由形态建筑", {"doc_type": "building_type"})
+        self.assertIn({"entity_name": "__no_requested_building__"}, collection.query.call_args.kwargs["where"]["$and"])
+
+    def test_reference_scope_is_explicit_and_old_vectors_are_always_excluded(self):
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        normal = loader._query_where()["$and"]
+        reference = loader._query_where({"doc_scope": "reference"})["$and"]
+        self.assertIn({"doc_scope": "generation"}, normal)
+        self.assertIn({"doc_scope": "reference"}, reference)
+        self.assertIn({"knowledge_revision": KNOWLEDGE_REVISION}, reference)
+        self.assertFalse(any("knowledge_role" in condition for condition in reference))
+
     def test_context_limit_keeps_retrieved_chunks_atomic(self):
         """Prompt 放不下所有结果时，应舍弃整片，不能截断 JSON 片段。"""
         loader = object.__new__(RAGSpecLoader)
-        loader._max_context_chars = 360
+        loader._max_context_chars = 360 + len(KNOWLEDGE_GUIDANCE) + 2
         loader._loaded_at = None
         chunks = [
             RetrievedSpecChunk(

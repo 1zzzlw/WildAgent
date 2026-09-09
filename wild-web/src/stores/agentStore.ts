@@ -544,6 +544,54 @@ export const useAgentStore = defineStore('agent', () => {
     persistTurns(sessionId)
   }
 
+  function setDesignReviewRequired(
+    sessionId: string,
+    requestId: string,
+    document: NonNullable<AgentTurn['design_document']>,
+    resolved: NonNullable<AgentTurn['resolved_design']>,
+    previewUrl: string,
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.design_document = document
+    turn.resolved_design = resolved
+    turn.design_preview_url = previewUrl
+    turn.design_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
+  function markDesignReviewSubmitted(
+    sessionId: string,
+    requestId: string,
+    action: 'confirm' | 'revise',
+    feedback = '',
+  ) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'running'
+    turn.design_review_status = action === 'confirm' ? 'approved' : 'submitting'
+    if (action === 'revise') {
+      addMessageToSession(sessionId, {
+        id: `msg_${requestId}_design_revision_${Date.now()}`,
+        role: 'user',
+        content: feedback,
+        timestamp: Date.now(),
+        request_id: requestId,
+        turn_id: requestId,
+      })
+    }
+    persistTurns(sessionId)
+  }
+
+  function restoreDesignReviewAfterError(sessionId: string, requestId: string) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.status = 'waiting_review'
+    turn.design_review_status = 'pending'
+    persistTurns(sessionId)
+  }
+
   function setExecutionFeedbackQueued(
     sessionId: string,
     requestId: string,
@@ -1055,6 +1103,9 @@ export const useAgentStore = defineStore('agent', () => {
     setExecutionPlanReviewRequired,
     markExecutionPlanReviewSubmitted,
     restoreExecutionPlanReviewAfterError,
+    setDesignReviewRequired,
+    markDesignReviewSubmitted,
+    restoreDesignReviewAfterError,
     setExecutionFeedbackQueued,
     setTurnMetrics,
     setTurnThinkingStatus,

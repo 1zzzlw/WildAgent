@@ -56,7 +56,7 @@ classifier
 
 组件建议在派发前统一过滤：未知或未实现的类型被丢弃，用户明确否定的组件不生成，空建议保留门、窗、屋顶基础集合，阳台的内嵌栏杆不会被无意重复生成。
 
-`architecture`、`material_plan` 与 `skeleton` 职责分开：architecture 输出体量、层数、立面轴位、屋顶和构件配额，不设计房间布局；material_plan 解析材质角色与资产；skeleton 直接生成主体 Blueprint，并输出后续组件建议。原 FloorPlanIR、平面节点、平面规则、`ApprovedPlanAssembler`、风格审核和 Decor 装配已从当前运行时移除。
+`architecture`、`material_plan`、`design_review` 与 `skeleton` 职责分开：architecture 输出体量、层数、立面轴位、屋顶和构件配额；material_plan 解析材质角色与资产并写入 DesignDocument；design_review 用 SVG 和结构化字段审核具体建筑；skeleton 只在批准后生成主体 Blueprint，并输出后续组件建议。原 FloorPlanIR、平面节点、平面规则、`ApprovedPlanAssembler`、风格审核和 Decor 装配已从当前运行时移除。
 
 总体方案节点使用稳定的结构化调用并展示候选比较摘要；骨架节点在思考模式下可流式展示供应商实际返回的 `reasoning_content`。快速模式也持续展示检索、校验、格式恢复和组件派发等公开进度，不把程序日志伪装成模型内部推理。
 

@@ -10,37 +10,18 @@ synonyms:
   - building types
 ---
 
-# 建筑类型知识索引
+# building_types 知识索引
 
-> 分类来源：用户提供的《建筑类型分类体系_总目录.md》及现有建筑类型文档。
-> 用途：供维护者查看分类覆盖和详细配方位置；本 README 不进入普通生成召回。
+本目录采用 rules-v2：WILD 协议、构件能力与条件组装关系提供实现边界；类型卡只补充点名类型的特征。尺寸、造型、配色与附属系统由本次需求和已批准方案决定。普通生成不召回策略、完整案例、回退或导航内容。
 
-## 七大建筑分类与当前覆盖
+## 内容入口
 
-| 建筑大类 | 轻量分类入口 | 当前详细配方覆盖 |
-|---|---|---|
-| 居住建筑 | `catalog/building-type-taxonomy.md` | `residential/villas.md`、`residential/housing-dormitories-hotels.md`、`residential/extended-residential-types.md` |
-| 公共建筑 | `catalog/building-type-taxonomy.md` | `public/education-office-culture.md`、`public/commercial-sports-medical-transport-other.md`、`public/public-building-subtypes.md` |
-| 工业建筑 | `catalog/building-type-taxonomy.md` | `industrial/factories-and-warehouses.md` |
-| 农业建筑 | `catalog/building-type-taxonomy.md` | `agricultural/agricultural-buildings.md` |
-| 市政基础设施 | `catalog/building-type-taxonomy.md` | 尚无详细生成配方 |
-| 景观小品与纪念性建筑 | `catalog/building-type-taxonomy.md` | 凉亭、塔楼可参考 `catalog/pavilions.md`、`catalog/towers.md` |
-| 特殊专项建筑 | `catalog/building-type-taxonomy.md` | 尚无详细生成配方 |
+- [agricultural](agricultural/)
+- [catalog](catalog/README.md)
+- [industrial](industrial/)
+- [public](public/)
+- [residential](residential/)
 
-## 目录职责
+## 维护与生效
 
-| 子目录 | 内容 |
-|---|---|
-| `catalog/` | 模糊建筑名称的默认语义、分类词典和详细文档路由 |
-| `residential/` | 别墅、普通住宅、宿舍、酒店等居住或类居住建筑 |
-| `public/` | 教育、办公、文化、商业、体育、医疗、交通等公共建筑 |
-| `industrial/` | 厂房、工业上楼和仓储建筑 |
-| `agricultural/` | 温室、畜禽饲养场、粮仓和农机站 |
-
-## 使用约束
-
-本索引只说明知识文件的覆盖范围，不参与普通蓝图生成；需要生成时应继续读取相应的轻量分类或详细配方文档。
-
-- 分类目录中的建筑名称不等于 WILD `type`。
-- “已收录分类”不等于“已有完整生成配方”，详细覆盖以上表为准。
-- 模板 A～Y 目前只有目录名称，没有足够事实形成正式 `recipes/` 文档。
+按 wild-knowledge-ingest 技能维护来源、knowledge_role、applies_to 与真实分片。路径公共 metadata 在知识库根 config.yaml；Markdown 链接不会自动追踪。更新内容后由 RAGSpecLoader 同步索引，旧版本向量被 rules-v2 过滤；基础协议始终由文件加载。历史原文在 docs-dev/knowledge-before-rules-v2，不参与扫描。

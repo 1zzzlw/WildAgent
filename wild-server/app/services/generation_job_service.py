@@ -19,7 +19,7 @@ from app.agent.protocol import versioned_event
 JobRunner = Callable[[Any, dict, bool], Awaitable[None]]
 
 _SERVER_ROOT = Path(__file__).resolve().parents[2]
-GENERATION_PIPELINE_VERSION = "llm-skeleton-v2"
+GENERATION_PIPELINE_VERSION = "design-document-v1"
 _PIPELINE_UPGRADE_ERROR = "生成流程已升级，旧任务无法继续恢复，请重新发起生成请求"
 DEFAULT_CHECKPOINT_PATH = (
     _SERVER_ROOT / "storage" / "sessions" / "langgraph_checkpoints.sqlite3"
@@ -29,6 +29,7 @@ _PERSISTED_EVENT_TYPES = {
     "thinking_status",
     "execution_plan_ready",
     "execution_plan_review_required",
+    "design_review_required",
     "execution_feedback_queued",
     "patch_proposal",
     "blueprint_generated",
@@ -248,6 +249,62 @@ class GenerationJobService:
             "action": action,
             "feedback": feedback,
         }
+        await self._update_payload_and_status(request_id, payload, "running")
+        resumed = GenerationJob(
+            request_id=request_id,
+            session_id=session_id,
+            payload=payload,
+            status="running",
+            last_event_seq=job.last_event_seq,
+        )
+        await self.attach(request_id, subscriber)
+        await self._resume_review_job(resumed)
+        return resumed
+
+    async def submit_design_review(
+        self,
+        subscriber: Any,
+        *,
+        request_id: str,
+        session_id: str,
+        action: str,
+        feedback: str = "",
+        base_revision: int | None = None,
+    ) -> GenerationJob:
+        """批准具体建筑设计，或携带自然语言意见重新生成设计方案。"""
+
+        await self.initialize()
+        job = await self.get_job(request_id)
+        if job is None or job.session_id != session_id:
+            raise ValueError("找不到对应的建筑设计审核任务")
+        await self._require_current_pipeline(job)
+        if job.status != "waiting_review":
+            raise ValueError("当前任务不在建筑设计审核阶段")
+        if str(job.payload.get("_waiting_review_type") or "") != "design_document":
+            raise ValueError("当前等待的不是建筑设计审核")
+        action = str(action).lower()
+        feedback = str(feedback).strip()
+        if action not in {"confirm", "revise"}:
+            raise ValueError("建筑设计审核 action 只能是 confirm 或 revise")
+        if action == "revise" and not feedback:
+            raise ValueError("要求修改设计时必须填写具体意见")
+
+        from app.design.repository import design_repository
+
+        document = design_repository.get(session_id)
+        if document is None:
+            raise ValueError("建筑设计文档不存在")
+        if base_revision is not None and document.revision != int(base_revision):
+            raise ValueError(
+                f"设计版本冲突：当前 r{document.revision}，审核请求基于 r{base_revision}"
+            )
+        review: dict[str, Any] = {
+            "action": action,
+            "feedback": feedback,
+            "document": document.model_dump(mode="json"),
+        }
+        payload = dict(job.payload)
+        payload["_design_review"] = review
         await self._update_payload_and_status(request_id, payload, "running")
         resumed = GenerationJob(
             request_id=request_id,
@@ -509,7 +566,10 @@ class GenerationJobService:
             review_already_submitted = (
                 current is not None
                 and current.status == "running"
-                and isinstance(current.payload.get("_execution_plan_review"), dict)
+                and (
+                    isinstance(current.payload.get("_execution_plan_review"), dict)
+                    or isinstance(current.payload.get("_design_review"), dict)
+                )
             )
             if not pause_already_persisted and not review_already_submitted:
                 await self._mark_status(job.request_id, "waiting_review", None)

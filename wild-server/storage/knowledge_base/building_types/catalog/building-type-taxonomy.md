@@ -1,4 +1,6 @@
 ---
+doc_scope: index
+knowledge_role: navigation
 entity_name: building_type_taxonomy
 topic: definition
 status: experimental

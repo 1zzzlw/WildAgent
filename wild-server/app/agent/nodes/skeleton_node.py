@@ -23,6 +23,7 @@ from app.agent.llm_invocation import (
 )
 from app.agent.runtime_context import get_reasoning_callback
 from app.spec.loader import SpecQuery
+from app.agent.knowledge_policy import plan_knowledge_query
 from app.tools.spatial_tools import (
     fix_element_dimensions,
     fix_material_references,
@@ -77,21 +78,13 @@ async def skeleton_generator(state: GenerationState) -> dict:
     building_category = _identify_building_category(user_message)
     logger.info(f"[skeleton] 识别建筑类型: {building_category or '未识别'}")
     
-    # 构建带建筑类型过滤的查询
-    main_query_filter = {"doc_type": "building_type"}
-    if building_category:
-        main_query_filter["building_category"] = building_category
-    
+    # 骨架落实已选方案，避免再次检回别的整栋类型或风格配方。
+    selected_query = plan_knowledge_query(user_message, architecture_plan)
     queries = [
-        # 主查询：建筑类型特征（如"欧式别墅"、"中式庭院"），带建筑类型过滤
-        SpecQuery(user_message, main_query_filter),
-        # 补充：建筑配方和结构组件通用规范
-        SpecQuery(user_message, {"doc_type": "recipe"}),
-        SpecQuery(
-            f"{user_message} 组合体量 退台 结构轴网 立面进深",
-            {"doc_type": "pattern", "entity_type": "building"},
-        ),
-        SpecQuery("墙体 楼板 柱子 梁", {"entity_type": "structural_component"}),
+        SpecQuery("楼层与体量的组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+        SpecQuery(selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}),
+        SpecQuery("墙体 楼板 柱子 梁", {"doc_type": "component", "entity_type": "structural_component"}),
+        SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
     ]
 
     rag_error = None
@@ -303,13 +296,13 @@ async def skeleton_generator(state: GenerationState) -> dict:
             and not deterministic_fallback_reason
         ):
             logger.warning(
-                "[skeleton] 模型骨架未兑现高复杂度方案，切换到体量化确定性骨架: "
+                "[skeleton] 模型骨架未满足结构与方案约束，切换到确定性骨架: "
                 f"{json.dumps(complexity_diag, ensure_ascii=False, default=str)}"
             )
             if on_reasoning_delta is not None:
                 await on_reasoning_delta(
                     "skeleton",
-                    "\n模型骨架未达到组合体量与结构数量目标，正在启用体量化安全回退...\n",
+                    "\n模型骨架存在无效结构或未满足方案约束，正在依据已批准方案重建骨架...\n",
                 )
             blueprint = apply_resolved_material_plan(
                 normalize_blueprint_input(
@@ -317,9 +310,16 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 ),
                 material_plan,
             )
-            deterministic_fallback_reason = "模型骨架未达到高复杂度方案目标"
+            deterministic_fallback_reason = "模型骨架未满足结构与方案约束"
             schema_issues = validate_blueprint_schema(blueprint)
             complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
+
+    if complexity_diag and not complexity_diag["meets_target"]:
+        return {
+            "error": "确定性骨架仍未满足结构与方案约束，停止派发组件",
+            "status": "failed",
+            "skeleton_diag": {"complexity": complexity_diag, "deterministic_fallback_reason": deterministic_fallback_reason},
+        }
 
     if schema_issues:
         logger.warning(f"[skeleton] Schema 校验失败: {schema_issues[:3]}")
@@ -583,7 +583,6 @@ def _parse_components_from_reply(reply_text: str) -> list[str]:
 
 def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -> str:
     """生成骨架摘要供后续节点使用（几何轮廓 + 设计清单）"""
-    import json as _json
     elements = blueprint.get("geometry", {}).get("elements", [])
     walls = [e for e in elements if e.get("type") == "wall"]
     floors = [e for e in elements if e.get("type") == "floor"]
@@ -682,21 +681,20 @@ def _build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) -
 
         rag_ref = design_brief.get("rag_reference", "")
         if rag_ref:
-            lines.append(f"\nRAG 参考模板: {rag_ref}")
+            lines.append(f"\nRAG 能力与关系依据: {rag_ref}")
 
     # ── 门/窗定位基本规则 ──
     if walls:
         lines.append("\n【门/窗定位基本规则】：")
         lines.append(
             "  1. from[0] = 沿墙距离(m)；from[1] = 底部世界Y："
-            "门=父墙底Y，窗=父墙底Y+0.9~1.1m"
+            "门窗均优先逐字使用程序解析槽位，不再按建筑类型套固定窗台高度"
         )
-        lines.append("  2. 门宽 0.9~1.2m，高 2.0~2.4m；窗宽 1.0~2.0m，高 1.2~1.8m")
-        lines.append("  3. 开口边缘距墙角 ≥0.3m，相邻开口间距 ≥0.5m")
+        lines.append("  2. 门窗宽高、边缘留量和相邻间距服从已批准槽位，并且必须完整落在父墙范围内")
         lines.append(
-            "  4. from=[沿墙距离, 底部世界Y, 局部法向偏移]；from[2] 不是世界 X/Z。"
+            "  3. from=[沿墙距离, 底部世界Y, 局部法向偏移]；from[2] 不是世界 X/Z。"
             "门窗通常必须为 0（即使背墙世界 z=6，仍写 from[2]=0）"
         )
-        lines.append("  5. facade_plan 中 max_openings=0 的墙面不要放置任何开口")
+        lines.append("  4. facade_plan 中 max_openings=0 的墙面不要放置任何开口")
 
     return "\n".join(lines)

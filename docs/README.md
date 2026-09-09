@@ -14,12 +14,17 @@
 6. [服务器部署与运维](DEPLOYMENT.md)：Compose、环境文件位置、重建与故障核对。
 7. [优化路线](ROADMAP.md)：跨模块的当前结论、已完成优化和后续优先级。
 8. [两轮优化总结](OPTIMIZATION_SUMMARY.md)：LangGraph 生成链路（批次 A-E）与知识库/RAG（批次 K1-K3）的完整问题→改动→验证记录。
+9. [9月9日优化](9月9日优化/README.md)：DesignDocument、SVG 审核、知识声明加工与本轮验收规范。
 
 这些文件影响整个项目，因此保留在 `docs/` 根目录。
 
 ## 专题文档
 
 开发观测与评测：[LangSmith 追踪、检索评测与 Studio](../wild-server/langsmith_tools/README.md)。
+
+知识库设计：[知识库优化设计思路](rag/知识库优化设计思路.md)，说明知识、规则、实例和生成自由度的分工。
+
+生成失败排查：[生成失败记录排查](agent/生成失败记录排查.md)，说明会话日志、RAGTrace 和 SQLite 检查点的读取方法。
 
 | 目录 | 内容 | 推荐入口 |
 |---|---|---|

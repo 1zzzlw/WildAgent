@@ -1,4 +1,6 @@
 import unittest
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 from app.agent.nodes import skeleton_node
@@ -54,6 +56,31 @@ class _InvalidMaterialsLLM:
 
 
 class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_zero_length_wall_hosts_are_rebuilt_before_dispatch(self):
+        from app.agent.architecture_plan import normalize_architecture_plan
+        case = json.loads((Path(__file__).resolve().parents[1] / "fixtures/degenerate_wall_hosts.json").read_text(encoding="utf-8"))
+        plan = normalize_architecture_plan(case["architecture_plan"], case["user_message"])
+        response = type("Response", (), {"content": json.dumps(case["skeleton_blueprint"]), "response_metadata": {}})()
+
+        class LLM:
+            async def ainvoke(self, messages):
+                return response
+
+        loader = type("Loader", (), {"last_results": [], "load_many": lambda *_args, **_kwargs: ""})()
+        service = type("Service", (), {"spec_loader": loader})()
+        with (
+            patch.object(skeleton_node, "create_llm", return_value=LLM()),
+            patch("app.services.agent_service.agent_service", service),
+        ):
+            result = await skeleton_node.skeleton_generator({
+                "user_message": case["user_message"], "architecture_plan": plan,
+                "thinking_mode": False,
+            })
+        self.assertNotIn("error", result)
+        self.assertTrue(result["skeleton_diag"]["deterministic_fallback"])
+        self.assertTrue(result["skeleton_diag"]["complexity"]["checks"]["valid_wall_hosts"])
+        self.assertGreaterEqual(result["skeleton_diag"]["opening_slot_count"], 15)
+
     async def test_recovery_uses_non_thinking_model_and_extracts_wrapped_blueprint(self):
         fake_llm = _FakeLLM()
         with patch.object(skeleton_node, "create_llm", return_value=fake_llm) as create:
@@ -76,6 +103,33 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
             {"input": 5, "output": 7, "total": 12},
         )
         self.assertEqual(merged, {"input": 15, "output": 27, "total": 42})
+
+    def test_skeleton_summary_uses_approved_slots_instead_of_fixed_opening_sizes(self):
+        summary = skeleton_node._build_skeleton_summary({
+            "geometry": {
+                "elements": [{
+                    "id": "wall_front",
+                    "type": "wall",
+                    "from": [0, 0, 0],
+                    "to": [8, 3, 0],
+                    "thickness": 0.2,
+                }],
+                "components": [],
+            },
+            "materials": {},
+        }, {
+            "opening_slots": [{
+                "type": "window",
+                "wall_id": "wall_front",
+                "from": [1.3, 0.7, 0],
+                "width": 2.4,
+                "height": 1.9,
+            }],
+        })
+
+        self.assertIn("优先逐字使用程序解析槽位", summary)
+        self.assertNotIn("门宽 0.9~1.2m", summary)
+        self.assertNotIn("窗宽 1.0~2.0m", summary)
 
     async def test_invalid_materials_container_uses_deterministic_skeleton_fallback(self):
         architecture_plan = {

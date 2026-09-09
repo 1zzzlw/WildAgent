@@ -1,104 +1,44 @@
 ---
-entity_name: cabin
-topic: assembly
-status: experimental
-authority: domain_reference
+entity_name: cabins
+topic: composition
+status: supported
+authority: maintainer
 source: building_types/catalog/cabins.md
+building_category: mixed_use
 primary_terms:
+  - 木屋
+synonyms: []
+applies_to:
+  - 木屋
+---
+
+# 木屋：类型特征与条件关系
+
+> 来源：本文件旧版资料的语义审查；旧稿逐节保存在 docs-dev/knowledge-before-rules-v2。仅保留有用的类型差异，示例尺寸、默认配色和整栋蓝图不参与生成。共性字段以 components/ 与 BLUEPRINT-SPEC-FULL.md 为准。
+
+## 木屋
+
+<!-- rag-meta
+entity_type: building
+entity_name: cabin
+topic: composition
+knowledge_role: identity
+authority: domain_reference
+primary_terms:
+  - 木屋
+  - 小木屋
   - 小屋
-  - 木屋
-synonyms:
   - cabin
----
-
-# 轻量建筑分类：小屋 / 木屋（Cabin）
-
-> 来源：从旧版根目录轻量建筑类型参考库拆分。
-> 用途：当用户模糊请求“生成一个木屋”时，提供默认语义入口、常见变体和最少可行版本。
-> RAG 关键词：小屋、木屋、Cabin、标准木屋、前廊木屋、默认木屋
-
----
-## 小屋 / 木屋（Cabin）
-
-小屋是单层或低矮的简单住宅，结构简单，空间紧凑，常见于山地、林间或农村。
-
-### 标准功能分区
-
-| 区域 | 位置 | 核心构件 |
-|------|------|---------|
-| 地基 | 底部 | floor × 1 |
-| 外墙 | 四周 | wall × 4 |
-| 门窗 | 外墙开口 | door × 1、window × 2~4（组合构件，编译器自动生成 opening）|
-| 屋顶 | 顶部 | roof × 1（gable 双坡为主） |
-| 前廊 | 可选，正面外延 | floor + column × 2 + beam × 1 |
-| 烟囱 | 可选，屋顶侧面 | column（烟囱体）+ floor（顶盖）|
-
-<!-- rag-meta
-entity_type: building
-entity_name: standard_cabin
-topic: assembly
-status: experimental
-authority: domain_reference
-primary_terms:
-  - 标准木屋
+synonyms: []
+applies_to:
   - 木屋
-  - 单层木屋
-synonyms:
-  - standard cabin
+  - 小木屋
+  - 小屋
+  - cabin
 -->
 
-### 变体 A：标准木屋
-
-**构件清单**：
-- floor × 1（地基）
-- wall × 4（外墙，木板材质）
-- door × 1（正门）+ window × 2（前窗1 + 侧窗1）
-- roof × 1（gable，坡度较陡：height = span × 0.5）
-
-**典型尺寸**：
-- 占地：5m × 4m
-- 层高：2.8m
-- 屋顶：span 6m，depth 5m，height 3m
-
-**材质建议**：
-- 外墙/屋顶：原木 baseColor [0.45, 0.28, 0.12]
-- 地基：石材 baseColor [0.62, 0.59, 0.55]
-
----
-
-<!-- rag-meta
-entity_type: building
-entity_name: cabin_with_porch
-topic: assembly
-status: experimental
-authority: domain_reference
-primary_terms:
-  - 前廊木屋
-  - 带前廊木屋
-  - 木屋前廊
-synonyms:
-  - cabin with porch
--->
-
-### 变体 B：带前廊木屋
-
-在标准木屋基础上，正面增加：
-- floor × 1（前廊地面，从正面墙外延 2m）
-- column × 2（前廊两侧支柱）
-- beam × 1（门廊横梁，连接两柱顶）
-- roof（主屋顶 depth 延伸覆盖前廊，或单独 flat 小雨棚）
-
----
-
-### 构件最少可行版本
-
-```
-单层木屋
-- 地基 floor ×1，5m×4m
-- 外墙 wall ×4
-- 正门 door ×1（宽0.9m，高2.0m，parentWall 正面墙）
-- 前窗 window ×2（宽1.0m，高0.9m，窗台高1.0m）
-- 屋顶 roof ×1，gable，span 6m，depth 5m，height 2.5m
-```
-
----
+- 适用条件：用户或已批准方案明确采用木屋；名称本身不决定全部构件。
+- 类型特征：木构或木饰面的居住体量；前廊、烟囱与坡顶都是条件选择。
+- 条件关系：选定前廊后安排板、柱梁与屋盖；烟囱按真实屋面定位，门窗绑定围护墙。
+- WILD 映射与边界：wood 是材质角色而非结构验算；chimney 不自动穿透屋顶。
+- 自由变量：层数、体量轮廓、开间、屋顶形式与材质由本次需求和方案确定。

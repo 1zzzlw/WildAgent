@@ -13,7 +13,7 @@ def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
     merged.update(right or {})
     return merged
 
-
+# total=False 当前类里定义的所有字段默认全部可选，可以缺省。
 class GenerationState(TypedDict, total=False):
     """LangGraph 生成流程的完整状态"""
 
@@ -65,6 +65,11 @@ class GenerationState(TypedDict, total=False):
     architecture_plan: dict
     complexity_profile: dict
     architecture_diag: dict
+    design_document: dict
+    resolved_design: dict
+    design_review_status: str
+    design_feedback: str
+    design_material_refresh: bool
     material_plan: dict
     material_diag: dict
 

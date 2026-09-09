@@ -1,4 +1,9 @@
 ---
+applies_to:
+  - 幕墙
+  - curtain wall
+  - curtain_wall
+  - 玻璃立面
 knowledge_layer: architecture
 entity_type: facade
 entity_name: glass_curtain_wall_family
@@ -94,7 +99,7 @@ primary_terms:
 synonyms: []
 -->
 
-幕墙至少使用三种分离的材料角色，避免骨架、玻璃和层间板共享同一材质后失去层次。
+按已选系统区分骨架与玻璃材质；仅当存在层间背衬时另设该角色，避免不同功能共享材质失去层次。
 
 | 材料角色 | 建议字段方向 | 视觉目的 |
 |---|---|---|

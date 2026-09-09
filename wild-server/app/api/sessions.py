@@ -227,6 +227,10 @@ async def delete_session(session_id: str):
     if meta_path.exists():
         meta_path.unlink()
 
+    from app.design.repository import design_repository
+
+    design_repository.delete(session_id)
+
     # 删除关联的蓝图文件（精确匹配本会话，避免误删前缀相似的会话文件）
     SCENES_DIR.mkdir(parents=True, exist_ok=True)
     deleted_files = []

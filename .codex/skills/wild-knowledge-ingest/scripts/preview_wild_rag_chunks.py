@@ -11,6 +11,8 @@ from typing import Iterable
 
 
 REQUIRED_METADATA = {
+    "knowledge_revision",
+    "knowledge_role",
     "doc_type",
     "doc_scope",
     "knowledge_layer",
@@ -88,6 +90,13 @@ def audit_chunks(
         chunks_by_parent[str(metadata.get("parent_chunk_id") or chunk.id)].append(chunk)
 
         missing = sorted(REQUIRED_METADATA - metadata.keys())
+        if metadata.get("doc_scope") == "generation":
+            if metadata.get("knowledge_role") not in {"protocol", "capability", "relation", "identity"}:
+                issues.append(PreviewIssue("error", "invalid_generation_role", source, heading, part_index,
+                                           "生成分片包含非生成知识角色"))
+            if metadata.get("doc_type") == "building_type" and not metadata.get("applies_to"):
+                issues.append(PreviewIssue("error", "missing_applicability", source, heading, part_index,
+                                           "类型分片缺少 applies_to，不能用于自动类型路由"))
         if missing:
             issues.append(PreviewIssue(
                 "error", "missing_chunk_metadata", source, heading, part_index,

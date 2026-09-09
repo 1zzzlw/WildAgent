@@ -4,6 +4,7 @@ from .web_research_node import web_research_node
 from .chat_node import chat_node
 from .patch_node import patch_node
 from .architecture_node import architecture_planner
+from .design_review_node import design_review, route_design_review
 from .material_plan_node import material_planner
 from .skeleton_node import skeleton_generator
 from .merge_node import merge_fragments_node
@@ -25,6 +26,8 @@ __all__ = [
     "chat_node",
     "patch_node",
     "architecture_planner",
+    "design_review",
+    "route_design_review",
     "material_planner",
     "skeleton_generator",
     "merge_fragments_node",

@@ -18,7 +18,7 @@ from app.agent.knowledge_topics import (
 )
 
 
-# 覆盖比阈值：低于该值触发联网；可通过 config 覆盖。
+# 保留配置接口兼容性；覆盖比例仅供诊断，不触发建筑百科研究。
 DEFAULT_COVERAGE_THRESHOLD = 0.8
 
 
@@ -76,7 +76,7 @@ def evaluate_knowledge_coverage(
         user_message: 用户建筑需求（用于诊断原因）。
         building_type: 建筑类型 key（来自 _detect_building_type 或图谱）。
         retrieved_chunks: 本地 RAG 检索结果（RetrievedSpecChunk 列表）。
-        coverage_threshold: 覆盖比阈值（0~1），低于则触发联网。
+        coverage_threshold: 兼容旧调用；覆盖比例不再作为自动联网触发条件。
 
     Returns:
         CoverageDecision：充分性、覆盖比、缺失主题、是否触发联网。
@@ -124,20 +124,19 @@ def evaluate_knowledge_coverage(
     hit_count = len(hit_topics)
     coverage_ratio = round(hit_count / total, 3) if total else 1.0
 
-    # 5. 决策：低于阈值或任一 required 主题缺失 → 触发联网。
-    below_threshold = coverage_ratio < coverage_threshold
-    trigger = below_threshold or bool(missing_required)
-    sufficient = not trigger
+    # 5. 核心知识决定充分性；用途边界决定是否需要外部研究。
+    # 缺失本地 WILD 实现规则应回到随代码维护的基础协议；网络不能补出引擎能力。
+    # 类型卡是可选知识，不因缺少建筑百科启动研究。显式联网请求仍走外层 gate。
+    trigger = False
+    sufficient = not bool(missing_required)
 
     if sufficient:
-        reason = f"本地知识覆盖充分（{coverage_ratio:.0%}，{hit_count}/{total} 主题）"
-    elif missing_required:
+        reason = f"本地能力与组装规则已覆盖；可选主题计入覆盖统计（{hit_count}/{total}）"
+    else:
         reason = (
             f"缺少核心知识主题（{', '.join(missing_required[:4])}）；"
             f"覆盖 {coverage_ratio:.0%}"
         )
-    else:
-        reason = f"本地知识覆盖不足（{coverage_ratio:.0%}，低于阈值 {coverage_threshold:.0%}）"
 
     return CoverageDecision(
         sufficient=sufficient,
