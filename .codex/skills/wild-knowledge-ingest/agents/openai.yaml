@@ -1,4 +1,4 @@
 interface:
   display_name: "Wild RAG 知识入库"
   short_description: "维护 WILD 能力与条件关系，隔离固定建筑模板"
-  default_prompt: "使用 $wild-knowledge-ingest 将这份原始资料逐项做来源覆盖、事实审查、分类和重构，保留有效类型特征与条件组装关系，区分设计自由变量、引擎约束和参考案例，核查代码消费并预览真实 chunks。"
+  default_prompt: "使用 $wild-knowledge-ingest 审查这份资料，只把可执行的 WILD 协议、构件能力和条件组装关系写入活动知识库；隔离建筑百科、风格描述、完整案例和无代码执行点的强制参数，并核查代码消费与真实 chunks。"

@@ -412,6 +412,25 @@ def _wall_vertical_range(wall: dict) -> tuple[float, float]:
     return bottom, max(float(start[1]), float(end[1]))
 
 
+def _wall_centerline_key(wall: dict, precision: int = 3) -> tuple | None:
+    """按无方向 XZ 中心线和竖向范围标识同一面墙。"""
+    start = wall.get("from")
+    end = wall.get("to")
+    if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        return None
+    endpoints = sorted((
+        (round(float(start[0]), precision), round(float(start[2]), precision)),
+        (round(float(end[0]), precision), round(float(end[2]), precision)),
+    ))
+    bottom, top = _wall_vertical_range(wall)
+    return (
+        endpoints[0],
+        endpoints[1],
+        round(bottom, precision),
+        round(top, precision),
+    )
+
+
 def _infer_story_height(elements: list[dict]) -> float:
     """从楼板标高和已有墙高中推断常用层高；信息不足时使用 3m。"""
     candidates: list[float] = []
@@ -1604,20 +1623,9 @@ def validate_model_quality(blueprint: dict) -> str:
 
     wall_groups: dict[tuple, list[str]] = {}
     for wall in (item for item in elements if item.get("type") == "wall"):
-        start = wall.get("from")
-        end = wall.get("to")
-        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        key = _wall_centerline_key(wall)
+        if key is None:
             continue
-        endpoints = sorted((
-            (round(float(start[0]), 3), round(float(start[2]), 3)),
-            (round(float(end[0]), 3), round(float(end[2]), 3)),
-        ))
-        key = (
-            endpoints[0],
-            endpoints[1],
-            round(min(float(start[1]), float(end[1])), 3),
-            round(max(float(start[1]), float(end[1])), 3),
-        )
         wall_groups.setdefault(key, []).append(str(wall.get("id", "?")))
     for ids in wall_groups.values():
         if len(ids) > 1:
@@ -2492,6 +2500,12 @@ def fix_wall_junctions(blueprint: dict) -> str:
                 "thickness": float(ep["wall"].get("thickness", 0.24)),
                 "material": ep["wall"].get("material", "wall_finish"),
             }
+            new_key = _wall_centerline_key(new_wall)
+            if new_key is None or any(
+                _wall_centerline_key(wall) == new_key for wall in walls
+            ):
+                # 该候选只是把已有墙反向复制一遍，继续寻找真正的边界缺口。
+                continue
             elements.append(new_wall)
             walls.append(new_wall)
             used_ids.add(repair_id)

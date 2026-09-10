@@ -32,14 +32,14 @@ wild-server/
 **使用方法**：
 ```bash
 # Windows PowerShell - 一行命令（推荐）
-$env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/building_types/residential/villas.md
+$env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/components/windows-supported.md
 
 # Windows PowerShell - 如果遇到中文乱码，先设置输出编码
 $OutputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
-$env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/building_types/residential/villas.md
+$env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/components/windows-supported.md
 
 # Linux/Mac - 一行命令
-PYTHONPATH=. uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/building_types/residential/villas.md
+PYTHONPATH=. uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/components/windows-supported.md
 
 # 检查整个目录
 $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base
@@ -90,39 +90,6 @@ python scripts/rag/check_sync_status.py
 
 ---
 
-### 3. update_building_category.py
-**功能**：批量更新建筑类型 metadata
-
-**用途**：
-- 为知识库文档添加 `building_category` 字段
-- 支持 commercial、residential、public、industrial、agricultural
-
-**使用方法**：
-```bash
-# 自动运行（已内置文件映射）
-python scripts/building/update_building_category.py
-
-# 查看帮助
-python scripts/building/update_building_category.py --help
-```
-
----
-
-### 4. test_building_category.py
-**功能**：测试建筑类型分类功能
-
-**用途**：
-- 验证 RAG 检索时的建筑类型过滤
-- 测试不同查询的检索准确率
-
-**使用方法**：
-```bash
-python scripts/building/test_building_category.py
-```
-
-**测试用例**：
-- "社区商铺" → 商业建筑
-- "现代别墅" → 居住建筑
 - "厂房" → 工业建筑
 
 ---
@@ -255,7 +222,7 @@ python examples/p0_usage_example.py
 uv run python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base --table
 
 # 2. 检查特定文件的详细分片
-uv run python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/building_types/residential/villas.md --show-content
+uv run python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/components/windows-supported.md --show-content
 
 # 3. 验证分片大小合理性
 uv run python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base --chunk-size 600
@@ -266,14 +233,12 @@ uv run python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base --c
 # 1. 修改知识库文档
 # （编辑 storage/knowledge_base/... 文件）
 
-# 2. 更新 building_category（如果需要）
-uv run python scripts/building/update_building_category.py
-
-# 3. 检查同步状态
+# 2. 检查同步状态
 uv run python scripts/rag/check_sync_status.py
 
-# 4. 测试 RAG 检索
-uv run python scripts/building/test_building_category.py
+# 3. 运行规则用途与检索评测
+uv run python -m unittest tests.rag.test_knowledge_rules_v3 -v
+uv run python scripts/rag/eval_retrieval.py --questions evals/rag_retrieval_cases.json
 ```
 
 ### 3. 运行完整测试
@@ -318,7 +283,6 @@ uv run python -m scripts.deploy.deployment_preflight
 |--------|---------|
 | 查看知识库分片 | `inspect_knowledge_chunks.py` |
 | 测试 RAG 检索 | `eval_retrieval.py` |
-| 更新建筑分类 | `update_building_category.py` |
 | 检查索引同步 | `check_sync_status.py` |
 | 部署前检查 | `deployment_preflight.py` |
 | 运行单元测试 | `python -m pytest tests/` |
@@ -396,8 +360,8 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 ========================================================================================================================
 序号 文件               实体名称                类型       主题       长度   分类
 ---- ------------------ ---------------------- ---------- ---------- ------ ----------
-1    villas.md          现代简约别墅            component  window     856    residential
-2    villas.md          欧式古典别墅            component  door       742    residential
+1    windows.md         窗构件能力              component  parameters 856    shared
+2    doors.md           门构件能力              component  parameters 742    shared
 ...
 ```
 

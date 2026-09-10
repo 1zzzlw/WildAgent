@@ -4,7 +4,7 @@ entity_name: roof_and_eaves_family
 topic: parameters
 status: supported
 authority: maintainer
-source: components/roofs-and-eaves.md
+source: wild-web/wild-lang/schema.json; wild-web/src/wild-core/src/primitive/geometry/roof.ts
 primary_terms:
   - 屋顶
   - 屋檐

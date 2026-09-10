@@ -68,27 +68,6 @@ synonyms: []
 
 当前没有 `type: "truss"`。需要桁架外观时，显式使用多根 `beam` 或 `primitive` 表达上弦、下弦和腹杆；引擎不会根据 `trussType`、`panelCount` 自动生成杆件网络。
 
-## 专用 truss 类型提案
-
-<!-- rag-meta
-entity_type: structural_component
-entity_name: proposed_truss_type
-topic: definition
-status: proposed
-authority: domain_reference
-primary_terms:
-  - trussType
-  - king_post
-  - queen_post
-  - fink
-  - howe
-  - pratt
-  - warren
-synonyms: []
--->
-
-用户提供的完整规范提出 `truss` 类型以及 king_post、queen_post、fink、howe、pratt、warren 六种形式。该设计尚未进入 WILD v1.1 Schema、构件注册表或 resolver，只保留为扩展需求。
-
 ## 维护说明
 
-结构类型与字段以 Schema 为准；某类建筑的结构选型放入 `building_types/`，跨构件组合顺序放入 `recipes/`，尚未实现的专用类型必须标为 `proposed`。
+结构类型与字段以 Schema 为准；本次结构选型写入 `DesignDocument`，跨构件组合关系放入 `recipes/`。尚未实现的专用类型保存在活动知识库之外，不能仅用 metadata 隐藏在生成文档中。

@@ -1,6 +1,6 @@
 # 来源保真与条件关系
 
-先拆分声明，再决定是否进入生成上下文。按 identity、program_space、massing、structure、envelope、opening、circulation、auxiliary、assembly、repetition、material、parameter、unsupported、example 分类；没有的类别不补写。
+先拆分声明，再决定是否进入生成上下文。按 identity、program_space、massing、structure、envelope、opening、circulation、auxiliary、assembly、repetition、material、parameter、unsupported、example 分类；没有的类别不补写。identity、program_space 与普通 massing 作为设计输入或参考资料，不进入活动 RAG；只有可映射到当前引擎的能力和条件关系才能进入 generation scope。
 
 ## 处置记录
 
@@ -17,7 +17,7 @@
 
 ## 必要性与自由度
 
-“必须”用于 WILD 合法性或本次已选择系统的必需关系。“类型特征”是按请求保留的身份，不代表附属系统全部必选。“条件”写明触发需求。“可选”属于方案选择，不能改名为 required。
+“必须”用于 WILD 合法性或本次已选择系统的必需关系。“条件”写明触发需求。“可选”属于方案选择，不能改名为 required。建筑类型特征由模型和本次设计处理，不作为 RAG 硬约束。
 
 保留有来源的关键空间、系统角色、依附和重复关系；不要把详细建筑只压成百科名词。但不为每类建筑强制十栏、最小回退或完整 JSON，也不保留没有价值的百科篇幅来满足形式。
 

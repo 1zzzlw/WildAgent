@@ -673,6 +673,36 @@ class SpatialValidationTest(unittest.TestCase):
         self.assertEqual(repaired["from"], [12.0, 0.0, 12.0])
         self.assertEqual(repaired["to"], [12.0, 3.2, 8.0])
 
+    def test_boundary_gap_repair_does_not_reverse_copy_existing_wall(self):
+        blueprint = {
+            "geometry": {
+                "elements": [
+                    {"id": "floor", "type": "floor", "from": [0, 3.5, 0], "to": [16, 3.5, 10], "thickness": 0.2},
+                    {"id": "front_left", "type": "wall", "from": [0, 3.5, 0], "to": [4.48, 7, 0], "thickness": 0.24},
+                    {"id": "front_right", "type": "wall", "from": [11.52, 3.5, 0], "to": [16, 7, 0], "thickness": 0.24},
+                    {"id": "right", "type": "wall", "from": [16, 3.5, 0], "to": [16, 7, 10], "thickness": 0.24},
+                    {"id": "back", "type": "wall", "from": [16, 3.5, 10], "to": [0, 7, 10], "thickness": 0.24},
+                    {"id": "left", "type": "wall", "from": [0, 3.5, 10], "to": [0, 7, 0], "thickness": 0.24},
+                ],
+                "components": [],
+            }
+        }
+
+        repair = run_tool(fix_wall_junctions, blueprint)
+        walls = [
+            item for item in blueprint["geometry"]["elements"]
+            if item.get("type") == "wall"
+        ]
+
+        self.assertIn("补齐楼板外边界墙段", repair)
+        self.assertEqual(len(walls), 6)
+        self.assertNotIn("❌", run_tool(validate_model_quality, blueprint))
+        repaired = next(item for item in walls if item["id"].startswith("wall_repair_"))
+        self.assertEqual(
+            sorted((repaired["from"][0], repaired["to"][0])),
+            [4.48, 11.52],
+        )
+
     def test_structural_beam_joints_and_columns_embedded_in_walls_are_valid(self):
         blueprint = {
             "geometry": {

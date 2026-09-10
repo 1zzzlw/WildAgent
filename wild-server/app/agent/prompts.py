@@ -278,7 +278,7 @@ def build_architecture_plan_prompt(
 - massing：shape 使用 profile 允许值；width/depth/floor_height 为正数，floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；symmetry 为布尔值。
 - volumes：按本次方案输出体量数组，每项包含 id、role(primary/secondary)、x、z、width、depth、start_floor、end_floor；单体也需明确一个完整体量，多层单体不必拆成退台。
 - structural_grid：system 为 wall_bearing/frame/hybrid/long_span/shell；x_bays/z_bays 为正整数。
-- circulation：vertical_strategy 为 none/stair/core/core_and_stair；多层建筑不能为 none。
+- circulation：vertical_strategy 为 none/stair/core_and_stair；核心筒方案必须同时包含楼梯，多层建筑不能为 none。
 - detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
 - facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern；主入口面可给 entrance_bay，槽位数量与 bays 一致。
 - roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。

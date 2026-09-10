@@ -1,164 +1,17 @@
 {
-  "version": 2,
-  "description": "rules-v2：检索相关性与用途隔离。expectedSources/requiredTerms 评估召回；forbiddenSources/forbiddenTerms/expectEmpty 检查不应注入的内容。通用负样本 expectedAction 仍供距离阈值校准，不等于强制空召回。",
+  "version": 3,
+  "description": "rules-v3：生成知识仅包含协议、能力与条件关系；建筑类型查询必须为空。expectedSources/requiredTerms 评估召回，forbiddenSources/forbiddenTerms/expectEmpty 检查不应注入内容。",
   "cases": [
     {
-      "id": "bt_pavilion",
-      "query": "生成一个中式四角凉亭",
-      "topic": "建筑类型-凉亭",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/catalog/pavilions.md"
-      ],
-      "requiredTerms": [
-        "凉亭"
-      ]
-    },
-    {
-      "id": "bt_villa",
+      "id": "policy_no_building_type_knowledge",
       "query": "现代风格的度假别墅怎么生成",
-      "topic": "建筑类型-别墅",
+      "topic": "知识用途隔离-建筑类型",
       "metadataFilter": {
         "doc_type": "building_type"
       },
-      "expectedSources": [
-        "building_types/residential/villas.md"
-      ],
-      "requiredTerms": [
-        "别墅"
-      ]
-    },
-    {
-      "id": "bt_tower",
-      "query": "塔楼 tower 的空间关系和 WILD 能力边界",
-      "topic": "建筑类型-塔楼",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/catalog/towers.md"
-      ],
-      "requiredTerms": [
-        "塔楼"
-      ]
-    },
-    {
-      "id": "bt_cabin",
-      "query": "小木屋 cabins 的构件关系与 WILD 映射",
-      "topic": "建筑类型-木屋",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/catalog/cabins.md"
-      ],
-      "requiredTerms": [
-        "木屋"
-      ]
-    },
-    {
-      "id": "bt_courtyard",
-      "query": "四合院 courtyard 建筑如何表达",
-      "topic": "建筑类型-合院",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/catalog/courtyards.md"
-      ],
-      "requiredTerms": [
-        "合院"
-      ]
-    },
-    {
-      "id": "bt_residential",
-      "query": "三层住宅的空间关系与构件边界",
-      "topic": "建筑类型-住宅",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/residential/housing-dormitories-hotels.md"
-      ],
-      "requiredTerms": [
-        "住宅"
-      ]
-    },
-    {
-      "id": "bt_dorm_hotel",
-      "query": "宿舍楼和酒店这类居住建筑怎么配置",
-      "topic": "建筑类型-居住",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/residential/housing-dormitories-hotels.md"
-      ],
-      "requiredTerms": [
-        "宿舍",
-        "酒店"
-      ]
-    },
-    {
-      "id": "bt_office_school",
-      "query": "办公楼和学校的建筑类型语义入口",
-      "topic": "建筑类型-公共",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/public/education-office-culture.md"
-      ],
-      "requiredTerms": [
-        "办公",
-        "学校"
-      ]
-    },
-    {
-      "id": "bt_commercial",
-      "query": "商业综合体、体育场馆等公共建筑怎么生成",
-      "topic": "建筑类型-公共",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/public/commercial-sports-medical-transport-other.md"
-      ],
-      "requiredTerms": [
-        "商业",
-        "体育"
-      ]
-    },
-    {
-      "id": "bt_factory",
-      "query": "厂房仓库这类工业建筑的 WILD 组装关系",
-      "topic": "建筑类型-工业",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/industrial/factories-and-warehouses.md"
-      ],
-      "requiredTerms": [
-        "厂房",
-        "仓库"
-      ]
-    },
-    {
-      "id": "bt_agricultural",
-      "query": "农业建筑 agricultural buildings 的语义入口",
-      "topic": "建筑类型-农业",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectedSources": [
-        "building_types/agricultural/agricultural-buildings.md"
-      ],
-      "requiredTerms": [
-        "农业建筑"
-      ]
+      "expectEmpty": true,
+      "expectedAction": "reject",
+      "expectedSources": []
     },
     {
       "id": "comp_window",
@@ -330,33 +183,33 @@
       ]
     },
     {
-      "id": "mat_residential",
-      "query": "居住建筑的材质角色与玻璃参数关系",
-      "topic": "材质-住宅",
+      "id": "material_roles",
+      "query": "墙、门框、门扇和玻璃的材质引用关系",
+      "topic": "材质-角色与引用",
       "metadataFilter": {
         "doc_type": "recipe"
       },
       "expectedSources": [
-        "recipes/residential-material-palette.md"
+        "recipes/material-role-relations.md"
       ],
       "requiredTerms": [
         "材质",
-        "玻璃"
+        "引用"
       ]
     },
     {
-      "id": "mat_public",
-      "query": "公共建筑玻璃与框架的材质角色如何区分",
-      "topic": "材质-公共",
+      "id": "material_glass",
+      "query": "透射玻璃与不透明框架的材质字段如何区分",
+      "topic": "材质-物理玻璃",
       "metadataFilter": {
         "doc_type": "recipe"
       },
       "expectedSources": [
-        "recipes/public-building-material-palette.md"
+        "recipes/material-role-relations.md"
       ],
       "requiredTerms": [
-        "公共建筑",
-        "材质"
+        "materialClass",
+        "transmission"
       ]
     },
     {
@@ -374,50 +227,18 @@
       ]
     },
     {
-      "id": "recipe_template",
+      "id": "recipe_structural_relations",
       "query": "楼层、墙体、屋顶的通用组装关系",
-      "topic": "装配模板",
+      "topic": "结构组装关系",
       "metadataFilter": {
         "doc_type": "recipe"
       },
       "expectedSources": [
-        "recipes/assembly-templates.md"
+        "recipes/supported-assembly-relations.md"
       ],
       "requiredTerms": [
-        "楼层",
-        "屋盖"
-      ]
-    },
-    {
-      "id": "recipe_style",
-      "query": "门窗屋顶的风格参考",
-      "topic": "风格参考",
-      "metadataFilter": {
-        "doc_type": "recipe",
-        "doc_scope": "reference"
-      },
-      "expectedSources": [
-        "recipes/door-window-roof-style-reference.md"
-      ],
-      "requiredTerms": [
-        "门",
-        "窗",
+        "楼板",
         "屋顶"
-      ]
-    },
-    {
-      "id": "pattern_high_detail",
-      "query": "建筑细节的可选设计策略",
-      "topic": "生成模式",
-      "metadataFilter": {
-        "doc_type": "pattern",
-        "doc_scope": "reference"
-      },
-      "expectedSources": [
-        "patterns/high-detail-architecture-generation.md"
-      ],
-      "requiredTerms": [
-        "策略"
       ]
     },
     {
@@ -645,56 +466,11 @@
       "expectedSources": []
     },
     {
-      "id": "policy_unknown_type",
-      "query": "设计一个火星科研基地",
-      "topic": "知识用途隔离",
+      "id": "policy_no_reference_strategy",
+      "query": "高细节建筑与门窗屋顶策略",
+      "topic": "知识用途隔离-无消费者策略",
       "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectEmpty": true,
-      "expectedAction": "reject",
-      "expectedSources": []
-    },
-    {
-      "id": "policy_no_named_type",
-      "query": "设计一栋自由形态建筑",
-      "topic": "知识用途隔离",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectEmpty": true,
-      "expectedAction": "reject",
-      "expectedSources": []
-    },
-    {
-      "id": "policy_negated_courtyard",
-      "query": "不要四合院",
-      "topic": "知识用途隔离",
-      "metadataFilter": {
-        "doc_type": "building_type"
-      },
-      "expectEmpty": true,
-      "expectedAction": "reject",
-      "expectedSources": []
-    },
-    {
-      "id": "policy_no_default_pattern",
-      "query": "高细节建筑生成模式",
-      "topic": "知识用途隔离",
-      "metadataFilter": {
-        "doc_type": "pattern"
-      },
-      "expectEmpty": true,
-      "expectedAction": "reject",
-      "expectedSources": []
-    },
-    {
-      "id": "policy_no_default_style",
-      "query": "门窗屋顶风格参考",
-      "topic": "知识用途隔离",
-      "metadataFilter": {
-        "doc_type": "recipe",
-        "knowledge_role": "strategy"
+        "doc_scope": "reference"
       },
       "expectEmpty": true,
       "expectedAction": "reject",
@@ -715,10 +491,6 @@
       "id": "policy_office_no_villa",
       "query": "办公楼的 WILD 构件关系",
       "topic": "知识用途隔离",
-      "forbiddenSources": [
-        "building_types/residential/villas.md",
-        "patterns/high-detail-architecture-generation.md"
-      ],
       "forbiddenTerms": [
         "upper_setback",
         "现代别墅的完整蓝图"

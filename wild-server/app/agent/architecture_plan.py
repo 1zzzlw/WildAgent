@@ -1266,7 +1266,11 @@ def normalize_architecture_plan(
     vertical_strategy = str(
         circulation_source.get("vertical_strategy") or default_vertical_strategy
     ).lower()
-    if vertical_strategy not in {"none", "stair", "core", "core_and_stair"}:
+    # 旧版允许单独选择 core，但当前核心筒只表达围合墙体，不能承担层间通行。
+    # 将旧值收敛到“核心筒 + 楼梯”，避免多层方案在骨架阶段合法、交付阶段失败。
+    if vertical_strategy == "core":
+        vertical_strategy = "core_and_stair"
+    if vertical_strategy not in {"none", "stair", "core_and_stair"}:
         vertical_strategy = default_vertical_strategy
     if modeled_floors > 1 and vertical_strategy == "none":
         vertical_strategy = default_vertical_strategy
@@ -1820,7 +1824,6 @@ def evaluate_skeleton_complexity(
     circulation_valid = (
         modeled_floors <= 1
         or vertical_strategy == "stair" and has_stair
-        or vertical_strategy == "core" and has_core
         or vertical_strategy == "core_and_stair" and has_stair and has_core
     )
     expected_floor_layouts = {
@@ -1942,7 +1945,7 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         (normalized.get("circulation") or {}).get("vertical_strategy") or "stair"
     )
     want_stair = vertical_strategy in {"stair", "core_and_stair"} and floors > 1
-    want_core = vertical_strategy in {"core", "core_and_stair"} and floors > 1
+    want_core = vertical_strategy == "core_and_stair" and floors > 1
     level_regions = []
     for level in range(1, modeled_floors + 1):
         level_regions.append([

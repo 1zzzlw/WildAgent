@@ -1158,7 +1158,7 @@ class AgentService:
 
     def _agent_for_query(
         self,
-        rag_query: str | list[str],
+        rag_query: str | list[str | SpecQuery],
         thinking_mode: bool = False,
         purpose: str = "generation",
     ):
@@ -1169,15 +1169,19 @@ class AgentService:
             return self._create_agent(self.spec_loader.load(), thinking_mode=True)
 
         if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
-            filtered_queries = self._build_filtered_rag_queries(rag_query)
+            filtered_queries = [
+                query if isinstance(query, SpecQuery) else SpecQuery(text=query)
+                for query in rag_query
+            ]
             spec_text = self.spec_loader.load_many(
                 filtered_queries,
                 per_query=1,
                 purpose=purpose,
             )
-            query_log = " | ".join(rag_query)
+            query_log = " | ".join(query.text for query in filtered_queries)
         else:
-            query_text = rag_query[0] if isinstance(rag_query, list) else rag_query
+            query_item = rag_query[0] if isinstance(rag_query, list) and rag_query else rag_query
+            query_text = query_item.text if isinstance(query_item, SpecQuery) else str(query_item or "")
             spec_text = self.spec_loader.load(query=query_text, purpose=purpose)
             query_log = query_text
         if isinstance(self.spec_loader, RAGSpecLoader):
@@ -1187,26 +1191,6 @@ class AgentService:
             ]
             logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
         return self._create_agent(spec_text, thinking_mode=thinking_mode)
-
-    def _build_filtered_rag_queries(self, queries: list[str]) -> list[SpecQuery]:
-        """为建筑生成的八类检索意图附加业务 metadata 过滤条件。"""
-        if len(queries) != 8:
-            return [SpecQuery(text=query) for query in queries]
-
-        filters = [
-            {"doc_type": "building_type"},
-            {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
-            {"doc_type": "component", "entity_type": "structural_component"},
-            {"doc_type": "component", "entity_type": "wall"},
-            {"doc_type": "component", "entity_type": "window"},
-            {"doc_type": "component", "entity_type": "door"},
-            {"doc_type": "component", "entity_type": "railing"},
-            {"doc_type": "component", "entity_type": "roof"},
-        ]
-        return [
-            SpecQuery(text=query, metadata_filter=metadata_filter)
-            for query, metadata_filter in zip(queries, filters)
-        ]
 
     def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
         """把用户文本与场景线索拼成单个向量检索查询。"""
@@ -1222,8 +1206,13 @@ class AgentService:
             )
         if current_blueprint:
             meta = current_blueprint.get("meta", {})
-            elements = current_blueprint.get("geometry", {}).get("elements", [])
-            types = sorted({str(el.get("type")) for el in elements if el.get("type")})
+            geometry = current_blueprint.get("geometry", {})
+            entities = [
+                *geometry.get("elements", []),
+                *geometry.get("components", []),
+            ] if isinstance(geometry, dict) else []
+            types = sorted({str(item.get("type")) for item in entities
+                            if isinstance(item, dict) and item.get("type")})
             if meta.get("name"):
                 parts.append(f"场景名称: {meta.get('name')}")
             if types:
@@ -1234,11 +1223,24 @@ class AgentService:
         self,
         message: str,
         current_blueprint: dict | None,
-    ) -> list[str]:
-        """为建筑生成拆分主体和组件检索意图，保证关键组件文档进入上下文。"""
+    ) -> list[SpecQuery]:
+        """按任务阶段构建带显式用途过滤的知识查询。"""
         primary_query = self._build_rag_query(message, current_blueprint)
         if current_blueprint:
-            return [primary_query]
+            return [
+                SpecQuery(
+                    f"{primary_query}\nScenePatch 修改坐标、字段与引用协议",
+                    {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
+                ),
+                SpecQuery(
+                    f"{primary_query}\n目标构件的当前字段与能力边界",
+                    {"doc_type": "component", "knowledge_role": "capability"},
+                ),
+                SpecQuery(
+                    f"{primary_query}\n修改后需要保持的宿主、组装与校验关系",
+                    {"doc_type": "recipe", "knowledge_role": "relation"},
+                ),
+            ]
 
         generation_keywords = (
             "生成", "建造", "创建", "建一个", "做一个",
@@ -1255,17 +1257,37 @@ class AgentService:
             and any(keyword in message for keyword in building_keywords)
         )
         if not is_building_generation:
-            return [primary_query]
+            return [SpecQuery(primary_query)]
 
         return [
-            primary_query,
-            f"{message}\n已选构件的条件关系：opening、door、window、roof、stair、railing 的宿主与衔接",
-            f"{message}\n结构构件规则：柱梁楼板桁架、column、beam、floor、truss 的参数与组合",
-            f"{message}\n墙体构件参数与围护规则：wall、thickness、height、material、opening 承载关系",
-            f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",
-            f"{message}\n门构件分类与组装规则：door、opening、panel、glass、门型选择",
-            f"{message}\n栏杆构件参数与路径规则：railing、path、postSpacing、railLevels、楼梯与阳台栏杆",
-            f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
+            SpecQuery(
+                f"{message}\n已选构件的条件关系：opening、door、window、roof、stair、railing 的宿主与衔接",
+                {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
+            ),
+            SpecQuery(
+                f"{message}\n结构构件能力：column、beam、floor、primitive 的合法字段与组合，truss 能力边界",
+                {"doc_type": "component", "entity_type": "structural_component"},
+            ),
+            SpecQuery(
+                f"{message}\n墙体构件能力：wall 世界坐标、thickness、material 与 opening 宿主关系",
+                {"doc_type": "component", "entity_type": "wall"},
+            ),
+            SpecQuery(
+                f"{message}\n窗构件能力：window、opening、parentWall、mullion 字段和受支持变体",
+                {"doc_type": "component", "entity_type": "window"},
+            ),
+            SpecQuery(
+                f"{message}\n门构件能力：door、opening、parentWall、doorStyle 与 interaction 字段",
+                {"doc_type": "component", "entity_type": "door"},
+            ),
+            SpecQuery(
+                f"{message}\n栏杆构件能力：railing、path、postSpacing、railLevels 与 parentFloor",
+                {"doc_type": "component", "entity_type": "railing"},
+            ),
+            SpecQuery(
+                f"{message}\n屋顶构件能力：roof、cornice、canopy 的合法字段、覆盖与依附边界",
+                {"doc_type": "component", "entity_type": "roof"},
+            ),
         ]
 
     async def _recover_scene_patch(

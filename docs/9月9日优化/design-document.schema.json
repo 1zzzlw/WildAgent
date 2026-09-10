@@ -135,7 +135,6 @@
           "enum": [
             "none",
             "stair",
-            "core",
             "core_and_stair"
           ],
           "title": "Vertical Strategy",

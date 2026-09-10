@@ -1,70 +1,114 @@
 ---
 entity_type: door
-entity_name: door_variants
+entity_name: door_variant_mappings
 topic: assembly
 status: supported
 authority: maintainer
-source: components/doors.md
+source: wild-web/src/wild-compiler/components/door.ts
 primary_terms:
   - 门型映射
-  - door
+  - door variant
 synonyms: []
 ---
 
-# 门型语义与 WILD 映射
+# 门型语义到 WILD 的条件映射
 
-## 门型选择与宿主
+## 共性边界
 
-门型由用户需求或已批准方案决定。所有 door/window 使用真实 parentWall 与沿墙局部坐标，尺寸根据宿主推导。参数契约维护于 doors-supported.md；具体传统或现代名称不作为新 type、sashType、leafCount 或 parentOpening 字段。
+门型名称只帮助解释用户意图，不决定建筑风格、数量、比例或材质。基础字段统一使用 `door` 能力契约；下列映射只在用户或批准设计明确选择对应门型时使用。
 
-## 实榻门（宫殿/城门）
+## 单扇、双扇与推拉门
 
-适用条件：本次方案已选择实榻门（宫殿/城门）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 单扇门
+  - 双扇门
+  - 双开门
+  - 推拉门
+  - sliding door
+entity_name: supported_door_variants
+topic: assembly
+primary_terms:
+  - doorStyle
+  - interaction
+synonyms: []
+-->
 
-## 隔扇门（厅堂/宫殿内檐）
+- 单扇门：`doorStyle: "single"`，需要开合时配置 `interaction`。
+- 双扇门：一个 `door` 使用 `doorStyle: "double"`；`width` 表示完整门洞宽度。
+- 推拉门：使用 `interaction.mode: "slide"`；几何仍是当前门扇近似，不自动生成轨道或多扇联动。
 
-适用条件：本次方案已选择隔扇门（厅堂/宫殿内檐）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 拱形门
 
-## 其他中式门型速查
+<!-- rag-meta
+applies_to:
+  - 拱形门
+  - 拱形大门
+  - arched door
+entity_name: arched_door_mapping
+topic: assembly
+primary_terms:
+  - openingStyle
+  - arched
+synonyms: []
+-->
 
-适用条件：本次方案已选择其他中式门型速查。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+使用 `openingStyle: "arched"`。尖拱、复杂券拱与雕刻轮廓超出该枚举时，只能在用户接受近似的前提下添加显式 `primitive` 装饰。
 
-## 嵌板门（Panel Door）
+## 亮子与侧亮
 
-适用条件：本次方案已选择嵌板门（Panel Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 门亮子
+  - 横披窗
+  - 侧亮
+  - transom
+  - sidelight
+entity_name: door_glazing_companions
+topic: assembly
+primary_terms:
+  - door window
+  - parentWall
+synonyms: []
+-->
 
-## 平板门（Flush Door）
+亮子和侧亮使用独立 `window`，与门引用同一原生墙体。它们的位置由门洞范围推导并避免重叠；不能使用 `parentOpening`。
 
-适用条件：本次方案已选择平板门（Flush Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 专业门名与未实现性能
 
-## 法式门（French Door）
+<!-- rag-meta
+applies_to:
+  - 自动感应门
+  - 卷帘门
+  - 气密门
+  - 防火门
+  - 旋转门
+  - 折叠门
+entity_name: unsupported_door_performance
+topic: constraints
+primary_terms:
+  - unsupported door performance
+synonyms: []
+-->
 
-适用条件：本次方案已选择法式门（French Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 多扇关系按当前 doorStyle 与 interaction 支持确定，必要时拆为独立门组件。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+自动感应、卷绕、气密、防火、旋转和折叠不属于当前门组件能力。可以按批准设计表达矩形或拱形门洞、材质与已有平开/推拉交互，但不得把名称当成已实现性能。
 
-## 荷兰门（Dutch Door）
+## 装饰性门型
 
-适用条件：本次方案已选择荷兰门（Dutch Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 实榻门
+  - 隔扇门
+  - 嵌板门
+  - 平板门
+  - 法式门
+  - 荷兰门
+entity_name: decorative_door_mapping
+topic: assembly
+primary_terms:
+  - decorative door
+  - primitive
+synonyms: []
+-->
 
-## 拱形大门（Arched Entrance）
-
-适用条件：本次方案已选择拱形大门（Arched Entrance）。采用当前支持的 openingStyle/洞口样式及 door/window；特殊尖拱或轮廓超出支持范围时用 primitive 近似，并明确降级。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 玻璃推拉门（Sliding Glass Door）
-
-适用条件：本次方案已选择玻璃推拉门（Sliding Glass Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 自动感应门（Automatic Sensor Door）
-
-适用条件：本次方案已选择自动感应门（Automatic Sensor Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 工业卷帘门（Roll-up Door）
-
-适用条件：本次方案已选择工业卷帘门（Roll-up Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 气密门（医用密封门）
-
-适用条件：本次方案已选择气密门（医用密封门）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 防火门（Fire-rated Door）
-
-适用条件：本次方案已选择防火门（Fire-rated Door）。使用标准 door 的门扇与框材质表达；装饰线脚、格栅或分扇关系用额外 primitive 显式表示。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+这些名称使用标准 `door` 表达门洞和门扇。只有批准设计要求可见格栅、面板或线脚时才增加 `primitive`，并保持其与门扇共面关系；名称本身不触发固定装饰套餐。

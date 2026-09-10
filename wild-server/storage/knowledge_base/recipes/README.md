@@ -12,18 +12,15 @@ synonyms: []
 
 # recipes 知识索引
 
-本目录采用 rules-v2：WILD 协议、构件能力与条件组装关系提供实现边界；类型卡只补充点名类型的特征。尺寸、造型、配色与附属系统由本次需求和已批准方案决定。普通生成不召回策略、完整案例、回退或导航内容。
+本目录采用 rules-v3，只记录已选系统的宿主、装配、引用和验证关系。是否选择某个系统由用户需求与已批准 `DesignDocument` 决定。
 
 ## 内容入口
 
-- [assembly-templates.md](assembly-templates.md)
-- [component-building-matrix.md](component-building-matrix.md)
-- [door-window-roof-style-reference.md](door-window-roof-style-reference.md)
+- [component-selection-relations.md](component-selection-relations.md)
 - [glass-curtain-wall-assembly.md](glass-curtain-wall-assembly.md)
-- [public-building-material-palette.md](public-building-material-palette.md)
-- [residential-material-palette.md](residential-material-palette.md)
+- [material-role-relations.md](material-role-relations.md)
 - [supported-assembly-relations.md](supported-assembly-relations.md)
 
 ## 维护与生效
 
-按 wild-knowledge-ingest 技能维护来源、knowledge_role、applies_to 与真实分片。路径公共 metadata 在知识库根 config.yaml；Markdown 链接不会自动追踪。更新内容后由 RAGSpecLoader 同步索引，旧版本向量被 rules-v2 过滤；基础协议始终由文件加载。历史原文在 docs-dev/knowledge-before-rules-v2，不参与扫描。
+按 wild-knowledge-ingest 技能维护来源、knowledge_role、applies_to 与真实分片。只有源码能够表达或校验的关系进入活动 recipes；尚无执行点的设计不变量进入 `docs-dev/knowledge-backlog/`。更新内容后由 RAGSpecLoader 同步索引，旧 revision 向量被 rules-v3 过滤；运行时直接解析的参数块继续使用 system scope。

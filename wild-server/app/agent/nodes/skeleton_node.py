@@ -36,28 +36,6 @@ from app.utils.blueprint_parser import (
     validate_blueprint_schema,
 )
 
-def _identify_building_category(user_message: str) -> str | None:
-    """识别用户输入中的建筑类型关键词"""
-    commercial_keywords = ["商铺", "商业", "商场", "购物中心", "店面", "零售", "超市", "卖场"]
-    residential_keywords = ["别墅", "住宅", "公寓", "宿舍", "民宿", "酒店", "旅馆"]
-    industrial_keywords = ["厂房", "仓库", "车间", "工业"]
-    public_keywords = ["办公", "教学", "学校", "医院", "体育馆", "图书馆", "博物馆"]
-    
-    for keyword in commercial_keywords:
-        if keyword in user_message:
-            return "commercial"
-    for keyword in residential_keywords:
-        if keyword in user_message:
-            return "residential"
-    for keyword in industrial_keywords:
-        if keyword in user_message:
-            return "industrial"
-    for keyword in public_keywords:
-        if keyword in user_message:
-            return "public"
-    return None
-
-
 async def skeleton_generator(state: GenerationState) -> dict:
     """生成建筑骨架（walls + floors + columns + beams + stair）并输出设计清单"""
     from app.services.agent_service import agent_service
@@ -71,17 +49,13 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
 
-    # ── 1. RAG 检索（专注建筑类型知识）──
+    # ── 1. RAG 检索（只补充可执行能力与组装关系）──
     rag_t0 = _time.time()
 
-    # 识别建筑类型，用于过滤知识库
-    building_category = _identify_building_category(user_message)
-    logger.info(f"[skeleton] 识别建筑类型: {building_category or '未识别'}")
-    
     # 骨架落实已选方案，避免再次检回别的整栋类型或风格配方。
     selected_query = plan_knowledge_query(user_message, architecture_plan)
     queries = [
-        SpecQuery("楼层与体量的组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+        SpecQuery("墙、楼板、楼梯与屋顶的已实现组装关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
         SpecQuery(selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}),
         SpecQuery("墙体 楼板 柱子 梁", {"doc_type": "component", "entity_type": "structural_component"}),
         SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
@@ -102,13 +76,11 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "heading": hit.metadata.get("heading", "?"),
             "doc_type": hit.metadata.get("doc_type", "?"),
             "entity_type": hit.metadata.get("entity_type", "?"),
-            "building_category": hit.metadata.get("building_category", "?"),
         }
         for hit in getattr(agent_service.spec_loader, "last_results", [])
     ]
     logger.info(
-        f"[skeleton] RAG 完成（建筑类型知识）: {rag_chars} 字符, {rag_ms}ms, "
-        f"building_category={building_category or 'none'}, "
+        f"[skeleton] RAG 完成（能力与关系知识）: {rag_chars} 字符, {rag_ms}ms, "
         f"hits={json.dumps(rag_hits, ensure_ascii=False, default=str)}"
     )
 

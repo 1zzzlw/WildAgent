@@ -811,7 +811,7 @@ def test_standard_plan_rejects_missing_vertical_circulation() -> None:
     assert evaluation["checks"]["vertical_circulation"] is False
 
 
-def test_core_only_circulation_compiles_and_validates_without_stair() -> None:
+def test_legacy_core_strategy_normalizes_to_core_and_stair() -> None:
     message = "生成一座普通两层办公楼"
     plan = normalize_architecture_plan(
         {"circulation": {"vertical_strategy": "core"}},
@@ -820,7 +820,8 @@ def test_core_only_circulation_compiles_and_validates_without_stair() -> None:
     blueprint = build_deterministic_skeleton(plan, message)
     elements = blueprint["geometry"]["elements"]
 
-    assert not any(element.get("type") == "stair" for element in elements)
+    assert plan["circulation"]["vertical_strategy"] == "core_and_stair"
+    assert any(element.get("type") == "stair" for element in elements)
     assert any(str(element.get("id", "")).startswith("wall_core_") for element in elements)
     assert evaluate_skeleton_complexity(blueprint, plan)["checks"]["vertical_circulation"] is True
 

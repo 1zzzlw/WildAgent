@@ -284,30 +284,14 @@ keywords: 旧主词, old alias
             },
         )
 
-    def test_type_route_is_applied_before_query_and_global_hits_are_checked(self):
-        collection = Mock()
-        collection.count.return_value = 2
-        collection.query.return_value = {
-            "documents": [["villa rules", "wall rules"]],
-            "metadatas": [[
-                {"doc_type": "building_type", "applies_to": "别墅", "entity_name": "villa"},
-                {"doc_type": "component", "entity_name": "wall"},
-            ]],
-            "distances": [[0.1, 0.2]],
-        }
+    def test_generation_filter_excludes_identity_knowledge(self):
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
-        loader._top_k = 2
-        loader._query_rewrite_enabled = False
-        loader._get_collection = Mock(return_value=collection)
-        loader._alias_catalog = Mock(return_value={
-            "villa": {"filters": {"doc_type": "building_type"}, "applies_to": ["别墅"]},
-        })
-        hits = loader._retrieve("自由形态建筑")
-        self.assertEqual([hit.document for hit in hits], ["wall rules"])
-        collection.query.return_value = {"documents": [[]], "metadatas": [[]], "distances": [[]]}
-        loader._retrieve("自由形态建筑", {"doc_type": "building_type"})
-        self.assertIn({"entity_name": "__no_requested_building__"}, collection.query.call_args.kwargs["where"]["$and"])
+        conditions = loader._query_where()["$and"]
+        role_condition = next(
+            item for item in conditions if "knowledge_role" in item
+        )
+        self.assertNotIn("identity", role_condition["knowledge_role"]["$in"])
 
     def test_reference_scope_is_explicit_and_old_vectors_are_always_excluded(self):
         loader = object.__new__(RAGSpecLoader)

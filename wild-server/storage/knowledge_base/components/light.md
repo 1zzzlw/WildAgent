@@ -1,11 +1,10 @@
 ---
-knowledge_layer: architecture
 entity_type: light
 entity_name: light_component
 topic: parameters
 status: supported
 authority: engine
-source: components/light.md
+source: wild-web/wild-lang/schema.json; wild-web/src/wild-compiler/components/light.ts
 primary_terms:
   - 灯具
   - light

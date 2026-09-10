@@ -55,8 +55,8 @@ LangSmith 数据集 inputs
 
 ```json
 {
-  "query": "现代风格的度假别墅怎么生成",
-  "metadataFilter": {"doc_type": "building_type"}
+  "query": "窗组件需要哪些宿主与局部坐标字段",
+  "metadataFilter": {"doc_type": "component", "entity_type": "window"}
 }
 ```
 
@@ -64,7 +64,7 @@ LangSmith 数据集 inputs
 
 ```json
 {
-  "expectedSources": ["building_types/residential/villas.md"]
+  "expectedSources": ["components/windows-supported.md"]
 }
 ```
 
@@ -74,7 +74,7 @@ LangSmith 数据集 inputs
 
 ```powershell
 uv run python -m langsmith_tools.evaluate_rag --dataset wildagent-rag
-uv run python -m langsmith_tools.evaluate_rag --dataset wildagent-rag --top-k 6 --experiment-prefix rag-routing-v2
+uv run python -m langsmith_tools.evaluate_rag --dataset wildagent-rag --top-k 6 --experiment-prefix rag-routing-v3
 ```
 
 也可以直接指定现有解释器：
@@ -115,7 +115,7 @@ uv run langgraph dev --config langsmith_tools/langgraph.json --allow-blocking
 
 启动后使用终端显示的 Studio 链接，选择 `wildagent` 图，输入 [studio-input.example.json](studio-input.example.json)。图输入是 `GenerationState`，不是原页面的 WebSocket 消息格式。
 
-更换任务时修改 `user_message`、`building_type`、请求和会话 ID；测试计划模式时设置 `plan_mode=true`。图入口使用现有步数预算函数，示例的 `max_retries=3` 已与默认预算对齐；调大重试次数时还需同步调整运行配置。
+更换任务时修改 `user_message`、执行 profile 字段 `building_type`、请求和会话 ID；该字段用于图状态兼容与引擎路由，不代表从知识库检索建筑类型卡。测试计划模式时设置 `plan_mode=true`。图入口使用现有步数预算函数，示例的 `max_retries=3` 已与默认预算对齐；调大重试次数时还需同步调整运行配置。
 
 遇到审核中断，在同一 Studio 线程恢复，例如：
 

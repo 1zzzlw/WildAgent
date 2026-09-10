@@ -569,7 +569,7 @@ uv run --no-project python scripts/rag/inspect_knowledge_chunks.py storage/knowl
 cd wild-server
 .\.venv\Scripts\activate        # Windows PowerShell
 $env:PYTHONPATH="."
-python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/building_types/residential/villas.md
+python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/components/windows-supported.md
 ```
 
 **常用参数**：`--chunk-size` / `--chunk-overlap`（分片配置）、`--limit N`（目录模式限制文件数）、`--output <file>`（自定义报告输出路径，默认 `scripts/reports/chunks_report_<时间戳>.md`）、`--show-full`（分片内容全文展示，默认截断摘要）。
@@ -588,7 +588,7 @@ python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/building_types/
 - **分片结构**：`namespace`、`heading_path`、`parent_chunk_id`、`part_index`、`chunk_index`
 - **内容校验**：`body_hash`、`content_hash`
 - **时间**：`mtime`（时间戳自动转为可读时间）
-- **文档分类**：`doc_scope`、`knowledge_layer`、`entity_type`、`topic`、`wild_version`、`keywords`、`building_category`、`entity_aliases`、`constraint_tags`、`role_tags`
+- **文档分类**：`doc_type`、`doc_scope`、`knowledge_role`、`knowledge_layer`、`entity_type`、`topic`、`wild_version`、`primary_terms`、`synonyms`、`entity_aliases`、`constraint_tags`、`role_tags`
 
 说明：列表类字段（如 `keywords`）以 `; ` 连接展示；单条 metadata 可能只包含部分字段，缺失字段在控制台不显示、在 Markdown 报告中显示为 `-`，不会报错。
 

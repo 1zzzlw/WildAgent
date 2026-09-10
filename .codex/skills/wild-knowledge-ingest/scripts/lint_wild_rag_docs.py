@@ -48,7 +48,6 @@ HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 FENCE_RE = re.compile(r"^\s*(```+|~~~+)\s*([A-Za-z0-9_-]*)")
 RAG_META_START_RE = re.compile(r"^\s*<!--\s*rag-meta\s*$")
 RAG_META_BLOCK_RE = re.compile(r"<!--\s*rag-meta\s*\n(.*?)-->", re.DOTALL)
-IDENTITY_FIELDS = ("适用条件", "类型特征", "条件关系", "WILD 映射", "自由变量")
 # 匹配 "X 类/种/个/款" 计数声明（如 "支持 9 类组件"、"11 种构件"）
 COUNT_CLAIM_RE = re.compile(
     r"(?:支持\s*)?(\d+|[一二三四五六七八九十]+)\s*(?:类|种|个|款)\s*(?:组件|构件|类型|事物|能力)"
@@ -503,91 +502,36 @@ def proposed_claim_issues(path: Path, lines: list[str]) -> list[Issue]:
     return []
 
 
-def _heading_subtree(
-    lines: list[str],
-    headings: list[Heading],
-    index: int,
-) -> tuple[int, list[str]]:
-    heading = headings[index]
-    end_line = len(lines)
-    for candidate in headings[index + 1:]:
-        if candidate.level <= heading.level:
-            end_line = candidate.line - 1
-            break
-    return end_line, lines[heading.line:end_line]
-
-
-def _rag_meta_in_intro(lines: list[str], heading: Heading) -> list[dict[str, object]]:
-    intro = "\n".join(lines[heading.line:heading.end_line])
-    return [
-        parse_simple_yaml(match.group(1).splitlines())
-        for match in RAG_META_BLOCK_RE.finditer(intro)
-    ]
-
-
-def building_composition_issues(path: Path, lines: list[str]) -> list[Issue]:
-    """Warn when a detailed building entity was reduced to a minimal prose summary."""
-    metadata = _resolved_frontmatter(path, lines)
-    if metadata.get("doc_type") != "building_type" or metadata.get("doc_scope") != "generation":
-        return []
-
-    headings, _, _ = scan_structure(lines)
-    entity_indices = [
-        index
-        for index, heading in enumerate(headings)
-        if heading.level == 2
-        and any(meta.get("entity_type") == "building" for meta in _rag_meta_in_intro(lines, heading))
-    ]
-
-    # A single-entity building document can rely on document-level metadata.
-    if not entity_indices and metadata.get("entity_type") == "building":
-        document_text = "\n".join(lines)
-        return _composition_contract_issues(
-            path,
-            int(next((heading.line for heading in headings if heading.level == 1), 1)),
-            str(metadata.get("entity_name") or path.stem),
-            document_text,
-        )
-
-    issues: list[Issue] = []
-    for index in entity_indices:
-        heading = headings[index]
-        _, subtree_lines = _heading_subtree(lines, headings, index)
-        issues.extend(_composition_contract_issues(
-            path,
-            heading.line,
-            heading.title,
-            "\n".join(subtree_lines),
-        ))
-    return issues
-
-
-def _composition_contract_issues(
-    path: Path,
-    line: int,
-    entity: str,
-    text: str,
-) -> list[Issue]:
-    # 检查类型知识的条件与自由度，不要求十项套餐或完整回退蓝图。
-    missing = [field for field in IDENTITY_FIELDS if field not in text]
-    issues = []
-    if missing:
-        issues.append(Issue("error", "incomplete_identity_contract", str(path), line,
-                            f"建筑实体 {entity!r} 缺少：{', '.join(missing)}"))
-    if "applies_to:" not in text:
-        issues.append(Issue("error", "missing_applicability", str(path), line,
-                            f"建筑实体 {entity!r} 缺少用于精确路由的 applies_to"))
-    return issues
-
-
 def generation_policy_issues(path: Path, lines: list[str]) -> list[Issue]:
     metadata = _resolved_frontmatter(path, lines)
     issues = []
     if metadata.get("doc_scope") not in {"generation", "system"}:
         return issues
+    if metadata.get("status") == "proposed":
+        issues.append(Issue(
+            "error", "proposed_in_generation", str(path), 1,
+            "未实现提案必须移出活动知识库，不能依赖 status 过滤隐藏",
+        ))
+    if metadata.get("doc_type") == "building_type":
+        issues.append(Issue(
+            "error", "building_type_in_generation", str(path), 1,
+            "建筑百科与类型卡不能进入生成知识；分类应由执行 profile 路由",
+        ))
     if metadata.get("knowledge_role") in {"strategy", "example", "fallback"}:
         issues.append(Issue("error", "reference_in_generation", str(path), 1,
                             "策略、整栋案例或回退必须使用 reference scope，不进入普通生成"))
+    for match in RAG_META_BLOCK_RE.finditer("\n".join(lines)):
+        chunk_metadata = dict(metadata)
+        chunk_metadata.update(parse_simple_yaml(match.group(1).splitlines()))
+        if (
+            chunk_metadata.get("doc_scope") in {"generation", "system"}
+            and chunk_metadata.get("status") == "proposed"
+        ):
+            issues.append(Issue(
+                "error", "proposed_chunk_in_generation", str(path),
+                "\n".join(lines)[:match.start()].count("\n") + 1,
+                "未实现提案分片必须移出活动知识库",
+            ))
     for match in re.finditer(r"```json\s*\n(.*?)\n```", "\n".join(lines), re.S):
         try:
             value = json.loads(match.group(1))
@@ -607,7 +551,6 @@ def lint_file(path: Path, min_section_chars: int, max_section_chars: int) -> lis
         *metadata_issues(path, lines),
         *structure_issues(path, lines, min_section_chars, max_section_chars),
         *proposed_claim_issues(path, lines),
-        *building_composition_issues(path, lines),
         *generation_policy_issues(path, lines),
     ]
 

@@ -17,6 +17,7 @@ synonyms: []
 
 > 来源：用户提供的《WILD蓝图构件与组合方式完整规范(1)》v2.0。
 > 状态：本文只保存仍未实现的需求分类和设计意图；已进入 `geometry.components` 的 9 类组合构件不再列为未实现类型。
+> 索引：本文件位于活动知识库之外，不会被 RAGSpecLoader 扫描。实现 Schema、compiler/renderer、validator 与回归后，才可把相应能力重写为活动 capability 文档。
 
 ## 结构与交通扩展提案
 

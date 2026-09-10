@@ -30,33 +30,33 @@ class QueryPlannerTest(unittest.TestCase):
 
         self.assertIn("legacy window", catalog["legacy_window"]["aliases"])
 
-    def test_build_plan_resolves_commercial_alias_without_inventing_facts(self):
+    def test_build_plan_resolves_system_alias_without_inventing_facts(self):
         catalog = {
-            "retail_building": {
-                "aliases": {"沿街商铺", "storefront"},
-                "filters": {"doc_type": "building_type", "entity_type": "building"},
-                "constraints": {"commercial_identity"},
+            "curtain_wall_assembly": {
+                "aliases": {"玻璃幕墙", "curtain wall"},
+                "filters": {"doc_type": "recipe", "entity_type": "assembly"},
+                "constraints": {"host"},
             },
         }
         plan = build_query_plan(
-            "生成一个沿街商铺，检查雨棚和橱窗",
+            "生成玻璃幕墙，检查宿主关系",
             alias_catalog=catalog,
         )
 
-        self.assertEqual(plan.metadata_filter["entity_name"], "retail_building")
-        self.assertEqual(plan.metadata_filter["doc_type"], "building_type")
-        self.assertIn("storefront", plan.aliases)
+        self.assertEqual(plan.metadata_filter["entity_name"], "curtain_wall_assembly")
+        self.assertEqual(plan.metadata_filter["doc_type"], "recipe")
+        self.assertIn("curtain wall", plan.aliases)
         self.assertIn("composition", plan.topics)
         self.assertIn("assembly", plan.topics)
 
     def test_explicit_filter_wins_over_inferred_component_type(self):
         plan = build_query_plan(
             "阳台 parentWall",
-            {"doc_type": "building_type", "entity_type": "building"},
+            {"doc_type": "component", "entity_type": "balcony"},
         )
 
-        self.assertEqual(plan.metadata_filter["doc_type"], "building_type")
-        self.assertEqual(plan.metadata_filter["entity_type"], "building")
+        self.assertEqual(plan.metadata_filter["doc_type"], "component")
+        self.assertEqual(plan.metadata_filter["entity_type"], "balcony")
         self.assertNotIn("entity_name", plan.metadata_filter)
         self.assertIn("host", plan.constraints)
 
@@ -72,11 +72,11 @@ class QueryPlannerTest(unittest.TestCase):
         collection = Mock()
         collection.count.return_value = 1
         collection.query.return_value = {
-            "documents": [["commercial composition"]],
+            "documents": [["curtain wall assembly"]],
             "metadatas": [[{
-                "content_hash": "commercial",
-                "entity_name": "retail_building",
-                "doc_type": "building_type",
+                "content_hash": "curtain",
+                "entity_name": "curtain_wall_assembly",
+                "doc_type": "recipe",
             }]],
             "distances": [[0.1]],
         }
@@ -92,20 +92,20 @@ class QueryPlannerTest(unittest.TestCase):
         from app.spec.loader import SpecQuery
         results = loader.retrieve_many([
             SpecQuery(
-                text="沿街商铺",
-                metadata_filter={"entity_name": "retail_building"}
+                text="玻璃幕墙",
+                metadata_filter={"entity_name": "curtain_wall_assembly"}
             )
         ], per_query=1)
 
         self.assertEqual(len(results), 1)
         query_text = collection.query.call_args.kwargs["query_texts"][0]
-        self.assertIn("沿街商铺", query_text)
+        self.assertIn("玻璃幕墙", query_text)
         
         # 验证 where 条件包含我们指定的过滤
         where = collection.query.call_args.kwargs["where"]
         and_conditions = where["$and"]
         self.assertTrue(
-            any(cond.get("entity_name") == "retail_building" for cond in and_conditions),
+            any(cond.get("entity_name") == "curtain_wall_assembly" for cond in and_conditions),
             f"entity_name filter not found in {and_conditions}"
         )
 
@@ -116,9 +116,9 @@ class QueryPlannerTest(unittest.TestCase):
         # 真实 Chroma 对不同查询返回不同结果；mock 按查询文本区分，避免去重吃掉第二个查询。
         collection.query.side_effect = [
             {
-                "documents": [["commercial composition"]],
+                "documents": [["curtain wall assembly"]],
                 "metadatas": [[
-                    {"content_hash": "commercial", "entity_name": "retail_building"},
+                    {"content_hash": "curtain", "entity_name": "curtain_wall_assembly"},
                 ]],
                 "distances": [[0.1]],
             },
@@ -133,12 +133,12 @@ class QueryPlannerTest(unittest.TestCase):
             "ids": ["c1", "c2"],
             "metadatas": [
                 {
-                    "content_hash": "commercial",
-                    "entity_name": "retail_building",
-                    "doc_type": "building_type",
-                    "entity_type": "building",
-                    "primary_terms": "沿街商铺, retail_building",
-                    "synonyms": "storefront, 商铺",
+                    "content_hash": "curtain",
+                    "entity_name": "curtain_wall_assembly",
+                    "doc_type": "recipe",
+                    "entity_type": "assembly",
+                    "primary_terms": "玻璃幕墙, curtain_wall_assembly",
+                    "synonyms": "curtain wall, 幕墙",
                 },
                 {"content_hash": "villa", "entity_name": "villa"},
             ],
@@ -154,8 +154,8 @@ class QueryPlannerTest(unittest.TestCase):
         results = loader.retrieve_many(
             [
                 SpecQuery(
-                    text="沿街商铺 检查雨棚和橱窗",
-                    metadata_filter={"entity_name": "retail_building"},
+                    text="玻璃幕墙 检查宿主和网格",
+                    metadata_filter={"entity_name": "curtain_wall_assembly"},
                 ),
                 "villa",
             ],
@@ -168,17 +168,17 @@ class QueryPlannerTest(unittest.TestCase):
             for call in collection.query.call_args_list
         ]
         # 按分组顺序：SpecQuery 一组（带过滤），纯 str 一组（无过滤）。
-        spec_text = next(q for q in all_query_texts if "沿街商铺" in q)
+        spec_text = next(q for q in all_query_texts if "玻璃幕墙" in q)
         plain = next(q for q in all_query_texts if q == "villa")
         # SpecQuery 查询文本保持原文，不被别名污染。
-        self.assertEqual(spec_text, "沿街商铺 检查雨棚和橱窗")
+        self.assertEqual(spec_text, "玻璃幕墙 检查宿主和网格")
         # 纯 str 查询保持原样。
         self.assertEqual(plain, "villa")
         # 过滤条件按别名补全（doc_type/entity_type），调用方显式 entity_name 保留。
         spec_where = collection.query.call_args_list[0].kwargs["where"]
         conds = spec_where["$and"]
         self.assertIn(
-            {"entity_name": "retail_building"},
+            {"entity_name": "curtain_wall_assembly"},
             conds,
             f"显式 entity_name 过滤应在 where 中: {conds}",
         )
@@ -215,18 +215,18 @@ class QueryPlannerTest(unittest.TestCase):
 
         # 显式 entity_name 保留。
         kept = _without_derived_entity_name(
-            {"entity_name": "retail_building"},
-            {"doc_type": "building_type", "entity_type": "building", "entity_name": "retail_building"},
+            {"entity_name": "curtain_wall_assembly"},
+            {"doc_type": "recipe", "entity_type": "assembly", "entity_name": "curtain_wall_assembly"},
         )
-        self.assertEqual(kept["entity_name"], "retail_building")
+        self.assertEqual(kept["entity_name"], "curtain_wall_assembly")
 
         # planner 推导的 entity_name 剔除，粗粒度过滤保留。
         dropped = _without_derived_entity_name(
             None,
-            {"doc_type": "building_type", "entity_type": "building", "entity_name": "villa"},
+            {"doc_type": "component", "entity_type": "window", "entity_name": "window"},
         )
         self.assertNotIn("entity_name", dropped)
-        self.assertEqual(dropped["doc_type"], "building_type")
+        self.assertEqual(dropped["doc_type"], "component")
 
     def test_index_enrichment_removed_in_refactor(self):
         """

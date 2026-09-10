@@ -5,7 +5,7 @@
 version: 2
 
 defaults:
-  knowledge_revision: rules-v2
+  knowledge_revision: rules-v3
   knowledge_role: capability
   wild_version: "1.1"
   # 当前仓库知识默认公开；未来受限文档必须在文件头显式覆盖，并补 tenant/department。
@@ -24,13 +24,13 @@ mapping_rules:
     metadata:
       doc_scope: system
 
-  - path_pattern: "building_types/**/*.md"
+  - path_pattern: "BLUEPRINT-PATCH-PROTOCOL.md"
     metadata:
-      doc_type: building_type
-      knowledge_role: identity
+      doc_type: blueprint_spec
+      knowledge_role: protocol
       doc_scope: generation
-      knowledge_layer: architecture
-      entity_type: building
+      knowledge_layer: wild_schema
+      entity_type: schema
 
   - path_pattern: "components/*.md"
     metadata:
@@ -44,13 +44,6 @@ mapping_rules:
       knowledge_role: relation
       doc_scope: generation
       knowledge_layer: constraint
-
-  - path_pattern: "patterns/*.md"
-    metadata:
-      doc_type: pattern
-      knowledge_role: strategy
-      doc_scope: reference
-      knowledge_layer: project_pattern
 
   # README 和目录型文档必须放在普通目录规则之后，以覆盖生成类默认值。
   - path_pattern: "README.md"

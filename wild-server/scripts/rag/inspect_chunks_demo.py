@@ -12,7 +12,7 @@ RAG 分片检查与展示脚本
     python scripts/rag/inspect_chunks_demo.py [文件或目录路径]
 
 示例：
-    python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/building_types/residential/villas.md
+    python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/components/windows-supported.md
     python scripts/rag/inspect_chunks_demo.py storage/knowledge_base
 """
 
@@ -62,8 +62,8 @@ METADATA_FIELD_GROUPS = [
     ("分片结构", ["namespace", "heading_path", "parent_chunk_id", "part_index", "chunk_index"]),
     ("内容校验", ["body_hash", "content_hash"]),
     ("时间", ["mtime"]),
-    ("文档分类", ["doc_scope", "knowledge_layer", "entity_type", "topic", "wild_version",
-                  "primary_terms", "synonyms", "building_category", "entity_aliases",
+    ("文档分类", ["doc_type", "doc_scope", "knowledge_role", "knowledge_layer", "entity_type", "topic", "wild_version",
+                  "primary_terms", "synonyms", "entity_aliases",
                   "constraint_tags", "role_tags", "keywords"]),
 ]
 
@@ -431,7 +431,7 @@ def main():
         epilog=(
             "示例:\n\n"
             "  # 检查单个文件\n"
-            "  python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/.../villas.md\n\n"
+            "  python scripts/rag/inspect_chunks_demo.py storage/knowledge_base/components/windows.md\n\n"
             "  # 检查整个知识库\n"
             "  python scripts/rag/inspect_chunks_demo.py storage/knowledge_base\n\n"
             "  # 自定义分片参数\n"

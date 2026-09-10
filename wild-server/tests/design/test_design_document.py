@@ -271,3 +271,12 @@ def test_multistorey_design_requires_vertical_circulation():
 
     with pytest.raises(ValidationError, match="竖向交通"):
         DesignDocument.model_validate(data)
+
+
+def test_legacy_core_strategy_is_migrated_when_loading_design_document():
+    data = make_document().model_dump(mode="json")
+    data["decisions"]["circulation"]["vertical_strategy"] = "core"
+
+    document = DesignDocument.model_validate(data)
+
+    assert document.decisions.circulation.vertical_strategy == "core_and_stair"

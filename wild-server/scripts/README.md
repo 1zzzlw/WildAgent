@@ -40,7 +40,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 |---|---|
 | `deploy/` | 生产部署前检查脚本（模型、Embedding、镜像知识库连通性） |
 | `rag/` | 知识库分片检查 / 展示 / RAG 评测脚本 |
-| `building/` | 建筑类型分类（building_category 元数据）工具与验证脚本 |
 | `reports/` | `inspect_chunks_demo.py` 等脚本生成的报告产物（Markdown 报告 + 控制台日志） |
 
 ## 文件清单
@@ -53,8 +52,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `rag/inspect_chunks_demo.py` | 分片展示报告：控制台展示 + Markdown 报告 + 控制台日志 |
 | `rag/eval_retrieval.py` | 当前 RAG 召回率评测（Hit@K、Recall@K、MRR、逐题报告） |
 | `rag/README_INSPECT_CHUNKS.md` | `inspect_*` 系列脚本的详细使用文档 |
-| `building/update_building_category.py` | 批量给知识库文档添加 `building_category` 元数据 |
-| `building/test_building_category.py` | 验证带 `building_category` 过滤的 RAG 检索 |
 | `reports/` | 分片报告与日志产物（`inspect_chunks_*.md`、`chunks_report_*.md`、`chunks_console_*.txt`） |
 
 ## 各脚本详细说明
@@ -75,13 +72,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `inspect_knowledge_chunks.py` | `.\.venv\Scripts\python.exe scripts\rag\inspect_knowledge_chunks.py storage\knowledge_base --table` | `scripts/reports/inspect_chunks_<时间戳>.md` + `chunks_console_<时间戳>.txt`；报告含分片信息表 / 标题路径 / 统计分析。完整解读见 [README_INSPECT_CHUNKS.md](rag/README_INSPECT_CHUNKS.md) |
 | `inspect_chunks_demo.py` | `.\.venv\Scripts\python.exe scripts\rag\inspect_chunks_demo.py storage\knowledge_base` | `scripts/reports/chunks_report_<时间戳>.md` + `chunks_console_<时间戳>.txt`；报告含每个分片来源 / 字符数 / 内容摘要 / 合法性检查 |
 | `eval_retrieval.py` | `.\.venv\Scripts\python.exe scripts\rag\eval_retrieval.py` | `scripts/reports/eval_retrieval_<时间戳>.md` + `eval_console_<时间戳>.txt`；报告含汇总统计 / 信号提示 / 分组分布 / 逐题 Top-K 命中明细。完整"报告怎么看"见 [README_EVAL_RETRIEVAL.md](rag/README_EVAL_RETRIEVAL.md) |
-
-### building/ — 建筑类型分类
-
-| 脚本 | 快速运行 | 产物 / 怎么看 |
-|---|---|---|
-| `update_building_category.py` | `.\.venv\Scripts\python.exe scripts\building\update_building_category.py` | 控制台逐文件打印 `✅ 已更新 / ⏭️ 跳过 / ❌ 失败`，结尾给"更新 N / 跳过 M"总结；无 CLI 参数 |
-| `test_building_category.py` | `.\.venv\Scripts\python.exe scripts\building\test_building_category.py` | 控制台打印多组查询 × building_category 过滤的 RAG 检索命中情况；分组均命中预期分类即通过。详见 [building/README.md](building/README.md) |
 
 ## 导入说明
 

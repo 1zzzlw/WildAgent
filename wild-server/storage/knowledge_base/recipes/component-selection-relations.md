@@ -4,7 +4,7 @@ entity_name: component_selection_conditions
 topic: constraints
 status: supported
 authority: maintainer
-source: recipes/component-building-matrix.md
+source: recipes/component-selection-relations.md
 primary_terms:
   - 构件选择
   - 条件系统

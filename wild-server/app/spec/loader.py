@@ -30,7 +30,7 @@ from typing import Any
 from loguru import logger
 from app.agent.knowledge_policy import (
     GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION,
-    knowledge_hit_applies, restrict_building_query,
+    knowledge_hit_applies,
 )
 
 from app.agent.rag_gate import (
@@ -808,25 +808,8 @@ class MarkdownChunker:
                 "topic": "navigation",
             })
             return metadata
-        if "building_types" in path_text or "building-types" in path_text:
-            metadata.update({"doc_type": "building_type", "entity_type": "building", "knowledge_role": "identity"})
-            # 根据目录路径推断 building_category
-            if "residential" in path_text:
-                metadata["building_category"] = "residential"
-            elif "public" in path_text:
-                # public 目录下需要进一步判断
-                if any(keyword in stem for keyword in ["commercial", "shopping", "retail", "商业", "商场", "商铺"]):
-                    metadata["building_category"] = "commercial"
-                else:
-                    metadata["building_category"] = "public"
-            elif "industrial" in path_text:
-                metadata["building_category"] = "industrial"
-            elif "agricultural" in path_text:
-                metadata["building_category"] = "agricultural"
-        elif "recipes" in path_text:
+        if "recipes" in path_text:
             metadata.update({"doc_type": "recipe", "entity_type": "assembly"})
-        elif "patterns" in path_text:
-            metadata.update({"doc_type": "pattern", "entity_type": "pattern"})
         elif "components" in path_text:
             metadata["doc_type"] = "component"
         elif "spec" in stem:
@@ -1029,6 +1012,9 @@ class RAGSpecLoader(SpecLoader):
     ):
         self._base_paths = [Path(p) for p in base_paths]
         self._rag_paths = [Path(p) for p in rag_paths]
+        # 索引同步可能暂时失败；检索时仍只允许本次启动实际扫描到的活动文件，
+        # 防止已移出知识库的旧分片继续从 Chroma 进入 Prompt。
+        self._active_rag_sources = {_normalize_path(path) for path in self._rag_paths}
         self._persist_dir = Path(persist_dir)
         self._collection_name = collection_name
         self._embedding_function = embedding_function
@@ -1074,6 +1060,15 @@ class RAGSpecLoader(SpecLoader):
             # 需要避免阻塞启动的调用方应传 auto_sync=False 并显式调用
             # start_background_sync()（AgentService 使用该路径）。
             self.sync_index()
+
+    def _knowledge_source_is_active(self, metadata: dict[str, Any]) -> bool:
+        active_sources = getattr(self, "_active_rag_sources", None)
+        if not active_sources:
+            return True
+        source = metadata.get("path") or metadata.get("_source")
+        if not source:
+            return False
+        return _normalize_path(Path(str(source))) in active_sources
 
     # ── 后台同步（不阻塞服务启动）───────────────────────────────────────
     # 背景：模块导入路径上同步执行 sync_index 会让服务在 embedding 服务
@@ -1254,7 +1249,7 @@ class RAGSpecLoader(SpecLoader):
             retrieved = self._apply_retrieval_gate([], purpose=purpose)
         return self._compose_context(base_text, retrieved, operation="load")
 
-    # per_query 参数控制每个检索意图返回的片段数，避免建筑类型文档挤掉组件文档。
+    # per_query 参数控制每个检索意图返回的片段数，避免单一文档挤掉其他能力关系。
     def load_many(
         self,
         queries: list[str | SpecQuery],
@@ -1262,7 +1257,7 @@ class RAGSpecLoader(SpecLoader):
         *,
         purpose: str = "generation",
     ) -> str:
-        """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
+        """按多个检索意图各取片段，保持协议、能力与关系覆盖。"""
         base_text = self._load_base_text()
         try:
             retrieved = self.retrieve_many(queries, per_query=per_query)
@@ -1666,8 +1661,8 @@ class RAGSpecLoader(SpecLoader):
             )
 
         # 用别名命中补全粗粒度过滤（doc_type/entity_type），但剔除 entity_name：
-        # 别名命中的实体名常与知识库实体命名粒度不一致（如"别墅"有 villa、
-        # modern_villa 多个变体），做硬过滤会漏召回。查询文本保持原文。
+        # 自然语言术语常比知识实体命名更粗，做实体名硬过滤会漏召回。
+        # 查询文本保持原文。
         # hash 模式不启用。
         if getattr(self, "_query_rewrite_enabled", True):
             planned = build_query_plan(
@@ -1686,7 +1681,6 @@ class RAGSpecLoader(SpecLoader):
             effective_filter = metadata_filter
 
         # 多取一倍候选，为后面的精确内容去重留出补位空间。
-        effective_filter = restrict_building_query(query, effective_filter, self._alias_catalog())
         n_results = min(self._top_k * 2, count)
         result = collection.query(
             query_texts=[query_text],
@@ -1713,7 +1707,10 @@ class RAGSpecLoader(SpecLoader):
         for index in ranked_indices:
             document = documents[index]
             metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
-            if not knowledge_hit_applies(query, metadata):
+            if (
+                not self._knowledge_source_is_active(metadata)
+                or not knowledge_hit_applies(query, metadata)
+            ):
                 continue
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
             dedupe_hash = self._retrieval_hash(document or "", metadata)
@@ -1730,8 +1727,12 @@ class RAGSpecLoader(SpecLoader):
             if len(retrieved) >= self._top_k:
                 break
 
-        retrieved = [hit for hit in self._expand_parent_neighbors(collection, retrieved)
-                     if knowledge_hit_applies(query, hit.metadata)]
+        retrieved = [
+            hit
+            for hit in self._expand_parent_neighbors(collection, retrieved)
+            if self._knowledge_source_is_active(hit.metadata)
+            and knowledge_hit_applies(query, hit.metadata)
+        ]
         self._last_results = retrieved
         return retrieved
 
@@ -1828,10 +1829,6 @@ class RAGSpecLoader(SpecLoader):
                 else:
                     normalized_queries.append((text, metadata_filter))
 
-        normalized_queries = [
-            (text, restrict_building_query(text, metadata, self._alias_catalog()))
-            for text, metadata in normalized_queries
-        ]
         if not normalized_queries:
             self._last_results = []
             return []
@@ -1915,7 +1912,10 @@ class RAGSpecLoader(SpecLoader):
             for index in ranked_indices:
                 document = documents[index]
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
-                if not knowledge_hit_applies(query_text, metadata):
+                if (
+                    not self._knowledge_source_is_active(metadata)
+                    or not knowledge_hit_applies(query_text, metadata)
+                ):
                     continue
                 dedupe_hash = self._retrieval_hash(document or "", metadata)
                 if dedupe_hash in seen_hashes:
@@ -1936,9 +1936,15 @@ class RAGSpecLoader(SpecLoader):
                 query_chunks = self._rerank_retrieved(query_chunks, query_text)
             retrieved.extend(query_chunks)
 
-        retrieved = [hit for hit in self._expand_parent_neighbors(collection, retrieved)
-                     if any(knowledge_hit_applies(text, hit.metadata)
-                            for text, _ in normalized_queries)]
+        retrieved = [
+            hit
+            for hit in self._expand_parent_neighbors(collection, retrieved)
+            if self._knowledge_source_is_active(hit.metadata)
+            and any(
+                knowledge_hit_applies(text, hit.metadata)
+                for text, _ in normalized_queries
+            )
+        ]
         self._last_results = retrieved
         if retrieval_cache is not None and cache_key is not None:
             retrieval_cache[cache_key] = list(retrieved)

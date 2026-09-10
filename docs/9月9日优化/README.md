@@ -7,7 +7,9 @@
 1. [建筑设计文档与生成链路规范](01-建筑设计文档与生成链路规范.md)：权威数据层、状态流转、SVG 审阅、DesignPatch 和 Blueprint 编译关系。
 2. [知识声明加工与执行规范](02-知识声明加工与执行规范.md)：将建筑长文拆成可验证声明，区分硬规则、条件关系、偏好、参考和未支持能力。
 3. [实施范围与验收规范](03-实施范围与验收规范.md)：代码映射、兼容边界、测试矩阵和完成标准。
-4. [DesignDocument JSON Schema](design-document.schema.json)：由后端 Pydantic 契约生成的机器可读字段规范。
+4. [知识库三类内容与执行边界](04-知识库三类内容与执行边界.md)：操作协议、复杂构件、可执行关系及能力缺口的最终划分。
+5. [知识库全量重构实施记录](05-知识库全量重构实施记录.md)：实际迁移、消费者调整、防复发门禁、验证结果与索引状态。
+6. [DesignDocument JSON Schema](design-document.schema.json)：由后端 Pydantic 契约生成的机器可读字段规范。
 
 ## 核心决策
 
@@ -15,7 +17,7 @@
 - 执行计划说明 Agent “怎样完成任务”，建筑设计审核确认“具体建成什么样”，两种审核不能混用。
 - 用户在设计阶段通过 `DesignPatch` 或自然语言反馈修改 DesignDocument；Blueprint 生成后继续使用 `ScenePatch` 做构件级修改。
 - 任何硬规则必须有 Schema、resolver、compiler 或 validator 的执行位置。只写进知识文档或提示词不算实施。
-- 建筑类型卡只补充真正不同的身份和条件，不复制墙、门、窗、幕墙等共享系统规则。
+- 建筑用途与风格由模型理解并写入 `DesignDocument`；活动知识库不维护建筑类型卡，只提供可执行的协议、构件能力和条件组装关系。
 
 ## 数据流
 
@@ -36,4 +38,4 @@ flowchart LR
     V --> T[三维渲染与 ScenePatch]
 ```
 
-具体知识库内容边界继续遵守 [知识库优化设计思路](../rag/知识库优化设计思路.md) 和 [rules-v2 实施说明](../rag/KNOWLEDGE_RULES_V2.md)。
+具体知识库内容边界继续遵守 [知识库优化设计思路](../rag/知识库优化设计思路.md) 和 [rules-v3 实施说明](../rag/KNOWLEDGE_RULES_V3.md)。

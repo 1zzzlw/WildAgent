@@ -2,15 +2,14 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 
-KNOWLEDGE_REVISION = "rules-v2"
-GENERATION_ROLES = ("protocol", "capability", "relation", "identity")
+KNOWLEDGE_REVISION = "rules-v3"
+GENERATION_ROLES = ("protocol", "capability", "relation")
 
 KNOWLEDGE_GUIDANCE = """知识使用约定：
 - protocol/capability/relation 说明当前 WILD 能力与已选择构件的正确关系。
-- identity 仅补充本次点名类型的辨识特征；其中的条件系统须由用户需求或已选方案触发。
+- 建筑类型与风格语义由模型理解；知识库不提供建筑百科或类型模板。
 - 用户明确需求与已批准方案决定层数、轮廓、尺寸、材质和构件选择；参考知识不能静默改写这些决定。
 - 未指定的设计变量由本次方案推导，不套用案例尺寸、固定配色、默认退台或固定构件套餐。
 - 数值示例只解释局部字段；可渲染、几何校验通过不代表结构或专业规范合规。
@@ -28,30 +27,9 @@ def term_is_requested(text: str, term: str) -> bool:
     return False
 
 
-def matching_building_entities(query: str, catalog: dict[str, dict[str, Any]]) -> list[str]:
-    """只按知识作者提供的类型名和别名路由；未知类型不硬套最近模板。"""
-    matches = []
-    for name, entry in catalog.items():
-        if entry.get("filters", {}).get("doc_type") != "building_type":
-            continue
-        terms = entry.get("applies_to") or entry.get("aliases", ())
-        if any(term_is_requested(query, str(term)) for term in terms):
-            matches.append(name)
-    return sorted(matches)
-
-
-def restrict_building_query(query: str, metadata: dict[str, Any] | None, catalog: dict) -> dict:
-    result = dict(metadata or {})
-    if result.get("doc_type") == "building_type" and "entity_name" not in result:
-        names = matching_building_entities(query, catalog)
-        # 空命中必须为空，不能删除过滤后检回别的建筑。
-        result["entity_name"] = {"$in": names} if names else "__no_requested_building__"
-    return result
-
-
-def knowledge_hit_applies(query: str, metadata: dict[str, Any]) -> bool:
-    """全局问答和邻片扩展也不能把未点名的建筑类型带进上下文。"""
-    if metadata.get("doc_type") != "building_type" and not metadata.get("applies_to"):
+def knowledge_hit_applies(query: str, metadata: dict) -> bool:
+    """专用系统规则只有在请求或已批准方案点名时才进入上下文。"""
+    if not metadata.get("applies_to"):
         return True
     terms = metadata.get("applies_to") or metadata.get("primary_terms") or ""
     if isinstance(terms, str):
@@ -73,3 +51,21 @@ def plan_knowledge_query(message: str, plan: dict | None) -> str:
     terms.extend(str(item) for item in plan.get("required_components", []))
     terms.extend(str(item) for item in plan.get("detail_packages", []))
     return message + "\n已选方案系统：" + "、".join(term for term in terms if term)
+
+
+def chat_knowledge_query_specs(message: str) -> list[tuple[str, dict[str, str]]]:
+    """返回知识问答的三类受控检索意图，不依赖 Loader 以便离线测试。"""
+    return [
+        (
+            f"{message} ScenePatch Blueprint 坐标 字段 引用",
+            {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
+        ),
+        (
+            f"{message} 当前构件字段 参数 能力边界",
+            {"doc_type": "component", "knowledge_role": "capability"},
+        ),
+        (
+            f"{message} 宿主 组装 连接 校验关系",
+            {"doc_type": "recipe", "knowledge_role": "relation"},
+        ),
+    ]

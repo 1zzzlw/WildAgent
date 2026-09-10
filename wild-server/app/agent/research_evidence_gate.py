@@ -14,7 +14,7 @@ from typing import Any
 
 from app.agent.knowledge_topics import (
     KnowledgeTopic,
-    topics_for_building_type,
+    generation_knowledge_topics,
 )
 
 
@@ -81,16 +81,8 @@ def evaluate_knowledge_coverage(
     Returns:
         CoverageDecision：充分性、覆盖比、缺失主题、是否触发联网。
     """
-    # 1. 确定该建筑类型应有的知识主题。
-    topics = topics_for_building_type(building_type or "")
-    if not topics:
-        return CoverageDecision(
-            sufficient=True,
-            coverage_ratio=1.0,
-            trigger_web_research=False,
-            reason="未知建筑类型，无覆盖标准，不触发联网",
-            building_type=building_type or "",
-        )
+    # 1. 所有建筑用途共用同一套可执行知识主题。
+    topics = generation_knowledge_topics()
 
     # 2. 从检索分片提取命中主题集合。
     hit_labels: set[str] = set()
@@ -126,7 +118,7 @@ def evaluate_knowledge_coverage(
 
     # 5. 核心知识决定充分性；用途边界决定是否需要外部研究。
     # 缺失本地 WILD 实现规则应回到随代码维护的基础协议；网络不能补出引擎能力。
-    # 类型卡是可选知识，不因缺少建筑百科启动研究。显式联网请求仍走外层 gate。
+    # 建筑百科不属于活动知识，不能因其缺失启动研究。显式联网请求仍走外层 gate。
     trigger = False
     sufficient = not bool(missing_required)
 

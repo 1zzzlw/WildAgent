@@ -16,7 +16,7 @@ synonyms: []
 
 # WILD v1.1 已实现的构件组合关系
 
-> 依据：当前 `resolver.ts`、`wild-compiler/index.ts`、`componentRegistry.ts` 与各组件编译器。本文只记录可以由引擎实际执行的关系；建筑设计建议另见建筑类型文档。
+> 依据：当前 `resolver.ts`、`wild-compiler/index.ts`、`componentRegistry.ts` 与各组件编译器。本文只记录可以由引擎实际执行的关系；建筑设计由本次 `DesignDocument` 决定。
 
 ## 组合构件解析顺序
 

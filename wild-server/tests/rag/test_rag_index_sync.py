@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from unittest.mock import Mock, patch
 
 from app.spec.loader import RAGSpecLoader, SpecChunk
@@ -40,6 +41,15 @@ def make_loader(
 
 
 class RAGIndexSyncTest(unittest.TestCase):
+    def test_retrieval_rejects_source_removed_from_active_file_list(self):
+        loader = object.__new__(RAGSpecLoader)
+        active = Path("storage/knowledge_base/components/windows.md").resolve()
+        stale = Path("storage/knowledge_base/components/proposed-component-extensions.md").resolve()
+        loader._active_rag_sources = {str(active).casefold()}
+
+        self.assertTrue(loader._knowledge_source_is_active({"path": str(active)}))
+        self.assertFalse(loader._knowledge_source_is_active({"path": str(stale)}))
+
     def test_timeout_batch_is_deferred_and_retried_after_other_batches(self):
         loader, collection = make_loader([], [make_chunk(str(i)) for i in range(11)])
         calls = 0

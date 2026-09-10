@@ -42,25 +42,28 @@ async def planning_research(state: GenerationState) -> dict:
     if callback:
         await callback(
             "planning_research:progress",
-            "\n### 计划研究\n正在读取任务目标、当前场景和相关建筑知识；此阶段不会生成或修改三维。\n",
+            "\n### 计划研究\n正在读取任务目标、当前场景和可执行 WILD 规则；此阶段不会生成或修改三维。\n",
         )
     queries = [
-        SpecQuery(user_message, {"doc_type": "building_type"}),
-        SpecQuery("已选方案的楼层、空间与构件组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+        SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
         SpecQuery("WILD 当前构件参数与能力边界", {"doc_type": "component", "topic": "parameters"}),
     ]
     if intent == "edit":
         queries = [
             SpecQuery(
-                f"{user_message} ScenePatch 修改 约束 引用", {"doc_scope": "editing"}
+                f"{user_message} ScenePatch 修改 坐标 字段 引用",
+                {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
             ),
-            SpecQuery(user_message, {"doc_type": "component"}),
+            SpecQuery(
+                user_message,
+                {"doc_type": "component", "knowledge_role": "capability"},
+            ),
         ]
     error = None
     coverage_diag = None
     try:
         context = agent_service.spec_loader.load_many(queries, per_query=2)
-        # 本地知识覆盖判断：检索分片是否覆盖该建筑类型的必备知识主题。
+        # 本地知识覆盖判断：检索分片是否覆盖可执行能力与组装主题。
         # 结果仅记录在诊断中；联网决策由 web_research 分支（若启用）执行。
         from app.agent.research_evidence_gate import evaluate_knowledge_coverage
         coverage_diag = evaluate_knowledge_coverage(

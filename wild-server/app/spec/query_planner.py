@@ -1,7 +1,7 @@
 """受限的 RAG 查询计划。
 
 查询计划只负责改善召回，不负责生成建筑事实。实体别名来自知识库 chunk
-metadata，因此新增建筑类型不需要修改本模块。
+metadata，因此新增构件能力或关系不需要修改本模块。
 """
 from __future__ import annotations
 

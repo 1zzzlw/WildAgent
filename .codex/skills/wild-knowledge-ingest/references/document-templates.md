@@ -2,17 +2,17 @@
 
 模板是写作辅助，不要求无信息的栏目占位。真实 Markdown 标题是实体边界，避免粗体 A/B/C 伪分块。
 
-## 类型卡
+## 专用系统条件映射
 
 ```md
 ## 类型名称
 
 <!-- rag-meta
-entity_type: building
-entity_name: stable_entity
-topic: composition
-knowledge_role: identity
-authority: domain_reference
+entity_type: facade
+entity_name: stable_system
+topic: assembly
+knowledge_role: relation
+authority: engine
 primary_terms:
   - 类型名称
 synonyms: []
@@ -20,14 +20,13 @@ applies_to:
   - 类型名称
 -->
 
-- 适用条件：本次需求或已批准方案点名此类型。
-- 类型特征：有价值的辨识差异和主要空间系统。
-- 条件关系：选择相应系统后应维持的空间、组件角色和连接。
+- 适用条件：本次需求或已批准方案点名此系统。
+- 字段与关系：选择相应系统后应维持的组件角色、宿主和连接。
 - WILD 映射与边界：受支持表达、无法表达的部分及近似方式。
 - 自由变量：由本次方案决定的轮廓、尺寸、数量、布局或材料。
 ```
 
-不要给所有类型自动加庭院、门廊或阳台。来源确实要求的身份特征要保留；其他特征标明触发条件。复杂类型的关系可拆成子标题，但每片保留实体上下文。
+不要通过建筑用途或风格自动添加庭院、门廊、幕墙或阳台。复杂系统可拆成子标题，但每片保留实体上下文与触发条件。
 
 ## 能力与关系
 
@@ -44,4 +43,4 @@ applies_to:
 
 ## 策略与案例
 
-reference scope 下写明适用意图、可替换选择、不可泛化的尺寸和来源。未经实际验证的案例不能标 verified_example。不是每次写知识都要提供案例。
+策略与案例保存在活动知识库之外，并写明适用意图、可替换选择、不可泛化的尺寸和来源。未经实际验证的案例不能标 verified_example。只有建立专用 reference 索引和显式策略路由后，才为它们设计可检索模板。

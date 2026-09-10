@@ -113,7 +113,7 @@ def print_chunks_table(chunks):
     print(f"{'='*100}")
     
     # 表头（缩短列宽）
-    print(f"{'No':<4} {'文件':<15} {'实体':<18} {'类型':<8} {'长度':<6} {'分类':<8}")
+    print(f"{'No':<4} {'文件':<15} {'实体':<18} {'类型':<8} {'长度':<6} {'角色':<10}")
     print(f"{'-'*4} {'-'*15} {'-'*18} {'-'*8} {'-'*6} {'-'*8}")
     
     # 打印每一行
@@ -127,10 +127,10 @@ def print_chunks_table(chunks):
             "entity": (m.get("entity_name", "-") or "-")[:18],
             "type": (m.get("doc_type", "-") or "-")[:8],
             "length": str(len(chunk.document)),
-            "category": (m.get("building_category", "-") or "-")[:8],
+            "role": (m.get("knowledge_role", "-") or "-")[:10],
         }
         
-        print(f"{row['no']:<4} {row['file']:<15} {row['entity']:<18} {row['type']:<8} {row['length']:<6} {row['category']:<8}")
+        print(f"{row['no']:<4} {row['file']:<15} {row['entity']:<18} {row['type']:<8} {row['length']:<6} {row['role']:<10}")
     
     print(f"{'-'*100}")
     print(f"总计: {len(chunks)} 个分片")
@@ -201,17 +201,17 @@ def analyze_chunks(chunks):
     for doc_type, count in sorted(by_doc_type.items()):
         print(f"  {doc_type}: {count} 个分片")
     
-    # 按 building_category 分组（如果有）
-    by_category = defaultdict(int)
+    # 按知识角色分组
+    by_role = defaultdict(int)
     for chunk in chunks:
-        category = chunk.metadata.get("building_category")
-        if category:
-            by_category[category] += 1
+        role = chunk.metadata.get("knowledge_role")
+        if role:
+            by_role[role] += 1
     
-    if by_category:
-        print(f"\n按建筑类型分组:")
-        for category, count in sorted(by_category.items()):
-            print(f"  {category}: {count} 个分片")
+    if by_role:
+        print(f"\n按知识角色分组:")
+        for role, count in sorted(by_role.items()):
+            print(f"  {role}: {count} 个分片")
 
 
 def chunks_to_markdown(chunks, label: str) -> str:
@@ -232,16 +232,16 @@ def chunks_to_markdown(chunks, label: str) -> str:
     # 分片信息表
     lines.append("## 分片信息表")
     lines.append("")
-    lines.append("| No | 文件 | 实体 | 类型 | 长度 | 分类 |")
+    lines.append("| No | 文件 | 实体 | 类型 | 长度 | 角色 |")
     lines.append("| --- | --- | --- | --- | --- | --- |")
     for i, chunk in enumerate(chunks):
         m = chunk.metadata
         file_ = (m.get("source", "-") or "-").replace("|", "\\|")[:30]
         entity = (m.get("entity_name", "-") or "-").replace("|", "\\|")[:30]
         doc_type = (m.get("doc_type", "-") or "-").replace("|", "\\|")[:20]
-        category = (m.get("building_category", "-") or "-").replace("|", "\\|")[:20]
+        role = (m.get("knowledge_role", "-") or "-").replace("|", "\\|")[:20]
         lines.append(
-            f"| {i + 1} | {file_} | {entity} | {doc_type} | {len(chunk.document)} | {category} |"
+            f"| {i + 1} | {file_} | {entity} | {doc_type} | {len(chunk.document)} | {role} |"
         )
     lines.append("")
 
@@ -372,7 +372,7 @@ def main():
 示例用法:
 
   # 检查单个文件
-  python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/building_types/residential/residential-building-types.md
+  python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base/components/windows-supported.md
 
   # 检查整个知识库目录
   python scripts/rag/inspect_knowledge_chunks.py storage/knowledge_base

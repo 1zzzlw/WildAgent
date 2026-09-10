@@ -4,13 +4,12 @@ applies_to:
   - curtain wall
   - curtain_wall
   - 玻璃立面
-knowledge_layer: architecture
 entity_type: facade
 entity_name: glass_curtain_wall_assembly
 topic: assembly
 status: experimental
-authority: domain_reference
-source: recipes/glass-curtain-wall-assembly.md
+authority: maintainer
+source: wild-server/app/agent/facade_recipe.py; wild-server/app/agent/architecture_plan.py; wild-web/src/wild-compiler/components/window.ts
 primary_terms:
   - 玻璃幕墙组装
   - curtain wall assembly
@@ -174,7 +173,7 @@ entity_type: facade
 entity_name: curtain_wall_grid_relations
 topic: assembly
 status: experimental
-authority: domain_reference
+authority: maintainer
 primary_terms:
   - grid first
   - 共面
@@ -200,7 +199,7 @@ entity_type: facade
 entity_name: curtain_wall_variant_selection
 topic: parameters
 status: experimental
-authority: domain_reference
+authority: maintainer
 primary_terms:
   - 明框参数
   - 隐框参数

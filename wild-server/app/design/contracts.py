@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def utc_now_iso() -> str:
@@ -133,7 +133,13 @@ class EnvelopeDecision(ContractModel):
 
 
 class CirculationDecision(ContractModel):
-    vertical_strategy: Literal["none", "stair", "core", "core_and_stair"] = "stair"
+    vertical_strategy: Literal["none", "stair", "core_and_stair"] = "stair"
+
+    @field_validator("vertical_strategy", mode="before")
+    @classmethod
+    def migrate_core_only_strategy(cls, value: Any) -> Any:
+        # 兼容已保存的旧 DesignDocument；核心筒本身不提供层间通行。
+        return "core_and_stair" if value == "core" else value
 
 
 MaterialRoleName = Literal[
@@ -235,7 +241,7 @@ class DesignDocument(ContractModel):
         if massing.modeled_floors > 1 and self.decisions.circulation.vertical_strategy == "none":
             raise ValueError("多层建筑必须选择竖向交通策略")
         if (
-            self.decisions.circulation.vertical_strategy in {"core", "core_and_stair"}
+            self.decisions.circulation.vertical_strategy == "core_and_stair"
             and min(massing.width, massing.depth) < 4
         ):
             raise ValueError("核心筒策略要求体量宽度和进深均不小于 4m")

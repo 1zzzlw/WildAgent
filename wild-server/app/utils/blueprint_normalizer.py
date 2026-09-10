@@ -357,17 +357,20 @@ def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) ->
 # ─────────────────────────────────────────────────────────────
 
 def _deduplicate_walls(elements: List[Dict[str, Any]], report: NormalizeReport) -> List[Dict[str, Any]]:
-    """双墙去重"""
+    """按渲染使用的平面中心线与标高去除重复墙。"""
+    from app.tools.spatial_tools import _wall_centerline_key
+
     walls = [e for e in elements if e.get("type") == "wall"]
     non_walls = [e for e in elements if e.get("type") != "wall"]
-    
-    # 简单去重：相同 from/to 的墙只保留一个
+
     seen = set()
     deduped = []
-    
+
     for wall in walls:
-        key = (tuple(wall.get("from", [])), tuple(wall.get("to", [])))
-        if key not in seen:
+        key = _wall_centerline_key(wall)
+        if key is None:
+            deduped.append(wall)
+        elif key not in seen:
             seen.add(key)
             deduped.append(wall)
         else:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.agent.knowledge_topics import all_topic_keys, topics_for_building_type
+from app.agent.knowledge_topics import all_topic_keys, generation_knowledge_topics
 from app.agent.research_evidence_gate import evaluate_knowledge_coverage
 from app.agent.nodes.web_research_node import web_research_node
 from app.agent.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
@@ -21,7 +21,6 @@ def _chunk(doc_type: str, topic: str, entity_type: str | None = None) -> Retriev
 
 def test_coverage_sufficient_when_all_required_hit():
     hits = [
-        _chunk("building_type", "composition"),
         _chunk("recipe", "assembly", "stair"),
         _chunk("component", "parameters", "wall"),
         _chunk("recipe", "assembly"),
@@ -34,7 +33,7 @@ def test_coverage_sufficient_when_all_required_hit():
 
 
 def test_missing_engine_rules_reports_gap_without_web():
-    hits = [_chunk("building_type", "composition")]
+    hits = []
     decision = evaluate_knowledge_coverage("高层玻璃幕墙", "high_rise", hits)
     assert decision.sufficient is False
     assert decision.trigger_web_research is False
@@ -48,11 +47,11 @@ def test_missing_local_retrieval_does_not_request_encyclopedia():
     assert decision.coverage_ratio == 0.0
 
 
-def test_unknown_building_type_uses_default_topics():
+def test_any_building_type_uses_shared_generation_topics():
     decision = evaluate_knowledge_coverage("生成一个水电站", "unknown_type", [])
     # 未知类型复用能力与组装主题；没有类型卡不触发百科研究。
     assert decision.trigger_web_research is False
-    assert "building_type.composition" in decision.missing_topics
+    assert "building_type.composition" not in decision.missing_topics
 
 
 @pytest.mark.asyncio
@@ -82,8 +81,8 @@ def test_topic_graph_has_no_duplicate_keys():
     assert len(keys) == len({k for k in keys})
 
 
-def test_topics_for_known_type_nonempty():
-    topics = topics_for_building_type("villa")
+def test_generation_topics_nonempty():
+    topics = generation_knowledge_topics()
     assert len(topics) >= 2
     assert any(t.required for t in topics)
 

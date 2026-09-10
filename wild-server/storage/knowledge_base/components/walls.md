@@ -4,7 +4,7 @@ entity_name: wall_family
 topic: parameters
 status: supported
 authority: maintainer
-source: components/walls.md
+source: wild-web/wild-lang/schema.json; wild-web/src/wild-core/src/primitive/geometry/wall.ts
 primary_terms:
   - 墙体
   - wall

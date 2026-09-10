@@ -1,90 +1,155 @@
 ---
 entity_type: window
-entity_name: window_variants
+entity_name: window_variant_mappings
 topic: assembly
 status: supported
 authority: maintainer
-source: components/windows.md
+source: wild-web/wild-lang/schema.json
 primary_terms:
   - 窗型映射
-  - window
+  - window variant
 synonyms: []
 ---
 
-# 窗型语义与 WILD 映射
+# 窗型语义到 WILD 的条件映射
 
-## 窗型选择与宿主
+## 共性边界
 
-窗型由用户需求或已批准方案决定。所有 door/window 使用真实 parentWall 与沿墙局部坐标，尺寸根据宿主推导。参数契约维护于 windows-supported.md；具体传统或现代名称不作为新 type、sashType、leafCount 或 parentOpening 字段。
+窗型名称不产生新的 WILD `type`，也不决定建筑风格、窗数、尺寸、排列或材质。基础窗统一服从 `windows-supported.md`；下列映射只在用户或批准设计明确选择对应系统时使用。
 
-## 直棂窗（最古早的中式窗型）
+## 规则框格窗
 
-适用条件：本次方案已选择直棂窗（最古早的中式窗型）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 直棂窗
+  - 菱花窗
+  - 槛窗
+  - 条形窗
+  - ribbon window
+entity_name: gridded_window_mapping
+topic: assembly
+primary_terms:
+  - verticalMullions
+  - horizontalMullions
+synonyms: []
+-->
 
-## 一码三箭直棂窗（直棂窗进阶版）
+可规则化的横竖框格使用 `window.verticalMullions` 与 `horizontalMullions`。复杂斜格、花纹或不规则图案没有原生窗格字段；只有批准设计要求且接受近似时才增加显式 `primitive`。
 
-适用条件：本次方案已选择一码三箭直棂窗（直棂窗进阶版）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 空窗与漏窗
 
-## 槛窗（与隔扇门配套的标准窗）
+<!-- rag-meta
+applies_to:
+  - 空窗
+  - 漏窗
+  - 花窗
+  - 月洞门
+entity_name: open_window_mapping
+topic: assembly
+primary_terms:
+  - opening
+  - no glass
+synonyms: []
+-->
 
-适用条件：本次方案已选择槛窗（与隔扇门配套的标准窗）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+纯洞口使用 `geometry.elements` 中的 `opening` 并引用墙体，不强加玻璃。需要可见格栅时另建受支持几何，格栅不能充当洞口布尔关系。
 
-## 支摘窗（民居经典
+## 门上亮窗
 
-适用条件：本次方案已选择支摘窗（民居经典。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 该业务名的卷绕、传感、上下独立开启、拆卸或专业性能未由几何实现；只承诺编译器已有交互。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 横披窗
+  - 门亮子
+  - transom window
+entity_name: transom_window_mapping
+topic: assembly
+primary_terms:
+  - parentWall
+  - transom
+synonyms: []
+-->
 
-## 漏窗（花窗/墙窗）
+亮窗是独立 `window`，与门引用同一 `parentWall`。其底标高由门顶和批准留缝推导，不能使用不存在的 `parentOpening`。
 
-适用条件：本次方案已选择漏窗（花窗/墙窗）。框景空洞用 opening，无需玻璃；漏窗若需要纹样则用显式 primitive 或受支持窗棂。不能给纯空洞强加玻璃窗。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 拱形与装饰轮廓窗
 
-## 空窗（洞窗/月洞门式窗）
+<!-- rag-meta
+applies_to:
+  - 玫瑰窗
+  - 帕拉第奥窗
+  - 尖拱窗
+  - 圆拱窗
+  - 柳叶窗
+entity_name: decorative_window_outline_mapping
+topic: constraints
+primary_terms:
+  - opening style
+  - primitive
+synonyms: []
+-->
 
-适用条件：本次方案已选择空窗（洞窗/月洞门式窗）。框景空洞用 opening，无需玻璃；漏窗若需要纹样则用显式 primitive 或受支持窗棂。不能给纯空洞强加玻璃窗。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+当前 `window` 只生成矩形组合窗，没有 `openingStyle`。圆窗、尖拱和复杂装饰轮廓需要 `opening` 与显式 `primitive` 近似；不能把建筑术语写成未定义字段，也不能宣称已实现真实曲线窗系统。
 
-## 菱花窗（三交六椀/双交四椀）
+## 幕墙窗
 
-适用条件：本次方案已选择菱花窗（三交六椀/双交四椀）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 玻璃幕墙
+  - 幕墙窗
+  - curtain wall
+entity_name: curtain_wall_window_mapping
+topic: assembly
+primary_terms:
+  - curtain wall window
+  - facade grid
+synonyms: []
+-->
 
-## 横披窗（门/窗上方的固定亮窗）
+幕墙窗按 `glass-curtain-wall-assembly.md` 使用墙体宿主加窗网格，或显式骨架与玻璃。建筑名称本身不触发幕墙。
 
-适用条件：本次方案已选择横披窗（门/窗上方的固定亮窗）。门窗上方的亮窗独立绑定同一墙体，按下方构件顶部及墙顶推导范围，不能依附另一 window。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 转角窗
 
-## 玫瑰窗（Rose Window）
+<!-- rag-meta
+applies_to:
+  - 转角窗
+  - corner window
+entity_name: corner_window_mapping
+topic: assembly
+primary_terms:
+  - two parent walls
+synonyms: []
+-->
 
-适用条件：本次方案已选择玫瑰窗（Rose Window）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+相邻立面分别创建窗口并绑定各自墙体，统一窗台与窗顶标高。单个窗不能跨越两个 `parentWall`。
 
-## 帕拉第奥窗（Palladian Window / Serliana）
+## 天窗
 
-适用条件：本次方案已选择帕拉第奥窗（Palladian Window / Serliana）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+<!-- rag-meta
+applies_to:
+  - 天窗
+  - skylight
+entity_name: skylight_mapping
+topic: constraints
+primary_terms:
+  - parentRoof unsupported
+  - transparent roof
+synonyms: []
+-->
 
-## 尖拱窗（哥特式）
+`window` 不支持 `parentRoof`。屋顶采光只能使用透明屋盖材质或独立 `primitive` 近似；当前不能仅靠透明板声称完成真实屋顶开洞。
 
-适用条件：本次方案已选择尖拱窗（哥特式）。采用当前支持的 openingStyle/洞口样式及 door/window；特殊尖拱或轮廓超出支持范围时用 primitive 近似，并明确降级。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+## 落地窗
 
-## 圆拱窗（罗马风）
+<!-- rag-meta
+applies_to:
+  - 落地窗
+  - floor-to-ceiling window
+entity_name: floor_to_ceiling_window_mapping
+topic: assembly
+primary_terms:
+  - floor level
+  - parentWall
+synonyms: []
+-->
 
-适用条件：本次方案已选择圆拱窗（罗马风）。采用当前支持的 openingStyle/洞口样式及 door/window；特殊尖拱或轮廓超出支持范围时用 primitive 近似，并明确降级。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 柳叶窗（Lancet Window）
-
-适用条件：本次方案已选择柳叶窗（Lancet Window）。采用当前支持的 openingStyle/洞口样式及 door/window；特殊尖拱或轮廓超出支持范围时用 primitive 近似，并明确降级。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 幕墙窗（Curtain Wall Grid）
-
-适用条件：本次方案已选择幕墙窗（Curtain Wall Grid）。采用 wall+window 网格或显式框架与玻璃；保持板块、框架及宿主范围，详见幕墙组装关系。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 转角窗（Corner Window）
-
-适用条件：本次方案已选择转角窗（Corner Window）。相邻墙分别设置 window，推导转角处范围与法向；不把跨两面墙的窗挂到单一宿主。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 条形窗（Ribbon/Strip Window）
-
-适用条件：本次方案已选择条形窗（Ribbon/Strip Window）。使用 window 框格参数表达规则窗棂，复杂纹样用显式 primitive；不创造新的窗型字段。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 天窗（Skylight）
-
-适用条件：本次方案已选择天窗（Skylight）。window 不能直接挂 roof；屋顶采光使用透明 roof/primitive，或真实屋面墙上的 window。屋顶开洞不能只靠透明板覆盖来假称完成。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
-
-## 落地窗（Floor-to-Ceiling）
-
-适用条件：本次方案已选择落地窗（Floor-to-Ceiling）。窗底标高对应本层地面，窗顶在宿主范围内；落地不是固定窗高，也不等于出入口。 数量、比例、材料和装饰复杂度由任务决定，保持宿主和通行/采光关系；此条不指定建筑风格或默认尺寸。
+仍使用标准 `window`。窗底与本层地面关系、窗顶余量和宽度来自批准设计及宿主范围；“落地”不等于出入口，也不规定固定窗高。

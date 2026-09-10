@@ -76,8 +76,7 @@ async def architecture_planner(state: GenerationState) -> dict:
     rag_error = None
     try:
         spec_text = agent_service.spec_loader.load_many([
-            SpecQuery(design_request, {"doc_type": "building_type"}),
-            SpecQuery("已选方案的楼层、空间与构件组装关系", {"doc_type": "recipe", "entity_name": "building_assembly_relations"}),
+            SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
             SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
         ], per_query=2)
     except Exception as exc:

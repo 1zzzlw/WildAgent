@@ -67,28 +67,25 @@ class PromptCompositionTest(unittest.TestCase):
 
         queries = service._build_rag_queries("生成一个别墅", None)
         asset_queries = service._build_rag_queries("生成一个篮球", None)
-        combined = "\n".join(queries)
+        combined = "\n".join(query.text for query in queries)
 
-        self.assertEqual(len(queries), 8)
+        self.assertEqual(len(queries), 7)
         self.assertIn("已选构件的条件关系", combined)
-        self.assertIn("柱梁楼板桁架", combined)
-        self.assertIn("墙体构件参数与围护规则", combined)
-        self.assertIn("窗构件分类与组装规则", combined)
-        self.assertIn("门构件分类与组装规则", combined)
-        self.assertIn("栏杆构件参数与路径规则", combined)
-        self.assertIn("屋顶屋檐构件规则", combined)
+        self.assertIn("结构构件能力", combined)
+        self.assertIn("墙体构件能力", combined)
+        self.assertIn("窗构件能力", combined)
+        self.assertIn("门构件能力", combined)
+        self.assertIn("栏杆构件能力", combined)
+        self.assertIn("屋顶构件能力", combined)
         self.assertEqual(len(asset_queries), 1)
 
     def test_building_queries_receive_business_metadata_filters(self):
         service = AgentService.__new__(AgentService)
         queries = service._build_rag_queries("生成一个别墅", None)
 
-        filtered_queries = service._build_filtered_rag_queries(queries)
-
         self.assertEqual(
-            [query.metadata_filter for query in filtered_queries],
+            [query.metadata_filter for query in queries],
             [
-                {"doc_type": "building_type"},
                 {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
                 {"doc_type": "component", "entity_type": "structural_component"},
                 {"doc_type": "component", "entity_type": "wall"},
@@ -98,6 +95,30 @@ class PromptCompositionTest(unittest.TestCase):
                 {"doc_type": "component", "entity_type": "roof"},
             ],
         )
+
+    def test_blueprint_edit_queries_cover_protocol_capability_and_relation(self):
+        service = AgentService.__new__(AgentService)
+        queries = service._build_rag_queries(
+            "把 window_1 沿 Z 轴移动",
+            {
+                "meta": {"name": "current"},
+                "geometry": {
+                    "elements": [{"type": "wall"}],
+                    "components": [{"type": "window"}],
+                },
+            },
+        )
+
+        self.assertEqual(len(queries), 3)
+        self.assertEqual(
+            [query.metadata_filter for query in queries],
+            [
+                {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
+                {"doc_type": "component", "knowledge_role": "capability"},
+                {"doc_type": "recipe", "knowledge_role": "relation"},
+            ],
+        )
+        self.assertIn("window", queries[0].text)
 
 
 if __name__ == "__main__":

@@ -95,7 +95,7 @@ def build_design_document(
             kind="system_required",
             target="/decisions/envelope/curtain_wall/grid_strategy",
             expression="幕墙分格必须与楼层和立面开间关系一致",
-            source="rules-v2:glass-curtain-wall-assembly",
+            source="rules-v3:glass-curtain-wall-assembly",
         ))
     if old:
         current_ids = {item.id for item in constraints}
@@ -161,7 +161,7 @@ def build_design_document(
                 applies_when="envelope.system == curtain_wall",
                 schema_targets=["/decisions/envelope", "/decisions/facades"],
                 enforcement=["planner", "resolver", "validator"],
-                source="rules-v2:glass-curtain-wall-assembly",
+                source="rules-v3:glass-curtain-wall-assembly",
             ),
         ],
     )
