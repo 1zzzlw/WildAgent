@@ -112,7 +112,8 @@ async def readiness():
         not config.rag.enabled
         or (
             loader_name == "RAGSpecLoader"
-            and source_count >= 30
+            # list_sources 同时包含固定注入的最小规范和 RAG 文档。
+            and source_count > 1
             and sync_stats.get("total", 0) > 0
         )
     )

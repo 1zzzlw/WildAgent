@@ -56,6 +56,7 @@ rules-v3 将建筑分类从 RAG 生成知识中彻底移除。大模型负责理
 5. 数字必须区分 Schema 边界、解析器参数、设计输入和局部示例。
 6. 运行时直接解析的参数块继续使用 system scope，不能误删。
 7. `status: proposed` 的文件和分片必须放到 `docs-dev/knowledge-backlog/`，不能依赖查询过滤留在活动库。
+8. 新增、移动或删除活动 Markdown 时同步更新 `config.yaml.required_documents`；部署按清单逐文件校验，不使用固定篇数阈值。
 
 ## 验证与同步
 

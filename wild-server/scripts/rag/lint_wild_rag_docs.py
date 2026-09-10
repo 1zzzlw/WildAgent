@@ -173,6 +173,56 @@ def iter_markdown_files(inputs: Iterable[Path]) -> list[Path]:
     return sorted(files, key=lambda item: str(item).casefold())
 
 
+def knowledge_manifest_issues(root: Path) -> list[Issue]:
+    """检查 config.yaml 清单与活动 Markdown 是否一一对应。"""
+    root = root.resolve()
+    config_path = root / "config.yaml"
+    if not config_path.is_file():
+        return [Issue("error", "missing_manifest", str(config_path), 1, "缺少知识库 config.yaml")]
+    loaded = _read_metadata_config(str(config_path))
+    required = loaded.get("required_documents")
+    if not isinstance(required, list) or not required:
+        return [Issue(
+            "error", "empty_manifest", str(config_path), 1,
+            "required_documents 必须声明全部活动 Markdown",
+        )]
+
+    declared = [str(item).strip() for item in required]
+    issues: list[Issue] = []
+    if len(declared) != len(set(declared)):
+        issues.append(Issue(
+            "error", "duplicate_manifest_entry", str(config_path), 1,
+            "required_documents 包含重复路径",
+        ))
+    invalid = [
+        path for path in declared
+        if not path.endswith(".md") or Path(path).is_absolute() or ".." in Path(path).parts
+    ]
+    if invalid:
+        issues.append(Issue(
+            "error", "invalid_manifest_entry", str(config_path), 1,
+            "清单路径必须是知识库内的 Markdown 相对路径: " + ", ".join(invalid),
+        ))
+
+    declared_set = set(declared) - set(invalid)
+    actual_set = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*.md")
+        if path.is_file()
+    }
+    for path in sorted(declared_set - actual_set):
+        issues.append(Issue(
+            "error", "missing_required_document", str(config_path), 1,
+            f"清单文档不存在: {path}",
+        ))
+    for path in sorted(actual_set - declared_set):
+        issues.append(Issue(
+            "error", "unlisted_active_document", str(config_path), 1,
+            f"活动文档未加入 required_documents: {path}",
+        ))
+    return issues
+
+
 def scan_structure(lines: list[str]) -> tuple[list[Heading], list[tuple[int, str, str]], list[int]]:
     raw_headings: list[tuple[int, int, str]] = []
     code_blocks: list[tuple[int, str, str]] = []
@@ -635,6 +685,12 @@ def main() -> int:
         for path in files
         for issue in lint_file(path, args.min_section_chars, args.max_section_chars)
     ]
+    issues.extend([
+        issue
+        for path in args.paths
+        if path.is_dir() and (path / "config.yaml").is_file()
+        for issue in knowledge_manifest_issues(path)
+    ])
     if args.cross_check:
         issues.extend([
             issue

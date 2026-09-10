@@ -35,7 +35,7 @@ Jenkins 生产流程为：
 
 后端验证容器不会挂载生产 `/opt/wild-agent/.env`。测试收集会导入全局 `AgentService`，因此 Jenkins 只为该临时容器注入 `ci-placeholder` 占位 Key，并把模型地址指向不可用的本机端口 `127.0.0.1:9`；这既满足客户端初始化，也能让误发起的真实模型调用立即失败，不会泄露或消耗生产凭据。RAG 在该阶段显式使用 hash fallback，并将临时 Chroma 数据写入容器 `/tmp`。正式部署容器仍只读取 `DEPLOY_ENV_FILE` 指定的服务器环境文件。
 
-部署预检现在默认是**离线门禁**：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，确认镜像中存在最小规范、知识库文件数量完整，并打印 Chat/RAG/Embedding 配置摘要，但不会向 Chat 或 Embedding 供应商发送请求。日志应出现 `preflight_mode=offline`，以及两个带 `reason=live_provider_preflight_disabled` 的 `smoke=skipped`。因此第三方额度耗尽、限流或短时网络波动不会阻止代码部署。
+部署预检现在默认是**离线门禁**：它使用本次新镜像和生产 `DEPLOY_ENV_FILE`，确认 `config.yaml.required_documents` 声明的知识文档全部存在，并打印 Chat/RAG/Embedding 配置摘要，但不会向 Chat 或 Embedding 供应商发送请求。日志应出现 `preflight_mode=offline`，以及两个带 `reason=live_provider_preflight_disabled` 的 `smoke=skipped`。因此第三方额度耗尽、限流或短时网络波动不会阻止代码部署。
 
 只有手工勾选 Jenkins 参数 `LIVE_PROVIDER_PREFLIGHT_ENABLED` 时，预检才会进入 `live_providers` 模式：向实际 Chat 服务发送一个最多 128 token 的最小请求，并用实际 Embedding 服务生成测试向量。这个模式用于排查生产凭据、模型 ID、兼容参数和网络，不是每次发布的质量门禁；失败仍会在删除旧容器前终止部署并保留旧服务。
 
@@ -43,11 +43,11 @@ Jenkins 生产流程为：
 
 Jenkins 已有 `REMOTE_VALIDATE_ENABLED=false` 这一紧急开关，可跳过远程前端编译和后端离线测试，但不建议把它作为日常发布方式；镜像构建、知识库检查、容器启动和就绪检查仍会执行。本次日志中的单个过期断言应修正测试契约，而不是靠长期关闭 414 个已通过的回归用例绕过。
 
-`storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/assets/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库；其中 `assets` 保存 PBR 图片和不可变清单，重新部署不能删除。Docker 构建与部署前预检都会要求镜像内存在 `BLUEPRINT-SPEC-MINIMAL.md` 且知识库 Markdown 不少于 30 个；日志必须出现 `knowledge_base_files=<数量>`。否则构建立即失败，不允许空知识库容器启动后把持久化 Chroma 分片删除。
+`storage/knowledge_base` 是镜像内置的只读 Agent 输入，不能被 `.dockerignore` 的通用 `storage` 规则排除。生产只把 `scenes/sessions/chroma/assets/geoip` 子目录挂载到 `/app/storage`，不会遮住镜像知识库；其中 `assets` 保存 PBR 图片和不可变清单，重新部署不能删除。Docker 构建与部署前预检都会逐项检查 `config.yaml.required_documents`；仓库测试还要求清单与当前活动 Markdown 完全一致。日志必须出现 `knowledge_base_files=<数量> required_documents=<数量>`，缺少任何正式文档时构建立即失败。
 
 后端每次启动都会执行 Chroma 增量同步：内容或 metadata 变化时更新对应分片，文件删除时移除旧分片，Embedding/分块索引签名变化时重建 collection。修复空知识库镜像后的第一次生产启动会重新写入完整索引，`RAG 索引同步` 日志中的 `total` 和 `updated` 应恢复为知识库实际分片数；后续没有知识变更时 `updated=0` 属于正常复用，不代表未更新。
 
-Docker 与 Jenkins 使用 `/health/ready` 而不是普通首页判断后端就绪。该接口读取当前服务进程中的真实 Loader：生产开启 RAG 时必须满足 `loader=RAGSpecLoader`、`source_count>=30` 且 `sync.total>0`；Embedding 或 Chroma 初始化失败后若代码降级成 `FileSpecLoader`，接口返回 503，部署会输出日志并恢复旧镜像。只有显式配置 `RAG__ENABLED=false` 时，文件 Loader 才被视为健康。
+Docker 与 Jenkins 使用 `/health/ready` 而不是普通首页判断后端就绪。完整性已在镜像清单门禁中确认；该接口读取当前服务进程中的真实 Loader，生产开启 RAG 时必须满足 `loader=RAGSpecLoader`、同时加载基础规范与至少一份检索文档，并且 `sync.total>0`。Embedding 或 Chroma 初始化失败后若代码降级成 `FileSpecLoader`，接口返回 503，部署会输出日志并恢复旧镜像。只有显式配置 `RAG__ENABLED=false` 时，文件 Loader 才被视为健康。
 
 后端启动时需要加载应用、同步 Chroma 知识库并创建模型客户端，5 秒内未监听端口并不等于启动失败。Jenkins 不再固定 `sleep 5` 后只探测一次，而是轮询容器状态和 HTTP；新后端超过 180 秒仍未就绪、前端超过 40 秒仍未就绪或容器提前退出时，会打印新容器日志并使用部署前记录的版本镜像恢复旧容器。后端镜像也包含 Docker `HEALTHCHECK`，便于部署后持续查看健康状态。
 

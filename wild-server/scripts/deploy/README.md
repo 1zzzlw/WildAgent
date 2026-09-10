@@ -49,7 +49,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/deploy/deployment_prefli
 
 | 输出 | 含义 | 通过标准 |
 |---|---|---|
-| `knowledge_base_files=N` | 镜像知识库实际文件数 | 大于 0；同时脚本断言 `BLUEPRINT-SPEC-MINIMAL.md` 等关键文件存在 |
+| `knowledge_base_files=N required_documents=M` | 镜像知识库实际文件数与清单数 | `config.yaml.required_documents` 中每个正式文档都存在；仓库测试同时要求清单与活动 Markdown 一致 |
 | `preflight_model=...` | 聊天模型名（`config.chat.name`） | 与部署目标模型一致 |
 | `preflight_base_url=...` | 聊天模型 base URL | 非空 / 与预期网关一致（`(default)` 表示未显式配置） |
 | `preflight_rag_enabled=true/false` | RAG 开关（`config.rag.enabled`） | 按部署规划应为 `true` |

@@ -123,6 +123,14 @@ class KnowledgeRulesTest(unittest.TestCase):
                   if issue.severity == "error"]
         self.assertEqual(errors, [])
 
+    def test_active_document_manifest_is_complete(self):
+        errors = [
+            issue
+            for issue in lint.knowledge_manifest_issues(KB)
+            if issue.severity == "error"
+        ]
+        self.assertEqual(errors, [])
+
     def test_linter_rejects_complete_building_in_system_protocol(self):
         import tempfile
         with tempfile.TemporaryDirectory() as directory:

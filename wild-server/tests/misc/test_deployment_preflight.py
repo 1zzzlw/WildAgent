@@ -1,11 +1,31 @@
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from scripts.deploy.deployment_preflight import run_preflight, select_smoke_response_text
+from scripts.deploy.deployment_preflight import (
+    run_preflight,
+    select_smoke_response_text,
+    validate_knowledge_documents,
+)
 
 
 class DeploymentPreflightTest(unittest.TestCase):
+    def test_knowledge_manifest_rejects_missing_document(self):
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config.yaml").write_text(
+                "required_documents:\n  - missing.md\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                AssertionError,
+                "required knowledge documents missing: missing.md",
+            ):
+                validate_knowledge_documents(root)
+
     def test_prefers_normal_content(self):
         response = SimpleNamespace(
             content="WILD_OK",

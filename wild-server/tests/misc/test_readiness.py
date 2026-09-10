@@ -7,7 +7,7 @@ import main
 
 class _ReadyRAGSpecLoader:
     def list_sources(self):
-        return [f"source-{index}" for index in range(37)]
+        return ["BLUEPRINT-SPEC-MINIMAL.md", "components/windows.md"]
 
     @property
     def last_sync_stats(self):
@@ -35,7 +35,7 @@ class ReadinessTest(unittest.IsolatedAsyncioTestCase):
         payload = json.loads(response.body)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["status"], "ready")
-        self.assertEqual(payload["rag"]["source_count"], 37)
+        self.assertEqual(payload["rag"]["source_count"], 2)
         self.assertEqual(payload["rag"]["sync"]["total"], 362)
 
     async def test_rag_fallback_is_not_ready_when_rag_is_enabled(self):

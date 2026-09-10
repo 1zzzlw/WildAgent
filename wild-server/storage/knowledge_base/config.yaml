@@ -4,6 +4,33 @@
 # path_pattern 使用相对路径：* 匹配一层，** 用于递归子目录。
 version: 2
 
+# 生产镜像完整性清单。新增、移动或删除活动文档时必须同步更新；部署门禁检查
+# 每个条目真实存在，知识库质量仍由 rules-v3 linter 检查。
+required_documents:
+  - BLUEPRINT-PATCH-PROTOCOL.md
+  - BLUEPRINT-SPEC-FULL.md
+  - BLUEPRINT-SPEC-MINIMAL.md
+  - components/README.md
+  - components/composite-components-second-batch.md
+  - components/doors-supported.md
+  - components/doors.md
+  - components/engine-capability-boundaries.md
+  - components/glass-curtain-walls.md
+  - components/light.md
+  - components/railings.md
+  - components/roofs-and-eaves.md
+  - components/stair.md
+  - components/structural-components.md
+  - components/walls.md
+  - components/windows-supported.md
+  - components/windows.md
+  - recipes/README.md
+  - recipes/component-selection-relations.md
+  - recipes/glass-curtain-wall-assembly.md
+  - recipes/material-role-relations.md
+  - recipes/supported-assembly-relations.md
+  - README.md
+
 defaults:
   knowledge_revision: rules-v3
   knowledge_role: capability
