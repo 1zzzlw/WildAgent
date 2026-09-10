@@ -7,10 +7,30 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from scripts.rag.eval_retrieval import main, score_ranked_hits, select_ranked_parent_groups
+from scripts.rag.eval_retrieval import main, run_eval, score_ranked_hits, select_ranked_parent_groups
 
 
 class RetrievalMetricTest(unittest.TestCase):
+    def test_exclusion_checks_all_injected_parts(self):
+        hit = SimpleNamespace(document="forbidden example", metadata={"source": "villas.md",
+            "path": "building_types/residential/villas.md"}, distance=0.1, id="one")
+        loader = SimpleNamespace(retrieve=lambda *args, **kwargs: [hit])
+        data = run_eval(loader, [{"id": "policy", "query": "办公楼",
+            "forbiddenSources": ["building_types/residential/villas.md"],
+            "forbiddenTerms": ["forbidden example"]}], 5)
+        self.assertEqual(data["stats"]["policy_failures"], 1)
+        self.assertEqual(data["results"][0]["forbidden_terms"], ["forbidden example"])
+
+    def test_threshold_calibration_negatives_are_separate_from_mandatory_empty(self):
+        hit = SimpleNamespace(document="content", metadata={}, distance=0.9, id="one")
+        loader = SimpleNamespace(retrieve=lambda *args, **kwargs: [hit])
+        data = run_eval(loader, [
+            {"id": "calibration", "query": "weather", "expectedAction": "reject"},
+            {"id": "policy", "query": "unknown building", "expectEmpty": True},
+        ], 5)
+        self.assertTrue(data["results"][0]["policy_pass"])
+        self.assertFalse(data["results"][1]["policy_pass"])
+
     def test_hit_recall_and_mrr_for_two_expected_sources(self):
         """两个标准来源只召回一个：Hit=成功，Recall=1/2，首位命中所以 MRR=1。"""
         hits = [

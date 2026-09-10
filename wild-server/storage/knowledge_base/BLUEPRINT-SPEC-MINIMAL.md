@@ -34,6 +34,10 @@ synonyms: []
 
 ---
 
+## 知识与设计决定
+
+用户需求与已批准方案决定本次建筑的层数、体量、风格和尺寸。检索知识提供能力边界、类型特征和已选构件关系；不得因参考文档改变用户决定。以下局部 JSON 数值仅解释字段，不是建筑默认尺寸。精密模式提高实现完整性和检查质量，不强制退台、多个体量或固定装饰套餐。
+
 ## 全局空间规则
 
 - 两面墙体在转角处相接时必须共享完全相同的端点坐标，不能使用近似值。
@@ -376,72 +380,14 @@ synonyms: []
 ```
 - baseColor 必须是 [R, G, B] 数组（0.0~1.0），**绝对禁止** "#RRGGBB" 字符串
 - baseColor、emissive 和效果层中的数值颜色统一按 sRGB authored value 表达，由渲染器转换到线性工作空间
-- 用户未指定颜色时，必须采用检索到的建筑类型默认配色；墙、楼板、屋顶、门、玻璃应使用角色独立的材质名
+- 用户未指定颜色时，由本次材质方案决定，不继承建筑类型的默认配色；墙、楼板、屋顶、门、玻璃按实际角色引用材质
 - 不要默认把墙、楼板和屋顶全部设成同一个 `concrete`；物理玻璃必须给出 `materialClass: "glass"`、`transmission > 0` 和 `ior`，`opacity` 必须为 `1` 或省略
 
 ---
 
-## 常用尺寸参考
+## 尺寸推导
 
-| 构件 | 典型值 |
-|------|--------|
-| 层高 | 2.8 ~ 3.5 m |
-| 墙厚 | 0.2 ~ 0.4 m |
-| 门宽/高 | 1.0 m / 2.2 m |
-| 窗宽/高 | 1.2 m / 1.2 m |
-| 窗台高（世界Y） | 墙底 Y + 0.9 m |
-| 柱半径 | 0.08 ~ 0.15 m |
-
----
-
-## 完整示例：简单小屋（4墙 + 地板 + 2门窗 + 屋顶）
-
-```json
-{
-  "meta": { "version": "1.1", "type": "building", "name": "简单小屋" },
-  "geometry": {
-    "elements": [
-      { "type": "floor",   "id": "floor_1",   "from": [0,0,0],   "to": [6,0,5],   "thickness": 0.2, "material": "stone" },
-      { "type": "wall",    "id": "wall_front", "from": [0,0,0],   "to": [6,3,0],   "thickness": 0.3, "material": "wood" },
-      { "type": "wall",    "id": "wall_back",  "from": [0,0,5],   "to": [6,3,5],   "thickness": 0.3, "material": "wood" },
-      { "type": "wall",    "id": "wall_left",  "from": [0,0,0],   "to": [0,3,5],   "thickness": 0.3, "material": "wood" },
-      { "type": "wall",    "id": "wall_right", "from": [6,0,0],   "to": [6,3,5],   "thickness": 0.3, "material": "wood" },
-      {
-        "type": "roof", "id": "main_roof", "roofType": "gable",
-        "span": 7.0, "depth": 6.0, "height": 2.0, "thickness": 0.3,
-        "material": "tile", "position": [3, 3, 2.5]
-      }
-    ],
-    "components": [
-      {
-        "type": "door", "id": "front_door", "parentWall": "wall_front",
-        "from": [2.4, 0.0, 0], "width": 1.2, "height": 2.2,
-        "frameMaterial": "wood", "leafMaterial": "door_wood"
-      },
-      {
-        "type": "window", "id": "front_window", "parentWall": "wall_front",
-        "from": [4.8, 0.9, 0], "width": 1.0, "height": 1.0,
-        "verticalMullions": 1, "horizontalMullions": 1,
-        "frameMaterial": "window_frame", "glassMaterial": "glass"
-      }
-    ]
-  },
-  "materials": {
-    "wood":  { "baseColor": [0.55, 0.27, 0.07], "roughness": 0.7,  "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "stone": { "baseColor": [0.62, 0.59, 0.55], "roughness": 0.9,  "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "tile":  { "baseColor": [0.60, 0.25, 0.15], "roughness": 0.85, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "door_wood": { "baseColor": [0.38, 0.16, 0.06], "roughness": 0.72, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "window_frame": { "baseColor": [0.18, 0.18, 0.18], "roughness": 0.35, "metallic": 0.65, "albedo": 1.0, "lightingCondition": "D65_noon" },
-    "glass": { "baseColor": [0.55, 0.72, 0.82], "roughness": 0.12, "metallic": 0.0, "albedo": 1.0, "lightingCondition": "D65_noon", "materialClass": "glass", "side": "double", "transmission": 0.92, "ior": 1.5, "thickness": 0.012 }
-  },
-  "behaviors": {}
-}
-```
-
-**注意 opening 沿墙距离验算**：
-- wall_front: from=[0,0,0] → to=[6,3,0]，方向 X+，墙长 6m
-- front_door: from[0]=2.4（距起点 2.4m，居中偏左）✓
-- front_window: from[0]=4.8（距起点 4.8m，右侧）✓
+层数、层高、开间、墙厚和构件数量由本次需求与方案确定。门窗尺寸必须适配实际宿主，窗底标高依据本层地面推导；屋盖覆盖其负责的体量。前文局部字段示例不能作为整栋建筑模板，完整场景旧例仅保留在知识库外的迁移档案。
 
 ---
 

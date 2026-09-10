@@ -19,18 +19,18 @@ from app.agent.protocol import versioned_event
 JobRunner = Callable[[Any, dict, bool], Awaitable[None]]
 
 _SERVER_ROOT = Path(__file__).resolve().parents[2]
+GENERATION_PIPELINE_VERSION = "design-document-v1"
+_PIPELINE_UPGRADE_ERROR = "生成流程已升级，旧任务无法继续恢复，请重新发起生成请求"
 DEFAULT_CHECKPOINT_PATH = (
     _SERVER_ROOT / "storage" / "sessions" / "langgraph_checkpoints.sqlite3"
 )
 _PERSISTED_EVENT_TYPES = {
     "agent_step",
     "thinking_status",
-    "floor_plan_ready",
-    "floor_plan_review_required",
     "execution_plan_ready",
     "execution_plan_review_required",
+    "design_review_required",
     "execution_feedback_queued",
-    "style_review_required",
     "patch_proposal",
     "blueprint_generated",
     "agent_reply",
@@ -113,7 +113,17 @@ class GenerationJobService:
     async def startup(self, runner: JobRunner) -> None:
         await self.initialize()
         self._runner = runner
-        incomplete = await self.list_running_jobs()
+        active_jobs = await self.list_active_jobs()
+        incompatible = [
+            job for job in active_jobs if not self._uses_current_pipeline(job)
+        ]
+        for job in incompatible:
+            await self._retire_incompatible_job(job)
+        incomplete = [
+            job
+            for job in active_jobs
+            if job.status == "running" and self._uses_current_pipeline(job)
+        ]
         for job in incomplete:
             self._spawn(job, resume=True)
         if incomplete:
@@ -142,6 +152,9 @@ class GenerationJobService:
             raise ValueError("request_id 不能为空")
 
         active = await self.get_active_job_for_session(session_id)
+        if active is not None and not self._uses_current_pipeline(active):
+            await self._retire_incompatible_job(active)
+            active = None
         if active is not None and active.request_id != request_id:
             return active, False
 
@@ -149,8 +162,10 @@ class GenerationJobService:
         if existing is not None:
             return existing, False
 
-        await self._insert_job(request_id, session_id, payload)
-        job = GenerationJob(request_id, session_id, dict(payload), "running")
+        job_payload = dict(payload)
+        job_payload["_pipeline_version"] = GENERATION_PIPELINE_VERSION
+        await self._insert_job(request_id, session_id, job_payload)
+        job = GenerationJob(request_id, session_id, job_payload, "running")
         await self.attach(job.request_id, subscriber)
         self._spawn(job, resume=False)
         return job, True
@@ -170,6 +185,10 @@ class GenerationJobService:
             job = await self.get_active_job_for_session(session_id)
         if job is None:
             return None
+        if job.status in {"running", "waiting_review"} and not self._uses_current_pipeline(job):
+            await self._retire_incompatible_job(job)
+            job = await self.get_job(job.request_id)
+            assert job is not None
 
         # 与持久化事件发布共用一把锁，保证“历史补发完成”先于新的实时关键事件。
         lock = self._event_locks.setdefault(job.request_id, asyncio.Lock())
@@ -199,97 +218,6 @@ class GenerationJobService:
         if latest is not None and latest.status == "running":
             self._spawn(latest, resume=True)
 
-    async def submit_floor_plan_review(
-        self,
-        subscriber: Any,
-        *,
-        request_id: str,
-        session_id: str,
-        action: str,
-        feedback: str = "",
-    ) -> GenerationJob:
-        """提交平面确认或修改意见，并从持久化 interrupt 继续。"""
-
-        await self.initialize()
-        job = await self.get_job(request_id)
-        if job is None or job.session_id != session_id:
-            raise ValueError("找不到对应的平面审核任务")
-        if job.status != "waiting_review":
-            raise ValueError("当前任务不在平面审核阶段")
-        waiting_type = str(job.payload.get("_waiting_review_type") or "floor_plan")
-        if waiting_type != "floor_plan":
-            raise ValueError("当前等待的是风格审核，不是平面审核")
-        action = str(action).lower()
-        feedback = str(feedback).strip()
-        if action not in {"confirm", "revise"}:
-            raise ValueError("平面审核 action 只能是 confirm 或 revise")
-        if action == "revise" and not feedback:
-            raise ValueError("提交修改时必须填写具体修改意见")
-        payload = dict(job.payload)
-        payload["_floor_plan_review"] = {"action": action, "feedback": feedback}
-        await self._update_payload_and_status(request_id, payload, "running")
-        resumed = GenerationJob(
-            request_id=request_id,
-            session_id=session_id,
-            payload=payload,
-            status="running",
-            last_event_seq=job.last_event_seq,
-        )
-        await self.attach(request_id, subscriber)
-        await self._resume_review_job(resumed)
-        return resumed
-
-    async def submit_style_review(
-        self,
-        subscriber: Any,
-        *,
-        request_id: str,
-        session_id: str,
-        action: str,
-        style_package_id: str = "",
-        feedback: str = "",
-    ) -> GenerationJob:
-        """提交第二次风格确认，并从 style_review interrupt 继续。"""
-
-        await self.initialize()
-        job = await self.get_job(request_id)
-        if job is None or job.session_id != session_id:
-            raise ValueError("找不到对应的风格审核任务")
-        if job.status != "waiting_review":
-            raise ValueError("当前任务不在风格审核阶段")
-        if str(job.payload.get("_waiting_review_type") or "") != "style":
-            raise ValueError("当前等待的是平面审核，不是风格审核")
-        action = str(action).lower()
-        feedback = str(feedback).strip()
-        style_package_id = str(style_package_id).strip().lower()
-        if action not in {"confirm", "revise"}:
-            raise ValueError("风格审核 action 只能是 confirm 或 revise")
-        if action == "confirm" and not style_package_id:
-            raise ValueError("确认风格时必须选择一个风格包")
-        if action == "confirm":
-            from app.agent.plan2build.style_registry import style_registry
-
-            style_registry.get(style_package_id)
-        if action == "revise" and not feedback:
-            raise ValueError("修改风格时必须填写具体意见")
-        payload = dict(job.payload)
-        payload["_style_review"] = {
-            "action": action,
-            "style_package_id": style_package_id,
-            "feedback": feedback,
-        }
-        await self._update_payload_and_status(request_id, payload, "running")
-        resumed = GenerationJob(
-            request_id=request_id,
-            session_id=session_id,
-            payload=payload,
-            status="running",
-            last_event_seq=job.last_event_seq,
-        )
-        await self.attach(request_id, subscriber)
-        await self._resume_review_job(resumed)
-        return resumed
-
     async def submit_execution_plan_review(
         self,
         subscriber: Any,
@@ -305,6 +233,7 @@ class GenerationJobService:
         job = await self.get_job(request_id)
         if job is None or job.session_id != session_id:
             raise ValueError("找不到对应的执行计划审核任务")
+        await self._require_current_pipeline(job)
         if job.status != "waiting_review":
             raise ValueError("当前任务不在执行计划审核阶段")
         if str(job.payload.get("_waiting_review_type") or "") != "execution_plan":
@@ -320,6 +249,62 @@ class GenerationJobService:
             "action": action,
             "feedback": feedback,
         }
+        await self._update_payload_and_status(request_id, payload, "running")
+        resumed = GenerationJob(
+            request_id=request_id,
+            session_id=session_id,
+            payload=payload,
+            status="running",
+            last_event_seq=job.last_event_seq,
+        )
+        await self.attach(request_id, subscriber)
+        await self._resume_review_job(resumed)
+        return resumed
+
+    async def submit_design_review(
+        self,
+        subscriber: Any,
+        *,
+        request_id: str,
+        session_id: str,
+        action: str,
+        feedback: str = "",
+        base_revision: int | None = None,
+    ) -> GenerationJob:
+        """批准具体建筑设计，或携带自然语言意见重新生成设计方案。"""
+
+        await self.initialize()
+        job = await self.get_job(request_id)
+        if job is None or job.session_id != session_id:
+            raise ValueError("找不到对应的建筑设计审核任务")
+        await self._require_current_pipeline(job)
+        if job.status != "waiting_review":
+            raise ValueError("当前任务不在建筑设计审核阶段")
+        if str(job.payload.get("_waiting_review_type") or "") != "design_document":
+            raise ValueError("当前等待的不是建筑设计审核")
+        action = str(action).lower()
+        feedback = str(feedback).strip()
+        if action not in {"confirm", "revise"}:
+            raise ValueError("建筑设计审核 action 只能是 confirm 或 revise")
+        if action == "revise" and not feedback:
+            raise ValueError("要求修改设计时必须填写具体意见")
+
+        from app.design.repository import design_repository
+
+        document = design_repository.get(session_id)
+        if document is None:
+            raise ValueError("建筑设计文档不存在")
+        if base_revision is not None and document.revision != int(base_revision):
+            raise ValueError(
+                f"设计版本冲突：当前 r{document.revision}，审核请求基于 r{base_revision}"
+            )
+        review: dict[str, Any] = {
+            "action": action,
+            "feedback": feedback,
+            "document": document.model_dump(mode="json"),
+        }
+        payload = dict(job.payload)
+        payload["_design_review"] = review
         await self._update_payload_and_status(request_id, payload, "running")
         resumed = GenerationJob(
             request_id=request_id,
@@ -350,6 +335,7 @@ class GenerationJobService:
             job = await self.get_job(request_id)
             if job is None or job.session_id != session_id:
                 raise ValueError("找不到对应的计划任务")
+            await self._require_current_pipeline(job)
             if job.status != "running" or job.payload.get("plan_mode") is not True:
                 raise ValueError("当前没有可接收意见的运行中计划")
             payload = dict(job.payload)
@@ -392,7 +378,7 @@ class GenerationJobService:
     async def mark_waiting_for_review(
         self,
         request_id: str,
-        review_type: str = "floor_plan",
+        review_type: str,
     ) -> None:
         """在向客户端暴露审核按钮前落库，消除快速点击产生的竞态。"""
 
@@ -415,6 +401,17 @@ class GenerationJobService:
                 empty.append(request_id)
         for request_id in empty:
             self._subscribers.pop(request_id, None)
+
+    def has_running_job_for(self, subscriber: Any) -> bool:
+        """当前物理连接是否仍附着至少一个正在执行的后台任务。"""
+        subscriber_id = id(subscriber)
+        for request_id, subscribers in self._subscribers.items():
+            if subscriber_id not in subscribers:
+                continue
+            task = self._active_tasks.get(request_id)
+            if task is not None and not task.done():
+                return True
+        return False
 
     async def publish_event(self, request_id: str, payload: dict) -> None:
         event = dict(payload)
@@ -496,6 +493,46 @@ class GenerationJobService:
             rows = await cursor.fetchall()
         return [self._row_to_job(row) for row in rows if row is not None]
 
+    async def list_active_jobs(self) -> list[GenerationJob]:
+        """列出可能需要恢复或等待审核的任务，供启动时做版本隔离。"""
+
+        async with aiosqlite.connect(self.database_path) as db:
+            cursor = await db.execute(
+                """SELECT request_id, session_id, payload_json, status,
+                          last_event_seq, error
+                   FROM generation_jobs
+                   WHERE status IN ('running', 'waiting_review')
+                   ORDER BY created_at"""
+            )
+            rows = await cursor.fetchall()
+        return [self._row_to_job(row) for row in rows if row is not None]
+
+    @staticmethod
+    def _uses_current_pipeline(job: GenerationJob) -> bool:
+        return job.payload.get("_pipeline_version") == GENERATION_PIPELINE_VERSION
+
+    async def _require_current_pipeline(self, job: GenerationJob) -> None:
+        if self._uses_current_pipeline(job):
+            return
+        await self._retire_incompatible_job(job)
+        raise ValueError(_PIPELINE_UPGRADE_ERROR)
+
+    async def _retire_incompatible_job(self, job: GenerationJob) -> None:
+        """终止旧图拓扑任务，避免恢复到已经删除的节点。"""
+
+        if job.status not in {"running", "waiting_review"}:
+            return
+        logger.warning(
+            f"[{job.request_id}] 检测到旧生成流程任务，已停止自动恢复"
+        )
+        await self.publish_event(job.request_id, versioned_event({
+            "type": "error",
+            "code": "generation_pipeline_upgraded",
+            "request_id": job.request_id,
+            "session_id": job.session_id,
+            "error": _PIPELINE_UPGRADE_ERROR,
+        }))
+
     def _spawn(self, job: GenerationJob, *, resume: bool) -> asyncio.Task:
         if self._runner is None:
             raise RuntimeError("GenerationJobService runner 尚未配置")
@@ -530,9 +567,8 @@ class GenerationJobService:
                 current is not None
                 and current.status == "running"
                 and (
-                    isinstance(current.payload.get("_floor_plan_review"), dict)
-                    or isinstance(current.payload.get("_style_review"), dict)
-                    or isinstance(current.payload.get("_execution_plan_review"), dict)
+                    isinstance(current.payload.get("_execution_plan_review"), dict)
+                    or isinstance(current.payload.get("_design_review"), dict)
                 )
             )
             if not pause_already_persisted and not review_already_submitted:

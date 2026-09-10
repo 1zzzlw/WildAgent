@@ -16,6 +16,64 @@
       <div v-if="turn.interruption_reason" class="interruption-notice">
         {{ turn.interruption_reason }}
       </div>
+      <section v-if="turn.design_document" class="design-review" :class="{ active: isDesignReview }">
+        <div class="execution-plan-header">
+          <strong>建筑设计 r{{ turn.design_document.revision }}</strong>
+          <span>{{ designStatusLabel(turn.design_document.status) }}</span>
+        </div>
+        <div class="design-concept">{{ turn.design_document.decisions.concept }}</div>
+        <div class="design-facts">
+          <span>{{ turn.design_document.decisions.massing.width }} × {{ turn.design_document.decisions.massing.depth }}m</span>
+          <span>{{ turn.design_document.decisions.massing.floors }} 层</span>
+          <span>{{ turn.design_document.decisions.volumes.length }} 个体量</span>
+          <span>{{ turn.design_document.decisions.envelope.system }}</span>
+          <span>{{ turn.design_document.decisions.roof.type }} 屋顶</span>
+          <span v-if="designMaterialConcept">{{ designMaterialConcept }}</span>
+        </div>
+        <a
+          v-if="turn.design_preview_url"
+          class="design-preview-link"
+          :href="turn.design_preview_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="在新窗口查看原始 SVG"
+        >
+          <img :src="turn.design_preview_url" alt="建筑体量、主立面和侧立面设计预览" />
+        </a>
+        <details class="design-details">
+          <summary>设计约束与构件计划</summary>
+          <div v-for="constraint in turn.design_document.constraints" :key="constraint.id">
+            <strong>{{ constraint.kind }}</strong> · {{ constraint.expression }}
+          </div>
+          <div class="design-quota">
+            <span
+              v-for="(quota, component) in turn.design_document.decisions.component_quota"
+              :key="component"
+            >{{ component }} {{ quota.min }}–{{ quota.max }}</span>
+          </div>
+        </details>
+        <div v-if="isDesignReview" class="review-actions">
+          <button
+            type="button"
+            class="confirm-plan-btn"
+            @click="$emit('confirm-design', turn.request_id)"
+          >批准此设计并生成 Blueprint</button>
+          <span>Blueprint 将绑定设计 revision 和 hash</span>
+        </div>
+        <div v-if="isDesignReview" class="review-revision">
+          <textarea
+            v-model="designFeedback"
+            rows="3"
+            placeholder="例如：塔楼向后退 2 米；主立面改为非对称；保留层数并减少窗格密度。"
+          ></textarea>
+          <button
+            type="button"
+            class="revise-plan-btn"
+            :disabled="!designFeedback.trim()"
+            @click="submitDesignRevision"
+          >根据意见生成下一版设计</button>
+        </div>
+      </section>
       <section v-if="turn.execution_plan" class="execution-plan-review" :class="{ active: isPlanReview }">
         <div class="execution-plan-header">
           <strong>执行计划 v{{ turn.execution_plan.version }}</strong>
@@ -70,10 +128,10 @@
           <summary>不可绕过的约束</summary>
           <div v-for="constraint in turn.execution_plan.constraints" :key="constraint">· {{ constraint }}</div>
         </details>
-        <div v-if="turn.execution_feedback_queued_count" class="floor-plan-note">
+        <div v-if="turn.execution_feedback_queued_count" class="review-note">
           已排队 {{ turn.execution_feedback_queued_count }} 条运行中意见，将在下一节点边界处理。
         </div>
-        <div v-if="isPlanReview" class="floor-plan-actions">
+        <div v-if="isPlanReview" class="review-actions">
           <button
             type="button"
             class="confirm-plan-btn"
@@ -82,11 +140,11 @@
           >批准计划并开始执行</button>
           <span>批准前不会生成三维</span>
         </div>
-        <div v-if="isPlanReview" class="floor-plan-revision">
+        <div v-if="isPlanReview" class="review-revision">
           <textarea
             v-model="planFeedback"
             rows="3"
-            placeholder="例如：先检查玻璃幕墙材质能力；底部改为三层商业基座；保留平面确认步骤。"
+            placeholder="例如：先检查玻璃幕墙材质能力；底部改为三层商业基座；减少非必要组件。"
           ></textarea>
           <button
             type="button"
@@ -96,126 +154,12 @@
           >根据意见重新制定计划</button>
         </div>
       </section>
-      <details v-if="floorPlanImageUrl" class="floor-plan-preview" open>
-        <summary>
-          平面方案（审核版）
-          <span>· {{ floorPlanSummary }}</span>
-        </summary>
-        <div class="floor-plan-note">红色为门、蓝色为窗；平面确认前可以在聊天输入框反复发送修改意见。</div>
-        <div v-if="floorPlanLevels.length > 1" class="level-tabs">
-          <button
-            v-for="item in floorPlanLevels"
-            :key="item.level"
-            type="button"
-            :class="{ active: item.level === selectedLevel }"
-            @click="selectedLevel = item.level"
-          >第 {{ item.level }} 层</button>
-        </div>
-        <img :src="floorPlanImageUrl" :alt="`建筑第 ${selectedLevel} 层平面审核图`" />
-        <div v-if="turn.floor_plan_notice" class="floor-plan-notice">
-          {{ turn.floor_plan_notice }}
-        </div>
-        <details v-if="floorPlanRuleFindings.length" class="floor-plan-rules">
-          <summary>
-            工程预审 {{ floorPlanRuleFindings.length }} 项
-            <span v-if="floorPlanRuleFailureCount" class="validation-error">· {{ floorPlanRuleFailureCount }} 项未通过</span>
-          </summary>
-          <div
-            v-for="(finding, index) in floorPlanRuleFindings"
-            :key="`${finding.gate}-${finding.entity_id || index}`"
-            :class="['validation-line', finding.passed ? 'status-ok' : 'status-error']"
-          >
-            {{ finding.passed ? '✓' : '!' }} {{ ruleGateLabel(finding.gate) }}：{{ finding.message }}
-          </div>
-          <div class="floor-plan-note">方案阶段辅助检查，不替代所在地法定施工图审查。</div>
-        </details>
-        <div
-          v-if="!turn.floor_plan_can_confirm && (turn.floor_plan_fallback_reason || !turn.floor_plan_notice)"
-          class="floor-plan-warning"
-        >
-          <template v-if="turn.floor_plan_fallback_reason">当前是不可确认的降级轮廓：{{ turn.floor_plan_fallback_reason }}。</template>
-          <template v-else>当前平面方案未通过校验，暂时不能直接生成三维。</template>
-          请在输入框说明问题，让 Agent 重新生成。
-        </div>
-        <div v-if="isFloorReview" class="floor-plan-actions">
-          <button
-            v-if="turn.floor_plan_can_confirm"
-            type="button"
-            class="confirm-plan-btn"
-            @click="$emit('confirm-floor-plan', turn.request_id)"
-          >确认平面并生成三维</button>
-          <button
-            v-else
-            type="button"
-            class="retry-plan-btn"
-            @click="$emit('retry-floor-plan', turn.request_id)"
-          >重新生成可确认方案</button>
-          <span>版本 {{ (turn.floor_plan_revision || 0) + 1 }}</span>
-        </div>
-        <div v-if="isFloorReview" class="floor-plan-revision">
-          <textarea
-            v-model="revisionFeedback"
-            rows="3"
-            placeholder="例如：把厨房移到北侧；主卧增加南向窗；一层改成 L 形，并保留中庭。"
-          ></textarea>
-          <button
-            type="button"
-            class="revise-plan-btn"
-            :disabled="!revisionFeedback.trim()"
-            @click="submitRevision"
-          >按修改意见重新设计平面</button>
-          <div class="floor-plan-note">
-            修改意见会回到同一个平面设计节点生成新版本；也可以直接在聊天输入框发送修改要求。
-          </div>
-        </div>
-      </details>
-      <section v-if="turn.style_options?.length" class="style-review" :class="{ active: isStyleReview }">
-        <div class="style-review-title">建筑风格（二次确认）</div>
-        <div class="floor-plan-note">
-          主体 G1-G6 已通过。请选择风格；确认后才会装配屋顶外观、檐口、入口雨棚和柱列，并执行 G7。
-        </div>
-        <label
-          v-for="option in turn.style_options"
-          :key="option.id"
-          :class="['style-option', { selected: selectedStyleId === option.id }]"
-        >
-          <input
-            v-model="selectedStyleId"
-            type="radio"
-            :value="option.id"
-            :disabled="!isStyleReview"
-          />
-          <span><strong>{{ option.name }}</strong><small>{{ option.description }}</small></span>
-        </label>
-        <div v-if="isStyleReview" class="style-actions">
-          <button
-            type="button"
-            class="confirm-plan-btn"
-            :disabled="!selectedStyleId"
-            @click="$emit('confirm-style', turn.request_id, selectedStyleId)"
-          >确认风格并完成三维</button>
-          <span>版本 {{ (turn.style_revision || 0) + 1 }}</span>
-        </div>
-        <div v-if="isStyleReview" class="floor-plan-revision">
-          <textarea
-            v-model="styleFeedback"
-            rows="2"
-            placeholder="例如：改成新中式，屋檐更明显；或者改成克制的欧式风格。"
-          ></textarea>
-          <button
-            type="button"
-            class="revise-plan-btn"
-            :disabled="!styleFeedback.trim()"
-            @click="submitStyleRevision"
-          >按意见调整风格</button>
-        </div>
-      </section>
       <details
         v-for="step in turn.steps"
         :key="step.node"
         :id="`agent-step-${turn.turn_id}-${step.node}`"
         class="execution-step"
-        :open="step.status === 'running' || (turn.status === 'waiting_review' && step.node === 'floor_plan_design')"
+        :open="step.status === 'running'"
       >
         <summary class="step-summary">
           <span :class="['step-dot', `status-${step.status}`]"></span>
@@ -297,20 +241,14 @@ import type { AgentTurn } from '../../types/agent'
 
 const props = defineProps<{ turn: AgentTurn }>()
 const emit = defineEmits<{
-  (event: 'confirm-floor-plan', requestId: string): void
-  (event: 'retry-floor-plan', requestId: string): void
-  (event: 'revise-floor-plan', requestId: string, feedback: string): void
-  (event: 'confirm-style', requestId: string, stylePackageId: string): void
-  (event: 'revise-style', requestId: string, feedback: string): void
   (event: 'confirm-execution-plan', requestId: string): void
   (event: 'revise-execution-plan', requestId: string, feedback: string): void
+  (event: 'confirm-design', requestId: string): void
+  (event: 'revise-design', requestId: string, feedback: string): void
 }>()
 const clock = ref(Date.now())
-const selectedLevel = ref('1')
-const revisionFeedback = ref('')
-const styleFeedback = ref('')
-const selectedStyleId = ref('')
 const planFeedback = ref('')
+const designFeedback = ref('')
 let timer: number | undefined
 
 const md = new MarkdownIt({ html: false, breaks: true, linkify: false })
@@ -323,21 +261,20 @@ const durationMs = computed(() => {
 const summaryTitle = computed(() => {
   if (props.turn.status === 'running') return '正在处理'
   if (isPlanReview.value) return '等待批准执行计划'
-  if (isStyleReview.value) return '等待确认建筑风格'
-  if (props.turn.status === 'waiting_review') return '等待确认平面'
+  if (isDesignReview.value) return '等待批准建筑设计'
+  if (props.turn.status === 'waiting_review') return '等待用户确认'
   if (props.turn.status === 'error') return '处理未完成'
   return '处理完成'
 })
 
-const isFloorReview = computed(() =>
-  props.turn.status === 'waiting_review' && props.turn.floor_plan_review_status === 'pending',
-)
-const isStyleReview = computed(() =>
-  props.turn.status === 'waiting_review' && props.turn.style_review_status === 'pending',
-)
 const isPlanReview = computed(() =>
   props.turn.status === 'waiting_review'
   && props.turn.execution_plan_review_status === 'pending',
+)
+
+const isDesignReview = computed(() =>
+  props.turn.status === 'waiting_review'
+  && props.turn.design_review_status === 'pending',
 )
 
 const summaryMeta = computed(() => {
@@ -351,67 +288,35 @@ const validationErrorCount = computed(() =>
   props.turn.validation_steps.filter(step => step.status === 'error').length,
 )
 
-const floorPlanLevels = computed(() => {
-  const svgs = props.turn.floor_plan_svgs || {}
-  const entries = Object.entries(svgs)
-    .sort(([left], [right]) => Number(left) - Number(right))
-    .map(([level, svg]) => ({ level, svg }))
-  if (!entries.length && props.turn.floor_plan_svg) {
-    entries.push({ level: '1', svg: props.turn.floor_plan_svg })
-  }
-  return entries
+const designMaterialConcept = computed(() => {
+  const plan = props.turn.design_document?.decisions.materials.resolved_plan
+  return typeof plan?.concept === 'string' ? plan.concept : ''
 })
 
-const floorPlanImageUrl = computed(() => {
-  const svg = floorPlanLevels.value.find(item => item.level === selectedLevel.value)?.svg
-    || floorPlanLevels.value[0]?.svg
-  return svg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}` : ''
-})
-
-watch(floorPlanLevels, levels => {
-  if (levels.length && !levels.some(item => item.level === selectedLevel.value)) {
-    selectedLevel.value = levels[0].level
-  }
-}, { immediate: true })
-
 watch(
-  () => [props.turn.request_id, props.turn.floor_plan_revision],
-  () => { revisionFeedback.value = '' },
-)
-
-watch(
-  () => [props.turn.request_id, props.turn.style_revision, props.turn.selected_style_id] as const,
+  () => [props.turn.request_id, props.turn.execution_plan?.version, props.turn.design_document?.revision] as const,
   () => {
-    styleFeedback.value = ''
-    selectedStyleId.value = props.turn.selected_style_id || props.turn.style_options?.[0]?.id || ''
+    planFeedback.value = ''
+    designFeedback.value = ''
   },
-  { immediate: true },
 )
-
-watch(
-  () => [props.turn.request_id, props.turn.execution_plan?.version] as const,
-  () => { planFeedback.value = '' },
-)
-
-function submitRevision() {
-  const feedback = revisionFeedback.value.trim()
-  if (!feedback) return
-  emit('revise-floor-plan', props.turn.request_id, feedback)
-  revisionFeedback.value = ''
-}
-
-function submitStyleRevision() {
-  const feedback = styleFeedback.value.trim()
-  if (!feedback) return
-  emit('revise-style', props.turn.request_id, feedback)
-  styleFeedback.value = ''
-}
 
 function submitPlanRevision() {
   const feedback = planFeedback.value.trim()
   if (!feedback) return
   emit('revise-execution-plan', props.turn.request_id, feedback)
   planFeedback.value = ''
+}
+
+function submitDesignRevision() {
+  const feedback = designFeedback.value.trim()
+  if (!feedback) return
+  emit('revise-design', props.turn.request_id, feedback)
+  designFeedback.value = ''
+}
+
+function designStatusLabel(status: string): string {
+  return ({ draft: '草案', approved: '已批准', compiled: '已编译' } as Record<string, string>)[status] || status
 }
 
 function planStepMark(status: string): string {
@@ -440,62 +345,11 @@ function plannerSourceLabel(source?: string): string {
 function planPhaseLabel(phase: string): string {
   return ({
     architecture: '总体方案',
-    floor_plan_design: '平面设计',
     material_plan: '材质方案',
     skeleton: '主体装配',
-    decor_assembly: '装饰装配',
     final_validate: '最终校验',
     patch: '场景修改',
   } as Record<string, string>)[phase] || phase
-}
-
-const floorPlanSummary = computed(() => {
-  const plan = props.turn.floor_plan
-  if (!plan) return '等待空间数据'
-  const levels = Array.isArray(plan.levels) ? plan.levels : []
-  const spaceCount = levels.reduce((total, level) => {
-    if (!level || typeof level !== 'object') return total
-    const spaces = (level as Record<string, unknown>).spaces
-    return total + (Array.isArray(spaces) ? spaces.length : 0)
-  }, 0)
-  const source = plan.source === 'model'
-    ? '模型方案'
-    : plan.source === 'deterministic_template' ? '确定性基础方案' : '安全回退'
-  return `${levels.length} 层 · ${spaceCount} 个空间 · ${source}`
-})
-
-interface FloorPlanRuleFinding {
-  gate: string
-  passed: boolean
-  message: string
-  entity_id?: string | null
-}
-
-const floorPlanRuleFindings = computed<FloorPlanRuleFinding[]>(() => {
-  const report = props.turn.floor_plan?.rule_review
-  if (!report || typeof report !== 'object') return []
-  const findings = (report as Record<string, unknown>).findings
-  return Array.isArray(findings) ? findings.filter((item): item is FloorPlanRuleFinding => (
-    !!item && typeof item === 'object'
-    && typeof (item as FloorPlanRuleFinding).gate === 'string'
-    && typeof (item as FloorPlanRuleFinding).passed === 'boolean'
-    && typeof (item as FloorPlanRuleFinding).message === 'string'
-  )) : []
-})
-
-const floorPlanRuleFailureCount = computed(() =>
-  floorPlanRuleFindings.value.filter(item => !item.passed).length,
-)
-
-function ruleGateLabel(gate: string): string {
-  return ({
-    elevator: '电梯覆盖',
-    egress: '疏散距离',
-    daylight: '采光面积',
-    symmetry: '轴线对称',
-    opening_corner: '洞口距墙角',
-    functional_flow: '功能流线',
-  } as Record<string, string>)[gate] || gate
 }
 
 function renderMarkdown(content: string): string {
@@ -595,6 +449,35 @@ onUnmounted(() => {
   background: rgba(104, 153, 212, .035);
 }
 
+.design-review {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 10px;
+  padding: 10px;
+  border: 1px solid rgba(91, 178, 142, .24);
+  border-radius: 7px;
+  background: rgba(91, 178, 142, .04);
+}
+
+.design-review.active { border-color: rgba(250, 204, 21, .42); }
+.design-concept { color: #c7d7cf; font-size: 11px; line-height: 1.5; }
+.design-facts { display: flex; flex-wrap: wrap; gap: 5px; }
+.design-facts span,
+.design-quota span {
+  padding: 2px 6px;
+  color: #aec6b9;
+  border-radius: 4px;
+  background: rgba(91, 178, 142, .1);
+  font-size: 10px;
+}
+.design-preview-link { display: block; overflow: hidden; border-radius: 6px; background: #171a20; }
+.design-preview-link img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.design-details { color: #929da8; font-size: 10.5px; }
+.design-details > summary { cursor: pointer; color: #bac4ce; }
+.design-details > div { padding-top: 4px; }
+.design-details strong { color: #8fbfa9; font-size: 9.5px; }
+.design-quota { display: flex; flex-wrap: wrap; gap: 4px; }
+
 .execution-plan-review.active { border-color: rgba(250, 204, 21, .38); }
 .execution-plan-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .execution-plan-header strong { color: #dedee3; font-size: 12px; }
@@ -658,78 +541,23 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.floor-plan-preview {
-  margin: 4px 0 8px;
-  padding: 8px 10px 10px;
-  border: 1px solid rgba(250, 204, 21, .16);
-  border-radius: 7px;
-  background: rgba(250, 204, 21, .025);
-}
-
-.style-review {
-  display: grid;
-  gap: 7px;
-  margin: 4px 0 9px;
-  padding: 9px 10px;
-  border: 1px solid rgba(104, 153, 212, .16);
-  border-radius: 7px;
-  background: rgba(104, 153, 212, .025);
-}
-
-.style-review.active { border-color: rgba(250, 204, 21, .32); }
-.style-review-title { color: #d8d8dd; font-size: 11.5px; font-weight: 600; }
-.style-option {
-  display: flex;
-  gap: 7px;
-  align-items: flex-start;
-  padding: 7px 8px;
-  border: 1px solid rgba(255, 255, 255, .06);
-  border-radius: 6px;
-  cursor: pointer;
-}
-.style-option.selected { border-color: rgba(104, 153, 212, .58); background: rgba(104, 153, 212, .1); }
-.style-option input { margin-top: 2px; }
-.style-option span { display: grid; gap: 2px; }
-.style-option strong { color: #d8d8dd; font-size: 11.5px; }
-.style-option small { color: #777781; font-size: 10.5px; line-height: 1.4; }
-.style-actions { display: flex; align-items: center; justify-content: space-between; color: #777781; font-size: 10.5px; }
-
-.floor-plan-preview > summary {
-  cursor: pointer;
-  color: #d8d8dd;
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.floor-plan-preview > summary span,
-.floor-plan-note {
+.review-note {
   color: #777781;
   font-weight: 400;
 }
 
-.floor-plan-note {
+.review-note {
   margin: 6px 0;
   font-size: 10.5px;
 }
 
-.floor-plan-preview img {
-  display: block;
-  width: 100%;
-  max-height: 360px;
-  object-fit: contain;
-  border-radius: 5px;
-  background: #111118;
-}
-
-.level-tabs,
-.floor-plan-actions {
+.review-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 7px 0;
 }
 
-.level-tabs button,
 .confirm-plan-btn,
 .retry-plan-btn,
 .revise-plan-btn {
@@ -741,32 +569,7 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.level-tabs button.active {
-  color: #e5e7eb;
-  border-color: #6899d4;
-  background: rgba(104, 153, 212, .2);
-}
-
-.floor-plan-warning {
-  margin-top: 7px;
-  padding: 7px 9px;
-  color: #e6b36a;
-  border-radius: 5px;
-  background: rgba(230, 179, 106, .08);
-  font-size: 10.5px;
-}
-
-.floor-plan-notice {
-  margin-top: 7px;
-  padding: 7px 9px;
-  color: #d8c386;
-  border-radius: 5px;
-  background: rgba(216, 195, 134, .08);
-  font-size: 10.5px;
-  line-height: 1.5;
-}
-
-.floor-plan-actions {
+.review-actions {
   justify-content: space-between;
   color: #777781;
   font-size: 10.5px;
@@ -784,7 +587,7 @@ onUnmounted(() => {
   background: rgba(230, 179, 106, .12);
 }
 
-.floor-plan-revision {
+.review-revision {
   display: grid;
   gap: 6px;
   margin-top: 9px;
@@ -792,7 +595,7 @@ onUnmounted(() => {
   border-top: 1px solid rgba(255, 255, 255, .06);
 }
 
-.floor-plan-revision textarea {
+.review-revision textarea {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
@@ -807,7 +610,7 @@ onUnmounted(() => {
   line-height: 1.45;
 }
 
-.floor-plan-revision textarea:focus {
+.review-revision textarea:focus {
   border-color: rgba(104, 153, 212, .72);
 }
 
@@ -909,7 +712,6 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.floor-plan-rules,
 .validation-details,
 .developer-details {
   margin-top: 7px;
@@ -919,7 +721,6 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.floor-plan-rules > summary,
 .validation-details > summary,
 .developer-details > summary { cursor: pointer; }
 .validation-error, .validation-line.status-error { color: #e07060; }

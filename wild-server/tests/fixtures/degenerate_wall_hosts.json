@@ -1,0 +1,621 @@
+{
+  "user_message": "生成一个别墅",
+  "architecture_plan": {
+    "schema_version": "1.1",
+    "profile": "residential_lowrise",
+    "concept": "现代简约别墅：纯净矩形体量，大面积落地玻璃与水平线条，平屋顶强调简洁利落的现代感",
+    "massing": {
+      "shape": "rectangle",
+      "width": 15.0,
+      "depth": 12.0,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "floor_height": 3.0,
+      "symmetry": true
+    },
+    "complexity": {
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "level": "standard",
+      "reason": "未指定体量复杂度；精密模式只提高实现与验证质量"
+    },
+    "volumes": [
+      {
+        "id": "main_volume",
+        "role": "primary",
+        "x": 0,
+        "z": 0,
+        "width": 15.0,
+        "depth": 12.0,
+        "start_floor": 1,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 3,
+      "z_bays": 2
+    },
+    "detail_packages": [],
+    "facades": {
+      "front": {
+        "bays": 3,
+        "entrance_bay": 1,
+        "ground_pattern": [
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "back": {
+        "bays": 3,
+        "entrance_bay": 1,
+        "ground_pattern": [
+          "window",
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "left": {
+        "bays": 2,
+        "entrance_bay": 1,
+        "ground_pattern": [
+          "window",
+          "empty"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      },
+      "right": {
+        "bays": 2,
+        "entrance_bay": 1,
+        "ground_pattern": [
+          "empty",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "ridge_axis": "x",
+      "overhang": 0.3
+    },
+    "component_quota": {
+      "door": {
+        "min": 1,
+        "max": 2,
+        "note": "主入口门1扇"
+      },
+      "window": {
+        "min": 14,
+        "max": 18,
+        "note": "大面积落地窗为主"
+      },
+      "roof": {
+        "min": 1,
+        "max": 1,
+        "type": "flat",
+        "note": "覆盖主体体量"
+      },
+      "sunshade": {
+        "min": 2,
+        "max": 4,
+        "note": "水平遮阳板"
+      }
+    },
+    "curtain_wall": false,
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [
+      "door",
+      "window",
+      "roof"
+    ],
+    "design_rationale": [
+      "矩形体量简洁高效，15×12米基底提供240㎡/层，适合家庭居住",
+      "2×3框架轴网开间约5米，进深6米，结构经济合理",
+      "主入口设于前立面中央，对称布局强化仪式感",
+      "大面积玻璃窗确保充足采光，平屋顶呼应现代极简美学",
+      "总高6米符合低层别墅尺度，体量比例协调"
+    ]
+  },
+  "skeleton_blueprint": {
+    "meta": {
+      "version": "1.1",
+      "type": "building",
+      "name": "现代简约别墅结构骨架"
+    },
+    "geometry": {
+      "elements": [
+        {
+          "type": "floor",
+          "id": "floor_1",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            15,
+            0,
+            12
+          ],
+          "thickness": 0.2,
+          "material": "floor_finish"
+        },
+        {
+          "type": "floor",
+          "id": "floor_2",
+          "from": [
+            0,
+            3,
+            0
+          ],
+          "to": [
+            15,
+            3,
+            12
+          ],
+          "thickness": 0.2,
+          "material": "floor_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_front_1",
+          "from": [
+            0,
+            0,
+            0
+          ],
+          "to": [
+            0,
+            3,
+            0
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_front_2",
+          "from": [
+            0,
+            3,
+            0
+          ],
+          "to": [
+            0,
+            6,
+            0
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_back_1",
+          "from": [
+            15,
+            0,
+            12
+          ],
+          "to": [
+            15,
+            3,
+            12
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_back_2",
+          "from": [
+            15,
+            3,
+            12
+          ],
+          "to": [
+            15,
+            6,
+            12
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_left_1",
+          "from": [
+            0,
+            0,
+            12
+          ],
+          "to": [
+            0,
+            3,
+            12
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_left_2",
+          "from": [
+            0,
+            3,
+            12
+          ],
+          "to": [
+            0,
+            6,
+            12
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_right_1",
+          "from": [
+            15,
+            0,
+            0
+          ],
+          "to": [
+            15,
+            3,
+            0
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "wall",
+          "id": "wall_right_2",
+          "from": [
+            15,
+            3,
+            0
+          ],
+          "to": [
+            15,
+            6,
+            0
+          ],
+          "thickness": 0.3,
+          "material": "wall_finish"
+        },
+        {
+          "type": "column",
+          "id": "col_1_1",
+          "base": [
+            0,
+            0,
+            0
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "column",
+          "id": "col_1_2",
+          "base": [
+            7.5,
+            0,
+            0
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "column",
+          "id": "col_1_3",
+          "base": [
+            15,
+            0,
+            0
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "column",
+          "id": "col_2_1",
+          "base": [
+            0,
+            0,
+            12
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "column",
+          "id": "col_2_2",
+          "base": [
+            7.5,
+            0,
+            12
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "column",
+          "id": "col_2_3",
+          "base": [
+            15,
+            0,
+            12
+          ],
+          "height": 6.0,
+          "bottomRadius": 0.2,
+          "topRadius": 0.15,
+          "style": "modern",
+          "material": "concrete"
+        },
+        {
+          "type": "beam",
+          "id": "beam_x_1",
+          "from": [
+            0,
+            3,
+            0
+          ],
+          "to": [
+            15,
+            3,
+            0
+          ],
+          "crossSection": "rect",
+          "width": 0.2,
+          "height": 0.4,
+          "material": "concrete"
+        },
+        {
+          "type": "beam",
+          "id": "beam_x_2",
+          "from": [
+            0,
+            3,
+            12
+          ],
+          "to": [
+            15,
+            3,
+            12
+          ],
+          "crossSection": "rect",
+          "width": 0.2,
+          "height": 0.4,
+          "material": "concrete"
+        },
+        {
+          "type": "beam",
+          "id": "beam_z_1",
+          "from": [
+            0,
+            3,
+            0
+          ],
+          "to": [
+            0,
+            3,
+            12
+          ],
+          "crossSection": "rect",
+          "width": 0.2,
+          "height": 0.4,
+          "material": "concrete"
+        },
+        {
+          "type": "beam",
+          "id": "beam_z_2",
+          "from": [
+            7.5,
+            3,
+            0
+          ],
+          "to": [
+            7.5,
+            3,
+            12
+          ],
+          "crossSection": "rect",
+          "width": 0.2,
+          "height": 0.4,
+          "material": "concrete"
+        },
+        {
+          "type": "beam",
+          "id": "beam_z_3",
+          "from": [
+            15,
+            3,
+            0
+          ],
+          "to": [
+            15,
+            3,
+            12
+          ],
+          "crossSection": "rect",
+          "width": 0.2,
+          "height": 0.4,
+          "material": "concrete"
+        },
+        {
+          "type": "stair",
+          "id": "stair_main",
+          "from": [
+            11,
+            0,
+            2
+          ],
+          "to": [
+            11,
+            3,
+            10
+          ],
+          "width": 1.2,
+          "material": "metal"
+        }
+      ],
+      "components": []
+    },
+    "materials": {
+      "wall_finish": {
+        "baseColor": [
+          0.84,
+          0.82,
+          0.78
+        ],
+        "roughness": 0.72,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "concrete": {
+        "baseColor": [
+          0.66,
+          0.67,
+          0.68
+        ],
+        "roughness": 0.76,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "floor_finish": {
+        "baseColor": [
+          0.52,
+          0.51,
+          0.49
+        ],
+        "roughness": 0.78,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "metal": {
+        "baseColor": [
+          0.12,
+          0.13,
+          0.14
+        ],
+        "roughness": 0.3,
+        "metallic": 0.8,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "wood": {
+        "baseColor": [
+          0.38,
+          0.22,
+          0.12
+        ],
+        "roughness": 0.62,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "glass": {
+        "baseColor": [
+          0.72,
+          0.88,
+          0.96
+        ],
+        "roughness": 0.08,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon",
+        "materialClass": "glass",
+        "side": "double",
+        "transmission": 0.92,
+        "ior": 1.5,
+        "thickness": 0.012,
+        "attenuationColor": [
+          0.82,
+          0.94,
+          1.0
+        ],
+        "attenuationDistance": 6.0,
+        "clearcoat": 0.08,
+        "clearcoatRoughness": 0.12
+      },
+      "roof": {
+        "baseColor": [
+          0.27,
+          0.28,
+          0.3
+        ],
+        "roughness": 0.76,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "ground": {
+        "baseColor": [
+          0.34,
+          0.38,
+          0.33
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "accent": {
+        "baseColor": [
+          0.42,
+          0.2,
+          0.09
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      }
+    },
+    "assets": {}
+  }
+}

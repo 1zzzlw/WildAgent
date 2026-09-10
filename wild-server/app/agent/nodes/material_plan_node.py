@@ -312,16 +312,27 @@ async def material_planner(state: GenerationState) -> dict:
     procedural_materials_enabled = state.get("procedural_materials_enabled") is True
     procedural_catalog = compact_procedural_catalog() if procedural_materials_enabled else []
     raw_plan = None
+    prompt = ""
     error = None
     token_usage = None
     skipped_llm = False
     recovery_diag = None
     callback = get_reasoning_callback()
+    existing_material_plan = None
+    design_document = state.get("design_document")
+    if isinstance(design_document, dict):
+        materials = (design_document.get("decisions") or {}).get("materials") or {}
+        if isinstance(materials.get("resolved_plan"), dict):
+            existing_material_plan = materials["resolved_plan"]
 
     # 确定性优先：没有任何可匹配的 PBR 资产时，LLM 的审美输出会被 ROLE_SPECS
     # 兜底与白名单几乎全部覆盖（只剩概念文案与颜色微调），不值得付出一次串行 LLM
     # 往返。此时直接走 resolve_material_plan(None, ...) 的确定性路径。
-    if catalog:
+    if existing_material_plan is not None and state.get("design_material_refresh") is False:
+        raw_plan = existing_material_plan
+        skipped_llm = True
+        logger.info("[material_plan] 修改未涉及材质，复用上一版受控材质方案")
+    elif catalog:
         prompt = build_material_plan_prompt(
             architecture_plan,
             catalog,
@@ -395,6 +406,14 @@ async def material_planner(state: GenerationState) -> dict:
         str(state.get("user_message") or ""),
         procedural_materials_enabled=procedural_materials_enabled,
     )
+    resolved_design = state.get("resolved_design")
+    if isinstance(design_document, dict):
+        from app.design.repository import design_repository
+        from app.design.resolver import attach_material_plan
+
+        updated_document = attach_material_plan(design_document, plan)
+        updated_document, resolved_design = design_repository.save(updated_document)
+        design_document = updated_document.model_dump(mode="json")
     if callback:
         selected = [
             item for item in plan["roles"] if item.get("assetId")
@@ -409,6 +428,8 @@ async def material_planner(state: GenerationState) -> dict:
         )
     return {
         "material_plan": plan,
+        "design_document": design_document,
+        "resolved_design": resolved_design,
         "material_diag": {
             "catalog_count": len(catalog),
             "procedural_catalog_count": len(procedural_catalog),
@@ -420,6 +441,7 @@ async def material_planner(state: GenerationState) -> dict:
             "rejected_asset_ids": plan["rejectedAssetIds"],
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],
             "used_fallback": raw_plan is None,
+            "reused_previous": existing_material_plan is not None and state.get("design_material_refresh") is False,
             "skipped_llm": skipped_llm,
             "recovery": recovery_diag,
             "error": error,

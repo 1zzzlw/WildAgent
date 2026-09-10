@@ -1,0 +1,225 @@
+TITLE: 阿里云百炼向量模型踩坑：一次最多传20条，超过就报400错误
+
+
+阿里云百炼向量模型踩坑&#xff1a;一次最多传20条&#xff0c;超过就报400错误** 
+在使用阿里云百炼&#xff08;DashScope&#xff09;的向量模型时&#xff0c;发现文档切分后如果一次上传超过20条&#xff0c;就会报 400 错误。本文记录问题原因和解决方案。 
+一、问题描述 
+ 在使用 LangChain &#43; 阿里云百炼做 RAG 应用时&#xff0c;将文档切分成多个 chunk 后&#xff0c;调用 embedding 模型生成向量&#xff1a; 
+ from langchain_community . embeddings import DashScopeEmbeddings
+embeddings &#61; DashScopeEmbeddings ( model &#61; &#34;text-embedding-v3&#34; ) 
+# 假设切分出了 50 个 chunk 
+texts &#61; [ chunk1 , chunk2 , . . . , chunk50 ] 
+# 一次性传入所有 chunk 
+vectors &#61; embeddings . embed_documents ( texts ) # ❌ 报错&#xff01; 
+错误信息 
+ dashscope.common.error.InvalidParameter: 
+HTTP code 400, {&#34;code&#34;:&#34;InvalidParameter&#34;,&#34;message&#34;:&#34;The input is invalid...&#34;,&#34;request_id&#34;:&#34;xxx&#34;}
+或者&#xff1a; 
+ openai.BadRequestError: Error code: 400 - {'error': {'code': 'InvalidParameter', 'message': 'The input is invalid...'}}
+二、原因分析 
+ 2.1 官方文档的限制 
+ 查阅阿里云百炼官方文档&#xff0c;发现 text-embedding-v3 模型有以下限制&#xff1a; 
+ 限制项 限制值 单次请求最多输入条数 20 条 单条文本最大 Token 数 8192 总 Token 数&#xff08;单次请求&#xff09; 约 32000 
+ 关键点 &#xff1a;一次请求最多只能传入 20 条文本 &#xff0c;超过就会报 400 错误&#xff01; 
+ 2.2 LangChain 默认行为 
+ LangChain 的 embed_documents() 方法 默认会一次性传入所有文本 &#xff0c;不会自动分批。所以当你的文档切分超过 20 个 chunk 时&#xff0c;就会触发限制。 
+三、解决方案 
+ 方案一&#xff1a;手动分批处理&#xff08;推荐&#xff09; 
+ from langchain_community . embeddings import DashScopeEmbeddings
+embeddings &#61; DashScopeEmbeddings ( model &#61; &#34;text-embedding-v3&#34; ) 
+def batch_embed_documents ( embeddings , texts , batch_size &#61; 20 ) : 
+ &#34;&#34;&#34;分批调用 embedding 接口&#34;&#34;&#34; 
+ all_vectors &#61; [ ] 
+for i in range ( 0 , len ( texts ) , batch_size ) : 
+ batch &#61; texts [ i : i &#43; batch_size ] 
+ vectors &#61; embeddings . embed_documents ( batch ) 
+ all_vectors . extend ( vectors ) 
+ print ( f&#34;已处理 { min ( i &#43; batch_size , len ( texts ) ) } / { len ( texts ) } 条&#34; ) 
+return all_vectors
+# 使用 
+texts &#61; [ chunk1 , chunk2 , . . . , chunk50 ] # 假设 50 个 chunk 
+vectors &#61; batch_embed_documents ( embeddings , texts , batch_size &#61; 20 ) 
+ print ( f&#34;生成了 { len ( vectors ) } 个向量&#34; ) 
+方案二&#xff1a;自定义 Embeddings 类 
+ from langchain_community . embeddings import DashScopeEmbeddings
+ from typing import List
+class BatchDashScopeEmbeddings ( DashScopeEmbeddings ) : 
+ &#34;&#34;&#34;支持批量处理的 DashScope Embeddings&#34;&#34;&#34; 
+batch_size : int &#61; 20 # 每批处理的条数 
+def embed_documents ( self , texts : List [ str ] ) - > List [ List [ float ] ] : 
+ &#34;&#34;&#34;分批生成文档向量&#34;&#34;&#34; 
+ all_embeddings &#61; [ ] 
+for i in range ( 0 , len ( texts ) , self . batch_size ) : 
+ batch &#61; texts [ i : i &#43; self . batch_size ] 
+ # 调用父类方法 
+ batch_embeddings &#61; super ( ) . embed_documents ( batch ) 
+ all_embeddings . extend ( batch_embeddings ) 
+return all_embeddings
+# 使用 
+embeddings &#61; BatchDashScopeEmbeddings ( 
+ model &#61; &#34;text-embedding-v3&#34; , 
+ batch_size &#61; 20 
+ ) 
+# 现在可以一次性传入所有文本&#xff0c;内部会自动分批 
+texts &#61; [ chunk1 , chunk2 , . . . , chunk50 ] 
+vectors &#61; embeddings . embed_documents ( texts ) # ✅ 正常工作 
+方案三&#xff1a;使用 OpenAI 兼容接口 
+ from langchain_openai import OpenAIEmbeddings
+# 阿里云百炼兼容 OpenAI 接口 
+embeddings &#61; OpenAIEmbeddings ( 
+ model &#61; &#34;text-embedding-v3&#34; , 
+ openai_api_base &#61; &#34;https://dashscope.aliyuncs.com/compatible-mode/v1&#34; , 
+ openai_api_key &#61; &#34;your-api-key&#34; , 
+ chunk_size &#61; 20 # 关键参数&#xff01;设置每批处理条数 
+ ) 
+# 使用 
+texts &#61; [ chunk1 , chunk2 , . . . , chunk50 ] 
+vectors &#61; embeddings . embed_documents ( texts ) # ✅ 自动分批 
+四、完整示例代码 
+ 4.1 完整的 RAG 流程 
+ from langchain_community . embeddings import DashScopeEmbeddings
+ from langchain_community . vectorstores import FAISS
+ from langchain . text_splitter import RecursiveCharacterTextSplitter
+# 1. 初始化 embeddings&#xff08;带批量处理&#xff09; 
+ class BatchDashScopeEmbeddings ( DashScopeEmbeddings ) : 
+ batch_size : int &#61; 20 
+def embed_documents ( self , texts ) : 
+ all_embeddings &#61; [ ] 
+ for i in range ( 0 , len ( texts ) , self . batch_size ) : 
+ batch &#61; texts [ i : i &#43; self . batch_size ] 
+ batch_embeddings &#61; super ( ) . embed_documents ( batch ) 
+ all_embeddings . extend ( batch_embeddings ) 
+ return all_embeddings
+embeddings &#61; BatchDashScopeEmbeddings ( 
+ model &#61; &#34;text-embedding-v3&#34; , 
+ dashscope_api_key &#61; &#34;your-api-key&#34; 
+ ) 
+# 2. 准备文档 
+documents &#61; [ 
+ &#34;公司规定&#xff1a;员工必须遵守...&#34; , 
+ &#34;费用报销&#xff1a;业务活动中产生的费用...&#34; , 
+ &#34;奖惩制度&#xff1a;对于符合下列条件的员工...&#34; , 
+ # ... 更多文档 
+ ] 
+# 3. 文档切分 
+text_splitter &#61; RecursiveCharacterTextSplitter ( 
+ chunk_size &#61; 500 , 
+ chunk_overlap &#61; 50 
+ ) 
+chunks &#61; text_splitter . split_text ( &#34;\n&#34; . join ( documents ) ) 
+ print ( f&#34;切分成了 { len ( chunks ) } 个 chunk&#34; ) 
+# 4. 创建向量数据库&#xff08;自动分批处理&#xff09; 
+vectorstore &#61; FAISS . from_texts ( 
+ texts &#61; chunks , 
+ embedding &#61; embeddings
+ ) 
+ print ( &#34;向量数据库创建成功&#xff01;&#34; ) 
+# 5. 保存和加载 
+vectorstore . save_local ( &#34;faiss_index&#34; ) 
+ # vectorstore &#61; FAISS.load_local(&#34;faiss_index&#34;, embeddings) 
+# 6. 检索测试 
+query &#61; &#34;费用报销需要什么&#xff1f;&#34; 
+results &#61; vectorstore . similarity_search ( query , k &#61; 3 ) 
+ for doc in results : 
+ print ( doc . page_content ) 
+ print ( &#34;---&#34; ) 
+4.2 异常处理版本 
+ import time
+ from typing import List
+ from langchain_community . embeddings import DashScopeEmbeddings
+class RobustDashScopeEmbeddings ( DashScopeEmbeddings ) : 
+ &#34;&#34;&#34;带重试和异常处理的 DashScope Embeddings&#34;&#34;&#34; 
+batch_size : int &#61; 20 
+ max_retries : int &#61; 3 
+ retry_delay : float &#61; 1.0 
+def embed_documents ( self , texts : List [ str ] ) - > List [ List [ float ] ] : 
+ all_embeddings &#61; [ ] 
+ total &#61; len ( texts ) 
+for i in range ( 0 , total , self . batch_size ) : 
+ batch &#61; texts [ i : i &#43; self . batch_size ] 
+ batch_num &#61; i // self . batch_size &#43; 1 
+for attempt in range ( self . max_retries ) : 
+ try : 
+ batch_embeddings &#61; super ( ) . embed_documents ( batch ) 
+ all_embeddings . extend ( batch_embeddings ) 
+ print ( f&#34;✅ 批次 { batch_num } 处理成功 ( { min ( i &#43; self . batch_size , total ) } / { total } )&#34; ) 
+ break 
+ except Exception as e : 
+ print ( f&#34;❌ 批次 { batch_num } 失败 (尝试 { attempt &#43; 1 } / { self . max_retries } ): { e } &#34; ) 
+ if attempt < self . max_retries - 1 : 
+ time . sleep ( self . retry_delay * ( attempt &#43; 1 ) ) 
+ else : 
+ raise RuntimeError ( f&#34;批次 { batch_num } 处理失败&#xff0c;已重试 { self . max_retries } 次&#34; ) 
+return all_embeddings
+# 使用 
+embeddings &#61; RobustDashScopeEmbeddings ( 
+ model &#61; &#34;text-embedding-v3&#34; , 
+ dashscope_api_key &#61; &#34;your-api-key&#34; , 
+ batch_size &#61; 20 , 
+ max_retries &#61; 3 
+ ) 
+五、其他向量模型的限制对比 
+ 模型 单次最大条数 单条最大 Token 备注 阿里云 text-embedding-v3 20 8192 本文主角 阿里云 text-embedding-v2 25 2048 旧版本 OpenAI text-embedding-3-small 2048 8191 限制宽松 OpenAI text-embedding-3-large 2048 8191 限制宽松 智谱 embedding-3 25 8192 类似限制 
+ 结论 &#xff1a;不同模型的限制不同&#xff0c;使用前一定要查看官方文档&#xff01; 
+六、常见问题 
+ Q1&#xff1a;为什么阿里云要限制 20 条&#xff1f; 
+ 主要是为了&#xff1a; 
+ 控制单次请求的计算量 &#xff0c;避免超时 保证服务质量 &#xff0c;防止单个用户占用过多资源 降低出错概率 &#xff0c;小批量更容易定位问题 
+ Q2&#xff1a;batch_size 设置成多少合适&#xff1f; 
+ 推荐值 &#xff1a;20&#xff08;官方限制&#xff09; 保守值 &#xff1a;10-15&#xff08;留点余量&#xff09; 不推荐 &#xff1a;超过 20&#xff08;会报错&#xff09; 
+ Q3&#xff1a;能不能异步批量处理&#xff1f; 
+ 可以使用 asyncio 加速&#xff1a; 
+ import asyncio
+ from langchain_community . embeddings import DashScopeEmbeddings
+async def async_batch_embed ( embeddings , texts , batch_size &#61; 20 ) : 
+ &#34;&#34;&#34;异步批量处理&#34;&#34;&#34; 
+ semaphore &#61; asyncio . Semaphore ( 5 ) # 最多 5 个并发 
+async def process_batch ( batch ) : 
+ async with semaphore : 
+ return embeddings . embed_documents ( batch ) 
+tasks &#61; [ ] 
+ for i in range ( 0 , len ( texts ) , batch_size ) : 
+ batch &#61; texts [ i : i &#43; batch_size ] 
+ tasks . append ( process_batch ( batch ) ) 
+results &#61; await asyncio . gather ( * tasks ) 
+ return [ vec for batch_vecs in results for vec in batch_vecs ] 
+# 使用 
+ # vectors &#61; asyncio.run(async_batch_embed(embeddings, texts)) 
+Q4&#xff1a;报错后如何恢复&#xff1f; 
+ 建议实现断点续传&#xff1a; 
+ def embed_with_checkpoint ( embeddings , texts , checkpoint_file &#61; &#34;embeddings.pkl&#34; ) : 
+ &#34;&#34;&#34;带断点续传的 embedding&#34;&#34;&#34; 
+ import pickle
+ import os
+# 加载已处理的结果 
+ if os . path . exists ( checkpoint_file ) : 
+ with open ( checkpoint_file , &#34;rb&#34; ) as f : 
+ all_embeddings &#61; pickle . load ( f ) 
+ start_idx &#61; len ( all_embeddings ) 
+ print ( f&#34;从断点恢复&#xff1a;已处理 { start_idx } 条&#34; ) 
+ else : 
+ all_embeddings &#61; [ ] 
+ start_idx &#61; 0 
+# 继续处理 
+ for i in range ( start_idx , len ( texts ) , 20 ) : 
+ batch &#61; texts [ i : i &#43; 20 ] 
+ batch_embeddings &#61; embeddings . embed_documents ( batch ) 
+ all_embeddings . extend ( batch_embeddings ) 
+# 保存断点 
+ with open ( checkpoint_file , &#34;wb&#34; ) as f : 
+ pickle . dump ( all_embeddings , f ) 
+print ( f&#34;进度&#xff1a; { len ( all_embeddings ) } / { len ( texts ) } &#34; ) 
+return all_embeddings
+七、总结 
+ 要点 说明 问题 阿里云百炼向量模型单次最多传 20 条 现象 超过 20 条报 400 错误 解决 分批处理&#xff0c;每批 ≤ 20 条 推荐 使用 OpenAIEmbeddings(chunk_size&#61;20) 或自定义批量类 
+ 最佳实践 
+ # 推荐写法&#xff1a;使用 OpenAI 兼容接口 &#43; chunk_size 参数 
+ from langchain_openai import OpenAIEmbeddings
+embeddings &#61; OpenAIEmbeddings ( 
+ model &#61; &#34;text-embedding-v3&#34; , 
+ openai_api_base &#61; &#34;https://dashscope.aliyuncs.com/compatible-mode/v1&#34; , 
+ openai_api_key &#61; &#34;your-api-key&#34; , 
+ chunk_size &#61; 20 # 自动分批 
+ ) 
+八、参考资料 
+ 阿里云百炼官方文档 - 文本嵌入模型 LangChain DashScope Embeddings 文档 DashScope API 错误码说明 

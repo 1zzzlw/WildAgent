@@ -43,14 +43,23 @@ class WebSocketHeartbeat:
         timeout: 超时阈值（秒），超过此时间未收到消息则触发回调
         check_interval: 检查间隔（秒）
         is_processing: AI 处理标记，为 True 时跳过超时检查
+        processing_probe: 动态查询当前连接是否附着持久化后台任务
     """
 
-    def __init__(self, timeout: float = 90, check_interval: float = 10):
+    def __init__(
+        self,
+        timeout: float = 90,
+        check_interval: float = 10,
+        processing_probe: Callable[[], bool] | None = None,
+    ):
         """保存检查参数并初始化尚未启动的监控状态。"""
         self.timeout = timeout
         self.check_interval = check_interval
         # 这是由调用方维护的协作标记，不代表后台任务自身正在执行。
         self.is_processing: bool = False
+        # 持久化任务脱离 WebSocket 接收协程运行，因此用动态探针判断连接是否
+        # 仍附着后台任务，避免手工布尔状态在任务完成或重连时失配。
+        self.processing_probe = processing_probe
 
         # 使用墙上时钟记录最近活动；elapsed 属性和检查循环采用同一时间源。
         self._last_message_time: float = time.time()
@@ -108,7 +117,16 @@ class WebSocketHeartbeat:
                     break
 
                 # AI 处理期间跳过检查（额外安全保护，实际 ping 仍可正常响应）
-                if self.is_processing:
+                probe_processing = False
+                if self.processing_probe is not None:
+                    try:
+                        probe_processing = bool(self.processing_probe())
+                    except Exception as exc:
+                        logger.warning(f"心跳任务状态探针失败，继续普通超时检查: {exc}")
+                if self.is_processing or probe_processing:
+                    # 处理结束后应重新获得完整的空闲宽限期，不能沿用任务开始前
+                    # 的旧时间戳并在下一轮检查中立即误判超时。
+                    self.touch()
                     continue
 
                 elapsed = time.time() - self._last_message_time

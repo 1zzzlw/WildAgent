@@ -7,6 +7,7 @@ from app.agent.execution_plan import (
     execution_plan_phase_guidance,
     next_ready_step,
     plan_is_complete,
+    public_capabilities,
     reset_plan_from,
     update_plan_step,
     validate_execution_plan,
@@ -23,30 +24,39 @@ def _generate_plan() -> dict:
     )
 
 
-def test_generate_plan_has_review_and_validation_gates() -> None:
+def test_generate_plan_keeps_plan_review_and_validation_gates() -> None:
     plan = _generate_plan()
 
     assert validate_execution_plan(plan, "generate") == []
     assert [step["type"] for step in plan["steps"]] == [
         "planning_research",
         "architecture",
-        "floor_plan_design",
-        "floor_plan_review",
         "material_plan",
         "skeleton",
-        "style_review",
-        "decor_assembly",
         "merge",
         "final_validate",
     ]
-    floor_review = next(
-        step for step in plan["steps"] if step["type"] == "floor_plan_review"
-    )
-    assert floor_review["requires_user_review"] is True
-    assert "用户确认平面前不得生成三维" in plan["constraints"]
+    assert "用户确认执行计划后才生成总体方案与三维" in plan["constraints"]
+    assert all(step["requires_user_review"] is False for step in plan["steps"])
     assert len(plan["dynamic_tasks"]) >= 3
     assert plan["planner_source"] == "fallback"
     assert "玻璃" in execution_plan_phase_guidance(plan, "material_plan")
+
+
+def test_new_plans_do_not_offer_removed_floor_pipeline() -> None:
+    capability_types = {
+        item["type"] for item in public_capabilities("generate")
+    }
+
+    assert not {
+        "floor_plan_design",
+        "floor_space_analysis",
+        "floor_layout",
+        "floor_openings",
+        "floor_validate",
+        "floor_plan_review",
+    } & capability_types
+    assert {"architecture", "material_plan", "skeleton", "merge", "final_validate"} <= capability_types
 
 
 def test_tampered_node_is_rejected() -> None:
@@ -66,25 +76,29 @@ def test_next_ready_step_respects_dependencies() -> None:
     assert step["type"] == "architecture"
 
     plan = update_plan_step(plan, "architecture", "completed")
-    assert next_ready_step(plan)["type"] == "floor_plan_design"
+    assert next_ready_step(plan)["type"] == "material_plan"
     assert next(
         task for task in plan["dynamic_tasks"] if task["phase"] == "architecture"
     )["status"] == "completed"
-    plan = update_plan_step(plan, "floor_plan_design", "completed")
-    assert next_ready_step(plan)["type"] == "floor_plan_review"
+    plan = update_plan_step(plan, "material_plan", "completed")
+    assert next_ready_step(plan)["type"] == "skeleton"
+    plan = update_plan_step(plan, "skeleton", "completed")
+    assert next_ready_step(plan)["type"] == "merge"
 
 
-def test_floor_revision_resets_only_floor_and_downstream_steps() -> None:
+def test_material_revision_resets_only_material_and_downstream_steps() -> None:
     plan = _generate_plan()
     for step in plan["steps"]:
         plan = update_plan_step(plan, step["type"], "completed")
 
-    revised = reset_plan_from(plan, "floor_plan_design")
+    revised = reset_plan_from(plan, "material_plan")
 
     statuses = {step["type"]: step["status"] for step in revised["steps"]}
     assert statuses["planning_research"] == "completed"
     assert statuses["architecture"] == "completed"
-    assert statuses["floor_plan_design"] == "pending"
+    assert statuses["material_plan"] == "pending"
+    assert statuses["skeleton"] == "pending"
+    assert statuses["merge"] == "pending"
     assert statuses["final_validate"] == "pending"
 
 
@@ -129,10 +143,10 @@ def test_model_tasks_are_compiled_to_allowed_phases() -> None:
                 "basis": "办公建筑知识",
             },
             {
-                "title": "组织环中庭流线",
-                "objective": "形成连续公共流线和两处竖向交通",
-                "phase": "floor_plan_design",
-                "acceptance": ["流线连续"],
+                "title": "生成环中庭主体",
+                "objective": "依据总体方案生成连续公共流线和两处竖向交通",
+                "phase": "skeleton",
+                "acceptance": ["主体结构和流线完整"],
                 "basis": "用户需求",
             },
             {
@@ -150,7 +164,7 @@ def test_model_tasks_are_compiled_to_allowed_phases() -> None:
     assert plan["planner_source"] == "llm"
     assert [task["title"] for task in plan["dynamic_tasks"]] == [
         "比较中庭体量",
-        "组织环中庭流线",
+        "生成环中庭主体",
         "验证中庭建筑",
     ]
     assert validate_execution_plan(plan, "generate") == []

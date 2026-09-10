@@ -38,7 +38,7 @@ AIGC:
 | 列 | 作用 |
 |---|---|
 | 文件 | 分片来源文档，用于定位"哪个文档分得异常" |
-| 实体 / 类型 | 对应 metadata 的 entity_type / building_category，是检索时的过滤维度 |
+| 实体 / 角色 | 对应 metadata 的 entity_type / knowledge_role，是检索时的过滤维度 |
 | 长度 | 字符数，判断分片质量的第一指标 |
 
 ### 2. 标题路径列表
@@ -55,7 +55,7 @@ AIGC:
 |---|---|---|
 | 粒度（长度） | 决定 embedding 向量承载的语义量 | 过碎（<150）语义残缺；过大（>1000）向量被稀释，一个向量混多种主题 |
 | 语义完整性 | 决定向量是否"言之有物" | 一个分片是否讲清一件事（完整参数表、完整组装步骤），而不是被标题切得七零八落 |
-| metadata | 检索后处理：过滤 + 上下文拼接 + 溯源 | 过滤类（namespace / entity_type / building_category / role_tags）、上下文类（parent_chunk_id / heading / path）、溯源类（source_file / body_hash 去重） |
+| metadata | 检索后处理：过滤 + 上下文拼接 + 溯源 | 过滤类（namespace / doc_type / knowledge_role / entity_type / role_tags）、上下文类（parent_chunk_id / heading / path）、溯源类（source_file / body_hash 去重） |
 
 ## 体检要点（异常信号）
 

@@ -399,6 +399,11 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
             step="8f", name="validate_wall_junctions [recheck]", output=recheck_out,
             has_error="❌" in recheck_out, has_warning="⚠️" in recheck_out,
         ))
+        quality_out = _run_tool(validate_model_quality, blueprint)
+        results.append(PipelineStepResult(
+            step="8f", name="validate_model_quality [recheck]", output=quality_out,
+            has_error="❌" in quality_out, has_warning="⚠️" in quality_out,
+        ))
     else:
         skip_step("8f", "fix_wall_junctions", "Step 5 墙体端点无问题")
 
@@ -1079,6 +1084,8 @@ class AgentService:
                     base_url=config.embedding.base_url,
                     model_name=config.embedding.name,
                     allow_hash_fallback=config.rag.allow_hash_fallback,
+                    timeout=config.embedding.timeout,
+                    max_retries=config.embedding.max_retries,
                 )
                 rag_spec_paths = get_rag_spec_paths()
                 loader = RAGSpecLoader(
@@ -1091,6 +1098,9 @@ class AgentService:
                     chunk_size=config.rag.chunk_size,
                     chunk_overlap=config.rag.chunk_overlap,
                     max_context_chars=config.rag.max_context_chars,
+                    # 索引同步移出模块导入路径：Loader 构造只做本地切分，
+                    # 不发起任何 embedding 请求，服务可立即对外提供。
+                    auto_sync=False,
                 )
                 logger.info(
                     f"RAGSpecLoader: 已启用 Chroma, persist_dir={persist_dir}, "
@@ -1102,6 +1112,7 @@ class AgentService:
                     f"total={sync_stats['total']}, "
                     f"updated={sync_stats['updated']}, "
                     f"deleted={sync_stats['deleted']}"
+                    f"{'（将转入后台线程增量同步，不阻塞服务启动）' if config.rag.auto_sync else '（自动同步已关闭）'}"
                 )
                 if isinstance(embedding_function, object) and embedding_function.__class__.__name__ == "HashEmbeddingFunction":
                     logger.warning("RAGSpecLoader: 当前使用 hash fallback embedding，仅适合本地 smoke test")
@@ -1110,6 +1121,10 @@ class AgentService:
                         "当前使用 hash fallback embedding；仅适合本地 smoke test，"
                         "检索门禁距离阈值在该模式下无效。",
                     )
+                if config.rag.auto_sync:
+                    # 后台线程完成增量同步；embedding 慢/超时不再阻塞服务启动。
+                    # 同步失败只留下"部分可用"索引，检索自动降级为基础规范。
+                    loader.start_background_sync()
                 return loader
             except Exception as exc:
                 logger.warning(
@@ -1124,7 +1139,10 @@ class AgentService:
                     "rag_index_unavailable",
                     f"RAG 向量索引不可用，已降级为全量文件注入模式：{type(exc).__name__}: {exc}",
                 )
-                logger.error(f"RAGSpecLoader 初始化失败，退回 FileSpecLoader: {type(exc).__name__}: {exc}", exc_info=True)
+                logger.error(
+                    "RAGSpecLoader 初始化失败，退回 FileSpecLoader: {}: {}",
+                    type(exc).__name__, exc,
+                )
 
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
@@ -1140,7 +1158,7 @@ class AgentService:
 
     def _agent_for_query(
         self,
-        rag_query: str | list[str],
+        rag_query: str | list[str | SpecQuery],
         thinking_mode: bool = False,
         purpose: str = "generation",
     ):
@@ -1151,15 +1169,19 @@ class AgentService:
             return self._create_agent(self.spec_loader.load(), thinking_mode=True)
 
         if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
-            filtered_queries = self._build_filtered_rag_queries(rag_query)
+            filtered_queries = [
+                query if isinstance(query, SpecQuery) else SpecQuery(text=query)
+                for query in rag_query
+            ]
             spec_text = self.spec_loader.load_many(
                 filtered_queries,
                 per_query=1,
                 purpose=purpose,
             )
-            query_log = " | ".join(rag_query)
+            query_log = " | ".join(query.text for query in filtered_queries)
         else:
-            query_text = rag_query[0] if isinstance(rag_query, list) else rag_query
+            query_item = rag_query[0] if isinstance(rag_query, list) and rag_query else rag_query
+            query_text = query_item.text if isinstance(query_item, SpecQuery) else str(query_item or "")
             spec_text = self.spec_loader.load(query=query_text, purpose=purpose)
             query_log = query_text
         if isinstance(self.spec_loader, RAGSpecLoader):
@@ -1170,26 +1192,6 @@ class AgentService:
             logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
         return self._create_agent(spec_text, thinking_mode=thinking_mode)
 
-    def _build_filtered_rag_queries(self, queries: list[str]) -> list[SpecQuery]:
-        """为建筑生成的八类检索意图附加业务 metadata 过滤条件。"""
-        if len(queries) != 8:
-            return [SpecQuery(text=query) for query in queries]
-
-        filters = [
-            {"doc_type": "building_type"},
-            {"doc_type": "recipe"},
-            {"doc_type": "component", "entity_type": "structural_component"},
-            {"doc_type": "component", "entity_type": "wall"},
-            {"doc_type": "component", "entity_type": "window"},
-            {"doc_type": "component", "entity_type": "door"},
-            {"doc_type": "component", "entity_type": "railing"},
-            {"doc_type": "component", "entity_type": "roof"},
-        ]
-        return [
-            SpecQuery(text=query, metadata_filter=metadata_filter)
-            for query, metadata_filter in zip(queries, filters)
-        ]
-
     def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
         """把用户文本与场景线索拼成单个向量检索查询。"""
         parts = [message]
@@ -1199,13 +1201,18 @@ class AgentService:
         )
         if not current_blueprint and any(keyword in message for keyword in generation_keywords):
             parts.append(
-                "同时检索：对象的默认变体、最少可行版本、默认材质、配色、"
-                "PBR 参数；建筑还需检索外墙、楼板、屋顶、门窗和玻璃透明度"
+                "检索本次对象的 WILD 能力边界、构件宿主和组装关系；"
+                "外形、尺寸与材质由本次需求确定，局部示例不能作为默认建筑"
             )
         if current_blueprint:
             meta = current_blueprint.get("meta", {})
-            elements = current_blueprint.get("geometry", {}).get("elements", [])
-            types = sorted({str(el.get("type")) for el in elements if el.get("type")})
+            geometry = current_blueprint.get("geometry", {})
+            entities = [
+                *geometry.get("elements", []),
+                *geometry.get("components", []),
+            ] if isinstance(geometry, dict) else []
+            types = sorted({str(item.get("type")) for item in entities
+                            if isinstance(item, dict) and item.get("type")})
             if meta.get("name"):
                 parts.append(f"场景名称: {meta.get('name')}")
             if types:
@@ -1216,11 +1223,24 @@ class AgentService:
         self,
         message: str,
         current_blueprint: dict | None,
-    ) -> list[str]:
-        """为建筑生成拆分主体和组件检索意图，保证关键组件文档进入上下文。"""
+    ) -> list[SpecQuery]:
+        """按任务阶段构建带显式用途过滤的知识查询。"""
         primary_query = self._build_rag_query(message, current_blueprint)
         if current_blueprint:
-            return [primary_query]
+            return [
+                SpecQuery(
+                    f"{primary_query}\nScenePatch 修改坐标、字段与引用协议",
+                    {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
+                ),
+                SpecQuery(
+                    f"{primary_query}\n目标构件的当前字段与能力边界",
+                    {"doc_type": "component", "knowledge_role": "capability"},
+                ),
+                SpecQuery(
+                    f"{primary_query}\n修改后需要保持的宿主、组装与校验关系",
+                    {"doc_type": "recipe", "knowledge_role": "relation"},
+                ),
+            ]
 
         generation_keywords = (
             "生成", "建造", "创建", "建一个", "做一个",
@@ -1237,17 +1257,37 @@ class AgentService:
             and any(keyword in message for keyword in building_keywords)
         )
         if not is_building_generation:
-            return [primary_query]
+            return [SpecQuery(primary_query)]
 
         return [
-            primary_query,
-            f"{message}\n构件-建筑类型速查矩阵：opening、door、window、roof、stair、railing 的推荐组合",
-            f"{message}\n结构构件规则：柱梁楼板桁架、column、beam、floor、truss 的参数与组合",
-            f"{message}\n墙体构件参数与围护规则：wall、thickness、height、material、opening 承载关系",
-            f"{message}\n窗构件分类与组装规则：window、opening、mullion、fixed、casement、sliding、窗型选择",
-            f"{message}\n门构件分类与组装规则：door、opening、panel、glass、门型选择",
-            f"{message}\n栏杆构件参数与路径规则：railing、path、postSpacing、railLevels、楼梯与阳台栏杆",
-            f"{message}\n屋顶屋檐构件规则：roof、cornice、canopy、flat、gable、hip、屋顶选型",
+            SpecQuery(
+                f"{message}\n已选构件的条件关系：opening、door、window、roof、stair、railing 的宿主与衔接",
+                {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
+            ),
+            SpecQuery(
+                f"{message}\n结构构件能力：column、beam、floor、primitive 的合法字段与组合，truss 能力边界",
+                {"doc_type": "component", "entity_type": "structural_component"},
+            ),
+            SpecQuery(
+                f"{message}\n墙体构件能力：wall 世界坐标、thickness、material 与 opening 宿主关系",
+                {"doc_type": "component", "entity_type": "wall"},
+            ),
+            SpecQuery(
+                f"{message}\n窗构件能力：window、opening、parentWall、mullion 字段和受支持变体",
+                {"doc_type": "component", "entity_type": "window"},
+            ),
+            SpecQuery(
+                f"{message}\n门构件能力：door、opening、parentWall、doorStyle 与 interaction 字段",
+                {"doc_type": "component", "entity_type": "door"},
+            ),
+            SpecQuery(
+                f"{message}\n栏杆构件能力：railing、path、postSpacing、railLevels 与 parentFloor",
+                {"doc_type": "component", "entity_type": "railing"},
+            ),
+            SpecQuery(
+                f"{message}\n屋顶构件能力：roof、cornice、canopy 的合法字段、覆盖与依附边界",
+                {"doc_type": "component", "entity_type": "roof"},
+            ),
         ]
 
     async def _recover_scene_patch(

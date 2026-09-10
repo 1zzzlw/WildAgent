@@ -19,7 +19,8 @@ from app.agent.graph_state import GenerationState
 from app.agent.llm_invocation import invoke_llm
 from app.agent.model_client import create_llm
 from app.agent.runtime_context import get_reasoning_callback
-from app.agent.web import SearchQuery, create_search_client, WebResult
+from app.agent.web import SearchQuery, WebResult
+from app.agent import web as _web_api  # 运行期取 web.create_search_client，便于测试打补丁
 from app.agent.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
 from app.utils.json_extractor import extract_json_array
 from config import config
@@ -33,12 +34,25 @@ async def web_research_node(state: GenerationState) -> dict:
          state["web_research_diag"]（来源/命中/丢弃诊断）
     """
     started = time.time()
+    if state.get("terminal_model_error") or state.get("status") == "failed":
+        logger.warning("[web_research] 上游模型服务已失败，跳过所有网络请求")
+        return {
+            "web_research_context": "",
+            "web_research_diag": {
+                "enabled": False,
+                "reason": "blocked_by_terminal_model_error",
+                "claims": [],
+                "usable_count": 0,
+                "dropped_count": 0,
+                "total_ms": 0,
+            },
+        }
     queries: list[str] = state.get("research_queries") or []
     missing_topics: list[str] = state.get("research_missing_topics") or []
     callback = get_reasoning_callback()
 
     # 1. 客户端可用性检查：未配置 key -> 优雅降级，Plan 模式继续。
-    client = create_search_client(
+    client = _web_api.create_search_client(
         enabled=config.web_research.enabled,
         provider=config.web_research.provider,
         api_key=config.web_research.api_key,

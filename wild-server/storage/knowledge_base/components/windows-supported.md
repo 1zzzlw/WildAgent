@@ -1,5 +1,4 @@
 ---
-knowledge_layer: wild_schema
 entity_type: window
 entity_name: static_window_component
 topic: schema

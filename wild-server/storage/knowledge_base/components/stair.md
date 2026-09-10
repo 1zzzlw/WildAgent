@@ -1,89 +1,56 @@
 ---
-knowledge_layer: architecture
 entity_type: stair
 entity_name: stair_component
 topic: parameters
 status: supported
 authority: engine
-source: components/stair.md
+source: wild-web/src/wild-core/src/primitive/resolver.ts
 primary_terms:
   - 楼梯
   - stair
   - 直跑楼梯
-  - 折跑楼梯
-  - 台阶
-  - 多层竖向交通
+  - 楼层连接
 synonyms:
   - staircase
   - stairs
 ---
 
-# 楼梯（stair）参数契约
+# 楼梯参数与连接关系
 
-> 来源：引擎 resolver 与 `BLUEPRINT-SPEC-MINIMAL.md` 的 stair 定义核对。
-> 用途：定义楼梯 `stair` 元素的参数、约束与常见布局，供生成多层建筑时正确配楼梯。
+## 字段契约
 
-## 基本定义
-
-`stair` 是 `geometry.elements` 中的结构元素，连接两个不同标高的楼板：
+`stair` 写入 `geometry.elements`。必填字段为唯一 `id`、下端 `from`、上端 `to` 和正数 `width`；`material`、`stepCount`、`stepDepth`、`stepHeight` 可选。`from` 与 `to` 都是世界坐标，Y 表示两端标高。
 
 ```json
 {
-  "type": "stair", "id": "main_stair",
-  "from": [2, 0, 1], "to": [2, 3, 4],
-  "width": 1.2,
-  "material": "concrete"
+  "type": "stair",
+  "id": "stair_run_1",
+  "from": [2.0, 0.2, 1.0],
+  "to": [2.0, 3.4, 5.0],
+  "width": 1.4,
+  "material": "stair_finish"
 }
 ```
 
-## 必填字段与语义
+示例数值只解释一段楼梯的字段关系，不是住宅或公共建筑的默认尺寸。
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `type` | `"stair"` | 固定 |
-| `id` | string | 稳定唯一 ID |
-| `from` | [number, number, number] | 楼梯下端世界坐标：`from[1]` 是下层地板 Y |
-| `to` | [number, number, number] | 楼梯上端世界坐标：`to[1]` 是上层地板 Y |
-| `width` | number | 楼梯宽度（米） |
-| `material` | string | 材质引用（可选） |
+## Resolver 行为
 
-## 硬约束（引擎强制）
+省略有效 `stepCount` 时，`resolveStairSteps` 根据总高差和 XZ 欧氏距离估算步数，内部目标值为步高 `0.18`、步深 `0.30`，再令 `stepHeight × stepCount` 等于总高差、`stepDepth × stepCount` 等于水平长度。这些数值是当前几何解析算法参数，不是建筑法规或项目设计配额。
 
-- **`from[1] < to[1]`**：楼梯必须连接两个递增标高；`to[1] <= from[1]` 是无效楼梯（`invalid_stair_levels`）。
-- **`from` / `to` 的 XZ 平面投影**：直跑楼梯的两端在水平面上应基本对齐；若 XZ 差异过大（折跑/旋转），引擎当前只支持直跑，需要用**多段直跑 stair 拼接**表达折跑。
-- **宽度范围**：建议 0.8m ~ 3.0m（住宅 0.9~1.2m，公建 1.5~1.8m）。
-- **两端落地**：楼梯下端应落在下层楼板顶面、上端落在上层楼板顶面；`collect_stair_placement_issues` 会检查踏步是否与两侧楼板衔接，悬空或穿入楼板会被标记。
+若总高差或水平长度不超过 `0.25`，解析器退化为一个踏步，并把对应步高或步深限制为至少 `0.05`。显式提供正 `stepCount` 时，解析器不会重新计算；调用方须保证步数、步高、步深与端点一致。
 
-## 踏步推算（引擎 resolver）
+## 当前已校验的楼层连接
 
-引擎按 `from`→`to` 的高差和水平跨度自动推算踏步（`resolveStairSteps`）：
+- 下端和上端需要分别落在对应标高的楼板区域内，且上端标高高于下端标高。
+- 一段 `stair` 只能表达从 `from` 到 `to` 的直跑，不能在中途转向。
+- 折跑楼梯使用多段 `stair` 与中间 `floor` 平台；相邻段端点共享平台标高与可达区域。
+- 多层建筑为每一对相邻楼层建立实际连接，不能复制一段楼梯而保留原端点。
 
-- **踏步高（rise）**：推荐 0.14~0.20m（住宅常用 ~0.16m，公建 ~0.15m）。过高过矮都会让引擎以警告方式提示。
-- **踏步宽（run）**：由水平跨度与步数自动分配；水平跨度不足时优先保证踏步高合理。
-- **一段直跑建议最多 12~14 步**，超过后应插入休息平台（用多段 stair 表达）。
+## 能力边界
 
-## 多段折跑/带平台楼梯
+当前几何只表达楼梯踏步和宽度，不证明疏散宽度、人体工学、扶手、防火或结构承载合规。旋转、弧形和连续螺旋楼梯没有原生路径类型；只有批准设计接受近似时才能分段表达。
 
-引擎只支持**直跑 stair**；折跑（L/U 形）楼梯用多段直跑拼接：
+## 校验与尚未实现的边界
 
-1. 第一段：下层楼板 → 平台标高（`to[1]` = 平台顶 Y，水平投影到平台一端）。
-2. 平台：用 `floor` 元素铺在平台标高（或由楼板单元表达）。
-3. 第二段：平台 → 上层楼板（`from[1]` = 平台顶 Y，水平投影与第一段方向垂直）。
-
-```json
-[
-  {"type": "stair", "id": "stair_l1", "from": [2, 0, 1], "to": [2, 1.6, 1], "width": 1.2},
-  {"type": "floor", "id": "landing_1", "from": [2, 1.6, 1], "to": [4, 1.6, 1], "thickness": 0.15},
-  {"type": "stair", "id": "stair_l2", "from": [4, 1.6, 1], "to": [4, 3.2, 3], "width": 1.2}
-]
-```
-
-## 常见错误
-
-| 错误 | 原因 | 修正 |
-|------|------|------|
-| `from[1] == to[1]` | 没有高差 | 让 `to[1]` = 上一层楼板标高 |
-| 楼梯悬空 | 下端 Y 低于下层楼板顶 | 下端 Y 对齐楼板顶面 |
-| 一段过长 | 步数 > 14 无平台 | 插入平台并拆成多段 |
-| 宽度过窄 | < 0.8m | 加宽到 0.9m 以上 |
-| 旋转楼梯 | 引擎不支持 | 改用多段直跑 + 平台近似 |
+当前流水线检查 `from/to` 格式、正宽度、标高对齐、两端楼板区域、相邻梯段平台位置以及通用碰撞。它尚不检查楼梯穿越上层楼板时是否留出完整洞口，也不计算房间可达性；这两项不能只靠本文宣称为已执行硬规则。发现已覆盖问题时修复端点或平台关系，不用建筑类型的经验尺寸覆盖批准设计。

@@ -45,7 +45,7 @@ class ComponentConfig:
     implemented: bool = True
 
 
-# ── 每个组件的专属规则（来自设计文档 02-节点详细设计.md 3.2 节）──
+# ── 每个组件的实现规则。数量、位置和造型由已批准设计及精确槽位决定。──
 
 _COMPONENT_RULES: dict[str, str] = {
     "door": (
@@ -53,33 +53,23 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[1] 是底部世界 Y 坐标（通常为 0）\n"
         "- from[2] 是法向偏移（通常为 0）\n"
         '- interaction 必填: {"mode":"swing","hingeSide":"left"|"right","openAngle":90}\n'
-        "- 主入口门宽 0.9~1.2m、门高 2.1~2.4m；不得为了塞进单个立面开间而缩到 0.9m 以下\n"
-        "- 用户未指定外观参数时，在上述范围内选择克制的小幅变化；避免所有建筑机械复用完全相同的门参数\n"
-        "- 优先让 frameMaterial 与 leafMaterial 形成可读层次（如金属框+木门扇），但不得虚构 materials 中不存在的名称\n"
+        "- width、height 必须为正数并完整落在父墙范围内；有精确槽位时逐字使用槽位尺寸\n"
         "- frameDepth 默认等于父墙 thickness；leafDepth 默认 min(0.04, frameDepth)，通常不必显式填写\n"
         "- 自定义 leafDepth 必须为正数且不大于 frameDepth，门框和门扇必须与父墙厚度范围相交\n"
+        "- 数量、宿主墙和位置服从 DesignDocument 解析出的槽位与 component_quota，不自行补门\n"
         "- 编译后产出: opening + primitive.box×3（门框）\n"
-        "\n**数量与位置约束（必须遵守）**：\n"
-        "- 一栋建筑通常只有 1~2 个门：1 个正门（放在正面墙 wall_front 居中），可选 1 个后门/侧门\n"
-        "- 绝对不要每面墙都放门！内墙不要放门\n"
-        "- 正门放在正面墙（通常是 wall_front 或最长的面朝道路的墙）的居中位置\n"
-        "- 如果建筑有明确的「入口」、「主入口」语义，只生成 1 个门\n"
     ),
     "window": (
-        "- from[0] 是沿墙距离；from[1] 是底部世界 Y（父墙底 Y + 通常 0.8~1.0m 的窗台高度）\n"
+        "- from[0] 是沿墙距离；from[1] 是窗底世界 Y；有精确槽位时逐字使用槽位坐标\n"
         "- verticalMullions 范围 0~32，horizontalMullions 范围 0~32\n"
-        "- width 建议 0.8~2.0m，height 建议 1.0~2.0m\n"
+        "- width、height 必须为正数，边缘留量和开口间距由父墙尺寸及已批准槽位决定\n"
         "- frameMaterial 和 glassMaterial 必须引用骨架 materials 中已有的材质名\n"
         "- frameDepth 默认等于父墙 thickness；glassDepth 默认 min(0.012, frameDepth)，通常不必显式填写\n"
         "- 自定义 glassDepth 必须为正数且不大于 frameDepth，窗框和玻璃必须与父墙厚度范围相交\n"
         "- glassMaterial 指向的材质必须使用 materialClass=glass、transmission>0、有效 ior 的物理玻璃；opacity 必须为 1 或省略\n"
         "- 如果骨架 materials 没有物理玻璃材质，在组件 JSON 外附加提醒（不输出到 JSON）\n"
+        "- 数量、宿主墙和位置服从 DesignDocument 解析出的槽位与 component_quota，不自行改成固定对称阵列\n"
         "- 编译后产出: opening + primitive.box×N（窗框+窗棂）\n"
-        "\n**数量与位置约束（必须遵守）**：\n"
-        "- 每面墙最多 2~3 个窗，根据墙长合理分布（墙长 <4m 放 1 个，4~8m 放 2 个，>8m 放 3 个）\n"
-        "- 窗户沿墙均匀分布，间距 ≥1.0m，边缘距墙角 ≥0.5m\n"
-        "- 正面墙（wall_front）可以多放窗以增加采光，背面/侧面适当减少\n"
-        "- 不要在有门的墙上放太多窗（门+窗总数 ≤ 墙长/1.8）\n"
     ),
     "roof": (
         "- roof 是 geometry.elements 原生类型，不是 components\n"

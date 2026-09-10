@@ -5,6 +5,7 @@
 
 > 适用对象：第一次接触 WildAgent 知识库 / RAG 链路的开发者、评估者。
 > 当前代码链路最后核对：2026-08-24。第 7、8、12 节保留的是 2026-08-20 的索引实测快照，只用于讲解存储结构，不代表当前部署配置或当前分片数量。
+> 2026-09-10 知识职责与召回过滤已更新为 [rules-v3](KNOWLEDGE_RULES_V3.md)。建筑类型卡已退出活动知识库；下方旧检索样例只用于解释历史问题。
 
 ---
 
@@ -20,14 +21,14 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置�
 ┌─────────┐  ①分片    ┌──────────┐  ②向量化   ┌───────────────┐  ③入库   ┌────────────────┐
 │ 知识库    │ ───────▶ │  Markdown │ ────────▶ │  ChromaDB      │ ──────▶ │ HNSW 向量索引   │
 │ *.md     │  chunker │  Chunker  │  embed   │ wild_knowledge │  upsert │ + documents/    │
-│ 42 篇    │          │           │          │ _base          │         │ metadata       │
+│ 当前文件 │          │           │          │ _base          │         │ metadata       │
 └─────────┘          └──────────┘           │ N 个分片         │         └────────┬───────┘
                                             └────────────────┘                     │
                                                                                   │ ④检索 query(1024d)
 ┌─────────┐  ⑤注入    ┌──────────────────┐  ④Top-K   ┌──────────────┐             │
 │ LLM      │ ◀────── │  RAGSpecLoader    │ ◀──────── │  AgentService │ ──────────▶│
 │ (agent)  │ prompt  │  .retrieve/load   │  片段      │ _build_rag_   │            │
-└─────────┘          └──────────────────┘            │ queries(1~8) │            │
+└─────────┘          └──────────────────┘            │ queries(1~7) │            │
                                                       └──────────────┘            │
                                                                         collection.query
 ```
@@ -48,12 +49,11 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置�
 
 ### 2.1 知识库形态
 
-- 根目录：`storage/knowledge_base/`，共 **42 篇 Markdown**，按业务组织：
+- 根目录：`storage/knowledge_base/`，文件数以分片检查工具的当前输出为准，按职责组织：
   - `BLUEPRINT-SPEC-FULL.md` / `BLUEPRINT-SPEC-MINIMAL.md`（蓝图规范主文档）
-  - `building_types/`（住宅、公共、工业、农业、目录 taxonomy）
   - `components/`（墙、门、窗、栏杆、玻璃幕墙、屋顶等，含 `engine-capability-boundaries.md` 边界文档）
-  - `patterns/`（高细节生成）、`recipes/`（装配模板、材质色板、装配关系）
-- 每篇 Markdown 可通过 **frontmatter / `<!-- rag-meta -->` 块** 声明文档级元数据（`doc_type`、`doc_scope`、`entity_type`、`entity_name`、`status`、`authority`、`building_category` 等）。
+  - `recipes/`（装配模板、材质角色、装配关系）
+- 每篇 Markdown 可通过 **frontmatter / `<!-- rag-meta -->` 块** 声明文档级元数据（`doc_type`、`doc_scope`、`knowledge_role`、`entity_type`、`entity_name`、`status`、`authority` 等）。
 
 ### 2.2 分片逻辑（`app/spec/loader.py` → `MarkdownChunker`）
 
@@ -116,13 +116,13 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置�
 1. **query 向量化**：同一 embedding function 对查询文本编码（实证 query 向量维度 1024）。
 2. **Chroma `collection.query`**：默认 `top_k=6`，返回 `ids/documents/metadatas/distances`；`chunk_id` 使用 Chroma 的真实 ID。
 3. **`_retrieval_priority_score` 排序去重**：语义距离 + **status / authority 成熟度惩罚**（`supported` 优于 `experimental`；`engine` 优于 `schema`/`domain_reference`/`inferred`）。
-4. **强制服务端过滤**：限定 `namespace=wild_spec`，排除 `doc_scope=index`、`status=proposed`、`authority=inferred`，并追加 `public/tenant/department/clearance_level` 权限条件。调用方传入的权限字段会被移除，不能覆盖服务端 AccessContext。
-5. **业务 metadata 过滤**：查询规划可携带 `doc_type/entity_type/building_category` 等白名单条件，减少跨域噪声。
+4. **强制服务端过滤**：限定 namespace 与 `knowledge_revision=rules-v3`，普通生成默认仅包含 generation scope 的 protocol/capability/relation，status 为 supported/experimental，并排除 authority=inferred；专用系统另检查 applies_to。Loader 支持调用方显式指定 reference scope，但当前图没有策略检索消费者，活动知识库也不保存策略文档。服务端继续追加 `public/tenant/department/clearance_level` 权限条件，调用方不能覆盖 AccessContext。
+5. **业务 metadata 过滤**：查询规划可携带 `doc_type/entity_type` 等白名单条件，减少跨域噪声。建筑用途分类不通过 RAG metadata 路由。
 6. **parent 扩展**：命中子分片时可能回带父分片/相邻 part，保证注入上下文完整；相邻补片没有独立向量距离。
 7. **Retrieval Gate**：检索后按原始 distance 执行 `off/observe/enforce`。问答证据不足时可拒答；建筑生成只降级为基础规范，不因一个可选知识点缺失而终止整个任务。
 8. 返回结构：`RetrievedSpecChunk(document, metadata, distance, id)` 列表。
 
-**真实检索样例**（本次实证，query="生成一栋现代别墅，包含正门、水平长窗、平屋顶、楼梯和入口雨棚"，Top-6）：
+**历史检索样例**（rules-v3 前，query="生成一栋现代别墅，包含正门、水平长窗、平屋顶、楼梯和入口雨棚"，Top-6）：
 
 | # | distance | source | heading 前缀 | status / authority |
 |---|---|---|---|---|
@@ -142,7 +142,7 @@ WildAgent 的知识库（Markdown）经 **MarkdownChunker 分片** → **配置�
 位置：`app/services/agent_service.py`。
 
 1. **装配**：`_create_spec_loader()` 用 config 创建 `RAGSpecLoader`（`auto_sync=True` 时启动时自动建索引）。日志实证：`RAGSpecLoader: 已启用 Chroma, persist_dir=...storage\chroma, collection=wild_knowledge_base`。
-2. **意图拆解**：`_build_rag_queries()` 把用户一句话拆成 **1~8 个检索意图**（建筑类型 / 构件 / 材质 / 装配关系等多角度）。
+2. **意图拆解**：`_build_rag_queries()` 把建筑生成请求拆成 **7 个可执行知识意图**（组件选择关系、结构、墙、窗、门、栏杆、屋顶）；建筑类型不再单独检索。
 3. **检索吸收**：`_agent_for_query()` 对每个意图调用 `loader.load / load_many`，得到的分片拼成 `spec_text`。
 4. **注入 prompt**：`build_system_prompt()` 将 `spec_text` 放入 System Prompt 的 **`# WILD 规范`** 段。超过 `max_context_chars=18000` 时舍弃放不下的整片，不截断 JSON、表格或单个分片。
 5. 因此 agent 的生成依据是"Top-K 分片原文 + 成熟度排序后的优先采用顺序"，**是否真正采用取决于 LLM 对 prompt 的执行**（这正是欠缺分析中的 P0 项，见 10.1）。
@@ -224,7 +224,7 @@ $env:PYTHONPATH="."
 
 稳定基础字段包括：`wild_version, topic, status, source_file, source, path, part_index, parent_chunk_id, namespace, mtime, knowledge_layer, primary_terms, synonyms, heading_path, heading, entity_type, entity_name, doc_type, doc_scope, declared_source, content_hash, chunk_index, body_hash, authority, access_scope`。实际键集合以当前分片报告为准，不能继续把历史“31 个键”当成固定 Schema。
 
-条件键（仅部分分片有）：`entity_aliases(500), role_tags(277), constraint_tags(240), building_category(191)`
+历史快照中的条件键计数只用于解释旧索引；rules-v3 当前使用 `entity_aliases`、`role_tags`、`constraint_tags` 与专用系统的 `applies_to`，不再生成 `building_category` 元数据。
 
 单条样例（节选）：`namespace=wild_spec, source=BLUEPRINT-SPEC-FULL.md, entity_type=schema, doc_type=blueprint_spec, doc_scope=generation, status=supported, authority=schema, heading_path=…>2.2.2 弧形墙, chunk_index=8, content_hash=d5b5ce856d631f8f, parent_chunk_id=wild_spec:…:section:09e843e9459b9abc`
 

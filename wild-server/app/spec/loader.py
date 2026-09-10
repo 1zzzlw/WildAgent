@@ -19,13 +19,19 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 from loguru import logger
+from app.agent.knowledge_policy import (
+    GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION,
+    knowledge_hit_applies,
+)
 
 from app.agent.rag_gate import (
     RAGRetrievalRejected,
@@ -111,6 +117,14 @@ class FileSpecLoader(SpecLoader):
     def list_sources(self) -> list[str]:
         return [str(p) for p in self._paths]
 
+    def load_many(self, queries: list, per_query: int = 1, *, purpose: str = "generation") -> str:
+        """向量不可用时各节点仍获得固定协议；不补入建筑案例。"""
+        return self.load()
+
+    @property
+    def last_results(self) -> list:
+        return []
+
     @property
     def loaded_at(self) -> float | None:
         return self._loaded_at
@@ -158,6 +172,9 @@ def _without_derived_entity_name(
     explicit = dict(original_filter or {})
     if "entity_name" in result and "entity_name" not in explicit:
         result.pop("entity_name", None)
+    # 同一术语可同时有参数、约束和组装章节，别名不是主题硬过滤依据。
+    if "topic" not in explicit:
+        result.pop("topic", None)
     return result
 
 
@@ -255,12 +272,16 @@ class OpenAICompatibleEmbeddingFunction:
         base_url: str,
         model_name: str,
         batch_size: int = 10,
+        timeout: float = 60.0,
+        max_retries: int = 1,
     ):
         self.api_key = api_key
         self.base_url = base_url
         self.model_name = model_name
         # 上游兼容服务可能限制单批数量，因此即使配置更大也收敛到 10。
         self.batch_size = max(1, min(batch_size, 10))
+        self.timeout = max(1.0, float(timeout))
+        self.max_retries = max(0, int(max_retries))
         # 延迟创建客户端，使配置与索引对象初始化时不立即发起外部连接。
         self._client: Any | None = None
 
@@ -269,17 +290,110 @@ class OpenAICompatibleEmbeddingFunction:
             return []
 
         embeddings: list[list[float]] = []
-        for start in range(0, len(input), self.batch_size):
+        index = 0
+        slice_size = self.batch_size
+        while index < len(input):
             # 分批调用既遵守服务限制，也避免一次请求携带过多文本。
-            embeddings.extend(self._embed_batch(input[start:start + self.batch_size]))
+            batch = input[index:index + slice_size]
+            try:
+                embeddings.extend(self._embed_batch(batch))
+                index += len(batch)
+            except Exception as exc:
+                # 不同网关/模型的单批条数限制可能比配置更低：遇到"输入类 400"
+                # 时把本批减半重试，而不是让整批报废（参考百炼 20 条限制类问题）。
+                # 网络类错误（超时/连接）仍按 _embed_batch 内的重试处理，不在这里消化。
+                message = str(exc).lower()
+                is_input_limit = (
+                    type(exc).__name__ in {"BadRequestError", "InvalidRequestError", "InvalidParameter"}
+                    or "invalidparameter" in message
+                ) and ("input" in message or "条" in message or "batch" in message)
+                if not is_input_limit or len(batch) <= 1:
+                    raise
+                reduced = max(1, len(batch) // 2)
+                if reduced >= len(batch):
+                    raise
+                logger.warning(
+                    "Embedding 单批请求被网关拒绝（{}），疑似单批条数限制低于 {}；"
+                    "本批 {}/{} 条减半为 {} 条重试",
+                    type(exc).__name__, slice_size, len(batch), slice_size, reduced,
+                )
+                slice_size = reduced
+                # 注意：不推进 index；只缩小本轮切片的条数后原地重试。
         return embeddings
 
     def _embed_batch(self, input: list[str]) -> list[list[float]]:
+        # SDK 的 max_retries 只重试部分可恢复错误（连接类重试对 timeout 常不生效），
+        # 这里对超时/连接错误做指数退避的有限重试，兼容"代理冷连接首请求慢"场景。
+        # 请求在 helper 线程内执行，等待期间每 20s 打一条心跳日志，避免
+        # 后台索引同步长时间无输出被误判为"服务卡死"。
         client = self._get_client()
-        response = client.embeddings.create(model=self.model_name, input=input)
-        # 部分兼容服务不保证 data 顺序，按响应 index 恢复成输入顺序。
-        sorted_data = sorted(response.data, key=lambda item: item.index)
-        return [list(item.embedding) for item in sorted_data]
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                response = self._embed_with_heartbeat(client, input, attempt)
+                # 部分兼容服务不保证 data 顺序，按响应 index 恢复成输入顺序。
+                sorted_data = sorted(response.data, key=lambda item: item.index)
+                return [list(item.embedding) for item in sorted_data]
+            except Exception as exc:  # noqa: BLE001 - 按异常名识别可重试错误
+                error_name = type(exc).__name__
+                retryable = error_name in {"APITimeoutError", "APIConnectionError"} or (
+                    error_name == "ReadTimeout"
+                )
+                if not retryable or attempt >= self.max_retries:
+                    if attempt >= self.max_retries:
+                        logger.error(
+                            "Embedding 请求已耗尽 {} 次重试：{}。若持续超时，可在 .env "
+                            "调小 EMBEDDING__TIMEOUT/EMBEDDING__MAX_RETRIES 以快速失败，"
+                            "或检查代理/网络；索引保持部分可用，不影响服务启动。",
+                            self.max_retries + 1, exc,
+                        )
+                    raise
+                last_error = exc
+                delay = min(1.5 * (2 ** attempt), 8.0)
+                logger.warning(
+                    "Embedding 请求失败（{}），第 {} 次重试，{}s 后继续：{}",
+                    error_name, attempt + 1, round(delay, 1), exc,
+                )
+                time.sleep(delay)
+        # 理论不可达：max_retries >= 0 时循环内已处理全部失败路径。
+        assert last_error is not None
+        raise last_error
+
+    def _embed_with_heartbeat(self, client: Any, input: list[str], attempt: int) -> Any:
+        """在工作线程里执行一次 embedding 请求，主线程按 20s 心跳打日志。
+
+        请求本身仍受 ``self.timeout`` 约束；心跳只解决"等待期无日志"的
+        可观测性问题，不改变任何超时/重试语义。
+        """
+        box: dict[str, Any] = {}
+
+        def work() -> None:
+            try:
+                box["result"] = client.embeddings.create(
+                    model=self.model_name,
+                    input=input,
+                    # 百炼兼容接口明确支持 float；显式指定可避免 SDK 默认请求 base64。
+                    encoding_format="float",
+                )
+            except BaseException as exc:  # noqa: BLE001 - 跨线程搬运异常
+                box["error"] = exc
+
+        worker = threading.Thread(target=work, name="embedding-request", daemon=True)
+        worker.start()
+        waited = 0.0
+        while worker.is_alive():
+            worker.join(timeout=20.0)
+            if worker.is_alive():
+                waited += 20.0
+                logger.info(
+                    "Embedding 请求仍在等待响应（第 {} 次尝试，已等待 {:.0f}s，"
+                    "单次超时上限 {:.0f}s）……",
+                    attempt + 1, waited, self.timeout,
+                )
+        error = box.get("error")
+        if error is not None:
+            raise error
+        return box["result"]
 
     def _get_client(self):
         if self._client is not None:
@@ -291,7 +405,15 @@ class OpenAICompatibleEmbeddingFunction:
             raise RuntimeError("缺少 openai 依赖，请先安装 wild-server 依赖") from exc
 
         # base_url 为空时传 None，让 OpenAI 客户端使用默认服务地址。
-        self._client = OpenAI(api_key=self.api_key, base_url=self.base_url or None)
+        # 注意：SDK 内部重试必须关闭（max_retries=0），否则 SDK 会按同样的
+        # 次数静默重试超时请求，与 _embed_batch 的手动重试叠加成
+        # (max_retries+1)^2 倍的等待时间；重试统一由手动循环带心跳执行。
+        self._client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url or None,
+            timeout=self.timeout,
+            max_retries=0,
+        )
         return self._client
 
     def embed_query(self, input: list[str] | str) -> list[list[float]] | list[float]:
@@ -338,6 +460,9 @@ class MarkdownChunker:
         "wild_version",
         "status",
         "authority",
+        "knowledge_revision",
+        "knowledge_role",
+        "applies_to",
         "primary_terms",
         "synonyms",
         # 兼容尚未迁移的外部文档；正式知识库不再写 legacy keywords。
@@ -667,6 +792,8 @@ class MarkdownChunker:
         metadata: dict[str, Any] = {
             "doc_type": "knowledge",
             "doc_scope": doc_scope,
+            "knowledge_revision": KNOWLEDGE_REVISION,
+            "knowledge_role": "capability",
             "knowledge_layer": "generation",
             "entity_type": "general",
             "entity_name": path.stem,
@@ -681,25 +808,8 @@ class MarkdownChunker:
                 "topic": "navigation",
             })
             return metadata
-        if "building_types" in path_text or "building-types" in path_text:
-            metadata.update({"doc_type": "building_type", "entity_type": "building"})
-            # 根据目录路径推断 building_category
-            if "residential" in path_text:
-                metadata["building_category"] = "residential"
-            elif "public" in path_text:
-                # public 目录下需要进一步判断
-                if any(keyword in stem for keyword in ["commercial", "shopping", "retail", "商业", "商场", "商铺"]):
-                    metadata["building_category"] = "commercial"
-                else:
-                    metadata["building_category"] = "public"
-            elif "industrial" in path_text:
-                metadata["building_category"] = "industrial"
-            elif "agricultural" in path_text:
-                metadata["building_category"] = "agricultural"
-        elif "recipes" in path_text:
+        if "recipes" in path_text:
             metadata.update({"doc_type": "recipe", "entity_type": "assembly"})
-        elif "patterns" in path_text:
-            metadata.update({"doc_type": "pattern", "entity_type": "pattern"})
         elif "components" in path_text:
             metadata["doc_type"] = "component"
         elif "spec" in stem:
@@ -898,20 +1008,27 @@ class RAGSpecLoader(SpecLoader):
         max_context_chars: int = 18000,
         namespace: str = "wild_spec",
         auto_sync: bool = True,
+        allow_destructive_rebuild: bool = False,
     ):
         self._base_paths = [Path(p) for p in base_paths]
         self._rag_paths = [Path(p) for p in rag_paths]
+        # 索引同步可能暂时失败；检索时仍只允许本次启动实际扫描到的活动文件，
+        # 防止已移出知识库的旧分片继续从 Chroma 进入 Prompt。
+        self._active_rag_sources = {_normalize_path(path) for path in self._rag_paths}
         self._persist_dir = Path(persist_dir)
         self._collection_name = collection_name
         self._embedding_function = embedding_function
         self._top_k = max(1, top_k)
         self._max_context_chars = max(4000, max_context_chars)
         self._namespace = namespace
+        # 模型切换时默认保护旧集合。只有迁移/维护命令显式授权，才允许原地删库重建。
+        self._allow_destructive_rebuild = bool(allow_destructive_rebuild)
         self._chunker = MarkdownChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self._loaded_at: float | None = None
         # 保存最近一次检索和同步状态，供 AgentService 写诊断日志。
         self._last_results: list[RetrievedSpecChunk] = []
         self._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
+        self._last_sync_pending = 0
         self._client: Any | None = None
         self._collection: Any | None = None
         self._retrieval_cache: dict[str, list[RetrievedSpecChunk]] = {}
@@ -925,10 +1042,196 @@ class RAGSpecLoader(SpecLoader):
             embedding_name is None
             or embedding_name.__name__ != "HashEmbeddingFunction"
         )
+        # 后台同步的一次性调度状态：进程内单飞 + 跨进程文件锁，避免 dev reload
+        # 的父/子进程或重复构造同时写同一份 Chroma。
+        self._sync_guard = threading.RLock()
+        self._sync_thread_started = False
+        self._sync_thread: threading.Thread | None = None
+        self._sync_status: dict[str, Any] = {
+            "phase": "pending",  # pending | syncing | ok | degraded
+            "attempts": 0,
+            "last_error": None,
+            "last_success_at": None,
+            "pending_chunks": 0,
+        }
 
         if auto_sync:
             # 默认在 Loader 构造时同步一次，保证第一次查询即可命中新文档。
+            # 需要避免阻塞启动的调用方应传 auto_sync=False 并显式调用
+            # start_background_sync()（AgentService 使用该路径）。
             self.sync_index()
+
+    def _knowledge_source_is_active(self, metadata: dict[str, Any]) -> bool:
+        active_sources = getattr(self, "_active_rag_sources", None)
+        if not active_sources:
+            return True
+        source = metadata.get("path") or metadata.get("_source")
+        if not source:
+            return False
+        return _normalize_path(Path(str(source))) in active_sources
+
+    # ── 后台同步（不阻塞服务启动）───────────────────────────────────────
+    # 背景：模块导入路径上同步执行 sync_index 会让服务在 embedding 服务
+    # 慢/超时时阻塞数分钟。这里提供"构造完成后由守护线程后台同步"的路径，
+    # 并配进程级文件锁，防止 dev reload 父/子进程同时写同一份 Chroma。
+    _PROCESS_LOCK_NAME = ".wild_rag_sync.lock"
+    _PROCESS_LOCK_WAIT = 1.0   # 拿不到锁时的轮询间隔（秒）
+
+    def start_background_sync(
+        self,
+        *,
+        attempts: int = 3,
+        backoff_seconds: tuple[float, ...] = (15.0, 60.0, 300.0),
+    ) -> bool:
+        """启动一次后台索引同步（进程内单飞）。
+
+        返回 False 表示本轮已经有一个后台同步线程在跑（幂等）。
+        同步失败不会让 loader 抛异常：索引保持"部分可用"，检索自动降级
+        为基础规范上下文；错误通过日志和 self.sync_status 暴露。
+        """
+        with self._sync_guard:
+            if self._sync_thread_started:
+                return False
+            self._sync_thread_started = True
+            thread = threading.Thread(
+                target=self._background_sync_worker,
+                args=(max(1, int(attempts)), tuple(backoff_seconds)),
+                name="rag-index-sync",
+                daemon=True,
+            )
+            self._sync_thread = thread
+        thread.start()
+        logger.info("RAG 索引同步：已在后台线程启动（不影响服务启动）")
+        return True
+
+    @property
+    def sync_status(self) -> dict[str, Any]:
+        """后台同步的观测状态（phase/attempts/last_error/last_success_at）。"""
+        return dict(getattr(self, "_sync_status", {}) or {})
+
+    def _background_sync_worker(
+        self,
+        attempts: int,
+        backoff_seconds: tuple[float, ...],
+    ) -> None:
+        for attempt in range(1, attempts + 1):
+            lock_handle = None
+            try:
+                lock_handle = self._try_process_lock()
+                if lock_handle is None:
+                    logger.info(
+                        "RAG 索引同步：另一进程正在同步，按退避等待后重试（第 {}/{} 次）",
+                        attempt, attempts,
+                    )
+                    if attempt < attempts:
+                        delay = backoff_seconds[min(attempt - 1, len(backoff_seconds) - 1)]
+                        time.sleep(delay)
+                    continue
+                status = self._sync_status
+                status["phase"] = "syncing"
+                status["attempts"] = attempt
+                status["last_error"] = None
+                # 3 连超时不再整体失败：剩余批次保留待同步，已有批次保持可用。
+                self.sync_index(raise_on_stall=False)
+                pending_chunks = self.last_sync_pending
+                if pending_chunks:
+                    error_text = f"仍有 {pending_chunks} 个文本块待同步"
+                    status.update(
+                        phase="degraded",
+                        last_error=error_text,
+                        pending_chunks=pending_chunks,
+                    )
+                    if attempt >= attempts:
+                        logger.error(
+                            "RAG 索引同步：后台已耗尽 {}/{} 次尝试，{}；"
+                            "保持 degraded，等待手动同步或下次启动补齐",
+                            attempt, attempts, error_text,
+                        )
+                        return
+                    logger.warning(
+                        "RAG 索引同步：后台第 {}/{} 次未完成，{}；将按退避策略重试",
+                        attempt, attempts, error_text,
+                    )
+                    # 退避等待期间不要占用跨进程锁，让 dev reload 的另一个健康
+                    # 进程有机会接手同步。
+                    self._release_process_lock(lock_handle)
+                    lock_handle = None
+                    delay = backoff_seconds[min(attempt - 1, len(backoff_seconds) - 1)]
+                    time.sleep(delay)
+                    continue
+                status["phase"] = "ok"
+                status["last_success_at"] = time.time()
+                status["pending_chunks"] = 0
+                logger.info("RAG 索引同步：后台同步完成")
+                return
+            except Exception as exc:
+                # 只有真正的本地/结构性错误（如 Chroma 打不开）会走到这里；
+                # embedding 超时已被 sync_index 内部消化为"待同步"。
+                error_text = f"{type(exc).__name__}: {exc}"
+                self._sync_status.update(phase="degraded", last_error=error_text)
+                logger.error(
+                    "RAG 索引同步失败（后台，第 {}/{} 次），索引保持部分可用：{}",
+                    attempt, attempts, error_text,
+                )
+                if attempt >= attempts:
+                    return
+                self._release_process_lock(lock_handle)
+                lock_handle = None
+                delay = backoff_seconds[min(attempt - 1, len(backoff_seconds) - 1)]
+                time.sleep(delay)
+            finally:
+                if lock_handle is not None:
+                    self._release_process_lock(lock_handle)
+
+    def _try_process_lock(self) -> Any | None:
+        """非阻塞获取跨进程同步锁；返回文件句柄，失败（锁被占用）返回 None。"""
+        try:
+            self._persist_dir.mkdir(parents=True, exist_ok=True)
+            handle = open(self._persist_dir / self._PROCESS_LOCK_NAME, "a+b")  # noqa: SIM115
+        except OSError as exc:
+            logger.warning("RAG 索引同步：无法创建进程锁文件（{}），跳过本轮同步", exc)
+            return None
+        try:
+            if os.name == "nt":
+                import msvcrt
+                # msvcrt.locking 从当前文件位置开始锁定；固定锁第 0 个字节，避免
+                # a+b 的初始指针位于文件末尾而导致不同进程锁住不同区域。
+                handle.seek(0)
+                if not handle.read(1):
+                    handle.seek(0)
+                    handle.write(b"\0")
+                    handle.flush()
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            return None
+        # 写入持有者标记便于排查；锁释放后文件仍保留但不再上锁。
+        handle.seek(0)
+        handle.write(f"pid={os.getpid()} at={time.time():.0f}".encode("utf-8"))
+        handle.truncate()
+        handle.flush()
+        return handle
+
+    def _release_process_lock(self, handle: Any) -> None:
+        try:
+            if os.name == "nt":
+                import msvcrt
+                handle.seek(0)
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        finally:
+            try:
+                handle.close()
+            except OSError:
+                pass
 
     def load(self, query: str = "", *, purpose: str = "generation") -> str:
         # 基础规范始终完整注入；扩展知识只在有查询时按需召回。
@@ -946,7 +1249,7 @@ class RAGSpecLoader(SpecLoader):
             retrieved = self._apply_retrieval_gate([], purpose=purpose)
         return self._compose_context(base_text, retrieved, operation="load")
 
-    # per_query 参数控制每个检索意图返回的片段数，避免建筑类型文档挤掉组件文档。
+    # per_query 参数控制每个检索意图返回的片段数，避免单一文档挤掉其他能力关系。
     def load_many(
         self,
         queries: list[str | SpecQuery],
@@ -954,7 +1257,7 @@ class RAGSpecLoader(SpecLoader):
         *,
         purpose: str = "generation",
     ) -> str:
-        """按多个检索意图各取片段，避免建筑类型文档挤掉组件文档。"""
+        """按多个检索意图各取片段，保持协议、能力与关系覆盖。"""
         base_text = self._load_base_text()
         try:
             retrieved = self.retrieve_many(queries, per_query=per_query)
@@ -1056,9 +1359,30 @@ class RAGSpecLoader(SpecLoader):
     def last_sync_stats(self) -> dict[str, int]:
         return dict(self._last_sync_stats)
 
-    def sync_index(self) -> int:
-        """增量同步当前 namespace，返回本次新增或变化的 chunk 数。"""
+    @property
+    def last_sync_pending(self) -> int:
+        """最近一次同步结束后仍未写入的正文块数。"""
+        return int(getattr(self, "_last_sync_pending", 0) or 0)
+
+    def sync_index(
+        self,
+        *,
+        raise_on_stall: bool = True,
+        budget_seconds: float | None = None,
+    ) -> int:
+        """增量同步当前 namespace，返回本次新增或变化的 chunk 数。
+
+        ``raise_on_stall``：连续 3 批请求超时后是否抛出异常。默认抛出以保留
+        历史"整体降级"语义；后台同步路径传 False，只停止本轮并把剩余批次
+        保留为待同步，已写入批次继续可用，不中断服务。
+
+        ``budget_seconds``：可选总时间预算（不含删除/元数据等本地步骤）；
+        超预算立即收尾，剩余批次保留待下次同步。
+        """
+        started = time.perf_counter()
+        logger.info("RAG 索引同步：正在打开向量集合……")
         collection = self._get_collection()
+        logger.info("RAG 索引同步：正在读取并切分知识库文档……")
         chunks = self._build_chunks()
         # 字典键保证同一次构建中相同 ID 只保留一个；ID 本身包含来源、序号和内容。
         chunks_by_id = {chunk.id: chunk for chunk in chunks}
@@ -1094,18 +1418,155 @@ class RAGSpecLoader(SpecLoader):
             if existing_metadata_by_id.get(chunk_id) != chunks_by_id[chunk_id].metadata
         ]
 
+        # 每批与 EmbeddingFunction 的上限保持一致；成功后立即持久化，重启时
+        # 可以从尚未入库的块继续同步。
         batch_size = 10
+        total = len(pending_chunks)
+        self._last_sync_pending = total
+        if hasattr(self, "_sync_status"):
+            self._sync_status["pending_chunks"] = total
+        batch_count = math.ceil(total / batch_size)
+        logger.info(
+            "RAG 索引同步：共 {} 块，待向量化 {} 块（{} 批），待删除 {} 块，待更新元数据 {} 块",
+            len(chunks), total, batch_count, len(stale_ids), len(metadata_only_chunks),
+        )
+        if not total:
+            logger.info("RAG 索引同步：无需重新向量化")
+
+        def log_progress(completed: int, status: str) -> None:
+            # 只按成功写入的块推进；等待接口时保留上一批的实际进度。
+            filled = completed * 20 // total
+            logger.info(
+                "RAG 向量化 [{}{}] {:.0f}% {}/{} 块 | {} | 累计 {:.1f}s",
+                "#" * filled, "-" * (20 - filled), completed * 100 / total,
+                completed, total, status, time.perf_counter() - started,
+            )
+
+        def describe_batch(batch: list[SpecChunk]) -> str:
+            sources = sorted({
+                str(chunk.metadata.get("source_file") or chunk.metadata.get("source") or "unknown")
+                for chunk in batch
+            })
+            source_preview = ", ".join(sources[:3])
+            if len(sources) > 3:
+                source_preview += f" 等 {len(sources)} 个文件"
+            input_chars = sum(len(chunk.document) for chunk in batch)
+            return f"{len(batch)} 块/{input_chars} 字符（{source_preview}）"
+
+        def embed_and_upsert(batch: list[SpecChunk], label: str) -> None:
+            documents = [chunk.document for chunk in batch]
+            embeddings = self._embedding_function.embed_documents(documents)
+            logger.info(
+                "RAG 向量化：{} 已收到 {} 个向量，正在写入 Chroma……",
+                label, len(embeddings),
+            )
+            collection.upsert(
+                ids=[chunk.id for chunk in batch],
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=[chunk.metadata for chunk in batch],
+            )
+
         for start in range(0, len(stale_ids), batch_size):
             # 删除已移除文件、已改变内容或因重新分片而失效的旧 ID。
             collection.delete(ids=stale_ids[start:start + batch_size])
 
+        completed = 0
+        deferred_batches: list[tuple[int, list[SpecChunk]]] = []
+        consecutive_timeouts = 0
+        stalled = False
+        budget_exceeded = False
         for start in range(0, len(pending_chunks), batch_size):
+            if (
+                budget_seconds is not None
+                and time.perf_counter() - started >= budget_seconds
+            ):
+                budget_exceeded = True
+                logger.warning(
+                    "RAG 索引同步：已达到时间预算（{:.0f}s），剩余 {} 块保留为待同步",
+                    budget_seconds, total - completed,
+                )
+                break
             batch = pending_chunks[start:start + batch_size]
-            # upsert 会调用 collection 的 embedding function 计算并持久化向量。
-            collection.upsert(
-                ids=[chunk.id for chunk in batch],
-                documents=[chunk.document for chunk in batch],
-                metadatas=[chunk.metadata for chunk in batch],
+            batch_number = start // batch_size + 1
+            batch_description = describe_batch(batch)
+            log_progress(
+                completed,
+                f"第 {batch_number}/{batch_count} 批：请求 Embedding，"
+                f"{batch_description}",
+            )
+            batch_started = time.perf_counter()
+            try:
+                # 显式拆开远程向量计算与本地 Chroma 写入，避免 upsert 内部调用
+                # 把网络等待和数据库等待混在同一个不可观测步骤中。
+                embed_and_upsert(batch, f"第 {batch_number}/{batch_count} 批")
+            except Exception as exc:
+                if type(exc).__name__ == "APITimeoutError":
+                    consecutive_timeouts += 1
+                    deferred_batches.append((batch_number, batch))
+                    logger.warning(
+                        "RAG 向量化超时：第 {}/{} 批已延后，将继续处理后续批次；"
+                        "本批 {}，耗时 {:.1f}s",
+                        batch_number, batch_count, batch_description,
+                        time.perf_counter() - batch_started,
+                    )
+                    if consecutive_timeouts >= 3:
+                        # 服务整体不可用时及时停止，避免每一批都等待完整超时。
+                        if raise_on_stall:
+                            logger.error("RAG 连续 3 批请求超时，停止本次索引同步")
+                            raise
+                        stalled = True
+                        logger.error(
+                            "RAG 向量化连续 3 批请求超时，停止本次同步；"
+                            "已写入部分保持可用，剩余 {} 块保留为待同步",
+                            total - completed,
+                        )
+                        break
+                    continue
+                logger.error(
+                    "RAG 向量化失败：第 {}/{} 批，已完成 {}/{} 块，本批耗时 {:.1f}s，错误类型 {}",
+                    batch_number, batch_count, completed, total,
+                    time.perf_counter() - batch_started, type(exc).__name__,
+                )
+                raise
+            consecutive_timeouts = 0
+            completed += len(batch)
+            self._last_sync_pending = total - completed
+            if hasattr(self, "_sync_status"):
+                self._sync_status["pending_chunks"] = self._last_sync_pending
+            log_progress(
+                completed,
+                f"第 {batch_number}/{batch_count} 批完成，耗时 {time.perf_counter() - batch_started:.1f}s",
+            )
+
+        if deferred_batches and not stalled and not budget_exceeded:
+            logger.warning("RAG 索引同步：开始重试 {} 个超时批次", len(deferred_batches))
+        for batch_number, batch in deferred_batches:
+            if stalled or budget_exceeded:
+                # 服务不可用或预算耗尽时不再重试延后批次，避免无意义的长时间等待；
+                # 它们与未处理的批次一样保留为待同步。
+                break
+            batch_started = time.perf_counter()
+            try:
+                embed_and_upsert(batch, f"重试原第 {batch_number}/{batch_count} 批")
+            except Exception as exc:
+                if type(exc).__name__ != "APITimeoutError":
+                    raise
+                logger.error(
+                    "RAG 超时批次重试失败：原第 {}/{} 批，本次保留为待同步，"
+                    "不影响其余索引使用；失败 {} 块，耗时 {:.1f}s",
+                    batch_number, batch_count, len(batch),
+                    time.perf_counter() - batch_started,
+                )
+                continue
+            completed += len(batch)
+            self._last_sync_pending = total - completed
+            if hasattr(self, "_sync_status"):
+                self._sync_status["pending_chunks"] = self._last_sync_pending
+            log_progress(
+                completed,
+                f"原第 {batch_number}/{batch_count} 批重试成功，耗时 "
+                f"{time.perf_counter() - batch_started:.1f}s",
             )
 
         for start in range(0, len(metadata_only_chunks), batch_size):
@@ -1117,15 +1578,33 @@ class RAGSpecLoader(SpecLoader):
 
         self._last_sync_stats = {
             "total": len(chunks),
-            "updated": len(pending_chunks) + len(metadata_only_chunks),
+            "updated": completed + len(metadata_only_chunks),
             "deleted": len(stale_ids),
         }
         # 索引内容变化后使检索缓存失效，避免命中过期的召回结果。
         retrieval_cache = getattr(self, "_retrieval_cache", None)
         if retrieval_cache is not None:
             retrieval_cache.clear()
-        
-        return len(pending_chunks) + len(metadata_only_chunks)
+
+        elapsed = time.perf_counter() - started
+        pending_remaining = total - completed
+        self._last_sync_pending = pending_remaining
+        if hasattr(self, "_sync_status"):
+            self._sync_status["pending_chunks"] = pending_remaining
+        if budget_exceeded or stalled:
+            logger.warning(
+                "RAG 索引同步：本轮停止，索引部分可用；仍有 {} 块待同步，"
+                "后续启动或手动同步将自动补齐（本轮耗时 {:.1f}s）",
+                pending_remaining, elapsed,
+            )
+        elif pending_remaining:
+            logger.warning(
+                "RAG 索引同步完成但仍有 {} 块待同步；下次启动将自动重试，耗时 {:.1f}s",
+                pending_remaining, elapsed,
+            )
+        else:
+            logger.info("RAG 索引同步完成，耗时 {:.1f}s", elapsed)
+        return completed + len(metadata_only_chunks)
 
     def retrieve(
         self,
@@ -1182,8 +1661,8 @@ class RAGSpecLoader(SpecLoader):
             )
 
         # 用别名命中补全粗粒度过滤（doc_type/entity_type），但剔除 entity_name：
-        # 别名命中的实体名常与知识库实体命名粒度不一致（如"别墅"有 villa、
-        # modern_villa 多个变体），做硬过滤会漏召回。查询文本保持原文。
+        # 自然语言术语常比知识实体命名更粗，做实体名硬过滤会漏召回。
+        # 查询文本保持原文。
         # hash 模式不启用。
         if getattr(self, "_query_rewrite_enabled", True):
             planned = build_query_plan(
@@ -1228,6 +1707,11 @@ class RAGSpecLoader(SpecLoader):
         for index in ranked_indices:
             document = documents[index]
             metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+            if (
+                not self._knowledge_source_is_active(metadata)
+                or not knowledge_hit_applies(query, metadata)
+            ):
+                continue
             # 兼容旧索引：没有 content_hash metadata 时现场按同样规则补算。
             dedupe_hash = self._retrieval_hash(document or "", metadata)
             if dedupe_hash in seen_hashes:
@@ -1243,7 +1727,12 @@ class RAGSpecLoader(SpecLoader):
             if len(retrieved) >= self._top_k:
                 break
 
-        retrieved = self._expand_parent_neighbors(collection, retrieved)
+        retrieved = [
+            hit
+            for hit in self._expand_parent_neighbors(collection, retrieved)
+            if self._knowledge_source_is_active(hit.metadata)
+            and knowledge_hit_applies(query, hit.metadata)
+        ]
         self._last_results = retrieved
         return retrieved
 
@@ -1423,6 +1912,11 @@ class RAGSpecLoader(SpecLoader):
             for index in ranked_indices:
                 document = documents[index]
                 metadata = metadatas[index] if index < len(metadatas) and metadatas[index] else {}
+                if (
+                    not self._knowledge_source_is_active(metadata)
+                    or not knowledge_hit_applies(query_text, metadata)
+                ):
+                    continue
                 dedupe_hash = self._retrieval_hash(document or "", metadata)
                 if dedupe_hash in seen_hashes:
                     continue
@@ -1442,7 +1936,15 @@ class RAGSpecLoader(SpecLoader):
                 query_chunks = self._rerank_retrieved(query_chunks, query_text)
             retrieved.extend(query_chunks)
 
-        retrieved = self._expand_parent_neighbors(collection, retrieved)
+        retrieved = [
+            hit
+            for hit in self._expand_parent_neighbors(collection, retrieved)
+            if self._knowledge_source_is_active(hit.metadata)
+            and any(
+                knowledge_hit_applies(text, hit.metadata)
+                for text, _ in normalized_queries
+            )
+        ]
         self._last_results = retrieved
         if retrieval_cache is not None and cache_key is not None:
             retrieval_cache[cache_key] = list(retrieved)
@@ -1537,11 +2039,9 @@ class RAGSpecLoader(SpecLoader):
         """按知识库版本惰性构建别名目录，供 build_query_plan 做实体别名改写。
 
         目录从已索引 chunk 的 entity_name/primary_terms/synonyms 构建。构建失败
-        时静默降级为空目录（等价于不做别名改写），不阻断检索。手工构造的测试
+        时降级为空目录：通用规则仍可检索，自动类型路由不放行任何类型。手工构造的测试
         Loader 可能缺少这些属性，统一用 getattr 防御。
         """
-        if not getattr(self, "_query_rewrite_enabled", True):
-            return {}
         cached = getattr(self, "_alias_catalog_cache", None)
         cached_revision = getattr(self, "_alias_catalog_revision", None)
         stats = getattr(self, "_last_sync_stats", None) or {}
@@ -1552,11 +2052,11 @@ class RAGSpecLoader(SpecLoader):
         try:
             collection = self._get_collection()
             if collection is not None and collection.count() > 0:
-                batch = collection.get(include=["metadatas"])
+                batch = collection.get(where=self._query_where(), include=["metadatas"])
                 metadatas = batch.get("metadatas", []) or []
                 catalog = build_alias_catalog(metadatas)
         except Exception as exc:
-            # 别名目录只是检索增强，不参与安全过滤；失败不应阻断检索。
+            # 失败时类型路由关闭，通用规则仍可使用。
             logger.warning(f"[RAG] 别名目录构建失败，本次不做别名改写: {exc}")
             catalog = {}
         self._alias_catalog_cache = catalog
@@ -1634,10 +2134,15 @@ class RAGSpecLoader(SpecLoader):
         )
         conditions: list[dict[str, Any]] = [
             {"namespace": self._namespace},
-            {"doc_scope": {"$ne": "index"}},
+            {"knowledge_revision": KNOWLEDGE_REVISION},
         ]
+        # 新版本知识未同步时返回空知识，不能退回旧建筑模板。
+        if "doc_scope" not in business_filter:
+            conditions.append({"doc_scope": "generation"})
+        if "knowledge_role" not in business_filter and business_filter.get("doc_scope") != "reference":
+            conditions.append({"knowledge_role": {"$in": list(GENERATION_ROLES)}})
         if "status" not in business_filter:
-            conditions.append({"status": {"$ne": "proposed"}})
+            conditions.append({"status": {"$in": ["supported", "experimental"]}})
         if "authority" not in business_filter:
             conditions.append({"authority": {"$ne": "inferred"}})
         conditions.extend(access_conditions)
@@ -1674,7 +2179,14 @@ class RAGSpecLoader(SpecLoader):
 
         existing_signature = (collection.metadata or {}).get("index_signature")
         if existing_signature != collection_metadata["index_signature"]:
-            # embedding 或分片策略变化后旧向量不可复用，直接重建整个集合。
+            if not self._allow_destructive_rebuild:
+                raise RuntimeError(
+                    "当前 Embedding 模型或切分配置与已有 Chroma 集合签名不一致。"
+                    "为保护旧索引，运行时不会自动删除集合；请为新模型设置新的 "
+                    "RAG__COLLECTION_NAME，或使用显式迁移命令构建并验证新集合。"
+                )
+            # 只有显式维护命令可以走原地重建；普通服务启动永远不会自动删旧索引。
+            logger.warning("已显式授权：RAG 模型或切分配置变化，将原地重建向量集合")
             self._client.delete_collection(name=self._collection_name)
             collection = self._client.get_or_create_collection(
                 name=self._collection_name,
@@ -1719,7 +2231,7 @@ class RAGSpecLoader(SpecLoader):
         if not chunks:
             return ""
 
-        parts = ["## RAG 检索到的相关规范片段"]
+        parts = ["## RAG 检索到的相关规范片段", KNOWLEDGE_GUIDANCE]
         for index, chunk in enumerate(chunks, start=1):
             source = chunk.metadata.get(
                 "source_file",
@@ -1728,7 +2240,7 @@ class RAGSpecLoader(SpecLoader):
             heading = chunk.metadata.get("heading", "")
             metadata_text = ", ".join(
                 f"{key}={chunk.metadata[key]}"
-                for key in ("doc_type", "entity_name", "topic", "status", "authority")
+                for key in ("doc_type", "entity_name", "topic", "knowledge_role", "status", "authority")
                 if chunk.metadata.get(key)
             )
             distance = chunk.distance
@@ -1749,8 +2261,14 @@ def create_embedding_function(
     base_url: str,
     model_name: str,
     allow_hash_fallback: bool = True,
+    timeout: float = 60.0,
+    max_retries: int = 1,
 ):
-    """根据配置创建 Chroma embedding function。"""
+    """根据配置创建 Chroma embedding function。
+
+    ``timeout``/``max_retries`` 控制单批向量请求的网络超时与重试；
+    两者只在索引同步（后台线程）中使用，不影响任何用户请求延迟。
+    """
     if api_key and model_name:
         # 同时具备密钥和模型名时优先使用真实语义 embedding。
         return OpenAICompatibleEmbeddingFunction(
@@ -1758,6 +2276,8 @@ def create_embedding_function(
             base_url=base_url,
             model_name=model_name,
             batch_size=10,
+            timeout=timeout,
+            max_retries=max_retries,
         )
 
     if allow_hash_fallback:

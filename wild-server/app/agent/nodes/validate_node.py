@@ -41,13 +41,13 @@ async def validate_node(state: GenerationState) -> dict:
     
     merged_blueprint = state.get("merged_blueprint")
     if not merged_blueprint:
-        logger.error(f"[validate_node] merged_blueprint 缺失")
+        logger.error("[validate_node] merged_blueprint 缺失")
         return {
             "error": "merged_blueprint 缺失，无法校验",
             "status": "failed",
         }
     
-    logger.info(f"[validate_node] 开始校验 Blueprint")
+    logger.info("[validate_node] 开始校验 Blueprint")
     
     # 导入并执行校验流水线
     from app.services.agent_delivery import final_validation_results
@@ -100,35 +100,6 @@ async def validate_node(state: GenerationState) -> dict:
                     has_warning=False,
                 ))
 
-        # 风格装配后的任何 merge/归一化/callback 都必须再次通过 G7，避免
-        # “装配时通过、交付时漂移”。这一步位于最终候选上，和保存门禁同源。
-        style_gate_report = state.get("style_gate_report") or {}
-        if state.get("style_review_status") == "approved" and state.get("style_package_id"):
-            from app.agent.plan2build.decor_assembler import gate_g7_style
-            from app.agent.plan2build.style_registry import style_registry
-
-            package = style_registry.get(str(state["style_package_id"]))
-            report = gate_g7_style(merged_blueprint, package)
-            style_gate_report = report.to_dict()
-            error_issues = [issue for issue in report.issues if issue.severity == "error"]
-            warning_issues = [issue for issue in report.issues if issue.severity == "warning"]
-            if error_issues or warning_issues:
-                lines = []
-                for issue in report.issues:
-                    marker = "❌" if issue.severity == "error" else "⚠️"
-                    entity = issue.entity_ids[0] if issue.entity_ids else "style"
-                    lines.append(f"{marker} [{entity}] {issue.code}: {issue.message}")
-                output = "\n".join(lines)
-            else:
-                output = f"✅ G7 风格与装饰闭环通过（{package['id']}）"
-            pipeline_results.append(PipelineStepResult(
-                step="g7",
-                name="validate_plan2build_g7",
-                output=output,
-                has_error=bool(error_issues),
-                has_warning=bool(warning_issues),
-            ))
-        
         # 提取最终错误（修复后的 recheck 覆盖初检错误）
         final_errors = _final_errors(pipeline_results)
         
@@ -203,7 +174,6 @@ async def validate_node(state: GenerationState) -> dict:
             "status": status,
             "error": error_summary,
             "final_blueprint": merged_blueprint,  # 通过校验后的最终结果
-            "style_gate_report": style_gate_report,
             "retry_count": state.get("retry_count", 0),
             "max_retries": state.get("max_retries", 3),
         }

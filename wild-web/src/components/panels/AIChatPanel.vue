@@ -123,13 +123,10 @@
           v-show="shouldShowExecution(agentStore.getTurnForMessage(message)!)"
           :id="turnDomId(agentStore.getTurnForMessage(message)!)"
           :turn="agentStore.getTurnForMessage(message)!"
-          @confirm-floor-plan="handleConfirmFloorPlan"
-          @retry-floor-plan="handleRetryFloorPlan"
-          @revise-floor-plan="handleReviseFloorPlan"
-          @confirm-style="handleConfirmStyle"
-          @revise-style="handleReviseStyle"
           @confirm-execution-plan="handleConfirmExecutionPlan"
           @revise-execution-plan="handleReviseExecutionPlan"
+          @confirm-design="handleConfirmDesign"
+          @revise-design="handleReviseDesign"
         />
       </template>
 
@@ -361,20 +358,15 @@ const isUserScrolling = ref(false)
 const hasRunningTurn = computed(() =>
   agentStore.currentTurns.some(turn => turn.status === 'running')
 )
-const pendingFloorPlanReview = computed(() =>
-  [...agentStore.currentTurns]
-    .reverse()
-    .find(turn => turn.status === 'waiting_review' && turn.floor_plan_review_status === 'pending')
-)
-const pendingStyleReview = computed(() =>
-  [...agentStore.currentTurns]
-    .reverse()
-    .find(turn => turn.status === 'waiting_review' && turn.style_review_status === 'pending')
-)
 const pendingExecutionPlanReview = computed(() =>
   [...agentStore.currentTurns]
     .reverse()
     .find(turn => turn.status === 'waiting_review' && turn.execution_plan_review_status === 'pending')
+)
+const pendingDesignReview = computed(() =>
+  [...agentStore.currentTurns]
+    .reverse()
+    .find(turn => turn.status === 'waiting_review' && turn.design_review_status === 'pending')
 )
 const activePlanTurn = computed(() =>
   [...agentStore.currentTurns]
@@ -383,8 +375,7 @@ const activePlanTurn = computed(() =>
 )
 const inputPlaceholder = computed(() => {
   if (pendingExecutionPlanReview.value) return '输入对执行计划的修改意见，或直接点击“批准计划”…'
-  if (pendingStyleReview.value) return '输入对建筑风格的修改意见，例如“改成新中式，屋檐更明显”…'
-  if (pendingFloorPlanReview.value) return '输入对当前平面的修改意见，例如“二层主卧加一扇朝南窗”…'
+  if (pendingDesignReview.value) return '输入对建筑设计的修改意见，或直接点击“批准此设计”…'
   if (activePlanTurn.value) return '输入运行中修改意见，将在下一节点边界重新规划…'
   return '输入您的建筑需求...'
 })
@@ -448,8 +439,7 @@ const sendButtonTitle = computed(() => {
   if (activePlanTurn.value) return '发送运行中修改意见 (Ctrl+Enter)'
   if (agentStore.isProcessing) return '处理中...'
   if (pendingExecutionPlanReview.value) return '发送计划修改意见 (Ctrl+Enter)'
-  if (pendingStyleReview.value) return '发送风格修改意见 (Ctrl+Enter)'
-  if (pendingFloorPlanReview.value) return '发送平面修改意见 (Ctrl+Enter)'
+  if (pendingDesignReview.value) return '发送建筑设计修改意见 (Ctrl+Enter)'
   return '发送 (Ctrl+Enter)'
 })
 
@@ -461,35 +451,6 @@ function handleSend() {
   if (requestId) inputText.value = ''
 }
 
-function handleConfirmFloorPlan(requestId: string) {
-  resumeAutoScroll()
-  agentBridge.submitFloorPlanReview(requestId, 'confirm')
-}
-
-function handleRetryFloorPlan(requestId: string) {
-  resumeAutoScroll()
-  agentBridge.submitFloorPlanReview(
-    requestId,
-    'revise',
-    '请重新生成一个可以通过确定性校验并允许确认的完整基础平面。',
-  )
-}
-
-function handleReviseFloorPlan(requestId: string, feedback: string) {
-  resumeAutoScroll()
-  agentBridge.submitFloorPlanReview(requestId, 'revise', feedback)
-}
-
-function handleConfirmStyle(requestId: string, stylePackageId: string) {
-  resumeAutoScroll()
-  agentBridge.submitStyleReview(requestId, 'confirm', stylePackageId)
-}
-
-function handleReviseStyle(requestId: string, feedback: string) {
-  resumeAutoScroll()
-  agentBridge.submitStyleReview(requestId, 'revise', '', feedback)
-}
-
 function handleConfirmExecutionPlan(requestId: string) {
   resumeAutoScroll()
   agentBridge.submitExecutionPlanReview(requestId, 'confirm')
@@ -498,6 +459,16 @@ function handleConfirmExecutionPlan(requestId: string) {
 function handleReviseExecutionPlan(requestId: string, feedback: string) {
   resumeAutoScroll()
   agentBridge.submitExecutionPlanReview(requestId, 'revise', feedback)
+}
+
+function handleConfirmDesign(requestId: string) {
+  resumeAutoScroll()
+  agentBridge.submitDesignReview(requestId, 'confirm')
+}
+
+function handleReviseDesign(requestId: string, feedback: string) {
+  resumeAutoScroll()
+  agentBridge.submitDesignReview(requestId, 'revise', feedback)
 }
 
 function handleReconnect() {

@@ -30,17 +30,6 @@ async def _architecture(_state: dict) -> dict:
     return {"architecture_plan": {"required_components": []}}
 
 
-async def _floor_plan_design(_state: dict) -> dict:
-    return {
-        "floor_plan": {"source": "model", "levels": []},
-        "floor_plan_validation": [],
-    }
-
-
-def _floor_plan_review(_state: dict) -> dict:
-    return {"floor_plan_review_status": "approved"}
-
-
 async def _material_plan(_state: dict) -> dict:
     return {"material_plan": {"roles": [], "resolvedAssets": {}}}
 
@@ -74,8 +63,6 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             patch.object(graph_module, "chat_node", _chat),
             patch.object(graph_module, "patch_node", _patch),
             patch.object(graph_module, "architecture_planner", _architecture),
-            patch.object(graph_module, "floor_plan_designer", _floor_plan_design),
-            patch.object(graph_module, "floor_plan_review", _floor_plan_review),
             patch.object(graph_module, "material_planner", _material_plan),
             patch.object(graph_module, "skeleton_generator", _skeleton),
             patch.object(graph_module, "merge_fragments_node", _merge),
@@ -87,6 +74,26 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             item.start()
             self.addCleanup(item.stop)
         return graph_module.build_generation_graph(enable_callback=False)
+
+    def test_graph_does_not_register_retired_floor_pipeline(self):
+        node_names = set(self._build_graph().get_graph().nodes)
+
+        self.assertTrue({
+            "floor_space_analysis",
+            "floor_layout",
+            "floor_openings",
+            "floor_validate",
+            "floor_plan_design",
+            "floor_plan_review",
+            "approved_plan_assembler",
+        }.isdisjoint(node_names))
+        self.assertTrue({
+            "architecture",
+            "material_plan",
+            "skeleton",
+            "merge",
+            "final_validate",
+        }.issubset(node_names))
 
     async def test_chat_branch_executes_chat_node(self):
         result = await self._build_graph().ainvoke({"user_message": "chat: hello"})

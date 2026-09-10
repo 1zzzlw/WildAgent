@@ -7,8 +7,13 @@
 wild-server/storage/chroma/
 wild-server/storage/scenes/
 wild-server/storage/sessions/
+wild-server/storage/designs/
 wild-server/storage/assets/
 wild-server/storage/geoip/*.mmdb
+wild-server/.langgraph_api/
+wild-server/rag_bg_sync_*
+wild-server/.rag_bg_sync_test/
+wild-server/.probe_tmp/
 
 # Node
 node_modules/

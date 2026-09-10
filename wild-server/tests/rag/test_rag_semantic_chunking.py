@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
 from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
+from app.agent.knowledge_policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
 
 
 class RAGSemanticChunkingTest(unittest.TestCase):
@@ -271,8 +272,10 @@ keywords: 旧主词, old alias
             {
                 "$and": [
                     {"namespace": "test"},
-                    {"doc_scope": {"$ne": "index"}},
-                    {"status": {"$ne": "proposed"}},
+                    {"knowledge_revision": KNOWLEDGE_REVISION},
+                    {"doc_scope": "generation"},
+                    {"knowledge_role": {"$in": list(GENERATION_ROLES)}},
+                    {"status": {"$in": ["supported", "experimental"]}},
                     {"authority": {"$ne": "inferred"}},
                     {"access_scope": "public"},
                     {"doc_type": "component"},
@@ -281,10 +284,29 @@ keywords: 旧主词, old alias
             },
         )
 
+    def test_generation_filter_excludes_identity_knowledge(self):
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        conditions = loader._query_where()["$and"]
+        role_condition = next(
+            item for item in conditions if "knowledge_role" in item
+        )
+        self.assertNotIn("identity", role_condition["knowledge_role"]["$in"])
+
+    def test_reference_scope_is_explicit_and_old_vectors_are_always_excluded(self):
+        loader = object.__new__(RAGSpecLoader)
+        loader._namespace = "test"
+        normal = loader._query_where()["$and"]
+        reference = loader._query_where({"doc_scope": "reference"})["$and"]
+        self.assertIn({"doc_scope": "generation"}, normal)
+        self.assertIn({"doc_scope": "reference"}, reference)
+        self.assertIn({"knowledge_revision": KNOWLEDGE_REVISION}, reference)
+        self.assertFalse(any("knowledge_role" in condition for condition in reference))
+
     def test_context_limit_keeps_retrieved_chunks_atomic(self):
         """Prompt 放不下所有结果时，应舍弃整片，不能截断 JSON 片段。"""
         loader = object.__new__(RAGSpecLoader)
-        loader._max_context_chars = 360
+        loader._max_context_chars = 360 + len(KNOWLEDGE_GUIDANCE) + 2
         loader._loaded_at = None
         chunks = [
             RetrievedSpecChunk(

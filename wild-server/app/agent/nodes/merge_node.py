@@ -406,6 +406,14 @@ async def merge_fragments_node(state: GenerationState) -> dict:
     merge_diag["element_count"] = len(elements)
     merge_diag["component_count"] = len(components)
     merge_diag["final_errors"] = len(final_errors) + len(design_errors)
+    design_document = state.get("design_document") or {}
+    resolved_design = state.get("resolved_design") or {}
+    if isinstance(design_document, dict):
+        meta = merged_blueprint.setdefault("meta", {})
+        if isinstance(meta, dict):
+            meta["designRevision"] = design_document.get("revision")
+            meta["designHash"] = resolved_design.get("design_hash")
+            meta["designSchemaVersion"] = design_document.get("schema_version")
     # final_validate 紧接在 merge 之后，蓝图未发生变化时可安全复用这一轮结果；
     # 用蓝图指纹显式判断，避免依赖“final_errors==0”这种隐式条件。
     merge_diag["blueprint_fingerprint"] = blueprint_fingerprint(merged_blueprint)
@@ -511,7 +519,8 @@ def _validate_design_brief_constraints(
             if not stairs:
                 errors.append(f"建筑方案要求 {modeled_floors} 层，但没有 stair 构件")
 
-    for component_type, limits in design_brief.get("component_quota", {}).items():
+    quotas = design_brief.get("component_quota", {})
+    for component_type, limits in quotas.items():
         if not isinstance(limits, dict):
             continue
         actual = counts.get(component_type, 0)
@@ -551,7 +560,58 @@ def _validate_design_brief_constraints(
                 f"墙 {wall_id} 有 {actual} 个门窗，超过立面上限 {maximum}"
             )
 
+    # 当配额要求完整实现全部已解析槽位时，数量正确仍不够：每个门窗还必须
+    # 落在对应墙面和局部坐标上。这样可阻止“总数通过、立面节奏错位”。
+    opening_slots = design_brief.get("opening_slots")
+    if isinstance(opening_slots, list):
+        for opening_type in ("door", "window"):
+            slots = [
+                slot for slot in opening_slots
+                if isinstance(slot, dict) and slot.get("type") == opening_type
+            ]
+            limits = quotas.get(opening_type, {}) if isinstance(quotas.get(opening_type), dict) else {}
+            if not slots or limits.get("min") != len(slots) or limits.get("max") != len(slots):
+                continue
+            candidates = [
+                component for component in geometry.get("components", [])
+                if component.get("type") == opening_type
+                or (opening_type == "window" and component.get("type") == "bay_window")
+            ]
+            unmatched = list(candidates)
+            missing_slot_ids: list[str] = []
+            for slot in slots:
+                slot_from = slot.get("from")
+                match_index = next((
+                    index for index, component in enumerate(unmatched)
+                    if component.get("parentWall") == slot.get("wall_id")
+                    and _opening_values_match(component.get("from"), slot_from)
+                    and _opening_values_match(component.get("width"), slot.get("width"))
+                    and _opening_values_match(component.get("height"), slot.get("height"))
+                ), None)
+                if match_index is None:
+                    missing_slot_ids.append(str(slot.get("id") or "?"))
+                else:
+                    unmatched.pop(match_index)
+            if missing_slot_ids:
+                preview = ", ".join(missing_slot_ids[:4])
+                suffix = "..." if len(missing_slot_ids) > 4 else ""
+                errors.append(
+                    f"{opening_type} 未落实 {len(missing_slot_ids)} 个批准槽位: {preview}{suffix}"
+                )
+
     return errors
+
+
+def _opening_values_match(actual: object, expected: object, tolerance: float = 0.01) -> bool:
+    """比较门窗槽位标量或向量，容忍序列化产生的微小浮点误差。"""
+    if isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
+        return abs(float(actual) - float(expected)) <= tolerance
+    if isinstance(actual, list) and isinstance(expected, list) and len(actual) == len(expected):
+        return all(
+            _opening_values_match(actual_item, expected_item, tolerance)
+            for actual_item, expected_item in zip(actual, expected)
+        )
+    return actual == expected
 
 
 def _deduplicate_balcony_representations(blueprint: dict) -> dict:
@@ -779,8 +839,6 @@ def _enforce_component_quota(
     策略：按墙面优先级保留。主立面(max_openings多的)优先保留，侧墙/背面多余额外剔除。
     返回 (filtered_components, pruned_count)
     """
-    import json as _json
-    
     # 按类型统计
     by_type: dict[str, list[int]] = {}
     for idx, comp in enumerate(components):

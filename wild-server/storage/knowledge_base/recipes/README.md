@@ -10,23 +10,17 @@ primary_terms:
 synonyms: []
 ---
 
-# 组装配方索引
+# recipes 知识索引
 
-> 依据：当前引擎实现与分类后的领域资料。
-> 用途：记录跨构件组装顺序、实际 resolver、构件矩阵和风格速配表。
-> RAG 关键词：组装模板、构件矩阵、低层建筑、高层建筑、大跨建筑、温室、门窗风格、屋顶类型。
+本目录采用 rules-v3，只记录已选系统的宿主、装配、引用和验证关系。是否选择某个系统由用户需求与已批准 `DesignDocument` 决定。
 
-## 当前拆分
+## 内容入口
 
-| 文件 | 内容 |
-|---|---|
-| `supported-assembly-relations.md` | 当前 resolver 与 expander 已实现的组合关系 |
-| `assembly-templates.md` | 只使用当前类型的低层、多层和大跨降级模板 |
-| `component-building-matrix.md` | 构件与建筑类型的常用程度矩阵 |
-| `door-window-roof-style-reference.md` | 门窗风格与屋顶类型速查 |
-| `residential-material-palette.md` | 居住建筑材质角色、建议颜色和当前 MaterialDef 约束 |
-| `public-building-material-palette.md` | 公共建筑材质角色与标量视觉参数 |
-| `glass-curtain-wall-assembly.md` | 玻璃幕墙 A/B 组装路径、网格关系、验证与回退 |
-| `plan2build-approved-plan-assembly.md` | 已确认 FloorPlanIR、G1-G7、风格包与 Decor IR 的确定性装配合同 |
+- [component-selection-relations.md](component-selection-relations.md)
+- [glass-curtain-wall-assembly.md](glass-curtain-wall-assembly.md)
+- [material-role-relations.md](material-role-relations.md)
+- [supported-assembly-relations.md](supported-assembly-relations.md)
 
-后两份领域矩阵仍含未来专用构件，按 `experimental` 使用；任何写入正式 WILD 的结果都必须先受 `engine-capability-boundaries.md` 约束。
+## 维护与生效
+
+按 wild-knowledge-ingest 技能维护来源、knowledge_role、applies_to 与真实分片。只有源码能够表达或校验的关系进入活动 recipes；尚无执行点的设计不变量进入 `docs-dev/knowledge-backlog/`。更新内容后由 RAGSpecLoader 同步索引，旧 revision 向量被 rules-v3 过滤；运行时直接解析的参数块继续使用 system scope。

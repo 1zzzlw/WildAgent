@@ -2,9 +2,11 @@
 # 合并顺序：defaults → 按书写顺序命中的 mapping_rules → Markdown 文件头。
 # 因此更具体的规则要写在更靠后的位置，文件头可覆盖任何默认值。
 # path_pattern 使用相对路径：* 匹配一层，** 用于递归子目录。
-version: 1
+version: 2
 
 defaults:
+  knowledge_revision: rules-v3
+  knowledge_role: capability
   wild_version: "1.1"
   # 当前仓库知识默认公开；未来受限文档必须在文件头显式覆盖，并补 tenant/department。
   access_scope: public
@@ -13,6 +15,7 @@ mapping_rules:
   - path_pattern: "BLUEPRINT-SPEC-*.md"
     metadata:
       doc_type: blueprint_spec
+      knowledge_role: protocol
       doc_scope: generation
       knowledge_layer: wild_schema
       entity_type: schema
@@ -21,33 +24,32 @@ mapping_rules:
     metadata:
       doc_scope: system
 
-  - path_pattern: "building_types/**/*.md"
+  - path_pattern: "BLUEPRINT-PATCH-PROTOCOL.md"
     metadata:
-      doc_type: building_type
+      doc_type: blueprint_spec
+      knowledge_role: protocol
       doc_scope: generation
-      knowledge_layer: architecture
-      entity_type: building
+      knowledge_layer: wild_schema
+      entity_type: schema
 
   - path_pattern: "components/*.md"
     metadata:
       doc_type: component
       doc_scope: generation
+      knowledge_layer: wild_schema
 
   - path_pattern: "recipes/*.md"
     metadata:
       doc_type: recipe
+      knowledge_role: relation
       doc_scope: generation
-
-  - path_pattern: "patterns/*.md"
-    metadata:
-      doc_type: pattern
-      doc_scope: generation
-      knowledge_layer: project_pattern
+      knowledge_layer: constraint
 
   # README 和目录型文档必须放在普通目录规则之后，以覆盖生成类默认值。
   - path_pattern: "README.md"
     metadata:
       doc_type: index
+      knowledge_role: navigation
       doc_scope: index
       knowledge_layer: navigation
       entity_type: index
@@ -56,6 +58,7 @@ mapping_rules:
   - path_pattern: "*/README.md"
     metadata:
       doc_type: index
+      knowledge_role: navigation
       doc_scope: index
       knowledge_layer: navigation
       entity_type: index

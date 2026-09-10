@@ -20,6 +20,30 @@ class ModelConfig(BaseModel):
     api_key: str = ""
     # 自建或第三方兼容服务填写 base_url；空值表示使用客户端默认地址。
     base_url: str = ""
+    # Agent 的统一思考控制值。支持 Token 预算的模型使用精确上限；只支持
+    # 推理档位的模型映射为 low/high/max；0 表示使用供应商默认值。
+    thinking_budget: int = Field(default=4096, ge=0, le=262144)
+    # 单次 LLM 请求超时（秒）。这是防御性兜底，主要防止配置错误或服务端
+    # 挂起时无限等待；正常模型的大 prompt（如建筑方案生成）可能响应较慢，
+    # 因此默认给足 300s。0 表示不设显式超时（不建议）。
+    timeout: float = 300.0
+    # 网络类错误（含超时）的自动重试次数。连接不稳的上游（如走代理的
+    # embedding 服务）需要有限重试；0 表示不重试。
+    max_retries: int = 2
+
+
+class EmbeddingModelConfig(ModelConfig):
+    """Embedding 服务连接参数。
+
+    批量向量化请求比对话请求短，默认单次超时 60s、手动重试 1 次：
+    既能容忍代理/冷连接的首请求慢启动，又不会在服务不可用时让索引同步
+    长时间空转。仍可用 ``EMBEDDING__TIMEOUT`` / ``EMBEDDING__MAX_RETRIES``
+    覆盖。注意重试在 SDK 层被禁用（见 loader），这里的 max_retries 只控制
+    带心跳日志的手动重试次数。
+    """
+
+    timeout: float = 60.0
+    max_retries: int = 1
 
 
 class RetrievalGateConfig(BaseModel):
@@ -70,6 +94,9 @@ class RAGConfig(BaseModel):
     max_context_chars: int = 18000
     # 没配置远程 embedding 时允许使用本地 hash 向量，仅适合开发 smoke test。
     allow_hash_fallback: bool = True
+    # AgentService 创建 RAG Loader 后是否自动在后台线程执行索引同步。
+    # 同步永远不阻塞服务启动：索引就绪前查询自动降级为基础规范上下文。
+    auto_sync: bool = True
     retrieval_gate: RetrievalGateConfig = Field(default_factory=RetrievalGateConfig)
     trace: RAGTraceConfig = Field(default_factory=RAGTraceConfig)
     security: RAGSecurityConfig = Field(default_factory=RAGSecurityConfig)
@@ -128,7 +155,7 @@ class Settings(BaseSettings):
 
     # default_factory 确保每个 Settings 实例拥有独立的嵌套配置对象。
     chat: ModelConfig = Field(default_factory=ModelConfig)
-    embedding: ModelConfig = Field(default_factory=ModelConfig)
+    embedding: EmbeddingModelConfig = Field(default_factory=EmbeddingModelConfig)
     rerank: ModelConfig = Field(default_factory=ModelConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
     web_research: WebResearchConfig = Field(default_factory=WebResearchConfig)

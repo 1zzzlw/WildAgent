@@ -1,7 +1,12 @@
 import unittest
-from unittest.mock import Mock
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 from app.spec.loader import RAGSpecLoader, SpecChunk
+
+
+class APITimeoutError(Exception):
+    """测试用超时类型；Loader 只依赖异常类型名，避免发起真实网络请求。"""
 
 
 def make_chunk(chunk_id: str) -> SpecChunk:
@@ -26,12 +31,116 @@ def make_loader(
     loader = object.__new__(RAGSpecLoader)
     loader._namespace = "test"
     loader._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
+    loader._embedding_function = Mock()
+    loader._embedding_function.embed_documents.side_effect = (
+        lambda documents: [[float(index)] for index, _ in enumerate(documents)]
+    )
     loader._get_collection = Mock(return_value=collection)
     loader._build_chunks = Mock(return_value=chunks)
     return loader, collection
 
 
 class RAGIndexSyncTest(unittest.TestCase):
+    def test_retrieval_rejects_source_removed_from_active_file_list(self):
+        loader = object.__new__(RAGSpecLoader)
+        active = Path("storage/knowledge_base/components/windows.md").resolve()
+        stale = Path("storage/knowledge_base/components/proposed-component-extensions.md").resolve()
+        loader._active_rag_sources = {str(active).casefold()}
+
+        self.assertTrue(loader._knowledge_source_is_active({"path": str(active)}))
+        self.assertFalse(loader._knowledge_source_is_active({"path": str(stale)}))
+
+    def test_timeout_batch_is_deferred_and_retried_after_other_batches(self):
+        loader, collection = make_loader([], [make_chunk(str(i)) for i in range(11)])
+        calls = 0
+
+        def embed(documents):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise APITimeoutError("temporary timeout")
+            return [[float(index)] for index, _ in enumerate(documents)]
+
+        loader._embedding_function.embed_documents.side_effect = embed
+        with patch("app.spec.loader.logger") as log:
+            self.assertEqual(loader.sync_index(), 11)
+
+        self.assertEqual([len(call.kwargs["ids"]) for call in collection.upsert.call_args_list], [1, 10])
+        warning_messages = [call.args[0] for call in log.warning.call_args_list]
+        self.assertTrue(any("已延后" in message for message in warning_messages))
+        self.assertTrue(any("开始重试" in message for message in warning_messages))
+
+    def test_retry_timeout_keeps_failed_batch_pending_without_disabling_rag(self):
+        loader, collection = make_loader([], [make_chunk(str(i)) for i in range(11)])
+        calls = 0
+
+        def embed(documents):
+            nonlocal calls
+            calls += 1
+            if calls in {1, 3}:
+                raise APITimeoutError("persistent timeout")
+            return [[float(index)] for index, _ in enumerate(documents)]
+
+        loader._embedding_function.embed_documents.side_effect = embed
+        with patch("app.spec.loader.logger") as log:
+            self.assertEqual(loader.sync_index(), 1)
+
+        self.assertEqual(collection.upsert.call_count, 1)
+        self.assertEqual(loader.last_sync_stats, {"total": 11, "updated": 1, "deleted": 0})
+        self.assertEqual(loader.last_sync_pending, 10)
+        warning_messages = [
+            call.args[0].format(*call.args[1:])
+            for call in log.warning.call_args_list
+        ]
+        self.assertTrue(any("完成但仍有 10 块待同步" in message for message in warning_messages))
+
+    def test_progress_advances_only_after_each_batch_succeeds(self):
+        loader, collection = make_loader([], [make_chunk(str(i)) for i in range(11)])
+        messages = []
+        progress_at_upsert = []
+
+        def capture(message, *args):
+            messages.append(message.format(*args))
+
+        def upsert(**kwargs):
+            progress_at_upsert.append(next(
+                message for message in reversed(messages)
+                if message.startswith("RAG 向量化 [")
+            ))
+
+        collection.upsert.side_effect = upsert
+        with patch("app.spec.loader.logger") as log:
+            log.info.side_effect = capture
+            self.assertEqual(loader.sync_index(), 11)
+
+        self.assertIn("0/11 块", progress_at_upsert[0])
+        self.assertIn("第 1/2 批：请求 Embedding", progress_at_upsert[0])
+        self.assertIn("10/11 块", progress_at_upsert[1])
+        self.assertIn("第 2/2 批：请求 Embedding", progress_at_upsert[1])
+        self.assertTrue(any("[####################] 100% 11/11 块" in m for m in messages))
+        self.assertIn("RAG 索引同步完成", messages[-1])
+
+    def test_progress_reports_no_embedding_for_unchanged_index(self):
+        chunk = make_chunk("a")
+        loader, collection = make_loader(["a"], [chunk], [chunk.metadata])
+        with patch("app.spec.loader.logger") as log:
+            self.assertEqual(loader.sync_index(), 0)
+        log.info.assert_any_call("RAG 索引同步：无需重新向量化")
+        collection.upsert.assert_not_called()
+
+    def test_failed_batch_reports_last_successful_progress_and_reraises(self):
+        loader, collection = make_loader([], [make_chunk(str(i)) for i in range(11)])
+        error = RuntimeError("{'error': 'upstream unavailable'}")
+        collection.upsert.side_effect = [None, error]
+        with patch("app.spec.loader.logger") as log:
+            with self.assertRaises(RuntimeError) as caught:
+                loader.sync_index()
+        self.assertIs(caught.exception, error)
+        log.error.assert_called_once()
+        self.assertEqual(log.error.call_args.args[1:5], (2, 2, 10, 11))
+        messages = [call.args[0].format(*call.args[1:]) for call in log.info.call_args_list]
+        self.assertFalse(any("100%" in m or "RAG 索引同步完成" in m for m in messages))
+
     def test_supported_maintainer_chunk_can_outrank_nearby_experimental_chunk(self):
         collection = Mock()
         collection.count.return_value = 2
@@ -144,6 +253,7 @@ class RAGIndexSyncTest(unittest.TestCase):
         updated = loader.sync_index()
 
         self.assertEqual(updated, 0)
+        self.assertEqual(loader.last_sync_pending, 0)
         collection.upsert.assert_not_called()
         collection.update.assert_not_called()
         collection.delete.assert_not_called()
@@ -179,6 +289,7 @@ class RAGIndexSyncTest(unittest.TestCase):
         collection.delete.assert_called_once_with(ids=["old"])
         collection.upsert.assert_called_once()
         self.assertEqual(collection.upsert.call_args.kwargs["ids"], ["new"])
+        self.assertEqual(collection.upsert.call_args.kwargs["embeddings"], [[0.0]])
         self.assertEqual(
             loader.last_sync_stats,
             {"total": 1, "updated": 1, "deleted": 1},

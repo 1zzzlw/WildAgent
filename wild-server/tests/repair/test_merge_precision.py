@@ -40,6 +40,42 @@ def _design_brief(minimum_doors: int = 1) -> dict:
     }
 
 
+def test_exact_opening_quota_also_requires_each_approved_slot():
+    blueprint = {
+        "geometry": {
+            "elements": [],
+            "components": [
+                {
+                    "type": "window", "id": "window_1", "parentWall": "wall_front",
+                    "from": [1.0, 0.9, 0.0], "width": 1.8, "height": 1.5,
+                },
+                {
+                    "type": "window", "id": "window_2", "parentWall": "wall_front",
+                    "from": [1.0, 0.9, 0.0], "width": 1.8, "height": 1.5,
+                },
+            ],
+        },
+    }
+    design_brief = {
+        "component_quota": {"window": {"min": 2, "max": 2}},
+        "facade_plan": {"wall_front": {"max_openings": 2}},
+        "opening_slots": [
+            {
+                "id": "wall_front:window:1", "type": "window", "wall_id": "wall_front",
+                "from": [1.0, 0.9, 0.0], "width": 1.8, "height": 1.5,
+            },
+            {
+                "id": "wall_front:window:2", "type": "window", "wall_id": "wall_front",
+                "from": [5.0, 0.9, 0.0], "width": 1.8, "height": 1.5,
+            },
+        ],
+    }
+
+    errors = _validate_design_brief_constraints(blueprint, design_brief)
+
+    assert "window 未落实 1 个批准槽位: wall_front:window:2" in errors
+
+
 class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
     def test_balcony_named_railing_is_preserved_without_balcony_component(self):
         blueprint = {

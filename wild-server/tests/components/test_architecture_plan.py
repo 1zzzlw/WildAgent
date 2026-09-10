@@ -6,6 +6,7 @@ from app.agent.architecture_plan import (
     conform_railings_to_slots,
     conform_roofs_to_slots,
     evaluate_skeleton_complexity,
+    detect_architecture_profile,
     normalize_architecture_plan,
     resolve_facade_layout,
     resolve_complexity_profile,
@@ -73,10 +74,34 @@ def test_minimal_request_keeps_single_wall() -> None:
     assert diag["meets_target"] is True
 
 
+def test_industrial_building_uses_long_span_profile_instead_of_residential_defaults() -> None:
+    profile = detect_architecture_profile("生成一座单层工业厂房")
+    plan = normalize_architecture_plan({}, "生成一座单层工业厂房")
+
+    assert profile["id"] == "industrial_long_span"
+    assert plan["profile"] == "industrial_long_span"
+    assert plan["structural_grid"]["system"] == "long_span"
+
+
 def test_minimal_plan_has_no_required_components() -> None:
     """极简结构不应强制派发门/窗/屋顶组件。"""
     plan = normalize_architecture_plan({}, "生成一面玻璃幕墙")
     assert plan["required_components"] == []
+
+
+def test_architecture_plan_ignores_retired_spatial_plan_payload() -> None:
+    """旧 checkpoint 中的房间布局不能重新进入总体方案或骨架输入。"""
+    plan = normalize_architecture_plan(
+        {"spatial_plan": {"levels": [{"walls": [{"id": "legacy_inner_wall"}]}]}},
+        "生成一座两层住宅",
+    )
+
+    assert "spatial_plan" not in plan
+    blueprint = build_deterministic_skeleton(plan, "生成一座两层住宅")
+    assert all(
+        element.get("id") != "legacy_inner_wall"
+        for element in blueprint["geometry"]["elements"]
+    )
 
 
 def test_curtain_wall_plan_has_dense_facade_pattern() -> None:
@@ -224,6 +249,38 @@ def test_candidate_selection_respects_explicit_floor_count() -> None:
     assert diag["candidate_summaries"][diag["selected_index"]]["score"] == max(diag["candidate_scores"])
 
 
+def test_standard_candidate_scoring_prefers_real_articulation_without_fixed_package() -> None:
+    plain = {
+        "concept": "单一矩形",
+        "massing": {"shape": "rectangle", "width": 14, "depth": 10, "floors": 2},
+        "volumes": [{
+            "id": "main", "role": "primary", "x": 0, "z": 0,
+            "width": 14, "depth": 10, "start_floor": 1, "end_floor": 2,
+        }],
+        "detail_packages": [],
+    }
+    articulated = {
+        **plain,
+        "concept": "主次体量",
+        "massing": {**plain["massing"], "shape": "l_shape"},
+        "volumes": [
+            plain["volumes"][0],
+            {
+                "id": "secondary", "role": "secondary", "x": 0, "z": 5,
+                "width": 6, "depth": 5, "start_floor": 1, "end_floor": 1,
+            },
+        ],
+    }
+
+    _, diag = select_architecture_plan(
+        {"candidates": [plain, articulated]},
+        "生成一个别墅",
+    )
+
+    assert diag["selected_index"] == 1
+    assert diag["candidate_scores"][1] > diag["candidate_scores"][0]
+
+
 def test_facade_layout_resolves_exact_non_overlapping_slots() -> None:
     plan, _ = select_architecture_plan({}, "生成两层欧式别墅")
     brief = resolve_facade_layout(_two_storey_blueprint(), plan)
@@ -244,6 +301,56 @@ def test_facade_layout_resolves_exact_non_overlapping_slots() -> None:
             slot_right = slot["from"][0] + slot["width"]
             other_right = other["from"][0] + other["width"]
             assert slot_right <= other["from"][0] or other_right <= slot["from"][0]
+
+
+def test_facade_patterns_override_contradictory_sparse_window_quota() -> None:
+    """逐层立面图案是门窗布局事实来源，不能再被较小总配额随机抽稀。"""
+    repeated_windows = {
+        face: {
+            "bays": 2,
+            "entrance_bay": 1,
+            "ground_pattern": ["door", "window"] if face == "front" else ["window", "window"],
+            "upper_pattern": ["window", "window"],
+        }
+        for face in ("front", "back", "left", "right")
+    }
+    plan = normalize_architecture_plan({
+        "massing": {
+            "shape": "rectangle", "width": 14, "depth": 10,
+            "floors": 3, "modeled_floors": 3, "floor_height": 3,
+            "symmetry": True,
+        },
+        "facades": repeated_windows,
+        "component_quota": {
+            "door": {"min": 1, "max": 1},
+            "window": {"min": 7, "max": 7},
+        },
+    }, "生成一个别墅")
+
+    assert plan["component_quota"]["door"]["min"] == 1
+    assert plan["component_quota"]["window"]["min"] == 23
+    assert plan["component_quota"]["window"]["max"] == 23
+
+    blueprint = build_deterministic_skeleton(plan, "生成一个别墅")
+    brief = resolve_facade_layout(blueprint, plan)
+    windows = [slot for slot in brief["opening_slots"] if slot["type"] == "window"]
+    assert len(windows) == 23
+    assert brief["component_quota"]["window"]["min"] == len(windows)
+    assert brief["realization"]["symmetry"] is True
+
+    components, stats = conform_openings_to_slots([], brief, blueprint["materials"])
+    realized_windows = [item for item in components if item["type"] == "window"]
+    assert len(realized_windows) == 23
+    assert stats["synthesized"] == 24  # 1 door + 23 windows
+
+    upper_front = [
+        item for item in realized_windows
+        if item["parentWall"] in {"wall_front_2", "wall_front_3"}
+    ]
+    assert {(item["parentWall"], item["from"][0]) for item in upper_front} == {
+        ("wall_front_2", 2.4), ("wall_front_2", 9.4),
+        ("wall_front_3", 2.4), ("wall_front_3", 9.4),
+    }
 
 
 def test_short_wall_does_not_emit_overlapping_facade_slots() -> None:
@@ -590,8 +697,29 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
         assert len(window_levels) <= plan["massing"]["modeled_floors"]
 
 
-def test_precision_mode_compiles_detailed_plan_into_articulated_skeleton() -> None:
+def test_precision_alone_does_not_force_massing_or_accessories() -> None:
+    message = "生成一座现代两层别墅"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+    assert complexity["level"] == "standard"
+    assert len(plan["volumes"]) == 1
+    assert plan["detail_packages"] == []
+    assert not {"balcony", "canopy", "bay_window"}.intersection(plan["required_components"])
+
+
+def test_rich_facade_does_not_imply_setbacks() -> None:
     message = "生成一座现代两层别墅，立面丰富、有层次感"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan({}, message, complexity)
+    assert complexity["level"] == "detailed"
+    assert complexity["min_volumes"] == 1
+    assert plan["massing"]["shape"] == "rectangle"
+    assert len(plan["volumes"]) == 1
+    assert plan["detail_packages"] == []
+
+
+def test_explicit_massing_and_details_compile_into_articulated_skeleton() -> None:
+    message = "生成一座现代两层退台别墅，立面丰富，带阳台、雨棚和凸窗"
     complexity = resolve_complexity_profile(message, precision_mode=True)
     plan = normalize_architecture_plan({}, message, complexity)
 
@@ -622,7 +750,7 @@ def test_precision_mode_compiles_detailed_plan_into_articulated_skeleton() -> No
 
 
 def test_detailed_plan_rejects_plain_low_complexity_shell() -> None:
-    message = "生成一座复杂的现代两层别墅"
+    message = "生成一座复杂的现代两层多体量别墅"
     complexity = resolve_complexity_profile(message, precision_mode=True)
     plan = normalize_architecture_plan({}, message, complexity)
 
@@ -681,6 +809,21 @@ def test_standard_plan_rejects_missing_vertical_circulation() -> None:
 
     assert evaluation["meets_target"] is False
     assert evaluation["checks"]["vertical_circulation"] is False
+
+
+def test_legacy_core_strategy_normalizes_to_core_and_stair() -> None:
+    message = "生成一座普通两层办公楼"
+    plan = normalize_architecture_plan(
+        {"circulation": {"vertical_strategy": "core"}},
+        message,
+    )
+    blueprint = build_deterministic_skeleton(plan, message)
+    elements = blueprint["geometry"]["elements"]
+
+    assert plan["circulation"]["vertical_strategy"] == "core_and_stair"
+    assert any(element.get("type") == "stair" for element in elements)
+    assert any(str(element.get("id", "")).startswith("wall_core_") for element in elements)
+    assert evaluate_skeleton_complexity(blueprint, plan)["checks"]["vertical_circulation"] is True
 
 
 def test_stepped_building_stairs_stay_in_shared_footprint_and_connect() -> None:

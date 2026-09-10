@@ -1,64 +1,46 @@
-# 检索增强与自主纠错协议
+# 检索与纠错边界
 
-## 1. 结构化查询计划
+## 查询计划
 
-把用户原句保留为 `raw_query`，再生成不改变事实的检索计划：
+查询必须保留用户原句，并只按当前阶段选择可执行知识：
 
 ```json
 {
-  "raw_query": "生成一个社区商铺",
+  "raw_query": "生成一个带玻璃幕墙的办公楼",
   "intent": "building_generation",
-  "entities": ["community_commercial"],
-  "aliases": ["社区商业", "沿街商铺", "店面", "neighborhood retail", "storefront"],
-  "topics": ["composition", "assembly", "fallback"],
-  "filters": {"doc_type": "building_type", "entity_type": "building"},
-  "constraints": ["floor_count_unspecified", "storefront_identity"]
+  "topics": ["capability", "assembly", "constraints"],
+  "filters": {"doc_type": "recipe", "entity_type": "facade"},
+  "selected_systems": ["curtain_wall"]
 }
 ```
 
-查询计划的 `entities/topics/filters` 必须能追溯到用户原句或现有分类词表。LLM 可以改写同义词和检索意图，但不得在计划中新增未经来源支持的构件事实。无法确定建筑类型时保留多个候选并标记 `uncertain`，不要静默选择住宅模板。
+建筑用途和风格不作为 RAG 文档实体。模型先形成 `DesignDocument`；后续查询只能根据用户原句、已批准系统和实际构件扩展，不得新增建筑套餐。
 
-## 2. 索引增强字段
+## 检索分组
 
-索引字段只从来源正文和 metadata 确定性抽取：
+1. 方案阶段加载基础协议、通用组装关系和引擎边界。
+2. 骨架阶段根据批准体量、楼层、结构和屋顶系统检索关系。
+3. 组件阶段按真实 `entity_type` 检索门、窗、栏杆等能力。
+4. 专用系统规则必须通过 `applies_to` 检查；建筑类型、风格和近似语义不能替代显式选择。
+5. 普通生成只允许 rules-v3 的 protocol、capability、relation；当前活动索引不保存无消费者的 reference 策略。
 
-| 字段 | 内容 | 用途 |
-|---|---|---|
-| `entity_aliases` | 中文别名、英文名、行业称呼 | 同义召回 |
-| `entity_name` | 稳定 snake_case ID | 精确过滤 |
-| `topic` | composition/assembly/fallback 等 | 意图路由 |
-| `role_tags` | required/characteristic/conditional/optional | 构成排序 |
-| `constraint_tags` | host、level、coverage、collision 等 | 关系召回 |
-| `status`/`authority` | 原 metadata 值 | 可信度过滤 |
-| `source` | 来源路径或源码入口 | 证据追踪 |
+## 重排与追踪
 
-不要把这些字段只写进向量 metadata 而从正文删除；命中的 chunk 仍必须自包含地说明实体、条件和 WILD 映射。索引重建后通过项目 Loader 更新 Chroma，不手工写向量数据。
+重排优先级为 schema/engine、verified、maintainer、domain_reference、inferred。按正文哈希去重，并记录查询、过滤条件、命中 source/heading、距离、用途和最终注入字符数。类型文档命中普通生成应视为配置错误，而不是可接受的低相关结果。
 
-## 3. 两阶段召回与重排
-
-1. 先按 `doc_type/entity_type/topic/status` 做受限召回，再执行向量或 BM25 相似度。
-2. 建筑生成至少分开召回建筑类型 composition、组件规则和跨组件 recipe；按查询意图为每类分配配额。
-3. 重排优先级为：源码/schema/engine > supported verified_example > maintainer > experimental domain_reference > inferred。
-4. 按正文哈希和实体 ID 去重；同一实体的 composition 不得被 fallback 摘要挤掉。
-5. 记录 query plan、命中 source/heading、过滤条件、重排理由和未命中项，便于诊断“知识不存在”与“召回失败”。
-
-## 4. 有界自主纠错
-
-对 Agent 草稿采用固定检查链：
+## 有界纠错
 
 ```text
 Draft
-  -> Structure Check
-  -> Source/Factual Check
-  -> Tool/Schema Check
-  -> Relation/Reasoning Check
-  -> Final Output
+  → Structure Check
+  → Tool/Schema Check
+  → Relation Check
+  → Final Validation
 ```
 
-- `Structure Check` 检查 JSON、字段、数量和阶段边界。
-- `Source/Factual Check` 检查每个身份、构成、条件和降级是否有来源；不得用模型常识补齐缺口。
-- `Tool/Schema Check` 调用仓库现有确定性校验器；Schema 失败先修结构，不让 LLM 重写整栋建筑。
-- `Relation/Reasoning Check` 检查 parent、标高、覆盖、入口可达、组件冲突和建筑类型禁用项。
-- 每次局部修正后重跑受影响检查和最终全量检查；最多固定轮数，失败输出可审计的错误与待确认项。
+- Structure Check 检查 JSON、字段和阶段输出边界。
+- Tool/Schema Check 使用仓库现有确定性校验器，不让模型凭知识文本修改合法枚举。
+- Relation Check 检查 parent、标高、覆盖、入口可达和碰撞。
+- 每次只修复失败实体及相关关系，然后重跑受影响检查和最终校验。
 
-召回增强解决“找不到正确知识”，纠错链解决“生成后没有兑现约束”；二者都不能替代共享 validator 或确定性编译规则。
+检索解决“当前引擎规则能否被找到”，纠错解决“生成结果是否兑现批准设计”。两者都不能用建筑百科、整栋模板或无限重试替代。

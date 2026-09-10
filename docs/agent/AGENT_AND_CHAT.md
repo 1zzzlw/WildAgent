@@ -2,7 +2,7 @@
 
 > 文档分类：Agent 专题。返回 [正式文档入口](../README.md)。
 
-最后核对：2026-08-28。
+最后核对：2026-09-08。
 
 > 新增的执行前计划审核、能力白名单、运行中意见队列和有限重规划，详见 [建筑生成计划模式与当前优化](建筑生成计划模式与当前优化.md)。
 
@@ -24,9 +24,9 @@ Agent 的价值不是单次输出 JSON，而是把不稳定的模型输出约束
 
 ### 快速模式
 
-快速与精密模式现在都先进入持久化 LangGraph，由 `classifier` 负责三种分支。快速模式关闭深度思考并采用较低复杂度目标，但新建筑生成不会绕过平面规划：
+快速与精密模式现在都先进入持久化 LangGraph，由 `classifier` 负责三种分支。快速模式关闭深度思考并采用较低复杂度目标：
 
-- `GENERATE`：先生成 FloorPlanIR v2 和审核图，用户确认后才生成完整 Blueprint。
+- `GENERATE`：依次生成总体方案、材质方案、LLM 主体骨架和组件分片，合并并通过最终校验后交付 Blueprint。
 - `EDIT`：基于当前 Blueprint 生成 ScenePatch，经前端确认后应用。
 - `CHAT`：建筑知识问答，仅返回文本。
 
@@ -43,9 +43,8 @@ PBR 上传不交给建筑对话模型生成 URL 或 Base64，而走独立资产�
 ```text
 classifier
   ├── GENERATE -> architecture（2 个方案候选 + 确定性评分）
-  │                -> floor_plan_design（独立模型过程 + FloorPlanIR）
-  │                -> floor_plan_review（修改循环 / 人工确认）
-  │                -> skeleton（只落实结构骨架）
+  │                -> material_plan（材质角色 + 资产解析）
+  │                -> skeleton（LLM 主体骨架 + 组件建议）
   │                -> Send(component_gen -> component_val) × N
   │                -> merge
   │                -> final_validate
@@ -57,9 +56,9 @@ classifier
 
 组件建议在派发前统一过滤：未知或未实现的类型被丢弃，用户明确否定的组件不生成，空建议保留门、窗、屋顶基础集合，阳台的内嵌栏杆不会被无意重复生成。
 
-`architecture`、`floor_plan_design` 与主体装配职责分开。architecture 只输出体量尺寸、层数、立面轴位、屋顶和构件配额；floor_plan_design 在已选体量内单独调用模型，生成并校验 `FloorPlanIR v2`，再绘制 SVG；审核前不生成临时三维。`floor_plan_review` 持久化暂停：合法方案从第一版起就能直接确认，修改意见直接返回 floor_plan_design。确认后 `ApprovedPlanAssembler` 才把批准方案落实为墙、板、楼梯、门窗和屋顶并执行 G1-G6；随后 `style_review` 第二次暂停，用户确认风格包后运行 Decor IR 与 G7。完整边界见 [Plan2Build 建筑生成链路](PLAN2BUILD_PIPELINE.md) 和 [建筑平面生成与确认](FLOOR_PLAN_GENERATION_MVP.md)。
+`architecture`、`material_plan`、`design_review` 与 `skeleton` 职责分开：architecture 输出体量、层数、立面轴位、屋顶和构件配额；material_plan 解析材质角色与资产并写入 DesignDocument；design_review 用 SVG 和结构化字段审核具体建筑；skeleton 只在批准后生成主体 Blueprint，并输出后续组件建议。原 FloorPlanIR、平面节点、平面规则、`ApprovedPlanAssembler`、风格审核和 Decor 装配已从当前运行时移除。
 
-总体方案节点使用稳定的非流式结构化调用，并展示候选比较和确定性选择摘要。独立平面节点在思考模式下使用流式调用：供应商返回的 `reasoning_content` 实时归入“平面设计 / 模型过程”，快速模式仍持续展示检索、校验、回退和预览里程碑。这样用户不会面对一个无状态的长等待，同时也不会把程序日志伪装成模型内部推理。
+总体方案节点使用稳定的结构化调用并展示候选比较摘要；骨架节点在思考模式下可流式展示供应商实际返回的 `reasoning_content`。快速模式也持续展示检索、校验、格式恢复和组件派发等公开进度，不把程序日志伪装成模型内部推理。
 
 骨架生成后，程序按墙体包围盒把真实墙映射为 `front/back/left/right`，再按立面轴数计算 `opening_slots`。每个槽位直接给出真实 `wall_id`、局部 `from`、`width`、`height`；门窗节点必须复制槽位，合并阶段还会二次吸附。模型漏掉设计下限内的门窗时，程序用最小安全构件补齐；无槽位的多余开口会剔除。因此模型负责建筑意图和构件外观参数，程序负责容易出错的坐标与对齐。
 
@@ -88,8 +87,11 @@ LLM 结构化结果
 
 callback 的 `component_retry_counts` 是每个失败目标的有限预算，模型调用抛出异常时也必须写回已经增加的计数，不能出现“第 10 轮修复（每目标最多 3 次）”。WebSocket 根据启用的组件链和最大重试数设置动态 `recursion_limit`，它只是防止复杂合法流程被默认 25 步过早截断的安全余量，不是解决死循环的方法。真正的停止条件仍是：模型服务故障立即终止、每个建筑目标最多重试 3 次、没有改善的确定性修复立即停止。
 
+生成任务由 `GenerationJobService` 脱离物理 WebSocket 持久化执行。心跳会动态检查当前连接是否仍附着运行任务：运行期间不执行 90 秒空闲断开，任务结束后恢复普通超时。前端收到任意业务事件或 `pong` 都视为连接活跃，并只保留一个 30 秒心跳等待，避免浏览器后台节流或后端长计算造成“生成仍在继续但提示心跳超时”的假断线。
+
 界面遇到这两类错误时应这样理解：
 
+- “未找到配置的模型”：模型名称、服务地址或供应商不匹配；本轮会在意图分类后立即结束，不会触发 RAG 网络研究或生成计划。
 - “模型服务额度已耗尽”：先充值、关闭供应商的“仅使用免费额度”限制，或更换当前账号有权限且有额度的模型，然后重新生成。
 - “生成流程超过安全步数”：系统已经为避免继续消耗额度而停止。先看执行面板中最早失败的节点；不应只继续调大 `recursion_limit`。
 

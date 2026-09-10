@@ -1,14 +1,4 @@
-"""
-Layer -1: RAG 知识问答节点
-
-当意图分类为 CHAT 时，全面扫描 RAG 知识库，
-用 LLM 生成专业的建筑领域知识回答。
-
-特性：
-- 多角度 RAG 检索（建筑类型、构件规则、设计原则）
-- 输出正式回答，不把回答正文混入思考事件
-- 不消耗 thinking tokens
-"""
+"""Layer -1: WILD 项目知识问答节点。"""
 import time as _time
 from loguru import logger
 
@@ -21,21 +11,21 @@ from app.agent.rag_trace import (
     record_final_answer,
     record_rag_citations,
 )
+from app.agent.knowledge_policy import chat_knowledge_query_specs
 
-_CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精通以下领域：
+_CHAT_SYSTEM_PROMPT = """你是 WILD 项目知识助手。参考资料只覆盖：
 
-- **建筑类型学**：欧式别墅、中式庭院、现代建筑、日式建筑等各类建筑的特征与设计原则
-- **建筑构件**：门、窗、屋顶、栏杆、雨棚、阳台、灯具、坡道、凸窗、檐口、烟囱的规格与设计规范
-- **空间设计**：墙体布局、楼板规划、柱网布置、开间进深、层高设计
-- **材料与美学**：各类建筑材质特性、色彩搭配、风格协调
+- WILD Blueprint 与 ScenePatch 的字段、坐标和引用协议；
+- 当前引擎已经支持的构件、参数与能力边界；
+- 已选择构件或系统的宿主、组装和校验关系。
 
 # 回答原则
 
 1. **基于知识库**：只能根据参考资料回答；引用格式必须为 `[引用:chunk_id]`
-2. **专业准确**：使用建筑领域标准术语，数据精确
-3. **结构清晰**：分点阐述，必要时给出对比和示例
-4. **实用导向**：如果用户问题涉及具体参数（尺寸、间距等），给出推荐值范围
-5. **简洁友好**：不要过度展开，聚焦用户的问题核心
+2. **不补建筑百科**：资料未覆盖的风格、类型学、工程规范或推荐尺寸，明确说明不在当前 WILD 知识范围内
+3. **区分事实层级**：引擎支持、视觉近似、未实现能力和局部 JSON 示例不得混淆
+4. **使用当前上下文**：涉及蓝图修改时结合调用方提供的当前 Blueprint；不能把文档示例 ID 或数值当作当前对象
+5. **简洁准确**：聚焦字段、能力、关系及其限制
 
 # 参考资料
 
@@ -44,7 +34,7 @@ _CHAT_SYSTEM_PROMPT = """你是 WILD 建筑领域的专业知识助手。你精�
 
 
 async def chat_node(state: dict) -> dict:
-    """RAG 知识问答：全面扫描知识库 + LLM 生成专业回答"""
+    """RAG 知识问答：按三类活动知识检索后生成带引用回答。"""
     from app.services.agent_service import agent_service
 
     # 计算回答总耗时
@@ -53,17 +43,14 @@ async def chat_node(state: dict) -> dict:
     user_message = state.get("user_message", "")
     logger.info(f"[chat] 知识问答: {user_message[:80]}...")
 
-    # ── 1. 全面 RAG 检索 ──
+    # ── 1. 按活动知识角色检索 ──
     rag_t0 = _time.time()
 
-    # 多角度检索：建筑类型 + 构件规则 + 设计原则
     from app.spec.loader import SpecQuery
 
     queries = [
-        SpecQuery(user_message, {}),  # 无过滤，全局搜索
-        SpecQuery(f"{user_message} 建筑类型 设计特征 风格", {"doc_type": "component"}),
-        SpecQuery(f"{user_message} 构件参数 规格 尺寸 规则", {}),
-        SpecQuery(f"{user_message} 设计原则 空间布局 规范", {}),
+        SpecQuery(text, metadata_filter)
+        for text, metadata_filter in chat_knowledge_query_specs(user_message)
     ]
 
     try:

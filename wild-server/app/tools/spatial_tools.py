@@ -412,6 +412,25 @@ def _wall_vertical_range(wall: dict) -> tuple[float, float]:
     return bottom, max(float(start[1]), float(end[1]))
 
 
+def _wall_centerline_key(wall: dict, precision: int = 3) -> tuple | None:
+    """按无方向 XZ 中心线和竖向范围标识同一面墙。"""
+    start = wall.get("from")
+    end = wall.get("to")
+    if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        return None
+    endpoints = sorted((
+        (round(float(start[0]), precision), round(float(start[2]), precision)),
+        (round(float(end[0]), precision), round(float(end[2]), precision)),
+    ))
+    bottom, top = _wall_vertical_range(wall)
+    return (
+        endpoints[0],
+        endpoints[1],
+        round(bottom, precision),
+        round(top, precision),
+    )
+
+
 def _infer_story_height(elements: list[dict]) -> float:
     """从楼板标高和已有墙高中推断常用层高；信息不足时使用 3m。"""
     candidates: list[float] = []
@@ -1002,9 +1021,6 @@ def validate_element_required_fields(blueprint: dict) -> str:
 
     # 合法枚举值
     VALID_FURNITURE_SUBTYPES = {"table", "chair", "bookshelf", "bed", "lamp", "tile"}
-    VALID_ROOF_TYPES = {"gable", "hip", "dome", "flat", "chinese_curved", "chinese_pagoda"}
-    VALID_COLUMN_STYLES = {"doric", "ionic", "corinthian", "modern", "chinese_wooden"}
-    VALID_OPENING_STYLES = {"rectangular", "arched", "gothic", "circular"}
     VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
 
     # 蓝图顶层只允许这些 key
@@ -1607,20 +1623,9 @@ def validate_model_quality(blueprint: dict) -> str:
 
     wall_groups: dict[tuple, list[str]] = {}
     for wall in (item for item in elements if item.get("type") == "wall"):
-        start = wall.get("from")
-        end = wall.get("to")
-        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        key = _wall_centerline_key(wall)
+        if key is None:
             continue
-        endpoints = sorted((
-            (round(float(start[0]), 3), round(float(start[2]), 3)),
-            (round(float(end[0]), 3), round(float(end[2]), 3)),
-        ))
-        key = (
-            endpoints[0],
-            endpoints[1],
-            round(min(float(start[1]), float(end[1])), 3),
-            round(max(float(start[1]), float(end[1])), 3),
-        )
         wall_groups.setdefault(key, []).append(str(wall.get("id", "?")))
     for ids in wall_groups.values():
         if len(ids) > 1:
@@ -2044,7 +2049,9 @@ def validate_element_dimensions(blueprint: dict) -> str:
             endpoint_height = abs(to[1] - f[1])
             h = el.get("height", endpoint_height)
             th = el.get("thickness", 0)
-            if not (0.1 <= length <= 500):
+            if length <= 0.01:
+                issues.append(f"❌ [{eid}] wall 水平长度={length:.3f}m，不能作为有效墙体或门窗宿主")
+            elif not (0.1 <= length <= 500):
                 issues.append(f"⚠️  [{eid}] wall 长度={length:.1f}m，建议在 0.1~500m")
             if h <= 0.01:
                 issues.append(
@@ -2089,7 +2096,9 @@ def validate_element_dimensions(blueprint: dict) -> str:
 
         elif t == "beam":
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            dx = to[0]-f[0]; dy = to[1]-f[1]; dz = to[2]-f[2]
+            dx = to[0]-f[0]
+            dy = to[1]-f[1]
+            dz = to[2]-f[2]
             length = math.sqrt(dx*dx + dy*dy + dz*dz)
             w = el.get("width", 0)
             h = el.get("height", 0)
@@ -2124,7 +2133,8 @@ def validate_element_dimensions(blueprint: dict) -> str:
         elif t == "stair":
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
             dh = abs(to[1] - f[1])
-            dx = to[0]-f[0]; dz = to[2]-f[2]
+            dx = to[0]-f[0]
+            dz = to[2]-f[2]
             horiz = math.sqrt(dx*dx + dz*dz)
             if dh > 0 and not (0.1 <= dh <= 50):
                 issues.append(f"⚠️  [{eid}] stair 高差={dh:.1f}m，建议在 0.1~50m")
@@ -2368,6 +2378,10 @@ def fix_wall_junctions(blueprint: dict) -> str:
     ]
     floors = [el for el in elements if el.get("type") == "floor"]
 
+    degenerate_ids = [str(wall.get("id", "?")) for wall in walls if _wall_length(wall) <= 0.01]
+    if degenerate_ids:
+        return "❌ 零水平长度墙体不能用于猜测补墙，请依据已批准方案重建：" + ", ".join(degenerate_ids)
+
     if len(walls) < 2:
         return "✅ 少于 2 面墙，跳过端点对齐。"
 
@@ -2447,6 +2461,15 @@ def fix_wall_junctions(blueprint: dict) -> str:
 
     used_ids = {str(element.get("id")) for element in elements}
     for ep in isolated:
+        # 前一个端点可能已经补齐本缺口；按当前墙集合复查，保证一次及重复调用幂等。
+        if any(
+            wall is not ep["wall"]
+            and min(ep["top"], _wall_vertical_range(wall)[1])
+            - max(ep["bottom"], _wall_vertical_range(wall)[0]) > 0.15
+            and _plan_point_on_wall_segment(ep["x"], ep["z"], wall, TOLERANCE)
+            for wall in walls
+        ):
+            continue
         candidates: list[tuple[float, dict]] = []
         for other in endpoints:
             if other["wall"] is ep["wall"]:
@@ -2477,6 +2500,12 @@ def fix_wall_junctions(blueprint: dict) -> str:
                 "thickness": float(ep["wall"].get("thickness", 0.24)),
                 "material": ep["wall"].get("material", "wall_finish"),
             }
+            new_key = _wall_centerline_key(new_wall)
+            if new_key is None or any(
+                _wall_centerline_key(wall) == new_key for wall in walls
+            ):
+                # 该候选只是把已有墙反向复制一遍，继续寻找真正的边界缺口。
+                continue
             elements.append(new_wall)
             walls.append(new_wall)
             used_ids.add(repair_id)

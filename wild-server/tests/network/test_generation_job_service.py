@@ -1,10 +1,41 @@
 import asyncio
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from app.agent.protocol import versioned_event
-from app.services.generation_job_service import GenerationJobService, GenerationPaused
+from app.services.generation_job_service import (
+    GENERATION_PIPELINE_VERSION,
+    GenerationJobService,
+    GenerationPaused,
+)
+
+
+def _sample_design_plan() -> dict:
+    facade = {"bays": 1, "ground_pattern": ["window"], "upper_pattern": ["window"]}
+    return {
+        "profile": "ordinary_public",
+        "concept": "审核恢复测试",
+        "massing": {
+            "shape": "rectangle", "width": 10, "depth": 8,
+            "floors": 1, "modeled_floors": 1, "representation_mode": "full",
+            "floor_height": 3.5, "symmetry": True,
+        },
+        "complexity": {"level": "simple", "min_volumes": 1,
+                       "min_detail_packages": 0, "target_structural_elements": 4,
+                       "grid_bays": [1, 1], "reason": "test"},
+        "volumes": [{"id": "main", "role": "primary", "x": 0, "z": 0,
+                     "width": 10, "depth": 8, "start_floor": 1, "end_floor": 1}],
+        "structural_grid": {"system": "frame", "x_bays": 1, "z_bays": 1},
+        "facades": {"front": {**facade, "entrance_bay": 1, "ground_pattern": ["door"]},
+                    "back": facade, "left": facade, "right": facade},
+        "roof": {"type": "flat", "ridge_axis": "x", "overhang": 0},
+        "component_quota": {"door": {"min": 1, "max": 1},
+                            "window": {"min": 3, "max": 3},
+                            "roof": {"min": 1, "max": 1, "type": "flat"}},
+        "required_components": ["door", "window", "roof"],
+    }
 
 
 class RecordingSubscriber:
@@ -144,6 +175,10 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         paused = await first.get_job("req_restart")
         self.assertIsNotNone(paused)
         self.assertEqual(paused.status, "running")
+        self.assertEqual(
+            paused.payload.get("_pipeline_version"),
+            GENERATION_PIPELINE_VERSION,
+        )
 
         second = self.make_service()
         resume_flags: list[bool] = []
@@ -174,6 +209,32 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
             ["generation_resumed", "agent_reply"],
         )
         self.assertEqual(subscriber.messages[1]["event_seq"], 1)
+
+    async def test_startup_retires_job_from_removed_graph_topology(self):
+        service = self.make_service()
+        await service.initialize()
+        await service._insert_job(
+            "req_old_pipeline",
+            "session_old_pipeline",
+            {
+                "request_id": "req_old_pipeline",
+                "session_id": "session_old_pipeline",
+            },
+        )
+        resumed: list[str] = []
+
+        async def runner(_sink, payload, _resume):
+            resumed.append(payload["request_id"])
+
+        await service.startup(runner)
+
+        job = await service.get_job("req_old_pipeline")
+        self.assertIsNotNone(job)
+        self.assertEqual(job.status, "failed")
+        self.assertIn("流程已升级", job.error)
+        self.assertEqual(resumed, [])
+        events = await service.events_after("req_old_pipeline", 0)
+        self.assertEqual(events[-1]["code"], "generation_pipeline_upgraded")
 
     async def test_replay_finishes_before_new_live_persisted_event(self):
         service = self.make_service()
@@ -306,92 +367,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(job.status, "waiting_review")
         self.assertNotIn("waiting_review", status_writes)
 
-    async def test_floor_plan_review_pauses_and_resumes_same_job(self):
-        service = self.make_service()
-        resume_payloads: list[dict] = []
-
-        async def runner(sink, payload, resume):
-            if not resume:
-                await service.mark_waiting_for_review(payload["request_id"])
-                await sink.send_json(versioned_event({
-                    "type": "floor_plan_review_required",
-                    "request_id": payload["request_id"],
-                    "session_id": payload["session_id"],
-                    "revision": 0,
-                    "can_confirm": True,
-                }))
-                raise GenerationPaused()
-            resume_payloads.append(payload["_floor_plan_review"])
-
-        await service.startup(runner)
-        subscriber = RecordingSubscriber()
-        await service.start_job({
-            "request_id": "req_review",
-            "session_id": "session_review",
-            "precision_mode": True,
-        }, subscriber)
-        await self.wait_for_status(service, "req_review", "waiting_review")
-
-        await service.submit_floor_plan_review(
-            subscriber,
-            request_id="req_review",
-            session_id="session_review",
-            action="revise",
-            feedback="主卧增加一扇朝南窗",
-        )
-        await self.wait_for_status(service, "req_review", "completed")
-
-        self.assertEqual(resume_payloads, [{
-            "action": "revise",
-            "feedback": "主卧增加一扇朝南窗",
-        }])
-        events = await service.events_after("req_review", 0)
-        self.assertEqual(events[0]["type"], "floor_plan_review_required")
-
-    async def test_style_review_pauses_and_resumes_same_job(self):
-        service = self.make_service()
-        resume_payloads: list[dict] = []
-
-        async def runner(sink, payload, resume):
-            if not resume:
-                await service.mark_waiting_for_review(payload["request_id"], "style")
-                await sink.send_json(versioned_event({
-                    "type": "style_review_required",
-                    "request_id": payload["request_id"],
-                    "session_id": payload["session_id"],
-                    "revision": 0,
-                    "selected_style_id": "modern",
-                    "options": [],
-                }))
-                raise GenerationPaused()
-            resume_payloads.append(payload["_style_review"])
-
-        await service.startup(runner)
-        subscriber = RecordingSubscriber()
-        await service.start_job({
-            "request_id": "req_style_review",
-            "session_id": "session_style_review",
-            "precision_mode": True,
-        }, subscriber)
-        await self.wait_for_status(service, "req_style_review", "waiting_review")
-
-        await service.submit_style_review(
-            subscriber,
-            request_id="req_style_review",
-            session_id="session_style_review",
-            action="confirm",
-            style_package_id="chinese",
-        )
-        await self.wait_for_status(service, "req_style_review", "completed")
-
-        self.assertEqual(resume_payloads, [{
-            "action": "confirm",
-            "style_package_id": "chinese",
-            "feedback": "",
-        }])
-        events = await service.events_after("req_style_review", 0)
-        self.assertEqual(events[0]["type"], "style_review_required")
-
     async def test_execution_plan_review_pauses_and_resumes_same_job(self):
         service = self.make_service()
         resume_payloads: list[dict] = []
@@ -444,6 +419,71 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await self.wait_for_status(service, "req_plan_review", "completed")
 
         self.assertEqual(resume_payloads, [{"action": "confirm", "feedback": ""}])
+
+    async def test_design_review_pauses_and_resumes_with_persisted_document(self):
+        service = self.make_service()
+        resume_payloads: list[dict] = []
+        allow_pause_to_finish = asyncio.Event()
+        handoff_started = asyncio.Event()
+        original_resume_review_job = service._resume_review_job
+
+        async def tracking_resume_review_job(resumed):
+            handoff_started.set()
+            await original_resume_review_job(resumed)
+
+        service._resume_review_job = tracking_resume_review_job
+
+        from app.design.repository import DesignRepository
+        from app.design.resolver import build_design_document
+        document = build_design_document(
+            _sample_design_plan(),
+            session_id="session_design_review",
+            source_request="生成三层写字楼",
+        )
+        repository = DesignRepository(Path(self.temp_dir.name) / "designs")
+        repository.save(document)
+
+        async def runner(sink, payload, resume):
+            if not resume:
+                await service.mark_waiting_for_review(
+                    payload["request_id"],
+                    "design_document",
+                )
+                await sink.send_json(versioned_event({
+                    "type": "design_review_required",
+                    "request_id": payload["request_id"],
+                    "session_id": payload["session_id"],
+                    "document": document.model_dump(mode="json"),
+                }))
+                await allow_pause_to_finish.wait()
+                raise GenerationPaused()
+            resume_payloads.append(payload["_design_review"])
+
+        await service.startup(runner)
+        subscriber = RecordingSubscriber()
+        await service.start_job({
+            "request_id": "req_design_review",
+            "session_id": "session_design_review",
+        }, subscriber)
+        await self.wait_for_status(service, "req_design_review", "waiting_review")
+
+        with patch("app.design.repository.design_repository", repository):
+            submit_task = asyncio.create_task(service.submit_design_review(
+                subscriber,
+                request_id="req_design_review",
+                session_id="session_design_review",
+                action="confirm",
+                base_revision=document.revision,
+            ))
+            await handoff_started.wait()
+            self.assertFalse(submit_task.done())
+
+            allow_pause_to_finish.set()
+            await submit_task
+        await self.wait_for_status(service, "req_design_review", "completed")
+
+        self.assertEqual(resume_payloads[0]["action"], "confirm")
+        self.assertEqual(resume_payloads[0]["document"]["revision"], 1)
 
     async def test_running_execution_feedback_is_persisted_and_drained_once(self):
         service = self.make_service()

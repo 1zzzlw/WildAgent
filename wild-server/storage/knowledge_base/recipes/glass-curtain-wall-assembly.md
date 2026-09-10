@@ -1,11 +1,15 @@
 ---
-knowledge_layer: architecture
+applies_to:
+  - 幕墙
+  - curtain wall
+  - curtain_wall
+  - 玻璃立面
 entity_type: facade
 entity_name: glass_curtain_wall_assembly
 topic: assembly
 status: experimental
-authority: domain_reference
-source: recipes/glass-curtain-wall-assembly.md
+authority: maintainer
+source: wild-server/app/agent/facade_recipe.py; wild-server/app/agent/architecture_plan.py; wild-web/src/wild-compiler/components/window.ts
 primary_terms:
   - 玻璃幕墙组装
   - curtain wall assembly
@@ -17,7 +21,7 @@ synonyms: []
 
 # 玻璃幕墙骨架—玻璃组装配方
 
-> 本配方把幕墙业务语义收敛到两条可执行路径。方案 A 适合默认生成；方案 B 只在需要显式框深、点支或复杂表皮时使用。底层类型受支持，但“真实幕墙系统”仍是实验性视觉近似。
+> 本配方把幕墙业务语义收敛到两条可执行路径。本次选择幕墙后，可按几何与细节需求选择方案 A 或 B；建筑名称本身不触发幕墙。底层类型受支持，但“真实幕墙系统”仍是实验性视觉近似。
 
 ## 玻璃幕墙组装前置条件
 
@@ -59,7 +63,7 @@ primary_terms:
 synonyms: []
 -->
 
-方案 A 用 `wall + window` 表达整片或分层幕墙。窗编译器生成框、竖梃、横挺和玻璃，是默认的低成本路径。 它适合常规正交立面和标准层批量生成，能把宿主、开洞、框架与玻璃关系收敛到一个组件。入口层、转角和异形区仍应拆开处理，不能用一片超大窗覆盖全部立面。
+方案 A 用 `wall + window` 表达整片或分层幕墙。窗编译器生成框、竖梃、横挺和玻璃，是可选的低成本路径。 它适合常规正交立面和标准层批量生成，能把宿主、开洞、框架与玻璃关系收敛到一个组件。入口层、转角和异形区仍应拆开处理，不能用一片超大窗覆盖全部立面。
 
 ### 方案 A 组装步骤
 
@@ -71,16 +75,13 @@ synonyms: []
 
 ### 方案 A 最小有效示例
 
-以下是完整的小型 `.wild` 文件，用一片固定网格窗表达单层幕墙单元。
+以下是 geometry 的局部组装片段，不是完整 .wild 文件；数值仅解释宿主与窗口关系，不限定本次立面模数。
 
 ```json
 {
-  "meta": {"version":"1.1","type":"building","name":"玻璃幕墙单元"},
-  "geometry": {
+
     "elements": [{"type":"wall","id":"cw_host","from":[0,0,0],"to":[3,3,0],"thickness":0.16}],
     "components": [{"type":"window","id":"cw_window","parentWall":"cw_host","from":[0.1,0.1,0],"width":2.8,"height":2.8,"frameWidth":0.06,"frameDepth":0.12,"glassDepth":0.012,"verticalMullions":1,"horizontalMullions":1,"interaction":{"mode":"swing","hingeSide":"left","openAngle":0}}]
-  },
-  "behaviors": {}
 }
 ```
 
@@ -91,6 +92,8 @@ synonyms: []
 <!-- rag-meta
 entity_type: facade
 entity_name: curtain_wall_deterministic_parameters
+doc_scope: system
+knowledge_role: capability
 topic: parameters
 status: supported
 authority: engine
@@ -170,7 +173,7 @@ entity_type: facade
 entity_name: curtain_wall_grid_relations
 topic: assembly
 status: experimental
-authority: domain_reference
+authority: maintainer
 primary_terms:
   - grid first
   - 共面
@@ -196,7 +199,7 @@ entity_type: facade
 entity_name: curtain_wall_variant_selection
 topic: parameters
 status: experimental
-authority: domain_reference
+authority: maintainer
 primary_terms:
   - 明框参数
   - 隐框参数

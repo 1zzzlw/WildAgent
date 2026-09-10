@@ -97,14 +97,14 @@ def test_deduplicate_walls():
                     "type": "wall",
                     "id": "wall1",
                     "from": [0, 0, 0],
-                    "to": [10, 0, 0],
+                    "to": [10, 3, 0],
                     "thickness": 0.2
                 },
                 {
                     "type": "wall",
-                    "id": "wall1_dup",
-                    "from": [0, 0, 0],
-                    "to": [10, 0, 0],
+                    "id": "wall1_reverse_dup",
+                    "from": [10, 0, 0],
+                    "to": [0, 3, 0],
                     "thickness": 0.2
                 }
             ]
@@ -116,6 +116,7 @@ def test_deduplicate_walls():
     # 应该只保留一个墙
     walls = [e for e in normalized["geometry"]["elements"] if e["type"] == "wall"]
     assert len(walls) == 1
+    assert walls[0]["id"] == "wall1"
 
 
 def test_convert_old_column():
