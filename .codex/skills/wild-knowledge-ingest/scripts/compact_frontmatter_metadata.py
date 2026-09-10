@@ -14,9 +14,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+PROJECT_ROOT = next(
+    candidate
+    for candidate in Path(__file__).resolve().parents
+    if (candidate / "wild-server/scripts/rag/lint_wild_rag_docs.py").is_file()
+)
+LINTER_DIR = PROJECT_ROOT / "wild-server/scripts/rag"
+if str(LINTER_DIR) not in sys.path:
+    sys.path.insert(0, str(LINTER_DIR))
 
 from lint_wild_rag_docs import _path_metadata, split_frontmatter  # noqa: E402
 

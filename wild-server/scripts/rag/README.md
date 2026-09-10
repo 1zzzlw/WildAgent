@@ -56,6 +56,7 @@ RAG Loader 的职责到“找出并组装知识上下文”为止；真正生成
 
 | 文件 | 测试层次 | 能回答的问题 | 不能回答的问题 |
 |---|---|---|---|
+| `lint_wild_rag_docs.py` | 文档契约 | metadata、章节、生成范围和跨文档声明是否符合 rules-v3 | 不评价向量语义排序 |
 | `inspect_knowledge_chunks.py` | 分片预览 | 标题、JSON、表格、metadata、长度是否正确 | 向量语义排序好不好 |
 | `inspect_chunks_demo.py` | 分片展示 | 与上一个脚本相近，但报告更详细 | 不能计算召回率；功能有部分重复 |
 | `eval_retrieval.py` | 检索质量 | 真实/临时索引的 Hit@K、Recall@K、MRR 和命中明细 | Agent 召回后是否真的采用知识 |

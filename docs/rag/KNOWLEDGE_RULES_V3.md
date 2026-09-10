@@ -62,7 +62,7 @@ rules-v3 将建筑分类从 RAG 生成知识中彻底移除。大模型负责理
 在项目根目录检查文档：
 
 ```powershell
-wild-server/.venv/Scripts/python.exe -X utf8 .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py wild-server/storage/knowledge_base --cross-check
+wild-server/.venv/Scripts/python.exe -X utf8 wild-server/scripts/rag/lint_wild_rag_docs.py wild-server/storage/knowledge_base --cross-check
 wild-server/.venv/Scripts/python.exe -X utf8 .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py wild-server/storage/knowledge_base --json
 ```
 

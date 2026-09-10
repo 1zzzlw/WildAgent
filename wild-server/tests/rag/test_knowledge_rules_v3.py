@@ -14,9 +14,9 @@ from app.agent.research_evidence_gate import evaluate_knowledge_coverage
 from app.agent.prompts import build_architecture_plan_prompt, build_skeleton_prompt
 
 
-ROOT = Path(__file__).resolve().parents[3]
-KB = ROOT / "wild-server/storage/knowledge_base"
-LINT_PATH = ROOT / ".codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py"
+SERVER_ROOT = Path(__file__).resolve().parents[2]
+KB = SERVER_ROOT / "storage/knowledge_base"
+LINT_PATH = SERVER_ROOT / "scripts/rag/lint_wild_rag_docs.py"
 spec = importlib.util.spec_from_file_location("rules_v3_linter", LINT_PATH)
 lint = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = lint
@@ -113,7 +113,7 @@ class KnowledgeRulesTest(unittest.TestCase):
                 {"doc_type": "recipe", "knowledge_role": "relation"},
             ],
         )
-        source = (ROOT / "wild-server/app/agent/nodes/chat_node.py").read_text(encoding="utf-8")
+        source = (SERVER_ROOT / "app/agent/nodes/chat_node.py").read_text(encoding="utf-8")
         self.assertNotIn("建筑类型学", source)
         self.assertIn("不补建筑百科", source)
 

@@ -57,7 +57,7 @@ description: 审查并扩充 WildAgent 的 WILD 能力与条件组装关系；�
 ## 验证命令
 
 ```powershell
-wild-server/.venv/Scripts/python.exe -X utf8 .codex/skills/wild-knowledge-ingest/scripts/lint_wild_rag_docs.py wild-server/storage/knowledge_base --cross-check
+wild-server/.venv/Scripts/python.exe -X utf8 wild-server/scripts/rag/lint_wild_rag_docs.py wild-server/storage/knowledge_base --cross-check
 wild-server/.venv/Scripts/python.exe -X utf8 .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py wild-server/storage/knowledge_base --json
 ```
 
