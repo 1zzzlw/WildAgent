@@ -259,6 +259,8 @@ export interface ErrorResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id?: string
   code?: string
+  error_category?: string
+  retryable?: boolean
   error: string
 }
 
