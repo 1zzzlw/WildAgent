@@ -142,13 +142,13 @@
 - `build_architecture_plan_prompt` / `build_floor_plan_prompt` / `build_material_plan_prompt` 注入 `_style_preference_section`（候选风格及其屋顶/体量倾向约束）。
 - `style_review` 仍由用户最终确认/改选。
 
-### E3. RAG 事实校验接入流水线（`app/services/agent_service.py`）
+### E3. 清除失效的领域事实伪校验（`app/services/agent_service.py`）
 
-**问题**：`FactualValidator`（`app/agent/validators/factual_validator.py`）是死代码，从未接入生成校验。
+**问题**：`domain_schema.yaml` 已随旧平面设计回退删除，但 Step 11 仍在缺少配置或执行异常时返回成功文本，界面显示“领域事实校验通过”，实际没有执行任何规则。
 
-**改动**：`run_validation_pipeline` 追加 Step 11 `validate_domain_facts`，按 `domain_schema.yaml` 的实体尺寸约束校验 Blueprint。**绕过** `FactualValidator.validate_batch`（它内部 `asyncio.run` 无法在 LangGraph 事件循环内执行），改为同步调用 `_validate_ranges`/`_validate_enums`。
+**改动**：删除失效的 Step 11、`DomainConfig` 和只被该步骤消费的 `FactualValidator`。字段、范围、宿主和几何关系继续由 `validate_element_dimensions`、组件专用校验与 Blueprint Schema 负责。
 
-**验证**：真实装配输出 Step 11 通过（38 个实体，0 错误）。
+**结果**：校验报告不再把“未检查”伪装成“通过”，规则来源回到当前仍受测试覆盖的确定性校验器。
 
 ---
 
@@ -271,7 +271,7 @@ Hit@5=85.7%   Recall@5=85.7%   MRR=0.730   空召回 0/60 (0.0%)   异常 0
 2. **"整体回退"是精细度的最大杀手**。volumes 一重叠就整份丢弃 LLM 设计 → 改为逐项修复后，LLM 的设计得以保留。**能局部修复就别整体回退**。
 3. **文档与代码必须同源**。roofType/interaction 的冲突全来自"文档要求"和"代码实现"不同步。**改代码契约时要同步改文档，反之亦然**（本轮通过让 spatial_tools 与 registry 对齐 + 文档对齐，三方闭环）。
 4. **"只写了代码没接入"是隐性债务**。HybridRetriever、QueryRewriter、QueryPlanner、rag_calibration、config.rerank 都写了但没接入主链路。**接入比新写更有价值**。
-5. **`asyncio.run` 不能在事件循环内调用**。`FactualValidator.validate_batch` 因此在 LangGraph 里崩溃，需改用同步内部方法。
+5. **跳过不能伪装成通过**。缺少规则文件或校验器异常时必须显式暴露；已经失效且与现有确定性校验重复的链路应直接移除。
 6. **知识库双源/旧模型残留会污染召回**。别墅双源给 LLM 两个相反答案，降级为路由入口后，评测确认命中正确指向详细配方。
 
 ## 12. 后续方向（明确未做，留待下一阶段）
@@ -340,7 +340,7 @@ M  app/agent/spatial_plan.py           (内墙端点吸附)
 M  app/agent/validation_issues.py      (指纹加入消息哈希)
 A  app/agent/format_recovery.py        (共享格式恢复)
 M  app/services/agent_delivery.py      (警告门禁)
-M  app/services/agent_service.py       (severity 结构化、Step 11 事实校验)
+M  app/services/agent_service.py       (severity 结构化；后续移除失效的 Step 11)
 M  app/tools/component_tools.py        (cornice/light 几何合理性)
 M  tests/components/test_plan2build_pipeline.py
 M  tests/repair/test_targeted_repair_tools.py

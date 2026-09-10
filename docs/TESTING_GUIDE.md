@@ -374,7 +374,6 @@ python -m pytest tests/blueprint/test_blueprint_normalizer.py -v
 **测试内容**：
 - **结构自检**：验证 JSON 格式和 schema 合规性
 - **查询改写**：优化 RAG 检索查询
-- **领域配置**：外部化领域知识
 
 **关键测试**：
 ```python
@@ -386,9 +385,6 @@ test_structure_validator_detects_schema_violations()
 
 test_query_rewriter_expands_technical_terms()
 # 验证：技术术语扩展
-
-test_domain_config_loads_successfully()
-# 验证：领域配置加载
 ```
 
 **使用场景**：

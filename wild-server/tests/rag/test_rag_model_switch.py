@@ -14,6 +14,7 @@ def make_loader(*, allow_destructive_rebuild: bool):
     loader = object.__new__(RAGSpecLoader)
     loader._persist_dir = Path(".rag_model_switch_test")
     loader._collection_name = "wild_knowledge_base"
+    loader._namespace = "test_model_switch"
     loader._embedding_function = Mock()
     loader._collection = None
     loader._client = None

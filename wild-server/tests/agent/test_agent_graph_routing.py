@@ -44,11 +44,12 @@ def test_minimal_complexity_skips_component_dispatch():
     assert result == "merge"
 
 
-def test_empty_component_suggestions_route_to_merge():
-    assert _dispatch_components({
+def test_empty_component_suggestions_dispatch_base_components():
+    result = _dispatch_components({
         "suggested_components": [],
         "user_message": "生成一个简单体块",
-    }) == "merge"
+    })
+    assert [send.node for send in result] == ["door_gen", "window_gen", "roof_gen"]
 
 
 def test_edit_keyword_routes_to_patch_when_scene_exists():

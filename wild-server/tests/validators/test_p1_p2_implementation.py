@@ -1,108 +1,13 @@
 """
-P1 和 P2 方案测试
+P2 方案测试
 
-测试事实自检、工具自检、推理自检和混合检索功能
+测试工具自检、推理自检和混合检索功能
 """
 import pytest
 from unittest.mock import AsyncMock, Mock
 
 
 pytest_plugins = ('pytest_asyncio',)
-
-
-class TestFactualValidator:
-    """测试事实自检功能"""
-    
-    def test_import_factual_validator(self):
-        """测试模块导入"""
-        from app.agent.validators import FactualValidator
-        assert FactualValidator is not None
-    
-    @pytest.mark.asyncio
-    async def test_validate_entity_pass(self):
-        """测试实体验证通过"""
-        from app.agent.validators import FactualValidator
-        
-        constraints = {
-            "door": {
-                "width": {"min": 0.7, "max": 3.0, "unit": "m"},
-                "height": {"min": 1.8, "max": 3.5, "unit": "m"}
-            }
-        }
-        
-        validator = FactualValidator(constraints)
-        
-        # 合法的门
-        valid_door = {
-            "type": "door",
-            "width": 1.0,
-            "height": 2.2
-        }
-        
-        is_valid, errors = await validator.validate_entity(valid_door)
-        
-        assert is_valid
-        assert len(errors) == 0
-    
-    @pytest.mark.asyncio
-    async def test_validate_entity_range_violation(self):
-        """测试范围违规"""
-        from app.agent.validators import FactualValidator
-        
-        constraints = {
-            "door": {
-                "width": {"min": 0.7, "max": 3.0, "unit": "m"},
-                "height": {"min": 1.8, "max": 3.5, "unit": "m"}
-            }
-        }
-        
-        validator = FactualValidator(constraints)
-        
-        # 宽度超出范围的门
-        invalid_door = {
-            "type": "door",
-            "width": 5.0,  # 超过最大值 3.0
-            "height": 2.2
-        }
-        
-        is_valid, errors = await validator.validate_entity(invalid_door)
-        
-        assert not is_valid
-        assert len(errors) > 0
-        assert any("width" in err for err in errors)
-    
-    @pytest.mark.asyncio
-    async def test_auto_correct_clamp(self):
-        """测试自动修正（钳位策略）"""
-        from app.agent.validators import FactualValidator
-        
-        constraints = {
-            "door": {
-                "width": {"min": 0.7, "max": 3.0},
-                "height": {"min": 1.8, "max": 3.5}
-            }
-        }
-        
-        validator = FactualValidator(constraints)
-        
-        # 超出范围的门
-        door = {
-            "type": "door",
-            "width": 5.0,
-            "height": 0.5
-        }
-        
-        corrected = await validator.auto_correct(
-            door,
-            ["width超出", "height超出"],
-            correction_strategy="clamp"
-        )
-        
-        # 应该被钳位到边界
-        assert corrected["width"] == 3.0
-        assert corrected["height"] == 1.8
-
-
 class TestToolValidator:
     """测试工具自检功能"""
     
@@ -280,47 +185,3 @@ class TestHybridRetriever:
         assert stats["vector_k"] == 5
         assert "has_bm25" in stats
         assert "has_vector" in stats
-
-
-if __name__ == "__main__":
-    # 运行简单测试
-    print("开始测试 P1 & P2 实施...")
-    
-    # 测试导入
-    try:
-        from app.agent.validators import (
-            FactualValidator,
-            ToolValidator,
-            ReasoningValidator
-        )
-        from app.agent.rag import HybridRetriever
-        print("✓ 所有模块导入成功")
-    except Exception as e:
-        print(f"✗ 模块导入失败: {e}")
-        exit(1)
-    
-    # 测试事实验证
-    try:
-        import asyncio
-        
-        constraints = {
-            "door": {
-                "width": {"min": 0.7, "max": 3.0},
-                "height": {"min": 1.8, "max": 3.5}
-            }
-        }
-        
-        validator = FactualValidator(constraints)
-        
-        # 测试合法实体
-        valid_door = {"type": "door", "width": 1.0, "height": 2.2}
-        is_valid, _ = asyncio.run(validator.validate_entity(valid_door))
-        
-        assert is_valid
-        print("✓ 事实验证测试通过")
-        
-    except Exception as e:
-        print(f"✗ 事实验证测试失败: {e}")
-    
-    print("\n使用 pytest 运行完整测试:")
-    print("  cd wild-server && pytest tests/test_p1_p2_implementation.py -v")

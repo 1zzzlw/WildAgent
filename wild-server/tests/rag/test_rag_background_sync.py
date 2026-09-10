@@ -26,9 +26,10 @@ class RAGBackgroundSyncTest(unittest.TestCase):
     _TMP_ROOT = Path.cwd() / ".rag_bg_sync_test"
 
     def setUp(self):
-        # 沙箱/CI 环境对 mkdtemp(0o700) 的目录可能拒绝嵌套写入，
-        # 统一使用工作区内固定目录（默认 ACL）并在 teardown 清理。
-        self._tmp_root = self._TMP_ROOT
+        # Chroma 会按持久化路径缓存客户端。每个用例使用独立子目录，避免前一
+        # 用例删除仍被客户端持有的 SQLite 文件后，后一用例复用只读句柄。
+        self._tmp_root = self._TMP_ROOT / self._testMethodName
+        shutil.rmtree(self._tmp_root, ignore_errors=True)
         self.kb_dir = self._tmp_root / "knowledge"
         self.persist_dir = self._tmp_root / "chroma"
         self.kb_dir.mkdir(parents=True, exist_ok=True)

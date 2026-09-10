@@ -469,58 +469,7 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
             has_warning=recheck_warning,
         ))
 
-    # ── Step 11: 领域事实校验（domain_schema.yaml 约束）──
-    # FactualValidator 此前从未接入生成校验；这里用领域约束（门窗/墙/柱/楼梯
-    # 的尺寸范围）兜底几何之外的“事实合理性”，与既有几何校验互补。
-    run_step(11, "validate_domain_facts", _validate_domain_facts, blueprint)
-
     return results
-
-
-def _validate_domain_facts(blueprint: dict) -> str:
-    """按 domain_schema.yaml 的实体尺寸约束校验 Blueprint，返回文本结果。
-
-    直接调用 FactualValidator 的同步校验逻辑（``_validate_ranges`` /
-    ``_validate_enums``），不用 ``validate_batch``——它内部 ``asyncio.run``
-    无法在 LangGraph 的事件循环内执行。
-    """
-    try:
-        from app.agent.validators.factual_validator import FactualValidator
-        from app.config.domain_config import get_domain_config
-
-        constraints = get_domain_config().get_constraints()
-        if not constraints:
-            return "✅ 领域事实校验跳过（无约束配置）"
-        validator = FactualValidator(constraints)
-        geometry = blueprint.get("geometry", {})
-        entities = [
-            *geometry.get("elements", []),
-            *geometry.get("components", []),
-        ]
-        invalid_entities: list[dict] = []
-        for entity in entities:
-            if not isinstance(entity, dict):
-                continue
-            entity_type = entity.get("type")
-            if entity_type not in constraints:
-                continue
-            errors: list[str] = []
-            errors.extend(validator._validate_ranges(entity, entity_type, constraints[entity_type]))
-            errors.extend(validator._validate_enums(entity, entity_type, constraints[entity_type]))
-            if errors:
-                invalid_entities.append({"entity": entity, "errors": errors})
-        if not invalid_entities:
-            return f"✅ 领域事实校验通过（{len(entities)} 个实体）"
-        lines = [f"❌ 领域事实校验发现 {len(invalid_entities)} 个实体不合规："]
-        for item in invalid_entities:
-            entity = item.get("entity") or {}
-            entity_id = str(entity.get("id") or "?")
-            for error in item.get("errors", [])[:6]:
-                lines.append(f"❌ [{entity_id}] {error}")
-        return "\n".join(lines[:30])
-    except Exception as exc:
-        logger.warning(f"[pipeline] 领域事实校验执行失败，跳过: {exc}")
-        return "✅ 领域事实校验跳过（执行异常）"
 
 
 _MATERIAL_REFERENCE_FIELDS = (

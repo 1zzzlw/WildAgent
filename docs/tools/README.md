@@ -195,25 +195,6 @@ python -m pytest tests/test_rag_semantic_chunking.py::RAGSemanticChunkingTest::t
 
 ---
 
-## 📝 Examples（示例代码）
-
-位置：`wild-server/examples/`
-
-### p0_usage_example.py
-**功能**：P0 优化方案使用示例
-
-**用途**：
-- 演示结构自检的使用
-- 演示查询改写的使用
-- 演示领域配置的使用
-
-**使用方法**：
-```bash
-python examples/p0_usage_example.py
-```
-
----
-
 ## 🎯 常用工作流
 
 ### 1. 检查知识库分片质量
