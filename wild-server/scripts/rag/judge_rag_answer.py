@@ -18,8 +18,8 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.agent.model_client import create_llm
-from app.agent.rag_quality import judge_rag_answer
+from app.llm.client import create_llm
+from app.rag.quality import judge_rag_answer
 from config import config
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.agent.nodes import skeleton_node
-from app.agent.llm_invocation import merge_token_usage
+from app.llm.invocation import merge_token_usage
 
 
 class _FakeResponse:
@@ -57,7 +57,7 @@ class _InvalidMaterialsLLM:
 
 class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
     async def test_zero_length_wall_hosts_are_rebuilt_before_dispatch(self):
-        from app.agent.architecture_plan import normalize_architecture_plan
+        from app.agent.generation.architecture import normalize_architecture_plan
         case = json.loads((Path(__file__).resolve().parents[1] / "fixtures/degenerate_wall_hosts.json").read_text(encoding="utf-8"))
         plan = normalize_architecture_plan(case["architecture_plan"], case["user_message"])
         response = type("Response", (), {"content": json.dumps(case["skeleton_blueprint"]), "response_metadata": {}})()

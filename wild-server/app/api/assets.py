@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
-from app.agent.asset_graph import run_asset_workflow
+from app.agent.assets import run_asset_workflow
 from app.services.asset_storage import AssetStorageError, asset_storage
 
 

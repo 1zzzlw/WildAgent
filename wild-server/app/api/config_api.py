@@ -230,7 +230,7 @@ async def test_llm_config(update: ModelConfigUpdate | None = None) -> dict[str, 
         }
     except Exception as e:
         logger.error(f"[config] LLM 测试失败: {e}")
-        from app.agent.model_errors import classify_model_error
+        from app.llm.errors import classify_model_error
 
         error_info = classify_model_error(e)
         return {

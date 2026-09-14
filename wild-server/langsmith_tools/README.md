@@ -113,20 +113,20 @@ uv run langgraph dev --config langsmith_tools/langgraph.json --allow-blocking
 
 它只关闭对同步阻塞操作的报错，不会修复阻塞本身，也不能解决文件路径、导入或配置错误。原图含同步检索和文件操作，可能触发该检测，但要以具体堆栈为准。
 
-启动后使用终端显示的 Studio 链接，选择 `wildagent` 图，输入 [studio-input.example.json](studio-input.example.json)。图输入是 `GenerationState`，不是原页面的 WebSocket 消息格式。
+启动后使用终端显示的 Studio 链接，选择 `wildagent` 图，输入 [studio-input.example.json](studio-input.example.json)。图使用独立的 `GenerationInput` 公开输入契约，不是原页面的 WebSocket 消息格式；执行计划、诊断和生成结果等 `GenerationState` 内部字段不需要手工填写。
 
-更换任务时修改 `user_message`、执行 profile 字段 `building_type`、请求和会话 ID；该字段用于图状态兼容与引擎路由，不代表从知识库检索建筑类型卡。测试计划模式时设置 `plan_mode=true`。图入口使用现有步数预算函数，示例的 `max_retries=3` 已与默认预算对齐；调大重试次数时还需同步调整运行配置。
+更换任务时修改 `user_message`、`request_id` 和 `session_id`；直接从 Studio 运行时还可填写与需求对应的 `building_type`，供计划研究阶段判断知识覆盖。测试计划模式时设置 `plan_mode=true`；省略或设为 `false` 时，生成请求会从分类节点直接进入总体方案节点。
 
-遇到审核中断，在同一 Studio 线程恢复，例如：
+Plan Mode 会先在 `plan_review` 等待执行计划审核，之后还会在 `design_review` 等待具体建筑方案审核。遇到审核中断，在同一 Studio 线程恢复，例如：
 
 ```json
 {"action": "confirm"}
 ```
 
-平面方案只有 `can_confirm=true` 时可以确认，否则提交：
+需要修改当前执行计划或建筑方案时提交：
 
 ```json
-{"action": "revise", "feedback": "保留两个卧室，缩短走廊"}
+{"action": "revise", "feedback": "保持两层，使用双坡屋顶"}
 ```
 
 Studio 的检查点由 Agent Server 管理，不传入正式任务 SQLite checkpointer。它复用原业务配置：导入图可能初始化并同步原 RAG 索引，运行节点可能调用模型、Embedding 和工具，也会使用业务原有存储路径。请将它视为使用现有项目资源的开发运行。

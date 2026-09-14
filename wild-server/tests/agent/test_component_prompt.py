@@ -1,7 +1,7 @@
 """实际构建组件提示词，覆盖生成前的代码路径；不依赖模型或网络。"""
 import unittest
 
-from app.agent.component_registry import COMPONENT_REGISTRY
+from app.agent.generation.components import COMPONENT_REGISTRY
 from app.agent.prompts import build_component_prompt
 
 

@@ -253,10 +253,10 @@ wild-server/storage/sessions/floor_plan_preview.svg
 | 文件 | 作用 |
 |---|---|
 | `wild-server/app/agent/spatial_plan.py` | IR v2 归一化、校验、摘要、SVG、井道/楼板/墙和洞口槽位编译 |
-| `wild-server/app/agent/spatial_geometry.py` | 多边形、矩形并集、曲线路径与楼板拆分的共享几何函数 |
+| `wild-server/app/agent/generation/spatial_geometry.py` | 多边形、矩形并集、曲线路径与楼板拆分的共享几何函数 |
 | `wild-server/app/agent/floor_plan_rules.py` | 六类可配置工程预审闸门与可读报告 |
-| `wild-server/app/agent/prompts.py` | 分别约束总体建筑方案和 FloorPlanIR 输出协议 |
-| `wild-server/app/agent/architecture_plan.py` | 把空间方案合入建筑方案、骨架和组件配额 |
+| `wild-server/app/agent/prompts/` | 分别约束总体建筑方案和 FloorPlanIR 输出协议 |
+| `wild-server/app/agent/generation/architecture/` | 把空间方案合入建筑方案、骨架和组件配额 |
 | `wild-server/app/agent/nodes/architecture_node.py` | 只生成总体体量、立面轴网和构件配额 |
 | `wild-server/app/agent/nodes/floor_space_analysis_node.py` | 逐层功能空间分析 |
 | `wild-server/app/agent/nodes/floor_layout_node.py` | 二维拓扑与空间几何设计 |

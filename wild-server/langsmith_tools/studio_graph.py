@@ -1,5 +1,5 @@
 """给官方 Studio 导出项目原图；检查点由 Agent Server 管理。"""
-from app.agent.component_registry import get_implemented_components
+from app.agent.generation.components import get_implemented_components
 from app.agent.graph import build_generation_graph, generation_recursion_limit
 
 

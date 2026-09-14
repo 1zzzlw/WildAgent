@@ -1,6 +1,6 @@
 """模型服务故障分类协议的回归测试。"""
 
-from app.agent.model_errors import (
+from app.llm.errors import (
     classify_model_error,
     collect_component_model_errors,
 )

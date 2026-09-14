@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.agent.rag_trace import append_rag_feedback
+from app.rag.trace import append_rag_feedback
 
 
 router = APIRouter(prefix="/api/rag", tags=["rag-observability"])

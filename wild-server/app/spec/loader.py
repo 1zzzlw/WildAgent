@@ -28,17 +28,17 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from loguru import logger
-from app.agent.knowledge_policy import (
+from app.agent.knowledge.policy import (
     GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION,
     knowledge_hit_applies,
 )
 
-from app.agent.rag_gate import (
+from app.rag.gate import (
     RAGRetrievalRejected,
     evaluate_retrieval_gate,
 )
-from app.agent.rag_security import split_business_and_access_filters
-from app.agent.rag_trace import (
+from app.rag.security import split_business_and_access_filters
+from app.rag.trace import (
     make_query_trace,
     record_rag_context,
     record_rag_gate,

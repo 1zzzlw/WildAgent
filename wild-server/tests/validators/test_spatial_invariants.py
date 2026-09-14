@@ -1,4 +1,4 @@
-from app.agent.spatial_invariants import build_spatial_invariants
+from app.agent.generation.spatial_invariants import build_spatial_invariants
 from app.tools.spatial_tools import compute_wall_bounding_box
 
 

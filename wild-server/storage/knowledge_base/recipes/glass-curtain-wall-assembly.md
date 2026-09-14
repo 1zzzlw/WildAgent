@@ -9,7 +9,7 @@ entity_name: glass_curtain_wall_assembly
 topic: assembly
 status: experimental
 authority: maintainer
-source: wild-server/app/agent/facade_recipe.py; wild-server/app/agent/architecture_plan.py; wild-web/src/wild-compiler/components/window.ts
+source: wild-server/app/agent/generation/architecture/recipes.py; wild-server/app/agent/generation/architecture/facade.py; wild-web/src/wild-compiler/components/window.ts
 primary_terms:
   - 玻璃幕墙组装
   - curtain wall assembly
@@ -108,7 +108,7 @@ primary_terms:
 synonyms: []
 -->
 
-下面的 JSON 是方案 A 的确定性生成参数，由生成器在运行时直接解析（`app/agent/facade_recipe.py`）。修改这些数值会立即改变幕墙的窗格模数、竖梃缝、窗台高与层间缝，无需改动代码：
+下面的 JSON 是方案 A 的确定性生成参数，由生成器在运行时直接解析（`app/agent/generation/architecture/recipes.py`）。修改这些数值会立即改变幕墙的窗格模数、竖梃缝、窗台高与层间缝，无需改动代码：
 
 ```json
 {

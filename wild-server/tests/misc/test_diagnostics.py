@@ -2,7 +2,7 @@
 
 import unittest
 
-from app.agent.diagnostics import (
+from app.agent.validation.diagnostics import (
     VALIDATOR_VERSION,
     NodeDiagnostic,
     ValidationSnapshot,

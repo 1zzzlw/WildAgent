@@ -3,7 +3,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.agent.diagnostics import blueprint_fingerprint
+from app.agent.validation.diagnostics import blueprint_fingerprint
 from app.agent.nodes.validate_node import validate_node
 
 

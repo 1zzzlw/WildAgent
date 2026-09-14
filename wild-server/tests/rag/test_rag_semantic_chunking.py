@@ -10,7 +10,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
 from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
-from app.agent.knowledge_policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
+from app.agent.knowledge.policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
 
 
 class RAGSemanticChunkingTest(unittest.TestCase):

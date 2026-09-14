@@ -8,13 +8,14 @@ from dataclasses import asdict
 
 from loguru import logger
 
-from app.agent.diagnostics import (
+from app.agent.validation.diagnostics import (
     VALIDATOR_VERSION,
     ValidationSnapshot,
     blueprint_fingerprint,
 )
-from app.agent.graph_state import GenerationState
-from app.agent.validation_issues import (
+from app.agent.validation.design_constraints import validate_design_brief_constraints
+from app.agent.state import GenerationState
+from app.agent.validation.issues import (
     group_issues_by_entity,
     validation_issues_from_results,
 )
@@ -85,9 +86,7 @@ async def validate_node(state: GenerationState) -> dict:
                 pipeline_results = run_validation_pipeline(merged_blueprint)
 
             # merge_diag 记录的是合并当时的快照；设计配额必须对当前 Blueprint 重算。
-            from app.agent.nodes.merge_node import _validate_design_brief_constraints
-
-            design_errors = _validate_design_brief_constraints(
+            design_errors = validate_design_brief_constraints(
                 merged_blueprint,
                 state.get("design_brief"),
             )

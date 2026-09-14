@@ -101,6 +101,29 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             "final_validate",
         }.issubset(node_names))
 
+    def test_graph_exposes_only_public_input_fields(self):
+        schema = self._build_graph().get_input_jsonschema()
+
+        self.assertEqual(
+            set(schema["properties"]),
+            {
+                "user_message",
+                "request_id",
+                "session_id",
+                "building_type",
+                "current_blueprint",
+                "selection",
+                "recent_messages",
+                "workflow_state",
+                "thinking_mode",
+                "procedural_materials_enabled",
+                "plan_mode",
+            },
+        )
+        self.assertEqual(schema.get("required"), ["user_message"])
+        self.assertNotIn("execution_plan", schema["properties"])
+        self.assertNotIn("architecture_plan", schema["properties"])
+
     async def test_chat_branch_executes_chat_node(self):
         result = await self._build_graph().ainvoke({"user_message": "chat: hello"})
         self.assertEqual(result["intent"], "chat")

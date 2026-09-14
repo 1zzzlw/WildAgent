@@ -6,19 +6,19 @@ import time as _time
 
 from loguru import logger
 
-from app.agent.architecture_plan import (
+from app.agent.generation.architecture import (
     detect_architecture_profile,
     resolve_complexity_profile,
     select_architecture_plan,
 )
-from app.agent.graph_state import GenerationState
-from app.agent.execution_plan import execution_plan_phase_guidance
-from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm, merge_token_usage, stream_llm
+from app.agent.state import GenerationState
+from app.agent.planning.execution import execution_plan_phase_guidance
+from app.llm.client import create_llm
+from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
-from app.agent.runtime_context import get_reasoning_callback
+from app.agent.runtime import get_reasoning_callback
 from app.spec.loader import SpecQuery
-from app.agent.knowledge_policy import KNOWLEDGE_GUIDANCE
+from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
 from app.utils.json_extractor import extract_json_object
 
 
@@ -153,7 +153,7 @@ async def architecture_planner(state: GenerationState) -> dict:
                 "\n总体方案结构化输出缺失或格式无效，正在进行一次定向格式恢复...\n",
             )
         if raw_plan is None:
-            from app.agent.format_recovery import recover_single_json
+            from app.llm.recovery import recover_single_json
 
             raw_plan, recovery_diag = await recover_single_json(
                 prompt,
@@ -171,7 +171,7 @@ async def architecture_planner(state: GenerationState) -> dict:
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[architecture] 模型服务故障，已阻断: {exc}")
-        from app.agent.model_errors import model_failure_result
+        from app.llm.errors import model_failure_result
         return model_failure_result(exc)
 
     plan, selection_diag = select_architecture_plan(

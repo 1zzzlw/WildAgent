@@ -27,7 +27,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 def _build_assets(output_dir: Path, enable_callback: bool) -> tuple[Path, Path, int]:
-    from app.agent.component_registry import get_implemented_components
+    from app.agent.generation.components import get_implemented_components
     from app.agent.graph import build_generation_graph
 
     drawable = build_generation_graph(enable_callback=enable_callback).get_graph()

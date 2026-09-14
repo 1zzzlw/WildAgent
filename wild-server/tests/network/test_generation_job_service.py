@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch
 from pathlib import Path
 
-from app.agent.protocol import versioned_event
+from app.contracts.agent_events import versioned_event
 from app.services.generation_job_service import (
     GENERATION_PIPELINE_VERSION,
     GenerationJobService,

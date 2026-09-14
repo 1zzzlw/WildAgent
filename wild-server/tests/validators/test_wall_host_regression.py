@@ -4,11 +4,11 @@ import json
 from pathlib import Path
 import unittest
 
-from app.agent.architecture_plan import (
+from app.agent.generation.architecture import (
     build_deterministic_skeleton, evaluate_skeleton_complexity,
     normalize_architecture_plan, resolve_facade_layout,
 )
-from app.agent.component_registry import COMPONENT_REGISTRY
+from app.agent.generation.components import COMPONENT_REGISTRY
 from app.tools.spatial_tools import (
     fix_wall_junctions, validate_element_dimensions,
     validate_model_quality, validate_opening_fit,

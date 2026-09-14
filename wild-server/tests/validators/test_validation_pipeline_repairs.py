@@ -1,7 +1,7 @@
 import unittest
 
 from app.services.agent_service import _final_errors, run_validation_pipeline
-from app.agent.validation_issues import validation_issues_from_results
+from app.agent.validation.issues import validation_issues_from_results
 
 
 class ValidationPipelineRepairTest(unittest.TestCase):

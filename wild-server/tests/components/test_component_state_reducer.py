@@ -4,7 +4,7 @@ import unittest
 
 from langgraph.graph import END, START, StateGraph
 
-from app.agent.graph_state import GenerationState
+from app.agent.state import GenerationState
 
 
 async def _door_branch(_state: GenerationState) -> dict:

@@ -7,7 +7,7 @@ import pytest
 from starlette.datastructures import Headers, UploadFile
 
 from app.api import assets as assets_api
-from app.agent.asset_graph import run_asset_workflow
+from app.agent.assets import run_asset_workflow
 from app.services.agent_service import (
     _apply_patch_to_blueprint,
     _validate_scene_patch_operations,

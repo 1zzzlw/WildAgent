@@ -11,7 +11,7 @@
 import unittest
 from unittest.mock import Mock
 
-from app.agent.rag_trace import (
+from app.rag.trace import (
     get_current_rag_trace,
     make_query_trace,
     rag_trace_scope,

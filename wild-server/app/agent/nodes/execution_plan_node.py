@@ -9,7 +9,7 @@ from typing import Any
 from langgraph.types import interrupt
 from loguru import logger
 
-from app.agent.execution_plan import (
+from app.agent.planning.execution import (
     CAPABILITY_REGISTRY,
     build_execution_plan,
     next_ready_step,
@@ -17,11 +17,11 @@ from app.agent.execution_plan import (
     update_plan_step,
     validate_execution_plan,
 )
-from app.agent.graph_state import GenerationState
-from app.agent.llm_invocation import invoke_llm, merge_token_usage
-from app.agent.model_client import create_llm
+from app.agent.state import GenerationState
+from app.llm.invocation import invoke_llm, merge_token_usage
+from app.llm.client import create_llm
 from app.agent.prompts import build_execution_plan_prompt
-from app.agent.runtime_context import (
+from app.agent.runtime import (
     get_execution_feedback_poller,
     get_reasoning_callback,
 )
@@ -65,7 +65,7 @@ async def planning_research(state: GenerationState) -> dict:
         context = agent_service.spec_loader.load_many(queries, per_query=2)
         # 本地知识覆盖判断：检索分片是否覆盖可执行能力与组装主题。
         # 结果仅记录在诊断中；联网决策由 web_research 分支（若启用）执行。
-        from app.agent.research_evidence_gate import evaluate_knowledge_coverage
+        from app.agent.knowledge.evidence_gate import evaluate_knowledge_coverage
         coverage_diag = evaluate_knowledge_coverage(
             user_message,
             state.get("building_type"),
@@ -175,7 +175,7 @@ async def execution_planner(state: GenerationState) -> dict:
         raw_payload = parsed if isinstance(parsed, dict) else None
         token_usage = llm_result.token_usage
         if raw_payload is None:
-            from app.agent.format_recovery import recover_single_json
+            from app.llm.recovery import recover_single_json
 
             recovered, recovery_diag = await recover_single_json(
                 prompt,
@@ -198,7 +198,7 @@ async def execution_planner(state: GenerationState) -> dict:
     except Exception as exc:
         planner_error = str(exc)
         logger.warning(f"[execution_planner] 模型计划失败，已阻断: {exc}")
-        from app.agent.model_errors import model_failure_result
+        from app.llm.errors import model_failure_result
         block = model_failure_result(exc)
         return {
             **block,
@@ -292,7 +292,6 @@ def execution_plan_validator(state: GenerationState) -> dict:
     intent = str(state.get("intent") or "generate")
     plan = deepcopy(state.get("execution_plan") or {})
     issues = validate_execution_plan(plan, intent)
-    plan["validation_issues"] = issues
     plan["valid"] = not issues
     plan["status"] = "reviewing" if not issues else "failed"
     return {
@@ -320,8 +319,16 @@ def execution_plan_review(state: GenerationState) -> dict:
     decision = interrupt(
         {
             "type": "execution_plan_review",
+            "question": "请审核动态执行计划，然后在恢复输入中批准或提出修改意见。",
             "plan": plan,
             "version": int(plan.get("version") or 1),
+            "resume_examples": {
+                "confirm": {"action": "confirm"},
+                "revise": {
+                    "action": "revise",
+                    "feedback": "请填写需要修改的计划内容",
+                },
+            },
         }
     )
     action = str(decision.get("action") if isinstance(decision, dict) else "").lower()

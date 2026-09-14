@@ -4,7 +4,7 @@ import asyncio
 import unittest
 from unittest.mock import patch
 
-from app.agent.model_errors import classify_model_error, model_failure_result
+from app.llm.errors import classify_model_error, model_failure_result
 from app.agent.nodes.architecture_node import architecture_planner
 from app.agent.nodes.execution_plan_node import execution_planner
 from app.agent.nodes.classifier_node import classifier_node
@@ -22,7 +22,7 @@ class ModelServiceBlockTest(unittest.TestCase):
     def test_classifier_blocks_missing_model_before_any_generation_route(self):
         async def _run():
             with patch(
-                "app.agent.intent_classifier.invoke_llm",
+                "app.agent.routing.invoke_llm",
                 side_effect=_MissingModelError("configured model does not exist"),
             ):
                 return await classifier_node({

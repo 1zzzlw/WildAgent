@@ -6,11 +6,11 @@ import re
 import sys
 import unittest
 
-from app.agent.knowledge_policy import (
+from app.agent.knowledge.policy import (
     GENERATION_ROLES, chat_knowledge_query_specs, knowledge_hit_applies, plan_knowledge_query,
     term_is_requested,
 )
-from app.agent.research_evidence_gate import evaluate_knowledge_coverage
+from app.agent.knowledge.evidence_gate import evaluate_knowledge_coverage
 from app.agent.prompts import build_architecture_plan_prompt, build_skeleton_prompt
 
 

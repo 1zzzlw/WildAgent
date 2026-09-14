@@ -2,7 +2,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from app.agent.model_client import (
+from app.llm.client import (
     ReasoningChatOpenAI,
     _response_mapping,
     content_as_text,

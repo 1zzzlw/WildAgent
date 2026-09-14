@@ -8,22 +8,22 @@ import time as _time
 import json
 from loguru import logger
 
-from app.agent.graph_state import GenerationState
-from app.agent.architecture_plan import (
+from app.agent.state import GenerationState
+from app.agent.generation.architecture import (
     build_deterministic_skeleton,
     evaluate_skeleton_complexity,
 )
-from app.agent.nodes.material_plan_node import apply_resolved_material_plan
+from app.agent.generation.material_plan import apply_resolved_material_plan
 from app.agent.prompts import build_skeleton_prompt
-from app.agent.model_client import create_llm
-from app.agent.llm_invocation import (
+from app.llm.client import create_llm
+from app.llm.invocation import (
     invoke_llm,
     merge_token_usage,
     stream_llm,
 )
-from app.agent.runtime_context import get_reasoning_callback
+from app.agent.runtime import get_reasoning_callback
 from app.spec.loader import SpecQuery
-from app.agent.knowledge_policy import plan_knowledge_query
+from app.agent.knowledge.policy import plan_knowledge_query
 from app.tools.spatial_tools import (
     fix_element_dimensions,
     fix_material_references,
@@ -377,7 +377,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
     spatial_invariants = {}
     try:
         from app.tools.spatial_tools import compute_wall_bounding_box
-        from app.agent.spatial_invariants import build_spatial_invariants
+        from app.agent.generation.spatial_invariants import build_spatial_invariants
 
         bbox_result = compute_wall_bounding_box(blueprint)
         spatial_invariants = build_spatial_invariants(blueprint, bbox_result)
@@ -387,7 +387,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 6.5 把抽象轴网解析为真实 wall id 和精确局部门窗槽位 ──
     if isinstance(architecture_plan, dict):
-        from app.agent.architecture_plan import resolve_facade_layout
+        from app.agent.generation.architecture import resolve_facade_layout
 
         design_brief = resolve_facade_layout(blueprint, architecture_plan)
         logger.info(

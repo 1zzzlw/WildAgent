@@ -3,7 +3,7 @@ import unittest
 from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk
 
-from app.agent.model_client import ReasoningChatOpenAI, create_llm
+from app.llm.client import ReasoningChatOpenAI, create_llm
 from app.services.agent_service import _ReasoningStreamCallback
 from config import ModelConfig
 

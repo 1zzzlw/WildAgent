@@ -16,14 +16,14 @@ class TestStructureValidator:
     
     def test_import_structure_validator(self):
         """测试模块导入"""
-        from app.agent.validators import StructureValidator, JsonSchemaValidator
+        from app.agent.validation.structure import StructureValidator, JsonSchemaValidator
         assert StructureValidator is not None
         assert JsonSchemaValidator is not None
     
     @pytest.mark.asyncio
     async def test_structure_validation_pass(self):
         """测试 Schema 验证通过"""
-        from app.agent.validators import StructureValidator, JsonSchemaValidator
+        from app.agent.validation.structure import StructureValidator, JsonSchemaValidator
         
         # Mock LLM
         mock_llm = AsyncMock()
@@ -61,7 +61,7 @@ class TestStructureValidator:
     @pytest.mark.asyncio
     async def test_structure_validation_missing_field(self):
         """测试缺少必填字段"""
-        from app.agent.validators import StructureValidator, JsonSchemaValidator
+        from app.agent.validation.structure import StructureValidator, JsonSchemaValidator
         
         mock_llm = AsyncMock()
         schema_validator = JsonSchemaValidator()
@@ -98,14 +98,14 @@ class TestQueryRewriter:
     
     def test_import_query_rewriter(self):
         """测试模块导入"""
-        from app.agent.rag import QueryRewriter, EnhancedRAGRetriever
+        from app.rag.query_rewriter import QueryRewriter, EnhancedRAGRetriever
         assert QueryRewriter is not None
         assert EnhancedRAGRetriever is not None
     
     @pytest.mark.asyncio
     async def test_query_rewrite_basic(self):
         """测试基本查询改写"""
-        from app.agent.rag import QueryRewriter
+        from app.rag.query_rewriter import QueryRewriter
         
         # Mock LLM
         mock_llm = AsyncMock()
@@ -150,7 +150,7 @@ class TestQueryRewriter:
     @pytest.mark.asyncio
     async def test_query_rewrite_fallback(self):
         """测试改写失败时的回退策略"""
-        from app.agent.rag import QueryRewriter
+        from app.rag.query_rewriter import QueryRewriter
         
         # Mock LLM that fails
         mock_llm = AsyncMock()

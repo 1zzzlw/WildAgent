@@ -213,7 +213,7 @@ G1～G6 通过后才能选择风格，G7 和完整校验通过后才能保存。
 
 | 文件 | 作用 |
 |---|---|
-| `app/agent/architecture_plan.py` | 总体方案归一化、体量到骨架、幕墙和槽位规则 |
+| `app/agent/generation/architecture/` | 总体方案归一化、体量到骨架、幕墙和槽位规则 |
 | `app/agent/spatial_plan.py` | FloorPlanIR 归一化与平面到 Blueprint |
 | `app/agent/floor_plan_rules.py` | 工程预审和确定性修复 |
 | `app/agent/plan2build/assembler.py` | 已确认平面到主体 Blueprint |

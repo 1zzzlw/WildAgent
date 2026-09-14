@@ -1,6 +1,6 @@
 import asyncio
 
-from app.agent.component_registry import COMPONENT_REGISTRY, ComponentConfig
+from app.agent.generation.components import COMPONENT_REGISTRY, ComponentConfig
 from app.agent.nodes.base_component_node import (
     create_component_validator,
     _validate_and_fix_with_tools,

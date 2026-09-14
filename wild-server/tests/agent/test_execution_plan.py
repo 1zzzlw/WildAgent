@@ -2,12 +2,12 @@
 
 from copy import deepcopy
 
-from app.agent.execution_plan import (
+from app.agent.planning.execution import (
+    CAPABILITY_REGISTRY,
     build_execution_plan,
     execution_plan_phase_guidance,
     next_ready_step,
     plan_is_complete,
-    public_capabilities,
     reset_plan_from,
     update_plan_step,
     validate_execution_plan,
@@ -45,7 +45,9 @@ def test_generate_plan_keeps_plan_review_and_validation_gates() -> None:
 
 def test_new_plans_do_not_offer_removed_floor_pipeline() -> None:
     capability_types = {
-        item["type"] for item in public_capabilities("generate")
+        item.type
+        for item in CAPABILITY_REGISTRY.values()
+        if "generate" in item.allowed_intents
     }
 
     assert not {
@@ -66,6 +68,24 @@ def test_tampered_node_is_rejected() -> None:
     issues = validate_execution_plan(plan, "generate")
 
     assert any(issue["code"] == "plan_node_tampered" for issue in issues)
+
+
+def test_plan_contract_rejects_unknown_top_level_field() -> None:
+    plan = dict(_generate_plan())
+    plan["arbitrary_field"] = "不应被节点私自加入"
+
+    issues = validate_execution_plan(plan, "generate")
+
+    assert any(issue["code"] == "unknown_plan_fields" for issue in issues)
+
+
+def test_plan_contract_rejects_missing_top_level_field() -> None:
+    plan = dict(_generate_plan())
+    plan.pop("dynamic_tasks")
+
+    issues = validate_execution_plan(plan, "generate")
+
+    assert any(issue["code"] == "missing_plan_fields" for issue in issues)
 
 
 def test_next_ready_step_respects_dependencies() -> None:

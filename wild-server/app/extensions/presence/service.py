@@ -9,7 +9,7 @@ import time
 
 from fastapi import WebSocket
 
-from app.agent.protocol import versioned_event
+from app.contracts.agent_events import versioned_event
 
 from .geoip import extract_client_ip, geoip_resolver, mask_ip
 

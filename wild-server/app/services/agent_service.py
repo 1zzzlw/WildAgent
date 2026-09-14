@@ -31,11 +31,11 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from loguru import logger
 
 from config import config
-from app.agent.model_client import create_llm, message_texts as _message_texts
-from app.agent.llm_invocation import collect_response, invoke_llm, merge_token_usage
-from app.agent.rag_citations import validate_answer_citations
-from app.agent.rag_gate import RAGRetrievalRejected, infer_retrieval_purpose
-from app.agent.rag_trace import (
+from app.llm.client import create_llm, message_texts as _message_texts
+from app.llm.invocation import collect_response, invoke_llm, merge_token_usage
+from app.rag.citations import validate_answer_citations
+from app.rag.gate import RAGRetrievalRejected, infer_retrieval_purpose
+from app.rag.trace import (
     get_injected_chunk_ids,
     record_final_answer,
     record_rag_citations,
@@ -1339,7 +1339,7 @@ class AgentService:
 
         # ── LLM 调用（Agent + 工具）──────────────────────────────
         rag_queries = self._build_rag_queries(message, current_blueprint)
-        from app.agent.intent_classifier import fast_path_intent
+        from app.agent.routing import fast_path_intent
 
         retrieval_intent = resolved_intent or fast_path_intent(
             message,

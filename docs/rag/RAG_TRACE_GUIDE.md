@@ -250,10 +250,10 @@ wild-server/storage/sessions/rag_traces/<session_id>/<request_id>.json
 
 ## 7. 对应代码与测试
 
-- 追踪数据结构与日志输出：`wild-server/app/agent/rag_trace.py`
+- 追踪数据结构与日志输出：`wild-server/app/rag/trace.py`
 - WebSocket 请求边界：`wild-server/app/api/ws_agent.py`
 - Chroma ID、距离与上下文记录：`wild-server/app/spec/loader.py`
-- LLM 耗时与 Token 记录：`wild-server/app/agent/llm_invocation.py`
+- LLM 耗时与 Token 记录：`wild-server/app/llm/invocation.py`
 - 快速模式 Agent 汇总：`wild-server/app/services/agent_service.py`
 - 多文件指标汇总：`wild-server/app/agent/rag_reporting.py` 与 `wild-server/scripts/rag/summarize_rag_traces.py`
 - 不连接真实数据库的单元测试：`wild-server/tests/rag/test_rag_trace.py`

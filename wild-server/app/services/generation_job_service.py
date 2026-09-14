@@ -13,7 +13,7 @@ import aiosqlite
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from loguru import logger
 
-from app.agent.protocol import versioned_event
+from app.contracts.agent_events import versioned_event
 
 
 JobRunner = Callable[[Any, dict, bool], Awaitable[None]]

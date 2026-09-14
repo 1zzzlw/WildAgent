@@ -17,7 +17,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.agent.rag_reporting import summarize_rag_traces
+from app.rag.reporting import summarize_rag_traces
 
 
 def main() -> int:

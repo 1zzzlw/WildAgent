@@ -9,7 +9,7 @@ entity_name: glass_curtain_wall_family
 topic: assembly
 status: experimental
 authority: engine
-source: wild-web/wild-lang/schema.json; wild-web/src/wild-compiler/components/window.ts; wild-server/app/agent/architecture_plan.py
+source: wild-web/wild-lang/schema.json; wild-web/src/wild-compiler/components/window.ts; wild-server/app/agent/generation/architecture/facade.py
 primary_terms:
   - 玻璃幕墙 WILD 映射
   - curtain wall assembly

@@ -1,4 +1,4 @@
-from app.agent.facade_recipe import (
+from app.agent.generation.architecture.recipes import (
     _build_parameters,
     _parse_parameters,
     load_curtain_wall_parameters,

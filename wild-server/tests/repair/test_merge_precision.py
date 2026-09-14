@@ -4,9 +4,9 @@ import unittest
 
 from app.agent.nodes.merge_node import (
     _deduplicate_balcony_representations,
-    _validate_design_brief_constraints,
     merge_fragments_node,
 )
+from app.agent.validation.design_constraints import validate_design_brief_constraints
 from app.agent.nodes.validate_node import validate_node
 from app.tools.spatial_tools import validate_opening_fit
 
@@ -71,7 +71,7 @@ def test_exact_opening_quota_also_requires_each_approved_slot():
         ],
     }
 
-    errors = _validate_design_brief_constraints(blueprint, design_brief)
+    errors = validate_design_brief_constraints(blueprint, design_brief)
 
     assert "window 未落实 1 个批准槽位: wall_front:window:2" in errors
 
@@ -116,7 +116,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         }
 
         self.assertEqual(
-            _validate_design_brief_constraints(blueprint, design_brief),
+            validate_design_brief_constraints(blueprint, design_brief),
             [],
         )
 
@@ -135,7 +135,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         }
 
         self.assertEqual(
-            _validate_design_brief_constraints(blueprint, design_brief),
+            validate_design_brief_constraints(blueprint, design_brief),
             [],
         )
 
@@ -158,7 +158,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-        errors = _validate_design_brief_constraints(blueprint, design_brief)
+        errors = validate_design_brief_constraints(blueprint, design_brief)
 
         self.assertIn("建筑方案要求 2 层，但缺少墙体标高 [3.2]", errors)
         self.assertIn("建筑方案要求 2 层，但缺少楼板标高 [3.2]", errors)

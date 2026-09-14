@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from langgraph.types import interrupt
 
-from app.agent.graph_state import GenerationState
+from app.agent.state import GenerationState
 from app.design.contracts import DesignDocument
 from app.design.repository import design_repository
 from app.design.resolver import architecture_plan_from_document, resolve_design
@@ -17,9 +17,17 @@ def design_review(state: GenerationState) -> dict:
     resolved = resolve_design(document)
     decision = interrupt({
         "type": "design_review",
+        "question": "请审核建筑设计，然后在恢复输入中批准或提出修改意见。",
         "document": document.model_dump(mode="json"),
         "resolved": resolved.model_dump(mode="json"),
         "preview_url": f"/api/designs/{document.session_id}/preview.svg?revision={document.revision}",
+        "resume_examples": {
+            "confirm": {"action": "confirm"},
+            "revise": {
+                "action": "revise",
+                "feedback": "请填写需要修改的建筑设计内容",
+            },
+        },
     })
     action = str(decision.get("action") if isinstance(decision, dict) else "").lower()
     feedback = str(decision.get("feedback") if isinstance(decision, dict) else "").strip()

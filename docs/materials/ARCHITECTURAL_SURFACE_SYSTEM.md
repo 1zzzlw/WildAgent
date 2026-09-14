@@ -1085,7 +1085,7 @@ Renderer 不再理解“轻微”“旧”“不要太脏”等自然语言，�
 | `wild-web/src/components/panels/ProceduralMaterialPanel.vue` | 内置预设、自定义参数和浏览器复用入口 |
 | `wild-web/src/wild/proceduralMaterialPresets.ts` | 当前三套红砖数据预设 |
 | `wild-server/app/agent/nodes/material_plan_node.py` | AI 材质意图的受控解析 |
-| `wild-server/app/agent/prompts.py` | AI 可输出字段和边界说明 |
+| `wild-server/app/agent/prompts/` | AI 可输出字段和边界说明 |
 | `wild-web/scripts/check-wild-core.mjs` | Core 程序化材质回归 |
 | `wild-web/scripts/check-rendering-pipeline.mjs` | Shader、缓存和 Program key 回归 |
 

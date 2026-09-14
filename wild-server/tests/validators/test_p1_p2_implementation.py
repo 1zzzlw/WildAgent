@@ -13,13 +13,13 @@ class TestToolValidator:
     
     def test_import_tool_validator(self):
         """测试模块导入"""
-        from app.agent.validators import ToolValidator
+        from app.agent.validation.tool import ToolValidator
         assert ToolValidator is not None
     
     @pytest.mark.asyncio
     async def test_diagnose_tool_error(self):
         """测试工具错误诊断"""
-        from app.agent.validators import ToolValidator
+        from app.agent.validation.tool import ToolValidator
         
         # Mock LLM
         mock_llm = AsyncMock()
@@ -60,13 +60,13 @@ class TestReasoningValidator:
     
     def test_import_reasoning_validator(self):
         """测试模块导入"""
-        from app.agent.validators import ReasoningValidator
+        from app.agent.validation.reasoning import ReasoningValidator
         assert ReasoningValidator is not None
     
     @pytest.mark.asyncio
     async def test_validate_reasoning_consistent(self):
         """测试推理一致性验证（一致的情况）"""
-        from app.agent.validators import ReasoningValidator
+        from app.agent.validation.reasoning import ReasoningValidator
         
         # Mock LLM
         mock_llm = AsyncMock()
@@ -98,7 +98,7 @@ class TestReasoningValidator:
     @pytest.mark.asyncio
     async def test_validate_reasoning_inconsistent(self):
         """测试推理一致性验证（不一致的情况）"""
-        from app.agent.validators import ReasoningValidator
+        from app.agent.validation.reasoning import ReasoningValidator
         
         # Mock LLM
         mock_llm = AsyncMock()
@@ -140,12 +140,12 @@ class TestHybridRetriever:
     
     def test_import_hybrid_retriever(self):
         """测试模块导入"""
-        from app.agent.rag import HybridRetriever
+        from app.rag.hybrid_retriever import HybridRetriever
         assert HybridRetriever is not None
     
     def test_hybrid_retriever_initialization(self):
         """测试混合检索器初始化"""
-        from app.agent.rag import HybridRetriever
+        from app.rag.hybrid_retriever import HybridRetriever
         
         # Mock vector store
         mock_vector_store = Mock()
@@ -165,7 +165,7 @@ class TestHybridRetriever:
     
     def test_get_stats(self):
         """测试获取统计信息"""
-        from app.agent.rag import HybridRetriever
+        from app.rag.hybrid_retriever import HybridRetriever
         
         mock_vector_store = Mock()
         mock_retriever = Mock()

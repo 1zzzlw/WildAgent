@@ -1,4 +1,4 @@
-from app.agent.architecture_plan import (
+from app.agent.generation.architecture import (
     build_deterministic_skeleton,
     conform_balconies_to_slots,
     conform_entrance_accessories,

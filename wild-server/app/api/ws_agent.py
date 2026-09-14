@@ -56,17 +56,17 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
-from app.agent.intent_classifier import INTENT_LABELS, classify_intent_decision
-from app.agent.architecture_plan import detect_architecture_profile
-from app.agent.protocol import AGENT_PROTOCOL_VERSION, versioned_event
-from app.agent.procedural_material_recipes import without_procedural_materials
-from app.agent.rag_security import (
+from app.agent.routing import INTENT_LABELS, classify_intent_decision
+from app.agent.generation.architecture import detect_architecture_profile
+from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
+from app.agent.generation.materials import without_procedural_materials
+from app.rag.security import (
     AccessContext,
     access_context_from_headers,
     check_content_safety,
     redact_pii,
 )
-from app.agent.rag_trace import (
+from app.rag.trace import (
     rag_trace_scope,
     record_final_answer,
     record_node_call,
@@ -589,7 +589,7 @@ _NODE_LABELS = {
 def _node_label(name: str) -> str:
     if name in _NODE_LABELS:
         return _NODE_LABELS[name]
-    from app.agent.component_registry import get_implemented_components
+    from app.agent.generation.components import get_implemented_components
 
     for component_config in get_implemented_components():
         ct, cl = component_config.component_type, component_config.label
@@ -602,7 +602,7 @@ def _node_label(name: str) -> str:
 
 async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     """持久化 LangGraph：逐节点推送 RAG/LLM/确定性进度诊断与性能汇总。"""
-    from app.agent.graph_state import GenerationState
+    from app.agent.state import GenerationState
 
     request_id = data.get("request_id", "")
     message = data.get("message", "")
@@ -679,8 +679,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
     from app.agent.graph import generation_recursion_limit, get_graph
-    from app.agent.component_registry import get_implemented_components
-    from app.agent.runtime_context import (
+    from app.agent.generation.components import get_implemented_components
+    from app.agent.runtime import (
         bind_execution_feedback_poller,
         bind_reasoning_callback,
         reset_execution_feedback_poller,

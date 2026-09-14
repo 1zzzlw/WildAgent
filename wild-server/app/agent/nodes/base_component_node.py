@@ -3,7 +3,7 @@
 
 用法:
     from .base_component_node import create_component_generator, create_component_validator
-    from app.agent.component_registry import COMPONENT_REGISTRY
+    from app.agent.generation.components import COMPONENT_REGISTRY
 
     door_gen = create_component_generator(COMPONENT_REGISTRY["door"])
     door_val = create_component_validator(COMPONENT_REGISTRY["door"])
@@ -13,15 +13,15 @@ import json
 import time as _time
 from loguru import logger
 
-from app.agent.graph_state import GenerationState
+from app.agent.state import GenerationState
 from app.agent.prompts import build_component_prompt
-from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm, stream_llm
-from app.agent.model_errors import classify_model_error
-from app.agent.runtime_context import get_reasoning_callback
-from app.agent.component_registry import ComponentConfig
+from app.llm.client import create_llm
+from app.llm.invocation import invoke_llm, stream_llm
+from app.llm.errors import classify_model_error
+from app.agent.runtime import get_reasoning_callback
+from app.agent.generation.components import ComponentConfig
 from app.spec.loader import SpecQuery
-from app.agent.knowledge_policy import plan_knowledge_query
+from app.agent.knowledge.policy import plan_knowledge_query
 from app.utils.json_extractor import extract_json_array, extract_json_object
 
 # 全局 LLM 并发信号量

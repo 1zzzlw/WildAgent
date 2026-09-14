@@ -12,9 +12,9 @@ from app.api.ws_agent import (
     _process_user_message_safely,
     agent_websocket,
 )
-from app.agent.rag_security import AccessContext
+from app.rag.security import AccessContext
 from app.extensions.presence import WebSocketConnectionRegistry
-from app.agent.intent_classifier import IntentDecision
+from app.agent.routing import IntentDecision
 from app.services.agent_service import QueryResult
 from app.services.generation_job_service import GenerationJob, GenerationJobService
 

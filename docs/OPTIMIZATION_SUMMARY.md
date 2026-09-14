@@ -68,7 +68,7 @@
 
 **改动**：新增 `_collect_json_parse_failures`。`json_parse_failed=True` 的组件：配额 `min>0` 时生成设计配额级错误交给 callback `add_entity`；`min=0` 时记 `logger.warning`。格式故障与几何问题区分开。
 
-### C3. 计划层格式恢复 + invoke_llm 退避重试（`app/agent/llm_invocation.py:18,93`、`app/agent/format_recovery.py:17`）
+### C3. 计划层格式恢复 + invoke_llm 退避重试（`app/llm/invocation.py:18,93`、`app/agent/format_recovery.py:17`）
 
 **问题**：四个计划节点（architecture / floor_plan_design / material_plan / execution_planner）全是单次 try/except + 走确定性回退，零重试。偶发抖动直接把 LLM 设计整份丢弃，精细度塌缩但用户无感知。`model_errors.py:73-79` 里 `terminal_current_run` 恒为 True，限流/5xx/超时这些 `retryable` 错误在计划节点既不重试也不上报。
 
@@ -83,7 +83,7 @@
 
 ## 4. 批次 D：确定性几何（P1，精细度最大收益）
 
-### D1. volumes 逐项修复而非整体回退（`app/agent/architecture_plan.py:863`）
+### D1. volumes 逐项修复而非整体回退（`app/agent/generation/architecture/:863`）
 
 **问题**：`_normalize_volumes` 对任一正面积重叠/缺层**整份 `return fallback`**，丢弃 LLM 全部体量设计。
 
@@ -95,13 +95,13 @@
 
 **改动**：新增 `_OPENING_SLOT_TOLERANCE = 1e-2` 容差比较（`_signature_matches`），槽位签名与组件在 1cm 内匹配即通过。
 
-### D3. 外法向几何判定（`app/agent/architecture_plan.py:3303`）
+### D3. 外法向几何判定（`app/agent/generation/architecture/:3303`）
 
 **问题**：`_entrance_anchor` 假设"墙按逆时针围合，外法向=沿墙方向右旋 90°"。LLM 的 volumes 组合出顺时针或凹形轮廓时，**入口雨棚/柱/灯会被放到室内一侧**。
 
 **改动**：新增 `_plan_winding`（用体量联合轮廓的有向面积/shoelace 判定绕向）和 `_convex_hull`。逆时针用右旋，顺时针取反。
 
-### D4. 构造网格吸附（`app/agent/spatial_geometry.py:21`、`app/agent/architecture_plan.py:2679,2884`）
+### D4. 构造网格吸附（`app/agent/generation/spatial_geometry.py:21`、`app/agent/generation/architecture/:2679,2884`）
 
 **问题**：没有构造网格吸附机制，只有 `round(x,3)` 到毫米；窗宽 `bay_width*0.62` 等魔数导致开间不均分、窄开间窗被压成 0.5m 或被静默丢弃；槽位重叠直接 `continue` 丢弃。
 
@@ -132,7 +132,7 @@
 - `fix_cornice_placement` 按宿主屋顶范围推导保守默认 path（`_default_path_for`），不再写死。
 - light 校验增加 position 有限性、Y 不落地下。
 
-### E2. 风格预选前移（`app/agent/nodes/classifier_node.py`、`app/agent/prompts.py`）
+### E2. 风格预选前移（`app/agent/nodes/classifier_node.py`、`app/agent/prompts/`）
 
 **问题**：风格选择发生在主体装配完成之后（`style_review`），而 architecture / floor_plan / material 三个节点生成时完全不知道最终风格包。LLM 画平屋顶、风格包却要求中式坡屋顶，只能靠 G7 事后拦。
 
@@ -295,7 +295,7 @@ Hit@5=85.7%   Recall@5=85.7%   MRR=0.730   空召回 0/60 (0.0%)   异常 0
 
 针对"生成的平面空间太少、像两区空壳"的问题，三处收敛：
 
-1. **Prompt 硬规则重写**（`app/agent/prompts.py`）：第 9 条从"最小两区"改为"按建筑类型生成完整功能分区"，居住类每层 ≥3 功能区、面积允许细分到 4~6 个；JSON 示例从 2 空间改为 4 空间（起居/卧室/厨房/卫生间）+ 3 面墙 + 3 扇门。
+1. **Prompt 硬规则重写**（`app/agent/prompts/`）：第 9 条从"最小两区"改为"按建筑类型生成完整功能分区"，居住类每层 ≥3 功能区、面积允许细分到 4~6 个；JSON 示例从 2 空间改为 4 空间（起居/卧室/厨房/卫生间）+ 3 面墙 + 3 扇门。
 2. **确定性兜底升级**（`app/agent/spatial_plan.py`）：`deterministic_baseline_spatial_plan` 从固定两区改为按面积自适应——≥40㎡ 四区（起居/卧室/厨房/卫生间）、≥20㎡ 三区（起居/卧室/厨卫）、<20㎡ 两区。新增 `_fill_three_zone_baseline` / `_fill_four_zone_baseline` / `_door_spec` 辅助。
 3. **电梯修复与多房间模板兼容**（`app/agent/floor_plan_rules.py`）：`_elevator_polygon` 井道改为紧贴外墙角（不留内边距），避免切进内部分隔墙产生墙边空洞；修复后重新吸附内墙。
 
@@ -323,9 +323,9 @@ Hit@5=85.7%   Recall@5=85.7%   MRR=0.730   空召回 0/60 (0.0%)   异常 0
 
 ### 第一轮（LangGraph）
 ```
-M  app/agent/architecture_plan.py      (volumes 逐项修复、外法向判定、网格吸附、槽位重排)
-M  app/agent/graph_state.py            (style_preference 字段)
-M  app/agent/llm_invocation.py         (invoke_llm 退避重试)
+M  app/agent/generation/architecture/      (volumes 逐项修复、外法向判定、网格吸附、槽位重排)
+M  app/agent/state.py            (style_preference 字段)
+M  app/llm/invocation.py         (invoke_llm 退避重试)
 M  app/agent/nodes/architecture_node.py (格式恢复接入)
 M  app/agent/nodes/base_component_node.py (组件 JSON 恢复 + json_parse_failed)
 M  app/agent/nodes/classifier_node.py  (风格预选)
@@ -334,8 +334,8 @@ M  app/agent/nodes/floor_plan_design_node.py (格式恢复接入)
 M  app/agent/nodes/material_plan_node.py (格式恢复接入)
 M  app/agent/nodes/merge_node.py       (_collect_json_parse_failures)
 M  app/agent/plan2build/gates.py       (G3 容差、G8 碰撞校验)
-M  app/agent/prompts.py                (风格预选注入)
-M  app/agent/spatial_geometry.py       (snap_to_grid)
+M  app/agent/prompts/                (风格预选注入)
+M  app/agent/generation/spatial_geometry.py       (snap_to_grid)
 M  app/agent/spatial_plan.py           (内墙端点吸附)
 M  app/agent/validation_issues.py      (指纹加入消息哈希)
 A  app/agent/format_recovery.py        (共享格式恢复)

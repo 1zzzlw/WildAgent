@@ -9,8 +9,8 @@ import time as _time
 
 from loguru import logger
 
-from app.agent.graph_state import GenerationState
-from app.agent.runtime_context import get_reasoning_callback
+from app.agent.state import GenerationState
+from app.agent.runtime import get_reasoning_callback
 
 
 async def patch_node(state: GenerationState) -> dict:

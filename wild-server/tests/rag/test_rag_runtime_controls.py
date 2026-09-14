@@ -6,16 +6,16 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
-from app.agent.rag_calibration import calibrate_distance_threshold
-from app.agent.rag_citations import validate_answer_citations
-from app.agent.rag_gate import (
+from app.rag.calibration import calibrate_distance_threshold
+from app.rag.citations import validate_answer_citations
+from app.rag.gate import (
     RAGRetrievalRejected,
     evaluate_retrieval_gate,
     infer_retrieval_purpose,
 )
-from app.agent.rag_quality import JUDGE_PROMPT_VERSION, build_rag_judge_prompt
-from app.agent.rag_reporting import summarize_rag_traces
-from app.agent.rag_security import (
+from app.rag.quality import JUDGE_PROMPT_VERSION, build_rag_judge_prompt
+from app.rag.reporting import summarize_rag_traces
+from app.rag.security import (
     AccessContext,
     access_context_from_headers,
     access_context_scope,
@@ -23,7 +23,7 @@ from app.agent.rag_security import (
     redact_pii,
     split_business_and_access_filters,
 )
-from app.agent.rag_trace import append_rag_feedback, rag_trace_scope, trace_file_path
+from app.rag.trace import append_rag_feedback, rag_trace_scope, trace_file_path
 from app.spec.loader import RAGSpecLoader, RetrievedSpecChunk
 from config import config
 

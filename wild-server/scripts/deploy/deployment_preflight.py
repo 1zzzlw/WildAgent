@@ -43,7 +43,7 @@ def validate_knowledge_documents(kb_root: Path) -> tuple[list[Path], list[str]]:
 
 def select_smoke_response_text(response: object) -> tuple[str, str]:
     """选择可证明模型已响应的文本，并返回来源标签。"""
-    from app.agent.model_client import message_texts
+    from app.llm.client import message_texts
 
     content, reasoning = message_texts(response)
     if content.strip():
@@ -83,7 +83,7 @@ def validate_image_and_config(*, require_provider_credentials: bool) -> None:
 
 
 def run_model_smoke() -> None:
-    from app.agent.model_client import create_llm
+    from app.llm.client import create_llm
 
     response = create_llm().bind(max_tokens=MODEL_SMOKE_MAX_TOKENS).invoke(
         "Reply with WILD_OK only."

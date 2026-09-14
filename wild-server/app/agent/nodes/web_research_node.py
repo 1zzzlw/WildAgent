@@ -15,13 +15,13 @@ import time
 
 from loguru import logger
 
-from app.agent.graph_state import GenerationState
-from app.agent.llm_invocation import invoke_llm
-from app.agent.model_client import create_llm
-from app.agent.runtime_context import get_reasoning_callback
-from app.agent.web import SearchQuery, WebResult
+from app.agent.state import GenerationState
+from app.llm.invocation import invoke_llm
+from app.llm.client import create_llm
+from app.agent.runtime import get_reasoning_callback
+from app.agent.knowledge.web import SearchQuery, WebResult
 from app.agent import web as _web_api  # 运行期取 web.create_search_client，便于测试打补丁
-from app.agent.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
+from app.agent.knowledge.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
 from app.utils.json_extractor import extract_json_array
 from config import config
 

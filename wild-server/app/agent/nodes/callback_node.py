@@ -10,21 +10,22 @@ from dataclasses import asdict
 
 from loguru import logger
 
-from app.agent.diagnostics import (
+from app.agent.validation.diagnostics import (
     VALIDATOR_VERSION,
     ValidationSnapshot,
     blueprint_fingerprint,
     step_result_to_dict,
 )
-from app.agent.graph_state import GenerationState
+from app.agent.validation.design_constraints import validate_design_brief_constraints
+from app.agent.state import GenerationState
 from app.agent.prompts import build_callback_prompt
-from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm, stream_llm
-from app.agent.model_errors import classify_model_error
-from app.agent.runtime_context import get_reasoning_callback
-from app.agent.component_registry import COMPONENT_REGISTRY
-from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
-from app.agent.validation_issues import compare_issue_sets, validation_issues_from_results
+from app.llm.client import create_llm
+from app.llm.invocation import invoke_llm, stream_llm
+from app.llm.errors import classify_model_error
+from app.agent.runtime import get_reasoning_callback
+from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.repair.tools import execute_repair_actions, extract_repair_actions
+from app.agent.validation.issues import compare_issue_sets, validation_issues_from_results
 from app.spec.loader import SpecQuery
 
 
@@ -275,8 +276,7 @@ async def callback_node(state: GenerationState) -> dict:
     candidate_results = run_validation_pipeline(candidate)
     candidate_errors = _final_errors(candidate_results)
     after_issues = validation_issues_from_results(candidate_errors, candidate)
-    from app.agent.nodes.merge_node import _validate_design_brief_constraints
-    after_design_errors = _validate_design_brief_constraints(
+    after_design_errors = validate_design_brief_constraints(
         candidate,
         state.get("design_brief"),
     )

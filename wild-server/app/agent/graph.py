@@ -23,8 +23,8 @@ from langgraph.graph import StateGraph, END
 from langgraph.types import Send
 from loguru import logger
 
-from app.agent.graph_state import GenerationState
-from app.agent.component_registry import (
+from app.agent.state import GenerationInput, GenerationState
+from app.agent.generation.components import (
     get_implemented_components,
     resolve_component_suggestions,
 )
@@ -262,7 +262,10 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
       → LLM skeleton → 动态组件 gen→val → merge → final_validate)
       | (edit → patch → END) | (chat → END)
     """
-    graph = StateGraph(GenerationState)
+    # 对外只暴露请求入口字段；完整 GenerationState 仅供节点内部通信。
+    # Studio 会根据 input_schema 渲染表单，避免把执行计划、诊断和结果字段
+    # 误导成调用方需要填写的输入。
+    graph = StateGraph(GenerationState, input_schema=GenerationInput)
 
     # ── Layer -1: 意图分类 ──
     graph.add_node("classifier", classifier_node)

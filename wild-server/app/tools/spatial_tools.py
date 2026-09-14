@@ -25,7 +25,7 @@ Spatial Validation Tools —— 空间校验 + 自动修正工具
 import math
 from langchain.tools import tool
 
-from app.agent.spatial_geometry import point_in_regions, shared_stair_layout
+from app.agent.generation.spatial_geometry import point_in_regions, shared_stair_layout
 
 
 # 门窗洞口必须与父墙中心面保持接近；超过该值通常意味着 LLM 把世界 X/Z
@@ -389,7 +389,7 @@ def _wall_length(wall: dict) -> float:
     f = wall.get("from", [0, 0, 0])
     t = wall.get("to", [0, 0, 0])
     if wall.get("curve"):
-        from app.agent.spatial_geometry import curve_points, path_length
+        from app.agent.generation.spatial_geometry import curve_points, path_length
 
         return path_length(curve_points(
             [float(f[0]), float(f[2])],

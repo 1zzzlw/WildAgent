@@ -2,8 +2,8 @@ import unittest
 from types import SimpleNamespace
 
 from app.agent.nodes.validate_node import _trace_errors_to_components
-from app.agent.repair_tools import execute_repair_actions, extract_repair_actions
-from app.agent.validation_issues import compare_issue_sets, validation_issues_from_results
+from app.agent.repair.tools import execute_repair_actions, extract_repair_actions
+from app.agent.validation.issues import compare_issue_sets, validation_issues_from_results
 
 
 def _blueprint() -> dict:

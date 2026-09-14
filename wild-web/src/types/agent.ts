@@ -159,11 +159,10 @@ export interface ExecutionPlan {
   assumptions: string[]
   planner_source: 'llm' | 'fallback'
   planner_summary: string
-  feedback?: string
+  feedback: string
   change_summary: string[]
   dynamic_tasks: ExecutionPlanTask[]
   steps: ExecutionPlanStep[]
-  validation_issues: Array<{ code: string; message: string }>
 }
 
 export interface ExecutionPlanReadyResponse extends AgentProtocolEnvelope {

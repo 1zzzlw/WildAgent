@@ -23,7 +23,7 @@ SERVER_ROOT = Path(__file__).resolve().parents[2]
 if str(SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(SERVER_ROOT))
 
-from app.agent.web.staging import STAGING_ROOT  # noqa: E402
+from app.agent.knowledge.web.staging import STAGING_ROOT  # noqa: E402
 from config import config  # noqa: E402
 
 KB_ROOT = SERVER_ROOT / "storage" / "knowledge_base"

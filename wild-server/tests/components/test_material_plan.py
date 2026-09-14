@@ -1,12 +1,12 @@
 import asyncio
 from unittest import mock
 
-from app.agent.nodes.material_plan_node import (
+from app.agent.generation.material_plan import (
     apply_resolved_material_plan,
     compact_asset_catalog,
     resolve_material_plan,
 )
-from app.agent.procedural_material_recipes import (
+from app.agent.generation.materials import (
     compact_procedural_catalog,
     resolve_brick_preset,
     without_procedural_materials,

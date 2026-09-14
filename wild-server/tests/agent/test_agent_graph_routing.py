@@ -2,7 +2,7 @@
 
 from types import SimpleNamespace
 
-from app.agent.component_registry import resolve_component_suggestions
+from app.agent.generation.components import resolve_component_suggestions
 from langgraph.graph import END
 
 from app.agent.graph import (
@@ -17,8 +17,9 @@ from app.agent.graph import (
     _planning_research_dispatch,
     generation_recursion_limit,
 )
-import app.agent.intent_classifier as intent_classifier
-from app.agent.intent_classifier import (
+import app.agent.routing as intent_classifier
+import app.agent.nodes.execution_plan_node as execution_plan_node
+from app.agent.routing import (
     classify_intent,
     classify_keywords,
     fast_path_intent,
@@ -89,6 +90,24 @@ def test_terminal_model_error_stops_before_research_and_plan_validation():
 def test_valid_plan_continues_through_validator_to_review():
     assert _after_execution_planner({"execution_plan_status": "draft"}) == "plan_validator"
     assert _after_execution_plan_validator({"execution_plan_status": "reviewing"}) == "plan_review"
+
+
+def test_plan_review_interrupt_shows_resume_examples(monkeypatch):
+    captured = {}
+
+    def fake_interrupt(payload):
+        captured.update(payload)
+        return {"action": "confirm"}
+
+    monkeypatch.setattr(execution_plan_node, "interrupt", fake_interrupt)
+
+    result = execution_plan_node.execution_plan_review({
+        "execution_plan": {"valid": True, "version": 1},
+    })
+
+    assert captured["resume_examples"]["confirm"] == {"action": "confirm"}
+    assert captured["resume_examples"]["revise"]["action"] == "revise"
+    assert result["execution_plan_review_status"] == "approved"
 
 
 def test_invalid_intent_fails_closed_to_read_only_chat():

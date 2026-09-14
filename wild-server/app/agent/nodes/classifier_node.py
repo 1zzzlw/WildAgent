@@ -1,9 +1,9 @@
 """
 Layer -1: 意图分类节点（薄封装）。
 
-共享判定逻辑位于 ``app.agent.intent_classifier``，返回意图、置信度、目标和降级来源。
+共享判定逻辑位于 ``app.agent.routing``，返回意图、置信度、目标和降级来源。
 """
-from app.agent.intent_classifier import classify_intent_decision
+from app.agent.routing import classify_intent_decision
 
 
 def _infer_style_preference(user_message: str) -> list[str]:
@@ -14,7 +14,7 @@ def _infer_style_preference(user_message: str) -> list[str]:
     也不引入额外审核节点。
     """
     try:
-        from app.agent.style_registry import style_registry
+        from app.agent.generation.styles import style_registry
 
         packages = style_registry.recommend(user_message, limit=3)
         return [str(item["id"]) for item in packages]

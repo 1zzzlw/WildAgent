@@ -2,11 +2,11 @@
 
 import pytest
 
-from app.agent.knowledge_topics import all_topic_keys, generation_knowledge_topics
-from app.agent.research_evidence_gate import evaluate_knowledge_coverage
+from app.agent.knowledge.topics import all_topic_keys, generation_knowledge_topics
+from app.agent.knowledge.evidence_gate import evaluate_knowledge_coverage
 from app.agent.nodes.web_research_node import web_research_node
-from app.agent.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
-from app.agent.web.search_client import MockSearchClient, _validate_public_url
+from app.agent.knowledge.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
+from app.agent.knowledge.web.search_client import MockSearchClient, _validate_public_url
 from app.spec.loader import RetrievedSpecChunk
 
 
@@ -63,7 +63,7 @@ async def test_terminal_model_error_skips_search_client(monkeypatch):
         raise AssertionError("terminal model error 后不应创建网络搜索客户端")
 
     monkeypatch.setattr(
-        "app.agent.web.create_search_client",
+        "app.agent.knowledge.web.create_search_client",
         fail_if_created,
     )
     result = await web_research_node({
@@ -136,7 +136,7 @@ def test_ssrf_allows_public_https():
 @pytest.mark.asyncio
 async def test_mock_search_returns_results():
     client = MockSearchClient()
-    results = await client.search(__import__("app.agent.web.search_client", fromlist=["SearchQuery"]).SearchQuery("test"))
+    results = await client.search(__import__("app.agent.knowledge.web.search_client", fromlist=["SearchQuery"]).SearchQuery("test"))
     assert len(results) >= 1
     assert results[0].url.startswith("https://")
 

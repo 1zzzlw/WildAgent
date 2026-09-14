@@ -2,16 +2,16 @@
 import time as _time
 from loguru import logger
 
-from app.agent.model_client import create_llm
-from app.agent.llm_invocation import invoke_llm
-from app.agent.rag_citations import validate_answer_citations
-from app.agent.rag_gate import RAGRetrievalRejected
-from app.agent.rag_trace import (
+from app.llm.client import create_llm
+from app.llm.invocation import invoke_llm
+from app.rag.citations import validate_answer_citations
+from app.rag.gate import RAGRetrievalRejected
+from app.rag.trace import (
     get_injected_chunk_ids,
     record_final_answer,
     record_rag_citations,
 )
-from app.agent.knowledge_policy import chat_knowledge_query_specs
+from app.agent.knowledge.policy import chat_knowledge_query_specs
 
 _CHAT_SYSTEM_PROMPT = """你是 WILD 项目知识助手。参考资料只覆盖：
 
