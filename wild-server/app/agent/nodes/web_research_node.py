@@ -20,7 +20,7 @@ from app.llm.invocation import invoke_llm
 from app.llm.client import create_llm
 from app.agent.runtime import get_reasoning_callback
 from app.agent.knowledge.web import SearchQuery, WebResult
-from app.agent import web as _web_api  # 运行期取 web.create_search_client，便于测试打补丁
+import app.agent.knowledge.web as _web_api  # 运行期取 _web_api.create_search_client，便于测试打补丁
 from app.agent.knowledge.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
 from app.utils.json_extractor import extract_json_array
 from config import config
