@@ -1,11 +1,11 @@
 import asyncio
 
 from app.agent.generation.components import COMPONENT_REGISTRY, ComponentConfig
-from app.agent.nodes.base_component_node import (
-    create_component_validator,
-    _validate_and_fix_with_tools,
-    _validate_fragments,
-    _validation_has_error,
+from app.agent.generation.component_workflow import create_component_validator
+from app.agent.generation.component_processing import (
+    validate_and_fix_with_tools,
+    validate_fragments,
+    validation_has_error,
 )
 
 
@@ -38,7 +38,7 @@ def test_component_fix_is_revalidated_and_passes() -> None:
         "height": 2.2,
     }]
 
-    fixed_fragments, repair_applied, validation_passed = _validate_and_fix_with_tools(
+    fixed_fragments, repair_applied, validation_passed = validate_and_fix_with_tools(
         fragments,
         "door",
         _skeleton(),
@@ -60,7 +60,7 @@ def test_component_fix_does_not_claim_success_when_recheck_still_fails() -> None
         "height": 2.2,
     }]
 
-    _, repair_applied, validation_passed = _validate_and_fix_with_tools(
+    _, repair_applied, validation_passed = validate_and_fix_with_tools(
         fragments,
         "door",
         _skeleton(),
@@ -85,12 +85,12 @@ def test_required_boolean_false_is_not_treated_as_missing() -> None:
         "initiallyOn": False,
     }
 
-    assert _validate_fragments([fragment], config) == [fragment]
+    assert validate_fragments([fragment], config) == [fragment]
 
 
 def test_structured_validation_result_is_supported() -> None:
-    assert _validation_has_error({"has_error": True, "errors": ["bad"]}) is True
-    assert _validation_has_error({"has_error": False, "errors": []}) is False
+    assert validation_has_error({"has_error": True, "errors": ["bad"]}) is True
+    assert validation_has_error({"has_error": False, "errors": []}) is False
 
 
 def test_ground_level_balcony_is_relocated_to_upper_wall() -> None:
@@ -121,7 +121,7 @@ def test_ground_level_balcony_is_relocated_to_upper_wall() -> None:
         "slabThickness": 0.18,
     }]
 
-    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+    fixed, repair_applied, validation_passed = validate_and_fix_with_tools(
         fragments,
         "balcony",
         skeleton,
@@ -160,7 +160,7 @@ def test_horizontally_overflowing_balcony_is_relocated() -> None:
         "slabThickness": 0.18,
     }]
 
-    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+    fixed, repair_applied, validation_passed = validate_and_fix_with_tools(
         fragments,
         "balcony",
         skeleton,
@@ -194,7 +194,7 @@ def test_two_full_width_balconies_use_distinct_upper_front_walls() -> None:
         for index in (1, 2)
     ]
 
-    fixed, repair_applied, validation_passed = _validate_and_fix_with_tools(
+    fixed, repair_applied, validation_passed = validate_and_fix_with_tools(
         fragments, "balcony", skeleton, False,
     )
 

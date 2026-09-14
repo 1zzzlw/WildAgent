@@ -254,15 +254,4 @@ class ReasoningValidator:
                         "severity": "medium"
                     })
         
-        # 规则 3: 检查推理与输出的一致性（如果有推理文本）
-        if reasoning_text:
-            # 提取推理中提到的数值
-            import re
-            reasoning_numbers = re.findall(r'\d+\.?\d*', reasoning_text)
-            output_numbers = re.findall(r'\d+\.?\d*', str(output))
-            
-            # 简单检查：推理中提到的数值是否在输出中
-            # （这只是一个启发式检查）
-            pass  # 可以添加更复杂的逻辑
-        
         return contradictions

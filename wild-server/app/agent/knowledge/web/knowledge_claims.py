@@ -10,8 +10,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from loguru import logger
-
 # 引擎支持的类型 = 组件（component_registry）+ 基础元素（geometry.elements）。
 # wall/floor/stair/column/beam 是 elements 不是 components，必须一并纳入能力白名单。
 _BASE_ELEMENT_TYPES = {"wall", "floor", "stair", "column", "beam", "roof", "opening", "furniture"}

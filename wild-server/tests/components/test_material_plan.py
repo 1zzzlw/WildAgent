@@ -427,13 +427,13 @@ def test_material_planner_skips_llm_when_no_pbr_assets():
     }
     with (
         mock.patch(
-            "app.agent.nodes.material_plan_node.asset_storage"
+            "app.agent.generation.material_workflow.asset_storage"
         ) as storage,
         mock.patch(
-            "app.agent.nodes.material_plan_node.create_llm"
+            "app.agent.generation.material_workflow.create_llm"
         ) as create_llm_mock,
         mock.patch(
-            "app.agent.nodes.material_plan_node.get_reasoning_callback",
+            "app.agent.generation.material_workflow.get_reasoning_callback",
             return_value=None,
         ),
     ):

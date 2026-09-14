@@ -113,7 +113,7 @@ class KnowledgeRulesTest(unittest.TestCase):
                 {"doc_type": "recipe", "knowledge_role": "relation"},
             ],
         )
-        source = (SERVER_ROOT / "app/agent/nodes/chat_node.py").read_text(encoding="utf-8")
+        source = (SERVER_ROOT / "app/agent/prompts/chat.py").read_text(encoding="utf-8")
         self.assertNotIn("建筑类型学", source)
         self.assertIn("不补建筑百科", source)
 

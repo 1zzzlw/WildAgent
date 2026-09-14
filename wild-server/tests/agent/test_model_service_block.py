@@ -61,7 +61,7 @@ class ModelServiceBlockTest(unittest.TestCase):
                 "plan_research_summary": "",
                 "execution_plan_history": [],
             }
-            with patch("app.agent.nodes.execution_plan_node.invoke_llm",
+            with patch("app.agent.planning.workflow.invoke_llm",
                        side_effect=_quota_error()):
                 out = await execution_planner(state)
             return out
@@ -80,7 +80,7 @@ class ModelServiceBlockTest(unittest.TestCase):
                 "execution_plan": None,
                 "style_preference": None,
             }
-            with patch("app.agent.nodes.architecture_node.invoke_llm",
+            with patch("app.agent.generation.architecture.workflow.invoke_llm",
                        side_effect=_quota_error()):
                 out = await architecture_planner(state)
             return out

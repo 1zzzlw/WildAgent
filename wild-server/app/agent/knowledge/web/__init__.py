@@ -34,7 +34,7 @@ def create_search_client(
                 timeout_ms=timeout_ms,
             )
         return None
-    except ValueError as exc:
+    except ValueError:
         return None
 
 

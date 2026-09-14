@@ -31,6 +31,39 @@ def test_nodes_do_not_import_other_nodes():
     assert violations == []
 
 
+def test_node_entry_modules_stay_small():
+    """节点入口一旦重新长胖，就要求把实现下沉到所属领域。"""
+    oversized = {
+        path.name: len(path.read_text(encoding="utf-8").splitlines())
+        for path in (AGENT_ROOT / "nodes").glob("*.py")
+        if path.name != "__init__.py"
+        and len(path.read_text(encoding="utf-8").splitlines()) > 100
+    }
+
+    assert oversized == {}
+
+
+def test_domain_modules_do_not_depend_on_node_entries():
+    violations: list[str] = []
+    for package in ("planning", "generation", "knowledge", "validation", "repair", "prompts"):
+        for path in (AGENT_ROOT / package).rglob("*.py"):
+            if "__pycache__" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                module = getattr(node, "module", "")
+                if isinstance(node, ast.ImportFrom) and module.startswith("app.agent.nodes"):
+                    violations.append(f"{path.relative_to(AGENT_ROOT)}:{node.lineno}:{module}")
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name.startswith("app.agent.nodes"):
+                            violations.append(
+                                f"{path.relative_to(AGENT_ROOT)}:{node.lineno}:{alias.name}"
+                            )
+
+    assert violations == []
+
+
 def test_python_sources_do_not_reference_retired_agent_modules():
     retired_modules = {
         "app.agent.architecture_plan",

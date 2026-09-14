@@ -10,7 +10,6 @@ from app.agent.generation.components import get_implemented_components
 from app.agent.knowledge.policy import term_is_requested
 
 from .profile import (
-    _ARCHITECTURE_PROFILES,
     _DETAIL_COMPONENT_QUOTAS,
     _FACES,
     _OPENING_TYPES,
@@ -890,4 +889,3 @@ def select_architecture_plan(
         "selected_index": selected_index,
         "used_fallback": not bool(raw),
     }
-

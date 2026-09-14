@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
-import hashlib
 import math
 import re
 from typing import Any
 
-from app.agent.generation.architecture.recipes import load_curtain_wall_parameters
 from app.agent.knowledge.policy import term_is_requested
-from app.agent.generation.components import get_implemented_components
-from app.agent.generation.spatial_geometry import shared_stair_layout, snap_to_grid
 
 
 _FACES = ("front", "back", "left", "right")
@@ -548,4 +544,3 @@ def detect_architecture_profile(
     profile = deepcopy(_ARCHITECTURE_PROFILES[profile_id])
     profile["id"] = profile_id
     return profile
-

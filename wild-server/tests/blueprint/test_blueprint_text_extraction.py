@@ -6,9 +6,9 @@ from app.utils.blueprint_parser import (
     normalize_blueprint_input,
     validate_blueprint_schema,
 )
-from app.agent.nodes.skeleton_node import (
-    _parse_components_from_reply,
-    _parse_design_brief,
+from app.agent.generation.skeleton_output import (
+    parse_components_from_reply,
+    parse_design_brief,
 )
 
 
@@ -137,10 +137,10 @@ class BlueprintTextExtractionTest(unittest.TestCase):
         """
 
         self.assertEqual(
-            _parse_components_from_reply(text),
+            parse_components_from_reply(text),
             ["door", "window", "roof", "stair"],
         )
-        brief = _parse_design_brief(text)
+        brief = parse_design_brief(text)
         self.assertEqual(brief["component_quota"]["door"]["min"], 1)
 
 

@@ -18,7 +18,7 @@ from app.agent.graph import (
     generation_recursion_limit,
 )
 import app.agent.routing as intent_classifier
-import app.agent.nodes.execution_plan_node as execution_plan_node
+import app.agent.planning.workflow as execution_plan_node
 from app.agent.routing import (
     classify_intent,
     classify_keywords,

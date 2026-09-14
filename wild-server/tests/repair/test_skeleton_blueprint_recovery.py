@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from app.agent.nodes import skeleton_node
+from app.agent.generation import skeleton_workflow as skeleton_node
+from app.agent.generation.skeleton_output import build_skeleton_summary
 from app.llm.invocation import merge_token_usage
 
 
@@ -105,7 +106,7 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(merged, {"input": 15, "output": 27, "total": 42})
 
     def test_skeleton_summary_uses_approved_slots_instead_of_fixed_opening_sizes(self):
-        summary = skeleton_node._build_skeleton_summary({
+        summary = build_skeleton_summary({
             "geometry": {
                 "elements": [{
                     "id": "wall_front",

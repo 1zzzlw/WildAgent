@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from app.agent.nodes.validate_node import _trace_errors_to_components
+from app.agent.validation.component_trace import trace_errors_to_components
 from app.agent.repair.tools import execute_repair_actions, extract_repair_actions
 from app.agent.validation.issues import compare_issue_sets, validation_issues_from_results
 
@@ -63,7 +63,7 @@ class TargetedRepairToolsTest(unittest.TestCase):
         ]
 
         issues = validation_issues_from_results(results, _blueprint())
-        failed = _trace_errors_to_components(
+        failed = trace_errors_to_components(
             results,
             _blueprint(),
             validation_issues=issues,
@@ -92,7 +92,7 @@ class TargetedRepairToolsTest(unittest.TestCase):
         )]
 
         issues = validation_issues_from_results(results, blueprint)
-        failed = _trace_errors_to_components(
+        failed = trace_errors_to_components(
             results,
             blueprint,
             validation_issues=issues,

@@ -25,6 +25,24 @@ def build_material_optimization_prompt(selection: list[str]) -> str:
 """
 
 
+def append_approved_phase_guidance(
+    prompt: str,
+    phase_guidance: str,
+    compliance_note: str,
+) -> str:
+    """把已批准执行计划中的阶段任务追加到业务提示词。"""
+    if not phase_guidance:
+        return prompt
+    return f"""{prompt}
+
+# 已批准执行计划中的本阶段任务
+
+{phase_guidance}
+
+{compliance_note}
+"""
+
+
 def build_execution_plan_prompt(
     *,
     intent: str,
@@ -252,5 +270,4 @@ def build_material_plan_prompt(
   ]
 }}
 """
-
 

@@ -425,6 +425,7 @@ def build_execution_plan(
         user_message=user_message,
         intent=intent,
     )
+
     actual_source = "fallback" if used_fallback else planner_source
     previous_titles = [
         str(task.get("title") or "")

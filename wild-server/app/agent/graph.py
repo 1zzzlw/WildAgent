@@ -14,7 +14,7 @@ LangGraph 图定义 —— 可审核计划层 + LLM 骨架生成链
     → CHAT:     chat (RAG知识问答) → done
 
 平面设计/确定性装配时代（floor_* 与 approved_plan_assembler）已下线：
-主链骨架节点即 LLM 骨架实现（nodes/skeleton_node.py），组件由骨架建议
+主链骨架节点即 LLM 骨架实现（generation/skeleton_workflow.py），组件由骨架建议
 动态派发，gen→val 链仍是当前主链的一部分。
 """
 import inspect
@@ -28,16 +28,11 @@ from app.agent.generation.components import (
     get_implemented_components,
     resolve_component_suggestions,
 )
-from app.agent.nodes import (
-    web_research_node,
-    classifier_node,
-    chat_node,
-    patch_node,
-    architecture_planner,
-    design_review,
-    material_planner,
-    skeleton_generator,
-    merge_fragments_node,
+from app.agent.nodes.architecture_node import architecture_planner
+from app.agent.nodes.chat_node import chat_node
+from app.agent.nodes.classifier_node import classifier_node
+from app.agent.nodes.design_review_node import design_review, route_design_review
+from app.agent.nodes.execution_plan_node import (
     complete_execution_step,
     execution_plan_executor,
     execution_plan_review,
@@ -46,8 +41,12 @@ from app.agent.nodes import (
     planning_research,
     route_execution_plan_executor,
     route_execution_plan_review,
-    route_design_review,
 )
+from app.agent.nodes.material_plan_node import material_planner
+from app.agent.nodes.merge_node import merge_fragments_node
+from app.agent.nodes.patch_node import patch_node
+from app.agent.nodes.skeleton_node import skeleton_generator
+from app.agent.nodes.web_research_node import web_research_node
 from app.agent.nodes.callback_node import callback_node
 from app.agent.nodes.base_component_node import (
     create_component_generator,

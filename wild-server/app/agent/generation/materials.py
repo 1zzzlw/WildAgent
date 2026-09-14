@@ -200,12 +200,10 @@ def _sample_brick_recipe(
     recipe_id: str,
 ) -> dict[str, Any]:
     ranges = recipe["ranges"]
-    sample = lambda field: _sample_range(
-        ranges[field],
-        stable_context,
-        recipe_id,
-        field,
-    )
+
+    def sample(field: str):
+        return _sample_range(ranges[field], stable_context, recipe_id, field)
+
     return {
         "baseColor": sample("baseColor"),
         "roughness": sample("roughness"),

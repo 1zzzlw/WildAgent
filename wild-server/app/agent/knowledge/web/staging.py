@@ -10,8 +10,6 @@ from __future__ import annotations
 import datetime as _dt
 import re
 from pathlib import Path
-from typing import Any
-
 from loguru import logger
 
 from app.agent.knowledge.web.knowledge_claims import KnowledgeClaim

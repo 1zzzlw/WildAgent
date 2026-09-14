@@ -2,10 +2,8 @@
 
 import unittest
 
-from app.agent.nodes.merge_node import (
-    _deduplicate_balcony_representations,
-    merge_fragments_node,
-)
+from app.agent.generation.assembly import deduplicate_balcony_representations
+from app.agent.generation.assembly_workflow import merge_fragments_node
 from app.agent.validation.design_constraints import validate_design_brief_constraints
 from app.agent.nodes.validate_node import validate_node
 from app.tools.spatial_tools import validate_opening_fit
@@ -91,7 +89,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-        result = _deduplicate_balcony_representations(blueprint)
+        result = deduplicate_balcony_representations(blueprint)
 
         self.assertEqual(result["removed_railing_count"], 0)
         self.assertEqual(blueprint["geometry"]["components"][0]["id"], "balcony_guard_only")

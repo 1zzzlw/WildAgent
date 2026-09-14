@@ -205,3 +205,27 @@ def build_component_prompt(
 """
 
 
+def build_component_user_message(config, design_brief: dict | None = None) -> str:
+    """构建单类组件节点的用户指令。"""
+    quota_note = ""
+    if design_brief:
+        quota = design_brief.get("component_quota", {}).get(config.component_type, {})
+        if quota:
+            quota_note = (
+                f"，精确数量范围: {quota.get('min', '?')}~{quota.get('max', '?')} 个 "
+                f"({quota.get('note', '')})"
+            )
+
+    if config.is_list:
+        return (
+            "用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】和"
+            f"【立面开口方案 / 构件配额】生成**合适数量**的 {config.label} 组件{quota_note}。\n\n"
+            "重要：请仔细阅读 facade_plan（立面开口方案），严格按照每面墙的 "
+            "max_openings 和 intent 生成。max_openings=0 的墙必须留空。\n\n"
+            "只输出 JSON 数组，不要其他文字。"
+        )
+    return (
+        "用户需求已经由骨架节点分析和结构化。请依据上面【已知场景骨架】"
+        f"生成 {config.label} 构件。\n\n"
+        "只输出单个 JSON 对象，不要数组，不要其他文字。"
+    )
