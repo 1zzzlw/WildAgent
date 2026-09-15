@@ -251,7 +251,7 @@
         <span class="project-title">实习项目：WildAgent AI 参数化 3D 建筑编辑器。</span>服务于 3D 虚拟世界的建筑生成需求；在已有 .wild 参数化语言规范与 Three.js 渲染引擎的基础上，负责 Agent 层从 0 到 1 的整体设计与开发，使用户无需掌握复杂协议或预置大量固定 GLB 建筑资产，即可通过自然语言生成可校验、可版本化、可继续编辑的 Blueprint / ScenePatch。
       </p>
       <ul>
-        <li><span class="bullet-label">Agent 系统从 0 到 1：</span>针对单次大模型生成难以稳定遵循复杂 .wild 协议、保持跨阶段约束并验证结果的问题，基于 LangGraph 设计“意图分类 → 方案设计 → 骨架/组件生成 → 合并 → 最终校验”工作流，以结构化 State 传递设计方案、几何约束和校验结果；结合 LangSmith Trace 与服务日志复盘节点执行，定位批准约束未进入候选评分导致的规划—执行失配。</li>
+        <li><span class="bullet-label">Agent 系统从 0 到 1：</span>基于 LangGraph 构建可审核的建筑生成 Agentic Workflow，以“意图分类 → 方案设计 → 骨架与组件生成 → 合并 → 最终校验”固化执行主链和安全边界，通过结构化 State 传递设计方案、几何约束及校验结果；结合 LangSmith Trace 与服务日志定位并修复已批准约束未参与候选评分导致的规划—执行失配。</li>
         <li><span class="bullet-label">RAG 知识治理与评测：</span>落地 rules-v3 知识角色，普通生成仅允许 protocol / capability / relation 进入上下文，隔离建筑类型模板偏置；实现 Markdown 语义分片、Chroma 向量检索、元数据过滤与规则重排，并使用 LangSmith Dataset / Experiment 管理 51 题（含 35 题拒绝/隔离样本）的评测集，结合 Hit@K、Recall@K、MRR 评估召回与排序。</li>
         <li><span class="bullet-label">Agent 可靠性闭环：</span>将校验文本结构化为逐实体 ValidationIssue；模型只选择白名单局部修复工具，程序在 Blueprint 副本执行并全量复检，错误未减少或引入新问题时自动回滚；加入单目标重试预算与最终保存门禁，避免错误蓝图落库。</li>
         <li><span class="bullet-label">长任务与事件恢复：</span>将生成任务从物理 WebSocket 连接中解耦，持久化任务与事件序列，支持断线重连后的事件续传；设计版本化事件协议与动态心跳，解决长时间模型调用期间的假断连和跨会话状态串扰。</li>

@@ -54,7 +54,7 @@ from app.agent.nodes.base_component_node import (
 )
 
 def _planned_node(step_type: str, node):
-    """包装现有业务节点，仅在 plan_mode 中回写计划步骤状态。"""
+    """包装现有业务节点，仅在 plan_mode 中回写计划步骤状态。在不改动原业务节点的前提下，给每个节点加上“计划步骤状态回写”的能力。"""
 
     async def run(state: GenerationState) -> dict:
         result = node(state)

@@ -368,6 +368,7 @@ async def execution_plan_executor(state: GenerationState) -> dict:
     """在节点边界吸收用户意见，并选择下一条依赖已满足的白名单步骤。"""
 
     plan = deepcopy(state.get("execution_plan") or {})
+    # 执行过程中接收用户追加修改意见的轮询机制
     poller = get_execution_feedback_poller()
     pending_feedback: list[str] = []
     if poller is not None:

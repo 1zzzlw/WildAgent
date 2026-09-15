@@ -20,7 +20,7 @@
 
 ## 专题文档
 
-开发观测与评测：[LangSmith 追踪、检索评测与 Studio](../wild-server/langsmith_tools/README.md)。
+开发观测与评测：[LangSmith 节点状态观测指南](面试难点解决过程/Agent工作流与中间状态设计问题/LangSmith节点状态观测指南.md)说明如何比较节点 State；[LangSmith 追踪、检索评测与 Studio](../wild-server/langsmith_tools/README.md)说明启动、配置与评测入口。
 
 知识库设计：[知识库优化设计思路](rag/知识库优化设计思路.md)，说明知识、规则、实例和生成自由度的分工。
 
