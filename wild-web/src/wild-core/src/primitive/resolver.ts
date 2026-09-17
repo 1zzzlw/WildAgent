@@ -166,6 +166,36 @@ function resolveBeamSupports(elements: GeometryElement[], index: SpatialIndex): 
 }
 
 // ─── 屋顶适配 ────────────────────────────────
+/**
+ * 取一组墙里主导的材质名（按**墙长加权**）。
+ *
+ * 檐口饰面的材质取自宿主墙。这里必须按长度加权，不能数面数：多楼层蓝图里，
+ * 贯通全高的核心筒会把同一标高的墙撑成"若干面窄墙"，而外圈只有少数几面整跨长墙。
+ * 实测「中式意境别墅」：同标高的 9 面墙里核心筒占 5 面（各 4m）、外圈 4 面（各 8~12m），
+ * 按面数计会选中核心筒的 `concrete`，按长度计（外圈 40m vs 核心筒 20m）才选中
+ * 外墙面 `wall_finish`。
+ */
+function dominantMaterialOf(walls: any[]): string | null {
+  const lengthByMaterial = new Map<string, number>();
+  for (const wall of walls) {
+    const material = typeof wall.material === 'string' ? wall.material.trim() : '';
+    if (!material) continue;
+    const dx = Number(wall.to?.[0]) - Number(wall.from?.[0]);
+    const dz = Number(wall.to?.[2]) - Number(wall.from?.[2]);
+    const length = Math.hypot(dx, dz);
+    lengthByMaterial.set(
+      material,
+      (lengthByMaterial.get(material) ?? 0) + (Number.isFinite(length) ? length : 0),
+    );
+  }
+  let best: string | null = null;
+  let bestLength = -1;
+  for (const [material, length] of lengthByMaterial) {
+    if (length > bestLength) { best = material; bestLength = length; }
+  }
+  return best;
+}
+
 function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): void {
   const roofs = elements.filter(e => e.type === 'roof') as any[];
   const walls = elements.filter(e => e.type === 'wall') as any[];
@@ -183,39 +213,42 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
     );
     if (walls.length < 3) continue;
 
-    // 计算所有墙的最大高度，用于过滤栏杆/装饰矮墙
-    // 矮墙（如阳台栏杆 < 1.5m）不应参与屋顶包围盒计算，否则会导致屋顶偏移
-    let maxWallHeight = 0;
-    for (const wall of walls) {
-      const h = Math.abs(wall.to[1] - wall.from[1]);
-      if (h > maxWallHeight) maxWallHeight = h;
-    }
-
-    // 只取高度 >= 最大高度 50% 的结构墙，过滤栏杆等矮墙
-    const heightThreshold = maxWallHeight * 0.5;
-    const structuralWalls = walls.filter(w =>
-      Math.abs(w.to[1] - w.from[1]) >= heightThreshold
-    );
-
-    // 屋顶只能适配最高标高处的支承墙。退台建筑的首层外墙虽然与二层同高，
-    // 但墙顶标高更低，不能参与顶层屋顶边界计算。
-    const structuralCandidates = structuralWalls.length >= 3 ? structuralWalls : walls;
-    const highestWallTop = Math.max(...structuralCandidates.map(wall => (
+    // ── 承托墙的判定 ──
+    //
+    // 旧实现用「单段墙高 ≥ 全局最大墙高 × 50%」筛结构墙。该判据在多楼层蓝图里会
+    // 塌缩：外墙是按层切段的（每段只有层高），而贯通全高的楼梯间/电梯井核心筒是
+    // 单段长墙，于是外墙被**全部**误杀、只剩核心筒。
+    //
+    // 实测「中式意境别墅：L形体量高低错落…」蓝图：16 面外墙（各 3.2m）全灭，
+    // 只剩 5 面 9.6m 的混凝土核心筒墙 —— 后果是屋面端部只在核心筒那 4m 上做封堵
+    // （正立面屋脊下方露出一块混凝土板），檐口饰面也取到了核心筒的混凝土色。
+    //
+    // 改用墙顶标高做唯一判据：屋顶 `position.y` 就是墙顶标高，只有真的顶到屋面
+    // 基底的墙才可能承托它。退台建筑的低层外墙、阳台栏杆天然被排除。
+    // 不要再用「建筑外轮廓」当辅助判据 —— L 形/退台建筑的顶层面是总足迹的
+    // 真子集（本例顶层 Z[0,8] ⊂ 总足迹 Z[0,13]），会连正常的端墙一起误杀。
+    const highestWallTop = Math.max(...walls.map(wall => (
       Math.max(wall.from[1], wall.to[1])
     )));
-    const topSupportWalls = structuralCandidates.filter(wall => (
+    const topSupportWalls = walls.filter(wall => (
       Math.abs(Math.max(wall.from[1], wall.to[1]) - highestWallTop) <= 0.05
     ));
-    // 顶层支承墙不足时才回退到原集合，兼容开放式雨棚等不闭合结构。
-    const effectiveWalls = topSupportWalls.length >= 3
-      ? topSupportWalls
-      : structuralCandidates;
+    // 承托墙不足 3 面时回退到全部墙，兼容开放式雨棚等不闭合结构。
+    const effectiveWalls = topSupportWalls.length >= 3 ? topSupportWalls : walls;
 
     // 中式曲面屋顶的坡面会在墙顶上方形成三角形空腔。记录最高承托的
     // 横向墙体，交给 roof builder 生成运行时山墙填充；不修改 Blueprint
     // 中心线，也不把低层墙体误当成屋顶端墙。
     if (roof.roofType === 'chinese_curved') {
-      const gableEnds = effectiveWalls
+      // 承托墙 ≠ 山墙。山墙的职责是封堵曲面屋顶两端那个**满宽**的三角开口，
+      // 所以只有横跨山墙宽度的墙才算数。贯通全高的楼梯间/电梯井核心筒虽然
+      // 也顶到屋面基底（因此会通过上面的承托墙筛选），但它只是 4m 宽的窄墙，
+      // 封不住 13.2m 的开口 —— 放进 `_gableEnds` 只会在屋面内侧多出一块
+      // 0.5m 外凸、材质还是混凝土的板（正视图中屋脊下方那块灰板）。
+      //
+      // 基准取"同一屋顶下最宽的横墙"，不带绝对尺寸、也不依赖 `roof.span`
+      // 是否已解析，退台/大挑檐蓝图同样成立。
+      const crossWalls = effectiveWalls
         .filter(wall => {
           const dx = wall.to[0] - wall.from[0];
           const dz = wall.to[2] - wall.from[2];
@@ -229,7 +262,21 @@ function resolveRoofBoundary(elements: GeometryElement[], index: SpatialIndex): 
           material: wall.material || 'default',
         }))
         .filter(end => Number.isFinite(end.z) && end.xMax - end.xMin > 0.01);
+      const gableWidth = crossWalls.reduce((max, end) => Math.max(max, end.xMax - end.xMin), 0);
+      const gableEnds = crossWalls.filter(end => (end.xMax - end.xMin) >= gableWidth * 0.5);
       if (gableEnds.length > 0) (roof as any)._gableEnds = gableEnds;
+    }
+
+    // 檐口线脚需要一个"饰面材质"，它取自宿主墙而不是屋面：檐口/博风板/山墙饰面
+    // 在现实中属于砌体饰面，用墙材质才能在视觉上把屋面与檐口分开（同色檐口等于
+    // 没有檐口）。仍以渲染私有字段注入，不写回 Blueprint、不进契约。
+    //
+    // 这里**不再按 roofType 白名单**（旧写法只给 gable|hip 注入，导致曲面屋顶、
+    // 穹顶、平屋顶永远拿不到檐口，而且每加一种屋顶都要回来补一处类型判断）。
+    // 是否真的生成线脚由 `roof.ts` 的 `ROOF_CAPABILITIES` 声明，判定职责只留一处。
+    {
+      const trimMaterial = dominantMaterialOf(effectiveWalls) ?? roof.material;
+      (roof as any)._eave = { material: trimMaterial };
     }
 
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;

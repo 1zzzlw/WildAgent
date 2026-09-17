@@ -113,6 +113,7 @@ EXPLANATORY_QUESTION_MARKERS = (
 
 def _is_explanatory_question(message: str) -> bool:
     text = str(message or "").strip()
+    # 判断 text 里面是否包含 EXPLANATORY_QUESTION_MARKERS 中的任意一个标记
     return any(marker in text for marker in EXPLANATORY_QUESTION_MARKERS)
 
 
@@ -162,13 +163,21 @@ def _fallback_decision(
 
 
 def _json_object(raw: str) -> dict[str, Any] | None:
+    # 两个作用：判断非空和清理外层空白，不处理中间内容
     text = str(raw or "").strip()
+
+    # 去除 Markdown 代码块标记，兼容模型输出带 ```json 的情况
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE)
+
+    # 尝试解析 JSON 对象，忽略前后多余文本
+    # text.find("{") 从开头开始找第一个 {，text.rfind("}") 从结尾开始找最后一个 }
     start, end = text.find("{"), text.rfind("}")
+    # 如果找不到 { 或 }，或者 } 在 { 之前，则返回 None
     if start < 0 or end <= start:
         return None
     try:
+        # text[start:end+1] 字符串切片，左闭右开，所以当前代码意思是 截取 start 到 end 的子字符串，包括 start 和 end 位置的字符
         value = json.loads(text[start:end + 1])
     except (json.JSONDecodeError, TypeError):
         return None
@@ -181,9 +190,14 @@ def normalize_intent_decision(
     has_current_scene: bool,
 ) -> IntentDecision:
     """解析结构化模型结果，并兼容只返回单个旧标签的模型。"""
+
+    # 解析 JSON 对象
     payload = _json_object(raw)
+
     if payload is not None:
+        # 解析 JSON 对象中的字段，确保类型正确并提供默认值，字符串字段去除前后空白并转换为小写
         intent = str(payload.get("intent") or "").strip().lower()
+
         if intent in {"generate", "edit", "chat"}:
             if intent != "chat" and _is_explanatory_question(message):
                 return IntentDecision(
@@ -220,8 +234,10 @@ def normalize_intent_decision(
             )
 
     upper = (raw or "").strip().upper()
+
     matches = re.findall(r"\b(?:GENERATE|EDIT|CHAT)\b", upper)
     label = matches[0] if matches else ""
+
     if label == "EDIT" and has_current_scene:
         intent: IntentName = "edit"
     elif label == "CHAT":
@@ -230,6 +246,7 @@ def normalize_intent_decision(
         intent = "generate"
     else:
         return _fallback_decision(message, has_current_scene, "模型未返回合法意图")
+
     if intent != "chat" and _is_explanatory_question(message):
         return IntentDecision(
             intent="chat",
@@ -247,12 +264,6 @@ def normalize_intent_decision(
         reason="兼容旧版单标签模型输出",
         source="llm",
     )
-
-
-def normalize_intent(raw: str, message: str, has_current_scene: bool) -> str:
-    """兼容旧调用：只返回结构化决策中的 intent。"""
-    return normalize_intent_decision(raw, message, has_current_scene).intent
-
 
 def _normalized_recent_messages(
     recent_messages: list[dict[str, Any]] | None,
@@ -330,11 +341,13 @@ async def classify_intent_decision(
         raw = llm_result.content
     except Exception as exc:
         logger.error(f"[classifier] LLM 调用失败: {exc}")
+
         fallback = _fallback_decision(
             message,
             has_current_scene,
             f"分类模型不可用: {type(exc).__name__}",
         )
+
         decision = IntentDecision(
             intent=fallback.intent,
             confidence=fallback.confidence,
@@ -344,12 +357,15 @@ async def classify_intent_decision(
             source=fallback.source,
             model_error=classify_model_error(exc),
         )
+
         logger.info(
             f"[classifier] 意图: {decision.intent}, "
             f"confidence={decision.confidence:.2f} (raw=<fallback>)"
         )
+
         return decision
 
+    # 修正并解析大模型的输出
     decision = normalize_intent_decision(raw, message, has_current_scene)
     logger.info(
         f"[classifier] 意图: {decision.intent}, confidence={decision.confidence:.2f}, "
@@ -358,17 +374,4 @@ async def classify_intent_decision(
     return decision
 
 
-async def classify_intent(
-    message: str,
-    has_current_scene: bool = False,
-    llm=None,
-    **context: Any,
-) -> str:
-    """兼容旧调用：执行结构化分类，但仅返回 intent 字符串。"""
-    decision = await classify_intent_decision(
-        message,
-        has_current_scene,
-        llm,
-        **context,
-    )
-    return decision.intent
+

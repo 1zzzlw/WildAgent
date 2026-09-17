@@ -753,3 +753,99 @@ class SpatialValidationTest(unittest.TestCase):
         self.assertEqual(roof["depth"], 9.2)
         self.assertEqual(roof["position"], [6.0, 6.4, 4.0])
         self.assertIn("尺寸合理", run_tool(validate_roof_coverage, blueprint))
+
+    def test_l_shape_roof_over_courtyard_is_flagged(self):
+        """L 形体量用单块矩形屋顶盖住内院 → 深空区检查应检出。"""
+        # L 形：左翼 X[0,6]Z[0,12] + 前翼 X[6,14]Z[0,5]；内院 X[6,14]Z[5,12]
+        floor_rects = [
+            ("left", 0.0, 0.0, 6.0, 12.0),
+            ("front", 6.0, 0.0, 14.0, 5.0),
+        ]
+        walls = [
+            {"id": "w_s", "type": "wall", "from": [0, 0, 0], "to": [14, 3, 0], "thickness": 0.24},
+            {"id": "w_e", "type": "wall", "from": [14, 0, 0], "to": [14, 3, 5], "thickness": 0.24},
+            {"id": "w_n", "type": "wall", "from": [14, 0, 5], "to": [6, 3, 5], "thickness": 0.24},
+            {"id": "w_innere", "type": "wall", "from": [6, 0, 5], "to": [6, 3, 12], "thickness": 0.24},
+            {"id": "w_n2", "type": "wall", "from": [6, 0, 12], "to": [0, 3, 12], "thickness": 0.24},
+            {"id": "w_w", "type": "wall", "from": [0, 0, 12], "to": [0, 3, 0], "thickness": 0.24},
+        ]
+        floors = [
+            {"id": f"f_{name}", "type": "floor", "from": [x0, 0, z0], "to": [x1, 0, z1]}
+            for name, x0, z0, x1, z1 in floor_rects
+        ]
+        roof = {
+            "id": "roof_main", "type": "roof", "roofType": "gable",
+            "span": 15.0, "depth": 13.0, "position": [7.0, 3.0, 6.0],
+            "height": 1.5, "thickness": 0.3,
+        }
+        blueprint = {"geometry": {"elements": [*walls, *floors, roof], "components": []}}
+
+        output = run_tool(validate_roof_coverage, blueprint)
+        self.assertIn("下方没有任何墙/楼板承托", output)
+        self.assertIn("roof_main", output)
+
+    def test_floating_roof_y_gap_is_flagged(self):
+        """屋顶 position[1] 高于承托墙顶 → 应报悬空（回归 run JSON 现代风格别墅缺陷）。"""
+        walls = [
+            {"id": "w_front", "type": "wall", "from": [0, 0, 0], "to": [12, 6.4, 0], "thickness": 0.24},
+            {"id": "w_right", "type": "wall", "from": [12, 0, 0], "to": [12, 6.4, 10], "thickness": 0.24},
+            {"id": "w_back", "type": "wall", "from": [12, 0, 10], "to": [0, 6.4, 10], "thickness": 0.24},
+            {"id": "w_left", "type": "wall", "from": [0, 0, 10], "to": [0, 6.4, 0], "thickness": 0.24},
+        ]
+        floor = {"id": "f", "type": "floor", "from": [0, 0, 0], "to": [12, 0, 10]}
+        roof = {
+            "id": "roof_main", "type": "roof", "roofType": "gable",
+            "span": 12.0, "depth": 10.0, "position": [6.0, 7.4, 5.0],
+            "height": 2.0, "thickness": 0.3,
+        }
+        blueprint = {"geometry": {"elements": [*walls, floor, roof], "components": []}}
+
+        output = run_tool(validate_roof_coverage, blueprint)
+
+        self.assertIn("roof_main", output)
+        self.assertIn("悬空 1.00m", output)
+
+    def test_roof_seated_on_wall_top_passes_y_gap_check(self):
+        """屋顶 position[1] 恰好等于墙顶 → 不应报悬空。"""
+        walls = [
+            {"id": "w_front", "type": "wall", "from": [0, 0, 0], "to": [12, 6.4, 0], "thickness": 0.24},
+            {"id": "w_right", "type": "wall", "from": [12, 0, 0], "to": [12, 6.4, 10], "thickness": 0.24},
+            {"id": "w_back", "type": "wall", "from": [12, 0, 10], "to": [0, 6.4, 10], "thickness": 0.24},
+            {"id": "w_left", "type": "wall", "from": [0, 0, 10], "to": [0, 6.4, 0], "thickness": 0.24},
+        ]
+        floor = {"id": "f", "type": "floor", "from": [0, 0, 0], "to": [12, 0, 10]}
+        roof = {
+            "id": "roof_main", "type": "roof", "roofType": "gable",
+            "span": 12.0, "depth": 10.0, "position": [6.0, 6.4, 5.0],
+            "height": 2.0, "thickness": 0.3,
+        }
+        blueprint = {"geometry": {"elements": [*walls, floor, roof], "components": []}}
+
+        output = run_tool(validate_roof_coverage, blueprint)
+
+        self.assertNotIn("悬空", output)
+
+    def test_two_roofs_one_per_wing_pass(self):
+        """L 形按体量各设一块屋顶 → 不应误报。"""
+        floors = [
+            {"id": "f_left", "type": "floor", "from": [0, 0, 0], "to": [6, 0, 12]},
+            {"id": "f_front", "type": "floor", "from": [6, 0, 0], "to": [14, 0, 5]},
+        ]
+        walls = [
+            {"id": "w_s", "type": "wall", "from": [0, 0, 0], "to": [14, 3, 0], "thickness": 0.24},
+            {"id": "w_e", "type": "wall", "from": [14, 0, 0], "to": [14, 3, 5], "thickness": 0.24},
+            {"id": "w_n", "type": "wall", "from": [14, 0, 5], "to": [6, 3, 5], "thickness": 0.24},
+            {"id": "w_innere", "type": "wall", "from": [6, 0, 5], "to": [6, 3, 12], "thickness": 0.24},
+            {"id": "w_n2", "type": "wall", "from": [6, 0, 12], "to": [0, 3, 12], "thickness": 0.24},
+            {"id": "w_w", "type": "wall", "from": [0, 0, 12], "to": [0, 3, 0], "thickness": 0.24},
+        ]
+        roofs = [
+            {"id": "roof_left", "type": "roof", "roofType": "gable",
+             "span": 7.0, "depth": 13.0, "position": [3.0, 3.0, 6.0], "height": 1.5, "thickness": 0.3},
+            {"id": "roof_front", "type": "roof", "roofType": "gable",
+             "span": 9.0, "depth": 6.0, "position": [10.0, 3.0, 2.5], "height": 1.5, "thickness": 0.3},
+        ]
+        blueprint = {"geometry": {"elements": [*walls, *floors, *roofs], "components": []}}
+
+        output = run_tool(validate_roof_coverage, blueprint)
+        self.assertNotIn("❌", output)

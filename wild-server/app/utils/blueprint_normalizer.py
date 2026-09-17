@@ -2,7 +2,7 @@
 Blueprint Normalizer - 确定性蓝图修复模块
 
 **设计目标**：
-以前端 wild_schema.json 为单一事实源，确保后端生成的蓝图在交付前端前完全合规。
+以知识库目录下的 `schema.json` 为后端的单一事实源，确保后端生成的蓝图在交付前端前完全合规。
 
 **核心原则**：
 1. 纯函数、无 LLM、幂等
@@ -28,15 +28,17 @@ except ImportError:
     JSONSCHEMA_AVAILABLE = False
     logger.warning("jsonschema 未安装，将跳过最终 schema 校验")
 
-# ─────────────────────────────────────────────────────────────
 # Schema 加载
-# ─────────────────────────────────────────────────────────────
 
-# Vendored 副本：从 wild-web/wild-lang/schema.json 复制
-SCHEMA_PATH = Path(__file__).parent / "wild_schema.json"
+# 后端的单一事实源：知识库目录下的 schema.json。
+# 它随镜像内置的 storage/knowledge_base 一起分发，后端不依赖任何前端路径
+# （前后端分部署）。前端另有 wild-web/wild-lang/schema.json 供其构建期 import，
+# 两份内容应保持一致，但不共享路径。
+_SERVER_ROOT = Path(__file__).resolve().parents[2]
+SCHEMA_PATH = _SERVER_ROOT / "storage" / "knowledge_base" / "schema.json"
 
 def load_schema() -> Dict[str, Any]:
-    """加载 vendored schema.json（懒加载）"""
+    """加载知识库 schema.json（懒加载）"""
     if not SCHEMA_PATH.exists():
         logger.error(f"Schema 文件不存在: {SCHEMA_PATH}")
         return {}
@@ -52,9 +54,7 @@ def get_schema() -> Dict[str, Any]:
         _SCHEMA_CACHE = load_schema()
     return _SCHEMA_CACHE
 
-# ─────────────────────────────────────────────────────────────
 # 白名单派生
-# ─────────────────────────────────────────────────────────────
 
 def _extract_allowed_fields(schema_def: Dict[str, Any]) -> Tuple[Set[str], Set[str]]:
     """从 schema 定义提取允许字段 + 必填字段"""
@@ -85,9 +85,7 @@ def get_component_allowed_fields(comp_type: str) -> Tuple[Set[str], Set[str]]:
     _COMPONENT_FIELDS_CACHE[comp_type] = (allowed, required)
     return allowed, required
 
-# ─────────────────────────────────────────────────────────────
 # 修复报告
-# ─────────────────────────────────────────────────────────────
 
 class NormalizeReport:
     """修复报告"""
@@ -117,9 +115,7 @@ class NormalizeReport:
             parts.append(f"剩余错误: {len(self.schema_errors)}")
         return "; ".join(parts) if parts else "无修复"
 
-# ─────────────────────────────────────────────────────────────
 # 组件修复
-# ─────────────────────────────────────────────────────────────
 
 def _strip_unknown_fields(comp: Dict[str, Any], report: NormalizeReport) -> Dict[str, Any]:
     """剥离组件的未知字段"""
@@ -273,9 +269,7 @@ def _repair_components(components: List[Dict[str, Any]], report: NormalizeReport
     
     return repaired
 
-# ─────────────────────────────────────────────────────────────
 # 元素修复
-# ─────────────────────────────────────────────────────────────
 
 def _repair_column_style(elem: Dict[str, Any], report: NormalizeReport) -> Dict[str, Any]:
     """修复旧版 column style 枚举"""
@@ -352,9 +346,7 @@ def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) ->
     
     return repaired
 
-# ─────────────────────────────────────────────────────────────
 # 几何修复
-# ─────────────────────────────────────────────────────────────
 
 def _deduplicate_walls(elements: List[Dict[str, Any]], report: NormalizeReport) -> List[Dict[str, Any]]:
     """按渲染使用的平面中心线与标高去除重复墙。"""
@@ -525,9 +517,7 @@ def _normalize_geometry(bp: Dict[str, Any], report: NormalizeReport) -> Dict[str
     geom["elements"] = elements
     return bp
 
-# ─────────────────────────────────────────────────────────────
 # Schema 校验
-# ─────────────────────────────────────────────────────────────
 
 def _validate_against_schema(bp: Dict[str, Any], report: NormalizeReport) -> bool:
     """用 jsonschema 严格校验"""
@@ -548,9 +538,7 @@ def _validate_against_schema(bp: Dict[str, Any], report: NormalizeReport) -> boo
         logger.error(f"Schema 校验异常: {e}")
         return False
 
-# ─────────────────────────────────────────────────────────────
 # 主函数
-# ─────────────────────────────────────────────────────────────
 
 def normalize_blueprint_for_delivery(bp: Dict[str, Any]) -> Tuple[Dict[str, Any], NormalizeReport]:
     """

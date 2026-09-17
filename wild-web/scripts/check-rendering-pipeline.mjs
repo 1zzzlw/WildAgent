@@ -222,7 +222,7 @@ try {
     'wall_plaster',
   )
   assert.equal(defaultSurface.userData.wildDefaultSurface?.family, 'mineral')
-  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v1')
+  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v2')
   const defaultSurfaceShader = {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <uv_vertex>\n#include <defaultnormal_vertex>\n#include <worldpos_vertex>\n}',
@@ -243,6 +243,23 @@ try {
   assert.ok(defaultSurfaceShader.fragmentShader.includes('wildDefaultBaseNormal = normal'))
   assert.ok(!defaultSurfaceShader.fragmentShader.includes('geometryNormal'))
   assert.equal(defaultSurfaceShader.uniforms.wildWorldWetness.value, 0)
+  // 表面凹凸层：所有表面族共用同一个 GPU program，族差异靠 uniform 分支选择，
+  // 因此砖缝（masonry）与细粒（其余族）两条分支必须同时存在；且导数凹凸必须受
+  // __VERSION__ 保护（WebGL1 若无反导数扩展会直接编译失败）。
+  assert.equal(defaultSurface.userData.wildDefaultSurface?.relief, 0.012)
+  assert.equal(defaultSurface.userData.wildDefaultSurface?.grainFrequency, 12)
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('wildSurfaceMetricUv'))
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('float wildSurfaceCourse('))
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('if (wildSurfaceFamily == 5)'))
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('wildSurfaceReliefUnit = wildSurfaceCourse('))
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('(wildDefaultDetail - 0.5) * 0.8'))
+  // 两级细粒必须各自按频率淡出，否则细粒会把粗颗粒一起提前淡掉。
+  assert.ok(defaultSurfaceShader.fragmentShader.includes('wildSurfaceGrainFrequency * 3.2'))
+  assert.ok(
+    defaultSurfaceShader.fragmentShader.includes('#if __VERSION__ >= 300 && !defined( FLAT_SHADED )'),
+  )
+  assert.equal(defaultSurfaceShader.uniforms.wildSurfaceRelief.value, 0.012)
+  assert.equal(defaultSurfaceShader.uniforms.wildSurfaceGrainFrequency.value, 12)
 
   updateWorldRenderingState({ surfaceEnabled: false, surfaceQuality: 'high' })
   assert.equal(getWorldRenderingUniforms().surfaceEnabled.value, 0)

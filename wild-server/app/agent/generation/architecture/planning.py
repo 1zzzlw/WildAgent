@@ -1,4 +1,4 @@
-"""建筑方案回退、归一化、评分与候选选择。"""
+"""建筑方案回退与归一化。"""
 
 from __future__ import annotations
 
@@ -577,20 +577,32 @@ def normalize_architecture_plan(
             bays = int(base["bays"])
             ground = _normalize_pattern(base["ground_pattern"], bays, base["ground_pattern"])
             upper = _normalize_pattern(base["upper_pattern"], bays, base["upper_pattern"])
-            entrance_bay = int(base.get("entrance_bay", 1))
+            # entrance_bay 必须在 [1, bays] 范围内，即使是 fallback 值也要检查
+            entrance_bay = min(int(base.get("entrance_bay", 1)), bays) if "entrance_bay" in base else None
         else:
             bays = int(_clamp_number(item.get("bays"), 1, 9, base["bays"]))
             ground = _normalize_pattern(item.get("ground_pattern"), bays, base["ground_pattern"])
             upper = _normalize_pattern(item.get("upper_pattern"), bays, base["upper_pattern"])
-            entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
+            # 只有base中有entrance_bay的立面（front）才处理entrance_bay
+            if "entrance_bay" in base:
+                entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
+            else:
+                entrance_bay = None
         if profile["require_front_entrance"] and face == "front" and "door" not in ground:
+            if entrance_bay is None:
+                entrance_bay = (bays + 1) // 2  # 默认放在中间
             ground[entrance_bay - 1] = "door"
-        facades[face] = {
+        
+        facade_data = {
             "bays": bays,
-            "entrance_bay": entrance_bay,
             "ground_pattern": ground,
             "upper_pattern": upper,
         }
+        # 只有确实有entrance_bay的立面才加这个字段
+        if entrance_bay is not None:
+            facade_data["entrance_bay"] = entrance_bay
+        
+        facades[face] = facade_data
 
     roof_raw = source.get("roof") if isinstance(source.get("roof"), dict) else {}
     roof_type = str(roof_raw.get("type") or fallback["roof"]["type"]).lower()
@@ -777,115 +789,5 @@ def normalize_architecture_plan(
     }
 
 
-def score_architecture_plan(
-    plan: dict[str, Any],
-    user_message: str,
-    architecture_profile: dict[str, Any] | None = None,
-) -> int:
-    """用可解释规则选择同一模型给出的候选方案。"""
-    score = 0
-    profile = architecture_profile or detect_architecture_profile(user_message)
-    massing = plan["massing"]
-    facades = plan["facades"]
-    score += 10 if plan.get("concept") else 0
-    score += 12 if (
-        profile["width_range"][0] <= massing["width"] <= profile["width_range"][1]
-        and profile["depth_range"][0] <= massing["depth"] <= profile["depth_range"][1]
-    ) else 0
-    requested = _requested_floors(user_message)
-    score += 16 if requested is None or requested == massing["floors"] else -16
-    front_ground = facades["front"]["ground_pattern"]
-    if profile["require_front_entrance"]:
-        score += 15 if "door" in front_ground else -30
-    if "window" in profile["base_components"]:
-        score += 8 if any(item == "window" for item in front_ground) else 0
-    requested_width = _requested_dimension(user_message, (r"宽(?:度)?",))
-    requested_depth = _requested_dimension(user_message, (r"深(?:度)?", r"长(?:度)?"))
-    requested_plan_dimensions = _requested_plan_dimensions(user_message)
-    if requested_plan_dimensions:
-        requested_width = requested_width or requested_plan_dimensions[0]
-        requested_depth = requested_depth or requested_plan_dimensions[1]
-    if requested_width is not None:
-        score += 6 if abs(massing["width"] - requested_width) <= 0.1 else -6
-    if requested_depth is not None:
-        score += 6 if abs(massing["depth"] - requested_depth) <= 0.1 else -6
-    score += 8 if plan.get("required_components") else 0
-    score += min(12, len(plan.get("design_rationale", [])) * 3)
-    if term_is_requested(user_message, "对称") and not term_is_requested(user_message, "非对称"):
-        score += 12 if massing["symmetry"] else -8
-    elif term_is_requested(user_message, "非对称"):
-        score += 12 if not massing["symmetry"] else -8
-    for term, roof_type in (("平屋顶", "flat"), ("平顶", "flat"), ("双坡顶", "gable"), ("四坡顶", "hip"), ("穹顶", "dome")):
-        if term_is_requested(user_message, term):
-            score += 8 if plan["roof"]["type"] == roof_type else -6
-    if profile["id"] == "high_rise":
-        score += 10 if massing["representation_mode"] == "schematic" or massing["floors"] <= 10 else 0
-    if profile["id"] == "underground_transport":
-        score += 10 if "roof" not in plan.get("required_components", []) else -10
-    complexity = plan.get("complexity", {})
-    if complexity.get("level") == "standard":
-        volume_count = len(plan.get("volumes", []))
-        detail_count = len(plan.get("detail_packages", []))
-        if massing.get("shape") != "rectangle" or volume_count > 1:
-            score += 5
-        score += min(6, detail_count * 3)
-    if complexity.get("level") == "detailed":
-        volume_count = len(plan.get("volumes", []))
-        detail_count = len(plan.get("detail_packages", []))
-        score += 14 if volume_count >= int(complexity.get("min_volumes", 2)) else -24
-        score += 12 if detail_count >= int(complexity.get("min_detail_packages", 3)) else -18
-        if int(complexity.get("min_volumes", 1)) > 1:
-            score += 8 if volume_count > 1 else -12
-        grid = plan.get("structural_grid", {})
-        score += 6 if int(grid.get("x_bays", 1)) >= 2 and int(grid.get("z_bays", 1)) >= 2 else -6
-    return score
 
 
-def select_architecture_plan(
-    # 模型最终输出并解析后的原始对象，正常情况下包含 candidates 候选数组。
-    raw: object,
-    # 当前用于归一化和评分的需求文本；不是已批准 ExecutionPlan 的完整约束。
-    user_message: str,
-    # 方案复杂度要求，例如复杂度等级、最少体量数和细节包数量。
-    complexity_profile: dict[str, Any] | None = None,
-    # 建筑类型的能力配置，例如建议宽深范围、基础构件和入口要求。
-    architecture_profile: dict[str, Any] | None = None,
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """归一化候选并以确定性评分选出一个方案。"""
-    profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
-    source = raw if isinstance(raw, dict) else {}
-    candidates_raw = source.get("candidates") if isinstance(source.get("candidates"), list) else [source]
-    candidates = [
-        normalize_architecture_plan(item, user_message, complexity_profile, profile)
-        for item in candidates_raw[:4]
-    ]
-    if not candidates:
-        candidates = [normalize_architecture_plan({}, user_message, complexity_profile, profile)]
-    scores = [score_architecture_plan(item, user_message, profile) for item in candidates]
-    selected_index = max(range(len(candidates)), key=lambda index: scores[index])
-    candidate_summaries = [
-        {
-            "index": index,
-            "score": scores[index],
-            "concept": candidate.get("concept", ""),
-            "massing": deepcopy(candidate.get("massing", {})),
-            "profile": candidate.get("profile", profile["id"]),
-            "roof": deepcopy(candidate.get("roof", {})),
-            "front_bays": candidate.get("facades", {}).get("front", {}).get("bays"),
-            "complexity": deepcopy(candidate.get("complexity", {})),
-            "volume_count": len(candidate.get("volumes", [])),
-            "detail_packages": list(candidate.get("detail_packages", [])),
-            "unsupported_component_types": list(candidate.get("unsupported_component_types", [])),
-            "rationale": list(candidate.get("design_rationale", [])),
-        }
-        for index, candidate in enumerate(candidates)
-    ]
-    return candidates[selected_index], {
-        "profile": profile["id"],
-        "profile_label": profile["label"],
-        "candidate_count": len(candidates),
-        "candidate_scores": scores,
-        "candidate_summaries": candidate_summaries,
-        "selected_index": selected_index,
-        "used_fallback": not bool(raw),
-    }

@@ -673,6 +673,9 @@ export class AgentBridge {
           message.session_id,
           message.request_id,
           message.plan,
+          message.structured_requirements,
+          message.acceptance_results,
+          message.execution_progress,
         )
         break
 
@@ -681,6 +684,9 @@ export class AgentBridge {
           message.session_id,
           message.request_id,
           message.plan,
+          message.structured_requirements,
+          message.acceptance_results,
+          message.execution_progress,
         )
         if (message.session_id === agentStore.currentSessionId) {
           agentStore.setProcessing(false)

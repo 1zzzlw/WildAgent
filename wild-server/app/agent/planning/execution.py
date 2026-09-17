@@ -1,27 +1,24 @@
-"""可审核的 Agent 执行计划协议与建筑能力白名单。
+"""可审核的 Agent 动态任务协议。
 
-ExecutionPlan 只描述「准备做什么」；GenerationJob 负责「后台任务正在怎么跑」。
-模型和用户都不能通过计划填写 Python 函数名，实际节点只能来自本文件的注册表。
+ExecutionPlan 只描述本次「要完成什么」；固定节点顺序由 LangGraph 独占管理。
+模型不能通过计划填写 Python 函数名、节点名或检查器名称。
 """
 
 from __future__ import annotations
 
-from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any, get_args
 
 from app.agent.planning.contracts import (
+    DynamicTaskStatus,
     ExecutionDynamicTask,
     ExecutionPlan,
     ExecutionPlanStatus,
-    ExecutionStep,
-    PlanStepStatus,
     PlanValidationIssue,
 )
 
 
 # 状态值以共享类型契约为唯一来源，避免常量和类型声明分别维护。
-PLAN_STEP_STATUSES = set(get_args(PlanStepStatus))
+DYNAMIC_TASK_STATUSES = set(get_args(DynamicTaskStatus))
 PLAN_STATUSES = set(get_args(ExecutionPlanStatus))
 
 DYNAMIC_TASK_PHASES = {
@@ -41,109 +38,6 @@ _DYNAMIC_PHASE_LABELS = {
     "final_validate": "最终校验",
     "patch": "场景修改",
 }
-
-
-@dataclass(frozen=True, slots=True)
-class PlanCapability:
-    """计划可引用的受控能力；node 永远由服务端注册，不接受模型输入。"""
-
-    type: str
-    node: str
-    label: str
-    description: str
-    read_only: bool
-    allowed_intents: tuple[str, ...]
-    requires_user_review: bool = False
-
-
-_CAPABILITIES = (
-    PlanCapability(
-        "planning_research",
-        "planning_research",
-        "需求与知识研究",
-        "读取用户需求、当前场景和建筑知识，形成计划依据。",
-        True,
-        ("generate", "edit"),
-    ),
-    PlanCapability(
-        "architecture",
-        "architecture",
-        "总体建筑方案",
-        "确定建筑体量、层数、功能层次、立面轴网和屋顶意图。",
-        True,
-        ("generate",),
-    ),
-    PlanCapability(
-        "material_plan",
-        "material_plan",
-        "材质方案",
-        "将审美意图解析成受控材质角色和真实资产引用。",
-        True,
-        ("generate",),
-    ),
-    PlanCapability(
-        "skeleton",
-        "skeleton",
-        "主体装配",
-        "依据总体方案和材质约束生成主体骨架，并给出后续组件建议。",
-        False,
-        ("generate",),
-    ),
-    PlanCapability(
-        "merge",
-        "merge",
-        "结果合并",
-        "合并主体与装饰产物，执行确定性归一化和引用闭合。",
-        False,
-        ("generate",),
-    ),
-    PlanCapability(
-        "final_validate",
-        "final_validate",
-        "最终校验",
-        "运行完整 Blueprint 校验；只有零错误结果才允许保存和加载。",
-        True,
-        ("generate",),
-    ),
-    PlanCapability(
-        "patch",
-        "patch",
-        "场景修改提案",
-        "分析当前 Blueprint 并生成仍需用户单独应用的 ScenePatch。",
-        True,
-        ("edit",),
-        True,
-    ),
-)
-
-CAPABILITY_REGISTRY: dict[str, PlanCapability] = {
-    capability.type: capability for capability in _CAPABILITIES
-}
-
-
-def _step(
-    step_type: str,
-    *,
-    depends_on: list[str],
-    acceptance: list[str],
-    status: str = "pending",
-    detail: str = "",
-) -> ExecutionStep:
-    capability = CAPABILITY_REGISTRY[step_type]
-    return {
-        "id": f"step_{step_type}",
-        "type": step_type,
-        "node": capability.node,
-        "title": capability.label,
-        "description": capability.description,
-        "depends_on": list(depends_on),
-        "acceptance": list(acceptance),
-        "permission": "read" if capability.read_only else "mutate",
-        "requires_user_review": capability.requires_user_review,
-        "status": status,
-        "detail": detail,
-        "result_ref": None,
-    }
 
 
 def _text(value: Any, *, limit: int) -> str:
@@ -233,10 +127,15 @@ def normalize_dynamic_tasks(
 ) -> tuple[list[ExecutionDynamicTask], bool]:
     """把模型任务编译到受控阶段；返回任务和是否使用了回退。"""
 
+    # 根据意图限制白名单阶段和任务数量，过滤掉不符合要求的模型输出。
     allowed_phases = DYNAMIC_TASK_PHASES.get(intent, set())
+
+    # 任务应该有的最小和最大数量；
     minimum = 3 if intent == "generate" else 1
     maximum = 8 if intent == "generate" else 4
+
     normalized: list[dict[str, Any]] = []
+    # 遍历模型输出的每个任务，过滤掉不符合要求的任务，并将其编译为受控阶段。
     if isinstance(raw_tasks, list):
         for raw in raw_tasks[:maximum]:
             if not isinstance(raw, dict):
@@ -244,11 +143,17 @@ def normalize_dynamic_tasks(
             phase = _text(raw.get("phase"), limit=40)
             title = _text(raw.get("title"), limit=80)
             objective = _text(raw.get("objective"), limit=300)
+
+            # 检查阶段是否在白名单中，并确保标题和目标不为空。
             if phase not in allowed_phases or not title or not objective:
                 continue
+
+            # 确保验收条件是一个列表，并将其限制为最多 4 条，每条不超过 120 个字符。
             raw_acceptance = raw.get("acceptance")
+            # 如果不是列表，则将其设置为空列表。
             if not isinstance(raw_acceptance, list):
                 raw_acceptance = []
+
             acceptance = [
                 _text(item, limit=120)
                 for item in raw_acceptance[:4]
@@ -256,6 +161,8 @@ def normalize_dynamic_tasks(
             ]
             if not acceptance:
                 acceptance = [f"完成{_DYNAMIC_PHASE_LABELS.get(phase, phase)}并通过对应校验"]
+
+            # 最终，通过层层检查，加入规范列表
             normalized.append(
                 {
                     "title": title,
@@ -270,7 +177,10 @@ def normalize_dynamic_tasks(
     phases = {task["phase"] for task in normalized}
     used_fallback = len(normalized) < minimum or not required_phases.issubset(phases)
     if used_fallback:
+        # 放弃 LLM 输出，使用确定性生成
         normalized = fallback_dynamic_tasks(user_message, intent)
+
+    # 按阶段顺序排序，确保 architecture 在前，final_validate 在后，其他阶段按定义顺序排列。
     phase_order = {
         phase: index
         for index, phase in enumerate(
@@ -285,6 +195,7 @@ def normalize_dynamic_tasks(
     }
     normalized.sort(key=lambda task: phase_order.get(str(task.get("phase")), 99))
 
+    # 为每个任务分配唯一 ID，并设置依赖关系，确保每个任务依赖于前一个任务。
     task_ids: list[str] = []
     tasks: list[ExecutionDynamicTask] = []
     for index, task in enumerate(normalized[:maximum], start=1):
@@ -325,7 +236,6 @@ def build_execution_plan(
     request_id: str,
     intent: str,
     user_message: str,
-    architecture_plan: dict[str, Any] | None = None,
     research_summary: str = "",
     feedback: str = "",
     previous_plan: ExecutionPlan | None = None,
@@ -333,11 +243,11 @@ def build_execution_plan(
     planner_source: str = "fallback",
     planner_summary: str = "",
 ) -> ExecutionPlan:
-    """把动态建筑任务编译进确定、可校验的安全主流程。"""
+    """构建只描述本次业务目标的可审核计划，不复制 LangGraph 节点顺序。"""
 
     previous_version = int((previous_plan or {}).get("version") or 0)
     version = previous_version + 1
-    constraints = ["所有执行步骤只能使用服务端已注册能力"]
+    constraints = ["实际节点顺序和可执行能力只能由服务端 LangGraph 定义"]
     if intent == "generate":
         constraints.extend(
             [
@@ -350,72 +260,10 @@ def build_execution_plan(
     if feedback:
         constraints.append(f"用户对上一版计划的修改意见：{feedback[:500]}")
 
-    research = _step(
-        "planning_research",
-        depends_on=[],
-        acceptance=["已读取任务目标和当前场景", "已获得与任务相关的知识依据"],
-        status="completed",
-        detail=research_summary[:300] or "已完成只读研究",
-    )
+    # 根据用户意图生成可展示的总体目标，避免模型在计划中写入 Python 函数名、节点名或检查器名称。
     if intent == "generate":
-        architecture = _step(
-            "architecture",
-            depends_on=[research["id"]],
-            acceptance=["体量和层数明确", "立面、屋顶和空间关系可进入材质与骨架阶段"],
-            status="pending",
-            detail="批准计划后生成总体方案",
-        )
-        materials = _step(
-            "material_plan",
-            depends_on=[architecture["id"]],
-            acceptance=["材质角色引用闭合", "物理玻璃等关键材质满足真实协议"],
-        )
-        skeleton = _step(
-            "skeleton",
-            depends_on=[materials["id"]],
-            acceptance=["主体 Schema 预检通过", "结构表达完整且组件建议清单明确"],
-        )
-        merge = _step(
-            "merge",
-            depends_on=[skeleton["id"]],
-            acceptance=["引用闭合", "合并后不存在阻断错误"],
-        )
-        final_validate = _step(
-            "final_validate",
-            depends_on=[merge["id"]],
-            acceptance=["完整校验零错误", "产物可以安全保存和加载"],
-        )
-        massing = (architecture_plan or {}).get("massing")
-        if isinstance(massing, dict) and not feedback:
-            width = massing.get("width", "?")
-            depth = massing.get("depth", "?")
-            floors = massing.get("floors", "?")
-            skeleton["detail"] = f"将在 {width}×{depth}m、{floors} 层体量内生成主体骨架"
-        if any(
-            term in user_message.casefold()
-            for term in ("玻璃", "curtain wall", "glass")
-        ):
-            materials["detail"] = "重点校验玻璃的 transmission、ior、thickness 和幕墙引用"
-        steps = [
-            research,
-            architecture,
-            materials,
-            skeleton,
-            merge,
-            final_validate,
-        ]
         goal = f"根据用户需求生成经过确认与校验的建筑：{user_message[:240]}"
     elif intent == "edit":
-        patch = _step(
-            "patch",
-            depends_on=[research["id"]],
-            acceptance=[
-                "ScenePatch Schema 合法",
-                "不直接修改当前场景",
-                "等待用户应用提案",
-            ],
-        )
-        steps = [research, patch]
         goal = f"为当前建筑制定并生成安全修改提案：{user_message[:240]}"
     else:
         raise ValueError(f"执行计划不支持 intent={intent!r}")
@@ -427,6 +275,7 @@ def build_execution_plan(
     )
 
     actual_source = "fallback" if used_fallback else planner_source
+
     previous_titles = [
         str(task.get("title") or "")
         for task in (previous_plan or {}).get("dynamic_tasks", [])
@@ -434,6 +283,8 @@ def build_execution_plan(
     ]
     current_titles = [str(task.get("title") or "") for task in dynamic_tasks]
     change_summary: list[str] = []
+
+    # 生成计划时，比较与上一版的任务标题差异，形成简短的变更摘要。
     if previous_plan:
         added = [title for title in current_titles if title not in previous_titles]
         removed = [title for title in previous_titles if title not in current_titles]
@@ -456,8 +307,9 @@ def build_execution_plan(
         "review_status": "pending",
         "constraints": constraints,
         "assumptions": [
-            "计划描述的是公开执行步骤，不包含模型隐藏思维链",
-            "批准计划由执行器按注册白名单逐步调度节点",
+            "计划描述公开业务目标，不包含模型隐藏思维链",
+            "批准计划不会改变服务端 LangGraph 固定的安全执行边界",
+            f"规划前研究已完成：{research_summary[:200] or '已读取本地能力协议'}",
         ],
         "planner_source": actual_source,
         "planner_summary": (
@@ -468,12 +320,11 @@ def build_execution_plan(
         "feedback": _text(feedback, limit=500),
         "change_summary": change_summary,
         "dynamic_tasks": dynamic_tasks,
-        "steps": steps,
     }
 
 
 def validate_execution_plan(plan: object, intent: str) -> list[PlanValidationIssue]:
-    """校验白名单、依赖图、步骤顺序和建筑硬门禁。"""
+    """校验动态任务结构、阶段白名单和依赖，不再校验重复的固定 steps。"""
 
     issues: list[PlanValidationIssue] = []
     if not isinstance(plan, dict):
@@ -554,7 +405,7 @@ def validate_execution_plan(plan: object, intent: str) -> list[PlanValidationIss
                         "message": f"本次任务 {task_id} 缺少标题或目标",
                     }
                 )
-            if str(task.get("status") or "") not in PLAN_STEP_STATUSES:
+            if str(task.get("status") or "") not in DYNAMIC_TASK_STATUSES:
                 issues.append(
                     {
                         "code": "invalid_dynamic_task_status",
@@ -584,199 +435,4 @@ def validate_execution_plan(plan: object, intent: str) -> list[PlanValidationIss
                 }
             )
 
-    steps = plan.get("steps")
-    if not isinstance(steps, list) or not steps:
-        return issues + [{"code": "missing_plan_steps", "message": "执行计划没有步骤"}]
-
-    ids: set[str] = set()
-    step_by_id: dict[str, dict[str, Any]] = {}
-    for index, raw in enumerate(steps):
-        if not isinstance(raw, dict):
-            issues.append(
-                {"code": "invalid_plan_step", "message": f"第 {index + 1} 步不是对象"}
-            )
-            continue
-        step_id = str(raw.get("id") or "")
-        step_type = str(raw.get("type") or "")
-        capability = CAPABILITY_REGISTRY.get(step_type)
-        if not step_id or step_id in ids:
-            issues.append(
-                {
-                    "code": "duplicate_plan_step_id",
-                    "message": f"步骤 ID 缺失或重复：{step_id}",
-                }
-            )
-        else:
-            ids.add(step_id)
-            step_by_id[step_id] = raw
-        if capability is None or intent not in capability.allowed_intents:
-            issues.append(
-                {
-                    "code": "unsupported_plan_capability",
-                    "message": f"步骤能力不受支持：{step_type}",
-                }
-            )
-        elif str(raw.get("node") or "") != capability.node:
-            issues.append(
-                {
-                    "code": "plan_node_tampered",
-                    "message": f"步骤 {step_id} 的执行节点不是注册值",
-                }
-            )
-        if str(raw.get("status") or "") not in PLAN_STEP_STATUSES:
-            issues.append(
-                {
-                    "code": "invalid_plan_step_status",
-                    "message": f"步骤 {step_id} 状态无效",
-                }
-            )
-
-    for step_id, step in step_by_id.items():
-        dependencies = step.get("depends_on") or []
-        if not isinstance(dependencies, list):
-            issues.append(
-                {
-                    "code": "invalid_plan_dependencies",
-                    "message": f"步骤 {step_id} 依赖必须是数组",
-                }
-            )
-            continue
-        for dependency in dependencies:
-            if dependency not in ids:
-                issues.append(
-                    {
-                        "code": "missing_plan_dependency",
-                        "message": f"步骤 {step_id} 依赖不存在：{dependency}",
-                    }
-                )
-
-    visiting: set[str] = set()
-    visited: set[str] = set()
-
-    def visit(step_id: str) -> None:
-        if step_id in visiting:
-            issues.append(
-                {
-                    "code": "cyclic_plan_dependency",
-                    "message": f"计划依赖存在循环：{step_id}",
-                }
-            )
-            return
-        if step_id in visited or step_id not in step_by_id:
-            return
-        visiting.add(step_id)
-        for dependency in step_by_id[step_id].get("depends_on") or []:
-            visit(str(dependency))
-        visiting.remove(step_id)
-        visited.add(step_id)
-
-    for step_id in step_by_id:
-        visit(step_id)
-
-    required = (
-        {
-            "planning_research",
-            "architecture",
-            "material_plan",
-            "skeleton",
-            "merge",
-            "final_validate",
-        }
-        if intent == "generate"
-        else {"planning_research", "patch"}
-    )
-    present = {str(step.get("type") or "") for step in step_by_id.values()}
-    for missing in sorted(required - present):
-        issues.append(
-            {
-                "code": "missing_required_plan_step",
-                "message": f"计划缺少必要步骤：{missing}",
-            }
-        )
     return issues
-
-
-def update_plan_step(
-    plan: dict[str, Any] | None,
-    step_type: str,
-    status: str,
-    *,
-    detail: str = "",
-    result_ref: str | None = None,
-) -> dict[str, Any]:
-    """不可变更新指定步骤，避免 LangGraph checkpoint 中的新旧对象互相污染。"""
-
-    updated = deepcopy(plan or {})
-    for step in updated.get("steps", []):
-        if isinstance(step, dict) and step.get("type") == step_type:
-            step["status"] = status
-            if detail:
-                step["detail"] = detail[:500]
-            if result_ref is not None:
-                step["result_ref"] = result_ref
-            break
-    for task in updated.get("dynamic_tasks", []):
-        if isinstance(task, dict) and task.get("phase") == step_type:
-            task["status"] = status
-            if result_ref is not None:
-                task["result_ref"] = result_ref
-    return updated
-
-
-def reset_plan_from(plan: dict[str, Any] | None, step_type: str) -> dict[str, Any]:
-    """把某一步及依赖它的所有下游步骤恢复为 pending。"""
-
-    updated = deepcopy(plan or {})
-    steps = [step for step in updated.get("steps", []) if isinstance(step, dict)]
-    target_ids = {
-        str(step.get("id")) for step in steps if step.get("type") == step_type
-    }
-    changed = True
-    while changed:
-        changed = False
-        for step in steps:
-            if str(step.get("id")) in target_ids:
-                continue
-            if any(str(dep) in target_ids for dep in (step.get("depends_on") or [])):
-                target_ids.add(str(step.get("id")))
-                changed = True
-    for step in steps:
-        if str(step.get("id")) in target_ids:
-            step["status"] = "pending"
-            step["result_ref"] = None
-            step["detail"] = "等待重新执行"
-    reset_phases = {
-        str(step.get("type"))
-        for step in steps
-        if str(step.get("id")) in target_ids
-    }
-    for task in updated.get("dynamic_tasks", []):
-        if isinstance(task, dict) and task.get("phase") in reset_phases:
-            task["status"] = "pending"
-            task["result_ref"] = None
-    updated["status"] = "executing"
-    return updated
-
-
-def next_ready_step(plan: dict[str, Any] | None) -> dict[str, Any] | None:
-    """返回依赖均完成的第一条 pending 步骤，顺序稳定且可复现。"""
-
-    steps = [step for step in (plan or {}).get("steps", []) if isinstance(step, dict)]
-    completed = {
-        str(step.get("id"))
-        for step in steps
-        if step.get("status") in {"completed", "skipped"}
-    }
-    for step in steps:
-        if step.get("status") != "pending":
-            continue
-        if all(str(dep) in completed for dep in (step.get("depends_on") or [])):
-            return deepcopy(step)
-    return None
-
-
-def plan_is_complete(plan: dict[str, Any] | None) -> bool:
-    steps = [step for step in (plan or {}).get("steps", []) if isinstance(step, dict)]
-    return bool(steps) and all(
-        step.get("status") in {"completed", "skipped"} for step in steps
-    )

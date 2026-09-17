@@ -5,14 +5,16 @@ from __future__ import annotations
 import time as _time
 
 from loguru import logger
+from pydantic import ValidationError
 
 from app.agent.generation.architecture import (
     detect_architecture_profile,
+    normalize_architecture_plan,
     resolve_complexity_profile,
-    select_architecture_plan,
 )
 from app.agent.state import GenerationState
 from app.agent.planning.execution import execution_plan_phase_guidance
+from app.agent.planning.requirements import structured_requirement_guidance
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.prompts import append_approved_phase_guidance, build_architecture_plan_prompt
@@ -22,8 +24,57 @@ from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
 from app.utils.json_extractor import extract_json_object
 
 
+class DesignContractError(RuntimeError):
+    """设计方案不满足 DesignDocument 业务不变量时抛出的可读业务错误。"""
+
+
+def _validation_reason(exc: Exception) -> str:
+    """把契约错误压缩成一句可读原因，避免整段 Pydantic 调用栈进入用户提示。"""
+
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        messages = []
+        for item in errors():
+            message = str(item.get("msg") or "").removeprefix("Value error, ").strip()
+            if message:
+                messages.append(message)
+        if messages:
+            return "；".join(messages[:3])
+    return " ".join(str(exc).split())[:300]
+
+
+def build_design_document_or_error(
+    plan: dict,
+    *,
+    session_id: str,
+    source_request: str,
+    building_type: str,
+    style_intent: list[str],
+    previous: object,
+):
+    """构造设计契约；不满足业务不变量时抛 `DesignContractError`。
+
+    未捕获的 Pydantic 异常会直接终止整轮生成，用户只看到一条 ValidationError。
+    这里把它转成受控业务错误，让节点能给出明确原因并走正常失败分支。
+    """
+
+    from app.design.resolver import build_design_document
+
+    try:
+        return build_design_document(
+            plan,
+            session_id=session_id,
+            source_request=source_request,
+            building_type=building_type,
+            style_intent=style_intent,
+            previous=previous,
+        )
+    except (ValidationError, ValueError) as exc:
+        raise DesignContractError(_validation_reason(exc)) from exc
+
+
 async def architecture_planner(state: GenerationState) -> dict:
-    """输出紧凑方案候选，模型失败时回退到确定性默认方案而不中断生成。"""
+    """输出唯一最终总体方案，模型失败时回退到确定性默认方案而不中断生成。"""
     from app.services.agent_service import agent_service
 
     started = _time.time()
@@ -43,6 +94,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         if revision_feedback else user_message
     )
     previous_plan = state.get("architecture_plan")
+
     complexity_terms = (
         "简单", "简易", "极简", "低复杂度", "复杂", "高细节", "丰富",
         "多体量", "退台", "错落", "simple", "minimal", "complex", "detailed",
@@ -75,6 +127,7 @@ async def architecture_planner(state: GenerationState) -> dict:
     rag_started = _time.time()
     rag_error = None
     try:
+        # 知识库检索
         spec_text = agent_service.spec_loader.load_many([
             SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
             SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
@@ -87,17 +140,20 @@ async def architecture_planner(state: GenerationState) -> dict:
     if on_reasoning_delta:
         await on_reasoning_delta(
             "architecture",
-            f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成并比较候选方案...\n",
+            f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成总体方案...\n",
         )
     previous_profile_id = (
         str(previous_plan.get("profile") or "")
         if isinstance(previous_plan, dict) else ""
     )
     normalization_request = revision_feedback or user_message
+    
+    # 判断建筑类型 
     profile = detect_architecture_profile(
         normalization_request,
         fallback_profile_id=previous_profile_id or None,
     )
+
     prompt = build_architecture_plan_prompt(
         spec_text,
         profile,
@@ -106,14 +162,21 @@ async def architecture_planner(state: GenerationState) -> dict:
         revision_feedback=revision_feedback,
         style_preference=state.get("style_preference"),
     )
+
     prompt += "\n" + KNOWLEDGE_GUIDANCE
+
     phase_guidance = execution_plan_phase_guidance(execution_plan, "architecture")
+    requirement_guidance = structured_requirement_guidance(
+        state.get("structured_requirements"),
+        "architecture",
+    )
     prompt = append_approved_phase_guidance(
         prompt,
-        phase_guidance,
-        "这些是公开的任务目标和验收条件。总体方案必须落实它们，"
-        "但仍须服从本提示中的结构化输出协议和安全约束。",
+        "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
+        "这些是已批准任务及后端编译的结构化业务要求。总体方案必须落实它们；"
+        "由真实槽位数量与配额一致性在 DesignDocument 契约处校验。",
     )
+
     raw_plan = None
     llm_chars = 0
     llm_ms = 0
@@ -171,66 +234,68 @@ async def architecture_planner(state: GenerationState) -> dict:
         from app.llm.errors import model_failure_result
         return model_failure_result(exc)
 
-    plan, selection_diag = select_architecture_plan(
-        raw_plan,
-        normalization_request,
-        complexity_profile,
-        profile,
+    plan = normalize_architecture_plan(
+        raw_plan or {},
+        user_message=normalization_request,
+        complexity_profile=complexity_profile,
+        architecture_profile=profile,
     )
-    if raw_plan is None:
-        selection_diag["used_fallback"] = True
+
+    # 诊断信息：单方案生成，只记录 profile 与是否走了兜底。
+    selection_diag = {
+        "profile": profile["id"],
+        "profile_label": profile["label"],
+        "used_fallback": raw_plan is None,
+    }
+
     if on_reasoning_delta:
-        comparison_lines = ["\n**建筑方案候选对比**"]
-        for candidate in selection_diag.get("candidate_summaries", []):
-            candidate_massing = candidate.get("massing", {})
-            candidate_roof = candidate.get("roof", {})
-            comparison_lines.append(
-                f"- 候选 {candidate.get('index', 0) + 1}｜评分 {candidate.get('score', 0)}："
-                f"{candidate.get('concept') or '未命名方案'}；"
-                f"{candidate_massing.get('width', '?')}×{candidate_massing.get('depth', '?')}m，"
-                f"{candidate_massing.get('floors', '?')}层，"
-                f"{candidate.get('volume_count', '?')}个体量，"
-                f"主立面 {candidate.get('front_bays', '?')} 轴，"
-                f"{candidate_roof.get('type', '?')} 屋顶。"
-            )
         rationale = plan.get("design_rationale", [])
-        comparison_lines.extend([
-            "",
-            f"**选择结果：候选 {selection_diag['selected_index'] + 1}**",
-            f"- 复杂度目标：{complexity_profile['level']}；"
-            f"至少 {complexity_profile['min_volumes']} 个体量、"
-            f"{complexity_profile['min_detail_packages']} 个细部包。",
-            *[f"- {item}" for item in rationale],
-            "- 总体方案已确定；下一节点将解析受控材质并生成可审核的设计文档与 SVG。",
-        ])
-        if selection_diag.get("used_fallback"):
-            comparison_lines.append("- 模型总体方案不可用，本次采用了受 profile 约束的确定性总体方案。")
-        if plan.get("unsupported_component_types"):
-            comparison_lines.append(
-                "- 能力限制：模型提出的以下类型尚未注册，未纳入可执行配额，也未自动替换为其他构件："
-                + "、".join(plan["unsupported_component_types"])
-            )
         await on_reasoning_delta(
             "architecture",
-            "\n".join(comparison_lines) + "\n",
+            "\n### 总体建筑方案\n"
+            f"- 复杂度目标：{complexity_profile['level']}；"
+            f"至少 {complexity_profile['min_volumes']} 个体量、"
+            f"{complexity_profile['min_detail_packages']} 个细部包。\n"
+            + "\n".join(f"- {item}" for item in rationale) + "\n"
+            + "- 总体方案已确定；下一节点将解析受控材质并生成可审核的设计文档与 SVG。\n",
         )
-    total_ms = int((_time.time() - started) * 1000)
-    logger.info(
-        f"[architecture] 完成: candidates={selection_diag['candidate_count']}, "
-        f"selected={selection_diag['selected_index']}, "
-        f"score={selection_diag['candidate_scores'][selection_diag['selected_index']]}, "
-        f"{total_ms}ms"
-    )
-    from app.design.resolver import build_design_document, resolve_design
 
-    design_document = build_design_document(
-        plan,
-        session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
-        source_request=user_message,
-        building_type=str(plan.get("profile") or state.get("building_type") or "building"),
-        style_intent=list(state.get("style_preference") or []),
-        previous=state.get("design_document"),
-    )
+    total_ms = int((_time.time() - started) * 1000)
+    logger.info(f"[architecture] 完成: profile={profile['id']}, {total_ms}ms")
+    
+    from app.design.resolver import resolve_design
+
+    try:
+        design_document = build_design_document_or_error(
+            plan,
+            session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
+            source_request=user_message,
+            building_type=str(plan.get("profile") or state.get("building_type") or "building"),
+            style_intent=list(state.get("style_preference") or []),
+            previous=state.get("design_document"),
+        )
+    except DesignContractError as exc:
+        # 体量覆盖、立面完整、槽位与配额一致等业务不变量失败属于可预期的业务失败，
+        # 必须走受控失败分支，而不是让未捕获异常终止整轮生成。
+        error = f"总体方案不满足设计契约：{exc}"
+        logger.error(f"[architecture] {error}")
+        return {
+            "status": "failed",
+            "error": error,
+            "architecture_diag": {
+                **selection_diag,
+                "design_contract_error": True,
+                "rag_chars": len(spec_text),
+                "rag_ms": rag_ms,
+                "rag_error": rag_error,
+                "prompt_chars": len(prompt),
+                "llm_chars": llm_chars,
+                "llm_ms": llm_ms,
+                "token_usage": token_usage,
+                "recovery": recovery_diag,
+                "thinking_enabled": thinking_mode,
+            },
+        }
     resolved_design = resolve_design(design_document).model_dump(mode="json")
     material_feedback_terms = (
         "材质", "材料", "颜色", "配色", "玻璃材质", "幕墙", "金属", "木", "石材",

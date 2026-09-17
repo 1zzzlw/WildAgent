@@ -1,35 +1,103 @@
-# 知识库路径级 metadata 默认值。
-# 合并顺序：defaults → 按书写顺序命中的 mapping_rules → Markdown 文件头。
-# 因此更具体的规则要写在更靠后的位置，文件头可覆盖任何默认值。
-# path_pattern 使用相对路径：* 匹配一层，** 用于递归子目录。
+# WILD 知识库配置
+#
+# 本文件承担两件事：
+#   1. 路径级 metadata（defaults + mapping_rules）——被 MarkdownChunker 直接读取，
+#      决定每个分片进入向量库后带什么可过滤字段。合并顺序：
+#         defaults → 按书写顺序命中的 mapping_rules（后者覆盖前者）→ 文件 frontmatter（最高优先级）
+#   2. 人读的分类法与检索契约说明——这两节不被代码读取，仅供维护者对照。
+#
+# path_pattern 使用相对本文件的路径；* 匹配一层。
+
 version: 2
 
-# 生产镜像完整性清单。新增、移动或删除活动文档时必须同步更新；部署门禁检查
-# 每个条目真实存在，知识库质量仍由 rules-v3 linter 检查。
+# ---------------------------------------------------------------------------
+# 分类法（人读）
+# ---------------------------------------------------------------------------
+# 第一层按"这条内容是知识还是规则"二分，互斥判定标准是：
+#   「违反了能不能被机器判定」——能判定 → rules；只是"不这样模型会写错" → knowledge
+classification:
+  knowledge:
+    zh: 知识内容
+    description: 描述"是什么、怎么写"，模型无法可靠推断的事实
+    subcategories:
+      protocol:
+        zh: 操作协议
+        content: 顶层结构、字段、枚举、坐标系、引用格式
+      components:
+        zh: 复杂构件表达
+        content: 单个构件/组合构件的最小可用 JSON、可替换参数、能力边界
+  rules:
+    zh: 规则性质
+    description: 描述"必须成立什么"，可被 schema / compiler / resolver / validator 执行
+    subcategories:
+      implementation:
+        zh: 实现约束
+        content: 无前提的参数与引用关系（如窗必须引用有效墙宿主）
+      conditional:
+        zh: 条件约束
+        content: 选了 A 就必须落实 B 的跨构件触发规则
+      design-choice:
+        zh: 设计选择
+        content: 明确留给模型的自由变量（边界声明，不是约束）
+
+# ---------------------------------------------------------------------------
+# 检索契约（人读，但数值与代码强绑定）
+# ---------------------------------------------------------------------------
+# 下列过滤对硬编码在代码里，是检索的固定入口。改 metadata 前必须先核对：
+#   app/agent/knowledge/policy.py:61-69
+#   app/agent/planning/workflow.py:60-65
+#   app/services/agent_service.py:1185-1193
+retrieval_contract:
+  knowledge_query:
+    - filter: {doc_type: blueprint_spec, knowledge_role: protocol}
+      serves: 字段、坐标、引用与 ScenePatch 协议
+      files: knowledge/protocol/*
+    - filter: {doc_type: component, knowledge_role: capability}
+      serves: 构件参数与能力边界
+      files: knowledge/components/*, rules/design-choice/*
+  rule_query:
+    - filter: {doc_type: recipe, knowledge_role: relation}
+      serves: 宿主、组装、校验等必须保持的关系
+      files: rules/implementation/*, rules/conditional/*
+  pinned_filters:
+    - filter: {doc_type: recipe, entity_name: supported_assembly_relations}
+    - filter: {doc_type: component, topic: parameters}
+  # 说明：Loader 默认只在 knowledge_role ∈ (protocol, capability, relation) 中检索
+  # （app/spec/loader.py:2142-2143），因此 navigation 的内容不会进入生成上下文。
+
+# 核心原则
+principles:
+  - 只保留模型不能可靠掌握的知识
+  - 协议规范而非设计方案
+  - 最小示例而非完整案例
+  - 约束规则而非风格套话
+  - 知识声明不能代替确定性执行
+
+# 生产镜像完整性清单。新增、移动或删除文档时必须同步更新，部署门禁检查
+# 每个条目真实存在。
+# 🔴 只允许列 .md：wild-server/scripts/deploy/deployment_preflight.py:29 断言
+#    所有条目以 ".md" 结尾（且非绝对路径、不含 ".."、不重复）。
+#    schema.json 是随目录分发的资产，不是文档，因此不列在这里。
 required_documents:
-  - BLUEPRINT-PATCH-PROTOCOL.md
-  - BLUEPRINT-SPEC-FULL.md
-  - BLUEPRINT-SPEC-MINIMAL.md
-  - components/README.md
-  - components/composite-components-second-batch.md
-  - components/doors-supported.md
-  - components/doors.md
-  - components/engine-capability-boundaries.md
-  - components/glass-curtain-walls.md
-  - components/light.md
-  - components/railings.md
-  - components/roofs-and-eaves.md
-  - components/stair.md
-  - components/structural-components.md
-  - components/walls.md
-  - components/windows-supported.md
-  - components/windows.md
-  - recipes/README.md
-  - recipes/component-selection-relations.md
-  - recipes/glass-curtain-wall-assembly.md
-  - recipes/material-role-relations.md
-  - recipes/supported-assembly-relations.md
   - README.md
+  - knowledge/protocol/blueprint-skeleton.md
+  - knowledge/protocol/generation-redlines.md
+  - knowledge/protocol/templates-and-instances.md
+  - knowledge/protocol/placements.md
+  - knowledge/protocol/component-parameters.md
+  - knowledge/protocol/material-parameters.md
+  - knowledge/protocol/behavior-instructions.md
+  - knowledge/protocol/scene-patch-protocol.md
+  - knowledge/components/capability-boundaries.md
+  - knowledge/components/glass-curtain-wall-assembly.md
+  - knowledge/components/light.md
+  - knowledge/components/composite-components-second-batch.md
+  - rules/implementation/door-window-depth.md
+  - rules/implementation/assembly-relations.md
+  - rules/implementation/validation-rules.md
+  - rules/conditional/component-selection.md
+  - rules/conditional/pending.md
+  - rules/design-choice/free-variables.md
 
 defaults:
   knowledge_revision: rules-v3
@@ -39,7 +107,7 @@ defaults:
   access_scope: public
 
 mapping_rules:
-  - path_pattern: "BLUEPRINT-SPEC-*.md"
+  - path_pattern: "knowledge/protocol/*.md"
     metadata:
       doc_type: blueprint_spec
       knowledge_role: protocol
@@ -47,32 +115,48 @@ mapping_rules:
       knowledge_layer: wild_schema
       entity_type: schema
 
-  - path_pattern: "BLUEPRINT-SPEC-MINIMAL.md"
-    metadata:
-      doc_scope: system
-
-  - path_pattern: "BLUEPRINT-PATCH-PROTOCOL.md"
-    metadata:
-      doc_type: blueprint_spec
-      knowledge_role: protocol
-      doc_scope: generation
-      knowledge_layer: wild_schema
-      entity_type: schema
-
-  - path_pattern: "components/*.md"
+  - path_pattern: "knowledge/components/*.md"
     metadata:
       doc_type: component
+      knowledge_role: capability
       doc_scope: generation
       knowledge_layer: wild_schema
+      entity_type: component
 
-  - path_pattern: "recipes/*.md"
+  - path_pattern: "rules/implementation/*.md"
     metadata:
       doc_type: recipe
       knowledge_role: relation
       doc_scope: generation
       knowledge_layer: constraint
+      entity_type: assembly
 
-  # README 和目录型文档必须放在普通目录规则之后，以覆盖生成类默认值。
+  - path_pattern: "rules/conditional/*.md"
+    metadata:
+      doc_type: recipe
+      knowledge_role: relation
+      doc_scope: generation
+      knowledge_layer: constraint
+      entity_type: assembly
+
+  - path_pattern: "rules/design-choice/*.md"
+    metadata:
+      doc_type: component
+      knowledge_role: capability
+      doc_scope: generation
+      knowledge_layer: constraint
+      entity_type: policy
+
+  # 导航型文档必须放在普通目录规则之后，以覆盖上面派生的生成类默认值。
+  - path_pattern: "*/README.md"
+    metadata:
+      doc_type: index
+      knowledge_role: navigation
+      doc_scope: index
+      knowledge_layer: navigation
+      entity_type: index
+      topic: navigation
+
   - path_pattern: "README.md"
     metadata:
       doc_type: index
@@ -82,11 +166,20 @@ mapping_rules:
       entity_type: index
       topic: navigation
 
-  - path_pattern: "*/README.md"
-    metadata:
-      doc_type: index
-      knowledge_role: navigation
-      doc_scope: index
-      knowledge_layer: navigation
-      entity_type: index
-      topic: navigation
+# 排除的内容
+excluded_content:
+  - type: "building_encyclopedia"
+    reason: "LLM 已掌握通用建筑知识"
+    example: "多立克柱式的历史、哥特式建筑的特点"
+
+  - type: "style_rules"
+    reason: "风格应根据需求设计，不能固化"
+    example: "现代简约 = 玻璃幕墙 + 白墙 + 平屋顶"
+
+  - type: "complete_cases"
+    reason: "防止 LLM 照搬模板"
+    example: "三层别墅标准方案、中式庭院完整布局"
+
+  - type: "engine_internals"
+    reason: "LLM 不需要知道渲染引擎实现"
+    example: "wall 如何生成网格、布尔运算的算法"

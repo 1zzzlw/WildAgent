@@ -1,5 +1,13 @@
 # 一个完整 Thread 的三段 Trace 与 State 累加过程
 
+> 版本说明：本文主体保留了 2026-09-15 改造前 Trace 的逐节点证据，因此其中的 `execution_plan.steps`、`plan_executor`、`current_plan_step_id` 和 `plan_next_node` 用于解释旧问题，不代表当前代码结构。
+>
+> 改造后的 Plan Mode 主链为：`planning_research → planner → plan_validator → plan_review → architecture → material_plan → design_review → skeleton → 动态组件 → merge → final_validate → END`。阅读新 Trace 时，重点跟踪 `dynamic_tasks → structured_requirements → 节点业务产物 → acceptance_results`，并用 `execution_progress` 查看固定阶段进度。
+>
+> **后续结论（2026-09-17）**：本文 §8.3 记录的「批准文本进入 Prompt，但候选由评分选择」已不再是当前行为——
+> 候选数组、评分选择与违规检查已整体删除，`architecture` 只输出唯一最终方案。该节保留为问题现场证据。
+> 详见同目录《候选机制清理与proposal节点处置方案.md》。
+
 同一次 LangGraph Thread 因为两次人工审核，被分成了三份 Trace：
 
 ```text

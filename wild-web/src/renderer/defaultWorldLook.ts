@@ -85,7 +85,7 @@ export const QUALITY_PRESETS: Record<QualityLevel, QualityPreset> = {
 
 export const CAMERA_ORDER: CameraPresetId[] = ['corner', 'human', 'bird', 'front']
 export const CAMERA_PRESETS: Record<CameraPresetId, CameraPreset> = {
-  corner: { label: '街角', direction: [1, 0.62, 1] },
+  corner: { label: '街角', direction: [1, 0.72, 1] },  // 从 0.62 提升到 0.72，抬高俯角让屋面更突出
   human: { label: '人视', direction: [1, 0.18, 1] },
   bird: { label: '鸟瞰', direction: [0.8, 1.25, 0.8] },
   front: { label: '正立面', direction: [0, 0.12, 1] },
@@ -98,26 +98,26 @@ export const ENVIRONMENT_PRESETS: Record<EnvironmentPresetId, EnvironmentPreset>
   minimal: {
     label: '极简', icon: '◻️', groundColor: 0x747b73, fogColor: 0xb9c9d8,
     sunAzimuthOffset: 0, directLightScale: 1, ambientLightScale: 0.9, exposureScale: 1,
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.40,  // 从 0.22 提升到 0.40，增强阴影落地感
   },
   meadow: {
     label: '草地', icon: '🌿', groundColor: 0x526d42, fogColor: 0xadc2ae,
     sunAzimuthOffset: -18, directLightScale: 1.16, ambientLightScale: 0.72, exposureScale: 0.96,
-    shadowOpacity: 0.28,
+    shadowOpacity: 0.42,  // 从 0.28 提升到 0.42
   },
   alpine: {
     label: '雪山', icon: '🏔️', groundColor: 0xc9d1d5, fogColor: 0xc6d2da,
     sunAzimuthOffset: 16, directLightScale: 1.22, ambientLightScale: 0.82, exposureScale: 0.92,
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.44,  // 从 0.3 提升到 0.44
   },
   desert: {
     label: '沙漠', icon: '🏜️', groundColor: 0xb9844f, fogColor: 0xd2ad7f,
     sunAzimuthOffset: 30, directLightScale: 1.3, ambientLightScale: 0.66, exposureScale: 0.92,
-    shadowOpacity: 0.34,
+    shadowOpacity: 0.46,  // 从 0.34 提升到 0.46
   },
   autumn: {
     label: '秋林', icon: '🍂', groundColor: 0x665c3d, fogColor: 0xb39a78,
     sunAzimuthOffset: -32, directLightScale: 1.18, ambientLightScale: 0.68, exposureScale: 0.92,
-    shadowOpacity: 0.32,
+    shadowOpacity: 0.44,  // 从 0.32 提升到 0.44
   },
 }

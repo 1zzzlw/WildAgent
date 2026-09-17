@@ -22,7 +22,11 @@ REQUIRED_METADATA = (
     "wild_version",
     "status",
     "authority",
-    "source",
+    # 注意：`source` 不在必需清单里。
+    # 它不在 MarkdownChunker._DOCUMENT_METADATA_FIELDS 白名单中，Loader 根本不读它，
+    # 因此对召回零影响；前后端分部署后前端路径也失去意义。人工溯源请用
+    # `authority` + `knowledge_revision`，或在后端侧文档（schema.json、validator
+    # 源码）里追。旧版 v1 知识库用它记录前端路径，现已弃用。
 )
 TERM_FIELDS = {"primary_terms", "synonyms", "keywords"}
 

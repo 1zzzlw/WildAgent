@@ -96,9 +96,12 @@ class KnowledgeRulesTest(unittest.TestCase):
         self.assertIn("DESIGN_BRIEF", prompt)
 
     def test_scene_patch_protocol_explains_contextual_coordinate_updates(self):
-        text = (KB / "BLUEPRINT-PATCH-PROTOCOL.md").read_text(encoding="utf-8")
+        text = (KB / "knowledge/protocol/scene-patch-protocol.md").read_text(encoding="utf-8")
         self.assertIn("当前 Blueprint", text)
-        self.assertIn("from[2]` 是法向偏移，不是世界 Z", text)
+        # 断言"语义"而不是某一句原文：知识库已重写，这里钉住的是必须成立的两条事实——
+        # ① from[2] 是沿墙体法向的偏移；② 它不是世界 Z 坐标（这是最容易写错的点）。
+        self.assertIn("沿墙体法向的偏移", text)
+        self.assertIn("不是世界 Z", text)
         self.assertIn('"op": "update_component"', text)
 
     def test_chat_queries_follow_the_three_active_knowledge_roles(self):
@@ -171,7 +174,7 @@ class KnowledgeRulesTest(unittest.TestCase):
             self.assertIn("proposed_chunk_in_generation", [issue.code for issue in issues])
 
     def test_runtime_curtain_parameters_preserved_and_not_generation_context(self):
-        text = (KB / "recipes/glass-curtain-wall-assembly.md").read_text(encoding="utf-8")
+        text = (KB / "knowledge/components/glass-curtain-wall-assembly.md").read_text(encoding="utf-8")
         block = text.split("entity_name: curtain_wall_deterministic_parameters", 1)[1].split("## ", 1)[0]
         self.assertIn("doc_scope: system", block)
         values = [json.loads(match) for match in re.findall(r"```json\s*\n(.*?)\n```", block, re.S)]

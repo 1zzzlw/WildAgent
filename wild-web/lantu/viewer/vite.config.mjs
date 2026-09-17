@@ -43,8 +43,10 @@ export default defineConfig({
     fs: { allow: [here, projectRoot] },
   },
   // 直接以原生 ESM 提供 three（three/build/three.module.js 为单文件），
-  // 关闭依赖预构建即可跳过 .vite/deps 缓存清理，避免环境安全删除门禁。
-  optimizeDeps: { disabled: true },
+  // 关闭依赖预构建即可跳过 .vite/deps 缓存写入，避免环境安全删除门禁。
+  // 注意：旧的 `optimizeDeps.disabled` 在 Vite 5.1 起已被移除（本机 Vite 8.x 会
+  // 打印废弃警告后忽略它，等于没生效），官方替代写法是 noDiscovery + 空 include。
+  optimizeDeps: { noDiscovery: true, include: [] },
   build: {
     outDir: resolve(here, 'dist'),
   },

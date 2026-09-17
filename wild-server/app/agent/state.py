@@ -7,11 +7,14 @@ LangGraph State 定义
 from typing import Annotated, Any, NotRequired, TypedDict
 
 from app.agent.planning.contracts import (
+    AcceptanceResult,
     ExecutionPlan,
     ExecutionPlanHistoryEntry,
+    ExecutionProgressItem,
     ExecutionPlanReviewState,
     ExecutionPlanStatus,
     PlanValidationIssue,
+    StructuredRequirement,
 )
 
 
@@ -56,11 +59,14 @@ class GenerationState(TypedDict, total=False):
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
     plan_mode: bool  # 是否启用可审核的 ExecutionPlan 执行模式。
 
-    # ── Claude 风格的可审核执行计划 ──
-    execution_plan: ExecutionPlan  # 当前执行计划，包含固定步骤、动态任务、依赖和状态。
+    # ── 可审核执行计划与业务约束 ──
+    execution_plan: ExecutionPlan  # 当前执行计划，描述本次需求特有的动态任务；不负责节点路由。
+    structured_requirements: list[StructuredRequirement]  # 从批准任务编译出的节点可消费业务要求。
+    acceptance_results: dict[str, AcceptanceResult]  # 每条验收条件的结果、实际值和证据引用。
+    execution_progress: dict[str, ExecutionProgressItem]  # 固定 LangGraph 阶段的展示进度；不参与路由。
     execution_plan_status: ExecutionPlanStatus  # 计划整体状态，例如 draft、approved、executing、completed。
     execution_plan_review_status: ExecutionPlanReviewState  # 人工审核状态，例如 pending、approved、revise。
-    execution_plan_validation: list[PlanValidationIssue]  # 计划白名单、依赖关系等校验问题。
+    execution_plan_validation: list[PlanValidationIssue]  # 动态任务、依赖、结构化要求和能力边界问题。
     execution_plan_history: list[ExecutionPlanHistoryEntry]  # 旧版本计划及对应修改意见的简要记录。
     plan_feedback: str  # 用户要求重新规划时提交的修改意见。
     plan_research_context: str  # 规划前从本地知识库检索出的完整上下文。
@@ -75,8 +81,7 @@ class GenerationState(TypedDict, total=False):
     execution_plan_diag: dict  # 计划生成来源、任务数量、Token 和格式恢复诊断。
     plan_replan_count: int  # 当前请求已经重新制定计划的次数。
     max_plan_replans: int  # 当前请求允许重新制定计划的最大次数。
-    current_plan_step_id: str  # ExecutionPlan 当前正在执行的步骤 ID。
-    plan_next_node: str  # plan_executor 根据白名单决定的下一个节点名称。
+    plan_feedback_pending: bool  # 节点边界是否收到需要回到 planner 的追加意见。
     
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
@@ -87,9 +92,10 @@ class GenerationState(TypedDict, total=False):
     intent_source: str  # 分类结果来源，例如 rule、llm 或 fallback。
 
     # ── Layer -0.5: 建筑方案（生成分支）──
-    architecture_plan: dict  # 归一化并选中的总体建筑方案，供后续节点执行。
+    # 详细方案生成
+    architecture_plan: dict  # 归一化后的总体建筑方案，供后续节点执行。
     complexity_profile: dict  # 从需求解析出的复杂度等级、体量和细节数量要求。
-    architecture_diag: dict  # 总体方案候选、评分、选中序号、RAG 和模型调用诊断。
+    architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断。
     design_document: dict  # 可人工审核、带 revision 的结构化建筑设计文档。
     resolved_design: dict  # 将 DesignDocument 默认值和引用解析后的可执行视图。
     design_review_status: str  # 建筑设计审核状态，例如 pending、approved、revise。

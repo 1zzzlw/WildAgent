@@ -222,10 +222,20 @@ def _requested_balcony_access_count(user_message: str) -> int:
     return max(1, min(4, int(match.group(1)))) if match else 1
 
 
+## 模糊限定词：用户写"宽约17米"和写"宽17米"表达的是同一个尺寸约束，
+## 不能因为多了一个"约"就整条落回默认值。验收侧（planning/requirements.py）
+## 已经按"含约则放宽容差"处理，两侧必须认出同一句话，否则会出现
+## "验收要求 17×23、实际生成 12×9"的跨模块自相矛盾。
+_DIMENSION_QUALIFIERS = r"(?:约|大约|大概|为|是|在)?\s*"
+
+
 def _requested_dimension(user_message: str, labels: tuple[str, ...]) -> float | None:
     number = r"(\d+(?:\.\d+)?)"
     for label in labels:
-        for pattern in (fr"{label}\s*{number}\s*(?:米|m)?", fr"{number}\s*(?:米|m)?\s*{label}"):
+        for pattern in (
+            fr"{label}\s*{_DIMENSION_QUALIFIERS}{number}\s*(?:米|m)?",
+            fr"{number}\s*(?:米|m)?\s*{label}",
+        ):
             for match in re.finditer(pattern, user_message, re.I):
                 clause_start = max(
                     user_message.rfind(mark, 0, match.start())

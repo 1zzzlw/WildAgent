@@ -104,6 +104,9 @@ def build_execution_plan_prompt(
 3. 生成任务必须至少包含 architecture 和 final_validate；涉及高层时必须规划竖向交通，涉及玻璃幕墙时必须规划真实玻璃与框架关系。
 4. `objective` 说明要解决的建筑问题；`acceptance` 给出 1～4 条可检查的结果，不写“效果好”等空话。
 5. `summary` 用 1～2 句说明本次计划的核心策略。这是给用户看的公开摘要，不要输出逐步推理过程。
+6. 当前主链不设计房间平面、车库/后院/花园等语义空间，也不支持 table、chair 等 furniture 组件；不得自行补充这些内容。若用户明确要求，必须原样保留在验收条件中——服务端会标记该要求为"不具备该能力"并写入验收结果，但**不会因此终止本轮生成**，所以不要为了绕开它而改写或省略用户的要求，也不要把它拆成多个变体反复表述。
+7. 可直接规划的组件包括 door、window、roof、railing、canopy、balcony、light、ramp、bay_window、cornice、chimney。
+8. 验收条件优先写成可编译的明确要求：层数、宽深尺寸、屋顶类型或出檐下限、组件类型与最少数量、材质方案存在、最终校验零错误。
 
 只输出一个 JSON 对象，不要 Markdown：
 {{
@@ -165,7 +168,7 @@ def build_architecture_plan_prompt(
 
 用户对上一版的修改意见：{revision_feedback}
 
-上一版方案如下。保留未被意见否定的尺寸、风格和设计关系，只修改相关部分；仍需输出两个完整候选，不能只输出差异：
+上一版方案如下。保留未被意见否定的尺寸、风格和设计关系，只修改相关部分；仍需输出一份完整方案，不能只输出差异：
 
 {_json.dumps(current_plan, ensure_ascii=False, indent=2)}
 """
@@ -173,13 +176,13 @@ def build_architecture_plan_prompt(
 
 # 任务
 
-- 给出 2 个可实施候选，差异必须体现在体量比例、立面节奏或屋顶上。
+- 只输出 1 个可实施方案，即本次交付的唯一最终方案；不要输出备选或并列方案。
 - 方案服从用户需求和已批准决定；知识库补充能力与条件关系，不能决定默认造型。复杂度落实为本次所需空间与细节，不靠重复构件凑数。
 - 当前规划 profile 是：{profile_text}。profile 描述当前规划器可表达的范围；它不是默认建筑。明确需求超出范围时报告限制，不能静默改写。
 - 本次复杂度目标是：{complexity_text}。
 - `level=detailed` 时完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
 - `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
-- 除 simple/minimal 外，两个候选中至少一个应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
+- 除 simple/minimal 外，该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
 - ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
@@ -193,15 +196,16 @@ def build_architecture_plan_prompt(
 
 # 输出协议
 
-只输出包含 candidates 数组的 JSON 对象，数组中给出两个完整候选。下列是字段契约，不是可以照抄的建筑：
+只输出一个 JSON 对象，顶层直接给出唯一最终方案的字段；不要输出 candidates 数组、备选方案或方案对比。下列是字段契约，不是可以照抄的建筑：
 - concept：本次方案概念字符串。
 - massing：shape 使用 profile 允许值；width/depth/floor_height 为正数，floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；symmetry 为布尔值。
 - volumes：按本次方案输出体量数组，每项包含 id、role(primary/secondary)、x、z、width、depth、start_floor、end_floor；单体也需明确一个完整体量，多层单体不必拆成退台。
 - structural_grid：system 为 wall_bearing/frame/hybrid/long_span/shell；x_bays/z_bays 为正整数。
 - circulation：vertical_strategy 为 none/stair/core_and_stair；核心筒方案必须同时包含楼梯，多层建筑不能为 none。
+- 体量是逐层外轮廓的唯一来源：某层外轮廓只由覆盖该层的体量决定。规划退台时，任何跨越多个楼层的贯通构件（核心筒、电梯井、贯通竖向交通或通高墙体）都必须落在它经过的**每一层**体量并集之内，即收进 `start_floor..end_floor` 上全部存在的体量交集；不得伸进只存在于低楼层的退台翼，否则它在退台层会成为外凸的独立体块。必要时宁可让该体量贯通到顶层，也不要让核心筒跨进退台翼。
 - detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
 - facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern；主入口面可给 entrance_bay，槽位数量与 bays 一致。
-- roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。
+- roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。多体量（L/U 形）必须按体量分别声明屋顶，不得用单块屋顶盖住内院/天井。
 - component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
 - required_components：本次真正需要的组件名称数组。
 - design_rationale：说明体量、入口、交通与构件选择如何满足用户要求的字符串数组。
@@ -270,4 +274,3 @@ def build_material_plan_prompt(
   ]
 }}
 """
-

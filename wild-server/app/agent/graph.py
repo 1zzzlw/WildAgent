@@ -3,8 +3,8 @@ LangGraph 图定义 —— 可审核计划层 + LLM 骨架生成链
 
 流程:
   classifier (意图分类)
-    → PLAN:     planning_research → planner → plan_review → plan_executor
-    → GENERATE: architecture (总体方案候选)
+    → PLAN:     planning_research → planner → plan_review
+    → GENERATE: architecture (总体方案)
                   → material_plan (材质意图+资产解析)
                   → design_review (DesignDocument + SVG 人工审核)
                   → skeleton (LLM 骨架生成：主体蓝图 + 组件建议)
@@ -28,18 +28,17 @@ from app.agent.generation.components import (
     get_implemented_components,
     resolve_component_suggestions,
 )
+from app.agent.planning.requirements import required_component_types
 from app.agent.nodes.architecture_node import architecture_planner
 from app.agent.nodes.chat_node import chat_node
 from app.agent.nodes.classifier_node import classifier_node
 from app.agent.nodes.design_review_node import design_review, route_design_review
 from app.agent.nodes.execution_plan_node import (
-    complete_execution_step,
-    execution_plan_executor,
+    complete_execution_stage,
     execution_plan_review,
     execution_plan_validator,
     execution_planner,
     planning_research,
-    route_execution_plan_executor,
     route_execution_plan_review,
 )
 from app.agent.nodes.material_plan_node import material_planner
@@ -54,14 +53,16 @@ from app.agent.nodes.base_component_node import (
 )
 
 def _planned_node(step_type: str, node):
-    """包装现有业务节点，仅在 plan_mode 中回写计划步骤状态。在不改动原业务节点的前提下，给每个节点加上“计划步骤状态回写”的能力。"""
+    """在业务节点边界记录展示进度并执行结构化验收。"""
 
     async def run(state: GenerationState) -> dict:
+        # 执行原始业务节点
         result = node(state)
         if inspect.isawaitable(result):
             result = await result
         result = dict(result or {})
-        result.update(complete_execution_step(state, step_type, result))
+        # 完整阶段验收
+        result.update(await complete_execution_stage(state, step_type, result))
         return result
 
     run.__name__ = f"planned_{step_type}"
@@ -73,11 +74,18 @@ def _dispatch_components(state: GenerationState):
         logger.warning("[Graph] 骨架生成失败，短路终止")
         return "fail"
 
-    # 极简结构（一面墙/一堵墙/单个构件）只保留结构骨架，不派发门/窗/屋顶等组件。
+    approved_components = required_component_types(
+        state.get("structured_requirements")
+    )
+    # 极简结构只在没有批准组件要求时跳过组件派发。
     architecture_plan = state.get("architecture_plan")
     if isinstance(architecture_plan, dict):
         complexity = architecture_plan.get("complexity")
-        if isinstance(complexity, dict) and complexity.get("level") == "minimal":
+        if (
+            isinstance(complexity, dict)
+            and complexity.get("level") == "minimal"
+            and not approved_components
+        ):
             logger.info("[Graph] 极简结构，跳过组件派发")
             return "merge"
 
@@ -88,7 +96,10 @@ def _dispatch_components(state: GenerationState):
         else {}
     )
     suggested = resolve_component_suggestions(
-        state.get("suggested_components", []),
+        [
+            *state.get("suggested_components", []),
+            *approved_components,
+        ],
         state.get("user_message", ""),
         component_quota,
     )
@@ -158,31 +169,32 @@ def _after_execution_plan_validator(state: GenerationState) -> str:
 
 def _after_architecture(state: GenerationState) -> str:
     if state.get("terminal_model_error") or state.get("status") == "failed":
-        return "plan_executor" if state.get("plan_mode") else "__end__"
-    document = state.get("design_document") or {}
-    if state.get("plan_mode") and int(document.get("revision") or 1) == 1:
-        return "plan_executor"
+        return "__end__"
+    if state.get("plan_feedback_pending"):
+        return "planner"
     return "material_plan"
 
 
 def _after_material_plan(state: GenerationState) -> str:
     if state.get("terminal_model_error") or state.get("status") == "failed":
-        return "plan_executor" if state.get("plan_mode") else "__end__"
+        return "__end__"
+    if state.get("plan_feedback_pending"):
+        return "planner"
     return "design_review"
 
 
 def _after_planned_step(state: GenerationState, legacy_next: str) -> str:
     if state.get("terminal_model_error") or state.get("status") == "failed":
-        return "plan_executor" if state.get("plan_mode") else "__end__"
-    return "plan_executor" if state.get("plan_mode") else legacy_next
+        return "__end__"
+    if state.get("plan_feedback_pending"):
+        return "planner"
+    return legacy_next
 
 
 def _after_skeleton(state: GenerationState):
-    """LLM 骨架完成后：错误即终止，否则派发组件 gen→val 链（Plan 模式相同）。
-
-    计划步骤回写由 _planned_node 包装在节点返回时完成；组件链结束后
-    merge 的条件边会把 Plan 模式路由回执行器继续走剩余步骤。
-    """
+    """LLM 骨架完成后：先处理重规划意见，否则派发组件 gen→val 链。"""
+    if state.get("plan_feedback_pending"):
+        return "planner"
     return _dispatch_components(state)
 
 
@@ -207,7 +219,7 @@ def generation_recursion_limit(
     components = max(0, int(component_count))
     retries = max(0, int(max_retries))
     base = max(48, 16 + components * 2 + retries * 4)
-    return base + 40 if plan_mode else base
+    return base + 20 if plan_mode else base
 
 
 def _final_validate_dispatch(state: GenerationState):
@@ -271,15 +283,15 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_node("chat", chat_node)
     graph.add_node("patch", _planned_node("patch", patch_node))
 
-    # ── 可选计划层：只读研究 → 计划 → 校验 → 人工批准 → 白名单调度 ──
+    # ── 可选计划层：只读研究 → 动态任务与结构化要求 → 校验 → 人工批准 ──
     graph.add_node("planning_research", planning_research)
     graph.add_node("web_research", web_research_node)
     graph.add_node("planner", execution_planner)
     graph.add_node("plan_validator", execution_plan_validator)
     graph.add_node("plan_review", execution_plan_review)
-    graph.add_node("plan_executor", execution_plan_executor)
 
     # ── Layer -0.5: 建筑方案 ──
+    # 详细方案生成
     graph.add_node("architecture", _planned_node("architecture", architecture_planner))
     graph.add_node("design_review", design_review)
     graph.add_node("material_plan", _planned_node("material_plan", material_planner))
@@ -338,7 +350,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges(
         "patch",
         lambda state: _after_planned_step(state, "__end__"),
-        {"plan_executor": "plan_executor", "__end__": END},
+        {"planner": "planner", "__end__": END},
     )
     graph.add_conditional_edges(
         "planning_research",
@@ -351,7 +363,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         _after_architecture,
         {
             "material_plan": "material_plan",
-            "plan_executor": "plan_executor",
+            "planner": "planner",
             "__end__": END,
         },
     )
@@ -360,7 +372,6 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         route_design_review,
         {
             "architecture": "architecture",
-            "plan_executor": "plan_executor",
             "skeleton": "skeleton",
             "__end__": END,
         },
@@ -380,27 +391,16 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         route_execution_plan_review,
         {
             "__end__": END,
-            "plan_executor": "plan_executor",
+            "architecture": "architecture",
+            "patch": "patch",
             "planner": "planner",
         },
     )
-    graph.add_conditional_edges(
-        "plan_executor",
-        route_execution_plan_executor,
-        {
-            "__end__": END,
-            "architecture": "architecture",
-            "material_plan": "material_plan",
-            "skeleton": "skeleton",
-            "merge": "merge",
-            "final_validate": "final_validate",
-            "patch": "patch",
-        },
-    )
+
     graph.add_conditional_edges(
         "material_plan",
         _after_material_plan,
-        {"plan_executor": "plan_executor", "design_review": "design_review", "__end__": END},
+        {"planner": "planner", "design_review": "design_review", "__end__": END},
     )
 
     graph.add_conditional_edges(
@@ -409,6 +409,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         {
             "fail": END,
             "merge": "merge",
+            "planner": "planner",
         },
     )
 
@@ -426,23 +427,25 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             if _merge_dispatch(state) == END
             else _after_planned_step(state, "final_validate")
         ),
-        {"plan_executor": "plan_executor", "final_validate": "final_validate", "__end__": END, END: END},
+        {"planner": "planner", "final_validate": "final_validate", "__end__": END, END: END},
     )
     if enable_callback:
         graph.add_conditional_edges(
             "final_validate",
             lambda state: (
-                "callback"
+                "planner"
+                if state.get("plan_feedback_pending")
+                else "callback"
                 if _final_validate_dispatch(state) == "callback"
-                else _after_planned_step(state, "__end__")
+                else "__end__"
             ),
-            {"callback": "callback", "plan_executor": "plan_executor", "__end__": END},
+            {"callback": "callback", "planner": "planner", "__end__": END},
         )
     else:
         graph.add_conditional_edges(
             "final_validate",
             lambda state: _after_planned_step(state, "__end__"),
-            {"plan_executor": "plan_executor", "__end__": END},
+            {"planner": "planner", "__end__": END},
         )
     compiled = graph.compile(checkpointer=checkpointer)
     component_list = ", ".join(

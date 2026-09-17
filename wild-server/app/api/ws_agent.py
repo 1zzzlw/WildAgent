@@ -577,7 +577,6 @@ _NODE_LABELS = {
     "planner": "执行计划",
     "plan_validator": "计划校验",
     "plan_review": "计划审核",
-    "plan_executor": "计划调度",
     "architecture": "总体建筑方案",
     "design_review": "建筑设计审核",
     "material_plan": "材质方案",
@@ -717,7 +716,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     _OUR_NODES = {
         "classifier", "chat", "patch", "planning_research", "web_research", "planner",
-        "plan_validator", "plan_review", "plan_executor", "architecture", "design_review",
+        "plan_validator", "plan_review", "architecture", "design_review",
         "material_plan", "skeleton", "merge", "final_validate", "callback",
     }
 
@@ -809,7 +808,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "planner": "生成可审核的结构化执行计划",
                     "plan_validator": "检查能力白名单、依赖和安全门禁",
                     "plan_review": "等待用户批准或修改执行计划",
-                    "plan_executor": "在节点边界吸收用户意见并调度下一步",
                     "architecture": "生成建筑方案候选并执行确定性评分",
                     "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
                     "material_plan": "解析材质角色并匹配受控 PBR 资产",
@@ -1029,7 +1027,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         str(planner_error) if planner_error else (
                             f"计划 v{plan.get('version', 1)} · "
                             f"{len(plan.get('dynamic_tasks', []))} 项本次任务 · "
-                            f"{len(plan.get('steps', []))} 步安全主流程"
+                            f"{len(node_output.get('structured_requirements', []))} 条结构化要求"
                         ),
                     )
                     if diag:
@@ -1041,15 +1039,28 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 elif node_name == "plan_validator":
                     plan = node_output.get("execution_plan", {})
                     issues = node_output.get("execution_plan_validation", [])
+                    blocking = [
+                        issue for issue in issues
+                        if str(issue.get("severity") or "error") != "warning"
+                    ]
+                    if blocking:
+                        summary = f"{len(blocking)} 个阻断问题"
+                    elif issues:
+                        summary = f"校验通过，{len(issues)} 条提示待人工确认"
+                    else:
+                        summary = "任务、要求与能力边界校验通过"
                     await send_step(
-                        "planning", node_name, "error" if issues else "done", label,
-                        f"{len(issues)} 个问题" if issues else "白名单、依赖和建筑门禁均通过",
+                        "planning", node_name, "error" if blocking else "done", label,
+                        summary,
                     )
                     await _send_event(ws, {
                         "type": "execution_plan_ready",
                         "request_id": request_id,
                         "session_id": session_id,
                         "plan": plan,
+                        "structured_requirements": node_output.get("structured_requirements", []),
+                        "acceptance_results": node_output.get("acceptance_results", {}),
+                        "execution_progress": node_output.get("execution_progress", {}),
                     })
 
                 elif node_name == "plan_review":
@@ -1058,26 +1069,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "planning", node_name, "done", label,
                         "执行计划已批准" if approved else "已收到计划修改意见",
                     )
-
-                elif node_name == "plan_executor":
-                    plan = node_output.get("execution_plan", {})
-                    next_node = str(node_output.get("plan_next_node") or "")
-                    await send_step(
-                        "planning", node_name,
-                        "error" if node_output.get("error") else "done",
-                        label,
-                        node_output.get("error") or (
-                            "执行计划已完成" if next_node == "__end__"
-                            else f"下一步：{_node_label(next_node)}"
-                        ),
-                    )
-                    if plan:
-                        await _send_event(ws, {
-                            "type": "execution_plan_ready",
-                            "request_id": request_id,
-                            "session_id": session_id,
-                            "plan": plan,
-                        })
 
                 elif node_name == "material_plan":
                     material_diag = node_output.get("material_diag", {})
@@ -1250,6 +1241,29 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "generating", node_name, "done" if passed else "error", label,
                         f"{fc} 个 · {result_label} · {diag.get('total_ms', 0)}ms",
                     )
+                if (
+                    node_name
+                    in {
+                        "plan_review",
+                        "architecture",
+                        "material_plan",
+                        "design_review",
+                        "skeleton",
+                        "merge",
+                        "final_validate",
+                        "patch",
+                    }
+                    and node_output.get("execution_plan")
+                ):
+                    await _send_event(ws, {
+                        "type": "execution_plan_ready",
+                        "request_id": request_id,
+                        "session_id": session_id,
+                        "plan": node_output["execution_plan"],
+                        "structured_requirements": node_output.get("structured_requirements"),
+                        "acceptance_results": node_output.get("acceptance_results"),
+                        "execution_progress": node_output.get("execution_progress"),
+                    })
                 final_state = node_output
 
     except Exception as e:
@@ -1291,6 +1305,9 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             "session_id": session_id,
             "plan": plan,
             "version": int(plan.get("version") or 1),
+            "structured_requirements": values.get("structured_requirements") or [],
+            "acceptance_results": values.get("acceptance_results") or {},
+            "execution_progress": values.get("execution_progress") or {},
         })
         raise GenerationPaused()
 
@@ -1320,7 +1337,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         raise GenerationPaused()
 
     if not snapshot.next and snapshot.values:
-        # plan_executor 是最后一个调度节点时，业务产物在完整 checkpoint 中。
+        # 完成时以完整 checkpoint 为准，节点局部输出不一定包含所有业务产物。
         final_state = dict(snapshot.values)
 
     if final_state is None:

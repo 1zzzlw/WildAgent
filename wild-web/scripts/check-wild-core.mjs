@@ -110,7 +110,14 @@ async function assertChineseCurvedGableFill(core) {
     ] },
     materials: {}, behaviors: {},
   });
-  const gables = entity.meshes.filter(mesh => mesh.elementId === 'roof_main' && mesh.materialRef === 'wall');
+  const ownerMeshes = entity.meshes.filter(mesh => mesh.elementId === 'roof_main');
+  // 山墙填充与檐口线脚**同色**（都取宿主墙材质），必须靠形态区分：
+  //   · 山墙填充：底面就落在墙顶(3.2)，向上封到屋脊 —— 填的是墙顶以上的三角空腔
+  //   · 檐口线脚：挂在墙顶**以下**（封檐板 drop + 滴水 lipDrop），且博风板会沿
+  //     斜边一直爬到屋脊以上，所以"是否到屋脊"不能用来区分，必须看底面标高
+  const wallMaterialMeshes = ownerMeshes.filter(mesh => mesh.materialRef === 'wall');
+  const wallTopY = 3.2;
+  const gables = wallMaterialMeshes.filter(mesh => Math.abs(meshWorldBounds(mesh).min[1] - wallTopY) <= 1e-5);
   if (gables.length !== 2) throw new Error(`曲面屋顶没有生成两端山墙填充: ${gables.length}`);
   for (const mesh of gables) {
     const bounds = meshWorldBounds(mesh);
@@ -118,6 +125,9 @@ async function assertChineseCurvedGableFill(core) {
       throw new Error(`山墙填充没有从墙顶连续到屋脊: ${JSON.stringify(bounds)}`);
     }
   }
+  // 档 C 起，檐口由通用边界扫掠算子生成，曲面屋顶同样应当拿到（2/6 → 6/6）。
+  const trims = wallMaterialMeshes.filter(mesh => meshWorldBounds(mesh).min[1] < wallTopY - 0.2);
+  if (trims.length !== 1) throw new Error(`曲面屋顶没有生成檐口线脚网格: ${trims.length}`);
 }
 
 async function assertSteppedFlatRoofBoundary(core) {

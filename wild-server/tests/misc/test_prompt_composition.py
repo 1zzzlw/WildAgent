@@ -1,17 +1,22 @@
 import unittest
-from pathlib import Path
 
 from app.agent.prompts import build_system_prompt
-from app.services.agent_service import AgentService
+from app.services.agent_service import AgentService, BASE_SPEC_PATHS
 
 
-SERVER_ROOT = Path(__file__).resolve().parents[2]
-MINIMAL_SPEC = (
-    SERVER_ROOT / "storage" / "knowledge_base" / "BLUEPRINT-SPEC-MINIMAL.md"
-)
+def _base_spec_text() -> str:
+    """始终注入提示词的基础规范全文（由装配点自己声明，避免测试写死路径）。"""
+    return "\n".join(path.read_text(encoding="utf-8") for path in BASE_SPEC_PATHS)
+
+
+def _missing_base_paths() -> list[str]:
+    return [str(path) for path in BASE_SPEC_PATHS if not path.is_file()]
 
 
 class PromptCompositionTest(unittest.TestCase):
+    def test_base_spec_files_exist(self):
+        self.assertEqual(_missing_base_paths(), [])
+
     def test_loaded_spec_is_injected_once(self):
         marker = "UNIQUE_SPEC_MARKER"
 
@@ -27,17 +32,22 @@ class PromptCompositionTest(unittest.TestCase):
         self.assertNotIn("## 规则 5：必填字段", prompt)
         self.assertNotIn("## 规则 7：材质格式", prompt)
 
-    def test_minimal_spec_contains_always_on_spatial_rules(self):
-        minimal_spec = MINIMAL_SPEC.read_text(encoding="utf-8")
+    def test_base_spec_contains_always_on_spatial_rules(self):
+        """始终注入的那几份文档必须覆盖"看不到就会写错"的红线。
 
-        self.assertIn("共享完全相同的端点坐标", minimal_spec)
-        self.assertIn("get_wall_bounding_box", minimal_spec)
-        self.assertIn("from[0] = 沿墙距离", minimal_spec)
-        self.assertIn("baseColor 必须是 [R, G, B] 数组", minimal_spec)
-        self.assertIn("sRGB authored value", minimal_spec)
-        self.assertIn('物理玻璃必须给出 `materialClass: "glass"`', minimal_spec)
-        self.assertIn("`transmission > 0`", minimal_spec)
-        self.assertIn("`opacity` 必须为 `1` 或省略", minimal_spec)
+        基础规范刻意保持精简（其余细节走检索），因此这些条目必须留在
+        BASE_SPEC_PATHS 指向的文件里，而不是搬到只能被检索命中的文档。
+        """
+        base_spec = _base_spec_text()
+
+        self.assertIn("共享完全相同的端点坐标", base_spec)
+        self.assertIn("get_wall_bounding_box", base_spec)
+        self.assertIn("from[0] = 沿墙距离", base_spec)
+        self.assertIn("baseColor 必须是 [R, G, B] 数组", base_spec)
+        self.assertIn("sRGB authored value", base_spec)
+        self.assertIn('物理玻璃必须给出 `materialClass: "glass"`', base_spec)
+        self.assertIn("`transmission > 0`", base_spec)
+        self.assertIn("`opacity` 必须为 `1` 或省略", base_spec)
 
     def test_generation_prompt_requires_role_based_materials(self):
         prompt = build_system_prompt("UNIQUE_SPEC_MARKER")

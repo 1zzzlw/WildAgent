@@ -105,6 +105,7 @@ import {
 import {
   deriveWorldAtmosphere,
   WorldWeatherVisuals,
+  type WorldAtmosphereAppearance,
 } from '../../renderer/worldWeatherRuntime'
 import {
   getWorldEffectState,
@@ -193,7 +194,18 @@ let composer: EffectComposer | null = null
 let ssaoPass: SSAOPass | null = null
 let bloomPass: UnrealBloomPass | null = null
 let fxaaPass: ShaderPass | null = null
+// 当前生效的合成链路 MSAA 采样数（WebGL1 或降级后会回落到 0，只剩 FXAA）。
+let appliedMsaaSamples = 0
+// 合成链路 MSAA 采样数：默认 4x；帧率降级时减半——像素比已经降了，几何锯齿不该完全失守。
+const DEFAULT_MSAA_SAMPLES = 4
+const DEGRADED_MSAA_SAMPLES = 2
 const sunDirection = new THREE.Vector3()
+// 主光（定向光 + 阴影相机）实际使用的方向。与 sunDirection 的区别只在夜晚：
+// night 档 sunPhi = 108° > 90° ⇒ sunDirection.y < 0（太阳落到地平线之下），
+// 若直接拿它当主光方向，主光会被放到地面之下面朝上打光，等于整晚没有有效方向光。
+// 此时主光应取月亮方向 —— 与 moonBody（= center − sunDirection × r）一致。
+// 天空 uniform 与日月实体继续用 sunDirection，不受影响。
+const keyLightDirection = new THREE.Vector3(0, 1, 0)
 const weatherClock = new THREE.Clock()
 const lightingCenter = new THREE.Vector3()
 const sceneBoundsCenter = new THREE.Vector3()
@@ -202,7 +214,11 @@ const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 const instanceMatrix = new THREE.Matrix4()
 const instanceWorldMatrix = new THREE.Matrix4()
+// 场景尺度参照：内置环境半径、日月大小、天气层范围、雾都以它为准。
+// 刻意【不随太阳高度角变化】，否则切换时段时山体/远树会整体跳位。
 let lightingExtent = 8
+// 阴影正交框半宽：必须随太阳高度角放大（低角度下落影行程会指数级增长）。
+let shadowExtent = 8
 let environmentGroundY = 0
 let hasSceneBounds = false
 let hasFramedScene = false
@@ -223,19 +239,31 @@ let fpsSmoothed = 60
 let adaptiveQualityApplied = false
 let lastShadowDirtyTime = 0
 const SHADOW_DIRTY_THROTTLE_MS = 120
+// 拖动结束时补一次阴影刷新用的尾沿定时器。
+let trailingShadowDirtyTimer: ReturnType<typeof setTimeout> | null = null
+// 环境贴图（PMREM）重建的节流窗口：连续拖动天气滑杆时最多每 120ms 重建一次。
+const ENVIRONMENT_REBUILD_THROTTLE_MS = 120
+let lastEnvironmentRebuildTime = 0
+let lastEnvironmentSignature = ''
+let environmentRebuildTimer: ReturnType<typeof setTimeout> | null = null
+let pendingEnvironmentRebuild: { preset: TimePreset; atmosphere: WorldAtmosphereAppearance } | null = null
+// 阴影贴花的亮度比（线性空间）：等价于原先 0x26352d 在极简地面 0x747b73 上的关系。
+const SHADOW_DECAL_LUMA_RATIO = 0.162
 
 onMounted(() => {
   unsubscribeWorldLook = worldLookRuntime.subscribe(() => {
-    applyTimePreset()
+    // WILD 光影 profile 切换是离散动作，环境贴图必须立即重建。
+    applyTimePreset(true)
     applyQualityPreset()
   })
   unsubscribeWorldEnvironment = subscribeWorldEnvironment(() => {
-    syncTimePresetFromWorldEnvironment()
-    applyTimePreset()
+    // 时段切换同样走这条通道，但它属于离散动作；天气滑杆则是连续输入。
+    const timeChanged = syncTimePresetFromWorldEnvironment()
+    applyTimePreset(timeChanged)
     markNeedsRender()
   })
   unsubscribeWorldRendering = subscribeWorldRendering(() => {
-    applyTimePreset()
+    applyTimePreset(true)
     markNeedsRender()
   })
   unsubscribeWorldEffects = subscribeWorldEffects(() => {
@@ -284,6 +312,8 @@ function initThreeJS() {
 
   renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
+    // 恒定 false：主光栅化走 EffectComposer 的离屏 RT，canvas 默认帧缓冲只用来贴最终一张全屏四边形，
+    // 这里的 MSAA 既无效又白占显存。几何抗锯齿改在合成离线 RT 上做（见 applySceneMsaa）。
     antialias: false,
     powerPreference: 'high-performance',
   })
@@ -308,17 +338,21 @@ function initThreeJS() {
 
   composer = new EffectComposer(renderer)
   composer.addPass(new RenderPass(scene, camera))
-  // SSAO 半分辨率 + 更细核：开销减半，接触阴影更细腻。
-  ssaoPass = new SSAOPass(scene, camera, 0.5, 0.5)
-  ssaoPass.kernelRadius = 4
+  // SSAO：核半径从 4 提到 6，补偿内部 RT 减半后的采样密度（否则接触阴影会变得又紧又闪）。
+  ssaoPass = new SSAOPass(scene, camera)
+  ssaoPass.kernelRadius = 6
   ssaoPass.minDistance = 0.002
   ssaoPass.maxDistance = 0.3
+  applySsaoScale(ssaoPass)
   composer.addPass(ssaoPass)
   bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
   composer.addPass(bloomPass)
   composer.addPass(new OutputPass())
   fxaaPass = new ShaderPass(FXAAShader)
   composer.addPass(fxaaPass)
+  // 几何边缘的锯齿交给合成 RT 的 MSAA；FXAA 保留为最后一道，负责 MSAA 覆盖不到的
+  // 着色器高频细节（高光闪烁、程序化纹理、透明/自发光边缘）。
+  applySceneMsaa(DEFAULT_MSAA_SAMPLES)
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 1.5, 0)
@@ -373,7 +407,11 @@ function initThreeJS() {
   directionalLight.shadow.mapSize.height = 2048
   directionalLight.shadow.bias = -0.0002
   directionalLight.shadow.normalBias = 0.025
-  directionalLight.shadow.radius = 4
+  // 这里【不要】设 shadow.radius：three r160 的 shadowRadius 只在 SHADOWMAP_TYPE_PCF 分支
+  // 被引用（shadowmap_pars_fragment.glsl.js:122-125），而 PCFSoftShadowMap 编译出的
+  // PCF_SOFT 分支用固定 9 抽样 bilinear kernel、完全不读它 ⇒ radius 是个死配置。
+  // 想要更柔的阴影只能降 mapSize，或换成 VSMShadowMap（需另行处理漏光与 bias）。
+  // 阴影相关的 bias / normalBias / 相机范围统一由 updateLightingToBounds() 按实时参数推导。
   directionalLight.shadow.autoUpdate = false
   directionalLight.shadow.camera.left = -20
   directionalLight.shadow.camera.right = 20
@@ -381,7 +419,8 @@ function initThreeJS() {
   directionalLight.shadow.camera.bottom = -20
   scene.add(directionalLight)
   scene.add(directionalLight.target)
-  applyTimePreset()
+  // 首帧必须无条件建好环境贴图。
+  applyTimePreset(true)
 
   shadowGround = new THREE.Mesh(
     new THREE.PlaneGeometry(400, 400),
@@ -518,6 +557,7 @@ function renderFrame() {
     if (ssaoPass) ssaoPass.enabled = false
     if (bloomPass) bloomPass.enabled = false
     if (fxaaPass) fxaaPass.enabled = true
+    applySceneMsaa(DEGRADED_MSAA_SAMPLES)
     handleResize()
   }
   if (needsRender && renderer && scene && camera) {
@@ -541,9 +581,12 @@ function ensureGridVisible() {
 function resetSceneBounds() {
   hasSceneBounds = false
   lightingExtent = 8
+  shadowExtent = 8
   environmentGroundY = 0
   sceneBoundsCenter.set(0, 0, 0)
   sceneBoundsSize.set(8, 4, 8)
+  // 清掉足迹居中归一化留下的平移，避免空场景/下次加载时继承上一次的偏移。
+  if (sceneGroup) sceneGroup.position.set(0, 0, 0)
   if (shadowGround) shadowGround.position.y = -0.002
   if (presentationGround) {
     presentationGround.position.y = -0.004
@@ -607,12 +650,26 @@ function updateScene() {
     )
     const maxDim = Math.max(size.x, size.y, size.z)
 
+    // ── 足迹居中归一化 ──
+    // 生成器产出的是"角点对齐"坐标（例如 x 从 0 到 11.5，而不是 -5.75 到 5.75）。
+    // 实测 7 份样例蓝图：5 份足迹中心偏离世界原点，4 份超过 0.5m，最大偏 6.4m；
+    // 而网格、地面、内置环境全都钉在世界原点上 ⇒ 建筑看着明显偏到一边，
+    // 偏移大的还会捅出 20×20 的网格范围（如 generated_modern_villa 的 x 跨 -0.5~11.5）。
+    // 这里只做【显示层归一化】：把预览实例整体平移，让"足迹中心落在原点"。
+    // 不碰文档坐标：拖拽改的是对象局部 position，保存读的是文档，两者都不受影响。
+    // Y 不平移，以保持建筑与自身地面的关系（gridHelper.y = bbox.min[1]）。
+    if (sceneGroup) sceneGroup.position.set(-center.x, 0, -center.z)
+    // 归一化后模型在世界空间里就落在原点上，所以后续所有"以中心为参照"的逻辑
+    // （方向光与阴影相机、内置环境、网格与地面）统一改用归一化后的中心。
+    center.x = 0
+    center.z = 0
+
     sceneBoundsCenter.copy(center)
     sceneBoundsSize.copy(size)
     hasSceneBounds = true
     environmentGroundY = bbox.min[1]
 
-    updateLightingToBounds(center, maxDim)
+    updateLightingToBounds(center, size)
     if (shadowGround) shadowGround.position.y = bbox.min[1] - 0.002
     if (presentationGround) {
       presentationGround.position.y = bbox.min[1] - 0.004
@@ -874,6 +931,19 @@ function handleTransformMouseDown() {
   })
 }
 
+/**
+ * 拖动过程中阴影重渲被节流到 120ms，若松手时刚好落在节流窗口内，
+ * 阴影会停留在中间位置直到下一次失效（表现为"投影没跟上物体"）。
+ * 这里补一个尾沿定时器：每次拖动都重置，停止后 120ms 保证落地最终状态。
+ */
+function scheduleTrailingShadowRefresh(): void {
+  if (trailingShadowDirtyTimer !== null) clearTimeout(trailingShadowDirtyTimer)
+  trailingShadowDirtyTimer = setTimeout(() => {
+    trailingShadowDirtyTimer = null
+    markShadowsDirty()
+  }, SHADOW_DIRTY_THROTTLE_MS)
+}
+
 function handleTransformObjectChange() {
   if (!dragAnchor || !dragStartPosition) return
   const delta = dragAnchor.position.clone().sub(dragStartPosition)
@@ -886,6 +956,7 @@ function handleTransformObjectChange() {
     lastShadowDirtyTime = now
     markShadowsDirty()
   }
+  scheduleTrailingShadowRefresh()
 }
 
 function handleTransformDraggingChanged(event: { value?: unknown }) {
@@ -895,7 +966,12 @@ function handleTransformDraggingChanged(event: { value?: unknown }) {
 function handleTransformMouseUp() {
   if (!dragAnchor || !dragStartPosition || !dragComponentId || !sceneStore.document) return
   const delta = dragAnchor.position.clone().sub(dragStartPosition)
-  if (delta.lengthSq() < 1e-10) return
+  if (delta.lengthSq() < 1e-10) {
+    // 零净位移（拖出去又拖回原位）：不会产生 patch，也就不会走 updateScene → markShadowsDirty，
+    // 而中间过程的阴影可能已经按中间位置渲染过，所以这里必须补一次刷新。
+    markShadowsDirty()
+    return
+  }
   const component = sceneStore.document.blueprint.geometry.components
     ?.find(item => item.id === dragComponentId)
   if (!component) return
@@ -921,7 +997,8 @@ function cycleEnvironmentPreset() {
   const nextIndex = (ENVIRONMENT_ORDER.indexOf(environmentPresetId.value) + 1) % ENVIRONMENT_ORDER.length
   environmentPresetId.value = ENVIRONMENT_ORDER[nextIndex]
   rebuildBuiltInEnvironment()
-  applyTimePreset()
+  // 环境档切换是离散动作：地面色/雾色/太阳方位角都变了，必须立即重建环境贴图。
+  applyTimePreset(true)
 }
 
 function environmentColor(kind: 'groundColor' | 'fogColor') {
@@ -1097,23 +1174,29 @@ function rebuildBuiltInEnvironment() {
 
 function cycleTimeOfDay() {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
-  timeOfDay.value = TIME_ORDER[nextIndex]
+  const next = TIME_ORDER[nextIndex]
+  // 只写世界环境状态：订阅回调里的 syncTimePresetFromWorldEnvironment() 会检测到时段变化，
+  // 并把这次变更当作【离散切换】处理（force = true），环境贴图随即立即重建。
+  // 这里不要抢先改 timeOfDay.value —— 否则 sync 会认为"没变化"，退化成 120ms 的节流路径。
   updateWorldEnvironmentState({
-    timeOfDay: timeOfDay.value === 'day' ? 12 : timeOfDay.value === 'sunset' ? 18 : 0,
+    timeOfDay: next === 'day' ? 12 : next === 'sunset' ? 18 : 0,
   })
 }
 
-function syncTimePresetFromWorldEnvironment(): void {
+/** 依据世界环境的 timeOfDay 同步时段预设；返回是否发生了时段切换（离散切换需强制重建环境贴图）。 */
+function syncTimePresetFromWorldEnvironment(): boolean {
   const hour = getWorldEnvironmentState().timeOfDay
   const next: TimeOfDay = hour < 6 || hour >= 21
     ? 'night'
     : hour >= 16
       ? 'sunset'
       : 'day'
-  if (timeOfDay.value !== next) timeOfDay.value = next
+  if (timeOfDay.value === next) return false
+  timeOfDay.value = next
+  return true
 }
 
-function applyTimePreset() {
+function applyTimePreset(forceEnvironment = false) {
   if (!renderer || !scene || !sky || !hemisphereLight || !directionalLight) return
   const preset = TIME_PRESETS[timeOfDay.value]
   const environmentPreset = ENVIRONMENT_PRESETS[environmentPresetId.value]
@@ -1131,12 +1214,20 @@ function applyTimePreset() {
     THREE.MathUtils.degToRad(preset.sunPhi),
     THREE.MathUtils.degToRad(preset.sunTheta + environmentPreset.sunAzimuthOffset),
   )
+  // 主光方向：夜晚 sunPhi = 108° 使太阳落到地平线之下，此时主光取月亮方向（= −sunDirection），
+  // 与 moonBody 一致；否则主光会被放到地面之下面朝上打光，整晚没有有效方向光。
+  // 天空 uniform、太阳/月亮实体、环境贴图太阳亮点继续用 sunDirection，不受影响。
+  keyLightDirection.copy(sunDirection)
+  if (timeOfDay.value === 'night') keyLightDirection.negate()
+
   sky.visible = preset.skyVisible
   syncSkyPreset(sky, preset, atmosphere)
 
   scene.background = new THREE.Color(preset.background)
     .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
-  rebuildEnvironment(preset, atmosphere)
+  // 环境贴图（PMREM）重建很贵：一遍立方图 6 面渲染 + 卷积 + 纹理创建/销毁。
+  // 天气滑杆是连续 @input，一个拖动动作会打出上百个事件 ⇒ 必须去重 + 节流。
+  scheduleEnvironmentRebuild(preset, atmosphere, forceEnvironment)
   renderer.toneMappingExposure = preset.exposure
     * environmentPreset.exposureScale
     * exposureScale
@@ -1145,6 +1236,7 @@ function applyTimePreset() {
   hemisphereLight.color.setHex(preset.hemisphereSkyColor)
     .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength * 0.38)
   hemisphereLight.groundColor.setHex(preset.hemisphereGroundColor)
+    .lerp(new THREE.Color(atmosphere.groundTint), atmosphere.tintStrength * 0.38)
   hemisphereLight.intensity = preset.hemisphereIntensity
     * environmentPreset.ambientLightScale
     * ambientLightScale
@@ -1162,13 +1254,24 @@ function applyTimePreset() {
   }
   if (shadowGround) {
     const timeShadowScale = timeOfDay.value === 'night' ? 0.36 : timeOfDay.value === 'sunset' ? 0.88 : 1
+    // 贴花是半透明暗色覆盖层，颜色也要对齐当前环境的地面色相，
+    // 否则沙漠（色相偏差 118°）、秋林（103°）这种暖色地面上会出现"冷绿黑"的投影。
+    // 系数取线性空间等亮度比：原先 0x26352d 在极简地面 0x747b73 上的亮度比 ≈ 0.162，
+    // 换成"地面色 × 0.162"后极简档观感不变，其余环境自动跟随地面色相。
+    shadowGround.material.color
+      .setHex(environmentPreset.groundColor)
+      .multiplyScalar(SHADOW_DECAL_LUMA_RATIO)
+      .lerp(
+        new THREE.Color(atmosphere.groundTint).multiplyScalar(SHADOW_DECAL_LUMA_RATIO),
+        atmosphere.tintStrength * 0.5,
+      )
     shadowGround.material.opacity = environmentPreset.shadowOpacity
       * timeShadowScale
       * shadowOpacityScale
     shadowGround.material.needsUpdate = true
   }
 
-  updateLightingToBounds(lightingCenter, Math.max(sceneBoundsSize.x, sceneBoundsSize.y, sceneBoundsSize.z))
+  updateLightingToBounds(lightingCenter, sceneBoundsSize)
   applyViewMode()
   markNeedsRender()
 }
@@ -1191,6 +1294,71 @@ function syncSkyPreset(
   )
   uniforms.mieDirectionalG.value = Math.min(0.96, preset.mieDirectionalG + atmosphere.fog * 0.04)
   uniforms.sunPosition.value.copy(sunDirection)
+}
+
+/**
+ * 影响环境贴图（PMREM）的输入签名。所有会改变天空观感的量都必须在里面，
+ * 否则会出现"改了天气但环境贴图没跟上"。
+ */
+function environmentSignature(preset: TimePreset, atmosphere: WorldAtmosphereAppearance): string {
+  const q = (value: number) => Math.round(value * 32) / 32
+  return [
+    preset.label,
+    q(atmosphere.cloud),
+    q(atmosphere.rain),
+    q(atmosphere.snow),
+    q(atmosphere.dust),
+    q(atmosphere.fog),
+    q(atmosphere.tintStrength),
+    atmosphere.backgroundTint,
+    timeOfDay.value,
+  ].join('|')
+}
+
+/**
+ * 环境贴图重建的调度入口。
+ *
+ * 为什么需要：`rebuildEnvironment()` 里的 `pmremGenerator.fromScene()` 是一遍立方图 6 面渲染
+ * + PMREM 卷积 + 新纹理创建 + 旧纹理销毁；而天气面板的 7 条 `el-slider` 走的是连续 `@input`
+ * → `updateWorldEnvironmentState` → `subscribeWorldEnvironment` → `applyTimePreset()`，
+ * 一次拖动就能打出上百个事件。实测 60 个事件会触发 59 次 fromScene()。
+ *
+ * 策略：签名去重（量化到 1/32，肉眼不可辨）+ 前后沿节流。
+ *   - 前 120ms 内第一次变化立即重建 ⇒ 点选天气预设、时段切换这类离散操作无延迟感；
+ *   - 其后合并到 120ms 窗口末尾 ⇒ 拖动期间最多约 8 次/秒，且停止后一定会落地最终状态。
+ * 离散切换（时段/环境档/画质档/WILD profile）应传 force = true 绕过去重。
+ */
+function scheduleEnvironmentRebuild(
+  preset: TimePreset,
+  atmosphere: WorldAtmosphereAppearance,
+  force: boolean,
+): void {
+  const signature = environmentSignature(preset, atmosphere)
+  if (!force && signature === lastEnvironmentSignature && pendingEnvironmentRebuild === null) return
+  pendingEnvironmentRebuild = { preset, atmosphere }
+  const elapsed = performance.now() - lastEnvironmentRebuildTime
+  if (force || elapsed >= ENVIRONMENT_REBUILD_THROTTLE_MS) {
+    flushEnvironmentRebuild()
+    return
+  }
+  if (environmentRebuildTimer === null) {
+    environmentRebuildTimer = setTimeout(flushEnvironmentRebuild, ENVIRONMENT_REBUILD_THROTTLE_MS - elapsed)
+  }
+}
+
+function flushEnvironmentRebuild(): void {
+  if (environmentRebuildTimer !== null) {
+    clearTimeout(environmentRebuildTimer)
+    environmentRebuildTimer = null
+  }
+  const pending = pendingEnvironmentRebuild
+  pendingEnvironmentRebuild = null
+  if (!pending) return
+  // 签名与时间戳都按"落地时"的参数记，避免把被合并掉的中间态当成已应用状态。
+  lastEnvironmentRebuildTime = performance.now()
+  lastEnvironmentSignature = environmentSignature(pending.preset, pending.atmosphere)
+  rebuildEnvironment(pending.preset, pending.atmosphere)
+  markNeedsRender()
 }
 
 function rebuildEnvironment(
@@ -1424,25 +1592,71 @@ function cycleCameraPreset() {
   if (hasSceneBounds) frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
 }
 
-function updateLightingToBounds(center: THREE.Vector3, maxDim: number) {
+/**
+ * 关键光高度角下限（度）—— 仅作【数值护栏】，防止太阳贴地平线时 far 爆炸（1/tan → ∞）。
+ * 预设中最低是黄昏 6°，正常情况下不会触发；刻意不改动光方向本身，
+ * 这样"可见的太阳位置"与"主光方向"始终一致（否则落影会与天空里的太阳对不上）。
+ */
+const SHADOW_MIN_ELEVATION_DEG = 5
+/** normalBias 折算成【纹素数】表达，这样它与 mapSize / extent 自动保持自洽。 */
+const SHADOW_NORMAL_BIAS_TEXELS = 1.5
+/** 阴影深度 bias 的目标世界空间偏移量；实际写入前会按 (far − near) 换算。 */
+const SHADOW_BIAS_WORLD = 0.01
+
+function updateLightingToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   if (!directionalLight) return
   lightingCenter.copy(center)
-  // 阴影相机只覆盖模型附近，提升同一张 2048 阴影图的有效像素密度。
+  const maxDim = Math.max(size.x, size.y, size.z)
+  // 场景尺度参照（内置环境 / 日月 / 天气层 / 雾）仍按模型尺寸，不随太阳角度变化。
   lightingExtent = Math.max(maxDim * 0.68, 4)
-  const lightDistance = lightingExtent * 2.5
 
-  directionalLight.position.copy(center).addScaledVector(sunDirection, lightDistance)
+  // ── 阴影正交框：必须同时罩住【投影体】与【落影区】 ──
+  // 片元一旦落在框外，GLSL 的 inFrustum 为 false ⇒ 直接返回 shadow = 1（无阴影），
+  // 表现为投影边缘一条笔直的裁切线。
+  // 关键点：正交框与 far 都必须按【落影行程】放大 —— 黄昏 6° 时 10.95m 高的建筑投影要走
+  // 104m，原先固定 far = lightDistance + extent×2 ≈ 55 会把长影在中途硬切。
+  const elevation = Math.max(
+    THREE.MathUtils.degToRad(SHADOW_MIN_ELEVATION_DEG),
+    Math.asin(THREE.MathUtils.clamp(keyLightDirection.y, -1, 1)),
+  )
+  const sinElevation = Math.sin(elevation)
+  const cosElevation = Math.cos(elevation)
+  const horizontalRadius = 0.5 * Math.hypot(size.x, size.z)
+  const halfHeight = Math.max(0, size.y) * 0.5
+  // 正交框 U 轴水平、V 轴在太阳所在竖直面内，所以两个方向的上界分别是：
+  //   U ≤ 足迹半对角线
+  //   V ≤ 足迹半对角线 × sin(高度角) + 半高 × cos(高度角)
+  // （与全量蓝图复算一致：tiantan 白天需 U 11.31 / V 13.44。）
+  shadowExtent = Math.max(horizontalRadius, horizontalRadius * sinElevation + halfHeight * cosElevation) + 1
+  // 落影行程 = 建筑高度 / tan(高度角)：6° 时约为高度的 9.5 倍。
+  const shadowTravel = (halfHeight * 2) / Math.tan(elevation)
+  const halfDiagonal = Math.hypot(horizontalRadius, halfHeight)
+  const lightDistance = shadowExtent * 2.5
+
+  directionalLight.position.copy(center).addScaledVector(keyLightDirection, lightDistance)
   directionalLight.target.position.copy(center)
   directionalLight.target.updateMatrixWorld()
   const shadowCamera = directionalLight.shadow.camera
-  shadowCamera.left = -lightingExtent
-  shadowCamera.right = lightingExtent
-  shadowCamera.top = lightingExtent
-  shadowCamera.bottom = -lightingExtent
-  shadowCamera.near = 0.1
-  shadowCamera.far = lightDistance + lightingExtent * 2
+  shadowCamera.left = -shadowExtent
+  shadowCamera.right = shadowExtent
+  shadowCamera.top = shadowExtent
+  shadowCamera.bottom = -shadowExtent
+  // near 按投影体的最近深度收紧（原来恒为 0.1，配 far≈130 时深度精度被白白浪费）。
+  shadowCamera.near = Math.max(0.1, lightDistance - halfDiagonal * 2)
+  // far 必须覆盖【落影行程】，否则低角度下长影会在中途被硬切。
+  shadowCamera.far = lightDistance + shadowTravel + horizontalRadius + shadowExtent + 2
   shadowCamera.updateProjectionMatrix()
-  directionalLight.shadow.normalBias = Math.max(0.008, lightingExtent * 0.0015)
+
+  // normalBias 按纹素表达。原来写的是 `lightingExtent * 0.0015`，只在 mapSize = 2048 时
+  // 恰好等于 1.5 纹素，换个档位就错位：1024 档只有 0.77 纹素（欠 bias → 自阴影痤疮），
+  // 4096 档达 3.07 纹素（过 bias → 接触阴影变淡、薄构件漏影）。
+  const shadowTexel = (2 * shadowExtent) / Math.max(1, directionalLight.shadow.mapSize.width)
+  directionalLight.shadow.normalBias = Math.max(0.001, SHADOW_NORMAL_BIAS_TEXELS * shadowTexel)
+  // bias 是【归一化深度】偏移，等效世界偏移 = |bias| × (far − near)，
+  // 所以固定 -0.0002 在 far 从 55 涨到 200+ 之后等效偏移会翻好几倍（Peter-panning）。
+  // 改为按世界空间目标偏移反推，并夹住上下限避免极端参数。
+  const depthRange = Math.max(1e-3, shadowCamera.far - shadowCamera.near)
+  directionalLight.shadow.bias = THREE.MathUtils.clamp(-SHADOW_BIAS_WORLD / depthRange, -5e-4, -2e-5)
   directionalLight.shadow.needsUpdate = true
   markShadowsDirty()
   updateCelestialBodies(center, lightingExtent)
@@ -1456,7 +1670,7 @@ function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect)
   const verticalDistance = size.y / Math.max(2 * Math.tan(verticalFov / 2), 0.01)
   const horizontalDistance = Math.max(size.x, size.z) / Math.max(2 * Math.tan(horizontalFov / 2), 0.01)
-  const distance = Math.max(verticalDistance, horizontalDistance, 2) * 1.55
+  const distance = Math.max(verticalDistance, horizontalDistance, 2) * 1.50  // 从 1.55 降低到 1.50，更接近建筑
   const preset = CAMERA_PRESETS[cameraPresetId.value]
   const viewDirection = new THREE.Vector3(...preset.direction).normalize()
   const target = center.clone()
@@ -1482,12 +1696,82 @@ function markShadowsDirty() {
   if (!renderer || !directionalLight) return
   renderer.shadowMap.needsUpdate = true
   directionalLight.shadow.needsUpdate = true
+  // shadowMap.needsUpdate 只在【下一次 renderer.render()】里被消费并清零（autoUpdate=false）。
+  // 只置位不请求渲染会有两种失效：
+  //   1) 此刻队列里没有任何待渲染帧（相机静止、无动画）→ 标记永远悬空，阴影不刷新；
+  //   2) 已有帧在排队 → 该帧可能在本 tick 的几何/变换写入落地之前就被执行并清零标记，
+  //      于是阴影按旧姿态烘焙，之后也不再补算。
+  // 这里显式请求一次渲染：requestAnimationFrame 回调在所有同步写与微任务（Vue watcher）之后执行，
+  // 保证重算阴影时场景图已是最终状态。
+  markNeedsRender()
+}
+
+/**
+ * 场景 MSAA：几何走的是 EffectComposer，主光栅化目标不是 canvas 默认帧缓冲，
+ * 因此 WebGLRenderer 的 antialias 选项对合成链路完全无效（开与不开关）。
+ * 真正生效的做法是给合成的离屏 RT 开多重采样。
+ *
+ * 注意 writeBuffer / readBuffer 会在 RT1、RT2 之间来回换：
+ * 本链路的 RenderPass(no-swap) → SSAOPass(swap) → Bloom(no-swap) → OutputPass(swap) → FXAA(swap)
+ * 每帧净交换 3 次（奇数），所以 RenderPass 落点会逐帧在 RT1/RT2 间交替 —— 两个 RT 都要开。
+ * 改 samples 后必须 dispose()，否则已创建的帧缓冲不会按新采样数重建。
+ */
+function applySceneMsaa(samples: number) {
+  if (!renderer || !composer) return
+  // WebGL1 不支持 RT 多重采样，保持 0 并交由 FXAA 兜底。
+  const next = renderer.capabilities.isWebGL2 ? samples : 0
+  if (next === appliedMsaaSamples) return
+  for (const target of [composer.renderTarget1, composer.renderTarget2]) {
+    target.samples = next
+    target.dispose()
+  }
+  appliedMsaaSamples = next
+  markNeedsRender()
+}
+
+/** SSAO 内部 RT 的分辨率比例。0.5 ⇒ normal/ssao/blur 三个 RT 的面积降到 1/4。 */
+const SSAO_RESOLUTION_SCALE = 0.5
+
+/**
+ * 让 SSAO 真正跑在半分辨率上。
+ *
+ * 两个坑：
+ *   1) `SSAOPass(scene, camera, width, height)` 的 width/height 是【目标像素尺寸】而非比例，
+ *      默认 512；传 0.5 只会把初始 RT 建成 1×1，语义上并不是"半分辨率"。
+ *   2) `SSAOPass.setSize()`（three r160 `examples/jsm/postprocessing/SSAOPass.js`）会把
+ *      ssao/normal/blur 三个 RT 直接设为传入尺寸，内部【没有任何缩放系数】；
+ *      而 `EffectComposer.setSize()` 会按 `width * pixelRatio` 逐个 pass 下发
+ *      ⇒ 构造函数里的 0.5 会被全量覆盖，SSAO 实际一直跑全分辨率。
+ * 所以只能在入口处包装 setSize —— 好在它内部会一并同步 resolution uniform 与投影矩阵 uniform，
+ * 缩放入参即自洽。
+ *
+ * 为什么缩小是安全的：r160 的 `SSAOPass.OUTPUT.Default` 以合成器的 `readBuffer.texture`
+ * （全分辨率）作为底图，只用 blurRenderTarget 走 CustomBlending 叠加 AO 项，
+ * 因此缩小内部 RT 不会降低底图清晰度，只会让 AO 项被线性上采样 —— 这本就是 AO 的常规做法。
+ */
+function applySsaoScale(pass: SSAOPass): void {
+  const baseSetSize = pass.setSize.bind(pass)
+  pass.setSize = (width: number, height: number) =>
+    baseSetSize(
+      Math.max(1, Math.round(width * SSAO_RESOLUTION_SCALE)),
+      Math.max(1, Math.round(height * SSAO_RESOLUTION_SCALE)),
+    )
 }
 
 function cleanup() {
   renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
   animationFrameId = null
+  if (trailingShadowDirtyTimer !== null) {
+    clearTimeout(trailingShadowDirtyTimer)
+    trailingShadowDirtyTimer = null
+  }
+  if (environmentRebuildTimer !== null) {
+    clearTimeout(environmentRebuildTimer)
+    environmentRebuildTimer = null
+  }
+  pendingEnvironmentRebuild = null
+  lastEnvironmentSignature = ''
   resizeObserver?.disconnect()
   resizeObserver = null
   window.removeEventListener('resize', handleResize)

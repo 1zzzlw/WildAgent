@@ -120,21 +120,6 @@ export interface ExecutionFeedbackRequest extends AgentProtocolEnvelope {
   feedback: string
 }
 
-export interface ExecutionPlanStep {
-  id: string
-  type: string
-  node: string
-  title: string
-  description: string
-  depends_on: string[]
-  acceptance: string[]
-  permission: 'read' | 'mutate'
-  requires_user_review: boolean
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
-  detail?: string
-  result_ref?: string | null
-}
-
 export interface ExecutionPlanTask {
   id: string
   title: string
@@ -162,7 +147,40 @@ export interface ExecutionPlan {
   feedback: string
   change_summary: string[]
   dynamic_tasks: ExecutionPlanTask[]
-  steps: ExecutionPlanStep[]
+}
+
+export interface StructuredRequirement {
+  id: string
+  source_task_id: string
+  source_acceptance_id: string
+  description: string
+  phase: string
+  kind: string
+  target: string
+  operator: string
+  expected: unknown
+  consumers: string[]
+  validator: string
+  severity: 'error' | 'warning'
+  support_status: 'supported' | 'needs_review' | 'unsupported'
+}
+
+export interface AcceptanceResult {
+  acceptance_id: string
+  task_id: string
+  requirement_id: string
+  status: 'pending' | 'passed' | 'failed' | 'not_checked' | 'not_applicable' | 'unsupported'
+  expected: unknown
+  observed: unknown
+  validator: string
+  evidence_refs: string[]
+  message: string
+}
+
+export interface ExecutionProgressItem {
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
+  result_ref?: string | null
+  detail: string
 }
 
 export interface ExecutionPlanReadyResponse extends AgentProtocolEnvelope {
@@ -170,6 +188,9 @@ export interface ExecutionPlanReadyResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id: string
   plan: ExecutionPlan
+  structured_requirements?: StructuredRequirement[]
+  acceptance_results?: Record<string, AcceptanceResult>
+  execution_progress?: Record<string, ExecutionProgressItem>
 }
 
 export interface ExecutionPlanReviewRequiredResponse extends AgentProtocolEnvelope {
@@ -178,6 +199,9 @@ export interface ExecutionPlanReviewRequiredResponse extends AgentProtocolEnvelo
   session_id: string
   plan: ExecutionPlan
   version: number
+  structured_requirements?: StructuredRequirement[]
+  acceptance_results?: Record<string, AcceptanceResult>
+  execution_progress?: Record<string, ExecutionProgressItem>
 }
 
 export interface DesignReviewRequiredResponse extends AgentProtocolEnvelope {
@@ -336,6 +360,9 @@ export interface AgentTurn {
   thinking_notice?: string
   plan_mode?: boolean
   execution_plan?: ExecutionPlan
+  structured_requirements?: StructuredRequirement[]
+  acceptance_results?: Record<string, AcceptanceResult>
+  execution_progress?: Record<string, ExecutionProgressItem>
   execution_plan_review_status?: 'pending' | 'submitting' | 'approved'
   design_document?: DesignDocument
   resolved_design?: ResolvedDesign

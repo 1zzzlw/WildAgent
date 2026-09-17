@@ -20,7 +20,7 @@ from app.agent.graph import (
 import app.agent.routing as intent_classifier
 import app.agent.planning.workflow as execution_plan_node
 from app.agent.routing import (
-    classify_intent,
+    classify_intent_decision,
     classify_keywords,
     fast_path_intent,
     normalize_intent_decision,
@@ -45,6 +45,21 @@ def test_minimal_complexity_skips_component_dispatch():
     assert result == "merge"
 
 
+def test_approved_component_requirement_overrides_minimal_dispatch_skip():
+    result = _dispatch_components({
+        "architecture_plan": {"complexity": {"level": "minimal"}},
+        "structured_requirements": [{
+            "kind": "component_all",
+            "support_status": "supported",
+            "expected": {"types": ["balcony"], "minimum": 1},
+        }],
+        "suggested_components": [],
+        "user_message": "生成一个极简建筑",
+    })
+
+    assert "balcony_gen" in [send.node for send in result]
+
+
 def test_empty_component_suggestions_dispatch_base_components():
     result = _dispatch_components({
         "suggested_components": [],
@@ -65,7 +80,12 @@ def test_generate_routes_to_architecture_plan_first():
 def test_plan_mode_reviews_dynamic_plan_before_architecture():
     assert _classifier_dispatch({"intent": "generate", "plan_mode": True}) == "planning_research"
     assert _planning_research_dispatch({"intent": "generate"}) == "planner"
-    assert _after_architecture({"plan_mode": True}) == "plan_executor"
+    assert execution_plan_node.route_execution_plan_review({
+        "intent": "generate",
+        "execution_plan_review_status": "approved",
+    }) == "architecture"
+    assert _after_architecture({"plan_mode": True}) == "material_plan"
+    assert _after_architecture({"plan_feedback_pending": True}) == "planner"
 
 
 def test_material_plan_waits_for_concrete_design_review():
@@ -194,7 +214,7 @@ def test_classifier_uses_llm_for_generation_meta_question(monkeypatch):
 
     monkeypatch.setattr(intent_classifier, "invoke_llm", fake_invoke_llm)
 
-    result = _run_immediate_coroutine(classify_intent(
+    result = _run_immediate_coroutine(classify_intent_decision(
         "你生成一个建筑的实现思路是什么",
         has_current_scene=False,
         llm=object(),
@@ -205,7 +225,7 @@ def test_classifier_uses_llm_for_generation_meta_question(monkeypatch):
         workflow_state="scene_ready",
     ))
 
-    assert result == "chat"
+    assert result.intent == "chat"
     assert len(calls) == 1
     classifier_input = calls[0][1][1]["content"]
     assert "刚才生成了一座别墅" in classifier_input
@@ -221,13 +241,13 @@ def test_classifier_still_uses_llm_for_clear_generation_request(monkeypatch):
 
     monkeypatch.setattr(intent_classifier, "invoke_llm", fake_invoke_llm)
 
-    result = _run_immediate_coroutine(classify_intent(
+    result = _run_immediate_coroutine(classify_intent_decision(
         "生成一个玻璃幕墙商业综合体",
         has_current_scene=False,
         llm=object(),
     ))
 
-    assert result == "generate"
+    assert result.intent == "generate"
     assert len(calls) == 1
 
 
@@ -237,13 +257,13 @@ def test_classifier_failure_falls_back_without_generating_meta_question(monkeypa
 
     monkeypatch.setattr(intent_classifier, "invoke_llm", failing_invoke_llm)
 
-    result = _run_immediate_coroutine(classify_intent(
+    result = _run_immediate_coroutine(classify_intent_decision(
         "你生成一个建筑的实现思路是什么",
         has_current_scene=False,
         llm=object(),
     ))
 
-    assert result == "chat"
+    assert result.intent == "chat"
 
 
 def test_component_suggestions_filter_unknown_and_negated_types():
@@ -317,4 +337,4 @@ def test_normal_merge_enters_final_validation():
 def test_recursion_limit_scales_with_graph_size_and_retry_budget():
     assert generation_recursion_limit(0, 0) == 48
     assert generation_recursion_limit(11, 3) == 50
-    assert generation_recursion_limit(0, 0, plan_mode=True) == 88
+    assert generation_recursion_limit(0, 0, plan_mode=True) == 68

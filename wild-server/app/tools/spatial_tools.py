@@ -15,17 +15,23 @@ Spatial Validation Tools —— 空间校验 + 自动修正工具
   4. validate_opening_coords           — 门窗沿墙距离格式检查
   5. validate_wall_junctions           — 墙体转角端点对齐检查
   6. validate_stair_alignment          — 楼梯端点高度对齐检查
-  7. validate_roof_coverage            — 屋顶 span/depth 覆盖范围检查
-  8. fix_opening_coords                — 自动修正疑似世界坐标的门窗 from[0]
+  7. validate_roof_coverage            — 屋顶 span/depth 覆盖范围检查（roof → wall 单向）
+  7e. validate_roof_top_coverage       — 反向检查：每面墙的顶部是否有屋顶/楼板/上层墙盖住
+  8. validate_stacked_member_containment — 贯通构件（核心筒/电梯井/通高柱）收进逐层外墙轮廓
+  9. fix_opening_coords                — 自动修正疑似世界坐标的门窗 from[0]
      → 修正后重跑 validate_opening_coords（由流水线调度，非工具自身）
-  9. validate_collision                — 构件碰撞/穿插/悬空/重叠检测
+ 10. validate_collision                — 构件碰撞/穿插/悬空/重叠检测
 
 扩展方式：新增 def validate_xxx(bp: dict) -> str 并在 agent_service.PIPELINE 中注册。
 """
 import math
 from langchain.tools import tool
 
-from app.agent.generation.spatial_geometry import point_in_regions, shared_stair_layout
+from app.agent.generation.spatial_geometry import (
+    curve_points,
+    point_in_regions,
+    shared_stair_layout,
+)
 
 
 # 门窗洞口必须与父墙中心面保持接近；超过该值通常意味着 LLM 把世界 X/Z
@@ -824,6 +830,111 @@ def get_roof_support_bounds(
     }
 
 
+def _roof_base_y(roof: dict) -> float | None:
+    """返回屋顶 position[1]（屋面/檐口基底标高）；缺失或非法时返回 None。"""
+    position = roof.get("position")
+    if (
+        isinstance(position, list) and len(position) >= 3
+        and isinstance(position[1], (int, float))
+        and not isinstance(position[1], bool)
+    ):
+        return float(position[1])
+    return None
+
+
+def _rect_distance(x: float, z: float, rect: tuple[float, float, float, float]) -> float:
+    """点到 XZ 矩形 (x0, x1, z0, z1) 的距离（矩形内为 0）。"""
+    x0, x1, z0, z1 = rect
+    dx = max(x0 - x, 0.0, x - x1)
+    dz = max(z0 - z, 0.0, z - z1)
+    return math.hypot(dx, dz)
+
+
+def _wall_distance(x: float, z: float, seg: tuple[float, float, float, float], thickness: float) -> float:
+    """点到轴对齐墙段中心线的距离，扣除半墙厚。"""
+    x0, z0, x1, z1 = seg
+    if abs(x1 - x0) >= abs(z1 - z0):
+        wz = (z0 + z1) / 2
+        cx = min(max(x, min(x0, x1)), max(x0, x1))
+        return max(math.hypot(x - cx, z - wz) - thickness / 2, 0.0)
+    wx = (x0 + x1) / 2
+    cz = min(max(z, min(z0, z1)), max(z0, z1))
+    return max(math.hypot(x - wx, z - cz) - thickness / 2, 0.0)
+
+
+def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | None:
+    """返回屋顶 footprint 中“离最近承托(墙/楼板)超过 1m”的深空区 (占比, 面积㎡)。
+
+    正常出檐 ≤1m 不会被算作空腔；L/U 形建筑用单块屋顶盖住内院/天井时，
+    内院中心到最近墙/板的距离远超 1m，从而被识别。采样步长随屋顶尺度自缩放。
+    """
+    span = roof.get("span")
+    depth = roof.get("depth")
+    position = roof.get("position")
+    if not (
+        isinstance(span, (int, float)) and span > 0
+        and isinstance(depth, (int, float)) and depth > 0
+        and isinstance(position, list) and len(position) >= 3
+        and isinstance(position[0], (int, float)) and isinstance(position[2], (int, float))
+    ):
+        return None
+    cx, cz = float(position[0]), float(position[2])
+    x0, x1 = cx - span / 2, cx + span / 2
+    z0, z1 = cz - depth / 2, cz + depth / 2
+
+    floor_rects: list[tuple[float, float, float, float]] = []
+    wall_segs: list[tuple[float, float, float, float, float]] = []
+    for element in elements:
+        start = element.get("from")
+        end = element.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        element_type = element.get("type")
+        if element_type == "floor":
+            floor_rects.append((
+                min(float(start[0]), float(end[0])), max(float(start[0]), float(end[0])),
+                min(float(start[2]), float(end[2])), max(float(start[2]), float(end[2])),
+            ))
+        elif element_type == "wall":
+            try:
+                thickness = float(element.get("thickness", 0.24)) or 0.24
+            except (TypeError, ValueError):
+                thickness = 0.24
+            wall_segs.append((
+                float(start[0]), float(start[2]), float(end[0]), float(end[2]), thickness,
+            ))
+    if not floor_rects:
+        # 没有楼板（只有围合墙）时，墙体只是 1D 线段，无法填充建筑内部，
+        # 此时无法区分"室内"与"内院"，跳过该检查避免误报。
+        return None
+
+    step = max(0.4, min(span, depth) / 50.0)
+    max_overhang = 1.0
+    deep = 0
+    total = 0
+    x = x0 + step / 2
+    while x < x1:
+        z = z0 + step / 2
+        while z < z1:
+            total += 1
+            distance = math.inf
+            for rect in floor_rects:
+                d = _rect_distance(x, z, rect)
+                if d < distance:
+                    distance = d
+            for seg in wall_segs:
+                d = _wall_distance(x, z, seg[:4], seg[4])
+                if d < distance:
+                    distance = d
+            if distance > max_overhang:
+                deep += 1
+            z += step
+        x += step
+    if total == 0:
+        return None
+    return deep / total, deep * step * step
+
+
 @tool
 def validate_roof_coverage(blueprint: dict) -> str:
     """
@@ -889,6 +1000,29 @@ def validate_roof_coverage(blueprint: dict) -> str:
                 f"屋顶悬空过多"
             )
 
+        # 无承托深空区：屋顶下面离最近墙/楼板 >1m 的占比（L/U 形内院是典型）。
+        deep_void = _roof_deep_void(r, elements)
+        if deep_void is not None:
+            ratio, area = deep_void
+            if area > 8.0:
+                issues.append(
+                    f"❌ [{rid}] 屋顶有 {ratio:.0%} 面积（约 {area:.1f}㎡）下方没有任何墙/楼板承托，"
+                    f"超出正常出檐范围。L/U 形等多体量应为每个体量各设一块屋顶，"
+                    f"不要用单块屋顶盖住内院/天井。"
+                )
+
+        # 屋顶底标高必须落在承托墙顶上：position[1] 高于墙顶会让整块屋顶悬空。
+        roof_y = _roof_base_y(r)
+        support_y = bounds.get("support_y")
+        if roof_y is not None and isinstance(support_y, (int, float)):
+            gap = float(roof_y) - float(support_y)
+            if gap > 0.15:
+                issues.append(
+                    f"❌ [{rid}] 屋顶底标高 position[1]={roof_y:.2f} 高于承托墙顶 {support_y:.2f}m，"
+                    f"悬空 {gap:.2f}m。position[1] 必须等于其承托墙的墙顶标高（wall.to[1]），"
+                    f"不要额外加上楼板厚度或层高。"
+                )
+
     if not issues:
         bounds = last_bounds or get_roof_support_bounds(walls)
         return (
@@ -896,6 +1030,365 @@ def validate_roof_coverage(blueprint: dict) -> str:
             f"（承托墙宽度={bounds['span']:.1f}, 进深={bounds['depth']:.1f}）"
         )
     return "\n".join(issues)
+
+
+# ============================================================
+# P1：屋顶覆盖的反向检查（墙顶 → 屋顶）
+# ============================================================
+
+# 判定"其上方存在构件"的竖向容差（米）。墙顶略高于屋面基底（重檐 / 穿斗结构里
+# 墙与柱穿过下层檐口继续上到上层檐）不算裸露，故下界留 0.05m 余量。
+#
+# 上界刻意不设：只要屋面基底落在墙顶之上，该墙顶就是"被盖住"的；究竟高多少米
+# 合不合理由 `validate_roof_coverage` 负责（它专报"position[1] 高于承托墙顶 →
+# 悬空"）。本条只回答"上面有没有东西"，不重复回答"离得合不合理"。
+ABOVE_TOLERANCE = 0.05
+# 沿墙中线采样步长（米）。太粗会漏掉局部裸露，太细会拖慢流水线。
+TOP_COVERAGE_SAMPLE_STEP = 0.5
+# 低于此裸露长度不报（米），避免把浮点误差当成缺口。
+MIN_EXPOSED_LENGTH = 0.1
+
+
+def _is_positive_number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and float(value) > 0
+    )
+
+
+def _wall_centerline_points(wall: dict) -> list[tuple[float, float]]:
+    """返回墙体在 XZ 平面上的折线路径；带 curve 的墙按真实曲率展开。
+
+    `_wall_length` 早就支持 curve，但抽样若仍走 from→to 直线，曲线墙（弧墙、圆墙
+    围合）的 XZ 会退化成**一个点**（如天坛 main_wall 的 from/to 同为 [5.8, _, 0]），
+    采样点全落在错误位置，整圈墙被误报成裸露。
+    """
+    start = wall.get("from", [0, 0, 0])
+    end = wall.get("to", [0, 0, 0])
+    sx, sz = float(start[0]), float(start[2])
+    ex, ez = float(end[0]), float(end[2])
+    curve = wall.get("curve")
+    if curve:
+        points = curve_points([sx, sz], [ex, ez], curve)
+        if len(points) >= 2:
+            return [(float(point[0]), float(point[1])) for point in points]
+    return [(sx, sz), (ex, ez)]
+
+
+def _sample_wall_centerline(
+    wall: dict,
+    step: float = TOP_COVERAGE_SAMPLE_STEP,
+) -> tuple[float, list[tuple[float, float]]]:
+    """沿墙中线按**等弧长**采样，返回 (总长, [(x, z), ...])；退化墙返回 (0.0, [])。
+
+    取样点落在每个等分格的**中心**（`(i + 0.5) / count`），不是端点。端点采样会把
+    "墙端点落在屋顶外 4cm"这类浮点贴边放大成一个格的裸露：7m 长的墙按 0.5m 步长
+    只有 15 个采样点，端点一个不中就报 0.47m 裸露（实测 session_1786700051751）。
+    格中心采样下每个点严格代表 `总长 / count`，估计无偏，4cm 贴边自然落进
+    `MIN_EXPOSED_LENGTH` 之下。
+    """
+    points = _wall_centerline_points(wall)
+    if len(points) < 2:
+        return 0.0, []
+    cumulative = [0.0]
+    for start, end in zip(points, points[1:]):
+        cumulative.append(
+            cumulative[-1] + math.hypot(end[0] - start[0], end[1] - start[1])
+        )
+    total = cumulative[-1]
+    if total <= 1e-6:
+        return 0.0, []
+    count = max(1, int(round(total / step)))
+    samples: list[tuple[float, float]] = []
+    segment = 0
+    for index in range(count):
+        target = total * (index + 0.5) / count
+        while segment + 2 < len(cumulative) and cumulative[segment + 1] < target:
+            segment += 1
+        span = cumulative[segment + 1] - cumulative[segment]
+        ratio = 0.0 if span <= 1e-9 else (target - cumulative[segment]) / span
+        ax, az = points[segment]
+        bx, bz = points[segment + 1]
+        samples.append((ax + (bx - ax) * ratio, az + (bz - az) * ratio))
+    return total, samples
+
+
+def _point_on_wall_path(x: float, z: float, wall: dict, tolerance: float = 0.15) -> bool:
+    """判断 XZ 点是否落在墙体中线上（支持曲线墙的折线路径）。"""
+    points = _wall_centerline_points(wall)
+    for start, end in zip(points, points[1:]):
+        dx = end[0] - start[0]
+        dz = end[1] - start[1]
+        length_sq = dx * dx + dz * dz
+        if length_sq <= 1e-9:
+            continue
+        ratio = min(
+            max(((x - start[0]) * dx + (z - start[1]) * dz) / length_sq, 0.0),
+            1.0,
+        )
+        if math.hypot(x - (start[0] + ratio * dx), z - (start[1] + ratio * dz)) < tolerance:
+            return True
+    return False
+
+
+def _highest_wall_bounds(
+    walls: list[dict],
+) -> tuple[float, float, float, float, float] | None:
+    """复刻前端 `resolver.ts::resolveRoofBoundary` 的承托墙取法。
+
+    取"墙顶最高的一批墙"的 XZ 包围盒与最高墙顶；这批墙少于 3 面时回退到全部墙
+    （兼容开放式雨棚等不闭合结构）。返回 (min_x, max_x, min_z, max_z, max_y)。
+    """
+    valid = [
+        wall for wall in walls
+        if _is_finite_vector3(wall.get("from")) and _is_finite_vector3(wall.get("to"))
+    ]
+    if not valid:
+        return None
+    tops = [(_wall_vertical_range(wall)[1], wall) for wall in valid]
+    highest = max(top for top, _ in tops)
+    support = [wall for top, wall in tops if abs(top - highest) <= 0.05]
+    if len(support) < 3:
+        support = valid
+    xs: list[float] = []
+    zs: list[float] = []
+    for wall in support:
+        start = wall.get("from", [0, 0, 0])
+        end = wall.get("to", [0, 0, 0])
+        xs.extend([float(start[0]), float(end[0])])
+        zs.extend([float(start[2]), float(end[2])])
+    return min(xs), max(xs), min(zs), max(zs), highest
+
+
+def _roof_half_extents(
+    roof: dict,
+    fallback_half_w: float,
+    fallback_half_d: float,
+    expand_to_fallback: bool,
+) -> tuple[float, float]:
+    """屋顶半宽 / 半进深，含重檐屋顶的檐口外扩。
+
+    `chinese_pagoda` 的底层檐口是 `span/2 + eaveOutset`（roof.ts::buildPagoda），
+    只按 span/2 判断覆盖，会把半径 5.8m 的圆墙判成裸露 —— 实际 6.5m 的檐口早已盖住它。
+
+    `expand_to_fallback` 对应前端的 `!hasExplicitBoundary` 分支：position/span/depth
+    三者不全时，前端会把 span/depth 撑到 `承托墙包围盒 + 1.0`。
+    """
+    span = roof.get("span")
+    depth = roof.get("depth")
+    half_w = float(span) / 2 if _is_positive_number(span) else fallback_half_w
+    half_d = float(depth) / 2 if _is_positive_number(depth) else fallback_half_d
+    if expand_to_fallback:
+        half_w = max(half_w, fallback_half_w)
+        half_d = max(half_d, fallback_half_d)
+    outset = roof.get("eaveOutset")
+    if _is_positive_number(outset):
+        half_w += float(outset)
+        half_d += float(outset)
+    return half_w, half_d
+
+
+def _roof_footprint_entries(
+    elements: list[dict],
+    walls: list[dict],
+) -> list[tuple[float, float, float, float, float, str]]:
+    """返回 (min_x, max_x, min_z, max_z, base_y, id)，供 XZ 覆盖判定使用。
+
+    缺少 `position` 的屋顶按前端 `resolver.ts::resolveRoofBoundary` 的约定复原：
+    以承托墙包围盒居中，底标高取最高墙顶。旧实现遇到这种屋顶直接 `continue`，
+    整块屋顶不计入覆盖 —— 于是 bieshu / cabin_v1 这类"只写 span/depth"的正常
+    蓝图被误报成"建筑顶部完全裸露"。
+    """
+    roofs = [el for el in elements if el.get("type") == "roof"]
+    if not roofs:
+        return []
+    support = _highest_wall_bounds(walls)
+    fallback_half_w = fallback_half_d = 0.0
+    if support is not None:
+        min_x, max_x, min_z, max_z, _highest = support
+        fallback_half_w = (max_x - min_x + 1.0) / 2
+        fallback_half_d = (max_z - min_z + 1.0) / 2
+
+    entries: list[tuple[float, float, float, float, float, str]] = []
+    for el in roofs:
+        position = el.get("position")
+        explicit_position = (
+            isinstance(position, list)
+            and len(position) >= 3
+            and all(
+                isinstance(position[index], (int, float))
+                and not isinstance(position[index], bool)
+                for index in range(3)
+            )
+        )
+        has_explicit_boundary = (
+            explicit_position
+            and _is_positive_number(el.get("span"))
+            and _is_positive_number(el.get("depth"))
+        )
+        if explicit_position:
+            if support is None and not has_explicit_boundary:
+                continue
+            center_x, center_z, base_y = (
+                float(position[0]), float(position[2]), float(position[1]),
+            )
+        else:
+            if support is None:
+                continue
+            min_x, max_x, min_z, max_z, highest = support
+            center_x = (min_x + max_x) / 2
+            center_z = (min_z + max_z) / 2
+            base_y = highest
+        half_w, half_d = _roof_half_extents(
+            el,
+            fallback_half_w,
+            fallback_half_d,
+            expand_to_fallback=not has_explicit_boundary,
+        )
+        entries.append((
+            center_x - half_w,
+            center_x + half_w,
+            center_z - half_d,
+            center_z + half_d,
+            base_y,
+            str(el.get("id", "?")),
+        ))
+    return entries
+
+
+def _covered_by_roof(
+    x: float,
+    z: float,
+    wall_top: float,
+    footprints: list[tuple[float, float, float, float, float, str]],
+) -> bool:
+    """该 XZ 点正上方是否存在一块**基底不低于墙顶**的屋顶。"""
+    for min_x, max_x, min_z, max_z, base_y, _rid in footprints:
+        if not (min_x <= x <= max_x and min_z <= z <= max_z):
+            continue
+        if base_y >= wall_top - ABOVE_TOLERANCE:
+            return True
+    return False
+
+
+def _has_slab_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    floor_levels: list[tuple[float, list[list[float]]]],
+) -> bool:
+    for level_y, regions in floor_levels:
+        if level_y < wall_top - ABOVE_TOLERANCE:
+            continue
+        if point_in_regions((x, z), regions):
+            return True
+    return False
+
+
+def _has_wall_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    walls: list[dict],
+    skip_index: int,
+) -> bool:
+    for index, other in enumerate(walls):
+        if index == skip_index:
+            continue
+        bottom, _top = _wall_vertical_range(other)
+        if bottom < wall_top - ABOVE_TOLERANCE:
+            continue
+        if _point_on_wall_path(x, z, other):
+            return True
+    return False
+
+
+@tool
+def validate_roof_top_coverage(blueprint: dict) -> str:
+    """
+    反向检查：每面墙的顶部是否真有东西盖着（屋顶 / 楼板 / 上层墙）。
+
+    为什么需要它：`validate_roof_coverage` 只做 roof → wall **单向**检查，
+    从不问"这些墙上面有没有屋顶"。于是"漏掉一整块体量的屋顶"能通过全部
+    校验器——实测一份 L 形别墅只给主楼生成了屋顶，侧翼整块裸露却 10/10 全绿。
+
+    判据：沿每面墙的中线采样（带 curve 的墙按其真实曲率展开），若某点上方既没有
+    覆盖它的屋顶（屋面基底不低于该墙顶）、也没有楼板、也没有上层墙，则该点裸露。
+    多体量（L 形 / U 形 / 退台）应**每个体量各生成一块屋顶**。
+
+    只检查结构性墙体：阳台栏杆（矮、薄）本来就不该有屋顶，不参与判定。
+
+    严重度：只报 ⚠️，不报 ❌ —— 屋顶缺失属"覆盖不完整"，按项目政策
+    只标记、不阻断交付。
+
+    参数 blueprint: 完整的 Blueprint dict
+    """
+    elements = _get_elements(blueprint)
+    walls = [
+        el for el in elements
+        if el.get("type") == "wall" and _is_structural_wall(el)
+    ]
+    if not walls:
+        return "✅ 没有结构性墙构件，跳过检查。"
+
+    footprints = _roof_footprint_entries(elements, walls)
+    floor_levels = _floor_regions_by_level(elements)
+
+    if not footprints:
+        # 同时有墙和楼板才算"一栋建筑"；纯构件/场地场景（无楼板）不打扰。
+        if floor_levels:
+            return (
+                f"⚠️  有 {len(walls)} 面墙和 {len(floor_levels)} 层楼板，但一块屋顶都没有，"
+                f"建筑顶部完全裸露。请为每个体量补 roof 元素"
+                f"（多体量建筑不要只给主楼一块；若本就是露天院落/露台，"
+                f"请补该层标高的 floor 作为露台面）。"
+            )
+        return "✅ 没有屋顶构件，跳过检查。"
+
+    exposed: list[tuple[str, float, float, bool]] = []
+    highest_top = max(_wall_vertical_range(wall)[1] for wall in walls)
+    for index, wall in enumerate(walls):
+        _bottom, top = _wall_vertical_range(wall)
+        length, samples = _sample_wall_centerline(wall)
+        if length <= 1e-6 or not samples:
+            continue
+        bare = 0
+        for x, z in samples:
+            if _covered_by_roof(x, z, top, footprints):
+                continue
+            if _has_slab_above(x, z, top, floor_levels):
+                continue
+            if _has_wall_above(x, z, top, walls, index):
+                continue
+            bare += 1
+        bare_length = length * bare / len(samples)
+        if bare_length > MIN_EXPOSED_LENGTH:
+            exposed.append((
+                str(wall.get("id", "?")),
+                top,
+                bare_length,
+                abs(top - highest_top) <= ABOVE_TOLERANCE,
+            ))
+
+    if not exposed:
+        return f"✅ 所有 {len(walls)} 面墙的顶部均被屋顶 / 楼板 / 上层墙覆盖。"
+
+    total = sum(item[2] for item in exposed)
+    lines = [
+        f"⚠️  {len(exposed)} 面墙的顶部正上方没有任何构件（屋顶 / 楼板 / 上层墙），"
+        f"共 {total:.1f}m 裸露："
+    ]
+    for wall_id, top, bare_length, is_top_level in sorted(exposed, key=lambda item: -item[2]):
+        level = "最高层" if is_top_level else "非最高层"
+        lines.append(f"    · [{wall_id}] 墙顶 Y={top:.2f}m（{level}）裸露 {bare_length:.1f}m")
+    lines.append(
+        "    补救二选一：① 该体量本该有屋顶 → 为它**单独**生成一块 roof，"
+        "span/depth 按该体量自己的轮廓取，不要只给主楼一块；"
+        "② 该层本意是屋顶露台 → 补一块该层标高的 floor 作为露台面，"
+        "否则露台没有可站立的楼板。"
+    )
+    return "\n".join(lines)
 
 
 @tool
@@ -1673,6 +2166,148 @@ def validate_model_quality(blueprint: dict) -> str:
     if len(issues) > len(visible):
         visible.append(f"❌ 另有 {len(issues) - len(visible)} 处重复骨架未展开")
     return f"发现 {len(issues)} 处会造成重影/虚假复杂度的重复骨架：\n" + "\n".join(visible)
+
+
+def _wall_xz_footprint(wall: dict) -> list[float] | None:
+    """返回墙体的 XZ 包围盒 [minx, minz, maxx, maxz]；无法解析时返回 None。"""
+    start = wall.get("from")
+    end = wall.get("to")
+    if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+        return None
+    return [
+        min(float(start[0]), float(end[0])),
+        min(float(start[2]), float(end[2])),
+        max(float(start[0]), float(end[0])),
+        max(float(start[2]), float(end[2])),
+    ]
+
+
+@tool
+def validate_stacked_member_containment(blueprint: dict) -> str:
+    """检查跨越多个楼层的竖向墙体是否收进其经过的每一层外墙轮廓。
+
+    通用规则（不针对特定构件类型）：任何贯通多层的 wall，在它经过的每一层都必须
+    落在该层外墙的水平包络内。退台建筑中，核心筒/电梯井/贯通剪力墙若按底层轮廓
+    通高到底，就会在退台层外凸成一堵独立墙体。
+
+    只检查 wall：角部柱、框架/幕墙系统的柱天然会落在墙线外侧，属合法构造，
+    且已有 validate_model_quality / validate_collision 覆盖柱的重叠与高程。
+
+    判据（两段式，避免裙房/塔楼等“贯通外壳即底层外轮廓”的合法体型被误报）：
+      1. 仅当贯通墙在其**底层**处于外墙包络**内部**（四面都留 ≥0.3m 边）时才进一步判断。
+         这样，本身就是底层外轮廓的贯通外壳（如裙房通高幕墙、整层通高立面）会被跳过。
+      2. 对满足第 1 条的贯通墙，在它跨越的每个层间标高上，检查其 XZ 跨度是否落在
+         “墙底位于该层”的单层结构墙（高≥1.8m、厚≥0.1、单层高）的 XZ 包围盒内；
+         单层墙不足 3 面则不判定该层。容差 0.05m。
+    """
+    elements = _get_elements(blueprint)
+    story = _infer_story_height(elements)
+
+    structural = [
+        w for w in elements
+        if w.get("type") == "wall"
+        and _is_structural_wall(w)
+        and _is_finite_vector3(w.get("from"))
+        and _is_finite_vector3(w.get("to"))
+    ]
+
+    def covers_level(wall: dict, y: float) -> bool:
+        bottom, top = _wall_vertical_range(wall)
+        return bottom <= y + 0.01 and y < top - 0.01
+
+    # 1) 按墙底标高给“单层结构墙”分组，求每层外轮廓包络（供上层比较）
+    envelope: dict[int, list[float]] = {}
+    wall_count: dict[int, int] = {}
+    for wall in structural:
+        bottom, top = _wall_vertical_range(wall)
+        if top - bottom > story * 1.5 + 0.01:
+            continue  # 贯通墙不作为“单层外轮廓”
+        level = int(round(bottom * 100))
+        wall_count[level] = wall_count.get(level, 0) + 1
+        footprint = _wall_xz_footprint(wall)
+        if footprint is None:
+            continue
+        box = envelope.get(level)
+        if box is None:
+            envelope[level] = list(footprint)
+        else:
+            box[0] = min(box[0], footprint[0])
+            box[1] = min(box[1], footprint[1])
+            box[2] = max(box[2], footprint[2])
+            box[3] = max(box[3], footprint[3])
+
+    levels = sorted(
+        level for level in envelope if wall_count.get(level, 0) >= 3
+    )
+    if not levels:
+        return "✅ 无法定义逐层外墙轮廓（单层结构墙不足 3 面），跳过贯通墙体收进检查。"
+
+    # 2) 贯通墙 = 跨层结构墙；只有“底层处于轮廓内部”的才进一步判断
+    margin = 0.3
+    tolerance = 0.05
+    issues: list[str] = []
+
+    for wall in structural:
+        bottom, top = _wall_vertical_range(wall)
+        if top - bottom <= story * 1.5 + 0.01:
+            continue  # 单层墙不检查
+
+        footprint = _wall_xz_footprint(wall)
+        if footprint is None:
+            continue
+
+        # 底层外轮廓 = 覆盖该墙底层标高的全部结构墙的 XZ 并集
+        base_box: list[float] | None = None
+        for other in structural:
+            if not covers_level(other, bottom):
+                continue
+            other_fp = _wall_xz_footprint(other)
+            if other_fp is None:
+                continue
+            if base_box is None:
+                base_box = list(other_fp)
+            else:
+                base_box[0] = min(base_box[0], other_fp[0])
+                base_box[1] = min(base_box[1], other_fp[1])
+                base_box[2] = max(base_box[2], other_fp[2])
+                base_box[3] = max(base_box[3], other_fp[3])
+        if base_box is None:
+            continue
+        interior_at_base = (
+            footprint[0] >= base_box[0] + margin
+            and footprint[2] <= base_box[2] - margin
+            and footprint[1] >= base_box[1] + margin
+            and footprint[3] <= base_box[3] - margin
+        )
+        if not interior_at_base:
+            continue  # 本身是底层外轮廓的贯通外壳，跳过
+
+        wall_id = str(wall.get("id", "?"))
+        for level in levels:
+            level_y = level / 100.0
+            if not (bottom + 0.25 < level_y < top - 0.25):
+                continue  # 墙未真正穿过该层间标高
+            box = envelope[level]
+            if (
+                footprint[0] >= box[0] - tolerance
+                and footprint[2] <= box[2] + tolerance
+                and footprint[1] >= box[1] - tolerance
+                and footprint[3] <= box[3] + tolerance
+            ):
+                continue
+            over_x = max(box[0] - footprint[0], footprint[2] - box[2], 0.0)
+            over_z = max(box[1] - footprint[1], footprint[3] - box[3], 0.0)
+            issues.append(
+                f"❌ [{wall_id}] 贯通墙体超出第 {level_y:.2f}m 层外墙轮廓："
+                f"越界 X {over_x:.2f}m / Z {over_z:.2f}m"
+            )
+
+    if not issues:
+        return f"✅ 贯通墙体均收进其跨越的每一层外墙轮廓（检查 {len(levels)} 层）。"
+    visible = issues[:12]
+    if len(issues) > len(visible):
+        visible.append(f"❌ 另有 {len(issues) - len(visible)} 处贯通墙体越界未展开")
+    return f"发现 {len(issues)} 处贯通墙体伸出所在层外墙轮廓：\n" + "\n".join(visible)
 
 
 @tool

@@ -1,0 +1,465 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "现代双层别墅（知识库生成）",
+    "author": "WildAgent",
+    "style": "modern"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "slab_l1",
+        "from": [0, -0.2, 0],
+        "to": [12, -0.2, 9],
+        "thickness": 0.2,
+        "material": "floor_stone"
+      },
+      {
+        "type": "wall",
+        "id": "wall_front_l1",
+        "from": [0, 0, 0],
+        "to": [12, 3, 0],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_right_l1",
+        "from": [12, 0, 0],
+        "to": [12, 3, 9],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_back_l1",
+        "from": [12, 0, 9],
+        "to": [0, 3, 9],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_left_l1",
+        "from": [0, 0, 9],
+        "to": [0, 3, 0],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "floor",
+        "id": "slab_l2",
+        "from": [0, 3, 0],
+        "to": [12, 3, 9],
+        "thickness": 0.25,
+        "material": "slab_concrete"
+      },
+      {
+        "type": "wall",
+        "id": "wall_front_l2",
+        "from": [0, 3.25, 0],
+        "to": [12, 6.25, 0],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_right_l2",
+        "from": [12, 3.25, 0],
+        "to": [12, 6.25, 9],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_back_l2",
+        "from": [12, 3.25, 9],
+        "to": [0, 6.25, 9],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_left_l2",
+        "from": [0, 3.25, 9],
+        "to": [0, 6.25, 0],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      {
+        "type": "stair",
+        "id": "stair_main",
+        "from": [1.4, 0, 8.2],
+        "to": [1.4, 3.25, 3.8],
+        "width": 1.2,
+        "material": "stair_stone"
+      },
+      {
+        "type": "roof",
+        "id": "roof_main",
+        "roofType": "gable",
+        "span": 13.2,
+        "depth": 10.2,
+        "height": 2.8,
+        "thickness": 0.22,
+        "position": [6, 6.25, 4.5],
+        "material": "roof_tile"
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "door_main_l1",
+        "parentWall": "wall_front_l1",
+        "from": [5.2, 0, 0],
+        "width": 1.6,
+        "height": 2.4,
+        "openingStyle": "rectangular",
+        "doorStyle": "double",
+        "frameWidth": 0.08,
+        "frameDepth": 0.22,
+        "leafDepth": 0.045,
+        "frameMaterial": "door_frame",
+        "leafMaterial": "door_leaf",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "canopy",
+        "id": "canopy_entry",
+        "parentWall": "wall_front_l1",
+        "from": [4.6, 2.9, 0],
+        "width": 2.8,
+        "depth": 1.4,
+        "thickness": 0.14,
+        "supportCount": 2,
+        "supportSize": 0.08,
+        "material": "canopy_wood",
+        "supportMaterial": "railing_metal"
+      },
+      {
+        "type": "window",
+        "id": "window_front_l1_a",
+        "parentWall": "wall_front_l1",
+        "from": [1.6, 0.9, 0],
+        "width": 1.8,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_front_l1_b",
+        "parentWall": "wall_front_l1",
+        "from": [8.6, 0.9, 0],
+        "width": 1.8,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_back_l1_a",
+        "parentWall": "wall_back_l1",
+        "from": [2.0, 0.9, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_back_l1_b",
+        "parentWall": "wall_back_l1",
+        "from": [8.0, 0.9, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_left_l1",
+        "parentWall": "wall_left_l1",
+        "from": [3.0, 0.9, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_right_l1",
+        "parentWall": "wall_right_l1",
+        "from": [3.0, 0.9, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "balcony",
+        "id": "balcony_front_l2",
+        "parentWall": "wall_front_l2",
+        "from": [4.0, 3.25, 0],
+        "width": 4.0,
+        "depth": 1.8,
+        "slabThickness": 0.2,
+        "railingHeight": 1.1,
+        "postSpacing": 1.2,
+        "material": "wood_deck",
+        "railingMaterial": "railing_metal"
+      },
+      {
+        "type": "door",
+        "id": "door_balcony_l2",
+        "parentWall": "wall_front_l2",
+        "from": [5.1, 3.25, 0],
+        "width": 1.8,
+        "height": 2.3,
+        "openingStyle": "rectangular",
+        "doorStyle": "double",
+        "frameWidth": 0.07,
+        "frameDepth": 0.22,
+        "leafDepth": 0.04,
+        "frameMaterial": "door_frame",
+        "leafMaterial": "door_leaf",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90,
+          "initiallyOpen": true
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_front_l2_a",
+        "parentWall": "wall_front_l2",
+        "from": [1.4, 4.5, 0],
+        "width": 1.6,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_front_l2_b",
+        "parentWall": "wall_front_l2",
+        "from": [8.6, 4.5, 0],
+        "width": 1.6,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_back_l2_a",
+        "parentWall": "wall_back_l2",
+        "from": [2.0, 4.5, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_back_l2_b",
+        "parentWall": "wall_back_l2",
+        "from": [8.0, 4.5, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_left_l2",
+        "parentWall": "wall_left_l2",
+        "from": [3.0, 4.5, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "window_right_l2",
+        "parentWall": "wall_right_l2",
+        "from": [3.0, 4.5, 0],
+        "width": 2.0,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.22,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "frameMaterial": "window_frame",
+        "glassMaterial": "glass"
+      }
+    ]
+  },
+  "materials": {
+    "floor_stone": {
+      "baseColor": [0.66, 0.64, 0.61],
+      "roughness": 0.88,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "slab_concrete": {
+      "baseColor": [0.56, 0.56, 0.55],
+      "roughness": 0.92,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "wall_finish": {
+      "baseColor": [0.9, 0.88, 0.83],
+      "roughness": 0.85,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "roof_tile": {
+      "baseColor": [0.19, 0.2, 0.22],
+      "roughness": 0.62,
+      "metallic": 0.05,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "door_frame": {
+      "baseColor": [0.16, 0.17, 0.19],
+      "roughness": 0.45,
+      "metallic": 0.3,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "door_leaf": {
+      "baseColor": [0.32, 0.21, 0.12],
+      "roughness": 0.55,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "window_frame": {
+      "baseColor": [0.13, 0.14, 0.16],
+      "roughness": 0.35,
+      "metallic": 0.75,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [0.62, 0.78, 0.86],
+      "roughness": 0.05,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "side": "double",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012
+    },
+    "wood_deck": {
+      "baseColor": [0.52, 0.38, 0.25],
+      "roughness": 0.7,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "railing_metal": {
+      "baseColor": [0.18, 0.19, 0.21],
+      "roughness": 0.38,
+      "metallic": 0.65,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "canopy_wood": {
+      "baseColor": [0.35, 0.26, 0.18],
+      "roughness": 0.6,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "stair_stone": {
+      "baseColor": [0.6, 0.58, 0.55],
+      "roughness": 0.8,
+      "metallic": 0,
+      "albedo": 1,
+      "opacity": 1,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {}
+}

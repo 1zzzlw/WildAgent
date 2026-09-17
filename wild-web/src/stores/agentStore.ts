@@ -42,7 +42,10 @@ import type {
   SessionMetrics,
   AgentTurn,
   AgentTurnStep,
+  AcceptanceResult,
   ExecutionPlan,
+  ExecutionProgressItem,
+  StructuredRequirement,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
@@ -493,10 +496,16 @@ export const useAgentStore = defineStore('agent', () => {
     sessionId: string,
     requestId: string,
     plan: ExecutionPlan,
+    structuredRequirements?: StructuredRequirement[],
+    acceptanceResults?: Record<string, AcceptanceResult>,
+    executionProgress?: Record<string, ExecutionProgressItem>,
   ) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
     turn.execution_plan = plan
+    if (structuredRequirements !== undefined) turn.structured_requirements = structuredRequirements
+    if (acceptanceResults !== undefined) turn.acceptance_results = acceptanceResults
+    if (executionProgress !== undefined) turn.execution_progress = executionProgress
     persistTurns(sessionId)
   }
 
@@ -504,11 +513,17 @@ export const useAgentStore = defineStore('agent', () => {
     sessionId: string,
     requestId: string,
     plan: ExecutionPlan,
+    structuredRequirements?: StructuredRequirement[],
+    acceptanceResults?: Record<string, AcceptanceResult>,
+    executionProgress?: Record<string, ExecutionProgressItem>,
   ) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
     turn.status = 'waiting_review'
     turn.execution_plan = plan
+    if (structuredRequirements !== undefined) turn.structured_requirements = structuredRequirements
+    if (acceptanceResults !== undefined) turn.acceptance_results = acceptanceResults
+    if (executionProgress !== undefined) turn.execution_progress = executionProgress
     turn.execution_plan_review_status = 'pending'
     persistTurns(sessionId)
   }
@@ -1023,7 +1038,6 @@ export const useAgentStore = defineStore('agent', () => {
     planner: '执行计划',
     plan_validator: '计划校验',
     plan_review: '计划审核',
-    plan_executor: '计划调度',
     architecture: '总体建筑方案',
     skeleton: '主体装配',
     merge: '合并', final_validate: '最终校验', callback: '修正',

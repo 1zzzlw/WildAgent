@@ -10,8 +10,6 @@ from .facade import (
 )
 from .planning import (
     normalize_architecture_plan,
-    score_architecture_plan,
-    select_architecture_plan,
 )
 from .profile import detect_architecture_profile, resolve_complexity_profile
 from .skeleton import build_deterministic_skeleton, evaluate_skeleton_complexity
@@ -28,6 +26,4 @@ __all__ = [
     "normalize_architecture_plan",
     "resolve_complexity_profile",
     "resolve_facade_layout",
-    "score_architecture_plan",
-    "select_architecture_plan",
 ]

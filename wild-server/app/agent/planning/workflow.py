@@ -1,4 +1,4 @@
-"""Claude 风格计划层：只读研究、结构化计划、审核与白名单执行路由。"""
+"""可审核计划层：研究、动态任务、结构化约束、审核与阶段验收。"""
 
 from __future__ import annotations
 
@@ -10,12 +10,18 @@ from langgraph.types import interrupt
 from loguru import logger
 
 from app.agent.planning.execution import (
-    CAPABILITY_REGISTRY,
     build_execution_plan,
-    next_ready_step,
-    plan_is_complete,
-    update_plan_step,
     validate_execution_plan,
+)
+from app.agent.planning.requirements import (
+    blocking_acceptance_failures,
+    compile_structured_requirements,
+    evaluate_acceptance_results,
+    initial_execution_progress,
+    initialize_acceptance_results,
+    update_dynamic_task_statuses,
+    update_execution_progress,
+    validate_structured_requirements,
 )
 from app.agent.state import GenerationState
 from app.llm.invocation import invoke_llm, merge_token_usage
@@ -125,7 +131,7 @@ async def planning_research(state: GenerationState) -> dict:
 
 
 async def execution_planner(state: GenerationState) -> dict:
-    """让模型规划本次建筑任务，再编译到不可绕过的安全主流程。"""
+    """让模型规划本次业务任务，再编译为节点可消费和可验收的要求。"""
 
     intent = str(state.get("intent") or "generate")
     callback = get_reasoning_callback()
@@ -174,9 +180,11 @@ async def execution_planner(state: GenerationState) -> dict:
         parsed = extract_json_object(llm_result.content)
         raw_payload = parsed if isinstance(parsed, dict) else None
         token_usage = llm_result.token_usage
+        # 模型有时返回格式不标准的 JSON（缺括号、多余文本）
         if raw_payload is None:
             from app.llm.recovery import recover_single_json
 
+            # 再次调用 LLM，专门修复格式
             recovered, recovery_diag = await recover_single_json(
                 prompt,
                 str(state.get("user_message") or ""),
@@ -210,25 +218,26 @@ async def execution_planner(state: GenerationState) -> dict:
                 "error": planner_error,
                 "total_ms": int((time.time() - started) * 1000),
             },
-            "current_plan_step_id": "",
-            "plan_next_node": "",
+            "plan_feedback_pending": False,
         }
 
+    # 把 LLM 的原始输出（可能不规范）转换成标准的 ExecutionPlan 对象。
     plan = build_execution_plan(
         request_id=str(state.get("request_id") or "unknown"),
         intent=intent,
         user_message=str(state.get("user_message") or ""),
-        architecture_plan=(
-            state.get("architecture_plan")
-            if isinstance(state.get("architecture_plan"), dict)
-            else None
-        ),
         research_summary=str(state.get("plan_research_summary") or ""),
         feedback=feedback,
         previous_plan=previous,
         planned_tasks=(raw_payload or {}).get("tasks"),
         planner_source="llm",
         planner_summary=str((raw_payload or {}).get("summary") or ""),
+    )
+    requirements = compile_structured_requirements(plan)
+    acceptance_results = initialize_acceptance_results(requirements)
+    progress = initial_execution_progress(
+        intent,
+        str(state.get("plan_research_summary") or ""),
     )
     if plan.get("planner_source") == "fallback" and planner_error is None:
         planner_error = "模型计划缺少必要任务或包含不受支持的阶段"
@@ -243,7 +252,7 @@ async def execution_planner(state: GenerationState) -> dict:
             f"已通过{source_label}生成计划 v{plan['version']}，"
             f"包含 {len(plan['dynamic_tasks'])} 项本次任务。\n"
             + "\n".join(task_lines)
-            + "\n固定安全主流程将由系统编译并校验，模型不能绕过。\n",
+            + "\n动态任务已编译为结构化业务要求；固定安全主流程仍由 LangGraph 管理。\n",
         )
     history = list(state.get("execution_plan_history") or [])
     if isinstance(previous, dict):
@@ -256,6 +265,9 @@ async def execution_planner(state: GenerationState) -> dict:
         )
     return {
         "execution_plan": plan,
+        "structured_requirements": requirements,
+        "acceptance_results": acceptance_results,
+        "execution_progress": progress,
         "execution_plan_status": "draft",
         "execution_plan_review_status": "pending",
         "execution_plan_history": history,
@@ -269,13 +281,12 @@ async def execution_planner(state: GenerationState) -> dict:
             "total_ms": int((time.time() - started) * 1000),
         },
         "plan_feedback": "",
-        "current_plan_step_id": "",
-        "plan_next_node": "",
+        "plan_feedback_pending": False,
     }
 
 
 def execution_plan_validator(state: GenerationState) -> dict:
-    """在人工审核前验证白名单、依赖图和建筑必要步骤。"""
+    """在人工审核前验证任务结构及其编译后的业务要求。"""
 
     terminal = state.get("terminal_model_error")
     if terminal:
@@ -292,15 +303,24 @@ def execution_plan_validator(state: GenerationState) -> dict:
     intent = str(state.get("intent") or "generate")
     plan = deepcopy(state.get("execution_plan") or {})
     issues = validate_execution_plan(plan, intent)
-    plan["valid"] = not issues
-    plan["status"] = "reviewing" if not issues else "failed"
+    issues.extend(
+        validate_structured_requirements(state.get("structured_requirements"))
+    )
+    # 只有 error 级问题才阻断整轮生成；warning 级问题（例如"要一张 2D 平面图"
+    # 这类表现层差异、主观验收条件）挂到审核面板由人工裁决，不再终结流程。
+    blocking = [issue for issue in issues if str(issue.get("severity") or "error") != "warning"]
+    plan["valid"] = not blocking
+    plan["status"] = "reviewing" if not blocking else "failed"
     return {
         "execution_plan": plan,
+        "structured_requirements": state.get("structured_requirements") or [],
+        "acceptance_results": state.get("acceptance_results") or {},
+        "execution_progress": state.get("execution_progress") or {},
         "execution_plan_status": plan["status"],
         "execution_plan_validation": issues,
         "error": (
-            "执行计划校验失败：" + "；".join(issue["message"] for issue in issues[:6])
-            if issues
+            "执行计划校验失败：" + "；".join(issue["message"] for issue in blocking[:6])
+            if blocking
             else None
         ),
     }
@@ -321,6 +341,9 @@ def execution_plan_review(state: GenerationState) -> dict:
             "type": "execution_plan_review",
             "question": "请审核动态执行计划，然后在恢复输入中批准或提出修改意见。",
             "plan": plan,
+            "structured_requirements": state.get("structured_requirements") or [],
+            "acceptance_results": state.get("acceptance_results") or {},
+            "execution_progress": state.get("execution_progress") or {},
             "version": int(plan.get("version") or 1),
             "resume_examples": {
                 "confirm": {"action": "confirm"},
@@ -340,9 +363,13 @@ def execution_plan_review(state: GenerationState) -> dict:
         plan["review_status"] = "approved"
         return {
             "execution_plan": plan,
+            "structured_requirements": state.get("structured_requirements") or [],
+            "acceptance_results": state.get("acceptance_results") or {},
+            "execution_progress": state.get("execution_progress") or {},
             "execution_plan_status": "approved",
             "execution_plan_review_status": "approved",
             "plan_feedback": "",
+            "plan_feedback_pending": False,
         }
     if not feedback:
         feedback = "请重新检查计划目标、步骤依赖和验收条件，并生成新版计划。"
@@ -350,6 +377,9 @@ def execution_plan_review(state: GenerationState) -> dict:
     plan["review_status"] = "revise"
     return {
         "execution_plan": plan,
+        "structured_requirements": state.get("structured_requirements") or [],
+        "acceptance_results": state.get("acceptance_results") or {},
+        "execution_progress": state.get("execution_progress") or {},
         "execution_plan_status": "revising",
         "execution_plan_review_status": "revise",
         "plan_feedback": feedback,
@@ -358,182 +388,148 @@ def execution_plan_review(state: GenerationState) -> dict:
 
 def route_execution_plan_review(state: GenerationState) -> str:
     if state.get("execution_plan_review_status") == "approved":
-        return "plan_executor"
+        # 生成分支直达 architecture；编辑分支由 patch 节点产出可审核的 ScenePatch。
+        return "patch" if state.get("intent") == "edit" else "architecture"
     if state.get("execution_plan_status") == "failed":
         return "__end__"
     return "planner"
 
 
-async def execution_plan_executor(state: GenerationState) -> dict:
-    """在节点边界吸收用户意见，并选择下一条依赖已满足的白名单步骤。"""
+_STAGE_RESULTS = {
+    "architecture": ("architecture_plan", "总体体量、功能层次与立面意图已确定"),
+    "material_plan": ("material_plan", "材质角色和资产解析完成"),
+    "design_review": ("design_document", "建筑设计已批准"),
+    "skeleton": ("skeleton_blueprint", "主体骨架与组件建议已完成"),
+    "merge": ("merged_blueprint", "Blueprint 已合并"),
+    "final_validate": ("final_blueprint", "最终校验零错误"),
+    "patch": ("scene_patch", "ScenePatch 提案已生成，等待用户应用"),
+}
 
-    plan = deepcopy(state.get("execution_plan") or {})
-    # 执行过程中接收用户追加修改意见的轮询机制
+
+async def _poll_execution_feedback(state: GenerationState) -> dict[str, Any]:
+    """在业务阶段边界吸收追加意见，但不再承担业务节点调度。"""
+
     poller = get_execution_feedback_poller()
-    pending_feedback: list[str] = []
-    if poller is not None:
-        pending_feedback = [
-            str(item).strip() for item in await poller() if str(item).strip()
-        ]
-    if pending_feedback:
-        replan_count = int(state.get("plan_replan_count") or 0)
-        max_replans = max(0, int(state.get("max_plan_replans") or 3))
-        if replan_count >= max_replans:
-            plan["status"] = "failed"
-            return {
-                "execution_plan": plan,
-                "execution_plan_status": "failed",
-                "plan_next_node": "__end__",
-                "error": f"执行计划已达到最大重规划次数 {max_replans}",
-            }
-        feedback = "；".join(pending_feedback)
-        plan["status"] = "revising"
-        return {
-            "execution_plan": plan,
-            "execution_plan_status": "revising",
-            "execution_plan_review_status": "revise",
-            "plan_feedback": feedback,
-            "plan_replan_count": replan_count + 1,
-            "plan_next_node": "planner",
-            "current_plan_step_id": "",
-        }
+    if poller is None:
+        return {"plan_feedback_pending": False}
+    pending = [str(item).strip() for item in await poller() if str(item).strip()]
+    if not pending:
+        return {"plan_feedback_pending": False}
 
-    if any(
-        isinstance(step, dict) and step.get("status") == "failed"
-        for step in plan.get("steps", [])
-    ):
-        plan["status"] = "failed"
+    replan_count = int(state.get("plan_replan_count") or 0)
+    max_replans = max(0, int(state.get("max_plan_replans") or 3))
+    if replan_count >= max_replans:
         return {
-            "execution_plan": plan,
+            "plan_feedback_pending": False,
             "execution_plan_status": "failed",
-            "plan_next_node": "__end__",
-            "error": state.get("error") or "执行计划存在失败步骤",
+            "status": "failed",
+            "error": f"执行计划已达到最大重规划次数 {max_replans}",
         }
-    if plan_is_complete(plan):
-        plan["status"] = "completed"
-        return {
-            "execution_plan": plan,
-            "execution_plan_status": "completed",
-            "plan_next_node": "__end__",
-            "current_plan_step_id": "",
-        }
-    step = next_ready_step(plan)
-    if step is None:
-        plan["status"] = "failed"
-        return {
-            "execution_plan": plan,
-            "execution_plan_status": "failed",
-            "plan_next_node": "__end__",
-            "error": "执行计划没有可运行步骤，可能存在未满足依赖",
-        }
-    capability = CAPABILITY_REGISTRY.get(str(step.get("type") or ""))
-    if capability is None or str(step.get("node") or "") != capability.node:
-        plan["status"] = "failed"
-        return {
-            "execution_plan": plan,
-            "execution_plan_status": "failed",
-            "plan_next_node": "__end__",
-            "error": "执行计划引用了未注册能力",
-        }
-    plan = update_plan_step(
-        plan,
-        capability.type,
-        "in_progress",
-        detail=f"正在执行：{capability.label}",
-    )
-    plan["status"] = "executing"
     return {
-        "execution_plan": plan,
-        "execution_plan_status": "executing",
-        "plan_next_node": capability.node,
-        "current_plan_step_id": str(step.get("id") or ""),
+        "plan_feedback_pending": True,
+        "execution_plan_status": "revising",
+        "execution_plan_review_status": "revise",
+        "plan_feedback": "；".join(pending),
+        "plan_replan_count": replan_count + 1,
     }
 
 
-def route_execution_plan_executor(state: GenerationState) -> str:
-    return str(state.get("plan_next_node") or "__end__")
-
-
-def complete_execution_step(
+async def complete_execution_stage(
     state: GenerationState,
-    step_type: str,
+    stage: str,
     result: dict[str, Any],
 ) -> dict[str, Any]:
-    """把业务节点结果映射回计划状态；建筑结果本身仍由原节点负责。"""
+    """记录固定阶段进度并执行逐条业务验收；返回值不决定正常节点顺序。"""
 
     plan = state.get("execution_plan")
     if not state.get("plan_mode") or not isinstance(plan, dict):
         return {}
+
+    result_ref, success_detail = _STAGE_RESULTS.get(stage, (None, "执行完成"))
     success = not result.get("error") and result.get("status") != "failed"
-    detail = "执行完成"
-    result_ref = None
-    if step_type == "architecture":
-        success = isinstance(result.get("architecture_plan"), dict) and not result.get(
-            "error"
-        )
-        detail = (
-            "总体体量、功能层次与立面意图已确定"
-            if success
-            else str(result.get("error") or "总体方案未完成")
-        )
-        result_ref = "architecture_plan"
-    elif step_type == "skeleton":
-        success = isinstance(result.get("skeleton_blueprint"), dict) and not result.get(
-            "error"
-        )
-        detail = (
-            "LLM 主体骨架与组件建议已完成"
-            if success
-            else str(result.get("error") or "主体骨架生成未完成")
-        )
-        result_ref = "skeleton_blueprint"
-    elif step_type == "merge":
-        success = isinstance(result.get("merged_blueprint"), dict) and not result.get(
-            "error"
-        )
-        detail = (
-            "Blueprint 已合并" if success else str(result.get("error") or "合并失败")
-        )
-        result_ref = "merged_blueprint"
-    elif step_type == "final_validate":
+    if result_ref:
+        success = success and isinstance(result.get(result_ref), dict)
+    if stage == "final_validate":
         success = (
-            result.get("status") == "complete"
+            success
+            and result.get("status") == "complete"
             and int(result.get("validation_error_count") or 0) == 0
         )
-        detail = (
-            "最终校验零错误" if success else str(result.get("error") or "最终校验失败")
-        )
-        result_ref = "final_blueprint"
-    elif step_type == "patch":
-        success = isinstance(result.get("scene_patch"), dict) and not result.get(
-            "error"
-        )
-        detail = (
-            "ScenePatch 提案已生成，等待用户应用"
-            if success
-            else str(result.get("error") or "修改提案失败")
-        )
-        result_ref = "scene_patch"
-    elif step_type == "material_plan":
-        success = isinstance(result.get("material_plan"), dict) and not result.get(
-            "error"
-        )
-        detail = (
-            "材质角色和资产解析完成"
-            if success
-            else str(result.get("error") or "材质方案失败")
-        )
-        result_ref = "material_plan"
 
-    updated = update_plan_step(
-        plan,
-        step_type,
+    detail = success_detail if success else str(result.get("error") or f"{stage} 执行失败")
+
+    # 更新节点进度
+    progress = update_execution_progress(
+        state.get("execution_progress"),
+        stage,
         "completed" if success else "failed",
+        result_ref=result_ref if success else None,
         detail=detail,
-        result_ref=result_ref,
     )
-    return {
-        "execution_plan": updated,
-        "execution_plan_status": "executing" if success else "failed",
-        "current_plan_step_id": "",
+    if stage == "merge":
+        progress = update_execution_progress(
+            progress,
+            "component_generation",
+            "completed" if success else "failed",
+            result_ref="component_fragments" if success else None,
+            detail="动态组件已生成并参与合并" if success else "动态组件生成或合并失败",
+        )
+
+    acceptance_results = evaluate_acceptance_results(
+        state=state,
+        result=result,
+        phase=stage,
+    )
+    updated_plan = update_dynamic_task_statuses(
+        plan,
+        acceptance_results,
+        progress,
+        state.get("structured_requirements"),
+    )
+    updated_plan["status"] = "executing" if success else "failed"
+    payload: dict[str, Any] = {
+        "execution_plan": updated_plan,
+        "structured_requirements": state.get("structured_requirements") or [],
+        "execution_plan_status": updated_plan["status"],
+        "acceptance_results": acceptance_results,
+        "execution_progress": progress,
+        "plan_feedback_pending": False,
     }
+
+    if stage in {"final_validate", "patch"} and success:
+        failures = blocking_acceptance_failures(
+            state.get("structured_requirements"),
+            acceptance_results,
+        )
+        if failures:
+            message = "；".join(str(item.get("message") or item.get("acceptance_id")) for item in failures[:6])
+            updated_plan["status"] = "failed"
+            payload.update({
+                "execution_plan": updated_plan,
+                "execution_plan_status": "failed",
+                "error": "业务验收未通过：" + message,
+                "status": "failed",
+            })
+            if stage == "final_validate":
+                payload["final_blueprint"] = None
+            return payload
+        updated_plan["status"] = "completed"
+        payload.update(
+            {
+                "execution_plan": updated_plan,
+                "execution_plan_status": "completed",
+            }
+        )
+
+    if not success:
+        return payload
+
+    feedback_update = await _poll_execution_feedback(state)
+    if feedback_update.get("execution_plan_status") == "failed":
+        updated_plan["status"] = "failed"
+        feedback_update["execution_plan"] = updated_plan
+    elif feedback_update.get("plan_feedback_pending"):
+        updated_plan["status"] = "revising"
+        feedback_update["execution_plan"] = updated_plan
+    payload.update(feedback_update)
+    return payload

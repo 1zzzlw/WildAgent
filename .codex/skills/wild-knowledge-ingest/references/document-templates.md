@@ -2,13 +2,36 @@
 
 模板是写作辅助，不要求无信息的栏目占位。真实 Markdown 标题是实体边界，避免粗体 A/B/C 伪分块。
 
+🔴 文件级 frontmatter 只写"整篇共享"的字段；**同一文件里并列讲多个构件时，每个构件必须用自己的
+`rag-meta` 声明 `entity_type`**，否则按构件检索命中不到（机制与后果见
+[chunk-contract.md](chunk-contract.md)）。
+
+## 构件级分片（多构件文件必用）
+
+```md
+## 墙体构件
+
+<!-- rag-meta
+entity_type: wall
+entity_name: wall_family
+topic: parameters
+primary_terms:
+  - 墙体
+  - wall
+synonyms: []
+-->
+
+必需字段：…（本构件独有的字段表）
+边界：…（本构件做不到的事）
+```
+
 ## 专用系统条件映射
 
 ```md
 ## 类型名称
 
 <!-- rag-meta
-entity_type: facade
+entity_type: component
 entity_name: stable_system
 topic: assembly
 knowledge_role: relation
@@ -25,6 +48,10 @@ applies_to:
 - WILD 映射与边界：受支持表达、无法表达的部分及近似方式。
 - 自由变量：由本次方案决定的轮廓、尺寸、数量、布局或材料。
 ```
+
+注意 `entity_type` 只能取代码里真实使用的值（当前查询涉及
+`structural_component` / `wall` / `window` / `door` / `railing` / `roof`，
+以及协议类的 `schema`、组装类的 `assembly`）。写一个没人查询的值等于没写。
 
 不要通过建筑用途或风格自动添加庭院、门廊、幕墙或阳台。复杂系统可拆成子标题，但每片保留实体上下文与触发条件。
 

@@ -9,6 +9,7 @@ from loguru import logger
 from app.agent.generation.material_plan import compact_asset_catalog, resolve_material_plan
 from app.agent.generation.materials import compact_procedural_catalog
 from app.agent.planning.execution import execution_plan_phase_guidance
+from app.agent.planning.requirements import structured_requirement_guidance
 from app.agent.prompts import append_approved_phase_guidance, build_material_plan_prompt
 from app.agent.runtime import get_reasoning_callback
 from app.agent.state import GenerationState
@@ -55,10 +56,14 @@ async def material_planner(state: GenerationState) -> dict:
             state.get("execution_plan"),
             "material_plan",
         )
+        requirement_guidance = structured_requirement_guidance(
+            state.get("structured_requirements"),
+            "material_plan",
+        )
         prompt = append_approved_phase_guidance(
             prompt,
-            phase_guidance,
-            "材质方案必须落实这些公开任务及验收条件，"
+            "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
+            "材质方案必须落实这些批准任务及结构化业务要求，"
             "但不得引用白名单之外的资产或材质字段。",
         )
         if callback:

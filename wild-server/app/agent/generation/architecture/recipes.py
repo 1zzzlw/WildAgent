@@ -1,6 +1,6 @@
 """幕墙确定性生成参数：从知识库配方读取，而非在代码里写死。
 
-知识库 `recipes/glass-curtain-wall-assembly.md` 是幕墙组装的单一事实源。本模块
+知识库 `knowledge/components/glass-curtain-wall-assembly.md` 是幕墙组装的单一事实源。本模块
 直接解析该文件中「幕墙确定性生成参数」的 JSON 块，让窗格模数、竖梃缝、窗台高等
 参数随知识库修改而生效，无需改代码。文件缺失或解析失败时回退到内置默认值，保证
 生成链路永不因配方格式问题而崩溃。
@@ -17,7 +17,7 @@ from loguru import logger
 
 _SERVER_ROOT = Path(__file__).resolve().parents[4]
 _RECIPE_PATH = (
-    _SERVER_ROOT / "storage" / "knowledge_base" / "recipes"
+    _SERVER_ROOT / "storage" / "knowledge_base" / "knowledge" / "components"
     / "glass-curtain-wall-assembly.md"
 )
 

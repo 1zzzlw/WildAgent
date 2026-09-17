@@ -107,20 +107,42 @@
             <span class="plan-phase">{{ planPhaseLabel(task.phase) }}</span>
           </div>
         </div>
-        <details class="plan-constraints">
-          <summary>系统安全主流程（{{ turn.execution_plan.steps.length }} 步）</summary>
+        <details v-if="turn.execution_progress" class="plan-constraints">
+          <summary>LangGraph 固定主链运行进度</summary>
           <div class="execution-plan-steps">
             <div
-              v-for="step in turn.execution_plan.steps"
-              :key="step.id"
-              :class="['execution-plan-step', `plan-${step.status}`]"
+              v-for="(progress, phase) in turn.execution_progress"
+              :key="phase"
+              :class="['execution-plan-step', `plan-${progress.status}`]"
             >
-              <span class="plan-step-mark">{{ planStepMark(step.status) }}</span>
+              <span class="plan-step-mark">{{ planStepMark(progress.status) }}</span>
               <span class="plan-step-main">
-                <strong>{{ step.title }}</strong>
-                <small>{{ step.detail || step.description }}</small>
+                <strong>{{ planPhaseLabel(String(phase)) }}</strong>
+                <small>{{ progress.detail }}</small>
               </span>
-              <span class="plan-permission">{{ step.permission === 'read' ? '分析/审核' : '写入产物' }}</span>
+              <span class="plan-permission">{{ progress.result_ref || '等待产物' }}</span>
+            </div>
+          </div>
+        </details>
+        <details v-if="turn.structured_requirements?.length" class="plan-constraints">
+          <summary>结构化要求与验收（{{ turn.structured_requirements.length }} 条）</summary>
+          <div class="execution-plan-steps">
+            <div
+              v-for="requirement in turn.structured_requirements"
+              :key="requirement.id"
+              :class="['execution-plan-step', `plan-${acceptanceStatus(requirement.source_acceptance_id)}`]"
+            >
+              <span class="plan-step-mark">{{ acceptanceMark(requirement.source_acceptance_id) }}</span>
+              <span class="plan-step-main">
+                <strong>{{ requirement.description }}</strong>
+                <small>{{ acceptanceMessage(requirement.source_acceptance_id) }}</small>
+                <em v-if="acceptanceEvidence(requirement.source_acceptance_id)">
+                  {{ acceptanceEvidence(requirement.source_acceptance_id) }}
+                </em>
+              </span>
+              <span :class="['plan-permission', `plan-support-${requirement.support_status}`]">
+                {{ requirementSupportLabel(requirement) }}
+              </span>
             </div>
           </div>
         </details>
@@ -329,6 +351,45 @@ function planStepMark(status: string): string {
   } as Record<string, string>)[status] || '·'
 }
 
+function acceptanceStatus(acceptanceId: string): string {
+  const status = props.turn.acceptance_results?.[acceptanceId]?.status || 'pending'
+  if (status === 'passed' || status === 'not_applicable') return 'completed'
+  if (status === 'failed' || status === 'unsupported') return 'failed'
+  return status
+}
+
+function acceptanceMark(acceptanceId: string): string {
+  const status = props.turn.acceptance_results?.[acceptanceId]?.status
+  // not_checked 与普通 pending 含义不同：它不是“还没轮到”，而是“需要人工确认”。
+  if (status === 'not_checked') return '?'
+  return planStepMark(acceptanceStatus(acceptanceId))
+}
+
+function acceptanceMessage(acceptanceId: string): string {
+  return props.turn.acceptance_results?.[acceptanceId]?.message || '等待对应阶段执行'
+}
+
+function formatAcceptanceValue(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
+
+function acceptanceEvidence(acceptanceId: string): string {
+  const result = props.turn.acceptance_results?.[acceptanceId]
+  if (!result || result.status === 'pending') return ''
+  const expected = formatAcceptanceValue(result.expected)
+  const observed = formatAcceptanceValue(result.observed)
+  if (!expected && !observed) return ''
+  return `期望 ${expected || '—'} · 实际 ${observed || '—'}`
+}
+
+function requirementSupportLabel(requirement: { support_status: string; validator: string }): string {
+  if (requirement.support_status === 'unsupported') return '当前不支持'
+  if (requirement.support_status === 'needs_review') return '需人工确认'
+  return requirement.validator
+}
+
 function planStatusLabel(status: string): string {
   return ({
     draft: '草案', reviewing: '待审核', approved: '已批准',
@@ -344,9 +405,13 @@ function plannerSourceLabel(source?: string): string {
 
 function planPhaseLabel(phase: string): string {
   return ({
+    planning_research: '计划研究',
     architecture: '总体方案',
     material_plan: '材质方案',
+    design_review: '设计审核',
     skeleton: '主体装配',
+    component_generation: '动态组件生成',
+    merge: '结果合并',
     final_validate: '最终校验',
     patch: '场景修改',
   } as Record<string, string>)[phase] || phase
@@ -523,11 +588,15 @@ onUnmounted(() => {
 .execution-plan-step.plan-in_progress { background: rgba(104, 153, 212, .12); }
 .execution-plan-step.plan-completed .plan-step-mark { color: #6bbf9b; }
 .execution-plan-step.plan-failed .plan-step-mark { color: #e07060; }
+.execution-plan-step.plan-not_checked .plan-step-mark { color: #d8b26a; }
 .plan-step-mark { color: #8aa8cf; font-weight: 700; }
 .plan-step-main { display: grid; min-width: 0; gap: 2px; }
 .plan-step-main strong { color: #d8d8dd; font-size: 11px; }
 .plan-step-main small { overflow: hidden; color: #777781; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.plan-step-main em { color: #6f7a8c; font-size: 9.5px; font-style: normal; }
 .plan-permission { color: #687386; font-size: 9.5px; }
+.plan-permission.plan-support-needs_review { color: #d8b26a; }
+.plan-permission.plan-support-unsupported { color: #e07060; }
 .plan-constraints { color: #85858e; font-size: 10.5px; }
 .plan-constraints > summary { cursor: pointer; }
 .plan-constraints > div { padding: 3px 0 0 10px; }

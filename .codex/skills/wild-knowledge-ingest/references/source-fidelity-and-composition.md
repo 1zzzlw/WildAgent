@@ -2,6 +2,20 @@
 
 先拆分声明，再决定是否进入生成上下文。按 identity、program_space、massing、structure、envelope、opening、circulation、auxiliary、assembly、repetition、material、parameter、unsupported、example 分类；没有的类别不补写。identity、program_space 与普通 massing 作为设计输入或参考资料，不进入活动 RAG；只有可映射到当前引擎的能力和条件关系才能进入 generation scope。
 
+## 外部资料入口（本 skill 的主要入口）
+
+典型输入三种，可信度与处置不同：
+
+| 输入 | 可信度 | 处置 |
+|---|---|---|
+| 用户手写的项目文档 | 高（用户是权威） | 逐条拆声明，可直接落位 |
+| 网页 / 规范摘录 | 中（通用知识，多半映射不到本项目字段） | 只取能映射到 Schema/Validator 的部分，其余 `routed` 或 `rejected` |
+| 上游 AI 产出的 JSON 描述 | 低（字段名与数值大概率不符合本项目 Schema） | **只当素材**：逐条改写（`normalized`）或拒绝，绝不整段照收 |
+
+🔴 **不要把上游 AI 的 JSON 当成交付物。** 它只是"原始声明"的载体，字段名、枚举值、坐标约定都不是本项目的。
+一份质量平平的资料要**留下有用部分、显式丢弃无用部分并记录原因**——既不整篇照收，
+也不因为局部字段错误就把其中有效的空间关系一起删掉（错误字段与建筑语义分别处理）。
+
 ## 处置记录
 
 | disposition | 含义 |

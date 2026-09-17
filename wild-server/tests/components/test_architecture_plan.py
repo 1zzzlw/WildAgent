@@ -1,3 +1,5 @@
+import pytest
+
 from app.agent.generation.architecture import (
     build_deterministic_skeleton,
     conform_balconies_to_slots,
@@ -10,7 +12,6 @@ from app.agent.generation.architecture import (
     normalize_architecture_plan,
     resolve_facade_layout,
     resolve_complexity_profile,
-    select_architecture_plan,
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
 from app.tools.spatial_tools import validate_model_quality, validate_reference_integrity
@@ -237,52 +238,16 @@ def test_schematic_highrise_skips_per_floor_checks() -> None:
     assert diag["meets_target"] is True
 
 
-def test_candidate_selection_respects_explicit_floor_count() -> None:
-    raw = {"candidates": [
-        {"concept": "单层", "massing": {"floors": 1}},
-        {"concept": "三层", "massing": {"floors": 3}},
-    ]}
-    plan, diag = select_architecture_plan(raw, "生成三层欧式别墅")
-    assert plan["massing"]["floors"] == 3
-    assert diag["candidate_count"] == 2
-    assert len(diag["candidate_summaries"]) == 2
-    assert diag["candidate_summaries"][diag["selected_index"]]["score"] == max(diag["candidate_scores"])
 
 
-def test_standard_candidate_scoring_prefers_real_articulation_without_fixed_package() -> None:
-    plain = {
-        "concept": "单一矩形",
-        "massing": {"shape": "rectangle", "width": 14, "depth": 10, "floors": 2},
-        "volumes": [{
-            "id": "main", "role": "primary", "x": 0, "z": 0,
-            "width": 14, "depth": 10, "start_floor": 1, "end_floor": 2,
-        }],
-        "detail_packages": [],
-    }
-    articulated = {
-        **plain,
-        "concept": "主次体量",
-        "massing": {**plain["massing"], "shape": "l_shape"},
-        "volumes": [
-            plain["volumes"][0],
-            {
-                "id": "secondary", "role": "secondary", "x": 0, "z": 5,
-                "width": 6, "depth": 5, "start_floor": 1, "end_floor": 1,
-            },
-        ],
-    }
 
-    _, diag = select_architecture_plan(
-        {"candidates": [plain, articulated]},
-        "生成一个别墅",
-    )
 
-    assert diag["selected_index"] == 1
-    assert diag["candidate_scores"][1] > diag["candidate_scores"][0]
+
+
 
 
 def test_facade_layout_resolves_exact_non_overlapping_slots() -> None:
-    plan, _ = select_architecture_plan({}, "生成两层欧式别墅")
+    plan = normalize_architecture_plan({}, "生成两层欧式别墅")
     brief = resolve_facade_layout(_two_storey_blueprint(), plan)
     doors = [slot for slot in brief["opening_slots"] if slot["type"] == "door"]
     windows = [slot for slot in brief["opening_slots"] if slot["type"] == "window"]
@@ -450,7 +415,7 @@ def test_conformance_rejects_overlapping_legacy_slots() -> None:
 
 def test_merge_conformance_snaps_and_fills_minimum_openings() -> None:
     blueprint = _two_storey_blueprint()
-    plan, _ = select_architecture_plan({}, "生成两层欧式别墅")
+    plan = normalize_architecture_plan({}, "生成两层欧式别墅")
     brief = resolve_facade_layout(blueprint, plan)
     components, stats = conform_openings_to_slots([
         {"id": "bad_door", "type": "door", "parentWall": "missing", "from": [99, 0, 8], "width": 4, "height": 4},
@@ -465,7 +430,7 @@ def test_merge_conformance_snaps_and_fills_minimum_openings() -> None:
 
 def test_bay_window_claims_a_window_slot_without_duplicate_plain_window() -> None:
     blueprint = _two_storey_blueprint()
-    plan, _ = select_architecture_plan({}, "生成带凸窗的两层欧式别墅")
+    plan = normalize_architecture_plan({}, "生成带凸窗的两层欧式别墅")
     brief = resolve_facade_layout(blueprint, plan)
     target_slot = next(slot for slot in brief["opening_slots"] if slot["type"] == "window")
 
@@ -493,7 +458,7 @@ def test_bay_window_claims_a_window_slot_without_duplicate_plain_window() -> Non
 
 def test_required_bay_window_is_synthesized_from_an_approved_window_slot() -> None:
     blueprint = _two_storey_blueprint()
-    plan, _ = select_architecture_plan({}, "生成带凸窗的两层现代别墅")
+    plan = normalize_architecture_plan({}, "生成带凸窗的两层现代别墅")
     brief = resolve_facade_layout(blueprint, plan)
 
     components, stats = conform_openings_to_slots(
@@ -566,10 +531,6 @@ def test_high_rise_keeps_semantic_floor_count_and_uses_schematic_geometry() -> N
     assert plan["massing"]["representation_mode"] == "schematic"
     assert validate_blueprint_schema(build_deterministic_skeleton(plan, message)) == []
 
-    fallback_plan, _ = select_architecture_plan({}, message)
-    assert fallback_plan["massing"]["width"] == 80
-    assert fallback_plan["massing"]["depth"] == 45
-
 
 def test_high_rise_commercial_complex_outranks_ordinary_public_profile() -> None:
     message = "生成一个高层玻璃幕墙商业综合体"
@@ -581,7 +542,7 @@ def test_high_rise_commercial_complex_outranks_ordinary_public_profile() -> None
 
 
 def test_chinese_floor_count_does_not_confuse_twenty_one_with_one() -> None:
-    plan, _ = select_architecture_plan({}, "建造二十一层办公楼")
+    plan = normalize_architecture_plan({}, "建造二十一层办公楼")
     assert plan["profile"] == "high_rise"
     assert plan["massing"]["floors"] == 21
 
@@ -1077,7 +1038,7 @@ def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None
 
 def test_regular_balcony_slot_is_centered_on_an_upper_facade_opening() -> None:
     blueprint = _two_storey_blueprint()
-    plan, _ = select_architecture_plan({}, "生成带阳台的两层现代别墅")
+    plan = normalize_architecture_plan({}, "生成带阳台的两层现代别墅")
     plan["component_quota"]["balcony"] = {"min": 1, "max": 2}
 
     brief = resolve_facade_layout(blueprint, plan)

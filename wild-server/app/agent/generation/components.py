@@ -46,7 +46,6 @@ class ComponentConfig:
 
 
 # ── 每个组件的实现规则。数量、位置和造型由已批准设计及精确槽位决定。──
-
 _COMPONENT_RULES: dict[str, str] = {
     "door": (
         "- from[0] 是沿墙距离（单位米），范围: 0 ≤ from[0] ≤ 墙长-门宽\n"
@@ -74,7 +73,9 @@ _COMPONENT_RULES: dict[str, str] = {
     "roof": (
         "- roof 是 geometry.elements 原生类型，不是 components\n"
         "- roofType 支持 6 个值: gable/hip/flat/dome/chinese_curved/chinese_pagoda\n"
-        "- span 和 depth 应覆盖整个建筑的包围盒\n"
+        "- span 和 depth 按其负责体量的轮廓取值，不是整栋建筑包围盒\n"
+        "- L/U 形等多体量必须为每个体量各生成一块 roof，禁止用单块盖住内院/天井\n"
+        "- 每块屋顶下方都必须有墙或楼板承托\n"
         "- position 是屋顶中心世界坐标"
     ),
     "railing": (
@@ -133,7 +134,6 @@ _COMPONENT_RULES: dict[str, str] = {
 
 
 # ── 注册表：全部组件（均已实现）──
-
 COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
     # ── P0: 建筑三要素 ──
     "door": ComponentConfig(

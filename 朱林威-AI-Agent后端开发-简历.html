@@ -1,293 +1,358 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>朱林威 - 个人简历</title>
-<style>
-  :root {
-    --ink: #1f2937;
-    --muted: #5f6b7a;
-    --accent: #174f7a;
-    --accent-soft: #edf4f8;
-    --line: #cbd7df;
-    --paper: #ffffff;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>朱林威 - 个人简历</title>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #5f6b7a;
+      --accent: #174f7a;
+      --accent-soft: #edf4f8;
+      --line: #cbd7df;
+      --paper: #ffffff;
+    }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-  html, body { min-height: 100%; }
+    html,
+    body {
+      min-height: 100%;
+    }
 
-  body {
-    display: flex;
-    justify-content: center;
-    padding: 12px;
-    color: var(--ink);
-    background: #eef1f3;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    font-size: 12.1px;
-    font-weight: 400;
-    line-height: 1.55;
-    -webkit-font-smoothing: antialiased;
-  }
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 12px;
+      color: var(--ink);
+      background: #eef1f3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      font-size: 12.1px;
+      font-weight: 400;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
 
-  .resume {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 10mm 14mm 8mm;
-    overflow: hidden;
-    background: var(--paper);
-    box-shadow: 0 4px 22px rgba(24, 50, 68, 0.12);
-  }
-
-  .header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 8px 20px;
-    align-items: end;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--accent);
-  }
-
-  .name {
-    color: #123f61;
-    font-size: 25px;
-    font-weight: 700;
-    letter-spacing: 5px;
-    line-height: 1.05;
-  }
-
-  .contact {
-    display: grid;
-    grid-template-columns: auto auto;
-    gap: 2px 14px;
-    color: var(--muted);
-    font-size: 10.8px;
-    text-align: right;
-  }
-
-  a { color: inherit; text-decoration: none; }
-
-  .profile {
-    margin-top: 7px;
-    padding: 6px 9px;
-    color: #344454;
-    background: var(--accent-soft);
-    border-left: 3px solid #5f8eae;
-    font-size: 11.35px;
-    line-height: 1.48;
-  }
-
-  .section { margin-top: 9px; }
-
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 5px;
-    color: var(--accent);
-    font-size: 13.8px;
-    font-weight: 700;
-    letter-spacing: 1px;
-  }
-
-  .section-title::after {
-    content: "";
-    flex: 1;
-    height: 1px;
-    background: var(--line);
-  }
-
-  .education-row,
-  .item-head {
-    display: flex;
-    justify-content: space-between;
-    gap: 14px;
-    align-items: baseline;
-  }
-
-  .education-main,
-  .item-name {
-    font-size: 12.5px;
-    font-weight: 650;
-  }
-
-  .education-detail,
-  .item-role {
-    margin-left: 7px;
-    color: var(--muted);
-    font-size: 10.8px;
-    font-weight: 500;
-  }
-
-  .date {
-    flex: none;
-    color: var(--muted);
-    font-size: 10.7px;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .skills { display: grid; gap: 2px; }
-
-  .skill {
-    color: #34404d;
-    font-size: 11.25px;
-    line-height: 1.5;
-  }
-
-  .skill-label,
-  .project-title,
-  .bullet-label {
-    color: #263f52;
-    font-weight: 600;
-  }
-
-  .project-title {
-    color: var(--ink);
-  }
-
-  .bullet-label {
-    white-space: nowrap;
-  }
-
-  .item + .item { margin-top: 7px; }
-
-  .item-summary {
-    margin: 2px 0 3px;
-    color: var(--muted);
-    font-size: 11.05px;
-    line-height: 1.48;
-  }
-
-  .tags {
-    color: #466276;
-    font-size: 10.2px;
-    font-weight: 500;
-  }
-
-  ul { list-style: none; }
-
-  li {
-    position: relative;
-    margin-top: 2px;
-    padding-left: 11px;
-    font-size: 11.25px;
-    line-height: 1.5;
-  }
-
-  li::before {
-    content: "•";
-    position: absolute;
-    left: 1px;
-    top: -0.5px;
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 700;
-  }
-
-  @page { size: A4; margin: 0; }
-
-  @media print {
-    html, body { width: 210mm; height: 297mm; }
-    body { padding: 0; background: #fff; }
     .resume {
       width: 210mm;
-      height: 297mm;
-      min-height: 0;
-      padding: 9mm 13mm 7mm;
-      box-shadow: none;
-      page-break-after: avoid;
+      min-height: 297mm;
+      padding: 10mm 14mm 8mm;
+      overflow: hidden;
+      background: var(--paper);
+      box-shadow: 0 4px 22px rgba(24, 50, 68, 0.12);
     }
-    .section, .item { break-inside: avoid; page-break-inside: avoid; }
-  }
-</style>
+
+    .header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 20px;
+      align-items: end;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .name {
+      color: #123f61;
+      font-size: 25px;
+      font-weight: 700;
+      letter-spacing: 5px;
+      line-height: 1.05;
+    }
+
+    .contact {
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 2px 14px;
+      color: var(--muted);
+      font-size: 10.8px;
+      text-align: right;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .profile {
+      margin-top: 7px;
+      padding: 6px 9px;
+      color: #344454;
+      background: var(--accent-soft);
+      border-left: 3px solid #5f8eae;
+      font-size: 11.35px;
+      line-height: 1.48;
+    }
+
+    .section {
+      margin-top: 9px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+      color: var(--accent);
+      font-size: 13.8px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .section-title::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+    }
+
+    .education-row,
+    .item-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: baseline;
+    }
+
+    .education-main,
+    .item-name {
+      font-size: 12.5px;
+      font-weight: 650;
+    }
+
+    .education-detail,
+    .item-role {
+      margin-left: 7px;
+      color: var(--muted);
+      font-size: 10.8px;
+      font-weight: 500;
+    }
+
+    .date {
+      flex: none;
+      color: var(--muted);
+      font-size: 10.7px;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .skills {
+      display: grid;
+      gap: 2px;
+    }
+
+    .skill {
+      color: #34404d;
+      font-size: 11.25px;
+      line-height: 1.5;
+    }
+
+    .skill-label,
+    .project-title,
+    .bullet-label {
+      color: #263f52;
+      font-weight: 600;
+    }
+
+    .project-title {
+      color: var(--ink);
+    }
+
+    .bullet-label {
+      white-space: nowrap;
+    }
+
+    .item+.item {
+      margin-top: 7px;
+    }
+
+    .item-summary {
+      margin: 2px 0 3px;
+      color: var(--muted);
+      font-size: 11.05px;
+      line-height: 1.48;
+    }
+
+    .tags {
+      color: #466276;
+      font-size: 10.2px;
+      font-weight: 500;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+      margin-top: 2px;
+      padding-left: 11px;
+      font-size: 11.25px;
+      line-height: 1.5;
+    }
+
+    li::before {
+      content: "•";
+      position: absolute;
+      left: 1px;
+      top: -0.5px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    @media print {
+
+      html,
+      body {
+        width: 210mm;
+        height: 297mm;
+      }
+
+      body {
+        padding: 0;
+        background: #fff;
+      }
+
+      .resume {
+        width: 210mm;
+        height: 297mm;
+        min-height: 0;
+        padding: 9mm 13mm 7mm;
+        box-shadow: none;
+        page-break-after: avoid;
+      }
+
+      .section,
+      .item {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
 </head>
+
 <body>
-<main class="resume">
-  <header class="header">
-    <div>
-      <h1 class="name">朱林威</h1>
-    </div>
-    <div class="contact">
-      <span>20 岁</span>
-      <a href="tel:18539312155">18539312155</a>
-      <a href="mailto:1400377637@qq.com">1400377637@qq.com</a>
-      <a href="https://github.com/1zzzlw">github.com/1zzzlw</a>
-    </div>
-  </header>
-
-  <p class="profile">
-    2028 届本科生，具备 Agent 工程与 Java / Python 后端项目经验，独立完成过微服务 IM、Python 智能体服务及配套前端开发；注重结合日志、LangSmith Trace 和回归测试定位问题，能够围绕接口契约、数据一致性与部署可靠性推进功能落地。
-  </p>
-
-  <section class="section">
-    <h2 class="section-title">教育背景</h2>
-    <div class="education-row">
-      <div><span class="education-main">河南师范大学</span><span class="education-detail">软件工程 · 本科在读</span></div>
-      <span class="date">2024.09 — 2028.06</span>
-    </div>
-  </section>
-
-  <section class="section">
-    <h2 class="section-title">专业技能</h2>
-    <div class="skills">
-      <p class="skill"><span class="skill-label">Agent 工程：</span>使用 LangGraph 构建状态化工作流，实践过结构化输出、Checkpoint、工具调用、人机确认与校验—修复—复检闭环，并使用 LangSmith 观测节点和模型调用。</p>
-      <p class="skill"><span class="skill-label">RAG：</span>实践过 Markdown 分片、Embedding、ChromaDB 检索、元数据过滤与规则重排，能结合检索 Trace 和 Hit@K / Recall@K / MRR 分析召回效果。</p>
-      <p class="skill"><span class="skill-label">Java 后端：</span>熟悉 Java 17、Spring Boot、Spring Cloud Alibaba 与 MyBatis；在项目中使用 Netty、Redis、RabbitMQ 和 MySQL 处理通信、缓存与并发事务。</p>
-      <p class="skill"><span class="skill-label">Python 服务：</span>能够使用 FastAPI、Pydantic、PyMySQL 开发 Agent 服务，实践过 OpenAI 兼容模型、DeepSeek 与 Ollama 的统一接入。</p>
-      <p class="skill"><span class="skill-label">前端与工程化：</span>具备 Vue 3、TypeScript、Electron、Three.js 项目经验；使用过 GitLab、Jenkins、Docker、Nginx 完成自动化构建与部署。</p>
-    </div>
-  </section>
-
-  <section class="section">
-    <h2 class="section-title">实习经历</h2>
-    <article class="item">
-      <div class="item-head">
-        <div><span class="item-name">杭州木风投资管理公司</span><span class="item-role">AI Agent 开发实习生</span></div>
-        <span class="date">2026.06.10 — 2026.09.10</span>
+  <main class="resume">
+    <header class="header">
+      <div>
+        <h1 class="name">朱林威</h1>
       </div>
-      <p class="item-summary">
-        <span class="project-title">实习项目：WildAgent AI 参数化 3D 建筑编辑器。</span>服务于 3D 虚拟世界的建筑生成需求；在已有 .wild 参数化语言规范与 Three.js 渲染引擎的基础上，负责 Agent 层从 0 到 1 的整体设计与开发，使用户无需掌握复杂协议或预置大量固定 GLB 建筑资产，即可通过自然语言生成可校验、可版本化、可继续编辑的 Blueprint / ScenePatch。
-      </p>
-      <ul>
-        <li><span class="bullet-label">Agent 系统从 0 到 1：</span>基于 LangGraph 构建可审核的建筑生成 Agentic Workflow，以“意图分类 → 方案设计 → 骨架与组件生成 → 合并 → 最终校验”固化执行主链和安全边界，通过结构化 State 传递设计方案、几何约束及校验结果；结合 LangSmith Trace 与服务日志定位并修复已批准约束未参与候选评分导致的规划—执行失配。</li>
-        <li><span class="bullet-label">RAG 知识治理与评测：</span>落地 rules-v3 知识角色，普通生成仅允许 protocol / capability / relation 进入上下文，隔离建筑类型模板偏置；实现 Markdown 语义分片、Chroma 向量检索、元数据过滤与规则重排，并使用 LangSmith Dataset / Experiment 管理 51 题（含 35 题拒绝/隔离样本）的评测集，结合 Hit@K、Recall@K、MRR 评估召回与排序。</li>
-        <li><span class="bullet-label">Agent 可靠性闭环：</span>将校验文本结构化为逐实体 ValidationIssue；模型只选择白名单局部修复工具，程序在 Blueprint 副本执行并全量复检，错误未减少或引入新问题时自动回滚；加入单目标重试预算与最终保存门禁，避免错误蓝图落库。</li>
-        <li><span class="bullet-label">长任务与事件恢复：</span>将生成任务从物理 WebSocket 连接中解耦，持久化任务与事件序列，支持断线重连后的事件续传；设计版本化事件协议与动态心跳，解决长时间模型调用期间的假断连和跨会话状态串扰。</li>
-        <li><span class="bullet-label">CI/CD 与发布门禁：</span>基于 GitLab、Jenkins Pipeline 与 Docker 串联前端构建、后端 pytest、镜像构建、部署预检和生产发布；以知识库 required_documents 清单、RAG Loader 就绪状态及 /health/ready 阻断不完整镜像，容器启动失败自动恢复旧镜像。修复知识库被构建忽略或挂载遮蔽的问题，当前回归基线为 189 passed + 4 subtests。</li>
-      </ul>
-    </article>
-  </section>
-
-  <section class="section">
-    <h2 class="section-title">项目经历</h2>
-    <article class="item">
-      <div class="item-head">
-        <div><span class="item-name">IM-SpringCloud + imAgent｜Java 微服务智能体项目</span><span class="item-role">独立全栈开发</span></div>
-        <span class="date">2025.11 — 至今</span>
+      <div class="contact">
+        <span>20 岁</span>
+        <a href="tel:18539312155">18539312155</a>
+        <a href="mailto:1400377637@qq.com">1400377637@qq.com</a>
+        <a href="https://github.com/1zzzlw">github.com/1zzzlw</a>
       </div>
-      <p class="item-summary">
-        以 Java 微服务即时通讯系统为业务底座，将 imAgent 作为独立 Python 智能体服务接入，形成由统一网关治理、桌面端承载交互的 AI 增强型 IM 平台。
-        <a class="tags" href="https://github.com/1zzzlw/IM-SpringCloud-Upgrade">项目地址：github.com/1zzzlw/IM-SpringCloud-Upgrade</a>
-      </p>
-      <ul>
-        <li><span class="bullet-label">Python Agent 微服务融合：</span>基于 FastAPI 开发 imAgent，在应用生命周期内自动注册/注销 Nacos；Gateway 通过 lb://im-agent 统一转发 /ai-message/**。封装 OpenAI、DeepSeek、Ollama 与自定义 OpenAI 兼容模型接入，使用 MySQL 按用户持久化模型配置、会话和消息，API Key 仅随本次调用传递、不入库。</li>
-        <li><span class="bullet-label">高并发 IM 后端：</span>设计 16 字节固定头 + 变长消息体协议，基于 LengthFieldBasedFrameDecoder 处理 TCP 粘包半包；以 RabbitMQ Topic Exchange 完成同节点直发、跨节点路由和离线消息异步持久化，支持 Netty 服务水平扩展。</li>
-        <li><span class="bullet-label">模拟支付与资金安全：</span>针对红包、转账和支付中的并发扣款与重复消费，采用 MySQL 行锁 + 余额条件更新 + Redis 幂等锁三层校验；转账按 userId 排序加锁规避死锁，并记录 before / after balance 形成资金变更审计链。</li>
-        <li><span class="bullet-label">数据一致性：</span>使用 Redis Lua 将 Token 清理/替换、离线消息和点赞计数等多步操作原子化；朋友圈缓存采用 Cache-Aside + Canal 监听 MySQL binlog 异步删除，并通过随机 TTL 降低热点数据同时失效风险。</li>
-        <li><span class="bullet-label">全栈交付：</span>独立完成 Vue 3 + TypeScript + Electron 客户端，以 IPC 隔离主进程/渲染进程、SQLite 保存本地会话与消息；实现 WebSocket 二进制编解码、心跳重连、多窗口同步，以及 Agent 工作台、模型配置和会话管理界面。</li>
-      </ul>
-    </article>
-  </section>
+    </header>
 
-  <section class="section">
-    <h2 class="section-title">个人优势</h2>
-    <ul>
-      <li><span class="bullet-label">问题驱动：</span>习惯结合运行日志、LangSmith Trace 与失败样本定位根因，能够区分模型输出、确定性程序和运行时交付问题，避免只在 Prompt 层反复试错。</li>
-      <li><span class="bullet-label">工程习惯：</span>重视接口契约、敏感信息边界、自动化测试与部署检查；面对复杂问题会先复现和建立验证标准，再进行针对性修改。</li>
-    </ul>
-  </section>
-</main>
+    <p class="profile">
+      2028 届本科生，具备 Agent 工程与 Java / Python 后端项目经验，独立完成过微服务 IM、Python 智能体服务及配套前端开发；注重结合日志、LangSmith Trace
+      和回归测试定位问题，能够围绕接口契约、数据一致性与部署可靠性推进功能落地。
+    </p>
+
+    <section class="section">
+      <h2 class="section-title">教育背景</h2>
+      <div class="education-row">
+        <div><span class="education-main">河南师范大学</span><span class="education-detail">软件工程 · 本科在读</span></div>
+        <span class="date">2024.09 — 2028.06</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">专业技能</h2>
+      <div class="skills">
+        <p class="skill"><span class="skill-label">Agent 工程：</span>使用 LangGraph
+          构建状态化工作流，实践过结构化输出、Checkpoint、工具调用、人机确认与校验—修复—复检闭环，并使用 LangSmith 观测节点和模型调用。</p>
+        <p class="skill"><span class="skill-label">RAG：</span>实践过 Markdown 分片、Embedding、ChromaDB 检索、元数据过滤与规则重排，能结合检索
+          Trace 和 Hit@K / Recall@K / MRR 分析召回效果。</p>
+        <p class="skill"><span class="skill-label">Java 后端：</span>熟悉 Java 17、Spring Boot、Spring Cloud Alibaba 与
+          MyBatis；在项目中使用 Netty、Redis、RabbitMQ 和 MySQL 处理通信、缓存与并发事务。</p>
+        <p class="skill"><span class="skill-label">Python 服务：</span>能够使用 FastAPI、Pydantic、PyMySQL 开发 Agent 服务，实践过 OpenAI
+          兼容模型、DeepSeek 与 Ollama 的统一接入。</p>
+        <p class="skill"><span class="skill-label">前端与工程化：</span>具备 Vue 3、TypeScript、Electron、Three.js 项目经验；使用过
+          GitLab、Jenkins、Docker、Nginx 完成自动化构建与部署。</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">实习经历</h2>
+      <article class="item">
+        <div class="item-head">
+          <div><span class="item-name">杭州木风投资管理公司</span><span class="item-role">AI Agent 开发实习生</span></div>
+          <span class="date">2026.06.10 — 2026.09.10</span>
+        </div>
+        <p class="item-summary">
+          <span class="project-title">实习项目：WildAgent AI 参数化 3D 建筑编辑器。</span>服务于 3D 虚拟世界的建筑生成需求；在已有 .wild 参数化语言规范与
+          Three.js 渲染引擎基础上，负责 Agent 层从 0 到 1 的整体设计与开发，采用 VibeCoding 方式快速搭建原型，并在遇到 AI
+          优化瓶颈后深度介入代码理解与生产级优化，使用户无需掌握复杂协议或预置大量固定 GLB 建筑资产，即可通过自然语言生成可校验、可版本化、可继续编辑的 Blueprint / ScenePatch。
+        </p>
+        <ul>
+          <li><span class="bullet-label">Agent 系统从 0 到 1：</span>基于 LangGraph 构建可审核的建筑生成 Agentic Workflow，以“意图分类 → 方案设计 →
+            骨架与组件生成 → 合并 → 最终校验”固化执行主链和安全边界，通过结构化 State 传递设计方案、几何约束及校验结果；结合 LangSmith Trace
+            与服务日志定位并修复已批准约束未参与候选评分导致的规划—执行失配。</li>
+          <li><span class="bullet-label">RAG 知识治理与评测：</span>基于"大模型已知通识但不懂项目协议"的能力边界，设计知识库仅保留模型不能可靠掌握的 WILD
+            协议规范和引擎能力边界，隔离建筑百科和完整案例避免模板化；自制 AI Skill 自动读取 Schema 和 Validator 生成结构化知识文档，确保与代码同步；实现 Markdown 语义分片、Chroma
+            向量检索、元数据过滤与规则重排，并通过 LangSmith 导入CSV 评测集，结合 Hit@K、Recall@K、MRR 评估召回质量。</li>
+          <li><span class="bullet-label">Agent 可靠性闭环：</span>将校验文本结构化为逐实体 ValidationIssue；模型只选择白名单局部修复工具，程序在 Blueprint
+            副本执行并全量复检，错误未减少或引入新问题时自动回滚；加入单目标重试预算与最终保存门禁，避免错误蓝图落库。</li>
+          <li><span class="bullet-label">长任务与事件恢复：</span>将生成任务从物理 WebSocket
+            连接中解耦，持久化任务与事件序列，支持断线重连后的事件续传；设计版本化事件协议与动态心跳，解决长时间模型调用期间的假断连和跨会话状态串扰。</li>
+          <li><span class="bullet-label">CI/CD 与发布门禁：</span>基于 GitLab、Jenkins Pipeline 与 Docker 串联前端构建、后端
+            pytest、镜像构建、部署预检和生产发布；以知识库 required_documents 清单、RAG Loader 就绪状态及 /health/ready
+            阻断不完整镜像，容器启动失败自动恢复旧镜像。修复知识库被构建忽略或挂载遮蔽的问题，当前回归基线为 189 passed + 4 subtests。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">项目经历</h2>
+      <article class="item">
+        <div class="item-head">
+          <div><span class="item-name">IM-SpringCloud + imAgent｜Java 微服务智能体项目</span><span
+              class="item-role">独立全栈开发</span></div>
+          <span class="date">2025.11 — 至今</span>
+        </div>
+        <p class="item-summary">
+          以 Java 微服务即时通讯系统为业务底座，将 imAgent 作为独立 Python 智能体服务接入，形成由统一网关治理、桌面端承载交互的 AI 增强型 IM 平台。
+          <a class="tags"
+            href="https://github.com/1zzzlw/IM-SpringCloud-Upgrade">项目地址：github.com/1zzzlw/IM-SpringCloud-Upgrade</a>
+        </p>
+        <ul>
+          <li><span class="bullet-label">Python Agent 微服务融合：</span>基于 FastAPI 开发 imAgent，在应用生命周期内自动注册/注销 Nacos；Gateway
+            通过 lb://im-agent 统一转发 /ai-message/**。封装 OpenAI、DeepSeek、Ollama 与自定义 OpenAI 兼容模型接入，使用 MySQL
+            按用户持久化模型配置、会话和消息，API Key 仅随本次调用传递、不入库。</li>
+          <li><span class="bullet-label">高并发 IM 后端：</span>设计 16 字节固定头 + 变长消息体协议，基于 LengthFieldBasedFrameDecoder 处理 TCP
+            粘包半包；以 RabbitMQ Topic Exchange 完成同节点直发、跨节点路由和离线消息异步持久化，支持 Netty 服务水平扩展。</li>
+          <li><span class="bullet-label">模拟支付与资金安全：</span>针对红包、转账和支付中的并发扣款与重复消费，采用 MySQL 行锁 + 余额条件更新 + Redis 幂等锁三层校验；转账按
+            userId 排序加锁规避死锁，并记录 before / after balance 形成资金变更审计链。</li>
+          <li><span class="bullet-label">数据一致性：</span>使用 Redis Lua 将 Token 清理/替换、离线消息和点赞计数等多步操作原子化；朋友圈缓存采用 Cache-Aside +
+            Canal 监听 MySQL binlog 异步删除，并通过随机 TTL 降低热点数据同时失效风险。</li>
+          <li><span class="bullet-label">全栈交付：</span>独立完成 Vue 3 + TypeScript + Electron 客户端，以 IPC 隔离主进程/渲染进程、SQLite
+            保存本地会话与消息；实现 WebSocket 二进制编解码、心跳重连、多窗口同步，以及 Agent 工作台、模型配置和会话管理界面。</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">个人优势</h2>
+      <ul>
+        <li><span class="bullet-label">问题驱动：</span>习惯结合运行日志、LangSmith Trace 与失败样本定位根因，能够区分模型输出、确定性程序和运行时交付问题，避免只在 Prompt
+          层反复试错。</li>
+        <li><span class="bullet-label">工程习惯：</span>重视接口契约、敏感信息边界、自动化测试与部署检查；面对复杂问题会先复现和建立验证标准，再进行针对性修改。</li>
+      </ul>
+    </section>
+  </main>
 </body>
+
 </html>

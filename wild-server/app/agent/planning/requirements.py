@@ -11,6 +11,8 @@ from app.agent.planning.contracts import (
     ExecutionPlan,
     ExecutionProgressItem,
     PlanValidationIssue,
+    RequirementSeverity,
+    RequirementSupportStatus,
     StructuredRequirement,
 )
 
@@ -41,6 +43,21 @@ _UNSUPPORTED_COMPONENT_ALIASES = {
     "furniture": ("furniture", "家具", "table", "chair", "桌", "椅"),
 }
 
+# 真实能力缺失：主链不设计内部空间（无房间坐标、无隔墙），也不处理场地语义。
+# 这些要求必须**被标记出来**，但不能阻断整轮生成：把一份结构合法的计划判死，
+# 用户拿到的是一张图都没有；照常生成、把缺的能力写进验收结果，用户至少拿到蓝图。
+# 判定准则是"系统真的做不到 vs 做得到但表述不一致"，两者现在都不阻断，
+# 区别只在 support_status 记的是"缺能力"还是"待人工确认"。
+_UNSUPPORTED_INTERIOR_TERMS = ("房间位置", "房间布局", "功能分区平面", "内部隔墙")
+_UNSUPPORTED_SITE_TERMS = ("车库", "后院", "花园", "garage", "backyard", "garden")
+
+# 只是交付媒介与系统产物不一致：主链不产出 2D 平面图，但体量、立面与尺寸会由
+# design_review 的 SVG 预览和 DesignDocument 呈现。这类表述降级为人工确认，
+# 不阻断整轮生成——否则用户只要顺口说一句"出个平面草图"就会让计划直接判死。
+# 注意：该判定放在所有量化抽取分支之后，句子里只要给出了层数、尺寸、屋顶或构件
+# 等可执行指标，就按指标编译，不再按媒介判级。
+_PRESENTATION_MEDIUM_TERMS = ("平面草图", "平面图", "二维平面", "2d 平面", "2d平面")
+
 _ELEMENT_ALIASES = {
     "wall": ("wall", "墙体", "墙"),
     "floor": ("floor", "楼板", "地板"),
@@ -48,6 +65,12 @@ _ELEMENT_ALIASES = {
     "beam": ("beam", "梁"),
     "stair": ("stair", "楼梯"),
 }
+
+# 材质类要求必须由 material_plan 消费，而且**必须排在构件分支之前**：
+# 构件分支只看到"门窗、屋顶"就会把"材质至少N种"编译成 component_presence，
+# 把种类数错读成每种构件的实例下限。这类"分支优先级"教训在文件里已出现过
+# （媒介降级分支必须排在量化抽取之后），规律一样：**更具体的语义先判**。
+_MATERIAL_TERMS = ("材质", "材料")
 
 _ROOF_TYPES = ("flat", "gable", "hip", "shed", "dome", "chinese_curved")
 
@@ -60,11 +83,6 @@ _PHASE_OUTCOME = {
     "final_validate": ("final_blueprint", "final_validation_zero_errors"),
     "patch": ("scene_patch", "scene_patch_exists"),
 }
-
-# door/window 的配额由 architecture 阶段的立面 pattern 解析得出（见
-# `normalize_architecture_plan`），属于派生值。结构化要求只能对它们做违规检查，
-# 不能改写配额，否则立面上的实际槽位数量会与配额互相矛盾。
-_PATTERN_GOVERNED_OPENINGS = frozenset({"door", "window"})
 
 # 纯主观验收无法由程序判定。它们既不能假装通过，也不该阻断交付，
 # 因此标为 needs_review（warning），由用户在计划审核阶段确认。
@@ -135,13 +153,92 @@ def _parse_number(value: str, default: int = 1) -> int:
     return default
 
 
+# 量词决定"数的是种类还是实例"：「至少3种材质」数的是种类数，
+# 把它当成"每种至少3个"会让一条本该通过的要求变成阻断点。
+# 真实事故（2026-09-17，req_1789634516108_eu82yreb4）：验收原文
+# "材质方案包含墙体、屋顶、门窗至少3种材质" 被编译成
+# types=[door, window, roof] + minimum=3（门/窗/屋顶每种>=3），
+# 实际 door=1 / roof=1 → failed（severity=error）→ 整轮判死，
+# 而已合并的 23 元素蓝图因 final_blueprint=None 被丢弃。
+# 长量词必须排在短量词前面，否则"类型"会被"类"先吃掉。
+_KIND_QUANTIFIERS = ("类型", "品种", "系列", "种", "类", "款")
+_KIND_QUANTIFIER_PATTERN = "|".join(_KIND_QUANTIFIERS)
+
+_MINIMUM_COUNT_PATTERN = re.compile(
+    r"(?:至少|最少)\s*"
+    r"(?:添加|生成|布置|包含|配置|存在|使用|采用|有)?\s*"
+    r"(\d+|[一二两三四五六七八九十]+)\s*"
+    rf"({_KIND_QUANTIFIER_PATTERN})?"
+)
+
+
+def _quantified_minimum(text: str) -> tuple[int | None, bool]:
+    """解析「至少N<量词>」，返回 (数量, 量词是否表示种类)。
+
+    找不到「至少N」时返回 (None, False)。
+    """
+
+    match = _MINIMUM_COUNT_PATTERN.search(text)
+    if match is None:
+        return None, False
+    count = _parse_number(match.group(1), 1)
+    return count, (match.group(2) or "") in _KIND_QUANTIFIERS
+
+
 def _minimum_count(text: str) -> int:
-    match = re.search(r"至少(?:添加|生成|布置|包含|配置|存在)?\s*([一二两三四五六七八九十\d]+)", text)
-    return _parse_number(match.group(1), 1) if match else 1
+    """实例数量下限。
+
+    **种类量词不构成实例下限**：「至少3种材质」说的是种类数，
+    不是"每种至少3个"，此时退回默认下限 1。
+    """
+
+    count, is_kind = _quantified_minimum(text)
+    if count is None or is_kind:
+        return 1
+    return count
+
+
+def _minimum_kind_count(text: str) -> int | None:
+    """种类数量下限（「至少3种」→3）。不是种类量词时返回 None。"""
+
+    count, is_kind = _quantified_minimum(text)
+    return count if is_kind else None
 
 
 def _mentioned(text: str, aliases: dict[str, tuple[str, ...]]) -> list[str]:
     return [name for name, terms in aliases.items() if _contains_any(text, terms)]
+
+
+# 平面宽深的两种常见表述：
+#   1) 紧凑写法 "12×10"、"12x10"、"12*10"
+#   2) 自然语言 "宽12米，深10米"、"宽度约12米、进深约10米"
+_PLAN_DIMENSION_PAIR = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:m|米)?\s*[×xX*]\s*(\d+(?:\.\d+)?)"
+)
+_PLAN_WIDTH_DEPTH_PAIR = re.compile(
+    r"宽(?:度)?\s*(?:约|大约|为|是|在)?\s*[:：]?\s*(\d+(?:\.\d+)?)\s*(?:m|米)?"
+    r"[^0-9]{0,10}?"
+    r"(?:进深|深(?:度)?|长(?:度)?)\s*(?:约|大约|为|是|在)?\s*[:：]?\s*(\d+(?:\.\d+)?)"
+)
+# 紧邻尺寸之前的"举例"引导词。举例值只是说明量级，不能变成 near 硬判定，
+# 否则模型按示例写了 12×10、架构节点算出 14×9 就会被判验收失败并阻断交付。
+_ILLUSTRATIVE_LEADS = (
+    "例如", "比如", "示例", "例", "如",
+    "例如：", "例如:", "比如：", "比如:", "示例：", "示例:",
+    "如：", "如:", "（如", "(如",
+)
+
+
+def _extract_plan_dimensions(text: str) -> tuple[float, float] | None:
+    """提取平面宽深；被"例如/如"引导的示例值不作为可判定要求。"""
+
+    for pattern in (_PLAN_DIMENSION_PAIR, _PLAN_WIDTH_DEPTH_PAIR):
+        for match in pattern.finditer(text):
+            lead = text[: match.start()].rstrip()
+            if lead.endswith(_ILLUSTRATIVE_LEADS):
+                continue
+            return float(match.group(1)), float(match.group(2))
+    return None
 
 
 def _requirement(
@@ -156,8 +253,8 @@ def _requirement(
     expected: Any,
     consumers: list[str] | None = None,
     validator: str,
-    severity: str = "error",
-    support_status: str = "supported",
+    severity: RequirementSeverity = "error",
+    support_status: RequirementSupportStatus = "supported",
 ) -> StructuredRequirement:
     acceptance_id = f"acc_{task_id}_{acceptance_index}"
     return {
@@ -186,8 +283,8 @@ def _compile_acceptance(
     text = " ".join(description.split())
     folded = text.casefold()
 
-    # 当前主链不再设计房间平面，也没有 furniture 组件。此类计划必须在审核前暴露，
-    # 不能让模型写进计划后静默显示 completed。
+    # 当前主链不再设计房间平面，也没有 furniture 组件。此类计划必须让用户看见，
+    # 但**不阻断**：引擎仍能产出可用的建筑蓝图，把它判死等于让用户连一张图都拿不到。
     unsupported_components = _mentioned(text, _UNSUPPORTED_COMPONENT_ALIASES)
     if unsupported_components:
         return _requirement(
@@ -200,9 +297,10 @@ def _compile_acceptance(
             operator="unsupported",
             expected=True,
             validator="unsupported",
+            severity="warning",
             support_status="unsupported",
         )
-    if _contains_any(text, ("房间位置", "房间布局", "功能分区平面", "平面草图", "内部隔墙")):
+    if _contains_any(text, _UNSUPPORTED_INTERIOR_TERMS):
         return _requirement(
             task_id=task_id,
             acceptance_index=acceptance_index,
@@ -213,9 +311,10 @@ def _compile_acceptance(
             operator="unsupported",
             expected=True,
             validator="unsupported",
+            severity="warning",
             support_status="unsupported",
         )
-    if _contains_any(text, ("车库", "后院", "花园", "garage", "backyard", "garden")):
+    if _contains_any(text, _UNSUPPORTED_SITE_TERMS):
         return _requirement(
             task_id=task_id,
             acceptance_index=acceptance_index,
@@ -226,6 +325,7 @@ def _compile_acceptance(
             operator="unsupported",
             expected=True,
             validator="unsupported",
+            severity="warning",
             support_status="unsupported",
         )
 
@@ -295,6 +395,23 @@ def _compile_acceptance(
                 validator="architecture_floor_count",
             )
 
+    # 材质要求先于构件分支判定，且只认「N种」这种种类量词，
+    # 不能让构件分支把"材质至少3种"读成"门窗屋顶每种至少3个"。
+    material_kind_minimum = _minimum_kind_count(text)
+    if material_kind_minimum is not None and _contains_any(text, _MATERIAL_TERMS):
+        return _requirement(
+            task_id=task_id,
+            acceptance_index=acceptance_index,
+            description=text,
+            phase=phase,
+            kind="material_role_count",
+            target="material_plan.roles",
+            operator="gte",
+            expected={"minimum": material_kind_minimum},
+            consumers=["material_plan", "design_review", "skeleton", "final_validate"],
+            validator="material_plan_exists",
+        )
+
     components = _mentioned(text, _COMPONENT_ALIASES)
     if components and _contains_any(
         text,
@@ -323,7 +440,32 @@ def _compile_acceptance(
         )
 
     elements = _mentioned(text, _ELEMENT_ALIASES)
-    if elements and _contains_any(text, ("生成", "包含", "必要", "完整", "所有")):
+    # 区分"要求存在元素"和"元素质量检查"以及"规划性描述"
+    # 质量检查的关键词：对齐、一致、精确、无间隙、无重叠、合理、符合
+    is_quality_check = _contains_any(
+        text,
+        (
+            "对齐", "一致", "精确", "无间隙", "无重叠", "合理", "符合",
+            "正确", "端点", "转角", "连接", "衔接",
+        )
+    )
+    # 规划性描述：定义范围、标高体系、初步划分等，不是要求真的生成
+    is_planning_description = _contains_any(
+        text,
+        (
+            "定义", "划分", "范围", "标高体系", "初步", "大致",
+            "确定", "指定", "给出", "提供依据",
+        )
+    )
+    # element_all 只应用于 skeleton/merge/final_validate 阶段
+    # architecture 阶段不生成 elements，不应该检查元素存在性
+    is_element_generation_phase = phase in ("skeleton", "merge", "final_validate")
+    
+    if (elements 
+        and not is_quality_check 
+        and not is_planning_description
+        and is_element_generation_phase
+        and _contains_any(text, ("生成", "包含", "必要", "完整", "所有"))):
         return _requirement(
             task_id=task_id,
             acceptance_index=acceptance_index,
@@ -337,8 +479,12 @@ def _compile_acceptance(
             validator="element_presence",
         )
 
-    dimensions = re.search(r"(\d+(?:\.\d+)?)\s*(?:m|米)?\s*[×xX*]\s*(\d+(?:\.\d+)?)", text)
+    dimensions = _extract_plan_dimensions(text)
     if dimensions:
+        # 检测是否有"约"、"大约"、"左右"等模糊词，使用更大的容差
+        is_approximate = _contains_any(text, ("约", "大约", "左右", "大致", "接近"))
+        tolerance = 1.5 if is_approximate else 0.5
+
         return _requirement(
             task_id=task_id,
             acceptance_index=acceptance_index,
@@ -348,9 +494,9 @@ def _compile_acceptance(
             target="architecture.massing",
             operator="near",
             expected={
-                "width": float(dimensions.group(1)),
-                "depth": float(dimensions.group(2)),
-                "tolerance": 0.5,
+                "width": dimensions[0],
+                "depth": dimensions[1],
+                "tolerance": tolerance,
             },
             consumers=["architecture", "skeleton", "final_validate"],
             validator="architecture_dimensions",
@@ -370,6 +516,25 @@ def _compile_acceptance(
             expected=roof_types[0],
             consumers=["architecture", "component_generation", "final_validate"],
             validator="architecture_roof_type",
+        )
+
+    # 走到这里说明层数、尺寸、屋顶、构件等量化分支都没命中，句子只剩"要一张平面图"
+    # 这类表现层诉求。系统确实不产出 2D 平面图，但几何与尺寸会由 design_review 的
+    # SVG 预览和 DesignDocument 呈现，因此降级为人工确认而不是终止整轮生成。
+    if _contains_any(text, _PRESENTATION_MEDIUM_TERMS):
+        return _requirement(
+            task_id=task_id,
+            acceptance_index=acceptance_index,
+            description=text,
+            phase=phase,
+            kind="presentation_medium_mismatch",
+            target="delivery.presentation",
+            operator="manual_review",
+            expected=True,
+            consumers=[phase] if phase else [],
+            validator="needs_review",
+            severity="warning",
+            support_status="needs_review",
         )
 
     # 阶段优先：先由 phase 决定权威检查器，关键词只用于补充更精确的判定。
@@ -425,6 +590,7 @@ def compile_structured_requirements(plan: ExecutionPlan | dict[str, Any]) -> lis
     """把每条自然语言 acceptance 编译成带来源和检查器的受控要求。"""
 
     requirements: list[StructuredRequirement] = []
+    # 遍历每个任务的每条验收条件
     for task in plan.get("dynamic_tasks", []):
         if not isinstance(task, dict):
             continue
@@ -442,29 +608,56 @@ def compile_structured_requirements(plan: ExecutionPlan | dict[str, Any]) -> lis
 def validate_structured_requirements(
     requirements: object,
 ) -> list[PlanValidationIssue]:
-    """检查编译结果是否完整，并在审核前阻断明确不支持的能力。"""
+    """检查编译结果是否完整，并把能力缺失报成非阻断提示。
+
+    返回的每条问题都带 severity，调用方据此决定是否终止本轮：
+
+    - **结构类问题**（缺消费者/检查器、ID 重复、类型错误）固定 `error`——
+      这类计划对象本身不合法，放过去下游必然崩。
+    - **能力缺失**（`support_status="unsupported"`）沿用要求自身的 severity，
+      当前一律编译为 `warning`：只提示，不阻断。
+    - `needs_review` 不在这里上报，它已经通过 `initialize_acceptance_results`
+      的 `not_checked` 出现在计划审核面板里，多报一次只会造成同一信号两份来源。
+    """
 
     if not isinstance(requirements, list) or not requirements:
-        return [{"code": "missing_structured_requirements", "message": "计划没有可验收的结构化要求"}]
+        return [{
+            "code": "missing_structured_requirements",
+            "message": "计划没有可验收的结构化要求",
+            "severity": "error",
+        }]
     issues: list[PlanValidationIssue] = []
     ids: set[str] = set()
     for requirement in requirements:
         if not isinstance(requirement, dict):
-            issues.append({"code": "invalid_structured_requirement", "message": "结构化要求必须是对象"})
+            issues.append({
+                "code": "invalid_structured_requirement",
+                "message": "结构化要求必须是对象",
+                "severity": "error",
+            })
             continue
         requirement_id = str(requirement.get("id") or "")
         if not requirement_id or requirement_id in ids:
-            issues.append({"code": "duplicate_requirement_id", "message": f"结构化要求 ID 缺失或重复：{requirement_id}"})
+            issues.append({
+                "code": "duplicate_requirement_id",
+                "message": f"结构化要求 ID 缺失或重复：{requirement_id}",
+                "severity": "error",
+            })
         ids.add(requirement_id)
         if not requirement.get("consumers") or not str(requirement.get("validator") or ""):
             issues.append({
                 "code": "incomplete_structured_requirement",
                 "message": f"结构化要求 {requirement_id} 缺少消费者或检查器",
+                "severity": "error",
             })
         if requirement.get("support_status") == "unsupported":
             issues.append({
                 "code": "unsupported_plan_requirement",
-                "message": f"当前 Agent 能力无法执行：{requirement.get('description')}",
+                "message": (
+                    f"当前 Agent 不具备该能力，将按可达范围生成并标记："
+                    f"{requirement.get('description')}"
+                ),
+                "severity": str(requirement.get("severity") or "error"),
             })
     return issues
 
@@ -476,7 +669,10 @@ def initialize_acceptance_results(
     for requirement in requirements:
         support_status = requirement["support_status"]
         if support_status == "unsupported":
-            status, message = "unsupported", "当前系统不支持该要求"
+            status, message = (
+                "unsupported",
+                "当前 Agent 不具备该能力，将按可达范围生成并在交付结果中标记",
+            )
         elif support_status == "needs_review":
             status, message = "not_checked", "该验收条件无法由程序判定，需要在计划审核时人工确认"
         else:
@@ -573,138 +769,12 @@ def required_component_types(
     return required
 
 
-def apply_structured_architecture_requirements(
-    plan: dict[str, Any],
-    requirements: list[StructuredRequirement] | None,
-) -> dict[str, Any]:
-    """把可安全确定化的批准要求写入归一化总体方案。"""
-
-    updated = deepcopy(plan)
-    required_components = list(updated.get("required_components") or [])
-    component_quota = deepcopy(updated.get("component_quota") or {})
-    roof = deepcopy(updated.get("roof") or {})
-    for requirement in requirements or []:
-        if requirement.get("support_status") != "supported":
-            continue
-        kind = requirement.get("kind")
-        expected = requirement.get("expected")
-        if kind == "architecture_roof_type":
-            roof["type"] = str(expected)
-            continue
-        if kind == "architecture_roof_overhang":
-            roof["overhang"] = max(
-                float(roof.get("overhang") or 0),
-                float(expected),
-            )
-            continue
-        if kind not in {"component_all", "component_any"} or not isinstance(expected, dict):
-            continue
-        types = list(expected.get("types") or [])
-        if kind == "component_any":
-            types = types[:1]
-        minimum = max(1, int(expected.get("minimum") or 1))
-        for component_type in types:
-            name = str(component_type)
-            if name not in required_components:
-                required_components.append(name)
-            if name in _PATTERN_GOVERNED_OPENINGS:
-                # door/window 的配额由立面 pattern 解析得出，是**派生值**而不是可写约束。
-                # 在这里抬高 min 会让配额与实际槽位数量互相矛盾，DesignDocument 的
-                # “槽位数量必须落在配额内” 不变量随即失败。是否达标由
-                # architecture_requirement_violations 按真实槽位数量判定。
-                continue
-            quota = dict(component_quota.get(name) or {})
-            quota["min"] = max(minimum, int(quota.get("min") or 0))
-            quota["max"] = max(quota["min"], int(quota.get("max") or quota["min"]))
-            quota.setdefault("note", "来自已批准执行计划的结构化要求")
-            component_quota[name] = quota
-    updated["required_components"] = required_components
-    updated["component_quota"] = component_quota
-    updated["roof"] = roof
-    return updated
 
 
-def _opening_slot_counts(plan: dict[str, Any]) -> dict[str, int]:
-    """统计该方案立面 pattern 会实际执行的门窗槽位数量。
-
-    与 `DesignDocument` 的校验使用同一个实现，避免“检查认为达标、契约却拒绝”的分歧。
-    """
-
-    from app.agent.generation.architecture.planning import _facade_opening_counts
-
-    facades = plan.get("facades") if isinstance(plan.get("facades"), dict) else {}
-    massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
-    modeled_floors = int(massing.get("modeled_floors") or massing.get("floors") or 1)
-    return _facade_opening_counts(facades, modeled_floors)
 
 
-def architecture_requirement_violations(
-    plan: dict[str, Any],
-    requirements: list[StructuredRequirement] | None,
-) -> list[str]:
-    """返回候选违反的可确定检查的 architecture 硬约束 ID。"""
-
-    violations: list[str] = []
-    massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
-    roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
-    required_components = set(plan.get("required_components") or [])
-    opening_slots = _opening_slot_counts(plan)
-    for requirement in requirements or []:
-        if "architecture" not in requirement.get("consumers", []):
-            continue
-        kind = requirement.get("kind")
-        expected = requirement.get("expected")
-        matched = True
-        if kind == "architecture_floor_count":
-            matched = int(massing.get("floors") or 0) == int(expected)
-        elif kind == "architecture_dimensions" and isinstance(expected, dict):
-            tolerance = float(expected.get("tolerance", 0.5))
-            matched = (
-                abs(float(massing.get("width") or 0) - float(expected.get("width") or 0)) <= tolerance
-                and abs(float(massing.get("depth") or 0) - float(expected.get("depth") or 0)) <= tolerance
-            )
-        elif kind == "architecture_roof_type":
-            matched = str(roof.get("type") or "") == str(expected)
-        elif kind == "architecture_roof_overhang":
-            matched = float(roof.get("overhang") or 0) >= float(expected)
-        elif kind in {"component_all", "component_any"} and isinstance(expected, dict):
-            matched = _component_requirement_delivered(
-                kind,
-                expected,
-                required_components,
-                opening_slots,
-            )
-        if not matched:
-            violations.append(str(requirement.get("id") or ""))
-    return violations
 
 
-def _component_requirement_delivered(
-    kind: str,
-    expected: dict[str, Any],
-    required_components: set[str],
-    opening_slots: dict[str, int],
-) -> bool:
-    """判断候选是否真的提供了要求的构件数量。
-
-    对 door/window 必须按立面实际槽位数量判断，不能只看 `required_components`：
-    要求注入本身就会把这些类型写进 `required_components`，只看名单等于让检查恒为真，
-    候选即使少给门窗也会通过筛选，最后在 DesignDocument 契约处才炸掉。
-    """
-
-    types = [str(item) for item in expected.get("types", [])]
-    if kind == "component_any":
-        types = types[:1]
-    minimum = max(1, int(expected.get("minimum") or 1))
-
-    def satisfied(component_type: str) -> bool:
-        if component_type in _PATTERN_GOVERNED_OPENINGS:
-            return opening_slots.get(component_type, 0) >= minimum
-        return component_type in required_components
-
-    if kind == "component_any":
-        return any(satisfied(item) for item in types)
-    return all(satisfied(item) for item in types)
 
 
 def _blueprint_entities(view: dict[str, Any]) -> tuple[list[dict], list[dict]]:
@@ -730,7 +800,12 @@ def _check_requirement(
     validator = requirement["validator"]
     expected = requirement["expected"]
     if requirement["support_status"] == "unsupported":
-        return "unsupported", None, [], "当前系统不支持该要求"
+        return (
+            "unsupported",
+            None,
+            [],
+            "当前 Agent 不具备该能力，将按可达范围生成并在交付结果中标记",
+        )
     if requirement["support_status"] == "needs_review":
         # 无法机器判定：既不能算通过，也不作为阻断项。
         return "not_checked", None, [], "该验收条件无法由程序判定，需要人工确认"
@@ -799,13 +874,18 @@ def _check_requirement(
         )
     if validator == "material_plan_exists":
         material_plan = view.get("material_plan")
-        observed = len(material_plan.get("roles", [])) if isinstance(material_plan, dict) else 0
-        passed = observed > 0
+        roles = material_plan.get("roles") if isinstance(material_plan, dict) else None
+        observed = len(roles) if isinstance(roles, list) else 0
+        # expected.minimum 缺省为 1，与旧行为（roles 非空即通过）完全等价。
+        minimum = int(expected.get("minimum", 1)) if isinstance(expected, dict) else 1
+        passed = observed >= minimum
         return (
             "passed" if passed else "failed",
             observed,
             ["material_plan"] if passed else [],
-            f"材质角色数量为 {observed}",
+            f"材质角色数量为 {observed}（要求不少于 {minimum}）"
+            if minimum > 1
+            else f"材质角色数量为 {observed}",
         )
     if validator == "skeleton_schema":
         skeleton = view.get("skeleton_blueprint")
@@ -833,6 +913,13 @@ def _check_requirement(
         for item in entities:
             entity_type = str(item.get("type") or item.get("componentType") or "").casefold()
             counts[entity_type] = counts.get(entity_type, 0) + 1
+        
+        # balcony 内嵌 U 形栏杆，不需要独立 railing 组件
+        # 如果有 balcony，则认为已经满足 railing 要求
+        if "balcony" in counts and counts["balcony"] > 0:
+            counts.setdefault("railing", 0)
+            counts["railing"] += counts["balcony"]
+        
         types = [
             str(item).casefold()
             for item in (

@@ -1,0 +1,1248 @@
+{
+  "inputs": {
+    "input": null
+  },
+  "outputs": {
+    "user_message": "生成一个别墅",
+    "style_preference": [
+      "modern",
+      "chinese",
+      "eco_contemporary"
+    ],
+    "thinking_mode": true,
+    "plan_mode": true,
+    "execution_plan": {
+      "plan_id": "plan_unknown",
+      "version": 1,
+      "intent": "generate",
+      "goal": "根据用户需求生成经过确认与校验的建筑：生成一个别墅",
+      "status": "failed",
+      "valid": true,
+      "review_status": "approved",
+      "constraints": [
+        "实际节点顺序和可执行能力只能由服务端 LangGraph 定义",
+        "用户确认执行计划后才生成总体方案与三维",
+        "完整校验未通过不得保存或加载 Blueprint"
+      ],
+      "assumptions": [
+        "计划描述公开业务目标，不包含模型隐藏思维链",
+        "批准计划不会改变服务端 LangGraph 固定的安全执行边界",
+        "规划前研究已完成：知识上下文 11920 字；当前场景 0 个结构元素、0 个组件"
+      ],
+      "planner_source": "llm",
+      "planner_summary": "本次计划旨在生成一栋现代风格的一层半（带地下室）别墅，重点在于构建完整的建筑骨架、合理规划竖向交通（楼梯）和屋顶，并配置必要的门窗组件。",
+      "feedback": "",
+      "change_summary": [],
+      "dynamic_tasks": [
+        {
+          "id": "task_1",
+          "title": "整体建筑架构与尺寸规划",
+          "objective": "确定别墅的整体平面尺寸、层数（含地下室）和各层层高，为后续构件生成提供基础坐标框架。",
+          "phase": "architecture",
+          "acceptance": [
+            "建筑主体包含地下室、一层及半层阁楼（利用屋顶空间）共三层几何结构。",
+            "主体长宽尺寸确定，如长度12米，宽度8米，地下室层高不小于2.4米，一层层高不小于2.8米。",
+            "为楼梯和核心筒（如有）预留明确位置。"
+          ],
+          "basis": "用户需求“别墅”结合典型住宅功能需求。",
+          "depends_on": [],
+          "status": "failed",
+          "result_ref": null
+        },
+        {
+          "id": "task_2",
+          "title": "主要门窗组件配置",
+          "objective": "为客厅、卧室等主要空间的外墙开口配置门和窗户组件，定义其样式、尺寸和材质。",
+          "phase": "material_plan",
+          "acceptance": [
+            "在规划好的墙体开口处，为至少一处主入口配置门组件（door）。",
+            "为客厅、主卧等至少四处开口配置窗户组件（window）。",
+            "所有门窗的 parentWall 引用正确，位置和尺寸参数明确。"
+          ],
+          "basis": "别墅采光、通风与出入的基本功能需求。",
+          "depends_on": [
+            "task_1"
+          ],
+          "status": "pending",
+          "result_ref": null
+        },
+        {
+          "id": "task_3",
+          "title": "材质与外观方案制定",
+          "objective": "为墙体、楼板、屋顶、门窗等所有构件分配具体的材料名称，形成统一的建筑外观方案。",
+          "phase": "material_plan",
+          "acceptance": [
+            "地下室墙体、地面使用如‘concrete’等材质。",
+            "一层外墙、内墙、楼板使用如‘wood’、‘plaster’等材质。",
+            "屋顶使用‘tile’或‘metal’等材质，门使用‘wood’，窗户使用‘glass’。",
+            "所有材质名称在 Schema 的合法值范围内。"
+          ],
+          "basis": "现代别墅的常见材料选择与美学要求。",
+          "depends_on": [
+            "task_2"
+          ],
+          "status": "pending",
+          "result_ref": null
+        },
+        {
+          "id": "task_4",
+          "title": "地下室及一层主体墙体网络",
+          "objective": "生成地下室和一层所有承重墙与隔墙，形成完整的封闭空间，并确保所有转角端点精确共享。",
+          "phase": "skeleton",
+          "acceptance": [
+            "地下室四周围墙及一层外墙均生成，墙体厚度、材质符合规范。",
+            "所有相邻墙体在转角处端点坐标完全一致，无间隙或重叠。",
+            "为一层主要空间（如客厅、卧室区域）的门窗预留开口位置。"
+          ],
+          "basis": "架构阶段确定的尺寸与布局。",
+          "depends_on": [
+            "task_3"
+          ],
+          "status": "pending",
+          "result_ref": null
+        },
+        {
+          "id": "task_5",
+          "title": "竖向交通系统（楼梯）规划",
+          "objective": "设计并生成连接地下室到一层、以及一层到阁楼的楼梯构件，确保竖向通行逻辑正确。",
+          "phase": "skeleton",
+          "acceptance": [
+            "生成至少两个楼梯：一个连接地下室与一层，一个连接一层与阁楼。",
+            "楼梯的起止点Y坐标正确（from[1] < to[1]），宽度和材质符合别墅尺度。",
+            "楼梯位置不与主体结构冲突。"
+          ],
+          "basis": "别墅多层结构的必备功能。",
+          "depends_on": [
+            "task_4"
+          ],
+          "status": "pending",
+          "result_ref": null
+        },
+        {
+          "id": "task_6",
+          "title": "楼板与屋顶结构生成",
+          "objective": "生成各层楼板及覆盖整个建筑的屋顶，并确保屋顶正确覆盖下方所有墙体。",
+          "phase": "skeleton",
+          "acceptance": [
+            "生成地下室顶板（即一层地板）、一层天花板（即阁楼地板）。",
+            "生成一个四坡屋顶（hip）或双坡屋顶（gable），其 span 和 depth 完全覆盖一层外墙边界，并有适当出檐。",
+            "屋顶 position 的 Y 坐标与一层墙顶齐平。"
+          ],
+          "basis": "墙体包围盒信息（通过知识规则提及）与建筑围护需求。",
+          "depends_on": [
+            "task_5"
+          ],
+          "status": "pending",
+          "result_ref": null
+        },
+        {
+          "id": "task_7",
+          "title": "最终结构完整性与规范性验证",
+          "objective": "对生成的全部几何元素和组件进行最终校验，确保结构完整、引用正确且无规范错误。",
+          "phase": "final_validate",
+          "acceptance": [
+            "所有基础几何元素（墙、板、屋顶）的类型和必填字段完整。",
+            "所有组合组件（门、窗、楼梯）的 parentWall 等引用正确存在。",
+            "屋顶的 roofType、跨度（span/depth）符合规范，且覆盖了下方墙体。",
+            "最终检查无任何元素或组件的引用错误或缺失。"
+          ],
+          "basis": "BLUEPRINT-SPEC-MINIMAL 规范对结构完整性和正确性的要求。",
+          "depends_on": [
+            "task_6"
+          ],
+          "status": "pending",
+          "result_ref": null
+        }
+      ]
+    },
+    "structured_requirements": [
+      {
+        "id": "req_task_1_1",
+        "source_task_id": "task_1",
+        "source_acceptance_id": "acc_task_1_1",
+        "description": "建筑主体包含地下室、一层及半层阁楼（利用屋顶空间）共三层几何结构。",
+        "phase": "architecture",
+        "kind": "component_all",
+        "target": "blueprint.components",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "roof"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "component_generation",
+          "final_validate"
+        ],
+        "validator": "component_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_1_2",
+        "source_task_id": "task_1",
+        "source_acceptance_id": "acc_task_1_2",
+        "description": "主体长宽尺寸确定，如长度12米，宽度8米，地下室层高不小于2.4米，一层层高不小于2.8米。",
+        "phase": "architecture",
+        "kind": "architecture_floor_count",
+        "target": "architecture.massing.floors",
+        "operator": "eq",
+        "expected": 1,
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "final_validate"
+        ],
+        "validator": "architecture_floor_count",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_1_3",
+        "source_task_id": "task_1",
+        "source_acceptance_id": "acc_task_1_3",
+        "description": "为楼梯和核心筒（如有）预留明确位置。",
+        "phase": "architecture",
+        "kind": "phase_outcome",
+        "target": "architecture_plan",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "architecture",
+          "design_review"
+        ],
+        "validator": "architecture_plan_exists",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_2_1",
+        "source_task_id": "task_2",
+        "source_acceptance_id": "acc_task_2_1",
+        "description": "在规划好的墙体开口处，为至少一处主入口配置门组件（door）。",
+        "phase": "material_plan",
+        "kind": "component_all",
+        "target": "blueprint.components",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "door"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "component_generation",
+          "final_validate"
+        ],
+        "validator": "component_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_2_2",
+        "source_task_id": "task_2",
+        "source_acceptance_id": "acc_task_2_2",
+        "description": "为客厅、主卧等至少四处开口配置窗户组件（window）。",
+        "phase": "material_plan",
+        "kind": "component_all",
+        "target": "blueprint.components",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "window"
+          ],
+          "minimum": 4
+        },
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "component_generation",
+          "final_validate"
+        ],
+        "validator": "component_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_2_3",
+        "source_task_id": "task_2",
+        "source_acceptance_id": "acc_task_2_3",
+        "description": "所有门窗的 parentWall 引用正确，位置和尺寸参数明确。",
+        "phase": "material_plan",
+        "kind": "phase_outcome",
+        "target": "material_plan",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "material_plan",
+          "design_review",
+          "skeleton"
+        ],
+        "validator": "material_plan_exists",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_3_1",
+        "source_task_id": "task_3",
+        "source_acceptance_id": "acc_task_3_1",
+        "description": "地下室墙体、地面使用如‘concrete’等材质。",
+        "phase": "material_plan",
+        "kind": "phase_outcome",
+        "target": "material_plan",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "material_plan",
+          "design_review",
+          "skeleton"
+        ],
+        "validator": "material_plan_exists",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_3_2",
+        "source_task_id": "task_3",
+        "source_acceptance_id": "acc_task_3_2",
+        "description": "一层外墙、内墙、楼板使用如‘wood’、‘plaster’等材质。",
+        "phase": "material_plan",
+        "kind": "architecture_floor_count",
+        "target": "architecture.massing.floors",
+        "operator": "eq",
+        "expected": 1,
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "final_validate"
+        ],
+        "validator": "architecture_floor_count",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_3_3",
+        "source_task_id": "task_3",
+        "source_acceptance_id": "acc_task_3_3",
+        "description": "屋顶使用‘tile’或‘metal’等材质，门使用‘wood’，窗户使用‘glass’。",
+        "phase": "material_plan",
+        "kind": "phase_outcome",
+        "target": "material_plan",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "material_plan",
+          "design_review",
+          "skeleton"
+        ],
+        "validator": "material_plan_exists",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_3_4",
+        "source_task_id": "task_3",
+        "source_acceptance_id": "acc_task_3_4",
+        "description": "所有材质名称在 Schema 的合法值范围内。",
+        "phase": "material_plan",
+        "kind": "phase_outcome",
+        "target": "material_plan",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "material_plan",
+          "design_review",
+          "skeleton"
+        ],
+        "validator": "material_plan_exists",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_4_1",
+        "source_task_id": "task_4",
+        "source_acceptance_id": "acc_task_4_1",
+        "description": "地下室四周围墙及一层外墙均生成，墙体厚度、材质符合规范。",
+        "phase": "skeleton",
+        "kind": "element_all",
+        "target": "blueprint.elements",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "skeleton",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "element_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_4_2",
+        "source_task_id": "task_4",
+        "source_acceptance_id": "acc_task_4_2",
+        "description": "所有相邻墙体在转角处端点坐标完全一致，无间隙或重叠。",
+        "phase": "skeleton",
+        "kind": "element_all",
+        "target": "blueprint.elements",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "skeleton",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "element_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_4_3",
+        "source_task_id": "task_4",
+        "source_acceptance_id": "acc_task_4_3",
+        "description": "为一层主要空间（如客厅、卧室区域）的门窗预留开口位置。",
+        "phase": "skeleton",
+        "kind": "architecture_floor_count",
+        "target": "architecture.massing.floors",
+        "operator": "eq",
+        "expected": 1,
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "final_validate"
+        ],
+        "validator": "architecture_floor_count",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_5_1",
+        "source_task_id": "task_5",
+        "source_acceptance_id": "acc_task_5_1",
+        "description": "生成至少两个楼梯：一个连接地下室与一层，一个连接一层与阁楼。",
+        "phase": "skeleton",
+        "kind": "element_all",
+        "target": "blueprint.elements",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "stair"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "skeleton",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "element_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_5_2",
+        "source_task_id": "task_5",
+        "source_acceptance_id": "acc_task_5_2",
+        "description": "楼梯的起止点Y坐标正确（from[1] < to[1]），宽度和材质符合别墅尺度。",
+        "phase": "skeleton",
+        "kind": "phase_outcome",
+        "target": "skeleton_blueprint",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "skeleton",
+          "component_generation",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "skeleton_schema",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_5_3",
+        "source_task_id": "task_5",
+        "source_acceptance_id": "acc_task_5_3",
+        "description": "楼梯位置不与主体结构冲突。",
+        "phase": "skeleton",
+        "kind": "phase_outcome",
+        "target": "skeleton_blueprint",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "skeleton",
+          "component_generation",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "skeleton_schema",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_6_1",
+        "source_task_id": "task_6",
+        "source_acceptance_id": "acc_task_6_1",
+        "description": "生成地下室顶板（即一层地板）、一层天花板（即阁楼地板）。",
+        "phase": "skeleton",
+        "kind": "element_all",
+        "target": "blueprint.elements",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "floor"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "skeleton",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "element_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_6_2",
+        "source_task_id": "task_6",
+        "source_acceptance_id": "acc_task_6_2",
+        "description": "生成一个四坡屋顶（hip）或双坡屋顶（gable），其 span 和 depth 完全覆盖一层外墙边界，并有适当出檐。",
+        "phase": "skeleton",
+        "kind": "component_all",
+        "target": "blueprint.components",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "roof"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "component_generation",
+          "final_validate"
+        ],
+        "validator": "component_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_6_3",
+        "source_task_id": "task_6",
+        "source_acceptance_id": "acc_task_6_3",
+        "description": "屋顶 position 的 Y 坐标与一层墙顶齐平。",
+        "phase": "skeleton",
+        "kind": "architecture_floor_count",
+        "target": "architecture.massing.floors",
+        "operator": "eq",
+        "expected": 1,
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "final_validate"
+        ],
+        "validator": "architecture_floor_count",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_7_1",
+        "source_task_id": "task_7",
+        "source_acceptance_id": "acc_task_7_1",
+        "description": "所有基础几何元素（墙、板、屋顶）的类型和必填字段完整。",
+        "phase": "final_validate",
+        "kind": "element_all",
+        "target": "blueprint.elements",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "skeleton",
+          "merge",
+          "final_validate"
+        ],
+        "validator": "element_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_7_2",
+        "source_task_id": "task_7",
+        "source_acceptance_id": "acc_task_7_2",
+        "description": "所有组合组件（门、窗、楼梯）的 parentWall 等引用正确存在。",
+        "phase": "final_validate",
+        "kind": "component_all",
+        "target": "blueprint.components",
+        "operator": "contains_all",
+        "expected": {
+          "types": [
+            "door",
+            "window"
+          ],
+          "minimum": 1
+        },
+        "consumers": [
+          "architecture",
+          "skeleton",
+          "component_generation",
+          "final_validate"
+        ],
+        "validator": "component_presence",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_7_3",
+        "source_task_id": "task_7",
+        "source_acceptance_id": "acc_task_7_3",
+        "description": "屋顶的 roofType、跨度（span/depth）符合规范，且覆盖了下方墙体。",
+        "phase": "final_validate",
+        "kind": "phase_outcome",
+        "target": "final_blueprint",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "final_validate"
+        ],
+        "validator": "final_validation_zero_errors",
+        "severity": "error",
+        "support_status": "supported"
+      },
+      {
+        "id": "req_task_7_4",
+        "source_task_id": "task_7",
+        "source_acceptance_id": "acc_task_7_4",
+        "description": "最终检查无任何元素或组件的引用错误或缺失。",
+        "phase": "final_validate",
+        "kind": "phase_outcome",
+        "target": "final_blueprint",
+        "operator": "exists",
+        "expected": true,
+        "consumers": [
+          "final_validate"
+        ],
+        "validator": "final_validation_zero_errors",
+        "severity": "error",
+        "support_status": "supported"
+      }
+    ],
+    "acceptance_results": {
+      "acc_task_1_1": {
+        "acceptance_id": "acc_task_1_1",
+        "task_id": "task_1",
+        "requirement_id": "req_task_1_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "roof"
+          ],
+          "minimum": 1
+        },
+        "observed": {
+          "roof": 0
+        },
+        "validator": "component_presence",
+        "evidence_refs": [],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_1_2": {
+        "acceptance_id": "acc_task_1_2",
+        "task_id": "task_1",
+        "requirement_id": "req_task_1_2",
+        "status": "pending",
+        "expected": 1,
+        "observed": null,
+        "validator": "architecture_floor_count",
+        "evidence_refs": [
+          "architecture_plan.massing.floors"
+        ],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_1_3": {
+        "acceptance_id": "acc_task_1_3",
+        "task_id": "task_1",
+        "requirement_id": "req_task_1_3",
+        "status": "failed",
+        "expected": true,
+        "observed": false,
+        "validator": "architecture_plan_exists",
+        "evidence_refs": [],
+        "message": "总体方案缺失"
+      },
+      "acc_task_2_1": {
+        "acceptance_id": "acc_task_2_1",
+        "task_id": "task_2",
+        "requirement_id": "req_task_2_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "door"
+          ],
+          "minimum": 1
+        },
+        "observed": {
+          "door": 0
+        },
+        "validator": "component_presence",
+        "evidence_refs": [],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_2_2": {
+        "acceptance_id": "acc_task_2_2",
+        "task_id": "task_2",
+        "requirement_id": "req_task_2_2",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "window"
+          ],
+          "minimum": 4
+        },
+        "observed": {
+          "window": 0
+        },
+        "validator": "component_presence",
+        "evidence_refs": [],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_2_3": {
+        "acceptance_id": "acc_task_2_3",
+        "task_id": "task_2",
+        "requirement_id": "req_task_2_3",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "material_plan_exists",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_3_1": {
+        "acceptance_id": "acc_task_3_1",
+        "task_id": "task_3",
+        "requirement_id": "req_task_3_1",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "material_plan_exists",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_3_2": {
+        "acceptance_id": "acc_task_3_2",
+        "task_id": "task_3",
+        "requirement_id": "req_task_3_2",
+        "status": "pending",
+        "expected": 1,
+        "observed": null,
+        "validator": "architecture_floor_count",
+        "evidence_refs": [
+          "architecture_plan.massing.floors"
+        ],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_3_3": {
+        "acceptance_id": "acc_task_3_3",
+        "task_id": "task_3",
+        "requirement_id": "req_task_3_3",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "material_plan_exists",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_3_4": {
+        "acceptance_id": "acc_task_3_4",
+        "task_id": "task_3",
+        "requirement_id": "req_task_3_4",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "material_plan_exists",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_4_1": {
+        "acceptance_id": "acc_task_4_1",
+        "task_id": "task_4",
+        "requirement_id": "req_task_4_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "observed": null,
+        "validator": "element_presence",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_4_2": {
+        "acceptance_id": "acc_task_4_2",
+        "task_id": "task_4",
+        "requirement_id": "req_task_4_2",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "observed": null,
+        "validator": "element_presence",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_4_3": {
+        "acceptance_id": "acc_task_4_3",
+        "task_id": "task_4",
+        "requirement_id": "req_task_4_3",
+        "status": "pending",
+        "expected": 1,
+        "observed": null,
+        "validator": "architecture_floor_count",
+        "evidence_refs": [
+          "architecture_plan.massing.floors"
+        ],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_5_1": {
+        "acceptance_id": "acc_task_5_1",
+        "task_id": "task_5",
+        "requirement_id": "req_task_5_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "stair"
+          ],
+          "minimum": 1
+        },
+        "observed": null,
+        "validator": "element_presence",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_5_2": {
+        "acceptance_id": "acc_task_5_2",
+        "task_id": "task_5",
+        "requirement_id": "req_task_5_2",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "skeleton_schema",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_5_3": {
+        "acceptance_id": "acc_task_5_3",
+        "task_id": "task_5",
+        "requirement_id": "req_task_5_3",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "skeleton_schema",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_6_1": {
+        "acceptance_id": "acc_task_6_1",
+        "task_id": "task_6",
+        "requirement_id": "req_task_6_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "floor"
+          ],
+          "minimum": 1
+        },
+        "observed": null,
+        "validator": "element_presence",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_6_2": {
+        "acceptance_id": "acc_task_6_2",
+        "task_id": "task_6",
+        "requirement_id": "req_task_6_2",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "roof"
+          ],
+          "minimum": 1
+        },
+        "observed": {
+          "roof": 0
+        },
+        "validator": "component_presence",
+        "evidence_refs": [],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_6_3": {
+        "acceptance_id": "acc_task_6_3",
+        "task_id": "task_6",
+        "requirement_id": "req_task_6_3",
+        "status": "pending",
+        "expected": 1,
+        "observed": null,
+        "validator": "architecture_floor_count",
+        "evidence_refs": [
+          "architecture_plan.massing.floors"
+        ],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_7_1": {
+        "acceptance_id": "acc_task_7_1",
+        "task_id": "task_7",
+        "requirement_id": "req_task_7_1",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "wall"
+          ],
+          "minimum": 1
+        },
+        "observed": null,
+        "validator": "element_presence",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_7_2": {
+        "acceptance_id": "acc_task_7_2",
+        "task_id": "task_7",
+        "requirement_id": "req_task_7_2",
+        "status": "pending",
+        "expected": {
+          "types": [
+            "door",
+            "window"
+          ],
+          "minimum": 1
+        },
+        "observed": {
+          "door": 0,
+          "window": 0
+        },
+        "validator": "component_presence",
+        "evidence_refs": [],
+        "message": "当前阶段尚未满足，将在最终校验阶段复检"
+      },
+      "acc_task_7_3": {
+        "acceptance_id": "acc_task_7_3",
+        "task_id": "task_7",
+        "requirement_id": "req_task_7_3",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "final_validation_zero_errors",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      },
+      "acc_task_7_4": {
+        "acceptance_id": "acc_task_7_4",
+        "task_id": "task_7",
+        "requirement_id": "req_task_7_4",
+        "status": "pending",
+        "expected": true,
+        "observed": null,
+        "validator": "final_validation_zero_errors",
+        "evidence_refs": [],
+        "message": "等待对应阶段执行"
+      }
+    },
+    "execution_progress": {
+      "planning_research": {
+        "status": "completed",
+        "result_ref": "plan_research_summary",
+        "detail": "知识上下文 11920 字；当前场景 0 个结构元素、0 个组件"
+      },
+      "architecture": {
+        "status": "failed",
+        "result_ref": null,
+        "detail": "总体方案候选均违反已批准业务要求：req_task_1_2、req_task_3_2、req_task_4_3、req_task_6_3"
+      },
+      "material_plan": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      },
+      "design_review": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      },
+      "skeleton": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      },
+      "component_generation": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      },
+      "merge": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      },
+      "final_validate": {
+        "status": "pending",
+        "result_ref": null,
+        "detail": "等待执行"
+      }
+    },
+    "execution_plan_status": "failed",
+    "execution_plan_review_status": "approved",
+    "execution_plan_validation": [],
+    "execution_plan_history": [],
+    "plan_feedback": "",
+    "plan_research_context": "## BLUEPRINT-SPEC-MINIMAL\n\n---\nentity_name: blueprint_spec_minimal\ntopic: constraints\nstatus: supported\nauthority: schema\nsource: BLUEPRINT-SPEC-MINIMAL.md\nprimary_terms:\n  - WILD\n  - Blueprint\n  - 系统铁律\n  - 空间规则\n  - 必填字段\nsynonyms: []\n---\n\n# Wild 蓝图规范（精简版 · AI 生成专用）\n\n> 完整规范见 BLUEPRINT-SPEC-FULL.md（用于 RAG 检索）。本文档只含 AI 生成必需的最小信息。\n\n---\n\n## 顶层结构（必须严格遵守）\n\n```json\n{\n  \"meta\": { \"version\": \"1.1\", \"type\": \"building\", \"name\": \"建筑名称\" },\n  \"geometry\": { \"elements\": [], \"components\": [] },\n  \"materials\": {},\n  \"behaviors\": {}\n}\n```\n\n禁止在根级别出现 elements、bounds 或其他字段。\n\n---\n\n## 知识与设计决定\n\n用户需求与已批准方案决定本次建筑的层数、体量、风格和尺寸。检索知识提供能力边界、类型特征和已选构件关系；不得因参考文档改变用户决定。以下局部 JSON 数值仅解释字段，不是建筑默认尺寸。精密模式提高实现完整性和检查质量，不强制退台、多个体量或固定装饰套餐。\n\n## 全局空间规则\n\n- 两面墙体在转角处相接时必须共享完全相同的端点坐标，不能使用近似值。\n- 生成屋顶前应先使用 `get_wall_bounding_box` 获取墙体包围盒，不要猜测尺寸。\n- `roof.span` 必须覆盖墙体 X 方向范围，`roof.depth` 必须覆盖墙体 Z 方向范围；需要出檐时在两侧增加相应余量。\n- `roof.position` 应位于墙体 XZ 中心和墙顶高度。\n- **`roof.roofType` 的 6 个合法值**：`gable`（双坡）/ `hip`（四坡）/ `dome`（穹顶）/ `flat`（平顶）/ `chinese_curved`（中式曲面）/ `chinese_pagoda`（多层塔顶）。\n- **严禁使用**：pitched、sloped、gabled、hipped、shed、mono-pitch 等建筑术语（这些词虽然是有效的建筑学概念，但不是 WILD Schema 的枚举值）。\n\n---\n\n## 11 种构件必填字段速查\n\n### wall（墙体）\n```json\n{\n  \"type\": \"wall\", \"id\": \"wall_front\",\n  \"from\": [0, 0, 0], \"to\": [6, 3, 0],\n  \"thickness\": 0.3, \"material\": \"wood\"\n}\n```\n- from/to 均为世界坐标 [X, Y, Z]，from[1] 是墙底，to[1] 是墙顶\n\n### floor（地板）\n```json\n{\n  \"type\": \"floor\", \"id\": \"ground_floor\",\n  \"from\": [0, 0, 0], \"to\": [6, 0, 5],\n  \"thickness\": 0.2, \"material\": \"stone\"\n}\n```\n\n### column（柱子）\n```json\n{\n  \"type\": \"column\", \"id\": \"col_1\",\n  \"base\": [0, 0, 0], \"height\": 3,\n  \"bottomRadius\": 0.12, \"topRadius\": 0.1,\n  \"style\": \"modern\", \"material\": \"wood\"\n}\n```\n- style 可选值：doric / ionic / corinthian / modern / chinese_wooden\n\n### beam（梁）\n```json\n{\n  \"type\": \"beam\", \"id\": \"beam_1\",\n  \"from\": [0, 3, 0], \"to\": [6, 3, 0],\n  \"crossSection\": \"rect\", \"width\": 0.15, \"height\": 0.25,\n  \"material\": \"wood\"\n}\n```\n\n### roof（屋顶）\n```json\n{\n  \"type\": \"roof\", \"id\": \"main_roof\",\n  \"roofType\": \"gable\",\n  \"span\": 7.0, \"depth\": 6.0, \"height\": 2.5,\n  \"thickness\": 0.3, \"material\": \"tile\",\n  \"position\": [3, 3, 2.5]\n}\n```\n- roofType **只能且必须**使用以下 6 个标准值之一：\n  * `gable` — 双坡屋顶（人字形）\n  * `hip` — 四坡屋顶（四面坡）\n  * `dome` — 穹顶\n  * `flat` — 平顶\n  * `chinese_curved` — 中式曲面屋顶\n  * `chinese_pagoda` — 中式多层塔顶\n- **严禁使用以下建筑术语**：pitched、sloped、gabled、hipped、shed、mono-pitch 等（系统已自动转换历史数据，但新生成必须直接使用标准值）\n- span 覆盖 X 方向，depth 覆盖 Z 方向，必须大于等于墙体范围\n\n### opening（墙体洞口）⚠️ 坐标最容易出错\n```json\n{\n  \"type\": \"opening\", \"id\": \"front_door\",\n  \"parentWall\": \"wall_front\",\n  \"from\": [2.0, 0.0, 0],\n  \"width\": 1.2, \"height\": 2.2,\n  \"style\": \"rectangular\", \"material\": \"wood\"\n}\n```\n- **from[0] = 沿墙距离**（从 parentWall.from 沿墙方向量起，单位米）\n- **from[1] = 开口底部的世界 Y 坐标**（通常与墙底 Y 相同表示落地门）\n- **from[2] = 0**（法向偏移，通常不动）\n- ❌ 绝对禁止把世界坐标填入 from[0]\n\n### stair（楼梯）\n```json\n{\n  \"type\": \"stair\", \"id\": \"main_stair\",\n  \"from\": [2, 0, 1], \"to\": [2, 3, 4],\n  \"width\": 1.2, \"material\": \"wood\"\n}\n```\n- from[1] = 下层地板 Y，to[1] = 上层地板 Y，from[1] < to[1]\n\n### furniture（参数化家具）\n```json\n{\n  \"type\": \"furniture\", \"id\": \"lamp_1\",\n  \"subtype\": \"lamp\",\n  \"position\": [3, 2.5, 2],\n  \"dimensions\": { \"width\": 0.3, \"depth\": 0.3, \"height\": 0.5 },\n  \"material\": \"metal\"\n}\n```\n- subtype 可选：table / chair / bookshelf / bed / lamp / tile。\n- `furniture` 适合中低细节参数化家具；需要特殊结构时再用基础构件或 `primitive` 组合。\n\n### dense_brick（体素）\n\n当前参考引擎状态为 `experimental`，体素解压与等值面提取尚未实现。AI 不应生成 `dense_brick`；如确实需要，先向用户说明该构件会产生 `ELEMENT_BUILD_FAILED` 诊断。\n\n### body（化身）\n```json\n{\n  \"type\": \"body\", \"id\": \"avatar_1\",\n  \"height\": 1.75, \"build\": \"athletic\",\n  \"headShape\": \"round\",\n  \"armLength\": 0.6, \"legLength\": 0.9,\n  \"cloakLength\": 0, \"hoodUp\": false\n}\n```\n\n### primitive（v1.1 通用形体）\n\n```json\n{\n  \"type\": \"primitive\", \"id\": \"ball_body\",\n  \"shape\": \"sphere\", \"position\": [0, 0.12, 0],\n  \"radius\": 0.12, \"segments\": 32, \"heightSegments\": 20,\n  \"material\": \"orange_rubber\"\n}\n```\n\n- shape 可选：box / sphere / cylinder / profile_sweep。\n- box 使用 `dimensions: [width, height, depth]`。\n- cylinder 使用 `height` 和 `radius`，或 `radiusTop` / `radiusBottom`。\n- profile_sweep 使用 `path: Vec3[]`，可选闭合 `profile: [number, number][]`；未给 profile 时可用 `radius` + `segments` 生成圆截面。\n- 不要为篮球、花瓶等名词发明新的 `geometry.elements.type`；檐口等已注册语义组件只能写入 `geometry.components`。\n\n---\n\n## ⚠️ 枚举陷阱速查（容易出错的字段值）\n\nLLM 经常把建筑学概念当作 WILD 枚举值。以下字段**只能使用列出的值**，其他任何术语都是错误的。\n\n### roof.roofType（6 个合法值）\n\n| ✅ 合法值 | 含义 | ❌ 常见错误（严禁使用） |\n|---|---|---|\n| `gable` | 双坡屋顶 | pitched, sloped, gabled |\n| `hip` | 四坡屋顶 | hipped |\n| `dome` | 穹顶 | domed, spherical |\n| `flat` | 平顶 | level, horizontal |\n| `chinese_curved` | 中式曲面 | curved, traditional |\n| `chinese_pagoda` | 多层塔顶 | pagoda, tiered |\n\n### column.style（5 个合法值）\n\n`doric` / `ionic` / `corinthian` / `modern` / `chinese_wooden`\n\n严禁使用：round、square、classical、greek、roman、chinese、traditional、pillar。\n\n### furniture.subtype（6 个合法值）\n\n`table` / `chair` / `bookshelf` / `bed` / `lamp` / `tile`\n\n严禁使用：sofa、desk、cabinet、stool、bench、couch、drawer、closet。\n\n> 注意：`furniture.subtype: \"lamp\"` 只是静态家具占位，**不发光**。需要可开关灯具时必须使用 `geometry.components` 中的 `light`。\n\n### opening.style（4 个合法值）\n\n`rectangular` / `arched` / `gothic` / `circular`\n\n严禁使用：square、round、arch、pointed、rectangle、oval、semicircular。\n\n### beam.crossSection（3 个合法值）\n\n`rect` / `circular` / `i-beam`\n\n严禁使用：rectangle、round、h-beam、box、square。\n\n### 通用原则\n\n- **Schema 枚举 ≠ 建筑学术语**。即使某个词在建筑领域是正确的（如 `hipped`），只要不在 Schema 枚举中就是错误。\n- 不确定某个值是否合法时，查询 `engine-capability-boundaries.md` 或当前 Schema 源码。\n- 不要为现实物体（篮球、花瓶、沙发）发明新的 `type` 值，用 `primitive` 组合表达。\n\n---\n\n## 10 种组合构件（只能写入 geometry.components）\n\n`door`、`window`、`railing`、`canopy`、`balcony`、`ramp`、`bay_window`、`cornice`、`chimney`、`light` 是组合构件编译器输入，不是 `geometry.elements` 类型。编译器会在渲染前把它们转换为 Core 基础元素。\n\n### door（门）\n\n以下是 `geometry.components` 数组中的一个片段，不是完整 `.wild` 文件：\n\n```json\n{\n  \"type\": \"door\",\n  \"id\": \"front_door\",\n  \"parentWall\": \"wall_front\",\n  \"from\": [2.4, 0.0, 0],\n  \"width\": 1.2,\n  \"height\": 2.2,\n  \"frameMaterial\": \"wood\",\n  \"leafMaterial\": \"door_wood\",\n  \"interaction\": { \"mode\": \"swing\", \"hingeSide\": \"left\", \"ope",
+    "plan_research_summary": "知识上下文 11920 字；当前场景 0 个结构元素、0 个组件",
+    "plan_research_diag": {
+      "rag_chars": 11920,
+      "rag_error": null,
+      "element_count": 0,
+      "component_count": 0,
+      "coverage": {
+        "sufficient": false,
+        "coverage_ratio": 0.5,
+        "missing_topics": [
+          "component.parameters"
+        ],
+        "missing_required": [
+          "component.parameters"
+        ],
+        "hit_topics": [
+          "recipe.assembly"
+        ],
+        "trigger_web_research": false,
+        "reason": "缺少核心知识主题（component.parameters）；覆盖 50%",
+        "building_type": ""
+      },
+      "total_ms": 1124
+    },
+    "research_queries": [],
+    "research_missing_topics": [],
+    "web_research_context": "",
+    "web_research_diag": null,
+    "execution_plan_diag": {
+      "source": "llm",
+      "task_count": 7,
+      "prompt_chars": 7050,
+      "token_usage": {
+        "input": 3266,
+        "output": 1671,
+        "total": 4937
+      },
+      "recovery": null,
+      "error": null,
+      "total_ms": 62936
+    },
+    "plan_feedback_pending": false,
+    "intent": "generate",
+    "intent_confidence": 1,
+    "intent_target": "一个别墅",
+    "intent_requires_scene": false,
+    "intent_reason": "用户直接要求生成一个别墅，符合创建建筑的意图。",
+    "intent_source": "llm",
+    "architecture_diag": {
+      "profile": "residential_lowrise",
+      "profile_label": "低层居住建筑",
+      "candidate_count": 2,
+      "candidate_scores": [
+        -3902,
+        -3907
+      ],
+      "candidate_summaries": [
+        {
+          "index": 0,
+          "score": -3902,
+          "concept": "现代水平延展别墅：L形平面围合庭院空间，平屋顶与通长横向窗带强调水平线条，地下室自然采光",
+          "massing": {
+            "shape": "l_shape",
+            "width": 8,
+            "depth": 12,
+            "floors": 3,
+            "modeled_floors": 3,
+            "representation_mode": "full",
+            "floor_height": 3,
+            "symmetry": false
+          },
+          "profile": "residential_lowrise",
+          "roof": {
+            "type": "flat",
+            "ridge_axis": "x",
+            "overhang": 0.6
+          },
+          "front_bays": 4,
+          "complexity": {
+            "min_volumes": 1,
+            "min_detail_packages": 0,
+            "target_structural_elements": 10,
+            "grid_bays": [
+              2,
+              2
+            ],
+            "level": "standard",
+            "reason": "未指定体量复杂度；精密模式只提高实现与验证质量"
+          },
+          "volume_count": 2,
+          "detail_packages": [],
+          "unsupported_component_types": [],
+          "rationale": [
+            "L形平面在东北角形成半围合庭院，增加室外活动空间",
+            "地下室设置采光窗井，满足2.5米层高的通风采光需求",
+            "一层3.2米层高，客厅区域采用落地窗带，强化内外空间渗透",
+            "平屋顶配出檐，呼应现代水平延展的建筑语言",
+            "楼梯置于L形转折处，高效连接地下室、一层与阁楼"
+          ],
+          "requirement_violations": [
+            "req_task_1_2",
+            "req_task_3_2",
+            "req_task_4_3",
+            "req_task_6_3"
+          ]
+        },
+        {
+          "index": 1,
+          "score": -3907,
+          "concept": "新中式坡顶别墅：对称矩形体量，双坡屋顶与竖向窗列形成传统韵律，地下室藏于高台基座",
+          "massing": {
+            "shape": "rectangle",
+            "width": 8,
+            "depth": 12,
+            "floors": 3,
+            "modeled_floors": 3,
+            "representation_mode": "full",
+            "floor_height": 3,
+            "symmetry": true
+          },
+          "profile": "residential_lowrise",
+          "roof": {
+            "type": "gable",
+            "ridge_axis": "x",
+            "overhang": 0.8
+          },
+          "front_bays": 4,
+          "complexity": {
+            "min_volumes": 1,
+            "min_detail_packages": 0,
+            "target_structural_elements": 10,
+            "grid_bays": [
+              2,
+              2
+            ],
+            "level": "standard",
+            "reason": "未指定体量复杂度；精密模式只提高实现与验证质量"
+          },
+          "volume_count": 1,
+          "detail_packages": [],
+          "unsupported_component_types": [],
+          "rationale": [
+            "矩形对称平面，正立面中轴双开门强调仪式感",
+            "地下室抬高0.6米形成台基，侧窗自然采光",
+            "一层3.0米层高，窗洞竖向比例统一，形成古典韵律",
+            "双坡屋顶出檐0.8米，保护外墙并形成檐下灰空间",
+            "楼梯居中布置，左右对称服务于主卧与次卧区"
+          ],
+          "requirement_violations": [
+            "req_task_1_2",
+            "req_task_3_2",
+            "req_task_4_3",
+            "req_task_6_3"
+          ]
+        }
+      ],
+      "selected_index": 0,
+      "selected_requirement_violations": [
+        "req_task_1_2",
+        "req_task_3_2",
+        "req_task_4_3",
+        "req_task_6_3"
+      ],
+      "eligible_candidate_count": 0,
+      "used_fallback": false,
+      "rag_chars": 12907,
+      "rag_ms": 362,
+      "rag_error": null,
+      "prompt_chars": 17170,
+      "llm_chars": 4593,
+      "llm_ms": 30732,
+      "token_usage": {
+        "input": 8048,
+        "output": 1988,
+        "total": 10036
+      },
+      "recovery": null,
+      "thinking_enabled": true
+    },
+    "component_fragments": {},
+    "component_diagnostics": {},
+    "error": "总体方案候选均违反已批准业务要求：req_task_1_2、req_task_3_2、req_task_4_3、req_task_6_3",
+    "status": "failed"
+  },
+  "metadata": {
+    "LANGGRAPH_API_URL": "http://127.0.0.1:2024",
+    "LANGSMITH_ENDPOINT": "https://api.smith.langchain.com",
+    "LANGSMITH_LANGGRAPH_API_VARIANT": "local_dev",
+    "LANGSMITH_PROJECT": "wildagent",
+    "LANGSMITH_TRACING": "true",
+    "assistant_id": "a061e2ac-45b8-53ca-a8b6-d72d5dc98cd7",
+    "checkpoint_id": "1f1b193c-524e-6027-8006-0006dfc00f6d",
+    "checkpoint_ns": "",
+    "created_by": "system",
+    "from_studio": true,
+    "graph_id": "wildagent",
+    "langgraph_api_url": "http://127.0.0.1:2024",
+    "langgraph_api_version": "0.13.4",
+    "langgraph_auth_user_id": "",
+    "langgraph_host": "self-hosted",
+    "langgraph_plan": "enterprise",
+    "langgraph_request_id": "2ca35d76-087e-4626-a946-a9e612efd98b",
+    "langgraph_version": "1.2.9",
+    "ls_integration": "langgraph",
+    "ls_run_depth": 0,
+    "revision_id": "ce094bb-dirty",
+    "run_attempt": 1,
+    "run_id": "01a0a8cc-6fee-7022-aa94-cafa709969f7",
+    "thread_id": "01a0a8c8-b969-75f3-9b38-dd5da9067c9c",
+    "user_id": ""
+  },
+  "langsmith": {
+    "organization": {
+      "name": "Personal",
+      "id": "ed8474c2-befb-4da7-a27d-0cff5f292e38"
+    },
+    "workspace": {
+      "name": "Workspace 1",
+      "id": "0186ad00-74ec-4262-bd54-e3ce799d852c"
+    },
+    "tracing_project": {
+      "id": "6fcfa217-a204-4d05-9407-ab08582ca384",
+      "name": "wildagent"
+    }
+  }
+}

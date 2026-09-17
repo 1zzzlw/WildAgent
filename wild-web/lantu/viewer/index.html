@@ -3,66 +3,193 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WildAgent 蓝图渲染查看器</title>
+    <title>WILD 蓝图渲染查看器</title>
     <style>
       :root {
         --bg: #0e1116;
-        --panel: rgba(20, 24, 31, 0.86);
+        --panel: rgba(18, 22, 29, 0.88);
+        --panel-solid: #12161d;
         --border: rgba(255, 255, 255, 0.08);
+        --border-strong: rgba(255, 255, 255, 0.14);
         --text: #e6e9ef;
-        --muted: #9aa3b0;
+        --muted: #8b95a5;
         --accent: #5b9dff;
+        --ok: #5fd38a;
+        --warn: #f2c14e;
+        --err: #ff6b6b;
       }
       * { box-sizing: border-box; }
-      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+      html, body {
+        margin: 0; height: 100%; overflow: hidden;
+        background: var(--bg); color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
       #app { position: fixed; inset: 0; }
       canvas { display: block; }
+
       #panel {
-        position: absolute; top: 16px; left: 16px; width: 320px; max-height: calc(100% - 32px);
-        overflow: auto; background: var(--panel); border: 1px solid var(--border);
-        border-radius: 12px; padding: 16px; backdrop-filter: blur(8px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        position: absolute; top: 18px; left: 18px; width: 340px;
+        max-height: calc(100% - 36px); overflow-y: auto;
+        background: var(--panel); border: 1px solid var(--border);
+        border-radius: 14px; padding: 18px 18px 14px;
+        backdrop-filter: blur(14px) saturate(140%);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
       }
-      #panel h1 { font-size: 15px; margin: 0 0 4px; letter-spacing: 0.5px; }
-      #panel .sub { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
-      .row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
-      label { font-size: 12px; color: var(--muted); }
+      #panel::-webkit-scrollbar { width: 8px; }
+      #panel::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.12); border-radius: 4px;
+      }
+
+      .head { margin-bottom: 16px; }
+      .head h1 {
+        font-size: 15px; font-weight: 600; margin: 0 0 6px;
+        letter-spacing: 0.02em;
+      }
+      .badge {
+        display: inline-block; font-size: 10px; letter-spacing: 0.04em;
+        color: var(--accent); background: rgba(91, 157, 255, 0.12);
+        border: 1px solid rgba(91, 157, 255, 0.28);
+        padding: 2px 7px; border-radius: 999px;
+      }
+
+      .field { margin-bottom: 14px; }
+      .field > label {
+        display: block; font-size: 11px; color: var(--muted);
+        text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
+      }
       select, input[type="file"] {
-        width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
-        background: #161b22; color: var(--text); font-size: 13px;
+        width: 100%; padding: 8px 10px; border-radius: 9px;
+        border: 1px solid var(--border-strong); background: #0b0e13;
+        color: var(--text); font-size: 13px; font-family: inherit;
+        transition: border-color 0.15s;
       }
-      .stats { font-size: 12px; line-height: 1.7; border-top: 1px solid var(--border); padding-top: 10px; }
-      .stats b { color: var(--accent); }
-      .ok { color: #5fd38a; }
-      .warn { color: #f2c14e; }
-      .err { color: #ff6b6b; }
-      .controls { display: flex; gap: 10px; margin-top: 10px; }
-      .controls label { display: flex; align-items: center; gap: 6px; color: var(--text); }
-      #hint { position: absolute; bottom: 14px; left: 16px; font-size: 12px; color: var(--muted);
-        background: var(--panel); border: 1px solid var(--border); padding: 6px 10px; border-radius: 8px; }
+      select:hover, input[type="file"]:hover { border-color: rgba(255,255,255,0.24); }
+      select:focus, input[type="file"]:focus {
+        outline: none; border-color: var(--accent);
+      }
+      input[type="file"] { font-size: 12px; padding: 6px 8px; }
+      input[type="file"]::file-selector-button {
+        background: #1c2230; color: var(--text); border: 1px solid var(--border-strong);
+        border-radius: 6px; padding: 4px 9px; margin-right: 9px;
+        font-size: 12px; font-family: inherit; cursor: pointer;
+      }
+
+      .section {
+        border-top: 1px solid var(--border); padding-top: 12px; margin-top: 14px;
+      }
+      .section-title {
+        font-size: 11px; color: var(--muted); text-transform: uppercase;
+        letter-spacing: 0.06em; margin-bottom: 9px;
+      }
+
+      #stats { font-size: 12px; line-height: 1.85; }
+      #stats .k { color: var(--muted); }
+      #stats .v { color: var(--text); }
+      #stats .v.mono { font-variant-numeric: tabular-nums; }
+
+      .pill {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11px; padding: 2px 8px; border-radius: 999px;
+        border: 1px solid transparent;
+      }
+      .pill.ok { color: var(--ok); background: rgba(95, 211, 138, 0.1);
+        border-color: rgba(95, 211, 138, 0.24); }
+      .pill.warn { color: var(--warn); background: rgba(242, 193, 78, 0.1);
+        border-color: rgba(242, 193, 78, 0.24); }
+      .pill.err { color: var(--err); background: rgba(255, 107, 107, 0.1);
+        border-color: rgba(255, 107, 107, 0.26); }
+
+      details { margin-top: 10px; }
+      details > summary {
+        font-size: 12px; color: var(--muted); cursor: pointer;
+        list-style: none; user-select: none;
+      }
+      details > summary::-webkit-details-marker { display: none; }
+      details > summary::before { content: "▸ "; }
+      details[open] > summary::before { content: "▾ "; }
+      details > summary:hover { color: var(--text); }
+      .diag-list {
+        margin: 8px 0 0; padding: 0; list-style: none;
+        max-height: 210px; overflow-y: auto; font-size: 11px; line-height: 1.6;
+      }
+      .diag-list li {
+        padding: 6px 8px; border-radius: 6px; margin-bottom: 5px;
+        background: rgba(255,255,255,0.03); word-break: break-word;
+      }
+      .diag-list li.err { border-left: 2px solid var(--err); }
+      .diag-list li.warn { border-left: 2px solid var(--warn); }
+      .diag-list .diag-el {
+        color: var(--accent); font-family: ui-monospace, Consolas, monospace;
+        font-size: 10px; display: block; margin-bottom: 2px;
+      }
+
+      .controls { display: flex; flex-wrap: wrap; gap: 9px 16px; }
+      .controls label {
+        display: flex; align-items: center; gap: 6px; font-size: 12px;
+        color: var(--text); cursor: pointer; user-select: none;
+      }
+      .controls input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+      #hint {
+        position: absolute; bottom: 16px; left: 18px; font-size: 11.5px;
+        color: var(--muted); background: var(--panel);
+        border: 1px solid var(--border); padding: 7px 12px;
+        border-radius: 9px; backdrop-filter: blur(14px);
+      }
+      #hint kbd {
+        font-family: inherit; color: var(--text); background: rgba(255,255,255,0.07);
+        border-radius: 4px; padding: 1px 5px; margin: 0 1px;
+      }
+      #empty-state {
+        position: absolute; inset: 0; display: none; place-items: center;
+        font-size: 13px; color: var(--muted);
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+
     <div id="panel">
-      <h1>WildAgent 蓝图渲染查看器</h1>
-      <div class="sub">接入项目渲染引擎 (wild-core + wild-compiler)</div>
-      <div class="row">
-        <label for="bp">选择蓝图 (.wild)</label>
+      <div class="head">
+        <h1>WILD 蓝图渲染查看器</h1>
+        <span class="badge">wild-core → wild-compiler → renderEntity</span>
+      </div>
+
+      <div class="field">
+        <label for="bp">选择蓝图</label>
         <select id="bp"></select>
       </div>
-      <div class="row">
-        <label for="file">或加载本地文件</label>
+
+      <div class="field">
+        <label for="file">或加载本地 .wild</label>
         <input id="file" type="file" accept=".wild,application/json" />
       </div>
-      <div id="stats" class="stats"></div>
-      <div class="controls">
-        <label><input id="spin" type="checkbox" /> 自动旋转</label>
-        <label><input id="wire" type="checkbox" /> 线框</label>
+
+      <div class="section">
+        <div class="section-title">场景信息</div>
+        <div id="stats"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">显示</div>
+        <div class="controls">
+          <label><input id="spin" type="checkbox" /> 自动旋转</label>
+          <label><input id="wire" type="checkbox" /> 线框</label>
+          <label><input id="gridToggle" type="checkbox" checked /> 网格地面</label>
+        </div>
+        <div class="field" style="margin: 12px 0 0">
+          <label for="level">楼层隔离</label>
+          <select id="level"></select>
+        </div>
       </div>
     </div>
-    <div id="hint">左键拖拽旋转 · 右键平移 · 滚轮缩放</div>
+
+    <div id="hint">
+      <kbd>左键</kbd> 旋转 · <kbd>右键</kbd> 平移 · <kbd>滚轮</kbd> 缩放
+    </div>
+
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

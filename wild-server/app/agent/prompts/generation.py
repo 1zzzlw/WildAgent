@@ -52,11 +52,13 @@ def build_skeleton_prompt(
 
 1. 每层外墙闭合，共享转角端点；wall.from[1] 是墙底，wall.to[1] 是墙顶且必须更大。
 2. 每个 floor 同时使用三维 `from`/`to`，两个 Y 相同并等于该层底标高。
-3. 按 `circulation.vertical_strategy` 生成 stair、核心筒或二者；多层建筑不能省略所选竖向交通。
+3. 按 `circulation.vertical_strategy` 生成 stair、核心筒或二者；多层建筑不能省略所选竖向交通。核心筒/电梯井是贯通构件，必须收进它跨越的每一层外墙轮廓。
 4. 所有 element 的材质引用必须存在于 `materials`；至少定义墙、楼板、门窗框、门扇、屋顶和物理玻璃角色材质，供后续节点引用。
 5. ID 使用 `wall_front_1`、`floor_1` 之类可读且唯一的名称。
 6. 现代住宅不滥用装饰性外露角柱；但当 structural_grid 为 frame/hybrid 或复杂度目标明确要求时，必须生成承担体量与跨距关系的真实柱梁。
 7. 退台交接层必须由下层完整顶板封闭；不得只画上层较小底板而让下层外围空间敞口，也不得叠放两块共面 floor。
+8. 贯通多个楼层的竖向构件（核心筒、电梯井、贯通剪力墙、通高柱）必须落在它经过的**每一层**外墙轮廓之内。退台处上层外墙已经退进，贯通构件必须跟着退进；不得按底层轮廓通高到底，否则它会在退台层外凸成一堵独立墙体。判断依据是"逐层外墙的并集轮廓"，不是整栋建筑的外包络。
+9. L/U 形等多体量建筑，component_quota.roof 的 min/max 应按体量数设定（每个体量各一块屋顶）；屋顶按其负责体量的轮廓取 span/depth，禁止只给一块屋顶盖住整栋外包络、把内院/天井也盖进去。
 
 # WILD 规范参考
 
@@ -72,6 +74,8 @@ def build_skeleton_prompt(
 - 只生成 wall、floor、column、beam、stair；geometry.components 留空。
 - 层数、尺寸、轮廓和材质来自本次需求；未指定时自行作出有理由的设计决定。
 - 共享墙角、楼层标高、楼板覆盖和交通衔接必须有效；开放亭廊不强加四面墙。
+- 跨越多个楼层的贯通构件（核心筒、电梯井、贯通剪力墙、通高柱）必须收进它经过的每一层外墙轮廓；退台处上层外墙已退进时，贯通构件必须跟着退进，不得按底层轮廓通高到底。
+- L/U 形等多体量建筑按体量分别设定屋顶配额（每体量一块），屋顶按其负责体量的轮廓取值，禁止用单块屋顶盖住内院/天井。
 - 不照搬任何旧建筑案例、固定配色或门窗数量；附属组件只有功能需要才加入设计清单。
 - 输出严格 Blueprint JSON，随后以 DESIGN_BRIEF: 标记输出一个设计清单 JSON。
 - 设计清单包含 facade_plan（各立面的 bays、entrance_bay、window_spacing、ground_pattern、upper_pattern）、component_quota（实际需要组件的 min、max、note；屋顶可给 type）、design_notes（设计理由）、rag_reference（实际使用的能力或关系依据）。槽位与本次墙面和门窗数量一致。

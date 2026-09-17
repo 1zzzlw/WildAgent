@@ -19,7 +19,13 @@ from app.agent.generation.skeleton_output import (
     parse_components_from_reply,
     parse_design_brief,
 )
-from app.agent.prompts import build_blueprint_recovery_messages, build_skeleton_prompt
+from app.agent.prompts import (
+    append_approved_phase_guidance,
+    build_blueprint_recovery_messages,
+    build_skeleton_prompt,
+)
+from app.agent.planning.execution import execution_plan_phase_guidance
+from app.agent.planning.requirements import structured_requirement_guidance
 from app.llm.client import create_llm
 from app.llm.invocation import (
     invoke_llm,
@@ -91,6 +97,19 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 2. 构建 Prompt ──
     system_prompt = build_skeleton_prompt(spec_text, architecture_plan, material_plan)
+    phase_guidance = execution_plan_phase_guidance(
+        state.get("execution_plan"),
+        "skeleton",
+    )
+    requirement_guidance = structured_requirement_guidance(
+        state.get("structured_requirements"),
+        "skeleton",
+    )
+    system_prompt = append_approved_phase_guidance(
+        system_prompt,
+        "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
+        "骨架必须落实这些批准任务及结构化业务要求，且不得违反 WILD Schema。",
+    )
     prompt_chars = len(system_prompt)
 
     # ── 3. LLM 调用（流式或非流式）──

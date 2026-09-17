@@ -73,6 +73,8 @@ from app.tools.spatial_tools import (
     validate_opening_fit,
     validate_reference_integrity,
     validate_roof_coverage,
+    validate_roof_top_coverage,
+    validate_stacked_member_containment,
     validate_stair_alignment,
     validate_wall_junctions,
 )
@@ -87,12 +89,15 @@ from app.utils.blueprint_parser import (
 _SERVER_ROOT = Path(__file__).resolve().parent.parent.parent  # wild-server/
 _KB = _SERVER_ROOT / "storage" / "knowledge_base"
 
+# 每轮全量注入、且被排除出向量索引的"基础规范"（见 get_rag_spec_paths 的 exclude）。
+# 保持精简：只有模型不注入就一定会写错的内容才放这里，其余交给 RAG 检索。
 BASE_SPEC_PATHS = [
-    _KB / "BLUEPRINT-SPEC-MINIMAL.md",
+    _KB / "knowledge" / "protocol" / "blueprint-skeleton.md",
+    _KB / "knowledge" / "protocol" / "generation-redlines.md",
 ]
 
 def get_rag_spec_paths() -> list[Path]:
-    """扫描知识库 Markdown，并排除已经完整注入的最小规范。"""
+    """扫描知识库 Markdown，并排除已经完整注入的基础规范。"""
     return collect_markdown_paths(_KB, exclude=BASE_SPEC_PATHS)
 
 @dataclass
@@ -307,6 +312,12 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
     r7b = run_step("7b", "validate_element_dimensions", validate_element_dimensions, blueprint)
     # ── Step 7c: 重复骨架质量门禁 ──
     run_step("7c", "validate_model_quality", validate_model_quality, blueprint)
+    # ── Step 7d: 贯通构件逐层收进门禁 ──
+    run_step("7d", "validate_stacked_member_containment", validate_stacked_member_containment, blueprint)
+    # ── Step 7e: 墙顶 - 屋顶反向覆盖（多体量漏屋顶）──
+    # 只报 ⚠️，不参与 8e 的 fix_roof_coverage（修不了"少一块屋顶"，
+    # 补屋顶是生成侧的事），也不进 _final_errors，因此不阻断交付。
+    run_step("7e", "validate_roof_top_coverage", validate_roof_top_coverage, blueprint)
 
     # ── Step 8: 自动修正门窗坐标 ──
     if r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning:

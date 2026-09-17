@@ -32,6 +32,7 @@
 | [`rag/`](rag/) | 分片、Embedding、Chroma、检索、评测和演进规划 | [RAG 文档入口](rag/README.md) |
 | [`specs/`](specs/) | `.wild` Blueprint 规范、字段和当前引擎能力目录 | [WILD Blueprint 当前版本规范](specs/WILD_BLUEPRINT_SPEC.md) |
 | [`materials/`](materials/) | PBR、程序化材质、表面系统、`.wildmat` 与 `.wildlook` | [建筑表面系统总览](materials/ARCHITECTURAL_SURFACE_SYSTEM.md) |
+| [`渲染引擎优化/`](渲染引擎优化/README.md) | 渲染链路诊断流程、A/B/C 改动分级、优化方向与 P0~P8 实施记录 | [渲染引擎优化目录](渲染引擎优化/README.md) |
 | [`operations/`](operations/) | 具体部署与运维专题 | [HTTPS/SSL 配置](operations/HTTPS_SETUP.md) |
 | [`tools/`](tools/) | 项目脚本和工具入口 | [工具目录](tools/README.md) |
 
