@@ -1,0 +1,3014 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "天坛祈年殿"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "primitive",
+        "id": "terrace_t1",
+        "shape": "cylinder",
+        "radiusTop": 30.0,
+        "radiusBottom": 30.0,
+        "height": 2.1,
+        "segments": 64,
+        "position": [
+          30.0,
+          -5.25,
+          30.0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_t2",
+        "shape": "cylinder",
+        "radiusTop": 26.0,
+        "radiusBottom": 26.0,
+        "height": 2.1,
+        "segments": 64,
+        "position": [
+          30.0,
+          -3.1500000000000004,
+          30.0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_t3",
+        "shape": "cylinder",
+        "radiusTop": 22.0,
+        "radiusBottom": 22.0,
+        "height": 2.1,
+        "segments": 64,
+        "position": [
+          30.0,
+          -1.05,
+          30.0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_00",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          59.31562214996781,
+          -3.8000000000000003,
+          32.8873367658387
+        ],
+        "rotation": [
+          0,
+          -1.6689710972195777,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_01",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          58.189039231134856,
+          -3.8000000000000003,
+          38.55105156484203
+        ],
+        "rotation": [
+          0,
+          -1.865320638068939,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_02",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          55.97916734324471,
+          -3.8000000000000003,
+          43.88615424769344
+        ],
+        "rotation": [
+          0,
+          -2.0616701789183027,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_03",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          52.77093062363858,
+          -3.8000000000000003,
+          48.687619810251014
+        ],
+        "rotation": [
+          0,
+          -2.2580197197676632,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_04",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          48.68761981025102,
+          -3.8000000000000003,
+          52.77093062363858
+        ],
+        "rotation": [
+          0,
+          -2.454369260617026,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_05",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          43.88615424769344,
+          -3.8000000000000003,
+          55.97916734324471
+        ],
+        "rotation": [
+          0,
+          -2.650718801466388,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_06",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          38.55105156484203,
+          -3.8000000000000003,
+          58.189039231134856
+        ],
+        "rotation": [
+          0,
+          -2.84706834231575,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_07",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.887336765838704,
+          -3.8000000000000003,
+          59.31562214996781
+        ],
+        "rotation": [
+          0,
+          -3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_08",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.112663234161303,
+          -3.8000000000000003,
+          59.31562214996781
+        ],
+        "rotation": [
+          0,
+          3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_09",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          21.448948435157973,
+          -3.8000000000000003,
+          58.189039231134856
+        ],
+        "rotation": [
+          0,
+          2.8470683423157506,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_10",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          16.11384575230656,
+          -3.8000000000000003,
+          55.97916734324471
+        ],
+        "rotation": [
+          0,
+          2.650718801466387,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_11",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          11.312380189748984,
+          -3.8000000000000003,
+          52.77093062363857
+        ],
+        "rotation": [
+          0,
+          2.4543692606170264,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_12",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          7.229069376361426,
+          -3.8000000000000003,
+          48.687619810251014
+        ],
+        "rotation": [
+          0,
+          2.258019719767664,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_13",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          4.0208326567552835,
+          -3.8000000000000003,
+          43.88615424769344
+        ],
+        "rotation": [
+          0,
+          2.0616701789183023,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_14",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          1.8109607688651437,
+          -3.8000000000000003,
+          38.55105156484203
+        ],
+        "rotation": [
+          0,
+          1.865320638068939,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_15",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          0.6843778500321882,
+          -3.8000000000000003,
+          32.8873367658387
+        ],
+        "rotation": [
+          0,
+          1.668971097219578,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_16",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          0.6843778500321882,
+          -3.8000000000000003,
+          27.112663234161303
+        ],
+        "rotation": [
+          0,
+          1.4726215563702156,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_17",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          1.8109607688651437,
+          -3.8000000000000003,
+          21.448948435157973
+        ],
+        "rotation": [
+          0,
+          1.2762720155208533,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_18",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          4.020832656755285,
+          -3.8000000000000003,
+          16.11384575230656
+        ],
+        "rotation": [
+          0,
+          1.0799224746714915,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_19",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          7.229069376361425,
+          -3.8000000000000003,
+          11.312380189748984
+        ],
+        "rotation": [
+          0,
+          0.8835729338221295,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_20",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          11.312380189748982,
+          -3.8000000000000003,
+          7.229069376361428
+        ],
+        "rotation": [
+          0,
+          0.6872233929727669,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_21",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          16.113845752306563,
+          -3.8000000000000003,
+          4.020832656755285
+        ],
+        "rotation": [
+          0,
+          0.490873852123405,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_22",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          21.448948435157973,
+          -3.8000000000000003,
+          1.8109607688651455
+        ],
+        "rotation": [
+          0,
+          0.2945243112740432,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_23",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.112663234161293,
+          -3.8000000000000003,
+          0.68437785003219
+        ],
+        "rotation": [
+          0,
+          0.09817477042468167,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_24",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.8873367658387,
+          -3.8000000000000003,
+          0.6843778500321882
+        ],
+        "rotation": [
+          0,
+          -0.09817477042468095,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_25",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          38.551051564842034,
+          -3.8000000000000003,
+          1.8109607688651455
+        ],
+        "rotation": [
+          0,
+          -0.29452431127404316,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_26",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          43.88615424769344,
+          -3.8000000000000003,
+          4.0208326567552835
+        ],
+        "rotation": [
+          0,
+          -0.49087385212340573,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_27",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          48.68761981025101,
+          -3.8000000000000003,
+          7.229069376361421
+        ],
+        "rotation": [
+          0,
+          -0.6872233929727669,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_28",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          52.77093062363857,
+          -3.8000000000000003,
+          11.312380189748982
+        ],
+        "rotation": [
+          0,
+          -0.8835729338221293,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_29",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          55.97916734324471,
+          -3.8000000000000003,
+          16.11384575230656
+        ],
+        "rotation": [
+          0,
+          -1.0799224746714913,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_30",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          58.189039231134856,
+          -3.8000000000000003,
+          21.448948435157966
+        ],
+        "rotation": [
+          0,
+          -1.276272015520853,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t1_31",
+        "shape": "box",
+        "dimensions": [
+          5.802614707509988,
+          0.8,
+          0.12
+        ],
+        "position": [
+          59.31562214996781,
+          -3.8000000000000003,
+          27.11266323416129
+        ],
+        "rotation": [
+          0,
+          -1.4726215563702156,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_00",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          55.35405158916135,
+          -1.7000000000000002,
+          32.49715612180644
+        ],
+        "rotation": [
+          0,
+          -1.6689710972195777,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_01",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          54.37970960530582,
+          -1.7000000000000002,
+          37.39550405607959
+        ],
+        "rotation": [
+          0,
+          -1.8653206380689387,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_02",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          52.468469053617056,
+          -1.7000000000000002,
+          42.009646916924055
+        ],
+        "rotation": [
+          0,
+          -2.0616701789183027,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_03",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          49.69377783666039,
+          -1.7000000000000002,
+          46.16226578183872
+        ],
+        "rotation": [
+          0,
+          -2.258019719767662,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_04",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          46.16226578183872,
+          -1.7000000000000002,
+          49.69377783666039
+        ],
+        "rotation": [
+          0,
+          -2.4543692606170278,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_05",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          42.009646916924055,
+          -1.7000000000000002,
+          52.468469053617056
+        ],
+        "rotation": [
+          0,
+          -2.650718801466387,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_06",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          37.39550405607959,
+          -1.7000000000000002,
+          54.37970960530582
+        ],
+        "rotation": [
+          0,
+          -2.847068342315751,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_07",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.49715612180644,
+          -1.7000000000000002,
+          55.35405158916135
+        ],
+        "rotation": [
+          0,
+          -3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_08",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.50284387819356,
+          -1.7000000000000002,
+          55.35405158916135
+        ],
+        "rotation": [
+          0,
+          3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_09",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          22.604495943920412,
+          -1.7000000000000002,
+          54.37970960530582
+        ],
+        "rotation": [
+          0,
+          2.847068342315751,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_10",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          17.99035308307594,
+          -1.7000000000000002,
+          52.46846905361705
+        ],
+        "rotation": [
+          0,
+          2.6507188014663865,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_11",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          13.837734218161282,
+          -1.7000000000000002,
+          49.69377783666039
+        ],
+        "rotation": [
+          0,
+          2.4543692606170278,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_12",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          10.30622216333961,
+          -1.7000000000000002,
+          46.16226578183872
+        ],
+        "rotation": [
+          0,
+          2.2580197197676637,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_13",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          7.531530946382947,
+          -1.7000000000000002,
+          42.009646916924055
+        ],
+        "rotation": [
+          0,
+          2.061670178918302,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_14",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          5.6202903946941785,
+          -1.7000000000000002,
+          37.39550405607959
+        ],
+        "rotation": [
+          0,
+          1.8653206380689393,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_15",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          4.645948410838649,
+          -1.7000000000000002,
+          32.49715612180644
+        ],
+        "rotation": [
+          0,
+          1.668971097219578,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_16",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          4.645948410838649,
+          -1.7000000000000002,
+          27.50284387819356
+        ],
+        "rotation": [
+          0,
+          1.4726215563702156,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_17",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          5.620290394694177,
+          -1.7000000000000002,
+          22.604495943920412
+        ],
+        "rotation": [
+          0,
+          1.276272015520854,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_18",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          7.531530946382947,
+          -1.7000000000000002,
+          17.990353083075945
+        ],
+        "rotation": [
+          0,
+          1.0799224746714913,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_19",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          10.30622216333961,
+          -1.7000000000000002,
+          13.837734218161282
+        ],
+        "rotation": [
+          0,
+          0.8835729338221293,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_20",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          13.837734218161282,
+          -1.7000000000000002,
+          10.306222163339612
+        ],
+        "rotation": [
+          0,
+          0.6872233929727669,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_21",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          17.990353083075945,
+          -1.7000000000000002,
+          7.531530946382947
+        ],
+        "rotation": [
+          0,
+          0.4908738521234056,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_22",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          22.604495943920405,
+          -1.7000000000000002,
+          5.6202903946941785
+        ],
+        "rotation": [
+          0,
+          0.29452431127404255,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_23",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.502843878193552,
+          -1.7000000000000002,
+          4.645948410838651
+        ],
+        "rotation": [
+          0,
+          0.09817477042468167,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_24",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.49715612180644,
+          -1.7000000000000002,
+          4.645948410838649
+        ],
+        "rotation": [
+          0,
+          -0.0981747704246811,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_25",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          37.395504056079595,
+          -1.7000000000000002,
+          5.62029039469418
+        ],
+        "rotation": [
+          0,
+          -0.29452431127404294,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_26",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          42.009646916924055,
+          -1.7000000000000002,
+          7.531530946382947
+        ],
+        "rotation": [
+          0,
+          -0.4908738521234051,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_27",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          46.16226578183871,
+          -1.7000000000000002,
+          10.306222163339607
+        ],
+        "rotation": [
+          0,
+          -0.6872233929727679,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_28",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          49.69377783666039,
+          -1.7000000000000002,
+          13.837734218161282
+        ],
+        "rotation": [
+          0,
+          -0.8835729338221285,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_29",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          52.468469053617056,
+          -1.7000000000000002,
+          17.990353083075945
+        ],
+        "rotation": [
+          0,
+          -1.079922474671491,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_30",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          54.37970960530582,
+          -1.7000000000000002,
+          22.604495943920405
+        ],
+        "rotation": [
+          0,
+          -1.2762720155208547,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t2_31",
+        "shape": "box",
+        "dimensions": [
+          5.018477584873503,
+          0.8,
+          0.12
+        ],
+        "position": [
+          55.354051589161344,
+          -1.7000000000000002,
+          27.50284387819355
+        ],
+        "rotation": [
+          0,
+          -1.472621556370214,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_00",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          51.392481028354894,
+          0.4,
+          32.106975477774185
+        ],
+        "rotation": [
+          0,
+          -1.6689710972195777,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_01",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          50.57037997947678,
+          0.4,
+          36.239956547317156
+        ],
+        "rotation": [
+          0,
+          -1.8653206380689396,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_02",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          48.95777076398939,
+          0.4,
+          40.13313958615468
+        ],
+        "rotation": [
+          0,
+          -2.0616701789183014,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_03",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          46.6166250496822,
+          0.4,
+          43.63691175342642
+        ],
+        "rotation": [
+          0,
+          -2.2580197197676655,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_04",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          43.63691175342642,
+          0.4,
+          46.6166250496822
+        ],
+        "rotation": [
+          0,
+          -2.4543692606170247,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_05",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          40.13313958615468,
+          0.4,
+          48.95777076398939
+        ],
+        "rotation": [
+          0,
+          -2.6507188014663883,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_06",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          36.239956547317156,
+          0.4,
+          50.57037997947678
+        ],
+        "rotation": [
+          0,
+          -2.8470683423157506,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_07",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.106975477774185,
+          0.4,
+          51.392481028354894
+        ],
+        "rotation": [
+          0,
+          -3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_08",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.893024522225815,
+          0.4,
+          51.392481028354894
+        ],
+        "rotation": [
+          0,
+          3.043417883165112,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_09",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          23.760043452682844,
+          0.4,
+          50.57037997947678
+        ],
+        "rotation": [
+          0,
+          2.84706834231575,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_10",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          19.866860413845323,
+          0.4,
+          48.95777076398939
+        ],
+        "rotation": [
+          0,
+          2.6507188014663874,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_11",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          16.363088246573582,
+          0.4,
+          46.6166250496822
+        ],
+        "rotation": [
+          0,
+          2.454369260617026,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_12",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          13.383374950317798,
+          0.4,
+          43.63691175342642
+        ],
+        "rotation": [
+          0,
+          2.258019719767665,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_13",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          11.042229236010613,
+          0.4,
+          40.13313958615468
+        ],
+        "rotation": [
+          0,
+          2.0616701789183014,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_14",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          9.429620020523213,
+          0.4,
+          36.239956547317156
+        ],
+        "rotation": [
+          0,
+          1.8653206380689396,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_15",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          8.60751897164511,
+          0.4,
+          32.106975477774185
+        ],
+        "rotation": [
+          0,
+          1.668971097219578,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_16",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          8.60751897164511,
+          0.4,
+          27.893024522225815
+        ],
+        "rotation": [
+          0,
+          1.4726215563702156,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_17",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          9.429620020523211,
+          0.4,
+          23.760043452682844
+        ],
+        "rotation": [
+          0,
+          1.2762720155208538,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_18",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          11.042229236010611,
+          0.4,
+          19.866860413845327
+        ],
+        "rotation": [
+          0,
+          1.0799224746714917,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_19",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          13.383374950317794,
+          0.4,
+          16.363088246573582
+        ],
+        "rotation": [
+          0,
+          0.8835729338221291,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_20",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          16.363088246573582,
+          0.4,
+          13.383374950317798
+        ],
+        "rotation": [
+          0,
+          0.687223392972767,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_21",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          19.86686041384533,
+          0.4,
+          11.042229236010611
+        ],
+        "rotation": [
+          0,
+          0.4908738521234053,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_22",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          23.760043452682844,
+          0.4,
+          9.429620020523213
+        ],
+        "rotation": [
+          0,
+          0.29452431127404244,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_23",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          27.893024522225808,
+          0.4,
+          8.607518971645112
+        ],
+        "rotation": [
+          0,
+          0.09817477042468183,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_24",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          32.106975477774185,
+          0.4,
+          8.60751897164511
+        ],
+        "rotation": [
+          0,
+          -0.09817477042468106,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_25",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          36.239956547317156,
+          0.4,
+          9.429620020523215
+        ],
+        "rotation": [
+          0,
+          -0.29452431127404366,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_26",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          40.13313958615467,
+          0.4,
+          11.042229236010613
+        ],
+        "rotation": [
+          0,
+          -0.49087385212340506,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_27",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          43.63691175342641,
+          0.4,
+          13.383374950317794
+        ],
+        "rotation": [
+          0,
+          -0.6872233929727662,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_28",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          46.6166250496822,
+          0.4,
+          16.363088246573582
+        ],
+        "rotation": [
+          0,
+          -0.8835729338221292,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_29",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          48.95777076398939,
+          0.4,
+          19.86686041384533
+        ],
+        "rotation": [
+          0,
+          -1.0799224746714906,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_30",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          50.57037997947679,
+          0.4,
+          23.760043452682844
+        ],
+        "rotation": [
+          0,
+          -1.2762720155208542,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "railing_t3_31",
+        "shape": "box",
+        "dimensions": [
+          4.234340462237018,
+          0.8,
+          0.12
+        ],
+        "position": [
+          51.392481028354894,
+          0.4,
+          27.893024522225808
+        ],
+        "rotation": [
+          0,
+          -1.4726215563702156,
+          0
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t1_0",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -5.775,
+          -1.2
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t1_1",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -4.7250000000000005,
+          -2.4
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t2_0",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -3.6750000000000003,
+          2.8
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t2_1",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -2.6250000000000004,
+          1.5999999999999999
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t3_0",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -1.5750000000000002,
+          6.8
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_t3_1",
+        "shape": "box",
+        "dimensions": [
+          6.0,
+          1.05,
+          1.2
+        ],
+        "position": [
+          30.0,
+          -0.525,
+          5.6
+        ],
+        "material": "stone_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_00",
+        "from": [
+          40.14222117603522,
+          0,
+          27.28240002642353
+        ],
+        "to": [
+          40.14222117603522,
+          6,
+          32.71759997357647
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_00",
+        "base": [
+          40.14222117603522,
+          0,
+          32.71759997357647
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_01",
+        "from": [
+          40.14222117603522,
+          0,
+          32.71759997357647
+        ],
+        "to": [
+          37.42462120245875,
+          6,
+          37.42462120245875
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_01",
+        "base": [
+          37.42462120245875,
+          0,
+          37.42462120245875
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_02",
+        "from": [
+          37.42462120245875,
+          0,
+          37.42462120245875
+        ],
+        "to": [
+          32.71759997357647,
+          6,
+          40.14222117603522
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_02",
+        "base": [
+          32.71759997357647,
+          0,
+          40.14222117603522
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_03",
+        "from": [
+          32.71759997357647,
+          0,
+          40.14222117603522
+        ],
+        "to": [
+          27.28240002642353,
+          6,
+          40.14222117603522
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_03",
+        "base": [
+          27.28240002642353,
+          0,
+          40.14222117603522
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_04",
+        "from": [
+          27.28240002642353,
+          0,
+          40.14222117603522
+        ],
+        "to": [
+          22.57537879754125,
+          6,
+          37.42462120245875
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_04",
+        "base": [
+          22.57537879754125,
+          0,
+          37.42462120245875
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_05",
+        "from": [
+          22.57537879754125,
+          0,
+          37.42462120245875
+        ],
+        "to": [
+          19.857778823964786,
+          6,
+          32.71759997357647
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_05",
+        "base": [
+          19.857778823964786,
+          0,
+          32.71759997357647
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_06",
+        "from": [
+          19.857778823964786,
+          0,
+          32.71759997357647
+        ],
+        "to": [
+          19.857778823964782,
+          6,
+          27.28240002642353
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_06",
+        "base": [
+          19.857778823964782,
+          0,
+          27.28240002642353
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_07",
+        "from": [
+          19.857778823964782,
+          0,
+          27.28240002642353
+        ],
+        "to": [
+          22.575378797541248,
+          6,
+          22.57537879754125
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_07",
+        "base": [
+          22.575378797541248,
+          0,
+          22.57537879754125
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_08",
+        "from": [
+          22.575378797541248,
+          0,
+          22.57537879754125
+        ],
+        "to": [
+          27.282400026423534,
+          6,
+          19.857778823964782
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_08",
+        "base": [
+          27.282400026423534,
+          0,
+          19.857778823964782
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_09",
+        "from": [
+          27.282400026423534,
+          0,
+          19.857778823964782
+        ],
+        "to": [
+          32.71759997357646,
+          6,
+          19.857778823964782
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_09",
+        "base": [
+          32.71759997357646,
+          0,
+          19.857778823964782
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_10",
+        "from": [
+          32.71759997357646,
+          0,
+          19.857778823964782
+        ],
+        "to": [
+          37.424621202458745,
+          6,
+          22.575378797541248
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_10",
+        "base": [
+          37.424621202458745,
+          0,
+          22.575378797541248
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "wall",
+        "id": "wall_seg_11",
+        "from": [
+          37.424621202458745,
+          0,
+          22.575378797541248
+        ],
+        "to": [
+          40.14222117603522,
+          6,
+          27.28240002642353
+        ],
+        "thickness": 0.12,
+        "material": "pillar_red"
+      },
+      {
+        "type": "column",
+        "id": "col_11",
+        "base": [
+          40.14222117603522,
+          0,
+          27.28240002642353
+        ],
+        "height": 6.0,
+        "bottomRadius": 0.25,
+        "topRadius": 0.22,
+        "style": "chinese_wooden",
+        "material": "pillar_red"
+      },
+      {
+        "type": "primitive",
+        "id": "body_core",
+        "shape": "cylinder",
+        "radiusTop": 9.0,
+        "radiusBottom": 9.0,
+        "height": 6.0,
+        "segments": 64,
+        "position": [
+          30.0,
+          3.0,
+          30.0
+        ],
+        "material": "pillar_red"
+      },
+      {
+        "type": "primitive",
+        "id": "band_l1",
+        "shape": "cylinder",
+        "radiusTop": 10.56,
+        "radiusBottom": 10.56,
+        "height": 0.6,
+        "segments": 64,
+        "position": [
+          30.0,
+          5.7,
+          30.0
+        ],
+        "material": "paint_teal"
+      },
+      {
+        "type": "primitive",
+        "id": "band_l2",
+        "shape": "cylinder",
+        "radiusTop": 8.06,
+        "radiusBottom": 8.06,
+        "height": 0.6,
+        "segments": 64,
+        "position": [
+          30.0,
+          10.5,
+          30.0
+        ],
+        "material": "paint_teal"
+      },
+      {
+        "type": "primitive",
+        "id": "band_l3",
+        "shape": "cylinder",
+        "radiusTop": 5.56,
+        "radiusBottom": 5.56,
+        "height": 0.6,
+        "segments": 64,
+        "position": [
+          30.0,
+          15.3,
+          30.0
+        ],
+        "material": "paint_teal"
+      },
+      {
+        "type": "primitive",
+        "id": "body_l2",
+        "shape": "cylinder",
+        "radiusTop": 8.0,
+        "radiusBottom": 8.0,
+        "height": 4.8,
+        "segments": 64,
+        "position": [
+          30.0,
+          8.4,
+          30.0
+        ],
+        "material": "pillar_red"
+      },
+      {
+        "type": "primitive",
+        "id": "body_l3",
+        "shape": "cylinder",
+        "radiusTop": 5.5,
+        "radiusBottom": 5.5,
+        "height": 4.8,
+        "segments": 64,
+        "position": [
+          30.0,
+          13.2,
+          30.0
+        ],
+        "material": "pillar_red"
+      },
+      {
+        "type": "primitive",
+        "id": "eave_l1",
+        "shape": "cylinder",
+        "radiusTop": 13.0,
+        "radiusBottom": 13.0,
+        "height": 0.4,
+        "segments": 64,
+        "position": [
+          30.0,
+          6.2,
+          30.0
+        ],
+        "material": "tile_blue"
+      },
+      {
+        "type": "primitive",
+        "id": "eave_l2",
+        "shape": "cylinder",
+        "radiusTop": 10.8,
+        "radiusBottom": 10.8,
+        "height": 0.4,
+        "segments": 64,
+        "position": [
+          30.0,
+          11.0,
+          30.0
+        ],
+        "material": "tile_blue"
+      },
+      {
+        "type": "primitive",
+        "id": "eave_l3",
+        "shape": "cylinder",
+        "radiusTop": 8.4,
+        "radiusBottom": 8.4,
+        "height": 0.4,
+        "segments": 64,
+        "position": [
+          30.0,
+          15.8,
+          30.0
+        ],
+        "material": "tile_blue"
+      },
+      {
+        "type": "roof",
+        "id": "roof_dome",
+        "roofType": "dome",
+        "span": 12.0,
+        "depth": 12.0,
+        "height": 5.4,
+        "thickness": 0.2,
+        "position": [
+          30.0,
+          16.0,
+          30.0
+        ],
+        "material": "tile_blue"
+      },
+      {
+        "type": "primitive",
+        "id": "finial_base",
+        "shape": "cylinder",
+        "radiusTop": 0.4,
+        "radiusBottom": 0.4,
+        "height": 0.9,
+        "segments": 32,
+        "position": [
+          30.0,
+          21.85,
+          30.0
+        ],
+        "material": "gold"
+      },
+      {
+        "type": "primitive",
+        "id": "finial_ball",
+        "shape": "sphere",
+        "radius": 1.0,
+        "segments": 32,
+        "heightSegments": 16,
+        "position": [
+          30.0,
+          22.85,
+          30.0
+        ],
+        "material": "gold"
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "door_00",
+        "parentWall": "wall_seg_00",
+        "from": [
+          1.518,
+          0,
+          0
+        ],
+        "width": 2.4,
+        "height": 3.6,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "doorStyle": "double",
+        "frameMaterial": "gold",
+        "leafMaterial": "pillar_red",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_03",
+        "parentWall": "wall_seg_03",
+        "from": [
+          1.518,
+          0,
+          0
+        ],
+        "width": 2.4,
+        "height": 3.6,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "doorStyle": "double",
+        "frameMaterial": "gold",
+        "leafMaterial": "pillar_red",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_06",
+        "parentWall": "wall_seg_06",
+        "from": [
+          1.518,
+          0,
+          0
+        ],
+        "width": 2.4,
+        "height": 3.6,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "doorStyle": "double",
+        "frameMaterial": "gold",
+        "leafMaterial": "pillar_red",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_09",
+        "parentWall": "wall_seg_09",
+        "from": [
+          1.518,
+          0,
+          0
+        ],
+        "width": 2.4,
+        "height": 3.6,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "doorStyle": "double",
+        "frameMaterial": "gold",
+        "leafMaterial": "pillar_red",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "right",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "window",
+        "id": "win_01",
+        "parentWall": "wall_seg_01",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_02",
+        "parentWall": "wall_seg_02",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_04",
+        "parentWall": "wall_seg_04",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_05",
+        "parentWall": "wall_seg_05",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_07",
+        "parentWall": "wall_seg_07",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_08",
+        "parentWall": "wall_seg_08",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_10",
+        "parentWall": "wall_seg_10",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_11",
+        "parentWall": "wall_seg_11",
+        "from": [
+          1.518,
+          0.9,
+          0
+        ],
+        "width": 2.4,
+        "height": 2.4,
+        "frameWidth": 0.09,
+        "frameDepth": 0.09,
+        "verticalMullions": 4,
+        "frameMaterial": "gold",
+        "glassMaterial": "glass"
+      }
+    ]
+  },
+  "materials": {
+    "stone_white": {
+      "baseColor": [
+        0.93,
+        0.92,
+        0.9
+      ],
+      "roughness": 0.45,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "pillar_red": {
+      "baseColor": [
+        0.6,
+        0.15,
+        0.1
+      ],
+      "roughness": 0.65,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "paint_teal": {
+      "baseColor": [
+        0.13,
+        0.48,
+        0.42
+      ],
+      "roughness": 0.55,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "tile_blue": {
+      "baseColor": [
+        0.1,
+        0.22,
+        0.52
+      ],
+      "roughness": 0.85,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "gold": {
+      "baseColor": [
+        0.92,
+        0.72,
+        0.22
+      ],
+      "roughness": 0.2,
+      "metallic": 0.85,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.72,
+        0.88,
+        0.96
+      ],
+      "roughness": 0.08,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "side": "double",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012,
+      "attenuationColor": [
+        0.82,
+        0.94,
+        1.0
+      ],
+      "attenuationDistance": 6.0,
+      "clearcoat": 0.08,
+      "clearcoatRoughness": 0.12
+    }
+  }
+}

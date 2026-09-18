@@ -3,7 +3,7 @@ Layer -1: 意图分类节点（薄封装）。
 
 共享判定逻辑位于 ``app.agent.routing``，返回意图、置信度、目标和降级来源。
 """
-from app.agent.routing import classify_intent_decision
+from app.agent.routing import classify_intent_decision, has_scene_content
 
 
 def _infer_style_preference(user_message: str) -> list[str]:
@@ -26,7 +26,7 @@ async def classifier_node(state: dict) -> dict:
     """意图分类：判断用户是想生成建筑、修改场景还是知识问答。"""
     decision = await classify_intent_decision(
         state.get("user_message", ""),
-        bool(state.get("current_blueprint")),
+        has_scene_content(state.get("current_blueprint")),
         recent_messages=state.get("recent_messages"),
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),

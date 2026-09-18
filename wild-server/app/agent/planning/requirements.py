@@ -976,6 +976,24 @@ def evaluate_acceptance_results(
             continue
         consumers = requirement.get("consumers", [])
         if phase != "final_validate" and phase not in consumers:
+            # edit（patch）链路只产 scene_patch，不跑 architecture/skeleton/material_plan 等
+            # generate 阶段。planner 若把"生成宽6米建筑"这类 generate 语义塞进 edit 计划，
+            # 其 consumers 指向 generate 阶段、永无消费者评估它，停在 pending 会被
+            # blocking_acceptance_failures 误判阻断（实测"生成一个玻璃幕墙"报
+            # "业务验收未通过：等待对应阶段执行"）。这类验收在 edit 链路不适用，直接标
+            # not_applicable：既不假装通过，也不阻断交付。
+            if phase == "patch" and consumers:
+                updated[requirement["source_acceptance_id"]] = {
+                    "acceptance_id": requirement["source_acceptance_id"],
+                    "task_id": requirement["source_task_id"],
+                    "requirement_id": requirement["id"],
+                    "status": "not_applicable",
+                    "expected": deepcopy(requirement.get("expected")),
+                    "observed": None,
+                    "validator": requirement.get("validator"),
+                    "evidence_refs": [],
+                    "message": "该验收属于生成链路阶段，编辑链路不适用",
+                }
             continue
         status, observed, evidence_refs, message = _check_requirement(requirement, view)
         # 中间阶段缺少最终组件并不等于已经失败；留给更靠后的消费者复检。
@@ -1059,7 +1077,12 @@ def blocking_acceptance_failures(
         for item in requirements or []
         if item.get("severity") == "error"
     }
+    # 只有 status=failed 才算"业务验收失败"，才配阻断一次交付。
+    # pending 表示"尚未轮到对应阶段评估"（占位文案"等待对应阶段执行"），不是失败；
+    # unsupported / not_checked(needs_review) 按项目政策"能力缺失只标记、不阻断"同样不算。
+    # 历史上把"非 passed/not_applicable"一网打尽，导致 edit 链路里一条 consumers 指向
+    # generate 阶段、永远停在 pending 的验收（如"生成宽6米建筑"）把整轮修改判死。
     return [
         item for acceptance_id, item in (results or {}).items()
-        if acceptance_id in required_ids and item.get("status") not in {"passed", "not_applicable"}
+        if acceptance_id in required_ids and item.get("status") == "failed"
     ]

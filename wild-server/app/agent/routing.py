@@ -117,6 +117,24 @@ def _is_explanatory_question(message: str) -> bool:
     return any(marker in text for marker in EXPLANATORY_QUESTION_MARKERS)
 
 
+def has_scene_content(blueprint) -> bool:
+    """是否真的存在可编辑场景内容：按 elements/components 判空，而非 blueprint dict 的 truthiness。
+
+    前端在新建/清空场景时可能传一个"空蓝图骨架"（有 meta/geometry/materials 键、
+    elements=[]、components=[]），`bool(骨架)` 是 True，会把"没有场景"误判成"有场景"，
+    于是空场景下的"生成一个玻璃幕墙"被当成 edit（`normalize_intent_decision` 里
+    `edit && !has_current_scene → chat` 的兜底因此不触发）。
+    """
+    if not isinstance(blueprint, dict):
+        return False
+    geometry = blueprint.get("geometry")
+    if not isinstance(geometry, dict):
+        return False
+    elements = geometry.get("elements")
+    components = geometry.get("components")
+    return bool(elements) or bool(components)
+
+
 def classify_keywords(message: str, has_current_scene: bool = False) -> str:
     """模型不可用时的保守降级；元问题优先避免误启动生成。"""
     if _is_explanatory_question(message):

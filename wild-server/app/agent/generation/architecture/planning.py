@@ -660,13 +660,16 @@ def normalize_architecture_plan(
             normalized_limits["max"] = max(normalized_limits["min"], normalized_limits["max"])
         quotas[component_type] = normalized_limits
     if (
-        not curtain_wall
-        and complexity.get("level") != "minimal"
+        complexity.get("level") != "minimal"
         and massing["representation_mode"] == "full"
     ):
         opening_counts = _facade_opening_counts(facades, modeled_floors)
         for opening_type in ("door", "window"):
             if opening_type not in profile["base_components"]:
+                continue
+            if curtain_wall and opening_type == "window":
+                # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格；
+                # 门仍按逐层 pattern 一一对应，否则门配额会与立面槽位数脱钩。
                 continue
             planned_count = opening_counts[opening_type]
             quotas[opening_type] = {

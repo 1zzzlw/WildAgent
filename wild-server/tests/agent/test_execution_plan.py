@@ -153,7 +153,9 @@ def test_dynamic_task_completes_only_after_each_acceptance_passes() -> None:
 
     assert updated["dynamic_tasks"][0]["status"] == "completed"
     assert updated["dynamic_tasks"][1]["status"] == "pending"
-    assert blocking_acceptance_failures(requirements, results)
+    # 中间阶段：skeleton/final_validate 的验收尚未评估（pending），但没有一条真正 failed，
+    # 因此 blocking_acceptance_failures 应为空 —— pending 表示"等待对应阶段执行"，不是失败。
+    assert not blocking_acceptance_failures(requirements, results)
 
 
 def test_schema_success_does_not_hide_failed_business_acceptance() -> None:
@@ -301,6 +303,42 @@ async def test_plan_mode_edit_completes_at_patch_stage() -> None:
     assert [
         task["status"] for task in update["execution_plan"]["dynamic_tasks"]
     ] == ["completed"]
+
+
+def test_edit_plan_generate_semantics_marked_not_applicable_not_blocking() -> None:
+    """edit 链路里 planner 误塞的 generate 语义验收标 not_applicable，不阻断。
+
+    回归：session_1789689987790 "生成一个玻璃幕墙"被误判 edit，计划里混入
+    "生成宽6米进深4米建筑"，其 consumers 指向 generate 阶段、在 patch 阶段永无消费者，
+    停在 pending 被 blocking_acceptance_failures 误判成"业务验收未通过：等待对应阶段执行"。
+    """
+    tasks = [{
+        "title": "生成玻璃幕墙",
+        "objective": "在现有场景加幕墙",
+        "phase": "patch",
+        "acceptance": ["生成一个至少一层、宽6米、进深4米的建筑"],
+        "basis": "用户需求",
+    }]
+    plan = build_execution_plan(
+        request_id="req_edit_gensem",
+        intent="edit",
+        user_message="生成一个玻璃幕墙",
+        planned_tasks=tasks,
+        planner_source="llm",
+    )
+    requirements = compile_structured_requirements(plan)
+    gen_req = next(r for r in requirements if r["kind"] == "architecture_dimensions")
+    assert "patch" not in gen_req["consumers"]
+
+    state = {
+        "structured_requirements": requirements,
+        "acceptance_results": initialize_acceptance_results(requirements),
+    }
+    results = evaluate_acceptance_results(
+        state=state, result={"scene_patch": {"operations": []}}, phase="patch"
+    )
+    assert results[gen_req["source_acceptance_id"]]["status"] == "not_applicable"
+    assert blocking_acceptance_failures(requirements, results) == []
 
 
 def test_subjective_acceptance_is_needs_review_and_not_blocking() -> None:

@@ -752,24 +752,17 @@ def validate_wall_junctions(blueprint: dict) -> str:
 def get_roof_support_bounds(
     walls: list[dict],
     roof: dict | None = None,
-) -> dict[str, float]:
-    """返回屋顶所在标高实际承托墙体的 XZ 包围盒，而不是整栋建筑首层外包框。"""
-    if not walls:
-        return {
-            "min_x": 0.0, "max_x": 0.0, "min_z": 0.0, "max_z": 0.0,
-            "span": 0.0, "depth": 0.0, "center_x": 0.0, "center_z": 0.0,
-            "support_y": 0.0,
-        }
+    primitives: list[dict] | None = None,
+) -> dict:
+    """返回屋顶所在标高实际承托构件的 XZ 包围盒，而不是整栋建筑首层外包框。
+
+    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶。传统建筑（祈年殿）用
+    primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在檐盘顶上而非直接落在
+    墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
+    """
+    primitives = primitives or []
     wall_tops = [(_wall_vertical_range(wall)[1], wall) for wall in walls]
     position = (roof or {}).get("position")
-    roof_y = (
-        float(position[1])
-        if isinstance(position, list) and len(position) >= 3
-        and isinstance(position[1], (int, float))
-        else max(top for top, _ in wall_tops)
-    )
-    support_y = min((top for top, _ in wall_tops), key=lambda top: abs(top - roof_y))
-    support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
     roof_span = (roof or {}).get("span")
     roof_depth = (roof or {}).get("depth")
     roof_footprint = None
@@ -786,9 +779,84 @@ def get_roof_support_bounds(
             float(position[2]) - float(roof_depth) / 2,
             float(position[2]) + float(roof_depth) / 2,
         )
+    roof_cx = (roof_footprint[0] + roof_footprint[1]) / 2 if roof_footprint else None
+    roof_cz = (roof_footprint[2] + roof_footprint[3]) / 2 if roof_footprint else None
+    roof_half = (
+        max(roof_footprint[1] - roof_footprint[0], roof_footprint[3] - roof_footprint[2]) / 2
+        if roof_footprint else None
+    )
+
+    # 圆柱承托：position 为中心、height 上下对称 → 顶 = position.y + height/2。
+    cylinder_candidates: list[tuple[float, dict, float]] = []
+    for prim in primitives:
+        if prim.get("shape") != "cylinder":
+            continue
+        ppos = prim.get("position")
+        height = prim.get("height")
+        if not _is_finite_vector3(ppos) or not _is_positive_number(height):
+            continue
+        radius = prim.get("radiusTop") or prim.get("radius") or prim.get("radiusBottom")
+        if not _is_positive_number(radius):
+            continue
+        radius = float(radius)
+        top_y = float(ppos[1]) + float(height) / 2
+        if roof_cx is not None and roof_half is not None:
+            dist = math.hypot(float(ppos[0]) - roof_cx, float(ppos[2]) - roof_cz)
+            if dist > radius + roof_half:
+                continue
+        cylinder_candidates.append((top_y, prim, radius))
+
+    if not wall_tops and not cylinder_candidates:
+        return {
+            "min_x": 0.0, "max_x": 0.0, "min_z": 0.0, "max_z": 0.0,
+            "span": 0.0, "depth": 0.0, "center_x": 0.0, "center_z": 0.0,
+            "support_y": 0.0, "support_kind": "none",
+        }
+
+    if (
+        isinstance(position, list) and len(position) >= 3
+        and isinstance(position[1], (int, float))
+    ):
+        roof_y = float(position[1])
+    else:
+        tops = [top for top, _ in wall_tops] + [top for top, _, _ in cylinder_candidates]
+        roof_y = max(tops) if tops else 0.0
+
+    candidates: list[tuple[float, str, object, float | None]] = [
+        (top, "wall", wall, None) for top, wall in wall_tops
+    ]
+    candidates += [(top, "cylinder", prim, radius) for top, prim, radius in cylinder_candidates]
+    support_y, kind, payload, radius = min(
+        candidates, key=lambda item: abs(item[0] - roof_y)
+    )
+
+    if kind == "cylinder":
+        prim = payload
+        cx = float(prim["position"][0])
+        cz = float(prim["position"][2])
+        return {
+            "min_x": cx - radius, "max_x": cx + radius,
+            "min_z": cz - radius, "max_z": cz + radius,
+            "span": radius * 2, "depth": radius * 2,
+            "center_x": cx, "center_z": cz,
+            "support_y": support_y, "support_kind": "primitive",
+        }
+
+    support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
     all_x: list[float] = []
     all_z: list[float] = []
     for wall in support_walls:
+        # 曲线墙（圆墙/弧墙）的 from/to XZ 是同一个闭合点，走直线端点会退化成"点"，
+        # 把圆形建筑的外包络算成 0（实测天坛：屋顶被误判"span/depth 悬空过多"）。
+        # 曲线墙直接取整条中心线的 XZ 包围盒，不参与下面的横向/纵向裁剪。
+        if wall.get("curve"):
+            points = _wall_centerline_points(wall)
+            if points:
+                xs = [point[0] for point in points]
+                zs = [point[1] for point in points]
+                all_x.extend([min(xs), max(xs)])
+                all_z.extend([min(zs), max(zs)])
+            continue
         start = wall.get("from", [0, 0, 0])
         end = wall.get("to", [0, 0, 0])
         x0, x1 = sorted((float(start[0]), float(end[0])))
@@ -814,6 +882,14 @@ def get_roof_support_bounds(
         all_z.extend([z0, z1])
     if not all_x or not all_z:
         for wall in support_walls:
+            if wall.get("curve"):
+                points = _wall_centerline_points(wall)
+                if points:
+                    xs = [point[0] for point in points]
+                    zs = [point[1] for point in points]
+                    all_x.extend([min(xs), max(xs)])
+                    all_z.extend([min(zs), max(zs)])
+                continue
             start = wall.get("from", [0, 0, 0])
             end = wall.get("to", [0, 0, 0])
             all_x.extend([float(start[0]), float(end[0])])
@@ -827,6 +903,7 @@ def get_roof_support_bounds(
         "center_x": (min_x + max_x) / 2,
         "center_z": (min_z + max_z) / 2,
         "support_y": support_y,
+        "support_kind": "wall",
     }
 
 
@@ -862,6 +939,34 @@ def _wall_distance(x: float, z: float, seg: tuple[float, float, float, float], t
     return max(math.hypot(x - wx, z - cz) - thickness / 2, 0.0)
 
 
+def _circle_distance(x: float, z: float, cx: float, cz: float, radius: float) -> float:
+    """点到 XZ 圆盘的距离：圆内为 0，圆外为到圆周的距离。"""
+    return max(math.hypot(x - cx, z - cz) - radius, 0.0)
+
+
+def _polyline_distance(
+    x: float,
+    z: float,
+    points: list[tuple[float, float]],
+    thickness: float,
+) -> float:
+    """点到折线中心线的距离，扣除半墙厚（曲线墙/圆墙用）。"""
+    distance = math.inf
+    for (sx, sz), (ex, ez) in zip(points, points[1:]):
+        dx = ex - sx
+        dz = ez - sz
+        length_sq = dx * dx + dz * dz
+        if length_sq <= 1e-9:
+            distance = min(distance, math.hypot(x - sx, z - sz))
+            continue
+        ratio = min(max(((x - sx) * dx + (z - sz) * dz) / length_sq, 0.0), 1.0)
+        distance = min(
+            distance,
+            math.hypot(x - (sx + ratio * dx), z - (sz + ratio * dz)),
+        )
+    return max(distance - thickness / 2, 0.0)
+
+
 def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | None:
     """返回屋顶 footprint 中“离最近承托(墙/楼板)超过 1m”的深空区 (占比, 面积㎡)。
 
@@ -883,14 +988,33 @@ def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | N
     z0, z1 = cz - depth / 2, cz + depth / 2
 
     floor_rects: list[tuple[float, float, float, float]] = []
+    floor_circles: list[tuple[float, float, float]] = []
     wall_segs: list[tuple[float, float, float, float, float]] = []
+    wall_polylines: list[tuple[list[tuple[float, float]], float]] = []
     for element in elements:
-        start = element.get("from")
-        end = element.get("to")
-        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
-            continue
         element_type = element.get("type")
         if element_type == "floor":
+            # 圆形楼板用 center + radius 表达，from/to 只是包围盒的两个角点。
+            # 直接套矩形会把圆板当成"第一象限的方块"，把圆板另一侧误判成空腔
+            # （天坛：圆板 to=[18,_,18] 与 from=[0,_,0] 拼出的矩形只盖住 x/z 正半轴）。
+            if element.get("shape") == "circle" and _is_finite_vector3(element.get("from")):
+                radius = element.get("radius")
+                if not _is_positive_number(radius):
+                    end = element.get("to")
+                    if _is_finite_vector3(end):
+                        radius = math.hypot(
+                            float(end[0]) - float(element["from"][0]),
+                            float(end[2]) - float(element["from"][2]),
+                        ) / 2
+                if _is_positive_number(radius):
+                    floor_circles.append((
+                        float(element["from"][0]), float(element["from"][2]), float(radius),
+                    ))
+                    continue
+            start = element.get("from")
+            end = element.get("to")
+            if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+                continue
             floor_rects.append((
                 min(float(start[0]), float(end[0])), max(float(start[0]), float(end[0])),
                 min(float(start[2]), float(end[2])), max(float(start[2]), float(end[2])),
@@ -900,10 +1024,19 @@ def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | N
                 thickness = float(element.get("thickness", 0.24)) or 0.24
             except (TypeError, ValueError):
                 thickness = 0.24
+            if element.get("curve"):
+                points = _wall_centerline_points(element)
+                if len(points) >= 2:
+                    wall_polylines.append((points, thickness))
+                    continue
+            start = element.get("from")
+            end = element.get("to")
+            if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+                continue
             wall_segs.append((
                 float(start[0]), float(start[2]), float(end[0]), float(end[2]), thickness,
             ))
-    if not floor_rects:
+    if not floor_rects and not floor_circles:
         # 没有楼板（只有围合墙）时，墙体只是 1D 线段，无法填充建筑内部，
         # 此时无法区分"室内"与"内院"，跳过该检查避免误报。
         return None
@@ -922,8 +1055,16 @@ def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | N
                 d = _rect_distance(x, z, rect)
                 if d < distance:
                     distance = d
+            for cx_c, cz_c, radius in floor_circles:
+                d = _circle_distance(x, z, cx_c, cz_c, radius)
+                if d < distance:
+                    distance = d
             for seg in wall_segs:
                 d = _wall_distance(x, z, seg[:4], seg[4])
+                if d < distance:
+                    distance = d
+            for points, thickness in wall_polylines:
+                d = _polyline_distance(x, z, points, thickness)
                 if d < distance:
                     distance = d
             if distance > max_overhang:
@@ -950,6 +1091,7 @@ def validate_roof_coverage(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     roofs = [el for el in elements if el.get("type") == "roof"]
     walls = [el for el in elements if el.get("type") == "wall"]
+    primitives = [el for el in elements if el.get("type") == "primitive"]
 
     if not roofs:
         return "✅ 没有 roof 构件，跳过检查。"
@@ -962,43 +1104,48 @@ def validate_roof_coverage(blueprint: dict) -> str:
         rid = r.get("id", "?")
         span = r.get("span", 0)
         depth = r.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, r)
+        bounds = get_roof_support_bounds(walls, r, primitives)
         last_bounds = bounds
         wall_span = bounds["span"]
         wall_depth = bounds["depth"]
+        # 承托是 primitive 造型体（祈年殿的檐盘/殿身圆柱）时，屋顶是"攒尖/圆顶"这类
+        # 盖在造型体上的收分顶，其 span/depth 不遵循"≈ 墙体宽度"的矩形语义，跳过
+        # span/depth 对比，只保留悬空检查。
+        support_is_primitive = bounds.get("support_kind") == "primitive"
 
         # 合理范围：墙体范围 + 0~2m 出檐空间
-        if span < wall_span * 0.5:
-            issues.append(
-                f"❌ [{rid}] span={span:.1f} 远小于墙体宽度={wall_span:.1f}，"
-                f"屋顶完全无法覆盖墙体"
-            )
-        elif span < wall_span - 0.5:
-            issues.append(
-                f"⚠️  [{rid}] span={span:.1f} 略小于墙体宽度={wall_span:.1f}，"
-                f"出檐不足"
-            )
-        elif span > wall_span + 4.0:
-            issues.append(
-                f"⚠️  [{rid}] span={span:.1f} 远大于墙体宽度={wall_span:.1f}，"
-                f"屋顶悬空过多"
-            )
+        if not support_is_primitive:
+            if span < wall_span * 0.5:
+                issues.append(
+                    f"❌ [{rid}] span={span:.1f} 远小于墙体宽度={wall_span:.1f}，"
+                    f"屋顶完全无法覆盖墙体"
+                )
+            elif span < wall_span - 0.5:
+                issues.append(
+                    f"⚠️  [{rid}] span={span:.1f} 略小于墙体宽度={wall_span:.1f}，"
+                    f"出檐不足"
+                )
+            elif span > wall_span + 4.0:
+                issues.append(
+                    f"⚠️  [{rid}] span={span:.1f} 远大于墙体宽度={wall_span:.1f}，"
+                    f"屋顶悬空过多"
+                )
 
-        if depth < wall_depth * 0.5:
-            issues.append(
-                f"❌ [{rid}] depth={depth:.1f} 远小于墙体进深={wall_depth:.1f}，"
-                f"屋顶完全无法覆盖墙体"
-            )
-        elif depth < wall_depth - 0.5:
-            issues.append(
-                f"⚠️  [{rid}] depth={depth:.1f} 略小于墙体进深={wall_depth:.1f}，"
-                f"出檐不足"
-            )
-        elif depth > wall_depth + 4.0:
-            issues.append(
-                f"⚠️  [{rid}] depth={depth:.1f} 远大于墙体进深={wall_depth:.1f}，"
-                f"屋顶悬空过多"
-            )
+            if depth < wall_depth * 0.5:
+                issues.append(
+                    f"❌ [{rid}] depth={depth:.1f} 远小于墙体进深={wall_depth:.1f}，"
+                    f"屋顶完全无法覆盖墙体"
+                )
+            elif depth < wall_depth - 0.5:
+                issues.append(
+                    f"⚠️  [{rid}] depth={depth:.1f} 略小于墙体进深={wall_depth:.1f}，"
+                    f"出檐不足"
+                )
+            elif depth > wall_depth + 4.0:
+                issues.append(
+                    f"⚠️  [{rid}] depth={depth:.1f} 远大于墙体进深={wall_depth:.1f}，"
+                    f"屋顶悬空过多"
+                )
 
         # 无承托深空区：屋顶下面离最近墙/楼板 >1m 的占比（L/U 形内院是典型）。
         deep_void = _roof_deep_void(r, elements)
@@ -1011,15 +1158,16 @@ def validate_roof_coverage(blueprint: dict) -> str:
                     f"不要用单块屋顶盖住内院/天井。"
                 )
 
-        # 屋顶底标高必须落在承托墙顶上：position[1] 高于墙顶会让整块屋顶悬空。
+        # 屋顶底标高必须落在承托构件顶上：position[1] 高于承托顶会让整块屋顶悬空。
         roof_y = _roof_base_y(r)
         support_y = bounds.get("support_y")
         if roof_y is not None and isinstance(support_y, (int, float)):
             gap = float(roof_y) - float(support_y)
             if gap > 0.15:
+                support_label = "承托造型体顶" if support_is_primitive else "承托墙顶"
                 issues.append(
-                    f"❌ [{rid}] 屋顶底标高 position[1]={roof_y:.2f} 高于承托墙顶 {support_y:.2f}m，"
-                    f"悬空 {gap:.2f}m。position[1] 必须等于其承托墙的墙顶标高（wall.to[1]），"
+                    f"❌ [{rid}] 屋顶底标高 position[1]={roof_y:.2f} 高于{support_label} {support_y:.2f}m，"
+                    f"悬空 {gap:.2f}m。position[1] 必须等于其承托构件的顶标高，"
                     f"不要额外加上楼板厚度或层高。"
                 )
 
@@ -1304,6 +1452,62 @@ def _has_wall_above(
     return False
 
 
+def _has_primitive_cover_above(
+    x: float,
+    z: float,
+    wall_top: float,
+    primitives: list[dict],
+) -> bool:
+    """该 XZ 点正上方是否有水平造型体（cylinder/box）横跨墙顶标高。
+
+    传统殿阁（祈年殿 / 天坛）不用矩形 roof，而是用一摞水平 primitive：彩画带
+    （cylinder 环带）、蓝琉璃檐盘（薄 cylinder 盘）、上层殿身（cylinder）。正十二
+    边形 / 圆墙的墙顶并不是被一块 roof 盖住，而是被这些"盘 / 带"压住。若不认它们，
+    12 面墙会被整圈误报成裸露（实测祈年殿 65.2m 全裸）。
+
+    判据：造型体竖向跨度 [bottom, top] 必须包含 wall_top（容差内），且 XZ 投影
+    覆盖采样点。只认"水平薄盘"——圆柱按半径、box 按未旋转 AABB 判 XZ。
+    """
+    for prim in primitives:
+        shape = prim.get("shape")
+        ppos = prim.get("position")
+        if not _is_finite_vector3(ppos):
+            continue
+        px, py, pz = float(ppos[0]), float(ppos[1]), float(ppos[2])
+        if shape == "cylinder":
+            height = prim.get("height")
+            if not _is_positive_number(height):
+                continue
+            radius = (
+                prim.get("radiusTop") or prim.get("radius") or prim.get("radiusBottom")
+            )
+            if not _is_positive_number(radius):
+                continue
+            bottom = py - float(height) / 2
+            top = py + float(height) / 2
+            if bottom > wall_top + ABOVE_TOLERANCE or top < wall_top - ABOVE_TOLERANCE:
+                continue
+            if math.hypot(x - px, z - pz) <= float(radius) + ABOVE_TOLERANCE:
+                return True
+        elif shape == "box":
+            dims = prim.get("dimensions")
+            if not isinstance(dims, (list, tuple)) or len(dims) < 3:
+                continue
+            w, h, d = float(dims[0]), float(dims[1]), float(dims[2])
+            if not (w > 0 and h > 0 and d > 0):
+                continue
+            bottom = py - h / 2
+            top = py + h / 2
+            if bottom > wall_top + ABOVE_TOLERANCE or top < wall_top - ABOVE_TOLERANCE:
+                continue
+            if (
+                abs(x - px) <= w / 2 + ABOVE_TOLERANCE
+                and abs(z - pz) <= d / 2 + ABOVE_TOLERANCE
+            ):
+                return True
+    return False
+
+
 @tool
 def validate_roof_top_coverage(blueprint: dict) -> str:
     """
@@ -1334,6 +1538,10 @@ def validate_roof_top_coverage(blueprint: dict) -> str:
 
     footprints = _roof_footprint_entries(elements, walls)
     floor_levels = _floor_regions_by_level(elements)
+    primitives = [
+        el for el in elements
+        if el.get("type") == "primitive"
+    ]
 
     if not footprints:
         # 同时有墙和楼板才算"一栋建筑"；纯构件/场地场景（无楼板）不打扰。
@@ -1360,6 +1568,8 @@ def validate_roof_top_coverage(blueprint: dict) -> str:
             if _has_slab_above(x, z, top, floor_levels):
                 continue
             if _has_wall_above(x, z, top, walls, index):
+                continue
+            if _has_primitive_cover_above(x, z, top, primitives):
                 continue
             bare += 1
         bare_length = length * bare / len(samples)
@@ -2446,10 +2656,15 @@ def validate_collision(blueprint: dict) -> str:
         "stair":  lambda el: el.get("from", [0, 0, 0])[1],
         "furniture": lambda el: el.get("position", [0, 0, 0])[1],
     }
+    # column / stair 的底座既可落在楼板**顶面**（承托柱、台基/须弥座上的柱、楼梯起步），
+    # 也可落在楼板**底面**（高层分段柱从结构层标高起算）。两者都算"有承托"，故合并
+    # 底面/顶面标高再取最近；furniture 的 position[1] 是家具底部，站在行走面（楼板顶面）
+    # 上，只对顶面。合并后避免把"站在叠层台基顶上的柱"（底 Y = 某层顶面）误判悬空。
+    support_levels = sorted({round(v, 6) for v in (*floor_base_ys, *floor_top_ys)})
     for t, get_bottom_y in FLOATING_TYPES.items():
         for el in by_type.get(t, []):
             bottom_y = float(get_bottom_y(el))
-            references = floor_top_ys if t == "furniture" else floor_base_ys
+            references = floor_top_ys if t == "furniture" else support_levels
             # 找最近的楼板高度
             nearest_floor = min(references, key=lambda fy: abs(fy - bottom_y))
             gap = bottom_y - nearest_floor

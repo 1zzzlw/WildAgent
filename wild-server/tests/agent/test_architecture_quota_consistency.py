@@ -73,6 +73,43 @@ def test_normalized_plan_always_satisfies_design_contract(message: str) -> None:
     assert document.decisions.component_quota
 
 
+_CURTAIN_WALL_MESSAGES = [
+    "生成一个玻璃幕墙",
+    "生成一个玻璃幕墙办公楼",
+]
+
+
+@pytest.mark.parametrize("message", _CURTAIN_WALL_MESSAGES)
+def test_curtain_wall_door_quota_matches_facade_slots(message: str) -> None:
+    """幕墙建筑的 door 配额必须与立面槽位数一一对应（窗保持密铺自由）。
+
+    背景：`normalize_architecture_plan` 曾在 curtain_wall 模式下整体跳过
+    door/window 的槽位重派生，导致模型输出的 door 配额（如 2~2）与立面
+    实际只有 1 个门槽位脱钩，`DesignDocument` 抛出 "door 立面槽位数量 1
+    不在配额 2~2 内"。修复后：door 仍按逐层 pattern 一一对应，window 保持
+    幕墙密铺配额（宽区间），两者不再互相矛盾。
+    """
+
+    plan = _normalized(message)
+    assert plan.get("curtain_wall") is True
+
+    slots = _opening_slots(plan)
+    door_quota = plan["component_quota"]["door"]
+    window_quota = plan["component_quota"]["window"]
+
+    assert door_quota["min"] == door_quota["max"] == slots["door"]
+    # 幕墙窗是密集网格，配额保持宽区间（1~480），不等于槽位数。
+    assert window_quota["min"] == 1
+    assert window_quota["max"] > slots["window"]
+
+    document = build_design_document(
+        plan,
+        session_id="regression_session",
+        source_request=message,
+    )
+    assert document.decisions.component_quota
+
+
 # 同一句话里的平面尺寸，验收侧与架构侧必须认出同一个值。
 # 曾经的矛盾：验收侧认"宽约17米，深约23米"，架构侧的 `_requested_dimension`
 # 不认"约"字，整条落回默认 12×9 → 验收要求 17×23、实际生成 12×9，

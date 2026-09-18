@@ -28,6 +28,7 @@ const BLUEPRINTS: BlueprintEntry[] = [
   { name: '新中式别墅', file: '1.wild' },
   { name: '别墅 · bieshu', file: 'bieshu.wild' },
   { name: '天坛 · tiantan', file: 'tiantan.wild' },
+  { name: '祈年殿 · qiniandian', file: 'qiniandian.wild' },
   { name: '小木屋 · cabin', file: 'cabin_v1.wild' },
   { name: '篮球场 · basketball', file: 'basketball_v1_1.wild' },
   { name: '檐口 · eave_extension', file: 'eave_extension_v1_1.wild' },

@@ -56,7 +56,7 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
-from app.agent.routing import INTENT_LABELS, classify_intent_decision
+from app.agent.routing import INTENT_LABELS, classify_intent_decision, has_scene_content
 from app.agent.generation.architecture import detect_architecture_profile
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.generation.materials import without_procedural_materials
@@ -1650,7 +1650,7 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
     # Phase 1: 与精密模式复用同一个结构化意图分类器。
     decision = await classify_intent_decision(
         message,
-        bool(current_blueprint),
+        has_scene_content(current_blueprint),
         recent_messages=data.get("recent_messages"),
         workflow_state=str(data.get("workflow_state") or "idle"),
         selection=selection,
