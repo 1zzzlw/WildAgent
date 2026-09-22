@@ -40,7 +40,7 @@ def _custom_tasks() -> list[dict]:
             "objective": "确定两层主体和屋顶",
             "phase": "architecture",
             "acceptance": [
-                "建筑必须为两层",
+                "建筑总共两层",
                 "必须采用 gable 屋顶",
                 "屋顶出檐至少 0.5m",
             ],
