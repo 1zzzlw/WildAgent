@@ -1,4 +1,4 @@
-import type { WorldPackageManifest, WorldPackageSignature } from '../wild-core/src/materials'
+import type { WorldPackageManifest, WorldPackageSignature } from 'wild-core/materials'
 
 export type WorldAssetTrust = 'builtin' | 'verified' | 'unverified'
 

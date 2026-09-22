@@ -5,9 +5,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const corePath = join(root, 'src/wild-core/src/primitive/index.ts').replaceAll('\\', '/');
-const compilerPath = join(root, 'src/wild-compiler/index.ts').replaceAll('\\', '/');
-const parserPath = join(root, 'src/wild-core/src/primitive/parser.ts').replaceAll('\\', '/');
+const corePath = join(root, '..', 'wild-core', 'src/primitive/index.ts').replaceAll('\\', '/');
+const compilerPath = join(root, '..', 'wild-core', 'src/compiler/index.ts').replaceAll('\\', '/');
+const parserPath = join(root, '..', 'wild-core', 'src/primitive/parser.ts').replaceAll('\\', '/');
 const virtualEntry = `
 export { parseBlueprint } from 'wildsrc:parser';
 export { reconstructEntity } from 'wildsrc:core';

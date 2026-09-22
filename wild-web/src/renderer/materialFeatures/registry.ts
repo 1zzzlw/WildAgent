@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { RenderMaterialDescriptor } from '../../wild-core/src/materials'
+import type { RenderMaterialDescriptor } from 'wild-core/materials'
 import type { MaterialParams } from '../materialAdapter'
 import { applyProceduralMaterial } from '../proceduralMaterials'
 import { applyDefaultSurfaceMaterial } from './defaultSurfaceMaterial'

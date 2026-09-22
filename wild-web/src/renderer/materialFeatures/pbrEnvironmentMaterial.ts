@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { RenderMaterialDescriptor } from '../../wild-core/src/materials'
+import type { RenderMaterialDescriptor } from 'wild-core/materials'
 import { PROCEDURAL_NOISE_GLSL } from '../proceduralMaterials/noise.glsl'
 import {
   getWorldEnvironmentUniforms,

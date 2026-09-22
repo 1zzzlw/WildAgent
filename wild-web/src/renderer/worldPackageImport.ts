@@ -3,8 +3,8 @@ import type {
   MaterialPackageChannel,
   WildMaterialPackageManifest,
   WorldPackageManifest,
-} from '../wild-core/src/materials'
-import { parseWorldPackageManifest } from '../wild-core/src/materials'
+} from 'wild-core/materials'
+import { parseWorldPackageManifest } from 'wild-core/materials'
 
 export interface WorldPackageFile {
   name: string

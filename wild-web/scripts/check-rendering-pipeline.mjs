@@ -1,14 +1,27 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { BlobWriter, TextReader, Uint8ArrayReader, ZipWriter } from '@zip.js/zip.js'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import * as THREE from 'three'
 import { createServer } from 'vite'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+const coreRoot = resolve(repoRoot, 'wild-core')
 
 
 const server = await createServer({
   appType: 'custom',
   logLevel: 'silent',
-  server: { middlewareMode: true },
+  server: {
+    middlewareMode: true,
+    fs: { allow: [repoRoot] },
+  },
+  resolve: {
+    alias: {
+      'wild-core/materials': resolve(coreRoot, 'src/materials/index.ts'),
+    },
+  },
 })
 
 try {
@@ -16,7 +29,7 @@ try {
     '/src/renderer/materialAdapter.ts',
   )
   const { parseWorldPackageManifest, WorldPackageValidationError } = await server.ssrLoadModule(
-    '/src/wild-core/src/materials/index.ts',
+    'wild-core/materials',
   )
   const { worldLookRuntime, registerWorldLookProfile, registerShaderFeature } = await server.ssrLoadModule(
     '/src/renderer/worldLookRuntime.ts',

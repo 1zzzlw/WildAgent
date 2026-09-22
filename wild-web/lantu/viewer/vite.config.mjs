@@ -3,24 +3,31 @@ import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { existsSync, createReadStream } from 'node:fs'
 
-const here = dirname(fileURLToPath(import.meta.url))
-const projectRoot = resolve(here, '../../..')
-const lantuDir = resolve(here, '..')
+const here = dirname(fileURLToPath(import.meta.url)) // wild-web/lantu/viewer
+const repoRoot = resolve(here, '../../..')           // 仓库根：覆盖 wild-web 与 wild-core
+const lantuDir = resolve(here, '..')                 // wild-web/lantu（.wild 存放处）
 
+// ─────────────────────────────────────────────────────────────
 // 独立查看器：直接接入项目的渲染引擎
-//   - wild-core    (src/wild-core/src/primitive/index.ts)  -> parseBlueprint / reconstructEntity
-//   - wild-compiler(src/wild-compiler/index.ts)            -> compileBlueprintComponents
-//   - 项目渲染层    (src/renderer/meshDataToGeometry.ts)     -> MeshData -> THREE.BufferGeometry
+//
+//   wild-core                    → parseBlueprint / reconstructEntity
+//   wild-web/src/renderer        → wildCoreAdapter / BlueprintRenderInstance
+//                                  （编辑器视口用的同一条链路，不另起一套）
+//
+// ⚠️ 这里**刻意不写 resolve.alias**。
+//    历史版本的 config 把 'wild-core' 指向 ../../src/wild-core/src/primitive/index.ts，
+//    而 wild-core 拆成独立包后该路径已不存在 —— 那会让 dev server 直接启动失败。
+//    现在一律用包名，由 wild-web/node_modules/wild-core（file: 依赖的软链）解析。
+//
+// ⚠️ fs.allow 必须放到仓库根：wild-core 是 wild-web 的**同级目录**，
+//    软链被 vite 解析成真实路径后落在 wild-web 之外。
+// ─────────────────────────────────────────────────────────────
 export default defineConfig({
   root: here,
-  resolve: {
-    alias: {
-      'wild-core': resolve(here, '../../src/wild-core/src/primitive/index.ts'),
-      'wild-compiler': resolve(here, '../../src/wild-compiler/index.ts'),
-    },
-  },
   plugins: [
     {
+      // 蓝图以静态资源提供：GET /bp/<文件名> → wild-web/lantu/<文件名>
+      // 用中间件而不是 publicDir，是为了让 .wild 和 viewer 分处两层目录仍能原地编辑。
       name: 'serve-blueprints',
       configureServer(server) {
         server.middlewares.use('/bp', (req, res, next) => {
@@ -40,12 +47,10 @@ export default defineConfig({
   server: {
     host: true,
     port: 5180,
-    fs: { allow: [here, projectRoot] },
+    fs: { allow: [repoRoot] },
   },
-  // 直接以原生 ESM 提供 three（three/build/three.module.js 为单文件），
-  // 关闭依赖预构建即可跳过 .vite/deps 缓存写入，避免环境安全删除门禁。
-  // 注意：旧的 `optimizeDeps.disabled` 在 Vite 5.1 起已被移除（本机 Vite 8.x 会
-  // 打印废弃警告后忽略它，等于没生效），官方替代写法是 noDiscovery + 空 include。
+  // three 以原生 ESM 单文件提供，关掉依赖预构建即可跳过 .vite/deps 缓存写入。
+  // 注意：旧的 optimizeDeps.disabled 在 Vite 5.1 起已移除，官方替代是 noDiscovery + 空 include。
   optimizeDeps: { noDiscovery: true, include: [] },
   build: {
     outDir: resolve(here, 'dist'),

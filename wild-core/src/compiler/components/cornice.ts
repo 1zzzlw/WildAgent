@@ -5,7 +5,7 @@ import type {
   GeometryElement,
   PrimitiveParams,
   Vec3,
-} from '../../wild-core/types'
+} from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import { ComponentCompileError } from '../types'
 import {

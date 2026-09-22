@@ -1,4 +1,4 @@
-import type { ProceduralBrickMaterial } from '../../wild-core/types'
+import type { ProceduralBrickMaterial } from 'wild-core/types'
 
 export interface NormalizedProceduralBrickMaterial {
   type: 'brick'

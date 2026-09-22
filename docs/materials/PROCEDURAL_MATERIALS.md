@@ -258,8 +258,8 @@ float weatherMask = smoothstep(0.42, 0.78, weatherNoise) * weatheringAmount;
 
 同步修改以下类型，保持字段一致：
 
-- `wild-web/src/wild-core/types.ts`：`MaterialDef`；
-- `wild-web/src/wild-core/src/primitive/types.ts`：Core 内部 `MaterialDef/MaterialParams`；
+- `wild-core/types.ts`：`MaterialDef`；
+- `wild-core/src/primitive/types.ts`：Core 内部 `MaterialDef/MaterialParams`；
 - `wild-web/src/types/blueprint.ts`：前端 Blueprint 类型；
 - `wild-web/src/types/scene.ts`：若存在独立的重建材质类型，也要同步增加；
 - 后端 Blueprint Schema/校验逻辑。

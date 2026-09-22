@@ -155,7 +155,7 @@
 import { computed, onMounted, reactive, ref, toRef } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import type { MaterialDef, PBRTextureSetAsset, ReferencedImageData } from '../../types/blueprint'
-import type { WorldEnvironmentState, WildMaterialPackageManifest } from '../../wild-core/src/materials'
+import type { WorldEnvironmentState, WildMaterialPackageManifest } from 'wild-core/materials'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useWorldPackageStore } from '../../stores/worldPackageStore'

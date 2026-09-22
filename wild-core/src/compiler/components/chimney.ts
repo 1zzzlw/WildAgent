@@ -1,4 +1,4 @@
-import type { ChimneyComponent, GeometryElement, Vec3 } from '../../wild-core/types'
+import type { ChimneyComponent, GeometryElement, Vec3 } from '../../../types'
 import { ComponentCompileError } from '../types'
 import type { ComponentCompileContext } from '../types'
 import { assertNonEmptyString, assertPositive, assertVec3, createBox } from './attachedToWall'

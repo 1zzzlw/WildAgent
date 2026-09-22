@@ -23,7 +23,7 @@
 | 快速 Agent 与校验 | `wild-server/app/services/agent_service.py` |
 | Agent WebSocket | `wild-server/app/api/ws_agent.py` |
 | RAG | `wild-server/app/spec/loader.py`、`wild-server/storage/knowledge_base/` |
-| WILD 契约 | `wild-web/wild-lang/` |
+| WILD 契约 | `docs/specs/WILD_BLUEPRINT_SPEC.md`（规范）、`wild-core/schema.json`（机器可读） |
 
 ## 修改原则
 

@@ -697,7 +697,7 @@ export interface Blueprint {
   geometry: {
     // 直接构件数组。存放场景中每个独立物体（墙、柱、地板、房顶、家具等），每个元素是一个 GeometryElement 联合类型，必须带唯一的 id。这是一般场景最主要的填充内容
     elements?: GeometryElement[];
-    // 高级组合构件。渲染前由 wild-compiler 展开为现有 GeometryElement。
+    // 高级组合构件。渲染前由同包的 compiler 展开为现有 GeometryElement。
     components?: ComponentSpec[];
     // 构件模板字典。key → GeometryElement 的映射。模板本身不直接渲染，它定义了一个"原型构件"。与 instances 组合使用：同一模板可被多个实例引用，类似于"定义了一个柱子原型，然后在地图上放置 20 个"。避免重复定义相同的构件参数
     templates?: Record<string, GeometryElement>;

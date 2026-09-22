@@ -1,4 +1,4 @@
-import type { BalconyComponent, GeometryElement, RailingComponent } from '../../wild-core/types'
+import type { BalconyComponent, GeometryElement, RailingComponent } from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import {
   assertPositive,

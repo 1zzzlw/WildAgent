@@ -1,4 +1,4 @@
-import type { ComponentCompilationMapping } from '../wild-compiler'
+import type { ComponentCompilationMapping } from 'wild-core/compiler'
 
 /** 将编译后的临时元素 ID 回溯为用户可编辑的源组合构件 ID。 */
 export function resolveSelectableId(

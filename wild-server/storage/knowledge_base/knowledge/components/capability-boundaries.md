@@ -492,9 +492,9 @@ entity_type: railing
 
 ## 实现来源
 
-- `wild-web/wild-lang/schema.json`
-- `wild-web/src/wild-core/types.ts`
-- `wild-web/src/wild-core/src/primitive/registry.ts`
-- `wild-web/src/wild-core/src/primitive/resolver.ts`
+- `wild-core/schema.json`
+- `wild-core/types.ts`
+- `wild-core/src/primitive/registry.ts`
+- `wild-core/src/primitive/resolver.ts`
 
 能力边界与当前引擎版本保持同步。

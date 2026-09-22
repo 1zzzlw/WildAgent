@@ -5,7 +5,7 @@ import type {
   PrimitiveParams,
   Vec3,
   WallParams,
-} from '../../wild-core/types'
+} from '../../../types'
 import { ComponentCompileError } from '../types'
 import type { ComponentCompileContext } from '../types'
 

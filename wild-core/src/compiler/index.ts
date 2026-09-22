@@ -1,4 +1,4 @@
-import type { Blueprint, ComponentSpec, GeometryElement } from '../wild-core/types'
+import type { Blueprint, ComponentSpec, GeometryElement } from '../../types'
 import {
   getComponentCapabilities,
   getComponentCompiler,

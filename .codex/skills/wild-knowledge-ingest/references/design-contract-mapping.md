@@ -46,7 +46,7 @@ disposition: relation
 2. 有来源或明确标为项目内部引擎事实；
 3. 能映射到一个真实字段；
 4. 至少有一个**可打开的执行位置**（写在 `enforcement` 里，精确到文件）：
-   `wild-web/wild-lang/schema.json`（字段与枚举）、`app/design/resolver.py`（引用解析）、
+   `wild-core/schema.json`（字段与枚举）、`app/design/resolver.py`（引用解析）、
    `app/agent/validation/{structure,design_constraints,component_trace}.py`、
    `app/agent/generation/architecture/{planning,skeleton,facade,profile}.py`；
 5. 有命中和不命中的回归；

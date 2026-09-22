@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import type { WorldEnvironmentState } from '../wild-core/src/materials'
+import type { WorldEnvironmentState } from 'wild-core/materials'
 import { getWorldEffectUniforms } from './worldEffectRuntime'
 
 export const WORLD_WEATHER_PRESET_ORDER = [

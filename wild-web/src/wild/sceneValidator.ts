@@ -21,7 +21,7 @@
 
 import type { Blueprint } from '../types/blueprint'
 import type { ValidationIssue } from '../types/scenePatch'
-import { compileBlueprintComponents } from '../wild-compiler'
+import { compileBlueprintComponents } from 'wild-core/compiler'
 
 export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   const issues: ValidationIssue[] = []

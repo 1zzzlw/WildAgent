@@ -13,6 +13,7 @@
  * 退出码 0 = 无 error 级诊断。
  */
 const ROOT = 'E:/AgentProject/WildAgent/wild-web'
+const CORE_ROOT = 'E:/AgentProject/WildAgent/wild-core'
 const { readFile } = await import('node:fs/promises')
 const { createServer } = await import(
   'file:///E:/AgentProject/WildAgent/wild-web/node_modules/vite/dist/node/index.js'
@@ -29,6 +30,16 @@ const server = await createServer({
   appType: 'custom',
   logLevel: 'silent',
   server: { middlewareMode: true },
+  resolve: {
+    alias: {
+      'wild-core/compiler': `${CORE_ROOT}/src/compiler/index.ts`,
+      'wild-core/materials': `${CORE_ROOT}/src/materials/index.ts`,
+      'wild-core/world': `${CORE_ROOT}/src/world/index.ts`,
+      'wild-core/primitive': `${CORE_ROOT}/src/primitive/index.ts`,
+      'wild-core/types': `${CORE_ROOT}/types.ts`,
+      'wild-core': `${CORE_ROOT}/src/index.ts`,
+    },
+  },
 })
 
 /**
@@ -76,7 +87,7 @@ try {
     '/src/renderer/wildCoreAdapter.ts',
   )
   const { compileBlueprintComponents } = await server.ssrLoadModule(
-    '/src/wild-compiler/index.ts',
+    'wild-core/compiler',
   )
 
   for (const target of targets) {

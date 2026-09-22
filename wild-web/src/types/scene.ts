@@ -9,9 +9,9 @@
  */
 
 import type { Blueprint, EmbeddedImageData, TextureImageData } from './blueprint'
-import type { ComponentCompilationMapping } from '../wild-compiler'
-import type { InteractiveElementBehavior } from '../wild-core/types'
-import type { RenderMaterialDescriptor } from '../wild-core/src/materials'
+import type { ComponentCompilationMapping } from 'wild-core/compiler'
+import type { InteractiveElementBehavior } from 'wild-core/types'
+import type { RenderMaterialDescriptor } from 'wild-core/materials'
 
 export interface SceneDocument {
   id: string
@@ -126,7 +126,7 @@ export interface MaterialParams {
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number
-  procedural?: import('../wild-core/types').ProceduralMaterial
+  procedural?: import('wild-core/types').ProceduralMaterial
   renderDescriptor: RenderMaterialDescriptor
 }
 

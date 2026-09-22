@@ -1,4 +1,4 @@
-import type { SurfaceQuality } from '../wild-core/src/materials'
+import type { SurfaceQuality } from 'wild-core/materials'
 
 /**
  * 视口级环境效果开关运行时。

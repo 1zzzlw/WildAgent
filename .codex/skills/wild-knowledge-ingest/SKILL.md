@@ -35,8 +35,10 @@ rules/{implementation,conditional,design-choice}  # 实现约束 / 条件约束 
 - **能力依据（Schema / 合法性）**：`wild-server/storage/knowledge_base/schema.json` —— 唯一不过期的事实源，
   随知识库目录一起分发，后端 `app/utils/blueprint_normalizer.py::SCHEMA_PATH` 直接指向它
   （`app/utils/wild_schema.json` 那份 vendored 副本已删除，不要再引用）。
-  前端 `wild-web/wild-lang/schema.json` 是**字节一致的同步副本**，由
-  `wild-web/src/wild-core/src/primitive/schema-validator.ts` 直接 import；改 schema 必须同时更新这两处。
+  前端那份在**独立包 `wild-core/schema.json`**（原 `wild-web/wild-lang/` 目录已删除），
+  由 `wild-core/src/primitive/schema-validator.ts` 构建期 import。
+  活跃副本只有两份：`wild-core/schema.json` ↔ `wild-server/storage/knowledge_base/schema.json`，
+  字节一致、不共享路径；**改 schema 必须同时更新这两处**。
   Schema 只回答"字段名、枚举取值、必填项、结构形状是否合法"。
 - **约束执行依据（Validator / 关系）**：`app/agent/validation/`（`structure.py` 结构合法性、
   `design_constraints.py` 设计约束、`component_trace.py` 构件溯源、`workflow.py` 编排）、

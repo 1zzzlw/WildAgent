@@ -40,11 +40,11 @@ WildAgent 是 AI 辅助的参数化 3D 建筑编辑器。AI 负责理解需求�
 
 | 模块 | 主要职责 | 权威入口 |
 |---|---|---|
+| `wild-core` | **独立包**（与 wild-server / wild-web 同级）：从 Blueprint 确定性重建 MeshData，不依赖 Vue / Three.js / Agent | `wild-core/src/index.ts` |
+| └ `compiler` | `wild-core` 子模块：把门窗、阳台、灯具等组合构件展开为基础元素 | `wild-core/src/compiler/` |
 | `wild-web` | Vue 编辑器、状态、会话、交互、3D 展示 | `src/stores/sceneStore.ts` |
-| `wild-compiler` | 把门窗、阳台、灯具等组合构件展开为基础元素 | `wild-web/src/wild-compiler/` |
-| `wild-core` | 从 Blueprint 确定性重建 MeshData | `wild-web/src/wild-core/` |
 | `wild-server` | Agent、RAG、校验、会话和场景文件 API | `wild-server/app/` |
-| `wild-lang` | WILD 语言和兼容性契约 | `wild-web/wild-lang/` |
+| WILD 契约 | 语言规范与机器可读 Schema（原 `wild-web/wild-lang/` 已删除） | `docs/specs/WILD_BLUEPRINT_SPEC.md`、`wild-core/schema.json` |
 
 ## 3. 核心数据模型
 

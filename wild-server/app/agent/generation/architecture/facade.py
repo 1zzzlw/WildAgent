@@ -160,10 +160,28 @@ def _evenly_spaced_opening_slots(
     return [slot for slot in ordered if str(slot.get("id")) in selected_ids]
 
 
+# 能按体量分段的屋顶类型 —— 屋面本身是"逐块可平铺"的线性/平面形态。
+# 不在此表的三类是整体式造型，拆开只会得到互不相容的碎曲面：
+#   dome            单一穹顶，居中控制整栋
+#   chinese_pagoda  重檐逐层自成一套坡面，层间关系由 tiers 表达
+#   chinese_curved  整栋一体的曲面壳（飞檐沿整圈连续起翘），不能按体量切断
+_PER_VOLUME_ROOF_TYPES = frozenset({"flat", "gable", "hip"})
+
+
 def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
-    """为 U 形顶层生成互不重叠的平屋顶分段，避免整块屋面填平凹口。"""
+    """为多体量顶层生成互不重叠的分段屋顶，避免单块屋面盖住内院/天井。
+
+    门禁只有两条，且都与形状标签无关：
+    ① 屋顶类型是"逐块可平铺"的形态（见 ``_PER_VOLUME_ROOF_TYPES``）；
+    ② 顶层确实有 ≥2 个独立体量 —— 只有一个体量时保持模型自己的整块屋顶，
+       不抢走单一体量的造型自由。
+
+    L 形 / U 形 / 退台 / 合院只是体量组合的结果，不应当是门禁条件：
+    早期实现只认 ``shape == "u_shape"``，导致同样多体量的 L 形别墅拿不到槽位，
+    进而 roof 配额停留在 1~1，最终整栋只长出一块屋顶。
+    """
     roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
-    if realization.get("shape") != "u_shape" or roof.get("type") != "flat":
+    if str(roof.get("type") or "") not in _PER_VOLUME_ROOF_TYPES:
         return []
     modeled_floors = int(realization.get("modeled_floors") or 1)
     floor_height = float(realization.get("floor_height") or 3.2)
@@ -733,7 +751,7 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             **quotas.get("roof", {}),
             "min": len(roof_slots),
             "max": len(roof_slots),
-            "note": "U 形顶层按体量分段覆盖，不跨越退台凹口",
+            "note": "每个体量各一块，不跨越内院/退台凹口",
         }
     railing_slots = _planned_terrace_railing_slots(blueprint, slots, realization)
 
@@ -1185,7 +1203,11 @@ def conform_roofs_to_slots(
     elements: list[dict[str, Any]],
     design_brief: dict[str, Any] | None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    """用一个模型屋顶作为风格模板，按已批准的 U 形体量拆成多个无重叠屋面。"""
+    """用一个模型屋顶作为风格模板，按已批准的多体量拆成多个无重叠屋面。
+
+    模型只负责"这块屋顶长什么样"（roofType / height / thickness / material），
+    位置与尺度由体量槽位决定 —— 模型无需、也无法输出多块屋顶。
+    """
     slots = design_brief.get("roof_slots") if isinstance(design_brief, dict) else None
     if not isinstance(slots, list) or not slots:
         return elements, {"split": 0, "synthesized": 0}

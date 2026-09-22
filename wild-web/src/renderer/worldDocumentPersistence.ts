@@ -1,7 +1,7 @@
 import type { SceneDocument } from '../types/scene'
-import type { WorldDocument } from '../wild-core/src/world'
-import type { WorldEnvironmentState } from '../wild-core/src/materials'
-import { validateWorldDocument } from '../wild-core/src/world'
+import type { WorldDocument } from 'wild-core/world'
+import type { WorldEnvironmentState } from 'wild-core/materials'
+import { validateWorldDocument } from 'wild-core/world'
 
 const STORAGE_PREFIX = 'wild_world_document_v1:'
 

@@ -3,7 +3,7 @@ import type {
   LightComponent,
   LightElementBehavior,
   PrimitiveParams,
-} from '../../wild-core/types'
+} from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import { COMPONENT_MATERIAL } from '../componentMaterials'
 import {

@@ -10,12 +10,12 @@
  * 这些类型是整个项目的基础，所有场景数据都基于此结构。
  */
 
-import type { ComponentSpec, ProceduralMaterial } from '../wild-core/types'
+import type { ComponentSpec, ProceduralMaterial } from 'wild-core/types'
 import type {
   MaterialEnvironmentResponse,
   SurfaceFamily,
-} from '../wild-core/src/materials'
-export type { ComponentSpec } from '../wild-core/types'
+} from 'wild-core/materials'
+export type { ComponentSpec } from 'wild-core/types'
 
 export interface Blueprint {
   meta: BlueprintMeta

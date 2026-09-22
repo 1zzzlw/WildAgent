@@ -4,8 +4,8 @@ import type {
   WorldBlueprintInstance,
   WorldDocument,
   WorldTheme,
-} from '../wild-core/src/world'
-import { validateWorldDocument } from '../wild-core/src/world'
+} from 'wild-core/world'
+import { validateWorldDocument } from 'wild-core/world'
 import { BlueprintRenderInstance } from './blueprintRenderInstance'
 
 export interface WorldRuntimeStats {

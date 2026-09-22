@@ -1,4 +1,4 @@
-import type { Vec3 } from '../../wild-core/types'
+import type { Vec3 } from '../../../types'
 import { ComponentCompileError } from '../types'
 import { assertPositive, assertVec3 } from './attachedToWall'
 

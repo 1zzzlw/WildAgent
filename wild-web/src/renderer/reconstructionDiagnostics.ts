@@ -80,6 +80,44 @@ function aabbSeparation(left: ReconstructionBounds, right: ReconstructionBounds)
   return Math.hypot(...gaps)
 }
 
+// ── 屋顶覆盖判据用的常量与工具 ────────────────────────────────
+// 与 Python 侧 `app/tools/spatial_tools.py` 的 `_is_structural_wall` 一致：
+// 矮墙（泳池壁、栏板）本来就不该有屋顶，不参与覆盖判定。
+const STRUCTURAL_WALL_MIN_HEIGHT = 1.8
+const STRUCTURAL_WALL_MIN_THICKNESS = 0.1
+/** 边缘重合不算缺口：span/depth 恰等于墙中心线时浮点上会差几分之一毫米。 */
+const ROOF_COVER_TOLERANCE = 0.1
+
+/**
+ * 结构性墙判定。用**蓝图参数**而不是网格包围盒：厚度是墙体参数，
+ * 从渲染后的盒子上反推厚度会同时把门窗框算进去。
+ */
+function isStructuralWall(element: Record<string, any>): boolean {
+  const bottom = Number(element.from?.[1])
+  const top = Number(element.to?.[1])
+  const thickness = Number(element.thickness ?? 0)
+  if (!Number.isFinite(bottom) || !Number.isFinite(top)) return false
+  return Math.abs(top - bottom) >= STRUCTURAL_WALL_MIN_HEIGHT
+    && thickness >= STRUCTURAL_WALL_MIN_THICKNESS
+}
+
+/** 逐轴描述"覆盖范围比目标范围小"的那几侧，供诊断消息使用。 */
+function describeUncovered(
+  cover: ReconstructionBounds,
+  target: ReconstructionBounds,
+  tolerance: number,
+): string[] {
+  const messages: string[] = []
+  const axes: Array<[0 | 2, string]> = [[0, 'X'], [2, 'Z']]
+  for (const [axis, name] of axes) {
+    const lowGap = cover.min[axis] - target.min[axis]
+    const highGap = target.max[axis] - cover.max[axis]
+    if (lowGap > tolerance) messages.push(`${name} 低侧缺 ${lowGap.toFixed(2)}m`)
+    if (highGap > tolerance) messages.push(`${name} 高侧缺 ${highGap.toFixed(2)}m`)
+  }
+  return messages
+}
+
 function mappingIds(mapping: unknown, sourceId: string): string[] {
   if (Array.isArray(mapping)) {
     const entry = mapping.find((item) => item?.sourceId === sourceId || item?.componentId === sourceId)
@@ -133,8 +171,12 @@ export function buildReconstructionDiagnostics(
   const sourceElements = Array.isArray(source.geometry?.elements) ? source.geometry.elements : []
   const components = Array.isArray(source.geometry?.components) ? source.geometry.components : []
   const walls = sourceElements.filter((element: Record<string, any>) => element.type === 'wall')
+  // ⚠️ 这里必须是**结构性墙**的并集。用全量墙并集时，矮墙会把它拉大：
+  // 本蓝图的泳池四壁高 1.5m、落在 z∈[-7,-2.6]，会把墙并集往 −Z 撑到 -7，
+  // 而任何屋顶都不可能盖到泳池上 → 必然误报"覆盖不足"。
   const wallBounds = emptyBounds()
   for (const wall of walls) {
+    if (!isStructuralWall(wall)) continue
     const bounds = boundsByElement.get(wall.id)
     if (bounds) unionBounds(wallBounds, bounds)
   }
@@ -209,26 +251,41 @@ export function buildReconstructionDiagnostics(
       element.type === 'roof' ? 'covers_walls' : 'self',
     )
     if (element.type === 'roof' && isFiniteBounds(wallBounds)) {
-      const observation = observations[observations.length - 1]
-      observation.expectedBounds = wallBounds
-      const roof = observation.actualBounds
-      if (roof && (
-        roof.min[0] > wallBounds.min[0] + 0.1
-        || roof.max[0] < wallBounds.max[0] - 0.1
-        || roof.min[2] > wallBounds.min[2] + 0.1
-        || roof.max[2] < wallBounds.max[2] - 0.1
-      )) {
-        observation.status = 'warning'
-        observation.message = '屋顶重建范围未完全覆盖墙体范围'
+      // 只是把"期望范围"记进观测里供人看，**不再**在这里判对错。
+      observations[observations.length - 1].expectedBounds = wallBounds
+    }
+  }
+
+  // ── 屋顶覆盖：一次聚合判定，「屋顶并集 vs 结构墙并集」────────────
+  // 历史实现逐块屋顶去比全楼墙并集，于是**任何多体量建筑**（L 形 / 退台 /
+  // 主体+门廊）每一块屋顶都会被判"未完全覆盖"——实测一栋 3 块屋顶的别墅
+  // 3 块全报 warning，而 Python 侧 7e 校验器 PASS、真实渲染也正常。
+  // 多体量本来就该"每个体量各盖一块"，每块都不覆盖全楼是**正确**的。
+  //
+  // 本判据只做渲染侧自检，权威结论仍是流水线的 7e
+  // （`validate_roof_top_coverage`，它还认"上层楼板 / 上层墙"也能盖住墙顶）。
+  // 严重度：只报 ⚠️ 不报 ❌ —— 覆盖不完整按项目政策只标记、不阻断。
+  if (isFiniteBounds(wallBounds)) {
+    const roofUnion = emptyBounds()
+    let roofCount = 0
+    for (const element of sourceElements) {
+      if (element?.type !== 'roof') continue
+      const bounds = boundsByElement.get(element.id)
+      if (!bounds) continue
+      unionBounds(roofUnion, bounds)
+      roofCount += 1
+    }
+    if (roofCount > 0 && isFiniteBounds(roofUnion)) {
+      const uncovered = describeUncovered(roofUnion, wallBounds, ROOF_COVER_TOLERANCE)
+      if (uncovered.length > 0) {
         diagnostics.push({
           level: 'warning',
           code: 'RECONSTRUCTION_ROOF_COVERAGE',
-          message: `[${element.id}] ${observation.message}`,
+          message: `屋顶并集（${roofCount} 块）未完全覆盖结构墙范围：${uncovered.join('；')}`,
           category: 'core_geometry',
           repairLayer: 'core',
-          elementId: element.id,
           expectedBounds: wallBounds,
-          actualBounds: roof,
+          actualBounds: roofUnion,
         })
       }
     }

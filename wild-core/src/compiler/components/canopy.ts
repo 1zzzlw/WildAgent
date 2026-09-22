@@ -1,4 +1,4 @@
-import type { CanopyComponent, GeometryElement } from '../../wild-core/types'
+import type { CanopyComponent, GeometryElement } from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import { ComponentCompileError } from '../types'
 import {

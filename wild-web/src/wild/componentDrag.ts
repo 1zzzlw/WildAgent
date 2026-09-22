@@ -1,7 +1,7 @@
 import type {
   ComponentSpec,
   Vec3,
-} from '../wild-core/types'
+} from 'wild-core/types'
 
 /** 将视口中的世界坐标位移转换为组件蓝图字段更新。 */
 export function createComponentTranslationChanges(

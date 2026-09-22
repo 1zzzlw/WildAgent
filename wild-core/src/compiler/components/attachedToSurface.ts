@@ -2,7 +2,7 @@ import type {
   FloorParams,
   RoofParams,
   Vec3,
-} from '../../wild-core/types'
+} from '../../../types'
 import { ComponentCompileError } from '../types'
 import type { ComponentCompileContext } from '../types'
 import { assertNonEmptyString, assertVec3 } from './attachedToWall'

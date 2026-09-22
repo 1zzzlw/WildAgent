@@ -1,0 +1,22 @@
+# 构建上下文是仓库根（Jenkinsfile: docker build -f wild-web/Dockerfile .），
+# 此文件替代原来的 wild-web/.dockerignore（Docker 只读 context 根目录的 .dockerignore）。
+
+# 版本控制
+.git
+.gitignore
+
+# 依赖与构建产物
+**/node_modules
+**/dist
+**/.vite
+**/.eslintcache
+
+# 环境与日志
+**/.env
+*.log
+
+# Python（后端不参与前端镜像构建，但排除大目录/缓存以防误入）
+**/__pycache__
+**/*.pyc
+wild-server/.venv
+wild-server/storage

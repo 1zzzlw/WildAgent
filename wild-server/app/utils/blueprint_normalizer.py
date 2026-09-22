@@ -32,7 +32,8 @@ except ImportError:
 
 # 后端的单一事实源：知识库目录下的 schema.json。
 # 它随镜像内置的 storage/knowledge_base 一起分发，后端不依赖任何前端路径
-# （前后端分部署）。前端另有 wild-web/wild-lang/schema.json 供其构建期 import，
+# （前后端分部署）。前端那份在独立 npm 包 wild-core/schema.json（原
+# wild-web/wild-lang/ 目录已删除），供其构建期 import；
 # 两份内容应保持一致，但不共享路径。
 _SERVER_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = _SERVER_ROOT / "storage" / "knowledge_base" / "schema.json"
@@ -65,13 +66,27 @@ def _extract_allowed_fields(schema_def: Dict[str, Any]) -> Tuple[Set[str], Set[s
 
 _COMPONENT_FIELDS_CACHE: Dict[str, Tuple[Set[str], Set[str]]] = {}
 
+#: 构件 ``type`` 值（snake_case）→ schema ``$defs`` 键（camelCase）的映射。
+#: 绝大多数是 ``type + "Component"``，只有带下划线的 kind 例外（如
+#: ``bay_window`` → ``bayWindowComponent``）。schema 键是 camelCase，而
+#: ``type`` 的 ``const`` 值是 snake_case，两者不能直接拼。
+_COMPONENT_SCHEMA_KEY_OVERRIDES: Dict[str, str] = {
+    "bay_window": "bayWindowComponent",
+}
+
+
+def _component_schema_key(comp_type: str) -> str:
+    """构件 type 值 → schema ``$defs`` 键。"""
+    return _COMPONENT_SCHEMA_KEY_OVERRIDES.get(comp_type, f"{comp_type}Component")
+
+
 def get_component_allowed_fields(comp_type: str) -> Tuple[Set[str], Set[str]]:
     """获取组件类型的 (允许字段, 必填字段)"""
     if comp_type in _COMPONENT_FIELDS_CACHE:
         return _COMPONENT_FIELDS_CACHE[comp_type]
     
     schema = get_schema()
-    component_schema_key = f"{comp_type}Component"
+    component_schema_key = _component_schema_key(comp_type)
     
     # 查找 $defs 中的定义
     defs = schema.get("$defs", {})
@@ -417,60 +432,41 @@ def _normalize_materials(bp: Dict[str, Any], report: NormalizeReport) -> Dict[st
 
 def _create_default_material(material_id: str) -> Dict[str, Any]:
     """
-    根据材质 ID 创建合理的默认材质定义
-    
-    Args:
-        material_id: 材质 ID（如 "tile", "door_wood", "glass"）
-        
-    Returns:
-        材质定义字典
+    根据材质 ID 创建完整的默认材质定义
+
+    对齐 schema 的 ``materialDef`` 必填字段：``baseColor / roughness / metallic /
+    albedo / lightingCondition``，且不允许 ``type`` 字段。之前的实现只返回
+    ``{type, baseColor}``，会产出 schema 非法的材质（缺 roughness 等必填项）。
     """
     mat_lower = material_id.lower()
+    material: Dict[str, Any] = {
+        "baseColor": [0.8, 0.8, 0.8],
+        "roughness": 0.8,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon",
+    }
     
     # 根据常见材质名称模式推断类型和颜色
     if "wood" in mat_lower or "timber" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.6, 0.4, 0.2]  # 木色
-        }
+        material.update({"baseColor": [0.6, 0.4, 0.2], "roughness": 0.7})  # 木色
     elif "glass" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.8, 0.9, 1.0],
-            "opacity": 0.3
-        }
+        material.update({
+            "baseColor": [0.8, 0.9, 1.0], "roughness": 0.1, "opacity": 0.3,
+        })
     elif "tile" in mat_lower or "roof" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.5, 0.3, 0.2]  # 瓦片色
-        }
+        material.update({"baseColor": [0.5, 0.3, 0.2], "roughness": 0.85})  # 瓦片色
     elif "concrete" in mat_lower or "cement" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.7, 0.7, 0.7]  # 混凝土灰
-        }
+        material.update({"baseColor": [0.7, 0.7, 0.7], "roughness": 0.9})  # 混凝土灰
     elif "brick" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.7, 0.3, 0.2]  # 砖红色
-        }
+        material.update({"baseColor": [0.7, 0.3, 0.2], "roughness": 0.9})  # 砖红色
     elif "metal" in mat_lower or "steel" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.8, 0.8, 0.8],
-            "metallic": 0.8
-        }
+        material.update({
+            "baseColor": [0.8, 0.8, 0.8], "roughness": 0.4, "metallic": 0.8,
+        })
     elif "white" in mat_lower:
-        return {
-            "type": "standard",
-            "baseColor": [0.95, 0.95, 0.95]
-        }
-    else:
-        # 通用默认材质
-        return {
-            "type": "standard",
-            "baseColor": [0.8, 0.8, 0.8]
-        }
+        material.update({"baseColor": [0.95, 0.95, 0.95]})
+    return material
 
 
 def _normalize_geometry(bp: Dict[str, Any], report: NormalizeReport) -> Dict[str, Any]:

@@ -1,4 +1,4 @@
-import wildSchema from '../../../../wild-lang/schema.json';
+import wildSchema from '../../schema.json';
 
 type JsonSchema = Record<string, any>;
 

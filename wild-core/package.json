@@ -1,0 +1,29 @@
+{
+  "name": "wild-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WILD 蓝图确定性几何重建引擎：原语编译、空间求解、材质契约与组合构件展开",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./types": "./types.ts",
+    "./primitive": "./src/primitive/index.ts",
+    "./materials": "./src/materials/index.ts",
+    "./world": "./src/world/index.ts",
+    "./compiler": "./src/compiler/index.ts",
+    "./schema.json": "./schema.json"
+  },
+  "files": [
+    "src",
+    "types.ts",
+    "schema.json"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2"
+  }
+}

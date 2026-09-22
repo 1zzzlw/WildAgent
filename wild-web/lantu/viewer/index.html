@@ -30,7 +30,7 @@
       canvas { display: block; }
 
       #panel {
-        position: absolute; top: 18px; left: 18px; width: 340px;
+        position: absolute; top: 18px; left: 18px; width: 348px;
         max-height: calc(100% - 36px); overflow-y: auto;
         background: var(--panel); border: 1px solid var(--border);
         border-radius: 14px; padding: 18px 18px 14px;
@@ -59,14 +59,14 @@
         display: block; font-size: 11px; color: var(--muted);
         text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px;
       }
-      select, input[type="file"] {
+      select, input[type="file"], input[type="range"] {
         width: 100%; padding: 8px 10px; border-radius: 9px;
         border: 1px solid var(--border-strong); background: #0b0e13;
         color: var(--text); font-size: 13px; font-family: inherit;
         transition: border-color 0.15s;
       }
       select:hover, input[type="file"]:hover { border-color: rgba(255,255,255,0.24); }
-      select:focus, input[type="file"]:focus {
+      select:focus, input[type="file"]:focus, input[type="range"]:focus {
         outline: none; border-color: var(--accent);
       }
       input[type="file"] { font-size: 12px; padding: 6px 8px; }
@@ -74,6 +74,10 @@
         background: #1c2230; color: var(--text); border: 1px solid var(--border-strong);
         border-radius: 6px; padding: 4px 9px; margin-right: 9px;
         font-size: 12px; font-family: inherit; cursor: pointer;
+      }
+      input[type="range"] {
+        padding: 0; height: 22px; background: transparent; border: none;
+        accent-color: var(--accent); cursor: pointer;
       }
 
       .section {
@@ -112,7 +116,7 @@
       details > summary:hover { color: var(--text); }
       .diag-list {
         margin: 8px 0 0; padding: 0; list-style: none;
-        max-height: 210px; overflow-y: auto; font-size: 11px; line-height: 1.6;
+        max-height: 240px; overflow-y: auto; font-size: 11px; line-height: 1.6;
       }
       .diag-list li {
         padding: 6px 8px; border-radius: 6px; margin-bottom: 5px;
@@ -131,6 +135,13 @@
         color: var(--text); cursor: pointer; user-select: none;
       }
       .controls input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+
+      .triage {
+        font-size: 11px; line-height: 1.7; color: var(--muted);
+        background: rgba(91,157,255,0.06); border: 1px solid rgba(91,157,255,0.18);
+        border-radius: 9px; padding: 9px 11px;
+      }
+      .triage b { color: var(--text); font-weight: 600; }
 
       #hint {
         position: absolute; bottom: 16px; left: 18px; font-size: 11.5px;
@@ -154,10 +165,10 @@
     <div id="panel">
       <div class="head">
         <h1>WILD 蓝图渲染查看器</h1>
-        <span class="badge">wild-core → wild-compiler → renderEntity</span>
+        <span class="badge">wild-core → compiler → renderEntity</span>
       </div>
 
-      <div class="field">
+      <div class="field" id="bpField">
         <label for="bp">选择蓝图</label>
         <select id="bp"></select>
       </div>
@@ -178,10 +189,25 @@
           <label><input id="spin" type="checkbox" /> 自动旋转</label>
           <label><input id="wire" type="checkbox" /> 线框</label>
           <label><input id="gridToggle" type="checkbox" checked /> 网格地面</label>
+          <label><input id="bbox" type="checkbox" /> 构件包围盒</label>
+        </div>
+        <div class="field" style="margin: 12px 0 0">
+          <label for="exposure">曝光 <span id="exposureVal" class="v mono">1.05</span></label>
+          <input id="exposure" type="range" min="0.4" max="2.2" step="0.05" value="1.05" />
         </div>
         <div class="field" style="margin: 12px 0 0">
           <label for="level">楼层隔离</label>
           <select id="level"></select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">分诊</div>
+        <div class="triage">
+          看走样先判<b>数据还是引擎</b>：<br />
+          ① 悬空 / 穿透 / 位置离谱 → <b>蓝图</b>问题<br />
+          ② 数据对但材质、光影、面朝向怪 → <b>引擎</b>问题<br />
+          打开「构件包围盒」，位置错一眼可见。
         </div>
       </div>
     </div>

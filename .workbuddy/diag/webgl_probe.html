@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>WebGL 能力探针</title></head>
+<body>
+<div id="out">PENDING</div>
+<script>
+(function () {
+  var lines = [];
+  function log(s) { lines.push(s); }
+
+  function probe(kind) {
+    var c = document.createElement('canvas');
+    c.width = 320; c.height = 240;
+    var gl = null, err = null;
+    try { gl = c.getContext(kind, { failIfMajorPerformanceCaveat: false }); }
+    catch (e) { err = String(e && e.message || e); }
+    if (!gl) { log(kind + ': 拿不到上下文' + (err ? ' (' + err + ')' : '')); return null; }
+    log(kind + ': OK');
+    log('   VERSION   = ' + gl.getParameter(gl.VERSION));
+    log('   VENDOR    = ' + gl.getParameter(gl.VENDOR));
+    log('   RENDERER  = ' + gl.getParameter(gl.RENDERER));
+    var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    if (dbg) {
+      log('   UNMASKED_VENDOR   = ' + gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL));
+      log('   UNMASKED_RENDERER = ' + gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL));
+    } else { log('   (无 WEBGL_debug_renderer_info 扩展)'); }
+    // 真正画一帧，确认能出像素
+    gl.clearColor(0.2, 0.4, 0.9, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    var px = new Uint8Array(4);
+    gl.readPixels(4, 4, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    log('   实际清屏像素 = [' + px[0] + ',' + px[1] + ',' + px[2] + ',' + px[3] + ']'
+        + (px[2] > 200 ? '  ✅ 真出像素' : '  ❌ 没出像素'));
+    return gl;
+  }
+
+  log('UA = ' + navigator.userAgent);
+  log('硬件并发 = ' + (navigator.hardwareConcurrency || '?'));
+
+  probe('webgl2');
+  log('');
+  probe('webgl');
+
+  document.getElementById('out').textContent = 'RESULT_START\n' + lines.join('\n') + '\nRESULT_END';
+  document.title = 'DONE';
+})();
+</script>
+</body>
+</html>

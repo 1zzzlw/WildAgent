@@ -1,4 +1,4 @@
-import type { WorldLookProfileManifest } from '../wild-core/src/materials'
+import type { WorldLookProfileManifest } from 'wild-core/materials'
 
 export interface DisposableWorldLookResource {
   dispose(): void
@@ -42,9 +42,15 @@ const defaultWorldLook: WorldLookProfileManifest = {
     dust: 'surface.dust.v1',
   },
   appearance: {
-    directLightScale: 1.08,
-    ambientLightScale: 0.9,
-    exposureScale: 1.03,
+    // 🔴 光照倍率必须全部是 1：默认 profile 是**艺术方向**的载体，不是"补亮"的载体。
+    // 这三个数原本是 1.08 / 0.9 / 1.03 —— 那是"没有 IBL、场景整体偏暗"时代的补光。
+    // S0 把 IBL 接进来之后它们成了 3%~8% 的系统偏差，而偏差只发生在编辑器
+    // （查看器不读 worldLook profile）⇒ "查看器与编辑器同一套光照"这句话就不成立了。
+    // 曝光/光强的**唯一事实源**是 TIME_PRESETS + ENVIRONMENT_PRESETS + 天气；
+    // 想让某一档更亮，去改那两层，不要在这里叠一个看不出来的系数。
+    directLightScale: 1,
+    ambientLightScale: 1,
+    exposureScale: 1,
     shadowOpacity: 0.78,
     fogScale: 1.08,
   },

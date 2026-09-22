@@ -1,4 +1,4 @@
-import type { BayWindowComponent, GeometryElement, WindowComponent } from '../../wild-core/types'
+import type { BayWindowComponent, GeometryElement, WindowComponent } from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import { assertFrameDimensions, assertPositive, createBox, resolveStraightWallFrame } from './attachedToWall'
 import { compileWindow } from './window'

@@ -1,4 +1,4 @@
-import type { ComponentSpec, GeometryElement } from '../wild-core/types'
+import type { ComponentSpec, GeometryElement } from '../../types'
 import type { ComponentCompileContext, ComponentCompiler } from './types'
 
 const MAX_CACHE_ENTRIES = 256

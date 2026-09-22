@@ -1,4 +1,4 @@
-import type { WildMaterialPackageManifest } from '../wild-core/src/materials'
+import type { WildMaterialPackageManifest } from 'wild-core/materials'
 import { worldLookRuntime } from './worldLookRuntime'
 import { getWorldRenderingState } from './worldEnvironmentRuntime'
 

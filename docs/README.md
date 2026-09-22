@@ -42,7 +42,7 @@
 
 1. 可运行代码、Schema 和自动化测试；
 2. 本目录中的正式文档；
-3. `wild-web/wild-lang/` 的 WILD 语言契约及源码旁的专项说明；
+3. `docs/specs/` 的 WILD 语言契约、`wild-core/schema.json` 及源码旁的专项说明；
 4. `agent.md`、`wild-web/CLAUDE.md` 等协作上下文；
 5. `docs-dev/` 历史材料。
 

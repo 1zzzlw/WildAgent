@@ -17,8 +17,8 @@
 import * as THREE from 'three'
 import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
 import type { EmbeddedImageData, TextureImageData } from '../types/blueprint'
-import type { ProceduralMaterial } from '../wild-core/types'
-import type { RenderMaterialDescriptor } from '../wild-core/src/materials'
+import type { ProceduralMaterial } from 'wild-core/types'
+import type { RenderMaterialDescriptor } from 'wild-core/materials'
 import { recordTextureLoad } from './textureLoadMonitor'
 import { applyRegisteredSurfaceMaterial } from './materialFeatures'
 import { worldMaterialRuntime } from './worldMaterialRuntime'
@@ -136,7 +136,12 @@ export function createMaterialFromParams(
   // 2. 粗糙度和金属度
   material.roughness = params.roughness
   material.metalness = params.metallic
-  // IBL 反射基准提高：非金属也有环境反射，金属/光滑面反射更亮；配合 scene.environmentIntensity。
+  // IBL 反射基准：非金属也有环境反射，金属/光滑面反射更亮。
+  // ⚠️ 这里**不能**写"配合 scene.environmentIntensity" —— 本仓库锁的是 three 0.160.1，
+  // `Scene.environmentIntensity` 要到 r163 才有；写上去只会让人去找一个不存在的旋钮，
+  // 然后误以为"IBL 强度是可调的"。r160 里能调 IBL 强度的只有两处：
+  //   ① `material.envMapIntensity`（本行，逐材质）
+  //   ② 环境贴图本身的辐射量（即天空亮度 × 曝光，见 defaultWorldLook 的注释）
   material.envMapIntensity = Math.min(1.8, 1.0 + params.metallic * 0.5)
 
   // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）

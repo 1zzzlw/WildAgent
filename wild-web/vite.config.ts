@@ -36,6 +36,11 @@ export default defineConfig({
     },
   },
   server: {
+    // wild-core 是仓库根下的同级包（通过 file: 依赖链接），不落在 vite 默认的
+    // workspace root 内，必须显式放行上一级目录，否则 dev server 会拒绝加载它。
+    fs: {
+      allow: ['..'],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

@@ -6,7 +6,7 @@ import { build } from 'vite'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const outputDirectory = await mkdtemp(join(tmpdir(), 'wild-component-compiler-'))
-const compilerPath = join(root, 'src/wild-compiler/index.ts').replaceAll('\\', '/')
+const compilerPath = join(root, '..', 'wild-core', 'src/compiler/index.ts').replaceAll('\\', '/')
 const adapterPath = join(root, 'src/renderer/wildCoreAdapter.ts').replaceAll('\\', '/')
 const scenePatchPath = join(root, 'src/wild/scenePatch.ts').replaceAll('\\', '/')
 const componentSelectionPath = join(root, 'src/wild/componentSelection.ts').replaceAll('\\', '/')

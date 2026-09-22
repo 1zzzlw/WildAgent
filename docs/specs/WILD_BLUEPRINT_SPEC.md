@@ -11,8 +11,8 @@
 
 本规范描述当前代码实际支持的交付格式。发生冲突时按以下顺序判断：
 
-1. `wild-web/src/wild-core/`、`wild-web/src/wild-compiler/` 的实际构建代码；
-2. `wild-web/wild-lang/schema.json` 和 TypeScript 类型；
+1. `wild-core/`、`wild-core/src/compiler/` 的实际构建代码；
+2. `wild-core/schema.json` 和 TypeScript 类型；
 3. `wild-server/app/utils/blueprint_parser.py` 与 `spatial_tools.py`；
 4. 当前自动化测试；
 5. 本文档及知识库中的旧版说明。
@@ -732,7 +732,7 @@ Core 的正式字段是：
 
 当前存在三处需要维护者知晓的实现差异：
 
-1. `wild-lang/schema.json` 顶层尚未显式声明 `assets`，但 Schema 默认允许未知根字段，前后端应用层会对 `assets` 做专门校验，PBR 流程已有回归测试。
+1. `wild-core/schema.json` 顶层尚未显式声明 `assets`，但 Schema 默认允许未知根字段，前后端应用层会对 `assets` 做专门校验，PBR 流程已有回归测试。
 2. Core/Schema 的实例引用字段是 `ref`，后端空间引用校验仍读取旧字段 `templateId`，因此 Agent 暂停使用模板实例。
 3. Schema 把 `geometry.elements` 视为可选，后端完整交付流水线把它视为必需；本文按更严格的最终交付要求执行。
 

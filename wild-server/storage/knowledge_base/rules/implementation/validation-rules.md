@@ -542,8 +542,8 @@ def validate_blueprint(blueprint):
 
 ## 实现来源
 
-- `wild-web/src/wild-core/src/primitive/validator.ts`
-- `wild-web/src/wild-core/src/wild-compiler/index.ts`
+- `wild-core/src/primitive/validator.ts`
+- `wild-core/wild-core/src/compiler/index.ts`
 - `wild-server/app/services/blueprint_service.py`
 
 校验规则与引擎实现保持同步。

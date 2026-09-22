@@ -1,5 +1,5 @@
-import type { SurfaceQuality, WorldEnvironmentState } from '../wild-core/src/materials'
-import { DEFAULT_WORLD_ENVIRONMENT } from '../wild-core/src/materials'
+import type { SurfaceQuality, WorldEnvironmentState } from 'wild-core/materials'
+import { DEFAULT_WORLD_ENVIRONMENT } from 'wild-core/materials'
 
 type EnvironmentListener = (state: Readonly<WorldEnvironmentState>) => void
 type RenderingListener = (state: Readonly<WorldRenderingState>) => void

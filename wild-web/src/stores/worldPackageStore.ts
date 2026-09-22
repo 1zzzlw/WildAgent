@@ -4,7 +4,7 @@ import type {
   WildMaterialPackageManifest,
   WorldEnvironmentState,
   WorldLookProfileManifest,
-} from '../wild-core/src/materials'
+} from 'wild-core/materials'
 import type { WorldRenderingState } from '../renderer/worldEnvironmentRuntime'
 import {
   getWorldEnvironmentState,

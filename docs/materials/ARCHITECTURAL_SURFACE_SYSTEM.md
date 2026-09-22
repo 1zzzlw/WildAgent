@@ -1077,8 +1077,8 @@ Renderer 不再理解“轻微”“旧”“不要太脏”等自然语言，�
 
 | 位置 | 作用 |
 |---|---|
-| `wild-web/src/wild-core/types.ts` | WILD/Core 程序化材质类型 |
-| `wild-web/src/wild-core/src/primitive/materials/apply.ts` | Core 默认值、归一化和只读透传 |
+| `wild-core/types.ts` | WILD/Core 程序化材质类型 |
+| `wild-core/src/primitive/materials/apply.ts` | Core 默认值、归一化和只读透传 |
 | `wild-server/app/utils/blueprint_parser.py` | 后端协议和范围校验 |
 | `wild-web/src/renderer/materialAdapter.ts` | Three.js 材质创建与缓存入口 |
 | `wild-web/src/renderer/proceduralMaterials/` | 当前程序化红砖 Shader 和共享噪声 |

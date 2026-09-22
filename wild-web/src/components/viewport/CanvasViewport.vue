@@ -72,12 +72,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
 import {
   configureKtx2Rendering,
   configureMaterialRendering,
@@ -115,6 +112,13 @@ import {
 } from '../../renderer/worldEffectRuntime'
 import { WorldCloudLayer } from '../../renderer/worldCloudLayer'
 import { applyGroundWeatherMaterial } from '../../renderer/groundWeatherMaterial'
+import {
+  createCelestialBody,
+  syncSkyPreset,
+  WorldEnvironmentMapRuntime,
+} from '../../renderer/environmentRuntime'
+import { WorldLightingRig } from '../../renderer/lightingRuntime'
+import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
 import {
   CAMERA_ORDER,
   CAMERA_PRESETS,
@@ -175,11 +179,8 @@ let sceneGroup: THREE.Group | null = null
 let materialCache: MaterialCache | null = null
 let worldRuntime: WorldRuntime | null = null
 let gridHelper: THREE.GridHelper | null = null
-let environmentTarget: THREE.WebGLRenderTarget | null = null
-let pmremGenerator: THREE.PMREMGenerator | null = null
-let environmentScene: THREE.Scene | null = null
-let environmentSunSprite: THREE.Sprite | null = null
-let environmentSky: Sky | null = null
+let environmentRuntime: WorldEnvironmentMapRuntime | null = null
+let lightingRig: WorldLightingRig | null = null
 let sky: Sky | null = null
 let sunBody: THREE.Sprite | null = null
 let moonBody: THREE.Sprite | null = null
@@ -190,12 +191,12 @@ let directionalLight: THREE.DirectionalLight | null = null
 let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null = null
 let presentationGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
 let builtInEnvironment: THREE.Group | null = null
+let postProcessing: WorldPostProcessingRuntime | null = null
+// 以下四个只是 postProcessing 的别名；真正的构造/尺寸/采样数/释放都在引擎运行时里。
 let composer: EffectComposer | null = null
 let ssaoPass: SSAOPass | null = null
 let bloomPass: UnrealBloomPass | null = null
 let fxaaPass: ShaderPass | null = null
-// 当前生效的合成链路 MSAA 采样数（WebGL1 或降级后会回落到 0，只剩 FXAA）。
-let appliedMsaaSamples = 0
 // 合成链路 MSAA 采样数：默认 4x；帧率降级时减半——像素比已经降了，几何锯齿不该完全失守。
 const DEFAULT_MSAA_SAMPLES = 4
 const DEGRADED_MSAA_SAMPLES = 2
@@ -241,12 +242,8 @@ let lastShadowDirtyTime = 0
 const SHADOW_DIRTY_THROTTLE_MS = 120
 // 拖动结束时补一次阴影刷新用的尾沿定时器。
 let trailingShadowDirtyTimer: ReturnType<typeof setTimeout> | null = null
-// 环境贴图（PMREM）重建的节流窗口：连续拖动天气滑杆时最多每 120ms 重建一次。
-const ENVIRONMENT_REBUILD_THROTTLE_MS = 120
-let lastEnvironmentRebuildTime = 0
-let lastEnvironmentSignature = ''
-let environmentRebuildTimer: ReturnType<typeof setTimeout> | null = null
-let pendingEnvironmentRebuild: { preset: TimePreset; atmosphere: WorldAtmosphereAppearance } | null = null
+// 环境贴图（PMREM）的去重、节流与生命周期全部由 engine 侧的
+// WorldEnvironmentMapRuntime 持有，组件只负责"什么时候用什么预设"。
 // 阴影贴花的亮度比（线性空间）：等价于原先 0x26352d 在极简地面 0x747b73 上的关系。
 const SHADOW_DECAL_LUMA_RATIO = 0.162
 
@@ -336,23 +333,15 @@ function initThreeJS() {
   camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 2000)
   camera.position.set(12, 10, 12)
 
-  composer = new EffectComposer(renderer)
-  composer.addPass(new RenderPass(scene, camera))
-  // SSAO：核半径从 4 提到 6，补偿内部 RT 减半后的采样密度（否则接触阴影会变得又紧又闪）。
-  ssaoPass = new SSAOPass(scene, camera)
-  ssaoPass.kernelRadius = 6
-  ssaoPass.minDistance = 0.002
-  ssaoPass.maxDistance = 0.3
-  applySsaoScale(ssaoPass)
-  composer.addPass(ssaoPass)
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
-  composer.addPass(bloomPass)
-  composer.addPass(new OutputPass())
-  fxaaPass = new ShaderPass(FXAAShader)
-  composer.addPass(fxaaPass)
-  // 几何边缘的锯齿交给合成 RT 的 MSAA；FXAA 保留为最后一道，负责 MSAA 覆盖不到的
-  // 着色器高频细节（高光闪烁、程序化纹理、透明/自发光边缘）。
-  applySceneMsaa(DEFAULT_MSAA_SAMPLES)
+  // 后期合成链路（SSAO 接触阴影 / Bloom / FXAA / MSAA）由引擎侧持有，
+  // 组件只决定"当前画质档开哪几项"。四个别名只为让既有策略代码少改。
+  postProcessing = new WorldPostProcessingRuntime(renderer, scene, camera, {
+    msaaSamples: DEFAULT_MSAA_SAMPLES,
+  })
+  composer = postProcessing.composer
+  ssaoPass = postProcessing.ssao
+  bloomPass = postProcessing.bloom
+  fxaaPass = postProcessing.fxaa
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.target.set(0, 1.5, 0)
@@ -385,40 +374,18 @@ function initThreeJS() {
   cloudLayer = new WorldCloudLayer(scene)
   cloudLayer.setVisible(getWorldEffectState().clouds)
 
-  pmremGenerator = new THREE.PMREMGenerator(renderer)
-  pmremGenerator.compileCubemapShader()
-  environmentScene = new THREE.Scene()
-  environmentSky = new Sky()
-  environmentSky.scale.setScalar(450)
-  environmentScene.add(environmentSky)
-  // 环境贴图内的太阳亮点：让 IBL 反射出现真实太阳镜面高光（材质更立体）。
-  environmentSunSprite = createCelestialBody('sun')
-  environmentSunSprite.scale.setScalar(60)
-  environmentSunSprite.name = 'EnvironmentSun'
-  environmentScene.add(environmentSunSprite)
+  // 环境贴图（IBL）运行时：离屏环境场景 + PMREM 全部由引擎侧持有。
+  // 组件只是它的调用方 —— 这样 `lantu/viewer` 与离线出图脚本能拿到**同一份** IBL，
+  // 而不是各自在本地再搭一套光照。
+  environmentRuntime = new WorldEnvironmentMapRuntime(renderer, scene, {
+    onRebuilt: markNeedsRender,
+  })
 
-  hemisphereLight = new THREE.HemisphereLight(0xddeeff, 0x665544, 0.75)
-  scene.add(hemisphereLight)
-  // 平行光
-  directionalLight = new THREE.DirectionalLight(0xfff4df, 2.4)
-  directionalLight.position.set(10, 20, 10)
-  directionalLight.castShadow = true
-  directionalLight.shadow.mapSize.width = 2048
-  directionalLight.shadow.mapSize.height = 2048
-  directionalLight.shadow.bias = -0.0002
-  directionalLight.shadow.normalBias = 0.025
-  // 这里【不要】设 shadow.radius：three r160 的 shadowRadius 只在 SHADOWMAP_TYPE_PCF 分支
-  // 被引用（shadowmap_pars_fragment.glsl.js:122-125），而 PCFSoftShadowMap 编译出的
-  // PCF_SOFT 分支用固定 9 抽样 bilinear kernel、完全不读它 ⇒ radius 是个死配置。
-  // 想要更柔的阴影只能降 mapSize，或换成 VSMShadowMap（需另行处理漏光与 bias）。
-  // 阴影相关的 bias / normalBias / 相机范围统一由 updateLightingToBounds() 按实时参数推导。
-  directionalLight.shadow.autoUpdate = false
-  directionalLight.shadow.camera.left = -20
-  directionalLight.shadow.camera.right = 20
-  directionalLight.shadow.camera.top = 20
-  directionalLight.shadow.camera.bottom = -20
-  scene.add(directionalLight)
-  scene.add(directionalLight.target)
+  // 光照骨架（半球光 + 关键光/阴影）同样由引擎侧持有；这里只保留两个别名，
+  // 因为组件里有大量"按当前预设改颜色/强度"的策略代码要写这两个光源。
+  lightingRig = new WorldLightingRig(scene, { shadowMapSize: 2048 })
+  hemisphereLight = lightingRig.hemisphere
+  directionalLight = lightingRig.key
   // 首帧必须无条件建好环境贴图。
   applyTimePreset(true)
 
@@ -506,14 +473,7 @@ function handleResize() {
   camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
-  composer?.setSize(width, height)
-  if (fxaaPass) {
-    const pixelRatio = renderer.getPixelRatio()
-    fxaaPass.material.uniforms.resolution.value.set(
-      1 / Math.max(width * pixelRatio, 1),
-      1 / Math.max(height * pixelRatio, 1),
-    )
-  }
+  postProcessing?.setSize(width, height)
   markNeedsRender()
 }
 
@@ -553,11 +513,11 @@ function renderFrame() {
     adaptiveQualityApplied = true
     const ratio = renderer?.getPixelRatio() ?? 1
     if (ratio > 1) renderer?.setPixelRatio(Math.max(1, ratio * 0.66))
-    if (composer) composer?.setPixelRatio(renderer?.getPixelRatio() ?? 1)
+    postProcessing?.setPixelRatio(renderer?.getPixelRatio() ?? 1)
     if (ssaoPass) ssaoPass.enabled = false
     if (bloomPass) bloomPass.enabled = false
     if (fxaaPass) fxaaPass.enabled = true
-    applySceneMsaa(DEGRADED_MSAA_SAMPLES)
+    postProcessing?.setMsaaSamples(DEGRADED_MSAA_SAMPLES)
     handleResize()
   }
   if (needsRender && renderer && scene && camera) {
@@ -1221,7 +1181,7 @@ function applyTimePreset(forceEnvironment = false) {
   if (timeOfDay.value === 'night') keyLightDirection.negate()
 
   sky.visible = preset.skyVisible
-  syncSkyPreset(sky, preset, atmosphere)
+  syncSkyPreset(sky, preset, atmosphere, sunDirection)
 
   scene.background = new THREE.Color(preset.background)
     .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
@@ -1276,116 +1236,22 @@ function applyTimePreset(forceEnvironment = false) {
   markNeedsRender()
 }
 
-function syncSkyPreset(
-  target: Sky,
-  preset: TimePreset,
-  atmosphere = deriveWorldAtmosphere(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled),
-) {
-  const uniforms = target.material.uniforms
-  uniforms.turbidity.value = preset.turbidity
-    + atmosphere.cloud * 7
-    + atmosphere.rain * 3
-    + atmosphere.dust * 9
-    + atmosphere.fog * 4
-  uniforms.rayleigh.value = Math.max(0.08, preset.rayleigh * (1 - atmosphere.cloud * 0.38))
-  uniforms.mieCoefficient.value = Math.min(
-    0.08,
-    preset.mieCoefficient + atmosphere.cloud * 0.012 + atmosphere.fog * 0.018 + atmosphere.dust * 0.026,
-  )
-  uniforms.mieDirectionalG.value = Math.min(0.96, preset.mieDirectionalG + atmosphere.fog * 0.04)
-  uniforms.sunPosition.value.copy(sunDirection)
-}
-
-/**
- * 影响环境贴图（PMREM）的输入签名。所有会改变天空观感的量都必须在里面，
- * 否则会出现"改了天气但环境贴图没跟上"。
- */
-function environmentSignature(preset: TimePreset, atmosphere: WorldAtmosphereAppearance): string {
-  const q = (value: number) => Math.round(value * 32) / 32
-  return [
-    preset.label,
-    q(atmosphere.cloud),
-    q(atmosphere.rain),
-    q(atmosphere.snow),
-    q(atmosphere.dust),
-    q(atmosphere.fog),
-    q(atmosphere.tintStrength),
-    atmosphere.backgroundTint,
-    timeOfDay.value,
-  ].join('|')
-}
-
 /**
  * 环境贴图重建的调度入口。
  *
- * 为什么需要：`rebuildEnvironment()` 里的 `pmremGenerator.fromScene()` 是一遍立方图 6 面渲染
- * + PMREM 卷积 + 新纹理创建 + 旧纹理销毁；而天气面板的 7 条 `el-slider` 走的是连续 `@input`
- * → `updateWorldEnvironmentState` → `subscribeWorldEnvironment` → `applyTimePreset()`，
- * 一次拖动就能打出上百个事件。实测 60 个事件会触发 59 次 fromScene()。
+ * 机制（PMREM 生产、签名去重、前后沿节流、旧纹理释放）全部在引擎侧的
+ * `WorldEnvironmentMapRuntime` 里；这里只负责把**当前策略**喂进去：
+ * 用哪个时段预设、当前大气参数、太阳方向、是不是夜晚。
  *
- * 策略：签名去重（量化到 1/32，肉眼不可辨）+ 前后沿节流。
- *   - 前 120ms 内第一次变化立即重建 ⇒ 点选天气预设、时段切换这类离散操作无延迟感；
- *   - 其后合并到 120ms 窗口末尾 ⇒ 拖动期间最多约 8 次/秒，且停止后一定会落地最终状态。
- * 离散切换（时段/环境档/画质档/WILD profile）应传 force = true 绕过去重。
+ * 离散切换（时段/环境档/画质档/WILD profile）传 force = true 绕过去重与节流，
+ * 避免"点了一下但画面没跟着变"。
  */
 function scheduleEnvironmentRebuild(
   preset: TimePreset,
   atmosphere: WorldAtmosphereAppearance,
   force: boolean,
 ): void {
-  const signature = environmentSignature(preset, atmosphere)
-  if (!force && signature === lastEnvironmentSignature && pendingEnvironmentRebuild === null) return
-  pendingEnvironmentRebuild = { preset, atmosphere }
-  const elapsed = performance.now() - lastEnvironmentRebuildTime
-  if (force || elapsed >= ENVIRONMENT_REBUILD_THROTTLE_MS) {
-    flushEnvironmentRebuild()
-    return
-  }
-  if (environmentRebuildTimer === null) {
-    environmentRebuildTimer = setTimeout(flushEnvironmentRebuild, ENVIRONMENT_REBUILD_THROTTLE_MS - elapsed)
-  }
-}
-
-function flushEnvironmentRebuild(): void {
-  if (environmentRebuildTimer !== null) {
-    clearTimeout(environmentRebuildTimer)
-    environmentRebuildTimer = null
-  }
-  const pending = pendingEnvironmentRebuild
-  pendingEnvironmentRebuild = null
-  if (!pending) return
-  // 签名与时间戳都按"落地时"的参数记，避免把被合并掉的中间态当成已应用状态。
-  lastEnvironmentRebuildTime = performance.now()
-  lastEnvironmentSignature = environmentSignature(pending.preset, pending.atmosphere)
-  rebuildEnvironment(pending.preset, pending.atmosphere)
-  markNeedsRender()
-}
-
-function rebuildEnvironment(
-  preset: TimePreset,
-  atmosphere = deriveWorldAtmosphere(getWorldEnvironmentState(), getWorldRenderingState().weatherEnabled),
-) {
-  if (!scene || !pmremGenerator || !environmentScene || !environmentSky) return
-  syncSkyPreset(environmentSky, preset, atmosphere)
-  environmentScene.background = new THREE.Color(preset.background)
-    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
-  if (environmentSunSprite) {
-    // 沿太阳方向放置亮点（距离远于 PMREM 半径），夜晚隐藏避免月光串色。
-    environmentSunSprite.position.copy(sunDirection).multiplyScalar(380)
-    environmentSunSprite.visible = timeOfDay.value !== 'night'
-  }
-  const nextTarget = pmremGenerator.fromScene(
-    environmentScene,
-    timeOfDay.value === 'night' ? 0.16 : 0.045,
-    0.1,
-    1000,
-  )
-  const previousTarget = environmentTarget
-  environmentTarget = nextTarget
-  scene.environment = nextTarget.texture
-  // IBL 强度由 materialAdapter 的 envMapIntensity（非金属 1.0 / 金属 1.0~1.5）承担，
-  // 太阳亮点已通过 environmentSunSprite 注入环境贴图，材质反射/高光更立体。
-  previousTarget?.dispose()
+  environmentRuntime?.schedule(preset, atmosphere, sunDirection, timeOfDay.value === 'night', force)
 }
 
 function createGroundTexture(): THREE.CanvasTexture {
@@ -1418,56 +1284,6 @@ function createGroundTexture(): THREE.CanvasTexture {
   texture.wrapT = THREE.RepeatWrapping
   texture.repeat.set(24, 24)
   return texture
-}
-
-function createCelestialBody(kind: 'sun' | 'moon'): THREE.Sprite {
-  const canvas = document.createElement('canvas')
-  canvas.width = 128
-  canvas.height = 128
-  const context = canvas.getContext('2d')
-  if (context) {
-    if (kind === 'sun') {
-      const glow = context.createRadialGradient(64, 64, 4, 64, 64, 62)
-      glow.addColorStop(0, 'rgba(255,255,250,1)')
-      glow.addColorStop(0.3, 'rgba(255,240,200,0.92)')
-      glow.addColorStop(0.55, 'rgba(255,214,130,0.55)')
-      glow.addColorStop(1, 'rgba(255,180,80,0)')
-      context.fillStyle = glow
-      context.fillRect(0, 0, 128, 128)
-      // 明亮日轮，边缘清晰可见
-      context.fillStyle = 'rgba(255,252,242,1)'
-      context.beginPath()
-      context.arc(64, 64, 24, 0, Math.PI * 2)
-      context.fill()
-    } else {
-      context.fillStyle = 'rgba(224,232,244,0.96)'
-      context.beginPath()
-      context.arc(64, 64, 47, 0, Math.PI * 2)
-      context.fill()
-      context.fillStyle = 'rgba(155,169,188,0.28)'
-      for (const [x, y, radius] of [[45, 47, 9], [78, 38, 6], [82, 73, 11], [49, 82, 5]]) {
-        context.beginPath()
-        context.arc(x, y, radius, 0, Math.PI * 2)
-        context.fill()
-      }
-    }
-  }
-  const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  const material = new THREE.SpriteMaterial({
-    map: texture,
-    color: 0xffffff,
-    transparent: true,
-    opacity: 1,
-    depthWrite: false,
-    depthTest: true,
-    fog: false,
-    toneMapped: false,
-  })
-  const body = new THREE.Sprite(material)
-  body.name = kind === 'sun' ? 'WorldSun' : 'WorldMoon'
-  body.renderOrder = 3
-  return body
 }
 
 function updateCelestialBodies(center = lightingCenter, extent = lightingExtent): void {
@@ -1570,14 +1386,9 @@ function applyQualityPreset() {
   })
   const pixelRatio = Math.min(window.devicePixelRatio || 1, preset.pixelRatio)
   renderer.setPixelRatio(pixelRatio)
-  composer?.setPixelRatio(pixelRatio)
-  if (directionalLight) {
-    const shadowSize = Math.min(preset.shadowMapSize, renderer.capabilities.maxTextureSize)
-    if (directionalLight.shadow.mapSize.width !== shadowSize) {
-      directionalLight.shadow.map?.dispose()
-      directionalLight.shadow.map = null
-      directionalLight.shadow.mapSize.set(shadowSize, shadowSize)
-    }
+  postProcessing?.setPixelRatio(pixelRatio)
+  if (lightingRig) {
+    lightingRig.setShadowMapSize(preset.shadowMapSize, renderer.capabilities.maxTextureSize)
     markShadowsDirty()
   }
   if (ssaoPass) ssaoPass.enabled = preset.ssao
@@ -1592,73 +1403,19 @@ function cycleCameraPreset() {
   if (hasSceneBounds) frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
 }
 
-/**
- * 关键光高度角下限（度）—— 仅作【数值护栏】，防止太阳贴地平线时 far 爆炸（1/tan → ∞）。
- * 预设中最低是黄昏 6°，正常情况下不会触发；刻意不改动光方向本身，
- * 这样"可见的太阳位置"与"主光方向"始终一致（否则落影会与天空里的太阳对不上）。
- */
-const SHADOW_MIN_ELEVATION_DEG = 5
-/** normalBias 折算成【纹素数】表达，这样它与 mapSize / extent 自动保持自洽。 */
-const SHADOW_NORMAL_BIAS_TEXELS = 1.5
-/** 阴影深度 bias 的目标世界空间偏移量；实际写入前会按 (far − near) 换算。 */
-const SHADOW_BIAS_WORLD = 0.01
-
 function updateLightingToBounds(center: THREE.Vector3, size: THREE.Vector3) {
-  if (!directionalLight) return
+  if (!lightingRig) return
   lightingCenter.copy(center)
   const maxDim = Math.max(size.x, size.y, size.z)
   // 场景尺度参照（内置环境 / 日月 / 天气层 / 雾）仍按模型尺寸，不随太阳角度变化。
   lightingExtent = Math.max(maxDim * 0.68, 4)
 
-  // ── 阴影正交框：必须同时罩住【投影体】与【落影区】 ──
-  // 片元一旦落在框外，GLSL 的 inFrustum 为 false ⇒ 直接返回 shadow = 1（无阴影），
-  // 表现为投影边缘一条笔直的裁切线。
-  // 关键点：正交框与 far 都必须按【落影行程】放大 —— 黄昏 6° 时 10.95m 高的建筑投影要走
-  // 104m，原先固定 far = lightDistance + extent×2 ≈ 55 会把长影在中途硬切。
-  const elevation = Math.max(
-    THREE.MathUtils.degToRad(SHADOW_MIN_ELEVATION_DEG),
-    Math.asin(THREE.MathUtils.clamp(keyLightDirection.y, -1, 1)),
-  )
-  const sinElevation = Math.sin(elevation)
-  const cosElevation = Math.cos(elevation)
-  const horizontalRadius = 0.5 * Math.hypot(size.x, size.z)
-  const halfHeight = Math.max(0, size.y) * 0.5
-  // 正交框 U 轴水平、V 轴在太阳所在竖直面内，所以两个方向的上界分别是：
-  //   U ≤ 足迹半对角线
-  //   V ≤ 足迹半对角线 × sin(高度角) + 半高 × cos(高度角)
-  // （与全量蓝图复算一致：tiantan 白天需 U 11.31 / V 13.44。）
-  shadowExtent = Math.max(horizontalRadius, horizontalRadius * sinElevation + halfHeight * cosElevation) + 1
-  // 落影行程 = 建筑高度 / tan(高度角)：6° 时约为高度的 9.5 倍。
-  const shadowTravel = (halfHeight * 2) / Math.tan(elevation)
-  const halfDiagonal = Math.hypot(horizontalRadius, halfHeight)
-  const lightDistance = shadowExtent * 2.5
-
-  directionalLight.position.copy(center).addScaledVector(keyLightDirection, lightDistance)
-  directionalLight.target.position.copy(center)
-  directionalLight.target.updateMatrixWorld()
-  const shadowCamera = directionalLight.shadow.camera
-  shadowCamera.left = -shadowExtent
-  shadowCamera.right = shadowExtent
-  shadowCamera.top = shadowExtent
-  shadowCamera.bottom = -shadowExtent
-  // near 按投影体的最近深度收紧（原来恒为 0.1，配 far≈130 时深度精度被白白浪费）。
-  shadowCamera.near = Math.max(0.1, lightDistance - halfDiagonal * 2)
-  // far 必须覆盖【落影行程】，否则低角度下长影会在中途被硬切。
-  shadowCamera.far = lightDistance + shadowTravel + horizontalRadius + shadowExtent + 2
-  shadowCamera.updateProjectionMatrix()
-
-  // normalBias 按纹素表达。原来写的是 `lightingExtent * 0.0015`，只在 mapSize = 2048 时
-  // 恰好等于 1.5 纹素，换个档位就错位：1024 档只有 0.77 纹素（欠 bias → 自阴影痤疮），
-  // 4096 档达 3.07 纹素（过 bias → 接触阴影变淡、薄构件漏影）。
-  const shadowTexel = (2 * shadowExtent) / Math.max(1, directionalLight.shadow.mapSize.width)
-  directionalLight.shadow.normalBias = Math.max(0.001, SHADOW_NORMAL_BIAS_TEXELS * shadowTexel)
-  // bias 是【归一化深度】偏移，等效世界偏移 = |bias| × (far − near)，
-  // 所以固定 -0.0002 在 far 从 55 涨到 200+ 之后等效偏移会翻好几倍（Peter-panning）。
-  // 改为按世界空间目标偏移反推，并夹住上下限避免极端参数。
-  const depthRange = Math.max(1e-3, shadowCamera.far - shadowCamera.near)
-  directionalLight.shadow.bias = THREE.MathUtils.clamp(-SHADOW_BIAS_WORLD / depthRange, -5e-4, -2e-5)
-  directionalLight.shadow.needsUpdate = true
-  markShadowsDirty()
+  // 阴影正交框 / 光位 / bias 的推导是纯机制，全部在引擎侧 WorldLightingRig.fitToBounds()：
+  // 那一套参数互相耦合，任何别的渲染方都要拿到同一份推导，否则"同一蓝图两套光影"。
+  const fit = lightingRig.fitToBounds(center, size, keyLightDirection, {
+    onShadowsDirty: markShadowsDirty,
+  })
+  shadowExtent = fit.extent
   updateCelestialBodies(center, lightingExtent)
   weatherVisuals?.setBounds(center, lightingExtent, environmentGroundY)
   configureSceneFog()
@@ -1706,58 +1463,6 @@ function markShadowsDirty() {
   markNeedsRender()
 }
 
-/**
- * 场景 MSAA：几何走的是 EffectComposer，主光栅化目标不是 canvas 默认帧缓冲，
- * 因此 WebGLRenderer 的 antialias 选项对合成链路完全无效（开与不开关）。
- * 真正生效的做法是给合成的离屏 RT 开多重采样。
- *
- * 注意 writeBuffer / readBuffer 会在 RT1、RT2 之间来回换：
- * 本链路的 RenderPass(no-swap) → SSAOPass(swap) → Bloom(no-swap) → OutputPass(swap) → FXAA(swap)
- * 每帧净交换 3 次（奇数），所以 RenderPass 落点会逐帧在 RT1/RT2 间交替 —— 两个 RT 都要开。
- * 改 samples 后必须 dispose()，否则已创建的帧缓冲不会按新采样数重建。
- */
-function applySceneMsaa(samples: number) {
-  if (!renderer || !composer) return
-  // WebGL1 不支持 RT 多重采样，保持 0 并交由 FXAA 兜底。
-  const next = renderer.capabilities.isWebGL2 ? samples : 0
-  if (next === appliedMsaaSamples) return
-  for (const target of [composer.renderTarget1, composer.renderTarget2]) {
-    target.samples = next
-    target.dispose()
-  }
-  appliedMsaaSamples = next
-  markNeedsRender()
-}
-
-/** SSAO 内部 RT 的分辨率比例。0.5 ⇒ normal/ssao/blur 三个 RT 的面积降到 1/4。 */
-const SSAO_RESOLUTION_SCALE = 0.5
-
-/**
- * 让 SSAO 真正跑在半分辨率上。
- *
- * 两个坑：
- *   1) `SSAOPass(scene, camera, width, height)` 的 width/height 是【目标像素尺寸】而非比例，
- *      默认 512；传 0.5 只会把初始 RT 建成 1×1，语义上并不是"半分辨率"。
- *   2) `SSAOPass.setSize()`（three r160 `examples/jsm/postprocessing/SSAOPass.js`）会把
- *      ssao/normal/blur 三个 RT 直接设为传入尺寸，内部【没有任何缩放系数】；
- *      而 `EffectComposer.setSize()` 会按 `width * pixelRatio` 逐个 pass 下发
- *      ⇒ 构造函数里的 0.5 会被全量覆盖，SSAO 实际一直跑全分辨率。
- * 所以只能在入口处包装 setSize —— 好在它内部会一并同步 resolution uniform 与投影矩阵 uniform，
- * 缩放入参即自洽。
- *
- * 为什么缩小是安全的：r160 的 `SSAOPass.OUTPUT.Default` 以合成器的 `readBuffer.texture`
- * （全分辨率）作为底图，只用 blurRenderTarget 走 CustomBlending 叠加 AO 项，
- * 因此缩小内部 RT 不会降低底图清晰度，只会让 AO 项被线性上采样 —— 这本就是 AO 的常规做法。
- */
-function applySsaoScale(pass: SSAOPass): void {
-  const baseSetSize = pass.setSize.bind(pass)
-  pass.setSize = (width: number, height: number) =>
-    baseSetSize(
-      Math.max(1, Math.round(width * SSAO_RESOLUTION_SCALE)),
-      Math.max(1, Math.round(height * SSAO_RESOLUTION_SCALE)),
-    )
-}
-
 function cleanup() {
   renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
@@ -1766,12 +1471,6 @@ function cleanup() {
     clearTimeout(trailingShadowDirtyTimer)
     trailingShadowDirtyTimer = null
   }
-  if (environmentRebuildTimer !== null) {
-    clearTimeout(environmentRebuildTimer)
-    environmentRebuildTimer = null
-  }
-  pendingEnvironmentRebuild = null
-  lastEnvironmentSignature = ''
   resizeObserver?.disconnect()
   resizeObserver = null
   window.removeEventListener('resize', handleResize)
@@ -1783,8 +1482,6 @@ function cleanup() {
   if (worldRuntime) worldRuntime.dispose()
   else if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
-  environmentTarget?.dispose()
-  pmremGenerator?.dispose()
   weatherVisuals?.dispose()
   weatherVisuals = null
   cloudLayer?.dispose()
@@ -1800,10 +1497,11 @@ function cleanup() {
   moonBody = null
   sky?.geometry.dispose()
   sky?.material.dispose()
-  environmentSky?.geometry.dispose()
-  environmentSky?.material.dispose()
-  environmentSunSprite?.removeFromParent()
-  environmentSunSprite = null
+  // 环境贴图（PMREM target + 离屏环境场景 + 太阳精灵）的释放统一交给运行时。
+  environmentRuntime?.dispose()
+  environmentRuntime = null
+  lightingRig?.dispose()
+  lightingRig = null
   clearBuiltInEnvironment()
   shadowGround?.geometry.dispose()
   shadowGround?.material.dispose()
@@ -1813,10 +1511,9 @@ function cleanup() {
     ;(groundMaterial as THREE.MeshStandardMaterial).map?.dispose()
   }
   groundMaterial?.dispose()
-  ssaoPass?.dispose()
-  bloomPass?.dispose()
-  fxaaPass?.material.dispose()
-  composer?.dispose()
+  // 后期合成链路（含 SSAO / Bloom / FXAA 三张 pass 与合成 RT）统一由运行时释放。
+  postProcessing?.dispose()
+  postProcessing = null
   configureMaterialRendering(1)
   disposeKtx2Rendering()
   worldLookRuntime.setActivationContext(undefined)

@@ -15,7 +15,7 @@
 
 import * as THREE from 'three'
 import type { ReconstructedEntity, MeshData } from '../types/scene'
-import type { LightElementBehavior } from '../wild-core/types'
+import type { LightElementBehavior } from 'wild-core/types'
 import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
 

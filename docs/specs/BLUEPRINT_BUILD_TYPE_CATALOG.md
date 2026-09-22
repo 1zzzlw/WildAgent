@@ -304,14 +304,14 @@ Blueprint 还保留四种旧式 `effects` 效果层：`weathering`、`moss`、`e
 
 | 主题 | 源码位置 |
 |---|---|
-| Blueprint、基础元素、组件和材质类型 | `wild-web/src/wild-core/types.ts` |
-| WILD JSON Schema | `wild-web/wild-lang/schema.json` |
-| Core 基础元素注册表 | `wild-web/src/wild-core/src/primitive/registry.ts` |
-| Core 重建主流程 | `wild-web/src/wild-core/src/primitive/index.ts` |
-| 组件编译主流程与注册表 | `wild-web/src/wild-compiler/index.ts`、`componentRegistry.ts` |
+| Blueprint、基础元素、组件和材质类型 | `wild-core/types.ts` |
+| WILD JSON Schema | `wild-core/schema.json` |
+| Core 基础元素注册表 | `wild-core/src/primitive/registry.ts` |
+| Core 重建主流程 | `wild-core/src/primitive/index.ts` |
+| 组件编译主流程与注册表 | `wild-core/src/compiler/index.ts`、`componentRegistry.ts` |
 | 后端 AI 组件生成注册表 | `wild-server/app/agent/generation/components.py` |
 | AI 建筑方案 Profile | `wild-server/app/agent/generation/architecture/` |
-| Core 材质合同与描述符 | `wild-web/src/wild-core/src/materials/contracts.ts`、`descriptor.ts` |
+| Core 材质合同与描述符 | `wild-core/src/materials/contracts.ts`、`descriptor.ts` |
 | Three.js 材质适配 | `wild-web/src/renderer/materialAdapter.ts` |
 | Renderer 表面功能注册表 | `wild-web/src/renderer/materialFeatures/registry.ts` |
 | 默认表面、PBR 天气响应、专用砖 Shader | `wild-web/src/renderer/materialFeatures/`、`proceduralMaterials/` |

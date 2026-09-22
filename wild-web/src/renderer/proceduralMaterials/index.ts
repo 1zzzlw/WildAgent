@@ -1,5 +1,5 @@
 import type * as THREE from 'three'
-import type { ProceduralMaterial } from '../../wild-core/types'
+import type { ProceduralMaterial } from 'wild-core/types'
 import { applyProceduralBrickMaterial } from './brickMaterial'
 import { normalizeProceduralBrick } from './types'
 

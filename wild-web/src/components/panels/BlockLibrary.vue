@@ -35,7 +35,7 @@ import { useUIStore } from '../../stores/uiStore'
 import { createPatch } from '../../wild/scenePatch'
 import { generateId } from '../../utils/common'
 import type { ComponentSpec, GeometryElement } from '../../types/blueprint'
-import type { RoofParams, WallParams } from '../../wild-core/types'
+import type { RoofParams, WallParams } from 'wild-core/types'
 import { ElMessage } from 'element-plus'
 
 const sceneStore = useSceneStore()

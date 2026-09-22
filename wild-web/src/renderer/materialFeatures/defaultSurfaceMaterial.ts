@@ -1,12 +1,12 @@
 import * as THREE from 'three'
-import type { RenderMaterialDescriptor, SurfaceFamily } from '../../wild-core/src/materials'
+import type { RenderMaterialDescriptor, SurfaceFamily } from 'wild-core/materials'
 import { PROCEDURAL_NOISE_GLSL } from '../proceduralMaterials/noise.glsl'
 import {
   getWorldEnvironmentUniforms,
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v2'
+const SHADER_VERSION = 'default-surface-v3'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>
@@ -48,6 +48,19 @@ const FAMILY_CODE: Record<SurfaceFamily, number> = {
 }
 
 const MASONRY_FAMILY_CODE = FAMILY_CODE.masonry
+/**
+ * mineral 族（灰泥 / 混凝土 / 抹面 / 石材面）在着色器里的分支号。
+ *
+ * 为什么给它单开一个分支：这一族是**实际蓝图里占比最高的一族** ——
+ * `resolveSurfaceFamily` 会按材质名里的 wall/floor/roof/stone/concrete/plaster
+ * 关键词把 `wall_white`、`roof_white`、`deck_stone`、`slab_concrete` 全部归到 mineral，
+ * 实测 `modern_pool_villa.wild` 的 18 处墙面引用全在这一族。
+ * 而在加这个分支之前，mineral 的高度场只有**各向同性**的细粒噪声 —— 近看是均匀的
+ * 砂纸感，中远看就退化成一块纯色，这正是"白墙像塑料"的直接原因。
+ * 手工抹面/批荡的真实特征是**拉长的抹痕 + 大块深浅斑**（各向异性、低频），
+ * 两者都不是细粒噪声能表达的，所以必须单独写。
+ */
+const MINERAL_FAMILY_CODE = FAMILY_CODE.mineral
 
 /**
  * 每个族的凹凸参数。relief 为高度场振幅（米），直接等于表面坡度（米/米）的上限量级，
@@ -60,7 +73,7 @@ const RELIEF_PRESETS: Record<SurfaceFamily, {
   grainFrequency: number
 }> = {
   masonry: { relief: 0.009, reliefRoughness: 0.3, courseCells: [3.3, 6.6], grainFrequency: 6 },
-  mineral: { relief: 0.012, reliefRoughness: 0.22, courseCells: [3.3, 6.6], grainFrequency: 12 },
+  mineral: { relief: 0.016, reliefRoughness: 0.22, courseCells: [3.3, 6.6], grainFrequency: 12 },
   wood: { relief: 0.010, reliefRoughness: 0.18, courseCells: [3.3, 6.6], grainFrequency: 16 },
   metal: { relief: 0.004, reliefRoughness: 0.14, courseCells: [3.3, 6.6], grainFrequency: 20 },
   neutral: { relief: 0.010, reliefRoughness: 0.2, courseCells: [3.3, 6.6], grainFrequency: 12 },
@@ -227,6 +240,21 @@ float wildSurfaceCourse(vec2 metric, vec2 cells, float seed) {
 /** 细粒糙面：单倍频价值噪声，用于灰泥/混凝土/木/金属的微观起伏。 */
 float wildSurfaceGrain(vec2 metric, float frequency, float seed) {
   return wildValueNoise(metric * frequency + vec2(seed * 0.0137, seed * 0.0071)) - 0.5;
+}
+
+/**
+ * 抹面/批荡特征：**拉长的抹痕**（x）+ **大块深浅斑**（y），返回约 [-1,1]。
+ *
+ * 各向异性是刻意的：把横向频率压到 0.32、纵向抬到 2.6，等值线就变成横向长条，
+ * 读起来才是"抹子走过的方向"；各向同性噪声只会得到一团团云斑，那是另一种材质。
+ * 频率刻意取低（每米不到一次量级）：抹痕是**分米级**结构，
+ * 高了就退化成细粒、和被它替代的 noise 没有区别，还会在远处闪。
+ */
+vec2 wildSurfacePlaster(vec2 metric, float seed) {
+  return vec2(
+    wildValueNoise(metric * vec2(0.32, 2.6) + vec2(seed * 0.0079, seed * 0.0023)) - 0.5,
+    wildFbm(metric * 0.55 + vec2(seed * 0.0031, seed * 0.0053)) - 0.5
+  );
 }`,
     )
     .replace(
@@ -240,6 +268,8 @@ float wildDefaultNoise = 0.5;
 float wildDefaultDetail = 0.5;
 float wildDefaultPattern = 0.0;
 float wildSurfaceReliefUnit = 0.0;
+// 抹面特征只在 mineral 分支里赋值；这里先给初值是为了让它在外层 if 之外也可读。
+vec2 wildPlaster = vec2(0.0);
 if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildWorldDust) > 0.0) {
   vec2 wildDefaultUv = vWildDefaultSurfaceUv * wildSurfaceScale;
   wildDefaultNoise = wildFbm(wildDefaultUv + vec2(wildSurfaceSeed * 0.0017));
@@ -253,6 +283,16 @@ if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildW
   } else if (wildSurfaceFamily == 3) {
     float wildMetalBrush = sin(wildDefaultUv.y * 42.0 + wildDefaultDetail * 2.0) * 0.035;
     wildDefaultPattern = wildDefaultPattern * 0.2 + wildMetalBrush;
+  } else if (wildSurfaceFamily == ${MINERAL_FAMILY_CODE}) {
+    // 抹面：颜色上的不匀主要来自低频的抹痕与斑，而不是细粒。
+    // ⚠️ 这里必须用**米制世界坐标**（和下面 relief 用的 wildSurfaceMetric 同一套），
+    // 不能用 wildDefaultUv：蓝图里楼板/门窗构件是归一化 0..1 UV、外墙是米制 UV，
+    // 两套混着用会让"颜色斑"和"凹凸痕"落在画面上的不同位置 —— 看起来像贴错图。
+    wildPlaster = wildSurfacePlaster(
+      wildSurfaceMetricUv(vWildDefaultWorldPosition, normalize(vWildDefaultWorldNormal)),
+      wildSurfaceSeed
+    );
+    wildDefaultPattern = wildDefaultPattern * 0.5 + wildPlaster.x * 0.62 + wildPlaster.y * 0.44;
   }
 #if __VERSION__ >= 300 && !defined( FLAT_SHADED )
   if (wildDefaultSurfaceAmount > 0.0 && wildSurfaceRelief > 0.0) {
@@ -285,6 +325,14 @@ if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildW
       ) * wildSurfaceMainFade
         + wildSurfaceGrainNoise * 0.3
         + (wildDefaultDetail - 0.5) * 0.35;
+    } else if (wildSurfaceFamily == ${MINERAL_FAMILY_CODE}) {
+      // 抹面：抹痕/斑是低频结构，所以只吃 mainFade，不做细粒那级淡出 ——
+      // 远处该保留的正是"整面墙深浅不匀"，那是辨认手工抹面的主要线索。
+      // 细粒只留 0.75 权重，否则会在抹痕上再糊一层砂纸感，反而回到"塑料"。
+      wildSurfaceReliefUnit = wildSurfaceGrainNoise * 0.75
+        + wildPlaster.x * 1.15
+        + wildPlaster.y * 0.7
+        + (wildDefaultDetail - 0.5) * 0.4;
     } else {
       // 灰泥/混凝土/木/金属：细粒为主 + 复用 wildDefaultDetail（其 fbm 已含 0.15m~4cm 多倍频），
       // 不额外增加 fbm 采样开销。
@@ -371,13 +419,17 @@ function createDefaultSurfaceParams(
   materialSeed: string,
 ): DefaultSurfaceParams {
   const family = descriptor.family
-  const base = family === 'mineral' || family === 'masonry'
+  // 各族的基础不匀度。mineral 单独一档（不像 masonry 那样靠砖块哈希出变化，
+  // 它的不匀必须来自低频抹痕，所以色差权重比 neutral/mineral 共用档更高）。
+  const base = family === 'masonry'
     ? { scale: 2.1, color: 0.11, roughness: 0.13 }
-    : family === 'wood'
-      ? { scale: 5.2, color: 0.1, roughness: 0.085 }
-      : family === 'metal'
-        ? { scale: 8.5, color: 0.045, roughness: 0.065 }
-        : { scale: 3.5, color: 0.04, roughness: 0.05 }
+    : family === 'mineral'
+      ? { scale: 2.1, color: 0.16, roughness: 0.13 }
+      : family === 'wood'
+        ? { scale: 5.2, color: 0.1, roughness: 0.085 }
+        : family === 'metal'
+          ? { scale: 8.5, color: 0.045, roughness: 0.065 }
+          : { scale: 3.5, color: 0.04, roughness: 0.05 }
   const relief = RELIEF_PRESETS[family]
   return {
     family,

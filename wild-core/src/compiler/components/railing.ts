@@ -3,7 +3,7 @@ import type {
   GeometryElement,
   PrimitiveParams,
   RailingComponent,
-} from '../../wild-core/types'
+} from '../../../types'
 import { ComponentCompileError } from '../types'
 import type { ComponentCompileContext } from '../types'
 import {

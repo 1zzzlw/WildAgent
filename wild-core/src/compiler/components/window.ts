@@ -2,7 +2,7 @@ import type {
   GeometryElement,
   OpeningParams,
   WindowComponent,
-} from '../../wild-core/types'
+} from '../../../types'
 import type { ComponentCompileContext } from '../types'
 import {
   assertFrameDimensions,

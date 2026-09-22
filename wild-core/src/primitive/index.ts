@@ -11,7 +11,7 @@ import { generatePlanarUVs } from './geometry/mesh-helper';
 import { applyMaterials } from './materials/apply';
 import { getElementBuilder } from './registry';
 import { normalizeBlueprintInput } from './parser';
-export { parseBlueprint } from './parser';
+export { parseBlueprint, normalizeBlueprintInput } from './parser';
 export { migrateBlueprintToLatest } from './migrations';
 export { getEngineCapabilities, registerElementBuilder } from './registry';
 export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';

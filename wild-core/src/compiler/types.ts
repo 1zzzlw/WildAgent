@@ -2,7 +2,7 @@ import type {
   Blueprint,
   ComponentSpec,
   GeometryElement,
-} from '../wild-core/types'
+} from '../../types'
 
 /** 单个组合构件编译时可读取的场景上下文。 */
 export interface ComponentCompileContext {

@@ -117,11 +117,10 @@ pipeline {
             ssh $SSH_OPTS "$DEPLOY_TARGET" \
               "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' NODE_BASE_IMAGE='$NODE_BASE_IMAGE' NPM_REGISTRY='$NPM_REGISTRY' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
-cd "$REMOTE_RELEASE_DIR/wild-web"
 docker run --rm \
   -e NPM_REGISTRY="$NPM_REGISTRY" \
-  -v "$PWD:/app" \
-  -w /app \
+  -v "$REMOTE_RELEASE_DIR:/repo" \
+  -w /repo/wild-web \
   "$NODE_BASE_IMAGE" \
   sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
 REMOTE_SCRIPT
@@ -225,7 +224,7 @@ docker build \
   -t "$IMAGE_WEB_NAME" \
   -t "$IMAGE_WEB_LATEST" \
   -f wild-web/Dockerfile \
-  wild-web
+  .
 REMOTE_SCRIPT
           '''
         }

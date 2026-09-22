@@ -1036,6 +1036,106 @@ def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None
     assert railings[0]["path"][0][1] == 3.4
 
 
+def test_l_shape_pitched_roof_is_split_per_volume() -> None:
+    """L 形 + 坡屋顶也必须按体量分段 —— 平面形状标签不是门禁。
+
+    回归：早期 ``_planned_roof_slots`` 只认 ``shape == "u_shape"`` **且**
+    ``roof.type == "flat"``，L 形别墅拿不到任何 ``roof_slots``，
+    ``component_quota.roof`` 停在 ``planning.py`` 硬编码的 1~1，整栋只长出一块屋顶。
+    2026-09-21 线上两例（``l_shape`` + ``gable``）均复现：一块 13×7 的屋面横跨内院、
+    两侧体量都盖不满，裸露墙顶 24.0m。
+    """
+    message = (
+        "生成一座两层L形别墅，主翼面南展开12米，副翼从东北角向北延伸形成半围合庭院，"
+        "双坡屋顶覆盖各翼"
+    )
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan(
+        {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
+    )
+    blueprint = build_deterministic_skeleton(plan, message)
+    brief = resolve_facade_layout(blueprint, plan)
+
+    volumes = brief["realization"]["volumes"]
+    assert brief["realization"]["shape"] == "l_shape"
+    assert len(volumes) == 2
+    assert len(brief["roof_slots"]) == len(volumes)
+    assert brief["component_quota"]["roof"]["min"] == len(volumes)
+    assert brief["component_quota"]["roof"]["max"] == len(volumes)
+
+    for slot, volume in zip(brief["roof_slots"], volumes):
+        # 一体量一槽，标高等于顶层墙顶，出檐只加在临空边
+        assert slot["id"] == f"roof:{volume['id']}"
+        assert slot["position"][1] == pytest.approx(6.4)
+        assert volume["width"] < slot["span"] <= volume["width"] + 1.0 + 1e-6
+        assert volume["depth"] < slot["depth"] <= volume["depth"] + 1.0 + 1e-6
+
+    # 模型只给一块屋顶时，程序拆成与体量数相同的多块，且互不重叠
+    roof_type = plan["roof"]["type"]
+    template = {
+        "type": "roof", "id": "roof_01", "roofType": roof_type,
+        "span": 13, "depth": 10, "height": 2.4, "thickness": 0.24,
+        "material": "roof", "position": [6, 6.4, 5],
+    }
+    roofs, roof_stats = conform_roofs_to_slots([template], brief)
+    parts = [item for item in roofs if item.get("type") == "roof"]
+
+    assert roof_stats == {"split": len(volumes) - 1, "synthesized": 0}
+    assert len(parts) == len(volumes)
+    assert {item["roofType"] for item in parts} == {roof_type}
+    for index, first in enumerate(parts):
+        first_rect = _roof_footprint(first)
+        for second in parts[index + 1:]:
+            second_rect = _roof_footprint(second)
+            overlap_x = min(first_rect[2], second_rect[2]) - max(first_rect[0], second_rect[0])
+            overlap_z = min(first_rect[3], second_rect[3]) - max(first_rect[1], second_rect[1])
+            # 相邻体量的两块屋面共享一条边（数值上可能差 1e-16），允许共边、不允许共面重叠
+            assert overlap_x <= 1e-6 or overlap_z <= 1e-6
+
+
+def _roof_footprint(roof: dict) -> tuple[float, float, float, float]:
+    """返回屋面的水平投影包围盒 (x0, z0, x1, z1)。"""
+    return (
+        roof["position"][0] - roof["span"] / 2,
+        roof["position"][2] - roof["depth"] / 2,
+        roof["position"][0] + roof["span"] / 2,
+        roof["position"][2] + roof["depth"] / 2,
+    )
+
+
+def test_single_volume_building_keeps_the_model_roof() -> None:
+    """单一体量不生成槽位 —— 保持模型自己的整块屋顶，不抢走造型自由。"""
+    message = "生成一座两层矩形别墅，采用双坡屋顶"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan(
+        {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
+    )
+    blueprint = build_deterministic_skeleton(plan, message)
+    brief = resolve_facade_layout(blueprint, plan)
+
+    assert brief["realization"]["shape"] == "rectangle"
+    assert brief["roof_slots"] == []
+    assert brief["component_quota"]["roof"]["min"] == 1
+    assert brief["component_quota"]["roof"]["max"] == 1
+
+
+@pytest.mark.parametrize("roof_type", ["dome", "chinese_pagoda", "chinese_curved"])
+def test_whole_building_roof_types_are_not_split_per_volume(roof_type: str) -> None:
+    """穹顶 / 重檐塔 / 中式曲面是整体式造型，不按体量拆（拆开只会得到碎曲面）。"""
+    message = "生成一座两层L形中式别墅，采用中式曲面屋顶"
+    complexity = resolve_complexity_profile(message, precision_mode=True)
+    plan = normalize_architecture_plan(
+        {"roof": {"type": roof_type}}, message, complexity,
+    )
+    blueprint = build_deterministic_skeleton(plan, message)
+    brief = resolve_facade_layout(blueprint, plan)
+
+    assert brief["realization"]["shape"] == "l_shape"
+    assert len(brief["realization"]["volumes"]) >= 2
+    assert brief["roof_slots"] == []
+    assert brief["component_quota"]["roof"]["min"] == 1
+
+
 def test_regular_balcony_slot_is_centered_on_an_upper_facade_opening() -> None:
     blueprint = _two_storey_blueprint()
     plan = normalize_architecture_plan({}, "生成带阳台的两层现代别墅")

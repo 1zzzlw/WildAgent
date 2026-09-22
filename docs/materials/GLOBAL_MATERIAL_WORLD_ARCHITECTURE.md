@@ -635,12 +635,12 @@ AI 不应直接写 Shader 源码，也不应随意生成任意字段。推荐流
 
 | 位置 | 可能职责变化 |
 | --- | --- |
-| `wild-web/src/wild-core/types.ts` | 增加全局引用、统一表面来源、`RenderProfile`、`EnvironmentState` 和世界实例协议 |
+| `wild-core/types.ts` | 增加全局引用、统一表面来源、`RenderProfile`、`EnvironmentState` 和世界实例协议 |
 | `wild-web/src/renderer/materialAdapter.ts` | 从“直接创建材质”转为通过 Registry/Compiler 获取材质 |
 | `wild-web/src/renderer/proceduralMaterials/` | 扩展有限材质族、版本、质量等级和回退 |
 | 建议新增 `wild-web/src/renderer/shaderFeatures/` | 保存湿润、雨痕、积雪等可复用 Three.js/GLSL 实现 |
 | 建议新增 `wild-web/src/renderer/shaderPacks/` | 解析 `.wildlook`，组合功能、质量等级和回退配置 |
-| `wild-web/src/wild-core/src/primitive/materials/apply.ts` | 统一绑定材质引用与受控实例覆盖 |
+| `wild-core/src/primitive/materials/apply.ts` | 统一绑定材质引用与受控实例覆盖 |
 | `wild-web/src/wild/materialBindings.ts` | 增加语义槽位、世界主题和优先级解析 |
 | 场景与重建相关模块 | 引入蓝图实例根节点、命名空间和卸载生命周期 |
 | `wild-web/src/components/panels/PBRAssetPanel.vue` | 支持 `.wildmat` 导入、预览、版本和许可证信息 |

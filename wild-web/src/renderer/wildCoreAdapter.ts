@@ -5,7 +5,7 @@
  * - parseBlueprint(): 解析 .wild JSON 字符串
  * - reconstructEntity(): 重建场景几何
  * 
- * wild-core 位置：src/wild-core/src/primitive/
+ * 引擎来源：同仓库的独立包 wild-core（wild-core/src/primitive/）
  * 
  * 使用方式：
  * ```ts
@@ -19,16 +19,16 @@ import type { ReconstructedEntity } from '../types/scene'
 import {
   compileBlueprintComponents,
   getComponentCapabilities,
-} from '../wild-compiler'
+} from 'wild-core/compiler'
 import { buildReconstructionDiagnostics } from './reconstructionDiagnostics'
 
 // 导入 wild-core 的函数
-// 注意：wild-core 使用的是 wild-lang/types.ts 的类型定义
+// 注意：wild-core 使用的是包内 types.ts 的类型定义
 import {
   parseBlueprint as coreParseBlueprint,
   reconstructEntity as coreReconstructEntity,
   getEngineCapabilities,
-} from '../wild-core/src/primitive/index'
+} from 'wild-core/primitive'
 
 /**
  * 解析 .wild JSON 字符串为 Blueprint

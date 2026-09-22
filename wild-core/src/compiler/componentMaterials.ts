@@ -1,4 +1,4 @@
-import type { ComponentSpec, MaterialDef } from '../wild-core/types'
+import type { ComponentSpec, MaterialDef } from '../../types'
 
 export const COMPONENT_MATERIAL = {
   frame: '__wild_component_frame',

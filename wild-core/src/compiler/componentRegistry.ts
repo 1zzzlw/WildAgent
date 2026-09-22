@@ -1,4 +1,4 @@
-import type { ComponentSpec } from '../wild-core/types'
+import type { ComponentSpec } from '../../types'
 import type { ComponentCompiler } from './types'
 import { compileDoor } from './components/door'
 import { compileRailing } from './components/railing'

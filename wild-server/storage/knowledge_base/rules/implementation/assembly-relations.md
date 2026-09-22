@@ -283,9 +283,9 @@ def validate_wall_attached(component, walls):
 
 本文档基于以下代码：
 
-- `wild-web/src/wild-core/src/primitive/resolver.ts`
-- `wild-web/src/wild-core/src/wild-compiler/index.ts`
-- `wild-web/src/wild-core/src/primitive/componentRegistry.ts`
+- `wild-core/src/primitive/resolver.ts`
+- `wild-core/wild-core/src/compiler/index.ts`
+- `wild-core/src/primitive/componentRegistry.ts`
 - 各组件的 `builder.ts` 和 `compiler.ts`
 
 约束规则与代码实现保持同步。
