@@ -15,6 +15,7 @@
 """
 
 import json
+import math
 from unittest.mock import patch
 
 import pytest
@@ -26,6 +27,7 @@ from app.agent.generation.components import (
     _COMPONENT_RULES,
 )
 from app.services.agent_service import agent_service
+from app.tools.component_tools import validate_component
 
 # `_COMPONENT_RULES["door"]` 的首行片段：只在 fallback 分支才会进 system prompt
 _RULE_MARKER = _COMPONENT_RULES["door"].splitlines()[0][:40]
@@ -160,3 +162,63 @@ async def test_roof_batch_survives_generation_and_collection():
     assert collected == roofs
     legacy, _ = _collect_fragments({"roof": roofs[0]})
     assert legacy == roofs[:1]
+
+
+# ── rotation 单位迁移必须**真的挂在生成器上**（2026-09-25）───────────────
+# 只测 `_coerce_fragment_rotations` 是不够的：负例验证（把生成器里的调用注掉）
+# 时它照样绿 —— 那正是"能力已实现却无人派发"。这条用例走真实节点函数体，
+# 唯一打桩的是 RAG 与模型，所以能钉住"调用点存在"。
+
+_DEGREE_FURNITURE = [
+    {
+        "type": "furniture", "id": "furniture_01", "subtype": "bed",
+        "position": [1.0, 0.0, 1.0],
+        "dimensions": {"width": 1.6, "depth": 2.0, "height": 0.55},
+        "rotation": 180,
+    },
+    {
+        "type": "furniture", "id": "furniture_02", "subtype": "wardrobe",
+        "position": [2.0, 0.0, 1.0],
+        "dimensions": {"width": 1.6, "depth": 0.6, "height": 2.2},
+        "rotation": [0, 90, 0],
+    },
+    {
+        "type": "furniture", "id": "furniture_03", "subtype": "nightstand",
+        "position": [3.0, 0.0, 1.0],
+        "dimensions": {"width": 0.45, "depth": 0.45, "height": 0.55},
+        "rotation": [0.0, 1.5708, 0.0],
+    },
+]
+
+
+@pytest.mark.asyncio
+async def test_furniture_generator_migrates_degree_rotations() -> None:
+    """模型写度数（标量 180 / 数组 [0,90,0]）时，**节点产出**必须是弧度。"""
+
+    async def invoke(_llm, _messages):
+        return _FakeLLMResult(json.dumps(_DEGREE_FURNITURE, ensure_ascii=False))
+
+    spec_loader, create_llm, _ = _node_patches("")
+    node = create_component_generator(COMPONENT_REGISTRY["furniture"])
+    with spec_loader, create_llm, patch(
+        "app.agent.generation.component_workflow.invoke_llm", invoke,
+    ):
+        update = await node(_state())
+
+    fragments = update["component_fragments"]["furniture"]
+    assert len(fragments) == 3, fragments
+
+    rotations = [fragment["rotation"] for fragment in fragments]
+    assert rotations[0][:3] == pytest.approx([0.0, math.pi, 0.0]), "180° 未迁移"
+    assert rotations[1][:3] == pytest.approx([0.0, math.pi / 2, 0.0]), "[0,90,0] 未迁移"
+    assert rotations[2] == [0.0, 1.5708, 0.0], "合法弧度值不该被改写"
+
+    result = validate_component(
+        "furniture",
+        {
+            "meta": {"version": "1.1", "type": "building"},
+            "geometry": {"elements": fragments, "components": []},
+            "materials": {},
+        },
+    )
+    assert "❌" not in str(result), result

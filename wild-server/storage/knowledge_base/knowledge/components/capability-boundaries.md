@@ -53,7 +53,7 @@ synonyms: []
 | `beam` | 矩形/圆形/工字截面 | 支持 `rect`, `circular`, `i-beam` |
 | `roof` | 多种屋顶类型 | 支持 `gable`, `hip`, `dome`, `flat`, `chinese_curved`, `chinese_pagoda` |
 | `opening` | 墙体洞口 | 必须引用 `parentWall` |
-| `furniture` | 参数化家具（**无宿主**，可单独成一个场景） | 支持 `table`, `chair`, `sofa`, `bookshelf`, `bed`, `wardrobe`, `nightstand`, `tv_cabinet`, `lamp`, `tile`（均为引擎原生 subtype，`position` 为底面中心锚点）；`rotation` 可任意朝向，绕底面中心旋转；所有子类型**正面统一朝 +Z**；`couch` 由服务端归一器收敛为 `sofa`（详见《家具参数契约》与《沙发表达》） |
+| `furniture` | 参数化家具（**无宿主**，可单独成一个场景） | 支持 `table`, `chair`, `sofa`, `bookshelf`, `bed`, `wardrobe`, `nightstand`, `tv_cabinet`, `lamp`, `tile`（均为引擎原生 subtype，`position` 为底面中心锚点）；`rotation` 可任意朝向，绕底面中心旋转，写**弧度三维数组** `[0, 弧度, 0]`（写成度数标量 `180` 或度数数组 `[0,90,0]` 时引擎按度数自动换算，不丢件）；所有子类型**正面统一朝 +Z**；`couch` 由服务端归一器收敛为 `sofa`（详见《家具参数契约》与《沙发表达》） |
 | `body` | 简化人物 | 用于化身，建筑中不常用 |
 
 ### 1.3 实验性支持 (experimental)

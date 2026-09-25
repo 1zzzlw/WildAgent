@@ -31,9 +31,26 @@ from app.agent.generation.components import ComponentConfig, component_rules_sou
 from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import plan_knowledge_query
 from app.utils.json_extractor import extract_json_array, extract_json_object
+from app.utils.rotation import coerce_element_rotation
 
 # 全局 LLM 并发信号量
 _LLM_SEMAPHORE = asyncio.Semaphore(3)
+
+
+def _coerce_fragment_rotations(fragments: list) -> int:
+    """对一批片段做 `rotation` 单位迁移，返回被改动的条数。
+
+    所有组件类型共用同一个入口（就在校验之前），规则本身只有一份
+    （`app/utils/rotation.py::coerce_element_rotation`）。
+    """
+
+    repaired = 0
+    for fragment in fragments:
+        if not isinstance(fragment, dict):
+            continue
+        if coerce_element_rotation(fragment) is not None:
+            repaired += 1
+    return repaired
 
 
 async def _recover_component_json(
@@ -287,11 +304,22 @@ def create_component_generator(config: ComponentConfig):
                     }
                 return component_state_update(config, empty_value, "gen", diag)
 
+        # ── 4.5 单位迁移：`rotation` 的度数写法收敛成契约的弧度三维数组 ──
+        # 放在校验**之前**：这一步是"同一语义、不同单位"的归一化，不是类型过滤。
+        # 曾把 8 个家具片段（rotation 写 90/180 度数标量）整批判死 → 条目重试 →
+        # 最终 0 件家具，表面像"模型不会做家具"。
+        repaired_rotations = _coerce_fragment_rotations(fragments)
+
         # ── 5. 基本校验（类型 + 必填字段）──
         valid = validate_fragments(fragments, config)
         total_ms = int((_time.time() - t0) * 1000)
 
         logger.info(f"[{config.component_type}_gen] 完成: {len(valid)} 个 {config.label}, {total_ms}ms")
+        if repaired_rotations:
+            logger.info(
+                f"[{config.component_type}_gen] rotation 单位迁移 "
+                f"{repaired_rotations} 个（度数 → 弧度）"
+            )
 
         value = valid if config.is_list else (valid[0] if valid else None)
         diag = {

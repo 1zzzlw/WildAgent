@@ -416,6 +416,8 @@ def _repair_body(elem: Dict[str, Any], report: NormalizeReport) -> Dict[str, Any
 
 def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) -> List[Dict[str, Any]]:
     """修复元素列表"""
+    from app.utils.rotation import coerce_element_rotation
+
     repaired = []
     
     for elem in elements:
@@ -428,6 +430,11 @@ def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) ->
         # 迁移旧版 body（保留几何，理由见 _repair_body）
         elif elem_type == "body":
             elem = _repair_body(elem, report)
+
+        # rotation 单位迁移（所有元素共用）：模型写成度数标量/度数数组时收敛成弧度，
+        # 而不是交给校验器把整批判死。与生成批次用的是同一个规则函数。
+        if coerce_element_rotation(elem) is not None:
+            report.repaired_fields.append(f"rotation 度数→弧度: {elem.get('id', '?')}")
         
         repaired.append(elem)
     

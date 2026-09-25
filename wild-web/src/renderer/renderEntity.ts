@@ -101,7 +101,12 @@ function createMeshFromMeshData(
     if (meshData.interaction.kind === 'opening') {
       mesh.userData.interactionOpen = false
       if (meshData.interaction.initiallyOpen) setOpeningInteractionProgress(mesh, 1)
-    } else {
+    } else if (meshData.interaction.kind === 'light') {
+      // 🔴 必须按 kind 显式分派，不能写 `else`：`InteractiveElementBehavior` 是
+      // `opening | light | elevator` 的联合，`else` 会把电梯行为也交给灯光初始化
+      // （读 undefined 的 lightType/color）—— 且 TS 会直接报 TS2345 卡住构建。
+      // 电梯无需初始化：编译器已按 `initialFloor` 摆好轿厢与导轨，运行时楼层状态
+      // 由 `callElevator` 惰性建立（`elevatorFloor ?? interaction.initialFloor ?? 0`）。
       initializeLightInteraction(mesh, meshData.interaction)
     }
   }

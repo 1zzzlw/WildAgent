@@ -45,7 +45,10 @@
 - 🔴 **门窗开合有唯一运行时消费点**：`attachedToWall.ts::createOpeningInteraction` → `renderEntity.ts::setOpeningInteractionProgress`。**只有两分支**：`swing` 绕 Y 转、**其余一律走 `openOffset` 平移** ⇒ 新增平移类 mode（如 `lift`）只需编译器给 `openOffset` 赋值，**渲染侧零改动**。`openDistance` 按 mode 分叉、`lift` 位移被钳到墙顶净空 → `GATES.md` §十。
 - 🔴 **`interaction` 的消费点只有编辑器视口** `CanvasViewport.vue:708 handleContextMenu`，且绑定在**右键**（左键留给选中高亮）；`lantu/viewer` 是**纯展示**（无 `Raycaster`/`pointerdown`）。说"电梯能按"须限定"编辑器 + 右键"。
 - 🔴 **`door.leafRows` 几何真生成、线数正确，但 8mm 凸起只有 5~13/255 灰阶** → 可见性随门在画面里的大小变化。"一眼认出卷帘门"必须叠加深色/金属 `leafMaterial`；**不许为可见性放宽厚度门禁**（总厚 ∈ `(0.04, 0.08]`，见 `GATES.md` §10.1）。
-- 🔴 **改 `wild-core` 几何/材质后必跑**：`check-wild-core.mjs` / `check-component-compiler.mjs`。`check-rendering-pipeline.mjs` **当前存量红**（`SHADER_VERSION` v3 vs 期望 v2，上一轮遗留），不是新回归。
+- 🔴 **改 `wild-core` 几何/材质后必跑**：`check-wild-core.mjs` / `check-component-compiler.mjs` / `check-rendering-pipeline.mjs`。✅ **2026-09-25 三关全绿**（"`SHADER_VERSION` v3 vs 期望 v2 存量红"**已作废**：那是 `e2ba4f7` 有意升 v3+调 `relief` 0.016 时门禁没跟上，期望值已补齐）。
+- 🔴 **联合类型新增成员后，所有收窄处必须显式列分支，禁止 `else` 兜底**：`InteractiveElementBehavior = opening|light|elevator` 加了 `elevator` 后，`renderEntity.ts:101` 的 `if(kind==='opening'){…}else{ 当灯初始化 }` 同时**编译报 TS2345**（`vue-tsc` 卡死 Jenkins）**且运行期错**（电梯读 `undefined` 的 `lightType/color`）。⇒ 加联合成员时把 `interaction.kind` 全部判定点 grep 一遍，逐个确认是 `===`。
+- 🔴 **`scripts/check-*.mjs` 里硬编码的期望值是"能力契约"，加构件/改参数必须同批更新**：`e744eba` 加 `elevator` 漏改能力清单 → 门禁红。能派生的就别写死（类型数改成从 `getComponentCapabilities().length` 派生）。
+- 🔴 **Jenkins 只跑三件事，`scripts/check-*.mjs` 不在其中**（红了不阻断部署）：`git archive HEAD` 上传 → 前端 `npm ci && npm run build`（= `vue-tsc -b && vite build`）→ 后端 `uv lock && pytest tests` → `docker build`（`wild-web/Dockerfile` 内部同样 `npm run build`）。⇒ **部署失败先看 `vue-tsc`**；`wild-core` 的 `exports` 指向 `.ts` 源码、`git archive` 不带未跟踪文件**不构成隐患**。
 
 ## 五、曝光与光照（S1）
 - 🔴 曝光/光强**唯一事实源**=`TIME_PRESETS`+`ENVIRONMENT_PRESETS`+天气；`worldLookRuntime` 默认 profile 倍率必须全为 1；标定必须"**走预设、不传 `?exp=`**"（门禁 `audit_exposure_calibration.mjs` 是**区间**断言）。three 0.160.1 无 `scene.environmentIntensity`；`Sky` 的 `rayleigh` 调大让天空更白不是更蓝。
@@ -54,12 +57,13 @@
 ## 六、协作与判定硬约束
 - 🔴 **两个同源克隆，工作树已分叉**：`E:/work/WildAgent`（活跃开发）与 `E:/AgentProject/WildAgent`（**旧链** + 渲染引擎 + **lantu 查看器在 `wild-web/lantu/`**）。HEAD 同为 `4bc9645`，但**未提交改动互不可见** → 动手前先问清在哪个树。
 - 🔴 **跨树移植只能"值级"**：AgentProject 走 `wild-core` **包抽取**（`import ... from 'wild-core/materials'`），`E:/work` 仍是内部目录布局 → 整目录搬 renderer 会 40+ `Cannot find module 'wild-core/*'`。
-- 跑 wild-server 一律 `wild-server/.venv/Scripts/python.exe`；`pytest tests` **全量能跑通**（2026-09-24 实测 905 passed / 1 xfailed，~10s），旧结论"全量必崩"**已作废**。⚠️ 必须非沙箱（沙箱内 `tests/rag/test_rag_background_sync.py` 5 F）。
+- 跑 wild-server 一律 `wild-server/.venv/Scripts/python.exe`；`pytest tests` **全量能跑通**（2026-09-25 实测 946 passed / 1 xfailed，~10s），旧结论"全量必崩"**已作废**。⚠️ 必须非沙箱（沙箱内 `tests/rag/test_rag_background_sync.py` 5 F）。
 - 🔴 **生成链双目标**：`DesignDecisions` 是 **`kind` 判别联合**（`architecture`｜`object`）；判定 `routing.detect_target_kind`，`api/ws_agent.py:639` 非 architecture 时 `building_type="asset"` → `object_design`。object 分支**结构上产不出** `massing/volumes/facades/roof`。竖切包 `app/agent/generation/objects/`。
 - 🔴 **目标判定只能建在闭集侧**：只有"命中建筑类型闭集"（`is_architecture_request`）才判 `architecture`，其余一律 `object`。建筑类型是**闭集**、物件名是**开放集** ⇒ "不是已知物件 ⟹ 是建筑"永远不成立。🔴 **不许为任何物件名单独写规则**（用户红线：生成一个小人和生成一个桌子是同一个测试用例）。
 - 🔴 **elements／components 分桶必须读 registry `is_element`，禁止硬编码类型名**（`utils/fragment_merger.py::_is_element_type`）。曾硬编码 `== "roof"` → `furniture` 被塞进 `components`，而 reconcile／校验只在 `elements` 找 → 家具"永远没落地"→ **无限重试到放弃**。
 - 🔴 **归一化不是类型过滤器**：`_repair_elements` 曾无条件丢弃 `type=="body"` → 最终蓝图空。现为**迁移不丢弃**（字段值对齐 `wild-core/.../body.ts`）。
 - 🔴 **"一个物件 = N 个零件"的通道只能设下限、不能设上限**（`design/resolver.py` 曾按 `count` 设 `component_quota[kind].max` → 4 零件花瓶被读成"4 个花瓶超上限"）。⇒ **凡"一个数被当两个单位用"，先问单位与被施加对象是否同一语义**。
+- 🔴 **同一语义、不同单位 ⇒ 迁移；语义本身不合法 ⇒ 才交给校验器**：`rotation` 契约是**弧度 vec3**，模型常写度数标量 `180` / 度数数组 `[0,90,0]` → 校验器如实报错但**整批 8 个片段判死 → 0 件家具**。唯一规则函数 `app/utils/rotation.py`（`coerce_rotation`；**2π 分界** + 非零分量须为 15 的整数倍，认不出返回 `None` 不猜）挂**三处**：`component_workflow.py::_coerce_fragment_rotations`（**校验之前**，第 4.5 步）/ `blueprint_normalizer._repair_elements` / `objects/planning.py::normalize_primitive_part`。🔴 **只测辅助函数 = 假绿**：注掉调用点后 40 条仍全绿 ⇒ 必须有**走真实节点函数体**的用例钉"调用点存在"（`test_component_generator_smoke.py::test_furniture_generator_migrates_degree_rotations`）。
 - 🔴 **`prompts/generation.py` A／E 段跨 kind 通用**；E 段 host 占位**数据驱动**（`_host_bound()` 读 registry `required_fields`），**不许写死 `parentWall`**。B 段逐条只放 `objects/skeleton.py::object_specs()`。
 - 🔴 **`furniture` 不是能力缺口**（引擎 10 subtype 齐全）；缺的是**房间划分** → 映射 `floor_plan`。
 - 🔴 **唯一剩余引擎侧能力缺口**：`balcony.ts:41` 自建内嵌 `RailingComponent`、**不透传 `infill*`** → 阳台玻璃栏板做不了。（"`furniture` 无 rotation" **已作废**：`rotation` 是契约字段 + `geometry/furniture.ts` 已实现，正面朝 +Z。）

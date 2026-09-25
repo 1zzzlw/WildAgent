@@ -334,6 +334,13 @@ def normalize_primitive_part(raw: object) -> dict[str, Any] | None:
     part: dict[str, Any] = {"shape": shape}
     for field in ("position", "rotation", "scale"):
         vector = _vec3(raw.get(field))
+        if vector is None and field == "rotation":
+            # `rotation` 允许"度数标量/度数数组"的写法：走与生成链同一个单位迁移
+            # 规则，而不是因为形态不对就静默丢掉朝向（丢掉 = 悄悄换了交付结果）。
+            from app.utils.rotation import coerce_rotation
+
+            coerced = coerce_rotation(raw.get(field))
+            vector = [round(value, 6) for value in coerced] if coerced else None
         if vector is not None:
             part[field] = vector
     material = str(raw.get("material") or "").strip()[:80]

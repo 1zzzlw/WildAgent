@@ -235,7 +235,11 @@ try {
     'wall_plaster',
   )
   assert.equal(defaultSurface.userData.wildDefaultSurface?.family, 'mineral')
-  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v2')
+  // v3 = `e2ba4f7 优化渲染引擎` 有意提升：同一次改动真实改了 shader 本体
+  // （给 mineral 族加了各向异性抹痕分支、relief 0.012→0.016）。shader 源码变了
+  // `customProgramCacheKey` 就必须变，否则 Three.js 会复用旧编译产物。
+  // 门禁的作用是"版本变更必须是一次显式决定"，这里决定已做出，故期望值跟上。
+  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v3')
   const defaultSurfaceShader = {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <uv_vertex>\n#include <defaultnormal_vertex>\n#include <worldpos_vertex>\n}',
@@ -259,7 +263,8 @@ try {
   // 表面凹凸层：所有表面族共用同一个 GPU program，族差异靠 uniform 分支选择，
   // 因此砖缝（masonry）与细粒（其余族）两条分支必须同时存在；且导数凹凸必须受
   // __VERSION__ 保护（WebGL1 若无反导数扩展会直接编译失败）。
-  assert.equal(defaultSurface.userData.wildDefaultSurface?.relief, 0.012)
+  // relief 0.012→0.016 与上面的 v3 同源（`e2ba4f7` 给 mineral 族加抹痕时一并加深了起伏振幅）。
+  assert.equal(defaultSurface.userData.wildDefaultSurface?.relief, 0.016)
   assert.equal(defaultSurface.userData.wildDefaultSurface?.grainFrequency, 12)
   assert.ok(defaultSurfaceShader.fragmentShader.includes('wildSurfaceMetricUv'))
   assert.ok(defaultSurfaceShader.fragmentShader.includes('float wildSurfaceCourse('))
@@ -271,7 +276,7 @@ try {
   assert.ok(
     defaultSurfaceShader.fragmentShader.includes('#if __VERSION__ >= 300 && !defined( FLAT_SHADED )'),
   )
-  assert.equal(defaultSurfaceShader.uniforms.wildSurfaceRelief.value, 0.012)
+  assert.equal(defaultSurfaceShader.uniforms.wildSurfaceRelief.value, 0.016)
   assert.equal(defaultSurfaceShader.uniforms.wildSurfaceGrainFrequency.value, 12)
 
   updateWorldRenderingState({ surfaceEnabled: false, surfaceQuality: 'high' })

@@ -68,13 +68,21 @@ cd <仓库根> && <python3> .workbuddy/diag/check_undefined_names.py wild-server
 ./.venv/Scripts/python.exe ../.workbuddy/diag/resync_knowledge_index.py
 ```
 
-⚠️ **存量红**（改动前就红，别当自己引入的）：
-- `wild-web/scripts/check-rendering-pipeline.mjs:225` 硬断言着色器缓存键，当前工作区
-  `actual: wild-surface:default-surface-v3 / expected: ...-v2` —— 上一轮改 `SHADER_VERSION` 没同步脚本。
+⚠️ **门禁现状（2026-09-25 复核：前端三关全绿）**：
+- `check-rendering-pipeline.mjs` **已转绿**。曾有的"存量红"（`actual: wild-surface:default-surface-v3 / expected: ...-v2`）
+  已查明是**门禁过期**而非代码错：`e2ba4f7 优化渲染引擎` 同一次改动真实改了 shader 本体
+  （mineral 族各向异性抹痕 + `relief 0.012→0.016`），v3 是**有意**提升
+  （shader 源码变了 `customProgramCacheKey` 必须变，否则 Three.js 复用旧编译产物）
+  → 已把 `:242/:266/:278` 三处期望值补齐。**同类原则：门禁里的期望值是"能力契约"，
+  改参数/加构件必须同批更新；能派生的就别写死。**
 - `check-component-compiler.mjs` 尾部**故意**打 `COMPONENT_COMPILE_FAILED` 负例 → 看退出码。
 - `verify_wild_blueprint.py` 退出码 1 可能是 `⚠️ 需要注意` 而非 error，读最后那行 `— 结果：`。
 
-⚠️ `pytest tests` **全量必崩** → 按目录跑。plan 链改造已删掉旧计划层的测试文件（`test_execution_plan.py` / `test_plan_mode_acceptance.py` / `test_web_research_gate.py` / `test_material_kind_requirement.py` / `test_requirements_floor_count_fix.py`），现在按 `tests/{agent,plan,components,repair,rag,network,api}` 跑即为全量相关集。
+⚠️ `pytest tests` **全量能跑通**（2026-09-25 实测 946 passed / 1 xfailed，~10s）。
+旧结论"全量必崩 → 按目录跑"（下一行）**已作废**，保留仅为对照。⚠️ 必须**非沙箱**：
+沙箱内 `tests/rag/test_rag_background_sync.py` 5 F。
+
+⚠️ ~~`pytest tests` **全量必崩** → 按目录跑~~（**已作废，勿采信**）。plan 链改造已删掉旧计划层的测试文件（`test_execution_plan.py` / `test_plan_mode_acceptance.py` / `test_web_research_gate.py` / `test_material_kind_requirement.py` / `test_requirements_floor_count_fix.py`），现在按 `tests/{agent,plan,components,repair,rag,network,api}` 跑即为全量相关集。
 ⚠️ `lantu/**` 不在 `tsconfig.app.json` 的 `include` 里 → 改查看器不走类型检查，需另行校验。
 
 ## 二、7e 反向屋顶覆盖（`validate_roof_top_coverage`）
@@ -160,6 +168,8 @@ node .workbuddy/diag/probe_page_errors.mjs \
 | `lib/pngStats.mjs` | 零依赖 PNG 解码（`zlib` inflate + 反滤波）+ 亮度/过曝/细节能量/分位数 + 分区域 `rgb`·`std`·`detail` + 裁剪并排落盘 |
 | `lib/regions.mjs` / `lib/rgbcheck.mjs` / `lib/mkview.mjs` | 分区域量化（`STATS=detail`）/ 区域 RGB 抽查 / 小尺寸并排对比图 |
 | `render_preview.mjs` | CPU 软件光栅化出 PNG —— **只做几何体检**（不做透明/阴影，观感不可信） |
+| `wild-server/scripts/rag/lint_wild_rag_docs.py <paths…>` | RAG 文档风格/围栏/metadata Lint。🔴 **必须显式传路径**（不带 `paths` 只报 usage 错、退出码仍是 0，别误当通过）。🔴 **真实路径在 `wild-server/scripts/rag/`，不是 `.workbuddy/diag/`**（旧记忆写错）。对照基线时注意：`redundant_path_metadata` **只在文件处于真实路径、`config.yaml` 能匹配时才触发**，把文件拷到 `/tmp` 跑会假性少报 + 多报 `missing_metadata` |
+| `wild-server/scripts/rag/check_kb.py`（或 `.workbuddy/diag/check_kb.py` 副本） | KB 结构 / metadata / **5 组过滤对**命中数 / `required_documents` 一致性；末尾打 `PASS`，并给出「参与生成检索的文档 N / 仅导航 M」 |
 
 > 🔴 **出图的两个坑**：① `file://` 下必须加 `--allow-file-access-from-files`（否则 ES module 被 CORS 拦，
 > 表现为"句柄建不出来"或"canvas 全黑"两种假象）；② **查看器 dev server 会自己死掉**（表现为 502），
@@ -300,7 +310,14 @@ try: ... finally: reset_reasoning_callback(token)
 ⚠️ 注入锚点按**真实行尾**匹配（本仓源码是 CRLF，`byte.count(b'\r\n')` 才是真相），
 且注入前 `assert` 命中恰好 1 次 —— 否则会"静默没注入"，测试通过被误读成"用例无效"（本轮踩过两次）。
 
-📌 `wild-server` 当前基线：`pytest tests` → **905 passed, 1 xfailed**（约 10s，2026-09-24）；
+🔴 **负例验证要连「调用点」一起注**：只注**规则函数/辅助函数**的返回值仍会全绿 —
+`rotation` 单位迁移本轮实测：把 `component_workflow.py` 里的 `_coerce_fragment_rotations(fragments)`
+注成 `0`，`test_rotation_units.py` **40 条一条不红**。⇒ 规则写对 ≠ 有人调用
+（"能力已实现却无人派发"的测试版）。修法=再补一条**走真实节点函数体**的用例
+（`test_component_generator_smoke.py::test_furniture_generator_migrates_degree_rotations`），
+注回去后**恰好这一条红、其余 4 条绿**。
+
+📌 `wild-server` 当前基线：`pytest tests` → **946 passed, 1 xfailed**（约 10s，2026-09-25）；
 唯一 xfail 是 `test_architecture_quota_consistency.py::test_schematic_high_rise_fallback_satisfies_design_contract`（`_fallback_plan` 配额 84 vs 实际 69 槽位）。
 `audit_keyword_calls.py` → 405 调用点 / 0 问题。
 

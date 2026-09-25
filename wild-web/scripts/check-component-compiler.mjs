@@ -114,7 +114,9 @@ try {
   assertPresenceUpdate(compiler)
   await assertExplicitServerSave(compiler)
   await inspectExternalBlueprint(compiler)
-  console.log('Component compiler check passed: 10 component types, attachments, cache and interaction.')
+  // 类型数从能力表派生，避免新增构件后这行标签与实际脱节（曾写死 10 → 加了 elevator 仍打印 10）。
+  const capabilityCount = compiler.getComponentCapabilities().length
+  console.log(`Component compiler check passed: ${capabilityCount} component types, attachments, cache and interaction.`)
 } finally {
   await rm(outputDirectory, { recursive: true, force: true })
 }
@@ -241,6 +243,7 @@ function assertCapabilities(compiler) {
     'chimney',
     'cornice',
     'door',
+    'elevator',
     'light',
     'railing',
     'ramp',
