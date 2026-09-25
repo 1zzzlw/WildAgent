@@ -38,7 +38,6 @@ export function createUserMessageRequest(
   thinkingMode: boolean = false,
   precisionMode: boolean = false,
   proceduralMaterialsEnabled: boolean = false,
-  planMode: boolean = false,
   recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [],
 ): UserMessageRequest {
   return {
@@ -55,7 +54,6 @@ export function createUserMessageRequest(
     thinking_mode: thinkingMode,
     precision_mode: precisionMode,
     procedural_materials_enabled: proceduralMaterialsEnabled,
-    plan_mode: planMode,
     recent_messages: recentMessages,
   }
 }

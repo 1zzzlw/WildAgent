@@ -15,7 +15,7 @@
 
 import * as THREE from 'three'
 import type { ReconstructedEntity, MeshData } from '../types/scene'
-import type { LightElementBehavior } from 'wild-core/types'
+import type { ElevatorElementBehavior, LightElementBehavior } from 'wild-core/types'
 import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
 
@@ -164,7 +164,72 @@ export function toggleRuntimeInteraction(
   if (object.userData.interaction?.kind === 'light') {
     return toggleLightInteraction(object, requestRender)
   }
+  if (object.userData.interaction?.kind === 'elevator') {
+    return callElevator(object, requestRender)
+  }
   return false
+}
+
+/**
+ * 呼梯：点击轿厢或呼梯按钮，轿厢到下一楼层（顶层后回到 0 层循环）。
+ *
+ * 轿厢与按钮的 `interaction` 携带同一份 `ElevatorElementBehavior`（同 id 前缀），
+ * 但运行时楼层状态只挂在**轿厢网格**的 userData 上：按钮点击时先把指令转发给
+ * 同组件的轿厢网格（`mesh.name` 即 elementId，约定为 `<componentId>__cab`），
+ * 再走同一套楼层推进逻辑，保证从任意入口点击都只有一个状态源。
+ */
+export function callElevator(
+  object: THREE.Object3D,
+  requestRender: () => void = () => {},
+): boolean {
+  if (!(object instanceof THREE.Mesh)) return false
+  const interaction = object.userData.interaction as ElevatorElementBehavior
+  if (interaction?.kind !== 'elevator') return false
+
+  const cab = object.name.endsWith('__cab') ? object : findElevatorCab(object)
+  if (!cab) return false
+
+  const currentFloor = cab.userData.elevatorFloor ?? interaction.initialFloor ?? 0
+  const nextFloor = (currentFloor + 1) % interaction.floorCount
+  const closedY = cab.position.y - currentFloor * interaction.floorHeight
+  const fromY = cab.position.y
+  const toY = closedY + nextFloor * interaction.floorHeight
+  const token = (cab.userData.elevatorAnimationToken || 0) + 1
+  cab.userData.elevatorAnimationToken = token
+  cab.userData.elevatorTargetFloor = nextFloor
+  const startedAt = performance.now()
+  // 每层行程约 1.2s；单层距离缩放时长，楼层越高越久但不拖沓。
+  const duration = 400 + 500 * Math.abs(nextFloor - currentFloor)
+
+  const tick = (now: number) => {
+    if (cab.userData.elevatorAnimationToken !== token) return
+    const linear = Math.min(1, (now - startedAt) / duration)
+    const eased = linear * linear * (3 - 2 * linear)
+    cab.position.y = fromY + (toY - fromY) * eased
+    requestRender()
+    if (linear < 1) requestAnimationFrame(tick)
+    else {
+      cab.position.y = toY
+      cab.userData.elevatorFloor = nextFloor
+      cab.userData.elevatorTargetFloor = nextFloor
+    }
+  }
+  requestRender()
+  requestAnimationFrame(tick)
+  return true
+}
+
+/** 在场景中找到与按钮同组件的轿厢网格（`<componentId>__cab`）。 */
+function findElevatorCab(button: THREE.Mesh): THREE.Mesh | null {
+  const componentId = button.name.replace(/__[^_]+$/, '')
+  let cab: THREE.Mesh | null = null
+  button.parent?.traverse(child => {
+    if (cab || !(child instanceof THREE.Mesh)) return
+    if (child.name === `${componentId}__cab` && child.userData.interaction?.kind === 'elevator') {
+      cab = child
+    }
+  })
+  return cab
 }
 
 /** 右键让灯具按“关闭 → 弱光 → 强光 → 关闭”循环，并平滑过渡亮度。 */

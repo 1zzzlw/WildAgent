@@ -259,9 +259,12 @@ def _fallback_plan(
     }
 
 
-def _normalize_pattern(value: object, bays: int, fallback: list[str]) -> list[str]:
+def _normalize_pattern(
+    value: object, bays: int, fallback: list[str], *, allowed_types: set[str] | None = None,
+) -> list[str]:
     raw = value if isinstance(value, list) else fallback
-    pattern = [str(item).lower() if str(item).lower() in _OPENING_TYPES else "empty" for item in raw]
+    allowed = _OPENING_TYPES if allowed_types is None else allowed_types
+    pattern = [str(item).lower() if str(item).lower() in allowed else "empty" for item in raw]
     if len(pattern) < bays:
         pattern.extend(["empty"] * (bays - len(pattern)))
     return pattern[:bays]
@@ -528,13 +531,31 @@ def normalize_architecture_plan(
     )
     raw_detail_packages = source.get("detail_packages")
     allowed_detail_packages = set(_DETAIL_COMPONENT_QUOTAS)
+    # 用户点名的细部包是本次方案的硬需求：`_default_detail_packages` 只由显式关键词
+    # 产生（不含默认套餐），所以"模型没写"就是"用户没要"，反过来"用户要了"就必须留下。
+    # 模型可以补充，但**不能删除**——实测"生成一个别墅，里面要有家具"会被规划模型以
+    # 「家具属于室内设计，不在建筑方案职责内」为由把 detail_packages 写成 `[]`，
+    # 照单全收后配额与 required_components 一起消失，最终表现成"要了却一件都没生成"。
+    requested_detail_packages = [
+        str(item).lower() for item in fallback["detail_packages"]
+        if str(item).lower() in allowed_detail_packages
+    ]
     if isinstance(raw_detail_packages, list):
         detail_packages = [
             str(item).lower() for item in raw_detail_packages
             if str(item).lower() in allowed_detail_packages
         ]
     else:
-        detail_packages = list(fallback["detail_packages"])
+        detail_packages = []
+    # 点名项必须排在前面：本列表末尾有 `[:6]` 截断，排在后面会被整段切掉。
+    detail_packages = list(dict.fromkeys([
+        *requested_detail_packages,
+        *detail_packages,
+    ]))
+    if modeled_floors < 2:
+        # 单层建筑没有垂直交通需求（KB《电梯》能力边界明确写"不要生成"）；
+        # 这是需求侧的无效项，与模型是否写了它无关，所以在配额之前就剔除。
+        detail_packages = [item for item in detail_packages if item != "elevator"]
     if len(detail_packages) < int(complexity["min_detail_packages"]):
         detail_packages = list(dict.fromkeys([
             *detail_packages,
@@ -576,13 +597,13 @@ def normalize_architecture_plan(
             # 幕墙立面轴网必须密铺；模型输出不得用稀疏「窗/空」模式覆盖默认窗格。
             bays = int(base["bays"])
             ground = _normalize_pattern(base["ground_pattern"], bays, base["ground_pattern"])
-            upper = _normalize_pattern(base["upper_pattern"], bays, base["upper_pattern"])
+            upper = _normalize_pattern(base["upper_pattern"], bays, base["upper_pattern"], allowed_types=_OPENING_TYPES - {"door"})
             # entrance_bay 必须在 [1, bays] 范围内，即使是 fallback 值也要检查
             entrance_bay = min(int(base.get("entrance_bay", 1)), bays) if "entrance_bay" in base else None
         else:
             bays = int(_clamp_number(item.get("bays"), 1, 9, base["bays"]))
             ground = _normalize_pattern(item.get("ground_pattern"), bays, base["ground_pattern"])
-            upper = _normalize_pattern(item.get("upper_pattern"), bays, base["upper_pattern"])
+            upper = _normalize_pattern(item.get("upper_pattern"), bays, base["upper_pattern"], allowed_types=_OPENING_TYPES - {"door"})
             # 只有base中有entrance_bay的立面（front）才处理entrance_bay
             if "entrance_bay" in base:
                 entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
@@ -765,6 +786,11 @@ def normalize_architecture_plan(
         vertical_strategy = default_vertical_strategy
     if modeled_floors > 1 and vertical_strategy == "none":
         vertical_strategy = default_vertical_strategy
+    if modeled_floors > 1 and "elevator" in detail_packages:
+        # 电梯必须有井道围合，而 `core_and_stair` 是唯一会生成 `wall_core_*` 骨架的策略
+        # （`stair` 只放楼梯）。用户点了电梯却停留在 `stair` 时，轿厢没有井道可放，
+        # 只能悬在建筑里；这里把策略升级到配套的核心筒，而不是让下游去猜。
+        vertical_strategy = "core_and_stair"
     circulation = {"vertical_strategy": vertical_strategy}
 
     rationale = source.get("design_rationale")

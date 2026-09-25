@@ -1,49 +1,24 @@
-"""受控网络研究客户端：搜索 + 网页抓取的安全封装。"""
+"""外部知识的**离线**入库通道。
 
-from app.agent.knowledge.web.search_client import (
-    MockSearchClient,
-    SearchClient,
-    SearchQuery,
-    TavilySearchClient,
-    WebResult,
-    _validate_public_url,
+代码里不再有"运行期联网检索"这一步：在线研究节点随旧计划层一起删除（它唯一的
+消费者是计划研究）。保留下来的是离线补课链路——把外部资料整理成声明、写进 staging，
+再由 `scripts/kb/promote_staged.py` 人工审核后并入知识库。下一次生成就能检索到，
+不需要在请求链路上联网，也就不会有"结果不可复现"的问题。
+"""
+
+from app.agent.knowledge.web.knowledge_claims import KnowledgeClaim, map_claim_to_capability
+from app.agent.knowledge.web.staging import (
+    STAGING_ROOT,
+    claim_to_markdown,
+    list_staged_files,
+    write_claim_to_staging,
 )
 
-
-def create_search_client(
-    *,
-    enabled: bool = False,
-    provider: str = "tavily",
-    api_key: str = "",
-    base_url: str = "https://api.tavily.com/search",
-    max_content_chars: int = 4000,
-    timeout_ms: int = 15000,
-) -> SearchClient | None:
-    """按配置创建搜索客户端；未启用或缺 key 时返回 None（调用方回退纯本地）。
-
-    用户只需在 .env 配置 WEB_RESEARCH__API_KEY 即可启用。
-    """
-    if not enabled or not api_key:
-        return None
-    try:
-        if provider == "tavily":
-            return TavilySearchClient(
-                api_key,
-                base_url=base_url,
-                max_content_chars=max_content_chars,
-                timeout_ms=timeout_ms,
-            )
-        return None
-    except ValueError:
-        return None
-
-
 __all__ = [
-    "MockSearchClient",
-    "SearchClient",
-    "SearchQuery",
-    "TavilySearchClient",
-    "WebResult",
-    "create_search_client",
-    "_validate_public_url",
+    "KnowledgeClaim",
+    "STAGING_ROOT",
+    "claim_to_markdown",
+    "list_staged_files",
+    "map_claim_to_capability",
+    "write_claim_to_staging",
 ]

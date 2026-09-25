@@ -14,7 +14,7 @@
  *   - beam: from, to, width, height
  *   - roof: roofType, span, depth, height
  *   - opening: parentWall, from, width, height
- *   - furniture: subtype, position, dimensions
+ *   - furniture: subtype, position, rotation, dimensions
  * 
  * 用于：
  * - 构件库添加构件时提供默认值
@@ -82,6 +82,8 @@ export function getElementDefaults(type: string): Record<string, unknown> {
     furniture: {
       subtype: 'table',
       position: [0, 0, 0],
+      // 绕底面中心的欧拉角；正面（椅/沙发靠背的背面）朝 +Z。
+      rotation: [0, 0, 0],
       dimensions: { width: 1, depth: 0.8, height: 1 }
     },
     primitive: {

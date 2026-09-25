@@ -77,7 +77,53 @@ export function compileRailing(
     }
   })
 
+  appendInfillPanels(component, path, elements)
+
   return elements
+}
+
+/** 沿路径逐段生成栏板（玻璃 / 实心板）：薄盒体，绕 Y 旋转对齐各段。 */
+function appendInfillPanels(
+  component: RailingComponent,
+  path: Array<[number, number, number]>,
+  elements: GeometryElement[],
+): void {
+  const infillType = component.infillType
+  if (!infillType) return
+  if (infillType !== 'glass' && infillType !== 'panel') {
+    throw new ComponentCompileError(
+      `infillType 只能是 "glass" 或 "panel"，收到 ${JSON.stringify(infillType)}`,
+      'infillType',
+    )
+  }
+  const infillThickness = component.infillThickness ?? (infillType === 'glass' ? 0.02 : 0.05)
+  assertPositive(infillThickness, 'infillThickness')
+  const infillTopRatio = component.infillTopRatio ?? 0.92
+  if (!Number.isFinite(infillTopRatio) || infillTopRatio <= 0 || infillTopRatio > 1) {
+    throw new ComponentCompileError('infillTopRatio 必须位于 (0, 1] 范围', 'infillTopRatio')
+  }
+  const panelHeight = component.height * infillTopRatio
+  const infillMaterial = component.infillMaterial ?? component.material
+
+  for (let segmentIndex = 0; segmentIndex < path.length - 1; segmentIndex++) {
+    const start = path[segmentIndex]
+    const end = path[segmentIndex + 1]
+    const dx = end[0] - start[0]
+    const dz = end[2] - start[2]
+    const segmentLength = Math.hypot(dx, dz)
+    if (segmentLength < 1e-6) continue
+    const baseY = (start[1] + end[1]) / 2
+    const panel: PrimitiveParams = {
+      type: 'primitive',
+      id: `${component.id}__infill_${padIndex(segmentIndex)}`,
+      shape: 'box',
+      position: [(start[0] + end[0]) / 2, baseY + panelHeight / 2, (start[2] + end[2]) / 2],
+      rotation: [0, Math.atan2(dz, dx), 0],
+      dimensions: [segmentLength, panelHeight, infillThickness],
+    }
+    if (infillMaterial) panel.material = infillMaterial
+    elements.push(panel)
+  }
 }
 
 function validateRailLevels(levels: number[]): void {

@@ -73,6 +73,13 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
                         "position": [0, 0, 2],
                         "dimensions": {"width": 2, "depth": 2, "height": 0.5},
                     },
+                    {
+                        "id": "couch",
+                        "type": "furniture",
+                        "subtype": "couch",
+                        "position": [4, 0, 2],
+                        "dimensions": {"width": 2, "depth": 1, "height": 0.8},
+                    },
                 ],
             },
             "materials": {},
@@ -84,7 +91,8 @@ class BlueprintMaterialValidationTest(unittest.TestCase):
             for element in normalized["geometry"]["elements"]
         ]
 
-        self.assertEqual(subtypes, ["chair", "table", "bed"])
+        # sofa 已是引擎原生 subtype（buildSofa），不再降级为 chair；couch 是它的别名。
+        self.assertEqual(subtypes, ["sofa", "table", "bed", "sofa"])
         self.assertEqual(blueprint["geometry"]["elements"][0]["subtype"], "sofa")
         validation = validate_element_required_fields.func(normalized)
         self.assertNotIn("❌", validation)

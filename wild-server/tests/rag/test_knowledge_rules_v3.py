@@ -10,7 +10,6 @@ from app.agent.knowledge.policy import (
     GENERATION_ROLES, chat_knowledge_query_specs, knowledge_hit_applies, plan_knowledge_query,
     term_is_requested,
 )
-from app.agent.knowledge.evidence_gate import evaluate_knowledge_coverage
 from app.agent.prompts import build_architecture_plan_prompt, build_skeleton_prompt
 
 
@@ -68,20 +67,6 @@ class KnowledgeRulesTest(unittest.TestCase):
         self.assertIn("core_and_stair", query)
         self.assertIn("canopy", query)
         self.assertNotIn("12345", query)
-
-    def test_unknown_use_does_not_trigger_encyclopedia_research(self):
-        hits = [{"metadata": {"doc_type": "component", "topic": "parameters", "entity_type": "wall"}},
-                {"metadata": {"doc_type": "recipe", "topic": "assembly"}}]
-        decision = evaluate_knowledge_coverage("生成新类型建筑", "unknown", hits)
-        self.assertTrue(decision.sufficient)
-        self.assertFalse(decision.trigger_web_research)
-        self.assertEqual(decision.missing_required, [])
-
-    def test_missing_engine_knowledge_is_reported_without_web_invention(self):
-        decision = evaluate_knowledge_coverage("设计别墅", "villa", [])
-        self.assertFalse(decision.sufficient)
-        self.assertTrue(decision.missing_required)
-        self.assertFalse(decision.trigger_web_research)
 
     def test_plan_prompt_has_no_fixed_building_or_profile_defaults(self):
         prompt = build_architecture_plan_prompt("关系规则", {"default_massing": [12, 9, 2, 3.2], "default_roof": "flat"})

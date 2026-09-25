@@ -71,10 +71,7 @@ def state_updates_from_candidate(
     for config in COMPONENT_REGISTRY.values():
         if not config.implemented:
             continue
-        old_value = generic_fragments.get(
-            config.component_type,
-            state.get(config.output_key),
-        )
+        old_value = generic_fragments.get(config.component_type)
         matching_entities = [
             entity for entity in candidate_entities.values()
             if entity.get("type") == config.component_type

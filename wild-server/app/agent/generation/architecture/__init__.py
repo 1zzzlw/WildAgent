@@ -11,7 +11,12 @@ from .facade import (
 from .planning import (
     normalize_architecture_plan,
 )
-from .profile import detect_architecture_profile, resolve_complexity_profile
+from .profile import (
+    detect_architecture_profile,
+    is_architecture_request,
+    match_architecture_profile_id,
+    resolve_complexity_profile,
+)
 from .skeleton import build_deterministic_skeleton, evaluate_skeleton_complexity
 
 __all__ = [
@@ -23,6 +28,8 @@ __all__ = [
     "conform_roofs_to_slots",
     "detect_architecture_profile",
     "evaluate_skeleton_complexity",
+    "is_architecture_request",
+    "match_architecture_profile_id",
     "normalize_architecture_plan",
     "resolve_complexity_profile",
     "resolve_facade_layout",

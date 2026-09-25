@@ -68,6 +68,45 @@ function elementBBox(element: GeometryElement, min: number[], max: number[]) {
     }
   }
 
+  // primitive / body：position 是几何**中心**（body 是脚底），按 shape 展开真实范围。
+  // 只解四种几何方式；这不是在重算几何，而是给"只有一个几何体、没有墙板"的
+  // 物件场景一个可用的取景盒 —— 漏掉这一支时，一个只用球/圆柱拼出来的物件
+  // 会让包围盒退化成单个点，取景中心歪掉。
+  if (e.type === 'primitive') {
+    const pos = isVec3(e.position) ? e.position : [0, 0, 0]
+    const shape = typeof e.shape === 'string' ? e.shape : ''
+    const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+    if (shape === 'sphere') {
+      const r = num(e.radius)
+      if (r > 0) {
+        addPoint([pos[0] - r, pos[1] - r, pos[2] - r], min, max)
+        addPoint([pos[0] + r, pos[1] + r, pos[2] + r], min, max)
+      }
+    } else if (shape === 'cylinder') {
+      const h = num(e.height)
+      const r = num(e.radius) || Math.max(num(e.radiusTop), num(e.radiusBottom))
+      if (h > 0 && r > 0) {
+        addPoint([pos[0] - r, pos[1] - h / 2, pos[2] - r], min, max)
+        addPoint([pos[0] + r, pos[1] + h / 2, pos[2] + r], min, max)
+      }
+    } else if (shape === 'profile_sweep') {
+      const pathPoints = Array.isArray(e.path) ? e.path : []
+      for (const p of pathPoints) {
+        if (isVec3(p)) addPoint([pos[0] + p[0], pos[1] + p[1], pos[2] + p[2]], min, max)
+      }
+    }
+  }
+  if (e.type === 'body') {
+    // 引擎把脚底放在 position 上（见 wild-core `body.ts::buildBody`）。
+    const pos = isVec3(e.position) ? e.position : [0, 0, 0]
+    const bodyHeight = typeof e.height === 'number' ? e.height : 0
+    if (bodyHeight > 0) {
+      const halfWidth = bodyHeight * 0.45
+      addPoint([pos[0] - halfWidth, pos[1], pos[2] - halfWidth], min, max)
+      addPoint([pos[0] + halfWidth, pos[1] + bodyHeight, pos[2] + halfWidth], min, max)
+    }
+  }
+
   // 底部 Y + 高度 → 顶面 Y
   const height = e.height
   if (typeof height === 'number' && Number.isFinite(height) && height > 0) {
@@ -90,6 +129,11 @@ function elementBBox(element: GeometryElement, min: number[], max: number[]) {
   }
 
   // furniture / primitive.box：position + dimensions 展开
+  // ⚠️ 两者的锚点语义不同，不能都用 `pos → pos + dims` 展开：
+  //   - `primitive`：position 是几何**中心** → 三个轴都 ±dims/2
+  //   - `furniture`：position 是**底面中心** → X/Z ±dims/2，Y 从底面往上
+  // 旧写法把两者都当成"角点"，独立物件场景（只有一个家具、无墙无板）会让包围盒
+  // 整体偏出半个占地尺寸，取景中心因此歪掉。
   const dimensions = e.dimensions
   if (dimensions && typeof dimensions === 'object') {
     const pos = isVec3(e.position) ? e.position : [0, 0, 0]
@@ -101,8 +145,14 @@ function elementBBox(element: GeometryElement, min: number[], max: number[]) {
           (dimensions as Record<string, unknown>).depth,
         ]
     if (isVec3(dims)) {
-      addPoint([pos[0], pos[1], pos[2]], min, max)
-      addPoint([pos[0] + (dims[0] || 0), pos[1] + (dims[1] || 0), pos[2] + (dims[2] || 0)], min, max)
+      const [w, h, d] = [dims[0] || 0, dims[1] || 0, dims[2] || 0]
+      if (e.type === 'furniture') {
+        addPoint([pos[0] - w / 2, pos[1], pos[2] - d / 2], min, max)
+        addPoint([pos[0] + w / 2, pos[1] + h, pos[2] + d / 2], min, max)
+      } else {
+        addPoint([pos[0] - w / 2, pos[1] - h / 2, pos[2] - d / 2], min, max)
+        addPoint([pos[0] + w / 2, pos[1] + h / 2, pos[2] + d / 2], min, max)
+      }
     }
   }
 }

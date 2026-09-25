@@ -13,11 +13,9 @@ from app.agent.generation.architecture import (
     resolve_complexity_profile,
 )
 from app.agent.state import GenerationState
-from app.agent.planning.execution import execution_plan_phase_guidance
-from app.agent.planning.requirements import structured_requirement_guidance
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
-from app.agent.prompts import append_approved_phase_guidance, build_architecture_plan_prompt
+from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
 from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
@@ -74,21 +72,19 @@ def build_design_document_or_error(
 
 
 async def architecture_planner(state: GenerationState) -> dict:
-    """输出唯一最终总体方案，模型失败时回退到确定性默认方案而不中断生成。"""
+    """输出唯一最终总体方案。
+
+    失败语义分两类，别混：
+      - **模型服务故障** → 返回 `model_failure_result()`（`error` + `terminal_model_error`），
+        **终止本轮图运行**，不进入建筑修复循环；
+      - **模型输出解析不了** → 走 `normalize_architecture_plan()` 的确定性归一化兜底，**不中断**。
+    """
     from app.services.agent_service import agent_service
 
     started = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
-    execution_plan = state.get("execution_plan")
-    plan_feedback = (
-        str(execution_plan.get("feedback") or "")
-        if isinstance(execution_plan, dict)
-        else ""
-    )
-    revision_feedback = str(
-        state.get("design_feedback") or state.get("plan_feedback") or plan_feedback or ""
-    ).strip()
+    revision_feedback = str(state.get("design_feedback") or "").strip()
     design_request = (
         f"{user_message}\n本轮修订意见：{revision_feedback}"
         if revision_feedback else user_message
@@ -113,10 +109,12 @@ async def architecture_planner(state: GenerationState) -> dict:
         )
     on_reasoning_delta = get_reasoning_callback()
     if on_reasoning_delta:
-        if plan_feedback:
-            revision_note = "根据已批准执行计划生成或调整总体方案"
-        elif revision_feedback:
-            revision_note = "根据计划修改意见调整总体方案"
+        # ⚠️ 这里原来还有一支 `if plan_feedback:`（"根据已批准执行计划生成或调整总体方案"）。
+        # 计划层（execution_plan / plan_feedback）已整体退场，该变量没有任何数据来源，
+        # 保留分支就是 NameError（只要有 reasoning callback 就会炸）——已随计划层一并删除。
+        # 现存语义只剩"用户提了修改意见 → 调整"与"全新生成"两种。
+        if revision_feedback:
+            revision_note = "根据修改意见调整总体方案"
         else:
             revision_note = "生成总体方案"
         await on_reasoning_delta(
@@ -164,18 +162,6 @@ async def architecture_planner(state: GenerationState) -> dict:
     )
 
     prompt += "\n" + KNOWLEDGE_GUIDANCE
-
-    phase_guidance = execution_plan_phase_guidance(execution_plan, "architecture")
-    requirement_guidance = structured_requirement_guidance(
-        state.get("structured_requirements"),
-        "architecture",
-    )
-    prompt = append_approved_phase_guidance(
-        prompt,
-        "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
-        "这些是已批准任务及后端编译的结构化业务要求。总体方案必须落实它们；"
-        "由真实槽位数量与配额一致性在 DesignDocument 契约处校验。",
-    )
 
     raw_plan = None
     llm_chars = 0
@@ -246,6 +232,8 @@ async def architecture_planner(state: GenerationState) -> dict:
         "profile": profile["id"],
         "profile_label": profile["label"],
         "used_fallback": raw_plan is None,
+        "raw_plan": raw_plan,
+        "normalized_plan": plan,
     }
 
     if on_reasoning_delta:
@@ -311,7 +299,6 @@ async def architecture_planner(state: GenerationState) -> dict:
         "design_review_status": "pending",
         "design_feedback": "",
         "design_material_refresh": refresh_materials,
-        "complexity_profile": complexity_profile,
         "architecture_diag": {
             **selection_diag,
             "rag_chars": len(spec_text),

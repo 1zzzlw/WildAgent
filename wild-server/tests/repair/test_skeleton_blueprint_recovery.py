@@ -78,7 +78,8 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
                 "thinking_mode": False,
             })
         self.assertNotIn("error", result)
-        self.assertTrue(result["skeleton_diag"]["deterministic_fallback"])
+        self.assertEqual(result["skeleton_diag"]["source"], "deterministic")
+        self.assertFalse(result["skeleton_diag"]["deterministic_fallback"])
         self.assertTrue(result["skeleton_diag"]["complexity"]["checks"]["valid_wall_hosts"])
         self.assertGreaterEqual(result["skeleton_diag"]["opening_slot_count"], 15)
 
@@ -132,7 +133,7 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("门宽 0.9~1.2m", summary)
         self.assertNotIn("窗宽 1.0~2.0m", summary)
 
-    async def test_invalid_materials_container_uses_deterministic_skeleton_fallback(self):
+    async def test_approved_plan_uses_deterministic_skeleton_without_model_output(self):
         architecture_plan = {
             "concept": "低层住宅",
             "required_components": [],
@@ -153,10 +154,8 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("error", result)
         self.assertIn("skeleton_blueprint", result)
-        self.assertEqual(
-            result["skeleton_diag"]["deterministic_fallback_reason"],
-            "模型骨架未通过 Schema 预检",
-        )
+        self.assertEqual(result["skeleton_diag"]["source"], "deterministic")
+        self.assertIsNone(result["skeleton_diag"]["deterministic_fallback_reason"])
         self.assertIsInstance(result["skeleton_blueprint"]["materials"], dict)
 
 

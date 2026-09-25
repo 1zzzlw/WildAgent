@@ -103,6 +103,11 @@ function normalizeComponent(component: any): any {
     }
   }
 
+  const normalizedRotation = normalizeScalarRotation(component.rotation);
+  if (normalizedRotation) {
+    return { ...component, rotation: normalizedRotation };
+  }
+
   return { ...component };
 }
 
@@ -223,7 +228,26 @@ function normalizeElement(element: any): any {
     }
   }
 
+  const normalizedRotation = normalizeScalarRotation(element.rotation);
+  if (normalizedRotation) {
+    return { ...element, rotation: normalizedRotation };
+  }
+
   return { ...element };
+}
+
+/**
+ * 兼容模型把 rotation 写成标量度数（如 90 / 270）的常见错误。
+ *
+ * WILD 契约中 rotation 是弧度制 vec3，但实际生成中标量形式反复出现——
+ * 直接放行会让 buildFurniture 等构建器在解构时抛
+ * "rotation is not iterable"，整个构件从场景里消失。
+ * 单个有限数字可以无歧义地理解为“绕 Y 轴的朝向角（度）”，
+ * 因此收敛为 [0, 度数→弧度, 0]，与“正面朝 +Z、用 rotation[1] 转向”的约定一致。
+ */
+function normalizeScalarRotation(value: unknown): [number, number, number] | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  return [0, (value * Math.PI) / 180, 0];
 }
 
 function normalizeMaterial(value: any): any {

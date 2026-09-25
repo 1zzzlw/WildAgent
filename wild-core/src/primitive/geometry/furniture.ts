@@ -1,15 +1,32 @@
-import type { FurnitureParams, MeshData } from '../types';
+import type { FurnitureParams, MeshData, Vec3 } from '../types';
 import { indexTriList } from './mesh-helper';
 import { createBoxGeometry } from './wall';
 import { buildPrimitive } from './primitive';
 
+/**
+ * 家具几何：按 subtype 分派，再整体施加 position / rotation。
+ *
+ * 坐标语义（写进 KB 前必须一致）：
+ * - 局部原点是**底面中心**：X/Z 以占地中心为 0，Y 以底面为 0（腿从 Y=0 起）；
+ * - `position` 是底面锚点，`position[1]` 即家具底面世界 Y；
+ * - `rotation` 是绕局部原点（底面中心）的欧拉角，因此转向不会把家具甩离落点，
+ *   只是原地改朝向；
+ * - 各 subtype 的"正面"由几何硬编码决定：chair / sofa 靠背在 **-Z** 侧，
+ *   即正面朝 **+Z**。摆放时用 rotation[1] 把正面转向目标方向。
+ */
 export function buildFurniture(params: FurnitureParams): MeshData[] {
   const tileGrid = (params as any)._tileGrid;
   if (tileGrid) return [buildTileGrid(tileGrid, (params as any).material || 'roof_tile')];
   const { subtype, dimensions, material } = params;
   const { width, depth, height } = dimensions;
   const pos = params.position ?? [0, 0, 0];
-  const rot = (params as any).rotation ?? [0, 0, 0];
+  // 兜底：未走 normalizeBlueprintInput 的调用方可能还带着标量 rotation（度数），
+  // 解构迭代会抛 "rotation is not iterable"，这里按“绕 Y 朝向角”语义救回。
+  const rot = Array.isArray(params.rotation)
+    ? params.rotation
+    : typeof params.rotation === 'number' && Number.isFinite(params.rotation)
+      ? ([0, (params.rotation * Math.PI) / 180, 0] as Vec3)
+      : ([0, 0, 0] as Vec3);
   const ms = buildSubtype(subtype, width, depth, height, material || 'default');
   for (const m of ms) {
     const local = rotateEulerXYZ(m.transform.position, rot);
@@ -26,8 +43,12 @@ function buildSubtype(s: string, w: number, d: number, h: number, mat: string): 
   switch (s) {
     case 'table': return buildTable(w, d, h, mat);
     case 'chair': return buildChair(w, d, h, mat);
+    case 'sofa': return buildSofa(w, d, h, mat);
     case 'bookshelf': return buildBookshelf(w, d, h, mat);
     case 'bed': return buildBed(w, d, h, mat);
+    case 'wardrobe': return buildWardrobe(w, d, h, mat);
+    case 'nightstand': return buildNightstand(w, d, h, mat);
+    case 'tv_cabinet': return buildTvCabinet(w, d, h, mat);
     case 'lamp': return buildLamp(w, d, h, mat);
     case 'tile': return [boxMesh(w, Math.max(h, 0.015), d, [0, Math.max(h, 0.015) / 2, 0], mat)];
     default: throw new Error(`Unsupported furniture subtype: ${s}`);
@@ -178,6 +199,74 @@ function buildBookshelf(w: number, d: number, h: number, mat: string): MeshData[
     result.push(boxMesh(w - board * 2, board, d, [0, h * ratio, 0], mat));
   }
   return result;
+}
+
+function buildSofa(w: number, d: number, h: number, mat: string): MeshData[] {
+  // 底座 + 整宽靠背 + 两侧扶手 + 三块坐垫（全部盒体近似，靠背朝 -Z）
+  const baseHeight = Math.max(h * 0.32, 0.18);
+  const armWidth = Math.max(w * 0.12, 0.12);
+  const innerWidth = Math.max(w - armWidth * 2, w * 0.3);
+  const cushionHeight = Math.max(h * 0.14, 0.1);
+  const cushionWidth = innerWidth / 3 * 0.94;
+  const backDepth = Math.max(d * 0.22, 0.14);
+  const cushions = [-1, 0, 1].map((slot) => boxMesh(
+    cushionWidth, cushionHeight, Math.max(d * 0.72, 0.3),
+    [slot * (innerWidth / 3), baseHeight + cushionHeight / 2, d * 0.04],
+    mat,
+  ));
+  return [
+    boxMesh(w, baseHeight, d, [0, baseHeight / 2, 0], mat),
+    boxMesh(w, h, backDepth, [0, h / 2, -d / 2 + backDepth / 2], mat),
+    boxMesh(armWidth, h * 0.72, d, [-(w / 2 - armWidth / 2), h * 0.36, 0], mat),
+    boxMesh(armWidth, h * 0.72, d, [w / 2 - armWidth / 2, h * 0.36, 0], mat),
+    ...cushions,
+  ];
+}
+
+function buildWardrobe(w: number, d: number, h: number, mat: string): MeshData[] {
+  // 柜体 + 两扇柜门（略凸出正面）+ 踢脚缩进
+  const plinthHeight = Math.max(h * 0.04, 0.04);
+  const doorGap = Math.max(w * 0.004, 0.005);
+  const doorWidth = (w - doorGap * 3) / 2;
+  const doorDepth = Math.max(d * 0.04, 0.02);
+  const bodyHeight = h - plinthHeight;
+  return [
+    boxMesh(w * 0.96, plinthHeight, d * 0.92, [0, plinthHeight / 2, 0], mat),
+    boxMesh(w, bodyHeight, d, [0, plinthHeight + bodyHeight / 2, 0], mat),
+    boxMesh(doorWidth, bodyHeight * 0.94, doorDepth, [-(doorWidth + doorGap) / 2, plinthHeight + bodyHeight / 2, d / 2 + doorDepth / 2], mat),
+    boxMesh(doorWidth, bodyHeight * 0.94, doorDepth, [(doorWidth + doorGap) / 2, plinthHeight + bodyHeight / 2, d / 2 + doorDepth / 2], mat),
+  ];
+}
+
+function buildNightstand(w: number, d: number, h: number, mat: string): MeshData[] {
+  // 台面 + 柜体 + 一条抽屉分缝
+  const topThickness = Math.max(h * 0.08, 0.03);
+  const legHeight = Math.max(h * 0.12, 0.06);
+  const bodyHeight = Math.max(h - topThickness - legHeight, 0.05);
+  const bodyDepth = Math.max(d * 0.9, 0.1);
+  return [
+    boxMesh(w, topThickness, d, [0, h - topThickness / 2, 0], mat),
+    boxMesh(w * 0.9, bodyHeight, bodyDepth, [0, legHeight + bodyHeight / 2, 0], mat),
+    boxMesh(w * 0.88, topThickness * 0.5, Math.max(d * 0.04, 0.02), [0, legHeight + bodyHeight * 0.55, bodyDepth / 2], mat),
+    ...cornerLegs(Math.max(w / 2 - Math.max(w * 0.08, 0.03), 0), Math.max(bodyDepth / 2 - Math.max(w * 0.08, 0.03), 0), Math.max(w * 0.08, 0.03), legHeight, mat),
+  ];
+}
+
+function buildTvCabinet(w: number, d: number, h: number, mat: string): MeshData[] {
+  // 台面 + 柜体 + 中间设备格
+  const topThickness = Math.max(h * 0.08, 0.03);
+  const plinthHeight = Math.max(h * 0.1, 0.05);
+  const bodyHeight = Math.max(h - topThickness - plinthHeight, 0.06);
+  const bayWidth = Math.max(w * 0.32, 0.2);
+  const sideWidth = (w - bayWidth) / 2;
+  const bodyCenterY = plinthHeight + bodyHeight / 2;
+  return [
+    boxMesh(w, topThickness, d, [0, h - topThickness / 2, 0], mat),
+    boxMesh(w * 0.98, plinthHeight, d * 0.9, [0, plinthHeight / 2, 0], mat),
+    boxMesh(sideWidth, bodyHeight, d, [-(bayWidth + sideWidth) / 2, bodyCenterY, 0], mat),
+    boxMesh(sideWidth, bodyHeight, d, [(bayWidth + sideWidth) / 2, bodyCenterY, 0], mat),
+    boxMesh(bayWidth, bodyHeight, Math.max(d * 0.9, 0.1), [0, bodyCenterY, 0], mat),
+  ];
 }
 
 function buildBed(w: number, d: number, h: number, mat: string): MeshData[] {

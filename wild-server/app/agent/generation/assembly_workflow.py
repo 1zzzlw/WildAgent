@@ -1,9 +1,14 @@
 """
-Layer 2: 分片合并节点（含校验 + 修复 + 循环）
+合并节点：**两种作用域**（《动态节点设计规划》§3.3 / §4.4）
 
-合并所有 Layer 1 产出的组件分片为完整 Blueprint，
-然后执行校验流水线，对检测到的问题使用 fix_* 工具自动修复，
-循环直到全部通过或达到最大迭代次数。
+| scope | 名字 | 做什么 | 不做什么 |
+| --- | --- | --- | --- |
+| ``batch`` | 批次合并 | 把已到货的分片并进蓝图（按 ``(id, type)`` 先删后插，幂等） | 不删不改、不吸附、不校验、不归一化 |
+| ``final`` | 收尾归一 | 配额强制 + 阳台去重 + 槽位吸附 + 校验→修复循环 + 交付归一化 | —— |
+
+分批合并必须**保守**：它跑的时候后面还有分组没到场，任何"删"（配额）或"补齐"（槽位吸附）
+都会误伤还没生成的构件。所以只有收尾合并有权删改元素，也因此只有收尾合并的结论能用来
+判定"产物没落地"（见 ``plan/reconcile.py``）。
 
 每次迭代通过 on_reasoning_delta 发射思考内容，让前端能看到合并推理过程。
 """
@@ -16,25 +21,172 @@ from app.agent.generation.assembly import (
     collect_json_parse_failures,
     deduplicate_balcony_representations,
     enforce_component_quota,
+    enforce_element_quota,
     remove_ground_level_railings,
 )
 from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.generation.slot_utils import component_slots
 from app.agent.validation.diagnostics import blueprint_fingerprint
 from app.agent.validation.design_constraints import validate_design_brief_constraints
 from app.llm.errors import collect_component_model_errors
 from app.agent.runtime import get_reasoning_callback
-from app.utils.fragment_merger import merge_fragments
+from app.utils.fragment_merger import merge_fragment_batch, merge_fragments
 
 MAX_MERGE_ITERATIONS = 3
 
+#: 两种作用域的名字。改这里要同步 ``plan/contracts.py::MERGE_SCOPES`` 与 plan 展开。
+SCOPE_BATCH = "batch"
+SCOPE_FINAL = "final"
 
-async def merge_fragments_node(state: GenerationState) -> dict:
-    """合并所有组件分片 —— 校验 → 修复 → 循环"""
+
+def _collect_fragments(
+    generic_fragments: object,
+    *,
+    kinds: set[str] | None = None,
+) -> tuple[list[dict], list[str]]:
+    """按注册表顺序收集分片，返回 ``(分片列表, 摘要片段)``。
+
+    ``kinds`` 非空时只取这些构件类型——批次合并只吃自己那一组，不吃别人已经并过的，
+    否则每批都会把全部分片重插一遍。
+    """
+
+    collected: list[dict] = []
+    summary: list[str] = []
+    source = generic_fragments if isinstance(generic_fragments, dict) else {}
+
+    for comp_type, cfg in COMPONENT_REGISTRY.items():
+        if not cfg.implemented:
+            continue
+        if kinds is not None and comp_type not in kinds:
+            continue
+        data = source.get(comp_type)
+        if not data:
+            continue
+        if cfg.is_list and isinstance(data, list):
+            if data:
+                collected.extend(data)
+                summary.append(f"{cfg.label}×{len(data)}")
+                logger.info(f"[merge] 收集到 {len(data)} 个 {cfg.label}")
+        elif isinstance(data, dict):  # 兼容旧 checkpoint 中单对象屋顶分片。
+            collected.append(data)
+            summary.append(f"{cfg.label}×1")
+            logger.info(f"[merge] 收集到 {cfg.label}")
+
+    return collected, summary
+
+
+def _model_failure_verdict(state: GenerationState) -> tuple[dict, list[str]] | None:
+    """模型服务故障不是几何问题：任一组件节点调用模型失败就停止本次生成。
+
+    返回 ``(终止更新, 受影响标签)``；没有故障时返回 ``None``。
+    """
+
+    failures = collect_component_model_errors(state.get("component_diagnostics", {}))
+    if not failures:
+        return None
+    labels = list(dict.fromkeys(item["label"] for item in failures))
+    primary = failures[0]
+    logger.error(
+        f"[merge] 检测到 {len(failures)} 个组件模型故障，停止当前生成: {', '.join(labels)}"
+    )
+    terminal_error = {
+        **primary,
+        "affected_count": len(failures),
+        "affected_components": [item["component_type"] for item in failures],
+    }
+    return (
+        {
+            "terminal_model_error": terminal_error,
+            "error": primary["user_message"],
+            "status": "failed",
+            "merge_diag": {
+                "label": "合并",
+                "model_failures": failures,
+                "final_errors": len(failures),
+                "iterations": [],
+            },
+        },
+        labels,
+    )
+
+
+async def merge_fragments_node(
+    state: GenerationState,
+    *,
+    scope: str = SCOPE_FINAL,
+    component_types: list[str] | None = None,
+) -> dict:
+    """合并节点入口：按作用域分派（默认收尾归一，与 plan 之前的单条 merge 语义一致）。"""
+
+    if scope == SCOPE_BATCH:
+        return await _merge_batch(state, component_types=component_types)
+    return await _finalize_merge(state)
+
+
+async def _merge_batch(
+    state: GenerationState,
+    *,
+    component_types: list[str] | None = None,
+) -> dict:
+    """批次合并：把一组分片并进蓝图，**只并入，不删不改**（§3.3）。"""
+
+    t0 = _time.time()
+    skeleton = state.get("skeleton_blueprint")
+    if not skeleton:
+        logger.error("[merge] 骨架缺失，无法合并")
+        return {"error": "骨架缺失，无法合并组件", "status": "failed"}
+
+    verdict = _model_failure_verdict(state)
+    if verdict is not None:
+        updates, labels = verdict
+        on_reasoning_delta = get_reasoning_callback()
+        if on_reasoning_delta:
+            await on_reasoning_delta(
+                "merge",
+                f"检测到模型服务故障，已停止合并和自动修复。受影响组件：{', '.join(labels)}。\n",
+            )
+        return updates
+
+    kinds = {str(kind) for kind in (component_types or []) if kind} or None
+    fragments, summary = _collect_fragments(
+        state.get("component_fragments", {}), kinds=kinds
+    )
+    base = state.get("merged_blueprint") or skeleton
+    try:
+        blueprint = merge_fragment_batch(base, fragments)
+    except Exception as exc:  # pragma: no cover - 分片结构坏了才会走到
+        logger.error(f"[merge] 批次合并失败: {exc}")
+        return {"error": f"分片合并失败: {exc}", "status": "failed"}
+
+    geometry = blueprint.get("geometry", {})
+    elements = geometry.get("elements", []) or []
+    components = geometry.get("components", []) or []
+    summary_text = "、".join(summary) if summary else "无分片"
+    logger.info(
+        f"[merge] 批次合并（{', '.join(sorted(kinds)) if kinds else '全部'}）："
+        f"{len(elements)} elements, {len(components)} components"
+    )
+    return {
+        "merged_blueprint": blueprint,
+        "merge_diag": {
+            "label": "批次合并",
+            "scope": SCOPE_BATCH,
+            "component_types": sorted(kinds) if kinds else [],
+            "fragment_summary": summary_text,
+            "element_count": len(elements),
+            "component_count": len(components),
+            "total_ms": int((_time.time() - t0) * 1000),
+        },
+    }
+
+
+async def _finalize_merge(state: GenerationState) -> dict:
+    """收尾归一：配额强制 + 全局归一化 + 校验 → 修复 → 循环。"""
 
     t0 = _time.time()
     on_reasoning_delta = get_reasoning_callback()
 
-    logger.info("[merge] 开始合并分片")
+    logger.info("[merge] 开始收尾合并")
 
     # ── 发射思考开始 ──
     if on_reasoning_delta:
@@ -48,38 +200,15 @@ async def merge_fragments_node(state: GenerationState) -> dict:
 
     # 模型服务故障不是几何问题。只要任一并行组件节点调用模型失败，
     # 就停止本次生成，避免用空分片合并后再误入 callback 修复循环。
-    model_failures = collect_component_model_errors(
-        state.get("component_diagnostics", {})
-    )
-    if model_failures:
-        labels = list(dict.fromkeys(item["label"] for item in model_failures))
-        primary = model_failures[0]
-        error_message = primary["user_message"]
-        logger.error(
-            f"[merge] 检测到 {len(model_failures)} 个组件模型故障，停止当前生成: "
-            f"{', '.join(labels)}"
-        )
+    verdict = _model_failure_verdict(state)
+    if verdict is not None:
+        updates, labels = verdict
         if on_reasoning_delta:
             await on_reasoning_delta(
                 "merge",
                 f"检测到模型服务故障，已停止合并和自动修复。受影响组件：{', '.join(labels)}。\n",
             )
-        terminal_error = {
-            **primary,
-            "affected_count": len(model_failures),
-            "affected_components": [item["component_type"] for item in model_failures],
-        }
-        return {
-            "terminal_model_error": terminal_error,
-            "error": error_message,
-            "status": "failed",
-            "merge_diag": {
-                "label": "合并",
-                "model_failures": model_failures,
-                "final_errors": len(model_failures),
-                "iterations": [],
-            },
-        }
+        return updates
 
     # JSON 提取失败不是服务故障（不设 terminal），但也不应静默消失：组件配额
     # min>0 时生成设计配额级错误交给回调 add_entity，否则记诊断告警。格式故障
@@ -107,41 +236,26 @@ async def merge_fragments_node(state: GenerationState) -> dict:
         if json_parse_dropped:
             logger.warning(f"[merge] JSON 解析失败且无配额下限，组件被丢弃: {json_parse_dropped}")
 
-    # ── 1. 收集所有组件分片 ──
-    fragments: list[dict] = []
-    fragment_summary: list[str] = []
-    generic_fragments = state.get("component_fragments", {})
-
-    for comp_type, cfg in COMPONENT_REGISTRY.items():
-        if not cfg.implemented:
-            continue
-        data = generic_fragments.get(comp_type, state.get(cfg.output_key))
-        if not data:
-            continue
-        if cfg.is_list and isinstance(data, list):
-            if data:
-                fragments.extend(data)
-                fragment_summary.append(f"{cfg.label}×{len(data)}")
-                logger.info(f"[merge] 收集到 {len(data)} 个 {cfg.label}")
-        elif not cfg.is_list and isinstance(data, dict):
-            fragments.append(data)
-            fragment_summary.append(f"{cfg.label}×1")
-            logger.info(f"[merge] 收集到 {cfg.label}")
-
+    # ── 1. 取合并底本 ──
+    # 有批次合并的成果就用它（分片已经并过一次，再并一遍是重复元素）；
+    # 没有的话（旧单条 merge 调用、诊断用例）退回"骨架 + 全部分片"一次性合并。
+    fragments, fragment_summary = _collect_fragments(state.get("component_fragments", {}))
     summary_text = "、".join(fragment_summary) if fragment_summary else "无组件"
     if on_reasoning_delta:
         await on_reasoning_delta("merge", f"已收集分片: {summary_text}\n")
 
     # ── 2. 合并 ──
-    try:
-        merged_blueprint = merge_fragments(skeleton, fragments)
-    except Exception as e:
-        logger.error(f"[merge] 合并失败: {e}")
-        return {"error": f"分片合并失败: {str(e)}", "status": "failed"}
+    merged_blueprint = state.get("merged_blueprint")
+    if not merged_blueprint:
+        try:
+            merged_blueprint = merge_fragments(skeleton, fragments)
+        except Exception as e:
+            logger.error(f"[merge] 合并失败: {e}")
+            return {"error": f"分片合并失败: {str(e)}", "status": "failed"}
 
     elements = merged_blueprint.get("geometry", {}).get("elements", [])
     components = merged_blueprint.get("geometry", {}).get("components", [])
-    logger.info(f"[merge] 初次合并: {len(elements)} elements, {len(components)} components")
+    logger.info(f"[merge] 合并底本: {len(elements)} elements, {len(components)} components")
 
     # ── 2.5 同一阳台只能保留一种表达：balcony 组件拥有自己的楼板和 U 形栏杆 ──
     balcony_cleanup = deduplicate_balcony_representations(merged_blueprint)
@@ -157,6 +271,7 @@ async def merge_fragments_node(state: GenerationState) -> dict:
 
     # ── 2.6 设计配额比对：超额组件按优先级剔除 ──
     quota_pruned = 0
+    element_quota_pruned = 0
     if design_brief:
         quota = design_brief.get("component_quota", {})
         fplan = design_brief.get("facade_plan", {})
@@ -165,6 +280,18 @@ async def merge_fragments_node(state: GenerationState) -> dict:
             if quota_pruned > 0:
                 merged_blueprint["geometry"]["components"] = components
                 logger.info(f"[merge] 配额强制: 移除了 {quota_pruned} 个超额组件")
+        # element 类构件（家具）没有 parentWall，排不出立面优先级，走只保上限的那一支。
+        # 有精确槽位的类型（roof 由 conform_roofs_to_slots 负责）跳过，避免两套机制打架。
+        if quota and elements:
+            elements, element_quota_pruned = enforce_element_quota(
+                elements,
+                quota,
+                logger,
+                slot_kinds={str(slot["type"]) for slot in component_slots(design_brief)},
+            )
+            if element_quota_pruned > 0:
+                merged_blueprint["geometry"]["elements"] = elements
+                logger.info(f"[merge] 配额强制: 移除了 {element_quota_pruned} 个超额 element")
 
     # ── 2.7 按方案槽位确定性吸附；模型负责风格，程序负责组合关系与安全边界 ──
     opening_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}

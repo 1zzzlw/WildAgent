@@ -1,0 +1,262 @@
+控制台输出将同时保存到: E:\AgentProject\WildAgent\wild-server\scripts\reports\chunks_console_20260922_114134.txt
+
+扫描目录: E:\AgentProject\WildAgent\wild-server\storage\knowledge_base\knowledge\components
+配置: chunk_size=900, chunk_overlap=150
+
+找到 8 个 Markdown 文件
+
+处理: capability-boundaries.md
+  生成 30 个分片
+
+处理: chinese-lattice-openings.md
+  生成 7 个分片
+
+处理: composite-components-second-batch.md
+  生成 7 个分片
+
+处理: glass-curtain-wall-assembly.md
+  生成 13 个分片
+
+处理: light.md
+  生成 13 个分片
+
+处理: massing-layers.md
+  生成 6 个分片
+
+处理: sofa.md
+  生成 6 个分片
+
+处理: window-variants.md
+  生成 6 个分片
+
+====================================================================================================
+分片信息表
+====================================================================================================
+No   文件              实体                 类型       长度     角色        
+---- --------------- ------------------ -------- ------ --------
+1    capability-boun engine_capability_ componen 186    capability
+2    capability-boun engine_capability_ componen 425    capability
+3    capability-boun engine_capability_ componen 595    capability
+4    capability-boun engine_capability_ componen 228    capability
+5    capability-boun engine_capability_ componen 274    capability
+6    capability-boun engine_capability_ componen 96     capability
+7    capability-boun engine_capability_ componen 878    capability
+8    capability-boun engine_capability_ componen 266    capability
+9    capability-boun engine_capability_ componen 502    capability
+10   capability-boun engine_capability_ componen 454    capability
+11   capability-boun engine_capability_ componen 377    capability
+12   capability-boun engine_capability_ componen 616    capability
+13   capability-boun engine_capability_ componen 792    capability
+14   capability-boun engine_capability_ componen 805    capability
+15   capability-boun engine_capability_ componen 501    capability
+16   capability-boun engine_capability_ componen 662    capability
+17   capability-boun engine_capability_ componen 510    capability
+18   capability-boun engine_capability_ componen 191    capability
+19   capability-boun engine_capability_ componen 675    capability
+20   capability-boun engine_capability_ componen 481    capability
+21   capability-boun engine_capability_ componen 293    capability
+22   capability-boun engine_capability_ componen 240    capability
+23   capability-boun engine_capability_ componen 196    capability
+24   capability-boun engine_capability_ componen 160    capability
+25   capability-boun engine_capability_ componen 109    capability
+26   capability-boun engine_capability_ componen 164    capability
+27   capability-boun engine_capability_ componen 122    capability
+28   capability-boun engine_capability_ componen 205    capability
+29   capability-boun engine_capability_ componen 173    capability
+30   capability-boun engine_capability_ componen 179    capability
+31   chinese-lattice chinese_lattice_op componen 253    capability
+32   chinese-lattice chinese_lattice_wi componen 527    capability
+33   chinese-lattice chinese_lattice_wi componen 475    capability
+34   chinese-lattice chinese_lattice_do componen 599    capability
+35   chinese-lattice chinese_lattice_do componen 339    capability
+36   chinese-lattice chinese_lattice_op componen 287    capability
+37   chinese-lattice chinese_lattice_op componen 208    capability
+38   composite-compo wall_canopy_compon componen 504    capability
+39   composite-compo wall_balcony_compo componen 673    capability
+40   composite-compo straight_ramp_comp componen 519    capability
+41   composite-compo projected_bay_wind componen 430    capability
+42   composite-compo profile_sweep_corn componen 686    capability
+43   composite-compo hollow_chimney_com componen 412    capability
+44   composite-compo second_batch_compo componen 193    capability
+45   glass-curtain-w glass_curtain_wall componen 130    capability
+46   glass-curtain-w curtain_wall_preco componen 248    capability
+47   glass-curtain-w curtain_wall_windo componen 191    capability
+48   glass-curtain-w curtain_wall_windo componen 317    capability
+49   glass-curtain-w curtain_wall_windo componen 577    capability
+50   glass-curtain-w curtain_wall_deter componen 554    capability
+51   glass-curtain-w curtain_wall_expli componen 215    capability
+52   glass-curtain-w curtain_wall_expli componen 278    capability
+53   glass-curtain-w curtain_wall_expli componen 264    capability
+54   glass-curtain-w curtain_wall_grid_ componen 282    capability
+55   glass-curtain-w curtain_wall_varia componen 303    capability
+56   glass-curtain-w curtain_wall_valid componen 312    capability
+57   glass-curtain-w curtain_wall_recip componen 222    capability
+58   light.md        light_component    componen 213    capability
+59   light.md        light_component    componen 319    capability
+60   light.md        light_component    componen 513    capability
+61   light.md        light_component    componen 429    capability
+62   light.md        light_component    componen 333    capability
+63   light.md        pendant_light      componen 882    capability
+64   light.md        ceiling_light      componen 353    capability
+65   light.md        floor_lamp         componen 360    capability
+66   light.md        linear_light       componen 349    capability
+67   light.md        wall_sconce        componen 571    capability
+68   light.md        wall_sconce        componen 476    capability
+69   light.md        eave_downlight     componen 566    capability
+70   light.md        light_component    componen 615    capability
+71   massing-layers. massing_layers     componen 248    capability
+72   massing-layers. setback_massing    componen 751    capability
+73   massing-layers. podium_massing     componen 279    capability
+74   massing-layers. floor_band_cornice componen 491    capability
+75   massing-layers. massing_layers     componen 175    capability
+76   massing-layers. massing_layers     componen 325    capability
+77   sofa.md         sofa               componen 656    capability
+78   sofa.md         sofa_furniture     componen 667    capability
+79   sofa.md         sofa_primitive     componen 278    capability
+80   sofa.md         sofa_primitive     componen 722    capability
+81   sofa.md         sofa_primitive     componen 339    capability
+82   sofa.md         sofa               componen 370    capability
+83   window-variants window_variants    componen 224    capability
+84   window-variants arched_window      componen 753    capability
+85   window-variants arched_window      componen 192    capability
+86   window-variants louvered_window    componen 545    capability
+87   window-variants combination_window componen 869    capability
+88   window-variants window_variants    componen 402    capability
+----------------------------------------------------------------------------------------------------
+总计: 88 个分片
+
+====================================================================================================
+标题路径列表
+====================================================================================================
+  1. 引擎能力边界
+  2. 引擎能力边界 > 1. geometry.elements 支持的类型 > 1.1 稳定支持 (stable)
+  3. 引擎能力边界 > 1. geometry.elements 支持的类型 > 1.2 部分支持 (partial)
+  4. 引擎能力边界 > 1. geometry.elements 支持的类型 > 1.3 实验性支持 (experimental)
+  5. 引擎能力边界 > 1. geometry.elements 支持的类型 > 1.4 不支持的类型
+  6. 引擎能力边界 > 2. geometry.components 支持的类型
+  7. 引擎能力边界 > 2. geometry.components 支持的类型 > 2.1 支持的组合构件
+  8. 引擎能力边界 > 2. geometry.components 支持的类型 > 2.1 支持的组合构件
+  9. 引擎能力边界 > 3. 具体能力边界 > 3.1 柱 (column)
+ 10. 引擎能力边界 > 3. 具体能力边界 > 3.2 梁 (beam)
+ 11. 引擎能力边界 > 3. 具体能力边界 > 3.3 门 (door)
+ 12. 引擎能力边界 > 3. 具体能力边界 > 3.3 门 (door)
+ 13. 引擎能力边界 > 3. 具体能力边界 > 3.3 门 (door) > 组合关系与禁止字段
+ 14. 引擎能力边界 > 3. 具体能力边界 > 3.4 窗 (window)
+ 15. 引擎能力边界 > 3. 具体能力边界 > 3.5 屋顶 (roof)
+ 16. 引擎能力边界 > 3. 具体能力边界 > 3.5 屋顶 (roof)
+ 17. 引擎能力边界 > 3. 具体能力边界 > 3.6 楼梯 (stair)
+ 18. 引擎能力边界 > 3. 具体能力边界 > 3.7 栏杆 (railing)
+ 19. 引擎能力边界 > 3. 具体能力边界 > 3.7 栏杆 (railing) > 参数契约
+ 20. 引擎能力边界 > 3. 具体能力边界 > 3.7 栏杆 (railing) > 有效 JSON 片段
+ 21. 引擎能力边界 > 3. 具体能力边界 > 3.7 栏杆 (railing) > 当前边界
+ 22. 引擎能力边界 > 4. 材质能力边界 > 4.1 基础材质
+ 23. 引擎能力边界 > 4. 材质能力边界 > 4.2 效果层
+ 24. 引擎能力边界 > 5. 交互能力边界 > 5.1 支持的交互
+ 25. 引擎能力边界 > 5. 交互能力边界 > 5.2 不支持的交互
+ 26. 引擎能力边界 > 6. 遇到不支持的需求怎么办 > 策略 1：组合近似
+ 27. 引擎能力边界 > 6. 遇到不支持的需求怎么办 > 策略 2：降级简化
+ 28. 引擎能力边界 > 6. 遇到不支持的需求怎么办 > 策略 3：明确告知限制
+ 29. 引擎能力边界 > 7. 能力边界检查清单
+ 30. 引擎能力边界 > 实现来源
+ 31. 中式格棂门窗（近似表达与能力边界）
+ 32. 中式格棂门窗（近似表达与能力边界） > 中式格棂窗
+ 33. 中式格棂门窗（近似表达与能力边界） > 中式格棂窗
+ 34. 中式格棂门窗（近似表达与能力边界） > 中式隔扇门
+ 35. 中式格棂门窗（近似表达与能力边界） > 中式隔扇门
+ 36. 中式格棂门窗（近似表达与能力边界） > 上下组合（固定上亮 / 裙窗）
+ 37. 中式格棂门窗（近似表达与能力边界） > 与引擎能力文档的关系
+ 38. WILD 第二批组合构件 > 雨棚 canopy
+ 39. WILD 第二批组合构件 > 阳台 balcony
+ 40. WILD 第二批组合构件 > 坡道 ramp
+ 41. WILD 第二批组合构件 > 凸窗 bay_window
+ 42. WILD 第二批组合构件 > 檐口 cornice
+ 43. WILD 第二批组合构件 > 烟囱 chimney
+ 44. WILD 第二批组合构件 > 第二批组件能力边界
+ 45. 玻璃幕墙骨架—玻璃组装配方
+ 46. 玻璃幕墙骨架—玻璃组装配方 > 玻璃幕墙组装前置条件
+ 47. 玻璃幕墙骨架—玻璃组装配方 > 方案 A：墙体宿主加网格窗
+ 48. 玻璃幕墙骨架—玻璃组装配方 > 方案 A：墙体宿主加网格窗 > 方案 A 组装步骤
+ 49. 玻璃幕墙骨架—玻璃组装配方 > 方案 A：墙体宿主加网格窗 > 方案 A 最小有效示例
+ 50. 玻璃幕墙骨架—玻璃组装配方 > 幕墙确定性生成参数（方案 A）
+ 51. 玻璃幕墙骨架—玻璃组装配方 > 方案 B：显式骨架加玻璃面板
+ 52. 玻璃幕墙骨架—玻璃组装配方 > 方案 B：显式骨架加玻璃面板 > 方案 B 参数公式
+ 53. 玻璃幕墙骨架—玻璃组装配方 > 方案 B：显式骨架加玻璃面板 > 方案 B 组装步骤
+ 54. 玻璃幕墙骨架—玻璃组装配方 > 骨架—玻璃七条关系
+ 55. 玻璃幕墙骨架—玻璃组装配方 > 幕墙变体参数化选择
+ 56. 玻璃幕墙骨架—玻璃组装配方 > 玻璃幕墙验证清单
+ 57. 玻璃幕墙骨架—玻璃组装配方 > 玻璃幕墙失败与回退
+ 58. 灯具（light）组件参数契约
+ 59. 灯具（light）组件参数契约 > 基本定义
+ 60. 灯具（light）组件参数契约 > 必填与可选字段
+ 61. 灯具（light）组件参数契约 > 约束
+ 62. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯
+ 63. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 吊灯（单头 / 多头 / 分子灯）
+ 64. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 吸顶灯
+ 65. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 落地灯
+ 66. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 线性灯具（长条吊灯 / 灯带）
+ 67. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 壁灯（竖条壁灯 / 壁装灯体）
+ 68. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 壁灯（竖条壁灯 / 壁装灯体）
+ 69. 灯具（light）组件参数契约 > 造型变体：吊灯、吸顶灯、落地灯与线性灯 > 檐下筒灯（屋檐板底一排小灯）
+ 70. 灯具（light）组件参数契约 > 常见错误
+ 71. 分层体量表达（退台、裙房与层间腰线）
+ 72. 分层体量表达（退台、裙房与层间腰线） > 退台（上层内缩）
+ 73. 分层体量表达（退台、裙房与层间腰线） > 裙房（低层附属体量）
+ 74. 分层体量表达（退台、裙房与层间腰线） > 层间腰线（水平线脚）
+ 75. 分层体量表达（退台、裙房与层间腰线） > 挑板与阳台线脚
+ 76. 分层体量表达（退台、裙房与层间腰线） > 能力边界
+ 77. 沙发表达（furniture 原生 subtype + primitive 组合）
+ 78. 沙发表达（furniture 原生 subtype + primitive 组合） > 快捷方式：furniture 原生 subtype
+ 79. 沙发表达（furniture 原生 subtype + primitive 组合） > 精细方式：primitive 盒体组合
+ 80. 沙发表达（furniture 原生 subtype + primitive 组合） > 精细方式：primitive 盒体组合
+ 81. 沙发表达（furniture 原生 subtype + primitive 组合） > 精细方式：primitive 盒体组合
+ 82. 沙发表达（furniture 原生 subtype + primitive 组合） > 能力边界汇总
+ 83. 窗样式变体（拱形、百叶与多扇组合）
+ 84. 窗样式变体（拱形、百叶与多扇组合） > 拱形窗
+ 85. 窗样式变体（拱形、百叶与多扇组合） > 拱形窗
+ 86. 窗样式变体（拱形、百叶与多扇组合） > 百叶窗
+ 87. 窗样式变体（拱形、百叶与多扇组合） > 多扇组合窗（水平并排）
+ 88. 窗样式变体（拱形、百叶与多扇组合） > 能力边界汇总
+====================================================================================================
+
+
+================================================================================
+统计分析
+================================================================================
+
+总分片数: 88
+
+长度统计:
+  最小: 96 字符
+  最大: 882 字符
+  平均: 404 字符
+  中位数: 353 字符
+
+按文件分组:
+  capability-boundaries.md: 30 个分片
+  chinese-lattice-openings.md: 7 个分片
+  composite-components-second-batch.md: 7 个分片
+  glass-curtain-wall-assembly.md: 13 个分片
+  light.md: 13 个分片
+  massing-layers.md: 6 个分片
+  sofa.md: 6 个分片
+  window-variants.md: 6 个分片
+
+按实体名称分组:
+  engine_capability_boundaries: 30 个分片
+  light_component: 6 个分片
+  chinese_lattice_openings: 3 个分片
+  curtain_wall_window_grid_recipe: 3 个分片
+  curtain_wall_explicit_grid_recipe: 3 个分片
+  massing_layers: 3 个分片
+  sofa_primitive: 3 个分片
+  chinese_lattice_window: 2 个分片
+  chinese_lattice_door: 2 个分片
+  wall_sconce: 2 个分片
+
+按文档类型分组:
+  component: 88 个分片
+
+按知识角色分组:
+  capability: 88 个分片
+
+报告文件已生成: E:\AgentProject\WildAgent\wild-server\scripts\reports\inspect_chunks_20260922_114134.md (11711 字符)

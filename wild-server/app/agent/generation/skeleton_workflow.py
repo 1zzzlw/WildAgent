@@ -13,19 +13,20 @@ from app.agent.generation.architecture import (
     build_deterministic_skeleton,
     evaluate_skeleton_complexity,
 )
-from app.agent.generation.material_plan import apply_resolved_material_plan
+from app.agent.generation.material_plan import (
+    apply_resolved_material_plan,
+    material_role_specs,
+)
+from app.agent.generation.objects import build_object_skeleton, object_design_brief
 from app.agent.generation.skeleton_output import (
     build_skeleton_summary,
     parse_components_from_reply,
     parse_design_brief,
 )
 from app.agent.prompts import (
-    append_approved_phase_guidance,
     build_blueprint_recovery_messages,
     build_skeleton_prompt,
 )
-from app.agent.planning.execution import execution_plan_phase_guidance
-from app.agent.planning.requirements import structured_requirement_guidance
 from app.llm.client import create_llm
 from app.llm.invocation import (
     invoke_llm,
@@ -48,108 +49,116 @@ from app.utils.blueprint_parser import (
 )
 
 async def skeleton_generator(state: GenerationState) -> dict:
-    """生成建筑骨架（walls + floors + columns + beams + stair）并输出设计清单"""
-    from app.services.agent_service import agent_service
-
+    """把已批准方案确定性编译为骨架，并输出后续计划所需设计清单。"""
     t0 = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
     on_reasoning_delta = get_reasoning_callback()
     architecture_plan = state.get("architecture_plan")
     material_plan = state.get("material_plan")
+    deterministic_primary = isinstance(architecture_plan, dict) and bool(architecture_plan)
+    # 物件场景走"空几何骨架"：没有墙、楼板、层高，也就没有"复杂度达标"这件事。
+    # 判据与方案层、材质层共用同一个 `is_object_plan`，不在这里另判一次。
+    from app.design.resolver import is_object_plan
+
+    object_scene = is_object_plan(architecture_plan)
+    role_specs = material_role_specs(architecture_plan)
 
     logger.info(f"[skeleton] 开始生成骨架，用户消息: {user_message[:100]}, 思考模式: {thinking_mode}")
 
-    # ── 1. RAG 检索（只补充可执行能力与组装关系）──
+    if deterministic_primary and on_reasoning_delta is not None:
+        await on_reasoning_delta(
+            "skeleton:progress",
+            "已收到批准的物件方案，正在建立物件场景骨架……\n"
+            if object_scene
+            else "已收到批准的结构化方案，正在确定性编译墙、楼板、柱梁与楼梯……\n",
+        )
+
+    # ── 1. 仅兼容无结构化方案的旧入口；正常生成链不再二次检索和重新设计 ──
     rag_t0 = _time.time()
-
-    # 骨架落实已选方案，避免再次检回别的整栋类型或风格配方。
-    selected_query = plan_knowledge_query(user_message, architecture_plan)
-    queries = [
-        SpecQuery("墙、楼板、楼梯与屋顶的已实现组装关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
-        SpecQuery(selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}),
-        SpecQuery("墙体 楼板 柱子 梁", {"doc_type": "component", "entity_type": "structural_component"}),
-        SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
-    ]
-
     rag_error = None
-    try:
-        spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
-    except Exception as exc:
+    spec_text = ""
+    rag_hits = []
+    if not deterministic_primary:
+        from app.services.agent_service import agent_service
+
+        selected_query = plan_knowledge_query(user_message, architecture_plan)
+        queries = [
+            SpecQuery("墙、楼板、楼梯与屋顶的已实现组装关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
+            SpecQuery(selected_query, {"doc_type": "recipe", "knowledge_role": "relation"}),
+            SpecQuery("墙体 楼板 柱子 梁", {"doc_type": "component", "entity_type": "structural_component"}),
+            SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
+        ]
+        try:
+            spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+        except Exception as exc:
+            rag_error = str(exc)
+            logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
+        rag_hits = [] if rag_error else [
+            {
+                "source": hit.metadata.get("source", "?"),
+                "heading": hit.metadata.get("heading", "?"),
+                "doc_type": hit.metadata.get("doc_type", "?"),
+                "entity_type": hit.metadata.get("entity_type", "?"),
+            }
+            for hit in getattr(agent_service.spec_loader, "last_results", [])
+        ]
+    else:
+        logger.info("[skeleton] 使用已批准方案的确定性编译路径，跳过 RAG 与骨架 LLM")
+    if rag_error:
         spec_text = ""
-        rag_error = str(exc)
-        logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
     rag_ms = int((_time.time() - rag_t0) * 1000)
     rag_chars = len(spec_text)
-    rag_hits = [] if rag_error else [
-        {
-            "source": hit.metadata.get("source", "?"),
-            "heading": hit.metadata.get("heading", "?"),
-            "doc_type": hit.metadata.get("doc_type", "?"),
-            "entity_type": hit.metadata.get("entity_type", "?"),
-        }
-        for hit in getattr(agent_service.spec_loader, "last_results", [])
-    ]
     logger.info(
         f"[skeleton] RAG 完成（能力与关系知识）: {rag_chars} 字符, {rag_ms}ms, "
         f"hits={json.dumps(rag_hits, ensure_ascii=False, default=str)}"
     )
 
     # ── 2. 构建 Prompt ──
-    system_prompt = build_skeleton_prompt(spec_text, architecture_plan, material_plan)
-    phase_guidance = execution_plan_phase_guidance(
-        state.get("execution_plan"),
-        "skeleton",
-    )
-    requirement_guidance = structured_requirement_guidance(
-        state.get("structured_requirements"),
-        "skeleton",
-    )
-    system_prompt = append_approved_phase_guidance(
-        system_prompt,
-        "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
-        "骨架必须落实这些批准任务及结构化业务要求，且不得违反 WILD Schema。",
+    system_prompt = (
+        "" if deterministic_primary
+        else build_skeleton_prompt(spec_text, architecture_plan, material_plan)
     )
     prompt_chars = len(system_prompt)
 
-    # ── 3. LLM 调用（流式或非流式）──
-    use_streaming = thinking_mode and on_reasoning_delta is not None
-    llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
-
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_message},
-    ]
-
+    # ── 3. 正常链确定性编译；只有旧入口没有 architecture_plan 时才走模型兼容路径 ──
     llm_t0 = _time.time()
     reply_text = ""
     reasoning = ""
     token_usage = None
     finish_reason = None
     blueprint = None
+    if deterministic_primary:
+        blueprint = (
+            build_object_skeleton(architecture_plan, user_message)
+            if object_scene
+            else build_deterministic_skeleton(architecture_plan, user_message)
+        )
     deterministic_fallback_reason = None
     complexity_diag = None
-    
-    try:
-        if use_streaming:
-            llm_result = await stream_llm(
-                llm,
-                messages,
-                on_reasoning_delta=lambda delta: on_reasoning_delta("skeleton", delta),
-            )
-        else:
-            llm_result = await invoke_llm(llm, messages)
-        reply_text = llm_result.content
-        reasoning = llm_result.reasoning
-        token_usage = llm_result.token_usage
-        finish_reason = llm_result.finish_reason
-    
-    except Exception as e:
-        logger.error(f"[skeleton] LLM 调用失败，尝试确定性骨架回退: {e}")
-        if isinstance(architecture_plan, dict):
-            blueprint = build_deterministic_skeleton(architecture_plan, user_message)
-            deterministic_fallback_reason = f"LLM 调用失败: {e}"
-        else:
+    use_streaming = thinking_mode and on_reasoning_delta is not None
+
+    if not deterministic_primary:
+        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message},
+        ]
+        try:
+            if use_streaming:
+                llm_result = await stream_llm(
+                    llm,
+                    messages,
+                    on_reasoning_delta=lambda delta: on_reasoning_delta("skeleton", delta),
+                )
+            else:
+                llm_result = await invoke_llm(llm, messages)
+            reply_text = llm_result.content
+            reasoning = llm_result.reasoning
+            token_usage = llm_result.token_usage
+            finish_reason = llm_result.finish_reason
+        except Exception as e:
+            logger.error(f"[skeleton] LLM 调用失败: {e}")
             return {
                 "error": f"骨架生成失败: {str(e)}",
                 "status": "failed",
@@ -160,16 +169,17 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 },
             }
 
-    llm_ms = int((_time.time() - llm_t0) * 1000)
+    llm_ms = 0 if deterministic_primary else int((_time.time() - llm_t0) * 1000)
     llm_chars = len(reply_text)
     reasoning_chars = len(reasoning)
     
-    logger.info(
-        f"[skeleton] LLM 回复: {llm_chars} 字符, {llm_ms}ms"
-        + (f", thinking={reasoning_chars}字符" if reasoning_chars else "")
-        + (f", tokens={token_usage['total']}" if token_usage else "")
-        + (f", finish_reason={finish_reason}" if finish_reason else "")
-    )
+    if not deterministic_primary:
+        logger.info(
+            f"[skeleton] LLM 回复: {llm_chars} 字符, {llm_ms}ms"
+            + (f", thinking={reasoning_chars}字符" if reasoning_chars else "")
+            + (f", tokens={token_usage['total']}" if token_usage else "")
+            + (f", finish_reason={finish_reason}" if finish_reason else "")
+        )
 
     # ── 4. 从 LLM 回复中提取组件建议 + DESIGN_BRIEF + Blueprint JSON ──
     suggested_components = (
@@ -256,9 +266,9 @@ async def skeleton_generator(state: GenerationState) -> dict:
 
     # ── 5. 归一化和 Schema 校验 ──
     blueprint = normalize_blueprint_input(blueprint)
-    schema_issues = validate_blueprint_schema(blueprint)
+    schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
     if not schema_issues:
-        blueprint = apply_resolved_material_plan(blueprint, material_plan)
+        blueprint = apply_resolved_material_plan(blueprint, material_plan, role_specs=role_specs)
     floor_coordinates = {
         element.get("id", "?"): {
             "from": element.get("from"),
@@ -272,23 +282,33 @@ async def skeleton_generator(state: GenerationState) -> dict:
             "[skeleton] 楼板坐标规范化结果: "
             + json.dumps(floor_coordinates, ensure_ascii=False, default=str)
         )
-    schema_issues = validate_blueprint_schema(blueprint)
+    schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
 
-    if schema_issues and isinstance(architecture_plan, dict) and not deterministic_fallback_reason:
+    if (
+        schema_issues
+        and isinstance(architecture_plan, dict)
+        and not deterministic_primary
+        and not deterministic_fallback_reason
+    ):
         logger.warning("[skeleton] 模型骨架 Schema 无效，切换到确定性骨架回退")
         blueprint = apply_resolved_material_plan(
             normalize_blueprint_input(
                 build_deterministic_skeleton(architecture_plan, user_message)
             ),
             material_plan,
+            role_specs=role_specs,
         )
         deterministic_fallback_reason = "模型骨架未通过 Schema 预检"
-        schema_issues = validate_blueprint_schema(blueprint)
+        schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
 
-    if not schema_issues and isinstance(architecture_plan, dict):
+    # 复杂度评估只对建筑有意义：它衡量的是体量覆盖、逐层墙标高、竖向交通与
+    # 结构构件数量。物件场景的 elements 本来就是空的（家具由 generate 条目后写入），
+    # 拿建筑口径去评它必然"不达标"，会把一张合法的桌子判成失败。
+    if not schema_issues and isinstance(architecture_plan, dict) and not object_scene:
         complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
         if (
             not complexity_diag["meets_target"]
+            and not deterministic_primary
             and not deterministic_fallback_reason
         ):
             logger.warning(
@@ -305,9 +325,10 @@ async def skeleton_generator(state: GenerationState) -> dict:
                     build_deterministic_skeleton(architecture_plan, user_message)
                 ),
                 material_plan,
+                role_specs=role_specs,
             )
             deterministic_fallback_reason = "模型骨架未满足结构与方案约束"
-            schema_issues = validate_blueprint_schema(blueprint)
+            schema_issues = validate_blueprint_schema(blueprint, allow_empty_geometry=object_scene)
             complexity_diag = evaluate_skeleton_complexity(blueprint, architecture_plan)
 
     if complexity_diag and not complexity_diag["meets_target"]:
@@ -410,7 +431,14 @@ async def skeleton_generator(state: GenerationState) -> dict:
         logger.error(f"[skeleton] 包围盒计算失败: {e}")
 
     # ── 6.5 把抽象轴网解析为真实 wall id 和精确局部门窗槽位 ──
-    if isinstance(architecture_plan, dict):
+    # 物件场景没有立面轴网，也就没有槽位可解析：设计清单直接由方案里的
+    # component_quota 生成（家具的数量靠 quota 表达，不靠槽位）。
+    if object_scene:
+        design_brief = object_design_brief(architecture_plan)
+        logger.info(
+            f"[skeleton] 物件设计清单: {json.dumps(design_brief.get('component_quota', {}), ensure_ascii=False, default=str)}"
+        )
+    elif isinstance(architecture_plan, dict):
         from app.agent.generation.architecture import resolve_facade_layout
 
         design_brief = resolve_facade_layout(blueprint, architecture_plan)
@@ -428,6 +456,19 @@ async def skeleton_generator(state: GenerationState) -> dict:
     if design_brief:
         quota = design_brief.get("component_quota", {})
         logger.info(f"[skeleton] 设计清单: {json.dumps(quota, ensure_ascii=False, default=str)}")
+    if deterministic_primary and on_reasoning_delta is not None:
+        await on_reasoning_delta(
+            "skeleton:progress",
+            (
+                "物件场景骨架已建立"
+                f"（待生成构件：{json.dumps((design_brief or {}).get('component_quota', {}), ensure_ascii=False, default=str)}）；"
+                "下一节点将直接展开执行计划。\n"
+                if object_scene
+                else f"骨架编译完成：{len(elements)} 个结构元素、"
+                     f"{len((design_brief or {}).get('opening_slots', []))} 个组件槽位；"
+                     "下一节点将直接展开执行计划。\n"
+            ),
+        )
 
     return {
         "skeleton_blueprint": blueprint,
@@ -437,6 +478,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
         "suggested_components": suggested_components,
         "design_brief": design_brief,
         "skeleton_diag": {
+            "source": "deterministic" if deterministic_primary else "llm",
             "rag_chars": rag_chars,
             "rag_ms": rag_ms,
             "rag_hits": rag_hits,

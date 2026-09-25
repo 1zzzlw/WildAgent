@@ -45,9 +45,9 @@ def test_rate_limit_is_retryable_but_still_stops_current_run():
 def test_component_failures_are_collected_from_generator_diagnostics():
     quota_error = classify_model_error(_ProviderError("Free quota exhausted", 403))
     failures = collect_component_model_errors({
-        "door_gen_diag": {"label": "门生成", "model_error": quota_error},
-        "door_val_diag": {"label": "门校验"},
-        "window_gen_diag": {"label": "窗生成"},
+        "door_gen": {"label": "门生成", "model_error": quota_error},
+        "door_val": {"label": "门校验"},
+        "window_gen": {"label": "窗生成"},
     })
 
     assert len(failures) == 1

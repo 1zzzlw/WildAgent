@@ -22,6 +22,7 @@ primary_terms:
   - dense_brick
   - body
   - primitive
+  - elevator
 synonyms: []
 ---
 
@@ -487,10 +488,14 @@ entity_type: opening
 
 | 值 | 说明 |
 |----|------|
-| `"table"` | 桌 |
-| `"chair"` | 椅 |
+| `"table"` | 桌（台面 + 四条腿） |
+| `"chair"` | 椅（坐板 + 四腿 + 整宽靠背） |
+| `"sofa"` | 沙发（底座 + 整宽靠背 + 两侧扶手 + **固定 3 块坐垫**，靠背朝 -Z） |
 | `"bookshelf"` | 书柜/架 |
 | `"bed"` | 床 |
+| `"wardrobe"` | 衣柜（柜体 + 两扇凸出门 + 缩进踢脚） |
+| `"nightstand"` | 床头柜（台面 + 柜体 + 抽屉分缝 + 四角腿） |
+| `"tv_cabinet"` | 电视柜（台面 + 踢脚 + 左右柜体 + 中间设备格） |
 | `"lamp"` | 灯具（自带发光材质） |
 | `"tile"` | 瓦片/砖块。适用于 placement 批量生成。引擎生成一个长方体盒体，根据 `dimensions.width`（宽）、`depth`（深/长）、`height`（厚）决定尺寸 |
 
@@ -510,8 +515,14 @@ entity_type: opening
 
 **引擎处理说明**：
 
-- 每种 `subtype` 有预设的比例模板。`dimensions` 在模板基础上缩放。
+- 每种 `subtype` 有预设的比例模板，按 `dimensions` 的 `width`/`depth`/`height` 缩放，
+  内部零件尺寸由固定比例推出（例如 sofa 扶手宽 = `max(width × 0.12, 0.12)`、靠背厚 =
+  `max(depth × 0.22, 0.14)`）。改 `dimensions` 会整体联动，没有单独调某个零件的字段。
+- `position` 是**底面中心**：局部网格 y 从 0 到 `height` 整体平移到 `position`，
+  所以落地摆放时 `position[1]` 直接给楼板标高（与 `primitive` 的"中心锚点"不同）。
 - 灯具（`"lamp"`）需包含发光部分，发光颜色和强度由材质的 `emissive` 字段控制。
+- 需要扶手/坐垫分块以外的异形（L 型沙发、贵妃位）时，改用多个 `primitive` 盒体拼装，
+  见《沙发表达》。
 
 ---
 

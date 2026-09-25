@@ -1,6 +1,7 @@
 """组件节点共享的状态写入、基础校验与工具复检。"""
 
 from loguru import logger
+from copy import deepcopy
 
 from app.agent.generation.components import ComponentConfig
 
@@ -8,12 +9,17 @@ from app.agent.generation.components import ComponentConfig
 def component_state_update(
     config: ComponentConfig,
     value,
-    diag_key: str,
+    step: str,
     diag: dict,
 ) -> dict:
-    """写入通用组件分片和诊断映射。"""
+    """写入通用组件分片和诊断映射。
+
+    ``{type}_fragments`` / ``{type}_gen_diag`` / ``{type}_val_diag`` 这族 per-type state
+    字段已随 per-type 节点删除（《动态节点设计规划》§9.1），所有诊断统一写进
+    ``component_diagnostics``（键为 ``{type}_gen`` / ``{type}_val``）。
+    """
+    diag_key = f"{config.component_type}_{step}"
     return {
-        diag_key: diag,
         "component_fragments": {config.component_type: value},
         "component_diagnostics": {diag_key: diag},
     }
@@ -72,6 +78,7 @@ def validate_and_fix_with_tools(
     component_type: str,
     skeleton_blueprint: dict,
     is_element: bool,
+    diagnostics: dict | None = None,
 ) -> tuple[list[dict], bool, bool]:
     """使用组件专用工具校验、修复并再次校验。"""
     if not fragments:
@@ -83,7 +90,7 @@ def validate_and_fix_with_tools(
         logger.warning(f"[{component_type}] 组件工具未找到，跳过校验修复")
         return fragments, False, False
 
-    temp_blueprint = {
+    temp_blueprint = deepcopy({
         "meta": skeleton_blueprint.get(
             "meta", {"version": "1.1", "type": "building"}
         ),
@@ -96,11 +103,13 @@ def validate_and_fix_with_tools(
             .copy(),
         },
         "materials": skeleton_blueprint.get("materials", {}),
-    }
+    })
     bucket = "elements" if is_element else "components"
-    temp_blueprint["geometry"][bucket].extend(fragments)
+    temp_blueprint["geometry"][bucket].extend(deepcopy(fragments))
 
     validation_result = validate_component(component_type, temp_blueprint)
+    if diagnostics is not None:
+        diagnostics["initial"] = str(validation_result)
     if not validation_has_error(validation_result):
         return fragments, False, True
 
@@ -110,6 +119,8 @@ def validate_and_fix_with_tools(
 
     fixed_fragments = temp_blueprint["geometry"][bucket][-len(fragments):]
     recheck_result = validate_component(component_type, temp_blueprint)
+    if diagnostics is not None:
+        diagnostics.update(fix=str(fix_result), recheck=str(recheck_result))
     recheck_passed = not validation_has_error(recheck_result)
     if not recheck_passed:
         logger.warning(f"[{component_type}] 工具修复后复检仍未通过: {recheck_result}")

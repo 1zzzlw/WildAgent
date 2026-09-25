@@ -15,6 +15,40 @@ from app.agent.generation.architecture import (
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
 from app.tools.spatial_tools import validate_model_quality, validate_reference_integrity
+from app.agent.generation.stair_openings import stair_opening_issues
+
+
+@pytest.mark.parametrize("floors", [1, 2, 3])
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+def test_normalized_upper_pattern_satisfies_design_contract(floors, face):
+    from copy import deepcopy
+    from app.design.resolver import build_design_document, resolve_design
+
+    raw = {"massing": {"floors": floors}, "facades": {face: {
+        "bays": 3, "ground_pattern": ["door", "window", "empty"],
+        "upper_pattern": ["DOOR", "window", "empty"],
+    }}}
+    original = deepcopy(raw)
+    message = "生成一个小木屋"
+    plan = normalize_architecture_plan(raw, message)
+    assert raw == original
+    assert plan["facades"][face]["ground_pattern"] == ["door", "window", "empty"]
+    assert plan["facades"][face]["upper_pattern"] == ["empty", "window", "empty"]
+    document = build_design_document(plan, session_id="upper_pattern_regression", source_request=message)
+    resolve_design(document)
+    for kind in ("door", "window"):
+        expected = sum(f["ground_pattern"].count(kind) + (plan["massing"]["modeled_floors"] - 1) * f["upper_pattern"].count(kind)
+                       for f in plan["facades"].values())
+        assert plan["component_quota"][kind]["min"] == expected
+        assert plan["component_quota"][kind]["max"] == expected
+
+
+def test_upper_door_still_rejected_when_bypassing_draft_normalization():
+    from pydantic import ValidationError
+    from app.design.contracts import FacadeDecision
+
+    with pytest.raises(ValidationError, match="upper_pattern 不允许放置 door"):
+        FacadeDecision(bays=1, ground_pattern=["door"], upper_pattern=["door"])
 
 
 def _two_storey_blueprint() -> dict:
@@ -633,13 +667,13 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
 
         assert "❌" not in validate_reference_integrity.func(blueprint)
         assert "standard_floor_plate" in geometry["templates"]
-        floor_instances = [
-            instance for instance in geometry["instances"]
-            if instance["ref"] == "standard_floor_plate"
-        ]
-        assert len(floor_instances) == floors - 1
-        assert floor_instances[0]["position"][1] == floor_height
-        assert floor_instances[-1]["position"][1] == (floors - 1) * floor_height
+        # 被楼梯穿过的楼板实例展开为有开口的矩形板，所有标准层仍须保留。
+        floor_levels = {
+            element["from"][1] for element in geometry["elements"]
+            if element["type"] == "floor"
+        }
+        assert {level * floor_height for level in range(1, floors)} <= floor_levels
+        assert stair_opening_issues(blueprint) == []
 
         core_walls = [
             element for element in geometry["elements"]
@@ -702,9 +736,12 @@ def test_explicit_massing_and_details_compile_into_articulated_skeleton() -> Non
         element for element in blueprint["geometry"]["elements"]
         if element["type"] == "floor" and element["from"][1] == 3.2
     ]
-    assert len(transition_floors) == 1
-    assert transition_floors[0]["from"] == [0.0, 3.2, 0.0]
-    assert transition_floors[0]["to"] == [12.0, 3.2, 9.0]
+    assert len(transition_floors) > 1
+    assert min(f["from"][0] for f in transition_floors) == 0.0
+    assert min(f["from"][2] for f in transition_floors) == 0.0
+    assert max(f["to"][0] for f in transition_floors) == 12.0
+    assert max(f["to"][2] for f in transition_floors) == 9.0
+    assert stair_opening_issues(blueprint) == []
 
     brief = resolve_facade_layout(blueprint, plan)
     assert brief["facade_plan"]["wall_front_2_upper_setback"]["max_openings"] > 0

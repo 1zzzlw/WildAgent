@@ -85,6 +85,11 @@ export function applyComponentMaterialDefaults(
         fallback(component, 'shadeMaterial', COMPONENT_MATERIAL.lampShade)
         required.add(COMPONENT_MATERIAL.bulbEmitter)
         break
+      case 'elevator':
+        fallback(component, 'material', COMPONENT_MATERIAL.metal)
+        fallback(component, 'frameMaterial', COMPONENT_MATERIAL.frame)
+        required.add(COMPONENT_MATERIAL.bulbEmitter)
+        break
     }
   }
 

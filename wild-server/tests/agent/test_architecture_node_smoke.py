@@ -92,3 +92,72 @@ async def test_architecture_node_records_profile_diagnostics() -> None:
     assert diag["profile"] == update["architecture_plan"]["profile"]
     assert diag["profile_label"]
     assert diag["used_fallback"] is False
+
+
+@pytest.mark.asyncio
+async def test_architecture_node_with_reasoning_callback() -> None:
+    """**绑定 reasoning 回调**时必须能跑完，且提示文案与语义一致。
+
+    为什么单独一条（真实事故 2026-09-22）：节点里有一段进度提示长这样
+
+        on_reasoning_delta = get_reasoning_callback()
+        if on_reasoning_delta:
+            if plan_feedback:            # ← 计划层退场后此变量已无定义 → NameError
+                ...
+
+    `plan_feedback` 的赋值随计划层一起被删掉了，判断却留着。上面两条用例
+    **从不绑定 reasoning 回调**，`get_reasoning_callback()` 返回 None，整块被跳过，
+    于是 NameError 对它们完全隐身 —— 全量导入扫描、图编译、单测三道都查不到，
+    只有线上开了 thinking（有回调）走到这一行才炸，用户看到"意图分类之后直接报错"。
+
+    所以这条用例的价值不在断言业务结果，而在**强制进入那个被 runtime ContextVar 守卫的分支**。
+    """
+
+    from app.agent.runtime import bind_reasoning_callback, reset_reasoning_callback
+
+    seen: list[tuple[str, str]] = []
+
+    async def _collect(node: str, text: str) -> None:
+        seen.append((node, text))
+
+    spec_loader, create_llm, invoke_llm = _node_patches()
+    token = bind_reasoning_callback(_collect)
+    try:
+        with spec_loader, create_llm, invoke_llm:
+            update = await architecture_planner({"user_message": "生成一个两层别墅"})
+    finally:
+        reset_reasoning_callback(token)
+
+    assert "architecture_plan" in update, update
+    notes = [text for node, text in seen if node == "architecture"]
+    assert notes, "绑定回调后节点必须至少推一条 architecture 进度提示"
+    assert any("生成总体方案" in note for note in notes), notes
+
+
+@pytest.mark.asyncio
+async def test_architecture_node_with_reasoning_callback_and_feedback() -> None:
+    """带 `design_feedback` 时走"调整"文案分支（同样必须绑定回调才进得去）。"""
+
+    from app.agent.runtime import bind_reasoning_callback, reset_reasoning_callback
+
+    seen: list[tuple[str, str]] = []
+
+    async def _collect(node: str, text: str) -> None:
+        seen.append((node, text))
+
+    spec_loader, create_llm, invoke_llm = _node_patches()
+    token = bind_reasoning_callback(_collect)
+    try:
+        with spec_loader, create_llm, invoke_llm:
+            update = await architecture_planner(
+                {
+                    "user_message": "生成一个两层别墅",
+                    "design_feedback": "把屋顶改成四坡",
+                }
+            )
+    finally:
+        reset_reasoning_callback(token)
+
+    assert "architecture_plan" in update, update
+    notes = [text for node, text in seen if node == "architecture"]
+    assert any("调整总体方案" in note for note in notes), notes

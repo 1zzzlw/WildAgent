@@ -11,6 +11,10 @@ Blueprint Normalizer - 确定性蓝图修复模块
 4. 无法修复则丢弃单个构件
 5. 返回详细修复报告
 
+🔴 **元素（`geometry.elements`）只迁移不丢弃**：元素是用户点名要交付的几何本体，
+静默丢掉一个就等于"生成的物件凭空消失"（`body` 曾因此整类消失，见 `_repair_body`）。
+未知类型的元素保留原样，交给 schema / 结构校验去报错——归一化不是类型过滤器。
+
 **主函数**：
 - normalize_blueprint_for_delivery(bp) -> (bp, report)
 """
@@ -340,6 +344,76 @@ def _convert_old_column(elem: Dict[str, Any], report: NormalizeReport) -> Dict[s
     
     return elem
 
+#: `body` 的当前取值闭集，与 `wild-core/schema.json::$defs/body` 逐字对齐。
+_BODY_BUILD_VALUES: Tuple[str, ...] = ("lean", "athletic", "stout")
+_BODY_HEAD_SHAPES: Tuple[str, ...] = ("round", "oval", "angular")
+#: `body.ts` 判据是 `if (cloakLength > 0.3)` → **0.3 就是"不披斗篷"**，
+#: 也正好是 schema 的下限；旧场景里的 0 因此可以抬到 0.3 而不长出斗篷。
+_BODY_CLOAK_MIN: float = 0.3
+_BODY_DEFAULT_HEIGHT: float = 1.7
+
+
+def _finite_number(value: Any, default: float) -> float:
+    """把任意输入收敛成有限数字。
+
+    `bool` 是 `int` 的子类，必须显式排除——否则 `hoodUp` 之类的布尔值会被当成
+    `1.0` 塞进数值字段，正是"字段语义漂移"的开端。
+    """
+
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    number = float(value)
+    if number != number or number in (float("inf"), float("-inf")):
+        return default
+    return number
+
+
+def _repair_body(elem: Dict[str, Any], report: NormalizeReport) -> Dict[str, Any]:
+    """把旧版 `body` 元素**迁移**到当前 schema，而不是丢掉它。
+
+    为什么不能丢：`body` 现在是 schema 的合法元素类型（`$defs/body`，已被
+    `geometryElement` 的 oneOf 引用），引擎也有自己的 builder
+    （`wild-core/src/primitive/registry.ts` 中 `type: 'body'`, status=partial）。
+    这里曾经写的是"丢弃旧版 body（非建筑元素）"——那在"body 只是化身装饰"的旧语境下
+    说得通，但物件链里 `body` 就是**用户点名要交付的物件本体**：无条件丢弃会让
+    "生成一个小人"的产物在交付归一这一步静默消失（批次合并明明报"已并入 1 个元素"，
+    收尾归一把它删掉），最终蓝图空掉、`validate_design_brief` 报
+    "body 数量 0 少于设计下限 1"，条目被判 abandoned。
+
+    **归一化不是类型过滤器**：真不合法的元素应该由 schema / 结构校验报错
+    （《动态节点设计规划》§8.1"能力缺失只标记、不阻断"），而不是在这里悄悄删掉。
+
+    旧值按**引擎自己的中性语义**迁移，所以既有场景的观感不变（`body.ts`：未知
+    `build` → 缩放 1 = `athletic`；未知 `headShape` → `[1,1,1]` = `round`；
+    `cloakLength <= 0.3` → 不生成斗篷）。
+    """
+
+    height = _finite_number(elem.get("height"), _BODY_DEFAULT_HEIGHT)
+    if height <= 0:
+        height = _BODY_DEFAULT_HEIGHT
+    migrated = {
+        "height": height,
+        "build": (
+            elem.get("build") if elem.get("build") in _BODY_BUILD_VALUES else "athletic"
+        ),
+        "headShape": (
+            elem.get("headShape") if elem.get("headShape") in _BODY_HEAD_SHAPES else "round"
+        ),
+        "armLength": min(max(_finite_number(elem.get("armLength"), 1.0), 0.5), 1.5),
+        "legLength": min(max(_finite_number(elem.get("legLength"), 1.0), 0.5), 1.5),
+        "cloakLength": min(
+            max(_finite_number(elem.get("cloakLength"), _BODY_CLOAK_MIN), _BODY_CLOAK_MIN),
+            1.5,
+        ),
+        "hoodUp": bool(elem.get("hoodUp", False)),
+    }
+    changed = {key: value for key, value in migrated.items() if elem.get(key) != value}
+    if changed:
+        report.repaired_fields.append(f"{elem.get('id', 'unknown')}: body 旧值 -> {changed}")
+    elem.update(migrated)
+    return elem
+
+
 def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) -> List[Dict[str, Any]]:
     """修复元素列表"""
     repaired = []
@@ -347,15 +421,13 @@ def _repair_elements(elements: List[Dict[str, Any]], report: NormalizeReport) ->
     for elem in elements:
         elem_type = elem.get("type")
         
-        # 丢弃旧版 body（非建筑元素）
-        if elem_type == "body":
-            report.dropped_elements.append(f"{elem.get('id', 'unknown')} (body 不是建筑元素)")
-            continue
-        
         # 修复 column
         if elem_type == "column":
             elem = _repair_column_style(elem, report)
             elem = _convert_old_column(elem, report)
+        # 迁移旧版 body（保留几何，理由见 _repair_body）
+        elif elem_type == "body":
+            elem = _repair_body(elem, report)
         
         repaired.append(elem)
     

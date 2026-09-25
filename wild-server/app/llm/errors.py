@@ -99,15 +99,17 @@ def collect_component_model_errors(component_diagnostics: object) -> list[dict[s
 
     failures: list[dict[str, Any]] = []
     for diag_key, diag in component_diagnostics.items():
-        if not str(diag_key).endswith("_gen_diag") or not isinstance(diag, dict):
+        # 诊断键在 component_diagnostics 里是 ``{type}_gen``（生成阶段）
+        if not str(diag_key).endswith("_gen") or not isinstance(diag, dict):
             continue
         model_error = diag.get("model_error")
         if not isinstance(model_error, dict) or not model_error.get("terminal_current_run"):
             continue
+        component_type = str(diag_key)[:-4]
         failures.append({
             **model_error,
-            "component_type": str(diag_key)[:-9],
-            "label": diag.get("label", str(diag_key)[:-9]),
+            "component_type": component_type,
+            "label": diag.get("label", component_type),
         })
     return failures
 

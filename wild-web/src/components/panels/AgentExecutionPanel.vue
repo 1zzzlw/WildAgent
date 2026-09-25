@@ -9,6 +9,12 @@
       </span>
       <span class="summary-title">{{ summaryTitle }}</span>
       <span class="summary-meta">{{ summaryMeta }}</span>
+      <button
+        v-if="turn.plan"
+        type="button"
+        class="plan-window-toggle"
+        @click.prevent.stop="planWindowOpen = !planWindowOpen"
+      >{{ planWindowOpen ? '收起计划' : '查看计划' }}</button>
       <span class="summary-chevron">›</span>
     </summary>
 
@@ -18,17 +24,37 @@
       </div>
       <section v-if="turn.design_document" class="design-review" :class="{ active: isDesignReview }">
         <div class="execution-plan-header">
-          <strong>建筑设计 r{{ turn.design_document.revision }}</strong>
+          <strong>{{ architectureDecisions ? '建筑设计' : '物件方案' }} r{{ turn.design_document.revision }}</strong>
           <span>{{ designStatusLabel(turn.design_document.status) }}</span>
         </div>
         <div class="design-concept">{{ turn.design_document.decisions.concept }}</div>
-        <div class="design-facts">
-          <span>{{ turn.design_document.decisions.massing.width }} × {{ turn.design_document.decisions.massing.depth }}m</span>
-          <span>{{ turn.design_document.decisions.massing.floors }} 层</span>
-          <span>{{ turn.design_document.decisions.volumes.length }} 个体量</span>
-          <span>{{ turn.design_document.decisions.envelope.system }}</span>
-          <span>{{ turn.design_document.decisions.roof.type }} 屋顶</span>
+        <!-- 建筑与物件是 decisions 带标签联合的两支，字段不重叠：
+             模板必须按 kind 收窄后再读，否则读 massing 会直接抛异常。 -->
+        <div v-if="architectureDecisions" class="design-facts">
+          <span>{{ architectureDecisions.massing.width }} × {{ architectureDecisions.massing.depth }}m</span>
+          <span>{{ architectureDecisions.massing.floors }} 层</span>
+          <span>{{ architectureDecisions.volumes.length }} 个体量</span>
+          <span>{{ architectureDecisions.envelope.system }}</span>
+          <span>{{ architectureDecisions.roof.type }} 屋顶</span>
           <span v-if="designMaterialConcept">{{ designMaterialConcept }}</span>
+        </div>
+        <div v-else-if="objectDecisions" class="design-facts">
+          <span>{{ objectDecisions.objects.length }} 类物件</span>
+          <span>共 {{ objectCount }} 件</span>
+          <span v-if="designMaterialConcept">{{ designMaterialConcept }}</span>
+        </div>
+        <div v-if="objectDecisions" class="design-objects">
+          <div
+            v-for="(item, index) in objectDecisions.objects"
+            :key="`${item.kind}-${item.subtype}-${index}`"
+            class="design-object"
+          >
+            <span class="object-name">{{ item.subtype || item.kind }} × {{ item.count }}</span>
+            <span class="object-size">
+              {{ item.width.toFixed(2) }} × {{ item.depth.toFixed(2) }} × {{ item.height.toFixed(2) }}m
+            </span>
+            <span v-if="item.placement" class="object-placement">{{ item.placement }}</span>
+          </div>
         </div>
         <a
           v-if="turn.design_preview_url"
@@ -38,24 +64,36 @@
           rel="noopener noreferrer"
           title="在新窗口查看原始 SVG"
         >
-          <img :src="turn.design_preview_url" alt="建筑体量、主立面和侧立面设计预览" />
+          <img
+            :src="turn.design_preview_url"
+            :alt="architectureDecisions ? '建筑体量、主立面和侧立面设计预览' : '物件轮廓与尺寸预览'"
+          />
         </a>
         <details class="design-details">
           <summary>设计约束与构件计划</summary>
           <div v-for="constraint in turn.design_document.constraints" :key="constraint.id">
             <strong>{{ constraint.kind }}</strong> · {{ constraint.expression }}
           </div>
-          <div class="design-quota">
+          <div
+            v-if="architectureDecisions"
+            class="design-quota"
+          >
             <span
-              v-for="(quota, component) in turn.design_document.decisions.component_quota"
+              v-for="(quota, component) in architectureDecisions.component_quota"
               :key="component"
             >{{ component }} {{ quota.min }}–{{ quota.max }}</span>
+          </div>
+          <div v-else-if="objectDecisions" class="design-quota">
+            <span
+              v-for="(item, index) in objectDecisions.objects"
+              :key="`quota-${item.kind}-${item.subtype}-${index}`"
+            >{{ item.subtype || item.kind }} × {{ item.count }}</span>
           </div>
         </details>
         <div v-if="isDesignReview" class="review-actions">
           <button
             type="button"
-            class="confirm-plan-btn"
+            class="confirm-design-btn"
             @click="$emit('confirm-design', turn.request_id)"
           >批准此设计并生成 Blueprint</button>
           <span>Blueprint 将绑定设计 revision 和 hash</span>
@@ -64,116 +102,16 @@
           <textarea
             v-model="designFeedback"
             rows="3"
-            placeholder="例如：塔楼向后退 2 米；主立面改为非对称；保留层数并减少窗格密度。"
+            :placeholder="architectureDecisions
+              ? '例如：塔楼向后退 2 米；主立面改为非对称；保留层数并减少窗格密度。'
+              : '例如：桌子改宽到 1.8 米；四把椅子面向桌面；木色改深一点。'"
           ></textarea>
           <button
             type="button"
-            class="revise-plan-btn"
+            class="revise-design-btn"
             :disabled="!designFeedback.trim()"
             @click="submitDesignRevision"
           >根据意见生成下一版设计</button>
-        </div>
-      </section>
-      <section v-if="turn.execution_plan" class="execution-plan-review" :class="{ active: isPlanReview }">
-        <div class="execution-plan-header">
-          <strong>执行计划 v{{ turn.execution_plan.version }}</strong>
-          <span>
-            {{ plannerSourceLabel(turn.execution_plan.planner_source) }}
-            · {{ planStatusLabel(turn.execution_plan.status) }}
-          </span>
-        </div>
-        <div class="execution-plan-goal">{{ turn.execution_plan.goal }}</div>
-        <div v-if="turn.execution_plan.planner_summary" class="execution-plan-summary">
-          {{ turn.execution_plan.planner_summary }}
-        </div>
-        <div v-if="turn.execution_plan.change_summary?.length" class="plan-change-summary">
-          <strong>本版变化</strong>
-          <span v-for="item in turn.execution_plan.change_summary" :key="item">{{ item }}</span>
-        </div>
-        <div v-if="turn.execution_plan.dynamic_tasks?.length" class="dynamic-plan-tasks">
-          <div class="plan-section-title">本次建筑任务</div>
-          <div
-            v-for="task in turn.execution_plan.dynamic_tasks"
-            :key="task.id"
-            :class="['dynamic-plan-task', `plan-${task.status}`]"
-          >
-            <span class="plan-step-mark">{{ planStepMark(task.status) }}</span>
-            <span class="plan-step-main">
-              <strong>{{ task.title }}</strong>
-              <small>{{ task.objective }}</small>
-              <em>依据：{{ task.basis }}</em>
-              <em>验收：{{ task.acceptance.join('；') }}</em>
-            </span>
-            <span class="plan-phase">{{ planPhaseLabel(task.phase) }}</span>
-          </div>
-        </div>
-        <details v-if="turn.execution_progress" class="plan-constraints">
-          <summary>LangGraph 固定主链运行进度</summary>
-          <div class="execution-plan-steps">
-            <div
-              v-for="(progress, phase) in turn.execution_progress"
-              :key="phase"
-              :class="['execution-plan-step', `plan-${progress.status}`]"
-            >
-              <span class="plan-step-mark">{{ planStepMark(progress.status) }}</span>
-              <span class="plan-step-main">
-                <strong>{{ planPhaseLabel(String(phase)) }}</strong>
-                <small>{{ progress.detail }}</small>
-              </span>
-              <span class="plan-permission">{{ progress.result_ref || '等待产物' }}</span>
-            </div>
-          </div>
-        </details>
-        <details v-if="turn.structured_requirements?.length" class="plan-constraints">
-          <summary>结构化要求与验收（{{ turn.structured_requirements.length }} 条）</summary>
-          <div class="execution-plan-steps">
-            <div
-              v-for="requirement in turn.structured_requirements"
-              :key="requirement.id"
-              :class="['execution-plan-step', `plan-${acceptanceStatus(requirement.source_acceptance_id)}`]"
-            >
-              <span class="plan-step-mark">{{ acceptanceMark(requirement.source_acceptance_id) }}</span>
-              <span class="plan-step-main">
-                <strong>{{ requirement.description }}</strong>
-                <small>{{ acceptanceMessage(requirement.source_acceptance_id) }}</small>
-                <em v-if="acceptanceEvidence(requirement.source_acceptance_id)">
-                  {{ acceptanceEvidence(requirement.source_acceptance_id) }}
-                </em>
-              </span>
-              <span :class="['plan-permission', `plan-support-${requirement.support_status}`]">
-                {{ requirementSupportLabel(requirement) }}
-              </span>
-            </div>
-          </div>
-        </details>
-        <details class="plan-constraints">
-          <summary>不可绕过的约束</summary>
-          <div v-for="constraint in turn.execution_plan.constraints" :key="constraint">· {{ constraint }}</div>
-        </details>
-        <div v-if="turn.execution_feedback_queued_count" class="review-note">
-          已排队 {{ turn.execution_feedback_queued_count }} 条运行中意见，将在下一节点边界处理。
-        </div>
-        <div v-if="isPlanReview" class="review-actions">
-          <button
-            type="button"
-            class="confirm-plan-btn"
-            :disabled="!turn.execution_plan.valid"
-            @click="$emit('confirm-execution-plan', turn.request_id)"
-          >批准计划并开始执行</button>
-          <span>批准前不会生成三维</span>
-        </div>
-        <div v-if="isPlanReview" class="review-revision">
-          <textarea
-            v-model="planFeedback"
-            rows="3"
-            placeholder="例如：先检查玻璃幕墙材质能力；底部改为三层商业基座；减少非必要组件。"
-          ></textarea>
-          <button
-            type="button"
-            class="revise-plan-btn"
-            :disabled="!planFeedback.trim()"
-            @click="submitPlanRevision"
-          >根据意见重新制定计划</button>
         </div>
       </section>
       <details
@@ -247,30 +185,77 @@
           <span v-if="turn.metrics.retry_count !== undefined">
             修复轮次 {{ turn.metrics.retry_count }}（每目标最多 {{ turn.metrics.max_retries || 3 }} 次）
           </span>
-          <span v-if="turn.metrics.plan_mode">
-            计划 v{{ turn.metrics.plan_version || 1 }} · 重规划 {{ turn.metrics.plan_replan_count || 0 }} 次
-          </span>
         </div>
       </details>
     </div>
   </details>
+
+  <Teleport to="body">
+    <aside
+      v-if="turn.plan && planWindowOpen"
+      class="plan-floating-window"
+      role="dialog"
+      aria-label="执行计划"
+    >
+      <header class="plan-floating-header">
+        <div>
+          <strong>执行计划</strong>
+          <span>{{ planCounts.done }}/{{ planCounts.total }} 完成</span>
+        </div>
+        <div class="plan-floating-actions">
+          <button type="button" @click="planWindowMinimized = !planWindowMinimized">
+            {{ planWindowMinimized ? '展开' : '最小化' }}
+          </button>
+          <button type="button" aria-label="关闭执行计划" @click="planWindowOpen = false">×</button>
+        </div>
+      </header>
+      <template v-if="!planWindowMinimized">
+        <div class="plan-floating-meta">
+          <span>档位 {{ turn.plan.detail_level }}</span>
+          <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
+          <span>{{ planBatchCount }} 个生成批次</span>
+          <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>
+        </div>
+        <div v-if="planShortfall.length" class="plan-change-summary">
+          <strong>待处理 {{ planShortfall.length }} 条</strong>
+        </div>
+        <div class="dynamic-plan-tasks plan-floating-tasks">
+          <div
+            v-for="item in turn.plan.items"
+            :key="item.id"
+            :class="['dynamic-plan-task', `plan-${item.status}`]"
+          >
+            <span class="plan-step-mark">{{ planItemMark(item.status) }}</span>
+            <span class="plan-step-main">
+              <strong>{{ item.label || item.id }}</strong>
+              <small>{{ planItemDetail(item) }}</small>
+              <small v-if="planExecutionLabel(item)" class="plan-execution-mode">
+                {{ planExecutionLabel(item) }}
+              </small>
+            </span>
+            <span class="plan-phase">{{ item.op }}</span>
+          </div>
+        </div>
+      </template>
+    </aside>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
-import type { AgentTurn } from '../../types/agent'
+import type { AgentTurn, PlanItem } from '../../types/agent'
 
 const props = defineProps<{ turn: AgentTurn }>()
 const emit = defineEmits<{
-  (event: 'confirm-execution-plan', requestId: string): void
-  (event: 'revise-execution-plan', requestId: string, feedback: string): void
   (event: 'confirm-design', requestId: string): void
   (event: 'revise-design', requestId: string, feedback: string): void
 }>()
 const clock = ref(Date.now())
-const planFeedback = ref('')
 const designFeedback = ref('')
+const planWindowOpen = ref(false)
+const planWindowMinimized = ref(false)
+const planAutoOpenedForRequest = ref('')
 let timer: number | undefined
 
 const md = new MarkdownIt({ html: false, breaks: true, linkify: false })
@@ -282,17 +267,11 @@ const durationMs = computed(() => {
 
 const summaryTitle = computed(() => {
   if (props.turn.status === 'running') return '正在处理'
-  if (isPlanReview.value) return '等待批准执行计划'
   if (isDesignReview.value) return '等待批准建筑设计'
   if (props.turn.status === 'waiting_review') return '等待用户确认'
   if (props.turn.status === 'error') return '处理未完成'
   return '处理完成'
 })
-
-const isPlanReview = computed(() =>
-  props.turn.status === 'waiting_review'
-  && props.turn.execution_plan_review_status === 'pending',
-)
 
 const isDesignReview = computed(() =>
   props.turn.status === 'waiting_review'
@@ -315,20 +294,43 @@ const designMaterialConcept = computed(() => {
   return typeof plan?.concept === 'string' ? plan.concept : ''
 })
 
+// decisions 是带标签联合：模板必须先按 kind 收窄再读字段。
+// 直接读 decisions.massing 在物件方案上会抛异常（那支根本没有 massing）。
+const architectureDecisions = computed(() => {
+  const decisions = props.turn.design_document?.decisions
+  return decisions?.kind === 'architecture' ? decisions : null
+})
+
+const objectDecisions = computed(() => {
+  const decisions = props.turn.design_document?.decisions
+  return decisions?.kind === 'object' ? decisions : null
+})
+
+const objectCount = computed(() =>
+  (objectDecisions.value?.objects ?? []).reduce((total, item) => total + (item.count ?? 0), 0),
+)
+
 watch(
-  () => [props.turn.request_id, props.turn.execution_plan?.version, props.turn.design_document?.revision] as const,
+  () => [props.turn.request_id, props.turn.design_document?.revision] as const,
   () => {
-    planFeedback.value = ''
     designFeedback.value = ''
   },
 )
 
-function submitPlanRevision() {
-  const feedback = planFeedback.value.trim()
-  if (!feedback) return
-  emit('revise-execution-plan', props.turn.request_id, feedback)
-  planFeedback.value = ''
-}
+watch(
+  () => props.turn.plan,
+  (plan) => {
+    if (
+      plan
+      && props.turn.status === 'running'
+      && planAutoOpenedForRequest.value !== props.turn.request_id
+    ) {
+      planWindowOpen.value = true
+      planAutoOpenedForRequest.value = props.turn.request_id
+    }
+  },
+  { immediate: true },
+)
 
 function submitDesignRevision() {
   const feedback = designFeedback.value.trim()
@@ -341,80 +343,53 @@ function designStatusLabel(status: string): string {
   return ({ draft: '草案', approved: '已批准', compiled: '已编译' } as Record<string, string>)[status] || status
 }
 
-function planStepMark(status: string): string {
+const planCounts = computed(() => {
+  const items = props.turn.plan?.items || []
+  return {
+    total: items.length,
+    done: items.filter(item => item.status === 'done').length,
+  }
+})
+
+const planShortfall = computed(() =>
+  (props.turn.plan?.items || []).filter(item => item.status !== 'done'),
+)
+
+const planBatchCount = computed(() =>
+  (props.turn.plan?.items || []).filter(item => item.op === 'generate').length,
+)
+
+const planParallelGroups = computed(() => new Set(
+  (props.turn.plan?.items || [])
+    .map(item => item.params?.parallel_group)
+    .filter((group): group is string => Boolean(group)),
+).size)
+
+function planItemMark(status: string): string {
   return ({
     pending: '·',
-    in_progress: '→',
-    completed: '✓',
-    failed: '!',
+    ready: '·',
+    blocked: '·',
+    done: '✓',
+    abandoned: '!',
     skipped: '–',
+    unsupported: '?',
   } as Record<string, string>)[status] || '·'
 }
 
-function acceptanceStatus(acceptanceId: string): string {
-  const status = props.turn.acceptance_results?.[acceptanceId]?.status || 'pending'
-  if (status === 'passed' || status === 'not_applicable') return 'completed'
-  if (status === 'failed' || status === 'unsupported') return 'failed'
-  return status
+function planItemDetail(item: PlanItem): string {
+  const evidence = item.run?.evidence || ''
+  const attempts = item.run?.attempts ? `（已尝试 ${item.run.attempts} 次）` : ''
+  const strategy = String(item.params?.batch_reason || item.params?.reason || '')
+  return evidence || `${strategy}${attempts}` || attempts || '等待执行'
 }
 
-function acceptanceMark(acceptanceId: string): string {
-  const status = props.turn.acceptance_results?.[acceptanceId]?.status
-  // not_checked 与普通 pending 含义不同：它不是“还没轮到”，而是“需要人工确认”。
-  if (status === 'not_checked') return '?'
-  return planStepMark(acceptanceStatus(acceptanceId))
-}
-
-function acceptanceMessage(acceptanceId: string): string {
-  return props.turn.acceptance_results?.[acceptanceId]?.message || '等待对应阶段执行'
-}
-
-function formatAcceptanceValue(value: unknown): string {
-  if (value === null || value === undefined) return ''
-  if (typeof value === 'object') return JSON.stringify(value)
-  return String(value)
-}
-
-function acceptanceEvidence(acceptanceId: string): string {
-  const result = props.turn.acceptance_results?.[acceptanceId]
-  if (!result || result.status === 'pending') return ''
-  const expected = formatAcceptanceValue(result.expected)
-  const observed = formatAcceptanceValue(result.observed)
-  if (!expected && !observed) return ''
-  return `期望 ${expected || '—'} · 实际 ${observed || '—'}`
-}
-
-function requirementSupportLabel(requirement: { support_status: string; validator: string }): string {
-  if (requirement.support_status === 'unsupported') return '当前不支持'
-  if (requirement.support_status === 'needs_review') return '需人工确认'
-  return requirement.validator
-}
-
-function planStatusLabel(status: string): string {
-  return ({
-    draft: '草案', reviewing: '待审核', approved: '已批准',
-    executing: '执行中', revising: '重新规划', completed: '已完成', failed: '失败',
-  } as Record<string, string>)[status] || status
-}
-
-function plannerSourceLabel(source?: string): string {
-  if (source === 'llm') return '模型动态规划'
-  if (source === 'fallback') return '语义回退计划'
-  return '兼容计划'
-}
-
-function planPhaseLabel(phase: string): string {
-  return ({
-    planning_research: '计划研究',
-    architecture: '总体方案',
-    material_plan: '材质方案',
-    design_review: '设计审核',
-    skeleton: '主体装配',
-    component_generation: '动态组件生成',
-    merge: '结果合并',
-    final_validate: '最终校验',
-    patch: '场景修改',
-  } as Record<string, string>)[phase] || phase
+function planExecutionLabel(item: PlanItem): string {
+  if (item.op !== 'generate') return ''
+  const batchSize = Number(item.target?.batch_size || 1)
+  const batch = batchSize > 1 ? `一次批量 ${batchSize} 个` : '单批次生成'
+  const group = item.params?.parallel_group
+  return group ? `${batch} · 并发组 ${group}` : `${batch} · 串行`
 }
 
 function renderMarkdown(content: string): string {
@@ -488,7 +463,19 @@ onUnmounted(() => {
 .status-mark.status-waiting_review { color: #facc15; }
 .summary-title { color: #dedee3; font-weight: 600; }
 .summary-meta { color: #777781; }
+.plan-window-toggle {
+  margin-left: auto;
+  padding: 2px 7px;
+  color: #a9c8ee;
+  border: 1px solid rgba(104, 153, 212, .35);
+  border-radius: 5px;
+  background: rgba(104, 153, 212, .08);
+  font-size: 10px;
+  cursor: pointer;
+}
+.plan-window-toggle:hover { background: rgba(104, 153, 212, .16); }
 .summary-chevron { margin-left: auto; color: #777781; transition: transform .18s; }
+.plan-window-toggle + .summary-chevron { margin-left: 0; }
 .execution-panel[open] > .execution-summary .summary-chevron { transform: rotate(90deg); }
 
 .spinner {
@@ -512,6 +499,79 @@ onUnmounted(() => {
   border: 1px solid rgba(104, 153, 212, .2);
   border-radius: 7px;
   background: rgba(104, 153, 212, .035);
+}
+
+.plan-floating-window {
+  position: fixed;
+  z-index: 2400;
+  right: 22px;
+  bottom: 86px;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(68vh, 720px);
+  overflow: hidden;
+  color: #c7c7ce;
+  border: 1px solid rgba(104, 153, 212, .42);
+  border-radius: 12px;
+  background: rgba(18, 21, 28, .96);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .48), 0 0 0 1px rgba(255, 255, 255, .025) inset;
+  backdrop-filter: blur(14px);
+}
+
+.plan-floating-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+  background: linear-gradient(135deg, rgba(104, 153, 212, .16), rgba(104, 153, 212, .04));
+}
+
+.plan-floating-header > div:first-child { display: grid; gap: 2px; }
+.plan-floating-header strong { color: #e5edf7; font-size: 13px; }
+.plan-floating-header span { color: #8ea3bb; font-size: 10px; }
+.plan-floating-actions { display: flex; gap: 5px; }
+.plan-floating-actions button {
+  min-height: 24px;
+  padding: 2px 7px;
+  color: #aebdd0;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, .035);
+  font-size: 10px;
+  cursor: pointer;
+}
+.plan-floating-actions button:hover { background: rgba(255, 255, 255, .08); }
+
+.plan-floating-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 9px 11px 3px;
+}
+.plan-floating-meta span {
+  padding: 2px 6px;
+  color: #9eb7d3;
+  border-radius: 4px;
+  background: rgba(104, 153, 212, .09);
+  font-size: 9.5px;
+}
+.plan-floating-window > .plan-change-summary { padding: 6px 11px 0; }
+.plan-floating-tasks {
+  max-height: calc(min(68vh, 720px) - 104px);
+  overflow-y: auto;
+  padding: 7px 10px 11px;
+  scrollbar-width: thin;
+}
+.plan-execution-mode { color: #89a9ca !important; }
+
+@media (max-width: 720px) {
+  .plan-floating-window {
+    right: 8px;
+    bottom: 76px;
+    width: calc(100vw - 16px);
+    max-height: 62vh;
+  }
 }
 
 .design-review {
@@ -543,21 +603,27 @@ onUnmounted(() => {
 .design-details strong { color: #8fbfa9; font-size: 9.5px; }
 .design-quota { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.execution-plan-review.active { border-color: rgba(250, 204, 21, .38); }
+/* 物件方案：逐件列出"做几个、多大、怎么摆"——审核要看的正是这三件事。 */
+.design-objects { display: grid; gap: 3px; }
+.design-object {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: rgba(91, 178, 142, .08);
+}
+.object-name { color: #cfe0d5; font-size: 10.5px; }
+.object-size { color: #9fb6a9; font-size: 10px; }
+.object-placement { color: #8d99a4; font-size: 10px; }
+
 .execution-plan-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .execution-plan-header strong { color: #dedee3; font-size: 12px; }
 .execution-plan-header span { color: #9ca3af; font-size: 10.5px; }
-.execution-plan-goal { color: #aeb7c7; font-size: 11px; line-height: 1.5; }
-.execution-plan-summary {
-  padding: 7px 8px;
-  color: #b9c8dc;
-  font-size: 10.5px;
-  line-height: 1.55;
-  border-left: 2px solid rgba(104, 153, 212, .55);
-  background: rgba(104, 153, 212, .06);
-}
+/* 条目状态配色与后端 PlanStatus 一一对应（§2.6 计划态） */
 .plan-change-summary { display: grid; gap: 2px; color: #a8afba; font-size: 10px; }
-.plan-change-summary strong, .plan-section-title { color: #d8d8dd; font-size: 10.5px; }
+.plan-change-summary strong { color: #d8d8dd; font-size: 10.5px; }
 .dynamic-plan-tasks { display: grid; gap: 5px; }
 .dynamic-plan-task {
   display: grid;
@@ -569,37 +635,16 @@ onUnmounted(() => {
   border-radius: 6px;
   background: rgba(255, 255, 255, .025);
 }
-.dynamic-plan-task.plan-in_progress { border-color: rgba(104, 153, 212, .38); background: rgba(104, 153, 212, .12); }
-.dynamic-plan-task.plan-completed .plan-step-mark { color: #6bbf9b; }
-.dynamic-plan-task.plan-failed .plan-step-mark { color: #e07060; }
+.dynamic-plan-task.plan-ready { border-color: rgba(104, 153, 212, .38); background: rgba(104, 153, 212, .12); }
+.dynamic-plan-task.plan-done .plan-step-mark { color: #6bbf9b; }
+.dynamic-plan-task.plan-abandoned .plan-step-mark { color: #e07060; }
+.dynamic-plan-task.plan-unsupported .plan-step-mark { color: #d8b26a; }
 .dynamic-plan-task .plan-step-main small { white-space: normal; }
-.plan-step-main em { color: #697789; font-size: 9.5px; font-style: normal; line-height: 1.4; }
 .plan-phase { color: #7f9dc0; font-size: 9.5px; white-space: nowrap; }
-.execution-plan-steps { display: grid; gap: 4px; }
-.execution-plan-step {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: start;
-  padding: 6px 7px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, .025);
-}
-.execution-plan-step.plan-in_progress { background: rgba(104, 153, 212, .12); }
-.execution-plan-step.plan-completed .plan-step-mark { color: #6bbf9b; }
-.execution-plan-step.plan-failed .plan-step-mark { color: #e07060; }
-.execution-plan-step.plan-not_checked .plan-step-mark { color: #d8b26a; }
 .plan-step-mark { color: #8aa8cf; font-weight: 700; }
 .plan-step-main { display: grid; min-width: 0; gap: 2px; }
 .plan-step-main strong { color: #d8d8dd; font-size: 11px; }
 .plan-step-main small { overflow: hidden; color: #777781; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.plan-step-main em { color: #6f7a8c; font-size: 9.5px; font-style: normal; }
-.plan-permission { color: #687386; font-size: 9.5px; }
-.plan-permission.plan-support-needs_review { color: #d8b26a; }
-.plan-permission.plan-support-unsupported { color: #e07060; }
-.plan-constraints { color: #85858e; font-size: 10.5px; }
-.plan-constraints > summary { cursor: pointer; }
-.plan-constraints > div { padding: 3px 0 0 10px; }
 
 .interruption-notice {
   margin: 4px 0 8px;
@@ -610,16 +655,6 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-.review-note {
-  color: #777781;
-  font-weight: 400;
-}
-
-.review-note {
-  margin: 6px 0;
-  font-size: 10.5px;
-}
-
 .review-actions {
   display: flex;
   align-items: center;
@@ -627,9 +662,8 @@ onUnmounted(() => {
   margin: 7px 0;
 }
 
-.confirm-plan-btn,
-.retry-plan-btn,
-.revise-plan-btn {
+.confirm-design-btn,
+.revise-design-btn {
   border: 1px solid rgba(104, 153, 212, .35);
   border-radius: 5px;
   padding: 4px 9px;
@@ -644,16 +678,10 @@ onUnmounted(() => {
   font-size: 10.5px;
 }
 
-.confirm-plan-btn {
+.confirm-design-btn {
   color: #dff6e9;
   border-color: rgba(107, 191, 155, .5);
   background: rgba(107, 191, 155, .13);
-}
-
-.retry-plan-btn {
-  color: #f3d9a3;
-  border-color: rgba(230, 179, 106, .5);
-  background: rgba(230, 179, 106, .12);
 }
 
 .review-revision {
@@ -683,13 +711,13 @@ onUnmounted(() => {
   border-color: rgba(104, 153, 212, .72);
 }
 
-.revise-plan-btn {
+.revise-design-btn {
   justify-self: start;
   color: #dbeafe;
 }
 
-.confirm-plan-btn:disabled,
-.revise-plan-btn:disabled {
+.confirm-design-btn:disabled,
+.revise-design-btn:disabled {
   opacity: .38;
   cursor: not-allowed;
 }

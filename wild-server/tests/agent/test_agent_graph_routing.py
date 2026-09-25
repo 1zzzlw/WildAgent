@@ -1,24 +1,17 @@
-"""Agent 意图与组件派发的关键回归测试。"""
+"""意图分类与构件策略的关键回归测试。
+
+图级路由（plan → execute ⇄ replanner）在 `tests/agent/test_plan_graph.py`；
+本文件只管两件事：**意图别判错**（误判会走错分支）与**构件策略别放水**
+（`resolve_component_suggestions` 既是旧派发链的入口，也是新 plan 策略的安全边界）。
+"""
 
 from types import SimpleNamespace
 
 from app.agent.generation.components import resolve_component_suggestions
 from langgraph.graph import END
 
-from app.agent.graph import (
-    _after_architecture,
-    _after_material_plan,
-    _after_execution_plan_validator,
-    _after_execution_planner,
-    _classifier_dispatch,
-    _dispatch_components,
-    _final_validate_dispatch,
-    _merge_dispatch,
-    _planning_research_dispatch,
-    generation_recursion_limit,
-)
+from app.agent.graph import _classifier_dispatch, _final_validate_dispatch, _after_material_plan
 import app.agent.routing as intent_classifier
-import app.agent.planning.workflow as execution_plan_node
 from app.agent.routing import (
     classify_intent_decision,
     classify_keywords,
@@ -36,36 +29,7 @@ def _run_immediate_coroutine(coroutine):
     raise AssertionError("测试协程没有同步完成")
 
 
-def test_minimal_complexity_skips_component_dispatch():
-    result = _dispatch_components({
-        "architecture_plan": {"complexity": {"level": "minimal"}},
-        "suggested_components": ["door", "window", "roof"],
-        "user_message": "生成一面玻璃幕墙",
-    })
-    assert result == "merge"
-
-
-def test_approved_component_requirement_overrides_minimal_dispatch_skip():
-    result = _dispatch_components({
-        "architecture_plan": {"complexity": {"level": "minimal"}},
-        "structured_requirements": [{
-            "kind": "component_all",
-            "support_status": "supported",
-            "expected": {"types": ["balcony"], "minimum": 1},
-        }],
-        "suggested_components": [],
-        "user_message": "生成一个极简建筑",
-    })
-
-    assert "balcony_gen" in [send.node for send in result]
-
-
-def test_empty_component_suggestions_dispatch_base_components():
-    result = _dispatch_components({
-        "suggested_components": [],
-        "user_message": "生成一个简单体块",
-    })
-    assert [send.node for send in result] == ["door_gen", "window_gen", "roof_gen"]
+# ── 图级意图路由 ──
 
 
 def test_edit_keyword_routes_to_patch_when_scene_exists():
@@ -77,62 +41,86 @@ def test_generate_routes_to_architecture_plan_first():
     assert _classifier_dispatch({"intent": "generate"}) == "architecture"
 
 
-def test_plan_mode_reviews_dynamic_plan_before_architecture():
-    assert _classifier_dispatch({"intent": "generate", "plan_mode": True}) == "planning_research"
-    assert _planning_research_dispatch({"intent": "generate"}) == "planner"
-    assert execution_plan_node.route_execution_plan_review({
-        "intent": "generate",
-        "execution_plan_review_status": "approved",
-    }) == "architecture"
-    assert _after_architecture({"plan_mode": True}) == "material_plan"
-    assert _after_architecture({"plan_feedback_pending": True}) == "planner"
+def test_generate_with_object_target_routes_to_object_chain():
+    """`intent` 只决定"要不要现在产出"，`target_kind` 才决定产出什么。
+
+    缺失 `target_kind` 时必须回落到建筑（旧语料与旧状态都没有这个字段），
+    否则一次字段缺失就会把建筑需求送进只做物件的链路。
+    """
+
+    assert _classifier_dispatch(
+        {"intent": "generate", "intent_target_kind": "object"}
+    ) == "object_design"
+    assert _classifier_dispatch(
+        {"intent": "generate", "intent_target_kind": "architecture"}
+    ) == "architecture"
+    assert _classifier_dispatch({"intent": "generate"}) == "architecture"
+
+
+def test_target_kind_is_ignored_for_non_generate_intents():
+    """改场景/问答不走方案链：它们不需要重出一份方案。"""
+
+    assert _classifier_dispatch({"intent": "edit", "intent_target_kind": "object"}) == "patch"
+    assert _classifier_dispatch({"intent": "chat", "intent_target_kind": "object"}) == "chat"
+
+
+def test_design_review_returns_to_the_chain_that_produced_the_document():
+    """审图打回时必须回到产出该方案的链路，否则物件方案会被当作建筑方案重算。
+
+    判定依据刻意取**文档自身的判别字段**而不是意图字段：修订轮次的意图字段可能
+    缺失或过期，而"这份文档是谁产出的"永远写在 `decisions.kind` 里。
+    """
+
+    from app.agent.nodes.design_review_node import route_design_review
+
+    def state(kind: str) -> dict:
+        return {
+            "design_review_status": "revise",
+            "design_document": {"decisions": {"kind": kind}},
+        }
+
+    assert route_design_review(state("object")) == "object_design"
+    assert route_design_review(state("architecture")) == "architecture"
+    # 没有文档时（例如审图节点尚未写回）回落到建筑链，与 `_classifier_dispatch` 同一默认。
+    assert route_design_review({"design_review_status": "revise"}) == "architecture"
+    assert route_design_review({"design_review_status": "approved"}) == "skeleton"
+    assert route_design_review({"design_review_status": "revise", "status": "failed"}) == "__end__"
 
 
 def test_material_plan_waits_for_concrete_design_review():
-    assert _after_architecture({"plan_mode": False}) == "material_plan"
-    assert _after_architecture({"plan_mode": True, "design_document": {"revision": 2}}) == "material_plan"
-    assert _after_material_plan({"plan_mode": False}) == "design_review"
-    assert _after_material_plan({"plan_mode": True}) == "design_review"
-
-
-def test_terminal_model_error_stops_before_research_and_plan_validation():
-    failed = {
-        "status": "failed",
-        "terminal_model_error": {"category": "model_not_found"},
-    }
-
-    assert _classifier_dispatch(failed) == "__end__"
-    assert _planning_research_dispatch(failed) == "__end__"
-    assert _after_execution_planner(failed) == "__end__"
-    assert _after_execution_plan_validator({"execution_plan_status": "failed"}) == "__end__"
-
-
-def test_valid_plan_continues_through_validator_to_review():
-    assert _after_execution_planner({"execution_plan_status": "draft"}) == "plan_validator"
-    assert _after_execution_plan_validator({"execution_plan_status": "reviewing"}) == "plan_review"
-
-
-def test_plan_review_interrupt_shows_resume_examples(monkeypatch):
-    captured = {}
-
-    def fake_interrupt(payload):
-        captured.update(payload)
-        return {"action": "confirm"}
-
-    monkeypatch.setattr(execution_plan_node, "interrupt", fake_interrupt)
-
-    result = execution_plan_node.execution_plan_review({
-        "execution_plan": {"valid": True, "version": 1},
-    })
-
-    assert captured["resume_examples"]["confirm"] == {"action": "confirm"}
-    assert captured["resume_examples"]["revise"]["action"] == "revise"
-    assert result["execution_plan_review_status"] == "approved"
+    assert _after_material_plan({}) == "design_review"
 
 
 def test_invalid_intent_fails_closed_to_read_only_chat():
     assert _classifier_dispatch({"intent": "unknown"}) == "chat"
     assert _classifier_dispatch({}) == "chat"
+
+
+def test_model_service_failure_never_enters_validation_or_callback():
+    state = {
+        "status": "failed",
+        "terminal_model_error": {"category": "quota_exhausted"},
+    }
+
+    assert _final_validate_dispatch(state) == END
+
+
+def test_retry_budget_is_per_target_not_a_global_round_cutoff():
+    state = {
+        "status": "partial",
+        "retry_count": 3,
+        "max_retries": 3,
+        "component_retry_counts": {"old_window": 3},
+        "failed_components": [{"component_id": "new_roof"}],
+    }
+
+    assert _final_validate_dispatch(state) == "callback"
+
+    state["component_retry_counts"]["new_roof"] = 3
+    assert _final_validate_dispatch(state) == END
+
+
+# ── 意图分类：关键词与快速路径 ──
 
 
 def test_edit_like_request_does_not_edit_without_scene():
@@ -266,6 +254,9 @@ def test_classifier_failure_falls_back_without_generating_meta_question(monkeypa
     assert result.intent == "chat"
 
 
+# ── 构件策略（旧派发链与新 plan 策略共用的安全边界）──
+
+
 def test_component_suggestions_filter_unknown_and_negated_types():
     assert resolve_component_suggestions(
         ["door", "window", "unknown", "door"],
@@ -303,38 +294,3 @@ def test_balcony_does_not_duplicate_embedded_railing():
         ["balcony", "railing"],
         "生成一个带阳台和独立护栏的房子",
     ) == ["balcony", "railing"]
-
-
-def test_retry_budget_is_per_target_not_a_global_round_cutoff():
-    state = {
-        "status": "partial",
-        "retry_count": 3,
-        "max_retries": 3,
-        "component_retry_counts": {"old_window": 3},
-        "failed_components": [{"component_id": "new_roof"}],
-    }
-
-    assert _final_validate_dispatch(state) == "callback"
-
-    state["component_retry_counts"]["new_roof"] = 3
-    assert _final_validate_dispatch(state) == END
-
-
-def test_model_service_failure_never_enters_validation_or_callback():
-    state = {
-        "status": "failed",
-        "terminal_model_error": {"category": "quota_exhausted"},
-    }
-
-    assert _merge_dispatch(state) == END
-    assert _final_validate_dispatch(state) == END
-
-
-def test_normal_merge_enters_final_validation():
-    assert _merge_dispatch({"status": "validating"}) == "final_validate"
-
-
-def test_recursion_limit_scales_with_graph_size_and_retry_budget():
-    assert generation_recursion_limit(0, 0) == 48
-    assert generation_recursion_limit(11, 3) == 50
-    assert generation_recursion_limit(0, 0, plan_mode=True) == 68

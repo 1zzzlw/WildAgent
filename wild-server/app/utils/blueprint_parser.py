@@ -30,8 +30,9 @@ import os as _os
 SCENES_DIR = Path(_os.environ.get("WILD_SCENES_DIR", "") or (_SERVER_ROOT / "storage" / "scenes"))
 
 # 将 wild-core 暂不支持的模型常见叫法收敛到可渲染的 furniture subtype。
+# sofa 已是引擎原生 subtype（furniture.ts buildSofa），不再降级为 chair。
 _FURNITURE_SUBTYPE_ALIASES = {
-    "sofa": "chair",
+    "couch": "sofa",
     "counter": "table",
 }
 
@@ -628,11 +629,24 @@ def _validate_procedural_material(name: str, material: dict) -> list[str]:
     return issues
 
 
-def validate_blueprint_schema(blueprint: dict) -> list[str]:
+def validate_blueprint_schema(
+    blueprint: dict,
+    *,
+    allow_empty_geometry: bool = False,
+) -> list[str]:
     """轻量级 Blueprint 结构校验
 
     只检查基本结构完整性（meta/geometry/elements 存在性、ID 唯一性）。
     不做空间关系校验——那是 spatial_tools 的职责，LLM 在生成过程中已调用。
+
+    ``allow_empty_geometry``：允许 `geometry.elements` 与 `geometry.components`
+    同时为空。**交付物的默认值必须是 False**——一份空蓝图没有意义。只有
+    **骨架阶段的物件场景**需要它：物件骨架按设计就是空容器
+    （`build_object_skeleton` 返回 `elements: []`），家具要等 `plan` 派发的
+    `generate` 条目跑完才写进蓝图。骨架节点若用交付口径预检，
+    会把一张合法的桌子当场判成 `status=failed`。
+    见 `agent/generation/skeleton_workflow.py`（复杂度评估早已按同一理由跳过
+    物件场景，这里漏了）。
 
     Returns:
         问题描述列表，空列表表示通过
@@ -674,7 +688,7 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
             if not isinstance(components, list):
                 issues.append("geometry.components 必须是数组")
                 components = []
-            if len(elements) == 0 and len(components) == 0:
+            if not allow_empty_geometry and len(elements) == 0 and len(components) == 0:
                 issues.append("geometry.elements 和 geometry.components 不能同时为空")
 
             # 基础元素和高级组件共享同一个 ID 命名空间，避免编译后冲突。
@@ -731,7 +745,7 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                 "door": {
                     "type", "id", "parentWall", "from", "width", "height",
                     "frameWidth", "frameDepth", "leafDepth", "frameMaterial", "leafMaterial",
-                    "interaction", "openingStyle", "doorStyle", "draggable",
+                    "interaction", "openingStyle", "doorStyle", "leafRows", "draggable",
                 },
                 "window": {
                     "type", "id", "parentWall", "from", "width", "height",
@@ -742,6 +756,7 @@ def validate_blueprint_schema(blueprint: dict) -> list[str]:
                 "railing": {
                     "type", "id", "path", "height", "postSpacing", "postRadius",
                     "railRadius", "railLevels", "material", "parentFloor", "draggable",
+                    "infillType", "infillThickness", "infillTopRatio", "infillMaterial",
                 },
                 "canopy": {
                     "type", "id", "parentWall", "from", "width", "depth",

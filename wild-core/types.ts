@@ -75,6 +75,7 @@ export type ComponentSpec = (
   | CorniceComponent
   | ChimneyComponent
   | LightComponent
+  | ElevatorComponent
 ) & {
   /** 编辑器中是否允许通过三轴控件拖动；关闭时只允许属性面板编辑。 */
   draggable?: boolean;
@@ -82,11 +83,21 @@ export type ComponentSpec = (
 
 /** 门窗静态蓝图中持久化的交互配置；实际动画进度只存在于前端运行时。 */
 export interface OpeningInteractionSpec {
-  mode: 'swing' | 'slide';
+  /**
+   * swing=绕铰链侧平开；slide=沿墙面水平推拉；lift=整扇向上让开洞口（卷帘/上闸门）。
+   * `lift` 与 `hingeSide` 无关，只认 `openDistance`。
+   */
+  mode: 'swing' | 'slide' | 'lift';
   hingeSide?: 'left' | 'right';
   /** swing 模式的最大开角，单位为度。 */
   openAngle?: number;
-  /** slide 模式的位移，单位为米；省略时按构件宽度计算。 */
+  /**
+   * slide/lift 模式的位移，单位为米。
+   * - `slide`：省略时按宽度 × 0.8 计算。
+   * - `lift`：省略时按洞口高度计算，**但始终被钳到"洞口上方到父墙墙顶的净空"**——
+   *   门扇是刚体平板、引擎不剪裁也不折卷，不钳就会顶出墙外。净空不足时门只升起一截
+   *   （真实卷帘门半开的形态），净空足够时整扇让开洞口。
+   */
   openDistance?: number;
   initiallyOpen?: boolean;
 }
@@ -94,13 +105,56 @@ export interface OpeningInteractionSpec {
 /** 编译器写入基础元素、Core 透传给 renderer 的内部交互描述。 */
 export interface OpeningElementBehavior {
   kind: 'opening';
-  mode: 'swing' | 'slide';
+  mode: 'swing' | 'slide' | 'lift';
   pivot: Vec3;
   closedPosition: Vec3;
   closedRotation: Vec3;
   openRotation?: Vec3;
   openOffset?: Vec3;
   initiallyOpen: boolean;
+}
+
+/**
+ * 电梯行为：右键/点击按钮时轿厢在井道内逐层停靠。
+ *
+ * 轿厢是刚体盒，沿世界 +Y 在 [0, travelHeight] 间平移；`floorHeight` 是
+ * 单层层高，停靠位置恒为 floorHeight 的整数倍（1 层=0、2 层=floorHeight、…），
+ * 停在门洞正下方。层数只取井道实际跨越的层数（编译器写入），前端不猜。
+ */
+export interface ElevatorElementBehavior {
+  kind: 'elevator';
+  floorHeight: number;
+  floorCount: number;
+  /** 当前停靠楼层（0 基，0 = 底层）。静态蓝图只保存初始楼层。 */
+  initialFloor: number;
+}
+
+export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior | ElevatorElementBehavior;
+
+/**
+ * 电梯组件：井道内的可动轿厢。
+ *
+ * 写在 geometry.components 里，编译为：对重导轨（primitive.box）+ 轿厢
+ * （primitive.box，携带 kind:'elevator' 交互行为）+ 两个呼叫按钮
+ * （primitive.cylinder，各自携带 kind:'elevator' 行为，点击呼梯）。
+ * 井道围合仍由 wall_core_* 表达，本组件不生成井壁。
+ */
+export interface ElevatorComponent {
+  type: 'elevator';
+  id: string;
+  /** 轿厢中心的世界坐标 [x, 停靠层轿厢地板 Y, z]（Y 取当前停靠层地面标高）。 */
+  position: Vec3;
+  /** 轿厢外廓 [宽, 高, 深]，宽/深须小于井道净空。 */
+  dimensions: { width: number; depth: number; height: number };
+  /** 单层行驶距离（米），与建筑层高一致。 */
+  floorHeight: number;
+  /** 井道跨越的层数（含底层）。 */
+  floorCount: number;
+  /** 初始停靠楼层（0 基），默认 0（底层）。 */
+  initialFloor?: number;
+  material?: string;
+  /** 门框/导轨金属件材质。 */
+  frameMaterial?: string;
 }
 
 /** 灯具静态蓝图中持久化的光源参数；右键循环状态只存在于前端运行时。 */
@@ -139,8 +193,6 @@ export interface LightElementBehavior {
   initiallyOn: boolean;
 }
 
-export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior;
-
 export interface DoorComponent {
   type: 'door';
   id: string;
@@ -160,6 +212,11 @@ export interface DoorComponent {
   openingStyle?: 'rectangular' | 'arched';
   /** 门扇布局，默认 "single"。"double" 生成双开布局（两个洞口+四段框）。 */
   doorStyle?: 'single' | 'double';
+  /**
+   * 门扇横向分节行数（1~8）。缺省时按门洞尺寸哈希取 2 或 3。
+   * 车库门帘片用 4~6。与 `doorStyle` 正交：后者管单/双扇布局，本字段只改门扇外观分节。
+   */
+  leafRows?: number;
 }
 
 export interface WindowComponent {
@@ -192,6 +249,14 @@ export interface RailingComponent {
   railRadius?: number;
   /** 横杆相对栏杆高度的比例，范围 (0, 1]，默认只有顶部扶手。 */
   railLevels?: number[];
+  /** 栏板类型：`glass`（玻璃）/ `panel`（实心板）；缺省不生成栏板。 */
+  infillType?: 'glass' | 'panel';
+  /** 栏板厚度（米），默认 glass 0.02 / panel 0.05。 */
+  infillThickness?: number;
+  /** 栏板顶相对栏杆高度的比例，范围 (0, 1]，默认 0.92（留在顶部扶手下方）。 */
+  infillTopRatio?: number;
+  /** 栏板材质，默认与栏杆 `material` 相同。 */
+  infillMaterial?: string;
   material?: string;
   /** 指定后，path 使用父楼板左下角和顶面作为局部原点。 */
   parentFloor?: string;
@@ -385,7 +450,7 @@ export interface OpeningParams {
   _interaction?: InteractiveElementBehavior;
   /** 仅供 door 编译器使用；把门板细节合并进同一可交互网格。 */
   _doorLeafDetail?: {
-    rows: 2 | 3;
+    rows: number;
     columns: 1 | 2;
     hingeSide: 'left' | 'right';
     doubleDoor: boolean;
@@ -409,8 +474,17 @@ export interface StairParams {
 export interface FurnitureParams {
   type: 'furniture';
   id: string;
-  subtype: 'table' | 'chair' | 'bookshelf' | 'bed' | 'lamp' | 'tile';
+  subtype: 'table' | 'chair' | 'sofa' | 'bookshelf' | 'bed' | 'wardrobe' | 'nightstand' | 'tv_cabinet' | 'lamp' | 'tile';
+  /** 底面锚点：position[1] 是家具底部世界 Y，不是几何中心。 */
   position: Vec3;
+  /**
+   * 绕原点欧拉角（弧度，XYZ 序），与 primitive.rotation 同一语义。
+   *
+   * 缺省 [0,0,0]。家具没有宿主构件，朝向是它唯一的姿态自由度：椅子/沙发
+   * 只有转了向才能围桌、靠墙、面向视线。与 position 一样是**蓝图契约字段**，
+   * 不是渲染期偏移。
+   */
+  rotation?: Vec3;
   style?: string;
   dimensions: { width: number; depth: number; height: number };
   material?: string;

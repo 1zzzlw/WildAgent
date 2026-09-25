@@ -357,23 +357,12 @@ export class AgentBridge {
       return null
     }
 
+    // 唯一的人工审核点是图纸（design_review）：等待审核时的新消息按"修订意见"处理。
     const pendingReview = [...agentStore.currentTurns]
       .reverse()
       .find(turn => turn.status === 'waiting_review')
-    if (pendingReview) {
-      if (pendingReview.execution_plan_review_status === 'pending') {
-        return this.submitExecutionPlanReview(pendingReview.request_id, 'revise', message)
-      }
-      if (pendingReview.design_review_status === 'pending') {
-        return this.submitDesignReview(pendingReview.request_id, 'revise', message)
-      }
-    }
-
-    const activePlanTurn = [...agentStore.currentTurns]
-      .reverse()
-      .find(turn => turn.status === 'running' && turn.plan_mode && turn.execution_plan)
-    if (activePlanTurn) {
-      return this.submitExecutionFeedback(activePlanTurn.request_id, message)
+    if (pendingReview && pendingReview.design_review_status === 'pending') {
+      return this.submitDesignReview(pendingReview.request_id, 'revise', message)
     }
 
     if (!sceneStore.document) {
@@ -403,7 +392,6 @@ export class AgentBridge {
       agentStore.thinkingMode,
       agentStore.precisionMode,
       agentStore.proceduralMaterialsEnabled,
-      agentStore.planMode,
       recentMessages,
     )
 
@@ -421,7 +409,6 @@ export class AgentBridge {
       request.request_id,
       request.session_id,
       message,
-      agentStore.planMode,
     )
     void this.syncTurnsToServer(
       request.session_id,
@@ -430,56 +417,6 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     agentStore.setProcessing(true)
     return request.request_id
-  }
-
-  /** 批准执行计划，或提交意见后重新研究与规划。 */
-  submitExecutionPlanReview(
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ): string | null {
-    const agentStore = useAgentStore()
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      agentStore.addSystemMessage('未连接到 Agent 服务')
-      return null
-    }
-    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
-    if (
-      !turn
-      || turn.status !== 'waiting_review'
-      || turn.execution_plan_review_status !== 'pending'
-    ) {
-      agentStore.addSystemMessage('当前没有可提交的执行计划')
-      return null
-    }
-    this.requestContexts.set(requestId, {
-      sessionId: turn.session_id,
-      turnId: requestId,
-      durable: true,
-    })
-    agentStore.markExecutionPlanReviewSubmitted(
-      turn.session_id,
-      requestId,
-      action,
-      feedback,
-    )
-    this.ws.send(JSON.stringify({
-      protocol_version: AGENT_PROTOCOL_VERSION,
-      type: 'execution_plan_review',
-      request_id: requestId,
-      session_id: turn.session_id,
-      action,
-      feedback: action === 'revise' ? feedback : undefined,
-    }))
-    agentStore.setProcessing(
-      true,
-      action === 'confirm' ? '计划已批准，开始执行…' : '正在根据意见重新规划…',
-    )
-    void this.syncTurnsToServer(
-      turn.session_id,
-      agentStore.getTurnsForSession(turn.session_id),
-    )
-    return requestId
   }
 
   /** 批准具体建筑设计，或用自然语言意见生成下一版 DesignDocument。 */
@@ -500,7 +437,7 @@ export class AgentBridge {
       || turn.design_review_status !== 'pending'
       || !turn.design_document
     ) {
-      agentStore.addSystemMessage('当前没有可提交的建筑设计方案')
+      agentStore.addSystemMessage('当前没有可提交的设计方案')
       return null
     }
     this.requestContexts.set(requestId, {
@@ -525,44 +462,12 @@ export class AgentBridge {
     }))
     agentStore.setProcessing(
       true,
-      action === 'confirm' ? '设计已批准，开始生成 Blueprint…' : '正在根据意见调整建筑设计…',
+      action === 'confirm' ? '设计已批准，开始生成 Blueprint…' : '正在根据意见调整设计方案…',
     )
     void this.syncTurnsToServer(
       turn.session_id,
       agentStore.getTurnsForSession(turn.session_id),
     )
-    return requestId
-  }
-
-  /** 运行期间的新意见不启动第二个任务，而是排队到下一节点边界。 */
-  submitExecutionFeedback(requestId: string, feedback: string): string | null {
-    const agentStore = useAgentStore()
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      agentStore.addSystemMessage('未连接到 Agent 服务')
-      return null
-    }
-    const turn = agentStore.currentTurns.find(item => item.request_id === requestId)
-    if (!turn || turn.status !== 'running' || !turn.plan_mode) {
-      agentStore.addSystemMessage('当前没有可调整的运行中计划')
-      return null
-    }
-    agentStore.addMessageToSession(turn.session_id, {
-      id: `msg_${requestId}_feedback_${Date.now()}`,
-      role: 'user',
-      content: feedback,
-      timestamp: Date.now(),
-      request_id: requestId,
-      turn_id: requestId,
-    })
-    this.ws.send(JSON.stringify({
-      protocol_version: AGENT_PROTOCOL_VERSION,
-      type: 'execution_feedback',
-      request_id: requestId,
-      session_id: turn.session_id,
-      feedback,
-    }))
-    agentStore.setProcessing(true, '修改意见已发送，将在下一节点边界处理…')
-    void this.syncConversationState(turn.session_id)
     return requestId
   }
 
@@ -668,33 +573,14 @@ export class AgentBridge {
         break
         }
 
-      case 'execution_plan_ready':
-        agentStore.setExecutionPlan(
-          message.session_id,
-          message.request_id,
-          message.plan,
-          message.structured_requirements,
-          message.acceptance_results,
-          message.execution_progress,
-        )
+      // plan 不进审核：后端每个产出 plan 的节点都会推一次全量计划，这里整份替换，
+      // 所以 replanner 追加的条目也能到齐；plan_item_updated 只是状态变化的增量提示。
+      case 'plan_ready':
+        agentStore.setTurnPlan(message.session_id, message.request_id, message.plan)
         break
 
-      case 'execution_plan_review_required':
-        agentStore.setExecutionPlanReviewRequired(
-          message.session_id,
-          message.request_id,
-          message.plan,
-          message.structured_requirements,
-          message.acceptance_results,
-          message.execution_progress,
-        )
-        if (message.session_id === agentStore.currentSessionId) {
-          agentStore.setProcessing(false)
-        }
-        void this.syncTurnsToServer(
-          message.session_id,
-          agentStore.getTurnsForSession(message.session_id),
-        )
+      case 'plan_item_updated':
+        agentStore.applyPlanItemUpdate(message.session_id, message.request_id, message.item)
         break
 
       case 'design_review_required':
@@ -713,14 +599,6 @@ export class AgentBridge {
         void this.syncTurnsToServer(
           message.session_id,
           agentStore.getTurnsForSession(message.session_id),
-        )
-        break
-
-      case 'execution_feedback_queued':
-        agentStore.setExecutionFeedbackQueued(
-          message.session_id,
-          message.request_id,
-          message.queued_count,
         )
         break
 
@@ -805,17 +683,6 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        if (message.code === 'execution_plan_review_rejected') {
-          agentStore.restoreExecutionPlanReviewAfterError(sessionId, message.request_id)
-          agentStore.addSystemMessageForTurn(
-            sessionId,
-            message.request_id,
-            `执行计划提交失败：${message.error}。按钮已恢复。`,
-          )
-          if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
-          void this.syncConversationState(sessionId)
-          break
-        }
         if (message.code === 'design_review_rejected') {
           agentStore.restoreDesignReviewAfterError(sessionId, message.request_id)
           agentStore.addSystemMessageForTurn(
@@ -825,14 +692,6 @@ export class AgentBridge {
           )
           if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
           void this.syncConversationState(sessionId)
-          break
-        }
-        if (message.code === 'execution_feedback_rejected') {
-          agentStore.addSystemMessageForTurn(
-            sessionId,
-            message.request_id,
-            `运行中意见未接收：${message.error}`,
-          )
           break
         }
         if (message.code === 'model_service_error') {

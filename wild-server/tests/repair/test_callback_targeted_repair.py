@@ -112,8 +112,10 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             "merged_blueprint": blueprint,
             "skeleton_blueprint": skeleton,
             "skeleton_summary": "一面 6m 长墙",
-            "door_fragments": [blueprint["geometry"]["components"][0]],
-            "window_fragments": [blueprint["geometry"]["components"][1]],
+            "component_fragments": {
+                "door": [blueprint["geometry"]["components"][0]],
+                "window": [blueprint["geometry"]["components"][1]],
+            },
             "retry_count": 0,
             "max_retries": 3,
             "component_retry_counts": {},
@@ -137,8 +139,9 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             result["merged_blueprint"]["geometry"]["components"][0]["from"][0],
             0.5,
         )
-        self.assertNotIn("window_fragments", result)
-        self.assertEqual(state["window_fragments"][0]["from"][0], 2.8)
+        # 只回写本次被改动的构件类型，其余分片保持原样（增量更新）
+        self.assertNotIn("window", result.get("component_fragments", {}))
+        self.assertEqual(state["component_fragments"]["window"][0]["from"][0], 2.8)
 
     async def test_validate_node_preserves_retry_metrics(self):
         result = await validate_node({
@@ -250,8 +253,10 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
             "skeleton_blueprint": skeleton,
             "skeleton_summary": "一面 6m 长墙",
             "design_brief": design_brief,
-            "door_fragments": [blueprint["geometry"]["components"][0]],
-            "window_fragments": [blueprint["geometry"]["components"][1]],
+            "component_fragments": {
+                "door": [blueprint["geometry"]["components"][0]],
+                "window": [blueprint["geometry"]["components"][1]],
+            },
             "retry_count": 0,
             "max_retries": 3,
             "component_retry_counts": {},
@@ -271,9 +276,9 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["repair_audit"]["accepted"])
         self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
         self.assertEqual(result["component_fragments"]["window"], [])
-        self.assertNotIn("door_fragments", result)
-        self.assertEqual(state["door_fragments"][0]["id"], "door_front")
-        self.assertEqual(len(state["window_fragments"]), 1)
+        self.assertNotIn("door", result.get("component_fragments", {}))
+        self.assertEqual(state["component_fragments"]["door"][0]["id"], "door_front")
+        self.assertEqual(len(state["component_fragments"]["window"]), 1)
 
 
 if __name__ == "__main__":

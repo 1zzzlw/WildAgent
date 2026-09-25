@@ -1237,7 +1237,8 @@ class AgentService:
                 {"doc_type": "component", "entity_type": "window"},
             ),
             SpecQuery(
-                f"{message}\n门构件能力：door、opening、parentWall、doorStyle 与 interaction 字段",
+                f"{message}\n门构件能力：door、opening、parentWall、doorStyle 与 interaction 字段，"
+                "含 swing/slide/lift 三种开合方式与 leafRows 帘片分节",
                 {"doc_type": "component", "entity_type": "door"},
             ),
             SpecQuery(

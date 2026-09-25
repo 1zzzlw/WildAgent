@@ -10,6 +10,7 @@ import { compileChimney } from './components/chimney'
 import { compileCornice } from './components/cornice'
 import { compileRamp } from './components/ramp'
 import { compileLight } from './components/light'
+import { compileElevator } from './components/elevator'
 
 export interface ComponentCompilerRegistration {
   type: ComponentSpec['type']
@@ -94,6 +95,11 @@ function registerBuiltins(): void {
     type: 'light',
     description: '将交互灯具编译为灯泡、灯座和运行时光源行为',
     compile: (component, context) => compileLight(component as Extract<ComponentSpec, { type: 'light' }>, context),
+  })
+  registerComponentCompiler({
+    type: 'elevator',
+    description: '将电梯编译为可动轿厢、导轨与呼梯按钮（点击上下移动）',
+    compile: (component, context) => compileElevator(component as Extract<ComponentSpec, { type: 'elevator' }>, context),
   })
 }
 

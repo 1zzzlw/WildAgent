@@ -1,7 +1,7 @@
 """
 通用组件节点工厂 —— gen（LLM生成）+ val（工具校验）两段式
 
-图入口由 ``nodes/base_component_node.py`` 转发到本模块；本模块只组织组件生成与复检用例。
+入口是 ``plan/handlers.py`` 的 ``run_generate``；本模块只组织组件生成与复检用例。
 
     door_gen = create_component_generator(COMPONENT_REGISTRY["door"])
     door_val = create_component_validator(COMPONENT_REGISTRY["door"])
@@ -25,8 +25,9 @@ from app.agent.prompts import (
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, stream_llm
 from app.llm.errors import classify_model_error
-from app.agent.runtime import get_reasoning_callback
-from app.agent.generation.components import ComponentConfig
+from app.agent.plan.tool_loop import run_tool_loop
+from app.agent.runtime import get_item_tools, get_reasoning_callback
+from app.agent.generation.components import ComponentConfig, component_rules_source
 from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import plan_knowledge_query
 from app.utils.json_extractor import extract_json_array, extract_json_object
@@ -63,6 +64,24 @@ async def _recover_component_json(
         return failed_reply, int((_time.time() - recovery_t0) * 1000)
 
 
+def _plan_hint(plan_item: object) -> str:
+    """本条目的计划策略提示：形态与理由，不含坐标与数量。"""
+
+    if not isinstance(plan_item, dict):
+        return ""
+    parts = []
+    subtype = str(plan_item.get("subtype") or "").strip()
+    guidance = str(plan_item.get("guidance") or "").strip()
+    reason = str(plan_item.get("reason") or "").strip()
+    if subtype:
+        parts.append(f"- 形态：{subtype}")
+    if guidance:
+        parts.append(f"- 要求：{guidance}")
+    if reason:
+        parts.append(f"- 本次为何需要它：{reason}")
+    return "\n".join(parts)
+
+
 # 生成器工厂（LLM 调用，有思考内容）
 
 def create_component_generator(config: ComponentConfig):
@@ -81,7 +100,6 @@ def create_component_generator(config: ComponentConfig):
                 f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
             )
         design_brief = state.get("design_brief")  # ← 骨架设计清单
-        gen_diag_key = f"{config.component_type}_gen_diag"
 
         logger.info(f"[{config.component_type}_gen] 开始生成 {config.label}")
 
@@ -120,12 +138,18 @@ def create_component_generator(config: ComponentConfig):
         ]
 
         # ── 2. 构建 Prompt ──
+        # 字段约束优先来自知识库（§2.4）：检索到位就不注入代码里的静态规则，
+        # 检索为空/太薄才回退到 `_COMPONENT_RULES`。来源进诊断，便于逐 kind 观察下沉进度。
+        rules_source = component_rules_source(rag_chars)
         system_prompt = build_component_prompt(
             spec_text=spec_text,
             component_type=config.component_type,
             skeleton_summary=skeleton_summary,
-            extra_rules=config.extra_rules,
+            extra_rules=config.extra_rules if rules_source == "fallback" else "",
             design_brief=design_brief,
+            plan_hint=_plan_hint(state.get("plan_item")),
+            material_ids=list(state.get("material_ids") or []),
+            detail_level=str(state.get("detail_level") or ""),
         )
         prompt_chars = len(system_prompt)
 
@@ -145,22 +169,41 @@ def create_component_generator(config: ComponentConfig):
         reply_text = ""
         reasoning = ""
         token_usage = None
+        tool_trace: list[dict] = []
+        tool_diag: dict = {}
+
+        # 工具型处理器（plan 的 generate 条目）：预取 RAG 仍是主力，但模型可以在这基础
+        # 上**有界地**补检索与自查（《动态节点设计规划》§4.7–§4.12）。没有绑定工具集时
+        # 走既有的单次调用路径，行为与以前完全一致。
+        item_tools = get_item_tools()
 
         try:
-            async with _LLM_SEMAPHORE:
-                if use_streaming:
-                    llm_result = await stream_llm(
-                        llm,
-                        messages,
-                        on_reasoning_delta=lambda delta: on_reasoning_delta(
-                            f"{config.component_type}_gen", delta
-                        ),
-                    )
-                else:
-                    llm_result = await invoke_llm(llm, messages)
-                reply_text = llm_result.content
-                reasoning = llm_result.reasoning
-                token_usage = llm_result.token_usage
+            if item_tools:
+                tool_run = await run_tool_loop(
+                    system_prompt=system_prompt,
+                    user_message=build_component_user_message(config, design_brief),
+                    tool_specs=list(item_tools),
+                    thinking_mode=thinking_mode,
+                )
+                reply_text = tool_run.text
+                tool_trace = tool_run.trace
+                tool_diag = tool_run.diag
+                reasoning = ""
+            else:
+                async with _LLM_SEMAPHORE:
+                    if use_streaming:
+                        llm_result = await stream_llm(
+                            llm,
+                            messages,
+                            on_reasoning_delta=lambda delta: on_reasoning_delta(
+                                f"{config.component_type}_gen", delta
+                            ),
+                        )
+                    else:
+                        llm_result = await invoke_llm(llm, messages)
+                    reply_text = llm_result.content
+                    reasoning = llm_result.reasoning
+                    token_usage = llm_result.token_usage
 
         except Exception as e:
             logger.error(f"[{config.component_type}_gen] LLM 调用失败: {e}")
@@ -173,7 +216,7 @@ def create_component_generator(config: ComponentConfig):
                     "error": model_error["user_message"],
                     "model_error": model_error,
                 }
-            return component_state_update(config, empty_value, gen_diag_key, diag)
+            return component_state_update(config, empty_value, "gen", diag)
 
         llm_ms = int((_time.time() - llm_t0) * 1000)
         llm_chars = len(reply_text)
@@ -183,6 +226,17 @@ def create_component_generator(config: ComponentConfig):
             f"[{config.component_type}_gen] LLM 完成: {llm_chars} 字符, {llm_ms}ms"
             + (f", thinking={reasoning_chars}字符" if reasoning_chars else "")
         )
+
+        if tool_diag.get("error"):
+            # 工具执行异常不是 JSON 格式错误；保留现场，不再发起无依据的格式恢复。
+            diag = {
+                "label": config.label, "rag_chars": rag_chars, "rag_hits": rag_hits,
+                "rag_error": rag_error, "prompt_chars": prompt_chars,
+                "llm_chars": llm_chars, "llm_ms": llm_ms,
+                "tool_trace": tool_trace, "tool_loop": tool_diag, "fragment_count": 0,
+                "model_error": classify_model_error(RuntimeError(tool_diag["error"])),
+            }
+            return component_state_update(config, [] if config.is_list else None, "gen", diag)
 
         # ── 4. 提取 JSON ──
         if config.is_list:
@@ -216,6 +270,8 @@ def create_component_generator(config: ComponentConfig):
                         "llm_chars": llm_chars, "llm_ms": llm_ms,
                         "token_usage": token_usage,
                         "reasoning_chars": reasoning_chars,
+                        "tool_trace": tool_trace,
+                        "tool_loop": tool_diag,
                         "fragment_count": 0,
                         "recovery_ms": recovery_ms,
                         "error": "JSON 提取失败",
@@ -229,7 +285,7 @@ def create_component_generator(config: ComponentConfig):
                             "user_message": f"{config.label} 结构化输出解析失败",
                         },
                     }
-                return component_state_update(config, empty_value, gen_diag_key, diag)
+                return component_state_update(config, empty_value, "gen", diag)
 
         # ── 5. 基本校验（类型 + 必填字段）──
         valid = validate_fragments(fragments, config)
@@ -247,10 +303,13 @@ def create_component_generator(config: ComponentConfig):
                 "token_usage": token_usage,
                 "reasoning_chars": reasoning_chars,
                 "reasoning_preview": reasoning[:800] if reasoning else "",
+                "tool_trace": tool_trace,
+                "tool_loop": tool_diag,
                 "fragment_count": len(valid),
+                "raw_fragments": fragments,
                 "total_ms": total_ms,
             }
-        return component_state_update(config, value, gen_diag_key, diag)
+        return component_state_update(config, value, "gen", diag)
 
     generator.__name__ = f"{config.component_type}_gen"
     return generator
@@ -263,15 +322,10 @@ def create_component_validator(config: ComponentConfig):
 
     async def validator(state: GenerationState) -> dict:
         t0 = _time.time()
-        output_key = config.output_key
-        val_diag_key = f"{config.component_type}_val_diag"
 
-        fragments = state.get("component_fragments", {}).get(
-            config.component_type,
-            state.get(output_key),
-        )
+        fragments = state.get("component_fragments", {}).get(config.component_type)
         if config.is_list:
-            fragments = fragments if isinstance(fragments, list) else []
+            fragments = fragments if isinstance(fragments, list) else [fragments] if isinstance(fragments, dict) else []
         else:
             fragments = [fragments] if isinstance(fragments, dict) else []
 
@@ -284,16 +338,18 @@ def create_component_validator(config: ComponentConfig):
                     "validation_passed": True,
                 }
             value = [] if config.is_list else None
-            return component_state_update(config, value, val_diag_key, diag)
+            return component_state_update(config, value, "val", diag)
 
         logger.info(f"[{config.component_type}_val] 校验 {len(fragments)} 个 {config.label}")
 
         skeleton_blueprint = state.get("skeleton_blueprint", {})
+        validation_details: dict = {}
         validated, fixed, validation_passed = validate_and_fix_with_tools(
             fragments,
             config.component_type,
             skeleton_blueprint,
             config.is_element,
+            diagnostics=validation_details,
         )
 
         total_ms = int((_time.time() - t0) * 1000)
@@ -313,9 +369,11 @@ def create_component_validator(config: ComponentConfig):
                 "rejected_fragment_count": 0 if validation_passed else len(validated),
                 "validation_applied": fixed,
                 "validation_passed": validation_passed,
+                "validation_details": validation_details,
+                "input_fragments": fragments,
                 "total_ms": total_ms,
             }
-        return component_state_update(config, value, val_diag_key, diag)
+        return component_state_update(config, value, "val", diag)
 
     validator.__name__ = f"{config.component_type}_val"
     return validator

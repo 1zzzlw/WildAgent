@@ -25,105 +25,6 @@ def build_material_optimization_prompt(selection: list[str]) -> str:
 """
 
 
-def append_approved_phase_guidance(
-    prompt: str,
-    phase_guidance: str,
-    compliance_note: str,
-) -> str:
-    """把已批准执行计划中的阶段任务追加到业务提示词。"""
-    if not phase_guidance:
-        return prompt
-    return f"""{prompt}
-
-# 已批准执行计划中的本阶段任务
-
-{phase_guidance}
-
-{compliance_note}
-"""
-
-
-def build_execution_plan_prompt(
-    *,
-    intent: str,
-    user_message: str,
-    research_context: str,
-    current_scene_summary: str,
-    feedback: str = "",
-    previous_tasks: list[dict] | None = None,
-) -> str:
-    """生成任务专属计划；模型只能选择公开阶段，不能选择代码节点。"""
-    import json as _json
-
-    allowed_phases = (
-        [
-            "architecture",
-            "material_plan",
-            "skeleton",
-            "final_validate",
-        ]
-        if intent == "generate"
-        else ["patch"]
-    )
-    revision_section = ""
-    if feedback:
-        revision_section = f"""
-
-# 重新规划意见
-
-用户意见：{feedback}
-
-上一版公开任务：
-{_json.dumps(previous_tasks or [], ensure_ascii=False, indent=2)}
-
-保留未被意见否定的目标，明确修改相关任务及其验收条件。
-"""
-    return f"""你是建筑生成 Agent 的计划架构师。先制定本次任务专属的公开执行计划，不生成 Blueprint，不输出坐标，也不展示隐藏思维链。
-
-# 用户任务
-
-{user_message}
-
-# 当前场景
-
-{current_scene_summary}
-
-# 已检索的建筑知识
-
-{research_context[:6000]}
-{revision_section}
-
-# 可映射阶段
-
-{_json.dumps(allowed_phases, ensure_ascii=False)}
-
-# 强制规则
-
-1. 生成任务输出 3～8 项，修改任务输出 1～4 项；任务必须针对本次建筑，禁止照抄通用流水线名称。
-2. `phase` 只能逐字使用上面的可映射阶段。不得输出 Python 函数、LangGraph 节点、工具名或任意代码。
-3. 生成任务必须至少包含 architecture 和 final_validate；涉及高层时必须规划竖向交通，涉及玻璃幕墙时必须规划真实玻璃与框架关系。
-4. `objective` 说明要解决的建筑问题；`acceptance` 给出 1～4 条可检查的结果，不写“效果好”等空话。
-5. `summary` 用 1～2 句说明本次计划的核心策略。这是给用户看的公开摘要，不要输出逐步推理过程。
-6. 当前主链不设计房间平面、车库/后院/花园等语义空间，也不支持 table、chair 等 furniture 组件；不得自行补充这些内容。若用户明确要求，必须原样保留在验收条件中——服务端会标记该要求为"不具备该能力"并写入验收结果，但**不会因此终止本轮生成**，所以不要为了绕开它而改写或省略用户的要求，也不要把它拆成多个变体反复表述。
-7. 可直接规划的组件包括 door、window、roof、railing、canopy、balcony、light、ramp、bay_window、cornice、chimney。
-8. 验收条件优先写成可编译的明确要求：层数、宽深尺寸、屋顶类型或出檐下限、组件类型与最少数量、材质方案存在、最终校验零错误。
-
-只输出一个 JSON 对象，不要 Markdown：
-{{
-  "summary": "本次计划的公开摘要",
-  "tasks": [
-    {{
-      "title": "任务专属标题",
-      "objective": "这一项具体解决什么",
-      "phase": "{allowed_phases[0]}",
-      "acceptance": ["可验证条件"],
-      "basis": "用户需求或知识依据"
-    }}
-  ]
-}}
-"""
-
-
 def _style_preference_section(style_preference: list[str] | None) -> str:
     """把规则预选的候选风格注入早期节点 prompt。
 
@@ -184,7 +85,7 @@ def build_architecture_plan_prompt(
 - `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
 - 除 simple/minimal 外，该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
-- ground_pattern / upper_pattern 的数组长度必须等于 bays；每项只能是 door、window、empty。
+- ground_pattern / upper_pattern 的数组长度必须等于 bays。ground_pattern 每项只能是 door、window、empty；upper_pattern 每项只能是 window、empty，即使建筑只有一层也禁止填写 door。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
 - ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
 - 标准和高细节方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
@@ -217,18 +118,256 @@ def build_architecture_plan_prompt(
 """
 
 
+def build_object_design_prompt(
+    spec_text: str,
+    subtype_catalog: list[dict] | None = None,
+    material_ids: list[str] | None = None,
+    current_plan: dict | None = None,
+    revision_feedback: str = "",
+) -> str:
+    """物件场景第一阶段：只做"做几件、多大、怎么摆"，不做建筑。
+
+    与 `build_architecture_plan_prompt` 是**并列**的两条方案提示词，不是它的分支：
+    建筑方案必须给 massing/volumes/facades/roof，物件方案给这些字段是错的——
+    交付物不是建筑时，"补齐体量"就是把用户没要的房子塞回给他。
+    """
+
+    import json as _json
+
+    #: 图鉴预设表（`subtype` 的闭集）。通道说明与示例都直接引用这里，
+    #: 不另写一份 —— 预设增删时提示词自动跟着变。
+    catalog_text = _json.dumps(subtype_catalog or [], ensure_ascii=False, indent=2)
+    materials = ", ".join(material_ids or []) or "wood, metal, glass, stone, fabric, accent"
+    revision_section = ""
+    if current_plan and revision_feedback:
+        revision_section = f"""
+
+# 本轮是物件方案修订
+
+用户对上一版的修改意见：{revision_feedback}
+
+上一版方案如下。保留未被意见否定的种类、尺寸与摆位，只改相关部分；仍需输出完整方案：
+
+{_json.dumps(current_plan, ensure_ascii=False, indent=2)}
+"""
+
+    return f"""你是物件设计师。本次交付物**不是建筑**，而是用户点名的那件（或那几件）物件本身。
+只做物件清单、尺寸与摆位，不设计建筑、不设计房间、不设计体量。
+
+# 任务
+
+- 用户要什么就做什么：点名了餐桌就做餐桌，点名了小人就做小人。不要"顺手"补一栋房子、
+  不要补墙体、楼板、屋顶、门窗——那些不属于本次交付。
+- 数量用 `count` 表达，不要为同一个物件重复列条目。
+- 尺寸用米，必须真实：桌子台面 0.72~0.78 高、椅子含靠背 0.85~0.95、双人床垫 1.5×2.0、
+  衣柜总高 2.0~2.4、成年人身高 1.55~1.85。用户明确给了尺寸就逐字采用。
+- `placement` 用一句自然语言说明怎么摆（"四把围在长边两侧、面向桌面"）。**不要写世界坐标**：
+  坐标由下游构件节点按行走面标高算出。
+- 需要成组关系时把组关系写进 `placement`（围合、靠墙、面向视线、并列成排），
+  不要为每件单独编一个坐标。
+- 用户没提材质时也要主动给一个材质倾向，不要反问用户逐项提供参数。
+
+# 三种表达通道（`kind` 只能取这三个值）
+
+**先看图鉴，再看几何。判据是"能不能用已有的精确参数表达"，不是"是什么东西"。**
+
+## 1. `kind = "furniture"` —— 图鉴预设（首选）
+
+名字能落进下面的子类型表时用它，几何最精确（引擎有逐子类型的原生 builder）。
+必须同时给 `subtype`（只能取表里的值）与 `width`/`depth`/`height`。
+
+{catalog_text}
+
+`height` 的含义逐个类型不同，以上表为准（例如 `table` 是台面顶高，`bed` 是床头板高）。
+
+## 2. `kind = "primitive"` —— 通用几何组合（开放集出口）
+
+**图鉴里没有的东西走这条。** 它不认名字，只认形状：把物件拆成若干基础几何体，
+每个几何体给足参数。名字是列不完的（小人、花瓶、路灯、机器人、雕塑…），
+但几何方式只有四种，所以这条通道对**任何**物件都成立。
+
+- `parts` 是零件表，每项是一个零件：
+  - `shape = "box"` → 必填 `dimensions: [宽, 高, 深]`
+  - `shape = "sphere"` → 必填 `radius`
+  - `shape = "cylinder"` → 必填 `height`，并且给 `radius`，或给 `radiusTop` + `radiusBottom`（锥台）
+  - `shape = "profile_sweep"` → 必填 `path`（至少 2 个点），可选 `profile`（截面点对）
+- 每个零件可给 `position`（**必填**，见下）、可选 `rotation`（弧度）、`material`。
+- 🔴 `position` 是零件中心相对**物件底面中心**的局部坐标：**X/Z 以物件中心为 0，
+  Y 以物件落地底面为 0**。所以一个高 0.36m 的圆柱体从地面立起要写 `position: [0, 0.18, 0]`
+  （0.18 = 高度的一半）。最低的零件底面必须落在 `y = 0`，不要整体悬空。
+- 零件之间要**衔接**：该接触的面贴住、不要互相穿透，也不要出现明显悬空断层。
+- 每个零件单独给它自己的 `material`；没写时用整件物件的 `material`。
+- 零件数与复杂度要克制：一眼认得出轮廓即可，不要用几十个零件堆细节
+  （上限 64 个零件）。
+
+## 3. `kind = "body"` —— 简化人物（仅限人形）
+
+需要一个人物/化身时用这条：头部、躯干、四肢与斗篷由引擎按比例生成，
+比用 primitive 拼人更省事。参数放在 `params`：
+
+- `height` 身高（米，0.5~2.5）；`build` 体型 `lean`/`athletic`/`stout`；
+  `headShape` 头型 `round`/`oval`/`angular`
+- `armLength`、`legLength` 是**比例**（0.5~1.5，1.0 为正常），不是米
+- `cloakLength` 斗篷长度（米，0.3~1.5，没有斗篷也要给一个合法值）；
+  `hoodUp` 兜帽是否戴上（布尔）
+- 它只有"人"这一种造型；机器人、动物、器物一律走 `primitive`
+
+# 不要做的事
+
+- **不要退而求其次套一个相近的预设**：用户要"小人"就不要给 `table`，
+  要"花瓶"就不要给 `nightstand`。名字对不上就走 `primitive`，别硬套。
+- **不要用别的物件顶替**：既表达不了、又没法用几何组合近似时，
+  把它写进 `unsupported_objects` 如实说明，**不要**换成一件你没被要求的东西。
+- 不要输出 `massing`、`volumes`、`facades`、`roof`、`wall` 里的任何内容。
+
+# 朝向与落地（写摆位时必须知道）
+
+- 图鉴子类型的**正面统一朝 +Z**：椅/沙发靠背与床床头在 -Z 侧，衣柜门与床头柜抽屉面在 +Z 侧。
+- 要改变朝向写 `rotation_y`（弧度，绕物件**底面中心**旋转，不会把物件甩离落点），
+  不要靠挪位置凑朝向。默认 0 即可，只在摆位确实需要转向时才给。
+- 物件默认落地：没有楼板的独立场景以地面 Y=0 为行走面。不要写抬离地面的高度。
+
+# 材质
+
+只能引用以下材质名（写进 `material`，或零件的 `material`）：{materials}。
+`wood` 木、`metal` 金属、`glass` 玻璃、`stone` 石/混凝土、`fabric` 织物、`accent` 点缀色。
+
+# 输出协议
+
+只输出一个 JSON 对象，不要 Markdown、不要解释、不要输出候选方案数组：
+{{
+  "kind": "object",
+  "concept": "一句话说明本次做了哪些物件、按什么关系摆放",
+  "objects": [
+    {{"kind": "furniture", "name": "餐桌", "subtype": "table", "count": 1,
+      "width": 1.4, "depth": 0.8, "height": 0.75,
+      "placement": "置于场景中部", "material": "wood", "rotation_y": 0.0,
+      "rationale": "用户点名要一张餐桌，命中图鉴预设"}},
+    {{"kind": "furniture", "name": "餐椅", "subtype": "chair", "count": 4,
+      "width": 0.45, "depth": 0.5, "height": 0.9,
+      "placement": "两两分列长边两侧、面向桌面", "material": "wood", "rotation_y": 0.0,
+      "rationale": "与餐桌配套成组"}},
+    {{"kind": "primitive", "name": "花瓶", "count": 1,
+      "width": 0.22, "depth": 0.22, "height": 0.5,
+      "placement": "立于餐桌中央", "material": "stone",
+      "parts": [
+        {{"shape": "cylinder", "radius": 0.09, "height": 0.36, "position": [0, 0.18, 0]}},
+        {{"shape": "cylinder", "radiusBottom": 0.09, "radiusTop": 0.05, "height": 0.14,
+          "position": [0, 0.43, 0]}}
+      ],
+      "rationale": "图鉴没有花瓶，用圆柱+锥台拼出瓶身与瓶颈"}},
+    {{"kind": "body", "name": "小人", "count": 1, "height": 1.72,
+      "placement": "站在场景一侧、面向+Z", "material": "accent",
+      "params": {{"height": 1.72, "build": "lean", "headShape": "oval",
+                  "armLength": 1.0, "legLength": 1.0, "cloakLength": 0.4, "hoodUp": false}},
+      "rationale": "用户点名要一个人物，用引擎的人形元素"}}
+  ],
+  "unsupported_objects": [],
+  "design_rationale": ["说明尺寸与摆位如何满足用户要求"]
+}}
+
+- `objects` 每项必须有 `kind`；`furniture` 必须有 `subtype`，`primitive` 必须有 `parts`，
+  `body` 必须有 `params`。每项的 `name` 写用户点名的那个词。
+- `furniture` 的 `width`/`depth`/`height` 与 `body` 的 `height` 是必填正数（米）；
+  `primitive` 的 `width`/`depth`/`height` 是整件物件的包围盒，可从零件算出。
+- 实在无法表达某个点名物件时，把它写进 `unsupported_objects`（字符串列表），
+  **不要**用其它物件顶上；此时 `objects` 可以为空。
+- 所有数值都必须由本次需求推导；不要输出类型说明文字代替数值。
+{revision_section}
+
+# 知识库参考
+
+{spec_text}
+"""
+
+
 def build_material_plan_prompt(
     architecture_plan: dict,
     available_assets: list[dict],
     procedural_presets: list[dict] | None = None,
     style_preference: list[str] | None = None,
+    *,
+    object_scene: bool = False,
 ) -> str:
-    """让模型设计材质意图，只能引用可信 PBR 资产或受控程序化材质。"""
+    """让模型设计材质意图，只能引用可信 PBR 资产或受控程序化材质。
+
+    ``object_scene=True`` 时角色清单换成物件角色（木/金属/玻璃/石/织物/点缀）：
+    建筑角色里的 facade_primary、roof、door 对一张桌子没有意义，硬要求覆盖它们
+    只会让模型编出一个不存在的建筑语境。
+    """
     import json as _json
     style_section = _style_preference_section(style_preference)
-    return f"""你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。
+    if object_scene:
+        role_requirement = (
+            "3. 只从 wood（木）、metal（金属）、glass（玻璃）、stone（石/混凝土）、"
+            "fabric（织物）、accent（点缀色）里选择本次实际需要的角色；"
+            "不要输出 facade_primary、structure、floor、frame、door、roof、ground——"
+            "本次交付物是物件，没有外墙、楼板和屋顶。"
+        )
+        subject = "你是家具与陈列物件的材质设计师。为已批准的对象方案制定克制、统一且可实施的材质方案。"
+        plan_heading = "# 已批准的物件方案"
+        motivate = "用户即使只说“生成一个桌子”，你也必须结合对象方案主动补齐主材、辅材与整体色板；"
+        rule_11 = (
+            "在 `assetId`、`proceduralPresetId` 和普通无图片材质中三选一。"
+            "天然木纹、石材或织物纹理等扫描质感优先 PBR；"
+            "二者都不合适时使用普通材质。"
+        )
+        rule_13 = (
+            "只在物件材质叙事确实支持某种程序化预设时选择它；"
+            "不确定就用普通材质，不得为了使用 Shader 强行改成不相关的题材。"
+        )
+        example_roles = _json.dumps([
+            {"role": "wood", "assetId": None, "proceduralPresetId": None,
+             "shaderAdjustments": {}, "baseColor": [0.42, 0.26, 0.14],
+             "roughness": 0.62, "metallic": 0},
+            {"role": "metal", "assetId": None, "proceduralPresetId": None,
+             "shaderAdjustments": {}, "baseColor": [0.16, 0.17, 0.18],
+             "roughness": 0.32, "metallic": 0.8},
+            {"role": "fabric", "assetId": None, "proceduralPresetId": None,
+             "shaderAdjustments": {}, "baseColor": [0.46, 0.44, 0.42],
+             "roughness": 0.92, "metallic": 0},
+        ], ensure_ascii=False, indent=4)
+    else:
+        role_requirement = (
+            "3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；"
+            "ground 和 accent 可选。"
+        )
+        subject = "你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。"
+        plan_heading = "# 已批准建筑方案"
+        motivate = (
+            "用户即使只说“生成一个别墅”，你也必须结合建筑方案主动补齐主材、辅材、点缀、"
+            "表面新旧程度和整体色板；"
+        )
+        rule_11 = (
+            "对 facade_primary 在 `assetId`、`proceduralPresetId` 和普通无图片材质中三选一。"
+            "天然纹理、扫描质感或高匹配资产优先 PBR；规则砖墙、明确无贴图或需要可控老化时"
+            "可选择程序化预设；二者都不合适时使用普通材质。"
+        )
+        rule_13 = (
+            "只在建筑类型、风格、环境或材质叙事确实支持砖材时选择红砖预设；"
+            "现代玻璃幕墙、木屋或石材立面不得为了使用 Shader 强行改成红砖。"
+        )
+        example_roles = _json.dumps([
+            {"role": "facade_primary", "assetId": None, "proceduralPresetId": None,
+             "shaderAdjustments": {}, "baseColor": [0.82, 0.8, 0.76],
+             "roughness": 0.72, "metallic": 0},
+            {"role": "structure", "assetId": None, "baseColor": [0.65, 0.66, 0.67],
+             "roughness": 0.76, "metallic": 0},
+            {"role": "floor", "assetId": None, "baseColor": [0.5, 0.5, 0.5],
+             "roughness": 0.8, "metallic": 0},
+            {"role": "frame", "assetId": None, "baseColor": [0.12, 0.13, 0.14],
+             "roughness": 0.3, "metallic": 0.8},
+            {"role": "door", "assetId": None, "baseColor": [0.35, 0.2, 0.1],
+             "roughness": 0.62, "metallic": 0},
+            {"role": "glass", "assetId": None, "baseColor": [0.72, 0.88, 0.96],
+             "roughness": 0.08, "metallic": 0},
+            {"role": "roof", "assetId": None, "baseColor": [0.25, 0.26, 0.28],
+             "roughness": 0.76, "metallic": 0},
+        ], ensure_ascii=False, indent=4)
 
-# 已批准建筑方案
+    return f"""{subject}
+
+{plan_heading}
 
 {_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
 {style_section}
@@ -245,17 +384,17 @@ def build_material_plan_prompt(
 
 1. 你只设计材质意图，不生成纹理、不输出 URL、不修改灯光、曝光或阴影。
 2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值；`proceduralPresetId` 只能逐字引用 AVAILABLE_PROCEDURAL_PRESETS 中存在的值；没有合适候选必须使用 null，严禁猜测 ID。
-3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；ground 和 accent 可选。
+{role_requirement}
 4. 单个角色最多选择一个资产，总体保持主材、辅材、点缀的层级，不制造随机拼贴。
 5. stone/concrete/brick/wood/plaster/tile 的 metallic 不得超过 0.15；metal 的 metallic 应为 0.5–1。
 6. glass 不选择纹理资产，不设置 opacity；系统会应用受控物理玻璃预设。
 7. 若资产声明 recommendedRoles，只能用于其中列出的角色。
 8. baseColor 是 3 个 0–1 数值；roughness、metallic 是 0–1 数值。
-9. 用户即使只说“生成一个别墅”，你也必须结合建筑方案主动补齐主材、辅材、点缀、表面新旧程度和整体色板；“用户没说材质”不等于“不做材质设计”。不得反问用户逐项提供 Shader 参数。
+9. {motivate}“用户没说材质”不等于“不做材质设计”。不得反问用户逐项提供 Shader 参数。
 10. PBR 入库现在只要求一张 Base Color；`channels` 只有 `baseColor` 的资产也是完整合法候选。Normal/Roughness 等可选通道只表示增强质量，不能因为缺少它们就忽略该资产。
-11. 对 facade_primary 在 `assetId`、`proceduralPresetId` 和普通无图片材质中三选一。天然纹理、扫描质感或高匹配资产优先 PBR；规则砖墙、明确无贴图或需要可控老化时可选择程序化预设；二者都不合适时使用普通材质。
+11. {rule_11}
 12. `shaderAdjustments` 只允许 AVAILABLE_PROCEDURAL_PRESETS 声明的字段。强度只输出 `none/subtle/moderate/strong`；`mortarDepth` 只输出 `shallow/standard/deep`；`tone` 只输出 `default/light/dark/warm`；`cleanliness` 只输出 `clean/natural`。不要输出具体 uniform、GLSL、Shader 源码或未知字段。
-13. 只在建筑类型、风格、环境或材质叙事确实支持砖材时选择红砖预设；现代玻璃幕墙、木屋或石材立面不得为了使用 Shader 强行改成红砖。
+13. {rule_13}
 
 # 输出协议
 
@@ -263,14 +402,6 @@ def build_material_plan_prompt(
 {{
   "concept": "一句话材质概念",
   "palette": ["主色", "辅色", "点缀色"],
-  "roles": [
-    {{"role":"facade_primary","assetId":null,"proceduralPresetId":null,"shaderAdjustments":{{}},"baseColor":[0.82,0.8,0.76],"roughness":0.72,"metallic":0}},
-    {{"role":"structure","assetId":null,"baseColor":[0.65,0.66,0.67],"roughness":0.76,"metallic":0}},
-    {{"role":"floor","assetId":null,"baseColor":[0.5,0.5,0.5],"roughness":0.8,"metallic":0}},
-    {{"role":"frame","assetId":null,"baseColor":[0.12,0.13,0.14],"roughness":0.3,"metallic":0.8}},
-    {{"role":"door","assetId":null,"baseColor":[0.35,0.2,0.1],"roughness":0.62,"metallic":0}},
-    {{"role":"glass","assetId":null,"baseColor":[0.72,0.88,0.96],"roughness":0.08,"metallic":0}},
-    {{"role":"roof","assetId":null,"baseColor":[0.25,0.26,0.28],"roughness":0.76,"metallic":0}}
-  ]
+  "roles": {example_roles}
 }}
 """

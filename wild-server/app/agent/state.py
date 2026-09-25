@@ -1,25 +1,18 @@
-"""
-LangGraph State 定义
+"""LangGraph State 定义。
 
 所有节点通过这个 State 通信，并由 LangGraph checkpointer 持久化可序列化字段。
-诊断字段均已声明，确保 LangGraph 不会丢弃 astream 中的诊断数据。
-"""
-from typing import Annotated, Any, NotRequired, TypedDict
 
-from app.agent.planning.contracts import (
-    AcceptanceResult,
-    ExecutionPlan,
-    ExecutionPlanHistoryEntry,
-    ExecutionProgressItem,
-    ExecutionPlanReviewState,
-    ExecutionPlanStatus,
-    PlanValidationIssue,
-    StructuredRequirement,
-)
+"""
+
+from typing import Annotated, Any, NotRequired, TypedDict
 
 
 def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
-    """合并并行组件节点写入的通用 State 映射。"""
+    """合并分片映射的**局部更新**。
+
+    ``execute`` 可以并发返回互不依赖的构件类型，``repair/state_updates.py`` 也会按
+    构件类型回写**部分**键；没有 reducer 时，任一局部更新都会覆盖其它类型的分片。
+    """
     merged = dict(left or {})
     merged.update(right or {})
     return merged
@@ -38,7 +31,6 @@ class GenerationInput(TypedDict):
     workflow_state: NotRequired[str]  # 前端当前工作流状态，例如 idle、generating。
     thinking_mode: NotRequired[bool]  # 是否开启模型深度思考及 reasoning 流式展示。
     procedural_materials_enabled: NotRequired[bool]  # 是否允许使用程序化材质方案。
-    plan_mode: NotRequired[bool]  # 是否启用“制定计划→人工批准→按计划执行”模式。
 
 
 # total=False 当前类里定义的所有字段默认全部可选，可以缺省。
@@ -57,52 +49,32 @@ class GenerationState(TypedDict, total=False):
     workflow_state: str  # 前端传入的工作流状态，例如 idle、generating。
     thinking_mode: bool  # 是否启用模型深度思考和 reasoning 流式展示。
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
-    plan_mode: bool  # 是否启用可审核的 ExecutionPlan 执行模式。
 
-    # ── 可审核执行计划与业务约束 ──
-    execution_plan: ExecutionPlan  # 当前执行计划，描述本次需求特有的动态任务；不负责节点路由。
-    structured_requirements: list[StructuredRequirement]  # 从批准任务编译出的节点可消费业务要求。
-    acceptance_results: dict[str, AcceptanceResult]  # 每条验收条件的结果、实际值和证据引用。
-    execution_progress: dict[str, ExecutionProgressItem]  # 固定 LangGraph 阶段的展示进度；不参与路由。
-    execution_plan_status: ExecutionPlanStatus  # 计划整体状态，例如 draft、approved、executing、completed。
-    execution_plan_review_status: ExecutionPlanReviewState  # 人工审核状态，例如 pending、approved、revise。
-    execution_plan_validation: list[PlanValidationIssue]  # 动态任务、依赖、结构化要求和能力边界问题。
-    execution_plan_history: list[ExecutionPlanHistoryEntry]  # 旧版本计划及对应修改意见的简要记录。
-    plan_feedback: str  # 用户要求重新规划时提交的修改意见。
-    plan_research_context: str  # 规划前从本地知识库检索出的完整上下文。
-    plan_research_summary: str  # 当前场景和研究结果的精简摘要。
-    plan_research_diag: dict  # 本地检索耗时、知识覆盖率等诊断信息。
-
-    # ── Plan 模式受控网络研究（本地覆盖不足时临时补充，不写入知识库）──
-    research_queries: list[str]      # 缺失主题生成的研究问题
-    research_missing_topics: list[str]  # 覆盖判断缺失的主题
-    web_research_context: str        # 本次请求临时知识（仅当前 request 生效）
-    web_research_diag: dict          # 搜索/命中/丢弃诊断
-    execution_plan_diag: dict  # 计划生成来源、任务数量、Token 和格式恢复诊断。
-    plan_replan_count: int  # 当前请求已经重新制定计划的次数。
-    max_plan_replans: int  # 当前请求允许重新制定计划的最大次数。
-    plan_feedback_pending: bool  # 节点边界是否收到需要回到 planner 的追加意见。
-    
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
     intent_confidence: float  # 意图分类置信度，范围为 0～1。
-    intent_target: str  # 从用户消息中识别出的操作对象，例如“别墅”或“正门”。
+    intent_target: str  # 从用户消息中识别出的操作对象，例如"别墅"或"正门"。
+    intent_target_kind: str  # "architecture" | "object"：本轮交付的是建筑方案还是单个物件。
     intent_requires_scene: bool  # 当前意图是否必须依赖已有 Blueprint 场景。
     intent_reason: str  # 分类器给出的简短、可展示判断理由。
     intent_source: str  # 分类结果来源，例如 rule、llm 或 fallback。
 
+    # ── plan：动态执行计划──
+    plan: dict  # PlanDocument：条目列表 + revision + 预算 + 有界终止计数。
+    plan_events: list[dict]  # 本轮条目状态变化的增量事件，供前端进度面板累加消费。
+    current_item_id: str | None  # 本轮正在执行的条目 id，trace 与事件的挂载点。
+    tool_trace: dict  # {item_id: [{tool, ok, chars}]}：条目的工具/检索审计轨迹。
+
     # ── Layer -0.5: 建筑方案（生成分支）──
-    # 详细方案生成
     architecture_plan: dict  # 归一化后的总体建筑方案，供后续节点执行。
-    complexity_profile: dict  # 从需求解析出的复杂度等级、体量和细节数量要求。
-    architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断。
+    architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断（前端方案摘要消费）。
     design_document: dict  # 可人工审核、带 revision 的结构化建筑设计文档。
     resolved_design: dict  # 将 DesignDocument 默认值和引用解析后的可执行视图。
     design_review_status: str  # 建筑设计审核状态，例如 pending、approved、revise。
     design_feedback: str  # 用户对当前建筑设计提出的修改意见。
     design_material_refresh: bool  # 本轮修订后是否需要重新生成材质方案。
     material_plan: dict  # 材质角色、颜色和资产引用组成的受控材质方案。
-    material_diag: dict  # 材质检索、解析、校验和回退诊断。
+    material_diag: dict  # 材质检索、解析、校验和回退诊断（前端资产摘要消费）。
 
     # ── Layer -1: 知识问答输出 ──
     chat_reply: str       # 知识问答的文本回复
@@ -120,54 +92,15 @@ class GenerationState(TypedDict, total=False):
     spatial_invariants: dict  # 从主体提取的楼层、边界、宿主等空间不变量。
     suggested_components: list[str]  # 骨架节点建议的组件列表
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
-
-    # ── Layer 1: 组件分片（并行）──
-    # 以下 legacy 分片字段已不再写入，仅保留用于旧 checkpoint 的读侧兜底；
-    # 权威数据在下面的 component_fragments / component_diagnostics。
-    door_fragments: list[dict]  # 旧 checkpoint 中的门组件分片。
-    window_fragments: list[dict]  # 旧 checkpoint 中的窗组件分片。
-    roof_fragment: dict | None  # 旧 checkpoint 中的屋顶组件分片。
-    railing_fragments: list[dict]  # 旧 checkpoint 中的栏杆组件分片。
-    canopy_fragments: list[dict]  # 旧 checkpoint 中的雨棚组件分片。
-    balcony_fragments: list[dict]  # 旧 checkpoint 中的阳台组件分片。
-    ramp_fragments: list[dict]  # 旧 checkpoint 中的坡道组件分片。
-    bay_window_fragments: list[dict]  # 旧 checkpoint 中的凸窗组件分片。
-    cornice_fragments: list[dict]  # 旧 checkpoint 中的檐口组件分片。
-    chimney_fragments: list[dict]  # 旧 checkpoint 中的烟囱组件分片。
-    light_fragments: list[dict]  # 旧 checkpoint 中的灯光组件分片。
-
-    # 新组件优先写入通用映射；上面的旧字段保留，兼容既有节点、测试和前端。
-    component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各组件生成节点并行写入的通用分片映射。
-    component_diagnostics: Annotated[dict[str, dict], merge_state_mapping]  # 各组件生成和校验节点并行写入的诊断映射。
-
-    # ── Layer 1 诊断字段（gen + val 分离）──
     skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
-    door_gen_diag: dict  # 门组件生成阶段诊断。
-    door_val_diag: dict  # 门组件校验阶段诊断。
-    window_gen_diag: dict  # 窗组件生成阶段诊断。
-    window_val_diag: dict  # 窗组件校验阶段诊断。
-    roof_gen_diag: dict  # 屋顶组件生成阶段诊断。
-    roof_val_diag: dict  # 屋顶组件校验阶段诊断。
-    railing_gen_diag: dict  # 栏杆组件生成阶段诊断。
-    railing_val_diag: dict  # 栏杆组件校验阶段诊断。
-    canopy_gen_diag: dict  # 雨棚组件生成阶段诊断。
-    canopy_val_diag: dict  # 雨棚组件校验阶段诊断。
-    balcony_gen_diag: dict  # 阳台组件生成阶段诊断。
-    balcony_val_diag: dict  # 阳台组件校验阶段诊断。
-    light_gen_diag: dict  # 灯光组件生成阶段诊断。
-    light_val_diag: dict  # 灯光组件校验阶段诊断。
-    ramp_gen_diag: dict  # 坡道组件生成阶段诊断。
-    ramp_val_diag: dict  # 坡道组件校验阶段诊断。
-    bay_window_gen_diag: dict  # 凸窗组件生成阶段诊断。
-    bay_window_val_diag: dict  # 凸窗组件校验阶段诊断。
-    cornice_gen_diag: dict  # 檐口组件生成阶段诊断。
-    cornice_val_diag: dict  # 檐口组件校验阶段诊断。
-    chimney_gen_diag: dict  # 烟囱组件生成阶段诊断。
-    chimney_val_diag: dict  # 烟囱组件校验阶段诊断。
+
+    # ── Layer 1: 组件分片 ──
+    component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各构件类型的源分片映射。
+    component_diagnostics: Annotated[dict[str, dict], merge_state_mapping]  # 生成与校验的诊断映射。
 
     # ── Layer 2: 合并与校验 ──
     merged_blueprint: dict  # 主体骨架与所有组件分片合并后的 Blueprint。
-    merge_diag: dict  # 合并节点的校验→修复循环诊断
+    merge_diag: dict  # 合并诊断：批次合并只有并入计数，收尾合并才带校验→修复循环与蓝图指纹
     validation_results: list[dict]  # 各校验器返回的原始结果列表。
     validation_issues: list[dict]  # 汇总后的结构化错误与警告列表。
     validation_error_count: int  # 当前阻断级校验错误数量。
@@ -181,7 +114,6 @@ class GenerationState(TypedDict, total=False):
     component_retry_counts: dict[str, int]  # per-component 重试计数 {component_id: count}
 
     # ── 回调上下文 ──
-    callback_context: dict  # callback 定向修复需要的失败目标、问题和上下文。
     repair_audit: dict  # 修复前后错误变化、接受或拒绝原因等审计记录。
     terminal_model_error: dict  # 模型服务故障；当前图运行必须终止，不进入建筑修复循环
 

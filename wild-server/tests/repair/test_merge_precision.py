@@ -189,18 +189,18 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
                 },
                 "facade_plan": {},
             },
-            "balcony_fragments": [{
+            "component_fragments": {"balcony": [{
                 "type": "balcony", "id": "balcony_main", "parentWall": "wall_front",
                 "from": [2.8, 3.2, 0], "width": 2.4, "depth": 1.5,
                 "slabThickness": 0.2,
             }],
-            "railing_fragments": [
+            "railing": [
                 {"type": "railing", "id": "balcony_front", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.1},
                 {"type": "railing", "id": "balcony_left", "parentFloor": "floor_balcony", "path": [[0, 0, 0], [0, 0, 1.5]], "height": 1.1},
                 {"type": "railing", "id": "railing_balcony_orphan", "path": [[5.5, 0, 0], [7, 0, -1.5]], "height": 1.1},
                 {"type": "railing", "id": "portico_front", "parentFloor": "floor_portico", "path": [[0, 0, 0], [2.4, 0, 0]], "height": 1.0},
                 {"type": "railing", "id": "stair_guard", "path": [[0, 0, 4], [2, 2, 4]], "height": 1.0},
-            ],
+            ]},
         })
 
         blueprint = result["merged_blueprint"]
@@ -225,7 +225,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         result = await merge_fragments_node({
             "skeleton_blueprint": _skeleton(),
             "design_brief": _design_brief(),
-            "door_fragments": [{
+            "component_fragments": {"door": [{
                 "id": "door_back",
                 "type": "door",
                 "parentWall": "wall_back",
@@ -233,7 +233,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
                 "width": 1.2,
                 "height": 2.2,
                 "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90},
-            }],
+            }]},
         })
 
         door = result["merged_blueprint"]["geometry"]["components"][0]
@@ -270,22 +270,21 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
                 },
                 "facade_plan": {"wall_back": {"max_openings": 2}},
             },
-            "door_fragments": [{
+            "component_fragments": {"door": [{
                 "id": "door_back",
                 "type": "door",
                 "parentWall": "wall_back",
                 "from": [2, 0, 0],
                 "width": 1.2,
                 "height": 2.2,
-            }],
-            "window_fragments": [{
+            }], "window": [{
                 "id": "window_back",
                 "type": "window",
                 "parentWall": "wall_back",
                 "from": [2.8, 0.9, 0],
                 "width": 1.4,
                 "height": 1.2,
-            }],
+            }]},
         })
 
         self.assertGreater(result["merge_diag"]["final_errors"], 0)
@@ -312,7 +311,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         }
         result = await merge_fragments_node({
             "skeleton_blueprint": skeleton,
-            "window_fragments": [
+            "component_fragments": {"window": [
                 {
                     "id": "window_05", "type": "window",
                     "parentWall": "wall_short", "from": [0.18, 0.96, 0],
@@ -323,7 +322,7 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
                     "parentWall": "wall_short", "from": [0.32, 0.96, 0],
                     "width": 0.5, "height": 1.55,
                 },
-            ],
+            ]},
         })
 
         self.assertEqual(result["merge_diag"]["final_errors"], 0)

@@ -32,9 +32,19 @@ export interface DesignFacade {
   upper_pattern: OpeningKind[]
 }
 
-export type MaterialRoleName =
+// 建筑侧角色与物件侧角色的并集——`ResolvedMaterialPlan` 被两支共用。
+// 后端唯一事实源：`wild-server/app/design/contracts.py::MaterialRoleName`。
+// 物件侧没有 frame，用 metal（见 `material_plan.py::_METALLIC_ROLES`）。
+export type ArchitectureMaterialRoleName =
   | 'facade_primary' | 'structure' | 'floor' | 'frame' | 'door'
   | 'glass' | 'roof' | 'ground' | 'accent'
+
+export type ObjectMaterialRoleName =
+  | 'wood' | 'metal' | 'glass' | 'stone' | 'fabric' | 'accent'
+
+export type MaterialRoleName =
+  | ArchitectureMaterialRoleName
+  | ObjectMaterialRoleName
 
 export interface ResolvedMaterialPlan {
   concept: string
@@ -52,6 +62,95 @@ export interface ResolvedMaterialPlan {
   curtainWall: boolean
 }
 
+/**
+ * 设计决策的**带标签联合**。判别字段是两边都有的 `kind`：
+ * 有 `massing` 的那支只能解析成 ArchitectureDecisions，反之亦然。
+ *
+ * 前端此前无条件读 `decisions.massing.width`，对物件方案（"生成一个桌子"）
+ * 会直接在模板里抛异常。所有消费点必须先按 `kind` 收窄。
+ */
+export type DesignDecisions = ArchitectureDecisions | ObjectDecisions
+
+export interface ArchitectureDecisions {
+  kind: 'architecture'
+  concept: string
+  massing: DesignMassing
+  complexity: {
+    level: 'minimal' | 'simple' | 'standard' | 'detailed'
+    min_volumes: number
+    min_detail_packages: number
+    target_structural_elements: number
+    grid_bays: [number, number]
+    reason: string
+  }
+  volumes: DesignVolume[]
+  structural_grid: {
+    system: 'wall_bearing' | 'frame' | 'hybrid' | 'long_span' | 'shell'
+    x_bays: number
+    z_bays: number
+  }
+  envelope: {
+    system: 'solid_wall' | 'curtain_wall'
+    curtain_wall: {
+      grid_strategy: 'floor_and_bay_aligned'
+    } | null
+  }
+  facades: Record<'front' | 'back' | 'left' | 'right', DesignFacade>
+  roof: {
+    type: 'flat' | 'gable' | 'hip' | 'dome' | 'chinese_curved' | 'chinese_pagoda'
+    ridge_axis: 'x' | 'z'
+    overhang: number
+  }
+  circulation: {
+    vertical_strategy: 'none' | 'stair' | 'core' | 'core_and_stair'
+  }
+  materials: { keywords: string[]; resolved_plan: ResolvedMaterialPlan | null }
+  detail_packages: string[]
+  component_quota: Record<string, { min: number; max: number; note: string; type: string | null }>
+  balcony_access_count: number
+  balcony_width: number | null
+  required_components: string[]
+  unsupported_component_types: string[]
+  design_rationale: string[]
+}
+
+/**
+ * 物件场景里的一个待生成物件：只描述"做几个、多大、怎么摆"，不描述几何。
+ *
+ * `kind` 是**表达通道**（与后端 `OBJECT_COMPONENT_KINDS` 一致）：
+ * `furniture`（图鉴预设，靠 subtype）/ `primitive`（通用几何组合，靠 parts）/
+ * `body`（简化人物，靠 params）。`name` 是用户点名的原始名词。
+ */
+export interface DesignObject {
+  kind: string
+  subtype: string
+  /** 用户点名的原始名词（"桌子"/"小人"/"花瓶"）。预设通道可为空。 */
+  name: string
+  count: number
+  width: number
+  depth: number
+  height: number
+  /** `kind=primitive` 的零件表：每项是一份 WILD primitive 参数（相对物件底面中心）。 */
+  parts: Array<Record<string, unknown>>
+  /** `kind` 专属参数（目前只有 `body` 使用）。 */
+  params: Record<string, unknown>
+  /** 摆位说明（自然语言约束）。世界坐标由构件生成节点按行走面标高算出。 */
+  placement: string
+  material: string
+  rationale: string
+}
+
+/** 与后端 `ObjectDecisions` 一致：没有体量、立面与屋顶，只有物件清单与材质。 */
+export interface ObjectDecisions {
+  kind: 'object'
+  concept: string
+  objects: DesignObject[]
+  /** 点名了、但本次表达不出可生成几何的物件（非阻断提示，进交付清单）。 */
+  unsupported_objects: string[]
+  materials: { keywords: string[]; resolved_plan: ResolvedMaterialPlan | null }
+  design_rationale: string[]
+}
+
 export interface DesignDocument {
   schema_version: 'design/1.0'
   design_id: string
@@ -67,47 +166,7 @@ export interface DesignDocument {
     profile: string
     style_intent: string[]
   }
-  decisions: {
-    concept: string
-    massing: DesignMassing
-    complexity: {
-      level: 'minimal' | 'simple' | 'standard' | 'detailed'
-      min_volumes: number
-      min_detail_packages: number
-      target_structural_elements: number
-      grid_bays: [number, number]
-      reason: string
-    }
-    volumes: DesignVolume[]
-    structural_grid: {
-      system: 'wall_bearing' | 'frame' | 'hybrid' | 'long_span' | 'shell'
-      x_bays: number
-      z_bays: number
-    }
-    envelope: {
-      system: 'solid_wall' | 'curtain_wall'
-      curtain_wall: {
-        grid_strategy: 'floor_and_bay_aligned'
-      } | null
-    }
-    facades: Record<'front' | 'back' | 'left' | 'right', DesignFacade>
-    roof: {
-      type: 'flat' | 'gable' | 'hip' | 'dome' | 'chinese_curved' | 'chinese_pagoda'
-      ridge_axis: 'x' | 'z'
-      overhang: number
-    }
-    circulation: {
-      vertical_strategy: 'none' | 'stair' | 'core' | 'core_and_stair'
-    }
-    materials: { keywords: string[]; resolved_plan: ResolvedMaterialPlan | null }
-    detail_packages: string[]
-    component_quota: Record<string, { min: number; max: number; note: string; type: string | null }>
-    balcony_access_count: number
-    balcony_width: number | null
-    required_components: string[]
-    unsupported_component_types: string[]
-    design_rationale: string[]
-  }
+  decisions: DesignDecisions
   constraints: Array<{
     id: string
     kind: 'user_hard' | 'engine_hard' | 'system_required' | 'preference' | 'reference'

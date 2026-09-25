@@ -1,24 +1,28 @@
 """不进入 LangGraph State 的单次运行时上下文。
 
-持久化 checkpointer 只能保存可序列化状态；WebSocket 推送回调和执行意见
-轮询器属于当前进程资源，通过 ContextVar 传给节点，服务重启后由新任务重新绑定。
+持久化 checkpointer 只能保存可序列化状态；WebSocket 推送回调与"本条目可用的工具集"
+属于当前进程/当前条目的资源，通过 ContextVar 传给处理器，用完即丢。
+
+这也是《动态节点设计规划》§2.8 第 ② 层的落点：单次执行需要的输入是**函数参数或
+上下文变量**，不是 state 字段——它们既不需要跨节点，也不需要进 checkpoint。
 """
 
 from __future__ import annotations
 
 from contextvars import ContextVar, Token
-from typing import Awaitable, Callable
-
+from typing import Any, Awaitable, Callable
 
 ReasoningCallback = Callable[[str, str], Awaitable[None]]
-ExecutionFeedbackPoller = Callable[[], Awaitable[list[str]]]
 
 _reasoning_callback: ContextVar[ReasoningCallback | None] = ContextVar(
     "wild_reasoning_callback",
     default=None,
 )
-_execution_feedback_poller: ContextVar[ExecutionFeedbackPoller | None] = ContextVar(
-    "wild_execution_feedback_poller",
+
+#: 当前条目可用的工具集（plan.tool_registry.ToolSpec 元组）。
+#: 这里刻意用 ``tuple[Any, ...]``：runtime 是底层模块，不该反向依赖 plan。
+_item_tools: ContextVar[tuple[Any, ...] | None] = ContextVar(
+    "wild_item_tools",
     default=None,
 )
 
@@ -35,17 +39,15 @@ def reset_reasoning_callback(token: Token) -> None:
     _reasoning_callback.reset(token)
 
 
-def get_execution_feedback_poller() -> ExecutionFeedbackPoller | None:
-    """返回当前后台任务的用户意见轮询器。"""
+def get_item_tools() -> tuple[Any, ...] | None:
+    """当前条目可用的工具集；``None`` 表示这条条目不走工具型处理器。"""
 
-    return _execution_feedback_poller.get()
-
-
-def bind_execution_feedback_poller(
-    poller: ExecutionFeedbackPoller | None,
-) -> Token:
-    return _execution_feedback_poller.set(poller)
+    return _item_tools.get()
 
 
-def reset_execution_feedback_poller(token: Token) -> None:
-    _execution_feedback_poller.reset(token)
+def bind_item_tools(specs: tuple[Any, ...] | list[Any] | None) -> Token:
+    return _item_tools.set(tuple(specs) if specs else None)
+
+
+def reset_item_tools(token: Token) -> None:
+    _item_tools.reset(token)

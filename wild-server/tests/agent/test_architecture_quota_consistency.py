@@ -110,10 +110,10 @@ def test_curtain_wall_door_quota_matches_facade_slots(message: str) -> None:
     assert document.decisions.component_quota
 
 
-# 同一句话里的平面尺寸，验收侧与架构侧必须认出同一个值。
-# 曾经的矛盾：验收侧认"宽约17米，深约23米"，架构侧的 `_requested_dimension`
-# 不认"约"字，整条落回默认 12×9 → 验收要求 17×23、实际生成 12×9，
-# 必然阻断交付。两侧解析器各写各的，就必须有测试钉住它们的一致性。
+# 同一句话里的平面尺寸必须被认出。曾经的矛盾：计划层认"宽约17米，深约23米"，
+# 架构侧的 `_requested_dimension` 不认"约"字，整条落回默认 12×9 → 验收要求
+# 17×23、实际生成 12×9，必然阻断交付。计划层已删除，唯一保留的解析点是
+# `architecture/profile.py`，这里继续钉住它认得出这几种写法。
 _DIMENSION_CONSISTENCY_CASES = [
     "生成两层住宅，宽约17米，深约23米",
     "生成两层住宅，宽度为17米，进深为23米",
@@ -123,27 +123,23 @@ _DIMENSION_CONSISTENCY_CASES = [
 
 
 @pytest.mark.parametrize("message", _DIMENSION_CONSISTENCY_CASES)
-def test_acceptance_and_architecture_agree_on_plan_dimensions(message: str) -> None:
-    """说了尺寸就必须两侧都认；不然就会出现无法满足的验收要求。"""
+def test_architecture_recognizes_requested_plan_dimensions(message: str) -> None:
+    """说了尺寸就必须认；"约/为/进深/平面"这些写法都算同一件事。"""
 
-    from app.agent.planning.requirements import _extract_plan_dimensions
-
-    expected = _extract_plan_dimensions(message)
     massing = _normalized(message)["massing"]
 
-    assert expected == (17.0, 23.0), f"验收侧没解析出尺寸：{message}"
-    assert (massing["width"], massing["depth"]) == expected, (
-        f"架构侧解析结果与验收侧不一致：{message}"
+    assert (massing["width"], massing["depth"]) == (17.0, 23.0), (
+        f"架构侧没解析出尺寸：{message}"
     )
 
 
 def test_no_dimension_request_keeps_architecture_defaults() -> None:
-    """没提尺寸时两侧都不该凭空造要求——验收侧返回 None，架构侧走默认。"""
+    """没提尺寸时不凭空造要求——解析器返回 None，架构侧走默认正尺寸。"""
 
-    from app.agent.planning.requirements import _extract_plan_dimensions
+    from app.agent.generation.architecture.profile import _requested_plan_dimensions
 
     message = "生成两层住宅"
-    assert _extract_plan_dimensions(message) is None
+    assert _requested_plan_dimensions(message) is None
     assert _normalized(message)["massing"]["width"] > 0
 
 
@@ -167,48 +163,6 @@ def test_schematic_high_rise_fallback_satisfies_design_contract() -> None:
     )
 
     assert document.decisions.component_quota
-
-
-def test_ascii_slash_marks_alternative_components() -> None:
-    """door/window 是"任一"，不能因为斜杠两侧是字母就被判成"全部"。"""
-
-    from app.agent.planning.requirements import compile_structured_requirements
-    from app.agent.planning.execution import build_execution_plan
-
-    plan = build_execution_plan(
-        request_id="req_slash",
-        intent="generate",
-        user_message="生成一个两层别墅",
-        planned_tasks=[
-            {
-                "title": "确定体量",
-                "objective": "确定两层主体",
-                "phase": "architecture",
-                "acceptance": ["建筑必须为两层"],
-                "basis": "用户需求",
-            },
-            {
-                "title": "主体",
-                "objective": "生成主体",
-                "phase": "skeleton",
-                "acceptance": ["至少添加一个 door/window 组件"],
-                "basis": "用户需求",
-            },
-            {
-                "title": "最终校验",
-                "objective": "校验",
-                "phase": "final_validate",
-                "acceptance": ["完整校验零错误"],
-                "basis": "WILD 协议",
-            },
-        ],
-        planner_source="llm",
-    )
-    assert plan["planner_source"] == "llm", plan["dynamic_tasks"]
-    requirement = compile_structured_requirements(plan)[1]
-
-    assert requirement["kind"] == "component_any"
-    assert requirement["operator"] == "contains_any"
 
 
 def test_design_contract_error_is_a_controlled_business_error() -> None:

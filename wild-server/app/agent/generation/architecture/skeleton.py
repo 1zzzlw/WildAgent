@@ -5,7 +5,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from app.agent.generation.spatial_geometry import shared_stair_layout
+from app.agent.generation.spatial_geometry import shared_footprint, shared_stair_layout
+from app.agent.generation.stair_openings import cut_stair_openings
 
 from .planning import normalize_architecture_plan
 from .profile import _fallback_volumes
@@ -424,11 +425,21 @@ def evaluate_skeleton_complexity(
         or vertical_strategy == "stair" and has_stair
         or vertical_strategy == "core_and_stair" and has_stair and has_core
     )
+    expected_plates = {
+        "geometry": {"elements": [
+            {"id": f"expected_floor_{index}", "type": "floor",
+             "from": [plate["bounds"][0], plate["elevation"], plate["bounds"][1]],
+             "to": [plate["bounds"][2], plate["elevation"], plate["bounds"][3]],
+             "thickness": 0.2}
+            for index, plate in enumerate(_resolve_floor_plate_plan(plan_volumes, modeled_floors, floor_height))
+        ] + [element for element in elements if element.get("type") == "stair"]}
+    }
+    cut_stair_openings(expected_plates)
     expected_floor_layouts = {
         tuple(round(value, 2) for value in (
-            plate["elevation"], *plate["bounds"],
+            plate["from"][1], plate["from"][0], plate["from"][2], plate["to"][0], plate["to"][2],
         ))
-        for plate in _resolve_floor_plate_plan(plan_volumes, modeled_floors, floor_height)
+        for plate in expected_plates["geometry"]["elements"] if plate["type"] == "floor"
     }
     expected_wall_base_levels = {
         round(level * floor_height, 2) for level in range(modeled_floors)
@@ -482,39 +493,213 @@ def evaluate_skeleton_complexity(
     }
 
 
+#: 电梯井的**设备尺寸**（外廓，含两侧各 0.2m 混凝土井壁）：单井净空 2.0×2.2m，
+#: 双联 4.2×2.2m。井道不是"按建筑宽深等比缩放"的房间，所以不参与 `width*0.24`
+#: 这类推导 —— 一推导就会既失真（长条井道不像电梯）又跑出平面轮廓。
+_ELEVATOR_SHAFT_SINGLE_WIDTH = 2.4
+_ELEVATOR_SHAFT_TWIN_WIDTH = 4.6
+_ELEVATOR_SHAFT_DEPTH = 2.6
+#: 井道带与楼梯带之间的净距。
+_VERTICAL_TRANSPORT_GAP = 0.3
+
+
+def _resolve_vertical_transport_layout(
+    footprint: list[float],
+    *,
+    floor_height: float,
+    stair_width: float,
+) -> dict[str, Any] | None:
+    """在公共投影区内沿长轴依次排布「电梯井」与「楼梯」，两者互不重叠。
+
+    旧实现把核心筒按建筑**包围盒**居中、尺寸取 ``width*0.24 / depth*0.28``，
+    两个后果都是实测出来的：16×12 的 L 形平面上，核心筒 4.4×4.8 里有
+    3.5×3.4m 悬在建筑轮廓之外；而且那是个 2.1m 宽 × 4.8m 深的长条井道，
+    并不像电梯。这里改为：井道取固定设备尺寸（放得下双联时取双联，
+    否则单井），楼梯沿长轴另占一段，整体在公共区内居中。
+
+    返回 ``None`` 表示公共区放不下井道 —— 此时不生成核心筒，而不是硬塞。
+    """
+
+    rx0, rz0, rx1, rz1 = (float(value) for value in footprint)
+    span_x = rx1 - rx0
+    span_z = rz1 - rz0
+    short_span = min(span_x, span_z)
+    long_span = max(span_x, span_z)
+    long_axis_z = span_z >= span_x
+
+    twin = short_span >= _ELEVATOR_SHAFT_TWIN_WIDTH + 0.4
+    shaft_width = _ELEVATOR_SHAFT_TWIN_WIDTH if twin else _ELEVATOR_SHAFT_SINGLE_WIDTH
+    if short_span < shaft_width + 0.4:
+        return None
+
+    available = long_span - _ELEVATOR_SHAFT_DEPTH - _VERTICAL_TRANSPORT_GAP
+    stair_run = min(max(1.2, float(floor_height) * 1.65), available - 0.4)
+    if stair_run < 1.2:
+        return None
+    lead = (long_span - (_ELEVATOR_SHAFT_DEPTH + _VERTICAL_TRANSPORT_GAP + stair_run)) / 2
+    stair_width = min(float(stair_width), short_span - 0.4)
+
+    if long_axis_z:
+        short_center = (rx0 + rx1) / 2
+        core = [
+            short_center - shaft_width / 2, rz0 + lead,
+            short_center + shaft_width / 2, rz0 + lead + _ELEVATOR_SHAFT_DEPTH,
+        ]
+        stair_start = [short_center, core[3] + _VERTICAL_TRANSPORT_GAP]
+        stair_end = [short_center, stair_start[1] + stair_run]
+    else:
+        short_center = (rz0 + rz1) / 2
+        core = [
+            rx0 + lead, short_center - shaft_width / 2,
+            rx0 + lead + _ELEVATOR_SHAFT_DEPTH, short_center + shaft_width / 2,
+        ]
+        stair_start = [core[2] + _VERTICAL_TRANSPORT_GAP, short_center]
+        stair_end = [stair_start[0] + stair_run, short_center]
+
+    return {
+        "core": [round(value, 3) for value in core],
+        "twin": twin,
+        # 候梯面/分隔墙的朝向由长轴决定，`_append_vertical_core` 必须知道，
+        # 否则会把井道「进深」当「面宽」切开。
+        "long_axis_z": bool(long_axis_z),
+        "stair": {
+            "bounds": [round(float(value), 3) for value in footprint],
+            "start": [round(value, 3) for value in stair_start],
+            "end": [round(value, 3) for value in stair_end],
+            "width": round(stair_width, 3),
+        },
+    }
+
+
 def _append_vertical_core(
     elements: list[dict[str, Any]],
     *,
-    width: float,
-    depth: float,
+    core: list[float],
+    twin: bool,
+    long_axis_z: bool,
     total_height: float,
+    floor_height: float,
 ) -> None:
-    core_width = min(width - 2.0, max(4.0, width * 0.24))
-    core_depth = min(depth - 2.0, max(4.0, depth * 0.28))
-    x0 = (width - core_width) / 2
-    x1 = x0 + core_width
-    z0 = (depth - core_depth) / 2
-    z1 = z0 + core_depth
-    core_runs = (
+    """核心筒（电梯井）四壁 + 分隔墙，逐层带电梯门洞。
+
+    井道外廓由 :func:`_resolve_vertical_transport_layout` 在公共投影区内给定
+    （双联井 4.6×2.6、单井 2.4×2.6，均为含 0.2m 混凝土井壁的设备尺寸），
+    本函数不再自行推导尺寸。
+
+    **朝向不许硬编码在 x 轴上**：布局函数把井道放在公共区长轴的起点端、楼梯在外侧，
+    所以候梯面恒为「长轴起点端那面墙」（长轴沿 z 时是 front、沿 x 时是 left），
+    而分隔墙垂直于候梯面（＝垂直于轿厢并排方向）。早期实现把这两处都写死在 x 轴：
+    长轴沿 x 时，井道的「进深」被当「面宽」对半切开，双联井被切成两格
+    1.0×4.2m 的长条 —— 修复器只能把轿厢宽度夹到 0.9m（实测），形同电话亭。
+
+    门洞：每层朝候梯面开门（双联井两个、单井一个居中），底层不开门
+    （电梯不向基坑开门，也避免一层直接被洞贯穿）。
+    楼板开口由组件生成阶段的 `_cut_core_shaft_openings` 在合并骨架后处理。
+    """
+    x0, z0, x1, z1 = (float(value) for value in core)
+    mid_x = (x0 + x1) / 2
+    mid_z = (z0 + z1) / 2
+    core_runs: list[tuple[str, float, float, float, float]] = [
         ("front", x0, z0, x1, z0),
         ("right", x1, z0, x1, z1),
         ("back", x1, z1, x0, z1),
         ("left", x0, z1, x0, z0),
-        ("partition", (x0 + x1) / 2, z0, (x0 + x1) / 2, z1),
-    )
-    segment_count = max(1, math.ceil(total_height / 45.0))
-    segment_height = total_height / segment_count
-    for segment in range(segment_count):
-        base_y = segment * segment_height
-        top_y = (segment + 1) * segment_height
-        suffix = "" if segment_count == 1 else f"_{segment + 1}"
+    ]
+    if long_axis_z:
+        # 长轴沿 z → 候梯面是 front（跨 x）、分隔墙沿 z 立在中线 x 上。
+        if twin:
+            core_runs.append(("partition", mid_x, z0, mid_x, z1))
+        door_wall_side = "front"
+        shaft_span = x1 - x0
+    else:
+        # 长轴沿 x → 候梯面是 left（跨 z、方向 z1→z0）、分隔墙沿 x 卧在中线 z 上。
+        if twin:
+            core_runs.append(("partition", x0, mid_z, x1, mid_z))
+        door_wall_side = "left"
+        shaft_span = z1 - z0
+    # 🔴 分隔墙只在**双联井**里存在：单轿厢井再加一道分隔墙，会把 2.4m 面宽切成
+    # 两格 0.9m（实测），而单井那扇居中的门恰好压在分隔墙身上 —— 井与门一起作废。
+    # 电梯门洞尺寸：宽 0.9m（门扇 0.8m 级）、高 2.1m，双联井沿候梯面对称布置。
+    # `from[0]` 是沿宿主墙从 `from` 端点起的距离，且指向门洞**左边缘**（不是中心）——
+    # 所以这里要扣掉半个门宽；候梯墙的长度恒等于井道面宽，两种朝向下偏移量同号同值。
+    door_width = 0.9
+    door_height = min(2.1, max(1.8, floor_height - 1.0))
+    door_offsets = [
+        round(shaft_span * ratio - door_width / 2, 3)
+        for ratio in ((0.25, 0.75) if twin else (0.5,))
+    ]
+    doors_per_floor = max(1, round(total_height / floor_height))
+    for level in range(doors_per_floor):
+        base_y = level * floor_height
+        top_y = base_y + floor_height
+        level_offsets = [] if level == 0 else door_offsets
+        level_suffix = f"{level + 1}" if doors_per_floor > 1 else ""
         for side, start_x, start_z, end_x, end_z in core_runs:
-            elements.append({
-                "type": "wall", "id": f"wall_core_{side}{suffix}",
+            wall_id = f"wall_core_{side}_{level_suffix}" if doors_per_floor > 1 else f"wall_core_{side}"
+            wall = {
+                "type": "wall", "id": wall_id,
                 "from": [start_x, round(base_y, 3), start_z],
                 "to": [end_x, round(top_y, 3), end_z],
                 "thickness": 0.2, "material": "concrete",
-            })
+            }
+            if side == door_wall_side and level_offsets:
+                # 候梯墙逐层切出电梯门洞（用 opening 组件表达，
+                # 由 wild-core resolver 在渲染时从墙上真实挖洞）。
+                for door_index, offset in enumerate(level_offsets, start=1):
+                    elements.append({
+                        "type": "opening",
+                        "id": f"elevator_door_{level + 1}_{door_index}",
+                        "parentWall": wall_id,
+                        "from": [offset, round(base_y, 3), 0],
+                        "width": door_width,
+                        "height": door_height,
+                        "style": "rectangular",
+                        "depth": 0.2,
+                    })
+            elements.append(wall)
+
+
+def _cut_core_shaft_openings(blueprint: dict[str, Any], floor_height: float) -> None:
+    """在跨越电梯井的楼板上挖井道开口（各层楼板都要留洞，电梯才能贯通）。
+
+    复用 ``cut_stair_openings`` 的拆板逻辑：把与井道投影相交的楼板拆成
+    「井洞 + 周围环板」，保留材质与厚度。只处理 core_and_stair 骨架生成的
+    ``wall_core_*`` 围合出的矩形投影。
+    """
+    elements = blueprint.get("geometry", {}).get("elements", [])
+    core_walls = [
+        element for element in elements
+        if element.get("type") == "wall" and str(element.get("id") or "").startswith("wall_core_")
+    ]
+    if not core_walls:
+        return
+    xs: list[float] = []
+    zs: list[float] = []
+    for wall in core_walls:
+        xs.extend((wall["from"][0], wall["to"][0]))
+        zs.extend((wall["from"][2], wall["to"][2]))
+    shaft = (min(xs) + 0.2, min(zs) + 0.2, max(xs) - 0.2, max(zs) - 0.2)
+
+    walls_only = blueprint
+    # 走统一的楼板拆分通道：把井道投影临时注册为一个“楼梯式遮挡”，
+    # 拆完再移除占位，避免引入第二套拆板实现。
+    placeholder = {
+        "type": "stair",
+        "id": "__core_shaft_placeholder__",
+        "from": [shaft[0], 0.0, shaft[1]],
+        "to": [shaft[2], 0.0, shaft[3]],
+        "width": 0.1,
+    }
+    elements.append(placeholder)
+    try:
+        from app.agent.generation.stair_openings import cut_stair_openings
+
+        cut_stair_openings(walls_only)
+    finally:
+        try:
+            elements.remove(placeholder)
+        except ValueError:
+            pass
 
 
 def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -> dict[str, Any]:
@@ -556,10 +741,25 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
             for volume in volumes
             if int(volume.get("start_floor", 1)) <= level <= int(volume.get("end_floor", modeled_floors))
         ])
-    stair_layout = shared_stair_layout(
-        level_regions,
-        floor_height,
-        min(1.8, max(1.0, width * 0.08)),
+    preferred_stair_width = min(1.8, max(1.0, width * 0.08))
+    footprint = shared_footprint(level_regions)
+    # 核心筒与楼梯必须在公共区内分工：旧实现里核心筒按包围盒居中、楼梯按公共区
+    # 居中，两者都往中间挤，实测核心筒把整跑楼梯压在井道里。
+    vertical_layout = (
+        _resolve_vertical_transport_layout(
+            footprint,
+            floor_height=floor_height,
+            stair_width=preferred_stair_width,
+        )
+        if want_core and footprint is not None
+        else None
+    )
+    if want_core and vertical_layout is None:
+        # 公共区放不下井道设备尺寸 → 降级为纯楼梯，而不是把井道硬塞进建筑里。
+        want_core = False
+    stair_layout = (
+        vertical_layout["stair"] if vertical_layout is not None
+        else shared_stair_layout(level_regions, floor_height, preferred_stair_width)
     ) if want_stair else None
     if want_stair and stair_layout is None:
         stair_x = max(1.0, min(width - 1.0, width * 0.2))
@@ -568,7 +768,7 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         stair_layout = {
             "start": [stair_x, stair_z0],
             "end": [stair_x, stair_z1],
-            "width": min(1.8, max(1.0, width * 0.08)),
+            "width": preferred_stair_width,
         }
 
     elements: list[dict[str, Any]] = []
@@ -704,9 +904,14 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     "position": [0.0, round((level - 1) * floor_height, 3), 0.0],
                 } for level in range(1, floors))
 
-        if want_core:
+        if want_core and vertical_layout is not None:
             _append_vertical_core(
-                elements, width=width, depth=depth, total_height=total_height,
+                elements,
+                core=vertical_layout["core"],
+                twin=bool(vertical_layout["twin"]),
+                long_axis_z=bool(vertical_layout["long_axis_z"]),
+                total_height=total_height,
+                floor_height=floor_height,
             )
     else:
         detailed = normalized["complexity"]["level"] == "detailed"
@@ -780,9 +985,14 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     },
                 ])
 
-    if not schematic and want_core:
+    if not schematic and want_core and vertical_layout is not None:
         _append_vertical_core(
-            elements, width=width, depth=depth, total_height=total_height,
+            elements,
+            core=vertical_layout["core"],
+            twin=bool(vertical_layout["twin"]),
+            long_axis_z=bool(vertical_layout["long_axis_z"]),
+            total_height=total_height,
+            floor_height=floor_height,
         )
 
     if not schematic and modeled_floors > 1 and stair_layout:
@@ -957,6 +1167,6 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
         },
         "behaviors": {},
     }
+    cut_stair_openings(blueprint)
+    _cut_core_shaft_openings(blueprint, floor_height)
     return blueprint
-
-

@@ -96,6 +96,12 @@
                 @change="(value: number | undefined) => handleComponentNumberChange('leafDepth', value)" />
             </div>
             <div class="property-row">
+              <label>帘片分节</label>
+              <el-input-number :model-value="componentOptionalNumber('leafRows')" :min="1" :max="8" :step="1"
+                placeholder="自动"
+                @change="(value: number | undefined) => handleComponentIntegerChange('leafRows', value)" />
+            </div>
+            <div class="property-row">
               <label>门扇材质</label>
               <el-select :model-value="componentString('leafMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('leafMaterial', value)">
@@ -148,9 +154,10 @@
                   @change="(value: string) => handleInteractionChange('mode', value)">
                   <el-option label="旋转平开" value="swing" />
                   <el-option label="水平推拉" value="slide" />
+                  <el-option v-if="selectedComponent.type === 'door'" label="向上卷帘" value="lift" />
                 </el-select>
               </div>
-              <div v-if="selectedComponent.type === 'door'" class="property-row">
+              <div v-if="selectedComponent.type === 'door' && componentInteraction.mode !== 'lift'" class="property-row">
                 <label>开启方向</label>
                 <el-select :model-value="componentInteraction.hingeSide || 'left'"
                   @change="(value: string) => handleInteractionChange('hingeSide', value)">
@@ -164,7 +171,7 @@
                   @change="(value: number | undefined) => handleInteractionNumberChange('openAngle', value)" />
               </div>
               <div v-else class="property-row">
-                <label>推拉距离</label>
+                <label>{{ componentInteraction.mode === 'lift' ? '上移距离' : '推拉距离' }}</label>
                 <el-input-number :model-value="componentInteraction.openDistance" :min="0.01" :step="0.1"
                   placeholder="自动"
                   @change="(value: number | undefined) => handleInteractionNumberChange('openDistance', value)" />
@@ -441,6 +448,36 @@
                 <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
               </el-select>
             </div>
+            <div class="property-row">
+              <label>栏板类型</label>
+              <el-select :model-value="componentString('infillType') || ''" placeholder="无栏板" clearable
+                @clear="clearComponentField('infillType')"
+                @change="(value: string) => handleComponentChange('infillType', value)">
+                <el-option label="玻璃" value="glass" />
+                <el-option label="实心板" value="panel" />
+              </el-select>
+            </div>
+            <div v-if="componentString('infillType')" class="property-row">
+              <label>栏板厚度</label>
+              <el-input-number :model-value="componentOptionalNumber('infillThickness',
+                componentString('infillType') === 'glass' ? 0.02 : 0.05)"
+                :min="0.001" :step="0.005"
+                @change="(value: number | undefined) => handleComponentNumberChange('infillThickness', value)" />
+            </div>
+            <div v-if="componentString('infillType')" class="property-row">
+              <label>栏板高度比例</label>
+              <el-input-number :model-value="componentOptionalNumber('infillTopRatio', 0.92)"
+                :min="0.01" :max="1" :step="0.02"
+                @change="(value: number | undefined) => handleComponentNumberChange('infillTopRatio', value)" />
+            </div>
+            <div v-if="componentString('infillType')" class="property-row">
+              <label>栏板材质</label>
+              <el-select :model-value="componentString('infillMaterial')" placeholder="继承构件材质" clearable
+                @clear="clearComponentField('infillMaterial')"
+                @change="(value: string) => handleComponentChange('infillMaterial', value)">
+                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+              </el-select>
+            </div>
           </div>
 
           <div v-if="selectedComponent.type === 'railing'" class="property-section">
@@ -512,6 +549,42 @@
             <label>厚度</label>
             <el-input-number :model-value="(selectedElement as any).thickness" :step="0.01"
               @update:model-value="(value: string | number | null | undefined) => handleChange('thickness', value)" />
+          </div>
+        </div>
+
+        <div class="property-section" v-if="selectedElement?.type === 'furniture'">
+          <div class="section-title">家具参数</div>
+          <div class="property-row">
+            <label>子类型</label>
+            <el-select :model-value="(selectedElement as any).subtype || 'table'"
+              @change="(value: string) => handleFurnitureSubtype(value)">
+              <el-option v-for="item in furnitureSubtypes" :key="item.value"
+                :label="item.label" :value="item.value" />
+            </el-select>
+          </div>
+          <div class="property-row">
+            <label>宽</label>
+            <el-input-number :model-value="furnitureDimension('width')" :min="0.01" :step="0.05"
+              @change="(value: number | undefined) => handleFurnitureDimension('width', value)" />
+          </div>
+          <div class="property-row">
+            <label>深</label>
+            <el-input-number :model-value="furnitureDimension('depth')" :min="0.01" :step="0.05"
+              @change="(value: number | undefined) => handleFurnitureDimension('depth', value)" />
+          </div>
+          <div class="property-row">
+            <label>高</label>
+            <el-input-number :model-value="furnitureDimension('height')" :min="0.01" :step="0.05"
+              @change="(value: number | undefined) => handleFurnitureDimension('height', value)" />
+          </div>
+          <div class="property-row">
+            <label>朝向（度）</label>
+            <el-input-number :model-value="furnitureYawDegrees" :step="15"
+              @change="(value: number | undefined) => handleFurnitureYaw(value)" />
+          </div>
+          <div class="interaction-hint">
+            正面朝 +Z（椅/沙发靠背、床头板在 −Z 侧）。转向绕家具自身的底面中心，
+            位置不会跟着挪动。“高”的含义逐子类型不同：桌/柜是台面顶高，椅/沙发是含靠背的总高。
           </div>
         </div>
       </div>
@@ -662,6 +735,71 @@ function handleChange(key: string, value: string | number | null | undefined) {
   )
 
   sceneStore.applyPatch(patch)
+}
+
+// ── 家具元素 ──
+// dimensions 是嵌套对象、rotation 是数组，都不能走 handleChange 的扁平数字写回
+// （update_element 是浅合并：整块替换 dimensions / rotation，正是这里需要的语义）。
+const furnitureSubtypes = [
+  { value: 'table', label: '桌' },
+  { value: 'chair', label: '椅' },
+  { value: 'sofa', label: '沙发' },
+  { value: 'bookshelf', label: '书架' },
+  { value: 'bed', label: '床' },
+  { value: 'wardrobe', label: '衣柜' },
+  { value: 'nightstand', label: '床头柜' },
+  { value: 'tv_cabinet', label: '电视柜' },
+  { value: 'lamp', label: '灯（静态，不发光）' },
+  { value: 'tile', label: '薄板' },
+] as const
+
+function furnitureDimension(key: 'width' | 'depth' | 'height'): number | undefined {
+  const dimensions = (selectedElement.value as any)?.dimensions
+  const value = dimensions && typeof dimensions === 'object' ? dimensions[key] : undefined
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+const furnitureYawDegrees = computed(() => {
+  const rotation = (selectedElement.value as any)?.rotation
+  if (!Array.isArray(rotation) || typeof rotation[1] !== 'number') return 0
+  return Math.round((rotation[1] * 180) / Math.PI)
+})
+
+function handleFurniturePatch(changes: Record<string, unknown>, summary: string) {
+  if (!selectedElement.value || !sceneStore.document) return
+  const patch = createPatch(
+    sceneStore.document.revision,
+    [{ op: 'update_element', id: selectedElement.value.id, changes }],
+    'user',
+    false,
+    summary,
+  )
+  sceneStore.applyPatch(patch)
+}
+
+function handleFurnitureSubtype(value: string) {
+  if (!value) return
+  handleFurniturePatch({ subtype: value }, `修改${selectedElement.value?.id}.subtype`)
+}
+
+function handleFurnitureDimension(
+  key: 'width' | 'depth' | 'height',
+  value: number | undefined,
+) {
+  const current = (selectedElement.value as any)?.dimensions
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return
+  handleFurniturePatch(
+    { dimensions: { ...(current && typeof current === 'object' ? current : {}), [key]: value } },
+    `修改${selectedElement.value?.id}.dimensions.${key}`,
+  )
+}
+
+function handleFurnitureYaw(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return
+  const current = (selectedElement.value as any)?.rotation
+  const rotation = Array.isArray(current) ? [...current] : [0, 0, 0]
+  rotation[1] = (value * Math.PI) / 180
+  handleFurniturePatch({ rotation }, `修改${selectedElement.value?.id}.rotation`)
 }
 
 function componentValue(key: string): unknown {

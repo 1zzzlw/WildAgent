@@ -189,3 +189,80 @@ def test_idempotent():
     assert not report2.stripped_fields
     assert not report2.repaired_fields
     assert not report2.dropped_components
+
+
+# ── body 元素：只迁移不丢弃 ──────────────────────────────────────────────
+# 回归背景：这里曾无条件丢掉 `type == "body"`（理由写的是"body 不是建筑元素"），
+# 于是物件链里"生成一个小人"的产物在交付归一时静默消失——批次合并明明报
+# "已并入 1 个元素"，收尾归一后蓝图为空，`validate_design_brief` 报
+# "body 数量 0 少于设计下限 1"。`body` 现在是 schema 合法类型
+# （`$defs/body`）且引擎有 builder（`wild-core` registry，status=partial）。
+
+
+def _body_blueprint(body: dict) -> dict:
+    return {
+        "meta": {"version": "1.1", "type": "asset", "name": "小人"},
+        "geometry": {
+            "elements": [
+                body,
+                {"type": "primitive", "id": "p_01", "shape": "cylinder",
+                 "position": [0, 0.5, 0], "height": 1.0, "radius": 0.2},
+            ],
+            "components": [],
+        },
+    }
+
+
+def test_body_element_survives_delivery_normalization():
+    """合规 body 必须原样保留：它是用户点名要交付的几何本体。"""
+
+    bp = _body_blueprint({
+        "type": "body", "id": "body_01", "position": [0, 0, 0], "height": 1.72,
+        "build": "athletic", "headShape": "round", "armLength": 1.0,
+        "legLength": 1.0, "cloakLength": 0.6, "hoodUp": False,
+    })
+
+    normalized, report = normalize_blueprint_for_delivery(bp)
+    types = [el.get("type") for el in normalized["geometry"]["elements"]]
+
+    assert "body" in types
+    assert not report.dropped_elements
+    assert not report.repaired_fields  # 已经合规，不该被改动
+
+
+def test_legacy_body_is_migrated_not_dropped():
+    """旧场景取值（实测 `build: "average"`、`cloakLength: 0`）按引擎中性语义迁移。
+
+    `wild-core/src/primitive/geometry/body.ts` 对未知 build 退化为缩放 1（= athletic）、
+    对 `cloakLength <= 0.3` 不生成斗篷——迁移后观感不变，但几何不再丢失。
+    """
+
+    bp = _body_blueprint({
+        "type": "body", "id": "person_1", "position": [2.6, 0, 0.8], "height": 1.75,
+        "build": "average", "headShape": "round", "armLength": 0.6,
+        "legLength": 0.9, "cloakLength": 0, "hoodUp": False,
+    })
+
+    normalized, report = normalize_blueprint_for_delivery(bp)
+    body = next(el for el in normalized["geometry"]["elements"] if el.get("type") == "body")
+
+    assert body["build"] == "athletic"
+    assert body["cloakLength"] == 0.3   # 0.3 即"不披斗篷"，与 0 等价
+    assert body["armLength"] == 0.6     # 区间内，保持原值
+    assert not report.dropped_elements
+
+
+def test_incomplete_body_gets_neutral_defaults():
+    """残缺 body 补中性缺省，仍然保留——缺字段是校验器该报的事，不是删除的理由。"""
+
+    bp = _body_blueprint({"type": "body", "id": "body_x", "position": [0, 0, 0]})
+
+    normalized, report = normalize_blueprint_for_delivery(bp)
+    body = next(el for el in normalized["geometry"]["elements"] if el.get("type") == "body")
+
+    assert body["height"] == 1.7
+    assert body["build"] == "athletic"
+    assert body["headShape"] == "round"
+    assert body["cloakLength"] == 0.3
+    assert body["hoodUp"] is False
+    assert not report.dropped_elements

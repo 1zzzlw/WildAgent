@@ -215,6 +215,17 @@ export function createOpeningInteraction(
   if (interaction.mode === 'swing') {
     const angle = (interaction.openAngle ?? 90) * Math.PI / 180
     behavior.openRotation = [0, rotationY + (hingeSide === 'left' ? angle : -angle), 0]
+  } else if (interaction.mode === 'lift') {
+    // 向上开启（卷帘/上闸门）：整扇沿世界 +Y 平移，与墙朝向和铰链侧都无关。
+    //
+    // 🔴 位移钳到「洞口上方到墙顶的净空」：门扇是**刚体平板**，引擎既不剪裁也不折卷，
+    // 按洞口高度硬抬会让门顶穿出墙外（实测 3.6m 墙 + 2.5m 门抬 2.5m → 门顶高出墙顶 1.15m，
+    // 真图上就是"门飘在屋面之上"= 超模）。
+    // 钳到墙顶 = 抬到墙能容纳的最大高度；门头净空不足时表现为"门只升起一截"——
+    // 真实卷帘门半开也是这个样子，比穿出建筑可信。净空足够（如矮门配高墙）时仍能整扇让开洞口。
+    const wallTop = Math.max(frame.wall.from[1], frame.wall.to[1])
+    const headroom = Math.max(0, wallTop - (bottomY + height))
+    behavior.openOffset = [0, Math.min(interaction.openDistance ?? height, headroom), 0]
   } else {
     const direction = frame.directionAt(centerAlong)
     const distance = interaction.openDistance ?? width * 0.8

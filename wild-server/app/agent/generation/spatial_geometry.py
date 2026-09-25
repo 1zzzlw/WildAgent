@@ -20,13 +20,13 @@ CONSTRUCTION_GRID = 0.1
 def snap_to_grid(value: float, step: float = CONSTRUCTION_GRID) -> float:
     """把数值吸附到构造网格（round 到 step 的整数倍）。"""
     return round(round(float(value) / step) * step, 6)
-def shared_stair_layout(
-    level_regions: list[list[list[float]]],
-    floor_height: float,
-    preferred_width: float = 1.8,
-) -> dict[str, object] | None:
-    """在全部楼层共同覆盖区内布置一组可交替连接的直梯端点。"""
+def shared_footprint(level_regions: list[list[list[float]]]) -> list[float] | None:
+    """求**全部楼层共同覆盖**的最大矩形区域 ``[x0, z0, x1, z1]``。
 
+    垂直交通（楼梯、电梯井）必须落在每层都存在的楼板上。逐层求体量投影的交集，
+    取面积最大者：L/U/退台平面下，这个矩形会自然收到主体量里，而不是用整个
+    建筑包围盒 —— 后者会把井道推到建筑轮廓之外。
+    """
     if not level_regions or any(not regions for regions in level_regions):
         return None
     candidates = [
@@ -50,10 +50,29 @@ def shared_stair_layout(
         if not candidates:
             return None
 
-    bounds = max(
+    return max(
         candidates,
         key=lambda item: (item[2] - item[0]) * (item[3] - item[1]),
     )
+
+
+def shared_stair_layout(
+    level_regions: list[list[list[float]]],
+    floor_height: float,
+    preferred_width: float = 1.8,
+    *,
+    region: list[float] | None = None,
+) -> dict[str, object] | None:
+    """在全部楼层共同覆盖区内布置一组可交替连接的直梯端点。
+
+    ``region`` 允许调用方指定一个已经算好的子区域（例如核心筒之外的楼梯带），
+    默认取 ``shared_footprint`` 求出的最大公共矩形。
+    """
+
+    bounds = [float(value) for value in region] if region else shared_footprint(level_regions)
+    if bounds is None:
+        return None
+
     span_x = bounds[2] - bounds[0]
     span_z = bounds[3] - bounds[1]
     width = min(float(preferred_width), min(span_x, span_z) - 0.4)

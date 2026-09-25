@@ -26,6 +26,7 @@ Spatial Validation Tools —— 空间校验 + 自动修正工具
 """
 import math
 from langchain.tools import tool
+from app.agent.generation.stair_openings import cut_stair_openings, stair_opening_issues
 
 from app.agent.generation.spatial_geometry import (
     curve_points,
@@ -567,7 +568,7 @@ def validate_blueprint_structure(blueprint: dict) -> str:
                         continue
                     if component.get("type") not in {
                         "door", "window", "railing", "canopy", "balcony", "ramp",
-                        "bay_window", "cornice", "chimney", "light",
+                        "bay_window", "cornice", "chimney", "light", "elevator",
                     }:
                         issues.append(
                             f"❌ 组合构件类型无效: {component.get('type', '?')}"
@@ -1616,8 +1617,9 @@ def validate_stair_alignment(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     stairs = [el for el in elements if el.get("type") == "stair"]
 
+    opening_issues = stair_opening_issues(blueprint)
     if not stairs:
-        return "✅ 没有 stair 构件，跳过检查。"
+        return "\n".join(opening_issues) or "✅ 没有 stair 构件，跳过检查。"
 
     # 收集参考高度：地板顶面 + 墙体顶部 + 地面
     floors = [el for el in elements if el.get("type") == "floor"]
@@ -1672,6 +1674,7 @@ def validate_stair_alignment(blueprint: dict) -> str:
                 f"楼梯应该向上攀升"
             )
 
+    issues.extend(opening_issues)
     for placement_issue in collect_stair_placement_issues(blueprint):
         entity_ids = ", ".join(
             str(entity_id)
@@ -1723,7 +1726,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
     }
 
     # 合法枚举值
-    VALID_FURNITURE_SUBTYPES = {"table", "chair", "bookshelf", "bed", "lamp", "tile"}
+    VALID_FURNITURE_SUBTYPES = {"table", "chair", "sofa", "bookshelf", "bed", "wardrobe", "nightstand", "tv_cabinet", "lamp", "tile"}
     VALID_PRIMITIVE_SHAPES = {"box", "sphere", "cylinder", "profile_sweep"}
 
     # 蓝图顶层只允许这些 key
@@ -1786,6 +1789,16 @@ def validate_element_required_fields(blueprint: dict) -> str:
                         f"❌ [{eid}] (type=furniture) dimensions 必须是对象，实际为 {type(dims).__name__}"
                     )
 
+        # rotation 类型检查（所有带 rotation 的基础构件共用）。
+        # rotation 是弧度制 vec3；标量（如 90）会让 wild-core 构建器抛
+        # "rotation is not iterable"，整个构件从场景消失——必须在交付前拦下。
+        if "rotation" in el and not _is_finite_vector3(el["rotation"]):
+            issues.append(
+                f"❌ [{eid}] (type={etype}) rotation 必须是弧度制三维数组 "
+                f"[rx, ry, rz]（朝向写 [0, 弧度, 0]），"
+                f"实际为 {el['rotation']!r}；不要写度数标量"
+            )
+
         if etype == "floor":
             shape = el.get("shape", "rect")
             if shape == "circle":
@@ -1837,6 +1850,7 @@ def validate_element_required_fields(blueprint: dict) -> str:
         "cornice": ["path", "profile"],
         "chimney": ["position", "width", "depth", "height"],
         "light": ["position"],
+        "elevator": ["position", "dimensions", "floorHeight", "floorCount"],
     }
     for component in components:
         if not isinstance(component, dict):
@@ -1880,6 +1894,31 @@ def validate_element_required_fields(blueprint: dict) -> str:
                 value = component.get(field)
                 if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
                     issues.append(f"❌ [{component_id}] {field} 必须是正数")
+        elif component_type == "elevator":
+            if not _is_finite_vector3(component.get("position")):
+                issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
+            dims = component.get("dimensions")
+            if (
+                not isinstance(dims, dict)
+                or not isinstance(dims.get("width"), (int, float))
+                or not isinstance(dims.get("depth"), (int, float))
+                or not isinstance(dims.get("height"), (int, float))
+                or any(isinstance(v, bool) for v in dims.values() if isinstance(v, (int, float)))
+                or min(dims.get("width", 0), dims.get("depth", 0), dims.get("height", 0)) <= 0
+            ):
+                issues.append(f"❌ [{component_id}] dimensions 必须是 {{width, depth, height}} 且均为正数")
+            for field in ("floorHeight", "floorCount"):
+                value = component.get(field)
+                if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+                    issues.append(f"❌ [{component_id}] {field} 必须是正数")
+            initial_floor = component.get("initialFloor")
+            if initial_floor is not None and (
+                not isinstance(initial_floor, int)
+                or isinstance(initial_floor, bool)
+                or initial_floor < 0
+                or (isinstance(component.get("floorCount"), int) and initial_floor >= component["floorCount"])
+            ):
+                issues.append(f"❌ [{component_id}] initialFloor 必须落在 [0, floorCount) 内")
         elif component_type in {"chimney", "light"}:
             if not _is_finite_vector3(component.get("position")):
                 issues.append(f"❌ [{component_id}] position 必须是三维有限坐标")
@@ -3560,6 +3599,9 @@ def fix_stair_alignment(blueprint: dict) -> str:
     elements = _get_elements(blueprint)
     stairs = [el for el in elements if el.get("type") == "stair"]
     if not stairs:
+        opened = cut_stair_openings(blueprint)
+        if opened:
+            return "已为模板楼梯拆分遮挡楼板：" + ", ".join(opened)
         return "✅ 没有 stair 构件，跳过修正。"
 
     # 收集参考高度
@@ -3670,6 +3712,9 @@ def fix_stair_alignment(blueprint: dict) -> str:
                 "并交替梯段方向使相邻平台连续"
             )
 
+    opened = cut_stair_openings(blueprint)
+    if opened:
+        fixes.append("🔧 拆分遮挡楼梯通道的楼板：" + ", ".join(opened))
     if not fixes:
         return "✅ 所有 stair 端点高度已合理对齐，无需修正。"
     return "已自动修正以下 stair 高度对齐：\n" + "\n".join(fixes)
@@ -3882,4 +3927,129 @@ def fix_element_elevations(blueprint: dict) -> str:
     return (
         f"已自动修正 {len(fixes)} 个竖向构件的高程：\n"
         + "\n".join(fixes)
+    )
+
+
+#: 通用几何通道的构件类型：`primitive`（几何语言）与 `body`（简化人物）。
+#: 它们的 position 语义与 furniture 不同，所以不能复用 `fix_element_elevations`
+#: 的"逐件把底面贴到楼板"逻辑——见 `fix_primitive_elevations` 的说明。
+_GENERIC_SHAPE_TYPES = frozenset({"primitive", "body"})
+
+
+def _generic_shape_bottom_y(element: dict) -> float | None:
+    """通用几何构件的**最低点世界 Y**（近似）；无法判定时返回 None。
+
+    `primitive.position` 是**形体中心锚点**（见 KB《构件参数》§十一），
+    所以"最低点 = 中心 Y − 竖直半高"，逐 shape 不同：
+
+    - box → pos.y − dimensions[1]/2
+    - sphere → pos.y − radius
+    - cylinder → pos.y − height/2
+    - profile_sweep → pos.y + min(path[1])（路径最低点，忽略截面自身厚度）
+    - body → pos.y（引擎把脚底放在 origin 上，见 `body.ts::buildBody`）
+
+    rotation 不参与计算：旋转后的包围盒需要完整矩阵运算，而这里只用它判断
+    "整组是否悬空/穿地"，容差 0.31m 远大于倾斜带来的误差。
+    """
+
+    position = element.get("position")
+    if isinstance(position, list) and len(position) == 3:
+        try:
+            anchor_y = float(position[1])
+        except (TypeError, ValueError):
+            anchor_y = 0.0
+    else:
+        anchor_y = 0.0
+
+    etype = element.get("type")
+    if etype == "body":
+        return anchor_y
+
+    shape = str(element.get("shape") or "")
+    try:
+        if shape == "box":
+            dimensions = element.get("dimensions")
+            if not (isinstance(dimensions, list) and len(dimensions) == 3):
+                return None
+            return anchor_y - float(dimensions[1]) / 2.0
+        if shape == "sphere":
+            return anchor_y - float(element.get("radius"))
+        if shape == "cylinder":
+            return anchor_y - float(element.get("height")) / 2.0
+        if shape == "profile_sweep":
+            path = element.get("path")
+            if not (isinstance(path, list) and path):
+                return None
+            ys = [
+                float(point[1])
+                for point in path
+                if isinstance(point, list) and len(point) == 3
+            ]
+            return anchor_y + min(ys) if ys else None
+    except (TypeError, ValueError):
+        return None
+    return None
+
+
+@tool
+def fix_primitive_elevations(blueprint: dict) -> str:
+    """把 `primitive` / `body` 装配体的**最低点**对齐到行走面（Y=0）。
+
+    与 `fix_element_elevations` 的关键区别是**修法不同**：
+
+    - furniture 的 `position` 是**底面中心**，可以逐件把自己的底面贴到楼板顶面；
+    - primitive 的 `position` 是**形体中心**，逐件贴地会把每个零件都压进地面
+      （球心贴到 Y=0 = 半个球埋进地里）。
+
+    所以这里只做**整组刚性平移**：算出本次所有 primitive/body 的最低点，
+    只有整组悬空 > 0.31m 或整体穿入 > 0.1m 时，才把所有零件平移同一个量。
+    零件之间的相对关系完全不变，装配体不会被拆散。
+
+    场景里存在 floor 时不动：那时 primitive 可能有意分层摆放（灯具、檐盘等），
+    整组平移会把分层关系压平。这种场景的落位由生成节点负责。
+    """
+
+    elements = _get_elements(blueprint)
+    targets = [
+        element for element in elements
+        if isinstance(element, dict) and element.get("type") in _GENERIC_SHAPE_TYPES
+    ]
+    if not targets:
+        return "✅ 无 primitive/body 构件需要修正。"
+
+    if any(isinstance(element, dict) and element.get("type") == "floor" for element in elements):
+        return (
+            "✅ 场景含楼板：primitive/body 可分标高摆放，不做整组平移"
+            "（逐件贴地会把中心锚点的形体压进地面）。"
+        )
+
+    bottoms: list[float] = []
+    for element in targets:
+        bottom = _generic_shape_bottom_y(element)
+        if bottom is not None:
+            bottoms.append(bottom)
+    if not bottoms:
+        return "⚠️ primitive/body 构件缺少可判定的几何参数，未做高程修正。"
+
+    FLOAT_THRESH = 0.31   # 与 fix_element_elevations 同一容差，避免边界浮点抖动
+    EMBED_THRESH = 0.1
+    lowest = min(bottoms)
+    gap = lowest - 0.0
+    if -EMBED_THRESH <= gap <= FLOAT_THRESH:
+        return f"✅ primitive/body 装配体最低点 {lowest:.3f} 已在行走面容差内，无需修正。"
+
+    delta = round(-gap, 3)
+    for element in targets:
+        position = element.get("position")
+        if not (isinstance(position, list) and len(position) == 3):
+            position = [0.0, 0.0, 0.0]
+            element["position"] = position
+        try:
+            position[1] = round(float(position[1]) + delta, 3)
+        except (TypeError, ValueError):
+            position[1] = delta
+    return (
+        f"🔧 primitive/body 装配体整组平移 {delta:+.3f}m："
+        f"最低点 {lowest:.3f} → 0.000（{'悬空' if gap > 0 else '穿入'} {abs(gap):.3f}m；"
+        f"共 {len(targets)} 个零件，零件相对关系不变）"
     )

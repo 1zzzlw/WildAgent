@@ -1,0 +1,163 @@
+控制台输出将同时保存到: E:\AgentProject\WildAgent\wild-server\scripts\reports\chunks_console_20260922_134356.txt
+
+扫描目录: E:\AgentProject\WildAgent\wild-server\storage\knowledge_base\rules\implementation
+配置: chunk_size=900, chunk_overlap=150
+
+找到 3 个 Markdown 文件
+
+处理: assembly-relations.md
+  生成 27 个分片
+
+处理: door-window-depth.md
+  生成 1 个分片
+
+处理: validation-rules.md
+  生成 24 个分片
+
+====================================================================================================
+分片信息表
+====================================================================================================
+No   文件              实体                 类型       长度     角色        
+---- --------------- ------------------ -------- ------ --------
+1    assembly-relati supported_assembly recipe   170    relation  
+2    assembly-relati supported_assembly recipe   207    relation  
+3    assembly-relati supported_assembly recipe   238    relation  
+4    assembly-relati supported_assembly recipe   209    relation  
+5    assembly-relati supported_assembly recipe   457    relation  
+6    assembly-relati supported_assembly recipe   313    relation  
+7    assembly-relati supported_assembly recipe   171    relation  
+8    assembly-relati supported_assembly recipe   632    relation  
+9    assembly-relati supported_assembly recipe   121    relation  
+10   assembly-relati supported_assembly recipe   176    relation  
+11   assembly-relati supported_assembly recipe   81     relation  
+12   assembly-relati supported_assembly recipe   73     relation  
+13   assembly-relati supported_assembly recipe   124    relation  
+14   assembly-relati supported_assembly recipe   78     relation  
+15   assembly-relati supported_assembly recipe   76     relation  
+16   assembly-relati supported_assembly recipe   174    relation  
+17   assembly-relati supported_assembly recipe   172    relation  
+18   assembly-relati supported_assembly recipe   79     relation  
+19   assembly-relati supported_assembly recipe   139    relation  
+20   assembly-relati supported_assembly recipe   121    relation  
+21   assembly-relati supported_assembly recipe   128    relation  
+22   assembly-relati supported_assembly recipe   122    relation  
+23   assembly-relati supported_assembly recipe   107    relation  
+24   assembly-relati supported_assembly recipe   185    relation  
+25   assembly-relati supported_assembly recipe   167    relation  
+26   assembly-relati supported_assembly recipe   303    relation  
+27   assembly-relati supported_assembly recipe   234    relation  
+28   door-window-dep door_window_depth_ recipe   494    relation  
+29   validation-rule runtime_validation recipe   166    relation  
+30   validation-rule runtime_validation recipe   141    relation  
+31   validation-rule runtime_validation recipe   321    relation  
+32   validation-rule runtime_validation recipe   449    relation  
+33   validation-rule runtime_validation recipe   726    relation  
+34   validation-rule runtime_validation recipe   584    relation  
+35   validation-rule runtime_validation recipe   497    relation  
+36   validation-rule runtime_validation recipe   888    relation  
+37   validation-rule runtime_validation recipe   801    relation  
+38   validation-rule runtime_validation recipe   518    relation  
+39   validation-rule runtime_validation recipe   1008   relation  
+40   validation-rule runtime_validation recipe   1037   relation  
+41   validation-rule runtime_validation recipe   465    relation  
+42   validation-rule runtime_validation recipe   821    relation  
+43   validation-rule runtime_validation recipe   751    relation  
+44   validation-rule runtime_validation recipe   619    relation  
+45   validation-rule runtime_validation recipe   1126   relation  
+46   validation-rule runtime_validation recipe   486    relation  
+47   validation-rule runtime_validation recipe   385    relation  
+48   validation-rule runtime_validation recipe   106    relation  
+49   validation-rule runtime_validation recipe   566    relation  
+50   validation-rule runtime_validation recipe   318    relation  
+51   validation-rule runtime_validation recipe   432    relation  
+52   validation-rule runtime_validation recipe   191    relation  
+----------------------------------------------------------------------------------------------------
+总计: 52 个分片
+
+====================================================================================================
+标题路径列表
+====================================================================================================
+  1. 构件组装关系约束
+  2. 构件组装关系约束 > 1. 引用顺序约束 > 规则
+  3. 构件组装关系约束 > 1. 引用顺序约束 > 示例
+  4. 构件组装关系约束 > 2. 墙体与开口 > 规则
+  5. 构件组装关系约束 > 2. 墙体与开口 > 约束检查
+  6. 构件组装关系约束 > 3. 门窗与墙挂组件 > 3.1 形成开口的组件
+  7. 构件组装关系约束 > 3. 门窗与墙挂组件 > 3.2 不形成开口的墙挂组件
+  8. 构件组装关系约束 > 3. 门窗与墙挂组件 > 3.3 约束检查示例
+  9. 构件组装关系约束 > 4. 墙角闭合 > 规则
+ 10. 构件组装关系约束 > 4. 墙角闭合 > 生成时必须遵守
+ 11. 构件组装关系约束 > 4. 墙角闭合 > 限制
+ 12. 构件组装关系约束 > 4. 墙角闭合 > 实现依据
+ 13. 构件组装关系约束 > 5. 柱与梁吸附 > 规则
+ 14. 构件组装关系约束 > 5. 柱与梁吸附 > 限制
+ 15. 构件组装关系约束 > 5. 柱与梁吸附 > 实现依据
+ 16. 构件组装关系约束 > 6. 楼板与屋顶自动补全 > 6.1 楼板补全
+ 17. 构件组装关系约束 > 6. 楼板与屋顶自动补全 > 6.2 屋顶边界扩展
+ 18. 构件组装关系约束 > 6. 楼板与屋顶自动补全 > 限制
+ 19. 构件组装关系约束 > 7. 表面挂接组件 > 7.1 栏杆 (railing)
+ 20. 构件组装关系约束 > 7. 表面挂接组件 > 7.2 坡道 (ramp)
+ 21. 构件组装关系约束 > 7. 表面挂接组件 > 7.3 檐口 (cornice)
+ 22. 构件组装关系约束 > 7. 表面挂接组件 > 7.4 烟囱 (chimney)
+ 23. 构件组装关系约束 > 7. 表面挂接组件 > 7.5 灯光 (light)
+ 24. 构件组装关系约束 > 8. 模板与排布 > 8.1 模板实例 (instances)
+ 25. 构件组装关系约束 > 8. 模板与排布 > 8.2 表面排布 (placements)
+ 26. 构件组装关系约束 > 约束检查清单
+ 27. 构件组装关系约束 > 实现来源
+ 28. 门窗组合构件的深度约定
+ 29. WILD 运行时校验规则
+ 30. WILD 运行时校验规则 > 1. 基础完整性检查 > 1.1 必填字段 > 所有构件通用
+ 31. WILD 运行时校验规则 > 1. 基础完整性检查 > 1.1 必填字段 > 按构件类型
+ 32. WILD 运行时校验规则 > 1. 基础完整性检查 > 1.2 ID 唯一性
+ 33. WILD 运行时校验规则 > 1. 基础完整性检查 > 1.3 类型有效性
+ 34. WILD 运行时校验规则 > 2. 引用完整性检查 > 2.1 parentWall 引用
+ 35. WILD 运行时校验规则 > 2. 引用完整性检查 > 2.2 其他引用
+ 36. WILD 运行时校验规则 > 3. 数值边界检查 > 3.1 正数约束
+ 37. WILD 运行时校验规则 > 3. 数值边界检查 > 3.2 范围约束
+ 38. WILD 运行时校验规则 > 4. 几何约束检查 > 4.1 墙体长度
+ 39. WILD 运行时校验规则 > 4. 几何约束检查 > 4.2 门窗范围
+ 40. WILD 运行时校验规则 > 4. 几何约束检查 > 4.3 深度约束
+ 41. WILD 运行时校验规则 > 4. 几何约束检查 > 4.4 楼梯与楼板：楼梯井必须用多块楼板拼出
+ 42. WILD 运行时校验规则 > 4. 几何约束检查 > 4.4 楼梯与楼板：楼梯井必须用多块楼板拼出
+ 43. WILD 运行时校验规则 > 5. 坐标系统检查 > 5.1 数组长度
+ 44. WILD 运行时校验规则 > 5. 坐标系统检查 > 5.2 颜色数组
+ 45. WILD 运行时校验规则 > 6. 枚举值检查
+ 46. WILD 运行时校验规则 > 7. 版本兼容性检查
+ 47. WILD 运行时校验规则 > 8. Schema 校验 > 8.1 使用 schema.json
+ 48. WILD 运行时校验规则 > 8. Schema 校验 > 8.2 自定义校验
+ 49. WILD 运行时校验规则 > 9. 校验清单
+ 50. WILD 运行时校验规则 > 10. 错误处理 > 10.1 明确的错误消息
+ 51. WILD 运行时校验规则 > 10. 错误处理 > 10.2 收集所有错误
+ 52. WILD 运行时校验规则 > 实现来源
+====================================================================================================
+
+
+================================================================================
+统计分析
+================================================================================
+
+总分片数: 52
+
+长度统计:
+  最小: 73 字符
+  最大: 1126 字符
+  平均: 364 字符
+  中位数: 238 字符
+
+按文件分组:
+  assembly-relations.md: 27 个分片
+  door-window-depth.md: 1 个分片
+  validation-rules.md: 24 个分片
+
+按实体名称分组:
+  supported_assembly_relations: 27 个分片
+  runtime_validation_rules: 24 个分片
+  door_window_depth_convention: 1 个分片
+
+按文档类型分组:
+  recipe: 52 个分片
+
+按知识角色分组:
+  relation: 52 个分片
+
+报告文件已生成: E:\AgentProject\WildAgent\wild-server\scripts\reports\inspect_chunks_20260922_134356.md (6735 字符)

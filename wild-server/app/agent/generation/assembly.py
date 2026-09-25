@@ -280,6 +280,62 @@ def enforce_component_quota(
     return filtered, len(pruned_indices)
 
 
+def enforce_element_quota(
+    elements: list[dict],
+    quota: dict,
+    logger,
+    *,
+    slot_kinds: set[str] | None = None,
+) -> tuple[list[dict], int]:
+    """按配额上限剔除超额 **element** 类构件（如 furniture）。
+
+    为什么与 `enforce_component_quota` 分开：element 没有 `parentWall`，
+    排不出"主立面优先"的优先级，所以这里只保证一条不变量——**数量不超过上限**，
+    保留顺序与生成顺序一致（先到先留）。
+
+    `slot_kinds` 里的构件类型由 `conform_*_to_slots` 负责（它们有精确槽位，
+    数量由槽位而不是上限决定），这里跳过，避免两套机制互相拆台。
+
+    返回 (filtered_elements, pruned_count)。
+    """
+
+    protected = slot_kinds or set()
+    kept_indices: set[int] = set(range(len(elements)))
+    pruned = 0
+    counts: dict[str, int] = {}
+    for element in elements:
+        element_type = str(element.get("type") or "")
+        counts[element_type] = counts.get(element_type, 0) + 1
+
+    for element_type, maximum in counts.items():
+        if element_type in protected:
+            continue
+        limits = quota.get(element_type)
+        max_n = limits.get("max") if isinstance(limits, dict) else None
+        if not isinstance(max_n, (int, float)) or isinstance(max_n, bool):
+            continue
+        if maximum <= max_n:
+            continue
+        logger.info(
+            f"[merge] [{element_type}] element 超额: 当前 {maximum} 个, 配额最大 {max_n} 个"
+        )
+        seen = 0
+        for index, element in enumerate(elements):
+            if str(element.get("type") or "") != element_type or index not in kept_indices:
+                continue
+            seen += 1
+            if seen > max_n:
+                kept_indices.discard(index)
+                pruned += 1
+                logger.info(
+                    f"[merge] 剃除超额 element: [{element_type}] id={element.get('id', '?')}"
+                )
+
+    if not pruned:
+        return elements, 0
+    return [element for index, element in enumerate(elements) if index in kept_indices], pruned
+
+
 def apply_fixes(blueprint: dict, errors: list) -> list[tuple[str, bool]]:
     """根据校验错误，调用对应的 fix_* 工具修复
 
@@ -339,10 +395,11 @@ def collect_json_parse_failures(component_diagnostics: object) -> list[tuple[str
         return []
     failures: list[tuple[str, str]] = []
     for diag_key, diag in component_diagnostics.items():
-        if not str(diag_key).endswith("_gen_diag") or not isinstance(diag, dict):
+        # 诊断键在 component_diagnostics 里是 ``{type}_gen``（生成阶段）
+        if not str(diag_key).endswith("_gen") or not isinstance(diag, dict):
             continue
         if diag.get("json_parse_failed") is not True:
             continue
-        component_type = str(diag_key)[:-9]
+        component_type = str(diag_key)[:-4]
         failures.append((component_type, str(diag.get("label") or component_type)))
     return failures

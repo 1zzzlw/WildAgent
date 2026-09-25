@@ -42,10 +42,8 @@ import type {
   SessionMetrics,
   AgentTurn,
   AgentTurnStep,
-  AcceptanceResult,
-  ExecutionPlan,
-  ExecutionProgressItem,
-  StructuredRequirement,
+  PlanDocument,
+  PlanItemUpdate,
 } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
@@ -54,7 +52,6 @@ type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
-const STORAGE_KEY_PLAN_MODE = 'wild_plan_mode'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
 const MSG_STORAGE_PREFIX = 'wild_msgs_'
@@ -81,11 +78,6 @@ function loadPrecisionMode(): boolean {
 
 function loadProceduralMaterialsEnabled(): boolean {
   return localStorage.getItem(STORAGE_KEY_PROCEDURAL_MATERIALS) === 'true'
-}
-
-function loadPlanMode(): boolean {
-  // 新用户默认开启；已明确关闭时才走原固定流水线。
-  return localStorage.getItem(STORAGE_KEY_PLAN_MODE) !== 'false'
 }
 
 // ── 消息持久化工具 ──
@@ -242,7 +234,6 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** AI 是否允许自动选择程序化 Shader；默认关闭，由用户显式开启。 */
   const proceduralMaterialsEnabled = ref(loadProceduralMaterialsEnabled())
-  const planMode = ref(loadPlanMode())
 
   /** 精密模式：节点生成进度列表 */
   const generatingNodes = ref<GeneratingNode[]>([])
@@ -337,7 +328,6 @@ export const useAgentStore = defineStore('agent', () => {
     requestId: string,
     sessionId: string,
     content: string,
-    usePlanMode = false,
   ): AgentTurn {
     const message: ChatMessage = {
       id: `msg_${requestId}_user`,
@@ -358,7 +348,6 @@ export const useAgentStore = defineStore('agent', () => {
       started_at: Date.now(),
       steps: [],
       validation_steps: [],
-      plan_mode: usePlanMode,
     }
     const turns = ensureTurns(sessionId)
     const existingIndex = turns.findIndex(item => item.request_id === requestId)
@@ -492,70 +481,38 @@ export const useAgentStore = defineStore('agent', () => {
     step.diagnostic = diagnostic
   }
 
-  function setExecutionPlan(
-    sessionId: string,
-    requestId: string,
-    plan: ExecutionPlan,
-    structuredRequirements?: StructuredRequirement[],
-    acceptanceResults?: Record<string, AcceptanceResult>,
-    executionProgress?: Record<string, ExecutionProgressItem>,
-  ) {
+  /** 展开后的整份计划（plan 节点首次推送）。plan 不审核，只显示进度。 */
+  function setTurnPlan(sessionId: string, requestId: string, plan: PlanDocument) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
-    turn.execution_plan = plan
-    if (structuredRequirements !== undefined) turn.structured_requirements = structuredRequirements
-    if (acceptanceResults !== undefined) turn.acceptance_results = acceptanceResults
-    if (executionProgress !== undefined) turn.execution_progress = executionProgress
+    turn.plan = plan
     persistTurns(sessionId)
   }
 
-  function setExecutionPlanReviewRequired(
-    sessionId: string,
-    requestId: string,
-    plan: ExecutionPlan,
-    structuredRequirements?: StructuredRequirement[],
-    acceptanceResults?: Record<string, AcceptanceResult>,
-    executionProgress?: Record<string, ExecutionProgressItem>,
-  ) {
+  /** 条目状态增量：前端自己累加，只按 item_id 覆盖对应条目。 */
+  function applyPlanItemUpdate(sessionId: string, requestId: string, update: PlanItemUpdate) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
-    turn.status = 'waiting_review'
-    turn.execution_plan = plan
-    if (structuredRequirements !== undefined) turn.structured_requirements = structuredRequirements
-    if (acceptanceResults !== undefined) turn.acceptance_results = acceptanceResults
-    if (executionProgress !== undefined) turn.execution_progress = executionProgress
-    turn.execution_plan_review_status = 'pending'
-    persistTurns(sessionId)
-  }
-
-  function markExecutionPlanReviewSubmitted(
-    sessionId: string,
-    requestId: string,
-    action: 'confirm' | 'revise',
-    feedback = '',
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'running'
-    turn.execution_plan_review_status = action === 'confirm' ? 'approved' : 'submitting'
-    if (action === 'revise') {
-      addMessageToSession(sessionId, {
-        id: `msg_${requestId}_plan_revision_${Date.now()}`,
-        role: 'user',
-        content: feedback,
-        timestamp: Date.now(),
-        request_id: requestId,
-        turn_id: requestId,
-      })
+    const plan = turn.plan
+    if (!plan) return
+    const index = plan.items.findIndex(item => item.id === update.item_id)
+    const merged = {
+      ...(index >= 0 ? plan.items[index] : { id: update.item_id, op: update.op, kind: update.kind }),
+      id: update.item_id,
+      op: update.op,
+      kind: update.kind,
+      label: update.label,
+      status: update.status,
+      run: {
+        ...(index >= 0 ? plan.items[index].run : {}),
+        evidence: update.evidence ?? '',
+        elapsed_ms: update.elapsed_ms ?? null,
+      },
     }
-    persistTurns(sessionId)
-  }
-
-  function restoreExecutionPlanReviewAfterError(sessionId: string, requestId: string) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.status = 'waiting_review'
-    turn.execution_plan_review_status = 'pending'
+    const items = [...plan.items]
+    if (index >= 0) items.splice(index, 1, merged)
+    else items.push(merged)
+    turn.plan = { ...plan, items }
     persistTurns(sessionId)
   }
 
@@ -604,17 +561,6 @@ export const useAgentStore = defineStore('agent', () => {
     if (!turn) return
     turn.status = 'waiting_review'
     turn.design_review_status = 'pending'
-    persistTurns(sessionId)
-  }
-
-  function setExecutionFeedbackQueued(
-    sessionId: string,
-    requestId: string,
-    queuedCount: number,
-  ) {
-    const turn = findTurn(sessionId, requestId)
-    if (!turn) return
-    turn.execution_feedback_queued_count = queuedCount
     persistTurns(sessionId)
   }
 
@@ -1004,11 +950,6 @@ export const useAgentStore = defineStore('agent', () => {
     localStorage.setItem(STORAGE_KEY_PROCEDURAL_MATERIALS, String(enabled))
   }
 
-  function setPlanMode(enabled: boolean) {
-    planMode.value = enabled
-    localStorage.setItem(STORAGE_KEY_PLAN_MODE, String(enabled))
-  }
-
   function updateGeneratingNode(
     nodeName: string,
     status: GeneratingNode['status'],
@@ -1113,14 +1054,11 @@ export const useAgentStore = defineStore('agent', () => {
     addTurnValidationStep,
     clearTurnValidationSteps,
     setTurnDiagnostic,
-    setExecutionPlan,
-    setExecutionPlanReviewRequired,
-    markExecutionPlanReviewSubmitted,
-    restoreExecutionPlanReviewAfterError,
+    setTurnPlan,
+    applyPlanItemUpdate,
     setDesignReviewRequired,
     markDesignReviewSubmitted,
     restoreDesignReviewAfterError,
-    setExecutionFeedbackQueued,
     setTurnMetrics,
     setTurnThinkingStatus,
     completeTurn,
@@ -1161,8 +1099,6 @@ export const useAgentStore = defineStore('agent', () => {
     setPrecisionMode,
     proceduralMaterialsEnabled,
     setProceduralMaterialsEnabled,
-    planMode,
-    setPlanMode,
     updateGeneratingNode,
     addDebugLog,
     setSessionMetrics,

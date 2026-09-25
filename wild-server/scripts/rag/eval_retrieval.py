@@ -33,8 +33,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any
 
-# 设置输出编码为 UTF-8（解决 Windows PowerShell 中文乱码），与 inspect 脚本保持一致
-if sys.platform == "win32":
+# 设置输出编码为 UTF-8（解决 Windows PowerShell 中文乱码），与 inspect 脚本保持一致。
+# 只在作为脚本运行时替换 sys.stdout/stderr：被导入时（例如测试导入本模块的指标函数）
+# 替换会把 pytest 的捕获对象包进 TextIOWrapper，其析构会关闭底层临时文件，
+# 导致后续输出落到已关闭的句柄上。
+if sys.platform == "win32" and __name__ == "__main__":
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 

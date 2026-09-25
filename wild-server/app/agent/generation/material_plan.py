@@ -55,6 +55,57 @@ ELEMENT_ROLE = {
     "roof": "roof",
 }
 
+#: 物件场景的受控材质角色。**materialId 与
+#: `generation/objects/skeleton.py::OBJECT_MATERIALS` 的键逐字一致**——
+#: 家具的 `material` 字段引用的是材质名，两边对不上就会出现"引用了一个不存在的材质"。
+#:
+#: 刻意不含 facade_primary / structure / floor / frame / door / roof / ground：
+#: 一张桌子没有外墙与屋顶，为它"补齐"这些角色只会往蓝图里塞一堆用不上的材质，
+#: 并让设计审核图纸出现不存在的构件语义。
+OBJECT_ROLE_SPECS: dict[str, dict[str, Any]] = {
+    "wood": {
+        "materialId": "wood", "baseColor": [0.42, 0.26, 0.14],
+        "roughness": 0.62, "metallic": 0.0,
+    },
+    "metal": {
+        "materialId": "metal", "baseColor": [0.16, 0.17, 0.18],
+        "roughness": 0.32, "metallic": 0.8,
+    },
+    "glass": {
+        "materialId": "glass", "baseColor": [0.72, 0.88, 0.96],
+        "roughness": 0.08, "metallic": 0.0,
+    },
+    "stone": {
+        "materialId": "stone", "baseColor": [0.62, 0.60, 0.57],
+        "roughness": 0.78, "metallic": 0.0,
+    },
+    "fabric": {
+        "materialId": "fabric", "baseColor": [0.46, 0.44, 0.42],
+        "roughness": 0.92, "metallic": 0.0,
+    },
+    "accent": {
+        "materialId": "accent", "baseColor": [0.42, 0.20, 0.09],
+        "roughness": 0.50, "metallic": 0.0,
+    },
+}
+
+#: 角色名里"这一档必须是金属"的集合。`role == "frame"` 是建筑侧的对应写法，
+#: 物件侧没有 frame 角色，用 `metal`——两处必须同时生效，否则金属会被
+#: 0.15 的通用上限压成塑料。
+_METALLIC_ROLES = frozenset({"frame", "metal"})
+
+
+def material_role_specs(architecture_plan: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """按方案是物件还是建筑选择受控角色表。
+
+    判定复用 `design.resolver.is_object_plan`：只有一处判据，
+    不会出现"这里当物件、那里当建筑"的分叉。
+    """
+
+    from app.design.resolver import is_object_plan
+
+    return OBJECT_ROLE_SPECS if is_object_plan(architecture_plan) else ROLE_SPECS
+
 # 骨架生成器会先用这些受控材质 ID 标记构件的“用途”：例如玻璃幕墙壳体
 # 是 glass、龙骨是 metal、核心筒是 concrete。材质规划只能替换该用途对应的
 # 具体材质参数，不能再仅凭 element.type 把所有 wall/beam 覆盖成同一种材质。
@@ -119,8 +170,14 @@ def resolve_material_plan(
     user_message: str = "",
     *,
     procedural_materials_enabled: bool = False,
+    role_specs: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """把模型意图限制为固定角色、真实 assetId 和物理合理参数。"""
+    """把模型意图限制为固定角色、真实 assetId 和物理合理参数。
+
+    ``role_specs`` 缺省按方案自动选择（建筑角色 / 物件角色）。显式传入是为了让
+    调用方在"方案本身还没落成文档"时也能定住角色集，避免两处各判一次而分叉。
+    """
+    specs = role_specs or material_role_specs(architecture_plan)
     by_id = {
         item["assetId"]: item
         for item in manifests
@@ -130,7 +187,7 @@ def resolve_material_plan(
     raw_roles = raw_plan.get("roles", []) if isinstance(raw_plan, dict) else []
     if isinstance(raw_roles, list):
         for item in raw_roles:
-            if isinstance(item, dict) and item.get("role") in ROLE_SPECS:
+            if isinstance(item, dict) and item.get("role") in specs:
                 requested_by_role[str(item["role"])] = item
 
     roles: list[dict[str, Any]] = []
@@ -149,7 +206,7 @@ def resolve_material_plan(
         sort_keys=True,
         separators=(",", ":"),
     )
-    for role, fallback in ROLE_SPECS.items():
+    for role, fallback in specs.items():
         requested = requested_by_role.get(role, {})
         asset_id = requested.get("assetId")
         asset = by_id.get(asset_id) if isinstance(asset_id, str) else None
@@ -191,7 +248,7 @@ def resolve_material_plan(
             defaults.get("metallic") if asset else requested.get("metallic"),
             fallback["metallic"],
         )
-        if material_class == "metal" or role == "frame":
+        if material_class == "metal" or role in _METALLIC_ROLES:
             metallic = max(0.5, metallic)
         else:
             metallic = min(0.15, metallic)
@@ -251,10 +308,21 @@ def resolve_material_plan(
     }
 
 
-def apply_resolved_material_plan(blueprint: dict, material_plan: dict | None) -> dict:
-    """按骨架已有的语义材质角色写入方案，模型无法绕过资产白名单。"""
+def apply_resolved_material_plan(
+    blueprint: dict,
+    material_plan: dict | None,
+    *,
+    role_specs: dict[str, dict[str, Any]] | None = None,
+) -> dict:
+    """按骨架已有的语义材质角色写入方案，模型无法绕过资产白名单。
+
+    ``role_specs`` 必须与产出该方案的 `resolve_material_plan` 用同一份角色表，
+    否则物件场景的 wood/metal/glass 角色会被建筑角色白名单挡掉，
+    结果是"材质方案批了却没写进蓝图"。
+    """
     if not isinstance(material_plan, dict):
         return blueprint
+    specs = role_specs or ROLE_SPECS
     materials = blueprint.setdefault("materials", {})
     if not isinstance(materials, dict):
         materials = {}
@@ -266,7 +334,7 @@ def apply_resolved_material_plan(blueprint: dict, material_plan: dict | None) ->
         role = item.get("role")
         material_id = item.get("materialId")
         material = item.get("material")
-        if role in ROLE_SPECS and isinstance(material_id, str) and isinstance(material, dict):
+        if role in specs and isinstance(material_id, str) and isinstance(material, dict):
             materials[material_id] = deepcopy(material)
             role_material_ids[str(role)] = material_id
 

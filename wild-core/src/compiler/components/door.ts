@@ -18,6 +18,7 @@ import {
  * 支持参数：
  * - openingStyle: "rectangular"（默认）或 "arched"（拱形门洞）
  * - doorStyle: "single"（默认，单扇）或 "double"（双开：一个宽洞口+四段框，无中框）
+ * - leafRows: 门扇横向分节行数（1~8），缺省按门洞哈希取 2 或 3；车库门帘片用 4~6
  */
 export function compileDoor(
   component: DoorComponent,
@@ -192,8 +193,12 @@ function createDoorLeafDetail(
     hash ^= character.charCodeAt(0)
     hash = Math.imul(hash, 16777619)
   }
+  const declaredRows = component.leafRows
+  const rows = typeof declaredRows === 'number' && Number.isFinite(declaredRows)
+    ? Math.max(1, Math.min(8, Math.round(declaredRows)))
+    : (Math.abs(hash) % 2 === 0 ? 2 : 3)
   return {
-    rows: (Math.abs(hash) % 2 === 0 ? 2 : 3),
+    rows,
     columns: doubleDoor ? 2 : 1,
     hingeSide: component.interaction?.hingeSide ?? (Math.abs(hash) % 3 === 0 ? 'right' : 'left'),
     doubleDoor,

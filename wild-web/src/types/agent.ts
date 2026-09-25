@@ -47,17 +47,14 @@ export interface AgentProtocolEnvelope {
 export type AgentMessage =
   | UserMessageRequest
   | ResumeGenerationRequest
-  | ExecutionPlanReviewRequest
   | DesignReviewRequest
-  | ExecutionFeedbackRequest
   | GenerationResumedResponse
   | AgentStepResponse
   | ThinkingDeltaResponse
   | ThinkingStatusResponse
-  | ExecutionPlanReadyResponse
-  | ExecutionPlanReviewRequiredResponse
+  | PlanReadyResponse
+  | PlanItemUpdatedResponse
   | DesignReviewRequiredResponse
-  | ExecutionFeedbackQueuedResponse
   | PatchProposalResponse
   | AgentReplyResponse
   | BlueprintGeneratedResponse
@@ -81,7 +78,6 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
   precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
-  plan_mode?: boolean                    // 是否先研究并审核执行计划
   /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */
   recent_messages?: Array<{
     role: 'user' | 'assistant'
@@ -96,14 +92,6 @@ export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
   last_event_seq?: number
 }
 
-export interface ExecutionPlanReviewRequest extends AgentProtocolEnvelope {
-  type: 'execution_plan_review'
-  request_id: string
-  session_id: string
-  action: 'confirm' | 'revise'
-  feedback?: string
-}
-
 export interface DesignReviewRequest extends AgentProtocolEnvelope {
   type: 'design_review'
   request_id: string
@@ -113,95 +101,81 @@ export interface DesignReviewRequest extends AgentProtocolEnvelope {
   feedback?: string
 }
 
-export interface ExecutionFeedbackRequest extends AgentProtocolEnvelope {
-  type: 'execution_feedback'
-  request_id: string
-  session_id: string
-  feedback: string
+export type PlanItemStatus =
+  | 'pending'
+  | 'ready'
+  | 'blocked'
+  | 'done'
+  | 'abandoned'
+  | 'skipped'
+  | 'unsupported'
+
+export interface PlanItemRun {
+  state?: 'idle' | 'running' | 'succeeded' | 'failed' | 'aborted'
+  attempts?: number
+  max_attempts?: number
+  artifacts?: string[]
+  evidence?: string
+  elapsed_ms?: number | null
 }
 
-export interface ExecutionPlanTask {
+/** plan 里的一条工作项：一个算子 + 一份数据（后端 PlanItem）。 */
+export interface PlanItem {
   id: string
-  title: string
-  objective: string
-  phase: string
-  depends_on: string[]
-  acceptance: string[]
-  basis: string
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
-  result_ref?: string | null
-}
-
-export interface ExecutionPlan {
-  plan_id: string
-  version: number
-  intent: 'generate' | 'edit'
-  goal: string
-  status: 'draft' | 'reviewing' | 'approved' | 'executing' | 'revising' | 'completed' | 'failed'
-  valid: boolean
-  review_status: 'pending' | 'approved' | 'revise'
-  constraints: string[]
-  assumptions: string[]
-  planner_source: 'llm' | 'fallback'
-  planner_summary: string
-  feedback: string
-  change_summary: string[]
-  dynamic_tasks: ExecutionPlanTask[]
-}
-
-export interface StructuredRequirement {
-  id: string
-  source_task_id: string
-  source_acceptance_id: string
-  description: string
-  phase: string
+  op: string
   kind: string
-  target: string
-  operator: string
-  expected: unknown
-  consumers: string[]
-  validator: string
-  severity: 'error' | 'warning'
-  support_status: 'supported' | 'needs_review' | 'unsupported'
+  label: string
+  status: PlanItemStatus
+  target?: {
+    source_slots?: string[]
+    quota?: Record<string, unknown>
+    batch_size?: number
+    [key: string]: unknown
+  }
+  params?: {
+    execution_mode?: 'serial' | 'parallel'
+    parallel_group?: string
+    batch_reason?: string
+    subtype?: string
+    guidance?: string
+    reason?: string
+    [key: string]: unknown
+  }
+  run?: PlanItemRun
 }
 
-export interface AcceptanceResult {
-  acceptance_id: string
-  task_id: string
-  requirement_id: string
-  status: 'pending' | 'passed' | 'failed' | 'not_checked' | 'not_applicable' | 'unsupported'
-  expected: unknown
-  observed: unknown
-  validator: string
-  evidence_refs: string[]
-  message: string
+/** state.plan 的整份计划（后端 PlanDocument）。 */
+export interface PlanDocument {
+  revision: number
+  detail_level: string
+  items: PlanItem[]
+  iterations?: number
+  no_progress_rounds?: number
 }
 
-export interface ExecutionProgressItem {
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
-  result_ref?: string | null
-  detail: string
+/** 条目状态变化的增量事件（后端 plan_events 的一条）。 */
+export interface PlanItemUpdate {
+  item_id: string
+  op: string
+  kind: string
+  label: string
+  status: PlanItemStatus
+  evidence?: string
+  elapsed_ms?: number | null
 }
 
-export interface ExecutionPlanReadyResponse extends AgentProtocolEnvelope {
-  type: 'execution_plan_ready'
+export interface PlanReadyResponse extends AgentProtocolEnvelope {
+  type: 'plan_ready'
   request_id: string
   session_id: string
-  plan: ExecutionPlan
-  structured_requirements?: StructuredRequirement[]
-  acceptance_results?: Record<string, AcceptanceResult>
-  execution_progress?: Record<string, ExecutionProgressItem>
+  plan: PlanDocument
 }
 
-export interface ExecutionPlanReviewRequiredResponse extends AgentProtocolEnvelope {
-  type: 'execution_plan_review_required'
+export interface PlanItemUpdatedResponse extends AgentProtocolEnvelope {
+  type: 'plan_item_updated'
   request_id: string
   session_id: string
-  plan: ExecutionPlan
-  version: number
-  structured_requirements?: StructuredRequirement[]
-  acceptance_results?: Record<string, AcceptanceResult>
-  execution_progress?: Record<string, ExecutionProgressItem>
+  item: PlanItemUpdate
 }
 
 export interface DesignReviewRequiredResponse extends AgentProtocolEnvelope {
@@ -211,13 +185,6 @@ export interface DesignReviewRequiredResponse extends AgentProtocolEnvelope {
   document: DesignDocument
   resolved: ResolvedDesign
   preview_url: string
-}
-
-export interface ExecutionFeedbackQueuedResponse extends AgentProtocolEnvelope {
-  type: 'execution_feedback_queued'
-  request_id: string
-  session_id: string
-  queued_count: number
 }
 
 export interface GenerationResumedResponse extends AgentProtocolEnvelope {
@@ -358,17 +325,11 @@ export interface AgentTurn {
   interruption_reason?: string
   thinking_status?: 'thinking' | 'completed' | 'unsupported' | 'error'
   thinking_notice?: string
-  plan_mode?: boolean
-  execution_plan?: ExecutionPlan
-  structured_requirements?: StructuredRequirement[]
-  acceptance_results?: Record<string, AcceptanceResult>
-  execution_progress?: Record<string, ExecutionProgressItem>
-  execution_plan_review_status?: 'pending' | 'submitting' | 'approved'
+  plan?: PlanDocument
   design_document?: DesignDocument
   resolved_design?: ResolvedDesign
   design_preview_url?: string
   design_review_status?: 'pending' | 'submitting' | 'approved'
-  execution_feedback_queued_count?: number
   steps: AgentTurnStep[]
   validation_steps: Array<{
     label: string
@@ -435,9 +396,6 @@ export interface SessionMetrics {
   validation_errors: number
   retry_count?: number
   max_retries?: number
-  plan_mode?: boolean
-  plan_version?: number
-  plan_replan_count?: number
   status: string
 }
 

@@ -56,29 +56,31 @@ def build_skeleton_summary(blueprint: dict, design_brief: dict | None = None) ->
     materials = blueprint.get("materials", {})
 
     lines = [f"当前场景包含 {len(elements)} 个结构元素："]
-    
-    # 墙体详细信息
-    lines.append("\n【墙体详情】用于门窗定位：")
-    for wall in walls:
-        wid = wall.get("id", "?")
-        frm = wall.get("from", [0, 0, 0])
-        to = wall.get("to", [0, 0, 0])
-        length = ((to[0] - frm[0])**2 + (to[2] - frm[2])**2)**0.5
-        height = wall.get("height", to[1] - frm[1])
-        thickness = wall.get("thickness", 0.3)
-        
-        dx = to[0] - frm[0]
-        dz = to[2] - frm[2]
-        if abs(dx) > abs(dz):
-            direction = "东西向" if dx > 0 else "西东向"
-        else:
-            direction = "南北向" if dz > 0 else "北南向"
-        
-        lines.append(
-            f"  - [{wid}] {direction}墙: from=[{frm[0]:.2f}, {frm[1]:.2f}, {frm[2]:.2f}] "
-            f"to=[{to[0]:.2f}, {to[1]:.2f}, {to[2]:.2f}], "
-            f"长度={length:.2f}m, 高度={height:.2f}m, 厚度={thickness:.2f}m"
-        )
+
+    # 墙体详情只对"有墙"的场景有意义。物件场景（家具）elements 本来就是空的，
+    # 无条件输出这段会让模型读到一段"用于门窗定位"的空洞提示，误以为缺了东西。
+    if walls:
+        lines.append("\n【墙体详情】用于门窗定位：")
+        for wall in walls:
+            wid = wall.get("id", "?")
+            frm = wall.get("from", [0, 0, 0])
+            to = wall.get("to", [0, 0, 0])
+            length = ((to[0] - frm[0])**2 + (to[2] - frm[2])**2)**0.5
+            height = wall.get("height", to[1] - frm[1])
+            thickness = wall.get("thickness", 0.3)
+
+            dx = to[0] - frm[0]
+            dz = to[2] - frm[2]
+            if abs(dx) > abs(dz):
+                direction = "东西向" if dx > 0 else "西东向"
+            else:
+                direction = "南北向" if dz > 0 else "北南向"
+
+            lines.append(
+                f"  - [{wid}] {direction}墙: from=[{frm[0]:.2f}, {frm[1]:.2f}, {frm[2]:.2f}] "
+                f"to=[{to[0]:.2f}, {to[1]:.2f}, {to[2]:.2f}], "
+                f"长度={length:.2f}m, 高度={height:.2f}m, 厚度={thickness:.2f}m"
+            )
 
     # 楼板信息
     if floors:

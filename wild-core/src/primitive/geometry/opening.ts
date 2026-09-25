@@ -92,6 +92,11 @@ function appendDoorLeafDetails(
   halfDepth: number,
   detail: NonNullable<OpeningParams['_doorLeafDetail']>,
 ): void {
+  // 🔴 面板凸起深度受**门扇厚度**约束，不是可以随便加深的量级旋钮。
+  // `wild-web/scripts/check-component-compiler.mjs` 断言门扇总厚（leafDepth + 两侧细部）
+  // 落在 (0.04, 0.08]，即单侧最多 ~20mm。曾把这里改成"按门扇高度取比例"（2.5m 门 → 30mm），
+  // 结果总厚算成 0.1168，被那条门禁当场判"门扇细节深度不合理"——它是对的：40mm 的门扇
+  // 不可能两侧各凸 38mm。**分节的可见性天花板就是这个厚度上限**，不是这里可调的。
   const panelRelief = 0.008;
   const handleRelief = 0.018;
   const horizontalMargin = Math.max(0.06, Math.min(0.14, width * 0.14));

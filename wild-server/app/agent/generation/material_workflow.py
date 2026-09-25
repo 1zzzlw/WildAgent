@@ -6,11 +6,14 @@ import time
 
 from loguru import logger
 
-from app.agent.generation.material_plan import compact_asset_catalog, resolve_material_plan
+from app.agent.generation.material_plan import (
+    ROLE_SPECS,
+    compact_asset_catalog,
+    material_role_specs,
+    resolve_material_plan,
+)
 from app.agent.generation.materials import compact_procedural_catalog
-from app.agent.planning.execution import execution_plan_phase_guidance
-from app.agent.planning.requirements import structured_requirement_guidance
-from app.agent.prompts import append_approved_phase_guidance, build_material_plan_prompt
+from app.agent.prompts import build_material_plan_prompt
 from app.agent.runtime import get_reasoning_callback
 from app.agent.state import GenerationState
 from app.llm.client import create_llm
@@ -20,6 +23,10 @@ from app.utils.json_extractor import extract_json_object
 async def material_planner(state: GenerationState) -> dict:
     started = time.time()
     architecture_plan = state.get("architecture_plan") or {}
+    # 角色表一次定住：物件场景是 wood/metal/glass/stone/fabric/accent，
+    # 建筑场景是原来的七个立面/结构角色。提示词与解析器用同一份，避免分叉。
+    role_specs = material_role_specs(architecture_plan)
+    object_scene = role_specs is not ROLE_SPECS
     manifests = asset_storage.list_manifests()
     catalog = compact_asset_catalog(manifests)
     procedural_materials_enabled = state.get("procedural_materials_enabled") is True
@@ -51,26 +58,14 @@ async def material_planner(state: GenerationState) -> dict:
             catalog,
             procedural_catalog,
             style_preference=state.get("style_preference"),
-        )
-        phase_guidance = execution_plan_phase_guidance(
-            state.get("execution_plan"),
-            "material_plan",
-        )
-        requirement_guidance = structured_requirement_guidance(
-            state.get("structured_requirements"),
-            "material_plan",
-        )
-        prompt = append_approved_phase_guidance(
-            prompt,
-            "\n".join(item for item in (phase_guidance, requirement_guidance) if item),
-            "材质方案必须落实这些批准任务及结构化业务要求，"
-            "但不得引用白名单之外的资产或材质字段。",
+            object_scene=object_scene,
         )
         if callback:
             procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
             await callback(
                 "material_plan",
-                f"正在根据建筑方案自动丰富材质语言，并匹配 PBR 素材{procedural_detail}...\n",
+                f"正在根据{'物件' if object_scene else '建筑'}方案自动丰富材质语言，"
+                f"并匹配 PBR 素材{procedural_detail}...\n",
             )
         try:
             llm_result = await invoke_llm(
@@ -119,6 +114,7 @@ async def material_planner(state: GenerationState) -> dict:
         architecture_plan,
         str(state.get("user_message") or ""),
         procedural_materials_enabled=procedural_materials_enabled,
+        role_specs=role_specs,
     )
     resolved_design = state.get("resolved_design")
     if isinstance(design_document, dict):

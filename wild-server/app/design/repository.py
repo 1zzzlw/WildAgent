@@ -69,11 +69,17 @@ class DesignRepository:
         """阻止 Patch 把未实现构件重新写回可执行配额。"""
 
         from app.agent.generation.components import get_implemented_components
+        from app.design.contracts import ObjectDecisions
 
         supported = {item.component_type for item in get_implemented_components()}
-        selected = set(document.decisions.required_components) | set(
-            document.decisions.component_quota
-        )
+        decisions = document.decisions
+        # 物件文档没有 required_components / component_quota —— 它的"要做什么"写在
+        # `objects` 里。这里必须按判别字段取对应的那支，否则 `AttributeError` 会在
+        # 保存设计文档这一步就炸掉整轮生成。
+        if isinstance(decisions, ObjectDecisions):
+            selected = {str(item.kind) for item in decisions.objects}
+        else:
+            selected = set(decisions.required_components) | set(decisions.component_quota)
         unsupported = sorted(selected - supported)
         if unsupported:
             raise ValueError(

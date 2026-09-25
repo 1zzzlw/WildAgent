@@ -89,9 +89,15 @@ required_documents:
   - knowledge/protocol/behavior-instructions.md
   - knowledge/protocol/scene-patch-protocol.md
   - knowledge/components/capability-boundaries.md
+  - knowledge/components/chinese-lattice-openings.md
   - knowledge/components/glass-curtain-wall-assembly.md
   - knowledge/components/light.md
+  - knowledge/components/elevator.md
   - knowledge/components/composite-components-second-batch.md
+  - knowledge/components/window-variants.md
+  - knowledge/components/massing-layers.md
+  - knowledge/components/sofa.md
+  - knowledge/components/furniture.md
   - rules/implementation/door-window-depth.md
   - rules/implementation/assembly-relations.md
   - rules/implementation/validation-rules.md

@@ -15,7 +15,6 @@ Agent WebSocket API
     "scene_revision": 8,
     "message": "生成一座中式凉亭",
     "thinking_mode": false,
-    "plan_mode": true,
     "scene_summary": { "elements_count": 42, "types": [...], "bbox": {...} },
     "selection": []
   }
@@ -28,8 +27,8 @@ Agent WebSocket API
   agent_step:          { "type": "agent_step", "request_id": "...", "stage": "analyzing", "node": "classifier", "status": "running", "label": "意图分类", "detail": "..." }
   thinking_delta:      { "type": "thinking_delta", "request_id": "...", "delta": "..." }
   thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
-  execution_plan_ready:{ "type": "execution_plan_ready", "request_id": "...", "plan": {...} }
-  execution_plan_review_required: { "type": "execution_plan_review_required", "request_id": "...", "plan": {...} }
+  plan_ready:          { "type": "plan_ready", "request_id": "...", "plan": {...} }
+  plan_item_updated:   { "type": "plan_item_updated", "request_id": "...", "item": {...} }
   design_review_required: { "type": "design_review_required", "request_id": "...", "document": {...}, "preview_url": "..." }
   blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
   agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
@@ -56,7 +55,12 @@ import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
-from app.agent.routing import INTENT_LABELS, classify_intent_decision, has_scene_content
+from app.agent.routing import (
+    INTENT_LABELS,
+    classify_intent_decision,
+    detect_target_kind,
+    has_scene_content,
+)
 from app.agent.generation.architecture import detect_architecture_profile
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.generation.materials import without_procedural_materials
@@ -91,6 +95,47 @@ def _utc_now_iso() -> str:
     """当前 UTC 时间的 ISO 字符串，用于节点观测记录。"""
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+
+
+def _plan_delivery_summary(plan_payload: object) -> dict:
+    """交付清单：四个终态的计数 + 未完成条目（含能力缺失说明）。
+
+    没有这条记录，交付就只能回答"成没成"，回答不了"哪几条没做成、为什么"——而后者
+    正是 plan 驱动链存在的理由之一（《动态节点设计规划》§6.4）。
+    """
+
+    if not isinstance(plan_payload, dict) or not plan_payload:
+        return {}
+    try:
+        from app.agent.plan.contracts import PlanDocument
+        from app.agent.plan.store import terminal_stats
+
+        plan = PlanDocument.model_validate(plan_payload)
+    except Exception as exc:  # 计划不合法时不影响交付，只是少一份清单
+        logger.warning(f"交付清单生成失败: {exc}")
+        return {}
+
+    stats = terminal_stats(plan)
+    items = [
+        {
+            "item_id": item.id,
+            "label": item.label,
+            "op": item.op,
+            "kind": item.kind,
+            "status": item.status,
+            "notice": str(item.params.get("notice") or ""),
+            "evidence": item.run.evidence[:300],
+        }
+        for item in plan.items
+        if item.status != "done"
+    ]
+    return {
+        **stats,
+        "give_up": plan.give_up,
+        "llm_calls": plan.llm_calls,
+        "revision": plan.revision,
+        "items": items,
+    }
 
 
 async def _send_event(ws: WebSocket, payload: dict) -> None:
@@ -207,8 +252,6 @@ def _prepare_server_request(data: dict, access: AccessContext) -> dict:
     """覆盖所有前端自报身份字段，并在进入持久化任务前完成 PII 脱敏。"""
 
     prepared = dict(data)
-    # 将字典 prepared 中的 "plan_mode" 值，强制转换成一个“严格的布尔值”（True 或 False），并重新赋值给同一个键
-    prepared["plan_mode"] = prepared.get("plan_mode") is True
     # 覆盖访问身份
     prepared["_server_access_context"] = access.public_dict()
     message = str(prepared.get("message") or "")
@@ -233,11 +276,7 @@ def _prepare_server_request(data: dict, access: AccessContext) -> dict:
                 recent_messages.append({"role": role, "content": content})
     prepared["recent_messages"] = recent_messages
     prepared["workflow_state"] = (
-        "plan_requested"
-        if prepared["plan_mode"]
-        else "scene_ready"
-        if isinstance(prepared.get("blueprint"), dict)
-        else "empty_scene"
+        "scene_ready" if isinstance(prepared.get("blueprint"), dict) else "empty_scene"
     )
     safety = (
         check_content_safety(message)
@@ -444,34 +483,6 @@ async def agent_websocket(ws: WebSocket):
                     after_seq=int(data.get("last_event_seq") or 0),
                 )
 
-            elif msg_type == "execution_plan_review":
-                feedback = str(data.get("feedback") or "")
-                if config.rag.security.pii_redaction_enabled:
-                    feedback, _ = redact_pii(feedback)
-                try:
-                    resumed_job = await generation_job_service.submit_execution_plan_review(
-                        ws,
-                        request_id=str(data.get("request_id") or ""),
-                        session_id=str(data.get("session_id") or ""),
-                        action=str(data.get("action") or ""),
-                        feedback=feedback,
-                    )
-                    await _send_event(ws, {
-                        "type": "generation_resumed",
-                        "request_id": resumed_job.request_id,
-                        "session_id": resumed_job.session_id,
-                        "status": resumed_job.status,
-                        "last_event_seq": resumed_job.last_event_seq,
-                    })
-                except ValueError as exc:
-                    await _send_event(ws, {
-                        "type": "error",
-                        "request_id": data.get("request_id"),
-                        "session_id": data.get("session_id"),
-                        "code": "execution_plan_review_rejected",
-                        "error": str(exc),
-                    })
-
             elif msg_type == "design_review":
                 feedback = str(data.get("feedback") or "")
                 if config.rag.security.pii_redaction_enabled:
@@ -501,24 +512,6 @@ async def agent_websocket(ws: WebSocket):
                         "error": str(exc),
                     })
 
-            elif msg_type == "execution_feedback":
-                feedback = str(data.get("feedback") or "")
-                if config.rag.security.pii_redaction_enabled:
-                    feedback, _ = redact_pii(feedback)
-                try:
-                    await generation_job_service.queue_execution_feedback(
-                        request_id=str(data.get("request_id") or ""),
-                        session_id=str(data.get("session_id") or ""),
-                        feedback=feedback,
-                    )
-                except ValueError as exc:
-                    await _send_event(ws, {
-                        "type": "error",
-                        "request_id": data.get("request_id"),
-                        "session_id": data.get("session_id"),
-                        "code": "execution_feedback_rejected",
-                        "error": str(exc),
-                    })
             else:
                 await _send_event(ws, {
                     "type": "error",
@@ -572,31 +565,19 @@ _NODE_LABELS = {
     "classifier": "意图分类",
     "chat": "知识问答",
     "patch": "场景修改",
-    "planning_research": "计划研究",
-    "web_research": "网络研究",
-    "planner": "执行计划",
-    "plan_validator": "计划校验",
-    "plan_review": "计划审核",
     "architecture": "总体建筑方案",
     "design_review": "建筑设计审核",
     "material_plan": "材质方案",
     "skeleton": "主体装配",
-    "merge": "合并", "final_validate": "最终校验", "callback": "修正",
+    "plan": "执行计划",
+    "execute": "执行计划条目",
+    "replanner": "计划对账",
+    "final_validate": "最终校验", "callback": "修正",
 }
 
-# gen/val 标签动态生成: _node_label("door_gen") → "门·生成"
-def _node_label(name: str) -> str:
-    if name in _NODE_LABELS:
-        return _NODE_LABELS[name]
-    from app.agent.generation.components import get_implemented_components
 
-    for component_config in get_implemented_components():
-        ct, cl = component_config.component_type, component_config.label
-        if name == f"{ct}_gen":
-            return f"{cl}·生成"
-        if name == f"{ct}_val":
-            return f"{cl}·校验"
-    return name
+def _node_label(name: str) -> str:
+    return _NODE_LABELS.get(name, name)
 
 
 async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
@@ -637,8 +618,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         channel = (
             "progress"
             if explicit_progress
-            or public_node_name in {"architecture", "merge", "final_validate"}
-            or public_node_name.endswith("_val")
+            or public_node_name in {"architecture", "final_validate"}
             else "reasoning"
         )
         await _emit_thinking_delta(
@@ -651,10 +631,20 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         )
 
     # ── 初始状态 ──
+    #
+    # `building_type` 只是入口的**预标签**（真正的 profile 由建筑方案节点带上下文重算），
+    # 但它会写进会话元数据。所以物件需求不能借用建筑的兜底值：`detect_architecture_profile`
+    # 在认不出建筑类型时返回 `residential_lowrise`，直接套用会把"生成一个桌子"标成低层住宅。
+    # 这里用与意图路由同一套确定性关键词先判目标类型，只有建筑需求才预打建筑标签。
+    preliminary_target = detect_target_kind(message, "generate")
     initial_state: GenerationState = {
         "request_id": request_id,
         "user_message": message,
-        "building_type": detect_architecture_profile(message)["id"],
+        "building_type": (
+            detect_architecture_profile(message)["id"]
+            if preliminary_target == "architecture"
+            else "asset"
+        ),
         "session_id": session_id,
         "current_blueprint": current_blueprint,
         "selection": selection,
@@ -662,10 +652,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "workflow_state": str(data.get("workflow_state") or "idle"),
         "thinking_mode": thinking_mode,
         "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
-        "plan_mode": data.get("plan_mode") is True,
-        "execution_plan_history": [],
-        "plan_replan_count": 0,
-        "max_plan_replans": 3,
         "max_retries": 3,
         "retry_count": 0,
         "component_fragments": {},
@@ -677,12 +663,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         await send_thinking_status("thinking", "正在收集节点思考内容")
 
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
-    from app.agent.graph import generation_recursion_limit, get_graph
+    from app.agent.graph import get_graph, plan_recursion_limit
     from app.agent.generation.components import get_implemented_components
     from app.agent.runtime import (
-        bind_execution_feedback_poller,
         bind_reasoning_callback,
-        reset_execution_feedback_poller,
         reset_reasoning_callback,
     )
 
@@ -694,13 +678,16 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     component_configs = {
         config.component_type: config for config in get_implemented_components()
     }
+    # 条目数在 plan 节点跑完前未知，用「构件类型数 × 3」估上界。每组是 generate + 批次 merge
+    # 两条，加收尾 merge + validate 两条，所以 2×构件数 + 2 ≤ 3×构件数（构件类型数 ≥ 2）。
+    # 上限只是安全余量，真正的停止条件是 replanner 的五重判定（《动态节点设计规划》§5.4）。
+    recursion_limit = plan_recursion_limit(
+        len(component_configs) * 3,
+        initial_state["max_retries"],
+    )
     graph_config = {
         "configurable": {"thread_id": f"generation:{request_id}"},
-        "recursion_limit": generation_recursion_limit(
-            len(component_configs),
-            initial_state["max_retries"],
-            plan_mode=initial_state["plan_mode"],
-        ),
+        "recursion_limit": recursion_limit,
     }
     all_diags: dict[str, dict] = {}
     final_state = None
@@ -712,24 +699,16 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     suggested_components = []  # 存储骨架节点建议的组件列表
 
     # 生成所有可能的节点名（gen + val + 固定节点）
-    _COMP_TYPES = set(component_configs)
-
     _OUR_NODES = {
-        "classifier", "chat", "patch", "planning_research", "web_research", "planner",
-        "plan_validator", "plan_review", "architecture", "design_review",
-        "material_plan", "skeleton", "merge", "final_validate", "callback",
+        "classifier", "chat", "patch", "architecture", "design_review",
+        "material_plan", "skeleton", "final_validate", "callback",
+        # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
+        "plan", "execute", "replanner",
     }
-
-    for ct in _COMP_TYPES:
-        _OUR_NODES.add(f"{ct}_gen")
-        _OUR_NODES.add(f"{ct}_val")
 
     # architecture/校验节点会通过同一回调发送可公开的执行摘要。快速模式也应
     # 展示这些摘要；模型原始 reasoning 是否存在仍由 enable_thinking 控制。
     reasoning_token = bind_reasoning_callback(send_thinking_delta)
-    feedback_token = bind_execution_feedback_poller(
-        lambda: generation_job_service.drain_execution_feedback(str(request_id))
-    )
 
     try:
         graph_input = initial_state
@@ -743,12 +722,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "suggested_components", []
                 )
                 if snapshot.next:
-                    plan_review_decision = data.get("_execution_plan_review")
                     graph_input = (
-                        Command(resume=plan_review_decision)
-                        if "plan_review" in snapshot.next and isinstance(plan_review_decision, dict)
-                        else Command(resume=data.get("_design_review"))
-                        if "design_review" in snapshot.next and isinstance(data.get("_design_review"), dict)
+                        Command(resume=data.get("_design_review"))
+                        if "design_review" in snapshot.next
+                        and isinstance(data.get("_design_review"), dict)
                         else None
                     )
                     logger.info(
@@ -791,10 +768,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 continue
 
             label = _node_label(node_name)
-            is_gen = node_name.endswith("_gen")
-            is_val = node_name.endswith("_val")
-            comp_type = node_name[:-4] if is_gen or is_val else node_name
-
             # ── 节点开始 ──
             if kind == "on_chain_start":
                 node_starts[node_name] = time.perf_counter()
@@ -803,24 +776,17 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     "classifier": "分析用户意图",
                     "chat": "RAG 检索知识库并生成回答",
                     "patch": "分析当前场景并生成修改提案",
-                    "planning_research": "只读分析需求、当前场景和建筑知识",
-                    "web_research": "仅在本地知识不足且模型服务可用时检索外部资料",
-                    "planner": "生成可审核的结构化执行计划",
-                    "plan_validator": "检查能力白名单、依赖和安全门禁",
-                    "plan_review": "等待用户批准或修改执行计划",
-                    "architecture": "生成建筑方案候选并执行确定性评分",
+                    "architecture": "生成唯一结构化建筑方案并校验设计契约",
                     "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
                     "material_plan": "解析材质角色并匹配受控 PBR 资产",
-                    "skeleton": "生成主体骨架并输出组件建议清单",
-                    "merge": "合并所有组件分片",
+                    "skeleton": "把批准方案确定性编译为主体骨架和组件槽位",
+                    "plan": "由大模型制定批次与并发策略，再按方案、槽位和骨架展开合法条目",
+                    "execute": "执行当前串行条目或安全并发组",
+                    "replanner": "对账本轮结果并决定下一轮",
                     "final_validate": "执行最终校验流水线",
                     "callback": "修正失败组件",
                 }
                 detail = start_details.get(node_name)
-                if detail is None and is_gen:
-                    detail = "RAG 检索并生成组件"
-                elif detail is None and is_val:
-                    detail = "执行组件工具校验"
                 if detail:
                     await send_step("generating", node_name, "running", label, detail)
 
@@ -866,14 +832,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         quota = design_brief.get("component_quota", {})
                         logger.info(f"[{request_id}] 设计清单配额: {quota}")
 
-                # 收集诊断（gen_diag 和 val_diag）
-                if is_gen:
-                    diag_key = f"{comp_type}_gen_diag"
-                elif is_val:
-                    diag_key = f"{comp_type}_val_diag"
-                else:
-                    diag_key = f"{node_name}_diag"
-                diag = node_output.get(diag_key, {})
+                # 收集诊断：每个节点把自己那层的诊断挂在 ``{node}_diag`` 下
+                diag = node_output.get(f"{node_name}_diag", {})
                 if diag:
                     all_diags[node_name] = diag
 
@@ -990,86 +950,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "建筑设计已批准" if approved else "已收到建筑设计修改意见",
                     )
 
-                elif node_name == "planning_research":
-                    research_diag = node_output.get("plan_research_diag", {})
-                    await send_step(
-                        "planning", node_name, "done", label,
-                        node_output.get("plan_research_summary", "已完成只读研究"),
-                    )
-                    if research_diag:
-                        await send_debug("node", {
-                            "node": node_name, "label": label, "stage": "done",
-                            **research_diag,
-                        })
-
-                elif node_name == "web_research":
-                    research_diag = node_output.get("web_research_diag", {})
-                    blocked = research_diag.get("reason") == "blocked_by_terminal_model_error"
-                    await send_step(
-                        "planning",
-                        node_name,
-                        "skipped" if blocked else "done",
-                        label,
-                        (
-                            "上游模型服务不可用，已跳过网络研究"
-                            if blocked
-                            else f"检索 {research_diag.get('search_count', 0)} 条 · "
-                            f"可用声明 {research_diag.get('usable_count', 0)} 条"
-                        ),
-                    )
-
-                elif node_name == "planner":
-                    plan = node_output.get("execution_plan", {})
-                    diag = node_output.get("execution_plan_diag", {})
-                    planner_error = node_output.get("error")
-                    await send_step(
-                        "planning", node_name, "error" if planner_error else "done", label,
-                        str(planner_error) if planner_error else (
-                            f"计划 v{plan.get('version', 1)} · "
-                            f"{len(plan.get('dynamic_tasks', []))} 项本次任务 · "
-                            f"{len(node_output.get('structured_requirements', []))} 条结构化要求"
-                        ),
-                    )
-                    if diag:
-                        await send_debug("node", {
-                            "node": node_name, "label": label, "stage": "done",
-                            **diag,
-                        })
-
-                elif node_name == "plan_validator":
-                    plan = node_output.get("execution_plan", {})
-                    issues = node_output.get("execution_plan_validation", [])
-                    blocking = [
-                        issue for issue in issues
-                        if str(issue.get("severity") or "error") != "warning"
-                    ]
-                    if blocking:
-                        summary = f"{len(blocking)} 个阻断问题"
-                    elif issues:
-                        summary = f"校验通过，{len(issues)} 条提示待人工确认"
-                    else:
-                        summary = "任务、要求与能力边界校验通过"
-                    await send_step(
-                        "planning", node_name, "error" if blocking else "done", label,
-                        summary,
-                    )
-                    await _send_event(ws, {
-                        "type": "execution_plan_ready",
-                        "request_id": request_id,
-                        "session_id": session_id,
-                        "plan": plan,
-                        "structured_requirements": node_output.get("structured_requirements", []),
-                        "acceptance_results": node_output.get("acceptance_results", {}),
-                        "execution_progress": node_output.get("execution_progress", {}),
-                    })
-
-                elif node_name == "plan_review":
-                    approved = node_output.get("execution_plan_review_status") == "approved"
-                    await send_step(
-                        "planning", node_name, "done", label,
-                        "执行计划已批准" if approved else "已收到计划修改意见",
-                    )
-
                 elif node_name == "material_plan":
                     material_diag = node_output.get("material_diag", {})
                     await send_step(
@@ -1106,37 +986,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             "deterministic_fallback": diag.get("deterministic_fallback", False),
                             "total_ms": diag.get("total_ms"),
                         })
-                elif node_name == "merge":
-                    merged = node_output.get("merged_blueprint", {})
-                    geom = merged.get("geometry", {})
-                    e_count = len(geom.get("elements", []))
-                    c_count = len(geom.get("components", []))
-                    merge_diag = node_output.get("merge_diag", {})
-                    iters = merge_diag.get("iterations", [])
-                    merge_errors = merge_diag.get("final_errors", 0)
-                    merge_error_text = node_output.get("error")
-                    iter_summary = ""
-                    if iters:
-                        last_iter = iters[-1]
-                        iter_summary = f" | {len(iters)}轮校验 {last_iter['passed']}✓ {last_iter['errors']}✗"
-                    await send_step(
-                        "generating", node_name,
-                        "error" if merge_error_text or merge_errors else "done",
-                        label,
-                        merge_error_text or f"{e_count} 元素 + {c_count} 组件{iter_summary}",
-                    )
-                    # 收集 merge 诊断到 all_diags
-                    if merge_diag:
-                        all_diags[node_name] = merge_diag
-                    await send_debug("node", {
-                        "node": node_name, "label": label, "stage": "done",
-                        "element_count": e_count,
-                        "component_count": c_count,
-                        "iterations": iters,
-                        "final_errors": merge_errors,
-                        "design_errors": merge_diag.get("design_errors", []),
-                        "total_ms": merge_diag.get("total_ms"),
-                    })
                 elif node_name == "final_validate":
                     # 校验流水线结果
                     validation_results = node_output.get("validation_results", [])
@@ -1185,32 +1034,39 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             validation_detail,
                         )
 
-                elif is_gen:
-                    if diag.get("error"):
-                        await send_step(
-                            "generating", node_name, "error", label,
-                            diag["error"],
+                elif node_name == "execute":
+                    # 条目级进度：串行轮是一条；安全并发轮会一次返回同组的多条结果。
+                    item_id = node_output.get("current_item_id")
+                    execute_diag = node_output.get("execute_diag") or {}
+                    item_ids = execute_diag.get("item_ids") or ([item_id] if item_id else [])
+                    tool_calls = int(execute_diag.get("tool_calls") or 0)
+                    if len(item_ids) > 1:
+                        detail = (
+                            f"并发 {len(item_ids)} 条：{'、'.join(item_ids)}"
+                            f" · 工具调用 {tool_calls} 次"
                         )
                     else:
-                        fc = diag.get("fragment_count", 0)
-                        rc = diag.get("reasoning_chars", 0)
-                        await send_step(
-                            "generating", node_name, "done", label,
-                            f"{fc} 个 · RAG {diag.get('rag_chars', 0)} 字 · "
-                            f"LLM {diag.get('llm_chars', 0)} 字/{diag.get('llm_ms', 0)}ms · "
-                            f"过程 {rc} 字",
-                        )
-                        await send_debug("node", {
-                            "node": node_name, "label": label, "stage": "done",
-                            "rag_chars": diag.get("rag_chars"), "rag_ms": diag.get("rag_ms"),
-                            "rag_hits": diag.get("rag_hits", []),
-                            "prompt_chars": diag.get("prompt_chars"),
-                            "llm_chars": diag.get("llm_chars"), "llm_ms": diag.get("llm_ms"),
-                            "token_usage": diag.get("token_usage"),
-                            "reasoning_chars": rc,
-                            "reasoning_preview": diag.get("reasoning_preview"),
-                            "fragment_count": fc, "total_ms": diag.get("total_ms"),
-                        })
+                        detail = f"{item_id or '无待办条目'} · 工具调用 {tool_calls} 次"
+                    await send_step(
+                        "generating", node_name, "done", label,
+                        detail,
+                    )
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        "item_id": item_id,
+                        "item_ids": item_ids,
+                        "parallel_count": len(item_ids),
+                        "tool_calls": tool_calls,
+                        "item_results": execute_diag.get("item_results") or [],
+                    })
+
+                elif node_name == "plan":
+                    total = len(node_output.get("plan_events") or [])
+                    budget = (node_output.get("plan") or {}).get("budget", {})
+                    await send_step(
+                        "generating", node_name, "done", label,
+                        f"展开 {total} 条条目 · 档位预算 {budget.get('iterations', '?')} 轮",
+                    )
 
                 elif node_name == "callback":
                     retry_number = node_output.get("retry_count", 0)
@@ -1230,39 +1086,24 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             "retry_count": retry_number,
                         })
 
-                elif is_val:
-                    fc = diag.get("fragment_count", 0)
-                    fixed = diag.get("validation_applied", False)
-                    passed = diag.get("validation_passed", True)
-                    result_label = "已修复并通过复检" if fixed and passed else (
-                        "修复后复检仍有错误" if not passed else "通过"
-                    )
-                    await send_step(
-                        "generating", node_name, "done" if passed else "error", label,
-                        f"{fc} 个 · {result_label} · {diag.get('total_ms', 0)}ms",
-                    )
-                if (
-                    node_name
-                    in {
-                        "plan_review",
-                        "architecture",
-                        "material_plan",
-                        "design_review",
-                        "skeleton",
-                        "merge",
-                        "final_validate",
-                        "patch",
-                    }
-                    and node_output.get("execution_plan")
-                ):
+                # plan 是数据：**每个产出 plan 的节点都推一次全量 plan**（plan / execute /
+                # replanner 都返回 plan），前端整份替换。之所以不只在 plan 节点推一次：
+                # replanner 追加的条目不会进 plan_events（增量只记状态变化），只推首次会让
+                # 追加项永远到不了前端。plan_item_updated 是状态变化的增量提示，不是唯一通道。
+                plan_payload = node_output.get("plan")
+                if isinstance(plan_payload, dict) and plan_payload.get("items") is not None:
                     await _send_event(ws, {
-                        "type": "execution_plan_ready",
+                        "type": "plan_ready",
                         "request_id": request_id,
                         "session_id": session_id,
-                        "plan": node_output["execution_plan"],
-                        "structured_requirements": node_output.get("structured_requirements"),
-                        "acceptance_results": node_output.get("acceptance_results"),
-                        "execution_progress": node_output.get("execution_progress"),
+                        "plan": plan_payload,
+                    })
+                for item_event in node_output.get("plan_events") or []:
+                    await _send_event(ws, {
+                        "type": "plan_item_updated",
+                        "request_id": request_id,
+                        "session_id": session_id,
+                        "item": item_event,
                     })
                 final_state = node_output
 
@@ -1280,37 +1121,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         await send_step("finished", "finished", "error", "处理失败", error_text)
         return
     finally:
-        reset_execution_feedback_poller(feedback_token)
         reset_reasoning_callback(reasoning_token)
 
     # interrupt 是正常的人工审核暂停点。此处必须先返回等待状态，不能继续保存或加载三维。
     snapshot = await graph.aget_state(graph_config)
-    if "plan_review" in snapshot.next:
-        values = snapshot.values or {}
-        plan = values.get("execution_plan") or {}
-        await send_step(
-            "reviewing",
-            "plan_review",
-            "done",
-            "计划审核",
-            "批准后才会执行建筑生成；也可提交修改意见",
-        )
-        await generation_job_service.mark_waiting_for_review(
-            request_id,
-            "execution_plan",
-        )
-        await _send_event(ws, {
-            "type": "execution_plan_review_required",
-            "request_id": request_id,
-            "session_id": session_id,
-            "plan": plan,
-            "version": int(plan.get("version") or 1),
-            "structured_requirements": values.get("structured_requirements") or [],
-            "acceptance_results": values.get("acceptance_results") or {},
-            "execution_progress": values.get("execution_progress") or {},
-        })
-        raise GenerationPaused()
-
     if "design_review" in snapshot.next:
         values = snapshot.values or {}
         document = values.get("design_document") or {}
@@ -1486,11 +1300,22 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "validation_errors": validation_errors,
         "retry_count": final_state.get("retry_count", 0),
         "max_retries": initial_state.get("max_retries", 3),
-        "plan_mode": final_state.get("plan_mode") is True,
-        "plan_version": (final_state.get("execution_plan") or {}).get("version"),
-        "plan_replan_count": int(final_state.get("plan_replan_count") or 0),
+        "plan_items": len((final_state.get("plan") or {}).get("items") or []),
+        "plan_iterations": int((final_state.get("plan") or {}).get("iterations") or 0),
         "status": final_status,
     }
+    # 交付清单（《动态节点设计规划》§6.4）：交付必须能回答"哪几条没做成、为什么"。
+    plan_delivery = _plan_delivery_summary(final_state.get("plan"))
+    if plan_delivery:
+        session_metrics["plan_delivery"] = plan_delivery
+        shortfall = [
+            entry for entry in plan_delivery.get("items", []) if entry["status"] != "done"
+        ]
+        if shortfall:
+            logger.warning(
+                f"[{request_id}] 交付清单包含 {len(shortfall)} 条未完成项："
+                + "; ".join(f"{entry['label']}（{entry['status']}）" for entry in shortfall[:5])
+            )
     await send_debug("session_metrics", session_metrics)
 
     try:
@@ -1576,7 +1401,8 @@ def _generation_failure_message(node_outputs: dict, final_state: dict) -> str:
         return str(terminal_model_error["user_message"])
     return (
         node_outputs.get("skeleton", {}).get("error")
-        or node_outputs.get("merge", {}).get("error")
+        or node_outputs.get("execute", {}).get("error")
+        or (final_state.get("plan") or {}).get("error")
         or final_state.get("error")
         or "最终 Blueprint 缺失"
     )
@@ -1654,7 +1480,6 @@ async def _handle_with_langchain(ws: WebSocket, data: dict):
         recent_messages=data.get("recent_messages"),
         workflow_state=str(data.get("workflow_state") or "idle"),
         selection=selection,
-        plan_mode=data.get("plan_mode") is True,
     )
     await send_step(
         "analyzing",

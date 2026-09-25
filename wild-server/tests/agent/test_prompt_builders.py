@@ -3,12 +3,12 @@
 from types import SimpleNamespace
 
 from app.agent.prompts import (
-    append_approved_phase_guidance,
     build_blueprint_recovery_messages,
     build_chat_system_prompt,
-    build_claim_extraction_prompt,
     build_component_recovery_messages,
     build_component_user_message,
+    build_plan_strategy_prompt,
+    build_plan_strategy_user_message,
 )
 
 
@@ -19,13 +19,28 @@ def test_chat_prompt_injects_only_supplied_knowledge() -> None:
     assert "不补建筑百科" in prompt
 
 
-def test_approved_phase_guidance_is_optional_and_explicit() -> None:
-    assert append_approved_phase_guidance("base", "", "must comply") == "base"
+def test_plan_strategy_prompt_offers_capabilities_but_forbids_geometry() -> None:
+    prompt = build_plan_strategy_prompt(
+        capability_catalog=[
+            {"kind": "door", "label": "门", "skip_keywords": ["不要门"]},
+            {"kind": "roof", "label": "屋顶", "is_element": True},
+        ],
+        design_brief={"component_quota": {"door": {"min": 1, "max": 2}}},
+        skeleton_summary="一层主体",
+        detail_level="standard",
+        slot_counts={"door": 2},
+    )
+    user_message = build_plan_strategy_user_message(
+        "生成一栋住宅", {"component_quota": {"door": {"min": 1}}}
+    )
 
-    prompt = append_approved_phase_guidance("base", "生成主体", "必须服从白名单")
-    assert "已批准执行计划中的本阶段任务" in prompt
-    assert "生成主体" in prompt
-    assert "必须服从白名单" in prompt
+    # 能力清单是模型的唯一选项来源；工作量与否定词对它可见，坐标对它不可见
+    assert "door（门）" in prompt
+    assert "不要门" in prompt
+    assert "配额下限：1" in prompt
+    assert "精确槽位：2 个" in prompt
+    assert "不得输出坐标" in prompt
+    assert "生成一栋住宅" in user_message and "min" in user_message
 
 
 def test_recovery_messages_keep_failed_output_bounded() -> None:
@@ -57,17 +72,3 @@ def test_component_messages_follow_component_shape_and_quota() -> None:
     assert "一个 JSON 数组" in recovery[0]["content"]
     assert "1~2 个" in user_message
     assert "只输出 JSON 数组" in user_message
-
-
-def test_research_prompt_contains_source_and_target_topics() -> None:
-    result = SimpleNamespace(
-        title="幕墙资料",
-        url="https://example.com/facade",
-        source="example",
-        content="幕墙构造正文",
-    )
-    prompt = build_claim_extraction_prompt([result], ["facade.system"])
-
-    assert "https://example.com/facade" in prompt
-    assert "facade.system" in prompt
-    assert "只输出 JSON 数组" in prompt
