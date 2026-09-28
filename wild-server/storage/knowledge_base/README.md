@@ -192,7 +192,7 @@ synonyms: []
 ```bash
 cd wild-server
 # ① 结构 + 检索契约（退出码即结果，0 = 全绿）
-./.venv/Scripts/python.exe ../.workbuddy/diag/check_kb.py
+./.venv/Scripts/python.exe scripts/kb/check_kb.py
 # ② 语义 linter —— 它其实是门禁：tests/rag/test_knowledge_rules_v3.py 断言本库零 error
 ./.venv/Scripts/python.exe -m pytest tests/rag/test_knowledge_rules_v3.py -q
 # ③ 端到端检索冒烟（临时索引，不碰线上 Chroma，不调远程模型）
