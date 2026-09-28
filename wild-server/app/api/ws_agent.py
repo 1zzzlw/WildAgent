@@ -566,9 +566,12 @@ _NODE_LABELS = {
     "chat": "知识问答",
     "patch": "场景修改",
     "architecture": "总体建筑方案",
-    "design_review": "建筑设计审核",
+    "object_design": "物件方案",
     "material_plan": "材质方案",
+    "design_convergence": "设计收敛",
+    "design_review": "建筑设计审核",
     "skeleton": "主体装配",
+    "compile": "确定性编译",
     "plan": "执行计划",
     "execute": "执行计划条目",
     "replanner": "计划对账",
@@ -578,6 +581,40 @@ _NODE_LABELS = {
 
 def _node_label(name: str) -> str:
     return _NODE_LABELS.get(name, name)
+
+
+#: 会向 ws 推送 step 事件的节点全集 = 图节点全集（见 ``tests/agent/test_plan_graph.py``
+#: 的 ``_EXPECTED_NODES``）+ 可选的 callback。图上加节点而这里不认，事件会在
+#: astream 过滤处被静默吞掉——前端管线就会"跳节点"（compile/design_convergence
+#: 上线时踩过：只改了生成链，忘了这张消费侧的表）。
+_OUR_NODES = {
+    "classifier", "chat", "patch", "architecture", "object_design",
+    "material_plan", "design_convergence", "design_review",
+    "skeleton", "compile",
+    # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
+    "plan", "execute", "replanner",
+    "final_validate", "callback",
+}
+
+#: 节点开始（running）事件的固定文案；缺了哪个节点，它的"开始"事件就不发
+#: （见事件循环里的 ``if detail:`` 门）。与 _OUR_NODES 必须同批维护。
+_NODE_START_DETAILS = {
+    "classifier": "分析用户意图",
+    "chat": "RAG 检索知识库并生成回答",
+    "patch": "分析当前场景并生成修改提案",
+    "architecture": "生成唯一结构化建筑方案并校验设计契约",
+    "object_design": "生成物件清单并校验设计契约",
+    "material_plan": "解析材质角色并匹配受控 PBR 资产",
+    "design_convergence": "试算图纸可编译性并收敛修订",
+    "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
+    "skeleton": "把批准方案展开为主体骨架和组件槽位（物件链）",
+    "compile": "把批准的图纸确定性编译成蓝图",
+    "plan": "由大模型制定批次与并发策略，再按方案、槽位和骨架展开合法条目",
+    "execute": "执行当前串行条目或安全并发组",
+    "replanner": "对账本轮结果并决定下一轮",
+    "final_validate": "执行最终校验流水线",
+    "callback": "修正失败组件",
+}
 
 
 async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
@@ -698,14 +735,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     node_started_isos: dict[str, str] = {}  # 节点名 → UTC 起始时间
     suggested_components = []  # 存储骨架节点建议的组件列表
 
-    # 生成所有可能的节点名（gen + val + 固定节点）
-    _OUR_NODES = {
-        "classifier", "chat", "patch", "architecture", "design_review",
-        "material_plan", "skeleton", "final_validate", "callback",
-        # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
-        "plan", "execute", "replanner",
-    }
-
     # architecture/校验节点会通过同一回调发送可公开的执行摘要。快速模式也应
     # 展示这些摘要；模型原始 reasoning 是否存在仍由 enable_thinking 控制。
     reasoning_token = bind_reasoning_callback(send_thinking_delta)
@@ -772,21 +801,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             if kind == "on_chain_start":
                 node_starts[node_name] = time.perf_counter()
                 node_started_isos[node_name] = _utc_now_iso()
-                start_details = {
-                    "classifier": "分析用户意图",
-                    "chat": "RAG 检索知识库并生成回答",
-                    "patch": "分析当前场景并生成修改提案",
-                    "architecture": "生成唯一结构化建筑方案并校验设计契约",
-                    "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
-                    "material_plan": "解析材质角色并匹配受控 PBR 资产",
-                    "skeleton": "把批准方案确定性编译为主体骨架和组件槽位",
-                    "plan": "由大模型制定批次与并发策略，再按方案、槽位和骨架展开合法条目",
-                    "execute": "执行当前串行条目或安全并发组",
-                    "replanner": "对账本轮结果并决定下一轮",
-                    "final_validate": "执行最终校验流水线",
-                    "callback": "修正失败组件",
-                }
-                detail = start_details.get(node_name)
+                detail = _NODE_START_DETAILS.get(node_name)
                 if detail:
                     await send_step("generating", node_name, "running", label, detail)
 

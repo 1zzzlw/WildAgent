@@ -74,7 +74,23 @@ def _revision_node(state: GenerationState) -> str:
 
 def route_design_review(state: GenerationState) -> str:
     if state.get("design_review_status") == "approved":
-        return "skeleton"
+        return "compile" if _compiles_deterministically(state) else "skeleton"
     if state.get("status") == "failed":
         return "__end__"
     return _revision_node(state)
+
+
+def _compiles_deterministically(state: GenerationState) -> bool:
+    """批准后是否走确定性编译。
+
+    **建筑一律走编译**（没有开关）——图纸一旦批准，结构/门窗/屋顶/附属构件
+    就是图纸的确定性函数，没有理由再让模型重算一遍。
+
+    唯一例外是物件（"生成一张桌子"）：编译器只认建筑的体量/立面/屋顶协议，
+    物件没有这些，必须留在 skeleton 上，否则会把一张桌子编译成一栋房子。
+    """
+
+    from app.design.resolver import is_object_plan
+
+    plan = state.get("architecture_plan")
+    return not is_object_plan(plan if isinstance(plan, dict) else None)

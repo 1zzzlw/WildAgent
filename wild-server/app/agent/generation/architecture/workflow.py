@@ -12,14 +12,12 @@ from app.agent.generation.architecture import (
     normalize_architecture_plan,
     resolve_complexity_profile,
 )
+from app.agent.generation.architecture.design_workflow import draft_design_blocks
 from app.agent.state import GenerationState
-from app.llm.client import create_llm
-from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
 from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
-from app.utils.json_extractor import extract_json_object
 
 
 class DesignContractError(RuntimeError):
@@ -169,51 +167,31 @@ async def architecture_planner(state: GenerationState) -> dict:
     error = None
     token_usage = None
     recovery_diag = None
+    block_diag: dict = {}
     try:
-        llm_started = _time.time()
-        # 精密模式下流式输出思考内容，避免“卡住很久却没有任何思考文本”。
-        use_streaming = thinking_mode and on_reasoning_delta is not None
-        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
-        messages = [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": design_request},
-        ]
-        if use_streaming:
-            async def emit_reasoning(delta: str) -> None:
-                assert on_reasoning_delta is not None
-                await on_reasoning_delta("architecture", delta)
-
-            llm_result = await stream_llm(llm, messages, on_reasoning_delta=emit_reasoning)
-        else:
-            llm_result = await invoke_llm(llm, messages)
-        llm_ms = int((_time.time() - llm_started) * 1000)
-        reply_text = llm_result.content
-        llm_chars = len(reply_text)
-        raw_plan = extract_json_object(reply_text)
-        token_usage = llm_result.token_usage
-
-        # 解析失败时做一次非思考定向格式恢复，避免偶发格式抖动丢弃整份方案。
-        if raw_plan is None and on_reasoning_delta is not None:
-            await on_reasoning_delta(
-                "architecture",
-                "\n总体方案结构化输出缺失或格式无效，正在进行一次定向格式恢复...\n",
-            )
-        if raw_plan is None:
-            from app.llm.recovery import recover_single_json
-
-            raw_plan, recovery_diag = await recover_single_json(
-                prompt,
-                design_request,
-                reply_text,
-                object_hint="包含 massing、volumes、facades、roof、component_quota 的建筑方案 JSON 对象",
-                extra_instruction=(
-                    "- 顶层必须直接包含 massing、volumes、facades、roof、component_quota；\n"
-                    "- 不要输出候选数组，只输出最终选定的单一方案对象。"
-                ),
-            )
-            token_usage = merge_token_usage(token_usage, (recovery_diag or {}).get("token_usage"))
-            if raw_plan is not None:
-                logger.warning("[architecture] 总体方案定向格式恢复成功")
+        # §1.6 首次成图：**逐块写**（设计文档 §1.6 的 plan-and-execute 那一半）。
+        # 依赖表是常量、后块只看前序定稿内容，所以"host 引用不存在的宿主"这类
+        # 悬空引用被**结构性地**消掉了，而不是等编译报错再回头改。
+        # 某块写不出来**不阻断**：留空交下游归一化兜底，缺口由 `defaulted` 如实报出。
+        block_started = _time.time()
+        draft, block_diag = await draft_design_blocks(
+            base_prompt=prompt,
+            user_request=design_request,
+            level=str(complexity_profile.get("level") or "standard"),
+            thinking_mode=thinking_mode,
+            on_reasoning_delta=on_reasoning_delta,
+            # 试算工具（§2.7）要用同一套归一化参数，否则"试算通过、正式编译不通过"
+            # 会变成一条查不出来的分叉。
+            complexity_profile=complexity_profile,
+            architecture_profile=profile,
+        )
+        llm_ms = int((_time.time() - block_started) * 1000)
+        llm_chars = sum(
+            int(item.get("llm_chars") or 0) for item in block_diag.get("blocks", [])
+        )
+        token_usage = block_diag.get("token_usage")
+        # 一块都没定稿 ⇒ 视同"没有方案"（`used_fallback` 要如实为真）。
+        raw_plan = draft or None
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[architecture] 模型服务故障，已阻断: {exc}")
@@ -282,6 +260,7 @@ async def architecture_planner(state: GenerationState) -> dict:
                 "token_usage": token_usage,
                 "recovery": recovery_diag,
                 "thinking_enabled": thinking_mode,
+                "design_blocks": block_diag,
             },
         }
     resolved_design = resolve_design(design_document).model_dump(mode="json")
@@ -313,5 +292,8 @@ async def architecture_planner(state: GenerationState) -> dict:
             "thinking_enabled": thinking_mode,
             "complexity_profile": complexity_profile,
             "total_ms": total_ms,
+            # 逐块诊断：哪几块一次过、哪几块试满上限仍未定稿。**不落这一份就等于
+            # 把"分块"唯一带来的可观测性丢掉**——出问题时只能看到"图纸不全"。
+            "design_blocks": block_diag,
         },
     }

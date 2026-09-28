@@ -1,9 +1,13 @@
 """新链（plan 驱动）的端到端集成测试。
 
 跑的是一张**真实编译的图**：真实的 classify → architecture → design_review →
-skeleton → plan → execute ⇄ replanner → final_validate 拓扑，真实的 `expand_plan`
-展开、真实的 `reconcile` 对账与有界终止判定。只把模型调用、RAG 与设计仓储换成
-确定性 stub。
+（建筑走 compile / 物件走 skeleton）→ plan → execute ⇄ replanner → final_validate 拓扑，
+真实的 `expand_plan` 展开、真实的 `reconcile` 对账与有界终止判定。
+只把模型调用、RAG、设计仓储**以及 compiler 节点**换成确定性 stub。
+
+⚠️ 桩掉 compiler 是必要的：本文件钉的是**计划调度循环**。真实编译器会从图纸算出
+一份与这里的 `_DESIGN_BRIEF` 不同的清单，用例就变成在测编译而不是测调度了
+（编译器自己的契约在 `tests/compiler/`）。
 
 三个用例分别钉住三件事：
 
@@ -171,6 +175,17 @@ class _StubWorld:
                 "status": "generating",
             }
 
+        async def compile_design(_state):
+            """与 ``skeleton`` 同形。
+
+            建筑批准后走的是 ``compile`` 节点，本用例钉的是**计划调度循环**
+            （展开 / 执行 / 对账 / 有界终止），不是编译本身——编译产物由
+            ``tests/compiler`` 钉。不桩掉它，真实编译器会产出一份与 ``_DESIGN_BRIEF``
+            不同的清单，调度用例就变成在测编译了。
+            """
+
+            return await skeleton(_state)
+
         async def validate(_state):
             return {
                 "final_blueprint": _blueprint_with(_DOOR_FRAGMENT),
@@ -186,6 +201,7 @@ class _StubWorld:
             patch.object(graph_module, "material_planner", material_plan),
             patch.object(graph_module, "design_review", design_review),
             patch.object(graph_module, "skeleton_generator", skeleton),
+            patch.object(graph_module, "compile_node", compile_design),
             patch.object(graph_module, "validate_node", validate),
             patch(
                 "app.agent.generation.component_workflow.create_component_generator",
@@ -199,7 +215,7 @@ class _StubWorld:
             # `validate` 条目消费的是校验流水线；本用例钉的是调度循环，不重复校验器自己的用例
             patch(
                 "app.services.agent_service.run_validation_pipeline",
-                lambda _blueprint: [_StubValidationResult()],
+                lambda _blueprint, **_kwargs: [_StubValidationResult()],
             ),
             patch("app.services.agent_service._final_errors", lambda _results: []),
             # plan/replanner 的模型边界用固定策略替代，其余展开、执行与对账保持真实
@@ -515,7 +531,7 @@ class ObjectChainEndToEndTest(unittest.IsolatedAsyncioTestCase):
             patch("app.agent.generation.assembly_workflow.merge_fragments_node", merge),
             patch(
                 "app.services.agent_service.run_validation_pipeline",
-                lambda _blueprint: [_StubValidationResult()],
+                lambda _blueprint, **_kwargs: [_StubValidationResult()],
             ),
             patch("app.services.agent_service._final_errors", lambda _results: []),
             patch("app.agent.plan.workflow.request_plan_strategy", plan_strategy),

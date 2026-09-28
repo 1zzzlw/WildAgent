@@ -85,7 +85,7 @@ def build_architecture_plan_prompt(
 - `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
 - 除 simple/minimal 外，该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
-- ground_pattern / upper_pattern 的数组长度必须等于 bays。ground_pattern 每项只能是 door、window、empty；upper_pattern 每项只能是 window、empty，即使建筑只有一层也禁止填写 door。
+- ground_pattern / upper_pattern 的数组长度必须等于 bays。每个槽位是开口 token：`door`／`window`／`empty`，或写成 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。形态闭集：门 swing／slide／lift，窗 swing／slide／fixed（fixed = 固定窗，不可开启；门不许写 fixed、窗不许写 lift，写错会被退回纯类型）。不写冒号时形态由系统派生。upper_pattern 只能用 window／empty，即使建筑只有一层也禁止填写 door。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
 - ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
 - 标准和高细节方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。

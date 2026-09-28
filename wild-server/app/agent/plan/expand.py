@@ -22,6 +22,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from loguru import logger
+
 from app.agent.generation.components import (
     get_implemented_components,
     resolve_component_suggestions,
@@ -115,6 +117,60 @@ def _requested_kinds(state: dict[str, Any]) -> list[str]:
     )
 
 
+def _produced_kinds(blueprint: Any) -> set[str]:
+    """骨架/编译蓝图里**已经存在**的构件类型。
+
+    建筑链批准后走确定性编译，结构/门窗/屋顶/阳台/栏杆/雨篷都是一次算完的；再为这些
+    类型派 ``generate`` 条目就是让模型把同样的东西重做一遍，还要多付一轮 merge + 校验。
+    实测（2026-09-28 真模型探针）：编译已产出 door/window/roof，plan 仍派
+    ``generate_door`` / ``generate_window`` / ``generate_roof``，白烧约 200s 模型时间，
+    且窗被生成两遍（27 → 54）。
+
+    物件链的骨架是空容器（``elements``/``components`` 皆空）⇒ 这里恒为空集，
+    ``generate`` 条目照常派发，**不改变物件链的行为**。
+    """
+
+    if not isinstance(blueprint, dict):
+        return set()
+    geometry = blueprint.get("geometry") or {}
+    return {
+        str(entity.get("type"))
+        for entity in [
+            *(geometry.get("elements") or []),
+            *(geometry.get("components") or []),
+        ]
+        if isinstance(entity, dict) and entity.get("type")
+    }
+
+
+def _drop_produced(
+    entries: list[PlanKindStrategy], state: dict[str, Any]
+) -> tuple[list[PlanKindStrategy], list[str]]:
+    """剔除"产物里已经有了"的类型，返回 ``(保留的策略, 被剔除的类型名)``。
+
+    这是**唯一**的抑制闸口，两条策略路径都从它过：
+
+    - 模型给了策略时走 ``ordered_kinds(strategy)``；
+    - 模型不可用时走确定性降级（``_requested_kinds``）。
+
+    原先只有第二条路径带这个过滤，因为当初的判据是"常规通路下产物里没有构件"；
+    建筑链改走确定性编译后该前提已不成立（编译产物就含门/窗/屋顶），
+    过滤必须提到两条路径的公共收口处，否则模型策略路径会重复派发。
+    """
+
+    produced = _produced_kinds(state.get("skeleton_blueprint"))
+    if not produced:
+        return entries, []
+    kept: list[PlanKindStrategy] = []
+    dropped: list[str] = []
+    for entry in entries:
+        if entry.kind in produced:
+            dropped.append(entry.kind)
+        else:
+            kept.append(entry)
+    return kept, dropped
+
+
 def _slot_ids_for(design_brief: Any, kind: str) -> list[str]:
     """取任意构件类型在设计清单中的精确槽位 id。"""
 
@@ -177,6 +233,14 @@ def expand_plan(
         if strategy is not None
         else [PlanKindStrategy(kind=kind) for kind in _requested_kinds(state)]
     )
+    # 产物里已有的类型一律不再派 generate——两条策略路径共用这一个闸口，
+    # 见 ``_drop_produced`` 的说明（模型策略路径原先绕过了这道过滤）。
+    entries, suppressed = _drop_produced(entries, state)
+    if suppressed:
+        logger.info(
+            f"[plan] 编译器/骨架已产出 {', '.join(sorted(suppressed))}，"
+            "不再派发这些类型的 generate 条目"
+        )
 
     labels = {config.component_type: config.label for config in get_implemented_components()}
     items: list[PlanItem] = []
@@ -280,6 +344,16 @@ def expand_plan(
                 action=f"strategy:{strategy.source}",
                 item_ids=list(generate_ids),
                 reason=strategy.notes or _strategy_reason(strategy),
+            )
+        )
+    if suppressed:
+        # 抑制也要进审计：模型"要了别的构件"与"程序没给它派"是两回事，
+        # 交付清单要能回答"模型点名 X 为什么没有条目"。
+        plan.history.append(
+            PlanHistoryEntry(
+                revision=plan.revision,
+                action="suppress:produced",
+                reason=f"产物已包含 {', '.join(sorted(suppressed))}，不再派发 generate",
             )
         )
     return plan

@@ -27,12 +27,12 @@ from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
 from langchain.agents import create_agent
-from langchain_core.callbacks import AsyncCallbackHandler
 from loguru import logger
 
 from config import config
 from app.llm.client import create_llm, message_texts as _message_texts
 from app.llm.invocation import collect_response, invoke_llm, merge_token_usage
+from app.llm.reasoning import ReasoningDeltaCallback
 from app.rag.citations import validate_answer_citations
 from app.rag.gate import RAGRetrievalRejected, infer_retrieval_purpose
 from app.rag.trace import (
@@ -160,39 +160,12 @@ def _extract_response_artifacts(
     return None, None, None
 
 
-class _ReasoningStreamCallback(AsyncCallbackHandler):
-    """从模型 token 回调中提取并适度合并真实 ``reasoning_content``。"""
+class _ReasoningStreamCallback(ReasoningDeltaCallback):
+    """**已迁到 `app/llm/reasoning.py`**（`ReasoningDeltaCallback`），这里只留别名。
 
-    def __init__(self, emit: Callable[[str], Awaitable[None]]):
-        self._emit = emit
-        self._buffer = ""
-
-    async def on_llm_new_token(
-        self,
-        token: str,
-        *,
-        chunk: Any = None,
-        **kwargs: Any,
-    ) -> None:
-        message = getattr(chunk, "message", None)
-        additional_kwargs = getattr(message, "additional_kwargs", {})
-        reasoning_delta = additional_kwargs.get("reasoning_content", "")
-        if not reasoning_delta:
-            return
-
-        self._buffer += reasoning_delta
-        if len(self._buffer) >= 24 or self._buffer.endswith(("\n", "。", "！", "？")):
-            await self.flush()
-
-    async def on_llm_end(self, response: Any, **kwargs: Any) -> None:
-        await self.flush()
-
-    async def flush(self) -> None:
-        if not self._buffer:
-            return
-        delta = self._buffer
-        self._buffer = ""
-        await self._emit(delta)
+    迁走的原因：工具循环 agent（`app/agent/plan/tool_loop.py`）也要用同一条规则，
+    而 agent 层不该"从服务层导一个私有类"。旧名保留以免打断既有导入点。
+    """
 
 
 def _run_tool(tool_fn, blueprint: dict) -> str:
@@ -218,8 +191,14 @@ def _severity_from_text(output: str) -> tuple[bool, bool]:
     return ("❌" in output, "⚠️" in output)
 
 
-def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
-    """按固定顺序执行所有校验 + 自动修正步骤，返回每步结果。"""
+def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[PipelineStepResult]:
+    """按固定顺序执行所有校验 + 自动修正步骤，返回每步结果。
+
+    ``log_steps``：交付路径要保持逐步骤日志（线上排查靠它）；编译期复用这条流水线
+    产缺陷时（``app/agent/compiler/pipeline_defects.py``，设计文档 §2.5）一次生成里
+    会调它很多次，逐步骤日志会把真正的编译诊断淹掉，所以那边传 False。
+    ⚠️ 只影响**日志**，不影响跑哪些步骤、也不影响返回的严重度。
+    """
     results: list[PipelineStepResult] = []
 
     def run_step(step: int, name: str, tool_fn, bp: dict) -> PipelineStepResult:
@@ -229,10 +208,11 @@ def run_validation_pipeline(blueprint: dict) -> list[PipelineStepResult]:
         r = PipelineStepResult(step=step, name=name, output=output,
                                has_error=has_error, has_warning=has_warning)
         results.append(r)
-        logger.info(
-            f"[Pipeline Step {step}] {name}: "
-            f"{'❌ ERROR' if has_error else '⚠️ WARN' if has_warning else '✅ OK'}"
-        )
+        if log_steps:
+            logger.info(
+                f"[Pipeline Step {step}] {name}: "
+                f"{'❌ ERROR' if has_error else '⚠️ WARN' if has_warning else '✅ OK'}"
+            )
         return r
 
     def skip_step(step: int, name: str, reason: str) -> PipelineStepResult:

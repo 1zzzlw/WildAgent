@@ -3,8 +3,11 @@
 本用例只钉两件别处没覆盖的事：
 
 1. **拓扑形态**：generate 分支经过 architecture → material_plan → design_review →
-   skeleton → plan → final_validate；图里**不再有** per-type 节点（``{ct}_gen`` /
-   ``{ct}_val``）与旧计划层节点。
+   （建筑走 compile / 物件走 skeleton）→ plan → final_validate；图里**不再有**
+   per-type 节点（``{ct}_gen`` / ``{ct}_val``）与旧计划层节点。
+   ⚠️ 本类里的 ``_compile`` / ``_skeleton`` 都是桩件：**节点内部**的校验、白名单、
+   几何预检一行都不执行（真实链路见 ``tests/compiler/test_compile_wiring.py`` 与
+   ``tests/agent/test_plan_chain_e2e.py``）。
 2. **旁路在分类处收尾**：chat / edit 直接结束，不进生成链。
 
 条目级执行循环由 ``test_plan_chain_e2e.py`` 钉，这里只把 plan 桩成空计划。
@@ -56,6 +59,17 @@ async def _skeleton(_state: dict) -> dict:
     }
 
 
+async def _compile(_state: dict) -> dict:
+    """与 ``_skeleton`` 同形：本用例钉的是**拓扑**，编译内容由 tests/compiler 钉。"""
+
+    return {
+        "skeleton_blueprint": {"meta": {"name": "graph"}, "geometry": {"elements": []}},
+        "suggested_components": [],
+        "design_brief": {},
+        "status": "generating",
+    }
+
+
 async def _plan(_state: dict) -> dict:
     """空计划：展开为 0 条条目，图应直接收尾到 final_validate。"""
 
@@ -82,6 +96,7 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             patch.object(graph_module, "material_planner", _material_plan),
             patch.object(graph_module, "design_review", _design_review),
             patch.object(graph_module, "skeleton_generator", _skeleton),
+            patch.object(graph_module, "compile_node", _compile),
             patch.object(graph_module, "plan_node", _plan),
             patch.object(graph_module, "validate_node", _validate),
         )
@@ -108,6 +123,7 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
             "material_plan",
             "design_review",
             "skeleton",
+            "compile",
             "plan",
             "execute",
             "replanner",

@@ -3,7 +3,6 @@
 
 基于 wild-compiler/componentRegistry.ts 的已注册组件。
 新增组件只需在此添加一行配置。
-所有 11 种组件均已实现（Phase 2 扩展完成）。
 """
 from dataclasses import dataclass, field
 
@@ -45,7 +44,6 @@ class ComponentConfig:
 
 
 #: 预取知识达到该长度就认为"字段约束已经来自知识库"，不再注入代码里的静态规则
-#: （《动态节点设计规划》§2.4：per-type 静态规则必须下沉进知识库）。
 #: 代码规则从此是**兜底**：检索为空或命中的知识太薄时才补，并在诊断里如实记录来源。
 KNOWLEDGE_SUFFICIENT_CHARS = 600
 

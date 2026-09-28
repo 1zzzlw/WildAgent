@@ -23,6 +23,7 @@ from .contracts import (
     RuleTrace,
     utc_now_iso,
 )
+from .openings import opening_kind
 
 
 def _stable_hash(document: DesignDocument) -> str:
@@ -446,7 +447,10 @@ def resolve_design(document: DesignDocument | dict[str, Any]) -> ResolvedDesign:
         for level in levels:
             floor = level.index
             pattern = facade.ground_pattern if floor == 1 else facade.upper_pattern
-            for index, opening_type in enumerate(pattern, start=1):
+            for index, raw_opening in enumerate(pattern, start=1):
+                # §3.3：pattern 项是 token（`"window"` / `"door:slide"`）。这里只用**类型**——
+                # 把形态写进 `id` / `type` 会让下游按 id 对齐槽位时分叉。
+                opening_type = opening_kind(raw_opening)
                 if opening_type == "empty":
                     continue
                 width = min(

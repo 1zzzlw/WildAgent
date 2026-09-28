@@ -19,6 +19,7 @@
 """
 
 import json
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -34,32 +35,51 @@ class _FakeSpecLoader:
         return ""
 
 
-class _FakeLLMResult:
-    def __init__(self, content: str) -> None:
-        self.content = content
-        self.token_usage = {"input": 1, "output": 1, "total": 2}
-
-
+#: 分块起草（§1.6）后，同一个桩返回体会被**每个块各取一次**它负责的字段。
+#: 所以这里必须把块契约要求的字段都写全：
+#: `massing` 块要求 `massing` + `volumes` 同时在，只给 `massing` 会被判"缺少字段"。
 _CANNED_RAW_PLAN = {
     "massing": {"floors": 2},
+    "volumes": [
+        {
+            "id": "v1",
+            "role": "primary",
+            "x": 0,
+            "z": 0,
+            "width": 12,
+            "depth": 10,
+            "start_floor": 1,
+            "end_floor": 2,
+        }
+    ],
     "roof": {"type": "gable"},
 }
 
 
-async def _fake_invoke_llm(_llm, _messages):
-    return _FakeLLMResult(json.dumps(_CANNED_RAW_PLAN, ensure_ascii=False))
+async def _fake_run_tool_loop(**_kwargs):
+    """桩件打在**真正的调用缝**上。
+
+    🔴 §1.6 的分块起草默认走 `run_tool_loop`（设计块可以调试算工具，§2.7）。
+    仍把桩件打在 `invoke_llm` 上的话，测试会绕过桩件去**真的连模型**并挂在那里——
+    这个坑比"用例红了"难查得多。`invoke_llm` 只在流式思考通道上用到。
+    """
+
+    return SimpleNamespace(
+        text=json.dumps(_CANNED_RAW_PLAN, ensure_ascii=False),
+        trace=[],
+        diag={"token_usage": {"input": 1, "output": 1, "total": 2}},
+    )
 
 
 def _node_patches():
+    # 🔴 patch 目标是**真正调模型的那一层**：`create_llm`/`invoke_llm` 随 §1.6 的
+    # 分块起草搬到了 `design_workflow`，`workflow` 里已没有这两个名字；
+    # 而默认通道进一步改成了工具循环（`app.agent.plan.tool_loop.run_tool_loop`）。
     return (
         patch.object(agent_service, "spec_loader", _FakeSpecLoader()),
         patch(
-            "app.agent.generation.architecture.workflow.create_llm",
-            lambda **_kwargs: object(),
-        ),
-        patch(
-            "app.agent.generation.architecture.workflow.invoke_llm",
-            _fake_invoke_llm,
+            "app.agent.plan.tool_loop.run_tool_loop",
+            _fake_run_tool_loop,
         ),
     )
 
@@ -68,8 +88,8 @@ def _node_patches():
 async def test_architecture_node_completes_without_llm() -> None:
     """节点必须能端到端跑完，并产出一份可用于审核的总体方案。"""
 
-    spec_loader, create_llm, invoke_llm = _node_patches()
-    with spec_loader, create_llm, invoke_llm:
+    spec_loader, tool_loop = _node_patches()
+    with spec_loader, tool_loop:
         update = await architecture_planner({"user_message": "生成一个两层别墅"})
 
     assert "architecture_plan" in update, update
@@ -84,8 +104,8 @@ async def test_architecture_node_completes_without_llm() -> None:
 async def test_architecture_node_records_profile_diagnostics() -> None:
     """诊断字段必须来自真实 profile，而不是写死的常量。"""
 
-    spec_loader, create_llm, invoke_llm = _node_patches()
-    with spec_loader, create_llm, invoke_llm:
+    spec_loader, tool_loop = _node_patches()
+    with spec_loader, tool_loop:
         update = await architecture_planner({"user_message": "生成一个两层欧式别墅"})
 
     diag = update["architecture_diag"]
@@ -120,10 +140,10 @@ async def test_architecture_node_with_reasoning_callback() -> None:
     async def _collect(node: str, text: str) -> None:
         seen.append((node, text))
 
-    spec_loader, create_llm, invoke_llm = _node_patches()
+    spec_loader, tool_loop = _node_patches()
     token = bind_reasoning_callback(_collect)
     try:
-        with spec_loader, create_llm, invoke_llm:
+        with spec_loader, tool_loop:
             update = await architecture_planner({"user_message": "生成一个两层别墅"})
     finally:
         reset_reasoning_callback(token)
@@ -145,10 +165,10 @@ async def test_architecture_node_with_reasoning_callback_and_feedback() -> None:
     async def _collect(node: str, text: str) -> None:
         seen.append((node, text))
 
-    spec_loader, create_llm, invoke_llm = _node_patches()
+    spec_loader, tool_loop = _node_patches()
     token = bind_reasoning_callback(_collect)
     try:
-        with spec_loader, create_llm, invoke_llm:
+        with spec_loader, tool_loop:
             update = await architecture_planner(
                 {
                     "user_message": "生成一个两层别墅",

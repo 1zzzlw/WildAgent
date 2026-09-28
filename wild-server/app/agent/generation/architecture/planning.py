@@ -8,6 +8,7 @@ from typing import Any
 
 from app.agent.generation.components import get_implemented_components
 from app.agent.knowledge.policy import term_is_requested
+from app.design.openings import opening_kind, opening_token, split_opening
 
 from .profile import (
     _DETAIL_COMPONENT_QUOTAS,
@@ -262,9 +263,23 @@ def _fallback_plan(
 def _normalize_pattern(
     value: object, bays: int, fallback: list[str], *, allowed_types: set[str] | None = None,
 ) -> list[str]:
+    """把一面的 pattern 压成 ``bays`` 个**合法开口 token**。
+
+    🔴 token 的解析一律走 `app.design.openings.split_opening`（§3.3）——**不在这里 `split(":")`**：
+    契约层、本函数、立面编译、`resolver` 四处读同一串东西，分头解析必然分叉（且不报错）。
+
+    🔴 非法形态**只丢形态、不丢开口**：``"window:casement"`` → ``"window"``，
+    照常生成、形态由编译器派生。旧值 ``"window"`` 的行为一个字节不改。
+    """
+
     raw = value if isinstance(value, list) else fallback
     allowed = _OPENING_TYPES if allowed_types is None else allowed_types
-    pattern = [str(item).lower() if str(item).lower() in allowed else "empty" for item in raw]
+    pattern: list[str] = []
+    for item in raw:
+        kind, form = split_opening(item)
+        if kind not in allowed:
+            kind, form = "empty", None
+        pattern.append(opening_token(kind, form))
     if len(pattern) < bays:
         pattern.extend(["empty"] * (bays - len(pattern)))
     return pattern[:bays]
@@ -285,9 +300,10 @@ def _facade_opening_counts(
         for pattern in layers:
             if not isinstance(pattern, list):
                 continue
-            for opening_type in pattern:
-                if opening_type in counts:
-                    counts[opening_type] += 1
+            for raw_opening in pattern:
+                kind = opening_kind(raw_opening)
+                if kind in counts:
+                    counts[kind] += 1
     return counts
 
 
@@ -609,9 +625,15 @@ def normalize_architecture_plan(
                 entrance_bay = int(_clamp_number(item.get("entrance_bay"), 1, bays, base.get("entrance_bay", 1)))
             else:
                 entrance_bay = None
-        if profile["require_front_entrance"] and face == "front" and "door" not in ground:
+        if (
+            profile["require_front_entrance"]
+            and face == "front"
+            and not any(opening_kind(token) == "door" for token in ground)
+        ):
             if entrance_bay is None:
                 entrance_bay = (bays + 1) // 2  # 默认放在中间
+            # 系统补的主门不给形态：让编译器派生（`"door"` 而不是 `"door:swing"`），
+            # 这样"没表态"和"表态成 swing"在诊断上仍然区分得开。
             ground[entrance_bay - 1] = "door"
         
         facade_data = {

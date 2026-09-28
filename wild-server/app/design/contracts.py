@@ -11,6 +11,8 @@ from typing import Any, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .openings import OPENING_KINDS, opening_kind, split_opening
+
 
 def utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -76,20 +78,44 @@ class StructuralGridDecision(ContractModel):
     z_bays: int = Field(ge=1, le=32)
 
 
-OpeningKind = Literal["door", "window", "empty"]
+#: 一个立面槽位的 token：``"window"`` / ``"door:slide"`` / ``"empty"``。
+#:
+#: 🔴 **不再是一段 `Literal`**：形态（§3.3）是"类型 × 形态"的开放组合，写成 Literal 只会
+#: 漏取值。取值域是**文法**，唯一定义在 :mod:`app.design.openings`，由下面的
+#: `patterns_use_legal_tokens` 就地校验。
+OpeningToken = str
 
 
 class FacadeDecision(ContractModel):
     bays: int = Field(ge=1, le=32)
     entrance_bay: int | None = Field(default=None, ge=1, le=32)
-    ground_pattern: list[OpeningKind]
-    upper_pattern: list[OpeningKind]
+    ground_pattern: list[OpeningToken]
+    upper_pattern: list[OpeningToken]
+
+    @field_validator("ground_pattern", "upper_pattern")
+    @classmethod
+    def patterns_use_legal_tokens(cls, value: list[str]) -> list[str]:
+        """只校验**类型**合法；形态名不合法**不在这里拒**。
+
+        🔴 两类问题要分开（红线"只标记不阻断"）：类型认不出（``"garage"``）是我们自己不认，
+        该拒；**形态名认不出**（``"window:casement"``）是模型用了个别的词，
+        归一化会把它降级成纯类型、照常生成——在这里拒等于因为一个形容词拼错就掐掉整轮生成。
+        """
+
+        for token in value:
+            kind = opening_kind(token)
+            if kind == "empty" and str(token).strip().lower() != "empty":
+                raise ValueError(
+                    f"立面槽位 {token!r} 不是合法开口：类型只能是 {'/'.join(OPENING_KINDS)}，"
+                    "可写成 '<type>' 或 '<type>:<form>'"
+                )
+        return value
 
     @model_validator(mode="after")
     def patterns_match_bays(self):
         if len(self.ground_pattern) != self.bays or len(self.upper_pattern) != self.bays:
             raise ValueError("立面 pattern 长度必须与 bays 相同")
-        if "door" in self.upper_pattern:
+        if any(opening_kind(token) == "door" for token in self.upper_pattern):
             raise ValueError("upper_pattern 不允许放置 door")
         if self.entrance_bay is not None and self.entrance_bay > self.bays:
             raise ValueError("entrance_bay 不能超出 bays")
@@ -405,11 +431,13 @@ class DesignDocument(ContractModel):
         opening_counts = {"door": 0, "window": 0}
         for facade in decisions.facades.values():
             for opening in facade.ground_pattern:
-                if opening in opening_counts:
-                    opening_counts[opening] += 1
+                kind = opening_kind(opening)
+                if kind in opening_counts:
+                    opening_counts[kind] += 1
             for opening in facade.upper_pattern:
-                if opening in opening_counts:
-                    opening_counts[opening] += massing.modeled_floors - 1
+                kind = opening_kind(opening)
+                if kind in opening_counts:
+                    opening_counts[kind] += massing.modeled_floors - 1
         for opening, count in opening_counts.items():
             quota = decisions.component_quota.get(opening)
             if quota is not None and not quota.min <= count <= quota.max:

@@ -172,23 +172,27 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
     plan = expand_plan(state, strategy=strategy).add_llm_calls(1)
     stats = terminal_stats(plan)
     first = poll_runnable(plan)
+    # 策略要的 ≠ 实际派发的：产物里已有的类型会被 ``expand_plan`` 抑制掉。诊断如实记两边，
+    # 否则"模型点名了门却没派门"在审计里看不出来。
+    dispatched_kinds = sorted({item.kind for item in plan.items if item.op == "generate"})
 
     logger.info(
-        f"[plan] 策略来源 {strategy.source}（{len(strategy.kinds)} 类构件）→ "
-        f"展开 {stats['total']} 条条目（档位 {plan.detail_level}）："
-        f"{[item.label for item in plan.items[:6]]}" + ("..." if stats["total"] > 6 else "")
+        f"[plan] 策略来源 {strategy.source}（要求 {len(strategy.kinds)} 类 → "
+        f"派发 {dispatched_kinds}）→ 展开 {stats['total']} 条条目"
+        f"（档位 {plan.detail_level}）：{[item.label for item in plan.items[:6]]}"
+        + ("..." if stats["total"] > 6 else "")
     )
     if callback:
         unsupported = stats["unsupported"]
+        # 只播报**真的进了计划**的类型：被抑制的类型播出去等于对用户撒谎。
+        planned = [entry for entry in strategy.kinds if entry.kind in set(dispatched_kinds)]
         parallel_groups = {
             entry.parallel_group
-            for entry in strategy.kinds
+            for entry in planned
             if entry.execution_mode == "parallel" and entry.parallel_group
         }
         batch_notes = [
-            f"{entry.kind}：{entry.batch_reason}"
-            for entry in strategy.kinds
-            if entry.batch_reason
+            f"{entry.kind}：{entry.batch_reason}" for entry in planned if entry.batch_reason
         ]
         await callback(
             "plan",
@@ -205,6 +209,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         "plan_diag": {
             **diag,
             "items": stats["total"],
+            "dispatched_kinds": dispatched_kinds,
             "terminal_stats": stats,
             "model_calls": 1,
             "total_ms": int((time.time() - started) * 1000),

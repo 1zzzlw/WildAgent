@@ -8,9 +8,12 @@ import math
 from typing import Any
 
 from app.agent.generation.spatial_geometry import snap_to_grid
+from app.design.openings import FIXED_FORM, INTERACTION_FORMS, split_opening
 
 from .recipes import load_curtain_wall_parameters
 from .skeleton import _schematic_volume_ranges
+
+
 def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
     start = wall.get("from")
     end = wall.get("to")
@@ -117,6 +120,37 @@ def _stable_unit_interval(value: str) -> float:
     """把稳定标识映射到 [0, 1]，为未指定参数提供可复现的小幅变化。"""
     digest = hashlib.sha256(value.encode("utf-8")).digest()
     return int.from_bytes(digest[:4], "big") / 0xFFFFFFFF
+
+
+def _apply_opening_form(item: dict[str, Any], form: str, seed: str) -> None:
+    """把图纸说的形态落到构件的 ``interaction`` 上（设计文档 §3.3）。
+
+    🔴 **只覆写 `mode`，不重建整个 `interaction`**：同 mode 下的 `hingeSide` / `openAngle` /
+    `openDistance` 都是有效细节，模型或派生已经给好了，扔掉就是丢信息。
+    切到非平开的 mode 时才清掉**平开专有**的两个键——留着它们会让引擎按"绕轴转"解释推拉门。
+
+    🔴 ``fixed`` 表示**不可开启**：把 `interaction` 整个摘掉。`windowComponent` 不要求
+    `interaction`（只有 `doorComponent` 要求），而门那一类的形态集里本来就没有 `fixed`
+    （`app.design.openings` 会把它降级），所以这里造不出"门缺 interaction"的非法产物。
+    """
+
+    if form == FIXED_FORM:
+        item.pop("interaction", None)
+        return
+    if form not in INTERACTION_FORMS:
+        return
+    raw_interaction = item.get("interaction")
+    interaction = dict(raw_interaction) if isinstance(raw_interaction, dict) else {}
+    interaction["mode"] = form
+    if form == "swing":
+        interaction.setdefault(
+            "hingeSide", "left" if _stable_unit_interval(seed) < 0.5 else "right"
+        )
+        interaction.setdefault("openAngle", 90)
+    else:
+        interaction.pop("hingeSide", None)
+        interaction.pop("openAngle", None)
+    item["interaction"] = interaction
 
 
 def _default_entrance_dimensions(slot_id: str, wall_height: float) -> tuple[float, float]:
@@ -583,9 +617,12 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             })
             slots.extend(wall_slots)
             balcony_access_remaining -= 1
-        for bay_index, opening_type in enumerate(pattern[:bays]):
+        for bay_index, raw_opening in enumerate(pattern[:bays]):
             if is_balcony_access_wall:
                 break
+            # §3.3：pattern 项是 token（`"window"` / `"door:slide"`）。**只解析一次**——
+            # 下面用的全是类型；形态单独放进槽位，由 `conform_openings_to_slots` 消费。
+            opening_type, opening_form = split_opening(raw_opening)
             if opening_type not in {"door", "window"}:
                 continue
             if (
@@ -656,6 +693,9 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
                 "width": round(width, 3),
                 "height": round(max(0.8, height), 3),
             }
+            if opening_form:
+                # 图纸显式说了形态才带上；没说是 `None` ⇒ 下游走"编译器派生"那条老路。
+                slot["form"] = opening_form
             if curtain_wall and opening_type == "window":
                 slot["vertical_mullions"] = _curtain_wall_mullions(width)
                 slot["horizontal_mullions"] = _curtain_wall_mullions(height)
@@ -944,8 +984,9 @@ def conform_openings_to_slots(
                 item["horizontalMullions"] = int(slot.get("horizontal_mullions", 0))
                 item["frameMaterial"] = frame_material
                 item["glassMaterial"] = glass_material
+            seed = f"{item.get('id', slot['id'])}:frame"
             if opening_type == "door":
-                variant = _stable_unit_interval(f"{item.get('id', slot['id'])}:frame")
+                variant = _stable_unit_interval(seed)
                 item.setdefault("frameWidth", round(0.065 + variant * 0.025, 3))
                 item.setdefault("frameMaterial", frame_material)
                 item.setdefault("leafMaterial", leaf_material)
@@ -954,6 +995,10 @@ def conform_openings_to_slots(
                     "hingeSide": "left" if variant < 0.5 else "right",
                     "openAngle": 90,
                 })
+            # 🔴 形态**排在派生默认之后**：图纸显式说了就覆盖刚 setdefault 出来的 swing，
+            # 没说就一个字节不改（老行为）。门窗共用同一条规则——**不按构件类型分支**。
+            if slot.get("form"):
+                _apply_opening_form(item, str(slot["form"]), seed)
             result_openings.append(item)
             stats["snapped"] += 1
     return [*non_openings, *result_openings], stats

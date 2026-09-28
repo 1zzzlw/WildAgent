@@ -967,7 +967,8 @@ export const useAgentStore = defineStore('agent', () => {
     }
   }
 
-  // 节点名→中文标签（与后端 _node_label 对应）
+  // 节点名→中文标签（与后端 ws_agent._NODE_LABELS 对应；正常路径后端事件自带 label，
+  // 此表是兜底——后端加节点时两张表要同批改，见 tests/api/test_ws_step_labels.py）
   const _COMP_LABELS: Record<string, string> = {
     door: '门', window: '窗', roof: '屋顶',
     railing: '栏杆', canopy: '雨棚', balcony: '阳台',
@@ -975,12 +976,23 @@ export const useAgentStore = defineStore('agent', () => {
     cornice: '檐口', chimney: '烟囱',
   }
   const _NODE_LABELS: Record<string, string> = {
+    classifier: '意图分类',
+    chat: '知识问答',
+    patch: '场景修改',
+    architecture: '总体建筑方案',
+    object_design: '物件方案',
+    material_plan: '材质方案',
+    design_convergence: '设计收敛',
+    design_review: '建筑设计审核',
+    skeleton: '主体装配',
+    compile: '确定性编译',
     planning_research: '计划研究',
     planner: '执行计划',
     plan_validator: '计划校验',
     plan_review: '计划审核',
-    architecture: '总体建筑方案',
-    skeleton: '主体装配',
+    plan: '执行计划',
+    execute: '执行计划条目',
+    replanner: '计划对账',
     merge: '合并', final_validate: '最终校验', callback: '修正',
   }
   function _resolveLabel(nodeName: string): string {

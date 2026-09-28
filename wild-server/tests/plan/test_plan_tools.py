@@ -32,6 +32,7 @@ from app.agent.plan.tool_loop import (
     TOOL_LOOP_RECURSION_LIMIT,
     _CallBudget,
     _available_tools,
+    _sum_usage,
     _wrap_with_budget,
     extract_trace,
     run_tool_loop,
@@ -237,11 +238,118 @@ def test_real_agent_finishes_after_three_tool_rounds():
     assert bindings == [["lookup"], ["lookup"], ["lookup"], []]
 
 
+def test_stream_tokens_reaches_the_model_factory():
+    """``stream_tokens=True`` 必须真的开在模型上——否则 ``on_llm_new_token`` 一次都不触发。
+
+    转发思考过程靠的是**模型级**回调（挂在 ``config["callbacks"]`` 上），而回调只在
+    模型开了流式时才有 token 可发。这两件事必须一起成立，缺一个就是"静默没有思考文本"。
+    """
+
+    from app.agent.plan.tool_loop import build_tool_agent
+
+    seen: list[dict] = []
+
+    def factory(**kwargs):
+        seen.append(kwargs)
+        return object()
+
+    build_tool_agent([], system_prompt="s", create_llm_fn=factory)
+    assert seen[-1]["streaming"] is False, "默认不开流式（普通工具循环不需要逐 token 回调）"
+
+    build_tool_agent([], system_prompt="s", create_llm_fn=factory, stream_tokens=True)
+    assert seen[-1]["streaming"] is True
+
+
+def test_reasoning_callback_is_attached_and_flushed_on_failure():
+    """转发器要交给 agent 的 config；**失败路径也要 flush**（否则界面上少最后半句）。
+
+    ``flush`` 写在 ``finally`` 里是一次修过的缺陷：异常直接 exit 时，
+    缓冲里攒着的那段思考过程会被丢掉，表现为"思考到一半突然没了"。
+    """
+
+    from app.llm.reasoning import ReasoningDeltaCallback
+
+    captured: list[dict] = []
+
+    class Agent:
+        async def astream(self, payload, config, stream_mode):
+            captured.append(config)
+            callback = config["callbacks"][0]
+            assert isinstance(callback, ReasoningDeltaCallback)
+            # 攒够 24 字符才发；这里只喂一个短串，逼出 finally 里的 flush。
+            await callback.on_llm_new_token("t", chunk=_Chunk("短"))
+            raise RuntimeError("boom")
+            yield  # noqa: B901 —— 有 `yield` 才是 async generator，否则 `async for` 直接 TypeError
+
+    emitted: list[str] = []
+
+    async def emit(delta: str) -> None:
+        emitted.append(delta)
+
+    result = asyncio.run(
+        run_tool_loop(
+            system_prompt="s",
+            user_message="u",
+            tool_specs=[],
+            agent=Agent(),
+            on_reasoning_delta=emit,
+        )
+    )
+
+    assert captured, "config 里必须带 callbacks"
+    assert result.diag["error"] == "boom"
+    assert emitted == ["短"], "finally 里必须 flush 掉缓冲"
+
+
+def test_no_callback_when_the_caller_does_not_ask_for_reasoning():
+    """没人要思考过程时不挂回调——挂了就等于给每次工具循环白付一份流式开销。"""
+
+    captured: list[dict] = []
+
+    class Agent:
+        async def astream(self, payload, config, stream_mode):
+            captured.append(config)
+            yield {"messages": [_Message("ai", content="ok")]}
+
+    result = asyncio.run(
+        run_tool_loop(system_prompt="s", user_message="u", tool_specs=[], agent=Agent())
+    )
+
+    assert "callbacks" not in captured[0]
+    assert result.text == "ok"
+
+
+class _Chunk:
+    def __init__(self, reasoning: str):
+        self.message = _Message("ai", additional_kwargs={"reasoning_content": reasoning})
+
+
 class _Message:
     def __init__(self, type_: str, **kwargs):
         self.type = type_
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+
+def test_tool_loop_token_usage_is_summed_and_normalized():
+    """工具循环会**多次**调模型，用量必须逐条累加，且键名归一化到 ``{input,output,total}``。
+
+    累加漏了就会少算到只剩最后一次；键名不归一化（``prompt_tokens`` vs ``input_tokens``）
+    则下游 ``merge_token_usage`` 读不到、用量静默归零 —— 两种都是"看起来有账、其实是假的"。
+    """
+
+    messages = [
+        _Message("ai", content="", usage_metadata={"input_tokens": 10, "output_tokens": 2, "total_tokens": 12}),
+        _Message("tool", content="结果"),
+        # 同一个会话里两种键名混用（不同端点/中间件都可能）——必须一起认。
+        _Message("ai", content="最终", usage_metadata={"prompt_tokens": 5, "completion_tokens": 3}),
+        _Message("ai", content="没有用量的那条", usage_metadata=None),
+    ]
+
+    assert _sum_usage(messages) == {"input": 15, "output": 5, "total": 20}
+    # 一条都取不到 → None（不伪造数字）。
+    assert _sum_usage([_Message("ai", content="x")]) is None
+    assert _sum_usage([]) is None
 
 
 def test_trace_records_tool_name_and_output_size():

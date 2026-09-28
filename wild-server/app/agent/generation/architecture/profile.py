@@ -8,10 +8,13 @@ import re
 from typing import Any
 
 from app.agent.knowledge.policy import term_is_requested
+from app.design.openings import OPENING_KINDS
 
 
 _FACES = ("front", "back", "left", "right")
-_OPENING_TYPES = {"door", "window", "empty"}
+#: 开口类型闭集。🔴 **从 `app.design.openings` 派生**，不在这里再写一遍——
+#: 同一个闭集两处写着，迟早一处加了另一处没加（`MEMORY.md`：单一事实源）。
+_OPENING_TYPES = frozenset(OPENING_KINDS)
 _SUPPORTED_ROOF_TYPES = {
     "flat", "gable", "hip", "dome", "chinese_curved", "chinese_pagoda",
 }

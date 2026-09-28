@@ -25,6 +25,7 @@ from typing import Any, Callable
 from loguru import logger
 
 from app.llm.client import content_as_text
+from app.llm.reasoning import ReasoningDeltaCallback
 
 #: 单条目内允许的工具调用总数。3 次足够"补一次检索 + 自查一次"，再多就是模型在绕圈。
 MAX_TOOL_CALLS = 3
@@ -117,8 +118,15 @@ def build_tool_agent(
     system_prompt: str,
     thinking_mode: bool = False,
     create_llm_fn: Callable[..., Any] | None = None,
+    stream_tokens: bool = False,
 ) -> tuple[Any, dict[str, int]]:
-    """按条目工具集创建一个无会话状态的 Agent，返回 ``(agent, 每工具预算)``。"""
+    """按条目工具集创建一个无会话状态的 Agent，返回 ``(agent, 每工具预算)``。
+
+    ``stream_tokens``：模型是否开流式传输。**只有需要转发思考过程时才开**——
+    开了才拿得到 ``on_llm_new_token``（``ReasoningDeltaCallback`` 就挂在那上面），
+    也才能让设计块的思考模式既是"有思考过程"又是"有试算工具"。
+    默认关：普通工具循环不需要逐 token 回调，多一层流式只是多一份开销。
+    """
 
     from langchain.agents import create_agent
     from langchain.agents.middleware import wrap_model_call
@@ -143,7 +151,7 @@ def build_tool_agent(
         return await handler(request.override(tools=available))
 
     agent = create_agent(
-        model=llm_factory(enable_thinking=thinking_mode, streaming=False),
+        model=llm_factory(enable_thinking=thinking_mode, streaming=stream_tokens),
         tools=tools,
         system_prompt=system_prompt,
         middleware=[enforce_tool_budget],
@@ -184,6 +192,32 @@ def extract_trace(messages: Any, *, limit: int = 20) -> list[dict[str, Any]]:
     return trace[-limit:]
 
 
+def _sum_usage(messages: Any) -> dict[str, Any] | None:
+    """从 agent 消息里累加 token 用量，输出规范化后的 ``{input, output, total}``。
+
+    工具循环会**多次**调用模型（每次工具往返都是一次完整请求），所以用量必须逐条累加，
+    否则"这一轮花了多少 token"会少算到只剩最后一次。
+
+    🔴 **先逐条归一化、再累加**，不能"先把原始键加总、最后归一化一次"：
+    模型侧同一会话里会混用两种键名（``prompt_tokens`` / ``input_tokens``），
+    ``_normalize_usage`` 遇到两者并存时只认前者 ⇒ 先加总再归一化会把其中一类**整批丢掉**
+    （实测：10+5 变成 5）。
+    归一化与合并都复用 ``invocation`` 里的实现（本仓库唯一的那份规则函数），
+    不在这里再写一遍（`MEMORY.md` 里"重复即风险"那条）。
+    拿不到 ``usage_metadata``（轻量桩件、部分兼容端点）时返回 ``None``，**不伪造数字**。
+    """
+
+    from app.llm.invocation import _normalize_usage, merge_token_usage
+
+    total: dict[str, Any] | None = None
+    for message in messages if isinstance(messages, list) else []:
+        usage = getattr(message, "usage_metadata", None)
+        if not isinstance(usage, dict):
+            continue
+        total = merge_token_usage(total, _normalize_usage(usage))
+    return total
+
+
 async def run_tool_loop(
     *,
     system_prompt: str,
@@ -191,25 +225,40 @@ async def run_tool_loop(
     tool_specs: list[Any],
     thinking_mode: bool = False,
     agent: Any = None,
+    on_reasoning_delta: Any = None,
 ) -> ToolRunResult:
     """执行有界工具循环，返回模型最终文本与工具轨迹。
 
     超限不抛异常：预算是给模型的**约束**，不是给系统的故障。真正的失败判定交给
     处理器（拿不到可解析产物才算这一轮失败）。
+
+    ``on_reasoning_delta(delta: str)``：给了就转发思考过程。此前这条路走不通是因为
+    工具循环经由 ``create_agent``，「图级流」拿不到 token 级 delta——但**回调是模型级的**，
+    挂在 ``config["callbacks"]`` 上照样生效（`agent_service` 的最终回答 agent 早就这么用）。
+    于是"思考过程"与"试算工具"不再二选一（§2.7 原先把它们做成了互斥）。
+    给了它就必须同时让模型 ``stream_tokens=True``，否则 ``on_llm_new_token`` 一次都不触发。
     """
 
     if agent is None:
         agent, budgets = build_tool_agent(
-            tool_specs, system_prompt=system_prompt, thinking_mode=thinking_mode
+            tool_specs,
+            system_prompt=system_prompt,
+            thinking_mode=thinking_mode,
+            stream_tokens=on_reasoning_delta is not None,
         )
     else:  # 测试注入：直接用现成 agent，预算仍按声明生效
         budgets = {spec.name: spec.max_calls for spec in tool_specs}
 
     messages: list[Any] = []
     error = None
+    callback = (
+        ReasoningDeltaCallback(on_reasoning_delta) if on_reasoning_delta is not None else None
+    )
     try:
         payload = {"messages": [{"role": "user", "content": user_message}]}
-        config = {"recursion_limit": TOOL_LOOP_RECURSION_LIMIT}
+        config: dict[str, Any] = {"recursion_limit": TOOL_LOOP_RECURSION_LIMIT}
+        if callback is not None:
+            config["callbacks"] = [callback]
         if hasattr(agent, "astream"):
             async for snapshot in agent.astream(payload, config=config, stream_mode="values"):
                 messages = snapshot.get("messages", messages)
@@ -219,6 +268,10 @@ async def run_tool_loop(
     except Exception as exc:
         logger.warning(f"[tool_loop] 工具型调用失败: {exc}")
         error = str(exc)
+    finally:
+        # 失败/超限时也要把缓冲里最后半句发出去，否则界面上会缺一截思考过程。
+        if callback is not None:
+            await callback.flush()
 
     trace = extract_trace(messages)
     text = ""
@@ -233,6 +286,7 @@ async def run_tool_loop(
         trace=trace,
         diag={
             "tool_calls": len(trace), "budgets": budgets,
+            "token_usage": _sum_usage(messages),
             **({"error": error} if error else {}),
             "transcript": {
                 "system_prompt": system_prompt,

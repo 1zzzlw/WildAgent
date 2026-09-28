@@ -10,11 +10,16 @@
            └─ target_kind=object       → object_design（物件方案）
                     （以上两条合流）
                     → material_plan（材质方案）
+                    → design_convergence（编译可行性收敛环；物件链穿过）
                     → design_review（图纸人工审核，interrupt）
-                    → skeleton（骨架 + 组件建议 + 设计清单）
+                    → skeleton | compile（物件走骨架，建筑走确定性编译）
                     → plan（大模型决定批次/并发，程序校验并展开条目）
                     → execute ⇄ replanner（逐条目执行、对账、有界终止）
                     → final_validate（校验 → 可选的定向回调修复）→ END
+
+**冻结点（`design_review`）必须排在可行性验证之后**：收敛环在人工审核前先跑
+`compile_design(dry_run)`（毫秒级纯函数），把"编不出来"的图纸改到能编为止。
+否则人工刚批准的设计可以被编译器一票否决、且没有修订通道（见 §1.3）。
 
 **"建筑"与"物件"只在方案层分叉**：交付物不是建筑时（"生成一个桌子"），
 强行产出 `massing/volumes/facades/roof` 就是把用户没要的房子塞回去。
@@ -38,6 +43,8 @@ from app.agent.nodes.architecture_node import architecture_planner
 from app.agent.nodes.callback_node import callback_node
 from app.agent.nodes.chat_node import chat_node
 from app.agent.nodes.classifier_node import classifier_node
+from app.agent.nodes.compile_node import compile_node
+from app.agent.nodes.design_convergence_node import design_convergence
 from app.agent.nodes.design_review_node import design_review, route_design_review
 from app.agent.nodes.execute_node import execute_node
 from app.agent.nodes.material_plan_node import material_planner
@@ -115,6 +122,11 @@ def _after_object_design(state: GenerationState) -> str:
 
 
 def _after_material_plan(state: GenerationState) -> str:
+    return "__end__" if _terminal(state) else "design_convergence"
+
+
+def _after_design_convergence(state: GenerationState) -> str:
+    # 收敛环不产出失败：没收敛也只记进 design_convergence，照常进人工审核。
     return "__end__" if _terminal(state) else "design_review"
 
 
@@ -203,8 +215,14 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_node("architecture", architecture_planner)
     graph.add_node("object_design", object_planner)
     graph.add_node("material_plan", material_planner)
+    # 设计收敛环：把图纸跑到"确实编得出来"再交给人工审核（§1.3 的冻结点后移）。
+    # 物件链直接穿过——编译器只认建筑的体量/立面/屋顶协议。
+    graph.add_node("design_convergence", design_convergence)
     graph.add_node("design_review", design_review)
     graph.add_node("skeleton", skeleton_generator)
+    # 确定性编译通路：图纸批准后一次算完结构/门窗/屋顶/附属构件，
+    # 模型只补编译器暂无规则的几类。与 skeleton（物件链）路由互斥。
+    graph.add_node("compile", compile_node)
 
     # ── 动态部分：拓扑固定，业务顺序在 plan 数据里 ──
     graph.add_node("plan", plan_node)
@@ -237,6 +255,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges("object_design", _after_object_design,
                                 {"material_plan": "material_plan", "__end__": END})
     graph.add_conditional_edges("material_plan", _after_material_plan,
+                                {"design_convergence": "design_convergence", "__end__": END})
+    graph.add_conditional_edges("design_convergence", _after_design_convergence,
                                 {"design_review": "design_review", "__end__": END})
     graph.add_conditional_edges(
         "design_review",
@@ -245,11 +265,14 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             "architecture": "architecture",
             "object_design": "object_design",
             "skeleton": "skeleton",
+            "compile": "compile",
             "__end__": END,
         },
     )
     graph.add_conditional_edges("skeleton", _after_skeleton,
                                 {"plan": "plan", "__end__": END})
+    # 编译节点不设失败出口：图纸有问题只记进 compile_report（红线：只标记不阻断）。
+    graph.add_edge("compile", "plan")
 
     graph.add_conditional_edges("plan", _after_plan,
                                 {"execute": "execute", "final_validate": "final_validate",
@@ -269,7 +292,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     compiled = graph.compile(checkpointer=checkpointer)
     logger.info(
         "LangGraph 图编译完成: classifier → (architecture | object_design) → material_plan → "
-        "design_review → skeleton → plan → (execute ⇄ replanner) → final_validate"
+        "design_convergence → design_review → (skeleton | compile) → plan → "
+        "(execute ⇄ replanner) → final_validate（建筑走 compile，物件走 skeleton）"
     )
     return compiled
 
