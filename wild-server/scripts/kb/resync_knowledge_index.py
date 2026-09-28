@@ -5,14 +5,15 @@
 
 跑法：
     cd wild-server
-    ./.venv/Scripts/python.exe ../.workbuddy/diag/resync_knowledge_index.py
+    ./.venv/Scripts/python.exe scripts/kb/resync_knowledge_index.py
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-SERVER_ROOT = Path(__file__).resolve().parents[2] / "wild-server"
+# 本脚本位于 <repo>/wild-server/scripts/kb/，parents[2] 即 wild-server
+SERVER_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(SERVER_ROOT))
 
 

@@ -13,7 +13,7 @@ AIGC:
 
 # scripts/ 脚本目录
 
-wild-server 的辅助脚本目录，按功能分类组织为 `deploy/`、`rag/`、`building/` 和 `reports/`。
+wild-server 的辅助脚本目录，按功能分类组织为 `deploy/`、`rag/`、`kb/` 和 `reports/`，另有根目录开发工具（`check_undefined_names.py`）。
 
 ## 运行前提
 
@@ -40,6 +40,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 |---|---|
 | `deploy/` | 生产部署前检查脚本（模型、Embedding、镜像知识库连通性） |
 | `rag/` | 知识库分片检查 / 展示 / RAG 评测脚本 |
+| `kb/` | 知识库结构与索引维护（契约校验、索引重建） |
 | `reports/` | `inspect_chunks_demo.py` 等脚本生成的报告产物（Markdown 报告 + 控制台日志） |
 
 ## 文件清单
@@ -51,6 +52,9 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `rag/inspect_knowledge_chunks.py` | 知识库分片检查：分片明细、统计、分片策略验证 |
 | `rag/inspect_chunks_demo.py` | 分片展示报告：控制台展示 + Markdown 报告 + 控制台日志 |
 | `rag/eval_retrieval.py` | 当前 RAG 召回率评测（Hit@K、Recall@K、MRR、逐题报告） |
+| `kb/check_kb.py` | 知识库结构与检索契约校验：5 组硬编码过滤对、frontmatter、H1、代码围栏、`required_documents` 登记（退出码即结果，0 = 全绿） |
+| `kb/resync_knowledge_index.py` | 改完 `storage/knowledge_base/**` 后重建 RAG 索引，让改动重新向量化生效 |
+| `check_undefined_names.py` | 纯 AST 扫描"读取了但从未定义"的裸名（pyflakes-lite），专抓重构残留；用法：`<任意 python3> scripts/check_undefined_names.py app tests` |
 | `rag/README_INSPECT_CHUNKS.md` | `inspect_*` 系列脚本的详细使用文档 |
 | `reports/` | 分片报告与日志产物（`inspect_chunks_*.md`、`chunks_report_*.md`、`chunks_console_*.txt`） |
 
