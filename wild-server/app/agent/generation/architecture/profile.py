@@ -19,30 +19,15 @@ _SUPPORTED_ROOF_TYPES = {
     "flat", "gable", "hip", "dome", "chinese_curved", "chinese_pagoda",
 }
 
+# 复杂度目标固定为单一标准档（2026-09-30 用户决策：前端粒度选择已下线，
+# "一面墙/复杂/精致"等词表分档一并删除）。字段名保留，下游
+# （normalize/设计分块/收敛环/试算/提示词）的 complexity_profile 契约不动。
 _COMPLEXITY_PROFILES: dict[str, dict[str, Any]] = {
-    "minimal": {
-        "min_volumes": 1,
-        "min_detail_packages": 0,
-        "target_structural_elements": 1,
-        "grid_bays": (1, 1),
-    },
-    "simple": {
-        "min_volumes": 1,
-        "min_detail_packages": 0,
-        "target_structural_elements": 6,
-        "grid_bays": (1, 1),
-    },
     "standard": {
         "min_volumes": 1,
         "min_detail_packages": 0,
         "target_structural_elements": 10,
         "grid_bays": (2, 2),
-    },
-    "detailed": {
-        "min_volumes": 2,
-        "min_detail_packages": 3,
-        "target_structural_elements": 18,
-        "grid_bays": (3, 2),
     },
 }
 
@@ -65,118 +50,64 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
     # `planning.py` 在点名电梯时会把 `vertical_strategy` 强制升到 `core_and_stair`；
     # 单层建筑没有垂直交通需求（KB《电梯》能力边界），点名也会在配额之前被剔除。
     "elevator": {"min": 1, "max": 2, "note": "与核心筒井道配套；单层建筑不生成"},
+    # 柱是引擎原生元素（注册表 2026-09-29 起可派发）。与家具同族："点名才生成"——
+    # 门廊柱/围廊柱/景观柱按设计点名进入配额，普通建筑不会被默认塞柱子。
+    "column": {"min": 0, "max": 48, "note": "门廊柱、围廊柱或景观柱；数量与柱网由设计点名"},
 }
 
 
+# 🔴 档案表只剩一个成员：``custom``（用户决策 2026-09-29：删除类型关键词→档案的
+# 选档白名单）。它**只提供物理安全边界，不做设计锚定**：
+#   - shapes / base_components 给全集（我们不再替模型决定它能是什么形状、能用什么构件）；
+#   - default_massing / default_roof 只是模型完全没表态时的最后兜底，
+#     且 prompts/planning.py 本来就把这两个字段排除在提示词之外，不会先入为主；
+#   - 设计意图（类型、风格、规模、结构体系）由模型 + 知识库决定。
+# 此前的 8 档关键词选档（住宅/公建/厂房…）会把"欧式古典柱廊殿宇"这类提示词
+# 锚成 12×9 两层住宅体量再被 shapes 钳死——是"所有建筑长一个样"的上游根因。
 _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
-    "residential_lowrise": {
-        "label": "低层居住建筑",
-        "width_range": (4.0, 60.0),
-        "depth_range": (4.0, 60.0),
-        "floor_range": (1, 8),
+    "custom": {
+        # 🔴 不带 label（用户决策 2026-09-29 二次修订）："自定义建筑"这类档位标签
+        # 一旦进提示词就会被模型当成设计主题写进 concept（实测"生成一个四角亭子"
+        # 产出 concept"自定义建筑、比例清晰、入口有识别度"的四层别墅）。
+        # 档案只提供物理边界，类型/风格/形态完全由用户请求 + 知识库决定。
+        "id": "custom",
+        "width_range": (4.0, 300.0),
+        "depth_range": (4.0, 300.0),
+        "floor_range": (1, 200),
         "default_massing": (12.0, 9.0, 2, 3.2),
-        "max_explicit_floors": 6,
-        "shapes": {"rectangle", "l_shape", "u_shape", "stepped", "courtyard"},
+        "max_explicit_floors": 12,
+        "shapes": {
+            "rectangle", "l_shape", "u_shape", "stepped", "courtyard", "linear",
+            "radial", "bowl", "terminal", "tower", "twin_tower", "pavilion",
+            "basilica", "centralized", "underground",
+        },
         "base_components": ["door", "window", "roof"],
+        # 档案默认要求主入口；设计清单显式排除 door 时（地下车站等）由
+        # planning 的 entrance_required 语义放宽——见 _fallback_plan / normalize。
         "require_front_entrance": True,
         "default_roof": "gable",
-    },
-    "ordinary_public": {
-        "label": "普通公共建筑",
-        "width_range": (6.0, 160.0),
-        "depth_range": (6.0, 160.0),
-        "floor_range": (1, 30),
-        "default_massing": (30.0, 22.0, 4, 3.9),
-        "max_explicit_floors": 8,
-        "shapes": {"rectangle", "l_shape", "u_shape", "stepped", "courtyard", "linear"},
-        "base_components": ["door", "window", "roof"],
-        "require_front_entrance": True,
-        "default_roof": "flat",
-    },
-    "industrial_long_span": {
-        "label": "工业与农业大跨建筑",
-        "width_range": (8.0, 300.0),
-        "depth_range": (8.0, 500.0),
-        "floor_range": (1, 12),
-        "default_massing": (60.0, 40.0, 1, 6.0),
-        "max_explicit_floors": 4,
-        "shapes": {"rectangle", "linear", "stepped"},
-        "base_components": ["door", "window", "roof"],
-        "require_front_entrance": True,
-        "default_roof": "gable",
-    },
-    "long_span_public": {
-        "label": "大跨公共建筑",
-        "width_range": (12.0, 300.0),
-        "depth_range": (12.0, 300.0),
-        "floor_range": (1, 12),
-        "default_massing": (80.0, 55.0, 2, 6.0),
-        "max_explicit_floors": 4,
-        "shapes": {"rectangle", "linear", "radial", "bowl", "terminal"},
-        "base_components": ["door", "roof"],
-        "require_front_entrance": True,
-        "default_roof": "gable",
-    },
-    "high_rise": {
-        "label": "高层与超高层建筑",
-        "width_range": (12.0, 120.0),
-        "depth_range": (12.0, 120.0),
-        "floor_range": (6, 200),
-        "default_massing": (42.0, 36.0, 30, 4.0),
-        "max_explicit_floors": 10,
-        "shapes": {"rectangle", "stepped", "tower", "twin_tower"},
-        "base_components": ["door", "window", "roof"],
-        "require_front_entrance": True,
-        "default_roof": "flat",
-    },
-    "underground_transport": {
-        "label": "地下交通建筑",
-        "width_range": (6.0, 300.0),
-        "depth_range": (12.0, 500.0),
-        "floor_range": (1, 8),
-        "default_massing": (24.0, 120.0, 2, 5.0),
-        "max_explicit_floors": 4,
-        "shapes": {"rectangle", "linear", "underground"},
-        "base_components": ["light"],
-        "require_front_entrance": False,
-        "default_roof": "flat",
-    },
-    "garden_structure": {
-        "label": "园林与景观建筑",
-        "width_range": (3.0, 80.0),
-        "depth_range": (3.0, 80.0),
-        "floor_range": (1, 5),
-        "default_massing": (12.0, 8.0, 1, 3.6),
-        "max_explicit_floors": 5,
-        "shapes": {"rectangle", "l_shape", "courtyard", "linear", "pavilion"},
-        "base_components": ["roof", "railing"],
-        "require_front_entrance": False,
-        "default_roof": "chinese_curved",
-    },
-    "religious_landmark": {
-        "label": "宗教与纪念性建筑",
-        "width_range": (6.0, 120.0),
-        "depth_range": (6.0, 160.0),
-        "floor_range": (1, 12),
-        "default_massing": (24.0, 36.0, 2, 5.0),
-        "max_explicit_floors": 6,
-        "shapes": {"rectangle", "courtyard", "linear", "basilica", "centralized"},
-        "base_components": ["door", "window", "roof"],
-        "require_front_entrance": True,
-        "default_roof": "chinese_curved",
     },
 }
 
 
 def _clamp_number(value: object, low: float, high: float, default: float) -> float:
+    """返回值**恒在 [low, high] 内**——包括走 default 分支的时候。
+
+    🔴 default 也必须夹取（2026-09-30 四角凉亭线上事故）：`entrance_bay` 的调用点
+    ``_clamp_number(item.get("entrance_bay"), 1, bays, base["entrance_bay"])`` 里
+    ``high=bays`` 是动态值——模型写 ``bays: 0``（夹成 1）而档案 default=3 时，
+    不夹 default 就会把 ``ground[3-1]`` 打进长度 1 的列表，
+    抛 ``IndexError: list assignment index out of range`` 掐掉整轮生成。
+    对 default 本来就在界内的既有调用点，这里是零行为变化。
+    """
     if isinstance(value, bool):
-        return default
+        return max(low, min(high, default))
     try:
         number = float(value)
     except (TypeError, ValueError):
-        return default
+        return max(low, min(high, default))
     if not math.isfinite(number):
-        return default
+        return max(low, min(high, default))
     return max(low, min(high, number))
 
 
@@ -299,41 +230,17 @@ def _requested_balcony_width(user_message: str) -> float | None:
 
 def resolve_complexity_profile(
     user_message: str,
-    precision_mode: bool = False,
 ) -> dict[str, Any]:
-    """把用户表达与运行模式解析为可验证的复杂度目标。"""
-    message = user_message.lower()
-    minimal_words = (
-        "一面墙", "一堵墙", "单面墙", "一面幕墙", "单面幕墙", "只要一面",
-        "只要一堵", "单个构件", "单个元素", "一面玻璃", "一块楼板", "一根柱",
-        "一根梁", "一堵",
-    )
-    simple_words = (
-        "简单", "简易", "基础款", "低复杂度", "方盒子", "单一体量",
-        "minimal massing", "simple massing",
-    )
-    detailed_words = (
-        "复杂", "高细节", "丰富", "有层次", "层次感", "多体量", "组合体量",
-        "退台", "错落", "豪华", "精致", "标志性", "complex", "detailed",
-    )
-    if any(word in message for word in minimal_words):
-        level = "minimal"
-        reason = "用户明确要求极简结构"
-    elif any(word in message for word in simple_words):
-        level = "simple"
-        reason = "用户明确要求简化体量"
-    elif any(word in message for word in detailed_words):
-        level = "detailed"
-        reason = "用户明确要求高细节"
-    else:
-        level = "standard"
-        reason = "未指定体量复杂度；精密模式只提高实现与验证质量"
+    """返回固定的标准复杂度目标。
 
-    result = deepcopy(_COMPLEXITY_PROFILES[level])
+    2026-09-30 用户决策：前端粒度选择已下线，复杂度固定为标准档。
+    保留函数与返回结构是为了不破坏下游契约；多体量意图仍按用户原文
+    点名（"多体量/退台"等）放开 min_volumes。
+    """
+    result = deepcopy(_COMPLEXITY_PROFILES["standard"])
     result["min_detail_packages"] = 0
-    if not any(term_is_requested(message, word) for word in ("多体量", "组合体量", "退台", "错落", "主次体量")):
+    if not any(term_is_requested(user_message, word) for word in ("多体量", "组合体量", "退台", "错落", "主次体量")):
         result["min_volumes"] = 1
-    result.update({"level": level, "reason": reason})
     result["grid_bays"] = list(result["grid_bays"])
     return result
 
@@ -362,6 +269,8 @@ def _default_detail_packages(
         # 电梯的点名词：同样与 COMPONENT_REGISTRY["elevator"].need_keywords 对齐。
         # 此前两处词表都没有 elevator，用户点名电梯时规划阶段不会有任何配额。
         "elevator": ("电梯", "升降梯", "垂直交通", "观光梯", "载货梯"),
+        # 柱的点名词：围廊/门廊/景观柱按点名进入配额（引擎原生元素，2026-09-29 起可派发）。
+        "column": ("柱廊", "廊柱", "罗马柱", "柱子", "石柱"),
     }
     explicit = [
         component_type
@@ -536,62 +445,50 @@ def _fallback_volumes(
     ]
 
 
-#: **各档位的类型词**（按声明顺序取第一个命中 = 选档顺序）。
-#: 这份表同时是 `is_architecture_request` 的闭集来源（见 `_ARCHITECTURE_TYPE_WORDS`），
-#: 所以新增一个建筑类型词只需要加在这里一处，"选档"和"是不是建筑"会同时看见它。
-_PROFILE_TYPE_WORDS: dict[str, tuple[str, ...]] = {
-    "underground_transport": ("地铁", "地下车站", "站台层", "地下站", "隧道"),
-    "high_rise": ("超高层", "高层", "摩天", "高层写字楼", "高层办公", "塔楼"),
-    "long_span_public": (
-        "体育场", "体育馆", "游泳馆", "航站楼", "高铁站", "火车站",
-        "客运站", "港口客运", "剧院", "音乐厅", "会展", "大会堂",
-    ),
-    "industrial_long_span": (
-        "工厂", "厂房", "仓库", "车间", "物流中心", "配送中心", "机库",
-        "温室", "畜舍", "粮仓", "农业建筑",
-    ),
-    "garden_structure": ("园林", "水榭", "凉亭", "亭子", "游廊", "景观廊"),
-    "religious_landmark": ("佛寺", "寺庙", "道观", "清真寺", "教堂", "礼拜殿"),
-    "ordinary_public": (
-        "办公", "写字楼", "学校", "幼儿园", "教学楼", "实验室", "博物馆",
-        "图书馆", "医院", "商业", "商场", "超市", "酒店", "法院", "养老院",
-    ),
-    # 低层居住建筑是"说了要建筑、但没说清是哪一类"的档位，所以它同时承担
-    # 三类词：明确的住宅类型词、房子的口语说法、以及英文常见写法。
-    "residential_lowrise": (
-        "别墅", "住宅", "民居", "民房", "公寓", "洋房", "排屋", "联排", "独栋",
-        "自建房", "私宅", "木屋", "小屋", "房子", "房屋", "民居建筑",
-        "house", "villa", "cottage", "cabin", "building",
-    ),
-}
-
-#: 跨档位的**通用建筑名词**：它们能确定"这是建筑"，但不足以选档（选档仍走
-#: `_PROFILE_TYPE_WORDS` 的缺省档位）。放在这里而不是塞进某个档位，是因为
-#: "楼/屋/房/馆/站"单独出现时无法判断建筑类型，硬归某一档会给出错的规划边界。
+#: 🔴 **建筑类型词闭集**——"这句话是不是在要建筑"的路由判据，**唯一身份**。
 #:
-#: ⚠️ 这里只收**单字名词**（"楼""馆""站"这类）。多字的建筑词一律进
-#: `_PROFILE_TYPE_WORDS`，否则"是不是建筑"与"是哪一档"会给出互相矛盾的答案。
-_GENERIC_ARCHITECTURE_WORDS: tuple[str, ...] = (
-    "建筑", "构筑物", "场地", "写字楼", "办公楼", "大厦", "商厦",
-    "楼", "屋", "房", "塔", "阁", "苑", "站", "厂",
-)
-
-#: 🔴 **建筑类型词的闭集**（`_PROFILE_TYPE_WORDS` 全部类型词 ∪ 通用建筑名词）。
 #:
-#: 判据为什么建在闭集这一侧：建筑类型是**有限闭集**（平台能生成的就是上面这些），
-#: 所以"没命中任何建筑类型词"可以安全地推出"用户要的不是建筑"；而物件名是
-#: **开放集**（桌子、小人、机器人、花瓶、路灯、雕塑……永远列不全），**不能**反过来
-#: 用"命中了某个物件名词"来判定目标类型。
+#: 判据为什么建在闭集这一侧：建筑是**有限闭集**，所以"没命中任何建筑类型词"
+#: 可以安全地推出"用户要的不是建筑"；而物件名是**开放集**（桌子、小人、机器人、
+#: 花瓶、路灯、雕塑……永远列不全），**不能**反过来用"命中了某个物件名词"来判定
+#: 目标类型。
 #:
 #: `routing.detect_target_kind` 就踩过这个坑：它拿一张家具名词表判"是不是物件"，
 #: 没命中就兜底成建筑 —— 于是"生成一个小人"被送去盖房子。改用本闭集之后，
 #: "生成一个人/花瓶/路灯/机器人"都会正确落到物件链，不需要为任何一个名字写规则。
+_ARCHITECTURE_TYPE_KEYWORDS: tuple[str, ...] = (
+    # 交通
+    "地铁", "地下车站", "站台层", "地下站", "隧道",
+    # 高层
+    "超高层", "高层", "摩天", "塔楼",
+    # 大跨公共
+    "体育场", "体育馆", "游泳馆", "航站楼", "高铁站", "火车站",
+    "客运站", "剧院", "音乐厅", "会展", "大会堂",
+    # 工农业
+    "工厂", "厂房", "仓库", "车间", "物流中心", "机库",
+    "温室", "粮仓",
+    # 园林
+    "园林", "水榭", "凉亭", "亭子", "游廊",
+    # 宗教
+    "佛寺", "寺庙", "道观", "清真寺", "教堂", "礼拜殿",
+    # 公共
+    "办公", "写字楼", "学校", "幼儿园", "教学楼", "博物馆",
+    "图书馆", "医院", "商场", "超市", "酒店", "法院", "养老院",
+    # 居住（含口语与英文）
+    "别墅", "住宅", "民居", "民房", "公寓", "洋房", "排屋", "联排", "独栋",
+    "自建房", "木屋", "小屋", "房子", "房屋",
+    "house", "villa", "cottage", "cabin",
+)
+
+#: 跨类型的**通用建筑名词**：能确定"这是建筑"，但不携带任何类型语义。
+_GENERIC_ARCHITECTURE_WORDS: tuple[str, ...] = (
+    "建筑", "构筑物", "场地", "大厦", "商厦",
+    "楼", "屋", "房", "塔", "阁", "苑", "站", "厂",
+)
+
+#: 路由闭集 = 类型词 ∪ 通用建筑名词（``is_architecture_request`` 唯一判据）。
 _ARCHITECTURE_TYPE_WORDS: tuple[str, ...] = tuple(
-    dict.fromkeys(
-        word
-        for words in _PROFILE_TYPE_WORDS.values()
-        for word in words
-    )
+    dict.fromkeys(_ARCHITECTURE_TYPE_KEYWORDS)
 ) + _GENERIC_ARCHITECTURE_WORDS
 
 
@@ -609,48 +506,14 @@ def is_architecture_request(user_message: str) -> bool:
     return any(word in message for word in _ARCHITECTURE_TYPE_WORDS)
 
 
-def match_architecture_profile_id(user_message: str) -> str | None:
-    """按**建筑类型词**判定命中了清单里的哪一档；一档都不命中时返回 ``None``。
-
-    "命中与否"本身就是一份可用判据，不只是选档的中间值：
-    ``is_architecture_request`` 就是它的闭集版本（见 `_ARCHITECTURE_TYPE_WORDS`）。
-    """
-
-    message = user_message.lower()
-    requested_floors = _requested_floors(user_message)
-    if any(word in message for word in _PROFILE_TYPE_WORDS["underground_transport"]):
-        return "underground_transport"
-    if (
-        any(word in message for word in _PROFILE_TYPE_WORDS["high_rise"])
-        or (requested_floors is not None and requested_floors >= 20)
-    ):
-        return "high_rise"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["long_span_public"]):
-        return "long_span_public"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["industrial_long_span"]):
-        return "industrial_long_span"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["garden_structure"]):
-        return "garden_structure"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["religious_landmark"]):
-        return "religious_landmark"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["ordinary_public"]):
-        return "ordinary_public"
-    if any(word in message for word in _PROFILE_TYPE_WORDS["residential_lowrise"]):
-        return "residential_lowrise"
-    return None
-
-
 def detect_architecture_profile(
-    user_message: str,
+    user_message: str = "",
     fallback_profile_id: str | None = None,
 ) -> dict[str, Any]:
-    """按功能和规模选择确定性规划边界，避免所有建筑退化成低层住宅。"""
+    """
+    返回本次生成使用的规划档案。
+    """
 
-    profile_id = match_architecture_profile_id(user_message) or (
-        fallback_profile_id
-        if fallback_profile_id in _ARCHITECTURE_PROFILES
-        else "residential_lowrise"
-    )
-    profile = deepcopy(_ARCHITECTURE_PROFILES[profile_id])
-    profile["id"] = profile_id
+    profile = deepcopy(_ARCHITECTURE_PROFILES["custom"])
+    profile["id"] = "custom"
     return profile

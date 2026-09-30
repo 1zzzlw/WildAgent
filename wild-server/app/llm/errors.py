@@ -5,18 +5,28 @@
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
 
 def classify_model_error(exc: Exception) -> dict[str, Any]:
-    """返回可写入节点诊断的模型错误信息。
-
-    ``retryable`` 表示用户稍后重新发起请求是否可能成功；无论该值如何，
-    当前图运行都应停止，避免把服务故障误交给建筑修复节点。
+    """
+    返回可写入节点诊断的模型错误信息。
     """
     raw_message = str(exc)
     lowered = raw_message.lower()
+
+    if _is_timeout_exception(exc):
+        return {
+            "category": "transport_error",
+            "status_code": None,
+            "retryable": True,
+            "terminal_current_run": True,
+            "user_message": "连接模型服务超时，本次生成已停止，请稍后重新生成。",
+            "raw_error": raw_message[:500] or type(exc).__name__,
+        }
+
     status_code = _extract_status_code(exc, lowered)
 
     if _contains_any(
@@ -82,6 +92,16 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "model_error"
         retryable = False
         user_message = "模型服务调用失败，本次生成已停止，请检查服务配置和后台日志。"
+        return {
+            "category": category,
+            "status_code": status_code,
+            "retryable": retryable,
+            "terminal_current_run": True,
+            "user_message": user_message,
+            # 🔴 兜底必须带原文与异常类型：分类器文案库永远追不上供应商网关的
+            # 各种非标准报错，没有原文这条诊断就是死胡同（2026-09-29 排查教训）。
+            "raw_error": f"{type(exc).__name__}: {raw_message}"[:500],
+        }
 
     return {
         "category": category,
@@ -128,6 +148,35 @@ def _extract_status_code(exc: Exception, lowered_message: str) -> int | None:
 
 def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
     return any(needle in text for needle in needles)
+
+
+def _is_timeout_exception(exc: Exception) -> bool:
+    """按**异常类型**判定超时/连接类故障（文案判定不可靠）。
+
+    - ``asyncio.TimeoutError``：``invoke_llm``/``stream_llm`` 外层 ``wait_for`` 超时，
+      ``str()`` 为空串，文案匹配必然落空；
+    - ``openai.APITimeoutError`` / ``APIConnectionError`` 及底层 ``httpx.TimeoutException``
+      等连接类异常：SDK 抛出，文案不一定含 "timed out"（网关包装后千奇百怪）。
+
+    供应商 SDK 用惰性导入：本模块声明"不依赖具体供应商 SDK"，缺包时退回文案匹配。
+    """
+    if isinstance(exc, (asyncio.TimeoutError, TimeoutError)):
+        return True
+    try:
+        from openai import APIConnectionError, APITimeoutError
+
+        if isinstance(exc, (APITimeoutError, APIConnectionError)):
+            return True
+    except ImportError:  # pragma: no cover - openai 未安装时退回文案匹配
+        pass
+    try:
+        import httpx
+
+        if isinstance(exc, httpx.TimeoutException):
+            return True
+    except ImportError:  # pragma: no cover
+        pass
+    return False
 
 
 def model_failure_result(exc: Exception) -> dict[str, Any]:

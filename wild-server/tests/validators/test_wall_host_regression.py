@@ -8,7 +8,6 @@ from app.agent.generation.architecture import (
     build_deterministic_skeleton, evaluate_skeleton_complexity,
     normalize_architecture_plan, resolve_facade_layout,
 )
-from app.agent.generation.components import COMPONENT_REGISTRY
 from app.tools.spatial_tools import (
     fix_wall_junctions, validate_element_dimensions,
     validate_model_quality, validate_opening_fit,
@@ -27,24 +26,28 @@ class WallHostRegressionTest(unittest.TestCase):
         self.case = json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     def test_recorded_zero_length_hosts_fail_before_component_dispatch(self):
-        for level in ("minimal", "standard", "detailed"):
-            with self.subTest(level=level):
-                plan = deepcopy(self.case["architecture_plan"])
-                plan["complexity"]["level"] = level
-                result = evaluate_skeleton_complexity(self.case["skeleton_blueprint"], plan)
-                self.assertFalse(result["meets_target"])
-                self.assertFalse(result["checks"]["valid_wall_hosts"])
-                self.assertEqual(len(result["degenerate_wall_ids"]), 8)
+        # 粒度选择已下线（2026-09-30），使用固定标准档
+        plan = deepcopy(self.case["architecture_plan"])
+        result = evaluate_skeleton_complexity(self.case["skeleton_blueprint"], plan)
+        self.assertFalse(result["meets_target"])
+        self.assertFalse(result["checks"]["valid_wall_hosts"])
+        self.assertEqual(len(result["degenerate_wall_ids"]), 8)
         output = run_tool(validate_element_dimensions, self.case["skeleton_blueprint"])
         self.assertIn("❌", output)
         self.assertIn("水平长度", output)
 
-    def test_unimplemented_quota_is_reported_and_never_dispatched(self):
+    def test_unknown_quota_type_is_attempted_via_generic_channel(self):
+        """开放集契约（用户决策 2026-09-29，替代旧"未知构件拦截"守卫）：
+
+        配额里注册表没有的类型（如 sunshade）不再进 ``unsupported`` 被拦下，
+        而是保留配额、进入 required_components，由 plan 条目用
+        ``generic_component_config`` 尝试生成——字段契约靠知识库检索，
+        校验与修复环兜底。``unsupported_component_types`` 从此恒空。
+        """
         plan = normalize_architecture_plan(self.case["architecture_plan"], self.case["user_message"])
-        self.assertEqual(plan["unsupported_component_types"], ["sunshade"])
-        self.assertNotIn("sunshade", plan["component_quota"])
-        self.assertNotIn("sunshade", plan["required_components"])
-        self.assertTrue(set(plan["component_quota"]).issubset(COMPONENT_REGISTRY))
+        self.assertEqual(plan["unsupported_component_types"], [])
+        self.assertIn("sunshade", plan["component_quota"])
+        self.assertIn("sunshade", plan["required_components"])
         self.assertEqual(plan["component_quota"]["window"]["min"], 17)
 
     def test_rebuilt_plan_has_valid_hosts_and_sufficient_opening_slots(self):

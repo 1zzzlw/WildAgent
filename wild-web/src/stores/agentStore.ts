@@ -412,11 +412,21 @@ export const useAgentStore = defineStore('agent', () => {
     const existing = turn.steps.find(item => item.node === step.node)
     if (existing) {
       Object.assign(existing, step)
+      // 同一个节点会被重跑（design_review 选 revise 会回到 architecture）。重跑是全新一次，
+      // 思考缓冲必须清空 —— 否则新一次的 CoT 会接在上一次后面，用户看到的是"同一个节点反复
+      // 自我推翻"，像卡进了循环。
+      if (step.stage === 'generating' && step.status === 'running') {
+        existing.thinking = ''
+        existing.reasoning = ''
+      }
     } else {
-      turn.steps.push({ ...step, thinking: step.thinking || '' })
+      turn.steps.push({ ...step, thinking: step.thinking || '', reasoning: step.reasoning || '' })
     }
     turn.status = step.status === 'error' ? 'error' : turn.status
   }
+
+  //: 单条思考缓冲上限（字符）。只保留尾部 —— 用户看的是"现在在做什么"，不是归档。
+  const _THINKING_BUFFER_LIMIT = 20000
 
   function appendTurnThinking(
     sessionId: string,
@@ -439,7 +449,16 @@ export const useAgentStore = defineStore('agent', () => {
       }
       turn.steps.push(step)
     }
-    step.thinking += delta
+    // 🔴 两条通道分开存：「执行说明」是代码写的进度句，「模型过程」是模型的原始思考。
+    // 混在一条缓冲里既分不开（标签只能取最后一次的通道），重跑时还会串在一起。
+    if (channel === 'progress') {
+      step.thinking += delta
+    } else {
+      step.reasoning = (step.reasoning || '') + delta
+      if (step.reasoning.length > _THINKING_BUFFER_LIMIT) {
+        step.reasoning = step.reasoning.slice(-_THINKING_BUFFER_LIMIT)
+      }
+    }
     step.thinking_channel = channel
   }
 

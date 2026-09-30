@@ -10,6 +10,9 @@
    真模型连错 3 次导致**整块被丢弃**（连累 railing/canopy 等真正会被用的配额）。
 3. **执行器语义**：逐块落定、带证据重试、**失败不阻断**（用户红线）、
    **模型服务故障必须上抛**（否则会被当成"这一块写不出来"静默吞掉）。
+4. **调度语义（plan 驱动）**：依赖与并发都来自块表 —— 依赖是物理约束，并发是
+   ``parallel_group`` 的声明。串行实现也能把五块写完，所以"结果对"不足以证明它，
+   必须量**同时进行的模型调用数**（见 `DesignPlanSchedulingTest`）。
 
 `_BLOCK_MAX_ATTEMPTS` 是**有界**的：坏图上无界重试会烧光预算，所以"三次就放弃"要钉住。
 """
@@ -36,6 +39,8 @@ from app.agent.generation.architecture.design_workflow import (
     build_block_prompt,
     check_block_contract,
     draft_design_blocks,
+    format_block_knowledge,
+    retrieve_block_knowledge,
 )
 
 #: 四面都用同一份"3 开间、1 门 5 窗"的立面：door=4、window=20。
@@ -46,6 +51,7 @@ _FACE = {
 }
 
 _FULL_PAYLOAD = {
+    "concept": "测试方案",
     "massing": {"floors": 2},
     "volumes": [
         {
@@ -153,7 +159,7 @@ class BlockContractTest(unittest.TestCase):
         self.assertIn("volumes", issue)
 
     def test_complete_block_passes(self):
-        picked = {"massing": {"floors": 2}, "volumes": [{"id": "v1"}]}
+        picked = {"concept": "测试方案", "massing": {"floors": 2}, "volumes": [{"id": "v1"}]}
         self.assertEqual(check_block_contract(BLOCK_BY_NAME["massing"], picked, {}), "")
 
     def test_facade_pattern_length_must_equal_bays(self):
@@ -225,6 +231,94 @@ class BlockContractTest(unittest.TestCase):
             check_block_contract(block, picked, {"facades": {face: dict(_FACE) for face in _FACE}}), ""
         )
 
+
+class BlockKnowledgeTest(unittest.TestCase):
+    """块级知识检索（§1.5 "RAG 换位置"）：每块用自己的查询，命中只进本块。
+
+    旧行为是整轮共用一份静态 ``spec_text`` —— facade 写槽位时看不到门窗规则，
+    roof 写屋顶时看不到形制技法。这里钉住：声明存在、过滤必带、失败不阻断、
+    注入只在块层。
+    """
+
+    def test_every_block_declares_knowledge_queries(self):
+        for block in DESIGN_BLOCKS:
+            self.assertTrue(block.knowledge_queries, f"{block.name} 没有声明块级检索")
+            for spec in block.knowledge_queries:
+                # 🔴 检索必须带过滤：给模型一个能查全库的口子，
+                # "它没查到"和"知识里真没有"就永远分不清。
+                self.assertTrue(spec.metadata_filter, f"{block.name} 有不带过滤的检索意图")
+                self.assertIn("doc_type", spec.metadata_filter)
+
+    def test_retrieval_failure_does_not_block_drafting(self):
+        """检索挂了 → 返回空文本 + 错误诊断，起草照常（知识是增强，不是依赖）。"""
+
+        class _Boom:
+            def load_many(self, *_args, **_kwargs):
+                raise RuntimeError("chroma down")
+
+        class _Service:
+            spec_loader = _Boom()
+
+        with patch("app.services.agent_service.agent_service", _Service()):
+            text, diag = asyncio.run(
+                retrieve_block_knowledge(BLOCK_BY_NAME["facade"], "生成一个别墅")
+            )
+
+        self.assertEqual(text, "")
+        self.assertIn("RuntimeError", diag["error"])
+
+    def test_hits_and_chars_are_recorded(self):
+        hit = type("H", (), {"metadata": {"source": "kb/window-variants.md", "heading": "窗"}})()
+
+        class _Loader:
+            last_results = [hit]
+
+            def load_many(self, queries, per_query=1, **_kwargs):
+                self.queries = queries
+                self.per_query = per_query
+                return "窗的形态闭集：swing/slide/fixed。"
+
+        loader = _Loader()
+
+        class _Service:
+            spec_loader = loader
+
+        with patch("app.services.agent_service.agent_service", _Service()):
+            text, diag = asyncio.run(
+                retrieve_block_knowledge(BLOCK_BY_NAME["facade"], "生成一个中式凉亭")
+            )
+
+        self.assertIn("形态闭集", text)
+        self.assertEqual(diag["queries"], len(BLOCK_BY_NAME["facade"].knowledge_queries))
+        self.assertGreater(diag["chars"], 0)
+        self.assertTrue(diag["hits"])
+        self.assertEqual(diag["hits"][0]["heading"], "窗")
+        # 用户请求被渲染进查询文本：形制词必须能命中形制技法文档。
+        first_query_text = loader.queries[0].text
+        self.assertIn("中式凉亭", first_query_text)
+        # 每条意图必须真的带了过滤进 Loader。
+        for query in loader.queries:
+            self.assertTrue(query.metadata_filter)
+
+    def test_knowledge_section_is_appended_to_the_block_prompt(self):
+        plain = build_block_prompt("BASE", BLOCK_BY_NAME["facade"], {})
+        with_kb = build_block_prompt(
+            "BASE", BLOCK_BY_NAME["facade"], {}, knowledge_text="窗的形态闭集。"
+        )
+
+        self.assertNotIn("本块专属知识库参考", plain)
+        self.assertTrue(with_kb.startswith("BASE"), "基础提示词仍原样在最前")
+        self.assertIn("本块专属知识库参考", with_kb)
+        self.assertIn("窗的形态闭集。", with_kb)
+        # 知识章节在块契约之后：先看合法域，再看参考知识。
+        self.assertLess(
+            with_kb.index("本轮必须输出这些字段"), with_kb.index("本块专属知识库参考")
+        )
+
+    def test_format_block_knowledge_ignores_blank_text(self):
+        self.assertEqual(format_block_knowledge(""), "")
+        self.assertEqual(format_block_knowledge("   \n "), "")
+
     def test_pick_block_fields_drops_foreign_fields(self):
         picked = _pick_block_fields(
             {"roof": {"type": "gable"}, "massing": {"floors": 9}}, BLOCK_BY_NAME["roof"]
@@ -254,7 +348,7 @@ class DraftExecutorTest(unittest.TestCase):
     只钉一条，另一条改了没人知道。
     """
 
-    def _run(self, payloads, *, level="standard", error=None, thinking_mode=False, probe=True):
+    def _run(self, payloads, *, error=None, thinking_mode=False, probe=True):
         calls: list[str] = []
         queue = list(payloads)
 
@@ -301,7 +395,6 @@ class DraftExecutorTest(unittest.TestCase):
                 draft_design_blocks(
                     base_prompt="BASE",
                     user_request="生成一个两层别墅",
-                    level=level,
                     thinking_mode=thinking_mode,
                     allow_probe=probe,
                 )
@@ -331,7 +424,7 @@ class DraftExecutorTest(unittest.TestCase):
     def test_retry_carries_the_evidence_back_to_the_model(self):
         # minimal 档只有 massing + facade；massing 第一次缺 volumes，第二次补齐。
         bad_massing = _json({"massing": {"floors": 2}})
-        draft, diag, calls = self._run([bad_massing, _json(_FULL_PAYLOAD), _json(_FULL_PAYLOAD)], level="minimal")
+        draft, diag, calls = self._run([bad_massing, _json(_FULL_PAYLOAD), _json(_FULL_PAYLOAD)])
 
         self.assertIn("massing", draft)
         self.assertEqual(diag["unsettled_blocks"], [])
@@ -341,14 +434,14 @@ class DraftExecutorTest(unittest.TestCase):
         self.assertEqual(diag["blocks"][1]["attempts"], 1)
 
     def test_unsettled_block_records_its_last_issue(self):
-        draft, diag, _ = self._run([], level="minimal")
+        draft, diag, _ = self._run([])
         self.assertEqual(draft, {})
         for item in diag["blocks"]:
             self.assertFalse(item["settled"])
             self.assertTrue(item["last_issue"])
 
     def test_settled_block_does_not_keep_a_stale_issue(self):
-        _, diag, _ = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS), level="minimal")
+        _, diag, _ = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS))
         for item in diag["blocks"]:
             self.assertTrue(item["settled"])
             self.assertEqual(item["last_issue"], "")
@@ -360,13 +453,9 @@ class DraftExecutorTest(unittest.TestCase):
             self._run([_json(_FULL_PAYLOAD)], error=RuntimeError("quota exhausted"))
 
     def test_only_the_selected_levels_blocks_are_drafted(self):
-        _, diag, calls = self._run([_json(_FULL_PAYLOAD)] * 2, level="minimal")
+        _, diag, calls = self._run([_json(_FULL_PAYLOAD)] * 2)
         self.assertEqual([item["block"] for item in diag["blocks"]], ["massing", "facade"])
         self.assertEqual(len(calls), 2)
-
-    def test_diag_records_the_level_it_used(self):
-        _, diag, _ = self._run([_json(_FULL_PAYLOAD)] * 2, level="minimal")
-        self.assertEqual(diag["level"], "minimal")
 
     # ── 两条通道都要覆盖：默认（工具循环）与非默认（纯 invoke）──
 
@@ -374,11 +463,11 @@ class DraftExecutorTest(unittest.TestCase):
         """显式关掉试算时退回纯 invoke 通道；语义必须与默认通道一致。"""
 
         draft, diag, calls = self._run(
-            [_json(_FULL_PAYLOAD)] * 2, level="minimal", probe=False
+            [_json(_FULL_PAYLOAD)] * 2, probe=False
         )
 
         self.assertEqual(diag["unsettled_blocks"], [])
-        self.assertEqual(set(draft), {"massing", "volumes", "facades"})
+        self.assertEqual(set(draft), {"concept", "massing", "volumes", "facades"})
         self.assertEqual(len(calls), 2)
         self.assertFalse(diag["probe_tool"])
         self.assertIn("关闭", diag["probe_tool_disabled_reason"])
@@ -386,9 +475,155 @@ class DraftExecutorTest(unittest.TestCase):
     def test_plain_channel_propagates_model_failure(self):
         with self.assertRaises(RuntimeError):
             self._run(
-                [_json(_FULL_PAYLOAD)], level="minimal", probe=False,
+                [_json(_FULL_PAYLOAD)], probe=False,
                 error=RuntimeError("quota exhausted"),
             )
+
+
+class DesignPlanSchedulingTest(unittest.TestCase):
+    """设计期跑在 plan 的调度语义上：依赖来自块表，并发来自 ``parallel_group``。
+
+    串行实现也能把五块写完，所以"结果对"**不足以**证明调度生效 —— 这里量的是
+    **同时进行的模型调用数**（串行永远是 1），以及批次与条目本身是否如声明。
+    """
+
+    def _run(self, payloads, *, , only_blocks=None):
+        """返回 ``(draft, diag, 并发峰值, 每次调用的 system_prompt)``。"""
+
+        prompts: list[str] = []
+        queue = list(payloads)
+        in_flight = 0
+        peak = 0
+
+        async def fake_run_tool_loop(*, system_prompt, **_kwargs):
+            nonlocal in_flight, peak
+            prompts.append(system_prompt)
+            in_flight += 1
+            peak = max(peak, in_flight)
+            # 让出控制权：串行调用永远到不了峰值 2。
+            for _ in range(4):
+                await asyncio.sleep(0)
+            in_flight -= 1
+            return SimpleNamespace(
+                text=queue.pop(0) if queue else "这不是 JSON",
+                trace=[],
+                diag={"token_usage": {"input": 1, "output": 1, "total": 2}},
+            )
+
+        with patch("app.agent.plan.tool_loop.run_tool_loop", fake_run_tool_loop):
+            draft, diag = asyncio.run(
+                draft_design_blocks(
+                    base_prompt="BASE",
+                    user_request="生成一个两层别墅",
+                    
+                    thinking_mode=False,
+                    only_blocks=only_blocks,
+                    allow_probe=True,
+                )
+            )
+        return draft, diag, peak, prompts
+
+    def test_shell_group_runs_its_three_blocks_concurrently(self):
+        """结构 / 立面 / 屋顶声明了同一个并发组 —— 必须**真的并发**。
+
+        块表里 ``parallel_group="shell"`` 一直只是声明：旧实现是纯串行 for 循环，
+        那份声明空转。这条测试钉住它已经生效。
+        """
+
+        _, diag, peak, _ = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS))
+        self.assertEqual(peak, 3, "shell 组应三块并发")
+        self.assertEqual(diag["unsettled_blocks"], [])
+
+    def test_batches_follow_the_block_table(self):
+        _, diag, _, _ = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS))
+        self.assertEqual(
+            [batch["items"] for batch in diag["batches"]],
+            [
+                ["draft_massing"],
+                ["draft_structure", "draft_facade", "draft_roof"],
+                ["draft_components"],
+            ],
+        )
+        self.assertEqual(diag["batches"][1]["parallel_group"], "shell")
+        self.assertEqual(
+            diag["batches"][1]["settled"], ["structure", "facade", "roof"]
+        )
+
+    def test_plan_carries_dependencies_groups_and_bounded_attempts(self):
+        _, diag, _, _ = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS))
+        plan = diag["plan"]
+        by_id = {item["id"]: item for item in plan["items"]}
+        self.assertEqual(set(by_id), {f"draft_{b.name}" for b in DESIGN_BLOCKS})
+        self.assertEqual(by_id["draft_massing"]["depends_on"], [])
+        self.assertEqual(by_id["draft_facade"]["depends_on"], ["draft_massing"])
+        self.assertEqual(
+            by_id["draft_components"]["depends_on"],
+            ["draft_massing", "draft_structure", "draft_facade", "draft_roof"],
+        )
+        self.assertEqual(plan["detail_level"], "standard")
+        for item in plan["items"]:
+            # 🔴 依赖是**物理约束**：块表给，不由模型产出（产出它只是白烧一次调用）。
+            self.assertEqual(item["op"], "generate")
+            self.assertEqual(item["run"]["max_attempts"], _BLOCK_MAX_ATTEMPTS)
+        # 并发组也跟着块表走：只有 shell 三块声明了组。
+        grouped = {
+            item["kind"]: item["params"]["parallel_group"]
+            for item in plan["items"]
+        }
+        self.assertEqual(
+            {kind for kind, group in grouped.items() if group}, 
+            {"structure", "facade", "roof"},
+        )
+
+    def test_retry_exhaustion_is_terminal_so_downstream_still_runs(self):
+        """某块试满上限 ⇒ ``abandoned``（**终态**）⇒ 下游照常跑。
+
+        用户红线：一块写不出来不阻断整轮 —— 留空交下游归一化兜底。若把试满上限写成
+        ``blocked`` 而不是终态，``components`` 会被永久锁死，表现为"图纸一直缺构件配额"。
+        """
+
+        payloads = ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        draft, diag, _, _ = self._run(payloads)
+        by_id = {item["id"]: item for item in diag["plan"]["items"]}
+
+        self.assertEqual(by_id["draft_massing"]["status"], "abandoned")
+        self.assertEqual(
+            by_id["draft_massing"]["run"]["attempts"], _BLOCK_MAX_ATTEMPTS
+        )
+        self.assertEqual(by_id["draft_components"]["status"], "done")
+        self.assertEqual(diag["unsettled_blocks"], ["massing"])
+        # 下游确实写出了东西（没有因为 massing 失败而集体留空）。
+        self.assertIn("facades", draft)
+        self.assertIn("roof", draft)
+
+    def test_subset_draft_drops_dangling_dependencies_instead_of_deadlocking(self):
+        """收敛环只重出受影响的块：被裁掉的依赖不能留下悬空 id。
+
+        悬空依赖会让 ``refresh_statuses`` 永远推不出 ``ready`` —— 条目被静默丢弃在
+        ``blocked``，表现为"重出之后图纸一个字节没变，却也不报错"。
+        """
+
+        draft, diag, _, prompts = self._run(
+            [_json(_FULL_PAYLOAD)], only_blocks=["facade"]
+        )
+        self.assertEqual(len(prompts), 1)
+        self.assertIn("facades", draft)
+        self.assertEqual(diag["unsettled_blocks"], [])
+        plan = diag["plan"]
+        self.assertEqual([item["id"] for item in plan["items"]], ["draft_facade"])
+        self.assertEqual(plan["items"][0]["depends_on"], [])
+
+    def test_abandoned_block_frees_its_group_siblings_to_run(self):
+        """massing 失败也不能拦住 shell 组：依赖的语义是"产物可用"而不是"上游成功"。"""
+
+        payloads = ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        _, diag, peak, _ = self._run(payloads)
+        by_id = {item["id"]: item for item in diag["plan"]["items"]}
+        self.assertEqual(
+            [by_id[f"draft_{name}"]["status"] for name in ("structure", "facade", "roof")],
+            ["done"] * 3,
+        )
+        self.assertEqual(peak, 3)
 
 
 if __name__ == "__main__":

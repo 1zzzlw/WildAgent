@@ -36,6 +36,25 @@ from app.utils.rotation import coerce_element_rotation
 # 全局 LLM 并发信号量
 _LLM_SEMAPHORE = asyncio.Semaphore(3)
 
+#: 工具型条目的检索指令（用户决策 2026-09-29，开放集构件通道配套）：
+#: 预取 RAG 可能空手、类型可能没有专属注册配置——必须明确告诉模型
+#: "不清楚就先调 search_knowledge，不要凭空编造字段"。
+_KB_TOOL_NUDGE = (
+
+    "\n\n# 知识检索工具（本条目可用）\n"
+    "- 你可以调用 search_knowledge(query, kind) 检索构件知识库，本条目最多 2 次；\n"
+    "  kind 传构件类型（如 \"column\"），query 用一句话描述你要查的契约点。\n"
+    "- 当你不确定该构件的字段契约、坐标语义、必填参数或能力边界时，"
+    "**必须先检索再输出**，不要凭空编造字段名或坐标语义。\n"
+    "- 检索结果与你的记忆冲突时，以知识库为准；检索后仍不确定，"
+    "就输出保守、合法的最小实现，并在 JSON 之外用一句话说明不确定点。\n"
+    "- 🔴 **放弃是最后手段**（用户规则 2026-09-29）：只有当你 ① 对照本提示词里的"
+    "蓝图语言规则（字段表、槽位规则、坐标语义）确认没有该构件/字段的契约，"
+    "**且** ② 调 search_knowledge 检索知识库也查不到它的描述时，才允许放弃——"
+    "此时必须在 JSON 之外用一句话写明放弃原因与两条核查的结论，"
+    "**不许静默跳过**，更不许凭印象认定\"做不到\"。"
+)
+
 
 def _coerce_fragment_rotations(fragments: list) -> int:
     """对一批片段做 `rotation` 单位迁移，返回被改动的条数。
@@ -82,7 +101,7 @@ async def _recover_component_json(
 
 
 def _plan_hint(plan_item: object) -> str:
-    """本条目的计划策略提示：形态与理由，不含坐标与数量。"""
+    """本条目的计划策略提示：形态、理由与图纸缺口，不含坐标与数量。"""
 
     if not isinstance(plan_item, dict):
         return ""
@@ -90,12 +109,15 @@ def _plan_hint(plan_item: object) -> str:
     subtype = str(plan_item.get("subtype") or "").strip()
     guidance = str(plan_item.get("guidance") or "").strip()
     reason = str(plan_item.get("reason") or "").strip()
+    gap = str(plan_item.get("blueprint_gap") or "").strip()
     if subtype:
         parts.append(f"- 形态：{subtype}")
     if guidance:
         parts.append(f"- 要求：{guidance}")
     if reason:
         parts.append(f"- 本次为何需要它：{reason}")
+    if gap:
+        parts.append(f"- 🔴 图纸缺口：{gap}")
     return "\n".join(parts)
 
 
@@ -117,6 +139,15 @@ def create_component_generator(config: ComponentConfig):
                 f"{json.dumps(spatial_invariants, ensure_ascii=False, default=str)}"
             )
         design_brief = state.get("design_brief")  # ← 骨架设计清单
+
+        # 图纸级缺口摘要（用户指令 2026-09-29）：编译报告的 uncompiled/defects，
+        # 让模型知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
+        gaps = state.get("blueprint_gaps")
+        if isinstance(gaps, dict) and gaps:
+            skeleton_summary = (
+                f"{skeleton_summary}\n\n【图纸缺口摘要（确定性编译报告，供参考）】\n"
+                f"{json.dumps(gaps, ensure_ascii=False, default=str)}"
+            )
 
         logger.info(f"[{config.component_type}_gen] 开始生成 {config.label}")
 
@@ -193,6 +224,10 @@ def create_component_generator(config: ComponentConfig):
         # 上**有界地**补检索与自查（《动态节点设计规划》§4.7–§4.12）。没有绑定工具集时
         # 走既有的单次调用路径，行为与以前完全一致。
         item_tools = get_item_tools()
+        if item_tools:
+            # 开放集构件通道（用户决策 2026-09-29）：模型可能拿到注册表之外的类型，
+            # 预取 RAG 也可能空手——必须明确告诉它"不清楚就先检索，不要编造"。
+            system_prompt = system_prompt + _KB_TOOL_NUDGE
 
         try:
             if item_tools:

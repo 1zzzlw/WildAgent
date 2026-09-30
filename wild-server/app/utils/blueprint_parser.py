@@ -740,6 +740,7 @@ def validate_blueprint_schema(
                 "cornice": ("path", "profile"),
                 "chimney": ("position", "width", "depth", "height"),
                 "light": ("position",),
+                "elevator": ("position", "dimensions", "floorHeight", "floorCount"),
             }
             component_allowed = {
                 "door": {
@@ -793,6 +794,10 @@ def validate_blueprint_schema(
                     "initiallyOn", "bulbRadius", "baseHeight", "height",
                     "shadeRadius", "material", "baseMaterial", "shadeMaterial",
                     "draggable",
+                },
+                "elevator": {
+                    "type", "id", "position", "dimensions", "floorHeight",
+                    "floorCount", "initialFloor", "draggable",
                 },
             }
             for component in components:

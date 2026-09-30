@@ -150,7 +150,6 @@ def _converge(compiler, draft, **overrides):
                 plan=dict(_PLAN),
                 raw_plan=None,
                 user_message="生成一个两层别墅",
-                level="standard",
                 complexity_profile=None,
                 architecture_profile=None,
                 thinking_mode=False,
@@ -266,12 +265,21 @@ class ConvergenceLoopTest(unittest.TestCase):
         self.assertEqual(len(outcome.diag["unresolved"]), 1)
 
     def test_invalid_revision_keeps_the_previous_plan(self):
-        """模型给的草稿让归一化抛错 ⇒ 保留上一版图纸，**不许**穿出异常掐掉生成。"""
+        """模型给的草稿让归一化抛错 ⇒ 保留上一版图纸，**不许**穿出异常掐掉生成。
 
+        （2026-09-30：原触发器是"bays=1 缺 ground_pattern"的真实越界草稿；
+        `_clamp_number` 根修后这份草稿已合法，改为强制归一化抛错，
+        让本用例钉的"异常不得穿出收敛环"与具体触发方式解耦。越界本身
+        由 test_architecture_plan.py::TestEntrancePunchWithinBays 钉。）
+        """
         compiler = _FakeCompiler([_defect(design_field="decisions.facades")])
-        # `bays=1` 但缺 ground_pattern ⇒ 归一化按 entrance_bay 写下标时越界（真实抛点）。
-        draft = _FakeDraft({"facades": {"front": {"bays": 1}}})
-        outcome = _converge(compiler, draft)
+        draft = _FakeDraft({"facades": {"front": {"bays": 3, "ground_pattern": ["window"] * 3}}})
+
+        with patch(
+            "app.agent.generation.architecture.normalize_architecture_plan",
+            side_effect=IndexError("list assignment index out of range"),
+        ):
+            outcome = _converge(compiler, draft)
 
         self.assertEqual(outcome.diag["stop_reason"], "invalid_revision")
         self.assertFalse(outcome.changed)
@@ -293,7 +301,6 @@ class ConvergenceLoopTest(unittest.TestCase):
                     plan=plan,
                     raw_plan={"massing": {"floors": 2}},
                     user_message="生成一个两层别墅",
-                    level="standard",
                     complexity_profile=None,
                     architecture_profile=None,
                     thinking_mode=False,

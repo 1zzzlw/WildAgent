@@ -102,6 +102,7 @@ _COMPONENT_LABELS = {
     "furniture": "家具",
     "primitive": "通用几何体",
     "body": "简化人物",
+    "column": "柱",
 }
 
 

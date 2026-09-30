@@ -7,9 +7,33 @@ from typing import Any
 
 from app.agent.generation.spatial_geometry import shared_footprint, shared_stair_layout
 from app.agent.generation.stair_openings import cut_stair_openings
+from app.design.openings import opening_kind
 
 from .planning import normalize_architecture_plan
 from .profile import _fallback_volumes
+
+
+def _open_facade_sides(facades: dict[str, Any], level: int) -> set[str]:
+    """某层"全空"的立面朝向集合——该面该层**开敞无墙**。
+
+    语义（2026-09-29 与 KB《亭与园林建筑的设计层表态》同批定）：立面 pattern
+    的槽位是"墙上开什么洞"的表达；一面在某一层的 pattern **全为 empty** =
+    设计点名这一面这一层不设墙（开敞亭廊、骑楼、月洞墙以外的敞面）。
+    首层读 ground_pattern，上层读 upper_pattern。facade 缺失或 pattern 不全
+    按"有墙"处理（安全默认——普通建筑的实墙不受影响）。
+    """
+    open_sides: set[str] = set()
+    for side, facade in (facades or {}).items():
+        if not isinstance(facade, dict):
+            continue
+        pattern = facade.get("ground_pattern" if level <= 1 else "upper_pattern")
+        if not isinstance(pattern, list) or not pattern:
+            continue
+        if all(opening_kind(str(token)) == "empty" for token in pattern):
+            open_sides.add(str(side))
+    return open_sides
+
+
 def _resolve_floor_plate_plan(
     volumes: list[dict[str, Any]],
     modeled_floors: int,
@@ -382,7 +406,6 @@ def evaluate_skeleton_complexity(
                 overlapping_column_count += 1
 
     complexity = plan.get("complexity", {}) if isinstance(plan, dict) else {}
-    level = str(complexity.get("level") or "standard")
     structural_count = sum(
         counts.get(item, 0) for item in ("wall", "floor", "column", "beam", "stair")
     )
@@ -470,14 +493,7 @@ def evaluate_skeleton_complexity(
         checks["overlapping_column_free"],
     )
     return {
-        "level": level,
-        "meets_target": (
-            (level == "minimal" and checks["valid_wall_hosts"])
-            or (
-                all(realization_checks)
-                and (level != "detailed" or all(checks.values()))
-            )
-        ),
+        "meets_target": all(realization_checks),
         "checks": checks,
         "structural_element_count": structural_count,
         "target_structural_elements": target,
@@ -914,7 +930,6 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                 floor_height=floor_height,
             )
     else:
-        detailed = normalized["complexity"]["level"] == "detailed"
         floor_plates = _resolve_floor_plate_plan(volumes, modeled_floors, floor_height)
         for level in range(1, modeled_floors + 1):
             active_volumes = [
@@ -938,10 +953,15 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                     "thickness": 0.2,
                     "material": "concrete",
                 })
+            # 🔴 立面 pattern 全空的面该层**开敞无墙**（亭廊/骑楼语义，
+            # 见 _open_facade_sides）——普通建筑的实墙面不受影响。
+            open_sides = _open_facade_sides(normalized.get("facades", {}), level)
             if len(active_volumes) > 1:
                 side_counts: dict[str, int] = {}
                 for segment in _resolve_union_wall_segments(active_volumes):
                     side = str(segment["side"])
+                    if side in open_sides:
+                        continue
                     side_counts[side] = side_counts.get(side, 0) + 1
                     start_x, start_z = segment["from"]
                     end_x, end_z = segment["to"]
@@ -961,29 +981,22 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                 z0 = float(volume["z"])
                 x1 = x0 + float(volume["width"])
                 z1 = z0 + float(volume["depth"])
-                suffix = f"{level}_{volume_id}" if detailed or len(active_volumes) > 1 else str(level)
-                elements.extend([
-                    {
-                        "type": "wall", "id": f"wall_front_{suffix}",
-                        "from": [x0, base_y, z0], "to": [x1, top_y, z0],
+                suffix = f"{level}_{volume_id}" if len(active_volumes) > 1 else str(level)
+                wall_specs = [
+                    ("front", x0, z0, x1, z0),
+                    ("right", x1, z0, x1, z1),
+                    ("back", x1, z1, x0, z1),
+                    ("left", x0, z1, x0, z0),
+                ]
+                for side, start_x, start_z, end_x, end_z in wall_specs:
+                    if side in open_sides:
+                        continue
+                    elements.append({
+                        "type": "wall", "id": f"wall_{side}_{suffix}",
+                        "from": [start_x, base_y, start_z],
+                        "to": [end_x, top_y, end_z],
                         "thickness": 0.24, "material": "wall_finish",
-                    },
-                    {
-                        "type": "wall", "id": f"wall_right_{suffix}",
-                        "from": [x1, base_y, z0], "to": [x1, top_y, z1],
-                        "thickness": 0.24, "material": "wall_finish",
-                    },
-                    {
-                        "type": "wall", "id": f"wall_back_{suffix}",
-                        "from": [x1, base_y, z1], "to": [x0, top_y, z1],
-                        "thickness": 0.24, "material": "wall_finish",
-                    },
-                    {
-                        "type": "wall", "id": f"wall_left_{suffix}",
-                        "from": [x0, base_y, z1], "to": [x0, top_y, z0],
-                        "thickness": 0.24, "material": "wall_finish",
-                    },
-                ])
+                    })
 
     if not schematic and want_core and vertical_layout is not None:
         _append_vertical_core(
@@ -1014,55 +1027,7 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -
                 "material": "concrete",
             })
 
-    if normalized["complexity"]["level"] == "detailed" and not schematic:
-        radius = min(0.35, max(0.16, min(width, depth) * 0.015))
-        column_keys: set[tuple[float, float, float, float]] = set()
-        for volume in volumes:
-            x0 = float(volume["x"])
-            z0 = float(volume["z"])
-            x1 = x0 + float(volume["width"])
-            z1 = z0 + float(volume["depth"])
-            beam_inset = min(0.35, float(volume["width"]) * 0.08, float(volume["depth"]) * 0.08)
-            column_inset = min(
-                max(radius + 0.04, 0.18),
-                float(volume["width"]) * 0.2,
-                float(volume["depth"]) * 0.2,
-            )
-            base_y = (int(volume["start_floor"]) - 1) * floor_height
-            volume_height = (int(volume["end_floor"]) - int(volume["start_floor"]) + 1) * floor_height
-            if int(volume["start_floor"]) > 1:
-                base_y += 0.2
-                volume_height = max(0.5, volume_height - 0.2)
-            volume_id = str(volume["id"])
-            corners = (
-                (x0 + column_inset, z0 + column_inset),
-                (x1 - column_inset, z0 + column_inset),
-                (x1 - column_inset, z1 - column_inset),
-                (x0 + column_inset, z1 - column_inset),
-            )
-            for index, (x, z) in enumerate(corners, start=1):
-                column_key = (
-                    round(x, 3), round(z, 3), round(base_y, 3),
-                    round(base_y + volume_height, 3),
-                )
-                if column_key in column_keys:
-                    continue
-                column_keys.add(column_key)
-                elements.append({
-                    "type": "column", "id": f"column_{volume_id}_{index}",
-                    "base": [x, base_y, z], "height": volume_height,
-                    "bottomRadius": radius, "topRadius": radius,
-                    "style": "modern", "material": "concrete",
-                })
-            beam_y = base_y + volume_height
-            elements.append({
-                "type": "beam", "id": f"beam_main_{volume_id}",
-                "from": [x0 + beam_inset, beam_y, (z0 + z1) / 2],
-                "to": [x1 - beam_inset, beam_y, (z0 + z1) / 2],
-                "crossSection": "rect", "width": 0.18, "height": 0.28,
-                "material": "concrete",
-            })
-    elif schematic:
+    if schematic:
         radius = min(0.6, max(0.2, min(width, depth) * 0.012))
         column_keys: set[tuple[float, float, float, float]] = set()
         for zone_index, zone in enumerate(schematic_zones, start=1):

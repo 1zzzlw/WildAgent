@@ -239,6 +239,22 @@ _COMPONENT_RULES: dict[str, str] = {
         "- 编译后产出: primitive.box / primitive.cylinder / primitive.sphere 拼出的人物网格，"
         "不产生 opening\n"
     ),
+    # ── 柱（引擎原生元素，注册进开放通道；此前"无人派发"是能力缺口）──
+    "column": (
+        "- column 是 geometry.elements 原生类型，不是 components；没有宿主构件，"
+        "不需要 parentWall / parentFloor\n"
+        "- base=[x,y,z] 是**柱底中心**世界坐标：base[1] 必须落在承托面上"
+        "（地面 / 台基顶 / 楼板顶），不得悬空\n"
+        "- height 从柱底到柱顶（米）；bottomRadius/topRadius 是柱底/柱顶半径，"
+        "古典柱收分通常 bottom 0.25 → top 0.2\n"
+        "- style 闭集五选一: doric / ionic / corinthian / modern / chinese_wooden\n"
+        "- 可选 flutes（凹槽数）、entasis（卷杀程度）、inclination（倾斜弧度）；"
+        "柱头垫块等附件用独立 primitive 表达，不要塞进 column 字段\n"
+        "- 柱网沿承托面周边等距布置；柱身不得与墙体相交；数量、位置服从 "
+        "component_quota 与已批准设计\n"
+        "- 材质必须引用骨架 materials 中已有的材质名\n"
+        "- 编译后产出: column 元素本身（引擎原生渲染，含柱头柱身收分）\n"
+    ),
 }
 
 
@@ -480,12 +496,62 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         extra_rules=_COMPONENT_RULES["body"],
         priority=7,
     ),
+    # ── P7: 柱（引擎原生元素；配额点名进入派发，服务柱廊/门廊/凉亭等开放语义）──
+    "column": ComponentConfig(
+        component_type="column",
+        label="柱",
+        # entity_type 必须与 KB 分片的 frontmatter 同名（light/elevator 同例）：
+        # 预取 RAG 按 (doc_type=component, entity_type=column) 过滤，对不上就永远检索不到。
+        entity_type="column",
+        rag_extra_queries=["column 柱 柱廊 柱网 垫块 doric ionic corinthian peristyle"],
+        is_list=True,
+        is_element=True,
+        required_fields=["type", "id", "base", "height", "bottomRadius", "topRadius", "style"],
+        optional_fields=["flutes", "entasis", "inclination", "material"],
+        skip_keywords=[],
+        need_keywords=[],
+        extra_rules=_COMPONENT_RULES["column"],
+        priority=7,
+    ),
 }
 
 
 def get_implemented_components() -> list[ComponentConfig]:
     """获取所有已实现的组件配置"""
     return [c for c in COMPONENT_REGISTRY.values() if c.implemented]
+
+
+def generic_component_config(component_type: str, label: str = "") -> ComponentConfig:
+    """未注册类型的**通用生成配置**（开放集出口，用户决策 2026-09-29）。
+
+    配额/建议里出现注册表没有的类型时，不再以"注册表没有"为由拒绝尝试，
+    而是用这份通用配置进入生成通道：字段契约靠知识库检索（``entity_type``
+    指向通用构件分片），校验与修复环兜底。与 ``primitive`` / ``body`` 的
+    "通用几何通道"同族——名字表永远是开放集，靠枚举拦截是死路。
+    """
+
+    return ComponentConfig(
+        component_type=component_type,
+        label=label or component_type,
+        entity_type="component",
+        rag_extra_queries=[component_type],
+        is_list=True,
+        # 未注册类型按元素处理：几何类自由构件（柱、山花、雕塑……）绝大多数
+        # 落 elements；真的属于挂墙组件时由宿主校验环节发现并修正。
+        is_element=True,
+        required_fields=["type", "id"],
+        optional_fields=["material", "position", "rotation", "dimensions", "height"],
+        skip_keywords=[],
+        need_keywords=[],
+        extra_rules=(
+            "- 该类型没有专属注册配置：字段契约以知识库检索结果为准；检索不到时\n"
+            "  按 WILD 蓝图 schema 的同名构件定义输出，宁可少产出也不要编造字段\n"
+            "- 🔴 放弃是最后手段：先对照蓝图语言规则（本提示词的字段表与坐标语义），\n"
+            "  再调 search_knowledge 检索知识库；两者都确认没有该构件的契约才允许\n"
+            "  放弃，且必须写明放弃原因——不许静默跳过，不许凭印象认定\"做不到\"\n"
+        ),
+        priority=7,
+    )
 
 
 def get_component_config(component_type: str) -> ComponentConfig | None:
@@ -534,10 +600,15 @@ def resolve_component_suggestions(
     resolved: list[str] = []
     for component_type in requested:
         config = COMPONENT_REGISTRY.get(component_type)
-        if config is None or not config.implemented:
+        if config is not None and not config.implemented:
             continue
-        if any(keyword in user_message for keyword in config.skip_keywords):
+        if config is not None and any(
+            keyword in user_message for keyword in config.skip_keywords
+        ):
             continue
+        # 开放集通道（用户决策 2026-09-29）：未注册类型不再丢弃——配额/建议里
+        # 点名的任何类型都进入派发，plan 条目用 generic_component_config 兜底，
+        # 字段契约靠知识库检索，校验与修复环兜底。
         if component_type not in resolved:
             resolved.append(component_type)
 

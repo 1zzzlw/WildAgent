@@ -160,7 +160,14 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn(("callback", "final_validate"), edges)
         self.assertNotIn(("callback", "merge"), edges)
 
-    async def test_callback_can_add_component_required_by_design_quota(self):
+    async def test_quota_shortfall_no_longer_drives_callback_repair(self):
+        """数量缺口不再触发回调补件（用户决策 2026-09-29，废除数量硬闸）。
+
+        旧实现把"door 数量 0 少于设计下限 1"当 error，驱动 callback_node
+        派 add_entity 补件。现在缺口是 warn：validate 放行（complete、零错误、
+        无 failed_components），只留 warning 步骤如实可见；模型补量走 plan 层
+        的 uncompiled 点名与修复环，不再借道回调。
+        """
         blueprint = _state_blueprint()
         blueprint["geometry"]["components"] = []
         design_brief = {
@@ -170,53 +177,16 @@ class CallbackTargetedRepairTest(unittest.IsolatedAsyncioTestCase):
         validation = await validate_node({
             "merged_blueprint": blueprint,
             "design_brief": design_brief,
-            "merge_diag": {
-                "design_errors": ["door 数量 0 少于设计下限 1"],
-            },
+            "merge_diag": {},
         })
-        action = '''
-        [{
-          "tool": "add_entity",
-          "arguments": {
-            "repair_target": "design:door",
-            "entity": {
-              "id": "door_front_added",
-              "type": "door",
-              "parentWall": "wall_front",
-              "from": [2.5, 0, 0],
-              "width": 1.0,
-              "height": 2.2,
-              "interaction": {"mode": "swing", "hingeSide": "left", "openAngle": 90}
-            }
-          },
-          "reason": "补齐设计配额要求的主入口"
-        }]
-        '''
-        state = {
-            **validation,
-            "merged_blueprint": blueprint,
-            "skeleton_blueprint": blueprint,
-            "skeleton_summary": "一面 6m 长墙",
-            "design_brief": design_brief,
-            "retry_count": 0,
-            "max_retries": 3,
-            "component_retry_counts": {},
-            "thinking_mode": False,
-        }
 
-        with (
-            patch("app.agent.repair.workflow.create_llm", return_value=_FakeLLM(action)),
-            patch(
-                "app.services.agent_service.agent_service.spec_loader.load_many",
-                return_value="",
-                create=True,  # RAG 关闭时 spec_loader 是 FileSpecLoader（无 load_many）
-            ),
-        ):
-            result = await callback_node(state)
-
-        self.assertTrue(result["repair_audit"]["accepted"])
-        self.assertEqual(result["repair_audit"]["after_issue_count"], 0)
-        self.assertEqual(result["component_fragments"]["door"][0]["id"], "door_front_added")
+        self.assertEqual(validation["status"], "complete")
+        self.assertEqual(validation["validation_error_count"], 0)
+        self.assertEqual(validation["failed_components"], [])
+        self.assertTrue(any(
+            result["name"] == "design_quota_shortfall"
+            for result in validation["validation_results"]
+        ))
 
     async def test_callback_can_remove_related_opening_for_facade_overage(self):
         blueprint = _state_blueprint()

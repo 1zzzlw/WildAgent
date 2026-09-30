@@ -128,11 +128,15 @@
           <span class="step-state">{{ statusLabel(step.status) }}</span>
         </summary>
         <div v-if="step.thinking" class="step-thinking">
-          <div class="thinking-label">
-            {{ step.thinking_channel === 'progress' ? '执行说明' : '模型过程' }}
-          </div>
+          <div class="thinking-label">执行说明</div>
           <div class="thinking-content" v-html="renderMarkdown(step.thinking)"></div>
         </div>
+        <!-- 模型原始思考默认折叠：它的体量可以很大（整段 CoT，含自我推翻），
+             展开着看会像"卡住了/出问题了"。 -->
+        <details v-if="step.reasoning" class="step-thinking step-reasoning">
+          <summary class="thinking-label">模型过程</summary>
+          <div class="thinking-content" v-html="renderMarkdown(step.reasoning)"></div>
+        </details>
         <div v-if="step.diagnostic" class="step-diagnostics">
           <span v-if="step.diagnostic.rag_chars">RAG {{ step.diagnostic.rag_chars }} 字</span>
           <span v-if="step.diagnostic.llm_ms">LLM {{ formatDuration(step.diagnostic.llm_ms) }}</span>
@@ -211,7 +215,6 @@
       </header>
       <template v-if="!planWindowMinimized">
         <div class="plan-floating-meta">
-          <span>档位 {{ turn.plan.detail_level }}</span>
           <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
           <span>{{ planBatchCount }} 个生成批次</span>
           <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>

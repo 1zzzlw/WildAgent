@@ -135,7 +135,12 @@ def _sanitize_parallel_groups(entries: list[PlanKindStrategy]) -> list[PlanKindS
         kinds = {member.kind for member in members}
         if len(members) < 2:
             continue
-        if any(set(configs[member.kind].dependencies) & kinds for member in members):
+        # 开放集：未注册类型没有注册依赖声明，按"无依赖"处理（generic 配置生成）。
+        if any(
+            member.kind in configs
+            and set(configs[member.kind].dependencies) & kinds
+            for member in members
+        ):
             continue
         safe_groups.add(group)
 
@@ -209,8 +214,13 @@ async def request_plan_strategy(
         return strategy, {"catalog_count": 0, "used_fallback": True,
                           "fallback_reason": "无可派发能力", "total_ms": 0}
 
+    # 设计清单（槽位/配额）
     design_brief = state.get("design_brief")
     detail_level = _resolve_level(state)
+    # 图纸缺口：策略层要看到"整张图纸缺什么"——
+    # 编译报告的 uncompiled/defects，而不是只数配额。惰性导入避免与 expand 成环。
+    from app.agent.plan.expand import compile_gap_summary
+
     prompt = build_plan_strategy_prompt(
         capability_catalog=catalog,
         design_brief=design_brief,
@@ -223,7 +233,9 @@ async def request_plan_strategy(
             if isinstance(state.get("architecture_plan"), dict)
             else None
         ),
+        compile_gaps=compile_gap_summary(state) or None,
     )
+    
     messages = [
         {"role": "system", "content": prompt},
         {

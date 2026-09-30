@@ -546,7 +546,6 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     """
     if "_server_access_context" not in data:
         data = _prepare_server_request(data, AccessContext())
-    precision_mode = data.get("precision_mode") is True
     with rag_trace_scope(
         str(data.get("request_id") or "unknown"),
         session_id=str(data.get("session_id") or data.get("request_id") or "unknown"),
@@ -554,10 +553,33 @@ async def _handle_user_message(ws: WebSocket, data: dict):
     ):
         if await _emit_safety_refusal_if_needed(ws, data):
             return
-        if precision_mode:
-            await _handle_with_langgraph(ws, data)
-        else:
-            await _handle_with_langchain(ws, data)
+        await _handle_with_langgraph(ws, data)
+
+
+# ── 思考通道 ──
+#
+# 🔴 **通道由发送方逐条表态，不按节点名猜**：
+#
+# - 代码写的中文进度句 → 用 `"<node>:progress"`，前端显示为「执行说明」；
+# - 模型自己吐出的思考 token → 用裸节点名，前端显示为「模型过程」。
+#
+# 这条规则是踩坑换来的：原先按节点名白名单把 `architecture` **一律**判成 progress，
+# 而同一个节点两种都发 —— 于是它转发的**整段原始 CoT**（含大量自我推翻）被当成
+# 「执行说明」倒给用户，看起来像"循环思考 / 出问题了"。
+# 按节点名永远分不开同一个节点的两种输出，只有逐条表态才分得开。
+_PROGRESS_SUFFIX = ":progress"
+
+
+def _thinking_channel(node_name: str) -> str:
+    """`"<node>:progress"` → `"progress"`（执行说明）；其余 → `"reasoning"`（模型过程）。"""
+
+    return "progress" if str(node_name).endswith(_PROGRESS_SUFFIX) else "reasoning"
+
+
+def _public_node_name(node_name: str) -> str:
+    """去掉通道后缀，还原它挂在哪一个步骤上。"""
+
+    return str(node_name).removesuffix(_PROGRESS_SUFFIX)
 
 
 # ── 节点名 → 展示标签 ──
@@ -581,6 +603,37 @@ _NODE_LABELS = {
 
 def _node_label(name: str) -> str:
     return _NODE_LABELS.get(name, name)
+
+
+def _design_schedule_note(design_blocks: dict | None) -> str:
+    """把设计期的 plan 调度压成一行：几批、最宽并发几块、落定几块。
+
+    🔴 这是"plan 到底参与图纸了没有"唯一可观测的口径。只看产物看不出来 ——
+    串行起草也能写出同一张图，只有**批次与并发数**能区分。块表的
+    ``parallel_group="shell"`` 曾经一直是空转的声明（旧实现是纯串行 for 循环），
+    所以这一行也兼作那条回归的现场证据。
+    """
+
+    if not isinstance(design_blocks, dict):
+        return ""
+    plan = design_blocks.get("plan")
+    batches = design_blocks.get("batches")
+    if not isinstance(plan, dict) or not isinstance(batches, list) or not batches:
+        return ""
+    items = [item for item in (plan.get("items") or []) if isinstance(item, dict)]
+    settled = len([item for item in items if item.get("status") == "done"])
+    widest = max(
+        (
+            len(batch.get("items") or [])
+            for batch in batches
+            if isinstance(batch, dict)
+        ),
+        default=0,
+    )
+    return (
+        f" · 设计期 {len(batches)} 批（最宽 {widest} 并发）"
+        f" · 落定 {settled}/{len(items)} 块"
+    )
 
 
 #: 会向 ws 推送 step 事件的节点全集 = 图节点全集（见 ``tests/agent/test_plan_graph.py``
@@ -627,7 +680,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
     # 精密模式下强制开启思考（前端已做联动，此处兜底防止 localStorage 状态不一致）
-    thinking_mode = data.get("thinking_mode") is True or data.get("precision_mode") is True
+    thinking_mode = data.get("thinking_mode") is True
 
     logger.info(f"[{request_id}] [precision] 收到: {message[:80]}...")
 
@@ -649,17 +702,14 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         )
 
     async def send_thinking_delta(node_name: str, delta: str):
-        """实时推送节点的思考内容给前端（带节点标识）"""
-        explicit_progress = node_name.endswith(":progress")
-        public_node_name = node_name.removesuffix(":progress")
-        channel = (
-            "progress"
-            if explicit_progress
-            or public_node_name in {"architecture", "final_validate"}
-            else "reasoning"
-        )
+        """实时推送节点的思考内容给前端（带节点标识）。通道判据见 :func:`_thinking_channel`。"""
         await _emit_thinking_delta(
-            ws, request_id, session_id, node=public_node_name, channel=channel, delta=delta,
+            ws,
+            request_id,
+            session_id,
+            node=_public_node_name(node_name),
+            channel=_thinking_channel(node_name),
+            delta=delta,
         )
 
     async def send_thinking_status(status: str, content: str = ''):
@@ -861,9 +911,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 if node_name == "classifier":
                     intent = node_output.get("intent")
                     resolved_intent = intent
-                    confidence = node_output.get("intent_confidence")
-                    if not isinstance(confidence, (int, float)):
-                        confidence = 0.0
                     intent_label = {
                         "generate": "生成建筑",
                         "edit": "修改场景",
@@ -879,14 +926,12 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             str(classifier_error.get("user_message") or "意图分类模型不可用")
                             if isinstance(classifier_error, dict)
                             else f"意图：{intent_label} · "
-                            f"置信度 {float(confidence):.0%} · "
                             f"{node_output.get('intent_reason', '')}"
                         ),
                     )
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
                         "intent": intent,
-                        "confidence": node_output.get("intent_confidence"),
                         "target": node_output.get("intent_target"),
                         "reason": node_output.get("intent_reason"),
                         "source": node_output.get("intent_source"),
@@ -943,12 +988,16 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     selected = diag.get("selected_index", 0) + 1
                     candidate_count = diag.get("candidate_count", 1)
                     fallback_note = " · 使用确定性总体方案" if diag.get("used_fallback") else ""
+                    # 设计期也跑在 plan 的调度语义上（`design_plan`）。把批次与并发如实
+                    # 报出来：图纸阶段究竟发生了几批、同批几块，是"plan 到底参与了没有"
+                    # 唯一可观测的证据 —— 只看结果看不出来，串行也能写出同样的图。
+                    schedule_note = _design_schedule_note(diag.get("design_blocks"))
                     await send_step(
                         "generating", node_name, "done", label,
                         f"候选 {selected}/{candidate_count} · "
                         f"{massing.get('width', '?')}×{massing.get('depth', '?')}m · "
                         f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶"
-                        f"{fallback_note}",
+                        f"{fallback_note}{schedule_note}",
                     )
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
@@ -956,6 +1005,27 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "concept": plan.get("concept"),
                         "massing": massing,
                         "roof": plan.get("roof"),
+                    })
+
+                elif node_name == "object_design":
+                    plan = node_output.get("architecture_plan", {})
+                    objects = plan.get("objects") if isinstance(plan, dict) else None
+                    objects = objects if isinstance(objects, list) else []
+                    piece_count = sum(
+                        int(item.get("count") or 0)
+                        for item in objects
+                        if isinstance(item, dict)
+                    )
+                    await send_step(
+                        "generating", node_name, "done", label,
+                        f"{len(objects)} 类物件 · 共 {piece_count} 件"
+                        + (" · 使用确定性兜底" if diag.get("used_fallback") else ""),
+                    )
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        **diag,
+                        "concept": plan.get("concept") if isinstance(plan, dict) else None,
+                        "objects": objects,
                     })
 
                 elif node_name == "design_review":
@@ -979,6 +1049,29 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             **material_diag,
                         })
 
+                elif node_name == "design_convergence":
+                    # 收敛环把图纸跑到编得出来再交人工审核；诊断键是 `design_convergence`
+                    # （**不是** 节点名 + `_diag` 的通用约定），所以这里显式取。
+                    convergence = node_output.get("design_convergence")
+                    convergence = convergence if isinstance(convergence, dict) else {}
+                    unfinished = convergence.get("unresolved") or []
+                    note = ""
+                    if convergence.get("reverted"):
+                        note = " · 收敛后图纸不合法，已回退原图纸"
+                    elif convergence.get("converged") is False:
+                        note = f" · 仍有 {len(unfinished)} 条未解缺陷（不阻断）"
+                    await send_step(
+                        "generating", node_name, "done", label,
+                        f"缺陷 {convergence.get('initial_defects', 0)}→"
+                        f"{convergence.get('final_defects', 0)} · "
+                        f"修订 {convergence.get('revisions', 0)} 轮 · "
+                        f"{convergence.get('stop_reason') or '?'}{note}",
+                    )
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        **convergence,
+                    })
+
                 elif node_name == "skeleton":
                     if node_output.get("error"):
                         await send_step(
@@ -1001,6 +1094,29 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             "deterministic_fallback": diag.get("deterministic_fallback", False),
                             "total_ms": diag.get("total_ms"),
                         })
+
+                elif node_name == "compile":
+                    # 编译**没有失败出口**（红线：图纸有问题只记进 compile_report，不阻断），
+                    # 所以状态恒为 done；阻断级缺陷由 final_validate 那一步报 error。
+                    report = node_output.get("compile_report")
+                    report = report if isinstance(report, dict) else {}
+                    uncompiled = [str(item) for item in (report.get("uncompiled") or [])]
+                    unsupported = [str(item) for item in (report.get("unsupported") or [])]
+                    detail = (
+                        f"{report.get('elements', '?')} 元素 + {report.get('components', '?')} 构件 · "
+                        f"缺陷 {report.get('defects', 0)} · 默认值 {report.get('defaulted', 0)}"
+                    )
+                    if uncompiled:
+                        detail += f" · 待模型补 {len(uncompiled)} 类（{'、'.join(uncompiled)}）"
+                    if unsupported:
+                        detail += f" · 能力缺失 {len(unsupported)} 类"
+                    if report.get("ok") is False:
+                        detail += " · ⚠ 有阻断级缺陷"
+                    await send_step("generating", node_name, "done", label, detail)
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        **report,
+                    })
                 elif node_name == "final_validate":
                     # 校验流水线结果
                     validation_results = node_output.get("validation_results", [])
@@ -1073,6 +1189,23 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "parallel_count": len(item_ids),
                         "tool_calls": tool_calls,
                         "item_results": execute_diag.get("item_results") or [],
+                    })
+
+                elif node_name == "replanner":
+                    terminal = diag.get("terminal_stats")
+                    terminal = terminal if isinstance(terminal, dict) else {}
+                    detail = (
+                        f"第 {diag.get('iterations', '?')} 轮 · "
+                        f"完成 {terminal.get('done', 0)}/{terminal.get('total', 0)} · "
+                        f"无进展 {diag.get('no_progress_rounds', 0)} 轮"
+                    )
+                    finalization = diag.get("finalization")
+                    if isinstance(finalization, dict) and finalization.get("reason"):
+                        detail += f" · 转入确定性收尾：{finalization['reason']}"
+                    await send_step("generating", node_name, "done", label, detail)
+                    await send_debug("node", {
+                        "node": node_name, "label": label, "stage": "done",
+                        **diag,
                     })
 
                 elif node_name == "plan":
@@ -1433,252 +1566,3 @@ def _friendly_graph_error(exc: Exception) -> str:
         )
     return message
 
-async def _handle_with_langchain(ws: WebSocket, data: dict):
-    """执行一次用户请求，并把 QueryResult 翻译成 WebSocket 协议消息。
-
-    根据 AgentService 的结构化结果分成三条出口：
-    完整 Blueprint 会落盘，ScenePatch 等待前端确认，普通对话只返回文本。
-    """
-    request_id = data.get("request_id", "")
-    message = data.get("message", "")
-    current_blueprint = data.get("blueprint")
-    selection = data.get("selection", [])
-    # 只有 JSON 布尔值 true 才开启，避免字符串 "true" 等意外触发日志。
-    thinking_mode = data.get("thinking_mode") is True
-    # 相同 session_id 使用同一个文件名，因此后续生成会更新该会话的场景文件。
-    session_id = data.get("session_id", request_id)
-
-    logger.info(f"[{request_id}] 收到用户消息: {message[:80]}...")
-
-    async def send_step(
-        stage: str,
-        detail: str,
-        *,
-        node: str | None = None,
-        status: str = "running",
-        label: str | None = None,
-    ):
-        """发送结构化步骤事件；content 仅保留可读文本，不承载协议字段。"""
-        step_id = node or stage
-        stage_labels = {
-            "analyzing": "理解需求",
-            "generating": "生成方案",
-            "validating": "校验结果",
-            "saving": "保存蓝图",
-            "finished": "处理完成",
-        }
-        await _emit_agent_step(
-            ws, request_id, session_id,
-            stage=stage, node=step_id, status=status,
-            label=label or stage_labels.get(stage, stage), detail=detail,
-        )
-
-    reasoning_received = False
-
-    async def send_reasoning_delta(delta: str):
-        """实时转发模型接口实际返回的 reasoning_content。"""
-        nonlocal reasoning_received
-        reasoning_received = True
-        await _emit_thinking_delta(
-            ws, request_id, session_id, node=None, channel="reasoning", delta=delta,
-        )
-
-    async def send_thinking_status(status: str, content: str = ""):
-        await _emit_thinking_status(
-            ws, request_id, session_id, status=status, content=content,
-        )
-
-    # Phase 1: 与精密模式复用同一个结构化意图分类器。
-    decision = await classify_intent_decision(
-        message,
-        has_scene_content(current_blueprint),
-        recent_messages=data.get("recent_messages"),
-        workflow_state=str(data.get("workflow_state") or "idle"),
-        selection=selection,
-    )
-    await send_step(
-        "analyzing",
-        f"意图：{INTENT_LABELS[decision.intent]} · "
-        f"置信度 {decision.confidence:.0%} · {decision.reason}",
-        node="classifier",
-        status="done",
-        label="意图分类",
-    )
-    await send_step("generating", "正在调用 AI 处理，请耐心等待...")
-    expected_output = {
-        "generate": "blueprint",
-        "edit": "patch",
-        "chat": "text",
-    }[decision.intent]
-
-    # Phase 2: LLM 查询（输出协议由共享意图决策强制限定）
-    if thinking_mode:
-        await send_thinking_status("thinking")
-    try:
-        result = await agent_service.query_structured(
-            message,
-            current_blueprint,
-            selection=selection,
-            thinking_mode=thinking_mode,
-            on_reasoning_delta=send_reasoning_delta if thinking_mode else None,
-            expected_output=expected_output,
-            resolved_intent=decision.intent,
-        )
-    except Exception:
-        if thinking_mode:
-            await send_thinking_status("error", "模型思考请求失败。")
-        raise
-
-    if thinking_mode and reasoning_received:
-        await send_thinking_status("completed")
-    elif thinking_mode:
-        await send_thinking_status(
-            "unsupported",
-            "当前模型接口没有返回 reasoning_content。",
-        )
-
-    # Phase 3: 处理结果（按 AI 输出的格式分发）
-    if result.blueprint is not None:
-        # ── 生成类：完整 Blueprint ──────────────────────────
-        # 只展示每个校验器最后一次结果，修正后的 recheck 覆盖初检。
-        for pr in final_validation_results(result.pipeline_results):
-            if pr.output.startswith("⏭️"):
-                continue
-            status = "❌" if pr.has_error else "⚠️" if pr.has_warning else "✅"
-            await send_step(
-                "validating",
-                f"{status} {pr.output[:300]}",
-                node=f"validation_{pr.step}",
-                status="error" if pr.has_error else "done",
-                label=f"[{pr.step}] {pr.name}",
-            )
- 
-        await send_step("saving", "正在保存蓝图文件...")
-        delivery_blueprint = (
-            result.blueprint
-            if data.get("procedural_materials_enabled") is True
-            else without_procedural_materials(result.blueprint)
-        )
-        try:
-            delivery = commit_generation_result(
-                session_id,
-                request_id,
-                delivery_blueprint,
-                result.pipeline_results,
-                status="failed" if result.error else "complete",
-            )
-        except GenerationRejectedError as exc:
-            logger.warning(f"[{request_id}] 蓝图校验未通过，拒绝下发: {exc}")
-            await send_step("finished", str(exc), status="error", label="校验未通过")
-            await _send_event(ws, {
-                "type": "agent_reply",
-                "request_id": request_id,
-                "session_id": session_id,
-                "content": f"生成的蓝图未通过校验，无法加载到场景：{exc}。请修正需求后重试。",
-            })
-            return
-        except ArtifactSaveError as exc:
-            logger.error(f"[{request_id}] 保存 Blueprint 失败: {exc}")
-            await _send_event(ws, {
-                "type": "error",
-                "request_id": request_id,
-                "session_id": session_id,
-                "code": "artifact_save_failed",
-                "error": f"Blueprint 已生成，但服务端保存失败: {exc}",
-            })
-            await send_step("finished", str(exc), status="error", label="保存失败")
-            return
-
-        await _send_event(ws, {
-            "type": "blueprint_generated",
-            "request_id": request_id,
-            "session_id": session_id,
-            "filename": delivery.filename,
-            "file_url": delivery.file_url,
-        })
-        await send_step("finished", "Blueprint 已加载", status="done", label="生成完成")
-        await _send_event(ws, {
-            "type": "agent_reply",
-            "request_id": request_id,
-            "session_id": session_id,
-            "content": delivery.reply,
-        })
-
-    elif result.patch is not None:
-        # ── 修改类：ScenePatch ──────────────────────────────
-        for pr in final_validation_results(result.pipeline_results):
-            if pr.output.startswith("⏭️"):
-                continue
-            status = "❌" if pr.has_error else "⚠️" if pr.has_warning else "✅"
-            await send_step(
-                "validating",
-                f"{status} {pr.output[:300]}",
-                node=f"validation_{pr.step}",
-                status="error" if pr.has_error else "done",
-                label=f"[{pr.step}] {pr.name}",
-            )
-
-        # 有 ❌ 级别错误则不发送 patch，改为错误提示
-        if result.error:
-            logger.warning(f"[{request_id}] Patch 校验失败，不发送: {result.error}")
-            await send_step("finished", result.error, status="error", label="修改提案失败")
-            await _send_event(ws, {
-                "type": "agent_reply",
-                "request_id": request_id,
-                "session_id": session_id,
-                "content": f"生成的修改方案存在问题，无法应用：\n\n{result.error}\n\n请重新描述你的需求。",
-            })
-        else:
-            # Patch 只是 proposal，前端必须让用户确认后才能真正应用到当前场景。
-            await send_step("finished", "等待用户确认", status="done", label="修改提案已完成")
-            await _send_event(ws, {
-                "type": "patch_proposal",
-                "request_id": request_id,
-                "session_id": session_id,
-                "patch": {
-                    "type": "scene_patch",
-                    "patch_id": f"patch_{request_id}",
-                    "base_revision": data.get("scene_revision", 0),
-                    "source": "agent",
-                    "mode": "proposal",
-                    "requires_confirmation": True,
-                    "operations": result.patch.get("operations", []),
-                    "summary": result.patch.get("summary", "AI 修改建议"),
-                },
-            })
-            logger.info(
-                f"[{request_id}] Patch 已发送, "
-                f"operations={len(result.patch.get('operations', []))}"
-            )
-
-    elif result.error:
-        # JSON 已被识别但结构预检失败时，不把无效 Blueprint 当作普通聊天回复。
-        needs_selection = result.error == "材质优化前必须先选中一个构件"
-        await send_step(
-            "finished",
-            result.error,
-            status="error",
-            label="需要选择构件" if needs_selection else "结构预检失败",
-        )
-        await _send_event(ws, {
-            "type": "agent_reply",
-            "request_id": request_id,
-            "session_id": session_id,
-            "content": result.text if needs_selection else (
-                f"生成结果未通过结构预检：\n\n{result.error}"
-            ),
-        })
-
-    else:
-        # ── 对话类：纯文本 ──────────────────────────────────
-        await send_step("finished", "回答已生成", status="done", label="处理完成")
-        await _send_event(ws, {
-            "type": "agent_reply",
-            "request_id": request_id,
-            "session_id": session_id,
-            "content": result.text,
-            "cited_chunk_ids": result.cited_chunk_ids,
-            "evidence_status": result.evidence_status,
-        })
-
-    logger.info(f"[{request_id}] 处理完成")

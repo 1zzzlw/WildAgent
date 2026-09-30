@@ -52,7 +52,6 @@ class GenerationState(TypedDict, total=False):
 
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
-    intent_confidence: float  # 意图分类置信度，范围为 0～1。
     intent_target: str  # 从用户消息中识别出的操作对象，例如"别墅"或"正门"。
     intent_target_kind: str  # "architecture" | "object"：本轮交付的是建筑方案还是单个物件。
     intent_requires_scene: bool  # 当前意图是否必须依赖已有 Blueprint 场景。

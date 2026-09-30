@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from app.agent.plan.contracts import (
+    ARTIFACTS_CAP,
     TERMINAL_STATUSES,
     ItemRun,
     PlanDocument,
@@ -121,7 +122,7 @@ def refresh_statuses(plan: PlanDocument) -> PlanDocument:
 def poll_runnable(plan: PlanDocument) -> PlanItem | None:
     """取第一条可执行条目。
 
-    规则（§4.1）：列表顺序即执行顺序，不排序、不依赖字典遍历顺序。
+    规则：列表顺序即执行顺序，不排序、不依赖字典遍历顺序。
     已经成功产出、只等 ``merge`` 把它并进蓝图的条目不算可执行——否则第一轮跑完的
     条目会被反复重跑，队列永远走不到 ``merge``。
     """
@@ -166,7 +167,15 @@ def record_result(
     if count_attempt:
         run.attempts += 1
     if artifacts is not None:
-        run.artifacts = list(artifacts)
+        values = [str(artifact) for artifact in artifacts]
+        if len(values) > ARTIFACTS_CAP:
+            # 兜底截断：validate_assignment=True 下超限会在赋值时抛 ValidationError，
+            # 把整轮执行炸成"处理失败"。凭据只是审计 payload（对账不读它），
+            # 截断事实写进 evidence，长度仍然确定可复现。
+            truncated_note = f"（产物 {len(values)} 个，凭据截断保留前 {ARTIFACTS_CAP} 条）"
+            values = values[:ARTIFACTS_CAP]
+            evidence = f"{evidence}{truncated_note}" if evidence else truncated_note
+        run.artifacts = values
     run.evidence = evidence[:2000]
     if elapsed_ms is not None:
         run.elapsed_ms = elapsed_ms
@@ -275,7 +284,7 @@ def append_items(
 
 
 def terminal_stats(plan: PlanDocument) -> dict[str, int]:
-    """交付清单的统计口径（§6.4）：四个终态 + 未完成数量必须可校验。"""
+    """交付清单的统计口径：四个终态 + 未完成数量必须可校验。"""
 
     stats = {"total": len(plan.items), "done": 0, "abandoned": 0, "skipped": 0,
              "unsupported": 0, "unfinished": 0}

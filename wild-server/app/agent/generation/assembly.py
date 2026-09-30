@@ -220,120 +220,13 @@ def positive_number(value: object) -> bool:
     )
 
 
-def enforce_component_quota(
-    components: list[dict],
-    quota: dict,
-    fplan: dict,
-    logger,
-) -> tuple[list[dict], int]:
-    """根据 design_brief.component_quota 剔除超额组件
-    
-    策略：按墙面优先级保留。主立面(max_openings多的)优先保留，侧墙/背面多余额外剔除。
-    返回 (filtered_components, pruned_count)
-    """
-    # 按类型统计
-    by_type: dict[str, list[int]] = {}
-    for idx, comp in enumerate(components):
-        ct = comp.get("type", "")
-        if ct not in by_type:
-            by_type[ct] = []
-        by_type[ct].append(idx)
-    
-    pruned_indices: set[int] = set()
-    
-    for comp_type, max_quota in quota.items():
-        if comp_type not in by_type:
-            continue
-        indices = by_type[comp_type]
-        max_n = max_quota.get("max")
-        if max_n is None or len(indices) <= max_n:
-            continue
-        
-        logger.info(f"[merge] [{comp_type}] 超额: 当前 {len(indices)} 个, 配额最大 {max_n} 个")
-        
-        # ── 按优先级排序（主立面 > 非主立面）──
-        def _priority(idx: int) -> int:
-            comp = components[idx]
-            parent_wall = comp.get("parentWall", "")
-            wall_plan = fplan.get(parent_wall, {})
-            if wall_plan.get("is_main_facade"):
-                return 0  # 主立面，最高优先
-            return 1 + (10 - wall_plan.get("max_openings", 0))  # 非主立面，max_openings 小的先剃
-        
-        # 按优先级排序，高优先在前
-        sorted_indices = sorted(indices, key=_priority)
-        # 保留前 max_n 个，剃除后面的
-        to_prune = sorted_indices[max_n:]
-        pruned_indices.update(to_prune)
-        
-        for idx in to_prune:
-            comp = components[idx]
-            logger.info(
-                f"[merge] 剃除超额组件: [{comp_type}] id={comp.get('id', '?')}, "
-                f"parentWall={comp.get('parentWall', '?')}"
-            )
-    
-    if not pruned_indices:
-        return components, 0
-    
-    filtered = [c for i, c in enumerate(components) if i not in pruned_indices]
-    return filtered, len(pruned_indices)
-
-
-def enforce_element_quota(
-    elements: list[dict],
-    quota: dict,
-    logger,
-    *,
-    slot_kinds: set[str] | None = None,
-) -> tuple[list[dict], int]:
-    """按配额上限剔除超额 **element** 类构件（如 furniture）。
-
-    为什么与 `enforce_component_quota` 分开：element 没有 `parentWall`，
-    排不出"主立面优先"的优先级，所以这里只保证一条不变量——**数量不超过上限**，
-    保留顺序与生成顺序一致（先到先留）。
-
-    `slot_kinds` 里的构件类型由 `conform_*_to_slots` 负责（它们有精确槽位，
-    数量由槽位而不是上限决定），这里跳过，避免两套机制互相拆台。
-
-    返回 (filtered_elements, pruned_count)。
-    """
-
-    protected = slot_kinds or set()
-    kept_indices: set[int] = set(range(len(elements)))
-    pruned = 0
-    counts: dict[str, int] = {}
-    for element in elements:
-        element_type = str(element.get("type") or "")
-        counts[element_type] = counts.get(element_type, 0) + 1
-
-    for element_type, maximum in counts.items():
-        if element_type in protected:
-            continue
-        limits = quota.get(element_type)
-        max_n = limits.get("max") if isinstance(limits, dict) else None
-        if not isinstance(max_n, (int, float)) or isinstance(max_n, bool):
-            continue
-        if maximum <= max_n:
-            continue
-        logger.info(
-            f"[merge] [{element_type}] element 超额: 当前 {maximum} 个, 配额最大 {max_n} 个"
-        )
-        seen = 0
-        for index, element in enumerate(elements):
-            if str(element.get("type") or "") != element_type or index not in kept_indices:
-                continue
-            seen += 1
-            if seen > max_n:
-                kept_indices.discard(index)
-                pruned += 1
-                logger.info(
-                    f"[merge] 剃除超额 element: [{element_type}] id={element.get('id', '?')}"
-                )
-
-    if not pruned:
-        return elements, 0
-    return [element for index, element in enumerate(elements) if index in kept_indices], pruned
+# ── 配额上限剔除已删除（用户决策 2026-09-29，删除上限白名单）──
+# 原有的 ``enforce_component_quota`` / ``enforce_element_quota`` 按配额 max
+# 剃除超额构件/元素，属于"模型能做多少"的尝试闸：密集窗格、通高柱廊、
+# 零件化物件都会被它误伤（曾把"一个花瓶 = 4 个零件"削成一块底座圆盘）。
+# 数量的唯一强制口径回到**设计自己的表态**：门窗按 `conform_openings_to_slots`
+# 的精确槽位吸附，屋顶按 `conform_roofs_to_slots`；配额 max 从此只是参考值，
+# 下限仍由 `validate_design_brief_constraints` 与编译器 deferable 降级把关。
 
 
 def apply_fixes(blueprint: dict, errors: list) -> list[tuple[str, bool]]:

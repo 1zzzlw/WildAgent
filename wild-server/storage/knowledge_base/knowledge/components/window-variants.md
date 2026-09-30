@@ -50,7 +50,7 @@ synonyms: []
 也不要借 `door` 的 `openingStyle: "arched"` 表达拱形窗（语义错位）。非矩形洞形由 **`opening` 元素**
 表达：`style` 支持 `rectangular` / `arched`（半圆拱）/ `gothic`（尖拱）/ `circular`（圆）。
 
-🔴 **必须向用户声明的引擎事实**：`arched` / `gothic` / `circular` 只是 opening 元素自身的
+关键：**必须向用户声明的引擎事实**：`arched` / `gothic` / `circular` 只是 opening 元素自身的
 **覆盖棱柱**造型（墙体开洞在引擎里只有矩形通孔一种，见 `box-with-holes.ts`）。
 即"拱形窗" = 矩形墙洞 + 洞内的拱形玻璃棱柱；斜视角能看到矩形洞口的内壁转角，
 不是把墙真切成拱洞。
@@ -152,11 +152,11 @@ synonyms: []
 
 ## 能力边界汇总
 
-- 🟡 拱形 `window`：window 组件只有矩形洞；拱形轮廓用 `opening`（`arched`/`gothic`/`circular`）
+- 提示：拱形 `window`：window 组件只有矩形洞；拱形轮廓用 `opening`（`arched`/`gothic`/`circular`）
   覆盖棱柱近似——**墙体开洞只有矩形**（引擎 `box-with-holes.ts` 只切矩形通孔），
   斜视角可见矩形洞内壁转角；opening 材质给玻璃即可，不要再叠玻璃盒。
-- ❌ 拱顶放射格、扇形分格：无字段，棂条图案不可表达。
-- ❌ 真百叶：无叶片几何与通风语义，只能横向密棂近似。
-- ❌ 窗扇开启：窗是静态几何（门的开合交互不适用于窗）。
-- ✅ 均匀棂格（田字格、横直棂）：`verticalMullions` / `horizontalMullions` 直接表达。
-- ✅ 多扇并排与上下组合：同墙多樘 `window` 切分表达。
+- 不支持：拱顶放射格、扇形分格：无字段，棂条图案不可表达。
+- 不支持：真百叶：无叶片几何与通风语义，只能横向密棂近似。
+- 不支持：窗扇开启：窗是静态几何（门的开合交互不适用于窗）。
+- 支持：均匀棂格（田字格、横直棂）：`verticalMullions` / `horizontalMullions` 直接表达。
+- 支持：多扇并排与上下组合：同墙多樘 `window` 切分表达。

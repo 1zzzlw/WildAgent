@@ -303,20 +303,23 @@ def validate_roof_coverage(blueprint: dict) -> str:
     """校验屋顶是否覆盖建筑"""
     elements = blueprint.get("geometry", {}).get("elements", [])
     roofs = [e for e in elements if e.get("type") == "roof"]
-    
+
     if not roofs:
         return "⚠️ 没有屋顶"
-    
+
     walls = [e for e in elements if e.get("type") == "wall"]
-    if not walls:
+    # 开敞立面（亭/廊）的屋面承托在柱上——柱必须参与承托计算，
+    # 否则承托 bounds 在开敞方向塌缩成 0，把好屋顶"修"成窄带。
+    columns = [e for e in elements if e.get("type") == "column"]
+    if not walls and not columns:
         return "⚠️ 没有墙体，无法校验屋顶"
-    
+
     issues = []
     for roof in roofs:
         roof_id = roof.get("id", "?")
         roof_span = roof.get("span", 0)
         roof_depth = roof.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, roof)
+        bounds = get_roof_support_bounds(walls, roof, columns=columns)
         building_width = bounds["span"]
         building_depth = bounds["depth"]
         
@@ -341,18 +344,20 @@ def fix_roof_coverage(blueprint: dict) -> str:
     """修复屋顶覆盖问题"""
     elements = blueprint.get("geometry", {}).get("elements", [])
     roofs = [e for e in elements if e.get("type") == "roof"]
-    
+
     if not roofs:
         return "⚠️ 没有屋顶"
-    
+
     walls = [e for e in elements if e.get("type") == "wall"]
-    if not walls:
+    # 与 validate_roof_coverage 同口径：柱是开敞立面的屋面承托，必须参与 bounds。
+    columns = [e for e in elements if e.get("type") == "column"]
+    if not walls and not columns:
         return "⚠️ 没有墙体"
-    
+
     fixes = []
     for roof in roofs:
         roof_id = roof.get("id", "?")
-        bounds = get_roof_support_bounds(walls, roof)
+        bounds = get_roof_support_bounds(walls, roof, columns=columns)
         roof["span"] = round(bounds["span"] + 1.2, 2)
         roof["depth"] = round(bounds["depth"] + 1.2, 2)
         roof["position"] = [

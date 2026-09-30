@@ -27,6 +27,60 @@ def run_tool(tool, blueprint):
     return getattr(tool, "func", tool)(blueprint)
 
 
+class OpenPavilionRoofSupportTest(unittest.TestCase):
+    """开敞立面（亭/廊）的屋顶承托：柱必须参与承托 bounds。
+
+    2026-09-29 实测回归：开敞立面语义落地后，"四角凉亭"三面无墙只剩 1 面 front 墙，
+    `get_roof_support_bounds` 只看墙 → z 方向塌缩成一条线（depth=0），
+    `fix_roof_coverage` 据此把 6.1×6.1 的攒尖顶"修"成 6.1×1.2 的窄带、
+    中心贴到墙上——整座亭子只剩半边屋顶，比一个月前四面墙版本严重倒退。
+    """
+
+    def _pavilion(self) -> dict:
+        walls = [
+            # 仅 front 一面墙（其余三面开敞，开敞立面语义不再生成墙）
+            {"id": "wall_front_1", "type": "wall",
+             "from": [0, 0, 0], "to": [4.5, 3.6, 0], "thickness": 0.2},
+        ]
+        columns = [
+            {"id": f"column_corner_{i:02d}", "type": "column",
+             "base": [x, 0, z], "height": 3.6,
+             "bottomRadius": 0.18, "topRadius": 0.15, "style": "chinese_wooden"}
+            for i, (x, z) in enumerate([(0.3, 0.3), (4.2, 0.3), (0.3, 4.2), (4.2, 4.2)], 1)
+        ]
+        roof = {"id": "roof_01", "type": "roof", "roofType": "chinese_curved",
+                "span": 6.1, "depth": 1.2, "height": 1.098,
+                "position": [2.25, 3.6, 0.0], "thickness": 0.25}
+        return {"geometry": {"elements": [*walls, *columns, roof], "components": []}}
+
+    def test_support_bounds_cover_columns_not_just_the_single_wall(self):
+        from app.tools.spatial_tools import get_roof_support_bounds
+
+        blueprint = self._pavilion()
+        elements = blueprint["geometry"]["elements"]
+        walls = [el for el in elements if el.get("type") == "wall"]
+        columns = [el for el in elements if el.get("type") == "column"]
+        roof = next(el for el in elements if el.get("type") == "roof")
+
+        bounds = get_roof_support_bounds(walls, roof, columns=columns)
+
+        # 4 根柱的 z∈[0.3,4.2] 必须把开敞方向的承托撑起来——塌缩成 0 就是本回归
+        self.assertGreater(bounds["depth"], 3.5)
+        self.assertGreater(bounds["span"], 3.5)
+        self.assertAlmostEqual(bounds["center_z"], 2.19, delta=0.2)
+
+    def test_fix_repairs_the_collapsed_roof_to_a_symmetric_canopy(self):
+        blueprint = self._pavilion()
+
+        output = run_tool(fix_roof_coverage, blueprint)
+
+        roof = next(el for el in blueprint["geometry"]["elements"] if el.get("type") == "roof")
+        self.assertGreater(roof["depth"], 4.5, f"开敞方向 depth 仍塌缩: {output}")
+        self.assertAlmostEqual(roof["position"][2], 2.25, delta=0.3)
+        # 修后校验必须干净
+        self.assertNotIn("❌", run_tool(validate_roof_coverage, blueprint))
+
+
 class SpatialValidationTest(unittest.TestCase):
     def test_external_disconnected_stair_stack_is_detected_and_repaired(self):
         elements = []

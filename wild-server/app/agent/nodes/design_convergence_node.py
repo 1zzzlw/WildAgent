@@ -33,13 +33,14 @@ def _profile_for(plan: dict, user_message: str) -> dict | None:
 
 
 async def design_convergence(state: GenerationState) -> dict:
-    """收敛环节点。返回空 dict 表示"图纸没动"（物件链，或一次就收敛）。"""
+    """收敛环节点。返回空 dict 表示"图纸没动"。"""
 
     plan = state.get("architecture_plan")
     if not isinstance(plan, dict) or not plan:
+        # 没有 architecture_plan → 空手返回
         return {}
     if is_object_plan(plan):
-        # 编译器只认建筑的体量/立面/屋顶协议，物件链不适用；判据与方案/材质/骨架层共用同一个。
+        # 物件链 → 空手返回
         return {}
 
     user_message = state.get("user_message", "")
@@ -54,7 +55,6 @@ async def design_convergence(state: GenerationState) -> dict:
         plan=plan,
         raw_plan=raw_plan if isinstance(raw_plan, dict) else None,
         user_message=user_message,
-        level=str((complexity_profile or {}).get("level") or "standard"),
         complexity_profile=complexity_profile,
         architecture_profile=_profile_for(plan, user_message),
         thinking_mode=bool(state.get("thinking_mode")),

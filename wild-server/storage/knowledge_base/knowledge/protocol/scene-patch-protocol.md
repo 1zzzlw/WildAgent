@@ -36,23 +36,23 @@ synonyms: []
 
 ### 1.1 Agent 职责
 
-- ✅ 根据用户需求生成 `operations` 数组
-- ✅ 提供人类可读的 `summary`
-- ✅ 检查目标对象是否存在
-- ✅ 确保修改后引用关系有效
+- 支持：根据用户需求生成 `operations` 数组
+- 支持：提供人类可读的 `summary`
+- 支持：检查目标对象是否存在
+- 支持：确保修改后引用关系有效
 
 ### 1.2 服务端职责
 
-- ✅ 提供当前 Blueprint 和选中对象 ID
-- ✅ 补齐 `patch_id`、`base_revision`、`type`、`source` 等元数据
-- ✅ 应用 patch 到 Blueprint
-- ✅ 执行完整性校验（引用、约束）
+- 支持：提供当前 Blueprint 和选中对象 ID
+- 支持：补齐 `patch_id`、`base_revision`、`type`、`source` 等元数据
+- 支持：应用 patch 到 Blueprint
+- 支持：执行完整性校验（引用、约束）
 
 ### 1.3 Agent 不应该做的
 
-- ❌ 输出完整 Blueprint（应输出增量操作）
-- ❌ 猜测元数据字段（patch_id、source 等由服务端补齐）
-- ❌ 修改非目标对象（除非维持引用必需）
+- 不支持：输出完整 Blueprint（应输出增量操作）
+- 不支持：猜测元数据字段（patch_id、source 等由服务端补齐）
+- 不支持：修改非目标对象（除非维持引用必需）
 
 ---
 
@@ -230,7 +230,7 @@ synonyms: []
 
 ## 3. 坐标系统的正确处理
 
-### ⚠️ 关键注意事项
+### 关键注意事项
 
 WILD 使用 `[X, Y, Z]` 数组，其中 `Y` 是高度，但**不同字段使用不同的坐标系**。
 
@@ -282,7 +282,7 @@ WILD 使用 `[X, Y, Z]` 数组，其中 `Y` 是高度，但**不同字段使用�
 - `from[1]`：底部的世界 Y 坐标（不是相对墙底）
 - `from[2]`：沿墙体法向的偏移（通常为 0）
 
-**⚠️ 特别注意**：`from[2]` 不是世界 Z 坐标！
+**特别注意**：`from[2]` 不是世界 Z 坐标！
 
 **修改示例**：
 
@@ -309,16 +309,16 @@ WILD 使用 `[X, Y, Z]` 数组，其中 `Y` 是高度，但**不同字段使用�
 ### 3.3 常见错误
 
 ```jsonc
-// ❌ 错误：把 from[2] 当成世界 Z
+// 错误：把 from[2] 当成世界 Z
 {
   "op": "update_component",
   "id": "window_1",
   "changes": {
-    "from": [3, 1, 5]  // ❌ from[2]=5 会被理解为法向偏移 5m，不是世界 Z=5
+    "from": [3, 1, 5]  // 错误：from[2]=5 会被理解为法向偏移 5m，不是世界 Z=5
   }
 }
 
-// ✅ 正确：修改墙挂组件的 Z，应该移动父墙
+// 正确：修改墙挂组件的 Z，应该移动父墙
 {
   "operations": [
     {
@@ -369,7 +369,7 @@ def validate_remove_wall(wall_id, blueprint):
     {
       "op": "update_element",
       "id": "wall_old",
-      "changes": {"id": "wall_new"}  // ❌ 不允许修改 id
+      "changes": {"id": "wall_new"}  // 错误：不允许修改 id
     }
   ]
 }
@@ -389,7 +389,7 @@ def validate_remove_wall(wall_id, blueprint):
 
 ## 5. 最小修改原则
 
-### ✅ 正确做法
+### 正确做法
 
 ```jsonc
 // 用户："把这扇门加宽 20cm"
@@ -407,21 +407,21 @@ def validate_remove_wall(wall_id, blueprint):
 }
 ```
 
-### ❌ 错误做法
+### 错误做法
 
 ```jsonc
-// ❌ 不要输出完整对象
+// 错误：不要输出完整对象
 {
   "operations": [
     {
       "op": "update_component",
       "id": "door_main",
       "changes": {
-        "type": "door",           // ❌ 不能修改 type
-        "parentWall": "wall_1",   // ❌ 没必要重复
-        "from": [4.5, 0, 0],      // ❌ 没必要重复
-        "width": 1.4,             // ✅ 这是需要修改的
-        "height": 2.4             // ❌ 没必要重复
+        "type": "door",           // 错误：不能修改 type
+        "parentWall": "wall_1",   // 错误：没必要重复
+        "from": [4.5, 0, 0],      // 错误：没必要重复
+        "width": 1.4,             // 这是需要修改的
+        "height": 2.4             // 错误：没必要重复
       }
     }
   ]
@@ -453,12 +453,12 @@ def validate_remove_wall(wall_id, blueprint):
 
 ```jsonc
 {
-  "type": "ScenePatch",         // ❌ Agent 不输出
-  "patch_id": "uuid",           // ❌ 服务端生成
-  "base_revision": "rev_123",   // ❌ 服务端提供
-  "source": "agent",            // ❌ 服务端标记
-  "mode": "incremental",        // ❌ 服务端确定
-  "requires_confirmation": true // ❌ 服务端判断
+  "type": "ScenePatch",         // 错误：Agent 不输出
+  "patch_id": "uuid",           // 错误：服务端生成
+  "base_revision": "rev_123",   // 错误：服务端提供
+  "source": "agent",            // 错误：服务端标记
+  "mode": "incremental",        // 错误：服务端确定
+  "requires_confirmation": true // 错误：服务端判断
 }
 ```
 

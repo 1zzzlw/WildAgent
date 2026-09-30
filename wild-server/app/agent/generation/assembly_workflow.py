@@ -20,14 +20,14 @@ from app.agent.generation.assembly import (
     apply_fixes,
     collect_json_parse_failures,
     deduplicate_balcony_representations,
-    enforce_component_quota,
-    enforce_element_quota,
     remove_ground_level_railings,
 )
 from app.agent.generation.components import COMPONENT_REGISTRY
-from app.agent.generation.slot_utils import component_slots
 from app.agent.validation.diagnostics import blueprint_fingerprint
-from app.agent.validation.design_constraints import validate_design_brief_constraints
+from app.agent.validation.design_constraints import (
+    design_quota_shortfalls,
+    validate_design_brief_constraints,
+)
 from app.llm.errors import collect_component_model_errors
 from app.agent.runtime import get_reasoning_callback
 from app.utils.fragment_merger import merge_fragment_batch, merge_fragments
@@ -269,29 +269,9 @@ async def _finalize_merge(state: GenerationState) -> dict:
         components = merged_blueprint.get("geometry", {}).get("components", [])
         logger.info(f"[merge] 地面平台冗余栏杆清理: {ground_railing_cleanup}")
 
-    # ── 2.6 设计配额比对：超额组件按优先级剔除 ──
-    quota_pruned = 0
-    element_quota_pruned = 0
-    if design_brief:
-        quota = design_brief.get("component_quota", {})
-        fplan = design_brief.get("facade_plan", {})
-        if quota and components:
-            components, quota_pruned = enforce_component_quota(components, quota, fplan, logger)
-            if quota_pruned > 0:
-                merged_blueprint["geometry"]["components"] = components
-                logger.info(f"[merge] 配额强制: 移除了 {quota_pruned} 个超额组件")
-        # element 类构件（家具）没有 parentWall，排不出立面优先级，走只保上限的那一支。
-        # 有精确槽位的类型（roof 由 conform_roofs_to_slots 负责）跳过，避免两套机制打架。
-        if quota and elements:
-            elements, element_quota_pruned = enforce_element_quota(
-                elements,
-                quota,
-                logger,
-                slot_kinds={str(slot["type"]) for slot in component_slots(design_brief)},
-            )
-            if element_quota_pruned > 0:
-                merged_blueprint["geometry"]["elements"] = elements
-                logger.info(f"[merge] 配额强制: 移除了 {element_quota_pruned} 个超额 element")
+    # ── 2.6 设计配额比对已删除（用户决策 2026-09-29，删除上限白名单）──
+    # 原来这里按配额 max 剔除超额组件/元素；max 从此只是参考值，产物数量
+    # 不再被剃。数量的强制口径回到设计自己的表态：门窗按精确槽位吸附（2.7）。
 
     # ── 2.7 按方案槽位确定性吸附；模型负责风格，程序负责组合关系与安全边界 ──
     opening_layout = {"snapped": 0, "synthesized": 0, "pruned": 0}
@@ -330,6 +310,9 @@ async def _finalize_merge(state: GenerationState) -> dict:
             )
 
     design_errors = validate_design_brief_constraints(merged_blueprint, design_brief)
+    # 配额数量缺口 = 警告不阻断（用户决策 2026-09-29）：记入 merge_diag 供诊断与
+    # 模型补量参考，不进错误列表——数量不足不许拦下整张蓝图。
+    quota_shortfalls = design_quota_shortfalls(merged_blueprint, design_brief)
     # JSON 提取失败且有配额下限的组件，视同配额缺失错误交给回调 add_entity；
     # 与几何问题区分（repair_target 为 design:<type>，走既有设计配额修复路径）。
     if json_parse_quota_errors:
@@ -339,7 +322,6 @@ async def _finalize_merge(state: GenerationState) -> dict:
         await on_reasoning_delta(
             "merge",
             f"初次合并完成: {len(elements)} 个结构元素, {len(components)} 个组件"
-            + (f"（配额比对后剔除 {quota_pruned} 个超额组件）" if quota_pruned else "")
             + (
                 f"（清理重复阳台楼板 {len(balcony_cleanup['removed_floor_ids'])}、"
                 f"栏杆 {balcony_cleanup['removed_railing_count']}）"
@@ -374,6 +356,10 @@ async def _finalize_merge(state: GenerationState) -> dict:
                 f"\n设计约束预检发现 {len(design_errors)} 个问题。"
                 if design_errors else "\n设计约束预检通过。"
             )
+            + (
+                f"另有 {len(quota_shortfalls)} 个配额数量缺口（警告，由模型补量）。"
+                if quota_shortfalls else ""
+            )
             + f"\n开始校验→修复循环（最多 {MAX_MERGE_ITERATIONS} 轮）...\n",
         )
 
@@ -394,6 +380,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
         "balcony_cleanup": balcony_cleanup,
         "ground_railing_cleanup": ground_railing_cleanup,
         "design_errors": design_errors,
+        "design_quota_shortfalls": quota_shortfalls,
         "iterations": [],
     }
 

@@ -31,6 +31,9 @@ _PLAN_RULES = """# 硬性约束
 8. 互不依赖、不会写同一构件类型的任务可设 `execution_mode=parallel`，并使用相同
    `parallel_group`；有依赖、需要先看前一批产物或把握不足时必须用 `serial`。
 9. `batch_reason` 说明为什么该类型适合一次批量生成，例如“多个同类槽位只有少量尺寸变体”。
+10. 【图纸缺口】里 `uncompiled` 点名的类型**必须**出现在 `kinds` 中（除非用户明确否定）：
+    它们是编译器点名但没产出的类型，整条计划的任务就是把这些洞补上；
+    `defects` 是图纸已报出的缺陷，给对应构件的 `guidance` 里要针对性规避。
 """
 
 _PLAN_OUTPUT = """# 输出格式
@@ -62,11 +65,14 @@ def build_plan_strategy_prompt(
     slot_counts: dict[str, int] | None = None,
     slot_batches: dict[str, object] | None = None,
     architecture_plan: dict | None = None,
+    compile_gaps: dict | None = None,
 ) -> str:
     """构建策略系统提示词。
 
     ``capability_catalog`` 来自 ``COMPONENT_REGISTRY``，是模型可选项的**唯一**来源；
-    ``slot_counts`` 是设计清单里每类构件的精确槽位数量（模型能看到工作量，但不能改它）。
+    ``slot_counts`` 是设计清单里每类构件的精确槽位数量（模型能看到工作量，但不能改它）；
+    ``compile_gaps`` 是编译报告的 uncompiled/defects 摘要——策略层要看到
+    "整张图纸缺什么"，而不是只数配额（用户指令 2026-09-29）。
     """
 
     quota = {}
@@ -126,6 +132,11 @@ def build_plan_strategy_prompt(
             + (
                 json.dumps(slot_batches, ensure_ascii=False, default=str)
                 if slot_batches else "（没有可分组槽位）"
+            ),
+            "# 图纸缺口\n\n"
+            + (
+                json.dumps(compile_gaps, ensure_ascii=False, default=str)[:1500]
+                if compile_gaps else "（无：编译器没有报告未落地类型或缺陷）"
             ),
             f"# 设计清单要点\n\n{facade or '（方案未给出立面清单）'}",
             f"# 主体骨架摘要\n\n{skeleton_summary or '（未提供骨架摘要）'}",

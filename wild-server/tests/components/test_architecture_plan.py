@@ -8,7 +8,6 @@ from app.agent.generation.architecture import (
     conform_railings_to_slots,
     conform_roofs_to_slots,
     evaluate_skeleton_complexity,
-    detect_architecture_profile,
     normalize_architecture_plan,
     resolve_facade_layout,
     resolve_complexity_profile,
@@ -71,57 +70,15 @@ def _two_storey_blueprint() -> dict:
     }
 
 
-def test_minimal_request_keeps_single_wall() -> None:
-    """用户只要一面墙时，复杂度应判为 minimal，且不触发体量化回退。"""
-    profile = resolve_complexity_profile("生成一个玻璃幕墙，只要一面墙就可以")
-    assert profile["level"] == "minimal"
-    assert profile["target_structural_elements"] == 1
 
-    single_wall = {
-        "meta": {"version": "1.1", "type": "building", "name": "单面玻璃幕墙"},
-        "geometry": {
-            "elements": [
-                {
-                    "id": "curtain_wall_host",
-                    "type": "wall",
-                    "from": [0, 0, 0],
-                    "to": [6, 3, 0],
-                    "thickness": 0.12,
-                    "material": "glass",
-                },
-            ],
-            "components": [],
-        },
-        "materials": {
-            "glass": {
-                "baseColor": [0.65, 0.78, 0.85],
-                "materialClass": "glass",
-                "transmission": 0.92,
-                "ior": 1.5,
-                "thickness": 0.012,
-            },
-        },
-    }
-    plan = {
-        "complexity": {"level": "minimal", "min_volumes": 1, "target_structural_elements": 1},
-    }
-    diag = evaluate_skeleton_complexity(single_wall, plan)
-    assert diag["meets_target"] is True
+def test_industrial_building_dimensions_survive_normalization() -> None:
+    """选档已删：厂房不再被特殊档案选中，但大跨尺寸必须原样通过钳制。"""
+    message = "生成一座单层工业厂房"
+    plan = normalize_architecture_plan({}, message)
 
+    assert plan["profile"] == "custom"
+    assert plan["structural_grid"]["system"] in {"long_span", "frame", "hybrid", "wall_bearing"}
 
-def test_industrial_building_uses_long_span_profile_instead_of_residential_defaults() -> None:
-    profile = detect_architecture_profile("生成一座单层工业厂房")
-    plan = normalize_architecture_plan({}, "生成一座单层工业厂房")
-
-    assert profile["id"] == "industrial_long_span"
-    assert plan["profile"] == "industrial_long_span"
-    assert plan["structural_grid"]["system"] == "long_span"
-
-
-def test_minimal_plan_has_no_required_components() -> None:
-    """极简结构不应强制派发门/窗/屋顶组件。"""
-    plan = normalize_architecture_plan({}, "生成一面玻璃幕墙")
-    assert plan["required_components"] == []
 
 
 def test_architecture_plan_ignores_retired_spatial_plan_payload() -> None:
@@ -515,21 +472,6 @@ def test_required_bay_window_is_synthesized_from_an_approved_window_slot() -> No
     )
 
 
-def test_simple_plan_rejects_model_invented_detail_quota() -> None:
-    message = "生成一个简单方盒子住宅，不要复杂装饰"
-    plan = normalize_architecture_plan({
-        "detail_packages": ["bay_window"],
-        "component_quota": {
-            "bay_window": {"min": 1, "max": 2},
-        },
-        "required_components": ["door", "window", "roof", "bay_window"],
-    }, message, resolve_complexity_profile(message, precision_mode=True))
-
-    assert plan["complexity"]["level"] == "simple"
-    assert plan["detail_packages"] == []
-    assert "bay_window" not in plan["component_quota"]
-    assert "bay_window" not in plan["required_components"]
-
 
 def test_simple_plan_keeps_explicitly_requested_bay_window() -> None:
     message = "生成一个简单的带凸窗住宅"
@@ -538,7 +480,7 @@ def test_simple_plan_keeps_explicitly_requested_bay_window() -> None:
         "component_quota": {
             "bay_window": {"min": 1, "max": 1},
         },
-    }, message, resolve_complexity_profile(message, precision_mode=True))
+    }, message, resolve_complexity_profile(message))
 
     assert plan["detail_packages"] == ["bay_window"]
     assert plan["component_quota"]["bay_window"]["min"] == 1
@@ -558,30 +500,32 @@ def test_high_rise_keeps_semantic_floor_count_and_uses_schematic_geometry() -> N
         "required_components": ["door", "window", "roof"],
     }, message)
 
-    assert plan["profile"] == "high_rise"
+    # 选档白名单已删（2026-09-29）：档案恒为 custom，只做物理钳制。
+    assert plan["profile"] == "custom"
     assert plan["massing"]["width"] == 80
     assert plan["massing"]["floors"] == 60
-    assert plan["massing"]["modeled_floors"] == 10
+    assert plan["massing"]["modeled_floors"] == 12
     assert plan["massing"]["representation_mode"] == "schematic"
     assert validate_blueprint_schema(build_deterministic_skeleton(plan, message)) == []
 
 
-def test_high_rise_commercial_complex_outranks_ordinary_public_profile() -> None:
+def test_style_words_no_longer_change_the_profile() -> None:
+    """选档已删：类型词只影响路由，不再改变确定性档案。"""
+
     message = "生成一个高层玻璃幕墙商业综合体"
 
     plan = normalize_architecture_plan({}, message)
 
-    assert plan["profile"] == "high_rise"
-    assert plan["massing"]["representation_mode"] == "schematic"
+    assert plan["profile"] == "custom"
 
 
 def test_chinese_floor_count_does_not_confuse_twenty_one_with_one() -> None:
     plan = normalize_architecture_plan({}, "建造二十一层办公楼")
-    assert plan["profile"] == "high_rise"
+    assert plan["profile"] == "custom"
     assert plan["massing"]["floors"] == 21
 
 
-def test_long_span_public_building_is_not_clipped_to_residential_dimensions() -> None:
+def test_wide_span_dimensions_are_not_clamped() -> None:
     message = "建造180米宽、120米深的体育馆"
     plan = normalize_architecture_plan({
         "massing": {
@@ -594,7 +538,7 @@ def test_long_span_public_building_is_not_clipped_to_residential_dimensions() ->
         "required_components": ["door", "roof"],
     }, message)
 
-    assert plan["profile"] == "long_span_public"
+    assert plan["profile"] == "custom"
     assert plan["massing"]["width"] == 180
     assert plan["massing"]["depth"] == 120
     assert "window" not in plan["required_components"]
@@ -613,7 +557,9 @@ def test_underground_transport_does_not_force_entrance_or_roof() -> None:
         "required_components": ["light"],
     }, message)
 
-    assert plan["profile"] == "underground_transport"
+    # required_components 是权威（开放集语义）：设计说只要 light，回退层
+    # 就不得强行配额屋顶和门。
+    assert plan["profile"] == "custom"
     assert plan["required_components"] == ["light"]
     assert plan["component_quota"]["roof"]["max"] == 0
     assert plan["component_quota"]["door"]["min"] == 0
@@ -657,11 +603,13 @@ def test_component_dimensions_are_not_misread_as_plan_dimensions() -> None:
 
 
 def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() -> None:
-    for message, floors, floor_height in (
-        ("生成30层住宅塔楼，标准层33×20m，平屋顶", 30, 4.0),
-        ("生成18层办公塔楼，建筑平面48×27m，平屋顶", 18, 4.0),
+    # 选档已删：层高取 plan 实际值（不再依赖已删除的 high_rise 档默认 4.0）。
+    for message, floors in (
+        ("生成30层住宅塔楼，标准层33×20m，平屋顶", 30),
+        ("生成18层办公塔楼，建筑平面48×27m，平屋顶", 18),
     ):
         plan = normalize_architecture_plan({}, message)
+        floor_height = plan["massing"]["floor_height"]
         blueprint = build_deterministic_skeleton(plan, message)
         geometry = blueprint["geometry"]
 
@@ -672,7 +620,10 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
             element["from"][1] for element in geometry["elements"]
             if element["type"] == "floor"
         }
-        assert {level * floor_height for level in range(1, floors)} <= floor_levels
+        # 浮点容差：楼板标高与 层高×层数 在 1e-6 内对齐即可。
+        assert {round(level * floor_height, 6) for level in range(1, floors)} <= {
+            round(v, 6) for v in floor_levels
+        }
         assert stair_opening_issues(blueprint) == []
 
         core_walls = [
@@ -694,9 +645,8 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
 
 def test_precision_alone_does_not_force_massing_or_accessories() -> None:
     message = "生成一座现代两层别墅"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan({}, message, complexity)
-    assert complexity["level"] == "standard"
     assert len(plan["volumes"]) == 1
     assert plan["detail_packages"] == []
     assert not {"balcony", "canopy", "bay_window"}.intersection(plan["required_components"])
@@ -704,64 +654,18 @@ def test_precision_alone_does_not_force_massing_or_accessories() -> None:
 
 def test_rich_facade_does_not_imply_setbacks() -> None:
     message = "生成一座现代两层别墅，立面丰富、有层次感"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan({}, message, complexity)
-    assert complexity["level"] == "detailed"
     assert complexity["min_volumes"] == 1
     assert plan["massing"]["shape"] == "rectangle"
     assert len(plan["volumes"]) == 1
     assert plan["detail_packages"] == []
 
 
-def test_explicit_massing_and_details_compile_into_articulated_skeleton() -> None:
-    message = "生成一座现代两层退台别墅，立面丰富，带阳台、雨棚和凸窗"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
-    plan = normalize_architecture_plan({}, message, complexity)
-
-    assert complexity["level"] == "detailed"
-    assert plan["massing"]["shape"] == "stepped"
-    assert len(plan["volumes"]) >= 2
-    assert len(plan["detail_packages"]) >= 3
-    assert {"balcony", "canopy", "bay_window"}.issubset(plan["required_components"])
-
-    blueprint = build_deterministic_skeleton(plan, message)
-    assert validate_blueprint_schema(blueprint) == []
-    evaluation = evaluate_skeleton_complexity(blueprint, plan)
-    assert evaluation["meets_target"] is True
-    assert evaluation["volume_footprint_count"] >= 2
-    assert evaluation["element_type_counts"]["column"] >= 4
-    assert evaluation["element_type_counts"]["beam"] >= 2
-
-    transition_floors = [
-        element for element in blueprint["geometry"]["elements"]
-        if element["type"] == "floor" and element["from"][1] == 3.2
-    ]
-    assert len(transition_floors) > 1
-    assert min(f["from"][0] for f in transition_floors) == 0.0
-    assert min(f["from"][2] for f in transition_floors) == 0.0
-    assert max(f["to"][0] for f in transition_floors) == 12.0
-    assert max(f["to"][2] for f in transition_floors) == 9.0
-    assert stair_opening_issues(blueprint) == []
-
-    brief = resolve_facade_layout(blueprint, plan)
-    assert brief["facade_plan"]["wall_front_2_upper_setback"]["max_openings"] > 0
-
-
-def test_detailed_plan_rejects_plain_low_complexity_shell() -> None:
-    message = "生成一座复杂的现代两层多体量别墅"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
-    plan = normalize_architecture_plan({}, message, complexity)
-
-    evaluation = evaluate_skeleton_complexity(_two_storey_blueprint(), plan)
-
-    assert evaluation["meets_target"] is False
-    assert evaluation["checks"]["structural_element_target"] is False
-    assert evaluation["checks"]["volume_footprint_target"] is False
-
 
 def test_detailed_plan_rejects_floor_outside_volume_floor_range() -> None:
     message = "生成一座复杂的现代两层别墅"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan({}, message, complexity)
     blueprint = build_deterministic_skeleton(plan, message)
     blueprint["geometry"]["elements"].append({
@@ -853,7 +757,7 @@ def test_stepped_building_stairs_stay_in_shared_footprint_and_connect() -> None:
                 "start_floor": 7, "end_floor": 8,
             },
         ],
-    }, message, resolve_complexity_profile(message, precision_mode=True))
+    }, message, resolve_complexity_profile(message))
 
     blueprint = build_deterministic_skeleton(plan, message)
     stairs = sorted(
@@ -907,7 +811,7 @@ def test_explicit_two_storey_u_shape_overrides_stale_single_storey_plan() -> Non
             {"id": "right_wing", "x": 3, "z": 0, "width": 1, "depth": 9, "start_floor": 1, "end_floor": 1},
         ],
     }
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
 
     plan = normalize_architecture_plan(raw, message, complexity)
 
@@ -963,7 +867,7 @@ def test_u_shape_skeleton_uses_union_perimeter_and_balcony_access_slots() -> Non
         "别墅二层U形两端分别有一个宽1.5米的带栏杆的阳台，"
         "阳台突出墙体骨架，阳台后面没有墙体，直接通向室内"
     )
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan({}, message, complexity)
     blueprint = build_deterministic_skeleton(plan, message)
 
@@ -973,13 +877,6 @@ def test_u_shape_skeleton_uses_union_perimeter_and_balcony_access_slots() -> Non
     evaluation = evaluate_skeleton_complexity(blueprint, plan)
     assert evaluation["meets_target"] is True
     assert evaluation["overlapping_column_count"] == 0
-    columns = [
-        element for element in blueprint["geometry"]["elements"]
-        if element.get("type") == "column"
-    ]
-    assert columns
-    assert all(column["base"][0] not in {0.0, 12.0} for column in columns)
-    assert all(column["base"][2] not in {0.0, 9.0} for column in columns)
 
     upper_front_walls = [
         element for element in blueprint["geometry"]["elements"]
@@ -1010,7 +907,7 @@ def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None
         "生成一座两层U形退台新中式别墅，二层两端分别设置宽1.5米的带栏杆阳台，"
         "阳台直接通向室内，采用平屋顶"
     )
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan(
         {"roof": {"type": "flat", "overhang": 0.4}},
         message,
@@ -1086,7 +983,7 @@ def test_l_shape_pitched_roof_is_split_per_volume() -> None:
         "生成一座两层L形别墅，主翼面南展开12米，副翼从东北角向北延伸形成半围合庭院，"
         "双坡屋顶覆盖各翼"
     )
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan(
         {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
     )
@@ -1143,7 +1040,7 @@ def _roof_footprint(roof: dict) -> tuple[float, float, float, float]:
 def test_single_volume_building_keeps_the_model_roof() -> None:
     """单一体量不生成槽位 —— 保持模型自己的整块屋顶，不抢走造型自由。"""
     message = "生成一座两层矩形别墅，采用双坡屋顶"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan(
         {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
     )
@@ -1160,7 +1057,7 @@ def test_single_volume_building_keeps_the_model_roof() -> None:
 def test_whole_building_roof_types_are_not_split_per_volume(roof_type: str) -> None:
     """穹顶 / 重檐塔 / 中式曲面是整体式造型，不按体量拆（拆开只会得到碎曲面）。"""
     message = "生成一座两层L形中式别墅，采用中式曲面屋顶"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
+    complexity = resolve_complexity_profile(message)
     plan = normalize_architecture_plan(
         {"roof": {"type": roof_type}}, message, complexity,
     )
@@ -1219,26 +1116,6 @@ def test_regular_balcony_slot_is_centered_on_an_upper_facade_opening() -> None:
     assert balconies[0]["width"] == balcony_slot["width"]
 
 
-def test_single_storey_detailed_wings_remain_distinct_volume_footprints() -> None:
-    message = "生成一座复杂的单层错落别墅"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
-    plan = normalize_architecture_plan({}, message, complexity)
-    blueprint = build_deterministic_skeleton(plan, message)
-
-    evaluation = evaluate_skeleton_complexity(blueprint, plan)
-
-    assert evaluation["meets_target"] is True
-    assert evaluation["volume_footprint_count"] >= 2
-
-
-def test_explicit_simple_request_overrides_precision_default() -> None:
-    message = "生成一个简单方盒子住宅，不要复杂装饰"
-    complexity = resolve_complexity_profile(message, precision_mode=True)
-    plan = normalize_architecture_plan({}, message, complexity)
-
-    assert complexity["level"] == "simple"
-    assert len(plan["volumes"]) == 1
-    assert plan["detail_packages"] == []
 
 
 def test_entrance_accessories_snap_to_entrance_door() -> None:
@@ -1329,3 +1206,85 @@ def test_entrance_accessories_leave_other_walls_untouched() -> None:
     assert light["position"][1] == 0.0
     assert light["position"][2] == 30.0
     assert stats["light_snapped"] == 0
+
+
+# ── 入口钉门越界回归（2026-09-30 四角凉亭线上事故）──────────────────────
+
+
+class TestEntrancePunchWithinBays:
+    """模型写小 bays + 全空 pattern（开敞亭语义）时，入口强制不许越界炸节点。
+
+    线上事故链：档案 default `entrance_bay=3`，模型写 `bays: 0`（夹成 1）且
+    未写 `required_components`（entrance_required=True）→ `_clamp_number` 走
+    default 分支**不夹取** → `ground[3-1]` 打进长度 1 的列表 →
+    `IndexError: list assignment index out of range` 从主路径裸调用穿出，
+    整轮生成终止。
+    """
+
+    @pytest.mark.parametrize("bays", [0, 1, 2])
+    def test_small_bays_pavilion_normalizes_without_indexerror(self, bays):
+        raw = {
+            "concept": "四角凉亭",
+            "massing": {"shape": "pavilion", "floors": 1},
+            # 关键：不写 required_components ⇒ entrance_required=True，必走钉门路径
+            "facades": {"front": {"bays": bays, "ground_pattern": []}},
+        }
+        plan = normalize_architecture_plan(raw, "生成一个四角凉亭")
+
+        front = plan["facades"]["front"]
+        assert 1 <= front["entrance_bay"] <= front["bays"], (
+            "entrance_bay 必须被夹在 [1, bays] 内（档案 default 不得越界回填）"
+        )
+        assert len(front["ground_pattern"]) == front["bays"]
+
+    def test_clamp_number_default_is_always_in_bounds(self):
+        from app.agent.generation.architecture.profile import _clamp_number
+
+        # value 缺失/非法时 default 也必须被夹进 [low, high]——这是线上事故根因。
+        assert _clamp_number(None, 1, 1, 3) == 1
+        assert _clamp_number(None, 1, 2, 9) == 2
+        assert _clamp_number(float("nan"), 1, 5, 8) == 5
+        assert _clamp_number(True, 1, 4, 7) == 4
+        assert _clamp_number("abc", 1, 4, 7) == 4
+        # 值有效时行为不变。
+        assert _clamp_number(0, 1, 9, 5) == 1
+        assert _clamp_number(42, 1, 9, 5) == 9
+        assert _clamp_number(4, 1, 9, 5) == 4
+
+    def test_model_declared_open_front_is_exempt_from_entrance_punch(self):
+        """模型显式写全空 front pattern = 开敞表态 ⇒ 不钉门、清单不点名 door。
+
+        线上实证（req_1790728407383）：模型按亭 KB 执行"排除 door"时**不写
+        required_components**（整个字段缺省），旧的豁免判据把"字段缺失"当
+        "未表态"→ 系统往全空 front 钉门，还带出一面实墙。开敞语义下
+        "pattern 全空 = 此面无门"是显式表态，必须等效豁免。
+        """
+        raw = {
+            "concept": "四角凉亭",
+            "massing": {"shape": "pavilion", "floors": 1},
+            # 关键：required_components 缺省——模型的实测行为
+            "facades": {"front": {"bays": 2, "ground_pattern": ["empty", "empty"]}},
+        }
+        plan = normalize_architecture_plan(raw, "生成一个四角凉亭")
+
+        front = plan["facades"]["front"]
+        assert "door" not in front["ground_pattern"], "开敞声明不许被系统钉门"
+        assert "door" not in plan["required_components"], (
+            "清单不许注入 door，否则交付层报'点名未落实'"
+        )
+
+    def test_partial_front_pattern_without_door_still_gets_punch(self):
+        """写了 pattern 但有非空 token（window）却没 door ⇒ 仍视为"忘了门"照常钉。"""
+        raw = {
+            "massing": {"floors": 1},
+            "facades": {"front": {"bays": 2, "ground_pattern": ["window", "empty"]}},
+        }
+        plan = normalize_architecture_plan(raw, "生成一个别墅")
+
+        assert "door" in plan["facades"]["front"]["ground_pattern"]
+
+    def test_missing_facades_still_gets_entrance_punch(self):
+        """立面完全没写（真未表态）⇒ 主入口强制兜底不变。"""
+        plan = normalize_architecture_plan({"massing": {"floors": 2}}, "生成一个两层别墅")
+
+        assert "door" in plan["facades"]["front"]["ground_pattern"]

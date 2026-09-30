@@ -152,12 +152,17 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
     """让模型根据批准方案决定分组策略，再由程序确定性展开条目。"""
 
     started = time.time()
+
+    # 取当前运行时的 "思考回调"。
     callback = get_reasoning_callback()
+    
     if callback:
-        await callback("plan", "正在把已批准方案拆成可执行的工作条目……\n")
+        # 必须带 `:progress` 后缀走「执行说明」通道。
+        await callback("plan:progress", "正在把已批准方案拆成可执行的工作条目……\n")
 
     strategy, diag = await request_plan_strategy(state)
 
+    # 如果 diag 里带了 terminal_model_error（说明模型服务调不通，是故障不是输出差），直接终止整轮
     if isinstance(diag.get("terminal_model_error"), dict):
         logger.warning("[plan] 策略模型不可用，终止本轮生成")
         return {
@@ -169,9 +174,15 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
             "status": "failed",
         }
 
+    # 1. 把策略确定性展开成条目列表（PlanDocument） 2. 给计划累加 1 次模型调用计数
     plan = expand_plan(state, strategy=strategy).add_llm_calls(1)
+
+    # 看这次计划多少条、各终态多少，供日志和播报用
     stats = terminal_stats(plan)
+
+    # 取第一条当前可执行的条目（status=ready 且没成功过）。用来设定 current_item_id 这是 trace 和事件要挂载的 "当前条目"
     first = poll_runnable(plan)
+    
     # 策略要的 ≠ 实际派发的：产物里已有的类型会被 ``expand_plan`` 抑制掉。诊断如实记两边，
     # 否则"模型点名了门却没派门"在审计里看不出来。
     dispatched_kinds = sorted({item.kind for item in plan.items if item.op == "generate"})
@@ -182,6 +193,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         f"（档位 {plan.detail_level}）：{[item.label for item in plan.items[:6]]}"
         + ("..." if stats["total"] > 6 else "")
     )
+    
     if callback:
         unsupported = stats["unsupported"]
         # 只播报**真的进了计划**的类型：被抑制的类型播出去等于对用户撒谎。
@@ -195,7 +207,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
             f"{entry.kind}：{entry.batch_reason}" for entry in planned if entry.batch_reason
         ]
         await callback(
-            "plan",
+            "plan:progress",
             f"计划已展开：{stats['total']} 条工作条目"
             + (f"，{len(parallel_groups)} 个安全并发组" if parallel_groups else "，其余按依赖串行")
             + (f"，其中 {unsupported} 条因能力缺失标记为不支持" if unsupported else "")
@@ -242,11 +254,11 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
     if callback and any(item.op in _MODEL_OPS for item in items):
         if len(items) > 1:
             await callback(
-                "execute",
+                "execute:progress",
                 "正在并发执行批次：" + "、".join(item.label for item in items) + "……\n",
             )
         else:
-            await callback("execute", f"正在执行{items[0].label}（{items[0].id}）……\n")
+            await callback("execute:progress", f"正在执行{items[0].label}（{items[0].id}）……\n")
 
     results = await asyncio.gather(*(_execute_one(state, item) for item in items))
     updates = _merge_parallel_updates([result[1] for result in results])
@@ -277,7 +289,7 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
         )
         logger.info(f"[execute] {item.id} → {run_state}（{elapsed_ms}ms）：{evidence}")
         if callback and item.op in _MODEL_OPS:
-            await callback("execute", f"{item.label}：{run_state}（{evidence}）\n")
+            await callback("execute:progress", f"{item.label}：{run_state}（{evidence}）\n")
     plan.add_llm_calls(model_calls)
 
     first = items[0]
@@ -338,13 +350,13 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
         if callback:
             if problem is not None:
                 await callback(
-                    "replanner",
+                    "replanner:progress",
                     f"条目 {problem.label or problem.id}（{problem.id}）执行失败 "
                     f"{problem.run.attempts}/{problem.run.max_attempts}："
                     f"{problem.run.evidence or '未提供失败证据'}。正在选择一次有界调整……\n",
                 )
             else:
-                await callback("replanner", "检测到计划结构异常，正在选择一次有界调整……\n")
+                await callback("replanner:progress", "检测到计划结构异常，正在选择一次有界调整……\n")
         decision, replan_diag = await request_replan(plan, state)
         plan, outcome = replan(plan, state, decision)
         if replan_diag.get("model_called"):
@@ -370,7 +382,7 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
                 or "未提供原因"
             )
             await callback(
-                "replanner",
+                "replanner:progress",
                 f"计划调整：{applied_action}；目标：{target}；依据：{detail}"
                 + (f"；变化：{changes}" if changes else "")
                 + "。\n",

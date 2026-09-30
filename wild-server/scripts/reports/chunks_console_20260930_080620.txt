@@ -1,0 +1,2 @@
+控制台输出将同时保存到: E:\AgentProject\WildAgent\wild-server\scripts\reports\chunks_console_20260930_080620.txt
+错误: 路径不存在: E:\AgentProject\WildAgent\wild-server\四角凉亭 要不要门

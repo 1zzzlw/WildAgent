@@ -1,7 +1,5 @@
 """
-Layer -1: 意图分类节点（薄封装）。
-
-共享判定逻辑位于 ``app.agent.routing``，返回意图、置信度、目标和降级来源。
+意图分类节点。
 """
 from app.agent.routing import classify_intent_decision, has_scene_content
 
@@ -34,7 +32,6 @@ async def classifier_node(state: dict) -> dict:
     )
     result = {
         "intent": decision.intent,
-        "intent_confidence": decision.confidence,
         "intent_target": decision.target,
         "intent_target_kind": decision.target_kind,
         "intent_requires_scene": decision.requires_scene,

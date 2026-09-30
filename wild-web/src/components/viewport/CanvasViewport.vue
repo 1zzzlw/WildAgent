@@ -56,7 +56,7 @@
           <span>{{ viewMode === 'presentation' ? '展示' : '编辑' }}</span>
         </button>
       </div>
-      <div class="fps-meter" :class="fpsTier" title="实时帧率">FPS {{ fps }}</div>
+      <RenderControlPanel />
     </div>
   </div>
 </template>
@@ -67,6 +67,8 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorldPackageStore } from '../../stores/worldPackageStore'
+import { useRenderPanelStore } from '../../stores/renderPanelStore'
+import RenderControlPanel from './RenderControlPanel.vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
@@ -150,6 +152,7 @@ const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
 const uiStore = useUIStore()
 const worldPackageStore = useWorldPackageStore()
+const renderPanel = useRenderPanelStore()
 
 const timeOfDay = ref<TimeOfDay>('day')
 const viewMode = ref<ViewMode>('editor')
@@ -161,7 +164,6 @@ const activeQualityPreset = computed(() => QUALITY_PRESETS[qualityLevel.value])
 const activeCameraPreset = computed(() => CAMERA_PRESETS[cameraPresetId.value])
 const activeEnvironmentPreset = computed(() => ENVIRONMENT_PRESETS[environmentPresetId.value])
 const fps = ref(0)
-const fpsTier = computed(() => fps.value >= 50 ? 'good' : fps.value >= 30 ? 'ok' : 'bad')
 const nextTimePreset = computed(() => {
   const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
   return TIME_PRESETS[TIME_ORDER[nextIndex]]
@@ -232,6 +234,10 @@ let dragComponentId: string | null = null
 let dragTargetPositions = new Map<THREE.Object3D, THREE.Vector3>()
 let suppressSelectionClick = false
 let unsubscribeWorldLook: (() => void) | null = null
+// 建筑线条叠加层（渲染面板开关）：按相邻面夹角 > 30° 提取 EdgesGeometry。
+// 挂在 scene 根上而不是 sceneGroup——clearSceneObjectResources 会清空 sceneGroup，
+// 线条层要在场景重建之后按需重画，生命周期由本组件自己持有。
+let edgesGroup: THREE.Group | null = null
 let unsubscribeWorldEnvironment: (() => void) | null = null
 let unsubscribeWorldRendering: (() => void) | null = null
 let unsubscribeWorldEffects: (() => void) | null = null
@@ -304,6 +310,26 @@ watch([
   () => JSON.stringify(worldPackageStore.environment),
 ], persistEditorWorldState)
 
+// ── 渲染控制面板：状态 → 视口动作的唯一接线处 ──
+watch(() => renderPanel.showEdges, () => {
+  applyEdgeMode()
+  markNeedsRender()
+})
+watch(() => renderPanel.autoRotate, enabled => {
+  if (!controls) return
+  controls.autoRotate = enabled
+  markNeedsRender()
+})
+watch(() => renderPanel.autoRotateSpeed, speed => {
+  if (controls) controls.autoRotateSpeed = speed
+})
+watch(() => renderPanel.showGrid, () => {
+  ensureGridVisible()
+  markNeedsRender()
+})
+watch(() => renderPanel.resetViewNonce, () => resetViewToPreset())
+watch(() => renderPanel.screenshotNonce, () => takeScreenshot())
+
 function initThreeJS() {
   if (!canvasRef.value || !containerRef.value) return
 
@@ -347,6 +373,9 @@ function initThreeJS() {
   controls.target.set(0, 1.5, 0)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
+  // 渲染面板的旋转开关（store 在组件挂载前可能已被用户改过，恢复一次）。
+  controls.autoRotate = renderPanel.autoRotate
+  controls.autoRotateSpeed = renderPanel.autoRotateSpeed
   controls.addEventListener('change', markNeedsRender)
   controls.update()
 
@@ -502,6 +531,8 @@ function renderFrame() {
   }
   const weatherAnimating = weatherVisuals?.tick(delta) ?? false
   if (weatherAnimating || controlsAnimating) needsRender = true
+  // 自动旋转：相机每帧都在动，保持渲染循环不进入休眠。
+  if (renderPanel.autoRotate) needsRender = true
   // 按需渲染休眠后的第一帧包含较长空闲时间，不能拿它计算实时 FPS。
   if (delta > 0.0005 && delta < 0.25) {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
@@ -524,6 +555,7 @@ function renderFrame() {
     if (composer) composer.render()
     else renderer.render(scene, camera)
     needsRender = false
+    publishRenderStats()
   }
   if (controlsAnimating || weatherAnimating || effectsAnimating || needsRender) {
     scheduleRenderFrame()
@@ -535,7 +567,8 @@ function ensureGridVisible() {
 	  if (!scene.children.includes(gridHelper)) {
 	    scene.add(gridHelper)
 	  }
-	  gridHelper.visible = viewMode.value === 'editor'
+	  // 展示模式恒隐藏；编辑器模式下尊重渲染面板的开关。
+	  gridHelper.visible = viewMode.value === 'editor' && renderPanel.showGrid
 	}
 
 function resetSceneBounds() {
@@ -573,6 +606,7 @@ function updateScene() {
     hasFramedScene = false
     resetSceneBounds()
     ensureGridVisible()
+    applyEdgeMode()
     syncSelectionHighlights()
     syncComponentTransformControl()
     markNeedsRender()
@@ -591,6 +625,7 @@ function updateScene() {
     }
     resetSceneBounds()
     ensureGridVisible()
+    applyEdgeMode()
     syncSelectionHighlights()
     syncComponentTransformControl()
     return
@@ -647,11 +682,13 @@ function updateScene() {
   
   ensureGridVisible()
   applyViewMode()
+  applyEdgeMode()
   markNeedsRender()
 }
 
 function handlePointerDown(event: PointerEvent) {
-  if (viewMode.value === 'presentation') return
+  if (viewMode.value === 'presentation' || renderPanel.showEdges) return
+  // 线框模式下建筑本体隐藏，选中/拖拽没有目标；同展示模式一起早退。
   // 选择只响应主按键。右键由 contextmenu 独占，不能先改变选中高亮。
   if (event.button !== 0) {
     pointerDownPosition = null
@@ -661,7 +698,7 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
-  if (viewMode.value === 'presentation') return
+  if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (suppressSelectionClick) {
     suppressSelectionClick = false
     pointerDownPosition = null
@@ -706,7 +743,7 @@ function handlePointerUp(event: PointerEvent) {
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
 function handleContextMenu(event: MouseEvent) {
-  if (viewMode.value === 'presentation') return
+  if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (!renderer || !camera || !sceneGroup) return
   const rect = renderer.domElement.getBoundingClientRect()
   pointer.x = (event.clientX - rect.left) / rect.width * 2 - 1
@@ -1353,7 +1390,7 @@ function applyViewMode() {
   if (!scene) return
   const presenting = viewMode.value === 'presentation'
   const scenic = environmentPresetId.value !== 'minimal'
-  if (gridHelper) gridHelper.visible = !presenting
+  ensureGridVisible()
   if (shadowGround) shadowGround.visible = true
   applyGroundVisibility()
   if (builtInEnvironment) builtInEnvironment.visible = scenic
@@ -1449,6 +1486,157 @@ function markNeedsRender() {
   scheduleRenderFrame()
 }
 
+// ── 渲染控制面板：执行端（状态在 renderPanelStore，UI 在 RenderControlPanel）──
+
+let lastStatsPublishAt = 0
+const STATS_PUBLISH_INTERVAL_MS = 500
+
+/** 渲染统计节流回写面板（~2Hz）：draw calls / 三角面只在真实渲染后有意义。 */
+function publishRenderStats() {
+  const now = performance.now()
+  if (now - lastStatsPublishAt < STATS_PUBLISH_INTERVAL_MS) return
+  lastStatsPublishAt = now
+  const info = renderer?.info
+  const pixelRatio = renderer?.getPixelRatio() || 1
+  const bufferWidth = renderer?.domElement.width ?? 0
+  const bufferHeight = renderer?.domElement.height ?? 0
+  renderPanel.stats = {
+    fps: fps.value,
+    drawCalls: info?.render.calls ?? 0,
+    triangles: info?.render.triangles ?? 0,
+    geometries: info?.memory.geometries ?? 0,
+    textures: info?.memory.textures ?? 0,
+    renderWidth: Math.round(bufferWidth / pixelRatio),
+    renderHeight: Math.round(bufferHeight / pixelRatio),
+    pixelRatio,
+  }
+}
+
+/** 相邻面夹角超过该值才算"建筑线条"——圆弧与平滑曲面不生成碎线。 */
+const EDGE_THRESHOLD_ANGLE_DEG = 30
+const EDGE_LINE_COLOR = 0x16324a
+const EDGE_LINE_OPACITY = 0.9
+
+function clearEdges() {
+  if (!edgesGroup || !scene) return
+  scene.remove(edgesGroup)
+  edgesGroup.traverse(node => {
+    if (node instanceof THREE.LineSegments) {
+      node.geometry.dispose()
+    }
+  })
+  // 材质在 rebuildEdges 里按组共用一份，随最后一组一起释放。
+  for (const child of edgesGroup.children) {
+    if (child instanceof THREE.LineSegments) {
+      (child.material as THREE.LineBasicMaterial).dispose()
+      break
+    }
+  }
+  edgesGroup = null
+}
+
+function rebuildEdges() {
+  if (!scene || !sceneGroup) return
+  clearEdges()
+  scene.updateMatrixWorld(true)
+  const material = new THREE.LineBasicMaterial({
+    color: EDGE_LINE_COLOR,
+    transparent: true,
+    opacity: EDGE_LINE_OPACITY,
+  })
+  let lineCount = 0
+  const group = new THREE.Group()
+  group.name = 'building_edges'
+  sceneGroup.traverse(node => {
+    if (!(node instanceof THREE.Mesh) || !node.visible) return
+    if (!node.geometry?.attributes?.position) return
+    const edgesGeometry = new THREE.EdgesGeometry(node.geometry, EDGE_THRESHOLD_ANGLE_DEG)
+    if (!edgesGeometry.attributes.position || edgesGeometry.attributes.position.count === 0) {
+      edgesGeometry.dispose()
+      return
+    }
+    const line = new THREE.LineSegments(edgesGeometry, material)
+    // 线条层挂在 scene 根上（identity 父变换），直接复用源网格的世界矩阵。
+    line.matrixAutoUpdate = false
+    line.matrix.copy(node.matrixWorld)
+    line.matrixWorldNeedsUpdate = true
+    line.frustumCulled = false
+    group.add(line)
+    lineCount += 1
+  })
+  if (lineCount === 0) {
+    material.dispose()
+    return
+  }
+  scene.add(group)
+  edgesGroup = group
+}
+
+/** 场景重建/开关后保持线框模式与当前网格一致。
+ *
+ * 线框模式（用户反馈 2026-09-29）：开启"建筑线条"时**建筑本体隐藏**，
+ * 只展示线条框架——建筑变空白，EdgeGeometry 叠加层就是画面里唯一的几何。
+ * sceneGroup 的可见性在这里统一管理；选中高亮与变换控制器挂在 scene 上
+ * （不会被 sceneGroup 连带隐藏），所以线框模式下要显式清掉，恢复时再同步回来。
+ */
+function applyEdgeMode() {
+  const edgesOnly = renderPanel.showEdges
+  if (sceneGroup) sceneGroup.visible = !edgesOnly
+  // 🔴 线框模式只留建筑线条（用户反馈二轮 2026-09-29）：只藏 sceneGroup 不够——
+  // 阴影承接面、展示地面、GridHelper、日月天体、云层、内置环境都挂在 scene 根上，
+  // 会原样留在画面里，"建筑变空白"变成"布景比线条还抢眼"。这里统一让位。
+  // 恢复不手写各对象的可见性规则，交给它们唯一的管家：
+  // applyViewMode / applyGroundVisibility / ensureGridVisible /
+  // updateCelestialBodies / cloudLayer.setVisible。
+  if (edgesOnly) {
+    if (shadowGround) shadowGround.visible = false
+    if (presentationGround) presentationGround.visible = false
+    if (gridHelper) gridHelper.visible = false
+    if (sunBody) sunBody.visible = false
+    if (moonBody) moonBody.visible = false
+    cloudLayer?.setVisible(false)
+    if (builtInEnvironment) builtInEnvironment.visible = false
+    rebuildEdges()
+    clearSelectionHelpers()
+    clearComponentTransformControl()
+  } else {
+    clearEdges()
+    applyViewMode()
+    updateCelestialBodies()
+    cloudLayer?.setVisible(getWorldEffectState().clouds)
+  }
+}
+
+function resetViewToPreset() {
+  if (hasSceneBounds) {
+    frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
+    return
+  }
+  if (controls && camera) {
+    controls.target.set(0, 1.5, 0)
+    camera.position.set(12, 10, 12)
+    controls.update()
+    markNeedsRender()
+  }
+}
+
+function takeScreenshot() {
+  if (!renderer || !scene || !camera) return
+  // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
+  if (composer) composer.render()
+  else renderer.render(scene, camera)
+  publishRenderStats()
+  try {
+    const url = renderer.domElement.toDataURL('image/png')
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `wild-viewport-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`
+    anchor.click()
+  } catch (error) {
+    console.error('[viewport] 截图保存失败', error)
+  }
+}
+
 function markShadowsDirty() {
   if (!renderer || !directionalLight) return
   renderer.shadowMap.needsUpdate = true
@@ -1479,6 +1667,7 @@ function cleanup() {
   renderer?.domElement.removeEventListener('contextmenu', handleContextMenu)
   clearSelectionHelpers()
   clearComponentTransformControl()
+  clearEdges()
   if (worldRuntime) worldRuntime.dispose()
   else if (materialCache) materialCache.clear()
   if (controls) controls.removeEventListener('change', markNeedsRender)
@@ -1602,27 +1791,7 @@ canvas {
   transform: translateY(1px);
 }
 
-.fps-meter {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: rgba(18, 23, 33, 0.72);
-  color: #8bd450;
-  font-family: monospace;
-  font-size: 12px;
-  line-height: 1;
-  backdrop-filter: blur(8px);
-}
-
-.fps-meter.ok {
-  color: #e6c34a;
-}
-
-.fps-meter.bad {
-  color: #e06a5a;
-}
+/* FPS 显示已移入渲染控制面板（RenderControlPanel.vue） */
 
 .viewport-action:focus-visible {
   outline: 2px solid #8fc7ff;

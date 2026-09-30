@@ -28,6 +28,12 @@ TERMINAL_STATUSES: tuple[str, ...] = ("done", "abandoned", "skipped", "unsupport
 #: 两者的区别是硬约束：只有收尾合并有权删改元素，所以只有它的结论能判定"产物没落地"。
 MERGE_SCOPES: tuple[str, ...] = ("batch", "final")
 
+#: merge/validate 条目的产物凭据是**整张蓝图的实体 id 列表**，密集设计
+#（195 窗 + 核心筒 + 栏杆）轻松超过 200——原上限 200 曾把收尾合并炸掉
+#（ItemRun 校验错误 → 整轮"处理失败"）。对账不读它（按蓝图落地数判定完成），
+# 它只是审计 payload；写入侧超限由 store.record_result 截断兜底。
+ARTIFACTS_CAP = 2000
+
 PlanStatus = Literal[
     "pending",  # 待办
     "ready",  # 依赖已满足，下一轮可执行
@@ -57,7 +63,8 @@ class ItemRun(PlanModel):
     state: RunState = "idle"
     attempts: int = Field(default=0, ge=0)
     max_attempts: int = Field(default=3, ge=1)
-    artifacts: list[str] = Field(default_factory=list, max_length=200)
+    # 上限见 ARTIFACTS_CAP 的注释。
+    artifacts: list[str] = Field(default_factory=list, max_length=ARTIFACTS_CAP)
     evidence: str = Field(default="", max_length=2000)
     elapsed_ms: int | None = Field(default=None, ge=0)
 
@@ -146,7 +153,7 @@ class PlanHistoryEntry(PlanModel):
 
 
 class PlanDocument(PlanModel):
-    """存进 ``state.plan`` 的整份计划（§2.2）。"""
+    """存进 ``state.plan`` 的整份计划。"""
 
     schema_version: Literal["plan/1.0"] = PLAN_SCHEMA_VERSION
     revision: int = Field(default=1, ge=1)

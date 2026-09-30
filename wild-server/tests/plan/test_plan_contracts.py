@@ -392,3 +392,32 @@ def test_detail_level_read_from_document_and_budget_is_monotonic():
 def test_plan_document_rejects_unknown_fields():
     with pytest.raises(ValueError):
         PlanDocument(unexpected_field=True)
+
+
+def test_record_result_artifacts_over_old_cap_never_raises():
+    """回归（真实事故 2026-09-29）：收尾合并把 376 个实体 id 写进凭据，
+    ItemRun 旧上限 200 在 validate_assignment 下抛 ValidationError，
+    把整轮执行炸成"处理失败"。对账不读 artifacts（按蓝图落地数判定），
+    上限提到 2000、写入侧超限截断并把事实写进 evidence。"""
+
+    from app.agent.plan.contracts import ARTIFACTS_CAP, ItemRun, PlanDocument, PlanItem
+    from app.agent.plan.store import record_result
+
+    plan = PlanDocument(items=[
+        PlanItem(id="merge_all_01", op="merge", kind="all"),
+    ])
+    ids = [f"entity_{index:03d}" for index in range(376)]
+
+    updated = record_result(plan, "merge_all_01", state="succeeded", artifacts=ids)
+
+    run = updated.item("merge_all_01").run
+    assert run.state == "succeeded"
+    assert len(run.artifacts) == 376  # 376 < 新上限：原样保留，不再炸校验
+
+    # 超过新上限：截断 + 事实进 evidence（确定性可复现）。
+    many = [f"entity_{index:04d}" for index in range(ARTIFACTS_CAP + 500)]
+    updated = record_result(plan, "merge_all_01", state="succeeded", artifacts=many)
+    run = updated.item("merge_all_01").run
+    assert len(run.artifacts) == ARTIFACTS_CAP
+    assert run.artifacts[0] == "entity_0000"
+    assert "凭据截断保留前" in run.evidence

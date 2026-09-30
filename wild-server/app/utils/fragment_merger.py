@@ -1,5 +1,43 @@
 """分片合并工具：将骨架与组件分片合并为完整 Blueprint。"""
 from copy import deepcopy
+from typing import Any
+
+#: 坐标向量字段：逐分量数值化。
+_VECTOR_FIELDS = ("from", "to", "position", "base")
+#: 标量尺寸字段：字符串数值宽容解析。
+_SCALAR_FIELDS = (
+    "height", "width", "depth", "thickness", "span",
+    "bottomRadius", "topRadius", "radius", "overhang", "floorHeight",
+)
+
+
+def _maybe_float(value: Any) -> Any:
+    """字符串数字 → float；转不动原样返回。模型偶发把坐标写成 "0.0"（实测
+    column.base[1]="0.0" 会让 wild-core 的 schema 校验直接拒收整份蓝图——
+    引擎侧 schema 只认 number，渲染重建全部失败），在合并入口统一归一。"""
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return value
+    return value
+
+
+def _numeric_normalize(item: dict) -> dict:
+    """模型分片的几何数值归一（原地）：坐标向量逐分量 + 标量尺寸 + dimensions 表。"""
+    for field in _VECTOR_FIELDS:
+        value = item.get(field)
+        if isinstance(value, list):
+            item[field] = [_maybe_float(v) for v in value]
+    for field in _SCALAR_FIELDS:
+        if isinstance(item.get(field), str):
+            item[field] = _maybe_float(item[field])
+    dims = item.get("dimensions")
+    if isinstance(dims, dict):
+        for key, value in dims.items():
+            if isinstance(value, str):
+                dims[key] = _maybe_float(value)
+    return item
 
 
 def merge_fragments(skeleton: dict, fragments: list[dict]) -> dict:
@@ -120,6 +158,9 @@ def _insert_item(item: dict, components: list, elements: list, used_ids: set):
     item_id = item.get("id")
     if not item_id:
         return
+
+    # 几何数值归一：模型 JSON 的字符串数字在进蓝图前转 float（见 _numeric_normalize）。
+    _numeric_normalize(item)
 
     # ID 冲突检测：自动加后缀
     if item_id in used_ids:

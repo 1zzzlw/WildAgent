@@ -161,6 +161,9 @@ classifier
 `components[].host` 必须已提交、`material_role` 必须已解析。这些是**块间不变量**，在 `commit_block`
 时就地拦下（不是等编译）。这是分块唯一的真实成本，也是它必须配一套不变量表的原因。
 
+> **落地状态（2026-09-28 晚）**：上面这张"执行循环"映射表的前三行与最后两行已实现，见 **§5.14**。
+> 未落地的是 `material` / `objects` 两个块（`DESIGN_BLOCKS` 目前只有 5 块）与 `replan` 五动作的设计版映射。
+
 ---
 
 ## 2. 编译器脚本
@@ -964,3 +967,84 @@ front.ground_pattern: ["window", "window", "door", "window", "window", "window"]
 
 **还没跑**：真模型探针——模型在改过的提示词下会不会真的开始写 `:形态`，以及会不会因新语法而重试变多。
 这是收尾前要补的最后一环。
+
+### 5.14 设计期 plan-and-execute 落地（§1.6，2026-09-28 晚）
+
+**起因**：用户报「我想让 plan 也参与到设计图纸当中」。查下来 plan 在**构造上**就碰不到图纸：
+图纸由 `architecture` 节点逐块起草（块表是常量），`compile` 零模型地把蓝图全算完，
+于是 `plan` 只剩编译器暂无派生规则的 `uncompiled` 类型（别墅里**就是雨棚**）。
+用户那次的 plan 输出本身**是正确的**，只是职责划分让它天然无活可干。
+
+**落地形态**（新模块 `app/agent/generation/architecture/design_plan.py`）：
+
+| §1.6 的目标 | 实现 |
+|---|---|
+| 条目 = 设计块 | `build_design_plan`：`DESIGN_BLOCKS` → `PlanDocument`，id=`draft_<块名>` |
+| 依赖表是常量、不由 LLM 产出 | 依赖直接取块表的 `depends_on`；**没有**为块序新增任何模型调用 |
+| `PlanItem` 条目 | 复用；`op` 取闭集里的 `generate`（不开新 op），`kind`=块名 |
+| `expand_plan` | `build_design_plan`（确定性展开，只保留计划内的依赖） |
+| `run_generate` | `_draft_one`（LLM 写这一块，带证据重试） |
+| `store.py` / `refresh_statuses` / 对账 | **原样复用** |
+| `parallel_group`（结构/立面/屋顶并发） | `next_batch` 按声明派发 —— 🔴 **这是本次唯一真正修复的空转声明** |
+| 有界终止 | `ItemRun.max_attempts`（= `_BLOCK_MAX_ATTEMPTS`） |
+| `commit_block` 的块间不变量 | `check_block_contract`（已存在，未改） |
+
+🔴 **`parallel_group="shell"` 从落表那天起就没生效过**：`draft_design_blocks` 是纯串行 for 循环，
+`ordered_blocks` 的文档里写着"便于外部并发执行"，但没有任何调用方并发。现在三块真并发。
+
+**两个只有跑起来才会暴露的坑**（都已钉进测试）：
+
+1. **试满上限必须落 `abandoned`（终态）**。`refresh_statuses` 把 `abandoned` 当已落定，下游才会继续 ——
+   这正好是"留空交下游兜底"那条红线在调度层的表达。写成 `blocked` 会把 `components` **永久锁死**，
+   症状是"图纸一直缺构件配额"，而根因在一块早就失败的块上。
+2. **子集重出（`only_blocks`）必须裁掉悬空依赖**。收敛环只重出受影响的块，若保留指向计划外条目的
+   `depends_on`，`refresh_statuses` 永远推不出 `ready` ⇒ 条目静默丢在 `blocked`，
+   症状是**"重出之后图纸一个字节没变，却也不报错"**。
+
+**为什么必须量并发，而不是量产物**：串行也能把五块写完，所以"图纸正确"证明不了调度生效。
+守卫 `tests/agent/test_design_blocks.py::DesignPlanSchedulingTest` 量的是**同时进行的模型调用数**
+（桩件在 `await asyncio.sleep(0)` 前后计数；串行永远到不了峰值 2）。
+
+**诊断口径**：`architecture_diag.design_blocks.{plan,batches}`（计划全文 + 每批的条目与落定情况），
+UI 那一行由 `ws_agent._design_schedule_note` 生成：`设计期 N 批（最宽 M 并发）· 落定 X/Y 块`。
+这是"plan 到底参与了没有"唯一可观测的现场。
+
+**验证**：全量 `pytest tests` **1174 passed / 1 xfailed**；新增 6 条调度测试 + 2 条口径测试。
+
+### 5.15 §3.4 实例清单落地：它是**覆盖层**，不是替换层（2026-09-28 晚）
+
+§3.4 的"抽象与显式并存、抽象为主显式为例外"此前被实现成了**按类型整批取代**，
+代价实测如下：
+
+| 症状（改前） | 根因 |
+|---|---|
+| `light 数量 1 少于设计下限 2` | 一张只写一盏灯的清单把**四个立面**的派生灯全删了 |
+| 大量 `配额下限没满足` / `ok=False` | 只写阳台的清单把**门窗**整类删了 |
+| `roof 缺少必填字段 height/thickness` | 屋顶实例自带一套几何，漏掉元素必填字段 |
+| `未在 Blueprint.materials 中定义` | 把**设计侧角色名**写进了引用**蓝图材质名**的字段 |
+| 整份蓝图 `schema_invalid` | `light` 用了引擎不认的 5 个字段，`lightType="wall"` 违反闭集 |
+
+**改后的规则**：
+
+1. 派生链**先跑完**（立面 pattern → 门窗、槽位 → 阳台/栏杆、屋顶/檐口/烟囱/灯具/电梯派生）；
+2. 实例**只顶替它指向的那一条**：门窗按 `parentWall` 对齐（= **批准槽位上的那个构件**），
+   灯具/屋顶取该类型的第一条；找不到对应派生结果就**追加**（实例是新增的）；
+3. 有模板（= 顶替的是一个批准槽位）时**几何以槽位为准**：
+   `validate_design_brief_constraints` 逐槽位同时比对 `from`/`width`/`height`，
+   实例改尺寸会让那个槽位"未落实" —— 实例能表态的只有**形态与材质**；
+4. 材质字段统一由 `_resolve_instance_materials` 换名，映射表唯一来源是
+   `material_plan.ROLE_SPECS[*].materialId`（**不在编译侧重抄一份**）；
+5. 屋顶实例只表态造型，几何取自派生模板（`_single_roof`）；`ridgeHeight` → `height`。
+
+🔴 **顺带暴露的测试问题**：`tests/design/test_component_instance_validation.py` 的 6 条 fixture 用
+`complexity: "medium"` / `envelope: "modern"`（字符串），而契约要 `ComplexityDecision` /
+`EnvelopeDecision` **对象** ⇒ 这 6 条**从来没跑过**（`model_validate` 在更早的字段上就炸了，
+断言全在空转）。写契约测试前先确认 fixture 能过 `model_validate`。
+
+🔴 **另一条**：`test_light_instance_compilation` 旧断言 `lightType == "wall"` —— 那是**引擎的闭集外**
+取值，断言的不是"实现对了"，而是"实现错得跟测试一样"。已改成钉真正合法的字段
+（`position`/`fixtureType`/`initiallyOn`）。
+
+**还没做（明确记账）**：`_compile_*_instance` 那 8 个 per-type builder 仍是既有 `conform_*_to_slots`
+的**重复实现**，只是在外面接了覆盖层；它们违反 §3.1"图纸里不出现世界坐标"（自己算了位置）。
+正确做法是让实例**只表态**、几何全部走既有派生，下一轮该收。

@@ -403,7 +403,7 @@ watch(() => agentStore.session.messages.length, () => scrollToBottom(), { flush:
 watch(() => agentStore.blueprintLoaded, () => scrollToBottom(), { flush: 'post' })
 watch(
   () => agentStore.currentTurns.map(turn =>
-    `${turn.turn_id}:${turn.status}:${turn.steps.length}:${turn.steps.map(step => step.thinking.length).join(',')}`
+    `${turn.turn_id}:${turn.status}:${turn.steps.length}:${turn.steps.map(step => step.thinking.length + ':' + (step.reasoning || '').length).join(',')}`
   ).join('|'),
   () => scrollToBottom(),
   { flush: 'post' },

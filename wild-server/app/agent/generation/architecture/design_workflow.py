@@ -21,6 +21,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import time as _time
 from typing import Any, Awaitable, Callable, Sequence
@@ -28,9 +29,18 @@ from typing import Any, Awaitable, Callable, Sequence
 from loguru import logger
 
 from app.agent.generation.architecture.design_blocks import (
+    BLOCK_BY_NAME,
     DesignBlock,
+    KnowledgeQuerySpec,
     ordered_blocks,
 )
+from app.agent.generation.architecture.design_plan import (
+    apply_batch_outcomes,
+    build_design_plan,
+    next_batch,
+    start_batch,
+)
+from app.agent.plan.contracts import PlanItem
 from app.design.openings import opening_kind
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
@@ -38,6 +48,14 @@ from app.utils.json_extractor import extract_json_object
 
 #: 每块的尝试次数上限（含首次）。**有界**是硬要求：无界重试会在坏图上烧完预算。
 _BLOCK_MAX_ATTEMPTS = 3
+
+#: 每个块级检索意图最多召回的分片数。块提示词要短（§1.6 "短输出"的同一理由），
+#: 所以每意图取 2 片、多意图去重后通常 2~6 片，足以覆盖该块最相关的知识。
+_BLOCK_PER_QUERY = 2
+
+#: 单块注入的知识文本上限（字符）。超过就按列表序截断：前几片是检索排名最高的，
+#: 后面的本来就该被淘汰。**不截单片**（与 Loader 上下文预算同一纪律）。
+_BLOCK_KNOWLEDGE_MAX_CHARS = 6000
 
 #: 上下限**由系统派生**的构件类型：`normalize_architecture_plan` 按立面逐层 pattern 与屋顶算出来，
 #: 模型写什么都会被覆盖。⇒ 它们不能作为判块是否合格的依据（见 `check_block_contract`）。
@@ -52,6 +70,82 @@ def _pick_block_fields(raw: Any, block: DesignBlock) -> dict[str, Any]:
     if not isinstance(raw, dict):
         return {}
     return {field: raw[field] for field in block.fields if field in raw}
+
+
+def _render_query_text(spec: KnowledgeQuerySpec, user_request: str) -> str:
+    """把块级查询模板渲染成真实查询文本。``{request}`` 替换为用户请求。"""
+
+    return spec.text.replace("{request}", user_request or "")
+
+
+async def retrieve_block_knowledge(
+    block: DesignBlock,
+    user_request: str,
+) -> tuple[str, dict[str, Any]]:
+    """起草**前**为本块检索知识（设计文档 §1.5 "RAG 换位置"的设计期落点）。
+
+    返回 ``(文本, 诊断)``。检索失败**不阻断**（返回空文本 + 错误诊断）：
+    知识是"能写得更好"的输入，不是"写不出来"的理由——与块留空交兜底同一纪律。
+    每条意图必须带 metadata 过滤（与 ``knowledge_tool.py`` 同一安全要求）。
+    """
+
+    diag: dict[str, Any] = {
+        "queries": 0,
+        "chars": 0,
+        "hits": [],
+        "error": "",
+    }
+    specs = getattr(block, "knowledge_queries", ()) or ()
+    if not specs:
+        return "", diag
+
+    from app.spec.loader import SpecQuery
+
+    queries = [
+        SpecQuery(_render_query_text(spec, user_request), dict(spec.metadata_filter))
+        for spec in specs
+    ]
+    diag["queries"] = len(queries)
+    try:
+        from app.services.agent_service import agent_service
+
+        spec_loader = agent_service.spec_loader
+    except Exception as exc:  # 基建不可用时如实记账，不阻断生成
+        diag["error"] = f"{type(exc).__name__}: {exc}"
+        return "", diag
+
+    try:
+        text = spec_loader.load_many(queries, per_query=_BLOCK_PER_QUERY)
+    except Exception as exc:
+        diag["error"] = f"{type(exc).__name__}: {exc}"
+        return "", diag
+
+    hits = [
+        {
+            "source": str(hit.metadata.get("source", "?")),
+            "heading": str(hit.metadata.get("heading", "?")),
+        }
+        for hit in getattr(spec_loader, "last_results", []) or []
+    ]
+    diag["hits"] = hits
+    diag["chars"] = len(text or "")
+    if len(text) > _BLOCK_KNOWLEDGE_MAX_CHARS:
+        text = text[:_BLOCK_KNOWLEDGE_MAX_CHARS]
+    return text, diag
+
+
+def format_block_knowledge(knowledge_text: str) -> str:
+    """把块级检索文本格式化成本块提示词的一个章节。空文本返回空串。"""
+
+    body = (knowledge_text or "").strip()
+    if not body:
+        return ""
+    return (
+        "\n\n# 本块专属知识库参考\n\n"
+        "以下是检索到的与本块相关的 WILD 规范/形制/组装知识。字段写法与组装关系**以此为准**；"
+        "造型取向仍由用户需求决定，知识不得静默改写用户已定的尺寸与风格：\n\n"
+        f"{body}"
+    )
 
 
 def check_block_contract(
@@ -163,6 +257,7 @@ def build_block_prompt(
     block: DesignBlock,
     draft: dict[str, Any],
     defects: Sequence[Any] | None = None,
+    knowledge_text: str = "",
 ) -> str:
     """基础提示词 + 块级附注。附注只讲"这一轮写什么、别的已定稿、上次错在哪"。"""
 
@@ -180,6 +275,9 @@ def build_block_prompt(
         "",
         "其余字段**已定稿**，由系统提供；写它们会被忽略，且浪费你的注意力。",
     ]
+    knowledge_section = format_block_knowledge(knowledge_text)
+    if knowledge_section:
+        lines.append(knowledge_section)
     issue_lines = describe_defects(defects)
     if issue_lines:
         lines += [
@@ -215,7 +313,6 @@ async def draft_design_blocks(
     *,
     base_prompt: str,
     user_request: str,
-    level: str,
     thinking_mode: bool,
     on_reasoning_delta: ReasoningEmitter | None = None,
     only_blocks: Sequence[str] | None = None,
@@ -241,14 +338,14 @@ async def draft_design_blocks(
     """
 
     draft: dict[str, Any] = {}
-    blocks = ordered_blocks(level)
+    blocks = ordered_blocks("standard")  # 固定使用标准档位（粒度选择已下线，2026-09-30）
     if only_blocks is not None:
         wanted = {str(name) for name in only_blocks}
         blocks = tuple(block for block in blocks if block.name in wanted)
     diag_blocks: list[dict[str, Any]] = []
     total_usage: dict[str, Any] | None = None
     #: 有没有工具循环可用。**与"要不要流式思考"正交**：`allow_probe` 决定有没有工具，
-    #: 思考模式决定要不要转发 reasoning delta，两者可以同时成立（见下方 probe_tool 参数）。
+    #: 思考模式决定要不要转发 reasoning delta，两者可以同时成立。
     probe_specs: list[Any] = []
     if allow_probe:
         # 延迟导入：`app.agent.plan` 包在导入时会拉起 expand/strategy 等一串模块，
@@ -265,7 +362,7 @@ async def draft_design_blocks(
             )
         ]
 
-    #: 只有"没有工具可用"时才退回纯流式通道（那时才需要单独起一个流式 LLM）。
+    #: 只有"没有工具可用"时才退回纯流式通道。
     use_streaming = thinking_mode and on_reasoning_delta is not None and not probe_specs
     probe_note = {
         "probe_tool": bool(probe_specs),
@@ -274,23 +371,53 @@ async def draft_design_blocks(
     }
     if not blocks:
         return {}, {
-            "level": level,
             "blocks": [],
             "unsettled_blocks": [],
             "token_usage": None,
             "requested_blocks": [str(name) for name in only_blocks or ()],
+            "plan": None,
+            "batches": [],
+            "knowledge_retrievals": 0,
+            "knowledge_chars": 0,
             **probe_note,
         }
 
-    for block in blocks:
+    async def _draft_one(
+        block: DesignBlock,
+        item: PlanItem,
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        """跑一条设计块：带证据重试，**有界**（``item.run.max_attempts``）。
+
+        本函数只管"把这一块写出来"；下一块是谁、能不能与谁并发，由
+        :func:`design_plan.next_batch` 决定 —— 调度不再写在这里。
+        """
+
         prompt = build_block_prompt(base_prompt, block, draft, defects)
+        # 🔴 块级检索（§1.5）在**每次起草尝试前**只做一次：提示词重建（重试时追加
+        # "上一次输出未通过"）不重查库。命中进本块提示词，也进诊断。
+        knowledge_text = ""
+        knowledge_diag: dict[str, Any] = {"queries": 0, "chars": 0, "hits": [], "error": ""}
+        try:
+            knowledge_text, knowledge_diag = await retrieve_block_knowledge(block, user_request)
+            if knowledge_text:
+                prompt = build_block_prompt(
+                    base_prompt, block, draft, defects, knowledge_text=knowledge_text
+                )
+        except Exception as exc:  # 检索路径自身的 bug 也不得阻断起草
+            knowledge_diag["error"] = f"{type(exc).__name__}: {exc}"
+        if knowledge_diag.get("error"):
+            logger.warning(
+                f"[architecture] 设计块 {block.name} 知识检索失败，继续用基础提示词: "
+                f"{knowledge_diag['error']}"
+            )
         attempts = 0
         settled = False
         last_issue = ""
         llm_ms = 0
         llm_chars = 0
+        usage_total: dict[str, Any] | None = None
 
-        while attempts < _BLOCK_MAX_ATTEMPTS and not settled:
+        while attempts < item.run.max_attempts and not settled:
             attempts += 1
             started = _time.time()
             content = ""
@@ -355,7 +482,7 @@ async def draft_design_blocks(
                 content, usage = reply.content or "", reply.token_usage
             llm_ms += int((_time.time() - started) * 1000)
             llm_chars += len(content)
-            total_usage = merge_token_usage(total_usage, usage)
+            usage_total = merge_token_usage(usage_total, usage)
 
             raw = extract_json_object(content)
             picked = _pick_block_fields(raw, block)
@@ -371,7 +498,7 @@ async def draft_design_blocks(
             )
             if on_reasoning_delta is not None:
                 await on_reasoning_delta(
-                    "architecture",
+                    "architecture:progress",
                     f"\n设计块 {block.name} 未通过（{last_issue}），带证据重出...\n",
                 )
             prompt = (
@@ -379,30 +506,96 @@ async def draft_design_blocks(
                 "请只修正上面指出的问题，重新输出**本轮该块的完整字段**。"
             )
 
-        diag_blocks.append(
-            {
-                "block": block.name,
-                "settled": settled,
-                "attempts": attempts,
-                "llm_ms": llm_ms,
-                "llm_chars": llm_chars,
-                "last_issue": last_issue if not settled else "",
-            }
-        )
+        row = {
+            "block": block.name,
+            "settled": settled,
+            "attempts": attempts,
+            "llm_ms": llm_ms,
+            "llm_chars": llm_chars,
+            "last_issue": last_issue if not settled else "",
+            "knowledge": knowledge_diag,
+        }
+        diag_blocks.append(row)
         if on_reasoning_delta is not None:
             await on_reasoning_delta(
-                "architecture",
+                "architecture:progress",
                 f"\n设计块 {block.name}："
                 + ("已定稿\n" if settled else f"未定稿（{last_issue}），交给下游兜底\n"),
             )
+        return row, usage_total
 
-    unsettled = [item["block"] for item in diag_blocks if not item["settled"]]
+    # ── plan 驱动：块表确定性展开成条目，批次与并发由 plan 的语义决定 ──
+    #
+    # 依赖来自块表（**物理约束**，不由模型产出）；并发来自块表的 ``parallel_group``
+    # （``shell`` 组 = 结构 / 立面 / 屋顶三块）。这样设计期也是"批次 + 有界重试 +
+    # 计划态推导"，而不是另一段写死的串行 for 循环 —— 后者会让 plan 完全碰不到图纸。
+    plan = build_design_plan(blocks, level="standard", max_attempts=_BLOCK_MAX_ATTEMPTS)
+    batches: list[dict[str, Any]] = []
+    while True:
+        batch = next_batch(plan)
+        if not batch:
+            break
+        plan = start_batch(plan, batch)
+        if on_reasoning_delta is not None and len(batch) > 1:
+            await on_reasoning_delta(
+                "architecture:progress",
+                f"\n### 设计期计划\n本轮并发 {len(batch)} 块（并发组 "
+                f"{batch[0].params.get('parallel_group') or '-'}）："
+                + "、".join(item.kind for item in batch)
+                + "……\n",
+            )
+        results = await asyncio.gather(
+            *(_draft_one(BLOCK_BY_NAME[item.kind], item) for item in batch)
+        )
+        batches.append(
+            {
+                "items": [item.id for item in batch],
+                "parallel_group": str(batch[0].params.get("parallel_group") or ""),
+                "settled": [row["block"] for row, _usage in results if row["settled"]],
+            }
+        )
+        for _item, (_row, item_usage) in zip(batch, results):
+            total_usage = merge_token_usage(total_usage, item_usage)
+        plan = apply_batch_outcomes(
+            plan,
+            [
+                (
+                    item.id,
+                    bool(row["settled"]),
+                    int(row["attempts"]),
+                    str(row["last_issue"] or "已定稿"),
+                )
+                for item, (row, _usage) in zip(batch, results)
+            ],
+        )
+
+    # 诊断行按**块表序**回填：执行序会随并发调度变化，而"哪几块未定稿"是给人
+    # 与审计看的，顺序必须稳定可复现。
+    order = {block.name: index for index, block in enumerate(blocks)}
+    ordered_rows = sorted(
+        diag_blocks, key=lambda row: order.get(str(row["block"]), len(order))
+    )
+    unsettled = [row["block"] for row in ordered_rows if not row["settled"]]
+    # 块级检索总账：多少次块真的带了知识进提示词、共注入多少字。没有这一行，
+    # "知识到底用没被用上"只能去翻每块的嵌套诊断。
+    knowledge_totals = {
+        "knowledge_retrievals": sum(
+            1 for row in diag_blocks if (row.get("knowledge") or {}).get("queries")
+        ),
+        "knowledge_chars": sum(
+            int((row.get("knowledge") or {}).get("chars") or 0) for row in diag_blocks
+        ),
+    }
     diag = {
-        "level": level,
-        "blocks": diag_blocks,
+        "blocks": ordered_rows,
         "unsettled_blocks": unsettled,
         "token_usage": total_usage,
         "requested_blocks": [block.name for block in blocks],
+        **knowledge_totals,
+        # 设计期也跑在 plan 的调度语义上；这两项是**审计证据** —— 它们证明批次与
+        # 并发是 plan 决定的，而不是另一段写死的 for 循环。
+        "plan": plan.model_dump(mode="json"),
+        "batches": batches,
         **probe_note,
     }
     if probe_specs:

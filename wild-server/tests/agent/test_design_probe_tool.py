@@ -193,7 +193,7 @@ def test_probe_tool_is_handed_to_the_model_on_the_plain_channel(monkeypatch) -> 
     calls = _patch_run_tool_loop(
         monkeypatch,
         _FakeLoopResult(
-            json.dumps({"massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []}),
+            json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []}),
             trace=[{"tool": PROBE_TOOL_NAME}],
             usage={"input": 10, "output": 2, "total": 12},
         ),
@@ -203,7 +203,6 @@ def test_probe_tool_is_handed_to_the_model_on_the_plain_channel(monkeypatch) -> 
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level="minimal",
             thinking_mode=False,
             only_blocks=["massing"],
         )
@@ -249,7 +248,6 @@ def test_thinking_mode_keeps_both_the_tool_and_the_reasoning_stream(monkeypatch)
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level="minimal",
             thinking_mode=True,
             on_reasoning_delta=emit,
             only_blocks=["massing"],
@@ -279,7 +277,6 @@ def test_tool_loop_reasoning_deltas_are_routed_to_the_architecture_channel(monke
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level="minimal",
             thinking_mode=True,
             on_reasoning_delta=emit,
             only_blocks=["massing"],
@@ -308,7 +305,7 @@ def test_streaming_fallback_when_the_tool_is_turned_off(monkeypatch) -> None:
         emitted.append(f"{channel}:{delta}")
 
     class _Reply:
-        content = json.dumps({"massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
+        content = json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
         token_usage = None
 
     async def fake_stream(*_args, **kwargs):
@@ -324,7 +321,6 @@ def test_streaming_fallback_when_the_tool_is_turned_off(monkeypatch) -> None:
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level="minimal",
             thinking_mode=True,
             on_reasoning_delta=emit,
             only_blocks=["massing"],
@@ -345,7 +341,7 @@ def test_caller_can_turn_the_tool_off(monkeypatch) -> None:
     calls = _patch_run_tool_loop(monkeypatch, _FakeLoopResult("{}"))
 
     class _Reply:
-        content = json.dumps({"massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
+        content = json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
         token_usage = None
 
     async def fake_invoke(*_args, **_kwargs):
@@ -358,7 +354,6 @@ def test_caller_can_turn_the_tool_off(monkeypatch) -> None:
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level="minimal",
             thinking_mode=False,
             only_blocks=["massing"],
             allow_probe=False,
@@ -391,7 +386,6 @@ def test_tool_loop_error_is_reraised_as_a_model_failure(monkeypatch) -> None:
             draft_design_blocks(
                 base_prompt="BASE",
                 user_request=_MESSAGE,
-                level="minimal",
                 thinking_mode=False,
                 only_blocks=["massing"],
             )

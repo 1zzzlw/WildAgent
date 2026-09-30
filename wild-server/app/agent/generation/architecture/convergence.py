@@ -103,7 +103,6 @@ async def converge_design(
     plan: dict[str, Any],
     raw_plan: dict[str, Any] | None,
     user_message: str,
-    level: str,
     complexity_profile: dict[str, Any] | None,
     architecture_profile: dict[str, Any] | None,
     thinking_mode: bool,
@@ -186,7 +185,6 @@ async def converge_design(
             draft, block_diag = await draft_design_blocks(
                 base_prompt=_REPAIR_BASE_PROMPT,
                 user_request=user_message,
-                level=level,
                 thinking_mode=thinking_mode,
                 on_reasoning_delta=on_reasoning_delta,
                 only_blocks=blocks,
@@ -266,7 +264,6 @@ async def converge_design(
             break
 
     diag = _diag(rounds, stop_reason)
-    diag["level"] = level
     diag["raw_plan_available"] = bool(raw_plan)
     if stop_reason not in ("converged",):
         logger.warning(

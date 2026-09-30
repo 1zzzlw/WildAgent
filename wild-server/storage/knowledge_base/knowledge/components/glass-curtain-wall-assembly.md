@@ -250,6 +250,41 @@ synonyms: []
 - 方案 B 的实例引用、旋转、缩放和位置均可展开。
 - 未出现 `curtain_wall`、`mullion`、`transom`、`window.parentOpening` 或 `window.parentRoof`。
 
+## 玻璃材质分制（幕墙玻璃 ≠ 窗玻璃）
+
+<!-- rag-meta
+entity_type: facade
+entity_name: curtain_wall_glass_split
+topic: parameters
+status: supported
+authority: engine
+primary_terms:
+  - 玻璃材质分制
+  - 幕墙玻璃
+  - transmission
+  - clearcoat
+  - materialClass glass
+synonyms: []
+-->
+
+渲染端材质适配器原生消费物理玻璃字段（`materialClass` / `transmission` / `ior` / `clearcoat` / `clearcoatRoughness`）：`materialClass` 为 `glass` 或 `clearcoat`，或 `transmission > 0`、`clearcoat > 0` 时走物理材质路径。**幕墙玻璃与透明窗玻璃必须分制成两种材质**：
+
+| 角色 | 关键参数 | 观感 |
+|---|---|---|
+| 幕墙玻璃（带色反光） | `transmission: 0` + `clearcoat: 1` + 带色 `baseColor` + 低 `roughness` + 中高 `metallic` | 反光镜面，**室外看不到内部** |
+| 透明窗玻璃 | `materialClass: "glass"` + `transmission: 0.92` + `ior: 1.5` | 透射折射，看到内部 |
+
+**红线：塔楼/球体幕墙严禁用透明窗玻璃**——内部核心筒、骨架、楼板全部外露。透明玻璃只给橱窗、门扇、采光窗。
+
+```json
+{
+  "curtain_glass": { "baseColor": [0.40,0.50,0.62], "roughness": 0.05, "metallic": 0.6, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "clearcoat", "clearcoat": 1.0, "clearcoatRoughness": 0.05, "transmission": 0.0, "ior": 1.5 },
+  "window_glass": { "baseColor": [0.85,0.90,0.93], "roughness": 0.05, "metallic": 0.0, "albedo": 1, "lightingCondition": "D65_noon", "materialClass": "glass", "transmission": 0.92, "ior": 1.5 }
+}
+```
+
+两个材质 id 为示例命名，材质字典键名自由；字段组合（transmission 0 + clearcoat 1 = 不透明高反光）是引擎行为。
+
 ## 玻璃幕墙失败与回退
 
 <!-- rag-meta

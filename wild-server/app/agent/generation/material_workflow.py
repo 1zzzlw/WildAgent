@@ -20,8 +20,12 @@ from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage
 from app.services.asset_storage import asset_storage
 from app.utils.json_extractor import extract_json_object
+
+
 async def material_planner(state: GenerationState) -> dict:
+
     started = time.time()
+    # 读取当前建筑方案，来自上一节点
     architecture_plan = state.get("architecture_plan") or {}
     # 角色表一次定住：物件场景是 wood/metal/glass/stone/fabric/accent，
     # 建筑场景是原来的七个立面/结构角色。提示词与解析器用同一份，避免分叉。
@@ -137,9 +141,13 @@ async def material_planner(state: GenerationState) -> dict:
             f"启用 {len(procedural_selected)} 个程序化配方。\n",
         )
     return {
+        # 材质方案本体
         "material_plan": plan,
+        # 材质方案本体
         "design_document": design_document,
+        # 更新后的可执行视图
         "resolved_design": resolved_design,
+        # 诊断账本
         "material_diag": {
             "catalog_count": len(catalog),
             "procedural_catalog_count": len(procedural_catalog),

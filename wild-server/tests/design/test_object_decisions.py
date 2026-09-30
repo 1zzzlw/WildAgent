@@ -115,13 +115,15 @@ def test_object_document_round_trips_into_generation_plan():
 def test_parts_decomposed_object_keeps_no_element_upper_bound():
     """通用几何通道：`count` 是物件数，元素数由零件数决定 ⇒ 配额不能设上限。
 
-    回归背景：配额曾被无条件写成 `max = count`，而 `assembly.enforce_element_quota`
-    拿它去钳**元素**数 ⇒ "一个花瓶 = 4 个零件"被读成"4 个花瓶、超过上限 1"，
+    回归背景：配额曾被无条件写成 `max = count`，而按上限剃元素的机制
+    （``assembly.enforce_element_quota``，已随上限白名单一起删除）拿它去钳
+    **元素**数 ⇒ "一个花瓶 = 4 个零件"被读成"4 个花瓶、超过上限 1"，
     收尾归一在 `_finalize_merge` 里把花瓶削成一块底座圆盘（0.16 × 0.04 × 0.16 m），
     而 `design_constraints` 随后仍然判通过 —— 只剩一块底座，没有任何地方会报。
 
-    同一份配额被两个消费点当"元素数"用，所以单位必须在**这里**对齐：
+    同一份配额曾有两个消费点当"元素数"用，所以单位必须在**这里**对齐：
     能分解成零件的物件只留下限（每件至少落地一块几何），不设上限。
+    上限剔除机制本身已删除，本用例继续锁住配额形状（缺 max 键）这一契约。
     """
 
     objects = [
@@ -145,22 +147,11 @@ def test_parts_decomposed_object_keeps_no_element_upper_bound():
     plan = architecture_plan_from_document(make_document(objects=objects))
     quota = plan["component_quota"]
 
-    # 缺 `max` 键 = 不设上限（两个消费点都走 `.get("max")`）。
+    # 缺 `max` 键 = 不设上限（消费点都走 `.get("max")`）。
     assert quota["primitive"] == {"min": 1, "note": ""}
     # 一个物件 = 一个元素的通道照旧收紧上限，别把这条修复扩大化。
     assert quota["furniture"]["max"] == 2
     assert quota["body"]["max"] == 1
-
-    # 直接锁住失败模式：4 个零件必须一个都不被削掉。
-    from loguru import logger
-
-    from app.agent.generation.assembly import enforce_element_quota
-
-    elements = [{"type": "primitive", "id": f"primitive_{index:02d}"} for index in range(4)]
-    kept, pruned = enforce_element_quota(elements, quota, logger)
-
-    assert pruned == 0
-    assert len(kept) == 4
 
 
 def test_repository_saves_object_document(tmp_path):

@@ -21,7 +21,9 @@ from loguru import logger
 from app.agent.generation.components import COMPONENT_REGISTRY
 
 #: 单次工具调用返回的字符上限：工具输出会进上下文，必须有界。
-MAX_RESULT_CHARS = 3000
+#: 6000 ≈ 两个完整高分片（Loader per_query=2 时常用 2~4 片）；3000 会把
+#: "参数契约 + 组装关系"这类成对知识拦腰斩断，模型只拿到半条规则。
+MAX_RESULT_CHARS = 6000
 
 
 def _entity_type_for(kind: str) -> str:

@@ -310,6 +310,8 @@ export interface AgentTurnStep {
   status: 'running' | 'done' | 'skipped' | 'error'
   detail: string
   thinking: string
+  //: 模型过程（reasoning 通道）：模型自己吐出的思考 token。与 thinking（执行说明）分开存。
+  reasoning?: string
   thinking_channel?: 'reasoning' | 'progress'
   diagnostic?: NodeDiagnostic
 }

@@ -79,16 +79,16 @@ def build_architecture_plan_prompt(
 
 - 只输出 1 个可实施方案，即本次交付的唯一最终方案；不要输出备选或并列方案。
 - 方案服从用户需求和已批准决定；知识库补充能力与条件关系，不能决定默认造型。复杂度落实为本次所需空间与细节，不靠重复构件凑数。
-- 当前规划 profile 是：{profile_text}。profile 描述当前规划器可表达的范围；它不是默认建筑。明确需求超出范围时报告限制，不能静默改写。
+- 当前引擎物理边界是：{profile_text}。它只描述本次可表达的范围（尺寸/层数/形状/构件），**不含任何默认建筑，也没有"档位"概念**——建筑类型、风格、形态完全由用户需求与知识库形制资料决定。明确需求超出范围时报告限制，不能静默改写。
 - 本次复杂度目标是：{complexity_text}。
-- `level=detailed` 时完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
-- `level=simple` 时尊重用户的简化要求，不自动补充非必要细部包。
-- 除 simple/minimal 外，该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
+- 完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
+- 该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
 - ground_pattern / upper_pattern 的数组长度必须等于 bays。每个槽位是开口 token：`door`／`window`／`empty`，或写成 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。形态闭集：门 swing／slide／lift，窗 swing／slide／fixed（fixed = 固定窗，不可开启；门不许写 fixed、窗不许写 lift，写错会被退回纯类型）。不写冒号时形态由系统派生。upper_pattern 只能用 window／empty，即使建筑只有一层也禁止填写 door。
+- 某一层的 pattern **全为 `empty` = 该面在该层开敞无墙**（亭廊、骑楼、敞廊语义）。要保留实墙的面至少给一个开口槽位；开敞形制（亭/廊）把不要墙的面全写 empty，由柱承重。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
 - ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
-- 标准和高细节方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
+- 方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
 - required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
 - `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
 - 本节点不设计房间坐标和内部隔墙；骨架节点直接依据总体体量、立面和结构约束生成 Blueprint 主体。
@@ -105,7 +105,7 @@ def build_architecture_plan_prompt(
 - circulation：vertical_strategy 为 none/stair/core_and_stair；核心筒方案必须同时包含楼梯，多层建筑不能为 none。
 - 体量是逐层外轮廓的唯一来源：某层外轮廓只由覆盖该层的体量决定。规划退台时，任何跨越多个楼层的贯通构件（核心筒、电梯井、贯通竖向交通或通高墙体）都必须落在它经过的**每一层**体量并集之内，即收进 `start_floor..end_floor` 上全部存在的体量交集；不得伸进只存在于低楼层的退台翼，否则它在退台层会成为外凸的独立体块。必要时宁可让该体量贯通到顶层，也不要让核心筒跨进退台翼。
 - detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
-- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern；主入口面可给 entrance_bay，槽位数量与 bays 一致。
+- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern，槽位数量与 bays 一致。entrance_bay 与 door 槽位**只在用户要求入口/门或形制确有门时才写**；形制知识命中开敞建筑（亭/廊/榭等）时四面 pattern 全 empty、不写 entrance_bay、任何面不写 door——全空声明会被系统自动豁免主入口强制，不要用 door 去"满足"入口要求。
 - roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。多体量（L/U 形）必须按体量分别声明屋顶，不得用单块屋顶盖住内院/天井。
 - component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
 - required_components：本次真正需要的组件名称数组。

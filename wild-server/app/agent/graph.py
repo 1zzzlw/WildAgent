@@ -93,11 +93,8 @@ def _plan_of(state: dict) -> PlanDocument | None:
 
 
 def _classifier_dispatch(state: GenerationState):
-    """意图分类：generate → 建筑方案或物件方案，edit → patch，chat → chat。
-
-    generate 之后再按 `intent_target_kind` 分一次叉：交付建筑走 architecture，
-    交付单件物件走 object_design。两条链在 design_review 之后合流，
-    所以这里只需要多一条边，不需要第二套骨架/计划/执行节点。
+    """
+    意图分类：generate → 建筑方案或物件方案，edit → patch，chat → chat。
     """
 
     if _terminal(state):
@@ -235,7 +232,10 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
         graph.add_node("callback", callback_node)
         graph.add_edge("callback", "final_validate")
 
+    # 图的入口节点，标志 classifier 是图的起点
     graph.set_entry_point("classifier")
+
+    # 第一条路由节点
     graph.add_conditional_edges(
         "classifier",
         _classifier_dispatch,
@@ -247,6 +247,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             "__end__": END,
         },
     )
+
     graph.add_edge("chat", END)
     graph.add_edge("patch", END)
 

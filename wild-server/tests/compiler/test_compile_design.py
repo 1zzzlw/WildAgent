@@ -362,27 +362,22 @@ def test_quota_shortfall_for_ruleless_type_is_not_blocking() -> None:
     assert all(item.severity == "warn" for item in shortfalls)
 
 
-def test_hard_defects_stay_blocking() -> None:
-    """降级只覆盖"该类型编译器没有规则"这一种情形。
+def test_quota_shortfall_is_never_blocking() -> None:
+    """数量缺口恒 warn（用户决策 2026-09-29，废除数量硬闸）。
 
-    同一个"配额没满足"：类型不在 ``deferable`` 里就是 ``error``（阻断），
-    在 ``deferable`` 里才降为 ``warn``。这里直接钉规则本身——
-    否则只要降级写宽一点，"图纸配额根本没被满足"就会静默通过。
+    校验只对**空间/结构状态**（标高缺失、超墙容量、批准槽位未落实）判 error；
+    "door 数量 0 少于设计下限 5"这类数量问题是"模型补量"问题——标记出来交给
+    模型通道，不许拦下整张蓝图。旧实现按 ``deferable``（编译器有无派生规则）
+    区分 error/warn，那仍然会让已实现类型的部分缺口阻断交付。
     """
 
     empty_blueprint = {"geometry": {"elements": [], "components": []}}
     brief = {"component_quota": {"door": {"min": 5, "max": 5}}}
 
-    blocking = _validator_defects(empty_blueprint, brief)
-    assert [item for item in blocking if item.code == "design_constraint"]
-    assert all(
-        item.severity == "error" for item in blocking if item.code == "design_constraint"
-    ), "缺规则之外的配额缺口必须阻断"
-
-    deferred = _validator_defects(empty_blueprint, brief, frozenset({"door"}))
-    assert all(
-        item.severity == "warn" for item in deferred if item.code == "design_constraint"
-    )
+    defects = _validator_defects(empty_blueprint, brief)
+    shortfalls = [item for item in defects if item.code == "design_constraint"]
+    assert shortfalls, "数量缺口必须如实报出，只是不该阻断"
+    assert all(item.severity == "warn" for item in shortfalls)
 
 
 # ── 六、产物必须过既有门禁 ──
@@ -477,16 +472,17 @@ def test_partial_derivation_is_refused_so_it_stays_a_warning() -> None:
     assert result.ok, "产不够时必须退回标记，不能阻断交付"
 
 
-def test_quota_max_still_prunes_derived_attachments() -> None:
-    """派生**不自己卡上限**：上限由既有配额器统一执行（唯一事实源）。
+def test_quota_max_no_longer_prunes_derived_attachments() -> None:
+    """配额上限已废（用户决策 2026-09-29，删除上限白名单）：max 只是参考值。
 
-    12 道外墙面各一盏灯，配额上限 8 ⇒ 既有 ``enforce_component_quota`` 裁到 8。
-    在这里再写一遍 ``min(len, max)`` 就是同一口径两处实现。
+    12 道外墙面各一盏灯，配额上限 8 ⇒ 产物仍是 12 盏。数量的强制口径回到
+    设计自己的表态（槽位吸附 + 下限校验），上限不再剃产物——密集表达正是
+    模型该有的自由度，剃掉它等于替设计做减法。
     """
 
     result = compile_design(_with_quota(_RECT, _ATTACHMENTS), user_message=_MESSAGE)
     _, components = _geometry(result)
-    assert len(_of_type(components, "light")) == 8
+    assert len(_of_type(components, "light")) == 12
 
 
 def test_chimney_stands_on_the_ridge_line() -> None:

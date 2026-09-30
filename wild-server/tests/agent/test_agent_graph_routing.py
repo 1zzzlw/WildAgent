@@ -281,11 +281,12 @@ def test_classifier_failure_falls_back_without_generating_meta_question(monkeypa
 # ── 构件策略（旧派发链与新 plan 策略共用的安全边界）──
 
 
-def test_component_suggestions_filter_unknown_and_negated_types():
+def test_component_suggestions_keep_unknown_and_drop_negated_types():
+    """开放集（2026-09-29）：未知类型保留（generic 通道尝试），否定词照常生效。"""
     assert resolve_component_suggestions(
         ["door", "window", "unknown", "door"],
         "生成一个没有窗的小屋",
-    ) == ["door"]
+    ) == ["door", "unknown"]
 
 
 def test_empty_suggestions_keep_base_components_and_explicit_extras():

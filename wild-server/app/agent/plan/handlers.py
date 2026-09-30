@@ -70,7 +70,7 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
     传入处理器，不写进 LangGraph state**。
     """
 
-    from app.agent.plan.expand import resolve_detail_level
+    from app.agent.plan.expand import compile_gap_summary, resolve_detail_level
 
     skeleton = state.get("skeleton_blueprint")
     materials = skeleton.get("materials") if isinstance(skeleton, dict) else None
@@ -86,6 +86,9 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
         # D 段（全局约束）要用的两项：材质 id 白名单与档位，程序推导、模型只读。
         "material_ids": sorted(materials) if isinstance(materials, dict) else [],
         "detail_level": resolve_detail_level(state),
+        # 图纸级缺口（用户指令 2026-09-29）：编译报告的 uncompiled/defects 紧凑摘要，
+        # 让每个条目知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
+        "blueprint_gaps": compile_gap_summary(state),
         "plan_item": {
             "id": item.id,
             "op": item.op,
@@ -179,9 +182,13 @@ async def run_generate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
     from app.agent.runtime import bind_item_tools, reset_item_tools
 
+    from app.agent.generation.components import generic_component_config
+
     config = COMPONENT_REGISTRY.get(item.kind)
     if config is None or not config.implemented:
-        return {}, "failed", [], f"未知或未实现的构件类型 {item.kind!r}", []
+        # 开放集通道：未知/未注册类型不再直接 failed，
+        # 用通用配置进入生成通道——字段契约靠知识库检索，校验与修复环兜底。
+        config = generic_component_config(item.kind, label=item.label)
 
     context = build_execution_context(state, item)
     tool_token = bind_item_tools(tools_for(item))
@@ -321,36 +328,73 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
 
 async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
-    """模型出白名单动作、程序执行（§4.11 族 B）。
+    """脚本工具先行、模型补充（§4.11 族 B + 用户指令 2026-09-29「脚本映射节点化」）。
 
-    复用既有的 `callback_node`：它已经实现了"精准 RAG → 工具取空间约束 → 模型只输出
-    白名单动作 → 程序执行并全量复检 → 只在错误数下降时提交"。这里只负责把失败目标
-    准备好（由校验节点派生），不另写一套修复协议。
+    用户在 LangSmith 里看不到"脚本映射"（compile/fix 都是纯函数、没有 LLM span），
+    要求把它变成一个节点：**大模型调用脚本工具，脚本实现不了的地方模型自己按
+    蓝图语言规则补充设计**。本条目就是这个节点的执行器：
+
+    1. 脚本先行：确定性 ``fix_*`` 工具按校验错误各司其职（trace 里 mode=deterministic，
+       工具名逐条可见）；
+    2. 模型补充：脚本修不掉的剩余失败目标交给既有 ``callback_node``——精准 RAG →
+       工具取空间约束 → 模型只输出白名单动作 → 程序执行并全量复检 → 错误数下降才提交。
     """
 
+    from app.agent.generation.assembly import apply_fixes
     from app.agent.repair.workflow import callback_node
     from app.agent.validation.workflow import validate_node
+    from app.services.agent_service import _final_errors, run_validation_pipeline
 
-    blueprint = state.get("merged_blueprint")
-    if not blueprint:
+    source_blueprint = state.get("merged_blueprint")
+    if not source_blueprint:
         return {}, "failed", [], "没有可修复的蓝图", []
+    # 深拷贝后原地修：不污染 LangGraph state 里的原对象，修好的副本随 updates 回写。
+    from copy import deepcopy as _deepcopy
 
-    validated = await validate_node(state)
-    if not validated.get("failed_components"):
-        return (
-            {key: value for key, value in validated.items() if key != "final_blueprint"},
-            "succeeded", [], f"{item.label}：没有需要修复的失败目标",
-            [{"tool": "validate_blueprint_structure", "ok": True, "chars": 0,
-              "mode": "deterministic"}],
+    blueprint = _deepcopy(source_blueprint)
+
+    trace: list[dict[str, Any]] = []
+
+    # ── 1. 脚本先行：fix_* 确定性工具 ──
+    errors = _final_errors(run_validation_pipeline(blueprint))
+    applied: list[tuple[str, bool]] = []
+    script_fixed = 0
+    if errors:
+        applied = apply_fixes(blueprint, errors)
+        script_fixed = len(errors) - len(_final_errors(run_validation_pipeline(blueprint)))
+        trace.extend(
+            {
+                "tool": name,
+                "ok": bool(success),
+                "chars": 0,
+                "mode": "deterministic",
+            }
+            for name, success in applied
         )
 
-    repaired = await callback_node({**state, **validated})
+    # ── 2. 脚本修不掉的，模型按蓝图语言规则补充 ──
+    working_state = {**state, "merged_blueprint": blueprint}
+    validated = await validate_node(working_state)
+    if not validated.get("failed_components"):
+        updates = {
+            key: value for key, value in validated.items() if key != "final_blueprint"
+        }
+        updates["merged_blueprint"] = blueprint
+        evidence = (
+            f"{item.label}：脚本工具修复 {script_fixed} 项后无剩余失败目标"
+            if applied
+            else f"{item.label}：没有需要修复的失败目标"
+        )
+        return updates, "succeeded", [], evidence, trace
+
+    repaired = await callback_node({**working_state, **validated})
     updates = {key: value for key, value in {**validated, **repaired}.items()}
+    updates["merged_blueprint"] = blueprint  # 脚本段的修复随蓝图一起带回去
     reports = [
         report for report in repaired.get("repair_audit", {}).get("reports", [])
         if isinstance(report, dict)
     ]
-    trace = [
+    trace.extend(
         {
             "tool": str(report.get("tool") or "repair_action"),
             "ok": bool(report.get("success")),
@@ -358,11 +402,11 @@ async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
             "mode": "model_whitelist",
         }
         for report in reports
-    ]
+    )
     error_after = len(updates.get("failed_components") or [])
     evidence = (
-        f"{item.label}：执行 {len(reports)} 个白名单动作，"
-        f"剩余失败目标 {error_after}"
+        f"{item.label}：脚本工具修复 {script_fixed} 项，"
+        f"模型执行 {len(reports)} 个白名单动作，剩余失败目标 {error_after}"
     )
     logger.info(f"[execute] repair 条目完成：{evidence}")
     return updates, ("succeeded" if reports else "failed"), [], evidence, trace

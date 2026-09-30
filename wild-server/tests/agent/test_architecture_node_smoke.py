@@ -110,7 +110,8 @@ async def test_architecture_node_records_profile_diagnostics() -> None:
 
     diag = update["architecture_diag"]
     assert diag["profile"] == update["architecture_plan"]["profile"]
-    assert diag["profile_label"]
+    # 档位标签已删（用户决策 2026-09-29）：诊断只报 id，不再有 profile_label。
+    assert "profile_label" not in diag
     assert diag["used_fallback"] is False
 
 
@@ -149,8 +150,10 @@ async def test_architecture_node_with_reasoning_callback() -> None:
         reset_reasoning_callback(token)
 
     assert "architecture_plan" in update, update
-    notes = [text for node, text in seen if node == "architecture"]
-    assert notes, "绑定回调后节点必须至少推一条 architecture 进度提示"
+    # 🔴 进度叙述必须带 `:progress` 后缀（见 `ws_agent._thinking_channel`）：不带就会被前端
+    # 归到「模型过程」，而 `architecture` 的「模型过程」是模型的原始 CoT —— 两种不能混。
+    notes = [text for node, text in seen if node == "architecture:progress"]
+    assert notes, "绑定回调后节点必须至少推一条 architecture 进度提示（带 :progress 后缀）"
     assert any("生成总体方案" in note for note in notes), notes
 
 
@@ -179,5 +182,5 @@ async def test_architecture_node_with_reasoning_callback_and_feedback() -> None:
         reset_reasoning_callback(token)
 
     assert "architecture_plan" in update, update
-    notes = [text for node, text in seen if node == "architecture"]
+    notes = [text for node, text in seen if node == "architecture:progress"]
     assert any("调整总体方案" in note for note in notes), notes

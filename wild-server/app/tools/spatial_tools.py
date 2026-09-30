@@ -754,14 +754,23 @@ def get_roof_support_bounds(
     walls: list[dict],
     roof: dict | None = None,
     primitives: list[dict] | None = None,
+    columns: list[dict] | None = None,
 ) -> dict:
     """返回屋顶所在标高实际承托构件的 XZ 包围盒，而不是整栋建筑首层外包框。
 
-    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶。传统建筑（祈年殿）用
-    primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在檐盘顶上而非直接落在
-    墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
+    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶 + **柱元素（column）顶**。
+    传统建筑（祈年殿）用 primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在
+    檐盘顶上而非直接落在墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
+
+    🔴 柱元素必须参与：开敞立面语义（facade pattern 全空 = 该面无墙）落地后，
+    亭/廊的屋面承托在**柱**上——2026-09-29 实测"四角凉亭"三面开敞只剩 1 面 front 墙，
+    本函数只看墙时 z 方向塌缩成一条线（depth=0），`fix_roof_coverage` 据此把
+    6.1×6.1 的攒尖顶"修"成 6.1×1.2 的窄带、中心贴到墙上，整座亭子只剩半边屋顶。
+    柱与屋顶水平投影有交叠才计入（与圆柱同规则）；柱是点状支撑，直接贡献
+    带半径的 XZ 区间，**不参与墙的横向/纵向裁剪**（那套裁剪会把点支撑塌缩成线）。
     """
     primitives = primitives or []
+    columns = columns or []
     wall_tops = [(_wall_vertical_range(wall)[1], wall) for wall in walls]
     position = (roof or {}).get("position")
     roof_span = (roof or {}).get("span")
@@ -807,7 +816,27 @@ def get_roof_support_bounds(
                 continue
         cylinder_candidates.append((top_y, prim, radius))
 
-    if not wall_tops and not cylinder_candidates:
+    # 柱元素承托：base 是柱底、height 是柱高 → 顶 = base.y + height。
+    # 🔴 柱候选**不做**屋顶 footprint 过滤（圆柱才做）：柱是结构承托件且数量有限；
+    # 且 footprint 来自当前屋顶本身——屋顶已经坏掉时（窄带/偏心）按 footprint 过滤
+    # 会把真承托柱排除在外，形成"坏屋顶永远修不回来"的自锁（2026-09-29 实测）。
+    column_candidates: list[tuple[float, dict, float]] = []
+    for column in columns:
+        base = column.get("base")
+        height = column.get("height")
+        if not _is_finite_vector3(base) or not _is_positive_number(height):
+            continue
+        try:
+            radius = max(
+                float(column.get("bottomRadius", 0.1) or 0.1),
+                float(column.get("topRadius", 0.1) or 0.1),
+            )
+        except (TypeError, ValueError):
+            radius = 0.1
+        top_y = float(base[1]) + float(height)
+        column_candidates.append((top_y, column, radius))
+
+    if not wall_tops and not cylinder_candidates and not column_candidates:
         return {
             "min_x": 0.0, "max_x": 0.0, "min_z": 0.0, "max_z": 0.0,
             "span": 0.0, "depth": 0.0, "center_x": 0.0, "center_z": 0.0,
@@ -820,13 +849,18 @@ def get_roof_support_bounds(
     ):
         roof_y = float(position[1])
     else:
-        tops = [top for top, _ in wall_tops] + [top for top, _, _ in cylinder_candidates]
+        tops = (
+            [top for top, _ in wall_tops]
+            + [top for top, _, _ in cylinder_candidates]
+            + [top for top, _, _ in column_candidates]
+        )
         roof_y = max(tops) if tops else 0.0
 
     candidates: list[tuple[float, str, object, float | None]] = [
         (top, "wall", wall, None) for top, wall in wall_tops
     ]
     candidates += [(top, "cylinder", prim, radius) for top, prim, radius in cylinder_candidates]
+    candidates += [(top, "column", column, radius) for top, column, radius in column_candidates]
     support_y, kind, payload, radius = min(
         candidates, key=lambda item: abs(item[0] - roof_y)
     )
@@ -844,6 +878,10 @@ def get_roof_support_bounds(
         }
 
     support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    support_columns = [
+        column for top, column, _ in column_candidates
+        if abs(top - support_y) <= 0.15
+    ]
     all_x: list[float] = []
     all_z: list[float] = []
     for wall in support_walls:
@@ -895,8 +933,35 @@ def get_roof_support_bounds(
             end = wall.get("to", [0, 0, 0])
             all_x.extend([float(start[0]), float(end[0])])
             all_z.extend([float(start[2]), float(end[2])])
+    # 柱是点状支撑：直接贡献带半径的 XZ 区间，不参与墙的横向/纵向裁剪
+    # （裁剪会把 x 向墙塌缩成一条 z=常数的线——开敞亭子 depth=0 的直接根源）。
+    for column in support_columns:
+        base = column["base"]
+        radius = next(
+            (r for top, col, r in column_candidates if col is column), 0.1
+        )
+        all_x.extend([float(base[0]) - radius, float(base[0]) + radius])
+        all_z.extend([float(base[2]) - radius, float(base[2]) + radius])
+    if not all_x or not all_z:
+        # 只有墙候选且裁剪后无贡献：退回墙端点原始包围盒（保持既有兜底行为）
+        for wall in support_walls:
+            if wall.get("curve"):
+                continue
+            start = wall.get("from", [0, 0, 0])
+            end = wall.get("to", [0, 0, 0])
+            all_x.extend([float(start[0]), float(end[0])])
+            all_z.extend([float(start[2]), float(end[2])])
+    if not all_x or not all_z:
+        return {
+            "min_x": 0.0, "max_x": 0.0, "min_z": 0.0, "max_z": 0.0,
+            "span": 0.0, "depth": 0.0, "center_x": 0.0, "center_z": 0.0,
+            "support_y": support_y, "support_kind": "none",
+        }
     min_x, max_x = min(all_x), max(all_x)
     min_z, max_z = min(all_z), max(all_z)
+    support_kind = "wall" if support_walls else (
+        "column" if support_columns else "wall"
+    )
     return {
         "min_x": min_x, "max_x": max_x,
         "min_z": min_z, "max_z": max_z,
@@ -904,7 +969,7 @@ def get_roof_support_bounds(
         "center_x": (min_x + max_x) / 2,
         "center_z": (min_z + max_z) / 2,
         "support_y": support_y,
-        "support_kind": "wall",
+        "support_kind": support_kind,
     }
 
 
@@ -1093,11 +1158,12 @@ def validate_roof_coverage(blueprint: dict) -> str:
     roofs = [el for el in elements if el.get("type") == "roof"]
     walls = [el for el in elements if el.get("type") == "wall"]
     primitives = [el for el in elements if el.get("type") == "primitive"]
+    columns = [el for el in elements if el.get("type") == "column"]
 
     if not roofs:
         return "✅ 没有 roof 构件，跳过检查。"
-    if not walls:
-        return "⚠️  有屋顶但没有墙体，无法判断覆盖范围。请确认设计意图。"
+    if not walls and not columns:
+        return "⚠️  有屋顶但没有墙体/柱，无法判断覆盖范围。请确认设计意图。"
 
     issues: list[str] = []
     last_bounds: dict[str, float] | None = None
@@ -1105,7 +1171,7 @@ def validate_roof_coverage(blueprint: dict) -> str:
         rid = r.get("id", "?")
         span = r.get("span", 0)
         depth = r.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, r, primitives)
+        bounds = get_roof_support_bounds(walls, r, primitives, columns)
         last_bounds = bounds
         wall_span = bounds["span"]
         wall_depth = bounds["depth"]
@@ -1173,7 +1239,7 @@ def validate_roof_coverage(blueprint: dict) -> str:
                 )
 
     if not issues:
-        bounds = last_bounds or get_roof_support_bounds(walls)
+        bounds = last_bounds or get_roof_support_bounds(walls, columns=columns)
         return (
             f"✅ 屋顶尺寸合理。"
             f"（承托墙宽度={bounds['span']:.1f}, 进深={bounds['depth']:.1f}）"
@@ -2203,20 +2269,33 @@ def fix_material_references(blueprint: dict) -> str:
 
 # 碰撞 / 空间冲突检测 —— Step 9 in pipeline
 
+def _vec3(value: object) -> list[float] | None:
+    """坐标序列宽容数值化。模型偶发把坐标写成字符串（实测 column.base[1]="0.0"，
+    曾让 validate_collision 整体 TypeError 炸掉、repair 条目与 final_validate 连锁失败），
+    这里统一转 float；任何分量转不动返回 None（由调用方按"无法计算"跳过）。"""
+    if not isinstance(value, (list, tuple)):
+        return None
+    try:
+        return [float(v) for v in value]
+    except (TypeError, ValueError):
+        return None
+
+
 def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
     """
     计算元素的轴对齐包围盒 (minX, maxX, minY, maxY, minZ, maxZ)。
     只处理有明确坐标的构件，无法计算的返回 None。
     Y 轴：wall/floor/beam 用 from[1]/to[1]，column 用 base[1] ~ base[1]+height。
+    所有坐标经 _vec3 数值化——模型产物里的字符串数字不算非法，但绝不能进算术。
     """
     t = el.get("type", "")
 
     if t == "wall":
-        f = el.get("from", [])
-        to = el.get("to", [])
-        if len(f) < 3 or len(to) < 3:
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
             return None
-        thickness = el.get("thickness", 0.2)
+        thickness = float(el.get("thickness", 0.2))
         half_t = thickness / 2.0
         min_y, max_y = _wall_vertical_range(el)
         min_x = min(f[0], to[0]) - half_t
@@ -2226,9 +2305,9 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         return (min_x, max_x, min_y, max_y, min_z, max_z)
 
     if t == "floor":
-        f = el.get("from", [])
-        to = el.get("to", [])
-        if len(f) < 3 or len(to) < 3:
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
             return None
         thickness = float(el.get("thickness", 0))
         return (
@@ -2238,9 +2317,9 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         )
 
     if t == "beam":
-        f = el.get("from", [])
-        to = el.get("to", [])
-        if len(f) < 3 or len(to) < 3:
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
             return None
         half_width = float(el.get("width", 0.2)) / 2.0
         beam_height = float(el.get("height", 0.2))
@@ -2254,11 +2333,11 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         )
 
     if t == "column":
-        base = el.get("base", [])
-        height = el.get("height", 0)
-        r = max(el.get("bottomRadius", 0.1), el.get("topRadius", 0.1))
-        if len(base) < 3:
+        base = _vec3(el.get("base"))
+        if not base or len(base) < 3:
             return None
+        height = float(el.get("height", 0))
+        r = max(float(el.get("bottomRadius", 0.1)), float(el.get("topRadius", 0.1)))
         return (
             base[0] - r, base[0] + r,
             base[1], base[1] + height,
@@ -2266,11 +2345,11 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         )
 
     if t == "stair":
-        f = el.get("from", [])
-        to = el.get("to", [])
-        w = el.get("width", 1.0) / 2.0
-        if len(f) < 3 or len(to) < 3:
+        f = _vec3(el.get("from"))
+        to = _vec3(el.get("to"))
+        if not f or not to or len(f) < 3 or len(to) < 3:
             return None
+        w = float(el.get("width", 1.0)) / 2.0
         return (
             min(f[0], to[0]) - w, max(f[0], to[0]) + w,
             min(f[1], to[1]), max(f[1], to[1]),
@@ -2278,13 +2357,13 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         )
 
     if t == "furniture":
-        pos = el.get("position", [])
+        pos = _vec3(el.get("position"))
         dims = el.get("dimensions", {})
-        if len(pos) < 3 or not isinstance(dims, dict):
+        if not pos or len(pos) < 3 or not isinstance(dims, dict):
             return None
-        hw = dims.get("width", 0.5) / 2.0
-        hd = dims.get("depth", 0.5) / 2.0
-        h = dims.get("height", 0.5)
+        hw = float(dims.get("width", 0.5)) / 2.0
+        hd = float(dims.get("depth", 0.5)) / 2.0
+        h = float(dims.get("height", 0.5))
         return (
             pos[0] - hw, pos[0] + hw,
             pos[1], pos[1] + h,
@@ -2974,9 +3053,13 @@ def validate_element_dimensions(blueprint: dict) -> str:
                 issues.append(f"⚠️  [{eid}] floor thickness={th}m，建议在 0.01~5m")
 
         elif t == "column":
-            h  = el.get("height", 0)
-            br = el.get("bottomRadius", 0)
-            tr = el.get("topRadius", 0)
+            # 字符串数字宽容解析（同 _aabb._vec3 口径）：模型偶发输出 "3.6" 这类值
+            try:
+                h  = float(el.get("height", 0))
+                br = float(el.get("bottomRadius", 0))
+                tr = float(el.get("topRadius", 0))
+            except (TypeError, ValueError):
+                h, br, tr = 0.0, 0.0, 0.0
             if h > 0 and not (0.1 <= h <= 50):
                 issues.append(f"⚠️  [{eid}] column height={h}m，建议在 0.1~50m")
             for rname, rv in [("bottomRadius", br), ("topRadius", tr)]:
@@ -3152,12 +3235,13 @@ def fix_roof_coverage(blueprint: dict) -> str:
     """
     elements = _get_elements(blueprint)
     walls  = [el for el in elements if el.get("type") == "wall"]
+    columns = [el for el in elements if el.get("type") == "column"]
     roofs  = [el for el in elements if el.get("type") == "roof"]
 
     if not roofs:
         return "✅ 没有 roof 构件，跳过修正。"
-    if not walls:
-        return "⚠️  没有 wall 构件，无法计算屋顶目标尺寸。"
+    if not walls and not columns:
+        return "⚠️  没有 wall/column 构件，无法计算屋顶目标尺寸。"
 
     EAVE = 0.6
     fixes: list[str] = []
@@ -3165,7 +3249,7 @@ def fix_roof_coverage(blueprint: dict) -> str:
         rid   = r.get("id", "?")
         span  = r.get("span",  0)
         depth = r.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, r)
+        bounds = get_roof_support_bounds(walls, r, columns=columns)
         wall_span = bounds["span"]
         wall_depth = bounds["depth"]
         center_x = bounds["center_x"]

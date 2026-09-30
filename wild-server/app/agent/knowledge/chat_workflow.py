@@ -1,4 +1,4 @@
-"""Layer -1: WILD 项目知识问答节点。"""
+"""WILD 项目知识问答节点。"""
 import time as _time
 from loguru import logger
 
@@ -25,7 +25,7 @@ async def chat_node(state: dict) -> dict:
     user_message = state.get("user_message", "")
     logger.info(f"[chat] 知识问答: {user_message[:80]}...")
 
-    # ── 1. 按活动知识角色检索 ──
+    # 按活动知识角色检索
     rag_t0 = _time.time()
 
     from app.spec.loader import SpecQuery
@@ -61,7 +61,7 @@ async def chat_node(state: dict) -> dict:
 
     logger.info(f"[chat] RAG 检索: {rag_chars} 字符, {rag_ms}ms")
 
-    # ── 2. LLM 生成回答 ──
+    # LLM 生成回答
     system_prompt = build_chat_system_prompt(spec_text)
     llm = create_llm(enable_thinking=False, streaming=False)
 

@@ -3,6 +3,13 @@
 export type DesignStatus = 'draft' | 'approved' | 'compiled'
 export type OpeningKind = 'door' | 'window' | 'empty'
 
+/** massing.tiers 的一段：从底到顶逐段的收放比例（相对 width/depth）。 */
+export interface DesignMassingTier {
+  floors: number
+  width_ratio: number
+  depth_ratio: number
+}
+
 export interface DesignMassing {
   shape: string
   width: number
@@ -12,6 +19,7 @@ export interface DesignMassing {
   representation_mode: 'full' | 'schematic'
   floor_height: number
   symmetry: boolean
+  tiers?: DesignMassingTier[] | null
 }
 
 export interface DesignVolume {
@@ -76,7 +84,6 @@ export interface ArchitectureDecisions {
   concept: string
   massing: DesignMassing
   complexity: {
-    level: 'minimal' | 'simple' | 'standard' | 'detailed'
     min_volumes: number
     min_detail_packages: number
     target_structural_elements: number

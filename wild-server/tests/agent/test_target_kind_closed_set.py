@@ -8,8 +8,12 @@
 这组测试锁住两条不变量：
 
 1. **判据单侧**：只有"命中建筑类型闭集"才判 architecture，其余一律 object；
-2. **闭集自洽**：`_PROFILE_TYPE_WORDS` 里每个选档词都必须被
-   `is_architecture_request` 认成建筑，否则会出现"选了档却说不是建筑"。
+2. **闭集自洽**：`_ARCHITECTURE_TYPE_KEYWORDS` 里每个类型词都必须被
+   `is_architecture_request` 认成建筑。
+
+历史注记：这份词表曾经还承担"关键词选档"职责（住宅/公建/厂房…八档），
+2026-09-29 已删除（用户决策：选档白名单限制模型表达、且无法维护）——
+类型词现在**只**服务路由闭集，不再表达任何设计先验。
 """
 
 from __future__ import annotations
@@ -18,7 +22,6 @@ import pytest
 
 from app.agent.generation.architecture import (
     is_architecture_request,
-    match_architecture_profile_id,
 )
 from app.agent.generation.architecture import profile as profile_module
 from app.agent.routing import detect_target_kind
@@ -66,21 +69,29 @@ def test_architecture_type_words_are_architecture(message):
     assert detect_target_kind(message, "generate") == "architecture"
 
 
-@pytest.mark.parametrize("profile_id, words", sorted(profile_module._PROFILE_TYPE_WORDS.items()))
-def test_every_profile_type_word_is_recognized_as_architecture(profile_id, words):
-    """选了档就必须也认成建筑：两个判据共用一份闭集，不能各说各话。"""
+@pytest.mark.parametrize("word", profile_module._ARCHITECTURE_TYPE_KEYWORDS)
+def test_every_type_word_is_recognized_as_architecture(word):
+    """闭集里的每个类型词都必须被认成建筑，路由判据不能自相矛盾。"""
 
-    for word in words:
-        assert is_architecture_request(f"生成一个{word}") is True, (
-            f"{profile_id} 的类型词 {word!r} 没被 is_architecture_request 认成建筑"
-        )
-        assert match_architecture_profile_id(f"生成一个{word}") is not None
+    assert is_architecture_request(f"生成一个{word}") is True, (
+        f"类型词 {word!r} 没被 is_architecture_request 认成建筑"
+    )
 
 
-def test_architecture_closed_set_covers_profile_words_by_construction():
+def test_architecture_closed_set_covers_type_words_by_construction():
     closed = set(profile_module._ARCHITECTURE_TYPE_WORDS)
-    for words in profile_module._PROFILE_TYPE_WORDS.values():
-        assert set(words) <= closed
+    assert set(profile_module._ARCHITECTURE_TYPE_KEYWORDS) <= closed
+
+
+def test_profile_selection_is_deleted_and_custom_is_the_only_profile():
+    """防回归：关键词选档已删除，档案表只剩 custom（物理边界，不做设计锚定）。"""
+
+    assert set(profile_module._ARCHITECTURE_PROFILES) == {"custom"}
+    profile = profile_module.detect_architecture_profile("欧式古典柱廊殿宇")
+    assert profile["id"] == "custom"
+    # custom 不做设计锚定：shapes / base_components 必须是全集语义（宽边界）。
+    assert "courtyard" in profile["shapes"]
+    assert "pavilion" in profile["shapes"]
 
 
 @pytest.mark.parametrize("intent", ["edit", "chat"])

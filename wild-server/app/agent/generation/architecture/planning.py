@@ -6,7 +6,6 @@ from copy import deepcopy
 import re
 from typing import Any
 
-from app.agent.generation.components import get_implemented_components
 from app.agent.knowledge.policy import term_is_requested
 from app.design.openings import opening_kind, opening_token, split_opening
 
@@ -27,10 +26,25 @@ from .profile import (
     detect_architecture_profile,
     resolve_complexity_profile,
 )
+def _concept_from_request(user_message: str) -> str:
+    """从用户请求原文提炼方案名（concept 兜底）。
+
+    用户说"生成一个四角亭子"，蓝图名就应该是"四角亭子"——不是风格词，
+    更不是"比例清晰、入口有识别度"这种硬编码空话（旧兜底实测把每栋楼都
+    命名成同一句话）。只剥请求动词与量词前缀，主体原样保留。
+    """
+    text = str(user_message or "").strip()
+    text = re.sub(r"^(?:请|帮我|给我|麻烦|帮忙)?(?:生成|创建|设计|搭建|做|做个|做一|画|绘制|来|要|想要)", "", text)
+    text = re.sub(r"^(?:一个|一座|一间|一栋|一幢|个|座)", "", text)
+    text = text.strip("，。,. 、！!？?")
+    return (text or "建筑方案")[:24]
+
+
 def _fallback_plan(
     user_message: str,
     complexity_profile: dict[str, Any] | None = None,
     architecture_profile: dict[str, Any] | None = None,
+    base_override: list[str] | None = None,
 ) -> dict[str, Any]:
     profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
     complexity = deepcopy(
@@ -66,20 +80,26 @@ def _fallback_plan(
     is_european = any(term_is_requested(user_message, word) for word in ("欧式", "法式", "古典"))
     is_chinese = any(term_is_requested(user_message, word) for word in ("中式", "新中式", "庭院"))
     is_modern = any(term_is_requested(user_message, word) for word in ("现代", "极简"))
-    style = (
-        "欧式" if is_european else "中式" if is_chinese else "现代" if is_modern
-        else profile["label"]
-    )
     roof_type = (
         "hip" if is_european else "chinese_curved" if is_chinese
         else "flat" if is_modern else profile["default_roof"]
     )
-    require_entrance = profile["require_front_entrance"]
+    # 入口强制语义（2026-09-29 修订）：档案默认要求主入口，但设计清单显式排除
+    # door 时（如地下车站）不再强制——"要不要门"由设计说了算，档案只定默认。
+    require_entrance = profile["require_front_entrance"] and (
+        base_override is None or "door" in base_override
+    )
     front_ground = (
         ["window", "empty", "door", "empty", "window"]
         if require_entrance else ["empty", "empty", "empty", "empty", "empty"]
     )
-    base_components = list(profile["base_components"])
+    base_components = (
+        list(base_override) if base_override else list(profile["base_components"])
+    )
+    # 开放集语义（用户决策 2026-09-29）：``base_override`` 来自设计清单显式给出的
+    # ``required_components``（由调用方从 source 读出传入），是**权威**——它声明了
+    # 这栋建筑需要哪些基础构件（如地下车站只要 light、无屋盖场景不要 roof），
+    # 回退层不得再用档案默认值强行配额。
     curtain_wall = (
         term_is_requested(user_message, "玻璃幕墙")
         or term_is_requested(user_message, "玻璃幕")
@@ -90,19 +110,11 @@ def _fallback_plan(
     else:
         component_quota["door"] = {"min": 0, "max": 8, "note": "仅在功能确有入口时生成"}
     if "window" in base_components:
-        if profile["id"] == "high_rise":
-            repeated_window_count = min(160, max(16, floors * 4))
-            component_quota["window"] = {
-                "min": repeated_window_count,
-                "max": repeated_window_count,
-                "note": "按标准层标高与立面轴线均匀重复",
-            }
-        else:
-            component_quota["window"] = {
-                "min": min(12, 4 + max(0, modeled_floors - 1) * 2),
-                "max": 32,
-                "note": "按立面轴线对齐",
-            }
+        component_quota["window"] = {
+            "min": min(12, 4 + max(0, modeled_floors - 1) * 2),
+            "max": 32,
+            "note": "按立面轴线对齐",
+        }
     else:
         component_quota["window"] = {"min": 0, "max": 24, "note": "按建筑功能选用"}
     if curtain_wall:
@@ -157,11 +169,6 @@ def _fallback_plan(
         requested_shape
         if requested_shape in profile["shapes"]
         else "stepped"
-        if (
-            profile["id"] == "high_rise"
-            and any(word in user_message for word in ("综合体", "商业基座", "裙房", "基座"))
-        )
-        else "stepped"
         if int(complexity.get("min_volumes", 1)) > 1 and "stepped" in profile["shapes"]
         else "rectangle"
     )
@@ -172,13 +179,12 @@ def _fallback_plan(
     structural_system = (
         "long_span" if profile["id"] in {"long_span_public", "industrial_long_span"}
         else "frame" if profile["id"] in {"ordinary_public", "high_rise"}
-        else "hybrid" if complexity["level"] == "detailed"
         else "wall_bearing"
     )
     return {
         "schema_version": "1.1",
         "profile": profile["id"],
-        "concept": f"{style}、比例清晰、入口有识别度",
+        "concept": _concept_from_request(user_message),
         "massing": {
             "shape": resolved_shape,
             "width": round(width, 2),
@@ -189,7 +195,6 @@ def _fallback_plan(
             "floor_height": default_floor_height,
             "symmetry": is_european,
         },
-        "complexity": complexity,
         "volumes": volumes,
         "structural_grid": {
             "system": structural_system,
@@ -473,9 +478,56 @@ def normalize_architecture_plan(
         complexity_profile or resolve_complexity_profile(user_message)
     )
     profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
-    fallback = _fallback_plan(user_message, complexity, profile)
     source = raw if isinstance(raw, dict) else {}
+    # 开放集语义：设计清单显式给出的 required_components 是权威（见 _fallback_plan）。
+    requested_required = source.get("required_components")
+    explicit_base: list[str] | None = (
+        [str(item) for item in requested_required if isinstance(item, str)]
+        if isinstance(requested_required, list) and requested_required
+        else None
+    )
+    fallback = _fallback_plan(user_message, complexity, profile, base_override=explicit_base)
     curtain_wall = bool(fallback.get("curtain_wall"))
+    # 🔴 模型对 front 的**开敞声明**（2026-09-30 四角凉亭"还是生成门了"）：
+    # 模型显式写了 front ground_pattern 且全为 empty——按已确立的开敞语义
+    # （pattern 全空 = 该面开敞无墙），这就是"此面无门"的显式表态。再往里钉
+    # 主入口会自相矛盾：把声明开敞的面改成实墙+门。实测模型按亭 KB 理解
+    # "排除 door"时不写 required_components（整个字段缺省），因此光有
+    # "required_components 不含 door 才豁免"一条判据不够——开敞声明是
+    # **等效豁免**。窄判据：只认"写了 pattern 且全 empty"；写了 pattern
+    # 但有 window 等非空 token 而没 door 的，仍视为"忘了门"照常钉。
+    facade_source_raw = (
+        source.get("facades") if isinstance(source.get("facades"), dict) else {}
+    )
+    front_item_raw = (
+        facade_source_raw.get("front")
+        if isinstance(facade_source_raw.get("front"), dict)
+        else {}
+    )
+    front_pattern_raw = front_item_raw.get("ground_pattern")
+    model_declared_front_open = (
+        isinstance(front_pattern_raw, list)
+        and bool(front_pattern_raw)
+        and all(opening_kind(str(token)) == "empty" for token in front_pattern_raw)
+    )
+    # 门窗/屋顶强制配额的判据同源：模型表态过的 required_components 优先于档案默认。
+    if explicit_base is not None:
+        base_components_effective = list(explicit_base)
+    elif model_declared_front_open:
+        # 开敞声明等效于"排除 door"：档案默认必备件里去掉 door，
+        # 否则 required_components / 配额仍点名 door，交付层报"未落实"。
+        base_components_effective = [
+            item for item in profile["base_components"] if item != "door"
+        ]
+    else:
+        base_components_effective = list(profile["base_components"])
+    # 主入口强制语义：档案默认要求，但出现任一显式豁免时不强制——
+    # ① 设计清单显式排除 door；② front 面被模型显式声明为全空开敞。
+    entrance_required = (
+        bool(profile["require_front_entrance"])
+        and not model_declared_front_open
+        and (explicit_base is None or "door" in explicit_base)
+    )
     massing_raw = source.get("massing") if isinstance(source.get("massing"), dict) else {}
     requested_floors = _requested_floors(user_message)
     requested_shape = _requested_shape(user_message)
@@ -523,7 +575,7 @@ def normalize_architecture_plan(
         "floor_height": round(_clamp_number(
             massing_raw.get("floor_height"),
             2.4,
-            12.0 if profile["id"] == "long_span_public" else 6.0,
+            6.0,
             fallback["massing"]["floor_height"],
         ), 2),
         "symmetry": bool(massing_raw.get("symmetry", fallback["massing"]["symmetry"])),
@@ -577,21 +629,8 @@ def normalize_architecture_plan(
             *detail_packages,
             *fallback["detail_packages"],
         ]))
-    if complexity["level"] in {"minimal", "simple"}:
-        # 简化模式只保留用户明确点名的细部。fallback 的细部列表在这两种
-        # 模式下只包含显式关键词，可阻止模型自行添加凸窗等装饰硬配额。
-        explicitly_requested = set(fallback["detail_packages"])
-        detail_packages = [
-            item for item in detail_packages
-            if item in explicitly_requested
-        ]
-        detail_packages = list(dict.fromkeys([
-            *detail_packages,
-            *fallback["detail_packages"],
-        ]))
     if (
         curtain_wall
-        and profile["id"] == "high_rise"
         and not any(word in user_message for word in ("凸窗", "飘窗"))
         and "bay_window" in detail_packages
     ):
@@ -626,7 +665,7 @@ def normalize_architecture_plan(
             else:
                 entrance_bay = None
         if (
-            profile["require_front_entrance"]
+            entrance_required
             and face == "front"
             and not any(opening_kind(token) == "door" for token in ground)
         ):
@@ -663,52 +702,48 @@ def normalize_architecture_plan(
         if (
             component_type not in _DETAIL_COMPONENT_QUOTAS
             or component_type in detail_packages
+            # 设计清单显式点名的类型（required_components → base_override）视为
+            # 已获批准：地下车站的 light 等功能构件不得在这里被静默丢配额。
+            or (explicit_base is not None and component_type in explicit_base)
         )
     }
-    allowed_components = {config.component_type for config in get_implemented_components()}
-    unsupported_component_types = set()
+    unsupported_component_types: set[str] = set()
     raw_quotas = source.get("component_quota") if isinstance(source.get("component_quota"), dict) else {}
     for component_type, limits in raw_quotas.items():
         if not isinstance(limits, dict):
             continue
         component_type = str(component_type)
-        if component_type not in allowed_components:
-            unsupported_component_types.add(component_type)
-            continue
+        # 开放集通道（用户决策 2026-09-29：删除构件白名单闸）：配额点名的任何类型
+        # 都放行进入下游——已注册的走既有派生/模型通道，未注册的由 plan 条目用
+        # 通用配置尝试（字段契约靠知识库检索），校验与修复环兜底。
+        # ``unsupported_component_types`` 保留为协议字段，从此恒空。
         if (
             component_type in _DETAIL_COMPONENT_QUOTAS
             and component_type not in detail_packages
-            and (
-                complexity["level"] in {"minimal", "simple"}
-                or (
-                    curtain_wall
-                    and profile["id"] == "high_rise"
-                    and component_type == "bay_window"
-                )
-            )
+            and curtain_wall
+            and component_type == "bay_window"
         ):
-            # 简化模式只接受用户明确点名的细部；高层连续幕墙也不能被模型
-            # 通过配额重新塞入未批准的凸窗。其余模式继续兼容“正配额补全
-            # required_components”的既有协议。
+            # 高层连续幕墙不能被模型通过配额重新塞入未批准的凸窗。其余情况
+            # 继续兼容“正配额补全 required_components”的既有协议。
             continue
         if curtain_wall and component_type == "window":
             # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格。
             continue
         normalized_limits = deepcopy(limits)
+        # 配额上下限不再夹取到 32（用户决策 2026-09-29，删除上限白名单）：
+        # 模型可以自由表达密集窗格、通高柱廊等大规模数量；上限只是参考值，
+        # 下限才是设计要求。这里只做类型归一与 max>=min 的一致性。
         if "min" in limits:
-            normalized_limits["min"] = int(_clamp_number(limits.get("min"), 0, 32, 0))
+            normalized_limits["min"] = max(0, int(limits.get("min") or 0))
         if "max" in limits:
-            normalized_limits["max"] = int(_clamp_number(limits.get("max"), 0, 32, 32))
+            normalized_limits["max"] = max(0, int(limits.get("max") or 0))
         if isinstance(normalized_limits.get("min"), int) and isinstance(normalized_limits.get("max"), int):
             normalized_limits["max"] = max(normalized_limits["min"], normalized_limits["max"])
         quotas[component_type] = normalized_limits
-    if (
-        complexity.get("level") != "minimal"
-        and massing["representation_mode"] == "full"
-    ):
+    if massing["representation_mode"] == "full":
         opening_counts = _facade_opening_counts(facades, modeled_floors)
         for opening_type in ("door", "window"):
-            if opening_type not in profile["base_components"]:
+            if opening_type not in base_components_effective:
                 continue
             if curtain_wall and opening_type == "window":
                 # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格；
@@ -721,7 +756,16 @@ def normalize_architecture_plan(
                 "max": planned_count,
                 "note": "由逐层立面 pattern 解析，槽位与组件一一对应",
             }
-    roof_required = "roof" in profile["base_components"]
+    if model_declared_front_open:
+        # 开敞声明的第三处对齐：fallback 档案默认 door 配额（min=1）不得残留——
+        # 841 行按 min>0 补派发会把它塞回 required_components。
+        quotas["door"] = {
+            **quotas.get("door", {}),
+            "min": 0,
+            "max": 0,
+            "note": "front 面被模型声明为全空开敞，无门槽位",
+        }
+    roof_required = "roof" in base_components_effective
     quotas["roof"] = {
         **quotas.get("roof", {}),
         "min": 1 if roof_required else 0,
@@ -744,7 +788,7 @@ def normalize_architecture_plan(
             "max": balcony_access_count,
             "note": "两翼阳台均需与室内直接连通",
         }
-        entrance_count = 1 if profile["require_front_entrance"] else 0
+        entrance_count = 1 if entrance_required else 0
         door_target = entrance_count + balcony_access_count
         quotas["door"] = {
             **quotas.get("door", {}),
@@ -756,29 +800,37 @@ def normalize_architecture_plan(
     required = source.get("required_components")
     if not isinstance(required, list):
         required = fallback["required_components"]
+        # 开敞声明的第二条豁免（与 base_components_effective 同批）：模型没写
+        # required_components 时整表取 fallback，档案默认表里带 door——不清掉
+        # 它，交付层就会"点名 door 未落实"。
+        if model_declared_front_open:
+            required = [item for item in required if str(item).lower() != "door"]
+    # 开放集通道（2026-09-29）：不再按注册表白名单过滤——模型点名的类型照常进入
+    # required_components，未注册类型由 plan 条目用通用配置尝试。保留的过滤只有
+    # 一条纪律：细部包类型必须已被 complexity 批准（与注册表无关）。
     required_components = [
         str(item).lower() for item in required
         if (
-            str(item).lower() in allowed_components
-            and (
-                str(item).lower() not in _DETAIL_COMPONENT_QUOTAS
-                or str(item).lower() in detail_packages
-            )
+            str(item).lower() not in _DETAIL_COMPONENT_QUOTAS
+            or str(item).lower() in detail_packages
         )
     ]
-    for base_type in profile["base_components"]:
-        if base_type not in required_components:
-            required_components.append(base_type)
+    for base_type in base_components_effective:
+        if base_type in required_components:
+            continue
+        # 与上面同一纪律：未获 complexity 批准的细部包类型不得借道混回 required。
+        if base_type in _DETAIL_COMPONENT_QUOTAS and base_type not in detail_packages:
+            continue
+        required_components.append(base_type)
     for component_type in detail_packages:
         if component_type not in required_components:
             required_components.append(component_type)
     # component_quota 是批准后的硬约束；若模型漏写 required_components，
-    # 仍必须派发所有最低数量大于零的已实现组件。
+    # 仍必须派发所有最低数量大于零的组件（开放集：不再按注册表过滤）。
     for component_type, limits in quotas.items():
         minimum = limits.get("min", 0) if isinstance(limits, dict) else 0
         if (
-            component_type in allowed_components
-            and isinstance(minimum, (int, float))
+            isinstance(minimum, (int, float))
             and not isinstance(minimum, bool)
             and minimum > 0
             and component_type not in required_components
@@ -788,13 +840,13 @@ def normalize_architecture_plan(
         component_type for component_type in required_components
         if quotas.get(component_type, {}).get("max", 1) != 0
     ]
-    if complexity.get("level") == "minimal":
-        required_components = []
 
     circulation_source = source.get("circulation") if isinstance(source.get("circulation"), dict) else {}
     default_vertical_strategy = (
         "none" if modeled_floors <= 1
-        else "core_and_stair" if profile["id"] == "high_rise"
+        # 核心筒化按**层数**（物理疏散需求）触发，与建筑类型无关——
+        # 选档白名单删除后，高层规则的正确落点是楼层阈值而不是类型词表。
+        else "core_and_stair" if modeled_floors >= 8
         else "stair"
     )
     vertical_strategy = str(
@@ -818,12 +870,17 @@ def normalize_architecture_plan(
     rationale = source.get("design_rationale")
     if not isinstance(rationale, list):
         rationale = fallback["design_rationale"]
+    
+    # §3.4: 保留构件实例清单
+    components = source.get("components")
+    if not isinstance(components, list):
+        components = []
+    
     return {
         "schema_version": "1.1",
         "profile": profile["id"],
         "concept": str(source.get("concept") or fallback["concept"])[:240],
         "massing": massing,
-        "complexity": complexity,
         "volumes": volumes,
         "structural_grid": structural_grid,
         "circulation": circulation,
@@ -831,6 +888,7 @@ def normalize_architecture_plan(
         "facades": facades,
         "roof": roof,
         "component_quota": quotas,
+        "components": components,
         "curtain_wall": curtain_wall,
         "balcony_access_count": balcony_access_count,
         "balcony_width": balcony_width,

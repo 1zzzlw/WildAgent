@@ -85,3 +85,64 @@ def test_unknown_types_still_go_to_components(item_type):
     elements, components = _buckets(blueprint)
     assert elements == set()
     assert components == {item_type}
+
+
+def test_string_numbers_in_model_fragments_are_normalized():
+    """模型 JSON 的字符串数字必须在合并入口归一成 number。
+
+    实测事故：真模型产出的 column 元素 base=[3.0, "0.0", 2.0]——Python 侧校验器
+    （_aabb 加固后）能宽容通过，但 wild-core 引擎的 schema 只认 number，
+    parseBlueprint 直接拒收整份蓝图 ⇒ 渲染重建全部失败。
+    "校验器全绿 ≠ 引擎能重建"的这一变体，正解是在合并入口归一。
+    """
+
+    column = {
+        "type": "column",
+        "id": "column_porch_01",
+        "base": [3.0, "0.0", "2.0"],
+        "height": "3.6",
+        "bottomRadius": 0.24,
+        "topRadius": "0.2",
+        "style": "corinthian",
+    }
+    blueprint = merge_fragments(_empty_skeleton(), [column])
+
+    (merged,) = blueprint["geometry"]["elements"]
+    assert merged["base"] == [3.0, 0.0, 2.0]
+    assert all(isinstance(v, float) for v in merged["base"])
+    assert merged["height"] == 3.6
+    assert merged["topRadius"] == 0.2
+    # 非几何字段不许被顺手转换：style 是语义字符串
+    assert merged["style"] == "corinthian"
+
+    # 增量路径（merge_fragment_batch）与首并路径同口径
+    incremental = merge_fragment_batch(_empty_skeleton(), [dict(column)])
+    (merged_inc,) = incremental["geometry"]["elements"]
+    assert merged_inc["base"] == [3.0, 0.0, 2.0]
+
+    # dimensions 表里的字符串数字也要归一（furniture 走这条路；注册表里它是 element）
+    furniture = {
+        "type": "furniture",
+        "id": "furn_1",
+        "position": [1, "2", 3],
+        "dimensions": {"width": "1.5", "depth": 0.8, "height": "0.75"},
+    }
+    blueprint2 = merge_fragments(_empty_skeleton(), [furniture])
+    (merged_f,) = blueprint2["geometry"]["elements"]
+    assert merged_f["dimensions"] == {"width": 1.5, "depth": 0.8, "height": 0.75}
+    assert merged_f["position"] == [1.0, 2.0, 3.0]
+
+
+def test_unparseable_strings_pass_through_untouched():
+    """转不动的字符串不是数值抖动，原样保留（不能把语义文本吃掉）。"""
+
+    weird = {
+        "type": "furniture",
+        "id": "furn_x",
+        "height": "auto",
+        "position": [1, "two", 3],
+    }
+    blueprint = merge_fragments(_empty_skeleton(), [weird])
+    (merged,) = blueprint["geometry"]["elements"]
+    assert merged["height"] == "auto"
+    assert merged["position"] == [1.0, "two", 3.0]

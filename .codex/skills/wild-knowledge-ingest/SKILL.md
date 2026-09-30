@@ -134,7 +134,7 @@ rules/{implementation,conditional,design-choice}  # 实现约束 / 条件约束 
 # 真实分片预览（必跑）：确认标题层级、元数据合并结果、分片没有空壳或断裂
 wild-server/.venv/Scripts/python.exe -X utf8 .codex/skills/wild-knowledge-ingest/scripts/preview_wild_rag_chunks.py wild-server/storage/knowledge_base --json
 # 检索契约回归（必跑）：5 组硬编码过滤对是否仍有命中（改 metadata 后必跑，否则查询可能直接查空）
-wild-server/.venv/Scripts/python.exe -X utf8 ../.workbuddy/diag/check_kb.py
+wild-server/.venv/Scripts/python.exe -X utf8 wild-server/scripts/kb/check_kb.py
 # 语义检查（必跑，它其实是门禁 —— 见下）
 wild-server/.venv/Scripts/python.exe -X utf8 wild-server/scripts/rag/lint_wild_rag_docs.py wild-server/storage/knowledge_base
 # 真·门禁（CI 会跑）：manifest 完整性 + 语病/围栏/metadata 全绿

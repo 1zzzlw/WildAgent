@@ -109,7 +109,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await service.start_job({
             "request_id": "req_disconnect",
             "session_id": "session_disconnect",
-            "precision_mode": True,
         }, subscriber)
         await started.wait()
         await service.detach(subscriber)
@@ -167,7 +166,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await first.start_job({
             "request_id": "req_restart",
             "session_id": "session_restart",
-            "precision_mode": True,
         }, RecordingSubscriber())
         await started.wait()
         await first.shutdown()
@@ -263,7 +261,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await service.start_job({
             "request_id": "req_order",
             "session_id": "session_order",
-            "precision_mode": True,
         }, original)
         await first_published.wait()
         await service.detach(original)
@@ -313,7 +310,6 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         await first.start_job({
             "request_id": "req_terminal",
             "session_id": "session_terminal",
-            "precision_mode": True,
         }, RecordingSubscriber())
         await terminal_persisted.wait()
         await self.wait_for_status(first, "req_terminal", "completed")

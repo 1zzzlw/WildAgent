@@ -241,24 +241,33 @@ class MergePrecisionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["merge_diag"]["final_errors"], 0)
         self.assertEqual(result["merge_diag"]["design_errors"], [])
 
-    async def test_missing_required_component_blocks_final_validation(self):
+    async def test_missing_required_component_warns_but_does_not_block(self):
+        """数量缺口 = 警告不阻断（用户决策 2026-09-29）。
+
+        缺口记入 ``merge_diag["design_quota_shortfalls"]``（诊断 + 模型补量参考），
+        不进 ``design_errors``；最终校验状态 complete、零错误，
+        但 warning 步骤必须如实可见。
+        """
         merged = await merge_fragments_node({
             "skeleton_blueprint": _skeleton(),
             "design_brief": _design_brief(),
         })
 
-        self.assertIn("door 数量 0 少于设计下限 1", merged["merge_diag"]["design_errors"])
-        self.assertEqual(merged["merge_diag"]["final_errors"], 1)
+        self.assertIn(
+            "door 数量 0 少于设计下限 1",
+            merged["merge_diag"]["design_quota_shortfalls"],
+        )
+        self.assertEqual(merged["merge_diag"]["design_errors"], [])
+        self.assertEqual(merged["merge_diag"]["final_errors"], 0)
 
         final = await validate_node(merged)
-        self.assertEqual(final["status"], "partial")
-        self.assertEqual(final["validation_error_count"], 1)
+        self.assertEqual(final["status"], "complete")
+        self.assertEqual(final["validation_error_count"], 0)
         self.assertTrue(any(
-            result["name"] == "validate_design_brief"
+            result["name"] == "design_quota_shortfall"
             for result in final["validation_results"]
         ))
-        self.assertEqual(final["failed_components"][0]["component_id"], "design:door")
-        self.assertEqual(final["failed_components"][0]["suggested_tools"], ["add_entity"])
+        self.assertEqual(final["failed_components"], [])
 
     async def test_overlapping_door_and_window_cannot_pass_merge(self):
         result = await merge_fragments_node({

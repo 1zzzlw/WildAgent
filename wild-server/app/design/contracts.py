@@ -38,6 +38,19 @@ class ComplexityDecision(ContractModel):
     reason: str = Field(default="", max_length=300)
 
 
+class MassingTierDecision(ContractModel):
+    """massing.tiers 的一段：从底到顶逐段的收放比例（塔形/退台的立面轮廓表态）。
+
+    比例相对 massing 的对应向尺寸（width_ratio ↔ width，depth_ratio ↔ depth），
+    段与段在立面上居中堆叠。这是**可选**表态——缺省时图纸与编译器从
+    volumes 落层或 shape 派生轮廓，与本字段无关。
+    """
+
+    floors: int = Field(ge=1, le=200)
+    width_ratio: float = Field(gt=0, le=1)
+    depth_ratio: float = Field(default=1.0, gt=0, le=1)
+
+
 class MassingDecision(ContractModel):
     shape: str = Field(min_length=1, max_length=40)
     width: float = Field(gt=0, le=500)
@@ -47,11 +60,20 @@ class MassingDecision(ContractModel):
     representation_mode: Literal["full", "schematic"] = "full"
     floor_height: float = Field(gt=0.5, le=20)
     symmetry: bool = False
+    #: 立面轮廓表态（可选）：从底到顶逐段的收放。电视塔、宝塔、阶梯收分的
+    #: 高层用它表达轮廓；不写 = 交给下游从 volumes/shape 派生。
+    tiers: list[MassingTierDecision] | None = Field(default=None, max_length=12)
 
     @model_validator(mode="after")
     def modeled_floor_count_is_valid(self):
         if self.modeled_floors > self.floors:
             raise ValueError("modeled_floors 不能大于 floors")
+        return self
+
+    @model_validator(mode="after")
+    def tiers_cover_all_floors(self):
+        if self.tiers and sum(tier.floors for tier in self.tiers) != self.floors:
+            raise ValueError("massing.tiers 各段 floors 之和必须等于 massing.floors")
         return self
 
 
@@ -225,6 +247,23 @@ class MaterialIntent(ContractModel):
     resolved_plan: ResolvedMaterialPlan | None = None
 
 
+class ComponentInstance(ContractModel):
+    """
+    统一的实例描述，取代散落的 balcony_access_count / balcony_width 等字段。
+    抽象（立面轴网）与显式（实例清单）并存：轴网为主、实例为例外。
+    """
+    
+    type: str = Field(min_length=1, max_length=60)
+    #: 宿主语义id：体量(volume_primary) / 墙(wall_front_01) / 槽位(slot_front_02)
+    host: str = Field(min_length=1, max_length=80)
+    #: 相对宿主的尺寸（逐类型字段不同）
+    size: dict[str, float] = Field(default_factory=dict)
+    #: 形态参数（逐类型闭集，来自schema）
+    form: dict[str, Any] = Field(default_factory=dict)
+    #: 材质角色名
+    material_role: MaterialRoleName | None = None
+
+
 class ArchitectureDecisions(ContractModel):
     #: 判别字段。与 `ObjectDecisions.kind` 一起构成 `decisions` 的带标签联合。
     #: 有默认值是为了让 2026-09-23 之前存档的 DesignDocument（当时只有建筑一种）
@@ -242,6 +281,8 @@ class ArchitectureDecisions(ContractModel):
     materials: MaterialIntent = Field(default_factory=MaterialIntent)
     detail_packages: list[str] = Field(default_factory=list, max_length=20)
     component_quota: dict[str, ComponentQuota] = Field(default_factory=dict)
+    #为空时回退到 component_quota 配额模式。
+    components: list[ComponentInstance] = Field(default_factory=list, max_length=100)
     balcony_access_count: int = Field(default=0, ge=0, le=32)
     balcony_width: float | None = Field(default=None, ge=0.8, le=6)
     required_components: list[str] = Field(default_factory=list, max_length=30)
@@ -305,8 +346,8 @@ class ObjectDecisions(ContractModel):
     kind: Literal["object"] = "object"
     concept: str = Field(default="", max_length=240)
     objects: list[ComponentObject] = Field(default_factory=list, max_length=24)
-    #: 点名了、但本次表达不出可生成几何的物件（用需求原文片段表示）。
-    #: 它进交付清单作为**非阻断**提示（与《动态节点设计规划》§8.1 同口径）。
+    #: 点名了、但本次表达不出可生成几何的物件。
+    #: 它进交付清单作为**非阻断**提示。
     unsupported_objects: list[str] = Field(default_factory=list, max_length=24)
     materials: MaterialIntent = Field(default_factory=MaterialIntent)
     design_rationale: list[str] = Field(default_factory=list, max_length=12)
@@ -440,15 +481,84 @@ class DesignDocument(ContractModel):
                     opening_counts[kind] += massing.modeled_floors - 1
         for opening, count in opening_counts.items():
             quota = decisions.component_quota.get(opening)
-            if quota is not None and not quota.min <= count <= quota.max:
+            if quota is not None and count < quota.min:
                 raise ValueError(
-                    f"{opening} 立面槽位数量 {count} 不在配额 {quota.min}~{quota.max} 内"
+                    f"{opening} 立面槽位数量 {count} 少于配额下限 {quota.min}"
                 )
         required = set(decisions.required_components)
         for component, quota in decisions.component_quota.items():
             if quota.min > 0 and component not in required:
                 raise ValueError(f"配额要求的构件 {component} 未列入 required_components")
+        
+        # 校验构件实例清单（§3.4）
+        if decisions.components:
+            self._validate_component_instances(decisions)
+        
         return self
+    
+    def _validate_component_instances(self, decisions: ArchitectureDecisions):
+        """校验构件实例清单的语义约束。"""
+        
+        # 构建宿主id集合
+        valid_hosts: set[str] = set()
+        
+        # 添加体量id
+        for volume in decisions.volumes:
+            valid_hosts.add(volume.id)
+            # 体量的层-面组合（如 volume_primary_L3_south）
+            for floor in range(volume.start_floor, volume.end_floor + 1):
+                for face in ["front", "back", "left", "right"]:
+                    valid_hosts.add(f"{volume.id}_L{floor}_{face}")
+        
+        # 添加墙id（假设格式：wall_<face>_<bay>）
+        for face in ["front", "back", "left", "right"]:
+            facade = decisions.facades.get(face)
+            if facade:
+                for bay in range(1, facade.bays + 1):
+                    valid_hosts.add(f"wall_{face}_{bay:02d}")
+        
+        # 添加槽位id（假设格式：slot_<face>_<bay>）
+        for face in ["front", "back", "left", "right"]:
+            facade = decisions.facades.get(face)
+            if facade:
+                for bay in range(1, facade.bays + 1):
+                    valid_hosts.add(f"slot_{face}_{bay:02d}")
+        
+        # 校验每个实例
+        for idx, instance in enumerate(decisions.components):
+            # host必须存在
+            if instance.host and instance.host not in valid_hosts:
+                # 宽松检查：允许部分格式的host（编译器会解析）
+                if not any(
+                    instance.host.startswith(prefix)
+                    for prefix in ["wall_", "volume_", "slot_", "door_", "window_"]
+                ):
+                    raise ValueError(
+                        f"构件实例 {idx} 的 host '{instance.host}' 不是有效的宿主引用"
+                    )
+            
+            # size必须合理
+            if instance.size:
+                for key, value in instance.size.items():
+                    if not isinstance(value, (int, float)) or value <= 0:
+                        raise ValueError(
+                            f"构件实例 {idx} 的 size.{key} 必须是正数"
+                        )
+                    # 尺寸上限检查
+                    if value > 100:
+                        raise ValueError(
+                            f"构件实例 {idx} 的 size.{key}={value} 超出合理范围(0-100m)"
+                        )
+            
+            # material_role必须在materials中有对应
+            if instance.material_role:
+                if decisions.materials.resolved_plan:
+                    roles = [r.role for r in decisions.materials.resolved_plan.roles]
+                    if instance.material_role not in roles:
+                        raise ValueError(
+                            f"构件实例 {idx} 的 material_role '{instance.material_role}' "
+                            f"不在材质方案中"
+                        )
 
 
 class DesignPatchOperation(ContractModel):

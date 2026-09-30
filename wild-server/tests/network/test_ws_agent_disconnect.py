@@ -148,8 +148,7 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
                         "request_id": "req_durable",
                         "session_id": "session_durable",
                         "message": "生成别墅",
-                        "precision_mode": True,
-                    })
+                                })
                 raise WebSocketDisconnect()
 
         job = GenerationJob(

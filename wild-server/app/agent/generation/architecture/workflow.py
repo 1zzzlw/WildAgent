@@ -72,61 +72,57 @@ def build_design_document_or_error(
 async def architecture_planner(state: GenerationState) -> dict:
     """输出唯一最终总体方案。
 
-    失败语义分两类，别混：
-      - **模型服务故障** → 返回 `model_failure_result()`（`error` + `terminal_model_error`），
-        **终止本轮图运行**，不进入建筑修复循环；
-      - **模型输出解析不了** → 走 `normalize_architecture_plan()` 的确定性归一化兜底，**不中断**。
+    失败语义分两类：
+      - 模型服务故障 → 返回 `model_failure_result()`（`error` + `terminal_model_error`），终止本轮图运行，不进入建筑修复循环；
+      - 模型输出解析不了 → 走 normalize_architecture_plan() 的确定性归一化兜底，不中断。
     """
     from app.services.agent_service import agent_service
 
     started = _time.time()
     user_message = state["user_message"]
     thinking_mode = state.get("thinking_mode", False)
+    # 用户的修正反馈
     revision_feedback = str(state.get("design_feedback") or "").strip()
+    # python 中的三元表达式，A if 条件 else B
     design_request = (
         f"{user_message}\n本轮修订意见：{revision_feedback}"
         if revision_feedback else user_message
     )
+    # 把修订意见拼进请求串
     previous_plan = state.get("architecture_plan")
 
-    complexity_terms = (
-        "简单", "简易", "极简", "低复杂度", "复杂", "高细节", "丰富",
-        "多体量", "退台", "错落", "simple", "minimal", "complex", "detailed",
-    )
-    if revision_feedback and any(term in revision_feedback.casefold() for term in complexity_terms):
-        complexity_profile = resolve_complexity_profile(
-            revision_feedback,
-            precision_mode=thinking_mode,
-        )
-    elif isinstance(previous_plan, dict) and isinstance(previous_plan.get("complexity"), dict):
+    # 修订时沿用上一版复杂度目标；否则固定标准档（粒度分档已下线，2026-09-30）。
+    if isinstance(previous_plan, dict) and isinstance(previous_plan.get("complexity"), dict):
         complexity_profile = dict(previous_plan["complexity"])
     else:
-        complexity_profile = resolve_complexity_profile(
-            user_message,
-            precision_mode=thinking_mode,
-        )
+        complexity_profile = resolve_complexity_profile(user_message)
+        
     on_reasoning_delta = get_reasoning_callback()
+    # 给前端的进度提示：正在制定建筑体量、立面轴网和屋顶方案
     if on_reasoning_delta:
-        # ⚠️ 这里原来还有一支 `if plan_feedback:`（"根据已批准执行计划生成或调整总体方案"）。
-        # 计划层（execution_plan / plan_feedback）已整体退场，该变量没有任何数据来源，
-        # 保留分支就是 NameError（只要有 reasoning callback 就会炸）——已随计划层一并删除。
-        # 现存语义只剩"用户提了修改意见 → 调整"与"全新生成"两种。
+        # 如果是修订反馈
         if revision_feedback:
             revision_note = "根据修改意见调整总体方案"
+        # 如果是首次生成
         else:
             revision_note = "生成总体方案"
+        # 给前端发送进度提示
         await on_reasoning_delta(
-            "architecture",
+            "architecture:progress",
             f"\n### 总体建筑方案\n{revision_note}：正在制定建筑体量、立面轴网和屋顶方案...\n",
         )
 
     rag_started = _time.time()
     rag_error = None
     try:
-        # 知识库检索
+        # 知识库检索：前两条是固定契约查询；第三条把用户消息原文带进查询文本
         spec_text = agent_service.spec_loader.load_many([
             SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
             SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
+            SpecQuery(
+                f"{user_message} 建筑形制特征 技法 组装配方 设计层表态",
+                {"doc_type": "component", "knowledge_role": "capability"},
+            ),
         ], per_query=2)
     except Exception as exc:
         spec_text = ""
@@ -135,11 +131,14 @@ async def architecture_planner(state: GenerationState) -> dict:
     rag_ms = int((_time.time() - rag_started) * 1000)
     if on_reasoning_delta:
         await on_reasoning_delta(
-            "architecture",
+            "architecture:progress",
             f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成总体方案...\n",
         )
+
     previous_profile_id = (
+        # 从上轮方案里继承 profile，避免用户没说话就被兜底成 "building"。
         str(previous_plan.get("profile") or "")
+        # 如果不是 dict 则说明是首次生成，那么就是空字符串
         if isinstance(previous_plan, dict) else ""
     )
     normalization_request = revision_feedback or user_message
@@ -169,18 +168,17 @@ async def architecture_planner(state: GenerationState) -> dict:
     recovery_diag = None
     block_diag: dict = {}
     try:
-        # §1.6 首次成图：**逐块写**（设计文档 §1.6 的 plan-and-execute 那一半）。
+        # 首次成图：逐块写。
         # 依赖表是常量、后块只看前序定稿内容，所以"host 引用不存在的宿主"这类
-        # 悬空引用被**结构性地**消掉了，而不是等编译报错再回头改。
-        # 某块写不出来**不阻断**：留空交下游归一化兜底，缺口由 `defaulted` 如实报出。
+        # 悬空引用被结构性地消掉了，而不是等编译报错再回头改。
+        # 某块写不出来不阻断：留空交下游归一化兜底，缺口由 `defaulted` 如实报出。
         block_started = _time.time()
         draft, block_diag = await draft_design_blocks(
             base_prompt=prompt,
             user_request=design_request,
-            level=str(complexity_profile.get("level") or "standard"),
             thinking_mode=thinking_mode,
             on_reasoning_delta=on_reasoning_delta,
-            # 试算工具（§2.7）要用同一套归一化参数，否则"试算通过、正式编译不通过"
+            # 试算工具要用同一套归一化参数，否则"试算通过、正式编译不通过"
             # 会变成一条查不出来的分叉。
             complexity_profile=complexity_profile,
             architecture_profile=profile,
@@ -198,18 +196,35 @@ async def architecture_planner(state: GenerationState) -> dict:
         from app.llm.errors import model_failure_result
         return model_failure_result(exc)
 
-    plan = normalize_architecture_plan(
-        raw_plan or {},
-        user_message=normalization_request,
-        complexity_profile=complexity_profile,
-        architecture_profile=profile,
-    )
+    # 模型草稿是不可信输入：归一化对它必须"失败不阻断"（与收敛环
+    # convergence.py 的 invalid_revision 同一纪律）。实测曾有一条
+    # `ground[entrance_bay - 1]` 越界的 IndexError 从这里穿出去掐掉整轮生成
+    # （根因 _clamp_number 不夹 default，已修；这里再兜一层防同类）。
+    # 归一化失败 ⇒ 视同"没有可用方案"，走确定性 fallback，如实记账。
+    normalization_error: str | None = None
+    try:
+        plan = normalize_architecture_plan(
+            raw_plan or {},
+            user_message=normalization_request,
+            complexity_profile=complexity_profile,
+            architecture_profile=profile,
+        )
+    except Exception as exc:  # noqa: BLE001 —— 草稿不可信，兜底优先
+        normalization_error = f"{type(exc).__name__}: {exc}"
+        logger.warning(f"[architecture] 草稿归一化失败，改走确定性 fallback: {normalization_error}")
+        raw_plan = None
+        plan = normalize_architecture_plan(
+            {},
+            user_message=normalization_request,
+            complexity_profile=complexity_profile,
+            architecture_profile=profile,
+        )
 
     # 诊断信息：单方案生成，只记录 profile 与是否走了兜底。
     selection_diag = {
         "profile": profile["id"],
-        "profile_label": profile["label"],
         "used_fallback": raw_plan is None,
+        "normalization_error": normalization_error,
         "raw_plan": raw_plan,
         "normalized_plan": plan,
     }
@@ -217,11 +232,8 @@ async def architecture_planner(state: GenerationState) -> dict:
     if on_reasoning_delta:
         rationale = plan.get("design_rationale", [])
         await on_reasoning_delta(
-            "architecture",
+            "architecture:progress",
             "\n### 总体建筑方案\n"
-            f"- 复杂度目标：{complexity_profile['level']}；"
-            f"至少 {complexity_profile['min_volumes']} 个体量、"
-            f"{complexity_profile['min_detail_packages']} 个细部包。\n"
             + "\n".join(f"- {item}" for item in rationale) + "\n"
             + "- 总体方案已确定；下一节点将解析受控材质并生成可审核的设计文档与 SVG。\n",
         )
@@ -272,12 +284,19 @@ async def architecture_planner(state: GenerationState) -> dict:
         term in revision_feedback.casefold() for term in material_feedback_terms
     )
     return {
+        # 设计方案本体
         "architecture_plan": plan,
+        # 给用户审核的文档版
         "design_document": design_document.model_dump(mode="json"),
+        # 可执行视图
         "resolved_design": resolved_design,
+        # 审核状态
         "design_review_status": "pending",
+        # 清空修订意见
         "design_feedback": "",
+        # 是否需要刷新材质节点
         "design_material_refresh": refresh_materials,
+        # 诊断账本（谁定的、花了多少、哪块难写）
         "architecture_diag": {
             **selection_diag,
             "rag_chars": len(spec_text),

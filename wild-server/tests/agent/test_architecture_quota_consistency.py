@@ -3,7 +3,7 @@
 背景：`normalize_architecture_plan` 会把 door/window 的配额**派生**成立面 pattern 的
 实际槽位数量（min == max == count）。曾经的结构化要求注入会在这之后抬高这两个开口的
 min，使配额与实际槽位互相矛盾，`DesignDocument` 随即抛出未捕获的 Pydantic 异常，
-整轮生成直接终止（用户看到 "door 立面槽位数量 1 不在配额 2~2 内"）。
+整轮生成直接终止（用户看到 "door 立面槽位数量 1 少于配额下限 2"）。
 
 注入机制与候选评分选择已整体删除（见
 `docs/面试难点解决过程/Agent工作流与中间状态设计问题/候选机制清理与proposal节点处置方案.md`），
@@ -86,7 +86,7 @@ def test_curtain_wall_door_quota_matches_facade_slots(message: str) -> None:
     背景：`normalize_architecture_plan` 曾在 curtain_wall 模式下整体跳过
     door/window 的槽位重派生，导致模型输出的 door 配额（如 2~2）与立面
     实际只有 1 个门槽位脱钩，`DesignDocument` 抛出 "door 立面槽位数量 1
-    不在配额 2~2 内"。修复后：door 仍按逐层 pattern 一一对应，window 保持
+    少于配额下限 2"。修复后：door 仍按逐层 pattern 一一对应，window 保持
     幕墙密铺配额（宽区间），两者不再互相矛盾。
     """
 
@@ -143,17 +143,13 @@ def test_no_dimension_request_keeps_architecture_defaults() -> None:
     assert _normalized(message)["massing"]["width"] > 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "已知遗留缺口（与本次候选机制清理无关）：高层的确定性兜底方案自身不自洽。"
-        "`_fallback_plan` 按 floors=21 给出 window 配额 84，而立面 pattern 只在 "
-        "modeled_floors=10 上展开，实际槽位为 69，DesignDocument 契约直接拒绝。"
-        "修复 `_fallback_plan` 后本用例会转为 XPASS，届时删除该标记。"
-    ),
-)
 def test_schematic_high_rise_fallback_satisfies_design_contract() -> None:
-    """示意型高层：兜底方案也必须满足契约（当前不满足，见 xfail 原因）。"""
+    """示意型高层：兜底方案也必须满足契约。
+
+    曾是 xfail：兜底方案的窗槽位（83）超过旧配额上限（32），DesignDocument
+    的 max 硬闸直接拒绝。2026-09-29 删除上限白名单（max 只是参考值）后
+    该缺口随闸一起消失，本用例转为常规回归。
+    """
 
     message = "建造二十一层办公楼"
     document = build_design_document(
@@ -182,7 +178,7 @@ def test_design_contract_error_is_a_controlled_business_error() -> None:
         )
 
     message = str(excinfo.value)
-    assert "不在配额" in message
+    assert "少于配额下限" in message
     assert "Value error" not in message
     assert "input_value" not in message
 

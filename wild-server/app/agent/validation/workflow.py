@@ -15,7 +15,10 @@ from app.agent.validation.diagnostics import (
     step_result_to_dict,
 )
 from app.agent.validation.component_trace import get_all_entity_ids, trace_errors_to_components
-from app.agent.validation.design_constraints import validate_design_brief_constraints
+from app.agent.validation.design_constraints import (
+    design_quota_shortfalls,
+    validate_design_brief_constraints,
+)
 from app.agent.state import GenerationState
 from app.agent.validation.issues import validation_issues_from_results
 
@@ -96,6 +99,20 @@ async def validate_node(state: GenerationState) -> dict:
                     output="\n".join(f"❌ [design] {message}" for message in design_errors),
                     has_error=True,
                     has_warning=False,
+                ))
+            # 配额数量缺口 = 警告不阻断（用户决策 2026-09-29）：只影响模型补量，
+            # 不许"canopy 数量 1 少于设计下限 2"这类消息拦下整张蓝图。
+            quota_shortfalls = design_quota_shortfalls(
+                merged_blueprint,
+                state.get("design_brief"),
+            )
+            if quota_shortfalls:
+                pipeline_results.append(PipelineStepResult(
+                    step="design",
+                    name="design_quota_shortfall",
+                    output="\n".join(f"⚠️ [design] {message}" for message in quota_shortfalls),
+                    has_error=False,
+                    has_warning=True,
                 ))
 
         # 提取最终错误（修复后的 recheck 覆盖初检错误）

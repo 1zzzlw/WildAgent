@@ -57,12 +57,14 @@ def test_capability_catalog_comes_from_the_registry():
     assert all(entry["label"] for entry in catalog)
 
 
-def test_unknown_kinds_are_dropped_not_raised():
+def test_unknown_kinds_are_kept_and_sorted_last():
+    """开放集通道（2026-09-29）：未知类型不再丢弃——用 generic 配置尝试，
+    排在已知类型之后；不会因陌生名字抛异常。"""
     kinds = normalize_kinds(
         [{"kind": "door"}, {"kind": "spaceship"}, {"kind": "window"}], _STATE
     )
 
-    assert [entry.kind for entry in kinds] == ["door", "window"]
+    assert [entry.kind for entry in kinds] == ["door", "spaceship", "window"]
 
 
 def test_user_negation_still_wins_over_the_model():
@@ -131,7 +133,8 @@ def test_slot_batch_summary_groups_same_size_openings():
 
 def test_parse_strategy_rejects_empty_kinds():
     assert parse_strategy({"kinds": []}, _STATE) is None
-    assert parse_strategy({"kinds": [{"kind": "spaceship"}]}, _STATE) is None
+    # 开放集：未知类型也是可用策略（generic 通道尝试），只有真正为空才降级。
+    assert parse_strategy({"kinds": [{"kind": "spaceship"}]}, _STATE) is not None
     assert parse_strategy("不是 JSON 对象", _STATE) is None
 
 
@@ -263,11 +266,12 @@ def test_model_strategy_path(monkeypatch):
     strategy, diag = _run(request_plan_strategy(_STATE))
 
     assert strategy.source == "llm"
-    assert [entry.kind for entry in strategy.kinds] == ["door"]  # 未知类型被丢弃
+    # 开放集（2026-09-29）：未知类型不再丢弃，排在已知类型之后由 generic 通道尝试。
+    assert [entry.kind for entry in strategy.kinds] == ["door", "spaceship"]
     assert strategy.kinds[0].subtype == "入户双开门"
     assert diag["used_fallback"] is False
     assert diag["strategy_source"] == "llm"
-    assert diag["kinds"] == ["door"]
+    assert diag["kinds"] == ["door", "spaceship"]
 
 
 def test_model_failure_is_terminal_not_degraded(monkeypatch):

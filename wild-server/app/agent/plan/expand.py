@@ -64,23 +64,7 @@ def resolve_detail_level(state: dict[str, Any]) -> str:
 
     档位由界面给定并写进方案，节点只读不推断（§3.5）。
     """
-
-    document = state.get("design_document")
-    if isinstance(document, dict):
-        decisions = document.get("decisions")
-        if isinstance(decisions, dict):
-            complexity = decisions.get("complexity")
-            if isinstance(complexity, dict):
-                level = complexity.get("level")
-                if isinstance(level, str) and level in DETAIL_BUDGET:
-                    return level
-    architecture_plan = state.get("architecture_plan")
-    if isinstance(architecture_plan, dict):
-        complexity = architecture_plan.get("complexity")
-        if isinstance(complexity, dict):
-            level = complexity.get("level")
-            if isinstance(level, str) and level in DETAIL_BUDGET:
-                return level
+    # 默认使用标准档位（粒度选择已下线，2026-09-30）
     return "standard"
 
 
@@ -91,6 +75,45 @@ def _component_order() -> dict[str, int]:
         config.component_type: index
         for index, config in enumerate(get_implemented_components())
     }
+
+
+def compile_gap_summary(state: dict[str, Any]) -> dict[str, Any]:
+    """从 ``compile_report`` 提取**图纸级缺口**的紧凑摘要（纯函数）。
+
+    用户指令：plan 不该只数配额——每个生成条目要知道自己在
+    补图纸上的哪个洞。唯一事实源是编译节点的诊断：
+
+    - ``uncompiled``：配额点名但编译器没有派生规则的类型 → 交模型通道补；
+    - ``defects``：编译器报出的图纸缺陷（schema/结构/约束）→ 生成与修复都该看到。
+
+    返回空 dict 表示"图纸没有缺口或编译报告不存在"，两个消费点（条目参数、
+    策略提示词）都按"无缺口"处理。
+    """
+
+    report = state.get("compile_report")
+    if not isinstance(report, dict):
+        return {}
+    gaps: dict[str, Any] = {}
+    uncompiled = [str(kind) for kind in (report.get("uncompiled") or []) if kind]
+    if uncompiled:
+        gaps["uncompiled"] = uncompiled
+    defects = [
+        defect for defect in (report.get("defects") or [])
+        if isinstance(defect, dict)
+    ]
+    if defects:
+        gaps["defect_count"] = len(defects)
+        gaps["defects"] = [
+            {
+                "code": str(defect.get("code") or ""),
+                "severity": str(defect.get("severity") or ""),
+                "evidence": str(defect.get("evidence") or "")[:200],
+            }
+            for defect in defects[:8]
+        ]
+        if len(defects) > 8:
+            gaps["defects_truncated"] = True
+    return gaps
 
 
 def _requested_kinds(state: dict[str, Any]) -> list[str]:
@@ -110,10 +133,11 @@ def _requested_kinds(state: dict[str, Any]) -> list[str]:
         object_scene=object_scene,
     )
     order = _component_order()
-    # 先按注册表顺序、再按名称排序：与 dict 插入顺序、集合遍历顺序无关。
+    # 开放集通道（用户决策 2026-09-29）：未注册类型不再被 `kind in order` 丢弃——
+    # 它们排在已知类型之后（generic_component_config 兜底生成）。
     return sorted(
-        {kind for kind in resolved if kind in order},
-        key=lambda kind: (order[kind], kind),
+        set(resolved),
+        key=lambda kind: (order.get(kind, len(order)), kind),
     )
 
 
@@ -205,10 +229,10 @@ def expand_plan(
 ) -> PlanDocument:
     """展开条目列表：每个构件一条 generate 紧跟一条批次 merge，末尾收尾 merge + validate。
 
-    **策略进、条目出**（§3.2）：``strategy`` 是模型给的"做什么"，本函数只做
+    **策略进、条目出**：``strategy`` 是模型给的"做什么"，本函数只做
     "怎么排"。没给策略时用确定性降级（骨架建议），两条路径产出同一种数据结构。
 
-    条目形态（§3.3）::
+    条目形态:
 
         generate_door_01 → merge_door_01 → generate_window_02 → merge_window_02
                         → merge_all_01 → validate_all_01
@@ -217,24 +241,28 @@ def expand_plan(
     对账（``reconcile``）才能按组判定完成，而不是等最后一刻一把梭。批次合并本身
     **不删不改**，所以未到场分组不会被误伤（见 ``generation/assembly_workflow.py``）。
 
-    最后追加的是**能力缺口条目**（§8.1）：命中已知做不到的能力（房间平面、家具、
+    最后追加的是**能力缺口条目**：命中已知做不到的能力（房间平面、家具、
     场地语义）时生成 ``unsupported`` 条目。它们是终态，不会被派发，只进交付清单。
     """
 
+    # 定档位和预算
     level = (
         detail_level
         or (strategy.detail_level if strategy is not None else None)
         or resolve_detail_level(state)
     )
     budget = plan_budget(level)
+
+    # 有策略 → ordered_kinds：按注册表顺序重排，条目顺序只由程序定，与模型输出顺序无关
+    # 没策略 → _requested_kinds：从骨架建议 suggested_components + 配额推导
     design_brief = state.get("design_brief")
     entries = (
         ordered_kinds(strategy)
         if strategy is not None
         else [PlanKindStrategy(kind=kind) for kind in _requested_kinds(state)]
     )
+
     # 产物里已有的类型一律不再派 generate——两条策略路径共用这一个闸口，
-    # 见 ``_drop_produced`` 的说明（模型策略路径原先绕过了这道过滤）。
     entries, suppressed = _drop_produced(entries, state)
     if suppressed:
         logger.info(
@@ -243,6 +271,8 @@ def expand_plan(
         )
 
     labels = {config.component_type: config.label for config in get_implemented_components()}
+    blueprint_gaps = compile_gap_summary(state)
+    uncompiled_kinds = set(blueprint_gaps.get("uncompiled") or [])
     items: list[PlanItem] = []
     generate_ids: list[str] = []
     batch_merge_ids: list[str] = []
@@ -255,6 +285,22 @@ def expand_plan(
         batch_size = slot_count or int(quota.get("min") or quota.get("max") or 1)
         item_id = f"generate_{kind}_{index:02d}"
         generate_ids.append(item_id)
+        params = {
+            "component_type": kind,
+            "subtype": entry.subtype,
+            "guidance": entry.guidance,
+            "reason": entry.reason,
+            "execution_mode": entry.execution_mode,
+            "parallel_group": entry.parallel_group,
+            "batch_reason": entry.batch_reason,
+        }
+        if kind in uncompiled_kinds:
+            # 图纸缺口注入：条目要知道自己在补哪个洞——
+            # 编译器点名了该类型却没产出，这条 generate 就是模型通道的补洞任务。
+            params["blueprint_gap"] = (
+                "编译器没有产出该类型（compile_report.uncompiled）："
+                "本条目负责把它补进蓝图，先按知识库检索到的契约生成。"
+            )
         items.append(
             PlanItem(
                 id=item_id,
@@ -269,15 +315,7 @@ def expand_plan(
                     "quota": quota,
                     "batch_size": batch_size,
                 },
-                params={
-                    "component_type": kind,
-                    "subtype": entry.subtype,
-                    "guidance": entry.guidance,
-                    "reason": entry.reason,
-                    "execution_mode": entry.execution_mode,
-                    "parallel_group": entry.parallel_group,
-                    "batch_reason": entry.batch_reason,
-                },
+                params=params,
                 run=ItemRun(max_attempts=3),
             )
         )
@@ -323,6 +361,27 @@ def expand_plan(
             run=ItemRun(max_attempts=1),
         )
     )
+
+    # 脚本映射节点化：编译报告有缺陷时就地派 repair 条目——
+    # "大模型调用脚本工具（fix_*），脚本实现不了的模型按蓝图语言规则补充"。
+    # 依赖只挂收尾合并（不挂 validate）：validate 报错是**预期输入**而不是失败，
+    # 挂在它上面会让 repair 永远 blocked。校验干净时该条目是廉价空转（无模型调用）。
+    if blueprint_gaps.get("defect_count"):
+        items.append(
+            PlanItem(
+                id="repair_compile_defects_01",
+                op="repair",
+                kind="all",
+                label="脚本工具修复编译缺陷，剩余由模型补充",
+                target={"blueprint": "merged_blueprint"},
+                params={
+                    "source": "compile_report.defects",
+                    "defect_count": blueprint_gaps.get("defect_count"),
+                },
+                depends_on=[merge_id],
+                run=ItemRun(max_attempts=1),
+            )
+        )
 
     # 迭代预算必须覆盖"每条条目各跑一次"这条最短路径。条目数从 N+2 变成 2N+2 之后，
     # 档位值（按旧形态标定）会先于队列跑空触发收尾，用户拿到的是"没跑完"。

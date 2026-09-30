@@ -1,27 +1,71 @@
-"""建筑设计清单与最终 Blueprint 的一致性校验。"""
+"""建筑设计清单与最终 Blueprint 的一致性校验。
+
+🔴 两类问题分开（用户决策 2026-09-29）：
+
+- **空间/结构状态**（标高缺失、缺楼梯、超墙容量、批准槽位未落实）→
+  :func:`validate_design_brief_constraints` 返回的**错误**，阻断交付；
+- **配额数量缺口**（"canopy 数量 1 少于设计下限 2"）→ :func:`design_quota_shortfalls`
+  返回的**警告**，只标记不阻断。数量缺口是"模型补量"问题，不是"蓝图非法"
+  问题——拿数量拦下整张蓝图，等于因为少摆了几根柱子就撕掉全部图纸。
+"""
 
 from math import isfinite
+
+def _entity_type_counts(blueprint: dict) -> dict[str, int]:
+    """按类型统计蓝图实体数。凸窗占用并替换普通窗槽位，计入 window。"""
+    geometry = blueprint.get("geometry", {})
+    counts: dict[str, int] = {}
+    for entity in [
+        *geometry.get("elements", []),
+        *geometry.get("components", []),
+    ]:
+        entity_type = entity.get("type")
+        if entity_type:
+            counts[entity_type] = counts.get(entity_type, 0) + 1
+    counts["window"] = counts.get("window", 0) + counts.get("bay_window", 0)
+    return counts
+
+
+def design_quota_shortfalls(blueprint: dict, design_brief: dict | None) -> list[str]:
+    """配额下限缺口清单——**警告，不阻断**。
+
+    文案保持既有格式（``"<type> 数量 N 少于设计下限 M"``）：
+    ``issues.py::_MISSING_QUOTA`` 按它分类修复目标。消费方把结果当 warn 面世
+    （编译报告 / 校验流水线 warning 步骤），模型通道负责补量。
+    """
+    if not isinstance(design_brief, dict):
+        return []
+    counts = _entity_type_counts(blueprint)
+    shortfalls: list[str] = []
+    for component_type, limits in (design_brief.get("component_quota") or {}).items():
+        if not isinstance(limits, dict):
+            continue
+        actual = counts.get(component_type, 0)
+        # balcony 自带 U 形栏杆，可满足 railing 的最低需求；但它已有独立的
+        # balcony 配额，不能再占用独立 railing 的数量。
+        minimum_actual = (
+            actual + counts.get("balcony", 0)
+            if component_type == "railing"
+            else actual
+        )
+        minimum = limits.get("min")
+        if isinstance(minimum, (int, float)) and not isinstance(minimum, bool) and minimum_actual < minimum:
+            shortfalls.append(
+                f"{component_type} 数量 {minimum_actual} 少于设计下限 {minimum}"
+            )
+    return shortfalls
+
 
 def validate_design_brief_constraints(
     blueprint: dict,
     design_brief: dict | None,
 ) -> list[str]:
-    """验证骨架设计清单中的数量与立面开口硬约束。"""
+    """验证骨架设计清单中的**空间/结构**硬约束（数量缺口见 quota_shortfalls）。"""
     if not isinstance(design_brief, dict):
         return []
 
     geometry = blueprint.get("geometry", {})
-    entities = [
-        *geometry.get("elements", []),
-        *geometry.get("components", []),
-    ]
-    counts: dict[str, int] = {}
-    for entity in entities:
-        entity_type = entity.get("type")
-        if entity_type:
-            counts[entity_type] = counts.get(entity_type, 0) + 1
-    # 凸窗会占用并替换一个普通窗槽位，因此也满足立面窗数量要求。
-    counts["window"] = counts.get("window", 0) + counts.get("bay_window", 0)
+    counts = _entity_type_counts(blueprint)
 
     errors: list[str] = []
 
@@ -36,7 +80,6 @@ def validate_design_brief_constraints(
         if modeled_floors > 1:
             walls = [item for item in geometry.get("elements", []) if item.get("type") == "wall"]
             floors = [item for item in geometry.get("elements", []) if item.get("type") == "floor"]
-            stairs = [item for item in entities if item.get("type") == "stair"]
             wall_levels = {
                 round(min(float(item["from"][1]), float(item["to"][1])), 2)
                 for item in walls
@@ -64,32 +107,12 @@ def validate_design_brief_constraints(
                 errors.append(
                     f"建筑方案要求 {modeled_floors} 层，但缺少楼板标高 {missing_floor_levels}"
                 )
-            if not stairs:
+            if not counts.get("stair"):
                 errors.append(f"建筑方案要求 {modeled_floors} 层，但没有 stair 构件")
 
     quotas = design_brief.get("component_quota", {})
-    for component_type, limits in quotas.items():
-        if not isinstance(limits, dict):
-            continue
-        actual = counts.get(component_type, 0)
-        # balcony 自带 U 形栏杆，可满足 railing 的最低需求；但它已有独立的
-        # balcony 配额，不能再占用独立 railing 的数量上限。
-        minimum_actual = (
-            actual + counts.get("balcony", 0)
-            if component_type == "railing"
-            else actual
-        )
-        minimum = limits.get("min")
-        maximum = limits.get("max")
-        if isinstance(minimum, (int, float)) and not isinstance(minimum, bool) and minimum_actual < minimum:
-            errors.append(
-                f"{component_type} 数量 {minimum_actual} 少于设计下限 {minimum}"
-            )
-        if isinstance(maximum, (int, float)) and not isinstance(maximum, bool) and actual > maximum:
-            errors.append(
-                f"{component_type} 数量 {actual} 超过设计上限 {maximum}"
-            )
-
+    # 配额数量缺口不再是错误（用户决策 2026-09-29，见 design_quota_shortfalls）；
+    # 这里只保留"批准槽位未落实"——它是**空间状态**错误（总数对但立面节奏错位）。
     openings_by_wall: dict[str, int] = {}
     for component in geometry.get("components", []):
         if component.get("type") not in {"door", "window", "bay_window"}:
