@@ -487,7 +487,7 @@ class DesignPlanSchedulingTest(unittest.TestCase):
     **同时进行的模型调用数**（串行永远是 1），以及批次与条目本身是否如声明。
     """
 
-    def _run(self, payloads, *, , only_blocks=None):
+    def _run(self, payloads, *, only_blocks=None):
         """返回 ``(draft, diag, 并发峰值, 每次调用的 system_prompt)``。"""
 
         prompts: list[str] = []
