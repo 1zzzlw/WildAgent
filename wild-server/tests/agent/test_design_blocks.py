@@ -422,16 +422,22 @@ class DraftExecutorTest(unittest.TestCase):
         self.assertEqual(len(calls), _BLOCK_MAX_ATTEMPTS * len(DESIGN_BLOCKS))
 
     def test_retry_carries_the_evidence_back_to_the_model(self):
-        # minimal 档只有 massing + facade；massing 第一次缺 volumes，第二次补齐。
+        # 档位粒度已下线（2026-09-30）⇒ 块表恒为全量：massing 第一次缺 volumes，
+        # 第二次补齐；其余四块第一次就通过。首批只有 massing 自己（依赖为空），
+        # 所以 calls[0]/calls[1] 必然是它的两次尝试。
+        # 用量 = 1 个坏样本 + 5 个正常样本（massing 重试一次 ⇒ 总共 6 次调用）。
         bad_massing = _json({"massing": {"floors": 2}})
-        draft, diag, calls = self._run([bad_massing, _json(_FULL_PAYLOAD), _json(_FULL_PAYLOAD)])
+        draft, diag, calls = self._run(
+            [bad_massing] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        )
 
         self.assertIn("massing", draft)
         self.assertEqual(diag["unsettled_blocks"], [])
         self.assertIn("上一次输出未通过", calls[1])
         self.assertIn("volumes", calls[1])
-        self.assertEqual(diag["blocks"][0]["attempts"], 2)
-        self.assertEqual(diag["blocks"][1]["attempts"], 1)
+        attempts = {item["block"]: item["attempts"] for item in diag["blocks"]}
+        self.assertEqual(attempts["massing"], 2)
+        self.assertEqual(attempts["structure"], 1)
 
     def test_unsettled_block_records_its_last_issue(self):
         draft, diag, _ = self._run([])
@@ -452,10 +458,19 @@ class DraftExecutorTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             self._run([_json(_FULL_PAYLOAD)], error=RuntimeError("quota exhausted"))
 
-    def test_only_the_selected_levels_blocks_are_drafted(self):
-        _, diag, calls = self._run([_json(_FULL_PAYLOAD)] * 2)
-        self.assertEqual([item["block"] for item in diag["blocks"]], ["massing", "facade"])
-        self.assertEqual(len(calls), 2)
+    def test_diagnostics_follow_the_block_table_order(self):
+        """档位粒度已下线（2026-09-30）：块表恒为全量 5 块。
+
+        并发执行不改变诊断顺序——`diag["blocks"]` 必须回落到块表序，
+        否则前端按序读诊断会与真实批次错位。
+        """
+
+        _, diag, calls = self._run([_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS))
+        self.assertEqual(
+            [item["block"] for item in diag["blocks"]],
+            [block.name for block in DESIGN_BLOCKS],
+        )
+        self.assertEqual(len(calls), len(DESIGN_BLOCKS))
 
     # ── 两条通道都要覆盖：默认（工具循环）与非默认（纯 invoke）──
 
@@ -463,12 +478,12 @@ class DraftExecutorTest(unittest.TestCase):
         """显式关掉试算时退回纯 invoke 通道；语义必须与默认通道一致。"""
 
         draft, diag, calls = self._run(
-            [_json(_FULL_PAYLOAD)] * 2, probe=False
+            [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS), probe=False
         )
 
         self.assertEqual(diag["unsettled_blocks"], [])
-        self.assertEqual(set(draft), {"concept", "massing", "volumes", "facades"})
-        self.assertEqual(len(calls), 2)
+        self.assertEqual(set(draft), {f for b in DESIGN_BLOCKS for f in b.fields})
+        self.assertEqual(len(calls), len(DESIGN_BLOCKS))
         self.assertFalse(diag["probe_tool"])
         self.assertIn("关闭", diag["probe_tool_disabled_reason"])
 

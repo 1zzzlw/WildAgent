@@ -394,16 +394,18 @@ def test_tool_loop_error_is_reraised_as_a_model_failure(monkeypatch) -> None:
     assert "FreeTierOnly" in str(excinfo.value)
 
 
-@pytest.mark.parametrize("level", ["minimal", "standard"])
-def test_empty_block_set_still_reports_probe_state(monkeypatch, level) -> None:
-    """一块都不用写时（`only_blocks` 与档位无交集），诊断字段也必须齐——
-    否则前端读 ``diag["probe_tool"]`` 会 KeyError。"""
+def test_empty_block_set_still_reports_probe_state(monkeypatch) -> None:
+    """一块都不用写时（`only_blocks` 与块表无交集），诊断字段也必须齐——
+    否则前端读 ``diag["probe_tool"]`` 会 KeyError。
+
+    档位粒度已下线（2026-09-30）：`draft_design_blocks` 不再接受 `level`，
+    块表恒为全量，所以这里不再按档位参数化。
+    """
 
     _draft, diag = _run(
         draft_design_blocks(
             base_prompt="BASE",
             user_request=_MESSAGE,
-            level=level,
             thinking_mode=False,
             only_blocks=["nonexistent"],
         )

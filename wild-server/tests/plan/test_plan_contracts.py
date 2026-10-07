@@ -376,9 +376,11 @@ def test_expand_includes_quota_minimum_components():
     assert "balcony" in [item.kind for item in plan.items_by_op("generate")]
 
 
-def test_detail_level_read_from_document_and_budget_is_monotonic():
-    state = _brief_state()
-    assert resolve_detail_level(state) == "simple"
+def test_detail_level_is_pinned_to_standard_and_budget_is_monotonic():
+    # 粒度选择已下线（2026-09-30）：不再从 design_document 读档位，
+    # resolve_detail_level 恒返回 standard；但预算表本身仍是档位化的，
+    # 单调性必须保持——否则有人"顺手"把 detailed 调得比 simple 还低也没人发现。
+    assert resolve_detail_level(_brief_state()) == "standard"
     assert resolve_detail_level({}) == "standard"
     assert plan_budget("simple") == DETAIL_BUDGET["simple"]
     assert plan_budget("unknown-level") == DETAIL_BUDGET["standard"]
