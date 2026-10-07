@@ -8,7 +8,8 @@
 //   1. DEPLOY_SSH_HOST 默认值改为 121.41.78.197，新增 DEPLOY_WEB_PORT；
 //   2. 去掉 443 端口发布与 certbot/letsencrypt 挂载（无域名无法签发证书）；
 //   3. 新增「远程环境预检」stage：SSH/生产 env/基础镜像可拉取性，失败早于长构建；
-//   4. 新增 SSH_AUTH_MODE：key（默认，与旧版一致）/ password（新机器尚未装公钥时可用）；
+//   4. 新增 SSH_AUTH_MODE：默认 password（新机 authorized_keys 为空，key 模式连不上）；
+//      日后装好公钥可切回 key；
 //   5. 前端就绪判据由「docker top 里有 nginx」改为真实 HTTP 探活。
 //
 // 旧配置完整保留在仓库根目录的 Jenkinsfile-temp。
@@ -61,7 +62,9 @@ pipeline {
 
   parameters {
     // ---- 认证 ----
-    string(name: 'SSH_AUTH_MODE', defaultValue: 'key', description: 'SSH 认证方式：key=私钥凭据（推荐，需新服务器已装公钥）；password=Jenkins 凭据密码')
+    // 默认 password：当前服务器 /root/.ssh/authorized_keys 为空，key 模式必然连不上。
+    // 日后把公钥装到服务器后，可以把这里切回 key。
+    choice(name: 'SSH_AUTH_MODE', choices: ['password', 'key'], description: 'SSH 认证方式：password=用 Secret text 凭据里的密码（当前服务器用这个）；key=用 SSH 私钥凭据（需服务器已装公钥）')
     string(name: 'SSH_CREDENTIALS_ID', defaultValue: 'wild-agent-prod-ssh', description: 'key 模式：Jenkins UI 中配置的 SSH 私钥凭据 ID')
     string(name: 'SSH_PASSWORD_CREDENTIAL_ID', defaultValue: 'wild-agent-prod-ssh-password', description: 'password 模式：存放 root 密码的 Jenkins「Secret text」凭据 ID')
 
