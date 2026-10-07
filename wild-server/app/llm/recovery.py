@@ -33,7 +33,7 @@ async def recover_single_json(
     failed_excerpt = failed_reply[:excerpt_limit]
     instruction = f"""
 
-# 格式恢复（覆盖前面的输出格式要求）
+# 格式恢复
 
 这是失败恢复，不要重新解释设计过程。你只能输出一个严格合法的 {object_hint}：
 - 不要 Markdown 围栏、注释、多余说明或额外文本；

@@ -37,7 +37,7 @@ _FURNITURE_SUBTYPE_ALIASES = {
 }
 
 
-# ---------- JSON 提取 ----------
+# JSON 提取
 
 def _extract_json_values(text: str):
     """依次提取代码块和普通文本中的完整 JSON 对象或数组。"""
@@ -174,7 +174,7 @@ def _normalize_scene_patch(patch: dict) -> dict:
     return normalized
 
 
-# ---------- 结构校验 ----------
+# 结构校验
 
 def normalize_blueprint_input(blueprint: dict) -> dict:
     """将模型常见简写转换为标准 WILD 1.1 字段。
@@ -184,7 +184,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     """
     normalized = deepcopy(blueprint)
 
-    # ---------- 固定元数据补全 ----------
+    # 固定元数据补全
     # WILD 协议版本、文档类型和兜底名称不需要模型推理。让模型偶发漏掉这些
     # 非几何字段时继续进入昂贵的修复或直接阻断没有收益，因此在结构校验前
     # 确定性补齐；meta 类型本身非法时仍交给校验器报告。
@@ -197,7 +197,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
         if not isinstance(meta.get("name"), str) or not meta["name"].strip():
             meta["name"] = "AI生成建筑"
 
-    # ---------- 容器门禁 ----------
+    # 容器门禁
     # 非法容器保持原样交给 Schema 校验器报告；规范化层只读取已确认类型，
     # 避免模型把对象写成数组时在进入确定性回退前触发 AttributeError。
     materials = normalized.get("materials", {})
@@ -210,7 +210,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     if not isinstance(components, list):
         components = []
 
-    # ---------- 材质归一化 ----------
+    # 材质归一化
     for material in material_values:
         if not isinstance(material, dict):
             continue
@@ -229,7 +229,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
             # 标准字段已经就绪，删除不属于 WILD 1.1 的简写字段。
             material.pop("color", None)
 
-    # ---------- 构件归一化 ----------
+    # 构件归一化 
     for element in elements:
         if not isinstance(element, dict):
             continue
@@ -305,7 +305,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     # 地恢复矩形楼板。无法从楼板自身或墙体确定范围时保持原值，让校验器继续报错。
     _normalize_floor_coordinates(elements)
 
-    # ---------- 组合构件 from[1] 修正 ----------
+    # 组合构件 from[1] 修正 
     # 系统约定 component.from[1] 是世界坐标 Y，但模型常误用相对父墙底部的局部偏移。
     # 当 from[1] 明显小于父墙底部 Y（超过 0.5m）时，推断为局部坐标并加上 wallBottom。
     wall_bottom_map: dict[str, float] = {}
