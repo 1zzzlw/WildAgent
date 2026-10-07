@@ -1,7 +1,7 @@
 """设计期"逐块起草"执行器（设计文档 §1.6 的首次成图那一半）。
 
-**只替换"产出 raw_plan"这一段**：块全部落定后交给既有的
-``normalize_architecture_plan`` → ``build_design_document_or_error``，下游一行不改。
+块全部落定后交给 ``normalize_architecture_plan`` → ``build_design_document_or_error``。
+局部修订读取当前设计的稳定快照，仅返回本轮成功起草的字段。
 
 三条设计取舍：
 1. **提示词不重写**：基础提示词仍用 `build_architecture_plan_prompt`（它是调过的），
@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time as _time
+from copy import deepcopy
 from typing import Any, Awaitable, Callable, Sequence
 
 from loguru import logger
@@ -42,6 +43,8 @@ from app.agent.generation.architecture.design_plan import (
 )
 from app.agent.plan.contracts import PlanItem
 from app.design.openings import opening_kind
+from app.design.contracts import ComponentInstance
+from pydantic import ValidationError
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
 from app.utils.json_extractor import extract_json_object
@@ -56,10 +59,6 @@ _BLOCK_PER_QUERY = 2
 #: 单块注入的知识文本上限（字符）。超过就按列表序截断：前几片是检索排名最高的，
 #: 后面的本来就该被淘汰。**不截单片**（与 Loader 上下文预算同一纪律）。
 _BLOCK_KNOWLEDGE_MAX_CHARS = 6000
-
-#: 上下限**由系统派生**的构件类型：`normalize_architecture_plan` 按立面逐层 pattern 与屋顶算出来，
-#: 模型写什么都会被覆盖。⇒ 它们不能作为判块是否合格的依据（见 `check_block_contract`）。
-_DERIVED_QUOTA_KINDS = frozenset({"door", "window", "roof"})
 
 ReasoningEmitter = Callable[[str, str], Awaitable[None]]
 
@@ -160,18 +159,18 @@ def check_block_contract(
 
     当前覆盖：
 
-    - 必填字段必须在（`block.fields` 全到）；
+    - 必填字段必须在（历史输出可省略 components）；
     - `facade`：每面 `ground_pattern` / `upper_pattern` 的**长度必须等于 bays**
       （长度不齐会让下游按 bays 切槽位时静默错位）；
-    - `components`：`component_quota` 必须非空，且**不能只写系统会派生的那三类**
-      （door/window/roof）——那样这一块等于什么都没贡献。
+    - `components`：配额是对象、实例满足现有契约；允许不选择额外装饰。
 
     🔴 **一条反面教训**：不要拿"下游一定会覆盖的值"当门禁。`door`/`window` 的上下限由
     `normalize_architecture_plan` 按立面 pattern 派生，曾用"必须与实际总数完全相等"去判，
     真模型连错 3 次 ⇒ **整块被丢弃**，连带丢掉这几种真正会被用的配额。
     """
 
-    missing = [field for field in block.fields if field not in picked]
+    # 历史输出可省略实例；缺失保留旧实例，显式 [] 才表示清空。
+    missing = [field for field in block.fields if field not in picked and field != "components"]
     if missing:
         return f"缺少字段 {missing}"
 
@@ -209,22 +208,16 @@ def check_block_contract(
 
     if block.name == "components":
         quota = picked.get("component_quota")
-        if not isinstance(quota, dict) or not quota:
-            return "component_quota 必须是非空对象"
-        # 🔴 **不能拿 door / window / roof 的上下限判块是否合格**：这三类由
-        # `normalize_architecture_plan` 按立面逐层 pattern 与屋顶**派生**，模型写什么都会被
-        # 原样覆盖（实测：写 min=5 也被改回 1）。
-        #
-        # 曾经的写法是"必须与 pattern 实际总数完全相等"。2026-09-28 真模型实测：
-        # 模型连错 3 次（16/27 vs 实际 18）⇒ **整块 `components` 被判未定稿丢弃** ⇒
-        # 连带丢掉 railing / canopy / cornice / chimney / light 这些**真正会被用**的配额，
-        # 还白烧了 ~90s 模型时间。用"下游会覆盖的值"当门禁，代价全落在别处。
-        contributed = sorted(kind for kind in quota if kind not in _DERIVED_QUOTA_KINDS)
-        if not contributed:
-            return (
-                "component_quota 只写了 door/window/roof —— 这三类的上下限由系统按立面与屋顶派生，"
-                "请改写**其他**构件类型（如 railing / canopy / cornice / chimney / light）的配额"
-            )
+        if not isinstance(quota, dict):
+            return "component_quota 必须是对象，可以为空"
+        instances = picked.get("components", [])
+        if not isinstance(instances, list):
+            return "components 必须是数组，可以为空"
+        for index, instance in enumerate(instances):
+            try:
+                ComponentInstance.model_validate(instance)
+            except ValidationError as exc:
+                return f"components[{index}] 不满足实例契约：{exc}"
     return ""
 
 
@@ -288,13 +281,13 @@ def build_block_prompt(
             "",
             "只修正上面这些，不要顺手改别的——别的块由它们自己的那一轮负责。",
         ]
-    if block.depends_on:
+    if settled:
         lines += [
             "",
             "## 已定稿的前序块（只许引用，不许改写）",
             "",
             "```json",
-            json.dumps(settled or {}, ensure_ascii=False, indent=2)[:4000],
+            json.dumps(settled, ensure_ascii=False, separators=(",", ":")),
             "```",
             "",
             "本块只能引用上面出现过的 id 与尺寸，不得引入新的体量、新的面或新的构件类型。",
@@ -320,6 +313,7 @@ async def draft_design_blocks(
     complexity_profile: dict[str, Any] | None = None,
     architecture_profile: dict[str, Any] | None = None,
     allow_probe: bool = True,
+    current_plan: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """逐块起草，返回 ``(draft, diag)``。
 
@@ -330,6 +324,7 @@ async def draft_design_blocks(
         ``None`` = 按档位全写。传进来的块名若不在该档位里会被忽略——档位是硬约束。
     :param defects: 上一版编译报出的缺陷。会作为**首轮证据**写进提示词，
         而不是让模型先白写一次再被驳。
+    :param current_plan: 只读的当前设计。修订失败或字段未返回时，由调用方保留旧值。
     :param allow_probe: 是否把编译器作为**试算工具**交给模型（设计文档 §2.7）。
         工具只回诊断、不回蓝图，模型污染不了产物。
         ⚠️ **思考过程与试算工具不再二选一**（2026-09-28 起）：工具循环那条通道现在
@@ -337,6 +332,8 @@ async def draft_design_blocks(
         所以思考模式下**同时**有思考文本与工具。差别如实记进 ``diag.probe_tool``。
     """
 
+    # 只读基准与本轮增量分开；未成功重写的字段不会清空旧方案。
+    baseline = deepcopy(current_plan or {})
     draft: dict[str, Any] = {}
     blocks = ordered_blocks("standard")  # 固定使用标准档位（粒度选择已下线，2026-09-30）
     if only_blocks is not None:
@@ -385,14 +382,15 @@ async def draft_design_blocks(
     async def _draft_one(
         block: DesignBlock,
         item: PlanItem,
-    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
+        context: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any]]:
         """跑一条设计块：带证据重试，**有界**（``item.run.max_attempts``）。
 
         本函数只管"把这一块写出来"；下一块是谁、能不能与谁并发，由
         :func:`design_plan.next_batch` 决定 —— 调度不再写在这里。
         """
 
-        prompt = build_block_prompt(base_prompt, block, draft, defects)
+        prompt = build_block_prompt(base_prompt, block, context, defects)
         # 🔴 块级检索（§1.5）在**每次起草尝试前**只做一次：提示词重建（重试时追加
         # "上一次输出未通过"）不重查库。命中进本块提示词，也进诊断。
         knowledge_text = ""
@@ -401,7 +399,7 @@ async def draft_design_blocks(
             knowledge_text, knowledge_diag = await retrieve_block_knowledge(block, user_request)
             if knowledge_text:
                 prompt = build_block_prompt(
-                    base_prompt, block, draft, defects, knowledge_text=knowledge_text
+                    base_prompt, block, context, defects, knowledge_text=knowledge_text
                 )
         except Exception as exc:  # 检索路径自身的 bug 也不得阻断起草
             knowledge_diag["error"] = f"{type(exc).__name__}: {exc}"
@@ -486,10 +484,9 @@ async def draft_design_blocks(
 
             raw = extract_json_object(content)
             picked = _pick_block_fields(raw, block)
-            last_issue = check_block_contract(block, picked, draft) if picked else "输出不是合法 JSON 对象"
+            last_issue = check_block_contract(block, picked, context) if picked else "输出不是合法 JSON 对象"
 
             if not last_issue:
-                draft.update(picked)
                 settled = True
                 break
 
@@ -522,7 +519,7 @@ async def draft_design_blocks(
                 f"\n设计块 {block.name}："
                 + ("已定稿\n" if settled else f"未定稿（{last_issue}），交给下游兜底\n"),
             )
-        return row, usage_total
+        return row, usage_total, picked if settled else {}
 
     # ── plan 驱动：块表确定性展开成条目，批次与并发由 plan 的语义决定 ──
     #
@@ -544,17 +541,19 @@ async def draft_design_blocks(
                 + "、".join(item.kind for item in batch)
                 + "……\n",
             )
+        context = deepcopy({**baseline, **draft})
         results = await asyncio.gather(
-            *(_draft_one(BLOCK_BY_NAME[item.kind], item) for item in batch)
+            *(_draft_one(BLOCK_BY_NAME[item.kind], item, context) for item in batch)
         )
         batches.append(
             {
                 "items": [item.id for item in batch],
                 "parallel_group": str(batch[0].params.get("parallel_group") or ""),
-                "settled": [row["block"] for row, _usage in results if row["settled"]],
+                "settled": [row["block"] for row, _usage, _patch in results if row["settled"]],
             }
         )
-        for _item, (_row, item_usage) in zip(batch, results):
+        for _item, (_row, item_usage, picked) in zip(batch, results):
+            draft.update(picked)
             total_usage = merge_token_usage(total_usage, item_usage)
         plan = apply_batch_outcomes(
             plan,
@@ -565,7 +564,7 @@ async def draft_design_blocks(
                     int(row["attempts"]),
                     str(row["last_issue"] or "已定稿"),
                 )
-                for item, (row, _usage) in zip(batch, results)
+                for item, (row, _usage, _patch) in zip(batch, results)
             ],
         )
 

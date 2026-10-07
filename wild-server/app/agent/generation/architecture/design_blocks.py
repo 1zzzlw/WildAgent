@@ -152,7 +152,7 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
     ),
     DesignBlock(
         name="components",
-        fields=("component_quota",),
+        fields=("component_quota", "components"),
         depends_on=("massing", "structure", "facade", "roof"),
         parallel_group=None,
         contract=(
@@ -161,6 +161,13 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "  自动派生，你写了也会被覆盖。请把配额写在这三类**之外**真正会落地的构件上，\n"
             "  例如 railing / canopy / cornice / chimney / light / column。\n"
             "- 不给未选择的组件硬配额；能力做不到的类型不要写进来（写了会被归入 `uncompiled`）。"
+            "\n- components：具体实例数组，可为空；不要为了通过检查添加装饰。"
+            "每项使用 type、host、size、form、material_role，配额不代替实例设计。"
+            "\n- 门窗 host 可用已定稿体量的 `<volume_id>_L<floor>_<front/back/left/right>`，"
+            "同面第 n 个同类开口追加 `:n`；实际墙由编译器解析，不得猜未来墙 ID。"
+            "\n- 门窗已有槽位时位置和主尺寸来自槽位，size 不覆盖槽位；"
+            "form 可表达引擎已有的 frameWidth/frameDepth 等形态。"
+            "其它构件须使用已提供的真实宿主，无法确定宿主时不编造实例。"
         ),
         knowledge_queries=(
             KnowledgeQuerySpec(

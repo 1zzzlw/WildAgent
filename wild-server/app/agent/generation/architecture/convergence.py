@@ -1,4 +1,4 @@
-"""编译可行性收敛环 —— 设计文档 §1.6 的**第二半**（缺陷回改）。
+"""编译可行性收敛环 —— 设计文档 §1.6 的**第二半**。
 
 第一半在 `design_workflow.py`：首次成图时逐块写。
 本模块是同一套块机制在"编译反馈"下的第二次进入：
@@ -12,14 +12,14 @@
 
 四条硬约束：
 
-1. 🔴 **能力缺失只标记不阻断**（用户红线）：收敛不成功也**不失败**——如实记账，
+1. **能力缺失只标记不阻断**（用户红线）：收敛不成功也**不失败**——如实记账，
    把最终缺陷交给人工审核。`unsupported` / `uncompiled` 由编译器另行归入四类输出，
    这里既不重复报、也不因它们继续修订。
-2. 🔴 **有界**（§1.4）：迭代上限 + 缺陷数连续不下降低于阈值就停。
+2. **有界**（§1.4）：迭代上限 + 缺陷数连续不下降低于阈值就停。
    无界重试会在坏图上烧完预算。
-3. 🔴 **认不出的 `design_field` 不猜**：映射不到块就停。猜错会去改**另一个块**，
+3. **认不出的 `design_field` 不猜**：映射不到块就停。猜错会去改**另一个块**，
    那比不定位更糟（同一参数被两处夹取就会分叉，见 `MEMORY.md`）。
-4. 🔴 **模型故障不掐掉整轮生成**：图纸本身是可用的，收敛只是"能不能更好"。
+4. **模型故障不掐掉整轮生成**：图纸本身是可用的，收敛只是"能不能更好"。
    在这里 `return model_failure_result(...)` 就又把冻结点挪回了校验之前——
    正是本次重构要拆掉的东西。故障如实记进 `diag.model_error` 即止。
 """
@@ -27,6 +27,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from copy import deepcopy
 from typing import Any, Awaitable, Callable, Sequence
 
 from loguru import logger
@@ -118,10 +119,8 @@ async def converge_design(
     （`design_field` 为空、映射不到块），也出环——它不属于任何块，重出任何一块都
     解决不了，只能交人工。
 
-    🔴 ``raw_plan`` 是**合并基准**：重出的块字段会并进它再归一化。
-    传 ``None`` 时基准退化成空字典，重新归一化出来的图纸就**只剩被重出的那几块**——
-    调用方应尽量给首轮的原始草稿（图里由 ``architecture_diag.raw_plan`` 提供）。
-    ``diag.raw_plan_available`` 会把这一点如实报出来，便于排查"为什么图纸缩水了"。
+    修订以当前有效 plan 为基准；raw_plan 只用于诊断其是否存在，不能恢复已被
+    后续修订替换的旧值。每轮模型读取当前版本，返回的块级增量再合回当前版本。
     """
 
     from app.agent.generation.architecture import normalize_architecture_plan
@@ -132,9 +131,8 @@ async def converge_design(
         "material_plan": material_plan,
     }
 
-    original = dict(plan)
-    current = dict(plan)
-    raw = dict(raw_plan or {})
+    original = deepcopy(plan)
+    current = deepcopy(plan)
     result = compile_design(current, **compile_kwargs)
     initial_count = len(blocking_defects(result))
     last_count = initial_count
@@ -193,6 +191,7 @@ async def converge_design(
                 # 正式编译不通过"会变成一条查不出来的分叉。
                 complexity_profile=complexity_profile,
                 architecture_profile=architecture_profile,
+                current_plan={**current, "material_plan": material_plan},
             )
         except Exception as exc:
             # 红线 4：模型故障不把整轮生成掐掉。图纸仍然可用，如实记账即可。
@@ -220,7 +219,7 @@ async def converge_design(
             )
             break
 
-        merged = {**raw, **draft}
+        merged = {**current, **draft}
         try:
             candidate = normalize_architecture_plan(
                 merged,
@@ -257,7 +256,7 @@ async def converge_design(
 
         # 判进展只看**条数**：fingerprint 里带数值，改对一点点就整串变样（见 defect_fingerprint）。
         no_progress = no_progress + 1 if count >= last_count else 0
-        current, raw, result, last_count = candidate, merged, outcome, count
+        current, result, last_count = candidate, outcome, count
 
         if no_progress >= max(1, int(max_no_progress)):
             stop_reason = "no_progress"

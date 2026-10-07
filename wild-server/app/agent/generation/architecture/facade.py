@@ -939,7 +939,14 @@ def conform_openings_to_slots(
         used_slots: set[str] = set()
         ordered_items: list[tuple[dict[str, Any], dict[str, Any]]] = []
         for item in items:
-            preferred = next((slot for slot in slots if slot["id"] not in used_slots and slot["wall_id"] == item.get("parentWall")), None)
+            # 已编译实例可能排在列表末尾；保留其原槽位，不因列表重排交换同墙形态。
+            preferred = next((
+                slot for slot in slots
+                if slot["id"] not in used_slots
+                and slot["wall_id"] == item.get("parentWall")
+                and slot.get("from") == item.get("from")
+            ), None)
+            preferred = preferred or next((slot for slot in slots if slot["id"] not in used_slots and slot["wall_id"] == item.get("parentWall")), None)
             slot = preferred or next((slot for slot in slots if slot["id"] not in used_slots), None)
             if not slot:
                 break

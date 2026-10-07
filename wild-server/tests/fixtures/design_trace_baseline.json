@@ -1,0 +1,398 @@
+{
+  "evidence_only": true,
+  "trace_ids": [
+    "01a0cd36-0592-7cf0-bef3-c35a20694276",
+    "01a0cd38-4dd4-7bc0-9232-c7db668eef24"
+  ],
+  "thread_id": "01a0cd36-0581-7791-a57b-03ec877f0840",
+  "revision_id": "2b0c8bd-dirty",
+  "request": "生成一个别墅",
+  "raw_plan": {
+    "concept": "现代L形别墅，两体量垂直相交形成私密内院；侧翼采用退台处理，在2层创造屋顶露台，丰富建筑轮廓与阴影层次；主入口设于L形转角，强化空间引导性",
+    "massing": {
+      "shape": "l_shape",
+      "width": 18.0,
+      "depth": 18.0,
+      "floor_height": 3.0,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "symmetry": false
+    },
+    "volumes": [
+      {
+        "id": "main_building",
+        "role": "primary",
+        "x": 0.0,
+        "z": 6.0,
+        "width": 18.0,
+        "depth": 12.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "wing_lower",
+        "role": "secondary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 8.0,
+        "depth": 18.0,
+        "start_floor": 1,
+        "end_floor": 1
+      },
+      {
+        "id": "wing_upper",
+        "role": "secondary",
+        "x": 0.0,
+        "z": 4.0,
+        "width": 6.0,
+        "depth": 14.0,
+        "start_floor": 2,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 2,
+      "z_bays": 3
+    },
+    "circulation": {
+      "vertical_strategy": "core_and_stair"
+    },
+    "detail_packages": [],
+    "facades": {
+      "front": {
+        "bays": 3,
+        "ground_pattern": [
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ],
+        "entrance_bay": 1
+      },
+      "back": {
+        "bays": 3,
+        "ground_pattern": [
+          "window",
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "left": {
+        "bays": 2,
+        "ground_pattern": [
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      },
+      "right": {
+        "bays": 2,
+        "ground_pattern": [
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      }
+    },
+    "roof": [
+      {
+        "type": "flat",
+        "position": [
+          9.0,
+          6.0,
+          6.0
+        ],
+        "span": 18.0,
+        "depth": 12.0,
+        "ridge_axis": "x",
+        "overhang": 0.5,
+        "parentId": "main_building"
+      },
+      {
+        "type": "flat",
+        "position": [
+          3.0,
+          2.0,
+          3.0
+        ],
+        "span": 6.0,
+        "depth": 4.0,
+        "ridge_axis": "x",
+        "overhang": 0.5,
+        "parentId": "wing_upper"
+      }
+    ],
+    "component_quota": {
+      "door": {
+        "min": 1,
+        "max": 1,
+        "note": "主入口单扇大门"
+      },
+      "window": {
+        "min": 14,
+        "max": 16,
+        "note": "立面大面积落地窗及标准窗"
+      },
+      "roof": {
+        "min": 2,
+        "max": 2,
+        "note": "主楼与侧翼各一块平屋顶"
+      }
+    },
+    "required_components": [
+      "door",
+      "window",
+      "roof"
+    ],
+    "design_rationale": [
+      "L形平面由主楼（18×12m）与侧翼（8×18m）垂直相交形成，交汇区域自然界定主入口位置",
+      "侧翼2层退台（缩至6×14m）在1层顶部创造约32㎡屋顶露台，丰富建筑轮廓并提供户外活动空间",
+      "主入口设于L形转角处，正对内院，兼顾展示性与私密性",
+      "框架结构使立面可采用大面积玻璃，落地窗与标准窗形成上下层虚实对比",
+      "两块平屋顶分别覆盖主楼与侧翼，不同标高强化体量穿插关系，水平出檐统一现代简洁风格"
+    ]
+  },
+  "normalized_plan": {
+    "schema_version": "1.1",
+    "profile": "residential_lowrise",
+    "concept": "现代L形别墅，两体量垂直相交形成私密内院；侧翼采用退台处理，在2层创造屋顶露台，丰富建筑轮廓与阴影层次；主入口设于L形转角，强化空间引导性",
+    "massing": {
+      "shape": "l_shape",
+      "width": 18.0,
+      "depth": 18.0,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "floor_height": 3.0,
+      "symmetry": false
+    },
+    "complexity": {
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "level": "standard",
+      "reason": "未指定体量复杂度；精密模式只提高实现与验证质量"
+    },
+    "volumes": [
+      {
+        "id": "left_wing",
+        "role": "primary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 7.56,
+        "depth": 18.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "front_wing",
+        "role": "secondary",
+        "x": 7.56,
+        "z": 0.0,
+        "width": 10.44,
+        "depth": 7.56,
+        "start_floor": 1,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 2,
+      "z_bays": 3
+    },
+    "circulation": {
+      "vertical_strategy": "core_and_stair"
+    },
+    "detail_packages": [],
+    "facades": {
+      "front": {
+        "bays": 3,
+        "ground_pattern": [
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ],
+        "entrance_bay": 1
+      },
+      "back": {
+        "bays": 3,
+        "ground_pattern": [
+          "window",
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "left": {
+        "bays": 2,
+        "ground_pattern": [
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      },
+      "right": {
+        "bays": 2,
+        "ground_pattern": [
+          "window",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window"
+        ]
+      }
+    },
+    "roof": {
+      "type": "gable",
+      "ridge_axis": "x",
+      "overhang": 0.55
+    },
+    "component_quota": {
+      "door": {
+        "min": 1,
+        "max": 1,
+        "note": "由逐层立面 pattern 解析，槽位与组件一一对应"
+      },
+      "window": {
+        "min": 19,
+        "max": 19,
+        "note": "由逐层立面 pattern 解析，槽位与组件一一对应"
+      },
+      "roof": {
+        "min": 1,
+        "max": 1,
+        "note": "主楼与侧翼各一块平屋顶",
+        "type": "gable"
+      }
+    },
+    "curtain_wall": false,
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [
+      "door",
+      "window",
+      "roof"
+    ],
+    "unsupported_component_types": [],
+    "design_rationale": [
+      "L形平面由主楼（18×12m）与侧翼（8×18m）垂直相交形成，交汇区域自然界定主入口位置",
+      "侧翼2层退台（缩至6×14m）在1层顶部创造约32㎡屋顶露台，丰富建筑轮廓并提供户外活动空间",
+      "主入口设于L形转角处，正对内院，兼顾展示性与私密性",
+      "框架结构使立面可采用大面积玻璃，落地窗与标准窗形成上下层虚实对比",
+      "两块平屋顶分别覆盖主楼与侧翼，不同标高强化体量穿插关系，水平出檐统一现代简洁风格"
+    ]
+  },
+  "review_door": {
+    "id": "front:floor_1:door:2",
+    "facing": "front",
+    "floor": 1,
+    "bay": 2,
+    "type": "door",
+    "offset": 7.14,
+    "width": 3.72,
+    "bottom": 0.0,
+    "height": 2.4
+  },
+  "compiled_door_slot": {
+    "id": "wall_front_1_1:floor_1:door:2",
+    "type": "door",
+    "wall_id": "wall_front_1_1",
+    "facing": "front",
+    "bay": 2,
+    "from": [
+      8.4,
+      0.0,
+      0.0
+    ],
+    "width": 1.1,
+    "height": 2.318
+  },
+  "final_entities": [
+    {
+      "type": "roof",
+      "id": "roof_planned_01",
+      "roofType": "gable",
+      "span": 8.11,
+      "depth": 19.1,
+      "height": 2.0,
+      "thickness": 0.24,
+      "position": [
+        3.505,
+        6.0,
+        9.0
+      ],
+      "material": "roof"
+    },
+    {
+      "type": "roof",
+      "id": "roof_planned_02",
+      "roofType": "gable",
+      "span": 10.99,
+      "depth": 8.66,
+      "height": 2.0,
+      "thickness": 0.24,
+      "position": [
+        13.055,
+        6.0,
+        3.78
+      ],
+      "material": "roof"
+    },
+    {
+      "type": "door",
+      "id": "door_front_1_1",
+      "parentWall": "wall_front_1_1",
+      "from": [
+        8.4,
+        0.0,
+        0.0
+      ],
+      "width": 1.1,
+      "height": 2.318,
+      "frameMaterial": "metal",
+      "leafMaterial": "wood",
+      "doorStyle": "single",
+      "interaction": {
+        "mode": "swing",
+        "hingeSide": "left"
+      },
+      "frameWidth": 0.082
+    }
+  ],
+  "status": "complete",
+  "validation_error_count": 0
+}

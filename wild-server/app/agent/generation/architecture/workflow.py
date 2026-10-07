@@ -182,6 +182,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             # 会变成一条查不出来的分叉。
             complexity_profile=complexity_profile,
             architecture_profile=profile,
+            current_plan=previous_plan if revision_feedback and isinstance(previous_plan, dict) else None,
         )
         llm_ms = int((_time.time() - block_started) * 1000)
         llm_chars = sum(
@@ -189,7 +190,11 @@ async def architecture_planner(state: GenerationState) -> dict:
         )
         token_usage = block_diag.get("token_usage")
         # 一块都没定稿 ⇒ 视同"没有方案"（`used_fallback` 要如实为真）。
-        raw_plan = draft or None
+        raw_plan = (
+            {**previous_plan, **draft}
+            if revision_feedback and isinstance(previous_plan, dict)
+            else draft or None
+        )
     except Exception as exc:
         error = str(exc)
         logger.warning(f"[architecture] 模型服务故障，已阻断: {exc}")

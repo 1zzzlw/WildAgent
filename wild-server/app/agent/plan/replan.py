@@ -66,7 +66,7 @@ class ReplanDecision:
 def plan_needs_replan(plan: PlanDocument) -> bool:
     """快路径判定：本轮有没有值得调模型的异常。
 
-    只有两类情况值得调一次（§5.1）：
+    只有两类情况值得调一次：
 
     1. 有条目本轮 ``failed``（还没耗尽重试）；
     2. 有条目被**悬空依赖**卡住（依赖的条目根本不存在）——结构异常，自己好不了。

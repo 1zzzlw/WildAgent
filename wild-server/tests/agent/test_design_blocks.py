@@ -4,7 +4,7 @@
 
 1. **块表是常量且自洽**：依赖序、档位闭集、字段→块唯一映射。
    字段归属重复会让两个块都写同一个字段 → 必然分叉。
-2. **块契约只拦"能精确定义"的**：`facade` 的 pattern 长度；`components` 的配额是否非空。
+2. **块契约只拦"能精确定义"的**：`facade` 的 pattern 长度；`components` 的结构是否合法。
    🔴 特别钉住一条**反面教训**：不许拿"下游一定会覆盖的值"当门禁 ——
    `door`/`window` 的上下限由归一化按立面 pattern 派生，曾用"必须完全相等"去判，
    真模型连错 3 次导致**整块被丢弃**（连累 railing/canopy 等真正会被用的配额）。
@@ -69,8 +69,8 @@ _FULL_PAYLOAD = {
     "circulation": {"kind": "stair"},
     "facades": {face: dict(_FACE) for face in ("front", "back", "left", "right")},
     "roof": {"type": "gable"},
-    # 🔴 必须带一个**非派生**类型的配额：door/window/roof 由系统派生，只写它们会被判
-    # "这一块什么都没贡献"（见 check_block_contract 里的反面教训）。
+    "components": [],
+    # 含附属配额的样本；无附属构件也合法，由独立测试覆盖。
     "component_quota": {
         "door": {"min": 4, "max": 4},
         "window": {"min": 20, "max": 20},
@@ -182,15 +182,15 @@ class BlockContractTest(unittest.TestCase):
         block = BLOCK_BY_NAME["facade"]
         self.assertNotEqual(check_block_contract(block, {"facades": {}}, {}), "")
 
-    def test_components_quota_must_not_be_empty(self):
+    def test_components_quota_must_be_an_object(self):
         block = BLOCK_BY_NAME["components"]
-        for quota in ({}, [], None, "x"):
+        for quota in ([], None, "x"):
             self.assertNotEqual(
                 check_block_contract(block, {"component_quota": quota}, {}), "", repr(quota)
             )
 
-    def test_components_quota_of_only_derived_kinds_is_rejected(self):
-        """door/window/roof 由系统派生 —— 只写它们等于这一块什么都没贡献。"""
+    def test_components_do_not_require_extra_decoration(self):
+        """合法方案可以没有额外装饰，不能强迫模型添加构件。"""
 
         block = BLOCK_BY_NAME["components"]
         only_derived = {
@@ -201,7 +201,20 @@ class BlockContractTest(unittest.TestCase):
             }
         }
         issue = check_block_contract(block, only_derived, {})
-        self.assertIn("door/window/roof", issue)
+        self.assertEqual(issue, "")
+        self.assertEqual(check_block_contract(block, {"component_quota": {}, "components": []}, {}), "")
+
+    def test_instances_are_owned_and_validated(self):
+        block = BLOCK_BY_NAME["components"]
+        payload = {"component_quota": {}, "components": [
+            {"type": "window", "host": "main_L1_left", "form": {"frameWidth": 0.11}}
+        ], "roof": {"type": "flat"}}
+        picked = _pick_block_fields(payload, block)
+        self.assertIn("components", picked)
+        self.assertNotIn("roof", picked)
+        self.assertEqual(check_block_contract(block, picked, {}), "")
+        picked["components"] = [{"type": "window"}]
+        self.assertIn("components[0]", check_block_contract(block, picked, {}))
 
     def test_components_quota_numbers_of_derived_kinds_are_not_checked(self):
         """🔴 反面教训：door/window 的**数值**不许再当门禁。

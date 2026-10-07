@@ -527,10 +527,12 @@ class DesignDocument(ContractModel):
         # 校验每个实例
         for idx, instance in enumerate(decisions.components):
             # host必须存在
-            if instance.host and instance.host not in valid_hosts:
+            host, separator, occurrence = instance.host.rpartition(":")
+            host = host if separator and occurrence.isdigit() else instance.host
+            if host and host not in valid_hosts:
                 # 宽松检查：允许部分格式的host（编译器会解析）
                 if not any(
-                    instance.host.startswith(prefix)
+                    host.startswith(prefix)
                     for prefix in ["wall_", "volume_", "slot_", "door_", "window_"]
                 ):
                     raise ValueError(

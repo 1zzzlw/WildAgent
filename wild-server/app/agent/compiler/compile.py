@@ -703,7 +703,9 @@ def _resolve_instance_materials(
     return item
 
 
-def _opening_expression(inst: dict[str, Any], walls: dict[str, Any]) -> tuple[str | None, int]:
+def _opening_expression(
+    inst: dict[str, Any], walls: dict[str, Any], plan: dict[str, Any] | None = None,
+) -> tuple[str | None, int]:
     """解析实例 ``host`` → ``(墙 id, 同墙第几条)``。
 
     ``None`` 表示 host 解析不到任何墙 —— 宿主对齐类实例随即整条丢弃并记入
@@ -716,9 +718,8 @@ def _opening_expression(inst: dict[str, Any], walls: dict[str, Any]) -> tuple[st
 
     - ``wall_<face>_<level>`` —— 骨架墙 id，直接命中；
     - ``slot_<face>_<bay>`` —— 槽位 id，``slot`` → ``wall`` 换前缀；
-    - ``<id>_L<floor>_<face>`` —— 体量面，取末段 ``<face>``（front/back/left/right
-      之一）对墙 id 做后缀匹配。``south`` 这类不在四面词表里的方位词认不出 ——
-      返回 ``None``，比猜一个墙好。
+    - ``<id>_L<floor>_<face>`` —— 按真实体量边界和楼层标高解析，必须唯一命中。
+      跨越多个体量的合并墙不猜测归属，留给缺陷报告处理。
     """
 
     host = str(inst.get("host") or "").strip()
@@ -735,12 +736,39 @@ def _opening_expression(inst: dict[str, Any], walls: dict[str, Any]) -> tuple[st
         wall_id = f"wall_{host[len('slot_'):]}"
         if wall_id in walls:
             return wall_id, occurrence
-    if "_L" in host and host.count("_") >= 2:
-        face = host.rsplit("_", 1)[-1]
-        if face in {"front", "back", "left", "right"}:
-            matches = sorted(wid for wid in walls if wid.endswith(f"_{face}"))
-            if matches:
-                return matches[0], occurrence
+    if "_L" in host and plan:
+        volume_id, _, suffix = host.rpartition("_L")
+        level, _, face = suffix.partition("_")
+        volume = next((v for v in plan.get("volumes", []) if v.get("id") == volume_id), None)
+        if not volume or not level.isdigit() or face not in {"front", "back", "left", "right"}:
+            return None, occurrence
+        floor = int(level)
+        if not int(volume["start_floor"]) <= floor <= int(volume["end_floor"]):
+            return None, occurrence
+        height = float(plan["massing"]["floor_height"])
+        base_y = (floor - 1) * height
+        axis, along = (2, 0) if face in {"front", "back"} else (0, 2)
+        x, z = float(volume["x"]), float(volume["z"])
+        width, depth = float(volume["width"]), float(volume["depth"])
+        boundary = {"front": z, "back": z + depth, "left": x, "right": x + width}[face]
+        low, high = (x, x + width) if along == 0 else (z, z + depth)
+        tolerance = 0.01
+        matches = []
+        for wall_id, wall in walls.items():
+            frm, to = wall.get("from"), wall.get("to")
+            if not isinstance(frm, list) or not isinstance(to, list) or len(frm) != 3 or len(to) != 3:
+                continue
+            if (
+                abs(min(frm[1], to[1]) - base_y) <= tolerance
+                and abs(max(frm[1], to[1]) - (base_y + height)) <= tolerance
+                and abs(frm[axis] - boundary) <= tolerance
+                and abs(to[axis] - boundary) <= tolerance
+                and min(frm[along], to[along]) >= low - tolerance
+                and max(frm[along], to[along]) <= high + tolerance
+            ):
+                matches.append(wall_id)
+        if len(matches) == 1:
+            return matches[0], occurrence
     return None, 1
 
 
@@ -935,6 +963,7 @@ def _compile_from_instances(
     instances: list[dict[str, Any]],
     blueprint: dict[str, Any],
     materials: dict[str, Any],
+    plan: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """从实例清单编译构件（§3.4 覆盖层）。
 
@@ -983,7 +1012,7 @@ def _compile_from_instances(
         for occurrence, inst in enumerate(type_instances, start=1):
             inst = dict(inst)
             inst["_seq"] = occurrence
-            wall_id, nth = _opening_expression(inst, walls)
+            wall_id, nth = _opening_expression(inst, walls, plan)
             component: dict[str, Any] | None = None
 
             if component_type in {"door", "window", "balcony"}:
@@ -1271,6 +1300,7 @@ def _compose(
             # 雨篷/檐口/烟囱的宿主按定义就是门窗或屋顶，晚一步就一个都解析不到。
             {**blueprint, "geometry": {**geometry, "components": components, "elements": elements}},
             materials,
+            plan=normalized,
         )
         components, elements, overrides = _apply_instance_overrides(
             explicit,
