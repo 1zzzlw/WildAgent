@@ -54,12 +54,24 @@ CLASSIFIER_PROMPT = """你是 3D 生成需求分类器。系统能从知识库�
 不要因为"建筑更擅长"就把物件需求归成建筑：那会让用户拿到一个他没要的房子。
 也不要因为"没在例子或词表里见过"就把物件需求归成建筑——那和上一条是同一个错误。
 
+## 第三步：判断建筑形制 profile（只在 GENERATE 且 target_kind=architecture 时有意义）
+
+`profile` 是你**自己判断**出来的形制短标签，供下游把"别墅的形制资料"和"塔的形制资料"
+分开检索。**没有固定清单**，你判断成什么就写什么，只要满足格式：
+
+- 小写英文短标签，只含 `a-z 0-9 _ -`，不超过 40 个字符（如 villa / pavilion / tower）。
+- 同一类形制请尽量用同一个词，这样下游分支才稳定。
+- 不是建筑（target_kind=object）、只是修改场景，或你判断不出形制时，一律写 `custom`。
+
+`custom` 是"未定"，不是"其他类型"——不要为了填满字段而硬凑一个标签。
+
 只输出以下 JSON，不要 Markdown 或其他文字：
 {
   "intent": "generate | edit | chat",
   "confidence": 0.0,
   "target": "本次请求面向的对象或主题",
   "target_kind": "architecture | object",
+  "profile": "建筑形制短标签；认不出或不是建筑写 custom",
   "requires_scene": false,
   "reason": "一句话分类依据，不输出思维链"
 }

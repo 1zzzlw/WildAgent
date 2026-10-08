@@ -106,7 +106,7 @@ def build_architecture_plan_prompt(
 - 体量是逐层外轮廓的唯一来源：某层外轮廓只由覆盖该层的体量决定。规划退台时，任何跨越多个楼层的贯通构件（核心筒、电梯井、贯通竖向交通或通高墙体）都必须落在它经过的**每一层**体量并集之内，即收进 `start_floor..end_floor` 上全部存在的体量交集；不得伸进只存在于低楼层的退台翼，否则它在退台层会成为外凸的独立体块。必要时宁可让该体量贯通到顶层，也不要让核心筒跨进退台翼。
 - detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
 - facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern，槽位数量与 bays 一致。entrance_bay 与 door 槽位**只在用户要求入口/门或形制确有门时才写**；形制知识命中开敞建筑（亭/廊/榭等）时四面 pattern 全 empty、不写 entrance_bay、任何面不写 door——全空声明会被系统自动豁免主入口强制，不要用 door 去"满足"入口要求。
-- roof：type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。多体量（L/U 形）必须按体量分别声明屋顶，不得用单块屋顶盖住内院/天井。
+- roof：**只给一块**屋顶的风格模板——type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。不要写成数组，也不要写 id/span/depth/position：多体量（L/U 形）与退台的分段屋面、出檐、贴合墙体并避开内院/天井，全部由系统按 volumes 自动派生。
 - component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
 - required_components：本次真正需要的组件名称数组。
 - design_rationale：说明体量、入口、交通与构件选择如何满足用户要求的字符串数组。

@@ -148,6 +148,47 @@ def format_block_knowledge(knowledge_text: str) -> str:
     )
 
 
+def _contract_error_notes(errors: list[dict[str, Any]]) -> str:
+    """把 pydantic 校验错误译成**能照着改**的中文短句。
+
+    🔴 这段文本是**给模型的重试证据**（`_draft_one` 会把它拼进下一轮提示词），
+    不是给人看的日志。旧写法直接 `f"{explicit_errors}"` —— 模型收到的是
+    `[{'type': 'model_type', 'loc': (), 'msg': 'Input should be a valid dictionary…',
+    'url': 'https://errors.pydantic.dev/2.13/v/model_type'}]`：
+
+    - 字段路径、期望取值、实际值**三样都得自己从 repr 里挖**；
+    - 真正的信息（该写哪几个键）完全不在里面。
+
+    现场（2026-10-08）：roof 块连撞三轮、`extra_forbidden` / `model_type` 交替出现，
+    模型在"数组"与"单对象"之间来回猜，最后整块作废、屋顶退回默认平屋顶。
+    ``url`` 一律丢掉——它只会让模型去猜"是不是该打开那个网址"。
+    """
+
+    notes: list[str] = []
+    for error in errors:
+        path = ".".join(str(part) for part in (error.get("loc") or ())) or "顶层"
+        kind = str(error.get("type") or "")
+        got = error.get("input")
+        context = error.get("ctx") or {}
+        if kind == "extra_forbidden":
+            notes.append(f"{path} 不是该字段允许的键（写了 {got!r}）")
+        elif kind == "missing":
+            notes.append(f"{path} 必填，没写")
+        elif kind == "model_type":
+            notes.append(f"{path} 必须是对象，实际是 {type(got).__name__}")
+        elif kind.endswith("_type"):
+            notes.append(f"{path} 类型不对（实际 {type(got).__name__} = {got!r}）")
+        elif kind == "literal_error":
+            notes.append(f"{path} 只能是 {context.get('expected')}，实际 {got!r}")
+        elif kind in {"greater_than", "greater_than_equal", "less_than", "less_than_equal"}:
+            notes.append(f"{path} 超出取值边界（实际 {got!r}）")
+        elif kind.startswith(("string_too", "too_short", "too_long")):
+            notes.append(f"{path} 长度不合法（实际 {got!r}）")
+        else:
+            notes.append(f"{path} 不合法：{error.get('msg')}（实际 {got!r}）")
+    return "；".join(notes)
+
+
 def check_block_contract(
     block: DesignBlock,
     picked: dict[str, Any],
@@ -175,6 +216,54 @@ def check_block_contract(
     if missing:
         return f"缺少字段 {missing}"
 
+    # Give invalid explicit values back to the existing bounded block retry before
+    # normalization degrades them. The contracts own supported fields and ranges.
+    from app.design.contracts import MassingDecision, RoofDecision, StructuralGridDecision, VolumeDecision
+    for field, contract in (("massing", MassingDecision), ("roof", RoofDecision),
+                            ("structural_grid", StructuralGridDecision)):
+        if field not in picked:
+            continue
+        value = picked[field]
+        if field == "roof" and isinstance(value, list):
+            # 迁移口径与 `normalize_architecture_plan` 一致：单元素数组就是那个对象。
+            if len(value) == 1:
+                value = value[0]
+            else:
+                # 🔴 2026-10-08 现场：模型**按契约写对了**（契约当时命令"多体量必须按体量
+                # 分别声明屋顶"），是 schema 收不下（`ArchitectureDecisions.roof` 是**单个**
+                # `RoofDecision`）。这种时候证据必须是**形状指令**，不能是 pydantic 的
+                # `model_type` repr —— 模型没有任何办法从那句话里猜到"只能写一块"。
+                return (
+                    "roof 显式值不满足当前协议：只能写**一个对象**，不能是数组"
+                    "（一块屋顶的风格模板，恰好 type / ridge_axis / overhang 三个键）。"
+                    "多体量（L/U 形）的逐块屋面、出檐与避开内院/天井由系统按 volumes 自动派生，"
+                    "**不要**在这里拆成多块。"
+                )
+        try:
+            contract.model_validate(value)
+        except ValidationError as exc:
+            explicit_errors = [e for e in exc.errors() if e["type"] != "missing"]
+            if explicit_errors:
+                return (
+                    f"{field} 显式值不满足当前协议：{_contract_error_notes(explicit_errors)}。"
+                    "请照上面点出的键与取值修订该字段，不能依赖默认替换。"
+                )
+    if "volumes" in picked:
+        volumes = picked["volumes"]
+        if not isinstance(volumes, list) or not 1 <= len(volumes) <= 8:
+            return "volumes 必须包含 1 到 8 个体量"
+        for index, volume in enumerate(volumes):
+            try:
+                VolumeDecision.model_validate(volume)
+            except ValidationError as exc:
+                explicit_errors = [e for e in exc.errors() if e["type"] != "missing"]
+                if explicit_errors:
+                    return (
+                        f"volumes[{index}] 显式值不满足当前协议："
+                        f"{_contract_error_notes(explicit_errors)}。"
+                        "每项必须写全 id、role、x、z、width、depth、start_floor、end_floor。"
+                    )
+
     if "design_constraints" in picked:
         if not isinstance(picked["design_constraints"], list):
             return "design_constraints 必须是数组"
@@ -182,6 +271,11 @@ def check_block_contract(
             for entry in picked["design_constraints"]:
                 DesignConstraint.model_validate(entry)
         except (ValueError, TypeError) as exc:
+            # `ValidationError` 是 `ValueError` 子类：能译成中文就译（证据是给模型读的）。
+            if isinstance(exc, ValidationError):
+                explicit_errors = [e for e in exc.errors() if e["type"] != "missing"]
+                if explicit_errors:
+                    return f"设计决定不满足契约：{_contract_error_notes(explicit_errors)}"
             return f"设计决定不满足契约: {exc}"
 
     if block.name == "facade":
@@ -227,7 +321,13 @@ def check_block_contract(
             try:
                 ComponentInstance.model_validate(instance)
             except ValidationError as exc:
-                return f"components[{index}] 不满足实例契约：{exc}"
+                # 同样是**给模型读的证据**：`f"{exc}"` 是多行 pydantic 报错（含网址），
+                # 现场 `form: "modern_flat"` 就撞在这里 ⇒ 换成一行的字段/取值点名单。
+                return (
+                    f"components[{index}] 不满足实例契约：{_contract_error_notes(exc.errors())}。"
+                    "每项必须有 type 与 host；`size` / `form` 是对象，"
+                    "`form` 的键必须是引擎字段名。"
+                )
     return ""
 
 
@@ -255,6 +355,38 @@ def describe_defects(defects: Sequence[Any] | None) -> list[str]:
     return lines
 
 
+def render_block_contract(block: DesignBlock) -> str:
+    """渲染块契约里的占位符。
+
+    取值一律来自**唯一来源**——不在块表里另抄一份词表：抄两份的话，来源那边加一个
+    成员，提示词就会继续教模型用旧的那套。
+
+    - ``{material_roles}`` → `material.plan.ROLE_SPECS`（构件实例的材质角色名）；
+    - ``{shape_enum}`` / ``{shape_volume_members}`` → `architecture.profile._SHAPE_ENUM`
+      （体量形状词表，以及其中真有体量派生分支的那几个）。
+
+    为什么必须把词表送到**字段所在的那一轮**：`material_role` 的教训（2026-10-08）
+    —— 词表只活在 **另一个节点**的提示词里时，模型只能从检索到的别处借名词，
+    于是写出"看起来对、词表不对"的值。`massing.shape` 同理：枚举以前只在
+    整份 profile 的 JSON 里出现过，与"你要写的那个字段"隔了一层。
+    """
+
+    text = block.contract
+    if "{material_roles}" in text:
+        from app.agent.generation.material.plan import ROLE_SPECS
+
+        text = text.replace("{material_roles}", "、".join(ROLE_SPECS))
+    if "{shape_enum}" in text or "{shape_volume_members}" in text:
+        from app.agent.generation.architecture.profile import _SHAPE_ENUM
+
+        text = text.replace("{shape_enum}", "、".join(_SHAPE_ENUM))
+        text = text.replace(
+            "{shape_volume_members}",
+            "、".join(name for name, kind in _SHAPE_ENUM.items() if kind == "volumes"),
+        )
+    return text
+
+
 def build_block_prompt(
     base_prompt: str,
     block: DesignBlock,
@@ -273,9 +405,25 @@ def build_block_prompt(
         "",
         f"本轮是**分块起草**，你这一轮只负责 `{block.name}` 块。",
         "",
-        f"## 本轮必须输出这些字段（且只输出这些）",
+        # 🔴 只写"这些字段"还不够 —— **键名和嵌套形态**必须一起送到（2026-10-08 事故）：
+        # 基础提示词里的"顶层直接给出唯一最终方案的字段"说的是整份方案，分块后它会被
+        # 误读成"把子字段平铺到顶层"。现场实测：模型把 `massing` 的子字段
+        # （shape/width/depth…）当成了顶层对象、`volumes` 另起一行写成 `volumes: [...]`，
+        # 于是整块被判"输出不是合法 JSON 对象"。清单来自 `block.fields`（唯一事实源），
+        # 不在这里另抄一份。
+        "## 输出形态（先看这一条）",
         "",
-        block.contract,
+        "只输出**一个** JSON 对象，顶层键**恰好**是这 "
+        f"{len(block.fields)} 个："
+        + "、".join(f"`{name}`" for name in block.fields)
+        + "。下面 `- 键名：…` 说的是**那个键里面**该写什么，"
+        "不是让你把它的内容平铺到顶层——某个键的值是对象/数组时，子字段必须留在"
+        "那个对象/数组里；也不要另起一行写成 `键名: 值`，那不是 JSON。"
+        "顶层出现清单之外的键，这一轮就会被判未通过并点名缺了哪些键。",
+        "",
+        "## 本轮必须输出这些字段（且只输出这些）",
+        "",
+        render_block_contract(block),
         "",
         "其余字段**已定稿**，由系统提供；写它们会被忽略，且浪费你的注意力。",
     ]
@@ -502,7 +650,19 @@ async def draft_design_blocks(
 
             raw = extract_json_object(content)
             picked = _pick_block_fields(raw, block)
-            last_issue = check_block_contract(block, picked, context) if picked else "输出不是合法 JSON 对象"
+            # 🔴 判据分两种，别混成一句话（2026-10-08 事故）：
+            #  - `raw is None` 才是"没给出合法 JSON 对象"；
+            #  - 给出了对象、只是**顶层键不对**时，必须让 `check_block_contract` 说出
+            #    **缺了哪些键** —— 它的 `missing` 分支就是为这一刻写的。
+            # 旧写法 `... if picked else "输出不是合法 JSON 对象"` 用"picked 非空"短路，
+            # 而这恰恰是 `picked` 恒为空的场景 ⇒ 那句"缺少字段 [...]"**永远够不到**，
+            # 模型只收到无从下手的证据，白烧一轮重出。现场：模型把 `massing` 的子字段
+            # 平铺到顶层、`volumes` 另起一行，报的就是"输出不是合法 JSON 对象"，
+            # 而它缺的其实是 concept／massing／volumes 这三个顶层键。
+            if raw is None:
+                last_issue = "输出不是合法 JSON 对象"
+            else:
+                last_issue = check_block_contract(block, picked, context)
 
             if allow_design_changes and isinstance(raw, dict) and set(raw) - set(block.fields):
                 last_issue = "补丁越权：仅允许写入 " + ", ".join(block.fields)

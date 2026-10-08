@@ -63,3 +63,26 @@ def test_stale_or_legacy_resolved_view_is_not_rendered():
     changed = doc.model_copy(update={"revision": doc.revision+1})
     svg = render_design_svg(changed, old)
     assert f"DesignDocument r{changed.revision}" in svg
+
+
+@pytest.mark.parametrize("facing,axis", [("front", 0), ("left", 2)])
+def test_svg_opening_width_uses_world_projection(facing, axis):
+    from xml.etree import ElementTree
+    from app.design.preview import render_compiled_svg
+
+    doc = document()
+    resolved = resolve_design(doc)
+    slot = resolved.facade_slots[0]
+    slot.facing = facing
+    slot.world_from = [0, slot.bottom, 0]
+    slot.world_to = [slot.width, slot.bottom, slot.width]
+    resolved.facade_slots = [slot]
+
+    def width():
+        root = ElementTree.fromstring(render_compiled_svg(doc, resolved))
+        rect = next(e for e in root.iter() if e.get("data-slot-id") == slot.id)
+        return float(rect.get("width"))
+
+    straight_width = width()
+    slot.world_to[axis] *= 0.6
+    assert width() == pytest.approx(straight_width * 0.6, abs=0.02)

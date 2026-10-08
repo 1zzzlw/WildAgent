@@ -106,8 +106,8 @@ def test_curtain_wall_plan_has_dense_facade_pattern() -> None:
     assert plan["component_quota"]["window"]["max"] >= 480
 
 
-def test_curtain_wall_facade_pattern_not_overridable_by_model() -> None:
-    """模型输出的稀疏「窗/空」立面模式不能覆盖幕墙的密铺窗格。"""
+def test_curtain_wall_preserves_explicit_facade_pattern() -> None:
+    """P3：幕墙缺失字段可默认，显式合法立面选择不能被默认替换。"""
     raw = {
         "facades": {
             "front": {"bays": 4, "upper_pattern": ["window", "empty", "window", "empty"]},
@@ -117,8 +117,8 @@ def test_curtain_wall_facade_pattern_not_overridable_by_model() -> None:
     plan = normalize_architecture_plan(raw, "生成一个玻璃幕墙办公楼")
     assert plan["curtain_wall"] is True
     front = plan["facades"]["front"]
-    assert front["bays"] == 6  # 幕墙密铺轴网，模型 4 开间被忽略
-    assert all(item == "window" for item in front["upper_pattern"])
+    assert front["bays"] == 4
+    assert front["upper_pattern"] == raw["facades"]["front"]["upper_pattern"]
 
 
 def test_curtain_wall_window_quota_not_overridable_by_model() -> None:
@@ -794,7 +794,7 @@ def test_standard_plan_rejects_exact_duplicate_wall() -> None:
     assert evaluation["duplicate_wall_count"] == 1
 
 
-def test_explicit_two_storey_u_shape_overrides_stale_single_storey_plan() -> None:
+def test_request_revision_records_changes_without_replacing_existing_volumes() -> None:
     message = (
         "生成一个有退台表现，一层为矩形，二层为U形的两层新中式别墅，"
         "别墅二层U形两端分别有一个宽1.5米的带栏杆的阳台，"
@@ -813,20 +813,22 @@ def test_explicit_two_storey_u_shape_overrides_stale_single_storey_plan() -> Non
     }
     complexity = resolve_complexity_profile(message)
 
-    plan = normalize_architecture_plan(raw, message, complexity)
+    changes = []
+    plan = normalize_architecture_plan(raw, message, complexity, normalization_changes=changes)
+    assert any(c["path"] == "/decisions/massing/floors" and c["semantic_change"] for c in changes)
 
     assert plan["massing"]["floors"] == 2
     assert plan["massing"]["modeled_floors"] == 2
     assert plan["massing"]["shape"] == "u_shape"
-    assert plan["massing"]["width"] >= 5.0
+    assert plan["massing"]["width"] == 4.0
     assert plan["balcony_access_count"] == 2
     assert plan["balcony_width"] == 1.5
     assert plan["component_quota"]["balcony"]["min"] == 2
     assert plan["component_quota"]["balcony"]["max"] == 2
     assert {volume["id"] for volume in plan["volumes"]} == {
-        "base", "upper_left_wing", "upper_right_wing", "upper_back_link",
+        "base", "left_wing", "right_wing",
     }
-    assert any(volume["start_floor"] == 2 for volume in plan["volumes"])
+    assert any(volume["end_floor"] == 2 for volume in plan["volumes"])
 
 
 def test_balcony_width_is_not_misread_as_building_width() -> None:
@@ -1288,3 +1290,44 @@ class TestEntrancePunchWithinBays:
         plan = normalize_architecture_plan({"massing": {"floors": 2}}, "生成一个两层别墅")
 
         assert "door" in plan["facades"]["front"]["ground_pattern"]
+
+# ── 形制 id 的透传（2026-10-08）──
+
+
+def test_normalize_keeps_carried_profile_id():
+    """二次归一化必须**沿用 plan 里已有的形制 id**，不许重算成 custom。
+
+    背景：normalize_architecture_plan 在链上被多处二次调用
+    （compiler._compose / build_deterministic_skeleton / probe_tool），
+    它们手里只有 plan、不会再传 architecture_profile。此前这些调用点会把
+    分类器判出的 villa 静默洗回 custom（planning.py:480 的 or 兜底）。
+    """
+
+    assert normalize_architecture_plan({"profile": "villa"}, "把门改大一点")["profile"] == "villa"
+    # 显式传入仍然优先（architecture_profile 必须是完整档案，不是 {"id": …} 薄片）
+    from app.agent.generation.architecture import detect_architecture_profile
+
+    assert normalize_architecture_plan(
+        {"profile": "villa"}, "把门改大一点",
+        architecture_profile=detect_architecture_profile("x", profile_id="pavilion"),
+    )["profile"] == "pavilion"
+    # 没有 id 时行为不变
+    assert normalize_architecture_plan({}, "生成一个东西")["profile"] == "custom"
+    # 脏值（非字符串）不许变成垃圾 id
+    assert normalize_architecture_plan({"profile": {"bad": 1}}, "x")["profile"] == "custom"
+    assert normalize_architecture_plan({"profile": None}, "x")["profile"] == "custom"
+
+
+def test_profile_id_never_changes_any_other_normalized_decision():
+    """换形制 id 只许改 profile 一个键 —— 其余派生决策必须逐项相同。
+
+    这是打标签不加闸的最强判据：一旦某个形制悄悄改了 shapes/配额/结构体系，
+    这份逐键对比就会失败。
+    """
+
+    a = normalize_architecture_plan({"profile": "villa"}, "生成一个两层建筑")
+    b = normalize_architecture_plan({"profile": "tower"}, "生成一个两层建筑")
+    c = normalize_architecture_plan({}, "生成一个两层建筑")
+
+    assert sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k)) == ["profile"]
+    assert sorted(k for k in set(a) | set(c) if a.get(k) != c.get(k)) == ["profile"]

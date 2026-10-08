@@ -84,6 +84,12 @@ def compile_gap_summary(state: dict[str, Any]) -> dict[str, Any]:
     补图纸上的哪个洞。唯一事实源是编译节点的诊断：
 
     - ``uncompiled``：配额点名但编译器没有派生规则的类型 → 交模型通道补；
+    - ``instance_dropped``：实例清单里**宿主解析不到、整条丢弃**的条目
+      （``类型:宿主``）→ 该类型的生成条目要按真实宿主重写；
+    - ``instance_form_rejected``：实例**形态值**不满足引擎字段契约、编译时未采纳
+      （``类型.键: 原因``）→ 该类型要按知识库的字段契约重写这一步表态；
+    - ``instance_form_unverified``：形态值落了、但引擎 schema 里没有该字段
+      （``类型.键``）→ 静默失效，生成条目别依赖它；
     - ``defects``：编译器报出的图纸缺陷（schema/结构/约束）→ 生成与修复都该看到。
 
     返回空 dict 表示"图纸没有缺口或编译报告不存在"，两个消费点（条目参数、
@@ -97,6 +103,30 @@ def compile_gap_summary(state: dict[str, Any]) -> dict[str, Any]:
     uncompiled = [str(kind) for kind in (report.get("uncompiled") or []) if kind]
     if uncompiled:
         gaps["uncompiled"] = uncompiled
+    # 契约层不再拦宿主引用（见 `contracts._validate_component_instances`），
+    # 编译器的 `dropped` 就成了"写是写了、没落地"的**唯一**通道，必须继续往下传。
+    instance_dropped = [
+        str(item) for item in (report.get("instance_dropped") or []) if item
+    ]
+    if instance_dropped:
+        gaps["instance_dropped"] = instance_dropped
+    # 形态表态的两类证据：值被拒（编译器**没落**）与字段闭集外（落了但引擎不认）。
+    # 它们和 `instance_dropped` 是同一条口径 —— "只标记不阻断"的标记必须传到消费者手里。
+    form_rejected = [
+        str(item) for item in (report.get("instance_form_rejected") or []) if item
+    ]
+    if form_rejected:
+        gaps["instance_form_rejected"] = form_rejected
+    form_unverified = [
+        str(item) for item in (report.get("instance_form_unverified") or []) if item
+    ]
+    if form_unverified:
+        gaps["instance_form_unverified"] = form_unverified
+    form_ignored = [
+        str(item) for item in (report.get("instance_form_ignored") or []) if item
+    ]
+    if form_ignored:
+        gaps["instance_form_ignored"] = form_ignored
     defects = [
         defect for defect in (report.get("defects") or [])
         if isinstance(defect, dict)
@@ -273,6 +303,18 @@ def expand_plan(
     labels = {config.component_type: config.label for config in get_implemented_components()}
     blueprint_gaps = compile_gap_summary(state)
     uncompiled_kinds = set(blueprint_gaps.get("uncompiled") or [])
+    # `类型:宿主` → 该类型被丢弃的宿主清单（同一类型的多条可能同源，去重保序）。
+    dropped_by_kind: dict[str, list[str]] = {}
+    for gap_entry in blueprint_gaps.get("instance_dropped") or []:
+        kind_name, _, host_name = str(gap_entry).partition(":")
+        if kind_name and host_name and host_name not in dropped_by_kind.setdefault(kind_name, []):
+            dropped_by_kind[kind_name].append(host_name)
+    # `类型.键: 原因` → 该类型被拒的形态键清单（同理去重保序）。
+    rejected_forms_by_kind: dict[str, list[str]] = {}
+    for gap_entry in blueprint_gaps.get("instance_form_rejected") or []:
+        kind_name, _, detail = str(gap_entry).partition(".")
+        if kind_name and detail and detail not in rejected_forms_by_kind.setdefault(kind_name, []):
+            rejected_forms_by_kind[kind_name].append(detail)
     items: list[PlanItem] = []
     generate_ids: list[str] = []
     batch_merge_ids: list[str] = []
@@ -294,7 +336,23 @@ def expand_plan(
             "parallel_group": entry.parallel_group,
             "batch_reason": entry.batch_reason,
         }
-        if kind in uncompiled_kinds:
+        dropped_hosts = dropped_by_kind.get(kind) or []
+        rejected_forms = rejected_forms_by_kind.get(kind) or []
+        if dropped_hosts:
+            # 比"编译器没产出该类型"更具体：图纸**写过**这条实例，只是宿主没解析到。
+            params["blueprint_gap"] = (
+                "实例清单里这些宿主没解析到、该实例已整条丢弃"
+                f"（compile_report.instance_dropped）：{'、'.join(dropped_hosts[:4])}。"
+                "本条目先按知识库检索到的真实宿主契约重写，不要沿用这些宿主 id。"
+            )
+        elif rejected_forms:
+            # 图纸写过的**形态值**不合引擎字段契约，编译时被拒（值没落，几何仍用派生值）。
+            params["blueprint_gap"] = (
+                "图纸给这些形态字段写的值不符合引擎字段契约、编译时未采纳"
+                f"（compile_report.instance_form_rejected）：{'；'.join(rejected_forms[:4])}。"
+                "本条目按知识库检索到的字段契约生成该形态，不要沿用这些值。"
+            )
+        elif kind in uncompiled_kinds:
             # 图纸缺口注入：条目要知道自己在补哪个洞——
             # 编译器点名了该类型却没产出，这条 generate 就是模型通道的补洞任务。
             params["blueprint_gap"] = (

@@ -718,13 +718,13 @@ def _cut_core_shaft_openings(blueprint: dict[str, Any], floor_height: float) -> 
             pass
 
 
-def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "") -> dict[str, Any]:
+def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *, normalized_input: bool = False) -> dict[str, Any]:
     """在骨架模型不可用或复杂度不足时生成可校验的体量化概念骨架。
 
     full 模式按方案 volumes 落实组合体量；schematic 模式仍使用完整总高度外壳，
     避免一次生成数百层元素。
     """
-    normalized = normalize_architecture_plan(
+    normalized = plan if normalized_input else normalize_architecture_plan(
         plan,
         user_message,
         plan.get("complexity") if isinstance(plan, dict) else None,

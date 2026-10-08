@@ -329,6 +329,11 @@ entity_type: roof
 - 生成屋顶前先用 `get_wall_bounding_box` 取得墙体包围盒，**不要猜测尺寸**。
 - 多体量（L 形 / U 形 / 退台）必须**为每个体量各生成一块屋顶**，或让屋顶轮廓贴合墙体并留出内院 / 天井；
   禁止用单块屋顶盖住没有墙、没有楼板的空腔。
+  ⚠️ **分层**：本条约束的是**蓝图屋顶元素**（`geometry.elements` 里 `type: roof` 的每一项）的尺寸与定位。
+  **设计层**的 `decisions.roof` 只写**一块风格模板**（`type` / `ridge_axis` / `overhang` 三个键），
+  逐体量分段由编译器按 `volumes` 派生（`facade._planned_roof_slots` + `conform_roofs_to_slots`）；
+  在设计层写数组或写 `id` / `span` / `depth` / `position` 会被图纸契约判为不合法，
+  整块设计作废、屋顶退回默认平屋顶。
 - `position` 应位于墙体 XZ 中心和墙顶高度。
 
 **示例**：

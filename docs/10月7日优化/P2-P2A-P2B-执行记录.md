@@ -4,6 +4,16 @@
 
 P1 保持已完成状态。原有未提交的 design_blocks.py / design_workflow.py 改动已保留，在其上接入本轮能力。
 
+## 架构重构后的补充核对（2026-10-08）
+
+当前仓库已包含结构调整提交 `4a1cc96`。上文“未提交”描述的是 Agent 未执行提交操作，不代表这些实现仍未进入用户的提交历史。此次保留工作区已有的形制标签、实例宿主、材质角色及编译器修改。
+
+按现行源码重新核对：`graph.py` → `nodes/*` 薄入口 → `design_flow/review.py`、`compile.py`、`convergence.py`。共享编译仍在 `app/design/compilation.py`；完善实现仍在 `generation/architecture/completion.py`，模型批次边界为 `revision_task.py`；最终一致性检查仍在 `validation/workflow.py`，位于几何缓存之外。审核版本和收敛回归用例的替换目标已指向 `design_flow` 实现模块。
+
+补充修复：SVG 中斜向墙开口的显示宽度改为世界坐标两端在对应立面轴上的距离，保留原始物理宽度作为提示信息；此前直接显示物理宽度会使斜墙开口画得过宽。`test_compiled_review.py` 增加 front/left 两个投影方向的回归用例。
+
+结论：P2、P2A、P2B 的代码交付已具备，重构后的入口仍连通。此结论来自源码和差异核对；未运行任何测试、构建、类型检查或真实生成，运行验收及视觉效果仍待用户确认。
+
 ## P2：审核与编译共用解释
 
 建筑链：DesignDocument → design/compilation.py::compile_document → 原 compile_design → project_compilation → ResolvedDesign/SVG。正式 compile_node 使用同一 document 编译适配，不再读取另一份 plan 重新决定审核尺寸。旧无文档 checkpoint 保留原编译入口。

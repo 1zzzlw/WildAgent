@@ -66,8 +66,8 @@ _FULL_PAYLOAD = {
             "end_floor": 2,
         }
     ],
-    "structural_grid": {"x": [4, 4, 4], "z": [5, 5]},
-    "circulation": {"kind": "stair"},
+    "structural_grid": {"system": "frame", "x_bays": 3, "z_bays": 2},
+    "circulation": {"vertical_strategy": "stair"},
     "facades": {face: dict(_FACE) for face in ("front", "back", "left", "right")},
     "roof": {"type": "gable"},
     "components": [],
@@ -245,6 +245,104 @@ class BlockContractTest(unittest.TestCase):
             check_block_contract(block, picked, {"facades": {face: dict(_FACE) for face in _FACE}}), ""
         )
 
+    def test_components_contract_states_the_shape_of_form_profile(self):
+        """檐口的 `form.profile` 必须写清**形状**（2026-10-08 事故）。
+
+        图纸层能表态这个字段（`compile._INSTANCE_FORM_FIELDS["cornice"]`），
+        但契约里从没说过它是"二维点数组" ⇒ 模型写了 `"rectangular_80x60"` 这类预设名，
+        编译器原样落进蓝图，第一次被看见是在**校验器**里（还报成"退化为直线"）。
+        词表/形态必须送达**写它的那一轮**提示词。
+        """
+
+        from app.agent.generation.architecture.design_workflow import render_block_contract
+
+        contract = render_block_contract(BLOCK_BY_NAME["components"])
+        self.assertIn("form.profile", contract)
+        self.assertIn("二维数字点", contract)
+        self.assertIn("rectangular_80x60", contract)
+
+    def test_roof_contract_does_not_ask_for_a_roof_array(self):
+        """🔴 roof 块契约（以及基础提示词）**不得**再命令"按体量分别声明屋顶"。
+
+        现场（2026-10-08）：两处都写着"多体量（L/U 形）必须按体量分别声明屋顶"，
+        而设计层 `ArchitectureDecisions.roof` 是**单个** `RoofDecision`（只有
+        type/ridge_axis/overhang）。模型照契约写数组 ⇒ 契约拒 ⇒ 重试三轮全废 ⇒
+        roof 块未定稿、屋顶退回默认平屋顶。
+
+        那句话原本是**蓝图屋顶元素**的规则（KB《构件参数》/《生成红线》），
+        被抄进了图纸层的契约；逐体量分段其实由 `facade._planned_roof_slots`
+        按 volumes 自动派生。这条用例同时钉住"别再抄回来"。
+        """
+
+        from app.agent.generation.architecture.design_workflow import render_block_contract
+        from app.agent.prompts import build_architecture_plan_prompt
+
+        roof_contract = render_block_contract(BLOCK_BY_NAME["roof"])
+        base_prompt = build_architecture_plan_prompt("测试知识", {"default_roof": "flat"})
+        for name, text in (("roof 块契约", roof_contract), ("基础提示词", base_prompt)):
+            self.assertNotIn("分别声明屋顶", text, name)
+            self.assertIn("自动派生", text, name)
+
+    def test_roof_array_is_refused_with_a_shape_instruction_not_a_pydantic_dump(self):
+        """形状写错时，证据必须是**可照做的中文**，不是 pydantic 的 repr。"""
+
+        block = BLOCK_BY_NAME["roof"]
+        two = [{"type": "hip", "overhang": 1.5}, {"type": "hip", "overhang": 1.5}]
+
+        issue = check_block_contract(block, {"roof": two}, {})
+        self.assertIn("数组", issue)
+        self.assertIn("volumes", issue)
+        self.assertNotIn("errors.pydantic.dev", issue)
+        self.assertNotIn("model_type", issue)
+
+        # 单元素数组走**与归一化同口径**的迁移：解包成那个对象后应当通过。
+        self.assertEqual(
+            check_block_contract(block, {"roof": [{"type": "hip", "overhang": 1.5}]}, {}), ""
+        )
+
+    def test_wrong_key_evidence_names_the_key_and_drops_the_pydantic_url(self):
+        """多余键 / 取值越界的证据：点名键与取值，且不带 pydantic 网址。"""
+
+        block = BLOCK_BY_NAME["roof"]
+        issue = check_block_contract(
+            block, {"roof": {"type": "hip", "span": 13.0, "position": {"x": 1.0, "z": 2.0}}}, {}
+        )
+        self.assertIn("不是该字段允许的键", issue)
+        self.assertIn("span", issue)
+        self.assertNotIn("errors.pydantic.dev", issue)
+
+        bad_value = check_block_contract(block, {"roof": {"type": "斜屋顶"}}, {})
+        self.assertIn("type", bad_value)
+        self.assertNotIn("errors.pydantic.dev", bad_value)
+
+    def test_components_contract_states_that_form_is_an_object(self):
+        """`form` 的形状必须写清：它是**对象**（键=引擎字段名），不是形态名字符串。
+
+        现场（2026-10-08）：模型写了 `form: "modern_flat"` ⇒ 实例契约报
+        `dict_type`、整块重出。
+        """
+
+        from app.agent.generation.architecture.design_workflow import render_block_contract
+
+        contract = render_block_contract(BLOCK_BY_NAME["components"])
+        self.assertIn("必须是**对象**", contract)
+        self.assertIn("引擎字段名", contract)
+        self.assertIn("modern_flat", contract)
+
+    def test_component_instance_evidence_is_a_one_line_field_note(self):
+        """实例契约的证据同样要**一行、可读**：点名字段与实际取值。"""
+
+        block = BLOCK_BY_NAME["components"]
+        issue = check_block_contract(
+            block,
+            {"component_quota": {}, "components": [{"type": "roof", "host": "v", "form": "modern_flat"}]},
+            {},
+        )
+        self.assertIn("components[0]", issue)
+        self.assertIn("form", issue)
+        self.assertNotIn("errors.pydantic.dev", issue)
+        self.assertNotIn("\n", issue, "证据要一行，多行 pydantic 报错模型读不动")
+
 
 class BlockKnowledgeTest(unittest.TestCase):
     """块级知识检索（§1.5 "RAG 换位置"）：每块用自己的查询，命中只进本块。
@@ -352,6 +450,25 @@ class BlockKnowledgeTest(unittest.TestCase):
         self.assertIn('"floors": 2', later)
         self.assertIn("本轮只写一个设计块", later)
 
+    def test_block_prompt_names_the_required_top_level_keys(self):
+        """块提示词必须把**顶层键名**写出来（2026-10-08 事故）。
+
+        只说"本轮必须输出这些字段"不够：基础提示词里那句"顶层直接给出唯一最终方案的
+        字段"在分块后会被误读成"把子字段平铺到顶层"。现场实测：模型把 `massing` 的
+        子字段（shape/width/depth…）当成了顶层对象，`volumes` 另起一行写成
+        `volumes: [...]` ⇒ 整块被判未通过。
+
+        键名清单必须来自 `block.fields`（唯一事实源），所以这里**遍历整张块表**钉住——
+        将来加块时忘了同步提示词会红。
+        """
+
+        for block in DESIGN_BLOCKS:
+            prompt = build_block_prompt("BASE", block, {})
+            self.assertIn("输出形态", prompt, block.name)
+            for name in block.fields:
+                self.assertIn(f"`{name}`", prompt, f"{block.name} 缺键名 {name}")
+            self.assertIn("平铺到顶层", prompt, block.name)
+
 
 class DraftExecutorTest(unittest.TestCase):
     """执行器：逐块落定 / 带证据重试 / 失败不阻断 / 模型故障上抛。
@@ -452,6 +569,38 @@ class DraftExecutorTest(unittest.TestCase):
         attempts = {item["block"]: item["attempts"] for item in diag["blocks"]}
         self.assertEqual(attempts["massing"], 2)
         self.assertEqual(attempts["structure"], 1)
+
+    def test_flattened_block_gets_an_actionable_missing_keys_evidence(self):
+        """顶层键写错的输出，证据必须是"缺了哪些键"，不是"输出不是合法 JSON 对象"。
+
+        事故原文（2026-10-08 14:32）：模型把 `massing` 的**子字段**当成了顶层对象，
+        `volumes` 另起一行写成 `volumes: [...]`。旧实现的
+        `check_block_contract(...) if picked else "输出不是合法 JSON 对象"` 用
+        "picked 非空"短路，而这恰恰是 `picked` 恒为空的场景 ⇒
+        `check_block_contract` 里那句"缺少字段 [...]"**永远够不到**，
+        模型只收到无从下手的证据（"不是合法 JSON"），白烧一轮重出。
+        """
+
+        incident = (
+            '{"shape": "l_shape", "width": 20.0, "depth": 15.0, "floors": 2,'
+            ' "modeled_floors": 2, "representation_mode": "full", "floor_height": 3.0,'
+            ' "symmetry": false, "tiers": null}\nvolumes: [{"id": "main_volume'
+        )
+        draft, diag, calls = self._run(
+            [incident] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        )
+
+        # 首批只有 massing（依赖为空）⇒ calls[1] 必然是它的第 2 次尝试。
+        evidence = calls[1].split("证据：", 1)[1].split("\n", 1)[0].strip()
+        self.assertIn("缺少字段", evidence)
+        for name in ("concept", "massing", "volumes"):
+            self.assertIn(name, evidence)
+        self.assertNotIn("不是合法 JSON", evidence)
+
+        # 带着这条证据重出一次就定稿 —— 不该原地打转到上限。
+        self.assertIn("massing", draft)
+        attempts = {item["block"]: item["attempts"] for item in diag["blocks"]}
+        self.assertEqual(attempts["massing"], 2)
 
     def test_unsettled_block_records_its_last_issue(self):
         draft, diag, _ = self._run([])

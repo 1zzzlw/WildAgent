@@ -58,7 +58,7 @@ async def validate_node(state: GenerationState) -> dict:
     
     try:
         t0 = _time.time()
-        merge_diag = state.get("merge_diag", {})
+        merge_diag = dict(state.get("merge_diag") or {})
         current_fingerprint = blueprint_fingerprint(merged_blueprint)
 
         # 1. 优先复用 callback 携带的、指纹一致的校验快照（callback 已做过全量复检）。
@@ -116,18 +116,29 @@ async def validate_node(state: GenerationState) -> dict:
                 ))
 
         # Always refresh design-dependent evidence, even if geometry validation is cached.
-        pipeline_results = [r for r in pipeline_results if r.name != "review_opening_consistency"]
+        pipeline_results = [r for r in pipeline_results if r.name not in {"review_opening_consistency", "approved_design_mutation"}]
         if state.get("design_document"):
             from app.design.contracts import DesignDocument, ObjectDecisions
-            from app.design.resolver import resolve_design
-            from app.design.compilation import opening_drift
+            from app.design.compilation import compile_document, project_compilation, opening_drift
+            from app.design.normalization import approved_compilation_changes
             document = DesignDocument.model_validate(state["design_document"])
             if not isinstance(document.decisions, ObjectDecisions):
-                drift = opening_drift(resolve_design(document), merged_blueprint)
+                compiled = compile_document(document)
+                drift = opening_drift(project_compilation(document, compiled), merged_blueprint)
                 if drift:
                     pipeline_results.append(PipelineStepResult(
                         step="design", name="review_opening_consistency",
                         output="\n".join(f"❌ [design] {message}" for message in drift),
+                        has_error=True, has_warning=False,
+                    ))
+                mutations = approved_compilation_changes(compiled.blueprint, merged_blueprint)
+                merge_diag["approved_design_changes"] = mutations
+                if mutations:
+                    pipeline_results.append(PipelineStepResult(
+                        step="design", name="approved_design_mutation",
+                        output="\n".join(f"❌ [design] 已审核实体发生变化：{c['path']}，"
+                                         f"{c['before']!r} → {c['after']!r}；需要设计修订或等价性证明"
+                                         for c in mutations),
                         has_error=True, has_warning=False,
                     ))
 
@@ -200,6 +211,7 @@ async def validate_node(state: GenerationState) -> dict:
             "validation_cache_reused": cache_reused,
             "validation_issues": validation_issues,
             "validation_snapshot": asdict(snapshot),
+            "merge_diag": merge_diag,
             "failed_components": failed_components,
             "passed_component_ids": passed_component_ids,
             "status": status,

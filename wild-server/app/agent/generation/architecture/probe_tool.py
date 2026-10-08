@@ -82,12 +82,14 @@ def probe_design_text(
     if not isinstance(raw, dict):
         return "❌ design_json 必须是一个 JSON **对象**（图纸），收到别的类型。"
 
+    normalization_changes = []
     try:
         plan = normalize_architecture_plan(
             raw,
             user_message=user_message,
             complexity_profile=complexity_profile,
             architecture_profile=architecture_profile,
+            normalization_changes=normalization_changes, input_source="model",
         )
     except Exception as exc:  # noqa: BLE001 —— 工具边界：任何异常都必须变成文本
         # 归一化失败是**模型最可能**撞到的一类（它写的就是图纸）。这条回执本身就是有用的
@@ -95,7 +97,7 @@ def probe_design_text(
         return f"❌ 图纸不合法（归一化失败）：{type(exc).__name__}: {exc}"
 
     try:
-        result = compile_design(plan, mode=MODE_PROBE, user_message=user_message)
+        result = compile_design(plan, mode=MODE_PROBE, user_message=user_message, normalized_input=True)
     except Exception as exc:  # noqa: BLE001 —— 编译器崩溃是我们的 bug，但也不许穿出去
         logger.warning(f"[probe] 试算时编译器抛错: {exc}")
         return f"❌ 编译器内部错误：{type(exc).__name__}: {exc}"
@@ -111,6 +113,11 @@ def probe_design_text(
         f"error 缺陷 {len(errors)} 条、warn {len(warns)} 条；"
         f"未表态（走引擎默认值）的字段 {len(result.defaulted)} 项。",
     ]
+
+    if normalization_changes:
+        lines.append("归一化变化（可编译不等于原方案已保留）：")
+        for change in normalization_changes:
+            lines.append(f"- {change['path']}: {change['before']!r} → {change['after']!r}；{change['reason']}")
 
     if errors:
         lines.append("")

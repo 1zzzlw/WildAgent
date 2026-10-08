@@ -124,6 +124,7 @@ async def complete_design(*, document: dict, user_message: str, complexity_profi
         materials = current.decisions.materials.resolved_plan
         context = {**plan, "material_plan": materials.model_dump(mode="json") if materials else None}
         calls += len(tasks)
+        normalization_changes = []
         try:
             patch, block_diag = await _run_revision(dict(
                 base_prompt=_COMPLETION_PROMPT+"\n本轮任务与完成条件：\n"+json.dumps(tasks, ensure_ascii=False),
@@ -144,7 +145,8 @@ async def complete_design(*, document: dict, user_message: str, complexity_profi
                 raise ValueError("设计块未全部完成，保留当前有效设计")
             merged = {**plan, **deepcopy(patch)}
             normalized = normalize_architecture_plan(merged, user_message=user_message,
-                complexity_profile=complexity_profile, architecture_profile=architecture_profile)
+                complexity_profile=complexity_profile, architecture_profile=architecture_profile,
+                normalization_changes=normalization_changes, input_source="model")
             # Quota/required types are existing deterministic derivatives of facade/roof
             # decisions. Record these writes; do not require a second model to copy them.
             derived_fields = {"component_quota", "required_components", "detail_packages", "balcony_access_count", "balcony_width"}
@@ -156,6 +158,7 @@ async def complete_design(*, document: dict, user_message: str, complexity_profi
                                for f in derived_fields if f in normalized and normalized[f] != plan.get(f)}
             normalized = {**plan, **{f:v for f,v in normalized.items() if f in allowed|derived_fields}}
             normalized["design_constraints"] = plan["design_constraints"]
+            normalized["normalization_changes"] = normalization_changes
             candidate = build_design_document(normalized, session_id=current.session_id,
                 source_request=current.requirements.source_request,
                 building_type=current.requirements.building_type,
@@ -186,12 +189,13 @@ async def complete_design(*, document: dict, user_message: str, complexity_profi
                 task["result_hash"] = resolved.design_hash
                 task["closed_gap_ids"] = sorted(closed.intersection(task["gap_ids"]))
             rounds.append({"blocks": blocks, "base_hash": base_hash, "result_hash": resolved.design_hash,
-                           "closed_gap_ids": sorted(closed), "derived_changes": derived_changes, "block_diagnostics": block_diag})
+                           "closed_gap_ids": sorted(closed), "derived_changes": derived_changes, "normalization_changes": normalization_changes, "block_diagnostics": block_diag})
         except Exception as exc:
             no_progress += 1
             for t in tasks:
                 t.update(status="failed", evidence_error=str(exc), model_error=isinstance(exc, RevisionModelError))
-            rounds.append({"blocks": blocks, "base_hash": base_hash, "error": str(exc)})
+            rounds.append({"blocks": blocks, "base_hash": base_hash, "error": str(exc),
+                           "normalization_changes": normalization_changes})
         tasks_log.extend(tasks)
         if tasks and tasks[0].get("model_error"):
             stop = "model_error"

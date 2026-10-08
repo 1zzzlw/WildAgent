@@ -94,6 +94,46 @@ def test_profile_selection_is_deleted_and_custom_is_the_only_profile():
     assert "pavilion" in profile["shapes"]
 
 
+def test_profile_label_never_narrows_physical_bounds():
+    """防回归（2026-10-08）：形制标签只做分流与观测，**不得**收窄任何物理边界。
+
+    档案 id 现在来自分类器模型自选（villa / pavilion / 模型自造的任一词），
+    但 shapes / 尺寸范围 / 层数范围必须逐项等于 custom —— 一旦按形制收窄，就复现了
+    2026-09-29 删掉的"选档白名单"（把"欧式古典柱廊殿宇"锚成 12×9 两层住宅）。
+    """
+
+    baseline = profile_module.detect_architecture_profile("生成一个四角亭子")
+    for label in ("villa", "pavilion", "tower", "ziggurat", "custom"):
+        profile = profile_module.detect_architecture_profile(
+            "生成一个四角亭子", profile_id=label,
+        )
+        assert profile["id"] == label
+        for key in (
+            "width_range", "depth_range", "floor_range", "max_explicit_floors",
+            "shapes", "base_components", "require_front_entrance",
+            "default_massing", "default_roof",
+        ):
+            assert profile[key] == baseline[key], f"{label} 收窄了 {key}"
+
+
+def test_profile_label_is_an_open_set_not_a_code_whitelist():
+    """防回归（2026-10-08 用户决策："不要写成白名单，全部由 LLM 控制"）。
+
+    代码只负责把模型给的标签清成 slug，**不校验词表**：认不出的值原样透传，
+    只有缺失/非法才退 custom；降级路径（模型没参与判断）也不许拿用户原文里的词凑标签。
+    """
+
+    from app.agent.intent.decision import _normalize_profile, fallback_decision
+
+    assert _normalize_profile("Ziggurat") == "ziggurat"
+    assert _normalize_profile("villa 大宅") == "villa"
+    assert _normalize_profile("") == "custom"
+    assert _normalize_profile(None) == "custom"
+    assert _normalize_profile("x" * 99) == "x" * 40
+
+    assert fallback_decision("生成一个别墅", False, "模型不可用").profile == "custom"
+
+
 @pytest.mark.parametrize("intent", ["edit", "chat"])
 def test_non_generate_intent_never_becomes_object(intent):
     """edit/chat 不做目标分叉（下游按 architecture 走），避免"改桌子"被当成物件链。"""

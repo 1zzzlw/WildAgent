@@ -22,16 +22,20 @@ from app.design.resolver import is_object_plan, resolve_design
 
 
 def _profile_for(plan: dict, user_message: str) -> dict | None:
-    """重建建筑类型 profile。
+    """重建建筑形制档案。
 
     用确定性的 `detect_architecture_profile` 重算，而不是把它塞进 state——它本来就是
     能从需求串推出来的纯函数结果，多存一份就多一个会漂移的副本。
+
+    🔴 `profile_id` 必须把**计划里已有的形制 id 传进去**（收敛环会重写 plan，不传就等于
+    把分类器判出的 villa/pavilion 洗回 custom）。此前这里只传了 `fallback_profile_id`，
+    而那个参数在档案表只剩 custom 之后已被忽略——是条"收下但不生效"的空缝。
     """
 
     from app.agent.generation.architecture import detect_architecture_profile
 
-    fallback = str(plan.get("profile") or "").strip() or None
-    return detect_architecture_profile(user_message, fallback_profile_id=fallback)
+    existing = str(plan.get("profile") or "").strip() or None
+    return detect_architecture_profile(user_message, profile_id=existing)
 
 
 async def design_convergence(state: GenerationState) -> dict:

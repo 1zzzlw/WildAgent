@@ -117,12 +117,19 @@ async def architecture_planner(state: GenerationState) -> dict:
     rag_started = _time.time()
     rag_error = None
     try:
-        # 知识库检索：前两条是固定契约查询；第三条把用户消息原文带进查询文本
+        # 知识库检索：前两条是固定契约查询；第三条把用户消息原文带进查询文本。
+        # 分类器给出的形制标签（模型自选）一并作为特征词，让"别墅的形制契约"和
+        # "塔的形制契约"这类差异大的形制各检索各的。`custom` 是"未定"，不带形制
+        # 语义，拼进去只会稀释查询，所以只在非 custom 时追加。
+        intent_profile = str(state.get("intent_profile") or "").strip()
+        profile_term = (
+            f" {intent_profile} 形制" if intent_profile and intent_profile != "custom" else ""
+        )
         spec_text = agent_service.spec_loader.load_many([
             SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
             SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
             SpecQuery(
-                f"{user_message} 建筑形制特征 技法 组装配方 设计层表态",
+                f"{user_message}{profile_term} 建筑形制特征 技法 组装配方 设计层表态",
                 {"doc_type": "component", "knowledge_role": "capability"},
             ),
         ], per_query=2)
@@ -144,11 +151,14 @@ async def architecture_planner(state: GenerationState) -> dict:
         if isinstance(previous_plan, dict) else ""
     )
     normalization_request = revision_feedback or user_message
-    
-    # 判断建筑类型 
+
+    # 判断建筑形制。id 来自分类器；
+    # 修订时优先沿用上一版方案的 profile，否则用户只说"把门改大"也会被重算档位。
+    # 物理边界无论如何都来自 custom 档，所以这里换 id 只影响检索与观测，不影响能力。
     profile = detect_architecture_profile(
         normalization_request,
         fallback_profile_id=previous_profile_id or None,
+        profile_id=previous_profile_id or state.get("intent_profile"),
     )
 
     prompt = build_architecture_plan_prompt(
@@ -209,23 +219,39 @@ async def architecture_planner(state: GenerationState) -> dict:
     # （根因 _clamp_number 不夹 default，已修；这里再兜一层防同类）。
     # 归一化失败 ⇒ 视同"没有可用方案"，走确定性 fallback，如实记账。
     normalization_error: str | None = None
+    # 归一化取舍的账本（用户覆盖模型 / 模型写了表外值）。trace 里看不到它，
+    # "形状怎么变成这个的"就只能靠猜 —— 2026-10-08 实测过一次。
+    normalize_notes: list[str] = []
+    normalization_changes: list[dict] = []
     try:
         plan = normalize_architecture_plan(
             raw_plan or {},
             user_message=normalization_request,
             complexity_profile=complexity_profile,
             architecture_profile=profile,
+            normalize_notes=normalize_notes,
+            normalization_changes=normalization_changes,
+            input_source="model",
         )
     except Exception as exc:  # noqa: BLE001 —— 草稿不可信，兜底优先
         normalization_error = f"{type(exc).__name__}: {exc}"
         logger.warning(f"[architecture] 草稿归一化失败，改走确定性 fallback: {normalization_error}")
-        raw_plan = None
         plan = normalize_architecture_plan(
             {},
             user_message=normalization_request,
             complexity_profile=complexity_profile,
             architecture_profile=profile,
+            normalize_notes=normalize_notes,
+            normalization_changes=normalization_changes,
+            input_source="model",
         )
+
+    if normalization_error:
+        from app.design.normalization import plan_changes
+        normalization_changes = plan_changes(raw_plan, plan, source="model")
+        for change in normalization_changes:
+            change["reason"] += f"；整案降级：{normalization_error}"
+    plan["normalization_changes"] = normalization_changes
 
     # Preserve adopted pre-normalization choices and request constraints independently
     # of normalization (which does not own intent).
@@ -238,8 +264,11 @@ async def architecture_planner(state: GenerationState) -> dict:
     # 诊断信息：单方案生成，只记录 profile 与是否走了兜底。
     selection_diag = {
         "profile": profile["id"],
-        "used_fallback": raw_plan is None,
+        "used_fallback": raw_plan is None or normalization_error is not None,
+        "used_local_fallback": any(c["category"] == "default" or c["semantic_change"] for c in normalization_changes),
+        "normalization_changes": normalization_changes,
         "normalization_error": normalization_error,
+        "normalize_notes": normalize_notes,
         "raw_plan": raw_plan,
         "normalized_plan": plan,
     }

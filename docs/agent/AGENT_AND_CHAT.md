@@ -1,3 +1,5 @@
+> 2026-10-08 P3 更新（代码完成，运行待用户验收）：归一化字段变化写入 architecture_diag 与文档 rule_trace，关联原约束并由 design_gaps/P2B 消费。已解析文档编译跳过再次归一化，解析版本升级为 compiler-projection/2，旧解析批准结果需重新审核。交付归一化记录字段证据，最终校验独立检查已有批准实体与材质的删改；不假定拓扑替换等价。模板未落实的实例 size 明确报告 implementation/unsupported。详见 [P3 执行记录](../10月7日优化/P3-执行记录.md)。
+
 > 2026-10-08 建筑生成更新（代码完成，运行待用户验收）：审核解析与 compile_node 共用 `app/design/compilation.py::compile_document`；建筑 SVG 投影编译实体，屋顶仅显示参数范围示意。`DesignConstraint` 新增可执行目标/来源/采用状态，`resolved_design.design_gaps` 记录当前版本的设计检查。`design_convergence` 在审核前按缺口调度有界块修订（3 轮、最多 9 次块调用、连续 2 轮无进展停止），已批准设计不进入此循环。设计任务保存在 `design_convergence.tasks`，不混入审核后的 `state.plan`。已完成模型批次通过 LangGraph task 参与 checkpoint 恢复。最终校验独立重查审核开口一致性。详见 [阶段执行记录](../10月7日优化/P2-P2A-P2B-执行记录.md)。以下历史章节若与此更新不符，以当前源码和本次记录为准。
 
 # Agent 与 AI 对话设计

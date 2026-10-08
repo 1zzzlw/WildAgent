@@ -32,6 +32,7 @@ def _stable_hash(document: DesignDocument) -> str:
         "decisions": document.decisions.model_dump(mode="json"),
         "constraints": [item.model_dump(mode="json") for item in document.constraints],
         "locks": document.locks,
+        "normalization_evidence": [t.model_dump(mode="json") for t in document.rule_trace if t.changes],
     }
     raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return "sha256:" + sha256(raw.encode("utf-8")).hexdigest()
@@ -199,14 +200,45 @@ def build_design_document(
         ],
     )
 
+    changes = plan.get("normalization_changes") or []
+    if old:
+        document.rule_trace.extend(t for t in old.rule_trace if t.changes)
+    if changes:
+        for change in changes:
+            target = change["path"]
+            change["constraint_ids"] = [c.id for c in constraints if
+                c.target == target or c.target.startswith(target+"/") or target.startswith(c.target+"/")]
+            for c in constraints:
+                if (c.id in change["constraint_ids"] and c.kind == "user_hard"
+                        and c.source_quote and c.check == "equals" and c.target == target):
+                    if change["before"] == c.expected:
+                        change["input_source"] = "user"
+                    if change["after"] == c.expected:
+                        change["output_source"] = "user"
+        document.rule_trace.append(RuleTrace(
+            rule_id="architecture.normalize", classification="reference",
+            enforcement=["planner", "validator"], source="architecture normalization",
+            design_revision=document.revision, changes=changes,
+        ))
+
+    from .normalization import decision_summary
+    document.decisions.design_rationale = [
+        decision_summary(architecture_plan_from_document(document)),
+        *[text for text in document.decisions.design_rationale
+          if not text.removeprefix("[待核对] ").startswith("[决策事实]")][:5],
+    ]
+
     # Keep prose explicitly unverified when it no longer has reliable decision evidence.
     from .completeness import evaluate_design
     gaps = evaluate_design(document, _stable_hash(document))
     if any(g.status != "satisfied" for g in gaps):
         document.decisions.design_rationale = [
-            text if text.startswith("[待核对]") else "[待核对] " + text
+            text if text.startswith(("[待核对]", "[决策事实]")) else "[待核对] " + text
             for text in document.decisions.design_rationale
         ]
+        if any(c.get("semantic_change") for t in document.rule_trace for c in t.changes):
+            concept = document.decisions.concept
+            document.decisions.concept = concept if concept.startswith("[待核对]") else ("[待核对] " + concept)[:240]
     return document
 
 
@@ -321,14 +353,92 @@ def _build_object_document(
     )
 
 
+def _repair_instance_material_roles(
+    data: dict[str, Any],
+    material_plan: dict[str, Any],
+) -> list[str]:
+    """把实例的 ``material_role`` 归一成**本方案里真实存在的角色名**。
+
+    判据全部来自方案自身，不另抄一张别名表：命中 ``role`` 即原样；否则查
+    ``materialId → role`` 的反查表（``metal`` → ``frame``、``wood`` → ``door``）；
+    两者都不中，说明这个名字在本方案的蓝图里落不到任何材质，**降级为"没表态"并记账**，
+    不抛异常（宁缺毋错：这一条是造型偏好，不是可交付性）。
+
+    为什么必须在这里做：`ComponentInstance.material_role` 的字面量是**建筑 ∪ 物件
+    并集**（`MaterialRoleName`），所以模型在建筑方案里写物件侧的材质名 `metal` 过得了
+    字面量校验、也过得了块级 `ComponentInstance.model_validate`，却在
+    `DesignDocument` 的引用完整性校验上被 raise —— 而那是
+    `DesignDocument.model_validate` 里的硬失败，会让**整轮生成**终止在材质节点
+    （2026-10-08 玻璃幕墙场景实测）。口径与编译器一致：
+    `compile._material_name_for_role` 本来就同时认角色名与蓝图材质名。
+    """
+
+    roles = {
+        str(item["role"]): item
+        for item in material_plan.get("roles") or []
+        if isinstance(item, dict) and isinstance(item.get("role"), str)
+    }
+    by_material_id = {
+        str(item["materialId"]): str(item["role"])
+        for item in roles.values()
+        if isinstance(item.get("materialId"), str)
+    }
+    decisions = data.get("decisions")
+    instances = decisions.get("components") if isinstance(decisions, dict) else None
+    if not isinstance(instances, list):
+        return []
+    repairs: list[str] = []
+    for index, instance in enumerate(instances):
+        if not isinstance(instance, dict):
+            continue
+        role = instance.get("material_role")
+        if not role or str(role) in roles:
+            continue
+        canonical = by_material_id.get(str(role))
+        if canonical:
+            instance["material_role"] = canonical
+            repairs.append(f"components[{index}]: {role} → {canonical}（材质名换成角色名）")
+        else:
+            instance["material_role"] = None
+            repairs.append(
+                f"components[{index}]: {role} 在本材质方案里没有对应材质，降级为未表态"
+            )
+    return repairs
+
+
 def attach_material_plan(
     document: DesignDocument | dict[str, Any],
     material_plan: dict[str, Any],
+    *,
+    role_repairs: list[str] | None = None,
 ) -> DesignDocument:
-    """把已解析的材质方案写入当前设计 revision，不制造虚假的新设计版本。"""
+    """把已解析的材质方案写入当前设计 revision，不制造虚假的新设计版本。
+
+    ``role_repairs`` 是可选出参：把实例角色名的归一记录（见
+    :func:`_repair_instance_material_roles`）回给调用方进诊断账本。用出参而不是改
+    返回值，是为了让"记录"这件事**只发生在材质方案与图纸相遇的这一个收口点**上。
+    """
 
     doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
     data = doc.model_dump(mode="json")
+    # 归一必须在写入方案**之前**：校验器要求实例角色名能落到方案里的材质，
+    # 而这些名字本来就是方案给的（先写方案再归一也不影响结果，但顺序反了会误导读者）。
+    repairs = _repair_instance_material_roles(data, material_plan)
+    if repairs:
+        from .normalization import field_changes
+        changes = field_changes(doc.model_dump(mode="json")["decisions"]["components"],
+                                data["decisions"]["components"], path="/decisions/components",
+                                rule="materials.instance_roles", source="unknown")
+        role_map = {r["role"]: r.get("materialId") for r in material_plan.get("roles", [])}
+        for change in changes:
+            if change["path"].endswith("/material_role") and role_map.get(change["after"]) == change["before"]:
+                change.update(category="protocol", semantic_change=False, reason="材质名转换为指向相同材质的角色名")
+        data["rule_trace"].append(RuleTrace(
+            rule_id="materials.instance_roles", classification="reference", enforcement=["resolver"],
+            source="material_plan roles", design_revision=doc.revision, changes=changes,
+        ).model_dump(mode="json"))
+    if role_repairs is not None:
+        role_repairs.extend(repairs)
     concept = str(material_plan.get("concept") or "").strip()
     palette = material_plan.get("palette")
     keywords = [concept] if concept else []

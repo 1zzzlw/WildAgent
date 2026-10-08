@@ -49,6 +49,9 @@ class DesignBlock:
     #: 同组内的块互不依赖，可并发。``None`` = 必须串行。
     parallel_group: str | None
     #: 该块的字段契约（直接拼进提示词）。写"什么是合法的"，不写造型偏好。
+    #: 契约里可以留 ``{...}`` 占位符（如 ``{material_roles}``），由
+    #: `design_workflow.render_block_contract` 在拼提示词时用**唯一来源**填上——
+    #: 这样"词表"不必在本表里再抄一份（抄两份迟早一处改了另一处没改）。
     contract: str
     #: 本块专属的知识检索意图。空元组 = 这一块不注入检索文本（只吃基础提示词）。
     knowledge_queries: tuple[KnowledgeQuerySpec, ...] = ()
@@ -65,7 +68,11 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "- concept：从**用户需求原文**提炼的方案名（如「四角亭子」「临水茶室」），"
             "不超过 16 字。这是蓝图文件名与图纸标题；不要写风格档位词、"
             "不要写「比例清晰」这类空话，也不要复读整个请求句子。\n"
-            "- massing：shape 用 profile 允许值；width/depth/floor_height 为正数；"
+            "- massing：shape **优先从这些值里选**：{shape_enum}。"
+            "其中 {shape_volume_members} 有专门的体量派生（你没给 volumes 时按它生成）；"
+            "其余（形制名，如 pavilion／tower／circle）的体量构成由你给的 volumes 表达。"
+            "写了表外的名字不会被拦，但也不会有专门的几何行为。"
+            "width/depth/floor_height 为正数；"
             "floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；"
             "symmetry 为布尔值。\n"
             "- 塔形/退台轮廓用 massing.tiers 表态：从底到顶逐段给 floors、width_ratio、depth_ratio"
@@ -148,8 +155,12 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
         depends_on=("massing",),
         parallel_group="shell",
         contract=(
-            "- roof：type 用当前六种 roofType 之一；ridge_axis 为 x 或 z；overhang 为非负数。\n"
-            "- 多体量（L/U 形）必须按体量分别声明屋顶，**不得**用单块屋顶盖住内院/天井。"
+            "- roof：**只写一块**屋顶的风格模板，恰好三个键：type（当前六种 roofType 之一）、"
+            "ridge_axis（x 或 z）、overhang（非负数）。\n"
+            "- 🔴 不要写成数组，也不要写 id／span／depth／position——屋顶是**元素**："
+            "多体量（L/U 形）、退台的分段屋面、出檐、贴合墙体、避开内院/天井都由系统按 volumes "
+            "**自动派生**，不在这里声明。写成数组或带上元素字段会被契约拒掉，"
+            "本块连着丢三轮后整块作废，你想表达的屋型与出檐一起丢。"
         ),
         knowledge_queries=(
             KnowledgeQuerySpec(
@@ -171,8 +182,25 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "- 不给未选择的组件硬配额；能力做不到的类型不要写进来（写了会被归入 `uncompiled`）。"
             "\n- components：具体实例数组，可为空；不要为了通过检查添加装饰。"
             "每项使用 type、host、size、form、material_role，配额不代替实例设计。"
+            "\n- 🔴 `size` 与 `form` 都必须是**对象**（一组「键: 值」），不是字符串："
+            "`form` 的键只能是**引擎字段名**（如 `profile`／`roofType`／`postSpacing`／`frameWidth`），"
+            "写形态名或风格名（`modern_flat`、`斜屋顶` 这类）会被实例契约拒掉，白烧一轮重出。"
+            "\n- **material_role 只能是材质角色名**，合法值：{material_roles}。"
+            "`metal`／`wood`／`stone` 是**材质名**不是角色名（金属构件用 frame、"
+            "门扇用 door、玻璃用 glass）；写成材质名要靠下游归一兜底，"
+            "你本来想表达的材质意图可能因此丢失。"
             "\n- 门窗 host 可用已定稿体量的 `<volume_id>_L<floor>_<front/back/left/right>`，"
             "同面第 n 个同类开口追加 `:n`；实际墙由编译器解析，不得猜未来墙 ID。"
+            "\n- 檐口 cornice / 烟囱 chimney 依附**屋面**，host 写它所依附体量的 id"
+            "（如 `main`），也可写顶层屋面形式 `<volume_id>_L<顶层>_roof`；"
+            "具体屋面元素 id 由编译器在编译期铸造，不要在图纸里编造一个看不出来的 id。"
+            "引擎只为 flat / gable / hip 三类屋面派生檐口与烟囱，其余屋面形制"
+            "写了也会因无模板而落空（会记入缺口，不会中止生成）。"
+            "\n- 要指定檐口截面时用 `form.profile`：必须是 **≥3 个 "
+            "`[水平外挑量, 竖向偏移]` 二维数字点**组成的数组（单位米，"
+            "取自知识库《檐口 cornice》的示例形状）；**不是** `rectangular_80x60` "
+            "这类预设名。写成名字会被编译期按引擎字段契约拒掉：值不落地、"
+            "记进编译缺口，你想表达的线脚形状就丢了。"
             "\n- 门窗已有槽位时位置和主尺寸来自槽位，size 不覆盖槽位；"
             "form 可表达引擎已有的 frameWidth/frameDepth 等形态。"
             "其它构件须使用已提供的真实宿主，无法确定宿主时不编造实例。"

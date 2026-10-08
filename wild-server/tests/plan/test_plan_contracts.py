@@ -9,7 +9,13 @@ from app.agent.plan.contracts import (
     PlanItem,
     TERMINAL_STATUSES,
 )
-from app.agent.plan.expand import DETAIL_BUDGET, expand_plan, plan_budget, resolve_detail_level
+from app.agent.plan.expand import (
+    DETAIL_BUDGET,
+    compile_gap_summary,
+    expand_plan,
+    plan_budget,
+    resolve_detail_level,
+)
 from app.agent.plan.store import (
     append_items,
     counts_are_consistent,
@@ -374,6 +380,41 @@ def test_expand_includes_quota_minimum_components():
     state["design_brief"]["component_quota"]["balcony"] = {"min": 1, "max": 2}
     plan = expand_plan(state)
     assert "balcony" in [item.kind for item in plan.items_by_op("generate")]
+
+
+def test_rejected_instance_form_value_reaches_the_generate_item():
+    """形态值被拒必须传到该类型的生成条目上。
+
+    否则编译器那句"只标记不阻断"就退化成"标记了没人读"：值没落地、几何用派生值，
+    而生成条目完全不知道自己图纸上那一步表态已经被拒。
+    """
+
+    state = _brief_state(compile_report={
+        "instance_form_rejected": [
+            "cornice.profile: 值不满足引擎字段契约（profile）："
+            "'rectangular_80x60' is not of type 'array'",
+        ],
+    })
+    state["design_brief"]["component_quota"]["cornice"] = {"min": 1, "max": 2}
+    plan = expand_plan(state)
+    cornice = next(item for item in plan.items_by_op("generate") if item.kind == "cornice")
+    gap = cornice.params["blueprint_gap"]
+    assert "instance_form_rejected" in gap
+    assert "profile" in gap
+    assert "rectangular_80x60" in gap
+
+
+def test_form_evidence_survives_the_compile_report_projection():
+    """`compile_gap_summary` 必须把形态三类证据透出来（编译器 → plan 的唯一通道）。"""
+
+    summary = compile_gap_summary({"compile_report": {
+        "instance_form_ignored": ["window.slope"],
+        "instance_form_rejected": ["cornice.profile: 值不满足引擎字段契约"],
+        "instance_form_unverified": ["roof.ridge_axis"],
+    }})
+    assert summary["instance_form_ignored"] == ["window.slope"]
+    assert summary["instance_form_rejected"] == ["cornice.profile: 值不满足引擎字段契约"]
+    assert summary["instance_form_unverified"] == ["roof.ridge_axis"]
 
 
 def test_detail_level_is_pinned_to_standard_and_budget_is_monotonic():

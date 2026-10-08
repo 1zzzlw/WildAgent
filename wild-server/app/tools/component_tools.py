@@ -8,6 +8,8 @@
 策略：在节点生成后立即调用，确保对齐
 """
 from loguru import logger
+import math
+
 from app.tools.spatial_tools import (
     MAX_OPENING_NORMAL_OFFSET,
     fix_element_elevations,
@@ -1212,10 +1214,11 @@ def fix_bay_window_placement(blueprint: dict) -> str:
 
 
 def validate_cornice_placement(blueprint: dict) -> str:
-    """校验檐口配置：path/profile 存在性 + 几何合理性。
+    """校验檐口配置：path/profile 的**类型与几何**合理性。
 
-    除“至少 N 个点”外，还检查 path 每段长度、profile 是否退化（共线），
-    避免产出“合法但错误”的零长度/退化截面。
+    两处都按"**先判类型、再判几何**"的顺序报，不再拿 ``len()`` 当形状检查：
+    字符串同样有长度，``len("rectangular_80x60") == 19`` ⇒ 旧实现既拦不住类型错误，
+    还会把它报成"退化为直线"/"总长度过短"，把修复引到错误的病因上。
     """
     components = blueprint.get("geometry", {}).get("components", [])
     cornices = [c for c in components if c.get("type") == "cornice"]
@@ -1226,36 +1229,30 @@ def validate_cornice_placement(blueprint: dict) -> str:
     issues = []
     for cornice in cornices:
         cornice_id = cornice.get("id", "?")
-        path = cornice.get("path", [])
-        profile = cornice.get("profile", [])
+        path = cornice.get("path")
 
-        if len(path) < 2:
-            issues.append(f"❌ [{cornice_id}] path 至少需要 2 个点，当前: {len(path)}")
+        path_points = _path_points(path)
+        if path_points is None:
+            issues.append(
+                f"❌ [{cornice_id}] path 必须是 `[x, y, z]` 三维数字点组成的数组，"
+                f"当前是 {type(path).__name__}（{str(path)[:32]!r}）"
+            )
+        elif len(path_points) < 2:
+            issues.append(f"❌ [{cornice_id}] path 至少需要 2 个点，当前: {len(path_points)}")
         else:
-            total_length = 0.0
-            for index in range(len(path) - 1):
-                p1, p2 = path[index], path[index + 1]
-                if (
-                    not isinstance(p1, (list, tuple)) or len(p1) < 3
-                    or not isinstance(p2, (list, tuple)) or len(p2) < 3
-                ):
-                    continue
-                seg_length = (
-                    (float(p2[0]) - float(p1[0])) ** 2
-                    + (float(p2[1]) - float(p1[1])) ** 2
-                    + (float(p2[2]) - float(p1[2])) ** 2
-                ) ** 0.5
-                total_length += seg_length
+            total_length = sum(
+                math.dist(path_points[index], path_points[index + 1])
+                for index in range(len(path_points) - 1)
+            )
             if total_length < 0.05:
                 issues.append(
                     f"❌ [{cornice_id}] path 总长度过短 ({total_length:.2f}m)，"
                     f"檐口无法形成可见轮廓"
                 )
 
-        if len(profile) < 3:
-            issues.append(f"❌ [{cornice_id}] profile 至少需要 3 个点，当前: {len(profile)}")
-        elif _profile_is_degenerate(profile):
-            issues.append(f"❌ [{cornice_id}] profile 退化为直线，无法形成飞檐截面")
+        profile_error = _profile_error(cornice.get("profile", []))
+        if profile_error:
+            issues.append(f"❌ [{cornice_id}] profile {profile_error}")
 
     if not issues:
         return f"✅ 檐口校验通过 ({len(cornices)} 个檐口)"
@@ -1263,24 +1260,97 @@ def validate_cornice_placement(blueprint: dict) -> str:
     return "\n".join(issues)
 
 
-def _profile_is_degenerate(profile: list) -> bool:
-    """判断 2D 截面是否退化（所有点共线、面积为零）。"""
-    try:
-        points = [(float(p[0]), float(p[1])) for p in profile if isinstance(p, (list, tuple)) and len(p) >= 2]
-    except (TypeError, ValueError):
-        return True
+def _path_points(path) -> list[tuple[float, float, float]] | None:
+    """把檐口路径解析成三维点；**不是点数组**返回 ``None``。"""
+
+    if not isinstance(path, (list, tuple)):
+        return None
+    points: list[tuple[float, float, float]] = []
+    for point in path:
+        if not isinstance(point, (list, tuple)) or len(point) < 3:
+            return None
+        try:
+            x, y, z = float(point[0]), float(point[1]), float(point[2])
+        except (TypeError, ValueError):
+            return None
+        if not all(math.isfinite(value) for value in (x, y, z)):
+            return None
+        points.append((x, y, z))
+    return points
+
+
+def _profile_points(profile) -> list[tuple[float, float]] | None:
+    """把截面解析成二维点；**不是点数组**（字符串/数字/缺项）返回 ``None``。"""
+
+    if not isinstance(profile, (list, tuple)):
+        return None
+    points: list[tuple[float, float]] = []
+    for point in profile:
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            return None
+        try:
+            x, y = float(point[0]), float(point[1])
+        except (TypeError, ValueError):
+            return None
+        if not (math.isfinite(x) and math.isfinite(y)):
+            return None
+        points.append((x, y))
+    return points
+
+
+def _profile_error(profile) -> str | None:
+    """截面问题描述；``None`` = 合格。
+
+    🔴 **必须"先判类型、再判退化"**：旧实现在这里只做
+    ``len(profile) < 3`` + 面积判断，于是把一个**类型错误**（图纸写的是
+    ``"rectangular_80x60"`` 这种预设名，而不是截面点数组）报成"退化为直线"
+    —— 修的是 A 病因，报的是 B 症状，修复模型只能靠猜（现场它猜了整整一段推理）。
+    字符串长度还恰好 ≥3，所以连 ``len`` 门都拦不住：错误一路走到最终校验。
+    """
+
+    points = _profile_points(profile)
+    if points is None:
+        return (
+            "必须是 ≥3 个 `[x, y]` 二维数字点组成的数组，"
+            f"当前是 {type(profile).__name__}（{str(profile)[:32]!r}）"
+        )
     if len(points) < 3:
-        return True
+        return f"至少需要 3 个点，当前 {len(points)} 个"
     area = 0.0
     for index in range(len(points)):
         x1, y1 = points[index]
         x2, y2 = points[(index + 1) % len(points)]
         area += x1 * y2 - x2 * y1
-    return abs(area) < 1e-6
+    if abs(area) < 1e-6:
+        return "退化为直线（所有点共线，面积为零），无法形成飞檐截面"
+    return None
+
+
+def _default_cornice_profile() -> list[list[float]]:
+    """檐口参考截面：与**编译器派生檐口**用的是同一份（唯一事实源，勿另抄）。
+
+    那份常量在 ``compiler/compile.py``，出处是知识库《檐口 cornice》的示例。
+    这里只在修复时惰性 import：``app.tools`` → ``app.agent.compiler`` 是新方向，
+    惰性导入避免模块级环依赖；真导不进来时用最简矩形兜底（仍然合法，只是不精致）。
+    """
+
+    try:
+        from app.agent.compiler.compile import _CORNICE_PROFILE
+    except ImportError:  # pragma: no cover - 只在模块图异常时走到
+        return [[0.0, 0.0], [0.3, 0.0], [0.3, 0.2], [0.0, 0.2]]
+    return [[float(x), float(y)] for x, y in _CORNICE_PROFILE]
 
 
 def fix_cornice_placement(blueprint: dict) -> str:
-    """修复檐口配置：按宿主屋顶范围推导保守默认 path，不再写死任意坐标。"""
+    """修复檐口配置：path 按宿主屋顶范围推导，profile 不合格时回落参考截面。
+
+    🔴 **判据必须与校验器用的是同一条**。旧实现用 ``len(cornice["profile"]) < 3``
+    当判据，而字符串 ``"rectangular_80x60"`` 长度是 19 ⇒ 修复器认定"无需修复"，
+    接着 recheck 原样失败、错误被留到最终交付（现场日志：
+    ``validate_cornice_placement [recheck]: ❌`` + ``fix_cornice_placement: 通过``）。
+    ``classify_validation_issue`` 已经把它声明成 ``deterministic_fix``，
+    这里就得真的是确定性修复 —— 否则声明与实现不符，修复环再派模型也是空转。
+    """
     components = blueprint.get("geometry", {}).get("components", [])
     cornices = [c for c in components if c.get("type") == "cornice"]
 
@@ -1316,14 +1386,15 @@ def fix_cornice_placement(blueprint: dict) -> str:
     for cornice in cornices:
         cornice_id = cornice.get("id", "?")
 
-        if len(cornice.get("path", [])) < 2:
+        path_points = _path_points(cornice.get("path"))
+        if path_points is None or len(path_points) < 2:
             cornice["path"] = _default_path_for(cornice)
             fixes.append(f"🔧 [{cornice_id}] 按宿主屋顶范围设置 path")
 
-        if len(cornice.get("profile", [])) < 3:
-            # 简单的飞檐截面
-            cornice["profile"] = [[0, 0], [0.3, 0], [0.3, 0.2], [0, 0.2]]
-            fixes.append(f"🔧 [{cornice_id}] 添加默认 profile")
+        profile_error = _profile_error(cornice.get("profile"))
+        if profile_error:
+            cornice["profile"] = _default_cornice_profile()
+            fixes.append(f"🔧 [{cornice_id}] profile 不合格（{profile_error}），回落参考截面")
 
     if not fixes:
         return f"✅ 檐口无需修复 ({len(cornices)} 个檐口)"

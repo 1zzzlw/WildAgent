@@ -69,6 +69,7 @@ class GenerationState(TypedDict, total=False):
     intent: str  # "generate" | "edit" | "chat"
     intent_target: str  # 从用户消息中识别出的操作对象，例如"别墅"或"正门"。
     intent_target_kind: str  # "architecture" | "object"：本轮交付的是建筑方案还是单个物件。
+    intent_profile: str  # 建筑形制短标签（分类器模型自选，如 villa/pavilion）；未定或非建筑为 "custom"。
     intent_requires_scene: bool  # 当前意图是否必须依赖已有 Blueprint 场景。
     intent_reason: str  # 分类器给出的简短、可展示判断理由。
     intent_source: str  # 分类结果来源，例如 rule、llm 或 fallback。

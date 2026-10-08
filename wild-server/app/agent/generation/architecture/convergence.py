@@ -231,12 +231,14 @@ async def converge_design(
             break
 
         merged = {**current, **draft}
+        normalization_changes = []
         try:
             candidate = normalize_architecture_plan(
                 merged,
                 user_message=user_message,
                 complexity_profile=complexity_profile,
                 architecture_profile=architecture_profile,
+                normalization_changes=normalization_changes, input_source="model",
             )
         except Exception as exc:
             # 🔴 **模型给的草稿是不可信输入**：归一化一旦抛错（实测有一条
@@ -253,6 +255,7 @@ async def converge_design(
                 }
             )
             break
+        candidate["normalization_changes"] = normalization_changes
         outcome = compile_design(candidate, **compile_kwargs)
         count = len(blocking_defects(outcome))
 

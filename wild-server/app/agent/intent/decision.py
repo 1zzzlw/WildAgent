@@ -3,6 +3,10 @@
 ``IntentDecision`` 是分类器唯一对外产出的东西：它把模型的自由文本收敛成闭集内的
 ``intent`` / ``target_kind``，并记录来源与置信度，便于观测与降级判定。
 
+``profile`` 是唯一的例外——它是**开放集**：形制标签由模型自己决定（"别墅/亭子/塔"
+该归成什么词是模型的判断，不是代码的判断），这里只做 slug 化格式清洗，认不出的值
+**原样保留**。原因见 ``_normalize_profile``。
+
 归一化是**保守**的：认不出的写法一律退到确定性规则，不在这里自造类别——下游按
 ``intent`` 与 ``target_kind`` 分叉，第三个值会让图路由落空。
 """
@@ -38,10 +42,24 @@ class IntentDecision:
     reason: str
     source: Literal["llm", "fallback"]
     target_kind: TargetKind = "architecture"
+    profile: str = "custom"
     model_error: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+#: 形制标签只允许 slug 字符；其余一律折成连字符。
+_PROFILE_SLUG = re.compile(r"[^a-z0-9_-]+")
+
+
+def _normalize_profile(raw: object) -> str:
+    """把模型给的形制标签清成 slug；缺失/非法时退 ``custom``。
+    """
+
+    text = str(raw or "").strip().lower()
+    text = _PROFILE_SLUG.sub("-", text).strip("-")
+    return text[:40] or "custom"
 
 
 def _json_object(raw: str) -> dict[str, Any] | None:
@@ -83,6 +101,9 @@ def fallback_decision(
         reason=reason[:200],
         source="fallback",
         target_kind=_target_kind_of(message, intent),
+        # 降级路径不猜形制：模型没参与判断时写 custom（未定），
+        # 而不是拿用户原文里的词去凑一个标签（那等于变相的代码选档）。
+        profile="custom",
     )
 
 
@@ -142,6 +163,7 @@ def normalize_intent_decision(
                 reason=reason,
                 source="llm",
                 target_kind=target_kind,
+                profile=_normalize_profile(payload.get("profile")),
             )
 
     upper = (raw or "").strip().upper()

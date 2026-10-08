@@ -5,9 +5,9 @@ from collections import Counter
 from math import hypot
 from typing import Any
 
-from .contracts import DesignDocument, ResolvedDesign, ResolvedFacadeSlot, ResolvedLevel
+from .contracts import DesignDocument, DesignGap, ResolvedDesign, ResolvedFacadeSlot, ResolvedLevel
 
-RESOLVER_VERSION = "compiler-projection/1"
+RESOLVER_VERSION = "compiler-projection/2"
 
 
 def compile_document(document: DesignDocument):
@@ -20,6 +20,7 @@ def compile_document(document: DesignDocument):
         architecture_plan_from_document(document),
         user_message=document.requirements.source_request,
         material_plan=materials.model_dump(mode="json") if materials else None,
+        normalized_input=True,
     )
 
 
@@ -79,6 +80,15 @@ def project_compilation(document: DesignDocument, result: Any) -> ResolvedDesign
         projection_elements=projection, warnings=warnings,
     )
     resolved.design_gaps = evaluate_design(document, resolved.design_hash)
+    for index, change in enumerate((result.stats.get("instance_overrides") or {}).get("size_changes") or []):
+        constraint = next((c.id for c in document.constraints if
+            c.target == change["path"] or change["path"].startswith(c.target+"/")), "request.source")
+        resolved.design_gaps.append(DesignGap(
+            id=f"gap.compiler.instance_size.{index}", constraint_id=constraint,
+            layer="implementation", status="unsupported", design_hash=resolved.design_hash,
+            target=change["path"], expected=change["before"], actual=change["after"],
+            evidence=f"{change['target']} {change['path']}：{change['reason']}（{change['before']} → {change['after']}）",
+        ))
     resolved.warnings.extend(g.evidence for g in resolved.design_gaps if g.status != "satisfied")
     return resolved
 

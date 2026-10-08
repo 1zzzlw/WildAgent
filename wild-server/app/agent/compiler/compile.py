@@ -821,8 +821,17 @@ def _positive_float(value: Any, fallback: float) -> float:
 #: ``validate_blueprint_schema.component_allowed``），正是字段映射各写一份的恶果。
 #:
 #: ``mode`` / ``hingeSide`` / ``openAngle`` 属于 ``interaction``（走
-#: :func:`_apply_instance_form` 的改道路由）；``ridge_axis`` / ``ridgeHeight``
-#: 是图纸词汇，引擎字段是 ``ridgeAxis`` / ``height``（roof 是元素，只有 height）。
+#: :func:`_apply_instance_form` 的改道路由）；``ridgeHeight`` 是图纸词汇，
+#: 引擎字段是 ``height``（roof 是元素，只有 height）。
+#:
+#: 🔴 **本表必须是引擎字段闭集的子集**：键名对、落点不存在 = 静默失效
+#: （值落进了蓝图，引擎不读、校验器也看不见）。守卫见
+#: ``tests/compiler/test_component_instances.py::test_every_form_key_lands_on_an_engine_field``。
+#: 2026-10-08 据此删掉 ``roof.ridge_axis`` / ``roof.overhang`` —— 它们是**图纸层**
+#: ``decisions.roof`` 的词汇（``design/contracts.py::RoofDecision``，由
+#: ``_roof_overhang`` / ``normalize_roof`` 消费），不是构件实例的形态；
+#: 屋顶元素 schema 里既没有 ``ridgeAxis`` 也没有 ``overhang``（曾有人在 ``_INSTANCE_FORM_ROUTES``
+#: 里给 ``ridge_axis`` 写了张到 ``ridgeAxis`` 的地图，目的地根本不在闭集里）。
 _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
     "door": frozenset({
         "mode", "hingeSide", "openAngle", "frameWidth", "frameDepth",
@@ -837,7 +846,7 @@ _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
         "postSpacing", "postRadius", "railRadius", "railLevels",
         "infillType", "infillMaterial",
     }),
-    "roof": frozenset({"roofType", "ridge_axis", "overhang", "ridgeHeight"}),
+    "roof": frozenset({"roofType", "ridgeHeight"}),
     "canopy": frozenset({"depth", "thickness", "supportCount", "supportSize"}),
     "light": frozenset({"fixtureType", "initiallyOn"}),
     "cornice": frozenset({"profile"}),
@@ -847,24 +856,109 @@ _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
 #: 白名单键 → 落点的改道/改名规则。其余键**同名**落构件字段。
 #: - ``mode``：interaction 唯一规则函数（facade），只覆写 mode 不重建 interaction；
 #: - ``hingeSide`` / ``openAngle``：属于 ``interaction``，写顶层会被字段闭集拒掉；
-#: - ``ridge_axis`` → ``ridgeAxis``、``ridgeHeight`` → ``height``：图纸词 ≠ 引擎词。
+#: - ``ridgeHeight`` → ``height``：图纸词 ≠ 引擎词。
 _INSTANCE_FORM_ROUTES: dict[str, tuple[str, str]] = {
     "mode": ("interaction_fn", ""),
     "hingeSide": ("interaction", "hingeSide"),
     "openAngle": ("interaction", "openAngle"),
-    "ridge_axis": ("field", "ridgeAxis"),
     "ridgeHeight": ("field", "height"),
 }
+
+
+#: 形态落值的 schema 缓存（``(类型, 落点字段, 容器)`` → JSON-schema 片段 / 校验器）。
+_FORM_TARGET_SCHEMA_CACHE: dict[tuple[str, str], dict[str, Any] | None] = {}
+_FORM_VALUE_VALIDATOR_CACHE: dict[tuple[str, str, str | None], Any] = {}
+
+
+def _form_target_schema(component_type: str, field: str) -> dict[str, Any] | None:
+    """**落点**字段在引擎 schema 里的定义；闭集外返回 ``None``。"""
+
+    cache_key = (component_type, field)
+    if cache_key not in _FORM_TARGET_SCHEMA_CACHE:
+        _allowed, _required, properties = _schema_fields(component_type)
+        prop = properties.get(field)
+        _FORM_TARGET_SCHEMA_CACHE[cache_key] = prop if isinstance(prop, dict) else None
+    return _FORM_TARGET_SCHEMA_CACHE[cache_key]
+
+
+def _patch_schema(prop: dict[str, Any]) -> dict[str, Any]:
+    """把"整对象"契约降成"补丁"契约：解一层 ``$ref`` 并去掉 ``required``。
+
+    实例只补**部分**字段，不是整对象替换。不降的话 ``form.hingeSide`` 会被报
+    ``'mode' is a required property``（`openingInteractionSpec.required = ['mode']`）
+    —— 把一次合法表态变成假拒绝。``additionalProperties`` 保留：未知键仍该被拒。
+    """
+
+    ref = prop.get("$ref")
+    if isinstance(ref, str):
+        target = get_schema().get("$defs", {}).get(ref.split("/")[-1])
+        if isinstance(target, dict):
+            prop = target
+    return {key: value for key, value in prop.items() if key != "required"}
+
+
+def _form_value_error(
+    component_type: str,
+    field: str,
+    value: Any,
+    *,
+    container: str | None = None,
+) -> str | None:
+    """落值前按**引擎 schema** 收口；``None`` = 该值可以落。
+
+    为什么必须在这里收，而不是交给下游校验器：``_INSTANCE_FORM_FIELDS`` 只筛**键名**，
+    值原样落到蓝图 —— 第一次被看见的地方是合并后的**校验器**，那时它已经是"错误"
+    而不是"降级"（整轮记一次失败），而修复环又改不了这类字段（`repair/tools.py`
+    的 ``_PATCH_FIELDS`` 是另一份手写名单，`profile` 不在里面）。
+
+    现场（2026-10-08）：图纸给檐口写 ``form.profile = "rectangular_80x60"``
+    —— 一个预设名，不是截面点数组。编译照落，``validate_cornice_placement``
+    只能把**类型错误**报成"退化为直线"，修复模型再猜一轮，最后被白名单拒收。
+
+    与红线的关系：**只标记不阻断**。值不合格就**不落**（保留派生模板的值）、
+    记进 ``form_rejections``；不抛异常、不降 severity、不改几何其它部分。
+
+    ``container``：值落在子对象里时（如 ``interaction.hingeSide``）传子对象名，
+    这样校验的是**引擎真正读的那一层**，而不是顶层同名键。
+    """
+
+    cache_key = (component_type, field, container)
+    validator = _FORM_VALUE_VALIDATOR_CACHE.get(cache_key)
+    if validator is None:
+        prop = _form_target_schema(component_type, container or field)
+        if prop is None:
+            return None
+        if container:
+            prop = _patch_schema(prop)
+        try:
+            import jsonschema
+        except ImportError:  # 与 ``blueprint_normalizer`` 同口径：缺依赖就跳过，不阻断
+            return None
+        # ``$ref`` 按**文档根**解析，所以要把根 ``$defs`` 一起带上，否则 ``vec3`` 之类解不开。
+        snippet: dict[str, Any] = {
+            "type": "object",
+            "properties": {container or field: prop},
+            "$defs": get_schema().get("$defs", {}),
+        }
+        validator = jsonschema.Draft202012Validator(snippet)
+        _FORM_VALUE_VALIDATOR_CACHE[cache_key] = validator
+    instance = {container: {field: value}} if container else {field: value}
+    errors = sorted(validator.iter_errors(instance), key=lambda item: list(item.path))
+    if not errors:
+        return None
+    return f"值不满足引擎字段契约（{field}）：{errors[0].message}"
 
 
 def _apply_instance_form(
     component: dict[str, Any],
     inst: dict[str, Any],
-) -> tuple[list[str], list[str]]:
-    """把实例的形态表态落进**派生模板的拷贝**（白名单过滤 + 改道路由）。
+) -> tuple[list[str], list[str], dict[str, str], list[str]]:
+    """把实例的形态表态落进**派生模板的拷贝**（键白名单 + 改道路由 + 值收口）。
 
-    返回 ``(落地的键, 丢弃的键)`` 给 stats。丢弃比透传安全（整份蓝图非法），
-    也比中断符合编译器既有口径（``split_opening``：认不出就降级，不抛异常）。
+    返回 ``(落地的键, 丢弃的键, 被拒的键→原因, 闭集外没被校验的键)`` 给 stats。
+    丢弃比透传安全（整份蓝图非法），也比中断符合编译器既有口径（``split_opening``：
+    认不出就降级，不抛异常）。**但这三类必须能被下游看见** —— 否则"只标记不阻断"
+    会退化成"标记了没人读"；投影点见 ``CompileResult.summary``。
     """
 
     component_type = str(component.get("type") or "")
@@ -872,6 +966,8 @@ def _apply_instance_form(
     form = inst.get("form") if isinstance(inst.get("form"), dict) else {}
     applied: list[str] = []
     ignored: list[str] = []
+    rejected: dict[str, str] = {}
+    unverified: list[str] = []
     for key, value in form.items():
         if key not in allowed:
             ignored.append(key)
@@ -879,6 +975,21 @@ def _apply_instance_form(
         route, target = _INSTANCE_FORM_ROUTES.get(key, ("field", key))
         if route == "interaction_fn":
             continue  # 统一在循环后走 _apply_opening_form，避免逐键重建 interaction
+        container = "interaction" if route == "interaction" else None
+        # 闭集与值都按**引擎真正读的那一层**判：普通形态是 ``component[字段]``，
+        # interaction 路由的是 ``component["interaction"][字段]``。
+        prop = _form_target_schema(component_type, container or target)
+        if prop is None:
+            # 引擎字段闭集里没有它：照旧落下（不改变既有行为），但要记一笔 ——
+            # `roof.ridge_axis` / `roof.overhang` 历史上就是这样静默失效的
+            # （2026-10-08 已从白名单删除）。留着这条分支是为了**将来漂移**也能被看见。
+            unverified.append(key)
+        else:
+            reason = _form_value_error(component_type, target, value, container=container)
+            if reason:
+                rejected[key] = reason
+                ignored.append(key)
+                continue
         if route == "interaction":
             interaction = component.get("interaction")
             interaction = dict(interaction) if isinstance(interaction, dict) else {}
@@ -893,7 +1004,7 @@ def _apply_instance_form(
         _apply_opening_form(component, str(form["mode"]), str(component.get("id") or "instance"))
         if "mode" not in applied:
             applied.append("mode")
-    return applied, ignored
+    return applied, ignored, rejected, unverified
 
 
 def _host_lookup(geometry: dict[str, Any]) -> list[dict[str, Any]]:
@@ -909,6 +1020,79 @@ def _host_lookup(geometry: dict[str, Any]) -> list[dict[str, Any]]:
         *(geometry.get("components") or []),
         *(geometry.get("elements") or []),
     ]
+
+
+def _roof_host_aliases(
+    geometry: dict[str, Any],
+    brief: dict[str, Any] | None,
+    plan: dict[str, Any] | None,
+) -> dict[str, str]:
+    """屋顶宿主的**别名表**：图纸写得出来的拼法 → 真实屋面元素 id。
+
+    为什么需要它：屋面元素 id 是**编译期铸造**的 —— ``roof_planned_NN`` 由
+    :func:`conform_roofs_to_slots` 按槽位序命名，单块屋面是 :func:`_single_roof`
+    的 ``roof_01``。图纸起草时这些 id 还不存在，图纸手里只有**体量 id**，
+    所以它天然会写"这个体量的屋顶"。
+
+    早期 ``parentRoof == host`` 是**全等**匹配 ⇒ 图纸写体量 id 一律落空，静默退到
+    :func:`_template_for` 的"第 occurrence 条派生结果"：檐口会挂到**别的体量**的
+    屋面上，而且没有任何记录（正是 :func:`_host_lookup` 文档里警告的那类"比报错更
+    难发现"的失败）。这里按体量补上解析，让图纸写的宿主真能落到它想说的地方。
+
+    槽位序即元素序：``conform_roofs_to_slots`` 按 ``enumerate(slots, start=1)``
+    生成 ``roof_planned_{index:02d}`` 并**整体替换**原有屋面，两边同序。
+    """
+
+    roofs = _roofs_of(list(geometry.get("elements") or []))
+    if not roofs:
+        return {}
+    plan = plan if isinstance(plan, dict) else {}
+    volumes = [item for item in (plan.get("volumes") or []) if isinstance(item, dict)]
+    raw_slots = brief.get("roof_slots") if isinstance(brief, dict) else None
+    slots = [item for item in raw_slots if isinstance(item, dict)] if isinstance(raw_slots, list) else []
+
+    aliases: dict[str, str] = {}
+    for roof in roofs:
+        roof_id = str(roof.get("id") or "")
+        if roof_id:
+            aliases[roof_id] = roof_id
+
+    def _bind(volume_id: str, roof_id: str, volume: dict[str, Any] | None) -> None:
+        """把"体量 → 屋面"的三种拼法都登记上；只在没登记过时写，避免覆盖真 id。"""
+
+        if not volume_id or not roof_id:
+            return
+        aliases.setdefault(volume_id, roof_id)
+        aliases.setdefault(f"roof:{volume_id}", roof_id)
+        aliases.setdefault(f"roof_{volume_id}", roof_id)
+        floors: list[int] = []
+        if isinstance(volume, dict):
+            try:
+                floors = list(
+                    range(
+                        int(volume.get("start_floor", 1)),
+                        int(volume.get("end_floor", 1)) + 1,
+                    )
+                )
+            except (TypeError, ValueError):
+                floors = []
+        # `<volume_id>_L<floor>_roof`：模型最自然的类推写法（现场实测 `main_L2_roof`）。
+        for floor in floors or [1]:
+            aliases.setdefault(f"{volume_id}_L{floor}_roof", roof_id)
+
+    if slots and len(slots) == len(roofs):
+        for slot, roof in zip(slots, roofs):
+            volume_id = str(slot.get("id") or "").rsplit(":", 1)[-1]
+            volume = next(
+                (item for item in volumes if str(item.get("id") or "") == volume_id),
+                None,
+            )
+            _bind(volume_id, str(roof.get("id") or ""), volume)
+    elif len(roofs) == 1 and len(volumes) == 1:
+        # 无槽位的单块屋面（`chinese_curved` 等整块形制、或单一体量）：
+        # 只有一个体量时"体量 id"才无歧义，多体量不猜。
+        _bind(str(volumes[0].get("id") or ""), str(roofs[0].get("id") or ""), volumes[0])
+    return aliases
 
 
 def _opening_defaults(
@@ -964,6 +1148,7 @@ def _compile_from_instances(
     blueprint: dict[str, Any],
     materials: dict[str, Any],
     plan: dict[str, Any] | None = None,
+    brief: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """从实例清单编译构件（§3.4 覆盖层）。
 
@@ -979,10 +1164,13 @@ def _compile_from_instances(
 
     1. **配对**：``host`` → 派生模板（:func:`_opening_expression` +
        :func:`_template_for`）；灯具没有 ``parentWall``，按出现序对齐；
+       檐口/烟囱的宿主是**屋面**，先经 :func:`_roof_host_aliases` 把图纸写的
+       体量拼法解析成真实屋面 id（否则按全等匹配一律落空）；
     2. **追加**：宿主墙解析得到、但该墙没有同类型派生结果的门窗/阳台，按
        :func:`_opening_defaults` 追加（§3.4"找不到就追加"）；宿主都解析不到的
        实例整条丢弃并记入 ``stats["dropped"]``；
     3. **表态**：白名单内的 form 字段覆写模板拷贝（:func:`_apply_instance_form`），
+       **落值前按引擎 schema 收口**（值不合格就不落、记 ``form_rejections``），
        材质角色名由 :func:`_resolve_instance_materials` 统一换蓝图材质名；
     4. **顶替**：配对成功的模板记进 ``replaced``（identity 定位），由
        :func:`_apply_instance_overrides` 从派生结果里摘掉 —— 覆盖层不是替换层。
@@ -994,7 +1182,19 @@ def _compile_from_instances(
     replaced: list[dict[str, Any]] = []
     form_applied: dict[str, list[str]] = {}
     form_ignored: dict[str, list[str]] = {}
+    #: 值不合格、**没落**的形态键 → 原因（键名 + 引擎字段 + 期望形状）。
+    #: 这是 P3「显式非法值要给出具体字段问题」在实例形态层的唯一落点。
+    form_rejections: dict[str, dict[str, str]] = {}
+    #: 落下了、但**引擎字段闭集里根本没有**的键（`roof.ridge_axis` /
+    #: `roof.overhang` 曾长期如此）。属静默失效，必须能出得来，否则等于没看见 ——
+    #: 白名单已收干净，这条通道现在是防漂移用的。
+    form_unverified: dict[str, list[str]] = {}
     dropped: list[str] = []
+    #: 宿主没解析到、但靠"第 occurrence 条派生结果"兜底产出的实例。
+    #: 不记的话这类**错位**（檐口挂到别的体量屋面）完全看不见。
+    host_fallback: list[str] = []
+    size_changes: list[dict] = []
+    roof_hosts = _roof_host_aliases(blueprint.get("geometry", {}), brief, plan)
 
     geometry = blueprint.get("geometry", {})
     walls = {
@@ -1004,9 +1204,9 @@ def _compile_from_instances(
     }
 
     by_type: dict[str, list[dict[str, Any]]] = {}
-    for inst in instances:
+    for design_index, inst in enumerate(instances):
         if isinstance(inst, dict) and str(inst.get("type", "")):
-            by_type.setdefault(str(inst["type"]), []).append(inst)
+            by_type.setdefault(str(inst["type"]), []).append({**inst, "_design_index": design_index})
 
     for component_type, type_instances in sorted(by_type.items()):
         for occurrence, inst in enumerate(type_instances, start=1):
@@ -1113,15 +1313,25 @@ def _compile_from_instances(
                     }
             elif component_type in {"cornice", "chimney"}:
                 # 追加型：宿主是屋顶。模板取同屋顶同类型的那条派生结果，几何全沿用。
+                # 图纸写体量级拼法（`main` / `main_L2_roof` / `roof:main`）时先解析成
+                # 真实屋面 id——全等匹配对这类写法一律落空，会静默退到下面那条
+                # "第 occurrence 条派生结果"（檐口挂到别的体量屋面）。
+                raw_host = str(inst.get("host") or "")
+                roof_host = roof_hosts.get(raw_host, raw_host)
                 template = next(
                     (
                         item
                         for item in _host_lookup(geometry)
                         if item.get("type") == component_type
-                        and item.get("parentRoof") == str(inst.get("host") or "")
+                        and item.get("parentRoof") == roof_host
                     ),
                     None,
-                ) or _template_for(geometry, component_type, None, occurrence)
+                )
+                if template is None:
+                    template = _template_for(geometry, component_type, None, occurrence)
+                    if isinstance(template, dict) and raw_host:
+                        # 兜底成功但**不是**按宿主配到的 ⇒ 记一笔，别让它静默错位。
+                        host_fallback.append(f"{component_type}:{raw_host}")
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
@@ -1138,7 +1348,26 @@ def _compile_from_instances(
                 else f"roof_{occurrence:02d}"
             )
 
-            applied, ignored = _apply_instance_form(component, inst)
+            applied, ignored, rejected, unverified = _apply_instance_form(component, inst)
+            for field, reason in rejected.items():
+                form_rejections.setdefault(component_type, {})[field] = reason
+            if unverified:
+                form_unverified[component_type] = sorted(
+                    set(form_unverified.get(component_type, [])) | set(unverified)
+                )
+            for field, value in (inst.get("size") or {}).items():
+                actual = component.get(field)
+                if isinstance(actual, (float, int)) and isinstance(value, (float, int)) and abs(actual-value) <= 0.001:
+                    continue
+                size_changes.append({
+                    "path": f"/decisions/components/{inst['_design_index']}/size/{field}",
+                    "target": component["id"], "before": value, "after": actual,
+                    "before_exists": True, "after_exists": field in component,
+                    "rule": "compiler.instance_size", "category": "semantic_change",
+                    "input_source": "design", "output_source": "program", "semantic_change": True,
+                    "reason": "当前实例编译未落实该尺寸，仍使用派生模板或没有对应产物字段",
+                    "constraint_ids": [],
+                })
             if inst.get("material_role"):
                 if component_type in {"door", "window"}:
                     component["frameMaterial"] = str(inst["material_role"])
@@ -1164,7 +1393,11 @@ def _compile_from_instances(
     return components, replaced, {
         "form_applied": form_applied,
         "form_ignored": form_ignored,
+        "form_rejections": form_rejections,
+        "form_unverified": form_unverified,
         "dropped": dropped,
+        "host_fallback": host_fallback,
+        "size_changes": size_changes,
     }
 
 
@@ -1219,21 +1452,24 @@ def _compose(
     plan: dict[str, Any],
     user_message: str,
     material_plan: dict[str, Any] | None = None,
+    *, normalized_input: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """把既有确定性部件串成一次编译，返回 ``(blueprint, design_brief, stats)``。
 
-    **只归一化一次**：``build_deterministic_skeleton`` 内部也会归一化，但屋顶派生
-    与立面解析都要读归一化后的 ``massing`` —— 各归一化一次会让两条路径读到不同的值，
-    这正是本仓库记录过的"同一参数被两处夹取就分叉"。所以这里先归一化，全流程共用。
+    DesignDocument 适配器通过 ``normalized_input`` 直接交付权威设计，不再解释
+    原始请求。历史裸 plan 最多归一化一次并记录字段变化，骨架直接消费同一结果。
 
     **实例清单是覆盖层，不是替换层**（§3.4）：派生链先跑完，再让显式实例按类型覆盖
     它点名的那几类（见 ``_apply_instance_overrides``）。
     """
 
     complexity = plan.get("complexity") if isinstance(plan.get("complexity"), dict) else None
-    normalized = normalize_architecture_plan(plan, user_message, complexity)
+    normalization_changes: list[dict] = []
+    normalized = deepcopy(plan) if normalized_input else normalize_architecture_plan(
+        plan, user_message, complexity, normalization_changes=normalization_changes,
+    )
 
-    blueprint = build_deterministic_skeleton(normalized, user_message)
+    blueprint = build_deterministic_skeleton(normalized, user_message, normalized_input=True)
     # 已批准的材质方案必须落地在**任何按材质取名的步骤之前**：
     # `conform_openings_to_slots` / `_derive_lights` / `_roof_material` 都从
     # `blueprint["materials"]` 取名字，晚一步它们拿到的就是骨架硬编码的那 6 个
@@ -1301,6 +1537,9 @@ def _compose(
             {**blueprint, "geometry": {**geometry, "components": components, "elements": elements}},
             materials,
             plan=normalized,
+            # 屋顶槽位只活在 design_brief 里（`roof:<volume_id>` → `roof_planned_NN`
+            # 的序对应），所以要把它传进去才能解析体量级屋顶宿主。
+            brief=brief,
         )
         components, elements, overrides = _apply_instance_overrides(
             explicit,
@@ -1321,6 +1560,7 @@ def _compose(
     geometry["elements"] = elements
     geometry["components"] = components
     stats = {
+        "normalization_changes": normalization_changes,
         "opening": opening_layout,
         "entrance": entrance_layout,
         "balcony": balcony_layout,
@@ -1623,6 +1863,7 @@ def compile_design(
     mode: str = MODE_FINAL,
     user_message: str = "",
     material_plan: dict[str, Any] | None = None,
+    normalized_input: bool = False,
 ) -> CompileResult:
     """把设计图纸确定性编译成蓝图。
 
@@ -1640,7 +1881,7 @@ def compile_design(
     if mode not in MODES:
         raise ValueError(f"未知编译模式 {mode!r}，闭集为 {MODES}")
 
-    blueprint, brief, stats = _compose(plan, user_message, material_plan)
+    blueprint, brief, stats = _compose(plan, user_message, material_plan, normalized_input=normalized_input)
     unsupported, uncompiled = _capability_gaps(brief, blueprint)
     # 收缺陷的顺序即"从粗到细"：整图 schema → 逐构件必填/枚举 → 交付流水线 + 设计清单。
     # §2.5 的口径统一在这里：三处校验（skeleton 预检 / spatial_tools / final_validate）

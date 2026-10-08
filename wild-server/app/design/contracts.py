@@ -25,7 +25,7 @@ class ContractModel(BaseModel):
 class DesignRequirements(ContractModel):
     source_request: str = Field(min_length=1, max_length=8000)
     building_type: str = Field(default="building", min_length=1, max_length=80)
-    profile: str = Field(default="residential_lowrise", min_length=1, max_length=80)
+    profile: str = Field(default="custom", min_length=1, max_length=80)
     style_intent: list[str] = Field(default_factory=list, max_length=12)
 
 
@@ -254,7 +254,9 @@ class ComponentInstance(ContractModel):
     """
     
     type: str = Field(min_length=1, max_length=60)
-    #: 宿主语义id：体量(volume_primary) / 墙(wall_front_01) / 槽位(slot_front_02)
+    #: 宿主语义id：体量(volume_primary) / 墙(wall_front_01) / 槽位(slot_front_02) /
+    #: 开口(door_front_01) / 屋面(roof_01、`<volume_id>`)。**不做解析校验**——
+    #: 解析唯一的实现在编译器，认不出就记 `dropped`（见 `_validate_component_instances`）。
     host: str = Field(min_length=1, max_length=80)
     #: 相对宿主的尺寸（逐类型字段不同）
     size: dict[str, float] = Field(default_factory=dict)
@@ -373,6 +375,9 @@ class RuleTrace(ContractModel):
     schema_targets: list[str] = Field(default_factory=list, max_length=20)
     enforcement: list[Literal["schema", "planner", "resolver", "compiler", "validator", "none"]]
     source: str = Field(default="", max_length=500)
+    # Field-level diagnostic evidence, never input for compilation.
+    changes: list[dict[str, Any]] = Field(default_factory=list)
+    design_revision: int | None = None
 
 
 #: `decisions` 的带标签联合。标签是两边都有的 `kind`，所以解析不需要猜：
@@ -502,48 +507,35 @@ class DesignDocument(ContractModel):
         return self
     
     def _validate_component_instances(self, decisions: ArchitectureDecisions):
-        """校验构件实例清单的语义约束。"""
-        
-        # 构建宿主id集合
-        valid_hosts: set[str] = set()
-        
-        # 添加体量id
-        for volume in decisions.volumes:
-            valid_hosts.add(volume.id)
-            # 体量的层-面组合（如 volume_primary_L3_south）
-            for floor in range(volume.start_floor, volume.end_floor + 1):
-                for face in ["front", "back", "left", "right"]:
-                    valid_hosts.add(f"{volume.id}_L{floor}_{face}")
-        
-        # 添加墙id（假设格式：wall_<face>_<bay>）
-        for face in ["front", "back", "left", "right"]:
-            facade = decisions.facades.get(face)
-            if facade:
-                for bay in range(1, facade.bays + 1):
-                    valid_hosts.add(f"wall_{face}_{bay:02d}")
-        
-        # 添加槽位id（假设格式：slot_<face>_<bay>）
-        for face in ["front", "back", "left", "right"]:
-            facade = decisions.facades.get(face)
-            if facade:
-                for bay in range(1, facade.bays + 1):
-                    valid_hosts.add(f"slot_{face}_{bay:02d}")
-        
-        # 校验每个实例
+        """校验构件实例清单的语义约束。
+
+        🔴 **这里不判 host 能否解析**（2026-10-08 事故，第二例）。原先的做法是按
+        注释里"假设格式"拼一份 `valid_hosts`，再加一道
+        ``["wall_", "volume_", "slot_", "door_", "window_"]`` 前缀白名单。它两个
+        方向都不对：
+
+        - **拦不住真正悬空的引用** —— `wall_随便写` 只要带对前缀就放行；
+        - **把编译器自铸的合法宿主全拒掉** —— `roof_planned_01`、`roof_01`
+          一个前缀都对不上。现场：中式别墅给 `cornice` 写实例、
+          host=`main_L2_roof`（体量 `main` 顶层屋面），契约直接抛错 ⇒
+          `architecture` 节点 `status=failed` ⇒ **整轮生成中止**；而编译器那边
+          只是把这条实例记进 `dropped` 就继续了 —— 契约比编译器严，且严在
+          它自己判不了的事情上。
+
+        host 的命名空间有一半是**编译期才铸出来**的（骨架墙 `wall_*`、槽位
+        `slot_*`、开口 `door_*`/`window_*`、屋面 `roof_01`/`roof_planned_NN`、
+        檐口 `cornice_*`…），契约层手里只有体量/立面，**构造不出**这份名单；
+        硬拼一份就必然与编译器分叉。⇒ **解析只有一个实现：编译器**
+        （``compiler.compile._compile_from_instances``，宿主解析规则集中在
+        :func:`_opening_expression` 与屋顶宿主解析）。它认不出宿主就把实例记进
+        `stats.instance_overrides.dropped`、配额点名而零产出的类型另记
+        `uncompiled`，两者都进 `compile_report` 交修复环 —— 这才是
+        "图纸有问题只标记不阻断"该有的样子。
+
+        契约层只保留**它自己就能判**的东西：尺寸合理性、材质角色落点。
+        """
+
         for idx, instance in enumerate(decisions.components):
-            # host必须存在
-            host, separator, occurrence = instance.host.rpartition(":")
-            host = host if separator and occurrence.isdigit() else instance.host
-            if host and host not in valid_hosts:
-                # 宽松检查：允许部分格式的host（编译器会解析）
-                if not any(
-                    host.startswith(prefix)
-                    for prefix in ["wall_", "volume_", "slot_", "door_", "window_"]
-                ):
-                    raise ValueError(
-                        f"构件实例 {idx} 的 host '{instance.host}' 不是有效的宿主引用"
-                    )
-            
             # size必须合理
             if instance.size:
                 for key, value in instance.size.items():
@@ -557,11 +549,18 @@ class DesignDocument(ContractModel):
                             f"构件实例 {idx} 的 size.{key}={value} 超出合理范围(0-100m)"
                         )
             
-            # material_role必须在materials中有对应
+            # material_role 必须在材质方案里有落点。**判据与编译器同源**
+            # （`compile._material_name_for_role`）：角色名与方案里的 `materialId` 都算
+            # —— 编译器本来就认后者（`if role in known: return role`），只认角色名会造出
+            # 一道连编译器都不需要的硬闸。2026-10-08 实测：玻璃幕墙场景模型写 `metal`
+            # （材质名）而不是 `frame`（角色名），撞上这道闸即 `ValidationError`。
             if instance.material_role:
                 if decisions.materials.resolved_plan:
-                    roles = [r.role for r in decisions.materials.resolved_plan.roles]
-                    if instance.material_role not in roles:
+                    plan_roles = decisions.materials.resolved_plan.roles
+                    accepted = {item.role for item in plan_roles} | {
+                        item.materialId for item in plan_roles
+                    }
+                    if instance.material_role not in accepted:
                         raise ValueError(
                             f"构件实例 {idx} 的 material_role '{instance.material_role}' "
                             f"不在材质方案中"

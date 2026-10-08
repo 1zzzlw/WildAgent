@@ -121,13 +121,19 @@ async def material_planner(state: GenerationState) -> dict:
         role_specs=role_specs,
     )
     resolved_design = state.get("resolved_design")
+    role_repairs: list[str] = []
     if isinstance(design_document, dict):
         from app.design.repository import design_repository
         from app.design.resolver import attach_material_plan
 
-        updated_document = attach_material_plan(design_document, plan)
+        # 实例角色名归一（材质名 → 角色名 / 无对应则降级）在 attach 这一个收口点做，
+        # 并把记录回给诊断账本。没有这一步，模型写 `metal` 会让图纸的引用完整性校验
+        # 直接 raise，整轮生成终止在这里 —— 而编译器本来就能容忍这两种写法。
+        updated_document = attach_material_plan(design_document, plan, role_repairs=role_repairs)
         updated_document, resolved_design = design_repository.save(updated_document)
         design_document = updated_document.model_dump(mode="json")
+    for repair in role_repairs:
+        logger.warning(f"[material_plan] 构件实例材质角色已归一：{repair}")
     if callback:
         selected = [
             item for item in plan["roles"] if item.get("assetId")
@@ -163,6 +169,9 @@ async def material_planner(state: GenerationState) -> dict:
             "skipped_llm": skipped_llm,
             "recovery": recovery_diag,
             "error": error,
+            # 实例材质角色名的归一记录（材质名换角色名 / 无对应已降级）。
+            # 非空说明图纸里有过"看起来对、词表不对"的值，排查时先看这里。
+            "instance_role_repairs": role_repairs,
             "token_usage": token_usage,
             "prompt_chars": len(prompt) if catalog else 0,
             "total_ms": int((time.time() - started) * 1000),

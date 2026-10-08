@@ -97,6 +97,7 @@ class CompileResult:
         geometry = (self.blueprint or {}).get("geometry", {})
         elements = geometry.get("elements", []) or []
         components = geometry.get("components", []) or []
+        overrides = self.stats.get("instance_overrides") or {}
         return {
             "mode": self.mode,
             "ok": self.ok,
@@ -106,6 +107,37 @@ class CompileResult:
             "defaulted": len(self.defaulted),
             "unsupported": list(self.unsupported),
             "uncompiled": list(self.uncompiled),
+            # 实例清单里"写是写了、但没落地"的两类，必须出得来：
+            # 契约层已不再拦宿主引用（`contracts._validate_component_instances`），
+            # 若这里再不报，"只标记不阻断"就退化成"不标记也不阻断"。
+            #  - dropped：宿主解析不到、连兜底模板都没有，整条丢弃；
+            #  - host_fallback：宿主没按原意配到，退用了第 N 条派生结果（错位）。
+            "normalization_changes": list(self.stats.get("normalization_changes") or []),
+            "instance_size_changes": list(overrides.get("size_changes") or []),
+            "instance_dropped": list(overrides.get("dropped") or []),
+            "instance_host_fallback": list(overrides.get("host_fallback") or []),
+            # 形态表态的三类证据（`_apply_instance_form` 产出）。**必须出得来**：
+            # 编译器对非法形态值的处理是"不落 + 记一笔"，只标记不阻断的红线要靠这里成立 ——
+            # 投影不出来，"标记了没人读"和"没标记"对模型通道完全一样。
+            #  - ignored：键名认不出 **或** 值被拒 —— 两者都等于"这一步表态没落地"
+            #    （要区分原因就看 rejected）；
+            #  - rejected：键认得、但**值**不满足引擎字段契约（如 `profile` 给了一个名字）；
+            #  - unverified：值和键都落了，可**引擎 schema 里没有这个字段**（静默失效）。
+            "instance_form_ignored": [
+                f"{kind}.{key}"
+                for kind, keys in (overrides.get("form_ignored") or {}).items()
+                for key in keys
+            ],
+            "instance_form_rejected": [
+                f"{kind}.{key}: {reason}"
+                for kind, items in (overrides.get("form_rejections") or {}).items()
+                for key, reason in sorted(items.items())
+            ],
+            "instance_form_unverified": [
+                f"{kind}.{key}"
+                for kind, keys in (overrides.get("form_unverified") or {}).items()
+                for key in keys
+            ],
         }
 
 

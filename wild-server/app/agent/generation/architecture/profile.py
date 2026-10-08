@@ -64,9 +64,68 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
 #   - 设计意图（类型、风格、规模、结构体系）由模型 + 知识库决定。
 # 此前的 8 档关键词选档（住宅/公建/厂房…）会把"欧式古典柱廊殿宇"这类提示词
 # 锚成 12×9 两层住宅体量再被 shapes 钳死——是"所有建筑长一个样"的上游根因。
+#
+# 2026-10-08 补充：``id`` 现在会带上**分类器模型自选**的形制标签（villa / pavilion /
+# tower …），但**上表所有物理边界照旧来自 custom**——标签只用来分流检索与观测，
+# 不用来收窄能力。改这里之前先读 `detect_architecture_profile` 的 docstring。
+#: 体量形状枚举 —— **唯一事实源**（`_ARCHITECTURE_PROFILES` 的 ``shapes`` 由它派生）。
+#:
+#: 值是"这个成员在下游有没有**专门的几何行为**"，不是"能不能用"：
+#:
+#: - ``"volumes"``：`_fallback_volumes` 里有专属分支（模型没给 volumes 时按它派生体量）；
+#: - ``"plain"``：没有特殊形态，落到通用体量派生（"一栋普通矩形楼"）；
+#: - ``"label"``：**只有标签语义** —— 它的体量构成是设计决策（塔的收分、亭的居中、
+#:   巴西利卡的主从各不相同），只能由模型给的 ``volumes`` 表达，兜底只给一组通用体量。
+#:   `circle` 也属这一类：圆形平面的几何由屋顶类型派生（KB `cone-roof-system.md`），
+#:   本字段只负责表态。
+#:
+#: 🔴 **枚举是提示词词表，不是输出闸**（项目宪法：禁止给"模型能做什么"设允许列表）。
+#: 模型的 shape 越界时**不拦截、不静默改写**，按"仅标签语义"照原样保留并记账
+#: —— 这与 2026-09-29「未知构件类型走 `generic_component_config`」是同一条口径。
+#:
+#: 🔴 **这张表是"枚举↔行为↔KB"的对账点**：加成员只改这里；
+#: `tests/components/test_shape_enum.py` 钉住三条 —— 每个成员必须归类、
+#: 标了 ``volumes`` 的必须真有分支、KB 里教的 `massing.shape` 取值必须是表内成员
+#: （`circle` 就是这么发现 KB 与枚举不一致的）。
+_SHAPE_ENUM: dict[str, str] = {
+    "rectangle": "plain",
+    "l_shape": "volumes",
+    "u_shape": "volumes",
+    "stepped": "volumes",
+    "courtyard": "volumes",
+    "circle": "label",
+    "linear": "label",
+    "radial": "label",
+    "bowl": "label",
+    "terminal": "label",
+    "tower": "label",
+    "twin_tower": "label",
+    "pavilion": "label",
+    "basilica": "label",
+    "centralized": "label",
+    "underground": "label",
+}
+
+#: 形状标签的字符上限。**与 `app.design.contracts.MassingDecision.shape` 的
+#: ``max_length`` 同值**（守卫测试比对两者，不是靠注释提醒）：
+#: 越界会让契约校验直接硬失败，而"模型的形状词太长"绝不该掐掉整轮生成。
+_SHAPE_LABEL_MAX = 40
+
+
+def coerce_shape_label(value: object) -> str:
+    """把作者写的形状标签清成契约能收的形式（去空白、小写、截到上限）。
+
+    **不做成员校验** —— 枚举不是闸，表外名字照样保留（见 `_SHAPE_ENUM`）。
+    只做两件契约要求的事：非空、不超长。
+    """
+
+    text = str(value or "").strip().lower()
+    return text[:_SHAPE_LABEL_MAX]
+
+
 _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
     "custom": {
-        # 🔴 不带 label（用户决策 2026-09-29 二次修订）："自定义建筑"这类档位标签
+        # 不带 label："自定义建筑"这类档位标签
         # 一旦进提示词就会被模型当成设计主题写进 concept（实测"生成一个四角亭子"
         # 产出 concept"自定义建筑、比例清晰、入口有识别度"的四层别墅）。
         # 档案只提供物理边界，类型/风格/形态完全由用户请求 + 知识库决定。
@@ -76,11 +135,9 @@ _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
         "floor_range": (1, 200),
         "default_massing": (12.0, 9.0, 2, 3.2),
         "max_explicit_floors": 12,
-        "shapes": {
-            "rectangle", "l_shape", "u_shape", "stepped", "courtyard", "linear",
-            "radial", "bowl", "terminal", "tower", "twin_tower", "pavilion",
-            "basilica", "centralized", "underground",
-        },
+        # 形状词表由 `_SHAPE_ENUM` 派生（一处定义）：它进提示词告诉模型"有哪些可用"。
+        # 越界值不在这里拦 —— 见 `_SHAPE_ENUM` 的注释。
+        "shapes": set(_SHAPE_ENUM),
         "base_components": ["door", "window", "roof"],
         # 档案默认要求主入口；设计清单显式排除 door 时（地下车站等）由
         # planning 的 entrance_required 语义放宽——见 _fallback_plan / normalize。
@@ -137,17 +194,43 @@ def _requested_floors(user_message: str) -> int | None:
 
 
 def _requested_shape(user_message: str) -> str | None:
-    """提取用户明确指定的平面/体量形状，优先于模型方案中的旧值。"""
+    """提取用户**明确说出的形状词**，优先于模型方案中的旧值。
+
+    它唯一的不可替代作用：**用户显式表态 > 模型推断**（"把体量改成 U 形"必须生效，
+    不能让模型的自选把它顶掉）。所以词表必须只收**显式形状词**。
+
+    🔴 2026-10-08 实测（真实语料对照实验，见
+    `.workbuddy/diag/audit_requested_shape_hitrate.py`）：
+
+    - 「**在庭院里**设计一个四角凉亭…」→ 旧实现正则给 `courtyard`；
+    - 「生成一个四角凉亭」→ 正则不命中，模型自己写 `pavilion`（与 KB
+      `pavilion-garden-structure.md` 一致）。
+
+    两例的 `volumes` 完全相同（单体 4×4 `pavilion_main`），唯一差别就是"在庭院里"
+    四个字 —— 也就是说旧实现**用场地词压掉了模型的正确答案**。因此删掉：
+
+    - ``庭院``／``中庭``：**场地/室内空间**词，不是建筑自身平面形态；亭台常"在庭院里"，
+      它一命中就把亭子判成围合式四合院（`_fallback_volumes` 的 courtyard 分支真会
+      生成四块体量）。
+    - ``退台``：**工艺/部位**词。模型看到原文自己会选 `stepped`（语料 3 例全对），
+      正则去猜它只是与模型抢方向盘。
+
+    已知不精确（**有意不拦**）：它不看形状词修饰的是谁 ——「屋顶应该也是 L 形状的」
+    里那四个字仍是形状词，照样会命中（语料 1 例）。判"这个词在说屋顶还是说体量"需要
+    句法级判断，正则做不到；而为此收窄（要求"平面/体量/整体"作限定词）会漏掉
+    "二层为U形"这类**真**表态 —— 漏判（用户明说了却没被尊重）比误判更贵。
+    """
+
     if re.search(r"(?:^|[^a-z])u\s*(?:形|型)", user_message, re.I):
         return "u_shape"
     if re.search(r"(?:^|[^a-z])l\s*(?:形|型)", user_message, re.I):
         return "l_shape"
-    if any(word in user_message for word in (
-        "庭院", "中庭", "合院", "围合院落", "回字形", "回形",
-    )):
+    # `回字形/回形` 是平面形态；`合院` 是围合式形制（"生成一个四合院"实测就该是它）。
+    # 🔴 `合院` 必须带负向断言：`围合院落` 里也含"合院"两个连续字（`围合`+`院落` 的
+    # 跨词切分），裸子串匹配会把"围合院落式住宅"误判成 courtyard——这正是本轮要消除的
+    # 那类"看起来像形状表态"的误命中，写测试时当场撞上。
+    if re.search(r"回字形|回形|(?<!围)合院", user_message):
         return "courtyard"
-    if "退台" in user_message:
-        return "stepped"
     if any(word in user_message for word in ("矩形", "方盒子")):
         return "rectangle"
     return None
@@ -509,11 +592,18 @@ def is_architecture_request(user_message: str) -> bool:
 def detect_architecture_profile(
     user_message: str = "",
     fallback_profile_id: str | None = None,
+    profile_id: str | None = None,
 ) -> dict[str, Any]:
-    """
-    返回本次生成使用的规划档案。
+    """返回本次生成使用的规划档案。
+
+    ``profile_id`` 是**分类器**（Layer -1，``intent/workflow.py``）给出的形制标签：
+    它由模型在**同一个意图分类调用**里自行判断，本函数只把它落成档案 id。
     """
 
+    del user_message, fallback_profile_id
+
     profile = deepcopy(_ARCHITECTURE_PROFILES["custom"])
-    profile["id"] = "custom"
+    # 只做长度/空白清洗，不做枚举校验：认不出的标签原样保留，缺失才退 custom。
+    label = str(profile_id or "").strip().lower()[:40]
+    profile["id"] = label or "custom"
     return profile

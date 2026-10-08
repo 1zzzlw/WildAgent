@@ -116,6 +116,7 @@ class NormalizeReport:
         self.added_materials: List[str] = []  # 自动添加的材质
         self.fixes_applied: List[str] = []  # 应用的修复工具
         self.schema_errors: List[str] = []  # 最终 schema 校验错误
+        self.changes: List[dict] = []  # 字段级 before/after，供交付诊断消费
     
     def summary(self) -> str:
         """生成摘要"""
@@ -625,6 +626,7 @@ def normalize_blueprint_for_delivery(bp: Dict[str, Any]) -> Tuple[Dict[str, Any]
     Returns:
         (normalized_bp, report): 归一化后的蓝图 + 修复报告
     """
+    original = copy.deepcopy(bp)
     report = NormalizeReport()
     bp = copy.deepcopy(bp)  # 不修改原对象
     
@@ -657,6 +659,8 @@ def normalize_blueprint_for_delivery(bp: Dict[str, Any]) -> Tuple[Dict[str, Any]
     # 7. 最终 schema 校验
     _validate_against_schema(bp, report)
     
+    from app.design.normalization import field_changes
+    report.changes = field_changes(original, bp, rule="blueprint.delivery", source="unknown")
     logger.info(f"[Normalizer] {report.summary()}")
     
     return bp, report

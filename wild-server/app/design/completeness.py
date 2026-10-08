@@ -64,12 +64,14 @@ def adopted_from_plan(raw: dict) -> list[dict]:
         if root not in raw:
             continue
         value = raw[root]
+        if root == "roof" and isinstance(value, list) and len(value) == 1 and isinstance(value[0], dict):
+            value = value[0]
         if value == [] or value == {}:
             continue
         fields = value.items() if isinstance(value, dict) else [(None, value)]
         for key, expected in fields:
             # Descriptions and unrelated style labels are not machine-verifiable promises.
-            if root == "massing" and key not in {"width", "depth", "floors", "floor_height", "modeled_floors"}:
+            if root == "massing" and key not in {"width", "depth", "floors", "floor_height", "modeled_floors", "shape", "tiers"}:
                 continue
             if root == "roof" and key not in {"type", "ridge_axis", "overhang"}:
                 continue
@@ -168,4 +170,21 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
         gaps.append(DesignGap(id="gap.intent.unknown", constraint_id="request.source", status="needs_review",
             design_hash=design_hash, target="/requirements/source_request", expected=document.requirements.source_request,
             evidence="历史文档或起草结果未提供可执行意图，不能证明全部需求已经满足"))
+    for trace in document.rule_trace:
+        for index, change in enumerate(trace.changes):
+            if not change.get("semantic_change"):
+                continue
+            target = change["path"]
+            exists, actual = value_at(data, target)
+            # Evidence is historical. A later explicit design revision can replace the
+            # degraded value; do not keep reporting the old revision as a current defect.
+            still_degraded = exists == change.get("after_exists", True) and _matches(actual, change.get("after"))
+            supported = _path_schema(document, target) is not None
+            gaps.append(DesignGap(
+                id=f"gap.normalization.{trace.rule_id}.{trace.design_revision}.{index}",
+                constraint_id=next(iter(change.get("constraint_ids") or []), "request.source"),
+                status=("open" if supported and change.get("category") != "derived" else "needs_review") if still_degraded else "satisfied",
+                design_hash=design_hash, target=target, expected=change.get("before"), actual=actual,
+                evidence=f"{target}：{change['reason']}；原值 {change.get('before')!r}，降级值 {change.get('after')!r}。修订须遵守当前契约，不能恢复非法值。",
+            ))
     return gaps

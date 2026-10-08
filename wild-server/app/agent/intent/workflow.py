@@ -1,7 +1,7 @@
 """意图分类节点入口。
 
-流程：读取 GenerationState → 判定意图与交付对象类型 → 写回 ``intent_*`` 字段；
-建筑目标额外预选风格包，供后续节点约束设计方向。
+流程：读取 GenerationState → 判定意图、交付对象类型与建筑形制标签 → 写回
+``intent_*`` 字段；建筑目标额外预选风格包，供后续节点约束设计方向。
 """
 from __future__ import annotations
 
@@ -41,6 +41,7 @@ async def classifier_node(state: dict) -> dict:
         "intent": decision.intent,
         "intent_target": decision.target,
         "intent_target_kind": decision.target_kind,
+        "intent_profile": decision.profile,
         "intent_requires_scene": decision.requires_scene,
         "intent_reason": decision.reason,
         "intent_source": decision.source,

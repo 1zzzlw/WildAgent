@@ -27,6 +27,19 @@ from app.agent.generation.architecture.probe_tool import (
 
 _MESSAGE = "生成一个三层别墅"
 
+#: massing 块的一份**合法**回复：块契约要求体量数组给出 1~8 个完整体量
+#: （`design_blocks.py` massing 块："单体也要明确一个完整体量"）。
+#: ``"volumes": []`` 会被 `check_block_contract` 判不通过 → 有界重试三轮 → 整块作废，
+#: 表现为下游 ``draft["massing"]`` 直接 KeyError（不是这条用例要测的东西）。
+_MASSING_BLOCK_REPLY = json.dumps({
+    "concept": "试算方案",
+    "massing": {"floors": 3, "width": 12, "depth": 9},
+    "volumes": [{
+        "id": "v1", "role": "primary", "x": 0, "z": 0,
+        "width": 12, "depth": 9, "start_floor": 1, "end_floor": 3,
+    }],
+})
+
 
 def _run(coro):
     return asyncio.run(coro)
@@ -193,7 +206,7 @@ def test_probe_tool_is_handed_to_the_model_on_the_plain_channel(monkeypatch) -> 
     calls = _patch_run_tool_loop(
         monkeypatch,
         _FakeLoopResult(
-            json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []}),
+            _MASSING_BLOCK_REPLY,
             trace=[{"tool": PROBE_TOOL_NAME}],
             usage={"input": 10, "output": 2, "total": 12},
         ),
@@ -305,7 +318,7 @@ def test_streaming_fallback_when_the_tool_is_turned_off(monkeypatch) -> None:
         emitted.append(f"{channel}:{delta}")
 
     class _Reply:
-        content = json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
+        content = _MASSING_BLOCK_REPLY
         token_usage = None
 
     async def fake_stream(*_args, **kwargs):
@@ -341,7 +354,7 @@ def test_caller_can_turn_the_tool_off(monkeypatch) -> None:
     calls = _patch_run_tool_loop(monkeypatch, _FakeLoopResult("{}"))
 
     class _Reply:
-        content = json.dumps({"concept": "试算方案", "massing": {"floors": 3, "width": 12, "depth": 9}, "volumes": []})
+        content = _MASSING_BLOCK_REPLY
         token_usage = None
 
     async def fake_invoke(*_args, **_kwargs):

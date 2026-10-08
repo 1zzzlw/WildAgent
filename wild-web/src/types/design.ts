@@ -194,6 +194,21 @@ export interface DesignDocument {
     schema_targets: string[]
     enforcement: Array<'schema' | 'planner' | 'resolver' | 'compiler' | 'validator' | 'none'>
     source: string
+    design_revision?: number | null
+    changes?: Array<{
+      path: string
+      before: unknown
+      after: unknown
+      before_exists: boolean
+      after_exists: boolean
+      rule: string
+      category: string
+      input_source: string
+      output_source: string
+      semantic_change: boolean
+      reason: string
+      constraint_ids: string[]
+    }>
   }>
 }
 

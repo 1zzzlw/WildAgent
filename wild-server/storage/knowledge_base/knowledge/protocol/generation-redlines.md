@@ -30,6 +30,9 @@ synonyms: []
 - 组合构件挂在墙上的水平定位是 **`from[0] = 沿墙距离`**（从 `parentWall.from` 沿墙方向量起，单位米）。
 - `roof.span` / `roof.depth` 按其负责的**体量轮廓**取尺寸，出檐时两侧加余量；
   **不得**用整栋外包络当屋顶范围。多体量（L 形 / U 形 / 退台）各生成一块屋顶，或贴合墙体留出内院 / 天井。
+  （这三项 `span` / `depth` / `position` 是**蓝图屋顶元素**的字段；
+  **设计层** `decisions.roof` 没有它们，只写一块风格模板 `type` / `ridge_axis` / `overhang`——
+  逐体量分段由编译器派生，见《构件参数》§roof 的分层说明。）
 - `roof.position` 位于墙体 XZ 中心与墙顶高度。
 
 ## 枚举陷阱

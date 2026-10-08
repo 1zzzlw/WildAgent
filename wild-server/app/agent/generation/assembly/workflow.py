@@ -546,6 +546,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
     from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery
     
     merged_blueprint, norm_report = normalize_blueprint_for_delivery(merged_blueprint)
+    merge_diag["normalization_changes"] = norm_report.changes
     logger.info(f"[merge] 归一化修复: {norm_report.summary()}")
     
     if on_reasoning_delta:

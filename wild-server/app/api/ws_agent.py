@@ -719,9 +719,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     # ── 初始状态 ──
     #
-    # `building_type` 只是入口的**预标签**（真正的 profile 由建筑方案节点带上下文重算），
-    # 但它会写进会话元数据。所以物件需求不能借用建筑的兜底值：`detect_architecture_profile`
-    # 在认不出建筑类型时返回 `residential_lowrise`，直接套用会把"生成一个桌子"标成低层住宅。
+    # `building_type` 只是入口的**预标签**（真正的 profile 由分类器判形制、建筑方案节点
+    # 落档，见 `intent/decision.py::_normalize_profile`），但它会写进会话元数据。所以
+    # 物件需求不能借用建筑的兜底值：`detect_architecture_profile` 在认不出形制时返回
+    # `custom`，直接套用会把"生成一个桌子"标成一栋建筑。
     # 这里用与意图路由同一套确定性关键词先判目标类型，只有建筑需求才预打建筑标签。
     preliminary_target = detect_target_kind(message, "generate")
     initial_state: GenerationState = {
@@ -933,6 +934,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "node": node_name, "label": label, "stage": "done",
                         "intent": intent,
                         "target": node_output.get("intent_target"),
+                        "profile": node_output.get("intent_profile"),
                         "reason": node_output.get("intent_reason"),
                         "source": node_output.get("intent_source"),
                     })

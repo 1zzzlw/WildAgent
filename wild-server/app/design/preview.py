@@ -37,7 +37,8 @@ def render_compiled_svg(document, resolved):
         for slot in resolved.facade_slots:
             if slot.facing != facing:
                 continue
-            parts.append(f'<rect x="{x0+slot.offset*scale:.2f}" y="{base-(slot.bottom+slot.height)*scale:.2f}" width="{slot.width*scale:.2f}" height="{slot.height*scale:.2f}" fill="{("#5aa7d7" if slot.type!="door" else "#b78350")}" data-design-path="/decisions/facades/{facing}" data-slot-id="{escape(slot.id)}"><title>{escape(slot.id)}: {slot.width} × {slot.height} m</title></rect>')
+            projected_width = abs(slot.world_to[axis] - slot.world_from[axis])
+            parts.append(f'<rect x="{x0+slot.offset*scale:.2f}" y="{base-(slot.bottom+slot.height)*scale:.2f}" width="{projected_width*scale:.2f}" height="{slot.height*scale:.2f}" fill="{("#5aa7d7" if slot.type!="door" else "#b78350")}" data-design-path="/decisions/facades/{facing}" data-slot-id="{escape(slot.id)}"><title>{escape(slot.id)}: {slot.width} × {slot.height} m</title></rect>')
         parts.append(f'<text x="{x0}" y="410" fill="#aab8c8">主体宽深参考 {span:.1f} m · 实际墙顶 {resolved.bounds["height"]:.1f} m</text>')
     # Ground-plan anchors project actual compiled walls, not a second volume silhouette.
     parts.append('<text x="650" y="460" fill="white">底层墙体平面</text>')
