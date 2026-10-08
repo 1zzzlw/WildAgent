@@ -8,7 +8,7 @@ import pytest
 
 from app.agent.plan.contracts import PlanItem
 from app.agent.plan.handlers import run_generate
-from app.agent.generation.component_processing import validate_and_fix_with_tools
+from app.agent.generation.component.processing import validate_and_fix_with_tools
 
 
 @pytest.mark.parametrize("count", [1, 15, 38])

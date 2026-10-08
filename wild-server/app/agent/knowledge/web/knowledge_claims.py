@@ -17,7 +17,7 @@ _BASE_ELEMENT_TYPES = {"wall", "floor", "stair", "column", "beam", "roof", "open
 
 def _supported_component_types() -> set[str]:
     try:
-        from app.agent.generation.components import get_implemented_components
+        from app.agent.generation.component.registry import get_implemented_components
         components = {cfg.component_type for cfg in get_implemented_components()}
     except Exception:
         components = {"door", "window", "roof", "railing", "canopy", "balcony",

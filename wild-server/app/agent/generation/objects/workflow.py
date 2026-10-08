@@ -32,7 +32,7 @@ from app.spec.loader import SpecQuery
 from app.utils.json_extractor import extract_json_object
 
 #: 物件方案可以引用的材质名。与 `objects/skeleton.py::OBJECT_MATERIALS`
-#: 和 `material_plan.OBJECT_ROLE_SPECS` 逐字一致——三处都是这一份清单。
+#: 和 `material.plan.OBJECT_ROLE_SPECS` 逐字一致——三处都是这一份清单。
 _SCENE_MATERIAL_IDS = ["wood", "metal", "glass", "stone", "fabric", "accent"]
 
 

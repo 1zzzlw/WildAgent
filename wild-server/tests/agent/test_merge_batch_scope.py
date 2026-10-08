@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import unittest
 
-from app.agent.generation.assembly_workflow import merge_fragments_node
+from app.agent.generation.assembly.workflow import merge_fragments_node
 from app.utils.fragment_merger import merge_fragment_batch
 
 _SKELETON = {

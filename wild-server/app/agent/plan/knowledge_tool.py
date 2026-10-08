@@ -18,7 +18,7 @@ from typing import Any
 from langchain.tools import tool
 from loguru import logger
 
-from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
 
 #: 单次工具调用返回的字符上限：工具输出会进上下文，必须有界。
 #: 6000 ≈ 两个完整高分片（Loader per_query=2 时常用 2~4 片）；3000 会把
@@ -44,7 +44,7 @@ def search_knowledge_impl(
     if not query:
         return "❌ 查询为空：请给出具体的字段、构件或构造问题。"
 
-    from app.agent.generation.components import get_implemented_components
+    from app.agent.generation.component.registry import get_implemented_components
     from app.spec.loader import SpecQuery
 
     filters: dict[str, Any] = {"doc_type": doc_type or "component"}

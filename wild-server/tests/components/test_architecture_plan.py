@@ -14,7 +14,7 @@ from app.agent.generation.architecture import (
 )
 from app.utils.blueprint_parser import validate_blueprint_schema
 from app.tools.spatial_tools import validate_model_quality, validate_reference_integrity
-from app.agent.generation.stair_openings import stair_opening_issues
+from app.agent.generation.spatial.stair_openings import stair_opening_issues
 
 
 @pytest.mark.parametrize("floors", [1, 2, 3])

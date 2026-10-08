@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from app.agent.generation import skeleton_workflow as skeleton_node
-from app.agent.generation.skeleton_output import build_skeleton_summary
+from app.agent.generation.skeleton import workflow as skeleton_node
+from app.agent.generation.skeleton.output import build_skeleton_summary
 from app.llm.invocation import merge_token_usage
 
 

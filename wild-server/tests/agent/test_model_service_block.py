@@ -29,7 +29,7 @@ class ModelServiceBlockTest(unittest.TestCase):
     def test_classifier_blocks_missing_model_before_any_generation_route(self):
         async def _run():
             with patch(
-                "app.agent.routing.invoke_llm",
+                "app.agent.intent.classify.invoke_llm",
                 side_effect=_MissingModelError("configured model does not exist"),
             ):
                 return await classifier_node({"user_message": "生成一个玻璃幕墙商业综合体"})

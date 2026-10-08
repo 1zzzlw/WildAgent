@@ -5,9 +5,9 @@
 `ResolvedMaterialPlan` 模型同时承载两套角色表：
 
 - 建筑：`facade_primary / structure / floor / frame / door / glass / roof / ground / accent`
-  （`material_plan.ROLE_SPECS`）
+  （`material.plan.ROLE_SPECS`）
 - 物件：`wood / metal / glass / stone / fabric / accent`
-  （`material_plan.OBJECT_ROLE_SPECS`，物件侧没有 `frame`，用 `metal`）
+  （`material.plan.OBJECT_ROLE_SPECS`，物件侧没有 `frame`，用 `metal`）
 
 2026-09-23 实测缺陷：角色字面量只写了建筑侧，物件材质方案走到
 `resolver.attach_material_plan()` 的 `DesignDocument.model_validate()` 时
@@ -23,7 +23,7 @@ from typing import get_args
 
 from pydantic import ValidationError
 
-from app.agent.generation.material_plan import OBJECT_ROLE_SPECS, ROLE_SPECS, resolve_material_plan
+from app.agent.generation.material.plan import OBJECT_ROLE_SPECS, ROLE_SPECS, resolve_material_plan
 from app.agent.generation.objects import normalize_object_plan
 from app.design.contracts import (
     ArchitectureMaterialRoleName,
@@ -103,7 +103,7 @@ class ObjectMaterialPlanRoundTripTest(unittest.TestCase):
         )
 
     def test_attach_material_plan_accepts_a_dict_document(self):
-        # `material_workflow` 传进来的就是 `state["design_document"]`（dict）。
+        # `material/workflow.py` 传进来的就是 `state["design_document"]`（dict）。
         material_plan = resolve_material_plan(None, [], self.plan, "")
         updated = attach_material_plan(self.document.model_dump(mode="json"), material_plan)
         self.assertEqual(updated.decisions.kind, "object")

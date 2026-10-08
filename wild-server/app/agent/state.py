@@ -4,7 +4,7 @@
 
 """
 
-from typing import Annotated, Any, NotRequired, TypedDict
+from typing import Annotated, Any, Literal, NotRequired, TypedDict
 
 
 def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
@@ -16,6 +16,21 @@ def merge_state_mapping(left: dict | None, right: dict | None) -> dict:
     merged = dict(left or {})
     merged.update(right or {})
     return merged
+
+
+#: 本轮**要不要现在产出**：generate（生成新产物）/ edit（改既有场景）/ chat（只问答）。
+#: 与 :data:`TargetKind` 正交，两者共同决定图的第一个分叉。
+IntentName = Literal["generate", "edit", "chat"]
+
+#: 本轮**要产出什么**，与 intent 正交。
+#:
+#: - ``architecture``：建筑/构筑物/场地，走体量→立面→屋顶的完整方案链；
+#: - ``object``：单个物件（家具、器物、陈设），没有体量，直接按构件生成。
+#:
+#: 为什么不合成第四个 intent：``intent`` 回答"要不要现在产出"，``target_kind``
+#: 回答"产出什么"。塞进同一个枚举会让每个分支都要再分叉一次——"改一下这个桌子"
+#: 是 edit + object，"生成一个别墅"是 generate + architecture。
+TargetKind = Literal["architecture", "object"]
 
 
 class GenerationInput(TypedDict):

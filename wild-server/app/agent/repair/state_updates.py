@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 
-from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
 from app.agent.state import GenerationState
 
 

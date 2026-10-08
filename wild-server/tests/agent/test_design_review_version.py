@@ -16,7 +16,7 @@ def document():
 
 @pytest.mark.parametrize("stored_newer", [False,True])
 def test_review_persists_completion_but_preserves_newer_user_patch(monkeypatch,stored_newer):
-    from app.agent.nodes import design_review_node as node
+    from app.agent.design_flow import review as node
     doc=document().model_copy(update={"revision":2})
     stored=doc.model_copy(update={"revision":3 if stored_newer else 1})
     saved=[]

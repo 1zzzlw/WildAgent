@@ -68,7 +68,7 @@ class DesignRepository:
     def _validate_component_capabilities(document: DesignDocument) -> None:
         """阻止 Patch 把未实现构件重新写回可执行配额。"""
 
-        from app.agent.generation.components import get_implemented_components
+        from app.agent.generation.component.registry import get_implemented_components
         from app.design.contracts import ObjectDecisions
 
         supported = {item.component_type for item in get_implemented_components()}

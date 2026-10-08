@@ -10,7 +10,7 @@
 
 ``merge`` 条目有两种作用域（§3.3）：``scope="batch"`` 只把一组分片并进蓝图，
 ``scope="final"`` 才是配额强制 + 全局归一化 + 校验修复循环。分派逻辑在本模块，
-实现复用同一个 ``merge_fragments_node``（``generation/assembly_workflow.py``）。
+实现复用同一个 ``merge_fragments_node``（``generation/assembly/workflow.py``）。
 
 关键校验由 plan 里显式的 ``validate`` 条目兜底（模型无法跳过）；模型自愿调工具只是加分项。
 处理器全部复用既有实现：生成用 ``create_component_generator``/``create_component_validator``，
@@ -24,7 +24,7 @@ from typing import Any, Callable
 
 from loguru import logger
 
-from app.agent.generation.components import COMPONENT_REGISTRY, ComponentConfig
+from app.agent.generation.component.registry import COMPONENT_REGISTRY, ComponentConfig
 from app.agent.plan.contracts import PlanItem
 from app.agent.plan.tool_registry import tools_for
 
@@ -40,7 +40,7 @@ Handler = Callable[[dict[str, Any], PlanItem], Any]
 def _generator_for(config: ComponentConfig):
     generator = _GENERATORS.get(config.component_type)
     if generator is None:
-        from app.agent.generation.component_workflow import create_component_generator
+        from app.agent.generation.component.workflow import create_component_generator
 
         generator = create_component_generator(config)
         _GENERATORS[config.component_type] = generator
@@ -50,7 +50,7 @@ def _generator_for(config: ComponentConfig):
 def _validator_for(config: ComponentConfig):
     validator = _VALIDATORS.get(config.component_type)
     if validator is None:
-        from app.agent.generation.component_workflow import create_component_validator
+        from app.agent.generation.component.workflow import create_component_validator
 
         validator = create_component_validator(config)
         _VALIDATORS[config.component_type] = validator
@@ -182,7 +182,7 @@ async def run_generate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
     from app.agent.runtime import bind_item_tools, reset_item_tools
 
-    from app.agent.generation.components import generic_component_config
+    from app.agent.generation.component.registry import generic_component_config
 
     config = COMPONENT_REGISTRY.get(item.kind)
     if config is None or not config.implemented:
@@ -243,7 +243,7 @@ async def run_merge(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     跑的时候后面还有分组没到场，此刻按配额剔超额、按槽位补缺失都会误伤。
     """
 
-    from app.agent.generation.assembly_workflow import SCOPE_BATCH, merge_fragments_node
+    from app.agent.generation.assembly.workflow import SCOPE_BATCH, merge_fragments_node
 
     scope = SCOPE_BATCH if item.is_batch_merge else "final"
     kinds = [str(kind) for kind in (item.target.get("component_types") or []) if kind]
@@ -304,7 +304,7 @@ def run_validate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
 
 def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
-    from app.agent.generation.assembly import apply_fixes
+    from app.agent.generation.assembly.merge import apply_fixes
     from app.services.agent_service import _final_errors, run_validation_pipeline
 
     blueprint = state.get("merged_blueprint")
@@ -340,7 +340,7 @@ async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
        工具取空间约束 → 模型只输出白名单动作 → 程序执行并全量复检 → 错误数下降才提交。
     """
 
-    from app.agent.generation.assembly import apply_fixes
+    from app.agent.generation.assembly.merge import apply_fixes
     from app.agent.repair.workflow import callback_node
     from app.agent.validation.workflow import validate_node
     from app.services.agent_service import _final_errors, run_validation_pipeline

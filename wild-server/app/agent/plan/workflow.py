@@ -1,6 +1,6 @@
 """plan 驱动链的三个业务节点：plan / execute / replanner。
 
-与既有节点同一套写法（对照 ``generation/material_workflow.py``、``validation/workflow.py``）：
+与既有节点同一套写法（对照 ``generation/material/workflow.py``、``validation/workflow.py``）：
 
 - 节点先通过 ``get_reasoning_callback()`` 播报"正在做什么"，前端才有思考流可看；
 - 节点写回 ``<node>_diag`` 诊断（耗时 / 模型调用 / 关键计数），供审计与回归断言；

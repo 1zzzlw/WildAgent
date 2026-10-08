@@ -18,7 +18,7 @@
 
 本模块因此只做三件新事：
 
-1. **接线**：按 ``assembly_workflow.py:275-330`` 的既有顺序，把上面这些串成**一次**编译
+1. **接线**：按 ``assembly/workflow.py:275-330`` 的既有顺序，把上面这些串成**一次**编译
    （既有流程里它们是"模型产出之后的吸附/补足"，这里改成"没有模型产出也照样跑"）；
 2. **补缺口**：单块屋顶没有槽位（历史上留给模型自由造型）→ 从 ``massing`` 派生；
    檐口 / 烟囱 / 灯具连槽位都没有 → 从**已落地的屋顶与墙面**派生
@@ -65,12 +65,12 @@ from app.agent.generation.architecture import (
 from app.agent.generation.architecture.facade import _plan_winding
 #: 屋顶合法类型闭集。从既有定义导入而不是复制——闭集写两份就一定会分叉。
 from app.agent.generation.architecture.profile import _SUPPORTED_ROOF_TYPES
-from app.agent.generation.components import COMPONENT_REGISTRY
-from app.agent.generation.material_plan import (
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
+from app.agent.generation.material.plan import (
     apply_resolved_material_plan,
     material_role_specs,
 )
-from app.agent.generation.slot_utils import component_slots
+from app.agent.plan.slot_utils import component_slots
 from app.agent.validation.design_constraints import (
     design_quota_shortfalls,
     validate_design_brief_constraints,
@@ -673,12 +673,12 @@ def _material_name_for_role(
     写进去，``validate_reference_integrity`` 会报"未在 Blueprint.materials 中定义" ——
     而两个名字**看起来都对**，排查时最容易往材质方案那边找。
 
-    映射表**不在这里重抄一份**：唯一来源是 `material_plan.ROLE_SPECS` 的 ``materialId``。
+    映射表**不在这里重抄一份**：唯一来源是 `material.plan.ROLE_SPECS` 的 ``materialId``。
     该字段名不在 ``materials`` 里时（例如 ``floor`` → ``floor_finish`` 不在默认六件套中）
     继续退到 ``default_role``，最后才退到任意一个已定义的键。
     """
 
-    from app.agent.generation.material_plan import ROLE_SPECS
+    from app.agent.generation.material.plan import ROLE_SPECS
 
     known = materials if isinstance(materials, dict) else {}
     if str(role or "") in known:

@@ -6,7 +6,7 @@ import json
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.agent.generation.components import ComponentConfig
+    from app.agent.generation.component.registry import ComponentConfig
 
 
 def build_blueprint_recovery_messages(

@@ -190,7 +190,7 @@ class CirculationDecision(ContractModel):
         return "core_and_stair" if value == "core" else value
 
 
-#: 建筑侧材质角色名。与 `agent/generation/material_plan.py::ROLE_SPECS` 的键**一一对应**。
+#: 建筑侧材质角色名。与 `agent/generation/material/plan.py::ROLE_SPECS` 的键**一一对应**。
 ArchitectureMaterialRoleName = Literal[
     "facade_primary", "structure", "floor", "frame", "door",
     "glass", "roof", "ground", "accent",
@@ -198,7 +198,7 @@ ArchitectureMaterialRoleName = Literal[
 
 #: 物件侧材质角色名。与同文件的 `OBJECT_ROLE_SPECS` 的键**一一对应**——物件没有
 #: "承重墙/楼板/龙骨"这类建筑语义，所以按材质本身命名（木/金属/玻璃/石/织物）。
-#: 注意物件侧用 `metal` 而不是建筑侧的 `frame`（见 `material_plan._METALLIC_ROLES`）。
+#: 注意物件侧用 `metal` 而不是建筑侧的 `frame`（见 `material.plan._METALLIC_ROLES`）。
 ObjectMaterialRoleName = Literal["wood", "metal", "glass", "stone", "fabric", "accent"]
 
 #: 两者并集。`ResolvedMaterialPlan` 被建筑与物件**共用**（`decisions` 是带标签联合），

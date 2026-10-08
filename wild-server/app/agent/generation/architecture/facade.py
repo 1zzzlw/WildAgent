@@ -7,7 +7,7 @@ import hashlib
 import math
 from typing import Any
 
-from app.agent.generation.spatial_geometry import snap_to_grid
+from app.agent.generation.spatial.geometry import snap_to_grid
 from app.design.openings import FIXED_FORM, INTERACTION_FORMS, split_opening
 
 from .recipes import load_curtain_wall_parameters

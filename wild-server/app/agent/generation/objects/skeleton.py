@@ -10,7 +10,7 @@
 `geometry.elements`，这与 roof 走的是同一条路径（两者都声明 is_element）。
 
 材质调色板刻意用**受控角色 ID**（wood / metal / glass / stone / fabric / accent），
-与 `material_plan.OBJECT_ROLE_SPECS` 的 materialId 逐字一致，这样材质节点解析出的
+与 `material.plan.OBJECT_ROLE_SPECS` 的 materialId 逐字一致，这样材质节点解析出的
 受控方案能直接覆盖到物件上，而不会出现"模型引用了一个骨架里没有的材质名"。
 """
 

@@ -142,7 +142,7 @@ def _is_element_type(item_type: str) -> bool:
     """
 
     try:
-        from app.agent.generation.components import COMPONENT_REGISTRY
+        from app.agent.generation.component.registry import COMPONENT_REGISTRY
 
         config = COMPONENT_REGISTRY.get(item_type)
         if config is not None:

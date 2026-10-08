@@ -1,8 +1,8 @@
 import asyncio
 
-from app.agent.generation.components import COMPONENT_REGISTRY, ComponentConfig
-from app.agent.generation.component_workflow import create_component_validator
-from app.agent.generation.component_processing import (
+from app.agent.generation.component.registry import COMPONENT_REGISTRY, ComponentConfig
+from app.agent.generation.component.workflow import create_component_validator
+from app.agent.generation.component.processing import (
     validate_and_fix_with_tools,
     validate_fragments,
     validation_has_error,

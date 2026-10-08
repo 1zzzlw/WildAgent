@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.agent.generation.components import get_implemented_components
+from app.agent.generation.component.registry import get_implemented_components
 from app.agent.plan.contracts import (
     ItemRun,
     PlanDocument,

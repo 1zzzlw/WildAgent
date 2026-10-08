@@ -1,6 +1,6 @@
 """组件生成节点的**无模型冒烟**，专钉一条曾静默潜伏的 import 缺失。
 
-真实事故（2026-09-22）：`component_workflow.py` 里调用了 `component_rules_source(rag_chars)`
+真实事故（2026-09-22）：`component/workflow.py` 里调用了 `component_rules_source(rag_chars)`
 （定义在 `components.py`），但该文件的 import 只带了 `ComponentConfig`，**漏了这个函数**。
 后果和 `plan_feedback` 是同型：模块 import 正常、全量导入扫描正常、图编译正常，
 只有真跑到那一行才 NameError。它当时被 architecture 节点的更早崩溃挡住了，属于"下一个必炸"。
@@ -20,8 +20,8 @@ from unittest.mock import patch
 
 import pytest
 
-from app.agent.generation.component_workflow import create_component_generator
-from app.agent.generation.components import (
+from app.agent.generation.component.workflow import create_component_generator
+from app.agent.generation.component.registry import (
     KNOWLEDGE_SUFFICIENT_CHARS,
     COMPONENT_REGISTRY,
     _COMPONENT_RULES,
@@ -75,11 +75,11 @@ def _node_patches(spec_text: str):
     return (
         patch.object(agent_service, "spec_loader", _FakeSpecLoader(spec_text)),
         patch(
-            "app.agent.generation.component_workflow.create_llm",
+            "app.agent.generation.component.workflow.create_llm",
             lambda **_kwargs: object(),
         ),
         patch(
-            "app.agent.generation.component_workflow.invoke_llm",
+            "app.agent.generation.component.workflow.invoke_llm",
             _fake_invoke_llm,
         ),
     )
@@ -145,7 +145,7 @@ async def test_component_generator_omits_static_rules_when_rag_sufficient() -> N
 
 @pytest.mark.asyncio
 async def test_roof_batch_survives_generation_and_collection():
-    from app.agent.generation.assembly_workflow import _collect_fragments
+    from app.agent.generation.assembly.workflow import _collect_fragments
 
     roofs = [{"type": "roof", "id": f"roof_{i}", "roofType": "gable", "span": 8,
               "depth": 6, "height": 1.5, "thickness": 0.2} for i in range(2)]
@@ -155,7 +155,7 @@ async def test_roof_batch_survives_generation_and_collection():
         return _FakeLLMResult(json.dumps(roofs))
 
     spec_loader, create_llm, _ = _node_patches("")
-    with spec_loader, create_llm, patch("app.agent.generation.component_workflow.invoke_llm", invoke):
+    with spec_loader, create_llm, patch("app.agent.generation.component.workflow.invoke_llm", invoke):
         result = await create_component_generator(COMPONENT_REGISTRY["roof"])(_state())
     assert result["component_fragments"]["roof"] == roofs
     collected, _ = _collect_fragments(result["component_fragments"])
@@ -201,7 +201,7 @@ async def test_furniture_generator_migrates_degree_rotations() -> None:
     spec_loader, create_llm, _ = _node_patches("")
     node = create_component_generator(COMPONENT_REGISTRY["furniture"])
     with spec_loader, create_llm, patch(
-        "app.agent.generation.component_workflow.invoke_llm", invoke,
+        "app.agent.generation.component.workflow.invoke_llm", invoke,
     ):
         update = await node(_state())
 

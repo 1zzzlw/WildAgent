@@ -45,7 +45,17 @@ def test_node_entry_modules_stay_small():
 
 def test_domain_modules_do_not_depend_on_node_entries():
     violations: list[str] = []
-    for package in ("plan", "generation", "knowledge", "validation", "repair", "prompts"):
+    for package in (
+        "plan",
+        "generation",
+        "knowledge",
+        "validation",
+        "repair",
+        "prompts",
+        "intent",
+        "design_flow",
+        "patch",
+    ):
         for path in (AGENT_ROOT / package).rglob("*.py"):
             if "__pycache__" in path.parts:
                 continue

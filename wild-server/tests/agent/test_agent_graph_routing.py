@@ -7,7 +7,7 @@
 
 from types import SimpleNamespace
 
-from app.agent.generation.components import resolve_component_suggestions
+from app.agent.generation.component.registry import resolve_component_suggestions
 from langgraph.graph import END
 
 from app.agent.graph import (
@@ -16,8 +16,8 @@ from app.agent.graph import (
     _classifier_dispatch,
     _final_validate_dispatch,
 )
-import app.agent.routing as intent_classifier
-from app.agent.routing import (
+import app.agent.intent.classify as intent_classifier
+from app.agent.intent import (
     classify_intent_decision,
     classify_keywords,
     fast_path_intent,

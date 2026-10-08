@@ -17,12 +17,12 @@ from typing import Any
 
 from loguru import logger
 
-from app.agent.generation.components import (
+from app.agent.generation.component.registry import (
     get_implemented_components,
     resolve_component_suggestions,
 )
 from app.agent.plan.contracts import PlanKindStrategy, PlanStrategy
-from app.agent.generation.slot_utils import slot_batch_summary, slot_counts
+from app.agent.plan.slot_utils import slot_batch_summary, slot_counts
 from app.agent.prompts import build_plan_strategy_prompt, build_plan_strategy_user_message
 from app.llm.client import create_llm
 from app.llm.errors import classify_model_error

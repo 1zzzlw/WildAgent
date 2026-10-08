@@ -3,7 +3,7 @@
 from copy import deepcopy
 import unittest
 
-from app.agent.generation.stair_openings import cut_stair_openings, stair_opening_issues
+from app.agent.generation.spatial.stair_openings import cut_stair_openings, stair_opening_issues
 
 
 def floor(identifier, y):

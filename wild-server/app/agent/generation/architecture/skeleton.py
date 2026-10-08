@@ -5,8 +5,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from app.agent.generation.spatial_geometry import shared_footprint, shared_stair_layout
-from app.agent.generation.stair_openings import cut_stair_openings
+from app.agent.generation.spatial.geometry import shared_footprint, shared_stair_layout
+from app.agent.generation.spatial.stair_openings import cut_stair_openings
 from app.design.openings import opening_kind
 
 from .planning import normalize_architecture_plan
@@ -708,7 +708,7 @@ def _cut_core_shaft_openings(blueprint: dict[str, Any], floor_height: float) -> 
     }
     elements.append(placeholder)
     try:
-        from app.agent.generation.stair_openings import cut_stair_openings
+        from app.agent.generation.spatial.stair_openings import cut_stair_openings
 
         cut_stair_openings(walls_only)
     finally:

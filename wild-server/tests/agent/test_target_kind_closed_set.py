@@ -21,10 +21,10 @@ from __future__ import annotations
 import pytest
 
 from app.agent.generation.architecture import (
+    detect_target_kind,
     is_architecture_request,
 )
 from app.agent.generation.architecture import profile as profile_module
-from app.agent.routing import detect_target_kind
 
 
 #: 任意命名物件：**不能**因为"名字没被列举过"就被判成建筑。
@@ -107,10 +107,14 @@ def test_object_name_keyword_table_is_gone():
     它一回来，"没命中→建筑"的兜底就会跟着回来，而那正是"要桌子给房子"的成因。
     """
 
-    from app.agent import routing
+    from app.agent.generation.architecture import target_kind as target_kind_module
+    from app.agent.intent import rules as rules_module
 
-    assert not hasattr(routing, "OBJECT_TARGET_KEYWORDS")
-    assert not hasattr(routing, "ARCHITECTURE_TARGET_KEYWORDS")
+    # 判定的新家（architecture）与降级规则的新家（intent）都必须干净：
+    # 物件名词表出现在任何一处，"没命中→建筑"的兜底就会跟着回来。
+    for module in (target_kind_module, rules_module):
+        assert not hasattr(module, "OBJECT_TARGET_KEYWORDS")
+        assert not hasattr(module, "ARCHITECTURE_TARGET_KEYWORDS")
 
 
 def test_empty_message_is_not_architecture():

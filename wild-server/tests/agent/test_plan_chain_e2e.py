@@ -204,14 +204,14 @@ class _StubWorld:
             patch.object(graph_module, "compile_node", compile_design),
             patch.object(graph_module, "validate_node", validate),
             patch(
-                "app.agent.generation.component_workflow.create_component_generator",
+                "app.agent.generation.component.workflow.create_component_generator",
                 lambda _config: self._generator,
             ),
             patch(
-                "app.agent.generation.component_workflow.create_component_validator",
+                "app.agent.generation.component.workflow.create_component_validator",
                 lambda _config: self._validator,
             ),
-            patch("app.agent.generation.assembly_workflow.merge_fragments_node", self._merge),
+            patch("app.agent.generation.assembly.workflow.merge_fragments_node", self._merge),
             # `validate` 条目消费的是校验流水线；本用例钉的是调度循环，不重复校验器自己的用例
             patch(
                 "app.services.agent_service.run_validation_pipeline",
@@ -521,14 +521,14 @@ class ObjectChainEndToEndTest(unittest.IsolatedAsyncioTestCase):
             patch.object(graph_module, "skeleton_generator", skeleton),
             patch.object(graph_module, "validate_node", validate),
             patch(
-                "app.agent.generation.component_workflow.create_component_generator",
+                "app.agent.generation.component.workflow.create_component_generator",
                 lambda _config: generate,
             ),
             patch(
-                "app.agent.generation.component_workflow.create_component_validator",
+                "app.agent.generation.component.workflow.create_component_validator",
                 lambda _config: validate_fragment,
             ),
-            patch("app.agent.generation.assembly_workflow.merge_fragments_node", merge),
+            patch("app.agent.generation.assembly.workflow.merge_fragments_node", merge),
             patch(
                 "app.services.agent_service.run_validation_pipeline",
                 lambda _blueprint, **_kwargs: [_StubValidationResult()],

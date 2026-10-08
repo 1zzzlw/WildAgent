@@ -106,7 +106,6 @@ _COMPONENT_LABELS = {
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # generate 条目的五段提示词（《动态节点设计规划》§4.3）
 #
 #   顺序固定为 A → B → C → D → E，不得调换：
@@ -119,7 +118,6 @@ _COMPONENT_LABELS = {
 # 自检方法：新增一个 kind 时，如果 A 段或 E 段需要改动，说明组装契约已被破坏。
 # 这也是"每条条目的提示词不同"的正确实现方式——A/C 段共用，B/D 段随条目数据变化，
 # 而**不是**给每个构件类型写一份模板（那是 `_COMPONENT_RULES` 的老路）。
-# ─────────────────────────────────────────────────────────────────────────────
 
 _ROLE_TEMPLATE = """你是 {label} 组件生成专家。本条目只做一件事：产出 {component_type} 片段。\
 只生成 {component_type}，不得混入其它构件类型。
@@ -225,7 +223,7 @@ def _is_list_output(component_type: str) -> bool:
     """输出形态来自注册表，不在这里重新列举类型。"""
 
     try:
-        from app.agent.generation.components import COMPONENT_REGISTRY
+        from app.agent.generation.component.registry import COMPONENT_REGISTRY
 
         config = COMPONENT_REGISTRY.get(component_type)
         if config is not None:
@@ -243,7 +241,7 @@ def _host_bound(component_type: str) -> bool:
     """
 
     try:
-        from app.agent.generation.components import COMPONENT_REGISTRY
+        from app.agent.generation.component.registry import COMPONENT_REGISTRY
 
         config = COMPONENT_REGISTRY.get(component_type)
         required = list(config.required_fields) if config is not None else []
@@ -277,7 +275,7 @@ def _task_slice(
 
     import json as _json
 
-    from app.agent.generation.slot_utils import component_slots
+    from app.agent.plan.slot_utils import component_slots
 
     slots = component_slots(design_brief, component_type)
     #: 物件场景没有立面槽位，逐件规格由 `object_specs` 承载（见 objects/skeleton.py）。

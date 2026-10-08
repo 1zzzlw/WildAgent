@@ -1,12 +1,12 @@
 import asyncio
 from unittest import mock
 
-from app.agent.generation.material_plan import (
+from app.agent.generation.material.plan import (
     apply_resolved_material_plan,
     compact_asset_catalog,
     resolve_material_plan,
 )
-from app.agent.generation.materials import (
+from app.agent.generation.material.recipes import (
     compact_procedural_catalog,
     resolve_brick_preset,
     without_procedural_materials,
@@ -427,13 +427,13 @@ def test_material_planner_skips_llm_when_no_pbr_assets():
     }
     with (
         mock.patch(
-            "app.agent.generation.material_workflow.asset_storage"
+            "app.agent.generation.material.workflow.asset_storage"
         ) as storage,
         mock.patch(
-            "app.agent.generation.material_workflow.create_llm"
+            "app.agent.generation.material.workflow.create_llm"
         ) as create_llm_mock,
         mock.patch(
-            "app.agent.generation.material_workflow.get_reasoning_callback",
+            "app.agent.generation.material.workflow.get_reasoning_callback",
             return_value=None,
         ),
     ):

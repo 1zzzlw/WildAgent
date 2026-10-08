@@ -26,9 +26,9 @@ Spatial Validation Tools —— 空间校验 + 自动修正工具
 """
 import math
 from langchain.tools import tool
-from app.agent.generation.stair_openings import cut_stair_openings, stair_opening_issues
+from app.agent.generation.spatial.stair_openings import cut_stair_openings, stair_opening_issues
 
-from app.agent.generation.spatial_geometry import (
+from app.agent.generation.spatial.geometry import (
     curve_points,
     point_in_regions,
     shared_stair_layout,
@@ -396,7 +396,7 @@ def _wall_length(wall: dict) -> float:
     f = wall.get("from", [0, 0, 0])
     t = wall.get("to", [0, 0, 0])
     if wall.get("curve"):
-        from app.agent.generation.spatial_geometry import curve_points, path_length
+        from app.agent.generation.spatial.geometry import curve_points, path_length
 
         return path_length(curve_points(
             [float(f[0]), float(f[2])],

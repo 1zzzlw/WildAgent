@@ -24,8 +24,8 @@ from app.agent.compiler.compile import (
     _validator_defects,
 )
 from app.agent.generation.architecture import normalize_architecture_plan
-from app.agent.generation.components import COMPONENT_REGISTRY
-from app.agent.generation.material_plan import (
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
+from app.agent.generation.material.plan import (
     ROLE_SPECS,
     apply_resolved_material_plan,
     material_role_specs,

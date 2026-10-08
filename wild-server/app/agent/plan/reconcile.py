@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
 from app.agent.plan.contracts import PlanDocument, PlanItem
 from app.agent.plan.store import refresh_statuses, reset_for_retry, set_evidence, set_status
 from app.agent.validation.design_constraints import _opening_values_match

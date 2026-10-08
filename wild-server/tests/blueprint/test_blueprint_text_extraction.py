@@ -6,7 +6,7 @@ from app.utils.blueprint_parser import (
     normalize_blueprint_input,
     validate_blueprint_schema,
 )
-from app.agent.generation.skeleton_output import (
+from app.agent.generation.skeleton.output import (
     parse_components_from_reply,
     parse_design_brief,
 )

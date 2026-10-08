@@ -15,7 +15,7 @@ import math
 
 import pytest
 
-from app.agent.generation.component_workflow import _coerce_fragment_rotations
+from app.agent.generation.component.workflow import _coerce_fragment_rotations
 from app.agent.generation.objects.planning import normalize_primitive_part
 from app.tools.component_tools import validate_component
 from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery

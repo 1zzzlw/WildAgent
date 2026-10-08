@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent.generation.components import (
+from app.agent.generation.component.registry import (
     COMPONENT_REGISTRY,
     resolve_component_suggestions,
 )

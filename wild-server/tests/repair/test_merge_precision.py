@@ -2,8 +2,8 @@
 
 import unittest
 
-from app.agent.generation.assembly import deduplicate_balcony_representations
-from app.agent.generation.assembly_workflow import merge_fragments_node
+from app.agent.generation.assembly.merge import deduplicate_balcony_representations
+from app.agent.generation.assembly.workflow import merge_fragments_node
 from app.agent.validation.design_constraints import validate_design_brief_constraints
 from app.agent.nodes.validate_node import validate_node
 from app.tools.spatial_tools import validate_opening_fit

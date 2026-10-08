@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent.generation.components import COMPONENT_REGISTRY
+from app.agent.generation.component.registry import COMPONENT_REGISTRY
 from app.utils.fragment_merger import merge_fragment_batch, merge_fragments
 
 _ELEMENT_TYPES = {name for name, config in COMPONENT_REGISTRY.items() if config.is_element}

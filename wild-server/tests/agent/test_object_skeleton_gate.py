@@ -16,9 +16,9 @@ from __future__ import annotations
 
 import unittest
 
-from app.agent.generation.material_plan import material_role_specs, resolve_material_plan
+from app.agent.generation.material.plan import material_role_specs, resolve_material_plan
 from app.agent.generation.objects import normalize_object_plan
-from app.agent.generation.skeleton_workflow import skeleton_generator
+from app.agent.generation.skeleton.workflow import skeleton_generator
 from app.design.resolver import architecture_plan_from_document, build_design_document
 from app.utils.blueprint_parser import validate_blueprint_schema
 

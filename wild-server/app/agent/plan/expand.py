@@ -15,7 +15,7 @@
     generate_door_01 → merge_door_01 → generate_window_02 → merge_window_02 → merge_all_01 → validate_all_01
 
 批次 merge 只"并入"，收尾 merge 才"归一"（配额强制 + 全局归一化 + 校验修复循环）——
-判据见 ``generation/assembly_workflow.py`` 的模块说明。
+判据见 ``generation/assembly/workflow.py`` 的模块说明。
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Any
 
 from loguru import logger
 
-from app.agent.generation.components import (
+from app.agent.generation.component.registry import (
     get_implemented_components,
     resolve_component_suggestions,
 )
@@ -38,7 +38,7 @@ from app.agent.plan.contracts import (
     PlanStrategy,
 )
 from app.agent.plan.store import new_plan
-from app.agent.generation.slot_utils import component_slots, slot_ids_for
+from app.agent.plan.slot_utils import component_slots, slot_ids_for
 
 #: 档位预算（§3.5）。数值单调递增，且每档都有上限——高档位是"允许更贵"，不是"不设限"。
 #:
@@ -239,7 +239,7 @@ def expand_plan(
 
     为什么每组都要跟一条 merge：批次合并让"产物已并进蓝图"成为分组级的可观测事实，
     对账（``reconcile``）才能按组判定完成，而不是等最后一刻一把梭。批次合并本身
-    **不删不改**，所以未到场分组不会被误伤（见 ``generation/assembly_workflow.py``）。
+    **不删不改**，所以未到场分组不会被误伤（见 ``generation/assembly/workflow.py``）。
 
     最后追加的是**能力缺口条目**：命中已知做不到的能力（房间平面、家具、
     场地语义）时生成 ``unsupported`` 条目。它们是终态，不会被派发，只进交付清单。

@@ -322,7 +322,7 @@ class DesignConvergenceNodeTest(unittest.TestCase):
     _NODE_DRAFT = _DRAFT_TARGET
 
     def _run(self, state, compiler, draft):
-        from app.agent.nodes.design_convergence_node import design_convergence
+        from app.agent.design_flow.convergence import design_convergence
 
         with patch(self._NODE_COMPILE, compiler), patch(self._NODE_DRAFT, draft):
             return asyncio.run(design_convergence(state))
@@ -353,7 +353,7 @@ class DesignConvergenceNodeTest(unittest.TestCase):
             "app.agent.generation.architecture.workflow.build_design_document_or_error",
             lambda *args, **kwargs: fake_document,
         ), patch(
-            "app.agent.nodes.design_convergence_node.resolve_design",
+            "app.agent.design_flow.convergence.resolve_design",
             lambda document: SimpleNamespace(model_dump=lambda mode="json": {"resolved": True}),
         ):
             update = self._run(state, compiler, draft)

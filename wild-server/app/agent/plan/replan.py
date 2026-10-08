@@ -22,7 +22,7 @@ from typing import Any
 
 from loguru import logger
 
-from app.agent.generation.components import COMPONENT_REGISTRY, get_implemented_components
+from app.agent.generation.component.registry import COMPONENT_REGISTRY, get_implemented_components
 from app.agent.plan.contracts import OPS, ItemRun, PlanDocument, PlanHistoryEntry, PlanItem
 from app.agent.plan.store import (
     append_items,

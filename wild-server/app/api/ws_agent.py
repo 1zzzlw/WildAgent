@@ -63,7 +63,7 @@ from app.agent.routing import (
 )
 from app.agent.generation.architecture import detect_architecture_profile
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
-from app.agent.generation.materials import without_procedural_materials
+from app.agent.generation.material.recipes import without_procedural_materials
 from app.rag.security import (
     AccessContext,
     access_context_from_headers,
@@ -751,7 +751,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     # ── 流式执行（astream_events: 可获取节点 start/end 事件）──
     from app.agent.graph import get_graph, plan_recursion_limit
-    from app.agent.generation.components import get_implemented_components
+    from app.agent.generation.component.registry import get_implemented_components
     from app.agent.runtime import (
         bind_reasoning_callback,
         reset_reasoning_callback,

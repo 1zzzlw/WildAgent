@@ -14,7 +14,7 @@ from app.api.ws_agent import (
 )
 from app.rag.security import AccessContext
 from app.extensions.presence import WebSocketConnectionRegistry
-from app.agent.routing import IntentDecision
+from app.agent.intent import IntentDecision
 from app.services.agent_service import QueryResult
 from app.services.generation_job_service import GenerationJob, GenerationJobService
 

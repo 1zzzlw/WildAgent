@@ -645,7 +645,7 @@ def validate_blueprint_schema(
     （`build_object_skeleton` 返回 `elements: []`），家具要等 `plan` 派发的
     `generate` 条目跑完才写进蓝图。骨架节点若用交付口径预检，
     会把一张合法的桌子当场判成 `status=failed`。
-    见 `agent/generation/skeleton_workflow.py`（复杂度评估早已按同一理由跳过
+    见 `agent/generation/skeleton/workflow.py`（复杂度评估早已按同一理由跳过
     物件场景，这里漏了）。
 
     Returns:
