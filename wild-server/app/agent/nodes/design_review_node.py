@@ -7,7 +7,7 @@ from langgraph.types import interrupt
 from app.agent.state import GenerationState
 from app.design.contracts import DesignDocument
 from app.design.repository import design_repository
-from app.design.resolver import resolve_design
+from app.design.resolver import resolve_design, _stable_hash
 from app.design.review_outcome import (
     approved_design_fields,
     build_design_review_interrupt,
@@ -19,6 +19,13 @@ def design_review(state: GenerationState) -> dict:
     """在任何骨架或组件生成前暂停，等待用户批准具体建筑方案。"""
 
     document = DesignDocument.model_validate(state.get("design_document"))
+    # material_plan saved an earlier draft. Persist completion before exposing approval;
+    # on interrupt replay preserve any newer user Patch instead of overwriting it.
+    stored = design_repository.get(document.session_id)
+    if stored is not None and stored.revision > document.revision:
+        document = stored
+    elif stored is None or _stable_hash(stored) != _stable_hash(document):
+        document, _ = design_repository.save(document)
     decision = interrupt(build_design_review_interrupt(document, resolve_design(document)))
     action = str(decision.get("action") if isinstance(decision, dict) else "").lower()
     feedback = str(decision.get("feedback") if isinstance(decision, dict) else "").strip()

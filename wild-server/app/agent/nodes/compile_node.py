@@ -28,11 +28,35 @@ async def compile_node(state: GenerationState) -> dict:
     user_message = state.get("user_message", "")
     material_plan = state.get("material_plan")
 
-    result = compile_design(
-        architecture_plan,
-        user_message=user_message,
-        material_plan=material_plan if isinstance(material_plan, dict) else None,
-    )
+    document_data = state.get("design_document")
+    resolved = None
+    if document_data:
+        from app.design.contracts import DesignDocument
+        from app.design.compilation import compile_document, project_compilation, RESOLVER_VERSION
+        document = DesignDocument.model_validate(document_data)
+        result = compile_document(document)
+        resolved = project_compilation(document, result)
+        reviewed = state.get("resolved_design") or {}
+        if (reviewed.get("resolver_version") != RESOLVER_VERSION
+                or reviewed.get("design_hash") != resolved.design_hash):
+            # Old approval used a different interpretation. Re-enter the existing review
+            # flow, rather than silently replacing its dimensions with the new compiler.
+            from app.design.contracts import utc_now_iso
+            from app.design.resolver import resolve_design
+            payload = document.model_dump(mode="json")
+            payload.update(revision=document.revision+1, status="draft", approved_at=None, updated_at=utc_now_iso())
+            revised = DesignDocument.model_validate(payload)
+            return {"design_document": revised.model_dump(mode="json"),
+                    "resolved_design": resolve_design(revised).model_dump(mode="json"),
+                    "design_review_status": "pending",
+                    "compile_report": {"requires_review": True, "reason": "审核解析版本已变化，请确认当前图纸"}}
+
+    else:
+        # Legacy checkpoints with no document retain the old entry point.
+        result = compile_design(
+            architecture_plan, user_message=user_message,
+            material_plan=material_plan if isinstance(material_plan, dict) else None,
+        )
     blueprint = result.blueprint
     if blueprint is None:  # mode=final 必出蓝图；走到这里说明接口被改坏了
         raise RuntimeError("compile_design(mode=final) 未返回蓝图")
@@ -52,6 +76,7 @@ async def compile_node(state: GenerationState) -> dict:
         logger.warning(f"[compile] 空间不变量计算失败: {exc}")
 
     return {
+        **({"resolved_design": resolved.model_dump(mode="json")} if resolved else {}),
         "skeleton_blueprint": blueprint,
         "skeleton_summary": build_skeleton_summary(blueprint, design_brief),
         "spatial_invariants": spatial_invariants,

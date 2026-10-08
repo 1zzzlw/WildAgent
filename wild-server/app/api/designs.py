@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.design.contracts import DesignDocument, DesignPatch
 from app.design.repository import DesignConflictError, design_repository
-from app.design.resolver import resolve_design
+from app.design.resolver import resolve_design, render_design_svg
 
 
 router = APIRouter(prefix="/api/designs", tags=["designs"])
@@ -74,15 +74,17 @@ async def approve_design(session_id: str, body: ApproveDesignRequest):
 
 
 @router.get("/{session_id}/preview.svg")
-async def get_design_preview(session_id: str):
+async def get_design_preview(session_id: str, revision: int | None = None):
     try:
-        path = design_repository.svg_path(session_id)
+        document = design_repository.get(session_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not path.exists():
+    if document is None:
         raise HTTPException(status_code=404, detail="设计预览不存在")
+    if revision is not None and revision != document.revision:
+        raise HTTPException(status_code=409, detail="设计已更新，请刷新审核预览")
+    # Legacy SVG files carry no resolver version: regenerate from the current document.
     return Response(
-        content=path.read_text(encoding="utf-8"),
-        media_type="image/svg+xml",
+        content=render_design_svg(document), media_type="image/svg+xml",
         headers={"Cache-Control": "no-store, max-age=0"},
     )

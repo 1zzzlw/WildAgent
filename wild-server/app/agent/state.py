@@ -93,7 +93,7 @@ class GenerationState(TypedDict, total=False):
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
     skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
     compile_report: dict  # 确定性编译诊断：蓝图计数 + defects/defaulted/unsupported/uncompiled。
-    design_convergence: dict  # 设计收敛环诊断：轮数、stop_reason、修订前后的 error 缺陷数与未解缺陷。
+    design_convergence: dict  # 审核前完善：版本化任务、缺口证据、编译错误、调用预算与停止原因；不混入执行 plan。
 
     # ── Layer 1: 组件分片 ──
     component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各构件类型的源分片映射。

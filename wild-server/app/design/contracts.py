@@ -359,6 +359,11 @@ class DesignConstraint(ContractModel):
     target: str = Field(min_length=1, max_length=240)
     expression: str = Field(min_length=1, max_length=1000)
     source: str = Field(default="", max_length=500)
+    expected: Any = None
+    check: Literal["equals", "contains", "minimum", "absent", "manual"] = "manual"
+    adoption: Literal["adopted", "proposed", "superseded"] = "adopted"
+    source_quote: str = Field(default="", max_length=1000)
+    supersedes: str | None = None
 
 
 class RuleTrace(ContractModel):
@@ -584,13 +589,29 @@ class ResolvedLevel(ContractModel):
     top_y: float
 
 
+class DesignGap(ContractModel):
+    id: str
+    constraint_id: str
+    layer: Literal["design", "implementation", "execution"] = "design"
+    status: Literal["satisfied", "open", "needs_review", "unsupported"]
+    design_hash: str
+    target: str
+    expected: Any = None
+    actual: Any = None
+    evidence: str
+
+
 class ResolvedFacadeSlot(ContractModel):
     id: str
     facing: Literal["front", "back", "left", "right"]
     floor: int = Field(ge=1)
     bay: int = Field(ge=1)
-    type: Literal["door", "window"]
-    offset: float = Field(ge=0)
+    type: Literal["door", "window", "bay_window"]
+    parent_wall: str = ""
+    local_from: list[float] = Field(default_factory=list)
+    world_from: list[float] = Field(default_factory=list)
+    world_to: list[float] = Field(default_factory=list)
+    offset: float
     width: float = Field(gt=0)
     bottom: float = Field(ge=0)
     height: float = Field(gt=0)
@@ -601,6 +622,9 @@ class ResolvedDesign(ContractModel):
     design_id: str
     design_revision: int = Field(ge=1)
     design_hash: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+    resolver_version: str = "legacy"
+    projection_elements: list[dict[str, Any]] = Field(default_factory=list, exclude=True)
+    design_gaps: list[DesignGap] = Field(default_factory=list)
     bounds: dict[Literal["width", "depth", "height"], float]
     levels: list[ResolvedLevel]
     volumes: list[VolumeDecision]

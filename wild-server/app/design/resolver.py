@@ -16,17 +16,11 @@ from .contracts import (
     DesignDocument,
     DesignRequirements,
     EnvelopeDecision,
-    MassingDecision,
     ObjectDecisions,
     ResolvedDesign,
-    ResolvedFacadeSlot,
-    ResolvedLevel,
-    RoofDecision,
     RuleTrace,
-    VolumeDecision,
     utc_now_iso,
 )
-from .openings import opening_kind
 
 
 def _stable_hash(document: DesignDocument) -> str:
@@ -66,6 +60,7 @@ def build_design_document(
     building_type: str = "building",
     style_intent: list[str] | None = None,
     previous: DesignDocument | dict[str, Any] | None = None,
+    revision_feedback: str = "",
 ) -> DesignDocument:
     """把归一化方案提升为版本化设计契约；按目标类型分派建筑或物件。"""
 
@@ -138,7 +133,10 @@ def build_design_document(
             if item.id not in current_ids
         )
 
-    return DesignDocument(
+    from .completeness import merge_design_constraints
+    constraints = merge_design_constraints(constraints, plan.get("design_constraints"), source_request, revision_feedback)
+
+    document = DesignDocument(
         design_id=(old.design_id if old else f"design_{session_id}"),
         session_id=session_id,
         revision=(old.revision + 1 if old else 1),
@@ -200,6 +198,16 @@ def build_design_document(
             ),
         ],
     )
+
+    # Keep prose explicitly unverified when it no longer has reliable decision evidence.
+    from .completeness import evaluate_design
+    gaps = evaluate_design(document, _stable_hash(document))
+    if any(g.status != "satisfied" for g in gaps):
+        document.decisions.design_rationale = [
+            text if text.startswith("[待核对]") else "[待核对] " + text
+            for text in document.decisions.design_rationale
+        ]
+    return document
 
 
 def _build_object_document(
@@ -362,6 +370,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         "balcony_width": d.balcony_width,
         "required_components": list(d.required_components),
         "unsupported_component_types": list(d.unsupported_component_types),
+        "design_constraints": [c.model_dump(mode="json") for c in doc.constraints],
         "design_rationale": list(d.design_rationale),
     }
 
@@ -424,86 +433,14 @@ def _object_plan_from_document(doc: DesignDocument, d: ObjectDecisions) -> dict[
 
 
 def resolve_design(document: DesignDocument | dict[str, Any]) -> ResolvedDesign:
-    """只从设计契约推导稳定标高、体量和抽象立面槽位。"""
+    """建筑投影同一确定性编译结果；物件保持原有示意解析。"""
 
     doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
     d = doc.decisions
     if isinstance(d, ObjectDecisions):
         return _resolve_object_design(doc, d)
-    massing = d.massing
-    if massing.representation_mode == "schematic" and massing.modeled_floors > 1:
-        floor_indices = [
-            1 + round(index * (massing.floors - 1) / (massing.modeled_floors - 1))
-            for index in range(massing.modeled_floors)
-        ]
-    else:
-        floor_indices = list(range(1, massing.modeled_floors + 1))
-    levels = [
-        ResolvedLevel(
-            index=index,
-            base_y=round((index - 1) * massing.floor_height, 3),
-            top_y=round(index * massing.floor_height, 3),
-        )
-        for index in floor_indices
-    ]
-    slots: list[ResolvedFacadeSlot] = []
-    quantities = {key: value.min for key, value in d.component_quota.items()}
-    for facing, facade in d.facades.items():
-        span = massing.width if facing in {"front", "back"} else massing.depth
-        bay_width = span / facade.bays
-        for level in levels:
-            floor = level.index
-            pattern = facade.ground_pattern if floor == 1 else facade.upper_pattern
-            for index, raw_opening in enumerate(pattern, start=1):
-                # §3.3：pattern 项是 token（`"window"` / `"door:slide"`）。这里只用**类型**——
-                # 把形态写进 `id` / `type` 会让下游按 id 对齐槽位时分叉。
-                opening_type = opening_kind(raw_opening)
-                if opening_type == "empty":
-                    continue
-                width = min(
-                    bay_width * (0.9 if d.envelope.system == "curtain_wall" else 0.62),
-                    max(0.8, bay_width - 0.3),
-                )
-                bottom = 0.0 if opening_type == "door" else min(1.0, massing.floor_height * 0.3)
-                height = (
-                    min(2.4, massing.floor_height - 0.2)
-                    if opening_type == "door"
-                    else min(
-                        massing.floor_height - bottom - 0.25,
-                        massing.floor_height * (0.82 if d.envelope.system == "curtain_wall" else 0.48),
-                    )
-                )
-                slots.append(ResolvedFacadeSlot(
-                    id=f"{facing}:floor_{floor}:{opening_type}:{index}",
-                    facing=facing,
-                    floor=floor,
-                    bay=index,
-                    type=opening_type,
-                    offset=round((index - 0.5) * bay_width - width / 2, 3),
-                    width=round(width, 3),
-                    bottom=round(level.base_y + bottom, 3),
-                    height=round(max(0.8, height), 3),
-                ))
-    quantities["door"] = sum(slot.type == "door" for slot in slots)
-    quantities["window"] = sum(slot.type == "window" for slot in slots)
-    warnings = [
-        f"以下构件尚未被当前编译器支持：{', '.join(d.unsupported_component_types)}"
-    ] if d.unsupported_component_types else []
-    return ResolvedDesign(
-        design_id=doc.design_id,
-        design_revision=doc.revision,
-        design_hash=_stable_hash(doc),
-        bounds={
-            "width": massing.width,
-            "depth": massing.depth,
-            "height": round(massing.floors * massing.floor_height, 3),
-        },
-        levels=levels,
-        volumes=d.volumes,
-        facade_slots=slots,
-        component_quantities=quantities,
-        warnings=warnings,
-    )
+    from .compilation import compile_document, project_compilation
+    return project_compilation(doc, compile_document(doc))
 
 
 def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedDesign:
@@ -538,17 +475,6 @@ def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedD
         facade_slots=[],
         component_quantities=quantities,
         warnings=[],
-    )
-
-
-def _svg_opening(slot: ResolvedFacadeSlot, x: float, baseline: float, sx: float, sy: float) -> str:
-    color = "#5aa7d7" if slot.type == "window" else "#b78350"
-    rect_x = x + slot.offset * sx
-    rect_y = baseline - (slot.bottom + slot.height) * sy
-    return (
-        f'<rect x="{rect_x:.2f}" y="{rect_y:.2f}" width="{slot.width * sx:.2f}" '
-        f'height="{slot.height * sy:.2f}" fill="{color}" opacity="0.82" '
-        f'data-design-path="/decisions/facades/{slot.facing}" data-slot-id="{escape(slot.id)}"/>'
     )
 
 
@@ -622,292 +548,16 @@ def _render_object_svg(doc: DesignDocument, result: ResolvedDesign) -> str:
     return "".join(parts)
 
 
-def _elevation_floor_spans(
-    massing: MassingDecision,
-    volumes: list[VolumeDecision],
-    axis: str = "width",
-) -> list[tuple[float, float]]:
-    """逐层立面跨度：(左缘比例, 宽度比例)，比例相对对应向尺寸。
-
-    立面轮廓的**唯一投影口径**，优先级：massing.tiers 表态 > 体量落层
-    （分层不齐时派生退台/塔座）> shape 派生（塔形收分）> 满幅矩形。
-    这是**审核图纸的投影**，不是物理事实——编译器与 3D 引擎不受它约束；
-    反过来说，想让图纸画出塔形，必须在 massing 上表态（tiers/shape/volumes），
-    图纸不会自己发明轮廓。
-    """
-    floors = max(massing.modeled_floors, 1)
-    if massing.tiers:
-        spans: list[tuple[float, float]] = []
-        for tier in massing.tiers:
-            ratio = tier.width_ratio if axis == "width" else tier.depth_ratio
-            spans.extend([(round((1 - ratio) / 2, 4), ratio)] * tier.floors)
-        return spans[:floors]
-    if volumes:
-        covers: list[tuple[float, float]] = []
-        for floor in range(1, floors + 1):
-            covering = [v for v in volumes if v.start_floor <= floor <= v.end_floor]
-            if not covering:
-                covers.append((0.0, 1.0))
-                continue
-            if axis == "width":
-                left = min(v.x for v in covering)
-                right = max(v.x + v.width for v in covering)
-                dim = massing.width
-            else:
-                left = min(v.z for v in covering)
-                right = max(v.z + v.depth for v in covering)
-                dim = massing.depth
-            covers.append((round(left / dim, 4), round((right - left) / dim, 4)))
-        if len(set(covers)) > 1:
-            # 体量分层不齐（塔座/退台）才据此投影；整齐时与满幅等价，落到通用分支。
-            return covers
-    if massing.shape == "tower":
-        # 塔形收分：逐层线性收窄到底部宽度的 55%，居中放置。
-        return [
-            (
-                round(0.225 * (floor - 0.5) / floors, 4),
-                round(1 - 0.45 * (floor - 0.5) / floors, 4),
-            )
-            for floor in range(1, floors + 1)
-        ]
-    return [(0.0, 1.0)] * floors
-
-
-def _silhouette_element(
-    spans: list[tuple[float, float]],
-    level_tops: list[float],
-    axis_dim: float,
-    sx: float,
-    sy: float,
-    x0: float,
-    base: float,
-) -> str:
-    """把逐层跨度压成**一个**轮廓元素：满幅单段画 rect（兼容旧图），其余画台阶/收分 polygon。
-
-    data-design-path 恒为 ``/decisions/massing``——它是前端点击回写设计的锚点，
-    换元素形状不能换锚点。层高取 level_tops（schematic 档各代表层间距不均匀，
-    不能按 floor_height 均分）。
-    """
-
-    def top_of(floor: int) -> float:
-        return level_tops[min(floor, len(level_tops)) - 1]
-
-    bands: list[tuple[float, float, int, int]] = []  # (左缘比例, 宽度比例, 起层, 止层)
-    for floor, (left_r, w_r) in enumerate(spans, start=1):
-        if bands and abs(bands[-1][0] - left_r) < 1e-6 and abs(bands[-1][1] - w_r) < 1e-6:
-            prev_left, prev_w, f0, _ = bands[-1]
-            bands[-1] = (prev_left, prev_w, f0, floor)
-        else:
-            bands.append((left_r, w_r, floor, floor))
-    if len(bands) == 1 and abs(bands[0][1] - 1.0) < 1e-6 and bands[0][2] == 1:
-        height = top_of(bands[0][3])
-        return (
-            f'<rect x="{x0:.2f}" y="{base - height * sy:.2f}" width="{axis_dim * sx:.2f}" '
-            f'height="{height * sy:.2f}" fill="#303945" stroke="#9aa7b5" '
-            f'data-design-path="/decisions/massing"/>'
-        )
-    right_pts: list[str] = []
-    left_pts: list[str] = []
-    for left_r, w_r, _f0, f1 in bands:
-        y_top = base - top_of(f1) * sy
-        right_pts.append(f"{x0 + (left_r + w_r) * axis_dim * sx:.2f},{y_top:.2f}")
-        left_pts.append(f"{x0 + left_r * axis_dim * sx:.2f},{y_top:.2f}")
-    bottom_y = base - (top_of(bands[0][2] - 1) if bands[0][2] >= 2 else 0.0) * sy
-    points = " ".join([
-        f"{x0 + (bands[0][0] + bands[0][1]) * axis_dim * sx:.2f},{bottom_y:.2f}",
-        *right_pts,
-        *reversed(left_pts),
-        f"{x0 + bands[0][0] * axis_dim * sx:.2f},{bottom_y:.2f}",
-    ])
-    return (
-        f'<polygon points="{points}" fill="#303945" stroke="#9aa7b5" '
-        f'data-design-path="/decisions/massing"/>'
-    )
-
-
-def _roof_elements(roof: RoofDecision, cx: float, y: float, span_px: float, sx: float) -> list[str]:
-    """屋顶在立面上的轮廓投影。y = 承托面（屋顶底沿），span_px = 承托跨度像素宽。
-
-    flat 由体量轮廓的顶边承担，不另画。data-design-path 恒为 ``/decisions/roof``。
-    """
-    span = span_px + 2 * roof.overhang * sx
-    x0, x1 = cx - span / 2, cx + span / 2
-    common = 'fill="#3d4a5a" fill-opacity="0.55" stroke="#9aa7b5" data-design-path="/decisions/roof"'
-    if roof.type == "flat":
-        return []
-    if roof.type == "gable":
-        rise = min(span * 0.28, 46.0)
-        pts = f"{x0:.2f},{y:.2f} {cx:.2f},{y - rise:.2f} {x1:.2f},{y:.2f}"
-        return [f'<polygon points="{pts}" {common}/>']
-    if roof.type == "hip":
-        rise = min(span * 0.18, 32.0)
-        top = span * 0.2
-        pts = (
-            f"{x0:.2f},{y:.2f} {cx - top:.2f},{y - rise:.2f} "
-            f"{cx + top:.2f},{y - rise:.2f} {x1:.2f},{y:.2f}"
-        )
-        return [f'<polygon points="{pts}" {common}/>']
-    if roof.type == "dome":
-        rx, ry = span / 2, min(span * 0.42, 56.0)
-        return [f'<path d="M {x0:.2f},{y:.2f} A {rx:.2f},{ry:.2f} 0 0 1 {x1:.2f},{y:.2f} Z" {common}/>']
-    if roof.type == "chinese_curved":
-        # 曲线屋面：檐角上翘（高于檐中），经二次贝塞尔收至正脊。
-        rise = min(span * 0.24, 40.0)
-        tip, sag = y - rise * 0.55, y + rise * 0.12
-        d = (
-            f"M {x0:.2f},{tip:.2f} "
-            f"Q {cx - span * 0.27:.2f},{sag:.2f} {cx:.2f},{y - rise:.2f} "
-            f"Q {cx + span * 0.27:.2f},{sag:.2f} {x1:.2f},{tip:.2f} Z"
-        )
-        return [f'<path d="{d}" {common}/>']
-    # chinese_pagoda：三层递收的挑檐 + 宝顶。
-    parts: list[str] = []
-    step = min(span * 0.16, 22.0)
-    slab_h = max(5.0, span * 0.07)
-    for index in range(3):
-        slab_w = span * (1 - 0.26 * index)
-        slab_y = y - index * step - slab_h
-        parts.append(
-            f'<rect x="{cx - slab_w / 2:.2f}" y="{slab_y:.2f}" width="{slab_w:.2f}" '
-            f'height="{slab_h:.2f}" {common}/>'
-        )
-    tip_y = y - 2 * step - slab_h
-    parts.append(
-        f'<line x1="{cx:.2f}" y1="{tip_y:.2f}" x2="{cx:.2f}" y2="{tip_y - 14:.2f}" stroke="#9aa7b5"/>'
-    )
-    return parts
-
-
-def _slot_in_span(slot: ResolvedFacadeSlot, span: tuple[float, float], axis_dim: float) -> bool:
-    """槽位是否落在该层的立面跨度内。出界的不画——缩进体量外的开口是虚假信息。"""
-    left_m, width_m = span[0] * axis_dim, span[1] * axis_dim
-    return slot.offset >= left_m - 0.05 and slot.offset + slot.width <= left_m + width_m + 0.05
-
-
-def _dim_line_h(x: float, y: float, length: float, label: str) -> str:
-    stroke = 'stroke="#7f8b9a"'
-    return (
-        f'<line x1="{x:.2f}" y1="{y:.2f}" x2="{x + length:.2f}" y2="{y:.2f}" {stroke}/>'
-        f'<line x1="{x:.2f}" y1="{y - 4:.2f}" x2="{x:.2f}" y2="{y + 4:.2f}" {stroke}/>'
-        f'<line x1="{x + length:.2f}" y1="{y - 4:.2f}" x2="{x + length:.2f}" y2="{y + 4:.2f}" {stroke}/>'
-        f'<text x="{x + length / 2:.2f}" y="{y - 6:.2f}" fill="#9da8b8" font-size="11" '
-        f'font-family="sans-serif" text-anchor="middle">{escape(label)}</text>'
-    )
-
-
-def _dim_line_v(x: float, y_top: float, y_bottom: float, label: str) -> str:
-    stroke = 'stroke="#7f8b9a"'
-    mid_y = (y_top + y_bottom) / 2
-    text_x, text_y = x + 10, mid_y
-    return (
-        f'<line x1="{x:.2f}" y1="{y_top:.2f}" x2="{x:.2f}" y2="{y_bottom:.2f}" {stroke}/>'
-        f'<line x1="{x - 4:.2f}" y1="{y_top:.2f}" x2="{x + 4:.2f}" y2="{y_top:.2f}" {stroke}/>'
-        f'<line x1="{x - 4:.2f}" y1="{y_bottom:.2f}" x2="{x + 4:.2f}" y2="{y_bottom:.2f}" {stroke}/>'
-        f'<text x="{text_x:.2f}" y="{text_y:.2f}" fill="#9da8b8" font-size="11" '
-        f'font-family="sans-serif" text-anchor="middle" '
-        f'transform="rotate(-90 {text_x:.2f} {text_y:.2f})">{escape(label)}</text>'
-    )
-
-
 def render_design_svg(document: DesignDocument | dict[str, Any], resolved: ResolvedDesign | None = None) -> str:
-    """生成单文件 SVG 方案图；建筑画平面/立面，物件画轮廓与尺寸表。
-
-    立面不再是无条件大矩形：按 massing.tiers / 体量落层 / shape 派生逐层跨度，
-    画出台阶、收分（塔形）轮廓；屋顶按 RoofDecision 画六种示意轮廓；附总宽/总高
-    标注与地平线。所有 data-design-path 锚点保持不变。
-    """
+    """建筑使用编译实体的正投影；物件保留原有轮廓与尺寸表。"""
 
     doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
-    result = resolved or resolve_design(doc)
+    from .compilation import RESOLVER_VERSION
+    result = resolved
+    if (result is None or result.design_hash != _stable_hash(doc)
+            or (not isinstance(doc.decisions, ObjectDecisions) and (result.resolver_version != RESOLVER_VERSION or not result.projection_elements))):
+        result = resolve_design(doc)
     if isinstance(doc.decisions, ObjectDecisions):
         return _render_object_svg(doc, result)
-    decisions = doc.decisions
-    massing = decisions.massing
-    width = result.bounds["width"]
-    depth = result.bounds["depth"]
-    height = result.bounds["height"]
-    level_tops = [level.top_y for level in result.levels]
-    drawn_height = level_tops[-1] if level_tops else height
-    plan_s = min(470 / max(width, 1), 300 / max(depth, 1))
-    elev_sx = 470 / max(width, 1)
-    elev_sy = 270 / max(height, 1)
-    side_sx = 470 / max(depth, 1)
-    side_sy = 245 / max(height, 1)
-    title = escape(decisions.concept or doc.requirements.building_type)
-    parts = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820" role="img">',
-        '<rect width="1200" height="820" fill="#171a20"/>',
-        f'<text x="38" y="42" fill="#f2f4f8" font-size="20" font-family="sans-serif">{title}</text>',
-        f'<text x="38" y="68" fill="#9da8b8" font-size="12" font-family="sans-serif">DesignDocument r{doc.revision} · {doc.status} · {escape(result.design_hash[:22])}</text>',
-        '<text x="38" y="105" fill="#d8dde7" font-size="14" font-family="sans-serif">体量平面</text>',
-        '<rect x="38" y="120" width="520" height="330" fill="#20252d" stroke="#3b4655"/>',
-    ]
-    plan_x, plan_y = 58.0, 140.0
-    for index, volume in enumerate(result.volumes):
-        fill = "#487aa1" if volume.role == "primary" else "#5f7184"
-        parts.append(
-            f'<rect x="{plan_x + volume.x * plan_s:.2f}" y="{plan_y + volume.z * plan_s:.2f}" '
-            f'width="{volume.width * plan_s:.2f}" height="{volume.depth * plan_s:.2f}" '
-            f'fill="{fill}" fill-opacity="0.66" stroke="#9bc3e0" '
-            f'data-design-path="/decisions/volumes/{index}" data-volume-id="{escape(volume.id)}"/>'
-        )
-        parts.append(
-            f'<text x="{plan_x + (volume.x + 0.2) * plan_s:.2f}" y="{plan_y + (volume.z + 0.6) * plan_s:.2f}" '
-            f'fill="#edf5fb" font-size="11" font-family="sans-serif">{escape(volume.id)}</text>'
-        )
-
-    # 主立面：逐层跨度画轮廓（tiers 表态 / 退台 / 塔形收分），屋顶画在顶段承托面上。
-    front_spans = _elevation_floor_spans(massing, result.volumes, axis="width")
-    elev_x, elev_base = 650.0, 436.0
-    parts.extend([
-        '<text x="630" y="105" fill="#d8dde7" font-size="14" font-family="sans-serif">主立面</text>',
-        '<rect x="630" y="120" width="530" height="330" fill="#20252d" stroke="#3b4655"/>',
-        _silhouette_element(front_spans, level_tops, width, elev_sx, elev_sy, elev_x, elev_base),
-        f'<line x1="634" y1="{elev_base:.2f}" x2="1156" y2="{elev_base:.2f}" stroke="#6b7684" stroke-width="2"/>',
-    ])
-    front_top = elev_base - drawn_height * elev_sy
-    for level in result.levels[:-1]:
-        span = front_spans[min(level.index + 1, len(front_spans)) - 1]
-        y = elev_base - level.top_y * elev_sy
-        line_x1 = elev_x + span[0] * width * elev_sx
-        line_x2 = elev_x + (span[0] + span[1]) * width * elev_sx
-        parts.append(
-            f'<line x1="{line_x1:.2f}" y1="{y:.2f}" x2="{line_x2:.2f}" y2="{y:.2f}" '
-            f'stroke="#596573" stroke-width="1"/>'
-        )
-    for slot in result.facade_slots:
-        if slot.facing == "front":
-            span = front_spans[min(slot.floor, len(front_spans)) - 1]
-            if _slot_in_span(slot, span, width):
-                parts.append(_svg_opening(slot, elev_x, elev_base, elev_sx, elev_sy))
-    top_left, top_ratio = front_spans[-1]
-    parts.extend(_roof_elements(
-        decisions.roof,
-        cx=elev_x + (top_left + top_ratio / 2) * width * elev_sx,
-        y=front_top,
-        span_px=top_ratio * width * elev_sx,
-        sx=elev_sx,
-    ))
-    # 尺寸标注：人眼审图没有比例尺就没法核对设计。高度标的是**画出来的**轮廓高
-    # （schematic 档代表层只铺到 drawn_height，不虚标全高）。
-    parts.append(_dim_line_h(elev_x, elev_base + 11, width * elev_sx, f"{width:.1f} m"))
-    parts.append(_dim_line_v(elev_x + width * elev_sx + 14, front_top, elev_base, f"{drawn_height:.1f} m"))
-
-    # 侧立面：同一条投影口径，轴换成 depth。
-    side_spans = _elevation_floor_spans(massing, result.volumes, axis="depth")
-    side_x, side_base = 58.0, 785.0
-    parts.extend([
-        '<text x="38" y="505" fill="#d8dde7" font-size="14" font-family="sans-serif">侧立面</text>',
-        '<rect x="38" y="520" width="1122" height="275" fill="#20252d" stroke="#3b4655"/>',
-        _silhouette_element(side_spans, level_tops, depth, side_sx, side_sy, side_x, side_base),
-        f'<line x1="42" y1="{side_base:.2f}" x2="1156" y2="{side_base:.2f}" stroke="#6b7684" stroke-width="2"/>',
-    ])
-    for slot in result.facade_slots:
-        if slot.facing == "left":
-            span = side_spans[min(slot.floor, len(side_spans)) - 1]
-            if _slot_in_span(slot, span, depth):
-                parts.append(_svg_opening(slot, side_x, side_base, side_sx, side_sy))
-    side_top = side_base - drawn_height * side_sy
-    parts.append(_dim_line_v(side_x + depth * side_sx + 14, side_top, side_base, f"{drawn_height:.1f} m"))
-    parts.append('</svg>')
-    return "".join(parts)
+    from .preview import render_compiled_svg
+    return render_compiled_svg(doc, result)

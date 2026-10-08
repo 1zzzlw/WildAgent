@@ -58,7 +58,7 @@ class DesignBlock:
 DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
     DesignBlock(
         name="massing",
-        fields=("concept", "massing", "volumes"),
+        fields=("concept", "massing", "volumes", "design_constraints"),
         depends_on=(),
         parallel_group=None,
         contract=(
@@ -74,7 +74,15 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "- volumes：体量数组，每项含 id、role(primary/secondary)、x、z、width、depth、"
             "start_floor、end_floor。单体也要明确一个完整体量；多层单体不必拆成退台。\n"
             "- 体量之间**不得重叠**，同层投影必须覆盖建筑轮廓（这是硬约束，不是审美）。\n"
-            "- complexity 由系统按档位给出，**本块不要写 complexity**。"
+            "- complexity 由系统按档位给出，**本块不要写 complexity**。\n"
+            "- design_constraints：列出用户明确要求以及本方案采用的关键决定，不能只留在文案中。"
+            "每条含 id(稳定标识)、kind(user_hard 或 preference)、target(/decisions/... JSON Pointer)、"
+            "expression(简短目标)、source(user_request 或 architecture_draft)、source_quote(用户要求须逐字引用原文)、"
+            "expected(目标值)、check(equals/contains/minimum/absent/manual)、adoption(adopted/proposed)。"
+            "无法可靠映射的要求仍保留并用 manual，不得自行发明用户硬要求。"
+            "列表成员用 contains/absent；屋顶类型指向 /decisions/roof/type；层数指向 /decisions/massing/floors。"
+            "不支持的形态保留目标路径和说明，不可偷偷换成支持的形态。"
+            "修订时继承已有要求，不能删掉或降低 expected 以消除缺口。用户明确改变要求时才用新 id、supersedes=旧 id，source_quote 引用本次修改原文。"
         ),
         knowledge_queries=(
             KnowledgeQuerySpec(
@@ -157,7 +165,7 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
         parallel_group=None,
         contract=(
             "- component_quota：按实际组件类型给 min/max 整数及 note。\n"
-            "- 🔴 **不要写 door / window / roof 的上下限**——这三类由系统按立面逐层 pattern 与屋顶\n"
+            "- **不要写 door / window / roof 的上下限**——这三类由系统按立面逐层 pattern 与屋顶\n"
             "  自动派生，你写了也会被覆盖。请把配额写在这三类**之外**真正会落地的构件上，\n"
             "  例如 railing / canopy / cornice / chimney / light / column。\n"
             "- 不给未选择的组件硬配额；能力做不到的类型不要写进来（写了会被归入 `uncompiled`）。"

@@ -51,6 +51,7 @@ _FACE = {
 }
 
 _FULL_PAYLOAD = {
+    "design_constraints": [],
     "concept": "测试方案",
     "massing": {"floors": 2},
     "volumes": [

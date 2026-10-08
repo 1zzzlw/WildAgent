@@ -47,6 +47,7 @@ def build_design_document_or_error(
     building_type: str,
     style_intent: list[str],
     previous: object,
+    revision_feedback: str = "",
 ):
     """构造设计契约；不满足业务不变量时抛 `DesignContractError`。
 
@@ -64,6 +65,7 @@ def build_design_document_or_error(
             building_type=building_type,
             style_intent=style_intent,
             previous=previous,
+            revision_feedback=revision_feedback,
         )
     except (ValidationError, ValueError) as exc:
         raise DesignContractError(_validation_reason(exc)) from exc
@@ -225,6 +227,14 @@ async def architecture_planner(state: GenerationState) -> dict:
             architecture_profile=profile,
         )
 
+    # Preserve adopted pre-normalization choices and request constraints independently
+    # of normalization (which does not own intent).
+    from app.design.completeness import adopted_from_plan
+    plan["design_constraints"] = [
+        *((raw_plan or {}).get("design_constraints") or []),
+        *adopted_from_plan(raw_plan or {}),
+    ]
+
     # 诊断信息：单方案生成，只记录 profile 与是否走了兜底。
     selection_diag = {
         "profile": profile["id"],
@@ -256,6 +266,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             building_type=str(plan.get("profile") or state.get("building_type") or "building"),
             style_intent=list(state.get("style_preference") or []),
             previous=state.get("design_document"),
+            revision_feedback=revision_feedback,
         )
     except DesignContractError as exc:
         # 体量覆盖、立面完整、槽位与配额一致等业务不变量失败属于可预期的业务失败，

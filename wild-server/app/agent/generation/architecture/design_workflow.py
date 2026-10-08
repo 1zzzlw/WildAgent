@@ -25,6 +25,7 @@ import asyncio
 import json
 import time as _time
 from copy import deepcopy
+from dataclasses import replace
 from typing import Any, Awaitable, Callable, Sequence
 
 from loguru import logger
@@ -43,7 +44,7 @@ from app.agent.generation.architecture.design_plan import (
 )
 from app.agent.plan.contracts import PlanItem
 from app.design.openings import opening_kind
-from app.design.contracts import ComponentInstance
+from app.design.contracts import ComponentInstance, DesignConstraint
 from pydantic import ValidationError
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, merge_token_usage, stream_llm
@@ -170,9 +171,18 @@ def check_block_contract(
     """
 
     # 历史输出可省略实例；缺失保留旧实例，显式 [] 才表示清空。
-    missing = [field for field in block.fields if field not in picked and field != "components"]
+    missing = [field for field in block.fields if field not in picked and field not in {"components", "design_constraints"}]
     if missing:
         return f"缺少字段 {missing}"
+
+    if "design_constraints" in picked:
+        if not isinstance(picked["design_constraints"], list):
+            return "design_constraints 必须是数组"
+        try:
+            for entry in picked["design_constraints"]:
+                DesignConstraint.model_validate(entry)
+        except (ValueError, TypeError) as exc:
+            return f"设计决定不满足契约: {exc}"
 
     if block.name == "facade":
         facades = picked.get("facades")
@@ -251,6 +261,7 @@ def build_block_prompt(
     draft: dict[str, Any],
     defects: Sequence[Any] | None = None,
     knowledge_text: str = "",
+    allow_design_changes: bool = False,
 ) -> str:
     """基础提示词 + 块级附注。附注只讲"这一轮写什么、别的已定稿、上次错在哪"。"""
 
@@ -284,13 +295,14 @@ def build_block_prompt(
     if settled:
         lines += [
             "",
-            "## 已定稿的前序块（只许引用，不许改写）",
+            ("## 当前设计基准（本轮目标块可修订，其他块只读）" if allow_design_changes else "## 已定稿的前序块（只许引用，不许改写）"),
             "",
             "```json",
             json.dumps(settled, ensure_ascii=False, separators=(",", ":")),
             "```",
             "",
-            "本块只能引用上面出现过的 id 与尺寸，不得引入新的体量、新的面或新的构件类型。",
+            ("当前是设计补全：可在本块契约内修订设计，新增对象必须有需求/缺口依据；其他块保持原样。"
+             if allow_design_changes else "本块只能引用上面出现过的 id 与尺寸，不得引入新的体量、新的面或新的构件类型。"),
         ]
     else:
         lines += [
@@ -314,6 +326,8 @@ async def draft_design_blocks(
     architecture_profile: dict[str, Any] | None = None,
     allow_probe: bool = True,
     current_plan: dict[str, Any] | None = None,
+    allow_design_changes: bool = False,
+    max_attempts: int | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """逐块起草，返回 ``(draft, diag)``。
 
@@ -390,7 +404,11 @@ async def draft_design_blocks(
         :func:`design_plan.next_batch` 决定 —— 调度不再写在这里。
         """
 
-        prompt = build_block_prompt(base_prompt, block, context, defects)
+        if allow_design_changes and "design_constraints" in block.fields:
+            block = replace(block, fields=tuple(f for f in block.fields if f != "design_constraints"),
+                            contract=block.contract.split("- design_constraints：", 1)[0]
+                            + "设计决定已冻结，本轮不要输出 design_constraints。")
+        prompt = build_block_prompt(base_prompt, block, context, defects, allow_design_changes=allow_design_changes)
         # 🔴 块级检索（§1.5）在**每次起草尝试前**只做一次：提示词重建（重试时追加
         # "上一次输出未通过"）不重查库。命中进本块提示词，也进诊断。
         knowledge_text = ""
@@ -399,7 +417,7 @@ async def draft_design_blocks(
             knowledge_text, knowledge_diag = await retrieve_block_knowledge(block, user_request)
             if knowledge_text:
                 prompt = build_block_prompt(
-                    base_prompt, block, context, defects, knowledge_text=knowledge_text
+                    base_prompt, block, context, defects, knowledge_text=knowledge_text, allow_design_changes=allow_design_changes
                 )
         except Exception as exc:  # 检索路径自身的 bug 也不得阻断起草
             knowledge_diag["error"] = f"{type(exc).__name__}: {exc}"
@@ -439,7 +457,7 @@ async def draft_design_blocks(
             elif probe_specs:
                 # §2.7 试算工具：模型可以先算一遍再交卷。工具只回诊断、不回蓝图，
                 # 所以"模型多调几次"不会污染产物；调用次数由 tool_loop 的单条目预算卡死。
-                # 🔴 思考模式下 `on_reasoning_delta` 一并交给工具循环转发（回调是模型级的），
+                # 思考模式下 `on_reasoning_delta` 一并交给工具循环转发（回调是模型级的），
                 # 于是"有思考文本"和"有试算工具"不再互斥——`emit_reasoning` 的签名
                 # 与 `run_tool_loop` 期望的 `(delta) -> awaitable` 不同，这里包一层。
                 async def emit_from_loop(delta: str) -> None:
@@ -486,6 +504,8 @@ async def draft_design_blocks(
             picked = _pick_block_fields(raw, block)
             last_issue = check_block_contract(block, picked, context) if picked else "输出不是合法 JSON 对象"
 
+            if allow_design_changes and isinstance(raw, dict) and set(raw) - set(block.fields):
+                last_issue = "补丁越权：仅允许写入 " + ", ".join(block.fields)
             if not last_issue:
                 settled = True
                 break
@@ -526,7 +546,7 @@ async def draft_design_blocks(
     # 依赖来自块表（**物理约束**，不由模型产出）；并发来自块表的 ``parallel_group``
     # （``shell`` 组 = 结构 / 立面 / 屋顶三块）。这样设计期也是"批次 + 有界重试 +
     # 计划态推导"，而不是另一段写死的串行 for 循环 —— 后者会让 plan 完全碰不到图纸。
-    plan = build_design_plan(blocks, level="standard", max_attempts=_BLOCK_MAX_ATTEMPTS)
+    plan = build_design_plan(blocks, level="standard", max_attempts=max_attempts if max_attempts is not None else _BLOCK_MAX_ATTEMPTS)
     batches: list[dict[str, Any]] = []
     while True:
         batch = next_batch(plan)

@@ -608,7 +608,7 @@ def _node_label(name: str) -> str:
 def _design_schedule_note(design_blocks: dict | None) -> str:
     """把设计期的 plan 调度压成一行：几批、最宽并发几块、落定几块。
 
-    🔴 这是"plan 到底参与图纸了没有"唯一可观测的口径。只看产物看不出来 ——
+    这是"plan 到底参与图纸了没有"唯一可观测的口径。只看产物看不出来 ——
     串行起草也能写出同一张图，只有**批次与并发数**能区分。块表的
     ``parallel_group="shell"`` 曾经一直是空转的声明（旧实现是纯串行 for 循环），
     所以这一行也兼作那条回归的现场证据。

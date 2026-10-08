@@ -53,6 +53,7 @@ async def design_convergence(state: GenerationState) -> dict:
 
     outcome = await converge_design(
         plan=plan,
+        document=state.get("design_document"),
         raw_plan=raw_plan if isinstance(raw_plan, dict) else None,
         user_message=user_message,
         complexity_profile=complexity_profile,
@@ -63,12 +64,14 @@ async def design_convergence(state: GenerationState) -> dict:
     )
     diag = dict(outcome.diag)
     if not outcome.changed:
-        return {"design_convergence": diag}
+        return {"design_convergence": diag,
+                **({"resolved_design": resolve_design(outcome.document).model_dump(mode="json")} if outcome.document else {})}
 
     from app.agent.generation.architecture.workflow import build_design_document_or_error
 
+    from app.design.contracts import DesignDocument
     try:
-        document = build_design_document_or_error(
+        document = DesignDocument.model_validate(outcome.document) if outcome.document else build_design_document_or_error(
             outcome.plan,
             session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
             source_request=user_message,

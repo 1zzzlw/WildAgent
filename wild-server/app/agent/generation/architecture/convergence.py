@@ -65,6 +65,7 @@ class ConvergenceOutcome:
     #: 相对入参是否真的变了。没变时调用方**不要**重建 DesignDocument。
     changed: bool
     diag: dict[str, Any] = field(default_factory=dict)
+    document: dict[str, Any] | None = None
 
 
 ReasoningEmitter = Callable[[str, str], Awaitable[None]]
@@ -112,6 +113,7 @@ async def converge_design(
     max_rounds: int = _MAX_REVISION_ROUNDS,
     max_no_progress: int = _MAX_NO_PROGRESS_ROUNDS,
     on_reasoning_delta: ReasoningEmitter | None = None,
+    document: dict[str, Any] | None = None,
 ) -> ConvergenceOutcome:
     """把图纸跑到"能编译"，返回最终图纸与诊断。
 
@@ -122,6 +124,15 @@ async def converge_design(
     修订以当前有效 plan 为基准；raw_plan 只用于诊断其是否存在，不能恢复已被
     后续修订替换的旧值。每轮模型读取当前版本，返回的块级增量再合回当前版本。
     """
+
+    if document is not None:
+        from .completion import complete_design
+        return await complete_design(
+            document=document, user_message=user_message, complexity_profile=complexity_profile,
+            architecture_profile=architecture_profile, thinking_mode=thinking_mode,
+            max_rounds=max_rounds, max_no_progress=max_no_progress,
+            on_reasoning_delta=on_reasoning_delta, only_blocks=only_blocks,
+        )
 
     from app.agent.generation.architecture import normalize_architecture_plan
 

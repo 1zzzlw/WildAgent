@@ -180,6 +180,11 @@ export interface DesignDocument {
     target: string
     expression: string
     source: string
+    expected?: unknown
+    check?: 'equals' | 'contains' | 'minimum' | 'absent' | 'manual'
+    adoption?: 'adopted' | 'proposed' | 'superseded'
+    source_quote?: string
+    supersedes?: string | null
   }>
   locks: string[]
   rule_trace: Array<{
@@ -197,6 +202,18 @@ export interface ResolvedDesign {
   design_id: string
   design_revision: number
   design_hash: string
+  resolver_version?: string
+  design_gaps?: Array<{
+    id: string
+    constraint_id: string
+    layer: 'design' | 'implementation' | 'execution'
+    status: 'satisfied' | 'open' | 'needs_review' | 'unsupported'
+    design_hash: string
+    target: string
+    expected: unknown
+    actual: unknown
+    evidence: string
+  }>
   bounds: { width: number; depth: number; height: number }
   levels: Array<{ index: number; base_y: number; top_y: number }>
   volumes: DesignVolume[]
@@ -205,7 +222,11 @@ export interface ResolvedDesign {
     facing: 'front' | 'back' | 'left' | 'right'
     floor: number
     bay: number
-    type: 'door' | 'window'
+    type: 'door' | 'window' | 'bay_window'
+    parent_wall?: string
+    local_from?: number[]
+    world_from?: number[]
+    world_to?: number[]
     offset: number
     width: number
     bottom: number

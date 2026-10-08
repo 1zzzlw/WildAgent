@@ -131,6 +131,10 @@ def _after_skeleton(state: GenerationState) -> str:
     return "__end__" if _terminal(state) or state.get("error") else "plan"
 
 
+def _after_compile(state: GenerationState) -> str:
+    return "design_review" if state.get("design_review_status") == "pending" else "plan"
+
+
 def _after_plan(state: GenerationState) -> str:
     if _terminal(state):
         return "__end__"
@@ -273,7 +277,7 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges("skeleton", _after_skeleton,
                                 {"plan": "plan", "__end__": END})
     # 编译节点不设失败出口：图纸有问题只记进 compile_report（红线：只标记不阻断）。
-    graph.add_edge("compile", "plan")
+    graph.add_conditional_edges("compile", _after_compile, {"plan": "plan", "design_review": "design_review"})
 
     graph.add_conditional_edges("plan", _after_plan,
                                 {"execute": "execute", "final_validate": "final_validate",

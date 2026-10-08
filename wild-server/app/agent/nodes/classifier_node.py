@@ -28,7 +28,6 @@ async def classifier_node(state: dict) -> dict:
         recent_messages=state.get("recent_messages"),
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
-
     )
     result = {
         "intent": decision.intent,

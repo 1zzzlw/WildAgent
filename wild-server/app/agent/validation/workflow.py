@@ -115,6 +115,22 @@ async def validate_node(state: GenerationState) -> dict:
                     has_warning=True,
                 ))
 
+        # Always refresh design-dependent evidence, even if geometry validation is cached.
+        pipeline_results = [r for r in pipeline_results if r.name != "review_opening_consistency"]
+        if state.get("design_document"):
+            from app.design.contracts import DesignDocument, ObjectDecisions
+            from app.design.resolver import resolve_design
+            from app.design.compilation import opening_drift
+            document = DesignDocument.model_validate(state["design_document"])
+            if not isinstance(document.decisions, ObjectDecisions):
+                drift = opening_drift(resolve_design(document), merged_blueprint)
+                if drift:
+                    pipeline_results.append(PipelineStepResult(
+                        step="design", name="review_opening_consistency",
+                        output="\n".join(f"❌ [design] {message}" for message in drift),
+                        has_error=True, has_warning=False,
+                    ))
+
         # 提取最终错误（修复后的 recheck 覆盖初检错误）
         final_errors = _final_errors(pipeline_results)
         

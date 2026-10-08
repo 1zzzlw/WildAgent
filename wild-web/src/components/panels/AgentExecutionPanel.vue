@@ -69,6 +69,12 @@
             :alt="architectureDecisions ? '建筑体量、主立面和侧立面设计预览' : '物件轮廓与尺寸预览'"
           />
         </a>
+        <details v-if="turn.resolved_design?.warnings?.length" class="design-details" open>
+          <summary>设计待解决问题（{{ turn.resolved_design.warnings.length }}）</summary>
+          <div v-for="(warning, index) in turn.resolved_design.warnings" :key="index">
+            {{ warning }}
+          </div>
+        </details>
         <details class="design-details">
           <summary>设计约束与构件计划</summary>
           <div v-for="constraint in turn.design_document.constraints" :key="constraint.id">

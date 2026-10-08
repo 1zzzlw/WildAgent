@@ -1,9 +1,4 @@
-"""SVG 图纸轮廓投影（任务 #36 A+B）的守卫测试。
-
-立面前提：图纸不再把任何 shape 画成大矩形——tiers 表态 / 体量落层 / shape
-派生（tower 收分）都要能改变轮廓；屋顶六型有示意轮廓；出界开口不画。
-所有 ``data-design-path`` 锚点是前端回写设计的入口，任何改动不得增删改名。
-"""
+"""SVG projects compiled entities; it must not invent tapering or drop real openings."""
 
 import pytest
 from pydantic import ValidationError
@@ -13,6 +8,7 @@ from app.design.resolver import (
     architecture_plan_from_document,
     build_design_document,
     render_design_svg,
+    resolve_design,
 )
 
 
@@ -97,58 +93,42 @@ def test_plain_rectangle_flat_roof_keeps_rect_and_all_anchors():
     assert "20.0 m" in svg
 
 
-def test_tower_shape_draws_tapered_polygon():
-    svg = render_design_svg(make_document(base_plan(shape="tower")))
-
-    assert '<polygon points="' in svg
-    assert 'data-design-path="/decisions/massing"' in svg
-
-
-def test_tiers_draw_stepped_silhouette_and_filter_out_of_span_openings():
-    plan = base_plan(
-        tiers=[
-            {"floors": 2, "width_ratio": 1.0, "depth_ratio": 1.0},
-            {"floors": 2, "width_ratio": 0.6, "depth_ratio": 0.6},
-        ],
-    )
-    svg = render_design_svg(make_document(plan))
-
-    assert '<polygon points="' in svg
-    # 上段收进 20%：floor_3/4 出界的槽位不再画（下段 4 槽、上段只剩落在跨度内的）。
-    lower = svg.count("front:floor_1")
-    upper = svg.count("front:floor_3")
-    assert lower == 4
-    assert 0 < upper < lower
+@pytest.mark.parametrize("shape", ["rectangle", "tower"])
+def test_shape_projection_contains_actual_compiled_walls(shape):
+    from xml.etree import ElementTree as ET
+    doc = make_document(base_plan(shape=shape))
+    resolved = resolve_design(doc)
+    root = ET.fromstring(render_design_svg(doc, resolved))
+    shown = {e.get("data-entity-id") for e in root.iter()}
+    walls = {e["id"] for e in resolved.projection_elements if e["type"] == "wall"}
+    assert walls
+    assert walls <= shown
 
 
-def test_volumes_with_uneven_floors_derive_stepped_silhouette():
+def test_tiers_do_not_filter_out_real_compiled_openings():
+    from xml.etree import ElementTree as ET
+    doc = make_document(base_plan(tiers=[
+        {"floors":2,"width_ratio":1.0,"depth_ratio":1.0},
+        {"floors":2,"width_ratio":0.6,"depth_ratio":0.6},
+    ]))
+    resolved = resolve_design(doc)
+    root = ET.fromstring(render_design_svg(doc, resolved))
+    shown = {e.get("data-slot-id") for e in root.iter() if e.get("data-slot-id")}
+    assert shown == {s.id for s in resolved.facade_slots if s.facing in {"front","left"}}
+
+
+@pytest.mark.parametrize("roof_type", ["flat","gable","hip","dome","chinese_curved","chinese_pagoda"])
+def test_roof_projection_uses_compiled_entities(roof_type):
+    from xml.etree import ElementTree as ET
     plan = base_plan()
-    plan["volumes"] = [
-        {"id": "podium", "role": "secondary", "x": 0, "z": 0, "width": 20, "depth": 20,
-         "start_floor": 1, "end_floor": 2},
-        {"id": "shaft", "role": "primary", "x": 4, "z": 4, "width": 12, "depth": 12,
-         "start_floor": 3, "end_floor": 4},
-    ]
-    svg = render_design_svg(make_document(plan))
-
-    assert '<polygon points="' in svg
-
-
-def test_roof_types_draw_silhouettes_with_anchor():
-    roof_expectations = {
-        "gable": "<polygon",
-        "hip": "<polygon",
-        "dome": '<path d="M ',
-        "chinese_curved": "<path",
-        "chinese_pagoda": 'data-design-path="/decisions/roof"',
-    }
-    for roof_type, marker in roof_expectations.items():
-        plan = base_plan()
-        plan["roof"] = {"type": roof_type, "ridge_axis": "x", "overhang": 0.5}
-        svg = render_design_svg(make_document(plan))
-
-        assert 'data-design-path="/decisions/roof"' in svg, roof_type
-        assert marker in svg, roof_type
+    plan["roof"] = {"type":roof_type,"ridge_axis":"x","overhang":0.5}
+    plan["component_quota"]["roof"] = {"min":1}
+    plan["required_components"].append("roof")
+    doc = make_document(plan)
+    resolved = resolve_design(doc)
+    root = ET.fromstring(render_design_svg(doc,resolved))
+    shown = {e.get("data-entity-id") for e in root.iter() if e.get("data-design-path")=="/decisions/roof"}
+    assert shown == {e["id"] for e in resolved.projection_elements if e["type"]=="roof"}
 
 
 def test_tiers_sum_must_equal_floors():
