@@ -17,7 +17,6 @@ from app.agent.generation.material.plan import material_mentions
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
-from app.spec.loader import SpecQuery
 from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
 
 
@@ -116,35 +115,10 @@ async def architecture_planner(state: GenerationState) -> dict:
             f"\n### 总体建筑方案\n{revision_note}：正在制定建筑体量、立面轴网和屋顶方案...\n",
         )
 
-    rag_started = _time.time()
+    # 知识按设计块及当前选择检索；公共提示词不重复注入 Blueprint 基础协议。
+    spec_text = ""
     rag_error = None
-    try:
-        # 知识库检索：前两条是固定契约查询；第三条把用户消息原文带进查询文本。
-        # 分类器给出的形制标签（模型自选）一并作为特征词，让"别墅的形制契约"和
-        # "塔的形制契约"这类差异大的形制各检索各的。`custom` 是"未定"，不带形制
-        # 语义，拼进去只会稀释查询，所以只在非 custom 时追加。
-        intent_profile = str(state.get("intent_profile") or "").strip()
-        profile_term = (
-            f" {intent_profile} 形制" if intent_profile and intent_profile != "custom" else ""
-        )
-        spec_text = agent_service.spec_loader.load_many([
-            SpecQuery("当前引擎已实现的宿主、连接与空间解析关系", {"doc_type": "recipe", "entity_name": "supported_assembly_relations"}),
-            SpecQuery("当前 WILD 引擎能力边界", {"doc_type": "component", "knowledge_layer": "wild_schema"}),
-            SpecQuery(
-                f"{user_message}{profile_term} 建筑形制特征 技法 组装配方 设计层表态",
-                {"doc_type": "component", "knowledge_role": "capability"},
-            ),
-        ], per_query=2)
-    except Exception as exc:
-        spec_text = ""
-        rag_error = str(exc)
-        logger.warning(f"[architecture] RAG 检索失败，继续使用内置 profile: {exc}")
-    rag_ms = int((_time.time() - rag_started) * 1000)
-    if on_reasoning_delta:
-        await on_reasoning_delta(
-            "architecture:progress",
-            f"已完成建筑知识检索（{len(spec_text)} 字，{rag_ms}ms），正在生成总体方案...\n",
-        )
+    rag_ms = 0
 
     previous_profile_id = (
         # 从上轮方案里继承 profile，避免用户没说话就被兜底成 "building"。
@@ -203,6 +177,11 @@ async def architecture_planner(state: GenerationState) -> dict:
             int(item.get("llm_chars") or 0) for item in block_diag.get("blocks", [])
         )
         token_usage = block_diag.get("token_usage")
+        rag_ms = sum(int(item.get("knowledge", {}).get("elapsed_ms", 0))
+                     for item in block_diag.get("blocks", []))
+        rag_error = next((item.get("knowledge", {}).get("error")
+                          for item in block_diag.get("blocks", [])
+                          if item.get("knowledge", {}).get("error")), None)
         # 一块都没定稿 ⇒ 视同"没有方案"（`used_fallback` 要如实为真）。
         raw_plan = (
             {**previous_plan, **draft}
@@ -310,7 +289,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             "architecture_diag": {
                 **selection_diag,
                 "design_contract_error": True,
-                "rag_chars": len(spec_text),
+                "rag_chars": block_diag.get("knowledge_chars", 0),
                 "rag_ms": rag_ms,
                 "rag_error": rag_error,
                 "prompt_chars": len(prompt),
@@ -335,6 +314,10 @@ async def architecture_planner(state: GenerationState) -> dict:
         term in revision_feedback.casefold()
         for term in material_mentions(revision_feedback)
     )
+    prior_decisions = (state.get("design_document") or {}).get("decisions") or {}
+    prior_strategy = (prior_decisions.get("design_intent") or {}).get("material_strategy")
+    current_strategy = (plan.get("design_intent") or {}).get("material_strategy")
+    refresh_materials = refresh_materials or prior_strategy != current_strategy
     return {
         # 设计方案本体
         "architecture_plan": plan,
@@ -351,7 +334,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         # 诊断账本（谁定的、花了多少、哪块难写）
         "architecture_diag": {
             **selection_diag,
-            "rag_chars": len(spec_text),
+            "rag_chars": block_diag.get("knowledge_chars", 0),
             "rag_ms": rag_ms,
             "rag_error": rag_error,
             "prompt_chars": len(prompt),

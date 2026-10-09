@@ -1,17 +1,18 @@
-"""验证 merge → final_validate 的校验结果复用。"""
+"""完整门禁不能用合并缓存的旧通过结论替代。"""
 
 import unittest
 from unittest.mock import patch
 
 from app.agent.validation.diagnostics import blueprint_fingerprint
-from app.agent.nodes.validate_node import validate_node
+from app.agent.validation.workflow import validate_node
 
 
 class ValidationCacheTest(unittest.IsolatedAsyncioTestCase):
-    async def test_successful_merge_validation_is_not_run_twice(self) -> None:
+    async def test_successful_merge_cache_still_runs_the_current_full_gate(self) -> None:
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "cached"},
-            "geometry": {"elements": [], "components": []},
+            "geometry": {"elements": [{"id": "floor", "type": "floor", "from": [0, 0, 0],
+                                      "to": [6, 0, 4], "thickness": 0.2}], "components": []},
             "materials": {},
         }
         state = {
@@ -30,11 +31,12 @@ class ValidationCacheTest(unittest.IsolatedAsyncioTestCase):
             },
         }
 
-        with patch("app.services.agent_service.run_validation_pipeline") as pipeline:
+        with patch("app.services.agent_service.run_validation_pipeline", return_value=[]) as pipeline:
             result = await validate_node(state)
 
-        pipeline.assert_not_called()
-        self.assertTrue(result["validation_cache_reused"])
+        pipeline.assert_called_once()
+        self.assertFalse(pipeline.call_args.kwargs["auto_fix"])
+        self.assertFalse(result["validation_cache_reused"])
         self.assertEqual(result["validation_error_count"], 0)
         self.assertEqual(result["status"], "complete")
 
@@ -44,8 +46,8 @@ class ValidationCacheTest(unittest.IsolatedAsyncioTestCase):
             "geometry": {
                 "elements": [],
                 "components": [
-                    {"id": "light_1", "type": "light"},
-                    {"id": "light_2", "type": "light"},
+                    {"id": "light_1", "type": "light", "position": [1, 2, 0]},
+                    {"id": "light_2", "type": "light", "position": [2, 2, 0]},
                 ],
             },
             "materials": {},

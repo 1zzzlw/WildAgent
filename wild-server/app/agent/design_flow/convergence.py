@@ -95,7 +95,7 @@ async def design_convergence(state: GenerationState) -> dict:
 
     logger.info(
         f"[convergence] {diag['stop_reason']}："
-        f"{diag['initial_defects']} → {diag['final_defects']} 条 error 缺陷，"
+        f"{diag['initial_defects']} → {diag['final_defects']} 条可处理缺陷，"
         f"修订 {diag['revisions']} 轮"
     )
     return {

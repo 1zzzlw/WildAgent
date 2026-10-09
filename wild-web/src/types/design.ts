@@ -83,6 +83,14 @@ export type DesignDecisions = ArchitectureDecisions | ObjectDecisions
 export interface ArchitectureDecisions {
   kind: 'architecture'
   concept: string
+  design_intent?: {
+    goals: string[]
+    assumptions: string[]
+    spatial_strategy: string
+    composition: string
+    material_strategy: string
+    selected_systems: string[]
+  } | null
   massing: DesignMassing
   complexity: {
     min_volumes: number
@@ -162,7 +170,7 @@ export interface ObjectDecisions {
 }
 
 export interface DesignDocument {
-  schema_version: 'design/1.0' | 'design/1.1' | 'design/1.2'
+  schema_version: 'design/1.0' | 'design/1.1' | 'design/1.2' | 'design/1.3'
   design_id: string
   session_id: string
   revision: number

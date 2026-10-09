@@ -19,7 +19,6 @@
 
 from __future__ import annotations
 
-import dataclasses
 from typing import Any, Callable
 
 from loguru import logger
@@ -310,7 +309,11 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     kwargs = {"design_document": state.get("design_document"), "design_brief": state.get("design_brief")}
     before = evaluate_candidate(original, **kwargs)
     if not before["errors"]:
-        return {}, "succeeded", [], "完整验收已通过，无需修复", []
+        fulfillment = before.get("fulfillment") or {}
+        if any(fulfillment.get(key) for key in ("open", "needs_review", "unsupported")):
+            return {"design_fulfillment": fulfillment}, "succeeded", [], \
+                "几何校验通过，无脚本可修复错误；设计未落实及待核对项仍保留，不能据此声称设计完整", []
+        return {}, "succeeded", [], "几何校验通过，无脚本可修复错误", []
     if before["approved_design_errors"]:
         return {"repair_audit": {"accepted": False, "stop_reason": "design_revision_required"}}, \
             "failed", [], "批准设计自身无效，需要修订并重新审核", []
@@ -322,13 +325,18 @@ def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
         (after["fulfillment"] or {}).get("satisfied_ids") or [])
     if after["errors"] or not preserved or candidate == original:
         return {}, "failed", [], f"完整验收未通过，脚本候选已回滚；仍有 {len(after['errors'])} 个错误", trace
-    ids = {e["id"] for bp in (original, candidate) for bucket in ("elements", "components")
-           for e in (bp.get("geometry") or {}).get(bucket, [])}
+    from app.design.relations import entity_index
+    old_entities, new_entities = entity_index(original), entity_index(candidate)
+    ids = {entity_id for entity_id in old_entities.keys() | new_entities.keys()
+           if old_entities.get(entity_id) != new_entities.get(entity_id)}
     updates = state_updates_from_candidate(state, candidate, ids)
     updates["validation_snapshot"] = after["snapshot"]
+    updates.update(validation_results=after["snapshot"]["results"], validation_issues=after["issues"],
+                   validation_error_count=0, validation_warning_count=after["snapshot"]["warning_count"],
+                   design_fulfillment=after["fulfillment"], final_blueprint=candidate)
     updates["repair_audit"] = {"accepted": True, "before_issue_count": len(before["issues"]),
                                "after_issue_count": 0}
-    return updates, "succeeded", [], "脚本候选完整验收通过，已提交", trace
+    return updates, "succeeded", [], "脚本候选几何校验通过且保留已兑现设计项，已提交；其余设计履约以报告为准", trace
 
 
 async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
@@ -347,7 +355,7 @@ async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
                   "chars": 0, "mode": "model_whitelist"} for r in reports)
     updates = {**validated, **repaired}
     return updates, ("succeeded" if accepted else "failed"), [], (
-        "完整验收通过，已提交修复候选" if accepted else "修复未完整通过，保留原产物"), trace
+        "修复候选通过当前校验，已提交；设计履约以报告为准" if accepted else "修复未通过当前校验，保留原产物"), trace
 
 
 #: op → 处理器。新增 op 必须同时补进这里与 §2.3 的闭集，否则条目会以 failed 收场。

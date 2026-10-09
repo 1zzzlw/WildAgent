@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from typing import Any
 
 
@@ -13,11 +12,10 @@ def pipeline_defect_messages(blueprint: dict[str, Any]) -> list[tuple[str, str]]
     ``spatial_tools`` 的输出，否则同一条缺陷在两处会有两种说法。
     """
 
-    from app.services.agent_service import _final_errors, run_validation_pipeline
+    from app.agent.validation.candidate import evaluate_candidate
 
-    target = copy.deepcopy(blueprint)
     found: list[tuple[str, str]] = []
-    for step in _final_errors(run_validation_pipeline(target, log_steps=False, auto_fix=False)):
+    for step in evaluate_candidate(blueprint, source="compile")["errors"]:
         for line in str(step.output).splitlines():
             message = line.strip()
             if "❌" in message:

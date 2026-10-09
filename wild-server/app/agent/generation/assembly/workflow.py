@@ -13,6 +13,7 @@
 每次迭代通过 on_reasoning_delta 发射思考内容，让前端能看到合并推理过程。
 """
 import time as _time
+from copy import deepcopy
 from loguru import logger
 
 from app.agent.state import GenerationState
@@ -245,7 +246,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
         await on_reasoning_delta("merge", f"已收集分片: {summary_text}\n")
 
     # ── 2. 合并 ──
-    merged_blueprint = state.get("merged_blueprint")
+    merged_blueprint = deepcopy(state.get("merged_blueprint"))
     if not merged_blueprint:
         try:
             merged_blueprint = merge_fragments(skeleton, fragments)
@@ -368,7 +369,11 @@ async def _finalize_merge(state: GenerationState) -> dict:
 
     # ── 3. 校验 → 修复 → 循环 ──
     from app.services.agent_delivery import final_validation_results
-    from app.services.agent_service import run_validation_pipeline, _final_errors
+    from app.agent.validation.candidate import evaluate_candidate
+
+    def evaluate(blueprint):
+        return evaluate_candidate(blueprint, design_document=state.get("design_document"),
+                                  design_brief=design_brief, source="merge")
 
     merge_diag: dict = {
         "label": "合并",
@@ -389,21 +394,24 @@ async def _finalize_merge(state: GenerationState) -> dict:
 
     final_errors: list = []
     pipeline_results: list = []
+    repair_updates = {}
 
     for iteration in range(1, MAX_MERGE_ITERATIONS + 1):
         iter_t0 = _time.time()
 
         # 3a. 执行校验流水线
-        pipeline_results = run_validation_pipeline(merged_blueprint)
-        final_errors = _final_errors(pipeline_results)
+        evaluation = evaluate(merged_blueprint)
+        pipeline_results = evaluation["results"]
+        final_errors = evaluation["errors"]
+        design_errors = [*json_parse_quota_errors, *evaluation["snapshot"]["design_errors"]]
         final_results = final_validation_results(pipeline_results)
 
-        error_count = len(final_errors) + len(design_errors)
+        error_count = len(final_errors) + len(json_parse_quota_errors)
         warning_count = sum(
             1 for result in final_results if result.has_warning and not result.has_error
         )
         passed_count = len(final_results) - len(final_errors) - warning_count
-        total_steps = len(final_results) + (1 if design_errors else 0)
+        total_steps = len(final_results) + len(json_parse_quota_errors)
 
         iter_ms = int((_time.time() - iter_t0) * 1000)
 
@@ -425,8 +433,8 @@ async def _finalize_merge(state: GenerationState) -> dict:
 
         if on_reasoning_delta:
             error_names = [r.name for r in final_errors] if final_errors else []
-            if design_errors:
-                error_names.append("validate_design_brief")
+            if json_parse_quota_errors:
+                error_names.append("component_json_parse")
             status_line = (
                 "全部通过"
                 if not final_errors and not design_errors
@@ -480,7 +488,11 @@ async def _finalize_merge(state: GenerationState) -> dict:
                 "merge", f"检测到 {error_count} 个错误，尝试自动修复...\n"
             )
 
-        fix_results = apply_fixes(merged_blueprint, final_errors)
+        if evaluation["approved_design_errors"]:
+            merge_diag["stop_reason"] = "design_revision_required"
+            break
+        candidate = deepcopy(merged_blueprint)
+        fix_results = apply_fixes(candidate, final_errors)
 
         if not fix_results:
             logger.warning("[merge] 当前错误没有确定性修复工具，停止无效循环")
@@ -497,6 +509,28 @@ async def _finalize_merge(state: GenerationState) -> dict:
                     "merge", "自动修复未能安全消除错误，交给最终校验与回调处理。\n"
                 )
             break
+
+        candidate_evaluation = evaluate(candidate)
+        before_satisfied = set((evaluation["fulfillment"] or {}).get("satisfied_ids") or [])
+        after_satisfied = set((candidate_evaluation["fulfillment"] or {}).get("satisfied_ids") or [])
+        accepted = (candidate != merged_blueprint and not candidate_evaluation["errors"]
+                    and before_satisfied <= after_satisfied and not json_parse_quota_errors)
+        merge_diag["repair_audit"] = {
+            "accepted": accepted,
+            "source_fingerprint": blueprint_fingerprint(merged_blueprint),
+            "candidate_fingerprint": blueprint_fingerprint(candidate),
+            "remaining_errors": len(candidate_evaluation["errors"]),
+        }
+        if not accepted:
+            merge_diag["stop_reason"] = "incomplete_candidate"
+            break
+        from app.agent.repair.state_updates import state_updates_from_candidate
+        from app.design.relations import entity_index
+        old_entities, new_entities = entity_index(merged_blueprint), entity_index(candidate)
+        changed_ids = {entity_id for entity_id in old_entities.keys() | new_entities.keys()
+                       if old_entities.get(entity_id) != new_entities.get(entity_id)}
+        repair_updates = state_updates_from_candidate(state, candidate, changed_ids)
+        merged_blueprint = candidate
 
         if on_reasoning_delta:
             fix_names = [name for name, ok in fix_results if ok]
@@ -517,7 +551,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
     merge_diag["total_ms"] = total_ms
     merge_diag["element_count"] = len(elements)
     merge_diag["component_count"] = len(components)
-    merge_diag["final_errors"] = len(final_errors) + len(design_errors)
+    merge_diag["final_errors"] = len(final_errors) + len(json_parse_quota_errors)
     design_document = state.get("design_document") or {}
     resolved_design = state.get("resolved_design") or {}
     if isinstance(design_document, dict):
@@ -526,8 +560,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
             meta["designRevision"] = design_document.get("revision")
             meta["designHash"] = resolved_design.get("design_hash")
             meta["designSchemaVersion"] = design_document.get("schema_version")
-    # final_validate 紧接在 merge 之后，蓝图未发生变化时可安全复用这一轮结果；
-    # 用蓝图指纹显式判断，避免依赖“final_errors==0”这种隐式条件。
+    # 记录本轮证据；final_validate 会独立验收最终交付归一化后的内容。
     merge_diag["blueprint_fingerprint"] = blueprint_fingerprint(merged_blueprint)
     merge_diag["validation_results"] = [
         {
@@ -549,6 +582,11 @@ async def _finalize_merge(state: GenerationState) -> dict:
     from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery
     
     merged_blueprint, norm_report = normalize_blueprint_for_delivery(merged_blueprint)
+    evaluation = evaluate(merged_blueprint)
+    merge_diag["validation_snapshot"] = evaluation["snapshot"]
+    merge_diag["blueprint_fingerprint"] = evaluation["snapshot"]["blueprint_fingerprint"]
+    merge_diag["validation_results"] = evaluation["snapshot"]["results"]
+    merge_diag["final_errors"] = len(evaluation["errors"]) + len(json_parse_quota_errors)
     merge_diag["normalization_changes"] = norm_report.changes
     logger.info(f"[merge] 归一化修复: {norm_report.summary()}")
     
@@ -561,6 +599,7 @@ async def _finalize_merge(state: GenerationState) -> dict:
             )
 
     return {
+        **repair_updates,
         "merged_blueprint": merged_blueprint,
         "merge_diag": merge_diag,
         "design_brief": design_brief,

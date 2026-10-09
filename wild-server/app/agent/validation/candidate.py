@@ -15,7 +15,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                        source: str = "") -> dict:
     """不发事件、不写 State、不修复；所有证据绑定传入的原始候选。"""
     from app.services.agent_service import PipelineStepResult, _final_errors, run_validation_pipeline
-    from app.services.agent_delivery import final_validation_results
+    from app.services.agent_delivery import final_validation_results, WARNING_GATE_MAX
 
     target = deepcopy(blueprint)
     results = run_validation_pipeline(target, log_steps=False, auto_fix=False)
@@ -29,6 +29,9 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                 output="\n".join(f"{'⚠️' if warning else '❌'} [design] {m}" for m in messages),
                 has_error=not warning, has_warning=warning,
             ))
+
+    from app.utils.blueprint_parser import validate_blueprint_schema
+    append("validate_blueprint_schema", validate_blueprint_schema(blueprint))
 
     design_errors = validate_design_brief_constraints(blueprint, design_brief)
     append("validate_design_brief", design_errors)
@@ -64,9 +67,12 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                 superseded=sum(c.adoption == "superseded" for c in document.constraints))
             fulfillment["blueprint_fingerprint"] = blueprint_fingerprint(blueprint)
 
+    warning_count = sum(r.has_warning and not r.has_error for r in final_validation_results(results))
+    if warning_count > WARNING_GATE_MAX:
+        append("validate_delivery_warning_gate", [
+            f"校验警告 {warning_count} 超过交付上限 {WARNING_GATE_MAX}，完整交付门禁未通过"])
     errors = _final_errors(results)
     issues = validation_issues_from_results(errors, blueprint)
-    final = final_validation_results(results)
     snapshot = ValidationSnapshot(
         blueprint_fingerprint=blueprint_fingerprint(blueprint), validator_version=VALIDATOR_VERSION,
         design_hash=design_hash, design_revision=revision,
@@ -74,7 +80,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
         status="partial" if errors else "complete",
         results=[step_result_to_dict(r) for r in results], design_errors=design_errors,
         issues=issues, fulfillment=fulfillment, error_count=len(errors),
-        warning_count=sum(r.has_warning and not r.has_error for r in final), source=source,
+        warning_count=warning_count, source=source,
     )
     return {"results": results, "errors": errors, "issues": issues,
             "snapshot": asdict(snapshot), "fulfillment": fulfillment,

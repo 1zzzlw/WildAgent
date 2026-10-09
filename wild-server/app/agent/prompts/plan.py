@@ -16,6 +16,8 @@ _PLAN_NOTE = """你是建筑生成的「计划策略」决策者。你面对的�
 
 你只输出**策略**，不输出几何、不输出数量、不输出坐标。坐标与数量由设计清单
 （component_quota / 任意 *_slots 槽位集合）与骨架给定，后续节点会逐字遵守。
+设计意图说明为什么采用这些关系；计划只组织落实与核对，不补一套新的建筑设计。
+宿主未解析或设计链无法表达时，应保留设计修订问题，不凭同类型数量声称完成。
 """
 
 _PLAN_RULES = """# 硬性约束
@@ -111,6 +113,9 @@ def build_plan_strategy_prompt(
             _PLAN_RULES,
             "# 可派发能力清单\n\n" + ("\n".join(lines) or "（空：本次没有任何可做构件）"),
             f"# 本次生成档位\n\n{detail_level}",
+            "# 设计意图与设计依据（执行只落实，不重新选择）\n\n"
+            + json.dumps({key: (architecture_plan or {}).get(key)
+                          for key in ("design_intent", "design_rationale")}, ensure_ascii=False),
             "# 已批准总体方案摘要\n\n"
             + (
                 json.dumps(

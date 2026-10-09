@@ -22,7 +22,7 @@ def test_review_persists_completion_but_preserves_newer_user_patch(monkeypatch,s
     saved=[]
     monkeypatch.setattr(node,"design_repository",SimpleNamespace(get=lambda _:stored,
         save=lambda d:(saved.append(d) or d,{})))
-    monkeypatch.setattr(node,"resolve_design",lambda d:SimpleNamespace(model_dump=lambda **kw:{}))
+    monkeypatch.setattr(node,"resolve_design",lambda d:SimpleNamespace(compile_blockers=[], model_dump=lambda **kw:{}))
     class Paused(Exception): pass
     def interrupt(payload):
         assert payload["document"]["revision"] == (3 if stored_newer else 2)

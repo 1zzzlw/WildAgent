@@ -172,14 +172,14 @@ def entrance_legibility(blueprint: dict[str, Any]) -> dict[str, Any]:
     if len(doors) > 1:
         notes.append(f"共 {len(doors)} 樘门，入口唯一性需要人工确认")
     if not front_doors:
-        notes.append("所有门都在内墙上：入口未落在临街面")
+        notes.append("未找到外墙上的门，外部入口需要截图复核")
     # 🔴 雨棚是**正面**信息，只进 detail/evidence，不参与 needs_review 判定 ——
     #    装了雨棚反而变成"待复查"是判据写反了。
     positives: list[str] = []
     if front_doors:
-        positives.append(f"临街面 {len(front_doors)} 樘门")
+        positives.append(f"外墙上 {len(front_doors)} 樘门")
     if has_canopy:
-        positives.append("入口上方有雨棚")
+        positives.append("门与雨棚引用相同宿主墙，实际遮蔽关系需复核")
     if len(front_doors) == 1 and len(doors) == 1:
         positives.append("唯一入口")
     return {
@@ -310,7 +310,7 @@ def massing_hierarchy(
 ) -> dict[str, Any]:
     """体量层次：屋面块数与体量数是否匹配。
 
-    一块屋顶盖住多个体量 ⇒ 体量层次在**渲染上**就消失了（内院也被盖住）。
+    数量差异只触发复核，不能证明体量层次、内院覆盖或渲染效果。
 
     🔴 **体量数的唯一事实源是设计文档** ``decisions.volumes``，不在蓝图里 ——
        初版读 ``blueprint["volumes"]``，永远读不到 ⇒ 这一项恒为 ``missing``。
@@ -343,7 +343,8 @@ def massing_hierarchy(
         "status": "ok" if ok else "needs_review",
         "detail": (
             f"{volume_count} 个体量 / {roof_count} 块屋面"
-            + ("" if ok else "：屋面数少于体量数，体量层次在渲染上会消失")
+            + ("；通过当前数量规则，体量表达待截图评价" if ok
+               else "：屋面数少于体量数，覆盖关系及体量表达需复核")
         ),
         "confidence": "high",
         "evidence": {"volumes": volume_count, "roofs": roof_count},
@@ -353,7 +354,7 @@ def massing_hierarchy(
 def material_harmony(blueprint: dict[str, Any]) -> dict[str, Any]:
     """材质协调：材质引用种类数与分配是否集中。
 
-    同一种材质铺满全部构件 ⇒ 没有层次；种类过多 ⇒ 拼贴感。两者都记为需人工看。
+    种类数只触发人工复核；不能从数量推断层次、协调性或拼贴感。
 
     🔴 统计**所有材质引用位**（``_MATERIAL_REF_FIELDS``），不是只读 ``material``：
        门是 ``frameMaterial``/``leafMaterial``、窗是 ``frameMaterial``/``glassMaterial``，
@@ -381,9 +382,9 @@ def material_harmony(blueprint: dict[str, Any]) -> dict[str, Any]:
                 "evidence": {"materialCount": 0, "textured": []}}
     notes: list[str] = []
     if len(refs) <= 2:
-        notes.append(f"只用了 {len(refs)} 种材质，层次可能过弱")
+        notes.append(f"引用 {len(refs)} 种材质，处于代理统计区间下侧；协调性待截图评价")
     if len(refs) > 8:
-        notes.append(f"用了 {len(refs)} 种材质，易显拼贴")
+        notes.append(f"引用 {len(refs)} 种材质，超过代理统计区间；协调性待截图评价")
     return {
         "criterion": "material_harmony",
         "status": "needs_review" if notes else "ok",

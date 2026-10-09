@@ -67,7 +67,7 @@ def field_changes(before: Any, after: Any, *, path: str = "", rule: str,
 def plan_changes(before, after, *, source="unknown"):
     from .contracts import ArchitectureDecisions
     # Use contract fields; plan-only derivatives are explicitly included below.
-    roots = set(ArchitectureDecisions.model_fields) - {"kind", "envelope", "complexity", "design_rationale"}
+    roots = set(ArchitectureDecisions.model_fields) - {"kind", "envelope", "complexity", "design_rationale", "design_intent"}
     roots.add("curtain_wall")
     old = before if isinstance(before, dict) else {}
     changes = field_changes({k:v for k,v in old.items() if k in roots},
@@ -106,7 +106,10 @@ def plan_changes(before, after, *, source="unknown"):
 
 def decision_summary(plan: dict) -> str:
     massing = plan["massing"]
-    return (f"[决策事实] {massing['width']}×{massing['depth']}m；"
+    volumes = plan["volumes"]
+    width = max(v["x"]+v["width"] for v in volumes)-min(v["x"] for v in volumes)
+    depth = max(v["z"]+v["depth"] for v in volumes)-min(v["z"] for v in volumes)
+    return (f"[决策事实] 体量包络{width:g}×{depth:g}m，尺寸控制上限{massing['width']}×{massing['depth']}m；"
             f"{massing['floors']}层，表达{massing['modeled_floors']}层；"
             f"{len(plan['volumes'])}个体量；屋顶 {plan['roof']['type']}")
 
@@ -155,12 +158,14 @@ def semantic_design_fingerprint(document) -> str:
     data = document.decisions.model_dump(mode="json", exclude_none=True)
     data.pop("concept", None)
     data.pop("design_rationale", None)
+    data.pop("design_intent", None)
     for key in ("required_components", "detail_packages"):
         if isinstance(data.get(key), list):
             data[key] = sorted(data[key])
     for key in ("components", "volumes"):
         items = data.get(key) or []
         ids = [item.get("id") for item in items]
-        if items and all(ids) and len(ids) == len(set(ids)):
+        indexed_reference = any(c.target.startswith(f"/decisions/{key}/") for c in document.constraints)
+        if items and all(ids) and len(ids) == len(set(ids)) and not indexed_reference:
             data[key] = sorted(items, key=lambda item: item["id"])
     return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()

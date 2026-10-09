@@ -349,6 +349,7 @@
       "properties": {
         "type": { "const": "roof" }, "id": { "type": "string" },
         "roofType": { "enum": ["gable","hip","dome","flat","chinese_curved","chinese_pagoda"] },
+        "ridgeAxis": { "enum": ["x", "z"] },
         "span": { "type": "number", "exclusiveMinimum": 0 },
         "depth": { "type": "number", "exclusiveMinimum": 0 },
         "height": { "type": "number", "exclusiveMinimum": 0 },

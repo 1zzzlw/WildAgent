@@ -117,9 +117,9 @@ class FileSpecLoader(SpecLoader):
     def list_sources(self) -> list[str]:
         return [str(p) for p in self._paths]
 
-    def load_many(self, queries: list, per_query: int = 1, *, purpose: str = "generation") -> str:
+    def load_many(self, queries: list, per_query: int = 1, *, purpose: str = "generation", include_base: bool = True) -> str:
         """向量不可用时各节点仍获得固定协议；不补入建筑案例。"""
-        return self.load()
+        return self.load() if include_base else ""
 
     @property
     def last_results(self) -> list:
@@ -1256,9 +1256,10 @@ class RAGSpecLoader(SpecLoader):
         per_query: int = 1,
         *,
         purpose: str = "generation",
+        include_base: bool = True,
     ) -> str:
         """按多个检索意图各取片段，保持协议、能力与关系覆盖。"""
-        base_text = self._load_base_text()
+        base_text = self._load_base_text() if include_base else ""
         try:
             retrieved = self.retrieve_many(queries, per_query=per_query)
             retrieved = self._apply_retrieval_gate(retrieved, purpose=purpose)

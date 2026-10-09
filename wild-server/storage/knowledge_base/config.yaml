@@ -86,6 +86,7 @@ required_documents:
   - knowledge/protocol/scene-patch-protocol.md
   - knowledge/protocol/scale-notation.md
   - knowledge/components/capability-boundaries.md
+  - knowledge/components/architecture-design-expression.md
   - knowledge/components/chinese-lattice-openings.md
   - knowledge/components/glass-curtain-wall-assembly.md
   - knowledge/components/light.md

@@ -34,7 +34,7 @@ from .openings import opening_kind
 #: 履约判据口径。改动实体侧判定语义时递增，让旧报告自动失效（与
 #: ``validation.diagnostics.VALIDATOR_VERSION`` 同类做法，但**独立**——几何校验器
 #: 版本不该因为履约口径变化而失效，反之亦然）。
-FULFILLMENT_VERSION = "entity-fulfillment/3"
+FULFILLMENT_VERSION = "entity-fulfillment/4"
 
 #: 几何量的比较容差（米）。比 :func:`value_matches` 的 0.001 宽：实体坐标是
 #: 墙顶/板底累加出来的，设计值是名义尺寸，0.05 以内不算"没兑现"。
@@ -346,6 +346,8 @@ def _entity_check(
         rows = []
         used = set()
         declared = document.decisions.components
+        if len(expected) != len(declared):
+            return "open", len(declared), "已采用的实例数组长度改变，不能用部分成员冒充整组兑现"
         for expected_instance in expected:
             if not isinstance(expected_instance, dict):
                 rows.append(("unsupported", None, "实例要求不是对象"))
@@ -668,6 +670,8 @@ def _instance_check(
         actual = container[mapped]
         return ("satisfied" if value_matches(actual, expected) else "open"), actual, "核对最终实体形态字段"
     if field == "form" and isinstance(expected, dict):
+        if not expected:
+            return "satisfied", {}, "未声明额外形态约束"
         return _aggregate([_instance_check(blueprint, tokens[:3]+["form", k], v, check, instance_entities)
                            for k, v in expected.items()])
     if field.startswith("size/"):

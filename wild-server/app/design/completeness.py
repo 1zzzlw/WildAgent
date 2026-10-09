@@ -123,6 +123,32 @@ def path_schema(document: DesignDocument, path: str) -> dict | None:
     return node
 
 
+def schema_value_supported(schema: dict, value: Any) -> bool:
+    """判定目标值的类型和标量范围；不把不可恢复的目标交给设计修订。"""
+    if "anyOf" in schema:
+        return any(schema_value_supported(branch, value) for branch in schema["anyOf"])
+    kind = schema.get("type")
+    if kind == "null":
+        return value is None
+    types = {"array": list, "object": dict, "string": str, "boolean": bool}
+    if kind in types and not isinstance(value, types[kind]):
+        return False
+    if kind in {"number", "integer"}:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return False
+        if kind == "integer" and not isinstance(value, int):
+            return False
+        if "minimum" in schema and value < schema["minimum"]:
+            return False
+        if "maximum" in schema and value > schema["maximum"]:
+            return False
+        if "exclusiveMinimum" in schema and value <= schema["exclusiveMinimum"]:
+            return False
+        if "exclusiveMaximum" in schema and value >= schema["exclusiveMaximum"]:
+            return False
+    return "enum" not in schema or value in schema["enum"]
+
+
 def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGap]:
     data = document.model_dump(mode="json")
     gaps = []
@@ -140,9 +166,9 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
         elif path_schema(document, c.target) is None:
             status, reason = "unsupported", "目标字段不在当前设计契约中"
         elif c.check == "equals" and "enum" in (path_schema(document, c.target) or {}) and c.expected not in path_schema(document, c.target)["enum"]:
-            status, reason = "unsupported", "目标值超出当前设计协议的枚举能力"
-        elif c.check == "equals" and (path_schema(document, c.target) or {}).get("type") == "object" and not isinstance(c.expected, dict):
-            status, reason = "unsupported", "目标表达与当前对象协议不兼容"
+            status, reason = "unsupported", "目标取值不在当前字段支持的枚举中"
+        elif c.check == "equals" and not schema_value_supported(path_schema(document, c.target) or {}, c.expected):
+            status, reason = "needs_review", "目标类型或取值不符合设计表达协议，不能靠修改建筑关闭此项"
         elif c.check == "equals":
             same = value_matches(actual, c.expected)
             if exists and same:
@@ -182,7 +208,8 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
             # Evidence is historical. A later explicit design revision can replace the
             # degraded value; do not keep reporting the old revision as a current defect.
             still_degraded = exists == change.get("after_exists", True) and value_matches(actual, change.get("after"))
-            supported = path_schema(document, target) is not None
+            target_schema = path_schema(document, target)
+            supported = target_schema is not None and schema_value_supported(target_schema, change.get("before"))
             gaps.append(DesignGap(
                 id=f"gap.normalization.{trace.rule_id}.{trace.design_revision}.{index}",
                 constraint_id=next(iter(change.get("constraint_ids") or []), "request.source"),

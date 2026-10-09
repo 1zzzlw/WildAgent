@@ -141,7 +141,9 @@ def _resolve_generate(
                              "entity_id": entity_id, "reason": "按本任务实例核对实体存在与类型"})
             used.add(entity_id)
         import json
-        evidence = json.dumps({"requirements": requirements, "relation_evidence": rows}, ensure_ascii=False)
+        satisfied = sum(row["status"] == "satisfied" for row in rows)
+        evidence = (f"实例关系核对：{satisfied}/{len(rows)} 满足；"
+                    + json.dumps(rows, ensure_ascii=False))[:2000]
         if all(r["status"] == "satisfied" for r in rows):
             return "done", evidence, False
         if item.run.state == "succeeded" and _final_merge_has_run(plan):

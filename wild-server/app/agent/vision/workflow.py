@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
@@ -70,14 +69,14 @@ def main() -> None:
     write_json(run_dir / "proxy.json", proxy_evaluate(compiled.blueprint, document.model_dump(mode="json")))
     if args.review:
         from .revision import revise_by_visibility
-        from app.services.agent_service import _final_errors, run_validation_pipeline
+        from app.agent.validation.candidate import evaluate_candidate
         supplied = json.loads(args.review.read_text(encoding="utf-8-sig"))
         baseline = validated_review(supplied, manifest)
         if not baseline.get("complete"):
             raise ValueError("人工评价未完成或与当前蓝图/渲染版本不匹配；请填写本轮生成的模板")
 
         def validate(blueprint):
-            return len(_final_errors(run_validation_pipeline(deepcopy(blueprint), log_steps=False)))
+            return len(evaluate_candidate(blueprint, source="visual_revision")["errors"])
 
         outcome = asyncio.run(revise_by_visibility(
             document=document.model_dump(mode="json"),

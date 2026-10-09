@@ -38,6 +38,7 @@ def build_skeleton_prompt(
 # 职责边界
 
 - 严格服从 massing 的尺寸、层数和层高；不得重新做方案选择。
+- design_intent 与 design_rationale 说明当前方案的空间、构图和材料方向；只落实已批准的几何表达，不把未建模的功能意图当成已完成的房间布局。
 - `volumes` 是必须落实的体量分解：外墙只按该层处于 start_floor..end_floor 范围内的体量生成；每个层间标高的 floor 必须覆盖“下层体量封顶 ∪ 上层体量底板”，退台外露部分必须形成完整露台，且同一标高被大楼板包含的较小楼板不得重复生成。
 - `structural_grid` 是结构组织硬约束；frame、hybrid、long_span 应用柱梁表达主要轴网，wall_bearing 也必须让承重墙和跨距与轴网一致。
 - `complexity.level=detailed` 时，结构元素数量不得低于 `target_structural_elements`，并且必须能从逐层外墙轮廓识别出至少 `min_volumes` 个体量。复杂度来自退台、错动、主次体量和合理柱梁，不得靠复制重叠墙体凑数。
@@ -315,6 +316,10 @@ def _task_slice(
     return (
         f"# 任务切片 · 本条目\n\n{slot_block}\n"
         f"## 宿主与场景（只含本次可用的 id 与几何）\n\n{skeleton_summary}\n"
+        f"## 当前设计意图（落实形态与材料，不改写槽位）\n\n"
+        + _json.dumps({"design_intent": design_brief.get("design_intent"),
+                      "design_notes": design_brief.get("design_notes") or []}, ensure_ascii=False)
+        + "\n"
         f"{hint_block}"
     )
 

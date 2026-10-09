@@ -52,72 +52,52 @@ def build_architecture_plan_prompt(
     revision_feedback: str = "",
     style_preference: list[str] | None = None,
 ) -> str:
-    """生成路径第一阶段：只做总体建筑方案，不设计房间平面。"""
+    """建筑设计的公共任务；具体字段协议只在对应设计块中提供。"""
     import json as _json
-    profile_payload = {key: value for key, value in (profile or {}).items()
-                       if key not in {"default_massing", "default_roof"}}
-    if isinstance(profile_payload.get("shapes"), set):
-        profile_payload["shapes"] = sorted(profile_payload["shapes"])
-    profile_text = _json.dumps(profile_payload, ensure_ascii=False)
-    complexity_text = _json.dumps(complexity_profile or {}, ensure_ascii=False)
-    style_section = _style_preference_section(style_preference)
-    revision_section = ""
+
+    revision = ""
     if current_plan and revision_feedback:
-        revision_section = f"""
-
-# 本轮是建筑方案修订
-
-用户对上一版的修改意见：{revision_feedback}
-
-上一版方案如下。保留未被意见否定的尺寸、风格和设计关系，只修改相关部分；仍需输出一份完整方案，不能只输出差异：
-
-{_json.dumps(current_plan, ensure_ascii=False, indent=2)}
-"""
+        revision = (
+            "\n# 本轮设计修订\n用户意见：" + revision_feedback
+            + "\n从当前方案出发，保留未受影响的设计；调整体量、层高或宿主时，"
+              "同时核对依附的立面、屋面、交通与构件。\n"
+            + _json.dumps(current_plan, ensure_ascii=False, separators=(",", ":"))
+        )
+    suggestions = ""
+    if style_preference:
+        suggestions = (
+            "\n系统提供的可选风格线索：" + "、".join(map(str, style_preference))
+            + "。这些是未确认的建议。用户未指定风格时，由整体设计选择一致的方向。\n"
+        )
     return f"""
-你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不设计房间布局。
+你负责建筑方案设计，并把同一份设计交给后续图纸展示与确定性编译。
 
-# 任务
+# 设计任务
+先理解建筑用途、使用者体验及用户明确条件，再组织空间关系和整体构图。
+围绕同一个设计意图协调体量比例、到达与入口、交通、实虚与开口、屋面以及材料层次。
+未给出的场地、朝向、尺寸和使用情境可以提出合理假设，但要标明假设；
+不能把自己的选择写成用户要求，也不能声称已完成未建模的房间布局、结构计算或法规验收。
 
-- 只输出 1 个可实施方案，即本次交付的唯一最终方案；不要输出备选或并列方案。
-- 方案服从用户需求和已批准决定；知识库补充能力与条件关系，不能决定默认造型。复杂度落实为本次所需空间与细节，不靠重复构件凑数。
-- 当前引擎物理边界是：{profile_text}。它只描述本次可表达的范围（尺寸/层数/形状/构件），**不含任何默认建筑，也没有"档位"概念**——建筑类型、风格、形态完全由用户需求与知识库形制资料决定。明确需求超出范围时报告限制，不能静默改写。
-- 本次复杂度目标是：{complexity_text}。
-- 完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
-- 该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
-- front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
-- ground_pattern / upper_pattern 的数组长度必须等于 bays。每个槽位是开口 token：`door`／`window`／`empty`／`open`，或写成 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。形态闭集：门 swing／slide／lift，窗 swing／slide／fixed（fixed = 固定窗，不可开启；门不许写 fixed、窗不许写 lift，写错会被退回纯类型）。不写冒号时形态由系统派生。upper_pattern 只能用 window／empty／open，即使建筑只有一层也禁止填写 door。
-- `empty` 与 `open` 语义不同，不能混用：`empty` = **有墙、这一格不开洞**；`open` = **这一面这一层不生成墙**（开敞面，由柱承重）。要开敞的面写 `open`；要实墙只是某格没洞，写 `empty`。
-- 要保留实墙的面至少给一个开口槽位；开敞形制（亭/廊）把不要墙的面全写 open。
-- 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
-- ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
-- 方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
-- required_components 以 profile.base_components 为基础；示例中的门窗屋顶不是所有 profile 的固定要求。
-- `floors` 表示建筑语义总层数；复杂高层可用较小的 `modeled_floors` 做示意表达，并把 `representation_mode` 设为 `schematic`。
-- 本节点不设计房间坐标和内部隔墙；骨架节点直接依据总体体量、立面和结构约束生成 Blueprint 主体。
-{revision_section}
-{style_section}
+第一块先形成整体设计意图，后续块把它具体表达。意图中的系统是待核对的设计选择，
+不是已生成的构件。分块是输出组织方式，不代表各部分可以独立设计；
+每块均读取当前设计，保持功能、形态和材料之间的联系。
+尺寸由本次尺度、比例和空间关系推导，定位与标高沿体量、楼层和宿主衔接。
+简单体量也可以有好的设计；不要为了显得复杂而强制退台、多体量或增加装饰数量。
 
-# 输出协议
+# 参考与表达边界
+设计参考用于解决当前问题，不能套用其中的整栋布局、固定尺寸或构件套餐。
+字段与宿主的真实语义由本轮设计块协议说明；知识提供适用条件、可选表达及能力限制。
+引擎存在某个构件，不等于当前设计编译链能表达它的所有形式。
+遇到表达缺口，保留原意与限制供审核，不通过更换风格、假造宿主或省略对象来冒充落实。
+设计质量通过各部分关系与最终图纸判断；JSON 合法、构件数量齐全不能证明设计优秀。
 
-只输出一个 JSON 对象，顶层直接给出唯一最终方案的字段；不要输出 candidates 数组、备选方案或方案对比。下列是字段契约，不是可以照抄的建筑：
-- concept：本次方案概念字符串。
-- massing：shape 使用 profile 允许值；width/depth/floor_height 为正数，floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；symmetry 为布尔值。
-- volumes：按本次方案输出体量数组，每项包含 id、role(primary/secondary)、x、z、width、depth、start_floor、end_floor；单体也需明确一个完整体量，多层单体不必拆成退台。
-- structural_grid：system 为 wall_bearing/frame/hybrid/long_span/shell；x_bays/z_bays 为正整数。
-- circulation：vertical_strategy 为 none/stair/core_and_stair；核心筒方案必须同时包含楼梯，多层建筑不能为 none。
-- 体量是逐层外轮廓的唯一来源：某层外轮廓只由覆盖该层的体量决定。规划退台时，任何跨越多个楼层的贯通构件（核心筒、电梯井、贯通竖向交通或通高墙体）都必须落在它经过的**每一层**体量并集之内，即收进 `start_floor..end_floor` 上全部存在的体量交集；不得伸进只存在于低楼层的退台翼，否则它在退台层会成为外凸的独立体块。必要时宁可让该体量贯通到顶层，也不要让核心筒跨进退台翼。
-- detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
-- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern，槽位数量与 bays 一致。entrance_bay 与 door 槽位**只在用户要求入口/门或形制确有门时才写**；形制知识命中开敞建筑（亭/廊/榭等）时四面 pattern 全写 open、不写 entrance_bay、任何面不写 door——全空声明会被系统自动豁免主入口强制，不要用 door 去"满足"入口要求。
-- roof：**只给一块**屋顶的风格模板——type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。不要写成数组，也不要写 id/span/depth/position：多体量（L/U 形）与退台的分段屋面、出檐、贴合墙体并避开内院/天井，全部由系统按 volumes 自动派生。确实需要"主楼坡顶 + 侧翼平顶"这类差异时，在 roof 里**额外**加一个 volumes 数组，每条形如「volume: 体量 id，type: 六种之一，overhang: 非负数」；体量 id 必须与 volumes 里的 id 完全一致，未列出的体量继承上面的模板。
-- materials：可选。`regions` 是「哪一类实体用哪种材质」的绑定数组，每条形如「role: 材质角色名，type: 目标实体类型」——role 用材质方案里已有的角色（roof／structure／facade_primary／floor 等），type 用实体类型（wall／floor／roof／column／light／railing 等）。默认同类型实体共用一种材质；只有当本次需求真的要求"某类实体与同类不同材质"（例如屋面要与外墙明显区分、灯具要金属感）时才写，不要为了凑字段而给全类型逐条绑定。没这个需求就整个不写 materials。
-- component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
-- required_components：本次真正需要的组件名称数组。
-- design_rationale：说明体量、入口、交通与构件选择如何满足用户要求的字符串数组。
-所有数值都必须由本次需求推导；不要输出类型说明文字代替数值。
-
-# 知识库参考
-
-{spec_text}
+# 交付方式
+只返回本轮设计块要求的 JSON 字段。设计依据写成简短、可供用户审核的结论，
+说明选择如何支持设计目标，不输出内部思考过程。后续节点沿用这些设计决定，
+图纸负责展示，编译负责求解，执行计划负责补齐和核对实际落地。
+{suggestions}{revision}
+# 当前设计表达参考
+{spec_text or '本轮具体表达能力与字段见设计块协议。'}
 """
 
 
@@ -299,7 +279,7 @@ def build_material_plan_prompt(
     只会让模型编出一个不存在的建筑语境。
     """
     import json as _json
-    style_section = _style_preference_section(style_preference)
+    style_section = _style_preference_section(style_preference) if object_scene else ""
     # P6-A：没有资产**不等于**不能做材质设计。合法参数材质（baseColor /
     # roughness / metallic）不依赖任何贴图就能承载设计意图，必须把这句说清楚，
     # 否则空列表会让模型以为自己无事可做，转而去编 assetId。
@@ -347,8 +327,8 @@ def build_material_plan_prompt(
             "3. 必须覆盖 facade_primary、structure、floor、frame、door、glass、roof；"
             "ground 和 accent 可选。"
         )
-        subject = "你是建筑材质设计师。为已批准的建筑方案制定克制、统一且可实施的材质方案。"
-        plan_heading = "# 已批准建筑方案"
+        subject = "你是建筑材质设计师。落实当前建筑设计意图中的材料层次与色彩；方案尚待用户审核，不能另选风格或改动几何。"
+        plan_heading = "# 当前建筑方案（design_intent 是材料方向，design_rationale 是设计依据）"
         motivate = (
             "用户即使只说“生成一个别墅”，你也必须结合建筑方案主动补齐主材、辅材、点缀、"
             "表面新旧程度和整体色板；"

@@ -147,15 +147,15 @@ def test_unsplittable_template_still_blocks_split():
     ) == []
 
 
-def test_unsplittable_override_falls_back_to_a_single_roof():
-    """某个体量覆盖成 dome ⇒ 那次表态没落地，退回整栋单块（而不是整批作废）。"""
+def test_unsplittable_override_reports_a_compile_blocker():
+    """不能用整体包围盒伪造多体量屋面；未支持的组合必须显式阻断。"""
 
     result = compile_roof({
         "type": "gable", "overhang": 0.6,
         "volumes": [{"volume": "wing", "type": "dome"}],
     })
-    assert len(roofs_of(result)) == 1
-    assert roofs_of(result)[0]["roofType"] == "gable"
+    assert not roofs_of(result)
+    assert any(d.code == "roof_layout_unsupported" and d.severity == "error" for d in result.defects)
 
 
 _REALIZATION = {
@@ -176,19 +176,18 @@ def test_slots_carry_volume_and_roof_type():
     slots = slots_by_volume(result)
     assert slots["wing"]["roofType"] == "flat"
     assert slots["main"]["roofType"] == "gable"
-    # 逐体量出檐也走同一套钳制（0.15~0.8）：写 1.5 被钳到 0.8，跨度只加一侧
-    #（wing 与 main 相邻那一侧不加），所以是 6 + 0.8 而不是 6 + 1.6。
+    # 同为 0~2m 契约；相邻内边不出檐，外侧忠实保留 1.5m。
     clamped = slots_by_volume(compile_roof({
         "type": "gable", "overhang": 0.6,
         "volumes": [{"volume": "wing", "overhang": 1.5}],
     }))
-    assert clamped["wing"]["span"] == pytest.approx(6 + 0.8, abs=1e-6)
-    # 写 0.0 同样被钳到下限 0.15。
+    assert clamped["wing"]["span"] == pytest.approx(6 + 1.5, abs=1e-6)
+    # 显式零出檐不能被默认值或夹取吞掉。
     floored = slots_by_volume(compile_roof({
         "type": "gable", "overhang": 0.6,
         "volumes": [{"volume": "wing", "overhang": 0.0}],
     }))
-    assert floored["wing"]["span"] == pytest.approx(6 + 0.15, abs=1e-6)
+    assert floored["wing"]["span"] == pytest.approx(6, abs=1e-6)
 
 
 def test_out_of_contract_overhang_is_dropped_by_validation_not_by_the_clamp():

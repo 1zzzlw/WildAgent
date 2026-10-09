@@ -40,7 +40,7 @@ def apply_design_patch(current: DesignDocument, patch: dict, *, allowed_blocks: 
     derived = {"component_quota", "required_components", "detail_packages",
                "balcony_access_count", "balcony_width"}
     semantic_roots = {"massing", "volumes", "roof", "facades", "structural_grid",
-                      "circulation", "components", "curtain_wall", "materials"}
+                      "circulation", "components", "curtain_wall", "materials", "design_intent"}
     for field in semantic_roots - allowed:
         if field in normalized and without_null_fields(normalized[field]) != without_null_fields(plan.get(field)):
             raise ValueError(f"归一化越权修改 {field}，保留当前设计")

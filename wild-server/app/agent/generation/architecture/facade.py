@@ -252,7 +252,7 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
     # 独立低层侧翼也有屋面；被上层覆盖的体量不能用整块屋面穿过上层。
     volumes = [v for v in all_volumes if int(v.get("start_floor", 1)) <= modeled_floors
                and not covered_above(v)]
-    if not volumes or (len(volumes) < 2 and not overrides):
+    if not volumes or (len(all_volumes) < 2 and not overrides):
         return []
 
     # 当前槽位路径只支持可分段屋型；任一体量不支持时整体回退并由编译诊断标记。

@@ -85,8 +85,6 @@ _FLAT_ROOF = "flat"
 _PITCHED_ROOF_HEIGHT_RATIO = 0.18
 _PITCHED_ROOF_HEIGHT_MIN = 0.8
 _DEFAULT_OVERHANG = 0.35
-_OVERHANG_MIN = 0.15
-_OVERHANG_MAX = 0.8
 
 #: 构件类型 → 该改图纸的哪一项。给收敛环定位设计块用；粗粒度但如实。
 _DESIGN_FIELD = {
@@ -168,19 +166,14 @@ def _roof_plan(plan: dict[str, Any]) -> dict[str, Any]:
 
 
 def _roof_overhang(plan: dict[str, Any]) -> float:
-    """挑出距离，钳到 0.15~0.8。
-
-    ``facade.py:205`` 有一份同样的钳制。两条路径**互斥**
-    （有 ``roof_slots`` 就绝不会走单块分支），所以当前不会分叉；
-    若将来要改，两处必须同批改。
-    """
+    """消费 RoofDecision 的 0~2m 挑出契约，保留显式零出檐。"""
 
     raw = _roof_plan(plan).get("overhang")
     try:
         value = float(raw) if raw is not None else _DEFAULT_OVERHANG
     except (TypeError, ValueError):
         value = _DEFAULT_OVERHANG
-    return max(_OVERHANG_MIN, min(_OVERHANG_MAX, value))
+    return max(0.0, min(2.0, value))
 
 
 def _roof_type(plan: dict[str, Any]) -> str:
@@ -400,7 +393,7 @@ def _chimney_candidates(
         if roof_type not in _ROOF_LOCAL_ATTACH:
             continue
         try:
-            depth = float(roof.get("depth") or 0.0)
+            depth = float(roof.get("span" if roof.get("ridgeAxis") == "x" else "depth") or 0.0)
         except (TypeError, ValueError):
             continue
         if depth <= 0:
@@ -836,8 +829,8 @@ def _positive_float(value: Any, fallback: float) -> float:
 #: 2026-10-08 据此删掉 ``roof.ridge_axis`` / ``roof.overhang`` —— 它们是**图纸层**
 #: ``decisions.roof`` 的词汇（``design/contracts.py::RoofDecision``，由
 #: ``_roof_overhang`` / ``normalize_roof`` 消费），不是构件实例的形态；
-#: 屋顶元素 schema 里既没有 ``ridgeAxis`` 也没有 ``overhang``（曾有人在 ``_INSTANCE_FORM_ROUTES``
-#: 里给 ``ridge_axis`` 写了张到 ``ridgeAxis`` 的地图，目的地根本不在闭集里）。
+#: 当前屋顶元素的 ``ridgeAxis`` 由 roof 决策编译；``overhang`` 编译为跨度，
+#: 两者不从实例 form 再开第二条控制路径。旧 WILD 缺省 ridgeAxis 仍沿 Z。
 _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
     "door": frozenset({
         "mode", "hingeSide", "openAngle", "frameWidth", "frameDepth",
@@ -1356,21 +1349,8 @@ def _compile_from_instances(
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
-                elif occurrence == 1:
-                    # 骨架没出屋顶（quota.min == 0 的无屋盖场景）却写了屋顶实例：
-                    # 与 `_single_roof` 同口径的兜底——位置/跨度只有 massing 知道，
-                    # 实例自算必然与 massing 分叉，这里只给引擎三要素的最小占位。
-                    component = {
-                        "type": "roof",
-                        "id": "roof_instance_01",
-                        "roofType": _FLAT_ROOF,
-                        "span": 10.0,
-                        "depth": 10.0,
-                        "height": 0.0,
-                        "thickness": _DEFAULT_ROOF_THICKNESS,
-                        "material": _roof_material(materials),
-                        "position": [5.0, 0.0, 5.0],
-                    }
+                elif occurrence == 1 and len(plan.get("volumes") or []) == 1:
+                    component = _single_roof(plan, materials)
             elif component_type == "railing":
                 # 追加型：宿主是**楼板/体量边缘**。优先顶替同位置的派生栏杆；
                 # 没有派生栏杆时按宿主算一条闭合路径（世界坐标只由体量决定，
@@ -1664,6 +1644,8 @@ def _compose(
             blueprint, material_plan, role_specs=material_role_specs(normalized)
         )
     brief = resolve_facade_layout(blueprint, normalized)
+    brief["design_intent"] = deepcopy(normalized.get("design_intent"))
+    brief["design_notes"] = list(normalized.get("design_rationale") or [])
     materials = blueprint.get("materials") if isinstance(blueprint.get("materials"), dict) else {}
     materials = materials or {}
     geometry = blueprint.setdefault("geometry", {})
@@ -2193,7 +2175,7 @@ def compile_design(
             and not brief.get("roof_slots") else []),
         *([CompileDefect(code="roof_partial_coverage", severity="error", target="roof",
             evidence="下层体量被上层部分覆盖，剩余局部屋面当前无法无损编译；需要设计修订",
-            design_field="decisions.volumes")] if _partial_roof_coverage(brief) else []),
+            design_field="decisions.volumes")] if _quota_min(brief, "roof") > 0 and _partial_roof_coverage(brief) else []),
         *[CompileDefect(
             code="material_region_unapplied", severity="warn",
             target=str(item.get("target") or "materials"),
@@ -2201,6 +2183,15 @@ def compile_design(
             design_field=f"decisions.materials.regions[{index}]",
         ) for index, item in enumerate(stats.get("material_regions") or []) if not item.get("applied")],
     ]
+    for item in (stats.get("instance_overrides") or {}).get("instance_entities") or []:
+        if item.get("outcome") == "dropped":
+            index = item["index"]
+            defects.append(CompileDefect(
+                code="design_instance_uncompiled", severity="warn",
+                target=str(item.get("instance_id") or f"instance_{index}"),
+                evidence=f"设计实例 {item.get('declared_type')} 未落实，宿主 {item.get('declared_host')}；需核对当前设计编译表达能力",
+                design_field=f"decisions.components[{index}]",
+            ))
     result = CompileResult(
         mode=mode,
         blueprint=blueprint if mode == MODE_FINAL else None,

@@ -7,7 +7,7 @@ from typing import Any
 
 from .contracts import DesignDocument, DesignGap, ResolvedDesign, ResolvedFacadeSlot, ResolvedLevel
 
-RESOLVER_VERSION = "compiler-projection/5"
+RESOLVER_VERSION = "compiler-projection/6"
 
 
 def compile_document(document: DesignDocument):

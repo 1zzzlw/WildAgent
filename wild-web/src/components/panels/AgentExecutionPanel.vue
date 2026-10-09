@@ -28,6 +28,18 @@
           <span>{{ designStatusLabel(turn.design_document.status) }}</span>
         </div>
         <div class="design-concept">{{ turn.design_document.decisions.concept }}</div>
+        <details v-if="architectureDecisions?.design_intent" class="design-details" open>
+          <summary>设计目标与方案组织</summary>
+          <div v-for="(goal, index) in architectureDecisions.design_intent.goals" :key="`goal-${index}`">{{ goal }}</div>
+          <div v-if="architectureDecisions.design_intent.spatial_strategy">{{ architectureDecisions.design_intent.spatial_strategy }}</div>
+          <div v-if="architectureDecisions.design_intent.composition">{{ architectureDecisions.design_intent.composition }}</div>
+          <div v-if="architectureDecisions.design_intent.material_strategy">{{ architectureDecisions.design_intent.material_strategy }}</div>
+          <div v-for="(assumption, index) in architectureDecisions.design_intent.assumptions" :key="`assumption-${index}`">设计假设：{{ assumption }}</div>
+        </details>
+        <details v-if="turn.design_document.decisions.design_rationale?.length" class="design-details">
+          <summary>设计依据与表达限制</summary>
+          <div v-for="(reason, index) in turn.design_document.decisions.design_rationale" :key="`reason-${index}`">{{ reason }}</div>
+        </details>
         <!-- 建筑与物件是 decisions 带标签联合的两支，字段不重叠：
              模板必须按 kind 收窄后再读，否则读 massing 会直接抛异常。 -->
         <div v-if="architectureDecisions" class="design-facts">

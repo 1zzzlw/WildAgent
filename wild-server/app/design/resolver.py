@@ -182,6 +182,7 @@ def build_design_document(
             required_components=list(plan.get("required_components") or []),
             unsupported_component_types=list(plan.get("unsupported_component_types") or []),
             design_rationale=list(plan.get("design_rationale") or []),
+            design_intent=plan.get("design_intent"),
         ),
         constraints=constraints,
         locks=list(old.locks if old else []),
@@ -230,7 +231,7 @@ def build_design_document(
     document.decisions.design_rationale = [
         decision_summary(architecture_plan_from_document(document)),
         *[text for text in document.decisions.design_rationale
-          if not text.removeprefix("[待核对] ").startswith("[决策事实]")][:5],
+          if not text.removeprefix("[待核对] ").startswith("[决策事实]")][:11],
     ]
 
     # Keep prose explicitly unverified when it no longer has reliable decision evidence.
@@ -488,6 +489,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         "unsupported_component_types": list(d.unsupported_component_types),
         "design_constraints": [c.model_dump(mode="json") for c in doc.constraints],
         "design_rationale": list(d.design_rationale),
+        "design_intent": d.design_intent.model_dump(mode="json") if d.design_intent else None,
         # P5-C：区域/构件材质绑定随决策一起进方案。`resolved_plan` 不重复带 ——
         # 材质实体由 material_plan 单独传（compile_design 的入参），这里只带**绑定**。
         # exclude_defaults：note 留空串时不必进方案（绑定语义上没有信息量）。

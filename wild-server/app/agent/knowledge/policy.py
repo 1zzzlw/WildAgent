@@ -50,6 +50,7 @@ def plan_knowledge_query(message: str, plan: dict | None) -> str:
         terms.append("curtain_wall 玻璃幕墙")
     terms.extend(str(item) for item in plan.get("required_components", []))
     terms.extend(str(item) for item in plan.get("detail_packages", []))
+    terms.extend(str(item) for item in (plan.get("design_intent") or {}).get("selected_systems", []))
     return message + "\n已选方案系统：" + "、".join(term for term in terms if term)
 
 

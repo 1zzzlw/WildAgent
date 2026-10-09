@@ -4,9 +4,7 @@
 局部修订读取当前设计的稳定快照，仅返回本轮成功起草的字段。
 
 三条设计取舍：
-1. **提示词不重写**：基础提示词仍用 `build_architecture_plan_prompt`（它是调过的），
-   本模块只在它后面追加"本轮只写哪一块 + 已定稿内容 + 该块的字段契约"。
-   重写一份分块提示词等于把调制好的那份丢掉。
+1. 基础提示词描述整体设计任务，块级提示词只提供本轮表达协议及当前设计。
 2. **失败不阻断**（用户红线）：某块重试到上限仍不合格，就**留空**交给下游归一化兜底。
    空字段会以 `defaulted` 的口径如实报出来，而不是掐掉整轮生成。
    **模型服务故障**仍按既有语义上抛（由调用方 `model_failure_result` 终止）。
@@ -33,7 +31,7 @@ from loguru import logger
 from app.agent.generation.architecture.design_blocks import (
     BLOCK_BY_NAME,
     DesignBlock,
-    KnowledgeQuerySpec,
+    block_knowledge_query_specs,
     ordered_blocks,
 )
 from app.agent.generation.architecture.design_plan import (
@@ -44,7 +42,6 @@ from app.agent.generation.architecture.design_plan import (
 )
 from app.agent.generation.capability import (
     capability_brief,
-    capability_query,
     capability_type_labels,
 )
 from app.agent.plan.contracts import PlanItem
@@ -62,10 +59,6 @@ _BLOCK_MAX_ATTEMPTS = 3
 #: 所以每意图取 2 片、多意图去重后通常 2~6 片，足以覆盖该块最相关的知识。
 _BLOCK_PER_QUERY = 2
 
-#: 单块注入的知识文本上限（字符）。超过就按列表序截断：前几片是检索排名最高的，
-#: 后面的本来就该被淘汰。**不截单片**（与 Loader 上下文预算同一纪律）。
-_BLOCK_KNOWLEDGE_MAX_CHARS = 6000
-
 ReasoningEmitter = Callable[[str, str], Awaitable[None]]
 
 
@@ -77,15 +70,10 @@ def _pick_block_fields(raw: Any, block: DesignBlock) -> dict[str, Any]:
     return {field: raw[field] for field in block.fields if field in raw}
 
 
-def _render_query_text(spec: KnowledgeQuerySpec, user_request: str) -> str:
-    """把块级查询模板渲染成真实查询文本。``{request}`` 替换为用户请求。"""
-
-    return spec.text.replace("{request}", user_request or "")
-
-
 async def retrieve_block_knowledge(
     block: DesignBlock,
     user_request: str,
+    design_context: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """起草**前**为本块检索知识（设计文档 §1.5 "RAG 换位置"的设计期落点）。
 
@@ -100,17 +88,18 @@ async def retrieve_block_knowledge(
         "hits": [],
         "error": "",
     }
+    started = _time.perf_counter()
     specs = getattr(block, "knowledge_queries", ()) or ()
     if not specs:
         return "", diag
 
     from app.spec.loader import SpecQuery
 
-    queries = [
-        SpecQuery(_render_query_text(spec, user_request), dict(spec.metadata_filter))
-        for spec in specs
-    ]
+    queries = [SpecQuery(spec.text, spec.metadata_filter)
+               for spec in block_knowledge_query_specs(block, user_request, design_context)]
     diag["queries"] = len(queries)
+    diag["query_specs"] = [{"text": query.text, "filter": query.metadata_filter} for query in queries]
+    diag["include_base"] = False
     try:
         from app.services.agent_service import agent_service
 
@@ -120,7 +109,7 @@ async def retrieve_block_knowledge(
         return "", diag
 
     try:
-        text = spec_loader.load_many(queries, per_query=_BLOCK_PER_QUERY)
+        text = spec_loader.load_many(queries, per_query=_BLOCK_PER_QUERY, include_base=False)
     except Exception as exc:
         diag["error"] = f"{type(exc).__name__}: {exc}"
         return "", diag
@@ -134,8 +123,7 @@ async def retrieve_block_knowledge(
     ]
     diag["hits"] = hits
     diag["chars"] = len(text or "")
-    if len(text) > _BLOCK_KNOWLEDGE_MAX_CHARS:
-        text = text[:_BLOCK_KNOWLEDGE_MAX_CHARS]
+    diag["elapsed_ms"] = int((_time.perf_counter() - started) * 1000)
     return text, diag
 
 
@@ -147,8 +135,8 @@ def format_block_knowledge(knowledge_text: str) -> str:
         return ""
     return (
         "\n\n# 本块专属知识库参考\n\n"
-        "以下是检索到的与本块相关的 WILD 规范/形制/组装知识。字段写法与组装关系**以此为准**；"
-        "造型取向仍由用户需求决定，知识不得静默改写用户已定的尺寸与风格：\n\n"
+        "以下参考说明当前设计表达及已选系统的条件关系。能力事实用于核对，"
+        "示例不是造型要求；只采用与当前设计有关的内容：\n\n"
         f"{body}"
     )
 
@@ -195,7 +183,7 @@ def _contract_error_notes(errors: list[dict[str, Any]]) -> str:
 
 
 #: 块拥有、但模型可以不写的字段（见 :func:`check_block_contract` 的必填判定）。
-_OPTIONAL_BLOCK_FIELDS = frozenset({"components", "design_constraints", "materials"})
+_OPTIONAL_BLOCK_FIELDS = frozenset({"components", "design_constraints", "materials", "design_rationale"})
 
 
 def check_block_contract(
@@ -243,8 +231,8 @@ def check_block_contract(
 
     # Give invalid explicit values back to the existing bounded block retry before
     # normalization degrades them. The contracts own supported fields and ranges.
-    from app.design.contracts import MassingDecision, RoofDecision, StructuralGridDecision, VolumeDecision
-    for field, contract in (("massing", MassingDecision), ("roof", RoofDecision),
+    from app.design.contracts import ArchitectureIntent, MassingDecision, RoofDecision, StructuralGridDecision, VolumeDecision
+    for field, contract in (("design_intent", ArchitectureIntent), ("massing", MassingDecision), ("roof", RoofDecision),
                             ("structural_grid", StructuralGridDecision)):
         if field not in picked:
             continue
@@ -260,9 +248,9 @@ def check_block_contract(
                 # `model_type` repr —— 模型没有任何办法从那句话里猜到"只能写一块"。
                 return (
                     "roof 显式值不满足当前协议：只能写**一个对象**，不能是数组"
-                    "（一块屋顶的风格模板，恰好 type / ridge_axis / overhang 三个键）。"
-                    "多体量（L/U 形）的逐块屋面、出檐与避开内院/天井由系统按 volumes 自动派生，"
-                    "**不要**在这里拆成多块。"
+                    "（整体模板给 type / ridge_axis / overhang，可选 volumes 覆盖数组）。"
+                    "按已声明体量选择不同屋型时写 roof.volumes，不把 roof 本身写成数组；"
+                    "仍需遵守多体量分段和局部屋面的当前能力边界。"
                 )
         try:
             contract.model_validate(value)
@@ -294,7 +282,10 @@ def check_block_contract(
         massing_values = {"modeled_floors": picked["massing"].get("floors", 1), **picked["massing"]}
         if all(k in massing_values for k in ("width", "depth", "modeled_floors")) and all(
                 all(k in v for k in ("x", "z", "width", "depth", "end_floor")) for v in picked["volumes"]):
-            conflicts = volume_conflicts(picked["volumes"], massing_values)
+            parsed_volumes = [VolumeDecision.model_validate(v).model_dump(mode="json") for v in picked["volumes"]]
+            limits = {"width": float(massing_values["width"]), "depth": float(massing_values["depth"]),
+                      "modeled_floors": int(massing_values["modeled_floors"])}
+            conflicts = volume_conflicts(parsed_volumes, limits)
             if conflicts:
                 return "体量坐标冲突，必须修订显式字段：" + json.dumps(conflicts, ensure_ascii=False)
 
@@ -437,7 +428,7 @@ def render_block_contract(block: DesignBlock) -> str:
 _CAPABILITY_BLOCK_FIELDS = ("components",)
 
 
-def format_capability_section(block: DesignBlock) -> str:
+def format_capability_section(block: DesignBlock, design_context: dict[str, Any] | None = None) -> str:
     """块级引擎能力摘要（按需、按类型裁剪）。
 
     🔴 事实源是``schema.json`` + ``COMPONENT_REGISTRY``（见
@@ -445,21 +436,22 @@ def format_capability_section(block: DesignBlock) -> str:
     `canopy` 宿主语义在提示词与契约里都没定义，就是因为靠人写、没人校验。
     """
 
+    if block.name == "intent":
+        return "\n## 当前引擎可查询类型\n" + "、".join(capability_type_labels()) + "。这些是能力入口，不是本次必须选用的清单；具体宿主与参数在表达阶段核对。"
     if not set(block.fields) & set(_CAPABILITY_BLOCK_FIELDS):
         return ""
-    #: 只展开**构件类**（写入 ``geometry.components`` 的类型）。元素类由骨架节点
-    #: 确定性派生，模型本轮不写它们 —— 把 wall/column/primitive 也列进来只是
-    #: 白占提示词预算。注册表里``is_element`` 的那一批就是元素类。
-    wanted = [
-        type_name for type_name in capability_type_labels()
-        if capability_query(type_name)["capability"]["target"] == "components"
-    ]
-    if not wanted:
-        return ""
+    # 只展开已选类型；包括可通过设计关系表达的柱等元素。
+    context = design_context or {}
+    selected = set((context.get("design_intent") or {}).get("selected_systems") or [])
+    selected.update((context.get("component_quota") or {}).keys())
+    selected.update(item.get("type") for item in context.get("components") or [] if isinstance(item, dict))
+    available = capability_type_labels()
+    wanted = [type_name for type_name in available if type_name in selected]
     lines = [
         "",
         "## 引擎能力（机械提取自 schema.json + 组件注册表，与引擎逐字段一致）",
         "",
+        "已实现类型：" + "、".join(available) + "。只展开本次已选类型；其它类型仍需核对知识与编译结果，不能推定任意形态均可表达。",
     ]
     for type_name in wanted:
         brief = capability_brief(type_name)
@@ -510,9 +502,9 @@ def build_block_prompt(
         "",
         render_block_contract(block),
         "",
-        "其余字段**已定稿**，由系统提供；写它们会被忽略，且浪费你的注意力。",
+        "已提供字段是当前设计基准；尚未提供的字段会在后续表达。不要把待设计部分当成已完成。",
     ]
-    capability_section = format_capability_section(block)
+    capability_section = format_capability_section(block, draft)
     if capability_section:
         lines.append(capability_section)
     knowledge_section = format_block_knowledge(knowledge_text)
@@ -531,21 +523,21 @@ def build_block_prompt(
     if settled:
         lines += [
             "",
-            ("## 当前设计基准（本轮目标块可修订，其他块只读）" if allow_design_changes else "## 已定稿的前序块（只许引用，不许改写）"),
+            "## 当前完整设计基线（本轮目标块可表达，其他块只读）",
             "",
             "```json",
             json.dumps(settled, ensure_ascii=False, separators=(",", ":")),
             "```",
             "",
             ("当前是设计补全：可在本块契约内修订设计，新增对象必须有需求/缺口依据；其他块保持原样。"
-             if allow_design_changes else "本块只能引用上面出现过的 id 与尺寸，不得引入新的体量、新的面或新的构件类型。"),
+             if allow_design_changes else "本块在负责字段内完成设计；宿主与体量引用使用当前已有 id。保持整体设计意图，后续对象不能冒充已生成实体。"),
         ]
     else:
         lines += [
             "",
             "## 这是第一块",
             "",
-            "没有任何前序内容可引用；本块的尺寸将决定后面所有块的坐标。",
+            "从用户需求开始形成设计方向；后续表达块据此确定尺寸与宿主。",
         ]
     return "\n".join(lines)
 
@@ -578,7 +570,7 @@ async def draft_design_blocks(
     :param current_plan: 只读的当前设计。修订失败或字段未返回时，由调用方保留旧值。
     :param allow_probe: 是否把编译器作为**试算工具**交给模型（设计文档 §2.7）。
         工具只回诊断、不回蓝图，模型污染不了产物。
-        ⚠️ **思考过程与试算工具不再二选一**（2026-09-28 起）：工具循环那条通道现在
+        **思考过程与试算工具不再二选一**（2026-09-28 起）：工具循环那条通道现在
         也能转发 ``reasoning_content``（回调是模型级的，挂在 ``config["callbacks"]`` 上），
         所以思考模式下**同时**有思考文本与工具。差别如实记进 ``diag.probe_tool``。
     """
@@ -652,7 +644,7 @@ async def draft_design_blocks(
         knowledge_text = ""
         knowledge_diag: dict[str, Any] = {"queries": 0, "chars": 0, "hits": [], "error": ""}
         try:
-            knowledge_text, knowledge_diag = await retrieve_block_knowledge(block, user_request)
+            knowledge_text, knowledge_diag = await retrieve_block_knowledge(block, user_request, context)
             if knowledge_text:
                 prompt = build_block_prompt(
                     base_prompt, block, context, defects, knowledge_text=knowledge_text, allow_design_changes=allow_design_changes
@@ -674,7 +666,6 @@ async def draft_design_blocks(
 
         while attempts < item.run.max_attempts and not settled:
             attempts += 1
-            accounting["model_calls"] += 1
             started = _time.time()
             content = ""
             usage: dict[str, Any] | None = None
@@ -685,6 +676,7 @@ async def draft_design_blocks(
                     assert on_reasoning_delta is not None
                     await on_reasoning_delta("architecture", delta)
 
+                accounting["model_calls"] += 1
                 reply = await stream_llm(
                     llm,
                     [
@@ -704,6 +696,7 @@ async def draft_design_blocks(
                     assert on_reasoning_delta is not None
                     await on_reasoning_delta("architecture", delta)
 
+                accounting["model_calls"] += 1  # 起草试算入口尝试；完善阶段关闭 probe。
                 loop_result = await run_tool_loop(
                     system_prompt=prompt,
                     user_message=user_request,
@@ -728,8 +721,10 @@ async def draft_design_blocks(
                         f"：{[entry['tool'] for entry in loop_result.trace]}"
                     )
             else:
+                llm = create_llm(enable_thinking=thinking_mode, streaming=False)
+                accounting["model_calls"] += 1
                 reply = await invoke_llm(
-                    create_llm(enable_thinking=thinking_mode, streaming=False),
+                    llm,
                     [
                         {"role": "system", "content": prompt},
                         {"role": "user", "content": user_request},
@@ -816,8 +811,13 @@ async def draft_design_blocks(
             )
         context = deepcopy({**baseline, **draft})
         results = await asyncio.gather(
-            *(_draft_one(BLOCK_BY_NAME[item.kind], item, context) for item in batch)
+            *(_draft_one(BLOCK_BY_NAME[item.kind], item, context) for item in batch),
+            return_exceptions=True,
         )
+        failures = [result for result in results if isinstance(result, BaseException)]
+        if failures:
+            # 等本批调用结束再上抛，避免失败时漏记仍在执行的并发块调用。
+            raise failures[0]
         batches.append(
             {
                 "items": [item.id for item in batch],

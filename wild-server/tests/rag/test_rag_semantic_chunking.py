@@ -9,11 +9,30 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
-from app.spec.loader import MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
+from app.spec.loader import FileSpecLoader, MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
 from app.agent.knowledge.policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
 
 
 class RAGSemanticChunkingTest(unittest.TestCase):
+    def test_block_retrieval_does_not_repeat_base_protocol(self):
+        loader = object.__new__(RAGSpecLoader)
+        loader._load_base_text = Mock(return_value="BASE")
+        loader.retrieve_many = Mock(return_value=[])
+        loader._apply_retrieval_gate = Mock(side_effect=lambda hits, **kw: hits)
+        loader._compose_context = Mock(side_effect=lambda base, hits, **kw: base)
+        self.assertEqual(loader.load_many(["query"], include_base=False), "")
+        loader._load_base_text.assert_not_called()
+        self.assertEqual(loader.load_many(["query"]), "BASE")
+        loader._load_base_text.assert_called_once()
+
+    def test_file_fallback_respects_block_context_boundary(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "base.md"
+            path.write_text("BASE", encoding="utf-8")
+            loader = FileSpecLoader([str(path)])
+            self.assertEqual(loader.load_many(["query"], include_base=False), "")
+            self.assertIn("BASE", loader.load_many(["query"]))
+
     def _split(self, filename: str, text: str, chunk_size: int = 240):
         """把一段测试 Markdown 写进临时文件，再交给生产 MarkdownChunker。"""
         with TemporaryDirectory() as tmp_dir:

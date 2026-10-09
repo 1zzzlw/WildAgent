@@ -1431,6 +1431,24 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     final_status = final_state.get("status", "failed")
     # 🔴 P4：设计履约报告交给交付层，只进回复文案，**不进保存门禁**。
     design_fulfillment = final_state.get("design_fulfillment") or None
+    # 交付开关可能改变材质内容，证据必须重新绑定实际落盘的那份 Blueprint。
+    from app.agent.validation.candidate import evaluate_candidate
+    try:
+        delivery_evaluation = evaluate_candidate(
+            merged_blueprint, design_document=final_state.get("design_document"),
+            design_brief=final_state.get("design_brief"), source="delivery",
+        )
+        delivery_snapshot = delivery_evaluation["snapshot"]
+        validation_results = delivery_snapshot["results"]
+        validation_errors = delivery_snapshot["error_count"]
+        validation_warnings = delivery_snapshot["warning_count"]
+        design_fulfillment = delivery_evaluation["fulfillment"]
+        if final_status == "complete":
+            final_status = delivery_snapshot["status"]
+    except Exception as exc:
+        logger.error(f"[{request_id}] 交付内容复检失败: {exc}")
+        delivery_snapshot = None
+        final_status = "failed"
 
     active_diags = {key: value for key, value in all_diags.items() if not value.get("skipped")}
     total_rag_ms = sum(value.get("rag_ms", 0) for value in active_diags.values())
@@ -1480,15 +1498,18 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             error_count=validation_errors,
             warning_count=validation_warnings,
             fulfillment=design_fulfillment,
+            validation_snapshot=delivery_snapshot,
         )
     except GenerationRejectedError as exc:
+        revision_required = (final_state.get("repair_audit") or {}).get("stop_reason") == "design_revision_required"
         await _send_event(ws, {
             "type": "agent_reply",
             "request_id": request_id,
             "session_id": session_id,
             "content": (
-                "生成结果仍有未解决的校验错误，已阻止保存和加载。"
-                f"{exc}。"
+                ("批准设计自身存在编译阻断，请修改设计并重新审核；已停止局部修复。"
+                 if revision_required else "生成结果仍有未解决的校验错误，已阻止保存和加载。")
+                + f"{exc}。"
             ),
         })
         if thinking_mode:

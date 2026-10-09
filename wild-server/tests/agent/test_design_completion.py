@@ -84,8 +84,97 @@ def test_approved_design_never_enters_completion(monkeypatch, isolated):
 def test_massing_gap_adds_dependent_block_tasks(isolated):
     doc=document()
     resolved=SimpleNamespace(design_gaps=[SimpleNamespace(status="open",target="/decisions/massing/floors",
-        model_dump=lambda **kw: {"id":"gap.floors","expected":3})])
+        model_dump=lambda **kw: {"id":"gap.floors","target":"/decisions/massing/floors","expected":3})])
     tasks=completion.plan_design_tasks(doc,SimpleNamespace(defects=[]),resolved,round_index=0)
     assert tasks[0]["block"]=="massing"
     assert {t["block"] for t in tasks} >= {"structure","facade","roof","components"}
     assert all(t["base_hash"]==_stable_hash(doc) for t in tasks)
+
+
+@pytest.mark.parametrize("remaining", [4, 5])
+def test_budget_does_not_split_an_atomic_five_block_group(remaining):
+    tasks = [{"id": str(i), "depends_on": [str(i-1)] if i else []} for i in range(5)]
+    selected, pending = completion.select_task_group(tasks, remaining)
+    assert len(selected) == (5 if remaining == 5 else 0)
+    assert len(pending) == (0 if remaining == 5 else 5)
+
+
+def test_remaining_four_calls_can_close_an_independent_one_call_group():
+    tasks = [{"id": str(i), "depends_on": [str(i-1)] if i else []} for i in range(5)]
+    tasks.append({"id": "independent", "depends_on": []})
+    selected, pending = completion.select_task_group(tasks, 4)
+    assert [task["id"] for task in selected] == ["independent"]
+    assert len(pending) == 5
+
+
+@pytest.mark.parametrize("field", ["decisions.volumes", "/decisions/massing/width"])
+def test_geometry_compile_defects_keep_dependencies_and_respect_scope(isolated, field):
+    defect = SimpleNamespace(severity="error", design_field=field, code="coverage", target="roof", evidence="gap")
+    resolved = SimpleNamespace(design_gaps=[])
+    tasks = completion.plan_design_tasks(document(), SimpleNamespace(defects=[defect]), resolved, round_index=0)
+    assert {t["block"] for t in tasks} == {"massing", "structure", "facade", "roof", "components"}
+    limited = completion.plan_design_tasks(document(), SimpleNamespace(defects=[defect]), resolved,
+                                         round_index=0, only_blocks=["massing"])
+    assert limited == []
+
+
+def test_concept_gap_does_not_invalidate_geometry_blocks(isolated):
+    gap = SimpleNamespace(status="open", target="/decisions/concept",
+        model_dump=lambda **kw: {"id": "gap.title", "target": "/decisions/concept"})
+    tasks = completion.plan_design_tasks(document(), SimpleNamespace(defects=[]),
+                                        SimpleNamespace(design_gaps=[gap]), round_index=0)
+    assert [t["block"] for t in tasks] == ["intent"]
+
+
+def test_unchanged_candidate_is_not_applied(monkeypatch, isolated):
+    async def draft(**kw):
+        kw["call_accounting"]["model_calls"] += 1
+        return {"roof": deepcopy(kw["current_plan"]["roof"])}, {"model_calls": 1, "unsettled_blocks": []}
+    monkeypatch.setattr(completion, "draft_design_blocks", draft)
+    doc = document()
+    result = run(doc)
+    assert not result.changed
+    assert result.diag["stop_reason"] == "no_progress"
+    assert result.diag["budget"]["actual_model_calls"] == len(result.diag["rounds"])
+    assert all(not row["accepted"] for row in result.diag["rounds"])
+
+
+def test_failed_model_attempts_are_counted_separately_from_reservations(monkeypatch, isolated):
+    async def draft(**kw):
+        kw["call_accounting"]["model_calls"] += 1
+        raise TimeoutError("controlled timeout")
+    monkeypatch.setattr(completion, "draft_design_blocks", draft)
+    result = run(document())
+    assert result.diag["stop_reason"] == "model_error"
+    assert result.diag["budget"]["actual_model_calls"] == 1
+    assert result.diag["budget"]["remaining_model_calls"] == 8
+
+
+def test_semantic_fingerprint_ignores_descriptions_but_preserves_ordered_patterns():
+    from app.design.contracts import DesignDocument
+    from app.design.normalization import semantic_design_fingerprint
+    doc = document()
+    payload = doc.model_dump(mode="json")
+    payload["decisions"]["concept"] = "另一段说明"
+    payload["decisions"]["required_components"].reverse()
+    equivalent = DesignDocument.model_validate(payload)
+    assert semantic_design_fingerprint(equivalent) == semantic_design_fingerprint(doc)
+    pattern = payload["decisions"]["facades"]["front"]["ground_pattern"]
+    assert len(set(pattern)) > 1
+    pattern.append(pattern.pop(0))
+    assert semantic_design_fingerprint(DesignDocument.model_validate(payload)) != semantic_design_fingerprint(doc)
+
+
+def test_indexed_component_reference_keeps_array_order_in_fingerprint():
+    from app.design.contracts import DesignDocument, DesignConstraint
+    from app.design.normalization import semantic_design_fingerprint
+    payload = document().model_dump(mode="json")
+    payload["decisions"]["components"] = [
+        {"id": "first", "type": "canopy", "host": "main_L1_front"},
+        {"id": "second", "type": "canopy", "host": "main_L1_back"},
+    ]
+    payload["constraints"].append(DesignConstraint(id="indexed", kind="preference", source="architecture_draft",
+        target="/decisions/components/0/id", expression="首个实例", expected="first", check="equals").model_dump(mode="json"))
+    doc = DesignDocument.model_validate(payload)
+    payload["decisions"]["components"].reverse()
+    assert semantic_design_fingerprint(DesignDocument.model_validate(payload)) != semantic_design_fingerprint(doc)

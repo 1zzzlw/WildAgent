@@ -23,10 +23,13 @@ class AtomicSaveTest(unittest.TestCase):
 
     def test_commit_generation_result_uses_single_delivery_entry(self):
         blueprint = {"meta": {"name": "提交"}, "geometry": {"elements": [], "components": []}}
+        from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
+        snapshot = {"blueprint_fingerprint": blueprint_fingerprint(blueprint), "validator_version": VALIDATOR_VERSION,
+                    "status": "complete", "results": [], "error_count": 0}
         with patch("app.services.agent_delivery.prepare_blueprint_delivery") as prepare:
-            commit_generation_result("sess_1", "req_1", blueprint, [], status="complete")
+            commit_generation_result("sess_1", "req_1", blueprint, [], status="complete", validation_snapshot=snapshot)
             # 同一会话再次提交仍走同一 prepare（文件名确定性），不产生副本。
-            commit_generation_result("sess_1", "req_2", blueprint, [], status="complete")
+            commit_generation_result("sess_1", "req_2", blueprint, [], status="complete", validation_snapshot=snapshot)
         self.assertEqual(prepare.call_count, 2)
 
 

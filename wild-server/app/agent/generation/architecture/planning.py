@@ -376,29 +376,6 @@ def _normalize_volumes(
     return volumes
 
 
-def _repair_volume_floor_gaps(
-    volumes: list[dict[str, Any]],
-    modeled_floors: int,
-) -> list[dict[str, Any]]:
-    """补齐未被任何体量覆盖的楼层：把最近体量的 end_floor 扩展到该层。"""
-    repaired = [dict(item) for item in volumes]
-    for level in range(1, modeled_floors + 1):
-        if any(volume["start_floor"] <= level <= volume["end_floor"] for volume in repaired):
-            continue
-        # 找 end_floor 距离该层最近、且未覆盖它的体量；优先主体积。
-        def _distance(volume: dict[str, Any]) -> int:
-            return min(abs(volume["end_floor"] - level), abs(volume["start_floor"] - level))
-
-        candidates = [volume for volume in repaired if not (
-            volume["start_floor"] <= level <= volume["end_floor"]
-        )]
-        if not candidates:
-            continue
-        candidates.sort(key=lambda volume: (0 if volume["role"] == "primary" else 1, _distance(volume)))
-        candidates[0]["end_floor"] = max(candidates[0]["end_floor"], level)
-    return repaired
-
-
 def _normalize_structural_grid(
     raw: object,
     fallback: dict[str, Any],
@@ -899,7 +876,8 @@ def normalize_architecture_plan(
         "balcony_width": balcony_width,
         "required_components": list(dict.fromkeys(required_components)),
         "unsupported_component_types": sorted(unsupported_component_types),
-        "design_rationale": [str(item)[:160] for item in rationale[:6]],
+        "design_rationale": [str(item) for item in rationale[:12]],
+        "design_intent": deepcopy(source.get("design_intent")),
     }
 
     # §3.4 / P5-C：区域与构件材质绑定。**归一化不解释它**（角色闭集在材质方案那边，
@@ -928,7 +906,7 @@ def normalize_architecture_plan(
     rationale = [text for text in result["design_rationale"] if not text.startswith("[决策事实]")]
     if semantic:
         rationale = [text if text.startswith("[待核对]") else "[待核对] " + text for text in rationale]
-    result["design_rationale"] = [decision_summary(result), *rationale[:5]]
+    result["design_rationale"] = [decision_summary(result), *rationale[:11]]
     if "design_constraints" in source:
         result["design_constraints"] = deepcopy(source["design_constraints"])
     if "complexity" in source:

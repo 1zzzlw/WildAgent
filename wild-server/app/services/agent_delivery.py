@@ -88,15 +88,17 @@ def summarize_validation(
     """按校验器保留最后一次结果，让 recheck 覆盖初检。"""
     final_results = final_validation_results(validation_results)
 
-    errors = error_count if error_count is not None else sum(
+    measured_errors = sum(
         1 for result in final_results if _field(result, "has_error", False)
     )
-    warnings = warning_count if warning_count is not None else sum(
+    measured_warnings = sum(
         1
         for result in final_results
         if _field(result, "has_warning", False)
         and not _field(result, "has_error", False)
     )
+    errors = max(measured_errors, error_count or 0)
+    warnings = max(measured_warnings, warning_count or 0)
     total = len(final_results)
     return ValidationSummary(
         total=total,
@@ -129,6 +131,7 @@ def prepare_blueprint_delivery(
     error_count: int | None = None,
     warning_count: int | None = None,
     fulfillment: dict | None = None,
+    validation_snapshot: dict | None = None,
 ) -> BlueprintDelivery:
     """只有完整通过最终校验的 Blueprint 才会写入场景目录。
 
@@ -136,6 +139,21 @@ def prepare_blueprint_delivery(
     只在回复里如实展示缺口。把它并进 ``summary.errors`` 会让"合法但不完整"变成
     "不许保存"，与 P4 的交付政策相反。
     """
+    if validation_snapshot is not None:
+        from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
+        from dataclasses import asdict
+        evidence_results = [result if isinstance(result, dict) else asdict(result)
+                            for result in validation_results]
+        if (validation_snapshot.get("blueprint_fingerprint") != blueprint_fingerprint(blueprint)
+                or validation_snapshot.get("validator_version") != VALIDATOR_VERSION
+                or validation_snapshot.get("status") != "complete"
+                or validation_snapshot.get("results") != evidence_results
+                or validation_snapshot.get("error_count", 0) != 0
+                or (validation_snapshot.get("design_hash") and (
+                    blueprint.get("meta", {}).get("designHash") != validation_snapshot["design_hash"]
+                    or blueprint.get("meta", {}).get("designRevision") != validation_snapshot["design_revision"]))
+                or (fulfillment and fulfillment.get("blueprint_fingerprint") != blueprint_fingerprint(blueprint))):
+            raise GenerationRejectedError("校验证据与当前交付内容不一致，请重新进行完整校验")
     summary = summarize_validation(
         validation_results,
         error_count=error_count,
@@ -184,6 +202,7 @@ def commit_generation_result(
     error_count: int | None = None,
     warning_count: int | None = None,
     fulfillment: dict | None = None,
+    validation_snapshot: dict | None = None,
 ) -> BlueprintDelivery:
     """生成结果的单一幂等提交单元。
 
@@ -196,6 +215,8 @@ def commit_generation_result(
       ``fulfillment`` 只进回复文案，不进门禁（P4）。
     """
     logger.info(f"[{request_id}] 提交生成结果: session={session_id}")
+    if validation_snapshot is None:
+        raise GenerationRejectedError("生成结果缺少完整校验快照，已阻止保存")
     return prepare_blueprint_delivery(
         blueprint,
         session_id,
@@ -204,4 +225,5 @@ def commit_generation_result(
         error_count=error_count,
         warning_count=warning_count,
         fulfillment=fulfillment,
+        validation_snapshot=validation_snapshot,
     )

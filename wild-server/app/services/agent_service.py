@@ -220,7 +220,8 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix
         r = PipelineStepResult(step=step, name=name,
                                output=f"⏭️  跳过（{reason}）",
                                has_error=False, has_warning=False)
-        results.append(r)
+        if auto_fix or not name.startswith("fix_"):
+            results.append(r)
         return r
 
     # ── Step 1: 顶层结构 ──

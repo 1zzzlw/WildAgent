@@ -48,12 +48,26 @@ def evaluate_support(blueprint: dict, entity_id: str, relation: dict) -> dict:
     entities = entity_index(blueprint)
     column = entities.get(entity_id)
     base = {"entity_id": entity_id, "target": relation.get("target"), "tolerance_m": TOLERANCE}
+    if relation.get("kind") != "supports":
+        return {**base, "status": "unsupported", "reason": "当前只支持柱—雨棚的 supports 几何关系"}
+    target = entities.get(relation.get("target")) or {}
+    wall = entities.get(target.get("parentWall")) or {}
+    if wall.get("curve"):
+        return {**base, "status": "unsupported", "reason": "曲墙雨棚支撑暂无几何判据，需要设计复核"}
+    geometry = blueprint.get("geometry") or {}
+    all_entities = [*geometry.get("elements", []), *geometry.get("components", [])]
+    if any(sum(e.get("id") == key for e in all_entities) != 1
+           for key in (entity_id, relation.get("target"), target.get("parentWall"))):
+        return {**base, "status": "open", "reason": "柱、雨棚或墙引用缺失/重复，无法唯一解析"}
     if not column or column.get("type") != "column":
         return {**base, "status": "open", "reason": "对应柱实体缺失或类型错误"}
     try:
         point, bottom = canopy_support_point(blueprint, relation)
         start = column["base"]
-        end = [start[0], start[1]+column["height"], start[2]]
+        height = column["height"]
+        if isinstance(height, bool) or not isinstance(height, (int, float)) or not isfinite(height) or height <= 0:
+            raise ValueError("柱高必须是正有限数")
+        end = [start[0], start[1]+height, start[2]]
         values = start+end
         if len(start) != 3 or len(end) != 3 or not all(isinstance(v, (float, int)) and not isinstance(v, bool) and isfinite(v) for v in values):
             raise ValueError("柱端点无效")

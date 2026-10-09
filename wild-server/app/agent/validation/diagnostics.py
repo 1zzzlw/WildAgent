@@ -4,9 +4,8 @@
 - ``ValidationSnapshot``：一次权威校验的结果快照（含设计约束、结构化问题、耗时与来源）。
 - ``NodeDiagnostic``：节点级诊断的目标 Schema，保留 ``extra`` 承载节点特有字段以兼容前端。
 
-设计意图：当前 ``validate_node`` 用 ``merge_diag.final_errors == 0`` 这种隐式条件判断
-校验缓存是否可用；改为显式携带 Blueprint 指纹的 ``ValidationSnapshot`` 后，callback 已复检
-通过的候选回到 ``final_validate`` 时指纹一致即可复用，不再重跑校验。
+快照同时记录产物、设计版本、设计清单与校验器版本。最终门禁仍独立运行完整验收，
+不以合并或 callback 的旧结论替代当前内容检查。
 """
 from __future__ import annotations
 
@@ -16,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # 校验器版本：修改校验/修复工具语义时递增，让旧的 ValidationSnapshot 自动失效。
-VALIDATOR_VERSION = "2.0"
+VALIDATOR_VERSION = "2.1"
 
 
 def blueprint_fingerprint(blueprint: dict | None) -> str:
@@ -67,7 +66,7 @@ class NodeDiagnostic:
 
 @dataclass
 class ValidationSnapshot:
-    """一次权威校验的结果快照，按 Blueprint 指纹 + 校验器版本复用。"""
+    """一次完整验收的快照；证据绑定产物和设计上下文。"""
 
     blueprint_fingerprint: str = ""
     validator_version: str = VALIDATOR_VERSION
@@ -87,9 +86,13 @@ class ValidationSnapshot:
     elapsed_ms: int = 0
     source: str = ""  # merge | final_validate | callback
 
-    def matches(self, blueprint: dict | None) -> bool:
-        """当前 Blueprint 与校验器版本一致时，可复用本快照。"""
+    def matches(self, blueprint: dict | None, *, design_hash: str = "",
+                design_revision: int | None = None, design_brief: dict | None = None) -> bool:
+        """全部上下文一致才匹配；带设计的旧快照不能按单一产物指纹复用。"""
         return (
             self.blueprint_fingerprint == blueprint_fingerprint(blueprint)
             and self.validator_version == VALIDATOR_VERSION
+            and self.design_hash == design_hash
+            and self.design_revision == design_revision
+            and self.design_brief_fingerprint in ("", blueprint_fingerprint(design_brief))
         )

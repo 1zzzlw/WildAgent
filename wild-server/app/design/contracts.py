@@ -341,6 +341,17 @@ class ComponentInstance(ContractModel):
         return self
 
 
+class ArchitectureIntent(ContractModel):
+    """审核前的整体设计方向；不冒充已编译几何或专业规范结论。"""
+
+    goals: list[str] = Field(default_factory=list, max_length=8)
+    assumptions: list[str] = Field(default_factory=list, max_length=8)
+    spatial_strategy: str = Field(default="", max_length=800)
+    composition: str = Field(default="", max_length=800)
+    material_strategy: str = Field(default="", max_length=800)
+    selected_systems: list[str] = Field(default_factory=list, max_length=12)
+
+
 class ArchitectureDecisions(ContractModel):
     #: 判别字段。与 `ObjectDecisions.kind` 一起构成 `decisions` 的带标签联合。
     #: 有默认值是为了让 2026-09-23 之前存档的 DesignDocument（当时只有建筑一种）
@@ -365,6 +376,7 @@ class ArchitectureDecisions(ContractModel):
     required_components: list[str] = Field(default_factory=list, max_length=30)
     unsupported_component_types: list[str] = Field(default_factory=list, max_length=30)
     design_rationale: list[str] = Field(default_factory=list, max_length=12)
+    design_intent: ArchitectureIntent | None = None
 
 
 class ComponentObject(ContractModel):
@@ -464,7 +476,7 @@ DesignDecisions = Annotated[
 
 
 class DesignDocument(ContractModel):
-    schema_version: Literal["design/1.0", "design/1.1", "design/1.2"] = "design/1.2"
+    schema_version: Literal["design/1.0", "design/1.1", "design/1.2", "design/1.3"] = "design/1.3"
     design_id: str = Field(min_length=1, max_length=120)
     session_id: str = Field(min_length=1, max_length=160)
     revision: int = Field(ge=1)

@@ -31,8 +31,8 @@ async def callback_node(state: GenerationState) -> dict:
     3. 运行组件工具获取空间约束数据（tools 提供"具体错在哪里"）
     4. 构建 callback_payload（含骨架上下文 + 当前参数 + 工具建议 + RAG）
     5. LLM 只输出白名单修复动作（支持流式思考）
-    6. 程序执行动作并用全量校验比较错误数
-    7. 仅在错误数下降时提交到对应 fragments
+    6. 程序在副本执行动作，用与最终门禁相同的完整入口验收
+    7. 只有完整通过且保持已履约项时提交；其余候选回滚
     """
     source_blueprint = state.get("merged_blueprint") or {}
     before = evaluate_candidate(source_blueprint, design_document=state.get("design_document"),
@@ -280,7 +280,7 @@ async def callback_node(state: GenerationState) -> dict:
     introduced_issues = progress["introduced_issues"]
     before_satisfied = set((before["fulfillment"] or {}).get("satisfied_ids") or [])
     after_satisfied = set((after["fulfillment"] or {}).get("satisfied_ids") or [])
-    progress["accepted"] = (progress["accepted"] and not after_issues
+    progress["accepted"] = (progress["accepted"] and not after_issues and not after["errors"]
                             and before_satisfied <= after_satisfied
                             and blueprint_fingerprint(candidate) != source_fingerprint)
 
@@ -293,7 +293,7 @@ async def callback_node(state: GenerationState) -> dict:
         if on_reasoning_delta:
             await on_reasoning_delta(
                 "callback",
-                f"复检未改善：错误 {len(before_issues)} → {len(after_issues)}，"
+                f"完整门禁未通过：错误 {len(before_issues)} → {len(after_issues)}，"
                 "本轮修改已回滚。\n",
             )
         return {

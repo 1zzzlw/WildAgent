@@ -98,7 +98,7 @@ def test_degradation_evidence_reaches_current_design_gaps_and_keeps_constraint_i
     change = next(c for c in trace.changes if c["path"] == "/decisions/roof/type")
     assert change["constraint_ids"] == ["roof.choice"]
     gaps = evaluate_design(doc, _stable_hash(doc))
-    assert any(g.id.startswith("gap.normalization.") and g.status == "open" for g in gaps)
+    assert any(g.id.startswith("gap.normalization.") and g.status == "needs_review" for g in gaps)
     assert any(g.constraint_id == "roof.choice" and g.status == "unsupported" for g in gaps)
     assert doc.decisions.design_rationale[0].startswith("[决策事实]")
 

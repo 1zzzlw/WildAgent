@@ -85,7 +85,7 @@ def test_design_document_round_trip_and_resolution():
     resolved = resolve_design(document)
     plan = architecture_plan_from_document(document)
 
-    assert document.schema_version == "design/1.0"
+    assert document.schema_version == "design/1.3"
     assert document.decisions.envelope.system == "curtain_wall"
     assert resolved.design_revision == document.revision
     assert resolved.design_hash.startswith("sha256:")

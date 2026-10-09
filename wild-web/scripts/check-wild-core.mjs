@@ -48,6 +48,7 @@ try {
   await assertProfileSweepValidation(core);
   await assertSlopedBeamDirection(core);
   await assertSteppedFlatRoofBoundary(core);
+  await assertGableRidgeAxis(core);
   await assertChineseCurvedGableFill(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
@@ -179,6 +180,37 @@ function assertRoofMesh(entity, elementId, expected) {
     const error = Math.max(...actual.map((value, index) => Math.abs(value - wanted[index])));
     if (error > 1e-5) {
       throw new Error(`${elementId} ${label} 错误: ${JSON.stringify({ actual, wanted })}`);
+    }
+  }
+}
+
+async function assertGableRidgeAxis(core) {
+  for (const [span, depth] of [[12, 9], [9, 12]]) {
+    for (const ridgeAxis of [undefined, 'z', 'x']) {
+      const roof = { type: 'roof', id: 'ridge_axis', roofType: 'gable', span, depth,
+        height: 2, thickness: 0.2, position: [20, 6, -8],
+        ...(ridgeAxis ? { ridgeAxis } : {}) };
+      const blueprint = { meta: { version: '1.1', type: 'building', name: 'ridge-axis' },
+        geometry: { elements: [roof], components: [] }, materials: {}, behaviors: {} };
+      const original = JSON.stringify(blueprint);
+      const entity = await core.reconstructEntity(blueprint);
+      if (JSON.stringify(blueprint) !== original || entity.diagnostics.some(d => d.level === 'error')) {
+        throw new Error(`ridgeAxis=${ridgeAxis} 重建改变输入或产生错误`);
+      }
+      assertRoofMesh(entity, roof.id, { localMin: [-span/2, -0.2, -depth/2],
+        localMax: [span/2, 2, depth/2], position: roof.position });
+      const mesh = entity.meshes.find(m => m.elementId === roof.id);
+      const ridge = [];
+      for (let i = 0; i < mesh.geometry.length; i += 3) {
+        if (Math.abs(mesh.geometry[i+1]-2) < 1e-5) ridge.push(Array.from(mesh.geometry.slice(i, i+3)));
+      }
+      const axis = ridgeAxis === 'x' ? 0 : 2;
+      const cross = ridgeAxis === 'x' ? 2 : 0;
+      const length = Math.max(...ridge.map(p => p[axis]))-Math.min(...ridge.map(p => p[axis]));
+      if (!ridge.length || ridge.some(p => Math.abs(p[cross]) > 1e-5)
+          || Math.abs(length-(axis === 0 ? span : depth)) > 1e-5 || !validateMesh(mesh)) {
+        throw new Error(`ridgeAxis=${ridgeAxis} 屋脊方向、长度或网格属性错误`);
+      }
     }
   }
 }

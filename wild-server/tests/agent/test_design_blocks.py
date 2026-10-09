@@ -54,6 +54,8 @@ _FACE = {
 _FULL_PAYLOAD = {
     "design_constraints": [],
     "concept": "测试方案",
+    "design_intent": {"goals": ["入口清晰"], "composition": "主体与入口协调", "selected_systems": ["gable"]},
+    "design_rationale": ["入口与立面槽位对应"],
     "massing": {"floors": 2},
     "volumes": [
         {
@@ -129,9 +131,9 @@ class BlockTableTest(unittest.TestCase):
             # 档位只决定"用哪几块"，不许出现表外的块。
             self.assertLessEqual(set(order), all_names)
 
-    def test_standard_level_starts_with_massing_and_ends_with_components(self):
+    def test_standard_level_starts_with_intent_and_ends_with_components(self):
         order = [block.name for block in ordered_blocks("standard")]
-        self.assertEqual(order[0], "massing")
+        self.assertEqual(order[0], "intent")
         self.assertEqual(order[-1], "components")
 
     def test_levels_are_monotonic_and_unknown_falls_back_to_standard(self):
@@ -285,7 +287,7 @@ class BlockContractTest(unittest.TestCase):
         contract = render_block_contract(BLOCK_BY_NAME["components"])
         self.assertIn("form.profile", contract)
         self.assertIn("二维数字点", contract)
-        self.assertIn("rectangular_80x60", contract)
+        self.assertIn("不是预设名", contract)
 
     def test_roof_contract_does_not_ask_for_a_roof_array(self):
         """ roof 块契约（以及基础提示词）**不得**再命令"按体量分别声明屋顶"。
@@ -307,7 +309,8 @@ class BlockContractTest(unittest.TestCase):
         base_prompt = build_architecture_plan_prompt("测试知识", {"default_roof": "flat"})
         for name, text in (("roof 块契约", roof_contract), ("基础提示词", base_prompt)):
             self.assertNotIn("分别声明屋顶", text, name)
-            self.assertIn("自动派生", text, name)
+        self.assertIn("volumes 数组", roof_contract)
+        self.assertIn("仅支持 flat/gable/hip", roof_contract)
 
     def test_roof_array_is_refused_with_a_shape_instruction_not_a_pydantic_dump(self):
         """形状写错时，证据必须是**可照做的中文**，不是 pydantic 的 repr。"""
@@ -359,7 +362,8 @@ class BlockContractTest(unittest.TestCase):
         }
         for name, text in texts.items():
             self.assertNotIn('"volume"', text, f"{name} 里有裸花括号字面量")
-            self.assertIn("volumes", text, name)
+            if name == "roof 块契约":
+                self.assertIn("volumes", text, name)
 
     def test_components_contract_states_that_form_is_an_object(self):
         """`form` 的形状必须写清：它是**对象**（键=引擎字段名），不是形态名字符串。
@@ -371,9 +375,9 @@ class BlockContractTest(unittest.TestCase):
         from app.agent.generation.architecture.design_workflow import render_block_contract
 
         contract = render_block_contract(BLOCK_BY_NAME["components"])
-        self.assertIn("必须是**对象**", contract)
-        self.assertIn("引擎字段名", contract)
-        self.assertIn("modern_flat", contract)
+        self.assertIn("form 必须是对象", contract)
+        self.assertIn("引擎字段", contract)
+        self.assertIn("不能写形态名字符串", contract)
 
     def test_component_instance_evidence_is_a_one_line_field_note(self):
         """实例契约的证据同样要**一行、可读**：点名字段与实际取值。"""
@@ -434,6 +438,7 @@ class BlockKnowledgeTest(unittest.TestCase):
             def load_many(self, queries, per_query=1, **_kwargs):
                 self.queries = queries
                 self.per_query = per_query
+                self.include_base = _kwargs.get("include_base")
                 return "窗的形态闭集：swing/slide/fixed。"
 
         loader = _Loader()
@@ -450,6 +455,7 @@ class BlockKnowledgeTest(unittest.TestCase):
         self.assertEqual(diag["queries"], len(BLOCK_BY_NAME["facade"].knowledge_queries))
         self.assertGreater(diag["chars"], 0)
         self.assertTrue(diag["hits"])
+        self.assertFalse(loader.include_base)
         self.assertEqual(diag["hits"][0]["heading"], "窗")
         # 用户请求被渲染进查询文本：形制词必须能命中形制技法文档。
         first_query_text = loader.queries[0].text
@@ -492,7 +498,7 @@ class BlockKnowledgeTest(unittest.TestCase):
 
         later = build_block_prompt("BASE", BLOCK_BY_NAME["facade"], {"massing": {"floors": 2}})
         self.assertTrue(later.startswith("BASE"))
-        self.assertIn("已定稿的前序块", later)
+        self.assertIn("当前完整设计基线", later)
         self.assertIn('"floors": 2', later)
         self.assertIn("本轮只写一个设计块", later)
 
@@ -600,18 +606,18 @@ class DraftExecutorTest(unittest.TestCase):
 
     def test_retry_carries_the_evidence_back_to_the_model(self):
         # 档位粒度已下线（2026-09-30）⇒ 块表恒为全量：massing 第一次缺 volumes，
-        # 第二次补齐；其余四块第一次就通过。首批只有 massing 自己（依赖为空），
-        # 所以 calls[0]/calls[1] 必然是它的两次尝试。
-        # 用量 = 1 个坏样本 + 5 个正常样本（massing 重试一次 ⇒ 总共 6 次调用）。
+        # 第二次补齐；其余四块第一次就通过。intent 先完成，随后 massing 起草，
+        # 所以 calls[1]/calls[2] 是 massing 的两次尝试。
+        # 用量 = 块数 + 1 个重试样本。
         bad_massing = _json({"massing": {"floors": 2}})
         draft, diag, calls = self._run(
-            [bad_massing] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+            [_json(_FULL_PAYLOAD), bad_massing] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
         )
 
         self.assertIn("massing", draft)
         self.assertEqual(diag["unsettled_blocks"], [])
-        self.assertIn("上一次输出未通过", calls[1])
-        self.assertIn("volumes", calls[1])
+        self.assertIn("上一次输出未通过", calls[2])
+        self.assertIn("volumes", calls[2])
         attempts = {item["block"]: item["attempts"] for item in diag["blocks"]}
         self.assertEqual(attempts["massing"], 2)
         self.assertEqual(attempts["structure"], 1)
@@ -633,13 +639,13 @@ class DraftExecutorTest(unittest.TestCase):
             ' "symmetry": false, "tiers": null}\nvolumes: [{"id": "main_volume'
         )
         draft, diag, calls = self._run(
-            [incident] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+            [_json(_FULL_PAYLOAD), incident] + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
         )
 
-        # 首批只有 massing（依赖为空）⇒ calls[1] 必然是它的第 2 次尝试。
-        evidence = calls[1].split("证据：", 1)[1].split("\n", 1)[0].strip()
+        # intent 已完成，calls[2] 是 massing 的第 2 次尝试。
+        evidence = calls[2].split("证据：", 1)[1].split("\n", 1)[0].strip()
         self.assertIn("缺少字段", evidence)
-        for name in ("concept", "massing", "volumes"):
+        for name in ("massing", "volumes"):
             self.assertIn(name, evidence)
         self.assertNotIn("不是合法 JSON", evidence)
 
@@ -668,7 +674,7 @@ class DraftExecutorTest(unittest.TestCase):
             self._run([_json(_FULL_PAYLOAD)], error=RuntimeError("quota exhausted"))
 
     def test_diagnostics_follow_the_block_table_order(self):
-        """档位粒度已下线（2026-09-30）：块表恒为全量 5 块。
+        """档位粒度已下线（2026-09-30）：块表恒为全量设计块。
 
         并发执行不改变诊断顺序——`diag["blocks"]` 必须回落到块表序，
         否则前端按序读诊断会与真实批次错位。
@@ -763,14 +769,15 @@ class DesignPlanSchedulingTest(unittest.TestCase):
         self.assertEqual(
             [batch["items"] for batch in diag["batches"]],
             [
+                ["draft_intent"],
                 ["draft_massing"],
                 ["draft_structure", "draft_facade", "draft_roof"],
                 ["draft_components"],
             ],
         )
-        self.assertEqual(diag["batches"][1]["parallel_group"], "shell")
+        self.assertEqual(diag["batches"][2]["parallel_group"], "shell")
         self.assertEqual(
-            diag["batches"][1]["settled"], ["structure", "facade", "roof"]
+            diag["batches"][2]["settled"], ["structure", "facade", "roof"]
         )
 
     def test_plan_carries_dependencies_groups_and_bounded_attempts(self):
@@ -778,11 +785,12 @@ class DesignPlanSchedulingTest(unittest.TestCase):
         plan = diag["plan"]
         by_id = {item["id"]: item for item in plan["items"]}
         self.assertEqual(set(by_id), {f"draft_{b.name}" for b in DESIGN_BLOCKS})
-        self.assertEqual(by_id["draft_massing"]["depends_on"], [])
+        self.assertEqual(by_id["draft_intent"]["depends_on"], [])
+        self.assertEqual(by_id["draft_massing"]["depends_on"], ["draft_intent"])
         self.assertEqual(by_id["draft_facade"]["depends_on"], ["draft_massing"])
         self.assertEqual(
             by_id["draft_components"]["depends_on"],
-            ["draft_massing", "draft_structure", "draft_facade", "draft_roof"],
+            ["draft_structure", "draft_facade", "draft_roof"],
         )
         self.assertEqual(plan["detail_level"], "standard")
         for item in plan["items"]:
@@ -806,7 +814,7 @@ class DesignPlanSchedulingTest(unittest.TestCase):
         ``blocked`` 而不是终态，``components`` 会被永久锁死，表现为"图纸一直缺构件配额"。
         """
 
-        payloads = ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        payloads = [_json(_FULL_PAYLOAD)] + ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
         draft, diag, _, _ = self._run(payloads)
         by_id = {item["id"]: item for item in diag["plan"]["items"]}
 
@@ -840,7 +848,7 @@ class DesignPlanSchedulingTest(unittest.TestCase):
     def test_abandoned_block_frees_its_group_siblings_to_run(self):
         """massing 失败也不能拦住 shell 组：依赖的语义是"产物可用"而不是"上游成功"。"""
 
-        payloads = ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
+        payloads = [_json(_FULL_PAYLOAD)] + ["{}"] * _BLOCK_MAX_ATTEMPTS + [_json(_FULL_PAYLOAD)] * len(DESIGN_BLOCKS)
         _, diag, peak, _ = self._run(payloads)
         by_id = {item["id"]: item for item in diag["plan"]["items"]}
         self.assertEqual(
