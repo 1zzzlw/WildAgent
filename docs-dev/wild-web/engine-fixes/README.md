@@ -6,12 +6,12 @@
 
 ## 修复列表
 
-| 编号 | 日期 | 模块 | 问题 | 严重度 |
-|---|---|---|---|---|
-| [004](./004-column-snap-tolerance.md) | 2026-07-21 | resolver | resolveColumnOffsets 容差过大导致门廊柱/装饰柱被吸入墙内 | 🔴 高（已触发） |
-| [003](./003-stair-clamp-inconsistency.md) | 2026-07-21 | resolver | 楼梯踏步尺寸 clamp 破坏一致性导致踏步重叠/缝隙 | 🟡 中 |
-| [002](./002-stair-euclidean-distance.md) | 2026-07-21 | resolver | 楼梯水平距离用 Manhattan 距离导致对角线楼梯步深计算错误 | 🟡 中（未触发） |
-| [001](./001-roof-boundary-dwarf-wall.md) | 2026-07-21 | resolver | 屋顶包围盒计算包含栏杆/矮墙导致屋顶偏移 | 🔴 高（已触发） |
+| 编号                                      | 日期       | 模块     | 问题                                                     | 严重度         |
+| ----------------------------------------- | ---------- | -------- | -------------------------------------------------------- | -------------- |
+| [004](./004-column-snap-tolerance.md)     | 2026-07-21 | resolver | resolveColumnOffsets 容差过大导致门廊柱/装饰柱被吸入墙内 | 高（已触发）   |
+| [003](./003-stair-clamp-inconsistency.md) | 2026-07-21 | resolver | 楼梯踏步尺寸 clamp 破坏一致性导致踏步重叠/缝隙           | 🟡 中           |
+| [002](./002-stair-euclidean-distance.md)  | 2026-07-21 | resolver | 楼梯水平距离用 Manhattan 距离导致对角线楼梯步深计算错误  | 🟡 中（未触发） |
+| [001](./001-roof-boundary-dwarf-wall.md)  | 2026-07-21 | resolver | 屋顶包围盒计算包含栏杆/矮墙导致屋顶偏移                  | 高（已触发）   |
 
 ---
 

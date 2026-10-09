@@ -32,7 +32,9 @@ synonyms: []
   **不得**用整栋外包络当屋顶范围。多体量（L 形 / U 形 / 退台）各生成一块屋顶，或贴合墙体留出内院 / 天井。
   （这三项 `span` / `depth` / `position` 是**蓝图屋顶元素**的字段；
   **设计层** `decisions.roof` 没有它们，只写一块风格模板 `type` / `ridge_axis` / `overhang`——
-  逐体量分段由编译器派生，见《构件参数》§roof 的分层说明。）
+  逐体量分段由编译器派生；需要"主楼坡顶 + 侧翼平顶"这类差异时在模板里加
+  `volumes: [{"volume": "<体量 id>", "type": "...", "overhang": 0.3}]`，
+  体量 id 必须与 `decisions.volumes` 一致。见《构件参数》§roof 的分层说明。）
 - `roof.position` 位于墙体 XZ 中心与墙顶高度。
 
 ## 枚举陷阱

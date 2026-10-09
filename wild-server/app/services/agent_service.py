@@ -191,13 +191,13 @@ def _severity_from_text(output: str) -> tuple[bool, bool]:
     return ("❌" in output, "⚠️" in output)
 
 
-def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[PipelineStepResult]:
+def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True, auto_fix: bool = True) -> list[PipelineStepResult]:
     """按固定顺序执行所有校验 + 自动修正步骤，返回每步结果。
 
     ``log_steps``：交付路径要保持逐步骤日志（线上排查靠它）；编译期复用这条流水线
     产缺陷时（``app/agent/compiler/pipeline_defects.py``，设计文档 §2.5）一次生成里
     会调它很多次，逐步骤日志会把真正的编译诊断淹掉，所以那边传 False。
-    ⚠️ 只影响**日志**，不影响跑哪些步骤、也不影响返回的严重度。
+    ``auto_fix=False`` 只运行原校验器，不执行任何 fix；用于编译与候选验收。
     """
     results: list[PipelineStepResult] = []
 
@@ -251,7 +251,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
 
     # ── Step 3: 引用完整性 ──
     r3 = run_step(3, "validate_reference_integrity", validate_reference_integrity, blueprint)
-    if r3.has_error:
+    if auto_fix and r3.has_error:
         fix_output = _run_tool(fix_material_references, blueprint)
         fix_error, fix_warning = _severity_from_text(fix_output)
         results.append(PipelineStepResult(
@@ -300,7 +300,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
     run_step("7e", "validate_roof_top_coverage", validate_roof_top_coverage, blueprint)
 
     # ── Step 8: 自动修正门窗坐标 ──
-    if r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning:
+    if auto_fix and (r4.has_warning or r4.has_error or r4b.has_error or r4b.has_warning):
         fix_out = _run_tool(fix_opening_coords, blueprint)
         results.append(PipelineStepResult(
             step=8, name="fix_opening_coords", output=fix_out,
@@ -319,7 +319,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
         skip_step(8, "fix_opening_coords", "Step 4/4b 门窗坐标无问题")
 
     # ── Step 8b: 自动修正开口越界 ──
-    if r4b.has_error:
+    if auto_fix and r4b.has_error:
         fix_out = _run_tool(fix_opening_fit, blueprint)
         results.append(PipelineStepResult(
             step="8b", name="fix_opening_fit", output=fix_out,
@@ -334,7 +334,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
         skip_step("8b", "fix_opening_fit", "Step 4b 开口越界无严重问题")
 
     # ── Step 8c: 自动修正楼梯对齐 ──
-    if r6.has_warning or r6.has_error:
+    if auto_fix and (r6.has_warning or r6.has_error):
         fix_out = _run_tool(fix_stair_alignment, blueprint)
         results.append(PipelineStepResult(
             step="8c", name="fix_stair_alignment", output=fix_out,
@@ -349,7 +349,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
         skip_step("8c", "fix_stair_alignment", "Step 6 楼梯对齐无问题")
 
     # ── Step 8d: 自动修正构件尺寸 ──
-    if r7b.has_error:
+    if auto_fix and r7b.has_error:
         fix_out = _run_tool(fix_element_dimensions, blueprint)
         results.append(PipelineStepResult(
             step="8d", name="fix_element_dimensions", output=fix_out,
@@ -364,7 +364,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
         skip_step("8d", "fix_element_dimensions", "Step 7b 构件尺寸无严重异常")
 
     # ── Step 8e: 自动修正屋顶覆盖 ──
-    if r7.has_error or r7.has_warning:
+    if auto_fix and (r7.has_error or r7.has_warning):
         fix_out = _run_tool(fix_roof_coverage, blueprint)
         results.append(PipelineStepResult(
             step="8e", name="fix_roof_coverage", output=fix_out,
@@ -379,7 +379,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
         skip_step("8e", "fix_roof_coverage", "Step 7 屋顶覆盖无问题")
 
     # ── Step 8f: 自动对齐墙体端点 ──
-    if r5.has_warning or r5.has_error:
+    if auto_fix and (r5.has_warning or r5.has_error):
         fix_out = _run_tool(fix_wall_junctions, blueprint)
         results.append(PipelineStepResult(
             step="8f", name="fix_wall_junctions", output=fix_out,
@@ -402,7 +402,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
     r9 = run_step(9, "validate_collision", validate_collision, blueprint)
 
     # ── Step 9b: 自动修正竖向构件高程（悬空/穿入地板）──
-    if r9.has_warning or r9.has_error:
+    if auto_fix and (r9.has_warning or r9.has_error):
         fix_out = _run_tool(fix_element_elevations, blueprint)
         results.append(PipelineStepResult(
             step="9b", name="fix_element_elevations", output=fix_out,
@@ -439,7 +439,7 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
             lambda bp, current=component_type: validate_component(current, bp),
             blueprint,
         )
-        if not result.has_error:
+        if not auto_fix or not result.has_error:
             continue
         fix_output = fix_component(component_type, blueprint)
         fix_error, fix_warning = _severity_from_text(fix_output)
@@ -460,6 +460,12 @@ def run_validation_pipeline(blueprint: dict, *, log_steps: bool = True) -> list[
             has_warning=recheck_warning,
         ))
 
+    if auto_fix:
+        # 后面的修复也可能改变前面已检查的宿主/尺寸，完整复查实际最终产物。
+        for result in run_validation_pipeline(blueprint, log_steps=log_steps, auto_fix=False):
+            if result.name.startswith("validate_"):
+                result.name += " [recheck]"
+                results.append(result)
     return results
 
 

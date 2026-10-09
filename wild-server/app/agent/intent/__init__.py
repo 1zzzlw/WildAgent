@@ -4,7 +4,7 @@
 节点同构：``nodes/classifier_node.py`` 只是薄壳，实现都在这里。包内模块可以自由
 重组，对外只保证 :data:`__all__` 里的这些契约。
 
-🔴 测试注入假模型用 ``patch("app.agent.intent.classify.invoke_llm")``（调用缝在
+ 测试注入假模型用 ``patch("app.agent.intent.classify.invoke_llm")``（调用缝在
 :mod:`.classify`）；改它的模块归属必须同批改桩件路径。
 """
 from __future__ import annotations

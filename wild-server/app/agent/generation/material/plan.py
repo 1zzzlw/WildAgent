@@ -4,9 +4,141 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import re
 from typing import Any
 
 from .recipes import infer_brick_preset, resolve_brick_preset
+
+
+#: P6-A：用户提了材质/配色要求的**词面信号**。
+#:
+#: 🔴 这里刻意只判"有没有明确材质要求"，不判"有没有资产"——两件事曾经被绑成同一个
+#: 条件（``elif catalog:``），于是**无纹理资产时用户提了配色也被完全无视**。
+#: 材质设计决策与资产匹配必须分开判断：没有资产时仍然可以有合法的参数材质
+#: （baseColor / roughness / metallic 全是参数，不需要贴图）。
+#: 用户**提需求**时用的材质词（含具体材质名）。判"这次要不要做材质设计"用。
+_MATERIAL_INTENT_TERMS = (
+    "材质", "配色", "色调", "颜色", "色系", "主色", "辅色", "点缀",
+    "墙面色", "外墙色", "屋面色", "地面色", "石材", "木色", "砖色", "涂料",
+    "红砖", "青砖", "清水混凝土", "微水泥", "防腐木", "格栅", "幕墙",
+    "material", "color", "colour", "palette", "texture", "材质搭配",
+)
+
+#: 用户**给反馈**时用的材质词。只收"明确在说材质"的决策词，**不收**"木""金属"
+#: 这类材质名词做子串匹配 ——
+#:
+#: 🔴 反例：反馈"把木梁换成混凝土柱"含"木"（名词）却是**几何/结构**变更，不该换材质；
+#: 反馈"木门换成玻璃"不含下表任何词却是**明确材质**变更。两类句子靠同一张名词表
+#: 根本分不开，只能靠"这句话有没有在说材质"来判。
+_MATERIAL_FEEDBACK_TERMS = (
+    "材质", "材料", "颜色", "配色", "色调", "色系", "外墙色", "墙面", "幕墙",
+    "material", "color", "colour", "palette", "texture",
+)
+
+#: 具体材质**名**。单独出现不构成材质决策（"木梁"是结构，"石材地面"才是材质），
+#: 只与角色词同时出现时才算"在说材质"。
+_MATERIAL_NAMES = (
+    "玻璃", "木", "木纹", "金属", "钢", "铝", "石", "石材", "大理石", "砖",
+    "混凝土", "涂料", "漆", "塑料", "织物", "布", "毛玻璃", "镜面",
+)
+
+
+def material_mentions(text: str) -> list[str]:
+    """文本里出现过的**材质决策词**（给反馈路径用）。
+
+    与 :func:`material_intent_terms` 分开是因为两个场景的词表不同：提需求时
+    "红砖外墙"要能触发，判反馈时"红砖"不能触发（那是句子里恰好有的材质名）。
+
+    🔴 **纯决策词覆盖不了"门改成玻璃的"这类句子** —— 它是明确的材质变更，却一个
+    决策词都没有。补第二路判据：**材质名 + 角色词同时出现**才算（材质名单独出现
+    不算，"把木梁换成混凝土柱"里有"木"和"混凝土"但没有角色词，仍然不算）。
+    两路的交集为空，各自都漏，合起来才够用。
+    """
+
+    lowered = str(text or "").casefold()
+    words = [term for term in _MATERIAL_FEEDBACK_TERMS if term.casefold() in lowered]
+    has_material_name = any(word in str(text or "") for word in _MATERIAL_NAMES)
+    has_role_word = any(word in str(text or "") for word in _SURFACE_ROLE_WORDS)
+    if not words and has_material_name and has_role_word:
+        words = ["<材质名+角色词>"]
+    return words
+
+#: **表面类**角色的同义词（判"这句话在谈某表面的材质"时只用这张）。
+#:
+#: 🔴刻意**不含 structure**：反馈"把木梁换成混凝土柱"里有材质名"木/混凝土"，
+#: 但它谈的是**结构构件更换**，不是表面材质决策。柱/梁/框架一进来，
+#: 这句就会被误判成材质变更，全楼颜色跟着重来一遍。
+_SURFACE_ROLE_WORDS = (
+    "外墙", "外立面", "墙面", "墙体", "立面", "楼板", "地面", "地板", "楼面",
+    "屋面", "屋顶", "檐口", "门", "门扇", "大门", "窗", "窗框", "门框", "龙骨",
+)
+
+#: 材质角色的**同义表达** —— 用户说"外墙用红砖"时角色是 ``facade_primary``。
+#: 这张表是"用户语义 → 受控角色名"的唯一映射点，不要在别处再写一份。
+_ROLE_SYNONYMS: dict[str, tuple[str, ...]] = {
+    "facade_primary": ("外墙", "外立面", "墙面", "墙体", "立面", "外墙砖"),
+    "structure": ("结构", "柱", "梁", "框架", "混凝土", "水泥"),
+    "floor": ("楼板", "地面", "地板", "楼面"),
+    "roof": ("屋面", "屋顶", "檐口", "瓦"),
+    "frame": ("龙骨", "窗框", "门框", "金属框", "型材"),
+    "door": ("门", "门扇", "大门"),
+    "glass": ("玻璃", "幕墙玻璃"),
+}
+
+
+def material_intent_terms(user_message: str) -> list[str]:
+    """用户话里出现过的材质/配色关键词（去重、保序）。"""
+
+    text = str(user_message or "").lower()
+    return [term for term in _MATERIAL_INTENT_TERMS if term.lower() in text]
+
+
+def named_material_roles(user_message: str, role_specs: dict[str, Any]) -> list[str]:
+    """用户明确点名了哪些材质角色（"外墙用红砖"⇒ ``["facade_primary"]``）。
+
+    只认**角色同义词表里有的**说法，不做语义推断 —— 推断属于模型该干的活，
+    这里只判"有没有指名道姓"。用于判断"这次生成有没有真的材质变化"。
+    """
+
+    text = str(user_message or "")
+    return [
+        role for role, words in _ROLE_SYNONYMS.items()
+        if role in role_specs and any(word in text for word in words)
+    ]
+
+
+def needs_material_design(
+    user_message: str,
+    role_specs: dict[str, Any],
+    *,
+    has_catalog: bool,
+    procedural_materials_enabled: bool = False,
+) -> tuple[bool, str]:
+    """这次生成**是否需要材质设计决策**（与"有没有资产可匹配"无关）。
+
+    返回 ``(需要, 原因)``。三个真值：
+
+    - 用户明确提了材质/配色要求 ⇒ 需要（哪怕一张贴图都没有：合法参数材质本身就
+      承载设计，忽略用户要求等于把"有墙无洞"式的静默降级又搬回材质层）；
+    - 有资产或开了程序化配方 ⇒ 需要（要决定哪张贴图配哪个角色）；
+    - 其余 ⇒ 不需要，直接走确定性角色表。
+
+    🔴 **不要在这里判断资产数量来代替判断设计需求**（旧代码就是这么写的）：
+    "没有资产所以不需要设计"在无资产目录的机器上会静默吞掉全部配色要求。
+    """
+
+    terms = material_intent_terms(user_message)
+    roles = named_material_roles(user_message, role_specs)
+    if terms or roles:
+        detail = "、".join((terms + roles)[:4])
+        return True, f"用户明确提到材质/配色（{detail}）"
+    if has_catalog:
+        return True, "有可匹配的 PBR 资产，需要决定资产与角色的对应"
+    if procedural_materials_enabled:
+        return True, "程序化材质已启用，需要决定配方与角色的对应"
+    return False, "没有材质要求、也没有可匹配资产，走确定性角色表"
+
+
 ROLE_SPECS: dict[str, dict[str, Any]] = {
     "facade_primary": {
         "materialId": "wall_finish", "baseColor": [0.84, 0.82, 0.78],
@@ -353,6 +485,66 @@ def apply_resolved_material_plan(
     resolved_assets = material_plan.get("resolvedAssets") or {}
     blueprint["assets"] = deepcopy(resolved_assets) if isinstance(resolved_assets, dict) else {}
     return blueprint
+
+
+def material_region_field(role: str, target_type: str) -> str | None:
+    """区域应用与履约共享材质引用落点；不向不支持的构件写虚构 material。"""
+    from app.agent.generation.capability import capability_query
+    capability = capability_query(target_type)
+    fields = (capability.get("capability") or {}).get("fields") or {}
+    field = {"frame": "frameMaterial", "door": "leafMaterial", "glass": "glassMaterial"}.get(role)
+    return field if field in fields else "material" if "material" in fields else None
+
+
+def apply_material_regions(
+    blueprint: dict,
+    regions: list[dict[str, Any]] | None,
+    role_material_ids: dict[str, str],
+) -> list[dict[str, Any]]:
+    """P5-C：把「区域/构件 → 材质角色」的绑定落到已分配好的材质 id 上。
+
+    🔴 这一步**只换引用**，不新增材质：材质实体由 :func:`apply_resolved_material_plan`
+    按角色写好了，这里把某个区域/构件的 ``material`` 指向另一个角色的 ``materialId``。
+    角色不在方案里 ⇒ **不动**那条构件（保持类型默认角色），并把原因返回给调用方记缺陷
+    ——只标记不阻断：材质分区写错不该让整栋房子的墙消失。
+
+    判据用**类型**（``element_type`` / ``component_type``），不用 id 前缀：
+    id 命名会随编译演进，按 id 写规则等于把命名约定当契约。
+    """
+    applied: list[dict[str, Any]] = []
+    if not regions:
+        return applied
+    geometry = blueprint.get("geometry")
+    if not isinstance(geometry, dict):
+        return applied
+    for region in regions:
+        if not isinstance(region, dict):
+            continue
+        role = str(region.get("role") or "")
+        # 🔴 ``type`` 是**目标实体类型**（构件类如 railing/balcony，或元素类如
+        # wall/floor/roof），不是"要不要按区域扫"的开关。判据是它在**哪张表**里：
+        # 元素表（ELEMENT_ROLE）⇒ 只改那些元素；不在 ⇒ 改同名类型的构件。
+        # 早先写成"没 type 就扫全部元素"会把 ``role='roof'`` 理解成"改所有元素"，
+        # 于是地板楼梯一起被刷成屋顶材质。
+        target_type = str(region.get("type") or "")
+        material_id = role_material_ids.get(role)
+        if not material_id:
+            applied.append({
+                "role": role, "target": target_type or "（未指定类型）",
+                "applied": 0, "reason": f"材质方案里没有角色 {role!r}，该绑定未生效",
+            })
+            continue
+        field_name = material_region_field(role, target_type)
+        touched = 0
+        for entity in [*(geometry.get("elements") or []), *(geometry.get("components") or [])]:
+            if isinstance(entity, dict) and entity.get("type") == target_type and field_name:
+                entity[field_name] = material_id
+                touched += 1
+        applied.append({
+            "role": role, "target": target_type or "（未指定类型）", "applied": touched,
+            "reason": "" if touched else f"类型 {target_type!r} 无匹配实体或不支持该角色的材质字段",
+        })
+    return applied
 
 def _safe_color(value: Any, fallback: list[float]) -> list[float]:
     if (

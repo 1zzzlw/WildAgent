@@ -92,7 +92,7 @@ function appendDoorLeafDetails(
   halfDepth: number,
   detail: NonNullable<OpeningParams['_doorLeafDetail']>,
 ): void {
-  // 🔴 面板凸起深度受**门扇厚度**约束，不是可以随便加深的量级旋钮。
+  //  面板凸起深度受**门扇厚度**约束，不是可以随便加深的量级旋钮。
   // `wild-web/scripts/check-component-compiler.mjs` 断言门扇总厚（leafDepth + 两侧细部）
   // 落在 (0.04, 0.08]，即单侧最多 ~20mm。曾把这里改成"按门扇高度取比例"（2.5m 门 → 30mm），
   // 结果总厚算成 0.1168，被那条门禁当场判"门扇细节深度不合理"——它是对的：40mm 的门扇
@@ -130,10 +130,10 @@ function appendDoorLeafDetails(
     const handleXs = detail.doubleDoor
       ? [-gap * 0.65, gap * 0.65]
       : [
-          detail.hingeSide === 'left'
-            ? width / 2 - horizontalMargin * 0.65
-            : -width / 2 + horizontalMargin * 0.65,
-        ];
+        detail.hingeSide === 'left'
+          ? width / 2 - horizontalMargin * 0.65
+          : -width / 2 + horizontalMargin * 0.65,
+      ];
     const handleMinZ = side > 0 ? halfDepth : -halfDepth - handleRelief;
     const handleMaxZ = side > 0 ? halfDepth + handleRelief : -halfDepth;
     for (const handleX of handleXs) {

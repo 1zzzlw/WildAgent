@@ -6,7 +6,7 @@
 | 类别 | 含义 | 处置 |
 | --- | --- | --- |
 | ``defects`` | 图纸**错了**（引用悬空/尺寸越界/枚举越界） | **必须改图纸**，收敛环据 ``design_field`` 定位设计块 |
-| ``defaulted`` | 图纸**没说**，字段留给引擎默认值 | **档位决定**：低档接受；高档让模型补进图纸（🔴 **前置**：图纸层须有承接该字段的通道。门窗细部目前**没有**——`defaulted` 实测全部落在 `frameDepth`/`doorStyle` 这类字段上，而图纸只有"配额"没有"实例参数"，见 `docs-dev/2026-09-28-design-to-blueprint-compiler.md` §5.12） |
+| ``defaulted`` | 图纸**没说**，字段留给引擎默认值 | **档位决定**：低档接受；高档让模型补进图纸（ **前置**：图纸层须有承接该字段的通道。门窗细部目前**没有**——`defaulted` 实测全部落在 `frameDepth`/`doorStyle` 这类字段上，而图纸只有"配额"没有"实例参数"，见 `docs-dev/2026-09-28-design-to-blueprint-compiler.md` §5.12） |
 | ``unsupported`` | 能力缺失（引擎实现不了） | 只标记不阻断（红线），进交付清单 |
 | ``uncompiled`` | 编译器暂无派生规则（迁移指示，**不是**能力缺失） | 走模型通道；随规则补齐而缩小 |
 """
@@ -114,6 +114,7 @@ class CompileResult:
             #  - host_fallback：宿主没按原意配到，退用了第 N 条派生结果（错位）。
             "normalization_changes": list(self.stats.get("normalization_changes") or []),
             "instance_size_changes": list(overrides.get("size_changes") or []),
+            "material_regions": list(self.stats.get("material_regions") or []),
             "instance_dropped": list(overrides.get("dropped") or []),
             "instance_host_fallback": list(overrides.get("host_fallback") or []),
             # 形态表态的三类证据（`_apply_instance_form` 产出）。**必须出得来**：
@@ -138,6 +139,10 @@ class CompileResult:
                 for kind, keys in (overrides.get("form_unverified") or {}).items()
                 for key in keys
             ],
+            # P4：实例清单索引 → 产出实体 id 的唯一映射。履约验收（P4）靠它把
+            # "/decisions/components/3/host = main_L2_roof" 判成"真挂上去了"还是
+            # "退到了别处"；没有它只能 needs_review。**投影不出来 = 履约层永远判不了**。
+            "instance_entities": list(overrides.get("instance_entities") or []),
         }
 
 

@@ -10,6 +10,8 @@ from .plan import (
     ROLE_SPECS,
     compact_asset_catalog,
     material_role_specs,
+    named_material_roles,
+    needs_material_design,
     resolve_material_plan,
 )
 from .recipes import compact_procedural_catalog
@@ -49,14 +51,29 @@ async def material_planner(state: GenerationState) -> dict:
         if isinstance(materials.get("resolved_plan"), dict):
             existing_material_plan = materials["resolved_plan"]
 
-    # 确定性优先：没有任何可匹配的 PBR 资产时，LLM 的审美输出会被 ROLE_SPECS
-    # 兜底与白名单几乎全部覆盖（只剩概念文案与颜色微调），不值得付出一次串行 LLM
-    # 往返。此时直接走 resolve_material_plan(None, ...) 的确定性路径。
+    # P6-A：**"是否需要设计决策"与"是否有资产可匹配"是两个独立判断。**
+    # 旧实现用 ``elif catalog:`` 把两者绑成一个条件—— 无纹理资产时，用户提了
+    # 配色/材质要求也会被整段跳过，于是设计意图静默丢失。而合法参数材质
+    # （baseColor / roughness / metallic）根本不需要贴图就能承载设计。
+    needs_design, design_reason = needs_material_design(
+        str(state.get("user_message") or ""),
+        role_specs,
+        has_catalog=bool(catalog),
+        procedural_materials_enabled=procedural_materials_enabled,
+    )
+    if isinstance(design_document, dict):
+        intent = (design_document.get("decisions") or {}).get("materials") or {}
+        if intent.get("regions") or intent.get("keywords") or state.get("design_material_refresh") is True:
+            needs_design, design_reason = True, "设计文档包含显式材质意图或要求刷新"
     if existing_material_plan is not None and state.get("design_material_refresh") is False:
         raw_plan = existing_material_plan
         skipped_llm = True
+        #: 复用上一版 = 本轮**没有**重新做设计决策（没产生新的设计输出）。
+        design_decided = False
         logger.info("[material_plan] 修改未涉及材质，复用上一版受控材质方案")
-    elif catalog:
+    elif needs_design:
+        #: 本轮真的向模型要了材质设计（无论它成功还是失败）。
+        design_decided = True
         prompt = build_material_plan_prompt(
             architecture_plan,
             catalog,
@@ -66,10 +83,13 @@ async def material_planner(state: GenerationState) -> dict:
         )
         if callback:
             procedural_detail = "与程序化配方" if procedural_materials_enabled else ""
+            # 说清这轮**为什么**调模型：不是"有资产"，而是"有材质要设计"。
             await callback(
                 "material_plan",
-                f"正在根据{'物件' if object_scene else '建筑'}方案自动丰富材质语言，"
-                f"并匹配 PBR 素材{procedural_detail}...\n",
+                f"正在根据{'物件' if object_scene else '建筑'}方案设计材质语言"
+                f"（{design_reason}）"
+                f"{'，并匹配 PBR 素材' if catalog else '（本机无可用贴图，走参数材质）'}"
+                f"{procedural_detail}...\n",
             )
         try:
             llm_result = await invoke_llm(
@@ -108,9 +128,10 @@ async def material_planner(state: GenerationState) -> dict:
             logger.warning(f"[material_plan] 模型调用失败，使用受控回退材质: {exc}")
     else:
         skipped_llm = True
-        logger.info(
-            "[material_plan] 无可匹配 PBR 资产，跳过审美 LLM 调用，使用确定性材质方案"
-        )
+        design_decided = False
+        logger.info(f"[material_plan] 不需要材质设计决策（{design_reason}），用确定性材质方案")
+    if design_decided and error:
+        logger.warning(f"[material_plan] 需要材质设计但模型失败，本次意图未实现：{error}")
 
     plan = resolve_material_plan(
         raw_plan,
@@ -120,6 +141,14 @@ async def material_planner(state: GenerationState) -> dict:
         procedural_materials_enabled=procedural_materials_enabled,
         role_specs=role_specs,
     )
+    # P6-A 第7 条：模型失败/未调用时，"哪些材质意图没实现"必须**明确**，
+    # 不能让"回退到角色表"看起来像"本来就长这样"。判据 = 用户点名了哪些角色，
+    # 而最终方案里这些角色的材质**与角色表逐字段相同**（说明设计没起作用）。
+    unrealized_roles: list[str] = []
+    if not design_decided:
+        unrealized_roles = named_material_roles(
+            str(state.get("user_message") or ""), role_specs,
+        )
     resolved_design = state.get("resolved_design")
     role_repairs: list[str] = []
     if isinstance(design_document, dict):
@@ -156,6 +185,14 @@ async def material_planner(state: GenerationState) -> dict:
         # 诊断账本
         "material_diag": {
             "catalog_count": len(catalog),
+            # P6-A：决策依据要出得来。"跳过了模型调用"原来只有一个 bool，
+            # 看不出**为什么**跳过 —— 于是"没有材质要求"与"用户提了要求但被忽略"
+            # 在账本里长得一模一样。
+            "design_decided": design_decided,
+            "design_reason": design_reason,
+            "needs_material_design": needs_design,
+            # 用户点名了材质/配色，但本轮没做设计决策 ⇒ 这些意图未实现。
+            "unrealized_material_intents": unrealized_roles,
             "procedural_catalog_count": len(procedural_catalog),
             "selected_asset_count": len(plan["resolvedAssets"]),
             "selected_procedural_count": sum(
@@ -173,7 +210,7 @@ async def material_planner(state: GenerationState) -> dict:
             # 非空说明图纸里有过"看起来对、词表不对"的值，排查时先看这里。
             "instance_role_repairs": role_repairs,
             "token_usage": token_usage,
-            "prompt_chars": len(prompt) if catalog else 0,
+            "prompt_chars": len(prompt),
             "total_ms": int((time.time() - started) * 1000),
         },
     }

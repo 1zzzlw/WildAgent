@@ -147,6 +147,13 @@ function _expandPlacement(
 function getSurfaceCorners(parent: GeometryElement, face: string): { corners: number[][]; normal: number[] } | null {
   if (parent.type === 'roof' && (parent as any).roofType === 'gable') {
     const p = parent as any;
+    if (p.ridgeAxis === 'x') {
+      const surface = face === 'left' ? getGableLeftSurface(p.depth / 2, p.span / 2, p.height)
+        : face === 'right' ? getGableRightSurface(p.depth / 2, p.span / 2, p.height) : null;
+      if (!surface) return null;
+      return { corners: surface.corners.map(([x, y, z]) => [-z, y, x]),
+        normal: [-surface.normal[2], surface.normal[1], surface.normal[0]] };
+    }
     const hw = p.span / 2, hd = p.depth / 2, h = p.height;
     if (face === 'left') return getGableLeftSurface(hw, hd, h);
     if (face === 'right') return getGableRightSurface(hw, hd, h);

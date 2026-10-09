@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # 校验器版本：修改校验/修复工具语义时递增，让旧的 ValidationSnapshot 自动失效。
-VALIDATOR_VERSION = "1.0"
+VALIDATOR_VERSION = "2.0"
 
 
 def blueprint_fingerprint(blueprint: dict | None) -> str:
@@ -71,10 +71,17 @@ class ValidationSnapshot:
 
     blueprint_fingerprint: str = ""
     validator_version: str = VALIDATOR_VERSION
+    design_hash: str = ""
+    design_revision: int | None = None
+    design_brief_fingerprint: str = ""
     status: str = "complete"  # complete | partial | failed
     results: list = field(default_factory=list)  # PipelineStepResult
     design_errors: list = field(default_factory=list)
     issues: list = field(default_factory=list)  # 结构化 ValidationIssue
+    #: 🔴 P4 设计履约报告：**与几何校验分开记录**，不进 ``results``。
+    #: 几何门禁决定"能不能保存"，履约报告决定"用户要的东西兑现了没有"——
+    #: 两者混在一起会让"合法但不完整"变成"不许保存"。
+    fulfillment: dict | None = None
     error_count: int = 0
     warning_count: int = 0
     elapsed_ms: int = 0

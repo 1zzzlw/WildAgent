@@ -46,7 +46,7 @@ class TestShapeEnumTable:
         )
 
     def test_members_marked_volumes_really_have_a_branch(self):
-        """🔴 标了 `volumes` 就必须真有分支 —— 这是"加了成员忘了加行为"的唯一防线。
+        """ 标了 `volumes` 就必须真有分支 —— 这是"加了成员忘了加行为"的唯一防线。
 
         没有它，新成员会被当成"有几何行为"写进文档，实际却静默落回通用体量。
         """
@@ -80,7 +80,7 @@ class TestShapeEnumTable:
 
 
 class TestShapeNotAFilter:
-    """🔴 枚举是**提示词词表**，不是输出闸（项目宪法：禁设"模型能做什么"的允许列表）。"""
+    """ 枚举是**提示词词表**，不是输出闸（项目宪法：禁设"模型能做什么"的允许列表）。"""
 
     def test_out_of_enum_shape_survives_and_is_recorded(self):
         notes: list[str] = []
@@ -131,7 +131,7 @@ class TestRequestedShapeVocabulary:
             assert _requested_shape(message) == expected, message
 
     def test_scene_and_part_words_are_not_shape_statements(self):
-        """🔴 回归：场地词/部位词不得被当成形状表态。
+        """ 回归：场地词/部位词不得被当成形状表态。
 
         「在庭院里设计一个四角凉亭」在旧实现下被判成 `courtyard`，把模型的
         `pavilion`（与 KB 一致）顶掉了 —— 而两例的 `volumes` 完全相同。
@@ -193,7 +193,7 @@ class TestShapeVocabularyReachesTheDraftingPrompt:
 
 
 class TestKnowledgeBaseShapeVocabulary:
-    """🔴 KB 是"什么算合法"的第二实现：它教的取值必须是枚举成员。
+    """ KB 是"什么算合法"的第二实现：它教的取值必须是枚举成员。
 
     这条守卫是 `circle` 的发现机制：`cone-roof-system.md` 与
     `spherical-shell-massing.md` 都教模型写 `massing.shape: "circle"`，

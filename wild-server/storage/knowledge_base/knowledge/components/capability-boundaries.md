@@ -428,6 +428,18 @@ entity_type: railing
 }
 ```
 
+**设计层的宿主写法**（写进 `decisions.components[]`）：
+`host` 写体量，编译器按体量边界算出闭合 `path`：
+
+| `host` 写法 | 落位 |
+|---|---|
+| `<volume_id>`（如 `main`） | 该体量**顶层**的临空边缘 |
+| `<volume_id>_L<floor>` | 指定层的临空边缘 |
+| `railing:<volume_id>` / `railing:<volume_id>:<floor>` | 同上，与 `railing_slots` 的 id 同形 |
+
+**不要在图纸里写 `path`**：它是世界坐标，模型算不出体量边界在哪，
+写出来必飘在空中或跨过整栋楼。可表态的只有 `size.height` 与 `material_role`。
+
 上例生成玻璃栏板：沿每段 `path` 拉一块厚 0.02m、高 `1.1 × 0.92 = 1.012m` 的玻璃板，
 位于立杆之间；立杆与横杆仍按 `metal` 生成。
 

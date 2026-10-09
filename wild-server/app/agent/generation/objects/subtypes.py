@@ -111,7 +111,7 @@ GENERIC_KIND = "primitive"
 #: 引擎简化人物通道名。
 BODY_KIND = "body"
 
-#: 🔴 用于**尺度参照**的子类型：`default_size` / `long_axis` / `closest_axis` 在
+#:  用于**尺度参照**的子类型：`default_size` / `long_axis` / `closest_axis` 在
 #: 传入未注册子类型时要有一个可读的参照，取 `table`（尺寸容差最大）。
 #:
 #: ⚠️ 它**不是**兜底替身：这几个函数只处理"已知子类型下的缺省尺寸"，

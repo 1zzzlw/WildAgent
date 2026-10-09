@@ -1,4 +1,4 @@
-# 🔴 关键Bug修复：屋顶position丢失
+#  关键Bug修复：屋顶position丢失
 
 ## Bug描述
 
@@ -138,11 +138,11 @@ for (const m of rawMeshes) {
 
 ### 受影响的蓝图
 
-| 蓝图 | 屋顶材质 | 是否受影响 | 原因 |
-|------|---------|-----------|------|
-| cabin_v1.wild | roof_structure | ❌ 不受影响 | 材质不是roof_tile |
-| bieshu.wild | roof_tile | ✅ **受影响** | 屋顶主体被错误合并 |
-| tiantan.wild | roof_blue | ❌ 不受影响 | 材质不是roof_tile |
+| 蓝图          | 屋顶材质       | 是否受影响   | 原因               |
+| ------------- | -------------- | ------------ | ------------------ |
+| cabin_v1.wild | roof_structure | ❌ 不受影响   | 材质不是roof_tile  |
+| bieshu.wild   | roof_tile      | ✅ **受影响** | 屋顶主体被错误合并 |
+| tiantan.wild  | roof_blue      | ❌ 不受影响   | 材质不是roof_tile  |
 
 **注意**：tiantan虽然屋顶材质不是roof_tile，但如果其他蓝图使用roof_tile作为屋顶主体材质，也会受影响。
 

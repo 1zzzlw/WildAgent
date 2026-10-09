@@ -68,7 +68,7 @@ class GenerationState(TypedDict, total=False):
     # ── Layer -1: 意图分类 ──
     intent: str  # "generate" | "edit" | "chat"
     intent_target: str  # 从用户消息中识别出的操作对象，例如"别墅"或"正门"。
-    intent_target_kind: str  # "architecture" | "object"：本轮交付的是建筑方案还是单个物件。
+    intent_target_kind: str  # "architecture" | "object"：本轮交付的是建筑方案还是单个物件，属于路由字段。
     intent_profile: str  # 建筑形制短标签（分类器模型自选，如 villa/pavilion）；未定或非建筑为 "custom"。
     intent_requires_scene: bool  # 当前意图是否必须依赖已有 Blueprint 场景。
     intent_reason: str  # 分类器给出的简短、可展示判断理由。
@@ -124,6 +124,7 @@ class GenerationState(TypedDict, total=False):
     validation_warning_count: int  # 当前非阻断级校验警告数量。
     validation_cache_reused: bool  # final_validate 是否复用了 callback 已完成的校验快照。
     validation_snapshot: dict  # ValidationSnapshot 的 dict 形式，供 callback→final_validate 复用
+    design_fulfillment: dict | None  # P4 设计履约报告：已支持要求在最终 Blueprint 上的兑现情况（不参与保存门禁）
     failed_components: list[dict]  # 校验失败且可能进入定向修复的组件信息。
     passed_component_ids: list[str]  # 已通过校验、修复时应尽量保持不变的组件 ID。
     retry_count: int  # 已执行的修复轮次，仅用于审计/展示

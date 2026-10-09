@@ -23,6 +23,7 @@ def build_design_review_interrupt(
         "question": "请审核建筑设计，然后在恢复输入中批准或提出修改意见。",
         "document": document.model_dump(mode="json"),
         "resolved": resolved.model_dump(mode="json"),
+        "can_confirm": not bool(resolved.compile_blockers),
         "preview_url": (
             f"/api/designs/{document.session_id}/preview.svg?revision={document.revision}"
         ),

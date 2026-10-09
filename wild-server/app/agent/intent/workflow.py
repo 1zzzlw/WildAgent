@@ -56,6 +56,7 @@ async def classifier_node(state: dict) -> dict:
     # 风格包是建筑/立面风格（如"新中式""现代"），物件链没有立面可套，
     # 因此只在建筑目标上预选，避免给一张桌子塞进"欧式别墅"的风格约束。
     if decision.intent == "generate" and decision.target_kind == "architecture":
+        # TODO 后续需要详细设计风格包的约束逻辑，当前仅做轻量预选。
         result["style_preference"] = _infer_style_preference(str(state.get("user_message") or ""))
     return result
 

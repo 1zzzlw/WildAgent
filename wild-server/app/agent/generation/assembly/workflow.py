@@ -297,6 +297,9 @@ async def _finalize_merge(state: GenerationState) -> dict:
             components,
             design_brief,
             merged_blueprint,
+            # 已审核编译实体保留原布局；新增模型附属件仍走入口吸附。
+            fixed_ids={item.get("id") for item in (skeleton.get("geometry") or {}).get("components", [])}
+                if (state.get("design_document") or {}).get("status") in {"approved", "compiled"} else None,
         )
         components, balcony_layout = conform_balconies_to_slots(components, design_brief)
         components, railing_layout = conform_railings_to_slots(components, design_brief)

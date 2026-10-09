@@ -67,6 +67,7 @@ from app.agent.generation.architecture.facade import _plan_winding
 from app.agent.generation.architecture.profile import _SUPPORTED_ROOF_TYPES
 from app.agent.generation.component.registry import COMPONENT_REGISTRY
 from app.agent.generation.material.plan import (
+    apply_material_regions,
     apply_resolved_material_plan,
     material_role_specs,
 )
@@ -206,6 +207,7 @@ def _roof_style(plan: dict[str, Any], materials: dict[str, Any]) -> dict[str, An
         "type": "roof",
         "id": "roof_style_template",
         "roofType": _roof_type(plan),
+        "ridgeAxis": str(_roof_plan(plan).get("ridge_axis") or "x"),
         "height": 0.0,
         "thickness": _DEFAULT_ROOF_THICKNESS,
         "material": _roof_material(materials),
@@ -241,20 +243,12 @@ def _apply_pitched_heights(elements: list[dict[str, Any]]) -> int:
 
 
 def _single_roof(plan: dict[str, Any], materials: dict[str, Any]) -> dict[str, Any]:
-    """单一体量的整块屋顶。
-
-    多体量时 ``resolve_facade_layout`` 会给出 ``roof_slots``（逐块无重叠），
-    但**单一体量没有槽位**——既有设计把"整块屋顶的造型自由"留给了模型。
-    编译器这一侧必须自己补上，否则"零模型"就永远缺一块屋顶。
-
-    位置与尺度全部由 ``massing`` 算出：
-    ``position[1]`` = 建模层数 × 层高（承托墙顶），``span/depth`` = 体量宽深 + 双侧挑出。
-    """
-
-    massing = plan.get("massing") if isinstance(plan.get("massing"), dict) else {}
-    width = float(massing.get("width") or 10.0)
-    depth = float(massing.get("depth") or 10.0)
-    modeled_floors = int(massing.get("modeled_floors") or massing.get("floors") or 1)
+    """单体屋顶只消费与骨架相同的体量起点、跨度和承托层。"""
+    massing = plan.get("massing") or {}
+    volume = plan["volumes"][0]
+    width, depth = float(volume["width"]), float(volume["depth"])
+    x, z = float(volume["x"]), float(volume["z"])
+    modeled_floors = int(volume["end_floor"])
     floor_height = float(massing.get("floor_height") or 3.2)
     overhang = _roof_overhang(plan)
     roof_type = _roof_type(plan)
@@ -270,15 +264,16 @@ def _single_roof(plan: dict[str, Any], materials: dict[str, Any]) -> dict[str, A
         "type": "roof",
         "id": "roof_01",
         "roofType": roof_type,
+        "ridgeAxis": str(_roof_plan(plan).get("ridge_axis") or "x"),
         "span": span,
         "depth": span_depth,
         "height": height,
         "thickness": _DEFAULT_ROOF_THICKNESS,
         "material": _roof_material(materials),
         "position": [
-            round(width / 2, 3),
+            round(x + width / 2, 3),
             round(modeled_floors * floor_height, 3),
-            round(depth / 2, 3),
+            round(z + depth / 2, 3),
         ],
     }
 
@@ -333,6 +328,8 @@ def _cornice_candidates(
     for roof in roofs:
         roof_type = str(roof.get("roofType") or _FLAT_ROOF)
         edges = _ROOF_EAVES.get(roof_type)
+        if roof_type == "gable" and roof.get("ridgeAxis") == "x":
+            edges = tuple(("z" if axis == "x" else "x", sign) for axis, sign in edges)
         if edges is None:
             continue
         try:
@@ -418,7 +415,7 @@ def _chimney_candidates(
             "type": "chimney",
             "id": f"chimney_{roof.get('id')}",
             "parentRoof": str(roof.get("id") or ""),
-            "position": [0.0, 0.0, offset],
+            "position": [offset, 0.0, 0.0] if roof.get("ridgeAxis") == "x" else [0.0, 0.0, offset],
             "width": size,
             "depth": size,
             "height": height,
@@ -666,7 +663,7 @@ def _material_name_for_role(
 ) -> str:
     """设计侧**材质角色名** → 蓝图**材质名**（``blueprint.materials`` 的键）。
 
-    🔴 两个词表不是一回事：``ComponentInstance.material_role`` 用的是设计侧角色名
+     两个词表不是一回事：``ComponentInstance.material_role`` 用的是设计侧角色名
     （``frame`` / ``door`` / ``glass`` / ``roof`` / ``structure`` …），而构件字段
     （``frameMaterial`` / ``leafMaterial`` / ``material`` …）引用的是 ``blueprint.materials``
     的**键**（``metal`` / ``wood`` / ``glass`` / ``roof`` / ``concrete`` …）。直接把角色名
@@ -727,15 +724,24 @@ def _opening_expression(
         return None, 1
     occurrence = 1
     if ":" in host:
-        host, _, tail = host.rpartition(":")
+        head, _, tail = host.rpartition(":")
         if tail.isdigit():
             occurrence = max(1, int(tail))
+            host = head
     if host in walls:
         return host, occurrence
     if host.startswith("slot_"):
         wall_id = f"wall_{host[len('slot_'):]}"
         if wall_id in walls:
             return wall_id, occurrence
+    # 槽位 id 形如``wall_front_1:floor_1:door:1``：上面的``rpartition(":")``
+    # 会把 ``:door:1`` 一起吃掉，剩下的 ``wall_front_1:floor_1:door`` 不是墙 id。
+    # 它是**派生链自己的**开口槽位命名（``brief["opening_slots"]``），前缀
+    # ``<wall_id>:`` 就是宿主墙 —— 提示词教给模型的标准写法，必须认。
+    if ":" in host:
+        prefix = host.split(":", 1)[0]
+        if prefix in walls:
+            return prefix, occurrence
     if "_L" in host and plan:
         volume_id, _, suffix = host.rpartition("_L")
         level, _, face = suffix.partition("_")
@@ -824,7 +830,7 @@ def _positive_float(value: Any, fallback: float) -> float:
 #: :func:`_apply_instance_form` 的改道路由）；``ridgeHeight`` 是图纸词汇，
 #: 引擎字段是 ``height``（roof 是元素，只有 height）。
 #:
-#: 🔴 **本表必须是引擎字段闭集的子集**：键名对、落点不存在 = 静默失效
+#:  **本表必须是引擎字段闭集的子集**：键名对、落点不存在 = 静默失效
 #: （值落进了蓝图，引擎不读、校验器也看不见）。守卫见
 #: ``tests/compiler/test_component_instances.py::test_every_form_key_lands_on_an_engine_field``。
 #: 2026-10-08 据此删掉 ``roof.ridge_axis`` / ``roof.overhang`` —— 它们是**图纸层**
@@ -847,6 +853,7 @@ _INSTANCE_FORM_FIELDS: dict[str, frozenset[str]] = {
         "infillType", "infillMaterial",
     }),
     "roof": frozenset({"roofType", "ridgeHeight"}),
+    "column": frozenset({"style", "flutes", "entasis"}),
     "canopy": frozenset({"depth", "thickness", "supportCount", "supportSize"}),
     "light": frozenset({"fixtureType", "initiallyOn"}),
     "cornice": frozenset({"profile"}),
@@ -1143,6 +1150,84 @@ def _opening_defaults(
     return component
 
 
+def _railing_instance_defaults(
+    inst: dict[str, Any],
+    plan: dict[str, Any] | None,
+    brief: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """栏杆实例**追加**时的最小几何：按宿主体量边缘算一条闭合路径。
+
+    🔴 ``path`` 是**世界坐标**，绝不能让图纸写 —— 模型算不出体量边界在哪，
+    写出来的栏杆会飘在空中或跨过整栋楼。宿主认这几种写法（都归到"哪个体量的哪一层"）：
+
+    - ``<volume_id>`` —— 该体量顶层的临空边缘；
+    - ``<volume_id>_L<floor>`` —— 指定层；
+    - ``railing:<volume_id>[:<floor>]`` —— 与 ``railing_slots`` 的 id 前缀同形。
+
+    宿主体量解析不到 ⇒ 返回 None，让调用方整条丢弃并记 ``dropped``
+    （宁缺毋错：凭空给一条路径比没有栏杆更糟）。
+    """
+
+    host = str(inst.get("host") or "").strip()
+    if host.startswith("railing:"):
+        host = host[len("railing:"):]
+    level: int | None = None
+    if "_L" in host:
+        head, _, tail = host.rpartition("_L")
+        if tail.isdigit():
+            host, level = head, int(tail)
+    elif ":" in host:
+        # ``railing:main:2`` —— 与``brief["railing_slots"]`` 的 id 同形：
+        # 冒号后的纯数字是层号，不是出现序。
+        head, _, tail = host.rpartition(":")
+        if tail.isdigit() and head:
+            host, level = head, int(tail)
+    volumes = [
+        item for item in (plan or {}).get("volumes", []) if isinstance(item, dict)
+    ]
+    volume = next(
+        (item for item in volumes if str(item.get("id") or "") == host), None
+    )
+    if not isinstance(volume, dict):
+        # 只给了一个面（`main_front`）时按体量 id 再试一次。
+        volume = next(
+            (
+                item for item in volumes
+                if str(item.get("id") or "") and host.startswith(f"{item['id']}_")
+            ),
+            None,
+        )
+    if not isinstance(volume, dict):
+        return None
+    # floor_height 只在 ``brief["realization"]`` 里（brief 顶层是槽位表），别读错位置。
+    realization = (brief or {}).get("realization") if isinstance(brief, dict) else None
+    floor_height = _positive_float(
+        realization.get("floor_height") if isinstance(realization, dict) else None, 3.2,
+    )
+    if level is None:
+        level = int(volume.get("end_floor") or 1)
+    y = round(level * floor_height + 0.2, 3)
+    x0 = _positive_float(volume.get("x"), 0.0)
+    z0 = _positive_float(volume.get("z"), 0.0)
+    x1 = x0 + _positive_float(volume.get("width"), 0.0)
+    z1 = z0 + _positive_float(volume.get("depth"), 0.0)
+    size = inst.get("size") if isinstance(inst.get("size"), dict) else {}
+    return {
+        "type": "railing",
+        "id": f"railing_instance_{inst.get('_seq', 1):02d}",
+        "path": [
+            [round(x0, 3), y, round(z0, 3)],
+            [round(x1, 3), y, round(z0, 3)],
+            [round(x1, 3), y, round(z1, 3)],
+            [round(x0, 3), y, round(z1, 3)],
+            [round(x0, 3), y, round(z0, 3)],
+        ],
+        "height": _positive_float(size.get("height"), 1.1),
+        "postSpacing": 1.0,
+        "material": str(inst.get("material_role") or "frame"),
+    }
+
+
 def _compile_from_instances(
     instances: list[dict[str, Any]],
     blueprint: dict[str, Any],
@@ -1152,7 +1237,7 @@ def _compile_from_instances(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """从实例清单编译构件（§3.4 覆盖层）。
 
-    🔴 **唯一规则：实例 = 派生模板 + 形态/材质表态。** 几何一律沿用派生结果
+     **唯一规则：实例 = 派生模板 + 形态/材质表态。** 几何一律沿用派生结果
     （位置/主尺寸/宿主引用），实例不再自己算几何 —— 旧实现里 8 个 per-type
     builder 各写一套"宿主解析 + 位置计算 + 字段映射"，与派生链是 8 份重复实现，
     且产出字段屡屡越出引擎闭集（canopy.slope / chimney.capType / light 的五个
@@ -1194,6 +1279,11 @@ def _compile_from_instances(
     #: 不记的话这类**错位**（檐口挂到别的体量屋面）完全看不见。
     host_fallback: list[str] = []
     size_changes: list[dict] = []
+    #: P4：``/decisions/components/<i>/*`` 的**唯一实体侧证据**。没有这张表，
+    #: "模型要求第 3 个实例是带栏杆的阳台" 只能判 needs_review（类型级证据不足以
+    #: 定位到具体实例）。一条成功落地的实例记一条；被丢弃的实例也要记，
+    #: 否则"没做到"和"没查"在报告里长得一样。
+    instance_entities: list[dict[str, Any]] = []
     roof_hosts = _roof_host_aliases(blueprint.get("geometry", {}), brief, plan)
 
     geometry = blueprint.get("geometry", {})
@@ -1214,6 +1304,9 @@ def _compile_from_instances(
             inst["_seq"] = occurrence
             wall_id, nth = _opening_expression(inst, walls, plan)
             component: dict[str, Any] | None = None
+            #: P4：宿主**是否按图纸原意**解析到。履约层要判"/decisions/components/i/host"
+            #: 兑现与否，只能靠这个——它没法自己解析 `main_L2_roof` 这种体量级拼法。
+            host_intent = "none"
 
             if component_type in {"door", "window", "balcony"}:
                 template = (
@@ -1224,8 +1317,26 @@ def _compile_from_instances(
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
+                    host_intent = "resolved"
                 elif wall_id and isinstance(walls.get(wall_id), dict):
                     component = _opening_defaults(component_type, inst, walls[wall_id])
+                    host_intent = "resolved"
+            elif component_type == "column" and inst.get("relation"):
+                from app.design.relations import canopy_support_point
+                relation = inst["relation"]
+                try:
+                    context = {**blueprint, "geometry": {**geometry,
+                        "components": [*geometry.get("components", []), *components]}}
+                    top, bottom = canopy_support_point(context, relation)
+                    size = inst.get("size") or {}
+                    component = {"type": "column", "base": [top[0], bottom, top[2]],
+                                 "height": top[1]-bottom,
+                                 "bottomRadius": size.get("bottomRadius", 0.1),
+                                 "topRadius": size.get("topRadius", 0.1),
+                                 "style": "modern", "material": "concrete"}
+                    host_intent = "resolved"
+                except (ValueError, KeyError, TypeError, IndexError):
+                    component = None
             elif component_type == "light":
                 # 灯具没有 parentWall：按出现序对齐派生结果。host 解析不出墙
                 # 也照样配对（灯具是追加型，位置反正沿用派生）。
@@ -1261,20 +1372,33 @@ def _compile_from_instances(
                         "position": [5.0, 0.0, 5.0],
                     }
             elif component_type == "railing":
+                # 追加型：宿主是**楼板/体量边缘**。优先顶替同位置的派生栏杆；
+                # 没有派生栏杆时按宿主算一条闭合路径（世界坐标只由体量决定，
+                # 图纸不写 path —— 写了模型也写不准，且飘在空中）。
                 template = _template_for(geometry, "railing", None, occurrence)
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
+                    host_intent = "resolved"
+                else:
+                    component = _railing_instance_defaults(inst, plan, brief)
+                    if component is not None:
+                        host_intent = "resolved"
             elif component_type == "canopy":
-                # 追加型：宿主是门窗。优先顶替同门的**派生**雨棚；没有派生雨棚时
-                # 以宿主门窗为基准现算一条（位置=门顶、宽度=门宽微加宽）——
-                # 实例的 size.depth / size.thickness / form 才是可表态的部分。
+                # 追加型：宿主是**墙或墙上的门窗**。三种写法都认：
+                # 门窗实体 id、槽位 id（``wall_front_1:floor_1:door:1``，提示词教给
+                # 模型的标准写法）、墙 id / ``<volume_id>_L<floor>_<face>``。
+                # 之前只认前两种且要求派生结果带 ``parentOpening``，而派生链从不写
+                # 这个字段 —— 于是**任何**合规写法都落空、实例被静默丢弃
+                # （能力已实现却无人派发）。墙 id 走 ``_opening_expression`` 解析，
+                # 再取该墙上第一个真实门窗当遮蔽对象（注册表：雨棚必须有真实遮蔽物）。
+                raw_host = str(inst.get("host") or "")
                 template = next(
                     (
                         item
                         for item in _host_lookup(geometry)
                         if item.get("type") == "canopy"
-                        and item.get("parentOpening") == str(inst.get("host") or "")
+                        and item.get("parentOpening") == raw_host
                     ),
                     None,
                 )
@@ -1282,31 +1406,46 @@ def _compile_from_instances(
                     (
                         item
                         for item in _host_lookup(geometry)
-                        if item.get("id") == str(inst.get("host") or "")
+                        if item.get("id") == raw_host
                         and item.get("type") in {"door", "window"}
                     ),
                     None,
                 )
+                if host_opening is None:
+                    slot_wall, _nth = _opening_expression(inst, walls, plan)
+                    if slot_wall:
+                        host_opening = next(
+                            (
+                                item
+                                for item in _host_lookup(geometry)
+                                if item.get("type") in {"door", "window"}
+                                and str(item.get("parentWall") or "") == slot_wall
+                            ),
+                            None,
+                        )
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
+                    host_intent = "resolved"
                 elif isinstance(host_opening, dict):
+                    host_intent = "resolved"
                     opening_from = (
                         host_opening.get("from")
                         if isinstance(host_opening.get("from"), list)
                         else [0.0, 0.0, 0.0]
                     )
                     size = inst.get("size") if isinstance(inst.get("size"), dict) else {}
+                    canopy_width = _positive_float(size.get("width"), _positive_float(host_opening.get("width"), 1.0) + 0.3)
                     component = {
                         "type": "canopy",
                         "id": f"canopy_{occurrence:02d}",
                         "parentWall": host_opening.get("parentWall"),
                         "from": [
-                            float(opening_from[0]),
+                            round(float(opening_from[0]) + (float(host_opening["width"]) - canopy_width) / 2, 3),
                             float(opening_from[1]) + _positive_float(host_opening.get("height"), 2.0),
                             float(opening_from[2]),
                         ],
-                        "width": _positive_float(host_opening.get("width"), 1.0) + 0.3,
+                        "width": canopy_width,
                         "depth": _positive_float(size.get("depth"), 1.2),
                         "thickness": _positive_float(size.get("thickness"), 0.15),
                         "material": "roof",
@@ -1329,20 +1468,36 @@ def _compile_from_instances(
                 )
                 if template is None:
                     template = _template_for(geometry, component_type, None, occurrence)
+                    host_intent = "fallback"
                     if isinstance(template, dict) and raw_host:
                         # 兜底成功但**不是**按宿主配到的 ⇒ 记一笔，别让它静默错位。
                         host_fallback.append(f"{component_type}:{raw_host}")
+                else:
+                    host_intent = "resolved"
                 if isinstance(template, dict):
                     component = deepcopy(template)
                     replaced.append(template)
 
             if component is None:
                 dropped.append(f"{component_type}:{inst.get('host', '?')}")
+                instance_entities.append({
+                    "index": inst["_design_index"],
+                    "instance_id": inst.get("id"),
+                    "relation": inst.get("relation"),
+                    "declared_type": component_type,
+                    "declared_host": str(inst.get("host") or "") or None,
+                    "outcome": "dropped",
+                    "host_intent": host_intent,
+                    "host_sequence": occurrence,
+                    "entity_id": None,
+                    "entity_type": None,
+                    "entity_host": None,
+                })
                 continue
 
             # 显式实例统一改名：与派生产物的 id 词表（*_planned_* / *_synthesized_*）
             # 区分开，审计时一眼认出哪条来自实例清单。
-            component["id"] = (
+            component["id"] = inst.get("id") or (
                 f"{component_type}_{occurrence:02d}"
                 if component_type != "roof"
                 else f"roof_{occurrence:02d}"
@@ -1373,6 +1528,31 @@ def _compile_from_instances(
                     component["frameMaterial"] = str(inst["material_role"])
                 else:
                     component["material"] = str(inst["material_role"])
+            # 宿主字段各构件类型不统一（parentWall / parentRoof / parentOpening），
+            # 这里**读实体自身**而不是按类型硬编码——宿主键名会随引擎演进，
+            # 编译器不该替引擎宣布"合法宿主字段只有这三个"。
+            host_ref = next(
+                (
+                    (key, value)
+                    for key, value in component.items()
+                    if (key == "host" or key.startswith("parent")) and isinstance(value, str) and value
+                ),
+                (None, None),
+            )
+            instance_entities.append({
+                "index": inst["_design_index"],
+                    "instance_id": inst.get("id"),
+                    "relation": inst.get("relation"),
+                "declared_type": component_type,
+                "declared_host": str(inst.get("host") or "") or None,
+                "outcome": "compiled",
+                "host_intent": host_intent,
+                "host_sequence": occurrence,
+                "entity_id": str(component.get("id") or "") or None,
+                "entity_type": str(component.get("type") or "") or None,
+                "entity_host": host_ref[1],
+                "entity_host_field": host_ref[0],
+            })
             components.append(component)
 
             if applied:
@@ -1398,6 +1578,9 @@ def _compile_from_instances(
         "dropped": dropped,
         "host_fallback": host_fallback,
         "size_changes": size_changes,
+        # 按图纸下标排序：上面的循环是**按类型分组**跑的，直接投影出来顺序是乱的，
+        # 而这张表的消费方（履约报告、人读证据）都按 `/decisions/components/<i>` 理解。
+        "instance_entities": sorted(instance_entities, key=lambda item: item["index"]),
     }
 
 
@@ -1410,7 +1593,7 @@ def _apply_instance_overrides(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """把显式实例**叠加**到派生结果上（§3.4「轴网为主、显式为例外」）。
 
-    🔴 这是**叠加**，不是替换层。某一实例顶替成功，就**只**换掉它顶替的那一条
+     这是**叠加**，不是替换层。某一实例顶替成功，就**只**换掉它顶替的那一条
     （``replaced``，按对象 identity 定位），其余派生结果**照留**。
 
     最初的写法是"按类型整批换掉"。实测代价：一张只写了**一盏灯**的清单会把四个
@@ -1434,7 +1617,7 @@ def _apply_instance_overrides(
         component_type = str(item.get("type") or "")
         if not component_type:
             continue
-        (elements if component_type == "roof" else components).append(item)
+        (elements if component_type in {"roof", "column"} else components).append(item)
         explicit_kinds[component_type] = explicit_kinds.get(component_type, 0) + 1
     for item in replaced:
         if isinstance(item, dict) and item.get("type"):
@@ -1512,7 +1695,7 @@ def _compose(
         elements, roof_layout = conform_roofs_to_slots(
             [*elements, _roof_style(normalized, materials)], brief
         )
-    elif roof_min > 0:
+    elif roof_min > 0 and len(normalized.get("volumes") or []) == 1:
         # 无屋盖场景（quota.min == 0）不生成——判据取自图纸配额，不在这里另判一次。
         elements = [*elements, _single_roof(normalized, materials)]
         roof_layout = {"split": 0, "synthesized": 1}
@@ -1559,6 +1742,24 @@ def _compose(
 
     geometry["elements"] = elements
     geometry["components"] = components
+    # P5-C：区域/构件材质绑定。**必须排在几何全部落地之后** ——
+    # 早一步按类型扫，`components` 里还没有派生出来的阳台/栏杆，绑定会静默扫不到。
+    region_stats: list[dict[str, Any]] = []
+    if isinstance(material_plan, dict) and material_plan:
+        geometry["elements"] = elements
+        geometry["components"] = components
+        role_material_ids = {
+            str(item.get("role")): str(item.get("materialId"))
+            for item in material_plan.get("roles", [])
+            if isinstance(item, dict) and item.get("role") and item.get("materialId")
+        }
+        region_stats = apply_material_regions(
+            blueprint, _material_regions(normalized), role_material_ids,
+        )
+        # 绑定可能改写了最后一批构件的材质引用，重新读回（下面 stats 要按真实材质计数）。
+        elements = list(geometry.get("elements") or [])
+        components = list(geometry.get("components") or [])
+
     stats = {
         "normalization_changes": normalization_changes,
         "opening": opening_layout,
@@ -1574,6 +1775,8 @@ def _compose(
         "elevator": len(elevators),
         "from_instances": use_instance_list,
         "instance_overrides": instance_stats,
+        # P5-C：区域/构件材质绑定的逐条结果（角色缺失 / 没扫到实体都出得来）。
+        "material_regions": region_stats,
     }
     return blueprint, brief, stats
 
@@ -1681,7 +1884,7 @@ def _design_field_of_issue(message: str, blueprint: dict[str, Any]) -> str:
       井道墙 → ``decisions.circulation``；
     - 其余（``❌ 缺少顶层字段 'meta'`` 这类蓝图级）→ ``""``。
 
-    🔴 **认不出就返回空串，不猜。** 收敛环拿到空 ``design_field`` 只会"整图重出"；
+     **认不出就返回空串，不猜。** 收敛环拿到空 ``design_field`` 只会"整图重出"；
     猜错则会跑去改**另一个块**——那比不定位更糟（同一参数被两处夹取就会分叉）。
     """
 
@@ -1766,6 +1969,81 @@ def _validator_defects(
                 or (f"decisions.components[type={named}]" if named in COMPONENT_REGISTRY else ""),
             )
         )
+    return defects
+
+
+def _material_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    return plan.get("materials") if isinstance(plan.get("materials"), dict) else {}
+
+
+def _material_regions(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """读设计层的区域/构件材质绑定（P5-C）。
+
+    归一化方案里挂在 ``materials.regions``；也接受直接的 ``material_regions`` 键
+    （旧草案的叫法，两个都读免得静默丢一条用户写过的绑定）。
+    """
+    out: list[dict[str, Any]] = []
+    for source in (_material_plan(plan).get("regions"), plan.get("material_regions")):
+        for item in source or []:
+            if isinstance(item, dict) and item.get("role"):
+                out.append(item)
+    return out
+
+
+def _roof_override_defects(plan: dict[str, Any], brief: dict[str, Any]) -> list[CompileDefect]:
+    """P5-A：逐体量屋顶覆盖的**引用完整性与冲突**——恒 ``warn``，只标记不阻断。
+
+    🔴 为什么是 warn 而不是 error：体量覆盖写错（引用了不存在的体量、两条覆盖打架）
+    编译器**有兜底**（退回整栋模板，产物仍然合法可渲染）。按「能力缺失只标记、
+    不阻断」与「契约层不能比编译器严」两条，这属于"这一步表态没落地"，
+    必须出得来，不许把合法的整栋房子拦下来。
+
+    判据全部**结构化**（读 ``plan.roof.volumes`` 与槽位上的 ``volume`` 标记），
+    不做文案关键词匹配。
+    """
+
+    roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
+    raw_entries = [item for item in (roof.get("volumes") or []) if isinstance(item, dict)]
+    if not raw_entries:
+        return []
+    known = {
+        str(volume.get("id"))
+        for volume in (plan.get("volumes") or [])
+        if isinstance(volume, dict) and volume.get("id")
+    }
+    defects: list[CompileDefect] = []
+    seen: dict[str, dict[str, Any]] = {}
+    for entry in raw_entries:
+        volume = str(entry.get("volume") or "")
+        if known and volume not in known:
+            defects.append(CompileDefect(
+                code="roof_override_unknown_volume", severity="warn", target=volume or "roof",
+                evidence=(
+                    f"逐体量屋顶覆盖引用了不存在的体量 {volume!r}；"
+                    f"本次体量 id 为 {sorted(known)}。该条覆盖未生效，其余按整栋模板派生"
+                ),
+                design_field="decisions.roof.volumes",
+            ))
+            continue
+        values = {key: entry[key] for key in ("type", "overhang") if entry.get(key) is not None}
+        if volume in seen and seen[volume] != values:
+            defects.append(CompileDefect(
+                code="roof_override_conflict", severity="warn", target=volume,
+                evidence=(
+                    f"体量 {volume} 的屋顶覆盖写了不止一次且取值不同："
+                    f"{seen[volume]} 与 {values}。按后者生效，但这次表态本身有歧义"
+                ),
+                design_field="decisions.roof.volumes",
+            ))
+        seen[volume] = values
+    for slot in brief.get("roof_slots") or []:
+        if isinstance(slot, dict) and slot.get("override_conflict"):
+            defects.append(CompileDefect(
+                code="roof_override_conflict", severity="warn",
+                target=str(slot.get("volume") or slot.get("id") or "roof"),
+                evidence=f"体量 {slot.get('volume')} 的屋顶覆盖取值有歧义（见编译输入）",
+                design_field="decisions.roof.volumes",
+            ))
     return defects
 
 
@@ -1857,6 +2135,21 @@ def _capability_gaps(
     return unsupported, uncompiled
 
 
+def _partial_roof_coverage(brief: dict) -> bool:
+    volumes = (brief.get("realization") or {}).get("volumes") or []
+    for v in volumes:
+        for other in volumes:
+            if other["start_floor"] <= v["end_floor"]:
+                continue
+            x0, z0 = max(v["x"], other["x"]), max(v["z"], other["z"])
+            x1 = min(v["x"]+v["width"], other["x"]+other["width"])
+            z1 = min(v["z"]+v["depth"], other["z"]+other["depth"])
+            area = max(0, x1-x0) * max(0, z1-z0)
+            if 0.001 < area < v["width"]*v["depth"]-0.001:
+                return True
+    return False
+
+
 def compile_design(
     plan: dict[str, Any],
     *,
@@ -1891,6 +2184,22 @@ def compile_design(
         *_structure_defects(blueprint),
         # 数量缺口在 _validator_defects 内部恒为 warn（不依赖这里的缺口分类）。
         *_validator_defects(blueprint, brief),
+        # P5-A：逐体量屋顶覆盖的引用/冲突——同样恒 warn（有兜底就不阻断）。
+        *_roof_override_defects(plan, brief),
+        *([CompileDefect(code="roof_layout_unsupported", severity="error", target="roof",
+            evidence="当前屋型不能按多体量承托解析局部屋面，禁止用总体包围盒覆盖内院；需要设计修订",
+            design_field="decisions.roof")] if _quota_min(brief, "roof") > 0
+            and len((brief.get("realization") or {}).get("volumes") or []) > 1
+            and not brief.get("roof_slots") else []),
+        *([CompileDefect(code="roof_partial_coverage", severity="error", target="roof",
+            evidence="下层体量被上层部分覆盖，剩余局部屋面当前无法无损编译；需要设计修订",
+            design_field="decisions.volumes")] if _partial_roof_coverage(brief) else []),
+        *[CompileDefect(
+            code="material_region_unapplied", severity="warn",
+            target=str(item.get("target") or "materials"),
+            evidence=str(item.get("reason") or "材质绑定未落地"),
+            design_field=f"decisions.materials.regions[{index}]",
+        ) for index, item in enumerate(stats.get("material_regions") or []) if not item.get("applied")],
     ]
     result = CompileResult(
         mode=mode,

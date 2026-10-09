@@ -13,6 +13,15 @@ def field_changes(before: Any, after: Any, *, path: str = "", rule: str,
             return
         if old_exists and new_exists and old == new and type(old) is type(new) and not isinstance(old, dict):
             return
+        # 仅这些已声明可选字段的 null 与缺省等价；不忽略任意 form/null 或列表位置。
+        if target in {"/decisions/massing/tiers", "/decisions/balcony_width", "/decisions/roof/volumes"}:
+            if old is None and new is None:
+                return
+        if target in {"/decisions/required_components", "/decisions/detail_packages"}:
+            if (isinstance(old, list) and isinstance(new, list)
+                    and all(isinstance(v, str) for v in old+new)
+                    and len(old) == len(set(old)) and len(new) == len(set(new)) and set(old) == set(new)):
+                return
         if target in {"/geometry/elements", "/geometry/components"} and isinstance(old, list) and isinstance(new, list):
             old_by_id = {e.get("id"): e for e in old if isinstance(e, dict)}
             new_by_id = {e.get("id"): e for e in new if isinstance(e, dict)}
@@ -58,7 +67,7 @@ def field_changes(before: Any, after: Any, *, path: str = "", rule: str,
 def plan_changes(before, after, *, source="unknown"):
     from .contracts import ArchitectureDecisions
     # Use contract fields; plan-only derivatives are explicitly included below.
-    roots = set(ArchitectureDecisions.model_fields) - {"kind", "materials", "envelope", "complexity", "design_rationale"}
+    roots = set(ArchitectureDecisions.model_fields) - {"kind", "envelope", "complexity", "design_rationale"}
     roots.add("curtain_wall")
     old = before if isinstance(before, dict) else {}
     changes = field_changes({k:v for k,v in old.items() if k in roots},
@@ -128,3 +137,30 @@ def approved_compilation_changes(expected: dict, actual: dict) -> list[dict]:
     changes.extend(field_changes(old, retained(old, actual.get("materials", {})), path="/materials",
                                  rule="approved.compilation", source="approved_design"))
     return changes
+
+
+def without_null_fields(value: Any) -> Any:
+    """比较可选契约字段时统一缺省值与显式 null，不移除列表位置。"""
+    if isinstance(value, dict):
+        return {key: without_null_fields(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [without_null_fields(item) for item in value]
+    return value
+
+
+def semantic_design_fingerprint(document) -> str:
+    """只规范无序清单；pattern、path、profile 等有序数组保持次序。"""
+    import hashlib
+    import json
+    data = document.decisions.model_dump(mode="json", exclude_none=True)
+    data.pop("concept", None)
+    data.pop("design_rationale", None)
+    for key in ("required_components", "detail_packages"):
+        if isinstance(data.get(key), list):
+            data[key] = sorted(data[key])
+    for key in ("components", "volumes"):
+        items = data.get(key) or []
+        ids = [item.get("id") for item in items]
+        if items and all(ids) and len(ids) == len(set(ids)):
+            data[key] = sorted(items, key=lambda item: item["id"])
+    return hashlib.sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()

@@ -141,7 +141,7 @@ def test_produced_kinds_reads_both_buckets() -> None:
 def test_model_strategy_cannot_redispatch_compiled_kinds() -> None:
     """模型策略里含已产出类型时也不派 ``generate`` —— 这是**模型策略路径**上的过滤。
 
-    🔴 实测（2026-09-28 真模型探针）：编译已产出 door/window/roof，plan 仍派
+     实测（2026-09-28 真模型探针）：编译已产出 door/window/roof，plan 仍派
     ``generate_door`` / ``generate_window`` / ``generate_roof``，白烧约 200s 模型时间，
     且窗被生成两遍（27 → 54）。根因是过滤只挂在确定性降级路径（``_requested_kinds``），
     模型给了策略时走 ``ordered_kinds(strategy)`` 把它整个绕过了。
@@ -246,7 +246,7 @@ async def test_compiled_blueprint_passes_delivery_pipeline() -> None:
     编译器自带那三层（尺寸 / 引用 / 设计清单）只是交付门禁的子集。这一步不过，
     开关打开后交付的就是 partial/failed —— 那等于"确定性编译"只省了模型钱、却交不出东西。
 
-    🔴 **但这条测试不能只信流水线**：实测把门窗合成整段去掉（图纸点了 1 门 39 窗、
+     **但这条测试不能只信流水线**：实测把门窗合成整段去掉（图纸点了 1 门 39 窗、
     产物一个没有），22 步**照样全绿** —— 交付门禁只问"这份蓝图合不合法"，
     **不问"图纸点名的构件是否都到位"**（后者是 `validate_design_brief_constraints` 的职责，
     它不在 `run_validation_pipeline` 里）。所以下面必须自己钉住"产物非退化"，

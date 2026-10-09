@@ -73,7 +73,8 @@ def build_architecture_plan_prompt(
 
 {_json.dumps(current_plan, ensure_ascii=False, indent=2)}
 """
-    return f"""你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不设计房间布局。
+    return f"""
+你是建筑方案主创建筑师。只做体量、立面轴网和构件配额，不生成 WILD Blueprint，也不设计房间布局。
 
 # 任务
 
@@ -84,8 +85,9 @@ def build_architecture_plan_prompt(
 - 完整落实用户选择的关系并明确 structural_grid；仅当用户要求多体量时满足相应 min_volumes。细部包按功能选择，不强制退台、侧翼或固定套餐。
 - 该方案应通过非矩形或多体量关系、屋顶层次、或一个有功能依据的进深细部形成真实轮廓与阴影；具体策略由本次需求决定，不套建筑类型默认组件。
 - front 是最小 Z 的主立面，back 是最大 Z，left/right 分别是最小/最大 X。
-- ground_pattern / upper_pattern 的数组长度必须等于 bays。每个槽位是开口 token：`door`／`window`／`empty`，或写成 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。形态闭集：门 swing／slide／lift，窗 swing／slide／fixed（fixed = 固定窗，不可开启；门不许写 fixed、窗不许写 lift，写错会被退回纯类型）。不写冒号时形态由系统派生。upper_pattern 只能用 window／empty，即使建筑只有一层也禁止填写 door。
-- 某一层的 pattern **全为 `empty` = 该面在该层开敞无墙**（亭廊、骑楼、敞廊语义）。要保留实墙的面至少给一个开口槽位；开敞形制（亭/廊）把不要墙的面全写 empty，由柱承重。
+- ground_pattern / upper_pattern 的数组长度必须等于 bays。每个槽位是开口 token：`door`／`window`／`empty`／`open`，或写成 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。形态闭集：门 swing／slide／lift，窗 swing／slide／fixed（fixed = 固定窗，不可开启；门不许写 fixed、窗不许写 lift，写错会被退回纯类型）。不写冒号时形态由系统派生。upper_pattern 只能用 window／empty／open，即使建筑只有一层也禁止填写 door。
+- `empty` 与 `open` 语义不同，不能混用：`empty` = **有墙、这一格不开洞**；`open` = **这一面这一层不生成墙**（开敞面，由柱承重）。要开敞的面写 `open`；要实墙只是某格没洞，写 `empty`。
+- 要保留实墙的面至少给一个开口槽位；开敞形制（亭/廊）把不要墙的面全写 open。
 - 门只能出现在 ground_pattern。仅当 profile.require_front_entrance=true 时，front 才必须有且只有一个主门槽位。
 - ground_pattern 会在首层执行一次，upper_pattern 会在每个建模上层重复执行；其中每个 door/window 都会成为真实组件。component_quota 必须等于这些逐层 pattern 的实际总数，不能先画密集 pattern 再用较小配额抽样删减。
 - 方案至少建立一种可执行的构图关系，例如入口主次、上下层开口对位、成组对称或有理由的非对称、体量转折、屋顶层次、或与功能相符的进深细部。关系由本次需求选择，不绑定固定建筑类型和固定构件套餐。
@@ -105,8 +107,9 @@ def build_architecture_plan_prompt(
 - circulation：vertical_strategy 为 none/stair/core_and_stair；核心筒方案必须同时包含楼梯，多层建筑不能为 none。
 - 体量是逐层外轮廓的唯一来源：某层外轮廓只由覆盖该层的体量决定。规划退台时，任何跨越多个楼层的贯通构件（核心筒、电梯井、贯通竖向交通或通高墙体）都必须落在它经过的**每一层**体量并集之内，即收进 `start_floor..end_floor` 上全部存在的体量交集；不得伸进只存在于低楼层的退台翼，否则它在退台层会成为外凸的独立体块。必要时宁可让该体量贯通到顶层，也不要让核心筒跨进退台翼。
 - detail_packages：实际选用的附属组件名称数组，允许为空；只能用当前支持类型。
-- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern，槽位数量与 bays 一致。entrance_bay 与 door 槽位**只在用户要求入口/门或形制确有门时才写**；形制知识命中开敞建筑（亭/廊/榭等）时四面 pattern 全 empty、不写 entrance_bay、任何面不写 door——全空声明会被系统自动豁免主入口强制，不要用 door 去"满足"入口要求。
-- roof：**只给一块**屋顶的风格模板——type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。不要写成数组，也不要写 id/span/depth/position：多体量（L/U 形）与退台的分段屋面、出檐、贴合墙体并避开内院/天井，全部由系统按 volumes 自动派生。
+- facades：front/back/left/right 每面包含 bays、ground_pattern、upper_pattern，槽位数量与 bays 一致。entrance_bay 与 door 槽位**只在用户要求入口/门或形制确有门时才写**；形制知识命中开敞建筑（亭/廊/榭等）时四面 pattern 全写 open、不写 entrance_bay、任何面不写 door——全空声明会被系统自动豁免主入口强制，不要用 door 去"满足"入口要求。
+- roof：**只给一块**屋顶的风格模板——type 使用当前六种 roofType；ridge_axis 为 x 或 z；overhang 为非负数。不要写成数组，也不要写 id/span/depth/position：多体量（L/U 形）与退台的分段屋面、出檐、贴合墙体并避开内院/天井，全部由系统按 volumes 自动派生。确实需要"主楼坡顶 + 侧翼平顶"这类差异时，在 roof 里**额外**加一个 volumes 数组，每条形如「volume: 体量 id，type: 六种之一，overhang: 非负数」；体量 id 必须与 volumes 里的 id 完全一致，未列出的体量继承上面的模板。
+- materials：可选。`regions` 是「哪一类实体用哪种材质」的绑定数组，每条形如「role: 材质角色名，type: 目标实体类型」——role 用材质方案里已有的角色（roof／structure／facade_primary／floor 等），type 用实体类型（wall／floor／roof／column／light／railing 等）。默认同类型实体共用一种材质；只有当本次需求真的要求"某类实体与同类不同材质"（例如屋面要与外墙明显区分、灯具要金属感）时才写，不要为了凑字段而给全类型逐条绑定。没这个需求就整个不写 materials。
 - component_quota：按实际组件类型提供 min/max 整数及 note；如指定屋型可提供 type，不给未选择的组件硬配额。
 - required_components：本次真正需要的组件名称数组。
 - design_rationale：说明体量、入口、交通与构件选择如何满足用户要求的字符串数组。
@@ -192,7 +195,7 @@ def build_object_design_prompt(
   - `shape = "cylinder"` → 必填 `height`，并且给 `radius`，或给 `radiusTop` + `radiusBottom`（锥台）
   - `shape = "profile_sweep"` → 必填 `path`（至少 2 个点），可选 `profile`（截面点对）
 - 每个零件可给 `position`（**必填**，见下）、可选 `rotation`（弧度）、`material`。
-- 🔴 `position` 是零件中心相对**物件底面中心**的局部坐标：**X/Z 以物件中心为 0，
+-  `position` 是零件中心相对**物件底面中心**的局部坐标：**X/Z 以物件中心为 0，
   Y 以物件落地底面为 0**。所以一个高 0.36m 的圆柱体从地面立起要写 `position: [0, 0.18, 0]`
   （0.18 = 高度的一半）。最低的零件底面必须落在 `y = 0`，不要整体悬空。
 - 零件之间要**衔接**：该接触的面贴住、不要互相穿透，也不要出现明显悬空断层。
@@ -297,6 +300,18 @@ def build_material_plan_prompt(
     """
     import json as _json
     style_section = _style_preference_section(style_preference)
+    # P6-A：没有资产**不等于**不能做材质设计。合法参数材质（baseColor /
+    # roughness / metallic）不依赖任何贴图就能承载设计意图，必须把这句说清楚，
+    # 否则空列表会让模型以为自己无事可做，转而去编 assetId。
+    _no_asset_note = (
+        "\n> **本机当前没有任何可用的 PBR 纹理资产**（上面的列表是空的）。\n"
+        "> 这**不影响**你做材质设计：`assetId` 一律填 `null`，改用 `baseColor` /\n"
+        "> `roughness` / `metallic` 直接表达材质——颜色、粗糙度、金属度都是**参数**，\n"
+        "> 不需要贴图。用户的配色要求此时完全靠这些参数落地。\n"
+        "> 严禁编造 assetId 或任何纹理文件名。\n"
+        if not available_assets
+        else ""
+    )
     if object_scene:
         role_requirement = (
             "3. 只从 wood（木）、metal（金属）、glass（玻璃）、stone（石/混凝土）、"
@@ -376,6 +391,7 @@ def build_material_plan_prompt(
 
 {_json.dumps(available_assets, ensure_ascii=False, indent=2)}
 
+{_no_asset_note if not available_assets else ""}
 # AVAILABLE_PROCEDURAL_PRESETS（唯一允许选择的程序化配方）
 
 {_json.dumps(procedural_presets or [], ensure_ascii=False, indent=2)}
@@ -383,7 +399,7 @@ def build_material_plan_prompt(
 # 强制规则
 
 1. 你只设计材质意图，不生成纹理、不输出 URL、不修改灯光、曝光或阴影。
-2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值；`proceduralPresetId` 只能逐字引用 AVAILABLE_PROCEDURAL_PRESETS 中存在的值；没有合适候选必须使用 null，严禁猜测 ID。
+2. `assetId` 只能逐字引用 AVAILABLE_PBR_ASSETS 中存在的值（**列表为空就一律填 null**，不得猜测或编造任何 ID）；`proceduralPresetId` 只能逐字引用 AVAILABLE_PROCEDURAL_PRESETS 中存在的值；没有合适候选必须使用 null，严禁猜测 ID。
 {role_requirement}
 4. 单个角色最多选择一个资产，总体保持主材、辅材、点缀的层级，不制造随机拼贴。
 5. stone/concrete/brick/wood/plaster/tile 的 metallic 不得超过 0.15；metal 的 metallic 应为 0.5–1。

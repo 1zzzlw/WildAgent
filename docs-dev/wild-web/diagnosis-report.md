@@ -65,7 +65,7 @@
 2. **楼板高度错位**：`upper_floor` 的 `from[1]` 和墙体的 `to[1]` 可能不一致
 3. **开口定位错误**：门窗的 `from` 参数在弧形墙中需要特殊处理
 
-### 4. **真正的bug：开口(opening)坐标计算** 🔴
+### 4. **真正的bug：开口(opening)坐标计算** 
 
 查看 `resolveOpenings` 函数，我发现了一个问题：
 
@@ -99,7 +99,7 @@ const angle = startRad + opening.from[0] / radius;
 
 **这说明蓝图文件本身有问题**！
 
-### 5. 别墅的墙体坐标问题 🔴
+### 5. 别墅的墙体坐标问题 
 
 查看 `bieshu.wild` 的墙体定义：
 

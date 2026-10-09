@@ -416,6 +416,8 @@ export interface RoofParams {
   type: 'roof';
   id: string;
   roofType: 'gable' | 'hip' | 'dome' | 'flat' | 'chinese_curved' | 'chinese_pagoda';
+  /** 双坡屋脊轴；省略时保留历史 Z 轴。 */
+  ridgeAxis?: 'x' | 'z';
   span: number;
   depth: number;
   height: number;

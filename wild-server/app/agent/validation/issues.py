@@ -39,6 +39,8 @@ _ISSUE_CLASSIFICATION = {
     "validate_model_quality": ("model_instruction", "prompt"),
     "validate_collision": ("coverage_geometry", "deterministic_fix"),
     "validate_design_brief": ("model_instruction", "prompt"),
+    "approved_design_mutation": ("model_instruction", "design_revision"),
+    "approved_design_invalid": ("coverage_geometry", "design_revision"),
 }
 
 

@@ -132,6 +132,10 @@ class DesignRepository:
             )
         if current.status == "compiled":
             raise DesignConflictError("已编译设计必须先产生新 revision，不能降级为 approved")
+        resolved = resolve_design(current)
+        if resolved.compile_blockers:
+            raise DesignConflictError("当前草稿有确定性编译阻断，请修订后重新审核：" +
+                                      "；".join(d["evidence"] for d in resolved.compile_blockers))
         data = current.model_dump(mode="json")
         data["status"] = "approved"
         data["approved_at"] = utc_now_iso()

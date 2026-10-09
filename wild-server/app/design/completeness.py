@@ -73,7 +73,9 @@ def adopted_from_plan(raw: dict) -> list[dict]:
             # Descriptions and unrelated style labels are not machine-verifiable promises.
             if root == "massing" and key not in {"width", "depth", "floors", "floor_height", "modeled_floors", "shape", "tiers"}:
                 continue
-            if root == "roof" and key not in {"type", "ridge_axis", "overhang"}:
+            # P5-A：`volumes`（逐体量覆盖）同样是一条可核对的承诺，必须留下 ——
+            # 不收的话归一化会把它当"无关字段"丢掉，用户要的屋型差异无声消失。
+            if root == "roof" and key not in {"type", "ridge_axis", "overhang", "volumes"}:
                 continue
             target = "/decisions/" + root + ("/"+key if key is not None else "")
             choices.append(dict(id="choice."+target.removeprefix("/decisions/").replace("/", "."),
@@ -82,18 +84,19 @@ def adopted_from_plan(raw: dict) -> list[dict]:
     return choices
 
 
-def _matches(actual: Any, expected: Any) -> bool:
+def value_matches(actual: Any, expected: Any) -> bool:
+    """结构化取值比较（数值容差 0.001）。P2A 评价与 P4 履约共用同一份实现。"""
     # Additional schema defaults do not contradict an explicitly selected field.
     if isinstance(expected, dict):
-        return isinstance(actual, dict) and all(k in actual and _matches(actual[k], v) for k,v in expected.items())
+        return isinstance(actual, dict) and all(k in actual and value_matches(actual[k], v) for k,v in expected.items())
     if isinstance(expected, list):
-        return isinstance(actual, list) and len(actual)==len(expected) and all(_matches(a,e) for a,e in zip(actual,expected))
+        return isinstance(actual, list) and len(actual)==len(expected) and all(value_matches(a,e) for a,e in zip(actual,expected))
     if isinstance(expected, (float, int)) and not isinstance(expected, bool):
         return isinstance(actual, (float, int)) and not isinstance(actual, bool) and abs(actual-expected)<=0.001
     return type(actual) is type(expected) and actual == expected
 
 
-def _path_schema(document: DesignDocument, path: str) -> dict | None:
+def path_schema(document: DesignDocument, path: str) -> dict | None:
     """Read capability from the actual Pydantic schema rather than a second field catalog."""
     schema = type(document.decisions).model_json_schema()
     node = schema
@@ -134,14 +137,14 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
             status, reason = "needs_review", "尚无可靠的自动判定方法，需要审核"
         elif len(root) < 2 or root[0] != "decisions" or root[1] not in CHECK_ROOTS:
             status, reason = "unsupported", "当前设计协议没有可写入的对应字段"
-        elif _path_schema(document, c.target) is None:
+        elif path_schema(document, c.target) is None:
             status, reason = "unsupported", "目标字段不在当前设计契约中"
-        elif c.check == "equals" and "enum" in (_path_schema(document, c.target) or {}) and c.expected not in _path_schema(document, c.target)["enum"]:
+        elif c.check == "equals" and "enum" in (path_schema(document, c.target) or {}) and c.expected not in path_schema(document, c.target)["enum"]:
             status, reason = "unsupported", "目标值超出当前设计协议的枚举能力"
-        elif c.check == "equals" and (_path_schema(document, c.target) or {}).get("type") == "object" and not isinstance(c.expected, dict):
+        elif c.check == "equals" and (path_schema(document, c.target) or {}).get("type") == "object" and not isinstance(c.expected, dict):
             status, reason = "unsupported", "目标表达与当前对象协议不兼容"
         elif c.check == "equals":
-            same = _matches(actual, c.expected)
+            same = value_matches(actual, c.expected)
             if exists and same:
                 status = "satisfied"
         elif c.check == "contains":
@@ -178,8 +181,8 @@ def evaluate_design(document: DesignDocument, design_hash: str) -> list[DesignGa
             exists, actual = value_at(data, target)
             # Evidence is historical. A later explicit design revision can replace the
             # degraded value; do not keep reporting the old revision as a current defect.
-            still_degraded = exists == change.get("after_exists", True) and _matches(actual, change.get("after"))
-            supported = _path_schema(document, target) is not None
+            still_degraded = exists == change.get("after_exists", True) and value_matches(actual, change.get("after"))
+            supported = path_schema(document, target) is not None
             gaps.append(DesignGap(
                 id=f"gap.normalization.{trace.rule_id}.{trace.design_revision}.{index}",
                 constraint_id=next(iter(change.get("constraint_ids") or []), "request.source"),

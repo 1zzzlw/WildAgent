@@ -1,6 +1,6 @@
 """意图分类的模型调用通道：组装输入、调用模型、归一化输出。
 
-🔴 本模块的 ``invoke_llm`` 是**被桩件替换的调用缝**：测试通过
+ 本模块的 ``invoke_llm`` 是**被桩件替换的调用缝**：测试通过
 ``monkeypatch.setattr(app.agent.intent.classify, "invoke_llm", …)`` 或
 ``patch("app.agent.intent.classify.invoke_llm")`` 注入假模型。挪动它所在的模块
 必须同批改桩件路径——桩件不生效会真连模型并挂住。

@@ -2,7 +2,7 @@
 
 模板是写作辅助，不要求无信息的栏目占位。真实 Markdown 标题是实体边界，避免粗体 A/B/C 伪分块。
 
-🔴 文件级 frontmatter 只写"整篇共享"的字段；**同一文件里并列讲多个构件时，每个构件必须用自己的
+ 文件级 frontmatter 只写"整篇共享"的字段；**同一文件里并列讲多个构件时，每个构件必须用自己的
 `rag-meta` 声明 `entity_type`**，否则按构件检索命中不到（机制与后果见
 [chunk-contract.md](chunk-contract.md)）。
 

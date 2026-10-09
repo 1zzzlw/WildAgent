@@ -188,6 +188,10 @@ def _final_validate_dispatch(state: GenerationState) -> str:
 
     if state.get("terminal_model_error"):
         return "__end__"
+    if (state.get("repair_audit") or {}).get("stop_reason") in {
+        "design_revision_required", "repeated_candidate", "incomplete_candidate", "no_change", "no_action",
+    }:
+        return "__end__"
     if state.get("status") != "partial":
         return "__end__"
     retry_counts = state.get("component_retry_counts", {}) or {}

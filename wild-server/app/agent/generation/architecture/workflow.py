@@ -13,6 +13,7 @@ from app.agent.generation.architecture import (
     resolve_complexity_profile,
 )
 from app.agent.generation.architecture.design_workflow import draft_design_blocks
+from app.agent.generation.material.plan import material_mentions
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
@@ -93,10 +94,11 @@ async def architecture_planner(state: GenerationState) -> dict:
     # 把修订意见拼进请求串
     previous_plan = state.get("architecture_plan")
 
-    # 修订时沿用上一版复杂度目标；否则固定标准档（粒度分档已下线，2026-09-30）。
+    # 修订时沿用上一版复杂度目标；否则固定标准档。
     if isinstance(previous_plan, dict) and isinstance(previous_plan.get("complexity"), dict):
         complexity_profile = dict(previous_plan["complexity"])
     else:
+        # TODO 这个复杂度挡位会进入提示词中，并且目前的复杂度挡位还是固定的，所以后续需要考虑把复杂度挡位的选择权交给用户，或者根据用户的需求自动调整复杂度。
         complexity_profile = resolve_complexity_profile(user_message)
         
     on_reasoning_delta = get_reasoning_callback()
@@ -321,12 +323,17 @@ async def architecture_planner(state: GenerationState) -> dict:
             },
         }
     resolved_design = resolve_design(design_document).model_dump(mode="json")
-    material_feedback_terms = (
-        "材质", "材料", "颜色", "配色", "玻璃材质", "幕墙", "金属", "木", "石材",
-        "material", "color", "palette", "texture",
-    )
+    # P6-A 第 6 条：复用上一版材质的条件必须与**设计依赖**一致 ——
+    # 改相关表面/材质角色/用户提材质反馈 ⇒ 重新评估；纯几何修复（如屋顶坐标）
+    # 不该无故换掉全楼颜色。
+    #
+    # 🔴 判据只用 `material_mentions`（材质/配色/颜色这类**决策词**），不用"木""金属"
+    # 这类材质**名词**做子串匹配：反馈里出现"木门改玻璃门"是明确的材质变更（该刷），
+    # 而"把木梁换成混凝土柱"里"木"只是句子成分——两种情况靠同一张名词表根本分不开，
+    # 只能靠"这次反馈到底有没有在说材质"。
     refresh_materials = not isinstance(state.get("design_document"), dict) or any(
-        term in revision_feedback.casefold() for term in material_feedback_terms
+        term in revision_feedback.casefold()
+        for term in material_mentions(revision_feedback)
     )
     return {
         # 设计方案本体

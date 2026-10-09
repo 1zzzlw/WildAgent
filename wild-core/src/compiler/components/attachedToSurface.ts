@@ -137,7 +137,11 @@ function inferRoofOrigin(context: ComponentCompileContext): Vec3 {
 function roofSurfaceHeight(roof: RoofParams, localX: number, localZ: number): number {
   if (roof.roofType === 'flat') return roof.thickness
   const widthRatio = Math.min(1, Math.abs(localX) / (roof.span / 2))
-  if (roof.roofType === 'gable') return roof.height * (1 - widthRatio)
+  if (roof.roofType === 'gable') {
+    const slopeRatio = roof.ridgeAxis === 'x'
+      ? Math.min(1, Math.abs(localZ) / (roof.depth / 2)) : widthRatio
+    return roof.height * (1 - slopeRatio)
+  }
   const depthRatio = Math.min(1, Math.abs(localZ) / (roof.depth / 2))
   return roof.height * (1 - Math.max(widthRatio, depthRatio))
 }

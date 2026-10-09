@@ -1301,7 +1301,7 @@ def _profile_points(profile) -> list[tuple[float, float]] | None:
 def _profile_error(profile) -> str | None:
     """截面问题描述；``None`` = 合格。
 
-    🔴 **必须"先判类型、再判退化"**：旧实现在这里只做
+     **必须"先判类型、再判退化"**：旧实现在这里只做
     ``len(profile) < 3`` + 面积判断，于是把一个**类型错误**（图纸写的是
     ``"rectangular_80x60"`` 这种预设名，而不是截面点数组）报成"退化为直线"
     —— 修的是 A 病因，报的是 B 症状，修复模型只能靠猜（现场它猜了整整一段推理）。
@@ -1344,7 +1344,7 @@ def _default_cornice_profile() -> list[list[float]]:
 def fix_cornice_placement(blueprint: dict) -> str:
     """修复檐口配置：path 按宿主屋顶范围推导，profile 不合格时回落参考截面。
 
-    🔴 **判据必须与校验器用的是同一条**。旧实现用 ``len(cornice["profile"]) < 3``
+     **判据必须与校验器用的是同一条**。旧实现用 ``len(cornice["profile"]) < 3``
     当判据，而字符串 ``"rectangular_80x60"`` 长度是 19 ⇒ 修复器认定"无需修复"，
     接着 recheck 原样失败、错误被留到最终交付（现场日志：
     ``validate_cornice_placement [recheck]: ❌`` + ``fix_cornice_placement: 通过``）。

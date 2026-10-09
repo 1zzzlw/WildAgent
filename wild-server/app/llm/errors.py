@@ -98,7 +98,7 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
             "retryable": retryable,
             "terminal_current_run": True,
             "user_message": user_message,
-            # 🔴 兜底必须带原文与异常类型：分类器文案库永远追不上供应商网关的
+            #  兜底必须带原文与异常类型：分类器文案库永远追不上供应商网关的
             # 各种非标准报错，没有原文这条诊断就是死胡同（2026-09-29 排查教训）。
             "raw_error": f"{type(exc).__name__}: {raw_message}"[:500],
         }

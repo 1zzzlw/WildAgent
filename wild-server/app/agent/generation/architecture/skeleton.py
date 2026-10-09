@@ -7,7 +7,7 @@ from typing import Any
 
 from app.agent.generation.spatial.geometry import shared_footprint, shared_stair_layout
 from app.agent.generation.spatial.stair_openings import cut_stair_openings
-from app.design.openings import opening_kind
+from app.design.openings import is_open_side
 
 from .planning import normalize_architecture_plan
 from .profile import _fallback_volumes
@@ -16,11 +16,10 @@ from .profile import _fallback_volumes
 def _open_facade_sides(facades: dict[str, Any], level: int) -> set[str]:
     """某层"全空"的立面朝向集合——该面该层**开敞无墙**。
 
-    语义（2026-09-29 与 KB《亭与园林建筑的设计层表态》同批定）：立面 pattern
-    的槽位是"墙上开什么洞"的表达；一面在某一层的 pattern **全为 empty** =
-    设计点名这一面这一层不设墙（开敞亭廊、骑楼、月洞墙以外的敞面）。
-    首层读 ground_pattern，上层读 upper_pattern。facade 缺失或 pattern 不全
-    按"有墙"处理（安全默认——普通建筑的实墙不受影响）。
+    语义（P5-B）：立面 pattern 的槽位是"墙上开什么洞"的表达。两种写法都表示
+    开敞无墙：整面显式 ``open`` token；旧文档的 empty 在 DesignDocument 读取边界迁移。首层读 ground_pattern，
+    上层读 upper_pattern。facade 缺失或 pattern 不全按"有墙"处理（安全默认——
+    普通建筑的实墙不受影响）。
     """
     open_sides: set[str] = set()
     for side, facade in (facades or {}).items():
@@ -29,7 +28,7 @@ def _open_facade_sides(facades: dict[str, Any], level: int) -> set[str]:
         pattern = facade.get("ground_pattern" if level <= 1 else "upper_pattern")
         if not isinstance(pattern, list) or not pattern:
             continue
-        if all(opening_kind(str(token)) == "empty" for token in pattern):
+        if is_open_side(pattern):
             open_sides.add(str(side))
     return open_sides
 
@@ -633,7 +632,7 @@ def _append_vertical_core(
             core_runs.append(("partition", x0, mid_z, x1, mid_z))
         door_wall_side = "left"
         shaft_span = z1 - z0
-    # 🔴 分隔墙只在**双联井**里存在：单轿厢井再加一道分隔墙，会把 2.4m 面宽切成
+    #  分隔墙只在**双联井**里存在：单轿厢井再加一道分隔墙，会把 2.4m 面宽切成
     # 两格 0.9m（实测），而单井那扇居中的门恰好压在分隔墙身上 —— 井与门一起作废。
     # 电梯门洞尺寸：宽 0.9m（门扇 0.8m 级）、高 2.1m，双联井沿候梯面对称布置。
     # `from[0]` 是沿宿主墙从 `from` 端点起的距离，且指向门洞**左边缘**（不是中心）——
@@ -953,7 +952,7 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
                     "thickness": 0.2,
                     "material": "concrete",
                 })
-            # 🔴 立面 pattern 全空的面该层**开敞无墙**（亭廊/骑楼语义，
+            #  立面 pattern 全空的面该层**开敞无墙**（亭廊/骑楼语义，
             # 见 _open_facade_sides）——普通建筑的实墙面不受影响。
             open_sides = _open_facade_sides(normalized.get("facades", {}), level)
             if len(active_volumes) > 1:

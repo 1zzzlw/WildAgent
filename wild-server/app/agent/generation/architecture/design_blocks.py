@@ -72,14 +72,16 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "其中 {shape_volume_members} 有专门的体量派生（你没给 volumes 时按它生成）；"
             "其余（形制名，如 pavilion／tower／circle）的体量构成由你给的 volumes 表达。"
             "写了表外的名字不会被拦，但也不会有专门的几何行为。"
-            "width/depth/floor_height 为正数；"
+            "width/depth 是总体包络尺寸控制上限（米），不是以世界原点为边界的场地；floor_height 为正数；"
             "floors/modeled_floors 为正整数；representation_mode 为 full 或 schematic；"
             "symmetry 为布尔值。\n"
             "- 塔形/退台轮廓用 massing.tiers 表态：从底到顶逐段给 floors、width_ratio、depth_ratio"
             "（比例相对 massing.width/depth，0~1）；各段 floors 之和必须等于 massing.floors。\n"
             "  电视塔、宝塔、阶梯收分的高层**务必**用它表达轮廓收放，不要把整栋楼画成一个矩形体量。\n"
             "- volumes：体量数组，每项含 id、role(primary/secondary)、x、z、width、depth、"
-            "start_floor、end_floor。单体也要明确一个完整体量；多层单体不必拆成退台。\n"
+            "start_floor、end_floor。x/z 是世界平面起点，不是中心；矩形覆盖 [x,x+width]×[z,z+depth]。"
+            "允许整体平移及负坐标；体量并集跨度不得超出 massing.width/depth。坐标歧义必须显式纠正，不能裁剪。"
+            "单体也要明确一个完整体量；多层单体不必拆成退台。\n"
             "- 体量之间**不得重叠**，同层投影必须覆盖建筑轮廓（这是硬约束，不是审美）。\n"
             "- complexity 由系统按档位给出，**本块不要写 complexity**。\n"
             "- design_constraints：列出用户明确要求以及本方案采用的关键决定，不能只留在文案中。"
@@ -122,20 +124,23 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
         parallel_group="shell",
         contract=(
             "- facades：front/back/left/right 每面给 bays、ground_pattern、upper_pattern。\n"
-            "- 🔴 entrance_bay 与 door 槽位**只在用户要求入口/门、或形制确有门时才写**；"
-            "形制 KB 命中开敞建筑（亭/廊/榭等）时四面 pattern 全 empty、"
-            "不写 entrance_bay、任何面都不写 door——全空声明会被系统自动豁免主入口强制，"
+            "-  entrance_bay 与 door 槽位**只在用户要求入口/门、或形制确有门时才写**；"
+            "-  形制 KB 命中开敞建筑（亭/廊/榭等）时四面 pattern 全写 open、"
+            "不写 entrance_bay、任何面都不写 door——全开敞声明会被系统自动豁免主入口强制，"
             "**不要自行发明门（如月洞门）去\"满足\"入口要求**。\n"
             "- 槽位数量必须与 bays 一致；pattern 里每个 door/window 都会成为真实组件。\n"
-            "- 每个槽位是一个**开口 token**：`door`／`window`／`empty`，"
+            "- 每个槽位是一个**开口 token**：`door`／`window`／`empty`／`open`，"
             "或 `类型:形态` 显式指定形态（如 `door:slide`、`window:fixed`）。\n"
+            "- 🔴 `empty` 与 `open` 语义不同，别混：**empty = 有墙、这个开间不开洞**；"
+            "**open = 开敞、这个开间不设墙**。想表达「这面不要墙」就写 open，"
+            "写 empty 始终保留实墙。当前 open 必须整面使用，不支持与门窗或 empty 混用。\n"
             "- 形态闭集：门 `swing`(平开)／`slide`(推拉)／`lift`(提升·卷帘)；"
             "窗 `swing`(平开)／`slide`(推拉)／`fixed`(固定)。"
             "**门不许写 fixed（门必须能开），窗不许写 lift**；写错会被忽略、退回纯类型。\n"
             "- 不写 `:` 时形态由系统派生（通常为平开）。**写了就按写的渲染**。\n"
-            "- 🔴 某一层的 pattern **全为 empty = 该面在该层开敞无墙**（亭廊、骑楼、"
-            "敞廊语义）。要保留实墙的面至少给一个开口槽位；开敞形制（亭/廊）"
-            "把不要墙的面全写 empty，结构交给柱。\n"
+            "- 某一层的 pattern **全为 empty 或 open = 该面在该层开敞无墙**（亭廊、骑楼、"
+            "敞廊语义；要保留实墙的面至少给一个开口槽位，开敞形制把不要墙的面全写 open，"
+            "结构交给柱）。全 empty 是旧文档的兼容读法，新写法请直接用 open。\n"
             "- front 是最小 Z 的主立面，back 是最大 Z，left 是最小 X，right 是最大 X。"
         ),
         knowledge_queries=(
@@ -155,12 +160,16 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
         depends_on=("massing",),
         parallel_group="shell",
         contract=(
-            "- roof：**只写一块**屋顶的风格模板，恰好三个键：type（当前六种 roofType 之一）、"
+            "- roof：屋顶的风格模板，基础三个键：type（当前六种 roofType 之一）、"
             "ridge_axis（x 或 z）、overhang（非负数）。\n"
-            "- 🔴 不要写成数组，也不要写 id／span／depth／position——屋顶是**元素**："
+            "-  不要写成数组，也不要写 id／span／depth／position——屋顶是**元素**："
             "多体量（L/U 形）、退台的分段屋面、出檐、贴合墙体、避开内院/天井都由系统按 volumes "
             "**自动派生**，不在这里声明。写成数组或带上元素字段会被契约拒掉，"
-            "本块连着丢三轮后整块作废，你想表达的屋型与出檐一起丢。"
+            "本块连着丢三轮后整块作废，你想表达的屋型与出檐一起丢。\n"
+            "- volumes（可选）：想让**某个体量**用不同屋型时，加一个 volumes 数组，"
+            "每条只写「volume: 体量 id，type: 六种之一，overhang: 非负数」；"
+            "没写到的体量继承上面的模板。典型用法是主楼坡顶 + 侧翼平顶。"
+            "体量 id 必须与 volumes 块里写的 id 一致，写错会被记成缺陷并退回模板。"
         ),
         knowledge_queries=(
             KnowledgeQuerySpec(
@@ -171,10 +180,14 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
     ),
     DesignBlock(
         name="components",
-        fields=("component_quota", "components"),
+        fields=("component_quota", "components", "materials"),
         depends_on=("massing", "structure", "facade", "roof"),
         parallel_group=None,
         contract=(
+            "- 需要柱支撑雨棚时，给雨棚和柱稳定 id，柱 relation={kind:supports,target:雨棚id,"
+            "along_ratio:沿墙宽度0~1,depth_ratio:向外出挑0~1}；host 引用真实墙/开口。"
+            "左右关系按宿主方向定义，禁止靠四角柱数量冒充入口支撑。仅证明几何支承，不证明荷载安全。\n"
+
             "- component_quota：按实际组件类型给 min/max 整数及 note。\n"
             "- **不要写 door / window / roof 的上下限**——这三类由系统按立面逐层 pattern 与屋顶\n"
             "  自动派生，你写了也会被覆盖。请把配额写在这三类**之外**真正会落地的构件上，\n"
@@ -182,7 +195,7 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "- 不给未选择的组件硬配额；能力做不到的类型不要写进来（写了会被归入 `uncompiled`）。"
             "\n- components：具体实例数组，可为空；不要为了通过检查添加装饰。"
             "每项使用 type、host、size、form、material_role，配额不代替实例设计。"
-            "\n- 🔴 `size` 与 `form` 都必须是**对象**（一组「键: 值」），不是字符串："
+            "\n-  `size` 与 `form` 都必须是**对象**（一组「键: 值」），不是字符串："
             "`form` 的键只能是**引擎字段名**（如 `profile`／`roofType`／`postSpacing`／`frameWidth`），"
             "写形态名或风格名（`modern_flat`、`斜屋顶` 这类）会被实例契约拒掉，白烧一轮重出。"
             "\n- **material_role 只能是材质角色名**，合法值：{material_roles}。"
@@ -191,6 +204,14 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "你本来想表达的材质意图可能因此丢失。"
             "\n- 门窗 host 可用已定稿体量的 `<volume_id>_L<floor>_<front/back/left/right>`，"
             "同面第 n 个同类开口追加 `:n`；实际墙由编译器解析，不得猜未来墙 ID。"
+            "\n- **雨棚 canopy 的 host 写它要遮的那面墙**：可用 `<volume_id>_L<floor>_<面>`、"
+            "开口槽位 id（如 `wall_front_1:floor_1:door:1`）或墙 id；系统会自动取该墙上"
+            "真实存在的门/窗当遮蔽对象，把雨棚挂在洞口正上方。墙上没有任何门窗时"
+            "写了会整条丢弃（悬空雨棚是废构件）。`size.depth` / `size.thickness` 可表态。"
+            "\n- **栏杆 railing 的 host 写体量**（如 `main`）＝该体量顶层临空边缘，"
+            "或 `<volume_id>_L<floor>` 指定层、或 `railing:<volume_id>:<floor>`。"
+            "**不要自己写 path**（那是世界坐标，写出来必飘）：系统按体量边界算闭合路径，"
+            "你只表态 `size.height` 与 `material_role`。"
             "\n- 檐口 cornice / 烟囱 chimney 依附**屋面**，host 写它所依附体量的 id"
             "（如 `main`），也可写顶层屋面形式 `<volume_id>_L<顶层>_roof`；"
             "具体屋面元素 id 由编译器在编译期铸造，不要在图纸里编造一个看不出来的 id。"
@@ -204,6 +225,12 @@ DESIGN_BLOCKS: tuple[DesignBlock, ...] = (
             "\n- 门窗已有槽位时位置和主尺寸来自槽位，size 不覆盖槽位；"
             "form 可表达引擎已有的 frameWidth/frameDepth 等形态。"
             "其它构件须使用已提供的真实宿主，无法确定宿主时不编造实例。"
+            "\n- materials（可选）：`regions` 是「哪一类实体用哪种材质」的绑定数组，"
+            "每条只写「role: 材质角色名，type: 目标实体类型」——role 从 {material_roles} 里选，"
+            "type 用实体类型名（wall／floor／roof／column／light／railing 等）。"
+            "默认同类型实体共用一种材质；只有当本次需求真的要求「某类实体与同类不同材质」"
+            "（屋面要与外墙明显区分、灯具要金属感）时才写，别为凑字段给全类型逐条绑定。"
+            "没这个需求就整个不写 materials。"
         ),
         knowledge_queries=(
             KnowledgeQuerySpec(
@@ -288,6 +315,7 @@ _DESIGN_FIELD_ROOTS: tuple[tuple[str, str], ...] = (
     ("decisions.circulation", "structure"),
     ("decisions.component_quota", "components"),
     ("decisions.components", "components"),
+    ("decisions.materials", "components"),
 )
 
 #: 允许出现在 ``decisions.<root>`` 之后的定界符。只认这三种，是为了**不误配前缀**：
@@ -298,7 +326,7 @@ _DESIGN_FIELD_DELIMITERS = (".", "[", "<")
 def block_of_design_field(design_field: str) -> DesignBlock | None:
     """``design_field`` 串 → 该重出哪一块。**认不出返回 ``None``，不猜。**
 
-    🔴 猜错会让收敛环跑去改**另一个块**——那比不定位更糟：同一参数被两处改就会分叉
+     猜错会让收敛环跑去改**另一个块**——那比不定位更糟：同一参数被两处改就会分叉
     （`MEMORY.md` 里"同一参数被两处夹取就分叉"那条）。认不出时调用方应当停下来如实记账，
     而不是"随便挑一块重出"。
     """

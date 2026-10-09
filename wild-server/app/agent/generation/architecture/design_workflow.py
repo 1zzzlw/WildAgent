@@ -1,4 +1,4 @@
-"""设计期"逐块起草"执行器（设计文档 §1.6 的首次成图那一半）。
+"""设计期"逐块起草"执行器。
 
 块全部落定后交给 ``normalize_architecture_plan`` → ``build_design_document_or_error``。
 局部修订读取当前设计的稳定快照，仅返回本轮成功起草的字段。
@@ -13,7 +13,7 @@
 3. **块间不变量就地拦**：能精确定义的就拦（见 `check_block_contract`），
    定义不清的**不假装拦**——把不存在的检查写进注释比不写更糟。
 
-本模块被**两处**复用，共用同一套"块"的定义（设计文档 §1.6 的两半）：
+本模块被**两处**复用，共用同一套"块"的定义：
 
 - 首次成图：`architecture_planner` 逐块写全图；
 - 缺陷回改：`convergence.py` 按 `design_field` 映射回块，用 ``only_blocks`` **只重出那几块**。
@@ -42,8 +42,13 @@ from app.agent.generation.architecture.design_plan import (
     next_batch,
     start_batch,
 )
+from app.agent.generation.capability import (
+    capability_brief,
+    capability_query,
+    capability_type_labels,
+)
 from app.agent.plan.contracts import PlanItem
-from app.design.openings import opening_kind
+from app.design.openings import OPENING_KINDS, OPEN_SIDE, opening_kind
 from app.design.contracts import ComponentInstance, DesignConstraint
 from pydantic import ValidationError
 from app.llm.client import create_llm
@@ -151,7 +156,7 @@ def format_block_knowledge(knowledge_text: str) -> str:
 def _contract_error_notes(errors: list[dict[str, Any]]) -> str:
     """把 pydantic 校验错误译成**能照着改**的中文短句。
 
-    🔴 这段文本是**给模型的重试证据**（`_draft_one` 会把它拼进下一轮提示词），
+     这段文本是**给模型的重试证据**（`_draft_one` 会把它拼进下一轮提示词），
     不是给人看的日志。旧写法直接 `f"{explicit_errors}"` —— 模型收到的是
     `[{'type': 'model_type', 'loc': (), 'msg': 'Input should be a valid dictionary…',
     'url': 'https://errors.pydantic.dev/2.13/v/model_type'}]`：
@@ -189,6 +194,10 @@ def _contract_error_notes(errors: list[dict[str, Any]]) -> str:
     return "；".join(notes)
 
 
+#: 块拥有、但模型可以不写的字段（见 :func:`check_block_contract` 的必填判定）。
+_OPTIONAL_BLOCK_FIELDS = frozenset({"components", "design_constraints", "materials"})
+
+
 def check_block_contract(
     block: DesignBlock,
     picked: dict[str, Any],
@@ -196,7 +205,7 @@ def check_block_contract(
 ) -> str:
     """块落定前的就地检查。返回**空串 = 通过**，否则返回给模型看的证据。
 
-    🔴 只写**能精确定义**的不变量。含糊的检查（"体量好不好看""立面节奏对不对"）
+     只写**能精确定义**的不变量。含糊的检查（"体量好不好看""立面节奏对不对"）
     不在这里假装拦——它们不是可判定的。
 
     当前覆盖：
@@ -206,15 +215,31 @@ def check_block_contract(
       （长度不齐会让下游按 bays 切槽位时静默错位）；
     - `components`：配额是对象、实例满足现有契约；允许不选择额外装饰。
 
-    🔴 **一条反面教训**：不要拿"下游一定会覆盖的值"当门禁。`door`/`window` 的上下限由
+     **一条反面教训**：不要拿"下游一定会覆盖的值"当门禁。`door`/`window` 的上下限由
     `normalize_architecture_plan` 按立面 pattern 派生，曾用"必须与实际总数完全相等"去判，
     真模型连错 3 次 ⇒ **整块被丢弃**，连带丢掉这几种真正会被用的配额。
     """
 
-    # 历史输出可省略实例；缺失保留旧实例，显式 [] 才表示清空。
-    missing = [field for field in block.fields if field not in picked and field not in {"components", "design_constraints"}]
+    # 🔴 **可选字段**：块拥有但允许不写的字段。历史输出可省略实例（缺失保留旧实例，
+    # 显式 [] 才表示清空）；`materials` 只有在本次需求真要"某类实体换材质"时才写，
+    # 没这个需求就不写 —— 提示词里写的是"可选"，这里就必须同样判它可选，
+    # 否则提示词说可选、闸门报必填，模型只能靠反复重出来满足一个自相矛盾的契约。
+    missing = [
+        field for field in block.fields
+        if field not in picked and field not in _OPTIONAL_BLOCK_FIELDS
+    ]
     if missing:
         return f"缺少字段 {missing}"
+
+    if "materials" in picked:
+        from app.design.contracts import MaterialIntent
+        value = picked["materials"]
+        if not isinstance(value, dict) or set(value) - {"regions"}:
+            return "materials 仅允许 regions 字段，不能在构件块改写完整材质方案"
+        try:
+            MaterialIntent.model_validate(value)
+        except ValidationError as exc:
+            return f"materials.regions 不满足契约：{_contract_error_notes(exc.errors())}"
 
     # Give invalid explicit values back to the existing bounded block retry before
     # normalization degrades them. The contracts own supported fields and ranges.
@@ -229,7 +254,7 @@ def check_block_contract(
             if len(value) == 1:
                 value = value[0]
             else:
-                # 🔴 2026-10-08 现场：模型**按契约写对了**（契约当时命令"多体量必须按体量
+                #  2026-10-08 现场：模型**按契约写对了**（契约当时命令"多体量必须按体量
                 # 分别声明屋顶"），是 schema 收不下（`ArchitectureDecisions.roof` 是**单个**
                 # `RoofDecision`）。这种时候证据必须是**形状指令**，不能是 pydantic 的
                 # `model_type` repr —— 模型没有任何办法从那句话里猜到"只能写一块"。
@@ -264,6 +289,15 @@ def check_block_contract(
                         "每项必须写全 id、role、x、z、width、depth、start_floor、end_floor。"
                     )
 
+    if "volumes" in picked and "massing" in picked:
+        from app.design.coordinates import volume_conflicts
+        massing_values = {"modeled_floors": picked["massing"].get("floors", 1), **picked["massing"]}
+        if all(k in massing_values for k in ("width", "depth", "modeled_floors")) and all(
+                all(k in v for k in ("x", "z", "width", "depth", "end_floor")) for v in picked["volumes"]):
+            conflicts = volume_conflicts(picked["volumes"], massing_values)
+            if conflicts:
+                return "体量坐标冲突，必须修订显式字段：" + json.dumps(conflicts, ensure_ascii=False)
+
     if "design_constraints" in picked:
         if not isinstance(picked["design_constraints"], list):
             return "design_constraints 必须是数组"
@@ -297,15 +331,26 @@ def check_block_contract(
                         f"facades.{face}.{pattern_key} 长度 {len(pattern)} "
                         f"与 bays {bays} 不一致"
                     )
+                if any(opening_kind(t) == "open" for t in pattern) and not all(opening_kind(t) == "open" for t in pattern):
+                    return f"facades.{face}.{pattern_key} 当前只支持整面 open，不能混用门窗或 empty"
                 for token in pattern:
                     # §3.3：**类型**写错要当场让模型重写（带证据），否则归一化会把它静默
                     # 变成"空槽位"——那是在偷偷丢一扇窗。**形态**名写错不在这里拦：
                     # 归一化只把形容词降级、开口照留（红线：能力缺失只标记、不阻断）。
                     kind = opening_kind(token)
-                    if kind == "empty" and str(token).strip().lower() != "empty":
+                    # 判据同契约层：类型部分逐字合法即可，形态名不合法放过
+                    # （`window:casement` 归一化降级）；`empty:`/`open:` 带形态则拒。
+                    head = str(token).strip().lower().partition(":")[0].strip()
+                    if head not in OPENING_KINDS:
                         return (
                             f"facades.{face}.{pattern_key} 里的 {token!r} 不是合法开口，"
-                            "每一项只能是 door／window／empty，或写成 类型:形态"
+                            "每一项只能是 door／window／empty／open，或写成 类型:形态"
+                            "（empty=有墙无洞，open=开敞无墙）"
+                        )
+                    if head in {"empty", OPEN_SIDE} and ":" in str(token):
+                        return (
+                            f"facades.{face}.{pattern_key} 里的 {token!r} 不合法：{head} "
+                            f"表示{'有墙无洞' if head == 'empty' else '开敞无墙'}，不接受形态后缀"
                         )
                     if pattern_key == "upper_pattern" and kind == "door":
                         return f"facades.{face}.upper_pattern 不允许放 door（{token!r}）"
@@ -387,6 +432,46 @@ def render_block_contract(block: DesignBlock) -> str:
     return text
 
 
+#: 需要能力信息的块 —— 只有会写构件实例的块需要（引擎能力是**构件层**的知识）。
+#: 不给每个块都塞：把整个 schema 塞进提示词既浪费 token 又挤掉真正要写的约束。
+_CAPABILITY_BLOCK_FIELDS = ("components",)
+
+
+def format_capability_section(block: DesignBlock) -> str:
+    """块级引擎能力摘要（按需、按类型裁剪）。
+
+    🔴 事实源是``schema.json`` + ``COMPONENT_REGISTRY``（见
+    :mod:`app.agent.generation.capability`），**不是**这里另抄一份 —— P5 里
+    `canopy` 宿主语义在提示词与契约里都没定义，就是因为靠人写、没人校验。
+    """
+
+    if not set(block.fields) & set(_CAPABILITY_BLOCK_FIELDS):
+        return ""
+    #: 只展开**构件类**（写入 ``geometry.components`` 的类型）。元素类由骨架节点
+    #: 确定性派生，模型本轮不写它们 —— 把 wall/column/primitive 也列进来只是
+    #: 白占提示词预算。注册表里``is_element`` 的那一批就是元素类。
+    wanted = [
+        type_name for type_name in capability_type_labels()
+        if capability_query(type_name)["capability"]["target"] == "components"
+    ]
+    if not wanted:
+        return ""
+    lines = [
+        "",
+        "## 引擎能力（机械提取自 schema.json + 组件注册表，与引擎逐字段一致）",
+        "",
+    ]
+    for type_name in wanted:
+        brief = capability_brief(type_name)
+        lines.append(f"- {brief}")
+    lines += [
+        "",
+        "坐标语义与宿主约束是硬约束：写错会被编译期拒掉或让构件落到错误位置。"
+        "宿主 id 不要自己编——按上面的约束写法，系统会解析成真实实体。",
+    ]
+    return "\n".join(lines)
+
+
 def build_block_prompt(
     base_prompt: str,
     block: DesignBlock,
@@ -405,7 +490,7 @@ def build_block_prompt(
         "",
         f"本轮是**分块起草**，你这一轮只负责 `{block.name}` 块。",
         "",
-        # 🔴 只写"这些字段"还不够 —— **键名和嵌套形态**必须一起送到（2026-10-08 事故）：
+        #  只写"这些字段"还不够 —— **键名和嵌套形态**必须一起送到（2026-10-08 事故）：
         # 基础提示词里的"顶层直接给出唯一最终方案的字段"说的是整份方案，分块后它会被
         # 误读成"把子字段平铺到顶层"。现场实测：模型把 `massing` 的子字段
         # （shape/width/depth…）当成了顶层对象、`volumes` 另起一行写成 `volumes: [...]`，
@@ -427,6 +512,9 @@ def build_block_prompt(
         "",
         "其余字段**已定稿**，由系统提供；写它们会被忽略，且浪费你的注意力。",
     ]
+    capability_section = format_capability_section(block)
+    if capability_section:
+        lines.append(capability_section)
     knowledge_section = format_block_knowledge(knowledge_text)
     if knowledge_section:
         lines.append(knowledge_section)
@@ -476,6 +564,7 @@ async def draft_design_blocks(
     current_plan: dict[str, Any] | None = None,
     allow_design_changes: bool = False,
     max_attempts: int | None = None,
+    call_accounting: dict | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """逐块起草，返回 ``(draft, diag)``。
 
@@ -495,6 +584,7 @@ async def draft_design_blocks(
     """
 
     # 只读基准与本轮增量分开；未成功重写的字段不会清空旧方案。
+    accounting = call_accounting if call_accounting is not None else {"model_calls": 0}
     baseline = deepcopy(current_plan or {})
     draft: dict[str, Any] = {}
     blocks = ordered_blocks("standard")  # 固定使用标准档位（粒度选择已下线，2026-09-30）
@@ -557,7 +647,7 @@ async def draft_design_blocks(
                             contract=block.contract.split("- design_constraints：", 1)[0]
                             + "设计决定已冻结，本轮不要输出 design_constraints。")
         prompt = build_block_prompt(base_prompt, block, context, defects, allow_design_changes=allow_design_changes)
-        # 🔴 块级检索（§1.5）在**每次起草尝试前**只做一次：提示词重建（重试时追加
+        #  块级检索（§1.5）在**每次起草尝试前**只做一次：提示词重建（重试时追加
         # "上一次输出未通过"）不重查库。命中进本块提示词，也进诊断。
         knowledge_text = ""
         knowledge_diag: dict[str, Any] = {"queries": 0, "chars": 0, "hits": [], "error": ""}
@@ -577,12 +667,14 @@ async def draft_design_blocks(
         attempts = 0
         settled = False
         last_issue = ""
+        rejected_attempts = []
         llm_ms = 0
         llm_chars = 0
         usage_total: dict[str, Any] | None = None
 
         while attempts < item.run.max_attempts and not settled:
             attempts += 1
+            accounting["model_calls"] += 1
             started = _time.time()
             content = ""
             usage: dict[str, Any] | None = None
@@ -622,7 +714,7 @@ async def draft_design_blocks(
                     ),
                 )
                 if loop_result.diag.get("error"):
-                    # 🔴 **模型调不通必须上抛**，不能像 plan 条目那样只记诊断：
+                    #  **模型调不通必须上抛**，不能像 plan 条目那样只记诊断：
                     # 调用方要拿它走 `model_failure_result` 终止本轮（"服务坏了"不该被
                     # 伪装成"模型不会写"，更不该按"输出不是 JSON"白重试 3 次）。
                     # `run_tool_loop` 为 plan 条目设计，那里吞掉异常是对的；这里显式翻转。
@@ -650,7 +742,7 @@ async def draft_design_blocks(
 
             raw = extract_json_object(content)
             picked = _pick_block_fields(raw, block)
-            # 🔴 判据分两种，别混成一句话（2026-10-08 事故）：
+            #  判据分两种，别混成一句话（2026-10-08 事故）：
             #  - `raw is None` 才是"没给出合法 JSON 对象"；
             #  - 给出了对象、只是**顶层键不对**时，必须让 `check_block_contract` 说出
             #    **缺了哪些键** —— 它的 `missing` 分支就是为这一刻写的。
@@ -691,6 +783,7 @@ async def draft_design_blocks(
             "llm_chars": llm_chars,
             "last_issue": last_issue if not settled else "",
             "knowledge": knowledge_diag,
+            "rejected_attempts": rejected_attempts,
         }
         diag_blocks.append(row)
         if on_reasoning_delta is not None:
@@ -766,6 +859,7 @@ async def draft_design_blocks(
         ),
     }
     diag = {
+        "model_calls": accounting["model_calls"],
         "blocks": ordered_rows,
         "unsettled_blocks": unsettled,
         "token_usage": total_usage,

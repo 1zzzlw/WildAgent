@@ -28,7 +28,7 @@ rules/{implementation,conditional,design-choice}  # 实现约束 / 条件约束 
 - **知识目录（写作目标，同时也是运行时唯一读取的那一份）**：`wild-server/storage/knowledge_base/`。
   路径级 metadata 在 `config.yaml` 的 `defaults` + `mapping_rules`；人读分类法在该文件的 `classification:` 段；
   完整性清单在 `required_documents`。
-  🔴 旧 v1 库已删除、**不存在双库**，所以**改完文档就会直接影响线上检索**——不需要再声明"未接线"这类前提。
+   旧 v1 库已删除、**不存在双库**，所以**改完文档就会直接影响线上检索**——不需要再声明"未接线"这类前提。
   代码里的读取点：`app/services/agent_service.py`（`_KB` 与 `BASE_SPEC_PATHS`）、
   `app/agent/generation/architecture/recipes.py`（幕墙确定性参数）、`app/agent/validation/*`。
   开发阶段不分版本，**不要再新建 `knowledge_base_v2/` 之类的目录**。
@@ -102,7 +102,7 @@ rules/{implementation,conditional,design-choice}  # 实现约束 / 条件约束 
 6. 配置 `knowledge_role`、`applies_to` 和来源。`applies_to` 只包含能显式选择专用系统或构件变体的术语，不能写建筑用途、风格、"生成、建筑、wall"等泛词。目录能给出的字段交给 `config.yaml` 的 `mapping_rules`，不要在每个文件里重复抄一遍。
    新增、移动或删除活动 Markdown 时，同步维护 `config.yaml` 的 `required_documents`，该清单是**真门禁**
    （`scripts/deploy/deployment_preflight.py`，Jenkinsfile 部署前调用，当前硬编码指向 v1 `storage/knowledge_base`）。
-   🔴 **只列 `.md`**：preflight 断言每条都以 `.md` 结尾、非绝对路径、不含 `..`、不重复 —— 别把 `schema.json` 写进去。
+    **只列 `.md`**：preflight 断言每条都以 `.md` 结尾、非绝对路径、不含 `..`、不重复 —— 别把 `schema.json` 写进去。
 7. 用户已授权全量更新或入库时直接整合并适配消费者。授权仅讨论时提供诊断与可审阅方案。不要重复请求已给出的授权。
 8. 搜索提示词中重复的固定数量、固定尺寸、对称方式或风格套餐；实现代码只应保留字段、宿主、编译及已批准槽位约束。
 9. 执行静态检查、真实分片预览和与改动相关的检索/代码回归。失败时继续修正可处理部分；系统环境阻断须如实报告，不把静态检查当作运行验证。
@@ -150,11 +150,11 @@ wild-server/.venv/Scripts/python.exe wild-server/scripts/rag/smoke_test.py
   **零 `error`**，而 `Jenkinsfile`（`uv run … pytest tests -q`）会跑这个测试文件。
   因此**本库里它报的 `error` 必须清干净**，否则 CI 直接红。
   （`warning` 不影响：`redundant_path_metadata` / `short_section` / `empty_container_heading` 属内容优化 backlog。）
-- 🔴 **`source` 不再是必需键**（`REQUIRED_METADATA` 已移除）。它不在
+-  **`source` 不再是必需键**（`REQUIRED_METADATA` 已移除）。它不在
   `MarkdownChunker._DOCUMENT_METADATA_FIELDS` 白名单里，Loader 根本不读它，对召回零影响；
   前后端分部署后前端路径也失去意义。人工溯源改用 `authority` + `knowledge_revision`。
   **不要为了让脚本变绿把 `source: wild-web/...` 加回文档。**
-- 🔴 **代码围栏的两种语言是有分工的**（`lint_wild_rag_docs.py:499` 只严格校验 ` ```json `）：
+-  **代码围栏的两种语言是有分工的**（`lint_wild_rag_docs.py:499` 只严格校验 ` ```json `）：
   - ` ```json ` —— 可被代码解析、或模型能直接照抄的**最小示例**，必须**严格合法 JSON**（不能有 `//` 注释、`...`、尾逗号）。
     `app/agent/generation/architecture/recipes.py` 会用正则抓 ` ```json ` 块，改错语言会让配方失效。
   - ` ```jsonc ` —— 带 `//` 注释或 `...` 省略号的**教学示意/反例**（如"❌ 这样写会……"），不参与严格校验。

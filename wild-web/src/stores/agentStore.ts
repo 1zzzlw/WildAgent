@@ -126,7 +126,7 @@ function normalizeLoadedTurns(value: unknown, interruptRunning = true): AgentTur
       turn && typeof turn === 'object' && typeof turn.request_id === 'string',
     ))
     .map(turn => {
-    if (!interruptRunning || turn.status !== 'running') return turn
+      if (!interruptRunning || turn.status !== 'running') return turn
       return {
         ...turn,
         status: 'error' as const,
@@ -449,7 +449,7 @@ export const useAgentStore = defineStore('agent', () => {
       }
       turn.steps.push(step)
     }
-    // 🔴 两条通道分开存：「执行说明」是代码写的进度句，「模型过程」是模型的原始思考。
+    //  两条通道分开存：「执行说明」是代码写的进度句，「模型过程」是模型的原始思考。
     // 混在一条缓冲里既分不开（标签只能取最后一次的通道），重跑时还会串在一起。
     if (channel === 'progress') {
       step.thinking += delta

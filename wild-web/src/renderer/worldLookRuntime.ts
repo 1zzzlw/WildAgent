@@ -42,7 +42,7 @@ const defaultWorldLook: WorldLookProfileManifest = {
     dust: 'surface.dust.v1',
   },
   appearance: {
-    // 🔴 光照倍率必须全部是 1：默认 profile 是**艺术方向**的载体，不是"补亮"的载体。
+    //  光照倍率必须全部是 1：默认 profile 是**艺术方向**的载体，不是"补亮"的载体。
     // 这三个数原本是 1.08 / 0.9 / 1.03 —— 那是"没有 IBL、场景整体偏暗"时代的补光。
     // S0 把 IBL 接进来之后它们成了 3%~8% 的系统偏差，而偏差只发生在编辑器
     // （查看器不读 worldLook profile）⇒ "查看器与编辑器同一套光照"这句话就不成立了。
@@ -90,7 +90,7 @@ class WorldLookRuntime {
 
   registerProfile(profile: WorldLookProfileManifest): () => void {
     const existing = this.profiles.get(profile.profileId)
-    if (existing && JSON.stringify(existing) === JSON.stringify(profile)) return () => {}
+    if (existing && JSON.stringify(existing) === JSON.stringify(profile)) return () => { }
     if (existing) {
       throw new Error(`World look profile already registered: ${profile.profileId}`)
     }

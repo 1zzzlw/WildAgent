@@ -238,7 +238,7 @@ def test_thinking_mode_keeps_both_the_tool_and_the_reasoning_stream(monkeypatch)
     delta"。事实是**回调是模型级的**（挂在 `config["callbacks"]` 上），跟图级流无关——
     `agent_service` 的最终回答 agent 早就这么用了。既然不用二选一，就该两个都要。
 
-    🔴 这条断言是"反面判据"：把互斥改回来（比如又让 `probe_specs` 在思考模式下为空），
+     这条断言是"反面判据"：把互斥改回来（比如又让 `probe_specs` 在思考模式下为空），
     它会红。所以别把它当成"顺手的实现细节"改掉。
     """
 

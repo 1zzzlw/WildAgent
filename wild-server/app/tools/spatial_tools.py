@@ -750,6 +750,77 @@ def validate_wall_junctions(blueprint: dict) -> str:
     )
 
 
+def _wall_footprint(walls: list[dict]) -> tuple[float, float, float, float] | None:
+    """一组墙的 XZ 包围盒 ``(min_x, max_x, min_z, max_z)``。曲线墙取整条中心线。"""
+
+    xs: list[float] = []
+    zs: list[float] = []
+    for wall in walls:
+        if wall.get("curve"):
+            points = _wall_centerline_points(wall)
+            if points:
+                xs.extend(point[0] for point in points)
+                zs.extend(point[1] for point in points)
+            continue
+        start, end = wall.get("from") or [0, 0, 0], wall.get("to") or [0, 0, 0]
+        try:
+            x0, x1 = sorted((float(start[0]), float(end[0])))
+            z0, z1 = sorted((float(start[2]), float(end[2])))
+        except (TypeError, ValueError, IndexError):
+            continue
+        xs.extend([x0, x1])
+        zs.extend([z0, z1])
+    if not xs or not zs:
+        return None
+    return min(xs), max(xs), min(zs), max(zs)
+
+
+#: 判定"更大轮廓严格包含"时每边至少要多的米数。
+#: 取 0.25：小于它的差异是墙厚/浮点噪声，不足以说明是另一圈更大的墙。
+_STEPPED_CONTAIN_MARGIN = 0.25
+
+
+def _stepped_support_y(
+    wall_tops: list[tuple[float, dict]],
+    support_y: float,
+) -> float | None:
+    """退台体量：该用哪一标高的墙当屋面承托。
+
+    🔴 返回 ``None`` 表示"不是退台，按原逻辑走" —— 这是**默认且最常见**的分支。
+
+    触发条件（三条全满足，缺一即不触发）：
+
+    1. 存在**标高明显更低**的墙（低 0.5m 以上，避免同层抖动误判）；
+    2. 那一组墙的 XZ 包围盒在 x/z **两个方向都严格包含**当层轮廓
+       （每边至少多 0.25m）—— 这才是"更小的那一圈"；
+    3. 当层轮廓非空。
+
+    为什么不用"楼层层数 > 1"判：普通两层楼上下层墙同尺寸，不满足条件 2，
+    不会被合并 —— 这是本判据保守性的关键。
+    """
+
+    current = _wall_footprint([wall for top, wall in wall_tops
+                               if abs(top - support_y) <= 0.15])
+    if current is None:
+        return None
+    lower_yields = sorted({
+        round(top, 3) for top, _ in wall_tops
+        if support_y - top > 0.5
+    })
+    for candidate_y in reversed(lower_yields):          # 从最接近当层的那层往下找
+        outer = _wall_footprint([wall for top, wall in wall_tops
+                                 if abs(top - candidate_y) <= 0.15])
+        if outer is None:
+            continue
+        larger_x = (outer[0] <= current[0] - _STEPPED_CONTAIN_MARGIN
+                    and outer[1] >= current[1] + _STEPPED_CONTAIN_MARGIN)
+        larger_z = (outer[2] <= current[2] - _STEPPED_CONTAIN_MARGIN
+                    and outer[3] >= current[3] + _STEPPED_CONTAIN_MARGIN)
+        if larger_x and larger_z:
+            return candidate_y
+    return None
+
+
 def get_roof_support_bounds(
     walls: list[dict],
     roof: dict | None = None,
@@ -762,7 +833,7 @@ def get_roof_support_bounds(
     传统建筑（祈年殿）用 primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在
     檐盘顶上而非直接落在墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
 
-    🔴 柱元素必须参与：开敞立面语义（facade pattern 全空 = 该面无墙）落地后，
+     柱元素必须参与：开敞立面语义（facade pattern 全空 = 该面无墙）落地后，
     亭/廊的屋面承托在**柱**上——2026-09-29 实测"四角凉亭"三面开敞只剩 1 面 front 墙，
     本函数只看墙时 z 方向塌缩成一条线（depth=0），`fix_roof_coverage` 据此把
     6.1×6.1 的攒尖顶"修"成 6.1×1.2 的窄带、中心贴到墙上，整座亭子只剩半边屋顶。
@@ -817,7 +888,7 @@ def get_roof_support_bounds(
         cylinder_candidates.append((top_y, prim, radius))
 
     # 柱元素承托：base 是柱底、height 是柱高 → 顶 = base.y + height。
-    # 🔴 柱候选**不做**屋顶 footprint 过滤（圆柱才做）：柱是结构承托件且数量有限；
+    #  柱候选**不做**屋顶 footprint 过滤（圆柱才做）：柱是结构承托件且数量有限；
     # 且 footprint 来自当前屋顶本身——屋顶已经坏掉时（窄带/偏心）按 footprint 过滤
     # 会把真承托柱排除在外，形成"坏屋顶永远修不回来"的自锁（2026-09-29 实测）。
     column_candidates: list[tuple[float, dict, float]] = []
@@ -877,7 +948,30 @@ def get_roof_support_bounds(
             "support_y": support_y, "support_kind": "primitive",
         }
 
-    support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    #🔴 退台（stepped）体量：屋面应覆盖**各层外轮廓的并集**，不是"当层那一圈墙"。
+    #
+    # 2026-10-08 实测事故：底层 20×15、二层退到 14×9 的别墅，编译器给出一块覆盖
+    # 整栋的屋面（span 21.2 × depth 16.2 = 20×15 + 2×0.6 出檐），但 `support_y`
+    # 按 `roof.position[1]=7.0`（顶层墙顶）选墙⇒ 只选中层 14×9 的墙 ⇒
+    # `fix_roof_coverage` 把屋面"修"成 15.2×10.2，与已审核实体不符 ⇒
+    # `approved_design_mutation` 报error，整轮生成失败。
+    #
+    # 判据（保守）：存在**标高更低**的墙，且其 XZ 外轮廓**严格包含**当层轮廓。
+    # 三个条件缺一不可：
+    #   标高更低  —— 普通两层楼的上下层墙也分标高，不满足就不会被误合并；
+    #   严格包含  —— 真正"更小的那一圈"才触发，同尺寸的墙不触发；
+    #   墙非空    —— 没有墙就不进这个分支。
+    # 不满足时行为与从前完全一致（非退台建筑零影响）。
+    if kind == "wall":
+        stepped_y = _stepped_support_y(wall_tops, support_y)
+        if stepped_y is not None:
+            support_y = stepped_y
+            support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+            support_columns = []
+        else:
+            support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
+    else:
+        support_walls = [wall for top, wall in wall_tops if abs(top - support_y) <= 0.15]
     support_columns = [
         column for top, column, _ in column_candidates
         if abs(top - support_y) <= 0.15

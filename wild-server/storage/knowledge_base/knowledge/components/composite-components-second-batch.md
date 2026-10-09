@@ -56,6 +56,13 @@ synonyms: []
 }
 ```
 
+**设计层的宿主写法**（写进 `decisions.components[]`，不是蓝图）：
+`host` 写它要遮的那面墙，可用 `<volume_id>_L<floor>_<front/back/left/right>`、
+开口槽位 id（如 `wall_front_1:floor_1:door:1`）或墙 id。编译器取该墙上真实存在的
+门/窗当遮蔽对象，把雨棚挂在洞口正上方；墙上一个洞口都没有时整条丢弃并记入缺口
+（悬空雨棚在图上就是漂浮的废构件）。可表态：`size.width` / `size.depth` /
+`size.thickness`、`material_role`。
+
 ## 阳台 balcony
 
 <!-- rag-meta

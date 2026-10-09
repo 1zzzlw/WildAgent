@@ -48,7 +48,7 @@ _KB_TOOL_NUDGE = (
     "**必须先检索再输出**，不要凭空编造字段名或坐标语义。\n"
     "- 检索结果与你的记忆冲突时，以知识库为准；检索后仍不确定，"
     "就输出保守、合法的最小实现，并在 JSON 之外用一句话说明不确定点。\n"
-    "- 🔴 **放弃是最后手段**（用户规则 2026-09-29）：只有当你 ① 对照本提示词里的"
+    "-  **放弃是最后手段**（用户规则 2026-09-29）：只有当你 ① 对照本提示词里的"
     "蓝图语言规则（字段表、槽位规则、坐标语义）确认没有该构件/字段的契约，"
     "**且** ② 调 search_knowledge 检索知识库也查不到它的描述时，才允许放弃——"
     "此时必须在 JSON 之外用一句话写明放弃原因与两条核查的结论，"
@@ -117,7 +117,10 @@ def _plan_hint(plan_item: object) -> str:
     if reason:
         parts.append(f"- 本次为何需要它：{reason}")
     if gap:
-        parts.append(f"- 🔴 图纸缺口：{gap}")
+        parts.append(f"-  图纸缺口：{gap}")
+    if plan_item.get("entity_requirements"):
+        parts.append("- 必须逐实例保留 entity_id，按真实目标几何满足关系：" +
+                     json.dumps(plan_item["entity_requirements"], ensure_ascii=False))
     return "\n".join(parts)
 
 

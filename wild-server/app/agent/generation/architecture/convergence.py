@@ -241,7 +241,7 @@ async def converge_design(
                 normalization_changes=normalization_changes, input_source="model",
             )
         except Exception as exc:
-            # 🔴 **模型给的草稿是不可信输入**：归一化一旦抛错（实测有一条
+            #  **模型给的草稿是不可信输入**：归一化一旦抛错（实测有一条
             # `ground[entrance_bay - 1]` 越界），异常会一路穿出节点、把整轮生成掐掉——
             # 而上一版图纸**本来是可以编译的**。这正是"收敛失败不阻断"要挡住的事。
             # 注意这里**只**护归一化：编译器的崩溃是我们自己的 bug，必须暴露出来。

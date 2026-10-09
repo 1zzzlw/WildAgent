@@ -28,7 +28,7 @@ topic: parameters
 `loader.py:555-558` 把该声明递归叠加到分片 metadata。**优先级：`defaults` → `mapping_rules` → 文件 frontmatter
 → 分片 rag-meta（最高）**。同层更深的标题覆盖祖先声明。
 
-🔴 **v2 目前一个 rag-meta 都没写**（v1 的 `components/*.md` 是逐节写的）。
+ **v2 目前一个 rag-meta 都没写**（v1 的 `components/*.md` 是逐节写的）。
 后果很实：`app/services/agent_service.py` 的生成期查询里有 6 条按构件查询
 （`entity_type` = `structural_component` / `wall` / `window` / `door` / `railing` / `roof`），
 v2 全部命中 0 —— 因为 v2 的 `entity_type` 只有 `component` 和 `engine_capability_boundaries`。

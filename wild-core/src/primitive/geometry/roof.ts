@@ -94,6 +94,21 @@ export function capabilitiesOf(roofType: string): RoofCapabilities {
 }
 
 export function buildRoof(params: RoofParams): MeshData[] {
+  if (params.roofType === 'gable' && params.ridgeAxis === 'x') {
+    const meshes = buildRoof({ ...params, span: params.depth, depth: params.span, ridgeAxis: 'z' });
+    // 原生屋脊沿 Z；在局部坐标中旋转 90 度，世界包络仍为 span×depth。
+    for (const mesh of meshes) {
+      for (const values of [mesh.geometry, mesh.normals]) {
+        if (!values) continue;
+        for (let i = 0; i < values.length; i += 3) {
+          const x = values[i];
+          values[i] = -values[i + 2];
+          values[i + 2] = x;
+        }
+      }
+    }
+    return meshes;
+  }
   const { roofType, span, depth, height, thickness } = params;
   const spec = ROOF_TYPES[roofType];
   if (!spec) throw new Error(`Unsupported roofType: ${roofType}`);

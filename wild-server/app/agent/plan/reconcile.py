@@ -122,9 +122,39 @@ def _resolve_generate(
 ) -> tuple[str | None, str, bool]:
     """返回 ``(新计划态, 证据, 是否计一次尝试)``；状态为 ``None`` 表示本轮不动它。"""
 
+    requirements = item.target.get("entity_requirements") or []
+    if requirements:
+        from app.design.relations import entity_index, evaluate_support
+        blueprint = state.get("merged_blueprint") or {}
+        actual = entity_index(blueprint)
+        rows, used = [], set()
+        for requirement in requirements:
+            entity_id = requirement.get("entity_id")
+            entity = actual.get(entity_id)
+            relation = requirement.get("relation")
+            if not entity_id or entity_id in used:
+                rows.append({"status": "open", "reason": "实例引用缺失或重复"})
+            elif relation:
+                rows.append(evaluate_support(blueprint, entity_id, relation))
+            else:
+                rows.append({"status": "satisfied" if entity and entity.get("type") == item.kind else "open",
+                             "entity_id": entity_id, "reason": "按本任务实例核对实体存在与类型"})
+            used.add(entity_id)
+        import json
+        evidence = json.dumps({"requirements": requirements, "relation_evidence": rows}, ensure_ascii=False)
+        if all(r["status"] == "satisfied" for r in rows):
+            return "done", evidence, False
+        if item.run.state == "succeeded" and _final_merge_has_run(plan):
+            return "ready", evidence, True
+        if item.run.state == "failed" and item.run.exhausted:
+            return "abandoned", evidence, False
+        return None, evidence, False
     fragments = (state.get("component_fragments") or {}).get(item.kind)
     produced = _produced_count(fragments)
-    landed = _landed_count(item.kind, elements, components)
+    # 普通任务也只按本次产物 ID 记账；全场景数量留作观察值。
+    fragment_items = fragments if isinstance(fragments, list) else [fragments] if isinstance(fragments, dict) else []
+    owned_ids = set(item.run.artifacts) or {e.get("id") for e in fragment_items if isinstance(e, dict) and e.get("id")}
+    landed = sum(e.get("id") in owned_ids and e.get("type") == item.kind for e in [*elements, *components])
     matched, slots = _slot_match(item.kind, state.get("design_brief"), components)
 
     if slots:
@@ -166,6 +196,8 @@ def _resolve_simple(item: PlanItem, state: dict[str, Any]) -> tuple[str | None, 
         return None, ""
     evidence = item.run.evidence or item.label
     if item.run.state == "succeeded":
+        if item.op == "validate" and state.get("validation_error_count", 0):
+            return "abandoned", "校验执行结束，但完整门禁未通过"
         return "done", evidence
     if item.run.state == "failed":
         if item.run.exhausted:
@@ -254,9 +286,9 @@ def ensure_artifact_consistency(plan: PlanDocument, state: dict[str, Any]) -> Pl
     for item in plan.items:
         if item.op != "generate" or item.status != "done":
             continue
-        landed = _landed_count(item.kind, elements, components)
-        if landed == 0:
+        status, evidence, _consume = _resolve_generate(item, plan, state, elements, components)
+        if status != "done":
             updated = reset_for_retry(
-                updated, item.id, evidence="产物已不在蓝图中，重新对账"
+                updated, item.id, evidence="产物或支撑关系已失效，重新对账：" + evidence
             )
     return updated

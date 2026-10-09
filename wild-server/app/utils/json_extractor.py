@@ -3,7 +3,7 @@
 
 消除 door/window/roof/railing 节点中重复的 _extract_component_array 和 _extract_roof_object。
 
-🔴 **为什么不用** ``re.findall(r"\\{[\\s\\S]*\\}")``（2026-10-08 事故）：
+ **为什么不用** ``re.findall(r"\\{[\\s\\S]*\\}")``（2026-10-08 事故）：
 那个模式是**贪婪**的，只会产出一个"从第一个 ``{`` 到最后一个 ``}``"的跨度。模型
 先写对了对象、后面又多吐一段时（现场实测：``{"shape": "l_shape", ...}`` 换行后接
 ``volumes: [{"id": "main_volume...`` ），这个跨度必然横跨两段 ⇒ ``json.loads`` 抛

@@ -42,14 +42,35 @@ class BlueprintDelivery:
     elements_count: int
     components_count: int
     validation: ValidationSummary
+    #: 🔴 P4 设计履约报告（`app.design.fulfillment.fulfillment_summary` 的形状）。
+    #: 与 :attr:`validation` **分开**：validation 决定"能不能保存"，fulfillment 决定
+    #: "用户要的东西兑现了没有"。旧调用方不传时为 ``None``，回复文案保持原样。
+    fulfillment: dict | None = None
 
     @property
     def reply(self) -> str:
-        return (
+        base = (
             f"已生成 {self.name or '建筑'}（{self.elements_count} 元素 + "
             f"{self.components_count} 组件，校验 {self.validation.passed}✓ "
             f"{self.validation.warnings}⚠），已保存为 `{self.filename}`。"
         )
+        if not self.fulfillment or not self.fulfillment.get("total"):
+            return base
+        # 缺口逐条列出（最多 3 条），让用户看到"哪一条没做到"，而不是只看到一个比例。
+        outstanding = [
+            gap for gap in self.fulfillment.get("gaps") or []
+            if gap.get("status") == "open"
+        ]
+        detail = ""
+        if outstanding:
+            preview = "；".join(
+                f"{gap['target']}（期望 {gap['expected']!r}，实际 {gap['actual']!r}）"
+                for gap in outstanding[:3]
+            )
+            more = f" 等 {len(outstanding)} 条" if len(outstanding) > 3 else ""
+            detail = f"未兑现：{preview}{more}。"
+        from app.design.fulfillment import fulfillment_line
+        return base + fulfillment_line(self.fulfillment) + "。" + detail
 
 
 def _field(result: object, name: str, default=None):
@@ -107,8 +128,14 @@ def prepare_blueprint_delivery(
     status: str,
     error_count: int | None = None,
     warning_count: int | None = None,
+    fulfillment: dict | None = None,
 ) -> BlueprintDelivery:
-    """只有完整通过最终校验的 Blueprint 才会写入场景目录。"""
+    """只有完整通过最终校验的 Blueprint 才会写入场景目录。
+
+    🔴 ``fulfillment``（P4 设计履约）**不参与门禁**：``open`` 的设计要求仍然交付，
+    只在回复里如实展示缺口。把它并进 ``summary.errors`` 会让"合法但不完整"变成
+    "不许保存"，与 P4 的交付政策相反。
+    """
     summary = summarize_validation(
         validation_results,
         error_count=error_count,
@@ -143,6 +170,7 @@ def prepare_blueprint_delivery(
         elements_count=len(geometry.get("elements", [])),
         components_count=len(geometry.get("components", [])),
         validation=summary,
+        fulfillment=fulfillment,
     )
 
 
@@ -155,6 +183,7 @@ def commit_generation_result(
     status: str,
     error_count: int | None = None,
     warning_count: int | None = None,
+    fulfillment: dict | None = None,
 ) -> BlueprintDelivery:
     """生成结果的单一幂等提交单元。
 
@@ -163,7 +192,8 @@ def commit_generation_result(
     - 顺序契约：先原子落盘 .wild（``prepare_blueprint_delivery`` 内部保证），再让
       调用方发布 ``blueprint_generated`` / ``agent_reply`` 终端事件；落盘失败抛
       ``ArtifactSaveError``，调用方不得继续发成功事件。
-    - 校验门禁不变：``status != "complete"`` 或存在错误时抛 ``GenerationRejectedError``。
+    - 校验门禁不变：``status != "complete"`` 或存在错误时抛 ``GenerationRejectedError``；
+      ``fulfillment`` 只进回复文案，不进门禁（P4）。
     """
     logger.info(f"[{request_id}] 提交生成结果: session={session_id}")
     return prepare_blueprint_delivery(
@@ -173,4 +203,5 @@ def commit_generation_result(
         status=status,
         error_count=error_count,
         warning_count=warning_count,
+        fulfillment=fulfillment,
     )

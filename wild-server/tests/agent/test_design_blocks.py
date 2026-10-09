@@ -5,7 +5,7 @@
 1. **块表是常量且自洽**：依赖序、档位闭集、字段→块唯一映射。
    字段归属重复会让两个块都写同一个字段 → 必然分叉。
 2. **块契约只拦"能精确定义"的**：`facade` 的 pattern 长度；`components` 的结构是否合法。
-   🔴 特别钉住一条**反面教训**：不许拿"下游一定会覆盖的值"当门禁 ——
+    特别钉住一条**反面教训**：不许拿"下游一定会覆盖的值"当门禁 ——
    `door`/`window` 的上下限由归一化按立面 pattern 派生，曾用"必须完全相等"去判，
    真模型连错 3 次导致**整块被丢弃**（连累 railing/canopy 等真正会被用的配额）。
 3. **执行器语义**：逐块落定、带证据重试、**失败不阻断**（用户红线）、
@@ -35,6 +35,7 @@ from app.agent.generation.architecture.design_blocks import (
 )
 from app.agent.generation.architecture.design_workflow import (
     _BLOCK_MAX_ATTEMPTS,
+    _OPTIONAL_BLOCK_FIELDS,
     _pick_block_fields,
     build_block_prompt,
     check_block_contract,
@@ -77,6 +78,9 @@ _FULL_PAYLOAD = {
         "window": {"min": 20, "max": 20},
         "railing": {"min": 2, "max": 2},
     },
+    # materials 是 components 块的字段：块产出的键要能被拾取。
+    # 可选 ≠ 不在 fields 里 —— 可选只放松 check_block_contract 的必填判定。
+    "materials": {"regions": [{"role": "roof", "type": "roof"}]},
 }
 
 
@@ -159,6 +163,28 @@ class BlockContractTest(unittest.TestCase):
         issue = check_block_contract(BLOCK_BY_NAME["massing"], {"massing": {"floors": 2}}, {})
         self.assertIn("volumes", issue)
 
+    def test_every_optional_block_field_is_also_owned_by_its_block(self):
+        """🔴 "可选"与"不属于本块"是两件事。
+
+        提示词写「materials 可选」，闸门就必须判它可选；但它仍要是components 块的
+        `fields` 之一，否则块吐出来的键不会被拾取，绑定在链路上静默消失。
+        两条判据缺一条，这个特性就是"实现了但无人派发"。
+        """
+
+        owned = {field for block in DESIGN_BLOCKS for field in block.fields}
+        for field in _OPTIONAL_BLOCK_FIELDS:
+            self.assertIn(field, owned, f"{field} 判了可选，却不属于任何块")
+
+        # 反向：提示词声称可选的字段，必须真的在可选集合里（否则模型只能靠重出来满足）。
+        components_block = BLOCK_BY_NAME["components"]
+        self.assertIn("materials", components_block.fields)
+        self.assertEqual(
+            check_block_contract(
+                components_block, {"component_quota": {}, "components": []}, {},
+            ),
+            "",
+        )
+
     def test_complete_block_passes(self):
         picked = {"concept": "测试方案", "massing": {"floors": 2}, "volumes": [{"id": "v1"}]}
         self.assertEqual(check_block_contract(BLOCK_BY_NAME["massing"], picked, {}), "")
@@ -218,7 +244,7 @@ class BlockContractTest(unittest.TestCase):
         self.assertIn("components[0]", check_block_contract(block, picked, {}))
 
     def test_components_quota_numbers_of_derived_kinds_are_not_checked(self):
-        """🔴 反面教训：door/window 的**数值**不许再当门禁。
+        """ 反面教训：door/window 的**数值**不许再当门禁。
 
         2026-09-28 真模型实测：这条检查让模型连错 3 次 ⇒ **整块 `components` 被判未定稿丢弃**，
         连带丢掉 railing / canopy / cornice 这些真正会被用的配额，还白烧 ~90s。
@@ -262,7 +288,7 @@ class BlockContractTest(unittest.TestCase):
         self.assertIn("rectangular_80x60", contract)
 
     def test_roof_contract_does_not_ask_for_a_roof_array(self):
-        """🔴 roof 块契约（以及基础提示词）**不得**再命令"按体量分别声明屋顶"。
+        """ roof 块契约（以及基础提示词）**不得**再命令"按体量分别声明屋顶"。
 
         现场（2026-10-08）：两处都写着"多体量（L/U 形）必须按体量分别声明屋顶"，
         而设计层 `ArchitectureDecisions.roof` 是**单个** `RoofDecision`（只有
@@ -315,6 +341,26 @@ class BlockContractTest(unittest.TestCase):
         self.assertIn("type", bad_value)
         self.assertNotIn("errors.pydantic.dev", bad_value)
 
+    def test_prompt_and_contract_text_is_fstring_safe(self):
+        """🔴 提示词/契约里的**字面花括号**不能在 f-string 里裸写。
+
+        现场（2026-10-08，P5-A）：为了说明 ``roof.volumes`` 的形状，在 f-string 提示词里
+        写了 ``{"volume": "...", "type": "..."}`` ⇒ ``ValueError: Invalid format
+        specifier``，**整条建筑链在起草提示词时就崩**（4 个节点冒烟 + 知识规则测试同时红）。
+        提示词是给模型读的，用「」描述形状即可，不需要真的花括号。
+        """
+
+        from app.agent.generation.architecture.design_workflow import render_block_contract
+        from app.agent.prompts import build_architecture_plan_prompt
+
+        texts = {
+            "基础提示词": build_architecture_plan_prompt("测试知识", {"default_roof": "flat"}),
+            "roof 块契约": render_block_contract(BLOCK_BY_NAME["roof"]),
+        }
+        for name, text in texts.items():
+            self.assertNotIn('"volume"', text, f"{name} 里有裸花括号字面量")
+            self.assertIn("volumes", text, name)
+
     def test_components_contract_states_that_form_is_an_object(self):
         """`form` 的形状必须写清：它是**对象**（键=引擎字段名），不是形态名字符串。
 
@@ -356,7 +402,7 @@ class BlockKnowledgeTest(unittest.TestCase):
         for block in DESIGN_BLOCKS:
             self.assertTrue(block.knowledge_queries, f"{block.name} 没有声明块级检索")
             for spec in block.knowledge_queries:
-                # 🔴 检索必须带过滤：给模型一个能查全库的口子，
+                #  检索必须带过滤：给模型一个能查全库的口子，
                 # "它没查到"和"知识里真没有"就永远分不清。
                 self.assertTrue(spec.metadata_filter, f"{block.name} 有不带过滤的检索意图")
                 self.assertIn("doc_type", spec.metadata_filter)
@@ -473,7 +519,7 @@ class BlockKnowledgeTest(unittest.TestCase):
 class DraftExecutorTest(unittest.TestCase):
     """执行器：逐块落定 / 带证据重试 / 失败不阻断 / 模型故障上抛。
 
-    🔴 **默认通道是工具循环**（`app.agent.plan.tool_loop.run_tool_loop`，§2.7 的试算工具挂在它上面），
+     **默认通道是工具循环**（`app.agent.plan.tool_loop.run_tool_loop`，§2.7 的试算工具挂在它上面），
     所以桩件默认打在它那儿；`probe=False` 时改成打在 `invoke_llm` 上，
     专门覆盖"流式/显式关闭试算"的那条通道。**两条通道都要有覆盖**——
     只钉一条，另一条改了没人知道。
@@ -740,7 +786,7 @@ class DesignPlanSchedulingTest(unittest.TestCase):
         )
         self.assertEqual(plan["detail_level"], "standard")
         for item in plan["items"]:
-            # 🔴 依赖是**物理约束**：块表给，不由模型产出（产出它只是白烧一次调用）。
+            #  依赖是**物理约束**：块表给，不由模型产出（产出它只是白烧一次调用）。
             self.assertEqual(item["op"], "generate")
             self.assertEqual(item["run"]["max_attempts"], _BLOCK_MAX_ATTEMPTS)
         # 并发组也跟着块表走：只有 shell 三块声明了组。

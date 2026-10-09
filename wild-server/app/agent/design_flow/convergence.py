@@ -27,7 +27,7 @@ def _profile_for(plan: dict, user_message: str) -> dict | None:
     用确定性的 `detect_architecture_profile` 重算，而不是把它塞进 state——它本来就是
     能从需求串推出来的纯函数结果，多存一份就多一个会漂移的副本。
 
-    🔴 `profile_id` 必须把**计划里已有的形制 id 传进去**（收敛环会重写 plan，不传就等于
+     `profile_id` 必须把**计划里已有的形制 id 传进去**（收敛环会重写 plan，不传就等于
     把分类器判出的 villa/pavilion 洗回 custom）。此前这里只传了 `fallback_profile_id`，
     而那个参数在档案表只剩 custom 之后已被忽略——是条"收下但不生效"的空缝。
     """

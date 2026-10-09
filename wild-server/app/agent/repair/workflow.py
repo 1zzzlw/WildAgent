@@ -6,17 +6,10 @@ Layer 2 扩展: 回调重试节点
 
 这是 LangGraph 架构中最关键的创新点，详见设计文档 03-回调与重试机制.md。
 """
-from dataclasses import asdict
-
 from loguru import logger
 
-from app.agent.validation.diagnostics import (
-    VALIDATOR_VERSION,
-    ValidationSnapshot,
-    blueprint_fingerprint,
-    step_result_to_dict,
-)
-from app.agent.validation.design_constraints import validate_design_brief_constraints
+from app.agent.validation.diagnostics import blueprint_fingerprint
+from app.agent.validation.candidate import evaluate_candidate
 from app.agent.state import GenerationState
 from app.agent.prompts import build_callback_prompt
 from app.llm.client import create_llm
@@ -25,7 +18,7 @@ from app.llm.errors import classify_model_error
 from app.agent.runtime import get_reasoning_callback
 from app.agent.repair.tools import execute_repair_actions, extract_repair_actions
 from app.agent.repair.state_updates import state_updates_from_candidate
-from app.agent.validation.issues import compare_issue_sets, validation_issues_from_results
+from app.agent.validation.issues import compare_issue_sets
 from app.spec.loader import SpecQuery
 
 
@@ -41,6 +34,18 @@ async def callback_node(state: GenerationState) -> dict:
     6. 程序执行动作并用全量校验比较错误数
     7. 仅在错误数下降时提交到对应 fragments
     """
+    source_blueprint = state.get("merged_blueprint") or {}
+    before = evaluate_candidate(source_blueprint, design_document=state.get("design_document"),
+                                design_brief=state.get("design_brief"), source="callback_before")
+    prior_audit = state.get("repair_audit") or {}
+    source_fingerprint = blueprint_fingerprint(source_blueprint)
+    if before["approved_design_errors"]:
+        return {"repair_audit": {"accepted": False, "stop_reason": "design_revision_required",
+                "source_fingerprint": source_fingerprint,
+                "reason": "批准版本本身几何无效，局部改值不能同时满足几何与批准门禁；请修订后重新审核"}}
+    if (prior_audit.get("source_fingerprint") == source_fingerprint
+            and prior_audit.get("accepted") is False):
+        return {"repair_audit": {**prior_audit, "stop_reason": "repeated_candidate"}}
     failed_components = state.get("failed_components", [])
     if not failed_components:
         logger.info("[callback_node] 无失败组件，跳过")
@@ -115,15 +120,17 @@ async def callback_node(state: GenerationState) -> dict:
         try:
             from app.tools.component_tools import validate_component
 
-            # 构建只包含该组件的临时 blueprint
-            temp_bp = {
-                "meta": skeleton_blueprint.get("meta", {"version": "1.1", "type": "building"}),
-                "geometry": {
-                    "elements": skeleton_blueprint.get("geometry", {}).get("elements", []).copy(),
-                    "components": [fc.get("current_params", {})] if fc.get("current_params") else [],
-                },
-                "materials": skeleton_blueprint.get("materials", {}),
-            }
+            # 宿主校验依赖同墙门窗，必须使用当前完整场景；校验器只读其副本。
+            from copy import deepcopy
+            temp_bp = deepcopy(state.get("merged_blueprint") or skeleton_blueprint)
+            geometry = temp_bp.get("geometry") or {}
+            entities = [*geometry.get("elements", []), *geometry.get("components", [])]
+            target = next((item for item in entities if item.get("id") == fc.get("component_id")),
+                          fc.get("current_params") or {})
+            host = target.get("parentWall") or target.get("parentRoof") or target.get("parentFloor")
+            enriched["context_entities"] = [item for item in entities
+                if item.get("id") == host or (host and item.get("parentWall") == host
+                    and item.get("type") in {"door", "window", "bay_window"})]
             tool_context = validate_component(comp_type, temp_bp)
             if tool_context:
                 logger.info(f"[callback_node] 工具数据 ({comp_type}): {len(tool_context)} 字符")
@@ -143,7 +150,6 @@ async def callback_node(state: GenerationState) -> dict:
 
     # ── 4. LLM 修正（支持流式思考）──
     use_streaming = thinking_mode and on_reasoning_delta is not None
-    llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -160,6 +166,7 @@ async def callback_node(state: GenerationState) -> dict:
     reasoning = ""
     
     try:
+        llm = create_llm(enable_thinking=thinking_mode, streaming=use_streaming)
         if use_streaming:
             llm_result = await stream_llm(
                 llm,
@@ -201,6 +208,8 @@ async def callback_node(state: GenerationState) -> dict:
             "repair_audit": {
                 "accepted": False,
                 "reason": "模型未返回可解析的修复动作",
+                "stop_reason": "no_action",
+                "source_fingerprint": source_fingerprint,
             },
         }
 
@@ -244,6 +253,8 @@ async def callback_node(state: GenerationState) -> dict:
             "repair_audit": {
                 "accepted": False,
                 "reason": "没有成功执行的修复动作",
+                "stop_reason": "no_change",
+                "source_fingerprint": source_fingerprint,
                 "actions": action_reports,
             },
         }
@@ -261,35 +272,17 @@ async def callback_node(state: GenerationState) -> dict:
             "- 正在进行修复后全量复检...\n",
         )
 
-    # ── 6. 全量复检；错误没有严格减少就回滚（candidate 尚未写回 state）──
-    from app.services.agent_service import _final_errors, run_validation_pipeline
-
-    before_issues = list(state.get("validation_issues", []))
-    if not before_issues:
-        before_issues = validation_issues_from_results(
-            [
-                result for result in state.get("validation_results", [])
-                if result.get("has_error")
-            ],
-            state.get("merged_blueprint", {}),
-        )
-    candidate_results = run_validation_pipeline(candidate)
-    candidate_errors = _final_errors(candidate_results)
-    after_issues = validation_issues_from_results(candidate_errors, candidate)
-    after_design_errors = validate_design_brief_constraints(
-        candidate,
-        state.get("design_brief"),
-    )
-    if after_design_errors:
-        after_issues.extend(validation_issues_from_results([{
-            "name": "validate_design_brief",
-            "output": "\n".join(
-                f"❌ [design] {message}" for message in after_design_errors
-            ),
-            "has_error": True,
-        }], candidate))
+    # before/after 使用完全相同的批准版本与完整只读门禁。
+    after = evaluate_candidate(candidate, design_document=state.get("design_document"),
+                               design_brief=state.get("design_brief"), source="callback")
+    before_issues, after_issues = before["issues"], after["issues"]
     progress = compare_issue_sets(before_issues, after_issues)
     introduced_issues = progress["introduced_issues"]
+    before_satisfied = set((before["fulfillment"] or {}).get("satisfied_ids") or [])
+    after_satisfied = set((after["fulfillment"] or {}).get("satisfied_ids") or [])
+    progress["accepted"] = (progress["accepted"] and not after_issues
+                            and before_satisfied <= after_satisfied
+                            and blueprint_fingerprint(candidate) != source_fingerprint)
 
     if not progress["accepted"]:
         logger.warning(
@@ -308,7 +301,10 @@ async def callback_node(state: GenerationState) -> dict:
             "component_retry_counts": comp_retries,
             "repair_audit": {
                 "accepted": False,
-                "reason": "复检错误数没有严格下降或引入了新错误，已回滚",
+                "reason": "完整验收未通过或已满足项退化，候选已回滚",
+                "stop_reason": "incomplete_candidate",
+                "source_fingerprint": source_fingerprint,
+                "candidate_fingerprint": blueprint_fingerprint(candidate),
                 "before_issue_count": len(before_issues),
                 "after_issue_count": len(after_issues),
                 "introduced_issues": introduced_issues,
@@ -332,34 +328,20 @@ async def callback_node(state: GenerationState) -> dict:
         f"错误 {len(before_issues)} → {len(after_issues)}"
     )
 
-    serialized_results = [step_result_to_dict(result) for result in candidate_results]
-    if after_design_errors:
-        serialized_results.append({
-            "step": "design",
-            "name": "validate_design_brief",
-            "output": "\n".join(f"❌ [design] {message}" for message in after_design_errors),
-            "has_error": True,
-            "has_warning": False,
-        })
-    snapshot = ValidationSnapshot(
-        blueprint_fingerprint=blueprint_fingerprint(candidate),
-        validator_version=VALIDATOR_VERSION,
-        status="complete" if not candidate_errors and not after_design_errors else "partial",
-        results=serialized_results,
-        design_errors=after_design_errors,
-        issues=after_issues,
-        error_count=len(candidate_errors) + len(after_design_errors),
-        warning_count=0,
-        elapsed_ms=0,
-        source="callback",
-    )
     return {
         **updates,
         "retry_count": new_retry_count,
         "component_retry_counts": comp_retries,
-        "validation_snapshot": asdict(snapshot),
+        "validation_snapshot": after["snapshot"],
+        "final_blueprint": candidate,
+        "validation_results": after["snapshot"]["results"],
+        "validation_issues": after_issues,
+        "validation_error_count": after["snapshot"]["error_count"],
+        "design_fulfillment": after["fulfillment"],
         "repair_audit": {
             "accepted": True,
+            "source_fingerprint": source_fingerprint,
+            "candidate_fingerprint": blueprint_fingerprint(candidate),
             "before_issue_count": len(before_issues),
             "after_issue_count": len(after_issues),
             "actions": action_reports,

@@ -48,8 +48,8 @@ function createMeshFromMeshData(
       new THREE.MeshStandardMaterial({ color: 0xff4444, wireframe: true, transparent: true, opacity: 0.6 })
     )
     placeholder.name = meshData.elementId || 'unnamed'
-    placeholder.userData.elementId  = meshData.elementId
-    placeholder.userData.isError    = true
+    placeholder.userData.elementId = meshData.elementId
+    placeholder.userData.isError = true
     placeholder.userData.errorReason = 'vertex_overflow'
     placeholder.userData.ownsMaterial = true
     const { position, rotation, scale } = meshData.transform
@@ -60,7 +60,7 @@ function createMeshFromMeshData(
 
   // 1. 转换几何数据
   const geometry = meshDataToGeometry(meshData)
-  
+
   // 2. 获取或创建材质
   const matParams = materialParams[materialIndex]
   const hasVertexColors = !!meshData.vertexColors
@@ -72,20 +72,20 @@ function createMeshFromMeshData(
     material = material.clone()
     ownsMaterial = true
   }
-  
+
   // 3. 创建 Mesh
   const mesh = new THREE.Mesh(geometry, material)
-  
+
   // 4. 应用 transform
   const { position, rotation, scale } = meshData.transform
   mesh.position.set(position[0], position[1], position[2])
   mesh.rotation.set(rotation[0], rotation[1], rotation[2])
   mesh.scale.set(scale[0], scale[1], scale[2])
-  
+
   // 5. 设置阴影
   mesh.castShadow = !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
   mesh.receiveShadow = true
-  
+
   // 6. 存储元数据
   mesh.userData.elementId = meshData.elementId
   mesh.userData.materialRef = meshData.materialRef
@@ -102,7 +102,7 @@ function createMeshFromMeshData(
       mesh.userData.interactionOpen = false
       if (meshData.interaction.initiallyOpen) setOpeningInteractionProgress(mesh, 1)
     } else if (meshData.interaction.kind === 'light') {
-      // 🔴 必须按 kind 显式分派，不能写 `else`：`InteractiveElementBehavior` 是
+      //  必须按 kind 显式分派，不能写 `else`：`InteractiveElementBehavior` 是
       // `opening | light | elevator` 的联合，`else` 会把电梯行为也交给灯光初始化
       // （读 undefined 的 lightType/color）—— 且 TS 会直接报 TS2345 卡住构建。
       // 电梯无需初始化：编译器已按 `initialFloor` 摆好轿厢与导轨，运行时楼层状态
@@ -110,17 +110,17 @@ function createMeshFromMeshData(
       initializeLightInteraction(mesh, meshData.interaction)
     }
   }
-  
+
   // 7. 设置名称（用于调试和选择）
   mesh.name = meshData.elementId || 'unnamed'
-  
+
   return mesh
 }
 
 /** 右键命中门窗覆盖面时切换开合；动画每帧通知按需渲染器重绘。 */
 export function toggleOpeningInteraction(
   object: THREE.Object3D,
-  requestRender: () => void = () => {},
+  requestRender: () => void = () => { },
 ): boolean {
   if (
     !(object instanceof THREE.Mesh)
@@ -160,7 +160,7 @@ export function toggleOpeningInteraction(
 /** 根据运行时交互类型分派右键操作。 */
 export function toggleRuntimeInteraction(
   object: THREE.Object3D,
-  requestRender: () => void = () => {},
+  requestRender: () => void = () => { },
 ): boolean {
   if (!(object instanceof THREE.Mesh)) return false
   if (object.userData.interaction?.kind === 'opening') {
@@ -185,7 +185,7 @@ export function toggleRuntimeInteraction(
  */
 export function callElevator(
   object: THREE.Object3D,
-  requestRender: () => void = () => {},
+  requestRender: () => void = () => { },
 ): boolean {
   if (!(object instanceof THREE.Mesh)) return false
   const interaction = object.userData.interaction as ElevatorElementBehavior
@@ -240,7 +240,7 @@ function findElevatorCab(button: THREE.Mesh): THREE.Mesh | null {
 /** 右键让灯具按“关闭 → 弱光 → 强光 → 关闭”循环，并平滑过渡亮度。 */
 export function toggleLightInteraction(
   object: THREE.Object3D,
-  requestRender: () => void = () => {},
+  requestRender: () => void = () => { },
 ): boolean {
   if (
     !(object instanceof THREE.Mesh)
@@ -284,13 +284,13 @@ function initializeLightInteraction(
   const color = new THREE.Color().setRGB(...interaction.color)
   const light = interaction.lightType === 'spot'
     ? new THREE.SpotLight(
-        color,
-        0,
-        interaction.distance,
-        THREE.MathUtils.degToRad(interaction.angle),
-        0.35,
-        1.5,
-      )
+      color,
+      0,
+      interaction.distance,
+      THREE.MathUtils.degToRad(interaction.angle),
+      0.35,
+      1.5,
+    )
     : new THREE.PointLight(color, 0, interaction.distance, 1.5)
   light.name = `${mesh.name || mesh.userData.elementId}:LightSource`
   light.userData.fixtureLight = true
@@ -518,7 +518,7 @@ export function createSceneGroupFromEntity(
 ): THREE.Group {
   const group = new THREE.Group()
   group.name = 'WildScene'
-  
+
   const cache = materialCache || new MaterialCache()
   group.userData.materialScope = cache
   cache.beginUpdate()
@@ -527,14 +527,14 @@ export function createSceneGroupFromEntity(
   } finally {
     cache.endUpdate()
   }
-  
+
   // 存储边界盒信息
   if (entity.boundingBox) {
     group.userData.boundingBox = entity.boundingBox
   }
-  
+
   console.log(`场景组创建成功: ${entity.meshes.length} 个网格, ${cache.size} 个材质`)
-  
+
   return group
 }
 
@@ -553,18 +553,18 @@ export function updateSceneGroup(
   materialCache: MaterialCache
 ): void {
   clearSceneObjectResources(group)
-  
+
   materialCache.beginUpdate()
   try {
     populateSceneGroup(group, entity, materialCache)
   } finally {
     materialCache.endUpdate()
   }
-  
+
   // 更新边界盒
   if (entity.boundingBox) {
     group.userData.boundingBox = entity.boundingBox
   }
-  
+
   console.log(`场景组更新成功: ${entity.meshes.length} 个网格`)
 }

@@ -12,7 +12,7 @@ from app.design.openings import OPENING_KINDS
 
 
 _FACES = ("front", "back", "left", "right")
-#: 开口类型闭集。🔴 **从 `app.design.openings` 派生**，不在这里再写一遍——
+#: 开口类型闭集。 **从 `app.design.openings` 派生**，不在这里再写一遍——
 #: 同一个闭集两处写着，迟早一处加了另一处没加（`MEMORY.md`：单一事实源）。
 _OPENING_TYPES = frozenset(OPENING_KINDS)
 _SUPPORTED_ROOF_TYPES = {
@@ -56,7 +56,7 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
 }
 
 
-# 🔴 档案表只剩一个成员：``custom``（用户决策 2026-09-29：删除类型关键词→档案的
+# 档案表只剩一个成员：``custom``（用户决策 2026-09-29：删除类型关键词→档案的
 # 选档白名单）。它**只提供物理安全边界，不做设计锚定**：
 #   - shapes / base_components 给全集（我们不再替模型决定它能是什么形状、能用什么构件）；
 #   - default_massing / default_roof 只是模型完全没表态时的最后兜底，
@@ -79,11 +79,11 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
 #:   `circle` 也属这一类：圆形平面的几何由屋顶类型派生（KB `cone-roof-system.md`），
 #:   本字段只负责表态。
 #:
-#: 🔴 **枚举是提示词词表，不是输出闸**（项目宪法：禁止给"模型能做什么"设允许列表）。
+#: **枚举是提示词词表，不是输出闸**（项目宪法：禁止给"模型能做什么"设允许列表）。
 #: 模型的 shape 越界时**不拦截、不静默改写**，按"仅标签语义"照原样保留并记账
 #: —— 这与 2026-09-29「未知构件类型走 `generic_component_config`」是同一条口径。
 #:
-#: 🔴 **这张表是"枚举↔行为↔KB"的对账点**：加成员只改这里；
+#: **这张表是"枚举↔行为↔KB"的对账点**：加成员只改这里；
 #: `tests/components/test_shape_enum.py` 钉住三条 —— 每个成员必须归类、
 #: 标了 ``volumes`` 的必须真有分支、KB 里教的 `massing.shape` 取值必须是表内成员
 #: （`circle` 就是这么发现 KB 与枚举不一致的）。
@@ -150,7 +150,7 @@ _ARCHITECTURE_PROFILES: dict[str, dict[str, Any]] = {
 def _clamp_number(value: object, low: float, high: float, default: float) -> float:
     """返回值**恒在 [low, high] 内**——包括走 default 分支的时候。
 
-    🔴 default 也必须夹取（2026-09-30 四角凉亭线上事故）：`entrance_bay` 的调用点
+    default 也必须夹取（2026-09-30 四角凉亭线上事故）：`entrance_bay` 的调用点
     ``_clamp_number(item.get("entrance_bay"), 1, bays, base["entrance_bay"])`` 里
     ``high=bays`` 是动态值——模型写 ``bays: 0``（夹成 1）而档案 default=3 时，
     不夹 default 就会把 ``ground[3-1]`` 打进长度 1 的列表，
@@ -199,7 +199,7 @@ def _requested_shape(user_message: str) -> str | None:
     它唯一的不可替代作用：**用户显式表态 > 模型推断**（"把体量改成 U 形"必须生效，
     不能让模型的自选把它顶掉）。所以词表必须只收**显式形状词**。
 
-    🔴 2026-10-08 实测（真实语料对照实验，见
+    2026-10-08 实测（真实语料对照实验，见
     `.workbuddy/diag/audit_requested_shape_hitrate.py`）：
 
     - 「**在庭院里**设计一个四角凉亭…」→ 旧实现正则给 `courtyard`；
@@ -226,7 +226,7 @@ def _requested_shape(user_message: str) -> str | None:
     if re.search(r"(?:^|[^a-z])l\s*(?:形|型)", user_message, re.I):
         return "l_shape"
     # `回字形/回形` 是平面形态；`合院` 是围合式形制（"生成一个四合院"实测就该是它）。
-    # 🔴 `合院` 必须带负向断言：`围合院落` 里也含"合院"两个连续字（`围合`+`院落` 的
+    # `合院` 必须带负向断言：`围合院落` 里也含"合院"两个连续字（`围合`+`院落` 的
     # 跨词切分），裸子串匹配会把"围合院落式住宅"误判成 courtyard——这正是本轮要消除的
     # 那类"看起来像形状表态"的误命中，写测试时当场撞上。
     if re.search(r"回字形|回形|(?<!围)合院", user_message):
@@ -316,7 +316,7 @@ def resolve_complexity_profile(
 ) -> dict[str, Any]:
     """返回固定的标准复杂度目标。
 
-    2026-09-30 用户决策：前端粒度选择已下线，复杂度固定为标准档。
+    用户决策：前端粒度选择已下线，复杂度固定为标准档。
     保留函数与返回结构是为了不破坏下游契约；多体量意图仍按用户原文
     点名（"多体量/退台"等）放开 min_volumes。
     """
@@ -528,7 +528,7 @@ def _fallback_volumes(
     ]
 
 
-#: 🔴 **建筑类型词闭集**——"这句话是不是在要建筑"的路由判据，**唯一身份**。
+#: **建筑类型词闭集**——"这句话是不是在要建筑"的路由判据，**唯一身份**。
 #:
 #:
 #: 判据为什么建在闭集这一侧：建筑是**有限闭集**，所以"没命中任何建筑类型词"

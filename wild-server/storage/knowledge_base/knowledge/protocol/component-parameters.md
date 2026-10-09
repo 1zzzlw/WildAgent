@@ -330,10 +330,17 @@ entity_type: roof
 - 多体量（L 形 / U 形 / 退台）必须**为每个体量各生成一块屋顶**，或让屋顶轮廓贴合墙体并留出内院 / 天井；
   禁止用单块屋顶盖住没有墙、没有楼板的空腔。
   ⚠️ **分层**：本条约束的是**蓝图屋顶元素**（`geometry.elements` 里 `type: roof` 的每一项）的尺寸与定位。
-  **设计层**的 `decisions.roof` 只写**一块风格模板**（`type` / `ridge_axis` / `overhang` 三个键），
+  **设计层**的 `decisions.roof` 写**一块风格模板**（`type` / `ridge_axis` / `overhang` 三个键），
   逐体量分段由编译器按 `volumes` 派生（`facade._planned_roof_slots` + `conform_roofs_to_slots`）；
   在设计层写数组或写 `id` / `span` / `depth` / `position` 会被图纸契约判为不合法，
   整块设计作废、屋顶退回默认平屋顶。
+  P5-A 起模板可带一个**可选** `volumes` 数组表达逐体量差异，每条
+  `{"volume": "<体量 id>", "type": "<六种 roofType 之一>", "overhang": <非负数>}`；
+  体量 id 必须与 `decisions.volumes` 里的 id 一致，未列出的体量继承模板。
+  编译期：体量 id 不存在 → 记 `roof_override_unknown_volume` 缺陷（warn，不阻断）并退回模板；
+  同体量重复覆盖且取值不同 → 记 `roof_override_conflict`（warn），按后者生效。
+  `dome` / `chinese_pagoda` / `chinese_curved` 是整栋造型，**不能**按体量切，
+  任一体量取这三种类型即退回整栋单块屋顶。
 - `position` 应位于墙体 XZ 中心和墙顶高度。
 
 **示例**：
@@ -676,6 +683,45 @@ entity_type: structural_component
 - 当前参考引擎为所有通用形体生成 `position`、`normal`、`index` 与 UV。
 - 复杂语义物件应优先由多个 `primitive`、现有构件和模板组合。
 - 只有需要新的数学成形算法时才增加 builder。
+
+---
+
+## 十二、material_region — 区域/构件材质绑定（设计层）
+
+**分层**：材质绑定写在**设计层** `decisions.materials.regions`，**不写在蓝图里**。
+蓝图侧只有两种表达：材质实体（`materials.<id>`）与实体上的 `material` 引用。
+
+| 字段 | string | 是 | 说明 |
+| --- | --- | --- | --- |
+| `role` | string | 是 | 材质方案里已存在的角色名（如 `roof` / `structure` / `facade_primary`） |
+| `type` | string | 是 | **目标实体类型**：元素类（`wall` / `floor` / `roof` / `column` / `beam` / `stair`）或构件类（`light` / `railing` / `balcony` / `canopy` / `cornice` …） |
+| `note` | string | 否 | 自由说明，不参与判定 |
+
+规则：
+
+- 判据是**类型**，不是实体 id 前缀。id 命名会随编译演进，按 id 写规则等于把命名约定当契约。
+- 落点是**引用**：绑定把目标实体的 `material` 改指向 `role` 对应的 `materialId`，
+  **不新增材质实体**，也不改变其它类型的材质分配。
+- 两种"未生效"，都**只记录不阻断**（记入 `compile_report` 的 `material_regions`）：
+  1. `role` 不在材质方案里 → 该绑定未生效，原因写「材质方案里没有角色 X」；
+  2. 蓝图里没有该类型的实体 → 原因写「蓝图里没有类型为 X 的实体」。
+- 同类型的元素与构件会被**同时**改写（两张表都扫）；要只改其中一个，请用不同的类型名。
+- 元素默认材质角色见 `ELEMENT_ROLE`：`wall→facade_primary`、`floor→floor`、
+  `stair→floor`、`column/beam→structure`、`roof→roof`。
+  没有绑定时产物与引入本特性之前逐字段相同。
+
+示例：
+
+```json
+{
+  "materials": {
+    "regions": [
+      {"role": "roof", "type": "roof"},
+      {"role": "structure", "type": "light"}
+    ]
+  }
+}
+```
 
 ---
 

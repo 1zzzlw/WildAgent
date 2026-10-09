@@ -94,6 +94,7 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
             "op": item.op,
             "kind": item.kind,
             "label": item.label,
+            "target": item.target,
             **item.params,
         },
         "component_fragments": {},
@@ -280,136 +281,73 @@ async def run_merge(state: dict[str, Any], item: PlanItem) -> HandlerResult:
 
 
 def run_validate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
-    from app.services.agent_service import _final_errors, run_validation_pipeline
+    from app.agent.validation.candidate import evaluate_candidate
 
     blueprint = state.get("merged_blueprint") or {}
     if not blueprint:
         return {}, "failed", [], "没有可校验的蓝图", []
-    results = run_validation_pipeline(blueprint)
-    errors = _final_errors(results)
-    updates = {
-        "validation_results": [dataclasses.asdict(result) for result in results],
-        "validation_error_count": len(errors),
-        "validation_warning_count": len([r for r in results if r.has_warning]),
-    }
-    evidence = (
-        f"{item.label}：{len(errors)} 个错误"
-        + (f"（{', '.join(r.name for r in errors[:3])}）" if errors else "")
-    )
-    trace = [
-        {"tool": r.name, "ok": not r.has_error, "chars": len(r.output), "mode": "deterministic"}
-        for r in results
-    ]
-    return updates, ("failed" if errors else "succeeded"), [], evidence, trace
+    evaluated = evaluate_candidate(blueprint, design_document=state.get("design_document"),
+                                   design_brief=state.get("design_brief"), source="plan_validate")
+    snapshot = evaluated["snapshot"]
+    updates = {"validation_results": snapshot["results"], "validation_snapshot": snapshot,
+               "validation_issues": evaluated["issues"], "validation_error_count": snapshot["error_count"],
+               "validation_warning_count": snapshot["warning_count"]}
+    evidence = f"{item.label}：完整门禁 {snapshot['error_count']} 个错误"
+    trace = [{"tool": r.name, "ok": not r.has_error, "chars": len(r.output), "mode": "deterministic"}
+             for r in evaluated["results"]]
+    return updates, ("failed" if evaluated["errors"] else "succeeded"), [], evidence, trace
 
 
 def run_fix(state: dict[str, Any], item: PlanItem) -> HandlerResult:
+    from copy import deepcopy
     from app.agent.generation.assembly.merge import apply_fixes
-    from app.services.agent_service import _final_errors, run_validation_pipeline
+    from app.agent.validation.candidate import evaluate_candidate
+    from app.agent.repair.state_updates import state_updates_from_candidate
 
-    blueprint = state.get("merged_blueprint")
-    if not blueprint:
+    original = state.get("merged_blueprint")
+    if not original:
         return {}, "failed", [], "没有可修复的蓝图", []
-    errors = _final_errors(run_validation_pipeline(blueprint))
-    if not errors:
-        return {"validation_error_count": 0}, "succeeded", [], f"{item.label}：无需修复", []
-    applied = apply_fixes(blueprint, errors)
-    recheck = _final_errors(run_validation_pipeline(blueprint))
-    updates = {
-        "merged_blueprint": blueprint,
-        "validation_error_count": len(recheck),
-    }
-    trace = [
-        {"tool": name, "ok": success, "chars": 0, "mode": "deterministic"}
-        for name, success in applied
-    ]
-    evidence = f"{item.label}：修复 {len(applied)} 项，剩余 {len(recheck)} 个错误"
-    return updates, ("succeeded" if len(recheck) < len(errors) else "failed"), [], evidence, trace
+    kwargs = {"design_document": state.get("design_document"), "design_brief": state.get("design_brief")}
+    before = evaluate_candidate(original, **kwargs)
+    if not before["errors"]:
+        return {}, "succeeded", [], "完整验收已通过，无需修复", []
+    if before["approved_design_errors"]:
+        return {"repair_audit": {"accepted": False, "stop_reason": "design_revision_required"}}, \
+            "failed", [], "批准设计自身无效，需要修订并重新审核", []
+    candidate = deepcopy(original)
+    applied = apply_fixes(candidate, before["errors"])
+    after = evaluate_candidate(candidate, source="plan_fix", **kwargs)
+    trace = [{"tool": name, "ok": success, "chars": 0, "mode": "deterministic"} for name, success in applied]
+    preserved = set((before["fulfillment"] or {}).get("satisfied_ids") or []) <= set(
+        (after["fulfillment"] or {}).get("satisfied_ids") or [])
+    if after["errors"] or not preserved or candidate == original:
+        return {}, "failed", [], f"完整验收未通过，脚本候选已回滚；仍有 {len(after['errors'])} 个错误", trace
+    ids = {e["id"] for bp in (original, candidate) for bucket in ("elements", "components")
+           for e in (bp.get("geometry") or {}).get(bucket, [])}
+    updates = state_updates_from_candidate(state, candidate, ids)
+    updates["validation_snapshot"] = after["snapshot"]
+    updates["repair_audit"] = {"accepted": True, "before_issue_count": len(before["issues"]),
+                               "after_issue_count": 0}
+    return updates, "succeeded", [], "脚本候选完整验收通过，已提交", trace
 
 
 async def run_repair(state: dict[str, Any], item: PlanItem) -> HandlerResult:
-    """脚本工具先行、模型补充（§4.11 族 B + 用户指令 2026-09-29「脚本映射节点化」）。
-
-    用户在 LangSmith 里看不到"脚本映射"（compile/fix 都是纯函数、没有 LLM span），
-    要求把它变成一个节点：**大模型调用脚本工具，脚本实现不了的地方模型自己按
-    蓝图语言规则补充设计**。本条目就是这个节点的执行器：
-
-    1. 脚本先行：确定性 ``fix_*`` 工具按校验错误各司其职（trace 里 mode=deterministic，
-       工具名逐条可见）；
-    2. 模型补充：脚本修不掉的剩余失败目标交给既有 ``callback_node``——精准 RAG →
-       工具取空间约束 → 模型只输出白名单动作 → 程序执行并全量复检 → 错误数下降才提交。
-    """
-
-    from app.agent.generation.assembly.merge import apply_fixes
     from app.agent.repair.workflow import callback_node
     from app.agent.validation.workflow import validate_node
-    from app.services.agent_service import _final_errors, run_validation_pipeline
 
-    source_blueprint = state.get("merged_blueprint")
-    if not source_blueprint:
-        return {}, "failed", [], "没有可修复的蓝图", []
-    # 深拷贝后原地修：不污染 LangGraph state 里的原对象，修好的副本随 updates 回写。
-    from copy import deepcopy as _deepcopy
-
-    blueprint = _deepcopy(source_blueprint)
-
-    trace: list[dict[str, Any]] = []
-
-    # ── 1. 脚本先行：fix_* 确定性工具 ──
-    errors = _final_errors(run_validation_pipeline(blueprint))
-    applied: list[tuple[str, bool]] = []
-    script_fixed = 0
-    if errors:
-        applied = apply_fixes(blueprint, errors)
-        script_fixed = len(errors) - len(_final_errors(run_validation_pipeline(blueprint)))
-        trace.extend(
-            {
-                "tool": name,
-                "ok": bool(success),
-                "chars": 0,
-                "mode": "deterministic",
-            }
-            for name, success in applied
-        )
-
-    # ── 2. 脚本修不掉的，模型按蓝图语言规则补充 ──
-    working_state = {**state, "merged_blueprint": blueprint}
-    validated = await validate_node(working_state)
-    if not validated.get("failed_components"):
-        updates = {
-            key: value for key, value in validated.items() if key != "final_blueprint"
-        }
-        updates["merged_blueprint"] = blueprint
-        evidence = (
-            f"{item.label}：脚本工具修复 {script_fixed} 项后无剩余失败目标"
-            if applied
-            else f"{item.label}：没有需要修复的失败目标"
-        )
-        return updates, "succeeded", [], evidence, trace
-
-    repaired = await callback_node({**working_state, **validated})
-    updates = {key: value for key, value in {**validated, **repaired}.items()}
-    updates["merged_blueprint"] = blueprint  # 脚本段的修复随蓝图一起带回去
-    reports = [
-        report for report in repaired.get("repair_audit", {}).get("reports", [])
-        if isinstance(report, dict)
-    ]
-    trace.extend(
-        {
-            "tool": str(report.get("tool") or "repair_action"),
-            "ok": bool(report.get("success")),
-            "chars": len(str(report.get("changed_fields") or "")),
-            "mode": "model_whitelist",
-        }
-        for report in reports
-    )
-    error_after = len(updates.get("failed_components") or [])
-    evidence = (
-        f"{item.label}：脚本工具修复 {script_fixed} 项，"
-        f"模型执行 {len(reports)} 个白名单动作，剩余失败目标 {error_after}"
-    )
-    logger.info(f"[execute] repair 条目完成：{evidence}")
-    return updates, ("succeeded" if reports else "failed"), [], evidence, trace
+    fixed, outcome, artifacts, evidence, trace = run_fix(state, item)
+    if outcome == "succeeded" or (fixed.get("repair_audit") or {}).get("stop_reason"):
+        return fixed, outcome, artifacts, evidence, trace
+    # 脚本失败候选已回滚，模型基于原场景及同一完整门禁继续。
+    validated = await validate_node(state)
+    repaired = await callback_node({**state, **validated})
+    accepted = bool((repaired.get("repair_audit") or {}).get("accepted"))
+    reports = (repaired.get("repair_audit") or {}).get("actions") or []
+    trace.extend({"tool": r.get("tool", "repair_action"), "ok": bool(r.get("success")),
+                  "chars": 0, "mode": "model_whitelist"} for r in reports)
+    updates = {**validated, **repaired}
+    return updates, ("succeeded" if accepted else "failed"), [], (
+        "完整验收通过，已提交修复候选" if accepted else "修复未完整通过，保留原产物"), trace
 
 
 #: op → 处理器。新增 op 必须同时补进这里与 §2.3 的闭集，否则条目会以 failed 收场。

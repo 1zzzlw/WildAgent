@@ -100,9 +100,10 @@
           <button
             type="button"
             class="confirm-design-btn"
+            :disabled="Boolean(turn.resolved_design?.compile_blockers?.length)"
             @click="$emit('confirm-design', turn.request_id)"
           >批准此设计并生成 Blueprint</button>
-          <span>Blueprint 将绑定设计 revision 和 hash</span>
+          <span>{{ turn.resolved_design?.compile_blockers?.length ? '当前草稿有编译阻断，请先提出修改意见' : 'Blueprint 将绑定设计 revision 和 hash' }}</span>
         </div>
         <div v-if="isDesignReview" class="review-revision">
           <textarea

@@ -1,7 +1,8 @@
 /** DesignDocument v1。字段与后端 Pydantic JSON Schema 保持一致。 */
 
 export type DesignStatus = 'draft' | 'approved' | 'compiled'
-export type OpeningKind = 'door' | 'window' | 'empty'
+export type OpeningKind = 'door' | 'window' | 'empty' | 'open'
+export type OpeningToken = OpeningKind | `door:${'swing' | 'slide' | 'lift'}` | `window:${'swing' | 'slide' | 'fixed'}`
 
 /** massing.tiers 的一段：从底到顶逐段的收放比例（相对 width/depth）。 */
 export interface DesignMassingTier {
@@ -36,8 +37,8 @@ export interface DesignVolume {
 export interface DesignFacade {
   bays: number
   entrance_bay: number | null
-  ground_pattern: OpeningKind[]
-  upper_pattern: OpeningKind[]
+  ground_pattern: OpeningToken[]
+  upper_pattern: OpeningToken[]
 }
 
 // 建筑侧角色与物件侧角色的并集——`ResolvedMaterialPlan` 被两支共用。
@@ -107,13 +108,15 @@ export interface ArchitectureDecisions {
     type: 'flat' | 'gable' | 'hip' | 'dome' | 'chinese_curved' | 'chinese_pagoda'
     ridge_axis: 'x' | 'z'
     overhang: number
+    volumes?: Array<{ volume: string; type?: ArchitectureDecisions['roof']['type'] | null; overhang?: number | null }>
   }
   circulation: {
     vertical_strategy: 'none' | 'stair' | 'core' | 'core_and_stair'
   }
-  materials: { keywords: string[]; resolved_plan: ResolvedMaterialPlan | null }
+  materials: { keywords: string[]; regions?: Array<{ role: string; type: string; note?: string }>; resolved_plan: ResolvedMaterialPlan | null }
   detail_packages: string[]
   component_quota: Record<string, { min: number; max: number; note: string; type: string | null }>
+  components?: Array<{ id?: string | null; type: string; host: string; size: Record<string, number>; form: Record<string, unknown>; material_role: MaterialRoleName | null; relation?: { kind: 'supports'; target: string; along_ratio: number; depth_ratio: number } | null }>
   balcony_access_count: number
   balcony_width: number | null
   required_components: string[]
@@ -154,12 +157,12 @@ export interface ObjectDecisions {
   objects: DesignObject[]
   /** 点名了、但本次表达不出可生成几何的物件（非阻断提示，进交付清单）。 */
   unsupported_objects: string[]
-  materials: { keywords: string[]; resolved_plan: ResolvedMaterialPlan | null }
+  materials: { keywords: string[]; regions?: Array<{ role: string; type: string; note?: string }>; resolved_plan: ResolvedMaterialPlan | null }
   design_rationale: string[]
 }
 
 export interface DesignDocument {
-  schema_version: 'design/1.0'
+  schema_version: 'design/1.0' | 'design/1.1' | 'design/1.2'
   design_id: string
   session_id: string
   revision: number
@@ -218,6 +221,7 @@ export interface ResolvedDesign {
   design_revision: number
   design_hash: string
   resolver_version?: string
+  compile_blockers?: Array<{ code: string; evidence: string; design_field: string }>
   design_gaps?: Array<{
     id: string
     constraint_id: string

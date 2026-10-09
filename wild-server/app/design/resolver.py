@@ -168,7 +168,12 @@ def build_design_document(
                     or ("core_and_stair" if profile == "high_rise" else "stair")
                 ),
             },
-            materials=(old.decisions.materials if old else {}),
+            materials={
+                **(old.decisions.materials.model_dump(mode="json") if old else {}),
+                **({"regions": (plan.get("materials") or {}).get("regions", [])}
+                   if isinstance(plan.get("materials"), dict) and "regions" in plan["materials"]
+                   else {"regions": plan["material_regions"]} if "material_regions" in plan else {}),
+            },
             detail_packages=list(plan.get("detail_packages") or []),
             component_quota=plan.get("component_quota") or {},
             components=plan.get("components") or [],
@@ -445,6 +450,7 @@ def attach_material_plan(
     if isinstance(palette, list):
         keywords.extend(str(item).strip() for item in palette if str(item).strip())
     data["decisions"]["materials"] = {
+        **data["decisions"]["materials"],
         "keywords": keywords[:20],
         "resolved_plan": deepcopy(material_plan),
     }
@@ -482,6 +488,13 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         "unsupported_component_types": list(d.unsupported_component_types),
         "design_constraints": [c.model_dump(mode="json") for c in doc.constraints],
         "design_rationale": list(d.design_rationale),
+        # P5-C：区域/构件材质绑定随决策一起进方案。`resolved_plan` 不重复带 ——
+        # 材质实体由 material_plan 单独传（compile_design 的入参），这里只带**绑定**。
+        # exclude_defaults：note 留空串时不必进方案（绑定语义上没有信息量）。
+        "materials": {"regions": [
+            item.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
+            for item in d.materials.regions
+        ]},
     }
 
 

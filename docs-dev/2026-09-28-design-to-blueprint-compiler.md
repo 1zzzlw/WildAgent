@@ -13,14 +13,14 @@
 
 推论（这是本重构的全部收益）：
 
-| | 现在 | 目标 |
-|---|---|---|
+|              | 现在                                                       | 目标                                                                     |
+| ------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
 | 大模型调用点 | architecture / material / plan / 每个 generate / replanner | 每个**设计块**一次（体量/立面/屋顶/构件/材质…）+ 材质 resolve + 缺陷回改 |
-| 图纸精度 | 只到"数量配额"，形态靠模型补 | 完备到能直接编译 |
-| 图纸可修 | 不可（批准后冻结） | 可（收敛环内修订，带 revision） |
-| 编译 | 结构确定性（`skeleton`）+ 构件靠模型 | 全量确定性（一个纯函数） |
-| 失败模式 | 执行期分散（生成失败→重试→replanner） | 设计期集中（图纸不合格→修订） |
-| 耗时 | 构件逐个 LLM，单次 60~100s | 编译是纯 CPU，毫秒级 |
+| 图纸精度     | 只到"数量配额"，形态靠模型补                               | 完备到能直接编译                                                         |
+| 图纸可修     | 不可（批准后冻结）                                         | 可（收敛环内修订，带 revision）                                          |
+| 编译         | 结构确定性（`skeleton`）+ 构件靠模型                       | 全量确定性（一个纯函数）                                                 |
+| 失败模式     | 执行期分散（生成失败→重试→replanner）                      | 设计期集中（图纸不合格→修订）                                            |
+| 耗时         | 构件逐个 LLM，单次 60~100s                                 | 编译是纯 CPU，毫秒级                                                     |
 
 ---
 
@@ -56,18 +56,18 @@ classifier
 
 ### 1.1 节点增删
 
-| 节点 | 处置 | 依据 |
-|---|---|---|
-| `classifier` / `chat` / `patch` | 不动 | — |
-| `architecture` / `object_design` | 不动（职责变重：不再一次出全图，改为**逐块写**，见 1.6） | `nodes/architecture_node.py`、`object_design_node.py` |
-| `material_plan` | 保留；被修订触发时重跑 | `design_material_refresh` 状态位已存在（`state.py:75`） |
-| **`design_convergence`** | **新增**：LLM 读 `defects` 产出 `DesignPatch` | 复用 `contracts.py:432 DesignPatch` + `repository.py:98 apply_patch` |
-| `design_review` | **位置调整**：从"骨架前"移到"收敛后" | 现在 `graph.py:239-252`，问题见 1.3 |
-| **`compile`** | **新增**：吸收 `skeleton` | 纯函数，两种模式 dry_run / final |
-| `skeleton` | **删除**（并入 compile） | — |
+| 节点                             | 处置                                                                 | 依据                                                                                                                                                                             |
+| -------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classifier` / `chat` / `patch`  | 不动                                                                 | —                                                                                                                                                                                |
+| `architecture` / `object_design` | 不动（职责变重：不再一次出全图，改为**逐块写**，见 1.6）             | `nodes/architecture_node.py`、`object_design_node.py`                                                                                                                            |
+| `material_plan`                  | 保留；被修订触发时重跑                                               | `design_material_refresh` 状态位已存在（`state.py:75`）                                                                                                                          |
+| **`design_convergence`**         | **新增**：LLM 读 `defects` 产出 `DesignPatch`                        | 复用 `contracts.py:432 DesignPatch` + `repository.py:98 apply_patch`                                                                                                             |
+| `design_review`                  | **位置调整**：从"骨架前"移到"收敛后"                                 | 现在 `graph.py:239-252`，问题见 1.3                                                                                                                                              |
+| **`compile`**                    | **新增**：吸收 `skeleton`                                            | 纯函数，两种模式 dry_run / final                                                                                                                                                 |
+| `skeleton`                       | **删除**（并入 compile）                                             | —                                                                                                                                                                                |
 | `plan` / `execute` / `replanner` | **保留机制、换用途**（见 1.6）：条目从「构件生成任务」改成「设计块」 | `agent/plan/*` 的 `PlanDocument` / `PlanItem` / `store` / `refresh_statuses` / 对账 / 有界终止**原样复用**；`strategy.py` / `expand.py` / `handlers.py` / `replan.py` 换成设计版 |
-| `final_validate` | 保留，瘦身：只跑校验器 + 出交付清单 | `nodes/validate_node.py` |
-| `callback`（定向修复） | **删除** | 模型白名单修复是"执行期补设计"，收敛环已覆盖 |
+| `final_validate`                 | 保留，瘦身：只跑校验器 + 出交付清单                                  | `nodes/validate_node.py`                                                                                                                                                         |
+| `callback`（定向修复）           | **删除**                                                             | 模型白名单修复是"执行期补设计"，收敛环已覆盖                                                                                                                                     |
 
 ### 1.2 整包退场
 
@@ -115,32 +115,32 @@ classifier
 **条目 = 设计块**，依赖表**是常量**（写在代码里，像 `plan/expand.py:46 DETAIL_BUDGET` 那样），
 **不由 LLM 产出**——因为"先体量后立面"是物理约束，不是决策；让模型产出它只是白烧一次调用。
 
-| 块 | 写进图纸哪里 | 依赖 | 可并发 |
-|---|---|---|---|
-| `massing` 体量 | `massing` + `volumes` + `complexity` | — | — |
-| `structure` 结构 | `structural_grid` + `circulation` | massing | 与立面/屋顶并发 |
-| `facade` 立面 | `facades`（bays + 带形态的开口） | massing | 与结构/屋顶并发 |
-| `roof` 屋顶 | `roof` | massing | 与结构/立面并发 |
-| `components` 构件 | `components` 实例清单 | 上面全部 | — |
-| `material` 材质 | `materials`（= 现有 `material_plan` 节点） | components（`material_role` 要存在） | — |
-| `objects` 开放集 | `objects` | — | 物件场景下与 massing 互斥 |
+| 块                | 写进图纸哪里                               | 依赖                                 | 可并发                    |
+| ----------------- | ------------------------------------------ | ------------------------------------ | ------------------------- |
+| `massing` 体量    | `massing` + `volumes` + `complexity`       | —                                    | —                         |
+| `structure` 结构  | `structural_grid` + `circulation`          | massing                              | 与立面/屋顶并发           |
+| `facade` 立面     | `facades`（bays + 带形态的开口）           | massing                              | 与结构/屋顶并发           |
+| `roof` 屋顶       | `roof`                                     | massing                              | 与结构/立面并发           |
+| `components` 构件 | `components` 实例清单                      | 上面全部                             | —                         |
+| `material` 材质   | `materials`（= 现有 `material_plan` 节点） | components（`material_role` 要存在） | —                         |
+| `objects` 开放集  | `objects`                                  | —                                    | 物件场景下与 massing 互斥 |
 
 **档位决定用哪几块**：`minimal` 只用 massing + facade；`standard` 全用；`detailed` 追加细节块。
 这正好复用现有 `DETAIL_BUDGET` 的单调递增语义。
 
 **执行循环**（直接映射到既有机制）：
 
-| 现在（`agent/plan/*`） | 目标 |
-|---|---|
-| `PlanItem` 条目 | 设计块 |
+| 现在（`agent/plan/*`）                                         | 目标                                                                        |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `PlanItem` 条目                                                | 设计块                                                                      |
 | `strategy.py::request_plan_strategy`（LLM 定策略：做哪些构件） | **删除这次调用**——依赖表是常量；`capability_catalog()` 保留，改喂设计提示词 |
-| `expand.py::expand_plan`（按 quota 展开） | 按档位 + 常量依赖表展开块 |
-| `handlers.py::run_generate`（LLM 生成构件） | `run_design_block`（LLM 写这一块） |
-| `handlers.py::run_merge`（分片合并） | `commit_block`（把这一块写进 DesignDocument 草稿） |
-| `store.py` / `refresh_statuses` / 对账 | **原样复用**：依赖落定、状态推进、可执行判定 |
-| `replan.py` 五动作闭集 | 换成设计动作：**重出某一逻辑块** / 补块 / 标 unsupported / 收尾 |
-| 有界终止（迭代上限 / 无进展 / 预算 / 队列空） | **原样复用** |
-| `parallel_group`（`handlers.py:84-106`） | 原样复用：结构 / 立面 / 屋顶 三块并发 |
+| `expand.py::expand_plan`（按 quota 展开）                      | 按档位 + 常量依赖表展开块                                                   |
+| `handlers.py::run_generate`（LLM 生成构件）                    | `run_design_block`（LLM 写这一块）                                          |
+| `handlers.py::run_merge`（分片合并）                           | `commit_block`（把这一块写进 DesignDocument 草稿）                          |
+| `store.py` / `refresh_statuses` / 对账                         | **原样复用**：依赖落定、状态推进、可执行判定                                |
+| `replan.py` 五动作闭集                                         | 换成设计动作：**重出某一逻辑块** / 补块 / 标 unsupported / 收尾             |
+| 有界终止（迭代上限 / 无进展 / 预算 / 队列空）                  | **原样复用**                                                                |
+| `parallel_group`（`handlers.py:84-106`）                       | 原样复用：结构 / 立面 / 屋顶 三块并发                                       |
 
 **这比"一次出全图"精细在哪**（逐条）：
 
@@ -172,11 +172,11 @@ classifier
 
 蓝图元素是**参数记录**，几何由引擎（TypeScript 侧）生成。所以编译器只需要知道**每类构件要哪些字段、每个字段填什么值**——而字段契约**已经存在**：
 
-| 数据源 | 内容 | 位置 |
-|---|---|---|
-| schema 字段契约 | 每类有哪些字段、必填、枚举取值 | `wild-core/schema.json` ↔ `storage/knowledge_base/schema.json` |
-| 构件元数据表 | `component_type` / `entity_type` / `required_fields` / `is_element` / `dependencies` | `generation/components.py::ComponentConfig` + 15 行注册 |
-| 字段来源规则 | 每个字段的值从哪来 | **新增**（见 2.3） |
+| 数据源          | 内容                                                                                 | 位置                                                           |
+| --------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| schema 字段契约 | 每类有哪些字段、必填、枚举取值                                                       | `wild-core/schema.json` ↔ `storage/knowledge_base/schema.json` |
+| 构件元数据表    | `component_type` / `entity_type` / `required_fields` / `is_element` / `dependencies` | `generation/components.py::ComponentConfig` + 15 行注册        |
+| 字段来源规则    | 每个字段的值从哪来                                                                   | **新增**（见 2.3）                                             |
 
 三张表里前两张现已存在，**但现在只喂给大模型看，没有任何代码拿它们生成元素**。编译器就是把这条缺的链路补上。
 
@@ -202,14 +202,14 @@ compile_design(document, schema, registry) -> (blueprint, defects)
 
 每个字段的来源只有这几类，**逐类一行数据，不是逐类一段代码**：
 
-| 来源 | 含义 | 例子 |
-|---|---|---|
-| `derived` | A 层算好的位置/尺寸 | 门的 `from[]` / `width` / `height` |
-| `host` | 从宿主反查 | `parentWall`、`frameDepth` = 父墙 `thickness` |
-| `material` | 按 `material_role` 取材质 | `frameMaterial` / `glassMaterial` |
-| `form` | 图纸里写的形态 | `interaction.mode`、`leafRows`、`verticalMullions` |
-| `constant` | schema 默认值 | 省略即默认 |
-| `enum` | 需闭集校验的取值 | `roofType` |
+| 来源       | 含义                      | 例子                                               |
+| ---------- | ------------------------- | -------------------------------------------------- |
+| `derived`  | A 层算好的位置/尺寸       | 门的 `from[]` / `width` / `height`                 |
+| `host`     | 从宿主反查                | `parentWall`、`frameDepth` = 父墙 `thickness`      |
+| `material` | 按 `material_role` 取材质 | `frameMaterial` / `glassMaterial`                  |
+| `form`     | 图纸里写的形态            | `interaction.mode`、`leafRows`、`verticalMullions` |
+| `constant` | schema 默认值             | 省略即默认                                         |
+| `enum`     | 需闭集校验的取值          | `roofType`                                         |
 
 抽 `door` 验证（规则原文 `components.py:65-79`）：`from[]`/`width`/`height`/数量/宿主 → `derived`；`frameMaterial`/`glassMaterial` → `material`；`frameDepth`/`leafDepth` → `host`；只剩 `interaction.mode` 与 `leafRows` → `form`（且 `leafRows` 有默认值）。
 
@@ -250,13 +250,13 @@ compile_design(document, *, mode) -> CompileResult
 
 所以问题不是"脚本能不能完成"，而是"**默认值够不够好**"。据此，编译器输出四类：
 
-| 输出 | 含义 | 谁处理 |
-|---|---|---|
-| `blueprint` | 编译好的蓝图 | —— |
-| `defects` | 图纸**错了**：引用悬空 / 尺寸越界 / 枚举越界 / 必填缺失 | 必须改图纸 → 修订 |
-| `defaulted` | 图纸**没说**，编译器按默认值填了（如 `leafRows`、`mullions`） | **档位决定**：低档接受默认；高档让模型把值补进图纸后重编译 |
-| `unsupported` | 能力缺失（引擎做不到） | 只标记不阻断（红线），进交付清单 |
-| `uncompiled` | 编译器**暂无派生规则**（≠ 能力缺失，引擎是能做的） | 走模型通道补；对应的"配额没满足"缺陷降级为 `warn`，不阻断 |
+| 输出          | 含义                                                          | 谁处理                                                     |
+| ------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| `blueprint`   | 编译好的蓝图                                                  | ——                                                         |
+| `defects`     | 图纸**错了**：引用悬空 / 尺寸越界 / 枚举越界 / 必填缺失       | 必须改图纸 → 修订                                          |
+| `defaulted`   | 图纸**没说**，编译器按默认值填了（如 `leafRows`、`mullions`） | **档位决定**：低档接受默认；高档让模型把值补进图纸后重编译 |
+| `unsupported` | 能力缺失（引擎做不到）                                        | 只标记不阻断（红线），进交付清单                           |
+| `uncompiled`  | 编译器**暂无派生规则**（≠ 能力缺失，引擎是能做的）            | 走模型通道补；对应的"配额没满足"缺陷降级为 `warn`，不阻断  |
 
 `defaulted` 这一栏就是"借助大模型力量"的**唯一合法入口**，而且天然有界——只有编译报出来的字段才有讨论余地，
 模型不必（也不许）去改别的。
@@ -281,10 +281,10 @@ compile_design(document, *, mode) -> CompileResult
 
 正确的方向是**把"模型补"发生的位置从蓝图侧移到图纸侧**：
 
-| 调用方 | 用途 | 拿到什么 | 性质 |
-|---|---|---|---|
-| pipeline 的 `compile` 节点 | **必经**，一票定终局 | `(blueprint, defects, defaulted, unsupported)` | 不可跳过 |
-| 设计节点的 tool：`compile_design(draft)` | **试算**（"开间改成 5 会怎样"） | 只要 `defects` + `defaulted`，不要蓝图 | 可选、可多次 |
+| 调用方                                   | 用途                            | 拿到什么                                       | 性质         |
+| ---------------------------------------- | ------------------------------- | ---------------------------------------------- | ------------ |
+| pipeline 的 `compile` 节点               | **必经**，一票定终局            | `(blueprint, defects, defaulted, unsupported)` | 不可跳过     |
+| 设计节点的 tool：`compile_design(draft)` | **试算**（"开间改成 5 会怎样"） | 只要 `defects` + `defaulted`，不要蓝图         | 可选、可多次 |
 
 两个调用方是**同一个纯函数**。tool 版本只回诊断、不回蓝图，所以模型再怎么调也污染不了产物；
 而"模型补的值"落进**图纸**（走 `DesignPatch` 新 revision），再由必经的编译产出蓝图。
@@ -294,12 +294,12 @@ compile_design(document, *, mode) -> CompileResult
 
 ### 2.8 "复杂建筑出错率高"打的是图纸，不是编译器
 
-| | 编译器（纯函数） | 图纸生成（模型） |
-|---|---|---|
-| 同样输入 | 永远同样输出 | 每次可能不同 |
-| 错误性质 | 代码 bug | 设计不合（漏写/自相矛盾/引用悬空） |
-| 怎么修 | 写一条单测，一次修好永久修好 | 分块 + 逐块校验 + 块间不变量（1.6） |
-| 复杂度的影响 | 只增加**分支数**（正是该补测试的地方） | 显著增加出错率 |
+|              | 编译器（纯函数）                       | 图纸生成（模型）                    |
+| ------------ | -------------------------------------- | ----------------------------------- |
+| 同样输入     | 永远同样输出                           | 每次可能不同                        |
+| 错误性质     | 代码 bug                               | 设计不合（漏写/自相矛盾/引用悬空）  |
+| 怎么修       | 写一条单测，一次修好永久修好           | 分块 + 逐块校验 + 块间不变量（1.6） |
+| 复杂度的影响 | 只增加**分支数**（正是该补测试的地方） | 显著增加出错率                      |
 
 ⇒ 本重构的**根本收益其实就是这一条**：把最容易出错的那部分，从"模型手写、错了没人知道"的蓝图侧，
 搬到"纯函数 + 可单测 + 错了必然报 defects"的编译器侧。复杂度越高，这个搬家的收益越大。
@@ -377,13 +377,13 @@ DesignDecisions
 
 规则：
 
-| 字段 | 语义 | 谁算 |
-|---|---|---|
-| `type` | 必须命中构件注册表且 `implemented` | 图纸给，编译器校验 |
-| `host` | 宿主**语义 id**（体量 / 墙 / 门窗槽位） | 图纸给，编译器解析成坐标 |
-| `size` | 相对宿主的尺寸 | 图纸给 |
-| `form` | 形态参数，逐类闭集（来自 schema） | 图纸给 |
-| `material_role` | 材质角色名（`contracts.py:162`） | 图纸给，编译器据此取材质 |
+| 字段            | 语义                                    | 谁算                     |
+| --------------- | --------------------------------------- | ------------------------ |
+| `type`          | 必须命中构件注册表且 `implemented`      | 图纸给，编译器校验       |
+| `host`          | 宿主**语义 id**（体量 / 墙 / 门窗槽位） | 图纸给，编译器解析成坐标 |
+| `size`          | 相对宿主的尺寸                          | 图纸给                   |
+| `form`          | 形态参数，逐类闭集（来自 schema）       | 图纸给                   |
+| `material_role` | 材质角色名（`contracts.py:162`）        | 图纸给，编译器据此取材质 |
 
 **抽象与显式并存**：立面轴网（bays + pattern）作为**默认生成器**（"这个面 4 个开间都是窗"），`components` 用来**显式覆盖**个别槽位。抽象为主、显式为例外。
 
@@ -425,22 +425,22 @@ DesignDecisions
 
 ### 4.1 必须同批改的地方
 
-| 类别 | 具体 |
-|---|---|
-| 设计契约 | `app/design/contracts.py`（`OpeningKind`、新增 `ComponentInstance`、扩不变量）、前端类型、SVG 预览、`ResolvedDesign` |
-| 编译器 | 新增 A/B 两层；吸收 `architecture/skeleton.py`、`architecture/facade.py` |
-| 流程 | `graph.py` 节点与边；`state.py` 字段 |
-| 知识库 | `_COMPONENT_RULES` + `component/entity_type=*` 文档的**消费方**从执行期改到设计期；改完 md 必须 `scripts/kb/resync_knowledge_index.py` |
-| schema | 若新增契约字段，**三处白名单**：`blueprint_parser.py::component_allowed`、`spatial_tools.py` 枚举白名单、`schema.json` 两副本 |
-| 门禁 | `scripts/check-*.mjs` 硬编码期望值、`verify_wild_blueprint.py`、`tests/agent/*` |
+| 类别     | 具体                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 设计契约 | `app/design/contracts.py`（`OpeningKind`、新增 `ComponentInstance`、扩不变量）、前端类型、SVG 预览、`ResolvedDesign`                   |
+| 编译器   | 新增 A/B 两层；吸收 `architecture/skeleton.py`、`architecture/facade.py`                                                               |
+| 流程     | `graph.py` 节点与边；`state.py` 字段                                                                                                   |
+| 知识库   | `_COMPONENT_RULES` + `component/entity_type=*` 文档的**消费方**从执行期改到设计期；改完 md 必须 `scripts/kb/resync_knowledge_index.py` |
+| schema   | 若新增契约字段，**三处白名单**：`blueprint_parser.py::component_allowed`、`spatial_tools.py` 枚举白名单、`schema.json` 两副本          |
+| 门禁     | `scripts/check-*.mjs` 硬编码期望值、`verify_wild_blueprint.py`、`tests/agent/*`                                                        |
 
 ### 4.2 红线（不得被本重构绕开）
 
-- 🔴 **能力缺失只标记、不阻断**：编译遇到未实现能力 → `unsupported` + warn，不修订、不失败。
-- 🔴 **禁按构件类型/`roofType` 写专属分支加能力** → 一律抽成通用算子（这正是 A 层算子表的依据）。
-- 🔴 **唯一事实源**：图纸的唯一载体是 `DesignDocument`（带 revision/locks/rule_trace）；编译器**不产生设计**，只做映射。修订必须走 `apply_patch` 产生新 revision。
-- 🔴 **KB 是"什么算合法"的第二实现**：改几何口径/必填/枚举 → 必须同批改知识库文档。
-- 🔴 **生成链改动必须拿真模型跑**：`tests/agent/test_plan_chain_e2e.py` 把节点整替成桩件，节点内校验一行都不执行；须用 `.workbuddy/diag/probe_*_chain_live.py`。
+-  **能力缺失只标记、不阻断**：编译遇到未实现能力 → `unsupported` + warn，不修订、不失败。
+-  **禁按构件类型/`roofType` 写专属分支加能力** → 一律抽成通用算子（这正是 A 层算子表的依据）。
+-  **唯一事实源**：图纸的唯一载体是 `DesignDocument`（带 revision/locks/rule_trace）；编译器**不产生设计**，只做映射。修订必须走 `apply_patch` 产生新 revision。
+-  **KB 是"什么算合法"的第二实现**：改几何口径/必填/枚举 → 必须同批改知识库文档。
+-  **生成链改动必须拿真模型跑**：`tests/agent/test_plan_chain_e2e.py` 把节点整替成桩件，节点内校验一行都不执行；须用 `.workbuddy/diag/probe_*_chain_live.py`。
 
 ### 4.3 已知的、必须承认的代价
 
@@ -454,44 +454,44 @@ DesignDecisions
 
 ### 5.1 代码
 
-| 文件 | 作用 |
-|---|---|
-| `wild-server/app/agent/compiler/diagnostics.py` | 四类输出的数据契约：`CompileDefect` / `CompileDefault` / `CompileResult`（含 `.ok` / `.summary()`）+ 三档模式常量 |
-| `wild-server/app/agent/compiler/compile.py` | 编译器本体：`compile_design(plan, *, mode, user_message) -> CompileResult`；含附属构件派生（`_derive_attachments` / `_derive_lights`） |
-| `wild-server/app/agent/nodes/compile_node.py` | graph 节点入口：编译 → 写 `skeleton_blueprint` / `design_brief` / `compile_report` |
-| `wild-server/app/agent/nodes/design_review_node.py::route_design_review` | 建筑 → `compile`；物件 → `skeleton`（`_compiles_deterministically`） |
-| `wild-server/app/agent/plan/expand.py::_drop_produced` | 已产出的类型不再派 `generate`；**两条策略路径共用的唯一闸口**（见 §5.8） |
-| `wild-server/app/agent/graph.py` | 注册 `compile` 节点 + `design_review` 路由分支（与 `skeleton` 并列） |
-| `tests/compiler/test_compile_design.py` | 编译器行为契约 47 条 |
-| `tests/compiler/test_compile_wiring.py` | 接线契约 11 条 |
-| `wild-server/app/agent/generation/architecture/design_blocks.py` | **设计块表**（常量依赖表 + 档位闭集 + 字段→块 / `design_field`→块 映射），§1.6 的唯一事实源 |
-| `wild-server/app/agent/generation/architecture/design_workflow.py` | **逐块起草执行器**：`draft_design_blocks` + 块契约 `check_block_contract`（首次成图与收敛环共用） |
-| `wild-server/app/agent/generation/architecture/convergence.py` | **收敛环**：`converge_design`（缺陷 → 只重出受影响的块 → 再编译，有界终止），见 §5.7 |
-| `wild-server/app/agent/nodes/design_convergence_node.py` | 收敛环节点入口（薄适配层；实现留在领域层，受"节点入口 ≤100 行"契约约束） |
-| `wild-server/app/agent/generation/architecture/probe_tool.py` | **试算工具**（§2.7）：`probe_compile_design` / `probe_design_text` —— 只回诊断、不回蓝图，且在任何输入下都不抛异常 |
-| `wild-server/app/agent/compiler/pipeline_defects.py` | **交付流水线 → 编译期缺陷的唯一投影**（§2.5）：`pipeline_defect_messages`；在深拷贝上跑，只诊断不修复 |
-| `tests/compiler/test_pipeline_defects.py` | §2.5 验收 5 条（编译缺陷 ≡ 流水线 error 行 / 不改入参 / schema 收口抓 ID 重复 / 产物零缺陷） |
-| `tests/agent/test_design_blocks.py` | 块表与块契约 26 条 |
-| `tests/agent/test_design_probe_tool.py` | 试算工具 14 条（全函数 / 只回诊断 / 可调用性 / 两条通道的接线） |
-| `tests/agent/test_design_convergence.py` | 收敛环 25 条（有界终止 / 定向重出 / 不猜块 / 模型故障不阻断 / 真编译器接线） |
-| `.workbuddy/diag/probe_deterministic_full_compile.py` | 零模型探针（退出码即结果，**直接调 `compile_design`，不复制组合逻辑**；`--dump` 可导出 `.wild` 喂真实引擎） |
-| `.workbuddy/diag/probe_compile_path_plan.py` | 整路探针：`compile_node → expand_plan → run_validation_pipeline → merge_fragments` |
-| `.workbuddy/diag/negative_check_compiler_attachments.py` | 负例验证：7 个 mutation 逐个注回，确认红点集合**恰好**等于对应用例 |
+| 文件                                                                     | 作用                                                                                                                                   |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `wild-server/app/agent/compiler/diagnostics.py`                          | 四类输出的数据契约：`CompileDefect` / `CompileDefault` / `CompileResult`（含 `.ok` / `.summary()`）+ 三档模式常量                      |
+| `wild-server/app/agent/compiler/compile.py`                              | 编译器本体：`compile_design(plan, *, mode, user_message) -> CompileResult`；含附属构件派生（`_derive_attachments` / `_derive_lights`） |
+| `wild-server/app/agent/nodes/compile_node.py`                            | graph 节点入口：编译 → 写 `skeleton_blueprint` / `design_brief` / `compile_report`                                                     |
+| `wild-server/app/agent/nodes/design_review_node.py::route_design_review` | 建筑 → `compile`；物件 → `skeleton`（`_compiles_deterministically`）                                                                   |
+| `wild-server/app/agent/plan/expand.py::_drop_produced`                   | 已产出的类型不再派 `generate`；**两条策略路径共用的唯一闸口**（见 §5.8）                                                               |
+| `wild-server/app/agent/graph.py`                                         | 注册 `compile` 节点 + `design_review` 路由分支（与 `skeleton` 并列）                                                                   |
+| `tests/compiler/test_compile_design.py`                                  | 编译器行为契约 47 条                                                                                                                   |
+| `tests/compiler/test_compile_wiring.py`                                  | 接线契约 11 条                                                                                                                         |
+| `wild-server/app/agent/generation/architecture/design_blocks.py`         | **设计块表**（常量依赖表 + 档位闭集 + 字段→块 / `design_field`→块 映射），§1.6 的唯一事实源                                            |
+| `wild-server/app/agent/generation/architecture/design_workflow.py`       | **逐块起草执行器**：`draft_design_blocks` + 块契约 `check_block_contract`（首次成图与收敛环共用）                                      |
+| `wild-server/app/agent/generation/architecture/convergence.py`           | **收敛环**：`converge_design`（缺陷 → 只重出受影响的块 → 再编译，有界终止），见 §5.7                                                   |
+| `wild-server/app/agent/nodes/design_convergence_node.py`                 | 收敛环节点入口（薄适配层；实现留在领域层，受"节点入口 ≤100 行"契约约束）                                                               |
+| `wild-server/app/agent/generation/architecture/probe_tool.py`            | **试算工具**（§2.7）：`probe_compile_design` / `probe_design_text` —— 只回诊断、不回蓝图，且在任何输入下都不抛异常                     |
+| `wild-server/app/agent/compiler/pipeline_defects.py`                     | **交付流水线 → 编译期缺陷的唯一投影**（§2.5）：`pipeline_defect_messages`；在深拷贝上跑，只诊断不修复                                  |
+| `tests/compiler/test_pipeline_defects.py`                                | §2.5 验收 5 条（编译缺陷 ≡ 流水线 error 行 / 不改入参 / schema 收口抓 ID 重复 / 产物零缺陷）                                           |
+| `tests/agent/test_design_blocks.py`                                      | 块表与块契约 26 条                                                                                                                     |
+| `tests/agent/test_design_probe_tool.py`                                  | 试算工具 14 条（全函数 / 只回诊断 / 可调用性 / 两条通道的接线）                                                                        |
+| `tests/agent/test_design_convergence.py`                                 | 收敛环 25 条（有界终止 / 定向重出 / 不猜块 / 模型故障不阻断 / 真编译器接线）                                                           |
+| `.workbuddy/diag/probe_deterministic_full_compile.py`                    | 零模型探针（退出码即结果，**直接调 `compile_design`，不复制组合逻辑**；`--dump` 可导出 `.wild` 喂真实引擎）                            |
+| `.workbuddy/diag/probe_compile_path_plan.py`                             | 整路探针：`compile_node → expand_plan → run_validation_pipeline → merge_fragments`                                                     |
+| `.workbuddy/diag/negative_check_compiler_attachments.py`                 | 负例验证：7 个 mutation 逐个注回，确认红点集合**恰好**等于对应用例                                                                     |
 
 **实测覆盖范围**（探针 + 测试，零模型调用）：
 
-| 类别 | 能否确定性产出 |
-|---|---|
-| 墙 / 楼板 / 楼梯 | ✅ `build_deterministic_skeleton` |
-| 门 / 窗（含凸窗） | ✅ `conform_openings_to_slots` |
-| 入口雨篷 | ✅ `conform_entrance_accessories` 吸附 |
-| 屋顶（单体积派生 / 多体量逐块拆分） | ✅ 本模块新增的 `_single_roof` + 既有 `conform_roofs_to_slots` |
-| 阳台 / 栏杆 | ✅ `conform_balconies_to_slots` / `conform_railings_to_slots` |
-| 檐口 | ✅ `_cornice_candidates`：沿檐边挂 `parentRoof` 局部路径（`flat`/`gable`/`hip`） |
-| 烟囱 | ✅ `_chimney_candidates`：落在屋脊最高处，基座贴屋面（`flat`/`gable`/`hip`） |
-| 灯具 | ✅ `_derive_lights`：每个外墙面一盏，入口墙那盏复用既有吸附 |
-| 坡道 | ❌ → `uncompiled`：**没有场地标高就没有可派生的高差**，硬造一个落差就是"产生设计" |
-| 电梯 / 家具 | ❌ → `uncompiled`：电梯要井道配套与 `vertical_strategy` 联动；家具缺的是**房间划分**（P2 未实现） |
+| 类别                                | 能否确定性产出                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 墙 / 楼板 / 楼梯                    | ✅ `build_deterministic_skeleton`                                                                 |
+| 门 / 窗（含凸窗）                   | ✅ `conform_openings_to_slots`                                                                    |
+| 入口雨篷                            | ✅ `conform_entrance_accessories` 吸附                                                            |
+| 屋顶（单体积派生 / 多体量逐块拆分） | ✅ 本模块新增的 `_single_roof` + 既有 `conform_roofs_to_slots`                                    |
+| 阳台 / 栏杆                         | ✅ `conform_balconies_to_slots` / `conform_railings_to_slots`                                     |
+| 檐口                                | ✅ `_cornice_candidates`：沿檐边挂 `parentRoof` 局部路径（`flat`/`gable`/`hip`）                  |
+| 烟囱                                | ✅ `_chimney_candidates`：落在屋脊最高处，基座贴屋面（`flat`/`gable`/`hip`）                      |
+| 灯具                                | ✅ `_derive_lights`：每个外墙面一盏，入口墙那盏复用既有吸附                                       |
+| 坡道                                | ❌ → `uncompiled`：**没有场地标高就没有可派生的高差**，硬造一个落差就是"产生设计"                 |
+| 电梯 / 家具                         | ❌ → `uncompiled`：电梯要井道配套与 `vertical_strategy` 联动；家具缺的是**房间划分**（P2 未实现） |
 
 
 ### 5.2 接线：**没有开关**
@@ -512,7 +512,7 @@ DesignDecisions
 
 - ✅ **收敛环已落地（2026-09-28）**：`compile_design(dry_run)` 的 **error 级、且能映射回设计块**的缺陷，
   已经会驱动"只重出受影响的块 → 合回图纸 → 再编译"，见 §5.7。
-- 🔴 **`defaulted` 回灌图纸：前置未满足，现在做不了——它不是一个独立可做项**（2026-09-28 实测，见 §5.12）。
+-  **`defaulted` 回灌图纸：前置未满足，现在做不了——它不是一个独立可做项**（2026-09-28 实测，见 §5.12）。
   `defaulted` 不是 error 缺陷（没有 severity），进不了收敛环；§2.6 说的"高档位让模型把值补进图纸"
   要先把 `defaulted` 提升成一种**可修订项**。但**图纸层目前没有任何承接这些字段的通道**——
   实测 65 条 `defaulted` **全部**落在注册表 `optional_fields`（`window.frameDepth/frameWidth/glassDepth`、
@@ -544,7 +544,7 @@ DesignDecisions
 - **§3 的图纸分层未落地**：`OpeningInstance` / `ComponentInstance` / 契约不变量扩容都还只在文档里；当前编译器消费的是**现有** `architecture_plan` 协议。
 - **收敛环（§1.6 设计期 plan-and-execute）未实现**：设计侧仍是"一次定稿 → 人工审核"，`defects.design_field` 已经把定位信息准备好了，但还没人消费。
   > **已作废（2026-09-28 当晚）**：收敛环已落地，见 §5.7；`design_field` 的消费点就是 `convergence.py::design_level_defects`。
-- 🔴 **编译通路不落地材质方案（2026-09-28 实测，真回归）**：`skeleton_generator` 有一步
+-  **编译通路不落地材质方案（2026-09-28 实测，真回归）**：`skeleton_generator` 有一步
   `apply_resolved_material_plan(blueprint, material_plan, role_specs=…)`（`skeleton_workflow.py:271`），
   `compile_design` **没有**；而 `build_deterministic_skeleton`（`skeleton.py:1139`）的材质是**硬编码 6 个**
   （`concrete / wall_finish / wood / metal / glass / roof`），从不读图纸材质。
@@ -579,17 +579,17 @@ compile_design(plan, dry_run) → 取 severity=error 的缺陷
 
 **四种停法**（都实测过，见 `tests/agent/test_design_convergence.py`）：
 
-| stop_reason | 触发 |
-|---|---|
-| `converged` | 没有能映射回块的 error 缺陷（**含"只剩整图级缺陷"**——它不属于任何块，重出任何一块都解决不了，只能交人工） |
-| `max_rounds` | 迭代上限（默认 3）。**预算为 0 时一次模型调用都不发** |
-| `no_progress` | 连续 2 轮缺陷**条数**不下降 |
-| `no_draft` / `model_error` / `invalid_revision` / `outside_scope` | 模型一块没写出来 / 模型服务故障 / 归一化抛错 / 缺陷落在调用方划定的块之外 |
+| stop_reason                                                       | 触发                                                                                                      |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `converged`                                                       | 没有能映射回块的 error 缺陷（**含"只剩整图级缺陷"**——它不属于任何块，重出任何一块都解决不了，只能交人工） |
+| `max_rounds`                                                      | 迭代上限（默认 3）。**预算为 0 时一次模型调用都不发**                                                     |
+| `no_progress`                                                     | 连续 2 轮缺陷**条数**不下降                                                                               |
+| `no_draft` / `model_error` / `invalid_revision` / `outside_scope` | 模型一块没写出来 / 模型服务故障 / 归一化抛错 / 缺陷落在调用方划定的块之外                                 |
 
-🔴 **判进展只看缺陷条数，不用指纹集合**：`evidence` 里嵌着具体数值，改对一点点整串就变样，
+ **判进展只看缺陷条数，不用指纹集合**：`evidence` 里嵌着具体数值，改对一点点整串就变样，
 集合的"相等/包含"关系极不稳定。
 
-🔴 **`normalize_architecture_plan` 必须单独护住**：模型给的草稿是**不可信输入**，
+ **`normalize_architecture_plan` 必须单独护住**：模型给的草稿是**不可信输入**，
 实测它能抛出 `IndexError: list assignment index out of range`（`planning.py:615`
 的 `ground[entrance_bay - 1] = "door"`）。异常若穿出节点就会把整轮生成掐掉，
 而上一版图纸本来是可编译的 —— 这正是"收敛失败不阻断"要挡住的事。
@@ -622,21 +622,21 @@ compile_design(plan, dry_run) → 取 severity=error 的缺陷
 
 探针 `.workbuddy/diag/probe_compile_path_plan.py`（退出码即结果）。一份三层别墅图纸（带 `component_quota` 点名檐口/烟囱）：
 
-| 环节 | 结果 |
-|---|---|
-| 编译 | 24 个结构元素 + 42 个构件（door 1 / window 38 / cornice 2 / chimney 1），`ok=True`，`uncompiled=[]` |
-| plan | 条目 2 条，`generate` **0 条**——门窗、屋顶、檐口、烟囱全部已由编译产出，无一被重复派发 |
-| 交付校验 | `run_validation_pipeline` **24 步全绿**（0 error / 0 warning） |
-| merge | 空片段合并后与编译产物逐字节一致 |
+| 环节     | 结果                                                                                                |
+| -------- | --------------------------------------------------------------------------------------------------- |
+| 编译     | 24 个结构元素 + 42 个构件（door 1 / window 38 / cornice 2 / chimney 1），`ok=True`，`uncompiled=[]` |
+| plan     | 条目 2 条，`generate` **0 条**——门窗、屋顶、檐口、烟囱全部已由编译产出，无一被重复派发              |
+| 交付校验 | `run_validation_pipeline` **24 步全绿**（0 error / 0 warning）                                      |
+| merge    | 空片段合并后与编译产物逐字节一致                                                                    |
 
 ⇒ 这一份图纸上**模型调用为 0**：从"门窗+屋顶+附属十来类"降到"什么都不用模型做"。
 
-🔴 **由此发现一个必须记下来的边界（2026-09-28 二次核实后更正了措辞）**：`run_validation_pipeline`（24 步）单独跑时，把 `conform_openings_to_slots` 整段去掉（图纸点了 1 门 39 窗、产物一个没有）**仍然全绿**。也就是说：
+ **由此发现一个必须记下来的边界（2026-09-28 二次核实后更正了措辞）**：`run_validation_pipeline`（24 步）单独跑时，把 `conform_openings_to_slots` 整段去掉（图纸点了 1 门 39 窗、产物一个没有）**仍然全绿**。也就是说：
 
-| 校验层 | 管什么 | 不管什么 |
-|---|---|---|
-| `run_validation_pipeline`（交付流水线，24 步） | 这份蓝图**合不合法**（结构/引用/坐标/碰撞/覆盖） | 图纸点名的构件**是否都到位** |
-| `validate_design_brief_constraints`（设计符合性） | 图纸**有没有被落实**（配额下限、必填、批准槽位逐一对齐） | —— |
+| 校验层                                            | 管什么                                                   | 不管什么                     |
+| ------------------------------------------------- | -------------------------------------------------------- | ---------------------------- |
+| `run_validation_pipeline`（交付流水线，24 步）    | 这份蓝图**合不合法**（结构/引用/坐标/碰撞/覆盖）         | 图纸点名的构件**是否都到位** |
+| `validate_design_brief_constraints`（设计符合性） | 图纸**有没有被落实**（配额下限、必填、批准槽位逐一对齐） | ——                           |
 
 ⚠️ **但"交付层看不见"是错的**：`validate_node` 实际判的是**两条一起**（`validation/workflow.py:85`
 跑流水线 + `:88` 跑 `validate_design_brief_constraints`），所以**真正的交付判定不会漏**。
@@ -657,36 +657,36 @@ compile_design(plan, dry_run) → 取 severity=error 的缺陷
 
 补这三类是为了把 `uncompiled` 从 6 类收到 3 类。规则都建在**已落地的屋顶与墙面**上，不新增槽位：
 
-| 构件 | 规则 | 为什么是这个规则 |
-|---|---|---|
-| 檐口 | 每块屋顶的**每条檐边**一段线脚；`parentRoof` 局部坐标，Y = 屋面高度偏移 | KB《檐口 cornice》明文"建筑檐口应优先指定 `parentRoof`"；引擎据此把路径贴到**已计算屋面**（坡屋顶的檐边不是水平线） |
-| 烟囱 | 每块屋顶的屋脊**最高处**立一根；位置相对屋顶中心 | 基座在最高处 ⇒ 筒身两侧都在坡面之上。KB 明写烟囱"不执行屋顶布尔穿透"⇒ 埋在屋面里就是穿帮 |
-| 灯具 | 每个外墙面一盏壁灯；有门的墙优先落在门中 | 位置只做"贴墙外 0.35m、门高以上 1.8m"的**粗对齐**，精对齐复用既有的 `conform_entrance_accessories`（唯一规则函数） |
-| 坡道 | **不派生** | 设计协议里没有场地标高 ⇒ 没有可派生的高差。引擎要求 `from`/`to` 有水平投影、KB 要求"必须有高度差"，硬造一个落差就是**产生设计**，违反本模块不变式 ⇒ 如实报 `uncompiled`（warn）交给模型 |
+| 构件 | 规则                                                                    | 为什么是这个规则                                                                                                                                                                        |
+| ---- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 檐口 | 每块屋顶的**每条檐边**一段线脚；`parentRoof` 局部坐标，Y = 屋面高度偏移 | KB《檐口 cornice》明文"建筑檐口应优先指定 `parentRoof`"；引擎据此把路径贴到**已计算屋面**（坡屋顶的檐边不是水平线）                                                                     |
+| 烟囱 | 每块屋顶的屋脊**最高处**立一根；位置相对屋顶中心                        | 基座在最高处 ⇒ 筒身两侧都在坡面之上。KB 明写烟囱"不执行屋顶布尔穿透"⇒ 埋在屋面里就是穿帮                                                                                                |
+| 灯具 | 每个外墙面一盏壁灯；有门的墙优先落在门中                                | 位置只做"贴墙外 0.35m、门高以上 1.8m"的**粗对齐**，精对齐复用既有的 `conform_entrance_accessories`（唯一规则函数）                                                                      |
+| 坡道 | **不派生**                                                              | 设计协议里没有场地标高 ⇒ 没有可派生的高差。引擎要求 `from`/`to` 有水平投影、KB 要求"必须有高度差"，硬造一个落差就是**产生设计**，违反本模块不变式 ⇒ 如实报 `uncompiled`（warn）交给模型 |
 
 四条硬约束（都撞过或差点撞上）：
 
-1. 🔴 **`gable` 的檐边只有两条**（`x = ±span/2`）。`roof.ts::roofSurfaceHeight` 里 gable 的高度按
+1.  **`gable` 的檐边只有两条**（`x = ±span/2`）。`roof.ts::roofSurfaceHeight` 里 gable 的高度按
    `|localX| / (span/2)` 衰减 ⇒ 坡向沿 x、屋脊沿 z；`z = ±depth/2` 那两条是**山墙端**
    （由 `gableEndPanels` 表达），挂线脚就是把线脚钉在山墙面上。
-2. 🔴 **局部坐标必须向内取整到毫米**。引擎的边界检查是 `abs(local) <= half + 1e-6`，
+2.  **局部坐标必须向内取整到毫米**。引擎的边界检查是 `abs(local) <= half + 1e-6`，
    而 `round(5.8505, 3) == 5.851 > 5.8505` —— 直接写 `span/2` 会被浮点顶出去，
    引擎抛 `ComponentCompileError` ⇒ **整份蓝图编译失败**（不是"少个线脚"）。
-3. 🔴 **局部依附的屋顶类型闭集必须镜像引擎**（`_ROOF_LOCAL_ATTACH = flat/gable/hip`
+3.  **局部依附的屋顶类型闭集必须镜像引擎**（`_ROOF_LOCAL_ATTACH = flat/gable/hip`
    对应 `attachedToSurface.ts::attachPointsToRoof`）。闭集外的 `dome` / `chinese_curved` /
    `chinese_pagoda` 会让该函数直接抛错，代价同样是整份蓝图编译不出来。
-4. 🔴 **"产不够下限就一个都不产"**。`validate_design_brief_constraints` 对"配额下限没满足"报 `error`，
+4.  **"产不够下限就一个都不产"**。`validate_design_brief_constraints` 对"配额下限没满足"报 `error`，
    而 `_capability_gaps` 只看"该类型是否出现过"⇒ 下限 4 却产出 1 个，会让这类型从
    `uncompiled`(warn) 掉进 (error)：**部分派生比完全不派生更糟**。差值交给模型通道。
 
 **验证**（全部实跑过）：
 
-| 手段 | 结果 |
-|---|---|
-| 正向用例 | `tests/compiler` 46 条 |
-| 负例验证（`.workbuddy/diag/negative_check_compiler_attachments.py`） | 7 个 mutation，红点集合**恰好**等于对应用例（含一处如实记录的双红耦合） |
-| 真实引擎重建（`check_blueprint_render.mjs`） | **PASS**：檐口扫掠落在 `x=-0.6 / 12.6`（= 屋顶中心 ± span/2）、烟囱基座 `Y=11.44 = 9.6 + 1.836`（正好屋脊顶）、8 盏灯全部在轮廓外 |
-| 数据合法性（`verify_wild_blueprint.py`） | **PASS**（含"知识库红线：roofType 枚举 / 墙角坐标"） |
+| 手段                                                                 | 结果                                                                                                                              |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 正向用例                                                             | `tests/compiler` 46 条                                                                                                            |
+| 负例验证（`.workbuddy/diag/negative_check_compiler_attachments.py`） | 7 个 mutation，红点集合**恰好**等于对应用例（含一处如实记录的双红耦合）                                                           |
+| 真实引擎重建（`check_blueprint_render.mjs`）                         | **PASS**：檐口扫掠落在 `x=-0.6 / 12.6`（= 屋顶中心 ± span/2）、烟囱基座 `Y=11.44 = 9.6 + 1.836`（正好屋脊顶）、8 盏灯全部在轮廓外 |
+| 数据合法性（`verify_wild_blueprint.py`）                             | **PASS**（含"知识库红线：roofType 枚举 / 墙角坐标"）                                                                              |
 
 ---
 
@@ -752,12 +752,12 @@ callback 只播报**真的进了计划**的类型（否则等于对用户撒谎�
 
 **验证**：
 
-| 手段 | 结果 |
-|---|---|
+| 手段                                    | 结果                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `tests/compiler/test_compile_wiring.py` | 新增 `test_model_strategy_cannot_redispatch_compiled_kinds`（**模型策略路径**，原缺陷所在）+ `test_deterministic_path_skips_produced_types_through_the_same_gate`（降级路径）；原 `test_requested_kinds_skips_already_produced_types` 删除——它钉的正是"过滤挂在半条路上"的写法 |
-| 全量回归 | 1057 passed / 1 xfailed |
-| 未定义名扫描 | `check_undefined_names.py app tests` → 245 文件 / **0 处** |
-| 真模型探针 | `.workbuddy/diag/probe_architecture_chain_live.py` 新增 `_report_plan_dispatch`：`dispatched ∩ produced == ∅` 且 `uncompiled ⊆ dispatched` |
+| 全量回归                                | 1057 passed / 1 xfailed                                                                                                                                                                                                                                                        |
+| 未定义名扫描                            | `check_undefined_names.py app tests` → 245 文件 / **0 处**                                                                                                                                                                                                                     |
+| 真模型探针                              | `.workbuddy/diag/probe_architecture_chain_live.py` 新增 `_report_plan_dispatch`：`dispatched ∩ produced == ∅` 且 `uncompiled ⊆ dispatched`                                                                                                                                     |
 
 ---
 
@@ -765,20 +765,20 @@ callback 只播报**真的进了计划**的类型（否则等于对用户撒谎�
 
 **做了**：设计块起草默认走**有界工具循环**，模型拿到一个只读工具 `probe_compile_design`。
 
-| 环节 | 位置 | 说明 |
-|---|---|---|
-| 工具本体 | `generation/architecture/probe_tool.py::probe_design_text` | 归一化草稿 → `compile_design(mode="probe")` → 压成一段文本 |
-| 工具声明 | 同文件 `build_probe_tool` / `DesignToolSpec` | 参数（用户请求 + 两个 profile）用**闭包**固定，模型只能传图纸 |
-| 接线 | `design_workflow.draft_design_blocks` | 所有通道：`run_tool_loop(system_prompt=prompt, …, tool_specs=[probe])` |
-| 预算 | `plan/tool_loop.py` | 单条目总预算 `MAX_TOOL_CALLS=3` + 单工具 `max_calls=2`，超限回可读拒绝文本 |
+| 环节     | 位置                                                       | 说明                                                                       |
+| -------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 工具本体 | `generation/architecture/probe_tool.py::probe_design_text` | 归一化草稿 → `compile_design(mode="probe")` → 压成一段文本                 |
+| 工具声明 | 同文件 `build_probe_tool` / `DesignToolSpec`               | 参数（用户请求 + 两个 profile）用**闭包**固定，模型只能传图纸              |
+| 接线     | `design_workflow.draft_design_blocks`                      | 所有通道：`run_tool_loop(system_prompt=prompt, …, tool_specs=[probe])`     |
+| 预算     | `plan/tool_loop.py`                                        | 单条目总预算 `MAX_TOOL_CALLS=3` + 单工具 `max_calls=2`，超限回可读拒绝文本 |
 
 **四条设计取舍（都写进了代码注释）**：
 
-1. 🔴 **只回诊断、不回蓝图**：走 `mode="probe"`，该模式 `blueprint`/`design_brief` 恒为 `None`
+1.  **只回诊断、不回蓝图**：走 `mode="probe"`，该模式 `blueprint`/`design_brief` 恒为 `None`
    ⇒ 模型怎么调都拿不到也改不了产物。链路仍是 图纸 →（编译器）→ 蓝图。
-2. 🔴 **工具是全函数**：非法 JSON / 非对象 / 归一化抛错 / 编译器抛错，**全部转成可读文本**。
+2.  **工具是全函数**：非法 JSON / 非对象 / 归一化抛错 / 编译器抛错，**全部转成可读文本**。
    工具边界上放异常出去＝掐掉整轮生成（`normalize_architecture_plan` 实测有一条越界会抛 `IndexError`）。
-3. 🔴 **模型故障仍要上抛**：`run_tool_loop` 为 plan 条目设计，内部**吞掉**异常只记 `diag["error"]`；
+3.  **模型故障仍要上抛**：`run_tool_loop` 为 plan 条目设计，内部**吞掉**异常只记 `diag["error"]`；
    设计块路径显式把它翻回 `RuntimeError` —— 否则"服务坏了"会被伪装成"模型不会写这块"，
    白重试 3 次后拿一份默认图纸交付，调用方再没机会走 `model_failure_result`。
 4. ~~**流式思考通道不提供该工具**~~ → **已解（2026-09-28 晚，见 §5.11）**：原先认为
@@ -793,7 +793,7 @@ callback 只播报**真的进了计划**的类型（否则等于对用户撒谎�
 `test_model_service_block.py`。
 
 **记账**（`plan/tool_loop.py` 的附带修正）：`_sum_usage` 累加 agent 消息的 token 用量。
-🔴 必须**逐条归一化再累加**，不能"先按原始键加总、最后归一化一次"——
+ 必须**逐条归一化再累加**，不能"先按原始键加总、最后归一化一次"——
 同一会话里 `prompt_tokens` / `input_tokens` 会混用，而 `_normalize_usage` 两者并存时只认前者
 （实测 10+5 变成 5）。
 
@@ -809,27 +809,27 @@ callback 只播报**真的进了计划**的类型（否则等于对用户撒谎�
 
 **问题**：§2.5 说的"校验散在三处"实测就是三处，而且**其中两处是同一条规则的两个实现**：
 
-| 规则 | 实现 A | 实现 B |
-|---|---|---|
+| 规则         | 实现 A                                                   | 实现 B                                                            |
+| ------------ | -------------------------------------------------------- | ----------------------------------------------------------------- |
 | 顶层结构完整 | `blueprint_parser.validate_blueprint_schema`（骨架预检） | `spatial_tools.validate_blueprint_structure`（交付流水线 Step 1） |
-| 构件尺寸 | `spatial_tools.validate_element_dimensions` | 编译期手挑调用（原 `_validator_defects`） |
-| 引用完整性 | `spatial_tools.validate_reference_integrity` | 编译期手挑调用（原 `_validator_defects`） |
+| 构件尺寸     | `spatial_tools.validate_element_dimensions`              | 编译期手挑调用（原 `_validator_defects`）                         |
+| 引用完整性   | `spatial_tools.validate_reference_integrity`             | 编译期手挑调用（原 `_validator_defects`）                         |
 
 **修法**：不再"编译侧手挑几个校验器调一遍"，而是把**整条交付流水线**投影成编译缺陷。
 
-| 环节 | 位置 |
-|---|---|
-| 唯一投影 | `compiler/pipeline_defects.py::pipeline_defect_messages` |
-| 口径复用 | `agent_service._final_errors`（按校验器去重、只留修复后的 `[recheck]`）——不另写"哪些步骤算没过" |
-| 接入 | `compile.py::_validator_defects`（流水线部分）+ 新增 `_schema_defects`（`validate_blueprint_schema` 收口） |
-| 步骤日志 | `run_validation_pipeline(..., log_steps=False)`：交付路径保持逐步骤日志，编译期关掉 |
+| 环节     | 位置                                                                                                       |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| 唯一投影 | `compiler/pipeline_defects.py::pipeline_defect_messages`                                                   |
+| 口径复用 | `agent_service._final_errors`（按校验器去重、只留修复后的 `[recheck]`）——不另写"哪些步骤算没过"            |
+| 接入     | `compile.py::_validator_defects`（流水线部分）+ 新增 `_schema_defects`（`validate_blueprint_schema` 收口） |
+| 步骤日志 | `run_validation_pipeline(..., log_steps=False)`：交付路径保持逐步骤日志，编译期关掉                        |
 
 四条实现纪律（都写进了代码注释）：
 
-1. 🔴 **在深拷贝上跑**。流水线带 `fix_*` 步骤、会就地修蓝图（交付路径正是靠这个）。
+1.  **在深拷贝上跑**。流水线带 `fix_*` 步骤、会就地修蓝图（交付路径正是靠这个）。
    编译期只要**诊断**；直接吃入参会把 `dry_run` 变成一次隐式修复，而外面拿到的还是原样——
    同一份图纸两次编译结果不同，回归与门禁全部失效。
-2. 🔴 **判据必须是"同源"而不是"都跑过"**。只要编译期"手挑几个校验器调一遍"，
+2.  **判据必须是"同源"而不是"都跑过"**。只要编译期"手挑几个校验器调一遍"，
    交付侧新增一个校验器、编译侧不跟——两处就分叉，而且**不会红**（谁也不报错，
    只是收敛环少看到一类缺陷）。所以 `test_pipeline_defects.py` 的第一条断言是
    **集合相等**：编译缺陷的 `evidence` 集合 ≡ `pipeline_defect_messages` 的返回。
@@ -864,12 +864,12 @@ delta"，据此把"界面上的思考过程"与"试算工具"做成了互斥，�
 
 **改法**（三处，全部向后兼容）：
 
-| 环节 | 位置 | 说明 |
-|---|---|---|
-| 规则上移 | `app/llm/reasoning.py::ReasoningDeltaCallback` | 原 `agent_service._ReasoningStreamCallback` 整段迁出（攒批判据 `FLUSH_CHARS=24` / 句末标点不变），`agent_service` 保留旧名别名。**agent 层不该从服务层导私有类** |
-| 回调接线 | `plan/tool_loop.py::run_tool_loop(..., on_reasoning_delta=)` | 挂进 `config["callbacks"]`；`finally` 里 **flush**（失败/超限时缓冲里那半句也要发出去） |
-| 开流式 | `plan/tool_loop.py::build_tool_agent(..., stream_tokens=)` | `stream_tokens=True` 才 `create_llm(streaming=True)`——没回调就不开，不开就一次 `on_llm_new_token` 都不会触发 |
-| 解互斥 | `design_workflow.py` | `probe_specs` 只看 `allow_probe`；`use_streaming` 只在**没有工具可用**时成立；工具循环那支把转发器包一层 `(channel, delta)` 传下去 |
+| 环节     | 位置                                                         | 说明                                                                                                                                                             |
+| -------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 规则上移 | `app/llm/reasoning.py::ReasoningDeltaCallback`               | 原 `agent_service._ReasoningStreamCallback` 整段迁出（攒批判据 `FLUSH_CHARS=24` / 句末标点不变），`agent_service` 保留旧名别名。**agent 层不该从服务层导私有类** |
+| 回调接线 | `plan/tool_loop.py::run_tool_loop(..., on_reasoning_delta=)` | 挂进 `config["callbacks"]`；`finally` 里 **flush**（失败/超限时缓冲里那半句也要发出去）                                                                          |
+| 开流式   | `plan/tool_loop.py::build_tool_agent(..., stream_tokens=)`   | `stream_tokens=True` 才 `create_llm(streaming=True)`——没回调就不开，不开就一次 `on_llm_new_token` 都不会触发                                                     |
+| 解互斥   | `design_workflow.py`                                         | `probe_specs` 只看 `allow_probe`；`use_streaming` 只在**没有工具可用**时成立；工具循环那支把转发器包一层 `(channel, delta)` 传下去                               |
 
 **反面判据（同批钉住，别改回互斥）**：
 `test_thinking_mode_keeps_both_the_tool_and_the_reasoning_stream` —— 思考模式下必须**同时**
@@ -893,11 +893,11 @@ delta"，据此把"界面上的思考过程"与"试算工具"做成了互斥，�
 
 **三组实测证据**（当前代码，零模型调用）：
 
-| 证据 | 位置 | 说明 |
-|---|---|---|
-| 立面槽位只装**类型名** | `planning.py:262-270` `_normalize_pattern` | 每项走 `str(item).lower()`，不在 `_OPENING_TYPES` 里的一律变 `"empty"` ⇒ **对象项会被直接吃掉** |
-| 门窗细部由编译器**派生** | `facade.py:840-841`（凸窗）、`:948-951`（普通窗） | `frameWidth/frameDepth/frameMaterial/leafMaterial` 全是确定性/变体派生，**不读图纸** |
-| 图纸**没有**逐实例参数通道 | `component_quota` 实测形状 | 只有 `{min,max,note}`；`detail_packages` 是包名列表。**图纸以"配额"说话，不以"实例参数"说话** |
+| 证据                       | 位置                                              | 说明                                                                                            |
+| -------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| 立面槽位只装**类型名**     | `planning.py:262-270` `_normalize_pattern`        | 每项走 `str(item).lower()`，不在 `_OPENING_TYPES` 里的一律变 `"empty"` ⇒ **对象项会被直接吃掉** |
+| 门窗细部由编译器**派生**   | `facade.py:840-841`（凸窗）、`:948-951`（普通窗） | `frameWidth/frameDepth/frameMaterial/leafMaterial` 全是确定性/变体派生，**不读图纸**            |
+| 图纸**没有**逐实例参数通道 | `component_quota` 实测形状                        | 只有 `{min,max,note}`；`detail_packages` 是包名列表。**图纸以"配额"说话，不以"实例参数"说话**   |
 
 实测快照（`.workbuddy/diag/dump_defaulted.py`，三层矩形别墅；另一张图同形不同量）：
 
@@ -947,13 +947,13 @@ front.ground_pattern: ["window", "window", "door", "window", "window", "window"]
 
 **四处消费、一处解析**：
 
-| 层 | 位置 | 改法 |
-|---|---|---|
-| 契约 | `contracts.py` | `FacadeDecision` 两个 pattern `list[OpeningKind]` → `list[str]`；validator 只查**类型**合法，形态名写错**不拒** |
-| 归一化 | `planning.py::_normalize_pattern` | 非法形态→降级纯类型（**只丢形容词、不丢开口**）；计数 / `"door" in ground` 改走 `opening_kind` |
-| 立面编译 | `facade.py` | 槽位带 `form`；`_apply_opening_form` 只覆写 `interaction.mode`（同 mode 保留 `hingeSide`/`openAngle`、非 swing 清掉、`fixed` 摘掉整个 `interaction`） |
-| resolver | `resolver.py` | slot 的 `id`/`type` 只用类型，不把形态写进 id |
-| 提示词 | `design_blocks.py` facade 块 + `prompts/planning.py:88` | 写明 `<kind>:<form>` 语法与闭集 |
+| 层       | 位置                                                    | 改法                                                                                                                                                  |
+| -------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 契约     | `contracts.py`                                          | `FacadeDecision` 两个 pattern `list[OpeningKind]` → `list[str]`；validator 只查**类型**合法，形态名写错**不拒**                                       |
+| 归一化   | `planning.py::_normalize_pattern`                       | 非法形态→降级纯类型（**只丢形容词、不丢开口**）；计数 / `"door" in ground` 改走 `opening_kind`                                                        |
+| 立面编译 | `facade.py`                                             | 槽位带 `form`；`_apply_opening_form` 只覆写 `interaction.mode`（同 mode 保留 `hingeSide`/`openAngle`、非 swing 清掉、`fixed` 摘掉整个 `interaction`） |
+| resolver | `resolver.py`                                           | slot 的 `id`/`type` 只用类型，不把形态写进 id                                                                                                         |
+| 提示词   | `design_blocks.py` facade 块 + `prompts/planning.py:88` | 写明 `<kind>:<form>` 语法与闭集                                                                                                                       |
 
 **两处偏保守的决策**：
 1. **只丢形态、不丢开口**：`window:casement` → `"window"` 照常生成（红线"能力缺失只标记不阻断"）；
@@ -977,19 +977,19 @@ front.ground_pattern: ["window", "window", "door", "window", "window", "window"]
 
 **落地形态**（新模块 `app/agent/generation/architecture/design_plan.py`）：
 
-| §1.6 的目标 | 实现 |
-|---|---|
-| 条目 = 设计块 | `build_design_plan`：`DESIGN_BLOCKS` → `PlanDocument`，id=`draft_<块名>` |
-| 依赖表是常量、不由 LLM 产出 | 依赖直接取块表的 `depends_on`；**没有**为块序新增任何模型调用 |
-| `PlanItem` 条目 | 复用；`op` 取闭集里的 `generate`（不开新 op），`kind`=块名 |
-| `expand_plan` | `build_design_plan`（确定性展开，只保留计划内的依赖） |
-| `run_generate` | `_draft_one`（LLM 写这一块，带证据重试） |
-| `store.py` / `refresh_statuses` / 对账 | **原样复用** |
-| `parallel_group`（结构/立面/屋顶并发） | `next_batch` 按声明派发 —— 🔴 **这是本次唯一真正修复的空转声明** |
-| 有界终止 | `ItemRun.max_attempts`（= `_BLOCK_MAX_ATTEMPTS`） |
-| `commit_block` 的块间不变量 | `check_block_contract`（已存在，未改） |
+| §1.6 的目标                            | 实现                                                                     |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| 条目 = 设计块                          | `build_design_plan`：`DESIGN_BLOCKS` → `PlanDocument`，id=`draft_<块名>` |
+| 依赖表是常量、不由 LLM 产出            | 依赖直接取块表的 `depends_on`；**没有**为块序新增任何模型调用            |
+| `PlanItem` 条目                        | 复用；`op` 取闭集里的 `generate`（不开新 op），`kind`=块名               |
+| `expand_plan`                          | `build_design_plan`（确定性展开，只保留计划内的依赖）                    |
+| `run_generate`                         | `_draft_one`（LLM 写这一块，带证据重试）                                 |
+| `store.py` / `refresh_statuses` / 对账 | **原样复用**                                                             |
+| `parallel_group`（结构/立面/屋顶并发） | `next_batch` 按声明派发 ——  **这是本次唯一真正修复的空转声明**           |
+| 有界终止                               | `ItemRun.max_attempts`（= `_BLOCK_MAX_ATTEMPTS`）                        |
+| `commit_block` 的块间不变量            | `check_block_contract`（已存在，未改）                                   |
 
-🔴 **`parallel_group="shell"` 从落表那天起就没生效过**：`draft_design_blocks` 是纯串行 for 循环，
+ **`parallel_group="shell"` 从落表那天起就没生效过**：`draft_design_blocks` 是纯串行 for 循环，
 `ordered_blocks` 的文档里写着"便于外部并发执行"，但没有任何调用方并发。现在三块真并发。
 
 **两个只有跑起来才会暴露的坑**（都已钉进测试）：
@@ -1016,13 +1016,13 @@ UI 那一行由 `ws_agent._design_schedule_note` 生成：`设计期 N 批（最
 §3.4 的"抽象与显式并存、抽象为主显式为例外"此前被实现成了**按类型整批取代**，
 代价实测如下：
 
-| 症状（改前） | 根因 |
-|---|---|
-| `light 数量 1 少于设计下限 2` | 一张只写一盏灯的清单把**四个立面**的派生灯全删了 |
-| 大量 `配额下限没满足` / `ok=False` | 只写阳台的清单把**门窗**整类删了 |
-| `roof 缺少必填字段 height/thickness` | 屋顶实例自带一套几何，漏掉元素必填字段 |
-| `未在 Blueprint.materials 中定义` | 把**设计侧角色名**写进了引用**蓝图材质名**的字段 |
-| 整份蓝图 `schema_invalid` | `light` 用了引擎不认的 5 个字段，`lightType="wall"` 违反闭集 |
+| 症状（改前）                         | 根因                                                         |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `light 数量 1 少于设计下限 2`        | 一张只写一盏灯的清单把**四个立面**的派生灯全删了             |
+| 大量 `配额下限没满足` / `ok=False`   | 只写阳台的清单把**门窗**整类删了                             |
+| `roof 缺少必填字段 height/thickness` | 屋顶实例自带一套几何，漏掉元素必填字段                       |
+| `未在 Blueprint.materials 中定义`    | 把**设计侧角色名**写进了引用**蓝图材质名**的字段             |
+| 整份蓝图 `schema_invalid`            | `light` 用了引擎不认的 5 个字段，`lightType="wall"` 违反闭集 |
 
 **改后的规则**：
 
@@ -1036,12 +1036,12 @@ UI 那一行由 `ws_agent._design_schedule_note` 生成：`设计期 N 批（最
    `material_plan.ROLE_SPECS[*].materialId`（**不在编译侧重抄一份**）；
 5. 屋顶实例只表态造型，几何取自派生模板（`_single_roof`）；`ridgeHeight` → `height`。
 
-🔴 **顺带暴露的测试问题**：`tests/design/test_component_instance_validation.py` 的 6 条 fixture 用
+ **顺带暴露的测试问题**：`tests/design/test_component_instance_validation.py` 的 6 条 fixture 用
 `complexity: "medium"` / `envelope: "modern"`（字符串），而契约要 `ComplexityDecision` /
 `EnvelopeDecision` **对象** ⇒ 这 6 条**从来没跑过**（`model_validate` 在更早的字段上就炸了，
 断言全在空转）。写契约测试前先确认 fixture 能过 `model_validate`。
 
-🔴 **另一条**：`test_light_instance_compilation` 旧断言 `lightType == "wall"` —— 那是**引擎的闭集外**
+ **另一条**：`test_light_instance_compilation` 旧断言 `lightType == "wall"` —— 那是**引擎的闭集外**
 取值，断言的不是"实现对了"，而是"实现错得跟测试一样"。已改成钉真正合法的字段
 （`position`/`fixtureType`/`initiallyOn`）。
 

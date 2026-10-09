@@ -6,7 +6,7 @@
         → design_review（interrupt 等人工批准 / 要求修订）
         → compile（图纸 → 蓝图，零模型调用）
 
-🔴 **本包不在 ``__init__`` 里 re-export 这三个入口**：它们分别依赖
+ **本包不在 ``__init__`` 里 re-export 这三个入口**：它们分别依赖
 ``app.agent.compiler``（1668 行）、``langgraph.types``、``app.design.*``，
 包初始化不该把它们全部拉起来。请从子模块直接导入，例如
 ``from app.agent.design_flow.compile import compile_node``。

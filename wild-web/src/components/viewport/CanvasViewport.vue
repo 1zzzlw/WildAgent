@@ -1582,7 +1582,7 @@ function rebuildEdges() {
 function applyEdgeMode() {
   const edgesOnly = renderPanel.showEdges
   if (sceneGroup) sceneGroup.visible = !edgesOnly
-  // 🔴 线框模式只留建筑线条（用户反馈二轮 2026-09-29）：只藏 sceneGroup 不够——
+  //  线框模式只留建筑线条（用户反馈二轮 2026-09-29）：只藏 sceneGroup 不够——
   // 阴影承接面、展示地面、GridHelper、日月天体、云层、内置环境都挂在 scene 根上，
   // 会原样留在画面里，"建筑变空白"变成"布景比线条还抢眼"。这里统一让位。
   // 恢复不手写各对象的可见性规则，交给它们唯一的管家：

@@ -71,7 +71,7 @@ class ModelServiceBlockTest(unittest.TestCase):
                 "thinking_mode": False,
                 "style_preference": None,
             }
-            # 🔴 桩件打在默认通道上：设计块起草走 `run_tool_loop`（§2.7 的试算工具需要它）。
+            #  桩件打在默认通道上：设计块起草走 `run_tool_loop`（§2.7 的试算工具需要它）。
             # 工具循环内部**吞掉**异常（那是给 plan 条目用的语义），所以这里断言的是
             # "设计块路径把模型故障重新上抛" —— 服务坏了必须终止整轮，不许伪装成"模型不会写"。
             with patch("app.agent.plan.tool_loop.run_tool_loop", _fake_run_tool_loop):

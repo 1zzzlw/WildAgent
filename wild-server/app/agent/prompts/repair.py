@@ -54,6 +54,10 @@ def build_callback_prompt(
                     indent=2,
                 )
                 failed_text += "\n```\n"
+        if fc.get("context_entities"):
+            failed_text += "- 只读空间参照（不授予修改权限）:\n```json\n"
+            failed_text += _json.dumps(fc["context_entities"], ensure_ascii=False, indent=2)
+            failed_text += "\n```\n"
         failed_text += f"- 当前参数:\n```json\n{params_display}\n```\n"
 
         if tool_data:
@@ -99,6 +103,8 @@ def build_callback_prompt(
 7. 每个动作必须含 tool、arguments 和简短 reason；普通动作的 arguments.entity_id 必须来自失败组件或该问题列出的「允许修改的关联实体」
 8. 只有出现 `design:<type>` 缺失配额目标时才能调用 add_entity；repair_target 必须原样使用该目标，entity 使用新的唯一 id
 9. `remove_entity` 仅用于删除明确列出的关联超额实体；删除后仍必须满足全局最小配额和其他立面约束
+
+10. 宿主和门窗位置只能使用当前参数及只读空间参照，不得猜测；已审核值不是几何正确的证明。缺少依据时返回空动作数组。
 
 ## 输出格式
 

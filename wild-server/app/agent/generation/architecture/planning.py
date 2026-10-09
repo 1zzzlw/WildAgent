@@ -7,7 +7,7 @@ import re
 from typing import Any
 
 from app.agent.knowledge.policy import term_is_requested
-from app.design.openings import opening_kind, opening_token, split_opening
+from app.design.openings import is_open_side, opening_kind, opening_token, split_opening
 
 from .profile import (
     _DETAIL_COMPONENT_QUOTAS,
@@ -285,10 +285,10 @@ def _normalize_pattern(
 ) -> list[str]:
     """把一面的 pattern 压成 ``bays`` 个**合法开口 token**。
 
-    🔴 token 的解析一律走 `app.design.openings.split_opening`（§3.3）——**不在这里 `split(":")`**：
+     token 的解析一律走 `app.design.openings.split_opening`（§3.3）——**不在这里 `split(":")`**：
     契约层、本函数、立面编译、`resolver` 四处读同一串东西，分头解析必然分叉（且不报错）。
 
-    🔴 非法形态**只丢形态、不丢开口**：``"window:casement"`` → ``"window"``，
+     非法形态**只丢形态、不丢开口**：``"window:casement"`` → ``"window"``，
     照常生成、形态由编译器派生。旧值 ``"window"`` 的行为一个字节不改。
     """
 
@@ -341,53 +341,38 @@ def _normalize_volumes(
     if not isinstance(raw, list):
         return fallback
 
-    volumes: list[dict[str, Any]] = []
-    for index, item in enumerate(raw[:8]):
-        if not isinstance(item, dict):
-            continue
-        x = _clamp_number(item.get("x"), 0, max(0, width - 1), 0)
-        z = _clamp_number(item.get("z"), 0, max(0, depth - 1), 0)
-        item_width = _clamp_number(item.get("width"), 1, width - x, width - x)
-        item_depth = _clamp_number(item.get("depth"), 1, depth - z, depth - z)
-        start_floor = int(_clamp_number(item.get("start_floor"), 1, modeled_floors, 1))
-        end_floor = int(_clamp_number(
-            item.get("end_floor"), start_floor, modeled_floors, modeled_floors,
-        ))
-        raw_id = re.sub(r"[^a-zA-Z0-9_]+", "_", str(item.get("id") or f"volume_{index + 1}"))
-        from app.design.contracts import VolumeDecision
-        try:
-            explicit = VolumeDecision.model_validate(item).model_dump(mode="json")
-            if (explicit["x"] + explicit["width"] <= width
-                    and explicit["z"] + explicit["depth"] <= depth
-                    and explicit["end_floor"] <= modeled_floors):
-                volumes.append(explicit)
-                continue
-        except ValueError:
-            pass
-        volumes.append({
-            "id": raw_id[:48] or f"volume_{index + 1}",
-            "role": "secondary" if str(item.get("role")).lower() == "secondary" else "primary",
-            "x": round(x, 2),
-            "z": round(z, 2),
-            "width": round(item_width, 2),
-            "depth": round(item_depth, 2),
-            "start_floor": start_floor,
-            "end_floor": end_floor,
-        })
-    if not volumes:
-        return fallback
-    if len({volume["id"] for volume in volumes}) != len(volumes):
-        return fallback
+    from app.design.contracts import VolumeDecision
+    from app.design.coordinates import DesignCoordinateConflict, volume_conflicts
 
-    # Preserve overlapping geometry for compiler diagnostics and bounded design revision.
-    # Moving/deleting volumes is not equivalent: it changes hosts, floors and silhouette.
-    # A footprint union alone cannot establish equivalence of those design relationships.
-    volumes = _repair_volume_floor_gaps(volumes, modeled_floors)
-    if any(
-        not any(volume["start_floor"] <= level <= volume["end_floor"] for volume in volumes)
-        for level in range(1, modeled_floors + 1)
-    ):
-        return fallback
+    volumes = []
+    if not 1 <= len(raw) <= 8:
+        raise DesignCoordinateConflict([{"path": "/decisions/volumes", "value": raw,
+            "conflict_path": "VolumeDecision", "reason": "体量数量必须为 1 到 8，不能丢弃显式条目"}])
+    for index, item in enumerate(raw):
+        if not isinstance(item, dict):
+            raise DesignCoordinateConflict([{"path": f"/decisions/volumes/{index}", "value": item,
+                "conflict_path": "VolumeDecision", "reason": "体量必须是对象"}])
+        # 只补缺省字段；显式坐标、尺寸和楼层绝不夹取或重解释。
+        candidate = {"id": f"volume_{index+1}", "role": "primary", "x": 0, "z": 0,
+                     "width": width, "depth": depth, "start_floor": 1,
+                     "end_floor": modeled_floors, **item}
+        try:
+            volumes.append(VolumeDecision.model_validate(candidate).model_dump(mode="json"))
+        except ValueError as exc:
+            raise DesignCoordinateConflict([{"path": f"/decisions/volumes/{index}", "value": item,
+                "conflict_path": "VolumeDecision", "reason": str(exc)}]) from exc
+    conflicts = volume_conflicts(volumes, massing)
+    if len({v["id"] for v in volumes}) != len(volumes):
+        conflicts.append({"path": "/decisions/volumes", "value": raw,
+                          "conflict_path": "volumes.id", "reason": "体量 ID 重复"})
+    missing = [level for level in range(1, modeled_floors+1)
+               if not any(v["start_floor"] <= level <= v["end_floor"] for v in volumes)]
+    if missing:
+        conflicts.append({"path": "/decisions/volumes", "value": raw,
+                          "conflict_path": "/decisions/massing/modeled_floors",
+                          "reason": f"楼层 {missing} 缺少体量，必须显式修订楼层覆盖"})
+    if conflicts:
+        raise DesignCoordinateConflict(conflicts)
     return volumes
 
 
@@ -451,7 +436,7 @@ def normalize_architecture_plan(
     complexity = deepcopy(
         complexity_profile or resolve_complexity_profile(user_message)
     )
-    # 🔴 profile 三级取值：显式传入 > **计划里已有的 id** > 重算（缺省 custom）。
+    #  profile 三级取值：显式传入 > **计划里已有的 id** > 重算（缺省 custom）。
     # 中间那一档是必需的：本函数在链上被多处**二次调用**（`compiler._compose`、
     # `build_deterministic_skeleton`、`probe_tool` 等），它们手里只有 plan、不会
     # 再传 `architecture_profile` —— 少了这一档就会把分类器判出的形制标签静默洗回
@@ -474,14 +459,7 @@ def normalize_architecture_plan(
     )
     fallback = _fallback_plan(user_message, complexity, profile, base_override=explicit_base)
     curtain_wall = bool(source.get("curtain_wall", fallback.get("curtain_wall")))
-    # 模型对 front 的**开敞声明**：
-    # 模型显式写了 front ground_pattern 且全为 empty——按已确立的开敞语义
-    # （pattern 全空 = 该面开敞无墙），这就是"此面无门"的显式表态。再往里钉
-    # 主入口会自相矛盾：把声明开敞的面改成实墙+门。实测模型按亭 KB 理解
-    # "排除 door"时不写 required_components（整个字段缺省），因此光有
-    # "required_components 不含 door 才豁免"一条判据不够——开敞声明是
-    # **等效豁免**。窄判据：只认"写了 pattern 且全 empty"；写了 pattern
-    # 但有 window 等非空 token 而没 door 的，仍视为"忘了门"照常钉。
+    # 整面 open 明确表达无墙、无门；整面 empty 仍是实墙。
     facade_source_raw = (
         source.get("facades") if isinstance(source.get("facades"), dict) else {}
     )
@@ -493,8 +471,7 @@ def normalize_architecture_plan(
     front_pattern_raw = front_item_raw.get("ground_pattern")
     model_declared_front_open = (
         isinstance(front_pattern_raw, list)
-        and bool(front_pattern_raw)
-        and all(opening_kind(str(token)) == "empty" for token in front_pattern_raw)
+        and is_open_side(front_pattern_raw)
     )
     # 门窗/屋顶强制配额的判据同源：模型表态过的 required_components 优先于档案默认。
     if explicit_base is not None:
@@ -540,7 +517,7 @@ def normalize_architecture_plan(
         min(floors, profile["max_explicit_floors"]),
     ))
     # 形状三级取值：**用户显式形状词 > 模型表态 > 确定性兜底**。
-    # 🔴 中间这级不能被忽略：模型自选的形制名（pavilion / tower / 表外的自定义标签）
+    #  中间这级不能被忽略：模型自选的形制名（pavilion / tower / 表外的自定义标签）
     # 才是设计的真实来源，正则只在"用户把形状词说出口"时才该压它一头。
     model_shape = coerce_shape_label(massing_raw.get("shape"))
     resolved_shape = requested_shape or model_shape or coerce_shape_label(
@@ -704,7 +681,6 @@ def normalize_architecture_plan(
         # 只有确实有entrance_bay的立面才加这个字段
         if entrance_bay is not None:
             facade_data["entrance_bay"] = entrance_bay
-        
         facades[face] = facade_data
 
     roof_input = source.get("roof")
@@ -724,10 +700,15 @@ def normalize_architecture_plan(
     from app.design.contracts import RoofDecision
     for key, field in RoofDecision.model_fields.items():
         if key in roof_raw:
+            adapter = TypeAdapter(field.rebuild_annotation())
             try:
-                roof[key] = TypeAdapter(field.rebuild_annotation()).validate_python(roof_raw[key])
+                value = adapter.validate_python(roof_raw[key])
             except ValueError:
-                pass
+                continue
+            # P5-A：``volumes`` 校验出来是**模型对象序列**，直接塞进归一化方案会让下游
+            # （facade / compile / json 导出）拿到非 JSON 类型。标量字段经同一个
+            # ``dump_python`` 也是原值，所以对两者统一，不必按字段分支。
+            roof[key] = adapter.dump_python(value, mode="json")
 
     quotas = {
         component_type: deepcopy(limits)
@@ -920,6 +901,24 @@ def normalize_architecture_plan(
         "unsupported_component_types": sorted(unsupported_component_types),
         "design_rationale": [str(item)[:160] for item in rationale[:6]],
     }
+
+    # §3.4 / P5-C：区域与构件材质绑定。**归一化不解释它**（角色闭集在材质方案那边，
+    # 这里硬校验必然误拒），只做形状过滤后透传；认不出形状的条目丢掉即可 ——
+    # 绑定写错由编译器记缺陷，不阻断。
+    raw_regions = (source.get("materials") or {}).get("regions") if isinstance(source.get("materials"), dict) else None
+    if not isinstance(raw_regions, list):
+        raw_regions = source.get("material_regions") or []
+    regions = [
+        {
+            "role": str(item["role"])[:60],
+            **({"type": str(item["type"])[:60]} if item.get("type") else {}),
+            **({"note": str(item["note"])[:200]} if item.get("note") else {}),
+        }
+        for item in raw_regions or []
+        if isinstance(item, dict) and str(item.get("role") or "").strip()
+    ][:20]
+    if regions or "materials" in source or "material_regions" in source:
+        result["materials"] = {"regions": regions}
 
     from app.design.normalization import plan_changes, decision_summary
     changes = plan_changes(source, result, source=input_source)

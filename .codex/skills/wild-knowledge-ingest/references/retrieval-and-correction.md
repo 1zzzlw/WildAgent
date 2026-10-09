@@ -16,7 +16,7 @@
 
 建筑用途和风格不作为 RAG 文档实体。模型先形成设计方案；后续查询只能根据用户原句、已批准系统和实际构件扩展，不得新增建筑套餐。
 
-🔴 **查询用的过滤值必须与知识库里真实存在的 metadata 对得上**，否则该查询返回 0 条且不报错。
+ **查询用的过滤值必须与知识库里真实存在的 metadata 对得上**，否则该查询返回 0 条且不报错。
 当前真实消费者是 `app/services/agent_service.py::_build_rag_queries` / `_build_rag_query`；
 改完知识库务必用它们实际会用的过滤对去比对（`loader.py` 会按别名补全粗粒度 `doc_type`/`entity_type`，
 但 `entity_name` 必须精确匹配）。已知 v2 缺口见 [chunk-contract.md](chunk-contract.md) 的

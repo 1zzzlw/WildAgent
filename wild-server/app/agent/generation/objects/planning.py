@@ -665,7 +665,7 @@ def fallback_object_plan(user_message: str) -> dict[str, Any]:
     （预设里有缺省尺寸，是确切的知识）。预设命中不了的名字（小人、花瓶、路灯）
     在这里**算不出几何** —— 那就如实报"本次表达不了"，而不是挑一张桌子顶上。
 
-    🔴 这里曾经是 `subtypes = [match_subtype(text) or DEFAULT_SUBTYPE]`：
+     这里曾经是 `subtypes = [match_subtype(text) or DEFAULT_SUBTYPE]`：
     没命中任何预设就做一张桌子。静默替换比失败更糟 ——
     用户拿到自己没要的东西，还以为系统理解对了（"要桌子给房子"就是这个模式）。
     现在改成 `unsupported_objects`：与《动态节点设计规划》§8.1 的

@@ -1,18 +1,31 @@
-"""开口 token 的唯一文法（设计文档 §3.3）。
+"""开口 token 的唯一文法（设计文档 §3.3、§3.4）。
 
 图纸里一个立面槽位就是一个 **开口 token**：
 
     "window"        —— 只说"这里是窗"，形态由编译器派生（旧值，必须继续支持）
     "door:slide"    —— 显式指定形态
-    "empty"         —— 这个开间不开洞（不是构件）
+    "empty"         —— **有墙、这个开间不开洞**
+    "open"          —— **开敞、这个开间不设墙**（P5-B）
 
-🔴 **为什么只能有一个解析函数**：token 会被四处读——契约校验（`contracts.py`）、
+## `empty` 与 `open` 为什么必须分开（P5-B）
+
+早期 ``empty`` 同时承担两种语义："这一格没洞"与"这一面这层不设墙"，
+判定靠"整面 pattern 全是 empty"⇒ 开敞。于是**写满一整面 empty**和
+**只想留几个实墙开间**在图纸上长得一样，而编出来的东西完全不同（有墙 vs 无墙）。
+
+现在两种语义各有名字：``empty`` 只表示有墙无洞，``open`` 明确表示开敞无墙。
+
+历史 `design/1.0` 文档在 `DesignDocument` 读取边界把整面 `empty` 迁移为 `open`，
+记录 rule_trace 并升级为 `design/1.1`。新图纸整面 `empty` 保留实墙。
+当前编译器只支持整面开敞；混合 `open` 与门窗/实墙的表达在设计块重试边界拒绝。
+
+ **为什么只能有一个解析函数**：token 会被四处读——契约校验（`contracts.py`）、
 归一化（`planning.py::_normalize_pattern`）、立面编译（`facade.py`）、
 已解析设计（`resolver.py`）。分头写 `token.split(":")` 必然分叉，
 而这四个地方的分叉**不会报错**，只会让"图纸说的形态"和"编出来的形态"悄悄不一致
 （`MEMORY.md`："同一件事被两处解析就会要求收敛"）。所有地方一律走 :func:`split_opening`。
 
-🔴 **form 直接用引擎闭集，不做改名映射**：`form` 的取值域就是 WILD 蓝图
+ **form 直接用引擎闭集，不做改名映射**：`form` 的取值域就是 WILD 蓝图
 ``openingInteractionSpec.mode``（`wild-core/schema.json`）里的 ``swing/slide/lift``，
 外加一个 :data:`FIXED_FORM`（``fixed`` = 不可开启，编译时不写 ``interaction``）。
 
@@ -20,7 +33,7 @@
 多一层改名只会多一个会漂移的分叉点，而且两层名字最终仍要对齐引擎。
 :func:`test_forms_match_the_engine_interaction_enum` 会把这条口径钉在 schema 上。
 
-🔴 **宽容规则只丢形态，绝不丢开口**（红线"能力缺失只标记不阻断"）：
+ **宽容规则只丢形态，绝不丢开口**（红线"能力缺失只标记不阻断"）：
 形态名认不出（模型写了 ``window:casement``）时降级成纯类型 ``"window"``，
 让它照常生成、由编译器派生形态；**不能**把整个槽位判成 ``"empty"``——
 那等于因为一个形容词拼错就删掉一扇窗。
@@ -30,11 +43,14 @@ from __future__ import annotations
 
 from typing import Any
 
-#: 开口类型闭集。``empty`` 不是构件，是"这个开间不开洞"。
-OPENING_KINDS: tuple[str, ...] = ("door", "window", "empty")
+#: 开口类型闭集。``empty``/``open`` 都不是构件：前者"有墙无洞"、后者"开敞无墙"。
+OPENING_KINDS: tuple[str, ...] = ("door", "window", "empty", "open")
+
+#: 明确表示"开敞无墙"的 token（P5-B）。
+OPEN_SIDE = "open"
 
 #: ``form`` 中属于引擎 ``interaction.mode`` 的那部分。
-#: 🔴 必须与 `wild-core/schema.json` 的 ``openingInteractionSpec.mode`` 一致（有漂移守卫）。
+#:  必须与 `wild-core/schema.json` 的 ``openingInteractionSpec.mode`` 一致（有漂移守卫）。
 INTERACTION_FORMS: tuple[str, ...] = ("swing", "slide", "lift")
 
 #: 不是引擎枚举值：``fixed`` = 固定、不可开启 ⇒ 产物里**不写** ``interaction``。
@@ -69,8 +85,8 @@ def split_opening(token: Any) -> tuple[str, str | None]:
     form = form.strip()
     if kind not in OPENING_KINDS:
         return ("empty", None)
-    if kind == "empty" or not form or form not in FORMS_BY_KIND[kind]:
-        # `empty` 没有形态；形态名不认识 ⇒ **保留开口、丢掉形态**（不降级成 empty）。
+    if kind in {"empty", OPEN_SIDE} or not form or form not in FORMS_BY_KIND[kind]:
+        # `empty`/`open` 没有形态；形态名不认识 ⇒ **保留开口、丢掉形态**（不降级成 empty）。
         return (kind, None)
     return (kind, form)
 
@@ -81,13 +97,22 @@ def opening_kind(token: Any) -> str:
     return split_opening(token)[0]
 
 
+def is_open_side(pattern: Any) -> bool:
+    """显式整面 open 才表示无墙；empty 始终表示实墙无洞。
+
+    历史 design/1.0 的整面 empty 在文档读取边界迁移为 open。
+    混合 open 与门窗不能以删除整面墙的方式实现。
+    """
+    return bool(pattern) and all(opening_kind(item) == OPEN_SIDE for item in pattern)
+
+
 def opening_token(kind: str, form: str | None) -> str:
     """反向组合（归一化回写 pattern 时用）。形态非法时退化成纯类型。"""
 
     clean = str(kind or "").strip().lower()
     if clean not in OPENING_KINDS:
         return "empty"
-    if clean == "empty" or not form:
+    if clean in {"empty", OPEN_SIDE} or not form:
         return clean
     form_text = str(form).strip().lower()
     if form_text not in FORMS_BY_KIND[clean]:
@@ -100,6 +125,8 @@ __all__ = [
     "FORMS_BY_KIND",
     "INTERACTION_FORMS",
     "OPENING_KINDS",
+    "OPEN_SIDE",
+    "is_open_side",
     "opening_kind",
     "opening_token",
     "split_opening",

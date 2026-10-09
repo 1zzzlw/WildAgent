@@ -11,14 +11,9 @@ from loguru import logger
 from app.agent.validation.diagnostics import (
     VALIDATOR_VERSION,
     ValidationSnapshot,
-    blueprint_fingerprint,
     step_result_to_dict,
 )
 from app.agent.validation.component_trace import get_all_entity_ids, trace_errors_to_components
-from app.agent.validation.design_constraints import (
-    design_quota_shortfalls,
-    validate_design_brief_constraints,
-)
 from app.agent.state import GenerationState
 from app.agent.validation.issues import validation_issues_from_results
 
@@ -54,97 +49,35 @@ async def validate_node(state: GenerationState) -> dict:
     
     # 导入并执行校验流水线
     from app.services.agent_delivery import final_validation_results
-    from app.services.agent_service import PipelineStepResult, run_validation_pipeline, _final_errors
+    from app.services.agent_service import _final_errors
     
     try:
         t0 = _time.time()
         merge_diag = dict(state.get("merge_diag") or {})
-        current_fingerprint = blueprint_fingerprint(merged_blueprint)
-
-        # 1. 优先复用 callback 携带的、指纹一致的校验快照（callback 已做过全量复检）。
-        prior_snapshot = state.get("validation_snapshot") or {}
-        snapshot_reusable = (
-            prior_snapshot.get("blueprint_fingerprint") == current_fingerprint
-            and prior_snapshot.get("validator_version") == VALIDATOR_VERSION
-            and bool(prior_snapshot.get("results"))
+        from app.agent.validation.candidate import evaluate_candidate
+        evaluation = evaluate_candidate(
+            merged_blueprint, design_document=state.get("design_document"),
+            design_brief=state.get("design_brief"), source="final_validate",
         )
-        if snapshot_reusable:
-            pipeline_results = [
-                PipelineStepResult(**result) for result in prior_snapshot.get("results", [])
-            ]
-            design_errors = list(prior_snapshot.get("design_errors", []))
-            cache_reused = True
-            logger.info("[validate_node] 复用 callback 校验快照（指纹一致）")
-        else:
-            cached_results = merge_diag.get("validation_results", [])
-            cache_reused = (
-                bool(cached_results)
-                and merge_diag.get("blueprint_fingerprint") == current_fingerprint
-            )
-            if cache_reused:
-                pipeline_results = [PipelineStepResult(**result) for result in cached_results]
-                logger.info("[validate_node] 复用 merge 节点最后一轮校验结果")
-            else:
-                pipeline_results = run_validation_pipeline(merged_blueprint)
+        current_fingerprint = evaluation["snapshot"]["blueprint_fingerprint"]
+        pipeline_results = evaluation["results"]
+        design_errors = evaluation["snapshot"]["design_errors"]
+        fulfillment = evaluation["fulfillment"]
+        cache_reused = False
+        merge_diag["approved_design_changes"] = evaluation["approved_design_changes"]
+        merge_diag["design_fulfillment"] = fulfillment
 
-            # merge_diag 记录的是合并当时的快照；设计配额必须对当前 Blueprint 重算。
-            design_errors = validate_design_brief_constraints(
-                merged_blueprint,
-                state.get("design_brief"),
-            )
-            if design_errors:
-                pipeline_results.append(PipelineStepResult(
-                    step="design",
-                    name="validate_design_brief",
-                    output="\n".join(f"❌ [design] {message}" for message in design_errors),
-                    has_error=True,
-                    has_warning=False,
-                ))
-            # 配额数量缺口 = 警告不阻断（用户决策 2026-09-29）：只影响模型补量，
-            # 不许"canopy 数量 1 少于设计下限 2"这类消息拦下整张蓝图。
-            quota_shortfalls = design_quota_shortfalls(
-                merged_blueprint,
-                state.get("design_brief"),
-            )
-            if quota_shortfalls:
-                pipeline_results.append(PipelineStepResult(
-                    step="design",
-                    name="design_quota_shortfall",
-                    output="\n".join(f"⚠️ [design] {message}" for message in quota_shortfalls),
-                    has_error=False,
-                    has_warning=True,
-                ))
-
-        # Always refresh design-dependent evidence, even if geometry validation is cached.
-        pipeline_results = [r for r in pipeline_results if r.name not in {"review_opening_consistency", "approved_design_mutation"}]
-        if state.get("design_document"):
-            from app.design.contracts import DesignDocument, ObjectDecisions
-            from app.design.compilation import compile_document, project_compilation, opening_drift
-            from app.design.normalization import approved_compilation_changes
-            document = DesignDocument.model_validate(state["design_document"])
-            if not isinstance(document.decisions, ObjectDecisions):
-                compiled = compile_document(document)
-                drift = opening_drift(project_compilation(document, compiled), merged_blueprint)
-                if drift:
-                    pipeline_results.append(PipelineStepResult(
-                        step="design", name="review_opening_consistency",
-                        output="\n".join(f"❌ [design] {message}" for message in drift),
-                        has_error=True, has_warning=False,
-                    ))
-                mutations = approved_compilation_changes(compiled.blueprint, merged_blueprint)
-                merge_diag["approved_design_changes"] = mutations
-                if mutations:
-                    pipeline_results.append(PipelineStepResult(
-                        step="design", name="approved_design_mutation",
-                        output="\n".join(f"❌ [design] 已审核实体发生变化：{c['path']}，"
-                                         f"{c['before']!r} → {c['after']!r}；需要设计修订或等价性证明"
-                                         for c in mutations),
-                        has_error=True, has_warning=False,
-                    ))
+        from app.agent.vision.evaluation import proxy_evaluate
+        merge_diag["visual_review"] = {
+            "blueprint_fingerprint": current_fingerprint,
+            "proxy": proxy_evaluate(merged_blueprint, state.get("design_document")),
+            "complete": False,
+            "blockedBy": ["render", "human_review"],
+            "entrypoint": "python -m app.agent.vision.workflow",
+        }
 
         # 提取最终错误（修复后的 recheck 覆盖初检错误）
         final_errors = _final_errors(pipeline_results)
-        
         # 统计
         final_results = final_validation_results(pipeline_results)
         total_steps = len(final_results)
@@ -195,10 +128,14 @@ async def validate_node(state: GenerationState) -> dict:
         snapshot = ValidationSnapshot(
             blueprint_fingerprint=current_fingerprint,
             validator_version=VALIDATOR_VERSION,
+            design_hash=evaluation["snapshot"]["design_hash"],
+            design_revision=evaluation["snapshot"]["design_revision"],
+            design_brief_fingerprint=evaluation["snapshot"]["design_brief_fingerprint"],
             status=status,
             results=serialized_results,
             design_errors=design_errors,
             issues=validation_issues,
+            fulfillment=fulfillment,
             error_count=error_steps,
             warning_count=warning_steps,
             elapsed_ms=int((_time.time() - t0) * 1000),
@@ -211,6 +148,7 @@ async def validate_node(state: GenerationState) -> dict:
             "validation_cache_reused": cache_reused,
             "validation_issues": validation_issues,
             "validation_snapshot": asdict(snapshot),
+            "design_fulfillment": fulfillment,
             "merge_diag": merge_diag,
             "failed_components": failed_components,
             "passed_component_ids": passed_component_ids,
@@ -219,6 +157,9 @@ async def validate_node(state: GenerationState) -> dict:
             "final_blueprint": merged_blueprint,  # 通过校验后的最终结果
             "retry_count": state.get("retry_count", 0),
             "max_retries": state.get("max_retries", 3),
+            "repair_audit": ({"accepted": False, "stop_reason": "design_revision_required",
+                              "reason": "批准设计本身存在编译阻断，请修订并重新审核"}
+                             if evaluation["approved_design_errors"] else state.get("repair_audit")),
         }
     
     except Exception as e:

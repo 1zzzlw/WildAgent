@@ -185,7 +185,7 @@ class ConvergenceLoopTest(unittest.TestCase):
         self.assertEqual(outcome.diag["stop_reason"], "converged")
         self.assertEqual(outcome.diag["revisions"], 1)
         self.assertTrue(outcome.changed)
-        # 🔴 只重出受影响的块 —— 不是整图重出。
+        #  只重出受影响的块 —— 不是整图重出。
         self.assertEqual(draft.calls[0]["only_blocks"], ["facade", "roof"])
         self.assertEqual(len(draft.calls), 1)
         # 缺陷作为**首轮证据**传进去（不让模型先白写一次再被驳）。

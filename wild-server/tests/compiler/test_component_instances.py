@@ -188,7 +188,7 @@ def test_light_instance_compilation():
     components = result.blueprint.get("geometry", {}).get("components", [])
     lights = [c for c in components if c.get("type") == "light"]
 
-    # 🔴 引擎的 light 只有 position / fixtureType / initiallyOn。
+    #  引擎的 light 只有 position / fixtureType / initiallyOn。
     # `lightType` 是**闭集**（point / spot），写 "wall" 会让整份蓝图 schema_invalid ——
     # 旧断言把这个错误固化下来了，所以这里改成钉住真正合法的字段。
     explicit = [light for light in lights if light.get("id") == "light_01"]
@@ -611,7 +611,7 @@ def test_valid_form_profile_still_lands():
 
 
 def test_every_form_key_lands_on_an_engine_field():
-    """🔴 形态白名单里的**每个**键都必须在引擎 schema 里找得到落点。
+    """ 形态白名单里的**每个**键都必须在引擎 schema 里找得到落点。
 
     键名对、落点不存在 = 静默失效：值落进了蓝图，引擎不读、校验器也看不见。
     现场（2026-10-08）：`roof.ridge_axis` / `roof.overhang` 在白名单里、屋顶元素

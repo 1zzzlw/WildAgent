@@ -6,7 +6,7 @@
 
 ## 修复的Bug
 
-### 🔴 Bug #1: 开口坐标转换错误（Critical）
+###  Bug #1: 开口坐标转换错误（Critical）
 
 **文件**: `wild-web/src/wild-core/src/primitive/resolver.ts`
 
@@ -65,7 +65,7 @@ node wild-web/test/validate-opening-fix.js
 
 ---
 
-### 🔴 Bug #2: 屋顶位置丢失（High）
+###  Bug #2: 屋顶位置丢失（High）
 
 **文件**: `wild-web/src/wild-core/src/primitive/index.ts`
 

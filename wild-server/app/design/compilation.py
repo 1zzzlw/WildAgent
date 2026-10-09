@@ -7,7 +7,7 @@ from typing import Any
 
 from .contracts import DesignDocument, DesignGap, ResolvedDesign, ResolvedFacadeSlot, ResolvedLevel
 
-RESOLVER_VERSION = "compiler-projection/2"
+RESOLVER_VERSION = "compiler-projection/5"
 
 
 def compile_document(document: DesignDocument):
@@ -70,14 +70,18 @@ def project_compilation(document: DesignDocument, result: Any) -> ResolvedDesign
                top_y=max(max(float(w["from"][1]), float(w["to"][1]))
                          for w in walls.values() if float(w["from"][1]) == y)) for y in heights]
     projection = [e for e in elements if e.get("type") in {"wall", "floor", "roof", "column"}]
+    xs = [v.x for v in document.decisions.volumes]
+    zs = [v.z for v in document.decisions.volumes]
     resolved = ResolvedDesign(
         design_id=document.design_id, design_revision=document.revision,
         design_hash=_stable_hash(document), resolver_version=RESOLVER_VERSION,
-        bounds={"width": massing.width, "depth": massing.depth,
+        bounds={"width": max(v.x+v.width for v in document.decisions.volumes)-min(xs),
+                "depth": max(v.z+v.depth for v in document.decisions.volumes)-min(zs),
                 "height": max([l.top_y for l in levels] or [massing.modeled_floors*massing.floor_height])},
         levels=levels, volumes=document.decisions.volumes, facade_slots=slots,
         component_quantities=dict(Counter(e.get("type", "unknown") for e in [*elements, *components])),
         projection_elements=projection, warnings=warnings,
+        compile_blockers=[d.to_dict() for d in result.defects if d.severity == "error"],
     )
     resolved.design_gaps = evaluate_design(document, resolved.design_hash)
     for index, change in enumerate((result.stats.get("instance_overrides") or {}).get("size_changes") or []):

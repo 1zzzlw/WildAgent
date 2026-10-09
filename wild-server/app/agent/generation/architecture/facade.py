@@ -125,11 +125,11 @@ def _stable_unit_interval(value: str) -> float:
 def _apply_opening_form(item: dict[str, Any], form: str, seed: str) -> None:
     """把图纸说的形态落到构件的 ``interaction`` 上（设计文档 §3.3）。
 
-    🔴 **只覆写 `mode`，不重建整个 `interaction`**：同 mode 下的 `hingeSide` / `openAngle` /
+     **只覆写 `mode`，不重建整个 `interaction`**：同 mode 下的 `hingeSide` / `openAngle` /
     `openDistance` 都是有效细节，模型或派生已经给好了，扔掉就是丢信息。
     切到非平开的 mode 时才清掉**平开专有**的两个键——留着它们会让引擎按"绕轴转"解释推拉门。
 
-    🔴 ``fixed`` 表示**不可开启**：把 `interaction` 整个摘掉。`windowComponent` 不要求
+     ``fixed`` 表示**不可开启**：把 `interaction` 整个摘掉。`windowComponent` 不要求
     `interaction`（只有 `doorComponent` 要求），而门那一类的形态集里本来就没有 `fixed`
     （`app.design.openings` 会把它降级），所以这里造不出"门缺 interaction"的非法产物。
     """
@@ -202,29 +202,73 @@ def _evenly_spaced_opening_slots(
 _PER_VOLUME_ROOF_TYPES = frozenset({"flat", "gable", "hip"})
 
 
+def _roof_overrides_by_volume(roof: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """``roof.volumes`` → ``{体量 id: {type, overhang}}``（P5-A）。
+
+    只做**查表**，不判合法性：体量 id 是否存在、覆盖是否冲突都由编译器判并记缺陷
+    （契约层没有编译期铸造的命名空间，见 :class:`~app.design.contracts.RoofVolumeOverride`）。
+    同一体量写了多条时**后者为准**并在槽位里留 ``override_conflict``，让编译器能报出来，
+    不在这里静默取第一条。
+    """
+
+    table: dict[str, dict[str, Any]] = {}
+    for entry in roof.get("volumes") or []:
+        if not isinstance(entry, dict):
+            continue
+        volume = str(entry.get("volume") or "").strip()
+        if not volume:
+            continue
+        values = {
+            key: entry[key]
+            for key in ("type", "overhang")
+            if entry.get(key) is not None
+        }
+        if volume in table and table[volume] != values:
+            values = {**table[volume], **values, "override_conflict": True}
+        table[volume] = values
+    return table
+
+
 def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> list[dict[str, Any]]:
-    """为多体量顶层生成互不重叠的分段屋顶，避免单块屋面盖住内院/天井。
+    """为未被上层覆盖的独立体量生成屋面槽位。
 
-    门禁只有两条，且都与形状标签无关：
-    ① 屋顶类型是"逐块可平铺"的形态（见 ``_PER_VOLUME_ROOF_TYPES``）；
-    ② 顶层确实有 ≥2 个独立体量 —— 只有一个体量时保持模型自己的整块屋顶，
-       不抢走单一体量的造型自由。
-
-    L 形 / U 形 / 退台 / 合院只是体量组合的结果，不应当是门禁条件：
-    早期实现只认 ``shape == "u_shape"``，导致同样多体量的 L 形别墅拿不到槽位，
-    进而 roof 配额停留在 1~1，最终整栋只长出一块屋顶。
+    支持可分段的屋型，以及单体量的显式覆盖。非分段屋型组合保持既有
+    整体屋面路径，由编译诊断报告未兑现的覆盖；不伪造局部拆分结果。
     """
     roof = plan.get("roof") if isinstance(plan.get("roof"), dict) else {}
-    if str(roof.get("type") or "") not in _PER_VOLUME_ROOF_TYPES:
-        return []
+    overrides = _roof_overrides_by_volume(roof)
     modeled_floors = int(realization.get("modeled_floors") or 1)
     floor_height = float(realization.get("floor_height") or 3.2)
-    volumes = [
-        volume for volume in realization.get("volumes", [])
-        if isinstance(volume, dict)
-        and int(volume.get("start_floor", 1)) <= modeled_floors <= int(volume.get("end_floor", 1))
-    ]
-    if len(volumes) < 2:
+    all_volumes = [v for v in realization.get("volumes", []) if isinstance(v, dict)]
+    def covered_above(volume):
+        top = min(modeled_floors, int(volume.get("end_floor", 1)))
+        return any(
+            int(other.get("start_floor", 1)) > top
+            and int(other.get("start_floor", 1)) <= modeled_floors
+            and min(float(volume["x"]) + float(volume["width"]), float(other["x"]) + float(other["width"])) > max(float(volume["x"]), float(other["x"])) + 1e-6
+            and min(float(volume["z"]) + float(volume["depth"]), float(other["z"]) + float(other["depth"])) > max(float(volume["z"]), float(other["z"])) + 1e-6
+            for other in all_volumes if other is not volume
+        )
+    # 独立低层侧翼也有屋面；被上层覆盖的体量不能用整块屋面穿过上层。
+    volumes = [v for v in all_volumes if int(v.get("start_floor", 1)) <= modeled_floors
+               and not covered_above(v)]
+    if not volumes or (len(volumes) < 2 and not overrides):
+        return []
+
+    # 当前槽位路径只支持可分段屋型；任一体量不支持时整体回退并由编译诊断标记。
+    resolved: list[tuple[str, str, float]] = []
+    for index, volume in enumerate(volumes, start=1):
+        volume_id = str(volume.get("id") or index)
+        override = overrides.get(volume_id, {})
+        roof_type = str(override.get("type") or roof.get("type") or "")
+        try:
+            volume_overhang = max(
+                0.0, min(2.0, float(override.get("overhang", roof.get("overhang", 0.35)))),
+            )
+        except (TypeError, ValueError):
+            volume_overhang = max(0.0, min(2.0, float(roof.get("overhang", 0.35))))
+        resolved.append((volume_id, roof_type, volume_overhang))
+    if any(roof_type not in _PER_VOLUME_ROOF_TYPES for _, roof_type, _ in resolved):
         return []
 
     rectangles = [
@@ -236,7 +280,6 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
         )
         for volume in volumes
     ]
-    overhang = max(0.15, min(0.8, float(roof.get("overhang") or 0.35)))
 
     def has_adjacent(rectangle: tuple[float, float, float, float], edge: str) -> bool:
         x0, z0, x1, z1 = rectangle
@@ -255,7 +298,9 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
         return False
 
     slots: list[dict[str, Any]] = []
-    for index, (volume, rectangle) in enumerate(zip(volumes, rectangles), start=1):
+    for index, (volume, rectangle, (volume_id, roof_type, overhang)) in enumerate(
+        zip(volumes, rectangles, resolved), start=1,
+    ):
         x0, z0, x1, z1 = rectangle
         roof_x0 = x0 if has_adjacent(rectangle, "left") else x0 - overhang
         roof_x1 = x1 if has_adjacent(rectangle, "right") else x1 + overhang
@@ -265,11 +310,18 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
             "id": f"roof:{volume.get('id') or index}",
             "position": [
                 round((roof_x0 + roof_x1) / 2, 3),
-                round(modeled_floors * floor_height, 3),
+                round(min(modeled_floors, int(volume.get("end_floor", modeled_floors))) * floor_height, 3),
                 round((roof_z0 + roof_z1) / 2, 3),
             ],
             "span": round(roof_x1 - roof_x0, 3),
             "depth": round(roof_z1 - roof_z0, 3),
+            # 🔴 P5-A：逐体量的形态与体量 id 随槽位一起下发。缺了它们
+            # `conform_roofs_to_slots` 只能把一个模板盖到所有槽位上 ——
+            # 那正是"主楼坡顶 + 侧翼平顶"退化成整栋同一种屋型的通道。
+            "roofType": roof_type,
+            "overhang": overhang,
+            "volume": volume_id,
+            "override_conflict": overrides.get(volume_id, {}).get("override_conflict", False),
         })
     return slots
 
@@ -1002,7 +1054,7 @@ def conform_openings_to_slots(
                     "hingeSide": "left" if variant < 0.5 else "right",
                     "openAngle": 90,
                 })
-            # 🔴 形态**排在派生默认之后**：图纸显式说了就覆盖刚 setdefault 出来的 swing，
+            #  形态**排在派生默认之后**：图纸显式说了就覆盖刚 setdefault 出来的 swing，
             # 没说就一个字节不改（老行为）。门窗共用同一条规则——**不按构件类型分支**。
             if slot.get("form"):
                 _apply_opening_form(item, str(slot["form"]), seed)
@@ -1184,6 +1236,7 @@ def conform_entrance_accessories(
     components: list[dict[str, Any]],
     design_brief: dict[str, Any] | None,
     blueprint: dict[str, Any] | None,
+    *, fixed_ids: set[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """把入口雨棚与入口墙灯具吸附到主入口门，消除模型自由摆放导致的对不齐。
 
@@ -1198,6 +1251,8 @@ def conform_entrance_accessories(
 
     result = deepcopy(components)
     for comp in result:
+        if comp.get("id") in (fixed_ids or ()):
+            continue
         ctype = comp.get("type")
 
         if ctype == "canopy" and comp.get("parentWall") == anchor["wall_id"]:
@@ -1259,7 +1314,12 @@ def conform_roofs_to_slots(
 
     模型只负责"这块屋顶长什么样"（roofType / height / thickness / material），
     位置与尺度由体量槽位决定 —— 模型无需、也无法输出多块屋顶。
+
+    🔴 P5-A：模板提供**风格**（厚度/材质/默认形态），槽位上的 ``roofType``
+    优先 —— 逐体量覆盖就是在这里落地的。没写 ``roofType`` 的槽位沿用模板形态，
+    与引入本字段之前的产物完全一致。
     """
+
     slots = design_brief.get("roof_slots") if isinstance(design_brief, dict) else None
     if not isinstance(slots, list) or not slots:
         return elements, {"split": 0, "synthesized": 0}
@@ -1276,6 +1336,9 @@ def conform_roofs_to_slots(
         item["position"] = deepcopy(slot["position"])
         item["span"] = slot["span"]
         item["depth"] = slot["depth"]
+        slot_type = slot.get("roofType")
+        if isinstance(slot_type, str) and slot_type.strip():
+            item["roofType"] = slot_type.strip().lower()
         planned.append(item)
     return [*non_roofs, *planned], {
         "split": max(0, len(planned) - len(roofs)),

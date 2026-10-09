@@ -558,7 +558,7 @@ async def _handle_user_message(ws: WebSocket, data: dict):
 
 # ── 思考通道 ──
 #
-# 🔴 **通道由发送方逐条表态，不按节点名猜**：
+#  **通道由发送方逐条表态，不按节点名猜**：
 #
 # - 代码写的中文进度句 → 用 `"<node>:progress"`，前端显示为「执行说明」；
 # - 模型自己吐出的思考 token → 用裸节点名，前端显示为「模型过程」。
@@ -1429,6 +1429,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     validation_errors = final_state.get("validation_error_count", 0)
     validation_warnings = final_state.get("validation_warning_count", 0)
     final_status = final_state.get("status", "failed")
+    # 🔴 P4：设计履约报告交给交付层，只进回复文案，**不进保存门禁**。
+    design_fulfillment = final_state.get("design_fulfillment") or None
 
     active_diags = {key: value for key, value in all_diags.items() if not value.get("skipped")}
     total_rag_ms = sum(value.get("rag_ms", 0) for value in active_diags.values())
@@ -1477,6 +1479,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             status=final_status,
             error_count=validation_errors,
             warning_count=validation_warnings,
+            fulfillment=design_fulfillment,
         )
     except GenerationRejectedError as exc:
         await _send_event(ws, {

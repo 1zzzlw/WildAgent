@@ -124,12 +124,12 @@
 
 ## 验证
 
-| 项 | 命令 | 结果 |
-| --- | --- | --- |
-| 全量导入 | `pkgutil.walk_packages` 遍历 `app` + `app.agent` | 132 checked, **0 failures** |
-| LangGraph 图 | `build_generation_graph()` | 编译通过，`proposal_in_graph = False` |
-| 相关测试 | `pytest tests/components/test_architecture_plan.py tests/agent/test_architecture_quota_consistency.py tests/agent/test_execution_plan.py` | 78 passed, 1 xfailed |
-| 套件回归 | `pytest tests/agent tests/components tests/test_requirements_floor_count_fix.py` | **201 passed, 1 xfailed, 1 failed** |
+| 项           | 命令                                                                                                                                      | 结果                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 全量导入     | `pkgutil.walk_packages` 遍历 `app` + `app.agent`                                                                                          | 132 checked, **0 failures**           |
+| LangGraph 图 | `build_generation_graph()`                                                                                                                | 编译通过，`proposal_in_graph = False` |
+| 相关测试     | `pytest tests/components/test_architecture_plan.py tests/agent/test_architecture_quota_consistency.py tests/agent/test_execution_plan.py` | 78 passed, 1 xfailed                  |
+| 套件回归     | `pytest tests/agent tests/components tests/test_requirements_floor_count_fix.py`                                                          | **201 passed, 1 xfailed, 1 failed**   |
 
 ### 唯一的一项失败（非本次引入）
 
@@ -215,11 +215,11 @@ plan, selection_diag = select_architecture_plan(raw_plan, normalization_request,
 线索来自核实上面那段文字时的实测（原本想写"架构侧不认宽深写法"，一测发现说法不准确，
 真实情况更糟）：
 
-| 输入 | 验收侧 `_extract_plan_dimensions` | 架构侧 `normalize_architecture_plan` |
-| --- | --- | --- |
-| 生成两层住宅，宽17米深23米 | (17, 23) | (17, 23) |
-| 生成两层住宅，宽度为17米，进深为23米 | (17, 23) | (17, 23) |
-| **生成两层住宅，宽约17米，深约23米** | **(17, 23)** | **(12, 9)** ← 默认值 |
+| 输入                                 | 验收侧 `_extract_plan_dimensions` | 架构侧 `normalize_architecture_plan` |
+| ------------------------------------ | --------------------------------- | ------------------------------------ |
+| 生成两层住宅，宽17米深23米           | (17, 23)                          | (17, 23)                             |
+| 生成两层住宅，宽度为17米，进深为23米 | (17, 23)                          | (17, 23)                             |
+| **生成两层住宅，宽约17米，深约23米** | **(17, 23)**                      | **(12, 9)** ← 默认值                 |
 
 根因：`profile.py::_requested_dimension` 的两条正则
 （`{label}\s*{number}` / `{number}\s*{label}`）中间不允许"约/为/是/在"这类限定词，
@@ -243,12 +243,12 @@ plan, selection_diag = select_architecture_plan(raw_plan, normalization_request,
 
 ### 为什么现有验证全都漏掉了它
 
-| 验证手段 | 为什么漏 |
-| --- | --- |
-| 全量导入扫描 | 不是导入错误，函数体和调用点都能正常 import |
-| `build_generation_graph()` | 只编译图，从不执行节点函数体 |
-| 单元测试 | 直接按位置参调用 `normalize_architecture_plan`，从不经过节点里的真实调用点 |
-| `test_agent_graph_execution.py` | 把每个节点都替换成桩函数，节点内部永远不执行 |
+| 验证手段                        | 为什么漏                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| 全量导入扫描                    | 不是导入错误，函数体和调用点都能正常 import                                |
+| `build_generation_graph()`      | 只编译图，从不执行节点函数体                                               |
+| 单元测试                        | 直接按位置参调用 `normalize_architecture_plan`，从不经过节点里的真实调用点 |
+| `test_agent_graph_execution.py` | 把每个节点都替换成桩函数，节点内部永远不执行                               |
 
 **共同盲区：没有任何一道验证真正执行过"真实 architecture 节点"。**
 
@@ -297,12 +297,12 @@ plan, selection_diag = select_architecture_plan(raw_plan, normalization_request,
 
 ### 改动
 
-| 文件 | 改动 |
-| --- | --- |
-| `planning/requirements.py` | 三条 `unsupported_capability` 分支补 `severity="warning"`；`validate_structured_requirements` 不再写死 `error` |
-| `prompts/planning.py` 第 6 条 | 补明"服务端会标记但不会终止本轮"，避免 Planner 为绕开它而改写/重复表述 |
-| `app/agent/README.md` | 同步为"两者都只标记不阻断"；写明真正会失败的只剩两类 |
-| `tests/agent/test_execution_plan.py` | 两个断言旧行为的用例重写为 `..._is_reported_without_blocking` / `..._never_blocks_delivery` |
+| 文件                                 | 改动                                                                                                           |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `planning/requirements.py`           | 三条 `unsupported_capability` 分支补 `severity="warning"`；`validate_structured_requirements` 不再写死 `error` |
+| `prompts/planning.py` 第 6 条        | 补明"服务端会标记但不会终止本轮"，避免 Planner 为绕开它而改写/重复表述                                         |
+| `app/agent/README.md`                | 同步为"两者都只标记不阻断"；写明真正会失败的只剩两类                                                           |
+| `tests/agent/test_execution_plan.py` | 两个断言旧行为的用例重写为 `..._is_reported_without_blocking` / `..._never_blocks_delivery`                    |
 
 保留阻断的只有：**计划对象本身不合法**（缺字段/ID 重复/引用被篡改）与
 **模型服务终态错误**。前者是数据损坏不是能力不足，放过去下游必崩。
@@ -391,12 +391,12 @@ material_plan.roles   = 9 个
 
 ### 连带查出
 
-| 级别 | 问题 |
-| --- | --- |
-| 🔴 | 量词盲区：「种/类/款/类型」被当成实例量词 |
-| 🔴 | `validator="material_plan_exists"` 在全仓**无任何分支产出**（死代码），且只判 `roles>0`，不读 `expected.minimum`——所以材质要求只能被构件分支抢走 |
-| 🟡 | 「不少于/不低于N」完全不认 → 整条要求掉进 `phase_outcome` 兜底，退化成"检查产物存在"，**永远通过**（那次计划里「窗户数量不少于6个」「墙体数量不少于8个」都是这个下场） |
-| 🟡 | 数量词不绑定名词：全句抓「至少N」后统一套到所有匹配类型 |
+| 级别 | 问题                                                                                                                                                                   |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|      | 量词盲区：「种/类/款/类型」被当成实例量词                                                                                                                              |
+|      | `validator="material_plan_exists"` 在全仓**无任何分支产出**（死代码），且只判 `roles>0`，不读 `expected.minimum`——所以材质要求只能被构件分支抢走                       |
+| 🟡    | 「不少于/不低于N」完全不认 → 整条要求掉进 `phase_outcome` 兜底，退化成"检查产物存在"，**永远通过**（那次计划里「窗户数量不少于6个」「墙体数量不少于8个」都是这个下场） |
+| 🟡    | 数量词不绑定名词：全句抓「至少N」后统一套到所有匹配类型                                                                                                                |
 
 ### 改动
 

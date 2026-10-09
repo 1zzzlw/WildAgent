@@ -197,6 +197,21 @@ def _produced_kinds(blueprint: Any) -> set[str]:
     }
 
 
+def instance_requirements(state: dict, kind: str) -> list[dict]:
+    decisions = (state.get("design_document") or {}).get("decisions") or {}
+    entries = (state.get("compile_report") or {}).get("instance_entities") or []
+    requirements = []
+    for index, instance in enumerate(decisions.get("components") or []):
+        if instance.get("type") != kind:
+            continue
+        mapped = next((row for row in entries if row.get("index") == index), {})
+        requirements.append({"design_field": f"/decisions/components/{index}",
+            "instance_id": instance.get("id"), "entity_id": instance.get("id") or mapped.get("entity_id"),
+            "type": kind, "host": instance.get("host"), "relation": instance.get("relation"),
+            "mapping_outcome": mapped.get("outcome", "unknown")})
+    return requirements
+
+
 def _drop_produced(
     entries: list[PlanKindStrategy], state: dict[str, Any]
 ) -> tuple[list[PlanKindStrategy], list[str]]:
@@ -218,7 +233,13 @@ def _drop_produced(
     kept: list[PlanKindStrategy] = []
     dropped: list[str] = []
     for entry in entries:
-        if entry.kind in produced:
+        requirements = instance_requirements(state, entry.kind)
+        from app.design.relations import entity_index, evaluate_support
+        actual = entity_index(state.get("skeleton_blueprint") or {})
+        satisfied = all(r["entity_id"] in actual and (not r["relation"] or
+            evaluate_support(state.get("skeleton_blueprint") or {}, r["entity_id"], r["relation"])["status"] == "satisfied")
+            for r in requirements)
+        if entry.kind in produced and satisfied:
             dropped.append(entry.kind)
         else:
             kept.append(entry)
@@ -292,6 +313,11 @@ def expand_plan(
         else [PlanKindStrategy(kind=kind) for kind in _requested_kinds(state)]
     )
 
+    # 显式实例绑定不能被模型策略漏掉，也不能被同类型旧产物压掉。
+    decision_instances = ((state.get("design_document") or {}).get("decisions") or {}).get("components") or []
+    for instance in decision_instances:
+        if instance.get("type") and all(e.kind != instance["type"] for e in entries):
+            entries.append(PlanKindStrategy(kind=instance["type"]))
     # 产物里已有的类型一律不再派 generate——两条策略路径共用这一个闸口，
     entries, suppressed = _drop_produced(entries, state)
     if suppressed:
@@ -336,6 +362,16 @@ def expand_plan(
             "parallel_group": entry.parallel_group,
             "batch_reason": entry.batch_reason,
         }
+        requirements = instance_requirements(state, kind)
+        if requirements:
+            params["entity_requirements"] = requirements
+        unresolved = [r for r in requirements if not r["entity_id"]]
+        if unresolved:
+            items.append(PlanItem(id=item_id, op="generate", kind=kind,
+                label=f"实例绑定待核对：{labels.get(kind, kind)}", status="unsupported",
+                target={"entity_requirements": requirements}, params={"needs_review": True},
+                run=ItemRun(evidence="实例宿主/目标尚不可解析，不能用同类型数量替代；需要设计修订")))
+            continue
         dropped_hosts = dropped_by_kind.get(kind) or []
         rejected_forms = rejected_forms_by_kind.get(kind) or []
         if dropped_hosts:
@@ -372,6 +408,7 @@ def expand_plan(
                     "source_slots": source_slots,
                     "quota": quota,
                     "batch_size": batch_size,
+                    "entity_requirements": instance_requirements(state, kind),
                 },
                 params=params,
                 run=ItemRun(max_attempts=3),

@@ -11,7 +11,7 @@ from typing import Any, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from .openings import OPENING_KINDS, opening_kind, split_opening
+from .openings import OPENING_KINDS, OPEN_SIDE, opening_kind, split_opening
 
 
 def utc_now_iso() -> str:
@@ -53,8 +53,8 @@ class MassingTierDecision(ContractModel):
 
 class MassingDecision(ContractModel):
     shape: str = Field(min_length=1, max_length=40)
-    width: float = Field(gt=0, le=500)
-    depth: float = Field(gt=0, le=500)
+    width: float = Field(gt=0, le=500, description="总体 X 方向尺寸控制上限（米），无世界原点边界")
+    depth: float = Field(gt=0, le=500, description="总体 Z 方向尺寸控制上限（米），实际包络由 volumes 决定")
     floors: int = Field(ge=1, le=200)
     modeled_floors: int = Field(ge=1, le=200)
     representation_mode: Literal["full", "schematic"] = "full"
@@ -80,8 +80,8 @@ class MassingDecision(ContractModel):
 class VolumeDecision(ContractModel):
     id: str = Field(min_length=1, max_length=48, pattern=r"^[A-Za-z0-9_\-]+$")
     role: Literal["primary", "secondary"] = "primary"
-    x: float = Field(ge=0, le=500)
-    z: float = Field(ge=0, le=500)
+    x: float = Field(allow_inf_nan=False, description="体量平面起点的世界 X 坐标（米），不是中心")
+    z: float = Field(allow_inf_nan=False, description="体量平面起点的世界 Z 坐标（米），不是中心")
     width: float = Field(gt=0, le=500)
     depth: float = Field(gt=0, le=500)
     start_floor: int = Field(ge=1, le=200)
@@ -102,7 +102,7 @@ class StructuralGridDecision(ContractModel):
 
 #: 一个立面槽位的 token：``"window"`` / ``"door:slide"`` / ``"empty"``。
 #:
-#: 🔴 **不再是一段 `Literal`**：形态（§3.3）是"类型 × 形态"的开放组合，写成 Literal 只会
+#:  **不再是一段 `Literal`**：形态（§3.3）是"类型 × 形态"的开放组合，写成 Literal 只会
 #: 漏取值。取值域是**文法**，唯一定义在 :mod:`app.design.openings`，由下面的
 #: `patterns_use_legal_tokens` 就地校验。
 OpeningToken = str
@@ -119,18 +119,35 @@ class FacadeDecision(ContractModel):
     def patterns_use_legal_tokens(cls, value: list[str]) -> list[str]:
         """只校验**类型**合法；形态名不合法**不在这里拒**。
 
-        🔴 两类问题要分开（红线"只标记不阻断"）：类型认不出（``"garage"``）是我们自己不认，
+         两类问题要分开（红线"只标记不阻断"）：类型认不出（``"garage"``）是我们自己不认，
         该拒；**形态名认不出**（``"window:casement"``）是模型用了个别的词，
         归一化会把它降级成纯类型、照常生成——在这里拒等于因为一个形容词拼错就掐掉整轮生成。
+
+        ``empty`` 与 ``open`` 是**两个不同的类型**（P5-B：有墙无洞 / 开敞无墙），
+        两者都**不带形态**：``empty:swing`` / ``open:swing`` 一律拒 —— 否则归一化会
+        静默把形态丢掉，写的人以为表态了形态、其实没有。
         """
 
         for token in value:
-            kind = opening_kind(token)
-            if kind == "empty" and str(token).strip().lower() != "empty":
+            # 判据是"**类型部分**逐字合法"，不是"归一化结果 == token"：
+            # 形态名不合法要放过（`window:casement` 归一化成 `window`），
+            # 但 `empty:swing` / `open:swing` 必须拒 —— 这两类**没有形态**，
+            # 归一化会静默把形态丢掉，写的人以为表态了形态其实没有。
+            head = str(token).strip().lower().partition(":")[0].strip()
+            if head not in OPENING_KINDS:
                 raise ValueError(
                     f"立面槽位 {token!r} 不是合法开口：类型只能是 {'/'.join(OPENING_KINDS)}，"
                     "可写成 '<type>' 或 '<type>:<form>'"
+                    "（empty=有墙无洞，open=开敞无墙，两者语义不同，别互相替代；"
+                    "empty/open 不带形态）"
                 )
+            if head in {"empty", OPEN_SIDE} and ":" in str(token):
+                raise ValueError(
+                    f"立面槽位 {token!r} 不合法：{head} 表示"
+                    f"{'有墙无洞' if head == 'empty' else '开敞无墙'}，不接受形态后缀"
+                )
+        if any(opening_kind(token) == OPEN_SIDE for token in value) and not all(opening_kind(token) == OPEN_SIDE for token in value):
+            raise ValueError("当前只支持整面开敞：open 不可与门窗或 empty 混用")
         return value
 
     @model_validator(mode="after")
@@ -144,10 +161,33 @@ class FacadeDecision(ContractModel):
         return self
 
 
+class RoofVolumeOverride(ContractModel):
+    """逐体量的屋顶覆盖（P5-A）。
+
+    🔴 这里只放**引擎真能实现**的差异：屋顶形态与出檐。脊高不是决策项 ——
+    它由 :func:`~app.agent.compiler.compile._apply_pitched_heights` 按每块自己的
+    跨度算，写死会在多体量下失真。没写到的字段继承 :class:`RoofDecision` 的
+    风格模板（默认与覆盖的优先级就写在这里）。
+    """
+
+    volume: str = Field(min_length=1, max_length=48, pattern=r"^[A-Za-z0-9_\-]+$")
+    type: Literal["flat", "gable", "hip", "dome", "chinese_curved", "chinese_pagoda"] | None = None
+    overhang: float | None = Field(default=None, ge=0, le=2)
+
+
 class RoofDecision(ContractModel):
+    """整栋屋顶的**风格模板** + 可选的逐体量覆盖。
+
+    🔴 旧文档迁移等价：``volumes`` 为空 ⇒ 每个体量都用同一套模板，与引入本字段
+    **之前**的产物逐字段相同（不凭空改变造型）。
+    """
+
     type: Literal["flat", "gable", "hip", "dome", "chinese_curved", "chinese_pagoda"]
     ridge_axis: Literal["x", "z"] = "x"
     overhang: float = Field(default=0, ge=0, le=2)
+    #: 逐体量覆盖。**不校验体量是否存在**：体量 id 的引用完整性由编译器判并记缺陷
+    #: （契约层手里没有编译期铸造的命名空间，硬拼白名单必分叉）。
+    volumes: list[RoofVolumeOverride] = Field(default_factory=list, max_length=8)
 
 
 class ComponentQuota(ContractModel):
@@ -242,9 +282,36 @@ class ResolvedMaterialPlan(ContractModel):
         return self
 
 
+class MaterialRegion(ContractModel):
+    """区域/构件级材质绑定（P5-C）。
+
+    🔴 **只做最小表达**：一条绑定 = "**这一类实体**用这个材质角色"。
+    ``type`` 是**目标实体类型**（构件类 ``balcony`` / ``railing`` / ``canopy``…，
+    或元素类 ``wall`` / ``floor`` / ``roof`` / ``column``），``role`` 是材质方案里
+    的角色名。落点因此是"按类型换引用"，不是"按区域函数/坐标刷"——
+    后者是渲染器的事，不是设计决策。
+
+    角色名**不校验**是什么闭集：材质方案（:class:`ResolvedMaterialPlan`）才是闭集，
+    引用不存在的角色由编译器记缺陷（只标记不阻断，材质分区写错不该让墙消失）。
+    """
+
+    role: str = Field(min_length=1, max_length=60)
+    type: str = Field(min_length=1, max_length=60)
+    note: str = Field(default="", max_length=200)
+
+
 class MaterialIntent(ContractModel):
     keywords: list[str] = Field(default_factory=list, max_length=20)
     resolved_plan: ResolvedMaterialPlan | None = None
+    #: 区域/构件材质绑定（P5-C）。空列表 ⇒ 全部按类型默认角色，与引入前逐字段一致。
+    regions: list[MaterialRegion] = Field(default_factory=list, max_length=20)
+
+
+class SupportRelation(ContractModel):
+    kind: Literal["supports"] = "supports"
+    target: str = Field(min_length=1, max_length=80, description="目标雨棚的稳定实例 ID 或实体 ID")
+    along_ratio: float = Field(ge=0, le=1, description="沿宿主墙方向的雨棚宽度比例")
+    depth_ratio: float = Field(ge=0, le=1, description="从墙外表面向外的雨棚出挑比例")
 
 
 class ComponentInstance(ContractModel):
@@ -254,6 +321,8 @@ class ComponentInstance(ContractModel):
     """
     
     type: str = Field(min_length=1, max_length=60)
+    id: str | None = Field(default=None, min_length=1, max_length=80, pattern=r"^[A-Za-z0-9_-]+$")
+    relation: SupportRelation | None = None
     #: 宿主语义id：体量(volume_primary) / 墙(wall_front_01) / 槽位(slot_front_02) /
     #: 开口(door_front_01) / 屋面(roof_01、`<volume_id>`)。**不做解析校验**——
     #: 解析唯一的实现在编译器，认不出就记 `dropped`（见 `_validate_component_instances`）。
@@ -264,6 +333,12 @@ class ComponentInstance(ContractModel):
     form: dict[str, Any] = Field(default_factory=dict)
     #: 材质角色名
     material_role: MaterialRoleName | None = None
+
+    @model_validator(mode="after")
+    def relation_is_supported(self):
+        if self.relation is not None and self.type != "column":
+            raise ValueError("当前 supports 关系仅支持 column → canopy")
+        return self
 
 
 class ArchitectureDecisions(ContractModel):
@@ -389,7 +464,7 @@ DesignDecisions = Annotated[
 
 
 class DesignDocument(ContractModel):
-    schema_version: Literal["design/1.0"] = "design/1.0"
+    schema_version: Literal["design/1.0", "design/1.1", "design/1.2"] = "design/1.2"
     design_id: str = Field(min_length=1, max_length=120)
     session_id: str = Field(min_length=1, max_length=160)
     revision: int = Field(ge=1)
@@ -415,6 +490,29 @@ class DesignDocument(ContractModel):
 
         if not isinstance(data, dict):
             return data
+        if data.get("schema_version") == "design/1.0":
+            from copy import deepcopy
+            data = deepcopy(data)
+            migration_changes = []
+            decisions = data.get("decisions")
+            facades = decisions.get("facades") if isinstance(decisions, dict) else None
+            for face, facade in (facades.items() if isinstance(facades, dict) else []):
+                if not isinstance(facade, dict):
+                    continue
+                for key in ("ground_pattern", "upper_pattern"):
+                    pattern = facade.get(key)
+                    if isinstance(pattern, list) and pattern and all(token == "empty" for token in pattern):
+                        facade[key] = ["open"] * len(pattern)
+                        migration_changes.append({"path": f"/decisions/facades/{face}/{key}",
+                                                  "before": pattern, "after": facade[key],
+                                                  "semantic_change": False, "source": "legacy_schema"})
+            data["schema_version"] = "design/1.1"
+            if migration_changes and isinstance(data.get("rule_trace", []), list):
+                data.setdefault("rule_trace", []).append({
+                    "rule_id": "schema.facade_open_migration", "classification": "reference",
+                    "enforcement": ["schema"], "source": "design/1.0 → design/1.1",
+                    "changes": migration_changes, "design_revision": data.get("revision", 1),
+                })
         decisions = data.get("decisions")
         if isinstance(decisions, dict) and not decisions.get("kind"):
             return {**data, "decisions": {**decisions, "kind": "architecture"}}
@@ -467,12 +565,13 @@ class DesignDocument(ContractModel):
             if volume.id in seen:
                 raise ValueError(f"重复 volume id: {volume.id}")
             seen.add(volume.id)
-            if volume.x + volume.width > massing.width + 1e-6:
-                raise ValueError(f"volume {volume.id} 超出 massing.width")
-            if volume.z + volume.depth > massing.depth + 1e-6:
-                raise ValueError(f"volume {volume.id} 超出 massing.depth")
             if volume.end_floor > massing.modeled_floors:
                 raise ValueError(f"volume {volume.id} 超出 modeled_floors")
+        from .coordinates import DesignCoordinateConflict, volume_conflicts
+        conflicts = volume_conflicts([v.model_dump(mode="json") for v in decisions.volumes],
+                                    massing.model_dump(mode="json"))
+        if conflicts:
+            raise DesignCoordinateConflict(conflicts)
         for floor in range(1, massing.modeled_floors + 1):
             if not any(volume.start_floor <= floor <= volume.end_floor for volume in decisions.volumes):
                 raise ValueError(f"第 {floor} 建模层没有任何 volume 覆盖")
@@ -501,6 +600,9 @@ class DesignDocument(ContractModel):
                 raise ValueError(f"配额要求的构件 {component} 未列入 required_components")
         
         # 校验构件实例清单（§3.4）
+        instance_ids = [c.id for c in decisions.components if c.id]
+        if len(instance_ids) != len(set(instance_ids)):
+            raise ValueError("构件实例 id 必须唯一，不能把同一实体用于多条关系")
         if decisions.components:
             self._validate_component_instances(decisions)
         
@@ -509,7 +611,7 @@ class DesignDocument(ContractModel):
     def _validate_component_instances(self, decisions: ArchitectureDecisions):
         """校验构件实例清单的语义约束。
 
-        🔴 **这里不判 host 能否解析**（2026-10-08 事故，第二例）。原先的做法是按
+         **这里不判 host 能否解析**（2026-10-08 事故，第二例）。原先的做法是按
         注释里"假设格式"拼一份 `valid_hosts`，再加一道
         ``["wall_", "volume_", "slot_", "door_", "window_"]`` 前缀白名单。它两个
         方向都不对：
@@ -624,6 +726,7 @@ class ResolvedDesign(ContractModel):
     resolver_version: str = "legacy"
     projection_elements: list[dict[str, Any]] = Field(default_factory=list, exclude=True)
     design_gaps: list[DesignGap] = Field(default_factory=list)
+    compile_blockers: list[dict[str, Any]] = Field(default_factory=list)
     bounds: dict[Literal["width", "depth", "height"], float]
     levels: list[ResolvedLevel]
     volumes: list[VolumeDecision]

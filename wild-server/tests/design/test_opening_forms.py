@@ -3,7 +3,7 @@
 三件事必须钉住：
 
 1. **文法只有一处**（`app.design.openings`）——契约层、归一化、立面编译、resolver 都从那里读；
-2. 🔴 **非法形态只丢形态、不丢开口**（红线：能力缺失只标记、不阻断），而**非法类型要当场退回**；
+2.  **非法形态只丢形态、不丢开口**（红线：能力缺失只标记、不阻断），而**非法类型要当场退回**；
 3. **形态最终落到蓝图的 `interaction.mode`**，`fixed` 是"不写 interaction"的哨兵。
 """
 
@@ -23,6 +23,7 @@ from app.design.openings import (
     FORMS_BY_KIND,
     INTERACTION_FORMS,
     OPENING_KINDS,
+    OPEN_SIDE,
     opening_kind,
     opening_token,
     split_opening,
@@ -71,7 +72,7 @@ def test_opening_token_round_trips(kind, form):
 
 
 def test_forms_match_the_engine_interaction_enum():
-    """🔴 漂移守卫（"能派生的别写死"）。
+    """ 漂移守卫（"能派生的别写死"）。
 
     `INTERACTION_FORMS` 是硬编码的；引擎往 `openingInteractionSpec.mode` 里加了新值它就过期。
     这条用**后端真正加载的那份** schema（知识库副本）来钉，而不是另抄一份。
@@ -85,7 +86,8 @@ def test_forms_match_the_engine_interaction_enum():
 
 
 def test_every_buildable_kind_has_a_form_set():
-    assert set(FORMS_BY_KIND) == set(OPENING_KINDS) - {"empty"}
+    # `empty`（有墙无洞）与 `open`（开敞无墙，P5-B）都**不是构件**，因此没有形态集。
+    assert set(FORMS_BY_KIND) == set(OPENING_KINDS) - {"empty", OPEN_SIDE}
     assert FIXED_FORM not in FORMS_BY_KIND["door"]  # 门构件 interaction 必填 ⇒ 门不能"不可开启"
     assert "lift" not in FORMS_BY_KIND["window"]
     for kind, forms in FORMS_BY_KIND.items():

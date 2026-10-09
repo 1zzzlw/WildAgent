@@ -36,7 +36,7 @@ RULES = [
     (re.compile(r"// ❌ "), "// 错误："),
     (re.compile(r"// ⚠️ "), "// 注意："),
     # 5. 行内红黄（含表格内）
-    (re.compile(r"🔴\s*"), "关键："),
+    (re.compile(r"\s*"), "关键："),
     (re.compile(r"🟡\s*"), "提示："),
     # 6. 其余行内 ⚠️：语境各异，脚本只处理通用搭配，剩余报出来手工改
 ]
@@ -57,7 +57,7 @@ for p in sorted(ROOT.rglob("*.md")):
     if text != original:
         p.write_text(text, encoding="utf-8", newline="\n")
         rel = str(p.relative_to(ROOT))
-        marks = sum(text.count(m) for m in ("✅", "❌", "⚠️", "⚠", "🔴", "🟡"))
+        marks = sum(text.count(m) for m in ("✅", "❌", "⚠️", "⚠", "", "🟡"))
         changed[rel] = marks
 
 print("已改文件及剩余符号数：")
