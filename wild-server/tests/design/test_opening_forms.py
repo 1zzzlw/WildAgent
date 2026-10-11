@@ -14,8 +14,6 @@ from pydantic import ValidationError
 
 from app.agent.compiler import MODE_FINAL, compile_design
 from app.agent.generation.architecture import normalize_architecture_plan
-from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-from app.agent.generation.architecture.design_workflow import check_block_contract
 from app.agent.generation.architecture.facade import _apply_opening_form
 from app.design.contracts import FacadeDecision
 from app.design.openings import (
@@ -31,7 +29,6 @@ from app.design.openings import (
 from app.utils.blueprint_normalizer import load_schema
 
 MESSAGE = "三层矩形别墅，白色外墙，坡屋顶"
-FACADE_BLOCK = BLOCK_BY_NAME["facade"]
 
 
 # ── 1. 文法（唯一事实源） ──
@@ -171,28 +168,10 @@ def _facade_pick(ground: list[str], upper: list[str]) -> dict:
     }
 
 
-def test_block_contract_flags_an_illegal_kind():
-    issue = check_block_contract(
-        FACADE_BLOCK, _facade_pick(["garage", "window", "window"], ["window"] * 3), {}
-    )
-    assert "garage" in issue and "door" in issue
 
 
-@pytest.mark.parametrize("token", ["door", "door:slide"])
-def test_block_contract_flags_a_door_in_the_upper_pattern(token):
-    issue = check_block_contract(
-        FACADE_BLOCK, _facade_pick(["empty"] * 3, ["window", "window", token]), {}
-    )
-    assert "upper_pattern" in issue and "door" in issue
 
 
-def test_block_contract_leaves_an_unknown_form_alone():
-    """形态名写错**不该**罚模型重写整块——归一化只丢个形容词。"""
-
-    assert (
-        check_block_contract(FACADE_BLOCK, _facade_pick(["window:casement"] * 3, ["window"] * 3), "")
-        == ""
-    )
 
 
 # ── 5. 规则函数：只覆写 mode ──

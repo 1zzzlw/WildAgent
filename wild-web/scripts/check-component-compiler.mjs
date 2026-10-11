@@ -89,6 +89,7 @@ try {
   assertCapabilities(compiler)
   assertGeometryEvaluationCases(compiler)
   assertRepresentativeComponents(compiler)
+  assertLatticeClearArea(compiler)
   assertDefaultComponentMaterials(compiler)
   await assertDoorWindowDepthAlignment(compiler)
   await assertInteractiveWindowSashes(compiler)
@@ -300,6 +301,21 @@ async function assertSecondBatchComponents(compiler) {
   if (Math.max(...balconyZCoordinates) > -0.12 + 1e-9) {
     throw new Error(`阳台或内嵌栏杆进入了建筑内部: ${JSON.stringify(balconyZCoordinates)}`)
   }
+  const separateRailingSource = structuredClone(source)
+  separateRailingSource.geometry.components.find(component => component.id === 'test_balcony').railingEnabled = false
+  separateRailingSource.geometry.components.push({
+    type: 'railing', id: 'separate_railing', height: 1.1,
+    path: [[3, 1.2, -0.12], [3, 1.2, -1.32], [5.4, 1.2, -1.32], [5.4, 1.2, -0.12]],
+  })
+  const separateRailingResult = compiler.compileBlueprintComponents(
+    compiler.parseWildBlueprint(JSON.stringify(separateRailingSource)),
+  )
+  assertEqual(separateRailingResult.diagnostics, [], '独立栏杆接管不应产生诊断')
+  assertEqual(separateRailingResult.mapping.generatedElementIdsByComponentId.test_balcony,
+    ['test_balcony__slab'], '独立栏杆接管后阳台只生成板')
+  if (!separateRailingResult.mapping.generatedElementIdsByComponentId.separate_railing?.length) {
+    throw new Error('独立栏杆未生成；不得因关闭内置栏杆而丢失防护')
+  }
   const corniceElements = result.blueprint.geometry.elements.filter(
     element => element.id.startsWith('test_cornice__sweep'),
   )
@@ -491,6 +507,29 @@ function assertGeometryEvaluationCases(compiler) {
     }
   }
   console.log(`Geometry evaluation passed: ${geometryEvaluationCases.validCases.length + geometryEvaluationCases.invalidCases.length} cases.`)
+}
+
+function assertLatticeClearArea(compiler) {
+  const source = createBlueprint()
+  source.geometry.components = [{
+    type: 'window', id: 'dense_lattice', parentWall: 'front_wall', from: [1, 1, 0],
+    width: 1.8, height: 1.6, frameWidth: 0.09, verticalMullions: 15, horizontalMullions: 13,
+  }]
+  const snapshot = JSON.stringify(source)
+  let result = compiler.compileBlueprintComponents(source)
+  assertEqual(result.diagnostics, [], '密集格棂窗应能编译并保持透光')
+  let bars = result.blueprint.geometry.elements.filter(e => e.id.startsWith('dense_lattice__mullion_'))
+  assertEqual(bars.length, 28, '棂条数量应保留设计值')
+  assertEqual(bars.filter(e => e.id.includes('vertical')).map(e => e.dimensions[0]), Array(15).fill(0.02), '竖棂应独立于外框宽度')
+  assertEqual(bars.filter(e => e.id.includes('horizontal')).map(e => e.dimensions[1]), Array(13).fill(0.02), '横棂应独立于外框宽度')
+  assertEqual(JSON.stringify(source), snapshot, '不得修改原始窗设计')
+  source.geometry.components[0].mullionWidth = 0.03
+  result = compiler.compileBlueprintComponents(source)
+  bars = result.blueprint.geometry.elements.filter(e => e.id.includes('__mullion_vertical_'))
+  assertEqual(bars.map(e => e.dimensions[0]), Array(15).fill(0.03), '显式棂条宽度必须落实')
+  source.geometry.components[0].mullionWidth = 0.12
+  result = compiler.compileBlueprintComponents(source)
+  if (!result.diagnostics.some(d => JSON.stringify(d).includes('mullionWidth'))) throw new Error('相互覆盖的棂条应有明确诊断')
 }
 
 function assertRepresentativeComponents(compiler) {

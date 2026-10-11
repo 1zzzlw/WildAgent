@@ -1,41 +1,66 @@
-"""生成路径的建筑方案节点：同一模型先规划，再由后续节点落几何。"""
+"""建筑节点形成设计图纸；实现与 WILD 校验由 plan 负责。"""
 
 from __future__ import annotations
 
 import time as _time
 
-from loguru import logger
 from pydantic import ValidationError
 
 from app.agent.generation.architecture import (
     detect_architecture_profile,
-    normalize_architecture_plan,
     resolve_complexity_profile,
 )
-from app.agent.generation.architecture.design_workflow import draft_design_blocks
-from app.agent.generation.material.plan import material_mentions
+from app.agent.generation.architecture.design_workflow import draft_design
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
-from app.agent.knowledge.policy import KNOWLEDGE_GUIDANCE
 
 
 class DesignContractError(RuntimeError):
     """设计方案不满足 DesignDocument 业务不变量时抛出的可读业务错误。"""
 
 
-def _validation_reason(exc: Exception) -> str:
-    """把契约错误压缩成一句可读原因，避免整段 Pydantic 调用栈进入用户提示。"""
+def _coordinate_reasons(conflicts: list[dict]) -> list[str]:
+    messages = []
+    for conflict in conflicts:
+        path = conflict.get("conflict_path", conflict["path"]).removeprefix("/decisions")
+        if "actual_extent" in conflict:
+            messages.append(
+                f"{path}：全部体量的包络为 {conflict['actual_extent']:g} 米，"
+                f"当前总体尺寸为 {conflict['conflict_value']:g} 米。"
+                "若该尺寸是用户硬要求，应修订体量布局；否则显式修订总体尺寸，保留未受影响的设计。"
+            )
+        else:
+            messages.append(f"{path}：{conflict['reason']}")
+    return messages
 
+
+def _validation_reason(exc: Exception) -> str:
+    """保留字段路径与全部契约错误，供模型定向修订。"""
+
+    if isinstance(exc, KeyError):
+        return f"/{exc.args[0]}：缺少必填字段"
     errors = getattr(exc, "errors", None)
     if callable(errors):
         messages = []
         for item in errors():
+            conflicts = getattr((item.get("ctx") or {}).get("error"), "conflicts", None)
+            if conflicts:
+                messages.extend(_coordinate_reasons(conflicts))
+                continue
             message = str(item.get("msg") or "").removeprefix("Value error, ").strip()
+            if item.get("type") == "missing":
+                message = "缺少必填字段"
             if message:
-                messages.append(message)
+                path = "/" + "/".join(
+                    str(part).replace("~", "~0").replace("/", "~1")
+                    for part in item.get("loc", ())
+                )
+                if path.startswith("/roof/volumes/"):
+                    message += '；数组项应写对象，例如 {"volume": "体量ID", "type": "自拟屋型"}，引用字段名为 volume'
+                messages.append(f"{path}：{message}")
         if messages:
-            return "；".join(messages[:3])
+            return "；".join(messages)
     return " ".join(str(exc).split())[:300]
 
 
@@ -56,6 +81,8 @@ def build_design_document_or_error(
     """
 
     from app.design.resolver import build_design_document
+    from app.design.contracts import MassingDecision, VolumeDecision
+    from app.design.coordinates import volume_conflicts
 
     try:
         return build_design_document(
@@ -67,287 +94,170 @@ def build_design_document_or_error(
             previous=previous,
             revision_feedback=revision_feedback,
         )
-    except (ValidationError, ValueError) as exc:
-        raise DesignContractError(_validation_reason(exc)) from exc
+    except (ValidationError, ValueError, KeyError) as exc:
+        reasons = [_validation_reason(exc)]
+        if isinstance(plan.get("massing"), dict) and isinstance(plan.get("volumes"), list):
+            try:
+                massing = MassingDecision.model_validate(plan["massing"])
+                volumes = [VolumeDecision.model_validate(item) for item in plan["volumes"]]
+            except ValidationError:
+                pass
+            else:
+                conflicts = volume_conflicts([v.model_dump(mode="json") for v in volumes],
+                                             massing.model_dump(mode="json"))
+                reasons.extend(reason for reason in _coordinate_reasons(conflicts) if reason not in reasons[0])
+        raise DesignContractError("；".join(reasons)) from exc
 
 
 async def architecture_planner(state: GenerationState) -> dict:
-    """输出唯一最终总体方案。
-
-    失败语义分两类：
-      - 模型服务故障 → 返回 `model_failure_result()`（`error` + `terminal_model_error`），终止本轮图运行，不进入建筑修复循环；
-      - 模型输出解析不了 → 走 normalize_architecture_plan() 的确定性归一化兜底，不中断。
-    """
-    from app.services.agent_service import agent_service
+    """一次完整设计，契约失败时局部修订；不通过则保留原因，不降级成默认建筑。"""
+    from app.design.resolver import resolve_design
+    from app.design.resolver import architecture_plan_from_document
+    from app.llm.errors import model_failure_result
+    from app.agent.generation.material.plan import material_mentions
 
     started = _time.time()
-    user_message = state["user_message"]
-    thinking_mode = state.get("thinking_mode", False)
-    # 用户的修正反馈
-    revision_feedback = str(state.get("design_feedback") or "").strip()
-    # python 中的三元表达式，A if 条件 else B
-    design_request = (
-        f"{user_message}\n本轮修订意见：{revision_feedback}"
-        if revision_feedback else user_message
-    )
-    # 把修订意见拼进请求串
-    previous_plan = state.get("architecture_plan")
+    message = state["user_message"]
+    feedback = str(state.get("design_feedback") or "").strip()
+    previous = state.get("design_document")
+    if isinstance(previous, dict):
+        from app.design.contracts import DesignDocument
 
-    # 修订时沿用上一版复杂度目标；否则固定标准档。
-    if isinstance(previous_plan, dict) and isinstance(previous_plan.get("complexity"), dict):
-        complexity_profile = dict(previous_plan["complexity"])
-    else:
-        # TODO 这个复杂度挡位会进入提示词中，并且目前的复杂度挡位还是固定的，所以后续需要考虑把复杂度挡位的选择权交给用户，或者根据用户的需求自动调整复杂度。
-        complexity_profile = resolve_complexity_profile(user_message)
-        
-    on_reasoning_delta = get_reasoning_callback()
-    # 给前端的进度提示：正在制定建筑体量、立面轴网和屋顶方案
-    if on_reasoning_delta:
-        # 如果是修订反馈
-        if revision_feedback:
-            revision_note = "根据修改意见调整总体方案"
-        # 如果是首次生成
-        else:
-            revision_note = "生成总体方案"
-        # 给前端发送进度提示
-        await on_reasoning_delta(
-            "architecture:progress",
-            f"\n### 总体建筑方案\n{revision_note}：正在制定建筑体量、立面轴网和屋顶方案...\n",
+        previous_plan = architecture_plan_from_document(
+            DesignDocument.model_validate(previous)
         )
+    else:
+        previous_plan = state.get("architecture_plan")
 
-    # 知识按设计块及当前选择检索；公共提示词不重复注入 Blueprint 基础协议。
-    spec_text = ""
-    rag_error = None
-    rag_ms = 0
-
-    previous_profile_id = (
-        # 从上轮方案里继承 profile，避免用户没说话就被兜底成 "building"。
-        str(previous_plan.get("profile") or "")
-        # 如果不是 dict 则说明是首次生成，那么就是空字符串
-        if isinstance(previous_plan, dict) else ""
+    previous_complexity = (previous_plan or {}).get("complexity") or {}
+    selected = resolve_complexity_profile(
+        message, state.get("detail_level") or previous_complexity.get("level", "simple")
     )
-    normalization_request = revision_feedback or user_message
-
-    # 判断建筑形制。id 来自分类器；
-    # 修订时优先沿用上一版方案的 profile，否则用户只说"把门改大"也会被重算档位。
-    # 物理边界无论如何都来自 custom 档，所以这里换 id 只影响检索与观测，不影响能力。
+    complexity = {**selected, **previous_complexity,
+                  "level": selected["level"], "reason": selected["reason"]}
     profile = detect_architecture_profile(
-        normalization_request,
-        fallback_profile_id=previous_profile_id or None,
-        profile_id=previous_profile_id or state.get("intent_profile"),
+        feedback or message,
+        profile_id=(previous_plan or {}).get("profile") or state.get("intent_profile"),
     )
+
+    callback = get_reasoning_callback()
+    if callback:
+        await callback("architecture:progress", "正在形成完整建筑图纸与构件标记……\n")
 
     prompt = build_architecture_plan_prompt(
-        spec_text,
+        "",
         profile,
-        complexity_profile,
-        current_plan=state.get("architecture_plan"),
-        revision_feedback=revision_feedback,
+        complexity,
+        current_plan=previous_plan,
+        revision_feedback=feedback,
         style_preference=state.get("style_preference"),
     )
+    accepted = {}
 
-    prompt += "\n" + KNOWLEDGE_GUIDANCE
-
-    raw_plan = None
-    llm_chars = 0
-    llm_ms = 0
-    error = None
-    token_usage = None
-    recovery_diag = None
-    block_diag: dict = {}
-    try:
-        # 首次成图：逐块写。
-        # 依赖表是常量、后块只看前序定稿内容，所以"host 引用不存在的宿主"这类
-        # 悬空引用被结构性地消掉了，而不是等编译报错再回头改。
-        # 某块写不出来不阻断：留空交下游归一化兜底，缺口由 `defaulted` 如实报出。
-        block_started = _time.time()
-        draft, block_diag = await draft_design_blocks(
-            base_prompt=prompt,
-            user_request=design_request,
-            thinking_mode=thinking_mode,
-            on_reasoning_delta=on_reasoning_delta,
-            # 试算工具要用同一套归一化参数，否则"试算通过、正式编译不通过"
-            # 会变成一条查不出来的分叉。
-            complexity_profile=complexity_profile,
-            architecture_profile=profile,
-            current_plan=previous_plan if revision_feedback and isinstance(previous_plan, dict) else None,
-        )
-        llm_ms = int((_time.time() - block_started) * 1000)
-        llm_chars = sum(
-            int(item.get("llm_chars") or 0) for item in block_diag.get("blocks", [])
-        )
-        token_usage = block_diag.get("token_usage")
-        rag_ms = sum(int(item.get("knowledge", {}).get("elapsed_ms", 0))
-                     for item in block_diag.get("blocks", []))
-        rag_error = next((item.get("knowledge", {}).get("error")
-                          for item in block_diag.get("blocks", [])
-                          if item.get("knowledge", {}).get("error")), None)
-        # 一块都没定稿 ⇒ 视同"没有方案"（`used_fallback` 要如实为真）。
-        raw_plan = (
-            {**previous_plan, **draft}
-            if revision_feedback and isinstance(previous_plan, dict)
-            else draft or None
-        )
-    except Exception as exc:
-        error = str(exc)
-        logger.warning(f"[architecture] 模型服务故障，已阻断: {exc}")
-        from app.llm.errors import model_failure_result
-        return model_failure_result(exc)
-
-    # 模型草稿是不可信输入：归一化对它必须"失败不阻断"（与收敛环
-    # convergence.py 的 invalid_revision 同一纪律）。实测曾有一条
-    # `ground[entrance_bay - 1]` 越界的 IndexError 从这里穿出去掐掉整轮生成
-    # （根因 _clamp_number 不夹 default，已修；这里再兜一层防同类）。
-    # 归一化失败 ⇒ 视同"没有可用方案"，走确定性 fallback，如实记账。
-    normalization_error: str | None = None
-    # 归一化取舍的账本（用户覆盖模型 / 模型写了表外值）。trace 里看不到它，
-    # "形状怎么变成这个的"就只能靠猜 —— 2026-10-08 实测过一次。
-    normalize_notes: list[str] = []
-    normalization_changes: list[dict] = []
-    try:
-        plan = normalize_architecture_plan(
-            raw_plan or {},
-            user_message=normalization_request,
-            complexity_profile=complexity_profile,
-            architecture_profile=profile,
-            normalize_notes=normalize_notes,
-            normalization_changes=normalization_changes,
-            input_source="model",
-        )
-    except Exception as exc:  # noqa: BLE001 —— 草稿不可信，兜底优先
-        normalization_error = f"{type(exc).__name__}: {exc}"
-        logger.warning(f"[architecture] 草稿归一化失败，改走确定性 fallback: {normalization_error}")
-        plan = normalize_architecture_plan(
-            {},
-            user_message=normalization_request,
-            complexity_profile=complexity_profile,
-            architecture_profile=profile,
-            normalize_notes=normalize_notes,
-            normalization_changes=normalization_changes,
-            input_source="model",
-        )
-
-    if normalization_error:
-        from app.design.normalization import plan_changes
-        normalization_changes = plan_changes(raw_plan, plan, source="model")
-        for change in normalization_changes:
-            change["reason"] += f"；整案降级：{normalization_error}"
-    plan["normalization_changes"] = normalization_changes
-
-    # Preserve adopted pre-normalization choices and request constraints independently
-    # of normalization (which does not own intent).
-    from app.design.completeness import adopted_from_plan
-    plan["design_constraints"] = [
-        *((raw_plan or {}).get("design_constraints") or []),
-        *adopted_from_plan(raw_plan or {}),
-    ]
-
-    # 诊断信息：单方案生成，只记录 profile 与是否走了兜底。
-    selection_diag = {
-        "profile": profile["id"],
-        "used_fallback": raw_plan is None or normalization_error is not None,
-        "used_local_fallback": any(c["category"] == "default" or c["semantic_change"] for c in normalization_changes),
-        "normalization_changes": normalization_changes,
-        "normalization_error": normalization_error,
-        "normalize_notes": normalize_notes,
-        "raw_plan": raw_plan,
-        "normalized_plan": plan,
-    }
-
-    if on_reasoning_delta:
-        rationale = plan.get("design_rationale", [])
-        await on_reasoning_delta(
-            "architecture:progress",
-            "\n### 总体建筑方案\n"
-            + "\n".join(f"- {item}" for item in rationale) + "\n"
-            + "- 总体方案已确定；下一节点将解析受控材质并生成可审核的设计文档与 SVG。\n",
-        )
-
-    total_ms = int((_time.time() - started) * 1000)
-    logger.info(f"[architecture] 完成: profile={profile['id']}, {total_ms}ms")
-    
-    from app.design.resolver import resolve_design
-
-    try:
-        design_document = build_design_document_or_error(
+    # 在 draft_design 内部做了契约验证，失败时抛 DesignContractError；这里捕获它并返回可读错误。
+    def validate(raw):
+        components = raw.get("components") or []
+        if not isinstance(components, list) or any(
+            not isinstance(item, dict) for item in components
+        ):
+            raise ValueError("components 必须是构件对象数组")
+        if any(not item.get("id") for item in raw.get("components") or []):
+            raise ValueError("每个显式构件标记必须有稳定 id；不能只写构件类型与宿主")
+        from app.agent.knowledge.component_names import resolve_component_name
+        volume_ids = {v.get("id") for v in raw.get("volumes", []) if isinstance(v, dict)}
+        for index, item in enumerate(components):
+            placement = item.get("placement") or {}
+            if (resolve_component_name(item.get("type", ""))["entity_type"] in {"door", "window"}
+                    and item.get("host") in volume_ids and isinstance(placement, dict)
+                    and not placement.get("position")
+                    and (not placement.get("face") or not placement.get("floor"))):
+                raise ValueError(f"/components/{index}/placement：体量内门窗的沿墙定位需要 face 和 floor，"
+                                 "或写出世界 position；不能仅凭 offset 猜测墙面和楼层")
+        plan = {"profile": profile["id"], **raw, "complexity": {
+            **complexity, **(raw.get("complexity") or {}),
+            "level": selected["level"], "reason": selected["reason"],
+        }}
+        document = build_design_document_or_error(
             plan,
-            session_id=str(state.get("session_id") or state.get("request_id") or "unknown"),
-            source_request=user_message,
-            building_type=str(plan.get("profile") or state.get("building_type") or "building"),
+            session_id=str(
+                state.get("session_id") or state.get("request_id") or "unknown"
+            ),
+            source_request=message,
+            building_type=profile["id"],
             style_intent=list(state.get("style_preference") or []),
-            previous=state.get("design_document"),
-            revision_feedback=revision_feedback,
+            previous=previous,
+            revision_feedback=feedback,
+        )
+        resolved = resolve_design(document)
+        from app.design.coordinates import opening_coordinate_errors
+        coordinate_errors = opening_coordinate_errors(resolved.component_markers)
+        if coordinate_errors:
+            raise ValueError("；".join(coordinate_errors))
+        accepted.update(document=document, resolved=resolved)
+
+    accounting = {"model_calls": 0}
+    try:
+        raw, diag = await draft_design(
+            base_prompt=prompt,
+            user_request=message + ("\n本轮修改意见：" + feedback if feedback else ""),
+            thinking_mode=state.get("thinking_mode", False),
+            on_reasoning_delta=callback,
+            current_plan=previous_plan if feedback else None,
+            validate=validate,
+            call_accounting=accounting,
         )
     except DesignContractError as exc:
-        # 体量覆盖、立面完整、槽位与配额一致等业务不变量失败属于可预期的业务失败，
-        # 必须走受控失败分支，而不是让未捕获异常终止整轮生成。
-        error = f"总体方案不满足设计契约：{exc}"
-        logger.error(f"[architecture] {error}")
+        return {"status": "failed", "error": str(exc)}
+    except Exception as exc:
         return {
-            "status": "failed",
-            "error": error,
+            **model_failure_result(exc),
             "architecture_diag": {
-                **selection_diag,
-                "design_contract_error": True,
-                "rag_chars": block_diag.get("knowledge_chars", 0),
-                "rag_ms": rag_ms,
-                "rag_error": rag_error,
-                "prompt_chars": len(prompt),
-                "llm_chars": llm_chars,
-                "llm_ms": llm_ms,
-                "token_usage": token_usage,
-                "recovery": recovery_diag,
-                "thinking_enabled": thinking_mode,
-                "design_blocks": block_diag,
+                "model_calls": accounting["model_calls"],
+                "last_issue": str(exc),
+                "total_ms": int((_time.time() - started) * 1000),
+                "settled": False,
             },
         }
-    resolved_design = resolve_design(design_document).model_dump(mode="json")
-    # P6-A 第 6 条：复用上一版材质的条件必须与**设计依赖**一致 ——
-    # 改相关表面/材质角色/用户提材质反馈 ⇒ 重新评估；纯几何修复（如屋顶坐标）
-    # 不该无故换掉全楼颜色。
-    #
-    # 🔴 判据只用 `material_mentions`（材质/配色/颜色这类**决策词**），不用"木""金属"
-    # 这类材质**名词**做子串匹配：反馈里出现"木门改玻璃门"是明确的材质变更（该刷），
-    # 而"把木梁换成混凝土柱"里"木"只是句子成分——两种情况靠同一张名词表根本分不开，
-    # 只能靠"这次反馈到底有没有在说材质"。
-    refresh_materials = not isinstance(state.get("design_document"), dict) or any(
-        term in revision_feedback.casefold()
-        for term in material_mentions(revision_feedback)
+    diag.update(
+        total_ms=int((_time.time() - started) * 1000),
+        profile=profile["id"],
+        raw_plan=raw,
     )
-    prior_decisions = (state.get("design_document") or {}).get("decisions") or {}
-    prior_strategy = (prior_decisions.get("design_intent") or {}).get("material_strategy")
-    current_strategy = (plan.get("design_intent") or {}).get("material_strategy")
-    refresh_materials = refresh_materials or prior_strategy != current_strategy
+    if not raw:
+        return {
+            "status": "failed",
+            "error": "建筑图纸未通过检查：" + diag["last_issue"],
+            "architecture_diag": diag,
+        }
+    document = accepted["document"]
+    prior_strategy = (
+        (previous or {}).get("decisions", {}).get("design_intent") or {}
+    ).get("material_strategy")
+    strategy = (
+        document.decisions.design_intent.material_strategy
+        if document.decisions.design_intent
+        else ""
+    )
     return {
-        # 设计方案本体
-        "architecture_plan": plan,
-        # 给用户审核的文档版
-        "design_document": design_document.model_dump(mode="json"),
-        # 可执行视图
-        "resolved_design": resolved_design,
-        # 审核状态
+        "architecture_plan": architecture_plan_from_document(document),
+        "design_document": document.model_dump(mode="json"),
+        "resolved_design": accepted["resolved"].model_dump(mode="json"),
         "design_review_status": "pending",
-        # 清空修订意见
         "design_feedback": "",
-        # 是否需要刷新材质节点
-        "design_material_refresh": refresh_materials,
-        # 诊断账本（谁定的、花了多少、哪块难写）
-        "architecture_diag": {
-            **selection_diag,
-            "rag_chars": block_diag.get("knowledge_chars", 0),
-            "rag_ms": rag_ms,
-            "rag_error": rag_error,
-            "prompt_chars": len(prompt),
-            "llm_chars": llm_chars,
-            "llm_ms": llm_ms,
-            "token_usage": token_usage,
-            "recovery": recovery_diag,
-            "error": error,
-            "thinking_enabled": thinking_mode,
-            "complexity_profile": complexity_profile,
-            "total_ms": total_ms,
-            # 逐块诊断：哪几块一次过、哪几块试满上限仍未定稿。**不落这一份就等于
-            # 把"分块"唯一带来的可观测性丢掉**——出问题时只能看到"图纸不全"。
-            "design_blocks": block_diag,
+        "design_material_refresh": not previous
+        or prior_strategy != strategy
+        or bool(material_mentions(feedback)),
+        "architecture_diag": diag,
+        "component_fragments": {
+            k: [] for k in (state.get("component_fragments") or {})
         },
+        "component_diagnostics": {
+            k: {} for k in (state.get("component_diagnostics") or {})
+        },
+        "merged_blueprint": {},
+        "final_blueprint": {},
+        "validation_snapshot": {},
+        "repair_audit": {},
+        "compile_report": {},
+        "error": None,
     }

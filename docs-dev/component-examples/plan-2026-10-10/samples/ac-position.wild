@@ -1,0 +1,12 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"空调机位"},
+  "geometry":{
+    "elements":[
+      {"type":"primitive","id":"equipment_base","shape":"box","position":[0,0.06,0],"dimensions":[1.2,0.12,0.65],"material":"stone"},
+      {"type":"primitive","id":"condenser","shape":"box","position":[0,0.445,0],"dimensions":[0.95,0.65,0.3],"material":"plaster"},
+      {"type":"primitive","id":"fan_face","shape":"cylinder","position":[0,0.45,-0.16],"rotation":[1.5707963267948966,0,0],"radius":0.22,"height":0.02,"segments":24,"material":"metal"}
+    ],
+    "components":[]
+  },
+  "materials":{"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

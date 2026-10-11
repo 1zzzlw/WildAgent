@@ -61,7 +61,7 @@ from app.agent.routing import (
     detect_target_kind,
     has_scene_content,
 )
-from app.agent.generation.architecture import detect_architecture_profile
+from app.agent.generation.architecture import detect_architecture_profile, resolve_complexity_profile
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.generation.material.recipes import without_procedural_materials
 from app.rag.security import (
@@ -317,10 +317,14 @@ async def _run_persistent_langgraph(sink, payload: dict, resume: bool) -> None:
         str(payload.get("request_id") or "unknown"),
         session_id=str(payload.get("session_id") or payload.get("request_id") or "unknown"),
         access_context=access,
-    ):
+    ) as trace:
         if await _emit_safety_refusal_if_needed(sink, payload):
             return
-        await _handle_with_langgraph(sink, payload, resume=resume)
+        try:
+            await _handle_with_langgraph(sink, payload, resume=resume)
+        except asyncio.CancelledError as exc:
+            trace.finish(status="stopped" if exc.args == ("user_stop",) else "paused")
+            raise
 
 
 async def startup_generation_jobs() -> None:
@@ -475,6 +479,19 @@ async def agent_websocket(ws: WebSocket):
                         after_seq=int(data.get("last_event_seq") or 0),
                     )
 
+            elif msg_type == "stop_generation":
+                try:
+                    await generation_job_service.stop_job(
+                        ws, request_id=str(data.get("request_id") or ""),
+                        session_id=str(data.get("session_id") or ""),
+                    )
+                except ValueError as exc:
+                    await _send_event(ws, {
+                        "type": "error", "code": "generation_stop_rejected",
+                        "request_id": data.get("request_id"), "session_id": data.get("session_id"),
+                        "error": str(exc),
+                    })
+
             elif msg_type == "resume_generation":
                 await generation_job_service.resume_or_replay(
                     ws,
@@ -587,13 +604,12 @@ _NODE_LABELS = {
     "classifier": "意图分类",
     "chat": "知识问答",
     "patch": "场景修改",
-    "architecture": "总体建筑方案",
+    "architecture": "建筑图纸",
     "object_design": "物件方案",
     "material_plan": "材质方案",
-    "design_convergence": "设计收敛",
     "design_review": "建筑设计审核",
     "skeleton": "主体装配",
-    "compile": "确定性编译",
+    "compile": "最终编译",
     "plan": "执行计划",
     "execute": "执行计划条目",
     "replanner": "计划对账",
@@ -605,44 +621,15 @@ def _node_label(name: str) -> str:
     return _NODE_LABELS.get(name, name)
 
 
-def _design_schedule_note(design_blocks: dict | None) -> str:
-    """把设计期的 plan 调度压成一行：几批、最宽并发几块、落定几块。
-
-    这是"plan 到底参与图纸了没有"唯一可观测的口径。只看产物看不出来 ——
-    串行起草也能写出同一张图，只有**批次与并发数**能区分。块表的
-    ``parallel_group="shell"`` 曾经一直是空转的声明（旧实现是纯串行 for 循环），
-    所以这一行也兼作那条回归的现场证据。
-    """
-
-    if not isinstance(design_blocks, dict):
-        return ""
-    plan = design_blocks.get("plan")
-    batches = design_blocks.get("batches")
-    if not isinstance(plan, dict) or not isinstance(batches, list) or not batches:
-        return ""
-    items = [item for item in (plan.get("items") or []) if isinstance(item, dict)]
-    settled = len([item for item in items if item.get("status") == "done"])
-    widest = max(
-        (
-            len(batch.get("items") or [])
-            for batch in batches
-            if isinstance(batch, dict)
-        ),
-        default=0,
-    )
-    return (
-        f" · 设计期 {len(batches)} 批（最宽 {widest} 并发）"
-        f" · 落定 {settled}/{len(items)} 块"
-    )
 
 
 #: 会向 ws 推送 step 事件的节点全集 = 图节点全集（见 ``tests/agent/test_plan_graph.py``
 #: 的 ``_EXPECTED_NODES``）+ 可选的 callback。图上加节点而这里不认，事件会在
-#: astream 过滤处被静默吞掉——前端管线就会"跳节点"（compile/design_convergence
+#: astream 过滤处被静默吞掉——前端管线就会"跳节点"（compile/design_review
 #: 上线时踩过：只改了生成链，忘了这张消费侧的表）。
 _OUR_NODES = {
     "classifier", "chat", "patch", "architecture", "object_design",
-    "material_plan", "design_convergence", "design_review",
+    "material_plan", "design_review",
     "skeleton", "compile",
     # plan 驱动链的循环三节点：条目级进度在它们的输出里，不在节点名里
     "plan", "execute", "replanner",
@@ -658,11 +645,10 @@ _NODE_START_DETAILS = {
     "architecture": "生成唯一结构化建筑方案并校验设计契约",
     "object_design": "生成物件清单并校验设计契约",
     "material_plan": "解析材质角色并匹配受控 PBR 资产",
-    "design_convergence": "试算图纸可编译性并收敛修订",
     "design_review": "等待用户审阅建筑设计文档与 SVG 方案图",
     "skeleton": "把批准方案展开为主体骨架和组件槽位（物件链）",
-    "compile": "把批准的图纸确定性编译成蓝图",
-    "plan": "由大模型制定批次与并发策略，再按方案、槽位和骨架展开合法条目",
+    "compile": "装配已落实的图纸标记，检查版本与完整性",
+    "plan": "从已批准设计展开构件任务与依赖",
     "execute": "执行当前串行条目或安全并发组",
     "replanner": "对账本轮结果并决定下一轮",
     "final_validate": "执行最终校验流水线",
@@ -739,6 +725,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "recent_messages": data.get("recent_messages", []),
         "workflow_state": str(data.get("workflow_state") or "idle"),
         "thinking_mode": thinking_mode,
+        "detail_level": resolve_complexity_profile(message, data.get("detail_level") or "simple")["level"],
         "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
         "max_retries": 3,
         "retry_count": 0,
@@ -766,9 +753,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     component_configs = {
         config.component_type: config for config in get_implemented_components()
     }
-    # 条目数在 plan 节点跑完前未知，用「构件类型数 × 3」估上界。每组是 generate + 批次 merge
-    # 两条，加收尾 merge + validate 两条，所以 2×构件数 + 2 ≤ 3×构件数（构件类型数 ≥ 2）。
-    # 上限只是安全余量，真正的停止条件是 replanner 的五重判定（《动态节点设计规划》§5.4）。
+    # 首次运行在图纸审核处暂停；审核恢复时改用实际标记数量估算图步骤。
     recursion_limit = plan_recursion_limit(
         len(component_configs) * 3,
         initial_state["max_retries"],
@@ -789,6 +774,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     # architecture/校验节点会通过同一回调发送可公开的执行摘要。快速模式也应
     # 展示这些摘要；模型原始 reasoning 是否存在仍由 enable_thinking 控制。
     reasoning_token = bind_reasoning_callback(send_thinking_delta)
+    event_stream = None
 
     try:
         graph_input = initial_state
@@ -797,6 +783,9 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
             snapshot = await graph.aget_state(graph_config)
             if snapshot.values:
+                marker_count = len((snapshot.values.get("resolved_design") or {}).get("component_markers") or [])
+                if marker_count:
+                    graph_config["recursion_limit"] = plan_recursion_limit(marker_count, snapshot.values.get("max_retries", 3))
                 resolved_intent = snapshot.values.get("intent")
                 suggested_components = snapshot.values.get(
                     "suggested_components", []
@@ -987,22 +976,16 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 elif node_name == "architecture":
                     plan = node_output.get("architecture_plan", {})
                     massing = plan.get("massing", {})
-                    selected = diag.get("selected_index", 0) + 1
-                    candidate_count = diag.get("candidate_count", 1)
-                    fallback_note = " · 使用确定性总体方案" if diag.get("used_fallback") else ""
-                    # 设计期也跑在 plan 的调度语义上（`design_plan`）。把批次与并发如实
-                    # 报出来：图纸阶段究竟发生了几批、同批几块，是"plan 到底参与了没有"
-                    # 唯一可观测的证据 —— 只看结果看不出来，串行也能写出同样的图。
-                    schedule_note = _design_schedule_note(diag.get("design_blocks"))
+                    stage = "error" if node_output.get("error") or node_output.get("status") == "failed" else "done"
                     await send_step(
-                        "generating", node_name, "done", label,
-                        f"候选 {selected}/{candidate_count} · "
+                        "generating", node_name, stage, label,
+                        (node_output.get("error") or "建筑图纸未通过检查") if stage == "error" else
+                        "完整图纸 · "
                         f"{massing.get('width', '?')}×{massing.get('depth', '?')}m · "
-                        f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶"
-                        f"{fallback_note}{schedule_note}",
+                        f"{massing.get('floors', '?')}层 · {plan.get('roof', {}).get('type', '?')}屋顶",
                     )
                     await send_debug("node", {
-                        "node": node_name, "label": label, "stage": "done",
+                        "node": node_name, "label": label, "stage": stage,
                         **diag,
                         "concept": plan.get("concept"),
                         "massing": massing,
@@ -1051,29 +1034,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             **material_diag,
                         })
 
-                elif node_name == "design_convergence":
-                    # 收敛环把图纸跑到编得出来再交人工审核；诊断键是 `design_convergence`
-                    # （**不是** 节点名 + `_diag` 的通用约定），所以这里显式取。
-                    convergence = node_output.get("design_convergence")
-                    convergence = convergence if isinstance(convergence, dict) else {}
-                    unfinished = convergence.get("unresolved") or []
-                    note = ""
-                    if convergence.get("reverted"):
-                        note = " · 收敛后图纸不合法，已回退原图纸"
-                    elif convergence.get("converged") is False:
-                        note = f" · 仍有 {len(unfinished)} 条未解缺陷（不阻断）"
-                    await send_step(
-                        "generating", node_name, "done", label,
-                        f"缺陷 {convergence.get('initial_defects', 0)}→"
-                        f"{convergence.get('final_defects', 0)} · "
-                        f"修订 {convergence.get('revisions', 0)} 轮 · "
-                        f"{convergence.get('stop_reason') or '?'}{note}",
-                    )
-                    await send_debug("node", {
-                        "node": node_name, "label": label, "stage": "done",
-                        **convergence,
-                    })
-
                 elif node_name == "skeleton":
                     if node_output.get("error"):
                         await send_step(
@@ -1098,23 +1058,16 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         })
 
                 elif node_name == "compile":
-                    # 编译**没有失败出口**（红线：图纸有问题只记进 compile_report，不阻断），
-                    # 所以状态恒为 done；阻断级缺陷由 final_validate 那一步报 error。
-                    report = node_output.get("compile_report")
-                    report = report if isinstance(report, dict) else {}
-                    uncompiled = [str(item) for item in (report.get("uncompiled") or [])]
-                    unsupported = [str(item) for item in (report.get("unsupported") or [])]
-                    detail = (
-                        f"{report.get('elements', '?')} 元素 + {report.get('components', '?')} 构件 · "
-                        f"缺陷 {report.get('defects', 0)} · 默认值 {report.get('defaulted', 0)}"
-                    )
-                    if uncompiled:
-                        detail += f" · 待模型补 {len(uncompiled)} 类（{'、'.join(uncompiled)}）"
-                    if unsupported:
-                        detail += f" · 能力缺失 {len(unsupported)} 类"
-                    if report.get("ok") is False:
-                        detail += " · ⚠ 有阻断级缺陷"
-                    await send_step("generating", node_name, "done", label, detail)
+                    report = node_output.get("compile_report") or {}
+                    detail = f"{report.get('elements', '?')} 元素 + {report.get('components', '?')} 构件"
+                    if report.get("abandoned_markers"):
+                        detail += f" · 舍弃 {len(report['abandoned_markers'])} 个图纸标记"
+                    if report.get("retry_implementation"):
+                        detail = "完整装配检查发现问题，正在继续原构件的实现尝试"
+                        step_status = "running"
+                    else:
+                        step_status = "error" if report.get("ok") is False else "done"
+                    await send_step("generating", node_name, step_status, label, detail)
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
                         **report,
@@ -1171,6 +1124,12 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     # 条目级进度：串行轮是一条；安全并发轮会一次返回同组的多条结果。
                     item_id = node_output.get("current_item_id")
                     execute_diag = node_output.get("execute_diag") or {}
+                    for result in execute_diag.get("item_results") or []:
+                        await send_step(
+                            "generating", f"plan:{result['item_id']}",
+                            "done" if result["run_state"] == "succeeded" else "error",
+                            result.get("label") or result["kind"], result.get("evidence") or "",
+                        )
                     item_ids = execute_diag.get("item_ids") or ([item_id] if item_id else [])
                     tool_calls = int(execute_diag.get("tool_calls") or 0)
                     if len(item_ids) > 1:
@@ -1271,7 +1230,12 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         await send_step("finished", "finished", "error", "处理失败", error_text)
         return
     finally:
-        reset_reasoning_callback(reasoning_token)
+        try:
+            close = getattr(event_stream, "aclose", None)
+            if close is not None:
+                await close()
+        finally:
+            reset_reasoning_callback(reasoning_token)
 
     # interrupt 是正常的人工审核暂停点。此处必须先返回等待状态，不能继续保存或加载三维。
     snapshot = await graph.aget_state(graph_config)

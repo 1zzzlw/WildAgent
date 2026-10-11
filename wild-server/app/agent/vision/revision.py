@@ -454,7 +454,7 @@ async def revise_by_visibility(
     :param now: 注入式时钟，供测试钉住耗时口径。
     """
 
-    from app.design.compilation import compile_document, project_compilation
+    from app.design.compilation import compile_document, project_drawing
     from app.design.resolver import (
         architecture_plan_from_document,
     )
@@ -539,7 +539,7 @@ async def revise_by_visibility(
 
     def fulfillment_gaps(doc, compiled):
         from app.design.fulfillment import evaluate_fulfillment
-        resolved = project_compilation(doc, compiled)
+        resolved = project_drawing(doc)
         resolved.design_gaps = [*resolved.design_gaps, *evaluate_fulfillment(
             doc, compiled.blueprint, resolved.design_hash,
             (compiled.stats.get("instance_overrides") or {}).get("instance_entities"),
@@ -567,7 +567,7 @@ async def revise_by_visibility(
             # 认不出的映射不猜（convergence 红线 3）：只记录，不动稿。
             run.stop_reason = "no_issues"
             break
-        if run.calls + len(allowed_blocks) > call_budget:
+        if run.calls + 1 > call_budget:
             run.stop_reason = "model_budget"
             break
 
@@ -582,7 +582,7 @@ async def revise_by_visibility(
         materials = current.decisions.materials.resolved_plan
         context = {**plan,
                    "material_plan": materials.model_dump(mode="json") if materials else None}
-        run.calls += len(allowed_blocks)
+        run.calls += 1
         round_log: dict[str, Any] = {
             "round": round_index, "blocks": allowed_blocks,
             "evidence": [e["id"] for e in evidence], "baseHash": resolved_hash(current),
@@ -594,7 +594,7 @@ async def revise_by_visibility(
                 user_request=user_message, thinking_mode=thinking_mode,
                 only_blocks=allowed_blocks, complexity_profile=complexity_profile,
                 architecture_profile=effective_architecture_profile, current_plan=context,
-                allow_probe=False, allow_design_changes=True, max_attempts=1,
+                allow_design_changes=True, max_attempts=1,
                 on_reasoning_delta=on_reasoning_delta,
             ), timeout=max(0.01, time_budget - (now() - started)))
         except asyncio.TimeoutError:

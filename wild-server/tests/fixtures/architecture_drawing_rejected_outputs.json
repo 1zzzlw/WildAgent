@@ -1,0 +1,1028 @@
+[
+  {
+    "concept": "新欧风花园别墅",
+    "design_intent": {
+      "goals": [
+        "创造典雅居住空间，融合欧式柱廊与现代大窗",
+        "通过中式曲线屋顶局部点缀形成视觉焦点",
+        "强化南向景观视野与室内外过渡（阳台系统）"
+      ],
+      "assumptions": [
+        "场地平坦无高差，主朝向为正南",
+        "首层公共活动区，二三层私密卧室",
+        "结构体系为钢框架，层高3.0米",
+        "未指定专业规范尺寸，按住宅常规推导"
+      ],
+      "spatial_strategy": "入口组织：南立面中央设双开滑动门形成仪式感门廊；交通组织：主楼核心筒楼梯垂直贯通；室外关系：L形体量围合私密庭院，南向最大化开窗面向花园，东向阳台衔接卧室与景观。",
+      "composition": "L形主次体量：15x15米主楼3层与10x10米侧翼2层咬合；南立面中央突出柱廊支撑中式曲线屋顶；平屋顶主体与曲线屋顶焦点形成虚实对比；阳台错落布置强化立面层次。建筑轮廓严格遵循轴网模数，避免悬挑冲突。",
+      "material_strategy": "主墙暖白色石材饰面，柱廊与线脚采用米白色涂料；门窗深胡桃木色铝木复合框；屋顶主体深灰色金属板，中式曲线部分青灰色陶瓦；阳台栏杆黑色氟碳喷涂钢构。材料交接处设置不锈钢滴水线强化细节。",
+      "selected_systems": [
+        "steel_frame_structure",
+        "central_stair_core",
+        "chinese_curved_roof_accent",
+        "sliding_door_system",
+        "cantilevered_balcony"
+      ]
+    },
+    "massing": {
+      "shape": "l_shape",
+      "width": 25,
+      "depth": 20,
+      "floor_height": 3.0,
+      "floors": 3,
+      "modeled_floors": 3,
+      "representation_mode": "full",
+      "symmetry": false
+    },
+    "volumes": [
+      {
+        "id": "main",
+        "role": "primary",
+        "x": 0,
+        "z": 5,
+        "width": 15,
+        "depth": 15,
+        "start_floor": 1,
+        "end_floor": 3
+      },
+      {
+        "id": "wing",
+        "role": "secondary",
+        "x": 15,
+        "z": 0,
+        "width": 10,
+        "depth": 10,
+        "start_floor": 1,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 8,
+      "z_bays": 7
+    },
+    "circulation": {
+      "vertical_strategy": "core_and_stair"
+    },
+    "facades": {
+      "front": {
+        "bays": 5,
+        "ground_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "door:slide",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "empty",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "entrance_bay": 3
+      },
+      "back": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ]
+      },
+      "left": {
+        "bays": 5,
+        "ground_pattern": [
+          "door:slide",
+          "door:slide",
+          "door:swing",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "entrance_bay": 3
+      },
+      "right": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "door:slide",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "overhang": 0.8,
+      "volumes": [
+        {
+          "volume": "main",
+          "type": "flat",
+          "overhang": 0.8
+        },
+        {
+          "volume": "wing",
+          "type": "flat",
+          "overhang": 0.8
+        }
+      ]
+    },
+    "components": [
+      {
+        "id": "main_entrance_canopy",
+        "type": "canopy",
+        "host": "main_L1_front",
+        "size": {
+          "width": 4.0,
+          "depth": 1.8,
+          "height": 0.3
+        },
+        "form": {
+          "profile": [
+            [
+              0,
+              0
+            ],
+            [
+              0.4,
+              0.15
+            ],
+            [
+              1.4,
+              0.15
+            ],
+            [
+              1.8,
+              0
+            ]
+          ]
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "main_roof_accent",
+        "type": "roof",
+        "host": "main",
+        "size": {
+          "width": 4.0,
+          "depth": 2.0,
+          "position_x": 5.5,
+          "position_z": 15.0
+        },
+        "form": {
+          "type": "chinese_curved",
+          "curvature": 0.25
+        },
+        "material_role": "roof"
+      },
+      {
+        "id": "wing_balcony",
+        "type": "balcony",
+        "host": "wing_L2_right",
+        "size": {
+          "width": 3.0,
+          "depth": 1.5
+        },
+        "placement": {
+          "offset": 3.5,
+          "sill_height": 0.1
+        },
+        "material_role": "structure"
+      },
+      {
+        "id": "wing_railing",
+        "type": "railing",
+        "host": "wing_balcony",
+        "size": {
+          "height": 1.1
+        },
+        "form": {
+          "spacing": 0.12,
+          "end_post": true
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "main_cornice",
+        "type": "cornice",
+        "host": "main_L3_roof",
+        "size": {
+          "depth": 0.4
+        },
+        "form": {
+          "profile": [
+            [
+              0,
+              0
+            ],
+            [
+              0.1,
+              0.05
+            ],
+            [
+              0.3,
+              0.05
+            ],
+            [
+              0.4,
+              0
+            ]
+          ]
+        },
+        "material_role": "accent"
+      }
+    ],
+    "materials": {
+      "regions": [
+        {
+          "role": "facade_primary",
+          "type": "stone_cladding"
+        },
+        {
+          "role": "structure",
+          "type": "painted_steel"
+        },
+        {
+          "role": "frame",
+          "type": "aluminum"
+        },
+        {
+          "role": "door",
+          "type": "wood_clad"
+        },
+        {
+          "role": "glass",
+          "type": "low_e_glass"
+        },
+        {
+          "role": "roof",
+          "type": "metal_panel"
+        },
+        {
+          "role": "accent",
+          "type": "stucco"
+        }
+      ]
+    },
+    "design_rationale": [
+      "L形体量咬合形成庭院，主楼3层与侧翼2层高差强化主次关系",
+      "南立面中央滑动门与柱廊雨棚构成仪式性入口，中式曲线屋顶作为视觉焦点",
+      "侧翼二层阳台精准对位卧室空间，黑色细柱栏杆保持立面通透性",
+      "材料分层策略：石材基座+涂料线脚实现欧式基座，木纹门窗衔接现代感",
+      "限制：上层立面不支持门洞，阳台门通过构件定位；中式屋顶仅作局部装饰构件"
+    ],
+    "design_constraints": [
+      {
+        "id": "site_assumption_001",
+        "kind": "preference",
+        "target": "/design_intent/assumptions",
+        "expression": "场地假设",
+        "source": "系统推导",
+        "expected": "平坦无高差",
+        "check": "manual",
+        "adoption": "proposed"
+      },
+      {
+        "id": "orientation_assumption_001",
+        "kind": "preference",
+        "target": "/design_intent/assumptions",
+        "expression": "朝向假设",
+        "source": "系统推导",
+        "expected": "主南向",
+        "check": "manual",
+        "adoption": "proposed"
+      }
+    ],
+    "component_quota": {
+      "balcony": 1,
+      "railing": 1,
+      "canopy": 1,
+      "roof": 1,
+      "cornice": 1
+    }
+  },
+  {
+    "concept": "Symmetrical European Villa with Modern Touches",
+    "design_intent": {
+      "goals": [
+        "Create an elegant symmetrical European villa with modern comfort",
+        "Integrate Chinese-inspired roof curvature subtly",
+        "Maximize natural light and garden views",
+        "Provide covered entrances and outdoor connections"
+      ],
+      "assumptions": [
+        "Flat terrain with south-facing main facade",
+        "No site constraints or adjacent buildings",
+        "3.0m floor-to-floor height standard",
+        "Climate zone suitable for pitched roofs"
+      ],
+      "spatial_strategy": "Entrance organization: South-facing grand entrance with canopy under Chinese-curved roof transition; service entrance on west. Circulation: Central staircase core connecting both floors. Outdoor relationships: South garden access through French doors, east-west balconies for cross-views, north utility zone.",
+      "composition": "Rectangular primary mass with centered porch volume creating symmetrical hierarchy. Gable roof on main body transitions to Chinese-curved roof on porch. Tripartite facade division: stone base, plaster body, prominent cornice. Openings arranged symmetrically with vertical emphasis on windows and balcony projections.",
+      "material_strategy": "Primary structure: reinforced concrete frame. Facade base: limestone cladding. Upper floors: white stucco finish. Roof: dark terracotta tiles. Windows/doors: black aluminum frames with thermal breaks. Balconies: glass railings with stainless steel supports.",
+      "selected_systems": [
+        "door:swing",
+        "window:fixed",
+        "window:swing",
+        "roof:gable",
+        "roof:chinese_curved",
+        "balcony",
+        "canopy",
+        "cornice"
+      ]
+    },
+    "massing": {
+      "shape": "rectangle",
+      "width": 15.0,
+      "depth": 12.0,
+      "floor_height": 3.0,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "symmetry": true
+    },
+    "volumes": [
+      {
+        "id": "volume_main",
+        "role": "primary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 15.0,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "volume_porch",
+        "role": "secondary",
+        "x": 5.0,
+        "z": 10.0,
+        "width": 5.0,
+        "depth": 2.0,
+        "start_floor": 1,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 3,
+      "z_bays": 3
+    },
+    "circulation": {
+      "vertical_strategy": "stair"
+    },
+    "facades": {
+      "front": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "door:swing",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "entrance_bay": 2
+      },
+      "back": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ]
+      },
+      "left": {
+        "bays": 3,
+        "ground_pattern": [
+          "door:swing",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "entrance_bay": 1
+      },
+      "right": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ]
+      }
+    },
+    "roof": {
+      "type": "gable",
+      "ridge_axis": "x",
+      "overhang": 0.6,
+      "volumes": [
+        {
+          "volume": "volume_main",
+          "type": "gable",
+          "overhang": 0.6
+        },
+        {
+          "volume": "volume_porch",
+          "type": "chinese_curved",
+          "overhang": 0.4
+        }
+      ]
+    },
+    "components": [
+      {
+        "id": "canopy_main",
+        "type": "canopy",
+        "host": "volume_porch_L1_front",
+        "size": {
+          "width": 3.0,
+          "depth": 1.2,
+          "height": 0.3
+        },
+        "form": {
+          "profile": [
+            [
+              0,
+              0
+            ],
+            [
+              3,
+              0
+            ],
+            [
+              1.5,
+              0.8
+            ]
+          ]
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "column_left",
+        "type": "column",
+        "host": "ground",
+        "size": {
+          "height": 2.7,
+          "width": 0.3,
+          "depth": 0.3
+        },
+        "relation": {
+          "kind": "supports",
+          "target": "canopy_main",
+          "along_ratio": 0.2,
+          "depth_ratio": 0.5
+        },
+        "material_role": "structure"
+      },
+      {
+        "id": "column_right",
+        "type": "column",
+        "host": "ground",
+        "size": {
+          "height": 2.7,
+          "width": 0.3,
+          "depth": 0.3
+        },
+        "relation": {
+          "kind": "supports",
+          "target": "canopy_main",
+          "along_ratio": 0.8,
+          "depth_ratio": 0.5
+        },
+        "material_role": "structure"
+      },
+      {
+        "id": "balcony_south",
+        "type": "balcony",
+        "host": "volume_main_L2_front",
+        "size": {
+          "width": 3.0,
+          "depth": 1.5,
+          "height": 1.1
+        },
+        "placement": {
+          "offset": 6.0,
+          "sill_height": 0.2
+        },
+        "form": {
+          "rail_type": "glass_panel"
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "balcony_east",
+        "type": "balcony",
+        "host": "volume_main_L2_right",
+        "size": {
+          "width": 2.5,
+          "depth": 1.2,
+          "height": 1.1
+        },
+        "placement": {
+          "offset": 4.0,
+          "sill_height": 0.2
+        },
+        "form": {
+          "rail_type": "glass_panel"
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "balcony_west",
+        "type": "balcony",
+        "host": "volume_main_L2_left",
+        "size": {
+          "width": 2.5,
+          "depth": 1.2,
+          "height": 1.1
+        },
+        "placement": {
+          "offset": 4.0,
+          "sill_height": 0.2
+        },
+        "form": {
+          "rail_type": "glass_panel"
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "cornice_main",
+        "type": "cornice",
+        "host": "volume_main",
+        "size": {
+          "height": 0.3
+        },
+        "form": {
+          "profile": [
+            [
+              0,
+              0
+            ],
+            [
+              0.15,
+              0.15
+            ],
+            [
+              0,
+              0.3
+            ]
+          ]
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "light_entrance",
+        "type": "light",
+        "host": "volume_porch_L1_front",
+        "placement": {
+          "offset": 2.0,
+          "sill_height": 2.2
+        },
+        "form": {
+          "fixture_type": "wall_sconce"
+        },
+        "material_role": "accent"
+      }
+    ],
+    "materials": {
+      "regions": [
+        {
+          "role": "facade_primary",
+          "type": "wall"
+        },
+        {
+          "role": "structure",
+          "type": "column"
+        },
+        {
+          "role": "glass",
+          "type": "window"
+        },
+        {
+          "role": "roof",
+          "type": "roof"
+        },
+        {
+          "role": "accent",
+          "type": "cornice"
+        }
+      ]
+    },
+    "design_rationale": [
+      "Symmetrical massing with porch volume creates European hierarchy while Chinese-curved roof on porch nods to style cue without overwhelming composition",
+      "South facade pattern centers grand entrance under canopy with flanking windows; secondary entrances placed functionally on west",
+      "Balconies positioned on all three upper facades maximize views and outdoor access per spatial strategy",
+      "Chinese-curved roof applied only to porch volume as transitional element, maintaining gable roof dominance on primary mass",
+      "Cornice and canopy details executed as explicit components to achieve classical proportions",
+      "Column supports for canopy demonstrate relation-based placement rather than fixed coordinates",
+      "Balcony placements use offset/sill_height parameters for precise positioning relative to host walls",
+      "Limitation: Upper floor doors not expressible in current facade system; French doors simulated through window patterns with balcony access"
+    ],
+    "design_constraints": [],
+    "component_quota": {
+      "balcony": 3,
+      "canopy": 1,
+      "column": 2,
+      "cornice": 1,
+      "light": 1
+    }
+  },
+  {
+    "concept": "Harmonious Fusion Villa",
+    "design_intent": {
+      "goals": [
+        "融合欧式对称美学与中式屋顶曲线",
+        "创造室内外庭院互动的现代生活空间",
+        "最大化自然采光与景观视野",
+        "体现东西方材料与构造的层次对话"
+      ],
+      "assumptions": [
+        "场地平整无高差，主入口朝南（front facade）",
+        "建筑红线范围20m×20m，退界3m",
+        "结构层高3.0米，屋面设备空间计入总高",
+        "未指定精确坐标系，以体量x/z为世界原点"
+      ],
+      "spatial_strategy": "入口组织：南立面中央设主入口，门厅直通内庭院；交通组织：核心楼梯位于L形转角处，贯通三层；室外关系：内庭院（L形缺口）连接客厅与书房，二层露台俯瞰庭院，北侧服务入口独立设置。",
+      "composition": "L形体量围合中央庭院：主翼三层中式曲面屋顶统领全局，次翼二层平屋顶形成现代对比；立面采用三段式构图，南立面入口凹进搭配雨棚，东西立面悬挑阳台打破体量，北立面保持简洁服务功能；屋顶出檐1.2米形成灰空间，与阳台栏杆形成虚实韵律。",
+      "material_strategy": "主体结构：钢筋混凝土框架；主墙面：米白色质感涂料搭配灰色石材基座；屋顶：深灰色陶土瓦与平屋顶金属板；门窗系统：深棕色木纹铝包木窗框；装饰构件：黑色氟碳喷涂金属栏杆与檐口线脚。材料交接强调构造层次，石材基座托起轻质墙面，深色窗框勾勒白色体量。",
+      "selected_systems": [
+        "frame_structure",
+        "chinese_curved_roof",
+        "flat_roof",
+        "swing_door",
+        "fixed_window",
+        "cantilever_balcony",
+        "column_supported_canopy"
+      ]
+    },
+    "massing": {
+      "shape": "l_shape",
+      "width": 16,
+      "depth": 16,
+      "floor_height": 3.0,
+      "floors": 3,
+      "modeled_floors": 3,
+      "representation_mode": "full",
+      "symmetry": false
+    },
+    "volumes": [
+      {
+        "id": "main",
+        "role": "primary",
+        "x": 0,
+        "z": 0,
+        "width": 12,
+        "depth": 8,
+        "start_floor": 1,
+        "end_floor": 3
+      },
+      {
+        "id": "secondary",
+        "role": "secondary",
+        "x": 0,
+        "z": 8,
+        "width": 8,
+        "depth": 8,
+        "start_floor": 1,
+        "end_floor": 2
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 4,
+      "z_bays": 4
+    },
+    "circulation": {
+      "vertical_strategy": "core_and_stair"
+    },
+    "facades": {
+      "front": {
+        "bays": 4,
+        "entrance_bay": 2,
+        "ground_pattern": [
+          "window:fixed",
+          "door:swing",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ]
+      },
+      "back": {
+        "bays": 3,
+        "ground_pattern": [
+          "window:fixed",
+          "door:swing",
+          "empty"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "empty",
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 4,
+        "ground_pattern": [
+          "window:fixed",
+          "window:fixed",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "window:fixed",
+          "open",
+          "window:fixed",
+          "open"
+        ]
+      },
+      "right": {
+        "bays": 3,
+        "ground_pattern": [
+          "empty",
+          "window:fixed",
+          "window:fixed"
+        ],
+        "upper_pattern": [
+          "empty",
+          "open",
+          "window:fixed"
+        ]
+      }
+    },
+    "roof": {
+      "type": "chinese_curved",
+      "overhang": 1.2,
+      "volumes": [
+        {
+          "volume": "main",
+          "type": "chinese_curved",
+          "overhang": 1.2
+        },
+        {
+          "volume": "secondary",
+          "type": "flat",
+          "overhang": 0.6
+        }
+      ]
+    },
+    "components": [
+      {
+        "id": "balcony_main_L2_left",
+        "type": "balcony",
+        "host": "main_L2_left",
+        "size": {
+          "width": 4.0,
+          "depth": 1.8,
+          "height": 0.3
+        },
+        "form": {
+          "offset_x": 2.0,
+          "offset_z": 0.0,
+          "cantilever": true
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "balcony_main_L3_left",
+        "type": "balcony",
+        "host": "main_L3_left",
+        "size": {
+          "width": 4.0,
+          "depth": 1.8,
+          "height": 0.3
+        },
+        "form": {
+          "offset_x": 6.0,
+          "offset_z": 0.0,
+          "cantilever": true
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "balcony_secondary_L2_front",
+        "type": "balcony",
+        "host": "secondary_L2_front",
+        "size": {
+          "width": 3.0,
+          "depth": 1.5,
+          "height": 0.3
+        },
+        "form": {
+          "offset_x": 2.0,
+          "offset_z": 0.0,
+          "cantilever": false
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "canopy_main_entrance",
+        "type": "canopy",
+        "host": "main_L1_front",
+        "size": {
+          "width": 3.5,
+          "depth": 2.0,
+          "height": 0.3
+        },
+        "form": {
+          "offset_x": 4.5,
+          "offset_z": -0.5,
+          "slope": 0.05
+        },
+        "material_role": "accent"
+      },
+      {
+        "id": "column_canopy_support",
+        "type": "column",
+        "host": "ground",
+        "size": {
+          "width": 0.3,
+          "depth": 0.3,
+          "height": 3.0
+        },
+        "form": {
+          "position_x": 8.0,
+          "position_z": -1.0
+        },
+        "material_role": "structure",
+        "relation": {
+          "kind": "supports",
+          "target": "canopy_main_entrance",
+          "along_ratio": 0.5,
+          "depth_ratio": 0.5
+        }
+      },
+      {
+        "id": "railing_balcony_main_L2",
+        "type": "railing",
+        "host": "balcony_main_L2_left",
+        "size": {
+          "height": 1.1
+        },
+        "form": {},
+        "material_role": "accent"
+      },
+      {
+        "id": "railing_balcony_main_L3",
+        "type": "railing",
+        "host": "balcony_main_L3_left",
+        "size": {
+          "height": 1.1
+        },
+        "form": {},
+        "material_role": "accent"
+      },
+      {
+        "id": "railing_balcony_secondary_L2",
+        "type": "railing",
+        "host": "balcony_secondary_L2_front",
+        "size": {
+          "height": 1.1
+        },
+        "form": {},
+        "material_role": "accent"
+      },
+      {
+        "id": "cornice_main_roof",
+        "type": "cornice",
+        "host": "main_L3_roof",
+        "size": {
+          "depth": 0.4
+        },
+        "form": {
+          "profile": [
+            [
+              0,
+              0
+            ],
+            [
+              0.1,
+              0.05
+            ],
+            [
+              0.3,
+              0.05
+            ],
+            [
+              0.4,
+              0
+            ]
+          ]
+        },
+        "material_role": "accent"
+      }
+    ],
+    "materials": {
+      "regions": [
+        {
+          "role": "facade_primary",
+          "type": "rendered_wall"
+        },
+        {
+          "role": "structure",
+          "type": "concrete"
+        },
+        {
+          "role": "roof",
+          "type": "ceramic_tile"
+        },
+        {
+          "role": "glass",
+          "type": "insulated_glass"
+        },
+        {
+          "role": "accent",
+          "type": "metal"
+        },
+        {
+          "role": "ground",
+          "type": "stone_slab"
+        }
+      ]
+    },
+    "design_rationale": [
+      "L形体量围合内庭院：主翼(12x8m)三层中式曲面屋顶形成视觉中心，次翼(8x8m)二层平屋顶提供现代对比，退台关系强化层次。",
+      "南立面中央入口：通过雨棚与支撑柱形成 welcoming 空间，两侧固定窗平衡对称构图；东西立面悬挑阳台对应upper_pattern的open槽位，实现内外渗透。",
+      "三层中式屋顶覆盖主体量：1.2米出檐与檐口线脚(cornice)强化传统意象，次翼平屋顶0.6米出檐形成尺度对比；所有阳台配置栏杆确保安全需求已显式表达。",
+      "材料策略落地：米白墙面(facade_primary)与深灰屋顶(roof)形成基调，黑色金属栏杆(accent)勾勒阳台，石材基座(ground)定义构造逻辑；柱-雨棚关系通过relation字段精确绑定。",
+      "限制说明：内庭院地面未建模，北立面服务门无雨棚；中式屋顶在转角处的构造细节需后续深化；栏杆样式由材质节点定义，当前仅定位。"
+    ],
+    "design_constraints": [
+      {
+        "id": "user_style_european_modern_chinese",
+        "kind": "preference",
+        "target": "/decisions/design_intent",
+        "expression": "融合欧式对称、现代简洁、中式屋顶",
+        "source": "user_request",
+        "expected": "applied",
+        "check": "manual",
+        "adoption": "adopted",
+        "source_quote": "风格线索（非用户硬要求）：['european', 'modern', 'chinese']"
+      },
+      {
+        "id": "architecture_draft_floors_3",
+        "kind": "architecture_draft",
+        "target": "/decisions/massing",
+        "expression": "floors=3, modeled_floors=3",
+        "source": "design_derivation",
+        "expected": "3",
+        "check": "equals",
+        "adoption": "adopted",
+        "source_quote": "欧式别墅典型规模"
+      },
+      {
+        "id": "constraint_roof_system",
+        "kind": "capability_limitation",
+        "target": "/decisions/roof",
+        "expression": "chinese_curved roof not fully supported on L-shape",
+        "source": "engine_capability",
+        "expected": "partial_coverage",
+        "check": "manual",
+        "adoption": "proposed",
+        "source_quote": "多体量其它屋型返回 roof_layout_unsupported"
+      }
+    ],
+    "component_quota": {
+      "balcony": 3,
+      "canopy": 1,
+      "column": 1,
+      "cornice": 1,
+      "railing": 3
+    }
+  }
+]

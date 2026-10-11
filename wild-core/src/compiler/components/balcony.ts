@@ -38,6 +38,7 @@ export function compileBalcony(
     frame.rotationAt(centerAlong),
     component.material,
   )
+  if (component.railingEnabled === false) return [slab]
   const railing: RailingComponent = {
     type: 'railing',
     id: `${component.id}__railing`,

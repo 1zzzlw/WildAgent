@@ -180,7 +180,8 @@ def test_repository_patch_increments_revision_and_invalidates_approval(tmp_path:
     assert changed.revision == 2
     assert changed.status == "draft"
     assert changed.approved_at is None
-    assert resolved["bounds"]["width"] == 24
+    assert changed.decisions.massing.width == 24
+    assert resolved["bounds"]["width"] == 20
     assert (tmp_path / "history" / document.session_id / "revision_2.json").exists()
 
 
@@ -215,7 +216,7 @@ def test_repository_rejects_stale_or_locked_patch(tmp_path: Path):
         repository.apply_patch(document.session_id, stale)
 
 
-def test_repository_rejects_unsupported_component_patch(tmp_path: Path):
+def test_repository_preserves_new_component_design_patch(tmp_path: Path):
     repository = DesignRepository(tmp_path)
     repository.save(make_document())
     patch = DesignPatch.model_validate({
@@ -228,8 +229,8 @@ def test_repository_rejects_unsupported_component_patch(tmp_path: Path):
         }],
     })
 
-    with pytest.raises(ValueError, match="未实现的构件: sunshade"):
-        repository.apply_patch("session_design_test", patch)
+    changed, _ = repository.apply_patch("session_design_test", patch)
+    assert "sunshade" in changed.decisions.required_components
 
 
 def test_repository_marks_only_matching_approved_design_as_compiled(tmp_path: Path):
@@ -265,18 +266,18 @@ def test_invalid_facade_pattern_is_rejected():
         DesignDocument.model_validate(data)
 
 
-def test_multistorey_design_requires_vertical_circulation():
+def test_multistorey_circulation_design_is_left_for_plan_to_implement():
     data = make_document().model_dump(mode="json")
     data["decisions"]["circulation"]["vertical_strategy"] = "none"
 
-    with pytest.raises(ValidationError, match="竖向交通"):
-        DesignDocument.model_validate(data)
+    document = DesignDocument.model_validate(data)
+    assert document.decisions.circulation.vertical_strategy == "none"
 
 
-def test_legacy_core_strategy_is_migrated_when_loading_design_document():
+def test_explicit_core_strategy_is_not_silently_rewritten():
     data = make_document().model_dump(mode="json")
     data["decisions"]["circulation"]["vertical_strategy"] = "core"
 
     document = DesignDocument.model_validate(data)
 
-    assert document.decisions.circulation.vertical_strategy == "core_and_stair"
+    assert document.decisions.circulation.vertical_strategy == "core"

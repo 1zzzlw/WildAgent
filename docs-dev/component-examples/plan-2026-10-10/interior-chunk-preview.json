@@ -1,0 +1,42 @@
+{
+  "files": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\furniture-layout-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\kitchen-sanitary-examples.md"
+  ],
+  "chunk_count": 22,
+  "chunks": [],
+  "issues": [
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "furniture-layout-examples.md",
+      "heading": "家具与桌椅组合 JSON 示例 > 餐桌椅 · dining-table-chairs",
+      "part_index": 1,
+      "message": "原子 chunk 为 1138 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "kitchen-sanitary-examples.md",
+      "heading": "橱柜与厨卫设施 JSON 示例 > 橱柜 · kitchen-cabinet",
+      "part_index": 1,
+      "message": "原子 chunk 为 1634 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "kitchen-sanitary-examples.md",
+      "heading": "橱柜与厨卫设施 JSON 示例 > 洗手盆 · washbasin",
+      "part_index": 1,
+      "message": "原子 chunk 为 1391 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "kitchen-sanitary-examples.md",
+      "heading": "橱柜与厨卫设施 JSON 示例 > 马桶 · toilet",
+      "part_index": 1,
+      "message": "原子 chunk 为 2150 字符，超过配置 900"
+    }
+  ]
+}

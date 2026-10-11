@@ -1,0 +1,17 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\AgentProject\WildAgent\wild-server
+configfile: pyproject.toml
+plugins: anyio-4.14.2, langsmith-0.10.9, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 135 items
+
+tests\plan\test_component_naming.py ..........                           [  7%]
+tests\plan\test_drawing_implementation.py .............................. [ 29%]
+.....                                                                    [ 33%]
+tests\plan\test_plan_tools.py .......................................... [ 64%]
+..............                                                           [ 74%]
+tests\agent\test_drawing_format_feedback.py .................            [ 87%]
+tests\rag\test_knowledge_rules_v3.py .................                   [100%]
+
+============================= 135 passed in 2.02s =============================

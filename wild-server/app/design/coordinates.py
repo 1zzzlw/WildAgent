@@ -1,5 +1,6 @@
 """体量起点坐标与总体尺寸控制；不把世界原点当场地边界。"""
 import json
+from math import hypot
 
 
 class DesignCoordinateConflict(ValueError):
@@ -27,3 +28,76 @@ def volume_conflicts(volumes: list[dict], massing: dict) -> list[dict]:
                 "conflict_path": "/decisions/massing/modeled_floors",
                 "conflict_value": massing["modeled_floors"], "reason": "体量楼层超出建模层数"})
     return conflicts
+
+
+
+def representative_floor_indices(massing):
+    count, floors = massing.modeled_floors, massing.floors
+    if massing.representation_mode == "schematic" and count > 1:
+        return [1 + round(i*(floors-1)/(count-1)) for i in range(count)]
+    return list(range(1, count+1))
+
+
+def rectangle_uncovered_area(bounds, regions):
+    """矩形减去矩形并集的面积；重复、重叠覆盖不能抵消其他位置的空缺。"""
+    x0, z0, x1, z1 = bounds
+    xs = sorted({x0, x1, *(max(x0, min(x1, x)) for r in regions for x in (r[0], r[2]))})
+    covered = 0
+    for left, right in zip(xs, xs[1:]):
+        intervals = sorted((max(z0, r[1]), min(z1, r[3])) for r in regions
+                           if r[0] <= left and r[2] >= right and r[1] < z1 and r[3] > z0)
+        end, length = z0, 0
+        for low, high in intervals:
+            length += max(0, high-max(end, low))
+            end = max(end, high)
+        covered += (right-left)*length
+    return max(0, (x1-x0)*(z1-z0)-covered)
+
+
+def opening_coordinate_errors(markers):
+    """显式门窗的沿墙距离必须落在本体量宿主内；不猜测或改写世界坐标。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+    errors = []
+    for marker in markers:
+        wall = marker.get("diagram_host")
+        design, spec = marker["design"], marker["entity"]
+        if (not wall or not design.get("placement") or not spec.get("from")
+                or resolve_component_name(marker["type"])["entity_type"] not in {"door", "window"}):
+            continue
+        a, b = wall["from"], wall["to"]
+        length = hypot(b[0]-a[0], b[2]-a[2])
+        along, y, _ = spec["from"]
+        size = design.get("size") or {}
+        if (along < -0.001 or along+size.get("width", 0) > length+0.001
+                or y < a[1]-0.001 or y+size.get("height", 0) > b[1]+0.001):
+            errors.append(f"{marker['design_path']}/placement：{marker['id']} 的门窗范围超出宿主 {wall['id']}；"
+                          f"offset={along} 是沿墙局部距离，墙长 {length:.3f}m，标高范围 [{a[1]}, {b[1]}]；"
+                          "需要显式修订位置、尺寸或宿主，不能把世界 X/Z 填入 offset")
+    return errors
+
+
+def exterior_facade_intervals(volume, face, floor, volumes):
+    """矩形体量并集的外露墙段，返回沿图纸墙方向的距离区间。"""
+    axis = "x" if face in {"front", "back"} else "z"
+    extent = "width" if axis == "x" else "depth"
+    normal, normal_extent = ("z", "depth") if axis == "x" else ("x", "width")
+    positive = face in {"right", "back"}
+    plane = getattr(volume, normal) + (getattr(volume, normal_extent) if positive else 0)
+    origin, length = getattr(volume, axis), getattr(volume, extent)
+    segments = [(0.0, length)]
+    for other in volumes:
+        if other.id == volume.id or not other.start_floor <= floor <= other.end_floor:
+            continue
+        low, high = getattr(other, normal), getattr(other, normal)+getattr(other, normal_extent)
+        inside = low <= plane+0.001 and high > plane+0.001 if positive else low < plane-0.001 and high >= plane-0.001
+        if not inside:
+            continue
+        start = max(0.0, getattr(other, axis)-origin)
+        end = min(length, getattr(other, axis)+getattr(other, extent)-origin)
+        if face in {"back", "left"}:
+            start, end = length-end, length-start
+        if end <= start:
+            continue
+        segments = [(a, b) for left, right in segments for a, b in
+                    ((left, min(right, start)), (max(left, end), right)) if b-a > 0.001]
+    return segments

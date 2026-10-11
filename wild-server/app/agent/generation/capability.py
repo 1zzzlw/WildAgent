@@ -162,7 +162,7 @@ def _capability_from_definition(
 _COORD_SEMANTICS: dict[str, str] = {
     "wall": "from[1]=墙底世界Y，to[1]=墙顶世界Y",
     "floor": "from[1]=楼板底面世界Y（板顶= from[1]+thickness）",
-    "roof": "position[1]=承托墙顶世界Y",
+    "roof": "position[1]=承托墙顶世界Y；span始终为世界X覆盖尺寸，depth始终为世界Z覆盖尺寸，ridgeAxis只改变屋脊方向；gable的ridgeAxis=x时高度由半depth与坡角计算。eaveOutset仅用于chinese_pagoda，其他屋型用span/depth表达出檐，不能重复增加",
     "door": "from=[沿墙距离, 洞口底Y, 法向偏移]，from[0] 指开口左边缘",
     "window": "from=[沿墙距离, 窗台Y, 法向偏移]，from[0] 指开口左边缘",
     "balcony": "from=[沿墙距离, 阳台板底Y, 法向偏移]",

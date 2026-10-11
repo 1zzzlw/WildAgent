@@ -275,18 +275,17 @@ async def run_tool_loop(
 
     trace = extract_trace(messages)
     text = ""
-    for message in reversed(messages or []):
-        content = getattr(message, "content", "")
-        if not error and getattr(message, "type", "") == "ai" and content and not getattr(message, "tool_calls", None):
-            text = content_as_text(content)
-            if text:
-                break
+    # 只认最后一条消息；工具之后的空回复不能回退到此前的草稿或中间说明。
+    message = messages[-1] if messages else None
+    if not error and getattr(message, "type", "") == "ai" and not getattr(message, "tool_calls", None):
+        text = content_as_text(getattr(message, "content", ""))
     return ToolRunResult(
         text=text,
         trace=trace,
         diag={
             "tool_calls": len(trace), "budgets": budgets,
             "token_usage": _sum_usage(messages),
+            "final_response_missing": not bool(text.strip()) and not error,
             **({"error": error} if error else {}),
             "transcript": {
                 "system_prompt": system_prompt,
@@ -296,7 +295,9 @@ async def run_tool_loop(
                      "content": getattr(message, "content", ""),
                      "tool_calls": getattr(message, "tool_calls", None),
                      "tool_call_id": getattr(message, "tool_call_id", None),
-                     "name": getattr(message, "name", None)}
+                     "name": getattr(message, "name", None),
+                     "finish_reason": (getattr(message, "response_metadata", None) or {}).get("finish_reason"),
+                     "usage_metadata": getattr(message, "usage_metadata", None)}
                     for message in messages
                 ],
             },

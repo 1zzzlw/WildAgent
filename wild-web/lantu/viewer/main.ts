@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { parseWildBlueprint, reconstructWildEntity } from '../../src/renderer/wildCoreAdapter'
+import { toggleRuntimeInteraction } from '../../src/renderer/renderEntity'
 import { BlueprintRenderInstance } from '../../src/renderer/blueprintRenderInstance'
 import {
   createCelestialBody,
@@ -43,6 +44,7 @@ interface BlueprintEntry {
 
 // 位于 wild-web/lantu/。这里只列**当前工作集**里的蓝图；新做的逐份加进来。
 const BLUEPRINTS: BlueprintEntry[] = [
+  { name: '灯具形态样例 · 顶装双型 + 壁装矩形（9×6）', file: 'lamp_fixture_study.wild' },
   { name: '热带现代泳池别墅 · 照片还原（12×9）', file: 'modern_pool_villa.wild' },
 ]
 
@@ -770,6 +772,51 @@ function animate(): void {
   controls.update()
   postProcessing.render()
 }
+
+// ── 交互拾取（右键）─────────────────────────────────────────
+// 为什么要：灯具的开/关/强弱是引擎的**运行时行为**，挂在 primitive 上的
+// `_interaction` 里（renderEntity.ts 的 toggleLightInteraction），
+// 只在"射线命中 → 分派"这条链路上生效。以前这个查看器没有 Raycaster，
+// 于是蓝图里写了交互也点不出反应——看起来像"引擎没实现"。
+//
+// 与编辑器同一条通路：同一个 toggleRuntimeInteraction，不另写一套。
+// 点击（pointerdown）而不是右键：OrbitControls 用左键拖拽转视角，右键留给交互。
+const raycaster = new THREE.Raycaster()
+const pointer = new THREE.Vector2()
+/** 命中高亮的框；每次点击重建，旧 BoxHelper 必须 dispose，否则反复点会泄漏。 */
+let pickedHelper: THREE.BoxHelper | null = null
+
+function clearPickedHighlight(): void {
+  if (!pickedHelper) return
+  scene.remove(pickedHelper)
+  pickedHelper.geometry.dispose()
+  const mat = pickedHelper.material
+  if (Array.isArray(mat)) mat.forEach(m => m.dispose())
+  else mat.dispose()
+  pickedHelper = null
+}
+
+function highlightPicked(object: THREE.Object3D | null): void {
+  clearPickedHighlight()
+  if (!(object instanceof THREE.Mesh) || !object.geometry) return
+  pickedHelper = new THREE.BoxHelper(object, 0xffc857)
+  scene.add(pickedHelper)
+}
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0 || !allMeshes.length) return
+  const rect = renderer.domElement.getBoundingClientRect()
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  raycaster.setFromCamera(pointer, camera)
+  const visible = allMeshes.filter(mesh => mesh.visible)
+  const hits = raycaster.intersectObjects(visible, false)
+  const target = hits.find(hit => hit.object instanceof THREE.Mesh)?.object ?? null
+  highlightPicked(target)
+  // requestRender 是空实现：查看器本来就是常驻 rAF 循环，
+  // 点灯的亮度过渡由 toggleLightInteraction 内部的 rAF 驱动。
+  if (target) toggleRuntimeInteraction(target, () => { })
+})
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight

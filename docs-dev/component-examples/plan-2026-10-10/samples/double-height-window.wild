@@ -1,0 +1,10 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"通高窗"},
+  "geometry":{
+    "elements":[
+      {"type":"wall","id":"host_wall","from":[-2.0,0,0],"to":[2.0,6.4,0],"thickness":0.24,"material":"plaster"}
+    ],
+    "components":[{"type":"window","id":"sample_window","parentWall":"host_wall","from":[0.8,0.2,0],"width":2.4,"height":5.8,"frameWidth":0.05,"frameMaterial":"metal","glassMaterial":"glass","verticalMullions":1,"horizontalMullions":1}]
+  },
+  "materials":{"glass":{"baseColor":[0.85,0.93,0.98],"roughness":0.08,"metallic":0,"albedo":1,"lightingCondition":"D65_noon","materialClass":"glass","transmission":0.92,"ior":1.5,"opacity":1},"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

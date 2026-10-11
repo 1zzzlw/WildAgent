@@ -230,13 +230,8 @@ def test_host_resolution_supports_multiple_formats():
     assert result.blueprint is not None
 
 
-def test_slot_geometry_wins_over_instance_size():
-    """有批准槽位时几何以槽位为准：实例的 size 不落进产物（§3.4）。
-
-    旧实现里实例的 width/height 会盖掉派生槽位，``validate_design_brief_constraints``
-    随即报"未落实批准槽位"——几何被两处夹取就是会分叉。重构后实例的 size 只在
-    **追加**（该墙没有同类型派生结果）时才是尺寸来源。
-    """
+def test_explicit_instance_size_updates_geometry_and_its_review_slot():
+    """模板提供缺省值；显式尺寸必须同步进入构件与审核槽位。"""
 
     plan = {
         "massing": {"shape": "rectangular", "width": 20, "depth": 15, "floors": 3},
@@ -244,7 +239,6 @@ def test_slot_geometry_wins_over_instance_size():
             {
                 "type": "door",
                 "host": "wall_front_1",
-                # 离谱的尺寸：若被采纳，槽位校验必炸。模板存在时必须被忽略。
                 "size": {"width": 3.0, "height": 2.5},
                 "form": {"mode": "slide"},
             },
@@ -262,9 +256,11 @@ def test_slot_geometry_wins_over_instance_size():
     ]
     assert len(doors) == 1
     door = doors[0]
-    # 几何与派生模板一致（槽位说了算），不是实例写的 3.0 / 2.5。
-    assert door["width"] != 3.0
-    assert door["height"] != 2.5
+    assert door["width"] == 3.0
+    assert door["height"] == 2.5
+    slot = next(s for s in result.design_brief["opening_slots"] if s["id"] == door["id"])
+    assert slot["width"] == 3.0 and slot["height"] == 2.5
+    assert not result.stats["instance_overrides"]["size_changes"]
     # 形态表态仍然生效。
     assert door["interaction"]["mode"] == "slide"
 
@@ -306,16 +302,13 @@ def test_unknown_form_keys_are_dropped_not_passed():
     assert "intensity" in ignored
 
 
-def test_occurrence_suffix_selects_nth_derived_template():
-    """``host="wall_front_1:2"`` 命中同墙第 2 条派生结果。
-
-    旧实现两个实例会配对到同一条模板：第二条替换空转，该删的那条还删不掉。
-    """
+def test_wall_hosts_select_their_own_derived_lights():
+    """不同墙的灯具按真实宿主配对，不能把出现序当作同墙第几个。"""
 
     plan = {
         "massing": {"shape": "rectangular", "width": 20, "depth": 15, "floors": 3},
         # 灯具是派生型：没有配额下限派生链就不产灯，实例无模板可顶替。
-        # max 只是参考值（上限剔除已删除），这里只钉"出现序配对"，
+        # max 只是参考值（上限剔除已删除），这里只钉"宿主配对"，
         # 不让配额语义和实例配对互相污染。
         "component_quota": {"light": {"min": 2, "max": 8}},
         "components": [
@@ -326,7 +319,7 @@ def test_occurrence_suffix_selects_nth_derived_template():
             },
             {
                 "type": "light",
-                "host": "wall_front_1:2",
+                "host": "wall_back_1",
                 "form": {"fixtureType": "table_lamp"},
             },
         ],
@@ -550,7 +543,8 @@ def test_unresolvable_opening_host_is_dropped_and_reaches_the_gap_summary():
     assert result.summary()["instance_dropped"] == ["balcony:nowhere_L9_front"]
     assert _explicit(result, "balcony_01") == []
 
-    gaps = compile_gap_summary({"compile_report": result.summary()})
+    report = {**result.summary(), "defects": [d.to_dict() for d in result.defects]}
+    gaps = compile_gap_summary({"compile_report": report})
     assert gaps["instance_dropped"] == ["balcony:nowhere_L9_front"]
 
 
@@ -651,6 +645,7 @@ def test_form_key_absent_from_engine_schema_is_recorded_as_unverified(monkeypatc
     }
 
     normalized = normalize_architecture_plan(plan, "坡屋顶")
+    normalized["components"][0]["host"] = normalized["volumes"][0]["id"]
     result = compile_design(normalized, user_message="坡屋顶")
 
     assert result.ok, "静默失效不是错误，不许阻断"

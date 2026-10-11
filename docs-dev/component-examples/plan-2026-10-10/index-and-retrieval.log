@@ -1,0 +1,114 @@
+FRAGMENTS_OK 34
+CHUNKS_OK 34
+2026-10-10 20:09:27.995 | INFO     | app.services.agent_service:_create_spec_loader:1052 - RAGSpecLoader: 已启用 Chroma, persist_dir=E:\AgentProject\WildAgent\wild-server\storage\chroma, collection=wild_knowledge_base
+2026-10-10 20:09:27.996 | INFO     | app.services.agent_service:_create_spec_loader:1057 - RAG 索引同步: total=0, updated=0, deleted=0（自动同步已关闭）
+2026-10-10 20:09:27.996 | INFO     | app.services.agent_service:__init__:956 - SpecLoader: RAGSpecLoader, sources=42
+2026-10-10 20:09:28.407 | INFO     | app.services.agent_service:__init__:966 - LLM 已创建（普通模式 + 流式思考模式）
+2026-10-10 20:09:28.408 | INFO     | app.services.agent_service:__init__:990 - 已注册 19 个工具: ['get_wall_bounding_box', 'validate_blueprint_structure', 'validate_element_required_fields', 'validate_reference_integrity', 'validate_opening_coords', 'validate_opening_fit', 'validate_wall_junctions', 'validate_stair_alignment', 'validate_roof_coverage', 'validate_element_dimensions', 'fix_material_references', 'fix_element_dimensions', 'fix_element_elevations', 'fix_opening_coords', 'fix_opening_fit', 'fix_roof_coverage', 'fix_stair_alignment', 'fix_wall_junctions', 'validate_collision']
+2026-10-10 20:09:28.408 | INFO     | app.services.agent_service:__init__:999 - AgentService 初始化完成
+2026-10-10 20:09:28.428 | INFO     | app.spec.loader:sync_index:1384 - RAG 索引同步：正在打开向量集合……
+2026-10-10 20:09:29.057 | INFO     | app.spec.loader:sync_index:1386 - RAG 索引同步：正在读取并切分知识库文档……
+2026-10-10 20:09:29.308 | INFO     | app.spec.loader:sync_index:1430 - RAG 索引同步：共 480 块，待向量化 98 块（10 批），待删除 2 块，待更新元数据 4 块
+2026-10-10 20:09:29.367 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [--------------------] 0% 0/98 块 | 第 1/10 批：请求 Embedding，10 块/4360 字符（glazing-detail-examples.md） | 累计 0.9s
+2026-10-10 20:09:29.816 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 1/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:29.881 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##------------------] 10% 10/98 块 | 第 1/10 批完成，耗时 0.5s | 累计 1.5s
+2026-10-10 20:09:29.881 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##------------------] 10% 10/98 块 | 第 2/10 批：请求 Embedding，10 块/4248 字符（glazing-detail-examples.md） | 累计 1.5s
+2026-10-10 20:09:30.050 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 2/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:30.114 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [####----------------] 20% 20/98 块 | 第 2/10 批完成，耗时 0.2s | 累计 1.7s
+2026-10-10 20:09:30.114 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [####----------------] 20% 20/98 块 | 第 3/10 批：请求 Embedding，10 块/4581 字符（envelope-detail-examples.md, glazing-detail-examples.md） | 累计 1.7s
+2026-10-10 20:09:30.261 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 3/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:30.330 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [######--------------] 31% 30/98 块 | 第 3/10 批完成，耗时 0.2s | 累计 1.9s
+2026-10-10 20:09:30.330 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [######--------------] 31% 30/98 块 | 第 4/10 批：请求 Embedding，10 块/5714 字符（balcony-equipment-examples.md, envelope-detail-examples.md） | 累计 1.9s
+2026-10-10 20:09:30.474 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 4/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:30.548 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [########------------] 41% 40/98 块 | 第 4/10 批完成，耗时 0.2s | 累计 2.1s
+2026-10-10 20:09:30.549 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [########------------] 41% 40/98 块 | 第 5/10 批：请求 Embedding，10 块/5870 字符（balcony-equipment-examples.md） | 累计 2.1s
+2026-10-10 20:09:30.812 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 5/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:30.877 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##########----------] 51% 50/98 块 | 第 5/10 批完成，耗时 0.3s | 累计 2.4s
+2026-10-10 20:09:30.877 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##########----------] 51% 50/98 块 | 第 6/10 批：请求 Embedding，10 块/6684 字符（balcony-equipment-examples.md, ventilation-detail-examples.md, window-variants.md） | 累计 2.4s
+2026-10-10 20:09:31.050 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 6/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:31.121 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [############--------] 61% 60/98 块 | 第 6/10 批完成，耗时 0.2s | 累计 2.7s
+2026-10-10 20:09:31.121 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [############--------] 61% 60/98 块 | 第 7/10 批：请求 Embedding，10 块/5203 字符（roof-facade-detail-examples.md） | 累计 2.7s
+2026-10-10 20:09:31.268 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 7/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:31.341 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##############------] 71% 70/98 块 | 第 7/10 批完成，耗时 0.2s | 累计 2.9s
+2026-10-10 20:09:31.341 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##############------] 71% 70/98 块 | 第 8/10 批：请求 Embedding，10 块/6273 字符（roof-facade-detail-examples.md） | 累计 2.9s
+2026-10-10 20:09:31.506 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 8/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:31.584 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [################----] 82% 80/98 块 | 第 8/10 批完成，耗时 0.2s | 累计 3.2s
+2026-10-10 20:09:31.584 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [################----] 82% 80/98 块 | 第 9/10 批：请求 Embedding，10 块/8015 字符（entrance-door-examples.md, roof-facade-detail-examples.md） | 累计 3.2s
+2026-10-10 20:09:31.742 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 9/10 批 已收到 10 个向量，正在写入 Chroma……
+2026-10-10 20:09:31.808 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##################--] 92% 90/98 块 | 第 9/10 批完成，耗时 0.2s | 累计 3.4s
+2026-10-10 20:09:31.808 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [##################--] 92% 90/98 块 | 第 10/10 批：请求 Embedding，8 块/4614 字符（entrance-door-examples.md） | 累计 3.4s
+2026-10-10 20:09:31.931 | INFO     | app.spec.loader:embed_and_upsert:1460 - RAG 向量化：第 10/10 批 已收到 8 个向量，正在写入 Chroma……
+2026-10-10 20:09:32.001 | INFO     | app.spec.loader:log_progress:1440 - RAG 向量化 [####################] 100% 98/98 块 | 第 10/10 批完成，耗时 0.2s | 累计 3.6s
+2026-10-10 20:09:32.066 | INFO     | app.spec.loader:sync_index:1607 - RAG 索引同步完成，耗时 3.6s
+SYNC_OK {"updated": 102, "stats": {"total": 480, "updated": 102, "deleted": 2}, "pending": 0}
+2026-10-10 20:09:32.201 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='building_body WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > building_body · building-body', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > building_body · building-body', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY building_body FOUND
+2026-10-10 20:09:32.279 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='实墙基座 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙基座 · solid-base', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙基座 · solid-base', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 实墙基座 FOUND
+2026-10-10 20:09:32.356 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='落地窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗 · floor-window', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗 · floor-window', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗组 · floor-window-group', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗组 · floor-window-group']
+QUERY 落地窗 FOUND
+2026-10-10 20:09:32.431 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='主入口门斗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 主入口门斗 REVIEW
+2026-10-10 20:09:32.508 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='实墙 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙 · solid-wall', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 实墙 FOUND
+2026-10-10 20:09:32.581 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='凸窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例', 'composite-components-second-batch.md / WILD 第二批组合构件 > 凸窗 bay_window']
+QUERY 凸窗 REVIEW
+2026-10-10 20:09:32.659 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='阳台栏板 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 阳台栏板 · balcony-panel', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 阳台栏板 · balcony-panel']
+QUERY 阳台栏板 FOUND
+2026-10-10 20:09:32.746 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='通高窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 通高窗 REVIEW
+2026-10-10 20:09:32.823 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='装饰壁柱 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 装饰壁柱 · decorative-pilaster', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 装饰壁柱 · decorative-pilaster']
+QUERY 装饰壁柱 FOUND
+2026-10-10 20:09:32.901 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='庭院门 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 庭院门 REVIEW
+2026-10-10 20:09:32.977 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='大面积玻璃移门 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 大面积玻璃移门 · glass-sliding-door', 'entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 大面积玻璃移门 · glass-sliding-door', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例']
+QUERY 大面积玻璃移门 FOUND
+2026-10-10 20:09:33.064 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='实体墙 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙 · solid-wall', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙基座 · solid-base', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 实墙基座 · solid-base']
+QUERY 实体墙 FOUND
+2026-10-10 20:09:33.140 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='设备平台 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 设备平台 REVIEW
+2026-10-10 20:09:33.227 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='露台栏杆 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 露台栏杆 · terrace-railing', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 露台栏杆 · terrace-railing']
+QUERY 露台栏杆 FOUND
+2026-10-10 20:09:33.308 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='开启扇 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 开启扇 REVIEW
+2026-10-10 20:09:33.386 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='固定玻璃 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 固定玻璃 · fixed-glazing', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 固定玻璃 · fixed-glazing', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 固定玻璃 · fixed-glazing']
+QUERY 固定玻璃 FOUND
+2026-10-10 20:09:33.466 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='装饰檐口 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 装饰檐口 · decorative-cornice', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 装饰檐口 · decorative-cornice', 'composite-components-second-batch.md / WILD 第二批组合构件 > 檐口 cornice']
+QUERY 装饰檐口 FOUND
+2026-10-10 20:09:33.546 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='侧门 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例', 'entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 侧门 · side-door', 'entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 侧门 · side-door']
+QUERY 侧门 FOUND
+2026-10-10 20:09:33.631 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='小窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例']
+QUERY 小窗 REVIEW
+2026-10-10 20:09:33.710 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='车库门 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 车库门 REVIEW
+2026-10-10 20:09:33.812 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='通风百叶 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['ventilation-detail-examples.md / 固定百叶叶片与排风口 JSON 示例 > 通风百叶 · ventilation-louvre', 'ventilation-detail-examples.md / 固定百叶叶片与排风口 JSON 示例 > 通风百叶 · ventilation-louvre', 'ventilation-detail-examples.md / 固定百叶叶片与排风口 JSON 示例']
+QUERY 通风百叶 FOUND
+2026-10-10 20:09:33.893 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='空调机位 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 空调机位 · ac-position', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 空调机位 · ac-position', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 空调机位 FOUND
+2026-10-10 20:09:33.976 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='女儿墙 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例']
+QUERY 女儿墙 REVIEW
+2026-10-10 20:09:34.127 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='屋檐下悬 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 屋檐下悬 · eave-soffit', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 屋檐下悬 · eave-soffit']
+QUERY 屋檐下悬 FOUND
+2026-10-10 20:09:34.215 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='储藏间门 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例', 'entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 储藏间门 · storage-door', 'entrance-door-examples.md / 门斗、庭院门与车库门 JSON 示例 > 储藏间门 · storage-door']
+QUERY 储藏间门 FOUND
+2026-10-10 20:09:34.315 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='高窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 高窗 REVIEW
+2026-10-10 20:09:34.400 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='庭院围墙接口 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 庭院围墙接口 · garden-wall-junction', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 庭院围墙接口 · garden-wall-junction']
+QUERY 庭院围墙接口 FOUND
+2026-10-10 20:09:34.473 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='老虎窗 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例']
+QUERY 老虎窗 REVIEW
+2026-10-10 20:09:34.551 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='排风口 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['ventilation-detail-examples.md / 固定百叶叶片与排风口 JSON 示例', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 排风口 REVIEW
+2026-10-10 20:09:34.642 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='雨棚构造 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例', 'composite-components-second-batch.md / WILD 第二批组合构件 > 雨棚 canopy']
+QUERY 雨棚构造 REVIEW
+2026-10-10 20:09:34.722 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='roof WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component', 'entity_type': 'roof'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > roof · hip-roof', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > roof · hip-roof', 'roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > roof · hip-roof']
+QUERY roof FOUND
+2026-10-10 20:09:34.805 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='罗马柱 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['roof-facade-detail-examples.md / 屋面、老虎窗、壁柱与雨棚 JSON 示例 > 罗马柱 · roman-column', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 罗马柱 FOUND
+2026-10-10 20:09:34.891 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='铁艺栏杆 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 铁艺栏杆 · ornamental-iron-railing', 'balcony-equipment-examples.md / 阳台栏板、露台栏杆与设备平台 JSON 示例 > 铁艺栏杆 · ornamental-iron-railing']
+QUERY 铁艺栏杆 FOUND
+2026-10-10 20:09:34.974 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='景观矮墙 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例 > 景观矮墙 · landscape-low-wall', 'envelope-detail-examples.md / 墙体、基座与围墙接口 JSON 示例']
+QUERY 景观矮墙 FOUND
+2026-10-10 20:09:35.060 | INFO     | app.agent.plan.knowledge_tool:search_knowledge_impl:64 - [search_knowledge] query='落地窗组 WILD JSON 构件示例 安装 坐标' filters={'doc_type': 'component'} hits=['glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗组 · floor-window-group', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗组 · floor-window-group', 'glazing-detail-examples.md / 玻璃窗、开启扇与凸窗 JSON 示例 > 落地窗组 · floor-window-group']
+QUERY 落地窗组 FOUND
+RECALL 22 / 35

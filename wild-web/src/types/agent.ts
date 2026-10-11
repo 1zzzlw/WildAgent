@@ -38,6 +38,15 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 're
 
 export type AgentProtocolVersion = '1.0'
 
+export type BuildingDetailLevel = 'minimal' | 'simple' | 'standard' | 'detailed'
+
+export const BUILDING_DETAIL_LEVELS = [
+  { value: 'minimal', label: '低' },
+  { value: 'simple', label: '中' },
+  { value: 'standard', label: '高' },
+  { value: 'detailed', label: '极高' },
+] as const
+
 export interface AgentProtocolEnvelope {
   protocol_version: AgentProtocolVersion
   /** 持久化关键事件的单调序号，用于重连补发去重。 */
@@ -49,6 +58,7 @@ export type AgentMessage =
   | ResumeGenerationRequest
   | DesignReviewRequest
   | GenerationResumedResponse
+  | GenerationStoppedResponse
   | AgentStepResponse
   | ThinkingDeltaResponse
   | ThinkingStatusResponse
@@ -76,6 +86,7 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
   thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
+  detail_level?: BuildingDetailLevel
   precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
   /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */
@@ -90,6 +101,12 @@ export interface ResumeGenerationRequest extends AgentProtocolEnvelope {
   request_id?: string
   session_id: string
   last_event_seq?: number
+}
+
+export interface StopGenerationRequest extends AgentProtocolEnvelope {
+  type: 'stop_generation'
+  request_id: string
+  session_id: string
 }
 
 export interface DesignReviewRequest extends AgentProtocolEnvelope {
@@ -191,8 +208,16 @@ export interface GenerationResumedResponse extends AgentProtocolEnvelope {
   type: 'generation_resumed'
   request_id: string
   session_id: string
-  status: 'running' | 'waiting_review' | 'completed' | 'failed'
+  status: 'running' | 'waiting_review' | 'completed' | 'failed' | 'stopped'
   last_event_seq: number
+}
+
+export interface GenerationStoppedResponse extends AgentProtocolEnvelope {
+  type: 'generation_stopped'
+  request_id: string
+  session_id: string
+  status: 'stopped' | 'completed' | 'failed'
+  content: string
 }
 
 export interface AgentStepResponse extends AgentProtocolEnvelope {
@@ -307,7 +332,7 @@ export interface AgentTurnStep {
   node: string
   label: string
   stage: string
-  status: 'running' | 'done' | 'skipped' | 'error'
+  status: 'running' | 'done' | 'skipped' | 'error' | 'stopped'
   detail: string
   thinking: string
   //: 模型过程（reasoning 通道）：模型自己吐出的思考 token。与 thinking（执行说明）分开存。
@@ -321,7 +346,8 @@ export interface AgentTurn {
   request_id: string
   session_id: string
   user_message_id: string
-  status: 'running' | 'waiting_review' | 'completed' | 'error'
+  status: 'running' | 'waiting_review' | 'completed' | 'error' | 'stopped'
+  stop_requested?: boolean
   started_at: number
   completed_at?: number
   interruption_reason?: string

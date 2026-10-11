@@ -1,15 +1,4 @@
-"""条目可以在执行中自己发起的知识检索（《动态节点设计规划》§4.10）。
-
-**预取是主力，按需是补充**：处理器先用程序拼好的 query 预取一次（可复现），模型只在
-发现"缺字段知识"时再补检索，且上限由 `tools_for` 声明（默认 2 次）。
-
-两条安全要求不可放松：
-
-1. 检索**必须带 metadata 过滤**（`doc_type` / `entity_type`），走既有的
-   `SpecQuery` + `app/rag/security.py` 安全层——不给模型一个能查全库的口子，
-   否则"它没查到"和"知识里真没有"永远分不清；
-2. 命中结果**进上下文也进审计**：返回文本自带来源标题，审计侧记录查询与命中数。
-"""
+"""检索构件知识并保留来源；未知设计类型也可查询构件资料。"""
 
 from __future__ import annotations
 
@@ -18,67 +7,94 @@ from typing import Any
 from langchain.tools import tool
 from loguru import logger
 
-from app.agent.generation.component.registry import COMPONENT_REGISTRY
+from app.agent.knowledge.component_names import resolve_component_name
 
-#: 单次工具调用返回的字符上限：工具输出会进上下文，必须有界。
-#: 6000 ≈ 两个完整高分片（Loader per_query=2 时常用 2~4 片）；3000 会把
-#: "参数契约 + 组装关系"这类成对知识拦腰斩断，模型只拿到半条规则。
+# 完整首片保留；后续分片按预算加入，避免截断 JSON 示例。
 MAX_RESULT_CHARS = 6000
 
 
 def _entity_type_for(kind: str) -> str:
-    config = COMPONENT_REGISTRY.get(kind)
-    return config.entity_type if config is not None else ""
+    return resolve_component_name(kind)["entity_type"] if kind else ""
 
 
-def search_knowledge_impl(
+def search_knowledge_result(
     query: str,
     *,
     kind: str = "",
     doc_type: str = "component",
     per_query: int = 2,
-) -> str:
-    """带过滤的知识检索。无 `kind` 时按基础元素检索，不放开全库。"""
+) -> dict[str, Any]:
+    """带过滤的知识检索。无已知 entity_type 时按构件资料检索。"""
 
     query = str(query or "").strip()
     if not query:
-        return "❌ 查询为空：请给出具体的字段、构件或构造问题。"
+        return {"text": "❌ 查询为空：请给出具体的字段、构件或构造问题。", "has_shape_reference": False}
 
-    from app.agent.generation.component.registry import get_implemented_components
+    if kind:
+        naming = resolve_component_name(kind)
+        prefix = f"{naming['kind']} {naming['label']}"
+        if (naming["entity_type"] or naming["kind"] in {"building_body", "assembly"}) and not query.startswith(prefix):
+            query = f"{prefix} {query}"
+
     from app.spec.loader import SpecQuery
 
     filters: dict[str, Any] = {"doc_type": doc_type or "component"}
     entity_type = _entity_type_for(kind) if kind else ""
     if entity_type:
         filters["entity_type"] = entity_type
-    elif kind and kind not in COMPONENT_REGISTRY:
-        implemented = ", ".join(config.component_type for config in get_implemented_components())
-        return f"❌ 未知构件类型 {kind!r}；当前支持：{implemented}"
+    exact_filters = ({"doc_type": doc_type or "component", "entity_name": naming["kind"]}
+                     if kind and entity_type and naming["kind"] != entity_type else None)
 
     try:
         from app.services.agent_service import agent_service
     except Exception as exc:  # pragma: no cover - 基建不可用时不阻断生成
         logger.warning(f"[search_knowledge] 检索不可用: {exc}")
-        return "❌ 知识库当前不可用，请基于已给约束作答。"
+        return {"text": "❌ 知识库当前不可用，请基于已给约束作答。", "has_shape_reference": False}
 
     try:
-        text = agent_service.spec_loader.load_many(
-            [SpecQuery(query, filters)], per_query=per_query
-        )
+        selected_filters = exact_filters or filters
+        text = agent_service.spec_loader.load_many([SpecQuery(query, selected_filters)], per_query=per_query, include_base=False)
+        if exact_filters and not (text and text.strip()):
+            selected_filters = filters
+            text = agent_service.spec_loader.load_many([SpecQuery(query, filters)], per_query=per_query, include_base=False)
+        filters = selected_filters
     except Exception as exc:
         logger.warning(f"[search_knowledge] 检索失败: {exc}")
-        return "❌ 检索失败，请基于已给约束作答。"
+        return {"text": "❌ 检索失败，请基于已给约束作答。", "has_shape_reference": False}
 
     if not text or not text.strip():
-        return "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）"
+        return {"text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）", "has_shape_reference": False}
 
+    chunks = list(getattr(agent_service.spec_loader, "last_results", []))
     hits = [
         f"{hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}"
-        for hit in getattr(agent_service.spec_loader, "last_results", [])
+        for hit in chunks
     ]
-    logger.info(f"[search_knowledge] query={query[:120]!r} filters={filters} hits={hits}")
+    logger.info(
+        f"[search_knowledge] query={query[:120]!r} filters={filters} hits={hits}"
+    )
     header = f"# 检索结果（过滤 {filters}，命中 {len(hits)} 条）\n\n"
-    return (header + text)[:MAX_RESULT_CHARS]
+    selected, documents = [], []
+    for hit in chunks:
+        document = f"## {hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}\n{hit.document}"
+        if documents and len(header + "\n\n".join([*documents, document])) > MAX_RESULT_CHARS:
+            break
+        selected.append(hit)
+        documents.append(document)
+    text = header + "\n\n".join(documents) if documents else (header + text)[:MAX_RESULT_CHARS]
+    naming = resolve_component_name(kind) if kind else {"kind": "", "entity_type": ""}
+    shape = any(
+        (hit.metadata.get("topic") == "composition"
+         and resolve_component_name(hit.metadata.get("entity_name", ""))["kind"] == naming["kind"])
+        or (naming["entity_type"] and hit.metadata.get("entity_type") == naming["entity_type"]
+            and "```json" in hit.document)
+        for hit in selected
+    )
+    return {"text": text, "has_shape_reference": bool(shape)}
+
+
+def search_knowledge_impl(query: str, *, kind: str = "", doc_type: str = "component", per_query: int = 2) -> str:
+    return search_knowledge_result(query, kind=kind, doc_type=doc_type, per_query=per_query)["text"]
 
 
 @tool
@@ -93,4 +109,4 @@ def search_knowledge(query: str, kind: str = "") -> str:
     return search_knowledge_impl(query, kind=kind)
 
 
-__all__ = ["MAX_RESULT_CHARS", "search_knowledge", "search_knowledge_impl"]
+__all__ = ["MAX_RESULT_CHARS", "search_knowledge", "search_knowledge_impl", "search_knowledge_result"]

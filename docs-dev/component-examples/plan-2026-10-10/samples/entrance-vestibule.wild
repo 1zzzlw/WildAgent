@@ -1,0 +1,15 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"主入口门斗"},
+  "geometry":{
+    "elements":[
+      {"type":"wall","id":"inner_wall","from":[-1.7,0,0],"to":[1.7,2.8,0],"thickness":0.24,"material":"plaster"},
+      {"type":"wall","id":"outer_wall","from":[-1.7,0,-1.5],"to":[1.7,2.8,-1.5],"thickness":0.24,"material":"plaster"},
+      {"type":"floor","id":"vestibule_slab","from":[-1.7,-0.15,-1.5],"to":[1.7,-0.15,0],"thickness":0.15,"material":"stone"},
+      {"type":"primitive","id":"vestibule_roof","shape":"box","position":[0,2.9,-0.75],"dimensions":[3.6,0.2,1.7],"material":"stone"},
+      {"type":"wall","id":"left_wall","from":[-1.7,0,-1.5],"to":[-1.7,2.8,0],"thickness":0.24,"material":"plaster"},
+      {"type":"wall","id":"right_wall","from":[1.7,0,-1.5],"to":[1.7,2.8,0],"thickness":0.24,"material":"plaster"}
+    ],
+    "components":[{"type":"door","id":"inner_door","parentWall":"inner_wall","from":[0.9,0,0],"width":1.6,"height":2.35,"frameMaterial":"metal","leafMaterial":"wood","doorStyle":"double","interaction":{"mode":"swing","hingeSide":"left","openAngle":75}},{"type":"door","id":"outer_door","parentWall":"outer_wall","from":[0.8,0,0],"width":1.8,"height":2.35,"frameMaterial":"metal","leafMaterial":"wood","doorStyle":"double","interaction":{"mode":"swing","hingeSide":"right","openAngle":75}},{"type":"window","id":"side_light","parentWall":"left_wall","from":[0.25,0.5,0],"width":0.95,"height":1.9,"frameWidth":0.05,"frameMaterial":"metal","glassMaterial":"glass"}]
+  },
+  "materials":{"glass":{"baseColor":[0.85,0.93,0.98],"roughness":0.08,"metallic":0,"albedo":1,"lightingCondition":"D65_noon","materialClass":"glass","transmission":0.92,"ior":1.5,"opacity":1},"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"wood":{"baseColor":[0.3,0.18,0.1],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

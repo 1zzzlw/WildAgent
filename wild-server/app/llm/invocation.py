@@ -10,7 +10,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
-from app.llm.client import content_as_text, message_texts
+from app.llm.client import message_texts
 from app.rag.trace import record_rag_llm_call
 from config import config
 
@@ -109,6 +109,15 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
                 )
             else:
                 response = await llm.ainvoke(messages)
+        except asyncio.CancelledError:
+            record_rag_llm_call(
+                mode="invoke",
+                elapsed_ms=round((time.perf_counter() - started) * 1000),
+                token_usage=None,
+                error_type="CancelledError",
+                retry_count=attempt,
+            )
+            raise
         except Exception as exc:
             from app.llm.errors import classify_model_error
 
@@ -123,7 +132,17 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
                 )
                 raise
             last_exc = exc
-            await _sleep_with_jitter(attempt + 1)
+            try:
+                await _sleep_with_jitter(attempt + 1)
+            except asyncio.CancelledError:
+                record_rag_llm_call(
+                    mode="invoke",
+                    elapsed_ms=round((time.perf_counter() - started) * 1000),
+                    token_usage=None,
+                    error_type="CancelledError",
+                    retry_count=attempt,
+                )
+                raise
             continue
         result = collect_response(response)
         record_rag_llm_call(
@@ -131,6 +150,8 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
             elapsed_ms=round((time.perf_counter() - started) * 1000),
             token_usage=result.token_usage,
             retry_count=result.retry_count,
+            response_content=result.content,
+            reasoning_content=result.reasoning,
         )
         if last_exc is not None:
             result.retry_count = attempt
@@ -141,7 +162,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
 async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
     """统一流式调用：逐字收集 reasoning，末尾收集 content / usage / finish_reason。
 
-    用 asyncio.wait_for 包住每个 chunk 的等待，配置错误或服务端挂起时超时抛错，
+    用配置超时覆盖整个流式调用，持续输出思考也不会重置截止时间，
     不再无限等待；异常沿节点 except 进入模型服务故障阻断路径。
     """
     content_parts: list[str] = []
@@ -151,48 +172,44 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
 
     started = time.perf_counter()
     llm_timeout = float(getattr(config.chat, "timeout", 60.0) or 60.0)
+    _stream = None
     try:
         _stream = llm.astream(messages)
-        while True:
-            try:
-                if llm_timeout > 0:
-                    chunk = await asyncio.wait_for(
-                        _stream.__anext__(), timeout=llm_timeout,
-                    )
-                else:
-                    chunk = await _stream.__anext__()
-            except StopAsyncIteration:
-                break
-            if hasattr(chunk, "additional_kwargs"):
-                delta = chunk.additional_kwargs.get("reasoning_content", "") or ""
+        async with asyncio.timeout(llm_timeout if llm_timeout > 0 else None):
+            async for chunk in _stream:
+                text, delta = message_texts(chunk)
+                if text:
+                    content_parts.append(text)
                 if delta:
                     reasoning_parts.append(delta)
                     if on_reasoning_delta is not None:
                         await on_reasoning_delta(delta)
 
-            text = content_as_text(getattr(chunk, "content", ""))
-            if text:
-                content_parts.append(text)
+                metadata = getattr(chunk, "response_metadata", None) or {}
+                if isinstance(metadata, dict):
+                    finish_reason = finish_reason or metadata.get("finish_reason") or metadata.get("stop_reason")
+                    usage = _normalize_usage(metadata.get("usage"))
+                    if usage:
+                        token_usage = usage
 
-            metadata = getattr(chunk, "response_metadata", None) or {}
-            if isinstance(metadata, dict):
-                finish_reason = finish_reason or metadata.get("finish_reason") or metadata.get("stop_reason")
-                usage = _normalize_usage(metadata.get("usage"))
-                if usage:
-                    token_usage = usage
-
-            usage_metadata = getattr(chunk, "usage_metadata", None) or {}
-            normalized = _normalize_usage(usage_metadata)
-            if normalized:
-                token_usage = normalized
-    except Exception as exc:
+                usage_metadata = getattr(chunk, "usage_metadata", None) or {}
+                normalized = _normalize_usage(usage_metadata)
+                if normalized:
+                    token_usage = normalized
+    except (Exception, asyncio.CancelledError) as exc:
         record_rag_llm_call(
             mode="stream",
             elapsed_ms=round((time.perf_counter() - started) * 1000),
             token_usage=token_usage,
             error_type=type(exc).__name__,
+            response_content="".join(content_parts),
+            reasoning_content="".join(reasoning_parts),
         )
         raise
+    finally:
+        close = getattr(_stream, "aclose", None)
+        if close is not None:
+            await close()
 
     result = LlmResult(
         content="".join(content_parts),
@@ -204,5 +221,7 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
         mode="stream",
         elapsed_ms=round((time.perf_counter() - started) * 1000),
         token_usage=result.token_usage,
+        response_content=result.content,
+        reasoning_content=result.reasoning,
     )
     return result

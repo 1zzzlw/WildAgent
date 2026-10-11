@@ -1,0 +1,10 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"沙发"},
+  "geometry":{
+    "elements":[
+      {"type":"furniture","id":"sofa","subtype":"sofa","position":[0,0,0],"rotation":[0,0,0],"dimensions":{"width":2.3,"depth":0.9,"height":0.8},"material":"fabric"}
+    ],
+    "components":[]
+  },
+  "materials":{"fabric":{"baseColor":[0.53,0.58,0.65],"roughness":0.9,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

@@ -52,52 +52,64 @@ def build_architecture_plan_prompt(
     revision_feedback: str = "",
     style_preference: list[str] | None = None,
 ) -> str:
-    """建筑设计的公共任务；具体字段协议只在对应设计块中提供。"""
-    import json as _json
-
-    revision = ""
-    if current_plan and revision_feedback:
-        revision = (
-            "\n# 本轮设计修订\n用户意见：" + revision_feedback
-            + "\n从当前方案出发，保留未受影响的设计；调整体量、层高或宿主时，"
-              "同时核对依附的立面、屋面、交通与构件。\n"
-            + _json.dumps(current_plan, ensure_ascii=False, separators=(",", ":"))
-        )
-    suggestions = ""
-    if style_preference:
-        suggestions = (
-            "\n系统提供的可选风格线索：" + "、".join(map(str, style_preference))
-            + "。这些是未确认的建议。用户未指定风格时，由整体设计选择一致的方向。\n"
-        )
+    """一份完整图纸交给展示、标记任务和最终编译。"""
+    import json
+    from app.agent.knowledge.component_names import component_reference_prompt
+    from app.agent.generation.architecture.profile import resolve_complexity_profile
+    complexity = resolve_complexity_profile("", (complexity_profile or {}).get("level", "simple"))
+    current = json.dumps({k: v for k, v in current_plan.items()
+                          if k not in {"component_quota", "required_components"}}, ensure_ascii=False) if current_plan else "无"
+    example = {
+        "concept": "自拟设计理念",
+        "design_intent": {"goals": [], "assumptions": [], "spatial_strategy": "",
+                          "composition": "", "material_strategy": "", "selected_systems": []},
+        "massing": {"shape": "自拟形态", "width": 12, "depth": 10, "floors": 2,
+                    "modeled_floors": 2, "floor_height": 3},
+        "volumes": [{"id": "main", "x": 0, "z": 0, "width": 12, "depth": 10,
+                     "start_floor": 1, "end_floor": 2}],
+        "structural_grid": {"system": "自拟结构形式", "x_bays": 3, "z_bays": 2},
+        "circulation": {"vertical_strategy": "自拟交通组织", "description": "交通设计说明"},
+        "facades": {face: {"bays": 1, "ground_pattern": ["自拟开口形式"],
+                           "upper_pattern": ["自拟开口形式"]}
+                    for face in ("front", "back", "left", "right")},
+        "roof": {"type": "自拟屋型", "description": "屋面设计说明",
+                 "volumes": [{"volume": "main", "type": "自拟屋型", "overhang": 0.8}]},
+        "components": [{"id": "part_01", "type": "自拟构件", "host": "main",
+                        "size": {"width": 1, "depth": 1, "height": 1},
+                        "form": {"description": "自由造型与参数"}, "description": "构件设计说明",
+                        "placement": {"position": [6, 3, 0]}}],
+    }
     return f"""
-你负责建筑方案设计，并把同一份设计交给后续图纸展示与确定性编译。
-
-# 设计任务
-先理解建筑用途、使用者体验及用户明确条件，再组织空间关系和整体构图。
-围绕同一个设计意图协调体量比例、到达与入口、交通、实虚与开口、屋面以及材料层次。
-未给出的场地、朝向、尺寸和使用情境可以提出合理假设，但要标明假设；
-不能把自己的选择写成用户要求，也不能声称已完成未建模的房间布局、结构计算或法规验收。
-
-第一块先形成整体设计意图，后续块把它具体表达。意图中的系统是待核对的设计选择，
-不是已生成的构件。分块是输出组织方式，不代表各部分可以独立设计；
-每块均读取当前设计，保持功能、形态和材料之间的联系。
-尺寸由本次尺度、比例和空间关系推导，定位与标高沿体量、楼层和宿主衔接。
-简单体量也可以有好的设计；不要为了显得复杂而强制退台、多体量或增加装饰数量。
-
-# 参考与表达边界
-设计参考用于解决当前问题，不能套用其中的整栋布局、固定尺寸或构件套餐。
-字段与宿主的真实语义由本轮设计块协议说明；知识提供适用条件、可选表达及能力限制。
-引擎存在某个构件，不等于当前设计编译链能表达它的所有形式。
-遇到表达缺口，保留原意与限制供审核，不通过更换风格、假造宿主或省略对象来冒充落实。
-设计质量通过各部分关系与最终图纸判断；JSON 合法、构件数量齐全不能证明设计优秀。
-
-# 交付方式
-只返回本轮设计块要求的 JSON 字段。设计依据写成简短、可供用户审核的结论，
-说明选择如何支持设计目标，不输出内部思考过程。后续节点沿用这些设计决定，
-图纸负责展示，编译负责求解，执行计划负责补齐和核对实际落地。
-{suggestions}{revision}
-# 当前设计表达参考
-{spec_text or '本轮具体表达能力与字段见设计块协议。'}
+你负责绘制完整建筑设计图纸，发挥建筑知识和审美，后续 plan 负责研究和实现。
+本次用户选择的设计粒度：{complexity['reason']}
+complexity.level 使用用户选择的 {complexity['level']}。粒度指导默认设计范围，用户明确要求的构件、家具、功能与造型在任何档位都优先保留。按需增加细节，不能用重复增加门窗数量代替设计精细度，不套用固定数量或组件套餐。
+一次只返回完整 JSON 对象，直接包含 concept、design_intent、massing、volumes、structural_grid、circulation、facades、roof、components，不再包 architecture_plan 外层。
+concept 是字符串；design_intent 是对象，goals、assumptions、selected_systems 是字符串数组，spatial_strategy、composition、material_strategy 是设计说明。
+massing 写 shape、width、depth、floors、modeled_floors、floor_height；完整建模时 modeled_floors 等于 floors。
+massing.width/depth 是所有 volumes 的总体包络控制尺寸，含附楼、门廊等；主楼自己的尺寸写在对应 volume 中。总体 width 至少为 max(v.x+v.width)-min(v.x)，depth 至少为 max(v.z+v.depth)-min(v.z)。用户指定总体尺寸时按该尺寸布置体量，否则由你设计总体尺寸。
+volumes 是对象数组，每项写稳定 id、x、z、width、depth、start_floor、end_floor；x、z 是体量平面起点坐标，字段名使用 x、z，不使用 x_start、z_start。楼层从 1 开始。
+facades 必须包含 front、back、left、right 四个键；实际朝向可以另加说明。每面写整数 bays 和字符串数组 ground_pattern、upper_pattern；数组长度与 bays 一致。
+facades 表达共享的立面节奏；不同体量的功能与开口不同，在该 volume.facades 中按面覆盖对应布局，格式相同。内部相接面不套外立面门窗，内部连通门写明确实例。实墙、empty/无开口由主体实现，不派发附加墙任务。立面 token 也使用构件目录的统一英文编号。
+roof 写 type 和设计说明，可以设计新屋型；roof.volumes 是对象数组，可为空，每项必须写 volume 字符串引用 volumes 中的体量 id，例如 [{{"volume":"main","type":"自拟屋型","overhang":0.8}}]。volume 是固定字段名，不能用 ref、id 或 volume_id 代替；数组项不能只写字符串。structural_grid 写 system、整数 x_bays、整数 z_bays。
+components 是对象数组，每项写稳定 id、type、host、size、form、description；size 是尺寸数值对象，form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
+构件命名：type 使用稳定的英文 snake_case 编号；下列已有构件使用对应编号，中文名称写在 name，具体风格、位置与造型写在 description/form，不混进 type。新构件可自行取语义明确的英文 snake_case 编号和中文 name，完整描述形态，不能因名称未在目录中就放弃。
+{component_reference_prompt()}
+明确尺寸、位置、材料和依附关系，使用扩展字段保留完整设计要求。无需填写 WILD 引擎细节。
+宿主可引用体量或已声明构件；门窗沿墙定位时，host 写 wall_<体量id>_<front/back/left/right>_L<楼层>，或 host 写体量 id 并在 placement 写 face、floor。offset 是洞口左边沿墙方向的距离，sill_height 是相对该层的窗台高度，normal_offset 是沿墙法线的偏移。世界定位用 placement.position 数组 [x, y, z] 表示构件中心。显式门窗占据的立面位置由该实例实现，不再重复添加立面默认开口。
+例如翼楼 x=10、宽5，前墙窗洞起点世界 x=13.2，应写 offset=3.2；offset=13.2 会超出翼楼。沿墙 offset+width 不超过对应墙长，窗台+窗高不超过该层墙顶；需要更大开口时明确设计对应宿主，不能混用坐标。
+按房间用途组织开口，核对上下层窗的轴线、窗台与窗顶、入口及车库门的唯一位置，保留必要墙垛；格栅与遮阳板围绕对应窗组定位。需要精确构图的门窗写为有位置和尺寸的 components 实例，不能靠默认格位代替。
+需要室内设计时，用 floor_layouts 描述每层空间用途、平面位置与通行关系；家具、灯具和隔断在 components 中写实际标记。家具位置要考虑楼板标高、门窗开启与通行空间。
+不要在设计阶段因为程序不支持就删掉构件、改造型或提前声明无法实现。
+用户条件优先；未指定的尺寸和场地条件写为假设。修订保留未受影响的设计。
+以下仅演示字段结构，数值、数量、类型和造型由你设计，可增加设计说明与扩展字段：
+```json
+{json.dumps(example, ensure_ascii=False)}
+```
+当前方案：{current}
+修订意见：{revision_feedback or '无'}
+风格线索（非用户硬要求）：{style_preference or []}
+当前设计参考：
+{spec_text}
 """
 
 

@@ -87,6 +87,7 @@ required_documents:
   - knowledge/protocol/scale-notation.md
   - knowledge/components/capability-boundaries.md
   - knowledge/components/architecture-design-expression.md
+  - knowledge/components/component-catalog.md
   - knowledge/components/chinese-lattice-openings.md
   - knowledge/components/glass-curtain-wall-assembly.md
   - knowledge/components/light.md
@@ -96,6 +97,8 @@ required_documents:
   - knowledge/components/massing-layers.md
   - knowledge/components/sofa.md
   - knowledge/components/furniture.md
+  - knowledge/components/furniture-layout-examples.md
+  - knowledge/components/kitchen-sanitary-examples.md
   - knowledge/components/tangent-arc-colonnade.md
   - knowledge/components/tiered-eaves-pagoda.md
   - knowledge/components/cone-roof-system.md
@@ -104,7 +107,14 @@ required_documents:
   - knowledge/components/spherical-shell-massing.md
   - knowledge/components/massing-composition-rules.md
   - knowledge/components/column.md
+  - knowledge/components/stair.md
   - knowledge/components/pavilion-garden-structure.md
+  - knowledge/components/envelope-detail-examples.md
+  - knowledge/components/glazing-detail-examples.md
+  - knowledge/components/entrance-door-examples.md
+  - knowledge/components/balcony-equipment-examples.md
+  - knowledge/components/ventilation-detail-examples.md
+  - knowledge/components/roof-facade-detail-examples.md
   - rules/implementation/door-window-depth.md
   - rules/implementation/assembly-relations.md
   - rules/implementation/validation-rules.md

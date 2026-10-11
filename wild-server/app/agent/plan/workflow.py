@@ -1,19 +1,4 @@
-"""plan 驱动链的三个业务节点：plan / execute / replanner。
-
-与既有节点同一套写法（对照 ``generation/material/workflow.py``、``validation/workflow.py``）：
-
-- 节点先通过 ``get_reasoning_callback()`` 播报"正在做什么"，前端才有思考流可看；
-- 节点写回 ``<node>_diag`` 诊断（耗时 / 模型调用 / 关键计数），供审计与回归断言；
-- ``plan`` 用一次模型调用决定批次与并发策略，程序确定性展开；其余模型调用只发生在
-  ``execute`` 的 generate/repair 条目，以及 ``replanner`` 首次异常调整（§5.1）。
-
-关于 ``plan_diag`` / ``execute_diag`` / ``replanner_diag``：它们是**旁路观测**（§2.8 第 ③ 层），
-由 ``ws_agent`` 从流式节点输出读取并交给 `record_node_call` / `all_diags`。它们**故意不**
-声明在 ``GenerationState`` 里，所以 LangGraph 不会把它们写进 checkpoint——
-权威事实只有 ``plan`` / ``plan_events`` / ``current_item_id`` / ``tool_trace`` 四项。
-
-``nodes/*.py`` 里对应的是薄入口，真正的逻辑在本模块。
-"""
+"""建筑计划从图纸标记展开，尝试实现构件后统一装配和校验。"""
 
 from __future__ import annotations
 
@@ -43,7 +28,7 @@ from app.agent.plan.store import (
     terminal_stats,
 )
 from app.agent.plan.strategy import request_plan_strategy
-from app.agent.runtime import get_reasoning_callback
+from app.agent.runtime import get_reasoning_callback, bind_reasoning_callback, reset_reasoning_callback
 
 #: 哪些 op 的处理器会真的调模型（用于 §5.4 的模型调用预算统计）。
 _MODEL_OPS: frozenset[str] = frozenset({"generate", "repair"})
@@ -124,7 +109,14 @@ def _merge_parallel_updates(results: list[dict[str, Any]]) -> dict[str, Any]:
 async def _execute_one(state: dict[str, Any], item: PlanItem):
     handler = HANDLERS.get(item.op)
     handler_started = time.perf_counter()
+    callback = get_reasoning_callback()
+    async def item_callback(node, delta):
+        channel = ":progress" if node.endswith(":progress") else ""
+        await callback(f"plan:{item.id}{channel}", delta)
+    token = bind_reasoning_callback(item_callback if callback else None)
     try:
+        if callback:
+            await item_callback("execute:progress", f"正在执行{item.label}……\n")
         if handler is None:
             outcome = ({}, "failed", [], f"op {item.op!r} 没有执行器（见 §2.3 闭集）", [])
         else:
@@ -137,6 +129,8 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
         updates, run_state, artifacts, evidence, trace = (
             {}, "failed", [], f"执行异常: {exc}", []
         )
+    finally:
+        reset_reasoning_callback(token)
     return (
         item,
         updates,
@@ -149,7 +143,7 @@ async def _execute_one(state: dict[str, Any], item: PlanItem):
 
 
 async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
-    """让模型根据批准方案决定分组策略，再由程序确定性展开条目。"""
+    """建筑按批准图纸展开任务；物件保留模型分组策略。"""
 
     started = time.time()
 
@@ -159,6 +153,33 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
     if callback:
         # 必须带 `:progress` 后缀走「执行说明」通道。
         await callback("plan:progress", "正在把已批准方案拆成可执行的工作条目……\n")
+
+    document_data = state.get("design_document") or {}
+    if document_data.get("decisions", {}).get("kind") == "architecture":
+        from app.design.contracts import DesignDocument
+        from app.design.compilation import project_drawing, RESOLVER_VERSION
+        document = DesignDocument.model_validate(document_data)
+        resolved = project_drawing(document)
+        reviewed = state.get("resolved_design") or {}
+        if reviewed.get("resolver_version") != RESOLVER_VERSION or reviewed.get("design_hash") != resolved.design_hash:
+            return {"resolved_design": resolved.model_dump(mode="json"), "design_review_status": "pending",
+                    "component_fragments": {k: [] for k in (state.get("component_fragments") or {})},
+                    "component_diagnostics": {k: {} for k in (state.get("component_diagnostics") or {})},
+                    "merged_blueprint": {}, "final_blueprint": {}, "validation_snapshot": {}}
+        design_state = {**state, "resolved_design": resolved.model_dump(mode="json")}
+        plan = expand_plan(design_state)
+        material_plan = document.decisions.materials.resolved_plan
+        scaffold = {"meta": {"version": "1.1", "type": "building", "name": document.decisions.concept or "建筑",
+                             "designHash": resolved.design_hash, "designRevision": document.revision},
+                    "geometry": {"elements": [], "components": []}, "materials": {}, "assets": {}}
+        if material_plan:
+            scaffold["materials"] = {r.materialId: dict(r.material) for r in material_plan.roles}
+            scaffold["assets"] = dict(material_plan.resolvedAssets)
+        return {"plan": plan.model_dump(mode="json"), "plan_events": _events_for(plan),
+                "resolved_design": resolved.model_dump(mode="json"), "drawing_hosts": resolved.projection_elements,
+                "skeleton_blueprint": scaffold, "design_brief": {}, "merged_blueprint": {}, "current_item_id": None,
+                "plan_diag": {"source": "drawing_implementation", "model_calls": 0,
+                              "marker_count": len(resolved.component_markers), "total_ms": int((time.time()-started)*1000)}}
 
     strategy, diag = await request_plan_strategy(state)
 
@@ -234,7 +255,7 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
     """执行一条串行任务，或执行一个由 plan 决定的安全并发组。"""
 
     started = time.time()
-    plan = _plan_of(state)
+    plan = refresh_statuses(_plan_of(state))
     items = _runnable_batch(plan)
     if not items:
         logger.info("[execute] 没有可执行条目，交回 replanner")
@@ -275,13 +296,15 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
             elapsed_ms=elapsed_ms,
             count_attempt=(run_state == "failed"),
         )
-        calls = (1 + _model_tool_rounds(trace)) if item.op in _MODEL_OPS else 0
+        calls = (sum(entry.get("model_calls", 0) for entry in trace) if item.params.get("design_markers")
+                 else (1 + _model_tool_rounds(trace)) if item.op in _MODEL_OPS else 0)
         model_calls += calls
         tool_trace[item.id] = trace
         item_results.append(
             {
                 "item_id": item.id,
                 "kind": item.kind,
+                "label": item.label,
                 "run_state": run_state,
                 "elapsed_ms": elapsed_ms,
                 "evidence": evidence,
@@ -331,7 +354,8 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
     diag: dict[str, Any] = {"reconciled_events": len(events)}
 
     # ── 异常分支：只有 failed / 永久 blocked 时才调模型，且只能在五个动作里选 ──
-    if not plan.give_up and plan_needs_replan(plan):
+    if (not any(i.params.get("design_markers") for i in plan.items)
+            and not plan.give_up and plan_needs_replan(plan)):
         callback = get_reasoning_callback()
         problem = next(
             (
@@ -405,7 +429,7 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
         finalization_reason = "replanner 已停止继续生成，转入确定性收尾"
     elif plan.iterations >= int(budget.get("iterations", 5)):
         finalization_reason = f"达到计划迭代上限 {plan.iterations}"
-    elif plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS:
+    elif plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(i.params.get("design_markers") for i in plan.items):
         finalization_reason = f"连续 {plan.no_progress_rounds} 轮无业务进展"
     elif plan.llm_budget_exhausted():
         finalization_reason = f"模型调用预算已用尽（{plan.llm_calls} 次）"

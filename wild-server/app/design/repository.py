@@ -79,7 +79,7 @@ class DesignRepository:
         if isinstance(decisions, ObjectDecisions):
             selected = {str(item.kind) for item in decisions.objects}
         else:
-            selected = set(decisions.required_components) | set(decisions.component_quota)
+            return  # 建筑设计不按原生构件能力拒绝；plan 可以用多个元素组合实现。
         unsupported = sorted(selected - supported)
         if unsupported:
             raise ValueError(

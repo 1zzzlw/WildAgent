@@ -1,0 +1,221 @@
+{
+  "request_id": "req_1791697060796_mm47y4xfq",
+  "session_id": "session_1791696246304",
+  "source_file": "D:\\Backup\\Downloads\\AI 生成 - 林间栖居——以现代手法转译中式院落意象，L形体量围合半开放庭院，单坡屋顶与水平木格栅营造东方意境，大面积玻璃将自然光与景观引入室内。.wild",
+  "source_sha256": "b85c46ef61ad7063199bf6d9ccb08a835951a9294a7ab21fd7fa7e2eea6d1982",
+  "method": "saved checkpoint and saved model responses, current projector and actual fragment acceptor; no model calls",
+  "old_markers": 59,
+  "current_markers": 28,
+  "removed_default_markers": [
+    "侧门_main_right_L1_2",
+    "入口门_main_front_L1_1",
+    "卧室窗_main_back_L2_1",
+    "实墙_main_back_L1_2",
+    "实墙_main_back_L1_4",
+    "实墙_main_back_L2_4",
+    "实墙_main_front_L1_4",
+    "实墙_main_front_L2_4",
+    "实墙_main_left_L1_1",
+    "实墙_main_left_L1_3",
+    "实墙_main_left_L2_1",
+    "实墙_main_left_L2_3",
+    "实墙_main_right_L1_3",
+    "实墙_wing_back_L1_2",
+    "实墙_wing_back_L1_4",
+    "实墙_wing_front_L1_4",
+    "实墙_wing_left_L1_1",
+    "实墙_wing_left_L1_3",
+    "实墙_wing_right_L1_3",
+    "无开口_main_back_L2_5",
+    "无开口_main_front_L2_5",
+    "无开口_main_right_L1_1",
+    "无开口_main_right_L2_1",
+    "无开口_main_right_L2_2",
+    "无开口_main_right_L2_3",
+    "无开口_wing_right_L1_1",
+    "格栅窗_main_front_L2_2",
+    "组合窗_main_front_L2_1",
+    "组合窗_main_front_L2_3",
+    "组合窗_main_left_L2_2",
+    "高窗_wing_left_L1_2"
+  ],
+  "old_plan_items": 20,
+  "current_plan_items": 13,
+  "original_opening_placement_errors": [
+    {
+      "marker_id": "garage_door_01",
+      "errors": [
+        "❌ [garage_door_01_panel_1] 图纸标记 garage_door_01：门窗必须落实真实洞口；primitive 玻璃和框条不会在墙上开洞"
+      ]
+    },
+    {
+      "marker_id": "设备百叶_main_back_L1_5",
+      "errors": [
+        "❌ [设备百叶_main_back_L1_5_frame_top] 图纸标记 设备百叶_main_back_L1_5：门窗必须落实真实洞口；primitive 玻璃和框条不会在墙上开洞"
+      ]
+    },
+    {
+      "marker_id": "设备百叶_wing_back_L1_5",
+      "errors": [
+        "❌ [设备百叶_wing_back_L1_5_frame_top] 图纸标记 设备百叶_wing_back_L1_5：门窗必须落实真实洞口；primitive 玻璃和框条不会在墙上开洞"
+      ]
+    },
+    {
+      "marker_id": "window_back_02",
+      "errors": [
+        "❌ [window_back_02] 图纸标记 window_back_02：沿墙位置 应为 1.500m，实际 1.800m；按图纸修订，不能移动实例绕过冲突"
+      ]
+    },
+    {
+      "marker_id": "window_left_02",
+      "errors": [
+        "❌ [window_left_02] 图纸标记 window_left_02：沿墙位置 应为 3.500m，实际 1.500m；按图纸修订，不能移动实例绕过冲突"
+      ]
+    }
+  ],
+  "original_model_quality": "发现 15 处模型质量问题：\n❌ [wall_main_front_L1] / [实墙_main_front_L1_4] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_back_L1] / [实墙_main_back_L1_2] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [9.85, 10.15]，构件表面坐标 [9.85, 10.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_back_L1] / [实墙_main_back_L1_4] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [9.85, 10.15]，构件表面坐标 [9.85, 10.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_left_L1] / [实墙_main_left_L1_1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_left_L1] / [实墙_main_left_L1_3] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_right_L1_south] / [实墙_main_right_L1_3] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [9.85, 10.15]，构件表面坐标 [9.85, 10.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_front_L2] / [实墙_main_front_L2_4] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_back_L2] / [实墙_main_back_L2_4] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [9.85, 10.15]，构件表面坐标 [9.85, 10.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_left_L2] / [实墙_main_left_L2_1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_main_left_L2] / [实墙_main_left_L2_3] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [-0.15, 0.15]，构件表面坐标 [-0.15, 0.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_wing_front_L1] / [实墙_wing_front_L1_4] 表面共面重叠，会产生闪烁；法线轴 Z，墙面坐标 [0.85, 1.15]，构件表面坐标 [0.85, 1.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ [wall_wing_right_L1] / [实墙_wing_right_L1_3] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [15.85, 16.15]，构件表面坐标 [15.85, 16.15]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面\n❌ 另有 3 处重复骨架未展开",
+  "first_response_replays_against_saved_body": [
+    {
+      "marker_id": "garage_door_01",
+      "saved_stage": "generate",
+      "saved_item": "generate_4",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "garage_door_01"
+      ]
+    },
+    {
+      "marker_id": "entrance_door_01",
+      "saved_stage": "generate",
+      "saved_item": "generate_15",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "entrance_door_01",
+        "entrance_door_01_transom"
+      ]
+    },
+    {
+      "marker_id": "combination_window_01",
+      "saved_stage": "generate",
+      "saved_item": "generate_17",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "combination_window_01_louver_01",
+        "combination_window_01_louver_02",
+        "combination_window_01_louver_03",
+        "combination_window_01_louver_04",
+        "combination_window_01_louver_05",
+        "combination_window_01_louver_06",
+        "combination_window_01_louver_07",
+        "combination_window_01_louver_08",
+        "combination_window_01_louver_09",
+        "combination_window_01_louver_10",
+        "combination_window_01_left",
+        "combination_window_01_right"
+      ]
+    },
+    {
+      "marker_id": "combination_window_02",
+      "saved_stage": "generate",
+      "saved_item": "generate_17",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "combination_window_02_louver_01",
+        "combination_window_02_louver_02",
+        "combination_window_02_louver_03",
+        "combination_window_02_louver_04",
+        "combination_window_02_louver_05",
+        "combination_window_02_louver_06",
+        "combination_window_02_louver_07",
+        "combination_window_02_louver_08",
+        "combination_window_02_louver_09",
+        "combination_window_02_louver_10",
+        "combination_window_02_left",
+        "combination_window_02_right"
+      ]
+    },
+    {
+      "marker_id": "window_back_02",
+      "saved_stage": "generate",
+      "saved_item": "generate_18",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "window_back_02"
+      ]
+    },
+    {
+      "marker_id": "window_left_02",
+      "saved_stage": "generate",
+      "saved_item": "generate_18",
+      "accepted_without_duplicate_defaults": true,
+      "entity_ids": [
+        "window_left_02"
+      ]
+    }
+  ],
+  "boundary": "partial response replay is not a complete new building, model run or visual acceptance; historical session and original file unchanged",
+  "validation": {
+    "new_placement_regressions": 35,
+    "related_suite": {
+      "passed": 588,
+      "failed": 0,
+      "warnings": 2
+    },
+    "extended_suite": {
+      "collected": 906,
+      "passed": 869,
+      "failed": 37,
+      "warnings": 2
+    },
+    "legacy_baseline_failures": 37,
+    "new_legacy_failures": [],
+    "resolved_legacy_failures": [],
+    "legacy_failed_tests": [
+      "tests/design/test_architecture_intent_chain.py::test_design_basis_is_not_silently_cut_to_five_items_at_review",
+      "tests/design/test_architecture_intent_chain.py::test_impossible_targets_do_not_trigger_futile_design_rewriting[/decisions/roof/type-invented_roof-unsupported]",
+      "tests/design/test_architecture_intent_validation.py::test_sectioned_content_is_not_silently_truncated[spatial_strategy]",
+      "tests/design/test_architecture_intent_validation.py::test_sectioned_content_is_not_silently_truncated[composition]",
+      "tests/design/test_architecture_intent_validation.py::test_sectioned_content_is_not_silently_truncated[material_strategy]",
+      "tests/design/test_architecture_intent_validation.py::test_public_schema_keeps_text_fields_and_rejects_unknown_keys",
+      "tests/design/test_component_instance_validation.py::test_host_is_required_to_be_non_empty",
+      "tests/design/test_component_instance_validation.py::test_negative_size_raises_error",
+      "tests/design/test_component_instance_validation.py::test_excessive_size_raises_error",
+      "tests/design/test_design_completeness.py::test_unsupported_field_and_enum_are_not_satisfied",
+      "tests/design/test_design_instance_roundtrip.py::test_instances_survive_document_roundtrip[1]",
+      "tests/design/test_design_instance_roundtrip.py::test_instances_survive_document_roundtrip[2]",
+      "tests/design/test_design_instance_roundtrip.py::test_approved_instance_form_reaches_compiler_and_merge_alignment",
+      "tests/design/test_design_svg_silhouette.py::test_plain_rectangle_flat_roof_keeps_rect_and_all_anchors",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[flat]",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[gable]",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[hip]",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[dome]",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[chinese_curved]",
+      "tests/design/test_design_svg_silhouette.py::test_roof_projection_uses_compiled_entities[chinese_pagoda]",
+      "tests/design/test_design_svg_silhouette.py::test_schematic_tower_keeps_full_height_projection",
+      "tests/design/test_envelope_vs_opening.py::test_contract_rejects_open_with_a_form",
+      "tests/design/test_fulfillment.py::test_delivery_reply_states_the_gap_without_changing_the_gate",
+      "tests/design/test_material_regions.py::test_binding_never_leaves_a_dangling_material_reference",
+      "tests/design/test_material_regions.py::test_blueprint_stays_valid_with_a_bad_region",
+      "tests/design/test_normalization_evidence.py::test_missing_invalid_and_explicit_dimensions_are_distinct[-5-semantic_change]",
+      "tests/design/test_normalization_evidence.py::test_degradation_evidence_reaches_current_design_gaps_and_keeps_constraint_id",
+      "tests/design/test_oct09_consistency.py::test_final_gate_identifies_the_same_approved_mutation",
+      "tests/design/test_oct09_consistency.py::test_legal_single_volume_can_pass_full_gate_and_save",
+      "tests/design/test_opening_forms.py::test_contract_rejects_unknown_kinds[garage]",
+      "tests/design/test_opening_forms.py::test_contract_rejects_unknown_kinds[]",
+      "tests/design/test_opening_forms.py::test_contract_rejects_unknown_kinds[empty:x]",
+      "tests/design/test_opening_forms.py::test_upper_pattern_never_allows_a_door[door]",
+      "tests/design/test_opening_forms.py::test_upper_pattern_never_allows_a_door[door:slide]",
+      "tests/design/test_roof_per_volume.py::test_out_of_contract_overhang_is_dropped_by_validation_not_by_the_clamp",
+      "tests/design/test_roof_per_volume.py::test_blueprint_stays_valid_with_mixed_roof_types",
+      "tests/design/test_roof_per_volume.py::test_every_splittable_type_is_accepted_per_volume[flat]"
+    ],
+    "frontend_typecheck": "vue-tsc -b --pretty false passed",
+    "knowledge_manifest_documents": 46,
+    "knowledge_lint_errors": 0,
+    "modified_documents_chunk_count": 18,
+    "modified_documents_chunk_errors": 0,
+    "index_sync": "completed with Loader; changed examples retrievable; no collection rebuild",
+    "retrieval_smoke": "5 representative queries passed",
+    "visual_acceptance": "not performed for a new model-generated building"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"餐桌椅"},
+  "geometry":{
+    "elements":[
+      {"type":"furniture","id":"dining_table","subtype":"table","position":[0,0,0],"rotation":[0,0,0],"dimensions":{"width":1.6,"depth":0.85,"height":0.75},"material":"wood"},
+      {"type":"furniture","id":"dining_chair_0","subtype":"chair","position":[-0.45,0,-0.7],"rotation":[0,0,0],"dimensions":{"width":0.45,"depth":0.45,"height":0.85},"material":"wood"},
+      {"type":"furniture","id":"dining_chair_1","subtype":"chair","position":[0.45,0,-0.7],"rotation":[0,0,0],"dimensions":{"width":0.45,"depth":0.45,"height":0.85},"material":"wood"},
+      {"type":"furniture","id":"dining_chair_2","subtype":"chair","position":[-0.45,0,0.7],"rotation":[0,3.141592653589793,0],"dimensions":{"width":0.45,"depth":0.45,"height":0.85},"material":"wood"},
+      {"type":"furniture","id":"dining_chair_3","subtype":"chair","position":[0.45,0,0.7],"rotation":[0,3.141592653589793,0],"dimensions":{"width":0.45,"depth":0.45,"height":0.85},"material":"wood"}
+    ],
+    "components":[]
+  },
+  "materials":{"wood":{"baseColor":[0.3,0.18,0.1],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

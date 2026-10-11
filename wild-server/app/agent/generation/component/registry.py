@@ -105,7 +105,7 @@ _COMPONENT_RULES: dict[str, str] = {
         "- 玻璃栏板用 infillType=glass + infillMaterial=glass；实心栏板用 panel\n"
         "\n**位置约束（必须遵守）**：\n"
         "- 栏杆只放在有高差的地方：阳台边缘、楼梯两侧、露台边缘、二层平台\n"
-        "- 如果同轮还会生成 balcony，禁止再为该阳台生成独立 railing；balcony 已内嵌 U 形栏杆\n"
+        "- balcony 默认内嵌 U 形栏杆；只有其 railingEnabled=false 时才由批准的独立 railing 接管\n"
         "- 绝对不要在地面层的外墙位置放栏杆！地面层外墙本身就是围护结构\n"
         "- 如果没有阳台/楼梯/露台等构件，不要生成栏杆\n"
         "- path 坐标必须在对应楼板范围内，不能飘在空中\n"
@@ -126,7 +126,7 @@ _COMPONENT_RULES: dict[str, str] = {
         "- from[1] 是阳台板世界标高，必须 ≥1.8m 并落在父墙竖向范围内；严禁在 Y=0 地面层生成阳台\n"
         "- 优先挂接二层及以上外墙；若建筑没有上层或真实高差，不要生成 balcony\n"
         "- from[2] 通常为 0；depth 表示向建筑外侧的悬挑深度，方向由编译器根据建筑中心确定\n"
-        "- balcony 已内嵌悬挑板和 U 形栏杆，禁止同时生成同位置 floor 或独立 railing\n"
+        "- balcony 内嵌悬挑板；railingEnabled 默认 true，独立栏杆接管时必须为 false，禁止重复板和栏杆\n"
         "- 内部自动调用 railing 编译器 → 依赖 railing 先实现\n"
         "- 编译后产出: floor（悬挑板）+ railing（内嵌）"
     ),

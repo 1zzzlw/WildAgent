@@ -157,17 +157,6 @@ def _build_registry() -> tuple[ToolSpec, ...]:
             applies_to=("repair",),
             notes="REPAIR_TOOL_SPECS 白名单动作，经 execute_repair_actions 执行",
         ),
-        # ── 外部检索：默认关闭（§4.12）──
-        tool_spec(
-            "web_search",
-            "web_search",
-            tool=None,
-            max_calls=1,
-            read_only=True,
-            enabled=False,
-            applies_to=("repair",),
-            notes="默认关闭；开启后命中必须记 URL 并标记本次结果不可复现",
-        ),
     ]
     return tuple(specs)
 

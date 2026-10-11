@@ -143,48 +143,19 @@ class InstanceMaterialRoleTest(unittest.TestCase):
 
     REQUEST = "生成一栋玻璃幕墙的别墅"
 
-    def _attach(self, material_role: str) -> tuple[DesignDocument, list[str]]:
+    def _attach(self, material_role: str):
         plan = _instance_plan(material_role)
-        document = build_design_document(plan, session_id="role_repair", source_request=self.REQUEST)
-        material_plan = resolve_material_plan(None, [], plan, self.REQUEST)
-        repairs: list[str] = []
-        updated = attach_material_plan(document, material_plan, role_repairs=repairs)
-        return updated, repairs
+        document = build_design_document(plan, session_id="role_intent", source_request=self.REQUEST)
+        return attach_material_plan(document, resolve_material_plan(None, [], plan, self.REQUEST))
 
-    def test_material_name_is_normalized_to_its_role(self):
-        # `metal` 是建筑侧 `frame` 的 materialId：同一个材质，不该让整轮生成失败。
-        updated, repairs = self._attach("metal")
+    def test_material_name_is_preserved_for_implementation(self):
+        self.assertEqual(self._attach("metal").decisions.components[0].material_role, "metal")
 
-        self.assertEqual(updated.decisions.components[0].material_role, "frame")
-        self.assertTrue(repairs, "归一必须记账，否则'模型写错词表'这件事永远查不出来")
-
-    def test_role_the_plan_cannot_cover_is_downgraded_not_fatal(self):
-        # `stone` 在建筑角色表里没有自己的材质（物件侧才有）：降级为"没表态"，
-        # 编译器按派生模板的默认材质走 —— 与"能力缺失只标记、不阻断"同一口径。
-        updated, repairs = self._attach("stone")
-
-        self.assertIsNone(updated.decisions.components[0].material_role)
-        self.assertTrue(any("stone" in item for item in repairs))
+    def test_new_material_role_is_preserved_for_implementation(self):
+        self.assertEqual(self._attach("stone").decisions.components[0].material_role, "stone")
 
     def test_correct_role_is_left_untouched(self):
-        updated, repairs = self._attach("glass")
-
-        self.assertEqual(updated.decisions.components[0].material_role, "glass")
-        self.assertEqual(repairs, [])
-
-    def test_document_validator_keeps_its_teeth(self):
-        # 放宽到"编译器认得的两类写法"，不是关掉校验：名字背后真的没有材质时照旧拒绝。
-        # 这里绕过 attach（正常链路上归一已经先把它降级了）。
-        plan = _instance_plan("stone")
-        document = build_design_document(plan, session_id="role_strict", source_request=self.REQUEST)
-        data = document.model_dump(mode="json")
-        data["decisions"]["materials"] = {
-            "keywords": [],
-            "resolved_plan": resolve_material_plan(None, [], plan, self.REQUEST),
-        }
-
-        with self.assertRaises(ValidationError):
-            DesignDocument.model_validate(data)
+        self.assertEqual(self._attach("glass").decisions.components[0].material_role, "glass")
 
     def test_plan_material_id_passes_the_document_validator(self):
         plan = _instance_plan("metal")
@@ -203,24 +174,7 @@ class InstanceMaterialRoleTest(unittest.TestCase):
 class DesignBlockRoleVocabularyTest(unittest.TestCase):
     """图纸提示词必须给出角色词表，且词表来自**唯一来源**（角色表本身）。"""
 
-    def test_component_block_contract_renders_the_role_table(self):
-        from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-        from app.agent.generation.architecture.design_workflow import render_block_contract
 
-        text = render_block_contract(BLOCK_BY_NAME["components"])
-
-        self.assertNotIn("{material_roles}", text, "占位符没被渲染，模型看到的是花括号")
-        missing = [role for role in ROLE_SPECS if role not in text]
-        self.assertEqual(missing, [], f"角色表里的这些成员没进提示词：{missing}")
-
-    def test_contracts_without_placeholders_are_returned_verbatim(self):
-        from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-        from app.agent.generation.architecture.design_workflow import render_block_contract
-
-        # 挑一个契约里确实没有占位符的块：渲染函数对它是恒等变换。
-        block = BLOCK_BY_NAME["structure"]
-
-        self.assertEqual(render_block_contract(block), block.contract)
 
 
 if __name__ == "__main__":

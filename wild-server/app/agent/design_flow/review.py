@@ -1,16 +1,4 @@
-"""建筑设计文档的人工审核：``interrupt`` 等批准，confirm 与 revise 两条出路。
-
-它在骨架/组件生成前暂停，让用户看到并批准**具体**方案。三条不变量：
-
-- **批准用的是已完成的草稿**：``material_plan`` 可能保存过更早的草稿，暴露给用户前
-  先落库；重放 interrupt 时若已有更新的用户 Patch，**不覆盖它**（按 ``revision`` 判定）。
-- **修订只回方案链**：回建筑还是回物件链，只看文档的 ``decisions.kind``，不看意图字段
-  （它可能缺失或过期）——否则"把这张桌子改宽一点"会被当成建筑修订、重新产出一栋房子。
-- **批准后建筑一律走确定性编译**：图纸一旦批准，结构/门窗/屋顶就是图纸的确定性函数，
-  没有理由再让模型重算一遍；唯一例外是物件（编译器只认建筑的体量/立面/屋顶协议）。
-
-节点入口与路由见 ``nodes/design_review_node.py``（薄壳）。
-"""
+"""展示同一图纸并等待审核；建筑批准后展开标记任务，物件进入骨架链。"""
 
 from __future__ import annotations
 
@@ -64,6 +52,13 @@ def design_review(state: GenerationState) -> dict:
             approved_resolved,
             material_fallback=material_fallback,
         )
+        reviewed = state.get("resolved_design") or {}
+        if (reviewed.get("design_hash") != approved_resolved.get("design_hash")
+                or reviewed.get("resolver_version") != approved_resolved.get("resolver_version")):
+            design_fields.update(
+                component_fragments={k: [] for k in (state.get("component_fragments") or {})},
+                component_diagnostics={k: {} for k in (state.get("component_diagnostics") or {})},
+            )
 
     else:
         if not feedback:
@@ -93,24 +88,21 @@ def _revision_node(state: GenerationState) -> str:
 
 def route_design_review(state: GenerationState) -> str:
     if state.get("design_review_status") == "approved":
-        return "compile" if _compiles_deterministically(state) else "skeleton"
+        return "plan" if _is_architecture(state) else "skeleton"
     if state.get("status") == "failed":
         return "__end__"
     return _revision_node(state)
 
 
-def _compiles_deterministically(state: GenerationState) -> bool:
-    """批准后是否走确定性编译。
-
-    **建筑一律走编译**（没有开关）——图纸一旦批准，结构/门窗/屋顶/附属构件
-    就是图纸的确定性函数，没有理由再让模型重算一遍。
-
-    唯一例外是物件（"生成一张桌子"）：编译器只认建筑的体量/立面/屋顶协议，
-    物件没有这些，必须留在 skeleton 上，否则会把一张桌子编译成一栋房子。
-    """
+def _is_architecture(state: GenerationState) -> bool:
+    """建筑展开图纸任务；物件先准备空骨架。"""
 
     from app.design.resolver import is_object_plan
 
+    document = state.get("design_document") or {}
+    kind = document.get("decisions", {}).get("kind")
+    if kind:
+        return kind == "architecture"
     plan = state.get("architecture_plan")
     return not is_object_plan(plan if isinstance(plan, dict) else None)
 

@@ -185,51 +185,12 @@ def test_brief_reports_status_for_unknown_type():
 # ── 接进提示词：不接就是"实现了但无人派发" ────────────────────────
 
 
-def test_capability_section_is_rendered_into_the_component_block_prompt():
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import build_block_prompt
-
-    prompt = build_block_prompt("BASE", BLOCK_BY_NAME["components"], {})
-    assert "引擎能力" in prompt, "能力面没进提示词 = 模型无从知道引擎能做什么"
-    assert "parentWall 必须指向有真实门窗的墙" in prompt, "canopy 的宿主约束没送到"
-    assert "path 为世界坐标折线" in prompt, "railing 的坐标语义没送到"
-    assert "parentRoof" in prompt, "cornice/chimney 的宿主字段没送到"
 
 
-def test_capability_section_is_not_injected_into_unrelated_blocks():
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import build_block_prompt
-
-    for name in ("massing", "facade", "roof", "structure"):
-        prompt = build_block_prompt("BASE", BLOCK_BY_NAME[name], {})
-        assert "引擎能力" not in prompt, f"{name} 块不需要引擎能力，塞进去只是白占预算"
 
 
-def test_capability_section_lists_components_only_not_elements():
-    """元素类由骨架确定性派生，模型本轮不写 —— 列进来只是白占提示词预算。"""
-
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import (
-        format_capability_section,
-    )
-
-    section = format_capability_section(BLOCK_BY_NAME["components"])
-    assert "primitive（" not in section, "primitive 是元素类，不该出现在构件清单"
-    assert "canopy（写入 geometry.components）" in section
 
 
-def test_capability_section_stays_within_prompt_budget():
-    """🔴 能力信息不能挤掉真正要写的约束：给一个上限，超了这条测试就红。"""
-
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import (
-        format_capability_section,
-    )
-
-    section = format_capability_section(BLOCK_BY_NAME["components"])
-    assert 0 < len(section) <= 2600, f"能力段 {len(section)} 字，超预算；先裁剪再谈完整"
-    # 必填字段清单默认不展开（那是"要写哪些键"的另一层约束，由块契约负责）。
-    assert "必填：" not in section
 
 
 # ── 漂移检测：两表不一致要能被发现 ────────────────────────────────

@@ -1,0 +1,5992 @@
+[
+  {
+    "slug": "building-body",
+    "name": "building_body",
+    "group": "envelope",
+    "entity_type": "component",
+    "sources": [
+      "masonry"
+    ],
+    "explanation": "这是宿主骨架示例，不是别墅设计模板。楼板底标高 -0.18、厚 0.18，板顶为 0；四面 wall 接到标高 3。替换各端点和材料即可表达本次体量，不能自动加窗、屋顶或固定层数。",
+    "aliases": [
+      "建筑主体",
+      "主体骨架",
+      "building body",
+      "main building body"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "building_body"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "body_slab",
+            "from": [
+              -2,
+              -0.18,
+              -1.5
+            ],
+            "to": [
+              2,
+              -0.18,
+              1.5
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "front",
+            "from": [
+              -2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "right",
+            "from": [
+              2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "back",
+            "from": [
+              2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "left",
+            "from": [
+              -2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "solid-base",
+    "name": "实墙基座",
+    "group": "envelope",
+    "entity_type": "wall",
+    "sources": [
+      "masonry"
+    ],
+    "explanation": "保留基础底座、基座墙与顶面压盖的分层表达。示例仅显示外观；墙宽、厚度、基座高度和压盖外挑可改，不从参考图移植承载或配筋要求。",
+    "aliases": [
+      "墙体基座",
+      "solid wall base"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "实墙基座"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "footing",
+            "shape": "box",
+            "position": [
+              0,
+              -0.175,
+              0
+            ],
+            "dimensions": [
+              4.8,
+              0.35,
+              0.75
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.2,
+              0,
+              0
+            ],
+            "to": [
+              2.2,
+              0.65,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "base_cap",
+            "shape": "box",
+            "position": [
+              0,
+              0.69,
+              0
+            ],
+            "dimensions": [
+              4.6,
+              0.08,
+              0.55
+            ],
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "solid-wall",
+    "name": "实墙",
+    "group": "envelope",
+    "entity_type": "wall",
+    "sources": [
+      "masonry"
+    ],
+    "explanation": "实墙、实体墙属于同一原生 wall 用法，不因名称不同重复建模。from/to 同时表达水平端点及底顶标高，thickness 为墙厚；出现开口时另用宿主开口组件，不把窗形装饰贴在整块实墙上。",
+    "aliases": [
+      "实体墙",
+      "solid wall"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "实墙"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "landscape-low-wall",
+    "name": "景观矮墙",
+    "group": "envelope",
+    "entity_type": "wall",
+    "sources": [
+      "landscape"
+    ],
+    "explanation": "用低 wall 和略外挑的顶盖表达矮墙。压顶底面与墙顶相接；端部、转角或分段高度依据本次设计调整。该 JSON 没有挡土计算或地下排水系统。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "景观矮墙"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -1.5,
+              0,
+              0
+            ],
+            "to": [
+              1.5,
+              0.6,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "cap",
+            "shape": "box",
+            "position": [
+              0,
+              0.64,
+              0
+            ],
+            "dimensions": [
+              3.1,
+              0.08,
+              0.35
+            ],
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "garden-wall-junction",
+    "name": "庭院围墙接口",
+    "group": "envelope",
+    "entity_type": "wall",
+    "sources": [
+      "landscape"
+    ],
+    "explanation": "这里的接口是两段围墙的端点及压顶关系，不是新增 WILD 类型。转角共享水平端点 [0,0,0]，高低墙可以独立取高度；接已有建筑时替换墙端点和材质，不自动复制第二面重合墙。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "庭院围墙接口"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "wall_a",
+            "from": [
+              0,
+              0,
+              -1.5
+            ],
+            "to": [
+              0,
+              2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "wall_b",
+            "from": [
+              0,
+              0,
+              0
+            ],
+            "to": [
+              2,
+              1,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "cap_b",
+            "shape": "box",
+            "position": [
+              1,
+              1.04,
+              0
+            ],
+            "dimensions": [
+              2,
+              0.08,
+              0.34
+            ],
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "floor-window",
+    "name": "落地窗",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "低窗台、大玻璃与外围窗框构成落地窗。示例窗底为 0.15，可按真实门槛改为其他值；窗是 window，不能因落地就自动当门。",
+    "aliases": [
+      "floor-to-ceiling window",
+      "full-height glazing"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "落地窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              0.8,
+              0.15,
+              0
+            ],
+            "width": 2.4,
+            "height": 2.8,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "double-height-window",
+    "name": "通高窗",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "通高由宿主与开口的实际高度表达。示例整段高墙承载高窗，中部横梃只是分格；不能以多层重合 window 冒充一个连续开口。",
+    "aliases": [
+      "double-height window",
+      "通高玻璃窗"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "通高窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              6.4,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              0.8,
+              0.2,
+              0
+            ],
+            "width": 2.4,
+            "height": 5.8,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass",
+            "verticalMullions": 1,
+            "horizontalMullions": 1
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "operable-sash",
+    "name": "开启扇",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "开启语义使用 interaction，而不是新增 sash 类型。当前 window 交互编译会创建左右两扇；不能称作精确的单扇产品复制。开启角是示例取值。",
+    "aliases": [
+      "operable window sash",
+      "开启窗扇"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "开启扇"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              1.3,
+              0.9,
+              0
+            ],
+            "width": 1.4,
+            "height": 1.5,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left",
+              "openAngle": 55
+            }
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "fixed-glazing",
+    "name": "固定玻璃",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "固定玻璃用不带 interaction 的 window。外围框和玻璃深度由宿主厚度内的默认值承担；无交互表示固定窗，不能附加虚构的 fixed 字段。",
+    "aliases": [
+      "fixed glass",
+      "固定玻璃窗"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "固定玻璃"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              1.1,
+              0.9,
+              0
+            ],
+            "width": 1.8,
+            "height": 1.6,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "small-window",
+    "name": "小窗",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "小窗只调整 opening 的尺寸和窗台，不形成新类型。保留真实宿主、框及玻璃，参数仍需放在墙长和墙高以内；小窗尺寸是示例，不是通用下限。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "小窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              1.675,
+              1.2,
+              0
+            ],
+            "width": 0.65,
+            "height": 0.8,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "high-window",
+    "name": "高窗",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "高窗指较高的窗底标高，不等于窗体很高。from[1] 为世界窗底，height 为开口高度；应同步调整宿主高度，不能把世界 X 误写进 from[0]。",
+    "aliases": [
+      "clerestory window"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "高窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              1.3,
+              2.25,
+              0
+            ],
+            "width": 1.4,
+            "height": 0.55,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "floor-window-group",
+    "name": "落地窗组",
+    "group": "glazing",
+    "entity_type": "window",
+    "sources": [
+      "window"
+    ],
+    "explanation": "这是一组等分玻璃的最小用法：一个 window 用两条竖梃得到三格。若需不同开启方式或不等宽扇，拆成多个互不重叠的 window，并保留各自沿墙坐标。",
+    "aliases": [
+      "floor-to-ceiling window group"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "落地窗组"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "sample_window",
+            "parentWall": "host_wall",
+            "from": [
+              0.4,
+              0.2,
+              0
+            ],
+            "width": 3.2,
+            "height": 2.7,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass",
+            "verticalMullions": 2
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "bay-window",
+    "name": "凸窗",
+    "group": "glazing",
+    "entity_type": "bay_window",
+    "sources": [
+      "bay"
+    ],
+    "explanation": "参考图的前窗、侧窗及上下平台保留为凸窗的分件意识。当前 bay_window 为矩形外挑盒式窗体，projectionDepth 是外挑深度；不声称复现原图 30°／45° 的斜侧窗。该斜角造型需改用多个墙窗或 primitive。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "凸窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "bay_window",
+            "id": "bay",
+            "parentWall": "host_wall",
+            "from": [
+              0.8,
+              0.8,
+              0
+            ],
+            "width": 2.4,
+            "height": 1.7,
+            "projectionDepth": 0.65,
+            "frameWidth": 0.06,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "side-door",
+    "name": "侧门",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "window"
+    ],
+    "explanation": "侧门是单扇 door 的安装位置选择。复用真正宿主墙和沿墙起点，不自动生成旁边的小窗；interaction 提供侧铰平开语义。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "侧门"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "door",
+            "id": "sample_door",
+            "parentWall": "host_wall",
+            "from": [
+              1.525,
+              0,
+              0
+            ],
+            "width": 0.95,
+            "height": 2.1,
+            "frameMaterial": "metal",
+            "leafMaterial": "wood",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left",
+              "openAngle": 80
+            }
+          }
+        ]
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "storage-door",
+    "name": "储藏间门",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "window"
+    ],
+    "explanation": "储藏间门仍是 door，尺寸、门扇材料与铰链侧按本次空间决定。此示例不附带不存在的储藏间房间结构，安装时替换为本次室内墙宿主。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "储藏间门"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "door",
+            "id": "sample_door",
+            "parentWall": "host_wall",
+            "from": [
+              1.6,
+              0,
+              0
+            ],
+            "width": 0.8,
+            "height": 2.0,
+            "frameMaterial": "metal",
+            "leafMaterial": "wood",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "right",
+              "openAngle": 70
+            }
+          }
+        ]
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "glass-sliding-door",
+    "name": "大面积玻璃移门",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "window"
+    ],
+    "explanation": "玻璃移门使用 doorStyle=double、玻璃门扇材料和 slide。滑移示例不表示多轨折叠或完全收入墙内；将门旁滑移空间、玻璃和框料一起核对。",
+    "aliases": [
+      "glass sliding door",
+      "大面积玻璃推拉门"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "大面积玻璃移门"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "door",
+            "id": "sample_door",
+            "parentWall": "host_wall",
+            "from": [
+              0.5,
+              0,
+              0
+            ],
+            "width": 3,
+            "height": 2.4,
+            "frameMaterial": "metal",
+            "leafMaterial": "glass",
+            "doorStyle": "double",
+            "leafRows": 1,
+            "interaction": {
+              "mode": "slide",
+              "openDistance": 1.3
+            }
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "sectional-garage-door",
+    "name": "车库门",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "garage"
+    ],
+    "explanation": "保留分节门面及提升语义。当前 lift 把门扇整体竖直上移，不沿 Hörmann 的弯曲轨道逐节翻转；不能用示例宣称真实分节轨道仿真。宿主高 4.6 为提升留出净空，不把该高度推广到所有车库。",
+    "aliases": [
+      "garage door",
+      "分节车库门"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "车库门"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              4.6,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "door",
+            "id": "sample_door",
+            "parentWall": "host_wall",
+            "from": [
+              0.5,
+              0,
+              0
+            ],
+            "width": 3,
+            "height": 2.2,
+            "frameMaterial": "metal",
+            "leafMaterial": "metal",
+            "leafRows": 5,
+            "interaction": {
+              "mode": "lift",
+              "openDistance": 2.2
+            }
+          }
+        ]
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "entrance-vestibule",
+    "name": "主入口门斗",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "window",
+      "pilaster"
+    ],
+    "explanation": "门斗是有深度的入口空间，不能只画装饰门套。示例包含前后两道门、侧壁、楼板和顶盖；若本次只要开放门廊，应删去前道门和相应围护并重新设计，不机械保留封闭门斗。此空间组合是本项目示例设计，来源仅用于门窗和门套分件参考。",
+    "aliases": [
+      "entry vestibule",
+      "入口门斗"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "主入口门斗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "inner_wall",
+            "from": [
+              -1.7,
+              0,
+              0
+            ],
+            "to": [
+              1.7,
+              2.8,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "outer_wall",
+            "from": [
+              -1.7,
+              0,
+              -1.5
+            ],
+            "to": [
+              1.7,
+              2.8,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "floor",
+            "id": "vestibule_slab",
+            "from": [
+              -1.7,
+              -0.15,
+              -1.5
+            ],
+            "to": [
+              1.7,
+              -0.15,
+              0
+            ],
+            "thickness": 0.15,
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "vestibule_roof",
+            "shape": "box",
+            "position": [
+              0,
+              2.9,
+              -0.75
+            ],
+            "dimensions": [
+              3.6,
+              0.2,
+              1.7
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "left_wall",
+            "from": [
+              -1.7,
+              0,
+              -1.5
+            ],
+            "to": [
+              -1.7,
+              2.8,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "right_wall",
+            "from": [
+              1.7,
+              0,
+              -1.5
+            ],
+            "to": [
+              1.7,
+              2.8,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "door",
+            "id": "inner_door",
+            "parentWall": "inner_wall",
+            "from": [
+              0.9,
+              0,
+              0
+            ],
+            "width": 1.6,
+            "height": 2.35,
+            "frameMaterial": "metal",
+            "leafMaterial": "wood",
+            "doorStyle": "double",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left",
+              "openAngle": 75
+            }
+          },
+          {
+            "type": "door",
+            "id": "outer_door",
+            "parentWall": "outer_wall",
+            "from": [
+              0.8,
+              0,
+              0
+            ],
+            "width": 1.8,
+            "height": 2.35,
+            "frameMaterial": "metal",
+            "leafMaterial": "wood",
+            "doorStyle": "double",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "right",
+              "openAngle": 75
+            }
+          },
+          {
+            "type": "window",
+            "id": "side_light",
+            "parentWall": "left_wall",
+            "from": [
+              0.25,
+              0.5,
+              0
+            ],
+            "width": 0.95,
+            "height": 1.9,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "garden-gate",
+    "name": "庭院门",
+    "group": "entrance",
+    "entity_type": "door",
+    "sources": [
+      "iron"
+    ],
+    "explanation": "用两座门柱、两组边框与竖条表达静态镂空庭院门，保留两扇间缝隙。primitive 组合没有自动铰链或 door 交互；若要交互可改原生 door 并说明其实体门扇与镂空造型的差别。这里不复制来源产品的尺寸或规范声明。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "庭院门"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "pier_left",
+            "shape": "box",
+            "position": [
+              -1.65,
+              0.95,
+              0
+            ],
+            "dimensions": [
+              0.3,
+              1.9,
+              0.3
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "pier_right",
+            "shape": "box",
+            "position": [
+              1.65,
+              0.95,
+              0
+            ],
+            "dimensions": [
+              0.3,
+              1.9,
+              0.3
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_rail_0.15",
+            "shape": "box",
+            "position": [
+              -0.725,
+              0.15,
+              0
+            ],
+            "dimensions": [
+              1.42,
+              0.045,
+              0.05
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_rail_1.65",
+            "shape": "box",
+            "position": [
+              -0.725,
+              1.65,
+              0
+            ],
+            "dimensions": [
+              1.42,
+              0.045,
+              0.05
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_0",
+            "shape": "box",
+            "position": [
+              -1.325,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_1",
+            "shape": "box",
+            "position": [
+              -1.125,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_2",
+            "shape": "box",
+            "position": [
+              -0.9249999999999999,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_3",
+            "shape": "box",
+            "position": [
+              -0.7249999999999999,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_4",
+            "shape": "box",
+            "position": [
+              -0.5249999999999999,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_5",
+            "shape": "box",
+            "position": [
+              -0.32499999999999996,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_0_bar_6",
+            "shape": "box",
+            "position": [
+              -0.12499999999999978,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_rail_0.15",
+            "shape": "box",
+            "position": [
+              0.725,
+              0.15,
+              0
+            ],
+            "dimensions": [
+              1.42,
+              0.045,
+              0.05
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_rail_1.65",
+            "shape": "box",
+            "position": [
+              0.725,
+              1.65,
+              0
+            ],
+            "dimensions": [
+              1.42,
+              0.045,
+              0.05
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_0",
+            "shape": "box",
+            "position": [
+              0.125,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_1",
+            "shape": "box",
+            "position": [
+              0.325,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_2",
+            "shape": "box",
+            "position": [
+              0.525,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_3",
+            "shape": "box",
+            "position": [
+              0.7250000000000001,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_4",
+            "shape": "box",
+            "position": [
+              0.925,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_5",
+            "shape": "box",
+            "position": [
+              1.125,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "gate_1_bar_6",
+            "shape": "box",
+            "position": [
+              1.3250000000000002,
+              0.9,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.5,
+              0.025
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "balcony-panel",
+    "name": "阳台栏板",
+    "group": "balcony",
+    "entity_type": "balcony",
+    "sources": [
+      "railing"
+    ],
+    "explanation": "采用 balcony 生成悬挑板，railingEnabled=false 后由独立 panel 栏杆接管三边。宿主后方楼板确定内外方向；沿墙 from[0]=0.5，板顶 from[1]=3.2，墙外表面 z=-0.12，因此外边 z=-1.37。更换宿主后重算世界路径，不能只改板宽。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "阳台栏板"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              4,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "floor",
+            "id": "interior_slab",
+            "from": [
+              -2,
+              3.02,
+              0
+            ],
+            "to": [
+              2,
+              3.02,
+              2
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          }
+        ],
+        "components": [
+          {
+            "type": "balcony",
+            "id": "balcony",
+            "parentWall": "host_wall",
+            "from": [
+              0.5,
+              3.2,
+              0
+            ],
+            "width": 3,
+            "depth": 1.25,
+            "slabThickness": 0.18,
+            "railingEnabled": false,
+            "material": "stone"
+          },
+          {
+            "type": "railing",
+            "id": "panel_guard",
+            "path": [
+              [
+                -1.5,
+                3.2,
+                -0.12
+              ],
+              [
+                -1.5,
+                3.2,
+                -1.37
+              ],
+              [
+                1.5,
+                3.2,
+                -1.37
+              ],
+              [
+                1.5,
+                3.2,
+                -0.12
+              ]
+            ],
+            "height": 1.05,
+            "postSpacing": 0.75,
+            "infillType": "panel",
+            "infillThickness": 0.06,
+            "infillMaterial": "stone",
+            "material": "metal"
+          }
+        ]
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "terrace-railing",
+    "name": "露台栏杆",
+    "group": "balcony",
+    "entity_type": "railing",
+    "sources": [
+      "railing"
+    ],
+    "explanation": "楼板底标高为 -0.18、顶面为 0，栏杆世界路径从板顶起。三边栏杆由连续 path 与 glass 填充构成；没有 parentFloor 时 path 是世界坐标，不把这些点当沿墙坐标。栏杆高度及立柱间距是本次示例值。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "露台栏杆"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "terrace_slab",
+            "from": [
+              -1.5,
+              -0.18,
+              0
+            ],
+            "to": [
+              1.5,
+              -0.18,
+              1.8
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          }
+        ],
+        "components": [
+          {
+            "type": "railing",
+            "id": "glass_guard",
+            "path": [
+              [
+                -1.5,
+                0,
+                0
+              ],
+              [
+                -1.5,
+                0,
+                1.8
+              ],
+              [
+                1.5,
+                0,
+                1.8
+              ],
+              [
+                1.5,
+                0,
+                0
+              ]
+            ],
+            "height": 1.1,
+            "postSpacing": 1,
+            "infillType": "glass",
+            "infillThickness": 0.012,
+            "infillMaterial": "glass",
+            "material": "metal"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "equipment-platform",
+    "name": "设备平台",
+    "group": "balcony",
+    "entity_type": "component",
+    "sources": [
+      "equipment"
+    ],
+    "explanation": "以悬挑楼板和两组墙支架表达设备平台。floor.from[1]=2.08、厚度 0.12，故板顶 2.2；支架水平臂顶面接板底。安装原点、平台外挑、支架位置及设备净空由本次需求给出，不套用产品图的气候或载荷要求。",
+    "aliases": [
+      "设备承托平台"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "设备平台"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.4,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "floor",
+            "id": "equipment_slab",
+            "from": [
+              -1,
+              2.08,
+              -0.12
+            ],
+            "to": [
+              1,
+              2.08,
+              -1.12
+            ],
+            "thickness": 0.12,
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "bracket_0",
+            "shape": "box",
+            "position": [
+              -0.7,
+              2.04,
+              -0.62
+            ],
+            "dimensions": [
+              0.08,
+              0.08,
+              1
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "anchor_0",
+            "shape": "box",
+            "position": [
+              -0.7,
+              1.7,
+              -0.15
+            ],
+            "dimensions": [
+              0.08,
+              0.72,
+              0.06
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "bracket_1",
+            "shape": "box",
+            "position": [
+              0.7,
+              2.04,
+              -0.62
+            ],
+            "dimensions": [
+              0.08,
+              0.08,
+              1
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "anchor_1",
+            "shape": "box",
+            "position": [
+              0.7,
+              1.7,
+              -0.15
+            ],
+            "dimensions": [
+              0.08,
+              0.72,
+              0.06
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "ac-position",
+    "name": "空调机位",
+    "group": "balcony",
+    "entity_type": "component",
+    "sources": [
+      "equipment"
+    ],
+    "explanation": "机位示例包含底座、外机外壳和前侧风扇外观；底座顶为 0.12，机壳底为 0.12。安装到设备平台时将这组世界坐标平移到板顶，并保留方案要求的通风空间。该几何不表示制冷、排水、风量或风扇动画。",
+    "aliases": [
+      "air conditioning unit",
+      "air conditioner platform",
+      "空调外机位"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "空调机位"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "equipment_base",
+            "shape": "box",
+            "position": [
+              0,
+              0.06,
+              0
+            ],
+            "dimensions": [
+              1.2,
+              0.12,
+              0.65
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "condenser",
+            "shape": "box",
+            "position": [
+              0,
+              0.445,
+              0
+            ],
+            "dimensions": [
+              0.95,
+              0.65,
+              0.3
+            ],
+            "material": "plaster"
+          },
+          {
+            "type": "primitive",
+            "id": "fan_face",
+            "shape": "cylinder",
+            "position": [
+              0,
+              0.45,
+              -0.16
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "radius": 0.22,
+            "height": 0.02,
+            "segments": 24,
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "ventilation-louvre",
+    "name": "通风百叶",
+    "group": "equipment",
+    "entity_type": "window",
+    "sources": [
+      "louvre"
+    ],
+    "explanation": "TROX 图纸的边框与倾斜叶片保留为独立几何，不用窗棂冒充叶片。此模块用 primitive.box 旋转出八片固定叶片；rotation 为弧度。数量、间距、倾角和框深可改。安装到实墙时需要另外落实洞口；没有通风计算、叶片联动或防雨认证。",
+    "aliases": [
+      "百叶叶片",
+      "ventilation louver",
+      "通风百叶构造"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "通风百叶"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "top",
+            "shape": "box",
+            "position": [
+              0,
+              1,
+              0
+            ],
+            "dimensions": [
+              1.2,
+              0.05,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "bottom",
+            "shape": "box",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": [
+              1.2,
+              0.05,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "left",
+            "shape": "box",
+            "position": [
+              -0.575,
+              0.5,
+              0
+            ],
+            "dimensions": [
+              0.05,
+              1,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "right",
+            "shape": "box",
+            "position": [
+              0.575,
+              0.5,
+              0
+            ],
+            "dimensions": [
+              0.05,
+              1,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "blade_0",
+            "shape": "box",
+            "position": [
+              0,
+              0.105,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_1",
+            "shape": "box",
+            "position": [
+              0,
+              0.215,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_2",
+            "shape": "box",
+            "position": [
+              0,
+              0.325,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_3",
+            "shape": "box",
+            "position": [
+              0,
+              0.435,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_4",
+            "shape": "box",
+            "position": [
+              0,
+              0.545,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_5",
+            "shape": "box",
+            "position": [
+              0,
+              0.655,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_6",
+            "shape": "box",
+            "position": [
+              0,
+              0.765,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_7",
+            "shape": "box",
+            "position": [
+              0,
+              0.875,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "exhaust-outlet",
+    "name": "排风口",
+    "group": "equipment",
+    "entity_type": "component",
+    "sources": [
+      "louvre"
+    ],
+    "explanation": "排风口复用边框及固定百叶，后方圆筒只显示短管外形；cylinder 不是空心风管。接外墙或设备平台时先确定接口和实际开孔，不能靠把模块贴在未开孔的实墙上宣称通风已连通。",
+    "aliases": [
+      "exhaust vent",
+      "排气口"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "排风口"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "top",
+            "shape": "box",
+            "position": [
+              0,
+              1,
+              0
+            ],
+            "dimensions": [
+              1.2,
+              0.05,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "bottom",
+            "shape": "box",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": [
+              1.2,
+              0.05,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "left",
+            "shape": "box",
+            "position": [
+              -0.575,
+              0.5,
+              0
+            ],
+            "dimensions": [
+              0.05,
+              1,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "right",
+            "shape": "box",
+            "position": [
+              0.575,
+              0.5,
+              0
+            ],
+            "dimensions": [
+              0.05,
+              1,
+              0.18
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "blade_0",
+            "shape": "box",
+            "position": [
+              0,
+              0.105,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_1",
+            "shape": "box",
+            "position": [
+              0,
+              0.215,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_2",
+            "shape": "box",
+            "position": [
+              0,
+              0.325,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_3",
+            "shape": "box",
+            "position": [
+              0,
+              0.435,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_4",
+            "shape": "box",
+            "position": [
+              0,
+              0.545,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_5",
+            "shape": "box",
+            "position": [
+              0,
+              0.655,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_6",
+            "shape": "box",
+            "position": [
+              0,
+              0.765,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "blade_7",
+            "shape": "box",
+            "position": [
+              0,
+              0.875,
+              0
+            ],
+            "dimensions": [
+              1.1,
+              0.025,
+              0.14
+            ],
+            "material": "metal",
+            "rotation": [
+              0.6108652381980153,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "primitive",
+            "id": "rear_stub",
+            "shape": "cylinder",
+            "position": [
+              0,
+              0.5,
+              0.18
+            ],
+            "rotation": [
+              1.5707963267948966,
+              0,
+              0
+            ],
+            "radius": 0.32,
+            "height": 0.2,
+            "segments": 24,
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "hip-roof",
+    "name": "roof",
+    "group": "roof",
+    "entity_type": "roof",
+    "sources": [
+      "roof"
+    ],
+    "explanation": "roof 是原生元素，这里展示四坡屋面落在宿主墙顶标高 3。position 是中心与支承标高，span/depth 为屋面覆盖尺寸，height 为屋面上表面从檐口到屋脊的高差。多体量按各体量独立覆盖，不把此矩形示例当整栋固定屋顶。",
+    "aliases": [
+      "屋顶"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "roof"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "body_slab",
+            "from": [
+              -2,
+              -0.18,
+              -1.5
+            ],
+            "to": [
+              2,
+              -0.18,
+              1.5
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "front",
+            "from": [
+              -2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "right",
+            "from": [
+              2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "back",
+            "from": [
+              2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "left",
+            "from": [
+              -2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "roof",
+            "id": "main_roof",
+            "roofType": "hip",
+            "span": 4.4,
+            "depth": 3.4,
+            "height": 0.8,
+            "thickness": 0.08,
+            "position": [
+              0,
+              3,
+              0
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "parapet",
+    "name": "女儿墙",
+    "group": "roof",
+    "entity_type": "wall",
+    "sources": [
+      "roof"
+    ],
+    "explanation": "平屋面边沿采用两段相交的低 wall 与可选压顶。floor 底 2.82、厚 0.18，顶为 3；女儿墙底接 3。其高度、覆盖边数及压顶外挑留给图纸，不把示例高度当规范，也不自动补满未选的四边。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "女儿墙"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "roof_slab",
+            "from": [
+              -2,
+              2.82,
+              0
+            ],
+            "to": [
+              2,
+              2.82,
+              2
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "parapet_front",
+            "from": [
+              -2.0,
+              3,
+              0
+            ],
+            "to": [
+              2.0,
+              3.9,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "parapet_side",
+            "from": [
+              -2,
+              3,
+              0
+            ],
+            "to": [
+              -2,
+              3.9,
+              2
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "primitive",
+            "id": "coping_front",
+            "shape": "box",
+            "position": [
+              0,
+              3.94,
+              0
+            ],
+            "dimensions": [
+              4.1,
+              0.08,
+              0.34
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "eave-soffit",
+    "name": "屋檐下悬",
+    "group": "roof",
+    "entity_type": "roof",
+    "sources": [
+      "roof"
+    ],
+    "explanation": "这里按檐下封板及下挂封檐条解释“屋檐下悬”。封板只占墙外至屋面边缘的窄带，不以整块板堵住阁楼；示例展示前檐，其他边需要按本次覆盖关系补齐。若用户指悬挑构架，应按原图重新选构造，而不是仅改这个名称。",
+    "aliases": [
+      "soffit",
+      "檐下封板"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "屋檐下悬"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "body_slab",
+            "from": [
+              -2,
+              -0.18,
+              -1.5
+            ],
+            "to": [
+              2,
+              -0.18,
+              1.5
+            ],
+            "thickness": 0.18,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "front",
+            "from": [
+              -2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "right",
+            "from": [
+              2,
+              0,
+              -1.5
+            ],
+            "to": [
+              2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "back",
+            "from": [
+              2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "left",
+            "from": [
+              -2,
+              0,
+              1.5
+            ],
+            "to": [
+              -2,
+              3,
+              -1.5
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "roof",
+            "id": "main_roof",
+            "roofType": "hip",
+            "span": 4.4,
+            "depth": 3.4,
+            "height": 0.8,
+            "thickness": 0.08,
+            "position": [
+              0,
+              3,
+              0
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "front_soffit",
+            "shape": "box",
+            "position": [
+              0,
+              2.98,
+              -1.6
+            ],
+            "dimensions": [
+              4.4,
+              0.04,
+              0.2
+            ],
+            "material": "plaster"
+          },
+          {
+            "type": "primitive",
+            "id": "front_fascia",
+            "shape": "box",
+            "position": [
+              0,
+              2.93,
+              -1.68
+            ],
+            "dimensions": [
+              4.4,
+              0.14,
+              0.08
+            ],
+            "material": "plaster"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "decorative-cornice",
+    "name": "装饰檐口",
+    "group": "roof",
+    "entity_type": "cornice",
+    "sources": [
+      "trim"
+    ],
+    "explanation": "截面线脚通过 cornice 沿墙顶扫掠表达，适合腰线或屋檐装饰。profile 是二维截面，path 是世界路径；改变走向时需检查截面朝向，转角共享端点。此阶梯形截面是自行简化的示例，不是 Melton 产品尺寸复刻，也不增加不存在的齿饰字段。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "装饰檐口"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          }
+        ],
+        "components": [
+          {
+            "type": "cornice",
+            "id": "cornice",
+            "path": [
+              [
+                -2,
+                3.2,
+                0
+              ],
+              [
+                2,
+                3.2,
+                0
+              ]
+            ],
+            "profile": [
+              [
+                0,
+                0
+              ],
+              [
+                0.18,
+                0
+              ],
+              [
+                0.18,
+                0.08
+              ],
+              [
+                0.1,
+                0.08
+              ],
+              [
+                0.1,
+                0.18
+              ],
+              [
+                0,
+                0.18
+              ]
+            ],
+            "closedProfile": true,
+            "material": "stone"
+          }
+        ]
+      },
+      "materials": {
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "decorative-pilaster",
+    "name": "装饰壁柱",
+    "group": "roof",
+    "entity_type": "column",
+    "sources": [
+      "pilaster"
+    ],
+    "explanation": "壁柱是贴墙的矩形浅浮雕，而非独立圆柱。使用 primitive.box 组合柱脚、柱身、柱头，后侧略嵌入墙面；若设计要槽纹可再组合细条。保留壁柱与 host_wall 的位置关系，不把没有的 parentWall 属性写进 primitive。",
+    "aliases": [
+      "pilaster",
+      "壁柱"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "装饰壁柱"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.2,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "primitive",
+            "id": "pilaster_base",
+            "shape": "box",
+            "position": [
+              0,
+              0.1,
+              -0.16
+            ],
+            "dimensions": [
+              0.45,
+              0.2,
+              0.2
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "pilaster_shaft",
+            "shape": "box",
+            "position": [
+              0,
+              1.4,
+              -0.15
+            ],
+            "dimensions": [
+              0.25,
+              2.4,
+              0.12
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "pilaster_cap",
+            "shape": "box",
+            "position": [
+              0,
+              2.68,
+              -0.16
+            ],
+            "dimensions": [
+              0.5,
+              0.16,
+              0.25
+            ],
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "roman-column",
+    "name": "罗马柱",
+    "group": "roof",
+    "entity_type": "column",
+    "sources": [
+      "column"
+    ],
+    "explanation": "原生 column 放入 elements，用 base、height、上下半径和 style 描述独立柱。ionic 是当前支持的样式枚举；引擎为简化表达，不以 style 名称宣称历史柱式细部完全复原。需要额外柱头饰件时另用 primitive，柱高和柱数由本次方案决定。",
+    "aliases": [],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "罗马柱"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "column",
+            "id": "roman_column",
+            "base": [
+              0,
+              0,
+              0
+            ],
+            "height": 3,
+            "bottomRadius": 0.23,
+            "topRadius": 0.19,
+            "style": "ionic",
+            "flutes": 16,
+            "entasis": 0.015,
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "gable-dormer",
+    "name": "老虎窗",
+    "group": "roof",
+    "entity_type": "roof",
+    "sources": [
+      "dormer"
+    ],
+    "explanation": "老虎窗由凸出屋面的前窗、两侧围护和自身小屋顶组成，区别于直接嵌在坡面里的天窗。这里给出自选双坡造型，官方照片用于侧壁和屋面接口参考。原生主屋顶没有任意开孔字段：此独立样例没有主屋面；装到整栋时要按交线分块主屋面，不能直接叠在完整 hip/gable 屋面上。",
+    "aliases": [
+      "dormer",
+      "屋面老虎窗"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "老虎窗"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "dormer_base",
+            "from": [
+              -0.7,
+              1.9,
+              -0.7
+            ],
+            "to": [
+              0.7,
+              1.9,
+              0.7
+            ],
+            "thickness": 0.1,
+            "material": "stone"
+          },
+          {
+            "type": "wall",
+            "id": "dormer_front",
+            "from": [
+              -0.7,
+              2,
+              -0.7
+            ],
+            "to": [
+              0.7,
+              3.2,
+              -0.7
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "wall",
+            "id": "dormer_left",
+            "from": [
+              -0.7,
+              2,
+              -0.7
+            ],
+            "to": [
+              -0.7,
+              3.2,
+              0.7
+            ],
+            "thickness": 0.12,
+            "material": "metal"
+          },
+          {
+            "type": "wall",
+            "id": "dormer_right",
+            "from": [
+              0.7,
+              2,
+              -0.7
+            ],
+            "to": [
+              0.7,
+              3.2,
+              0.7
+            ],
+            "thickness": 0.12,
+            "material": "metal"
+          },
+          {
+            "type": "roof",
+            "id": "dormer_roof",
+            "roofType": "gable",
+            "span": 1.65,
+            "depth": 1.8,
+            "height": 0.5,
+            "thickness": 0.05,
+            "position": [
+              0,
+              3.2,
+              0
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": [
+          {
+            "type": "window",
+            "id": "dormer_window",
+            "parentWall": "dormer_front",
+            "from": [
+              0.25,
+              2.2,
+              0
+            ],
+            "width": 0.9,
+            "height": 0.9,
+            "frameWidth": 0.05,
+            "frameMaterial": "metal",
+            "glassMaterial": "glass"
+          }
+        ]
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "framed-awning",
+    "name": "雨棚构造",
+    "group": "roof",
+    "entity_type": "canopy",
+    "sources": [
+      "awning"
+    ],
+    "explanation": "参考装配图保留透明顶板、两侧支承和墙连接的组合。顶板用 glass 材料，曲折支架用 profile_sweep；这组原语用世界坐标，不能套 canopy.from 的沿墙坐标。原图的精确曲率、密封件和螺栓被简化，安装需替换墙位置并同步支架末端与板底。",
+    "aliases": [
+      "awning",
+      "雨棚支承构造"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "雨棚构造"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "wall",
+            "id": "host_wall",
+            "from": [
+              -2.0,
+              0,
+              0
+            ],
+            "to": [
+              2.0,
+              3.1,
+              0
+            ],
+            "thickness": 0.24,
+            "material": "plaster"
+          },
+          {
+            "type": "primitive",
+            "id": "awning_panel",
+            "shape": "box",
+            "position": [
+              0,
+              2.565,
+              -0.62
+            ],
+            "dimensions": [
+              2.1,
+              0.03,
+              1
+            ],
+            "material": "glass"
+          },
+          {
+            "type": "primitive",
+            "id": "curved_bracket_0",
+            "shape": "profile_sweep",
+            "profile": [
+              [
+                -0.02,
+                -0.02
+              ],
+              [
+                0.02,
+                -0.02
+              ],
+              [
+                0.02,
+                0.02
+              ],
+              [
+                -0.02,
+                0.02
+              ]
+            ],
+            "path": [
+              [
+                -0.75,
+                1.9,
+                -0.12
+              ],
+              [
+                -0.75,
+                2.12,
+                -0.3
+              ],
+              [
+                -0.75,
+                2.35,
+                -0.55
+              ],
+              [
+                -0.75,
+                2.5,
+                -0.85
+              ],
+              [
+                -0.75,
+                2.55,
+                -1.1
+              ]
+            ],
+            "closedProfile": true,
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "side_frame_0",
+            "shape": "box",
+            "position": [
+              -0.75,
+              2.575,
+              -0.62
+            ],
+            "dimensions": [
+              0.04,
+              0.08,
+              1.04
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "curved_bracket_1",
+            "shape": "profile_sweep",
+            "profile": [
+              [
+                -0.02,
+                -0.02
+              ],
+              [
+                0.02,
+                -0.02
+              ],
+              [
+                0.02,
+                0.02
+              ],
+              [
+                -0.02,
+                0.02
+              ]
+            ],
+            "path": [
+              [
+                0.75,
+                1.9,
+                -0.12
+              ],
+              [
+                0.75,
+                2.12,
+                -0.3
+              ],
+              [
+                0.75,
+                2.35,
+                -0.55
+              ],
+              [
+                0.75,
+                2.5,
+                -0.85
+              ],
+              [
+                0.75,
+                2.55,
+                -1.1
+              ]
+            ],
+            "closedProfile": true,
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "side_frame_1",
+            "shape": "box",
+            "position": [
+              0.75,
+              2.575,
+              -0.62
+            ],
+            "dimensions": [
+              0.04,
+              0.08,
+              1.04
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "glass": {
+          "baseColor": [
+            0.85,
+            0.93,
+            0.98
+          ],
+          "roughness": 0.08,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "materialClass": "glass",
+          "transmission": 0.92,
+          "ior": 1.5,
+          "opacity": 1
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "plaster": {
+          "baseColor": [
+            0.9,
+            0.88,
+            0.81
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "ornamental-iron-railing",
+    "name": "铁艺栏杆",
+    "group": "balcony",
+    "entity_type": "railing",
+    "sources": [
+      "iron"
+    ],
+    "explanation": "保留顶部扶手、下横杆、竖条和两端卷花。卷花使用小方截面沿折线扫掠，路径点越密轮廓越平滑；不是把普通两道横杆称为铁艺。安装在露台时整体平移并按实际长度重复所选竖条。这里只表达静态外观，没有来源产品的受力或规范声明。",
+    "aliases": [
+      "wrought iron railing",
+      "铁艺护栏"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "铁艺栏杆"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "iron_top",
+            "shape": "box",
+            "position": [
+              0,
+              1.1,
+              0
+            ],
+            "dimensions": [
+              2.4,
+              0.04,
+              0.04
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bottom",
+            "shape": "box",
+            "position": [
+              0,
+              0.08,
+              0
+            ],
+            "dimensions": [
+              2.4,
+              0.04,
+              0.04
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bar_0",
+            "shape": "box",
+            "position": [
+              -1.15,
+              0.59,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.02,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bar_1",
+            "shape": "box",
+            "position": [
+              -0.6,
+              0.59,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.02,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bar_2",
+            "shape": "box",
+            "position": [
+              0,
+              0.59,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.02,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bar_3",
+            "shape": "box",
+            "position": [
+              0.6,
+              0.59,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.02,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "iron_bar_4",
+            "shape": "box",
+            "position": [
+              1.15,
+              0.59,
+              0
+            ],
+            "dimensions": [
+              0.025,
+              1.02,
+              0.025
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "lower_scroll",
+            "shape": "profile_sweep",
+            "profile": [
+              [
+                -0.008,
+                -0.008
+              ],
+              [
+                0.008,
+                -0.008
+              ],
+              [
+                0.008,
+                0.008
+              ],
+              [
+                -0.008,
+                0.008
+              ]
+            ],
+            "path": [
+              [
+                0.02,
+                0.32,
+                0
+              ],
+              [
+                0.18,
+                0.2,
+                0
+              ],
+              [
+                0.28,
+                0.29,
+                0
+              ],
+              [
+                0.24,
+                0.4,
+                0
+              ],
+              [
+                0.12,
+                0.42,
+                0
+              ],
+              [
+                0.08,
+                0.36,
+                0
+              ],
+              [
+                0.12,
+                0.3,
+                0
+              ]
+            ],
+            "closedProfile": true,
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "upper_scroll",
+            "shape": "profile_sweep",
+            "profile": [
+              [
+                -0.008,
+                -0.008
+              ],
+              [
+                0.008,
+                -0.008
+              ],
+              [
+                0.008,
+                0.008
+              ],
+              [
+                -0.008,
+                0.008
+              ]
+            ],
+            "path": [
+              [
+                -0.02,
+                0.78,
+                0
+              ],
+              [
+                -0.18,
+                0.9000000000000001,
+                0
+              ],
+              [
+                -0.28,
+                0.81,
+                0
+              ],
+              [
+                -0.24,
+                0.7000000000000001,
+                0
+              ],
+              [
+                -0.12,
+                0.6800000000000002,
+                0
+              ],
+              [
+                -0.08,
+                0.7400000000000001,
+                0
+              ],
+              [
+                -0.12,
+                0.8,
+                0
+              ]
+            ],
+            "closedProfile": true,
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "sofa",
+    "name": "沙发",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_sofa"
+    ],
+    "explanation": "原生 furniture.sofa 表达底座、靠背、扶手与坐垫，正面朝 +Z，position 是底面中心；落地 Y 取所在楼板顶标高。示例宽 2.3、深 0.9、高 0.8 为自选米制设计值。来源的钢丝外框与软包曲面没有在本原生样例中复原，需要精确分件时改用 primitive 组合；不能把此简化沙发称为原厂模型。",
+    "aliases": [
+      "couch",
+      "三人沙发"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "沙发"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "sofa",
+            "subtype": "sofa",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 2.3,
+              "depth": 0.9,
+              "height": 0.8
+            },
+            "material": "fabric"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "fabric": {
+          "baseColor": [
+            0.53,
+            0.58,
+            0.65
+          ],
+          "roughness": 0.9,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "coffee-table",
+    "name": "茶几",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_table"
+    ],
+    "explanation": "用 furniture.table 将桌面与腿组合成低桌。position 是底面中心，height 控制桌面总高；这里用矩形四腿近似，来源的圆桌与中心支脚仅为桌面、支承关系参考，未照搬产品结构。宽深、高度、材料与离沙发距离由图纸决定。",
+    "aliases": [
+      "coffee table",
+      "矮桌"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "茶几"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "coffee_table",
+            "subtype": "table",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.1,
+              "depth": 0.6,
+              "height": 0.42
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "dining-table-chairs",
+    "name": "餐桌椅",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_chair",
+      "interior_table"
+    ],
+    "explanation": "餐桌和每把椅子分别写为 furniture 元素；椅背在 -Z，正面 +Z，rotation[1] 为弧度。两侧椅子转向桌边；示例椅子靠近桌边，正式安装仍要按房间留出拉椅与通行空间。餐椅是盒体近似，没有来源的曲面坐背或金属支脚造型。人数、布置和各尺寸为设计变量，不要求所有餐厅四椅。",
+    "aliases": [
+      "dining set",
+      "dining table chairs",
+      "餐桌",
+      "dining_table"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "餐桌椅"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "dining_table",
+            "subtype": "table",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.6,
+              "depth": 0.85,
+              "height": 0.75
+            },
+            "material": "wood"
+          },
+          {
+            "type": "furniture",
+            "id": "dining_chair_0",
+            "subtype": "chair",
+            "position": [
+              -0.45,
+              0,
+              -0.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 0.45,
+              "depth": 0.45,
+              "height": 0.85
+            },
+            "material": "wood"
+          },
+          {
+            "type": "furniture",
+            "id": "dining_chair_1",
+            "subtype": "chair",
+            "position": [
+              0.45,
+              0,
+              -0.7
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 0.45,
+              "depth": 0.45,
+              "height": 0.85
+            },
+            "material": "wood"
+          },
+          {
+            "type": "furniture",
+            "id": "dining_chair_2",
+            "subtype": "chair",
+            "position": [
+              -0.45,
+              0,
+              0.7
+            ],
+            "rotation": [
+              0,
+              3.141592653589793,
+              0
+            ],
+            "dimensions": {
+              "width": 0.45,
+              "depth": 0.45,
+              "height": 0.85
+            },
+            "material": "wood"
+          },
+          {
+            "type": "furniture",
+            "id": "dining_chair_3",
+            "subtype": "chair",
+            "position": [
+              0.45,
+              0,
+              0.7
+            ],
+            "rotation": [
+              0,
+              3.141592653589793,
+              0
+            ],
+            "dimensions": {
+              "width": 0.45,
+              "depth": 0.45,
+              "height": 0.85
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "bed",
+    "name": "床",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_bed"
+    ],
+    "explanation": "furniture.bed 表达床架、床垫与床头板，床头在 -Z；height 是床头总高，不能当床垫离地高度。position 取底面中心和楼板顶标高；需要明确床垫、床头或床架不同材质/高度时拆为 primitive，不虚构 mattressHeight。来源的储物举升机构与排骨架未实现，示例尺寸自选。",
+    "aliases": [
+      "双人床",
+      "double bed"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "床"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "bed",
+            "subtype": "bed",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.8,
+              "depth": 2.0,
+              "height": 1.05
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "wardrobe",
+    "name": "衣柜",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_cabinet"
+    ],
+    "explanation": "furniture.wardrobe 为柜身、前侧双门和踢脚的简化整体，正面 +Z，position 是底面中心。来源只提供柜体板件参考，不是衣柜产品复刻；门为静态几何，不具备开门交互。宽深高与位置由图纸给定；要开放挂衣区或多门分格可组合 primitive，不添加未知 cabinetDoors 字段。",
+    "aliases": [
+      "closet"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "衣柜"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "wardrobe",
+            "subtype": "wardrobe",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.8,
+              "depth": 0.6,
+              "height": 2.2
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "bookshelf",
+    "name": "书架",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_shelf"
+    ],
+    "explanation": "原生 furniture.bookshelf 含侧板、背板、上下板及两块中间隔板；不能凭 dimensions 声称实现来源全部层数。此例保留开放书架的板件关系，正面 +Z。需要更多层、独立材质或异形柜时用多个 primitive.box 表达，书本不是默认实体。",
+    "aliases": [
+      "bookcase",
+      "书柜"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "书架"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "bookshelf",
+            "subtype": "bookshelf",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 0.9,
+              "depth": 0.3,
+              "height": 1.8
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "nightstand",
+    "name": "床头柜",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_cabinet"
+    ],
+    "explanation": "furniture.nightstand 表达台面、低柜与静态抽屉分缝。position 取楼板顶，不挂 parentWall；柜前朝 +Z。来源的板件关系缩减为独立低柜，抽屉不可拉动；本例不自动配置床或台灯。数量、宽深高与床边距离由本次设计决定。",
+    "aliases": [
+      "bedside table"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "床头柜"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "nightstand",
+            "subtype": "nightstand",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 0.5,
+              "depth": 0.45,
+              "height": 0.5
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "tv-cabinet",
+    "name": "电视柜",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_cabinet"
+    ],
+    "explanation": "furniture.tv_cabinet 表达低柜台面、两侧柜体与中央设备区；柜前 +Z，底部锚点放在楼板顶。来源只用于柜体分件参考，本例没有电视屏幕或可操作设备。需要屏幕时另组合薄 primitive.box；整体长度、高度和分格应从图纸确定。",
+    "aliases": [
+      "tv cabinet",
+      "电视机柜"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "电视柜"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "tv_cabinet",
+            "subtype": "tv_cabinet",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.8,
+              "depth": 0.4,
+              "height": 0.5
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "desk-chair",
+    "name": "书桌椅",
+    "group": "furniture",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_table",
+      "interior_chair"
+    ],
+    "explanation": "书桌与座椅分别用 furniture.table/chair，椅子正面转向桌子。示例椅子在桌前 +Z 并旋转 π 弧度，底面 Y 相同。来源提供桌面支承与椅背参考，示例为自选矩形桌、简化椅；没有显示器和抽屉。通行、桌椅距离及房间朝向由本次图纸调整。",
+    "aliases": [
+      "desk",
+      "书桌",
+      "办公桌",
+      "desk chair"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "书桌椅"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "furniture",
+            "id": "desk",
+            "subtype": "table",
+            "position": [
+              0,
+              0,
+              0
+            ],
+            "rotation": [
+              0,
+              0,
+              0
+            ],
+            "dimensions": {
+              "width": 1.2,
+              "depth": 0.6,
+              "height": 0.75
+            },
+            "material": "wood"
+          },
+          {
+            "type": "furniture",
+            "id": "desk_chair",
+            "subtype": "chair",
+            "position": [
+              0,
+              0,
+              0.65
+            ],
+            "rotation": [
+              0,
+              3.141592653589793,
+              0
+            ],
+            "dimensions": {
+              "width": 0.45,
+              "depth": 0.45,
+              "height": 0.85
+            },
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "kitchen-cabinet",
+    "name": "橱柜",
+    "group": "interior",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_cabinet"
+    ],
+    "explanation": "用 primitive.box 分别表达柜体、踢脚、三扇门板、把手与台面；世界坐标 position 是各盒体中心，板件底部不能直接把 Y 写为 0。来源是吊柜板件图，本例转换为自选落地橱柜，不照搬安装高度。门板在 +Z 为正面；没有抽屉/开门动作、厨房设备或水槽。柜体尺寸、门数、台面与材质分层均可修改。",
+    "aliases": [
+      "kitchen cabinet",
+      "厨房橱柜",
+      "厨柜"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "橱柜"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "cabinet_body",
+            "shape": "box",
+            "position": [
+              0,
+              0.425,
+              0
+            ],
+            "dimensions": [
+              1.8,
+              0.7,
+              0.6
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_plinth",
+            "shape": "box",
+            "position": [
+              0,
+              0.075,
+              -0.025
+            ],
+            "dimensions": [
+              1.74,
+              0.15,
+              0.52
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "countertop",
+            "shape": "box",
+            "position": [
+              0,
+              0.8,
+              0
+            ],
+            "dimensions": [
+              1.86,
+              0.05,
+              0.64
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_door_0",
+            "shape": "box",
+            "position": [
+              -0.6,
+              0.43,
+              0.312
+            ],
+            "dimensions": [
+              0.588,
+              0.68,
+              0.024
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_handle_0",
+            "shape": "box",
+            "position": [
+              -0.6,
+              0.68,
+              0.34
+            ],
+            "dimensions": [
+              0.12,
+              0.02,
+              0.03
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_door_1",
+            "shape": "box",
+            "position": [
+              0,
+              0.43,
+              0.312
+            ],
+            "dimensions": [
+              0.588,
+              0.68,
+              0.024
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_handle_1",
+            "shape": "box",
+            "position": [
+              0,
+              0.68,
+              0.34
+            ],
+            "dimensions": [
+              0.12,
+              0.02,
+              0.03
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_door_2",
+            "shape": "box",
+            "position": [
+              0.6,
+              0.43,
+              0.312
+            ],
+            "dimensions": [
+              0.588,
+              0.68,
+              0.024
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "cabinet_handle_2",
+            "shape": "box",
+            "position": [
+              0.6,
+              0.68,
+              0.34
+            ],
+            "dimensions": [
+              0.12,
+              0.02,
+              0.03
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "stone": {
+          "baseColor": [
+            0.72,
+            0.69,
+            0.62
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.3,
+            0.18,
+            0.1
+          ],
+          "roughness": 0.7,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "washbasin",
+    "name": "洗手盆",
+    "group": "interior",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_basin"
+    ],
+    "explanation": "用底板和四侧板形成有开口的盆体，避免整块实心箱体；另组合自选支座与水龙头。来源平面图标注宽 600、深 470 mm，转换为 0.6、0.47 m；其余高度、板厚、支座与龙头是本项目示例假设，不是厂家安装规范。primitive.position 是分件几何中心，所有片段需一起平移到安装位置。盆的圆角、排水和曲面仅近似表达，没有给排水模拟。",
+    "aliases": [
+      "wash basin",
+      "洗脸盆",
+      "台盆",
+      "lavatory"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "洗手盆"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "basin_bottom",
+            "shape": "box",
+            "position": [
+              0,
+              0.735,
+              0
+            ],
+            "dimensions": [
+              0.6,
+              0.03,
+              0.47
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "basin_front",
+            "shape": "box",
+            "position": [
+              0,
+              0.81,
+              0.2175
+            ],
+            "dimensions": [
+              0.6,
+              0.12,
+              0.035
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "basin_back",
+            "shape": "box",
+            "position": [
+              0,
+              0.81,
+              -0.2175
+            ],
+            "dimensions": [
+              0.6,
+              0.12,
+              0.035
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "basin_left",
+            "shape": "box",
+            "position": [
+              -0.2825,
+              0.81,
+              0
+            ],
+            "dimensions": [
+              0.035,
+              0.12,
+              0.4
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "basin_right",
+            "shape": "box",
+            "position": [
+              0.2825,
+              0.81,
+              0
+            ],
+            "dimensions": [
+              0.035,
+              0.12,
+              0.4
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "basin_pedestal",
+            "shape": "box",
+            "position": [
+              0,
+              0.36,
+              -0.05
+            ],
+            "dimensions": [
+              0.18,
+              0.72,
+              0.2
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "faucet_stem",
+            "shape": "box",
+            "position": [
+              0,
+              0.945,
+              -0.21
+            ],
+            "dimensions": [
+              0.035,
+              0.15,
+              0.035
+            ],
+            "material": "metal"
+          },
+          {
+            "type": "primitive",
+            "id": "faucet_spout",
+            "shape": "box",
+            "position": [
+              0,
+              1.015,
+              -0.155
+            ],
+            "dimensions": [
+              0.035,
+              0.035,
+              0.11
+            ],
+            "material": "metal"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "ceramic": {
+          "baseColor": [
+            0.94,
+            0.94,
+            0.92
+          ],
+          "roughness": 0.2,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "metal": {
+          "baseColor": [
+            0.13,
+            0.15,
+            0.17
+          ],
+          "roughness": 0.4,
+          "metallic": 0.75,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  },
+  {
+    "slug": "toilet",
+    "name": "马桶",
+    "group": "interior",
+    "entity_type": "furniture",
+    "sources": [
+      "interior_toilet"
+    ],
+    "explanation": "primitive 组合底座、盆侧、水箱、箱盖与椭圆开口盆沿，保留侧视图中水箱在后、盆口在前的关系。盆沿用闭合 profile_sweep，未用实心盒封死盆口；模型不具备冲水或盖板开合。来源标注高 730、坐高 410 mm，对应约 0.73、0.41 m；横向宽度与椭圆轮廓为自选近似，不宣称复刻内部水封。安装时整体平移/旋转各分件，不能给 primitive 添加 toilet 类型。",
+    "aliases": [
+      "WC",
+      "坐便器"
+    ],
+    "blueprint": {
+      "meta": {
+        "version": "1.1",
+        "type": "asset",
+        "name": "马桶"
+      },
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "toilet_pedestal",
+            "shape": "box",
+            "position": [
+              0,
+              0.18,
+              0.04
+            ],
+            "dimensions": [
+              0.24,
+              0.36,
+              0.3
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "toilet_tank",
+            "shape": "box",
+            "position": [
+              0,
+              0.52,
+              -0.2
+            ],
+            "dimensions": [
+              0.36,
+              0.4,
+              0.18
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "toilet_tank_lid",
+            "shape": "box",
+            "position": [
+              0,
+              0.73,
+              -0.2
+            ],
+            "dimensions": [
+              0.38,
+              0.03,
+              0.2
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "toilet_bowl_rim",
+            "shape": "profile_sweep",
+            "profile": [
+              [
+                -0.035,
+                -0.02
+              ],
+              [
+                0.035,
+                -0.02
+              ],
+              [
+                0.035,
+                0.02
+              ],
+              [
+                -0.035,
+                0.02
+              ]
+            ],
+            "path": [
+              [
+                0.19,
+                0.41,
+                0.05
+              ],
+              [
+                0.183525906994923,
+                0.41,
+                0.11470476127563019
+              ],
+              [
+                0.16454482671904336,
+                0.41,
+                0.175
+              ],
+              [
+                0.13435028842544405,
+                0.41,
+                0.2267766952966369
+              ],
+              [
+                0.09500000000000003,
+                0.41,
+                0.26650635094610964
+              ],
+              [
+                0.04917561856947894,
+                0.41,
+                0.2914814565722671
+              ],
+              [
+                1.1634144591899856e-17,
+                0.41,
+                0.3
+              ],
+              [
+                -0.04917561856947892,
+                0.41,
+                0.2914814565722671
+              ],
+              [
+                -0.09499999999999996,
+                0.41,
+                0.2665063509461097
+              ],
+              [
+                -0.13435028842544403,
+                0.41,
+                0.2267766952966369
+              ],
+              [
+                -0.16454482671904336,
+                0.41,
+                0.175
+              ],
+              [
+                -0.18352590699492297,
+                0.41,
+                0.11470476127563026
+              ],
+              [
+                -0.19,
+                0.41,
+                0.05000000000000003
+              ],
+              [
+                -0.183525906994923,
+                0.41,
+                -0.014704761275630196
+              ],
+              [
+                -0.16454482671904339,
+                0.41,
+                -0.07499999999999993
+              ],
+              [
+                -0.1343502884254441,
+                0.41,
+                -0.12677669529663677
+              ],
+              [
+                -0.09500000000000008,
+                0.41,
+                -0.1665063509461096
+              ],
+              [
+                -0.04917561856947892,
+                0.41,
+                -0.19148145657226706
+              ],
+              [
+                -3.490243377569956e-17,
+                0.41,
+                -0.2
+              ],
+              [
+                0.04917561856947886,
+                0.41,
+                -0.19148145657226712
+              ],
+              [
+                0.09500000000000003,
+                0.41,
+                -0.16650635094610966
+              ],
+              [
+                0.134350288425444,
+                0.41,
+                -0.12677669529663693
+              ],
+              [
+                0.1645448267190433,
+                0.41,
+                -0.07500000000000011
+              ],
+              [
+                0.18352590699492294,
+                0.41,
+                -0.01470476127563039
+              ],
+              [
+                0.19,
+                0.41,
+                0.04999999999999994
+              ]
+            ],
+            "closedProfile": true,
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "toilet_bowl_side_0",
+            "shape": "box",
+            "position": [
+              -0.14,
+              0.31,
+              0.08
+            ],
+            "dimensions": [
+              0.06,
+              0.16,
+              0.36
+            ],
+            "material": "ceramic"
+          },
+          {
+            "type": "primitive",
+            "id": "toilet_bowl_side_1",
+            "shape": "box",
+            "position": [
+              0.14,
+              0.31,
+              0.08
+            ],
+            "dimensions": [
+              0.06,
+              0.16,
+              0.36
+            ],
+            "material": "ceramic"
+          }
+        ],
+        "components": []
+      },
+      "materials": {
+        "ceramic": {
+          "baseColor": [
+            0.94,
+            0.94,
+            0.92
+          ],
+          "roughness": 0.2,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    }
+  }
+]

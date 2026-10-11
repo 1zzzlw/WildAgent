@@ -1,0 +1,24 @@
+{
+  "provider": "Bing RSS",
+  "lexical_filter_only": true,
+  "queries": [
+    {
+      "kind": "small_window",
+      "query": "\"小窗\" 窗 建筑 构造 详图 installation detail drawing",
+      "hits": [],
+      "has_relevant_reference": false
+    },
+    {
+      "kind": "building_body",
+      "query": "\"建筑主体\"  建筑 构造 详图 installation detail drawing",
+      "hits": [],
+      "has_relevant_reference": false
+    },
+    {
+      "kind": "sofa",
+      "query": "\"sofa\" 沙发 建筑 构造 详图 installation detail drawing",
+      "hits": [],
+      "has_relevant_reference": false
+    }
+  ]
+}

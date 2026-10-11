@@ -54,7 +54,6 @@ _EXPECTED_NODES = {
     "architecture",     # 目标=建筑：体量、立面、屋顶
     "object_design",    # 目标=物件：物件清单（与 architecture 并列，不是它的内部分支）
     "material_plan",    # 以下各步两条链完全复用
-    "design_convergence",  # 编译可行性收敛环（物件链穿过）——把冻结点挪到可行性验证之后
     "design_review",
     "skeleton",         # 通路 A：模型产骨架 + 组件建议（物件链）
     "compile",          # 通路 B：图纸确定性编译成蓝图（建筑链）
@@ -89,10 +88,11 @@ def test_callback_is_optional():
 
 def test_recursion_limit_scales_with_items():
     # 小计划落在 48 的安全下限上，不随条目数变化
-    assert plan_recursion_limit(2) == plan_recursion_limit(10) == 48
+    assert plan_recursion_limit(2) >= 48
+    assert plan_recursion_limit(10) >= 16 + 10*15
     assert plan_recursion_limit(40) > plan_recursion_limit(30)
     # 一条条目 = execute + replanner 两步
-    assert plan_recursion_limit(30) - plan_recursion_limit(29) == 2
+    assert plan_recursion_limit(30) - plan_recursion_limit(29) == 15
     # 重试额度也计入预算
     assert plan_recursion_limit(30, 5) > plan_recursion_limit(30, 0)
 

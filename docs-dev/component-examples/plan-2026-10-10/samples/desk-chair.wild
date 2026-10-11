@@ -1,0 +1,11 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"书桌椅"},
+  "geometry":{
+    "elements":[
+      {"type":"furniture","id":"desk","subtype":"table","position":[0,0,0],"rotation":[0,0,0],"dimensions":{"width":1.2,"depth":0.6,"height":0.75},"material":"wood"},
+      {"type":"furniture","id":"desk_chair","subtype":"chair","position":[0,0,0.65],"rotation":[0,3.141592653589793,0],"dimensions":{"width":0.45,"depth":0.45,"height":0.85},"material":"wood"}
+    ],
+    "components":[]
+  },
+  "materials":{"wood":{"baseColor":[0.3,0.18,0.1],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

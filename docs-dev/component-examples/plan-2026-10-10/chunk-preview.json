@@ -1,0 +1,242 @@
+{
+  "files": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\architecture-design-expression.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\balcony-equipment-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\chinese-lattice-openings.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\column.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\composite-components-second-batch.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\cone-roof-system.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\dual-pitch-two-slope.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\elevator.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\entrance-door-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\envelope-detail-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\furniture.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\glass-curtain-wall-assembly.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\glazing-detail-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\light.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\massing-composition-rules.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\massing-layers.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\pavilion-garden-structure.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\roof-facade-detail-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\shaft-opening-five-panel.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\sofa.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\spherical-shell-massing.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\tangent-arc-colonnade.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\tiered-eaves-pagoda.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\ventilation-detail-examples.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\window-variants.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\blueprint-skeleton.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\generation-redlines.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\placements.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scale-notation.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\templates-and-instances.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\README.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\conditional\\component-selection.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\conditional\\pending.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\design-choice\\free-variables.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\door-window-depth.md",
+    "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md"
+  ],
+  "chunk_count": 489,
+  "chunks": [],
+  "issues": [
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "balcony-equipment-examples.md",
+      "heading": "阳台栏板、露台栏杆与设备平台 JSON 示例 > 阳台栏板 · balcony-panel",
+      "part_index": 1,
+      "message": "原子 chunk 为 1061 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "balcony-equipment-examples.md",
+      "heading": "阳台栏板、露台栏杆与设备平台 JSON 示例 > 设备平台 · equipment-platform",
+      "part_index": 1,
+      "message": "原子 chunk 为 1192 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "balcony-equipment-examples.md",
+      "heading": "阳台栏板、露台栏杆与设备平台 JSON 示例 > 铁艺栏杆 · ornamental-iron-railing",
+      "part_index": 1,
+      "message": "原子 chunk 为 1760 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "thin_payload",
+      "source": "capability-boundaries.md",
+      "heading": "引擎能力边界 > 2. geometry.components 支持的类型",
+      "part_index": 0,
+      "message": "有效正文仅 16 字符，确认它能独立回答问题"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "entrance-door-examples.md",
+      "heading": "门斗、庭院门与车库门 JSON 示例 > 主入口门斗 · entrance-vestibule",
+      "part_index": 1,
+      "message": "原子 chunk 为 2070 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "entrance-door-examples.md",
+      "heading": "门斗、庭院门与车库门 JSON 示例 > 庭院门 · garden-gate",
+      "part_index": 1,
+      "message": "原子 chunk 为 3061 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "roof-facade-detail-examples.md",
+      "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > roof · hip-roof",
+      "part_index": 1,
+      "message": "原子 chunk 为 1103 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "roof-facade-detail-examples.md",
+      "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 屋檐下悬 · eave-soffit",
+      "part_index": 1,
+      "message": "原子 chunk 为 1368 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "roof-facade-detail-examples.md",
+      "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 老虎窗 · gable-dormer",
+      "part_index": 1,
+      "message": "原子 chunk 为 1403 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "roof-facade-detail-examples.md",
+      "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 雨棚构造 · framed-awning",
+      "part_index": 1,
+      "message": "原子 chunk 为 1563 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "ventilation-detail-examples.md",
+      "heading": "固定百叶叶片与排风口 JSON 示例 > 通风百叶 · ventilation-louvre",
+      "part_index": 1,
+      "message": "原子 chunk 为 1972 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "ventilation-detail-examples.md",
+      "heading": "固定百叶叶片与排风口 JSON 示例 > 排风口 · exhaust-outlet",
+      "part_index": 1,
+      "message": "原子 chunk 为 2145 字符，超过配置 900"
+    },
+    {
+      "severity": "error",
+      "code": "rag_meta_leaked",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 元数据模板",
+      "part_index": 1,
+      "message": "rag-meta 注释泄漏到向量正文"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 0,
+      "message": "原子 chunk 为 905 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 2,
+      "message": "原子 chunk 为 915 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 3,
+      "message": "原子 chunk 为 914 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 5,
+      "message": "原子 chunk 为 927 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 6,
+      "message": "原子 chunk 为 911 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "validation-rules.md",
+      "heading": "WILD 运行时校验规则 > 4. 几何约束检查 > 4.2 门窗范围",
+      "part_index": 0,
+      "message": "原子 chunk 为 1008 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "validation-rules.md",
+      "heading": "WILD 运行时校验规则 > 4. 几何约束检查 > 4.3 深度约束",
+      "part_index": 0,
+      "message": "原子 chunk 为 1037 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "oversized_atomic_chunk",
+      "source": "validation-rules.md",
+      "heading": "WILD 运行时校验规则 > 6. 枚举值检查",
+      "part_index": 0,
+      "message": "原子 chunk 为 1126 字符，超过配置 900"
+    },
+    {
+      "severity": "warning",
+      "code": "too_many_parts",
+      "source": "component-parameters.md",
+      "heading": "构件参数 > 五、roof — 屋顶",
+      "part_index": 0,
+      "message": "同一业务标题产生 5 个 part，优先增加真实子标题"
+    },
+    {
+      "severity": "warning",
+      "code": "too_many_parts",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 2. 索引（英文名 ↔ 中文）",
+      "part_index": 0,
+      "message": "同一业务标题产生 5 个 part，优先增加真实子标题"
+    },
+    {
+      "severity": "warning",
+      "code": "too_many_parts",
+      "source": "README.md",
+      "heading": "WILD 知识库 — 开发者手册 > 5. 改内容时的硬约束 > 写作红线",
+      "part_index": 0,
+      "message": "同一业务标题产生 8 个 part，优先增加真实子标题"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"设备平台"},
+  "geometry":{
+    "elements":[
+      {"type":"wall","id":"host_wall","from":[-2.0,0,0],"to":[2.0,3.4,0],"thickness":0.24,"material":"plaster"},
+      {"type":"floor","id":"equipment_slab","from":[-1,2.08,-0.12],"to":[1,2.08,-1.12],"thickness":0.12,"material":"stone"},
+      {"type":"primitive","id":"bracket_0","shape":"box","position":[-0.7,2.04,-0.62],"dimensions":[0.08,0.08,1],"material":"metal"},
+      {"type":"primitive","id":"anchor_0","shape":"box","position":[-0.7,1.7,-0.15],"dimensions":[0.08,0.72,0.06],"material":"metal"},
+      {"type":"primitive","id":"bracket_1","shape":"box","position":[0.7,2.04,-0.62],"dimensions":[0.08,0.08,1],"material":"metal"},
+      {"type":"primitive","id":"anchor_1","shape":"box","position":[0.7,1.7,-0.15],"dimensions":[0.08,0.72,0.06],"material":"metal"}
+    ],
+    "components":[]
+  },
+  "materials":{"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

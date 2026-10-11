@@ -1,0 +1,31 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: E:\AgentProject\WildAgent\wild-server
+configfile: pyproject.toml
+plugins: anyio-4.14.2, langsmith-0.10.9, asyncio-1.4.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 185 items
+
+tests\agent\test_drawing_detail_levels.py ..........                     [  5%]
+tests\agent\test_agent_graph_execution.py .....                          [  8%]
+tests\agent\test_architecture_node_smoke.py ....                         [ 10%]
+tests\plan\test_drawing_implementation.py .............................. [ 26%]
+................                                                         [ 35%]
+tests\plan\test_component_naming.py ..........                           [ 40%]
+tests\plan\test_plan_tools.py .......................................... [ 63%]
+..............                                                           [ 70%]
+tests\components\test_component_blueprint.py ......                      [ 74%]
+tests\api\test_architecture_step_status.py ...                           [ 75%]
+tests\api\test_ws_step_labels.py .......                                 [ 79%]
+tests\rag\test_llm_trace_payload.py ....                                 [ 81%]
+tests\rag\test_knowledge_rules_v3.py .................                   [ 90%]
+tests\misc\test_reasoning_stream.py .................                    [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\chromadb\api\collection_configuration.py:327
+  E:\AgentProject\WildAgent\wild-server\.venv\Lib\site-packages\chromadb\api\collection_configuration.py:327: DeprecationWarning: legacy embedding function config: 'OpenAICompatibleEmbeddingFunction' object has no attribute 'is_legacy'
+    return json.dumps(create_collection_configuration_to_json(config, metadata))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================= 185 passed, 1 warning in 3.32s ========================
+

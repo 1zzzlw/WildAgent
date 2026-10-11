@@ -78,9 +78,15 @@
         >
           <img
             :src="turn.design_preview_url"
-            :alt="architectureDecisions ? '建筑体量、主立面和侧立面设计预览' : '物件轮廓与尺寸预览'"
+            :alt="architectureDecisions ? '逐层平面、构件标记和立面设计预览' : '物件轮廓与尺寸预览'"
           />
         </a>
+        <details v-if="architectureDecisions && turn.resolved_design?.component_markers?.length" class="design-details">
+          <summary>图纸构件标记（{{ turn.resolved_design.component_markers.length }}）</summary>
+          <div v-for="marker in turn.resolved_design.component_markers" :key="marker.id">
+            {{ marker.type }} · {{ marker.id }}<span v-if="marker.host"> · 宿主 {{ marker.host }}</span>
+          </div>
+        </details>
         <details v-if="turn.resolved_design?.warnings?.length" class="design-details" open>
           <summary>设计待解决问题（{{ turn.resolved_design.warnings.length }}）</summary>
           <div v-for="(warning, index) in turn.resolved_design.warnings" :key="index">
@@ -92,16 +98,7 @@
           <div v-for="constraint in turn.design_document.constraints" :key="constraint.id">
             <strong>{{ constraint.kind }}</strong> · {{ constraint.expression }}
           </div>
-          <div
-            v-if="architectureDecisions"
-            class="design-quota"
-          >
-            <span
-              v-for="(quota, component) in architectureDecisions.component_quota"
-              :key="component"
-            >{{ component }} {{ quota.min }}–{{ quota.max }}</span>
-          </div>
-          <div v-else-if="objectDecisions" class="design-quota">
+          <div v-if="objectDecisions" class="design-quota">
             <span
               v-for="(item, index) in objectDecisions.objects"
               :key="`quota-${item.kind}-${item.subtype}-${index}`"
@@ -134,7 +131,7 @@
         </div>
       </section>
       <details
-        v-for="step in turn.steps"
+        v-for="step in turn.steps.filter(step => !step.node.startsWith('plan:'))"
         :key="step.node"
         :id="`agent-step-${turn.turn_id}-${step.node}`"
         class="execution-step"
@@ -150,10 +147,8 @@
           <div class="thinking-label">执行说明</div>
           <div class="thinking-content" v-html="renderMarkdown(step.thinking)"></div>
         </div>
-        <!-- 模型原始思考默认折叠：它的体量可以很大（整段 CoT，含自我推翻），
-             展开着看会像"卡住了/出问题了"。 -->
-        <details v-if="step.reasoning" class="step-thinking step-reasoning">
-          <summary class="thinking-label">模型过程</summary>
+        <details v-if="step.reasoning" class="step-thinking step-reasoning" :open="step.status === 'running'">
+          <summary class="thinking-label">模型思考</summary>
           <div class="thinking-content" v-html="renderMarkdown(step.reasoning)"></div>
         </details>
         <div v-if="step.diagnostic" class="step-diagnostics">
@@ -234,6 +229,7 @@
       </header>
       <template v-if="!planWindowMinimized">
         <div class="plan-floating-meta">
+          <span>粒度：{{ BUILDING_DETAIL_LEVELS.find(level => level.value === turn.plan?.detail_level)?.label || '中' }}</span>
           <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
           <span>{{ planBatchCount }} 个生成批次</span>
           <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>
@@ -245,9 +241,9 @@
           <div
             v-for="item in turn.plan.items"
             :key="item.id"
-            :class="['dynamic-plan-task', `plan-${item.status}`]"
+            :class="['dynamic-plan-task', `plan-${item.status}`, { 'plan-running': itemStep(item)?.status === 'running' }]"
           >
-            <span class="plan-step-mark">{{ planItemMark(item.status) }}</span>
+            <span class="plan-step-mark">{{ itemStep(item)?.status === 'running' ? '⟳' : planItemMark(item.status) }}</span>
             <span class="plan-step-main">
               <strong>{{ item.label || item.id }}</strong>
               <small>{{ planItemDetail(item) }}</small>
@@ -256,6 +252,14 @@
               </small>
             </span>
             <span class="plan-phase">{{ item.op }}</span>
+            <details v-if="itemStep(item)" class="plan-item-thinking" :open="itemStep(item)?.status === 'running'">
+              <summary>执行过程与模型思考</summary>
+              <div v-if="itemStep(item)?.thinking" class="thinking-content"
+                v-html="renderMarkdown(itemStep(item)?.thinking || '')"></div>
+              <div v-if="itemStep(item)?.reasoning" class="thinking-content plan-item-reasoning"
+                v-html="renderMarkdown(itemStep(item)?.reasoning || '')"></div>
+              <small v-else>{{ itemStep(item)?.status === 'running' ? '等待模型返回思考内容…' : '本条目没有模型返回的思考内容。' }}</small>
+            </details>
           </div>
         </div>
       </template>
@@ -267,6 +271,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import type { AgentTurn, PlanItem } from '../../types/agent'
+import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
 
 const props = defineProps<{ turn: AgentTurn }>()
 const emit = defineEmits<{
@@ -289,6 +294,7 @@ const durationMs = computed(() => {
 
 const summaryTitle = computed(() => {
   if (props.turn.status === 'running') return '正在处理'
+  if (props.turn.status === 'stopped') return '已停止'
   if (isDesignReview.value) return '等待批准建筑设计'
   if (props.turn.status === 'waiting_review') return '等待用户确认'
   if (props.turn.status === 'error') return '处理未完成'
@@ -399,10 +405,15 @@ function planItemMark(status: string): string {
   } as Record<string, string>)[status] || '·'
 }
 
+function itemStep(item: PlanItem) {
+  return props.turn.steps.find(step => step.node === `plan:${item.id}`)
+}
+
 function planItemDetail(item: PlanItem): string {
   const evidence = item.run?.evidence || ''
   const attempts = item.run?.attempts ? `（已尝试 ${item.run.attempts} 次）` : ''
   const strategy = String(item.params?.batch_reason || item.params?.reason || '')
+  if (props.turn.status === 'stopped' && item.status !== 'done') return evidence || '任务已停止，未继续执行'
   return evidence || `${strategy}${attempts}` || attempts || '等待执行'
 }
 
@@ -411,6 +422,7 @@ function planExecutionLabel(item: PlanItem): string {
   const batchSize = Number(item.target?.batch_size || 1)
   const batch = batchSize > 1 ? `一次批量 ${batchSize} 个` : '单批次生成'
   const group = item.params?.parallel_group
+  if (group && item.params?.design_markers) return `${batch} · 最多 3 项并发`
   return group ? `${batch} · 并发组 ${group}` : `${batch} · 串行`
 }
 
@@ -419,7 +431,7 @@ function renderMarkdown(content: string): string {
 }
 
 function statusLabel(status: string): string {
-  return ({ running: '进行中', done: '完成', skipped: '跳过', error: '失败' } as Record<string, string>)[status] || status
+  return ({ running: '进行中', done: '完成', skipped: '跳过', error: '失败', stopped: '已停止' } as Record<string, string>)[status] || status
 }
 
 function formatDuration(ms: number): string {
@@ -658,6 +670,11 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, .025);
 }
 .dynamic-plan-task.plan-ready { border-color: rgba(104, 153, 212, .38); background: rgba(104, 153, 212, .12); }
+.dynamic-plan-task.plan-running { border-color: rgba(107, 191, 155, .6); }
+.plan-item-thinking { grid-column: 1 / -1; min-width: 0; color: #aeb7c7; font-size: 11px; }
+.plan-item-thinking > summary { cursor: pointer; padding: 3px 0; }
+.plan-item-thinking .thinking-content { max-height: 240px; overflow-y: auto; overflow-wrap: anywhere; padding: 5px 0; }
+.plan-item-reasoning { border-top: 1px solid rgba(255, 255, 255, .08); }
 .dynamic-plan-task.plan-done .plan-step-mark { color: #6bbf9b; }
 .dynamic-plan-task.plan-abandoned .plan-step-mark { color: #e07060; }
 .dynamic-plan-task.plan-unsupported .plan-step-mark { color: #d8b26a; }
@@ -766,6 +783,7 @@ onUnmounted(() => {
 .step-dot.status-running { background: #6899d4; box-shadow: 0 0 0 3px rgba(104, 153, 212, .12); }
 .step-dot.status-done { background: #6bbf9b; }
 .step-dot.status-error { background: #e07060; }
+.step-dot.status-stopped { background: #999; }
 .step-dot.status-skipped { background: #55555e; }
 
 .step-label { color: #d2d2d8; font-weight: 550; white-space: nowrap; }

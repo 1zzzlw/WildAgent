@@ -146,27 +146,3 @@ def test_document_compilation_skips_request_reinterpretation(monkeypatch):
     compile_document(doc)
     assert captured["normalized_input"] is True
     assert captured["plan"]["massing"]["width"] == doc.decisions.massing.width
-
-
-@pytest.mark.parametrize("roof", [{"type": "unknown"}, [{"type": "flat"}, {"type": "gable"}]])
-def test_invalid_explicit_roof_is_returned_to_existing_block_retry(roof):
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import check_block_contract
-    error = check_block_contract(BLOCK_BY_NAME["roof"], {"roof": roof}, {})
-    assert "roof" in error and "显式值" in error
-
-
-def test_unsupported_instance_size_is_visible_in_review():
-    from types import SimpleNamespace
-    from app.design.compilation import project_compilation
-    raw, _ = normalize({})
-    doc = build_design_document(raw, session_id="p3", source_request="建筑")
-    change = {"path": "/decisions/components/0/size/width", "target": "door_01",
-              "before": 3.7, "after": 1.1, "reason": "实例尺寸未落实"}
-    result = SimpleNamespace(blueprint={"geometry": {}}, design_brief={}, defects=[],
-                             stats={"instance_overrides": {"size_changes": [change]}})
-    resolved = project_compilation(doc, result)
-    gap = next(g for g in resolved.design_gaps if g.layer == "implementation")
-    assert gap.status == "unsupported"
-    assert (gap.expected, gap.actual) == (3.7, 1.1)
-    assert any("实例尺寸未落实" in warning for warning in resolved.warnings)

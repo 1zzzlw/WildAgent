@@ -1,0 +1,67 @@
+{
+  "source_request": "req_1791687067793_edoshb1qd",
+  "source_status": "failed",
+  "rag_hit": "stair.md / stair",
+  "original_model_calls": 2,
+  "original_stages": [
+    "generate",
+    "assembly_revision"
+  ],
+  "fragment_replay": [
+    {
+      "stage": "generate",
+      "stair": {
+        "type": "stair",
+        "id": "main_stair",
+        "from": [
+          6.0,
+          0.0,
+          3.0
+        ],
+        "to": [
+          6.0,
+          3.2,
+          9.0
+        ],
+        "width": 1.2,
+        "stepCount": 20,
+        "stepDepth": 0.3,
+        "stepHeight": 0.16,
+        "material": "stair_concrete"
+      },
+      "local_error_after_fix": "楼梯 main_stair 终点不在 3.2m 楼板范围内"
+    },
+    {
+      "stage": "assembly_revision",
+      "stair": {
+        "type": "stair",
+        "id": "main_stair",
+        "from": [
+          6.0,
+          0.0,
+          3.0
+        ],
+        "to": [
+          0.0,
+          3.2,
+          3.0
+        ],
+        "width": 1.2,
+        "stepCount": 20,
+        "stepDepth": 0.3,
+        "stepHeight": 0.16,
+        "material": "stair_concrete"
+      },
+      "local_error_after_fix": "楼梯 main_stair 终点不在 3.2m 楼板范围内"
+    }
+  ],
+  "exhausted_run_recompile": {
+    "ok": false,
+    "retry_implementation": false,
+    "body_status": "done",
+    "abandoned_markers": [
+      "main_stair"
+    ]
+  },
+  "verification_boundary": "原始片段回放；未调用新模型、未重渲染、未改写历史下载文件"
+}

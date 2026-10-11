@@ -114,9 +114,10 @@ async def validate_node(state: GenerationState) -> dict:
         )
         passed_component_ids = [cid for cid in all_component_ids if cid not in failed_component_ids]
         
-        # 决定状态
+        architectural = (state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture"
+        # 建筑实现已在 compile 完成全部尝试；最终拒绝不再转入另一套修复循环。
         if final_errors:
-            status = "partial"  # 部分通过
+            status = "failed" if architectural else "partial"  # 部分通过
             error_summary = f"校验发现 {len(final_errors)} 个错误: " + "; ".join(
                 f"{r.name}" for r in final_errors
             )
@@ -154,7 +155,7 @@ async def validate_node(state: GenerationState) -> dict:
             "passed_component_ids": passed_component_ids,
             "status": status,
             "error": error_summary,
-            "final_blueprint": merged_blueprint,  # 通过校验后的最终结果
+            "final_blueprint": {} if architectural and final_errors else merged_blueprint,
             "retry_count": state.get("retry_count", 0),
             "max_retries": state.get("max_retries", 3),
             "repair_audit": ({"accepted": False, "stop_reason": "design_revision_required",

@@ -47,7 +47,8 @@ synonyms: []
 -->
 
 格心棂条用 `window` 的均匀等分棂格近似（`verticalMullions` / `horizontalMullions`，
-编译器按等分比例生成棂条，有真实执行点）。深色木框用 `frameWidth` + `frameDepth` + `frameMaterial`。
+编译器按等分比例生成棂条）。外框用 `frameWidth` + `frameDepth` + `frameMaterial`，棂条另用 `mullionWidth` 指定宽度。
+`frameWidth` 是外框宽度，不能拿它当密集棂条的宽度；缺省棂条宽度为 `min(frameWidth, 0.02)` 米。
 
 以下是 `geometry.components` 数组中的一个片段，不是完整 `.wild` 文件：
 
@@ -62,22 +63,46 @@ synonyms: []
   "verticalMullions": 4,
   "horizontalMullions": 5,
   "frameWidth": 0.09,
+  "mullionWidth": 0.02,
   "frameDepth": 0.12,
   "frameMaterial": "dark_wood",
   "glassMaterial": "glass"
 }
 ```
 
-- 棂格密度属于自由变量：传统格心棂条间距通常较密（约 0.10–0.15m 一格），这是领域参考值，
-  不是引擎约束；`verticalMullions`/`horizontalMullions` 取值范围为 0–32 的整数。
+- 棂格密度与棂条宽度属于自由变量；`verticalMullions`/`horizontalMullions` 取值范围为 0–32 的整数。
+  水平净宽为 `width - 2*frameWidth`，竖向净高为 `height - 2*frameWidth`；等分后棂条宽度必须小于相邻棂条中心间距。
+  例如宽 1.8m、外框 0.09m、15 根竖棂时中心间距为 1.62/16=0.10125m；棂条若也宽 0.09m，玻璃几乎被遮住。
+  用独立的 0.02m 棂条可以保留透光格心；这是参数示例，不规定设计密度。交互双扇窗另有中央竖梃，也要保留净空。
 - 图 4/5/8 一类的横直棂变体：减少单向棂条数量即可（如 `verticalMullions: 2` + `horizontalMullions: 7`），
   不需要额外字段。
+
+窗外独立格栅应保留真实 `window` 洞口，格栅的外框由四条边框组成。整块木色 `box` 即使命名为 frame，仍是实心板，会把玻璃全部遮住；不能用它当镂空框。下面是局部安装片段，已有宿主时复用墙 ID，不重复添加墙。
+
+```json
+{
+  "elements": [
+    {"type":"wall","id":"host","from":[0,0,0],"to":[4,3.2,0],"thickness":0.24},
+    {"type":"primitive","id":"lattice_left","shape":"box","position":[0.66,1.65,-0.16],"dimensions":[0.06,1.62,0.04],"material":"dark_wood"},
+    {"type":"primitive","id":"lattice_right","shape":"box","position":[2.34,1.65,-0.16],"dimensions":[0.06,1.62,0.04],"material":"dark_wood"},
+    {"type":"primitive","id":"lattice_top","shape":"box","position":[1.5,2.43,-0.16],"dimensions":[1.62,0.06,0.04],"material":"dark_wood"},
+    {"type":"primitive","id":"lattice_bottom","shape":"box","position":[1.5,0.87,-0.16],"dimensions":[1.62,0.06,0.04],"material":"dark_wood"},
+    {"type":"primitive","id":"lattice_bar","shape":"box","position":[1.5,1.65,-0.16],"dimensions":[0.03,1.5,0.04],"material":"dark_wood"}
+  ],
+  "components": [
+    {"type":"window","id":"glazed_opening","parentWall":"host","from":[0.6,0.9,0],"width":1.8,"height":1.5,"frameWidth":0.06,"frameDepth":0.08,"frameMaterial":"dark_wood","glassMaterial":"glass"}
+  ],
+  "materials": {"dark_wood":{"baseColor":[0.2,0.12,0.08],"roughness":0.6,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"glass":{"baseColor":[0.75,0.85,0.9],"roughness":0.05,"metallic":0,"albedo":1,"lightingCondition":"D65_noon","materialClass":"glass","transmission":0.92}}
+}
+```
+
+本例是现有 WILD 字段与实际窗洞安装的项目映射，不是外部规范。条数、间距和尺寸随图纸调整；实心板遮满窗洞的检查由 `app/design/relations.py::opening_design_errors` 执行，适用直轴墙与未旋转 box，不证明任意格栅形态的透光率。
 
 **不能做**：
 
 - 不支持：套方纹、回纹、步步锦等**装饰图案格心**。棂条只有均匀等分一种排布，
   Schema 没有图案定义字段，也没有对应编译器实现。禁止编造 `pattern`、`latticeStyle` 之类字段。
-- 不支持：开启窗扇（窗是静态几何）。
+- 开启窗扇由 `interaction` 支持，省略时为固定窗。
 - 不支持：圆形或异形窗洞。
 
 **近似方式（downgraded）**：图案格心用较密的均匀棂格表达"格心密度"这一视觉特征；

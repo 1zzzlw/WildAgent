@@ -44,12 +44,15 @@ import type {
   AgentTurnStep,
   PlanDocument,
   PlanItemUpdate,
+  BuildingDetailLevel,
 } from '../types/agent'
+import { BUILDING_DETAIL_LEVELS } from '../types/agent'
 import type { ScenePatch } from '../types/scenePatch'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
 const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
+const STORAGE_KEY_DETAIL_LEVEL = 'wild_detail_level'
 const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
@@ -69,7 +72,11 @@ function compactSessionTitle(name: string, maxLength = 16): string {
 function loadThinkingMode(): boolean {
   // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
   if (loadPrecisionMode()) return true
-  return localStorage.getItem(STORAGE_KEY_THINKING_MODE) === 'true'
+  return localStorage.getItem(STORAGE_KEY_THINKING_MODE) !== 'false'
+}
+
+function loadDetailLevel(): BuildingDetailLevel {
+  return BUILDING_DETAIL_LEVELS.find(level => level.value === localStorage.getItem(STORAGE_KEY_DETAIL_LEVEL))?.value || 'simple'
 }
 
 function loadPrecisionMode(): boolean {
@@ -206,6 +213,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 用户偏好与模型接口实际返回的思考内容 */
   const thinkingMode = ref(loadThinkingMode())
+  const detailLevel = ref<BuildingDetailLevel>(loadDetailLevel())
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
@@ -441,7 +449,7 @@ export const useAgentStore = defineStore('agent', () => {
     if (!step) {
       step = {
         node,
-        label: _resolveLabel(node),
+        label: turn.plan?.items.find(item => node === `plan:${item.id}`)?.label || _resolveLabel(node),
         stage: 'generating',
         status: 'running',
         detail: '',
@@ -602,20 +610,39 @@ export const useAgentStore = defineStore('agent', () => {
     if (status !== 'thinking') persistTurns(sessionId)
   }
 
+  function setTurnStopRequested(sessionId: string, requestId: string, requested: boolean) {
+    const turn = findTurn(sessionId, requestId)
+    if (!turn) return
+    turn.stop_requested = requested
+    persistTurns(sessionId)
+  }
+
   function completeTurn(
     sessionId: string,
     requestId: string,
-    status: 'completed' | 'error' = 'completed',
+    status: 'completed' | 'error' | 'stopped' = 'completed',
     interruptionReason?: string,
   ) {
     const turn = findTurn(sessionId, requestId)
     if (!turn) return
+    const wasStopped = turn.status === 'stopped'
     turn.status = status
-    turn.completed_at = Date.now()
+    turn.stop_requested = false
+    turn.completed_at = wasStopped && status === 'stopped' ? turn.completed_at ?? Date.now() : Date.now()
     if (interruptionReason) turn.interruption_reason = interruptionReason
     turn.steps.forEach(step => {
-      if (step.status === 'running') step.status = status === 'error' ? 'error' : 'done'
+      if (step.status === 'running') step.status = status === 'completed' ? 'done' : status
     })
+    if (status === 'stopped') {
+      turn.thinking_status = 'completed'
+      turn.thinking_notice = '已停止'
+      for (const item of turn.plan?.items || []) {
+        if (item.run?.state === 'running') {
+          item.run.state = 'aborted'
+          item.run.evidence = '用户停止，保留已有执行记录'
+        }
+      }
+    }
     persistTurns(sessionId)
   }
 
@@ -677,6 +704,11 @@ export const useAgentStore = defineStore('agent', () => {
     if (!enabled) {
       clearThinkingState()
     }
+  }
+
+  function setDetailLevel(level: BuildingDetailLevel) {
+    detailLevel.value = level
+    localStorage.setItem(STORAGE_KEY_DETAIL_LEVEL, level)
   }
 
   function appendThinkingContent(delta: string, nodeName?: string) {
@@ -998,13 +1030,13 @@ export const useAgentStore = defineStore('agent', () => {
     classifier: '意图分类',
     chat: '知识问答',
     patch: '场景修改',
-    architecture: '总体建筑方案',
+    architecture: '建筑图纸',
     object_design: '物件方案',
     material_plan: '材质方案',
     design_convergence: '设计收敛',
     design_review: '建筑设计审核',
     skeleton: '主体装配',
-    compile: '确定性编译',
+    compile: '最终编译',
     planning_research: '计划研究',
     planner: '执行计划',
     plan_validator: '计划校验',
@@ -1092,6 +1124,7 @@ export const useAgentStore = defineStore('agent', () => {
     restoreDesignReviewAfterError,
     setTurnMetrics,
     setTurnThinkingStatus,
+    setTurnStopRequested,
     completeTurn,
     getTurnForMessage,
     setProcessing,
@@ -1112,6 +1145,8 @@ export const useAgentStore = defineStore('agent', () => {
     addPipelineStep,
     clearPipelineSteps,
     thinkingMode,
+    detailLevel,
+    setDetailLevel,
     thinkingContent,
     thinkingStatus,
     thinkingNotice,

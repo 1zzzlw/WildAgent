@@ -1,0 +1,975 @@
+[
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\balcony-equipment-examples.md",
+    "line": 70,
+    "message": "标题块有效正文 1610 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\balcony-equipment-examples.md",
+    "line": 137,
+    "message": "标题块有效正文 2093 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_code_block",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\balcony-equipment-examples.md",
+    "line": 155,
+    "message": "代码块 1752 字符；长度兜底必须保持其原子性"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 39,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 77,
+    "message": "标题块有效正文仅 16 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 99,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 219,
+    "message": "标题块有效正文 1827 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 459,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 489,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 491,
+    "message": "标题块有效正文仅 116 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 504,
+    "message": "标题块有效正文仅 52 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 512,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 514,
+    "message": "标题块有效正文仅 82 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 522,
+    "message": "标题块有效正文仅 60 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\capability-boundaries.md",
+    "line": 544,
+    "message": "标题块有效正文仅 119 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\chinese-lattice-openings.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\column.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\column.md",
+    "line": 85,
+    "message": "标题块有效正文仅 84 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\composite-components-second-batch.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\cone-roof-system.md",
+    "line": 136,
+    "message": "标题块有效正文仅 105 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\dual-pitch-two-slope.md",
+    "line": 50,
+    "message": "标题块有效正文仅 89 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\dual-pitch-two-slope.md",
+    "line": 61,
+    "message": "标题块有效正文仅 107 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\elevator.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\elevator.md",
+    "line": 62,
+    "message": "标题块有效正文 1810 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\entrance-door-examples.md",
+    "line": 129,
+    "message": "标题块有效正文 2515 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\entrance-door-examples.md",
+    "line": 164,
+    "message": "标题块有效正文 3413 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_code_block",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\entrance-door-examples.md",
+    "line": 147,
+    "message": "代码块 2052 字符；长度兜底必须保持其原子性"
+  },
+  {
+    "severity": "warning",
+    "code": "long_code_block",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\entrance-door-examples.md",
+    "line": 180,
+    "message": "代码块 3136 字符；长度兜底必须保持其原子性"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\furniture.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\glass-curtain-wall-assembly.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\light.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\light.md",
+    "line": 91,
+    "message": "标题块有效正文 1781 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\light.md",
+    "line": 146,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\pavilion-garden-structure.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\pavilion-garden-structure.md",
+    "line": 36,
+    "message": "标题块有效正文仅 117 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\pavilion-garden-structure.md",
+    "line": 74,
+    "message": "标题块有效正文仅 116 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\roof-facade-detail-examples.md",
+    "line": 78,
+    "message": "标题块有效正文 1695 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\roof-facade-detail-examples.md",
+    "line": 204,
+    "message": "标题块有效正文 1769 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\roof-facade-detail-examples.md",
+    "line": 238,
+    "message": "标题块有效正文 1977 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\shaft-opening-five-panel.md",
+    "line": 54,
+    "message": "标题块有效正文仅 102 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\sofa.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\tiered-eaves-pagoda.md",
+    "line": 63,
+    "message": "标题块有效正文仅 69 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\ventilation-detail-examples.md",
+    "line": 13,
+    "message": "标题块有效正文 2327 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\ventilation-detail-examples.md",
+    "line": 55,
+    "message": "标题块有效正文 2469 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_code_block",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\ventilation-detail-examples.md",
+    "line": 32,
+    "message": "代码块 1991 字符；长度兜底必须保持其原子性"
+  },
+  {
+    "severity": "warning",
+    "code": "long_code_block",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\ventilation-detail-examples.md",
+    "line": 73,
+    "message": "代码块 2175 字符；长度兜底必须保持其原子性"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\components\\window-variants.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 45,
+    "message": "标题块有效正文仅 62 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 49,
+    "message": "标题块有效正文仅 87 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 72,
+    "message": "标题块有效正文仅 28 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 117,
+    "message": "标题块有效正文仅 76 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 121,
+    "message": "标题块有效正文仅 91 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 159,
+    "message": "标题块有效正文仅 70 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 163,
+    "message": "标题块有效正文仅 104 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 193,
+    "message": "标题块有效正文仅 115 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 254,
+    "message": "标题块有效正文仅 101 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\behavior-instructions.md",
+    "line": 258,
+    "message": "标题块有效正文仅 51 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\blueprint-skeleton.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\blueprint-skeleton.md",
+    "line": 67,
+    "message": "标题块有效正文仅 49 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, knowledge_layer, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "line": 35,
+    "message": "标题块有效正文 1678 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "line": 282,
+    "message": "标题块有效正文 3060 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "line": 728,
+    "message": "标题块有效正文仅 79 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\component-parameters.md",
+    "line": 734,
+    "message": "标题块有效正文仅 44 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\generation-redlines.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "line": 34,
+    "message": "标题块有效正文仅 40 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "line": 250,
+    "message": "标题块有效正文仅 79 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "line": 347,
+    "message": "标题块有效正文仅 109 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\material-parameters.md",
+    "line": 351,
+    "message": "标题块有效正文仅 45 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\placements.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 35,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 37,
+    "message": "标题块有效正文仅 85 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 51,
+    "message": "标题块有效正文仅 92 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 59,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 61,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 120,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 163,
+    "message": "标题块有效正文仅 91 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 177,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 231,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 233,
+    "message": "标题块有效正文仅 52 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 338,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 390,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\scene-patch-protocol.md",
+    "line": 433,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\templates-and-instances.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\templates-and-instances.md",
+    "line": 41,
+    "message": "标题块有效正文仅 79 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\knowledge\\protocol\\templates-and-instances.md",
+    "line": 45,
+    "message": "标题块有效正文仅 71 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\README.md",
+    "line": 22,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\README.md",
+    "line": 54,
+    "message": "标题块有效正文 2492 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\README.md",
+    "line": 123,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "long_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\README.md",
+    "line": 174,
+    "message": "标题块有效正文 2501 字符，建议增加业务子标题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\conditional\\component-selection.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\conditional\\component-selection.md",
+    "line": 34,
+    "message": "标题块有效正文仅 89 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\conditional\\pending.md",
+    "line": 38,
+    "message": "标题块有效正文仅 93 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\design-choice\\free-variables.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\design-choice\\free-variables.md",
+    "line": 27,
+    "message": "标题块有效正文仅 42 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\design-choice\\free-variables.md",
+    "line": 33,
+    "message": "标题块有效正文仅 113 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\design-choice\\free-variables.md",
+    "line": 38,
+    "message": "标题块有效正文仅 87 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, entity_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 34,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 64,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 90,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 109,
+    "message": "标题块有效正文仅 99 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 140,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 142,
+    "message": "标题块有效正文仅 67 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 154,
+    "message": "标题块有效正文仅 40 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 160,
+    "message": "标题块有效正文仅 22 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 166,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 168,
+    "message": "标题块有效正文仅 68 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 174,
+    "message": "标题块有效正文仅 36 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 179,
+    "message": "标题块有效正文仅 24 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 185,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 187,
+    "message": "标题块有效正文仅 92 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 200,
+    "message": "标题块有效正文仅 104 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 212,
+    "message": "标题块有效正文仅 27 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 219,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 221,
+    "message": "标题块有效正文仅 53 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 226,
+    "message": "标题块有效正文仅 56 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 232,
+    "message": "标题块有效正文仅 57 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 237,
+    "message": "标题块有效正文仅 51 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 243,
+    "message": "标题块有效正文仅 34 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 250,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 252,
+    "message": "标题块有效正文仅 93 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\assembly-relations.md",
+    "line": 258,
+    "message": "标题块有效正文仅 81 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\door-window-depth.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "redundant_path_metadata",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 1,
+    "message": "以下字段已由 config.yaml 提供，可从文件头删除：doc_scope, doc_type, knowledge_layer, knowledge_role, wild_version"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 33,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 35,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 37,
+    "message": "标题块有效正文仅 42 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 103,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 149,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 206,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 343,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 466,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  },
+  {
+    "severity": "warning",
+    "code": "short_section",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 484,
+    "message": "标题块有效正文仅 36 字符，确认其能独立回答问题"
+  },
+  {
+    "severity": "warning",
+    "code": "empty_container_heading",
+    "path": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\knowledge_base\\rules\\implementation\\validation-rules.md",
+    "line": 530,
+    "message": "标题本身没有正文；Loader 会跳过该壳块，确认它仍有必要保留为父级路径"
+  }
+]

@@ -77,12 +77,15 @@ def _thinking_extra_body(model_cfg: ModelConfig, enable_thinking: bool) -> dict 
 
     各家 Chat Completions 思考字段并不通用：DashScope 的 Qwen、GLM 和
     部分 Kimi 支持 ``thinking_budget``；DeepSeek 新模型和 Kimi K3 使用
-    ``reasoning_effort``；Kimi K2.6 只有思考开关。未知端点不注入扩展字段，
+    ``reasoning_effort``；Kimi K2.6、MiMo 只有思考开关。未知端点不注入扩展字段，
     避免切换 OpenAI-compatible 服务时因不支持的参数返回 400。
     """
     hostname = (urlparse(model_cfg.base_url or "").hostname or "").casefold()
     model_name = (model_cfg.name or "").casefold()
     thinking_budget = int(getattr(model_cfg, "thinking_budget", 0) or 0)
+
+    if hostname == "api.xiaomimimo.com" and model_name.startswith("mimo-"):
+        return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
 
     is_dashscope = (
         hostname.endswith(".aliyuncs.com")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from collections import Counter
 import re
 from typing import Any
 
@@ -34,7 +35,7 @@ def _note(notes: list[str] | None, message: str) -> None:
 
     为什么用出参而不是返回值：`normalize_architecture_plan` 是链上复用最广的纯函数
     （6 处生产调用点），改返回类型会波及所有调用方；用 keyword-only 出参只影响关心
-    记账的那一处 —— 与 `resolver.attach_material_plan(role_repairs=…)` 同一手法。
+    记账的那一处 —— 保留字段来源与变化证据。
     """
 
     if notes is not None:
@@ -415,7 +416,7 @@ def normalize_architecture_plan(
     )
     #  profile 三级取值：显式传入 > **计划里已有的 id** > 重算（缺省 custom）。
     # 中间那一档是必需的：本函数在链上被多处**二次调用**（`compiler._compose`、
-    # `build_deterministic_skeleton`、`probe_tool` 等），它们手里只有 plan、不会
+    # `build_deterministic_skeleton` 等），它们手里只有 plan、不会
     # 再传 `architecture_profile` —— 少了这一档就会把分类器判出的形制标签静默洗回
     # `custom`（实测 `compiler/compile.py:1234` 与 `skeleton.py:727` 两处正是如此）。
     # 只沿用 **id**：物理边界照旧由 `detect_architecture_profile` 给（恒为 custom 档）。
@@ -698,16 +699,18 @@ def normalize_architecture_plan(
             or (explicit_base is not None and component_type in explicit_base)
         )
     }
-    unsupported_component_types: set[str] = set()
-    raw_quotas = source.get("component_quota") if isinstance(source.get("component_quota"), dict) else {}
+    unsupported_component_types: set[str] = set(source.get("unsupported_component_types") or [])
+    raw_quotas = source.get("component_quota", {})
+    if not isinstance(raw_quotas, dict):
+        raise ValueError("component_quota 必须是对象；新图纸不输出配额，数量由程序从构件标记派生")
     for component_type, limits in raw_quotas.items():
         if not isinstance(limits, dict):
-            continue
+            raise ValueError(f"component_quota.{component_type} 必须是包含 min/max 的对象，实际 {limits!r}；"
+                             "新图纸不输出配额，数量由程序从构件标记派生")
         component_type = str(component_type)
         # 开放集通道（用户决策 2026-09-29：删除构件白名单闸）：配额点名的任何类型
         # 都放行进入下游——已注册的走既有派生/模型通道，未注册的由 plan 条目用
         # 通用配置尝试（字段契约靠知识库检索），校验与修复环兜底。
-        # ``unsupported_component_types`` 保留为协议字段，从此恒空。
         if curtain_wall and component_type == "window":
             # 幕墙窗数量由立面槽位决定，模型配额不得覆盖密集窗格。
             continue
@@ -778,6 +781,15 @@ def normalize_architecture_plan(
             "max": max(door_target, int(quotas.get("door", {}).get("max", 0))),
             "note": "含主入口与阳台通室内入口",
         }
+
+    if "component_quota" not in source:
+        instances = source.get("components") or []
+        counts = Counter(item["type"] for item in instances if isinstance(item, dict) and item.get("type"))
+        for component_type, count in counts.items():
+            if component_type not in {"door", "window", "roof"}:
+                if component_type == "balcony" and balcony_access_count:
+                    continue
+                quotas[component_type] = {"min": count, "max": count, "note": "由显式构件标记派生"}
 
     required = source.get("required_components")
     if not isinstance(required, list):

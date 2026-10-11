@@ -176,20 +176,6 @@ class TestShapeVocabularyReachesTheDraftingPrompt:
     的教训就是"词表只活在另一个节点的提示词里 ⇒ 模型只能从别处借名词"。
     """
 
-    def test_massing_block_contract_renders_the_shape_vocabulary(self):
-        from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-        from app.agent.generation.architecture.design_workflow import render_block_contract
-
-        text = render_block_contract(BLOCK_BY_NAME["massing"])
-
-        assert "{shape_enum}" not in text, "占位符没被渲染，模型看到的是花括号"
-        assert "{shape_volume_members}" not in text
-        missing = [name for name in _SHAPE_ENUM if name not in text]
-        assert missing == [], f"枚举里这些成员没进提示词：{missing}"
-        volume_members = "、".join(
-            name for name, kind in _SHAPE_ENUM.items() if kind == "volumes"
-        )
-        assert volume_members in text, "必须告诉模型哪几个成员才有体量派生，别让它以为表外的也有"
 
 
 class TestKnowledgeBaseShapeVocabulary:

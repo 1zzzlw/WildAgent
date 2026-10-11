@@ -32,6 +32,16 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
 
     from app.utils.blueprint_parser import validate_blueprint_schema
     append("validate_blueprint_schema", validate_blueprint_schema(blueprint))
+    import json
+    try:
+        json.dumps(blueprint, allow_nan=False)
+    except (ValueError, TypeError) as exc:
+        append("validate_wild_json", [str(exc)])
+    import jsonschema
+    from app.agent.generation.capability import load_engine_schema
+    schema = load_engine_schema()
+    append("validate_wild_schema", ["WILD Schema 不可用"] if schema is None else
+           [f"/{'/'.join(map(str, e.path))}: {e.message}" for e in jsonschema.Draft202012Validator(schema).iter_errors(blueprint)])
 
     design_errors = validate_design_brief_constraints(blueprint, design_brief)
     append("validate_design_brief", design_errors)
@@ -43,28 +53,65 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
     if design_document:
         from app.design.contracts import DesignDocument, ObjectDecisions
         from app.design.resolver import _stable_hash
-        from app.design.compilation import compile_document, project_compilation, opening_drift
-        from app.design.normalization import approved_compilation_changes
+        from app.design.markers import IMPLEMENTATION_STAGES, body_floor_errors
+        from app.design.compilation import project_drawing
         from app.design.fulfillment import evaluate_fulfillment, fulfillment_summary
 
         document = DesignDocument.model_validate(design_document)
         design_hash, revision = _stable_hash(document), document.revision
         if not isinstance(document.decisions, ObjectDecisions):
-            compiled = compile_document(document)
-            resolved = project_compilation(document, compiled)
-            append("review_opening_consistency", opening_drift(resolved, blueprint))
-            mutations = approved_compilation_changes(compiled.blueprint, blueprint)
-            append("approved_design_mutation", [
-                f"已审核实体发生变化：{c['path']}，{c['before']!r} → {c['after']!r}；需要设计修订"
-                for c in mutations])
-            approved_errors = [d.to_dict() for d in compiled.defects if d.severity == "error"]
-            append("approved_design_invalid", [d["evidence"] for d in approved_errors])
-            entries = list((compiled.stats.get("instance_overrides") or {}).get("instance_entities") or [])
-            fulfillment = fulfillment_summary(evaluate_fulfillment(
-                document, blueprint, design_hash, entries,
-                list((compiled.design_brief or {}).get("roof_slots") or [])),
-                design_hash=design_hash,
-                superseded=sum(c.adoption == "superseded" for c in document.constraints))
+            implementation = (design_brief or {}).get("implementation") or {}
+            if implementation.get("design_hash") != design_hash:
+                append("implementation_version", ["落实记录与设计版本不一致"])
+            records = implementation.get("records") or {}
+            actual = {e["id"]: e for bucket in ("elements", "components")
+                      for e in blueprint.get("geometry", {}).get(bucket, [])}
+            markers = project_drawing(document).component_markers
+            for marker in markers:
+                record = records.get(marker["id"]) or {}
+                if record.get("status") == "implemented":
+                    ids = record.get("entity_ids") or []
+                    if not ids or any(i not in actual for i in ids):
+                        append("design_marker_fulfillment", [f"{marker['id']} 的实现实体缺失"])
+                    elif blueprint_fingerprint([actual[i] for i in ids]) != record.get("entity_fingerprint"):
+                        append("implementation_changed", [f"{marker['id']} 的实现被修改，需要重新执行构件校验"])
+                    else:
+                        if marker["type"] == "building_body":
+                            append("design_body_footprint", body_floor_errors([actual[i] for i in ids], marker["design"]))
+                        from app.design.relations import opening_design_errors, roof_design_errors
+                        append("design_opening_placement", opening_design_errors(blueprint, [actual[i] for i in ids], marker))
+                        append("design_roof_surface", roof_design_errors(blueprint, [actual[i] for i in ids], marker))
+                elif record.get("status") == "abandoned":
+                    attempts = record.get("attempts") or []
+                    stages = {t.get("stage") for t in attempts}
+                    lookup = next((t for t in attempts if t.get("tool") == "search_knowledge"), None)
+                    references_checked = bool(lookup and (lookup.get("web_required") is False
+                        or any(t.get("tool") == "web_search" for t in attempts)))
+                    finished = set(IMPLEMENTATION_STAGES).issubset(stages) or "assembly_revision" in stages
+                    if not record.get("reason") or (not record.get("dependency_failure") and (not finished or not references_checked)):
+                        append("implementation_incomplete", [f"{marker['id']} 没有完成实现尝试，不能声明舍弃"])
+                    if marker["id"] == "building_body":
+                        append("implementation_incomplete", ["建筑主体未实现，无法交付建筑文件"])
+                else:
+                    append("implementation_incomplete", [f"{marker['id']} 没有落实记录"])
+            fulfillment = fulfillment_summary(evaluate_fulfillment(document, blueprint, design_hash),
+                design_hash=design_hash, superseded=sum(c.adoption == "superseded" for c in document.constraints))
+            fulfillment["implementations"] = records
+            for marker_id, record in records.items():
+                if record.get("status") == "abandoned":
+                    fulfillment["gaps"].append({"id": "implementation."+marker_id, "target": marker_id,
+                        "status": "open", "expected": "落实图纸标记", "actual": "舍弃",
+                        "evidence": record["reason"]})
+                    fulfillment["total"] += 1
+                    fulfillment["open"] += 1
+            fulfillment["decided"] = fulfillment["satisfied"] + fulfillment["open"]
+            fulfillment["satisfied_ratio"] = round(fulfillment["satisfied"]/fulfillment["decided"], 3) if fulfillment["decided"] else None
+            fulfillment["decidable_coverage"] = round(fulfillment["decided"]/fulfillment["total"], 3) if fulfillment["total"] else None
+            fulfillment["implementation_summary"] = {
+                "implemented": sum(r.get("status") == "implemented" for r in records.values()),
+                "abandoned": sum(r.get("status") == "abandoned" for r in records.values()),
+                "design_complete": all((records.get(m["id"]) or {}).get("status") == "implemented" for m in markers),
+                "verification": "geometry_validated; architectural appearance requires review"}
             fulfillment["blueprint_fingerprint"] = blueprint_fingerprint(blueprint)
 
     warning_count = sum(r.has_warning and not r.has_error for r in final_validation_results(results))

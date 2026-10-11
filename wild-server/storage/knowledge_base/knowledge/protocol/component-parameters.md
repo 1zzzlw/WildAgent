@@ -326,21 +326,11 @@ entity_type: roof
 
 - `span` / `depth` 按其负责的**体量轮廓**取尺寸；出檐时在两侧增加相应余量。
   **不得**简单用整栋建筑的外包络当作屋顶范围。
-- 生成屋顶前先用 `get_wall_bounding_box` 取得墙体包围盒，**不要猜测尺寸**。
-- 多体量（L 形 / U 形 / 退台）必须**为每个体量各生成一块屋顶**，或让屋顶轮廓贴合墙体并留出内院 / 天井；
-  禁止用单块屋顶盖住没有墙、没有楼板的空腔。
-  ⚠️ **分层**：本条约束的是**蓝图屋顶元素**（`geometry.elements` 里 `type: roof` 的每一项）的尺寸与定位。
-  **设计层**的 `decisions.roof` 写**一块风格模板**（`type` / `ridge_axis` / `overhang` 三个键），
-  逐体量分段由编译器按 `volumes` 派生（`facade._planned_roof_slots` + `conform_roofs_to_slots`）；
-  在设计层写数组或写 `id` / `span` / `depth` / `position` 会被图纸契约判为不合法，
-  整块设计作废、屋顶退回默认平屋顶。
-  P5-A 起模板可带一个**可选** `volumes` 数组表达逐体量差异，每条
-  `{"volume": "<体量 id>", "type": "<六种 roofType 之一>", "overhang": <非负数>}`；
-  体量 id 必须与 `decisions.volumes` 里的 id 一致，未列出的体量继承模板。
-  编译期：体量 id 不存在 → 记 `roof_override_unknown_volume` 缺陷（warn，不阻断）并退回模板；
-  同体量重复覆盖且取值不同 → 记 `roof_override_conflict`（warn），按后者生效。
-  `dome` / `chinese_pagoda` / `chinese_curved` 是整栋造型，**不能**按体量切，
-  任一体量取这三种类型即退回整栋单块屋顶。
+- 屋顶的宿主体量范围、墙顶标高与图纸标记由当前 plan 上下文提供；按实际宿主取尺寸。
+- 多体量分别实现对应的屋顶标记，或使用贴合本次轮廓的连续屋面；不能只给主楼屋顶而将翼楼封檐条当作屋面。
+- 当前设计层 `decisions.roof` 是开放的造型描述，可用 `volumes` 对各体量描述不同类型与出檐，每条以 `volume` 引用体量 id。设计类型不受原生 `roofType` 枚举限制；plan 将图纸实现为原生元素或合法几何组合，最终编译合并落实片段。
+- 原生枚举只约束 WILD 的 `type: roof` 元素。单坡屋顶可以用整片薄 `primitive.box` 与弧度 `rotation` 实现，完整示例见《屋面、老虎窗、壁柱与雨棚 JSON 示例》的“单坡屋面”。不能写无效的 `roofType: shed`，也不能因此把图纸自动替换为平顶或双坡。
+- 本次矩形体量屋面验收按已采用实体的投影并集核对覆盖及图纸出檐；边缘封檐不能代替连续屋面。
 - `position` 应位于墙体 XZ 中心和墙顶高度。
 
 **示例**：
@@ -390,6 +380,11 @@ entity_type: roof
 ---
 
 ## 六、opening — 门窗洞口
+
+`geometry.components` 中的 `window` 会展开为洞口、玻璃、外框与棂条。`frameWidth` 只控制外框；
+`mullionWidth` 独立控制棂条，缺省为 `min(frameWidth, 0.02)` 米。`verticalMullions`、`horizontalMullions`
+决定均匀等分的棂条数量。外框必须留下正的净宽净高，棂条宽度必须小于相邻中心间距，不能封死净空。
+旧文件省略 `mullionWidth` 时使用上述缺省值；需保持粗棂条时显式设置该字段。
 
 <!-- rag-meta
 entity_type: opening
@@ -451,8 +446,8 @@ entity_type: opening
 |------|------|------|------|
 | `type` | string | 是 | 固定值 `"stair"` |
 | `id` | string | 是 | 构件唯一标识 |
-| `from` | Vec3 | 是 | 起步点，局部坐标 |
-| `to` | Vec3 | 是 | 到达点，局部坐标 |
+| `from` | Vec3 | 是 | 起步点，世界坐标 |
+| `to` | Vec3 | 是 | 到达点，世界坐标 |
 | `stepCount` | number | 否 | 步数。若为 0 或不设置，引擎根据人体工学自动计算 |
 | `stepDepth` | number | 否 | 踏面深度（米）。不设置则自动计算 |
 | `stepHeight` | number | 否 | 踏步高度（米）。不设置则自动计算 |

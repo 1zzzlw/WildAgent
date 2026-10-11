@@ -1,0 +1,29 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"庭院门"},
+  "geometry":{
+    "elements":[
+      {"type":"primitive","id":"pier_left","shape":"box","position":[-1.65,0.95,0],"dimensions":[0.3,1.9,0.3],"material":"stone"},
+      {"type":"primitive","id":"pier_right","shape":"box","position":[1.65,0.95,0],"dimensions":[0.3,1.9,0.3],"material":"stone"},
+      {"type":"primitive","id":"gate_0_rail_0.15","shape":"box","position":[-0.725,0.15,0],"dimensions":[1.42,0.045,0.05],"material":"metal"},
+      {"type":"primitive","id":"gate_0_rail_1.65","shape":"box","position":[-0.725,1.65,0],"dimensions":[1.42,0.045,0.05],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_0","shape":"box","position":[-1.325,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_1","shape":"box","position":[-1.125,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_2","shape":"box","position":[-0.9249999999999999,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_3","shape":"box","position":[-0.7249999999999999,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_4","shape":"box","position":[-0.5249999999999999,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_5","shape":"box","position":[-0.32499999999999996,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_0_bar_6","shape":"box","position":[-0.12499999999999978,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_rail_0.15","shape":"box","position":[0.725,0.15,0],"dimensions":[1.42,0.045,0.05],"material":"metal"},
+      {"type":"primitive","id":"gate_1_rail_1.65","shape":"box","position":[0.725,1.65,0],"dimensions":[1.42,0.045,0.05],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_0","shape":"box","position":[0.125,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_1","shape":"box","position":[0.325,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_2","shape":"box","position":[0.525,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_3","shape":"box","position":[0.7250000000000001,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_4","shape":"box","position":[0.925,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_5","shape":"box","position":[1.125,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"},
+      {"type":"primitive","id":"gate_1_bar_6","shape":"box","position":[1.3250000000000002,0.9,0],"dimensions":[0.025,1.5,0.025],"material":"metal"}
+    ],
+    "components":[]
+  },
+  "materials":{"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

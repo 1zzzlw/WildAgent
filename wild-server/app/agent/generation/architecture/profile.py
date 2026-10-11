@@ -19,16 +19,11 @@ _SUPPORTED_ROOF_TYPES = {
     "flat", "gable", "hip", "dome", "chinese_curved", "chinese_pagoda",
 }
 
-# 复杂度目标固定为单一标准档（2026-09-30 用户决策：前端粒度选择已下线，
-# "一面墙/复杂/精致"等词表分档一并删除）。字段名保留，下游
-# （normalize/设计分块/收敛环/试算/提示词）的 complexity_profile 契约不动。
-_COMPLEXITY_PROFILES: dict[str, dict[str, Any]] = {
-    "standard": {
-        "min_volumes": 1,
-        "min_detail_packages": 0,
-        "target_structural_elements": 10,
-        "grid_bays": (2, 2),
-    },
+DETAIL_LEVEL_GUIDANCE = {
+    "minimal": "低：完成建筑主体、必要的门窗、屋顶、多层建筑的楼梯和基础照明。采用简洁构造与材质表达，默认不增加装饰构件、家具或陈设。",
+    "simple": "中：在基础建筑上，按功能与风格适量设计阳台、露台、雨棚、栏杆和入口构件，完善基本立面与材质层次。默认不配置家具或大量装饰。",
+    "standard": "高：完整设计建筑外观与构造细节，包括开口分格、檐口、门廊、柱饰、屋面节点和分层材质；按功能与风格选择构件，默认不做全套室内家具。",
+    "detailed": "极高：在完整外观与构造细节上，设计室内功能分区、通行空间及家具陈设，如客厅沙发与茶几、餐桌椅、卧室床与柜体、厨房橱柜及卫浴设施；按建筑用途安排，并补充室内外照明、入口与场地细节。家具逐件或按组合写成有位置、尺寸和造型的构件标记，不能只写在文字说明里。",
 }
 
 _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
@@ -313,19 +308,13 @@ def _requested_balcony_width(user_message: str) -> float | None:
 
 def resolve_complexity_profile(
     user_message: str,
+    detail_level: str = "simple",
 ) -> dict[str, Any]:
-    """返回固定的标准复杂度目标。
-
-    用户决策：前端粒度选择已下线，复杂度固定为标准档。
-    保留函数与返回结构是为了不破坏下游契约；多体量意图仍按用户原文
-    点名（"多体量/退台"等）放开 min_volumes。
-    """
-    result = deepcopy(_COMPLEXITY_PROFILES["standard"])
-    result["min_detail_packages"] = 0
-    if not any(term_is_requested(user_message, word) for word in ("多体量", "组合体量", "退台", "错落", "主次体量")):
-        result["min_volumes"] = 1
-    result["grid_bays"] = list(result["grid_bays"])
-    return result
+    """粒度决定设计范围；结构数量、开口数量和体量布局仍由具体设计决定。"""
+    level = detail_level if isinstance(detail_level, str) and detail_level in DETAIL_LEVEL_GUIDANCE else "simple"
+    return {"level": level, "reason": DETAIL_LEVEL_GUIDANCE[level],
+            "min_volumes": 1, "min_detail_packages": 0,
+            "target_structural_elements": 10, "grid_bays": [2, 2]}
 
 
 def _default_detail_packages(

@@ -44,7 +44,8 @@ def design_quota_shortfalls(blueprint: dict, design_brief: dict | None) -> list[
         # balcony 自带 U 形栏杆，可满足 railing 的最低需求；但它已有独立的
         # balcony 配额，不能再占用独立 railing 的数量。
         minimum_actual = (
-            actual + counts.get("balcony", 0)
+            actual + sum(c.get("type") == "balcony" and c.get("railingEnabled") is not False
+                         for c in (blueprint.get("geometry") or {}).get("components", []))
             if component_type == "railing"
             else actual
         )

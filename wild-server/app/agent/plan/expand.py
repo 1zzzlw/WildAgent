@@ -1,22 +1,4 @@
-"""把方案与骨架产物确定性展开为条目列表。
-
-对应《动态节点设计规划》§3.2/§3.3：**模型定策略、程序定条目**。
-
-本模块不调用模型。本次要覆盖哪些构件，来自骨架节点已经产出的
-``suggested_components`` 与设计清单 ``component_quota``（这两者本身就是模型的策略输出），
-因此从"策略"到"条目"的这一步可以完全确定性地完成：
-
-- 同一份 state 两次展开必须得到逐字节相同的条目序列；
-- 条目 id 形如 ``generate_window_01`` / ``merge_window_01`` / ``merge_all_01``，可读且可追溯；
-- 容器顺序决定执行顺序，不做排序也不依赖字典遍历顺序。
-
-条目形态（§3.3）：**每组一条 generate + 一条批次 merge**，末尾收尾一条 merge + 一条 validate::
-
-    generate_door_01 → merge_door_01 → generate_window_02 → merge_window_02 → merge_all_01 → validate_all_01
-
-批次 merge 只"并入"，收尾 merge 才"归一"（配额强制 + 全局归一化 + 校验修复循环）——
-判据见 ``generation/assembly/workflow.py`` 的模块说明。
-"""
+"""建筑按图纸标记展开任务；物件保留既有策略与合并执行链。"""
 
 from __future__ import annotations
 
@@ -296,6 +278,10 @@ def expand_plan(
     场地语义）时生成 ``unsupported`` 条目。它们是终态，不会被派发，只进交付清单。
     """
 
+    document = state.get("design_document") or {}
+    if document.get("decisions", {}).get("kind") == "architecture":
+        return expand_design_markers(state)
+
     # 定档位和预算
     level = (
         detail_level
@@ -516,3 +502,50 @@ def expand_plan(
 def _strategy_reason(strategy: PlanStrategy) -> str:
     parts = [entry.reason for entry in strategy.kinds if entry.reason]
     return "；".join(parts)[:500]
+
+
+def expand_design_markers(state: dict) -> PlanDocument:
+    from app.agent.knowledge.component_names import resolve_component_name
+    from app.design.markers import IMPLEMENTATION_STAGES, implementation_records, implementation_complete
+    markers = (state.get("resolved_design") or {}).get("component_markers") or []
+    records = implementation_records(state)
+    level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
+    pending = {m["id"]: m for m in markers}
+    owners, items = {}, []
+    while pending:
+        ready = [m for m in pending.values() if set(m.get("depends_on") or []).issubset(owners)]
+        if not ready:
+            # 互相依附的设计共同交给模型实现，不在设计期按图算法拒绝。
+            groups = {"assembly": list(pending.values())}
+        else:
+            groups = {}
+            for marker in ready:
+                naming = resolve_component_name(marker["type"])
+                kind = naming["kind"]
+                if level == "minimal" and naming["entity_type"] in {"door", "window", "light"}:
+                    kind = naming["entity_type"]
+                groups.setdefault(kind, []).append(marker)
+        for kind, rows in groups.items():
+            task_id = f"generate_{len(items)+1}"
+            complete = all(implementation_complete(records.get(m["id"])) for m in rows)
+            naming = resolve_component_name(kind)
+            label = naming["label"]
+            if not naming["entity_type"] and kind not in {"building_body", "assembly"}:
+                labels = [m.get("design", {}).get("name") for m in rows]
+                label = next((name.strip() for name in labels if isinstance(name, str) and name.strip()), label)
+            parallel = kind not in {"building_body", "assembly"}
+            items.append(PlanItem(id=task_id, op="generate", kind=kind, label=label,
+                target={"marker_ids": [m["id"] for m in rows]},
+                depends_on=sorted({owners[d] for m in rows for d in m.get("depends_on", []) if d in owners}),
+                params={"design_markers": True, "design_hash": state["resolved_design"]["design_hash"],
+                        "execution_mode": "parallel" if parallel else "serial",
+                        "parallel_group": "drawing" if parallel else ""},
+                status="done" if complete else "pending",
+                run=ItemRun(state="succeeded" if complete else "idle", max_attempts=1)))
+            for marker in rows:
+                owners[marker["id"]] = task_id
+                pending.pop(marker["id"])
+    # 一次生成、两次局部修订和一次装配修订。
+    return new_plan(items, detail_level=level,
+                    budget={"iterations": len(markers)*(len(IMPLEMENTATION_STAGES)+1)+2,
+                            "llm_calls": len(markers)*(len(IMPLEMENTATION_STAGES)+1), "max_items": len(items)})

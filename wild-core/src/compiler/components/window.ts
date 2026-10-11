@@ -25,6 +25,7 @@ export function compileWindow(
   const glassDepth = component.glassDepth ?? Math.min(0.012, frameDepth)
   const verticalMullions = component.verticalMullions ?? 0
   const horizontalMullions = component.horizontalMullions ?? 0
+  const mullionWidth = component.mullionWidth ?? Math.min(frameWidth, 0.02)
   assertFrameDimensions(component, frameWidth, frameDepth)
   assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, glassDepth, 'glassDepth')
   assertNonNegativeInteger(verticalMullions, 'verticalMullions')
@@ -33,6 +34,21 @@ export function compileWindow(
   const [along, bottomY, normalOffset] = component.from
   const clearWidth = component.width - frameWidth * 2
   const clearHeight = component.height - frameWidth * 2
+  if (clearWidth <= 0 || clearHeight <= 0) throw new Error('frameWidth must leave a positive clear window area')
+  const verticalMullionRatios = new Set<number>()
+  for (let index = 0; index < verticalMullions; index++) {
+    verticalMullionRatios.add((index + 1) / (verticalMullions + 1))
+  }
+  if (component.interaction) verticalMullionRatios.add(0.5)
+  const ratios = [0, ...[...verticalMullionRatios].sort((a, b) => a - b), 1]
+  const verticalSpacing = Math.min(...ratios.slice(1).map((r, i) => (r - ratios[i]) * clearWidth))
+  if (verticalMullionRatios.size || horizontalMullions) {
+    if (!Number.isFinite(mullionWidth) || mullionWidth <= 0
+      || (verticalMullionRatios.size && mullionWidth >= verticalSpacing)
+      || (horizontalMullions && mullionWidth >= clearHeight / (horizontalMullions + 1))) {
+      throw new Error('mullionWidth must leave clear space between window bars')
+    }
+  }
   const createSash = (id: string, sashAlong: number, sashWidth: number): OpeningParams => (
     withMaterial<OpeningParams>({
       type: 'opening',
@@ -107,19 +123,12 @@ export function compileWindow(
     ),
   ]
 
-  const verticalMullionRatios = new Set<number>()
-  for (let index = 0; index < verticalMullions; index++) {
-    verticalMullionRatios.add((index + 1) / (verticalMullions + 1))
-  }
-  // 双窗扇必须保留中缝；已有中央竖梃时 Set 会自动去重。
-  if (component.interaction) verticalMullionRatios.add(0.5)
-
   for (const [index, ratio] of [...verticalMullionRatios].sort((a, b) => a - b).entries()) {
     const localAlong = along + frameWidth + clearWidth * ratio
     elements.push(createBox(
       `${component.id}__mullion_vertical_${padIndex(index)}`,
       frame.pointAt(localAlong, bottomY + component.height / 2, normalOffset),
-      [frameWidth, clearHeight, frameDepth],
+      [mullionWidth, clearHeight, frameDepth],
       frame.rotationAt(localAlong),
       component.frameMaterial,
     ))
@@ -131,7 +140,7 @@ export function compileWindow(
     elements.push(createBox(
       `${component.id}__mullion_horizontal_${padIndex(index)}`,
       frame.pointAt(along + component.width / 2, worldY, normalOffset),
-      [clearWidth, frameWidth, frameDepth],
+      [clearWidth, mullionWidth, frameDepth],
       frame.rotationAt(along + component.width / 2),
       component.frameMaterial,
     ))

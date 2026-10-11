@@ -53,6 +53,8 @@ frontmatter 由 `MarkdownChunker._parse_metadata_lines` 解析（`app/spec/loade
 
 ## 一致性纪律
 
+- plan 构件命名复用活动库中带 JSON 示例的 `composition` 实体：稳定编号使用英文 snake_case 的 `entity_name`，`primary_terms` 第一项是中文正式名称，可互换的中英文名称放 `synonyms`。正文中的位置、风格和型号不另造构件编号。实际命名消费者为 `app/agent/knowledge/component_names.py`，不是额外的模型输出枚举。
+
 - 类型语义与渲染实现不共用一个虚假的 `engine` 权威。资料里的经验尺寸不能因为用了 WILD 字段就变成引擎约束；
   混合权威时拆块。
 - 新增/移动/删除文档必须同步 `config.yaml` 的 `required_documents` —— 这是**真门禁**

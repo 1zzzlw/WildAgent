@@ -7,6 +7,7 @@ from app.llm.client import (
     _response_mapping,
     content_as_text,
     message_texts,
+    _thinking_extra_body,
 )
 
 
@@ -19,6 +20,13 @@ class _PydanticLikeResponse:
 
 
 class ModelClientCompatibilityTest(unittest.TestCase):
+    def test_mimo_thinking_switch_does_not_send_unsupported_budget(self):
+        cfg = SimpleNamespace(base_url="https://api.xiaomimimo.com/v1", name="mimo-v2.6-flash", thinking_budget=4096)
+        self.assertEqual(_thinking_extra_body(cfg, True), {"thinking": {"type": "enabled"}})
+        self.assertEqual(_thinking_extra_body(cfg, False), {"thinking": {"type": "disabled"}})
+        cfg.base_url = "https://other-compatible.example/v1"
+        self.assertIsNone(_thinking_extra_body(cfg, False))
+
     def test_content_as_text_accepts_openai_content_blocks(self):
         self.assertEqual(
             content_as_text([

@@ -23,6 +23,8 @@ synonyms: []
 
 # 引擎能力边界
 
+这里限制的是实际 WILD 输出字段，不限制 architecture 的设计内容。没有同名原生类型时，plan 应尝试用支持的元素组合实现；经过自行实现、知识库、网络参考与修订仍失败，才舍弃并记录原因。
+
 > 定义当前引擎**能做什么**、**不能做什么**  
 > 来源：`schema.json`、`types.ts`、`registry.ts`、`resolver.ts`
 
@@ -436,9 +438,9 @@ entity_type: railing
 | `<volume_id>`（如 `main`） | 该体量**顶层**的临空边缘 |
 | `<volume_id>_L<floor>` | 指定层的临空边缘 |
 | `railing:<volume_id>` / `railing:<volume_id>:<floor>` | 同上，与 `railing_slots` 的 id 同形 |
+| 阳台的稳定实例 ID | 按该阳台真实墙宿主、位置和尺寸生成外侧 U 形路径；关闭内置栏杆，由独立实例接管 |
 
-**不要在图纸里写 `path`**：它是世界坐标，模型算不出体量边界在哪，
-写出来必飘在空中或跨过整栋楼。可表态的只有 `size.height` 与 `material_role`。
+图纸不另写世界 `path`，由真实宿主解算。可声明 `size.height`、`material_role`，以及 `form.postSpacing/postRadius/railRadius/railLevels/infillType/infillMaterial`；栏杆没有 `profile`，它不是檐口截面扫掠。
 
 上例生成玻璃栏板：沿每段 `path` 拉一块厚 0.02m、高 `1.1 × 0.92 = 1.012m` 的玻璃板，
 位于立杆之间；立杆与横杆仍按 `metal` 生成。

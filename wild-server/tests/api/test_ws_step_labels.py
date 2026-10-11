@@ -1,15 +1,4 @@
-"""ws 展示层对图节点的认知必须跟上图本身。
-
-回归背景：编译器重构把建筑链的 ``skeleton`` 换成 ``compile``、加了
-``design_convergence`` / ``object_design`` 节点，但 ``ws_agent`` 的
-``_OUR_NODES`` 没跟上——新节点的事件在 astream 过滤处被静默 ``continue`` 吞掉，
-前端管线展示直接"跳节点"（material_plan 之后直接 design_review / plan）。
-
-三条守卫（图节点全集的事实源是 ``test_plan_graph.py::_EXPECTED_NODES``）：
-1. 图上每个节点都能发事件（不在 _OUR_NODES 就会被吞）；
-2. 每个可发事件的节点都有中文标签（缺了就给用户看英文裸名）；
-3. 每个图节点都有 running 文案（缺了 ``if detail:`` 门会连"开始"事件都不发）。
-"""
+"""图节点的事件、中文标签、开始与完成消息必须同步。"""
 
 import ast
 from pathlib import Path
@@ -19,7 +8,6 @@ from app.api.ws_agent import (
     _NODE_LABELS,
     _NODE_START_DETAILS,
     _OUR_NODES,
-    _design_schedule_note,
     _public_node_name,
     _thinking_channel,
 )
@@ -113,40 +101,8 @@ def test_thinking_channel_is_declared_per_delta_not_guessed_from_node():
     assert _thinking_channel("architecture:reasons") == "reasoning"
 
 
-def test_design_schedule_note_reports_batches_and_concurrency():
-    """设计期的批次/并发必须能被读出来。
-
-    只看产物分不出 "plan 参与了图纸" 没有：串行起草也能写出同一张图。这条口径
-    让 UI 与审计都能看到"几批、同批几块"。
-    """
-
-    note = _design_schedule_note(
-        {
-            "plan": {
-                "items": [
-                    {"id": "draft_massing", "status": "done"},
-                    {"id": "draft_facade", "status": "done"},
-                    {"id": "draft_roof", "status": "abandoned"},
-                ]
-            },
-            "batches": [
-                {"items": ["draft_massing"]},
-                {"items": ["draft_structure", "draft_facade", "draft_roof"]},
-            ],
-        }
-    )
-    assert "2 批" in note
-    assert "最宽 3 并发" in note
-    assert "落定 2/3 块" in note
 
 
-def test_design_schedule_note_is_empty_without_a_design_plan():
-    """没有设计期计划就不许编一个出来（老 checkpoint 与物件链都会走到这里）。"""
-
-    assert _design_schedule_note(None) == ""
-    assert _design_schedule_note({}) == ""
-    assert _design_schedule_note({"plan": None, "batches": []}) == ""
-    assert _design_schedule_note({"plan": {"items": []}, "batches": "不是列表"}) == ""
 
 
 def test_thinking_channel_suffix_is_stripped_from_the_step_node():

@@ -1298,7 +1298,7 @@ def test_normalize_keeps_carried_profile_id():
     """二次归一化必须**沿用 plan 里已有的形制 id**，不许重算成 custom。
 
     背景：normalize_architecture_plan 在链上被多处二次调用
-    （compiler._compose / build_deterministic_skeleton / probe_tool），
+    （compiler._compose / build_deterministic_skeleton），
     它们手里只有 plan、不会再传 architecture_profile。此前这些调用点会把
     分类器判出的 villa 静默洗回 custom（planning.py:480 的 or 兜底）。
     """

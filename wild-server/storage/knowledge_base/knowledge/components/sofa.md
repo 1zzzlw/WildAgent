@@ -3,7 +3,7 @@ doc_type: component
 knowledge_role: capability
 doc_scope: generation
 knowledge_layer: wild_schema
-entity_type: component
+entity_type: furniture
 entity_name: sofa
 topic: composition
 status: supported

@@ -160,6 +160,15 @@
         <component :is="connectionIcon" />
       </el-icon>
       <span class="connection-text">{{ connectionStatusText }}</span>
+      <div class="detail-level-control">
+        <span>粒度</span>
+        <el-select ref="detailLevelSelect" :model-value="agentStore.detailLevel" size="small"
+          aria-label="建筑设计粒度" popper-class="agent-detail-level-dropdown"
+          :disabled="agentStore.isProcessing" @change="handleDetailLevelChange">
+          <el-option v-for="level in BUILDING_DETAIL_LEVELS" :key="level.value"
+            :value="level.value" :label="level.label" />
+        </el-select>
+      </div>
       <div class="thinking-toggle"
         :title="agentStore.precisionMode ? '精密模式下自动开启思考，不可关闭' : '请求模型开启思考，并实时展示接口返回的 reasoning_content'">
         <span>思考</span>
@@ -188,14 +197,17 @@
     <div class="input-container">
       <el-input v-model="inputText" type="textarea" :placeholder="inputPlaceholder" :rows="3" resize="none"
         @keydown.enter.ctrl="handleSend" />
-      <el-button class="send-btn" @click="handleSend" :disabled="!canSend" :title="sendButtonTitle">
-        <el-icon v-if="agentStore.isProcessing" class="is-loading">
+      <el-button class="send-btn" :class="{ 'stop-btn': activeTurn }"
+        @click="activeTurn ? handleStop() : handleSend()"
+        :disabled="activeTurn ? !canStop : !canSend" :title="sendButtonTitle">
+        <el-icon v-if="activeTurn?.stop_requested" class="is-loading">
           <Loading />
         </el-icon>
+        <span v-else-if="activeTurn" class="stop-icon" aria-hidden="true" />
         <el-icon v-else>
           <Promotion />
         </el-icon>
-        <span>发送</span>
+        <span>{{ activeTurn ? (activeTurn.stop_requested ? '停止中…' : '停止') : '发送' }}</span>
       </el-button>
     </div>
   </div>
@@ -223,7 +235,16 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
 import AgentExecutionPanel from './AgentExecutionPanel.vue'
-import type { AgentTurn, ChatMessage } from '../../types/agent'
+import type { AgentTurn, BuildingDetailLevel, ChatMessage } from '../../types/agent'
+import type { SelectInstance } from 'element-plus'
+import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
+
+const detailLevelSelect = ref<SelectInstance>()
+
+function handleDetailLevelChange(value: BuildingDetailLevel) {
+  agentStore.setDetailLevel(value)
+  detailLevelSelect.value?.blur()
+}
 
 hljs.registerLanguage('bash', bash)
 hljs.registerLanguage('css', css)
@@ -347,9 +368,12 @@ function jumpToSelectedStep() {
 
 // 用户滚动检测
 const isUserScrolling = ref(false)
-const hasRunningTurn = computed(() =>
-  agentStore.currentTurns.some(turn => turn.status === 'running')
+const activeTurn = computed(() =>
+  [...agentStore.currentTurns].reverse().find(turn => turn.status === 'running')
 )
+const hasRunningTurn = computed(() => Boolean(activeTurn.value))
+const canStop = computed(() => Boolean(activeTurn.value && !activeTurn.value.stop_requested)
+  && agentStore.connectionStatus === 'connected')
 const pendingDesignReview = computed(() =>
   [...agentStore.currentTurns]
     .reverse()
@@ -413,12 +437,13 @@ watch(
 const canSend = computed(() =>
   inputText.value.trim().length > 0
   && agentStore.connectionStatus === 'connected'
-  && !agentStore.isProcessing
+  && !hasRunningTurn.value
 )
 
 const sendButtonTitle = computed(() => {
   if (agentStore.connectionStatus !== 'connected') return '未连接到 Agent 服务'
-  if (agentStore.isProcessing) return '处理中...'
+  if (activeTurn.value?.stop_requested) return '正在停止并保存已有记录…'
+  if (activeTurn.value) return '停止当前任务并保存已有记录'
   if (pendingDesignReview.value) return '发送建筑设计修改意见 (Ctrl+Enter)'
   return '发送 (Ctrl+Enter)'
 })
@@ -429,6 +454,10 @@ function handleSend() {
   resumeAutoScroll()
   const requestId = agentBridge.sendUserMessage(message)
   if (requestId) inputText.value = ''
+}
+
+function handleStop() {
+  if (canStop.value) agentBridge.stopCurrentGeneration()
 }
 
 function handleConfirmDesign(requestId: string) {
@@ -1477,6 +1506,7 @@ function loadDraftSessionsFromLocal(): any[] {
 /* ── Connection Bar ── */
 .connection-bar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 7px 16px;
@@ -1500,6 +1530,7 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .thinking-toggle,
+.detail-level-control,
 .precision-toggle,
 .shader-toggle {
   display: flex;
@@ -1509,6 +1540,54 @@ function loadDraftSessionsFromLocal(): any[] {
   flex-shrink: 0;
   font-size: 11px;
   letter-spacing: 0.02em;
+}
+
+.detail-level-control :deep(.el-select) { width: 72px; }
+
+.detail-level-control :deep(.el-select__wrapper) {
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 1px var(--border) inset;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.detail-level-control :deep(.el-select__selected-item) { color: var(--text-primary); }
+.detail-level-control :deep(.el-select__caret) { color: var(--text-muted); }
+.detail-level-control :deep(.el-select__wrapper.is-focused) {
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+:global(.agent-detail-level-dropdown.el-popper) {
+  --bg-secondary: #252528;
+  --bg-tertiary: #2c2c30;
+  --border: rgba(255, 255, 255, 0.08);
+  --text-secondary: #a0a0a8;
+  --accent: #6899d4;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px #0006;
+  min-width: 72px;
+}
+
+:global(.agent-detail-level-dropdown .el-popper__arrow::before) {
+  background: var(--bg-secondary);
+  border-color: var(--border);
+}
+
+:global(.agent-detail-level-dropdown .el-select-dropdown__item) {
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 0 14px;
+}
+
+:global(.agent-detail-level-dropdown .el-select-dropdown__item.is-hovering) {
+  background: var(--bg-tertiary);
+}
+
+:global(.agent-detail-level-dropdown .el-select-dropdown__item.is-selected) {
+  color: var(--accent);
+  background: var(--bg-tertiary);
 }
 
 .thinking-toggle :deep(.el-switch.is-checked .el-switch__core),
@@ -1596,6 +1675,17 @@ function loadDraftSessionsFromLocal(): any[] {
 .send-btn:hover:not(:disabled) {
   opacity: 0.88;
   transform: scale(1.01);
+}
+
+.send-btn.stop-btn {
+  background: #bc4848;
+}
+
+.stop-icon {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: currentColor;
 }
 
 .send-btn:disabled {

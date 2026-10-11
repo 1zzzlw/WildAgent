@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import math
 from copy import deepcopy
+from graphlib import TopologicalSorter
 from typing import Any
 
 from loguru import logger
@@ -518,6 +519,7 @@ def _light_candidates(
             "fixtureType": "bulb",
             "initiallyOn": True,
         })
+        brief.setdefault("light_hosts", {})[candidates[-1]["id"]] = wall_id
     return candidates
 
 
@@ -865,6 +867,14 @@ _INSTANCE_FORM_ROUTES: dict[str, tuple[str, str]] = {
 }
 
 
+def _instance_size_field(component_type: str, field: str) -> str | None:
+    """设计尺寸到引擎数值尺寸；板的 height 表示板厚，不表示安装标高。"""
+    target = {("balcony", "height"): "slabThickness",
+              ("canopy", "height"): "thickness"}.get((component_type, field), field)
+    prop = _form_target_schema(component_type, target)
+    return target if prop and prop.get("type") == "number" else None
+
+
 #: 形态落值的 schema 缓存（``(类型, 落点字段, 容器)`` → JSON-schema 片段 / 校验器）。
 _FORM_TARGET_SCHEMA_CACHE: dict[tuple[str, str], dict[str, Any] | None] = {}
 _FORM_VALUE_VALIDATOR_CACHE: dict[tuple[str, str, str | None], Any] = {}
@@ -1124,13 +1134,13 @@ def _opening_defaults(
         bottom, width, height = 0.9, 1.0, 1.2
         extra = {"verticalMullions": 1, "horizontalMullions": 0}
     else:  # balcony
-        bottom, width, height = 3.2, 2.4, 0.0
+        bottom, width, height = 0.0, 2.4, 0.0
         extra = {"slabThickness": 0.15, "railingHeight": 1.05, "postSpacing": 1.5}
     component = {
         "type": component_type,
         "id": f"{component_type}_instance_{inst.get('_seq', 1):02d}",
         "parentWall": str(wall.get("id") or ""),
-        "from": [along, bottom, 0.0],
+        "from": [along, min(float(frm[1]), float(to[1])) + bottom, 0.0],
         "width": _positive_float(size.get("width"), width),
         "height": _positive_float(size.get("height"), height),
         "frameMaterial": str(inst.get("material_role") or "frame"),
@@ -1228,32 +1238,10 @@ def _compile_from_instances(
     plan: dict[str, Any] | None = None,
     brief: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    """从实例清单编译构件（§3.4 覆盖层）。
+    """沿真实宿主配对模板，落实显式尺寸/位置，再按依赖编译附属实例。
 
-     **唯一规则：实例 = 派生模板 + 形态/材质表态。** 几何一律沿用派生结果
-    （位置/主尺寸/宿主引用），实例不再自己算几何 —— 旧实现里 8 个 per-type
-    builder 各写一套"宿主解析 + 位置计算 + 字段映射"，与派生链是 8 份重复实现，
-    且产出字段屡屡越出引擎闭集（canopy.slope / chimney.capType / light 的五个
-    幽灵字段都是这么进来的）。实例的 ``size`` 在**有模板**时被忽略（有槽位时
-    几何以槽位为准），只在**追加**（该墙没有同类型派生结果）时作为尺寸来源。
-
-    派生链**先跑完**（``_compose`` 里的 ``conform_*`` / ``_derive_*``），
-    本函数只做四件事：
-
-    1. **配对**：``host`` → 派生模板（:func:`_opening_expression` +
-       :func:`_template_for`）；灯具没有 ``parentWall``，按出现序对齐；
-       檐口/烟囱的宿主是**屋面**，先经 :func:`_roof_host_aliases` 把图纸写的
-       体量拼法解析成真实屋面 id（否则按全等匹配一律落空）；
-    2. **追加**：宿主墙解析得到、但该墙没有同类型派生结果的门窗/阳台，按
-       :func:`_opening_defaults` 追加（§3.4"找不到就追加"）；宿主都解析不到的
-       实例整条丢弃并记入 ``stats["dropped"]``；
-    3. **表态**：白名单内的 form 字段覆写模板拷贝（:func:`_apply_instance_form`），
-       **落值前按引擎 schema 收口**（值不合格就不落、记 ``form_rejections``），
-       材质角色名由 :func:`_resolve_instance_materials` 统一换蓝图材质名；
-    4. **顶替**：配对成功的模板记进 ``replaced``（identity 定位），由
-       :func:`_apply_instance_overrides` 从派生结果里摘掉 —— 覆盖层不是替换层。
-
-    返回 ``(构件列表, 被顶替的派生结果, 统计)``。
+    模板只提供未声明值；显式值及无法兑现的字段都必须保留证据。
+    返回构件、被顶替的模板与逐实例统计。
     """
 
     components: list[dict[str, Any]] = []
@@ -1291,258 +1279,351 @@ def _compile_from_instances(
         if isinstance(inst, dict) and str(inst.get("type", "")):
             by_type.setdefault(str(inst["type"]), []).append({**inst, "_design_index": design_index})
 
-    for component_type, type_instances in sorted(by_type.items()):
-        for occurrence, inst in enumerate(type_instances, start=1):
-            inst = dict(inst)
-            inst["_seq"] = occurrence
-            wall_id, nth = _opening_expression(inst, walls, plan)
-            component: dict[str, Any] | None = None
-            #: P4：宿主**是否按图纸原意**解析到。履约层要判"/decisions/components/i/host"
-            #: 兑现与否，只能靠这个——它没法自己解析 `main_L2_roof` 这种体量级拼法。
-            host_intent = "none"
+    indexed = {}
+    for type_instances in by_type.values():
+        for occurrence, inst in enumerate(type_instances, 1):
+            indexed[inst["_design_index"]] = {**inst, "_seq": occurrence}
+    instance_ids = {inst["id"]: index for index, inst in indexed.items() if inst.get("id")}
+    dependencies = {index: {instance_ids[host] for host in
+                    (inst.get("host"), (inst.get("relation") or {}).get("target"))
+                    if host in instance_ids} for index, inst in indexed.items()}
+    ordered = TopologicalSorter(dependencies).static_order()
+    for index in ordered:
+        inst = indexed[index]
+        component_type, occurrence = inst["type"], inst["_seq"]
+        inst = dict(inst)
+        inst["_seq"] = occurrence
+        raw_host = str(inst.get("host") or "")
+        wall_id, nth = _opening_expression(inst, walls, plan)
+        component: dict[str, Any] | None = None
+        template = None
+        context_geometry = {**geometry, "components": [
+            *(item for item in geometry.get("components", []) if item not in replaced), *components]}
+        context = {**blueprint, "geometry": context_geometry}
+        #: P4：宿主**是否按图纸原意**解析到。履约层要判"/decisions/components/i/host"
+        #: 兑现与否，只能靠这个——它没法自己解析 `main_L2_roof` 这种体量级拼法。
+        host_intent = "none"
 
-            if component_type in {"door", "window", "balcony"}:
-                template = (
-                    _template_for(geometry, component_type, wall_id, nth)
-                    if wall_id
-                    else None
-                )
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-                    host_intent = "resolved"
-                elif wall_id and isinstance(walls.get(wall_id), dict):
-                    component = _opening_defaults(component_type, inst, walls[wall_id])
-                    host_intent = "resolved"
-            elif component_type == "column" and inst.get("relation"):
-                from app.design.relations import canopy_support_point
-                relation = inst["relation"]
-                try:
-                    context = {**blueprint, "geometry": {**geometry,
-                        "components": [*geometry.get("components", []), *components]}}
-                    top, bottom = canopy_support_point(context, relation)
-                    size = inst.get("size") or {}
-                    component = {"type": "column", "base": [top[0], bottom, top[2]],
-                                 "height": top[1]-bottom,
-                                 "bottomRadius": size.get("bottomRadius", 0.1),
-                                 "topRadius": size.get("topRadius", 0.1),
-                                 "style": "modern", "material": "concrete"}
-                    host_intent = "resolved"
-                except (ValueError, KeyError, TypeError, IndexError):
-                    component = None
-            elif component_type == "light":
-                # 灯具没有 parentWall：按出现序对齐派生结果。host 解析不出墙
-                # 也照样配对（灯具是追加型，位置反正沿用派生）。
-                template = _template_for(geometry, "light", None, nth)
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-            elif component_type == "roof":
-                template = next(
-                    (
-                        item
-                        for item in (geometry.get("elements") or [])
-                        if isinstance(item, dict) and item.get("type") == "roof"
-                    ),
-                    None,
-                )
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-                elif occurrence == 1 and len(plan.get("volumes") or []) == 1:
-                    component = _single_roof(plan, materials)
-            elif component_type == "railing":
-                # 追加型：宿主是**楼板/体量边缘**。优先顶替同位置的派生栏杆；
-                # 没有派生栏杆时按宿主算一条闭合路径（世界坐标只由体量决定，
-                # 图纸不写 path —— 写了模型也写不准，且飘在空中）。
-                template = _template_for(geometry, "railing", None, occurrence)
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-                    host_intent = "resolved"
-                else:
-                    component = _railing_instance_defaults(inst, plan, brief)
-                    if component is not None:
-                        host_intent = "resolved"
-            elif component_type == "canopy":
-                # 追加型：宿主是**墙或墙上的门窗**。三种写法都认：
-                # 门窗实体 id、槽位 id（``wall_front_1:floor_1:door:1``，提示词教给
-                # 模型的标准写法）、墙 id / ``<volume_id>_L<floor>_<face>``。
-                # 之前只认前两种且要求派生结果带 ``parentOpening``，而派生链从不写
-                # 这个字段 —— 于是**任何**合规写法都落空、实例被静默丢弃
-                # （能力已实现却无人派发）。墙 id 走 ``_opening_expression`` 解析，
-                # 再取该墙上第一个真实门窗当遮蔽对象（注册表：雨棚必须有真实遮蔽物）。
-                raw_host = str(inst.get("host") or "")
-                template = next(
-                    (
-                        item
-                        for item in _host_lookup(geometry)
-                        if item.get("type") == "canopy"
-                        and item.get("parentOpening") == raw_host
-                    ),
-                    None,
-                )
-                host_opening = next(
-                    (
-                        item
-                        for item in _host_lookup(geometry)
-                        if item.get("id") == raw_host
-                        and item.get("type") in {"door", "window"}
-                    ),
-                    None,
-                )
-                if host_opening is None:
-                    slot_wall, _nth = _opening_expression(inst, walls, plan)
-                    if slot_wall:
-                        host_opening = next(
-                            (
-                                item
-                                for item in _host_lookup(geometry)
-                                if item.get("type") in {"door", "window"}
-                                and str(item.get("parentWall") or "") == slot_wall
-                            ),
-                            None,
-                        )
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-                    host_intent = "resolved"
-                elif isinstance(host_opening, dict):
-                    host_intent = "resolved"
-                    opening_from = (
-                        host_opening.get("from")
-                        if isinstance(host_opening.get("from"), list)
-                        else [0.0, 0.0, 0.0]
-                    )
-                    size = inst.get("size") if isinstance(inst.get("size"), dict) else {}
-                    canopy_width = _positive_float(size.get("width"), _positive_float(host_opening.get("width"), 1.0) + 0.3)
-                    component = {
-                        "type": "canopy",
-                        "id": f"canopy_{occurrence:02d}",
-                        "parentWall": host_opening.get("parentWall"),
-                        "from": [
-                            round(float(opening_from[0]) + (float(host_opening["width"]) - canopy_width) / 2, 3),
-                            float(opening_from[1]) + _positive_float(host_opening.get("height"), 2.0),
-                            float(opening_from[2]),
-                        ],
-                        "width": canopy_width,
-                        "depth": _positive_float(size.get("depth"), 1.2),
-                        "thickness": _positive_float(size.get("thickness"), 0.15),
-                        "material": "roof",
-                    }
-            elif component_type in {"cornice", "chimney"}:
-                # 追加型：宿主是屋顶。模板取同屋顶同类型的那条派生结果，几何全沿用。
-                # 图纸写体量级拼法（`main` / `main_L2_roof` / `roof:main`）时先解析成
-                # 真实屋面 id——全等匹配对这类写法一律落空，会静默退到下面那条
-                # "第 occurrence 条派生结果"（檐口挂到别的体量屋面）。
-                raw_host = str(inst.get("host") or "")
-                roof_host = roof_hosts.get(raw_host, raw_host)
-                template = next(
-                    (
-                        item
-                        for item in _host_lookup(geometry)
-                        if item.get("type") == component_type
-                        and item.get("parentRoof") == roof_host
-                    ),
-                    None,
-                )
-                if template is None:
-                    template = _template_for(geometry, component_type, None, occurrence)
-                    host_intent = "fallback"
-                    if isinstance(template, dict) and raw_host:
-                        # 兜底成功但**不是**按宿主配到的 ⇒ 记一笔，别让它静默错位。
-                        host_fallback.append(f"{component_type}:{raw_host}")
-                else:
-                    host_intent = "resolved"
-                if isinstance(template, dict):
-                    component = deepcopy(template)
-                    replaced.append(template)
-
-            if component is None:
-                dropped.append(f"{component_type}:{inst.get('host', '?')}")
-                instance_entities.append({
-                    "index": inst["_design_index"],
-                    "instance_id": inst.get("id"),
-                    "relation": inst.get("relation"),
-                    "declared_type": component_type,
-                    "declared_host": str(inst.get("host") or "") or None,
-                    "outcome": "dropped",
-                    "host_intent": host_intent,
-                    "host_sequence": occurrence,
-                    "entity_id": None,
-                    "entity_type": None,
-                    "entity_host": None,
-                })
-                continue
-
-            # 显式实例统一改名：与派生产物的 id 词表（*_planned_* / *_synthesized_*）
-            # 区分开，审计时一眼认出哪条来自实例清单。
-            component["id"] = inst.get("id") or (
-                f"{component_type}_{occurrence:02d}"
-                if component_type != "roof"
-                else f"roof_{occurrence:02d}"
+        if component_type in {"door", "window", "balcony"}:
+            template = (
+                _template_for(geometry, component_type, wall_id, nth)
+                if wall_id
+                else None
             )
-
-            applied, ignored, rejected, unverified = _apply_instance_form(component, inst)
-            for field, reason in rejected.items():
-                form_rejections.setdefault(component_type, {})[field] = reason
-            if unverified:
-                form_unverified[component_type] = sorted(
-                    set(form_unverified.get(component_type, [])) | set(unverified)
-                )
-            for field, value in (inst.get("size") or {}).items():
-                actual = component.get(field)
-                if isinstance(actual, (float, int)) and isinstance(value, (float, int)) and abs(actual-value) <= 0.001:
-                    continue
-                size_changes.append({
-                    "path": f"/decisions/components/{inst['_design_index']}/size/{field}",
-                    "target": component["id"], "before": value, "after": actual,
-                    "before_exists": True, "after_exists": field in component,
-                    "rule": "compiler.instance_size", "category": "semantic_change",
-                    "input_source": "design", "output_source": "program", "semantic_change": True,
-                    "reason": "当前实例编译未落实该尺寸，仍使用派生模板或没有对应产物字段",
-                    "constraint_ids": [],
-                })
-            if inst.get("material_role"):
-                if component_type in {"door", "window"}:
-                    component["frameMaterial"] = str(inst["material_role"])
-                else:
-                    component["material"] = str(inst["material_role"])
-            # 宿主字段各构件类型不统一（parentWall / parentRoof / parentOpening），
-            # 这里**读实体自身**而不是按类型硬编码——宿主键名会随引擎演进，
-            # 编译器不该替引擎宣布"合法宿主字段只有这三个"。
-            host_ref = next(
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+                host_intent = "resolved"
+            elif wall_id and isinstance(walls.get(wall_id), dict):
+                component = _opening_defaults(component_type, inst, walls[wall_id])
+                host_intent = "resolved"
+        elif component_type == "column" and inst.get("relation"):
+            from app.design.relations import canopy_support_point
+            relation = inst["relation"]
+            try:
+                top, bottom = canopy_support_point(context, relation)
+                size = inst.get("size") or {}
+                component = {"type": "column", "base": [top[0], bottom, top[2]],
+                             "height": top[1]-bottom,
+                             "bottomRadius": size.get("bottomRadius", 0.1),
+                             "topRadius": size.get("topRadius", 0.1),
+                             "style": "modern", "material": "concrete"}
+                host_intent = "resolved"
+            except (ValueError, KeyError, TypeError, IndexError):
+                component = None
+        elif component_type == "light":
+            light_hosts = brief.get("light_hosts", {})
+            template = next((item for item in geometry.get("components", [])
+                if item.get("type") == "light" and wall_id
+                and light_hosts.get(item["id"]) == wall_id), None)
+            if not wall_id:
+                template = _template_for(geometry, "light", None, occurrence)
+                host_intent = "fallback"
+                host_fallback.append(f"light:{raw_host}")
+            if template in replaced and inst.get("placement") is not None:
+                template = None
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+                if wall_id:
+                    host_intent = "resolved"
+            elif wall_id and inst.get("placement") is not None:
+                component = {"type": "light", "position": [0, 0, 0],
+                             "fixtureType": "bulb", "initiallyOn": True}
+                host_intent = "resolved"
+        elif component_type == "roof":
+            roof_host = roof_hosts.get(raw_host, raw_host)
+            template = next(
                 (
-                    (key, value)
-                    for key, value in component.items()
-                    if (key == "host" or key.startswith("parent")) and isinstance(value, str) and value
+                    item
+                    for item in (geometry.get("elements") or [])
+                    if isinstance(item, dict) and item.get("type") == "roof"
+                    and item.get("id") == roof_host
                 ),
-                (None, None),
+                None,
             )
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+                host_intent = "resolved"
+        elif component_type == "railing":
+            balcony = next((item for item in components if item.get("id") == raw_host
+                            and item.get("type") == "balcony"), None)
+            if balcony is not None:
+                from app.design.relations import wall_attached_point
+                along, y, _ = balcony["from"]
+                width, depth = balcony["width"], balcony["depth"]
+                component = {"type": "railing", "height": balcony.get("railingHeight", 1.1),
+                    "postSpacing": balcony.get("postSpacing", .9),
+                    "material": balcony.get("railingMaterial") or balcony.get("material") or "frame",
+                    "path": [wall_attached_point(context, balcony, a, y, d) for a, d in
+                             ((along, 0), (along, depth), (along+width, depth), (along+width, 0))]}
+                balcony["railingEnabled"] = False
+                host_intent = "resolved"
+            else:
+                template = _template_for(geometry, "railing", None, occurrence)
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+                host_intent = "resolved"
+            elif component is None:
+                component = _railing_instance_defaults(inst, plan, brief)
+                if component is not None:
+                    host_intent = "resolved"
+        elif component_type == "canopy":
+            # 追加型：宿主是**墙或墙上的门窗**。三种写法都认：
+            # 门窗实体 id、槽位 id（``wall_front_1:floor_1:door:1``，提示词教给
+            # 模型的标准写法）、墙 id / ``<volume_id>_L<floor>_<face>``。
+            # 之前只认前两种且要求派生结果带 ``parentOpening``，而派生链从不写
+            # 这个字段 —— 于是**任何**合规写法都落空、实例被静默丢弃
+            # （能力已实现却无人派发）。墙 id 走 ``_opening_expression`` 解析，
+            # 再取该墙上第一个真实门窗当遮蔽对象（注册表：雨棚必须有真实遮蔽物）。
+            raw_host = str(inst.get("host") or "")
+            template = next(
+                (
+                    item
+                    for item in _host_lookup(context_geometry)
+                    if item.get("type") == "canopy"
+                    and item.get("parentOpening") == raw_host
+                ),
+                None,
+            )
+            host_opening = next(
+                (
+                    item
+                    for item in _host_lookup(context_geometry)
+                    if item.get("id") == raw_host
+                    and item.get("type") in {"door", "window"}
+                ),
+                None,
+            )
+            if host_opening is None:
+                slot_wall, _nth = _opening_expression(inst, walls, plan)
+                if slot_wall:
+                    host_opening = next(
+                        (
+                            item
+                            for item in _host_lookup(context_geometry)
+                            if item.get("type") in {"door", "window"}
+                            and str(item.get("parentWall") or "") == slot_wall
+                        ),
+                        None,
+                    )
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+                host_intent = "resolved"
+            elif isinstance(host_opening, dict):
+                host_intent = "resolved"
+                opening_from = (
+                    host_opening.get("from")
+                    if isinstance(host_opening.get("from"), list)
+                    else [0.0, 0.0, 0.0]
+                )
+                size = inst.get("size") if isinstance(inst.get("size"), dict) else {}
+                canopy_width = _positive_float(size.get("width"), _positive_float(host_opening.get("width"), 1.0) + 0.3)
+                component = {
+                    "type": "canopy",
+                    "id": f"canopy_{occurrence:02d}",
+                    "parentWall": host_opening.get("parentWall"),
+                    "from": [
+                        round(float(opening_from[0]) + (float(host_opening["width"]) - canopy_width) / 2, 3),
+                        float(opening_from[1]) + _positive_float(host_opening.get("height"), 2.0),
+                        float(opening_from[2]),
+                    ],
+                    "width": canopy_width,
+                    "depth": _positive_float(size.get("depth"), 1.2),
+                    "thickness": _positive_float(size.get("thickness"), 0.15),
+                    "material": "roof",
+                }
+        elif component_type in {"cornice", "chimney"}:
+            # 追加型：宿主是屋顶。模板取同屋顶同类型的那条派生结果，几何全沿用。
+            # 图纸写体量级拼法（`main` / `main_L2_roof` / `roof:main`）时先解析成
+            # 真实屋面 id——全等匹配对这类写法一律落空，会静默退到下面那条
+            # "第 occurrence 条派生结果"（檐口挂到别的体量屋面）。
+            raw_host = str(inst.get("host") or "")
+            roof_host = roof_hosts.get(raw_host, raw_host)
+            template = next(
+                (
+                    item
+                    for item in _host_lookup(geometry)
+                    if item.get("type") == component_type
+                    and item.get("parentRoof") == roof_host
+                ),
+                None,
+            )
+            if template is None:
+                template = _template_for(geometry, component_type, None, occurrence)
+                host_intent = "fallback"
+                if isinstance(template, dict) and raw_host:
+                    # 兜底成功但**不是**按宿主配到的 ⇒ 记一笔，别让它静默错位。
+                    host_fallback.append(f"{component_type}:{raw_host}")
+            else:
+                host_intent = "resolved"
+            if isinstance(template, dict):
+                component = deepcopy(template)
+                replaced.append(template)
+
+        if component is None:
+            dropped.append(f"{component_type}:{inst.get('host', '?')}")
             instance_entities.append({
                 "index": inst["_design_index"],
-                    "instance_id": inst.get("id"),
-                    "relation": inst.get("relation"),
+                "instance_id": inst.get("id"),
+                "relation": inst.get("relation"),
                 "declared_type": component_type,
                 "declared_host": str(inst.get("host") or "") or None,
-                "outcome": "compiled",
+                "outcome": "dropped",
                 "host_intent": host_intent,
                 "host_sequence": occurrence,
-                "entity_id": str(component.get("id") or "") or None,
-                "entity_type": str(component.get("type") or "") or None,
-                "entity_host": host_ref[1],
-                "entity_host_field": host_ref[0],
+                "entity_id": None,
+                "entity_type": None,
+                "entity_host": None,
             })
-            components.append(component)
+            continue
 
-            if applied:
-                form_applied[component_type] = sorted(
-                    set(form_applied.get(component_type, [])) | set(applied)
-                )
-            if ignored:
-                form_ignored[component_type] = sorted(
-                    set(form_ignored.get(component_type, [])) | set(ignored)
-                )
+        # 显式实例统一改名：与派生产物的 id 词表（*_planned_* / *_synthesized_*）
+        # 区分开，审计时一眼认出哪条来自实例清单。
+        component["id"] = inst.get("id") or (
+            f"{component_type}_{occurrence:02d}"
+            if component_type != "roof"
+            else f"roof_{occurrence:02d}"
+        )
+        if isinstance(template, dict):
+            instance_id_map = brief.setdefault("instance_id_map", {})
+            old_id, new_id = template["id"], component["id"]
+            if old_id in instance_id_map and instance_id_map[old_id] != new_id:
+                raise ValueError(f"多个显式实例占用了同一设计位置：{old_id}")
+            instance_id_map[old_id] = new_id
+
+        placement = inst.get("placement")
+        if placement is not None:
+            placement_wall = wall_id or component.get("parentWall")
+            if component_type not in {"door", "window", "balcony", "canopy", "light"} or placement_wall not in walls:
+                raise ValueError(f"{component['id']}: placement 需要门窗、阳台、雨棚或灯具的真实墙宿主")
+            wall = walls[placement_wall]
+            component["from"] = [float(placement["offset"]),
+                min(wall["from"][1], wall["to"][1]) + float(placement.get("sill_height", 0)),
+                float(placement.get("normal_offset", 0))]
+            if component_type == "light":
+                from app.design.relations import wall_attached_point
+                component["position"] = wall_attached_point(context,
+                    {**component, "parentWall": placement_wall, "width": 0},
+                    component["from"][0], component["from"][1], _LIGHT_WALL_OFFSET)
+                component.pop("from")
+
+        for field, value in (inst.get("size") or {}).items():
+            target = _instance_size_field(component_type, field)
+            if target and _form_value_error(component_type, target, value) is None:
+                component[target] = value
+        if placement is not None:
+            wall_length = math.hypot(wall["to"][0]-wall["from"][0], wall["to"][2]-wall["from"][2])
+            extent = component.get("width", 0) if component_type != "light" else 0
+            vertical = component.get("height", 0) if component_type in {"door", "window"} else 0
+            if (float(placement["offset"])+extent > wall_length+0.001 or
+                float(placement.get("sill_height", 0))+vertical > abs(wall["to"][1]-wall["from"][1])+0.001):
+                raise ValueError(f"{component['id']}: 显式 placement/size 超出宿主墙范围；核对沿墙起点、宽度与本层安装高度")
+        if component_type == "column" and inst.get("relation"):
+            expected_height = top[1]-bottom
+            if abs(component["height"]-expected_height) > 0.001:
+                raise ValueError(f"{component['id']}: 显式柱高 {component['height']} 与雨棚板底要求 "
+                                 f"{expected_height:.6g} 冲突；核对目标雨棚 placement、板厚或柱高")
+        if component_type in {"door", "window"} and isinstance(template, dict):
+            for slot in brief.get("opening_slots", []):
+                if (slot.get("wall_id") == template.get("parentWall")
+                        and slot.get("type") == component_type
+                        and slot.get("from") == template.get("from")
+                        and slot.get("width") == template.get("width")
+                        and slot.get("height") == template.get("height")):
+                    slot.update(id=component["id"], **{
+                        "from": list(component["from"]),
+                        "width": component["width"], "height": component["height"]})
+                    break
+
+        applied, ignored, rejected, unverified = _apply_instance_form(component, inst)
+        for field, reason in rejected.items():
+            form_rejections.setdefault(component_type, {})[field] = reason
+        if unverified:
+            form_unverified[component_type] = sorted(
+                set(form_unverified.get(component_type, [])) | set(unverified)
+            )
+        for field, value in (inst.get("size") or {}).items():
+            target = _instance_size_field(component_type, field) or field
+            actual = component.get(target)
+            if isinstance(actual, (float, int)) and isinstance(value, (float, int)) and abs(actual-value) <= 0.001:
+                continue
+            size_changes.append({
+                "path": f"/decisions/components/{inst['_design_index']}/size/{field}",
+                "target": component["id"], "before": value, "after": actual,
+                "before_exists": True, "after_exists": target in component,
+                "rule": "compiler.instance_size", "category": "semantic_change",
+                "input_source": "design", "output_source": "program", "semantic_change": True,
+                "reason": "当前实例编译未落实该尺寸，仍使用派生模板或没有对应产物字段",
+                "constraint_ids": [],
+            })
+        if inst.get("material_role"):
+            if component_type in {"door", "window"}:
+                component["frameMaterial"] = str(inst["material_role"])
+            else:
+                component["material"] = str(inst["material_role"])
+        if component_type == "light" and any(item.get("type") == "light" and
+            all(abs(a-b) <= 0.001 for a, b in zip(item["position"], component["position"]))
+            for item in components):
+            raise ValueError(f"多个显式灯具占用了同一设计位置：{component['id']}")
+        # 宿主字段各构件类型不统一（parentWall / parentRoof / parentOpening），
+        # 这里**读实体自身**而不是按类型硬编码——宿主键名会随引擎演进，
+        # 编译器不该替引擎宣布"合法宿主字段只有这三个"。
+        host_ref = next(
+            (
+                (key, value)
+                for key, value in component.items()
+                if (key == "host" or key.startswith("parent")) and isinstance(value, str) and value
+            ),
+            (None, None),
+        )
+        instance_entities.append({
+            "index": inst["_design_index"],
+                "instance_id": inst.get("id"),
+                "relation": inst.get("relation"),
+            "declared_type": component_type,
+            "declared_host": str(inst.get("host") or "") or None,
+            "outcome": "compiled",
+            "host_intent": host_intent,
+            "host_sequence": occurrence,
+            "entity_id": str(component.get("id") or "") or None,
+            "entity_type": str(component.get("type") or "") or None,
+            "entity_host": host_ref[1],
+            "entity_host_field": host_ref[0],
+        })
+        components.append(component)
+
+        if applied:
+            form_applied[component_type] = sorted(
+                set(form_applied.get(component_type, [])) | set(applied)
+            )
+        if ignored:
+            form_ignored[component_type] = sorted(
+                set(form_ignored.get(component_type, [])) | set(ignored)
+            )
 
     # 材质角色名 → 蓝图材质名（唯一换名点；写角色名进蓝图会被引用完整性校验拒掉）。
     components = [
@@ -1718,6 +1799,11 @@ def _compose(
             elements,
         )
         instance_stats = {**instance_stats, **overrides}
+        renamed = brief.pop("instance_id_map", {})
+        for entity in [*elements, *components]:
+            for key, value in list(entity.items()):
+                if key.startswith("parent") and isinstance(value, str) and value in renamed:
+                    entity[key] = renamed[value]
 
     # 配额上限剔除已删除（用户决策 2026-09-29）：max 只是参考值，产物数量
     # 不再被剃；下限仍由 _validator_defects 的 deferable 降级把关。

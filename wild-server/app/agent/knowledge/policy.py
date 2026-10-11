@@ -1,13 +1,14 @@
 """生成知识的用途边界；不依赖模型、向量库或建筑类型硬编码。"""
+
 from __future__ import annotations
 
 import re
 
-
 KNOWLEDGE_REVISION = "rules-v3"
 GENERATION_ROLES = ("protocol", "capability", "relation")
 
-KNOWLEDGE_GUIDANCE = """知识使用约定：
+KNOWLEDGE_GUIDANCE = """
+知识使用约定：
 - protocol/capability/relation 说明当前 WILD 能力与已选择构件的正确关系。
 - 建筑类型与风格语义由模型理解；知识库不提供建筑百科或类型模板。
 - 用户明确需求与已批准方案决定层数、轮廓、尺寸、材质和构件选择；参考知识不能静默改写这些决定。
@@ -21,8 +22,12 @@ def term_is_requested(text: str, term: str) -> bool:
     if not term.strip():
         return False
     for match in re.finditer(re.escape(term.strip()), text, re.IGNORECASE):
-        prefix = text[max(0, match.start() - 12):match.start()]
-        if not re.search(r"(?:不要|不采用|不使用|不需要|排除|避免|非|without\s+|not\s+)\s*$", prefix, re.I):
+        prefix = text[max(0, match.start() - 12) : match.start()]
+        if not re.search(
+            r"(?:不要|不采用|不使用|不需要|排除|避免|非|without\s+|not\s+)\s*$",
+            prefix,
+            re.I,
+        ):
             return True
     return False
 
@@ -34,7 +39,8 @@ def knowledge_hit_applies(query: str, metadata: dict) -> bool:
     terms = metadata.get("applies_to") or metadata.get("primary_terms") or ""
     if isinstance(terms, str):
         terms = [term.strip() for term in terms.split(",")]
-    return any(term_is_requested(query, str(term)) for term in terms)
+    return (bool(metadata.get("entity_name") and term_is_requested(query, str(metadata["entity_name"])))
+            or any(term_is_requested(query, str(term)) for term in terms))
 
 
 def plan_knowledge_query(message: str, plan: dict | None) -> str:
@@ -44,13 +50,20 @@ def plan_knowledge_query(message: str, plan: dict | None) -> str:
     roof = plan.get("roof") or {}
     grid = plan.get("structural_grid") or {}
     circulation = plan.get("circulation") or {}
-    terms = [str(plan.get("concept") or ""), str(roof.get("type") or ""),
-             str(grid.get("system") or ""), str(circulation.get("vertical_strategy") or "")]
+    terms = [
+        str(plan.get("concept") or ""),
+        str(roof.get("type") or ""),
+        str(grid.get("system") or ""),
+        str(circulation.get("vertical_strategy") or ""),
+    ]
     if plan.get("curtain_wall") is True:
         terms.append("curtain_wall 玻璃幕墙")
     terms.extend(str(item) for item in plan.get("required_components", []))
     terms.extend(str(item) for item in plan.get("detail_packages", []))
-    terms.extend(str(item) for item in (plan.get("design_intent") or {}).get("selected_systems", []))
+    terms.extend(
+        str(item)
+        for item in (plan.get("design_intent") or {}).get("selected_systems", [])
+    )
     return message + "\n已选方案系统：" + "、".join(term for term in terms if term)
 
 

@@ -76,6 +76,9 @@ rules/{implementation,conditional,design-choice}  # 实现约束 / 条件约束 
    模板见 [document-templates.md](references/document-templates.md)。
 6. **回写 metadata 与清单**：补 frontmatter（见 [metadata-schema.md](references/metadata-schema.md)）；
    增/移/删文档时同步 `config.yaml` 的 `required_documents`。
+   构件小节的 `entity_name` 使用稳定英文 snake_case；`primary_terms` 第一项为中文正式名称，
+   可互换的中英文叫法放 `synonyms`。复用已有语义编号，位置、风格和型号放描述，
+   不因换模型或语言另造同义编号。plan 与检索共用 `app/agent/knowledge/component_names.py` 的命名目录。
 7. **验证**：跑下面的命令，并如实报告 v2 未接线的限制。
 
 按任务读取引用：分类读 [classification-taxonomy.md](references/classification-taxonomy.md)；重写读 [document-templates.md](references/document-templates.md)；metadata 读 [metadata-schema.md](references/metadata-schema.md)；分片读 [chunk-contract.md](references/chunk-contract.md)；资料转换读 [source-fidelity-and-composition.md](references/source-fidelity-and-composition.md)；设计契约映射读 [design-contract-mapping.md](references/design-contract-mapping.md)；交付读 [rag-readiness-checklist.md](references/rag-readiness-checklist.md)。
@@ -164,6 +167,7 @@ wild-server/.venv/Scripts/python.exe wild-server/scripts/rag/smoke_test.py
 
 索引由 Loader 同步，不手写 Chroma。内容和 metadata 更新后必须确认同步；`rules-v3` 过滤会阻止旧版本向量
 继续进入生成。不要宣称"添加 metadata 即生效"，必须核查查询过滤与实际索引。
+新增或修改构件示例后，先运行 `wild-server/scripts/kb/update_component_catalog.py` 刷新 `knowledge/components/component-catalog.md`，再运行 `--check` 并同步索引。目录由注册表与示例小节元数据生成，是参考索引、不是设计白名单；未知构件仍保留自由设计和实现通道。目录标记为 `navigation`，不能挤占正常构件检索结果。
 另外注意 **README 若落在被扫描目录内，自己也会被切块入库**并挤占 `top_k`；导航型文档靠
 `config.yaml` 派生的 `knowledge_role: navigation` 才被排除在生成之外。
 

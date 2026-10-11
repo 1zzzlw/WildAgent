@@ -2,7 +2,7 @@
 
 export type DesignStatus = 'draft' | 'approved' | 'compiled'
 export type OpeningKind = 'door' | 'window' | 'empty' | 'open'
-export type OpeningToken = OpeningKind | `door:${'swing' | 'slide' | 'lift'}` | `window:${'swing' | 'slide' | 'fixed'}`
+export type OpeningToken = string
 
 /** massing.tiers 的一段：从底到顶逐段的收放比例（相对 width/depth）。 */
 export interface DesignMassingTier {
@@ -25,13 +25,14 @@ export interface DesignMassing {
 
 export interface DesignVolume {
   id: string
-  role: 'primary' | 'secondary'
+  role: string
   x: number
   z: number
   width: number
   depth: number
   start_floor: number
   end_floor: number
+  facades?: Partial<Record<'front' | 'back' | 'left' | 'right', DesignFacade>>
 }
 
 export interface DesignFacade {
@@ -101,33 +102,44 @@ export interface ArchitectureDecisions {
   }
   volumes: DesignVolume[]
   structural_grid: {
-    system: 'wall_bearing' | 'frame' | 'hybrid' | 'long_span' | 'shell'
+    system: string
     x_bays: number
     z_bays: number
   }
   envelope: {
-    system: 'solid_wall' | 'curtain_wall'
+    system: string
     curtain_wall: {
-      grid_strategy: 'floor_and_bay_aligned'
+      grid_strategy: string
     } | null
   }
   facades: Record<'front' | 'back' | 'left' | 'right', DesignFacade>
   roof: {
-    type: 'flat' | 'gable' | 'hip' | 'dome' | 'chinese_curved' | 'chinese_pagoda'
+    type: string
     ridge_axis: 'x' | 'z'
     overhang: number
     volumes?: Array<{ volume: string; type?: ArchitectureDecisions['roof']['type'] | null; overhang?: number | null }>
   }
   circulation: {
-    vertical_strategy: 'none' | 'stair' | 'core' | 'core_and_stair'
+    vertical_strategy: string
   }
   materials: { keywords: string[]; regions?: Array<{ role: string; type: string; note?: string }>; resolved_plan: ResolvedMaterialPlan | null }
   detail_packages: string[]
-  component_quota: Record<string, { min: number; max: number; note: string; type: string | null }>
-  components?: Array<{ id?: string | null; type: string; host: string; size: Record<string, number>; form: Record<string, unknown>; material_role: MaterialRoleName | null; relation?: { kind: 'supports'; target: string; along_ratio: number; depth_ratio: number } | null }>
+  component_quota: Record<string, unknown>
   balcony_access_count: number
   balcony_width: number | null
   required_components: string[]
+  components?: Array<{
+    id?: string | null
+    type: string
+    host: string
+    description?: string
+    placement?: { face?: 'front' | 'back' | 'left' | 'right' | null; floor?: number | null; offset?: number; sill_height?: number; normal_offset?: number; position?: number[]; [key: string]: unknown } | null
+    size: Record<string, number>
+    form: Record<string, unknown>
+    material_role: string | null
+    relation?: { kind: string; target: string; along_ratio?: number; depth_ratio?: number; [key: string]: unknown } | null
+    [key: string]: unknown
+  }>
   unsupported_component_types: string[]
   design_rationale: string[]
 }
@@ -224,6 +236,7 @@ export interface DesignDocument {
 }
 
 export interface ResolvedDesign {
+  component_markers?: Array<{ id: string; type: string; host: string; depends_on: string[] }>
   schema_version: 'resolved-design/1.0'
   design_id: string
   design_revision: number

@@ -1,0 +1,284 @@
+{
+  "request_id": "req_1791705458954_pffgyusn7",
+  "session_id": "session_1791703391184",
+  "source_file": "D:\\Backup\\Downloads\\AI 生成 - 墨院——以现代手法重构中式院落意境，L形体量围合内向庭院，白墙深木与大面积通透玻璃形成虚实对比，深出挑平檐呼应传统屋檐的庇护感.wild",
+  "source_sha256": "fd519c8bd4e10c5d2e5aa32ba930c5fa3347574d1238e38923fd9edb5f4c982c",
+  "design_hash": "sha256:b846f71f06da18f0462604e52b2134e3fb17032b026120a93bfd3001da9b11f6",
+  "scope": "saved design, response and original output replay; no new provider building generation or visual acceptance",
+  "counts": {
+    "old_markers": 44,
+    "current_markers": 27,
+    "old_items": 13,
+    "current_items": 12
+  },
+  "removed_marker_ids": [
+    "solid_main_back_L1_2",
+    "solid_main_back_L1_4",
+    "solid_main_back_L2_3",
+    "solid_main_back_L2_4",
+    "solid_main_back_L2_5",
+    "solid_main_front_L2_4",
+    "solid_main_front_L2_5",
+    "solid_main_left_L1_2",
+    "solid_main_left_L2_2",
+    "solid_main_right_L1_3",
+    "solid_main_right_L2_1",
+    "solid_main_right_L2_2",
+    "solid_main_right_L2_3",
+    "solid_wing_back_L1_2",
+    "solid_wing_back_L1_4",
+    "solid_wing_right_L1_1",
+    "solid_wing_right_L1_3"
+  ],
+  "current_items": [
+    {
+      "kind": "building_body",
+      "marker_ids": [
+        "building_body"
+      ]
+    },
+    {
+      "kind": "small_window",
+      "marker_ids": [
+        "small_window_main_back_L1_1",
+        "small_window_main_back_L1_5",
+        "small_window_wing_back_L1_1",
+        "small_window_wing_back_L1_5",
+        "back_window_02"
+      ]
+    },
+    {
+      "kind": "window",
+      "marker_ids": [
+        "window_main_left_L1_3",
+        "window_main_left_L2_1",
+        "window_wing_front_L1_5",
+        "window_wing_back_L1_3",
+        "window_wing_right_L1_2",
+        "front_upper_window_01",
+        "wing_front_window",
+        "back_window_01"
+      ]
+    },
+    {
+      "kind": "high_window",
+      "marker_ids": [
+        "high_window_main_left_L2_3",
+        "left_high_window"
+      ]
+    },
+    {
+      "kind": "roof",
+      "marker_ids": [
+        "roof_main",
+        "roof_wing"
+      ]
+    },
+    {
+      "kind": "door",
+      "marker_ids": [
+        "door_wing_front_L1_1",
+        "entrance_door"
+      ]
+    },
+    {
+      "kind": "canopy",
+      "marker_ids": [
+        "entrance_canopy"
+      ]
+    },
+    {
+      "kind": "floor_window",
+      "marker_ids": [
+        "front_floor_window_01",
+        "front_floor_window_02"
+      ]
+    },
+    {
+      "kind": "combination_window",
+      "marker_ids": [
+        "front_upper_window_02"
+      ]
+    },
+    {
+      "kind": "glass_sliding_door",
+      "marker_ids": [
+        "wing_sliding_door"
+      ]
+    },
+    {
+      "kind": "stair",
+      "marker_ids": [
+        "stair_main"
+      ]
+    },
+    {
+      "kind": "downlight",
+      "marker_ids": [
+        "entrance_light"
+      ]
+    }
+  ],
+  "coordinate_errors": [
+    "/decisions/components/7/placement：wing_front_window 的门窗范围超出宿主 wall_wing_front_L1；offset=13.2 是沿墙局部距离，墙长 5.000m，标高范围 [0.0, 3.2]；需要显式修订位置、尺寸或宿主，不能把世界 X/Z 填入 offset"
+  ],
+  "group_errors": {
+    "roof_main": [],
+    "roof_wing": [
+      "❌ [roof_wing_south_block] 图纸标记 roof_wing：屋面未覆盖负责体量及出檐，缺少 35.941㎡；生成连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box"
+    ],
+    "front_upper_window_01": [
+      "❌ [front_upper_window_01_louver_frame] 图纸标记 front_upper_window_01：实心板遮满窗洞 front_upper_window_01；窗框用四边框或条状构件，保留玻璃净空"
+    ],
+    "front_upper_window_02": []
+  },
+  "final_gate_errors": [
+    {
+      "name": "design_roof_surface",
+      "output": "❌ [design] ❌ [roof_wing_south_block] 图纸标记 roof_wing：屋面未覆盖负责体量及出檐，缺少 35.941㎡；生成连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box"
+    },
+    {
+      "name": "design_opening_placement",
+      "output": "❌ [design] ❌ [front_upper_window_01_louver_frame] 图纸标记 front_upper_window_01：实心板遮满窗洞 front_upper_window_01；窗框用四边框或条状构件，保留玻璃净空"
+    }
+  ],
+  "window_response_extraction": [
+    {
+      "stage": "generate",
+      "previous_first_keys": [
+        "id",
+        "geometry",
+        "materials",
+        "assets",
+        "explanation"
+      ],
+      "envelope_markers": [
+        "window_main_left_L1_3",
+        "window_main_left_L2_1",
+        "window_wing_front_L1_5",
+        "window_wing_back_L1_3",
+        "window_wing_right_L1_2",
+        "front_upper_window_01",
+        "wing_front_window",
+        "back_window_01"
+      ]
+    },
+    {
+      "stage": "repair_1",
+      "previous_first_keys": [
+        "id",
+        "geometry",
+        "materials",
+        "assets",
+        "explanation"
+      ],
+      "envelope_markers": [
+        "window_main_left_L1_3",
+        "window_main_left_L2_1",
+        "window_wing_front_L1_5",
+        "window_wing_back_L1_3",
+        "window_wing_right_L1_2",
+        "front_upper_window_01",
+        "wing_front_window",
+        "back_window_01"
+      ]
+    },
+    {
+      "stage": "repair_2",
+      "previous_first_keys": [
+        "implementations"
+      ],
+      "envelope_markers": [
+        "window_main_left_L1_3",
+        "window_main_left_L2_1",
+        "window_wing_front_L1_5",
+        "window_wing_back_L1_3",
+        "window_wing_right_L1_2",
+        "front_upper_window_01",
+        "wing_front_window",
+        "back_window_01"
+      ]
+    }
+  ],
+  "checks": {
+    "current_flow": "634 passed, 2 preexisting Chroma deprecation warnings",
+    "new_tests": 18,
+    "expanded_roof_checks": "2 failures in legacy RealSessionRegressionTest; compile_design/fix_roof_coverage behavior not changed in this turn",
+    "knowledge_lint": "46 files, 0 errors, 146 warnings",
+    "manifest": "46 required, 0 missing, 0 unregistered",
+    "knowledge_chunk_preview": {
+      "chunks": 61,
+      "issues": [
+        {
+          "severity": "warning",
+          "code": "oversized_atomic_chunk",
+          "source": "chinese-lattice-openings.md",
+          "heading": "中式格棂门窗（近似表达与能力边界） > 中式格棂窗",
+          "part_index": 2,
+          "message": "原子 chunk 为 1321 字符，超过配置 900"
+        },
+        {
+          "severity": "warning",
+          "code": "oversized_atomic_chunk",
+          "source": "roof-facade-detail-examples.md",
+          "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 屋顶 · hip-roof",
+          "part_index": 1,
+          "message": "原子 chunk 为 1101 字符，超过配置 900"
+        },
+        {
+          "severity": "warning",
+          "code": "oversized_atomic_chunk",
+          "source": "roof-facade-detail-examples.md",
+          "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 屋檐下悬 · eave-soffit",
+          "part_index": 1,
+          "message": "原子 chunk 为 1368 字符，超过配置 900"
+        },
+        {
+          "severity": "warning",
+          "code": "oversized_atomic_chunk",
+          "source": "roof-facade-detail-examples.md",
+          "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 老虎窗 · gable-dormer",
+          "part_index": 1,
+          "message": "原子 chunk 为 1403 字符，超过配置 900"
+        },
+        {
+          "severity": "warning",
+          "code": "oversized_atomic_chunk",
+          "source": "roof-facade-detail-examples.md",
+          "heading": "屋面、老虎窗、壁柱与雨棚 JSON 示例 > 雨棚构造 · framed-awning",
+          "part_index": 1,
+          "message": "原子 chunk 为 1563 字符，超过配置 900"
+        }
+      ]
+    },
+    "rag_smoke": "5 queries passed on temporary hash embedding index",
+    "index": "sync_index completed; actual shed_roof retrieval includes continuous rotated box JSON",
+    "geometry_boundary": "rectangular volume roof projection union; native roof footprints, rectangular floor, box with a single X or Z tilt. Not a proof of arbitrary roof surfaces, support closure, loads or final appearance."
+  },
+  "knowledge_dispositions": [
+    {
+      "claim": "屋面必须实际覆盖其负责体量，封檐条不能替代屋面",
+      "source": "saved roof_wing response and original geometry",
+      "disposition": "preserved",
+      "target": "roof-facade-detail-examples.md and component-parameters.md"
+    },
+    {
+      "claim": "非原生单坡可用整片薄 box + radians rotation",
+      "source": "schema.json primitive and buildPrimitive",
+      "disposition": "normalized",
+      "target": "roof-facade-detail-examples.md"
+    },
+    {
+      "claim": "格栅 frame 不能用不透明整板遮满玻璃",
+      "source": "original window primitive and opening_design_errors",
+      "disposition": "normalized",
+      "target": "chinese-lattice-openings.md"
+    },
+    {
+      "claim": "设计屋顶必须受六种原生 enum 限制并自动回退模板",
+      "source": "retired component-parameters.md roof instructions",
+      "disposition": "rejected",
+      "target": "component-parameters.md"
+    }
+  ]
+}

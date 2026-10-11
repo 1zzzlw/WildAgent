@@ -2444,10 +2444,13 @@ def _aabb(el: dict) -> tuple[float, float, float, float, float, float] | None:
         if not f or not to or len(f) < 3 or len(to) < 3:
             return None
         w = float(el.get("width", 1.0)) / 2.0
+        dx, dz = to[0] - f[0], to[2] - f[2]
+        length = math.hypot(dx, dz)
+        wx, wz = (abs(dz) / length * w, abs(dx) / length * w) if length else (w, w)
         return (
-            min(f[0], to[0]) - w, max(f[0], to[0]) + w,
+            min(f[0], to[0]) - wx, max(f[0], to[0]) + wx,
             min(f[1], to[1]), max(f[1], to[1]),
-            min(f[2], to[2]) - w, max(f[2], to[2]) + w,
+            min(f[2], to[2]) - wz, max(f[2], to[2]) + wz,
         )
 
     if t == "furniture":
@@ -2532,7 +2535,7 @@ def _floor_reference_ys(blueprint: dict) -> tuple[list[float], list[float]]:
 
 @tool
 def validate_model_quality(blueprint: dict) -> str:
-    """拦截会产生闪烁或虚假复杂度的重复墙体与重叠柱。"""
+    """检查重复骨架及轴对齐墙面与矩形构件的共面重叠。"""
     elements = _get_elements(blueprint)
     issues: list[str] = []
 
@@ -2545,6 +2548,74 @@ def validate_model_quality(blueprint: dict) -> str:
     for ids in wall_groups.values():
         if len(ids) > 1:
             issues.append(f"❌ 重复墙体共用同一中心线与标高: {', '.join(ids)}")
+
+    # 只检查可精确确定的共面表面；结构相交本身合法。
+    for wall_index, wall in enumerate(elements):
+        if wall.get("type") != "wall" or wall.get("curve"):
+            continue
+        start, end = wall.get("from"), wall.get("to")
+        if not _is_finite_vector3(start) or not _is_finite_vector3(end):
+            continue
+        axis = 0 if abs(end[2]-start[2]) < 1e-6 else 2 if abs(end[0]-start[0]) < 1e-6 else None
+        if axis is None:
+            continue
+        normal = 2-axis
+        if not _is_positive_number(wall.get("thickness")):
+            continue
+        bottom, top = _wall_vertical_range(wall)
+        wall_faces = [start[normal]-wall.get("thickness", 0)/2, start[normal]+wall.get("thickness", 0)/2]
+        holes = []
+        for opening in [*elements, *blueprint.get("geometry", {}).get("components", [])]:
+            if (opening.get("parentWall") != wall.get("id")
+                    or opening.get("type") not in {"door", "window", "opening"}
+                    or (opening.get("type") == "opening" and opening.get("style") != "rectangular")
+                    or not _is_finite_vector3(opening.get("from"))
+                    or not all(_is_positive_number(opening.get(k)) for k in ("width", "height"))):
+                continue
+            direction = 1 if end[axis] > start[axis] else -1
+            left = start[axis] + direction*opening["from"][0]
+            right = left + direction*opening["width"]
+            holes.append((*sorted((left, right)), opening["from"][1], opening["from"][1]+opening["height"]))
+        for member_index, member in enumerate(elements):
+            bounds = None
+            if member.get("type") == "wall" and not member.get("curve") and member_index > wall_index:
+                a, b = member.get("from"), member.get("to")
+                if (_is_finite_vector3(a) and _is_finite_vector3(b) and abs(a[normal]-b[normal]) < 1e-6
+                        and _wall_centerline_key(wall) != _wall_centerline_key(member)):
+                    bounds = list(_aabb(member))
+                    bounds[axis*2:axis*2+2] = sorted((a[axis], b[axis]))
+            elif member.get("type") == "beam" and member.get("crossSection", "rect") == "rect" and not member.get("curve"):
+                a, b = member.get("from"), member.get("to")
+                if (_is_finite_vector3(a) and _is_finite_vector3(b) and abs(a[1]-b[1]) < 1e-6
+                        and abs(a[normal]-b[normal]) < 1e-6):
+                    bounds = _aabb(member)
+            elif (member.get("type") == "primitive" and member.get("shape") == "box"
+                  and _is_finite_vector3(member.get("rotation", [0, 0, 0])) and not any(member.get("rotation", [0, 0, 0]))):
+                p, size = member.get("position"), member.get("dimensions")
+                if _is_finite_vector3(p) and _is_finite_vector3(size):
+                    bounds = [value for i in range(3) for value in (p[i]-size[i]/2, p[i]+size[i]/2)]
+            if bounds is None:
+                continue
+            left, right = max(min(start[axis], end[axis]), bounds[axis*2]), min(max(start[axis], end[axis]), bounds[axis*2+1])
+            low, high = max(bottom, bounds[2]), min(top, bounds[3])
+            if (right-left > 0.05 and high-low > 0.05
+                    and any(abs(w-bounds[normal*2+j]) < 0.001 for w in wall_faces for j in (0, 1))):
+                # 门窗洞内没有墙面；按矩形洞口并集核对，保留墙垛处的冲突。
+                if member.get("type") != "wall" and holes:
+                    xs = sorted({left, right, *(max(left, min(right, x)) for h in holes for x in h[:2])})
+                    covered = 0
+                    for a, b in zip(xs, xs[1:]):
+                        intervals = sorted((max(low, h[2]), min(high, h[3])) for h in holes
+                                           if h[0] <= a and h[1] >= b and h[2] < high and h[3] > low)
+                        cursor = low
+                        for y0, y1 in intervals:
+                            covered += (b-a)*max(0, y1-max(cursor, y0))
+                            cursor = max(cursor, y1)
+                    if (right-left)*(high-low)-covered < 1e-9:
+                        continue
+                issues.append(f"❌ [{wall.get('id')}] / [{member.get('id')}] 表面共面重叠，会产生闪烁；"
+                              f"法线轴 {'XZ'[normal//2]}，墙面坐标 {wall_faces}，构件表面坐标 {list(bounds[normal*2:normal*2+2])}；"
+                              "调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面")
 
     columns: list[tuple[str, list[float], float, float]] = []
     for column in (item for item in elements if item.get("type") == "column"):
@@ -2583,11 +2654,11 @@ def validate_model_quality(blueprint: dict) -> str:
                 )
 
     if not issues:
-        return "✅ 模型质量检查通过：无重复墙体或重叠柱。"
+        return "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。"
     visible = issues[:12]
     if len(issues) > len(visible):
         visible.append(f"❌ 另有 {len(issues) - len(visible)} 处重复骨架未展开")
-    return f"发现 {len(issues)} 处会造成重影/虚假复杂度的重复骨架：\n" + "\n".join(visible)
+    return f"发现 {len(issues)} 处模型质量问题：\n" + "\n".join(visible)
 
 
 def _wall_xz_footprint(wall: dict) -> list[float] | None:
@@ -3085,7 +3156,7 @@ def validate_element_dimensions(blueprint: dict) -> str:
 
     参数 blueprint: 完整的 Blueprint dict
     """
-    elements = _get_elements(blueprint)
+    elements = [*_get_elements(blueprint), *blueprint.get("geometry", {}).get("components", [])]
     issues: list[str] = []
 
     for el in elements:
@@ -3093,9 +3164,10 @@ def validate_element_dimensions(blueprint: dict) -> str:
         eid = el.get("id", "?")
 
         if t in {"wall", "floor", "beam", "stair"}:
+            coordinate_fields = ("from",) if t == "floor" and el.get("shape") == "circle" else ("from", "to")
             invalid_fields = [
                 field
-                for field in ("from", "to")
+                for field in coordinate_fields
                 if not _is_finite_vector3(el.get(field))
             ]
             if invalid_fields:
@@ -3137,12 +3209,16 @@ def validate_element_dimensions(blueprint: dict) -> str:
 
         elif t == "floor":
             f, to = el.get("from", [0,0,0]), el.get("to", [0,0,0])
-            sx = abs(to[0] - f[0])
-            sz = abs(to[2] - f[2])
             th = el.get("thickness", 0)
-            for dim, val in [("X跨度", sx), ("Z跨度", sz)]:
-                if val > 0 and not (0.1 <= val <= 500):
-                    issues.append(f"⚠️  [{eid}] floor {dim}={val:.1f}m，建议在 0.1~500m")
+            if el.get("shape", "rect") == "circle":
+                if not _is_positive_number(el.get("radius")):
+                    issues.append(f"❌ [{eid}] 圆形 floor radius 必须是正有限数字")
+            else:
+                for dim, val in [("X跨度", abs(to[0]-f[0])), ("Z跨度", abs(to[2]-f[2]))]:
+                    if val == 0:
+                        issues.append(f"❌ [{eid}] 矩形 floor {dim}=0，楼板面积为零；from/to 是对角端点，不是中心")
+                    elif not (0.1 <= val <= 500):
+                        issues.append(f"⚠️  [{eid}] floor {dim}={val:.1f}m，建议在 0.1~500m")
             if th > 0 and not (0.01 <= th <= 5):
                 issues.append(f"⚠️  [{eid}] floor thickness={th}m，建议在 0.01~5m")
 
@@ -3188,6 +3264,29 @@ def validate_element_dimensions(blueprint: dict) -> str:
             ]:
                 if fv > 0 and not (lo <= fv <= hi):
                     issues.append(f"⚠️  [{eid}] roof {fname}={fv}m，建议在 {lo}~{hi}m")
+
+        elif t == "window":
+            frame = el.get("frameWidth", 0.06)
+            if not all(_is_positive_number(value) for value in (frame, el.get("width"), el.get("height"))):
+                issues.append(f"❌ [{eid}] window width、height、frameWidth 必须是有限正数")
+                continue
+            width, height = el.get("width", 0)-2*frame, el.get("height", 0)-2*frame
+            if width <= 0 or height <= 0:
+                issues.append(f"❌ [{eid}] frameWidth 必须保留正的窗净宽、净高")
+                continue
+            vertical, horizontal = el.get("verticalMullions", 0), el.get("horizontalMullions", 0)
+            if any(not isinstance(n, int) or isinstance(n, bool) or not 0 <= n <= 32 for n in (vertical, horizontal)):
+                issues.append(f"❌ [{eid}] verticalMullions、horizontalMullions 必须是 0–32 的整数")
+                continue
+            bar = el.get("mullionWidth", min(frame, 0.02))
+            ratios = {i/(vertical+1) for i in range(1, vertical+1)}
+            if el.get("interaction"):
+                ratios.add(0.5)
+            ordered = [0, *sorted(ratios), 1]
+            spacing = min((b-a)*width for a, b in zip(ordered, ordered[1:]))
+            if ((ratios or horizontal) and (not _is_positive_number(bar)
+                    or (ratios and bar >= spacing) or (horizontal and bar >= height/(horizontal+1)))):
+                issues.append(f"❌ [{eid}] mullionWidth 与棂条间距冲突，必须保留透明净空；独立设置棂条宽度，不缩改外框")
 
         elif t == "opening":
             w = el.get("width", 0)

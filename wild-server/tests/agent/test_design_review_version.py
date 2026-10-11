@@ -31,16 +31,3 @@ def test_review_persists_completion_but_preserves_newer_user_patch(monkeypatch,s
     with pytest.raises(Paused):
         node.design_review({"design_document":doc.model_dump(mode="json")})
     assert len(saved)==(0 if stored_newer else 1)
-
-
-def test_legacy_approval_returns_to_review(monkeypatch):
-    from app.agent.nodes.compile_node import compile_node
-    from app.design import compilation, resolver
-    doc=document().model_copy(update={"status":"approved"})
-    monkeypatch.setattr(compilation,"compile_document",lambda d:SimpleNamespace())
-    monkeypatch.setattr(compilation,"project_compilation",lambda d,r:SimpleNamespace(design_hash=_stable_hash(d)))
-    monkeypatch.setattr(resolver,"resolve_design",lambda d:SimpleNamespace(model_dump=lambda **kw:{"design_revision":d.revision}))
-    result=asyncio.run(compile_node({"design_document":doc.model_dump(mode="json"),"resolved_design":{}}))
-    assert result["design_review_status"]=="pending"
-    assert result["design_document"]["revision"]==doc.revision+1
-    assert "skeleton_blueprint" not in result

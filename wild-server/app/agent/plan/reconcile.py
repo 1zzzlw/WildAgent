@@ -122,6 +122,21 @@ def _resolve_generate(
 ) -> tuple[str | None, str, bool]:
     """返回 ``(新计划态, 证据, 是否计一次尝试)``；状态为 ``None`` 表示本轮不动它。"""
 
+    if item.params.get("design_markers"):
+        from app.design.markers import implementation_records, implementation_complete
+        expected = {m["id"]: m for m in (state.get("resolved_design") or {}).get("component_markers", [])}
+        results = implementation_records(state)
+        ids = item.target.get("marker_ids") or []
+        complete = bool(ids) and all(i in expected and implementation_complete(results.get(i)) for i in ids)
+        if complete:
+            abandoned = sum(results[i].get("status") == "abandoned" for i in ids)
+            return "done", f"实现流程结束：落实 {len(ids)-abandoned}，舍弃 {abandoned}", False
+        if item.run.state == "failed":
+            return ("abandoned" if item.run.exhausted else "ready"), item.run.evidence, False
+        if item.run.state == "succeeded":
+            return "ready", "构件结果没有准确覆盖本任务标记", True
+        return None, "", False
+
     requirements = item.target.get("entity_requirements") or []
     if requirements:
         from app.design.relations import entity_index, evaluate_support

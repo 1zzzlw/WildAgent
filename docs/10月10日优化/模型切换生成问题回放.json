@@ -1,0 +1,300 @@
+{
+  "request_id": "req_1791711188064_je5y5t1uc",
+  "session_id": "session_1791711186553",
+  "model": "qwen3.5-plus-2026-02-15",
+  "detail_level": "minimal",
+  "checkpoint_matches_user_file": true,
+  "input_sha256": "d8688ed9f08c3ce6b5d848338303bb3506ee566a6efc573c0e05db2f051e47fb",
+  "placement_comparison": [
+    {
+      "id": "combination_window_main_front_L2_2",
+      "host": "wall_main_front_L2",
+      "expected_center": 4.5,
+      "actual_center": 4.5,
+      "delta": 0
+    },
+    {
+      "id": "combination_window_main_front_L2_4",
+      "host": "wall_main_front_L2",
+      "expected_center": 10.5,
+      "actual_center": 10.5,
+      "delta": 0
+    },
+    {
+      "id": "combination_window_main_back_L1_2",
+      "host": "wall_main_back_L1",
+      "expected_center": 4.5,
+      "actual_center": 11.7,
+      "delta": 7.199999999999999
+    },
+    {
+      "id": "combination_window_main_back_L1_3",
+      "host": "wall_main_back_L1",
+      "expected_center": 7.5,
+      "actual_center": 8.7,
+      "delta": 1.1999999999999993
+    },
+    {
+      "id": "combination_window_main_back_L1_4",
+      "host": "wall_main_back_L1",
+      "expected_center": 10.5,
+      "actual_center": 5.699999999999999,
+      "delta": -4.800000000000001
+    },
+    {
+      "id": "combination_window_main_back_L2_2",
+      "host": "wall_main_back_L2",
+      "expected_center": 4.5,
+      "actual_center": 11.7,
+      "delta": 7.199999999999999
+    },
+    {
+      "id": "combination_window_main_back_L2_3",
+      "host": "wall_main_back_L2",
+      "expected_center": 7.5,
+      "actual_center": 8.7,
+      "delta": 1.1999999999999993
+    },
+    {
+      "id": "combination_window_main_back_L2_4",
+      "host": "wall_main_back_L2",
+      "expected_center": 10.5,
+      "actual_center": 5.699999999999999,
+      "delta": -4.800000000000001
+    },
+    {
+      "id": "combination_window_main_left_L1_2",
+      "host": "wall_main_left_L1",
+      "expected_center": 4.5,
+      "actual_center": 8.7,
+      "delta": 4.199999999999999
+    },
+    {
+      "id": "combination_window_main_left_L1_3",
+      "host": "wall_main_left_L1",
+      "expected_center": 7.5,
+      "actual_center": 5.699999999999999,
+      "delta": -1.8000000000000007
+    },
+    {
+      "id": "combination_window_main_left_L2_2",
+      "host": "wall_main_left_L2",
+      "expected_center": 4.5,
+      "actual_center": 8.7,
+      "delta": 4.199999999999999
+    },
+    {
+      "id": "combination_window_main_left_L2_3",
+      "host": "wall_main_left_L2",
+      "expected_center": 7.5,
+      "actual_center": 5.699999999999999,
+      "delta": -1.8000000000000007
+    },
+    {
+      "id": "combination_window_main_right_L1_2",
+      "host": "wall_main_right_L1",
+      "expected_center": 4.5,
+      "actual_center": 5.699999999999999,
+      "delta": 1.1999999999999993
+    },
+    {
+      "id": "combination_window_main_right_L1_3",
+      "host": "wall_main_right_L1",
+      "expected_center": 7.5,
+      "actual_center": 8.7,
+      "delta": 1.1999999999999993
+    },
+    {
+      "id": "combination_window_main_right_L2_2",
+      "host": "wall_main_right_L2",
+      "expected_center": 4.5,
+      "actual_center": 5.699999999999999,
+      "delta": 1.1999999999999993
+    },
+    {
+      "id": "combination_window_main_right_L2_3",
+      "host": "wall_main_right_L2",
+      "expected_center": 7.5,
+      "actual_center": 8.7,
+      "delta": 1.1999999999999993
+    }
+  ],
+  "body_tasks": [
+    {
+      "id": "generate_1",
+      "markers": [
+        "building_body"
+      ]
+    },
+    {
+      "id": "generate_3",
+      "markers": [
+        "body_main"
+      ]
+    }
+  ],
+  "problem_entities": [
+    {
+      "type": "floor",
+      "id": "floor_ground",
+      "from": [
+        0,
+        -0.2,
+        0
+      ],
+      "to": [
+        15,
+        -0.2,
+        12
+      ],
+      "thickness": 0.2,
+      "material": "concrete",
+      "shape": "rect"
+    },
+    {
+      "type": "primitive",
+      "id": "roof_main",
+      "shape": "box",
+      "position": [
+        7.5,
+        7.25,
+        6
+      ],
+      "dimensions": [
+        15.6,
+        0.5,
+        12.6
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "material": "roof"
+    },
+    {
+      "type": "primitive",
+      "id": "body_main_envelope",
+      "shape": "box",
+      "position": [
+        7.5,
+        3.5,
+        6
+      ],
+      "dimensions": [
+        15,
+        7,
+        12
+      ],
+      "material": "wall_finish",
+      "rotation": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "type": "floor",
+      "id": "body_main_ground_ref",
+      "from": [
+        0,
+        -0.2,
+        0
+      ],
+      "to": [
+        15,
+        -0.2,
+        12
+      ],
+      "thickness": 0.2,
+      "material": "concrete",
+      "shape": "rect"
+    }
+  ],
+  "abandoned": [
+    {
+      "id": "entrance_door",
+      "status": "abandoned",
+      "reason": "设计尺寸 height=2.4，实际 height=2.3",
+      "attempts": [
+        {
+          "stage": "generate",
+          "errors": {
+            "entrance_door": "❌ [component:entrance_door] 顶部 Y=3.60 超出墙顶 Y=3.50"
+          }
+        },
+        {
+          "stage": "repair_1",
+          "errors": {
+            "entrance_door": "设计尺寸 height=2.4，实际 height=2.3"
+          }
+        },
+        {
+          "stage": "repair_2",
+          "errors": {
+            "entrance_door": "设计尺寸 height=2.4，实际 height=2.3"
+          }
+        }
+      ]
+    },
+    {
+      "id": "roof_main",
+      "status": "abandoned",
+      "reason": "不能覆盖已采用实体：roof_main；保留原实体，只修订失败片段，不能改名后重复新建",
+      "attempts": [
+        {
+          "stage": "generate",
+          "errors": {
+            "roof_main": "不能覆盖已采用实体：roof_main；保留原实体，只修订失败片段，不能改名后重复新建"
+          }
+        },
+        {
+          "stage": "repair_1",
+          "errors": {
+            "roof_main": "缺少该标记的实现"
+          }
+        },
+        {
+          "stage": "repair_2",
+          "errors": {
+            "roof_main": "不能覆盖已采用实体：roof_main；保留原实体，只修订失败片段，不能改名后重复新建"
+          }
+        }
+      ]
+    }
+  ],
+  "read_only_replay": {
+    "errors": 0,
+    "warnings": 3,
+    "corrected_door": {
+      "from": [
+        6.6,
+        0,
+        0
+      ],
+      "height": 2.4,
+      "accepted": true
+    }
+  },
+  "trace_scope": "implementation_after_design_review",
+  "trace_summary": {
+    "retrieval_calls": 9,
+    "retrieval_ms": 1387,
+    "context_builds": 9,
+    "max_context_chars": 4384,
+    "llm_calls": 15,
+    "llm_ms": 800989,
+    "token_usage": {
+      "input": 174966,
+      "output": 46108,
+      "total": 221074
+    },
+    "llm_retry_count": 0,
+    "node_calls": 14,
+    "node_ms": 583990,
+    "gate_rejections": 0
+  },
+  "source_code_changed": false,
+  "fresh_model_generation": false,
+  "render_directory": "C:/Users/Administrator/AppData/Local/Temp/wild-model-switch-render"
+}

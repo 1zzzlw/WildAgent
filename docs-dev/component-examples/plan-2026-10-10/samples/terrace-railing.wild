@@ -1,0 +1,10 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"露台栏杆"},
+  "geometry":{
+    "elements":[
+      {"type":"floor","id":"terrace_slab","from":[-1.5,-0.18,0],"to":[1.5,-0.18,1.8],"thickness":0.18,"material":"stone"}
+    ],
+    "components":[{"type":"railing","id":"glass_guard","path":[[-1.5,0,0],[-1.5,0,1.8],[1.5,0,1.8],[1.5,0,0]],"height":1.1,"postSpacing":1,"infillType":"glass","infillThickness":0.012,"infillMaterial":"glass","material":"metal"}]
+  },
+  "materials":{"glass":{"baseColor":[0.85,0.93,0.98],"roughness":0.08,"metallic":0,"albedo":1,"lightingCondition":"D65_noon","materialClass":"glass","transmission":0.92,"ior":1.5,"opacity":1},"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

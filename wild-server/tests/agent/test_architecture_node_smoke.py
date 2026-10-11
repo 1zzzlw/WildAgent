@@ -39,7 +39,7 @@ class _FakeSpecLoader:
 #: 所以这里必须把块契约要求的字段都写全：
 #: `massing` 块要求 `massing` + `volumes` 同时在，只给 `massing` 会被判"缺少字段"。
 _CANNED_RAW_PLAN = {
-    "massing": {"floors": 2},
+    "massing": {"width": 12, "depth": 10, "floors": 2},
     "volumes": [
         {
             "id": "v1",
@@ -56,31 +56,25 @@ _CANNED_RAW_PLAN = {
 }
 
 
-async def _fake_run_tool_loop(**_kwargs):
-    """桩件打在**真正的调用缝**上。
-
-     §1.6 的分块起草默认走 `run_tool_loop`（设计块可以调试算工具，§2.7）。
-    仍把桩件打在 `invoke_llm` 上的话，测试会绕过桩件去**真的连模型**并挂在那里——
-    这个坑比"用例红了"难查得多。`invoke_llm` 只在流式思考通道上用到。
-    """
-
-    return SimpleNamespace(
-        text=json.dumps(_CANNED_RAW_PLAN, ensure_ascii=False),
-        trace=[],
-        diag={"token_usage": {"input": 1, "output": 1, "total": 2}},
-    )
+async def _fake_invoke(_llm, _messages):
+    from app.agent.generation.architecture import normalize_architecture_plan
+    raw = normalize_architecture_plan(_CANNED_RAW_PLAN, user_message="生成一个两层别墅")
+    raw.pop("component_quota")
+    raw.pop("required_components")
+    raw["concept"] = "测试别墅"
+    raw["design_intent"] = {"goals": ["居住"], "selected_systems": ["door", "window", "roof"]}
+    return SimpleNamespace(content=json.dumps(raw, ensure_ascii=False), token_usage=None)
 
 
 def _node_patches():
-    #  patch 目标是**真正调模型的那一层**：`create_llm`/`invoke_llm` 随 §1.6 的
-    # 分块起草搬到了 `design_workflow`，`workflow` 里已没有这两个名字；
-    # 而默认通道进一步改成了工具循环（`app.agent.plan.tool_loop.run_tool_loop`）。
+    # 只替换模型输出和检索，其余使用真实节点代码。
     return (
         patch.object(agent_service, "spec_loader", _FakeSpecLoader()),
         patch(
-            "app.agent.plan.tool_loop.run_tool_loop",
-            _fake_run_tool_loop,
+            "app.agent.generation.architecture.design_workflow.invoke_llm",
+            _fake_invoke,
         ),
+        patch("app.agent.generation.architecture.design_workflow.create_llm", return_value=object()),
     )
 
 
@@ -88,8 +82,8 @@ def _node_patches():
 async def test_architecture_node_completes_without_llm() -> None:
     """节点必须能端到端跑完，并产出一份可用于审核的总体方案。"""
 
-    spec_loader, tool_loop = _node_patches()
-    with spec_loader, tool_loop:
+    spec_loader, model_output, model_factory = _node_patches()
+    with spec_loader, model_output, model_factory:
         update = await architecture_planner({"user_message": "生成一个两层别墅"})
 
     assert "architecture_plan" in update, update
@@ -104,15 +98,15 @@ async def test_architecture_node_completes_without_llm() -> None:
 async def test_architecture_node_records_profile_diagnostics() -> None:
     """诊断字段必须来自真实 profile，而不是写死的常量。"""
 
-    spec_loader, tool_loop = _node_patches()
-    with spec_loader, tool_loop:
+    spec_loader, model_output, model_factory = _node_patches()
+    with spec_loader, model_output, model_factory:
         update = await architecture_planner({"user_message": "生成一个两层欧式别墅"})
 
     diag = update["architecture_diag"]
     assert diag["profile"] == update["architecture_plan"]["profile"]
     # 档位标签已删（用户决策 2026-09-29）：诊断只报 id，不再有 profile_label。
     assert "profile_label" not in diag
-    assert diag["used_fallback"] is False
+    assert diag["settled"] is True
 
 
 @pytest.mark.asyncio
@@ -141,10 +135,10 @@ async def test_architecture_node_with_reasoning_callback() -> None:
     async def _collect(node: str, text: str) -> None:
         seen.append((node, text))
 
-    spec_loader, tool_loop = _node_patches()
+    spec_loader, model_output, model_factory = _node_patches()
     token = bind_reasoning_callback(_collect)
     try:
-        with spec_loader, tool_loop:
+        with spec_loader, model_output, model_factory:
             update = await architecture_planner({"user_message": "生成一个两层别墅"})
     finally:
         reset_reasoning_callback(token)
@@ -154,7 +148,7 @@ async def test_architecture_node_with_reasoning_callback() -> None:
     # 归到「模型过程」，而 `architecture` 的「模型过程」是模型的原始 CoT —— 两种不能混。
     notes = [text for node, text in seen if node == "architecture:progress"]
     assert notes, "绑定回调后节点必须至少推一条 architecture 进度提示（带 :progress 后缀）"
-    assert any("生成总体方案" in note for note in notes), notes
+    assert any("形成完整建筑图纸" in note for note in notes), notes
 
 
 @pytest.mark.asyncio
@@ -168,10 +162,10 @@ async def test_architecture_node_with_reasoning_callback_and_feedback() -> None:
     async def _collect(node: str, text: str) -> None:
         seen.append((node, text))
 
-    spec_loader, tool_loop = _node_patches()
+    spec_loader, model_output, model_factory = _node_patches()
     token = bind_reasoning_callback(_collect)
     try:
-        with spec_loader, tool_loop:
+        with spec_loader, model_output, model_factory:
             update = await architecture_planner(
                 {
                     "user_message": "生成一个两层别墅",
@@ -183,4 +177,4 @@ async def test_architecture_node_with_reasoning_callback_and_feedback() -> None:
 
     assert "architecture_plan" in update, update
     notes = [text for node, text in seen if node == "architecture:progress"]
-    assert any("调整总体方案" in note for note in notes), notes
+    assert any("形成完整建筑图纸" in note for note in notes), notes

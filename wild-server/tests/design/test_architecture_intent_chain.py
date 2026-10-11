@@ -119,15 +119,3 @@ def test_compile_reports_dropped_roof_attachment_before_review():
     defect = next(d for d in result.defects if d.code == "design_instance_uncompiled")
     assert defect.target == "eave"
     assert defect.design_field == "decisions.components[0]"
-
-
-@pytest.mark.parametrize("code,field", [
-    ("design_instance_uncompiled", "decisions.components[0]"),
-    ("material_region_unapplied", "decisions.materials.regions"),
-])
-def test_design_implementation_warnings_create_preapproval_tasks(code, field):
-    from app.agent.generation.architecture.completion import plan_design_tasks
-    defect = SimpleNamespace(severity="warn", code=code, design_field=field, target="eave", evidence="未落实")
-    tasks = plan_design_tasks(document(), SimpleNamespace(defects=[defect]),
-        SimpleNamespace(design_gaps=[]), round_index=0)
-    assert [t["block"] for t in tasks] == ["components"]

@@ -1,0 +1,13 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"装饰壁柱"},
+  "geometry":{
+    "elements":[
+      {"type":"wall","id":"host_wall","from":[-2.0,0,0],"to":[2.0,3.2,0],"thickness":0.24,"material":"plaster"},
+      {"type":"primitive","id":"pilaster_base","shape":"box","position":[0,0.1,-0.16],"dimensions":[0.45,0.2,0.2],"material":"stone"},
+      {"type":"primitive","id":"pilaster_shaft","shape":"box","position":[0,1.4,-0.15],"dimensions":[0.25,2.4,0.12],"material":"stone"},
+      {"type":"primitive","id":"pilaster_cap","shape":"box","position":[0,2.68,-0.16],"dimensions":[0.5,0.16,0.25],"material":"stone"}
+    ],
+    "components":[]
+  },
+  "materials":{"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

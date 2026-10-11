@@ -742,64 +742,8 @@ def validate_blueprint_schema(
                 "light": ("position",),
                 "elevator": ("position", "dimensions", "floorHeight", "floorCount"),
             }
-            component_allowed = {
-                "door": {
-                    "type", "id", "parentWall", "from", "width", "height",
-                    "frameWidth", "frameDepth", "leafDepth", "frameMaterial", "leafMaterial",
-                    "interaction", "openingStyle", "doorStyle", "leafRows", "draggable",
-                },
-                "window": {
-                    "type", "id", "parentWall", "from", "width", "height",
-                    "frameWidth", "frameDepth", "glassDepth", "verticalMullions",
-                    "horizontalMullions", "frameMaterial", "glassMaterial",
-                    "interaction", "draggable",
-                },
-                "railing": {
-                    "type", "id", "path", "height", "postSpacing", "postRadius",
-                    "railRadius", "railLevels", "material", "parentFloor", "draggable",
-                    "infillType", "infillThickness", "infillTopRatio", "infillMaterial",
-                },
-                "canopy": {
-                    "type", "id", "parentWall", "from", "width", "depth",
-                    "thickness", "supportCount", "supportSize", "material",
-                    "supportMaterial", "draggable",
-                },
-                "balcony": {
-                    "type", "id", "parentWall", "from", "width", "depth",
-                    "slabThickness", "railingHeight", "postSpacing", "material",
-                    "railingMaterial", "draggable",
-                },
-                "ramp": {
-                    "type", "id", "from", "to", "width", "thickness",
-                    "railingSides", "railingHeight", "postSpacing", "material",
-                    "railingMaterial", "parentFloor", "draggable",
-                },
-                "bay_window": {
-                    "type", "id", "parentWall", "from", "width", "height",
-                    "projectionDepth", "frameWidth", "frameDepth", "frameMaterial",
-                    "glassMaterial", "draggable",
-                },
-                "cornice": {
-                    "type", "id", "path", "profile", "closedProfile", "material",
-                    "parentRoof", "draggable",
-                },
-                "chimney": {
-                    "type", "id", "position", "width", "depth", "height",
-                    "wallThickness", "capHeight", "material", "capMaterial",
-                    "parentRoof", "draggable",
-                },
-                "light": {
-                    "type", "id", "position", "fixtureType", "lightType", "color",
-                    "lowIntensity", "highIntensity", "distance", "angle",
-                    "initiallyOn", "bulbRadius", "baseHeight", "height",
-                    "shadeRadius", "material", "baseMaterial", "shadeMaterial",
-                    "draggable",
-                },
-                "elevator": {
-                    "type", "id", "position", "dimensions", "floorHeight",
-                    "floorCount", "initialFloor", "draggable",
-                },
-            }
+            from app.utils.blueprint_normalizer import get_component_allowed_fields
+            component_allowed = {kind: get_component_allowed_fields(kind)[0] for kind in component_required}
             for component in components:
                 if not isinstance(component, dict):
                     issues.append("geometry.components 中的每一项都必须是对象")

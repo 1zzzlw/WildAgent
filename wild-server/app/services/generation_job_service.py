@@ -34,11 +34,13 @@ _PERSISTED_EVENT_TYPES = {
     "blueprint_generated",
     "agent_reply",
     "error",
+    "generation_stopped",
 }
 _TERMINAL_EVENT_STATUS = {
     "patch_proposal": "completed",
     "agent_reply": "completed",
     "error": "failed",
+    "generation_stopped": "stopped",
 }
 
 
@@ -84,6 +86,7 @@ class GenerationJobService:
         self._subscribers: dict[str, dict[int, Any]] = {}
         self._event_locks: dict[str, asyncio.Lock] = {}
         self._payload_locks: dict[str, asyncio.Lock] = {}
+        self._stopped_requests: set[str] = set()
         self._init_lock = asyncio.Lock()
         self._initialized = False
 
@@ -135,6 +138,7 @@ class GenerationJobService:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._active_tasks.clear()
+        self._stopped_requests.clear()
         if self._checkpoint_context is not None:
             await self._checkpoint_context.__aexit__(None, None, None)
         self._checkpoint_context = None
@@ -168,6 +172,42 @@ class GenerationJobService:
         await self.attach(job.request_id, subscriber)
         self._spawn(job, resume=False)
         return job, True
+
+    async def stop_job(
+        self, subscriber: Any, *, request_id: str, session_id: str,
+    ) -> GenerationJob:
+        """先落盘停止状态，再取消执行；日志写完后才发送停止确认。"""
+        await self.initialize()
+        lock = self._payload_locks.setdefault(request_id, asyncio.Lock())
+        async with lock:
+            async with self._event_locks.setdefault(request_id, asyncio.Lock()):
+                job = await self.get_job(request_id)
+                if job is None or job.session_id != session_id:
+                    raise ValueError("找不到当前会话的任务")
+                await self.attach(request_id, subscriber)
+                event = versioned_event({
+                    "type": "generation_stopped",
+                    "request_id": request_id,
+                    "session_id": session_id,
+                    "status": "stopped",
+                    "content": "已停止，已有执行记录已保存。",
+                })
+                if job.status not in {"running", "waiting_review"}:
+                    await subscriber.send_json({
+                        **event,
+                        "status": job.status,
+                        "content": "已有执行记录已保存。" if job.status == "stopped"
+                        else "任务已结束，已有记录已保留。",
+                    })
+                    return job
+                self._stopped_requests.add(request_id)
+                await self._mark_status(request_id, "stopped", None)
+            task = self._active_tasks.get(request_id)
+            if task is not None and not task.done():
+                task.cancel("user_stop")
+                await asyncio.gather(task, return_exceptions=True)
+            await self.publish_event(request_id, event)
+            return await self.get_job(request_id)
 
     async def resume_or_replay(
         self,
@@ -312,6 +352,8 @@ class GenerationJobService:
         return False
 
     async def publish_event(self, request_id: str, payload: dict) -> None:
+        if request_id in self._stopped_requests and payload.get("type") != "generation_stopped":
+            return
         event = dict(payload)
         should_persist = (
             event.get("type") in _PERSISTED_EVENT_TYPES
@@ -323,6 +365,8 @@ class GenerationJobService:
         if should_persist:
             lock = self._event_locks.setdefault(request_id, asyncio.Lock())
             async with lock:
+                if request_id in self._stopped_requests and event.get("type") != "generation_stopped":
+                    return
                 sequence = await self._append_event(request_id, event)
                 event["event_seq"] = sequence
                 await self._broadcast(request_id, event)
@@ -453,13 +497,14 @@ class GenerationJobService:
             current = await self.get_job(job.request_id)
             current_status = current.status if current is not None else "running"
             logger.info(
-                f"[{job.request_id}] 任务随服务关闭暂停，保留 {current_status} 状态"
+                f"[{job.request_id}] 用户停止任务" if current_status == "stopped"
+                else f"[{job.request_id}] 任务随服务关闭暂停，保留 {current_status} 状态"
             )
             raise
         except GenerationPaused:
             current = await self.get_job(job.request_id)
             pause_already_persisted = (
-                current is not None and current.status == "waiting_review"
+                current is not None and current.status in {"waiting_review", "stopped"}
             )
             review_already_submitted = (
                 current is not None
@@ -607,7 +652,8 @@ class GenerationJobService:
         async with aiosqlite.connect(self.database_path) as db:
             await db.execute(
                 """UPDATE generation_jobs
-                   SET status = ?, error = ?, updated_at = ? WHERE request_id = ?""",
+                   SET status = ?, error = ?, updated_at = ?
+                   WHERE request_id = ? AND status != 'stopped'""",
                 (status, error, time.time(), request_id),
             )
             await db.commit()
@@ -622,7 +668,7 @@ class GenerationJobService:
             await db.execute(
                 """UPDATE generation_jobs
                    SET payload_json = ?, status = ?, error = NULL, updated_at = ?
-                   WHERE request_id = ?""",
+                   WHERE request_id = ? AND status != 'stopped'""",
                 (json.dumps(payload, ensure_ascii=False), status, time.time(), request_id),
             )
             await db.commit()

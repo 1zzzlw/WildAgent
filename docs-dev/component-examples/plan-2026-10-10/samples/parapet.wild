@@ -1,0 +1,13 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"女儿墙"},
+  "geometry":{
+    "elements":[
+      {"type":"floor","id":"roof_slab","from":[-2,2.82,0],"to":[2,2.82,2],"thickness":0.18,"material":"stone"},
+      {"type":"wall","id":"parapet_front","from":[-2.0,3,0],"to":[2.0,3.9,0],"thickness":0.24,"material":"plaster"},
+      {"type":"wall","id":"parapet_side","from":[-2,3,0],"to":[-2,3.9,2],"thickness":0.24,"material":"plaster"},
+      {"type":"primitive","id":"coping_front","shape":"box","position":[0,3.94,0],"dimensions":[4.1,0.08,0.34],"material":"metal"}
+    ],
+    "components":[]
+  },
+  "materials":{"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"},"plaster":{"baseColor":[0.9,0.88,0.81],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

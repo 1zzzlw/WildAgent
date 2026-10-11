@@ -23,7 +23,7 @@
  * - 避免冲突（通过 revision）
  */
 
-import type { UserMessageRequest, SceneSummary } from '../types/agent'
+import type { UserMessageRequest, SceneSummary, BuildingDetailLevel } from '../types/agent'
 
 export const AGENT_PROTOCOL_VERSION = '1.0' as const
 
@@ -39,6 +39,7 @@ export function createUserMessageRequest(
   precisionMode: boolean = false,
   proceduralMaterialsEnabled: boolean = false,
   recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [],
+  detailLevel: BuildingDetailLevel = 'simple',
 ): UserMessageRequest {
   return {
     protocol_version: AGENT_PROTOCOL_VERSION,
@@ -52,6 +53,7 @@ export function createUserMessageRequest(
     selection,
     blueprint,
     thinking_mode: thinkingMode,
+    detail_level: detailLevel,
     precision_mode: precisionMode,
     procedural_materials_enabled: proceduralMaterialsEnabled,
     recent_messages: recentMessages,

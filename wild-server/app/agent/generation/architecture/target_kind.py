@@ -15,6 +15,7 @@
 （:func:`is_architecture_request`）都在 :mod:`.profile`；本模块只负责把
 "intent 不参与分叉"这条策略叠在那个判据之上。
 """
+
 from __future__ import annotations
 
 from app.agent.state import TargetKind

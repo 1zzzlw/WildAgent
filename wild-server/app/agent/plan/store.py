@@ -85,7 +85,7 @@ def refresh_statuses(plan: PlanDocument) -> PlanDocument:
 
     两条规则，都只是**推导**，不引入新状态：
 
-    1. ``pending`` / ``blocked`` 且依赖全部落定 → ``ready``（悬空依赖永远落定不了，
+    1. ``pending`` / ``blocked`` 及图纸生成的 ``ready`` 按依赖判定（悬空依赖永远落定不了，
        条目保持 ``blocked``，由结构校验 §2.7 拦）；
     2. 已完成（``done``）的下游条目，只要有上游没落定 → 退回 ``ready`` 并清执行态。
        没有这条，一次重试就会让批次/收尾合并保持 ``done``，重跑出来的新指标永远
@@ -105,7 +105,9 @@ def refresh_statuses(plan: PlanDocument) -> PlanDocument:
 
     for item in items:
         upstream = upstream_ids(item, items)
-        if item.status in {"pending", "blocked"}:
+        if item.status in {"pending", "blocked"} or (
+            item.status == "ready" and item.params.get("design_markers")
+        ):
             item.status = "ready" if all(dep in settled for dep in upstream) else "blocked"
             continue
         if (

@@ -1,0 +1,10 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"电视柜"},
+  "geometry":{
+    "elements":[
+      {"type":"furniture","id":"tv_cabinet","subtype":"tv_cabinet","position":[0,0,0],"rotation":[0,0,0],"dimensions":{"width":1.8,"depth":0.4,"height":0.5},"material":"wood"}
+    ],
+    "components":[]
+  },
+  "materials":{"wood":{"baseColor":[0.3,0.18,0.1],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

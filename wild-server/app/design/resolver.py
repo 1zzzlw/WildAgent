@@ -63,7 +63,7 @@ def build_design_document(
     previous: DesignDocument | dict[str, Any] | None = None,
     revision_feedback: str = "",
 ) -> DesignDocument:
-    """把归一化方案提升为版本化设计契约；按目标类型分派建筑或物件。"""
+    """把完整方案保存为版本化设计文档；按目标类型分派建筑或物件。"""
 
     old = (
         previous
@@ -104,29 +104,7 @@ def build_design_document(
             expression="设计必须保持用户原始需求中明确提出的条件",
             source="user_request",
         ),
-        DesignConstraint(
-            id="engine.supported-components",
-            kind="engine_hard",
-            target="/decisions/required_components",
-            expression="只允许编译当前组件注册表支持的构件类型",
-            source="component_registry",
-        ),
-        DesignConstraint(
-            id="facade.pattern-cardinality",
-            kind="system_required",
-            target="/decisions/facades",
-            expression="每个立面的 pattern 长度必须等于 bays",
-            source="design_schema",
-        ),
     ]
-    if curtain_wall:
-        constraints.append(DesignConstraint(
-            id="envelope.curtain-wall.alignment",
-            kind="system_required",
-            target="/decisions/envelope/curtain_wall/grid_strategy",
-            expression="幕墙分格必须与楼层和立面开间关系一致",
-            source="rules-v3:glass-curtain-wall-assembly",
-        ))
     if old:
         current_ids = {item.id for item in constraints}
         constraints.extend(
@@ -151,18 +129,21 @@ def build_design_document(
             style_intent=list(style_intent or []),
         ),
         decisions=ArchitectureDecisions(
+            **{k: v for k, v in plan.items() if k not in ArchitectureDecisions.model_fields
+               and k not in {"schema_version", "profile", "design_constraints", "normalization_changes", "curtain_wall", "material_regions"}},
             concept=str(plan.get("concept") or ""),
             massing=plan["massing"],
             complexity=ComplexityDecision.model_validate(complexity),
             volumes=plan["volumes"],
             structural_grid=plan["structural_grid"],
-            envelope=EnvelopeDecision(
+            envelope=plan.get("envelope") or EnvelopeDecision(
                 system="curtain_wall" if curtain_wall else "solid_wall",
                 curtain_wall={} if curtain_wall else None,
             ),
             facades=plan["facades"],
             roof=plan["roof"],
             circulation={
+                **(plan.get("circulation") or {}),
                 "vertical_strategy": str(
                     (plan.get("circulation") or {}).get("vertical_strategy")
                     or ("core_and_stair" if profile == "high_rise" else "stair")
@@ -170,6 +151,7 @@ def build_design_document(
             },
             materials={
                 **(old.decisions.materials.model_dump(mode="json") if old else {}),
+                **({k: v for k, v in plan["materials"].items() if k != "resolved_plan"} if isinstance(plan.get("materials"), dict) else {}),
                 **({"regions": (plan.get("materials") or {}).get("regions", [])}
                    if isinstance(plan.get("materials"), dict) and "regions" in plan["materials"]
                    else {"regions": plan["material_regions"]} if "material_regions" in plan else {}),
@@ -186,24 +168,7 @@ def build_design_document(
         ),
         constraints=constraints,
         locks=list(old.locks if old else []),
-        rule_trace=[
-            RuleTrace(
-                rule_id="wild.schema.contract",
-                classification="engine_hard",
-                applies_when="always",
-                schema_targets=["/decisions"],
-                enforcement=["schema", "compiler", "validator"],
-                source="WILD schema and component registry",
-            ),
-            RuleTrace(
-                rule_id="envelope.curtain-wall.floor-grid-alignment",
-                classification="conditional",
-                applies_when="envelope.system == curtain_wall",
-                schema_targets=["/decisions/envelope", "/decisions/facades"],
-                enforcement=["planner", "resolver", "validator"],
-                source="rules-v3:glass-curtain-wall-assembly",
-            ),
-        ],
+        rule_trace=[],
     )
 
     changes = plan.get("normalization_changes") or []
@@ -227,24 +192,25 @@ def build_design_document(
             design_revision=document.revision, changes=changes,
         ))
 
-    from .normalization import decision_summary
-    document.decisions.design_rationale = [
-        decision_summary(architecture_plan_from_document(document)),
-        *[text for text in document.decisions.design_rationale
-          if not text.removeprefix("[待核对] ").startswith("[决策事实]")][:11],
-    ]
-
-    # Keep prose explicitly unverified when it no longer has reliable decision evidence.
-    from .completeness import evaluate_design
-    gaps = evaluate_design(document, _stable_hash(document))
-    if any(g.status != "satisfied" for g in gaps):
+    if changes:
+        from .normalization import decision_summary
         document.decisions.design_rationale = [
-            text if text.startswith(("[待核对]", "[决策事实]")) else "[待核对] " + text
-            for text in document.decisions.design_rationale
+            decision_summary(architecture_plan_from_document(document)),
+            *[text for text in document.decisions.design_rationale
+              if not text.removeprefix("[待核对] ").startswith("[决策事实]")][:11],
         ]
-        if any(c.get("semantic_change") for t in document.rule_trace for c in t.changes):
-            concept = document.decisions.concept
-            document.decisions.concept = concept if concept.startswith("[待核对]") else ("[待核对] " + concept)[:240]
+
+        # Keep prose explicitly unverified when it no longer has reliable decision evidence.
+        from .completeness import evaluate_design
+        gaps = evaluate_design(document, _stable_hash(document))
+        if any(g.status != "satisfied" for g in gaps):
+            document.decisions.design_rationale = [
+                text if text.startswith(("[待核对]", "[决策事实]")) else "[待核对] " + text
+                for text in document.decisions.design_rationale
+            ]
+            if any(c.get("semantic_change") for t in document.rule_trace for c in t.changes):
+                concept = document.decisions.concept
+                document.decisions.concept = concept if concept.startswith("[待核对]") else ("[待核对] " + concept)[:240]
     return document
 
 
@@ -359,92 +325,13 @@ def _build_object_document(
     )
 
 
-def _repair_instance_material_roles(
-    data: dict[str, Any],
-    material_plan: dict[str, Any],
-) -> list[str]:
-    """把实例的 ``material_role`` 归一成**本方案里真实存在的角色名**。
-
-    判据全部来自方案自身，不另抄一张别名表：命中 ``role`` 即原样；否则查
-    ``materialId → role`` 的反查表（``metal`` → ``frame``、``wood`` → ``door``）；
-    两者都不中，说明这个名字在本方案的蓝图里落不到任何材质，**降级为"没表态"并记账**，
-    不抛异常（宁缺毋错：这一条是造型偏好，不是可交付性）。
-
-    为什么必须在这里做：`ComponentInstance.material_role` 的字面量是**建筑 ∪ 物件
-    并集**（`MaterialRoleName`），所以模型在建筑方案里写物件侧的材质名 `metal` 过得了
-    字面量校验、也过得了块级 `ComponentInstance.model_validate`，却在
-    `DesignDocument` 的引用完整性校验上被 raise —— 而那是
-    `DesignDocument.model_validate` 里的硬失败，会让**整轮生成**终止在材质节点
-    （2026-10-08 玻璃幕墙场景实测）。口径与编译器一致：
-    `compile._material_name_for_role` 本来就同时认角色名与蓝图材质名。
-    """
-
-    roles = {
-        str(item["role"]): item
-        for item in material_plan.get("roles") or []
-        if isinstance(item, dict) and isinstance(item.get("role"), str)
-    }
-    by_material_id = {
-        str(item["materialId"]): str(item["role"])
-        for item in roles.values()
-        if isinstance(item.get("materialId"), str)
-    }
-    decisions = data.get("decisions")
-    instances = decisions.get("components") if isinstance(decisions, dict) else None
-    if not isinstance(instances, list):
-        return []
-    repairs: list[str] = []
-    for index, instance in enumerate(instances):
-        if not isinstance(instance, dict):
-            continue
-        role = instance.get("material_role")
-        if not role or str(role) in roles:
-            continue
-        canonical = by_material_id.get(str(role))
-        if canonical:
-            instance["material_role"] = canonical
-            repairs.append(f"components[{index}]: {role} → {canonical}（材质名换成角色名）")
-        else:
-            instance["material_role"] = None
-            repairs.append(
-                f"components[{index}]: {role} 在本材质方案里没有对应材质，降级为未表态"
-            )
-    return repairs
-
-
 def attach_material_plan(
     document: DesignDocument | dict[str, Any],
     material_plan: dict[str, Any],
-    *,
-    role_repairs: list[str] | None = None,
 ) -> DesignDocument:
-    """把已解析的材质方案写入当前设计 revision，不制造虚假的新设计版本。
-
-    ``role_repairs`` 是可选出参：把实例角色名的归一记录（见
-    :func:`_repair_instance_material_roles`）回给调用方进诊断账本。用出参而不是改
-    返回值，是为了让"记录"这件事**只发生在材质方案与图纸相遇的这一个收口点**上。
-    """
-
+    """附加材质实现，不改写原始构件材质意图。"""
     doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
     data = doc.model_dump(mode="json")
-    # 归一必须在写入方案**之前**：校验器要求实例角色名能落到方案里的材质，
-    # 而这些名字本来就是方案给的（先写方案再归一也不影响结果，但顺序反了会误导读者）。
-    repairs = _repair_instance_material_roles(data, material_plan)
-    if repairs:
-        from .normalization import field_changes
-        changes = field_changes(doc.model_dump(mode="json")["decisions"]["components"],
-                                data["decisions"]["components"], path="/decisions/components",
-                                rule="materials.instance_roles", source="unknown")
-        role_map = {r["role"]: r.get("materialId") for r in material_plan.get("roles", [])}
-        for change in changes:
-            if change["path"].endswith("/material_role") and role_map.get(change["after"]) == change["before"]:
-                change.update(category="protocol", semantic_change=False, reason="材质名转换为指向相同材质的角色名")
-        data["rule_trace"].append(RuleTrace(
-            rule_id="materials.instance_roles", classification="reference", enforcement=["resolver"],
-            source="material_plan roles", design_revision=doc.revision, changes=changes,
-        ).model_dump(mode="json"))
-    if role_repairs is not None:
-        role_repairs.extend(repairs)
     concept = str(material_plan.get("concept") or "").strip()
     palette = material_plan.get("palette")
     keywords = [concept] if concept else []
@@ -452,7 +339,7 @@ def attach_material_plan(
         keywords.extend(str(item).strip() for item in palette if str(item).strip())
     data["decisions"]["materials"] = {
         **data["decisions"]["materials"],
-        "keywords": keywords[:20],
+        "keywords": list(dict.fromkeys([*data["decisions"]["materials"].get("keywords", []), *keywords])),
         "resolved_plan": deepcopy(material_plan),
     }
     data["status"] = "draft"
@@ -469,6 +356,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
     if isinstance(d, ObjectDecisions):
         return _object_plan_from_document(doc, d)
     return {
+        **(d.model_extra or {}),
         "schema_version": "1.1",
         "profile": doc.requirements.profile,
         "concept": d.concept,
@@ -480,7 +368,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         "detail_packages": list(d.detail_packages),
         "facades": {key: value.model_dump(mode="json", exclude_none=True) for key, value in d.facades.items()},
         "roof": d.roof.model_dump(mode="json"),
-        "component_quota": {key: value.model_dump(mode="json", exclude_none=True) for key, value in d.component_quota.items()},
+        "component_quota": deepcopy(d.component_quota),
         "components": [item.model_dump(mode="json", exclude_none=True) for item in d.components],
         "curtain_wall": d.envelope.system == "curtain_wall",
         "balcony_access_count": d.balcony_access_count,
@@ -564,8 +452,8 @@ def resolve_design(document: DesignDocument | dict[str, Any]) -> ResolvedDesign:
     d = doc.decisions
     if isinstance(d, ObjectDecisions):
         return _resolve_object_design(doc, d)
-    from .compilation import compile_document, project_compilation
-    return project_compilation(doc, compile_document(doc))
+    from .compilation import project_drawing
+    return project_drawing(doc)
 
 
 def _resolve_object_design(doc: DesignDocument, d: ObjectDecisions) -> ResolvedDesign:
@@ -684,5 +572,5 @@ def render_design_svg(document: DesignDocument | dict[str, Any], resolved: Resol
         result = resolve_design(doc)
     if isinstance(doc.decisions, ObjectDecisions):
         return _render_object_svg(doc, result)
-    from .preview import render_compiled_svg
-    return render_compiled_svg(doc, result)
+    from .preview import render_drawing_svg
+    return render_drawing_svg(doc, result)

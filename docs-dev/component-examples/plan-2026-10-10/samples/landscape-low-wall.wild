@@ -1,0 +1,11 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"景观矮墙"},
+  "geometry":{
+    "elements":[
+      {"type":"wall","id":"host_wall","from":[-1.5,0,0],"to":[1.5,0.6,0],"thickness":0.24,"material":"stone"},
+      {"type":"primitive","id":"cap","shape":"box","position":[0,0.64,0],"dimensions":[3.1,0.08,0.35],"material":"stone"}
+    ],
+    "components":[]
+  },
+  "materials":{"stone":{"baseColor":[0.72,0.69,0.62],"roughness":0.7,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}
+}

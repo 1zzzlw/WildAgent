@@ -1,0 +1,367 @@
+[
+  {
+    "claim_id": "sofa.mapping",
+    "category": "example",
+    "claim": "原生 furniture.sofa 表达底座、靠背、扶手与坐垫，正面朝 +Z，position 是底面中心；落地 Y 取所在楼板顶标高。示例宽 2.3、深 0.9、高 0.8 为自选米制设计值。来源的钢丝外框与软包曲面没有在本原生样例中复原，需要精确分件时改用 primitive 组合；不能把此简化沙发称为原厂模型。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Herman Miller Wireframe 沙发立面与尺寸图，第 1 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/emea/wireframe_sofa_product_sheet_en-gb.pdf",
+        "reference_file": "references/interior/sofa.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择沙发",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "coffee-table.mapping",
+    "category": "example",
+    "claim": "用 furniture.table 将桌面与腿组合成低桌。position 是底面中心，height 控制桌面总高；这里用矩形四腿近似，来源的圆桌与中心支脚仅为桌面、支承关系参考，未照搬产品结构。宽深、高度、材料与离沙发距离由图纸决定。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Herman Miller Eames 桌台图纸，第 1 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/eames_occasional_table_product_sheet.pdf",
+        "reference_file": "references/interior/table.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择茶几",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "dining-table-chairs.mapping",
+    "category": "example",
+    "claim": "餐桌和每把椅子分别写为 furniture 元素；椅背在 -Z，正面 +Z，rotation[1] 为弧度。两侧椅子转向桌边；示例椅子靠近桌边，正式安装仍要按房间留出拉椅与通行空间。餐椅是盒体近似，没有来源的曲面坐背或金属支脚造型。人数、布置和各尺寸为设计变量，不要求所有餐厅四椅。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Herman Miller Eames 餐椅图纸，第 2 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/eames_molded_plastic_dining_chair_product_sheet.pdf",
+        "reference_file": "references/interior/chair.pdf"
+      },
+      {
+        "title": "Herman Miller Eames 桌台图纸，第 1 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/eames_occasional_table_product_sheet.pdf",
+        "reference_file": "references/interior/table.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择餐桌椅",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "bed.mapping",
+    "category": "example",
+    "claim": "furniture.bed 表达床架、床垫与床头板，床头在 -Z；height 是床头总高，不能当床垫离地高度。position 取底面中心和楼板顶标高；需要明确床垫、床头或床架不同材质/高度时拆为 primitive，不虚构 mattressHeight。来源的储物举升机构与排骨架未实现，示例尺寸自选。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA MALM 床架装配图，第 1 页",
+        "url": "https://www.ikea.com/us/en/assembly_instructions/malm-storage-bed-white__AA-2055625-9-100.pdf",
+        "reference_file": "references/interior/bed.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择床",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "wardrobe.mapping",
+    "category": "example",
+    "claim": "furniture.wardrobe 为柜身、前侧双门和踢脚的简化整体，正面 +Z，position 是底面中心。来源只提供柜体板件参考，不是衣柜产品复刻；门为静态几何，不具备开门交互。宽深高与位置由图纸给定；要开放挂衣区或多门分格可组合 primitive，不添加未知 cabinetDoors 字段。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA METOD 柜体装配图，第 1 页",
+        "url": "https://www.ikea.com/de/de/assembly_instructions/metod-korpus-wandschrank-weiss__AA-2238433-5-2.pdf",
+        "reference_file": "references/interior/cabinet.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择衣柜",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "bookshelf.mapping",
+    "category": "example",
+    "claim": "原生 furniture.bookshelf 含侧板、背板、上下板及两块中间隔板；不能凭 dimensions 声称实现来源全部层数。此例保留开放书架的板件关系，正面 +Z。需要更多层、独立材质或异形柜时用多个 primitive.box 表达，书本不是默认实体。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA BILLY 书架装配图，第 1 页",
+        "url": "https://www.ikea.com/us/en/assembly_instructions/billy-bookcase-white__AA-2289105-4-100.pdf",
+        "reference_file": "references/interior/bookcase.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择书架",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "nightstand.mapping",
+    "category": "example",
+    "claim": "furniture.nightstand 表达台面、低柜与静态抽屉分缝。position 取楼板顶，不挂 parentWall；柜前朝 +Z。来源的板件关系缩减为独立低柜，抽屉不可拉动；本例不自动配置床或台灯。数量、宽深高与床边距离由本次设计决定。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA METOD 柜体装配图，第 1 页",
+        "url": "https://www.ikea.com/de/de/assembly_instructions/metod-korpus-wandschrank-weiss__AA-2238433-5-2.pdf",
+        "reference_file": "references/interior/cabinet.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择床头柜",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "tv-cabinet.mapping",
+    "category": "example",
+    "claim": "furniture.tv_cabinet 表达低柜台面、两侧柜体与中央设备区；柜前 +Z，底部锚点放在楼板顶。来源只用于柜体分件参考，本例没有电视屏幕或可操作设备。需要屏幕时另组合薄 primitive.box；整体长度、高度和分格应从图纸确定。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA METOD 柜体装配图，第 1 页",
+        "url": "https://www.ikea.com/de/de/assembly_instructions/metod-korpus-wandschrank-weiss__AA-2238433-5-2.pdf",
+        "reference_file": "references/interior/cabinet.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择电视柜",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "desk-chair.mapping",
+    "category": "example",
+    "claim": "书桌与座椅分别用 furniture.table/chair，椅子正面转向桌子。示例椅子在桌前 +Z 并旋转 π 弧度，底面 Y 相同。来源提供桌面支承与椅背参考，示例为自选矩形桌、简化椅；没有显示器和抽屉。通行、桌椅距离及房间朝向由本次图纸调整。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Herman Miller Eames 桌台图纸，第 1 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/eames_occasional_table_product_sheet.pdf",
+        "reference_file": "references/interior/table.pdf"
+      },
+      {
+        "title": "Herman Miller Eames 餐椅图纸，第 2 页",
+        "url": "https://www.hermanmiller.com/content/dam/hermanmiller/documents/product_literature/product_sheets/eames_molded_plastic_dining_chair_product_sheet.pdf",
+        "reference_file": "references/interior/chair.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择书桌椅",
+    "target_document": "knowledge/components/furniture-layout-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "kitchen-cabinet.mapping",
+    "category": "example",
+    "claim": "用 primitive.box 分别表达柜体、踢脚、三扇门板、把手与台面；世界坐标 position 是各盒体中心，板件底部不能直接把 Y 写为 0。来源是吊柜板件图，本例转换为自选落地橱柜，不照搬安装高度。门板在 +Z 为正面；没有抽屉/开门动作、厨房设备或水槽。柜体尺寸、门数、台面与材质分层均可修改。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "IKEA METOD 柜体装配图，第 1 页",
+        "url": "https://www.ikea.com/de/de/assembly_instructions/metod-korpus-wandschrank-weiss__AA-2238433-5-2.pdf",
+        "reference_file": "references/interior/cabinet.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择橱柜",
+    "target_document": "knowledge/components/kitchen-sanitary-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "washbasin.mapping",
+    "category": "example",
+    "claim": "用底板和四侧板形成有开口的盆体，避免整块实心箱体；另组合自选支座与水龙头。来源平面图标注宽 600、深 470 mm，转换为 0.6、0.47 m；其余高度、板厚、支座与龙头是本项目示例假设，不是厂家安装规范。primitive.position 是分件几何中心，所有片段需一起平移到安装位置。盆的圆角、排水和曲面仅近似表达，没有给排水模拟。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Duravit Vero 台盆平面图，第 1 页",
+        "url": "https://csassets.duravit.com/1/2/Duravit_TD_1266386.pdf",
+        "reference_file": "references/interior/basin.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择洗手盆",
+    "target_document": "knowledge/components/kitchen-sanitary-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "toilet.mapping",
+    "category": "example",
+    "claim": "primitive 组合底座、盆侧、水箱、箱盖与椭圆开口盆沿，保留侧视图中水箱在后、盆口在前的关系。盆沿用闭合 profile_sweep，未用实心盒封死盆口；模型不具备冲水或盖板开合。来源标注高 730、坐高 410 mm，对应约 0.73、0.41 m；横向宽度与椭圆轮廓为自选近似，不宣称复刻内部水封。安装时整体平移/旋转各分件，不能给 primitive 添加 toilet 类型。",
+    "source_status": "official_reference_and_current_schema",
+    "evidence": [
+      {
+        "title": "Duravit 马桶侧面尺寸图，第 1 页",
+        "url": "https://csassets.duravit.com/2/9/Duravit_TD_2912316.pdf",
+        "reference_file": "references/interior/toilet.pdf"
+      }
+    ],
+    "disposition": "normalized",
+    "applies_when": "本次设计选择马桶",
+    "target_document": "knowledge/components/kitchen-sanitary-examples.md",
+    "target_fields": [
+      "/geometry/elements",
+      "/materials"
+    ],
+    "execution_location": "plan.run_marker_generate -> wild-core compiler/primitive",
+    "free_variables": [
+      "尺寸",
+      "材料",
+      "朝向",
+      "放置位置",
+      "组装数量"
+    ],
+    "visual_approval": false
+  },
+  {
+    "claim_id": "source.product_mechanics",
+    "category": "unsupported",
+    "disposition": "rejected",
+    "claim": "来源的品牌认证、载荷、滑轨、抽屉和给排水动作不加入活动示例；不将来源产品尺寸变成设计要求。",
+    "target_document": null
+  }
+]

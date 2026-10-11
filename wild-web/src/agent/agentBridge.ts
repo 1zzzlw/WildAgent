@@ -47,7 +47,7 @@ import { usePresenceStore } from '../extensions/presence/store'
 import { PRESENCE_VISITOR_NAME_CHANGED_EVENT } from '../extensions/presence/types'
 import { generateSceneSummary } from '../wild/sceneSummary'
 import { AGENT_PROTOCOL_VERSION, createUserMessageRequest } from './protocol'
-import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse, ChatMessage } from '../types/agent'
+import type { AgentMessage, AgentReplyResponse, AgentTurn, BlueprintGeneratedResponse, ChatMessage, StopGenerationRequest } from '../types/agent'
 import type { Blueprint } from '../types/blueprint'
 
 /** 重连配置 */
@@ -393,6 +393,7 @@ export class AgentBridge {
       agentStore.precisionMode,
       agentStore.proceduralMaterialsEnabled,
       recentMessages,
+      agentStore.detailLevel,
     )
 
     agentStore.clearPipelineSteps()
@@ -417,6 +418,21 @@ export class AgentBridge {
     this.ws.send(JSON.stringify(request))
     agentStore.setProcessing(true)
     return request.request_id
+  }
+
+  stopCurrentGeneration(): boolean {
+    const agentStore = useAgentStore()
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false
+    const turn = [...agentStore.currentTurns].reverse().find(item => item.status === 'running')
+    if (!turn || turn.stop_requested) return false
+    const request: StopGenerationRequest = {
+      protocol_version: AGENT_PROTOCOL_VERSION, type: 'stop_generation',
+      request_id: turn.request_id, session_id: turn.session_id,
+    }
+    agentStore.setTurnStopRequested(turn.session_id, turn.request_id, true)
+    this.ws.send(JSON.stringify(request))
+    void this.syncConversationState(turn.session_id)
+    return true
   }
 
   /** 批准具体建筑设计，或用自然语言意见生成下一版 DesignDocument。 */
@@ -497,13 +513,33 @@ export class AgentBridge {
         ) {
           agentStore.setProcessing(true, '正在恢复后台生成任务...')
         }
+        if (message.status === 'stopped') {
+          agentStore.completeTurn(message.session_id, message.request_id, 'stopped', '用户停止')
+          if (message.session_id === agentStore.currentSessionId) agentStore.setProcessing(false)
+          this.requestContexts.delete(message.request_id)
+        }
+        break
+
+      case 'generation_stopped':
+        {
+          const turn = agentStore.getTurnsForSession(message.session_id).find(t => t.request_id === message.request_id)
+          const status = message.status === 'failed' ? 'error' : message.status
+          if (turn?.status !== status) {
+            agentStore.addSystemMessageForTurn(message.session_id, message.request_id, message.content)
+          }
+          agentStore.completeTurn(message.session_id, message.request_id, status,
+            message.status === 'stopped' ? '用户停止' : undefined)
+          if (message.session_id === agentStore.currentSessionId) agentStore.setProcessing(false)
+          void this.syncConversationState(message.session_id)
+          this.requestContexts.delete(message.request_id)
+        }
         break
 
       case 'agent_step':
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        agentStore.setProcessing(true, message.content)
+        if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(true, message.content)
         const nodeName = message.node || message.step_id || message.stage
         const nodeStatus = message.status || (message.stage === 'finished' ? 'done' : 'running')
         const detail = message.detail || message.content
@@ -683,6 +719,12 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
+        if (message.code === 'generation_stop_rejected') {
+          agentStore.setTurnStopRequested(sessionId, message.request_id, false)
+          agentStore.addSystemMessageForTurn(sessionId, message.request_id, `停止未成功：${message.error}`)
+          void this.syncConversationState(sessionId)
+          break
+        }
         if (message.code === 'design_review_rejected') {
           agentStore.restoreDesignReviewAfterError(sessionId, message.request_id)
           agentStore.addSystemMessageForTurn(
@@ -780,6 +822,13 @@ export class AgentBridge {
         session_id: sessionId,
         last_event_seq: target.lastEventSeq,
       }))
+      const turn = agentStore.getTurnsForSession(sessionId).find(t => t.request_id === target.requestId)
+      if (turn?.stop_requested) {
+        this.ws.send(JSON.stringify({
+          protocol_version: AGENT_PROTOCOL_VERSION, type: 'stop_generation',
+          request_id: turn.request_id, session_id: sessionId,
+        } satisfies StopGenerationRequest))
+      }
     }
   }
 

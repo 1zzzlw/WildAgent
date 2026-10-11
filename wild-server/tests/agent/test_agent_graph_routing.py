@@ -11,7 +11,6 @@ from app.agent.generation.component.registry import resolve_component_suggestion
 from langgraph.graph import END
 
 from app.agent.graph import (
-    _after_design_convergence,
     _after_material_plan,
     _classifier_dispatch,
     _final_validate_dispatch,
@@ -88,8 +87,8 @@ def test_design_review_returns_to_the_chain_that_produced_the_document():
     assert route_design_review(state("architecture")) == "architecture"
     # 没有文档时（例如审图节点尚未写回）回落到建筑链，与 `_classifier_dispatch` 同一默认。
     assert route_design_review({"design_review_status": "revise"}) == "architecture"
-    # 批准后的建筑走确定性编译（没有开关）；物件批准后留在 skeleton。
-    assert route_design_review({"design_review_status": "approved"}) == "compile"
+    # 建筑批准后展开标记任务；物件批准后留在 skeleton。
+    assert route_design_review({"design_review_status": "approved"}) == "plan"
     assert route_design_review({
         "design_review_status": "approved",
         "architecture_plan": {"target_kind": "object"},
@@ -97,22 +96,9 @@ def test_design_review_returns_to_the_chain_that_produced_the_document():
     assert route_design_review({"design_review_status": "revise", "status": "failed"}) == "__end__"
 
 
-def test_material_plan_waits_for_concrete_design_convergence():
-    """材质方案之后先跑收敛环，再进人工审核（§1.3：冻结点必须排在可行性验证之后）。"""
-
-    assert _after_material_plan({}) == "design_convergence"
-
-
-def test_design_convergence_hands_the_draft_to_review():
-    """收敛环**不产出失败**：没收敛也只是记进 design_convergence，照常进人工审核。"""
-
-    assert _after_design_convergence({}) == "design_review"
-
-    terminal = {
-        "status": "failed",
-        "terminal_model_error": {"category": "quota_exhausted"},
-    }
-    assert _after_design_convergence(terminal) == END
+def test_material_plan_hands_the_design_directly_to_review():
+    assert _after_material_plan({}) == "design_review"
+    assert _after_material_plan({"status": "failed"}) == "__end__"
 
 
 def test_invalid_intent_fails_closed_to_read_only_chat():

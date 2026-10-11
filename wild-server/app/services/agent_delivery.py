@@ -56,6 +56,10 @@ class BlueprintDelivery:
         )
         if not self.fulfillment or not self.fulfillment.get("total"):
             return base
+        implementation = self.fulfillment.get("implementation_summary") or {}
+        if implementation.get("abandoned"):
+            base += (f"图纸落实 {implementation['implemented']} 项、舍弃 {implementation['abandoned']} 项，"
+                     "设计尚未完整实现。")
         # 缺口逐条列出（最多 3 条），让用户看到"哪一条没做到"，而不是只看到一个比例。
         outstanding = [
             gap for gap in self.fulfillment.get("gaps") or []

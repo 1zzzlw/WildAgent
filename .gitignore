@@ -28,6 +28,7 @@ wild-server/test_output_blueprint.json
 .idea/
 .vscode/
 .claude/
+.codex/
 .freebuff/
 .idea/
 .workbuddy/

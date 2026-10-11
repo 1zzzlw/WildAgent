@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from uuid import uuid4
 
 from loguru import logger
 
@@ -98,6 +99,8 @@ class RAGTrace:
     error_type: str | None = None
     _started_perf: float = field(default_factory=time.perf_counter, repr=False)
     _elapsed_ms: int | None = field(default=None, repr=False)
+    _previous: dict[str, Any] = field(default_factory=dict, repr=False)
+    _execution_id: str = field(default_factory=lambda: uuid4().hex, repr=False)
 
     def finish(self, status: str = "completed", error_type: str | None = None) -> None:
         """结束计时；重复调用不会覆盖第一次结束结果。"""
@@ -117,52 +120,56 @@ class RAGTrace:
         elapsed_ms = self._elapsed_ms
         if elapsed_ms is None:
             elapsed_ms = round((time.perf_counter() - self._started_perf) * 1000)
+        previous = self._previous
+        records = {key: [*previous.get(key, []), *getattr(self, key)] for key in
+                   ("retrievals", "contexts", "llm_calls", "nodes", "gate_decisions", "citations", "warnings")}
+        executions = list(previous.get("executions") or [])
+        if previous and not executions:
+            executions.append({"id": "legacy", "started_at": previous.get("started_at"),
+                               "elapsed_ms": previous.get("elapsed_ms", 0), "status": previous.get("status")})
+        executions.append({"id": self._execution_id, "started_at": self.started_at,
+                           "elapsed_ms": elapsed_ms, "status": self.status, "error_type": self.error_type})
 
         token_usage = {"input": 0, "output": 0, "total": 0}
         retry_count = 0
-        for call in self.llm_calls:
+        for call in records["llm_calls"]:
             usage = call.get("token_usage") or {}
             token_usage["input"] += int(usage.get("input", 0) or 0)
             token_usage["output"] += int(usage.get("output", 0) or 0)
             token_usage["total"] += int(usage.get("total", 0) or 0)
             retry_count += int(call.get("retry_count") or 0)
 
-        context_chars = [int(item.get("context_chars", 0)) for item in self.contexts]
+        context_chars = [int(item.get("context_chars", 0)) for item in records["contexts"]]
         return {
             "request_id": self.request_id,
             "session_id": self.session_id,
-            "started_at": self.started_at,
+            "started_at": previous.get("started_at", self.started_at),
             "status": self.status,
             "error_type": self.error_type,
-            "elapsed_ms": elapsed_ms,
+            "elapsed_ms": int(previous.get("elapsed_ms", 0)) + elapsed_ms,
+            "executions": executions,
             "summary": {
-                "retrieval_calls": len(self.retrievals),
+                "retrieval_calls": len(records["retrievals"]),
                 "retrieval_ms": sum(
-                    int(item.get("elapsed_ms", 0)) for item in self.retrievals
+                    int(item.get("elapsed_ms", 0)) for item in records["retrievals"]
                 ),
-                "context_builds": len(self.contexts),
+                "context_builds": len(records["contexts"]),
                 "max_context_chars": max(context_chars, default=0),
-                "llm_calls": len(self.llm_calls),
-                "llm_ms": sum(int(item.get("elapsed_ms", 0)) for item in self.llm_calls),
+                "llm_calls": len(records["llm_calls"]),
+                "llm_ms": sum(int(item.get("elapsed_ms", 0)) for item in records["llm_calls"]),
                 "token_usage": token_usage,
                 "llm_retry_count": retry_count,
-                "node_calls": len(self.nodes),
+                "node_calls": len(records["nodes"]),
                 "node_ms": sum(
-                    int(item.get("duration_ms", 0)) for item in self.nodes
+                    int(item.get("duration_ms", 0)) for item in records["nodes"]
                 ),
                 "gate_rejections": sum(
-                    1 for item in self.gate_decisions if item.get("decision") == "reject"
+                    1 for item in records["gate_decisions"] if item.get("decision") == "reject"
                 ),
             },
-            "retrievals": self.retrievals,
-            "contexts": self.contexts,
-            "llm_calls": self.llm_calls,
-            "nodes": self.nodes,
-            "gate_decisions": self.gate_decisions,
-            "citations": self.citations,
-            "warnings": self.warnings,
-            "safety": self.safety,
-            "final_answer": self.final_answer,
+            **records,
+            "safety": self.safety or previous.get("safety"),
+            "final_answer": self.final_answer if self.final_answer is not None else previous.get("final_answer"),
             "access_context": self.access_context,
         }
 
@@ -238,6 +245,16 @@ def rag_trace_scope(
         session_id=str(session_id or request_id or "unknown"),
         access_context=bound_access.public_dict(),
     )
+    if persist is not False and config.rag.trace.enabled:
+        path = trace_file_path(trace.session_id, trace.request_id)
+        if path.exists():
+            try:
+                previous = json.loads(path.read_text(encoding="utf-8"))
+                if (previous.get("request_id") == trace.request_id and previous.get("session_id") == trace.session_id
+                        and previous.get("access_context") == json.loads(json.dumps(trace.access_context))):
+                    trace._previous = previous
+            except (OSError, ValueError) as exc:
+                logger.warning("不能恢复此前 trace：{}", type(exc).__name__)
     with access_context_scope(bound_access):
         token = _current_rag_trace.set(trace)
         try:
@@ -258,6 +275,9 @@ def rag_trace_scope(
                 persistence_error = f"{type(exc).__name__}: {exc}"
             try:
                 payload = trace.to_dict()
+                payload["llm_calls"] = [{k: v for k, v in call.items()
+                                         if k not in {"response_content", "reasoning_content"}}
+                                        for call in payload["llm_calls"]]
                 payload["trace_file"] = str(path) if path else None
                 payload["persistence_error"] = persistence_error
                 logger.info(
@@ -333,8 +353,11 @@ def record_rag_llm_call(
     token_usage: dict[str, int] | None,
     error_type: str | None = None,
     retry_count: int = 0,
+    *,
+    response_content: str = "",
+    reasoning_content: str = "",
 ) -> bool:
-    """记录一次 LLM 调用耗时、供应商返回的 Token 用量和退避重试次数。"""
+    """记录调用统计与模型实际返回的完整输出、思考，沿请求 trace 落盘。"""
 
     trace = get_current_rag_trace()
     if trace is None:
@@ -345,6 +368,8 @@ def record_rag_llm_call(
             "elapsed_ms": elapsed_ms,
             "error_type": error_type,
             "retry_count": max(0, int(retry_count or 0)),
+            "response_content": response_content,
+            "reasoning_content": reasoning_content,
             "token_usage": {
                 "input": int((token_usage or {}).get("input", 0) or 0),
                 "output": int((token_usage or {}).get("output", 0) or 0),

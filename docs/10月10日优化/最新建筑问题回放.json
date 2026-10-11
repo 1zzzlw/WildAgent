@@ -1,0 +1,66 @@
+{
+  "source_request": "req_1791681486536_1369qgf78",
+  "mode": "saved_output_replay_no_live_generation",
+  "upload_matches_delivered_blueprint": true,
+  "baseline_errors": [
+    "❌ [component:window_main_front_L1_3] 与 ❌ [component:window_01] 在父墙 [wall_main_front_L1] 上重叠 (0.95m × 1.15m)"
+  ],
+  "recovered_fragments": [
+    {
+      "marker": "small_window_main_front_L1_4",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "small_window_main_front_L2_4",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "small_window_annex_front_L1_4",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "small_window_annex_front_L2_4",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "roof_main",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "roof_annex",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "light_01",
+      "accepted": true,
+      "error": null
+    },
+    {
+      "marker": "light_02",
+      "accepted": true,
+      "error": null
+    }
+  ],
+  "superseded_facade_markers": [
+    "chinese_lattice_window_main_front_L1_2",
+    "glass_sliding_door_main_front_L1_1",
+    "window_main_front_L1_3"
+  ],
+  "body_floor_errors": [
+    "❌ [building_body_L1_slab] 主体楼板超出该标高体量并集 15.210㎡；按体量分片保留庭院空缺，不能填满包围盒",
+    "❌ [building_body_L2_slab] 主体楼板超出该标高体量并集 15.210㎡；按体量分片保留庭院空缺，不能填满包围盒"
+  ],
+  "note": "片段通过不代表屋面尺寸、楼梯交通或整栋外观通过；这些仍需按新上下文重新生成。",
+  "verification": {
+    "regressions_passed": 407,
+    "live_index_synced": true,
+    "live_generation_run": false,
+    "rendered_after_fix": false
+  }
+}

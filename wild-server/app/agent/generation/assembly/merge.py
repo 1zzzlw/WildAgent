@@ -50,6 +50,7 @@ def deduplicate_balcony_representations(blueprint: dict) -> dict:
             continue
         footprint = balcony_footprint(component, walls.get(component.get("parentWall")), building_center)
         if footprint:
+            footprint["railing_enabled"] = component.get("railingEnabled") is not False
             expected_footprints.append(footprint)
     if not expected_footprints:
         return {"removed_floor_ids": [], "removed_railing_count": 0}
@@ -80,8 +81,16 @@ def deduplicate_balcony_representations(blueprint: dict) -> dict:
     for component in components:
         is_duplicate_balcony_railing = False
         if isinstance(component, dict) and component.get("type") == "railing":
+            path = component.get("path") or []
+            separate_railing = len(path) >= 2 and all(is_finite_vec3(p) for p in path) and any(
+                not footprint["railing_enabled"] and all(
+                    abs(p[1] - footprint["top_y"]) <= 0.001
+                    and footprint["bounds"][0] - 0.001 <= p[0] <= footprint["bounds"][1] + 0.001
+                    and footprint["bounds"][2] - 0.001 <= p[2] <= footprint["bounds"][3] + 0.001
+                    for p in path)
+                for footprint in expected_footprints)
             component_id = str(component.get("id") or "").lower()
-            is_duplicate_balcony_railing = (
+            is_duplicate_balcony_railing = not separate_railing and (
                 component.get("parentFloor") in removed_floor_ids
                 or "balcony" in component_id
             )
@@ -136,6 +145,7 @@ def balcony_footprint(
         + (wall_center[1] - building_center[1]) * normal[1]
     )
     exterior_sign = 1 if outward_dot > 1e-6 else -1
+    normal_offset += exterior_sign * float(wall.get("thickness", 0)) / 2
     start = (
         wall_from[0] + direction[0] * along + normal[0] * normal_offset,
         wall_from[2] + direction[1] * along + normal[1] * normal_offset,

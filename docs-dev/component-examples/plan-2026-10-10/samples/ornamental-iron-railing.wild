@@ -1,0 +1,18 @@
+{
+  "meta":{"version":"1.1","type":"asset","name":"铁艺栏杆"},
+  "geometry":{
+    "elements":[
+      {"type":"primitive","id":"iron_top","shape":"box","position":[0,1.1,0],"dimensions":[2.4,0.04,0.04],"material":"metal"},
+      {"type":"primitive","id":"iron_bottom","shape":"box","position":[0,0.08,0],"dimensions":[2.4,0.04,0.04],"material":"metal"},
+      {"type":"primitive","id":"iron_bar_0","shape":"box","position":[-1.15,0.59,0],"dimensions":[0.025,1.02,0.025],"material":"metal"},
+      {"type":"primitive","id":"iron_bar_1","shape":"box","position":[-0.6,0.59,0],"dimensions":[0.025,1.02,0.025],"material":"metal"},
+      {"type":"primitive","id":"iron_bar_2","shape":"box","position":[0,0.59,0],"dimensions":[0.025,1.02,0.025],"material":"metal"},
+      {"type":"primitive","id":"iron_bar_3","shape":"box","position":[0.6,0.59,0],"dimensions":[0.025,1.02,0.025],"material":"metal"},
+      {"type":"primitive","id":"iron_bar_4","shape":"box","position":[1.15,0.59,0],"dimensions":[0.025,1.02,0.025],"material":"metal"},
+      {"type":"primitive","id":"lower_scroll","shape":"profile_sweep","profile":[[-0.008,-0.008],[0.008,-0.008],[0.008,0.008],[-0.008,0.008]],"path":[[0.02,0.32,0],[0.18,0.2,0],[0.28,0.29,0],[0.24,0.4,0],[0.12,0.42,0],[0.08,0.36,0],[0.12,0.3,0]],"closedProfile":true,"material":"metal"},
+      {"type":"primitive","id":"upper_scroll","shape":"profile_sweep","profile":[[-0.008,-0.008],[0.008,-0.008],[0.008,0.008],[-0.008,0.008]],"path":[[-0.02,0.78,0],[-0.18,0.9000000000000001,0],[-0.28,0.81,0],[-0.24,0.7000000000000001,0],[-0.12,0.6800000000000002,0],[-0.08,0.7400000000000001,0],[-0.12,0.8,0]],"closedProfile":true,"material":"metal"}
+    ],
+    "components":[]
+  },
+  "materials":{"metal":{"baseColor":[0.13,0.15,0.17],"roughness":0.4,"metallic":0.75,"albedo":1,"lightingCondition":"D65_noon"}}
+}

@@ -282,7 +282,7 @@ table | chair | bookshelf | bed | lamp | tile
 | `window` | `parentWall,from,width,height` | `frameWidth,frameDepth,glassDepth,verticalMullions,horizontalMullions,frameMaterial,glassMaterial,interaction,draggable` |
 | `railing` | `path,height` | `postSpacing,postRadius,railRadius,railLevels,material,parentFloor,draggable` |
 | `canopy` | `parentWall,from,width,depth,thickness` | `supportCount,supportSize,material,supportMaterial,draggable` |
-| `balcony` | `parentWall,from,width,depth,slabThickness` | `railingHeight,postSpacing,material,railingMaterial,draggable` |
+| `balcony` | `parentWall,from,width,depth,slabThickness` | `railingEnabled,railingHeight,postSpacing,material,railingMaterial,draggable` |
 | `ramp` | `from,to,width,thickness` | `railingSides,railingHeight,postSpacing,material,railingMaterial,parentFloor,draggable` |
 | `bay_window` | `parentWall,from,width,height,projectionDepth` | `frameWidth,frameDepth,frameMaterial,glassMaterial,draggable` |
 | `cornice` | `path,profile` | `closedProfile,material,parentRoof,draggable` |
@@ -331,7 +331,7 @@ table | chair | bookshelf | bed | lamp | tile
 
 - `balcony.from[1]` 是阳台楼板顶面世界 Y；`depth` 始终表示室外悬挑深度。
 - 编译器根据宿主墙相对于全体墙水平包围盒中心的位置推断室外方向，不依赖墙的顺逆时针。
-- 同一阳台只能由一个 `balcony` 表达；禁止额外生成重合的 `floor` 或 `railing`。
+- 同一阳台只能由一个 `balcony` 表达；禁止额外生成重合的 `floor`。`railingEnabled` 缺省为 true；独立栏杆接管时设为 false，此时阳台只展开悬挑板，栏杆由对应的 `railing` 表达。
 - `canopy.from[1]` 是安装高度；支柱数量 `supportCount` 为 `0–16`。
 - `bay_window` 会生成父墙洞口和投影窗体，但不等同于完整室内凸窗结构。
 

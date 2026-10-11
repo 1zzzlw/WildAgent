@@ -45,6 +45,7 @@ class GenerationInput(TypedDict):
     recent_messages: NotRequired[list[dict]]  # 供意图分类参考的近期对话消息。
     workflow_state: NotRequired[str]  # 前端当前工作流状态，例如 idle、generating。
     thinking_mode: NotRequired[bool]  # 是否开启模型深度思考及 reasoning 流式展示。
+    detail_level: NotRequired[str]  # minimal/simple/standard/detailed，对应低/中/高/极高。
     procedural_materials_enabled: NotRequired[bool]  # 是否允许使用程序化材质方案。
 
 
@@ -63,6 +64,7 @@ class GenerationState(TypedDict, total=False):
     recent_messages: list[dict]  # 供意图分类和上下文判断使用的近期对话。
     workflow_state: str  # 前端传入的工作流状态，例如 idle、generating。
     thinking_mode: bool  # 是否启用模型深度思考和 reasoning 流式展示。
+    detail_level: str  # 用户选择的建筑设计粒度，随任务持久化。
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
 
     # ── Layer -1: 意图分类 ──
@@ -81,9 +83,10 @@ class GenerationState(TypedDict, total=False):
     tool_trace: dict  # {item_id: [{tool, ok, chars}]}：条目的工具/检索审计轨迹。
 
     # ── Layer -0.5: 建筑方案（生成分支）──
-    architecture_plan: dict  # 归一化后的总体建筑方案，供后续节点执行。
+    architecture_plan: dict  # DesignDocument 的只读兼容投影；设计修改回到文档。
     architecture_diag: dict  # 总体方案来源、RAG 和模型调用诊断（前端方案摘要消费）。
     design_document: dict  # 可人工审核、带 revision 的结构化建筑设计文档。
+    drawing_hosts: list[dict]  # 图纸中的宿主几何示意，供主体实现保持引用。
     resolved_design: dict  # 将 DesignDocument 默认值和引用解析后的可执行视图。
     design_review_status: str  # 建筑设计审核状态，例如 pending、approved、revise。
     design_feedback: str  # 用户对当前建筑设计提出的修改意见。
@@ -109,7 +112,6 @@ class GenerationState(TypedDict, total=False):
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
     skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
     compile_report: dict  # 确定性编译诊断：蓝图计数 + defects/defaulted/unsupported/uncompiled。
-    design_convergence: dict  # 审核前完善：版本化任务、缺口证据、编译错误、调用预算与停止原因；不混入执行 plan。
 
     # ── Layer 1: 组件分片 ──
     component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各构件类型的源分片映射。

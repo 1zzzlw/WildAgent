@@ -11,38 +11,45 @@ authority: engine
 primary_terms:
   - 灯具
   - light
-  - 台灯
   - 壁灯
+  - 吸顶灯
+  - 筒灯
   - 灯泡
   - 照明
   - 发光
   - 可开关灯具
+  - 灯体
+  - 吊灯
 synonyms:
   - lamp
   - 光源
+  - 灯具安装
 ---
 
 # 灯具（light）组件参数契约
 
-> 来源：引擎 light 组件实现与 `BLUEPRINT-SPEC-MINIMAL.md` 的 light 定义核对。
-> 用途：定义可发光、可开关灯具 `light` 组件的参数与约束。用户要求台灯、亮灯、发光或可开关灯具时使用本组件；旧版 `furniture.subtype: "lamp"` 只是静态家具占位，不产生真实光照。
+> 来源：引擎 `light` 组件实现（`wild-core/src/compiler/components/light.ts`）与 `schema.json` 的 `$defs.lightComponent` 核对。
+> 用途：定义可发光、可开关灯具 `light` 的参数与挂装方式。旧版 `furniture.subtype: "lamp"` 只是静态家具占位，不产生真实光照。
 
 ## 基本定义
 
-`light` 是 `geometry.components` 中的组合组件：
+`light` 是 `geometry.components` 中的组合组件。灯体由 `body` 逐段描述，光源行为挂在其中一段上：
 
 ```json
 {
   "type": "light",
-  "id": "desk_lamp",
-  "fixtureType": "table_lamp",
-  "position": [1.5, 0.75, 1.0],
+  "id": "ceiling_disc_1",
+  "position": [3.0, 2.9, 2.0],
+  "body": [
+    {"shape": "cylinder", "position": [3.0, 2.96, 2.0], "radiusTop": 0.3, "radiusBottom": 0.3, "height": 0.06},
+    {"shape": "cylinder", "position": [3.0, 2.92, 2.0], "radiusTop": 0.26, "radiusBottom": 0.26, "height": 0.03, "interactive": true}
+  ],
   "lightType": "point",
-  "color": [1.0, 0.78, 0.52],
-  "lowIntensity": 18,
-  "highIntensity": 65,
-  "distance": 8,
-  "initiallyOn": false
+  "color": [1.0, 0.87, 0.68],
+  "lowIntensity": 12,
+  "highIntensity": 40,
+  "distance": 7,
+  "initiallyOn": true
 }
 ```
 
@@ -52,29 +59,91 @@ synonyms:
 |------|------|------|
 | `type` | ✓ | `"light"` |
 | `id` | ✓ | 稳定唯一 ID |
-| `position` | ✓ | 世界坐标 `[x, y, z]`；`table_lamp` 是底座支承面锚点，`bulb` 是灯泡中心 |
-| `fixtureType` | ✗ | 外观业务类型：`bulb` 或 `table_lamp` |
+| `position` | ✓ | 世界坐标 `[x, y, z]`。**挂装参考点**：顶装贴顶棚下沿，壁装贴墙面外挑，落地落地面 |
+| `body` | ✗ | 灯体几何分段（见下）。**新形态首选此字段** |
+| `fixtureType` | ✗ | 预设灯体快捷写法：`bulb`（球泡+灯座）或 `table_lamp`（灯座+灯杆+灯罩）。`body` 存在时该字段不参与 |
 | `lightType` | ✗ | 发光算法：`point` 或 `spot` |
 | `color` | ✗ | RGB，3 个 0~1 数值 |
-| `lowIntensity` / `highIntensity` | ✗ | 弱光/强光强度 |
+| `lowIntensity` / `highIntensity` | ✗ | 弱光 / 强光强度 |
 | `distance` | ✗ | 光照距离 |
-| `angle` | ✗ | 光束角（`spot` 时） |
-| `initiallyOn` | ✗ | 初始状态：默认 `true`（亮灯）；`false` 表示默认关灯。省略按亮灯处理 |
+| `angle` | ✗ | 光束角（`spot` 时），≤ 90 |
+| `initiallyOn` | ✗ | 初始状态。默认 `false`（关灯）；要默认点亮必须显式写 `true` |
+
+## 灯体：body 分段
+
+`body` 是 `primitive` 原语的数组，**每段只能写几何字段，不写 `type` / `id`**（编译期生成）。
+`shape` 取 `box` / `sphere` / `cylinder` / `profile_sweep` 四种之一，并满足该形状的参数配对：
+
+| shape | 必带参数 | 用途 |
+|---|---|---|
+| `box` | `dimensions` | 矩形面板、壁灯、灯带槽 |
+| `sphere` | `radius` | 球泡、装饰光球 |
+| `cylinder` | `height` + （`radius` 或 `radiusTop`+`radiusBottom`） | 圆盘吸顶灯、吊杆、灯座 |
+| `profile_sweep` | `path` + `profile` | 环形灯、曲线灯带 |
+
+约束：
+
+- **`interactive` 标记唯一命中体**。右键点灯需要明确的点击目标：标了 `interactive: true` 的那段挂上光源与开关交互；省略时默认**最后一段**。灯体通常是"外壳 + 发光面"两段，发光面写 `interactive: true`。
+- **`profile_sweep` 的 `position` 必须为 `[0,0,0]`**。它的顶点已经把 `path` 的绝对坐标算进去了，写非零位置会整体平移一次。
+- **`profile_sweep` 是开放路径扫掠**，不把末点连回首点。要闭合环形，沿圆弧布一圈点、**不要重复首点**（重复会被判 `path must not overlap`）。
+- `body` 段的 `material` 省略时回落到组件级 `material`。
+
+## 挂装方式：按安装面选 position
+
+顶装、壁装、吊装由**安装面**决定，不是由"灯的种类"决定。同一种灯具安装面不同，`position` 落点就不同。
+
+| 安装面 | `position[1]` 落点 | 灯体表达 | `lightType` |
+|---|---|---|---|
+| **顶装**（吸顶灯、嵌入灯、环形灯） | 顶棚下沿 ≈ 顶棚标高 − 灯体半厚 | 薄 `cylinder` / `box` 作盘体，发光面朝下 | `point` |
+| **壁装**（壁灯、洗墙灯、画框灯） | 离地 1.5~2.0m（入口门两侧常取 1.8m） | `box` 贴墙面，凸出量 0.06~0.25m | 面板朝下用 `point`，定向洗墙用 `spot` |
+| **吊装**（吊灯、线型吊灯） | 低于顶棚，由杆件长度决定 | 杆（细 `cylinder`）+ 灯罩，`body` 内表达连接 | `point` |
+| **落地 / 台面** | 地面或桌面标高 | 用 `fixtureType: table_lamp` 预设，或 `body` 自绘底座 | `point` |
+
+**顶装示例**（薄盘贴顶，发光面朝下）：
+
+```json
+{"type": "light", "id": "ceiling_1", "position": [3.0, 2.9, 2.0],
+ "body": [
+   {"shape": "cylinder", "position": [3.0, 2.96, 2.0], "radiusTop": 0.3, "radiusBottom": 0.3, "height": 0.06},
+   {"shape": "cylinder", "position": [3.0, 2.92, 2.0], "radiusTop": 0.26, "radiusBottom": 0.26, "height": 0.03, "interactive": true}],
+ "lightType": "point", "initiallyOn": true}
+```
+
+**壁装示例**（矩形面板贴墙，`spot` 定向洗墙）：
+
+```json
+{"type": "light", "id": "sconce_1", "position": [0.28, 1.8, 4.0],
+ "body": [
+   {"shape": "box", "position": [0.15, 1.8, 4.0], "dimensions": [0.06, 0.3, 0.16]},
+   {"shape": "box", "position": [0.24, 1.8, 4.0], "dimensions": [0.08, 0.22, 0.6], "interactive": true}],
+ "lightType": "spot", "angle": 60, "initiallyOn": true}
+```
+
+**顶装环形示例**（`profile_sweep` 表达环体）：
+
+```json
+{"type": "light", "id": "ring_1", "position": [4.5, 2.8, 2.0],
+ "body": [
+   {"shape": "profile_sweep",
+    "path": [[4.8, 2.8, 2.0], [4.7, 2.8, 2.4], [4.5, 2.8, 2.5], [4.3, 2.8, 2.4], [4.2, 2.8, 2.0]],
+    "profile": [[0.06, 0.0], [0.0, 0.06], [-0.06, 0.0], [0.0, -0.06]],
+    "closedProfile": true, "interactive": true}],
+ "lightType": "point", "initiallyOn": true}
+```
+
+壁装面板贴哪面墙：墙是沿 `from`→`to` 轴线居中的，两侧各厚 `thickness/2`，**哪侧是室外没有统一手性规则**（取决于墙的绕向）。唯一可靠判据：**灯体凸出方向必须背离建筑几何中心**——取墙中点，朝建筑中心的反向即室外法向。挂反了灯会装进室内，**所有校验器都不会报错**。
 
 ## 约束
 
-- **`fixtureType` 与 `lightType` 不混用**：`fixtureType` 是外观（bulb/table_lamp），`lightType` 是发光算法（point/spot），二者独立。
-- **`table_lamp` 编译产物**：灯泡、底座、灯杆和灯罩；`bulb` 只编译灯泡与灯座。
-- **交互**：右键在关灯、弱光和强光之间循环；运行时亮度级别不写回 Blueprint，`initiallyOn` 只保存初始状态。
-- **`draggable: true`** 允许用户手动拖动并把位置写回当前草稿，不表示已实现自动贴桌面或空间碰撞校验。
-- **壁灯挂墙**：壁灯（`fixtureType: bulb`）的 `position` 应落在墙上安装高度（如离地 1.8m 左右），不要悬浮在半空；竖条壁灯的灯体造型见"造型变体·壁灯"。
+- **`fixtureType` 与 `lightType` 不混用**：前者是预设灯体，后者是发光算法，二者独立。
+- **`body` 与 `fixtureType` 二选一**：`body` 存在时 `fixtureType` 的几何不参与（不会报错，只是不生效）。新形态一律写 `body`，不要去找不存在的 `fixtureType` 枚举值。
+- **一个 `light` = 一个真实光源**。多头吊灯、分子灯只给 1~3 个 `light`，其余装饰泡用 `body` 里不发光的 `sphere` 段表达。
+- **交互**：右键在关灯 → 弱光 → 强光之间循环；运行时亮度级别不写回 Blueprint，`initiallyOn` 只保存初始状态。
+- **没有昼夜自动开关**：`initiallyOn: false` 就是常关。要"黄昏亮灯"的效果必须显式 `true`。
+- **发光材质**：灯体发光段用 `materials` 里带 `emissive` 的材质（如 `emissive: [1.0, 0.87, 0.68]`），否则只有光源照不到灯体自身。
+- **`draggable: true`** 允许手动拖动并写回当前草稿，不表示已实现自动贴面或碰撞校验。
 
-## 造型变体：吊灯、吸顶灯、落地灯与线性灯
-
-`fixtureType` 只有 `bulb` / `table_lamp` 两个枚举值（schema 硬约束，写 `pendant` / `chandelier` 会直接校验失败）。
-图中常见的吊灯、吸顶灯、落地灯等造型变体按下面的组合方式表达；**用户显式点名**某类灯具时才需要套用，
-"温馨""明亮"这类氛围词不触发。共通原则：**一个 `light` 组件 = 一个真实光源**（挂在发光灯泡上），
-灯体造型用 `primitive` 装饰件拼装；多头吊灯默认只给 1 个光源（性能友好），装饰泡用不发光的小球体。
+## 造型变体
 
 ### 吊灯（单头 / 多头 / 分子灯）
 
@@ -90,46 +159,20 @@ primary_terms:
 synonyms: []
 -->
 
-吊灯 = `bulb` 光源（挂在灯罩内的悬挂高度）+ `primitive` 吊杆（细圆柱，从天花板到灯罩顶）+
-灯罩（圆柱/圆台）。`bulb` 的 `position` 是**灯泡中心**，不是天花板锚点。以下为
-`geometry.components`（light）与 `geometry.elements`（吊杆灯罩）的混合片段，不是完整 `.wild` 文件：
+用 `body` 表达杆件 + 灯罩，光源挂在灯罩内那段。杆件高度 = 顶棚标高 − 灯罩顶标高：
 
 ```json
-[
-  { "type": "light", "id": "pendant_1", "fixtureType": "bulb", "position": [5.0, 2.25, 2.0],
-    "bulbRadius": 0.08, "lightType": "point", "color": [1.0, 0.82, 0.58] },
-  { "type": "primitive", "shape": "cylinder", "id": "pendant_1_cord",
-    "position": [5.0, 2.75, 2.0], "radius": 0.01, "height": 0.5 },
-  { "type": "primitive", "shape": "cylinder", "id": "pendant_1_shade",
-    "position": [5.0, 2.35, 2.0], "radiusTop": 0.06, "radiusBottom": 0.18, "height": 0.22 }
-]
+{"type": "light", "id": "pendant_1", "position": [5.0, 2.3, 2.0],
+ "body": [
+   {"shape": "cylinder", "position": [5.0, 2.85, 2.0], "radius": 0.01, "height": 0.3},
+   {"shape": "cylinder", "position": [5.0, 2.6, 2.0], "radiusTop": 0.06, "radiusBottom": 0.18, "height": 0.22},
+   {"shape": "sphere", "position": [5.0, 2.62, 2.0], "radius": 0.05, "interactive": true}],
+ "lightType": "point", "initiallyOn": true}
 ```
 
-- 悬挂高度、灯罩尺寸、吊杆长度是**自由变量**；示例按 3.0m 天花板、灯罩顶 2.5m 取值。
-- 多头吊灯 / 分子灯：若干 `primitive` 球体（装饰泡，不发光）+ 从灯泡中引出的支臂圆柱；
-  真实光源 1~3 个即可，不要每颗泡都配 `light`。
+悬挂高度、灯罩尺寸、吊杆长度是**自由变量**。
 
-### 吸顶灯
-
-<!-- rag-meta
-entity_type: light
-entity_name: ceiling_light
-topic: composition
-primary_terms:
-  - 吸顶灯
-  - 圆盘灯
-synonyms: []
--->
-
-`bulb` 的编译产物天然是吸顶形态：底座圆盘在灯泡**上方**。把 `position[1]` 贴到天花板下
-（灯泡中心 ≈ 天花板标高 - bulbRadius），调大 `bulbRadius` 即得圆盘吸顶灯，无需任何 primitive：
-
-```json
-{ "type": "light", "id": "ceiling_1", "fixtureType": "bulb", "position": [3.0, 2.86, 2.0],
-  "bulbRadius": 0.14, "baseHeight": 0.06, "lightType": "point" }
-```
-
-### 落地灯
+### 落地灯 / 台灯
 
 <!-- rag-meta
 entity_type: light
@@ -137,18 +180,21 @@ entity_name: floor_lamp
 topic: composition
 primary_terms:
   - 落地灯
-synonyms: []
+  - 台灯
+  - 灯
+synonyms:
+  - floor lamp
 -->
 
-`table_lamp` 的形状（底座 + 灯杆 + 灯罩）对落地灯完全适用：把 `height` 拉到 1.5~1.7、
-`position[1]` 落到地面即可，`shadeRadius` 按灯罩比例放大：
+这两个 `fixtureType` 预设没坏，直接用：`table_lamp` 编译出灯座 + 灯杆 + 灯罩。落地灯把
+`height` 拉到 1.5~1.7、`position[1]` 落到地面；台灯把 `position[1]` 落到桌面标高：
 
 ```json
-{ "type": "light", "id": "floor_lamp_1", "fixtureType": "table_lamp", "position": [1.0, 0.0, 3.5],
-  "height": 1.6, "shadeRadius": 0.24, "lightType": "point", "initiallyOn": false }
+{"type": "light", "id": "floor_lamp_1", "fixtureType": "table_lamp", "position": [1.0, 0.0, 3.5],
+ "height": 1.6, "shadeRadius": 0.24, "lightType": "point", "initiallyOn": false}
 ```
 
-### 线性灯具（长条吊灯 / 灯带）
+### 线性灯与灯带
 
 <!-- rag-meta
 entity_type: light
@@ -158,88 +204,55 @@ primary_terms:
   - 线性灯
   - 长条吊灯
   - 灯带
+  - 灯槽
 synonyms: []
 -->
 
-没有线状光源类型。长条吊灯 = `primitive` 细长盒体作灯体 + 沿轴 1~2 个 `bulb` 光源 +
-两端吊杆；LED 灯带（暗藏光槽）**没有对应表达**，只能用隐藏在槽内的低强度 `bulb` 近似或
-明确告知不支持。灯体示例：
+`box` 作长条灯体（`dimensions` 拉长），`interactive` 段与 `position` 同心。
+暗藏灯槽的效果靠 `materials` 里低强度 `emissive` 材质表达，不是靠 `light` 的 `distance`：
 
 ```json
-{ "type": "primitive", "shape": "box", "id": "linear_1_body",
-  "position": [5.0, 2.45, 2.0], "dimensions": [1.2, 0.08, 0.12] }
+{"type": "light", "id": "linear_1", "position": [5.0, 2.45, 2.0],
+ "body": [
+   {"shape": "box", "position": [5.0, 2.45, 2.0], "dimensions": [1.2, 0.08, 0.12]},
+   {"shape": "box", "position": [5.0, 2.42, 2.0], "dimensions": [1.1, 0.02, 0.08], "interactive": true}],
+ "lightType": "point", "initiallyOn": false}
 ```
 
-### 壁灯（竖条壁灯 / 壁装灯体）
+### 筒灯（檐下或吊顶一排小灯）
 
 <!-- rag-meta
 entity_type: light
-entity_name: wall_sconce
+entity_name: downlight
 topic: composition
 primary_terms:
-  - 壁灯
-  - 条形壁灯
-  - 竖条壁灯
-  - 壁装灯
-synonyms: []
--->
-
-引擎没有壁灯专用 fixtureType（枚举只有 `bulb` / `table_lamp`），bare `bulb` 挂墙只是
-"悬浮灯泡 + 上方圆盘"，没有灯体造型。竖条壁灯（门/窗两侧的装饰壁灯）= `primitive` 竖条盒
-做灯体（亮色材质）+ `bulb` 光源藏在灯体内。
-
-关键：**内外侧判断（校验器不查，最容易错）**：墙是沿 from→to 轴线居中的，两侧各厚 `thickness/2`，
-**哪侧是室外没有统一的手性规则**（取决于墙的绕向）。唯一可靠判据：**灯体偏移方向必须背离
-建筑几何中心**。做法：取墙中点 → 朝建筑中心向量取反 → 得室外法向 → 灯体中心 = 室外墙面
-沿法向外推 0.03。挂反了灯会在室内，渲染外观直接丢灯，且所有校验器都不会报错。
-
-以下是 `geometry.elements`（灯体）与 `geometry.components`（光源）的混合片段，
-不是完整 `.wild` 文件（前墙 `from:[0,0,0]→to:[14,3,0]`、建筑在 +z 侧，室外墙面 z=-0.12）：
-
-```json
-[
-  { "type": "primitive", "shape": "box", "id": "sconce_1_body",
-    "position": [5.7, 1.95, -0.15], "dimensions": [0.12, 0.55, 0.06], "material": "sconce_white" },
-  { "type": "light", "id": "sconce_1", "fixtureType": "bulb",
-    "position": [5.7, 1.95, -0.15], "bulbRadius": 0.06, "lightType": "point",
-    "color": [1.0, 0.85, 0.6], "lowIntensity": 10, "highIntensity": 35, "distance": 5,
-    "initiallyOn": true }
-]
-```
-
-### 檐下筒灯（屋檐板底一排小灯）
-
-<!-- rag-meta
-entity_type: light
-entity_name: eave_downlight
-topic: composition
-primary_terms:
-  - 檐下筒灯
   - 筒灯
-  - 屋檐灯
+  - 檐下筒灯
+  - 射灯
 synonyms: []
 -->
 
-效果图中屋檐板底的一排嵌入式筒灯没有专用类型：用小半径 `bulb`（`bulbRadius` 0.04~0.06）
-贴在檐口板底（`position[1]` ≈ 屋檐底标高 - 0.05），沿檐口方向等距排布。关键：引擎**没有昼夜
-自动开关**：`initiallyOn: false` 就是常关，要"黄昏亮灯"的效果图感必须显式 `true`。
-屋檐出挑位置由屋顶 `depth`/`span` 决定（出檐 ≈ (depth − 进深)/2）。
+小半径 `cylinder`（`radius` 0.04~0.08、`height` 0.05~0.1）贴在安装面下沿，
+沿面等距排布；`body` 只有一段时它就是 `interactive` 段：
 
 ```json
-{ "type": "light", "id": "eave_downlight_1", "fixtureType": "bulb",
-  "position": [3.5, 5.88, -0.5], "bulbRadius": 0.05, "lightType": "point",
-  "color": [1.0, 0.9, 0.7], "lowIntensity": 8, "highIntensity": 30, "distance": 4,
-  "initiallyOn": false }
+{"type": "light", "id": "downlight_1", "position": [3.5, 2.9, 2.0],
+ "body": [
+   {"shape": "cylinder", "position": [3.5, 2.95, 2.0], "radius": 0.06, "height": 0.08, "interactive": true}],
+ "lightType": "spot", "angle": 45, "initiallyOn": true}
 ```
 
 ## 常见错误
 
 | 错误 | 原因 | 修正 |
 |------|------|------|
-| 台灯悬浮半空 | `position[1]` 过高且 `fixtureType: table_lamp` | 把底座 Y 落到支承面（桌面/地面） |
-| 无光照的静态灯 | 用了 `furniture.subtype: "lamp"` | 改用 `light` 组件 |
-| `initiallyOn` 缺失被误判 | 省略即亮灯 | 需要默认关灯时显式写 `false` |
-| `position` 高度为负 | 灯具埋入地下 | 修正 `position[1]` ≥ 0 |
-| 吊灯写成 `fixtureType: "pendant"` | 枚举只有 `bulb`/`table_lamp`，schema 直接拒绝 | 用 `bulb` 光源 + `primitive` 吊杆灯罩组合（见"造型变体"） |
-| 每颗装饰泡都配一个 `light` | 光源数量膨胀，交互与性能浪费 | 1 个 `light` 光源 + 其余泡用不发光 `primitive` 球体 |
-| 壁灯挂到室内侧 | 墙两侧各厚 thickness/2，哪侧朝外取决于墙绕向，**校验器不查内外侧** | 按"灯体偏移方向背离建筑几何中心"判断室外法向（见"造型变体·壁灯"） |
+| 写了 `fixtureType: "pendant"` / `"ceiling"` / `"wall"` | 枚举只有 `bulb` / `table_lamp`，schema 直接拒绝 | 用 `body` 写灯体，不要新造 `fixtureType` 值 |
+| 灯体拼好了却点不亮 | 拼的是 `geometry.elements` 的 `primitive`，`light` 组件没被使用 | 灯体必须写在 `light` 的 `body` 里，元素级 `primitive` 不带光源与交互 |
+| `profile_sweep` 的灯整体偏移 | 段内写了非零 `position` | `profile_sweep` 段的 `position` 必须是 `[0,0,0]` |
+| 环形灯报 `path must not overlap` | 末尾重复了首点想闭合 | 开放路径扫掠，沿弧布点且不重复首点 |
+| 点一下跳了两档亮度 | 多个段都标了 `interactive: true` | 只保留一段标 `interactive` |
+| 吸顶灯悬在顶棚下方一段距离 | 忘了灯体本身有厚度 | `position` 落到"顶棚标高 − 灯体半厚"，灯体贴顶 |
+| 壁灯装进室内 | 墙两侧各厚 `thickness/2`，哪侧朝外取决于墙绕向，**校验器不查内外侧** | 按"凸出方向背离建筑几何中心"判断室外侧 |
+| 台灯悬浮半空 | `position[1]` 过高 | 落到支承面（桌面 / 地面） |
+| 要默认关灯却一直亮 | 省略 `initiallyOn` 时按 `false` 处理；要亮必须显式 `true` | 需要常亮的效果图显式写 `"initiallyOn": true` |
+| 每颗装饰泡都配一个 `light` | 光源数量膨胀，交互与性能浪费 | 1 个 `light` + 其余泡用不发光的 `sphere` 段 |

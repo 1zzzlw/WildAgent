@@ -141,16 +141,6 @@ def test_contract_accepts_both_empty_and_open():
     assert facade.ground_pattern == ["open", "open", "open"]
 
 
-def test_block_contract_evidence_names_both_kinds():
-    from app.agent.generation.architecture.design_blocks import BLOCK_BY_NAME
-    from app.agent.generation.architecture.design_workflow import check_block_contract
-
-    block = BLOCK_BY_NAME["facade"]
-    issue = check_block_contract(
-        block, {"facades": {"front": {"bays": 1, "ground_pattern": ["garage"],
-                                      "upper_pattern": ["window"]}}}, {},
-    )
-    assert "open" in issue and "empty" in issue
 
 
 # ── 稳定性 ────────────────────────────────────────────────────────

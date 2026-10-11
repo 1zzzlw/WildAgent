@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from unittest.mock import patch
 
 import pytest
@@ -331,6 +332,25 @@ class _Message:
             setattr(self, key, value)
 
 
+@pytest.mark.parametrize("terminal", [
+    _Message("ai", content="", response_metadata={"finish_reason": "length"}),
+    _Message("tool", content="试算通过", name="probe_compile_design"),
+    _Message("ai", content="", tool_calls=[{"name": "probe_compile_design"}]),
+])
+def test_tool_loop_never_uses_a_draft_before_the_last_message_as_final(terminal):
+    class Agent:
+        async def ainvoke(self, payload, config):
+            return {"messages": [_Message("ai", content='{"旧草稿":true}'), terminal]}
+
+    result = asyncio.run(run_tool_loop(system_prompt="s", user_message="u", tool_specs=[], agent=Agent()))
+    assert result.text == ""
+    assert result.diag["final_response_missing"] is True
+    assert "error" not in result.diag
+    assert result.diag["transcript"]["messages"][-1]["finish_reason"] == (
+        getattr(terminal, "response_metadata", {}).get("finish_reason")
+    )
+
+
 def test_tool_loop_token_usage_is_summed_and_normalized():
     """工具循环会**多次**调模型，用量必须逐条累加，且键名归一化到 ``{input,output,total}``。
 
@@ -406,7 +426,7 @@ class _Loader:
         self.queries: list[tuple[str, dict]] = []
         self.last_results: list[object] = []
 
-    def load_many(self, queries, per_query=2):
+    def load_many(self, queries, per_query=2, *, include_base=True):
         for query in queries:
             self.queries.append((query.text, dict(query.metadata_filter or {})))
         return "宿主墙厚 240mm；洞口需留过梁。"
@@ -426,28 +446,74 @@ def test_search_tool_always_sends_a_metadata_filter():
 
     assert loader.queries, "检索没有发出"
     text_query, filters = loader.queries[0]
-    assert text_query == "门洞尺寸要求"
+    assert text_query == "door 门 门洞尺寸要求"
     assert filters.get("doc_type")
     assert filters.get("entity_type") == "door"
     assert "检索结果" in text
 
 
-def test_search_tool_refuses_unknown_kind_without_querying():
+def test_search_tool_queries_component_docs_for_unregistered_name():
     loader = _Loader()
     with patch("app.services.agent_service.agent_service", _Service(loader)):
         text = search_knowledge_impl("怎么做", kind="teleporter")
 
-    assert "未知构件类型" in text
-    assert loader.queries == []
+    assert "检索结果" in text
+    assert loader.queries == [("怎么做", {"doc_type": "component"})]
 
 
 def test_search_tool_result_is_bounded():
     loader = _Loader()
-    loader.load_many = lambda queries, per_query=2: "构" * (MAX_RESULT_CHARS * 2)
+    loader.load_many = lambda queries, per_query=2, **kwargs: "构" * (MAX_RESULT_CHARS * 2)
     with patch("app.services.agent_service.agent_service", _Service(loader)):
         text = search_knowledge_impl("门窗做法", kind="window")
 
     assert len(text) <= MAX_RESULT_CHARS
+
+
+def test_search_tool_keeps_example_when_base_protocol_is_long():
+    example = '```json\n{"type":"window","id":"fixed_glass"}\n```'
+    loader = _Loader()
+
+    def load_many(queries, per_query=2, *, include_base=True):
+        return ("基础协议" * MAX_RESULT_CHARS if include_base else "") + example
+
+    loader.load_many = load_many
+    with patch("app.services.agent_service.agent_service", _Service(loader)):
+        text = search_knowledge_impl("固定玻璃 JSON 示例", kind="window")
+
+    assert example in text
+    assert "基础协议" not in text
+
+
+@pytest.mark.parametrize("topic,entity_name,document,expected", [
+    ("parameters", "window", "字段与坐标协议", False),
+    ("composition", "arched_window", "半圆拱覆盖玻璃的形态描述", True),
+    ("composition", "window", '```json\n{"type":"window","id":"sample"}\n```', True),
+])
+def test_knowledge_shape_signal_uses_returned_component_metadata(topic, entity_name, document, expected):
+    from types import SimpleNamespace
+    from app.agent.plan.knowledge_tool import search_knowledge_result
+    loader = _Loader()
+    loader.last_results = [SimpleNamespace(document=document, metadata={
+        "source": "window.md", "heading": "构件资料", "entity_type": "window",
+        "entity_name": entity_name, "topic": topic})]
+    with patch("app.services.agent_service.agent_service", _Service(loader)):
+        result = search_knowledge_result("形态与示例", kind="arched_window")
+    assert result["has_shape_reference"] is expected
+    assert document in result["text"]
+
+
+def test_knowledge_keeps_a_complete_first_json_chunk_instead_of_truncating_it():
+    from types import SimpleNamespace
+    from app.agent.plan.knowledge_tool import search_knowledge_result
+    example = '```json\n' + json.dumps({"geometry": {"elements": [{"id": "part_" + str(i), "type": "primitive"} for i in range(200)]}}) + '\n```'
+    assert len(example) > MAX_RESULT_CHARS
+    loader = _Loader()
+    loader.last_results = [SimpleNamespace(document=example, metadata={"entity_type": "window", "entity_name": "window"})]
+    with patch("app.services.agent_service.agent_service", _Service(loader)):
+        result = search_knowledge_result("完整 JSON 示例", kind="window")
+    assert example in result["text"]
+    assert result["has_shape_reference"]
 
 
 # ── 能力缺口 ──

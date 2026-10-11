@@ -38,13 +38,14 @@ def extract_json_array(text: str) -> list:
     return value
 
 
-def extract_json_object(text: str) -> dict | None:
+def extract_json_object(text: str, *, required_key: str | None = None) -> dict | None:
     """从 LLM 回复中提取 JSON 对象。
 
     跳过空对象 ``{}``：对本模块的调用方（设计块字段、材质方案、物件方案、plan
     策略…）空 dict 从来不是有效载荷，继续往后扫才找得到真正的那个。
     """
-    value = _first_json_value(text, "{", lambda item: isinstance(item, dict) and bool(item))
+    value = _first_json_value(text, "{", lambda item: isinstance(item, dict) and bool(item)
+                              and (required_key is None or required_key in item))
     if value is None:
         _log_miss("对象", text)
         return None

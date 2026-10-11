@@ -1,41 +1,4 @@
-"""LangGraph 图定义 —— plan 驱动的生成链。
-
-拓扑（《动态节点设计规划》§一）：
-
-    classifier（意图分类）
-      ├─ chat  → END
-      ├─ edit  → patch → END
-      └─ generate
-           ├─ target_kind=architecture → architecture（总体建筑方案）
-           └─ target_kind=object       → object_design（物件方案）
-                    （以上两条合流）
-                    → material_plan（材质方案）
-                    → design_convergence（编译可行性收敛环；物件链穿过）
-                    → design_review（图纸人工审核，interrupt）
-                    → skeleton | compile（物件走骨架，建筑走确定性编译）
-                    → plan（大模型决定批次/并发，程序校验并展开条目）
-                    → execute ⇄ replanner（逐条目执行、对账、有界终止）
-                    → final_validate（校验 → 可选的定向回调修复）→ END
-
-**冻结点（`design_review`）必须排在可行性验证之后**：收敛环在人工审核前先跑
-`compile_design(dry_run)`（毫秒级纯函数），把"编不出来"的图纸改到能编为止。
-否则人工刚批准的设计可以被编译器一票否决、且没有修订通道（见 §1.3）。
-
-**"建筑"与"物件"只在方案层分叉**：交付物不是建筑时（"生成一个桌子"），
-强行产出 `massing/volumes/facades/roof` 就是把用户没要的房子塞回去。
-分叉用 `intent_target_kind` 这一个字段表达，合流点固定在 `material_plan` ——
-材质、审核、骨架、计划、执行、校验都不关心"交付物是什么"，只关心契约字段。
-
-**图里没有 per-type 节点**：以前每类构件要预注册 ``{ct}_gen`` / ``{ct}_val`` 两个节点
-（11 类构件 = 22 个节点，加计划层与包装器共三十多个），业务顺序写在拓扑里；现在业务
-顺序写在 ``state.plan`` 这份**数据**里，加一个构件类型只加数据、不加节点。这也是删掉
-旧链的原因：节点集在 ``compile()`` 前必须确定，靠预注册换来的"动态"只是多了一层间接。
-
-节点名是静态的，条目级可见性由 ``current_item_id`` 与 ``plan_events`` 承担。
-
-平面设计/确定性装配时代（``floor_*``、``approved_plan_assembler``）与可审核执行计划层
-（``planning/``、``{ct}_gen`` / ``{ct}_val``、``plan_mode`` 开关、``Send`` 派发）均已删除。
-"""
+"""建筑：图纸 → 材质解析 → 审核 → 标记任务 → 最终编译；物件沿用骨架链。"""
 from langgraph.graph import END, StateGraph
 from loguru import logger
 
@@ -44,7 +7,6 @@ from app.agent.nodes.callback_node import callback_node
 from app.agent.nodes.chat_node import chat_node
 from app.agent.nodes.classifier_node import classifier_node
 from app.agent.nodes.compile_node import compile_node
-from app.agent.nodes.design_convergence_node import design_convergence
 from app.agent.nodes.design_review_node import design_review, route_design_review
 from app.agent.nodes.execute_node import execute_node
 from app.agent.nodes.material_plan_node import material_planner
@@ -60,15 +22,10 @@ from app.agent.plan.store import poll_runnable, refresh_statuses
 from app.agent.state import GenerationInput, GenerationState
 
 def plan_recursion_limit(plan_item_count: int, max_retries: int = 3) -> int:
-    """按 plan 条目数给安全步数。
-
-    一条条目 = ``execute`` + ``replanner`` 两个图步，所以乘 2；再加上收尾与重试预算。
-    上限是安全余量，不是停止条件——真正的停止条件是 §5.4 的五重判定。
-    """
-
+    """按任务/标记数估算图步骤：最多五次 execute/replanner 和对应装配检查。"""
     items = max(0, int(plan_item_count))
     retries = max(0, int(max_retries))
-    return max(48, 16 + items * 2 + retries * 4)
+    return max(48, 16 + items * 15 + retries * 4)
 
 
 def _terminal(state: dict) -> bool:
@@ -119,11 +76,6 @@ def _after_object_design(state: GenerationState) -> str:
 
 
 def _after_material_plan(state: GenerationState) -> str:
-    return "__end__" if _terminal(state) else "design_convergence"
-
-
-def _after_design_convergence(state: GenerationState) -> str:
-    # 收敛环不产出失败：没收敛也只记进 design_convergence，照常进人工审核。
     return "__end__" if _terminal(state) else "design_review"
 
 
@@ -132,18 +84,31 @@ def _after_skeleton(state: GenerationState) -> str:
 
 
 def _after_compile(state: GenerationState) -> str:
-    return "design_review" if state.get("design_review_status") == "pending" else "plan"
+    if _terminal(state):
+        return "__end__"
+    if (state.get("compile_report") or {}).get("retry_implementation"):
+        return "execute"
+    return "final_validate"
+
+
+def _execution_end(state: GenerationState) -> str:
+    kind = (state.get("design_document") or {}).get("decisions", {}).get("kind")
+    return "compile" if kind == "architecture" else "final_validate"
 
 
 def _after_plan(state: GenerationState) -> str:
     if _terminal(state):
         return "__end__"
+    if state.get("design_review_status") == "pending":
+        return "design_review"
+    if state.get("design_review_status") == "revise":
+        return "architecture"
     plan = _plan_of(state)
     if plan is None:
         logger.warning("[graph] plan 缺失，跳过执行循环")
-        return "final_validate"
+        return _execution_end(state)
     if poll_runnable(plan) is None:
-        return "final_validate"
+        return _execution_end(state)
     return "execute"
 
 
@@ -157,7 +122,7 @@ def _after_replanner(state: GenerationState) -> str:
         return "__end__"
     plan = _plan_of(state)
     if plan is None:
-        return "final_validate"
+        return _execution_end(state)
     budget = plan.budget or {}
     # give_up 只停止模型工作；replanner 已把其余模型条目收束，确定性 merge 仍需跑完。
     if plan.give_up:
@@ -166,20 +131,20 @@ def _after_replanner(state: GenerationState) -> str:
             logger.info(f"[graph] 有界退出后继续确定性收尾：{next_item.id}")
             return "execute"
         logger.warning("[graph] replanner 判定 give_up，确定性收尾已结束")
-        return "final_validate"
+        return _execution_end(state)
     # 五重有界终止条件（§5.4）：replanner 会先把计划转换为 give_up 收尾态；这里的
     # 分支只兼容旧 checkpoint，避免旧状态绕过最终校验。
     if plan.iterations >= int(budget.get("iterations", 5)):
         logger.info(f"[graph] 达到迭代上限 {plan.iterations}，收尾交付")
-        return "final_validate"
-    if plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS:
+        return _execution_end(state)
+    if plan.no_progress_rounds >= MAX_NO_PROGRESS_ROUNDS and not any(i.params.get("design_markers") for i in plan.items):
         logger.info(f"[graph] 连续 {plan.no_progress_rounds} 轮无进展，收尾交付")
-        return "final_validate"
+        return _execution_end(state)
     if plan.llm_budget_exhausted():
         logger.info(f"[graph] 模型调用预算用尽（{plan.llm_calls}），收尾交付")
-        return "final_validate"
+        return _execution_end(state)
     if poll_runnable(plan) is None:
-        return "final_validate"
+        return _execution_end(state)
     return "execute"
 
 
@@ -187,6 +152,8 @@ def _final_validate_dispatch(state: GenerationState) -> str:
     """兼容既有修复路径：还有未耗尽重试额度的失败目标时进 callback。"""
 
     if state.get("terminal_model_error"):
+        return "__end__"
+    if (state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture":
         return "__end__"
     if (state.get("repair_audit") or {}).get("stop_reason") in {
         "design_revision_required", "repeated_candidate", "incomplete_candidate", "no_change", "no_action",
@@ -214,19 +181,13 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_node("chat", chat_node)
     graph.add_node("patch", patch_node)
 
-    # ── 方案 → 材质 → 人工审图 → 骨架 ──
-    # architecture / object_design 是**并列**的两条方案链，交付物不同（建筑 vs 单件物件），
-    # 之后合流到同一条材质-审核-骨架-计划-执行链。
+    # 建筑与物件分别形成设计，再共享材质解析和审核。
     graph.add_node("architecture", architecture_planner)
     graph.add_node("object_design", object_planner)
     graph.add_node("material_plan", material_planner)
-    # 设计收敛环：把图纸跑到"确实编得出来"再交给人工审核（§1.3 的冻结点后移）。
-    # 物件链直接穿过——编译器只认建筑的体量/立面/屋顶协议。
-    graph.add_node("design_convergence", design_convergence)
     graph.add_node("design_review", design_review)
     graph.add_node("skeleton", skeleton_generator)
-    # 确定性编译通路：图纸批准后一次算完结构/门窗/屋顶/附属构件，
-    # 模型只补编译器暂无规则的几类。与 skeleton（物件链）路由互斥。
+    # 建筑构件任务完成后统一装配；物件继续使用现有合并链。
     graph.add_node("compile", compile_node)
 
     # ── 动态部分：拓扑固定，业务顺序在 plan 数据里 ──
@@ -264,8 +225,6 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges("object_design", _after_object_design,
                                 {"material_plan": "material_plan", "__end__": END})
     graph.add_conditional_edges("material_plan", _after_material_plan,
-                                {"design_convergence": "design_convergence", "__end__": END})
-    graph.add_conditional_edges("design_convergence", _after_design_convergence,
                                 {"design_review": "design_review", "__end__": END})
     graph.add_conditional_edges(
         "design_review",
@@ -274,23 +233,23 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
             "architecture": "architecture",
             "object_design": "object_design",
             "skeleton": "skeleton",
-            "compile": "compile",
+            "plan": "plan",
             "__end__": END,
         },
     )
     graph.add_conditional_edges("skeleton", _after_skeleton,
                                 {"plan": "plan", "__end__": END})
-    # 编译节点不设失败出口：图纸有问题只记进 compile_report（红线：只标记不阻断）。
-    graph.add_conditional_edges("compile", _after_compile, {"plan": "plan", "design_review": "design_review"})
+    # 版本失效回到审核；装配完成后使用同一候选做最终校验。
+    graph.add_conditional_edges("compile", _after_compile, {"execute": "execute", "final_validate": "final_validate", "__end__": END})
 
     graph.add_conditional_edges("plan", _after_plan,
-                                {"execute": "execute", "final_validate": "final_validate",
-                                 "__end__": END})
+                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
+                                 "design_review": "design_review", "architecture": "architecture", "__end__": END})
     graph.add_conditional_edges("execute", _after_execute,
                                 {"replanner": "replanner", "__end__": END})
     graph.add_conditional_edges("replanner", _after_replanner,
-                                {"execute": "execute", "final_validate": "final_validate",
-                                 "__end__": END})
+                                {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
+                                 "design_review": "design_review", "architecture": "architecture", "__end__": END})
 
     if enable_callback:
         graph.add_conditional_edges("final_validate", _final_validate_dispatch,
@@ -301,8 +260,8 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     compiled = graph.compile(checkpointer=checkpointer)
     logger.info(
         "LangGraph 图编译完成: classifier → (architecture | object_design) → material_plan → "
-        "design_convergence → design_review → (skeleton | compile) → plan → "
-        "(execute ⇄ replanner) → final_validate（建筑走 compile，物件走 skeleton）"
+        "design_review → (skeleton | plan) → "
+        "(execute ⇄ replanner) → 建筑最终compile / 物件合并 → final_validate"
     )
     return compiled
 

@@ -67,6 +67,7 @@ _TOOL_HINTS = {
 }
 
 _MISSING_QUOTA = re.compile(r"\b([a-z_]+)\s+数量\s+\d+\s+少于设计下限")
+_MISSING_COMPONENT = re.compile(r"没有\s+([a-z_]+)\s+构件")
 _FACADE_OVERAGE = re.compile(
     r"墙\s+([\w.-]+)\s+有\s+\d+\s+个门窗，超过立面上限\s+\d+"
 )
@@ -116,14 +117,15 @@ def validation_issues_from_results(
                 if validator == "validate_design_brief"
                 else None
             )
-            marker = _ENTITY_MARKER.search(line)
+            marker = next((m for m in _ENTITY_MARKER.finditer(line) if m.group(1) in entities),
+                          _ENTITY_MARKER.search(line))
             marker_id = facade_match.group(1) if facade_match else (
                 marker.group(1) if marker else None
             )
             entity_id = marker_id if marker_id in entities else None
             entity = entities.get(entity_id or "", {})
             message = line[:800]
-            quota_match = _MISSING_QUOTA.search(message) if validator == "validate_design_brief" else None
+            quota_match = (_MISSING_QUOTA.search(message) or _MISSING_COMPONENT.search(message)) if validator == "validate_design_brief" else None
             target_type = quota_match.group(1) if quota_match else None
             related_entity_ids = []
             if facade_match and entity_id:

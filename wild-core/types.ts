@@ -157,12 +157,36 @@ export interface ElevatorComponent {
   frameMaterial?: string;
 }
 
+/**
+ * 灯具灯体的一段几何。字段与 `primitive` 原语完全一致 —— 灯体不发明新的
+ * 几何语言，只复用引擎已有的四种通用算子（box / sphere / cylinder / profile_sweep）。
+ * `position` 为null 时按组件 `position` 处理。
+ */
+export type LightBodyPart = Omit<PrimitiveParams, 'id' | 'type' | 'position'> & {
+  position?: Vec3;
+  /** 该段是否承载 `_interaction`：右键点灯的命中体。只有一段应为true。 */
+  interactive?: boolean;
+};
+
 /** 灯具静态蓝图中持久化的光源参数；右键循环状态只存在于前端运行时。 */
 export interface LightComponent {
   type: 'light';
   id: string;
   position: Vec3;
-  /** 灯具业务外观；与 point/spot 光源算法分开表达。 */
+  /**
+   * 灯体几何（参数化通路）。给了它就直接展开成这些 primitive，
+   * `fixtureType` 退化为不再使用；没给才回落到 `fixtureType` 的预设几何。
+   *
+   * 为什么开这个口：`fixtureType` 是闭集枚举，每加一种灯型就要改 schema 两副本 +
+   * 编译器分支，而灯具形态是开放的（顶装/壁装/吊装/异形，同一种还能有无数尺寸比）。
+   * 让形态由数据决定，新增灯型不必碰契约。
+   */
+  body?: LightBodyPart[];
+  /**
+   * 预设灯体的快捷写法。**不是唯一出口** —— 新形态优先写 `body`。
+   * `bulb` = 球泡 + 下方灯座（吊装，底座在发光体上方之外）；
+   * `table_lamp` = 灯座 + 灯杆 + 灯罩 + 灯泡。
+   */
   fixtureType?: 'bulb' | 'table_lamp';
   lightType?: 'point' | 'spot';
   color?: Color;
@@ -233,6 +257,8 @@ export interface WindowComponent {
   glassDepth?: number;
   verticalMullions?: number;
   horizontalMullions?: number;
+  /** 棂条宽度独立于外框，默认 min(frameWidth, 0.02m)。 */
+  mullionWidth?: number;
   frameMaterial?: string;
   glassMaterial?: string;
   interaction?: OpeningInteractionSpec;
@@ -286,6 +312,8 @@ export interface BalconyComponent {
   width: number;
   depth: number;
   slabThickness: number;
+  /** 独立栏杆实例接管时关闭内置栏杆。 */
+  railingEnabled?: boolean;
   railingHeight?: number;
   postSpacing?: number;
   material?: string;

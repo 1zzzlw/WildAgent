@@ -180,6 +180,9 @@ def _generation_failure_evidence(
 async def run_generate(state: dict[str, Any], item: PlanItem) -> HandlerResult:
     """工具型生成：预取 RAG 是主力，模型可以在这基础上有界地补检索与自查。"""
 
+    if item.params.get("design_markers"):
+        return await run_marker_generate(state, item)
+
     from app.agent.runtime import bind_item_tools, reset_item_tools
 
     from app.agent.generation.component.registry import generic_component_config
@@ -369,3 +372,6 @@ HANDLERS: dict[str, Handler] = {
 
 
 __all__ = ["HANDLERS", "build_execution_context"]
+
+
+from app.agent.plan.implementation import run_marker_generate

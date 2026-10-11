@@ -81,6 +81,16 @@ def test_successful_delivery_uses_uniform_file_reference_and_reply():
     save.assert_called_once()
 
 
+def test_valid_file_with_abandoned_design_items_reports_incomplete_design():
+    fulfillment = {"total": 3, "satisfied": 2, "open": 1, "gaps": [],
+                   "implementation_summary": {"implemented": 2, "abandoned": 1, "design_complete": False}}
+    with patch("app.services.agent_delivery.save_blueprint_file_as"):
+        delivery = prepare_blueprint_delivery(_blueprint(), "incomplete", [_result("validate_schema")],
+                                              status="complete", fulfillment=fulfillment)
+    assert "图纸落实 2 项、舍弃 1 项" in delivery.reply
+    assert "设计尚未完整实现" in delivery.reply
+
+
 def test_long_descriptive_blueprint_name_uses_short_session_title_and_filename():
     blueprint = _blueprint()
     blueprint["meta"]["name"] = (

@@ -14,6 +14,19 @@ def run_tool(tool, blueprint):
 
 
 class ComponentBlueprintTest(unittest.TestCase):
+    def test_schema_supported_tracking_and_light_body_are_not_rejected(self):
+        blueprint = make_blueprint()
+        for component in blueprint["geometry"]["components"]:
+            component["slot_id"] = "design_" + component["id"]
+        blueprint["geometry"]["components"].append({
+            "type": "light", "id": "pendant", "position": [0, 2.7, 0],
+            "slot_id": "design_pendant", "body": [{"shape": "sphere", "radius": 0.12}],
+        })
+        import jsonschema
+        from app.utils.blueprint_normalizer import get_schema
+        jsonschema.Draft202012Validator(get_schema()).validate(blueprint)
+        self.assertEqual(validate_blueprint_schema(blueprint), [])
+
     def test_supported_components_pass_backend_validation(self):
         blueprint = make_blueprint()
 

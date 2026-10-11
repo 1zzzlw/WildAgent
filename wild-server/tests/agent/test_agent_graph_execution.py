@@ -1,17 +1,4 @@
-"""使用真实编译图验证 generate/edit/chat 三条执行分支与图拓扑。
-
-本用例只钉两件别处没覆盖的事：
-
-1. **拓扑形态**：generate 分支经过 architecture → material_plan → design_review →
-   （建筑走 compile / 物件走 skeleton）→ plan → final_validate；图里**不再有**
-   per-type 节点（``{ct}_gen`` / ``{ct}_val``）与旧计划层节点。
-   ⚠️ 本类里的 ``_compile`` / ``_skeleton`` 都是桩件：**节点内部**的校验、白名单、
-   几何预检一行都不执行（真实链路见 ``tests/compiler/test_compile_wiring.py`` 与
-   ``tests/agent/test_plan_chain_e2e.py``）。
-2. **旁路在分类处收尾**：chat / edit 直接结束，不进生成链。
-
-条目级执行循环由 ``test_plan_chain_e2e.py`` 钉，这里只把 plan 桩成空计划。
-"""
+"""使用替身验证建筑、物件、编辑、聊天路由；真实节点回归另行覆盖。"""
 
 import unittest
 from unittest.mock import patch
@@ -40,7 +27,8 @@ async def _patch(_state: dict) -> dict:
 
 
 async def _architecture(_state: dict) -> dict:
-    return {"architecture_plan": {"required_components": []}}
+    return {"architecture_plan": {"required_components": []},
+            "design_document": {"decisions": {"kind": "architecture"}}}
 
 
 async def _material_plan(_state: dict) -> dict:
@@ -60,10 +48,10 @@ async def _skeleton(_state: dict) -> dict:
 
 
 async def _compile(_state: dict) -> dict:
-    """与 ``_skeleton`` 同形：本用例钉的是**拓扑**，编译内容由 tests/compiler 钉。"""
+    """最终编译输出候选；此用例验证拓扑，编译内容由 tests/compiler 覆盖。"""
 
     return {
-        "skeleton_blueprint": {"meta": {"name": "graph"}, "geometry": {"elements": []}},
+        "merged_blueprint": {"meta": {"name": "graph"}, "geometry": {"elements": []}},
         "suggested_components": [],
         "design_brief": {},
         "status": "generating",
@@ -78,7 +66,7 @@ async def _plan(_state: dict) -> dict:
 
 async def _validate(state: dict) -> dict:
     return {
-        "final_blueprint": state.get("merged_blueprint") or state["skeleton_blueprint"],
+        "final_blueprint": state.get("merged_blueprint") or state.get("skeleton_blueprint", {}),
         "validation_results": [],
         "validation_error_count": 0,
         "validation_warning_count": 0,
@@ -155,6 +143,7 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
                 "recent_messages",
                 "workflow_state",
                 "thinking_mode",
+                "detail_level",
                 "procedural_materials_enabled",
             },
         )
