@@ -1,4 +1,0 @@
-interface:
-  display_name: "Wild RAG 知识入库"
-  short_description: "把外部资料转成 WILD 知识库条目：拆声明、判 knowledge/rules、核对 Schema 与 Validator"
-  default_prompt: "使用 $wild-knowledge-ingest 处理这份资料：上网查到的内容、上游 AI 产出的 JSON 描述或用户手写文档都只算素材。先拆成原子声明，逐条判断能不能映射到当前引擎的字段与执行点，再决定写入 wild-server/storage/knowledge_base/ 的 knowledge/ 还是 rules/、还是丢弃并记录原因。隔离建筑百科、风格描述、完整案例；最后用真实分片预览和检索契约确认改动能被找到。"
