@@ -13,7 +13,6 @@
  * - scene_summary: 场景摘要（元素数量、类型、边界等）
  * - selection: 当前选中的构件 ID
  * - scene_revision: 当前场景版本号
- * - thinking_mode: 是否让模型开启思考并流式返回 reasoning_content
  * - procedural_materials_enabled: 是否允许 AI 自动生成程序化 Shader
  * 
  * 这些上下文信息帮助 Agent：
@@ -35,8 +34,6 @@ export function createUserMessageRequest(
   sceneSummary: SceneSummary,
   selection: string[],
   blueprint?: Record<string, unknown>,
-  thinkingMode: boolean = false,
-  precisionMode: boolean = false,
   proceduralMaterialsEnabled: boolean = false,
   recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [],
   detailLevel: BuildingDetailLevel = 'simple',
@@ -52,9 +49,7 @@ export function createUserMessageRequest(
     scene_summary: sceneSummary,
     selection,
     blueprint,
-    thinking_mode: thinkingMode,
     detail_level: detailLevel,
-    precision_mode: precisionMode,
     procedural_materials_enabled: proceduralMaterialsEnabled,
     recent_messages: recentMessages,
   }

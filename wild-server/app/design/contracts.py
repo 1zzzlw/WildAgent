@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any, Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 
@@ -256,6 +256,12 @@ class ComponentPlacement(ContractModel):
     normal_offset: float = Field(default=0, description="沿宿主墙局部法线的偏移；不是世界 X/Z")
 
 
+def _dimension_name(value: str) -> str:
+    if value in ComponentPlacement.model_fields:
+        raise ValueError(f"{value} 是位置参数，应保留原值写在 placement.{value}")
+    return value
+
+
 class ComponentInstance(ContractModel):
     """保留实例设计及扩展参数，由 plan 实现形态与依附关系。"""
 
@@ -268,7 +274,8 @@ class ComponentInstance(ContractModel):
     description: str = ""
     #: 相对宿主的尺寸（逐类型字段不同）
     placement: ComponentPlacement | None = None
-    size: dict[str, float] = Field(default_factory=dict)
+    size: dict[Annotated[str, AfterValidator(_dimension_name)],
+               Annotated[float, Field(gt=0, allow_inf_nan=False)]] = Field(default_factory=dict)
     #: 开放的设计形式描述，plan 负责转换成 WILD。
     form: dict[str, Any] = Field(default_factory=dict)
     #: 材质角色名
@@ -535,15 +542,7 @@ class DesignDocument(ContractModel):
         instance_ids = [c.id for c in decisions.components if c.id]
         if len(instance_ids) != len(set(instance_ids)):
             raise ValueError("构件实例 id 必须唯一，不能把同一实体用于多条关系")
-        if decisions.components:
-            self._validate_component_instances(decisions)
-        
         return self
-    
-    def _validate_component_instances(self, decisions: ArchitectureDecisions):
-        for instance in decisions.components:
-            if any(value <= 0 for value in instance.size.values()):
-                raise ValueError(f"{instance.id}: 设计尺寸必须为正数")
 
 
 class DesignPatchOperation(ContractModel):

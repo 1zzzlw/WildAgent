@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+from app.agent.generation.architecture import resolve_complexity_profile
 from app.utils.blueprint_query import has_scene_content
 
 from .classify import classify_intent_decision
@@ -37,7 +38,10 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
+    detail_level = resolve_complexity_profile(state.get("user_message", ""), state.get("detail_level", "simple"))["level"]
     result = {
+        "detail_level": detail_level,
+        "thinking_mode": True,
         "intent": decision.intent,
         "intent_target": decision.target,
         "intent_target_kind": decision.target_kind,

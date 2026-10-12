@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from loguru import logger
 
-from config import config
+from config import ModelProvider, config
+from app.llm.providers import resolve_connection
 from app.utils.runtime_env import (
     runtime_env_host_path,
     runtime_env_is_persistent,
@@ -20,6 +21,7 @@ router = APIRouter(prefix="/api/config", tags=["config"])
 
 class ModelConfigUpdate(BaseModel):
     """模型配置更新请求"""
+    provider: ModelProvider | None = None
     name: str | None = None
     api_key: str | None = None
     base_url: str | None = None
@@ -28,6 +30,8 @@ class ModelConfigUpdate(BaseModel):
 
 class ModelConfigResponse(BaseModel):
     """模型配置响应（隐藏 API Key）"""
+    provider: ModelProvider
+    resolved_provider: str
     name: str
     api_key_set: bool
     base_url: str
@@ -41,6 +45,8 @@ class ModelConfigResponse(BaseModel):
 async def get_llm_config():
     """获取当前 LLM 配置（隐藏完整 API Key）"""
     return ModelConfigResponse(
+        provider=config.chat.provider,
+        resolved_provider=resolve_connection(config.chat)[0],
         name=config.chat.name,
         api_key_set=bool(config.chat.api_key),
         base_url=config.chat.base_url or "",
@@ -55,59 +61,44 @@ async def get_llm_config():
 async def update_llm_config(update: ModelConfigUpdate) -> dict[str, Any]:
     """持久化全站 Chat 模型配置，并重建当前进程的模型客户端。"""
     try:
-        env_updates: dict[str, str] = {}
-        updated_fields: list[str] = []
-        if update.name is not None:
-            name = update.name.strip()
-            if not name:
+        labels = {"provider": "供应商", "name": "模型名称", "api_key": "API Key",
+                  "base_url": "Base URL", "thinking_budget": "思考预算"}
+        values = {}
+        for field in labels:
+            value = getattr(update, field)
+            if value is None:
+                continue
+            value = value.strip() if isinstance(value, str) else value
+            if field == "name" and not value:
                 raise ValueError("模型名称不能为空")
-            env_updates["CHAT__NAME"] = name
-            updated_fields.append("模型名称")
-        if update.api_key is not None:
-            env_updates["CHAT__API_KEY"] = update.api_key.strip()
-            updated_fields.append("API Key")
-        if update.base_url is not None:
-            env_updates["CHAT__BASE_URL"] = update.base_url.strip()
-            updated_fields.append("Base URL")
-        if update.thinking_budget is not None:
-            env_updates["CHAT__THINKING_BUDGET"] = str(update.thinking_budget)
-            updated_fields.append("思考预算")
+            values[field] = value
 
-        if not env_updates:
+        if not values:
             return {
                 "success": False,
                 "message": "没有提供任何配置更新",
             }
 
-        previous = {
-            "CHAT__NAME": config.chat.name,
-            "CHAT__API_KEY": config.chat.api_key,
-            "CHAT__BASE_URL": config.chat.base_url or "",
-            "CHAT__THINKING_BUDGET": str(config.chat.thinking_budget),
-        }
+        previous = {field: getattr(config.chat, field) for field in values}
+        candidate = config.chat.model_copy(update=values)
+        resolve_connection(candidate)
+        env_updates = {"CHAT__"+field.upper(): str(value) for field, value in values.items()}
+        updated_fields = [labels[field] for field in values]
         saved_path = update_runtime_env(env_updates)
         try:
-            if "CHAT__NAME" in env_updates:
-                config.chat.name = env_updates["CHAT__NAME"]
-            if "CHAT__API_KEY" in env_updates:
-                config.chat.api_key = env_updates["CHAT__API_KEY"]
-            if "CHAT__BASE_URL" in env_updates:
-                config.chat.base_url = env_updates["CHAT__BASE_URL"]
-            if "CHAT__THINKING_BUDGET" in env_updates:
-                config.chat.thinking_budget = int(env_updates["CHAT__THINKING_BUDGET"])
+            for field, value in values.items():
+                setattr(config.chat, field, value)
             os.environ.update(env_updates)
             from app.services.agent_service import agent_service
 
             agent_service.reload_chat_models()
         except Exception:
-            rollback = {key: previous[key] for key in env_updates}
+            rollback = {"CHAT__"+field.upper(): str(value) for field, value in previous.items()}
             try:
                 update_runtime_env(rollback, saved_path)
             finally:
-                config.chat.name = previous["CHAT__NAME"]
-                config.chat.api_key = previous["CHAT__API_KEY"]
-                config.chat.base_url = previous["CHAT__BASE_URL"]
-                config.chat.thinking_budget = int(previous["CHAT__THINKING_BUDGET"])
+                for field, value in previous.items():
+                    setattr(config.chat, field, value)
                 os.environ.update(rollback)
             raise
 
@@ -123,6 +114,8 @@ async def update_llm_config(update: ModelConfigUpdate) -> dict[str, Any]:
                 f"路径: {saved_path}）"
             ),
             "config": {
+                "provider": config.chat.provider,
+                "resolved_provider": resolve_connection(config.chat)[0],
                 "name": config.chat.name,
                 "api_key_set": bool(config.chat.api_key),
                 "base_url": config.chat.base_url or "",
@@ -163,6 +156,7 @@ def _test_model_config(update: ModelConfigUpdate | None):
     if not api_key:
         raise ValueError("API Key 不能为空；如已保存密钥，可将输入框留空")
     return ModelConfig(
+        provider=update.provider if update.provider is not None else config.chat.provider,
         name=name,
         api_key=api_key,
         base_url=base_url,
@@ -179,9 +173,10 @@ async def test_llm_config(update: ModelConfigUpdate | None = None) -> dict[str, 
         from openai import AsyncOpenAI
 
         test_config = _test_model_config(update)
+        provider, base_url = resolve_connection(test_config)
         logger.info(
             f"[config] 测试 LLM 连接: model={test_config.name}, "
-            f"base_url={test_config.base_url or '<default>'}"
+            f"provider={provider}, base_url={base_url}"
         )
 
         # 连接测试只验证最小 Chat Completions 标准协议，不携带 Agent、思考、
@@ -192,8 +187,7 @@ async def test_llm_config(update: ModelConfigUpdate | None = None) -> dict[str, 
         }
         if test_config.timeout > 0:
             client_options["timeout"] = test_config.timeout
-        if test_config.base_url:
-            client_options["base_url"] = test_config.base_url
+        client_options["base_url"] = base_url
         test_client = AsyncOpenAI(**client_options)
         try:
             response = await test_client.chat.completions.create(
@@ -216,8 +210,9 @@ async def test_llm_config(update: ModelConfigUpdate | None = None) -> dict[str, 
             "message": "LLM 连接测试成功",
             "response": content[:100],
             "tested": {
+                "provider": provider,
                 "name": test_config.name,
-                "base_url": test_config.base_url or "",
+                "base_url": base_url,
             },
         }
 

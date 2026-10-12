@@ -7,8 +7,9 @@ from app.llm.client import (
     _response_mapping,
     content_as_text,
     message_texts,
-    _thinking_extra_body,
+    create_llm,
 )
+from config import ModelConfig
 
 
 class _PydanticLikeResponse:
@@ -20,12 +21,22 @@ class _PydanticLikeResponse:
 
 
 class ModelClientCompatibilityTest(unittest.TestCase):
+    def test_mimo_token_plan_can_disable_thinking(self):
+        model = create_llm(ModelConfig(name="mimo-v2.6-flash", api_key="test-key",
+            base_url="https://token-plan-cn.xiaomimimo.com/v1"), enable_thinking=False)
+        self.assertEqual(model.extra_body, {"thinking": {"type": "disabled"}})
+
+    def test_explicit_mimo_provider_uses_its_protocol_at_a_custom_endpoint(self):
+        model = create_llm(ModelConfig(provider="mimo", name="mimo-v2.6-flash", api_key="test-key",
+            base_url="https://proxy.example/v1"), enable_thinking=False)
+        self.assertEqual(model.extra_body, {"thinking": {"type": "disabled"}})
+
     def test_mimo_thinking_switch_does_not_send_unsupported_budget(self):
-        cfg = SimpleNamespace(base_url="https://api.xiaomimimo.com/v1", name="mimo-v2.6-flash", thinking_budget=4096)
-        self.assertEqual(_thinking_extra_body(cfg, True), {"thinking": {"type": "enabled"}})
-        self.assertEqual(_thinking_extra_body(cfg, False), {"thinking": {"type": "disabled"}})
+        cfg = ModelConfig(base_url="https://api.xiaomimimo.com/v1", name="mimo-v2.6-flash", api_key="test-key", thinking_budget=4096)
+        self.assertEqual(create_llm(cfg, enable_thinking=True).extra_body, {"thinking": {"type": "enabled"}})
+        self.assertEqual(create_llm(cfg, enable_thinking=False).extra_body, {"thinking": {"type": "disabled"}})
         cfg.base_url = "https://other-compatible.example/v1"
-        self.assertIsNone(_thinking_extra_body(cfg, False))
+        self.assertIsNone(create_llm(cfg, enable_thinking=False).extra_body)
 
     def test_content_as_text_accepts_openai_content_blocks(self):
         self.assertEqual(

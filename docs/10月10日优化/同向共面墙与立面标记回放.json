@@ -1,0 +1,123 @@
+{
+  "request_id": "req_1791764638909_edy8g4gbz",
+  "mode": "saved_raw_reply_replay_with_current_projection",
+  "original_error": "建筑主体未能实现，停止附属构件生成：❌ [wall_main_left_L1] / [wall_garage_left_L1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [-0.12, 0.12]，构件表面坐标 [-0.12, 0.12]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面",
+  "original_body_reply_counts": [
+    15,
+    15,
+    15
+  ],
+  "original_attempt_stages": [
+    "generate",
+    "repair_1",
+    "repair_2"
+  ],
+  "resolver_version": "drawing-projection/8",
+  "document_unchanged": true,
+  "marker_count_before": 27,
+  "marker_count_after": 26,
+  "removed_derived_markers": [
+    "combination_window_garage_left_L1_3"
+  ],
+  "added_markers": [],
+  "body_status": "succeeded",
+  "model_reply_replay_count": 1,
+  "entity_ids": [
+    "floor_main_L1",
+    "floor_main_L2",
+    "floor_garage_L1",
+    "wall_main_front_L1",
+    "wall_main_right_L1",
+    "wall_main_back_L1",
+    "wall_main_left_L1",
+    "wall_main_front_L2",
+    "wall_main_right_L2",
+    "wall_main_back_L2",
+    "wall_main_left_L2",
+    "wall_garage_front_L1",
+    "wall_garage_right_L1",
+    "wall_garage_back_L1",
+    "wall_garage_left_L1"
+  ],
+  "assembly_changes": [
+    {
+      "rule": "compiler.shared_wall",
+      "entity_id": "wall_garage_left_L1",
+      "retained_entity_id": "wall_main_left_L1",
+      "retained_entity_ids": [
+        "wall_main_left_L1"
+      ],
+      "before": {
+        "type": "wall",
+        "id": "wall_garage_left_L1",
+        "from": [
+          0,
+          0,
+          12
+        ],
+        "to": [
+          0,
+          3.2,
+          8
+        ],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      "after": {
+        "type": "wall",
+        "id": "wall_garage_left_L1",
+        "from": [
+          0,
+          0,
+          12
+        ],
+        "to": [
+          0,
+          3.2,
+          10
+        ],
+        "thickness": 0.24,
+        "material": "wall_finish"
+      },
+      "semantic_change": false
+    }
+  ],
+  "implementation_errors": [],
+  "body_host_errors": [],
+  "opening_probe": {
+    "id": "replay_probe",
+    "type": "window",
+    "parentWall": "wall_garage_left_L1",
+    "from": [
+      0.16666666666666663,
+      1,
+      0
+    ],
+    "width": 1,
+    "height": 1.2
+  },
+  "opening_placement_changes": [
+    {
+      "rule": "compiler.opening_placement",
+      "entity_id": "replay_probe",
+      "field": "from",
+      "before": [
+        0,
+        1,
+        0
+      ],
+      "after": [
+        0.16666666666666663,
+        1,
+        0
+      ]
+    }
+  ],
+  "scope": "主体阶段原始回复回放和门窗坐标探针；未调用真实模型，未执行整栋生成和渲染",
+  "verification": {
+    "reproduction_before_fix": "15 failed, 77 passed（新增缺陷回归）",
+    "focused_tests": "92 passed",
+    "related_suite": "888 passed, 2 existing Chroma test substitute warnings",
+    "git_diff_check": "passed"
+  }
+}

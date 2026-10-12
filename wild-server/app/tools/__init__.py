@@ -4,7 +4,7 @@
 以后：design_tools、scene_read_tools 等按需扩展
 
 所有导出对象都是 @tool 装饰函数，可以被 LangChain Agent 或 LangGraph 节点调用。
-这里保留的是早期公共导出子集；当前 AgentService 会从 spatial_tools 直接导入完整工具集。
+这里保留公共导出子集；完整校验流水线从 spatial_tools 直接导入。
 """
 from app.tools.spatial_tools import (
     validate_opening_coords,

@@ -1,6 +1,6 @@
 """按 Agent 阶段组织的提示词构建函数。"""
 
-from .common import build_patch_recovery_prompt, build_system_prompt
+from .common import build_patch_recovery_prompt, build_patch_system_prompt
 from .chat import build_chat_system_prompt
 from .generation import build_component_prompt, build_component_user_message, build_skeleton_prompt
 from .plan import (
@@ -35,5 +35,5 @@ __all__ = [
     "build_replan_prompt",
     "build_replan_user_message",
     "build_skeleton_prompt",
-    "build_system_prompt",
+    "build_patch_system_prompt",
 ]

@@ -5,15 +5,20 @@
 从而保证一次进程中的配置视图一致。
 """
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.utils.runtime_env import runtime_env_path
 
+ModelProvider = Literal["auto", "openai", "dashscope", "deepseek", "moonshot", "mimo", "custom"]
+
 
 class ModelConfig(BaseModel):
     """一项 OpenAI-compatible 模型服务的连接参数。"""
 
+    provider: ModelProvider = "auto"
     # 模型名会原样传给兼容服务，例如 qwen-plus 或某个 embedding 模型名。
     name: str = "qwen-plus"
     # 密钥默认留空，实际值应通过环境变量提供，避免写入代码仓库。

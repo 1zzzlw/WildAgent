@@ -2,7 +2,6 @@
 
 **为什么单独成模块**：这条规则有两个消费者，而且它们在仓库的两层里——
 
-- `app/services/agent_service.py`：最终回答 agent 的 ``ainvoke(config={"callbacks": [...]})``；
 - `app/agent/plan/tool_loop.py`：条目/设计块的工具循环 agent。
 
 把它留在 ``agent_service`` 里，agent 层就只能"从服务层导一个私有类"（方向反了）；

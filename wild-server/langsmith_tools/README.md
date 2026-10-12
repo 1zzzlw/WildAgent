@@ -20,7 +20,7 @@ LANGSMITH_TRACING=true
 LANGSMITH_PROJECT=wildagent
 ```
 
-模型和 Embedding 继续使用原 `CHAT__*`、`THINKING__*`、`EMBEDDING__*` 配置。进程环境变量优先于 `.env`。若设置过 `UV_PROJECT_ENVIRONMENT`，需确保它指向项目现有 `.venv`。
+模型和 Embedding 使用原 `CHAT__*`、`EMBEDDING__*` 配置。`CHAT__PROVIDER=auto` 沿用按地址识别，也可显式选择 `openai/dashscope/deepseek/moonshot/mimo/custom`；Studio 与原页面共用 `app/llm/factory.py`。MiMo 支持思考开关，`CHAT__THINKING_BUDGET` 不会被当作其独立思考预算发送。进程环境变量优先于 `.env`。若设置过 `UV_PROJECT_ENVIRONMENT`，需确保它指向项目现有 `.venv`。
 
 ## 2. Tracing：观察原页面触发的调用
 

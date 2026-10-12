@@ -168,31 +168,21 @@ def test_selected_scene_summary_exposes_parameters_but_not_image_url():
     assert "/api/assets/" not in summary
 
 
-class _FakeAgent:
+class _FakeLLM:
     def __init__(self, response):
         self.response = response
         self.payload = None
 
-    async def ainvoke(self, payload, config=None):
+    async def ainvoke(self, payload):
         self.payload = payload
-        return {"messages": [self.response]}
-
-
-class _UnusedLLM:
-    calls = 0
-
-    async def ainvoke(self, _messages):
-        self.calls += 1
-        raise AssertionError("不应执行格式恢复")
+        return self.response
 
 
 def _service(response):
     service = AgentService.__new__(AgentService)
-    fake_agent = _FakeAgent(response)
-    service._build_rag_queries = lambda *_args, **_kwargs: []
-    service._agent_for_query = lambda *_args, **_kwargs: fake_agent
-    service.llm = _UnusedLLM()
-    return service, fake_agent
+    service.llm = _FakeLLM(response)
+    service.spec_loader = SimpleNamespace(load_many=lambda *_args, **_kwargs: "")
+    return service, service.llm
 
 
 def test_query_material_optimization_forces_safe_patch_protocol():
@@ -201,10 +191,10 @@ def test_query_material_optimization_forces_safe_patch_protocol():
         additional_kwargs={},
         response_metadata={},
     )
-    service, fake_agent = _service(response)
+    service, fake_llm = _service(response)
 
     with patch("app.services.agent_service.run_validation_pipeline", return_value=[]):
-        result = asyncio.run(service.query_structured(
+        result = asyncio.run(service.query_patch(
             "提升这面墙的纹理质感，让石材更真实",
             _blueprint(),
             selection=["wall_front"],
@@ -219,23 +209,23 @@ def test_query_material_optimization_forces_safe_patch_protocol():
         "normalScale": 1,
         "uvScale": [1, 1],
     }
-    prompt = fake_agent.payload["messages"][0]["content"]
+    prompt = fake_llm.payload[1]["content"]
     assert "只允许输出 `tune_material`" in prompt
     assert "/api/assets/" not in prompt
 
 
 def test_query_material_optimization_requires_selection_before_llm_call():
     response = SimpleNamespace(content="", additional_kwargs={}, response_metadata={})
-    service, fake_agent = _service(response)
+    service, fake_llm = _service(response)
 
-    result = asyncio.run(service.query_structured(
+    result = asyncio.run(service.query_patch(
         "优化当前材质纹理质量",
         _blueprint(),
         selection=[],
     ))
 
     assert "必须先选中" in result.error
-    assert fake_agent.payload is None
+    assert fake_llm.payload is None
 
 
 def test_material_optimization_intent_is_narrow():

@@ -11,7 +11,6 @@ from app.rag.citations import validate_answer_citations
 from app.rag.gate import (
     RAGRetrievalRejected,
     evaluate_retrieval_gate,
-    infer_retrieval_purpose,
 )
 from app.rag.quality import JUDGE_PROMPT_VERSION, build_rag_judge_prompt
 from app.rag.reporting import summarize_rag_traces
@@ -47,15 +46,6 @@ class RAGRuntimeControlsTest(unittest.TestCase):
         self.assertFalse(observed.enforced)
         self.assertEqual(enforced.reason, observed.reason)
         self.assertTrue(enforced.enforced)
-
-    def test_fast_mode_gate_purpose_does_not_reject_ambiguous_generation(self):
-        self.assertEqual(infer_retrieval_purpose("生成一个别墅", "generate"), "generation")
-        self.assertEqual(infer_retrieval_purpose("欧式别墅有什么特点", None), "chat")
-        self.assertEqual(
-            infer_retrieval_purpose("你生成一个建筑的实现思路是什么", None),
-            "chat",
-        )
-        self.assertEqual(infer_retrieval_purpose("欧式别墅", None), "generation")
 
     def test_chat_retrieval_error_cannot_bypass_enforced_gate(self):
         loader = object.__new__(RAGSpecLoader)

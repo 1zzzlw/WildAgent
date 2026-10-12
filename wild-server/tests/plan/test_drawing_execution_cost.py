@@ -42,11 +42,13 @@ def test_low_detail_keeps_custom_design_and_dependent_tasks():
 
 
 @pytest.mark.parametrize("level", ["minimal", "simple", "standard", "detailed"])
-def test_local_repair_disables_deep_thinking_and_keeps_only_failed_markers(monkeypatch, level):
+@pytest.mark.parametrize("node_thinking", [None, False, True])
+def test_local_repair_disables_deep_thinking_and_keeps_only_failed_markers(monkeypatch, level, node_thinking):
     import app.llm.client as client
     import app.llm.invocation as invocation
     state = empty_state()
-    state["thinking_mode"] = True
+    if node_thinking is not None:
+        state["thinking_mode"] = node_thinking
     state["design_document"]["decisions"]["complexity"]["level"] = level
     patch_services(monkeypatch, [])
     options, contexts = [], []

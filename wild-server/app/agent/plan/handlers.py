@@ -60,7 +60,7 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
     """组装一条条目需要的执行上下文（不写回 state）。
 
     只放该条目真正要用的东西：用户需求、骨架摘要、空间不变量、设计清单、本条目的策略提示、
-    档位与思考开关。
+    粒度及其派生的思考状态。
 
     ``plan_item`` 是 plan 阶段导出的**策略**（subtype / guidance / reason）：
     生成处理器会把它作为形态提示拼进提示词，但坐标与数量仍以设计清单为准。
@@ -73,6 +73,10 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
 
     skeleton = state.get("skeleton_blueprint")
     materials = skeleton.get("materials") if isinstance(skeleton, dict) else None
+    level = (
+        state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level")
+        or state.get("detail_level") or resolve_detail_level(state)
+    )
 
     return {
         "user_message": state.get("user_message", ""),
@@ -81,10 +85,10 @@ def build_execution_context(state: dict[str, Any], item: PlanItem) -> dict[str, 
         "spatial_invariants": state.get("spatial_invariants", {}),
         "design_brief": state.get("design_brief"),
         "architecture_plan": state.get("architecture_plan"),
-        "thinking_mode": state.get("thinking_mode", False),
+        "thinking_mode": level != "minimal",
         # D 段（全局约束）要用的两项：材质 id 白名单与档位，程序推导、模型只读。
         "material_ids": sorted(materials) if isinstance(materials, dict) else [],
-        "detail_level": resolve_detail_level(state),
+        "detail_level": level,
         # 图纸级缺口（用户指令 2026-09-29）：编译报告的 uncompiled/defects 紧凑摘要，
         # 让每个条目知道整张图纸还缺什么；条目自身的缺口在 plan_item.blueprint_gap。
         "blueprint_gaps": compile_gap_summary(state),

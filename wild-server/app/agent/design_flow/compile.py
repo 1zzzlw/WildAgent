@@ -4,7 +4,7 @@ from copy import deepcopy
 from app.agent.state import GenerationState
 
 
-def _assemble_with_stair_openings(document, state):
+def _assemble_with_relations(document, state):
     from app.design.markers import assemble_marker_results, implementation_records
     from app.agent.generation.spatial.stair_openings import cut_stair_openings
     from app.agent.validation.diagnostics import blueprint_fingerprint
@@ -33,6 +33,24 @@ def _assemble_with_stair_openings(document, state):
             "source_entity_ids": ids, "source_entity_fingerprint": record["entity_fingerprint"]}]
         record["entity_ids"] = [part for i in ids for part in replacements.get(i, [i])]
         record["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in record["entity_ids"]])
+    from app.agent.knowledge.component_names import resolve_component_name
+    for marker in (state.get("resolved_design") or {}).get("component_markers", []):
+        if (resolve_component_name(marker["type"])["entity_type"] != "railing"
+                or (records.get(marker["id"]) or {}).get("status") != "implemented"):
+            continue
+        parent = records.get(marker.get("host")) or {}
+        if parent.get("status") != "implemented":
+            continue
+        for entity_id in parent["entity_ids"]:
+            entity = actual[entity_id]
+            if entity.get("type") != "balcony" or entity.get("railingEnabled") is False:
+                continue
+            parent.setdefault("assembly_changes", []).append({"rule": "compiler.separate_railing",
+                "source_entity_ids": list(parent["entity_ids"]), "source_entity_fingerprint": parent["entity_fingerprint"],
+                "entity_id": entity_id, "before": entity.get("railingEnabled", True), "after": False,
+                "railing_marker_id": marker["id"]})
+            entity["railingEnabled"] = False
+            parent["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in parent["entity_ids"]])
     return blueprint, missing, records
 
 
@@ -85,7 +103,7 @@ async def compile_node(state: GenerationState) -> dict:
 
     plan = PlanDocument.model_validate(state["plan"])
     document = DesignDocument.model_validate(state["design_document"])
-    blueprint, missing, compiled_records = _assemble_with_stair_openings(document, state)
+    blueprint, missing, compiled_records = _assemble_with_relations(document, state)
     if missing:
         return {"status": "failed", "error": "图纸标记未完成实现流程：" + ", ".join(missing)}
     records = implementation_records(state)
@@ -156,7 +174,7 @@ async def compile_node(state: GenerationState) -> dict:
                     "compile_report": {"ok": False, "retry_implementation": True, "reason": message}, "error": None}
         if updates["component_diagnostics"]:
             state = {**state, **updates}
-            blueprint, missing, compiled_records = _assemble_with_stair_openings(document, state)
+            blueprint, missing, compiled_records = _assemble_with_relations(document, state)
             brief["implementation"]["records"] = compiled_records
             evaluation = evaluate_candidate(blueprint, design_document=document.model_dump(mode="json"),
                                             design_brief=brief, source="compile_after_discard")

@@ -12,8 +12,7 @@
   约束，超限时返回可读错误让模型收尾，而不是继续烧 token；
 - 关键校验不依赖模型自觉：它仍由 plan 里显式的 `validate` 条目保证。
 
-调用形状照抄现有 `agent_service._create_agent` + `query_structured`（不另写模型客户端），
-只把返回的 messages 拿来提取工具轨迹供审计。
+模型客户端由统一工厂提供，返回的 messages 用于提取工具轨迹供审计。
 """
 
 from __future__ import annotations

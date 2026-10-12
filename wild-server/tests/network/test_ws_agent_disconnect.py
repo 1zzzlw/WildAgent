@@ -1,6 +1,7 @@
 import asyncio
 import json
 import unittest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 from fastapi import WebSocketDisconnect
@@ -14,20 +15,35 @@ from app.api.ws_agent import (
 )
 from app.rag.security import AccessContext
 from app.extensions.presence import WebSocketConnectionRegistry
-from app.agent.intent import IntentDecision
-from app.services.agent_service import QueryResult
 from app.services.generation_job_service import GenerationJob, GenerationJobService
 
 
-def _intent_decision(intent: str) -> IntentDecision:
-    return IntentDecision(
-        intent=intent,
-        confidence=0.9,
-        target="test",
-        requires_scene=intent == "edit",
-        reason="test",
-        source="llm",
-    )
+async def _run_graph_request(ws, data, outputs, reasoning_delta=None):
+    captured = {}
+
+    class Graph:
+        async def astream_events(self, state, **_kwargs):
+            captured.update(state)
+            if reasoning_delta:
+                from app.agent.runtime import get_reasoning_callback
+
+                await get_reasoning_callback()("patch", reasoning_delta)
+            for node, output in outputs.items():
+                yield {"event": "on_chain_end", "name": node, "data": {"output": output}}
+
+        async def aget_state(self, _config):
+            values = {}
+            for output in outputs.values():
+                values.update(output)
+            return SimpleNamespace(next=(), values=values)
+
+    with (
+        patch("app.agent.graph.get_graph", return_value=Graph()),
+        patch("app.api.ws_agent.generation_job_service.initialize", AsyncMock()),
+        patch("app.api.ws_agent.generation_job_service._checkpointer", object()),
+    ):
+        await _handle_user_message(ws, data)
+    return captured
 
 
 def test_server_normalizes_recent_intent_context():
@@ -94,46 +110,7 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(error["protocol_version"], "1.0")
         self.assertEqual(error["request_id"], "req_version")
 
-    async def test_quick_generation_is_also_detached_instead_of_cancelled(self):
-        class DisconnectingWebSocket:
-            def __init__(self):
-                self.accept = AsyncMock()
-                self.send_json = AsyncMock()
-                self.receive_count = 0
-
-            async def receive_text(self):
-                self.receive_count += 1
-                if self.receive_count == 1:
-                    return json.dumps({
-                        "type": "user_message",
-                        "request_id": "req_active",
-                        "message": "生成别墅",
-                    })
-                raise WebSocketDisconnect()
-
-        job = GenerationJob(
-            request_id="req_active",
-            session_id="req_active",
-            payload={},
-            status="running",
-        )
-        ws = DisconnectingWebSocket()
-        with (
-            patch(
-                "app.api.ws_agent.generation_job_service.start_job",
-                AsyncMock(return_value=(job, True)),
-            ) as start_job,
-            patch(
-                "app.api.ws_agent.generation_job_service.detach",
-                AsyncMock(),
-            ) as detach,
-        ):
-            await agent_websocket(ws)
-
-        start_job.assert_awaited_once()
-        detach.assert_awaited_once_with(ws)
-
-    async def test_precision_generation_is_detached_instead_of_cancelled(self):
+    async def test_generation_is_detached_instead_of_cancelled(self):
         class DisconnectingWebSocket:
             def __init__(self):
                 self.accept = AsyncMock()
@@ -148,7 +125,7 @@ class WebSocketDisconnectTest(unittest.IsolatedAsyncioTestCase):
                         "request_id": "req_durable",
                         "session_id": "session_durable",
                         "message": "生成别墅",
-                                })
+                    })
                 raise WebSocketDisconnect()
 
         job = GenerationJob(
@@ -289,89 +266,51 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
-    async def test_legacy_fast_handler_uses_shared_intent_output_contract(self):
+    async def _run_request(self, detail_level, reasoning_delta=None):
         ws = Mock()
         ws.send_json = AsyncMock()
-        captured = {}
-
-        async def query_structured(*args, **kwargs):
-            captured.update(kwargs)
-            return QueryResult(text="这是实现思路说明")
-
-        with (
-            patch(
-                "app.api.ws_agent.agent_service.query_structured",
-                side_effect=query_structured,
-            ),
-            patch(
-                "app.api.ws_agent.classify_intent_decision",
-                AsyncMock(return_value=_intent_decision("chat")),
-            ),
-        ):
-            await _handle_user_message(ws, {
-                "request_id": "req_shared_intent",
-                "session_id": "session_shared_intent",
-                "message": "你生成建筑的实现思路是什么",
-                "thinking_mode": False,
-            })
-
-        self.assertEqual(captured["expected_output"], "text")
-
-    async def _run_request(self, thinking_mode, reasoning_delta=None):
-        ws = Mock()
-        ws.send_json = AsyncMock()
-        data = {
-            "type": "user_message",
+        captured = await _run_graph_request(ws, {
             "request_id": "req_thinking",
             "session_id": "session_thinking",
-            "scene_revision": 0,
-            "message": "介绍一下当前场景",
-            "thinking_mode": thinking_mode,
-        }
-
-        async def query_structured(*args, **kwargs):
-            callback = kwargs.get("on_reasoning_delta")
-            if reasoning_delta and callback:
-                await callback(reasoning_delta)
-            return QueryResult(text="处理完成")
-
-        with (
-            patch(
-                "app.api.ws_agent.agent_service.query_structured",
-                side_effect=query_structured,
-            ),
-            patch(
-                "app.api.ws_agent.classify_intent_decision",
-                AsyncMock(return_value=_intent_decision("chat")),
-            ),
-        ):
-            await _handle_user_message(ws, data)
-
+            "message": "修改墙厚",
+            "detail_level": detail_level,
+        }, {
+            "classifier": {"intent": "edit", "thinking_mode": True},
+            "patch": {
+                "scene_patch": {
+                    "operations": [{"op": "update_element", "id": "wall", "changes": {"thickness": 0.3}}],
+                    "summary": "修改墙厚",
+                },
+                "status": "complete",
+            },
+        }, reasoning_delta)
+        self.assertNotIn("thinking_mode", captured)
+        self.assertEqual(captured["detail_level"], detail_level)
         return [call.args[0] for call in ws.send_json.await_args_list]
 
-    async def test_disabled_mode_sends_no_thinking_logs(self):
-        messages = await self._run_request(False)
+    async def test_low_detail_still_collects_non_plan_node_thinking(self):
+        messages = await self._run_request("minimal", "模型实际返回的思考")
+        deltas = [msg for msg in messages if msg["type"] == "thinking_delta"]
+        self.assertEqual([msg["delta"] for msg in deltas], ["模型实际返回的思考"])
+        self.assertTrue(any(msg["type"] == "thinking_status" for msg in messages))
+        proposal = next(msg for msg in messages if msg["type"] == "patch_proposal")
+        self.assertTrue(proposal["patch"]["requires_confirmation"])
 
-        self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))
     async def test_enabled_mode_streams_real_reasoning_content(self):
-        messages = await self._run_request(True, "模型实际返回的思考")
+        messages = await self._run_request("simple", "模型实际返回的思考")
         deltas = [msg for msg in messages if msg["type"] == "thinking_delta"]
         statuses = [msg for msg in messages if msg["type"] == "thinking_status"]
-
         self.assertEqual([msg["delta"] for msg in deltas], ["模型实际返回的思考"])
         self.assertEqual([msg["status"] for msg in statuses], ["thinking", "completed"])
 
-    async def test_enabled_mode_reports_missing_reasoning_content(self):
-        messages = await self._run_request(True)
-        statuses = [msg for msg in messages if msg["type"] == "thinking_status"]
-
-        self.assertEqual([msg["status"] for msg in statuses], ["thinking", "unsupported"])
+    async def test_enabled_mode_does_not_fabricate_reasoning(self):
+        messages = await self._run_request("detailed")
         self.assertFalse(any(msg["type"] == "thinking_delta" for msg in messages))
+        self.assertTrue(any(msg["type"] == "patch_proposal" for msg in messages))
 
-    async def test_only_literal_true_enables_thinking_mode(self):
-        messages = await self._run_request("true")
-
-        self.assertFalse(any(msg["type"].startswith("thinking_") for msg in messages))
+    async def test_standard_level_collects_thinking_without_extra_switch(self):
+        messages = await self._run_request("standard")
+        self.assertTrue(any(msg["type"] == "thinking_status" for msg in messages))
 
 
 class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
@@ -387,39 +326,23 @@ class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("模型未返回有效的 Blueprint JSON", error)
 
-    async def test_schema_error_is_returned_as_readable_reply(self):
+    async def test_graph_validation_failure_is_returned_with_original_reason(self):
         ws = Mock()
         ws.send_json = AsyncMock()
-
-        with (
-            patch(
-                "app.api.ws_agent.agent_service.query_structured",
-                AsyncMock(return_value=QueryResult(
-                    text="模型生成的无效 JSON",
-                    error=(
-                        "Blueprint 结构预检未通过: "
-                        "floor_bad.to 必须是包含 3 个有限数字的数组"
-                    ),
-                )),
-            ),
-            patch(
-                "app.api.ws_agent.classify_intent_decision",
-                AsyncMock(return_value=_intent_decision("generate")),
-            ),
-        ):
-            await _handle_user_message(ws, {
-                "request_id": "req_invalid_coordinate",
-                "session_id": "session_invalid_coordinate",
-                "message": "生成一座别墅",
-                "thinking_mode": False,
-            })
-
+        error = "Blueprint 结构预检未通过: floor_bad.to 必须是包含 3 个有限数字的数组"
+        await _run_graph_request(ws, {
+            "request_id": "req_invalid_coordinate",
+            "session_id": "session_invalid_coordinate",
+            "message": "生成一座别墅",
+            "detail_level": "minimal",
+        }, {
+            "classifier": {"intent": "generate"},
+            "skeleton": {"error": error, "status": "failed"},
+        })
         messages = [call.args[0] for call in ws.send_json.await_args_list]
-        replies = [msg for msg in messages if msg["type"] == "agent_reply"]
-
-        self.assertEqual(len(replies), 1)
-        self.assertIn("生成结果未通过结构预检", replies[0]["content"])
-        self.assertIn("floor_bad.to", replies[0]["content"])
+        errors = [msg for msg in messages if msg["type"] == "error"]
+        self.assertEqual(len(errors), 1)
+        self.assertIn("floor_bad.to", errors[0]["error"])
 
 
 class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
@@ -433,25 +356,27 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
             "behaviors": {},
         }
 
+        from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
+        evaluation = {
+            "snapshot": {
+                "blueprint_fingerprint": blueprint_fingerprint(blueprint),
+                "validator_version": VALIDATOR_VERSION,
+                "results": [], "error_count": 0, "warning_count": 0, "status": "complete",
+            },
+            "fulfillment": None,
+        }
         with (
-            patch(
-                "app.api.ws_agent.agent_service.query_structured",
-                AsyncMock(return_value=QueryResult(text="生成完成", blueprint=blueprint)),
-            ),
-            patch(
-                "app.api.ws_agent.classify_intent_decision",
-                AsyncMock(return_value=_intent_decision("generate")),
-            ),
-            patch(
-                "app.services.agent_delivery.save_blueprint_file_as",
-                return_value="storage/scenes/session_cache.wild",
-            ),
+            patch("app.agent.validation.candidate.evaluate_candidate", return_value=evaluation),
+            patch("app.services.agent_delivery.save_blueprint_file_as", return_value="storage/scenes/session_cache.wild"),
         ):
-            await _handle_user_message(ws, {
+            await _run_graph_request(ws, {
                 "request_id": "req_cache",
                 "session_id": "session_cache",
                 "message": "生成一栋建筑",
-                "thinking_mode": False,
+                "detail_level": "minimal",
+            }, {
+                "classifier": {"intent": "generate"},
+                "final_validate": {"merged_blueprint": blueprint, "status": "complete"},
             })
 
         messages = [call.args[0] for call in ws.send_json.await_args_list]

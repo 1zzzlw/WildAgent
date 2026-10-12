@@ -91,12 +91,15 @@ volumes 是对象数组，每项写稳定 id、x、z、width、depth、start_flo
 facades 必须包含 front、back、left、right 四个键；实际朝向可以另加说明。每面写整数 bays 和字符串数组 ground_pattern、upper_pattern；数组长度与 bays 一致。
 facades 表达共享的立面节奏；不同体量的功能与开口不同，在该 volume.facades 中按面覆盖对应布局，格式相同。内部相接面不套外立面门窗，内部连通门写明确实例。实墙、empty/无开口由主体实现，不派发附加墙任务。立面 token 也使用构件目录的统一英文编号。
 roof 写 type 和设计说明，可以设计新屋型；roof.volumes 是对象数组，可为空，每项必须写 volume 字符串引用 volumes 中的体量 id，例如 [{{"volume":"main","type":"自拟屋型","overhang":0.8}}]。volume 是固定字段名，不能用 ref、id 或 volume_id 代替；数组项不能只写字符串。structural_grid 写 system、整数 x_bays、整数 z_bays。
-components 是对象数组，每项写稳定 id、type、host、size、form、description；size 是尺寸数值对象，form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
+components 是对象数组，每项写稳定 id、type、host、size、form、description；size 只写构件自身尺寸（width、height、depth、thickness 等），每项为有限正数。sill_height、offset、normal_offset 是位置参数，写在 placement；落地门窗的 placement.sill_height 可以为 0，不写 size.sill_height。form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
+circulation 中设计的楼梯也写成 stair 构件标记，说明连接楼层、位置与形态；后续 plan 单独实现，不能只写交通说明而遗漏实际构件。
 构件命名：type 使用稳定的英文 snake_case 编号；下列已有构件使用对应编号，中文名称写在 name，具体风格、位置与造型写在 description/form，不混进 type。新构件可自行取语义明确的英文 snake_case 编号和中文 name，完整描述形态，不能因名称未在目录中就放弃。
 {component_reference_prompt()}
 明确尺寸、位置、材料和依附关系，使用扩展字段保留完整设计要求。无需填写 WILD 引擎细节。
-宿主可引用体量或已声明构件；门窗沿墙定位时，host 写 wall_<体量id>_<front/back/left/right>_L<楼层>，或 host 写体量 id 并在 placement 写 face、floor。offset 是洞口左边沿墙方向的距离，sill_height 是相对该层的窗台高度，normal_offset 是沿墙法线的偏移。世界定位用 placement.position 数组 [x, y, z] 表示构件中心。显式门窗占据的立面位置由该实例实现，不再重复添加立面默认开口。
-例如翼楼 x=10、宽5，前墙窗洞起点世界 x=13.2，应写 offset=3.2；offset=13.2 会超出翼楼。沿墙 offset+width 不超过对应墙长，窗台+窗高不超过该层墙顶；需要更大开口时明确设计对应宿主，不能混用坐标。
+宿主可引用体量或已声明构件；门窗、阳台和雨棚沿墙定位时，host 写 wall_<体量id>_<front/back/left/right>_L<楼层>，或 host 写体量 id 并在 placement 写 face、floor。placement.face 只表示 front、back、left、right 四个竖向立面；屋顶、檐底、天花构件用 placement.position 写世界中心坐标，其朝向在 form/description 中描述。offset 是构件左边沿墙方向的距离，sill_height 是相对该层的安装高度，normal_offset 是沿墙法线的偏移。世界定位用 placement.position 数组 [x, y, z] 表示构件中心。显式构件占据的同类立面位置由该实例实现，不再重复添加默认标记；阳台与窗仍可在同一开间共存。
+矩形体量 front 对应 z，back 对应 z+depth，left 对应 x，right 对应 x+width；悬挑中心位于对应墙面室外，不把向 front 外挑写成向室内增加 z。
+阳台明确所在层、板顶标高、板厚及其依附门窗；二层板顶位于二层楼面，不把二层墙顶写成二层楼面。雨棚分别写安装高度和板厚；板厚优先写 size.thickness，size.height 表示板本身高度时也作为板厚，含支架的总高度在 form 中说明。独立栏杆用 host 引用实际阳台或露台实例。
+例如翼楼 x=10、宽5，前墙窗洞起点世界 x=13.2，应写 offset=3.2；offset=13.2 会超出翼楼。沿墙 offset+size.width 不超过对应墙长；placement.sill_height 是相对本层墙底的高度，必须满足 sill_height+size.height <= 墙顶Y-墙底Y，不能把上层世界Y当窗台高度再次叠加。需要更大开口时明确设计对应宿主，不能混用坐标。
 按房间用途组织开口，核对上下层窗的轴线、窗台与窗顶、入口及车库门的唯一位置，保留必要墙垛；格栅与遮阳板围绕对应窗组定位。需要精确构图的门窗写为有位置和尺寸的 components 实例，不能靠默认格位代替。
 需要室内设计时，用 floor_layouts 描述每层空间用途、平面位置与通行关系；家具、灯具和隔断在 components 中写实际标记。家具位置要考虑楼板标高、门窗开启与通行空间。
 不要在设计阶段因为程序不支持就删掉构件、改造型或提前声明无法实现。

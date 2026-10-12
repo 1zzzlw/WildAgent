@@ -1,0 +1,658 @@
+{
+  "request_id": "req_1791724740469_f14svcwep",
+  "trace": "wild-server/storage/sessions/rag_traces/session_1791724534757/req_1791724740469_f14svcwep.json",
+  "original": {
+    "llm_calls": 26,
+    "implementation_calls": 23,
+    "error": "建筑主体未能实现，停止附属构件生成：materials 必须是对象，不能覆盖已经采用的定义"
+  },
+  "root_causes": [
+    "被拒绝且没有采用实体的片段仍返回 truthy accepted，accumulated/materials 收进非法玻璃，后续空 materials 修订不能撤销污染",
+    "资源字典按最后写入覆盖，同名不同材质污染其他实体，省略 opacity 与显式 opacity=1 被误判冲突",
+    "露台屋顶承托尺寸加入了不在当前屋面下的主楼柱，局部屋顶被误判覆盖不足",
+    "glazing 未解析为 window，立面默认洞口与显式 fixed_glazing 重复",
+    "circulation 描述楼梯但 components 没有标记，最终检查才重做主体及依赖"
+  ],
+  "replay": {
+    "external_model_calls": 0,
+    "external_search_calls": 0,
+    "simulation_calls": 18,
+    "items": 15,
+    "implemented_markers": 35,
+    "abandoned_markers": 0,
+    "compile": {
+      "abandoned_markers": [],
+      "missing_markers": [],
+      "elements": 49,
+      "components": 32,
+      "design_complete": true,
+      "ok": true
+    },
+    "errors": [],
+    "warning_count": 0,
+    "modifications_to_model_geometry": "从原最后主体修订中提取 stair，单独交给派生交通标记，只有 ID 从 building_body_stair_01 改为 circulation_stair_01；其他片段使用原始回复。程序仍应用已有安装平移、共享墙去重和编译楼板开洞。",
+    "limitation": "离线复用保存回复，门任务按当前合批重组；不代表新模型调用次数、耗时或渲染已验收。"
+  },
+  "tests": {
+    "new_regressions": 25,
+    "related_passed": 829,
+    "warnings": "2 条既有 Chroma 测试替身弃用警告；非全仓库通过声明",
+    "suite": [
+      "tests/plan",
+      "tests/agent/test_plan_graph.py",
+      "tests/agent/test_drawing_format_feedback.py",
+      "tests/agent/test_drawing_detail_levels.py",
+      "tests/agent/test_drawing_contract_recovery.py",
+      "tests/agent/test_agent_delivery.py",
+      "tests/api/test_architecture_step_status.py",
+      "tests/design/test_design_protocol_validation.py",
+      "tests/design/test_compiled_review.py",
+      "tests/design/test_design_document.py",
+      "tests/design/test_drawing_revision.py",
+      "tests/generation/test_capability_surface.py",
+      "tests/rag",
+      "tests/validators/test_stair_openings.py",
+      "tests/validators/test_spatial_validation.py",
+      "tests/validators/test_wall_host_regression.py",
+      "tests/validators/test_roof_top_coverage.py",
+      "tests/misc/test_json_extractor.py",
+      "-q",
+      "--tb=short",
+      "tests/assets/test_model_client_compat.py",
+      "tests/network/test_generation_stop.py",
+      "tests/network/test_generation_job_service.py",
+      "tests/network/test_session_turns.py",
+      "tests/network/test_generation_commit.py",
+      "tests/agent/test_model_errors.py",
+      "tests/agent/test_drawing_opening_feedback.py"
+    ]
+  },
+  "items": [
+    {
+      "kind": "building_body",
+      "markers": [
+        "building_body"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 2,
+      "errors": [
+        {
+          "building_body": "❌ [building_body_floor_L1] 主体楼板超出该标高体量并集 48.000㎡；按体量分片保留庭院空缺，不能填满包围盒"
+        }
+      ]
+    },
+    {
+      "kind": "stair",
+      "markers": [
+        "circulation_stair"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "window",
+      "markers": [
+        "window_main_back_L1_1",
+        "window_main_back_L1_3",
+        "window_main_left_L2_1",
+        "window_main_right_L2_2",
+        "window_porch_front_L1_1",
+        "window_porch_front_L1_3",
+        "window_porch_left_L1_1",
+        "window_porch_right_L1_2",
+        "window_terrace_back_L2_1",
+        "window_terrace_back_L2_3",
+        "window_terrace_left_L2_1",
+        "window_terrace_right_L2_2"
+      ],
+      "status": "succeeded",
+      "summary": "落实 12，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "roof",
+      "markers": [
+        "roof_main",
+        "roof_porch",
+        "roof_terrace"
+      ],
+      "status": "succeeded",
+      "summary": "落实 3，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "door",
+      "markers": [
+        "entrance_porch_front_L1_2",
+        "door_terrace_back_L2_2"
+      ],
+      "status": "succeeded",
+      "summary": "落实 2，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "chinese_lattice_door",
+      "markers": [
+        "entrance_door_01"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "canopy",
+      "markers": [
+        "canopy_01"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "column",
+      "markers": [
+        "column_01",
+        "column_02"
+      ],
+      "status": "succeeded",
+      "summary": "落实 2，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "combination_window",
+      "markers": [
+        "window_living_01",
+        "window_living_02"
+      ],
+      "status": "succeeded",
+      "summary": "落实 2，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "chinese_lattice_window",
+      "markers": [
+        "window_bed_01",
+        "window_bed_02"
+      ],
+      "status": "succeeded",
+      "summary": "落实 2，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "fixed_glazing",
+      "markers": [
+        "window_back_01"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "glass_sliding_door",
+      "markers": [
+        "door_terrace_01"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "terrace_railing",
+      "markers": [
+        "railing_terrace_01",
+        "railing_terrace_02",
+        "railing_terrace_03"
+      ],
+      "status": "succeeded",
+      "summary": "落实 3，舍弃 0",
+      "calls": 2,
+      "errors": [
+        {
+          "railing_terrace_01": "材质 'glass__6af0232e51cc' 的物理玻璃 opacity 必须为 1 或省略",
+          "railing_terrace_02": "材质 'glass__6af0232e51cc' 的物理玻璃 opacity 必须为 1 或省略",
+          "railing_terrace_03": "材质 'glass__6af0232e51cc' 的物理玻璃 opacity 必须为 1 或省略"
+        }
+      ]
+    },
+    {
+      "kind": "cornice",
+      "markers": [
+        "cornice_01"
+      ],
+      "status": "succeeded",
+      "summary": "落实 1，舍弃 0",
+      "calls": 1,
+      "errors": []
+    },
+    {
+      "kind": "small_window",
+      "markers": [
+        "window_side_01",
+        "window_side_02"
+      ],
+      "status": "succeeded",
+      "summary": "落实 2，舍弃 0",
+      "calls": 2,
+      "errors": [
+        {
+          "window_side_01": "材质 'glass_frosted__e1eac65278a7' 的物理玻璃 opacity 必须为 1 或省略",
+          "window_side_02": "材质 'glass_frosted__e1eac65278a7' 的物理玻璃 opacity 必须为 1 或省略"
+        }
+      ]
+    }
+  ],
+  "records": {
+    "building_body": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "building_body_floor_L2",
+        "wall_main_front_L1",
+        "wall_main_right_L1",
+        "wall_main_back_L1",
+        "wall_main_left_L1",
+        "wall_main_front_L2",
+        "wall_main_right_L2",
+        "wall_main_back_L2",
+        "wall_main_left_L2",
+        "wall_porch_front_L1",
+        "wall_porch_right_L1",
+        "wall_porch_left_L1",
+        "wall_terrace_right_L2",
+        "wall_terrace_back_L2",
+        "wall_terrace_left_L2",
+        "building_body_beam_L1_front",
+        "building_body_beam_L1_back",
+        "building_body_beam_L1_left",
+        "building_body_beam_L1_right",
+        "building_body_beam_L2_front",
+        "building_body_beam_L2_back",
+        "building_body_beam_L2_left",
+        "building_body_beam_L2_right",
+        "building_body_column_01",
+        "building_body_column_02",
+        "building_body_column_03",
+        "building_body_column_04",
+        "building_body_floor_L1_main",
+        "building_body_floor_L1_porch"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    },
+    "circulation_stair": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "circulation_stair_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_main_back_L1_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_main_back_L1_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_main_back_L1_3": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_main_back_L1_3"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_main_left_L2_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_main_left_L2_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_main_right_L2_2": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_main_right_L2_2"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_porch_front_L1_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_porch_front_L1_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_porch_front_L1_3": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_porch_front_L1_3"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_porch_left_L1_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_porch_left_L1_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_porch_right_L1_2": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_porch_right_L1_2"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_terrace_back_L2_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_terrace_back_L2_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_terrace_back_L2_3": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_terrace_back_L2_3"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_terrace_left_L2_1": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_terrace_left_L2_1"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_terrace_right_L2_2": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_terrace_right_L2_2"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "roof_main": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "roof_main"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "roof_porch": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "roof_porch"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "roof_terrace": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "roof_terrace"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "entrance_porch_front_L1_2": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "entrance_porch_front_L1_2_door"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "door_terrace_back_L2_2": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "door_terrace_back_L2_2"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "entrance_door_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "entrance_door_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "canopy_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "canopy_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "column_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "column_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "column_02": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "column_02"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_living_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_living_01_left",
+        "window_living_01_center",
+        "window_living_01_right"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_living_02": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_living_02_left",
+        "window_living_02_center",
+        "window_living_02_right"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_bed_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_bed_01_lattice_left",
+        "window_bed_01_lattice_right",
+        "window_bed_01_lattice_top",
+        "window_bed_01_lattice_bottom",
+        "window_bed_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_bed_02": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_bed_02_lattice_left",
+        "window_bed_02_lattice_right",
+        "window_bed_02_lattice_top",
+        "window_bed_02_lattice_bottom",
+        "window_bed_02"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_back_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_back_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "door_terrace_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "door_terrace_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "railing_terrace_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "railing_terrace_01_wood_base",
+        "railing_terrace_01"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    },
+    "railing_terrace_02": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "railing_terrace_02_wood_base",
+        "railing_terrace_02"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    },
+    "railing_terrace_03": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "railing_terrace_03_wood_base",
+        "railing_terrace_03"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    },
+    "cornice_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "cornice_01"
+      ],
+      "attempted_stages": [
+        "generate"
+      ]
+    },
+    "window_side_01": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_side_01"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    },
+    "window_side_02": {
+      "status": "implemented",
+      "reason": null,
+      "entity_ids": [
+        "window_side_02"
+      ],
+      "attempted_stages": [
+        "generate",
+        "repair_1"
+      ]
+    }
+  }
+}

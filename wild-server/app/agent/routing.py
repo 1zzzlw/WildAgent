@@ -1,7 +1,6 @@
 """过渡层：意图分类已迁往 ``app.agent.intent``。
 
-本文件保留同名 re-export，**只为不改动既有调用点**（``api/ws_agent.py:58``、
-``services/agent_service.py:1334`` 与若干测试）。不要再往这里加任何东西——
+本文件保留同名 re-export，供 WebSocket 等既有调用点使用。不要再往这里加任何东西——
 新代码请直接从真正的主人处导入：
 
 - 意图分类（提示词 / 规则 / 契约 / 模型通道）→ ``app.agent.intent``

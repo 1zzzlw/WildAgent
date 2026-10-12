@@ -95,6 +95,96 @@ def test_plain_business_error_remains_readable():
     assert _validation_reason(ValueError("体量范围不一致")) == "体量范围不一致"
 
 
+def test_face_and_all_size_errors_are_reported_together_with_exact_paths(drawing):
+    drawing["components"] = [
+        {"id": "living_room_window_01", "type": "floor_window_group", "host": "main",
+         "size": {"width": 4.5, "height": 3, "sill_height": 0},
+         "placement": {"face": "back", "floor": 1, "offset": 1.5}},
+        {"id": "kitchen_door", "type": "glass_sliding_door", "host": "main",
+         "size": {"width": 3, "height": 2.4, "sill_height": 0},
+         "placement": {"face": "front", "floor": 1, "offset": 2}},
+        {"id": "roof_soffit", "type": "eave_soffit", "host": "wing",
+         "size": {"width": 6.5, "depth": 1.2}, "placement": {"face": "top", "floor": 1}},
+    ]
+    before = deepcopy(drawing)
+    with pytest.raises(DesignContractError) as caught:
+        document(drawing)
+    reason = str(caught.value)
+    assert "/components/0/size/sill_height" in reason
+    assert "/components/1/size/sill_height" in reason
+    assert "/components/2/placement/face" in reason
+    assert "placement.sill_height" in reason and "可以为 0" in reason
+    assert "placement.position" in reason and "top" in reason
+    assert drawing == before
+
+
+@pytest.mark.parametrize("field", ["width", "height", "depth", "radius", "custom_length"])
+@pytest.mark.parametrize("value", [0, -0.5, float("nan"), float("inf")])
+def test_invalid_size_reports_its_field_without_replacing_the_value(drawing, field, value):
+    drawing["components"][0]["size"][field] = value
+    with pytest.raises(DesignContractError) as caught:
+        document(drawing)
+    assert f"/components/0/size/{field}" in str(caught.value)
+    assert drawing["components"][0]["size"][field] is value
+
+
+def test_zero_sill_height_and_negative_normal_offset_are_positions(drawing):
+    drawing["components"][0]["placement"].update(sill_height=0, normal_offset=-0.2)
+    result = document(drawing).decisions.components[0]
+    assert result.placement.sill_height == 0
+    assert result.placement.normal_offset == -0.2
+    assert result.size == drawing["components"][0]["size"]
+
+
+@pytest.mark.parametrize("field", ["sill_height", "offset", "normal_offset", "floor"])
+def test_positive_position_parameter_in_size_is_not_silently_ignored(drawing, field):
+    drawing["components"][0]["size"][field] = 0.6 if field != "floor" else 1
+    with pytest.raises(DesignContractError) as caught:
+        document(drawing)
+    reason = str(caught.value)
+    assert f"/components/0/size/{field}" in reason and f"placement.{field}" in reason
+    assert "[key]" not in reason
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("streaming", [True, False])
+async def test_format_retry_repairs_face_and_sill_in_one_call_without_deep_thinking(drawing, monkeypatch, streaming):
+    drawing["components"] = [
+        {"id": "living_room_window_01", "type": "floor_window_group", "host": "main",
+         "size": {"width": 4.5, "height": 3, "sill_height": 0},
+         "placement": {"face": "back", "floor": 1, "offset": 1.5}},
+        {"id": "roof_soffit", "type": "eave_soffit", "host": "wing",
+         "size": {"width": 6.5, "depth": 1.2}, "placement": {"face": "top", "floor": 1}},
+    ]
+    options, prompts, notes = [], [], []
+    async def model(_llm, messages, **kwargs):
+        prompts.append(messages[0]["content"])
+        output = deepcopy(drawing)
+        if len(prompts) == 2:
+            assert "/components/0/size/sill_height" in prompts[-1]
+            assert "/components/1/placement/face" in prompts[-1]
+            output["components"][0]["placement"]["sill_height"] = output["components"][0]["size"].pop("sill_height")
+            output["components"][1]["placement"] = {"position": [13.5, 3.3, 4]}
+        return SimpleNamespace(content=json.dumps(output), token_usage=None)
+    async def collect(node, text):
+        notes.append((node, text))
+    monkeypatch.setattr(design_workflow, "stream_llm", model)
+    monkeypatch.setattr(design_workflow, "invoke_llm", model)
+    monkeypatch.setattr(design_workflow, "create_llm", lambda **kwargs: options.append(kwargs))
+    raw, diag = await design_workflow.draft_design(
+        base_prompt=build_architecture_plan_prompt(""), user_request="设计别墅",
+        validate=document, thinking_mode=True, on_reasoning_delta=collect if streaming else None)
+    assert diag["settled"] and diag["model_calls"] == 2
+    assert [o["enable_thinking"] for o in options] == [True, False]
+    assert len(notes) == (1 if streaming else 0)
+    if streaming:
+        assert "size/sill_height" in notes[0][1] and "placement/face" in notes[0][1]
+    assert raw["components"][0]["size"] == {"width": 4.5, "height": 3}
+    assert raw["components"][0]["placement"]["sill_height"] == 0
+    assert raw["components"][1]["placement"]["position"] == [13.5, 3.3, 4]
+    assert raw["roof"] == drawing["roof"] and raw["volumes"] == drawing["volumes"]
+
+
 def test_retry_receives_all_missing_paths_and_preserves_free_design(drawing, monkeypatch):
     rejected = deepcopy(drawing)
     for volume in rejected["volumes"]:

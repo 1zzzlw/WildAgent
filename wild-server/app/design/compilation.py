@@ -5,7 +5,7 @@ from collections import Counter
 
 from .contracts import DesignDocument, ResolvedDesign, ResolvedLevel
 
-RESOLVER_VERSION = "drawing-projection/5"
+RESOLVER_VERSION = "drawing-projection/8"
 
 
 def compile_document(document: DesignDocument):

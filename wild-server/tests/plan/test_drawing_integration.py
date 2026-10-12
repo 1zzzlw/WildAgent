@@ -162,6 +162,27 @@ def test_body_floor_guard_is_used_by_fragment_validation():
         impl._accept_group(base, {"geometry": {"elements": [bad]}}, {"type": "building_body", "design": design})
 
 
+@pytest.mark.parametrize("offset", [-11, 0, 19])
+def test_floor_edge_uses_same_actual_wall_margin_in_incremental_and_group_checks(offset):
+    from app.design.markers import body_floor_errors
+    from tests.plan.test_drawing_implementation import drawing as single_drawing, empty_state
+    document = single_drawing()
+    document.decisions.volumes[0].x = document.decisions.volumes[0].z = offset
+    state = empty_state(document)
+    design = component_markers(document)[0]["design"]
+    host = {"id": "host", "type": "wall", "from": [offset, 0, offset],
+            "to": [offset+10, 3, offset], "thickness": 0.24}
+    slab = {"id": "slab", "type": "floor", "from": [offset-0.12, -0.18, offset-0.12],
+            "to": [offset+10.12, -0.18, offset+8.12], "thickness": 0.18}
+    assert body_floor_errors([host, slab], design) == []
+    base = state["skeleton_blueprint"]
+    base["geometry"]["elements"] = [host]
+    impl._accept_group(base, {"geometry": {"elements": [slab]}}, {"type": "building_body", "design": design})
+    invalid = {**slab, "from": [offset-0.5, -0.18, offset-0.5]}
+    with pytest.raises(ValueError, match="体量并集"):
+        impl._accept_group(base, {"geometry": {"elements": [invalid]}}, {"type": "building_body", "design": design})
+
+
 def test_final_gate_rechecks_body_footprint_despite_valid_implementation_fingerprint():
     from app.agent.validation.candidate import evaluate_candidate
     from app.agent.validation.diagnostics import blueprint_fingerprint

@@ -51,9 +51,7 @@ import type { ScenePatch } from '../types/scenePatch'
 
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
-const STORAGE_KEY_THINKING_MODE = 'wild_thinking_mode'
 const STORAGE_KEY_DETAIL_LEVEL = 'wild_detail_level'
-const STORAGE_KEY_PRECISION_MODE = 'wild_precision_mode'
 const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
@@ -69,18 +67,8 @@ function compactSessionTitle(name: string, maxLength = 16): string {
     : `${firstClause.slice(0, maxLength)}…`
 }
 
-function loadThinkingMode(): boolean {
-  // 精密模式开启时强制启用思考，避免页面刷新后状态不一致
-  if (loadPrecisionMode()) return true
-  return localStorage.getItem(STORAGE_KEY_THINKING_MODE) !== 'false'
-}
-
 function loadDetailLevel(): BuildingDetailLevel {
   return BUILDING_DETAIL_LEVELS.find(level => level.value === localStorage.getItem(STORAGE_KEY_DETAIL_LEVEL))?.value || 'simple'
-}
-
-function loadPrecisionMode(): boolean {
-  return localStorage.getItem(STORAGE_KEY_PRECISION_MODE) === 'true'
 }
 
 function loadProceduralMaterialsEnabled(): boolean {
@@ -211,14 +199,13 @@ export const useAgentStore = defineStore('agent', () => {
   const isProcessing = ref(false)
   const currentStep = ref<string>('')
 
-  /** 用户偏好与模型接口实际返回的思考内容 */
-  const thinkingMode = ref(loadThinkingMode())
+  /** 模型接口实际返回的思考内容 */
   const detailLevel = ref<BuildingDetailLevel>(loadDetailLevel())
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
 
-  /** 精密模式：按节点分组的思考内容 */
+  /** 按节点分组的思考内容 */
   interface NodeThinking {
     node: string
     content: string
@@ -237,19 +224,16 @@ export const useAgentStore = defineStore('agent', () => {
   const blueprintLoaded = ref(false)
   const lastBlueprintPath = ref<string>('')
 
-  /** 精密模式：LangGraph 分片并行 + 详细诊断日志 */
-  const precisionMode = ref(loadPrecisionMode())
-
   /** AI 是否允许自动选择程序化 Shader；默认关闭，由用户显式开启。 */
   const proceduralMaterialsEnabled = ref(loadProceduralMaterialsEnabled())
 
-  /** 精密模式：节点生成进度列表 */
+  /** 节点生成进度列表 */
   const generatingNodes = ref<GeneratingNode[]>([])
 
-  /** 精密模式：调试日志（节点诊断 RAG/LLM 数据） */
+  /** 调试日志（节点诊断 RAG/LLM 数据） */
   const debugLogs = ref<Array<{ category: string; data: NodeDiagnostic | ErrorDiagnostic }>>([])
 
-  /** 精密模式：最终性能汇总 */
+  /** 最终性能汇总 */
   const sessionMetrics = ref<SessionMetrics | null>(null)
 
   const hasMessages = computed(() => session.value.messages.length > 0)
@@ -698,22 +682,13 @@ export const useAgentStore = defineStore('agent', () => {
     pipelineSteps.value = []
   }
 
-  function setThinkingMode(enabled: boolean) {
-    thinkingMode.value = enabled
-    localStorage.setItem(STORAGE_KEY_THINKING_MODE, String(enabled))
-    if (!enabled) {
-      clearThinkingState()
-    }
-  }
-
   function setDetailLevel(level: BuildingDetailLevel) {
     detailLevel.value = level
     localStorage.setItem(STORAGE_KEY_DETAIL_LEVEL, level)
   }
 
   function appendThinkingContent(delta: string, nodeName?: string) {
-    if (precisionMode.value && nodeName) {
-      // 精密模式：按节点分组存储
+    if (nodeName) {
       const existing = nodeThinkingMap.value.get(nodeName)
       if (existing) {
         existing.content += delta
@@ -728,7 +703,6 @@ export const useAgentStore = defineStore('agent', () => {
       // 触发响应式更新
       nodeThinkingMap.value = new Map(nodeThinkingMap.value)
     } else {
-      // 非精密模式：累加到单一内容
       thinkingContent.value += delta
     }
   }
@@ -906,7 +880,7 @@ export const useAgentStore = defineStore('agent', () => {
     pendingPatch.value = null
     pipelineSteps.value = []
     clearThinkingState()
-    clearPrecisionState()
+    clearExecutionState()
     blueprintLoaded.value = false
   }
 
@@ -986,15 +960,7 @@ export const useAgentStore = defineStore('agent', () => {
     blueprintLoaded.value = false
   }
 
-  // ── 精密模式 ──
-
-  function setPrecisionMode(enabled: boolean) {
-    precisionMode.value = enabled
-    localStorage.setItem(STORAGE_KEY_PRECISION_MODE, String(enabled))
-    if (!enabled) {
-      clearPrecisionState()
-    }
-  }
+  // ── 节点执行状态 ──
 
   function setProceduralMaterialsEnabled(enabled: boolean) {
     proceduralMaterialsEnabled.value = enabled
@@ -1063,7 +1029,7 @@ export const useAgentStore = defineStore('agent', () => {
     sessionMetrics.value = metrics
   }
 
-  function clearPrecisionState() {
+  function clearExecutionState() {
     generatingNodes.value = []
     nodeThinkingMap.value.clear()
     debugLogs.value = []
@@ -1144,31 +1110,27 @@ export const useAgentStore = defineStore('agent', () => {
     pipelineSteps,
     addPipelineStep,
     clearPipelineSteps,
-    thinkingMode,
     detailLevel,
     setDetailLevel,
     thinkingContent,
     thinkingStatus,
     thinkingNotice,
     nodeThinkingMap,
-    setThinkingMode,
     appendThinkingContent,
     completeNodeThinking,
     completeAllGeneratingNodes,
     setThinkingStatus,
     clearThinkingState,
-    // 精密模式
-    precisionMode,
+    // 节点执行状态
     generatingNodes,
     debugLogs,
     sessionMetrics,
-    setPrecisionMode,
     proceduralMaterialsEnabled,
     setProceduralMaterialsEnabled,
     updateGeneratingNode,
     addDebugLog,
     setSessionMetrics,
-    clearPrecisionState,
+    clearExecutionState,
     clearDebugLogs,
   }
 })

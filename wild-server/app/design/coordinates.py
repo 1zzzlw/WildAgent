@@ -55,7 +55,7 @@ def rectangle_uncovered_area(bounds, regions):
 
 
 def opening_coordinate_errors(markers):
-    """显式门窗的沿墙距离必须落在本体量宿主内；不猜测或改写世界坐标。"""
+    """核对门窗范围，按实际越界方向反馈；不猜测或改写设计坐标。"""
     from app.agent.knowledge.component_names import resolve_component_name
     errors = []
     for marker in markers:
@@ -68,16 +68,47 @@ def opening_coordinate_errors(markers):
         length = hypot(b[0]-a[0], b[2]-a[2])
         along, y, _ = spec["from"]
         size = design.get("size") or {}
-        if (along < -0.001 or along+size.get("width", 0) > length+0.001
-                or y < a[1]-0.001 or y+size.get("height", 0) > b[1]+0.001):
+        width, height = size.get("width", 0), size.get("height", 0)
+        world = bool(design["placement"].get("position"))
+        problems = []
+        if along < -0.001 or along+width > length+0.001:
+            message = f"沿墙范围 [{along:g}, {along+width:g}]m，宿主允许 [0, {length:g}]m，窗宽={width:g}m；"
+            if width > length:
+                message += ("当前宽度没有可用沿墙位置" if world else "当前宽度没有可用 offset") + "，须显式修订宽度或宿主"
+            elif world:
+                message += (f"position 沿宿主 from→to 的中心距离={along+width/2:g}m，"
+                            f"保留宽度时中心距离的可用范围 [{width/2:g}, {length-width/2:g}]")
+            else:
+                message += f"offset={along:g} 是沿墙局部距离，保留宽度时 offset 的可用范围 [0, {length-width:g}]"
+            problems.append(message)
+        if y < a[1]-0.001 or y+height > b[1]+0.001:
+            message = f"竖向范围 [{y:g}, {y+height:g}]m，宿主允许 [{a[1]:g}, {b[1]:g}]m，墙高={b[1]-a[1]:g}m；"
+            if world:
+                message += f"position[1] 是世界中心 Y，窗高={height:g}m；"
+                if height <= b[1]-a[1]:
+                    message += f"保留窗高时 position[1] 的可用范围 [{a[1]+height/2:g}, {b[1]-height/2:g}]"
+                else:
+                    message += "当前窗高没有可用中心位置，须显式修订窗高或宿主"
+            else:
+                message += f"sill_height={y-a[1]:g}m 是相对本层墙底的高度，窗高={height:g}m；"
+                if height <= b[1]-a[1]:
+                    message += f"保留窗高时 sill_height 的可用范围 [0, {b[1]-a[1]-height:g}]"
+                else:
+                    message += "当前窗高没有可用 sill_height，须显式修订窗高或宿主"
+            message += "；"
+            if a[1] <= y < b[1]:
+                message += f"保留窗底时 height 的可用范围 (0, {b[1]-y:g}]"
+            else:
+                message += "窗底已超出可安装范围，需修订位置或宿主，不能只改窗高"
+            problems.append(message)
+        if problems:
             errors.append(f"{marker['design_path']}/placement：{marker['id']} 的门窗范围超出宿主 {wall['id']}；"
-                          f"offset={along} 是沿墙局部距离，墙长 {length:.3f}m，标高范围 [{a[1]}, {b[1]}]；"
-                          "需要显式修订位置、尺寸或宿主，不能把世界 X/Z 填入 offset")
+                          + "；".join(problems) + "；只修对应方向的位置或明确调整尺寸/宿主，保留未受影响的设计")
     return errors
 
 
 def exterior_facade_intervals(volume, face, floor, volumes):
-    """矩形体量并集的外露墙段，返回沿图纸墙方向的距离区间。"""
+    """自动立面使用的外露墙段；同向共面区域只分配给一个体量。"""
     axis = "x" if face in {"front", "back"} else "z"
     extent = "width" if axis == "x" else "depth"
     normal, normal_extent = ("z", "depth") if axis == "x" else ("x", "width")
@@ -90,7 +121,9 @@ def exterior_facade_intervals(volume, face, floor, volumes):
             continue
         low, high = getattr(other, normal), getattr(other, normal)+getattr(other, normal_extent)
         inside = low <= plane+0.001 and high > plane+0.001 if positive else low < plane-0.001 and high >= plane-0.001
-        if not inside:
+        shared = plane == (high if positive else low)
+        owner = (-getattr(other, extent), other.id) < (-length, volume.id)
+        if not inside and not (shared and owner):
             continue
         start = max(0.0, getattr(other, axis)-origin)
         end = min(length, getattr(other, axis)+getattr(other, extent)-origin)

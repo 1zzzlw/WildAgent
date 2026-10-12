@@ -85,9 +85,7 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   scene_summary?: SceneSummary
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
-  thinking_mode?: boolean              // 是否让模型开启思考并流式返回 reasoning_content
   detail_level?: BuildingDetailLevel
-  precision_mode?: boolean             // 是否启用 LangGraph 精密模式（分片并行 + 详细日志）
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
   /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */
   recent_messages?: Array<{
@@ -238,7 +236,7 @@ export interface ThinkingDeltaResponse extends AgentProtocolEnvelope {
   type: 'thinking_delta'
   request_id: string
   session_id?: string
-  node?: string  // 精密模式下，标识是哪个节点的思考内容
+  node?: string  // 标识是哪个节点的思考内容
   channel?: 'reasoning' | 'progress'
   delta: string
 }
@@ -372,7 +370,7 @@ export interface AgentSession {
   connected: boolean
 }
 
-/** 精密模式：后端推送的节点诊断日志 */
+/** 后端推送的节点诊断日志 */
 export interface DebugLogResponse extends AgentProtocolEnvelope {
   type: 'debug_log'
   request_id: string
@@ -427,7 +425,7 @@ export interface SessionMetrics {
   status: string
 }
 
-/** 精密模式：节点生成进度 */
+/** 节点生成进度 */
 export interface GeneratingNode {
   name: string
   label: string

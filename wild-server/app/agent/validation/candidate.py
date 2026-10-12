@@ -78,9 +78,11 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                     else:
                         if marker["type"] == "building_body":
                             append("design_body_footprint", body_floor_errors([actual[i] for i in ids], marker["design"]))
-                        from app.design.relations import opening_design_errors, roof_design_errors
+                        from app.design.relations import opening_design_errors, roof_design_errors, railing_design_errors
+                        marker["host_entity_ids"] = (records.get(marker.get("host")) or {}).get("entity_ids", [marker.get("host")])
                         append("design_opening_placement", opening_design_errors(blueprint, [actual[i] for i in ids], marker))
                         append("design_roof_surface", roof_design_errors(blueprint, [actual[i] for i in ids], marker))
+                        append("design_railing_placement", railing_design_errors(blueprint, [actual[i] for i in ids], marker))
                 elif record.get("status") == "abandoned":
                     attempts = record.get("attempts") or []
                     stages = {t.get("stage") for t in attempts}

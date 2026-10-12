@@ -19,8 +19,8 @@ def _catalog_for_files(signature):
     names = {kind: {"kind": kind, "label": config.label, "entity_type": config.entity_type,
                     "aliases": {kind, config.label}, "references": []}
              for kind, config in COMPONENT_REGISTRY.items()}
-    names["door"]["aliases"].update({"入口门", "主入口门", "entrance door"})
-    names["window"]["aliases"].update({"厨房窗", "卧室窗"})
+    names["door"]["aliases"].update({"入口门", "主入口门", "entrance door", "entrance"})
+    names["window"]["aliases"].update({"厨房窗", "卧室窗", "glazing"})
     for kind, label in (("building_body", "建筑主体"), ("assembly", "组合构件"),
                         ("wall", "墙体"), ("floor", "楼板"), ("beam", "梁")):
         names[kind] = {"kind": kind, "label": label, "entity_type": kind if kind in {"wall", "floor", "beam"} else "",

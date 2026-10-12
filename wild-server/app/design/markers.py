@@ -8,17 +8,24 @@ def body_floor_errors(entities, design):
     """主体矩形楼板不能把多体量的空缺填成整栋包围盒；只检查，不裁剪。"""
     from .contracts import MassingDecision
     from .coordinates import representative_floor_indices, rectangle_uncovered_area
+    from math import isfinite
+    from app.tools.spatial_tools import _is_finite_vector3, _is_positive_number
     volumes = design.get("volumes") or []
     if not volumes or not design.get("massing"):
         return []
     massing = MassingDecision.model_validate(design["massing"])
     indices = representative_floor_indices(massing)
-    margin = max((e.get("thickness", 0) / 2 for e in entities if e.get("type") == "wall"), default=0)
+    margin = max((e["thickness"] / 2 for e in entities
+                  if e.get("type") == "wall" and _is_positive_number(e.get("thickness"))
+                  and isfinite(e["thickness"])), default=0)
     errors = []
     for floor in entities:
         if floor.get("type") != "floor" or floor.get("shape", "rect") != "rect":
             continue
-        a, b = floor["from"], floor["to"]
+        a, b = floor.get("from"), floor.get("to")
+        if not (_is_finite_vector3(a) and _is_finite_vector3(b) and _is_positive_number(floor.get("thickness"))
+                and isfinite(floor["thickness"])):
+            continue  # 格式错误交给 WILD Schema；此处只判断可计算的空间范围。
         top = a[1] + floor["thickness"]
         regions = [(v["x"]-margin, v["z"]-margin, v["x"]+v["width"]+margin, v["z"]+v["depth"]+margin)
                    for v in volumes if (indices[v["start_floor"]-1]-1)*massing.floor_height-0.25 <= top
@@ -27,18 +34,22 @@ def body_floor_errors(entities, design):
         z0, z1 = sorted((a[2], b[2]))
         outside = rectangle_uncovered_area((x0, z0, x1, z1), regions)
         if outside > 0.001:
-            errors.append(f"❌ [{floor['id']}] 主体楼板超出该标高体量并集 {outside:.3f}㎡；按体量分片保留庭院空缺，不能填满包围盒")
+            errors.append(f"❌ [{floor['id']}] 主体楼板超出该标高体量并集 {outside:.3f}㎡；"
+                          f"当前 X/Z 范围 [{x0:g}, {x1:g}] × [{z0:g}, {z1:g}]，允许覆盖区域 {regions}；"
+                          "from/to 是世界端点，体量 x/z 是起点；按体量分片保留庭院空缺，不能改成原点居中或填满包围盒")
     return errors
 
 
-def _explicit_opening_locations(d, explicit, indices):
+def _explicit_facade_locations(d, explicit, indices):
     from app.agent.knowledge.component_names import resolve_component_name
     locations, covered = {}, {}
     for item in explicit:
-        if resolve_component_name(item["type"])["entity_type"] not in {"door", "window"}:
-            continue
+        family = resolve_component_name(item["type"])["entity_type"] or item["type"]
         placement = item.get("placement") or {}
         position = placement.get("position")
+        size = item.get("size") or {}
+        extension = size.get("depth", 0)/2 if family in {"balcony", "canopy"} else 0
+        y = position[1] + size.get("height", 0)/2 if position and family == "balcony" else position[1] if position else 0
         for volume in d.volumes:
             for face, facade in {**d.facades, **volume.facades}.items():
                 # 墙方向与 project_drawing 的 from/to 一致。
@@ -55,14 +66,18 @@ def _explicit_opening_locations(d, explicit, indices):
                     direct = item["host"] == host
                     local = (item["host"] == volume.id and placement.get("face") == face
                              and placement.get("floor") == floor)
-                    on_volume = (item["host"] == volume.id and position and distance <= 0.3
+                    on_volume = (family in {"door", "window", "balcony", "canopy"}
+                        and item["host"] == volume.id and position and distance <= 0.3+extension
+                        and placement.get("face") in {None, face} and placement.get("floor") in {None, floor}
                         and 0 <= along <= length
-                        and (indices[floor-1]-1)*d.massing.floor_height <= position[1] < indices[floor-1]*d.massing.floor_height)
+                        and (indices[floor-1]-1)*d.massing.floor_height <= y
+                        and (y < indices[floor-1]*d.massing.floor_height or (family == "balcony"
+                            and floor == volume.end_floor and position[1] <= indices[floor-1]*d.massing.floor_height)))
                     if not direct and not on_volume and not local:
                         continue
                     locations[item["id"]] = host
                     bay = placement.get("bay", item.get("bay"))
-                    width = (item.get("size") or {}).get("width")
+                    width = size.get("width")
                     if bay:
                         occupied = {bay}
                     elif position and width:
@@ -76,7 +91,8 @@ def _explicit_opening_locations(d, explicit, indices):
                                     and b*length/facade.bays > left+0.001}
                     else:
                         occupied = set()
-                    covered.setdefault(host, set()).update(occupied)
+                    group = "opening" if family in {"door", "window"} else family
+                    covered.setdefault((group, host), set()).update(occupied)
     return locations, covered
 
 
@@ -88,7 +104,7 @@ def component_markers(document):
     explicit = [i.model_dump(mode="json", exclude_none=True) for i in d.components]
     body_components = [i for i in explicit if resolve_component_name(i["type"])["kind"] == "building_body"]
     body_ids = {i["id"] for i in body_components}
-    locations, covered = _explicit_opening_locations(d, explicit, indices)
+    locations, covered = _explicit_facade_locations(d, explicit, indices)
     delegated = [i for i in explicit if resolve_component_name(i["type"])["entity_type"] in {"stair", "floor", "column", "beam"}]
     rows = [{"id": "building_body", "type": "building_body", "host": "", "depends_on": [],
              "design": {k: v for k, v in d.model_dump(mode="json").items()
@@ -96,14 +112,25 @@ def component_markers(document):
              "entity": {}}]
     rows[0]["design"]["delegated_components"] = delegated
     rows[0]["design"]["body_components"] = body_components
-    explicit_openings = {}
+    if (d.massing.representation_mode == "full" and d.massing.modeled_floors > 1
+            and not any(resolve_component_name(i["type"])["entity_type"] == "stair" for i in explicit)
+            and any(term in (d.circulation.vertical_strategy + " " + (d.circulation.model_dump().get("description") or "")).casefold()
+                    for term in ("stair", "楼梯"))):
+        stair_id = "circulation_stair"
+        while any(i["id"] == stair_id for i in explicit):
+            stair_id += "_auto"
+        rows.append({"id": stair_id, "type": "stair", "host": "", "depends_on": ["building_body"],
+                     "design_path": "/decisions/circulation", "entity": {},
+                     "design": {"type": "stair", "circulation": d.circulation.model_dump(mode="json"),
+                                "massing": d.massing.model_dump(mode="json")}})
+    explicit_facades = {}
     wall_floors = {}
     for item in explicit:
         family = resolve_component_name(item["type"])["entity_type"]
         placement = item.get("placement") or {}
         has_extent = (item.get("size") or {}).get("width") and "offset" in placement
-        if family in {"door", "window"} and not placement.get("position") and not has_extent:
-            explicit_openings.setdefault((family, locations.get(item["id"], item["host"])), []).append(item)
+        if not placement.get("position") and not has_extent:
+            explicit_facades.setdefault((family, locations.get(item["id"], item["host"])), []).append(item)
     for v in d.volumes:
         for face, facade in {**d.facades, **v.facades}.items():
             for floor in range(v.start_floor, v.end_floor+1):
@@ -123,9 +150,10 @@ def component_markers(document):
                     exposed = exterior_facade_intervals(v, face, floor, d.volumes)
                     if not any(left <= center <= right for left, right in exposed):
                         continue
-                    if family in {"door", "window"} and bay in covered.get(host, set()):
+                    group = "opening" if family in {"door", "window"} else family
+                    if bay in covered.get((group, host), set()):
                         continue
-                    candidates = explicit_openings.get((family, host), [])
+                    candidates = explicit_facades.get((family, host), [])
                     matching = next((i for i in candidates if (i.get("placement") or {}).get("bay", i.get("bay")) == bay), None)
                     matching = matching or next((i for i in candidates if not (i.get("placement") or {}).get("bay", i.get("bay"))), None)
                     if matching:
@@ -206,6 +234,14 @@ def implementation_records(state):
             for key, value in (diag.get("implementations") or {}).items()}
 
 
+def merge_marker_resources(blueprint, diag):
+    for key in ("materials", "assets"):
+        for name, definition in (diag.get(key) or {}).items():
+            if name in blueprint[key] and blueprint[key][name] != definition:
+                raise ValueError(f"/{key}/{name} 的片段定义冲突；不能按合并顺序覆盖材质或资产")
+            blueprint[key].setdefault(name, deepcopy(definition))
+
+
 def implementation_complete(record):
     return bool(record and record.get("status") in {"implemented", "abandoned"})
 
@@ -228,7 +264,6 @@ def assemble_marker_results(document, state):
     for diag in (state.get("component_diagnostics") or {}).values():
         for bucket in ("elements", "components"):
             blueprint["geometry"][bucket].extend(deepcopy(entities[i]) for i in diag.get(bucket, []) if i in entities)
-        blueprint["materials"].update(diag.get("materials") or {})
-        blueprint["assets"].update(diag.get("assets") or {})
+        merge_marker_resources(blueprint, diag)
     missing = sorted(i for i in expected if not implementation_complete(records.get(i)))
     return blueprint, missing

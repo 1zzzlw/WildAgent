@@ -29,29 +29,6 @@ class RAGRetrievalRejected(RuntimeError):
         self.decision = decision
 
 
-_CHAT_QUERY_MARKERS = (
-    "什么", "为什么", "怎么", "如何", "哪些", "多少", "多高",
-    "介绍", "解释", "区别", "特点", "规则", "参数", "是否", "吗", "？", "?",
-)
-
-
-def infer_retrieval_purpose(message: str, fast_intent: str | None) -> str:
-    """为快速模式选择 Gate 语义；歧义请求优先避免误拒建筑生成。
-
-    明确生成/编辑直接按 generation 处理；明确问句按 chat 处理；仅有建筑名等
-    无动词短语无法可靠分类，因此按 generation 降级，让后续 Agent 决定意图。
-    """
-
-    if fast_intent in {"generate", "edit"}:
-        return "generation"
-    if fast_intent == "chat":
-        return "chat"
-    text = str(message or "").strip()
-    if any(marker in text for marker in _CHAT_QUERY_MARKERS):
-        return "chat"
-    return "generation"
-
-
 def evaluate_retrieval_gate(
     hits: Iterable[Any],
     *,

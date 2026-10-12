@@ -75,7 +75,7 @@ class DurableEventSink:
 
 
 class GenerationJobService:
-    """让快速与精密模式的图任务独立于任意一条 WebSocket 连接。"""
+    """让图任务独立于任意一条 WebSocket 连接。"""
 
     def __init__(self, database_path: Path = DEFAULT_CHECKPOINT_PATH):
         self.database_path = Path(database_path)

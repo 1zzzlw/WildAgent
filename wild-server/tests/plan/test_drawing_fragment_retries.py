@@ -47,10 +47,15 @@ def test_echo_without_corrected_geometry_keeps_original_failed_fragment(monkeypa
         contexts.append(json.loads(messages[1]["content"]))
         return reply("building_body", [stable, bad] if len(contexts) == 1 else [stable])
     monkeypatch.setattr(invocation, "invoke_llm", model)
-    updates, status, _, _, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
+    updates, status, _, message, trace = run(impl.run_marker_generate(state, task(state, "building_body")))
     assert status == "aborted" and not updates["component_fragments"][task(state, "building_body").id]
     assert contexts[1]["failed_implementations"]["building_body"]["geometry"]["elements"] == [bad]
     assert contexts[2]["failed_implementations"]["building_body"]["geometry"]["elements"] == [bad]
+    assert "没有生成有效实体" not in message
+    assert "slab" in message
+    assert contexts[2]["validation_feedback"] == contexts[1]["validation_feedback"]
+    echoes = [t for t in trace if t.get("stage") in {"repair_1", "repair_2"}]
+    assert all(t["repeated_entity_ids"]["building_body"] == [stable["id"]] for t in echoes)
 
 
 @pytest.mark.parametrize("geometry", [None, [], "invalid"])

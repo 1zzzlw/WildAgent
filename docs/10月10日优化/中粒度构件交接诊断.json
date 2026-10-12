@@ -1,0 +1,98 @@
+{
+  "marker_counts": {
+    "old": 35,
+    "new": 34
+  },
+  "removed": [
+    "balcony_main_front_L2_2"
+  ],
+  "roof_wing": {
+    "old_error": "❌ [roof_wing_shed] 图纸标记 roof_wing：屋面未覆盖负责体量及出檐，缺少 50.160㎡；生成连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box",
+    "current_error": "❌ [roof_wing_shed] 图纸标记 roof_wing：屋面未覆盖负责体量及出檐，缺少 0.041㎡；目标 X/Z 范围 (13.2, 1.7, 20.8, 8.3)，已有上表面投影 [(13.2, 1.706329970362138, 20.8, 8.311101086019516)]；核对倾斜后的投影尺寸及中心，保持连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box",
+    "offline_correction": {
+      "before_position": [
+        17,
+        3.65,
+        5
+      ],
+      "after_position": [
+        17,
+        3.65,
+        4.991284471809173
+      ],
+      "dimensions_and_slope_unchanged": true
+    },
+    "offline_corrected_fragment_passes": true
+  },
+  "entrance_canopy_01": {
+    "old_error": "设计尺寸 height=0.3，实际 thickness=0.15",
+    "current_error": "设计尺寸 height=0.3，实际 thickness=0.15；/geometry/components/0/thickness 应写 thickness=0.3，安装标高另写 from/position",
+    "offline_correction": {
+      "field": "thickness",
+      "before": 0.15,
+      "after": 0.3
+    },
+    "offline_corrected_fragment_passes": true
+  },
+  "balcony_railing_01": {
+    "old_error": null,
+    "current_error": "❌ [component:balcony_railing_01] parentFloor='balcony_01' 引用的基础构件不存在；必须指向 floor",
+    "offline_correction": {
+      "remove_invalid_parentFloor": true,
+      "native_world_path": [
+        [
+          5,
+          3.5,
+          -0.12
+        ],
+        [
+          5,
+          3.5,
+          -1.62
+        ],
+        [
+          9,
+          3.5,
+          -1.62
+        ],
+        [
+          9,
+          3.5,
+          -0.12
+        ]
+      ],
+      "decorative_paths_mirrored_to_actual_exterior": true
+    },
+    "offline_corrected_fragment_passes": true
+  },
+  "current_final_errors": [
+    "❌ [component:balcony_railing_01] parentFloor='balcony_01' 引用的基础构件不存在；必须指向 floor",
+    "❌ [balcony_01] 与 [balcony_main_front_L2_2] 阳台板重叠；核对立面标记和显式实例是否重复表达同一阳台",
+    "❌ [design] ❌ [balcony_railing_01] 图纸标记 balcony_railing_01：栏杆路径未落在实际阳台 balcony_01 的板顶范围；世界边缘 path=[[5.0, 3.5, -0.12], [5.0, 3.5, -1.62], [9.0, 3.5, -1.62], [9.0, 3.5, -0.12]]，核对室外方向、标高和 parentFloor 坐标语义"
+  ],
+  "request_id": "req_1791727059177_zt048yw0e",
+  "session_id": "session_1791724534757",
+  "method": "原始本地记录与片段回放；修正后的片段为离线验证样本，没有调用真实模型",
+  "original_core_diagnostics": [
+    {
+      "level": "error",
+      "code": "COMPONENT_COMPILE_FAILED",
+      "message": "依附目标 \"balcony_01\" 不存在",
+      "elementId": "balcony_railing_01",
+      "elementType": "railing"
+    }
+  ],
+  "knowledge_index": {
+    "verified_chunks": 7,
+    "all_persisted_documents_match_current_source": true,
+    "manual_index_rebuild": false
+  },
+  "render_review": "未重新调用模型生成，也未进行浏览器渲染验收；夜间环境与几何实现分开核对",
+  "verification": {
+    "related_regressions_passed": 855,
+    "existing_test_double_deprecation_warnings": 2,
+    "real_model_calls": 0,
+    "visual_render_acceptance": false,
+    "original_core_compile_failures": 1
+  }
+}

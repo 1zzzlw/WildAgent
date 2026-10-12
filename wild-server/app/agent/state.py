@@ -32,6 +32,8 @@ IntentName = Literal["generate", "edit", "chat"]
 #: 是 edit + object，"生成一个别墅"是 generate + architecture。
 TargetKind = Literal["architecture", "object"]
 
+DetailLevel = Literal["minimal", "simple", "standard", "detailed"]
+
 
 class GenerationInput(TypedDict):
     """图的公开输入契约；其余 GenerationState 字段只能由节点产生。"""
@@ -44,8 +46,7 @@ class GenerationInput(TypedDict):
     selection: NotRequired[list[str]]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: NotRequired[list[dict]]  # 供意图分类参考的近期对话消息。
     workflow_state: NotRequired[str]  # 前端当前工作流状态，例如 idle、generating。
-    thinking_mode: NotRequired[bool]  # 是否开启模型深度思考及 reasoning 流式展示。
-    detail_level: NotRequired[str]  # minimal/simple/standard/detailed，对应低/中/高/极高。
+    detail_level: NotRequired[DetailLevel]  # minimal/simple/standard/detailed，对应低/中/高/极高。
     procedural_materials_enabled: NotRequired[bool]  # 是否允许使用程序化材质方案。
 
 
@@ -63,8 +64,8 @@ class GenerationState(TypedDict, total=False):
     selection: list[str]  # 前端当前选中的 Blueprint 元素 ID 列表。
     recent_messages: list[dict]  # 供意图分类和上下文判断使用的近期对话。
     workflow_state: str  # 前端传入的工作流状态，例如 idle、generating。
-    thinking_mode: bool  # 是否启用模型深度思考和 reasoning 流式展示。
-    detail_level: str  # 用户选择的建筑设计粒度，随任务持久化。
+    thinking_mode: bool  # 节点默认思考上下文；plan 条目单独按粒度控制。
+    detail_level: DetailLevel  # 用户选择的建筑设计粒度，随任务持久化。
     procedural_materials_enabled: bool  # 是否允许生成程序化材质。
 
     # ── Layer -1: 意图分类 ──

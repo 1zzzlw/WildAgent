@@ -75,6 +75,64 @@ def test_adjacent_volumes_do_not_receive_default_exterior_openings_on_shared_fac
     assert any(m["host"] == "wall_main_right_L2" for m in markers)
 
 
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("offset,reverse_order", [(-20, False), (15, True)])
+def test_coplanar_exterior_overlap_has_one_default_layout_and_preserves_explicit_design(monkeypatch, face, offset, reverse_order):
+    from app.design.contracts import VolumeDecision
+    from app.design.coordinates import exterior_facade_intervals
+    from app.design.markers import implementation_records
+    from tests.plan.test_drawing_implementation import drawing as single_drawing
+    document = single_drawing()
+    d = document.decisions
+    d.massing.width = d.massing.depth = 20
+    d.massing.floors = d.massing.modeled_floors = 2
+    main = VolumeDecision(id="primary", x=offset, z=offset, width=10, depth=10, start_floor=1, end_floor=2)
+    x, z = {"front": (8, 0), "back": (8, 5), "left": (0, 8), "right": (5, 8)}[face]
+    annex = VolumeDecision(id="secondary", x=x+offset, z=z+offset,
+                           width=4 if face in {"front", "back"} else 5,
+                           depth=5 if face in {"front", "back"} else 4, start_floor=1, end_floor=1)
+    d.volumes = [annex, main] if reverse_order else [main, annex]
+    d.facades = {f: FacadeDecision(bays=3, ground_pattern=["window", "empty", "window"],
+                                  upper_pattern=["window", "empty", "window"]) for f in d.facades}
+    d.components = []
+    original = document.model_dump(mode="json")
+    expected = [(0, 2)] if face in {"back", "left"} else [(2, 4)]
+    assert exterior_facade_intervals(annex, face, 1, d.volumes) == expected
+    assert exterior_facade_intervals(main, face, 1, d.volumes) == [(0, 10)]
+    assert exterior_facade_intervals(main, face, 2, d.volumes) == [(0, 10)]
+    state = empty_state(document)
+    markers = state["resolved_design"]["component_markers"]
+    host = f"wall_secondary_{face}_L1"
+    generated = [m for m in markers if m["host"] == host]
+    assert len(generated) == 1 and generated[0]["design"]["bay"] == (1 if face in {"back", "left"} else 3)
+    entities = [{k: deepcopy(w[k]) for k in ("id", "type", "from", "to")} | {"thickness": 0.24}
+                for w in state["drawing_hosts"]]
+    events = patch_services(monkeypatch, [reply("building_body", entities)])
+    updates, status, ids, _, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "succeeded" and events == ["rag", "model"]
+    record = implementation_records(updates)["building_body"]
+    assert record["assembly_changes"] and host in ids
+    assert document.model_dump(mode="json") == original
+    explicit = ComponentInstance(id="explicit_overlap_window", type="window", host=host,
+                                 placement={"offset": 2.7 if face in {"back", "left"} else 0.3},
+                                 size={"width": 0.6, "height": 1})
+    d.components.append(explicit)
+    assert any(m["id"] == explicit.id and m["design"] == explicit.model_dump(mode="json", exclude_none=True)
+               for m in component_markers(document))
+
+
+@pytest.mark.parametrize("reverse_order", [False, True])
+def test_identical_exterior_faces_choose_one_owner_independent_of_volume_order(reverse_order):
+    from app.design.contracts import VolumeDecision
+    from app.design.coordinates import exterior_facade_intervals
+    a = VolumeDecision(id="a", x=0, z=0, width=10, depth=8, start_floor=1, end_floor=1)
+    b = a.model_copy(update={"id": "b"})
+    volumes = [b, a] if reverse_order else [a, b]
+    for face in ("front", "back", "left", "right"):
+        assert exterior_facade_intervals(a, face, 1, volumes)
+        assert exterior_facade_intervals(b, face, 1, volumes) == []
+
+
 def installed_window(entity_id="opening", along=2, width=2.4, y=4.1, host="host"):
     return {"type": "window", "id": entity_id, "parentWall": host,
             "from": [along, y, 0], "width": width, "height": 1.8}

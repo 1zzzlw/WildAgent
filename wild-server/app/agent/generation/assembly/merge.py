@@ -162,6 +162,7 @@ def balcony_footprint(
     points = (start, end, outside_start, outside_end)
     return {
         "top_y": top_y,
+        "path": [[point[0], top_y, point[1]] for point in (start, outside_start, outside_end, end)],
         "bounds": (
             min(point[0] for point in points), max(point[0] for point in points),
             min(point[1] for point in points), max(point[1] for point in points),

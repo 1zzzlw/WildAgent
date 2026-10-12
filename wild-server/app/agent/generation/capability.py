@@ -35,7 +35,7 @@ from app.utils.blueprint_normalizer import SCHEMA_PATH
 
 #: 能力面版本。schema 或注册表变化时**内容会变但版本不变**—— 版本只标"这份查询面
 #: 的形状/语义有没有变"，不标"内容有没有变"（内容变更是正常的，改引擎就该变）。
-CAPABILITY_SURFACE_VERSION = "p6b.2"
+CAPABILITY_SURFACE_VERSION = "p6b.3"
 
 #: 查询状态闭集。新增状态要显式改这里（测试有守卫），别悄悄多一个 —— 状态一多，
 #: 调用方的 `if status == "unsupported"` 分支就会漏掉新情况。
@@ -165,9 +165,9 @@ _COORD_SEMANTICS: dict[str, str] = {
     "roof": "position[1]=承托墙顶世界Y；span始终为世界X覆盖尺寸，depth始终为世界Z覆盖尺寸，ridgeAxis只改变屋脊方向；gable的ridgeAxis=x时高度由半depth与坡角计算。eaveOutset仅用于chinese_pagoda，其他屋型用span/depth表达出檐，不能重复增加",
     "door": "from=[沿墙距离, 洞口底Y, 法向偏移]，from[0] 指开口左边缘",
     "window": "from=[沿墙距离, 窗台Y, 法向偏移]，from[0] 指开口左边缘",
-    "balcony": "from=[沿墙距离, 阳台板底Y, 法向偏移]",
-    "canopy": "from=[沿墙距离, 雨棚板底Y, 法向偏移]",
-    "railing": "path 为世界坐标折线（minItems=2），逐点Y 是栏杆底标高",
+    "balcony": "from=[沿墙距离, 阳台板顶Y, 法向偏移]，板底=from[1]-slabThickness",
+    "canopy": "from=[沿墙距离, 雨棚板中心Y, 法向偏移]，板底=from[1]-thickness/2",
+    "railing": "path 无parentFloor时为世界坐标折线；有parentFloor时为真实楼板顶面局部坐标，逐点Y为相对板顶高度",
     "stair": "from/to 为梯段起止点世界坐标",
     "column": "base 为柱底世界坐标，柱顶Y=base[1]+height",
     "beam": "from/to 为梁端点世界坐标",

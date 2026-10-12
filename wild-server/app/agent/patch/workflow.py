@@ -1,8 +1,7 @@
 """Blueprint 增量修改："patch" 节点实现。
 
-复用当前已经过 Blueprint 预检和完整校验流水线验证的统一 Agent 入口，
-但只接受 ScenePatch 结果。这样精密模式和快速模式拥有一致的编辑语义，
-同时保持 Patch 必须由前端确认后才能应用。
+直接调用模型生成 ScenePatch，并执行操作预检和完整校验。
+Patch 必须由前端确认后才能应用。
 
  与 ``repair/`` 的分工（两者不共用通道）：
 - **本模块** = 用户要的修改：编辑意图 → ScenePatch，落库前等前端确认。
@@ -39,14 +38,12 @@ async def patch_node(state: GenerationState) -> dict:
             await on_reasoning_delta("patch", delta)
 
     try:
-        result = await agent_service.query_structured(
+        result = await agent_service.query_patch(
             state.get("user_message", ""),
             current_blueprint,
             selection=state.get("selection", []),
             thinking_mode=state.get("thinking_mode", False),
             on_reasoning_delta=emit_reasoning if on_reasoning_delta else None,
-            expected_output="patch",
-            resolved_intent="edit",
         )
     except Exception as exc:
         logger.exception(f"[patch] 增量修改失败: {exc}")

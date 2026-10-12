@@ -14,7 +14,7 @@ Agent WebSocket API
     "scene_id": "scene_xxx",
     "scene_revision": 8,
     "message": "生成一座中式凉亭",
-    "thinking_mode": false,
+    "detail_level": "simple",
     "scene_summary": { "elements_count": 42, "types": [...], "bbox": {...} },
     "selection": []
   }
@@ -77,7 +77,6 @@ from app.rag.trace import (
     record_rag_error,
     record_rag_safety,
 )
-from app.services.agent_service import agent_service
 from app.services.agent_delivery import (
     ArtifactSaveError,
     GenerationRejectedError,
@@ -158,7 +157,7 @@ async def _emit_agent_step(
     label: str,
     detail: str,
 ) -> None:
-    """共享的结构化步骤事件；快速与精密模式使用同一 payload 形状。"""
+    """统一的结构化步骤事件。"""
     await _send_event(ws, {
         "type": "agent_step",
         "request_id": request_id,
@@ -377,7 +376,7 @@ async def agent_websocket(ws: WebSocket):
     """维护一个 Agent WebSocket 连接的完整生命周期。
 
     接收循环始终保持轻量，只负责解析协议、回复 ping 和启动后台生成任务；
-    耗时的 LLM 请求不会阻塞心跳。快速与精密模式都由持久化图托管；区别只在
+    耗时的 LLM 请求不会阻塞心跳。所有请求均由持久化图托管；按请求决定
     推理深度和复杂度目标。生成类请求都会先进入独立平面规划和人工确认。
     """
     await ws.accept()
@@ -556,11 +555,7 @@ async def agent_websocket(ws: WebSocket):
 
 
 async def _handle_user_message(ws: WebSocket, data: dict):
-    """兼容旧调用和单元测试的直接处理入口。
-
-    实际 WebSocket 接收循环已把快速与精密请求统一交给持久化 LangGraph；这里
-    暂时保留旧的快速 LangChain 分支，避免影响仍显式调用该内部函数的集成代码。
-    """
+    """带访问上下文与安全检查的 LangGraph 处理入口。"""
     if "_server_access_context" not in data:
         data = _prepare_server_request(data, AccessContext())
     with rag_trace_scope(
@@ -665,10 +660,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     current_blueprint = data.get("blueprint")
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
-    # 精密模式下强制开启思考（前端已做联动，此处兜底防止 localStorage 状态不一致）
-    thinking_mode = data.get("thinking_mode") is True
+    detail_level = resolve_complexity_profile(message, data.get("detail_level") or "simple")["level"]
+    thinking_mode = True
 
-    logger.info(f"[{request_id}] [precision] 收到: {message[:80]}...")
+    logger.info(f"[{request_id}] [langgraph] 收到: {message[:80]}...")
 
     async def send_step(
         stage: str,
@@ -724,8 +719,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "selection": selection,
         "recent_messages": data.get("recent_messages", []),
         "workflow_state": str(data.get("workflow_state") or "idle"),
-        "thinking_mode": thinking_mode,
-        "detail_level": resolve_complexity_profile(message, data.get("detail_level") or "simple")["level"],
+        "detail_level": detail_level,
         "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
         "max_retries": 3,
         "retry_count": 0,
@@ -771,8 +765,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     node_started_isos: dict[str, str] = {}  # 节点名 → UTC 起始时间
     suggested_components = []  # 存储骨架节点建议的组件列表
 
-    # architecture/校验节点会通过同一回调发送可公开的执行摘要。快速模式也应
-    # 展示这些摘要；模型原始 reasoning 是否存在仍由 enable_thinking 控制。
+    # 执行摘要始终推送；模型原始 reasoning 由 enable_thinking 控制。
     reasoning_token = bind_reasoning_callback(send_thinking_delta)
     event_stream = None
 
@@ -1527,7 +1520,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     })
 
     logger.info(
-        f"[{request_id}] [precision] 完成: {len(active_diags)}活跃节点, "
+        f"[{request_id}] [langgraph] 完成: {len(active_diags)}活跃节点, "
         f"建议组件: {suggested_components}, RAG {total_rag_ms}ms, "
         f"LLM {total_llm_ms}ms, tokens {total_tokens['input'] + total_tokens['output']}"
     )

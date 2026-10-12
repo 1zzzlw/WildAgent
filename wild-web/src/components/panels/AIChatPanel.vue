@@ -169,19 +169,7 @@
             :value="level.value" :label="level.label" />
         </el-select>
       </div>
-      <div class="thinking-toggle"
-        :title="agentStore.precisionMode ? '精密模式下自动开启思考，不可关闭' : '请求模型开启思考，并实时展示接口返回的 reasoning_content'">
-        <span>思考</span>
-        <el-switch :model-value="agentStore.precisionMode ? true : agentStore.thinkingMode" size="small"
-          :disabled="agentStore.isProcessing || agentStore.precisionMode" @change="handleThinkingModeChange" />
-      </div>
-      <div class="thinking-toggle precision-toggle"
-        :title="agentStore.precisionMode ? 'LangGraph 精密模式：分片并行 + RAG/LLM 详细诊断' : 'LangChain 快速模式：单体 Agent'">
-        <span>精密</span>
-        <el-switch :model-value="agentStore.precisionMode" size="small" :disabled="agentStore.isProcessing"
-          @change="handlePrecisionModeChange" />
-      </div>
-      <div class="thinking-toggle shader-toggle"
+      <div class="shader-toggle"
         :title="agentStore.proceduralMaterialsEnabled ? '已允许 AI 自动生成程序化纹理 Shader' : '默认关闭；开启后 AI 才能自动生成程序化纹理 Shader'">
         <span>Shader</span>
         <el-switch :model-value="agentStore.proceduralMaterialsEnabled" size="small"
@@ -472,19 +460,6 @@ function handleReviseDesign(requestId: string, feedback: string) {
 
 function handleReconnect() {
   agentBridge.connect()
-}
-
-function handleThinkingModeChange(value: boolean | string | number) {
-  agentStore.setThinkingMode(Boolean(value))
-}
-
-function handlePrecisionModeChange(value: boolean | string | number) {
-  const enabled = Boolean(value)
-  agentStore.setPrecisionMode(enabled)
-  // 精密模式依赖思考流展示每个节点的推理过程，强制开启思考
-  if (enabled) {
-    agentStore.setThinkingMode(true)
-  }
 }
 
 function handleProceduralMaterialsChange(value: boolean | string | number) {
@@ -1529,9 +1504,7 @@ function loadDraftSessionsFromLocal(): any[] {
   color: var(--text-secondary);
 }
 
-.thinking-toggle,
 .detail-level-control,
-.precision-toggle,
 .shader-toggle {
   display: flex;
   align-items: center;
@@ -1590,8 +1563,6 @@ function loadDraftSessionsFromLocal(): any[] {
   background: var(--bg-tertiary);
 }
 
-.thinking-toggle :deep(.el-switch.is-checked .el-switch__core),
-.precision-toggle :deep(.el-switch.is-checked .el-switch__core),
 .shader-toggle :deep(.el-switch.is-checked .el-switch__core) {
   background: var(--accent);
   border-color: var(--accent);

@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from app.agent.plan.contracts import PlanItem
-from app.agent.plan.handlers import run_generate
+from app.agent.plan.handlers import build_execution_context, run_generate
 from app.agent.generation.component.processing import validate_and_fix_with_tools
 
 
@@ -40,3 +40,15 @@ def test_failed_validation_keeps_specific_evidence_and_original_input():
     assert "missing" in details["initial"]
     assert "missing" in details["recheck"]
     assert fragments == original
+
+
+@pytest.mark.parametrize("level", ["minimal", "simple", "standard", "detailed"])
+@pytest.mark.parametrize("node_thinking", [False, True])
+def test_component_execution_context_controls_only_item_thinking(level, node_thinking):
+    state = {"detail_level": level, "thinking_mode": node_thinking}
+    original = deepcopy(state)
+    item = PlanItem(id="generate_window_01", op="generate", kind="window")
+    context = build_execution_context(state, item)
+    assert context["detail_level"] == level
+    assert context["thinking_mode"] is (level != "minimal")
+    assert state == original

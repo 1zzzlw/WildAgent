@@ -1,0 +1,43 @@
+{
+  "request_id": "req_1791720607946_1ggin3djf",
+  "source_trace": "wild-server/storage/sessions/rag_traces/session_1791714919362/req_1791720607946_1ggin3djf.json",
+  "original_attempt_issues": [
+    "/components/1/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/2/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/3/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/4/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/7/placement/face：face 仅表示 front/back/left/right 四个竖向立面，实际 'top'；屋顶、檐底或天花构件用 placement.position=[x,y,z] 写世界中心坐标，朝向说明写在 form/description",
+    "/components/1/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/2/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/3/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/4/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/7/placement/face：face 仅表示 front/back/left/right 四个竖向立面，实际 'top'；屋顶、檐底或天花构件用 placement.position=[x,y,z] 写世界中心坐标，朝向说明写在 form/description",
+    "/components/1/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/2/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/3/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0；/components/4/size/sill_height：sill_height 是位置参数，应保留原值写在 placement.sill_height；sill_height、offset、normal_offset 可以为 0"
+  ],
+  "replay_method": "仅离线复核：使用已保存的第三稿（模型已给出檐底板世界位置），将四处窗台高度从 size 移到 placement，保留 0、0、0.6、0.9；生成入口仍要求模型修订，不自动改写输入。",
+  "replay_field_moves": [
+    {
+      "component_id": "living_room_window_01",
+      "from": "/components/1/size/sill_height",
+      "to": "/components/1/placement/sill_height",
+      "value": 0.0
+    },
+    {
+      "component_id": "kitchen_sliding_door",
+      "from": "/components/2/size/sill_height",
+      "to": "/components/2/placement/sill_height",
+      "value": 0.0
+    },
+    {
+      "component_id": "master_bedroom_window",
+      "from": "/components/3/size/sill_height",
+      "to": "/components/3/placement/sill_height",
+      "value": 0.6
+    },
+    {
+      "component_id": "study_lattice_window",
+      "from": "/components/4/size/sill_height",
+      "to": "/components/4/placement/sill_height",
+      "value": 0.9
+    }
+  ],
+  "explicit_component_count": 9,
+  "contract_passed": true,
+  "coordinate_errors": [],
+  "new_tests": 28,
+  "related_pytest_passed": 755,
+  "new_model_generation": false,
+  "render_validation": false
+}

@@ -111,6 +111,50 @@ def patch_services(monkeypatch, outputs, *, shape_reference=True):
     return events
 
 
+def test_body_repair_receives_host_and_floor_coordinate_errors_together(monkeypatch):
+    from app.design.contracts import ComponentInstance
+    import app.llm.invocation as invocation
+    document = drawing()
+    document.decisions.components = [ComponentInstance(id="entry", type="door", host="wall_main_front_L1",
+        size={"width": 1, "height": 2}, placement={"offset": 3})]
+    state = empty_state(document)
+    wall = {"id": "building_body_wall_main_front_L1", "type": "wall", "from": [0, 0, 0],
+            "to": [10, 3, 0], "thickness": 0.24}
+    wrong = {"id": "slab", "type": "floor", "from": [-5, -0.18, -4], "to": [5, -0.18, 4], "thickness": 0.18}
+    outputs = [reply("building_body", [wrong, wall]), reply("building_body", [
+        {**wrong, "from": [0, -0.18, 0], "to": [10, -0.18, 8]}, {**wall, "id": "wall_main_front_L1"}])]
+    patch_services(monkeypatch, [])
+    contexts = []
+    async def model(_llm, messages):
+        contexts.append(json.loads(messages[1]["content"]))
+        return outputs.pop(0)
+    monkeypatch.setattr(invocation, "invoke_llm", model)
+    updates, status, ids, _, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "succeeded" and set(ids) == {"slab", "wall_main_front_L1"}
+    feedback = contexts[1]["validation_feedback"]["building_body"]
+    assert "缺少真实墙" in feedback and "主体楼板超出" in feedback
+    assert "X/Z" in feedback and "世界" in feedback
+    assert implementation_records(updates)["building_body"]["status"] == "implemented"
+
+
+def test_invalid_json_feedback_is_not_misreported_as_a_missing_array(monkeypatch):
+    import app.llm.invocation as invocation
+    state = empty_state()
+    malformed = reply("lattice")
+    malformed.content = malformed.content[:-1]
+    outputs = [malformed, reply("lattice")]
+    patch_services(monkeypatch, [])
+    contexts = []
+    async def model(_llm, messages):
+        contexts.append(json.loads(messages[1]["content"]))
+        return outputs.pop(0)
+    monkeypatch.setattr(invocation, "invoke_llm", model)
+    _, status, _, _, _ = run(impl.run_marker_generate(state, task(state)))
+    assert status == "succeeded"
+    feedback = contexts[1]["validation_feedback"]["lattice"]
+    assert "完整 JSON" in feedback and "必须是数组" not in feedback
+
+
 @pytest.mark.parametrize("shape_reference,expected", [
     (True, ["rag", "model"]), (False, ["rag", "web", "model"]),
 ])

@@ -76,6 +76,42 @@ def test_a_ground_floor_cannot_be_counted_as_roof_coverage():
         impl._accept_group(base, {"geometry": {"elements": [ground]}}, marker)
 
 
+@pytest.mark.parametrize("axis", [0, 2])
+@pytest.mark.parametrize("offset", [-20, 0, 18])
+def test_complete_shed_roof_reports_vertical_error_instead_of_missing_surface(axis, offset):
+    base, marker = roof_case(offset)
+    angle = 0.0872664626
+    span = 6 if axis == 0 else 5
+    dimensions = [5, 0.2, 6]
+    dimensions[2-axis] = span/cos(angle)
+    rotation = [0, 0, 0]
+    rotation[axis] = angle
+    position = [offset+2.5, 3.25, 3]
+    position[2-axis] += (-1 if axis == 0 else 1)*0.1*sin(angle)
+    slab = roof_box("sloped", position, dimensions, rotation=rotation)
+    with pytest.raises(ValueError) as error:
+        impl._accept_group(base, {"geometry": {"elements": [slab]}}, marker)
+    assert "最低标高" in str(error.value) and "/position/1" in str(error.value)
+    assert "平面投影已覆盖" in str(error.value) and "缺少" not in str(error.value)
+    position[1] += span*tan(angle)/2
+    impl._accept_group(base, {"geometry": {"elements": [slab]}}, marker)
+
+
+@pytest.mark.parametrize("axis", [0, 2])
+def test_shed_eave_can_descend_below_wall_top_outside_the_supported_volume(axis):
+    base, marker = roof_case()
+    marker["design"]["overhang"] = 0.8
+    angle = 0.0872664626
+    dimensions = [6.6, 0.2, 7.6]
+    dimensions[2-axis] /= cos(angle)
+    rotation = [0, 0, 0]
+    rotation[axis] = angle
+    position = [2.5, 3.38, 3]
+    position[2-axis] += (-1 if axis == 0 else 1)*0.1*sin(angle)
+    slab = roof_box("sloped_eaves", position, dimensions, rotation=rotation)
+    impl._accept_group(base, {"geometry": {"elements": [slab]}}, marker)
+
+
 def test_native_roof_must_include_the_declared_eaves():
     base, marker = roof_case()
     marker["design"]["overhang"] = 0.6

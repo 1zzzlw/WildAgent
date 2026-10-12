@@ -28,6 +28,15 @@
               这是当前服务器的全站 Chat 模型配置，会影响所有会话；它不是按用户隔离的个人密钥。
             </div>
             <div class="config-section">
+              <label class="config-label">供应商</label>
+              <select v-model="form.provider" class="config-input">
+                <option v-for="provider in providers" :key="provider.value" :value="provider.value">
+                  {{ provider.label }}
+                </option>
+              </select>
+              <div class="config-hint">自动识别沿用当前地址；通过代理接入时，选择其支持的供应商协议。</div>
+            </div>
+            <div class="config-section">
               <label class="config-label">模型名称</label>
               <input
                 v-model="form.name"
@@ -57,7 +66,7 @@
                 class="config-input"
                 placeholder="留空使用默认地址"
               />
-              <div class="config-hint">自建或第三方服务地址，例如: https://api.openai.com/v1</div>
+              <div class="config-hint">填写的地址优先；切换供应商时请核对地址，留空使用所选供应商默认地址。自定义供应商必须填写。</div>
             </div>
 
             <div class="config-section">
@@ -69,10 +78,11 @@
                 min="0"
                 max="262144"
                 step="256"
+                :disabled="mimoSelected"
               />
               <div class="config-hint">
-                不关闭精密模式思考。Qwen/部分 Kimi 使用精确预算；DeepSeek、Kimi K3
-                在支持的接口上映射为推理强度；固定思考模型可能不支持限额。0 使用供应商默认值。
+                <template v-if="mimoSelected">MiMo 不支持此 Token 预算；思考由各节点策略决定，plan 构件条目按粒度控制。</template>
+                <template v-else>Qwen/部分 Kimi 使用 Token 预算；支持的 DeepSeek、Kimi 接口映射为推理强度。其他模型可能只支持开关或不支持控制；0 使用供应商默认值。</template>
               </div>
             </div>
 
@@ -81,6 +91,10 @@
             <div class="config-section">
               <label class="config-label">当前配置</label>
               <div class="current-config">
+                <div class="config-item">
+                  <span class="config-key">供应商:</span>
+                  <span class="config-value">{{ providers.find(p => p.value === currentConfig.resolved_provider)?.label || currentConfig.provider }}</span>
+                </div>
                 <div class="config-item">
                   <span class="config-key">模型:</span>
                   <span class="config-value">{{ currentConfig.name || '未配置' }}</span>
@@ -96,7 +110,7 @@
                 <div class="config-item">
                   <span class="config-key">思考预算:</span>
                   <span class="config-value">
-                    {{ currentConfig.thinking_budget === 0 ? '供应商默认' : `${currentConfig.thinking_budget} Token` }}
+                    {{ currentConfig.resolved_provider === 'mimo' ? '由节点策略控制' : currentConfig.thinking_budget === 0 ? '供应商默认' : `${currentConfig.thinking_budget} Token` }}
                   </span>
                 </div>
                 <div class="config-item">
@@ -146,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
 interface Props {
@@ -160,7 +174,18 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const providers = [
+  { value: 'auto', label: '自动识别' },
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'dashscope', label: '阿里云百炼' },
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'moonshot', label: 'Kimi' },
+  { value: 'mimo', label: 'MiMo' },
+  { value: 'custom', label: '自定义兼容服务' },
+]
+
 const form = ref({
+  provider: 'auto',
   name: '',
   api_key: '',
   base_url: '',
@@ -168,6 +193,8 @@ const form = ref({
 })
 
 const currentConfig = ref({
+  provider: 'auto',
+  resolved_provider: 'auto',
   name: '',
   api_key_set: false,
   base_url: '',
@@ -176,6 +203,10 @@ const currentConfig = ref({
   host_storage_path: null as string | null,
   persistent: false,
 })
+
+const mimoSelected = computed(() => form.value.provider === 'mimo' || (
+  form.value.provider === 'auto' && form.value.base_url === currentConfig.value.base_url && currentConfig.value.resolved_provider === 'mimo'
+))
 
 const saving = ref(false)
 const testing = ref(false)
@@ -202,6 +233,7 @@ async function loadCurrentConfig() {
     currentConfig.value = await response.json()
     
     form.value = {
+      provider: currentConfig.value.provider,
       name: currentConfig.value.name,
       api_key: '',
       base_url: currentConfig.value.base_url,
@@ -217,6 +249,10 @@ async function handleSave() {
   saving.value = true
   try {
     const payload: Record<string, string | number> = {}
+
+    if (form.value.provider !== currentConfig.value.provider) {
+      payload.provider = form.value.provider
+    }
     
     if (form.value.name && form.value.name !== currentConfig.value.name) {
       payload.name = form.value.name
@@ -279,6 +315,7 @@ async function handleTest() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        provider: form.value.provider,
         name: form.value.name,
         api_key: form.value.api_key || null,
         base_url: form.value.base_url,
@@ -421,6 +458,11 @@ function handleClose() {
 
 .config-input:focus {
   border-color: #3aaed8;
+}
+
+.config-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .config-input::placeholder {

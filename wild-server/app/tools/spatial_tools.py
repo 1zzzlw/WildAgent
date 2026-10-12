@@ -1027,13 +1027,19 @@ def get_roof_support_bounds(
             end = wall.get("to", [0, 0, 0])
             all_x.extend([float(start[0]), float(end[0])])
             all_z.extend([float(start[2]), float(end[2])])
-    # 柱是点状支撑：直接贡献带半径的 XZ 区间，不参与墙的横向/纵向裁剪
-    # （裁剪会把 x 向墙塌缩成一条 z=常数的线——开敞亭子 depth=0 的直接根源）。
+    # 已有二维墙顶承托时只计当前屋面下的柱；开敞亭廊仍用完整柱网找承托。
+    bounded_walls = (bool(support_walls and all_x and all_z)
+                     and max(all_x)-min(all_x) > 1e-6 and max(all_z)-min(all_z) > 1e-6)
     for column in support_columns:
         base = column["base"]
         radius = next(
             (r for top, col, r in column_candidates if col is column), 0.1
         )
+        if roof_footprint and bounded_walls and (
+            base[0]+radius < roof_footprint[0] or base[0]-radius > roof_footprint[1]
+            or base[2]+radius < roof_footprint[2] or base[2]-radius > roof_footprint[3]
+        ):
+            continue
         all_x.extend([float(base[0]) - radius, float(base[0]) + radius])
         all_z.extend([float(base[2]) - radius, float(base[2]) + radius])
     if not all_x or not all_z:
@@ -2227,24 +2233,19 @@ def validate_reference_integrity(blueprint: dict) -> str:
                 f"❌ [{eid}] parentWall='{parent}' 引用的构件不是 wall 类型"
             )
 
-    # --- 1b. door/window 组合构件的 parentWall 校验 ---
+    # --- 1b. 组合构件的依附对象必须是编译器要求的基础实体类型 ---
     for component in components:
-        if component.get("type") not in {"door", "window"}:
-            continue
         component_id = component.get("id", "?")
-        parent = component.get("parentWall", "")
-        if not parent:
+        if component.get("type") in {"door", "window"} and not component.get("parentWall"):
             issues.append(f"❌ [component:{component_id}] 缺少 parentWall 字段")
-            continue
-        if parent not in element_ids:
-            issues.append(
-                f"❌ [component:{component_id}] parentWall='{parent}' 引用的构件不存在"
-            )
-            continue
-        if parent not in wall_ids:
-            issues.append(
-                f"❌ [component:{component_id}] parentWall='{parent}' 不是 wall 类型"
-            )
+        for field, kind in (("parentWall", "wall"), ("parentFloor", "floor"), ("parentRoof", "roof")):
+            parent = component.get(field)
+            if not parent:
+                continue
+            if parent not in element_ids:
+                issues.append(f"❌ [component:{component_id}] {field}='{parent}' 引用的基础构件不存在；必须指向 {kind}")
+            elif not any(e.get("id") == parent and e.get("type") == kind for e in elements):
+                issues.append(f"❌ [component:{component_id}] {field}='{parent}' 不是 {kind} 类型")
 
     # --- 1c. 元素与组合构件的材质引用必须存在 ---
     materials = blueprint.get("materials", {}) or {}

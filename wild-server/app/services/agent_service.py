@@ -1,51 +1,23 @@
-"""
-Agent Service —— Agent 生命周期管理和对话入口
-
-职责：组装 spec_loader + tools + prompt + llm，对外提供统一的 query_structured() 接口。
-
-一份 prompt + 一份入口方法，同时覆盖三种意图：
-  - 生成类（从零创建）→ 输出完整 Blueprint JSON
-  - 修改类（增量修改）→ 输出 ScenePatch JSON（operations + summary）
-  - 对话类（纯聊天）→ 纯文本
-
-AI 在 prompt 内自行判断意图，选择输出格式。场景上下文通过 user message 传入。
-
-校验流水线（服务端强制执行，不依赖 LLM 自由调用顺序）：
-  Structure → Schema → Reference → Geometry → Fix → Collision
-
-升级路径（每次只改内部，query_structured() 接口和 ws_agent.py 不动）：
-  现在   → FileSpecLoader + create_agent + server-side pipeline
-  以后1  → RAGSpecLoader（只改 loader 一行）
-  以后2  → LangGraph graph.ainvoke()（只改编排，tools + pipeline 复用）
-"""
+"""LangGraph 共用的模型、知识加载器、校验流水线与 ScenePatch 服务。"""
 from dataclasses import dataclass, field
 import math
-import time
 from pathlib import Path
 from copy import deepcopy
 from collections.abc import Awaitable, Callable
-from typing import Any, Literal
 
-from langchain.agents import create_agent
 from loguru import logger
 
 from config import config
-from app.llm.client import create_llm, message_texts as _message_texts
-from app.llm.invocation import collect_response, invoke_llm, merge_token_usage
-from app.llm.reasoning import ReasoningDeltaCallback
-from app.rag.citations import validate_answer_citations
-from app.rag.gate import RAGRetrievalRejected, infer_retrieval_purpose
+from app.llm.client import create_llm
+from app.llm.invocation import invoke_llm, stream_llm
+from app.rag.gate import RAGRetrievalRejected
 from app.rag.trace import (
-    get_injected_chunk_ids,
-    record_final_answer,
-    record_rag_citations,
-    record_rag_llm_call,
     record_rag_warning,
 )
 from app.agent.prompts import (
     build_material_optimization_prompt,
     build_patch_recovery_prompt,
-    build_system_prompt,
+    build_patch_system_prompt,
 )
 from app.spec.loader import (
     FileSpecLoader,
@@ -63,7 +35,6 @@ from app.tools.spatial_tools import (
     fix_roof_coverage,
     fix_stair_alignment,
     fix_wall_junctions,
-    get_wall_bounding_box,
     validate_blueprint_structure,
     validate_collision,
     validate_element_dimensions,
@@ -79,7 +50,6 @@ from app.tools.spatial_tools import (
     validate_wall_junctions,
 )
 from app.utils.blueprint_parser import (
-    extract_blueprint_from_text,
     extract_patch_from_text,
     normalize_blueprint_input,
     validate_blueprint_schema,
@@ -110,62 +80,22 @@ class PipelineStepResult:
     has_warning: bool
 
 @dataclass
-class QueryResult:
-    """query_structured() 的结构化返回结果
-
-    - text:              完整 LLM 回复文本（始终存在）
-    - blueprint:         提取的 Blueprint dict（生成类，可能为 None）
-    - patch:             提取的 ScenePatch dict（修改类，可能为 None）
-    - error:             致命错误描述（无错误时为 None）
-    - pipeline_results:  各流水线步骤的执行结果列表
-    """
+class PatchResult:
+    """增量修改的提案、回复与校验证据。"""
     text: str
-    blueprint: dict | None = None
     patch: dict | None = None
     error: str | None = None
     pipeline_results: list[PipelineStepResult] = field(default_factory=list)
     structured_source: str | None = None
     structured_recovery_used: bool = False
-    cited_chunk_ids: list[str] = field(default_factory=list)
-    evidence_status: str | None = None
 
 
-def _extract_response_artifacts(
-    content: str,
-    reasoning: str,
-    *,
-    prefer_patch: bool = False,
-) -> tuple[dict | None, dict | None, str | None]:
-    """独立提取 Blueprint/ScenePatch，避免用 Blueprint 结果门控 Patch。"""
-    patches: list[tuple[str, dict]] = []
-    blueprints: list[tuple[str, dict]] = []
+def _extract_patch_artifact(content: str, reasoning: str) -> tuple[dict | None, str | None]:
     for source, text in (("content", content), ("reasoning", reasoning)):
         patch = extract_patch_from_text(text) if text else None
         if patch is not None:
-            patches.append((source, patch))
-        if not text:
-            continue
-        blueprint = extract_blueprint_from_text(text)
-        if blueprint is not None:
-            blueprints.append((source, blueprint))
-    if prefer_patch and patches:
-        source, patch = patches[0]
-        return None, patch, source
-    if blueprints:
-        source, blueprint = blueprints[0]
-        return blueprint, None, source
-    if patches:
-        source, patch = patches[0]
-        return None, patch, source
-    return None, None, None
-
-
-class _ReasoningStreamCallback(ReasoningDeltaCallback):
-    """**已迁到 `app/llm/reasoning.py`**（`ReasoningDeltaCallback`），这里只留别名。
-
-    迁走的原因：工具循环 agent（`app/agent/plan/tool_loop.py`）也要用同一条规则，
-    而 agent 层不该"从服务层导一个私有类"。旧名保留以免打断既有导入点。
-    """
+            return patch, source
+    return None, None
 
 
 def _run_tool(tool_fn, blueprint: dict) -> str:
@@ -940,82 +870,20 @@ def _apply_patch_to_blueprint(blueprint: dict, patch: dict) -> dict:
 
 
 class AgentService:
-    """Agent 服务
-
-    生命周期：
-    - 构造时：加载规范文档 + 创建 LLM + 注册 tools + 组装 System Prompt
-    - query_structured()：统一入口，同时处理生成/修改/聊天三种意图
-
-    一份 prompt 覆盖所有场景。场景上下文（如有）通过 user message 注入。
-    """
+    """为 LangGraph 提供模型、知识加载与增量修改校验。"""
 
     def __init__(self):
-        # ===== 1. 创建规范加载器（优先 RAG，失败则退回文件读取）=====
         self.spec_loader = self._create_spec_loader()
-        self._dynamic_prompt = isinstance(self.spec_loader, RAGSpecLoader)
-        logger.info(
-            f"SpecLoader: {type(self.spec_loader).__name__}, "
-            f"sources={len(self.spec_loader.list_sources())}"
-        )
-
-        # ===== 2. 创建 LLM =====
-        # 非思考模式显式关闭 DashScope 的默认思考；思考模型使用流式响应，
-        # 以便通过回调实时取得 reasoning_content。
         self.llm = create_llm(enable_thinking=False)
         self.thinking_llm = create_llm(enable_thinking=True, streaming=True)
-        logger.info("LLM 已创建（普通模式 + 流式思考模式）")
-
-        # ===== 3. 注册 Tools（所有意图通用）=====
-        self.tools = [
-            get_wall_bounding_box,
-            validate_blueprint_structure,
-            validate_element_required_fields,
-            validate_reference_integrity,
-            validate_opening_coords,
-            validate_opening_fit,
-            validate_wall_junctions,
-            validate_stair_alignment,
-            validate_roof_coverage,
-            validate_element_dimensions,
-            fix_material_references,
-            fix_element_dimensions,
-            fix_element_elevations,
-            fix_opening_coords,
-            fix_opening_fit,
-            fix_roof_coverage,
-            fix_stair_alignment,
-            fix_wall_junctions,
-            validate_collision,
-        ]
-        logger.info(f"已注册 {len(self.tools)} 个工具: {[t.name for t in self.tools]}")
-
-        # ===== 4. 非 RAG 模式创建静态 Agent；RAG 模式每次 query 动态创建 =====
-        self.agent = None
-        if not self._dynamic_prompt:
-            spec_text = self.spec_loader.load()
-            self.agent = self._create_agent(spec_text)
-            logger.info("AgentService: 使用静态规范上下文")
-
         logger.info("AgentService 初始化完成")
 
     def reload_chat_models(self) -> None:
-        """按当前 ``config.chat`` 重建模型客户端，供运行时配置保存后调用。"""
-
+        """按当前配置重建两个客户端；全部成功后再替换。"""
         new_llm = create_llm(enable_thinking=False)
         new_thinking_llm = create_llm(enable_thinking=True, streaming=True)
-        previous_llm = self.llm
-        previous_thinking_llm = self.thinking_llm
-        previous_agent = self.agent
-        try:
-            self.llm = new_llm
-            self.thinking_llm = new_thinking_llm
-            if not self._dynamic_prompt:
-                self.agent = self._create_agent(self.spec_loader.load())
-        except Exception:
-            self.llm = previous_llm
-            self.thinking_llm = previous_thinking_llm
-            self.agent = previous_agent
-            raise
+        self.llm = new_llm
+        self.thinking_llm = new_thinking_llm
         logger.info("LLM 客户端已按运行时配置重新创建")
 
     def _create_spec_loader(self):
@@ -1093,148 +961,24 @@ class AgentService:
 
         return FileSpecLoader([str(p) for p in BASE_SPEC_PATHS])
 
-    def _create_agent(self, spec_text: str, thinking_mode: bool = False):
-        """用当前 LLM、工具集和本次规范上下文创建无会话状态的 Agent。"""
-        system_prompt = build_system_prompt(spec_text)
-        logger.info(f"System Prompt: 总计 {len(system_prompt):,} 字符")
-        return create_agent(
-            model=self.thinking_llm if thinking_mode else self.llm,
-            tools=self.tools,
-            system_prompt=system_prompt,
-        )
-
-    def _agent_for_query(
-        self,
-        rag_query: str | list[str | SpecQuery],
-        thinking_mode: bool = False,
-        purpose: str = "generation",
-    ):
-        """为一次查询准备 Agent；RAG 模式会先动态组装本次 System Prompt。"""
-        if not self._dynamic_prompt:
-            if not thinking_mode:
-                return self.agent
-            return self._create_agent(self.spec_loader.load(), thinking_mode=True)
-
-        if isinstance(rag_query, list) and isinstance(self.spec_loader, RAGSpecLoader):
-            filtered_queries = [
-                query if isinstance(query, SpecQuery) else SpecQuery(text=query)
-                for query in rag_query
-            ]
-            spec_text = self.spec_loader.load_many(
-                filtered_queries,
-                per_query=1,
-                purpose=purpose,
-            )
-            query_log = " | ".join(query.text for query in filtered_queries)
-        else:
-            query_item = rag_query[0] if isinstance(rag_query, list) and rag_query else rag_query
-            query_text = query_item.text if isinstance(query_item, SpecQuery) else str(query_item or "")
-            spec_text = self.spec_loader.load(query=query_text, purpose=purpose)
-            query_log = query_text
-        if isinstance(self.spec_loader, RAGSpecLoader):
-            hits = [
-                f"{hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}"
-                for hit in self.spec_loader.last_results
-            ]
-            logger.info(f"RAG 检索 query={query_log[:300]!r}, hits={hits}")
-        return self._create_agent(spec_text, thinking_mode=thinking_mode)
-
-    def _build_rag_query(self, message: str, current_blueprint: dict | None) -> str:
-        """把用户文本与场景线索拼成单个向量检索查询。"""
-        parts = [message]
-        generation_keywords = (
-            "生成", "建造", "创建", "建一个", "做一个",
-            "画一个", "搭一个", "来一个", "设计一个",
-        )
-        if not current_blueprint and any(keyword in message for keyword in generation_keywords):
-            parts.append(
-                "检索本次对象的 WILD 能力边界、构件宿主和组装关系；"
-                "外形、尺寸与材质由本次需求确定，局部示例不能作为默认建筑"
-            )
-        if current_blueprint:
-            meta = current_blueprint.get("meta", {})
-            geometry = current_blueprint.get("geometry", {})
-            entities = [
-                *geometry.get("elements", []),
-                *geometry.get("components", []),
-            ] if isinstance(geometry, dict) else []
-            types = sorted({str(item.get("type")) for item in entities
-                            if isinstance(item, dict) and item.get("type")})
-            if meta.get("name"):
-                parts.append(f"场景名称: {meta.get('name')}")
-            if types:
-                parts.append(f"当前构件类型: {', '.join(types)}")
-        return "\n".join(parts)
-
-    def _build_rag_queries(
-        self,
-        message: str,
-        current_blueprint: dict | None,
-    ) -> list[SpecQuery]:
-        """按任务阶段构建带显式用途过滤的知识查询。"""
-        primary_query = self._build_rag_query(message, current_blueprint)
-        if current_blueprint:
-            return [
-                SpecQuery(
-                    f"{primary_query}\nScenePatch 修改坐标、字段与引用协议",
-                    {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
-                ),
-                SpecQuery(
-                    f"{primary_query}\n目标构件的当前字段与能力边界",
-                    {"doc_type": "component", "knowledge_role": "capability"},
-                ),
-                SpecQuery(
-                    f"{primary_query}\n修改后需要保持的宿主、组装与校验关系",
-                    {"doc_type": "recipe", "knowledge_role": "relation"},
-                ),
-            ]
-
-        generation_keywords = (
-            "生成", "建造", "创建", "建一个", "做一个",
-            "画一个", "搭一个", "来一个", "设计一个",
-        )
-        building_keywords = (
-            "别墅", "住宅", "房", "建筑", "小屋", "木屋", "亭",
-            "楼", "酒店", "宿舍", "办公", "学校", "商场", "医院",
-            "车站", "工厂", "仓库", "庭院", "四合院", "塔", "庙",
-            "宫殿", "教堂",
-        )
-        is_building_generation = (
-            any(keyword in message for keyword in generation_keywords)
-            and any(keyword in message for keyword in building_keywords)
-        )
-        if not is_building_generation:
-            return [SpecQuery(primary_query)]
-
+    def _patch_rag_queries(self, message: str, current_blueprint: dict) -> list[SpecQuery]:
+        geometry = current_blueprint.get("geometry") or {}
+        types = sorted({str(item["type"]) for item in [
+            *geometry.get("elements", []), *geometry.get("components", []),
+        ] if isinstance(item, dict) and item.get("type")})
+        primary_query = f"{message}\n当前构件类型: {', '.join(types)}"
         return [
             SpecQuery(
-                f"{message}\n已选构件的条件关系：opening、door、window、roof、stair、railing 的宿主与衔接",
-                {"doc_type": "recipe", "entity_name": "component_selection_conditions"},
+                f"{primary_query}\nScenePatch 修改坐标、字段与引用协议",
+                {"doc_type": "blueprint_spec", "knowledge_role": "protocol"},
             ),
             SpecQuery(
-                f"{message}\n结构构件能力：column、beam、floor、primitive 的合法字段与组合，truss 能力边界",
-                {"doc_type": "component", "entity_type": "structural_component"},
+                f"{primary_query}\n目标构件的当前字段与能力边界",
+                {"doc_type": "component", "knowledge_role": "capability"},
             ),
             SpecQuery(
-                f"{message}\n墙体构件能力：wall 世界坐标、thickness、material 与 opening 宿主关系",
-                {"doc_type": "component", "entity_type": "wall"},
-            ),
-            SpecQuery(
-                f"{message}\n窗构件能力：window、opening、parentWall、mullion 字段和受支持变体",
-                {"doc_type": "component", "entity_type": "window"},
-            ),
-            SpecQuery(
-                f"{message}\n门构件能力：door、opening、parentWall、doorStyle 与 interaction 字段，"
-                "含 swing/slide/lift 三种开合方式与 leafRows 帘片分节",
-                {"doc_type": "component", "entity_type": "door"},
-            ),
-            SpecQuery(
-                f"{message}\n栏杆构件能力：railing、path、postSpacing、railLevels 与 parentFloor",
-                {"doc_type": "component", "entity_type": "railing"},
-            ),
-            SpecQuery(
-                f"{message}\n屋顶构件能力：roof、cornice、canopy 的合法字段、覆盖与依附边界",
-                {"doc_type": "component", "entity_type": "roof"},
+                f"{primary_query}\n修改后需要保持的宿主、组装与校验关系",
+                {"doc_type": "recipe", "knowledge_role": "relation"},
             ),
         ]
 
@@ -1274,176 +1018,62 @@ class AgentService:
                 return patch, content or reasoning, source
         return None, content or reasoning, None
 
-    async def query_structured(
+    async def query_patch(
         self,
         message: str,
-        current_blueprint: dict | None = None,
+        current_blueprint: dict,
         *,
         selection: list[str] | None = None,
         thinking_mode: bool = False,
         on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
-        expected_output: Literal["auto", "patch", "blueprint", "text"] = "auto",
-        resolved_intent: Literal["generate", "edit", "chat"] | None = None,
-    ) -> QueryResult:
-        """统一入口：一次调用覆盖生成/修改/聊天三种意图。
-
-        1. 如有 current_blueprint，将场景摘要注入 user message
-        2. LLM 自行判断意图，输出 Blueprint 或 ScenePatch 或纯文本
-        3. 从回复提取 JSON → 校验流水线 → 返回 QueryResult
-        """
+    ) -> PatchResult:
+        """生成 ScenePatch，并在只读场景副本上完成预检与校验。"""
         selected_ids = _normalized_selection(selection)
-        material_optimization = bool(
-            current_blueprint and _is_material_optimization_request(message)
-        )
+        material_optimization = _is_material_optimization_request(message)
         if material_optimization and not selected_ids:
-            return QueryResult(
+            return PatchResult(
                 text="请先在场景中选中需要优化材质的构件，再重新发送请求。",
                 error="材质优化前必须先选中一个构件",
             )
-        if material_optimization:
-            expected_output = "patch"
-            resolved_intent = "edit"
-
-        # ── 场景上下文（如有）注入 user message ──────────────────
-        user_message = message
-        if current_blueprint:
-            elements = current_blueprint.get("geometry", {}).get("elements", [])
-            if elements:
-                scene_summary = _build_scene_summary(current_blueprint, selected_ids)
-                user_message = (
-                    f"# 当前场景（你可以修改它）\n\n{scene_summary}\n\n"
-                    f"# 用户请求\n\n{message}"
-                )
-                logger.info(f"[query] 注入场景上下文, 构件数={len(elements)}")
-        if expected_output == "patch":
-            user_message += (
-                "\n\n# 本次输出协议（强制）\n\n"
-                "上游已经判定这是增量修改。只输出一个 ScenePatch JSON 对象，"
-                "必须包含非空 operations 数组和 summary；不要输出完整 Blueprint。"
-            )
-        elif expected_output == "blueprint":
-            user_message += (
-                "\n\n# 本次输出协议（强制）\n\n"
-                "上游意图分类器已经判定这是新建筑生成。只输出一个完整 Blueprint "
-                "JSON 对象；不要输出 ScenePatch，也不要只给文字建议。"
-            )
-        elif expected_output == "text":
-            user_message += (
-                "\n\n# 本次输出协议（强制）\n\n"
-                "上游意图分类器已经判定这是知识问答。只输出面向用户的文本回答；"
-                "不要输出 Blueprint、ScenePatch 或启动建筑生成。"
-            )
-        if material_optimization:
-            user_message += build_material_optimization_prompt(selected_ids)
-
-        # ── LLM 调用（Agent + 工具）──────────────────────────────
-        rag_queries = self._build_rag_queries(message, current_blueprint)
-        from app.agent.routing import fast_path_intent
-
-        retrieval_intent = resolved_intent or fast_path_intent(
-            message,
-            current_blueprint is not None,
-        )
-        rag_purpose = infer_retrieval_purpose(message, retrieval_intent)
         try:
-            agent = self._agent_for_query(
-                rag_queries,
-                thinking_mode=thinking_mode,
-                purpose=rag_purpose,
+            spec_text = self.spec_loader.load_many(
+                self._patch_rag_queries(message, current_blueprint),
+                per_query=1,
+                purpose="generation",
             )
         except RAGRetrievalRejected as exc:
-            refusal = str(exc)
-            record_final_answer(refusal)
-            return QueryResult(
-                text=refusal,
-                cited_chunk_ids=[],
-                evidence_status="insufficient",
-            )
-        reasoning_callback = None
-        invoke_config = None
+            return PatchResult(text=str(exc), error=str(exc))
+        user_message = (
+            f"# 当前场景（只读参考）\n\n{_build_scene_summary(current_blueprint, selected_ids)}"
+            f"\n\n# 用户请求\n\n{message}"
+        )
+        if material_optimization:
+            user_message += build_material_optimization_prompt(selected_ids)
+        messages = [
+            {"role": "system", "content": build_patch_system_prompt(spec_text)},
+            {"role": "user", "content": user_message},
+        ]
+        llm = self.thinking_llm if thinking_mode else self.llm
         if thinking_mode and on_reasoning_delta is not None:
-            reasoning_callback = _ReasoningStreamCallback(on_reasoning_delta)
-            invoke_config = {"callbacks": [reasoning_callback]}
-
-        agent_started = time.perf_counter()
-        try:
-            result = await agent.ainvoke(
-                {"messages": [{"role": "user", "content": user_message}]},
-                config=invoke_config,
-            )
-        except Exception as exc:
-            record_rag_llm_call(
-                mode="agent_invoke",
-                elapsed_ms=round((time.perf_counter() - agent_started) * 1000),
-                token_usage=None,
-                error_type=type(exc).__name__,
-            )
-            raise
-        finally:
-            if reasoning_callback is not None:
-                await reasoning_callback.flush()
-        agent_token_usage = None
-        for response_message in result.get("messages", []):
-            agent_token_usage = merge_token_usage(
-                agent_token_usage,
-                collect_response(response_message).token_usage,
-            )
-        record_rag_llm_call(
-            mode="agent_invoke",
-            elapsed_ms=round((time.perf_counter() - agent_started) * 1000),
-            token_usage=agent_token_usage,
-        )
-        final_message = result["messages"][-1]
-        reply, reasoning = _message_texts(final_message)
-        logger.info(
-            f"Agent 回复: content={len(reply)}字符, reasoning={len(reasoning)}字符, "
-            f"preview={(reply or reasoning)[:200]}..."
-        )
-
-        # Blueprint 与 ScenePatch 必须独立提取。旧逻辑先要求 Blueprint 提取成功，
-        # 导致合法 ScenePatch 永远无法进入 patch 分支。
-        blueprint_data, patch_data, structured_source = _extract_response_artifacts(
-            reply,
-            reasoning,
-            prefer_patch=expected_output == "patch" or current_blueprint is not None,
-        )
+            response = await stream_llm(llm, messages, on_reasoning_delta=on_reasoning_delta)
+        else:
+            response = await invoke_llm(llm, messages)
+        reply = response.content
+        patch_data, structured_source = _extract_patch_artifact(reply, response.reasoning)
         recovery_used = False
-        if expected_output == "patch" and patch_data is None and current_blueprint:
-            logger.warning("[query] 首次回复未提取到 ScenePatch，执行一次定向格式恢复")
-            try:
-                recovered_patch, recovered_text, recovery_source = (
-                    await self._recover_scene_patch(
-                        message,
-                        current_blueprint,
-                        reply or reasoning,
-                        selected_ids,
-                        material_optimization,
-                    )
-                )
-                recovery_used = True
-                if recovered_patch is not None:
-                    patch_data = recovered_patch
-                    structured_source = recovery_source
-                    if recovered_text:
-                        reply = recovered_text
-            except Exception as exc:
-                logger.warning(f"[query] ScenePatch 定向格式恢复失败: {exc}")
-
+        if patch_data is None:
+            logger.warning("[patch] 首次回复未提取到 ScenePatch，执行一次定向格式恢复")
+            recovered_patch, recovered_text, recovery_source = await self._recover_scene_patch(
+                message, current_blueprint, reply or response.reasoning,
+                selected_ids, material_optimization,
+            )
+            recovery_used = True
+            if recovered_patch is not None:
+                patch_data = recovered_patch
+                structured_source = recovery_source
+                if recovered_text:
+                    reply = recovered_text
         if patch_data is not None:
-            if expected_output in {"blueprint", "text"}:
-                return QueryResult(
-                    text=reply,
-                    error=f"{expected_output} 意图收到不匹配的 ScenePatch",
-                    structured_source=structured_source,
-                )
-            if not current_blueprint:
-                return QueryResult(
-                    text=reply,
-                    error="ScenePatch 缺少可应用的当前 Blueprint",
-                    structured_source=structured_source,
-                    structured_recovery_used=recovery_used,
-                )
-
             operation_issues = _validate_scene_patch_operations(
                 current_blueprint,
                 patch_data,
@@ -1454,7 +1084,7 @@ class AgentService:
                     selected_ids,
                 ))
             if operation_issues:
-                return QueryResult(
+                return PatchResult(
                     text=reply,
                     patch=patch_data,
                     error="ScenePatch 操作预检未通过: " + "; ".join(operation_issues),
@@ -1466,7 +1096,7 @@ class AgentService:
 
             modified_bp = _apply_patch_to_blueprint(current_blueprint, patch_data)
             if modified_bp == current_blueprint:
-                return QueryResult(
+                return PatchResult(
                     text=reply,
                     patch=patch_data,
                     error="ScenePatch 未产生任何实际修改",
@@ -1476,7 +1106,7 @@ class AgentService:
             modified_bp = normalize_blueprint_input(modified_bp)
             pre_issues = validate_blueprint_schema(modified_bp)
             if pre_issues:
-                return QueryResult(
+                return PatchResult(
                     text=reply,
                     patch=patch_data,
                     error=(
@@ -1493,7 +1123,7 @@ class AgentService:
                 error_summary = "校验流水线存在错误: " + "; ".join(
                     f"Step{r.step}({r.name})" for r in fatal_steps
                 )
-            return QueryResult(
+            return PatchResult(
                 text=reply,
                 patch=patch_data,
                 error=error_summary,
@@ -1502,70 +1132,11 @@ class AgentService:
                 structured_recovery_used=recovery_used,
             )
 
-        if blueprint_data is not None:
-            if expected_output in {"patch", "text"}:
-                return QueryResult(
-                    text=reply,
-                    error=f"{expected_output} 意图收到不匹配的完整 Blueprint",
-                    structured_source=structured_source,
-                    structured_recovery_used=recovery_used,
-                )
-            blueprint_data = normalize_blueprint_input(blueprint_data)
-            
-            # 归一化修复（以前端 schema 为单一事实源）
-            from app.utils.blueprint_normalizer import normalize_blueprint_for_delivery
-            blueprint_data, norm_report = normalize_blueprint_for_delivery(blueprint_data)
-            if norm_report.stripped_fields or norm_report.repaired_fields or norm_report.dropped_components:
-                logger.info(f"[query] 归一化修复: {norm_report.summary()}")
-            
-            pre_issues = validate_blueprint_schema(blueprint_data)
-            if pre_issues:
-                return QueryResult(
-                    text=reply,
-                    error=f"Blueprint 结构预检未通过: {'; '.join(pre_issues)}",
-                    structured_source=structured_source,
-                )
-            pipeline_results = run_validation_pipeline(blueprint_data)
-            fatal_steps = _final_errors(pipeline_results)
-            error_summary = None
-            if fatal_steps:
-                error_summary = "校验流水线存在错误: " + "; ".join(
-                    f"Step{r.step}({r.name})" for r in fatal_steps
-                )
-            return QueryResult(
-                text=reply,
-                blueprint=blueprint_data,
-                error=error_summary,
-                pipeline_results=pipeline_results,
-                structured_source=structured_source,
-            )
-
-        if expected_output == "patch":
-            return QueryResult(
-                text=reply,
-                error="模型两次回复均未返回可解析的 ScenePatch",
-                structured_recovery_used=recovery_used,
-            )
-        if expected_output == "blueprint":
-            return QueryResult(
-                text=reply,
-                error="生成意图未返回可解析的完整 Blueprint",
-            )
-
-        # ── 纯文本（对话类）─────────────────────────────────────
-        citation_result = validate_answer_citations(reply, get_injected_chunk_ids())
-        record_rag_citations(
-            citation_result.cited_chunk_ids,
-            citation_result.invalid_chunk_ids,
-            citation_result.appended_fallback,
-        )
-        record_final_answer(citation_result.answer)
-        return QueryResult(
-            text=citation_result.answer,
-            cited_chunk_ids=list(citation_result.cited_chunk_ids),
-            evidence_status="supported" if citation_result.cited_chunk_ids else "none",
+        return PatchResult(
+            text=reply,
+            error="模型两次回复均未返回可解析的 ScenePatch",
+            structured_recovery_used=recovery_used,
         )
 
 
-# 模块级单例：导入 ws_agent 时完成配置、知识库索引和模型客户端初始化。
 agent_service = AgentService()

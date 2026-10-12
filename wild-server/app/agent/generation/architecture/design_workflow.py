@@ -28,13 +28,14 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
     for attempt in range(1, max_attempts + 1):
         messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_request}]
         accounting["model_calls"] = accounting.get("model_calls", 0) + 1
+        thinking = thinking_mode and attempt == 1
         if thinking_mode and on_reasoning_delta:
             async def emit(delta):
                 await on_reasoning_delta("architecture", delta)
-            reply = await stream_llm(create_llm(enable_thinking=True, streaming=True),
+            reply = await stream_llm(create_llm(enable_thinking=thinking, streaming=True),
                                      messages, on_reasoning_delta=emit)
         else:
-            reply = await invoke_llm(create_llm(enable_thinking=thinking_mode, streaming=False), messages)
+            reply = await invoke_llm(create_llm(enable_thinking=thinking, streaming=False), messages)
         usage = merge_token_usage(usage, reply.token_usage)
         raw = extract_json_object(reply.content or "")
         issue = "图纸必须是 JSON 对象" if not isinstance(raw, dict) else ""

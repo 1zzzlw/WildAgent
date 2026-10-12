@@ -4,7 +4,7 @@ from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk
 
 from app.llm.client import ReasoningChatOpenAI, create_llm
-from app.services.agent_service import _ReasoningStreamCallback
+from app.llm.reasoning import ReasoningDeltaCallback
 from config import ModelConfig
 
 
@@ -259,7 +259,7 @@ class ReasoningStreamCallbackTest(unittest.IsolatedAsyncioTestCase):
         async def emit(delta: str):
             emitted.append(delta)
 
-        callback = _ReasoningStreamCallback(emit)
+        callback = ReasoningDeltaCallback(emit)
         reasoning_chunk = ChatGenerationChunk(
             message=AIMessageChunk(
                 content="",

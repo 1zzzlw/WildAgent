@@ -389,8 +389,6 @@ export class AgentBridge {
       sceneSummary,
       selection,
       sceneStore.document.blueprint as Record<string, unknown>,
-      agentStore.thinkingMode,
-      agentStore.precisionMode,
       agentStore.proceduralMaterialsEnabled,
       recentMessages,
       agentStore.detailLevel,
@@ -398,11 +396,11 @@ export class AgentBridge {
 
     agentStore.clearPipelineSteps()
     agentStore.clearThinkingState()
-    agentStore.clearPrecisionState()
+    agentStore.clearExecutionState()
     this.requestContexts.set(request.request_id, {
       sessionId: request.session_id,
       turnId: request.request_id,
-      // 快速与精密模式都由服务端持久图托管；断线后都应恢复而不是标记失败。
+      // 服务端持久图托管任务，断线后恢复执行状态。
       durable: true,
     })
     this.lastEventSequences.set(request.request_id, 0)
@@ -642,19 +640,14 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        const visibleProgress = message.channel === 'progress'
-        if (agentStore.thinkingMode || agentStore.precisionMode) {
-          agentStore.appendThinkingContent(message.delta, message.node)
-        }
-        if (visibleProgress || agentStore.thinkingMode || agentStore.precisionMode) {
-          agentStore.appendTurnThinking(
-            sessionId,
-            message.request_id,
-            message.node || 'reasoning',
-            message.delta,
-            message.channel || 'reasoning',
-          )
-        }
+        agentStore.appendThinkingContent(message.delta, message.node)
+        agentStore.appendTurnThinking(
+          sessionId,
+          message.request_id,
+          message.node || 'reasoning',
+          message.delta,
+          message.channel || 'reasoning',
+        )
         break
         }
 
@@ -662,15 +655,13 @@ export class AgentBridge {
         {
         const context = this.requestContexts.get(message.request_id)
         const sessionId = message.session_id || context?.sessionId || agentStore.currentSessionId
-        if (agentStore.thinkingMode || agentStore.precisionMode) {
-          agentStore.setThinkingStatus(message.status, message.content || '')
-          agentStore.setTurnThinkingStatus(
-            sessionId,
-            message.request_id,
-            message.status,
-            message.content || '',
-          )
-        }
+        agentStore.setThinkingStatus(message.status, message.content || '')
+        agentStore.setTurnThinkingStatus(
+          sessionId,
+          message.request_id,
+          message.status,
+          message.content || '',
+        )
         if (message.status === 'completed') {
           agentStore.completeAllGeneratingNodes()
         }

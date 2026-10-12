@@ -1,0 +1,88 @@
+{
+  "source_request_id": "req_1791721881356_ndefwjbaf",
+  "scope": "building_body only; saved replies; no live model or rendering",
+  "result": {
+    "before": {
+      "status": "aborted",
+      "model_calls": 3,
+      "message": "建筑主体未能实现，停止附属构件生成：❌ [wall_main_block_right_L1] / [wall_wing_block_left_L1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [11.88, 12.12]，构件表面坐标 [11.88, 12.12]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面",
+      "entity_count": 0,
+      "errors": [
+        {
+          "building_body": "❌ [building_body_floor_L1] 主体楼板超出该标高体量并集 12.000㎡；按体量分片保留庭院空缺，不能填满包围盒；❌ [wall_main_block_right_L1] / [wall_wing_block_left_L1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [11.88, 12.12]，构件表面坐标 [11.88, 12.12]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面"
+        },
+        {
+          "building_body": "❌ [wall_main_block_right_L1] / [wall_wing_block_left_L1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [11.88, 12.12]，构件表面坐标 [11.88, 12.12]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面"
+        },
+        {
+          "building_body": "❌ [wall_main_block_right_L1] / [wall_wing_block_left_L1] 表面共面重叠，会产生闪烁；法线轴 X，墙面坐标 [11.88, 12.12]，构件表面坐标 [11.88, 12.12]；调整该方向截面或实际进退关系，移动 Y 标高不能消除此类共面"
+        }
+      ]
+    },
+    "after": {
+      "status": "succeeded",
+      "model_calls": 2,
+      "message": "落实 1，舍弃 0",
+      "entity_count": 16,
+      "errors": [
+        {
+          "building_body": "❌ [building_body_floor_L1] 主体楼板超出该标高体量并集 12.000㎡；按体量分片保留庭院空缺，不能填满包围盒"
+        },
+        {}
+      ],
+      "assembly_changes": [
+        {
+          "rule": "compiler.shared_wall",
+          "entity_id": "wall_wing_block_left_L1",
+          "retained_entity_id": "wall_main_block_right_L1",
+          "before": {
+            "type": "wall",
+            "id": "wall_wing_block_left_L1",
+            "from": [
+              12.0,
+              0.0,
+              10.0
+            ],
+            "to": [
+              12.0,
+              3.6,
+              2.0
+            ],
+            "thickness": 0.24,
+            "material": "wall_finish"
+          },
+          "after": null,
+          "semantic_change": false
+        },
+        {
+          "rule": "compiler.shared_wall",
+          "entity_id": "wall_wing_block_left_L1",
+          "retained_entity_id": "wall_main_block_right_L1",
+          "before": {
+            "type": "wall",
+            "id": "wall_wing_block_left_L1",
+            "from": [
+              12.0,
+              0.0,
+              2.0
+            ],
+            "to": [
+              12.0,
+              3.6,
+              10.0
+            ],
+            "thickness": 0.24,
+            "material": "wall_finish"
+          },
+          "after": null,
+          "semantic_change": false
+        }
+      ],
+      "host_errors": [],
+      "floor_errors": [],
+      "geometry_errors": [],
+      "upper_wall_preserved": true,
+      "unchanged_design": true
+    }
+  }
+}

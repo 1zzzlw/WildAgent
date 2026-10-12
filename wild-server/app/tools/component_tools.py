@@ -575,6 +575,20 @@ def validate_balcony_placement(blueprint: dict) -> str:
         width = float(balcony.get("width", 0))
         if float(balcony_from[0]) < 0 or float(balcony_from[0]) + width > wall_length:
             issues.append(f"❌ [{balcony_id}] 阳台沿墙范围超出父墙长度 {wall_length:.2f}m")
+
+    from app.design.relations import balcony_geometry
+    footprints, seen = balcony_geometry(blueprint), []
+    for balcony in balconies:
+        if balcony["id"] not in footprints:
+            continue
+        footprint = footprints[balcony["id"]]
+        x0, x1, z0, z1 = footprint["bounds"]
+        y1 = footprint["top_y"]
+        y0 = y1-balcony.get("slabThickness", 0)
+        for other, (a, b, c, d, low, high) in seen:
+            if min(x1, b)-max(x0, a) > 0.001 and min(z1, d)-max(z0, c) > 0.001 and min(y1, high)-max(y0, low) > 0.001:
+                issues.append(f"❌ [{balcony['id']}] 与 [{other}] 阳台板重叠；核对立面标记和显式实例是否重复表达同一阳台")
+        seen.append((balcony["id"], (x0, x1, z0, z1, y0, y1)))
     
     if not issues:
         return f"✅ 阳台校验通过 ({len(balconies)} 个阳台)"

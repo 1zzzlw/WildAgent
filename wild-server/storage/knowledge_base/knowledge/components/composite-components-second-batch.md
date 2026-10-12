@@ -38,7 +38,7 @@ primary_terms:
 synonyms: []
 -->
 
-`canopy` 写入 `geometry.components`，依附墙体并编译为一块 `primitive.box` 顶板和可选支柱。`from` 是 `[沿父墙距离, 安装世界Y, 墙体法向偏移]`；必填 `parentWall`、`width`、`depth`、`thickness`。`supportCount` 为 0–16 的可选整数。
+`canopy` 写入 `geometry.components`，依附墙体并编译为一块 `primitive.box` 顶板和可选支柱。`from` 是 `[沿父墙距离, 顶板中心世界Y, 墙体法向偏移]`；板底为 `from[1]-thickness/2`。必填 `parentWall`、`width`、`depth`、`thickness`。`supportCount` 为 0–16 的可选整数。图纸 `size.thickness` 或表示板高的 `size.height` 对应 `thickness`，不能直接沿用示例值；含支柱的整体高度另行描述。
 
 以下是 `geometry.components` 数组片段，不是完整 `.wild` 文件；假定 `front_wall` 已存在：
 
@@ -57,11 +57,7 @@ synonyms: []
 ```
 
 **设计层的宿主写法**（写进 `decisions.components[]`，不是蓝图）：
-`host` 写它要遮的那面墙，可用 `<volume_id>_L<floor>_<front/back/left/right>`、
-开口槽位 id（如 `wall_front_1:floor_1:door:1`）或墙 id。编译器取该墙上真实存在的
-门/窗当遮蔽对象，把雨棚挂在洞口正上方；墙上一个洞口都没有时整条丢弃并记入缺口
-（悬空雨棚在图上就是漂浮的废构件）。可表态：`size.width` / `size.depth` /
-`size.thickness`、`material_role`。
+`host` 写实际墙 id `wall_<volume_id>_<front/back/left/right>_L<floor>`，或写体量 id 并在 `placement` 写 `face`、`floor`。位置和尺寸由图纸决定，plan 根据真实墙及入口实现，不依赖旧开口槽位命名或自动选择洞口。可写 `size.width`、`size.depth`、`size.thickness`、`material_role`。
 
 ## 阳台 balcony
 
@@ -81,7 +77,7 @@ synonyms: []
 
 `balcony` 依附墙体，编译为悬挑楼板和 U 形路径栏杆。`from` 是 `[沿父墙距离, 楼板顶面世界Y, 墙体法向偏移]`；通常令 `from[2]=0`，编译器根据宿主墙相对建筑水平包围盒中心的位置推断室外方向，并让正数 `depth` 始终向室外悬挑。必填 `width`、`depth`、`slabThickness`。`railingHeight` 和 `postSpacing` 控制防护外观，但不代表通过建筑规范校核。
 
-同一阳台只能保留一个 `balcony` 组件，不得另加重合楼板。`railingEnabled` 缺省为 true，组件包含悬挑板和三面 U 形栏杆；独立 `railing` 接管时设为 false，阳台只展开板，保留对应独立栏杆。设计图纸可让 railing.host 引用阳台实例 ID，由编译器生成 U 形世界路径并关闭内置栏杆；缺少该栏杆结果时不得交付。
+同一阳台只生成一个 `balcony` 组件；立面上的概略标记与显式实例不能重复实现。`railingEnabled` 缺省为 true，组件包含悬挑板和三面 U 形栏杆。设计图纸让 railing.host 引用阳台实例 ID 时，plan 的 `attachment_geometry` 提供该阳台实际室外边缘世界路径及板顶；依据它实现栏杆及图纸花纹。实际独立栏杆通过校验后，统一装配关闭该阳台内置栏杆；独立实现舍弃时保留内置防护。`railing.parentFloor` 只接受真实 `floor` id，不能引用 `balcony`；使用上述世界路径时省略 `parentFloor`。填写真实 `parentFloor` 时，path 使用该楼板顶面局部坐标。
 
 以下是 `geometry.components` 数组片段，不是完整 `.wild` 文件；假定 `front_wall` 已存在：
 

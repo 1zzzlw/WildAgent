@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # 校验器版本：修改校验/修复工具语义时递增，让旧的 ValidationSnapshot 自动失效。
-VALIDATOR_VERSION = "2.6"
+VALIDATOR_VERSION = "2.7"
 
 
 def blueprint_fingerprint(blueprint: dict | None) -> str:
