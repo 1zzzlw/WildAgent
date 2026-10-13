@@ -1,56 +1,65 @@
 # WildAgent 正式文档
 
-这里仅保存与当前代码一致、需要持续维护的正式文档。历史方案、阶段总结、修复记录和已失效设计统一放在 [`docs-dev/`](../docs-dev/README.md)，不能作为当前实现依据。
+最后核对：2026-10-13。
 
-最后核对：2026-09-08。
+本目录**只保存与当前代码一致、需要长期维护的正式文档**。阶段性实施记录、诊断报告、Bug 复盘、方案原文和面试整理不属于正式文档，已移入 [`docs-dev/`](../docs-dev/README.md) 归档（该目录在 `.gitignore` 中，不进入版本库）。
+
+## 目录约定
+
+判断一份文档该不该留在这里，只问三个问题：
+
+1. 它描述的是**当前代码的真实行为**，还是某次改动的经过？
+2. 半年后还有人需要**按它行动**（照着启动、照着排查、照着改代码）吗？
+3. 它是否会随代码演进而**必须更新**？
+
+三个都是「是」才留在 `docs/`。任何一个是「否」，就属于开发过程记录。
 
 ## 项目级文档
 
-1. [项目索引](项目索引.md)：Agent 工作流、结构化中间状态、确定性装配、校验修复和前端重建的可维护代码索引。
-2. [架构说明](ARCHITECTURE.md)：项目边界、模块关系和真实数据流。
-3. [开发与测试](DEVELOPMENT.md)：本地启动、配置和验证要求。
-4. [测试文件使用指南](TESTING.md)：自动测试、专项评测、图展示和人工脚本的作用与命令。
-5. [测试文件详细目录](TESTING_GUIDE.md)：逐个测试文件和命令的详细说明。
-6. [服务器部署与运维](DEPLOYMENT.md)：Compose、环境文件位置、重建与故障核对。
-7. [优化路线](ROADMAP.md)：跨模块的当前结论、已完成优化和后续优先级。
-8. [两轮优化总结](OPTIMIZATION_SUMMARY.md)：LangGraph 生成链路（批次 A-E）与知识库/RAG（批次 K1-K3）的完整问题→改动→验证记录。
-9. [9月9日优化](9月9日优化/README.md)：DesignDocument、SVG 审核、知识声明加工与本轮验收规范。
+| 文档 | 内容 |
+|---|---|
+| [项目索引](项目索引.md) | **代码位置索引**。按文件路径 + 符号名定位，不写行号。排障第一入口 |
+| [架构说明](ARCHITECTURE.md) | 项目边界、模块关系和真实数据流 |
+| [开发与测试](DEVELOPMENT.md) | 环境要求、`.env` 完整配置、本地启动、变更验证、常见排查 |
+| [测试文件使用指南](TESTING.md) | 测试分层与门禁、目录分包、RAG 与前端检查工具、编写约定 |
+| [服务器部署与运维](DEPLOYMENT.md) | Jenkins 生产事实来源、`.env` 位置、镜像核对、数据与回滚 |
+| [优化路线](ROADMAP.md) | 当前架构硬约束、已闭环底线、P1–P3 优先级、验收指标 |
+| [WILD Blueprint 规范](specs/WILD_BLUEPRINT_SPEC.md) | `.wild` 交付格式的字段级唯一事实来源 |
 
-这些文件影响整个项目，因此保留在 `docs/` 根目录。
+根 `README.md` 提供项目定位、常见问答与快速启动入口，不重复本目录的细节。
 
 ## 专题文档
 
-开发观测与评测：[LangSmith 节点状态观测指南](面试难点解决过程/Agent工作流与中间状态设计问题/LangSmith节点状态观测指南.md)说明如何比较节点 State；[LangSmith 追踪、检索评测与 Studio](../wild-server/langsmith_tools/README.md)说明启动、配置与评测入口。
-
-知识库设计：[知识库优化设计思路](rag/知识库优化设计思路.md)，说明知识、规则、实例和生成自由度的分工。
-
-生成失败排查：[生成失败记录排查](agent/生成失败记录排查.md)，说明会话日志、RAGTrace 和 SQLite 检查点的读取方法。
-
 | 目录 | 内容 | 推荐入口 |
 |---|---|---|
-| [`agent/`](agent/) | Agent 路由、执行计划审核、校验闭环、对话与事件协议；平面/Plan2Build 文档仅保留为历史说明 | [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md)、[建筑生成计划模式与当前优化](agent/建筑生成计划模式与当前优化.md)、[AI 对话工作区优化说明](agent/AI对话工作区优化说明.md)、[Plan2Build 历史链路](agent/PLAN2BUILD_PIPELINE.md)、[平面生成历史实现](agent/FLOOR_PLAN_GENERATION_MVP.md) |
-| [`rag/`](rag/) | 分片、Embedding、Chroma、检索、评测和演进规划 | [RAG 文档入口](rag/README.md) |
-| [`specs/`](specs/) | `.wild` Blueprint 规范、字段和当前引擎能力目录 | [WILD Blueprint 当前版本规范](specs/WILD_BLUEPRINT_SPEC.md) |
+| [`specs/`](specs/) | `.wild` Blueprint 规范与引擎能力目录 | [构件能力目录](specs/BLUEPRINT_BUILD_TYPE_CATALOG.md) |
+| [`agent/`](agent/) | Agent 路由、执行计划、设计审核、校验闭环、对话与事件协议 | [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md) |
+| [`rag/`](rag/) | 分片、Embedding、Chroma、检索、门控、trace 与演进 | [RAG 专题入口](rag/README.md) |
 | [`materials/`](materials/) | PBR、程序化材质、表面系统、`.wildmat` 与 `.wildlook` | [建筑表面系统总览](materials/ARCHITECTURAL_SURFACE_SYSTEM.md) |
-| [`渲染引擎优化/`](渲染引擎优化/README.md) | 渲染链路诊断流程、A/B/C 改动分级、优化方向与 P0~P8 实施记录 | [渲染引擎优化目录](渲染引擎优化/README.md) |
+| [`design-languages/`](design-languages/) | 按建筑类型的 WILD 书写规则与蓝图示范 | [现代简约别墅设计语言](design-languages/现代简约别墅-建筑类型设计语言.md) |
+| [`渲染引擎优化/`](渲染引擎优化/) | 渲染诊断流程、改动分级、现状评估与优化方向 | [渲染问题诊断流程](渲染引擎优化/渲染问题诊断流程.md) |
+| [`10月10日优化/`](10月10日优化/) | **当前图纸驱动链路**的职责、代码入口与验收边界 | [图纸驱动链路说明](10月10日优化/README.md) |
+| [`9月9日优化/`](9月9日优化/) | DesignDocument 契约与知识声明加工规范 | [设计与生成链路规范](9月9日优化/README.md) |
 | [`operations/`](operations/) | 具体部署与运维专题 | [HTTPS/SSL 配置](operations/HTTPS_SETUP.md) |
-| [`tools/`](tools/) | 项目脚本和工具入口 | [工具目录](tools/README.md) |
+| [`tools/`](tools/) | 项目脚本与工具入口 | [工具目录](tools/README.md) |
 
 ## 事实来源优先级
 
 出现冲突时按以下顺序判断：
 
-1. 可运行代码、Schema 和自动化测试；
+1. 可运行代码、Schema 与自动化测试；
 2. 本目录中的正式文档；
-3. `docs/specs/` 的 WILD 语言契约、`wild-core/schema.json` 及源码旁的专项说明；
-4. `agent.md`、`wild-web/CLAUDE.md` 等协作上下文；
-5. `docs-dev/` 历史材料。
+3. `specs/` 的 WILD 语言契约、`wild-core/schema.json`；
+4. `wild-web/CLAUDE.md` 等协作上下文；
+5. `docs-dev/` 中的历史材料（**不能作为实现依据**）。
 
-知识库内容位于 `wild-server/storage/knowledge_base/`，它是 Agent 的运行数据，不属于项目说明文档，因此继续与后端存储放在一起。
+知识库内容位于 `wild-server/storage/knowledge_base/`，它是 Agent 的运行数据而非项目说明文档，因此继续与后端存储放在一起。
 
 ## 文档维护规则
 
-- 当前能力与规划必须明确分开；跨模块规划写入 [优化路线](ROADMAP.md)，单一专题规划写入对应专题目录。
-- 架构或协议变更必须同时更新对应正式文档。
-- 临时分析、Bug 复盘、实施日志直接写入 `docs-dev/`。
-- 每个主题只保留一个权威入口，避免“总结最终版”“最终修复版”并存。
+- 架构或协议变更必须**同批**更新对应正式文档；只改代码不改文档视为未完成。
+- 每个主题只保留一个权威入口，禁止出现「总结最终版」「最终修复版」并存。
+- 当前能力与未来设想必须明确分开；路线写入 [优化路线](ROADMAP.md)，单一专题的规划写入对应专题目录。
+- **索引里的每条链接都必须可达**。链接失效说明文档已过时，改内容或归档，不要留悬空链接。
+- 索引中不写行号。行号会漂移，用文件路径 + 符号名定位。
+- 临时分析、Bug 复盘、实施日志直接写入 `docs-dev/`，不要放进本目录再「以后再清理」。

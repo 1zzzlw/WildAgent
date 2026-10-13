@@ -142,6 +142,7 @@ class GenerationGraphExecutionTest(unittest.IsolatedAsyncioTestCase):
                 "selection",
                 "recent_messages",
                 "workflow_state",
+                "thinking_mode",
                 "detail_level",
                 "procedural_materials_enabled",
             },

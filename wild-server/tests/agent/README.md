@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9affa8eb9c4911f184de525400f8a581
-    ReservedCode1: fntON2zO2b0lKlw6hAtNrtLhfE4w7XbQke9+vYIB84mGXsOd7yI3Feh1hzUu5m6TAp5Lo+DvM29lagmWixFeJmS3VAiiLhLTnwMSmENVlgcLXLSfqnpUKt8/+rMaG+C/e+7zcjkPP0oEbKHSzXUvZxBVsVxrCgD8m3iqD48XPOjvkCUR6nVsd1KrAzk=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9affa8eb9c4911f184de525400f8a581
-    ReservedCode2: fntON2zO2b0lKlw6hAtNrtLhfE4w7XbQke9+vYIB84mGXsOd7yI3Feh1hzUu5m6TAp5Lo+DvM29lagmWixFeJmS3VAiiLhLTnwMSmENVlgcLXLSfqnpUKt8/+rMaG+C/e+7zcjkPP0oEbKHSzXUvZxBVsVxrCgD8m3iqD48XPOjvkCUR6nVsd1KrAzk=
----
-
-
-
 # agent 包测试
 
 ## 用途

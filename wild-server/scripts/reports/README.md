@@ -1,18 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_99b5e31c9c4911f184de525400f8a581
-    ReservedCode1: z9azDVdQ/E0BGjokht8kkmrMIK0QhXYJLy9hxxt8YodVFVwKBaIv8pXSknjUhtSB4BgsrZFozg6rozuIeVOUvOjI2/B+UaSYDaktHK8jEIqIdhjuAXIhjK4TuI6SNcvsly6In6jiLTR7uue7v7xiktNsqDIk5RXFluDL37tEHvTflw+0KEcGgi96DyE=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_99b5e31c9c4911f184de525400f8a581
-    ReservedCode2: z9azDVdQ/E0BGjokht8kkmrMIK0QhXYJLy9hxxt8YodVFVwKBaIv8pXSknjUhtSB4BgsrZFozg6rozuIeVOUvOjI2/B+UaSYDaktHK8jEIqIdhjuAXIhjK4TuI6SNcvsly6In6jiLTR7uue7v7xiktNsqDIk5RXFluDL37tEHvTflw+0KEcGgi96DyE=
----
-
-
-
-
-
 # reports/ — 脚本运行产物
 
 ## 目录说明

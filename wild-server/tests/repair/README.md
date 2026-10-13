@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9facd7b69c4911f19155525400826444
-    ReservedCode1: +0Yh3iIfqWcKL3MeRnZJxJSAMwswSGlt7UPRC011XL3hYOLRw2mmGeQr2VtupUa3uV4eCOQLWEVmamH9tb7EoIkcdiAkuOVqQQ2ZQXcYfv/VsNpPuOvnAPIKAwp7VXopjegNctQRFsG+wzuVEyv4qRUwh0HgCa00+P2OcM7q8avze5KzCwwbVcJ/Sac=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9facd7b69c4911f19155525400826444
-    ReservedCode2: +0Yh3iIfqWcKL3MeRnZJxJSAMwswSGlt7UPRC011XL3hYOLRw2mmGeQr2VtupUa3uV4eCOQLWEVmamH9tb7EoIkcdiAkuOVqQQ2ZQXcYfv/VsNpPuOvnAPIKAwp7VXopjegNctQRFsG+wzuVEyv4qRUwh0HgCa00+P2OcM7q8avze5KzCwwbVcJ/Sac=
----
-
-
-
 # repair 包测试
 
 ## 用途

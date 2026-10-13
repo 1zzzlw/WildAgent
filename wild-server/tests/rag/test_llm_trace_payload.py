@@ -64,27 +64,96 @@ def test_stream_failure_preserves_received_partial_output(local_trace):
 
 
 @pytest.mark.asyncio
-async def test_stream_timeout_covers_continuous_chunks_and_preserves_partial_trace(local_trace, monkeypatch):
-    monkeypatch.setattr(config.chat, "timeout", 0.04)
+@pytest.mark.parametrize("timeout", [0.08, 0])
+async def test_stream_timeout_does_not_cut_off_continuous_model_output(local_trace, monkeypatch, timeout):
+    monkeypatch.setattr(config.chat, "timeout", timeout)
     closed, received = [], []
     class Model:
         async def astream(self, messages):
             try:
-                for i in range(100):
+                for i in range(8):
+                    await asyncio.sleep(0.02)
                     yield SimpleNamespace(content=str(i), additional_kwargs={"reasoning_content": "思考"})
-                    await asyncio.sleep(0.005)
             finally:
                 closed.append(True)
     async def emit(delta):
         received.append(delta)
-    with pytest.raises(TimeoutError):
-        with rag_trace_scope("req_deadline", session_id="session_deadline"):
-            await invocation.stream_llm(Model(), [], on_reasoning_delta=emit)
-    assert closed == [True] and 0 < len(received) < 100
+    with rag_trace_scope("req_deadline", session_id="session_deadline"):
+        result = await invocation.stream_llm(Model(), [], on_reasoning_delta=emit)
+    assert closed == [True] and len(received) == 8
     trace = json.loads(trace_file_path("session_deadline", "req_deadline").read_text(encoding="utf-8"))
     call = trace["llm_calls"][0]
-    assert call["error_type"] == "TimeoutError" and call["response_content"]
+    assert call["error_type"] is None and call["response_content"] == result.content == "01234567"
+    assert call["elapsed_ms"] > 80
     assert call["reasoning_content"] == "".join(received)
+
+
+@pytest.mark.asyncio
+async def test_empty_stream_chunks_do_not_extend_response_timeout(local_trace, monkeypatch):
+    monkeypatch.setattr(config.chat, "timeout", 0.08)
+    closed = []
+    class Model:
+        async def astream(self, messages):
+            try:
+                for _ in range(8):
+                    await asyncio.sleep(0.02)
+                    yield SimpleNamespace(content="", additional_kwargs={})
+            finally:
+                closed.append(True)
+    with pytest.raises(TimeoutError):
+        with rag_trace_scope("req_empty", session_id="session_empty"):
+            await invocation.stream_llm(Model(), [])
+    assert closed == [True]
+    trace = json.loads(trace_file_path("session_empty", "req_empty").read_text(encoding="utf-8"))
+    assert trace["llm_calls"][0]["error_type"] == "TimeoutError"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("send_partial", [False, True])
+async def test_stream_idle_timeout_preserves_partial_output_and_closes_stream(local_trace, monkeypatch, send_partial):
+    monkeypatch.setattr(config.chat, "timeout", 0.03)
+    closed = []
+    class Model:
+        async def astream(self, messages):
+            try:
+                if send_partial:
+                    yield SimpleNamespace(content='{"roof":', additional_kwargs={"reasoning_content": "已返回"})
+                await asyncio.Event().wait()
+            finally:
+                closed.append(True)
+    with pytest.raises(TimeoutError):
+        with rag_trace_scope("req_idle", session_id="session_idle"):
+            await invocation.stream_llm(Model(), [])
+    assert closed == [True]
+    trace = json.loads(trace_file_path("session_idle", "req_idle").read_text(encoding="utf-8"))
+    call = trace["llm_calls"][0]
+    assert call["error_type"] == "TimeoutError"
+    assert call["response_content"] == ('{"roof":' if send_partial else "")
+    assert call["reasoning_content"] == ("已返回" if send_partial else "")
+
+
+@pytest.mark.asyncio
+async def test_stream_cancellation_still_closes_and_records_received_output(local_trace):
+    closed, received = [], asyncio.Event()
+    class Model:
+        async def astream(self, messages):
+            try:
+                yield SimpleNamespace(content="", additional_kwargs={"reasoning_content": "已返回"})
+                await asyncio.Event().wait()
+            finally:
+                closed.append(True)
+    async def emit(_delta):
+        received.set()
+    with rag_trace_scope("req_cancel", session_id="session_cancel"):
+        task = asyncio.create_task(invocation.stream_llm(Model(), [], on_reasoning_delta=emit))
+        await received.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+    assert closed == [True]
+    trace = json.loads(trace_file_path("session_cancel", "req_cancel").read_text(encoding="utf-8"))
+    assert trace["llm_calls"][0]["error_type"] == "CancelledError"
+    assert trace["llm_calls"][0]["reasoning_content"] == "已返回"
 
 
 def test_payload_recording_without_request_scope_is_a_noop():

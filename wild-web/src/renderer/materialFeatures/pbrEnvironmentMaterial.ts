@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'pbr-environment-v1'
+const SHADER_VERSION = 'pbr-environment-v2'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>
@@ -59,7 +59,8 @@ varying vec3 vWildPbrWorldPosition;`,
     )
     .replace(
       '#include <defaultnormal_vertex>',
-      '#include <defaultnormal_vertex>\nvWildPbrWorldNormal = normalize(mat3(modelMatrix) * transformedNormal);',
+      `#include <defaultnormal_vertex>
+vWildPbrWorldNormal = inverseTransformDirection(transformedNormal, viewMatrix);`,
     )
     .replace(
       '#include <worldpos_vertex>',

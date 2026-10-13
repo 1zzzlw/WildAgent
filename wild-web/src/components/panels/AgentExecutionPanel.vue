@@ -68,8 +68,20 @@
             <span v-if="item.placement" class="object-placement">{{ item.placement }}</span>
           </div>
         </div>
+        <div v-if="architectureDecisions && turn.design_preview_url" class="drawing-toolbar">
+          <div class="drawing-floors" aria-label="图纸楼层">
+            <button v-for="level in designLevels" :key="level.index" type="button"
+              :class="{ selected: selectedDesignFloor === level.index }"
+              @click="selectedDesignFloor = level.index">F{{ level.index }}</button>
+          </div>
+          <button type="button" @click="drawingOpen = true">放大图纸</button>
+        </div>
+        <button v-if="architectureDecisions && designPreviewUrl" type="button"
+          class="design-preview-link drawing-preview" title="放大查看本层平面图" @click="drawingOpen = true">
+          <img :src="designPreviewUrl" alt="本层平面图：空间、墙体、门窗及构件位置" />
+        </button>
         <a
-          v-if="turn.design_preview_url"
+          v-else-if="turn.design_preview_url"
           class="design-preview-link"
           :href="turn.design_preview_url"
           target="_blank"
@@ -209,6 +221,31 @@
   </details>
 
   <Teleport to="body">
+    <div v-if="drawingOpen && architectureDecisions" class="drawing-backdrop" @click.self="drawingOpen = false">
+      <section ref="drawingDialog" class="drawing-dialog" role="dialog" aria-modal="true" aria-label="平面设计图纸"
+        tabindex="-1" @keydown.esc="drawingOpen = false">
+        <header class="drawing-header">
+          <strong>平面设计图纸</strong>
+          <div class="drawing-floors" aria-label="放大图纸楼层">
+            <button v-for="level in designLevels" :key="level.index" type="button"
+              :class="{ selected: selectedDesignFloor === level.index }"
+              @click="selectedDesignFloor = level.index">F{{ level.index }} · {{ level.base_y.toFixed(3) }} m</button>
+          </div>
+          <div class="drawing-actions">
+            <button type="button" aria-label="缩小图纸" :disabled="drawingZoom <= 0.5"
+              @click="drawingZoom = Math.max(0.5, drawingZoom - 0.25)">−</button>
+            <button type="button" title="恢复适应宽度" @click="drawingZoom = 1">{{ Math.round(drawingZoom * 100) }}%</button>
+            <button type="button" aria-label="放大图纸" :disabled="drawingZoom >= 3"
+              @click="drawingZoom = Math.min(3, drawingZoom + 0.25)">+</button>
+            <a :href="designPreviewUrl" target="_blank" rel="noopener noreferrer">打开 SVG</a>
+            <button type="button" aria-label="关闭平面图纸" @click="drawingOpen = false">×</button>
+          </div>
+        </header>
+        <div class="drawing-viewport">
+          <img :src="designPreviewUrl" :style="{ width: `${drawingZoom * 100}%` }" alt="当前楼层完整平面设计图纸" />
+        </div>
+      </section>
+    </div>
     <aside
       v-if="turn.plan && planWindowOpen"
       class="plan-floating-window"
@@ -268,7 +305,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import type { AgentTurn, PlanItem } from '../../types/agent'
 import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
@@ -280,6 +317,10 @@ const emit = defineEmits<{
 }>()
 const clock = ref(Date.now())
 const designFeedback = ref('')
+const selectedDesignFloor = ref(1)
+const drawingOpen = ref(false)
+const drawingZoom = ref(1)
+const drawingDialog = ref<HTMLElement | null>(null)
 const planWindowOpen = ref(false)
 const planWindowMinimized = ref(false)
 const planAutoOpenedForRequest = ref('')
@@ -327,6 +368,27 @@ const designMaterialConcept = computed(() => {
 const architectureDecisions = computed(() => {
   const decisions = props.turn.design_document?.decisions
   return decisions?.kind === 'architecture' ? decisions : null
+})
+
+const designLevels = computed(() => architectureDecisions.value ? props.turn.resolved_design?.levels ?? [] : [])
+const designPreviewUrl = computed(() => {
+  const source = props.turn.design_preview_url
+  if (!source || !architectureDecisions.value || !designLevels.value.length) return source
+  const url = new URL(source, window.location.href)
+  url.searchParams.set('floor', String(selectedDesignFloor.value))
+  return url.toString()
+})
+watch(designLevels, levels => {
+  if (!levels.some(level => level.index === selectedDesignFloor.value)) {
+    selectedDesignFloor.value = levels[0]?.index ?? 1
+  }
+}, { immediate: true })
+watch(drawingOpen, async open => {
+  if (open) {
+    drawingZoom.value = 1
+    await nextTick()
+    drawingDialog.value?.focus()
+  }
 })
 
 const objectDecisions = computed(() => {
@@ -629,8 +691,30 @@ onUnmounted(() => {
   background: rgba(91, 178, 142, .1);
   font-size: 10px;
 }
-.design-preview-link { display: block; overflow: hidden; border-radius: 6px; background: #171a20; }
-.design-preview-link img { display: block; width: 100%; max-height: 360px; object-fit: contain; }
+.design-preview-link { display: block; overflow: hidden; border-radius: 6px; background: #0f172a; }
+.design-preview-link img { display: block; width: 100%; object-fit: contain; }
+.drawing-preview { width: 100%; padding: 0; border: 1px solid #334155; cursor: zoom-in; }
+.drawing-toolbar, .drawing-header, .drawing-actions, .drawing-floors { display: flex; align-items: center; gap: 8px; }
+.drawing-toolbar { justify-content: space-between; flex-wrap: wrap; }
+.drawing-floors { flex-wrap: wrap; }
+.drawing-toolbar button, .drawing-header button, .drawing-header a {
+  padding: 6px 10px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155;
+  border-radius: 5px; font: inherit; text-decoration: none; cursor: pointer;
+}
+.drawing-floors button.selected { color: #facc15; border-color: #a58b24; background: #373022; }
+.drawing-header button:disabled { opacity: .4; cursor: default; }
+.drawing-backdrop { position: fixed; inset: 0; z-index: 3000; padding: 24px; background: rgba(0, 0, 0, .72); }
+.drawing-dialog { display: flex; flex-direction: column; height: 100%; max-width: 1600px; margin: auto;
+  background: #0f172a; border: 1px solid #334155; border-radius: 10px; overflow: hidden; }
+.drawing-header { flex-wrap: wrap; padding: 14px 18px; border-bottom: 1px solid #334155; color: #e2e8f0; }
+.drawing-actions { margin-left: auto; }
+.drawing-viewport { flex: 1; overflow: auto; padding: 12px; }
+.drawing-viewport img { display: block; max-width: none; height: auto; margin: 0 auto; }
+@media (max-width: 700px) {
+  .drawing-backdrop { padding: 8px; }
+  .drawing-header { padding: 10px; gap: 10px; }
+  .drawing-actions { margin-left: 0; }
+}
 .design-details { color: #929da8; font-size: 10.5px; }
 .design-details > summary { cursor: pointer; color: #bac4ce; }
 .design-details > div { padding-top: 4px; }

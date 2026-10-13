@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time as _time
+import asyncio
 
 from pydantic import ValidationError
 
@@ -80,6 +81,9 @@ def _validation_reason(exc: Exception) -> str:
                         f"face 仅表示 front/back/left/right 四个竖向立面，实际 {item.get('input')!r}；"
                         "屋顶、檐底或天花构件用 placement.position=[x,y,z] 写世界中心坐标，朝向说明写在 form/description"
                     )
+                if path.startswith("/components/") and path.endswith("/host"):
+                    message = (f"host 应为宿主 ID 字符串或 null，实际 {item.get('input')!r}；"
+                               "无宿主可省略或写 null/空字符串；位置写 placement，不能把对象、数组或数值填入 host")
                 messages.append(f"{path}：{message}")
         if messages:
             return "；".join(dict.fromkeys(messages))
@@ -181,8 +185,18 @@ async def architecture_planner(state: GenerationState) -> dict:
     if callback:
         await callback("architecture:progress", "正在形成完整建筑图纸与构件标记……\n")
 
+    from app.services.agent_service import agent_service
+    from app.spec.loader import SpecQuery
+    rag_started = _time.time()
+    spec_text = await asyncio.to_thread(agent_service.spec_loader.load_many, [
+        SpecQuery(f"{message} {feedback} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
+                  {"entity_name": "architecture_design_expression"}),
+        SpecQuery(f"{message} {feedback} 形态表达 空间组织 构件组合",
+                  {"doc_type": "component", "topic": "composition"})
+    ], per_query=2, include_base=False)
+    rag_ms = int((_time.time()-rag_started)*1000)
     prompt = build_architecture_plan_prompt(
-        "",
+        spec_text,
         profile,
         complexity,
         current_plan=previous_plan,
@@ -210,6 +224,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             if (
                 resolve_component_name(item.get("type", ""))["entity_type"]
                 in {"door", "window"}
+                and isinstance(item.get("host"), str)
                 and item.get("host") in volume_ids
                 and isinstance(placement, dict)
                 and not placement.get("position")
@@ -253,7 +268,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         raw, diag = await draft_design(
             base_prompt=prompt,
             user_request=message + ("\n本轮修改意见：" + feedback if feedback else ""),
-            thinking_mode=True,
+            thinking_mode=state.get("thinking_mode") is not False,
             on_reasoning_delta=callback,
             current_plan=previous_plan if feedback else None,
             validate=validate,
@@ -272,6 +287,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             },
         }
     diag.update(
+        rag_chars=len(spec_text), rag_ms=rag_ms,
         total_ms=int((_time.time() - started) * 1000),
         profile=profile["id"],
         raw_plan=raw,

@@ -15,6 +15,7 @@ from tests.plan.test_drawing_implementation import empty_state, patch_services, 
     ("入口门", "door", "door"), ("组合窗", "combination_window", "window"),
     ("格栅窗", "louvered_window", "window"), ("厨房窗", "window", "window"),
     ("卧室窗", "window", "window"), ("设备百叶", "ventilation_louvre", "window"),
+    ("opening_door", "door", "door"), ("window_rectangular", "window", "window"),
 ])
 def test_facade_aliases_use_the_same_component_family(name, kind, family):
     actual = resolve_component_name(name)
@@ -32,7 +33,8 @@ def test_fill_and_no_opening_are_body_design_and_not_extra_tasks():
     assert document.model_dump(mode="json") == before
 
 
-@pytest.mark.parametrize("kind,alias", [("door", "入口门"), ("combination_window", "组合窗")])
+@pytest.mark.parametrize("kind,alias", [("door", "入口门"), ("combination_window", "组合窗"),
+                                        ("door", "opening_door"), ("window", "window_rectangular")])
 def test_explicit_opening_suppresses_its_default_alias(kind, alias):
     document = drawing()
     document.decisions.facades["front"] = FacadeDecision(bays=4,

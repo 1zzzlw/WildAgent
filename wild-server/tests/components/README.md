@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9ce118159c4911f19155525400826444
-    ReservedCode1: rptldFiv/MJXfCu7KqGmW8mWrYilpUYaVk8g85Pw4zCcHpl7DG0XGa6eJkdb7BX1KeQI+mCyv/Pkkv+oUe9sZ5U+5+1lF37Jiff6EhOA7iJAgut2e9/SU7FIjCM4SApn0dtI5f0a+7RugBpjufJz+ShQAqpyph8JRDus9+7FSeo1yUzbJHE0tanKM4w=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9ce118159c4911f19155525400826444
-    ReservedCode2: rptldFiv/MJXfCu7KqGmW8mWrYilpUYaVk8g85Pw4zCcHpl7DG0XGa6eJkdb7BX1KeQI+mCyv/Pkkv+oUe9sZ5U+5+1lF37Jiff6EhOA7iJAgut2e9/SU7FIjCM4SApn0dtI5f0a+7RugBpjufJz+ShQAqpyph8JRDus9+7FSeo1yUzbJHE0tanKM4w=
----
-
-
-
 # components 包测试
 
 ## 用途

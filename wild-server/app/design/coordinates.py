@@ -1,6 +1,6 @@
 """体量起点坐标与总体尺寸控制；不把世界原点当场地边界。"""
 import json
-from math import hypot
+from math import hypot, isfinite
 
 
 class DesignCoordinateConflict(ValueError):
@@ -38,6 +38,37 @@ def representative_floor_indices(massing):
     return list(range(1, count+1))
 
 
+def floor_elevations(design):
+    """同一图纸的楼面世界标高；显式 level 优先，未声明时沿用层高。"""
+    height, count = design["massing"]["floor_height"], design["massing"]["floors"]
+    explicit = {}
+    layouts = design.get("floor_layouts") or []
+    if not isinstance(layouts, list):
+        raise ValueError("/floor_layouts：逐层布局必须是对象数组")
+    for index, layout in enumerate(layouts):
+        if not isinstance(layout, dict):
+            raise ValueError(f"/floor_layouts/{index}：每层布局必须是对象")
+        for key in ("rooms", "walls"):
+            if not isinstance(layout.get(key, []), list) or any(not isinstance(item, dict) for item in layout.get(key, [])):
+                raise ValueError(f"/floor_layouts/{index}/{key}：必须是对象数组")
+        if "floor" not in layout or layout.get("level") is None:
+            continue
+        floor, level = layout["floor"], layout["level"]
+        if isinstance(floor, bool) or not isinstance(floor, int) or not 1 <= floor <= count:
+            raise ValueError(f"/floor_layouts/{index}/floor：楼层必须是 1～{count} 的整数")
+        if isinstance(level, bool) or not isinstance(level, (int, float)) or not isfinite(level):
+            raise ValueError(f"/floor_layouts/{index}/level：楼面世界标高必须是有限数字")
+        if floor in explicit and explicit[floor] != level:
+            raise ValueError(f"/floor_layouts/{index}/level：同一楼层声明了不同标高")
+        explicit[floor] = level
+    base = explicit.get(1, 0)
+    levels = {i: explicit.get(i, base+(i-1)*height) for i in range(1, count+1)}
+    levels[count+1] = levels[count]+height
+    if any(levels[i+1] <= levels[i] for i in range(1, count)):
+        raise ValueError("/floor_layouts：上层楼面标高必须高于下层；显式修订，不能覆盖已声明标高")
+    return levels
+
+
 def rectangle_uncovered_area(bounds, regions):
     """矩形减去矩形并集的面积；重复、重叠覆盖不能抵消其他位置的空缺。"""
     x0, z0, x1, z1 = bounds
@@ -61,6 +92,13 @@ def opening_coordinate_errors(markers):
     for marker in markers:
         wall = marker.get("diagram_host")
         design, spec = marker["design"], marker["entity"]
+        if (wall and wall.get("open")
+                and resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}):
+            errors.append(f"{marker.get('design_path', '/decisions/components')}/host：{marker['id']} 引用了 {wall['id']}，"
+                          "但该体量此面此层的有效 facades 是 open（无墙）；"
+                          "封闭空间需在对应 volume.facades 覆盖此面的布局，或显式修订门窗宿主；"
+                          "不能只在文字中声明围护，未覆盖的面仍继承共享 facades")
+            continue
         if (not wall or not design.get("placement") or not spec.get("from")
                 or resolve_component_name(marker["type"])["entity_type"] not in {"door", "window"}):
             continue

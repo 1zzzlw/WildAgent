@@ -74,7 +74,7 @@ async def approve_design(session_id: str, body: ApproveDesignRequest):
 
 
 @router.get("/{session_id}/preview.svg")
-async def get_design_preview(session_id: str, revision: int | None = None):
+async def get_design_preview(session_id: str, revision: int | None = None, floor: int | None = None):
     try:
         document = design_repository.get(session_id)
     except ValueError as exc:
@@ -84,7 +84,11 @@ async def get_design_preview(session_id: str, revision: int | None = None):
     if revision is not None and revision != document.revision:
         raise HTTPException(status_code=409, detail="设计已更新，请刷新审核预览")
     # Legacy SVG files carry no resolver version: regenerate from the current document.
+    try:
+        svg = render_design_svg(document, floor=floor)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return Response(
-        content=render_design_svg(document), media_type="image/svg+xml",
+        content=svg, media_type="image/svg+xml",
         headers={"Cache-Control": "no-store, max-age=0"},
     )

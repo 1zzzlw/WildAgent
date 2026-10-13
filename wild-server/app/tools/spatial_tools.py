@@ -47,15 +47,27 @@ WALL_OPENING_COMPONENT_TYPES = {"door", "window", "bay_window"}
 def _floor_regions_by_level(elements: list[dict]) -> list[tuple[float, list[list[float]]]]:
     grouped: dict[float, list[list[float]]] = {}
     for item in elements:
-        if item.get("type") != "floor":
+        if item.get("type") == "floor":
+            start, end = item.get("from"), item.get("to")
+        elif (item.get("type") == "primitive" and item.get("shape") == "box"
+              and item.get("rotation", [0, 0, 0]) == [0, 0, 0]):
+            position, dimensions = item.get("position"), item.get("dimensions")
+            scale = item.get("scale", [1, 1, 1])
+            if not all(_is_finite_vector3(v) for v in (position, dimensions, scale)):
+                continue
+            w, h, d = [abs(v*s) for v, s in zip(dimensions, scale)]
+            if min(w, h, d) <= 0:
+                continue
+            x, y, z = position
+            start, end = [x-w/2, y+h/2, z-d/2], [x+w/2, y+h/2, z+d/2]
+        else:
             continue
-        start, end = item.get("from"), item.get("to")
         if not isinstance(start, list) or not isinstance(end, list):
             continue
         if len(start) != 3 or len(end) != 3:
             continue
         try:
-            y = round(float(start[1]), 3)
+            y = round(float(start[1]) + (float(item.get("thickness", 0)) if item.get("type") == "floor" else 0), 3)
             bounds = [
                 min(float(start[0]), float(end[0])),
                 min(float(start[2]), float(end[2])),
@@ -75,6 +87,9 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
     stairs = [item for item in elements if item.get("type") == "stair"]
     floor_levels = _floor_regions_by_level(elements)
     issues: list[dict[str, object]] = []
+    support_feedback = (f"；已有承托标高 {[y for y, _ in floor_levels]}m。"
+                        "若该标高缺少承托面，返回 floor 或 primitive.box 平台实体，顶面覆盖端点完整梯宽，不能只移动 X/Z；"
+                        "若已有平台，则核对标高和覆盖范围；explanation 中描述平台不能代替实体")
 
     def supported(point: tuple[float, float], y: float) -> bool:
         matching = [
@@ -100,6 +115,15 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
         run_x = float(end[0]) - float(start[0])
         run_z = float(end[2]) - float(start[2])
         run_length = math.hypot(run_x, run_z)
+        count = stair.get("stepCount")
+        if _is_positive_number(count):
+            for field, distance in (("stepDepth", run_length), ("stepHeight", end_y-start_y)):
+                value = stair.get(field)
+                if _is_positive_number(value) and abs(count*value-distance) > 0.001:
+                    issues.append({"code": "stair_step_span_mismatch", "entity_ids": (str(stair.get("id") or "?"),),
+                        "message": f"楼梯 {stair.get('id')} 的 stepCount×{field}={count*value:g}m，"
+                                   f"from/to 实际{'水平投影' if field == 'stepDepth' else '高差'}={distance:g}m；"
+                                   "核对整跑起终点与踏步，不能只移动一端使梯段转向或缩短"})
         half_width = max(0.0, float(stair.get("width") or 0.0) / 2)
         if run_length > 0.001:
             offset_x = -run_z / run_length * half_width
@@ -119,13 +143,15 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
         if not endpoint_supported(start, start_y):
             issues.append({
                 "code": "stair_start_outside_floor",
-                "message": f"楼梯 {stair_id} 起点不在 {start_y:g}m 楼板范围内",
+                "message": (f"楼梯 {stair_id} 起点不在 {start_y:g}m 楼板或平台范围内；端点={start}，净宽={half_width*2:g}m，"
+                            f"承托范围={[r for y, regions in floor_levels if abs(y-start_y)<=0.25 for r in regions]}" + support_feedback),
                 "entity_ids": (stair_id,),
             })
         if not endpoint_supported(end, end_y):
             issues.append({
                 "code": "stair_end_outside_floor",
-                "message": f"楼梯 {stair_id} 终点不在 {end_y:g}m 楼板范围内",
+                "message": (f"楼梯 {stair_id} 终点不在 {end_y:g}m 楼板或平台范围内；端点={end}，净宽={half_width*2:g}m，"
+                            f"承托范围={[r for y, regions in floor_levels if abs(y-end_y)<=0.25 for r in regions]}" + support_feedback),
                 "entity_ids": (stair_id,),
             })
         valid_stairs.append((stair, start, end))
@@ -140,7 +166,13 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
             float(previous_end[0]) - float(current_start[0]),
             float(previous_end[2]) - float(current_start[2]),
         )
-        if horizontal_gap > 0.35:
+        shared_landing = any(
+            abs(level_y - float(previous_end[1])) <= 0.25
+            and point_in_regions((float(previous_end[0]), float(previous_end[2])), [region])
+            and point_in_regions((float(current_start[0]), float(current_start[2])), [region])
+            for level_y, regions in floor_levels for region in regions
+        )
+        if horizontal_gap > 0.35 and not shared_landing:
             previous_id = str(previous_stair.get("id") or "?")
             current_id = str(current_stair.get("id") or "?")
             issues.append({
@@ -1797,6 +1829,8 @@ def validate_stair_alignment(blueprint: dict) -> str:
         thickness = f.get("thickness", 0.0)
         if isinstance(fy, (int, float)):
             floor_heights.append(float(fy) + float(thickness))
+    floor_heights.extend(y for y, _ in _floor_regions_by_level(
+        [item for item in elements if item.get("type") == "primitive"]))
 
     wall_top_heights: list[float] = []
     for w in walls:
@@ -2945,8 +2979,12 @@ def validate_collision(blueprint: dict) -> str:
     # 底面/顶面标高再取最近；furniture 的 position[1] 是家具底部，站在行走面（楼板顶面）
     # 上，只对顶面。合并后避免把"站在叠层台基顶上的柱"（底 Y = 某层顶面）误判悬空。
     support_levels = sorted({round(v, 6) for v in (*floor_base_ys, *floor_top_ys)})
+    unsupported_starts = {i for issue in collect_stair_placement_issues(blueprint)
+                          if issue["code"] == "stair_start_outside_floor" for i in issue["entity_ids"]}
     for t, get_bottom_y in FLOATING_TYPES.items():
         for el in by_type.get(t, []):
+            if t == "stair" and el.get("id") not in unsupported_starts:
+                continue
             bottom_y = float(get_bottom_y(el))
             references = floor_top_ys if t == "furniture" else support_levels
             # 找最近的楼板高度

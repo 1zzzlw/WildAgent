@@ -18,7 +18,7 @@ from app.extensions.presence import WebSocketConnectionRegistry
 from app.services.generation_job_service import GenerationJob, GenerationJobService
 
 
-async def _run_graph_request(ws, data, outputs, reasoning_delta=None):
+async def _run_graph_request(ws, data, outputs, reasoning_delta=None, reasoning_node="patch"):
     captured = {}
 
     class Graph:
@@ -27,7 +27,7 @@ async def _run_graph_request(ws, data, outputs, reasoning_delta=None):
             if reasoning_delta:
                 from app.agent.runtime import get_reasoning_callback
 
-                await get_reasoning_callback()("patch", reasoning_delta)
+                await get_reasoning_callback()(reasoning_node, reasoning_delta)
             for node, output in outputs.items():
                 yield {"event": "on_chain_end", "name": node, "data": {"output": output}}
 
@@ -266,16 +266,19 @@ class WebSocketPresenceTest(unittest.IsolatedAsyncioTestCase):
 
 
 class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
-    async def _run_request(self, detail_level, reasoning_delta=None):
+    async def _run_request(self, detail_level, reasoning_delta=None, thinking_mode=None, reasoning_node="patch"):
         ws = Mock()
         ws.send_json = AsyncMock()
-        captured = await _run_graph_request(ws, {
+        data = {
             "request_id": "req_thinking",
             "session_id": "session_thinking",
             "message": "修改墙厚",
             "detail_level": detail_level,
-        }, {
-            "classifier": {"intent": "edit", "thinking_mode": True},
+        }
+        if thinking_mode is not None:
+            data["thinking_mode"] = thinking_mode
+        captured = await _run_graph_request(ws, data, {
+            "classifier": {"intent": "edit", "thinking_mode": thinking_mode is not False},
             "patch": {
                 "scene_patch": {
                     "operations": [{"op": "update_element", "id": "wall", "changes": {"thickness": 0.3}}],
@@ -283,8 +286,8 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
                 },
                 "status": "complete",
             },
-        }, reasoning_delta)
-        self.assertNotIn("thinking_mode", captured)
+        }, reasoning_delta, reasoning_node)
+        self.assertEqual(captured["thinking_mode"], thinking_mode is not False)
         self.assertEqual(captured["detail_level"], detail_level)
         return [call.args[0] for call in ws.send_json.await_args_list]
 
@@ -311,6 +314,12 @@ class ThinkingModeTest(unittest.IsolatedAsyncioTestCase):
     async def test_standard_level_collects_thinking_without_extra_switch(self):
         messages = await self._run_request("standard")
         self.assertTrue(any(msg["type"] == "thinking_status" for msg in messages))
+
+    async def test_explicit_off_reaches_graph_without_dropping_item_reasoning(self):
+        messages = await self._run_request("simple", "构件条目实际思考", False, "plan:generate_1")
+        deltas = [msg for msg in messages if msg["type"] == "thinking_delta"]
+        self.assertEqual([msg["delta"] for msg in deltas], ["构件条目实际思考"])
+        self.assertEqual(deltas[0]["node"], "plan:generate_1")
 
 
 class InvalidBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):

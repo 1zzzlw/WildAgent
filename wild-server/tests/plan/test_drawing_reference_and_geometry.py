@@ -144,8 +144,8 @@ def test_window_context_includes_real_body_frame_members():
 async def test_missing_opening_location_is_revised_in_drawing_at_every_detail_level(level, monkeypatch):
     from app.agent.generation.architecture import design_workflow
     from app.agent.generation.architecture.workflow import architecture_planner
-    from app.utils.json_extractor import extract_json_object
-    raw = extract_json_object(build_architecture_plan_prompt(""))
+    from app.design.resolver import architecture_plan_from_document
+    raw = architecture_plan_from_document(drawing())
     raw["components"] = [{"type": "chinese_lattice_window", "id": "lattice", "host": "main",
                           "placement": {"offset": 3, "sill_height": 1}, "size": {"width": 1.5, "height": 1.5}}]
     calls = []

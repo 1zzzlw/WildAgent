@@ -12,7 +12,7 @@
 2. [RAGTrace 日志阅读指南](RAG_TRACE_GUIDE.md)：学习怎样按 request_id 阅读查询、过滤、chunk_id、距离、耗时和 Token。
 3. [RAG 在线门控、权限、引用与质量控制手册](RAG_RUNTIME_CONTROLS.md)：配置 observe/enforce、权限、反馈、安全、Judge 和 CI。
 4. [RAG 全链路研究说明书](RAG_PIPELINE_GUIDE.md)：理解当前分片、Embedding、Chroma、检索和 Agent 注入细节。
-5. [RAG 与智能体优化路线图](RAG_AND_AGENT_OPTIMIZATION_ROADMAP.md)：早期方案参考，包含未实施设想，不能作为当前实现依据。
+5. `RAG 与智能体优化路线图`（已归档）：早期方案参考，包含未实施设想，不能作为当前实现依据。
 6. [RAG 测试脚本入门手册](../../wild-server/scripts/rag/README.md)：实际运行分片检查与召回率评测。
 
 ## 事实来源

@@ -8,7 +8,33 @@ primary_terms:
 synonyms: []
 ---
 
-# 门斗、庭院门与车库门 JSON 示例
+# 门基础、门斗、庭院门与车库门 JSON 示例
+
+## 门 · door
+
+<!-- rag-meta
+entity_type: door
+entity_name: door
+topic: composition
+primary_terms:
+  - 门
+synonyms: [opening_door, door_entrance, 矩形门, rectangular door]
+-->
+
+`opening_door` 是立面图纸中门的同义叫法，任务使用 `door`、显示“门”；WILD 仍写原生
+`door` 组件。下列片段的 elements/components 并入 geometry，materials 并入材质字典。
+安装到已有墙时只保留门并替换 parentWall，不重建宿主。from[0] 是从墙 from 朝 to 的
+左缘沿墙距离，from[1] 是门底世界 Y，from[2] 是法向偏移；墙的世界 X/Z 不填进 from。
+本例墙底为 0.9m，门从沿墙 1.5m 开始，尺寸与材料都是示例取值。
+
+```json
+{"elements":[{"type":"wall","id":"door_host","from":[-2,0.9,0],"to":[2,4,0],"thickness":0.3,"material":"stone"}],"components":[{"type":"door","id":"sample_door","parentWall":"door_host","from":[1.5,0.9,0],"width":1,"height":2.2,"frameWidth":0.08,"frameDepth":0.3,"leafDepth":0.04,"frameMaterial":"stone","leafMaterial":"wood","interaction":{"mode":"swing","hingeSide":"left","openAngle":75}}],"materials":{"stone":{"baseColor":[0.85,0.82,0.75],"roughness":0.75,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"wood":{"baseColor":[0.38,0.15,0.1],"roughness":0.65,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}}}
+```
+
+原生 door 已生成门洞覆盖面、门扇和框料；不能再叠加同位置 opening 或第二套 door
+当门框。只有裸洞而无门扇的设计应明确用 opening，不因上述别名补上门扇。
+字段依据：`wild-core/schema.json` 与 `src/compiler/components/door.ts`；本节是协议实现
+示例，没有移植外部产品尺寸或建筑风格限制。
 
 ## 侧门 · side-door
 

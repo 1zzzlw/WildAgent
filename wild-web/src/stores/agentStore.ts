@@ -52,6 +52,7 @@ import type { ScenePatch } from '../types/scenePatch'
 type ThinkingStatus = 'idle' | 'thinking' | 'completed' | 'unsupported' | 'error'
 
 const STORAGE_KEY_DETAIL_LEVEL = 'wild_detail_level'
+const STORAGE_KEY_THINKING_MODE = 'wild_graph_thinking_mode'
 const STORAGE_KEY_PROCEDURAL_MATERIALS = 'wild_procedural_materials_enabled'
 const STORAGE_KEY_LAST_SESSION = 'wild_last_session'
 const STORAGE_KEY_DRAFT_SESSIONS = 'wild_draft_sessions'
@@ -201,6 +202,7 @@ export const useAgentStore = defineStore('agent', () => {
 
   /** 模型接口实际返回的思考内容 */
   const detailLevel = ref<BuildingDetailLevel>(loadDetailLevel())
+  const thinkingMode = ref(localStorage.getItem(STORAGE_KEY_THINKING_MODE) !== 'false')
   const thinkingContent = ref('')
   const thinkingStatus = ref<ThinkingStatus>('idle')
   const thinkingNotice = ref('')
@@ -687,6 +689,11 @@ export const useAgentStore = defineStore('agent', () => {
     localStorage.setItem(STORAGE_KEY_DETAIL_LEVEL, level)
   }
 
+  function setThinkingMode(enabled: boolean) {
+    thinkingMode.value = enabled
+    localStorage.setItem(STORAGE_KEY_THINKING_MODE, String(enabled))
+  }
+
   function appendThinkingContent(delta: string, nodeName?: string) {
     if (nodeName) {
       const existing = nodeThinkingMap.value.get(nodeName)
@@ -1112,6 +1119,8 @@ export const useAgentStore = defineStore('agent', () => {
     clearPipelineSteps,
     detailLevel,
     setDetailLevel,
+    thinkingMode,
+    setThinkingMode,
     thinkingContent,
     thinkingStatus,
     thinkingNotice,

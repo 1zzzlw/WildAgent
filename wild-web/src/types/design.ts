@@ -131,7 +131,7 @@ export interface ArchitectureDecisions {
   components?: Array<{
     id?: string | null
     type: string
-    host: string
+    host: string | null
     description?: string
     placement?: { face?: 'front' | 'back' | 'left' | 'right' | null; floor?: number | null; offset?: number; sill_height?: number; normal_offset?: number; position?: number[]; [key: string]: unknown } | null
     size: Record<string, number>
@@ -236,7 +236,7 @@ export interface DesignDocument {
 }
 
 export interface ResolvedDesign {
-  component_markers?: Array<{ id: string; type: string; host: string; depends_on: string[] }>
+  component_markers?: Array<{ id: string; type: string; host: string | null; depends_on: string[] }>
   schema_version: 'resolved-design/1.0'
   design_id: string
   design_revision: number

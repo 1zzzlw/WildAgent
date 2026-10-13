@@ -86,7 +86,8 @@ def _discard(state, marker_ids, reason):
     for task_id, diag in updates["component_diagnostics"].items():
         for marker_id, record in (diag.get("implementations") or {}).items():
             if marker_id in affected:
-                record.update(status="abandoned", entity_ids=[], reason=reason,
+                original_reason = record.get("reason") if record.get("status") == "abandoned" else None
+                record.update(status="abandoned", entity_ids=[], reason=original_reason or reason,
                               dependency_failure=marker_id not in marker_ids)
         for bucket in ("elements", "components"):
             diag[bucket] = [i for i in diag.get(bucket, []) if i not in removed]
@@ -158,11 +159,13 @@ async def compile_node(state: GenerationState) -> dict:
             prior = old.get("implementations") or {}
             removed_ids = {i for m in targets for i in prior[m].get("entity_ids", [])}
             old["prior_implementations"] = {m: prior[m] for m in targets}
-            old["failed_implementations"] = {m: {"id": m,
+            old["failed_implementations"] = {m: ((old.get("failed_implementations") or {}).get(m)
+                if prior[m].get("status") == "abandoned" and (old.get("failed_implementations") or {}).get(m)
+                else {"id": m,
                 "geometry": {bucket: [deepcopy(e) for e in state["component_fragments"].get(item.id, [])
                     if e["id"] in prior[m].get("entity_ids", []) and e["id"] in old.get(bucket, [])]
                     for bucket in ("elements", "components")},
-                "materials": deepcopy(old.get("materials") or {}), "assets": deepcopy(old.get("assets") or {})}
+                "materials": deepcopy(old.get("materials") or {}), "assets": deepcopy(old.get("assets") or {})})
                 for m in targets}
             old["implementations"] = {m: r for m, r in prior.items() if m not in targets}
             for bucket in ("elements", "components"):

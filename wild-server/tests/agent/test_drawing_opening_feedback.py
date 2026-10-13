@@ -101,6 +101,56 @@ def test_valid_sill_and_exact_wall_top_pass_without_changing_design(sill, height
     assert item == before
 
 
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("kind", ["door", "window"])
+def test_open_inheritance_is_reported_and_local_enclosure_override_restores_host(face, kind):
+    from app.design.contracts import ComponentInstance, FacadeDecision, VolumeDecision
+    from tests.plan.test_drawing_implementation import drawing
+    doc = drawing()
+    for facade in doc.decisions.facades.values():
+        facade.ground_pattern = ["open"]
+    doc.decisions.volumes.append(VolumeDecision(id="inner", x=2, z=2, width=4, depth=3,
+                                               start_floor=1, end_floor=1))
+    doc.decisions.components = [ComponentInstance(id="opening", type=kind, host=f"wall_inner_{face}_L1",
+        placement={"offset": 1, "sill_height": 0.5}, size={"width": 1, "height": 1.5})]
+    before = doc.model_dump(mode="json")
+    resolved = resolve_design(doc)
+    errors = opening_coordinate_errors(resolved.component_markers)
+    assert len(errors) == 1 and "volume.facades" in errors[0] and "open" in errors[0]
+    assert "wall_inner_"+face+"_L1" in errors[0]
+    assert doc.model_dump(mode="json") == before
+    assert not resolved.projection_elements
+    doc.decisions.volumes[-1].facades[face] = FacadeDecision(bays=1, ground_pattern=["empty"], upper_pattern=["empty"])
+    resolved = resolve_design(doc)
+    assert opening_coordinate_errors(resolved.component_markers) == []
+    assert [w["id"] for w in resolved.projection_elements] == [f"wall_inner_{face}_L1"]
+
+
+@pytest.mark.asyncio
+async def test_architecture_injects_design_protocol_and_request_shape_references(monkeypatch):
+    from app.services.agent_service import agent_service
+    from app.agent.generation.architecture.workflow import architecture_planner
+    from app.design.resolver import architecture_plan_from_document
+    from tests.plan.test_drawing_implementation import drawing
+    searches, prompts = [], []
+    def load(queries, **options):
+        searches.extend(queries)
+        assert options == {"per_query": 2, "include_base": False}
+        return "可检索资料：体量逐面继承；圆形通过实际几何表达，不套方盒。"
+    async def model(_llm, messages):
+        prompts.append(messages[0]["content"])
+        return SimpleNamespace(content=json.dumps(architecture_plan_from_document(drawing())), token_usage=None)
+    monkeypatch.setattr(agent_service.spec_loader, "load_many", load)
+    monkeypatch.setattr(design_workflow, "invoke_llm", model)
+    monkeypatch.setattr(design_workflow, "create_llm", lambda **kwargs: None)
+    result = await architecture_planner({"user_message": "生成圆形建筑", "session_id": "rag_handoff"})
+    assert not result.get("error")
+    assert searches[0].metadata_filter == {"entity_name": "architecture_design_expression"}
+    assert searches[1].metadata_filter == {"doc_type": "component", "topic": "composition"}
+    assert "生成圆形建筑" in searches[1].text
+    assert "可检索资料" in prompts[0] and result["architecture_diag"]["rag_chars"] > 0
+
+
 def test_one_format_revision_can_fix_actual_height_conflict_and_preserve_high_window_intent(monkeypatch):
     plan = {
         "concept": "欧式别墅", "massing": {"shape": "自由组合", "width": 12, "depth": 10,

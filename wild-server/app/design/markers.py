@@ -7,7 +7,7 @@ IMPLEMENTATION_STAGES = ("generate", "repair_1", "repair_2")
 def body_floor_errors(entities, design):
     """主体矩形楼板不能把多体量的空缺填成整栋包围盒；只检查，不裁剪。"""
     from .contracts import MassingDecision
-    from .coordinates import representative_floor_indices, rectangle_uncovered_area
+    from .coordinates import representative_floor_indices, rectangle_uncovered_area, floor_elevations
     from math import isfinite
     from app.tools.spatial_tools import _is_finite_vector3, _is_positive_number
     volumes = design.get("volumes") or []
@@ -15,6 +15,7 @@ def body_floor_errors(entities, design):
         return []
     massing = MassingDecision.model_validate(design["massing"])
     indices = representative_floor_indices(massing)
+    elevations = floor_elevations(design)
     margin = max((e["thickness"] / 2 for e in entities
                   if e.get("type") == "wall" and _is_positive_number(e.get("thickness"))
                   and isfinite(e["thickness"])), default=0)
@@ -28,22 +29,25 @@ def body_floor_errors(entities, design):
             continue  # 格式错误交给 WILD Schema；此处只判断可计算的空间范围。
         top = a[1] + floor["thickness"]
         regions = [(v["x"]-margin, v["z"]-margin, v["x"]+v["width"]+margin, v["z"]+v["depth"]+margin)
-                   for v in volumes if (indices[v["start_floor"]-1]-1)*massing.floor_height-0.25 <= top
-                   <= indices[v["end_floor"]-1]*massing.floor_height+0.25]
+                   for v in volumes if elevations[indices[v["start_floor"]-1]]-0.25 <= top
+                   <= elevations[indices[v["end_floor"]-1]+1]+0.25]
         x0, x1 = sorted((a[0], b[0]))
         z0, z1 = sorted((a[2], b[2]))
         outside = rectangle_uncovered_area((x0, z0, x1, z1), regions)
         if outside > 0.001:
             errors.append(f"❌ [{floor['id']}] 主体楼板超出该标高体量并集 {outside:.3f}㎡；"
+                          f"当前板顶Y={top:g}m，图纸楼面顶标高={[elevations[i] for i in indices]}；"
                           f"当前 X/Z 范围 [{x0:g}, {x1:g}] × [{z0:g}, {z1:g}]，允许覆盖区域 {regions}；"
                           "from/to 是世界端点，体量 x/z 是起点；按体量分片保留庭院空缺，不能改成原点居中或填满包围盒")
     return errors
 
 
-def _explicit_facade_locations(d, explicit, indices):
+def _explicit_facade_locations(d, explicit, indices, elevations):
     from app.agent.knowledge.component_names import resolve_component_name
+    from .openings import is_open_side
     locations, covered = {}, {}
-    for item in explicit:
+    wall_ids = {i["id"] for i in explicit if resolve_component_name(i["type"])["entity_type"] == "wall"}
+    for item in sorted(explicit, key=lambda i: i["id"] not in wall_ids):
         family = resolve_component_name(item["type"])["entity_type"] or item["type"]
         placement = item.get("placement") or {}
         position = placement.get("position")
@@ -63,18 +67,25 @@ def _explicit_facade_locations(d, explicit, indices):
                 along = (position[axis]-origin[axis])*direction if position else 0
                 for floor in range(volume.start_floor, volume.end_floor+1):
                     host = f"wall_{volume.id}_{face}_L{floor}"
-                    direct = item["host"] == host
+                    direct = (item["host"] == host or (family in {"door", "window"}
+                              and item["host"] in wall_ids and locations.get(item["host"]) == host))
                     local = (item["host"] == volume.id and placement.get("face") == face
                              and placement.get("floor") == floor)
                     on_volume = (family in {"door", "window", "balcony", "canopy"}
                         and item["host"] == volume.id and position and distance <= 0.3+extension
                         and placement.get("face") in {None, face} and placement.get("floor") in {None, floor}
                         and 0 <= along <= length
-                        and (indices[floor-1]-1)*d.massing.floor_height <= y
-                        and (y < indices[floor-1]*d.massing.floor_height or (family == "balcony"
-                            and floor == volume.end_floor and position[1] <= indices[floor-1]*d.massing.floor_height)))
+                        and elevations[indices[floor-1]] <= y
+                        and (y < elevations[indices[floor-1]+1] or (family == "balcony"
+                            and floor == volume.end_floor and position[1] <= elevations[indices[floor-1]+1])))
                     if not direct and not on_volume and not local:
                         continue
+                    if family == "wall":
+                        pattern = facade.ground_pattern if floor == 1 else facade.upper_pattern
+                        if (position or item.get("relation") or (item.get("form") or {}).get("curve")
+                                or any(placement.get(k, 0) for k in ("offset", "sill_height", "normal_offset"))
+                                or abs(size.get("width", 0)-length) > 0.001 or is_open_side(pattern)):
+                            continue
                     locations[item["id"]] = host
                     bay = placement.get("bay", item.get("bay"))
                     width = size.get("width")
@@ -97,14 +108,16 @@ def _explicit_facade_locations(d, explicit, indices):
 
 
 def component_markers(document):
-    from .coordinates import representative_floor_indices, exterior_facade_intervals
+    from .coordinates import representative_floor_indices, exterior_facade_intervals, floor_elevations
     from app.agent.knowledge.component_names import resolve_component_name
     d = document.decisions
     indices = representative_floor_indices(d.massing)
-    explicit = [i.model_dump(mode="json", exclude_none=True) for i in d.components]
-    body_components = [i for i in explicit if resolve_component_name(i["type"])["kind"] == "building_body"]
+    elevations = floor_elevations(d.model_dump(mode="json"))
+    explicit = [{**i.model_dump(mode="json", exclude_none=True), "host": i.host} for i in d.components]
+    locations, covered = _explicit_facade_locations(d, explicit, indices, elevations)
+    body_components = [i for i in explicit if resolve_component_name(i["type"])["kind"] == "building_body"
+                       or (resolve_component_name(i["type"])["entity_type"] == "wall" and i["id"] in locations)]
     body_ids = {i["id"] for i in body_components}
-    locations, covered = _explicit_facade_locations(d, explicit, indices)
     delegated = [i for i in explicit if resolve_component_name(i["type"])["entity_type"] in {"stair", "floor", "column", "beam"}]
     rows = [{"id": "building_body", "type": "building_body", "host": "", "depends_on": [],
              "design": {k: v for k, v in d.model_dump(mode="json").items()
@@ -165,7 +178,7 @@ def component_markers(document):
                                             "bays": facade.bays, "semantic_floor": indices[floor-1], "form": form, "facade": facade.model_dump(mode="json")},
                                  "entity": {"parentWall": host,
                                      "centerAlong": center,
-                                     "bottomY": (indices[floor-1]-1)*d.massing.floor_height + (1 if family == "window" else 0)}})
+                                     "bottomY": elevations[indices[floor-1]] + (1 if family == "window" else 0)}})
         if not any(resolve_component_name(i["type"])["entity_type"] == "roof" and i["host"] == v.id for i in explicit):
             roof = d.roof.model_dump(mode="json")
             override = next((i.model_dump(mode="json", exclude_none=True) for i in d.roof.volumes if i.volume == v.id), {})
@@ -173,7 +186,11 @@ def component_markers(document):
                 continue
             rows.append({"id": f"roof_{v.id}", "type": "roof", "host": v.id,
                          "depends_on": ["building_body"], "design_path": "/decisions/roof", "design": {**roof, **override, "volume": v.model_dump(mode="json")},
-                         "entity": {"position": [v.x+v.width/2, indices[v.end_floor-1]*d.massing.floor_height, v.z+v.depth/2]}})
+                         "entity": {"position": [v.x+v.width/2, elevations[indices[v.end_floor-1]+1], v.z+v.depth/2]}})
+    for layout in d.model_dump(mode="json").get("floor_layouts") or []:
+        if layout.get("floor") in indices:
+            for wall in layout.get("walls") or []:
+                wall_floors[wall["id"]] = indices.index(layout["floor"])+1
     explicit_ids = {i["id"] for i in explicit}
     for index, item in enumerate(explicit):
         if item["id"] in body_ids:
@@ -187,7 +204,7 @@ def component_markers(document):
         placement = item.get("placement") or {}
         position = placement.get("position")
         host = locations.get(item["id"], item["host"])
-        elevation = (indices[wall_floors.get(host, 1)-1]-1)*d.massing.floor_height
+        elevation = elevations[indices[wall_floors.get(host, 1)-1]]
         local = [placement.get("offset", 0), elevation + placement.get("sill_height", 0), placement.get("normal_offset", 0)]
         entity = {"parentWall": host, **({"position": position} if position else {"from": local})}
         design = item
@@ -198,7 +215,7 @@ def component_markers(document):
             roof_type = item.get("roof_type") or (item["type"] if item["type"] != "roof" else override.get("type", roof["type"]))
             design = {**roof, **override, **item, "roof_type": roof_type, "volume": volume.model_dump(mode="json")}
             entity = {"position": position or [volume.x+volume.width/2,
-                      indices[volume.end_floor-1]*d.massing.floor_height, volume.z+volume.depth/2]}
+                      elevations[indices[volume.end_floor-1]+1], volume.z+volume.depth/2]}
         rows.append({"id": item["id"], "type": item["type"], "host": host,
                      "depends_on": sorted(dependencies-body_ids), "design_path": f"/decisions/components/{index}", "design": design,
                      "entity": entity})

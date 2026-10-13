@@ -47,9 +47,12 @@ try {
   await assertPrimitiveBoxDimensionCompatibility(core);
   await assertProfileSweepValidation(core);
   await assertSlopedBeamDirection(core);
+  await assertStairEndpointFootprint(core);
   await assertSteppedFlatRoofBoundary(core);
   await assertGableRidgeAxis(core);
   await assertChineseCurvedGableFill(core);
+  await assertColumnSurfaceNormals(core);
+  await assertTileSourceOwnership(core);
   const sampleDirectory = join(root, 'lantu');
   const sampleNames = (await readdir(sampleDirectory))
     .filter(name => name.endsWith('.wild'))
@@ -97,6 +100,49 @@ try {
   console.log(`Core smoke check passed: ${sampleNames.length} samples, ${core.getEngineCapabilities().length} capabilities.`);
 } finally {
   await rm(outputDirectory, { recursive: true, force: true });
+}
+
+async function assertColumnSurfaceNormals(core) {
+  for (const [topRadius, flutes, inclination] of [[0.2, 0, 0], [0.1, 0, 0], [0.2, 20, 0], [0.2, 0, 0.1]]) {
+    const column = { type: 'column', id: 'surface_column', base: [2, 0, 0], height: 3,
+      bottomRadius: 0.2, topRadius, style: 'modern', entasis: 0, flutes, inclination };
+    const entity = await core.reconstructEntity({ meta: { version: '1.1', type: 'building', name: 'column-normal' },
+      geometry: { elements: [column] }, materials: {}, behaviors: {} });
+    const mesh = entity.meshes.find(m => m.elementId === column.id);
+    const { geometry, normals } = mesh;
+    let fluteSlope = 0;
+    for (let i = 0; i < geometry.length; i += 3) {
+      const [nx, ny, nz] = normals.slice(i, i + 3);
+      if (Math.abs(Math.hypot(nx, ny, nz) - 1) > 1e-5) throw new Error('柱面法线未归一化');
+      const [x, y, z] = geometry.slice(i, i + 3);
+      const radialX = x + inclination * y;
+      const radius = Math.hypot(radialX, z);
+      if (nx * radialX + nz * z <= 0) throw new Error('柱面法线方向向内');
+      if (!flutes) {
+        const slope = (0.2 - topRadius) / 3 + inclination * radialX / radius;
+        const scale = Math.hypot(1, slope);
+        const wanted = [radialX / radius / scale, slope / scale, z / radius / scale];
+        if (wanted.some((v, axis) => Math.abs(v - normals[i + axis]) > 1e-4)) {
+          throw new Error('柱面法线未体现收分或倾斜');
+        }
+      } else fluteSlope = Math.max(fluteSlope, Math.abs(nx * z / radius - nz * radialX / radius));
+    }
+    if (flutes && fluteSlope < 0.3) throw new Error('柱槽侧面法线仍然被当作光滑圆柱');
+  }
+}
+
+async function assertTileSourceOwnership(core) {
+  const elements = [0, 1].map(i => ({ type: 'furniture', id: `tile_${i}`, subtype: 'tile',
+    dimensions: { width: 0.3, depth: 0.4, height: 0.02 }, position: [i, 3, 0],
+    rotation: [Math.PI / 4, 0, 0], material: 'roof_tile' }));
+  const entity = await core.reconstructEntity({ meta: { version: '1.1', type: 'building', name: 'tile-ownership' },
+    geometry: { elements }, materials: {}, behaviors: {} });
+  for (const tile of elements) {
+    const meshes = entity.meshes.filter(m => m.elementId === tile.id);
+    if (!meshes.length || meshes.some(m => m.transform.rotation[0] !== tile.rotation[0])) {
+      throw new Error('渲染合并丢失瓦片的来源 ID 或旋转');
+    }
+  }
 }
 
 async function assertChineseCurvedGableFill(core) {
@@ -251,6 +297,29 @@ async function assertProfileSweepValidation(core) {
   });
   if (!invalid.diagnostics.some(item => item.elementId === 'broken_sweep' && item.level === 'error')) {
     throw new Error('profile_sweep 重复路径点未产生可读错误');
+  }
+}
+
+async function assertStairEndpointFootprint(core) {
+  for (const [ux, uz] of [[1, 0], [-1, 0], [0, 1], [0, -1], [0.6, 0.8], [-0.6, 0.8]]) {
+    for (const count of [7, 11]) {
+      const from = [10, 5, -15], run = count * 0.3, width = 1.05;
+      const to = [from[0] + ux * run, from[1] + count * 0.15, from[2] + uz * run];
+      const entity = await core.reconstructEntity({
+        meta: { version: '1.1', type: 'building', name: 'stair-endpoints' },
+        geometry: { elements: [{ type: 'stair', id: 'flight', from, to, width,
+          stepCount: count, stepDepth: 0.3, stepHeight: 0.15 }], components: [] },
+      });
+      const halfX = Math.abs(uz) * width / 2, halfZ = Math.abs(ux) * width / 2;
+      const expected = {
+        min: [Math.min(from[0], to[0]) - halfX, from[1], Math.min(from[2], to[2]) - halfZ],
+        max: [Math.max(from[0], to[0]) + halfX, to[1], Math.max(from[2], to[2]) + halfZ],
+      };
+      for (const bound of ['min', 'max']) {
+        expected[bound].forEach((value, axis) => assertNear(entity.boundingBox[bound][axis], value,
+          `楼梯 ${ux}/${uz} ${count}级 ${bound}[${axis}] 未接到起步或到达边沿`));
+      }
+    }
   }
 }
 

@@ -15,7 +15,7 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
     返回可写入节点诊断的模型错误信息。
     """
     raw_message = str(exc)
-    lowered = raw_message.lower()
+    lowered = f"{type(exc).__name__}: {raw_message}".lower()
 
     if _is_timeout_exception(exc):
         return {
@@ -23,7 +23,7 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
             "status_code": None,
             "retryable": True,
             "terminal_current_run": True,
-            "user_message": "连接模型服务超时，本次生成已停止，请稍后重新生成。",
+            "user_message": "等待模型响应超时，本次生成已停止，请稍后重新生成。",
             "raw_error": raw_message[:500] or type(exc).__name__,
         }
 
@@ -84,7 +84,7 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "provider_unavailable"
         retryable = True
         user_message = "模型服务暂时不可用，本次生成已停止，请稍后重新生成。"
-    elif _contains_any(lowered, ("timeout", "timed out", "connection error", "连接超时")):
+    elif _contains_any(lowered, ("timeout", "timed out", "connection error", "apiconnectionerror", "connecterror", "连接超时")):
         category = "transport_error"
         retryable = True
         user_message = "连接模型服务失败，本次生成已停止，请检查网络后重新生成。"
@@ -151,21 +151,20 @@ def _contains_any(text: str, needles: tuple[str, ...]) -> bool:
 
 
 def _is_timeout_exception(exc: Exception) -> bool:
-    """按**异常类型**判定超时/连接类故障（文案判定不可靠）。
+    """按异常类型判定超时，连接失败由分类器另行识别。
 
-    - ``asyncio.TimeoutError``：``invoke_llm``/``stream_llm`` 外层 ``wait_for`` 超时，
-      ``str()`` 为空串，文案匹配必然落空；
-    - ``openai.APITimeoutError`` / ``APIConnectionError`` 及底层 ``httpx.TimeoutException``
-      等连接类异常：SDK 抛出，文案不一定含 "timed out"（网关包装后千奇百怪）。
+    - ``asyncio.TimeoutError``：统一调用层超时，可能没有错误消息；
+    - ``openai.APITimeoutError`` 及底层 ``httpx.TimeoutException``：
+      SDK 抛出，文案不一定含 "timed out"。
 
     供应商 SDK 用惰性导入：本模块声明"不依赖具体供应商 SDK"，缺包时退回文案匹配。
     """
     if isinstance(exc, (asyncio.TimeoutError, TimeoutError)):
         return True
     try:
-        from openai import APIConnectionError, APITimeoutError
+        from openai import APITimeoutError
 
-        if isinstance(exc, (APITimeoutError, APIConnectionError)):
+        if isinstance(exc, APITimeoutError):
             return True
     except ImportError:  # pragma: no cover - openai 未安装时退回文案匹配
         pass

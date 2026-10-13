@@ -235,11 +235,8 @@ try {
     'wall_plaster',
   )
   assert.equal(defaultSurface.userData.wildDefaultSurface?.family, 'mineral')
-  // v3 = `e2ba4f7 优化渲染引擎` 有意提升：同一次改动真实改了 shader 本体
-  // （给 mineral 族加了各向异性抹痕分支、relief 0.012→0.016）。shader 源码变了
-  // `customProgramCacheKey` 就必须变，否则 Three.js 会复用旧编译产物。
-  // 门禁的作用是"版本变更必须是一次显式决定"，这里决定已做出，故期望值跟上。
-  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v3')
+  // 法线转换变化后必须更换缓存版本，避免复用旧 GPU Program。
+  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v4')
   const defaultSurfaceShader = {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <uv_vertex>\n#include <defaultnormal_vertex>\n#include <worldpos_vertex>\n}',
@@ -306,6 +303,9 @@ try {
   assert.ok(pbrShader.fragmentShader.includes('wildPbrSnowMask'))
   assert.ok(pbrShader.fragmentShader.includes('wildPbrBaseNormal = normal'))
   assert.ok(!pbrShader.fragmentShader.includes('geometryNormal'))
+  assert.equal(pbrWeather.customProgramCacheKey(), 'wild-surface:pbr-environment-v2')
+  assert.ok(pbrShader.vertexShader.includes('inverseTransformDirection(transformedNormal, viewMatrix)'))
+  assert.ok(!pbrShader.vertexShader.includes('mat3(modelMatrix) * transformedNormal'))
 
   const realPbrShader = {
     uniforms: {},

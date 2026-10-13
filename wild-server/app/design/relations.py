@@ -10,7 +10,7 @@ def entity_index(blueprint: dict) -> dict:
             for e in geometry.get(bucket, []) if isinstance(e, dict) and e.get("id")}
 
 
-def coalesce_body_walls(blueprint, row, markers):
+def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
     """同构造直墙的重叠段只实现一次；保留外露段及被引用的宿主。"""
     from copy import deepcopy
     from collections import Counter
@@ -65,7 +65,15 @@ def coalesce_body_walls(blueprint, row, markers):
         return axis, a[2-axis], min(a[axis], b[axis]), max(a[axis], b[axis]), low, high, properties
 
     def keeps_host_frame(entity, bounds, segments):
-        if entity["id"] in entity_references or len(segments) != 1:
+        if entity["id"] in entity_references:
+            return False
+        if not segments:
+            preview = {"geometry": {"elements": [e for e, _ in kept]}}
+            attached = [m for m in markers if entity["id"] in strings(m)]
+            return bool(attached) and all(
+                m.get("id") != entity["id"] and m.get("entity", {}).get("parentWall") == entity["id"]
+                and opening_host(preview, m, diagram_hosts=diagram_hosts) is not None for m in attached)
+        if len(segments) != 1:
             return False
         axis = bounds[0]
         left, right = segments[0]
@@ -159,8 +167,13 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
     from app.tools.spatial_tools import _roof_footprint_entries
     walls = [e for e in entity_index(blueprint).values() if e.get("type") == "wall"]
     elevation = marker["entity"]["position"][1]
-    regions = [(x0, z0, x1, z1) for x0, x1, z0, z1, y, _ in _roof_footprint_entries(entities, walls)
-               if y >= elevation-TOLERANCE]
+    native_roofs = {e["id"]: e for e in entities if e.get("type") == "roof"}
+    regions = []
+    for x0, x1, z0, z1, y, entity_id in _roof_footprint_entries(entities, walls):
+        roof = native_roofs[entity_id]
+        surface_y = y + roof["thickness"] if roof.get("roofType") == "flat" else y
+        if surface_y >= elevation-TOLERANCE:
+            regions.append((x0, z0, x1, z1))
     projected, below = list(regions), []
     for entity in entities:
         if entity.get("type") == "floor" and entity.get("shape", "rect") == "rect":
@@ -315,25 +328,96 @@ def opening_target(marker, diagram, width, height):
     return None
 
 
-def body_host_errors(blueprint, markers):
-    """主体交接前核对门窗安装范围；未给尺寸的标记先核对定位点。"""
+def opening_host(blueprint, marker, *, diagram_hosts=None):
+    """缺少示意墙时，查找唯一完整覆盖其安装框的真实直墙。"""
     from app.agent.knowledge.component_names import resolve_component_name
-    from app.tools.spatial_tools import MAX_OPENING_NORMAL_OFFSET
-    index, errors = entity_index(blueprint), []
+    from app.tools.spatial_tools import _is_finite_vector3, _is_positive_number, _wall_vertical_range
+    index = entity_index(blueprint)
+    host = index.get(marker.get("entity", {}).get("parentWall"))
+    if host is not None:
+        return host if host.get("type") == "wall" else None
+    diagram, size = marker.get("diagram_host") or {}, marker.get("design", {}).get("size") or {}
+    if (resolve_component_name(marker.get("type", ""))["entity_type"] not in {"door", "window"}
+            or diagram.get("curve") or not all(_is_finite_vector3(diagram.get(k)) for k in ("from", "to"))
+            or not all(_is_positive_number(size.get(k)) for k in ("width", "height"))):
+        return None
+    a, b = diagram["from"], diagram["to"]
+    length = hypot(b[0]-a[0], b[2]-a[2])
+    if length <= TOLERANCE or opening_target(marker, diagram, size["width"], size["height"]) is None:
+        return None
+    ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+    allowed = {w["id"] for w in diagram_hosts} if diagram_hosts is not None else None
+    candidates = []
+    for wall in index.values():
+        if (wall.get("type") != "wall" or wall.get("curve")
+                or (allowed is not None and wall["id"] not in allowed)
+                or not all(_is_finite_vector3(wall.get(k)) for k in ("from", "to"))
+                or not _is_positive_number(wall.get("thickness"))):
+            continue
+        p, q = wall["from"], wall["to"]
+        along = [(v[0]-a[0])*ux+(v[2]-a[2])*uz for v in (p, q)]
+        normal = [-(v[0]-a[0])*uz+(v[2]-a[2])*ux for v in (p, q)]
+        low, high = _wall_vertical_range(wall)
+        if (max(map(abs, normal)) <= TOLERANCE and min(along) <= TOLERANCE
+                and max(along) >= length-TOLERANCE
+                and low <= min(a[1], b[1])+TOLERANCE and high >= max(a[1], b[1])-TOLERANCE):
+            candidates.append(wall)
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def body_host_errors(blueprint, markers, *, diagram_hosts=None):
+    """主体交接前核对开敞面与门窗宿主；不把示意定位框当实体墙。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+    from app.tools.spatial_tools import MAX_OPENING_NORMAL_OFFSET, _is_finite_vector3, _wall_vertical_range
+    from .openings import is_open_side
+    from .coordinates import floor_elevations, representative_floor_indices, rectangle_uncovered_area
+    from .contracts import MassingDecision
+    errors = []
     for marker in markers:
+        if marker["type"] == "building_body" and marker.get("design", {}).get("massing"):
+            design = marker["design"]
+            elevations = floor_elevations(design)
+            indices = representative_floor_indices(MassingDecision.model_validate(design["massing"]))
+            walls = [w for w in entity_index(blueprint).values() if w.get("type") == "wall" and not w.get("curve")
+                     and all(_is_finite_vector3(w.get(k)) for k in ("from", "to"))]
+            open_faces, closed_faces = [], []
+            for volume in design.get("volumes", []):
+                x, z, w, d = (volume[k] for k in ("x", "z", "width", "depth"))
+                frames = {"front": (2, z, 0, x, x+w), "back": (2, z+d, 0, x, x+w),
+                          "left": (0, x, 2, z, z+d), "right": (0, x+w, 2, z, z+d)}
+                for floor in range(volume["start_floor"], volume["end_floor"]+1):
+                    for face, facade in {**design.get("facades", {}), **volume.get("facades", {})}.items():
+                        pattern = facade["ground_pattern"] if floor == 1 else facade["upper_pattern"]
+                        normal, plane, axis, left, right = frames[face]
+                        bottom, top = elevations[indices[floor-1]], elevations[indices[floor-1]+1]
+                        target = open_faces if is_open_side(pattern) else closed_faces
+                        target.append((volume["id"], face, floor, normal, plane, axis, left, right, bottom, top))
+            for volume_id, face, floor, normal, plane, axis, left, right, bottom, top in open_faces:
+                shared = [(a, y0, b, y1) for owner, _, _, n, p, _, a, b, y0, y1 in closed_faces
+                          if owner != volume_id and n == normal and abs(p-plane) <= TOLERANCE]
+                if rectangle_uncovered_area((left, bottom, right, top), shared) <= TOLERANCE:
+                    continue  # 开敞体量不重复建墙，也不撤销另一体量明确设计的共用围护。
+                for wall in walls:
+                    a, b = wall["from"], wall["to"]
+                    low, high = _wall_vertical_range(wall)
+                    if (max(abs(a[normal]-plane), abs(b[normal]-plane)) <= TOLERANCE
+                            and min(a[axis], b[axis]) <= left+TOLERANCE and max(a[axis], b[axis]) >= right-TOLERANCE
+                            and low <= bottom+TOLERANCE and high >= top-TOLERANCE):
+                        errors.append(f"❌ [{wall['id']}] 体量 {volume_id} 的 {face} L{floor} 明确开敞，却生成整面实体墙；"
+                                      "该界面未被其他体量已声明的实墙围护完整覆盖；按 open 保留无墙空间，定位参考不能编成薄 wall")
         family = resolve_component_name(marker["type"])["entity_type"]
         host_id = marker.get("entity", {}).get("parentWall")
         diagram = marker.get("diagram_host")
         if family not in {"door", "window"} or not host_id or not diagram or diagram.get("curve"):
             continue
         prefix = f"主体宿主 {host_id} 无法承接图纸标记 {marker['id']}："
-        wall = index.get(host_id)
+        wall = opening_host(blueprint, marker, diagram_hosts=diagram_hosts)
         if not wall or wall.get("type") != "wall":
-            errors.append(prefix + "缺少真实墙；沿用 diagram_hosts 的宿主ID和安装范围")
+            errors.append(prefix + "缺少真实墙或唯一完整共用墙；保持 diagram_hosts 的安装范围")
             continue
         size = marker.get("design", {}).get("size") or {}
         width, height = size.get("width", 0), size.get("height", 0)
-        probe = {"id": marker["id"], "type": family, "parentWall": host_id,
+        probe = {"id": marker["id"], "type": family, "parentWall": wall["id"],
                  "from": [0, 0, 0], "width": width, "height": height}
         try:
             placed, _ = place_opening_group(blueprint, {"geometry": {"components": [probe]}}, marker)
@@ -344,9 +428,11 @@ def body_host_errors(blueprint, markers):
             length = hypot(b[0]-a[0], b[2]-a[2])
             if abs(normal) > MAX_OPENING_NORMAL_OFFSET:
                 errors.append(prefix + "实际墙面偏离图纸安装面；保持宿主所在墙面，不能让门窗漂浮在墙外")
-            if (start < -TOLERANCE or start+width > length+TOLERANCE
-                    or bottom < min(a[1], b[1])-TOLERANCE or bottom+height > max(a[1], b[1])+TOLERANCE):
+            if start < -TOLERANCE or start+width > length+TOLERANCE:
                 errors.append(prefix + "墙段未覆盖安装位置；不要把原宿主ID留给一小段墙，门窗会由原生洞口裁墙")
+            if bottom < min(a[1], b[1])-TOLERANCE or bottom+height > max(a[1], b[1])+TOLERANCE:
+                errors.append(prefix + f"门窗竖向标高 [{bottom:g}, {bottom+height:g}] 超出墙高 "
+                              f"[{min(a[1], b[1]):g}, {max(a[1], b[1]):g}]；按 diagram_hosts 修订墙底、墙顶 Y，不能改门窗位置掩盖缺失墙高")
         except (ValueError, TypeError, KeyError) as exc:
             errors.append(prefix + str(exc))
     return errors
@@ -360,19 +446,43 @@ def place_opening_group(blueprint, row, marker):
     if not isinstance(geometry, dict) or any(not isinstance(geometry.get(k, []), list) for k in ("elements", "components")):
         return row, []
     entities = [*geometry.get("elements", []), *geometry.get("components", [])]
+    changes = []
+    host_id = marker.get("entity", {}).get("parentWall")
+    host_ids = [host_id]
+    declared_host = marker.get("design", {}).get("host")
+    if marker.get("diagram_host") and declared_host and declared_host not in entity_index(blueprint):
+        host_ids.append(declared_host)
+    wall = opening_host(blueprint, marker)
+    if wall and any(e.get("parentWall") in host_ids and e.get("parentWall") != wall["id"] for e in entities):
+        a, b = marker["diagram_host"]["from"], marker["diagram_host"]["to"]
+        p, q = wall["from"], wall["to"]
+        length = hypot(q[0]-p[0], q[2]-p[2])
+        vx, vz = (q[0]-p[0])/length, (q[2]-p[2])/length
+        direction = 1 if (b[0]-a[0])*vx+(b[2]-a[2])*vz > 0 else -1
+        for entity in entities:
+            if (entity.get("type") not in {"door", "window", "opening"}
+                    or entity.get("parentWall") not in host_ids or entity.get("parentWall") == wall["id"]):
+                continue
+            start, y, normal = entity["from"]
+            before = {"parentWall": entity["parentWall"], "from": list(entity["from"])}
+            entity["parentWall"] = wall["id"]
+            entity["from"] = [(a[0]-p[0])*vx+(a[2]-p[2])*vz+direction*start
+                              -(entity["width"] if direction < 0 else 0), y,
+                              -(a[0]-p[0])*vz+(a[2]-p[2])*vx+direction*normal]
+            changes.append({"rule": "compiler.opening_host", "entity_id": entity["id"], "before": before,
+                            "after": {"parentWall": entity["parentWall"], "from": list(entity["from"])}})
     frame = _opening_frame(blueprint, entities, marker)
     if not frame:
-        return row, []
+        return row, changes
     index, diagram, openings, (ux, uz), (left, right, bottom, top), normals = frame
     target = opening_target(marker, diagram, right-left, top-bottom)
     if target is None:
-        return row, []
+        return row, changes
     # 不消除组内法向错位；它仍应由同一门窗验收报告。
     da, dy, dn = target[0]-left, target[1]-bottom, target[2]-normals[0]
     if max(abs(da), abs(dy), abs(dn)) <= TOLERANCE:
-        return row, []
+        return row, changes
     dx, dz = ux*da-uz*dn, uz*da+ux*dn
-    changes = []
     for entity in entities:
         if entity in openings:
             wall = index[entity["parentWall"]]

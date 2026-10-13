@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v3'
+const SHADER_VERSION = 'default-surface-v4'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>
@@ -148,17 +148,8 @@ varying vec3 vWildDefaultWorldPosition;`,
     .replace(
       '#include <defaultnormal_vertex>',
       `#include <defaultnormal_vertex>
-// defaultnormal_vertex 结束时 transformedNormal 已处于【视图空间】（且已折入 instanceMatrix）。
-// 旧实现写的是 mat3(modelMatrix) * transformedNormal —— 视图空间量再乘模型矩阵属于空间混用，
-// 相机一旋转、或物体带旋转/实例变换，"世界法线"就是错的。
-// inverseTransformDirection 是 viewMatrix 旋转部分的逆转置，正好把它还原回世界空间
-// （与下方 map_fragment 里处理 vNormal 的写法保持一致）。
-// FLAT_SHADED 下 transformedNormal 未声明，回退到 objectNormal + normalMatrix。
-#ifdef FLAT_SHADED
-vWildDefaultWorldNormal = inverseTransformDirection(normalMatrix * objectNormal, viewMatrix);
-#else
-vWildDefaultWorldNormal = inverseTransformDirection(transformedNormal, viewMatrix);
-#endif`,
+// transformedNormal 已包含实例变换；从视图空间还原世界法线。
+vWildDefaultWorldNormal = inverseTransformDirection(transformedNormal, viewMatrix);`,
     )
     .replace(
       '#include <worldpos_vertex>',

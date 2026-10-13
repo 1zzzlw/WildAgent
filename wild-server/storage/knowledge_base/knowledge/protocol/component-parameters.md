@@ -46,8 +46,8 @@ entity_type: wall
 |------|------|------|------|
 | `type` | string | 是 | 固定值 `"wall"` |
 | `id` | string | 是 | 构件唯一标识 |
-| `from` | Vec3 | 是 | 墙底起点，局部坐标 |
-| `to` | Vec3 | 是 | 墙底终点，局部坐标。Y 应与 `from.y` 一致 |
+| `from` | Vec3 | 是 | 世界坐标：平面起点，Y 为墙底标高 |
+| `to` | Vec3 | 是 | 世界坐标：平面终点，Y 为墙顶标高；墙高为 abs(to.y-from.y)，不能与墙底相同 |
 | `thickness` | number | 是 | 墙体厚度（米），>0 |
 | `material` | string | 否 | 引用材质库中的材质名 |
 | `curve` | object 或 array | 否 | 路径曲线。不指定时为直线。单段为对象，多段为数组。详见曲线类型定义 |
@@ -150,6 +150,13 @@ entity_type: structural_component
   "material": "wood"
 }
 ```
+
+**扫掠坐标与封口**：
+
+- path 是截面移动的三维轨迹；profile 是每个路径点处、垂直于轨迹的二维截面，不能把正立面轮廓与沿立面水平的路径混用。沿 +X 扫掠时截面落在 YZ 平面；沿 +Z 扫掠时截面落在 XY 平面。
+- 省略 position/rotation 时 path 点直接使用世界坐标；填写变换时 path 是变换前坐标，不能重复平移。
+- closedProfile=true 只闭合截面的周边。当前 profile_sweep 生成侧面，不生成路径两端封口；三角形截面不因此成为封闭山花面板。需要实面时用匹配的原生屋顶端板或明确的 box 分片近似，不沿横向挤出整幅山花当檐板。
+- 依据：当前 primitive.ts 的 buildProfileSweep 与 createPathFrame；路径、截面及厚度随本次设计计算。
 
 **引擎处理说明**：
 

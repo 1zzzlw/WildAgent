@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_a07662a39c4911f184de525400f8a581
-    ReservedCode1: 27jHAA91o1TrpIqJGvIBgC4ISJ07/Y6ocnqfDr6zMNidvuB7F7OlCbhklAiVUq2Swu5KiCfY8PA1Io0FMTsBbQA9Z3sIsahYlYNqFj6JxOdgC9OE8kPg3sEvc8FbMyo9xhLRyhVuCQUvKwiULKLCut/KMAb2pK123TuWbgL+bZXKc/MKErcMwWPStlc=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_a07662a39c4911f184de525400f8a581
-    ReservedCode2: 27jHAA91o1TrpIqJGvIBgC4ISJ07/Y6ocnqfDr6zMNidvuB7F7OlCbhklAiVUq2Swu5KiCfY8PA1Io0FMTsBbQA9Z3sIsahYlYNqFj6JxOdgC9OE8kPg3sEvc8FbMyo9xhLRyhVuCQUvKwiULKLCut/KMAb2pK123TuWbgL+bZXKc/MKErcMwWPStlc=
----
-
-
-
 # validators 包测试
 
 ## 用途

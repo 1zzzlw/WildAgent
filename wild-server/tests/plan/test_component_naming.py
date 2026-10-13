@@ -11,6 +11,8 @@ from app.agent.plan.knowledge_tool import search_knowledge_impl
     (["实墙", "实体墙", "Solid Wall", "solid_wall"], "solid_wall", "实墙"),
     (["落地窗", "floor-to-ceiling window", "floorWindow"], "floor_window", "落地窗"),
     (["窗", "Window", "window"], "window", "窗"),
+    (["窗", "window_rectangular", "window_center", "rectangularWindow", "矩形窗"], "window", "窗"),
+    (["门", "opening_door", "door_entrance", "openingDoor"], "door", "门"),
     (["屋顶", "Roof", "roof"], "roof", "屋顶"),
     (["building_body", "建筑主体", "building body"], "building_body", "建筑主体"),
 ])
@@ -28,6 +30,8 @@ def test_aliases_share_one_plan_group(names, kind, label):
 @pytest.mark.parametrize("names,entity_type,kind,label", [
     (["落地窗", "floor-to-ceiling window", "floor_window"], "window", "floor_window", "落地窗"),
     (["实墙", "实体墙", "solid_wall"], "wall", "solid_wall", "实墙"),
+    (["opening_door", "door_entrance", "openingDoor", "门"], "door", "door", "门"),
+    (["window_rectangular", "window_center", "rectangularWindow", "矩形窗"], "window", "window", "窗"),
 ])
 def test_aliases_produce_identical_knowledge_queries(monkeypatch, names, entity_type, kind, label):
     from app.services import agent_service as service_module
@@ -41,8 +45,8 @@ def test_aliases_produce_identical_knowledge_queries(monkeypatch, names, entity_
     monkeypatch.setattr(service_module, "agent_service", SimpleNamespace(spec_loader=loader))
     for name in names:
         search_knowledge_impl("WILD JSON 实现示例", kind=name)
-    assert calls == [(f"{kind} {label} WILD JSON 实现示例",
-                      {"doc_type": "component", "entity_name": kind})] * len(names)
+    expected = {"doc_type": "component", "entity_name" if kind != entity_type else "entity_type": kind}
+    assert calls == [(f"{kind} {label} WILD JSON 实现示例", expected)] * len(names)
 
 
 def test_custom_component_remains_available_with_chinese_display_name():

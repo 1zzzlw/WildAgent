@@ -661,6 +661,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
     detail_level = resolve_complexity_profile(message, data.get("detail_level") or "simple")["level"]
+    # 思考事件始终收集，plan 条目可独立于图节点开关开启思考。
     thinking_mode = True
 
     logger.info(f"[{request_id}] [langgraph] 收到: {message[:80]}...")
@@ -719,6 +720,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "selection": selection,
         "recent_messages": data.get("recent_messages", []),
         "workflow_state": str(data.get("workflow_state") or "idle"),
+        "thinking_mode": data.get("thinking_mode") is not False,
         "detail_level": detail_level,
         "procedural_materials_enabled": data.get("procedural_materials_enabled") is True,
         "max_retries": 3,

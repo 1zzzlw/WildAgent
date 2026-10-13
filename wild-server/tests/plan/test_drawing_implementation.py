@@ -13,6 +13,18 @@ from app.agent.plan.expand import expand_design_markers
 from app.agent.plan import implementation as impl
 
 
+def test_stair_protocol_includes_platform_and_railing_before_first_generation():
+    from app.agent.generation.capability import load_engine_schema
+
+    protocol = impl._output_protocol(load_engine_schema(), {"stairs": {"type": "stair"}}, "", {})
+    fields = json.loads(protocol.split("当前输出字段协议：", 1)[1])
+    entities = {e["properties"]["type"]["const"]: e for e in fields["entities"]}
+    assert {"stair", "floor", "railing"} <= entities.keys()
+    assert "path" in entities["railing"]["required"]
+    assert "parentWall" not in entities["railing"]["properties"]
+    assert "thickness" in entities["floor"]["properties"]
+
+
 def test_web_query_uses_design_name_without_repeating_markers_or_python_dicts():
     item = SimpleNamespace(kind="small_window", label="小窗")
     markers = {str(i): {"design": {"description": "小窗", "form": {"sill_height": 1.2}}} for i in range(8)}
@@ -111,6 +123,61 @@ def patch_services(monkeypatch, outputs, *, shape_reference=True):
     return events
 
 
+def test_invalid_json_keeps_decode_location_and_provider_finish_reason(monkeypatch):
+    state = empty_state()
+    invalid = '{"implementations":[{"id":"building_body","geometry":{"elements":[{"from":[15,0.45 + 0.12,13]}]}}]}'
+    events = patch_services(monkeypatch, [SimpleNamespace(content=invalid, token_usage={}, finish_reason="stop")] * 3)
+    updates, status, ids, message, trace = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "aborted" and ids == []
+    assert "JSON 格式错误" in message and "第 1 行" in message and "0.45 + 0.12" in message
+    assert events == ["rag", "model", "model", "model"]
+    attempts = [t for t in trace if t["tool"] == "generate_wild"]
+    assert all(t["finish_reason"] == "stop" and t["output"] == invalid for t in attempts)
+    assert all("JSON 格式错误" in t["errors"]["building_body"] for t in attempts)
+    assert updates["component_fragments"]["generate_1"] == []
+
+
+@pytest.mark.parametrize("form", [{"description": "双跑楼梯与实体平台"}, "双跑楼梯与实体平台"])
+def test_knowledge_query_includes_shape_description(monkeypatch, form):
+    import app.agent.plan.knowledge_tool as knowledge
+    state = empty_state()
+    marker = next(m for m in state["resolved_design"]["component_markers"] if m["id"] == "lattice")
+    marker["design"].update(description="二层连接组件", form=form)
+    patch_services(monkeypatch, [reply("lattice")])
+    queries = []
+    def rag(query, **kwargs):
+        queries.append(query)
+        return {"text": "形态示例", "has_shape_reference": True}
+    monkeypatch.setattr(knowledge, "search_knowledge_result", rag)
+    updates, status, *_ = run(impl.run_marker_generate(state, task(state)))
+    assert status == "succeeded"
+    assert len(queries) == 1
+    assert "二层连接组件" in queries[0] and "双跑楼梯与实体平台" in queries[0]
+
+
+@pytest.mark.parametrize("kind,panel_field", [("door", "leafDepth"), ("window", "glassDepth")])
+@pytest.mark.parametrize("frame_depth", [0.04, 0.12, None])
+def test_panel_thicker_than_frame_is_rejected_before_component_compilation(kind, panel_field, frame_depth):
+    base = empty_state()["skeleton_blueprint"]
+    base["geometry"]["elements"] = [{"type": "wall", "id": "host", "from": [0, 0, 0],
+        "to": [4, 3, 0], "thickness": 0.24}]
+    frame = frame_depth if frame_depth is not None else 0.24
+    panel = {"type": kind, "id": "panel", "parentWall": "host", "from": [1, 0.5, 0],
+             "width": 1, "height": 2, panel_field: frame+0.01}
+    if kind == "door":
+        panel["interaction"] = {"mode": "swing", "hingeSide": "left", "openAngle": 75}
+    if frame_depth is not None:
+        panel["frameDepth"] = frame_depth
+    marker = {"type": kind, "design": {}}
+    row = {"geometry": {"elements": [], "components": [panel]}}
+    with pytest.raises(ValueError, match=panel_field+".*frameDepth"):
+        impl._accept_group(base, row, marker)
+    panel[panel_field] = frame
+    candidate, _, record = impl._accept_group(base, row, marker)
+    assert record["status"] == "implemented"
+    assert candidate["geometry"]["components"] == [panel]
+
+
 def test_body_repair_receives_host_and_floor_coordinate_errors_together(monkeypatch):
     from app.design.contracts import ComponentInstance
     import app.llm.invocation as invocation
@@ -137,11 +204,13 @@ def test_body_repair_receives_host_and_floor_coordinate_errors_together(monkeypa
     assert implementation_records(updates)["building_body"]["status"] == "implemented"
 
 
-def test_invalid_json_feedback_is_not_misreported_as_a_missing_array(monkeypatch):
+@pytest.mark.parametrize("error_kind", ["truncated", "arithmetic"])
+def test_invalid_json_feedback_is_not_misreported_as_a_missing_array(monkeypatch, error_kind):
     import app.llm.invocation as invocation
     state = empty_state()
     malformed = reply("lattice")
-    malformed.content = malformed.content[:-1]
+    malformed.content = (malformed.content[:-1] if error_kind == "truncated" else
+                         malformed.content.replace("[0, 0, 0]", "[0, 0 + 3, 0]", 1))
     outputs = [malformed, reply("lattice")]
     patch_services(monkeypatch, [])
     contexts = []
@@ -153,6 +222,49 @@ def test_invalid_json_feedback_is_not_misreported_as_a_missing_array(monkeypatch
     assert status == "succeeded"
     feedback = contexts[1]["validation_feedback"]["lattice"]
     assert "完整 JSON" in feedback and "必须是数组" not in feedback
+
+
+@pytest.mark.parametrize("level", ["minimal", "simple", "standard", "detailed"])
+@pytest.mark.parametrize("empty_bucket", ["elements", "components"])
+def test_empty_geometry_object_is_normalized_without_another_model_call(monkeypatch, level, empty_bucket):
+    state = empty_state()
+    state["design_document"]["decisions"]["complexity"]["level"] = level
+    output = reply("lattice")
+    payload = json.loads(output.content)
+    geometry = payload["implementations"][0]["geometry"]
+    if empty_bucket == "elements":
+        geometry["components"] = [{"id": "lattice_light", "type": "light", "position": [0, 2, 0]}]
+    geometry[empty_bucket] = {}
+    output.content = json.dumps(payload)
+    original = output.content
+    before = deepcopy(state)
+    events = patch_services(monkeypatch, [output, output, output])
+    updates, status, ids, _, trace = run(impl.run_marker_generate(state, task(state)))
+    assert status == "succeeded" and len(ids) == 1
+    assert events == ["rag", "model"]
+    assert implementation_records(updates)["lattice"]["status"] == "implemented"
+    assert state == before and output.content == original
+    changes = next(t["format_changes"] for t in trace if t.get("stage") == "generate")
+    assert changes == [{"path": f"/implementations/lattice/geometry/{empty_bucket}", "before": {}, "after": []}]
+    assert not impl.implementation_errors(impl.implementation_blueprint({**state, **updates}))
+
+
+@pytest.mark.parametrize("bucket", ["elements", "components"])
+@pytest.mark.parametrize("invalid", [{"part": {"id": "part", "type": "primitive"}}, None, "[]", False])
+def test_nonempty_or_invalid_geometry_container_is_not_discarded(monkeypatch, bucket, invalid):
+    state = empty_state()
+    output = reply("lattice")
+    payload = json.loads(output.content)
+    payload["implementations"][0]["geometry"][bucket] = invalid
+    output.content = json.dumps(payload)
+    original = output.content
+    patch_services(monkeypatch, [output, output, output])
+    updates, _, ids, _, trace = run(impl.run_marker_generate(state, task(state)))
+    record = implementation_records(updates)["lattice"]
+    assert record["status"] == "abandoned" and not ids
+    assert f"/geometry/{bucket}" in record["reason"]
+    assert not any(t.get("format_changes") for t in trace)
+    assert output.content == original
 
 
 @pytest.mark.parametrize("shape_reference,expected", [
@@ -196,6 +308,76 @@ def test_revision_preserves_valid_entities_and_sends_only_the_failed_fragment(mo
     assert contexts[1]["accepted_entity_ids"]["lattice"] == ["stable_part"]
     assert [e for e in updates["component_fragments"][task(state).id] if e["id"] == "stable_part"] == [good]
     assert sum(t.get("model_calls", 0) for t in trace) == 2
+
+
+@pytest.mark.parametrize("origin", [(0, 0), (8, 8), (-12, 15)])
+@pytest.mark.parametrize("revision", ["remove_extra", "keep_invalid", "partial_repeat", "change_adopted", "duplicate_repeat", "invalid_repeat"])
+def test_body_revision_can_remove_rejected_extra_floor_without_losing_adopted_geometry(monkeypatch, origin, revision):
+    document = drawing()
+    x, z = origin
+    document.decisions.volumes[0].x, document.decisions.volumes[0].z = x, z
+    state = empty_state(document)
+    original = deepcopy(state["design_document"])
+    good = {"id": "interior", "type": "floor", "from": [x, -0.18, z],
+            "to": [x+10, -0.18, z+8], "thickness": 0.18}
+    stable = {**box("stable_structure"), "position": [x+1, 0.5, z+1]}
+    bad = {**good, "id": "unrequested_extra", "from": [x-2, -0.18, z-2], "to": [x+12, -0.18, z+10]}
+    revised = {
+        "remove_extra": [good, stable], "keep_invalid": [good, stable, bad],
+        "partial_repeat": [good], "change_adopted": [{**good, "thickness": 0.2}, stable],
+        "duplicate_repeat": [good, stable, stable], "invalid_repeat": [good, {**stable, "dimensions": [True, 1, 1]}],
+    }[revision]
+    outputs = [reply("building_body", entities) for entities in ([good, stable, bad], revised, revised)]
+    events = patch_services(monkeypatch, outputs)
+    item = task(state, "building_body")
+    updates, status, ids, _, trace = run(impl.run_marker_generate(state, item))
+    record = implementation_records(updates)["building_body"]
+    assert state["design_document"] == original
+    if revision == "remove_extra":
+        assert status == "succeeded" and record["status"] == "implemented"
+        assert set(ids) == {"interior", "stable_structure"} and len(ids) == 2
+        assert updates["component_fragments"][item.id] == [good, stable]
+        assert events == ["rag", "model", "model"]
+        assert trace[1]["errors"]["building_body"]
+        assert trace[2]["errors"] == {}
+    else:
+        assert status == "aborted" and record["status"] == "abandoned" and not ids
+        assert updates["component_fragments"][item.id] == []
+
+
+def test_repeated_complete_body_is_rechecked_against_required_hosts(monkeypatch):
+    patch_services(monkeypatch, [])
+    state = empty_state()
+    marker = state["resolved_design"]["component_markers"][0]
+    stable = box("adopted")
+    base = deepcopy(state["skeleton_blueprint"])
+    base["geometry"]["elements"] = [stable]
+    original = deepcopy(base)
+    geometry = {"elements": [stable], "components": []}
+    dependent = {"id": "required_window", "type": "window", "host": "wall_main_front_L1",
+                 "design": {"size": {"width": 1, "height": 1}},
+                 "diagram_host": next(w for w in state["drawing_hosts"] if w["id"] == "wall_main_front_L1"),
+                 "entity": {"parentWall": "wall_main_front_L1", "from": [1, 1, 0]}}
+    candidate, accepted, rejected, record = impl._accept_fragment(base,
+        {"id": "building_body", "geometry": geometry}, marker, geometry, dependent_markers=[dependent])
+    assert candidate == original and accepted is None and record is None
+    assert "缺少真实墙" in rejected["error"]
+
+
+def test_repeated_complete_fragment_still_checks_explicit_native_size(monkeypatch):
+    patch_services(monkeypatch, [])
+    state = empty_state()
+    stable = {"id": "adopted_slab", "type": "floor", "from": [0, -0.18, 0],
+              "to": [2, -0.18, 2], "thickness": 0.18}
+    base = deepcopy(state["skeleton_blueprint"])
+    base["geometry"]["elements"] = [stable]
+    original = deepcopy(base)
+    geometry = {"elements": [stable], "components": []}
+    marker = {"id": "platform", "type": "floor", "host": "main", "design": {"size": {"thickness": 0.2}}, "entity": {}}
+    candidate, accepted, rejected, record = impl._accept_fragment(base,
+        {"id": "platform", "geometry": geometry}, marker, geometry)
+    assert candidate == original and accepted is None and record is None
+    assert "设计尺寸 thickness=0.2" in rejected["error"]
 
 
 def test_body_does_not_fail_on_components_owned_by_other_plan_items(monkeypatch):
@@ -286,12 +468,13 @@ def test_model_service_failure_preserves_completed_markers_without_claiming_aban
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reasoning_field", ["additional_kwargs", "response_metadata", None])
-async def test_marker_reasoning_stream_is_routed_to_the_current_item(monkeypatch, reasoning_field):
+@pytest.mark.parametrize("node_thinking", [False, True])
+async def test_marker_reasoning_stream_is_routed_to_the_current_item(monkeypatch, reasoning_field, node_thinking):
     from app.agent.plan.workflow import _execute_one
     from app.agent.runtime import bind_reasoning_callback, reset_reasoning_callback, get_reasoning_callback
     import app.llm.client as client
 
-    state = {**empty_state(), "thinking_mode": True}
+    state = {**empty_state(), "thinking_mode": node_thinking}
     patch_services(monkeypatch, [])
     item = task(state)
     events, options = [], []

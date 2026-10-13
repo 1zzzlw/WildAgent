@@ -36,9 +36,11 @@ try {
   const sent = []
   bridge.ws = { readyState: 1, send: data => sent.push(JSON.parse(data)) }
   store.setConnectionStatus('connected')
+  store.setThinkingMode(false)
   store.switchToSession('session_other')
   const otherId = bridge.sendUserMessage('另一个会话')
   assert.ok(otherId)
+  assert.equal(sent.at(-1).thinking_mode, false)
   store.switchToSession('session_stop')
 
   async function button() {
@@ -54,6 +56,7 @@ try {
   assert.ok((await button()).includes('发送'))
   const requestId = bridge.sendUserMessage('生成别墅')
   assert.ok(requestId)
+  assert.equal(sent.at(-1).thinking_mode, false)
   const turn = store.currentTurns[0]
   store.appendTurnThinking(turn.session_id, requestId, 'architecture', '已有模型输出', 'reasoning')
   const runningButton = await button()

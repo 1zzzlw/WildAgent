@@ -15,12 +15,12 @@ export function buildStair(params: StairParams): MeshData[] {
   // 楼梯走向方向角（XZ 平面）
   const dirX = to[0] - from[0];
   const dirZ = to[2] - from[2];
-  const angle = Math.atan2(dirZ, dirX);
+  const angle = -Math.atan2(dirZ, dirX);
 
   for (let i = 0; i < count; i++) {
-    const x = from[0] + dx * i;
+    const x = from[0] + dx * (i + 0.5);
     const y = from[1] + sHeight * i;
-    const z = from[2] + dz * i;
+    const z = from[2] + dz * (i + 0.5);
     const { geometry, indices } = indexTriList(createStepGeometry(sDepth, sHeight, width));
 
     meshes.push({

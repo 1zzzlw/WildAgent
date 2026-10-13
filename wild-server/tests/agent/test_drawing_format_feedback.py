@@ -12,7 +12,6 @@ from app.agent.generation.architecture.workflow import (
     build_design_document_or_error,
 )
 from app.agent.prompts.planning import build_architecture_plan_prompt
-from app.utils.json_extractor import extract_json_object
 
 
 @pytest.fixture
@@ -41,16 +40,13 @@ def document(drawing):
         source_request="设计曲面别墅", building_type="villa", style_intent=[], previous=None)
 
 
-def test_prompt_format_example_passes_the_actual_drawing_contract():
+def test_prompt_explains_fields_without_a_fixed_building_template(drawing):
     prompt = build_architecture_plan_prompt("")
-    example = extract_json_object(prompt)
-    assert example is not None
-    result = document(example)
+    result = document(drawing)
     assert set(result.decisions.facades) == {"front", "back", "left", "right"}
-    assert isinstance(example["design_intent"], dict)
-    assert {"x", "z"} <= example["volumes"][0].keys()
-    assert example["roof"]["volumes"][0]["volume"] == example["volumes"][0]["id"]
-    assert "数值、数量、类型和造型由你设计" in prompt
+    assert "volumes | 对象数组" in prompt and "x、z 是平面起点" in prompt
+    assert "volume 是固定字段名" in prompt
+    assert '"massing":' not in prompt and "```json" not in prompt
 
 
 def test_missing_coordinates_report_every_path_without_mutating_design(drawing):
@@ -91,8 +87,109 @@ def test_design_intent_type_error_is_located(drawing):
     assert "/design_intent" in str(caught.value)
 
 
+@pytest.mark.parametrize("host", [None, "", "main", "sculpture_base"])
+def test_optional_host_preserves_explicit_value_and_marker_position(drawing, host):
+    from app.design.resolver import resolve_design, architecture_plan_from_document
+    drawing["components"][0]["host"] = host
+    drawing["components"][0]["placement"] = {"position": [-3, 1, 7]}
+    before = deepcopy(drawing)
+    doc = document(drawing)
+    assert doc.decisions.components[0].host == host
+    marker = next(m for m in resolve_design(doc).component_markers if m["id"] == "sculpture")
+    assert marker["host"] == host and marker["entity"]["position"] == [-3, 1, 7]
+    assert architecture_plan_from_document(doc)["components"][0]["host"] == host
+    assert drawing == before
+
+
+def test_omitted_host_keeps_the_existing_default_and_schema_accepts_null(drawing):
+    from app.design.contracts import ComponentInstance
+    drawing["components"][0].pop("host")
+    assert document(drawing).decisions.components[0].host == ""
+    schema = ComponentInstance.model_json_schema()["properties"]["host"]
+    assert {s["type"] for s in schema["anyOf"]} == {"string", "null"}
+    assert "引用 ID 字符串" in build_architecture_plan_prompt("")
+
+
+@pytest.mark.parametrize("host", [42, False, ["main"], {"id": "main"}])
+def test_non_reference_host_types_are_not_stringified_or_guessed(drawing, host):
+    drawing["components"][0]["host"] = host
+    before = deepcopy(drawing)
+    with pytest.raises(DesignContractError) as caught:
+        document(drawing)
+    assert "/components/0/host" in str(caught.value)
+    assert "字符串或 null" in str(caught.value) and "placement" in str(caught.value)
+    assert drawing == before
+
+
+@pytest.mark.asyncio
+async def test_independent_component_null_host_does_not_spend_a_format_retry(monkeypatch, drawing):
+    drawing["components"][0].update(host=None, placement={"position": [3, 1, 4]})
+    calls = []
+    async def model(*_args, **_kwargs):
+        calls.append(True)
+        return SimpleNamespace(content=json.dumps(drawing), token_usage={})
+    monkeypatch.setattr(design_workflow, "create_llm", lambda **kwargs: None)
+    monkeypatch.setattr(design_workflow, "invoke_llm", model)
+    raw, diag = await design_workflow.draft_design(base_prompt=build_architecture_plan_prompt(""),
+        user_request="生成独立构件", validate=document)
+    assert diag["settled"] and diag["model_calls"] == 1 and calls == [True]
+    assert raw["components"][0]["host"] is None and raw == drawing
+
+
 def test_plain_business_error_remains_readable():
     assert _validation_reason(ValueError("体量范围不一致")) == "体量范围不一致"
+
+
+@pytest.mark.parametrize("scope", ["shared", "volume"])
+@pytest.mark.parametrize("field", ["ground_pattern", "upper_pattern"])
+@pytest.mark.parametrize("bays", [1, 3, 9])
+def test_explicit_empty_pattern_is_equivalent_without_an_extra_model_call(drawing, scope, field, bays):
+    face = {"bays": bays, "ground_pattern": ["empty"]*bays, "upper_pattern": ["empty"]*bays}
+    face[field] = []
+    if scope == "shared":
+        drawing["facades"]["front"] = face
+        path = f"/decisions/facades/front/{field}"
+    else:
+        drawing["volumes"][0]["facades"] = {"front": face}
+        path = f"/decisions/volumes/0/facades/front/{field}"
+    before = deepcopy(drawing)
+    result = document(drawing)
+    actual = result.decisions.facades["front"] if scope == "shared" else result.decisions.volumes[0].facades["front"]
+    assert getattr(actual, field) == ["empty"]*bays and drawing == before
+    changes = [c for t in result.rule_trace for c in t.changes if c["path"] == path]
+    assert len(changes) == 1 and changes[0]["before"] == []
+    assert changes[0]["after"] == ["empty"]*bays and changes[0]["semantic_change"] is False
+
+
+def test_nonempty_pattern_count_error_reports_expected_and_both_actual_lengths(drawing):
+    drawing["facades"]["front"] = {"bays": 4, "ground_pattern": ["window", "door"], "upper_pattern": ["window"]}
+    before = deepcopy(drawing)
+    with pytest.raises(DesignContractError) as caught:
+        document(drawing)
+    assert "bays=4" in str(caught.value) and "ground_pattern=2" in str(caught.value)
+    assert "upper_pattern=1" in str(caught.value) and drawing == before
+
+
+@pytest.mark.asyncio
+async def test_unused_upper_pattern_does_not_trigger_design_revision(monkeypatch, drawing):
+    drawing["massing"].update(floors=1, modeled_floors=1)
+    drawing["design_intent"]["assumptions"] = ["单层"]
+    for volume in drawing["volumes"]:
+        volume["end_floor"] = 1
+    for facade in drawing["facades"].values():
+        facade["upper_pattern"] = []
+    calls, progress = [], []
+    async def model(*args, **kwargs):
+        calls.append(True)
+        return SimpleNamespace(content=json.dumps(drawing), token_usage={})
+    async def emit(_stage, message):
+        progress.append(message)
+    monkeypatch.setattr(design_workflow, "create_llm", lambda **kwargs: None)
+    monkeypatch.setattr(design_workflow, "invoke_llm", model)
+    raw, diag = await design_workflow.draft_design(base_prompt="字段说明", user_request="生成单层建筑",
+        validate=document, on_reasoning_delta=emit)
+    assert raw == drawing and calls == [True]
+    assert diag["settled"] and diag["model_calls"] == 1 and progress == []
 
 
 def test_face_and_all_size_errors_are_reported_together_with_exact_paths(drawing):

@@ -123,6 +123,20 @@ def test_native_roof_must_include_the_declared_eaves():
     impl._accept_group(base, {"geometry": {"elements": [roof]}}, marker)
 
 
+@pytest.mark.parametrize("offset,base_y,thickness", [(-20, 3.3, 0.2), (0, 6.6, 0.4), (18, 3.3, 0.35)])
+def test_native_flat_roof_base_is_not_the_design_center(offset, base_y, thickness):
+    base, marker = roof_case(offset)
+    marker["entity"]["position"][1] = base_y + thickness / 2
+    roof = {"type": "roof", "id": "native", "roofType": "flat",
+            "position": [offset+2.5, base_y, 3], "span": 5, "depth": 6,
+            "height": thickness, "thickness": thickness}
+    _, _, record = impl._accept_group(base, {"geometry": {"elements": [roof]}}, marker)
+    assert record["entity_ids"] == ["native"]
+    roof["position"][1] -= thickness
+    with pytest.raises(ValueError, match="屋面.*覆盖"):
+        impl._accept_group(base, {"geometry": {"elements": [roof]}}, marker)
+
+
 def test_opaque_full_window_frame_is_rejected_but_bars_and_glass_are_allowed():
     base, marker = base_and_marker()
     window = installed_window()
@@ -240,8 +254,9 @@ def test_final_gate_rechecks_roof_surface_even_if_old_record_says_implemented(mo
 async def test_drawing_revises_local_coordinate_conflict_before_plan(monkeypatch):
     from app.agent.generation.architecture import design_workflow
     from app.agent.generation.architecture.workflow import architecture_planner
-    from app.agent.prompts.planning import build_architecture_plan_prompt
-    raw = extract_json_object(build_architecture_plan_prompt(""))
+    from app.design.resolver import architecture_plan_from_document
+    from tests.plan.test_drawing_implementation import drawing
+    raw = architecture_plan_from_document(drawing())
     volume = raw["volumes"][0]
     raw["components"] = [{"id": "side_window", "type": "window", "host": volume["id"],
                           "placement": {"face": "front", "floor": 1, "offset": volume["width"]+5, "sill_height": 1},

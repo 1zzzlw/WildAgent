@@ -392,6 +392,7 @@ export class AgentBridge {
       agentStore.proceduralMaterialsEnabled,
       recentMessages,
       agentStore.detailLevel,
+      agentStore.thinkingMode,
     )
 
     agentStore.clearPipelineSteps()
@@ -728,13 +729,10 @@ export class AgentBridge {
           break
         }
         if (message.code === 'model_service_error') {
-          const retryHint = message.retryable
-            ? '请稍后重新生成。'
-            : '请检查模型配置、额度或更换可用模型后重新生成。'
           agentStore.addSystemMessageForTurn(
             sessionId,
             message.request_id,
-            `模型服务不可用，无法继续生成：${message.error}。${retryHint}`,
+            `模型调用失败：${message.error}`,
           )
           agentStore.completeTurn(sessionId, message.request_id, 'error')
           if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)

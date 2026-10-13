@@ -119,7 +119,8 @@ class FacadeDecision(ContractModel):
     @model_validator(mode="after")
     def patterns_match_bays(self):
         if len(self.ground_pattern) != self.bays or len(self.upper_pattern) != self.bays:
-            raise ValueError("立面 pattern 长度必须与 bays 相同")
+            raise ValueError(f"立面 pattern 长度必须与 bays 相同：bays={self.bays}，"
+                             f"ground_pattern={len(self.ground_pattern)}，upper_pattern={len(self.upper_pattern)}")
         if self.entrance_bay is not None and self.entrance_bay > self.bays:
             raise ValueError("entrance_bay 不能超出 bays")
         return self
@@ -270,7 +271,7 @@ class ComponentInstance(ContractModel):
     id: str | None = Field(default=None, min_length=1, pattern=r"^[A-Za-z0-9_-]+$")
     relation: SupportRelation | None = None
     #: 设计中的宿主引用；plan 负责转换为真实实体引用。
-    host: str = Field(default="")
+    host: str | None = Field(default="", description="宿主引用 ID；省略、空字符串或 null 表示无宿主")
     description: str = ""
     #: 相对宿主的尺寸（逐类型字段不同）
     placement: ComponentPlacement | None = None
@@ -528,7 +529,8 @@ class DesignDocument(ContractModel):
             seen.add(volume.id)
             if volume.end_floor > massing.modeled_floors:
                 raise ValueError(f"volume {volume.id} 超出 modeled_floors")
-        from .coordinates import DesignCoordinateConflict, volume_conflicts
+        from .coordinates import DesignCoordinateConflict, volume_conflicts, floor_elevations
+        floor_elevations(decisions.model_dump())
         conflicts = volume_conflicts([v.model_dump(mode="json") for v in decisions.volumes],
                                     massing.model_dump(mode="json"))
         if conflicts:

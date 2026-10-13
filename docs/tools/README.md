@@ -139,7 +139,7 @@ docker run --rm --env-file .env <image> python -m scripts.deploy.deployment_pref
 
 位置：`wild-server/tests/`
 
-测试文件详细说明请参考：**[测试文件说明文档](../TESTING_GUIDE.md)**
+测试文件详细说明请参考：**[测试文件使用指南](../TESTING.md)**
 
 ### 核心功能测试
 - `test_agent_graph_execution.py` - Agent 图执行流程
@@ -251,7 +251,7 @@ uv run python -m scripts.deploy.deployment_preflight
 
 ## 📚 相关文档
 
-- **[测试文件说明](../TESTING_GUIDE.md)** - 详细的测试文件说明和使用指南
+- **[测试文件使用指南](../TESTING.md)** - 测试分层、门禁命令与编写约定
 - **[开发指南](../DEVELOPMENT.md)** - 开发环境配置和工作流程
 - **[部署指南](../DEPLOYMENT.md)** - 生产部署流程
 - **[架构文档](../ARCHITECTURE.md)** - 系统架构设计

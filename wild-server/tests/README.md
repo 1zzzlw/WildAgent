@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9a59b6389c4911f184de525400f8a581
-    ReservedCode1: 6q7CIEXR268RAOt0gTtR1fgKmCJiUK5dql1hvhOMThWm3bT82SbMXv8USuTmh9GfKTUBb878qIbJLvtnVZpGz7Tde1hzmixiSZZKK+hXmA6ENpr+g+z57TXQHpPYzVirfAChNm7ZHqwOKtu67P8vrojAFs9UKI2YZ3RwZyfyn0E5ruuvCAhV3rovLo8=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9a59b6389c4911f184de525400f8a581
-    ReservedCode2: 6q7CIEXR268RAOt0gTtR1fgKmCJiUK5dql1hvhOMThWm3bT82SbMXv8USuTmh9GfKTUBb878qIbJLvtnVZpGz7Tde1hzmixiSZZKK+hXmA6ENpr+g+z57TXQHpPYzVirfAChNm7ZHqwOKtu67P8vrojAFs9UKI2YZ3RwZyfyn0E5ruuvCAhV3rovLo8=
----
-
-
-
 # WildAgent 测试目录说明
 
 `wild-server/tests/` 按功能领域划分为 9 个子包，每个子包包含独立的测试文件与 `README.md`：
@@ -108,6 +95,6 @@ python -m pytest tests/rag/test_rag_semantic_chunking.py -v   # 运行单个文�
 
 - 所有测试文件仅依赖 `app.*` 模块，包间无相互导入，无需 `__init__.py`。
 - 移动测试文件时无需调整 import；请保持"一个功能包一个子目录"的组织方式。
-- 完整测试说明见 [docs/TESTING_GUIDE.md](../../docs/TESTING_GUIDE.md)。
+- 完整测试说明见 [docs/TESTING.md](../../docs/TESTING.md)。
 *（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*

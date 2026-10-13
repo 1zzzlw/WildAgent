@@ -63,6 +63,7 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
@@ -143,7 +144,7 @@ import {
   selectionAfterClick,
   type SelectionMode,
 } from '../../wild/componentSelection'
-import { createComponentTranslationChanges } from '../../wild/componentDrag'
+import { createGeometryTranslationOperations } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
 
 const containerRef = ref<HTMLDivElement>()
@@ -230,8 +231,9 @@ let pointerDownPosition: { x: number; y: number } | null = null
 let selectionHelpers: THREE.Box3Helper[] = []
 let dragAnchor: THREE.Object3D | null = null
 let dragStartPosition: THREE.Vector3 | null = null
-let dragComponentId: string | null = null
+let dragSelectedIds: string[] = []
 let dragTargetPositions = new Map<THREE.Object3D, THREE.Vector3>()
+let dragTargetInstances = new Map<THREE.InstancedMesh, Map<number, THREE.Matrix4>>()
 let suppressSelectionClick = false
 let unsubscribeWorldLook: (() => void) | null = null
 // 建筑线条叠加层（渲染面板开关）：按相邻面夹角 > 30° 提取 EdgesGeometry。
@@ -863,7 +865,7 @@ function clearSelectionHelpers() {
   selectionHelpers = []
 }
 
-/** 仅给显式开启 draggable 的单选组合构件显示 Element 编辑器的三轴移动控件。 */
+/** 原生与组合构件共用三轴移动；组合构件可显式锁定。 */
 function syncComponentTransformControl() {
   clearComponentTransformControl()
   if (
@@ -872,29 +874,13 @@ function syncComponentTransformControl() {
     || !sceneGroup
     || !transformControls
     || !sceneStore.reconstructed
-    || selectionStore.selectedIds.length !== 1
+    || selectionStore.selectedIds.length === 0
   ) return
-  const componentId = selectionStore.selectedIds[0]
-  const component = sceneStore.document?.blueprint.geometry.components
-    ?.find(item => item.id === componentId)
-  if (!component?.draggable) return
-
-  const renderedIds = new Set(getRenderedElementIds(
-    componentId,
-    sceneStore.reconstructed.componentMapping,
-  ))
-  const targets: THREE.Object3D[] = []
-  sceneGroup.traverse(object => {
-    if (!(object instanceof THREE.Mesh) || !object.userData.draggable) return
-    const elementId = object.userData.elementId
-    if (typeof elementId === 'string' && renderedIds.has(elementId)) targets.push(object)
-  })
-  if (targets.length === 0) return
-
+  const renderedIds = translationRenderedIds(selectionStore.selectedIds)
   const bounds = collectElementBounds(renderedIds)
   if (bounds.isEmpty()) return
   dragAnchor = new THREE.Object3D()
-  dragAnchor.name = `DragAnchor:${componentId}`
+  dragAnchor.name = `DragAnchor:${selectionStore.selectedIds.join(',')}`
   bounds.getCenter(dragAnchor.position)
   scene.add(dragAnchor)
   transformControls.attach(dragAnchor)
@@ -906,21 +892,40 @@ function clearComponentTransformControl() {
   if (dragAnchor?.parent) dragAnchor.parent.remove(dragAnchor)
   dragAnchor = null
   dragStartPosition = null
-  dragComponentId = null
+  dragSelectedIds = []
   dragTargetPositions.clear()
+  dragTargetInstances.clear()
+}
+
+function translationRenderedIds(ids: readonly string[]): Set<string> {
+  if (!sceneStore.document || !sceneStore.reconstructed) return new Set()
+  const operations = createGeometryTranslationOperations(sceneStore.document.blueprint, ids, [0, 0, 0])
+  return new Set(operations.flatMap(op => 'id' in op
+    ? getRenderedElementIds(op.id, sceneStore.reconstructed!.componentMapping) : []))
 }
 
 function handleTransformMouseDown() {
-  if (!dragAnchor || selectionStore.selectedIds.length !== 1 || !sceneGroup) return
+  if (!dragAnchor || selectionStore.selectedIds.length === 0 || !sceneGroup) return
   suppressSelectionClick = true
   dragStartPosition = dragAnchor.position.clone()
-  dragComponentId = selectionStore.selectedIds[0]
+  dragSelectedIds = [...selectionStore.selectedIds]
   dragTargetPositions.clear()
-  const mapping = sceneStore.reconstructed?.componentMapping
-  if (!mapping) return
-  const renderedIds = new Set(getRenderedElementIds(dragComponentId, mapping))
+  dragTargetInstances.clear()
+  const renderedIds = translationRenderedIds(dragSelectedIds)
   sceneGroup.traverse(object => {
-    if (!(object instanceof THREE.Mesh) || !object.userData.draggable) return
+    if (object instanceof THREE.InstancedMesh) {
+      const matrices = new Map<number, THREE.Matrix4>()
+      const ids = object.userData.instanceElementIds as Array<string | undefined> | undefined
+      ids?.forEach((id, index) => {
+        if (!id || !renderedIds.has(id)) return
+        const matrix = new THREE.Matrix4()
+        object.getMatrixAt(index, matrix)
+        matrices.set(index, matrix)
+      })
+      if (matrices.size) dragTargetInstances.set(object, matrices)
+      return
+    }
+    if (!(object instanceof THREE.Mesh)) return
     const elementId = object.userData.elementId
     if (typeof elementId === 'string' && renderedIds.has(elementId)) {
       dragTargetPositions.set(object, object.position.clone())
@@ -945,6 +950,18 @@ function handleTransformObjectChange() {
   if (!dragAnchor || !dragStartPosition) return
   const delta = dragAnchor.position.clone().sub(dragStartPosition)
   for (const [object, start] of dragTargetPositions) object.position.copy(start).add(delta)
+  for (const [object, matrices] of dragTargetInstances) {
+    for (const [index, start] of matrices) {
+      instanceMatrix.copy(start)
+      instanceMatrix.elements[12] += delta.x
+      instanceMatrix.elements[13] += delta.y
+      instanceMatrix.elements[14] += delta.z
+      object.setMatrixAt(index, instanceMatrix)
+    }
+    object.instanceMatrix.needsUpdate = true
+    object.computeBoundingSphere()
+    object.computeBoundingBox()
+  }
   syncSelectionHighlights()
   markNeedsRender()
   // 拖动时阴影重渲节流：避免每帧重渲整张阴影图，拖动手感更跟手。
@@ -961,7 +978,7 @@ function handleTransformDraggingChanged(event: { value?: unknown }) {
 }
 
 function handleTransformMouseUp() {
-  if (!dragAnchor || !dragStartPosition || !dragComponentId || !sceneStore.document) return
+  if (!dragAnchor || !dragStartPosition || !dragSelectedIds.length || !sceneStore.document) return
   const delta = dragAnchor.position.clone().sub(dragStartPosition)
   if (delta.lengthSq() < 1e-10) {
     // 零净位移（拖出去又拖回原位）：不会产生 patch，也就不会走 updateScene → markShadowsDirty，
@@ -969,24 +986,25 @@ function handleTransformMouseUp() {
     markShadowsDirty()
     return
   }
-  const component = sceneStore.document.blueprint.geometry.components
-    ?.find(item => item.id === dragComponentId)
-  if (!component) return
-  const changes = createComponentTranslationChanges(
-    component,
+  const operations = createGeometryTranslationOperations(
+    sceneStore.document.blueprint,
+    dragSelectedIds,
     [delta.x, delta.y, delta.z],
-    sceneStore.document.blueprint.geometry.elements,
   )
+  if (!operations.length) return
   const patch = createPatch(
     sceneStore.document.revision,
-    [{ op: 'update_component', id: component.id, changes }],
+    operations,
     'user',
     false,
-    `拖动${component.id}`,
+    `移动${dragSelectedIds.join('、')}`,
   )
   transformControls?.detach()
   void sceneStore.applyPatch(patch).then(applied => {
-    if (!applied) updateScene()
+    if (!applied) {
+      updateScene()
+      ElMessage.warning(sceneStore.validationIssues.find(issue => issue.level === 'error')?.message || '移动未能应用，已恢复原位置')
+    }
   })
 }
 

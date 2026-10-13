@@ -37,6 +37,7 @@ export function createUserMessageRequest(
   proceduralMaterialsEnabled: boolean = false,
   recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [],
   detailLevel: BuildingDetailLevel = 'simple',
+  thinkingMode: boolean = true,
 ): UserMessageRequest {
   return {
     protocol_version: AGENT_PROTOCOL_VERSION,
@@ -49,6 +50,7 @@ export function createUserMessageRequest(
     scene_summary: sceneSummary,
     selection,
     blueprint,
+    thinking_mode: thinkingMode,
     detail_level: detailLevel,
     procedural_materials_enabled: proceduralMaterialsEnabled,
     recent_messages: recentMessages,

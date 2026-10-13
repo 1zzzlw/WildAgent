@@ -29,10 +29,10 @@
                 <label>允许拖动</label>
                 <div class="behavior-description">开启后显示三轴移动控件</div>
               </div>
-              <el-switch :model-value="selectedComponent.draggable || false" inline-prompt
+              <el-switch :model-value="selectedComponent.draggable !== false" inline-prompt
                 active-text="开" inactive-text="关" @change="handleDraggableEnabled" />
             </div>
-            <div class="interaction-hint">拖动只更新组件坐标；自动吸附、对齐和碰撞校验留到后续阶段。</div>
+            <div class="interaction-hint">选中构件后拖动三轴控件移动；移动墙时附属门窗跟随，修改支持撤销重做。</div>
           </div>
 
           <div v-if="hasWallAttachment" class="property-section">

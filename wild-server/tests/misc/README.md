@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9d88b4cf9c4911f19155525400826444
-    ReservedCode1: fCq0BCC5QjRIl6y8EiRzHheCCYEDlpXW+VuMg0/hViQspD2TpBmyRWg5ajuarICLyHwZqi0ACHCfN7yrlfoyEPCbonf6+BlmyHwl8qG8mTXJL9OLvfge0oTc+0knEM+XGDKrjFuLhAgMlqg7zCEhDCGKQPsOI5EFHIqq0APraJQranDT2BAXL5Uzb5c=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9d88b4cf9c4911f19155525400826444
-    ReservedCode2: fCq0BCC5QjRIl6y8EiRzHheCCYEDlpXW+VuMg0/hViQspD2TpBmyRWg5ajuarICLyHwZqi0ACHCfN7yrlfoyEPCbonf6+BlmyHwl8qG8mTXJL9OLvfge0oTc+0knEM+XGDKrjFuLhAgMlqg7zCEhDCGKQPsOI5EFHIqq0APraJQranDT2BAXL5Uzb5c=
----
-
-
-
 # misc 包测试
 
 ## 用途

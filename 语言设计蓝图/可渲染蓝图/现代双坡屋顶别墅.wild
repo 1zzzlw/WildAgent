@@ -1,0 +1,943 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "现代双坡屋顶别墅",
+    "style": "modern",
+    "author": "WildAgent 现代简约别墅类型设计语言 G1 · 板按封顶层编号"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "ground",
+        "from": [
+          0,
+          0,
+          0
+        ],
+        "to": [
+          11,
+          0,
+          9
+        ],
+        "thickness": 0.2,
+        "material": "floor_stone"
+      },
+      {
+        "type": "floor",
+        "id": "slab_l1_a",
+        "from": [
+          0,
+          3.6,
+          0
+        ],
+        "to": [
+          9,
+          3.6,
+          2.34
+        ],
+        "thickness": 0.2,
+        "material": "floor_wood"
+      },
+      {
+        "type": "floor",
+        "id": "slab_l1_b",
+        "from": [
+          2.52,
+          3.6,
+          2.34
+        ],
+        "to": [
+          9,
+          3.6,
+          7
+        ],
+        "thickness": 0.2,
+        "material": "floor_wood"
+      },
+      {
+        "type": "floor",
+        "id": "slab_l1_c",
+        "from": [
+          0,
+          3.6,
+          6.06
+        ],
+        "to": [
+          2.52,
+          3.6,
+          7
+        ],
+        "thickness": 0.2,
+        "material": "floor_wood"
+      },
+      {
+        "type": "floor",
+        "id": "terrace_l1_east",
+        "from": [
+          9,
+          3.6,
+          0
+        ],
+        "to": [
+          11,
+          3.6,
+          9
+        ],
+        "thickness": 0.2,
+        "material": "floor_terrace"
+      },
+      {
+        "type": "floor",
+        "id": "terrace_l1_north",
+        "from": [
+          0,
+          3.6,
+          7
+        ],
+        "to": [
+          9,
+          3.6,
+          9
+        ],
+        "thickness": 0.2,
+        "material": "floor_terrace"
+      },
+      {
+        "type": "floor",
+        "id": "landing_l12",
+        "from": [
+          0.12,
+          1.8,
+          4.62
+        ],
+        "to": [
+          2.52,
+          1.8,
+          6.06
+        ],
+        "thickness": 0.15,
+        "material": "floor_wood"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l1_s",
+        "from": [
+          -0.12,
+          0,
+          0
+        ],
+        "to": [
+          11.12,
+          3.6,
+          0
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l1_e",
+        "from": [
+          11,
+          0,
+          0.12
+        ],
+        "to": [
+          11,
+          3.6,
+          8.88
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l1_n",
+        "from": [
+          11.12,
+          0,
+          9
+        ],
+        "to": [
+          -0.12,
+          3.6,
+          9
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l1_w",
+        "from": [
+          0,
+          0,
+          8.88
+        ],
+        "to": [
+          0,
+          3.6,
+          0.12
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l1_int",
+        "from": [
+          6.5,
+          0,
+          0
+        ],
+        "to": [
+          6.5,
+          3.6,
+          9
+        ],
+        "thickness": 0.12,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_shaft_s",
+        "from": [
+          0,
+          0,
+          2.28
+        ],
+        "to": [
+          2.64,
+          3.6,
+          2.28
+        ],
+        "thickness": 0.12,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_shaft_e",
+        "from": [
+          2.58,
+          0,
+          2.22
+        ],
+        "to": [
+          2.58,
+          3.6,
+          6.06
+        ],
+        "thickness": 0.12,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_shaft_n",
+        "from": [
+          0,
+          0,
+          6.12
+        ],
+        "to": [
+          2.64,
+          3.6,
+          6.12
+        ],
+        "thickness": 0.12,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l2_s",
+        "from": [
+          -0.12,
+          3.6,
+          0
+        ],
+        "to": [
+          9.12,
+          6.6,
+          0
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l2_e",
+        "from": [
+          9,
+          3.6,
+          0.12
+        ],
+        "to": [
+          9,
+          6.6,
+          6.88
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l2_n",
+        "from": [
+          9.12,
+          3.6,
+          7
+        ],
+        "to": [
+          -0.12,
+          6.6,
+          7
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l2_w",
+        "from": [
+          0,
+          3.6,
+          6.88
+        ],
+        "to": [
+          0,
+          6.6,
+          0.12
+        ],
+        "thickness": 0.24,
+        "material": "wall_white"
+      },
+      {
+        "type": "wall",
+        "id": "wall_l2_int",
+        "from": [
+          5,
+          3.6,
+          0
+        ],
+        "to": [
+          5,
+          6.6,
+          7
+        ],
+        "thickness": 0.12,
+        "material": "wall_white"
+      },
+      {
+        "type": "stair",
+        "id": "stair_f1",
+        "from": [
+          0.72,
+          0,
+          2.34
+        ],
+        "to": [
+          0.72,
+          1.8,
+          4.74
+        ],
+        "width": 1.2,
+        "stepCount": 10,
+        "stepDepth": 0.24,
+        "stepHeight": 0.18,
+        "material": "floor_wood"
+      },
+      {
+        "type": "stair",
+        "id": "stair_f2",
+        "from": [
+          1.92,
+          1.8,
+          4.62
+        ],
+        "to": [
+          1.92,
+          3.6,
+          2.22
+        ],
+        "width": 1.2,
+        "stepCount": 10,
+        "stepDepth": 0.24,
+        "stepHeight": 0.18,
+        "material": "floor_wood"
+      },
+      {
+        "type": "roof",
+        "id": "roof_gable",
+        "roofType": "gable",
+        "span": 9.8,
+        "depth": 7,
+        "height": 2.6,
+        "thickness": 0.2,
+        "position": [
+          4.5,
+          6.6,
+          3.5
+        ],
+        "material": "roof_dark"
+      },
+      {
+        "type": "primitive",
+        "id": "parapet_n",
+        "shape": "box",
+        "position": [
+          5.5,
+          3.9,
+          9
+        ],
+        "dimensions": [
+          11.24,
+          0.6,
+          0.24
+        ],
+        "material": "wall_white"
+      },
+      {
+        "type": "primitive",
+        "id": "parapet_s",
+        "shape": "box",
+        "position": [
+          10,
+          3.9,
+          0
+        ],
+        "dimensions": [
+          2.24,
+          0.6,
+          0.24
+        ],
+        "material": "wall_white"
+      },
+      {
+        "type": "primitive",
+        "id": "parapet_e",
+        "shape": "box",
+        "position": [
+          11,
+          3.9,
+          4.5
+        ],
+        "dimensions": [
+          0.24,
+          0.6,
+          8.76
+        ],
+        "material": "wall_white"
+      },
+      {
+        "type": "primitive",
+        "id": "parapet_w",
+        "shape": "box",
+        "position": [
+          0,
+          3.9,
+          8
+        ],
+        "dimensions": [
+          0.24,
+          0.6,
+          1.76
+        ],
+        "material": "wall_white"
+      },
+      {
+        "type": "primitive",
+        "id": "step_1",
+        "shape": "box",
+        "position": [
+          5.8,
+          0.075,
+          -0.25
+        ],
+        "dimensions": [
+          2.4,
+          0.15,
+          0.4
+        ],
+        "material": "concrete_step"
+      },
+      {
+        "type": "primitive",
+        "id": "step_2",
+        "shape": "box",
+        "position": [
+          5.8,
+          0.225,
+          -0.75
+        ],
+        "dimensions": [
+          2.4,
+          0.15,
+          0.6
+        ],
+        "material": "concrete_step"
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "door_main",
+        "parentWall": "wall_l1_s",
+        "from": [
+          5.32,
+          0,
+          0
+        ],
+        "width": 1.2,
+        "height": 2.2,
+        "frameDepth": 0.16,
+        "leafDepth": 0.05,
+        "doorStyle": "single",
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_l1_int",
+        "parentWall": "wall_l1_int",
+        "from": [
+          2.05,
+          0,
+          0
+        ],
+        "width": 0.9,
+        "height": 2.1,
+        "frameDepth": 0.06,
+        "leafDepth": 0.04,
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_shaft",
+        "parentWall": "wall_shaft_s",
+        "from": [
+          0.87,
+          0,
+          0
+        ],
+        "width": 0.9,
+        "height": 2.1,
+        "frameDepth": 0.06,
+        "leafDepth": 0.04,
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "window",
+        "id": "win_liv_s",
+        "parentWall": "wall_l1_s",
+        "from": [
+          7.32,
+          0.3,
+          0
+        ],
+        "width": 3.6,
+        "height": 2.7,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 2,
+        "horizontalMullions": 0,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_kitchen_s",
+        "parentWall": "wall_l1_s",
+        "from": [
+          2.22,
+          0.9,
+          0
+        ],
+        "width": 1.8,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_l1_e",
+        "parentWall": "wall_l1_e",
+        "from": [
+          3.63,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_l1_n1",
+        "parentWall": "wall_l1_n",
+        "from": [
+          7.37,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_l1_n2",
+        "parentWall": "wall_l1_n",
+        "from": [
+          2.37,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_l1_w",
+        "parentWall": "wall_l1_w",
+        "from": [
+          3.63,
+          0.9,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "door_bd1_s",
+        "parentWall": "wall_l2_s",
+        "from": [
+          2.17,
+          3.6,
+          0
+        ],
+        "width": 0.9,
+        "height": 2.1,
+        "frameDepth": 0.16,
+        "leafDepth": 0.05,
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "balcony",
+        "id": "balcony_bd1",
+        "parentWall": "wall_l2_s",
+        "from": [
+          1.02,
+          3.6,
+          0
+        ],
+        "width": 3.6,
+        "depth": 1.5,
+        "slabThickness": 0.15,
+        "railingHeight": 1.05,
+        "postSpacing": 0.9,
+        "material": "floor_terrace",
+        "railingMaterial": "railing_metal"
+      },
+      {
+        "type": "window",
+        "id": "win_l2_s",
+        "parentWall": "wall_l2_s",
+        "from": [
+          6.22,
+          4.5,
+          0
+        ],
+        "width": 1.8,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "door_l2_int",
+        "parentWall": "wall_l2_int",
+        "from": [
+          2.55,
+          3.6,
+          0
+        ],
+        "width": 0.9,
+        "height": 2.1,
+        "frameDepth": 0.06,
+        "leafDepth": 0.04,
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_l2_terrace",
+        "parentWall": "wall_l2_e",
+        "from": [
+          2.38,
+          3.6,
+          0
+        ],
+        "width": 1,
+        "height": 2.1,
+        "frameDepth": 0.16,
+        "leafDepth": 0.05,
+        "frameMaterial": "frame_dark",
+        "leafMaterial": "door_wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "type": "window",
+        "id": "win_l2_terr_n",
+        "parentWall": "wall_l2_n",
+        "from": [
+          3.72,
+          4.5,
+          0
+        ],
+        "width": 1.8,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "win_l2_w",
+        "parentWall": "wall_l2_w",
+        "from": [
+          2.63,
+          4.5,
+          0
+        ],
+        "width": 1.5,
+        "height": 1.5,
+        "frameWidth": 0.09,
+        "frameDepth": 0.16,
+        "glassDepth": 0.012,
+        "verticalMullions": 1,
+        "horizontalMullions": 1,
+        "frameMaterial": "frame_dark",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "railing",
+        "id": "railing_arrival",
+        "path": [
+          [
+            0.12,
+            3.6,
+            2.34
+          ],
+          [
+            1.32,
+            3.6,
+            2.34
+          ]
+        ],
+        "height": 1.05,
+        "postSpacing": 0.8,
+        "railLevels": [
+          0.5,
+          1
+        ],
+        "material": "railing_metal"
+      }
+    ]
+  },
+  "materials": {
+    "wall_white": {
+      "baseColor": [
+        0.92,
+        0.91,
+        0.89
+      ],
+      "roughness": 0.85,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "floor_stone": {
+      "baseColor": [
+        0.62,
+        0.6,
+        0.57
+      ],
+      "roughness": 0.9,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "floor_wood": {
+      "baseColor": [
+        0.55,
+        0.38,
+        0.22
+      ],
+      "roughness": 0.7,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "floor_terrace": {
+      "baseColor": [
+        0.5,
+        0.48,
+        0.45
+      ],
+      "roughness": 0.9,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "roof_dark": {
+      "baseColor": [
+        0.18,
+        0.19,
+        0.2
+      ],
+      "roughness": 0.85,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "frame_dark": {
+      "baseColor": [
+        0.12,
+        0.12,
+        0.13
+      ],
+      "roughness": 0.35,
+      "metallic": 0.8,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.62,
+        0.78,
+        0.86
+      ],
+      "roughness": 0.08,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "side": "double",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012
+    },
+    "door_wood": {
+      "baseColor": [
+        0.3,
+        0.14,
+        0.06
+      ],
+      "roughness": 0.6,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "railing_metal": {
+      "baseColor": [
+        0.35,
+        0.36,
+        0.38
+      ],
+      "roughness": 0.4,
+      "metallic": 0.85,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete_step": {
+      "baseColor": [
+        0.55,
+        0.55,
+        0.53
+      ],
+      "roughness": 0.9,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "behaviors": {},
+  "editor": {
+    "revision": 2
+  }
+}

@@ -1,6 +1,8 @@
 # 服务器部署与运维
 
-最后核对：2026-08-29。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
+最后核对：2026-10-13。本文件是当前服务器部署的正式事实来源；`docs-dev/` 中的远程运维手册仅供历史追溯。
+
+本地开发与启动见 [开发与测试](DEVELOPMENT.md)，测试门禁见 [测试文件使用指南](TESTING.md)。
 
 ## 1. 生产事实来源：Jenkins
 
@@ -56,6 +58,7 @@ Docker 与 Jenkins 使用 `/health/ready` 而不是普通首页判断后端就�
 默认生产文件为 `/opt/wild-agent/.env`：
 
 ```dotenv
+CHAT__PROVIDER=auto
 CHAT__NAME=replace-with-your-chat-model-id
 CHAT__API_KEY=replace-me
 CHAT__BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
@@ -65,12 +68,26 @@ EMBEDDING__API_KEY=replace-me
 EMBEDDING__BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 RAG__ENABLED=true
+RAG__PERSIST_DIR=storage/chroma
+RAG__COLLECTION_NAME=wild_knowledge_base
+RAG__AUTO_SYNC=true
 RAG__ALLOW_HASH_FALLBACK=false
 
 ASSETS__BACKEND=local
 ASSETS__ROOT_DIR=storage/assets
 ASSETS__PUBLIC_BASE_URL=/api/assets
+
+PRESENCE__ENABLED=true
+PRESENCE__TRUSTED_PROXY_CIDRS=127.0.0.0/8,::1/128,172.16.0.0/12
+
+# 需要网络检索补充形态资料时才开启
+WEB_RESEARCH__ENABLED=false
+WEB_RESEARCH__API_KEY=replace-me
 ```
+
+完整的可选项与默认值以 `wild-server/config.py` 为准，见 [开发与测试 · 后端配置](DEVELOPMENT.md#3-后端配置)。生产 `.env` 不进入 Git。
+
+`WEB_RESEARCH__API_KEY` 是第三方检索服务的凭据，与 Chat/Embedding 分开配置；关闭检索时该字段留空即可。`ASSETS__MAX_FILE_BYTES`（默认 20MB）与 `ASSETS__MAX_TOTAL_BYTES`（默认 80MB）限制资产仓库容量，迁移对象存储前需确认这些上限。
 
 当前 `ASSETS__PUBLIC_BASE_URL=/api/assets` 让 `.wild` 保存站内 URL。迁移对象存储/CDN 时，把它改为公开 HTTPS 前缀，并确保对象路径仍为 `{assetId}/files/{filename}`、CDN CORS 允许前端站点读取图片；不要把宿主机文件路径或 `file://` 地址写进 Blueprint。
 
@@ -150,7 +167,9 @@ docker compose logs --tail=100 server
 - `Blueprint 定向格式恢复成功`：系统已用一次非思考调用补回单一 JSON，可继续组件生成；
 - WebSocket `heartbeat_timeout`：浏览器到 Nginx/后端的连接问题。
 
-一次新建筑生成包含分类、总体方案、材质方案、LLM 主体骨架、按建议派发的组件生成/校验、合并、最终校验和有限回调；Plan 模式还会在执行前暂停等待用户批准计划。原平面生成、平面审核和 ApprovedPlanAssembler 不再参与当前主链。需要模型的节点失败时，应以具体节点错误和 HTTP 状态码判断。
+一次新建筑生成的实际链路是：意图分类 → 建筑方案（完整图纸）→ 材质方案 → **设计审核（在此暂停等待用户批准）** → 展开标记任务 → 逐条执行（失败进 replanner 循环）→ 图纸驱动装配 → 最终校验 → 有限回调修复。唯一的循环是 `execute ⇄ replanner`；节点拓扑以 [`app/agent/graph.py`](../wild-server/app/agent/graph.py) 为准，逐节点对照见 [项目索引 · 当前生成主链](项目索引.md#3-当前生成主链)。
+
+早期的平面生成、平面审核、`ApprovedPlanAssembler`、`plan_review` 与 `design_convergence` 节点均已退出当前主链，日志中出现这些名字说明镜像过旧。需要模型的节点失败时，应以具体节点错误和 HTTP 状态码判断，不要按旧节点名排查。
 
 ## 6. 数据与回滚
 

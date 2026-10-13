@@ -68,7 +68,7 @@ LangSmith 数据集 inputs
 }
 ```
 
-可从现有 [rag_retrieval_cases.json](../evals/rag_retrieval_cases.json) 取样：将 `query`、`metadataFilter` 放进 inputs，将 `expectedSources` 放进参考 outputs。脚本读取已有云端数据集，不自动新建或重复上传样例。
+可从现有 [rag_retrieval_cases.json](../evals/rag_retrieval_cases_langsmith.csv) 取样：将 `query`、`metadataFilter` 放进 inputs，将 `expectedSources` 放进参考 outputs。脚本读取已有云端数据集，不自动新建或重复上传样例。
 
 运行：
 

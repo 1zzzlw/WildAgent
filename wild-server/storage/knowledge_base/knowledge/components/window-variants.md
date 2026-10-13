@@ -25,13 +25,39 @@ applies_to:
   - 圆形窗
 ---
 
-# 窗样式变体（拱形、百叶与多扇组合）
+# 窗基础与样式变体（矩形、拱形、百叶与多扇组合）
 
-适用条件：**用户或已批准方案显式点名**拱形窗、百叶窗、多扇组合窗、上亮窗等窗样式变体时，
-才按本文档表达；普通平开窗不需要引用本文。"欧式建筑"这类风格词本身不触发本文档。
+适用条件：基础矩形窗使用“窗”小节；**用户或已批准方案显式点名**拱形窗、百叶窗、
+多扇组合窗、上亮窗等变体时，才使用对应变体小节。“欧式建筑”本身不触发变体。
 
 上下组合（上亮 / 裙窗：同墙两樘 `window` 竖向不重叠）的完整规则与检查点见《中式格棂门窗》的
 "上下组合"小节，本档不重复；本文档只写该档没有的水平并排组合。
+
+## 窗 · window
+
+<!-- rag-meta
+entity_type: window
+entity_name: window
+topic: composition
+primary_terms:
+  - 窗
+synonyms: [矩形窗, window_rectangular, window_center, rectangular_window, rectangular window]
+applies_to: []
+-->
+
+普通矩形窗直接使用 window。上述英文叫法归为同一任务“窗”，不另建类型。
+本节不受拱形或组合窗的适用条件限制。elements/components 分别并入 geometry，
+materials 并入材质字典；已有墙时不复制示例宿主。from[0] 是沿宿主 from→to 的
+洞口左缘距离，from[1] 是窗底世界 Y，from[2] 是法向偏移，通常为 0。
+示例墙底 0.9m、窗底 1.8m；宽高、分格与材料按当前图纸替换。
+
+```json
+{"elements":[{"type":"wall","id":"window_host","from":[-2,0.9,0],"to":[2,4,0],"thickness":0.3,"material":"stone"}],"components":[{"type":"window","id":"sample_window","parentWall":"window_host","from":[1.4,1.8,0],"width":1.2,"height":1.6,"frameWidth":0.06,"frameDepth":0.3,"glassDepth":0.012,"verticalMullions":1,"frameMaterial":"stone","glassMaterial":"glass"}],"materials":{"stone":{"baseColor":[0.85,0.82,0.75],"roughness":0.75,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},"glass":{"baseColor":[0.85,0.93,0.98],"roughness":0.08,"metallic":0,"albedo":1,"lightingCondition":"D65_noon","materialClass":"glass","transmission":0.92,"ior":1.5,"opacity":1}}}
+```
+
+window 编译后已包含洞口、玻璃、四边窗框与指定分格；不能同位置再写 opening
+或第二个 window 当装饰框，否则重复开洞。额外石材窗套用 primitive，而不是另一
+扇窗。字段依据：`wild-core/schema.json` 与 `src/compiler/components/window.ts`。
 
 ## 拱形窗
 

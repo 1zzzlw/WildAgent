@@ -272,3 +272,69 @@ def test_non_body_component_is_not_coalesced_as_a_volume_interface(monkeypatch):
     attempts = [t for t in trace if t.get("tool") == "generate_wild"]
     assert all("shared_wall_changes" not in t for t in attempts)
     assert any("共面重叠" in t["errors"].get("lattice", "") for t in attempts)
+
+
+@pytest.mark.parametrize("axis,reverse", [(0, False), (0, True), (2, False), (2, True)])
+@pytest.mark.parametrize("include_shared", [False, True])
+@pytest.mark.parametrize("normal", [0, 0.05])
+def test_contained_opening_host_reuses_physical_wall_without_moving_design(monkeypatch, axis, reverse, include_shared, normal):
+    from app.design.relations import place_opening_group, opening_design_errors
+    state = empty_state()
+    outer = wall("physical", axis=axis, plane=-7, bottom=0.45, top=3.75)
+    shared = wall("diagram", 8 if reverse else 2, 2 if reverse else 8,
+                  axis=axis, plane=-7, bottom=0.45, top=3.75)
+    state["drawing_hosts"].extend([deepcopy(outer), deepcopy(shared)])
+    marker = {"id": "door_inside", "type": "door", "host": shared["id"],
+              "entity": {"parentWall": shared["id"], "from": [1, 0.45, normal]},
+              "diagram_host": deepcopy(shared), "depends_on": ["building_body"],
+              "design": {"placement": {"offset": 1}, "size": {"width": 1, "height": 2.1}}}
+    state["resolved_design"]["component_markers"].append(marker)
+    body = state["resolved_design"]["component_markers"][0]
+    body["design"]["opening_layout"] = [{"id": marker["id"], "type": marker["type"],
+        "host": marker["host"], "entity": deepcopy(marker["entity"]), "size": marker["design"]["size"]}]
+    before = deepcopy(state)
+    events = patch_services(monkeypatch, [reply("building_body", [outer, shared] if include_shared else [outer])])
+    updates, status, ids, _, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "succeeded" and ids == [outer["id"]]
+    assert events == ["rag", "model"] and state == before
+    base = impl.implementation_blueprint({**state, **updates})
+    context = impl._item_context(state, {marker["id"]: marker}, base)
+    assert context["opening_hosts"][marker["id"]]["parentWall"] == outer["id"]
+    assert context["existing_blueprint"]["geometry"]["elements"] == [outer]
+    opening = {"id": "door", "type": "door", "parentWall": shared["id"],
+               "from": [1, 0.45, normal], "width": 1, "height": 2.1}
+    decoration = {"id": "door_trim", "type": "primitive", "shape": "box",
+                  "position": [-7, 1.5, 4], "dimensions": [0.1, 2.1, 1]}
+    row, changes = place_opening_group(base, {"geometry": {"elements": [decoration], "components": [opening]}}, marker)
+    actual = row["geometry"]["components"][0]
+    assert actual["parentWall"] == outer["id"]
+    direction = -1 if reverse else 1
+    expected = shared["from"][axis] + direction * (1 if not reverse else 2)
+    assert actual["from"][0] == expected
+    assert actual["from"][1:] == [0.45, direction*normal]
+    assert row["geometry"]["elements"] == [decoration]
+    assert not opening_design_errors(base, [actual], marker)
+    assert changes[0]["rule"] == "compiler.opening_host"
+    assert marker == before["resolved_design"]["component_markers"][-1]
+
+
+@pytest.mark.parametrize("difference", ["ambiguous", "plane", "height", "extent"])
+def test_missing_opening_host_requires_unique_full_geometric_coverage(difference):
+    from app.design.relations import body_host_errors
+    shared = wall("diagram", 2, 8, axis=0)
+    outer = wall("physical", axis=0)
+    walls = [outer]
+    if difference == "ambiguous":
+        walls.append(wall("other", axis=0))
+    elif difference == "plane":
+        outer["from"][2] = outer["to"][2] = 12.1
+    elif difference == "height":
+        outer["to"][1] = 3
+    else:
+        outer["to"][0] = 7
+    marker = {"id": "door", "type": "door", "host": shared["id"], "diagram_host": shared,
+              "entity": {"parentWall": shared["id"], "from": [1, 0, 0]},
+              "design": {"placement": {"offset": 1}, "size": {"width": 1, "height": 2}}}
+    base = empty_state()["skeleton_blueprint"]
+    base["geometry"]["elements"] = walls
+    assert body_host_errors(base, [marker])

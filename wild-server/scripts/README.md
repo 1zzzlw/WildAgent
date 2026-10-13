@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_962efdeb9c4911f19046525400287e28
-    ReservedCode1: 46E6t7yt17SFbATr6Ts8M9sLXtdUgJlWVOMMy5pFX7K1ODbCGq4CE3+1QOlcMPH1pj1frrpZm2MMomB4Xx/IISi5P4r0ObDT4priRfZBr1O4cm9KFgQGPAw8kpCNejL19xefZqBIP9/v1NxD2CfGfP5qOLmZj5I+4+CZipGyRF/T8ii9XJRqDM5tcEQ=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_962efdeb9c4911f19046525400287e28
-    ReservedCode2: 46E6t7yt17SFbATr6Ts8M9sLXtdUgJlWVOMMy5pFX7K1ODbCGq4CE3+1QOlcMPH1pj1frrpZm2MMomB4Xx/IISi5P4r0ObDT4priRfZBr1O4cm9KFgQGPAw8kpCNejL19xefZqBIP9/v1NxD2CfGfP5qOLmZj5I+4+CZipGyRF/T8ii9XJRqDM5tcEQ=
----
-
-
-
 # scripts/ 脚本目录
 
 wild-server 的辅助脚本目录，按功能分类组织为 `deploy/`、`rag/`、`kb/` 和 `reports/`，另有根目录开发工具（`check_undefined_names.py`）。

@@ -273,7 +273,7 @@ LLM-as-Judge 只作为辅助信号。Judge 模型、Prompt 和版本必须记录
 
 - 当前分片、同步和检索：[loader.py](../../wild-server/app/spec/loader.py)
 - Agent 上下文注入：[agent_service.py](../../wild-server/app/services/agent_service.py)
-- 固定评测集：[rag_retrieval_cases.json](../../wild-server/evals/rag_retrieval_cases.json)
+- 固定评测集：[rag_retrieval_cases.json](../../wild-server/evals/rag_retrieval_cases_langsmith.csv)
 - RAG 脚本入门：[scripts/rag/README.md](../../wild-server/scripts/rag/README.md)
 - 当前全链路细节：[RAG_PIPELINE_GUIDE.md](RAG_PIPELINE_GUIDE.md)
 - RAGTrace 日志阅读：[RAG_TRACE_GUIDE.md](RAG_TRACE_GUIDE.md)

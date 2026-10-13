@@ -71,7 +71,6 @@ applies_to:
 - 锥坡 `segments=4` 且 rotation 仅绕 Y π/4；渲染无椭圆歪坡。
 - 楼层标高链连续：下层墙顶 = 楼板 = 上层墙底。
 
-## 设计层表态通道（当前生成链）
+## 当前图纸与实现通道
 
-- **设计层可表态**：`roof.type: "chinese_pagoda"` 或 `"chinese_curved"`；`volumes[]` 逐层收分——每层一个体量项，`width/depth` 随 `start_floor/end_floor` 升高递减（方锥轮廓），体量不得重叠且同层投影覆盖轮廓；`component_quota.cornice`（每层檐口线脚，多层塔取上限 4 或由编译器按层派生）。
-- **设计层无通道（能力缺口，只标记不阻断）**：叠涩带逐道外挑、四棱台锥坡（`cylinder segments=4`）、拱肩回填与券洞居中——均为蓝图层技法，编译产物不含；券洞是否出现取决于 facade 槽位是否含 door，拱形需走 ScenePatch 修改链。
+收分塔身和重檐在 volumes、roof 与 components.form 中描述各层轮廓、檐口标高、外挑与收分；plan 按当前图纸组合原生屋顶或 primitive。叠涩、锥坡和拱肩填补可由标记任务实现，不由 component_quota 或固定层数自动派生。拱门需明确实例与洞口宿主，不能仅写立面风格。

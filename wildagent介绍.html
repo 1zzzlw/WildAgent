@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WildAgent 项目介绍</title>
+  <style>
+    :root {
+      --ink: #1c2733;
+      --ink-soft: #3d4c5c;
+      --muted: #6b7885;
+      --accent: #174f7a;
+      --accent-deep: #0f3554;
+      --accent-soft: #edf4f8;
+      --line: #cfdae2;
+      --paper: #ffffff;
+      --warn-soft: #fdf6ec;
+      --warn-line: #e3cfa8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
+
+    body {
+      padding: 24px 12px 48px;
+      color: var(--ink);
+      background: #eef1f3;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 12.4px;
+      line-height: 1.78;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    .page {
+      width: 210mm;
+      margin: 0 auto 14mm;
+      padding: 16mm 17mm 14mm;
+      background: var(--paper);
+      box-shadow: 0 4px 22px rgba(24, 50, 68, .11);
+    }
+
+    /* ---------- 封面 ---------- */
+    .cover {
+      min-height: 257mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cover-kicker {
+      color: var(--muted);
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    .cover h1 {
+      margin-top: 6px;
+      color: #10395a;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      line-height: 1.24;
+    }
+
+    .cover .sub {
+      margin-top: 12px;
+      padding-left: 13px;
+      border-left: 3px solid var(--accent);
+      color: var(--ink-soft);
+      font-size: 13.2px;
+      line-height: 1.8;
+    }
+
+    .cover-facts {
+      display: grid;
+      gap: 3px;
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: 11.4px;
+    }
+
+    .cover-facts div {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 10px;
+    }
+
+    .cover-facts dt {
+      color: var(--muted);
+    }
+
+    .cover-foot {
+      color: var(--muted);
+      font-size: 10.6px;
+      line-height: 1.7;
+    }
+
+    /* ---------- 标题层级 ---------- */
+    h2 {
+      margin: 0 0 3px;
+      padding-bottom: 6px;
+      color: var(--accent);
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      border-bottom: 2px solid var(--accent);
+    }
+
+    h2 .num {
+      margin-right: 9px;
+      color: #9db4c6;
+      font-weight: 700;
+    }
+
+    h3 {
+      margin: 17px 0 6px;
+      color: #17415f;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .5px;
+    }
+
+    h4 {
+      margin: 12px 0 4px;
+      color: var(--ink);
+      font-size: 12.6px;
+      font-weight: 700;
+    }
+
+    p {
+      margin: 6px 0;
+      text-align: justify;
+    }
+
+    strong {
+      color: #123f61;
+      font-weight: 700;
+    }
+
+    .lead {
+      margin-top: 10px;
+      color: var(--ink-soft);
+    }
+
+    /* ---------- 列表 ---------- */
+    ul,
+    ol {
+      margin: 6px 0 6px 2px;
+      list-style: none;
+    }
+
+    li {
+      position: relative;
+      margin-top: 4px;
+      padding-left: 15px;
+    }
+
+    li::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: .72em;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    ol {
+      counter-reset: n;
+    }
+
+    ol>li {
+      padding-left: 20px;
+    }
+
+    ol>li::before {
+      content: counter(n);
+      counter-increment: n;
+      top: 0;
+      width: auto;
+      height: auto;
+      border-radius: 0;
+      background: none;
+      color: var(--accent);
+      font-size: 11.4px;
+      font-weight: 700;
+    }
+
+    /* ---------- 表格 ---------- */
+    table {
+      width: 100%;
+      margin: 10px 0;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      line-height: 1.62;
+    }
+
+    th,
+    td {
+      padding: 6px 8px;
+      border: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #143f60;
+      background: var(--accent-soft);
+      font-weight: 700;
+    }
+
+    td code,
+    p code,
+    li code {
+      padding: 1px 4px;
+      border-radius: 2px;
+      background: #f1f4f6;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 10.7px;
+      color: #0f4a72;
+    }
+
+    /* ---------- 代码块 / 流程图 ---------- */
+    figure {
+      margin: 12px 0;
+      padding: 12px 13px;
+      background: #f7f9fa;
+      border-left: 3px solid var(--accent);
+      border-radius: 2px;
+    }
+
+    figcaption {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10.7px;
+      line-height: 1.6;
+    }
+
+    pre {
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 10.6px;
+      line-height: 1.62;
+      color: #22333f;
+      white-space: pre;
+    }
+
+    pre .k {
+      color: #0f4a72;
+      font-weight: 700;
+    }
+
+    pre .m {
+      color: #7a5b2e;
+    }
+
+    pre .c {
+      color: #8695a3;
+    }
+
+    /* ---------- 提示框 ---------- */
+    .note {
+      margin: 11px 0;
+      padding: 9px 12px;
+      background: var(--warn-soft);
+      border-left: 3px solid #c9a35d;
+      font-size: 11.6px;
+      line-height: 1.68;
+      color: #4a3d28;
+    }
+
+    .note b {
+      color: #6b5220;
+    }
+
+    /* ---------- 创新点卡片 ---------- */
+    .idea {
+      margin: 13px 0;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .idea h4 {
+      margin: 0 0 5px;
+      padding-bottom: 4px;
+      color: var(--accent);
+      border-bottom: 1px dashed var(--line);
+      font-size: 12.8px;
+    }
+
+    .idea p {
+      margin: 4px 0;
+      font-size: 11.8px;
+    }
+
+    .idea .tag {
+      display: inline-block;
+      margin-right: 7px;
+      padding: 1px 6px;
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      vertical-align: 2px;
+    }
+
+    /* ---------- 小工具 ---------- */
+    .kv {
+      margin: 9px 0;
+      font-size: 11.7px;
+    }
+
+    .kv div {
+      display: grid;
+      grid-template-columns: 82px 1fr;
+      gap: 10px;
+      padding: 3px 0;
+      border-bottom: 1px dotted var(--line);
+    }
+
+    .kv div:last-child {
+      border-bottom: none;
+    }
+
+    .kv b {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .foot-note {
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+
+    .page-break {
+      break-before: page;
+      page-break-before: always;
+    }
+
+    .avoid-break {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* ---------- 打印 ---------- */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    @media print {
+
+      html,
+      body {
+        width: 210mm;
+        background: #fff;
+      }
+
+      body {
+        padding: 0;
+      }
+
+      .page {
+        width: 210mm;
+        margin: 0;
+        box-shadow: none;
+        page-break-after: always;
+      }
+
+      .page:last-child {
+        page-break-after: auto;
+      }
+
+      h2,
+      h3 {
+        break-after: avoid;
+        page-break-after: avoid;
+      }
+
+      figure,
+      table,
+      .note {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ============ 封面 ============ -->
+  <section class="page cover">
+    <div>
+      <p class="cover-kicker">Project Introduction</p>
+      <h1>WildAgent</h1>
+      <div class="sub">
+        面向建筑与三维场景的 AI 参数化生成工作台。<br>
+        以「设计语义」与「几何实现」分离为核心，把大模型的不确定判断约束在设计层，
+        几何落地交给确定性引擎，人机协同通过结构化补丁完成。
+      </div>
+
+      <div class="cover-facts">
+        <div><dt>项目形态</dt><dd>独立开发 · 从 0 到 1 设计与实现</dd></div>
+        <div><dt>技术栈</dt><dd>Python / LangGraph / FastAPI / ChromaDB；TypeScript / Vue 3 / Three.js</dd></div>
+        <div><dt>系统组成</dt><dd>确定性几何引擎、Vue 编辑器、FastAPI 服务端（三包独立）</dd></div>
+        <div><dt>核心交付物</dt><dd>WILD 参数化蓝图语言（.wild）及其编译器、校验器与编辑器</dd></div>
+        <div><dt>关键机制</dt><dd>纯函数编译、人工审核中断、修复单调性门禁、能力边界显式声明</dd></div>
+      </div>
+    </div>
+
+    <div class="cover-foot">
+      本文档分四部分：项目背景、技术架构、应用场景及创新点。文中所有能力描述均对应当前代码实现，
+      尚不具备的能力已在相应位置明确标注。
+    </div>
+  </section>
+
+  <!-- ============ 一、项目背景 ============ -->
+  <section class="page">
+    <h2><span class="num">01</span>项目背景</h2>
+
+    <h3>1.1 问题的提出</h3>
+    <p class="lead">
+      三维场景内容生产长期存在一个结构性瓶颈：<strong>建模是强手工、弱复用、慢迭代</strong>的过程。
+      设计师逐件建立墙体、门窗、屋顶等构件，导出为网格或场景文件，再导入引擎。
+      这条链路有三个难以回避的问题——单份内容的生产周期长且人力成本高；
+      产出是「已经定型的几何」，无法按构件语义理解，也无法通过调整参数复用；
+      任何一处修改都要回到建模工具重新操作，难以支撑多轮方案比选与多人协作。
+    </p>
+    <p>
+      大模型出现后，「用一句话生成三维场景」成为一个显然的诉求。但把这句话真正做成可用产品，
+      需要先回答三个问题：模型生成的产物是否可编辑？生成过程能否被约束和纠正？
+      错误能否在交付前被发现？WildAgent 的全部设计，都是围绕这三个问题展开的。
+    </p>
+
+    <h3>1.2 两条既有路径及其局限</h3>
+
+    <h4>路径一：网格资产生成（Meshy、Tripo 一类）</h4>
+    <p>
+      这类工具从文本或单图生成三角网格，产出质感真实、上手门槛低，适合快速制作和探索视觉资产。
+      但网格路线保存的是顶点、面与纹理数据，缺少构件语义与参数结构。
+      一扇窗在文件里只是一片三角形区域，无法回答「这是哪类窗、装在哪面墙、宽高多少、能否换成推拉窗」。
+      这类资产适合展示，不适合作为需要按构件理解、调整和复用的建筑主体。
+    </p>
+
+    <h4>路径二：大模型直接编写 Three.js 代码</h4>
+    <p>
+      让模型直接输出渲染代码确实可以得到能跑的场景，但它本质上是<strong>一次性代码产物</strong>：
+      每份场景是一段独立代码，参数散落在语句里，没有统一的数据契约，也无法做结构化校验。
+      修改一个参数需要重新生成，跨场景复用几乎不可能。一旦场景变复杂，
+      模型的输出还会面临截断、格式漂移和静默出错等固有问题。
+    </p>
+
+    <div class="note">
+      <b>共同的问题：</b>这两条路径都把「设计判断」和「几何实现」混在同一个产物里。
+      前者丢失了参数结构，后者丢失了数据契约。要同时拿到语义、可编辑性与可校验性，
+      就必须在中间引入一层独立的、可被程序精确解释的结构化表示。
+    </div>
+
+    <h3>1.3 项目定位</h3>
+    <p>
+      WildAgent 选择引入一层自定义参数化蓝图语言 <strong>WILD</strong> 作为中间表示，
+      并把整个系统划分为「设计」与「实现」两层：
+    </p>
+    <ul>
+      <li><strong>设计层由模型负责</strong>——决定体量关系、立面分格、屋顶形式、构件需求与材质意图，产出语义化的设计文档；</li>
+      <li><strong>实现层由确定性代码负责</strong>——把设计编译为蓝图、把蓝图重建为几何、把蓝图校验为可交付或不可交付，全程不依赖模型。</li>
+    </ul>
+    <p>
+      这个划分的意义在于：模型擅长判断、不擅长算数与保持一致；程序擅长算数与保持一致、不擅长审美。
+      把两类工作分给两类执行者，系统才能同时获得「设计有灵气」和「落地可信」。
+      WILD 蓝图本身不含任何网格数据，只描述构件、尺寸、坐标、依附关系与材质，
+      因此它既是交付格式，也是可版本化、可复用的存档格式。
+    </p>
+
+    <h3>1.4 目标形态</h3>
+    <p>
+      项目不是以「AI 出图工具」为终点，而是以<strong>网页版建筑制作工作台</strong>为目标形态：
+      自然语言生成只是入口之一，后续的构件编辑、参数调整、材质编辑、光影调试都在同一界面完成。
+      人的角色是设计决策者与编辑者，Agent 的角色是把人的意图翻译成结构化操作，
+      双方改动经统一补丁格式合入，而不是相互覆盖。
+    </p>
+  </section>
+
+  <!-- ============ 二、技术架构 ============ -->
+  <section class="page page-break">
+    <h2><span class="num">02</span>技术架构</h2>
+
+    <h3>2.1 总体架构</h3>
+    <p class="lead">
+      系统由三个可独立运行的包组成，依赖方向严格单向，不存在循环引用。
+      分层的核心目的是：<strong>让几何算法在全系统只有一份实现</strong>，
+      避免后端与前端各自解释同一份蓝图而产生不一致。
+    </p>
+
+    <figure>
+      <pre>┌──────────────────────────────────────────────────────────────┐
+│  <span class="k">wild-web</span>  浏览器端                    Vue 3 + TypeScript    │
+│    ├─ Agent 对话与步骤展示        ├─ 场景状态（Store）              │
+│    ├─ 属性面板 / 场景树 / 构件库    ├─ ScenePatch 应用与回滚           │
+│    └─ Three.js 渲染适配            └─ Worker 中调用 wild-core 重建几何 │
+└───────────────────────────┬──────────────────────────────────────┘
+                            │  依赖 file:../wild-core（零 npm 运行时依赖）
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│  <span class="k">wild-core</span>  确定性几何引擎（框架无关）                    │
+│    .wild ──▶ 组合构件编译 ──▶ 结构校验与版本归一 ──▶ 实体重建      │
+│    不依赖 Vue / Three.js / Agent，唯一外部输入为内置 schema.json │
+└──────────────────────────────────────────────────────────────┘
+                            ▲
+┌───────────────────────────┴──────────────────────────────────────┐
+│  <span class="k">wild-server</span>  服务端（Python 3.12）        FastAPI          │
+│    ├─ <span class="m">agent</span>    LangGraph 编排（14 个节点）           │
+│    ├─ <span class="m">agent/compiler</span> 图纸 → 蓝图（纯函数）          │
+│    ├─ <span class="m">design</span>   设计文档契约与审核（14 个模块）        │
+│    ├─ <span class="m">rag</span>      知识库分片、检索与索引同步             │
+│    ├─ <span class="m">tools</span>    校验器与修复器                      │
+│    └─ <span class="m">api</span>      REST + WebSocket 接入层                   │
+└──────────────────────────────────────────────────────────────┘</pre>
+      <figcaption>图 1　三层结构。依赖方向自上而下单向流动，蓝图为三层之间唯一的数据契约。</figcaption>
+    </figure>
+
+    <div class="kv">
+      <div><b>wild-core</b><span>几何引擎。无框架依赖、无 npm 运行时依赖，唯一公开入口；对外只暴露「蓝图进、几何出」。</span></div>
+      <div><b>wild-web</b><span>编辑器。负责交互、状态与渲染适配，不实现任何几何算法，重建在 Web Worker 中执行以避免阻塞交互。</span></div>
+      <div><b>wild-server</b><span>服务端。负责模型调用、知识检索、生成编排与交付校验，同时作为可独立接入的微服务。</span></div>
+    </div>
+
+    <h3>2.2 三个核心数据契约</h3>
+    <p>
+      系统复杂度的主要来源不是代码量，而是三类数据在不同阶段的职责边界。
+      明确划分后，绝大多数复杂问题都可以归因到「某个契约被越界使用」。
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="width:19%">契约</th>
+          <th style="width:33%">承载内容</th>
+          <th style="width:22%">产生者</th>
+          <th style="width:26%">约束</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>DesignDocument</strong><br><span class="muted">设计文档</span></td>
+          <td>体量与层数、立面轴网与分格、屋顶形式、构件配额、已解析材质意图</td>
+          <td>建筑方案节点<br>（模型 + 归一化）</td>
+          <td>必须经人工审核批准，才允许进入落地环节</td>
+        </tr>
+        <tr>
+          <td><strong>Blueprint</strong><br><span class="muted">WILD 蓝图 <code>.wild</code></span></td>
+          <td>构件类型、参数、坐标、依附关系、材质引用与资产清单；不含网格数据</td>
+          <td>确定性编译器<br>（纯函数）</td>
+          <td>必须通过完整校验流水线才允许保存与交付</td>
+        </tr>
+        <tr>
+          <td><strong>ScenePatch</strong><br><span class="muted">场景补丁</span></td>
+          <td>16 种结构化操作：元素与构件的增删改、材质调整与调优、资产入替、模板与实例、行为与编辑器元信息</td>
+          <td>补丁节点 /<br>用户对话</td>
+          <td>一律先执行预检与完整校验；失败整单回滚，不留半成品</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      三者构成一条清晰的链路：<strong>设计 → 蓝图 → 修改</strong>。
+      模型负责前两段的语义判断，确定性代码负责第三段的执行与回滚。
+      「设计未定不许建」「校验不过不许存」「补丁失败不留脏」三条规则，
+      构成了系统可靠性的基本骨架。
+    </p>
+  </section>
+
+  <!-- ============ 2.3 主链路 ============ -->
+  <section class="page">
+    <h3>2.3 生成主链路</h3>
+    <p class="lead">
+      LangGraph 只承担编排，不承载业务判断。图拓扑集中定义在一处，节点实现分散在各领域包，
+      并由测试强制「节点入口文件不超过 100 行」「节点之间不得互相导入」「领域包不得反向依赖入口层」。
+      这条约束保证了任何一次功能扩展都不会退化成核心文件持续膨胀。
+    </p>
+
+    <figure>
+      <pre>用户自然语言
+   │
+   ▼
+<span class="k">意图分类</span>  generate / edit / chat ────┬─▶ 知识问答（直接返回）
+   │                                                └─▶ 补丁修改（ScenePatch）
+   ▼
+<span class="k">建筑方案</span>  产出 DesignDocument：体量、层数、立面轴网、屋顶、构件配额
+   │
+   ▼
+<span class="k">材质方案</span>  受控归一化：只能选择真实存在且角色匹配的资产或受控程序化材质
+   │
+   ▼
+<span class="k">★ 设计审核</span>  ◀── LangGraph interrupt 暂停，等待人工批准 / 要求修改
+   │      （全程唯一的人工决策点）
+   ▼
+<span class="k">任务展开</span>  按图纸构件标记做差集，确定性展开为构件条目
+   │      ◀── 此步不调用模型
+   ▼
+<span class="k">逐条执行</span>  ⇄ <span class="k">失败重规划</span>      ◀── 全链路唯一的循环
+   │      并发上限 3，超限降为串行
+   ▼
+<span class="k">图纸装配</span>  合并构件分片，执行引用闭合、槽位约束与配额归一
+   │
+   ▼
+<span class="k">最终校验</span>  完整校验流水线 + 交付门禁（错误数必须为 0）
+   │
+   ├─▶ 通过 ──▶ 保存蓝图 ──▶ 实时渲染 ──▶ 进入手工编辑
+   │
+   └─▶ 失败 ──▶ <span class="k">有界回调修复</span>（白名单动作）──▶ 重新校验 ──┐
+                    ▲                                                    │
+                    └────────────────────────────────────────────────────┘</pre>
+      <figcaption>图 2　生成主链路。设计审核是唯一暂停点，执行与重规划是唯一循环，其余顺序完全由状态中的数据决定。</figcaption>
+    </figure>
+
+    <h4>两个关键设计</h4>
+    <ul>
+      <li>
+        <strong>任务展开不调用模型。</strong>图纸批准后，构件条目由程序按图纸标记做差集确定性推导得出。
+        这一步把「该建哪些构件」从模型的自由发挥变成程序的计算结果，
+        直接消除了漏生成、重复生成和类型发散这一类问题的源头。
+      </li>
+      <li>
+        <strong>循环有明确边界。</strong>重规划受四重上界约束：单条目执行上限 3 次、计划修订上限 2 轮、
+        单条目替换上限 1 次、连续无进展上限 2 轮。任一上界触发即转入收尾，
+        不允许出现无限自我修复消耗预算的情况。
+      </li>
+    </ul>
+
+    <h3>2.4 确定性边界：纯函数编译器</h3>
+    <p>
+      这是整个系统最核心的工程决策。设计文档到蓝图的转换由
+      <code>app/agent/compiler/compile.py</code> 完成，该模块被约束为：
+    </p>
+    <ul>
+      <li><strong>无 IO</strong>——不读写文件、不访问网络；</li>
+      <li><strong>无模型调用</strong>——编译过程中不存在任何 LLM 交互；</li>
+      <li><strong>无全局状态</strong>——不依赖可变的模块级变量。</li>
+    </ul>
+    <p>
+      三条约束共同保证了一件事：<strong>同一份设计文档，无论编译多少次、在哪台机器上编译，
+      输出都逐字节相同</strong>。这使得蓝图成为可信的版本化产物——
+      可以比对差异、可以回滚、可以在不同环境下复现，也使得「模型输出是否正确」
+      这一问题被收敛为「编译缺陷是否为空」这一可判定问题。
+    </p>
+    <p>
+      编译器遵循另一条原则：<strong>它不产生设计</strong>。
+      如果图纸中某项内容超出引擎能力，编译器不会猜测或补全，而是将其作为编译缺陷报出，
+      交回上游处理。这保证了「图纸写了什么」与「蓝图建成什么」之间不存在隐藏的隐式转换。
+    </p>
+
+    <h3>2.5 知识库与检索</h3>
+    <p>
+      知识库按<strong>能力边界</strong>而非「尽可能全」的原则建设。核心判断是：
+      模型已有的通识不需要入库，真正需要补给模型的是<strong>协议规范与引擎能力边界</strong>——
+      即「这个系统的构件怎么写」「哪种形态当前引擎做不到」。
+      这一点直接决定了召回质量：一旦把模型本来就会的常识写进知识库，
+      召回结果中就会出现大量与当前任务无关的片段，反而干扰生成。
+    </p>
+    <div class="kv">
+      <div><b>知识组织</b><span>按语义分片，标题路径与业务实体元数据随分片继承，保证分片独立可用且可过滤</span></div>
+      <div><b>检索链路</b><span>向量检索 + 元数据过滤 + 业务规则重排；单轮注入上限为最相关 6 个分片、约 18000 字符</span></div>
+      <div><b>效果量化</b><span>以 Hit@K、Recall@K、MRR 三个指标离线评测，避免凭主观判断调整</span></div>
+      <div><b>门控策略</b><span>默认只观测不拦截；待用当前 embedding 的正负样本校准距离阈值后再切换为拦截，避免未校准阈值误伤正常请求</span></div>
+      <div><b>候选入库</b><span>网络检索获得的候选知识先写入隔离区，经批准后由唯一晋升脚本入库并同步向量索引</span></div>
+      <div><b>完整性</b><span>构建阶段逐项校验正式文档清单，缺少任一必需文档即构建失败</span></div>
+    </div>
+    <p>
+      上下文成本由此得到结构性控制：知识库总计约 13 万字符，不足引擎源码的九分之一，
+      且单轮只注入其中最相关的极小部分。与「每次会话先通读整个项目」的通用 Agent 路径相比，
+      这份知识沉淀在项目内部，不随会话结束而消失。
+    </p>
+  </section>
+
+  <!-- ============ 2.6 校验闭环 ============ -->
+  <section class="page page-break">
+    <h3>2.6 校验与可靠性闭环</h3>
+    <p class="lead">
+      这是 Agent 类系统最容易被做成「看起来在工作、实际在碰运气」的部分。
+      WildAgent 的处理原则是：<strong>不让模型承担它无法被约束的判断</strong>——
+      能由程序判定的问题一律程序判定，必须由模型处理的场景一律先定义准入条件。
+    </p>
+
+    <h4>两级校验结构</h4>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:24%">层级</th>
+          <th style="width:40%">职责</th>
+          <th style="width:36%">执行者</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>结构校验</strong></td>
+          <td>顶层结构、元数据完整性、几何容器与构件身份、构件类型闭集、资产清单格式、材质通道取值范围</td>
+          <td>Pydantic 模型 + 纯函数，逐字段判定，无歧义</td>
+        </tr>
+        <tr>
+          <td><strong>空间校验</strong></td>
+          <td>13 个空间校验器（墙高补齐、门窗贴墙与重叠、共墙交接、楼梯对齐、屋顶覆盖、贯通构件收进、重复骨架质量门禁等）与 11 类构件的放置校验</td>
+          <td>确定性几何计算 + 文本协议，附带 9 类自动修复器</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      校验流水线按固定顺序执行，包含两条容易被忽略但很关键的规则：
+      <strong>早退</strong>——基础结构校验未通过时，后续空间校验全部跳过并直接返回，避免在错误的对象上做几何计算；
+      <strong>尾递归复查</strong>——自动修复执行完毕后，以「不修复」模式再完整跑一遍流水线，
+      复查被后续修复动作意外改动的事实。这保证了最终交付状态是自洽的，而不是逐次修复的叠加结果。
+    </p>
+
+    <h4>修复的单调性门禁</h4>
+    <p>
+      当校验失败需要模型介入时，系统<strong>不直接接受模型的输出</strong>，而是先定义修复的准入条件：
+      候选蓝图必须同时满足两个条件才允许提交——
+    </p>
+    <ol>
+      <li>修复后错误数量<strong>严格减少</strong>；</li>
+      <li>修复后<strong>没有引入任何新的</strong>「错误码 + 实体」组合。</li>
+    </ol>
+    <p>
+      任一条件不满足，候选蓝图整体丢弃，场景保留在修复前的状态，并把尝试记录写入审计。
+      此外，模型被限制只能调用白名单内的局部修复动作，且只能修改本轮失败的实体，
+      不允许修改实体的标识与类型、引用不存在的父墙或材质。
+    </p>
+    <p>
+      这条规则的意义在于：<strong>系统保证了「修复只会让情况变好或保持不变」</strong>，
+      从机制上排除了模型自我纠错时越修越坏的可能。这比单纯增加重试次数要可靠得多——
+      重试次数无法保证方向，而单调性可以。
+    </p>
+
+    <h4>能力边界的显式声明</h4>
+    <p>
+      另一类容易被忽略的风险是<strong>静默降级</strong>：模型描述了一种形态，
+      引擎做不到，于是悄悄省略了它，用户直到看到成品才发现缺东西。
+      WildAgent 采用相反的做法——把当前不具备的能力显式声明在代码中，
+      当用户需求命中时，将对应条目标记为不可支持并写入交付清单，
+      同时说明本次实际会交付什么、以及用户如何获得可用结果。
+    </p>
+    <p>
+      当前显式声明的能力缺口有两类：<strong>室内房间平面与房间布局</strong>、
+      <strong>场地语义</strong>（车库、后院、花园等室外空间划分）。
+      与「能力缺失」不同，用户要求「平面图」这类<strong>交付媒介不一致</strong>的表述只记提示、不判为失败——
+      因为体量与立面的语义都在，只是呈现形式不同。
+      这条区分避免了把正常的表述差异误判为系统缺陷。
+    </p>
+
+    <h4>人机协同的失效保护</h4>
+    <p>
+      设计审核使用 LangGraph 的 <code>interrupt</code> 机制暂停图、以 <code>Command(resume=…)</code> 恢复。
+      审核结论的落地带有校验：恢复时比对设计文档的内容指纹与解析器版本，
+      <strong>若图纸在审核期间被改动，则拒绝沿用旧审核结论</strong>，要求重新审核。
+      这条保护针对的是一个真实存在的人机协作事故——
+      人看到的图纸与最终建成的图纸不是同一版，任何静默接受都会产生难以察觉的错误。
+    </p>
+
+    <h3>2.7 前端工作台</h3>
+    <p>
+      前端不是「结果查看器」，而是完整的工作台。除对话与步骤展示外，
+      提供属性面板调参、场景树增删构件、构件库直接新增、三轴拖拽移动等<strong>直接操作</strong>能力。
+      这带来一个重要的使用特征：<strong>小修改不需要经过对话</strong>。
+      拖动一扇窗、调整墙厚、删除一个构件都不消耗模型调用，也不存在模型「顺手改了别的地方」的风险。
+      在生成质量尚未完全稳定的阶段，这个特性比任何自动化能力都更有实际价值。
+    </p>
+    <ul>
+      <li><strong>几何重建在 Web Worker 中执行</strong>，不阻塞画布交互；</li>
+      <li><strong>补丁应用带事务性</strong>：预检与完整校验通过后才提交，失败则回滚蓝图并恢复上一版网格；</li>
+      <li><strong>状态按请求与会话归属</strong>：消息、步骤、思考过程、诊断与产物均绑定请求标识，迟到的结果不会覆盖已切换的画布；</li>
+      <li><strong>表现层与生成分离</strong>：世界光影设置、材质包、程序化材质各有独立面板与运行时，可单独编写、单独调试、即时渲染，不牵动生成链路。</li>
+    </ul>
+  </section>
+
+  <!-- ============ 三、应用场景 ============ -->
+  <section class="page page-break">
+    <h2><span class="num">03</span>应用场景</h2>
+
+    <h3>3.1 建筑方案生成与深化</h3>
+    <p class="lead">
+      最直接的场景：用自然语言描述一座建筑，系统生成可校验、可版本化、可继续编辑的蓝图，
+      并实时渲染为 3D 场景。生成不是终点，产物直接进入编辑流程。
+    </p>
+    <p>
+      该场景的价值不在「一次生成」而在于<strong>迭代成本低</strong>。
+      由于蓝图是结构化的参数描述，调整一层的层高、改变立面分格密度、更换屋顶形式都不需要重新生成整栋建筑，
+      而是作为一次结构化修改被精确应用。对需要多轮比选的设计前期工作，这决定了实际可用性。
+    </p>
+
+    <h3>3.2 方案比选与设计交流</h3>
+    <p>
+      在教学、竞赛或方案前期阶段，经常需要在多个体量方案之间比较。
+      由于产物是可复现的参数化蓝图，同一套构件知识与渲染条件可以保证不同方案的呈现差异
+      只来自设计本身，而不受模型输出随机性的干扰。
+      配合确定性的编译器与实时渲染，方案比选从「渲染出图再对比」简化为「改参数看结果」。
+    </p>
+
+    <h3>3.3 增量编辑与人机协同</h3>
+    <p>
+      已生成的场景可以持续演进，路径有二，且两者使用统一的补丁格式、可叠加：
+    </p>
+    <ul>
+      <li><strong>Agent 修改</strong>——通过对话提出结构化修改意图，由 Agent 生成补丁提案；</li>
+      <li><strong>用户直接修改</strong>——通过属性面板、场景树、构件库与拖拽直接操作。</li>
+    </ul>
+    <p>
+      由于所有修改都必须经过同一套预检与完整校验，双方在同一条规则下协作，
+      不存在「用户改的格式」与「Agent 改的格式」不兼容的问题。
+      对诸如「把车库移到侧面」这类跨构件的修改，系统会一并处理位置、关联构件与既有场景的约束关系。
+    </p>
+
+    <h3>3.4 精细度分级与预算控制</h3>
+    <p>
+      生成精细度是用户显式选择的四档，而非模型临时决定，且同一档位同时约束设计范围与资源预算。
+      这一设计的目的是让成本可预期：使用者在发起生成前就知道大致会消耗多少模型调用、能得到什么程度的细节。
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:16%">粒度</th>
+          <th style="width:46%">设计范围</th>
+          <th style="width:12%">迭代上限</th>
+          <th style="width:13%">模型调用</th>
+          <th style="width:13%">最大条目</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>低</strong></td>
+          <td>建筑主体、必要门窗、屋顶、多层建筑的楼梯与基础照明；简洁构造与材质，不加装饰构件</td>
+          <td>4</td>
+          <td>6</td>
+          <td>8</td>
+        </tr>
+        <tr>
+          <td><strong>中</strong></td>
+          <td>在此基础上按功能与风格适量加入阳台、露台、雨棚、栏杆、入口构件，完善立面与材质层次</td>
+          <td>6</td>
+          <td>10</td>
+          <td>12</td>
+        </tr>
+        <tr>
+          <td><strong>高</strong></td>
+          <td>完整外观与构造细节：开口分格、檐口、门廊、柱饰、屋面节点与分层材质</td>
+          <td>12</td>
+          <td>24</td>
+          <td>24</td>
+        </tr>
+        <tr>
+          <td><strong>极高</strong></td>
+          <td>再加入室内功能分区、通行空间与家具陈设，补充室内外照明与场地细节</td>
+          <td>20</td>
+          <td>40</td>
+          <td>40</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      随档位提升的不只是条目数量，而是表达的<strong>层次深度</strong>——
+      从体量与外轮廓，推进到构造节点，再到室内功能与陈设。
+      同时成本按档位近似线性增长，形成清晰的取舍点。
+    </p>
+
+    <h3>3.5 建筑之外的参数化物件</h3>
+    <p>
+      系统按交付对象区分两条<strong>并列</strong>的链路：建筑链产出体量、立面、屋顶与结构；
+      物件链产出家具、器物等单体对象。二者共用同一套构件体系、材质契约与校验流水线，
+      因此项目同样适用于家具、亭台、景观构件及其他参数化物件的设计。
+    </p>
+    <p>
+      引擎侧的几何构建能力按成熟度分为三档，这一分级本身即是能力边界的一部分：
+      墙、楼板、楼梯、通用几何体为稳定级；柱、梁、屋顶、洞口、家具、简化人物为部分支持；
+      程序化红砖为实验级。组合构件编译器覆盖 11 类构件并支持贴墙、贴路径、贴面三种附着方式。
+    </p>
+
+    <h3>3.6 作为可复用的服务能力</h3>
+    <p>
+      服务端不依赖前端即可独立使用。生成能力通过 REST 与 WebSocket 暴露，
+      模型调用、知识检索与生成编排全部封装在后端。
+      其他应用可以直接接入这些能力而不必复用本项目的编辑器前端。
+      接入方需要遵守三条约定：产物只在完整校验通过后才返回；
+      返回的蓝图带服务端权威的文件标识，不应自行拼接路径；
+      就绪探针会读取真实的向量库状态，初始化失败时明确返回异常而非伪装健康。
+    </p>
+  </section>
+
+  <!-- ============ 四、创新点 ============ -->
+  <section class="page page-break">
+    <h2><span class="num">04</span>创新点</h2>
+    <p class="lead">
+      以下六点并非功能罗列，而是针对「AI 参与三维内容生产」这一命题中若干公认难题的工程解法。
+      每一点都对应可验证的代码约束，而非设计意图的描述。
+    </p>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 01</span>语义与几何分离，并用纯函数编译器保证可复现</h4>
+      <p><strong>要解决的问题：</strong>模型直接输出几何或渲染代码，产物无法复现、无法比对、无法复用；
+      同一份设计每次生成都可能得到不同结果。</p>
+      <p><strong>解法：</strong>引入独立的参数化蓝图语言作为中间层，并把设计到蓝图的转换实现为
+        严格受限的纯函数模块——禁止文件读写、禁止模型调用、禁止全局状态。</p>
+      <p><strong>价值：</strong>「同一输入必然得到同一输出」从期望变成可验证的性质。
+        蓝图因此成为可信的版本化产物：可做差异比对、可做回滚、可在不同环境复现。
+        更重要的是，问题被重新表述为「编译缺陷是否为空」，这个判定完全交给程序，
+        不再依赖对模型输出的信任。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 02</span>图纸驱动的落地：把「建什么」从模型手里收回来</h4>
+      <p><strong>要解决的问题：</strong>漏生成、重复生成、构件类型发散。
+        根源在于「该建哪些构件」原本由模型在生成时顺带决定，每次决策都可能不同。</p>
+      <p><strong>解法：</strong>模型只产出设计文档；批准后，构件条目由程序按图纸标记做差集<strong>确定性推导</strong>得出，
+        该步骤完全不调用模型。模型仅负责单个构件的具体实现。</p>
+      <p><strong>价值：</strong>全局布局的一致性由算法保证，而非由模型的稳定性保证。
+        构件数量、类型与归属在执行前即已确定，可预估、可检查，
+        出问题时可以直接定位到是「图纸设计问题」还是「单个构件实现问题」，
+        而不是面对一个混在一起的不可解结果。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 03</span>修复的单调性门禁：给 Agent 的自我纠错设定准入条件</h4>
+      <p><strong>要解决的问题：</strong>让模型修 bug 时，修复本身可能引入新错误，
+        而系统通常无法判断，只能接受结果——于是出现越修越坏。</p>
+      <p><strong>解法：</strong>候选修复必须同时满足「错误数量严格减少」与「未引入任何新的错误码与实体组合」才允许提交，
+        否则整轮回滚并保留审计记录。模型被限制只能调用白名单内的局部动作，
+        且只能修改本轮失败的实体，不得改动实体标识与类型。</p>
+      <p><strong>价值：</strong>系统给出了「修复只会让情况变好或保持不变」的机制性保证。
+        这与「增加重试次数」有本质区别：重试次数无法约束方向，单调性可以。
+        对于一个自主调用模型的系统，这类不变量是可用性的前提。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 04</span>能力边界显式声明，拒绝静默降级</h4>
+      <p><strong>要解决的问题：</strong>模型描述了引擎做不到的形态，系统悄悄省略，
+        用户直到看到成品才发现缺东西，而问题定位极其困难。</p>
+      <p><strong>解法：</strong>把当前不具备的能力显式声明为结构化配置。需求命中时，
+        对应条目标记为不可支持并写入交付清单，同时说明本次实际交付什么、如何获得可用结果。
+        另将「能力缺失」与「交付媒介不一致」严格区分——后者只记提示，不判为失败。</p>
+      <p><strong>价值：</strong>把「系统能力的边界」变成可查询、可版本化的显式契约，
+        而不是散落在开发认知里的隐性知识。用户预期与系统实际能力之间的偏差被提前消除，
+        排查问题时也不再需要从缺失的构件反推原因。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 05</span>唯一人工决策点，并带失效保护</h4>
+      <p><strong>要解决的问题：</strong>人机协作中最隐蔽的事故类型——
+        人审核的是版本 A，系统最终构建的是版本 B。审核动作与构建动作之间存在时间窗口。</p>
+      <p><strong>解法：</strong>全链路只保留一个暂停点，即设计审核，使用框架原生的中断与恢复机制。
+        恢复执行时比对设计文档的内容指纹与解析器版本，
+        <strong>若图纸在审核期间被改动则拒绝沿用旧结论，强制重新审核</strong>。</p>
+      <p><strong>价值：</strong>人的判断被放在唯一真正需要判断的位置——设计意图是否正确，
+        而不是重复确认程序已经能确定的事。
+        失效保护则消除了「批的是 A、建的是 B」这一类不会报错、只会产出错误结果的故障。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 06</span>几何引擎与框架彻底解耦</h4>
+      <p><strong>要解决的问题：</strong>几何逻辑若与渲染框架耦合，就会出现多份实现，
+        同一份蓝图在不同环境下重建出不同结果，且难以独立测试与复用。</p>
+      <p><strong>解法：</strong>把几何重建抽为独立的引擎包，约束其不依赖任何前端框架、
+        不依赖任何 npm 运行时依赖，对外只暴露单一入口，
+        唯一外部输入是包内自带的结构契约文件。前端通过本地路径引用消费该包。</p>
+      <p><strong>价值：</strong>几何算法在全系统只有一份实现，前后端不会各自解释蓝图。
+        引擎可脱离浏览器单独测试，修改后可即时反映到画布，
+        也为将来在服务端做几何校验或离线出图留下了通路。</p>
+    </div>
+
+    <div class="foot-note">
+      说明：以上创新点均为工程机制层面的设计取舍，其价值需要与同类方案在同一模型、
+      相近任务和一致验收标准下比较成功率、耗时、Token 消耗、修改准确性与最终渲染效果后才能量化。
+      本文档不对尚未量化的部分给出结论。
+    </div>
+  </section>
+
+</body>
+
+</html>

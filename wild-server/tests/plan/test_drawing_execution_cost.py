@@ -138,6 +138,22 @@ def test_body_rejects_hosts_at_wrong_level_plane_or_direction(change):
     assert relations.body_host_errors({"geometry": {"elements": [wrong]}}, [marker])
 
 
+@pytest.mark.parametrize("bottom_y,wall_height", [(0, 3.3), (3.3, 3.3), (-2, 4)])
+def test_body_host_feedback_identifies_zero_height_without_relocating_window(bottom_y, wall_height):
+    diagram = {"id": "host", "type": "wall", "from": [10, bottom_y, 0],
+               "to": [0, bottom_y+wall_height, 0], "thickness": 0.2}
+    flat = {**diagram, "to": [0, bottom_y, 0]}
+    marker = {"id": "win", "type": "window", "diagram_host": diagram,
+              "entity": {"parentWall": "host", "centerAlong": 5, "bottomY": bottom_y+0.8},
+              "design": {"size": {"width": 2, "height": 1.5}}}
+    before = deepcopy(marker)
+    errors = relations.body_host_errors({"geometry": {"elements": [flat]}}, [marker])
+    assert len(errors) == 1 and "竖向标高" in errors[0] and "墙底、墙顶 Y" in errors[0]
+    assert f"[{bottom_y:g}, {bottom_y:g}]" in errors[0]
+    assert not relations.body_host_errors({"geometry": {"elements": [diagram]}}, [marker])
+    assert marker == before
+
+
 def test_low_detail_rag_query_keeps_each_window_variant(monkeypatch):
     import app.agent.plan.knowledge_tool as knowledge
     import app.llm.invocation as invocation

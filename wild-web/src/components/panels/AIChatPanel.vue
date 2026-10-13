@@ -169,6 +169,11 @@
             :value="level.value" :label="level.label" />
         </el-select>
       </div>
+      <div class="thinking-toggle" title="控制设计、修改等节点思考；构件任务独立按粒度控制">
+        <span>思考</span>
+        <el-switch :model-value="agentStore.thinkingMode" size="small" aria-label="图节点思考"
+          :disabled="agentStore.isProcessing" @change="handleThinkingModeChange" />
+      </div>
       <div class="shader-toggle"
         :title="agentStore.proceduralMaterialsEnabled ? '已允许 AI 自动生成程序化纹理 Shader' : '默认关闭；开启后 AI 才能自动生成程序化纹理 Shader'">
         <span>Shader</span>
@@ -464,6 +469,10 @@ function handleReconnect() {
 
 function handleProceduralMaterialsChange(value: boolean | string | number) {
   agentStore.setProceduralMaterialsEnabled(Boolean(value))
+}
+
+function handleThinkingModeChange(value: boolean | string | number) {
+  agentStore.setThinkingMode(Boolean(value))
 }
 
 // ---------- 连接状态 ----------
@@ -1505,6 +1514,7 @@ function loadDraftSessionsFromLocal(): any[] {
 }
 
 .detail-level-control,
+.thinking-toggle,
 .shader-toggle {
   display: flex;
   align-items: center;
@@ -1563,7 +1573,8 @@ function loadDraftSessionsFromLocal(): any[] {
   background: var(--bg-tertiary);
 }
 
-.shader-toggle :deep(.el-switch.is-checked .el-switch__core) {
+.shader-toggle :deep(.el-switch.is-checked .el-switch__core),
+.thinking-toggle :deep(.el-switch.is-checked .el-switch__core) {
   background: var(--accent);
   border-color: var(--accent);
 }

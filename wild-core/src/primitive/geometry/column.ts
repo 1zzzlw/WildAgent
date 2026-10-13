@@ -36,10 +36,21 @@ export function buildColumn(params: ColumnParams): MeshData[] {
     ];
   };
 
+  const surfaceNormals = new Map<number, Vec3>();
   const push = (point: Vec3, u: number, v: number) => {
     vertices.push(...point);
-    const radial = normalize([point[0], 0, point[2]]);
-    normals.push(...radial);
+    const ring = Math.round(v * heightSegments), segment = Math.round(u * radialSegments);
+    const key = ring * (radialSegments + 1) + segment;
+    let normal = surfaceNormals.get(key);
+    if (!normal) {
+      const along0 = ringPoint(ring - 0.01, segment), along1 = ringPoint(ring + 0.01, segment);
+      const around0 = ringPoint(ring, segment - 0.01), around1 = ringPoint(ring, segment + 0.01);
+      const a = along1.map((x, i) => x - along0[i]);
+      const b = around1.map((x, i) => x - around0[i]);
+      normal = normalize([a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]);
+      surfaceNormals.set(key, normal);
+    }
+    normals.push(...normal);
     uvs.push(u, v);
   };
 

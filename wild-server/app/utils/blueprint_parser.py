@@ -791,6 +791,15 @@ def validate_blueprint_schema(
                     for field in optional_positive_fields:
                         if field in component and not _is_positive_finite_number(component.get(field)):
                             issues.append(f"组合构件 {component_id}.{field} 必须是正有限数字")
+                    if component_type in {"door", "window"}:
+                        wall = next((el for el in elements if isinstance(el, dict)
+                                     and el.get("id") == component.get("parentWall")), {})
+                        frame_depth = component.get("frameDepth", wall.get("thickness"))
+                        if _is_positive_finite_number(frame_depth):
+                            panel_field = "leafDepth" if component_type == "door" else "glassDepth"
+                            panel_depth = component.get(panel_field, min(0.04 if component_type == "door" else 0.012, frame_depth))
+                            if _is_positive_finite_number(panel_depth) and panel_depth > frame_depth + 1e-9:
+                                issues.append(f"组合构件 {component_id}.{panel_field}={panel_depth} 不能大于 frameDepth={frame_depth}；按门扇/玻璃与框料关系修订")
                 elif component_type in {"railing", "cornice"}:
                     path_points = component.get("path")
                     if (

@@ -116,7 +116,7 @@ Blueprint / ScenePatch
 后端提供两条执行路径：
 
 - 快速模式：统一 Agent 服务完成生成、修改或问答，适合低延迟请求。
-- 快速与精密模式：都由持久化 LangGraph 分类。新建筑依次执行 `architecture → material_plan → design_review → skeleton`；总体方案和受控材质先合并为可版本化的 DesignDocument 与 SVG，用户批准后才生成主体 Blueprint 与组件，随后进入 `merge → final_validate`。Plan 模式还会在执行前审核执行步骤；执行计划批准与建筑设计批准相互独立。编辑和问答仍走各自短路径。详见 [9月9日优化](9月9日优化/README.md) 和 [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md)。
+- 快速与精密模式：都由持久化 LangGraph 分类。新建筑依次执行 `classifier → architecture → material_plan → design_review → plan → execute ⇄ replanner → compile → final_validate`，可按需进入 `callback`。图纸与受控材质先合并为可版本化的 DesignDocument 与 SVG，用户在 `design_review` 批准后才展开标记任务并执行；`execute ⇄ replanner` 是链路中唯一的循环。编辑和问答仍走各自短路径。节点与路由的完整对照见 [项目索引 · 当前生成主链](项目索引.md#3-当前生成主链)，协议边界见 [Agent 与 AI 对话设计](agent/AGENT_AND_CHAT.md)。
 - 资产模式：独立 `asset_graph.py` 处理 PBR 上传。最短图只做显式参数提取、文件签名/大小校验、内容寻址入库和 ScenePatch 提案，不调用建筑 LLM，也不进入建筑合并节点。
 - 材质调优仍属于 EDIT 短路径，不增加新的建筑生成节点。前端选择 ID 会进入快速和精密模式的同一 Patch 上下文；没有选择时不调用模型。模型只能建议基础色、粗糙度、金属度、反照率、自发光、透明度、法线强度和 UV 比例，服务端随后按当前材质与实际纹理通道检查其是否安全且能产生效果。
 
@@ -126,7 +126,7 @@ Blueprint / ScenePatch
 - 精密模式在组件派发前先修复/阻断无效骨架（例如墙高为零）；`merge` 只做快速、确定性的归并和语义门禁。门窗局部坐标、父墙范围、同墙重叠、设计数量/立面开口约束及材质引用必须在最终交付前全部成立。合并耗时短不代表校验被省略。
 - `skeleton` 计算结构墙包围盒和 `spatial_invariants`，并输出组件建议；组件节点依据主体与 `opening_slots` 生成和校验门、窗、屋顶等分片。`merge` 再执行引用闭合、槽位约束和确定性归一化，避免各组件自由坐标直接污染最终 Blueprint。
 - `DesignDocument` 是设计阶段的权威数据，包含体量、层数、立面轴网、屋顶、构件配额和已解析材质；`architecture_plan` 与 `material_plan` 是现有生成节点消费的内部编译形态，`skeleton` 在批准后将其转成主体 Blueprint。FloorPlanIR、平面规则以及旧 Plan2Build 装配链路已从运行时代码移除。
-- 生成过程中不把中间 Blueprint 快照发送到画布。Plan 模式审核只展示执行计划；批准后继续显示节点过程，直到最终 Blueprint 完成全量校验、保存并一次性加载，避免多个临时重建请求与正式场景发生竞态。
+- 生成过程中不把中间 Blueprint 快照发送到画布。`design_review` 审核只展示图纸与 SVG；批准后继续显示节点过程，直到最终 Blueprint 完成全量校验、保存并一次性加载，避免多个临时重建请求与正式场景发生竞态。
 - 组件专用工具执行修复后，必须立即调用同一校验器复检。诊断分别记录“是否执行修复”和“复检是否通过”；前者不能替代后者，复检失败会以错误步骤进入后续全局修复与最终保存门禁。
 - RAG 诊断保留实际命中的来源、标题和分类元数据，并随请求级步骤事件发送到前端，避免只能看到“召回了多少字符”却无法追溯知识来源。
 - 建筑百科、用途类型卡、通用设计策略和完整案例不进入活动向量库。rules-v3 只索引 `blueprint_spec/component/recipe` 中的协议、引擎能力和条件组装关系。Loader 负责 metadata 合并、语义分片、增量索引和按知识角色过滤，建筑用途与风格由设计状态承载。

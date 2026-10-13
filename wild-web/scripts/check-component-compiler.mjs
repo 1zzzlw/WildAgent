@@ -32,7 +32,7 @@ export { useSceneStore } from 'wildsrc:scene-store';
 export { useHistoryStore } from 'wildsrc:history-store';
 export { reconstructScene } from 'wildsrc:reconstruction-client';
 export { createSceneGroupFromEntity, toggleOpeningInteraction, toggleRuntimeInteraction } from 'wildsrc:render-entity';
-export { createComponentTranslationChanges } from 'wildsrc:component-drag';
+export { createComponentTranslationChanges, createGeometryTranslationOperations } from 'wildsrc:component-drag';
 export { AgentBridge, agentBridge } from 'wildsrc:agent-bridge';
 export { useAgentStore } from 'wildsrc:agent-store';
 export { usePresenceStore } from 'wildsrc:presence-store';
@@ -111,6 +111,7 @@ try {
   await assertReactiveBlueprintWorkerTransfer(compiler)
   assertOpeningAnimationFrames(compiler)
   assertComponentTranslation(compiler)
+  await assertNativeElementTranslation(compiler)
   await assertGeneratedBlueprintLoadsFreshFile(compiler)
   assertPresenceUpdate(compiler)
   await assertExplicitServerSave(compiler)
@@ -796,6 +797,54 @@ function assertComponentTranslation(compiler) {
     source.geometry.elements,
   )
   assertEqual(lightChanges.position, [1.5, 1.5, 4], '自由组件拖动没有更新 position')
+}
+
+async function assertNativeElementTranslation(compiler) {
+  const source = createBlueprint()
+  const wall = source.geometry.elements.find(element => element.id === 'side_wall')
+  source.geometry.elements.push({ type: 'column', id: 'generated_column', base: [1, 0, 3], height: 3,
+    bottomRadius: 0.2, topRadius: 0.2, style: 'modern' })
+  source.geometry.components = [{ type: 'window', id: 'generated_window', parentWall: wall.id,
+    from: [1, 0.9, 0], width: 1.5, height: 1.2 }]
+  const before = JSON.stringify(source)
+  const operations = compiler.createGeometryTranslationOperations(source, [wall.id, 'generated_window', 'generated_column'], [2, 0.2, -1])
+  if (operations.length !== 3) throw new Error('墙与门窗共同选择应只移动一次，并保留独立柱')
+  const patch = { base_revision: 1, operations }
+  const moved = compiler.applyPatchToBlueprint(source, patch)
+  const movedWall = moved.geometry.elements.find(e => e.id === wall.id)
+  assertEqual(movedWall.from, wall.from.map((v, i) => v + [2, 0.2, -1][i]), '原生墙的起点未回写')
+  assertEqual(moved.geometry.elements.find(e => e.id === 'generated_column').base, [3, 0.2, 2], '原生柱不能移动')
+  assertEqual(moved.geometry.components[0].from, [1, 1.1, 0], '墙移动时门窗被重复移动或世界标高未跟随')
+  const rebuilt = await compiler.reconstructWildEntity(moved)
+  if (rebuilt.diagnostics.some(d => d.level === 'error')) throw new Error('拖拽回写的蓝图无法重建')
+  if (JSON.stringify(source) !== before) throw new Error('拖拽操作修改了原始蓝图')
+  const imported = compiler.parseWildBlueprint(JSON.stringify(moved))
+  assertEqual(imported.geometry.components[0].from, [1, 1.1, 0], '拖拽后重新导入位置丢失')
+  for (const item of [
+    { type: 'floor', id: 'floor', from: [1, 0, 2], to: [5, 0, 6], thickness: 0.2 },
+    { type: 'beam', id: 'beam', from: [1, 2, 3], to: [5, 2, 6] },
+    { type: 'stair', id: 'stair', from: [1, 0, 2], to: [1, 3, 6], width: 1 },
+    { type: 'floor', id: 'circle', from: [1, 0, 2], radius: 3, shape: 'circle' },
+    { type: 'primitive', id: 'box', shape: 'box', dimensions: [1, 1, 1] },
+    { type: 'furniture', id: 'chair', position: [1, 0, 2] },
+    { type: 'dense_brick', id: 'voxel', origin: [1, 0, 2] },
+    { type: 'body', id: 'body' },
+    { type: 'roof', id: 'roof', roofType: 'flat', position: [1, 3, 2] },
+  ]) {
+    const changes = compiler.createComponentTranslationChanges(item, [2, 1, -3], source.geometry.elements)
+    const key = item.from ? 'from' : item.origin ? 'origin' : 'position'
+    assertEqual(changes[key], (item[key] || [0, 0, 0]).map((v, i) => v + [2, 1, -3][i]), `原生 ${item.type} 平移不正确`)
+    if (item.to) assertEqual(changes.to, item.to.map((v, i) => v + [2, 1, -3][i]), '终点未跟随移动')
+  }
+  source.geometry.components[0].draggable = false
+  assertEqual(compiler.createGeometryTranslationOperations(source, ['generated_window'], [1, 0, 0]), [], '显式锁定被忽略')
+  const light = { type: 'light', id: 'light', position: [1, 2, 3], body: [
+    { shape: 'sphere', position: [1, 2, 3], radius: 0.1 },
+    { shape: 'profile_sweep', path: [[0, 0, 0], [0, 1, 0]], radius: 0.1 },
+  ] }
+  const translated = compiler.createComponentTranslationChanges(light, [2, 1, 0], [])
+  assertEqual(translated.body[0].position, [3, 3, 3], '参数化灯体未随组件移动')
+  assertEqual(translated.body[1].path, [[2, 1, 0], [2, 2, 0]], '灯体扫掠路径未随组件移动')
 }
 
 async function assertGeneratedBlueprintLoadsFreshFile(compiler) {

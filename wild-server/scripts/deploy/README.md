@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_986ce7959c4911f184de525400f8a581
-    ReservedCode1: P+Qqn2M3CEcn5ZwvpdiyiwmQ40XkPwtlWg7FyhngX9EFwXhC95bj+AwdTpB+V6/FXqoVtpkop43/KgHzfaKhxEcy+hO6Lw++PXw1+oEs0G2NbGq6xCeEWXTkxDIqvMEthcgWZWZ33hDb4seKJVfCvnXoVD3/rZN2LBdUx+ffADOcjpjy6Gj5+W11eR8=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_986ce7959c4911f184de525400f8a581
-    ReservedCode2: P+Qqn2M3CEcn5ZwvpdiyiwmQ40XkPwtlWg7FyhngX9EFwXhC95bj+AwdTpB+V6/FXqoVtpkop43/KgHzfaKhxEcy+hO6Lw++PXw1+oEs0G2NbGq6xCeEWXTkxDIqvMEthcgWZWZ33hDb4seKJVfCvnXoVD3/rZN2LBdUx+ffADOcjpjy6Gj5+W11eR8=
----
-
-
-
 # deploy/ — 部署前检查脚本
 
 生产部署前默认离线检查镜像知识库；需要时可显式测试 Chat 与 Embedding 连通性。

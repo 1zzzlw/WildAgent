@@ -13,6 +13,7 @@ import { getElementBuilder } from './registry';
 import { normalizeBlueprintInput } from './parser';
 export { parseBlueprint, normalizeBlueprintInput } from './parser';
 export { migrateBlueprintToLatest } from './migrations';
+export { resolveSpatialRelations } from './resolver';
 export { getEngineCapabilities, registerElementBuilder } from './registry';
 export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';
 
@@ -320,69 +321,8 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
 
   }
 
-  const rawMeshes = rawEntries.flatMap(e => e.meshes);
-
-  // 3.5 合并瓦片网格（materialRef=roof_tile）。
-  // 网格瓦片（_tileGrid）已由 buildTileGrid 合并为一个世界坐标网格，
-  // 直接放行；单个瓦片需要合并为一个大网格以减少 draw call。
-  // 
-  // 注意：只合并小瓦片（placement生成的），不合并屋顶主体
-  const tileVerts: number[] = [], tileIdx: number[] = [], tileCols: number[] = [], tileNorms: number[] = [], tileUvs: number[] = [];
-  let tileMortarColor: [number, number, number] | undefined;
-
-  const otherMeshes: MeshData[] = [];
-
-  for (const m of rawMeshes) {
-    if (m.materialRef === 'roof_tile' && m.transform.position) {
-      const [px, py, pz] = m.transform.position;
-
-      // 若已经在世界坐标中（批处理合并的网格），直接保留
-      if (px === 0 && py === 0 && pz === 0 && m.geometry.length > 1000) {
-        otherMeshes.push(m);
-        continue;
-      }
-
-      // 屋顶主体：有elementId且几何较大（> 20顶点）→ 保留原样，不合并
-      if (m.elementId && m.geometry.length / 3 > 20) {
-        otherMeshes.push(m);
-        continue;
-      }
-
-      // 小瓦片：合并到世界坐标
-      const base = tileVerts.length / 3;
-
-      for (let i = 0; i < m.geometry.length; i += 3) {
-        tileVerts.push(m.geometry[i] + px, m.geometry[i + 1] + py, m.geometry[i + 2] + pz);
-      }
-
-      if (m.indices) {
-        for (let i = 0; i < m.indices.length; i++) tileIdx.push(m.indices[i] + base);
-      } else {
-        for (let i = 0; i < m.geometry.length / 3; i++) tileIdx.push(base + i);
-      }
-      if (m.vertexColors) for (let i = 0; i < m.vertexColors.length; i++) tileCols.push(m.vertexColors[i]);
-      if (m.normals) for (let i = 0; i < m.normals.length; i++) tileNorms.push(m.normals[i]);
-      if (m.uvs) for (let i = 0; i < m.uvs.length; i++) tileUvs.push(m.uvs[i]);
-      if (m.patternMortarColor && !tileMortarColor) tileMortarColor = m.patternMortarColor;
-    } else {
-      otherMeshes.push(m);
-    }
-  }
-
-  if (tileVerts.length > 0) {
-    otherMeshes.push({
-      geometry: new Float32Array(tileVerts),
-      indices: new Uint32Array(tileIdx),
-      normals: tileNorms.length > 0 ? new Float32Array(tileNorms) : undefined,
-      uvs: tileUvs.length > 0 ? new Float32Array(tileUvs) : undefined,
-      vertexColors: tileCols.length > 0 ? new Float32Array(tileCols) : undefined,
-      transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
-      materialRef: 'roof_tile',
-      patternMortarColor: tileMortarColor,
-      elementId: '__merged_roof_tiles__',
-    });
-  }
-  const meshes = otherMeshes;
+  // 保留源元素 ID 和变换；相同几何在 renderer 中实例化批处理，仍可单独选取。
+  const meshes = rawEntries.flatMap(e => e.meshes);
 
   // 4. 材质应用（效果层烘焙：调色类）
   const materialParams = applyMaterials(bp.materials || {}, bp.assets || {}, meshes);

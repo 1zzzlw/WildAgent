@@ -1,6 +1,7 @@
 """图纸事实只交接一次：主体、屋顶归属及直墙门窗定位。"""
 from copy import deepcopy
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -11,6 +12,255 @@ from app.design.compilation import project_drawing
 from app.design.contracts import ComponentInstance
 from app.design.markers import component_markers, implementation_records
 from tests.plan.test_drawing_implementation import drawing, empty_state, patch_services, reply, run, task
+
+
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+def test_open_face_has_no_wall_host_and_body_receives_only_required_opening_hosts(face):
+    document = explicit_drawing()
+    document.decisions.facades[face].ground_pattern = ["open"]
+    document.decisions.components = []
+    before = document.model_dump(mode="json")
+    projected = project_drawing(document)
+    assert f"wall_main_{face}_L1" not in {w["id"] for w in projected.projection_elements}
+    state = empty_state(document)
+    body = next(m for m in projected.component_markers if m["type"] == "building_body")
+    context = impl._item_context(state, {"building_body": body}, state["skeleton_blueprint"])
+    assert context["diagram_hosts"] == []
+    assert document.model_dump(mode="json") == before
+
+
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("thickness", [0.05, 0.24])
+def test_open_face_rejects_physical_reference_wall_before_partial_adoption(face, thickness):
+    document = drawing()
+    projected = project_drawing(document)
+    wall = {**next(w for w in projected.projection_elements if w["id"] == f"wall_main_{face}_L1"),
+            "thickness": thickness}
+    document.decisions.facades[face].ground_pattern = ["open"]
+    markers = component_markers(document)
+    body = markers[0]
+    base = empty_state(document)["skeleton_blueprint"]
+    _, accepted, rejected, _ = impl._accept_fragment(base, {"geometry": {"elements": [wall]}}, body,
+                                                    dependent_markers=markers)
+    assert accepted is None and "开敞" in rejected["error"] and wall["id"] in rejected["error"]
+
+
+def test_body_context_retains_real_opening_host_without_materializing_other_diagrams():
+    state = empty_state(explicit_drawing())
+    marker = state["resolved_design"]["component_markers"][0]
+    context = impl._item_context(state, {"building_body": marker}, state["skeleton_blueprint"])
+    assert [w["id"] for w in context["diagram_hosts"]] == ["wall_main_front_L1"]
+
+
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("origin", [(0, 0), (-19, 12)])
+def test_declared_enclosure_wall_is_owned_by_body_and_door_uses_its_real_host(face, origin, monkeypatch):
+    document = drawing()
+    volume = document.decisions.volumes[0]
+    volume.x, volume.z = origin
+    length = volume.width if face in {"front", "back"} else volume.depth
+    document.decisions.facades[face].ground_pattern = ["door"]
+    document.decisions.components = [
+        ComponentInstance(id="entry", type="door", host="enclosure",
+            placement={"offset": 2, "sill_height": 0}, size={"width": 1.8, "height": 2.4}),
+        ComponentInstance(id="enclosure", type="solid_wall", host=volume.id,
+            placement={"face": face, "floor": 1}, size={"width": length, "height": 2.8, "thickness": 0.24},
+            form={"material": "stone"}),
+    ]
+    before = document.model_dump(mode="json")
+    state = empty_state(document)
+    markers = state["resolved_design"]["component_markers"]
+    assert {m["id"] for m in markers} == {"building_body", "entry", "roof_main"}
+    body, marker = (next(m for m in markers if m["id"] == i) for i in ("building_body", "entry"))
+    assert body["design"]["body_components"][0]["id"] == "enclosure"
+    assert body["design"]["body_components"][0]["size"] == before["decisions"]["components"][1]["size"]
+    assert marker["host"] == f"wall_main_{face}_L1" and marker["depends_on"] == ["building_body"]
+    wall = {**deepcopy(marker["diagram_host"]), "thickness": 0.24}
+    wall["to"][1] = 2.8
+    state["skeleton_blueprint"]["geometry"]["elements"] = [wall]
+    context = impl._item_context(state, {marker["id"]: marker}, state["skeleton_blueprint"])
+    assert context["opening_hosts"]["entry"] == {"parentWall": wall["id"], "from": [2, 0, 0]}
+    door = {"id": "entry", "type": "door", "parentWall": "enclosure", "from": [2, 0, 0],
+            "width": 1.8, "height": 2.4, "interaction": {"mode": "swing"}}
+    events = patch_services(monkeypatch, [SimpleNamespace(content=json.dumps({"implementations": [
+        {"id": "entry", "geometry": {"elements": [], "components": [door]}}]}), token_usage={})])
+    updates, status, ids, _, error = run(impl.run_marker_generate(state, task(state, "entry")))
+    assert status == "succeeded" and events == ["rag", "model"] and ids == ["entry"], (error, updates)
+    fragment = updates["component_fragments"][task(state, "entry").id][0]
+    assert fragment["parentWall"] == wall["id"] and fragment["from"] == [2, 0, 0]
+    assert relations.body_host_errors(state["skeleton_blueprint"], markers, diagram_hosts=state["drawing_hosts"]) == []
+    assert document.model_dump(mode="json") == before
+
+
+@pytest.mark.parametrize("difference", ["partial_width", "offset", "position", "open", "independent", "relation"])
+def test_distinct_wall_is_not_absorbed_into_volume_enclosure(difference):
+    document = drawing()
+    spec = {"id": "separate_wall", "type": "solid_wall", "host": "main",
+            "placement": {"face": "front", "floor": 1}, "size": {"width": 10, "height": 2.8}}
+    if difference == "partial_width":
+        spec["size"]["width"] = 4
+    elif difference == "offset":
+        spec["placement"]["normal_offset"] = 1
+    elif difference == "position":
+        spec["placement"]["position"] = [5, 1.4, -1]
+    elif difference == "open":
+        document.decisions.facades["front"].ground_pattern = ["open"]
+    elif difference == "independent":
+        spec["host"] = None
+    else:
+        spec["relation"] = {"target": "main", "kind": "supported_by"}
+    document.decisions.components = [ComponentInstance.model_validate(spec)]
+    markers = component_markers(document)
+    assert "separate_wall" in {m["id"] for m in markers}
+    assert markers[0]["design"]["body_components"] == []
+
+
+@pytest.mark.parametrize("open_sides", [False, True])
+def test_host_resolution_never_adds_a_door_to_a_design_without_openings(open_sides):
+    document = drawing()
+    document.decisions.components = []
+    if open_sides:
+        for facade in document.decisions.facades.values():
+            facade.ground_pattern = ["open"]
+    assert not any(m["type"] in {"door", "window"} for m in component_markers(document))
+
+
+@pytest.mark.parametrize("host", [None, ""])
+def test_independent_marker_keeps_world_position_and_generates_without_a_guessed_host(host, monkeypatch):
+    doc = drawing()
+    doc.decisions.components = [ComponentInstance(id="free_component", type="custom_lattice", host=host,
+        placement={"position": [-3, 1, 7]}, form={"description": "独立构件"})]
+    state = empty_state(doc)
+    marker = next(m for m in state["resolved_design"]["component_markers"] if m["id"] == "free_component")
+    context = impl._item_context(state, {marker["id"]: marker}, state["skeleton_blueprint"])
+    assert context["markers"][0]["host"] == host and context["diagram_hosts"] == []
+    assert context["markers"][0]["entity"]["position"] == [-3, 1, 7]
+    element = {"type": "primitive", "id": "free_component_part", "shape": "box",
+               "position": [-3, 1, 7], "dimensions": [1, 1, 1]}
+    events = patch_services(monkeypatch, [reply("free_component", [element])])
+    updates, status, ids, _, _ = run(impl.run_marker_generate(state, task(state, "free_component")))
+    assert status == "succeeded" and events == ["rag", "model"] and ids == [element["id"]]
+    assert updates["component_fragments"][task(state, "free_component").id][0]["position"] == [-3, 1, 7]
+
+
+def test_enclosure_is_not_assumed_when_the_model_did_not_specify_it():
+    assert drawing().decisions.envelope.system == "unspecified"
+
+
+@pytest.mark.parametrize("system", ["开敞柱廊与封闭内部空间", "圆形壳体与曲线墙", "球体与斜撑结构"])
+def test_body_retrieval_uses_approved_system_without_a_building_type_mapping(system, monkeypatch):
+    from app.design.contracts import ArchitectureIntent
+    from app.agent.plan import knowledge_tool
+    doc = drawing()
+    doc.decisions.design_intent = ArchitectureIntent(selected_systems=[system])
+    state = empty_state(doc)
+    floor = {"id": "building_body_floor", "type": "floor", "from": [0, -0.2, 0],
+             "to": [10, -0.2, 8], "thickness": 0.2}
+    patch_services(monkeypatch, [reply("building_body", [floor])])
+    queries = []
+    def search(query, **_options):
+        queries.append(query)
+        return {"text": "当前设计的局部实现参考", "has_shape_reference": True}
+    monkeypatch.setattr(knowledge_tool, "search_knowledge_result", search)
+    _, status, _, _, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "succeeded" and len(queries) == 1
+    assert system in queries[0] and len(queries[0]) <= 1000
+
+
+@pytest.mark.parametrize("origin,scale", [([0, 0], 1), ([-11, 6], 2)])
+def test_open_outer_volume_preserves_enclosed_inner_volume(origin, scale):
+    from app.design.contracts import VolumeDecision, FacadeDecision
+    document = drawing()
+    document.decisions.components = []
+    document.decisions.massing.width *= scale
+    document.decisions.massing.depth *= scale
+    outer = document.decisions.volumes[0]
+    outer.x, outer.z = origin
+    outer.width *= scale
+    outer.depth *= scale
+    for facade in document.decisions.facades.values():
+        facade.ground_pattern = ["open"]
+    closed = {face: FacadeDecision(bays=1, ground_pattern=["empty"], upper_pattern=["empty"])
+              for face in ("front", "back", "left", "right")}
+    document.decisions.volumes.append(VolumeDecision(id="inside", x=outer.x+2*scale, z=outer.z+2*scale,
+        width=6*scale, depth=4*scale, start_floor=1, end_floor=1, facades=closed))
+    projected = project_drawing(document)
+    assert len(projected.projection_elements) == 4
+    assert all(w["id"].startswith("wall_inside_") for w in projected.projection_elements)
+    walls = [{**w, "thickness": 0.24} for w in projected.projection_elements]
+    body = projected.component_markers[0]
+    base = empty_state(document)["skeleton_blueprint"]
+    _, accepted, rejected, _ = impl._accept_fragment(base, {"geometry": {"elements": walls}}, body,
+                                                    dependent_markers=projected.component_markers)
+    assert rejected is None and accepted["geometry"]["elements"] == walls
+
+
+def interface_drawing(face, origin=(0, 0), level=0):
+    from app.design.contracts import VolumeDecision, FacadeDecision
+    document = drawing()
+    document.decisions.components = []
+    document.decisions.floor_layouts = [{"floor": 1, "level": level, "walls": []}]
+    main = document.decisions.volumes[0]
+    main.id, main.x, main.z = "closed_space", *origin
+    x, z = {"front": (2, -6), "back": (2, 8), "left": (-6, 1), "right": (10, 1)}[face]
+    opposite = {"front": "back", "back": "front", "left": "right", "right": "left"}[face]
+    wing = VolumeDecision(id="open_space", x=x+origin[0], z=z+origin[1], width=6, depth=6,
+                          start_floor=1, end_floor=1,
+                          facades={opposite: FacadeDecision(bays=1, ground_pattern=["open"], upper_pattern=["empty"])})
+    document.decisions.volumes.append(wing)
+    projected = project_drawing(document)
+    wall = deepcopy(next(w for w in projected.projection_elements if w["id"] == f"wall_{main.id}_{face}_L1"))
+    wall.update(id="physical_shared_wall", thickness=0.24)
+    return document, wall
+
+
+@pytest.mark.parametrize("face", ["front", "back", "left", "right"])
+@pytest.mark.parametrize("origin,level,reverse", [((0, 0), 0, False), ((-19, 12), 1.25, True)])
+def test_open_volume_does_not_cancel_the_adjacent_volumes_declared_wall(face, origin, level, reverse):
+    document, wall = interface_drawing(face, origin, level)
+    if reverse:
+        document.decisions.volumes.reverse()
+        wall["from"], wall["to"] = wall["to"], wall["from"]
+    before = document.model_dump(mode="json")
+    base = empty_state(document)["skeleton_blueprint"]
+    base["geometry"]["elements"] = [wall]
+    assert relations.body_host_errors(base, component_markers(document)) == []
+    assert document.model_dump(mode="json") == before
+
+
+@pytest.mark.parametrize("difference", ["both_open", "partial_coverage", "different_plane", "different_floor"])
+def test_open_face_still_rejects_a_wall_without_full_declared_enclosure_coverage(difference):
+    document, wall = interface_drawing("right")
+    main, wing = document.decisions.volumes
+    if difference == "both_open":
+        document.decisions.facades["right"].ground_pattern = ["open"]
+    elif difference == "partial_coverage":
+        main.z += 4
+    elif difference == "different_plane":
+        main.x += 1
+    else:
+        document.decisions.massing.floors = document.decisions.massing.modeled_floors = 2
+        wing.end_floor = 2
+        wing.start_floor = 2
+        wing.facades["left"].upper_pattern = ["open"]
+        wall["from"][1], wall["to"][1] = 3, 6
+    base = empty_state(document)["skeleton_blueprint"]
+    base["geometry"]["elements"] = [wall]
+    errors = relations.body_host_errors(base, component_markers(document))
+    assert errors and any("open_space" in e and "开敞" in e for e in errors)
+
+
+def test_open_face_feedback_does_not_hide_malformed_floor_endpoints():
+    document = drawing()
+    document.decisions.facades["front"].ground_pattern = ["open"]
+    base = empty_state(document)["skeleton_blueprint"]
+    wall = {"type": "wall", "id": "blocked_open_side", "from": [0, 0, 0], "to": [10, 3, 0], "thickness": 0.24}
+    floor = {"type": "floor", "id": "floor_bad", "from": [0, -0.2, 0], "to": [10, 8], "thickness": 0.2}
+    markers = component_markers(document)
+    _, adopted, rejected, _ = impl._accept_fragment(base, {"geometry": {"elements": [wall, floor]}}, markers[0],
+                                                   dependent_markers=markers)
+    assert adopted is None and "开敞" in rejected["error"]
+    assert "floor_bad.to" in rejected["error"] and "3 个有限数字" in rejected["error"]
 
 
 def explicit_drawing():

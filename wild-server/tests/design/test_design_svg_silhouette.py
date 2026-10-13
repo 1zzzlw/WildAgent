@@ -118,7 +118,7 @@ def test_tiers_do_not_filter_out_real_compiled_openings():
 
 
 @pytest.mark.parametrize("roof_type", ["flat","gable","hip","dome","chinese_curved","chinese_pagoda"])
-def test_roof_projection_uses_compiled_entities(roof_type):
+def test_floor_plan_lists_roof_markers_without_covering_rooms(roof_type):
     from xml.etree import ElementTree as ET
     plan = base_plan()
     plan["roof"] = {"type":roof_type,"ridge_axis":"x","overhang":0.5}
@@ -127,8 +127,9 @@ def test_roof_projection_uses_compiled_entities(roof_type):
     doc = make_document(plan)
     resolved = resolve_design(doc)
     root = ET.fromstring(render_design_svg(doc,resolved))
-    shown = {e.get("data-entity-id") for e in root.iter() if e.get("data-design-path")=="/decisions/roof"}
-    assert shown == {e["id"] for e in resolved.projection_elements if e["type"]=="roof"}
+    shown = {e.get("data-marker-id") for e in root.iter()}
+    assert {m["id"] for m in resolved.component_markers if m["type"]=="roof"} <= shown
+    assert "屋面不覆盖平面剖切图" in render_design_svg(doc, resolved)
 
 
 def test_tiers_sum_must_equal_floors():
@@ -164,3 +165,66 @@ def test_schematic_tower_keeps_full_height_projection():
 
     # schematic 代表层铺到全高：高度标注必须是 120.0 m（30 × 4），不是 40。
     assert "120.0 m" in svg
+
+
+@pytest.mark.parametrize("origin", [(0, 0), (-30, 70)])
+def test_floor_selection_keeps_world_coordinates_and_draws_declared_rooms_and_partition_openings(origin):
+    from xml.etree import ElementTree as ET
+    x, z = origin
+    plan = base_plan()
+    plan["volumes"][0].update(x=x, z=z)
+    plan["floor_layouts"] = [{"floor": 2, "level": 3.9,
+        "rooms": [{"id": "study", "name": "书房<&>", "bounds": {"x": x, "z": z, "width": 7, "depth": 8}},
+                  {"id": "void", "name": "客厅上空", "void": True,
+                   "bounds": {"x": x+7, "z": z, "width": 4, "depth": 8}}],
+        "walls": [{"id": "partition", "from": [x+7, z], "to": [x+7, z+8], "thickness": 0.15}]}]
+    plan["components"] = [{"id": "study_door", "type": "door", "host": "partition",
+        "placement": {"offset": 2, "sill_height": 0}, "size": {"width": 1, "height": 2.1},
+        "form": {"hinge": "start", "swing_side": "left"}}]
+    doc = make_document(plan)
+    before = doc.model_dump(mode="json")
+    resolved = resolve_design(doc)
+    partition = next(w for w in resolved.projection_elements if w["id"] == "partition")
+    assert partition["from"] == [x+7, 3.9, z]
+    assert partition["to"] == [x+7, 8, z+8]
+    opening = next(m for m in resolved.component_markers if m["id"] == "study_door")
+    assert opening["entity"]["from"] == [2, 3.9, 0]
+    svg = render_design_svg(doc, resolved, floor=2)
+    root = ET.fromstring(svg)
+    assert [e.get("data-floor") for e in root.iter() if e.get("data-floor")] == ["2"]
+    assert {e.get("data-room-id") for e in root.iter()} >= {"study", "void"}
+    assert "base 3.900" in svg and "书房&lt;&amp;&gt;" in svg and "<path" in svg
+    assert "study_door" not in render_design_svg(doc, resolved, floor=1)
+    assert doc.model_dump(mode="json") == before
+
+
+def test_missing_room_or_opening_size_is_not_invented_and_absent_floor_is_rejected():
+    doc = make_document(base_plan())
+    svg = render_design_svg(doc, floor=1)
+    assert "本层尚未提供房间分区" in svg and "<path" not in svg
+    assert "点标记" in svg
+    with pytest.raises(ValueError, match="没有第 9 层"):
+        render_design_svg(doc, floor=9)
+
+
+@pytest.mark.parametrize("layouts,path", [("一层平面", "/floor_layouts"), (["房间"], "/floor_layouts/0"),
+                                         ([{"floor": 1, "rooms": ["卧室"]}], "/floor_layouts/0/rooms")])
+def test_invalid_layout_structure_has_field_feedback_instead_of_a_preview_crash(layouts, path):
+    plan = base_plan()
+    plan["floor_layouts"] = layouts
+    with pytest.raises(ValueError, match=path):
+        render_design_svg(make_document(plan))
+
+
+@pytest.mark.asyncio
+async def test_floor_preview_api_returns_selected_sheet_and_field_error_for_absent_floor(monkeypatch):
+    from fastapi import HTTPException
+    from app.api import designs
+    doc = make_document(base_plan())
+    monkeypatch.setattr(designs.design_repository, "get", lambda _session: doc)
+    response = await designs.get_design_preview(doc.session_id, revision=doc.revision, floor=2)
+    assert response.media_type == "image/svg+xml"
+    assert b'data-floor="2"' in response.body and b'data-floor="1"' not in response.body
+    with pytest.raises(HTTPException) as caught:
+        await designs.get_design_preview(doc.session_id, floor=9)
+    assert caught.value.status_code == 422 and "没有第 9 层" in caught.value.detail

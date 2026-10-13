@@ -1,16 +1,3 @@
----
-AIGC:
-    Label: "1"
-    ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 120c9aab85e3ed979ff6cbda3bbcb633_9e44b6bd9c4911f184de525400f8a581
-    ReservedCode1: izl3CiZPmKsh6bLPuyXZgdAMZcap4Lrcud/TeqVa3MdPDyeHzhpLKWDqNqDBHcu++PXcIEGkpb5avC1WRpnWA8psBGh18NB26er+fl4b7S1ilOVNGYDy9E6LjHPNvMah0d/JwnEEP92rxiFrUENTrOHWkOEplIMiSgCj8qwe8U2kpnAcCWIENJf9XRo=
-    ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 120c9aab85e3ed979ff6cbda3bbcb633_9e44b6bd9c4911f184de525400f8a581
-    ReservedCode2: izl3CiZPmKsh6bLPuyXZgdAMZcap4Lrcud/TeqVa3MdPDyeHzhpLKWDqNqDBHcu++PXcIEGkpb5avC1WRpnWA8psBGh18NB26er+fl4b7S1ilOVNGYDy9E6LjHPNvMah0d/JwnEEP92rxiFrUENTrOHWkOEplIMiSgCj8qwe8U2kpnAcCWIENJf9XRo=
----
-
-
-
 # network 包测试
 
 ## 用途

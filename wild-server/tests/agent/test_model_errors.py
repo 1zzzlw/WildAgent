@@ -1,5 +1,9 @@
 """模型服务故障分类协议的回归测试。"""
 
+import httpx
+import pytest
+from openai import APIConnectionError, APITimeoutError
+
 from app.llm.errors import (
     classify_model_error,
     collect_component_model_errors,
@@ -40,6 +44,21 @@ def test_rate_limit_is_retryable_but_still_stops_current_run():
     assert result["category"] == "rate_limited"
     assert result["retryable"] is True
     assert result["terminal_current_run"] is True
+
+
+@pytest.mark.parametrize("error", [TimeoutError(), APITimeoutError(request=httpx.Request("POST", "https://example.test"))])
+def test_response_timeout_does_not_claim_connection_or_quota_failure(error):
+    result = classify_model_error(error)
+    assert result["category"] == "transport_error" and result["retryable"]
+    assert "等待模型响应超时" in result["user_message"]
+    assert "额度" not in result["user_message"] and "连接模型服务超时" not in result["user_message"]
+
+
+def test_connection_failure_is_not_mislabeled_as_response_timeout():
+    result = classify_model_error(APIConnectionError(request=httpx.Request("POST", "https://example.test"), message="DNS lookup failed"))
+    assert result["category"] == "transport_error" and result["retryable"]
+    assert "连接模型服务失败" in result["user_message"]
+    assert "超时" not in result["user_message"]
 
 
 def test_component_failures_are_collected_from_generator_diagnostics():

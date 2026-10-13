@@ -38,7 +38,7 @@ def extract_json_array(text: str) -> list:
     return value
 
 
-def extract_json_object(text: str, *, required_key: str | None = None) -> dict | None:
+def extract_json_object(text: str, *, required_key: str | None = None, raise_on_error: bool = False) -> dict | None:
     """从 LLM 回复中提取 JSON 对象。
 
     跳过空对象 ``{}``：对本模块的调用方（设计块字段、材质方案、物件方案、plan
@@ -48,6 +48,17 @@ def extract_json_object(text: str, *, required_key: str | None = None) -> dict |
                               and (required_key is None or required_key in item))
     if value is None:
         _log_miss("对象", text)
+        if raise_on_error:
+            source = _extract_from_code_block(text)
+            start = source.find("{")
+            if start != -1:
+                try:
+                    json.JSONDecoder().raw_decode(source, start)
+                except json.JSONDecodeError as exc:
+                    excerpt = source[max(start, exc.pos-35):exc.pos+35].replace("\n", " ")
+                    raise ValueError(f"JSON 格式错误：第 {exc.lineno} 行，第 {exc.colno} 列，"
+                                     f"{exc.msg}；附近：{excerpt}") from exc
+            raise ValueError(f"缺少 {required_key} 的完整 JSON 对象" if required_key else "缺少完整 JSON 对象")
         return None
     return value
 

@@ -100,7 +100,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     """
     started = time.perf_counter()
     last_exc: Exception | None = None
-    llm_timeout = float(getattr(config.chat, "timeout", 60.0) or 60.0)
+    llm_timeout = float(config.chat.timeout)
     for attempt in range(_LLM_RETRY_MAX + 1):
         try:
             if llm_timeout > 0:
@@ -162,8 +162,8 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
 async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
     """统一流式调用：逐字收集 reasoning，末尾收集 content / usage / finish_reason。
 
-    用配置超时覆盖整个流式调用，持续输出思考也不会重置截止时间，
-    不再无限等待；异常沿节点 except 进入模型服务故障阻断路径。
+    配置超时限制等待正文或思考新数据的时间；持续输出时更新截止时间。
+    异常沿节点 except 进入模型服务故障阻断路径。
     """
     content_parts: list[str] = []
     reasoning_parts: list[str] = []
@@ -171,13 +171,15 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
     finish_reason: str | None = None
 
     started = time.perf_counter()
-    llm_timeout = float(getattr(config.chat, "timeout", 60.0) or 60.0)
+    llm_timeout = float(config.chat.timeout)
     _stream = None
     try:
         _stream = llm.astream(messages)
-        async with asyncio.timeout(llm_timeout if llm_timeout > 0 else None):
+        async with asyncio.timeout(llm_timeout if llm_timeout > 0 else None) as deadline:
             async for chunk in _stream:
                 text, delta = message_texts(chunk)
+                if llm_timeout > 0 and (text or delta):
+                    deadline.reschedule(asyncio.get_running_loop().time() + llm_timeout)
                 if text:
                     content_parts.append(text)
                 if delta:

@@ -86,6 +86,25 @@ def build_design_document(
             now=now,
         )
 
+    from .normalization import field_changes
+    empty_pattern_changes = []
+    layouts = [("/decisions/facades", plan.get("facades"))]
+    layouts.extend((f"/decisions/volumes/{index}/facades", volume.get("facades"))
+                   for index, volume in enumerate(plan.get("volumes", []) if isinstance(plan.get("volumes"), list) else [])
+                   if isinstance(volume, dict))
+    for path, facades in layouts:
+        for face, facade in (facades.items() if isinstance(facades, dict) else []):
+            if not isinstance(facade, dict) or type(facade.get("bays")) is not int or facade["bays"] < 1:
+                continue
+            for key in ("ground_pattern", "upper_pattern"):
+                if facade.get(key) == []:
+                    facade[key] = ["empty"] * facade["bays"]
+                    change = field_changes([], facade[key], path=f"{path}/{face}/{key}",
+                                           rule="architecture.facade_empty_pattern", source="model")[0]
+                    change.update(category="protocol", semantic_change=False,
+                                  reason="显式空数组表示没有开口，与逐开间 empty 等价；不改变围护或构件设计")
+                    empty_pattern_changes.append(change)
+
     # 保留部分 complexity 字段用于后续验证，但不包含已废弃的 level 字段
     complexity = dict(plan.get("complexity") or {})
     complexity.setdefault("min_volumes", 1)
@@ -137,7 +156,7 @@ def build_design_document(
             volumes=plan["volumes"],
             structural_grid=plan["structural_grid"],
             envelope=plan.get("envelope") or EnvelopeDecision(
-                system="curtain_wall" if curtain_wall else "solid_wall",
+                system="curtain_wall" if curtain_wall else "unspecified",
                 curtain_wall={} if curtain_wall else None,
             ),
             facades=plan["facades"],
@@ -171,7 +190,7 @@ def build_design_document(
         rule_trace=[],
     )
 
-    changes = plan.get("normalization_changes") or []
+    changes = empty_pattern_changes + (plan.get("normalization_changes") or [])
     if old:
         document.rule_trace.extend(t for t in old.rule_trace if t.changes)
     if changes:
@@ -369,7 +388,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         "facades": {key: value.model_dump(mode="json", exclude_none=True) for key, value in d.facades.items()},
         "roof": d.roof.model_dump(mode="json"),
         "component_quota": deepcopy(d.component_quota),
-        "components": [item.model_dump(mode="json", exclude_none=True) for item in d.components],
+        "components": [{**item.model_dump(mode="json", exclude_none=True), "host": item.host} for item in d.components],
         "curtain_wall": d.envelope.system == "curtain_wall",
         "balcony_access_count": d.balcony_access_count,
         "balcony_width": d.balcony_width,
@@ -561,16 +580,16 @@ def _render_object_svg(doc: DesignDocument, result: ResolvedDesign) -> str:
     return "".join(parts)
 
 
-def render_design_svg(document: DesignDocument | dict[str, Any], resolved: ResolvedDesign | None = None) -> str:
-    """建筑使用编译实体的正投影；物件保留原有轮廓与尺寸表。"""
+def render_design_svg(document: DesignDocument | dict[str, Any], resolved: ResolvedDesign | None = None, *, floor: int | None = None) -> str:
+    """建筑按设计世界坐标展示逐层平面；物件保留轮廓与尺寸表。"""
 
     doc = document if isinstance(document, DesignDocument) else DesignDocument.model_validate(document)
     from .compilation import RESOLVER_VERSION
     result = resolved
     if (result is None or result.design_hash != _stable_hash(doc)
-            or (not isinstance(doc.decisions, ObjectDecisions) and (result.resolver_version != RESOLVER_VERSION or not result.projection_elements))):
+            or (not isinstance(doc.decisions, ObjectDecisions) and result.resolver_version != RESOLVER_VERSION)):
         result = resolve_design(doc)
     if isinstance(doc.decisions, ObjectDecisions):
         return _render_object_svg(doc, result)
     from .preview import render_drawing_svg
-    return render_drawing_svg(doc, result)
+    return render_drawing_svg(doc, result, floor=floor)

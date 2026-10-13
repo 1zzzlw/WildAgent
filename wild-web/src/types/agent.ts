@@ -85,6 +85,7 @@ export interface UserMessageRequest extends AgentProtocolEnvelope {
   scene_summary?: SceneSummary
   selection: string[]
   blueprint?: Record<string, unknown>  // 当前场景的完整 Blueprint（增量修改时需要）
+  thinking_mode?: boolean // 图节点的思考开关；plan 条目独立按粒度控制
   detail_level?: BuildingDetailLevel
   procedural_materials_enabled?: boolean // 是否允许 AI 自动生成程序化 Shader 材质
   /** 最近对话仅供意图消歧；不包含系统消息，每条由前端截断。 */

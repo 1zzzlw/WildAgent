@@ -6,6 +6,8 @@
 对象也会报"输出不是合法 JSON 对象"。
 """
 
+import pytest
+
 from app.utils.json_extractor import extract_json_array, extract_json_object
 
 
@@ -177,3 +179,23 @@ def test_fenced_array_with_leading_prose():
 
 def test_invalid_array_returns_empty_list():
     assert extract_json_array("没有数组") == []
+
+
+def test_required_payload_reports_original_json_error_without_evaluating_arithmetic():
+    text = '```json\n{\n  "implementations": [{"from": [15, 0.45 + 0.12, 13]}]\n}\n```'
+    with pytest.raises(ValueError, match=r"第 2 行.*列.*0\.45 \+ 0\.12"):
+        extract_json_object(text, required_key="implementations", raise_on_error=True)
+
+
+def test_required_payload_does_not_accept_inner_objects_from_malformed_wrapper():
+    text = '{"implementations": [{"id": "body", "from": [0.45 + 0.12, 0, 0]}]}'
+    assert extract_json_object(text, required_key="implementations") is None
+    with pytest.raises(ValueError, match="JSON 格式错误"):
+        extract_json_object(text, required_key="implementations", raise_on_error=True)
+
+
+def test_required_payload_keeps_valid_later_answer_and_reports_missing_key():
+    assert extract_json_object('{"note": 1}\n{"implementations": []}',
+        required_key="implementations", raise_on_error=True) == {"implementations": []}
+    with pytest.raises(ValueError, match="缺少 implementations"):
+        extract_json_object('{"geometry": {}}', required_key="implementations", raise_on_error=True)

@@ -1,0 +1,2062 @@
+{
+ "meta": {
+  "name": "叠盒咖啡 · 错位叠盒咖啡厅（退台 + 挑空 + 悬挑）",
+  "description": "三个矩形体块沿高度错位叠加（盒2 东挑 2.40、盒3 西挑 3.00 ⇒ 交错悬挑），退台成 L 形露台，中庭通高挑空 + 屋面天窗；清水混凝土 + 木 + 落地玻璃 + 黑细金属框。",
+  "version": "1.1",
+  "unit": "meter",
+  "axis": {
+   "东": "+X",
+   "北": "+Z",
+   "上": "+Y"
+  },
+  "tags": [
+   "公共建筑",
+   "咖啡厅",
+   "错位叠盒",
+   "退台",
+   "挑空",
+   "悬挑",
+   "清水混凝土"
+  ],
+  "note": "±0.000 = 室外地面；室内地坪顶 = +0.45（3 级 × 0.15）。轴网 15×12；标高谱 0 / 0.45(室内地坪) / 4.05(二层楼面 = 露台1面) / 7.65(三层楼面 = 露台2面) / 11.25(屋面) / 11.85(女儿墙顶)，层高恒 3.60；盒1 X[0,12.6]×Z[0,12] / 盒2 X[3,15]×Z[3.6,12] / 盒3 X[0,12.6]×Z[6.6,12]（错位叠加）；退台成 L 形露台（露台1 南条+西条 / 露台2 南条+东条）；中庭 X[3.6,6.6]×Z[8.4,11.4] 通高挑空 + 屋面天窗；盒2 东挑 2.40（2 外柱支）、盒3 西挑 3.00（2 外柱支）⇒ 交错悬挑。",
+  "stats": {
+   "轴网": [
+    15,
+    12
+   ],
+   "标高链": {
+    "室外地面": 0,
+    "室内地坪顶": 0.45,
+    "露台1面": 4.05,
+    "露台2面": 7.65,
+    "屋面": 11.25,
+    "女儿墙顶": 11.85
+   },
+   "体块": {
+    "盒1": [
+     12.6,
+     12
+    ],
+    "盒2": [
+     12,
+     8.4
+    ],
+    "盒3": [
+     12.6,
+     5.4
+    ]
+   }
+  }
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "primitive",
+    "id": "foundation",
+    "shape": "box",
+    "position": [
+     6.3,
+     0.215,
+     6
+    ],
+    "dimensions": [
+     12.96,
+     0.47,
+     12.36
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "floor",
+    "id": "ground",
+    "from": [
+     0,
+     0.45,
+     0
+    ],
+    "to": [
+     12.6,
+     0.45,
+     12
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "deck1_s",
+    "from": [
+     3.12,
+     4.05,
+     0.12
+    ],
+    "to": [
+     12.48,
+     4.05,
+     3.48
+    ],
+    "thickness": 0.2,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "deck1_w",
+    "from": [
+     0.12,
+     4.05,
+     0.12
+    ],
+    "to": [
+     3.12,
+     4.05,
+     11.88
+    ],
+    "thickness": 0.2,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "deck2_s",
+    "from": [
+     3.12,
+     7.65,
+     3.72
+    ],
+    "to": [
+     14.88,
+     7.65,
+     6.48
+    ],
+    "thickness": 0.2,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "deck2_e",
+    "from": [
+     12.72,
+     7.65,
+     6.48
+    ],
+    "to": [
+     14.88,
+     7.65,
+     11.88
+    ],
+    "thickness": 0.2,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "slab2_a",
+    "from": [
+     3.12,
+     4.05,
+     3.72
+    ],
+    "to": [
+     14.88,
+     4.05,
+     8.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab2_b",
+    "from": [
+     3.12,
+     4.05,
+     8.4
+    ],
+    "to": [
+     3.6,
+     4.05,
+     11.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab2_c",
+    "from": [
+     6.6,
+     4.05,
+     8.4
+    ],
+    "to": [
+     14.88,
+     4.05,
+     11.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab2_d",
+    "from": [
+     3.12,
+     4.05,
+     11.4
+    ],
+    "to": [
+     14.88,
+     4.05,
+     11.88
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab3_a",
+    "from": [
+     0.12,
+     7.65,
+     6.72
+    ],
+    "to": [
+     12.48,
+     7.65,
+     8.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab3_b",
+    "from": [
+     0.12,
+     7.65,
+     8.4
+    ],
+    "to": [
+     3.6,
+     7.65,
+     11.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab3_c",
+    "from": [
+     6.6,
+     7.65,
+     8.4
+    ],
+    "to": [
+     12.48,
+     7.65,
+     11.4
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "slab3_d",
+    "from": [
+     0.12,
+     7.65,
+     11.4
+    ],
+    "to": [
+     12.48,
+     7.65,
+     11.88
+    ],
+    "thickness": 0.2,
+    "material": "floor_concrete"
+   },
+   {
+    "type": "floor",
+    "id": "roof3_a",
+    "from": [
+     0.12,
+     11.25,
+     6.72
+    ],
+    "to": [
+     12.48,
+     11.25,
+     8.4
+    ],
+    "thickness": 0.16,
+    "material": "roof_grey"
+   },
+   {
+    "type": "floor",
+    "id": "roof3_b",
+    "from": [
+     0.12,
+     11.25,
+     8.4
+    ],
+    "to": [
+     3.6,
+     11.25,
+     11.4
+    ],
+    "thickness": 0.16,
+    "material": "roof_grey"
+   },
+   {
+    "type": "floor",
+    "id": "roof3_c",
+    "from": [
+     6.6,
+     11.25,
+     8.4
+    ],
+    "to": [
+     12.48,
+     11.25,
+     11.4
+    ],
+    "thickness": 0.16,
+    "material": "roof_grey"
+   },
+   {
+    "type": "floor",
+    "id": "roof3_d",
+    "from": [
+     0.12,
+     11.25,
+     11.4
+    ],
+    "to": [
+     12.48,
+     11.25,
+     11.88
+    ],
+    "thickness": 0.16,
+    "material": "roof_grey"
+   },
+   {
+    "type": "floor",
+    "id": "skylight",
+    "from": [
+     3.6,
+     11.25,
+     8.4
+    ],
+    "to": [
+     6.6,
+     11.25,
+     11.4
+    ],
+    "thickness": 0.06,
+    "material": "glass"
+   },
+   {
+    "type": "wall",
+    "id": "w1_s",
+    "from": [
+     0,
+     0.45,
+     0
+    ],
+    "to": [
+     12.6,
+     4.05,
+     0
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w1_e",
+    "from": [
+     12.6,
+     0.45,
+     0
+    ],
+    "to": [
+     12.6,
+     4.05,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w1_w",
+    "from": [
+     0,
+     0.45,
+     12
+    ],
+    "to": [
+     0,
+     4.05,
+     0
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w1_n",
+    "from": [
+     0,
+     0.45,
+     12
+    ],
+    "to": [
+     12.6,
+     4.05,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w2_s",
+    "from": [
+     3,
+     4.05,
+     3.6
+    ],
+    "to": [
+     15,
+     7.65,
+     3.6
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w2_e",
+    "from": [
+     15,
+     4.05,
+     3.6
+    ],
+    "to": [
+     15,
+     7.65,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w2_w",
+    "from": [
+     3,
+     4.05,
+     12
+    ],
+    "to": [
+     3,
+     7.65,
+     3.6
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w2_n",
+    "from": [
+     3,
+     4.05,
+     12
+    ],
+    "to": [
+     15,
+     7.65,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w3_s",
+    "from": [
+     0,
+     7.65,
+     6.6
+    ],
+    "to": [
+     12.6,
+     11.25,
+     6.6
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w3_e",
+    "from": [
+     12.6,
+     7.65,
+     6.6
+    ],
+    "to": [
+     12.6,
+     11.25,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w3_w",
+    "from": [
+     0,
+     7.65,
+     12
+    ],
+    "to": [
+     0,
+     11.25,
+     6.6
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "w3_n",
+    "from": [
+     0,
+     7.65,
+     12
+    ],
+    "to": [
+     12.6,
+     11.25,
+     12
+    ],
+    "thickness": 0.24,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "par1_s_a",
+    "from": [
+     0,
+     4.05,
+     0
+    ],
+    "to": [
+     8.08,
+     4.95,
+     0
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par1_s_b",
+    "from": [
+     9.18,
+     4.05,
+     0
+    ],
+    "to": [
+     12.6,
+     4.95,
+     0
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par1_w",
+    "from": [
+     0,
+     4.05,
+     0
+    ],
+    "to": [
+     0,
+     4.95,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par1_e",
+    "from": [
+     12.6,
+     4.05,
+     0
+    ],
+    "to": [
+     12.6,
+     4.95,
+     3.6
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par1_n",
+    "from": [
+     0,
+     4.05,
+     12
+    ],
+    "to": [
+     3,
+     4.95,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par2_s",
+    "from": [
+     3,
+     7.65,
+     3.6
+    ],
+    "to": [
+     15,
+     8.55,
+     3.6
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par2_e",
+    "from": [
+     15,
+     7.65,
+     3.6
+    ],
+    "to": [
+     15,
+     8.55,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par2_n",
+    "from": [
+     12.6,
+     7.65,
+     12
+    ],
+    "to": [
+     15,
+     8.55,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "par2_w",
+    "from": [
+     3,
+     7.65,
+     3.6
+    ],
+    "to": [
+     3,
+     8.55,
+     6.6
+    ],
+    "thickness": 0.12,
+    "material": "metal_frame"
+   },
+   {
+    "type": "wall",
+    "id": "pw_s",
+    "from": [
+     0,
+     11.25,
+     6.6
+    ],
+    "to": [
+     12.6,
+     11.85,
+     6.6
+    ],
+    "thickness": 0.12,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "pw_e",
+    "from": [
+     12.6,
+     11.25,
+     6.6
+    ],
+    "to": [
+     12.6,
+     11.85,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "pw_w",
+    "from": [
+     0,
+     11.25,
+     12
+    ],
+    "to": [
+     0,
+     11.85,
+     6.6
+    ],
+    "thickness": 0.12,
+    "material": "concrete"
+   },
+   {
+    "type": "wall",
+    "id": "pw_n",
+    "from": [
+     0,
+     11.25,
+     12
+    ],
+    "to": [
+     12.6,
+     11.85,
+     12
+    ],
+    "thickness": 0.12,
+    "material": "concrete"
+   },
+   {
+    "type": "primitive",
+    "id": "col_e1",
+    "shape": "box",
+    "position": [
+     13.8,
+     1.925,
+     5.4
+    ],
+    "dimensions": [
+     0.3,
+     3.85,
+     0.3
+    ],
+    "material": "concrete"
+   },
+   {
+    "type": "primitive",
+    "id": "col_e2",
+    "shape": "box",
+    "position": [
+     13.8,
+     1.925,
+     10.2
+    ],
+    "dimensions": [
+     0.3,
+     3.85,
+     0.3
+    ],
+    "material": "concrete"
+   },
+   {
+    "type": "primitive",
+    "id": "col_w1",
+    "shape": "box",
+    "position": [
+     1.2,
+     5.75,
+     8.4
+    ],
+    "dimensions": [
+     0.3,
+     3.4,
+     0.3
+    ],
+    "material": "concrete"
+   },
+   {
+    "type": "primitive",
+    "id": "col_w2",
+    "shape": "box",
+    "position": [
+     1.2,
+     5.75,
+     11
+    ],
+    "dimensions": [
+     0.3,
+     3.4,
+     0.3
+    ],
+    "material": "concrete"
+   },
+   {
+    "type": "stair",
+    "id": "stair_1_a",
+    "from": [
+     6.3,
+     0.45,
+     9
+    ],
+    "to": [
+     3.9,
+     2.25,
+     9
+    ],
+    "width": 1.2,
+    "stepCount": 10,
+    "stepDepth": 0.24,
+    "stepHeight": 0.18,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "landing_1",
+    "from": [
+     3.6,
+     2.25,
+     9.6
+    ],
+    "to": [
+     4.2,
+     2.25,
+     10.2
+    ],
+    "thickness": 0.15,
+    "material": "wood_deck"
+   },
+   {
+    "type": "stair",
+    "id": "stair_1_b",
+    "from": [
+     4.2,
+     2.25,
+     10.2
+    ],
+    "to": [
+     6.6,
+     4.05,
+     10.2
+    ],
+    "width": 1.2,
+    "stepCount": 10,
+    "stepDepth": 0.24,
+    "stepHeight": 0.18,
+    "material": "wood_deck"
+   },
+   {
+    "type": "stair",
+    "id": "stair_2_a",
+    "from": [
+     6.3,
+     4.05,
+     9
+    ],
+    "to": [
+     3.9,
+     5.85,
+     9
+    ],
+    "width": 1.2,
+    "stepCount": 10,
+    "stepDepth": 0.24,
+    "stepHeight": 0.18,
+    "material": "wood_deck"
+   },
+   {
+    "type": "floor",
+    "id": "landing_2",
+    "from": [
+     3.6,
+     5.85,
+     9.6
+    ],
+    "to": [
+     4.2,
+     5.85,
+     10.2
+    ],
+    "thickness": 0.15,
+    "material": "wood_deck"
+   },
+   {
+    "type": "stair",
+    "id": "stair_2_b",
+    "from": [
+     4.2,
+     5.85,
+     10.2
+    ],
+    "to": [
+     6.6,
+     7.65,
+     10.2
+    ],
+    "width": 1.2,
+    "stepCount": 10,
+    "stepDepth": 0.24,
+    "stepHeight": 0.18,
+    "material": "wood_deck"
+   },
+   {
+    "type": "stair",
+    "id": "stair_e1",
+    "from": [
+     11.43,
+     0,
+     -1.77
+    ],
+    "to": [
+     9.18,
+     1.35,
+     -1.77
+    ],
+    "width": 1.1,
+    "stepCount": 9,
+    "stepDepth": 0.25,
+    "stepHeight": 0.15,
+    "material": "metal_frame"
+   },
+   {
+    "type": "floor",
+    "id": "land_e1",
+    "from": [
+     8.08,
+     1.35,
+     -2.32
+    ],
+    "to": [
+     9.18,
+     1.35,
+     -0.12
+    ],
+    "thickness": 0.15
+   },
+   {
+    "type": "stair",
+    "id": "stair_e2",
+    "from": [
+     9.18,
+     1.35,
+     -0.67
+    ],
+    "to": [
+     11.43,
+     2.7,
+     -0.67
+    ],
+    "width": 1.1,
+    "stepCount": 9,
+    "stepDepth": 0.25,
+    "stepHeight": 0.15,
+    "material": "metal_frame"
+   },
+   {
+    "type": "floor",
+    "id": "land_e2",
+    "from": [
+     11.43,
+     2.7,
+     -2.32
+    ],
+    "to": [
+     12.53,
+     2.7,
+     -0.12
+    ],
+    "thickness": 0.15
+   },
+   {
+    "type": "stair",
+    "id": "stair_e3",
+    "from": [
+     11.43,
+     2.7,
+     -1.77
+    ],
+    "to": [
+     9.18,
+     4.05,
+     -1.77
+    ],
+    "width": 1.1,
+    "stepCount": 9,
+    "stepDepth": 0.25,
+    "stepHeight": 0.15,
+    "material": "metal_frame"
+   },
+   {
+    "type": "floor",
+    "id": "land_e_top",
+    "from": [
+     8.08,
+     4.05,
+     -2.32
+    ],
+    "to": [
+     9.18,
+     4.05,
+     -0.12
+    ],
+    "thickness": 0.15
+   },
+   {
+    "type": "primitive",
+    "id": "step_s_1",
+    "shape": "box",
+    "position": [
+     4.6,
+     0.375,
+     -0.33
+    ],
+    "dimensions": [
+     2,
+     0.15,
+     0.3
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "step_e_1",
+    "shape": "box",
+    "position": [
+     12.93,
+     0.375,
+     8
+    ],
+    "dimensions": [
+     0.3,
+     0.15,
+     1.6
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "step_s_2",
+    "shape": "box",
+    "position": [
+     4.6,
+     0.225,
+     -0.63
+    ],
+    "dimensions": [
+     2,
+     0.15,
+     0.3
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "step_e_2",
+    "shape": "box",
+    "position": [
+     13.23,
+     0.225,
+     8
+    ],
+    "dimensions": [
+     0.3,
+     0.15,
+     1.6
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "step_s_3",
+    "shape": "box",
+    "position": [
+     4.6,
+     0.075,
+     -0.93
+    ],
+    "dimensions": [
+     2,
+     0.15,
+     0.3
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "step_e_3",
+    "shape": "box",
+    "position": [
+     13.53,
+     0.075,
+     8
+    ],
+    "dimensions": [
+     0.3,
+     0.15,
+     1.6
+    ],
+    "material": "stone_base"
+   },
+   {
+    "type": "primitive",
+    "id": "roof_plant_a",
+    "shape": "box",
+    "position": [
+     2.4,
+     11.585,
+     9
+    ],
+    "dimensions": [
+     2.4,
+     0.35,
+     1.2
+    ],
+    "material": "plant_green"
+   },
+   {
+    "type": "primitive",
+    "id": "roof_plant_b",
+    "shape": "box",
+    "position": [
+     10.2,
+     11.585,
+     9.8
+    ],
+    "dimensions": [
+     2,
+     0.35,
+     1.4
+    ],
+    "material": "plant_green"
+   },
+   {
+    "type": "primitive",
+    "id": "tree_trunk",
+    "shape": "cylinder",
+    "position": [
+     1.8,
+     1.8,
+     -1.8
+    ],
+    "radiusTop": 0.14,
+    "radiusBottom": 0.14,
+    "height": 3.6,
+    "material": "trunk_brown"
+   },
+   {
+    "type": "primitive",
+    "id": "tree_canopy",
+    "shape": "sphere",
+    "position": [
+     1.8,
+     4.4,
+     -1.8
+    ],
+    "radius": 1.4,
+    "material": "plant_green"
+   }
+  ],
+  "components": [
+   {
+    "type": "door",
+    "id": "door_main",
+    "parentWall": "w1_s",
+    "from": [
+     3.92,
+     0.45,
+     0
+    ],
+    "width": 1.6,
+    "height": 3,
+    "doorStyle": "double",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_side",
+    "parentWall": "w1_e",
+    "from": [
+     7.42,
+     0.45,
+     0
+    ],
+    "width": 1.4,
+    "height": 2.8,
+    "doorStyle": "single",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "right",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_t2s",
+    "parentWall": "w2_s",
+    "from": [
+     3.52,
+     4.05,
+     0
+    ],
+    "width": 1.6,
+    "height": 2.4,
+    "doorStyle": "double",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_t2w",
+    "parentWall": "w2_w",
+    "from": [
+     1.82,
+     4.05,
+     0
+    ],
+    "width": 1.4,
+    "height": 2.4,
+    "doorStyle": "single",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "right",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_t3s",
+    "parentWall": "w3_s",
+    "from": [
+     7.32,
+     7.65,
+     0
+    ],
+    "width": 1.6,
+    "height": 2.4,
+    "doorStyle": "double",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_t3e",
+    "parentWall": "w3_e",
+    "from": [
+     3.72,
+     7.65,
+     0
+    ],
+    "width": 1.2,
+    "height": 2.4,
+    "doorStyle": "single",
+    "frameWidth": 0.09,
+    "frameDepth": 0.16,
+    "frameMaterial": "metal_frame",
+    "leafMaterial": "glass",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90
+    }
+   },
+   {
+    "type": "window",
+    "id": "win1_s1",
+    "parentWall": "w1_s",
+    "from": [
+     0.72,
+     0.5,
+     0
+    ],
+    "width": 2.2,
+    "height": 2.9,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win1_s2",
+    "parentWall": "w1_s",
+    "from": [
+     5.72,
+     0.5,
+     0
+    ],
+    "width": 2.2,
+    "height": 2.9,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win1_e",
+    "parentWall": "w1_e",
+    "from": [
+     0.72,
+     0.5,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.9,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win1_w",
+    "parentWall": "w1_w",
+    "from": [
+     0.72,
+     0.5,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.9,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win2_s",
+    "parentWall": "w2_s",
+    "from": [
+     0.62,
+     4.65,
+     0
+    ],
+    "width": 2.6,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win2_s2",
+    "parentWall": "w2_s",
+    "from": [
+     7.72,
+     4.65,
+     0
+    ],
+    "width": 2,
+    "height": 2.4,
+    "verticalMullions": 1,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win2_w",
+    "parentWall": "w2_w",
+    "from": [
+     4.32,
+     4.65,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win3_s1",
+    "parentWall": "w3_s",
+    "from": [
+     3.72,
+     8.25,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win3_s2",
+    "parentWall": "w3_s",
+    "from": [
+     10.22,
+     8.25,
+     0
+    ],
+    "width": 1.8,
+    "height": 2.4,
+    "verticalMullions": 1,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win3_e",
+    "parentWall": "w3_e",
+    "from": [
+     0.92,
+     8.25,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win3_w",
+    "parentWall": "w3_w",
+    "from": [
+     2.72,
+     8.25,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_n_l2",
+    "parentWall": "w2_n",
+    "from": [
+     4.92,
+     4.65,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_n_l3",
+    "parentWall": "w3_n",
+    "from": [
+     7.92,
+     8.25,
+     0
+    ],
+    "width": 2.4,
+    "height": 2.4,
+    "verticalMullions": 2,
+    "horizontalMullions": 1,
+    "frameWidth": 0.07,
+    "frameDepth": 0.14,
+    "frameMaterial": "metal_frame",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "railing",
+    "id": "rail_at2_e",
+    "path": [
+     [
+      6.6,
+      4.05,
+      8.4
+     ],
+     [
+      6.6,
+      4.05,
+      11.4
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_at2_n",
+    "path": [
+     [
+      3.6,
+      4.05,
+      11.4
+     ],
+     [
+      6.6,
+      4.05,
+      11.4
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_at3_e",
+    "path": [
+     [
+      6.6,
+      7.65,
+      8.4
+     ],
+     [
+      6.6,
+      7.65,
+      11.4
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_at3_n",
+    "path": [
+     [
+      3.6,
+      7.65,
+      11.4
+     ],
+     [
+      6.6,
+      7.65,
+      11.4
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st1",
+    "path": [
+     [
+      11.43,
+      0,
+      -2.32
+     ],
+     [
+      9.18,
+      1.35,
+      -2.32
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st2",
+    "path": [
+     [
+      9.18,
+      1.35,
+      -1.22
+     ],
+     [
+      11.43,
+      2.7,
+      -1.22
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st3",
+    "path": [
+     [
+      11.43,
+      2.7,
+      -2.32
+     ],
+     [
+      9.18,
+      4.05,
+      -2.32
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st_l1",
+    "path": [
+     [
+      8.08,
+      1.35,
+      -0.12
+     ],
+     [
+      8.08,
+      1.35,
+      -2.32
+     ],
+     [
+      9.18,
+      1.35,
+      -2.32
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st_lt",
+    "path": [
+     [
+      8.08,
+      4.05,
+      -0.12
+     ],
+     [
+      8.08,
+      4.05,
+      -2.32
+     ],
+     [
+      9.18,
+      4.05,
+      -2.32
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "railing",
+    "id": "rail_st_l2",
+    "path": [
+     [
+      11.43,
+      2.7,
+      -0.12
+     ],
+     [
+      12.53,
+      2.7,
+      -0.12
+     ],
+     [
+      12.53,
+      2.7,
+      -2.32
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.9,
+    "railLevels": [
+     0.5,
+     1
+    ],
+    "material": "metal_frame"
+   },
+   {
+    "type": "light",
+    "id": "light_l1_a",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     3.6,
+     2.8,
+     3.6
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l1_b",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     9.6,
+     2.8,
+     6
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l1_c",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     5.4,
+     2.8,
+     10
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l2_a",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     5,
+     6.4,
+     5
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l2_b",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     11,
+     6.4,
+     9
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l3_a",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     4.8,
+     9.6,
+     7.6
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   },
+   {
+    "type": "light",
+    "id": "light_l3_b",
+    "fixtureType": "bulb",
+    "lightType": "point",
+    "position": [
+     10.2,
+     9.6,
+     10.2
+    ],
+    "color": [
+     1,
+     0.82,
+     0.58
+    ],
+    "lowIntensity": 14,
+    "highIntensity": 42,
+    "distance": 7,
+    "initiallyOn": true
+   }
+  ]
+ },
+ "materials": {
+  "concrete": {
+   "baseColor": [
+    0.72,
+    0.71,
+    0.69
+   ],
+   "roughness": 0.9,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "stone_base": {
+   "baseColor": [
+    0.44,
+    0.43,
+    0.41
+   ],
+   "roughness": 0.92,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "floor_concrete": {
+   "baseColor": [
+    0.58,
+    0.57,
+    0.55
+   ],
+   "roughness": 0.9,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "wood_deck": {
+   "baseColor": [
+    0.5,
+    0.35,
+    0.21
+   ],
+   "roughness": 0.72,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "wood_veneer": {
+   "baseColor": [
+    0.56,
+    0.39,
+    0.24
+   ],
+   "roughness": 0.62,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "roof_grey": {
+   "baseColor": [
+    0.3,
+    0.31,
+    0.32
+   ],
+   "roughness": 0.88,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.6,
+    0.76,
+    0.84
+   ],
+   "roughness": 0.08,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon",
+   "materialClass": "glass",
+   "side": "double",
+   "transmission": 0.92,
+   "ior": 1.5,
+   "thickness": 0.012
+  },
+  "metal_frame": {
+   "baseColor": [
+    0.13,
+    0.13,
+    0.14
+   ],
+   "roughness": 0.36,
+   "metallic": 0.78,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "plant_green": {
+   "baseColor": [
+    0.22,
+    0.46,
+    0.2
+   ],
+   "roughness": 0.88,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "trunk_brown": {
+   "baseColor": [
+    0.3,
+    0.21,
+    0.13
+   ],
+   "roughness": 0.85,
+   "metallic": 0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "behaviors": [],
+ "editor": {
+  "gridSnapping": 0.1,
+  "showGrid": true
+ }
+}
