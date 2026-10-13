@@ -6,7 +6,7 @@ knowledge_layer: constraint
 entity_type: component
 entity_name: engine_capability_boundaries
 topic: constraints
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: engine
 primary_terms:

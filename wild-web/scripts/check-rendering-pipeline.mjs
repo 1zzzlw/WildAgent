@@ -235,8 +235,7 @@ try {
     'wall_plaster',
   )
   assert.equal(defaultSurface.userData.wildDefaultSurface?.family, 'mineral')
-  // 法线转换变化后必须更换缓存版本，避免复用旧 GPU Program。
-  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v4')
+  assert.equal(defaultSurface.customProgramCacheKey(), 'wild-surface:default-surface-v1')
   const defaultSurfaceShader = {
     uniforms: {},
     vertexShader: '#include <common>\nvoid main() {\n#include <uv_vertex>\n#include <defaultnormal_vertex>\n#include <worldpos_vertex>\n}',
@@ -260,7 +259,6 @@ try {
   // 表面凹凸层：所有表面族共用同一个 GPU program，族差异靠 uniform 分支选择，
   // 因此砖缝（masonry）与细粒（其余族）两条分支必须同时存在；且导数凹凸必须受
   // __VERSION__ 保护（WebGL1 若无反导数扩展会直接编译失败）。
-  // relief 0.012→0.016 与上面的 v3 同源（`e2ba4f7` 给 mineral 族加抹痕时一并加深了起伏振幅）。
   assert.equal(defaultSurface.userData.wildDefaultSurface?.relief, 0.016)
   assert.equal(defaultSurface.userData.wildDefaultSurface?.grainFrequency, 12)
   assert.ok(defaultSurfaceShader.fragmentShader.includes('wildSurfaceMetricUv'))
@@ -303,7 +301,7 @@ try {
   assert.ok(pbrShader.fragmentShader.includes('wildPbrSnowMask'))
   assert.ok(pbrShader.fragmentShader.includes('wildPbrBaseNormal = normal'))
   assert.ok(!pbrShader.fragmentShader.includes('geometryNormal'))
-  assert.equal(pbrWeather.customProgramCacheKey(), 'wild-surface:pbr-environment-v2')
+  assert.equal(pbrWeather.customProgramCacheKey(), 'wild-surface:pbr-environment-v1')
   assert.ok(pbrShader.vertexShader.includes('inverseTransformDirection(transformedNormal, viewMatrix)'))
   assert.ok(!pbrShader.vertexShader.includes('mat3(modelMatrix) * transformedNormal'))
 

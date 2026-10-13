@@ -1091,7 +1091,7 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
 
     blueprint = {
         "meta": {
-            "version": "1.1",
+            "version": "1.0",
             "type": "building",
             "name": str(normalized.get("concept") or "确定性回退建筑")[:80],
         },

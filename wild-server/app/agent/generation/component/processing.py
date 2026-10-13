@@ -92,7 +92,7 @@ def validate_and_fix_with_tools(
 
     temp_blueprint = deepcopy({
         "meta": skeleton_blueprint.get(
-            "meta", {"version": "1.1", "type": "building"}
+            "meta", {"version": "1.0", "type": "building"}
         ),
         "geometry": {
             "elements": skeleton_blueprint.get("geometry", {})

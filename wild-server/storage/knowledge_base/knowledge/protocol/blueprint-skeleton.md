@@ -6,7 +6,7 @@ knowledge_layer: wild_schema
 entity_type: schema
 entity_name: blueprint_skeleton
 topic: structure
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: maintainer
 primary_terms:
@@ -56,7 +56,7 @@ synonyms: []
 
 | 字段 | 类型 | 必需 | 说明 |
 |------|------|------|------|
-| `version` | string | 是 | `"1.0"` 或 `"1.1"`；使用 `primitive`/PBR 纹理时必须为 `"1.1"` |
+| `version` | string | 是 | 未上线阶段固定为 `"1.0"`；同样支持 `primitive` 和 PBR 纹理，历史 `"1.1"` 文件仍可读 |
 | `type` | string | 是 | `"building"`、`"avatar"`、`"asset"` 或 `"scene"` |
 | `name` | string | 是 | 实体名称 |
 | `author` | string | 否 | 创建者地址 |

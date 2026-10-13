@@ -198,7 +198,7 @@ def _fallback_plan(
         else "wall_bearing"
     )
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.0",
         "profile": profile["id"],
         "concept": _concept_from_request(user_message),
         "massing": {
@@ -871,7 +871,7 @@ def normalize_architecture_plan(
         components = []
     
     result = {
-        "schema_version": "1.1",
+        "schema_version": "1.0",
         "profile": profile["id"],
         "concept": str(source.get("concept") or fallback["concept"])[:240],
         "massing": massing,

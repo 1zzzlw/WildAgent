@@ -31,10 +31,8 @@ from .completeness import path_schema, value_matches
 from .contracts import DesignDocument, DesignGap, ObjectDecisions
 from .openings import opening_kind
 
-#: 履约判据口径。改动实体侧判定语义时递增，让旧报告自动失效（与
-#: ``validation.diagnostics.VALIDATOR_VERSION`` 同类做法，但**独立**——几何校验器
-#: 版本不该因为履约口径变化而失效，反之亦然）。
-FULFILLMENT_VERSION = "entity-fulfillment/4"
+#: 未上线期间固定履约报告首版，判据使用当前批准设计与实际实体。
+FULFILLMENT_VERSION = "entity-fulfillment/1"
 
 #: 几何量的比较容差（米）。比 :func:`value_matches` 的 0.001 宽：实体坐标是
 #: 墙顶/板底累加出来的，设计值是名义尺寸，0.05 以内不算"没兑现"。

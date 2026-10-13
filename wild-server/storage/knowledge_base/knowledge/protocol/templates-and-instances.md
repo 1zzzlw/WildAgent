@@ -6,7 +6,7 @@ knowledge_layer: wild_schema
 entity_type: schema
 entity_name: blueprint_templates_instances
 topic: structure
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: maintainer
 primary_terms:

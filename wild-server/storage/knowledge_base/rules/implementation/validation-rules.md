@@ -6,7 +6,7 @@ knowledge_layer: constraint
 entity_type: validator
 entity_name: runtime_validation_rules
 topic: validation
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: engine
 primary_terms:

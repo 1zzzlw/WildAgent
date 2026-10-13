@@ -2169,7 +2169,7 @@ class RAGSpecLoader(SpecLoader):
         collection_metadata = {
             "project": "WildAgent",
             "namespace": self._namespace,
-            "version": "3",
+            "version": "1",
             "index_signature": self._index_signature(),
         }
         collection = self._client.get_or_create_collection(

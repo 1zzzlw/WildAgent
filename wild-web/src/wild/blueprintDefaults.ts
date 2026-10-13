@@ -27,7 +27,7 @@ import type { Blueprint } from '../types/blueprint'
 export function createEmptyBlueprint(name: string = '未命名建筑'): Blueprint {
   return {
     meta: {
-      version: '1.1',
+      version: '1.0',
       type: 'building',
       name
     },

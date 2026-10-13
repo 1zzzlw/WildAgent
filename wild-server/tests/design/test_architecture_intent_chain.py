@@ -31,7 +31,7 @@ def test_intent_survives_save_review_and_plan_roundtrip():
     raw = plan()
     original = deepcopy(raw)
     doc = DesignDocument.model_validate_json(document(raw).model_dump_json()).model_copy(update={"status": "approved"})
-    assert doc.schema_version == "design/1.3"
+    assert doc.schema_version == "design/1.0"
     assert architecture_plan_from_document(doc)["design_intent"] == raw["design_intent"]
     assert raw == original
 
@@ -44,12 +44,14 @@ def test_design_basis_is_not_silently_cut_to_five_items_at_review():
     assert "方案关系 7" in reviewed["design_rationale"][-1]
 
 
-@pytest.mark.parametrize("version", ["design/1.1", "design/1.2"])
+@pytest.mark.parametrize("version", ["design/1.1", "design/1.2", "design/1.3"])
 def test_historical_document_without_intent_remains_readable(version):
     data = document().model_dump(mode="json")
     data["schema_version"] = version
     data["decisions"].pop("design_intent")
-    assert DesignDocument.model_validate(data).decisions.design_intent is None
+    loaded = DesignDocument.model_validate(data)
+    assert loaded.schema_version == "design/1.0"
+    assert loaded.decisions.design_intent is None
 
 
 def test_review_hash_binds_intent_but_geometry_fingerprint_ignores_prose():

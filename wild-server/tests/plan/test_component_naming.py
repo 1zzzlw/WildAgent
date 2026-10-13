@@ -70,7 +70,7 @@ def test_prompt_uses_the_same_names_as_plan():
 def test_new_single_component_document_supplies_names_without_code_changes(tmp_path, monkeypatch):
     from app.agent.knowledge import component_names as naming
     config = tmp_path / "config.yaml"
-    config.write_text("defaults:\n  knowledge_revision: rules-v3\n", encoding="utf-8")
+    config.write_text("defaults:\n  knowledge_revision: rules-v1\n", encoding="utf-8")
     document = tmp_path / "twisted-column.md"
     document.write_text("""---
 entity_name: twisted_column

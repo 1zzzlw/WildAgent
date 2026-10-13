@@ -1,4 +1,4 @@
-"""rules-v3 知识用途、来源隔离和条件路由回归；可用 unittest 离线运行。"""
+"""知识用途、来源隔离和条件路由回归；可用 unittest 离线运行。"""
 import importlib.util
 import json
 from pathlib import Path

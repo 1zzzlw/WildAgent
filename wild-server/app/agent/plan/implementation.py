@@ -356,6 +356,8 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         m.get("host") == v["id"] or (m.get("host") or "").startswith(f"wall_{v['id']}_") for m in markers.values())]
     if circulation:
         context["drawing"]["circulation"] = drawing.get("circulation")
+    if any(resolve_component_name(m["type"])["entity_type"] == "roof" for m in markers.values()):
+        context["drawing"]["roof"] = deepcopy(drawing.get("roof"))
     if body:
         context["drawing"] = deepcopy(next(m["design"] for m in markers.values() if m["type"] == "building_body"))
         context["markers"] = [{k: v for k, v in m.items() if k != "design"} for m in markers.values()]
@@ -504,6 +506,7 @@ async def run_marker_generate(state, item):
                 "levels.base_y 是每层楼面顶标高；原生 floor 的 from 和 to 均为完整世界三维端点 [X,Y,Z]，不能把 to 写成平面 [X,Z]；两端 Y 应为楼面顶减板厚，不能把墙底标高直接当板底。"
                 "primitive box 是实心体，不能当成整栋空心围护或不可见参考体量。"
                 "按 opening_layout 给门窗留出净空；未指定轴网坐标时，按洞口间的墙垛组织梁柱，不能让柱穿过门窗。"
+                "structural_grid 是结构组织说明，不把 x_bays/z_bays 机械扩成全交点柱阵；未明确的柱位结合 floor_layouts 的隔墙与使用空间选择，避免占用房间中心或通道。保留图纸明确的独立室内柱、外露框架及开敞柱廊。"
                 "梁柱与填充墙核对墙法线方向的实际截面和进退，避免重合表面，不删掉图纸要求的外露框架。")
         if families & {"door", "window"}:
             instructions.append("用 door/window 或 opening 开真实洞口，按整个洞口组保持设计宽高，组内分扇不重叠。"
@@ -515,6 +518,7 @@ async def run_marker_generate(state, item):
             instructions.append("按 roof_type/type、volume、overhang 和 size 实现屋顶，保持坡向及支承封闭关系。"
                 "原生 roofType 没有该形态时尝试组合；屋面必须连续覆盖体量和出檐，封檐条不能替代屋面。"
                 "单坡可用整片薄 box 加弧度 rotation，按倾斜后的上表面投影取宽深和中心；"
+                "单轴倾斜时坡向长度按水平覆盖长度除以 cos(坡角) 计算，中心考虑板厚造成的顶面偏移；将最终数值写入 geometry 并回核实际数组，计算说明不能代替实体参数。"
                 "primitive box 的 position[1] 是板中心；原生 roof 的 position[1] 是支承标高，flat 的板中心为 position[1]+thickness/2。"
                 "须计算最低屋面标高，并完成坡面与墙顶的封闭支承。")
         if families & {"balcony", "canopy"}:

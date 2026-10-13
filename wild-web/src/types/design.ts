@@ -182,7 +182,7 @@ export interface ObjectDecisions {
 }
 
 export interface DesignDocument {
-  schema_version: 'design/1.0' | 'design/1.1' | 'design/1.2' | 'design/1.3'
+  schema_version: 'design/1.0'
   design_id: string
   session_id: string
   revision: number

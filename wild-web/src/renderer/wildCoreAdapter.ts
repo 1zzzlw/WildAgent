@@ -115,8 +115,8 @@ export async function loadWildScene(jsonText: string): Promise<{
 export function getWildCoreInfo() {
   const componentCapabilities = getComponentCapabilities()
   return {
-    version: '1.1.0',
-    supportedVersion: '1.1',
+    version: '1.0',
+    supportedVersion: '1.0',
     geometryTypes: getEngineCapabilities().map(item => item.type),
     capabilities: getEngineCapabilities(),
     componentTypes: componentCapabilities.map(item => item.type),

@@ -433,7 +433,7 @@ DesignDecisions = Annotated[
 
 
 class DesignDocument(ContractModel):
-    schema_version: Literal["design/1.0", "design/1.1", "design/1.2", "design/1.3"] = "design/1.3"
+    schema_version: Literal["design/1.0"] = "design/1.0"
     design_id: str = Field(min_length=1, max_length=120)
     session_id: str = Field(min_length=1, max_length=160)
     revision: int = Field(ge=1)
@@ -459,29 +459,8 @@ class DesignDocument(ContractModel):
 
         if not isinstance(data, dict):
             return data
-        if data.get("schema_version") == "design/1.0":
-            from copy import deepcopy
-            data = deepcopy(data)
-            migration_changes = []
-            decisions = data.get("decisions")
-            facades = decisions.get("facades") if isinstance(decisions, dict) else None
-            for face, facade in (facades.items() if isinstance(facades, dict) else []):
-                if not isinstance(facade, dict):
-                    continue
-                for key in ("ground_pattern", "upper_pattern"):
-                    pattern = facade.get(key)
-                    if isinstance(pattern, list) and pattern and all(token == "empty" for token in pattern):
-                        facade[key] = ["open"] * len(pattern)
-                        migration_changes.append({"path": f"/decisions/facades/{face}/{key}",
-                                                  "before": pattern, "after": facade[key],
-                                                  "semantic_change": False, "source": "legacy_schema"})
-            data["schema_version"] = "design/1.1"
-            if migration_changes and isinstance(data.get("rule_trace", []), list):
-                data.setdefault("rule_trace", []).append({
-                    "rule_id": "schema.facade_open_migration", "classification": "reference",
-                    "enforcement": ["schema"], "source": "design/1.0 → design/1.1",
-                    "changes": migration_changes, "design_revision": data.get("revision", 1),
-                })
+        if data.get("schema_version") in {"design/1.1", "design/1.2", "design/1.3"}:
+            data = {**data, "schema_version": "design/1.0"}
         decisions = data.get("decisions")
         if isinstance(decisions, dict) and not decisions.get("kind"):
             return {**data, "decisions": {**decisions, "kind": "architecture"}}

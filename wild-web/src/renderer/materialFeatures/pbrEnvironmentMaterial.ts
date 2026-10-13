@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'pbr-environment-v2'
+const SHADER_VERSION = 'pbr-environment-v1'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>

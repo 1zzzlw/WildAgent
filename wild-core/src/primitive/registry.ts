@@ -58,7 +58,7 @@ function registerBuiltins(): void {
     { type: 'furniture', status: 'partial', description: '基础参数化家具', build: buildFurniture },
     { type: 'dense_brick', status: 'experimental', description: '体素细节；等值面提取仍为实验能力', build: buildDenseBrick },
     { type: 'body', status: 'partial', description: '简化参数化人物', build: buildBody },
-    { type: 'primitive', status: 'stable', description: 'WILD v1.1 通用 box/sphere/cylinder/profile_sweep', build: buildPrimitive },
+    { type: 'primitive', status: 'stable', description: 'WILD 通用 box/sphere/cylinder/profile_sweep', build: buildPrimitive },
   ];
 
   for (const registration of builtins) registerElementBuilder(registration);

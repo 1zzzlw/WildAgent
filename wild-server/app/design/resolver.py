@@ -338,7 +338,7 @@ def _build_object_document(
                 applies_when="decisions.kind == object",
                 schema_targets=["/decisions/objects"],
                 enforcement=["schema", "planner", "resolver", "compiler", "validator"],
-                source="rules-v3:furniture",
+                source="rules-v1:furniture",
             ),
         ],
     )
@@ -376,7 +376,7 @@ def architecture_plan_from_document(document: DesignDocument | dict[str, Any]) -
         return _object_plan_from_document(doc, d)
     return {
         **(d.model_extra or {}),
-        "schema_version": "1.1",
+        "schema_version": "1.0",
         "profile": doc.requirements.profile,
         "concept": d.concept,
         "massing": d.massing.model_dump(mode="json"),
@@ -449,7 +449,7 @@ def _object_plan_from_document(doc: DesignDocument, d: ObjectDecisions) -> dict[
     # 因为"谁被派发"取决于物件条目自己声明了什么，而不是一份类型白名单。
     kinds = list(quota)
     return {
-        "schema_version": "1.1",
+        "schema_version": "1.0",
         "target_kind": "object",
         "profile": doc.requirements.profile,
         "concept": d.concept,

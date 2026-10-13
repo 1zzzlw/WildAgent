@@ -110,7 +110,7 @@ def build_object_skeleton(plan: dict[str, Any], user_message: str = "") -> dict[
 
     return {
         "meta": {
-            "version": "1.1",
+            "version": "1.0",
             "type": "asset",
             "name": concept[:80],
         },

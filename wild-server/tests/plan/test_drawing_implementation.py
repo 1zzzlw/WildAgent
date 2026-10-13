@@ -1,5 +1,6 @@
 """设计自由、逐步实现、组合构件和有证据舍弃的回归。"""
 from copy import deepcopy
+import asyncio
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -54,11 +55,7 @@ def test_web_reference_does_not_confuse_window_with_windows():
 
 
 def run(coroutine):
-    try:
-        coroutine.send(None)
-    except StopIteration as result:
-        return result.value
-    raise AssertionError("测试替身不应执行真实异步 IO")
+    return asyncio.run(coroutine)
 
 
 def drawing():
@@ -440,6 +437,25 @@ def test_scoped_context_keeps_actual_host_and_omits_other_design_items(monkeypat
     assert all(e["id"] == host["id"] for e in context["diagram_hosts"])
     from app.agent.generation.capability import load_engine_schema
     assert len(captured[0][0]["content"]) < len(json.dumps(load_engine_schema(), ensure_ascii=False)) / 2
+
+
+@pytest.mark.parametrize("direction", ["向南倾斜", "向北倾斜"])
+def test_roof_context_preserves_global_direction_with_volume_override(direction):
+    from app.design.resolver import architecture_plan_from_document
+    raw = architecture_plan_from_document(drawing())
+    raw["roof"] = {"type": "翼楼单坡屋顶" + direction,
+                   "volumes": [{"volume": "main", "type": "单坡屋顶", "overhang": 0.4}]}
+    document = build_design_document(raw, session_id="roof_context", source_request="按图纸实现屋顶")
+    state = empty_state(document)
+    before = deepcopy(state["design_document"])
+    marker = next(m for m in state["resolved_design"]["component_markers"] if m["type"] == "roof")
+    assert direction not in marker["design"]["type"]
+    context = impl._item_context(state, {marker["id"]: marker}, state["skeleton_blueprint"])
+    assert direction in context["drawing"]["roof"]["type"]
+    assert context["markers"][0]["design"]["type"] == "单坡屋顶"
+    assert "components" not in context["drawing"]
+    context["drawing"]["roof"]["type"] = "其他参考"
+    assert state["design_document"] == before
 
 
 def test_model_service_failure_preserves_completed_markers_without_claiming_abandonment(monkeypatch):
@@ -841,6 +857,7 @@ def test_no_attempt_omission_cannot_pass_final_gate():
 
 
 def test_architecture_node_never_compiles_or_filters_design(monkeypatch):
+    monkeypatch.setattr("app.services.agent_service.agent_service.spec_loader.load_many", lambda *_args, **_kwargs: "")
     from app.agent.generation.architecture.workflow import architecture_planner
     from app.agent.generation.architecture import design_workflow
     from app.design.resolver import architecture_plan_from_document
@@ -969,6 +986,7 @@ def test_web_adapter_returns_sources_and_descriptions(monkeypatch):
 
 @pytest.mark.parametrize("index", [0, 1])
 def test_recorded_drawing_keeps_explicit_components_and_numeric_quotas(monkeypatch, index):
+    monkeypatch.setattr("app.services.agent_service.agent_service.spec_loader.load_many", lambda *_args, **_kwargs: "")
     from app.agent.generation.architecture.workflow import architecture_planner
     from app.agent.generation.architecture import design_workflow
     raw = json.loads((Path(__file__).parents[1] / "fixtures/architecture_drawing_rejected_outputs.json").read_text(encoding="utf-8"))[index]
@@ -1166,6 +1184,7 @@ def test_per_volume_roof_override_survives_open_main_roof():
 
 @pytest.mark.parametrize("malformed", [["balcony"], {"balcony": 1}, 3])
 def test_malformed_component_list_returns_to_format_revision(monkeypatch, malformed):
+    monkeypatch.setattr("app.services.agent_service.agent_service.spec_loader.load_many", lambda *_args, **_kwargs: "")
     from app.agent.generation.architecture.workflow import architecture_planner
     from app.agent.generation.architecture import design_workflow
     from app.design.resolver import architecture_plan_from_document

@@ -106,9 +106,22 @@ class BlueprintTextExtractionTest(unittest.TestCase):
             "materials": {},
         })
 
-        self.assertEqual(normalized["meta"]["version"], "1.1")
+        self.assertEqual(normalized["meta"]["version"], "1.0")
         self.assertEqual(normalized["meta"]["type"], "building")
         self.assertEqual(normalized["meta"]["name"], "AI生成建筑")
+
+    def test_known_version_labels_normalize_without_changing_geometry_or_input(self):
+        from copy import deepcopy
+        for version in ("1.0", "1.1"):
+            with self.subTest(version=version):
+                blueprint = {"meta": {"version": version, "type": "asset", "name": "sphere"},
+                    "geometry": {"elements": [{"type": "primitive", "id": "sphere", "shape": "sphere", "radius": 1}],
+                                 "components": []}, "materials": {}}
+                original = deepcopy(blueprint)
+                normalized = normalize_blueprint_input(blueprint)
+                self.assertEqual(normalized["meta"]["version"], "1.0")
+                self.assertEqual(normalized["geometry"], original["geometry"])
+                self.assertEqual(blueprint, original)
 
     def test_normalization_preserves_invalid_container_types_for_schema_errors(self):
         cases = (

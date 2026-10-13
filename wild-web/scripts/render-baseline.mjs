@@ -10,7 +10,7 @@
  * 软件光栅化替出来的图不是"实际引擎看到的图"。这里在真实 Chromium 里跑 three。
  *
  * 固定项（P7 第 2 条）：引擎（本地 wild-core 源码）、灯光、背景、相机规则、
- * 输出尺寸全部写死在 ``RENDER_SETTINGS``。改动必须同步 ``BASELINE_VERSION``。
+ * 输出尺寸使用 ``RENDER_SETTINGS``，比较证据绑定源码与配置摘要。
  *
  * 用法：node scripts/render-baseline.mjs <blueprint.json> <输出目录> [chrome路径]
  */
@@ -53,7 +53,7 @@ export const RENDER_SETTINGS = Object.freeze({
   toneMappingExposure: 1.0,
 })
 
-export const BASELINE_VERSION = 'p7a.3'
+export const BASELINE_VERSION = 'p7a.1'
 
 /** 四个视角。方位角用度；`top` 拉近一点，其余一致，保证不同尺度同一构图。 */
 const VIEWS = [

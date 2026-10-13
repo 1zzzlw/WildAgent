@@ -68,7 +68,7 @@ export function meshDataToGeometry(meshData: MeshData): THREE.BufferGeometry {
   if (meshData.uvs) {
     const uvAttribute = new THREE.BufferAttribute(meshData.uvs, 2)
     geometry.setAttribute('uv', uvAttribute)
-    // WILD v1.1 尚未提供独立光照 UV；三个通道共享同一 BufferAttribute，
+    // WILD 尚未提供独立光照 UV；三个通道共享同一 BufferAttribute，
     // 保持 AO 兼容的同时避免把每个网格的 UV 数据复制三份到内存/GPU。
     geometry.setAttribute('uv1', uvAttribute)
     geometry.setAttribute('uv2', uvAttribute)

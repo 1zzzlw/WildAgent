@@ -88,6 +88,7 @@ open 表示该开间不设墙，empty 表示有实体墙但没有开口；整面
 共享 facades 逐面作用于所有体量（含内包体量），不同围护用 volume.facades 覆盖。文字说明不覆盖结构字段；有效布局为 open 的面没有门窗墙宿主。相接体量的共用界面一侧为 open、另一侧明确有墙时，只保留有墙侧的一份围护；内部连通门写明确实例，引用有墙侧宿主。实墙由主体实现。独立结构与装饰在 components 描述，不用同位置默认槽位重复生成。局部围护与组合示例按当前设计参考使用，案例尺寸与墙的数量不代替本次设计。
 整面围护墙若需在 components 单独描述尺寸、材料或形态，用体量 host 和 placement.face/floor 明确归属，由主体实现一次；门窗可引用该墙实例 ID，plan 会交接对应实际墙 ID。是否设计入口由当前空间用途与通行设计决定，没有门的空间不补门。
 roof 写 type 和设计说明，可以设计新屋型；roof.volumes 是对象数组，可为空，每项必须写 volume 字符串引用 volumes 中的体量 id，例如 [{{"volume":"main","type":"自拟屋型","overhang":0.8}}]。volume 是固定字段名，不能用 ref、id 或 volume_id 代替；数组项不能只写字符串。structural_grid 写 system、整数 x_bays、整数 z_bays。
+结构体系与平面功能同时设计；开间数不表示每个交点都必须建柱。未指定的柱位结合房间、隔墙和通道安排；影响室内净空的独立柱用 components 说明位置与用途，明确设计的室内柱、外露框架和开敞柱廊保留。
 ridge_axis 是屋脊实际世界轴，不能只在 type 的文字中说明方向；共用一片屋面的内包体量在 roof.volumes 中明确 type="none"，避免按默认屋型另建重叠屋顶。
 components 是对象数组，每项写稳定 id、type、host、size、form、description；size 只写构件自身尺寸（width、height、depth、thickness 等），每项为有限正数。sill_height、offset、normal_offset 是位置参数，写在 placement；落地门窗的 placement.sill_height 可以为 0，不写 size.sill_height。form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
 circulation 中设计的楼梯也写成 stair 构件标记，说明连接楼层、位置与形态；各跑踏步数乘踏步高度之和等于连接楼层高差，梯段与平台的平面尺寸要放得进楼梯占地，不能给出互相矛盾的尺寸。后续 plan 单独实现，不能只写交通说明而遗漏实际构件。

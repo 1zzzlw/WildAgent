@@ -3,7 +3,7 @@ import { PROCEDURAL_NOISE_GLSL } from './proceduralMaterials/noise.glsl'
 import { getWorldEffectUniforms } from './worldEffectRuntime'
 import { getWorldEnvironmentUniforms } from './worldEnvironmentRuntime'
 
-const GROUND_WEATHER_SHADER_VERSION = 'ground-weather-v3'
+const GROUND_WEATHER_SHADER_VERSION = 'ground-weather-v1'
 
 /**
  * 地面天气层：雨后低洼处积水，雨滴落在随机位置后波纹从落点向外扩散并消失，

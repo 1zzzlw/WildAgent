@@ -3,7 +3,7 @@ Blueprint Parser —— LLM 回复解析 + 结构校验 + 文件保存
 
 主要职责：
   1. extract_blueprint_from_text() — 从 LLM 文本回复中提取 ```json 块
-  2. normalize_blueprint_input()  — 兼容模型常见简写并统一为 WILD 1.1 表达
+  2. normalize_blueprint_input()  — 兼容模型常见简写并统一为 WILD 首版表达
   3. validate_blueprint_schema()  — 轻量结构校验（不替代 spatial_tools 的空间校验）
   4. save_blueprint_file*()       — 将最终 Blueprint 序列化到磁盘
 
@@ -177,7 +177,7 @@ def _normalize_scene_patch(patch: dict) -> dict:
 # 结构校验
 
 def normalize_blueprint_input(blueprint: dict) -> dict:
-    """将模型常见简写转换为标准 WILD 1.1 字段。
+    """将模型常见简写转换为标准 WILD 字段。
 
     函数先深拷贝，所以修改返回值不会反向污染 LLM 原始输出。这里只做能够
     确定意图的兼容转换；无法可靠推断的缺失字段留给后续校验器报告。
@@ -190,8 +190,9 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
     # 确定性补齐；meta 类型本身非法时仍交给校验器报告。
     meta = normalized.get("meta")
     if isinstance(meta, dict):
-        if not isinstance(meta.get("version"), str) or not meta["version"].strip():
-            meta["version"] = "1.1"
+        if (not isinstance(meta.get("version"), str) or not meta["version"].strip()
+                or meta["version"] == "1.1"):
+            meta["version"] = "1.0"
         if not isinstance(meta.get("type"), str) or not meta["type"].strip():
             meta["type"] = "building"
         if not isinstance(meta.get("name"), str) or not meta["name"].strip():
@@ -226,7 +227,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
             material.setdefault("albedo", 1.0)
             # 当前渲染规范统一按 D65 正午光照解释材质颜色。
             material["lightingCondition"] = "D65_noon"
-            # 标准字段已经就绪，删除不属于 WILD 1.1 的简写字段。
+            # 标准字段已经就绪，删除不属于 WILD 的简写字段。
             material.pop("color", None)
 
     # 构件归一化 
@@ -234,7 +235,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
         if not isinstance(element, dict):
             continue
         if element.get("type") == "wall":
-            # 模型常用“水平 from/to + height”。WILD 1.1 则用 to.y 表达墙顶。
+            # 模型常用“水平 from/to + height”。WILD 则用 to.y 表达墙顶。
             start = element.get("from")
             end = element.get("to")
             height = element.get("height")
@@ -271,7 +272,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
             # round 描述截面形状，但不属于柱式枚举；modern 是最接近的兜底值。
             element["style"] = "modern"
         elif element.get("type") == "roof":
-            # 兼容模型常用的建筑术语，统一转换为 WILD 1.1 标准枚举值
+            # 兼容模型常用的建筑术语，统一转换为 WILD 标准枚举值
             roof_type = element.get("roofType")
             if roof_type in {"pitched", "sloped", "gabled"}:
                 # pitched/sloped 是通用坡屋顶术语，默认映射为双坡（gable）
@@ -289,7 +290,7 @@ def normalize_blueprint_input(blueprint: dict) -> dict:
         elif element.get("type") == "primitive" and element.get("shape") == "box":
             dimensions = element.get("dimensions")
             if isinstance(dimensions, dict):
-                # furniture 使用尺寸对象，而 primitive.box 的 WILD 1.1 标准格式是
+                # furniture 使用尺寸对象，而 primitive.box 的 WILD 标准格式是
                 # [width, height, depth]。只在三个字段都明确且为正数时兼容转换，
                 # 缺字段或非法数值继续交给校验器报告，避免猜测尺寸。
                 ordered_dimensions = [

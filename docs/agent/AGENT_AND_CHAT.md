@@ -1,3 +1,5 @@
+> 2026-10-13 版本约定：未上线阶段软件包固定 `0.1.0`，WILD、图纸、校验、知识与渲染标记固定各自首版，普通修改不升版。当前功能保留，历史版本标签只在输入边界兼容；下方按日期记录的旧版本号属于历史记录。见 [项目版本固定](../10月10日优化/项目版本固定.md)。
+
 > 2026-10-10 最新实现：architecture 一次形成可扩展的自由图纸，审核示意使用 drawing-projection/1，不运行引擎编译。plan 从空 WILD 容器按标记实现，失败依次经过 RAG、网络形态检索和修订；完整装配问题回原任务，耗尽后舍弃并清理依赖。最终检查失败的建筑不进入旧 callback，也不提供最终文件。以下 compiler-projection、设计期白名单与配额拒绝说明属于历史实现，不能作为当前生成规则。当前职责、代码入口和验收边界见 [10月10日优化](../10月10日优化/README.md)及执行记录第 8 节（已归档）。
 
 > 2026-10-10 图纸驱动重构：建筑当前链为 architecture（完整图纸）→ material_plan → design_review → plan（标记任务）→ execute/replanner → compile（最终装配）→ final_validate。旧 design_convergence 与设计期分块调度已退役；物件、编辑和聊天分支保留。当前投影 compiler-projection/8、校验器 2.2。下方历史描述不代表当前拓扑，实际替换、检查与环境阻塞见 10月10日执行记录（已归档）。
@@ -150,7 +152,7 @@ callback 的 `component_retry_counts` 是每个失败目标的有限预算，模
 - 引用完整性只负责父对象、模板、行为和材质引用；门窗越界与重叠统一由开口几何校验负责，避免同一个根因重复计为两个错误。
 - 流式模型若把最终 Blueprint 放入 `reasoning_content` 且普通 `content` 为空，骨架节点允许从 reasoning 兼容提取完整的 `meta + geometry` 对象；提取器同时支持 fenced、未 fenced JSON，以及 `blueprint/result/data` 等常见包装对象，并按对象结构选择 Blueprint。
 - 首轮 Blueprint 缺失或 JSON 无效时，骨架节点只追加一次非思考格式恢复调用，强制模型只返回单一 Blueprint JSON；恢复仍失败才终止图。立面设计已来自上游批准方案，不要求恢复调用再输出 DESIGN_BRIEF。前端必须显示 skeleton 的真实错误，不能再用笼统的“最终 Blueprint 缺失”覆盖根因。
-- `meta.version`、`meta.type` 和空缺的 `meta.name` 属于可确定元数据，在 Schema 校验前分别补为 `1.1`、`building` 和 `AI生成建筑`；这类非几何字段不再浪费一次模型重试。`meta` 本身不是对象时仍会被结构校验阻断。
+- `meta.version`、`meta.type` 和空缺的 `meta.name` 属于可确定元数据，在 Schema 校验前分别补为 `1.0`、`building` 和 `AI生成建筑`；这类非几何字段不再浪费一次模型重试。`meta` 本身不是对象时仍会被结构校验阻断。
 - 骨架派发组件前修正唯一可判定的材质简称（如仅存在 `wood_oak` 时将 `wood` 映射到它）；候选不唯一则保留错误并阻断，禁止猜测。
 
 `2026-08-08/session_1786189311071_现代别墅.wild` 是门窗坐标回归样本：`door_back_service.from=[3.4,0,6]` 会被识别为离背墙 6 米，确定性修复结果应为 `[3.4,0,0]`。原始样本还包含未定义的屋顶、门框/门扇和窗框材质引用，新的完整性门禁会阻止其直接下发。

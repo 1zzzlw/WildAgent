@@ -4048,7 +4048,7 @@ def fix_element_dimensions(blueprint: dict) -> str:
       - 按合理范围上限的 0.9 倍收缩
       - 保留组件比例（如 wall 的厚度与高度比例）
       - wall/column 的建议高度上限只产生警告，不改写合法的高层建筑总高度
-      - wall 的 from/to 是 WILD 1.1 高度事实源，移除与其重复或冲突的 height
+      - wall 的 from/to 是 WILD 高度事实源，移除与其重复或冲突的 height
 
     参数 blueprint: 完整的 Blueprint dict
     """
@@ -4112,7 +4112,7 @@ def fix_element_dimensions(blueprint: dict) -> str:
                     f"高度 {endpoint_height:.1f} → {new_top - bottom:.1f}m（按楼板标高/常用层高补全）"
                 )
             elif has_declared_height:
-                # WILD 1.1 使用 from/to 表达墙高。保留端点意味着既不会把百米外壳
+                # WILD 使用 from/to 表达墙高。保留端点意味着既不会把百米外壳
                 # 静默压矮，也不会留下 height 与端点范围互相冲突的双重事实源。
                 el.pop("height", None)
                 changed.append(

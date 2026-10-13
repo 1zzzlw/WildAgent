@@ -6,7 +6,7 @@ knowledge_layer: constraint
 entity_type: assembly
 entity_name: supported_assembly_relations
 topic: assembly
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: engine
 primary_terms:

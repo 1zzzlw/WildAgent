@@ -43,7 +43,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
     append("validate_wild_schema", ["WILD Schema 不可用"] if schema is None else
            [f"/{'/'.join(map(str, e.path))}: {e.message}" for e in jsonschema.Draft202012Validator(schema).iter_errors(blueprint)])
 
-    design_errors = validate_design_brief_constraints(blueprint, design_brief)
+    design_errors = validate_design_brief_constraints(blueprint, design_brief, design_document=design_document)
     append("validate_design_brief", design_errors)
     append("design_quota_shortfall", design_quota_shortfalls(blueprint, design_brief), warning=True)
     fulfillment = None

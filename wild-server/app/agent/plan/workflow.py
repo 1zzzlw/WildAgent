@@ -169,7 +169,7 @@ async def plan_node(state: dict[str, Any]) -> dict[str, Any]:
         design_state = {**state, "resolved_design": resolved.model_dump(mode="json")}
         plan = expand_plan(design_state)
         material_plan = document.decisions.materials.resolved_plan
-        scaffold = {"meta": {"version": "1.1", "type": "building", "name": document.decisions.concept or "建筑",
+        scaffold = {"meta": {"version": "1.0", "type": "building", "name": document.decisions.concept or "建筑",
                              "designHash": resolved.design_hash, "designRevision": document.revision},
                     "geometry": {"elements": [], "components": []}, "materials": {}, "assets": {}}
         if material_plan:

@@ -35,20 +35,22 @@ def test_region_survives_design_and_material_node_round_trip():
     assert updated.decisions.materials.regions == document.decisions.materials.regions
 
 
-def test_only_versioned_legacy_documents_migrate_empty_to_open():
+def test_version_reset_preserves_explicit_empty_and_open_facades():
     plan = json.loads((Path(__file__).parents[1] / "fixtures/design_trace_baseline.json").read_text(encoding="utf-8"))["normalized_plan"]
     doc = build_design_document(plan, session_id="audit", source_request="两层住宅")
     raw = doc.model_dump(mode="json")
     face = raw["decisions"]["facades"]["back"]
-    face["ground_pattern"] = ["empty"] * face["bays"]
-    new = DesignDocument.model_validate(raw)
-    assert new.decisions.facades["back"].ground_pattern == face["ground_pattern"]
-    old = deepcopy(raw)
-    old["schema_version"] = "design/1.0"
-    migrated = DesignDocument.model_validate(old)
-    assert migrated.schema_version == "design/1.1"
-    assert set(migrated.decisions.facades["back"].ground_pattern) == {"open"}
-    assert DesignDocument.model_validate(migrated.model_dump(mode="json")) == migrated
+    for token in ("empty", "open"):
+        face["ground_pattern"] = [token] * face["bays"]
+        for version in ("design/1.0", "design/1.1", "design/1.2", "design/1.3"):
+            old = deepcopy(raw)
+            old["schema_version"] = version
+            before = deepcopy(old)
+            loaded = DesignDocument.model_validate(old)
+            assert loaded.schema_version == "design/1.0"
+            assert loaded.decisions.facades["back"].ground_pattern == face["ground_pattern"]
+            assert old == before
+            assert DesignDocument.model_validate(loaded.model_dump(mode="json")) == loaded
 
 
 def test_proxy_never_authorizes_visual_revision():

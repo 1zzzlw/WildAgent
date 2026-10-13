@@ -135,7 +135,7 @@ knowledge_layer: wild_schema   # wild_schema | constraint | navigation
 entity_type: component         # 实体种类，用于点名校验
 entity_name: component_parameters
 topic: parameters              # 与 entity_name 一样可被硬过滤，取值要对上
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported              # supported | experimental | proposed | deprecated
 authority: maintainer          # schema | engine | verified | maintainer | domain | imported | inferred
 primary_terms:

@@ -14,8 +14,8 @@ import json
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-# 校验器版本：修改校验/修复工具语义时递增，让旧的 ValidationSnapshot 自动失效。
-VALIDATOR_VERSION = "2.7"
+# 未上线期间固定首版；有效性仍按产物、图纸和实际校验结果核对。
+VALIDATOR_VERSION = "1.0"
 
 
 def blueprint_fingerprint(blueprint: dict | None) -> str:

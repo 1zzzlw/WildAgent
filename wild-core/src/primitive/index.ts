@@ -12,7 +12,6 @@ import { applyMaterials } from './materials/apply';
 import { getElementBuilder } from './registry';
 import { normalizeBlueprintInput } from './parser';
 export { parseBlueprint, normalizeBlueprintInput } from './parser';
-export { migrateBlueprintToLatest } from './migrations';
 export { resolveSpatialRelations } from './resolver';
 export { getEngineCapabilities, registerElementBuilder } from './registry';
 export type { Blueprint, ReconstructedEntity, MeshData, EngineDiagnostic, EngineCapability } from './types';

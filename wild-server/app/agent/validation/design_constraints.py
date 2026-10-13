@@ -60,6 +60,8 @@ def design_quota_shortfalls(blueprint: dict, design_brief: dict | None) -> list[
 def validate_design_brief_constraints(
     blueprint: dict,
     design_brief: dict | None,
+    *,
+    design_document: dict | None = None,
 ) -> list[str]:
     """验证骨架设计清单中的**空间/结构**硬约束（数量缺口见 quota_shortfalls）。"""
     if not isinstance(design_brief, dict):
@@ -70,7 +72,9 @@ def validate_design_brief_constraints(
 
     errors: list[str] = []
 
-    realization = design_brief.get("realization")
+    decisions = (design_document or {}).get("decisions") or {}
+    approved_levels = decisions.get("kind") == "architecture"
+    realization = decisions.get("massing") if approved_levels else design_brief.get("realization")
     if isinstance(realization, dict) and realization.get("representation_mode", "full") == "full":
         try:
             modeled_floors = max(1, int(realization.get("modeled_floors", 1)))
@@ -79,6 +83,11 @@ def validate_design_brief_constraints(
             modeled_floors = 1
             floor_height = 3.2
         if modeled_floors > 1:
+            expected_levels = [round(index * floor_height, 2) for index in range(modeled_floors)]
+            if approved_levels:
+                from app.design.coordinates import floor_elevations
+                elevations = floor_elevations(decisions)
+                expected_levels = [round(elevations[index+1], 2) for index in range(modeled_floors)]
             walls = [item for item in geometry.get("elements", []) if item.get("type") == "wall"]
             floors = [item for item in geometry.get("elements", []) if item.get("type") == "floor"]
             wall_levels = {
@@ -87,11 +96,11 @@ def validate_design_brief_constraints(
                 if is_finite_vec3(item.get("from")) and is_finite_vec3(item.get("to"))
             }
             floor_levels = {
-                round(float(item["from"][1]), 2)
+                round(float(item["from"][1]) + (item.get("thickness", 0) if approved_levels else 0), 2)
                 for item in floors
                 if is_finite_vec3(item.get("from"))
+                and (not approved_levels or isinstance(item.get("thickness", 0), (int, float)))
             }
-            expected_levels = [round(index * floor_height, 2) for index in range(modeled_floors)]
             missing_wall_levels = [
                 level for level in expected_levels
                 if not any(abs(actual - level) <= 0.25 for actual in wall_levels)

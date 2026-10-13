@@ -34,7 +34,7 @@ applies_to:
 ```json
 {
   "meta": {
-    "version": "1.1",
+    "version": "1.0",
     "type": "building",
     "name": "电视塔缩尺模型",
     "scale": { "ratio": "1:50", "k": 0.02, "unit": "m", "datum": "室外广场地面" },

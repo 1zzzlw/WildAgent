@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-KNOWLEDGE_REVISION = "rules-v3"
+KNOWLEDGE_REVISION = "rules-v1"
 GENERATION_ROLES = ("protocol", "capability", "relation")
 
 KNOWLEDGE_GUIDANCE = """

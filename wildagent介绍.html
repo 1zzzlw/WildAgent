@@ -287,6 +287,47 @@
       color: #6b5220;
     }
 
+    /* ---------- 目录 ---------- */
+    .toc {
+      margin-top: 4px;
+    }
+
+    .toc-ch {
+      margin: 13px 0 4px;
+      padding-bottom: 3px;
+      border-bottom: 1px solid var(--line);
+      color: var(--accent);
+      font-size: 13.4px;
+      font-weight: 700;
+      letter-spacing: .6px;
+    }
+
+    .toc-ch .n {
+      margin-right: 9px;
+      color: #a9bfce;
+    }
+
+    .toc-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      padding: 2.5px 0;
+      font-size: 11.6px;
+      line-height: 1.6;
+    }
+
+    .toc-row.sub {
+      padding-left: 26px;
+      color: var(--ink-soft);
+      font-size: 11.2px;
+    }
+
+    .toc-row .lead {
+      flex: 1;
+      border-bottom: 1px dotted #b9c7d1;
+      transform: translateY(-4px);
+    }
+
     /* ---------- 创新点卡片 ---------- */
     .idea {
       margin: 13px 0;
@@ -323,27 +364,209 @@
       vertical-align: 2px;
     }
 
+    /* ---------- 成果展示 ---------- */
+    .gallery-intro {
+      margin: 4px 0 14px;
+      padding: 9px 12px;
+      background: var(--accent-soft);
+      border-left: 3px solid var(--accent);
+      color: #2d4356;
+      font-size: 11.7px;
+      line-height: 1.7;
+    }
+
+    .grid7 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 11px;
+    }
+
+    .grid7 figure {
+      margin: 0;
+      padding: 0;
+      background: none;
+      border: none;
+      border-radius: 0;
+    }
+
+    .grid7 .shot {
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: #eceff1;
+      border: 1px solid var(--line);
+    }
+
+    .grid7 .shot img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .grid7 figcaption {
+      margin-top: 5px;
+      color: var(--ink);
+      font-size: 11.4px;
+      font-weight: 600;
+    }
+
+    .grid7 .kind {
+      display: block;
+      margin-top: 1px;
+      color: var(--muted);
+      font-size: 10.4px;
+      font-weight: 400;
+    }
+
+    .work {
+      margin: 15px 0;
+      padding: 12px 0 14px;
+      border-top: 1px solid var(--line);
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .work:first-of-type {
+      padding-top: 4px;
+      border-top: none;
+    }
+
+    .work-head {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      margin-bottom: 8px;
+    }
+
+    .work-no {
+      color: #a9bfce;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .work-name {
+      color: #123f61;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .6px;
+    }
+
+    .work-kind {
+      padding: 1px 7px;
+      border: 1px solid #9fbdd2;
+      border-radius: 2px;
+      color: #3d6c8d;
+      font-size: 10.3px;
+      font-weight: 500;
+    }
+
+    .work-body {
+      display: grid;
+      grid-template-columns: 1.72fr 1fr;
+      gap: 11px;
+      align-items: start;
+    }
+
+    .work-body .main-shot {
+      border: 1px solid var(--line);
+      background: #eceff1;
+    }
+
+    .work-body .main-shot img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+    }
+
+    .work-side {
+      display: grid;
+      gap: 7px;
+    }
+
+    .work-side .sub-shot {
+      border: 1px solid var(--line);
+      background: #eceff1;
+    }
+
+    .work-side .sub-shot img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+    }
+
+    .work-desc {
+      margin: 9px 0 0;
+      color: var(--ink-soft);
+      font-size: 11.5px;
+      line-height: 1.72;
+    }
+
+    .solo-shot {
+      border: 1px solid var(--line);
+      background: #eceff1;
+    }
+
+    .solo-shot img {
+      width: 62%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto;
+    }
+
     /* ---------- 小工具 ---------- */
     .kv {
       margin: 9px 0;
       font-size: 11.7px;
+      border: none;
     }
 
-    .kv div {
-      display: grid;
-      grid-template-columns: 82px 1fr;
-      gap: 10px;
-      padding: 3px 0;
+    .kv th,
+    .kv td {
+      text-align: left;
+      vertical-align: top;
+      border: none;
+      border-bottom: 1px dotted var(--line);
+      padding: 4px 8px 4px 0;
+      font-weight: 400;
+    }
+
+    .kv th {
+      width: 82px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
       border-bottom: 1px dotted var(--line);
     }
 
-    .kv div:last-child {
+    .kv tr:last-child th,
+    .kv tr:last-child td {
       border-bottom: none;
     }
 
-    .kv b {
+    .cover-facts table {
+      margin: 0;
+      border: none;
+      font-size: 11.4px;
+    }
+
+    .cover-facts td {
+      padding: 3px 0;
+      border: none;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .cover-facts tr:last-child td {
+      border-bottom: none;
+    }
+
+    .cover-facts td:first-child {
+      width: 76px;
       color: var(--muted);
-      font-weight: 600;
+      white-space: nowrap;
     }
 
     .foot-note {
@@ -365,46 +588,87 @@
       page-break-inside: avoid;
     }
 
-    /* ---------- 打印 ---------- */
+    /* ---------- 打印 ----------
+       关键：页边距交给 @page，.page 只作为内容块。
+       不对 .page 设 page-break-after，让内容自然流动填满每张物理页；
+       只在章节起始（.page-break）与封面处强制分页。 */
     @page {
       size: A4;
-      margin: 0;
+      margin: 16mm 17mm 15mm;
     }
 
     @media print {
 
       html,
       body {
-        width: 210mm;
         background: #fff;
       }
 
       body {
         padding: 0;
+        font-size: 11.9px;
       }
 
       .page {
-        width: 210mm;
+        width: auto;
+        min-height: 0;
         margin: 0;
+        padding: 0;
+        background: none;
         box-shadow: none;
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      /* 封面独占一页 */
+      .cover {
+        break-after: page;
         page-break-after: always;
       }
 
-      .page:last-child {
-        page-break-after: auto;
-      }
-
+      /* 标题不与后续内容分离 */
       h2,
-      h3 {
+      h3,
+      h4 {
         break-after: avoid;
         page-break-after: avoid;
       }
 
+      h2 {
+        margin-top: 0;
+      }
+
+      /* 整块内容不跨页 */
       figure,
       table,
-      .note {
+      .note,
+      .idea,
+      .work,
+      .kv,
+      .gallery-intro {
         break-inside: avoid;
         page-break-inside: avoid;
+      }
+
+      /* 段落避免孤行寡行 */
+      p,
+      li {
+        orphans: 2;
+        widows: 2;
+      }
+
+      /* 表格允许跨页，但不拆行 */
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      thead {
+        display: table-header-group;
+      }
+
+      img {
+        break-inside: avoid;
       }
     }
   </style>
@@ -423,23 +687,70 @@
         几何落地交给确定性引擎，人机协同通过结构化补丁完成。
       </div>
 
-      <div class="cover-facts">
-        <div><dt>项目形态</dt><dd>独立开发 · 从 0 到 1 设计与实现</dd></div>
-        <div><dt>技术栈</dt><dd>Python / LangGraph / FastAPI / ChromaDB；TypeScript / Vue 3 / Three.js</dd></div>
-        <div><dt>系统组成</dt><dd>确定性几何引擎、Vue 编辑器、FastAPI 服务端（三包独立）</dd></div>
-        <div><dt>核心交付物</dt><dd>WILD 参数化蓝图语言（.wild）及其编译器、校验器与编辑器</dd></div>
-        <div><dt>关键机制</dt><dd>纯函数编译、人工审核中断、修复单调性门禁、能力边界显式声明</dd></div>
-      </div>
+<div class="cover-facts">
+      <table>
+        <tr><td>项目形态</td><td>独立开发 · 从 0 到 1 设计与实现</td></tr>
+        <tr><td>技术栈</td><td>Python / LangGraph / FastAPI / ChromaDB；TypeScript / Vue 3 / Three.js</td></tr>
+        <tr><td>系统组成</td><td>确定性几何引擎、Vue 编辑器、FastAPI 服务端（三包独立）</td></tr>
+        <tr><td>核心交付物</td><td>WILD 参数化蓝图语言（.wild）及其编译器、校验器与编辑器</td></tr>
+        <tr><td>关键机制</td><td>纯函数编译、人工审核中断、修复单调性门禁、能力边界显式声明</td></tr>
+        <tr><td>已生成成果</td><td>传统建筑、塔类地标、传统居住、公共建筑与现代住宅共 7 栋（见第 04 章）</td></tr>
+      </table>
     </div>
+  </div>
 
     <div class="cover-foot">
-      本文档分四部分：项目背景、技术架构、应用场景及创新点。文中所有能力描述均对应当前代码实现，
+      本文档分五部分：项目背景、技术架构、应用场景、建筑成果展示、创新点。文中所有能力描述均对应当前代码实现，
       尚不具备的能力已在相应位置明确标注。
+      <br>全文配图 22 张，均为系统实际生成的建筑渲染结果。
+    </div>
+  </section>
+
+  <!-- ============ 目录 ============ -->
+  <section class="page toc">
+    <h2 style="border-bottom-width:1px">目录</h2>
+
+    <div class="toc">
+      <div class="toc-ch"><span class="n">01</span>项目背景</div>
+      <div class="toc-row sub">1.1 问题的提出<span class="lead"></span></div>
+      <div class="toc-row sub">1.2 两条既有路径及其局限<span class="lead"></span></div>
+      <div class="toc-row sub">1.3 项目定位<span class="lead"></span></div>
+      <div class="toc-row sub">1.4 目标形态<span class="lead"></span></div>
+
+      <div class="toc-ch"><span class="n">02</span>技术架构</div>
+      <div class="toc-row sub">2.1 总体架构<span class="lead"></span></div>
+      <div class="toc-row sub">2.2 三个核心数据契约<span class="lead"></span></div>
+      <div class="toc-row sub">2.3 生成主链路<span class="lead"></span></div>
+      <div class="toc-row sub">2.4 确定性边界：纯函数编译器<span class="lead"></span></div>
+      <div class="toc-row sub">2.5 知识库与检索<span class="lead"></span></div>
+      <div class="toc-row sub">2.6 校验与可靠性闭环<span class="lead"></span></div>
+      <div class="toc-row sub">2.7 前端工作台<span class="lead"></span></div>
+
+      <div class="toc-ch"><span class="n">03</span>应用场景</div>
+      <div class="toc-row sub">3.1 建筑方案生成与深化<span class="lead"></span></div>
+      <div class="toc-row sub">3.2 方案比选与设计交流<span class="lead"></span></div>
+      <div class="toc-row sub">3.3 增量编辑与人机协同<span class="lead"></span></div>
+      <div class="toc-row sub">3.4 精细度分级与预算控制<span class="lead"></span></div>
+      <div class="toc-row sub">3.5 建筑之外的参数化物件<span class="lead"></span></div>
+      <div class="toc-row sub">3.6 作为可复用的服务能力<span class="lead"></span></div>
+
+      <div class="toc-ch"><span class="n">04</span>建筑成果展示</div>
+      <div class="toc-row sub">传统建筑与塔类地标：西安大雁塔、天坛祈年殿、东方明珠电视塔<span class="lead"></span></div>
+      <div class="toc-row sub">传统居住与公共建筑：北京四合院、欧式古典殿宇<span class="lead"></span></div>
+      <div class="toc-row sub">现代住宅：三层新中式、三层欧式、三层平顶挑檐现代别墅<span class="lead"></span></div>
+
+      <div class="toc-ch"><span class="n">05</span>创新点</div>
+      <div class="toc-row sub">创新点 01　语义与几何分离，纯函数编译器保证可复现<span class="lead"></span></div>
+      <div class="toc-row sub">创新点 02　图纸驱动落地，把「建什么」收归程序<span class="lead"></span></div>
+      <div class="toc-row sub">创新点 03　修复的单调性门禁<span class="lead"></span></div>
+      <div class="toc-row sub">创新点 04　能力边界显式声明，拒绝静默降级<span class="lead"></span></div>
+      <div class="toc-row sub">创新点 05　唯一人工决策点与失效保护<span class="lead"></span></div>
+      <div class="toc-row sub">创新点 06　几何引擎与框架彻底解耦<span class="lead"></span></div>
     </div>
   </section>
 
   <!-- ============ 一、项目背景 ============ -->
-  <section class="page">
+  <section class="page page-break">
     <h2><span class="num">01</span>项目背景</h2>
 
     <h3>1.1 问题的提出</h3>
@@ -543,11 +854,11 @@
       <figcaption>图 1　三层结构。依赖方向自上而下单向流动，蓝图为三层之间唯一的数据契约。</figcaption>
     </figure>
 
-    <div class="kv">
-      <div><b>wild-core</b><span>几何引擎。无框架依赖、无 npm 运行时依赖，唯一公开入口；对外只暴露「蓝图进、几何出」。</span></div>
-      <div><b>wild-web</b><span>编辑器。负责交互、状态与渲染适配，不实现任何几何算法，重建在 Web Worker 中执行以避免阻塞交互。</span></div>
-      <div><b>wild-server</b><span>服务端。负责模型调用、知识检索、生成编排与交付校验，同时作为可独立接入的微服务。</span></div>
-    </div>
+    <table class="kv">
+      <tr><th style="width:82px">wild-core</th><td>几何引擎。无框架依赖、无 npm 运行时依赖，唯一公开入口；对外只暴露「蓝图进、几何出」。</td></tr>
+      <tr><th>wild-web</th><td>编辑器。负责交互、状态与渲染适配，不实现任何几何算法，重建在 Web Worker 中执行以避免阻塞交互。</td></tr>
+      <tr><th>wild-server</th><td>服务端。负责模型调用、知识检索、生成编排与交付校验，同时作为可独立接入的微服务。</td></tr>
+    </table>
 
     <h3>2.2 三个核心数据契约</h3>
     <p>
@@ -682,14 +993,14 @@
       这一点直接决定了召回质量：一旦把模型本来就会的常识写进知识库，
       召回结果中就会出现大量与当前任务无关的片段，反而干扰生成。
     </p>
-    <div class="kv">
-      <div><b>知识组织</b><span>按语义分片，标题路径与业务实体元数据随分片继承，保证分片独立可用且可过滤</span></div>
-      <div><b>检索链路</b><span>向量检索 + 元数据过滤 + 业务规则重排；单轮注入上限为最相关 6 个分片、约 18000 字符</span></div>
-      <div><b>效果量化</b><span>以 Hit@K、Recall@K、MRR 三个指标离线评测，避免凭主观判断调整</span></div>
-      <div><b>门控策略</b><span>默认只观测不拦截；待用当前 embedding 的正负样本校准距离阈值后再切换为拦截，避免未校准阈值误伤正常请求</span></div>
-      <div><b>候选入库</b><span>网络检索获得的候选知识先写入隔离区，经批准后由唯一晋升脚本入库并同步向量索引</span></div>
-      <div><b>完整性</b><span>构建阶段逐项校验正式文档清单，缺少任一必需文档即构建失败</span></div>
-    </div>
+    <table class="kv">
+      <tr><th style="width:82px">知识组织</th><td>按语义分片，标题路径与业务实体元数据随分片继承，保证分片独立可用且可过滤</td></tr>
+      <tr><th>检索链路</th><td>向量检索 + 元数据过滤 + 业务规则重排；单轮注入上限为最相关 6 个分片、约 18000 字符</td></tr>
+      <tr><th>效果量化</th><td>以 Hit@K、Recall@K、MRR 三个指标离线评测，避免凭主观判断调整</td></tr>
+      <tr><th>门控策略</th><td>默认只观测不拦截；待用当前 embedding 的正负样本校准距离阈值后再切换为拦截，避免未校准阈值误伤正常请求</td></tr>
+      <tr><th>候选入库</th><td>网络检索获得的候选知识先写入隔离区，经批准后由唯一晋升脚本入库并同步向量索引</td></tr>
+      <tr><th>完整性</th><td>构建阶段逐项校验正式文档清单，缺少任一必需文档即构建失败</td></tr>
+    </table>
     <p>
       上下文成本由此得到结构性控制：知识库总计约 13 万字符，不足引擎源码的九分之一，
       且单轮只注入其中最相关的极小部分。与「每次会话先通读整个项目」的通用 Agent 路径相比，
@@ -698,7 +1009,7 @@
   </section>
 
   <!-- ============ 2.6 校验闭环 ============ -->
-  <section class="page page-break">
+  <section class="page">
     <h3>2.6 校验与可靠性闭环</h3>
     <p class="lead">
       这是 Agent 类系统最容易被做成「看起来在工作、实际在碰运气」的部分。
@@ -908,9 +1219,227 @@
     </p>
   </section>
 
-  <!-- ============ 四、创新点 ============ -->
+  <!-- ============ 四、建筑成果展示 ============ -->
   <section class="page page-break">
-    <h2><span class="num">04</span>创新点</h2>
+    <h2><span class="num">04</span>建筑成果展示</h2>
+    <p class="lead">
+      以下建筑均由系统从自然语言需求生成，经设计审核后编译为参数化蓝图，再由确定性引擎重建渲染。
+      每一类建筑都对应一份可执行的书写规则，体量关系、立面分格、屋顶形式与构件参数均来自规则约束，
+      而非逐件指定。
+    </p>
+
+    <div class="gallery-intro">
+      共 7 栋，覆盖传统建筑、塔类地标、传统居住、公共建筑与现代住宅五类。
+      每栋展示三个视角：正立面与两个不同方位的轴测。
+    </div>
+
+    <div class="grid7">
+      <figure>
+        <div class="shot"><img src="images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-00.png" alt="西安大雁塔"></div>
+        <figcaption>西安大雁塔<span class="kind">传统建筑 · 砖塔</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-28.png" alt="天坛祈年殿"></div>
+        <figcaption>天坛祈年殿<span class="kind">传统建筑 · 攒尖顶</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/东方明珠电视塔/wild-viewport-2026-10-13-07-24-21.png" alt="东方明珠电视塔"></div>
+        <figcaption>东方明珠电视塔<span class="kind">塔类建筑 · 高层地标</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-28.png" alt="北京四合院"></div>
+        <figcaption>北京四合院<span class="kind">传统居住 · 院落布局</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-49.png" alt="欧式古典殿宇"></div>
+        <figcaption>欧式古典殿宇<span class="kind">公共建筑 · 柱式山花</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-45.png" alt="三层新中式别墅"></div>
+        <figcaption>三层新中式别墅<span class="kind">现代住宅 · 坡屋顶</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-32.png" alt="三层欧式别墅"></div>
+        <figcaption>三层欧式别墅<span class="kind">现代住宅 · 欧式形制</span></figcaption>
+      </figure>
+      <figure>
+        <div class="shot"><img src="images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-33.png" alt="三层平顶挑檐现代别墅"></div>
+        <figcaption>三层平顶挑檐现代别墅<span class="kind">现代住宅 · 平顶挑檐</span></figcaption>
+      </figure>
+    </div>
+
+    <p class="work-desc">
+      值得说明的是：这些建筑之间共享同一套构件体系与校验规则，差异来自各自的书写规则文件，
+      而不是为每栋建筑单独开发代码。新增一类建筑形态，原则上只需补规则与必要的几何构建器，
+      不需要改动生成链路。
+    </p>
+  </section>
+
+  <section class="page">
+    <h3 style="margin-top:0">传统建筑与塔类地标</h3>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">01</span>
+        <span class="work-name">西安大雁塔</span>
+        <span class="work-kind">传统建筑 · 砖塔</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-00.png" alt="西安大雁塔正立面"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-03.png" alt="西安大雁塔轴测"></div>
+          <div class="sub-shot"><img src="images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-05.png" alt="西安大雁塔另一侧"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        方形塔身、逐层收分的檐口与平面呈凹字形的塔基，全部由规则中的层数、收分比例与出檐深度推导得出，
+        未逐层指定坐标。塔身层数作为规则参数改变时，檐口与塔基轮廓随之联动。
+      </p>
+    </article>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">02</span>
+        <span class="work-name">天坛祈年殿</span>
+        <span class="work-kind">传统建筑 · 攒尖顶</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-28.png" alt="天坛祈年殿"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-33.png" alt="天坛祈年殿轴测"></div>
+          <div class="sub-shot"><img src="images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-36.png" alt="天坛祈年殿另一侧"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        三重檐、圆形攒尖顶与多层台基的组合。台基的踏步数量与宽度由基座尺寸推导，
+        屋顶的举折曲线来自攒尖顶规则，因此换成方攒尖或多层檐只需替换规则参数。
+      </p>
+    </article>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">03</span>
+        <span class="work-name">东方明珠电视塔</span>
+        <span class="work-kind">塔类建筑 · 高层地标</span>
+      </div>
+      <div class="solo-shot"><img src="images/introduce/东方明珠电视塔/wild-viewport-2026-10-13-07-24-21.png" alt="东方明珠电视塔"></div>
+      <p class="work-desc">
+        细长塔身与球体节点，是当前构件库中几何难度最高的一类。
+        球体幕墙与斜置杆件在规则中单独定义了参数区间与附着方式，
+        说明构件编译器可以承接超出常规建筑尺度的形体。
+        <br>由于塔身是回转对称体，各观察方位呈现高度接近，故仅展示一个视角。
+      </p>
+    </article>
+  </section>
+
+  <section class="page">
+    <h3 style="margin-top:0">传统居住与公共建筑</h3>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">04</span>
+        <span class="work-name">北京四合院</span>
+        <span class="work-kind">传统居住 · 院落布局</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-28.png" alt="北京四合院轴测"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-20.png" alt="北京四合院视角一"></div>
+          <div class="sub-shot"><img src="images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-49.png" alt="北京四合院视角二"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        正房与东西厢房围合出庭院。这类布局的价值在于体现了一个当前的能力边界：
+        系统能生成围合墙体与屋顶的形体，但<strong>不能设计房间位置、功能分区与内部隔墙</strong>——
+        这类需求在生成时会被显式标记为不支持并写入交付清单，而不是硬编一个结果出来。
+      </p>
+    </article>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">05</span>
+        <span class="work-name">欧式古典殿宇</span>
+        <span class="work-kind">公共建筑 · 柱式山花</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-49.png" alt="欧式古典殿宇正立面"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-59.png" alt="欧式古典殿宇轴测一"></div>
+          <div class="sub-shot"><img src="images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-25-09.png" alt="欧式古典殿宇轴测二"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        柱廊、山花与檐部线脚。这套规则的价值在于把古典建筑的形制知识固化成了可执行约束：
+        柱径与柱高的比例、柱式的选择、山花的起拱方式都不由模型临场判断。
+      </p>
+    </article>
+  </section>
+
+  <section class="page">
+    <h3 style="margin-top:0">现代住宅</h3>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">06</span>
+        <span class="work-name">三层新中式别墅</span>
+        <span class="work-kind">现代住宅 · 坡屋顶</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-45.png" alt="三层新中式别墅正立面"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-48.png" alt="三层新中式别墅轴测"></div>
+          <div class="sub-shot"><img src="images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-50.png" alt="三层新中式别墅另一侧"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        坡屋顶、转角披檐、入口雨棚与阳台的组合。同一栋建筑在不同批次生成中会得到不同方案——
+        屋顶形式、开窗节奏与入口处理都会变化，这是设计层保留的自由度；
+        而一旦设计通过审核，编译与几何重建环节对同一份输入始终产出完全一致的结果。
+      </p>
+    </article>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">07</span>
+        <span class="work-name">三层欧式别墅</span>
+        <span class="work-kind">现代住宅 · 欧式形制</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-32.png" alt="三层欧式别墅正立面"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-35.png" alt="三层欧式别墅轴测"></div>
+          <div class="sub-shot"><img src="images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-38.png" alt="三层欧式别墅另一侧"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        四坡屋顶、老虎窗、入口台阶与柱式门廊。与前一栋共享同一套构件，
+        差异仅来自规则中的屋顶形式与立面分格参数。
+      </p>
+    </article>
+
+    <article class="work">
+      <div class="work-head">
+        <span class="work-no">08</span>
+        <span class="work-name">三层平顶挑檐现代别墅</span>
+        <span class="work-kind">现代住宅 · 平顶挑檐</span>
+      </div>
+      <div class="work-body">
+        <div class="main-shot"><img src="images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-33.png" alt="三层平顶挑檐现代别墅"></div>
+        <div class="work-side">
+          <div class="sub-shot"><img src="images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-31.png" alt="三层平顶挑檐现代别墅正立面"></div>
+          <div class="sub-shot"><img src="images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-39.png" alt="三层平顶挑檐现代别墅另一侧"></div>
+        </div>
+      </div>
+      <p class="work-desc">
+        平屋顶配出挑檐口，大面积玻璃与横向线脚。挑檐深度来自规则中的出檐参数，
+        与坡屋顶类建筑共用同一套构件，仅屋面构件的生成方式不同。
+      </p>
+    </article>
+  </section>
+
+  <!-- ============ 五、创新点 ============ -->
+  <section class="page page-break">
+    <h2><span class="num">05</span>创新点</h2>
     <p class="lead">
       以下六点并非功能罗列，而是针对「AI 参与三维内容生产」这一命题中若干公认难题的工程解法。
       每一点都对应可验证的代码约束，而非设计意图的描述。
@@ -988,9 +1517,90 @@
         也为将来在服务端做几何校验或离线出图留下了通路。</p>
     </div>
 
+    <div class="idea">
+      <h4><span class="tag">创新点 07</span>参数化表示带来的存储效率：同等内容，体积相差两个数量级</h4>
+      <p><strong>要解决的问题：</strong>网格路线的产物与几何数据绑定。一旦交付，形体就被固化成顶点，
+        想改一扇窗的位置或高度，只能重新生成或回到建模工具改，无法在文件层面做精确调整。</p>
+      <p><strong>解法：</strong>交付物是参数描述而非几何。构件的类型、尺寸、坐标、依附关系与材质引用
+        构成一份文本；几何在需要时才由确定性引擎重建，不占用存储，也不进入版本库。</p>
+      <p><strong>实测：</strong>对仓库内 204 个可重建场景做全量统计，共 422 万三角面、1261 万顶点。</p>
+      <table style="margin:8px 0 6px">
+        <thead>
+          <tr>
+            <th style="width:34%">同一批内容的存储形式</th>
+            <th style="width:22%">体积</th>
+            <th style="width:20%">相对 .wild</th>
+            <th style="width:24%">可按构件编辑</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>WILD 蓝图（本项目）</strong></td>
+            <td><strong>5.1 MB</strong></td>
+            <td>基准</td>
+            <td>可以</td>
+          </tr>
+          <tr>
+            <td>网格（位置 + 法线 + UV + 索引）</td>
+            <td>433.1 MB</td>
+            <td>约 85 倍</td>
+            <td>不可以</td>
+          </tr>
+          <tr>
+            <td>glTF 顶点量化</td>
+            <td>54.1 MB</td>
+            <td>约 11 倍</td>
+            <td>不可以</td>
+          </tr>
+          <tr>
+            <td>draco 几何压缩</td>
+            <td>21.7 MB</td>
+            <td>约 4 倍</td>
+            <td>不可以</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>价值：</strong>换算到平均尺度，一份 422 万三角面的场景用网格表达需要 433 MB，
+        用 WILD 表达只需 5.1 MB——<strong>平均每个三角面 1.26 字节</strong>。
+        单体量看更直观：一栋 686 个构件、退台式玻璃幕墙商业综合体，
+        蓝图 128 KB，对应网格约 9.7 MB，差 78 倍。</p>
+      <p style="color:#5b6b78;font-size:11.2px">
+        注：上述网格体积按位置 12 + 法线 12 + UV 8 字节每顶点、索引 4 字节估算。
+        由于几何引擎当前不做顶点焊接，该值是网格方案的上界；
+        若做焊接，顶点数通常可降到三分之一至六分之一。即便如此，与压缩网格相比仍有约四倍差距。
+      </p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 08</span>粒度即预算：精细度与算力由同一个参数约束</h4>
+      <p><strong>要解决的问题：</strong>让用户选择「更精细」时，真正的成本通常在生成之后才显现——
+        模型调用次数、构件条目数、渲染耗时同时上升，用户既无法预估，也无法在生成前取舍。</p>
+      <p><strong>解法：</strong>把四档粒度做成单一开关，由它同时决定设计范围与资源预算：
+        迭代上限 4 / 6 / 12 / 20 次，模型调用 6 / 10 / 24 / 40 次，最大构件条目 8 / 12 / 24 / 40 条。
+        用户在发起生成前就能知道大致消耗与预期精细度。</p>
+      <p><strong>价值：</strong>生成质量与生成成本不再互相独立地漂移，而是绑定在用户的一次显式选择上。
+        更重要的是，预算不是靠提示词里的「请简洁一点」去约束模型，
+        而是由程序硬性执行——即便模型想多调用几次，条目上限也不允许。</p>
+    </div>
+
+    <div class="idea">
+      <h4><span class="tag">创新点 09</span>知识治理做减法：明确不收录什么，与明确收录同样重要</h4>
+      <p><strong>要解决的问题：</strong>知识库的默认做法是「能加就加」。但一旦把模型本来就会的通用常识写进知识库，
+        召回结果中就会出现大量与当前任务无关的片段，反而干扰生成，且这类冗余无法被察觉。</p>
+      <p><strong>解法：</strong>把知识库的建设标准定为能力边界，而非覆盖广度。
+        只收录两类内容——<strong>协议规范</strong>（这个系统的构件怎么写）与
+        <strong>引擎能力边界</strong>（哪种形态当前做不到）。
+        模型通识一律不入库。网络检索获得的候选内容先写入隔离区，
+        经人工批准后由唯一晋升脚本入库，避免未经验证的内容直接进入召回路径。</p>
+      <p><strong>价值：</strong>知识库规模与模型能力增长是负相关的——模型越强，需要补给的知识越少。
+        这一点与「靠专家知识武装模型」的直觉相反，但它是本项目实测下来最有效的取舍之一：
+        知识库总量约 13 万字符，不足引擎源码的九分之一，单轮只注入其中最相关的 6 个分片。</p>
+    </div>
+
     <div class="foot-note">
       说明：以上创新点均为工程机制层面的设计取舍，其价值需要与同类方案在同一模型、
       相近任务和一致验收标准下比较成功率、耗时、Token 消耗、修改准确性与最终渲染效果后才能量化。
+      创新点 07 的体积数据为仓库内 204 个场景的全量实测，其余为设计描述。
       本文档不对尚未量化的部分给出结论。
     </div>
   </section>

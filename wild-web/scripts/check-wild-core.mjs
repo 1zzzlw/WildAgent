@@ -88,7 +88,7 @@ try {
   }
 
   assertInvalidBlueprintIsRejected(core.parseBlueprint);
-  assertVersionMigration(core.parseBlueprint);
+  assertFixedBlueprintVersion(core.parseBlueprint);
   await assertSideWallOpeningAlignment(core);
   await assertRightAngleWallJointCoverage(core);
   await assertArchitecturalWallAttributes(core);
@@ -355,14 +355,16 @@ async function assertSlopedBeamDirection(core) {
   }
 }
 
-function assertVersionMigration(parseBlueprint) {
-  const migrated = parseBlueprint(JSON.stringify({
-    meta: { version: '1.0', type: 'building', name: 'migration-check' },
-    geometry: { elements: [] },
-    materials: {},
-  }));
-  if (migrated.meta.version !== '1.1') {
-    throw new Error(`WILD 1.0 未显式迁移到 1.1: ${migrated.meta.version}`);
+function assertFixedBlueprintVersion(parseBlueprint) {
+  for (const version of ['1.0', '1.1']) {
+    const source = { meta: { version, type: 'asset', name: 'version-check' },
+      geometry: { elements: [{ type: 'primitive', id: 'sphere', shape: 'sphere', radius: 1 }] }, materials: {} };
+    const before = JSON.stringify(source);
+    const parsed = parseBlueprint(before);
+    if (parsed.meta.version !== '1.0' || JSON.stringify(parsed.geometry.elements) !== JSON.stringify(source.geometry.elements)
+      || JSON.stringify(source) !== before) {
+      throw new Error('蓝图首版归一化改变几何数据或原始输入');
+    }
   }
 }
 

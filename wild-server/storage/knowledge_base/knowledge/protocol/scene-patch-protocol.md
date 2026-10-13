@@ -6,7 +6,7 @@ knowledge_layer: wild_schema
 entity_type: schema
 entity_name: scene_patch_protocol
 topic: patch
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: engine
 primary_terms:

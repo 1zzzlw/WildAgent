@@ -153,6 +153,63 @@ def run(coroutine):
     raise AssertionError("确定性装配不应执行异步 IO")
 
 
+def state_with_declared_levels(levels, thickness):
+    from app.design.contracts import DesignDocument
+    state, _ = state_with_stair()
+    raw = deepcopy(state["design_document"])
+    raw["decisions"]["massing"]["floor_height"] = 3.4
+    raw["decisions"]["floor_layouts"] = [{"floor": i+1, "level": y} for i, y in enumerate(levels)]
+    document = DesignDocument.model_validate(raw)
+    resolved = resolve_design(document)
+    state.update(design_document=document.model_dump(mode="json"),
+                 resolved_design=resolved.model_dump(mode="json"), drawing_hosts=resolved.projection_elements)
+    walls = {e["id"]: e for e in resolved.projection_elements}
+    for task_id, entities in state["component_fragments"].items():
+        for entity in entities:
+            if entity["type"] == "wall":
+                entity["from"], entity["to"] = walls[entity["id"]]["from"], walls[entity["id"]]["to"]
+            elif entity["type"] == "floor":
+                y = levels[int(entity["id"].rsplit("_", 1)[1])] - thickness
+                entity["from"][1] = entity["to"][1] = y
+                entity["thickness"] = thickness
+            elif entity["type"] == "stair":
+                entity["from"][1], entity["to"][1] = levels
+            elif entity["type"] == "roof":
+                entity["position"][1] = resolved.levels[-1].top_y
+        for record in state["component_diagnostics"][task_id]["implementations"].values():
+            record["entity_fingerprint"] = blueprint_fingerprint(entities)
+    return state
+
+
+@pytest.mark.parametrize("levels,thickness", [([0.45, 4.05], 0.18), ([-2, 1.8], 0.6),
+                                            ([5, 9.2], 0.4), ([0, 5], 0.15)])
+def test_compile_uses_declared_world_floor_surfaces_without_reexecuting_tasks(levels, thickness):
+    state = state_with_declared_levels(levels, thickness)
+    before = deepcopy(state)
+    result = run(compile_node(state))
+    assert not result["compile_report"].get("retry_implementation")
+    assert result["compile_report"]["ok"]
+    assert state == before
+    assert result["compile_report"]["abandoned_markers"] == []
+    assert not evaluate_candidate(result["merged_blueprint"], design_document=state["design_document"],
+                                  design_brief=result["design_brief"])["errors"]
+
+
+@pytest.mark.parametrize("missing_type", ["wall", "floor", "stair"])
+def test_declared_levels_still_reject_actual_missing_structure(missing_type):
+    from app.agent.validation.design_constraints import validate_design_brief_constraints
+    state = state_with_declared_levels([0.45, 4.05], 0.6)
+    blueprint = impl.implementation_blueprint(state)
+    blueprint["geometry"]["elements"] = [e for e in blueprint["geometry"]["elements"]
+        if e["type"] != missing_type or (missing_type == "wall" and e["from"][1] < 4)
+        or (missing_type == "floor" and e["from"][1] < 3)]
+    errors = validate_design_brief_constraints(blueprint, {"realization": state["design_document"]["decisions"]["massing"]},
+                                             design_document=state["design_document"])
+    assert len(errors) == 1
+    assert {"wall": "缺少墙体标高 [4.05]", "floor": "缺少楼板标高 [4.05]",
+            "stair": "没有 stair 构件"}[missing_type] in errors[0]
+
+
 @pytest.mark.parametrize("endpoint", [[5, 3.2, 11], [5, 3.2, 10]])
 def test_stair_endpoint_outside_or_at_edge_without_landing_is_local_failure(endpoint):
     state, stair = state_with_stair(axis=2)

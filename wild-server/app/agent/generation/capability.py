@@ -33,9 +33,8 @@ from typing import Any
 from app.agent.generation.component.registry import COMPONENT_REGISTRY
 from app.utils.blueprint_normalizer import SCHEMA_PATH
 
-#: 能力面版本。schema 或注册表变化时**内容会变但版本不变**—— 版本只标"这份查询面
-#: 的形状/语义有没有变"，不标"内容有没有变"（内容变更是正常的，改引擎就该变）。
-CAPABILITY_SURFACE_VERSION = "p6b.3"
+#: 未上线期间固定首版；能力内容始终从当前 Schema 和注册表读取。
+CAPABILITY_SURFACE_VERSION = "p6b.1"
 
 #: 查询状态闭集。新增状态要显式改这里（测试有守卫），别悄悄多一个 —— 状态一多，
 #: 调用方的 `if status == "unsupported"` 分支就会漏掉新情况。

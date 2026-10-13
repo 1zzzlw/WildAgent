@@ -6,7 +6,7 @@ knowledge_layer: constraint
 entity_type: policy
 entity_name: design_freedom
 topic: freedom
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: maintainer
 primary_terms:

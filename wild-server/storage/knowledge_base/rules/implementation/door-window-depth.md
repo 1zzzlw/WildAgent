@@ -6,7 +6,7 @@ knowledge_layer: constraint
 entity_type: relation
 entity_name: door_window_depth_convention
 topic: depth
-wild_version: "1.1"
+wild_version: "1.0"
 status: supported
 authority: engine
 primary_terms:

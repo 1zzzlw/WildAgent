@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v4'
+const SHADER_VERSION = 'default-surface-v1'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>

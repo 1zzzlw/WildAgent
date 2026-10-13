@@ -7,8 +7,6 @@
 
 import type { Blueprint } from './types';
 import { validateBlueprintSchema } from './schema-validator';
-import { migrateBlueprintToLatest } from './migrations';
-export { migrateBlueprintToLatest } from './migrations';
 
 export function parseBlueprint(json: string): Blueprint {
   let obj: any;
@@ -33,7 +31,7 @@ export function parseBlueprint(json: string): Blueprint {
     throw new Error(`Invalid blueprint version: ${version}`);
   }
   if (major > 1 || (major === 1 && minor > 1)) {
-    throw new Error(`Unsupported blueprint version: ${version}. Engine supports up to 1.1`);
+    throw new Error(`Unsupported blueprint version: ${version}. Engine uses 1.0 and accepts legacy 1.1`);
   }
 
   if (obj.geometry.elements !== undefined && !Array.isArray(obj.geometry.elements)) {
@@ -50,7 +48,7 @@ export function parseBlueprint(json: string): Blueprint {
   return obj as Blueprint;
 }
 
-/** 将模型常见简写转换为标准 WILD 1.1 字段，不修改输入对象。 */
+/** 将模型常见简写转换为标准 WILD 字段，不修改输入对象。 */
 export function normalizeBlueprintInput(value: any): any {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
 
@@ -81,12 +79,13 @@ export function normalizeBlueprintInput(value: any): any {
 
   const normalized = {
     ...value,
+    meta: value.meta?.version === '1.1' ? { ...value.meta, version: '1.0' } : value.meta,
     geometry: value.geometry && typeof value.geometry === 'object'
       ? { ...value.geometry, elements, components: normalizedComponents }
       : value.geometry,
     materials,
   };
-  return migrateBlueprintToLatest(normalized).blueprint;
+  return normalized;
 }
 
 /** 规范化 geometry.components 中的单个构件（如 light 的颜色格式）。 */
@@ -197,7 +196,7 @@ function normalizeElement(element: any): any {
   }
 
   if (element.type === 'roof') {
-    // 兼容模型常用的建筑术语，统一转换为 WILD 1.1 标准枚举值
+    // 兼容模型常用的建筑术语，统一转换为 WILD 标准枚举值
     const roofType = element.roofType;
     if (roofType === 'pitched' || roofType === 'sloped' || roofType === 'gabled') {
       // pitched/sloped 是通用坡屋顶术语，默认映射为双坡（gable）
