@@ -273,8 +273,8 @@
     pre {
       overflow-x: auto;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-      font-size: 10.6px;
-      line-height: 1.62;
+      font-size: 9.4px;
+      line-height: 1.42;
       color: #22333f;
       white-space: pre;
     }
@@ -1135,9 +1135,6 @@
 └──────────────────────────────────────────────────────────────┘</pre>
       <figcaption>图 1　三层结构。依赖方向自上而下单向流动，蓝图为三层之间唯一的数据契约。</figcaption>
     </figure>
-  </section>
-
-  <section class="page">
 <table class="kv">
       <tr>
         <th style="width:82px">wild-core</th>
@@ -1157,6 +1154,9 @@
       系统复杂度的主要来源不是代码量，而是三类数据在不同阶段的职责边界。
       明确划分后，绝大多数复杂问题都可以归因到「某个契约被越界使用」。
     </p>
+  </section>
+
+  <section class="page">
 <table>
       <thead>
         <tr>
@@ -1199,9 +1199,6 @@
       并由测试强制「节点入口文件不超过 100 行」「节点之间不得互相导入」「领域包不得反向依赖入口层」。
       这条约束保证了任何一次功能扩展都不会退化成核心文件持续膨胀。
     </p>
-  </section>
-
-  <section class="page">
 <figure>
       <pre>用户自然语言
    │
