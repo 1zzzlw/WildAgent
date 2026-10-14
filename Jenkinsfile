@@ -6,10 +6,16 @@
 //   - http://www.zzzlew.asia（域名，A 记录指向 121.41.78.197）
 //   - http://121.41.78.197（IP 兜底，排障用）
 //
-// SSL 状态：**尚未启用**。nginx.conf 只有 listen 80 单server 块、无证书挂载，
-//   与 Jenkinsfile 的 start_web() 保持一致。启用 SSL 时两者必须同批改，否则
-//   会出现「nginx.conf 引用证书但容器没挂证书卷」→ nginx 启动失败 → 部署回滚。
-//   参考 docs/operations/HTTPS_SETUP.md。
+// SSL 状态：**已启用**（2026-10-14）。nginx.conf 为四段结构：
+//   80 default_server →444 / 443 default_server → 444（拦 IP 与非本站域名）
+//   80 业务域名→ 301 跳 https + 放行 ACME challenge
+//   443 业务域名       → 静态文件 + /api /ws 反代
+// 🔴 **三处硬绑定，改任一项必须同批改其余两处**：
+//   1. wild-web/nginx.conf 的 ssl_certificate 路径（容器内 /etc/letsencrypt/...）
+//   2. 本文件 start_web() 的证书卷挂载（宿主机 /opt/wild-agent/certbot/... → 容器内）
+//   3. 本文件探活段（打 443 + 容忍 301/444，不能再期望 http 200）
+//   证书只签了 www.zzzlew.asia，**裸域不在证书内**，server_name 不含裸域。
+//   启用/关闭 SSL 前先读 docs/operations/HTTPS_SETUP.md。
 //
 // 与更早一版（无域名、纯 IP）的差异：
 //   1. nginx.conf 的 server_name 增加 www.zzzlew.asia，同时保留 default_server
@@ -83,7 +89,7 @@ pipeline {
     string(name: 'DEPLOY_SSH_USER', defaultValue: 'root', description: '部署服务器 SSH 用户')
     string(name: 'DEPLOY_SSH_HOST', defaultValue: '121.41.78.197', description: '部署服务器地址（亦为 nginx default_server 的 IP 兜底入口）')
     string(name: 'DEPLOY_SSH_PORT', defaultValue: '22', description: '部署服务器 SSH 端口')
-    string(name: 'DEPLOY_WEB_PORT', defaultValue: '80', description: '宿主机对外暴露的前端端口；当前纯 HTTP，仅需 80（启用 SSL 后需增加 443）')
+    string(name: 'DEPLOY_WEB_PORT', defaultValue: '80', description: '宿主机映射给前端 80 的端口；80 现在只做 301 与 ACME challenge，业务由固定的 443 承担')
     string(name: 'DEPLOY_PUBLIC_HOST', defaultValue: 'www.zzzlew.asia', description: '对外访问域名。必须与 wild-web/nginx.conf 的 server_name 保持一致；需已解析到 DEPLOY_SSH_HOST。留空则只报 IP 入口')
     string(name: 'REMOTE_WORK_DIR', defaultValue: '/opt/wild-agent/builds', description: '远程服务器临时构建目录')
     string(name: 'DEPLOY_DATA_DIR', defaultValue: '/opt/wild-agent/storage', description: '远程服务器运行时数据目录')
@@ -434,16 +440,21 @@ start_server() {
     "$server_image"
 }
 
-# 纯 HTTP 部署：nginx.conf 只有 listen 80 单 server 块，未启用 SSL，
-# 因此不需要 443 发布与 Let's Encrypt 证书卷挂载。
-# ⚠️ 启用 SSL 时这一段必须与 nginx.conf 同批改，否则容器缺证书卷会启动失败。
+# HTTPS 部署：80 只做 301 与 ACME challenge，业务在 443。
+# 🔴 两行证书卷挂载与 wild-web/nginx.conf 的 ssl_certificate 路径是**硬绑定**：
+#    少挂一行 ⇒ 容器内找不到证书 ⇒ nginx 启动失败 ⇒ 部署回滚。
+# ⚠️ 端口从 "${DEPLOY_WEB_PORT}:80" 改为固定 80:80 + 443:443：HTTP 现在只做 301，
+#    业务由 443 承担。
 start_web() {
   web_image="$1"
   docker run -d \\
     --name wild-web \\
     --restart unless-stopped \\
     --network wild-net \\
-    -p "$DEPLOY_WEB_PORT":80 \\
+    -p 80:80 \
+    -p 443:443 \
+    -v /opt/wild-agent/certbot/letsencrypt:/etc/letsencrypt:ro \
+    -v /opt/wild-agent/certbot/www:/var/www/certbot:ro \\
     "$web_image"
 }
 
@@ -502,25 +513,40 @@ if ! start_web "$IMAGE_WEB_NAME"; then
   rollback_deployment "新版 wild-web 容器创建失败"
 fi
 
-echo "=== 等待新版 wild-web 就绪（最多 40 秒） ==="
+echo "=== 等待新版 wild-web 就绪（最多 60 秒） ==="
+# ⚠️ 启用 SSL 后**不能**再用 `wget http://127.0.0.1/` 判据：
+#    80 的 default_server 是 `return 444`（IP 直连被拦），wget 会非零退出，
+#    于是永远探不到 ready → 40 秒后误判"未就绪" → 回滚一个其实完全正常的部署。
+#    改用「nginx -t 配置语法」+「HTTPS 端口可握手」两段：
+#    前者能第一时间暴露证书路径写错/卷没挂（nginx 起不来的真实原因），
+#    后者确认监听真的起来了。
 web_ready=0
 attempt=1
-while [ "$attempt" -le 20 ]; do
+while [ "$attempt" -le 30 ]; do
   if [ "$(docker inspect -f '{{.State.Running}}' wild-web 2>/dev/null || true)" != "true" ]; then
     rollback_deployment "新版 wild-web 在启动阶段退出"
   fi
-  # 纯 HTTP 部署下直接打 nginx 自身；容器内 busybox wget 即可，不再依赖 301 特判。
-  if docker exec wild-web wget -q -O /dev/null http://127.0.0.1/ >/dev/null 2>&1; then
-    web_ready=1
-    echo "wild-web 已就绪（attempt=$attempt）"
-    break
+  # 1) nginx 能加载配置（含 ssl_certificate）——证书缺失/卷未挂会在这一步暴露
+  if docker exec wild-web nginx -t >/dev/null 2>&1; then
+    # 2) 443 端口在容器内可握手（busybox wget 支持 --no-check-certificate）
+    if docker exec wild-web wget -q --no-check-certificate -O /dev/null https://127.0.0.1/ >/dev/null 2>&1; then
+      web_ready=1
+      echo "wild-web 已就绪（attempt=$attempt，nginx -t 通过且 HTTPS 可达）"
+      break
+    fi
   fi
   attempt=$((attempt + 1))
   sleep 2
 done
 
 if [ "$web_ready" -ne 1 ]; then
-  rollback_deployment "新版 wild-web 在 40 秒内未就绪"
+  echo "--- wild-web 未就绪，最后 30 行日志 ---"
+  docker logs --tail=30 wild-web 2>&1 || true
+  echo "--- 容器内 nginx -t 的实际输出 ---"
+  docker exec wild-web nginx -t 2>&1 || true
+  echo "--- 端口映射 ---"
+  docker port wild-web 2>&1 || true
+  rollback_deployment "新版 wild-web 在 60 秒内未就绪"
 fi
 REMOTE_SCRIPT
 
@@ -594,11 +620,45 @@ if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
 fi
 
 echo ""
-echo "--- 前端 API 反向代理可达性 ---"
+echo "--- 证书与 HTTPS 可达性（启用 SSL 后新增） ---"
+# 证书文件必须真实存在于宿主机，否则容器内 nginx 加载证书失败、容器根本起不来。
+cert_live="/opt/wild-agent/certbot/letsencrypt/live/${DEPLOY_PUBLIC_HOST}"
+if [ -f "$cert_live/fullchain.pem" ] && [ -f "$cert_live/privkey.pem" ]; then
+  echo "OK: 证书存在 $cert_live"
+  openssl x509 -in "$cert_live/fullchain.pem" -noout -subject -enddate 2>/dev/null \
+    && echo "  （证书信息见上；到期早于 30 天需检查 scripts/cert-renew.sh 的 crontab）" || true
+else
+  echo "ERROR: 证书缺失 $cert_live/fullchain.pem"
+  echo "  修复: 在服务器申请 Let's Encrypt 证书（阿里云 WAF 会拦 HTTP-01，需 DNS 验证），"
+  echo "        参考 docs/operations/HTTPS_SETUP.md 第一节。"
+  exit 1
+fi
+
+# HTTPS 业务判据：容器内 443 应返回 200。
+# -k：走 127.0.0.1 自查时证书 CN 与 IP 不符，校验必然失败，这里只验"能不能握手+有没有页面"。
+code_https=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 "https://127.0.0.1/" || echo 000)
+echo "GET https://127.0.0.1/ -> $code_https"
+if [ "$code_https" != "200" ]; then
+  echo "ERROR: HTTPS 业务未就绪（期望 200，实际 $code_https）"
+  echo "  检查: docker port wild-web 是否含 443、start_web() 是否挂载了证书卷、nginx 日志是否有 'cannot load certificate'"
+  docker logs --tail=30 wild-web 2>&1 || true
+  exit 1
+fi
+
+# HTTP 301 是**预期行为**（80 只做跳转），不是故障：确认跳转目标确实是 https。
+code_redirect=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
+echo "GET http://(Host: ${DEPLOY_PUBLIC_HOST}) -> $code_redirect（预期 301）"
+if [ -n "$DEPLOY_PUBLIC_HOST" ] && [ "$code_redirect" != "301" ]; then
+  echo "WARN: 域名 HTTP 未返回 301，实际 $code_redirect"
+  echo "  若已是 200，说明 80 端口没走redirect server块，检查 nginx.conf 的 HTTP → HTTPS 段。"
+fi
+
+echo ""
+echo "--- 前端 API 反向代理可达性（HTTPS） ---"
 # 用 /api/config/llm（无需鉴权的真实路由）而不是状态码判 200：
 # 后端健康检查在 /health/ready，不在 /api/ 下；而不存在的路径会被 SPA 的
 # try_files 兜底成 index.html 200，只看状态码会假通过。
-api_body=$(curl -s --max-time 8 "http://127.0.0.1:${DEPLOY_WEB_PORT}/api/config/llm" || true)
+api_body=$(curl -sk --max-time 8 "https://127.0.0.1/api/config/llm" || true)
 case "$api_body" in
   *storage_path*)
     echo "GET /api/config/llm -> 反代生效（已拿到后端 JSON）"
@@ -630,12 +690,17 @@ REMOTE_SCRIPT
 
             echo "部署完成；访问入口："
             if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
-              echo "  域名：http://${DEPLOY_PUBLIC_HOST}/"
+              echo "  https://${DEPLOY_PUBLIC_HOST}/"
             fi
-            echo "  IP（兜底）：http://${DEPLOY_SSH_HOST}:${DEPLOY_WEB_PORT}/"
+            echo "  http://${DEPLOY_PUBLIC_HOST}/  会 301跳到上面的 https"
+            echo ""
+            echo "提示："
+            echo "  1) IP 直连已被 nginx return 444 拦截（nginx.conf 的 default_server），这是预期行为。"
+            echo "     排障请用 ssh -L 本地转发，不要依赖 IP 访问。"
             if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
-              echo "提示：外部浏览器访问请确认 DNS 已解析、服务器安全组已放行 ${DEPLOY_WEB_PORT} 端口。"
+              echo "  2) 外部浏览器访问需服务器安全组放行 80 与 443。"
             fi
+            echo "  3) 证书续期由 crontab + scripts/cert-renew.sh 负责；换服务器后需重新部署该脚本与 crontab。"
           ''')
         }
       }
