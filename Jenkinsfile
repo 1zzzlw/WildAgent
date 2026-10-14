@@ -14,7 +14,7 @@
 // 与更早一版（无域名、纯 IP）的差异：
 //   1. nginx.conf 的 server_name 增加 www.zzzlew.asia，同时保留 default_server
 //      与 _ 兜底，域名和 IP 两种访问方式都通；探活判据沿用 IP Host，无需改动；
-   2. 保持无 443 发布、无 certbot/letsencrypt 挂载（未启用 SSL）；
+   //   2. 保持无 443 发布、无 certbot/letsencrypt 挂载（未启用 SSL）；
 //   3. 预检/ password 认证 / HTTP 探活等既有机制不变。
 //
 // 历史配置（上一台服务器 39.106.183.13 + Let's Encrypt）完整保留在
