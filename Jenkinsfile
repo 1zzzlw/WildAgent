@@ -199,7 +199,14 @@ pipeline {
             echo ""
             echo "=== 域名解析（nginx server_name 对应的公网入口）==="
             if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
-              resolved=$(ssh $SSH_OPTS "$DEPLOY_TARGET" "getent hosts '$DEPLOY_PUBLIC_HOST' | awk '{print \$1}' | head -1" 2>/dev/null || true)
+              # 不用 awk '{print $1}'：$1 经 Groovy 三引号 -> bash 双引号这条链会被当成位置参数，
+              # sh 调用没有传参，set -eu 下直接报 unbound variable。
+              # 本行远端命令串内**不含任何裸 $ / $1**（只有已展开的 '$DEPLOY_PUBLIC_HOST'），
+              # 字段切分放在本地管道，无 $ 转义问题。
+              # 归一化对齐空白用 sed 而不是 tr：Windows agent 上是 Git Bash 的 tr，
+              # tr -s '[:space:]' / tr -s ' \t' 都不生效（字符类与 \t 转义都不认），
+              # 实测只有 sed 的 [[:space:]] 可靠。
+              resolved=$(ssh $SSH_OPTS "$DEPLOY_TARGET" "getent hosts '$DEPLOY_PUBLIC_HOST'" 2>/dev/null | tr -d '\r' | head -1 | sed 's/[[:space:]][[:space:]]*/ /g' | cut -d' ' -f1 || true)
               if [ -z "$resolved" ]; then
                 echo "WARN: 服务器上解析不到 $DEPLOY_PUBLIC_HOST"
                 echo "  若确认 DNS 已配置，可忽略（服务器侧 DNS 缓存可能未刷新）。"
