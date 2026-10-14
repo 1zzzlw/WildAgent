@@ -28,6 +28,11 @@ import { useHistoryStore } from './historyStore'
 import { reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 
+function compactSceneName(name: string): string {
+  const firstClause = name.trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
+  return [...firstClause].slice(0, 24).join('')
+}
+
 export const useSceneStore = defineStore('scene', () => {
   // 当前编辑的场景文档
   const document = ref<SceneDocument | null>(null)
@@ -63,12 +68,14 @@ export const useSceneStore = defineStore('scene', () => {
   // 否则回退到蓝图 editor 元数据中的记录（无则从 1 开始），保证后续 patch base_revision 匹配。
   async function loadBlueprint(bp: Blueprint, name?: string, revision?: number): Promise<boolean> {
     const normalizedBlueprint = normalizeBlueprintInput(bp) as Blueprint
+    const sceneName = compactSceneName(normalizedBlueprint.meta?.name || name || '未命名建筑')
+    normalizedBlueprint.meta = { ...normalizedBlueprint.meta, name: sceneName }
     const editorRevision = typeof normalizedBlueprint.editor?.revision === 'number'
       ? normalizedBlueprint.editor.revision
       : undefined
     document.value = {
       id: `scene_${Date.now()}`,
-      name: name || normalizedBlueprint.meta.name || '未命名建筑',
+      name: sceneName,
       revision: revision ?? editorRevision ?? 1,
       blueprint: normalizedBlueprint,
       dirty: false

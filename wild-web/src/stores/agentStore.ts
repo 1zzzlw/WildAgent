@@ -69,7 +69,7 @@ function compactSessionTitle(name: string, maxLength = 16): string {
 }
 
 function loadDetailLevel(): BuildingDetailLevel {
-  return BUILDING_DETAIL_LEVELS.find(level => level.value === localStorage.getItem(STORAGE_KEY_DETAIL_LEVEL))?.value || 'simple'
+  return BUILDING_DETAIL_LEVELS.find(level => level.value === localStorage.getItem(STORAGE_KEY_DETAIL_LEVEL))?.value || 'minimal'
 }
 
 function loadProceduralMaterialsEnabled(): boolean {

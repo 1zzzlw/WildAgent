@@ -95,4 +95,4 @@ async def test_graph_keeps_node_thinking_independent_of_detail_level(level, thin
     result = await graph.compile().ainvoke(state)
     assert "thinking_mode" in GenerationInput.__annotations__
     assert result["thinking_mode"] is (thinking is not False)
-    assert result["detail_level"] == (level if level in DETAIL_LEVEL_GUIDANCE else "simple")
+    assert result["detail_level"] == (level if level in DETAIL_LEVEL_GUIDANCE else "minimal")

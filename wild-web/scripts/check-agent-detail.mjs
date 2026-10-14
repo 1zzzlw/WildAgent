@@ -37,7 +37,7 @@ const { BUILDING_DETAIL_LEVELS } = await import(pathToFileURL(path.join(cache, '
 const { createUserMessageRequest } = await import(pathToFileURL(path.join(cache, 'agent/protocol.mjs')))
 setActivePinia(createPinia())
 const store = useAgentStore()
-assert.equal(store.detailLevel, 'simple')
+assert.equal(store.detailLevel, 'minimal')
 assert.equal(store.thinkingMode, true)
 assert.ok(!('precisionMode' in store))
 storage.set('wild_thinking_mode', 'false')
@@ -65,11 +65,12 @@ for (const thinking of [false, true]) {
   }
 }
 assert.equal(createUserMessageRequest('设计建筑', 'session', undefined, 0, {}, []).thinking_mode, true)
+assert.equal(createUserMessageRequest('设计建筑', 'session', undefined, 0, {}, []).detail_level, 'minimal')
 setActivePinia(createPinia())
 assert.equal(useAgentStore().detailLevel, 'detailed')
 storage.set('wild_detail_level', 'obsolete')
 setActivePinia(createPinia())
-assert.equal(useAgentStore().detailLevel, 'simple')
+assert.equal(useAgentStore().detailLevel, 'minimal')
 
 const turn = store.startTurn('request', 'session', '设计建筑')
 store.setTurnPlan('session', 'request', {

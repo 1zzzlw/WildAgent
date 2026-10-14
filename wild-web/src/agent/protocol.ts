@@ -36,7 +36,7 @@ export function createUserMessageRequest(
   blueprint?: Record<string, unknown>,
   proceduralMaterialsEnabled: boolean = false,
   recentMessages: Array<{ role: 'user' | 'assistant'; content: string }> = [],
-  detailLevel: BuildingDetailLevel = 'simple',
+  detailLevel: BuildingDetailLevel = 'minimal',
   thinkingMode: boolean = true,
 ): UserMessageRequest {
   return {

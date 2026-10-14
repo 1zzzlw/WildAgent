@@ -2,12 +2,115 @@
 from math import cos, hypot, isfinite, sin, tan
 
 TOLERANCE = 0.001  # 米，与批准实体比较相同，1mm。
+NATIVE_SIZE_FIELDS = {("balcony", "height"): "slabThickness", ("canopy", "height"): "thickness"}
 
 
 def entity_index(blueprint: dict) -> dict:
     geometry = blueprint.get("geometry") or {}
     return {e["id"]: e for bucket in ("elements", "components")
             for e in geometry.get(bucket, []) if isinstance(e, dict) and e.get("id")}
+
+
+def stair_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> list[str]:
+    """逐标记检查明确楼面连接；平台承托仍由共享空间校验检查。"""
+    targets = marker.get("floor_connections") or []
+    flights = [e for e in entities if e.get("type") == "stair"
+               and all(isinstance(e.get(k), list) and len(e[k]) == 3
+                       and all(type(n) in (int, float) and isfinite(n) for n in e[k]) for k in ("from", "to"))]
+    if not targets or not flights:
+        return []
+    errors = []
+    for target in targets:
+        reached = [target["from_y"]]
+        while True:
+            additions = [e["to"][1] for e in flights
+                         if any(abs(e["from"][1]-y) <= TOLERANCE for y in reached)
+                         and not any(abs(e["to"][1]-y) <= TOLERANCE for y in reached)]
+            if not additions:
+                break
+            reached.extend(additions)
+        if not any(abs(target["to_y"]-y) <= TOLERANCE for y in reached):
+            errors.append(f"❌ [{', '.join(e['id'] for e in flights)}] 图纸标记 {marker['id']} "
+                          f"未连接楼面 {target['from_floor']}→{target['to_floor']}；"
+                          f"期望 Y={target['from_y']:g}→{target['to_y']:g}，实际可达标高={reached}")
+    low, high = min(t["from_y"] for t in targets), max(t["to_y"] for t in targets)
+    extra = [e["id"] for e in flights if e["from"][1] < low-TOLERANCE or e["to"][1] > high+TOLERANCE]
+    if extra:
+        errors.append(f"❌ [{', '.join(extra)}] 图纸标记 {marker['id']} 的梯段超出明确连接标高 "
+                      f"[{low:g}, {high:g}]；墙顶不自动成为到达楼面")
+    return errors
+
+
+def component_geometry_review(blueprint: dict, entities: list[dict], marker: dict) -> dict:
+    """精确核对可映射的组合尺寸；旋转/曲面/未知形式列待审核。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+
+    design = marker.get("design") or {}
+    size, placement = design.get("size") or {}, design.get("placement") or {}
+    form = design.get("form") if isinstance(design.get("form"), dict) else {"description": design.get("form")}
+    family = resolve_component_name(marker["type"])["entity_type"]
+    checked, unverified, errors = [], [], []
+    if (len(entities) > 1 or family in {"", "primitive"}) and size and family not in {"door", "window", "roof", "railing", "stair"}:
+        boxes = (bool(entities) and not placement.get("face") and not design.get("relation")
+                 and not any(form.get(k) for k in ("orientation", "rotation", "rotation_y"))
+                 and all(e.get("type") == "primitive" and e.get("shape") == "box"
+                         and e.get("rotation", [0, 0, 0]) == [0, 0, 0]
+                         and e.get("scale", [1, 1, 1]) == [1, 1, 1]
+                         and not any(k.startswith("parent") for k in e)
+                         and all(isinstance(e.get(k), list) and len(e[k]) == 3
+                                 and all(type(n) in (int, float) and isfinite(n) for n in e[k])
+                                 for k in ("position", "dimensions")) for e in entities))
+        if boxes:
+            bounds = [(min(e["position"][axis]-e["dimensions"][axis]/2 for e in entities),
+                       max(e["position"][axis]+e["dimensions"][axis]/2 for e in entities)) for axis in range(3)]
+            for key, axis in (("width", 0), ("height", 1), ("depth", 2)):
+                if key in size:
+                    actual = bounds[axis][1]-bounds[axis][0]
+                    checked.append("size."+key)
+                    if abs(actual-size[key]) > TOLERANCE:
+                        errors.append(f"图纸标记 {marker['id']} 的组合设计尺寸 {key}={size[key]:g}，实际 {actual:g}；不能只验证单个零件")
+            position = placement.get("position")
+            if isinstance(position, list) and len(position) == 3:
+                checked.append("placement.position")
+                actual = [(a+b)/2 for a, b in bounds]
+                if any(abs(a-b) > TOLERANCE for a, b in zip(actual, position)):
+                    errors.append(f"图纸标记 {marker['id']} 的组合中心期望 {position}，实际 {actual}")
+        else:
+            unverified.append("组合整体尺寸与定位需要复核，当前形态不能按未旋转 box 尺度验收")
+        if set(size) - {"width", "height", "depth"}:
+            unverified.append("组合的其他尺寸参数暂无实体映射")
+    elif len(entities) == 1 and family and entities[0].get("type") == family:
+        for key, value in size.items():
+            field = NATIVE_SIZE_FIELDS.get((family, key), key)
+            (checked if field in entities[0] else unverified).append(
+                "size."+key if field in entities[0] else "size."+key+" 未建立原生字段映射")
+            if field in entities[0] and (type(entities[0][field]) not in (int, float)
+                                         or abs(entities[0][field]-value) > TOLERANCE):
+                geometry = blueprint.get("geometry") or {}
+                bucket = next((k for k in ("elements", "components") if entities[0] in geometry.get(k, [])), "elements")
+                index = geometry.get(bucket, []).index(entities[0]) if entities[0] in geometry.get(bucket, []) else 0
+                errors.append(f"设计尺寸 {key}={value}，实际 {field}={entities[0][field]}；"
+                              f"/geometry/{bucket}/{index}/{field} 应写 {field}={value}，安装标高另写 from/position")
+    if any(form.values()) and family not in {"door", "window", "roof", "railing", "stair"}:
+        unverified.append("造型与构造描述需要渲染复核")
+    if family == "stair" and not marker.get("floor_connections"):
+        unverified.append("楼梯未声明具体楼面连接")
+    material_id = marker.get("material_id")
+    if design.get("material_role"):
+        materials = blueprint.get("materials") or {}
+        expected = materials.get(material_id)
+        if not isinstance(expected, dict):
+            unverified.append("设计材质角色尚未解析为实际材质")
+        else:
+            definition = {"opacity": 1, **expected}
+            if not any({"opacity": 1, **materials[e["material"]]} == definition
+                       for e in entities if isinstance(e.get("material"), str)
+                       and isinstance(materials.get(e["material"]), dict)):
+                errors.append(f"图纸标记 {marker['id']} 未引用设计材质角色 {design['material_role']}")
+            else:
+                checked.append("material_role 引用")
+    return {"status": "needs_review" if unverified else "checked", "checked": checked,
+            "unverified": unverified, "errors": errors}
 
 
 def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):

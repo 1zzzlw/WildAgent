@@ -308,10 +308,10 @@ def _requested_balcony_width(user_message: str) -> float | None:
 
 def resolve_complexity_profile(
     user_message: str,
-    detail_level: str = "simple",
+    detail_level: str = "minimal",
 ) -> dict[str, Any]:
     """粒度决定设计范围；结构数量、开口数量和体量布局仍由具体设计决定。"""
-    level = detail_level if isinstance(detail_level, str) and detail_level in DETAIL_LEVEL_GUIDANCE else "simple"
+    level = detail_level if isinstance(detail_level, str) and detail_level in DETAIL_LEVEL_GUIDANCE else "minimal"
     return {"level": level, "reason": DETAIL_LEVEL_GUIDANCE[level],
             "min_volumes": 1, "min_detail_packages": 0,
             "target_structural_elements": 10, "grid_bays": [2, 2]}

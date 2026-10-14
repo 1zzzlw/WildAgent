@@ -22,13 +22,26 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
     if target != blueprint:
         raise RuntimeError("只读校验器修改了候选，拒绝为原产物签发证据")
 
-    def append(name, messages, *, warning=False):
+    def append(name, messages, *, warning=False, marker=None, entity_ids=()):
         if messages:
-            results.append(PipelineStepResult(
+            result = PipelineStepResult(
                 step="design", name=name,
                 output="\n".join(f"{'⚠️' if warning else '❌'} [design] {m}" for m in messages),
                 has_error=not warning, has_warning=warning,
-            ))
+                issues=[{"code": name, "marker_id": marker["id"], "design_path": marker["design_path"],
+                         "entity_ids": list(entity_ids), "message": message,
+                         "expected": marker["design"].get("size") or marker.get("floor_connections"),
+                         "actual": {"entity_ids": list(entity_ids)}} for message in messages] if marker else None,
+            )
+            prior = next((r for r in results if r.step == "design" and r.name == name), None)
+            if prior is None:
+                results.append(result)
+            else:
+                prior.output += "\n" + result.output
+                prior.has_error = prior.has_error or result.has_error
+                prior.has_warning = prior.has_warning or result.has_warning
+                if result.issues:
+                    prior.issues = [*(prior.issues or []), *result.issues]
 
     from app.utils.blueprint_parser import validate_blueprint_schema
     append("validate_blueprint_schema", validate_blueprint_schema(blueprint))
@@ -51,7 +64,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
     approved_errors = []
     design_hash, revision = "", None
     if design_document:
-        from app.design.contracts import DesignDocument, ObjectDecisions
+        from app.design.contracts import DesignDocument, ObjectDecisions, DesignGap
         from app.design.resolver import _stable_hash
         from app.design.markers import IMPLEMENTATION_STAGES, body_floor_errors
         from app.design.compilation import project_drawing
@@ -67,6 +80,7 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
             actual = {e["id"]: e for bucket in ("elements", "components")
                       for e in blueprint.get("geometry", {}).get(bucket, [])}
             markers = project_drawing(document).component_markers
+            geometry_reviews = {}
             for marker in markers:
                 record = records.get(marker["id"]) or {}
                 if record.get("status") == "implemented":
@@ -78,11 +92,17 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                     else:
                         if marker["type"] == "building_body":
                             append("design_body_footprint", body_floor_errors([actual[i] for i in ids], marker["design"]))
-                        from app.design.relations import opening_design_errors, roof_design_errors, railing_design_errors
+                        from app.design.relations import (opening_design_errors, roof_design_errors, railing_design_errors,
+                                                          stair_design_errors, component_geometry_review)
                         marker["host_entity_ids"] = (records.get(marker.get("host")) or {}).get("entity_ids", [marker.get("host")])
                         append("design_opening_placement", opening_design_errors(blueprint, [actual[i] for i in ids], marker))
                         append("design_roof_surface", roof_design_errors(blueprint, [actual[i] for i in ids], marker))
                         append("design_railing_placement", railing_design_errors(blueprint, [actual[i] for i in ids], marker))
+                        append("design_stair_connection", stair_design_errors(blueprint, [actual[i] for i in ids], marker),
+                               marker=marker, entity_ids=ids)
+                        review = component_geometry_review(blueprint, [actual[i] for i in ids], marker)
+                        geometry_reviews[marker["id"]] = review
+                        append("design_component_geometry", review["errors"], marker=marker, entity_ids=ids)
                 elif record.get("status") == "abandoned":
                     attempts = record.get("attempts") or []
                     stages = {t.get("stage") for t in attempts}
@@ -98,7 +118,12 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                         append("implementation_incomplete", ["建筑主体未实现，无法交付建筑文件"])
                 else:
                     append("implementation_incomplete", [f"{marker['id']} 没有落实记录"])
-            fulfillment = fulfillment_summary(evaluate_fulfillment(document, blueprint, design_hash),
+            gaps = evaluate_fulfillment(document, blueprint, design_hash)
+            gaps.extend(DesignGap(id="review."+marker_id, constraint_id="design.geometry", status="needs_review",
+                                  design_hash=design_hash, target=marker_id, expected="图纸关系与组合表达",
+                                  actual=review["checked"], evidence="；".join(review["unverified"]))
+                        for marker_id, review in geometry_reviews.items() if review["status"] == "needs_review")
+            fulfillment = fulfillment_summary(gaps,
                 design_hash=design_hash, superseded=sum(c.adoption == "superseded" for c in document.constraints))
             fulfillment["implementations"] = records
             for marker_id, record in records.items():
@@ -115,7 +140,10 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                 "implemented": sum(r.get("status") == "implemented" for r in records.values()),
                 "abandoned": sum(r.get("status") == "abandoned" for r in records.values()),
                 "design_complete": all((records.get(m["id"]) or {}).get("status") == "implemented" for m in markers),
-                "verification": "geometry_validated; architectural appearance requires review"}
+                "relationships_verified": len(geometry_reviews) == len(markers)
+                                          and all(r["status"] != "needs_review" for r in geometry_reviews.values()),
+                "needs_review": sum(r["status"] == "needs_review" for r in geometry_reviews.values()),
+                "verification": "geometry_checked_with_reported_review_gaps; rendering_requires_review"}
             fulfillment["blueprint_fingerprint"] = blueprint_fingerprint(blueprint)
 
     warning_count = sum(r.has_warning and not r.has_error for r in final_validation_results(results))

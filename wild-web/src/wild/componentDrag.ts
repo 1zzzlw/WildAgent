@@ -74,6 +74,61 @@ export function createGeometryTranslationOperations(
   })
 }
 
+/** 绕构件自身中心水平旋转 90°，只改写 WILD 实际支持的朝向字段。 */
+export function createGeometryRotationOperations(
+  blueprint: Blueprint,
+  selectedIds: readonly string[],
+): SceneOperation[] {
+  if (selectedIds.length !== 1) return []
+  const id = selectedIds[0]
+  const component = blueprint.geometry.components?.find(item => item.id === id)
+  const element = blueprint.geometry.elements.find(item => item.id === id) as GeometryElement | undefined
+  const item = component || element
+  if (!item || (component && component.draggable === false)) return []
+  let changes: Record<string, unknown>
+  if (item.type === 'primitive' || item.type === 'furniture') {
+    const current = item.rotation || [0, 0, 0]
+    changes = { rotation: [current[0], current[1] + Math.PI / 2, current[2]] }
+  } else if (item.type === 'roof') {
+    changes = {
+      span: item.depth,
+      depth: item.span,
+      ...(item.roofType === 'gable'
+        ? { ridgeAxis: item.ridgeAxis === 'x' ? 'z' : 'x' }
+        : {}),
+    }
+  } else if (item.type === 'railing' || item.type === 'cornice') {
+    if (!item.path.length) return []
+    const xs = item.path.map(point => point[0])
+    const zs = item.path.map(point => point[2])
+    const center: Vec3 = [(Math.min(...xs) + Math.max(...xs)) / 2, 0, (Math.min(...zs) + Math.max(...zs)) / 2]
+    changes = { path: item.path.map(point => rotateQuarter(point, center)) }
+  } else if (item.type === 'wall' || item.type === 'beam' || item.type === 'stair'
+    || item.type === 'floor' || item.type === 'ramp') {
+    if (('curve' in item && item.curve && (Array.isArray(item.curve) || item.curve.type !== 'line'))
+      || (item.type === 'floor' && (!item.to || item.shape === 'circle'))) return []
+    const from = item.from
+    const to = item.to
+    if (!to) return []
+    const center: Vec3 = [(from[0] + to[0]) / 2, 0, (from[2] + to[2]) / 2]
+    const rotatedFrom = rotateQuarter(from, center)
+    const rotatedTo = rotateQuarter(to, center)
+    changes = item.type === 'floor'
+      ? {
+          from: [Math.min(rotatedFrom[0], rotatedTo[0]), from[1], Math.min(rotatedFrom[2], rotatedTo[2])],
+          to: [Math.max(rotatedFrom[0], rotatedTo[0]), to[1], Math.max(rotatedFrom[2], rotatedTo[2])],
+        }
+      : { from: rotatedFrom, to: rotatedTo }
+  } else {
+    return []
+  }
+  return [{ op: component ? 'update_component' : 'update_element', id, changes }]
+}
+
+function rotateQuarter(point: Vec3, center: Vec3): Vec3 {
+  return [center[0] + point[2] - center[2], point[1], center[2] - point[0] + center[0]]
+}
+
 function translateWallAttachment(
   from: Vec3,
   parentWall: string,

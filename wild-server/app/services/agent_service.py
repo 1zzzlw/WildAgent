@@ -78,6 +78,7 @@ class PipelineStepResult:
     output: str
     has_error: bool
     has_warning: bool
+    issues: list[dict] | None = None
 
 @dataclass
 class PatchResult:

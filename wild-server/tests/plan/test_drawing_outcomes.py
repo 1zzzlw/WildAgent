@@ -94,6 +94,18 @@ def test_legacy_multi_entity_issue_keeps_both_owners():
     assert issue["entity_id"] == "flight_a" and issue["related_entity_ids"] == ["flight_b"]
 
 
+def test_opening_overlap_does_not_assign_fault_to_context_wall():
+    result = SimpleNamespace(name="validate_collision", has_error=True,
+        output="❌ [component:window_a] 与 ❌ [component:door_b] 在父墙 [wall_front] 上重叠 (0.20m × 1.80m)")
+    blueprint = {"geometry": {"elements": [{"id": "wall_front", "type": "wall"}],
+        "components": [{"id": "window_a", "type": "window", "parentWall": "wall_front"},
+                       {"id": "door_b", "type": "door", "parentWall": "wall_front"}]}}
+    issue = validation_issues_from_results([result], blueprint)[0]
+    assert issue["entity_ids"] == ["window_a", "door_b"]
+    assert issue["related_entity_ids"] == ["door_b"]
+    assert issue["entity_id"] == "window_a"
+
+
 def test_unattributed_assembly_issue_never_reopens_building_body(monkeypatch):
     from app.agent.design_flow import compile as compilation
     from tests.plan.test_drawing_stair_assembly import state_with_stair

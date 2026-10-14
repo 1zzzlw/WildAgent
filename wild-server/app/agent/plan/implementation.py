@@ -5,9 +5,9 @@ import re
 from xml.etree import ElementTree
 
 from app.design.markers import IMPLEMENTATION_STAGES, implementation_records, marker_results, merge_marker_resources
+from app.design.relations import NATIVE_SIZE_FIELDS as _SIZE_FIELDS
 
 _BODY_TYPES = frozenset({"wall", "floor", "column", "beam", "stair", "primitive"})
-_SIZE_FIELDS = {("balcony", "height"): "slabThickness", ("canopy", "height"): "thickness"}
 
 
 def implementation_blueprint(state):
@@ -170,27 +170,24 @@ def _accept_group(base, row, marker, *, check_size=True):
         cut_stair_openings(preview)
         errors.extend(str(issue["message"]) for issue in collect_stair_placement_issues(preview)
                       if stair_ids.intersection(issue["entity_ids"]))
-    # 原生构件核对字段尺寸，门窗组合另核对完整洞口范围。
-    from app.agent.knowledge.component_names import resolve_component_name
-    family = resolve_component_name(marker["type"])["entity_type"] or marker["type"]
-    if check_size and len(entities) == 1 and entities[0].get("type") == family:
-        entity = entities[0]
-        for key, value in (marker["design"].get("size") or {}).items():
-            field = _SIZE_FIELDS.get((family, key), key)
-            if field in entity and (not isinstance(entity[field], (int, float)) or abs(entity[field]-value) > 0.001):
-                bucket = "components" if geometry.get("components") else "elements"
-                errors.append(f"设计尺寸 {key}={value}，实际 {field}={entity[field]}；"
-                              f"/geometry/{bucket}/0/{field} 应写 {field}={value}，安装标高另写 from/position")
     if check_size and not errors:
-        from app.design.relations import opening_design_errors, roof_design_errors, railing_design_errors
+        from app.design.relations import (opening_design_errors, roof_design_errors, railing_design_errors,
+                                          stair_design_errors, component_geometry_review)
         errors.extend(opening_design_errors(candidate, entities, marker))
         errors.extend(roof_design_errors(candidate, entities, marker))
         errors.extend(railing_design_errors(candidate, entities, marker))
+        errors.extend(stair_design_errors(candidate, entities, marker))
+        review = component_geometry_review(candidate, entities, marker)
+        errors.extend(review["errors"])
+    else:
+        review = {"status": "needs_review", "checked": [], "unverified": ["当前为片段验收"], "errors": []}
     if errors:
         raise ValueError("；".join(errors[:12]))
     record = {"status": "implemented", "entity_ids": [e["id"] for e in entities],
               "entity_fingerprint": blueprint_fingerprint(entities),
-              "explanation": str(row.get("explanation") or ""), "verification": "geometry_validated"}
+              "explanation": str(row.get("explanation") or ""),
+              "verification": "needs_review" if review["status"] == "needs_review" else "geometry_validated",
+              "geometry_review": review}
     return candidate, entities, record
 
 
@@ -253,6 +250,14 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
     geometry = row.get("geometry")
     if (not isinstance(geometry, dict) or set(geometry) - {"elements", "components"}
             or any(not isinstance(geometry.get(k, []), list) for k in ("elements", "components"))):
+        return base, None, {"row": row, "error": error}, None
+    from app.design.relations import component_geometry_review
+    preview = deepcopy(base)
+    group = [e for bucket in ("elements", "components") for e in geometry.get(bucket, [])]
+    if not isinstance(row.get("materials", {}), dict) or any(not isinstance(e, dict) for e in group):
+        return base, None, {"row": row, "error": error}, None
+    preview["materials"].update(row.get("materials") or {})
+    if component_geometry_review(preview, group, marker)["errors"]:
         return base, None, {"row": row, "error": error}, None
     remaining = [(bucket, e) for bucket in ("elements", "components") for e in geometry.get(bucket, [])]
     accepted = {**row, "geometry": {"elements": [], "components": []}}
@@ -587,7 +592,8 @@ async def run_marker_generate(state, item):
                 "railing.path 默认世界坐标；parentFloor 仅能引用真实 floor，不能填阳台组件ID，"
                 "填写 parentFloor 时 path 改用该楼板顶面局部坐标。保留图纸花纹，避免再生成重合整套防护。")
         if "stair" in families:
-            instructions.append("楼梯只连接图纸指定的楼面；available_floor_connections 给出相邻楼面的真实标高，"
+            instructions.append("楼梯按 markers[].floor_connections 的 from_y/to_y 实现明确的楼面连接；"
+                "available_floor_connections 只列全楼可用楼面，不要求本标记连接全部楼层。"
                 "levels.top_y 是该层墙顶，不是下一层楼面；没有明确屋面通行时，不增建顶层到屋面的梯段。"
                 "楼梯 size.width/depth 是整组占地，单跑净宽从 form 解析；各跑高差之和等于连接楼层高差。"
                 "指定踏步时 stepCount*stepHeight 等于两端高差，stepCount*stepDepth 等于两端水平距离；否则省略踏步参数让引擎计算。"

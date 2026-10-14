@@ -38,9 +38,6 @@
       <el-button class="toolbar-btn" size="small" @click="openConfig" title="LLM 配置">
         <span>配置</span>
       </el-button>
-      <el-button class="toolbar-btn" size="small" @click="openHelp" title="查看项目介绍与更新日志">
-        <span>帮助</span>
-      </el-button>
     </div>
 
     <div class="scene-info">
@@ -52,7 +49,6 @@
 
     <OnlinePresence />
 
-    <EditorHelpDialog :visible="helpVisible" @close="helpVisible = false" />
     <LLMConfigDialog :visible="configVisible" @update:visible="configVisible = $event" />
   </div>
 </template>
@@ -66,7 +62,6 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useUIStore } from '../../stores/uiStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
-import EditorHelpDialog from './EditorHelpDialog.vue'
 import { defineAsyncComponent } from 'vue'
 
 const LLMConfigDialog = defineAsyncComponent(() => import('./LLMConfigDialog.vue'))
@@ -76,12 +71,7 @@ const historyStore = useHistoryStore()
 const uiStore = useUIStore()
 const agentStore = useAgentStore()
 const isSaving = ref(false)
-const helpVisible = ref(false)
 const configVisible = ref(false)
-
-function openHelp() {
-  helpVisible.value = true
-}
 
 function openConfig() {
   configVisible.value = true

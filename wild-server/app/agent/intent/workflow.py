@@ -21,7 +21,7 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
-    detail_level = resolve_complexity_profile(state.get("user_message", ""), state.get("detail_level", "simple"))["level"]
+    detail_level = resolve_complexity_profile(state.get("user_message", ""), state.get("detail_level", "minimal"))["level"]
     result = {
         "detail_level": detail_level,
         "thinking_mode": state.get("thinking_mode") is not False,

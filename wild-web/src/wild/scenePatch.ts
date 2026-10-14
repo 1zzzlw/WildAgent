@@ -17,8 +17,63 @@
  */
 
 import type { Blueprint } from '../types/blueprint'
-import type { ScenePatch, SceneOperation } from '../types/scenePatch'
+import type { ScenePatch, SceneOperation, RemoveElementOperation, RemoveComponentOperation } from '../types/scenePatch'
+import type { PhysicsData } from 'wild-core/types'
 import { deepClone } from '../utils/common'
+
+export function createGeometryRemovalOperations(
+  blueprint: Blueprint,
+  selectedIds: readonly string[],
+): Array<RemoveElementOperation | RemoveComponentOperation> {
+  const elementIds = new Set(blueprint.geometry.elements.map(item => item.id))
+  const componentIds = new Set(blueprint.geometry.components?.map(item => item.id))
+  return [...new Set(selectedIds)].flatMap((id): Array<RemoveElementOperation | RemoveComponentOperation> => {
+    if (elementIds.has(id)) return [{ op: 'remove_element', id }]
+    if (componentIds.has(id)) return [{ op: 'remove_component', id }]
+    return []
+  })
+}
+
+/** 删除宿主及依附构件，并清理随之失效的排布、物理约束和编辑分组。 */
+function removeGeometry(blueprint: Blueprint, id: string) {
+  const idsToRemove = new Set([id])
+  const items = [...blueprint.geometry.elements, ...(blueprint.geometry.components || [])]
+  let foundNew = true
+  while (foundNew) {
+    foundNew = false
+    for (const item of items) {
+      if (idsToRemove.has(item.id)) continue
+      const record = item as unknown as Record<string, unknown>
+      const attachment = record.attachment as { parent?: string } | undefined
+      const parents = [record.parentWall, record.parentFloor, record.parentRoof, attachment?.parent]
+      if (parents.some(parent => typeof parent === 'string' && idsToRemove.has(parent))) {
+        idsToRemove.add(item.id)
+        foundNew = true
+      }
+    }
+  }
+  blueprint.geometry.elements = blueprint.geometry.elements.filter(item => !idsToRemove.has(item.id))
+  if (blueprint.geometry.components) {
+    blueprint.geometry.components = blueprint.geometry.components.filter(item => !idsToRemove.has(item.id))
+  }
+  if (blueprint.geometry.placements) {
+    blueprint.geometry.placements = blueprint.geometry.placements.filter(placement => {
+      const parent = (placement.onSurface as { parent?: string } | undefined)?.parent
+      if (parent && idsToRemove.has(parent)) {
+        idsToRemove.add(placement.id)
+        return false
+      }
+      return true
+    })
+  }
+  const physics = blueprint.behaviors?.physics as PhysicsData | undefined
+  if (physics?.constraints) {
+    physics.constraints = physics.constraints.filter(constraint => !idsToRemove.has(constraint.target))
+  }
+  for (const group of Object.values(blueprint.editor?.groups || {})) {
+    group.elements = group.elements.filter(elementId => !idsToRemove.has(elementId))
+  }
+}
 
 export function applyPatchToBlueprint(blueprint: Blueprint, patch: ScenePatch): Blueprint {
   const newBlueprint = deepClone(blueprint)
@@ -44,40 +99,9 @@ function applyOperation(blueprint: Blueprint, op: SceneOperation) {
       break
     }
 
-    case 'remove_element': {
-      // 级联删除：收集所有引用目标元素的子节点（opening.parentWall、组件 parentWall、
-      // 全局物理约束 target），一并删除，避免悬空引用导致校验失败。
-      const idsToRemove = new Set<string>([op.id])
-      let foundNew = true
-      while (foundNew) {
-        foundNew = false
-        for (const el of blueprint.geometry.elements) {
-          if (idsToRemove.has(el.id)) continue
-          const parentWall = (el as unknown as Record<string, unknown>).parentWall as string | undefined
-          if (parentWall && idsToRemove.has(parentWall)) {
-            idsToRemove.add(el.id)
-            foundNew = true
-          }
-        }
-        for (const comp of blueprint.geometry.components || []) {
-          if (idsToRemove.has(comp.id)) continue
-          const parentWall = (comp as unknown as Record<string, unknown>).parentWall as string | undefined
-          if (parentWall && idsToRemove.has(parentWall)) {
-            idsToRemove.add(comp.id)
-            foundNew = true
-          }
-        }
-      }
-      blueprint.geometry.elements = blueprint.geometry.elements.filter(
-        e => !idsToRemove.has(e.id)
-      )
-      if (blueprint.geometry.components) {
-        blueprint.geometry.components = blueprint.geometry.components.filter(
-          c => !idsToRemove.has(c.id)
-        )
-      }
+    case 'remove_element':
+      removeGeometry(blueprint, op.id)
       break
-    }
 
     case 'add_component':
       if (!blueprint.geometry.components) {
@@ -101,11 +125,7 @@ function applyOperation(blueprint: Blueprint, op: SceneOperation) {
     }
 
     case 'remove_component':
-      if (blueprint.geometry.components) {
-        blueprint.geometry.components = blueprint.geometry.components.filter(
-          component => component.id !== op.id
-        )
-      }
+      removeGeometry(blueprint, op.id)
       break
 
     case 'upsert_material':

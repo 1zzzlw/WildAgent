@@ -30,7 +30,7 @@ def find_item(plan: PlanDocument, item_id: str) -> PlanItem | None:
 def new_plan(
     items: list[PlanItem],
     *,
-    detail_level: str = "standard",
+    detail_level: str = "minimal",
     budget: dict[str, int] | None = None,
 ) -> PlanDocument:
     """由条目列表建立一份 PlanDocument（revision 从 1 开始）。"""

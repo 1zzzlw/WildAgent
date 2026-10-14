@@ -421,10 +421,11 @@ def test_detail_level_is_pinned_to_standard_and_budget_is_monotonic():
     # 粒度选择已下线（2026-09-30）：不再从 design_document 读档位，
     # resolve_detail_level 恒返回 standard；但预算表本身仍是档位化的，
     # 单调性必须保持——否则有人"顺手"把 detailed 调得比 simple 还低也没人发现。
-    assert resolve_detail_level(_brief_state()) == "standard"
-    assert resolve_detail_level({}) == "standard"
+    assert resolve_detail_level(_brief_state()) == "minimal"
+    assert resolve_detail_level({}) == "minimal"
+    assert resolve_detail_level({"detail_level": "standard"}) == "standard"
     assert plan_budget("simple") == DETAIL_BUDGET["simple"]
-    assert plan_budget("unknown-level") == DETAIL_BUDGET["standard"]
+    assert plan_budget("unknown-level") == DETAIL_BUDGET["minimal"]
 
     levels = ["minimal", "simple", "standard", "detailed"]
     iterations = [plan_budget(level)["iterations"] for level in levels]

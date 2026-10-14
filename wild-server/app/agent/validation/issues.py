@@ -8,6 +8,7 @@ from typing import Iterable
 
 
 _ENTITY_MARKER = re.compile(r"\[(?:component:)?([\w.-]+(?:\s*,\s*[\w.-]+)*)\]")
+_PARENT_WALL_MARKER = re.compile(r"在父墙\s*\[([\w.-]+)\]")
 
 _VALIDATOR_CODES = {
     "validate_blueprint_structure": "BLUEPRINT_STRUCTURE",
@@ -39,6 +40,8 @@ _ISSUE_CLASSIFICATION = {
     "validate_model_quality": ("model_instruction", "prompt"),
     "validate_collision": ("coverage_geometry", "deterministic_fix"),
     "validate_design_brief": ("model_instruction", "prompt"),
+    "design_stair_connection": ("level_continuity", "prompt"),
+    "design_component_geometry": ("model_instruction", "prompt"),
     "approved_design_mutation": ("model_instruction", "design_revision"),
     "approved_design_invalid": ("coverage_geometry", "design_revision"),
 }
@@ -128,6 +131,11 @@ def validation_issues_from_results(
             )
             mentioned = list(dict.fromkeys(i.strip() for m in _ENTITY_MARKER.finditer(line)
                                            for i in m.group(1).split(",") if i.strip() in entities))
+            # 门窗重叠消息中的父墙只是定位上下文；把它当作冲突实体会重做主体及所有依附构件。
+            if "上重叠" in line:
+                parent_wall = _PARENT_WALL_MARKER.search(line)
+                if parent_wall:
+                    mentioned = [i for i in mentioned if i != parent_wall.group(1)]
             marker_id = facade_match.group(1) if facade_match else (
                 mentioned[0] if mentioned else None
             )

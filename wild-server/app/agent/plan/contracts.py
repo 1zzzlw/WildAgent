@@ -157,7 +157,7 @@ class PlanDocument(PlanModel):
 
     schema_version: Literal["plan/1.0"] = PLAN_SCHEMA_VERSION
     revision: int = Field(default=1, ge=1)
-    detail_level: Literal["minimal", "simple", "standard", "detailed"] = "standard"
+    detail_level: Literal["minimal", "simple", "standard", "detailed"] = "minimal"
     budget: dict[str, int] = Field(default_factory=dict)
     items: list[PlanItem] = Field(default_factory=list, max_length=200)
     history: list[PlanHistoryEntry] = Field(default_factory=list, max_length=50)

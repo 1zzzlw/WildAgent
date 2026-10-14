@@ -32,7 +32,7 @@ def _content_fingerprint(paths: list[Path], root: Path) -> str:
 
 
 @lru_cache(maxsize=1)
-def runtime_fingerprint() -> dict[str, Any]:
+def _process_fingerprint() -> dict[str, Any]:
     """首次追踪时固定进程源码快照；不读取 .env、密钥或历史产物。"""
     server = Path(__file__).resolve().parents[2]
     project = server.parent
@@ -41,9 +41,6 @@ def runtime_fingerprint() -> dict[str, Any]:
                 if (server / name).is_file()]
     schemas = [path for path in (project / "wild-core/schema.json",
                                server / "storage/knowledge_base/schema.json") if path.is_file()]
-    knowledge = [path for directory in ("knowledge", "rules")
-                 for path in (server / "storage/knowledge_base" / directory).rglob("*")
-                 if path.is_file() and path.suffix in {".md", ".json"}]
     revision, dirty = None, None
     try:
         revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=project, check=True,
@@ -60,10 +57,20 @@ def runtime_fingerprint() -> dict[str, Any]:
         "source_sha256": _content_fingerprint(sources, project),
         "prompt_sha256": _content_fingerprint([p for p in sources if "prompts" in p.parts], project),
         "schema_sha256": _content_fingerprint(schemas, project),
-        "knowledge_sha256": _content_fingerprint(knowledge, project),
-        "source_file_count": len(sources), "knowledge_file_count": len(knowledge),
+        "source_file_count": len(sources),
         "python_version": platform.python_version(),
     }
+
+
+def runtime_fingerprint() -> dict[str, Any]:
+    """源码是进程首轮文件快照；可热更新知识按本次执行重新取摘要。"""
+    server = Path(__file__).resolve().parents[2]
+    root = server / "storage/knowledge_base"
+    knowledge = [path for directory in ("knowledge", "rules") for path in (root / directory).rglob("*")
+                 if path.is_file() and path.suffix in {".md", ".json"}]
+    knowledge.extend(path for path in (root / "config.yaml", root / "schema.json") if path.is_file())
+    return {**_process_fingerprint(), "knowledge_sha256": _content_fingerprint(knowledge, server.parent),
+            "knowledge_file_count": len(knowledge), "knowledge_snapshot_kind": "execution_source_files"}
 
 ReasoningCallback = Callable[[str, str], Awaitable[None]]
 

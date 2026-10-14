@@ -1,5 +1,6 @@
 """楼梯与主体楼板分属任务时，局部修订和装配仍完成通道关系。"""
 from copy import deepcopy
+import asyncio
 
 import pytest
 
@@ -358,7 +359,7 @@ def test_local_revision_fixes_endpoint_before_assembly_and_reuses_knowledge(monk
     monkeypatch.setattr(client, "create_llm", lambda **kwargs: None)
     monkeypatch.setattr(invocation, "invoke_llm", model)
     monkeypatch.setattr(knowledge, "search_knowledge_result", rag)
-    updates, status, _, _, _ = run(impl.run_marker_generate(state, item))
+    updates, status, _, _, _ = asyncio.run(impl.run_marker_generate(state, item))
     assert status == "succeeded" and events == ["rag", "model", "model"]
     record = implementation_records(updates)["stairs"]
     assert record["status"] == "implemented"
@@ -392,7 +393,7 @@ def test_assembly_retry_receives_last_failed_stair_geometry_and_local_reason(mon
             "geometry": {"elements": [stair], "components": []}}]}), token_usage={})
     monkeypatch.setattr(client, "create_llm", lambda **kwargs: None)
     monkeypatch.setattr(invocation, "invoke_llm", model)
-    updates, status, _, _, _ = run(impl.run_marker_generate(state, item))
+    updates, status, _, _, _ = asyncio.run(impl.run_marker_generate(state, item))
     assert status == "succeeded" and len(contexts) == 1
     assert contexts[0]["failed_implementations"]["stairs"] == row
     assert "终点没有承托" in contexts[0]["validation_feedback"]["stairs"]

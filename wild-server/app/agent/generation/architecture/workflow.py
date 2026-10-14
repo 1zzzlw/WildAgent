@@ -168,7 +168,7 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     previous_complexity = (previous_plan or {}).get("complexity") or {}
     selected = resolve_complexity_profile(
-        message, state.get("detail_level") or previous_complexity.get("level", "simple")
+        message, state.get("detail_level") or previous_complexity.get("level", "minimal")
     )
     complexity = {
         **selected,

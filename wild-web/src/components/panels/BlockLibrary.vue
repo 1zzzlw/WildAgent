@@ -110,8 +110,8 @@ const componentBlocks: readonly ComponentBlock[] = [
   { type: 'light', fixtureType: 'table_lamp', label: '台灯', icon: '♟', description: '创建带灯座、灯杆和灯罩的发光台灯' },
 ]
 
-function handleAddBlock(block: BlockTemplate) {
-  if (!sceneStore.document) return
+async function handleAddBlock(block: BlockTemplate) {
+  if (!sceneStore.document || sceneStore.isReconstructing) return
 
   const element: GeometryElement = {
     id: generateId(block.type),
@@ -126,7 +126,12 @@ function handleAddBlock(block: BlockTemplate) {
     `添加${block.label}`
   )
 
-  sceneStore.applyPatch(patch)
+  if (await sceneStore.applyPatch(patch)) {
+    selectionStore.select(element.id)
+    uiStore.setRightActivePanel('properties')
+  } else {
+    ElMessage.error('构件添加失败，请查看场景校验结果')
+  }
 }
 
 async function handleAddComponent(
@@ -134,7 +139,7 @@ async function handleAddComponent(
   fixtureType?: 'bulb' | 'table_lamp',
   label?: string,
 ) {
-  if (!sceneStore.document) return
+  if (!sceneStore.document || sceneStore.isReconstructing) return
 
   const component = createDefaultComponent(type, fixtureType)
   if (!component) return
@@ -148,6 +153,8 @@ async function handleAddComponent(
   if (await sceneStore.applyPatch(patch)) {
     selectionStore.select(component.id)
     uiStore.setRightActivePanel('properties')
+  } else {
+    ElMessage.error('构件添加失败，请查看场景校验结果')
   }
 }
 

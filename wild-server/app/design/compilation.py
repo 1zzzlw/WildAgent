@@ -79,6 +79,11 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
             frames[frame["id"]] = frame
             walls.append(frame)
     markers = component_markers(document)
+    material_ids = {role.role: role.materialId for role in d.materials.resolved_plan.roles} if d.materials.resolved_plan else {}
+    for marker in markers:
+        role = marker["design"].get("material_role")
+        if role in material_ids:
+            marker["material_id"] = material_ids[role]
     relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
     if relation_errors:
         raise DesignCoordinateConflict(relation_errors)

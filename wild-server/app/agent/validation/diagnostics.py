@@ -30,13 +30,14 @@ def blueprint_fingerprint(blueprint: dict | None) -> str:
 
 def step_result_to_dict(result: Any) -> dict:
     """把 ``PipelineStepResult``（或同构 dict）序列化为可存盘的 dict。"""
-    return {
-        "step": getattr(result, "step", None),
-        "name": getattr(result, "name", "unknown"),
-        "output": getattr(result, "output", ""),
-        "has_error": bool(getattr(result, "has_error", False)),
-        "has_warning": bool(getattr(result, "has_warning", False)),
+    get = result.get if isinstance(result, dict) else lambda key, default=None: getattr(result, key, default)
+    row = {
+        "step": get("step"), "name": get("name", "unknown"), "output": get("output", ""),
+        "has_error": bool(get("has_error", False)), "has_warning": bool(get("has_warning", False)),
     }
+    if get("issues"):
+        row["issues"] = get("issues")
+    return row
 
 
 @dataclass

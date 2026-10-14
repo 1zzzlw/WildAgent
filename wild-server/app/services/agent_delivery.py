@@ -145,9 +145,8 @@ def prepare_blueprint_delivery(
     """
     if validation_snapshot is not None:
         from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
-        from dataclasses import asdict
-        evidence_results = [result if isinstance(result, dict) else asdict(result)
-                            for result in validation_results]
+        from app.agent.validation.diagnostics import step_result_to_dict
+        evidence_results = [step_result_to_dict(result) for result in validation_results]
         if (validation_snapshot.get("blueprint_fingerprint") != blueprint_fingerprint(blueprint)
                 or validation_snapshot.get("validator_version") != VALIDATOR_VERSION
                 or validation_snapshot.get("status") != "complete"

@@ -267,7 +267,7 @@
       </header>
       <template v-if="!planWindowMinimized">
         <div class="plan-floating-meta">
-          <span>粒度：{{ BUILDING_DETAIL_LEVELS.find(level => level.value === turn.plan?.detail_level)?.label || '中' }}</span>
+          <span>粒度：{{ BUILDING_DETAIL_LEVELS.find(level => level.value === turn.plan?.detail_level)?.label || '低' }}</span>
           <span>第 {{ turn.plan.iterations || 0 }} 轮</span>
           <span>{{ planBatchCount }} 个生成批次</span>
           <span v-if="planParallelGroups">{{ planParallelGroups }} 个并发组</span>

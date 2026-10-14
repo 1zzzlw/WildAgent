@@ -162,8 +162,9 @@
       <span class="connection-text">{{ connectionStatusText }}</span>
       <div class="detail-level-control">
         <span>粒度</span>
-        <el-select ref="detailLevelSelect" :model-value="agentStore.detailLevel" size="small"
+        <el-select :key="agentStore.detailLevel" :model-value="agentStore.detailLevel" size="small"
           aria-label="建筑设计粒度" popper-class="agent-detail-level-dropdown"
+          :offset="6"
           :disabled="agentStore.isProcessing" @change="handleDetailLevelChange">
           <el-option v-for="level in BUILDING_DETAIL_LEVELS" :key="level.value"
             :value="level.value" :label="level.label" />
@@ -229,14 +230,10 @@ import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
 import AgentExecutionPanel from './AgentExecutionPanel.vue'
 import type { AgentTurn, BuildingDetailLevel, ChatMessage } from '../../types/agent'
-import type { SelectInstance } from 'element-plus'
 import { BUILDING_DETAIL_LEVELS } from '../../types/agent'
-
-const detailLevelSelect = ref<SelectInstance>()
 
 function handleDetailLevelChange(value: BuildingDetailLevel) {
   agentStore.setDetailLevel(value)
-  detailLevelSelect.value?.blur()
 }
 
 hljs.registerLanguage('bash', bash)
@@ -1546,6 +1543,8 @@ function loadDraftSessionsFromLocal(): any[] {
   --border: rgba(255, 255, 255, 0.08);
   --text-secondary: #a0a0a8;
   --accent: #6899d4;
+  --el-bg-color-overlay: var(--bg-secondary);
+  --el-border-color-light: var(--border);
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -1553,9 +1552,8 @@ function loadDraftSessionsFromLocal(): any[] {
   min-width: 72px;
 }
 
-:global(.agent-detail-level-dropdown .el-popper__arrow::before) {
+:global(.agent-detail-level-dropdown.el-popper .el-popper__arrow::before) {
   background: var(--bg-secondary);
-  border-color: var(--border);
 }
 
 :global(.agent-detail-level-dropdown .el-select-dropdown__item) {

@@ -26,13 +26,13 @@ const geometryEvaluationCases = JSON.parse(await readFile(
 const virtualEntry = `
 export * from 'wildsrc:compiler';
 export { parseWildBlueprint, reconstructWildEntity } from 'wildsrc:adapter';
-export { applyPatchToBlueprint } from 'wildsrc:scene-patch';
+export { applyPatchToBlueprint, createGeometryRemovalOperations } from 'wildsrc:scene-patch';
 export { resolveSelectableId, getRenderedElementIds } from 'wildsrc:component-selection';
 export { useSceneStore } from 'wildsrc:scene-store';
 export { useHistoryStore } from 'wildsrc:history-store';
 export { reconstructScene } from 'wildsrc:reconstruction-client';
 export { createSceneGroupFromEntity, toggleOpeningInteraction, toggleRuntimeInteraction } from 'wildsrc:render-entity';
-export { createComponentTranslationChanges, createGeometryTranslationOperations } from 'wildsrc:component-drag';
+export { createComponentTranslationChanges, createGeometryTranslationOperations, createGeometryRotationOperations } from 'wildsrc:component-drag';
 export { AgentBridge, agentBridge } from 'wildsrc:agent-bridge';
 export { useAgentStore } from 'wildsrc:agent-store';
 export { usePresenceStore } from 'wildsrc:presence-store';
@@ -105,12 +105,15 @@ try {
   await assertReconstructionDiagnostics(compiler)
   assertInvalidComponentSchemaIsRejected(compiler)
   assertScenePatchIntegration(compiler)
+  assertGeometryRemoval(compiler)
   assertMaterialTuningPatch(compiler)
   await assertPbrAssetIntegration(compiler)
   await assertComponentEditingHistory(compiler)
+  await assertExportUsesConciseName(compiler)
   await assertReactiveBlueprintWorkerTransfer(compiler)
   assertOpeningAnimationFrames(compiler)
   assertComponentTranslation(compiler)
+  assertComponentRotation(compiler)
   await assertNativeElementTranslation(compiler)
   await assertGeneratedBlueprintLoadsFreshFile(compiler)
   assertPresenceUpdate(compiler)
@@ -799,6 +802,35 @@ function assertComponentTranslation(compiler) {
   assertEqual(lightChanges.position, [1.5, 1.5, 4], '自由组件拖动没有更新 position')
 }
 
+function assertComponentRotation(compiler) {
+  const source = createBlueprint()
+  const wall = source.geometry.elements.find(element => element.id === 'side_wall')
+  source.geometry.components = [{ type: 'window', id: 'hosted_window', parentWall: wall.id,
+    from: [1, 0.9, 0], width: 1.5, height: 1.2 }]
+  const operations = compiler.createGeometryRotationOperations(source, [wall.id])
+  const rotated = compiler.applyPatchToBlueprint(source, { base_revision: 1, operations })
+  const turnedWall = rotated.geometry.elements.find(element => element.id === wall.id)
+  assertEqual(turnedWall.from, [5, 0, 3], '墙体起点没有绕中心旋转')
+  assertEqual(turnedWall.to, [11, 3, 3], '墙体终点没有绕中心旋转')
+  const middle = (a, b) => (a + b) / 2
+  assertEqual(middle(turnedWall.from[0], turnedWall.to[0]), middle(wall.from[0], wall.to[0]), '旋转墙体改变了中心 X')
+  assertEqual(middle(turnedWall.from[2], turnedWall.to[2]), middle(wall.from[2], wall.to[2]), '旋转墙体改变了中心 Z')
+  assertEqual(rotated.geometry.components[0].from, [1, 0.9, 0], '旋转宿主墙时门窗局部坐标不应改变')
+  assertEqual(compiler.createGeometryRotationOperations(source, ['hosted_window']), [], '墙挂门窗不应写入无效 rotation 字段')
+
+  source.geometry.elements.push(
+    { type: 'floor', id: 'turn_floor', from: [1, 0, 2], to: [5, 0, 8], thickness: 0.2 },
+    { type: 'roof', id: 'turn_roof', roofType: 'gable', span: 8, depth: 5, height: 2, thickness: 0.2 },
+    { type: 'primitive', id: 'turn_box', shape: 'box', dimensions: [2, 1, 3], position: [4, 0, 6] },
+  )
+  const roofOp = compiler.createGeometryRotationOperations(source, ['turn_roof'])[0]
+  assertEqual(roofOp.changes, { span: 5, depth: 8, ridgeAxis: 'x' }, '双坡屋顶旋转没有交换长宽与屋脊轴')
+  const floorOp = compiler.createGeometryRotationOperations(source, ['turn_floor'])[0]
+  assertEqual(floorOp.changes, { from: [0, 0, 3], to: [6, 0, 7] }, '矩形楼板旋转没有保持正向包围盒')
+  const boxOp = compiler.createGeometryRotationOperations(source, ['turn_box'])[0]
+  assertEqual(boxOp.changes.rotation, [0, Math.PI / 2, 0], '原语旋转没有写入可导出的朝向')
+}
+
 async function assertNativeElementTranslation(compiler) {
   const source = createBlueprint()
   const wall = source.geometry.elements.find(element => element.id === 'side_wall')
@@ -1191,6 +1223,66 @@ function assertScenePatchIntegration(compiler) {
   assertEqual(removed.geometry.components, [], 'remove_component 未生效')
 }
 
+function assertGeometryRemoval(compiler) {
+  const source = createBlueprint()
+  source.geometry.elements.push({
+    id: 'native_opening', type: 'opening', parentWall: 'front_wall',
+    from: [3, 0.9, 0], width: 1, height: 1.2, openingType: 'window',
+  })
+  source.behaviors.physics = {
+    mass: 1, collisionShape: 'box', constraints: [
+      { type: 'hinge', target: 'native_opening', axis: 'y' },
+      { type: 'hinge', target: 'side_window', axis: 'y' },
+    ],
+  }
+  source.editor = { groups: { facade: { name: '立面', elements: ['front_wall', 'front_door', 'side_wall'] } } }
+  const before = JSON.stringify(source)
+  const operations = compiler.createGeometryRemovalOperations(source, [
+    'front_wall', 'front_wall', 'terrace_railing', 'missing_id',
+  ])
+  assertEqual(operations, [
+    { op: 'remove_element', id: 'front_wall' },
+    { op: 'remove_component', id: 'terrace_railing' },
+  ], '混合选择删除未正确去重或识别来源')
+  const removed = compiler.applyPatchToBlueprint(source, { operations })
+  assertEqual(removed.geometry.elements.map(item => item.id), ['side_wall'], '墙体与原生门窗未一并删除')
+  assertEqual(removed.geometry.components.map(item => item.id), ['side_window'], '依附门未删除或误删其他墙的窗')
+  assertEqual(removed.behaviors.physics.constraints.map(item => item.target), ['side_window'], '删除后残留物理约束')
+  assertEqual(removed.editor.groups.facade.elements, ['side_wall'], '编辑分组残留删除的构件')
+  assertEqual(JSON.stringify(source), before, '删除修改了原蓝图，破坏撤销快照')
+
+  const windowRemoved = compiler.applyPatchToBlueprint(source, {
+    operations: compiler.createGeometryRemovalOperations(source, ['side_window']),
+  })
+  assertEqual(windowRemoved.geometry.elements.length, source.geometry.elements.length, '删除窗误删宿主墙')
+  const windowAdded = compiler.applyPatchToBlueprint(windowRemoved, {
+    operations: [{ op: 'add_component', component: source.geometry.components[1] }],
+  })
+  assertEqual(windowAdded.geometry.components.some(item => item.id === 'side_window'), true, '删除后无法重新添加构件')
+
+  for (const [parentType, parentField] of [['floor', 'parentFloor'], ['roof', 'parentRoof']]) {
+    const surface = createBlueprint()
+    surface.geometry.elements.push(parentType === 'floor'
+      ? { id: 'surface', type: 'floor', from: [0, 0, 0], to: [4, 0, 4], thickness: 0.2 }
+      : { id: 'surface', type: 'roof', roofType: 'gable', span: 8, depth: 6, height: 3 })
+    surface.geometry.components.push(parentType === 'floor'
+      ? { id: 'attached', type: 'railing', parentFloor: 'surface', path: [[0, 0, 0], [4, 0, 0]], height: 1.1 }
+      : { id: 'attached', type: 'cornice', parentRoof: 'surface', path: [[-4, 0, 3], [4, 0, 3]],
+          profile: [[-0.1, 0], [0.1, 0], [0.1, 0.1], [-0.1, 0.1]], closedProfile: true })
+    surface.geometry.elements.push({ id: 'surface_detail', type: 'primitive', shape: 'box',
+      position: [0, 0, 0], dimensions: [0.1, 0.1, 0.1], attachment: { parent: 'surface', mapping: 'planar' } })
+    surface.geometry.templates = { tile: { id: 'tile_template', type: 'primitive', shape: 'box', dimensions: [0.1, 0.1, 0.1] } }
+    surface.geometry.placements = [{ id: 'tiles', template: 'tile', onSurface: { parent: 'surface', face: 'left' },
+      layout: { type: 'grid', columns: 2, rows: 2, rowSpacing: 0.1, colSpacing: 0.1 } }]
+    const result = compiler.applyPatchToBlueprint(surface, {
+      operations: [{ op: 'remove_element', id: 'surface' }],
+    })
+    assertEqual(result.geometry.components.some(item => item.id === 'attached'), false, `${parentField} 依附构件残留`)
+    assertEqual(result.geometry.elements.some(item => item.id === 'surface_detail'), false, '贴附几何未删除')
+    assertEqual(result.geometry.placements, [], '删除宿主后残留表面排布')
+  }
+}
+
 async function assertComponentEditingHistory(compiler) {
   compiler.setActivePinia(compiler.createPinia())
   const sceneStore = compiler.useSceneStore()
@@ -1234,6 +1326,43 @@ async function assertComponentEditingHistory(compiler) {
     1.1,
     '重做后组件属性不正确',
   )
+
+  const deleted = await sceneStore.applyPatch({
+    type: 'scene_patch', patch_id: 'delete-editor-check',
+    base_revision: sceneStore.document.revision, source: 'user', mode: 'apply',
+    requires_confirmation: false, summary: '删除墙及依附门',
+    operations: compiler.createGeometryRemovalOperations(sceneStore.document.blueprint, ['front_wall']),
+  })
+  if (!deleted) throw new Error('删除墙体未通过场景重建')
+  assertEqual(sceneStore.document.dirty, true, '删除未标记草稿为已修改')
+  assertEqual(sceneStore.reconstructed.meshes.some(mesh => mesh.elementId === 'front_wall'), false, '删除后渲染仍包含旧墙体')
+  assertEqual(JSON.parse(sceneStore.exportWild()).geometry.elements.map(item => item.id), ['side_wall'], '导出仍包含已删除墙体')
+  const deleteUndo = historyStore.undo()
+  if (!deleteUndo || !await sceneStore.restoreBlueprint(deleteUndo.before)) throw new Error('删除无法撤销')
+  assertEqual(sceneStore.document.blueprint.geometry.components.some(item => item.id === 'front_door'), true, '撤销未恢复依附门')
+  const deleteRedo = historyStore.redo()
+  if (!deleteRedo || !await sceneStore.restoreBlueprint(deleteRedo.after)) throw new Error('删除无法重做')
+  assertEqual(sceneStore.document.blueprint.geometry.components.some(item => item.id === 'front_door'), false, '重做未删除依附门')
+}
+
+async function assertExportUsesConciseName(compiler) {
+  compiler.setActivePinia(compiler.createPinia())
+  const sceneStore = compiler.useSceneStore()
+  const source = createBlueprint()
+  source.meta.name = '现代中式生态别墅：以院落组织空间，结合玻璃立面与深出檐'
+  const originalName = source.meta.name
+  if (!await sceneStore.loadBlueprint(source, `AI 生成 - ${originalName}`)) {
+    throw new Error('长名称场景未能加载')
+  }
+  assertEqual(sceneStore.document.name, '现代中式生态别墅', '右上角仍显示完整生成说明')
+  assertEqual(sceneStore.document.blueprint.meta.name, sceneStore.document.name, '场景名称与 Blueprint 不一致')
+  assertEqual(JSON.parse(sceneStore.exportWild()).meta.name, sceneStore.document.name, '导出名称没有缩短')
+  assertEqual(source.meta.name, originalName, '载入场景修改了原始 Blueprint')
+
+  const longName = 'A minimalist eco villa with passive ventilation and panoramic glazing'
+  source.meta.name = longName
+  if (!await sceneStore.loadBlueprint(source)) throw new Error('英文长名称场景未能加载')
+  if ([...sceneStore.document.name].length > 24) throw new Error('无标点的长名称没有截短')
 }
 
 async function waitForReconstruction(sceneStore) {

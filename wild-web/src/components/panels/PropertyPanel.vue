@@ -2,6 +2,14 @@
   <div class="property-panel">
     <div class="panel-header">
       <span>属性面板</span>
+      <el-button v-if="selectedItem" size="small" plain :disabled="!rotationOperations.length || sceneStore.isReconstructing"
+        title="仅支持单选有朝向的构件；门窗等依附构件请旋转宿主墙体" @click="rotateSelectedItem">
+        旋转 90°
+      </el-button>
+      <el-button v-if="removalOperations.length" size="small" type="danger" plain
+        :loading="isRemoving" :disabled="sceneStore.isReconstructing" @click="removeSelectedItems">
+        {{ removalOperations.length > 1 ? `删除选中 (${removalOperations.length})` : '删除构件' }}
+      </el-button>
     </div>
     <div class="panel-body">
       <div v-if="!selectedItem" class="empty-state">
@@ -513,10 +521,6 @@
               <el-button v-if="railLevels.length > 1" link type="danger" @click="removeRailLevel(index)">删除</el-button>
             </div>
           </div>
-
-          <div class="danger-zone">
-            <el-button type="danger" plain @click="removeSelectedComponent">删除组合构件</el-button>
-          </div>
         </template>
 
         <div class="property-section" v-if="selectedElement?.type === 'column'">
@@ -593,14 +597,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
-import { createPatch } from '../../wild/scenePatch'
+import { createPatch, createGeometryRemovalOperations } from '../../wild/scenePatch'
+import { createGeometryRotationOperations } from '../../wild/componentDrag'
 
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
+const isRemoving = ref(false)
+const removalOperations = computed(() => sceneStore.document
+  ? createGeometryRemovalOperations(sceneStore.document.blueprint, selectionStore.selectedIds)
+  : [])
+const rotationOperations = computed(() => sceneStore.document
+  ? createGeometryRotationOperations(sceneStore.document.blueprint, selectionStore.selectedIds)
+  : [])
+
+async function rotateSelectedItem() {
+  if (!sceneStore.document || !rotationOperations.value.length) return
+  const patch = createPatch(
+    sceneStore.document.revision,
+    rotationOperations.value,
+    'user',
+    false,
+    `旋转${selectionStore.selectedIds[0]} 90°`,
+  )
+  if (!await sceneStore.applyPatch(patch)) ElMessage.error('旋转未能应用，请查看场景校验结果')
+}
 const axes = ['X', 'Y', 'Z'] as const
 const railingNumberFields = [
   { key: 'height', label: '高度', step: 0.1, defaultValue: 1.1 },
@@ -979,25 +1003,36 @@ function removeRailLevel(index: number) {
   )
 }
 
-async function removeSelectedComponent() {
-  if (!selectedComponent.value || !sceneStore.document) return
+async function removeSelectedItems() {
+  if (!sceneStore.document || !removalOperations.value.length || isRemoving.value || sceneStore.isReconstructing) return
+  const documentId = sceneStore.document.id
+  const selectedIds = [...selectionStore.selectedIds]
+  isRemoving.value = true
   try {
-    await ElMessageBox.confirm(`确定删除组合构件 ${selectedComponent.value.id}？`, '删除组合构件', {
+    const target = removalOperations.value.length === 1
+      ? removalOperations.value[0]!.id
+      : `选中的 ${removalOperations.value.length} 个构件`
+    await ElMessageBox.confirm(`确定删除 ${target}？依附这些构件的门窗等也会一并删除，可通过撤销恢复。`, '删除构件', {
       type: 'warning',
       confirmButtonText: '删除',
       cancelButtonText: '取消',
     })
+    if (!sceneStore.document || sceneStore.document.id !== documentId || sceneStore.isReconstructing) return
+    const operations = createGeometryRemovalOperations(sceneStore.document.blueprint, selectedIds)
+    if (!operations.length) return
+    const patch = createPatch(sceneStore.document.revision, operations, 'user', false, `删除 ${operations.length} 个构件`)
+    if (await sceneStore.applyPatch(patch)) {
+      selectionStore.clearSelection()
+      selectionStore.setHovered(null)
+      ElMessage.success('构件已删除，可撤销恢复')
+    } else {
+      ElMessage.error('删除失败，请查看场景校验结果')
+    }
   } catch {
     return
+  } finally {
+    isRemoving.value = false
   }
-  const patch = createPatch(
-    sceneStore.document.revision,
-    [{ op: 'remove_component', id: selectedComponent.value.id }],
-    'user',
-    false,
-    `删除${selectedComponent.value.id}`,
-  )
-  if (await sceneStore.applyPatch(patch)) selectionStore.clearSelection()
 }
 </script>
 
@@ -1009,6 +1044,11 @@ async function removeSelectedComponent() {
 }
 
 .panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   padding: 8px 12px;
   font-size: 13px;
   font-weight: 500;
@@ -1171,15 +1211,6 @@ async function removeSelectedComponent() {
   color: #8ca5b1;
   font-size: 11px;
   line-height: 1.5;
-}
-
-.danger-zone {
-  padding-top: 8px;
-  border-top: 1px solid #3e3e42;
-}
-
-.danger-zone :deep(.el-button) {
-  width: 100%;
 }
 
 .property-row :deep(.el-input__wrapper) {

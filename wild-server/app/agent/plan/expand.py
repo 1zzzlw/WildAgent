@@ -37,18 +37,18 @@ DETAIL_BUDGET: dict[str, dict[str, int]] = {
 
 
 def plan_budget(level: str) -> dict[str, int]:
-    """按档位取预算；未知档位按 standard 处理（不猜测、不报错）。"""
+    """按档位取预算；未知档位按 minimal 处理。"""
 
-    return dict(DETAIL_BUDGET.get(level, DETAIL_BUDGET["standard"]))
+    return dict(DETAIL_BUDGET.get(level, DETAIL_BUDGET["minimal"]))
 
 
 def resolve_detail_level(state: dict[str, Any]) -> str:
-    """从已批准方案里读档位；读不到时按 standard 兜底。
+    """读取用户选定的档位；未指定时使用低档。
 
     档位由界面给定并写进方案，节点只读不推断（§3.5）。
     """
-    # 默认使用标准档位（粒度选择已下线，2026-09-30）
-    return "standard"
+    level = state.get("detail_level")
+    return level if level in DETAIL_BUDGET else "minimal"
 
 
 def _component_order() -> dict[str, int]:

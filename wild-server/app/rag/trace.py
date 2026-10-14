@@ -126,13 +126,19 @@ def prepare_rag_llm_call(llm: Any, messages: Any) -> dict[str, Any]:
     encoded = json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
     trace.llm_inputs.setdefault(digest, {"messages": rows, "redaction": "pii_and_credentials"})
+    context = dict(_llm_trace_context.get())
+    if "stage" not in context:
+        from langchain_core.runnables.config import var_child_runnable_config
+        metadata = (var_child_runnable_config.get() or {}).get("metadata") or {}
+        if metadata.get("langgraph_node"):
+            context["stage"] = metadata["langgraph_node"]
     return {"call_id": uuid4().hex, "messages_ref": digest, "messages_sha256": digest,
             "input_chars": len(raw_encoded), "input_bytes": len(raw_encoded.encode("utf-8")),
             "input_message_count": len(rows), "model_config": _safe_model_config(llm),
             "index_signatures": sorted({query["index_signature"] for retrieval in trace.retrievals
                                         for query in retrieval.get("queries", [])
                                         if query.get("index_signature")}),
-            **_public_trace_value(_llm_trace_context.get())}
+            **_public_trace_value(context)}
 
 
 def _runtime_snapshot() -> dict[str, Any]:

@@ -14,7 +14,7 @@ Agent WebSocket API
     "scene_id": "scene_xxx",
     "scene_revision": 8,
     "message": "生成一座中式凉亭",
-    "detail_level": "simple",
+    "detail_level": "minimal",
     "scene_summary": { "elements_count": 42, "types": [...], "bbox": {...} },
     "selection": []
   }
@@ -660,7 +660,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     current_blueprint = data.get("blueprint")
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
-    detail_level = resolve_complexity_profile(message, data.get("detail_level") or "simple")["level"]
+    detail_level = resolve_complexity_profile(message, data.get("detail_level") or "minimal")["level"]
     # 思考事件始终收集，plan 条目可独立于图节点开关开启思考。
     thinking_mode = True
 
