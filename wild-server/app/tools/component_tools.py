@@ -462,6 +462,14 @@ def validate_canopy_placement(blueprint: dict) -> str:
         if thickness <= 0:
             issues.append(f"❌ [{canopy_id}] thickness {thickness} 必须大于 0")
 
+        from app.tools.spatial_tools import _wall_length
+        wall_length = _wall_length(walls[parent_wall])
+        along = canopy.get("from", [0, 0, 0])[0]
+        width = canopy.get("width", 0)
+        if along < 0 or along+width > wall_length+1e-6:
+            issues.append(f"❌ [{canopy_id}] 雨棚沿墙范围 [{along:g}, {along+width:g}] 超出父墙水平范围 "
+                          f"0–{wall_length:g}m；from[0] 是沿墙起点，不是世界中心或沿墙中心")
+
         # 雨棚必须遮蔽真实的门/窗/入口。悬在无任何洞口的实墙高处，
         # 视觉上就是一块“悬空片”（实测生成缺陷），这里按宿主墙上开洞对齐判定。
         mount_y = canopy.get("from", [0, 0, 0])[1]

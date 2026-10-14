@@ -506,7 +506,7 @@ def _strategy_reason(strategy: PlanStrategy) -> str:
 
 
 def _batch_load(rows: list[dict]) -> dict[str, int]:
-    """按本批实际图纸内容计量；没有模型上限时不凭标记数拆批。"""
+    """按本批实际图纸内容计量。"""
     floors = set()
     for marker in rows:
         design = marker.get("design") or {}
@@ -520,6 +520,19 @@ def _batch_load(rows: list[dict]) -> dict[str, int]:
         "floor_count": len(floors),
         "dependency_count": len({d for m in rows for d in m.get("depends_on") or []}),
     }
+
+
+def _marker_batches(rows: list[dict]) -> list[list[dict]]:
+    """限制单次图纸负载；单个标记保持完整，输出截断另由执行器拆分。"""
+    batches, batch = [], []
+    for marker in rows:
+        if batch and _batch_load([*batch, marker])["marker_chars"] > 8000:
+            batches.append(batch)
+            batch = []
+        batch.append(marker)
+    if batch:
+        batches.append(batch)
+    return batches
 
 
 def expand_design_markers(state: dict) -> PlanDocument:
@@ -543,7 +556,9 @@ def expand_design_markers(state: dict) -> PlanDocument:
                 if level == "minimal" and naming["entity_type"] in {"door", "window", "light"}:
                     kind = naming["entity_type"]
                 groups.setdefault(kind, []).append(marker)
-        for kind, rows in groups.items():
+        batches = [(kind, batch) for kind, rows in groups.items()
+                   for batch in ([rows] if kind == "assembly" else _marker_batches(rows))]
+        for kind, rows in batches:
             task_id = f"generate_{len(items)+1}"
             complete = all(implementation_complete(records.get(m["id"])) for m in rows)
             naming = resolve_component_name(kind)

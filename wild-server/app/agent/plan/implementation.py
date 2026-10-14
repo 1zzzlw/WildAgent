@@ -100,7 +100,7 @@ def implementation_errors(blueprint):
     from app.tools.spatial_tools import (validate_element_dimensions, validate_element_required_fields,
                                         validate_reference_integrity, validate_opening_coords, validate_opening_fit,
                                         validate_model_quality)
-    from app.tools.component_tools import validate_balcony_placement
+    from app.tools.component_tools import validate_balcony_placement, validate_canopy_placement
     schema = load_engine_schema()
     errors = validate_blueprint_schema(blueprint)
     try:
@@ -113,7 +113,7 @@ def implementation_errors(blueprint):
         errors.extend(f"/{'/'.join(map(str, e.path))}: {e.message}" for e in jsonschema.Draft202012Validator(schema).iter_errors(blueprint))
     for validator in (validate_element_dimensions, validate_element_required_fields,
                       validate_reference_integrity, validate_opening_coords, validate_opening_fit, validate_model_quality,
-                      validate_balcony_placement):
+                      validate_balcony_placement, validate_canopy_placement):
         output = getattr(validator, "func", validator)(deepcopy(blueprint))
         errors.extend(line for line in str(output).splitlines() if "❌" in line)
     return errors
@@ -170,13 +170,25 @@ def _accept_group(base, row, marker, *, check_size=True):
         cut_stair_openings(preview)
         errors.extend(str(issue["message"]) for issue in collect_stair_placement_issues(preview)
                       if stair_ids.intersection(issue["entity_ids"]))
+        route = _stair_route_target(base, marker)
+        if route and len(stair_ids) == 2:
+            first, second = sorted((e for e in entities if e.get("type") == "stair"), key=lambda e: e["from"][1])
+            axis = route["direction_axis"]
+            if (first["to"][axis] - first["from"][axis]) * route["direction_sign"] <= 0:
+                errors.append(f"楼梯 {first['id']} 第一跑方向与图纸相反；应沿 "
+                              f"{'+' if route['direction_sign'] > 0 else '-'}{'X' if axis == 0 else 'Z'} 上行，"
+                              f"参考 stair_route_targets.{marker['id']} 的梯段与平台坐标")
+            if (second["to"][axis] - second["from"][axis]) * route["direction_sign"] >= 0:
+                errors.append(f"楼梯 {second['id']} 第二跑没有按图纸折返；参考 "
+                              f"stair_route_targets.{marker['id']} 的梯段与平台坐标")
     if check_size and not errors:
         from app.design.relations import (opening_design_errors, roof_design_errors, railing_design_errors,
-                                          stair_design_errors, component_geometry_review)
+                                          stair_design_errors, component_geometry_review, canopy_design_errors)
         errors.extend(opening_design_errors(candidate, entities, marker))
         errors.extend(roof_design_errors(candidate, entities, marker))
         errors.extend(railing_design_errors(candidate, entities, marker))
         errors.extend(stair_design_errors(candidate, entities, marker))
+        errors.extend(canopy_design_errors(candidate, entities, marker))
         review = component_geometry_review(candidate, entities, marker)
         errors.extend(review["errors"])
     else:
@@ -192,49 +204,78 @@ def _accept_group(base, row, marker, *, check_size=True):
 
 
 def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_markers=(), diagram_hosts=None):
+    from app.agent.validation.diagnostics import blueprint_fingerprint
     row = deepcopy(row)
     geometry = row.get("geometry")
     repeated = []
-    repeated_geometry = {"elements": [], "components": []}
     if (isinstance(geometry, dict) and not set(geometry) - {"elements", "components"}
             and all(isinstance(geometry.get(k, []), list) for k in ("elements", "components"))):
         for bucket in ("elements", "components"):
             retained = {e["id"]: e for e in (retained_geometry or {}).get(bucket, [])}
             fresh = []
             for entity in geometry.get(bucket, []):
-                if isinstance(entity, dict) and entity.get("id") in retained and entity == retained[entity["id"]]:
+                if (isinstance(entity, dict) and entity.get("id") in retained
+                        and blueprint_fingerprint(entity) == blueprint_fingerprint(retained[entity["id"]])):
                     repeated.append(entity["id"])
-                    repeated_geometry[bucket].append(entity)
                 else:
                     fresh.append(entity)
             row["geometry"][bucket] = fresh
     row["repeated_entity_ids"] = repeated
+    if len(repeated) != len(set(repeated)):
+        return base, None, {"row": row, "error": "当前片段的实体 ID 重复；每个实体只返回一次"}, None
     recheck_retained = bool(repeated and not any(row["geometry"].get(k) for k in ("elements", "components")))
     validation_base = base
     if recheck_retained:
         retained_ids = {e["id"] for bucket in ("elements", "components") for e in retained_geometry.get(bucket, [])}
         if set(repeated) != retained_ids:
             return base, None, {"row": row, "error": "本轮仅重复部分已通过实体，尚未提供完整修订结果"}, None
-        row["geometry"] = repeated_geometry
+    validation_row = deepcopy(row)
+    valid_geometry = (isinstance(geometry, dict) and not set(geometry)-{"elements", "components"}
+                      and all(isinstance(geometry.get(k, []), list) for k in ("elements", "components")))
+    if retained_geometry and valid_geometry:
+        retained_ids = {e["id"] for bucket in ("elements", "components") for e in retained_geometry.get(bucket, [])}
+        if any(isinstance(e, dict) and e.get("id") in retained_ids
+               for bucket in ("elements", "components") for e in row["geometry"].get(bucket, [])):
+            return base, None, {"row": row, "error": "不能覆盖已采用实体；只修订失败片段"}, None
         validation_base = deepcopy(base)
         for bucket in ("elements", "components"):
             validation_base["geometry"][bucket] = [e for e in base["geometry"][bucket] if e["id"] not in retained_ids]
-    if (marker["type"] == "building_body" and isinstance(geometry, dict)
+            validation_row["geometry"][bucket] = deepcopy(retained_geometry.get(bucket, [])) + row["geometry"].get(bucket, [])
+    from app.design.relations import delegated_geometry_errors
+    if valid_geometry:
+        ownership_errors = delegated_geometry_errors(
+            [e for bucket in ("elements", "components") for e in validation_row["geometry"].get(bucket, [])
+             if isinstance(e, dict)], marker, dependent_markers)
+        if ownership_errors:
+            return base, None, {"row": row, "error": "；".join(ownership_errors)}, None
+    from app.agent.knowledge.component_names import resolve_component_name
+    family = resolve_component_name(marker["type"])["entity_type"]
+    if ((marker["type"] == "building_body" or family == "wall") and isinstance(geometry, dict)
             and all(isinstance(geometry.get(k, []), list) for k in ("elements", "components"))):
         from app.design.relations import body_host_errors
         preview = deepcopy(validation_base)
-        preview["geometry"]["elements"].extend(e for e in row["geometry"].get("elements", []) if isinstance(e, dict))
-        errors = body_host_errors(preview, dependent_markers, diagram_hosts=diagram_hosts)
+        preview["geometry"]["elements"].extend(e for e in validation_row["geometry"].get("elements", []) if isinstance(e, dict))
+        if marker["type"] == "building_body":
+            delegated_walls = {m["id"] for m in dependent_markers
+                               if m["id"] != marker["id"]
+                               and resolve_component_name(m["type"])["entity_type"] == "wall"}
+            handoff_markers = [m for m in dependent_markers
+                               if (m.get("entity") or {}).get("parentWall") not in delegated_walls]
+        else:
+            handoff_markers = [m for m in dependent_markers
+                               if (m.get("entity") or {}).get("parentWall") == marker["id"]]
+        errors = body_host_errors(preview, handoff_markers, diagram_hosts=diagram_hosts)
         if errors:
-            from app.design.markers import body_floor_errors
-            errors = body_floor_errors(preview["geometry"]["elements"], marker["design"]) + errors
+            if marker["type"] == "building_body":
+                from app.design.markers import body_floor_errors
+                errors = body_floor_errors(preview["geometry"]["elements"], marker["design"]) + errors
             try:
-                _accept_group(validation_base, row, marker)
+                _accept_group(validation_base, validation_row, marker)
             except (ValueError, TypeError, KeyError) as exc:
                 errors.append(str(exc))
             return base, None, {"row": row, "error": "；".join(errors[:12])}, None
     try:
-        candidate, entities, record = _accept_group(validation_base, row, marker)
+        candidate, entities, record = _accept_group(validation_base, validation_row, marker)
         if recheck_retained:
             row["geometry"] = {"elements": [], "components": []}
         return candidate, row, None, record
@@ -242,9 +283,8 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
         error = str(exc)
     if recheck_retained:
         return base, None, {"row": row, "error": error}, None
-    from app.agent.knowledge.component_names import resolve_component_name
     family = resolve_component_name(marker["type"])["entity_type"]
-    if family in {"roof", "stair"} or (family == "railing" and marker.get("host")) or (
+    if family in {"roof", "stair", "canopy"} or (family == "railing" and marker.get("host")) or (
             marker.get("entity", {}).get("parentWall") and family in {"door", "window"}):
         return base, None, {"row": row, "error": error}, None
     geometry = row.get("geometry")
@@ -253,7 +293,7 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
         return base, None, {"row": row, "error": error}, None
     from app.design.relations import component_geometry_review
     preview = deepcopy(base)
-    group = [e for bucket in ("elements", "components") for e in geometry.get(bucket, [])]
+    group = [e for bucket in ("elements", "components") for e in validation_row["geometry"].get(bucket, [])]
     if not isinstance(row.get("materials", {}), dict) or any(not isinstance(e, dict) for e in group):
         return base, None, {"row": row, "error": error}, None
     preview["materials"].update(row.get("materials") or {})
@@ -261,7 +301,7 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
         return base, None, {"row": row, "error": error}, None
     remaining = [(bucket, e) for bucket in ("elements", "components") for e in geometry.get(bucket, [])]
     accepted = {**row, "geometry": {"elements": [], "components": []}}
-    single = len(remaining) == 1
+    single = len(group) == 1
     record = None
     while remaining:
         failed = []
@@ -286,6 +326,66 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
     return base, accepted, None, record
 
 
+def _stair_route_target(base, marker):
+    """仅在图纸明确双跑方向且已有楼板承接时，给出一组可落地的坐标。"""
+    design = marker.get("design") or {}
+    form, size = design.get("form") or {}, design.get("size") or {}
+    if (not isinstance(form, dict) or form.get("flights") != 2
+            or not re.search(r"U|回|折返", str(form.get("shape") or "") + str(form.get("description") or ""), re.I)):
+        return None
+    direction = re.search(r"第一跑[^。；]*?沿\s*([+-])\s*([XZ])", str(form.get("description") or ""), re.I)
+    position = (design.get("placement") or {}).get("position")
+    connections = marker.get("floor_connections") or []
+    values = [size.get("width"), size.get("depth"), form.get("flight_width"),
+              form.get("landing_depth"), form.get("tread_depth")]
+    if (not direction or not isinstance(position, list) or len(position) != 3
+            or len(connections) != 1 or type(form.get("rises")) is not int or form["rises"] < 1
+            or not all(type(v) in (int, float) and v > 0 for v in values)
+            or not all(type(v) in (int, float) for v in position)):
+        return None
+    axis = 0 if direction[2].upper() == "X" else 2
+    cross_axis = 2 if axis == 0 else 0
+    sign = 1 if direction[1] == "+" else -1
+    length, cross = size["width" if axis == 0 else "depth"], size["depth" if axis == 0 else "width"]
+    run = form["rises"] * form["tread_depth"]
+    if run + form["landing_depth"] > length + 0.01 or 2*form["flight_width"] > cross + 0.01:
+        return None
+    lower, upper = connections[0]["from_y"], connections[0]["to_y"]
+    middle = (lower + upper)/2
+    if type(form.get("riser_height")) in (int, float) and abs(form["rises"]*form["riser_height"]-(middle-lower)) > 0.01:
+        return None
+    near = position[axis] - sign*length/2
+    turn = near + sign*run
+    far = turn + sign*form["landing_depth"]
+    cross_offset = (cross-form["flight_width"])/2
+    first_cross, second_cross = position[cross_axis]-cross_offset, position[cross_axis]+cross_offset
+
+    def point(cross_value, y, along):
+        result = list(position)
+        result[axis], result[cross_axis], result[1] = round(along, 6), round(cross_value, 6), round(y, 6)
+        return result
+
+    first_from, first_to = point(first_cross, lower, near), point(first_cross, middle, turn)
+    second_from, second_to = point(second_cross, middle, turn), point(second_cross, upper, near)
+    from app.tools.spatial_tools import _floor_regions_by_level
+    from app.agent.generation.spatial.geometry import point_in_regions
+    levels = _floor_regions_by_level(base["geometry"]["elements"])
+    for endpoint, y in ((first_from, lower), (second_to, upper)):
+        regions = [region for level, group in levels if abs(level-y) <= 0.01 for region in group]
+        if not regions or not all(point_in_regions((endpoint[0] + (factor*form["flight_width"]/2 if cross_axis == 0 else 0),
+                                                   endpoint[2] + (factor*form["flight_width"]/2 if cross_axis == 2 else 0)),
+                                                 regions) for factor in (-1, 0, 1)):
+            return None
+    bounds = [position[0]-size["width"]/2, position[2]-size["depth"]/2,
+              position[0]+size["width"]/2, position[2]+size["depth"]/2]
+    bounds[0 if axis == 0 else 1] = min(turn, far)
+    bounds[2 if axis == 0 else 3] = max(turn, far)
+    return {"first_flight": {"from": first_from, "to": first_to},
+            "second_flight": {"from": second_from, "to": second_to},
+            "landing": {"bounds": [round(v, 6) for v in bounds], "top_y": round(middle, 6)},
+            "direction_axis": axis, "direction_sign": sign}
+
+
 def _item_context(state, markers, base, reference_entity_ids=()):
     from app.agent.knowledge.component_names import component_reference_prompt
     drawing = state["design_document"]["decisions"]
@@ -293,7 +393,7 @@ def _item_context(state, markers, base, reference_entity_ids=()):
     from app.agent.knowledge.component_names import resolve_component_name
     circulation = any(resolve_component_name(m["type"])["entity_type"] == "stair" for m in markers.values())
     needed = {m.get("host", "") for m in markers.values()} | set(reference_entity_ids)
-    from app.design.relations import opening_host, place_opening_group
+    from app.design.relations import opening_host, place_opening_group, opening_cell_limits
     opening_hosts = {}
     for marker in markers.values():
         wall = opening_host(base, marker, diagram_hosts=state.get("drawing_hosts", []))
@@ -352,9 +452,16 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         "existing_blueprint": {**base, "geometry": {bucket: [e for e in base["geometry"][bucket] if e["id"] in needed]
                                                     for bucket in ("elements", "components")}}}
     context["opening_hosts"] = opening_hosts
+    context["opening_cell_limits"] = {m["id"]: limits for m in markers.values()
+                                      if (limits := opening_cell_limits(m)) is not None}
+    from app.design.relations import canopy_mount_target
+    context["canopy_mount_targets"] = {m["id"]: target for m in markers.values()
+                                       if (target := canopy_mount_target(base, m)) is not None}
     context["native_size_targets"] = {m["id"]: {
         _SIZE_FIELDS.get((resolve_component_name(m["type"])["entity_type"], k), k): v
         for k, v in (m["design"].get("size") or {}).items()} for m in markers.values()}
+    context["stair_route_targets"] = {m["id"]: route for m in markers.values()
+                                      if (route := _stair_route_target(base, m)) is not None}
     from app.design.relations import balcony_geometry
     footprints = balcony_geometry(base)
     context["attachment_geometry"] = {}
@@ -377,6 +484,10 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         ]
     if any(resolve_component_name(m["type"])["entity_type"] == "roof" for m in markers.values()):
         context["drawing"]["roof"] = deepcopy(drawing.get("roof"))
+    context["delegated_markers"] = [{k: m.get(k) for k in ("id", "type", "host", "design")}
+                                    for m in (state.get("resolved_design") or {}).get("component_markers", [])
+                                    if m["id"] not in markers and m.get("host")
+                                    and m.get("host") in {v.get("host") for v in markers.values()}]
     if body:
         context["drawing"] = deepcopy(next(m["design"] for m in markers.values() if m["type"] == "building_body"))
         context["markers"] = [{k: v for k, v in m.items() if k != "design"} for m in markers.values()]
@@ -482,6 +593,8 @@ async def run_marker_generate(state, item):
     base = implementation_blueprint(state)
     fragments = list((state.get("component_fragments") or {}).get(item.id) or [])
     records = dict(old.get("implementations") or {})
+    if not item.params.get("assembly_feedback"):
+        pending = {i: m for i, m in pending.items() if records.get(i, {}).get("status") != "implemented"}
     buckets = {key: list(old.get(key) or []) for key in ("elements", "components")}
     materials, assets = dict(old.get("materials") or {}), dict(old.get("assets") or {})
     schema = load_engine_schema()
@@ -536,16 +649,35 @@ async def run_marker_generate(state, item):
                     await callback("execute:progress", f"{item.label}：网络没有相关资料，依据图纸和模型知识继续实现。\n")
             except Exception as exc:
                 trace.append({"tool": "web_search", "query": query, "ok": False, "error": str(exc)})
-    completed_stages = {i: {t.get("stage") for t in trace if i in t.get("marker_ids", [])} for i in pending}
+    completed_stages = {i: {t.get("stage") for t in trace if i in t.get("marker_ids", [])
+                            and not t.get("split_marker_ids")} for i in pending}
     stages = ("assembly_revision",) if item.params.get("assembly_feedback") else IMPLEMENTATION_STAGES
     model_error = None
     stopped = set()
-    for stage in stages:
+    from collections import deque
+    batches = [list(pending)]
+    for attempt in trace:
+        for half in attempt.get("split_marker_ids", []):
+            split_batches = []
+            for batch in batches:
+                split_batches.extend(part for part in ([i for i in batch if i in half],
+                                                       [i for i in batch if i not in half]) if part)
+            batches = split_batches
+    jobs = deque((stage, batch) for stage in stages for batch in batches)
+    call_limit = len(item.target["marker_ids"])*(len(IMPLEMENTATION_STAGES)+1)
+    while jobs:
+        stage, batch_ids = jobs.popleft()
         if not pending:
             break
-        eligible = {i: m for i, m in pending.items() if i not in stopped and stage not in completed_stages[i]}
+        eligible = {i: pending[i] for i in batch_ids if i in pending
+                    and i not in stopped and stage not in completed_stages[i]}
         if not eligible:
             continue
+        if sum(t.get("model_calls", 0) for t in trace) >= call_limit:
+            failures.update({i: "当前任务模型调用预算已耗尽，仍未完成实现" for i in pending})
+            trace.append({"tool": "implementation_budget_exhausted", "model_calls": 0,
+                          "marker_ids": list(pending), "limit": call_limit})
+            break
         if callback:
             stage_label = "结合图纸和参考实现" if stage == "generate" else "只修订失败片段"
             await callback("execute:progress", f"{item.label}：{stage_label}，待落实 {len(eligible)} 个标记。\n")
@@ -553,13 +685,16 @@ async def run_marker_generate(state, item):
         from app.agent.knowledge.component_names import resolve_component_name
         families = {resolve_component_name(m["type"])["entity_type"] or m["type"] for m in eligible.values()}
         instructions = []
+        if "canopy" in families:
+            instructions.append("canopy_mount_targets 给出按已批准板中心换算的 parentWall/from，直接采用，不能把世界中心当沿墙起点。"
+                "雨棚保持显式宽、深、厚；原生 supportCount 生成竖直支柱，图纸要求斜撑时用正确倾斜的实体，不以竖柱代替斜撑。")
         if "building_body" in families:
             instructions.append("主体统一实现 body_components 的结构描述，沿用实际采用的 diagram_hosts 墙ID。"
                 "body_components 中的整面围护墙归主体实现，按其显式尺寸、厚度、材料和形态生成一次；用 volume+face+floor 对应的墙ID承接后续门窗，不重复建墙。"
                 "墙的 from/to 包含墙底与墙顶 Y，沿用完整三维宿主坐标；不能只保留 X/Z 或把两端 Y 都写成同一标高。"
-                "diagram_hosts 仅列后续门窗需要的实际墙宿主；其他围护按各体量实际空间用途与 facades 实现。"
+                "diagram_hosts 列后续门窗需要的墙宿主；其中 ID 若在 delegated_markers 另列为墙体任务，主体只参考其位置，不重复生成。其他围护按各体量实际空间用途与 facades 实现。"
                 "facades 的 open 表示该体量此面不建墙，empty 表示有墙无开口；相接体量的同一界面若另一侧明确有墙，保留一份该侧围护，不重复建墙，也不删除它。薄 wall 仍是实体，不能生成所谓定位参考墙。"
-                "每个体量逐面采用 volume.facades 覆盖后的有效布局；floor_layouts.walls 是实际内墙，按其世界 X/Z 端点、厚度和本层标高实现并沿用内墙 id。rooms 仅标注用途，不自动建隔墙。"
+                "每个体量逐面采用 volume.facades 覆盖后的有效布局；floor_layouts.walls 是实际内墙，未委派的按世界 X/Z 端点、厚度和本层标高实现并沿用内墙 id，已在 delegated_markers 单列的由对应墙体任务实现。rooms 仅标注用途，不自动建隔墙。"
                 "相邻体量交界只生成一份物理墙，不能逐体量叠加四面墙。"
                 "delegated_markers/components 由其他任务实现，主体留出位置和承托，不占用其实体ID。"
                 "不能换用任意ID重复搭建其他任务的屋面、山花或装饰几何；只有 body_components 明确要求的主体构造才在本条目实现。"
@@ -573,12 +708,15 @@ async def run_marker_generate(state, item):
                 "梁柱与填充墙核对墙法线方向的实际截面和进退，避免重合表面，不删掉图纸要求的外露框架。")
         if families & {"door", "window"}:
             instructions.append("用 door/window 或 opening 开真实洞口，按整个洞口组保持设计宽高，组内分扇不重叠。"
+                "opening_cell_limits 是自动立面标记的可用开间；整组洞口不得超出该沿墙范围和 max_height，不能占用相邻标记的位置。"
+                "max_width/max_height 是上限，不是必须填满的尺寸；显式 size 仍严格按图纸实现，不用缩小显式尺寸绕过矛盾。"
                 "程序按图纸统一安装平移；from 是洞口左下角，position 是世界中心，已提供的 from 可直接用。"
                 "opening_hosts 若列出墙引用对应关系或共用墙，以其中 parentWall/from 实现；design.host 是原始设计引用，最终 parentWall 使用实际墙ID；diagram_host 保留原图纸定位框，不能补建重叠墙。"
                 "仅选择实际宿主及组内分格，保留玻璃净空；框架用四边条，门窗任务不补建整墙。"
                 "frameDepth 是框深，leafDepth/glassDepth 是门扇/玻璃厚度，后者不能大于框深；装饰窗套用 primitive，不再次开洞。")
         if "roof" in families:
             instructions.append("按 roof_type/type、volume、overhang 和 size 实现屋顶，保持坡向及支承封闭关系。"
+                "delegated_markers 列出了同一宿主另行实现的构件；其中已有女儿墙、栏杆等时，即使屋顶描述提及也不能重复搭建，保留它们的位置。"
                 "原生 roofType 没有该形态时尝试组合；屋面必须连续覆盖体量和出檐，封檐条不能替代屋面。"
                 "单坡可用整片薄 box 加弧度 rotation，按倾斜后的上表面投影取宽深和中心；"
                 "单轴倾斜时坡向长度按水平覆盖长度除以 cos(坡角) 计算，中心考虑板厚造成的顶面偏移；将最终数值写入 geometry 并回核实际数组，计算说明不能代替实体参数。"
@@ -594,6 +732,9 @@ async def run_marker_generate(state, item):
         if "stair" in families:
             instructions.append("楼梯按 markers[].floor_connections 的 from_y/to_y 实现明确的楼面连接；"
                 "available_floor_connections 只列全楼可用楼面，不要求本标记连接全部楼层。"
+                "若 stair_route_targets 给出坐标，按其中第一跑、第二跑和平台顶面落实；"
+                "其中 landing.bounds 是世界 X/Z 边界，平台须覆盖两跑接头的完整净宽，"
+                "第二跑出口须接到现有上层楼板，不要落在楼梯洞口内部。"
                 "levels.top_y 是该层墙顶，不是下一层楼面；没有明确屋面通行时，不增建顶层到屋面的梯段。"
                 "楼梯 size.width/depth 是整组占地，单跑净宽从 form 解析；各跑高差之和等于连接楼层高差。"
                 "指定踏步时 stepCount*stepHeight 等于两端高差，stepCount*stepDepth 等于两端水平距离；否则省略踏步参数让引擎计算。"
@@ -659,11 +800,37 @@ async def run_marker_generate(state, item):
                    "finish_reason": getattr(reply, "finish_reason", None),
                    "output": reply.content, "marker_ids": list(eligible), "errors": {}}
         trace.append(attempt)
+        if (attempt["finish_reason"] in {"length", "max_tokens"} and len(eligible) > 1
+                and not any(set(m.get("depends_on") or []).intersection(eligible) for m in eligible.values())):
+            ids = list(eligible)
+            middle = len(ids)//2
+            halves = [ids[:middle], ids[middle:]]
+            attempt["split_marker_ids"] = halves
+            attempt["errors"] = {i: "模型输出达到长度上限；拆分当前批次，不原批重复修订" for i in ids}
+            # 后续修订沿用拆分边界，不再把失败标记拼回同一个超长请求。
+            following = []
+            for next_stage, next_ids in jobs:
+                selected = set(ids).intersection(next_ids)
+                if selected:
+                    following.extend((next_stage, [i for i in half if i in selected]) for half in halves
+                                     if selected.intersection(half))
+                    other = [i for i in next_ids if i not in selected]
+                    if other:
+                        following.append((next_stage, other))
+                else:
+                    following.append((next_stage, next_ids))
+            jobs = deque([(stage, half) for half in halves] + following)
+            if callback:
+                await callback("execute:progress", f"{item.label}：输出达到长度上限，拆为 {len(halves[0])} 和 {len(halves[1])} 个标记继续实现。\n")
+            continue
         try:
             payload = extract_json_object(reply.content or "", required_key="implementations", raise_on_error=True)
         except ValueError as exc:
             payload = {}
-            failures.update({i: str(exc) + "；数值先计算，只返回完整 JSON" for i in eligible})
+            feedback = ("模型输出达到长度上限；保留全部设计要求，精简重复字段和说明，返回完整 JSON"
+                        if attempt["finish_reason"] in {"length", "max_tokens"}
+                        else str(exc) + "；数值先计算，只返回完整 JSON")
+            failures.update({i: feedback for i in eligible})
         rows = payload.get("implementations")
         if not payload:
             attempt["errors"] = dict(failures)

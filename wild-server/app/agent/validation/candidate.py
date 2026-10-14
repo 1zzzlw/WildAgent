@@ -93,10 +93,15 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                         if marker["type"] == "building_body":
                             append("design_body_footprint", body_floor_errors([actual[i] for i in ids], marker["design"]))
                         from app.design.relations import (opening_design_errors, roof_design_errors, railing_design_errors,
-                                                          stair_design_errors, component_geometry_review)
+                                                          stair_design_errors, component_geometry_review,
+                                                          delegated_geometry_errors, canopy_design_errors)
                         marker["host_entity_ids"] = (records.get(marker.get("host")) or {}).get("entity_ids", [marker.get("host")])
                         append("design_opening_placement", opening_design_errors(blueprint, [actual[i] for i in ids], marker))
                         append("design_roof_surface", roof_design_errors(blueprint, [actual[i] for i in ids], marker))
+                        append("design_task_ownership", delegated_geometry_errors([actual[i] for i in ids], marker, markers),
+                               marker=marker, entity_ids=ids)
+                        append("design_canopy_placement", canopy_design_errors(blueprint, [actual[i] for i in ids], marker),
+                               marker=marker, entity_ids=ids)
                         append("design_railing_placement", railing_design_errors(blueprint, [actual[i] for i in ids], marker))
                         append("design_stair_connection", stair_design_errors(blueprint, [actual[i] for i in ids], marker),
                                marker=marker, entity_ids=ids)

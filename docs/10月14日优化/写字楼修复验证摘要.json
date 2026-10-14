@@ -1,0 +1,382 @@
+{
+  "request_id": "req_1791977272855_wk79l1ksa",
+  "detail_level": "minimal",
+  "head": "285320e900b9fd74b96dcdf6492bd1b727453cbd",
+  "original_window_attempts": [
+    {
+      "stage": "generate",
+      "finish_reason": "length",
+      "token_usage": {
+        "input": 67676,
+        "output": 8192,
+        "total": 75868
+      },
+      "marker_count": 180
+    },
+    {
+      "stage": "repair_1",
+      "finish_reason": "length",
+      "token_usage": {
+        "input": 76495,
+        "output": 8192,
+        "total": 84687
+      },
+      "marker_count": 180
+    },
+    {
+      "stage": "repair_2",
+      "finish_reason": "length",
+      "token_usage": {
+        "input": 77215,
+        "output": 8192,
+        "total": 85407
+      },
+      "marker_count": 180
+    }
+  ],
+  "final": {
+    "markers": 209,
+    "implemented": 209,
+    "abandoned": 0,
+    "windows": 180,
+    "backend_errors": 0,
+    "core_compile_errors": 0,
+    "core_reconstruct_errors": 0,
+    "mesh_count": 1557,
+    "unmapped_materials": 0
+  },
+  "live_generation": {
+    "actual_calls": 24,
+    "reused_original_body_and_other_successful_components": true,
+    "stair_source": "original repair_2 offline replay",
+    "rag_source": "original saved retrieved references; no fresh retrieval in isolated replays",
+    "whole_graph_fresh_run": false,
+    "model_version_fixed": false
+  },
+  "regressions": {
+    "broad_before_canopy": {
+      "tests": 1711,
+      "failures": "48",
+      "errors": "0",
+      "skipped": "0",
+      "time": "111.358",
+      "passed": 1663
+    },
+    "final_plan_and_validators": {
+      "tests": 878,
+      "failures": "8",
+      "errors": "0",
+      "skipped": "0",
+      "time": "30.940",
+      "passed": 870
+    },
+    "all_48_broad_failures_reproduced_on_head_sources": true,
+    "new_failures_in_final_plan_and_validators": [],
+    "existing_failures": [
+      {
+        "module": "tests.plan.test_drawing_attachment_handoff",
+        "test": "test_native_canopy_dimension_feedback_names_the_actual_field_and_expected_value"
+      },
+      {
+        "module": "tests.plan.test_drawing_implementation",
+        "test": "test_repair_order_reuses_references_without_more_searches[2]"
+      },
+      {
+        "module": "tests.plan.test_drawing_implementation",
+        "test": "test_recorded_drawing_keeps_explicit_components_and_numeric_quotas[0]"
+      },
+      {
+        "module": "tests.plan.test_drawing_implementation",
+        "test": "test_recorded_drawing_keeps_explicit_components_and_numeric_quotas[1]"
+      },
+      {
+        "module": "tests.plan.test_drawing_reference_and_geometry",
+        "test": "test_generated_catalog_is_navigation_and_matches_live_metadata"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_chain",
+        "test": "test_design_basis_is_not_silently_cut_to_five_items_at_review"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_chain",
+        "test": "test_impossible_targets_do_not_trigger_futile_design_rewriting[/decisions/roof/type-invented_roof-unsupported]"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_validation",
+        "test": "test_sectioned_content_is_not_silently_truncated[spatial_strategy]"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_validation",
+        "test": "test_sectioned_content_is_not_silently_truncated[composition]"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_validation",
+        "test": "test_sectioned_content_is_not_silently_truncated[material_strategy]"
+      },
+      {
+        "module": "tests.design.test_architecture_intent_validation",
+        "test": "test_public_schema_keeps_text_fields_and_rejects_unknown_keys"
+      },
+      {
+        "module": "tests.design.test_component_instance_validation",
+        "test": "test_host_is_required_to_be_non_empty"
+      },
+      {
+        "module": "tests.design.test_component_instance_validation",
+        "test": "test_negative_size_raises_error"
+      },
+      {
+        "module": "tests.design.test_component_instance_validation",
+        "test": "test_excessive_size_raises_error"
+      },
+      {
+        "module": "tests.design.test_design_completeness",
+        "test": "test_unsupported_field_and_enum_are_not_satisfied"
+      },
+      {
+        "module": "tests.design.test_design_instance_roundtrip",
+        "test": "test_instances_survive_document_roundtrip[1]"
+      },
+      {
+        "module": "tests.design.test_design_instance_roundtrip",
+        "test": "test_instances_survive_document_roundtrip[2]"
+      },
+      {
+        "module": "tests.design.test_design_instance_roundtrip",
+        "test": "test_approved_instance_form_reaches_compiler_and_merge_alignment"
+      },
+      {
+        "module": "tests.design.test_envelope_vs_opening",
+        "test": "test_contract_rejects_open_with_a_form"
+      },
+      {
+        "module": "tests.design.test_fulfillment",
+        "test": "test_facade_bays_are_compared_per_floor"
+      },
+      {
+        "module": "tests.design.test_fulfillment",
+        "test": "test_delivery_reply_states_the_gap_without_changing_the_gate"
+      },
+      {
+        "module": "tests.design.test_material_regions",
+        "test": "test_binding_never_leaves_a_dangling_material_reference"
+      },
+      {
+        "module": "tests.design.test_material_regions",
+        "test": "test_blueprint_stays_valid_with_a_bad_region"
+      },
+      {
+        "module": "tests.design.test_normalization_evidence",
+        "test": "test_missing_invalid_and_explicit_dimensions_are_distinct[-5-semantic_change]"
+      },
+      {
+        "module": "tests.design.test_normalization_evidence",
+        "test": "test_degradation_evidence_reaches_current_design_gaps_and_keeps_constraint_id"
+      },
+      {
+        "module": "tests.design.test_oct09_consistency",
+        "test": "test_final_gate_identifies_the_same_approved_mutation"
+      },
+      {
+        "module": "tests.design.test_oct09_consistency",
+        "test": "test_legal_single_volume_can_pass_full_gate_and_save"
+      },
+      {
+        "module": "tests.design.test_opening_forms",
+        "test": "test_contract_rejects_unknown_kinds[garage]"
+      },
+      {
+        "module": "tests.design.test_opening_forms",
+        "test": "test_contract_rejects_unknown_kinds[]"
+      },
+      {
+        "module": "tests.design.test_opening_forms",
+        "test": "test_contract_rejects_unknown_kinds[empty:x]"
+      },
+      {
+        "module": "tests.design.test_opening_forms",
+        "test": "test_upper_pattern_never_allows_a_door[door]"
+      },
+      {
+        "module": "tests.design.test_opening_forms",
+        "test": "test_upper_pattern_never_allows_a_door[door:slide]"
+      },
+      {
+        "module": "tests.validators.test_stepped_roof_support.RealSessionRegressionTest",
+        "test": "test_no_approved_design_mutation_after_fix"
+      },
+      {
+        "module": "tests.validators.test_stepped_roof_support.RealSessionRegressionTest",
+        "test": "test_stepped_roof_survives_the_fix_unchanged"
+      },
+      {
+        "module": "tests.validators.test_validation_pipeline_repairs.ValidationPipelineRepairTest",
+        "test": "test_wall_repair_refreshes_structural_quality_result"
+      },
+      {
+        "module": "tests.agent.test_architecture_quota_consistency",
+        "test": "test_design_contract_error_is_a_controlled_business_error"
+      },
+      {
+        "module": "tests.agent.test_architecture_quota_consistency",
+        "test": "test_validation_error_is_wrapped_not_leaked"
+      },
+      {
+        "module": "tests.agent.test_drawing_detail_levels",
+        "test": "test_invalid_or_absent_selection_defaults_to_medium[None]"
+      },
+      {
+        "module": "tests.agent.test_drawing_detail_levels",
+        "test": "test_invalid_or_absent_selection_defaults_to_medium[]"
+      },
+      {
+        "module": "tests.agent.test_drawing_detail_levels",
+        "test": "test_invalid_or_absent_selection_defaults_to_medium[unknown]"
+      },
+      {
+        "module": "tests.agent.test_drawing_detail_levels",
+        "test": "test_invalid_or_absent_selection_defaults_to_medium[value3]"
+      },
+      {
+        "module": "tests.agent.test_drawing_detail_levels",
+        "test": "test_invalid_or_absent_selection_defaults_to_medium[value4]"
+      },
+      {
+        "module": "tests.agent.test_drawing_format_feedback",
+        "test": "test_optional_host_preserves_explicit_value_and_marker_position[sculpture_base]"
+      },
+      {
+        "module": "tests.agent.test_drawing_opening_feedback",
+        "test": "test_architecture_injects_design_protocol_and_request_shape_references"
+      },
+      {
+        "module": "tests.agent.test_model_service_block.ModelServiceBlockTest",
+        "test": "test_architecture_blocks_on_quota"
+      },
+      {
+        "module": "tests.agent.test_plan_chain_e2e.PlanChainEndToEndTest",
+        "test": "test_artifact_never_lands_is_abandoned_and_loop_stops"
+      },
+      {
+        "module": "tests.agent.test_plan_chain_e2e.PlanChainEndToEndTest",
+        "test": "test_failed_generate_retries_then_continues"
+      },
+      {
+        "module": "tests.agent.test_plan_chain_e2e.PlanChainEndToEndTest",
+        "test": "test_happy_path_runs_every_item_once_and_finishes"
+      }
+    ],
+    "new_cases": {
+      "total": 47,
+      "passed": 47
+    }
+  },
+  "source_sha256": {
+    "wild-server/app/agent/plan/expand.py": "3b9db59a5e5ba09028a89ab35ce55eb2e84811f424ca189e4eea3b3e83052f28",
+    "wild-server/app/agent/plan/implementation.py": "d7c19639f36aa17f67b4821171d9c329abdb835138c63ea1d198a865b8d5d978",
+    "wild-server/app/agent/validation/candidate.py": "9434b2a7fff7d262bc3e5ba5568fcbacc5dbd378272a1050aae3ba2a3d619c91",
+    "wild-server/app/design/relations.py": "ea22bd1b2c6cd90f67691516f062314df0c68956abead3bf36f0835db887a246",
+    "wild-server/app/tools/spatial_tools.py": "92e8e71b9cb921a049cda3a98cec4a3433d689857e745ee987e80b473a6a91d8",
+    "wild-server/app/tools/component_tools.py": "6217da80008c5c5a6c933b867b0c886c341c0a309bff7f1b5a4e9f80a743d27f"
+  },
+  "blueprint_sha256": "c518d861f9ee247c46131f10baa28833d0e15ca9b732c6c8442aa17bb27c9f06",
+  "render": {
+    "baselineVersion": "p7a.1",
+    "inputSha256": "c518d861f9ee247c46131f10baa28833d0e15ca9b732c6c8442aa17bb27c9f06",
+    "renderer": "wild-web/createSceneGroupFromEntity",
+    "settings": {
+      "width": 1280,
+      "height": 960,
+      "background": 14673130,
+      "sun": {
+        "azimuthDeg": 135,
+        "elevationDeg": 42,
+        "intensity": 2.1,
+        "color": 16774370
+      },
+      "ambient": {
+        "sky": 14674421,
+        "ground": 10130828,
+        "intensity": 0.85
+      },
+      "ground": {
+        "color": 9277571,
+        "y": -0.02
+      },
+      "toneMappingExposure": 1
+    },
+    "views": [
+      "front",
+      "side",
+      "top",
+      "perspective"
+    ],
+    "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+    "browserVersion": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/153.0.8010.12",
+      "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+      "jsVersion": "15.3.76.4"
+    },
+    "sourceDigest": "3ba6c8f9f0f1cc80408532ced151bf1ff1a581bc9466abb0f409ac43fdde961b",
+    "glRenderer": "WebKit WebGL",
+    "glVendor": "WebKit",
+    "meshCount": 1557,
+    "materialCount": 1557,
+    "unmappedMaterials": 0,
+    "boundingBox": {
+      "min": [
+        -0.17099952697753906,
+        -2.980232241545089e-09,
+        -10.5
+      ],
+      "max": [
+        30.17099952697754,
+        34.57999999910593,
+        18.17099952697754
+      ]
+    },
+    "compileErrors": 0,
+    "reconstructErrors": 0,
+    "shots": [
+      {
+        "view": "front",
+        "file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\diagnostics\\req_1791977272855_wk79l1ksa-common-fixes\\render\\front.png",
+        "bytes": 469674
+      },
+      {
+        "view": "side",
+        "file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\diagnostics\\req_1791977272855_wk79l1ksa-common-fixes\\render\\side.png",
+        "bytes": 404229
+      },
+      {
+        "view": "top",
+        "file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\diagnostics\\req_1791977272855_wk79l1ksa-common-fixes\\render\\top.png",
+        "bytes": 270195
+      },
+      {
+        "view": "perspective",
+        "file": "E:\\AgentProject\\WildAgent\\wild-server\\storage\\sessions\\diagnostics\\req_1791977272855_wk79l1ksa-common-fixes\\render\\perspective.png",
+        "bytes": 638064
+      }
+    ],
+    "contextSha256": "8cda95838f757ad6cff5e001d8c8d416c6162baa50082e11b881aaf89084a497"
+  },
+  "evidence_directory": "wild-server\\storage\\sessions\\diagnostics\\req_1791977272855_wk79l1ksa-common-fixes",
+  "visual_review": {
+    "viewed": [
+      "front",
+      "side",
+      "top",
+      "perspective"
+    ],
+    "building_and_openings_visible": true,
+    "architectural_acceptance_complete": false,
+    "remaining_observations": [
+      "自动窗未批准统一尺寸与分格，存在跨批次样式变化",
+      "雨棚组合斜撑与板边连接需要继续细化；原生板定位已验证",
+      "外部四视角不证明内部楼梯通行和全部构造关系"
+    ]
+  }
+}

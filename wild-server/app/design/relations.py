@@ -11,6 +11,30 @@ def entity_index(blueprint: dict) -> dict:
             for e in geometry.get(bucket, []) if isinstance(e, dict) and e.get("id")}
 
 
+def delegated_geometry_errors(entities: list[dict], marker: dict, markers) -> list[str]:
+    """平屋面与另派女儿墙的有限归属检查，不把屋面以下支承误作女儿墙。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+    if resolve_component_name(marker["type"])["entity_type"] != "roof":
+        return []
+    design = marker.get("design") or {}
+    roof_type = str(design.get("roof_type") or design.get("type") or "").casefold()
+    if "flat" not in roof_type and "平屋" not in roof_type and "平顶" not in roof_type:
+        return []
+    delegated = [m for m in markers if m["id"] != marker["id"] and marker.get("host")
+                 and m.get("host") == marker["host"]
+                 and resolve_component_name(m["type"])["kind"] == "parapet"]
+    position = (marker.get("entity") or {}).get("position")
+    if not delegated or not isinstance(position, list) or len(position) != 3:
+        return []
+    outside = [e["id"] for e in entities if e.get("type") == "wall"
+               and all(isinstance(e.get(k), list) and len(e[k]) == 3
+                       and type(e[k][1]) in (int, float) for k in ("from", "to"))
+               and min(e["from"][1], e["to"][1]) >= position[1]-TOLERANCE
+               and max(e["from"][1], e["to"][1]) > position[1]+TOLERANCE]
+    return ([f"屋顶 {marker['id']} 越界实现屋面以上围墙 {outside}；"
+             f"该宿主女儿墙已委派给 {[m['id'] for m in delegated]}，本任务只实现屋面与支承"] if outside else [])
+
+
 def stair_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> list[str]:
     """逐标记检查明确楼面连接；平台承托仍由共享空间校验检查。"""
     targets = marker.get("floor_connections") or []
@@ -431,6 +455,22 @@ def opening_target(marker, diagram, width, height):
     return None
 
 
+def opening_cell_limits(marker):
+    """自动立面标记的开间范围；显式实例仍按其批准尺寸和位置验收。"""
+    spec, design = marker.get("entity") or {}, marker.get("design") or {}
+    diagram = marker.get("diagram_host") or {}
+    bays = design.get("bays")
+    if ("centerAlong" not in spec or type(bays) is not int or bays < 1
+            or diagram.get("curve") or not all(isinstance(diagram.get(k), list)
+            and len(diagram[k]) == 3 for k in ("from", "to"))):
+        return None
+    a, b = diagram["from"], diagram["to"]
+    width = hypot(b[0]-a[0], b[2]-a[2])/bays
+    center, bottom = spec["centerAlong"], spec["bottomY"]
+    return {"along_min": center-width/2, "along_max": center+width/2,
+            "bottom_y": bottom, "max_width": width, "max_height": max(a[1], b[1])-bottom}
+
+
 def opening_host(blueprint, marker, *, diagram_hosts=None):
     """缺少示意墙时，查找唯一完整覆盖其安装框的真实直墙。"""
     from app.agent.knowledge.component_names import resolve_component_name
@@ -629,6 +669,13 @@ def opening_design_errors(blueprint: dict, entities: list[dict], marker: dict) -
     except ValueError as exc:
         return [prefix + str(exc)]
     design, errors = marker["design"], []
+    limits = opening_cell_limits(marker)
+    if limits and (left < limits["along_min"]-TOLERANCE or right > limits["along_max"]+TOLERANCE):
+        errors.append(prefix + f"整组洞口占用相邻开间；本开间沿墙范围 "
+                      f"[{limits['along_min']:g}, {limits['along_max']:g}]，实际 [{left:g}, {right:g}]；"
+                      f"整组宽度不得超过 {limits['max_width']:g}m，保持图纸中心不变")
+    if limits and top > limits["bottom_y"]+limits["max_height"]+TOLERANCE:
+        errors.append(prefix + f"整组洞口超过本层开间顶部；高度不得超过 {limits['max_height']:g}m，保持图纸底标高不变")
     if family == "window":
         for opening in openings:
             if opening.get("type") != "window":
@@ -709,6 +756,52 @@ def canopy_support_point(blueprint: dict, relation: dict) -> tuple[list, float]:
     if top <= bottom:
         raise ValueError("雨棚板底不高于宿主底标高")
     return point, bottom
+
+
+def canopy_mount_target(blueprint, marker):
+    """将已批准的板中心换算成 Core 的附墙起点，供提示与验收共用。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+    if resolve_component_name(marker["type"])["entity_type"] != "canopy":
+        return None
+    spec, size = marker.get("entity") or {}, marker.get("design", {}).get("size") or {}
+    wall = entity_index(blueprint).get(spec.get("parentWall"))
+    position = spec.get("position")
+    if (not wall or wall.get("type") != "wall" or wall.get("curve")
+            or not isinstance(position, list) or len(position) != 3
+            or not all(type(size.get(k)) in (int, float) and size[k] > 0 for k in ("width", "depth"))):
+        return None
+    a, b = wall["from"], wall["to"]
+    length = hypot(b[0]-a[0], b[2]-a[2])
+    if length <= TOLERANCE:
+        return None
+    ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+    along = (position[0]-a[0])*ux+(position[2]-a[2])*uz-size["width"]/2
+    probe = {"parentWall": wall["id"], "width": size["width"], "from": [along, position[1], 0]}
+    center = wall_attached_point(blueprint, probe, along+size["width"]/2, position[1], size["depth"]/2)
+    normal = -(position[0]-center[0])*uz+(position[2]-center[2])*ux
+    return {"parentWall": wall["id"], "from": [along, position[1], normal]}
+
+
+def canopy_design_errors(blueprint, entities, marker):
+    from app.agent.knowledge.component_names import resolve_component_name
+    if resolve_component_name(marker["type"])["entity_type"] != "canopy":
+        return []
+    canopies = [e for e in entities if e.get("type") == "canopy"]
+    if len(canopies) != 1:
+        return []  # 自定义组合保留现有几何审核，不猜测其安装框。
+    canopy = canopies[0]
+    target = canopy_mount_target(blueprint, marker)
+    errors = []
+    if target and (canopy.get("parentWall") != target["parentWall"]
+                   or any(abs(a-b) > TOLERANCE for a, b in zip(canopy["from"], target["from"]))):
+        errors.append(f"❌ [{canopy['id']}] 图纸雨棚板中心必须保持 {marker['entity']['position']}；"
+                      f"附墙安装应为 parentWall={target['parentWall']}，from={target['from']}，"
+                      "from[0] 为板左端沿墙距离，from[2] 为安装偏移，不能直接填写板中心法向距离")
+    for field, value in (marker.get("design", {}).get("size") or {}).items():
+        actual_field = NATIVE_SIZE_FIELDS.get(("canopy", field), field)
+        if actual_field in canopy and abs(canopy[actual_field]-value) > TOLERANCE:
+            errors.append(f"❌ [{canopy['id']}] 图纸雨棚 {actual_field} 应为 {value}，实际 {canopy[actual_field]}；不能改变尺寸绕过宿主边界")
+    return errors
 
 
 def evaluate_support(blueprint: dict, entity_id: str, relation: dict) -> dict:

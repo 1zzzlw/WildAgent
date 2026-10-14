@@ -111,6 +111,40 @@ def test_body_repairs_host_atomically_then_door_succeeds_on_first_call(monkeypat
     assert events == ["rag", "model", "model", "rag", "model"]
 
 
+def test_delegated_wall_handoff_waits_for_wall_item_and_checks_its_door(monkeypatch):
+    wall = {"id": "interior_host", "type": "wall", "from": [0, 0, 5], "to": [5, 3.2, 5],
+            "thickness": 0.15}
+    body = {"id": "building_body", "type": "building_body", "design": {}, "entity": {}}
+    wall_marker = {"id": wall["id"], "type": "wall", "depends_on": [body["id"]],
+                   "design": {}, "entity": {}}
+    door = {"id": "interior_door", "type": "door", "depends_on": [wall["id"]],
+            "entity": {"parentWall": wall["id"], "from": [1, 0, 0]}, "diagram_host": wall,
+            "design": {"placement": {"offset": 1}, "size": {"width": 0.9, "height": 2.1}}}
+    markers = [body, wall_marker, door]
+    base = {"geometry": {"elements": [], "components": []}}
+
+    def accept(candidate, row, _marker, **_kwargs):
+        merged = deepcopy(candidate)
+        merged["geometry"]["elements"].extend(row["geometry"]["elements"])
+        return merged, row["geometry"]["elements"], {"status": "implemented"}
+
+    monkeypatch.setattr(impl, "_accept_group", accept)
+    body_row = {"geometry": {"elements": [{"id": "slab", "type": "floor"}], "components": []}}
+    body_base, _, rejected, _ = impl._accept_fragment(base, body_row, body,
+        dependent_markers=markers, diagram_hosts=[wall])
+    assert rejected is None
+
+    wrong = {"geometry": {"elements": [{**wall, "id": "other_wall"}], "components": []}}
+    _, _, rejected, _ = impl._accept_fragment(body_base, wrong, wall_marker,
+        dependent_markers=markers, diagram_hosts=[wall])
+    assert "interior_door" in rejected["error"]
+
+    correct = {"geometry": {"elements": [wall], "components": []}}
+    _, _, rejected, _ = impl._accept_fragment(body_base, correct, wall_marker,
+        dependent_markers=markers, diagram_hosts=[wall])
+    assert rejected is None
+
+
 def test_body_checks_explicit_opening_extent_but_allows_exposed_partial_wall():
     wall = {"id": "host", "type": "wall", "from": [0, 0, 0], "to": [10, 3, 0], "thickness": 0.2}
     marker = {"id": "win", "type": "floor_window", "diagram_host": wall,

@@ -80,6 +80,25 @@ def _floor_regions_by_level(elements: list[dict]) -> list[tuple[float, list[list
     return sorted(grouped.items())
 
 
+def _connected_landing(regions, start, end):
+    """拆板后的相接矩形仍是同一平台；点接触和实际间隙不构成通路。"""
+    reached = {i for i, region in enumerate(regions) if point_in_regions(start, [region])}
+    pending = list(reached)
+    while pending:
+        region = regions[pending.pop()]
+        if point_in_regions(end, [region]):
+            return True
+        for i, other in enumerate(regions):
+            if i in reached:
+                continue
+            dx = min(region[2], other[2]) - max(region[0], other[0])
+            dz = min(region[3], other[3]) - max(region[1], other[1])
+            if dx >= -1e-9 and dz >= -1e-9 and max(dx, dz) > 1e-9:
+                reached.add(i)
+                pending.append(i)
+    return False
+
+
 def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
     """检查楼梯端点是否落在楼板上，以及相邻梯段是否在同一平台衔接。"""
 
@@ -168,9 +187,9 @@ def collect_stair_placement_issues(blueprint: dict) -> list[dict[str, object]]:
         )
         shared_landing = any(
             abs(level_y - float(previous_end[1])) <= 0.25
-            and point_in_regions((float(previous_end[0]), float(previous_end[2])), [region])
-            and point_in_regions((float(current_start[0]), float(current_start[2])), [region])
-            for level_y, regions in floor_levels for region in regions
+            and _connected_landing(regions, (float(previous_end[0]), float(previous_end[2])),
+                                   (float(current_start[0]), float(current_start[2])))
+            for level_y, regions in floor_levels
         )
         if horizontal_gap > 0.35 and not shared_landing:
             previous_id = str(previous_stair.get("id") or "?")

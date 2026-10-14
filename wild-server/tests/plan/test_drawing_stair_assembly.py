@@ -285,6 +285,57 @@ def test_return_flights_connect_through_a_full_width_landing(axis, offset, platf
     assert all("端点=" in i["message"] and "承托范围=" in i["message"] for i in unsupported)
 
 
+@pytest.mark.parametrize("axis,sign", [(2, 1), (2, -1), (0, 1)])
+def test_stair_route_target_joins_flights_landing_and_upper_floor(axis, sign):
+    state, _ = state_with_stair()
+    base = impl.implementation_blueprint(state)
+    base["geometry"]["elements"] = [e for e in base["geometry"]["elements"] if e["type"] != "stair"]
+    marker = {"id": "stairs", "type": "stair", "design": {
+        "placement": {"position": [5, 1.6, 5]},
+        "size": {"width": 3.6 if axis == 0 else 2.4, "depth": 2.4 if axis == 0 else 3.6},
+        "form": {"shape": "U 形双跑", "flights": 2, "rises": 8,
+                 "tread_depth": 0.3, "flight_width": 1.1, "landing_depth": 1.05,
+                 "description": f"第一跑沿 {'+' if sign > 0 else '-'}{'X' if axis == 0 else 'Z'} 上行，到平台后折返"}},
+        "floor_connections": [{"from_floor": 1, "to_floor": 2, "from_y": 0, "to_y": 3.2}]}
+    route = impl._stair_route_target(base, marker)
+    assert route is not None
+    first, second = route["first_flight"], route["second_flight"]
+    assert (first["to"][axis]-first["from"][axis])*sign == pytest.approx(2.4)
+    assert first["to"][1] == second["from"][1] == pytest.approx(1.6)
+    assert second["to"][axis] == pytest.approx(first["from"][axis])
+    x0, z0, x1, z1 = route["landing"]["bounds"]
+    landing = {"type": "primitive", "id": "landing", "shape": "box",
+               "position": [(x0+x1)/2, 1.525, (z0+z1)/2],
+               "dimensions": [x1-x0, 0.15, z1-z0]}
+    flights = [
+        {"type": "stair", "id": "first", **first, "width": 1.1, "stepCount": 8,
+         "stepDepth": 0.3, "stepHeight": 0.2},
+        {"type": "stair", "id": "second", **second, "width": 1.1, "stepCount": 8,
+         "stepDepth": 0.3, "stepHeight": 0.2}]
+    if axis == 2 and sign == 1:
+        reversed_first = deepcopy(flights[0])
+        reversed_first["from"][axis], reversed_first["to"][axis] = (
+            reversed_first["to"][axis], reversed_first["from"][axis])
+        with pytest.raises(ValueError, match="第一跑方向与图纸相反"):
+            impl._accept_group(base, {"geometry": {"elements": [reversed_first, flights[1], landing],
+                                                  "components": []}}, marker, check_size=False)
+    base["geometry"]["elements"].extend([*flights, landing])
+    cut_stair_openings(base)
+    assert collect_stair_placement_issues(base) == []
+
+
+def test_stair_route_target_does_not_invent_an_unspecified_direction():
+    state, _ = state_with_stair()
+    base = impl.implementation_blueprint(state)
+    marker = {"id": "stairs", "type": "stair", "design": {
+        "placement": {"position": [5, 1.6, 5]},
+        "size": {"width": 2.4, "depth": 3.6},
+        "form": {"shape": "U 形双跑", "flights": 2, "rises": 8,
+                 "tread_depth": 0.3, "flight_width": 1.1, "landing_depth": 1.05}},
+        "floor_connections": [{"from_y": 0, "to_y": 3.2}]}
+    assert impl._stair_route_target(base, marker) is None
+
+
 def test_failed_stair_keeps_its_support_and_decoration_in_the_same_revision():
     state, stair = state_with_stair(axis=2)
     base = impl.implementation_blueprint(state)
