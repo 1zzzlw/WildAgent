@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from loguru import logger
@@ -504,6 +505,23 @@ def _strategy_reason(strategy: PlanStrategy) -> str:
     return "；".join(parts)[:500]
 
 
+def _batch_load(rows: list[dict]) -> dict[str, int]:
+    """按本批实际图纸内容计量；没有模型上限时不凭标记数拆批。"""
+    floors = set()
+    for marker in rows:
+        design = marker.get("design") or {}
+        floor = design.get("floor", (design.get("placement") or {}).get("floor"))
+        if floor is not None:
+            floors.add(floor)
+    return {
+        "marker_count": len(rows),
+        "marker_chars": len(json.dumps(rows, ensure_ascii=False, separators=(",", ":"))),
+        "host_count": len({m["host"] for m in rows if m.get("host")}),
+        "floor_count": len(floors),
+        "dependency_count": len({d for m in rows for d in m.get("depends_on") or []}),
+    }
+
+
 def expand_design_markers(state: dict) -> PlanDocument:
     from app.agent.knowledge.component_names import resolve_component_name
     from app.design.markers import IMPLEMENTATION_STAGES, implementation_records, implementation_complete
@@ -538,6 +556,7 @@ def expand_design_markers(state: dict) -> PlanDocument:
                 target={"marker_ids": [m["id"] for m in rows]},
                 depends_on=sorted({owners[d] for m in rows for d in m.get("depends_on", []) if d in owners}),
                 params={"design_markers": True, "design_hash": state["resolved_design"]["design_hash"],
+                        "batch_load": _batch_load(rows),
                         "execution_mode": "parallel" if parallel else "serial",
                         "parallel_group": "drawing" if parallel else ""},
                 status="done" if complete else "pending",

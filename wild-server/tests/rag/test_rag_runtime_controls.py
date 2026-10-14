@@ -51,7 +51,8 @@ class RAGRuntimeControlsTest(unittest.TestCase):
         loader = object.__new__(RAGSpecLoader)
         loader._load_base_text = Mock(return_value="BASE")
         loader.retrieve = Mock(side_effect=RuntimeError("chroma unavailable"))
-        loader._compose_context = Mock(return_value="BASE")
+        from app.spec.loader import SpecLoadResult
+        loader._compose_result = Mock(return_value=SpecLoadResult("BASE"))
         old_mode = config.rag.retrieval_gate.mode
         old_threshold = config.rag.retrieval_gate.max_distance
         try:
@@ -60,7 +61,7 @@ class RAGRuntimeControlsTest(unittest.TestCase):
             with self.assertRaises(RAGRetrievalRejected):
                 loader.load("窗有哪些参数", purpose="chat")
             self.assertEqual(loader.load("生成一个窗", purpose="generation"), "BASE")
-            loader._compose_context.assert_called_with("BASE", [], operation="load")
+            loader._compose_result.assert_called_with("BASE", [], operation="load")
         finally:
             config.rag.retrieval_gate.mode = old_mode
             config.rag.retrieval_gate.max_distance = old_threshold

@@ -72,16 +72,16 @@ def normalize_kinds(
     for raw in raw_kinds if isinstance(raw_kinds, list) else []:
         if isinstance(raw, dict):
             kind = str(raw.get("kind") or raw.get("type") or "").strip()
-            subtype = str(raw.get("subtype") or "").strip()
-            guidance = str(raw.get("guidance") or "").strip()
-            reason = str(raw.get("reason") or "").strip()
+            subtype = str(raw.get("subtype") or "").strip()[:64]
+            guidance = str(raw.get("guidance") or "").strip()[:300]
+            reason = str(raw.get("reason") or "").strip()[:300]
             execution_mode = str(raw.get("execution_mode") or "serial").strip()
             parallel_group = str(raw.get("parallel_group") or "").strip()[:64]
-            batch_reason = str(raw.get("batch_reason") or "").strip()
+            batch_reason = str(raw.get("batch_reason") or "").strip()[:300]
         else:
             kind, subtype, guidance, reason = str(raw).strip(), "", "", ""
             execution_mode, parallel_group, batch_reason = "serial", "", ""
-        if not kind or kind in seen:
+        if not kind or len(kind) > 64 or kind in seen:
             continue
         seen.add(kind)
         entries.append(
@@ -99,6 +99,8 @@ def normalize_kinds(
                 batch_reason=batch_reason,
             )
         )
+        if len(entries) >= 40:
+            break
 
     # 既有策略统一在这里生效：未知/未实现构件被丢弃，否定词生效，配额下限强制进入，
     # 阳台已内嵌栏杆时不再单独生成栏杆。

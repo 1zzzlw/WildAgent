@@ -92,6 +92,21 @@ def test_declared_enclosure_wall_is_owned_by_body_and_door_uses_its_real_host(fa
     assert document.model_dump(mode="json") == before
 
 
+def test_opening_host_probe_with_no_placed_component_does_not_abort_item(monkeypatch):
+    document = drawing()
+    document.decisions.components = [ComponentInstance(
+        id="entry", type="door", host="wall_main_front_L1",
+        placement={"offset": 2, "sill_height": 0}, size={"width": 1.8, "height": 2.4},
+    )]
+    state = empty_state(document)
+    marker = next(m for m in state["resolved_design"]["component_markers"] if m["id"] == "entry")
+    wall = {**deepcopy(marker["diagram_host"]), "thickness": 0.24}
+    state["skeleton_blueprint"]["geometry"]["elements"] = [wall]
+    monkeypatch.setattr(relations, "place_opening_group", lambda *args: ({"geometry": {"components": []}}, []))
+    context = impl._item_context(state, {marker["id"]: marker}, state["skeleton_blueprint"])
+    assert context["opening_hosts"] == {}
+
+
 @pytest.mark.parametrize("difference", ["partial_width", "offset", "position", "open", "independent", "relation"])
 def test_distinct_wall_is_not_absorbed_into_volume_enclosure(difference):
     document = drawing()

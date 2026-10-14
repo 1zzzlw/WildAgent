@@ -146,6 +146,19 @@ def test_parse_strategy_keeps_valid_detail_level_only():
     assert bad is not None and bad.detail_level is None
 
 
+def test_oversized_model_strategy_text_does_not_escape_contract():
+    strategy = parse_strategy({"kinds": [{
+        "kind": "door", "subtype": "门" * 100,
+        "guidance": "构造" * 200, "reason": "理由" * 200,
+        "batch_reason": "分组" * 200,
+    }]}, _STATE)
+    assert strategy is not None
+    entry = strategy.kinds[0]
+    assert len(entry.subtype) == 64
+    assert len(entry.guidance) == len(entry.reason) == len(entry.batch_reason) == 300
+    assert parse_strategy({"kinds": [{"kind": "门" * 65}]}, _STATE) is None
+
+
 # ── 展开：策略进、条目出 ──
 
 

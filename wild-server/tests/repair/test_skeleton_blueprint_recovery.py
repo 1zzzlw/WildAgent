@@ -67,7 +67,8 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
             async def ainvoke(self, messages):
                 return response
 
-        loader = type("Loader", (), {"last_results": [], "load_many": lambda *_args, **_kwargs: ""})()
+        from app.spec.loader import SpecLoadResult
+        loader = type("Loader", (), {"load_many_result": lambda *_args, **_kwargs: SpecLoadResult("")})()
         service = type("Service", (), {"spec_loader": loader})()
         with (
             patch.object(skeleton_node, "create_llm", return_value=LLM()),
@@ -138,7 +139,8 @@ class SkeletonBlueprintRecoveryTest(unittest.IsolatedAsyncioTestCase):
             "concept": "低层住宅",
             "required_components": [],
         }
-        fake_loader = type("Loader", (), {"last_results": [], "load_many": lambda *_args, **_kwargs: ""})()
+        from app.spec.loader import SpecLoadResult
+        fake_loader = type("Loader", (), {"load_many_result": lambda *_args, **_kwargs: SpecLoadResult("")})()
         fake_service = type("Service", (), {"spec_loader": fake_loader})()
 
         with (

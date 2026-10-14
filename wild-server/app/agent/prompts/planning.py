@@ -57,10 +57,14 @@ def build_architecture_plan_prompt(
     from app.agent.knowledge.component_names import component_reference_prompt
     from app.agent.generation.architecture.profile import resolve_complexity_profile
     complexity = resolve_complexity_profile("", (complexity_profile or {}).get("level", "simple"))
+    profile_id = str((profile or {}).get("id") or "custom")
+    profile_hint = (f"分类器提供的形制线索：{profile_id}。仅用于核对需求与检索方向；"
+                    "若与用户要求不符，以用户要求和本次设计为准。") if profile_id != "custom" else ""
     current = json.dumps({k: v for k, v in current_plan.items()
                           if k not in {"component_quota", "required_components"}}, ensure_ascii=False) if current_plan else "无"
     return f"""
 你负责绘制完整建筑设计图纸，发挥建筑知识和审美，后续 plan 负责研究和实现。
+{profile_hint}
 先确定建筑可辨识的轮廓、开敞/围护空间与构件承接，再安排功能和细节。层数、体量和结构由需求与本次形制推导，不默认两层矩形楼房。
 本次用户选择的设计粒度：{complexity['reason']}
 complexity.level 使用用户选择的 {complexity['level']}。粒度指导默认设计范围，用户明确要求的构件、家具、功能与造型在任何档位都优先保留。按需增加细节，不能用重复增加门窗数量代替设计精细度，不套用固定数量或组件套餐。
@@ -88,10 +92,10 @@ open 表示该开间不设墙，empty 表示有实体墙但没有开口；整面
 共享 facades 逐面作用于所有体量（含内包体量），不同围护用 volume.facades 覆盖。文字说明不覆盖结构字段；有效布局为 open 的面没有门窗墙宿主。相接体量的共用界面一侧为 open、另一侧明确有墙时，只保留有墙侧的一份围护；内部连通门写明确实例，引用有墙侧宿主。实墙由主体实现。独立结构与装饰在 components 描述，不用同位置默认槽位重复生成。局部围护与组合示例按当前设计参考使用，案例尺寸与墙的数量不代替本次设计。
 整面围护墙若需在 components 单独描述尺寸、材料或形态，用体量 host 和 placement.face/floor 明确归属，由主体实现一次；门窗可引用该墙实例 ID，plan 会交接对应实际墙 ID。是否设计入口由当前空间用途与通行设计决定，没有门的空间不补门。
 roof 写 type 和设计说明，可以设计新屋型；roof.volumes 是对象数组，可为空，每项必须写 volume 字符串引用 volumes 中的体量 id，例如 [{{"volume":"main","type":"自拟屋型","overhang":0.8}}]。volume 是固定字段名，不能用 ref、id 或 volume_id 代替；数组项不能只写字符串。structural_grid 写 system、整数 x_bays、整数 z_bays。
-结构体系与平面功能同时设计；开间数不表示每个交点都必须建柱。未指定的柱位结合房间、隔墙和通道安排；影响室内净空的独立柱用 components 说明位置与用途，明确设计的室内柱、外露框架和开敞柱廊保留。
+结构体系与平面功能同时设计；开间数不表示每个交点都必须建柱。需要独立柱时，在 components 逐根标明位置与用途，让图纸和 plan 都能显示；未标柱位不能只靠 structural_grid 暗示主体补出整片柱阵。明确设计的室内柱、外露框架和开敞柱廊保留。
 ridge_axis 是屋脊实际世界轴，不能只在 type 的文字中说明方向；共用一片屋面的内包体量在 roof.volumes 中明确 type="none"，避免按默认屋型另建重叠屋顶。
 components 是对象数组，每项写稳定 id、type、host、size、form、description；size 只写构件自身尺寸（width、height、depth、thickness 等），每项为有限正数。sill_height、offset、normal_offset 是位置参数，写在 placement；落地门窗的 placement.sill_height 可以为 0，不写 size.sill_height。form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
-circulation 中设计的楼梯也写成 stair 构件标记，说明连接楼层、位置与形态；各跑踏步数乘踏步高度之和等于连接楼层高差，梯段与平台的平面尺寸要放得进楼梯占地，不能给出互相矛盾的尺寸。后续 plan 单独实现，不能只写交通说明而遗漏实际构件。
+circulation 中设计的楼梯也写成 stair 构件标记，说明位置与形态，并用 floor_connections 对象数组明确连接楼层，例如 [{{"from_floor":1,"to_floor":2}},{{"from_floor":2,"to_floor":3}}]；需要上屋面时 to_floor 写 "roof"。该数组描述楼面间的通行，不规定每层必须直跑或双跑。只连接第 1 层至第 N 层时共有 N-1 段层间高差，最高到达第 N 层楼面 floor_layouts.level，不把顶层墙顶当成额外楼面。size.height 是实际连接楼面的总高差。form.flights 是实际梯段总数，不按楼层数填写；同时填写 form.rises 和 riser_height 时，表示每跑级数与每级高度，三者乘积应等于实际连接高差。算不一致时不要编造精确踏步参数。梯段与平台要放得进楼梯占地。后续 plan 单独实现，不能只写交通说明而遗漏实际构件。
 互相承接的构件明确 relation.target 或在 form 写共同承接标高与定位基准。跨条目构件不重复归属；柱顶、檐部底/顶、屋面支承形成连续关系。用户未给尺寸时先把这些关系算一致，再写数值。
 构件命名：type 使用稳定的英文 snake_case 编号；下列已有构件使用对应编号，中文名称写在 name，具体风格、位置与造型写在 description/form，不混进 type。新构件可自行取语义明确的英文 snake_case 编号和中文 name，完整描述形态，不能因名称未在目录中就放弃。
 {component_reference_prompt()}
@@ -101,7 +105,7 @@ circulation 中设计的楼梯也写成 stair 构件标记，说明连接楼层�
 阳台明确所在层、板顶标高、板厚及其依附门窗；二层板顶位于二层楼面，不把二层墙顶写成二层楼面。雨棚分别写安装高度和板厚；板厚优先写 size.thickness，size.height 表示板本身高度时也作为板厚，含支架的总高度在 form 中说明。独立栏杆用 host 引用实际阳台或露台实例。
 例如翼楼 x=10、宽5，前墙窗洞起点世界 x=13.2，应写 offset=3.2；offset=13.2 会超出翼楼。沿墙 offset+size.width 不超过对应墙长；placement.sill_height 是相对本层墙底的高度，必须满足 sill_height+size.height <= 墙顶Y-墙底Y，不能把上层世界Y当窗台高度再次叠加。需要更大开口时明确设计对应宿主，不能混用坐标。
 按房间用途组织开口，核对上下层窗的轴线、窗台与窗顶、入口及车库门的唯一位置，保留必要墙垛；格栅与遮阳板围绕对应窗组定位。需要精确构图的门窗写为有位置和尺寸的 components 实例，不能靠默认格位代替。
-平面分区用 floor_layouts：每项 floor、level；rooms 每项 id、name、bounds:{{"x":0,"z":0,"width":4,"depth":3}}（世界 X/Z 起点与宽深），void:true 为挑空。实际内墙写 walls，每项 id、from:[x,z]、to:[x,z]、thickness；内墙门窗写 components 并引用该内墙 id。rooms 不自动建墙，通透空间允许 walls:[]；构件占地与家具按本次设计和粒度安排。门的 form.hinge=start/end、swing_side=left/right 表达相对宿主方向的开启方式，未声明则不猜测。
+平面分区用 floor_layouts：每项 floor、level；rooms 每项 id、name、bounds:{{"x":0,"z":0,"width":4,"depth":3}}（世界 X/Z 起点与宽深），void:true 为挑空。实际内墙写 walls，每项 id、from:[x,z]、to:[x,z]、thickness；内墙门窗写 components 并引用该内墙 id。rooms 不自动建墙，通透空间允许 walls:[]；构件占地与家具按本次设计和粒度安排。逐层核对入口、楼梯与使用空间的通行：有隔墙阻断路径时设计内门、洞口或真实的开放缺口；需要围合的房间不能只有标签，墙不能穿过同层房间 bounds 的使用空间。门的 form.hinge=start/end、swing_side=left/right 表达相对宿主方向的开启方式，未声明则不猜测。
 有台基或楼面整体抬高时，floor_layouts 每项用 floor 写楼层编号、level 写楼面顶面的世界Y标高；同层只能有一个一致标高，楼梯连接这些真实楼面。未声明标高时一层默认0，其余按 floor_height；台基构件中心Y不等于楼面标高。
 不要在设计阶段因为程序不支持就删掉构件、改造型或提前声明无法实现。
 用户条件优先；未指定的尺寸和场地条件写为假设。修订保留未受影响的设计。

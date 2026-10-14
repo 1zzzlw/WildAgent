@@ -255,7 +255,8 @@
       <header class="plan-floating-header">
         <div>
           <strong>执行计划</strong>
-          <span>{{ planCounts.done }}/{{ planCounts.total }} 完成</span>
+          <span>已结束 {{ planCounts.ended }}/{{ planCounts.total }} 个任务</span>
+          <span v-if="markerCounts.total">已落实 {{ markerCounts.implemented }}/{{ markerCounts.total }} 个标记<span v-if="markerCounts.abandoned"> · 舍弃 {{ markerCounts.abandoned }}</span></span>
         </div>
         <div class="plan-floating-actions">
           <button type="button" @click="planWindowMinimized = !planWindowMinimized">
@@ -278,9 +279,9 @@
           <div
             v-for="item in turn.plan.items"
             :key="item.id"
-            :class="['dynamic-plan-task', `plan-${item.status}`, { 'plan-running': itemStep(item)?.status === 'running' }]"
+            :class="['dynamic-plan-task', `plan-${planItemState(item)}`, { 'plan-running': itemStep(item)?.status === 'running' }]"
           >
-            <span class="plan-step-mark">{{ itemStep(item)?.status === 'running' ? '⟳' : planItemMark(item.status) }}</span>
+            <span class="plan-step-mark">{{ itemStep(item)?.status === 'running' ? '⟳' : planItemMark(planItemState(item)) }}</span>
             <span class="plan-step-main">
               <strong>{{ item.label || item.id }}</strong>
               <small>{{ planItemDetail(item) }}</small>
@@ -437,12 +438,29 @@ const planCounts = computed(() => {
   const items = props.turn.plan?.items || []
   return {
     total: items.length,
-    done: items.filter(item => item.status === 'done').length,
+    ended: items.filter(item => isPlanItemEnded(item)).length,
   }
 })
 
+const markerCounts = computed(() => {
+  const items = (props.turn.plan?.items || []).filter(item => item.params?.design_markers)
+  return {
+    total: items.reduce((sum, item) => sum + (item.params?.implementation_summary?.total ?? item.target?.marker_ids?.length ?? 0), 0),
+    implemented: items.reduce((sum, item) => sum + (item.params?.implementation_summary?.implemented ?? 0), 0),
+    abandoned: items.reduce((sum, item) => sum + (item.params?.implementation_summary?.abandoned ?? 0), 0),
+  }
+})
+
+function isPlanItemEnded(item: PlanItem): boolean {
+  return ['done', 'abandoned', 'skipped', 'unsupported'].includes(item.status)
+}
+
+function planItemState(item: PlanItem): string {
+  return item.params?.implementation_summary?.abandoned ? 'abandoned' : item.status
+}
+
 const planShortfall = computed(() =>
-  (props.turn.plan?.items || []).filter(item => item.status !== 'done'),
+  (props.turn.plan?.items || []).filter(item => !isPlanItemEnded(item)),
 )
 
 const planBatchCount = computed(() =>

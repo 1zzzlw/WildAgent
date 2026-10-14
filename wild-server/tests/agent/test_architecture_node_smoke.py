@@ -25,6 +25,7 @@ from unittest.mock import patch
 import pytest
 
 from app.agent.generation.architecture.workflow import architecture_planner
+from app.agent.prompts.planning import build_architecture_plan_prompt
 from app.services.agent_service import agent_service
 
 
@@ -56,7 +57,7 @@ _CANNED_RAW_PLAN = {
 }
 
 
-async def _fake_invoke(_llm, _messages):
+async def _fake_invoke(_llm, _messages, **_kwargs):
     from app.agent.generation.architecture import normalize_architecture_plan
     raw = normalize_architecture_plan(_CANNED_RAW_PLAN, user_message="生成一个两层别墅")
     raw.pop("component_quota")
@@ -70,10 +71,8 @@ def _node_patches():
     # 只替换模型输出和检索，其余使用真实节点代码。
     return (
         patch.object(agent_service, "spec_loader", _FakeSpecLoader()),
-        patch(
-            "app.agent.generation.architecture.design_workflow.invoke_llm",
-            _fake_invoke,
-        ),
+        patch.multiple("app.agent.generation.architecture.design_workflow",
+                       invoke_llm=_fake_invoke, stream_llm=_fake_invoke),
         patch("app.agent.generation.architecture.design_workflow.create_llm", return_value=object()),
     )
 
@@ -107,6 +106,27 @@ async def test_architecture_node_records_profile_diagnostics() -> None:
     # 档位标签已删（用户决策 2026-09-29）：诊断只报 id，不再有 profile_label。
     assert "profile_label" not in diag
     assert diag["settled"] is True
+
+
+def test_architecture_prompt_uses_profile_as_a_revisable_shape_hint() -> None:
+    prompt = build_architecture_plan_prompt("", profile={"id": "pavilion"})
+    assert "pavilion" in prompt
+    assert "若与用户要求不符，以用户要求和本次设计为准" in prompt
+
+
+@pytest.mark.asyncio
+async def test_architecture_node_rejects_missing_geometry_instead_of_filling_a_house() -> None:
+    async def incomplete(_llm, _messages, **_kwargs):
+        return SimpleNamespace(content=json.dumps({"concept": "凉亭", "roof": {"type": "hip"}}),
+                               token_usage=None)
+
+    with patch.object(agent_service, "spec_loader", _FakeSpecLoader()), patch.multiple(
+        "app.agent.generation.architecture.design_workflow",
+        invoke_llm=incomplete, stream_llm=incomplete,
+    ), patch("app.agent.generation.architecture.design_workflow.create_llm", return_value=object()):
+        update = await architecture_planner({"user_message": "生成一个四角凉亭"})
+    assert "architecture_plan" not in update
+    assert "/massing/shape" in str(update.get("architecture_diag"))
 
 
 @pytest.mark.asyncio

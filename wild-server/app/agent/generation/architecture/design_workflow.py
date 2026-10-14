@@ -4,6 +4,7 @@ import json
 
 from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, stream_llm, merge_token_usage
+from app.rag.trace import llm_trace_scope
 from app.utils.json_extractor import extract_json_object
 from .design_blocks import ordered_blocks
 
@@ -29,13 +30,15 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
         messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_request}]
         accounting["model_calls"] = accounting.get("model_calls", 0) + 1
         thinking = thinking_mode and attempt == 1
-        if thinking_mode and on_reasoning_delta:
-            async def emit(delta):
-                await on_reasoning_delta("architecture", delta)
-            reply = await stream_llm(create_llm(enable_thinking=thinking, streaming=True),
-                                     messages, on_reasoning_delta=emit)
-        else:
-            reply = await invoke_llm(create_llm(enable_thinking=thinking, streaming=False), messages)
+        stage = "architecture.generate" if attempt == 1 else "architecture.format_revision"
+        with llm_trace_scope(stage=stage, design_hash=_options.get("design_hash")):
+            if thinking_mode and on_reasoning_delta:
+                async def emit(delta):
+                    await on_reasoning_delta("architecture", delta)
+                reply = await stream_llm(create_llm(enable_thinking=thinking, streaming=True),
+                                         messages, on_reasoning_delta=emit)
+            else:
+                reply = await invoke_llm(create_llm(enable_thinking=thinking, streaming=False), messages)
         usage = merge_token_usage(usage, reply.token_usage)
         raw = extract_json_object(reply.content or "")
         issue = "图纸必须是 JSON 对象" if not isinstance(raw, dict) else ""
@@ -48,10 +51,12 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
             except (ValueError, TypeError, KeyError, RuntimeError) as exc:
                 issue = str(exc)
         diag = {"settled": not issue, "model_calls": attempt, "attempts": attempt,
-                "token_usage": usage, "last_issue": issue, "rejected_attempts": rejected}
+                "token_usage": usage, "last_issue": issue, "rejected_attempts": rejected,
+                "call_id": getattr(reply, "call_id", None)}
         if not issue:
             return picked, diag
-        rejected.append({"attempt": attempt, "issue": issue, "output": reply.content})
+        rejected.append({"attempt": attempt, "issue": issue, "output": reply.content,
+                         "call_id": getattr(reply, "call_id", None)})
         if on_reasoning_delta:
             await on_reasoning_delta("architecture:progress", f"图纸格式需要修订（{attempt}/{max_attempts}）：{issue}。\n")
         prompt = base + "\n只修订格式或图纸自身矛盾，保留设计意图。错误：" + issue + "\n上一稿：" + json.dumps(picked, ensure_ascii=False)

@@ -27,6 +27,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
+from app.agent.runtime import SERVER_INSTANCE_ID
 from app.utils.blueprint_parser import SCENES_DIR, compact_blueprint_title
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
@@ -260,7 +261,6 @@ async def delete_session(session_id: str):
 
 MAX_MESSAGES_PER_SESSION = 200
 MAX_TURNS_PER_SESSION = 100
-SERVER_INSTANCE_ID = uuid.uuid4().hex
 
 
 @router.get("/{session_id}/messages")

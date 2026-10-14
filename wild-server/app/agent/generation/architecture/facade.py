@@ -11,7 +11,7 @@ from app.agent.generation.spatial.geometry import snap_to_grid
 from app.design.openings import FIXED_FORM, INTERACTION_FORMS, split_opening
 
 from .recipes import load_curtain_wall_parameters
-from .skeleton import _schematic_volume_ranges
+from .skeleton import _effective_facade, _schematic_volume_ranges, _volume_for_face
 
 
 def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
@@ -30,6 +30,7 @@ def _wall_descriptor(wall: dict[str, Any]) -> dict[str, Any] | None:
         return None
     return {
         "id": wall.get("id"), "x": (x1 + x2) / 2, "z": (z1 + z2) / 2,
+        "start": (x1, z1), "end": (x2, z2),
         "base_y": min(y1, y2), "height": height, "length": length,
         "axis": "x" if abs(x2 - x1) >= abs(z2 - z1) else "z",
     }
@@ -256,20 +257,23 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
         return []
 
     # 当前槽位路径只支持可分段屋型；任一体量不支持时整体回退并由编译诊断标记。
-    resolved: list[tuple[str, str, float]] = []
+    resolved: list[tuple[dict[str, Any], str, str, float]] = []
     for index, volume in enumerate(volumes, start=1):
         volume_id = str(volume.get("id") or index)
         override = overrides.get(volume_id, {})
         roof_type = str(override.get("type") or roof.get("type") or "")
+        if roof_type in {"none", "open"}:
+            continue
         try:
             volume_overhang = max(
                 0.0, min(2.0, float(override.get("overhang", roof.get("overhang", 0.35)))),
             )
         except (TypeError, ValueError):
             volume_overhang = max(0.0, min(2.0, float(roof.get("overhang", 0.35))))
-        resolved.append((volume_id, roof_type, volume_overhang))
-    if any(roof_type not in _PER_VOLUME_ROOF_TYPES for _, roof_type, _ in resolved):
+        resolved.append((volume, volume_id, roof_type, volume_overhang))
+    if any(roof_type not in _PER_VOLUME_ROOF_TYPES for _, _, roof_type, _ in resolved):
         return []
+    volumes = [volume for volume, _, _, _ in resolved]
 
     rectangles = [
         (
@@ -298,8 +302,8 @@ def _planned_roof_slots(plan: dict[str, Any], realization: dict[str, Any]) -> li
         return False
 
     slots: list[dict[str, Any]] = []
-    for index, (volume, rectangle, (volume_id, roof_type, overhang)) in enumerate(
-        zip(volumes, rectangles, resolved), start=1,
+    for index, (rectangle, (volume, volume_id, roof_type, overhang)) in enumerate(
+        zip(rectangles, resolved), start=1,
     ):
         x0, z0, x1, z1 = rectangle
         roof_x0 = x0 if has_adjacent(rectangle, "left") else x0 - overhang
@@ -352,22 +356,25 @@ def _planned_terrace_railing_slots(
                 for item in raw_volumes
             ]
         )
+        slots: list[dict[str, Any]] = []
         for lower in volumes:
             lower_end = int(lower["semantic_end_floor"])
-            uppers = [
-                item for item in volumes
-                if int(item["semantic_start_floor"]) == lower_end + 1
-                and float(item["width"]) < float(lower["width"]) - 0.1
-                and float(item["depth"]) < float(lower["depth"]) - 0.1
-            ]
-            if not uppers:
-                continue
             x0 = float(lower["x"])
             z0 = float(lower["z"])
             x1 = x0 + float(lower["width"])
             z1 = z0 + float(lower["depth"])
+            uppers = [
+                item for item in volumes
+                if int(item["semantic_start_floor"]) == lower_end + 1
+                and float(item["x"]) > x0 + 0.1
+                and float(item["z"]) > z0 + 0.1
+                and float(item["x"]) + float(item["width"]) < x1 - 0.1
+                and float(item["z"]) + float(item["depth"]) < z1 - 0.1
+            ]
+            if not uppers:
+                continue
             y = round(lower_end * floor_height + 0.2, 3)
-            return [{
+            slots.append({
                 "id": f"railing:podium_terrace:{lower.get('id') or 'base'}",
                 "path": [
                     [round(x0, 3), y, round(z0, 3)],
@@ -377,8 +384,8 @@ def _planned_terrace_railing_slots(
                     [round(x0, 3), y, round(z0, 3)],
                 ],
                 "height": 1.1,
-            }]
-        return []
+            })
+        return slots
     if realization.get("shape") != "u_shape":
         return []
     access_slots = [slot for slot in opening_slots if slot.get("role") == "balcony_access"]
@@ -634,7 +641,17 @@ def resolve_facade_layout(blueprint: dict[str, Any], plan: dict[str, Any]) -> di
             }
         facing = min(distances, key=distances.get)
         external = distances[facing] <= boundary_tolerance
-        facade = plan.get("facades", {}).get(facing, {})
+        level = int(wall.get("story_index") or round(wall["base_y"] / realization["floor_height"]) + 1)
+        active_volumes = [volume for volume in realization["volumes"]
+                          if int(volume.get("start_floor", 1)) <= level <= int(volume.get("end_floor", level))]
+        volume = None
+        for side in (("front", "back") if wall["axis"] == "x" else ("left", "right")):
+            volume = _volume_for_face(active_volumes, side, wall["start"], wall["end"])
+            if volume is not None:
+                facing = side
+                external = True
+                break
+        facade = _effective_facade(plan.get("facades", {}), volume if external else None, facing)
         bays = max(1, int(facade.get("bays", 1)))
         is_ground = abs(wall["base_y"] - min_y) < 0.25
         pattern_key = "ground_pattern" if is_ground else "upper_pattern"
@@ -1098,62 +1115,34 @@ def conform_balconies_to_slots(
     return [*non_balconies, *balconies], stats
 
 
-def _plan_winding(plan: dict[str, Any] | None, frm: list[Any], ux: float, uz: float) -> float:
-    """用体量联合轮廓的有向面积（shoelace）判定建筑平面绕向。
-
-    返回面积为正表示逆时针（右旋法向朝外），为负表示顺时针（需取反）。
-    无法从 plan 恢复轮廓时，退化为沿墙方向右旋的默认假设。
-    """
+def _plan_winding(plan: dict[str, Any] | None, frm: list[Any], ux: float, uz: float,
+                  length: float = 0.0) -> float:
+    """比较墙两侧是否落在体量内，确定右旋法向的朝向。"""
     volumes = plan.get("volumes") if isinstance(plan, dict) else None
     if not isinstance(volumes, list) or not volumes:
-        # 只有单面入口墙时无法判定绕向，保留既有右旋假设（返回正面积）。
         return 1.0
-    corners: list[tuple[float, float]] = []
-    for volume in volumes:
-        if not isinstance(volume, dict):
-            continue
-        try:
-            x = float(volume.get("x") or 0.0)
-            z = float(volume.get("z") or 0.0)
-            w = float(volume.get("width") or 0.0)
-            d = float(volume.get("depth") or 0.0)
-        except (TypeError, ValueError):
-            continue
-        corners.extend([(x, z), (x + w, z), (x + w, z + d), (x, z + d)])
-    if len(corners) < 3:
-        return 1.0
-    # 用凸包顶点计算有向面积（shoelace 法）。
-    hull = _convex_hull(corners)
-    area2 = 0.0
-    for index in range(len(hull)):
-        x1, z1 = hull[index]
-        x2, z2 = hull[(index + 1) % len(hull)]
-        area2 += x1 * z2 - x2 * z1
-    if abs(area2) < 1e-9:
-        return 1.0
-    return area2
+    center_x = float(frm[0]) + ux * length / 2
+    center_z = float(frm[2]) + uz * length / 2
+    right_x, right_z = uz, -ux
 
+    def inside(x: float, z: float) -> bool:
+        for volume in volumes:
+            if not isinstance(volume, dict):
+                continue
+            try:
+                vx, vz = float(volume["x"]), float(volume["z"])
+                width, depth = float(volume["width"]), float(volume["depth"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if vx + 1e-6 < x < vx + width - 1e-6 and vz + 1e-6 < z < vz + depth - 1e-6:
+                return True
+        return False
 
-def _convex_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
-    """Andrew 单调链凸包；返回逆时针顶点序列。"""
-    pts = sorted(set(points))
-    if len(pts) <= 1:
-        return pts
-
-    def cross(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
-        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-
-    lower: list[tuple[float, float]] = []
-    for point in pts:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
-            lower.pop()
-        lower.append(point)
-    upper: list[tuple[float, float]] = []
-    for point in reversed(pts):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
-            upper.pop()
-        upper.append(point)
-    return lower[:-1] + upper[:-1]
+    right_inside = inside(center_x + right_x * 0.35, center_z + right_z * 0.35)
+    left_inside = inside(center_x - right_x * 0.35, center_z - right_z * 0.35)
+    if right_inside != left_inside:
+        return -1.0 if right_inside else 1.0
+    return 1.0
 
 
 def _entrance_anchor(
@@ -1210,10 +1199,8 @@ def _entrance_anchor(
     door_from = entrance.get("from") or [0.0, 0.0, 0.0]
     door_width = max(0.0, float(entrance.get("width") or 1.0))
     along = float(door_from[0]) + door_width / 2.0
-    # 外法向不能假设“墙按逆时针围合”：LLM 的 volumes 组合出顺时针或凹形
-    # 轮廓时，固定右旋 90° 会把入口附属件放到室内一侧。用体量联合轮廓的
-    # 有向面积（shoelace）判定实际绕向：逆时针用右旋，顺时针取反。
-    winding = _plan_winding(plan, frm, ux, uz)
+    # 墙的端点顺序不保证右旋法向朝外；按体量占用判断入口墙哪侧是室内。
+    winding = _plan_winding(plan, frm, ux, uz, length)
     normal_sign = 1.0 if winding >= 0 else -1.0
     return {
         "wall_id": wall_id,
@@ -1245,7 +1232,8 @@ def conform_entrance_accessories(
     附属件，不越界改动其它墙上的合法构件。
     """
     stats = {"canopy_snapped": 0, "light_snapped": 0}
-    anchor = _entrance_anchor(design_brief, blueprint, plan=design_brief)
+    realization = (design_brief or {}).get("realization") or {}
+    anchor = _entrance_anchor(design_brief, blueprint, plan=realization)
     if anchor is None:
         return components, stats
 

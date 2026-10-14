@@ -5,6 +5,7 @@ import pytest
 
 from app.agent.plan.expand import expand_design_markers
 from app.agent.plan.knowledge_tool import search_knowledge_impl
+from app.spec.loader import SpecLoadResult
 
 
 @pytest.mark.parametrize("names,kind,label", [
@@ -27,6 +28,26 @@ def test_aliases_share_one_plan_group(names, kind, label):
     assert [m["type"] for m in markers] == names
 
 
+def test_batch_load_measures_the_actual_markers_and_keeps_minimal_window_coalescing():
+    import json
+    markers = [{"id": "body", "type": "building_body", "depends_on": [], "design": {}}]
+    windows = [{"id": f"window_{i}", "type": "落地窗" if i % 2 else "window",
+                "depends_on": ["body"], "host": f"wall_{i % 2}",
+                "design": {"floor": i % 2 + 1, "form": {"description": "自然采光"}}}
+               for i in range(8)]
+    markers.extend(windows)
+    state = {"design_document": {"decisions": {"complexity": {"level": "minimal"}}},
+             "resolved_design": {"design_hash": "approved", "component_markers": markers}}
+    plan = expand_design_markers(state)
+    assert len(plan.items) == 2
+    item = plan.items[1]
+    assert item.kind == "window" and item.depends_on == [plan.items[0].id]
+    assert item.target["marker_ids"] == [m["id"] for m in windows]
+    assert item.params["batch_load"] == {"marker_count": 8, "host_count": 2,
+        "floor_count": 2, "dependency_count": 1,
+        "marker_chars": len(json.dumps(windows, ensure_ascii=False, separators=(",", ":")))}
+
+
 @pytest.mark.parametrize("names,entity_type,kind,label", [
     (["落地窗", "floor-to-ceiling window", "floor_window"], "window", "floor_window", "落地窗"),
     (["实墙", "实体墙", "solid_wall"], "wall", "solid_wall", "实墙"),
@@ -37,11 +58,11 @@ def test_aliases_produce_identical_knowledge_queries(monkeypatch, names, entity_
     from app.services import agent_service as service_module
     calls = []
 
-    def load_many(queries, **kwargs):
+    def load_many_result(queries, **kwargs):
         calls.append((queries[0].text, queries[0].metadata_filter))
-        return "构件示例"
+        return SpecLoadResult("构件示例")
 
-    loader = SimpleNamespace(load_many=load_many, last_results=[])
+    loader = SimpleNamespace(load_many_result=load_many_result)
     monkeypatch.setattr(service_module, "agent_service", SimpleNamespace(spec_loader=loader))
     for name in names:
         search_knowledge_impl("WILD JSON 实现示例", kind=name)

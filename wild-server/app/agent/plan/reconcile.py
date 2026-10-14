@@ -130,7 +130,7 @@ def _resolve_generate(
         complete = bool(ids) and all(i in expected and implementation_complete(results.get(i)) for i in ids)
         if complete:
             abandoned = sum(results[i].get("status") == "abandoned" for i in ids)
-            return "done", f"实现流程结束：落实 {len(ids)-abandoned}，舍弃 {abandoned}", False
+            return ("abandoned" if abandoned else "done"), f"实现流程结束：落实 {len(ids)-abandoned}，舍弃 {abandoned}", False
         if item.run.state == "failed":
             return ("abandoned" if item.run.exhausted else "ready"), item.run.evidence, False
         if item.run.state == "succeeded":

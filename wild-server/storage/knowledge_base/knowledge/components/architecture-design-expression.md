@@ -79,6 +79,10 @@ floor_layouts 按层保存 floor、level；rooms 标注空间用途，bounds 用
 }
 ```
 
+若内墙把入口、楼梯和使用空间分开，图纸同时确定通行开口，并让门或洞口引用实际内墙 ID。例如上述 `partition_a` 确实需要通行门时，可在图纸 `components` 增加 `{"id":"partition_a_door","type":"door","host":"partition_a","placement":{"offset":1,"sill_height":0},"size":{"width":0.9,"height":2.1}}`。这是局部字段示例，不要求每面内墙都有门；开放连通的房间可不画内墙。房间 bounds、内墙和入口不能互相矛盾，房间标签也不能代替实际围护。
+
+`structural_grid.x_bays/z_bays` 只描述结构组织，不是全交点柱位清单。需要在最终建筑中看到独立柱时，在图纸 `components` 指明其位置和用途，由对应 plan 标记实现；特别核对柱与房间、通道、楼梯和门窗洞口的关系。不需要独立柱的结构不补柱，已设计的柱廊与外露框架则照图纸保留。
+
 楼梯、阳台和栏杆的平面占地来自 components 的 placement.position 与 size.width/depth，栏杆路径来自 form.path；没有尺寸时只显示位置符号。门的 form.hinge=start/end 表示铰接端，form.swing_side=left/right 表示相对宿主 from→to 的开启侧；未设计这两个字段时不猜测开启弧。屋面投影不覆盖房间平面图。
 
 ## plan 研究并实现

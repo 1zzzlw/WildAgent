@@ -60,9 +60,7 @@ from app.agent.generation.architecture import (
     normalize_architecture_plan,
     resolve_facade_layout,
 )
-#: 外法向的判断依据（体量联合轮廓的绕向）。**故意**复用 facade 的私有实现而不是
-#: 再写一遍 shoelace：本仓库的既有纪律是"唯一规则函数"，抄一份必然与入口雨棚/灯具
-#: 的吸附口径分叉。若 facade 把它提为公开名，这里的导入路径要跟着改。
+#: 外法向与入口雨棚/灯具共用同一墙两侧体量占用判据。
 from app.agent.generation.architecture.facade import _plan_winding
 #: 屋顶合法类型闭集。从既有定义导入而不是复制——闭集写两份就一定会分叉。
 from app.agent.generation.architecture.profile import _SUPPORTED_ROOF_TYPES
@@ -181,7 +179,15 @@ def _roof_type(plan: dict[str, Any]) -> str:
     """屋顶形态**来自图纸**（``decisions.roof.type``）——不是默认值。"""
 
     raw = str(_roof_plan(plan).get("type") or "").lower()
-    return raw if raw in _SUPPORTED_ROOF_TYPES else _FLAT_ROOF
+    return raw
+
+
+def _roofless_volume_ids(plan: dict[str, Any]) -> set[str]:
+    return {
+        str(item.get("volume"))
+        for item in (_roof_plan(plan).get("volumes") or [])
+        if isinstance(item, dict) and str(item.get("type") or "").lower() in {"none", "open"}
+    }
 
 
 def _roof_material(materials: dict[str, Any]) -> str:
@@ -427,8 +433,8 @@ def _wall_run_and_normal(
     """墙的 ``(沿墙单位向量 ux,uz, 外法向单位向量 nx,nz)``。
 
     外法向**不能**假设"墙按逆时针围合"：体量拼出顺时针或凹形轮廓时，固定右旋 90°
-    会把灯放到室内。绕向判定复用 ``facade._plan_winding``（与入口雨棚/灯具吸附
-    同一依据），顺时针取反。
+    会把灯放到室内。法向判定复用 ``facade._plan_winding``（与入口雨棚/灯具吸附
+    同一依据），根据墙两侧的体量占用情况取反。
     """
 
     frm, to = wall.get("from"), wall.get("to")
@@ -445,7 +451,7 @@ def _wall_run_and_normal(
     if length < 1e-6:
         return None
     ux, uz = dx / length, dz / length
-    sign = 1.0 if _plan_winding(plan, frm, ux, uz) >= 0 else -1.0
+    sign = 1.0 if _plan_winding(plan, frm, ux, uz, length) >= 0 else -1.0
     return ux, uz, uz * sign, -ux * sign
 
 
@@ -1753,12 +1759,20 @@ def _compose(
     quota = quota or {}
     roof_slots = brief.get("roof_slots") or []
     roof_min = int((quota.get("roof") or {}).get("min") or 0)
+    roofless_volumes = _roofless_volume_ids(normalized)
+    single_volume = (normalized.get("volumes") or [])
+    roof_type = _roof_type(normalized)
+    single_roof_disabled = (
+        len(single_volume) == 1
+        and str(single_volume[0].get("id")) in roofless_volumes
+    )
     roof_layout = {"split": 0, "synthesized": 0}
     if roof_slots:
         elements, roof_layout = conform_roofs_to_slots(
             [*elements, _roof_style(normalized, materials)], brief
         )
-    elif roof_min > 0 and len(normalized.get("volumes") or []) == 1:
+    elif roof_min > 0 and len(single_volume) == 1 and not single_roof_disabled \
+            and roof_type in _SUPPORTED_ROOF_TYPES:
         # 无屋盖场景（quota.min == 0）不生成——判据取自图纸配额，不在这里另判一次。
         elements = [*elements, _single_roof(normalized, materials)]
         roof_layout = {"split": 0, "synthesized": 1}
@@ -2115,6 +2129,21 @@ def _roof_override_defects(plan: dict[str, Any], brief: dict[str, Any]) -> list[
     return defects
 
 
+def _roof_layout_evidence(plan: dict[str, Any], brief: dict[str, Any]) -> str:
+    roof = _roof_plan(plan)
+    overrides = {str(item.get("volume")): str(item.get("type") or roof.get("type") or "").lower()
+                 for item in roof.get("volumes") or [] if isinstance(item, dict)}
+    volumes = (brief.get("realization") or {}).get("volumes") or []
+    types = [overrides.get(str(volume.get("id")), str(roof.get("type") or "").lower())
+             for volume in volumes if isinstance(volume, dict)]
+    if types and all(roof_type in {"none", "open"} for roof_type in types):
+        return "所有体量都声明不单独建屋面，但设计仍要求屋顶；请核对屋面设计与配额"
+    unsupported = sorted(set(types) - {"flat", "gable", "hip", "none", "open"})
+    if unsupported:
+        return f"逐体量屋型 {unsupported} 当前不能拆分编译；请修订设计或交由构件实现"
+    return "当前多体量屋面不能按局部承托解析；禁止用总体包围盒覆盖内院"
+
+
 def _schema_defects(blueprint: dict[str, Any]) -> list[CompileDefect]:
     """整份蓝图的 schema 校验——skeleton 的四道预检之一，原先只有骨架阶段有。
 
@@ -2254,8 +2283,20 @@ def compile_design(
         *_validator_defects(blueprint, brief),
         # P5-A：逐体量屋顶覆盖的引用/冲突——同样恒 warn（有兜底就不阻断）。
         *_roof_override_defects(plan, brief),
+        *([CompileDefect(code="roof_type_unsupported", severity="error", target="roof",
+            evidence=f"图纸屋型 {_roof_type(plan)!r} 无法由单体量屋面编译器实现；需由 plan 单独落实",
+            design_field="decisions.roof.type")] if _quota_min(brief, "roof") > 0
+            and len((brief.get("realization") or {}).get("volumes") or []) == 1
+            and _roof_type(plan) not in _SUPPORTED_ROOF_TYPES | {"none", "open"} else []),
+        *([CompileDefect(code="roof_design_conflict", severity="error", target="roof",
+            evidence="唯一体量明确不单独建屋面，但设计仍要求屋顶；请核对屋顶配额与逐体量覆盖",
+            design_field="decisions.roof.volumes")] if _quota_min(brief, "roof") > 0
+            and len((brief.get("realization") or {}).get("volumes") or []) == 1
+            and str(((brief.get("realization") or {}).get("volumes") or [{}])[0].get("id"))
+            in _roofless_volume_ids(plan)
+            else []),
         *([CompileDefect(code="roof_layout_unsupported", severity="error", target="roof",
-            evidence="当前屋型不能按多体量承托解析局部屋面，禁止用总体包围盒覆盖内院；需要设计修订",
+            evidence=_roof_layout_evidence(plan, brief),
             design_field="decisions.roof")] if _quota_min(brief, "roof") > 0
             and len((brief.get("realization") or {}).get("volumes") or []) > 1
             and not brief.get("roof_slots") else []),

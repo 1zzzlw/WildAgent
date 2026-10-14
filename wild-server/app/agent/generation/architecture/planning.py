@@ -752,7 +752,9 @@ def normalize_architecture_plan(
             "max": 0,
             "note": "front 面被模型声明为全空开敞，无门槽位",
         }
-    roof_required = "roof" in base_components_effective
+    if str(roof["type"]).lower() in {"none", "open"} and explicit_base and "roof" in explicit_base:
+        raise ValueError("屋顶设计明确为 none/open，却在 required_components 中要求 roof")
+    roof_required = "roof" in base_components_effective and str(roof["type"]).lower() not in {"none", "open"}
     quotas["roof"] = {
         **quotas.get("roof", {}),
         "min": 1 if roof_required else 0,

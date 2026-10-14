@@ -4,6 +4,7 @@ Layer 0: 骨架生成节点
 输入: user_message
 输出: skeleton_blueprint, skeleton_summary, wall_bounding_box, skeleton_diag
 """
+import asyncio
 import time as _time
 import json
 from loguru import logger
@@ -90,7 +91,8 @@ async def skeleton_generator(state: GenerationState) -> dict:
             SpecQuery("墙体标高与宿主范围", {"doc_type": "component", "entity_type": "wall"}),
         ]
         try:
-            spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+            rag_result = await asyncio.to_thread(agent_service.spec_loader.load_many_result, queries, per_query=2)
+            spec_text = rag_result.text
         except Exception as exc:
             rag_error = str(exc)
             logger.warning(f"[skeleton] RAG 检索失败，继续使用方案约束: {exc}")
@@ -101,7 +103,7 @@ async def skeleton_generator(state: GenerationState) -> dict:
                 "doc_type": hit.metadata.get("doc_type", "?"),
                 "entity_type": hit.metadata.get("entity_type", "?"),
             }
-            for hit in getattr(agent_service.spec_loader, "last_results", [])
+            for hit in rag_result.hits
         ]
     else:
         logger.info("[skeleton] 使用已批准方案的确定性编译路径，跳过 RAG 与骨架 LLM")

@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from app.llm.client import message_texts
-from app.rag.trace import record_rag_llm_call
+from app.rag.trace import prepare_rag_llm_call, record_rag_llm_call
 from config import config
 
 # 可重试模型错误的退避重试：仅对限流(429)/服务端 5xx/超时等瞬态故障重试，
@@ -35,6 +35,7 @@ class LlmResult:
     token_usage: dict[str, int] | None = None
     finish_reason: str | None = None
     retry_count: int = 0
+    call_id: str | None = None
 
     @property
     def content_chars(self) -> int:
@@ -99,9 +100,12 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     ``_retry`` 通道由调用方诊断（兼容现有回调签名，忽略即无副作用）。
     """
     started = time.perf_counter()
+    call_metadata = prepare_rag_llm_call(llm, messages)
+    transport_attempts = []
     last_exc: Exception | None = None
     llm_timeout = float(config.chat.timeout)
     for attempt in range(_LLM_RETRY_MAX + 1):
+        attempt_started = time.perf_counter()
         try:
             if llm_timeout > 0:
                 response = await asyncio.wait_for(
@@ -110,18 +114,25 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
             else:
                 response = await llm.ainvoke(messages)
         except asyncio.CancelledError:
+            transport_attempts.append({"attempt": attempt + 1, "outcome": "cancelled",
+                                       "error_type": "CancelledError",
+                                       "elapsed_ms": round((time.perf_counter() - attempt_started) * 1000)})
             record_rag_llm_call(
                 mode="invoke",
                 elapsed_ms=round((time.perf_counter() - started) * 1000),
                 token_usage=None,
                 error_type="CancelledError",
                 retry_count=attempt,
+                call_metadata=call_metadata, transport_attempts=transport_attempts,
             )
             raise
         except Exception as exc:
             from app.llm.errors import classify_model_error
 
             retryable = bool(classify_model_error(exc).get("retryable"))
+            transport_attempts.append({"attempt": attempt + 1, "outcome": "failed",
+                                       "error_type": type(exc).__name__, "retryable": retryable,
+                                       "elapsed_ms": round((time.perf_counter() - attempt_started) * 1000)})
             if not retryable or attempt >= _LLM_RETRY_MAX:
                 record_rag_llm_call(
                     mode="invoke",
@@ -129,6 +140,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
                     token_usage=None,
                     error_type=type(exc).__name__,
                     retry_count=attempt,
+                    call_metadata=call_metadata, transport_attempts=transport_attempts,
                 )
                 raise
             last_exc = exc
@@ -141,10 +153,15 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
                     token_usage=None,
                     error_type="CancelledError",
                     retry_count=attempt,
+                    call_metadata=call_metadata, transport_attempts=transport_attempts,
                 )
                 raise
             continue
         result = collect_response(response)
+        result.retry_count = attempt
+        result.call_id = call_metadata.get("call_id")
+        transport_attempts.append({"attempt": attempt + 1, "outcome": "succeeded",
+                                   "elapsed_ms": round((time.perf_counter() - attempt_started) * 1000)})
         record_rag_llm_call(
             mode="invoke",
             elapsed_ms=round((time.perf_counter() - started) * 1000),
@@ -152,9 +169,9 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
             retry_count=result.retry_count,
             response_content=result.content,
             reasoning_content=result.reasoning,
+            call_metadata=call_metadata, transport_attempts=transport_attempts,
+            finish_reason=result.finish_reason,
         )
-        if last_exc is not None:
-            result.retry_count = attempt
         return result
     raise last_exc if last_exc is not None else RuntimeError("invoke_llm 未返回结果")
 
@@ -171,6 +188,7 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
     finish_reason: str | None = None
 
     started = time.perf_counter()
+    call_metadata = prepare_rag_llm_call(llm, messages)
     llm_timeout = float(config.chat.timeout)
     _stream = None
     try:
@@ -206,6 +224,11 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
             error_type=type(exc).__name__,
             response_content="".join(content_parts),
             reasoning_content="".join(reasoning_parts),
+            call_metadata=call_metadata,
+            transport_attempts=[{"attempt": 1, "outcome": "cancelled" if isinstance(exc, asyncio.CancelledError) else "failed",
+                                 "error_type": type(exc).__name__,
+                                 "elapsed_ms": round((time.perf_counter() - started) * 1000)}],
+            finish_reason=finish_reason,
         )
         raise
     finally:
@@ -218,6 +241,7 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
         reasoning="".join(reasoning_parts),
         token_usage=token_usage,
         finish_reason=finish_reason,
+        call_id=call_metadata.get("call_id"),
     )
     record_rag_llm_call(
         mode="stream",
@@ -225,5 +249,9 @@ async def stream_llm(llm, messages, *, on_reasoning_delta=None) -> LlmResult:
         token_usage=result.token_usage,
         response_content=result.content,
         reasoning_content=result.reasoning,
+        call_metadata=call_metadata,
+        transport_attempts=[{"attempt": 1, "outcome": "succeeded",
+                             "elapsed_ms": round((time.perf_counter() - started) * 1000)}],
+        finish_reason=result.finish_reason,
     )
     return result

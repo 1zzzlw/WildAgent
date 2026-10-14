@@ -2,18 +2,23 @@
 // WildAgent 部署流水线
 //
 // 目标服务器：121.41.78.197（阿里云 Alibaba Cloud Linux 3，2C/2G）
-// 访问方式：无域名、纯 HTTP（http://121.41.78.197）
+// 访问方式：纯 HTTP，双入口
+//   - http://www.zzzlew.asia（域名，A 记录指向 121.41.78.197）
+//   - http://121.41.78.197（IP 兜底，排障用）
 //
-// 与上一版的差异（旧服务器 39.106.183.13 + www.zzzlew.asia + Let's Encrypt）：
-//   1. DEPLOY_SSH_HOST 默认值改为 121.41.78.197，新增 DEPLOY_WEB_PORT；
-//   2. 去掉 443 端口发布与 certbot/letsencrypt 挂载（无域名无法签发证书）；
-//   3. 新增「远程环境预检」stage：SSH/生产 env/基础镜像可拉取性，失败早于长构建；
-//   4. 新增 SSH_AUTH_MODE：默认 password（新机 authorized_keys 为空，key 模式连不上）；
-//      日后装好公钥可切回 key；
-//   5. 前端就绪判据由「docker top 里有 nginx」改为真实 HTTP 探活。
+// SSL 状态：**尚未启用**。nginx.conf 只有 listen 80 单server 块、无证书挂载，
+//   与 Jenkinsfile 的 start_web() 保持一致。启用 SSL 时两者必须同批改，否则
+//   会出现「nginx.conf 引用证书但容器没挂证书卷」→ nginx 启动失败 → 部署回滚。
+//   参考 docs/operations/HTTPS_SETUP.md。
 //
-// 旧配置完整保留在仓库根目录的 Jenkinsfile-temp。
-// 配套改动：wild-web/nginx.conf 已改为纯 HTTP 单 server 块（旧配置见 nginx.conf-temp）。
+// 与更早一版（无域名、纯 IP）的差异：
+//   1. nginx.conf 的 server_name 增加 www.zzzlew.asia，同时保留 default_server
+//      与 _ 兜底，域名和 IP 两种访问方式都通；探活判据沿用 IP Host，无需改动；
+   2. 保持无 443 发布、无 certbot/letsencrypt 挂载（未启用 SSL）；
+//   3. 预检/ password 认证 / HTTP 探活等既有机制不变。
+//
+// 历史配置（上一台服务器 39.106.183.13 + Let's Encrypt）完整保留在
+// 仓库根目录的 Jenkinsfile-temp 与 wild-web/nginx.conf-temp。
 // ============================================================
 
 // SSH 凭据绑定：key 模式用私钥文件，password 模式用 Secret text。
@@ -71,14 +76,15 @@ pipeline {
     // ---- 部署开关 ----
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
     booleanParam(name: 'REMOTE_PREFLIGHT_ENABLED', defaultValue: true, description: '是否执行远程环境预检（SSH / 生产 env / 基础镜像可拉取）')
-    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否执行前端编译与后端离线测试；不调用真实模型。当前默认关闭：main 上的 test_design_blocks.py 有 3 个用例仍在按已下线的档位语义断言（2026-10-07 决定先关）')
+    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否在远程临时构建目录重复执行离线门禁；本地 PR/分支门禁始终执行，不调用真实模型')
     booleanParam(name: 'LIVE_PROVIDER_PREFLIGHT_ENABLED', defaultValue: false, description: '部署前是否真实调用 Chat/Embedding；会消耗额度，仅用于手工连通性检查')
 
     // ---- 目标服务器 ----
     string(name: 'DEPLOY_SSH_USER', defaultValue: 'root', description: '部署服务器 SSH 用户')
-    string(name: 'DEPLOY_SSH_HOST', defaultValue: '121.41.78.197', description: '部署服务器地址（新服务器，无域名）')
+    string(name: 'DEPLOY_SSH_HOST', defaultValue: '121.41.78.197', description: '部署服务器地址（亦为 nginx default_server 的 IP 兜底入口）')
     string(name: 'DEPLOY_SSH_PORT', defaultValue: '22', description: '部署服务器 SSH 端口')
-    string(name: 'DEPLOY_WEB_PORT', defaultValue: '80', description: '宿主机对外暴露的前端端口；无域名场景仅需 80')
+    string(name: 'DEPLOY_WEB_PORT', defaultValue: '80', description: '宿主机对外暴露的前端端口；当前纯 HTTP，仅需 80（启用 SSL 后需增加 443）')
+    string(name: 'DEPLOY_PUBLIC_HOST', defaultValue: 'www.zzzlew.asia', description: '对外访问域名。必须与 wild-web/nginx.conf 的 server_name 保持一致；需已解析到 DEPLOY_SSH_HOST。留空则只报 IP 入口')
     string(name: 'REMOTE_WORK_DIR', defaultValue: '/opt/wild-agent/builds', description: '远程服务器临时构建目录')
     string(name: 'DEPLOY_DATA_DIR', defaultValue: '/opt/wild-agent/storage', description: '远程服务器运行时数据目录')
     string(name: 'DEPLOY_ENV_FILE', defaultValue: '/opt/wild-agent/.env', description: '远程服务器后端容器 env 文件；不存在时部署失败并保留旧容器')
@@ -101,6 +107,7 @@ pipeline {
     DEPLOY_SSH_HOST = "${params.DEPLOY_SSH_HOST}"
     DEPLOY_SSH_PORT = "${params.DEPLOY_SSH_PORT}"
     DEPLOY_WEB_PORT = "${params.DEPLOY_WEB_PORT}"
+    DEPLOY_PUBLIC_HOST = "${params.DEPLOY_PUBLIC_HOST}"
     REMOTE_WORK_DIR = "${params.REMOTE_WORK_DIR}"
     DEPLOY_DATA_DIR = "${params.DEPLOY_DATA_DIR}"
     DEPLOY_ENV_FILE = "${params.DEPLOY_ENV_FILE}"
@@ -130,9 +137,53 @@ pipeline {
 
           echo "branch=${env.BUILD_BRANCH}, pull_request=${env.IS_PULL_REQUEST}, release=${env.IS_RELEASE_BRANCH}, commit=${env.COMMIT_SHORT}"
           echo "deploy target=${env.DEPLOY_SSH_USER}@${env.DEPLOY_SSH_HOST}:${env.DEPLOY_SSH_PORT} (auth=${env.SSH_AUTH_MODE}), web port=${env.DEPLOY_WEB_PORT}"
+          echo "public host=${env.DEPLOY_PUBLIC_HOST ?: '(none — IP only)'}"
           echo "remote release dir=${env.REMOTE_RELEASE_DIR}"
           echo "server image=${env.IMAGE_SERVER_NAME}"
           echo "web image=${env.IMAGE_WEB_NAME}"
+        }
+      }
+    }
+
+    stage('本地离线质量门禁') {
+      steps {
+        dir('wild-web') {
+          script {
+            if (isUnix()) {
+              sh '''
+                set -eu
+                npm ci
+                npm run check:ci
+              '''
+            } else {
+              powershell '''
+                $ErrorActionPreference = 'Stop'
+                npm ci
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                npm run check:ci
+                exit $LASTEXITCODE
+              '''
+            }
+          }
+        }
+        dir('wild-server') {
+          script {
+            if (isUnix()) {
+              sh '''
+                set -eu
+                uv sync --frozen
+                uv run --frozen python scripts/ci/check_generation_quality.py
+              '''
+            } else {
+              powershell '''
+                $ErrorActionPreference = 'Stop'
+                uv sync --frozen
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                uv run --frozen python scripts/ci/check_generation_quality.py
+                exit $LASTEXITCODE
+              '''
+            }
+          }
         }
       }
     }
@@ -189,6 +240,24 @@ pipeline {
             fi
 
             echo ""
+            echo "=== 域名解析（nginx server_name 对应的公网入口）==="
+            if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
+              resolved=$(ssh $SSH_OPTS "$DEPLOY_TARGET" "getent hosts '$DEPLOY_PUBLIC_HOST' | awk '{print \$1}' | head -1" 2>/dev/null || true)
+              if [ -z "$resolved" ]; then
+                echo "WARN: 服务器上解析不到 $DEPLOY_PUBLIC_HOST"
+                echo "  若确认 DNS 已配置，可忽略（服务器侧 DNS 缓存可能未刷新）。"
+                echo "  但若未配置，外部访问会直接失败。域名需 A 记录指向 ${DEPLOY_SSH_HOST}。"
+              elif [ "$resolved" = "$DEPLOY_SSH_HOST" ]; then
+                echo "OK: $DEPLOY_PUBLIC_HOST -> $resolved"
+              else
+                echo "WARN: $DEPLOY_PUBLIC_HOST -> $resolved，与部署目标 $DEPLOY_SSH_HOST 不一致"
+                echo "  访问域名会打到另一台机器，请先修正 DNS A 记录。"
+              fi
+            else
+              echo "(未配置 DEPLOY_PUBLIC_HOST，跳过)"
+            fi
+
+            echo ""
             echo "预检通过"
           ''')
         }
@@ -238,7 +307,7 @@ docker run --rm \\
   -v "$REMOTE_RELEASE_DIR:/repo" \\
   -w /repo/wild-web \\
   "$NODE_BASE_IMAGE" \\
-  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
+  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run check:ci'
 REMOTE_SCRIPT
           ''')
         }
@@ -276,10 +345,8 @@ docker run --rm \\
     pip install --no-cache-dir "uv==$UV_VERSION" -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
     python -m compileall app/
     python -m py_compile main.py
-    # 上传目录是本次构建的临时副本；在 Linux 上补齐平台锁信息，后续 Docker
-    # 构建继续使用同一份临时 uv.lock，不修改 Git 仓库中的工作区。
-    uv lock
-    uv run --frozen --with pytest python -m pytest tests -q
+    uv sync --frozen
+    uv run --frozen python scripts/ci/check_generation_quality.py
   '
 REMOTE_SCRIPT
           ''')
@@ -403,7 +470,9 @@ start_server() {
     "$server_image"
 }
 
-# 无域名部署：nginx.conf 已改为纯 HTTP，不再需要 443 与 Let's Encrypt 证书挂载。
+# 纯 HTTP 部署：nginx.conf 只有 listen 80 单 server 块，未启用 SSL，
+# 因此不需要 443 发布与 Let's Encrypt 证书卷挂载。
+# ⚠️ 启用 SSL 时这一段必须与 nginx.conf 同批改，否则容器缺证书卷会启动失败。
 start_web() {
   web_image="$1"
   docker run -d \\
@@ -493,7 +562,7 @@ REMOTE_SCRIPT
 
             echo "=== 检查容器状态 ==="
             ssh $SSH_OPTS "$DEPLOY_TARGET" \\
-              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_WEB_PORT='$DEPLOY_WEB_PORT' DEPLOY_SSH_HOST='$DEPLOY_SSH_HOST' /bin/sh -s" <<'REMOTE_SCRIPT'
+              "IMAGE_SERVER_NAME='$IMAGE_SERVER_NAME' IMAGE_WEB_NAME='$IMAGE_WEB_NAME' DEPLOY_WEB_PORT='$DEPLOY_WEB_PORT' DEPLOY_SSH_HOST='$DEPLOY_SSH_HOST' DEPLOY_PUBLIC_HOST='$DEPLOY_PUBLIC_HOST' /bin/sh -s" <<'REMOTE_SCRIPT'
 set -eu
 
 echo "--- 运行中的 wild 容器 ---"
@@ -533,7 +602,9 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
   exit 1
 fi
 
-# 无域名场景下，判据是"用 IP 当 Host 也能拿到 200"，而不是只看到 nginx 进程在跑。
+# nginx 有 default_server 兜底，域名与 IP 两种 Host 都应拿到 200。
+# 探活打 127.0.0.1 + Host 头，而不是从公网打域名：内网自打不受 DNS/安全组影响，
+# 且能分别验证两个 server_name 分支确实都命中了同一个 server 块。
 echo ""
 echo "--- 前端 HTTP 可达性（localhost:${DEPLOY_WEB_PORT}） ---"
 code_local=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
@@ -543,6 +614,19 @@ echo "GET / (Host: ${DEPLOY_SSH_HOST}) -> $code_ip"
 if [ "$code_local" != "200" ] || [ "$code_ip" != "200" ]; then
   echo "ERROR: 前端 HTTP 探活未通过（期望 200/200）"
   exit 1
+fi
+
+# 域名 Host 必须同样命中：它对应 nginx.conf server_name 里的显式域名。
+# 这一条失败而上面两条通过 ⇒ 典型原因是 nginx.conf 的 server_name 没加域名，
+# 访问域名会落到 default_server 的兜底行为上（功能可能仍通，但已不是预期配置）。
+if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
+  code_domain=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
+  echo "GET / (Host: ${DEPLOY_PUBLIC_HOST}) -> $code_domain"
+  if [ "$code_domain" != "200" ]; then
+    echo "ERROR: 域名 Host 未命中（期望 200，实际 $code_domain）"
+    echo "  检查 wild-web/nginx.conf 的 server_name 是否包含 ${DEPLOY_PUBLIC_HOST}"
+    exit 1
+  fi
 fi
 
 echo ""
@@ -580,7 +664,14 @@ for repo in "$PROJECT/wild-server" "$PROJECT/wild-web"; do
 done
 REMOTE_SCRIPT
 
-            echo "部署完成；访问入口：http://$DEPLOY_SSH_HOST:${DEPLOY_WEB_PORT}/"
+            echo "部署完成；访问入口："
+            if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
+              echo "  域名：http://${DEPLOY_PUBLIC_HOST}/"
+            fi
+            echo "  IP（兜底）：http://${DEPLOY_SSH_HOST}:${DEPLOY_WEB_PORT}/"
+            if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
+              echo "提示：外部浏览器访问请确认 DNS 已解析、服务器安全组已放行 ${DEPLOY_WEB_PORT} 端口。"
+            fi
           ''')
         }
       }

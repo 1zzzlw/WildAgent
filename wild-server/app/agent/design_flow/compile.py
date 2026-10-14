@@ -112,24 +112,34 @@ async def compile_node(state: GenerationState) -> dict:
              "implementation": {"design_hash": _stable_hash(document), "records": compiled_records}}
     evaluation = evaluate_candidate(blueprint, design_document=document.model_dump(mode="json"),
                                     design_brief=brief, source="compile")
+    unattributed_issues = []
     if evaluation["errors"]:
         message = "; ".join(str(getattr(e, "output", e)) for e in evaluation["errors"])
-        entity_ids = {issue.get("component_id") or issue.get("entity_id") for issue in evaluation["issues"]}
+        entity_ids = {i for issue in evaluation["issues"] for i in
+                      [issue.get("component_id"), issue.get("entity_id"), *(issue.get("entity_ids") or [])] if i}
         entity_ids.discard(None)
         failed = {m for m, r in records.items() if r.get("status") == "implemented"
                   and (set(r.get("entity_ids") or []) & entity_ids
                        or (not entity_ids and any(i in message for i in r.get("entity_ids", []))))}
+        failed.update(m for issue in evaluation["issues"] for m in
+                      [issue.get("marker_id"), *(issue.get("marker_ids") or [])] if m in records)
+        # 兼容旧校验器的标记消息；只按完整 ID 匹配，不把未归属错误交给主体。
+        import re
+        failed.update(m for m in records if re.search(r"(?<![\w.-])" + re.escape(m) + r"(?![\w.-])", message))
         from app.agent.knowledge.component_names import resolve_component_name
         missing_types = {issue["target_type"] for issue in evaluation["issues"] if issue.get("target_type")}
         failed.update(m["id"] for m in state["resolved_design"]["component_markers"]
                       if resolve_component_name(m["type"])["entity_type"] in missing_types and m["id"] in records)
-        if len(failed) > 1:
-            failed.discard("building_body")
         if not failed:
-            failed = {"building_body"}
+            unattributed_issues = evaluation["issues"]
         updates = {"component_fragments": deepcopy(state.get("component_fragments") or {}),
                    "component_diagnostics": deepcopy(state.get("component_diagnostics") or {})}
-        exhausted = {m for m in failed if "assembly_revision" in records[m].get("attempted_stages", [])}
+        from app.agent.validation.issues import repeated_failed_candidate
+        from app.agent.plan.implementation import failure_context_fingerprint
+        marker_by_id = {m["id"]: m for m in state["resolved_design"]["component_markers"]}
+        exhausted = {m for m in failed if "assembly_revision" in records[m].get("attempted_stages", [])
+                     or repeated_failed_candidate({**records[m], "marker_id": m},
+                         context_fingerprint=failure_context_fingerprint(state, marker_by_id[m]))}
         if exhausted:
             updates = _discard(state, exhausted, message)
         retry_markers = _affected_markers({**state, **updates}, failed - exhausted)
@@ -186,8 +196,10 @@ async def compile_node(state: GenerationState) -> dict:
     for item in plan.items:
         rows = [records[m] for m in item.target.get("marker_ids", [])]
         abandoned = sum(r["status"] == "abandoned" for r in rows)
-        item.status = "abandoned" if rows and abandoned == len(rows) else "done"
+        item.status = "abandoned" if abandoned else "done"
         item.run.evidence = f"实现流程结束：落实 {len(rows)-abandoned}，舍弃 {abandoned}"
+        item.params["implementation_summary"] = {"implemented": len(rows)-abandoned, "abandoned": abandoned,
+                                                 "total": len(rows), "design_complete": not abandoned}
         item.run.artifacts = [i for m in item.target.get("marker_ids", [])
                               for i in compiled_records[m].get("entity_ids", []) if i in actual]
     return {**({k: state[k] for k in ("component_fragments", "component_diagnostics")}),
@@ -195,6 +207,7 @@ async def compile_node(state: GenerationState) -> dict:
             "compile_report": {"abandoned_markers": [m for m, r in records.items() if r["status"] == "abandoned"], "missing_markers": missing, "elements": len(blueprint["geometry"]["elements"]),
                                "components": len(blueprint["geometry"]["components"]),
                                "design_complete": not missing and all(r["status"] == "implemented" for r in records.values()),
+                               "unattributed_issues": unattributed_issues,
                                "ok": not missing and not evaluation["errors"]}, "error": None}
 
 

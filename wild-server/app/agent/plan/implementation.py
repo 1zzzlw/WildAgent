@@ -132,6 +132,10 @@ def _accept_group(base, row, marker, *, check_size=True):
     entities = [*geometry.get("elements", []), *geometry.get("components", [])]
     if not entities or any(not isinstance(e, dict) or not e.get("id") for e in entities):
         raise ValueError("没有生成有效实体；请尝试原生构件或 primitive 组合")
+    if (marker["type"] == "building_body"
+            and any(layout.get("rooms") for layout in marker["design"].get("floor_layouts") or [])
+            and any(e.get("type") == "column" for e in entities)):
+        raise ValueError("建筑主体返回了图纸未标注的独立柱；柱位应先在 architecture.components 标注，交由对应 plan 实现")
     ids = [e["id"] for e in entities]
     existing = {e["id"] for bucket in ("elements", "components") for e in base["geometry"][bucket]}
     if len(set(ids)) != len(ids):
@@ -295,7 +299,11 @@ def _item_context(state, markers, base, reference_entity_ids=()):
             probe = {"id": marker["id"], "type": resolve_component_name(marker["type"])["entity_type"],
                      "parentWall": wall["id"], "from": [0, 0, 0], **size}
             placed, _ = place_opening_group(base, {"geometry": {"components": [probe]}}, marker)
-            opening_hosts[marker["id"]] = {k: placed["geometry"]["components"][0][k] for k in ("parentWall", "from")}
+            placed_components = (placed.get("geometry") or {}).get("components") or []
+            if placed_components and all(key in placed_components[0] for key in ("parentWall", "from")):
+                opening_hosts[marker["id"]] = {
+                    key: placed_components[0][key] for key in ("parentWall", "from")
+                }
             needed.add(wall["id"])
     records = implementation_records(state)
     for marker in markers.values():
@@ -356,6 +364,12 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         m.get("host") == v["id"] or (m.get("host") or "").startswith(f"wall_{v['id']}_") for m in markers.values())]
     if circulation:
         context["drawing"]["circulation"] = drawing.get("circulation")
+        levels = context["levels"]
+        context["available_floor_connections"] = [
+            {"from_floor": lower["index"], "to_floor": upper["index"],
+             "from_y": lower["base_y"], "to_y": upper["base_y"]}
+            for lower, upper in zip(levels, levels[1:])
+        ]
     if any(resolve_component_name(m["type"])["entity_type"] == "roof" for m in markers.values()):
         context["drawing"]["roof"] = deepcopy(drawing.get("roof"))
     if body:
@@ -391,6 +405,47 @@ def _output_protocol(schema, markers, references, failed_rows):
     return ("可组合的原生类型：" + ", ".join(f"{k}:{c['target']}" for k, c in capabilities.items())
             + "\n" + "\n".join(capability_brief(k, full=True) for k in sorted(kinds) if k in capabilities)
             + "\n当前输出字段协议：" + json.dumps(protocol, ensure_ascii=False, separators=(",", ":")))
+
+
+def failure_context_fingerprint(state, marker, base=None, owned_ids=()):
+    """失败去重绑定图纸及本标记实际依赖，宿主变化后允许重新验收。"""
+    from app.agent.validation.diagnostics import blueprint_fingerprint
+    context = _item_context(state, {marker["id"]: marker}, base or implementation_blueprint(state))
+    geometry = context["existing_blueprint"]["geometry"]
+    owned = set(owned_ids) | set((implementation_records(state).get(marker["id"]) or {}).get("entity_ids", []))
+    return blueprint_fingerprint({"design_hash": (state.get("resolved_design") or {}).get("design_hash"),
+        "geometry": {bucket: sorted((e for e in entities if e["id"] not in owned), key=lambda e: e["id"])
+                     for bucket, entities in geometry.items()},
+        **{key: context.get(key) for key in ("levels", "diagram_hosts", "opening_hosts", "attachment_geometry")}})
+
+
+def _failed_candidate(row, retained_geometry, error, context_fingerprint):
+    from app.agent.validation.diagnostics import blueprint_fingerprint
+    geometry = row.get("geometry") if isinstance(row, dict) else None
+    if not isinstance(geometry, dict) or any(not isinstance(geometry.get(k, []), list) for k in ("elements", "components")):
+        return None
+    entities = [e for bucket in ("elements", "components") for e in geometry.get(bucket, [])]
+    entities.extend(e for bucket in ("elements", "components") for e in (retained_geometry or {}).get(bucket, [])
+                    if e not in entities)
+    if not entities or any(not isinstance(e, dict) for e in entities):
+        return None
+    # 实体改名或说明文字变化不能伪装成新的几何；外部宿主引用保持原值。
+    labels = {e.get("id"): blueprint_fingerprint({k: v for k, v in e.items() if k != "id" and not k.startswith("parent")})
+              for e in entities if isinstance(e.get("id"), str)}
+    def normalize(value):
+        if isinstance(value, dict):
+            return {k: normalize(v) for k, v in value.items() if k != "id"}
+        if isinstance(value, list):
+            return [normalize(v) for v in value]
+        return labels.get(value, value) if isinstance(value, str) else value
+    normalized = sorted(json.dumps(normalize(e), sort_keys=True, ensure_ascii=False) for e in entities)
+    for entity_id in sorted(labels, key=len, reverse=True):
+        error = re.sub(r"(?<![\w.-])" + re.escape(entity_id) + r"(?![\w.-])", labels[entity_id], error)
+    issues = sorted(set(filter(None, (part.strip() for part in error.split("；")))))
+    return {"candidate_fingerprint": blueprint_fingerprint({"entities": normalized,
+                "materials": row.get("materials") or {}, "assets": row.get("assets") or {}}),
+            "context_fingerprint": context_fingerprint,
+            "issues_fingerprint": blueprint_fingerprint(issues), "issues": issues}
 
 
 async def run_marker_generate(state, item):
@@ -448,7 +503,8 @@ async def run_marker_generate(state, item):
                           and resolve_component_name(v)["kind"] != "roof"]
         variant = next(iter(variants)) if len(variants) == 1 else (known_variants[0] if len(known_variants) == 1 else None)
         lookup_kind = variant if variant and resolve_component_name(variant)["entity_type"] else item.kind
-        knowledge = search_knowledge_result(query, kind=lookup_kind)
+        import asyncio
+        knowledge = await asyncio.to_thread(search_knowledge_result, query, kind=lookup_kind)
         references = knowledge["text"]
         native = capability_surface()
         supplied_shape = all(any(m.get("design", {}).get(key) for key in ("geometry", "path", "profile"))
@@ -460,6 +516,7 @@ async def run_marker_generate(state, item):
             for m in pending.values())
         trace.append({"tool": "search_knowledge", "query": query, "result": references,
                       "ok": not references.startswith("❌"), "has_shape_reference": knowledge["has_shape_reference"],
+                      "injected_chunk_ids": knowledge.get("chunk_ids", []),
                       "web_required": needs_web,
                       "web_reason": "缺少当前构件的形态资料" if needs_web else "已有构件参考、原生形态或图纸几何信息"})
         if needs_web:
@@ -477,10 +534,11 @@ async def run_marker_generate(state, item):
     completed_stages = {i: {t.get("stage") for t in trace if i in t.get("marker_ids", [])} for i in pending}
     stages = ("assembly_revision",) if item.params.get("assembly_feedback") else IMPLEMENTATION_STAGES
     model_error = None
+    stopped = set()
     for stage in stages:
         if not pending:
             break
-        eligible = {i: m for i, m in pending.items() if stage not in completed_stages[i]}
+        eligible = {i: m for i, m in pending.items() if i not in stopped and stage not in completed_stages[i]}
         if not eligible:
             continue
         if callback:
@@ -506,7 +564,7 @@ async def run_marker_generate(state, item):
                 "levels.base_y 是每层楼面顶标高；原生 floor 的 from 和 to 均为完整世界三维端点 [X,Y,Z]，不能把 to 写成平面 [X,Z]；两端 Y 应为楼面顶减板厚，不能把墙底标高直接当板底。"
                 "primitive box 是实心体，不能当成整栋空心围护或不可见参考体量。"
                 "按 opening_layout 给门窗留出净空；未指定轴网坐标时，按洞口间的墙垛组织梁柱，不能让柱穿过门窗。"
-                "structural_grid 是结构组织说明，不把 x_bays/z_bays 机械扩成全交点柱阵；未明确的柱位结合 floor_layouts 的隔墙与使用空间选择，避免占用房间中心或通道。保留图纸明确的独立室内柱、外露框架及开敞柱廊。"
+                "structural_grid 是结构组织说明，不把 x_bays/z_bays 扩成柱阵；有明确房间平面时，主体不生成独立柱，图纸 components 标明的柱位由对应 plan 实现。"
                 "梁柱与填充墙核对墙法线方向的实际截面和进退，避免重合表面，不删掉图纸要求的外露框架。")
         if families & {"door", "window"}:
             instructions.append("用 door/window 或 opening 开真实洞口，按整个洞口组保持设计宽高，组内分扇不重叠。"
@@ -529,7 +587,9 @@ async def run_marker_generate(state, item):
                 "railing.path 默认世界坐标；parentFloor 仅能引用真实 floor，不能填阳台组件ID，"
                 "填写 parentFloor 时 path 改用该楼板顶面局部坐标。保留图纸花纹，避免再生成重合整套防护。")
         if "stair" in families:
-            instructions.append("楼梯 size.width/depth 是整组占地，单跑净宽从 form 解析；各跑高差之和等于连接楼层高差。"
+            instructions.append("楼梯只连接图纸指定的楼面；available_floor_connections 给出相邻楼面的真实标高，"
+                "levels.top_y 是该层墙顶，不是下一层楼面；没有明确屋面通行时，不增建顶层到屋面的梯段。"
+                "楼梯 size.width/depth 是整组占地，单跑净宽从 form 解析；各跑高差之和等于连接楼层高差。"
                 "指定踏步时 stepCount*stepHeight 等于两端高差，stepCount*stepDepth 等于两端水平距离；否则省略踏步参数让引擎计算。"
                 "平行双跑的并列轴与行进轴垂直；每跑沿自己的中心线上行，不能横跨到另一跑中心。"
                 "中间平台接第一跑上行终点、第二跑上行起点；按图纸平台所在侧确定两跑相反的行进方向，完整净宽都要落在平台内。"
@@ -551,7 +611,8 @@ async def run_marker_generate(state, item):
                   "复用已有材质时只引用 ID，无需重复定义；新材质由程序绑定独立 ID。"
                   "物理玻璃以 transmission 和 ior 表达透明，opacity 为 1 或省略。返回 JSON："
                   '{"implementations":[{"id":"图纸标记ID","geometry":{"elements":[],"components":[]},'
-                  '"materials":{},"assets":{},"explanation":"实现方法与尚未准确表达的设计要求"}]}。'
+                  '"materials":{},"assets":{}}]}。'
+                  "explanation 可省略；如填写，只写一句实施说明，不写推理过程。"
                   "elements/components 必须是数组，没有构件时写 []；materials/assets 是对象。"
                   "所有数值先计算再写入 JSON，不能在坐标中填写加减乘除算式。"
                   "\nWILD输出协议：" + protocol)
@@ -567,18 +628,27 @@ async def run_marker_generate(state, item):
                         {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]
             level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
             thinking = stage == "generate" and level != "minimal"
-            if thinking and callback:
-                async def emit(delta):
-                    await callback("execute", delta)
-                reply = await stream_llm(create_llm(enable_thinking=thinking, streaming=True),
-                                         messages, on_reasoning_delta=emit)
-            else:
-                reply = await invoke_llm(create_llm(enable_thinking=thinking, streaming=False), messages)
+            from app.rag.trace import llm_trace_scope
+            from app.agent.plan.expand import _batch_load
+            chunk_ids = next((t.get("injected_chunk_ids", []) for t in reversed(trace)
+                              if t.get("tool") == "search_knowledge"), [])
+            with llm_trace_scope(item_id=item.id, stage=stage, design_hash=resolved.get("design_hash"),
+                                 candidate_fingerprint=blueprint_fingerprint(base),
+                                 marker_ids=list(eligible), batch_load=_batch_load(list(eligible.values())),
+                                 injected_chunk_ids=chunk_ids):
+                if thinking and callback:
+                    async def emit(delta):
+                        await callback("execute", delta)
+                    reply = await stream_llm(create_llm(enable_thinking=thinking, streaming=True),
+                                             messages, on_reasoning_delta=emit)
+                else:
+                    reply = await invoke_llm(create_llm(enable_thinking=thinking, streaming=False), messages)
         except Exception as exc:
             from app.llm.errors import model_failure_result
             model_error = model_failure_result(exc)
             break
         attempt = {"tool": "generate_wild", "stage": stage, "model_calls": 1,
+                   "call_id": getattr(reply, "call_id", None),
                    "enable_thinking": thinking, "token_usage": reply.token_usage,
                    "finish_reason": getattr(reply, "finish_reason", None),
                    "output": reply.content, "marker_ids": list(eligible), "errors": {}}
@@ -600,6 +670,7 @@ async def run_marker_generate(state, item):
         else:
             returned = {r["id"]: r for r in rows}
             for marker_id, marker in eligible.items():
+                submitted = None
                 try:
                     if marker_id not in returned:
                         raise ValueError("缺少该标记的实现")
@@ -616,8 +687,10 @@ async def run_marker_generate(state, item):
                             delegated_ids = {i for i in markers if i != marker_id}
                             delegated_stair = any(resolve_component_name(markers[i]["type"])["entity_type"] == "stair"
                                                   for i in delegated_ids)
+                            has_room_plan = any(layout.get("rooms") for layout in marker["design"].get("floor_layouts") or [])
                             def belongs_to_body(entity):
                                 return (entity.get("type") in _BODY_TYPES
+                                        and not (has_room_plan and entity.get("type") == "column")
                                         and not (delegated_stair and entity.get("type") == "stair")
                                         and not any(entity.get("id") == i or str(entity.get("id", "")).startswith(i+"_")
                                                     for i in delegated_ids))
@@ -636,8 +709,26 @@ async def run_marker_generate(state, item):
                     if placement_changes:
                         attempt.setdefault("placement_changes", {})[marker_id] = placement_changes
                     row, bindings = _bind_materials(base, row, marker)
+                    submitted = deepcopy(row)
                     if bindings:
                         attempt.setdefault("material_bindings", {})[marker_id] = bindings
+                    retained = {e["id"]: e for bucket in ("elements", "components")
+                                for e in parts.get(marker_id, {}).get("geometry", {}).get(bucket, [])}
+                    geometry = row.get("geometry")
+                    returned_entities = ([e for bucket in ("elements", "components")
+                                          for e in geometry.get(bucket, [])]
+                                         if isinstance(geometry, dict) and all(
+                                             isinstance(geometry.get(bucket, []), list)
+                                             for bucket in ("elements", "components")) else [])
+                    failed_geometry = failed_rows.get(marker_id, {}).get("geometry") or {}
+                    failed_elements = failed_geometry.get("elements") or []
+                    if (marker["type"] == "building_body" and returned_entities
+                            and all(isinstance(e, dict) and retained.get(e.get("id")) == e
+                                    for e in returned_entities)
+                            and any(e.get("type") == "floor" for e in failed_elements)
+                            and not any(e.get("type") == "floor" for e in retained.values())):
+                        attempt.setdefault("repeated_entity_ids", {})[marker_id] = [e["id"] for e in returned_entities]
+                        raise ValueError(failures[marker_id])
                     base, accepted, rejected, record = _accept_fragment(base, row, marker,
                         parts.get(marker_id, {}).get("geometry"), dependent_markers=markers.values(),
                         diagram_hosts=state.get("drawing_hosts", []))
@@ -682,10 +773,26 @@ async def run_marker_generate(state, item):
                     failures.pop(marker_id, None)
                 except (ValueError, TypeError, KeyError) as exc:
                     failures[marker_id] = str(exc)
+                    owned = [e["id"] for bucket in ("elements", "components")
+                             for e in parts.get(marker_id, {}).get("geometry", {}).get(bucket, [])]
+                    failed_candidate = _failed_candidate(submitted, parts.get(marker_id, {}).get("geometry"), str(exc),
+                        failure_context_fingerprint(state, marker, base, owned)) if submitted else None
+                    if failed_candidate:
+                        attempt.setdefault("failed_candidates", {})[marker_id] = failed_candidate
+                        previous = next((t.get("failed_candidates", {}).get(marker_id) for t in reversed(trace[:-1])
+                                         if marker_id in t.get("marker_ids", [])), None)
+                        if failed_candidate == previous:
+                            stopped.add(marker_id)
+                            attempt.setdefault("stop_reasons", {})[marker_id] = "repeated_failed_candidate"
+                            if callback:
+                                await callback("execute:progress", f"{item.label}：{marker_id} 连续返回相同失败几何且问题未减少，停止重复修订。\n")
         attempt["errors"] = dict(failures)
     for marker_id in pending if not model_error else []:
         records[marker_id] = {"status": "abandoned", "entity_ids": [], "reason": failures[marker_id],
                               "attempted_stages": [t["stage"] for t in trace if "stage" in t]}
+        if marker_id in stopped:
+            records[marker_id]["stop_reason"] = "repeated_failed_candidate"
+            records[marker_id]["marker_id"] = marker_id
     for marker_id in target_ids:
         if marker_id not in records:
             continue
@@ -699,6 +806,12 @@ async def run_marker_generate(state, item):
     diag = {"implementations": records, "trace": trace, "references": references,
             "failed_implementations": {i: failed_rows[i] for i in pending if i in failed_rows}, "failures": failures,
             "materials": materials, "assets": assets, **buckets}
+    summary = {"implemented": sum(r.get("status") == "implemented" for r in records.values()),
+               "abandoned": sum(r.get("status") == "abandoned" for r in records.values()),
+               "total": len(item.target["marker_ids"]),
+               "design_complete": all((records.get(i) or {}).get("status") == "implemented"
+                                      for i in item.target["marker_ids"])}
+    diag["implementation_summary"] = summary
     updates = {"component_fragments": {item.id: fragments}, "component_diagnostics": {item.id: diag}}
     if model_error:
         return {**updates, **model_error}, "aborted", [e["id"] for e in fragments], model_error.get("error", "模型调用失败"), event_trace
@@ -706,4 +819,4 @@ async def run_marker_generate(state, item):
         error = "建筑主体未能实现，停止附属构件生成：" + failures["building_body"]
         return {**updates, "status": "failed", "error": error}, "aborted", [], error, event_trace
     return updates, \
-        "succeeded", [e["id"] for e in fragments], f"落实 {sum(r['status'] == 'implemented' for r in records.values())}，舍弃 {sum(r['status'] == 'abandoned' for r in records.values())}", event_trace
+        ("succeeded" if summary["design_complete"] else "failed"), [e["id"] for e in fragments], f"落实 {summary['implemented']}，舍弃 {summary['abandoned']}", event_trace

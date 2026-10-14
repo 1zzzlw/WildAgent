@@ -64,6 +64,46 @@ def test_per_volume_override_changes_only_that_volume_roof():
     assert roofs_of(override)[0]["span"] == roofs_of(baseline)[0]["span"]
 
 
+@pytest.mark.parametrize("roofless_type", ["none", "open"])
+def test_roofless_volume_keeps_other_volume_roof(roofless_type):
+    result = compile_roof({
+        "type": "gable", "overhang": 0.6,
+        "volumes": [{"volume": "wing", "type": roofless_type}],
+    })
+    assert list(slots_by_volume(result)) == ["main"]
+    assert len(roofs_of(result)) == 1
+    assert roofs_of(result)[0]["roofType"] == "gable"
+    assert not [defect for defect in result.defects if defect.code == "roof_layout_unsupported"]
+
+
+def test_single_roofless_volume_does_not_compile_as_flat_roof():
+    plan = copy.deepcopy(_PLAN)
+    plan["volumes"] = [plan["volumes"][0]]
+    plan["roof"] = {"type": "gable", "volumes": [{"volume": "main", "type": "none"}]}
+    normalized = normalize_architecture_plan(plan, "开敞建筑")
+    result = compile_design(normalized, user_message="开敞建筑")
+    assert not roofs_of(result)
+    assert any(defect.code == "roof_design_conflict" for defect in result.defects)
+
+
+def test_global_roofless_intent_does_not_inherit_residential_roof_quota():
+    plan = copy.deepcopy(_PLAN)
+    plan["volumes"] = [plan["volumes"][0]]
+    plan["roof"] = {"type": "none"}
+    normalized = normalize_architecture_plan(plan, "开敞建筑")
+    assert normalized["component_quota"]["roof"]["min"] == 0
+    assert not roofs_of(compile_design(normalized, user_message="开敞建筑"))
+
+
+def test_unknown_single_volume_roof_is_not_silently_compiled_as_flat():
+    plan = copy.deepcopy(_PLAN)
+    plan["volumes"] = [plan["volumes"][0]]
+    plan["roof"] = {"type": "folded_shell"}
+    result = compile_design(normalize_architecture_plan(plan, "异形屋面"), user_message="异形屋面")
+    assert not roofs_of(result)
+    assert any(defect.code == "roof_type_unsupported" for defect in result.defects)
+
+
 def test_per_volume_overhang_changes_only_that_volume_span():
     baseline = compile_roof({"type": "gable", "overhang": 0.6})
     override = compile_roof({
@@ -156,6 +196,7 @@ def test_unsplittable_override_reports_a_compile_blocker():
     })
     assert not roofs_of(result)
     assert any(d.code == "roof_layout_unsupported" and d.severity == "error" for d in result.defects)
+    assert any("dome" in d.evidence for d in result.defects if d.code == "roof_layout_unsupported")
 
 
 _REALIZATION = {

@@ -83,7 +83,6 @@ class QueryPlannerTest(unittest.TestCase):
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
         loader._top_k = 1
-        loader._last_results = []
         loader._retrieval_cache = {}
         loader._last_sync_stats = {"total": 1, "updated": 0, "deleted": 0}
         loader._get_collection = Mock(return_value=collection)
@@ -146,7 +145,6 @@ class QueryPlannerTest(unittest.TestCase):
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
         loader._top_k = 2
-        loader._last_results = []
         loader._retrieval_cache = {}
         loader._last_sync_stats = {"total": 2, "updated": 0, "deleted": 0}
         loader._get_collection = Mock(return_value=collection)
@@ -196,7 +194,6 @@ class QueryPlannerTest(unittest.TestCase):
         }
         loader._namespace = "test"
         loader._top_k = 1
-        loader._last_results = []
         loader._retrieval_cache = {}
         loader._last_sync_stats = {"total": 1, "updated": 0, "deleted": 0}
         loader._get_collection = Mock(return_value=collection)

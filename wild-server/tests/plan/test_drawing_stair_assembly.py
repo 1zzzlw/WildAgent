@@ -121,6 +121,28 @@ def state_with_stair(*, axis=0, direction=1, offset=0, stair_status="implemented
     return state, stair
 
 
+def test_stair_context_uses_floor_surfaces_not_top_of_upper_walls():
+    from app.design.contracts import DesignDocument
+
+    state, _ = state_with_stair()
+    raw = deepcopy(state["design_document"])
+    raw["decisions"]["massing"].update(floors=3, modeled_floors=3, floor_height=3.0)
+    raw["decisions"]["volumes"][0]["end_floor"] = 3
+    raw["decisions"]["floor_layouts"] = [
+        {"floor": floor, "level": level}
+        for floor, level in ((1, 0.45), (2, 3.45), (3, 6.45))
+    ]
+    document = DesignDocument.model_validate(raw)
+    state["design_document"] = document.model_dump(mode="json")
+    state["resolved_design"] = resolve_design(document).model_dump(mode="json")
+    marker = next(m for m in state["resolved_design"]["component_markers"] if m["id"] == "stairs")
+    context = impl._item_context(state, {"stairs": marker}, impl.implementation_blueprint(state))
+    assert context["available_floor_connections"] == [
+        {"from_floor": 1, "to_floor": 2, "from_y": 0.45, "to_y": 3.45},
+        {"from_floor": 2, "to_floor": 3, "from_y": 3.45, "to_y": 6.45},
+    ]
+
+
 @pytest.mark.parametrize("axis,direction,offset", [(0, 1, 0), (0, -1, -12), (2, 1, 25), (2, -1, 0)])
 def test_compile_opens_passage_without_rerunning_body_and_keeps_source_evidence(axis, direction, offset):
     state, _ = state_with_stair(axis=axis, direction=direction, offset=offset)

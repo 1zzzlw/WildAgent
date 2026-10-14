@@ -115,12 +115,11 @@ def test_named_shape_uses_exact_knowledge_before_family_fallback(monkeypatch):
     calls = []
     chunk = SimpleNamespace(document='```json\n{"type":"window"}\n```', metadata={
         "entity_name": "chinese_lattice_window", "entity_type": "window", "topic": "composition"})
-    loader = SimpleNamespace(last_results=[])
-    def load_many(queries, **kwargs):
+    from app.spec.loader import SpecLoadResult
+    def load_many_result(queries, **kwargs):
         calls.append(queries[0].metadata_filter)
-        loader.last_results = [chunk]
-        return chunk.document
-    loader.load_many = load_many
+        return SpecLoadResult(chunk.document, (chunk,))
+    loader = SimpleNamespace(load_many_result=load_many_result)
     monkeypatch.setattr(service_module, "agent_service", SimpleNamespace(spec_loader=loader))
     assert search_knowledge_result("格棂窗 JSON 示例", kind="chinese_lattice_window")["has_shape_reference"]
     assert calls == [{"doc_type": "component", "entity_name": "chinese_lattice_window"}]

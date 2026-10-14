@@ -1388,7 +1388,7 @@
         },
         "height": {
           "type": "number",
-          "exclusiveMinimum": 0
+          "minimum": 0
         },
         "thickness": {
           "type": "number",

@@ -296,6 +296,9 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
             elapsed_ms=elapsed_ms,
             count_attempt=(run_state == "failed"),
         )
+        summary = (_item_updates.get("component_diagnostics", {}).get(item.id) or {}).get("implementation_summary")
+        if item.params.get("design_markers") and summary:
+            plan.item(item.id).params["implementation_summary"] = summary
         calls = (sum(entry.get("model_calls", 0) for entry in trace) if item.params.get("design_markers")
                  else (1 + _model_tool_rounds(trace)) if item.op in _MODEL_OPS else 0)
         model_calls += calls
@@ -308,6 +311,8 @@ async def execute_node(state: dict[str, Any]) -> dict[str, Any]:
                 "run_state": run_state,
                 "elapsed_ms": elapsed_ms,
                 "evidence": evidence,
+                **({"implementation_summary": summary}
+                   if item.params.get("design_markers") else {}),
             }
         )
         logger.info(f"[execute] {item.id} → {run_state}（{elapsed_ms}ms）：{evidence}")
@@ -444,10 +449,18 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
         }
 
     stats = terminal_stats(plan)
+    stats["ended"] = stats["total"] - stats["unfinished"]
+    from app.design.markers import implementation_records
+    marker_records = implementation_records(state)
+    markers = (state.get("resolved_design") or {}).get("component_markers") or []
+    implementation_summary = {"implemented": sum(r.get("status") == "implemented" for r in marker_records.values()),
+                              "abandoned": sum(r.get("status") == "abandoned" for r in marker_records.values()),
+                              "total": len(markers),
+                              "design_complete": bool(markers) and all((marker_records.get(m["id"]) or {}).get("status") == "implemented" for m in markers)}
     next_item = poll_runnable(plan)
     logger.info(
         f"[replanner] 第 {plan.iterations}/{budget.get('iterations', '?')} 轮，"
-        f"完成 {stats['done']}/{stats['total']}，待办 {stats['unfinished']}，"
+        f"结束 {stats['ended']}/{stats['total']}，全部落实任务 {stats['done']}，待办 {stats['unfinished']}，"
         f"无进展 {plan.no_progress_rounds} 轮，模型调用 {plan.llm_calls}"
         + (f"，下一条 {next_item.id}" if next_item is not None else "，队列已空")
         + ("，已判定 give_up" if plan.give_up else "")
@@ -464,6 +477,7 @@ async def replanner_node(state: dict[str, Any]) -> dict[str, Any]:
             "llm_calls_total": plan.llm_calls,
             "llm_budget_exhausted": plan.llm_budget_exhausted(),
             "terminal_stats": stats,
+            "implementation_summary": implementation_summary,
             "next_item_id": next_item.id if next_item is not None else None,
             "total_ms": int((time.time() - started) * 1000),
         },

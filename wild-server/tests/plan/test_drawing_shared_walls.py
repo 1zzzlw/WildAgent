@@ -258,7 +258,7 @@ def test_explicit_shared_wall_host_is_not_silently_deleted_to_pass_validation(mo
     events = patch_services(monkeypatch, [reply("building_body", [outer, shared])] * 3)
     updates, status, _, message, _ = run(impl.run_marker_generate(state, task(state, "building_body")))
     assert status == "aborted" and "共面重叠" in message
-    assert events == ["rag", "model", "model", "model"]
+    assert events == ["rag", "model", "model"]
     assert implementation_records(updates)["building_body"]["status"] == "abandoned"
 
 
@@ -267,7 +267,7 @@ def test_non_body_component_is_not_coalesced_as_a_volume_interface(monkeypatch):
     row = reply("lattice", [wall("wall_long"), wall("wall_short", 2, 10)])
     patch_services(monkeypatch, [row] * 3)
     updates, status, ids, _, trace = run(impl.run_marker_generate(state, task(state, "lattice")))
-    assert status == "succeeded" and ids == []
+    assert status == "failed" and ids == []
     assert implementation_records(updates)["lattice"]["status"] == "abandoned"
     attempts = [t for t in trace if t.get("tool") == "generate_wild"]
     assert all("shared_wall_changes" not in t for t in attempts)

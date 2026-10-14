@@ -9,7 +9,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import Mock
 
-from app.spec.loader import FileSpecLoader, MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk
+from app.spec.loader import FileSpecLoader, MarkdownChunker, RAGSpecLoader, RetrievedSpecChunk, SpecLoadResult
 from app.agent.knowledge.policy import GENERATION_ROLES, KNOWLEDGE_GUIDANCE, KNOWLEDGE_REVISION
 
 
@@ -19,7 +19,7 @@ class RAGSemanticChunkingTest(unittest.TestCase):
         loader._load_base_text = Mock(return_value="BASE")
         loader.retrieve_many = Mock(return_value=[])
         loader._apply_retrieval_gate = Mock(side_effect=lambda hits, **kw: hits)
-        loader._compose_context = Mock(side_effect=lambda base, hits, **kw: base)
+        loader._compose_result = Mock(side_effect=lambda base, hits, **kw: SpecLoadResult(base))
         self.assertEqual(loader.load_many(["query"], include_base=False), "")
         loader._load_base_text.assert_not_called()
         self.assertEqual(loader.load_many(["query"]), "BASE")
@@ -278,7 +278,6 @@ keywords: 旧主词, old alias
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
         loader._top_k = 2
-        loader._last_results = []
         loader._get_collection = Mock(return_value=collection)
 
         loader.retrieve(
@@ -354,7 +353,7 @@ keywords: 旧主词, old alias
             ),
         ]
 
-        context = loader._compose_context("BASE", chunks)
+        context = loader._compose_result("BASE", chunks).text
 
         self.assertIn('"id": "one"', context)
         self.assertNotIn('"id": "two"', context)

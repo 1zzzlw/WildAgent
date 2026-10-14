@@ -191,7 +191,9 @@ async def architecture_planner(state: GenerationState) -> dict:
     spec_text = await asyncio.to_thread(agent_service.spec_loader.load_many, [
         SpecQuery(f"{message} {feedback} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
                   {"entity_name": "architecture_design_expression"}),
-        SpecQuery(f"{message} {feedback} 形态表达 空间组织 构件组合",
+        SpecQuery(f"{message} {feedback} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
+                  {"entity_name": "architecture_design_expression"}),
+        SpecQuery(f"{message} {profile['id']} {feedback} 建筑形制 形态表达 空间组织 构件组合",
                   {"doc_type": "component", "topic": "composition"})
     ], per_query=2, include_base=False)
     rag_ms = int((_time.time()-rag_started)*1000)
@@ -207,6 +209,29 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     # 在 draft_design 内部做了契约验证，失败时抛 DesignContractError；这里捕获它并返回可读错误。
     def validate(raw):
+        massing = raw.get("massing") if isinstance(raw.get("massing"), dict) else {}
+        missing = [f"/massing/{key}" for key in ("shape", "width", "depth", "floors")
+                   if massing.get(key) is None]
+        if not isinstance(raw.get("volumes"), list) or not raw["volumes"]:
+            missing.append("/volumes")
+        else:
+            missing.extend(
+                f"/volumes/{index}/{key}"
+                for index, volume in enumerate(raw["volumes"])
+                for key in ("id", "x", "z", "width", "depth", "start_floor", "end_floor")
+                if not isinstance(volume, dict) or volume.get(key) is None
+            )
+        facades = raw.get("facades") if isinstance(raw.get("facades"), dict) else {}
+        missing.extend(
+            f"/facades/{face}/{key}"
+            for face in ("front", "back", "left", "right")
+            for key in ("bays", "ground_pattern", "upper_pattern")
+            if not isinstance(facades.get(face), dict) or facades[face].get(key) is None
+        )
+        if not isinstance(raw.get("roof"), dict) or not raw["roof"].get("type"):
+            missing.append("/roof/type")
+        if missing:
+            raise ValueError("图纸缺少关键设计字段：" + "、".join(missing) + "；请补全本次建筑，不能用住宅模板填充")
         components = raw.get("components") or []
         if not isinstance(components, list) or any(
             not isinstance(item, dict) for item in components
@@ -256,9 +281,11 @@ async def architecture_planner(state: GenerationState) -> dict:
             revision_feedback=feedback,
         )
         resolved = resolve_design(document)
-        from app.design.coordinates import opening_coordinate_errors
+        from app.design.coordinates import opening_coordinate_errors, stair_span_conflicts
 
-        coordinate_errors = opening_coordinate_errors(resolved.component_markers)
+        coordinate_errors = opening_coordinate_errors(resolved.component_markers) + stair_span_conflicts(
+            document.decisions.model_dump(mode="json")
+        )
         if coordinate_errors:
             raise ValueError("；".join(coordinate_errors))
         accepted.update(document=document, resolved=resolved)

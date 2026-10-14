@@ -1,0 +1,611 @@
+{
+  "audit_date": "2026-10-14",
+  "timezone": "Asia/Shanghai",
+  "scope": "Read-only source and persisted evidence inspection; no test, replay, generation or rendering was executed.",
+  "source_head": "730bf391ac1e33e4e8aa909f843351e9e3d3a261",
+  "source_worktree_dirty": true,
+  "cases": [
+    {
+      "session_file": "wild-server/storage/sessions/session_1791935102992.json",
+      "session_file_sha256": "5d311cc56f9d8ed37bd4ac1e3ab2986911b942d9fe9f966e6354a85e635ab164",
+      "request_id": "req_1791935105839_8qneh91ma",
+      "checkpoint_thread": "generation:req_1791935105839_8qneh91ma",
+      "checkpoint_id": "1f1c760e-570a-639d-8010-d2f604d40c18",
+      "checkpoint_sha256": "49a373f59ab36f735ec146a713f889c4389bb32341995c070974f4c8b4f7859b",
+      "trace_file": "wild-server/storage/sessions/rag_traces/session_1791935102992/req_1791935105839_8qneh91ma.json",
+      "trace_file_sha256": "d2cc1bac23040999cfde022234fffb3d6ff59611d381d174126557553a23783e",
+      "user_message": "生成一个三层别墅",
+      "detail_level": "minimal",
+      "design_hash": "sha256:dfc2c750f91b105b624352e392ac320d6c8787af3c7a6abaf87c5fe75c1f1759",
+      "status": "failed",
+      "model_labels": [
+        "qwen3.8-27b"
+      ],
+      "marker_count": 17,
+      "plan_item_count": 6,
+      "plan_terminal_statuses": {
+        "generate_1": "done",
+        "generate_2": "done",
+        "generate_3": "abandoned",
+        "generate_4": "done",
+        "generate_5": "done",
+        "generate_6": "done"
+      },
+      "compile_report": {
+        "abandoned_markers": [
+          "stair_main"
+        ],
+        "missing_markers": [],
+        "elements": 19,
+        "components": 14,
+        "design_complete": false,
+        "ok": false
+      },
+      "validation_blueprint_fingerprint": "860605a48e56465ca31da71e8721dce748f0537b2ec3a76d0d7930c55a2309b6",
+      "trace_summary": {
+        "retrieval_calls": 7,
+        "retrieval_ms": 8424,
+        "context_builds": 7,
+        "max_context_chars": 4479,
+        "llm_calls": 12,
+        "llm_ms": 326513,
+        "token_usage": {
+          "input": 95938,
+          "output": 19170,
+          "total": 115108
+        },
+        "llm_retry_count": 0,
+        "node_calls": 16,
+        "node_ms": 297858,
+        "gate_rejections": 0
+      },
+      "active_execution_elapsed_ms": 308478,
+      "levels": [
+        {
+          "index": 1,
+          "base_y": 0.45,
+          "top_y": 3.45
+        },
+        {
+          "index": 2,
+          "base_y": 3.45,
+          "top_y": 6.45
+        },
+        {
+          "index": 3,
+          "base_y": 6.45,
+          "top_y": 9.45
+        }
+      ],
+      "stair_markers": [
+        {
+          "id": "stair_main",
+          "type": "stair",
+          "host": "main",
+          "depends_on": [
+            "building_body"
+          ],
+          "design_path": "/decisions/components/0",
+          "design": {
+            "type": "stair",
+            "id": "stair_main",
+            "host": "main",
+            "description": "单跑楼梯，每层 18 级踏步，连接 1-3 层，靠东墙布置",
+            "placement": {
+              "offset": 0.0,
+              "sill_height": 0.0,
+              "normal_offset": 0.0,
+              "position": [
+                8.6,
+                0.45,
+                4.0
+              ]
+            },
+            "size": {
+              "width": 1.2,
+              "depth": 4.8,
+              "height": 8.85
+            },
+            "form": {
+              "rises": 18,
+              "riser_height": 0.15,
+              "tread_width": 0.28,
+              "flights": 3,
+              "landing_depth": 1.2,
+              "orientation": "沿东墙，南北方向"
+            },
+            "name": "主楼梯"
+          },
+          "entity": {
+            "parentWall": "main",
+            "position": [
+              8.6,
+              0.45,
+              4.0
+            ]
+          }
+        }
+      ],
+      "validation_errors": [
+        {
+          "step": "design",
+          "name": "validate_design_brief",
+          "output": "❌ [design] 建筑方案要求 3 层，但没有 stair 构件",
+          "has_error": true,
+          "has_warning": false
+        }
+      ],
+      "visual_review": {
+        "blueprint_fingerprint": "860605a48e56465ca31da71e8721dce748f0537b2ec3a76d0d7930c55a2309b6",
+        "proxy": {
+          "source": "proxy",
+          "complete": false,
+          "okMeaning": "仅当前实体测量规则通过，未进行审美或截图验收",
+          "note": "从蓝图实体字段计算的可量化指标，不等于视觉判断；构图气质、材质质感等仍需人工看图（见 human_review）。",
+          "criteria": [
+            "massing_hierarchy",
+            "entrance_legibility",
+            "facade_rhythm",
+            "material_harmony"
+          ],
+          "statuses": [
+            "ok",
+            "needs_review",
+            "missing"
+          ],
+          "items": [
+            {
+              "criterion": "massing_hierarchy",
+              "status": "ok",
+              "detail": "1 个体量 / 1 块屋面；通过当前数量规则，体量表达待截图评价",
+              "confidence": "high",
+              "evidence": {
+                "volumes": 1,
+                "roofs": 1
+              }
+            },
+            {
+              "criterion": "entrance_legibility",
+              "status": "ok",
+              "detail": "外墙上 1 樘门；唯一入口",
+              "confidence": "high",
+              "evidence": {
+                "doorCount": 1,
+                "exteriorDoorCount": 1,
+                "entranceCanopy": false
+              }
+            },
+            {
+              "criterion": "facade_rhythm",
+              "status": "ok",
+              "detail": "12 面外墙：wall_main_front_L1 窗距 [6.5]（相对差 0.00）；wall_main_front_L2 窗距 [6.5]（相对差 0.00）；wall_main_front_L3 窗距 [6.5]（相对差 0.00）；通过当前间距规则，视觉节奏待截图评价",
+              "confidence": "high",
+              "evidence": {
+                "gaps": {
+                  "wall_main_front_L1": [
+                    6.5
+                  ],
+                  "wall_main_front_L2": [
+                    6.5
+                  ],
+                  "wall_main_front_L3": [
+                    6.5
+                  ]
+                },
+                "gapRatios": {
+                  "wall_main_front_L1": 0.0,
+                  "wall_main_front_L2": 0.0,
+                  "wall_main_front_L3": 0.0
+                },
+                "limit": 0.45,
+                "minGap": 0.6,
+                "offenders": [],
+                "scope": "12 面外墙",
+                "note": "只统计 window/balcony，门由entrance_legibility 单独管"
+              }
+            },
+            {
+              "criterion": "material_harmony",
+              "status": "ok",
+              "detail": "6 种材质、0 种带贴图；仅为数量统计，协调程度待截图评价",
+              "confidence": "medium",
+              "evidence": {
+                "materialCount": 6,
+                "materials": [
+                  "concrete",
+                  "glass",
+                  "metal",
+                  "roof",
+                  "wall_finish",
+                  "wood"
+                ],
+                "textured": []
+              }
+            }
+          ],
+          "needsReview": [],
+          "missing": [],
+          "ok": [
+            "massing_hierarchy",
+            "entrance_legibility",
+            "facade_rhythm",
+            "material_harmony"
+          ]
+        },
+        "complete": false,
+        "blockedBy": [
+          "render",
+          "human_review"
+        ],
+        "entrypoint": "python -m app.agent.vision.workflow"
+      },
+      "implementation_attempts": [
+        {
+          "task": "generate_3",
+          "stage": "generate",
+          "marker_ids": [
+            "stair_main"
+          ],
+          "errors": {
+            "stair_main": "JSON 格式错误：第 2 行，第 4151 列，Expecting ',' delimiter；附近：parallel flights? The marker says \"single flight\" (单跑). This is contra；数值先计算，只返回完整 JSON"
+          },
+          "response_sha256": "a054969ef0ed2a0a72d4a2c2d2aae9fd6fe4f3187ff373f13be3649f5fc07d73",
+          "geometry_sha256": null
+        },
+        {
+          "task": "generate_3",
+          "stage": "repair_1",
+          "marker_ids": [
+            "stair_main"
+          ],
+          "errors": {
+            "stair_main": "楼梯 stair_main_flight_3 终点不在 9.45m 楼板或平台范围内；端点=[9.2, 9.45, 5.2]，净宽=1.2m，承托范围=[]；已有承托标高 [0.45, 3.45, 6.45]m。若该标高缺少承托面，返回 floor 或 primitive.box 平台实体，顶面覆盖端点完整梯宽，不能只移动 X/Z；若已有平台，则核对标高和覆盖范围；explanation 中描述平台不能代替实体；相邻梯段 stair_main_flight_1 与 stair_main_flight_2 的平台错开 1.20m；相邻梯段 stair_main_flight_2 与 stair_main_flight_3 的平台错开 1.20m"
+          },
+          "response_sha256": "a4cba8cbd3ab7ac00ecca29f6365c96db710b65ff94833bc7f79abc2d39b448b",
+          "geometry_sha256": "fcd9eaeb14ecf54671bbb0fde64cea1b30eb8f45c9d97fcb920f7589346ef112"
+        },
+        {
+          "task": "generate_3",
+          "stage": "repair_2",
+          "marker_ids": [
+            "stair_main"
+          ],
+          "errors": {
+            "stair_main": "相邻梯段 stair_main_flight_1 与 stair_main_flight_2 的平台错开 1.20m；相邻梯段 stair_main_flight_2 与 stair_main_flight_3 的平台错开 1.20m"
+          },
+          "response_sha256": "974d6cce8d3414d66c00254fff4ad3c4769ca7c07a8af95f67106a3475d1b1bd",
+          "geometry_sha256": "798fe946b0f32203c0b20462541be47068b8ff779c8a56947677f1d210b92577"
+        },
+        {
+          "task": "generate_3",
+          "stage": "assembly_revision",
+          "marker_ids": [
+            "stair_main"
+          ],
+          "errors": {
+            "stair_main": "相邻梯段 stair_main_flight_1 与 stair_main_flight_2 的平台错开 1.20m；相邻梯段 stair_main_flight_2 与 stair_main_flight_3 的平台错开 1.20m"
+          },
+          "response_sha256": "a51c15916724214a258acb959e65cf27bf95681e611c51b53796c268c3f10458",
+          "geometry_sha256": "798fe946b0f32203c0b20462541be47068b8ff779c8a56947677f1d210b92577"
+        }
+      ],
+      "last_displayed_replanner": {
+        "detail": "第 4 轮 · 完成 6/6 · 无进展 0 轮",
+        "diagnostic": {
+          "node": "replanner",
+          "label": "计划对账",
+          "stage": "done",
+          "reconciled_events": 1,
+          "iterations": 4,
+          "no_progress_rounds": 0,
+          "give_up": false,
+          "llm_calls_total": 9,
+          "llm_budget_exhausted": false,
+          "terminal_stats": {
+            "total": 6,
+            "done": 6,
+            "abandoned": 0,
+            "skipped": 0,
+            "unsupported": 0,
+            "unfinished": 0
+          },
+          "next_item_id": null,
+          "total_ms": 0
+        }
+      }
+    },
+    {
+      "session_file": "wild-server/storage/sessions/session_1791893744172.json",
+      "session_file_sha256": "fadd230cf2c64a1669668ec2d864bc9511fc294c2d45248d28b997429afa8001",
+      "request_id": "req_1791893759117_py8a7xcsy",
+      "checkpoint_thread": "generation:req_1791893759117_py8a7xcsy",
+      "checkpoint_id": "1f1c7016-eabd-66b5-800d-28813b43daf9",
+      "checkpoint_sha256": "3e601187b97d01df76b03681f279d3b6291fa498bd4c401257cd2f8bf6ed1099",
+      "trace_file": "wild-server/storage/sessions/rag_traces/session_1791893744172/req_1791893759117_py8a7xcsy.json",
+      "trace_file_sha256": "7d2cf1e089762928271a9aacf605074916a4e2a308d19c93536884c3ab7e8f2f",
+      "user_message": "生成一个三层别墅",
+      "detail_level": "minimal",
+      "design_hash": "sha256:ab3c6923f0bdbf1ab9b34c640c2df8a3c023b4024db7d3e12289fd17d1d8c2b7",
+      "status": "complete",
+      "model_labels": [
+        "qwen3.8-27b"
+      ],
+      "marker_count": 24,
+      "plan_item_count": 6,
+      "plan_terminal_statuses": {
+        "generate_1": "done",
+        "generate_2": "done",
+        "generate_3": "done",
+        "generate_4": "done",
+        "generate_5": "done",
+        "generate_6": "done"
+      },
+      "compile_report": {
+        "abandoned_markers": [],
+        "missing_markers": [],
+        "elements": 44,
+        "components": 20,
+        "design_complete": true,
+        "ok": true
+      },
+      "validation_blueprint_fingerprint": "9625d949175ce7bada6081109fa6b175d0ed39894f249870f1bd806149cd5253",
+      "trace_summary": {
+        "retrieval_calls": 7,
+        "retrieval_ms": 1206,
+        "context_builds": 7,
+        "max_context_chars": 3980,
+        "llm_calls": 13,
+        "llm_ms": 610089,
+        "token_usage": {
+          "input": 113018,
+          "output": 29348,
+          "total": 142366
+        },
+        "llm_retry_count": 0,
+        "node_calls": 13,
+        "node_ms": 570429,
+        "gate_rejections": 0
+      },
+      "active_execution_elapsed_ms": 572928,
+      "levels": [
+        {
+          "index": 1,
+          "base_y": 0.0,
+          "top_y": 2.8
+        },
+        {
+          "index": 2,
+          "base_y": 2.8,
+          "top_y": 5.6
+        },
+        {
+          "index": 3,
+          "base_y": 5.6,
+          "top_y": 8.399999999999999
+        }
+      ],
+      "stair_markers": [
+        {
+          "id": "main_stair",
+          "type": "stair",
+          "host": "main_house",
+          "depends_on": [
+            "building_body"
+          ],
+          "design_path": "/decisions/components/0",
+          "design": {
+            "type": "stair",
+            "id": "main_stair",
+            "host": "main_house",
+            "description": "三段式直跑楼梯，连接首层至二层、二层至三层，每段 10 步，每段升 1.75 米，平台升 1.05 米，总升 5.6 米至二层楼面，二段再升 5.6 米至三层楼面",
+            "size": {
+              "width": 1.2,
+              "depth": 2.4,
+              "height": 8.4
+            },
+            "form": {
+              "orientation": "沿建筑深度方向布置，共三段梯段与两个休息平台",
+              "rise_per_step": 0.175,
+              "steps_per_flight": 10
+            }
+          },
+          "entity": {
+            "parentWall": "main_house",
+            "from": [
+              0,
+              0.0,
+              0
+            ]
+          }
+        }
+      ],
+      "validation_errors": [],
+      "visual_review": {
+        "blueprint_fingerprint": "9625d949175ce7bada6081109fa6b175d0ed39894f249870f1bd806149cd5253",
+        "proxy": {
+          "source": "proxy",
+          "complete": false,
+          "okMeaning": "仅当前实体测量规则通过，未进行审美或截图验收",
+          "note": "从蓝图实体字段计算的可量化指标，不等于视觉判断；构图气质、材质质感等仍需人工看图（见 human_review）。",
+          "criteria": [
+            "massing_hierarchy",
+            "entrance_legibility",
+            "facade_rhythm",
+            "material_harmony"
+          ],
+          "statuses": [
+            "ok",
+            "needs_review",
+            "missing"
+          ],
+          "items": [
+            {
+              "criterion": "massing_hierarchy",
+              "status": "needs_review",
+              "detail": "2 个体量 / 1 块屋面：屋面数少于体量数，覆盖关系及体量表达需复核",
+              "confidence": "high",
+              "evidence": {
+                "volumes": 2,
+                "roofs": 1
+              }
+            },
+            {
+              "criterion": "entrance_legibility",
+              "status": "ok",
+              "detail": "外墙上 1 樘门；唯一入口",
+              "confidence": "high",
+              "evidence": {
+                "doorCount": 1,
+                "exteriorDoorCount": 1,
+                "entranceCanopy": false
+              }
+            },
+            {
+              "criterion": "facade_rhythm",
+              "status": "ok",
+              "detail": "12 面外墙：wall_main_house_back_L1 窗距 [8.2]（相对差 0.00）；wall_main_house_back_L2 窗距 [8.2]（相对差 0.00）；wall_main_house_back_L3 窗距 [8.2]（相对差 0.00）；wall_main_house_front_L1 窗距 [8.2]（相对差 0.00）；wall_main_house_front_L2 窗距 [8.2]（相对差 0.00）；wall_main_house_front_L3 窗距 [8.2]（相对差 0.00）；通过当前间距规则，视觉节奏待截图评价",
+              "confidence": "high",
+              "evidence": {
+                "gaps": {
+                  "wall_main_house_front_L1": [
+                    8.2
+                  ],
+                  "wall_main_house_back_L1": [
+                    8.2
+                  ],
+                  "wall_main_house_front_L2": [
+                    8.2
+                  ],
+                  "wall_main_house_back_L2": [
+                    8.2
+                  ],
+                  "wall_main_house_front_L3": [
+                    8.2
+                  ],
+                  "wall_main_house_back_L3": [
+                    8.2
+                  ]
+                },
+                "gapRatios": {
+                  "wall_main_house_front_L1": 0.0,
+                  "wall_main_house_back_L1": 0.0,
+                  "wall_main_house_front_L2": 0.0,
+                  "wall_main_house_back_L2": 0.0,
+                  "wall_main_house_front_L3": 0.0,
+                  "wall_main_house_back_L3": 0.0
+                },
+                "limit": 0.45,
+                "minGap": 0.6,
+                "offenders": [],
+                "scope": "12 面外墙",
+                "note": "只统计 window/balcony，门由entrance_legibility 单独管"
+              }
+            },
+            {
+              "criterion": "material_harmony",
+              "status": "ok",
+              "detail": "6 种材质、0 种带贴图；仅为数量统计，协调程度待截图评价",
+              "confidence": "medium",
+              "evidence": {
+                "materialCount": 6,
+                "materials": [
+                  "concrete",
+                  "glass",
+                  "metal",
+                  "roof",
+                  "wall_finish",
+                  "wood"
+                ],
+                "textured": []
+              }
+            }
+          ],
+          "needsReview": [
+            "massing_hierarchy"
+          ],
+          "missing": [],
+          "ok": [
+            "entrance_legibility",
+            "facade_rhythm",
+            "material_harmony"
+          ]
+        },
+        "complete": false,
+        "blockedBy": [
+          "render",
+          "human_review"
+        ],
+        "entrypoint": "python -m app.agent.vision.workflow"
+      },
+      "implementation_attempts": [
+        {
+          "task": "generate_3",
+          "stage": "generate",
+          "marker_ids": [
+            "main_stair"
+          ],
+          "errors": {
+            "main_stair": "JSON 格式错误：第 47 行，第 3725 列，Expecting ',' delimiter；附近：y tight but plausible fit for the \"back part\" description, although it；数值先计算，只返回完整 JSON"
+          },
+          "response_sha256": "c8d3e23488694b06b8938b24598f8f5cc5492bf8531f112cb6ab6535d1a0f762",
+          "geometry_sha256": null
+        },
+        {
+          "task": "generate_3",
+          "stage": "repair_1",
+          "marker_ids": [
+            "main_stair"
+          ],
+          "errors": {},
+          "response_sha256": "ae96c9cf34ca526b0d5fad89cdedfff0c91932fa3fa4afd58742be0405bacc8f",
+          "geometry_sha256": "e3469581a2fdbb8ebe503c51d818cd7c0a456718b2362eb8d44896b41de6b84f"
+        }
+      ],
+      "last_displayed_replanner": {
+        "detail": "第 3 轮 · 完成 6/6 · 无进展 0 轮",
+        "diagnostic": {
+          "node": "replanner",
+          "label": "计划对账",
+          "stage": "done",
+          "reconciled_events": 2,
+          "iterations": 3,
+          "no_progress_rounds": 0,
+          "give_up": false,
+          "llm_calls_total": 9,
+          "llm_budget_exhausted": false,
+          "terminal_stats": {
+            "total": 6,
+            "done": 6,
+            "abandoned": 0,
+            "skipped": 0,
+            "unsupported": 0,
+            "unfinished": 0
+          },
+          "next_item_id": null,
+          "total_ms": 0
+        }
+      }
+    }
+  ],
+  "audited_source_fingerprints": {
+    "wild-server/app/agent/graph.py": "9c93327ec373ca27165e1f0b41ae6b17e33ccfb624339137ca383441bcdf52a1",
+    "wild-server/app/design/contracts.py": "d1788f67160c09a12babd3bf929abcb7da2de4708c993be70cf6d60ed65501f6",
+    "wild-server/app/design/coordinates.py": "994cdf7ca370ba4b76b79d9d33610353ec6144b8436ff75c21d41a97c98d25b1",
+    "wild-server/app/design/compilation.py": "60a57eb647c4d2e335e6d5b41ae8997effa51f7487946599277fcded9dd1ce2a",
+    "wild-server/app/design/markers.py": "bb2f9c91e8b19146b1b8bde7b2858fafead6da6e84695fef0e9442a50fce644e",
+    "wild-server/app/design/relations.py": "3df149913d135af397ca4bdd5124c1c95660d411c77c3309fc9c9c4cb0819f89",
+    "wild-server/app/agent/generation/architecture/workflow.py": "c8b4bab4ffd4e39f7f3ad3d0159862b310af1e90de010eb95f4c3db6f1db700c",
+    "wild-server/app/agent/generation/architecture/design_workflow.py": "796f40be8977c8821ec13716f9ac0685358f20f3b81780fb14b1e2375437dc93",
+    "wild-server/app/agent/plan/implementation.py": "fa94fa34ea08eb564146ef4a341f16c5c12cbf9db88dc82f4e5ab661e8f4ca14",
+    "wild-server/app/agent/plan/expand.py": "c0e187a66765eb834b833781938781481ec05214c2240759a199e734c4e5af0f",
+    "wild-server/app/agent/plan/workflow.py": "b73e2a48d3b4c6fe67723e4e13c293c15c57e48d980b091875664e3a9abce9ec",
+    "wild-server/app/agent/validation/candidate.py": "b5edcfabf9539f8cdba44e27137c40b7421d52abfca662d1c50c821b1465dc08",
+    "wild-server/app/agent/design_flow/compile.py": "ac90f779c1c95a3d7bb3a915ef2b85483257d50ba20751c93abea69dc7cd8249",
+    "wild-server/app/agent/validation/issues.py": "a5ac39772d1a0bd578ea3861db6804f692d8040c0215b21a3048a618640e484c",
+    "wild-server/app/services/agent_delivery.py": "dfcd9eff6673797b2c1217824512ade3930d7386e7c8d6d951a3bc2a4ade0bab",
+    "wild-server/app/rag/trace.py": "e25fc623f2328ddb54d431a76b0f590ef5058029a36960f63b8ea39beb48d1d0",
+    "wild-server/app/llm/invocation.py": "2f6f7078efdf6cb23a2324dc0b84806ecb1f614e74f2a9c99485a82e23cc4f7f",
+    ".gitlab-ci.yml": "8d4b82e475adc67d80df7c45d67ab8da5cff8bfb6ec2494d91438190911b351a",
+    "Jenkinsfile": "27f87fbe1925e93c2aa145f6f7bf7dabc8b2f220cd5e35ce241f4285c366f400"
+  }
+}

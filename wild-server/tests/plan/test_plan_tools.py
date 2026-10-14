@@ -26,6 +26,7 @@ from app.agent.plan.capability import (
 )
 from app.agent.plan.contracts import PlanItem
 from app.agent.plan.knowledge_tool import MAX_RESULT_CHARS, search_knowledge_impl
+from app.spec.loader import SpecLoadResult
 from app.agent.plan.expand import expand_plan
 from app.agent.plan.store import poll_runnable, terminal_stats
 from app.agent.plan.tool_loop import (
@@ -424,12 +425,12 @@ def test_tool_loop_extracts_text_from_openai_content_blocks():
 class _Loader:
     def __init__(self):
         self.queries: list[tuple[str, dict]] = []
-        self.last_results: list[object] = []
+        self.hits: list[object] = []
 
-    def load_many(self, queries, per_query=2, *, include_base=True):
+    def load_many_result(self, queries, per_query=2, *, include_base=True):
         for query in queries:
             self.queries.append((query.text, dict(query.metadata_filter or {})))
-        return "宿主墙厚 240mm；洞口需留过梁。"
+        return SpecLoadResult("宿主墙厚 240mm；洞口需留过梁。", tuple(self.hits))
 
 
 class _Service:
@@ -463,7 +464,7 @@ def test_search_tool_queries_component_docs_for_unregistered_name():
 
 def test_search_tool_result_is_bounded():
     loader = _Loader()
-    loader.load_many = lambda queries, per_query=2, **kwargs: "构" * (MAX_RESULT_CHARS * 2)
+    loader.load_many_result = lambda queries, per_query=2, **kwargs: SpecLoadResult("构" * (MAX_RESULT_CHARS * 2))
     with patch("app.services.agent_service.agent_service", _Service(loader)):
         text = search_knowledge_impl("门窗做法", kind="window")
 
@@ -474,10 +475,10 @@ def test_search_tool_keeps_example_when_base_protocol_is_long():
     example = '```json\n{"type":"window","id":"fixed_glass"}\n```'
     loader = _Loader()
 
-    def load_many(queries, per_query=2, *, include_base=True):
-        return ("基础协议" * MAX_RESULT_CHARS if include_base else "") + example
+    def load_many_result(queries, per_query=2, *, include_base=True):
+        return SpecLoadResult(("基础协议" * MAX_RESULT_CHARS if include_base else "") + example)
 
-    loader.load_many = load_many
+    loader.load_many_result = load_many_result
     with patch("app.services.agent_service.agent_service", _Service(loader)):
         text = search_knowledge_impl("固定玻璃 JSON 示例", kind="window")
 
@@ -494,7 +495,7 @@ def test_knowledge_shape_signal_uses_returned_component_metadata(topic, entity_n
     from types import SimpleNamespace
     from app.agent.plan.knowledge_tool import search_knowledge_result
     loader = _Loader()
-    loader.last_results = [SimpleNamespace(document=document, metadata={
+    loader.hits = [SimpleNamespace(document=document, metadata={
         "source": "window.md", "heading": "构件资料", "entity_type": "window",
         "entity_name": entity_name, "topic": topic})]
     with patch("app.services.agent_service.agent_service", _Service(loader)):
@@ -509,7 +510,7 @@ def test_knowledge_keeps_a_complete_first_json_chunk_instead_of_truncating_it():
     example = '```json\n' + json.dumps({"geometry": {"elements": [{"id": "part_" + str(i), "type": "primitive"} for i in range(200)]}}) + '\n```'
     assert len(example) > MAX_RESULT_CHARS
     loader = _Loader()
-    loader.last_results = [SimpleNamespace(document=example, metadata={"entity_type": "window", "entity_name": "window"})]
+    loader.hits = [SimpleNamespace(document=example, metadata={"entity_type": "window", "entity_name": "window"})]
     with patch("app.services.agent_service.agent_service", _Service(loader)):
         result = search_knowledge_result("完整 JSON 示例", kind="window")
     assert example in result["text"]

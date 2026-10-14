@@ -1210,6 +1210,75 @@ def test_entrance_accessories_leave_other_walls_untouched() -> None:
     assert stats["light_snapped"] == 0
 
 
+def test_reversed_entrance_wall_places_light_outside_volume() -> None:
+    blueprint = {"geometry": {"elements": [{
+        "type": "wall", "id": "entry_wall", "from": [10, 0, 0],
+        "to": [0, 3, 0], "thickness": 0.24,
+    }]}}
+    brief = {
+        "realization": {"volumes": [{"id": "main", "x": 0, "z": 0,
+                                     "width": 10, "depth": 8}]},
+        "opening_slots": [{"type": "door", "id": "entry", "wall_id": "entry_wall",
+                           "facing": "front", "from": [4, 0, 0], "width": 2, "height": 2.2}],
+    }
+    result, stats = conform_entrance_accessories(
+        [{"type": "light", "id": "entry_light", "position": [5, 2.3, 0]}],
+        brief, blueprint,
+    )
+    assert stats["light_snapped"] == 1
+    assert result[0]["position"][2] < 0
+
+
+def test_volume_facade_override_controls_wall_and_opening_slots() -> None:
+    shared = {side: {"bays": 1, "ground_pattern": ["window"],
+                     "upper_pattern": ["empty"]} for side in ("front", "back", "left", "right")}
+    plan = normalize_architecture_plan({
+        "massing": {"shape": "l_shape", "width": 15, "depth": 8, "floors": 1},
+        "volumes": [
+            {"id": "main", "x": 0, "z": 0, "width": 10, "depth": 8,
+             "start_floor": 1, "end_floor": 1},
+            {"id": "wing", "x": 10, "z": 0, "width": 5, "depth": 8,
+             "start_floor": 1, "end_floor": 1,
+             "facades": {"front": {"bays": 1, "ground_pattern": ["open"],
+                                    "upper_pattern": ["open"]}}},
+        ],
+        "facades": shared,
+    }, "两个相邻体量，翼楼正面开敞")
+    blueprint = build_deterministic_skeleton(plan, "两个相邻体量，翼楼正面开敞", normalized_input=True)
+    front_walls = [wall for wall in blueprint["geometry"]["elements"]
+                   if wall.get("type") == "wall" and wall["id"].startswith("wall_front_")]
+    assert len(front_walls) == 1
+    assert sorted([front_walls[0]["from"][0], front_walls[0]["to"][0]]) == [0, 10]
+    brief = resolve_facade_layout(blueprint, plan)
+    assert len([slot for slot in brief["opening_slots"] if slot["facing"] == "front"]) == 1
+    plan["volumes"][1]["facades"]["front"]["ground_pattern"] = ["door"]
+    blueprint = build_deterministic_skeleton(plan, "翼楼正面设门", normalized_input=True)
+    brief = resolve_facade_layout(blueprint, plan)
+    front = [slot for slot in brief["opening_slots"] if slot["facing"] == "front"]
+    assert sorted(slot["type"] for slot in front) == ["door", "window"]
+
+
+def test_each_fully_recessed_terrace_gets_its_own_railing_slot() -> None:
+    from app.agent.generation.architecture.facade import _planned_terrace_railing_slots
+
+    volumes = [
+        {"id": "base", "x": 0, "z": 0, "width": 20, "depth": 20,
+         "start_floor": 1, "end_floor": 2},
+        {"id": "middle", "x": 2, "z": 2, "width": 16, "depth": 16,
+         "start_floor": 3, "end_floor": 4},
+        {"id": "top", "x": 4, "z": 4, "width": 12, "depth": 12,
+         "start_floor": 5, "end_floor": 6},
+    ]
+    realization = {"shape": "stepped", "floors": 6, "modeled_floors": 6,
+                   "floor_height": 3.2, "volumes": volumes}
+    slots = _planned_terrace_railing_slots({}, [], realization)
+    assert [slot["id"] for slot in slots] == [
+        "railing:podium_terrace:base", "railing:podium_terrace:middle"]
+    assert slots[0]["path"][0][1] < slots[1]["path"][0][1]
+    volumes[1]["x"] = 0
+    assert _planned_terrace_railing_slots({}, [], realization) == []
+
+
 # ── 入口钉门越界回归（2026-09-30 四角凉亭线上事故）──────────────────────
 
 

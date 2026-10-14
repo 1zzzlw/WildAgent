@@ -132,7 +132,7 @@ class RoofVolumeOverride(ContractModel):
     model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
     volume: str = Field(min_length=1)
     type: str | None = None
-    overhang: float | None = Field(default=None, ge=0)
+    overhang: float | None = Field(default=None, ge=0, le=2)
 
 
 class RoofDecision(ContractModel):
@@ -141,7 +141,7 @@ class RoofDecision(ContractModel):
     model_config = ConfigDict(extra="allow", validate_assignment=True, allow_inf_nan=False)
     type: str
     ridge_axis: Literal["x", "z"] = "x"
-    overhang: float = Field(default=0, ge=0)
+    overhang: float = Field(default=0, ge=0, le=2)
     #: 按设计体量引用分配屋面形态，plan 负责实现。
     volumes: list[RoofVolumeOverride] = Field(default_factory=list)
 
@@ -263,6 +263,11 @@ def _dimension_name(value: str) -> str:
     return value
 
 
+class FloorConnection(ContractModel):
+    from_floor: int = Field(ge=1)
+    to_floor: Annotated[int, Field(ge=1)] | Literal["roof"]
+
+
 class ComponentInstance(ContractModel):
     """保留实例设计及扩展参数，由 plan 实现形态与依附关系。"""
 
@@ -270,6 +275,7 @@ class ComponentInstance(ContractModel):
     type: str = Field(min_length=1)
     id: str | None = Field(default=None, min_length=1, pattern=r"^[A-Za-z0-9_-]+$")
     relation: SupportRelation | None = None
+    floor_connections: list[FloorConnection] = Field(default_factory=list, exclude_if=lambda value: not value)
     #: 设计中的宿主引用；plan 负责转换为真实实体引用。
     host: str | None = Field(default="", description="宿主引用 ID；省略、空字符串或 null 表示无宿主")
     description: str = ""

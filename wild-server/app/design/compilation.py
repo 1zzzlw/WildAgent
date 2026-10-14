@@ -26,7 +26,8 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     """从设计尺寸绘制示意，不运行 WILD 编译器。"""
     from .resolver import _stable_hash
     from .markers import component_markers
-    from .coordinates import representative_floor_indices, floor_elevations
+    from .coordinates import (representative_floor_indices, floor_elevations, floor_layout_conflicts,
+                              design_relation_checks, DesignCoordinateConflict)
     from .relations import opening_target
     from .openings import is_open_side
     from app.agent.knowledge.component_names import resolve_component_name
@@ -34,6 +35,9 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     d = document.decisions
     indices = representative_floor_indices(d.massing)
     elevations = floor_elevations(d.model_dump(mode="json"))
+    layout_issues = floor_layout_conflicts(d.model_dump(mode="json"))
+    if layout_issues:
+        raise ValueError("；".join(layout_issues))
     levels = [ResolvedLevel(index=i, base_y=elevations[i], top_y=elevations[i+1]) for i in indices]
     walls, frames = [], {}
     for volume_index, v in enumerate(d.volumes):
@@ -75,6 +79,9 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
             frames[frame["id"]] = frame
             walls.append(frame)
     markers = component_markers(document)
+    relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
+    if relation_errors:
+        raise DesignCoordinateConflict(relation_errors)
     for marker in markers:
         if marker["host"] in frames:
             marker["diagram_host"] = frames[marker["host"]]
@@ -82,6 +89,15 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
             if (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
                     and marker["entity"].get("position") and size.get("width") and size.get("height")):
                 marker["entity"]["from"] = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
+    warnings = ["图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"]
+    for layout in d.model_dump(mode="json").get("floor_layouts") or []:
+        rooms, partitions = layout.get("rooms") or [], layout.get("walls") or []
+        if len(rooms) > 1 and not partitions:
+            warnings.append(f"第 {layout.get('floor', '?')} 层有多个房间标签但没有内墙；请确认是否为开放式布局。")
+        if partitions and not any(c.host in {w.get("id") for w in partitions}
+                                  and (c.type == "opening" or resolve_component_name(c.type)["entity_type"] == "door")
+                                  for c in d.components):
+            warnings.append(f"第 {layout.get('floor', '?')} 层有内墙但没有附着其上的通行开口；请核对实际动线。")
     return ResolvedDesign(
         design_id=document.design_id, design_revision=document.revision,
         design_hash=_stable_hash(document), resolver_version=RESOLVER_VERSION,
@@ -89,6 +105,11 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
                 "depth": max(v.z+v.depth for v in d.volumes)-min(v.z for v in d.volumes),
                 "height": elevations[d.massing.floors+1]-elevations[1]},
         levels=levels, volumes=d.volumes, facade_slots=[], projection_elements=walls,
+        design_gaps=[{"id": "relation." + str(i), "constraint_id": "design.relationship",
+                      "status": "needs_review", "design_hash": _stable_hash(document),
+                      "target": review["marker_id"], "expected": review.get("expected", review["path"]),
+                      "actual": review.get("actual"), "evidence": review["reason"]}
+                     for i, review in enumerate(relation_reviews)],
         component_markers=markers, component_quantities=dict(Counter(m["type"] for m in markers)),
-        warnings=["图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"],
+        warnings=warnings,
     )

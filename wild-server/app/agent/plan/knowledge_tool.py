@@ -53,19 +53,19 @@ def search_knowledge_result(
 
     try:
         selected_filters = exact_filters or filters
-        text = agent_service.spec_loader.load_many([SpecQuery(query, selected_filters)], per_query=per_query, include_base=False)
-        if exact_filters and not (text and text.strip()):
+        result = agent_service.spec_loader.load_many_result([SpecQuery(query, selected_filters)], per_query=per_query, include_base=False)
+        if exact_filters and not result.text.strip():
             selected_filters = filters
-            text = agent_service.spec_loader.load_many([SpecQuery(query, filters)], per_query=per_query, include_base=False)
+            result = agent_service.spec_loader.load_many_result([SpecQuery(query, filters)], per_query=per_query, include_base=False)
         filters = selected_filters
     except Exception as exc:
         logger.warning(f"[search_knowledge] 检索失败: {exc}")
         return {"text": "❌ 检索失败，请基于已给约束作答。", "has_shape_reference": False}
 
-    if not text or not text.strip():
+    if not result.text.strip():
         return {"text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）", "has_shape_reference": False}
 
-    chunks = list(getattr(agent_service.spec_loader, "last_results", []))
+    chunks = result.hits
     hits = [
         f"{hit.metadata.get('source', '?')} / {hit.metadata.get('heading', '?')}"
         for hit in chunks
@@ -81,7 +81,13 @@ def search_knowledge_result(
             break
         selected.append(hit)
         documents.append(document)
-    text = header + "\n\n".join(documents) if documents else (header + text)[:MAX_RESULT_CHARS]
+    text = header + "\n\n".join(documents) if documents else (header + result.text)[:MAX_RESULT_CHARS]
+    from app.rag.trace import record_rag_context
+    chunk_ids = [hit.id for hit in selected if getattr(hit, "id", None)]
+    record_rag_context(operation="search_knowledge", base_chars=len(header),
+                       retrieved_chars=sum(len(hit.document) for hit in selected),
+                       context_chars=len(text), retrieved_count=len(selected),
+                       injected_chunk_ids=chunk_ids)
     naming = resolve_component_name(kind) if kind else {"kind": "", "entity_type": ""}
     shape = any(
         (hit.metadata.get("topic") == "composition"
@@ -90,7 +96,7 @@ def search_knowledge_result(
             and "```json" in hit.document)
         for hit in selected
     )
-    return {"text": text, "has_shape_reference": bool(shape)}
+    return {"text": text, "has_shape_reference": bool(shape), "chunk_ids": chunk_ids}
 
 
 def search_knowledge_impl(query: str, *, kind: str = "", doc_type: str = "component", per_query: int = 2) -> str:

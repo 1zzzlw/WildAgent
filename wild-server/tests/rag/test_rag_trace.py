@@ -139,7 +139,6 @@ class RAGTraceTest(unittest.TestCase):
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
         loader._top_k = 1
-        loader._last_results = []
         loader._retrieval_cache = {}
         loader._last_sync_stats = {"total": 1, "updated": 0, "deleted": 0}
         loader._get_collection = Mock(return_value=collection)
@@ -175,7 +174,6 @@ class RAGTraceTest(unittest.TestCase):
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
         loader._top_k = 1
-        loader._last_results = []
         loader._get_collection = Mock(return_value=collection)
 
         with rag_trace_scope("req_loader_001", persist=False) as trace:

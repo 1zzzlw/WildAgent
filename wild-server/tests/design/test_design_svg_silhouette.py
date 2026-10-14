@@ -207,6 +207,36 @@ def test_missing_room_or_opening_size_is_not_invented_and_absent_floor_is_reject
         render_design_svg(doc, floor=9)
 
 
+@pytest.mark.parametrize("origin", [(0, 0), (-12, 8)])
+def test_partition_cannot_cut_a_declared_room_without_a_design_reference(origin):
+    x, z = origin
+    plan = base_plan()
+    plan["floor_layouts"] = [{"floor": 1, "level": 0,
+        "rooms": [{"id": "room", "name": "使用空间", "bounds": {"x": x, "z": z, "width": 4, "depth": 5}}],
+        "walls": [{"id": "partition", "from": [x+2, z], "to": [x+2, z+5], "thickness": 0.15}]}]
+    with pytest.raises(ValueError, match="内墙 partition 贯穿房间范围"):
+        resolve_design(make_document(plan))
+    plan["components"] = [{"id": "passage", "type": "door", "host": "partition",
+        "placement": {"offset": 1, "sill_height": 0}, "size": {"width": 1, "height": 2.1}}]
+    assert resolve_design(make_document(plan)).component_markers
+
+
+def test_open_room_labels_stay_valid_and_plan_legend_uses_column_and_light_symbols():
+    from xml.etree import ElementTree as ET
+    plan = base_plan()
+    plan["floor_layouts"] = [{"floor": 1, "level": 0,
+        "rooms": [{"id": "a", "bounds": {"x": 0, "z": 0, "width": 4, "depth": 4}},
+                  {"id": "b", "bounds": {"x": 4, "z": 0, "width": 4, "depth": 4}}], "walls": []}]
+    doc = make_document(plan)
+    resolved = resolve_design(doc)
+    assert any("没有内墙" in warning for warning in resolved.warnings)
+    root = ET.fromstring(render_design_svg(doc, resolved, floor=1))
+    legend = {group.get("data-legend-family"): group for group in root.iter()
+              if group.get("data-legend-family")}
+    assert any(child.tag.endswith("rect") for child in legend["column"])
+    assert any(child.tag.endswith("circle") for child in legend["light"])
+
+
 @pytest.mark.parametrize("layouts,path", [("一层平面", "/floor_layouts"), (["房间"], "/floor_layouts/0"),
                                          ([{"floor": 1, "rooms": ["卧室"]}], "/floor_layouts/0/rooms")])
 def test_invalid_layout_structure_has_field_feedback_instead_of_a_preview_crash(layouts, path):

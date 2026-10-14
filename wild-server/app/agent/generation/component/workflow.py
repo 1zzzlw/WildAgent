@@ -168,8 +168,10 @@ def create_component_generator(config: ComponentConfig):
             queries.append(SpecQuery(extra_query, {"doc_type": "component", "entity_type": config.entity_type}))
 
         rag_error = None
+        rag_result = None
         try:
-            spec_text = agent_service.spec_loader.load_many(queries, per_query=2)
+            rag_result = await asyncio.to_thread(agent_service.spec_loader.load_many_result, queries, per_query=2)
+            spec_text = rag_result.text
         except Exception as exc:
             spec_text = ""
             rag_error = str(exc)
@@ -185,7 +187,7 @@ def create_component_generator(config: ComponentConfig):
                 "doc_type": hit.metadata.get("doc_type", "?"),
                 "entity_type": hit.metadata.get("entity_type", "?"),
             }
-            for hit in getattr(agent_service.spec_loader, "last_results", [])
+            for hit in rag_result.hits
         ]
 
         # ── 2. 构建 Prompt ──

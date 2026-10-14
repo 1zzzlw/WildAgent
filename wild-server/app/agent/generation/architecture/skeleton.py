@@ -13,24 +13,36 @@ from .planning import normalize_architecture_plan
 from .profile import _fallback_volumes
 
 
-def _open_facade_sides(facades: dict[str, Any], level: int) -> set[str]:
-    """某层"全空"的立面朝向集合——该面该层**开敞无墙**。
+def _volume_for_face(
+    volumes: list[dict[str, Any]], side: str,
+    start: tuple[float, float], end: tuple[float, float],
+) -> dict[str, Any] | None:
+    """找到承载一段体量外立面的体量；共线边按覆盖范围最小者归属。"""
+    candidates = []
+    for volume in volumes:
+        x0, z0 = float(volume["x"]), float(volume["z"])
+        x1, z1 = x0 + float(volume["width"]), z0 + float(volume["depth"])
+        if side in {"front", "back"}:
+            constant = z0 if side == "front" else z1
+            matches = (abs(start[1] - constant) < 1e-5 and abs(end[1] - constant) < 1e-5
+                       and x0 - 1e-5 <= min(start[0], end[0])
+                       and max(start[0], end[0]) <= x1 + 1e-5)
+        else:
+            constant = x0 if side == "left" else x1
+            matches = (abs(start[0] - constant) < 1e-5 and abs(end[0] - constant) < 1e-5
+                       and z0 - 1e-5 <= min(start[1], end[1])
+                       and max(start[1], end[1]) <= z1 + 1e-5)
+        if matches:
+            candidates.append(volume)
+    return min(candidates, key=lambda item: (float(item["width"]) * float(item["depth"]),
+                                              str(item.get("id") or ""))) if candidates else None
 
-    语义（P5-B）：立面 pattern 的槽位是"墙上开什么洞"的表达。两种写法都表示
-    开敞无墙：整面显式 ``open`` token；旧文档的 empty 在 DesignDocument 读取边界迁移。首层读 ground_pattern，
-    上层读 upper_pattern。facade 缺失或 pattern 不全按"有墙"处理（安全默认——
-    普通建筑的实墙不受影响）。
-    """
-    open_sides: set[str] = set()
-    for side, facade in (facades or {}).items():
-        if not isinstance(facade, dict):
-            continue
-        pattern = facade.get("ground_pattern" if level <= 1 else "upper_pattern")
-        if not isinstance(pattern, list) or not pattern:
-            continue
-        if is_open_side(pattern):
-            open_sides.add(str(side))
-    return open_sides
+
+def _effective_facade(facades: dict[str, Any], volume: dict[str, Any] | None,
+                      side: str) -> dict[str, Any]:
+    shared = (facades or {}).get(side) or {}
+    local = ((volume or {}).get("facades") or {}).get(side) or {}
+    return {**shared, **local}
 
 
 def _resolve_floor_plate_plan(
@@ -106,6 +118,7 @@ def _resolve_floor_plate_plan(
 
 def _resolve_union_wall_segments(
     volumes: list[dict[str, Any]],
+    *, split_by_volume: bool = False,
 ) -> list[dict[str, Any]]:
     """把同层正交矩形体量编译成联合外轮廓，去掉共享边和被覆盖的内部边。"""
     rectangles = [
@@ -130,27 +143,33 @@ def _resolve_union_wall_segments(
             ):
                 occupied.add((x_index, z_index))
 
-    raw_segments: list[tuple[str, float, float, float]] = []
+    raw_segments: list[tuple[str, float, float, float, str]] = []
+    def add_segment(side: str, constant: float, start: float, end: float) -> None:
+        points = ((start, constant), (end, constant)) if side in {"front", "back"} else (
+            (constant, start), (constant, end))
+        owner = _volume_for_face(volumes, side, *points) if split_by_volume else None
+        raw_segments.append((side, constant, start, end, str(owner.get("id")) if owner else ""))
+
     for x_index, z_index in occupied:
         x0, x1 = xs[x_index], xs[x_index + 1]
         z0, z1 = zs[z_index], zs[z_index + 1]
         if (x_index, z_index - 1) not in occupied:
-            raw_segments.append(("front", z0, x0, x1))
+            add_segment("front", z0, x0, x1)
         if (x_index, z_index + 1) not in occupied:
-            raw_segments.append(("back", z1, x0, x1))
+            add_segment("back", z1, x0, x1)
         if (x_index - 1, z_index) not in occupied:
-            raw_segments.append(("left", x0, z0, z1))
+            add_segment("left", x0, z0, z1)
         if (x_index + 1, z_index) not in occupied:
-            raw_segments.append(("right", x1, z0, z1))
+            add_segment("right", x1, z0, z1)
 
-    merged: list[tuple[str, float, float, float]] = []
+    merged: list[tuple[str, float, float, float, str]] = []
     for side in ("front", "right", "back", "left"):
-        constants = sorted({segment[1] for segment in raw_segments if segment[0] == side})
-        for constant in constants:
+        groups = sorted({(segment[1], segment[4]) for segment in raw_segments if segment[0] == side})
+        for constant, owner in groups:
             intervals = sorted(
                 (segment[2], segment[3])
                 for segment in raw_segments
-                if segment[0] == side and abs(segment[1] - constant) <= 1e-6
+                if segment[0] == side and abs(segment[1] - constant) <= 1e-6 and segment[4] == owner
             )
             if not intervals:
                 continue
@@ -159,12 +178,12 @@ def _resolve_union_wall_segments(
                 if next_start <= end + 1e-6:
                     end = max(end, next_end)
                 else:
-                    merged.append((side, constant, start, end))
+                    merged.append((side, constant, start, end, owner))
                     start, end = next_start, next_end
-            merged.append((side, constant, start, end))
+            merged.append((side, constant, start, end, owner))
 
     segments: list[dict[str, Any]] = []
-    for side, constant, start, end in merged:
+    for side, constant, start, end, owner in merged:
         if side == "front":
             start_point, end_point = (start, constant), (end, constant)
         elif side == "back":
@@ -173,7 +192,8 @@ def _resolve_union_wall_segments(
             start_point, end_point = (constant, end), (constant, start)
         else:
             start_point, end_point = (constant, start), (constant, end)
-        segments.append({"side": side, "from": start_point, "to": end_point})
+        segments.append({"side": side, "from": start_point, "to": end_point,
+                         **({"volume": owner} if owner else {})})
     return segments
 
 
@@ -952,14 +972,19 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
                     "thickness": 0.2,
                     "material": "concrete",
                 })
-            #  立面 pattern 全空的面该层**开敞无墙**（亭廊/骑楼语义，
-            # 见 _open_facade_sides）——普通建筑的实墙面不受影响。
-            open_sides = _open_facade_sides(normalized.get("facades", {}), level)
+            # 逐体量立面覆盖优先于共享立面；全 open 的墙段不生成实体墙。
             if len(active_volumes) > 1:
                 side_counts: dict[str, int] = {}
-                for segment in _resolve_union_wall_segments(active_volumes):
+                for segment in _resolve_union_wall_segments(
+                    active_volumes,
+                    split_by_volume=any(volume.get("facades") for volume in active_volumes),
+                ):
                     side = str(segment["side"])
-                    if side in open_sides:
+                    owner = next((volume for volume in active_volumes
+                                  if volume.get("id") == segment.get("volume")), None)
+                    facade = _effective_facade(normalized.get("facades", {}), owner, side)
+                    pattern = facade.get("ground_pattern" if level == 1 else "upper_pattern")
+                    if is_open_side(pattern or []):
                         continue
                     side_counts[side] = side_counts.get(side, 0) + 1
                     start_x, start_z = segment["from"]
@@ -988,7 +1013,9 @@ def build_deterministic_skeleton(plan: dict[str, Any], user_message: str = "", *
                     ("left", x0, z1, x0, z0),
                 ]
                 for side, start_x, start_z, end_x, end_z in wall_specs:
-                    if side in open_sides:
+                    facade = _effective_facade(normalized.get("facades", {}), volume, side)
+                    pattern = facade.get("ground_pattern" if level == 1 else "upper_pattern")
+                    if is_open_side(pattern or []):
                         continue
                     elements.append({
                         "type": "wall", "id": f"wall_{side}_{suffix}",

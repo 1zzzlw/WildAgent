@@ -596,7 +596,7 @@ def test_discard_only_after_all_stages(monkeypatch):
     events = patch_services(monkeypatch, [reply("lattice", []) for _ in range(3)])
     updates, status, ids, _, trace = run(impl.run_marker_generate(state, task(state)))
     record = implementation_records(updates)["lattice"]
-    assert status == "succeeded" and not ids
+    assert status == "failed" and not ids
     assert record["status"] == "abandoned" and record["reason"]
     assert record["attempted_stages"] == ["generate", "repair_1", "repair_2"]
     assert events == ["rag", "model", "model", "model"]

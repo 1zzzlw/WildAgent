@@ -69,6 +69,134 @@ def floor_elevations(design):
     return levels
 
 
+def floor_connection_targets(design, component):
+    """明确楼层引用的唯一标高来源；未声明连接时不猜测。"""
+    levels = floor_elevations(design)
+    count = design["massing"]["floors"]
+    targets, issues = [], []
+    for index, connection in enumerate(component.get("floor_connections") or []):
+        lower, upper = connection["from_floor"], connection["to_floor"]
+        destination = count + 1 if upper == "roof" else upper
+        if lower > count or destination > count + (upper == "roof") or destination <= lower:
+            issues.append({"code": "floor_connection_reference", "path": f"/floor_connections/{index}",
+                           "expected": f"1～{count} 层的递增连接或显式 roof", "actual": connection,
+                           "reason": "连接楼层不存在或上层不高于下层"})
+            continue
+        targets.append({**connection, "from_y": levels[lower], "to_y": levels[destination],
+                        "rise": levels[destination] - levels[lower]})
+    return targets, issues
+
+
+def stair_span_conflicts(design):
+    """只核对显式数值能否落在已声明的楼面之间，不推断楼梯造型。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+
+    levels = floor_elevations(design)
+    highest_floor = levels[design["massing"]["floors"]]
+    available_rise = highest_floor - levels[1]
+    issues = []
+    for index, component in enumerate(design.get("components") or []):
+        if resolve_component_name(component.get("type", ""))["entity_type"] != "stair":
+            continue
+        form = component.get("form") if isinstance(component.get("form"), dict) else {}
+        targets, _ = floor_connection_targets(design, component)
+        if targets:
+            available_rise = max(t["to_y"] for t in targets) - min(t["from_y"] for t in targets)
+        elif form.get("roof_access") is True or design["massing"]["floors"] < 2:
+            continue
+        else:
+            available_rise = highest_floor - levels[1]
+        size = component.get("size") if isinstance(component.get("size"), dict) else {}
+        height = size.get("height")
+        if isinstance(height, (int, float)) and not isinstance(height, bool) and height > available_rise + 0.25:
+            issues.append(f"/components/{index}/size/height：楼梯高 {height:g}m 超过首层至顶层楼面高差 "
+                          f"{available_rise:g}m；核对连接楼层，屋面通行须显式写 form.roof_access")
+        if all(isinstance(form.get(key), (int, float)) and not isinstance(form[key], bool)
+               for key in ("flights", "rises", "riser_height")):
+            total_rise = form["flights"] * form["rises"] * form["riser_height"]
+            if total_rise > available_rise + 0.25:
+                issues.append(f"/components/{index}/form：梯段数×每跑级数×踏步高={total_rise:g}m，"
+                              f"超过首层至顶层楼面高差 {available_rise:g}m；修订楼梯连接或踏步参数")
+            elif isinstance(height, (int, float)) and not isinstance(height, bool) and abs(total_rise-height) > 0.25:
+                issues.append(f"/components/{index}/form：踏步总高差 {total_rise:g}m 与楼梯 size.height "
+                              f"{height:g}m 不一致；修订踏步或楼梯高度")
+    return issues
+
+
+def design_relation_checks(design, markers, frames):
+    """设计引用与明确楼层连接；资料不完整只列待审核，不代替设计。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+
+    ids = {v["id"] for v in design["volumes"]} | {m["id"] for m in markers} | set(frames)
+    errors, reviews, stairs = [], [], []
+    for marker in markers:
+        if marker["type"] == "building_body":
+            continue
+        component, path = marker["design"], marker["design_path"]
+        for field, reference in (("host", marker.get("host")),
+                                 ("relation/target", (component.get("relation") or {}).get("target"))):
+            if reference and reference not in ids:
+                errors.append({"code": "design_reference_missing", "path": f"{path}/{field}",
+                               "marker_id": marker["id"], "expected": "图纸已声明的宿主或构件 ID",
+                               "actual": reference, "reason": "引用目标未在本次图纸声明"})
+        if resolve_component_name(marker["type"])["entity_type"] != "stair":
+            continue
+        targets, problems = floor_connection_targets(design, component)
+        marker["floor_connections"] = targets
+        errors.extend({**problem, "path": path + problem["path"], "marker_id": marker["id"]}
+                      for problem in problems)
+        stairs.append((marker, targets))
+        if not targets:
+            reviews.append({"marker_id": marker["id"], "path": path + "/floor_connections",
+                            "reason": "楼梯连接楼层未结构化，须核对实际到达楼面；不据文字猜测连接"})
+    if stairs and all(targets for _, targets in stairs) and design["massing"].get("representation_mode", "full") == "full":
+        reached = {1}
+        while True:
+            expanded = reached | {t["to_floor"] for _, targets in stairs for t in targets if t["from_floor"] in reached}
+            if expanded == reached:
+                break
+            reached = expanded
+        missing = sorted(set(range(1, design["massing"]["floors"] + 1)) - reached)
+        if missing:
+            issue = {"code": "stair_floor_unreachable", "path": "/decisions/components",
+                     "marker_id": "circulation", "marker_ids": [m["id"] for m, _ in stairs],
+                     "expected": "各声明楼层可从首层到达", "actual": {"unreachable_floors": missing},
+                     "reason": "明确楼梯连接漏连楼层"}
+            (errors if design.get("circulation", {}).get("vertical_strategy") == "stair" else reviews).append(issue)
+    return errors, reviews
+
+
+def floor_layout_conflicts(design):
+    """Reject a partition that cuts across a declared rectangular room."""
+    issues = []
+    for floor_index, layout in enumerate(design.get("floor_layouts") or []):
+        for wall_index, wall in enumerate(layout.get("walls") or []):
+            a, b = wall.get("from"), wall.get("to")
+            if not (isinstance(a, list) and isinstance(b, list) and len(a) == len(b) == 2
+                    and all(type(n) in (int, float) and isfinite(n) for n in a+b)):
+                continue  # Field validation reports malformed walls separately.
+            if any(item.get("host") == wall.get("id") for item in design.get("components") or []):
+                continue  # A designed opening or attached detail needs human review.
+            for room_index, room in enumerate(layout.get("rooms") or []):
+                box = room.get("bounds") or {}
+                if not isinstance(box, dict):
+                    continue
+                if not all(type(box.get(key)) in (int, float) and isfinite(box[key])
+                           for key in ("x", "z", "width", "depth")):
+                    continue
+                x0, z0 = box["x"], box["z"]
+                x1, z1 = x0+box["width"], z0+box["depth"]
+                vertical = (abs(a[0]-b[0]) <= 0.001 and x0+0.001 < a[0] < x1-0.001
+                            and min(a[1], b[1]) <= z0+0.001 and max(a[1], b[1]) >= z1-0.001)
+                horizontal = (abs(a[1]-b[1]) <= 0.001 and z0+0.001 < a[1] < z1-0.001
+                              and min(a[0], b[0]) <= x0+0.001 and max(a[0], b[0]) >= x1-0.001)
+                if vertical or horizontal:
+                    issues.append(f"/floor_layouts/{floor_index}/rooms/{room_index}："
+                                  f"内墙 {wall.get('id', wall_index)} 贯穿房间范围；"
+                                  "请修订房间 bounds、内墙或明确设计通行开口")
+    return issues
+
+
 def rectangle_uncovered_area(bounds, regions):
     """矩形减去矩形并集的面积；重复、重叠覆盖不能抵消其他位置的空缺。"""
     x0, z0, x1, z1 = bounds

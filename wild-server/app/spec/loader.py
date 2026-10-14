@@ -4,7 +4,7 @@ Spec Document Loader —— 规范文档加载器
 职责：加载 WILD 语言规范文档，注入到 LLM System Prompt 中。
 
 设计原则：
-  - 调用方只依赖 load() 和 list_sources()
+  - load/load_many 保留文本接口，需来源的调用方使用对应 result 接口
   - FileSpecLoader 保留为确定性兜底
   - RAGSpecLoader 使用 Chroma 对完整知识库做语义检索
 
@@ -83,6 +83,12 @@ class SpecLoader:
         """加载规范文档，返回拼接后的文本"""
         raise NotImplementedError
 
+    def load_result(self, query: str = "", *, purpose: str = "generation") -> SpecLoadResult:
+        return SpecLoadResult(self.load(query))
+
+    def load_many_result(self, queries: list, per_query: int = 1, *, purpose: str = "generation", include_base: bool = True) -> SpecLoadResult:
+        return SpecLoadResult(self.load_many(queries, per_query=per_query, purpose=purpose, include_base=include_base))
+
     def list_sources(self) -> list[str]:
         """返回已加载的文档路径或来源标识"""
         raise NotImplementedError
@@ -122,10 +128,6 @@ class FileSpecLoader(SpecLoader):
         return self.load() if include_base else ""
 
     @property
-    def last_results(self) -> list:
-        return []
-
-    @property
     def loaded_at(self) -> float | None:
         return self._loaded_at
 
@@ -148,6 +150,18 @@ class RetrievedSpecChunk:
     distance: float | None
     # Chroma 的真实分片 ID，用于日志追踪和后续引用闭环。
     id: str | None = None
+
+
+@dataclass(frozen=True)
+class SpecLoadResult:
+    """本次注入的文本及来源；不能从 Loader 的最近查询状态重建。"""
+
+    text: str
+    hits: tuple[RetrievedSpecChunk, ...] = ()
+
+    @property
+    def chunk_ids(self) -> tuple[str, ...]:
+        return tuple(hit.id for hit in self.hits if hit.id)
 
 
 @dataclass(frozen=True)
@@ -1025,8 +1039,7 @@ class RAGSpecLoader(SpecLoader):
         self._allow_destructive_rebuild = bool(allow_destructive_rebuild)
         self._chunker = MarkdownChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         self._loaded_at: float | None = None
-        # 保存最近一次检索和同步状态，供 AgentService 写诊断日志。
-        self._last_results: list[RetrievedSpecChunk] = []
+        # 保存同步状态，供 AgentService 写诊断日志。
         self._last_sync_stats = {"total": 0, "updated": 0, "deleted": 0}
         self._last_sync_pending = 0
         self._client: Any | None = None
@@ -1234,6 +1247,9 @@ class RAGSpecLoader(SpecLoader):
                 pass
 
     def load(self, query: str = "", *, purpose: str = "generation") -> str:
+        return self.load_result(query, purpose=purpose).text
+
+    def load_result(self, query: str = "", *, purpose: str = "generation") -> SpecLoadResult:
         # 基础规范始终完整注入；扩展知识只在有查询时按需召回。
         base_text = self._load_base_text()
         try:
@@ -1247,7 +1263,7 @@ class RAGSpecLoader(SpecLoader):
             # observe 仍需记录“证据为空”的结论；enforce 下知识问答不能绕过
             # Gate 后继续让 LLM 根据基础规范猜答，建筑生成则照常降级。
             retrieved = self._apply_retrieval_gate([], purpose=purpose)
-        return self._compose_context(base_text, retrieved, operation="load")
+        return self._compose_result(base_text, retrieved, operation="load")
 
     # per_query 参数控制每个检索意图返回的片段数，避免单一文档挤掉其他能力关系。
     def load_many(
@@ -1258,6 +1274,16 @@ class RAGSpecLoader(SpecLoader):
         purpose: str = "generation",
         include_base: bool = True,
     ) -> str:
+        return self.load_many_result(queries, per_query=per_query, purpose=purpose, include_base=include_base).text
+
+    def load_many_result(
+        self,
+        queries: list[str | SpecQuery],
+        per_query: int = 1,
+        *,
+        purpose: str = "generation",
+        include_base: bool = True,
+    ) -> SpecLoadResult:
         """按多个检索意图各取片段，保持协议、能力与关系覆盖。"""
         base_text = self._load_base_text() if include_base else ""
         try:
@@ -1268,7 +1294,7 @@ class RAGSpecLoader(SpecLoader):
         except Exception as exc:
             logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
             retrieved = self._apply_retrieval_gate([], purpose=purpose)
-        return self._compose_context(base_text, retrieved, operation="load_many")
+        return self._compose_result(base_text, retrieved, operation="load_many")
 
     def _apply_retrieval_gate(
         self,
@@ -1292,12 +1318,12 @@ class RAGSpecLoader(SpecLoader):
         # 建筑生成不因可选知识不足而整体失败，只降级为基础规范。
         return []
 
-    def _compose_context(
+    def _compose_result(
         self,
         base_text: str,
         retrieved: list[RetrievedSpecChunk],
         operation: str = "compose",
-    ) -> str:
+    ) -> SpecLoadResult:
         rag_text = self._format_retrieved(retrieved)
         self._loaded_at = time.time()
 
@@ -1305,12 +1331,12 @@ class RAGSpecLoader(SpecLoader):
             context = base_text
             selected: list[RetrievedSpecChunk] = []
             self._record_composed_context(operation, base_text, selected, context)
-            return context
+            return SpecLoadResult(context)
 
         spec_text = f"{base_text}\n\n---\n\n{rag_text}"
         if len(spec_text) <= self._max_context_chars:
             self._record_composed_context(operation, base_text, retrieved, spec_text)
-            return spec_text
+            return SpecLoadResult(spec_text, tuple(retrieved))
 
         # 基础规范和单个 RAG chunk 都不可截断；按排名贪心选择能完整放入预算的片段。
         marker = "<!-- RAG 完整片段数量受上下文上限限制 -->"
@@ -1324,10 +1350,10 @@ class RAGSpecLoader(SpecLoader):
         if not selected:
             context = f"{base_text}\n\n{marker}"
             self._record_composed_context(operation, base_text, [], context)
-            return context
+            return SpecLoadResult(context)
         context = f"{base_text}\n\n---\n\n{self._format_retrieved(selected)}\n\n{marker}"
         self._record_composed_context(operation, base_text, selected, context)
-        return context
+        return SpecLoadResult(context, tuple(selected))
 
     def _record_composed_context(
         self,
@@ -1351,10 +1377,6 @@ class RAGSpecLoader(SpecLoader):
     @property
     def loaded_at(self) -> float | None:
         return self._loaded_at
-
-    @property
-    def last_results(self) -> list[RetrievedSpecChunk]:
-        return self._last_results
 
     @property
     def last_sync_stats(self) -> dict[str, int]:
@@ -1651,7 +1673,6 @@ class RAGSpecLoader(SpecLoader):
         collection = self._get_collection()
         count = collection.count()
         if count == 0:
-            self._last_results = []
             return []
         if not getattr(self, "_query_rewrite_enabled", True):
             # 检索发生时（请求上下文内）标记 hash 降级，便于 trace 里看到距离阈值失效。
@@ -1734,7 +1755,6 @@ class RAGSpecLoader(SpecLoader):
             if self._knowledge_source_is_active(hit.metadata)
             and knowledge_hit_applies(query, hit.metadata)
         ]
-        self._last_results = retrieved
         return retrieved
 
     def retrieve_many(
@@ -1831,7 +1851,6 @@ class RAGSpecLoader(SpecLoader):
                     normalized_queries.append((text, metadata_filter))
 
         if not normalized_queries:
-            self._last_results = []
             return []
 
         cache_key = None
@@ -1839,13 +1858,11 @@ class RAGSpecLoader(SpecLoader):
         if retrieval_cache is not None:
             cache_key = self._retrieval_cache_key(normalized_queries, per_query)
             if cache_key in retrieval_cache:
-                self._last_results = list(retrieval_cache[cache_key])
-                return self._last_results
+                return list(retrieval_cache[cache_key])
 
         collection = self._get_collection()
         count = collection.count()
         if count == 0:
-            self._last_results = []
             return []
 
         limit = max(1, per_query)
@@ -1946,7 +1963,6 @@ class RAGSpecLoader(SpecLoader):
                 for text, _ in normalized_queries
             )
         ]
-        self._last_results = retrieved
         if retrieval_cache is not None and cache_key is not None:
             retrieval_cache[cache_key] = list(retrieved)
         return retrieved

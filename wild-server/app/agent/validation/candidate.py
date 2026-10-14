@@ -89,7 +89,9 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                     lookup = next((t for t in attempts if t.get("tool") == "search_knowledge"), None)
                     references_checked = bool(lookup and (lookup.get("web_required") is False
                         or any(t.get("tool") == "web_search" for t in attempts)))
-                    finished = set(IMPLEMENTATION_STAGES).issubset(stages) or "assembly_revision" in stages
+                    from app.agent.validation.issues import repeated_failed_candidate
+                    finished = (set(IMPLEMENTATION_STAGES).issubset(stages) or "assembly_revision" in stages
+                                or repeated_failed_candidate({**record, "marker_id": marker["id"]}))
                     if not record.get("reason") or (not record.get("dependency_failure") and (not finished or not references_checked)):
                         append("implementation_incomplete", [f"{marker['id']} 没有完成实现尝试，不能声明舍弃"])
                     if marker["id"] == "building_body":

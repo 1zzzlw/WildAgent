@@ -135,6 +135,13 @@ export interface PlanItemRun {
   elapsed_ms?: number | null
 }
 
+export interface ImplementationSummary {
+  implemented: number
+  abandoned: number
+  total: number
+  design_complete: boolean
+}
+
 /** plan 里的一条工作项：一个算子 + 一份数据（后端 PlanItem）。 */
 export interface PlanItem {
   id: string
@@ -143,12 +150,14 @@ export interface PlanItem {
   label: string
   status: PlanItemStatus
   target?: {
+    marker_ids?: string[]
     source_slots?: string[]
     quota?: Record<string, unknown>
     batch_size?: number
     [key: string]: unknown
   }
   params?: {
+    implementation_summary?: ImplementationSummary
     execution_mode?: 'serial' | 'parallel'
     parallel_group?: string
     batch_reason?: string

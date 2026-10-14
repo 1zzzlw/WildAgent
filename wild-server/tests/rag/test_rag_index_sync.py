@@ -164,7 +164,6 @@ class RAGIndexSyncTest(unittest.TestCase):
         }
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
-        loader._last_results = []
         loader._get_collection = Mock(return_value=collection)
 
         results = loader.retrieve_many(["复杂建筑"], per_query=1)
@@ -193,7 +192,6 @@ class RAGIndexSyncTest(unittest.TestCase):
         }
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
-        loader._last_results = []
         loader._get_collection = Mock(return_value=collection)
 
         results = loader.retrieve_many(["villa", "window"], per_query=1)
@@ -231,7 +229,6 @@ class RAGIndexSyncTest(unittest.TestCase):
         }
         loader = object.__new__(RAGSpecLoader)
         loader._namespace = "test"
-        loader._last_results = []
         loader._get_collection = Mock(return_value=collection)
 
         results = loader.retrieve_many(["支摘窗"], per_query=1)

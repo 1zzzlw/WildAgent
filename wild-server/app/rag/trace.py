@@ -18,10 +18,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from loguru import logger
 
+from app.agent.runtime import SERVER_INSTANCE_ID, runtime_fingerprint
 from app.rag.security import AccessContext, access_context_scope, redact_pii
 from config import config
 
@@ -30,6 +32,114 @@ _current_rag_trace: ContextVar["RAGTrace | None"] = ContextVar(
     "current_rag_trace",
     default=None,
 )
+_llm_trace_context: ContextVar[dict[str, Any]] = ContextVar("llm_trace_context", default={})
+
+
+@contextmanager
+def llm_trace_scope(*, item_id=None, stage=None, design_hash=None, candidate_fingerprint=None,
+                    batch_load=None, marker_ids=None, injected_chunk_ids=None) -> Iterator[None]:
+    """绑定调用归属，独立异步任务不会互相覆盖条目或修订阶段。"""
+    values = {"item_id": item_id, "stage": stage, "design_hash": design_hash,
+              "candidate_fingerprint": candidate_fingerprint, "batch_load": batch_load,
+              "marker_ids": marker_ids, "injected_chunk_ids": injected_chunk_ids}
+    token = _llm_trace_context.set({**_llm_trace_context.get(),
+                                    **{k: v for k, v in values.items() if v is not None}})
+    try:
+        yield
+    finally:
+        _llm_trace_context.reset(token)
+
+
+_SECRET_FIELDS = {"api_key", "openai_api_key", "authorization", "password", "secret",
+                  "access_token", "refresh_token", "headers", "default_headers"}
+_SECRET_TEXT = re.compile(r"(?i)(\b(?:api[_-]?key|authorization|password|access_token)"
+                          r"[\"']?\s*[:=]\s*[\"']?)(?:Bearer\s+)?[^\s,\"'}]+")
+
+
+def _public_trace_value(value: Any) -> Any:
+    if isinstance(value, str):
+        text, _ = redact_pii(value)
+        return _SECRET_TEXT.sub(r"\1[redacted]", text)
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, dict):
+        return {str(k): _public_trace_value(v) for k, v in value.items()
+                if str(k).casefold() not in _SECRET_FIELDS}
+    if isinstance(value, (list, tuple)):
+        return [_public_trace_value(v) for v in value]
+    return {"type": type(value).__name__}
+
+
+def _safe_model_config(llm: Any) -> dict[str, Any]:
+    client = getattr(llm, "bound", llm)
+    fields = ("model_name", "temperature", "top_p", "seed", "max_tokens",
+              "frequency_penalty", "presence_penalty", "n", "logprobs", "top_logprobs",
+              "stop", "max_retries", "request_timeout", "streaming", "reasoning_effort")
+    result = {key: _public_trace_value(getattr(client, key)) for key in fields
+              if getattr(client, key, None) is not None}
+    timeout = getattr(client, "request_timeout", None)
+    if timeout is not None and not isinstance(timeout, (int, float)):
+        result["request_timeout"] = {key: getattr(timeout, key) for key in ("connect", "read", "write", "pool")
+                                     if isinstance(getattr(timeout, key, None), (int, float))}
+    raw_url = getattr(client, "openai_api_base", None)
+    if raw_url:
+        url = urlsplit(str(raw_url))
+        host = url.hostname or ""
+        if ":" in host:
+            host = f"[{host}]"
+        if url.port:
+            host += f":{url.port}"
+        result["base_url"] = urlunsplit((url.scheme, host, url.path, "", ""))
+    for key in ("extra_body", "model_kwargs", "kwargs"):
+        parameters = getattr(client if key != "kwargs" else llm, key, None)
+        if isinstance(parameters, dict):
+            allowed = {"thinking", "enable_thinking", "thinking_budget", "reasoning_effort",
+                       "temperature", "top_p", "seed", "max_tokens", "max_completion_tokens",
+                       "frequency_penalty", "presence_penalty", "n", "logprobs", "top_logprobs",
+                       "response_format", "stop", "stream_options"}
+            result[key] = _public_trace_value({k: v for k, v in parameters.items() if k in allowed})
+    return result
+
+
+def prepare_rag_llm_call(llm: Any, messages: Any) -> dict[str, Any]:
+    """调用前保存实际输入；全文按摘要复用，调用结束沿同一 call_id 记录结果。"""
+    trace = get_current_rag_trace()
+    if trace is None:
+        return {}
+    rows, raw_rows = [], []
+    for message in messages:
+        if isinstance(message, dict):
+            row = message
+        elif isinstance(message, tuple) and len(message) == 2:
+            row = {"role": message[0], "content": message[1]}
+        else:
+            kind = getattr(message, "type", type(message).__name__)
+            row = {"role": {"human": "user", "ai": "assistant"}.get(kind, kind),
+                   "content": getattr(message, "content", "")}
+            for key in ("name", "tool_call_id", "tool_calls", "additional_kwargs"):
+                if getattr(message, key, None):
+                    row[key] = getattr(message, key)
+        raw_rows.append(row)
+        rows.append(_public_trace_value(row))
+    raw_encoded = json.dumps(raw_rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                             default=lambda value: {"type": type(value).__name__})
+    encoded = json.dumps(rows, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    trace.llm_inputs.setdefault(digest, {"messages": rows, "redaction": "pii_and_credentials"})
+    return {"call_id": uuid4().hex, "messages_ref": digest, "messages_sha256": digest,
+            "input_chars": len(raw_encoded), "input_bytes": len(raw_encoded.encode("utf-8")),
+            "input_message_count": len(rows), "model_config": _safe_model_config(llm),
+            "index_signatures": sorted({query["index_signature"] for retrieval in trace.retrievals
+                                        for query in retrieval.get("queries", [])
+                                        if query.get("index_signature")}),
+            **_public_trace_value(_llm_trace_context.get())}
+
+
+def _runtime_snapshot() -> dict[str, Any]:
+    try:
+        return runtime_fingerprint()
+    except OSError as exc:
+        return {"server_instance_id": SERVER_INSTANCE_ID, "error_type": type(exc).__name__}
 
 
 def _utc_now() -> str:
@@ -89,6 +199,7 @@ class RAGTrace:
     retrievals: list[dict[str, Any]] = field(default_factory=list)
     contexts: list[dict[str, Any]] = field(default_factory=list)
     llm_calls: list[dict[str, Any]] = field(default_factory=list)
+    llm_inputs: dict[str, dict[str, Any]] = field(default_factory=dict)
     nodes: list[dict[str, Any]] = field(default_factory=list)
     gate_decisions: list[dict[str, Any]] = field(default_factory=list)
     citations: list[dict[str, Any]] = field(default_factory=list)
@@ -101,6 +212,7 @@ class RAGTrace:
     _elapsed_ms: int | None = field(default=None, repr=False)
     _previous: dict[str, Any] = field(default_factory=dict, repr=False)
     _execution_id: str = field(default_factory=lambda: uuid4().hex, repr=False)
+    _runtime: dict[str, Any] = field(default_factory=_runtime_snapshot, repr=False)
 
     def finish(self, status: str = "completed", error_type: str | None = None) -> None:
         """结束计时；重复调用不会覆盖第一次结束结果。"""
@@ -128,7 +240,8 @@ class RAGTrace:
             executions.append({"id": "legacy", "started_at": previous.get("started_at"),
                                "elapsed_ms": previous.get("elapsed_ms", 0), "status": previous.get("status")})
         executions.append({"id": self._execution_id, "started_at": self.started_at,
-                           "elapsed_ms": elapsed_ms, "status": self.status, "error_type": self.error_type})
+                           "elapsed_ms": elapsed_ms, "status": self.status, "error_type": self.error_type,
+                           "runtime": self._runtime})
 
         token_usage = {"input": 0, "output": 0, "total": 0}
         retry_count = 0
@@ -159,6 +272,10 @@ class RAGTrace:
                 "llm_ms": sum(int(item.get("elapsed_ms", 0)) for item in records["llm_calls"]),
                 "token_usage": token_usage,
                 "llm_retry_count": retry_count,
+                "llm_input_chars": sum(int(item.get("input_chars", 0)) for item in records["llm_calls"]),
+                "llm_output_chars": sum(int(item.get("output_chars", 0)) for item in records["llm_calls"]),
+                "llm_transport_attempts": sum(len(item.get("transport_attempts") or [])
+                                              for item in records["llm_calls"]),
                 "node_calls": len(records["nodes"]),
                 "node_ms": sum(
                     int(item.get("duration_ms", 0)) for item in records["nodes"]
@@ -168,6 +285,7 @@ class RAGTrace:
                 ),
             },
             **records,
+            "llm_inputs": {**previous.get("llm_inputs", {}), **self.llm_inputs},
             "safety": self.safety or previous.get("safety"),
             "final_answer": self.final_answer if self.final_answer is not None else previous.get("final_answer"),
             "access_context": self.access_context,
@@ -275,6 +393,7 @@ def rag_trace_scope(
                 persistence_error = f"{type(exc).__name__}: {exc}"
             try:
                 payload = trace.to_dict()
+                payload.pop("llm_inputs", None)
                 payload["llm_calls"] = [{k: v for k, v in call.items()
                                          if k not in {"response_content", "reasoning_content"}}
                                         for call in payload["llm_calls"]]
@@ -356,6 +475,9 @@ def record_rag_llm_call(
     *,
     response_content: str = "",
     reasoning_content: str = "",
+    call_metadata: dict[str, Any] | None = None,
+    transport_attempts: list[dict[str, Any]] | None = None,
+    finish_reason: str | None = None,
 ) -> bool:
     """记录调用统计与模型实际返回的完整输出、思考，沿请求 trace 落盘。"""
 
@@ -364,12 +486,23 @@ def record_rag_llm_call(
         return False
     trace.llm_calls.append(
         {
+            **(call_metadata or _public_trace_value(_llm_trace_context.get())),
+            "call_id": (call_metadata or {}).get("call_id") or uuid4().hex,
+            "request_id": trace.request_id,
+            "execution_id": trace._execution_id,
+            "server_instance_id": SERVER_INSTANCE_ID,
             "mode": mode,
             "elapsed_ms": elapsed_ms,
             "error_type": error_type,
             "retry_count": max(0, int(retry_count or 0)),
-            "response_content": response_content,
-            "reasoning_content": reasoning_content,
+            "retry_scope": "invocation_wrapper",
+            "response_content": _SECRET_TEXT.sub(r"\1[redacted]", response_content),
+            "reasoning_content": _SECRET_TEXT.sub(r"\1[redacted]", reasoning_content),
+            "output_chars": len(response_content),
+            "reasoning_chars": len(reasoning_content),
+            "finish_reason": finish_reason,
+            "transport_attempts": list(transport_attempts or []),
+            "sdk_retry_count": None,
             "token_usage": {
                 "input": int((token_usage or {}).get("input", 0) or 0),
                 "output": int((token_usage or {}).get("output", 0) or 0),

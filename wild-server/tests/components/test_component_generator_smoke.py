@@ -50,10 +50,10 @@ class _FakeSpecLoader:
 
     def __init__(self, text: str = "") -> None:
         self._text = text
-        self.last_results: list = []
 
-    def load_many(self, *_args, **_kwargs) -> str:
-        return self._text
+    def load_many_result(self, *_args, **_kwargs):
+        from app.spec.loader import SpecLoadResult
+        return SpecLoadResult(self._text)
 
 
 class _FakeLLMResult:

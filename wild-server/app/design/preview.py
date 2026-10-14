@@ -159,6 +159,9 @@ def render_drawing_svg(document, resolved, floor=None):
             elif family == "railing" and (path := entity.get("path") or form.get("path")):
                 for a, b in zip(path, path[1:]):
                     line(xy(a), xy(b), color, 2.5)
+            elif family == "light":
+                symbols_only += 1
+                parts.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="7" fill="none" stroke="{color}" stroke-width="2"/>')
             elif size.get("width") and size.get("depth"):
                 w, depth = size["width"]*scale, size["depth"]*scale
                 rotation = form.get("rotation_y", 0)
@@ -170,7 +173,10 @@ def render_drawing_svg(document, resolved, floor=None):
                 parts.append('</g>')
             else:
                 symbols_only += 1
-                parts.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="{color}"/>')
+                if family == "column":
+                    parts.append(f'<rect x="{x-5:.2f}" y="{y-5:.2f}" width="10" height="10" fill="{color}"/>')
+                else:
+                    parts.append(f'<circle cx="{x:.2f}" cy="{y:.2f}" r="4" fill="{color}"/>')
             parts.append('</g>')
         for room, b in rooms:
             if not b:
@@ -197,9 +203,18 @@ def render_drawing_svg(document, resolved, floor=None):
         text(820, top+170, "本层图例", "#e2e8f0", 21, 'font-weight="700"')
         for i, family in enumerate(LABELS):
             ly = top+207+i*35
-            line((820, ly-5), (858, ly-5), COLORS[family], 4 if family == "wall" else 2,
-                 'stroke-dasharray="6 4"' if family == "balcony" else '')
+            parts.append(f'<g data-legend-family="{family}">')
+            if family == "column":
+                parts.append(f'<rect x="832" y="{ly-16:.2f}" width="14" height="14" fill="{COLORS[family]}"/>')
+            elif family == "light":
+                parts.append(f'<circle cx="839" cy="{ly-9:.2f}" r="6" fill="none" stroke="{COLORS[family]}" stroke-width="2"/>')
+                line((839, ly-20), (839, ly-17), COLORS[family], 2)
+                line((839, ly-1), (839, ly+2), COLORS[family], 2)
+            else:
+                line((820, ly-5), (858, ly-5), COLORS[family], 4 if family == "wall" else 2,
+                     'stroke-dasharray="6 4"' if family == "balcony" else '')
             text(878, ly, LABELS[family]+(f" × {counts[family]}" if counts[family] else ""), "#cbd5e1", 16)
+            parts.append('</g>')
         text(820, top+515, "虚线框：空间包络 / 挑空", "#94a3b8", 14)
         text(820, top+542, "点标记：位置已知，形态或尺寸待实现", "#94a3b8", 14)
         text(820, top+569, "门弧：已声明铰接端与开启侧", "#94a3b8", 14)

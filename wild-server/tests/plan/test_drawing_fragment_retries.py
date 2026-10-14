@@ -7,7 +7,7 @@ import pytest
 from app.agent.plan import implementation as impl
 from app.design.markers import implementation_records
 from app.tools.spatial_tools import validate_element_dimensions
-from tests.plan.test_drawing_implementation import empty_state, patch_services, reply, run, task
+from tests.plan.test_drawing_implementation import drawing, empty_state, patch_services, reply, run, task
 
 
 def column(entity_id="stable_column", offset=0):
@@ -15,9 +15,27 @@ def column(entity_id="stable_column", offset=0):
             "bottomRadius": 0.1, "topRadius": 0.1, "style": "modern"}
 
 
+def test_body_cannot_add_an_unmarked_column_to_a_resolved_drawing():
+    base = empty_state()["skeleton_blueprint"]
+    marker = {"type": "building_body", "design": {"floor_layouts": [{"rooms": [{"id": "living"}]}]}}
+    with pytest.raises(ValueError, match="图纸未标注的独立柱"):
+        impl._accept_group(base, {"geometry": {"elements": [column()]}}, marker)
+
+
 def slab(entity_id="slab", offset=0, valid=True):
     return {"type": "floor", "id": entity_id, "from": [offset, -0.18, 0],
             "to": [offset+2 if valid else offset, -0.18, 2], "thickness": 0.18}
+
+
+def test_body_omits_unmarked_columns_when_drawing_has_rooms(monkeypatch):
+    document = drawing()
+    document.decisions.floor_layouts = [{"floor": 1, "level": 0,
+        "rooms": [{"id": "living", "bounds": {"x": 0, "z": 0, "width": 4, "depth": 4}}], "walls": []}]
+    state = empty_state(document)
+    patch_services(monkeypatch, [reply("building_body", [slab(), column()])])
+    updates, status, ids, _, trace = run(impl.run_marker_generate(state, task(state, "building_body")))
+    assert status == "succeeded" and ids == ["slab"]
+    assert next(t for t in trace if t.get("tool") == "generate_wild")["outside_item_entity_ids"] == ["stable_column"]
 
 
 @pytest.mark.parametrize("marker_id", ["building_body", "lattice"])

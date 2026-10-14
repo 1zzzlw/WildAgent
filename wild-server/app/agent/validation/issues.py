@@ -7,7 +7,7 @@ import re
 from typing import Iterable
 
 
-_ENTITY_MARKER = re.compile(r"[❌⚠️]\s*\[(?:component:)?([\w.-]+)\]")
+_ENTITY_MARKER = re.compile(r"\[(?:component:)?([\w.-]+(?:\s*,\s*[\w.-]+)*)\]")
 
 _VALIDATOR_CODES = {
     "validate_blueprint_structure": "BLUEPRINT_STRUCTURE",
@@ -106,6 +106,15 @@ def validation_issues_from_results(
             continue
         validator = str(_field(result, "name", "unknown")).replace(" [recheck]", "")
         category, repair_level = classify_validation_issue(validator)
+        structured = _field(result, "issues")
+        if isinstance(structured, list) and structured:
+            for issue in structured:
+                if not isinstance(issue, dict) or issue.get("severity", "error") != "error":
+                    continue
+                issues.append({"code": _VALIDATOR_CODES.get(validator, validator.upper()),
+                               "category": category, "validator": validator, "severity": "error",
+                               "recommended_repair_level": repair_level, **issue})
+            continue
         output = str(_field(result, "output", "") or "")
         error_lines = [line.strip() for line in output.splitlines() if "❌" in line]
         if not error_lines:
@@ -117,17 +126,17 @@ def validation_issues_from_results(
                 if validator == "validate_design_brief"
                 else None
             )
-            marker = next((m for m in _ENTITY_MARKER.finditer(line) if m.group(1) in entities),
-                          _ENTITY_MARKER.search(line))
+            mentioned = list(dict.fromkeys(i.strip() for m in _ENTITY_MARKER.finditer(line)
+                                           for i in m.group(1).split(",") if i.strip() in entities))
             marker_id = facade_match.group(1) if facade_match else (
-                marker.group(1) if marker else None
+                mentioned[0] if mentioned else None
             )
             entity_id = marker_id if marker_id in entities else None
             entity = entities.get(entity_id or "", {})
             message = line[:800]
             quota_match = (_MISSING_QUOTA.search(message) or _MISSING_COMPONENT.search(message)) if validator == "validate_design_brief" else None
             target_type = quota_match.group(1) if quota_match else None
-            related_entity_ids = []
+            related_entity_ids = mentioned[1:]
             if facade_match and entity_id:
                 related_entity_ids = [
                     candidate_id
@@ -150,6 +159,7 @@ def validation_issues_from_results(
                 "validator": validator,
                 "severity": "error",
                 "entity_id": entity_id,
+                "entity_ids": mentioned,
                 "entity_type": entity.get("type") if entity else None,
                 "related_entity_ids": related_entity_ids,
                 "message": message,
@@ -171,6 +181,22 @@ def group_issues_by_entity(issues: Iterable[dict]) -> dict[str, list[dict]]:
         if entity_id:
             grouped.setdefault(entity_id, []).append(issue)
     return grouped
+
+
+def repeated_failed_candidate(record: dict, *, context_fingerprint: str | None = None) -> bool:
+    """有两份连续、同依赖的失败证据才允许提前结束，实现舍弃不能自报无进展。"""
+    if record.get("stop_reason") != "repeated_failed_candidate":
+        return False
+    marker_id = record.get("marker_id")
+    failures = [t.get("failed_candidates", {}).get(marker_id) for t in record.get("attempts", [])
+                if t.get("stage") and marker_id in t.get("marker_ids", [])]
+    if len(failures) < 2 or not failures[-1] or failures[-1] != failures[-2]:
+        return False
+    evidence = failures[-1]
+    return (all(isinstance(evidence.get(k), str) and evidence[k] for k in
+                ("candidate_fingerprint", "context_fingerprint", "issues_fingerprint"))
+            and bool(evidence.get("issues"))
+            and (context_fingerprint is None or evidence["context_fingerprint"] == context_fingerprint))
 
 
 def _issue_fingerprint(issue: dict) -> tuple[str, str | None, str]:
