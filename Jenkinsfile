@@ -514,9 +514,10 @@ if ! start_web "$IMAGE_WEB_NAME"; then
 fi
 
 echo "=== 等待新版 wild-web 就绪（最多 60 秒） ==="
-# ⚠️ 启用 SSL 后**不能**再用 `wget http://127.0.0.1/` 判据：
-#    80 的 default_server 是 `return 444`（IP 直连被拦），wget 会非零退出，
-#    于是永远探不到 ready → 40 秒后误判"未就绪" → 回滚一个其实完全正常的部署。
+# 🔴 判据必须带**域名 Host**（--header="Host: $DEPLOY_PUBLIC_HOST"），不能用裸 127.0.0.1：
+#    443 default_server 是 `return 444`（专门拦 IP 直连），业务 server 块只匹配域名，
+#    `wget https://127.0.0.1/` 的 Host 是 127.0.0.1 ⇒ 落到 default_server ⇒ 恒 444
+#    ⇒ 误判"未就绪" ⇒ 回滚一个其实完全正常的部署（2026-10-14 实际发生过一次）。
 #    改用「nginx -t 配置语法」+「HTTPS 端口可握手」两段：
 #    前者能第一时间暴露证书路径写错/卷没挂（nginx 起不来的真实原因），
 #    后者确认监听真的起来了。
@@ -529,7 +530,7 @@ while [ "$attempt" -le 30 ]; do
   # 1) nginx 能加载配置（含 ssl_certificate）——证书缺失/卷未挂会在这一步暴露
   if docker exec wild-web nginx -t >/dev/null 2>&1; then
     # 2) 443 端口在容器内可握手（busybox wget 支持 --no-check-certificate）
-    if docker exec wild-web wget -q --no-check-certificate -O /dev/null https://127.0.0.1/ >/dev/null 2>&1; then
+    if docker exec wild-web wget -q --no-check-certificate -O /dev/null --header="Host: ${DEPLOY_PUBLIC_HOST}" https://127.0.0.1/ >/dev/null 2>&1; then
       web_ready=1
       echo "wild-web 已就绪（attempt=$attempt，nginx -t 通过且 HTTPS 可达）"
       break
@@ -592,32 +593,23 @@ if [ "$actual_web_image" != "$IMAGE_WEB_NAME" ]; then
   exit 1
 fi
 
-# nginx 有 default_server 兜底，域名与 IP 两种 Host 都应拿到 200。
-# 探活打 127.0.0.1 + Host 头，而不是从公网打域名：内网自打不受 DNS/安全组影响，
-# 且能分别验证两个 server_name 分支确实都命中了同一个 server 块。
+# 🔴 本段所有探活都必须带**域名 Host**。
+#    nginx.conf 的两个 default_server 都是 `return 444`（专门拦 IP 直连与非本站域名），
+#    业务 server 块只匹配 `server_name www.zzzlew.asia`。
+#    用 127.0.0.1 或 Host: IP 请求 ⇒ 落到 default_server ⇒ 恒 444 ⇒ 探活必然失败。
+#    2026-10-14 实际踩过：就绪判据与部署后验证都用了裸 IP，回滚了完全正常的部署。
 echo ""
-echo "--- 前端 HTTP 可达性（localhost:${DEPLOY_WEB_PORT}） ---"
-code_local=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
-echo "GET / -> $code_local"
+echo "--- IP 直连拦截（预期 444，是nginx.conf 的 default_server 行为）---"
+# 这一条**期望 444**，用它反证 444 规则确实生效，而不是探活失败。
 code_ip=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
-echo "GET / (Host: ${DEPLOY_SSH_HOST}) -> $code_ip"
-if [ "$code_local" != "200" ] || [ "$code_ip" != "200" ]; then
-  echo "ERROR: 前端 HTTP 探活未通过（期望 200/200）"
-  exit 1
+echo "GET / (Host: ${DEPLOY_SSH_HOST}) -> $code_ip（预期 000 或444）"
+if [ "$code_ip" != "444" ] && [ "$code_ip" != "000" ]; then
+  echo "WARN: IP 直连返回 $code_ip 而非 444，default_server 拦截可能未生效"
 fi
 
-# 域名 Host 必须同样命中：它对应 nginx.conf server_name 里的显式域名。
-# 这一条失败而上面两条通过 ⇒ 典型原因是 nginx.conf 的 server_name 没加域名，
-# 访问域名会落到 default_server 的兜底行为上（功能可能仍通，但已不是预期配置）。
-if [ -n "$DEPLOY_PUBLIC_HOST" ]; then
-  code_domain=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
-  echo "GET / (Host: ${DEPLOY_PUBLIC_HOST}) -> $code_domain"
-  if [ "$code_domain" != "200" ]; then
-    echo "ERROR: 域名 Host 未命中（期望 200，实际 $code_domain）"
-    echo "  检查 wild-web/nginx.conf 的 server_name 是否包含 ${DEPLOY_PUBLIC_HOST}"
-    exit 1
-  fi
-fi
+# IP 直连走 HTTPS 同样应被 443 default_server 拦掉。
+code_https_ip=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_SSH_HOST}" "https://127.0.0.1/" || echo 000)
+echo "GET https://(Host: ${DEPLOY_SSH_HOST}) -> $code_https_ip（预期 000 或 444）"
 
 echo ""
 echo "--- 证书与 HTTPS 可达性（启用 SSL 后新增） ---"
@@ -634,31 +626,33 @@ else
   exit 1
 fi
 
-# HTTPS 业务判据：容器内 443 应返回 200。
+# HTTPS 业务判据：**必须带域名 Host**（见本段开头说明）。
 # -k：走 127.0.0.1 自查时证书 CN 与 IP 不符，校验必然失败，这里只验"能不能握手+有没有页面"。
-code_https=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 "https://127.0.0.1/" || echo 000)
-echo "GET https://127.0.0.1/ -> $code_https"
+code_https=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "https://127.0.0.1/" || echo 000)
+echo "GET https://127.0.0.1/ (Host: ${DEPLOY_PUBLIC_HOST}) -> $code_https（期望 200）"
 if [ "$code_https" != "200" ]; then
   echo "ERROR: HTTPS 业务未就绪（期望 200，实际 $code_https）"
-  echo "  检查: docker port wild-web 是否含 443、start_web() 是否挂载了证书卷、nginx 日志是否有 'cannot load certificate'"
+  echo "  检查: docker port wild-web 是否含 443、start_web() 是否挂载了证书卷、"
+  echo "        nginx 日志是否有 'cannot load certificate'"
   docker logs --tail=30 wild-web 2>&1 || true
   exit 1
 fi
 
-# HTTP 301 是**预期行为**（80 只做跳转），不是故障：确认跳转目标确实是 https。
+# HTTP 301 是**预期行为**（80 只做跳转），不是故障。
 code_redirect=$(curl -s -o /dev/null -w '%{http_code}' --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "http://127.0.0.1:${DEPLOY_WEB_PORT}/" || echo 000)
 echo "GET http://(Host: ${DEPLOY_PUBLIC_HOST}) -> $code_redirect（预期 301）"
-if [ -n "$DEPLOY_PUBLIC_HOST" ] && [ "$code_redirect" != "301" ]; then
-  echo "WARN: 域名 HTTP 未返回 301，实际 $code_redirect"
-  echo "  若已是 200，说明 80 端口没走redirect server块，检查 nginx.conf 的 HTTP → HTTPS 段。"
+if [ "$code_redirect" != "301" ]; then
+  echo "ERROR: 域名 HTTP 未返回 301，实际 $code_redirect"
+  echo "  检查 nginx.conf 的 HTTP → HTTPS 段是否匹配 ${DEPLOY_PUBLIC_HOST}"
+  exit 1
 fi
 
 echo ""
-echo "--- 前端 API 反向代理可达性（HTTPS） ---"
+echo "--- 前端 API 反向代理可达性（HTTPS + 域名 Host）---"
 # 用 /api/config/llm（无需鉴权的真实路由）而不是状态码判 200：
 # 后端健康检查在 /health/ready，不在 /api/ 下；而不存在的路径会被 SPA 的
 # try_files 兜底成 index.html 200，只看状态码会假通过。
-api_body=$(curl -sk --max-time 8 "https://127.0.0.1/api/config/llm" || true)
+api_body=$(curl -sk --max-time 8 -H "Host: ${DEPLOY_PUBLIC_HOST}" "https://127.0.0.1/api/config/llm" || true)
 case "$api_body" in
   *storage_path*)
     echo "GET /api/config/llm -> 反代生效（已拿到后端 JSON）"
