@@ -76,7 +76,7 @@ pipeline {
     // ---- 部署开关 ----
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
     booleanParam(name: 'REMOTE_PREFLIGHT_ENABLED', defaultValue: true, description: '是否执行远程环境预检（SSH / 生产 env / 基础镜像可拉取）')
-    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否在远程临时构建目录重复执行离线门禁；本地 PR/分支门禁始终执行，不调用真实模型')
+    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否在远程临时构建目录执行离线门禁（前端 check:ci + 后端 pytest）；不调用真实模型。本地「本地离线质量门禁」stage 已按用户决策于 2026-10-14 移除')
     booleanParam(name: 'LIVE_PROVIDER_PREFLIGHT_ENABLED', defaultValue: false, description: '部署前是否真实调用 Chat/Embedding；会消耗额度，仅用于手工连通性检查')
 
     // ---- 目标服务器 ----
@@ -141,49 +141,6 @@ pipeline {
           echo "remote release dir=${env.REMOTE_RELEASE_DIR}"
           echo "server image=${env.IMAGE_SERVER_NAME}"
           echo "web image=${env.IMAGE_WEB_NAME}"
-        }
-      }
-    }
-
-    stage('本地离线质量门禁') {
-      steps {
-        dir('wild-web') {
-          script {
-            if (isUnix()) {
-              sh '''
-                set -eu
-                npm ci
-                npm run check:ci
-              '''
-            } else {
-              powershell '''
-                $ErrorActionPreference = 'Stop'
-                npm ci
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                npm run check:ci
-                exit $LASTEXITCODE
-              '''
-            }
-          }
-        }
-        dir('wild-server') {
-          script {
-            if (isUnix()) {
-              sh '''
-                set -eu
-                uv sync --frozen
-                uv run --frozen python scripts/ci/check_generation_quality.py
-              '''
-            } else {
-              powershell '''
-                $ErrorActionPreference = 'Stop'
-                uv sync --frozen
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                uv run --frozen python scripts/ci/check_generation_quality.py
-                exit $LASTEXITCODE
-              '''
-            }
-          }
         }
       }
     }
