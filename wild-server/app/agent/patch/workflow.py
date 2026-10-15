@@ -19,7 +19,7 @@ from app.agent.runtime import get_reasoning_callback
 
 
 async def patch_node(state: GenerationState) -> dict:
-    """根据当前 Blueprint 生成通过验证的 ScenePatch。"""
+    """生成可应用的 ScenePatch；草稿校验问题随提案展示，不阻止继续编辑。"""
     current_blueprint = state.get("current_blueprint")
     if not current_blueprint:
         return {
@@ -28,7 +28,7 @@ async def patch_node(state: GenerationState) -> dict:
             "patch_diag": {"error": "current_blueprint missing"},
         }
 
-    from app.services.agent_service import agent_service
+    from app.services.agent_service import agent_service, _final_errors
 
     started_at = _time.time()
     on_reasoning_delta = get_reasoning_callback()
@@ -81,15 +81,22 @@ async def patch_node(state: GenerationState) -> dict:
             },
         }
 
-    operations = result.patch.get("operations", [])
+    validation_errors = _final_errors(result.pipeline_results)
+    scene_patch = dict(result.patch)
+    if validation_errors:
+        scene_patch["summary"] = (str(scene_patch.get("summary") or "修改场景")
+            + "\n\n修改后草稿仍有校验错误，可确认后继续编辑：\n"
+            + "\n".join(f"{error.name}: {error.output}" for error in validation_errors))
+    operations = scene_patch.get("operations", [])
     return {
-        "scene_patch": result.patch,
+        "scene_patch": scene_patch,
         "patch_reply": result.text,
         "status": "complete",
         "error": None,
         "patch_diag": {
             "operation_count": len(operations),
             "validation_steps": len(result.pipeline_results),
+            "validation_passed": not validation_errors,
             "structured_source": result.structured_source,
             "structured_recovery_used": result.structured_recovery_used,
             "total_ms": elapsed_ms,

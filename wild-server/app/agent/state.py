@@ -113,7 +113,7 @@ class GenerationState(TypedDict, total=False):
     suggested_components: list[str]  # 骨架节点建议的组件列表
     design_brief: dict  # 骨架输出的设计清单（facade_plan + component_quota + rag_reference）
     skeleton_diag: dict  # 主体骨架模型调用、解析、恢复和校验诊断。
-    compile_report: dict  # 确定性编译诊断：蓝图计数 + defects/defaulted/unsupported/uncompiled。
+    compile_report: dict  # 装配计数、编译错误与一次局部修复的原稿、操作和复检记录。
 
     # ── Layer 1: 组件分片 ──
     component_fragments: Annotated[dict[str, Any], merge_state_mapping]  # 各构件类型的源分片映射。
@@ -137,9 +137,9 @@ class GenerationState(TypedDict, total=False):
 
     # ── 回调上下文 ──
     repair_audit: dict  # 修复前后错误变化、接受或拒绝原因等审计记录。
-    terminal_model_error: dict  # 模型服务故障；当前图运行必须终止，不进入建筑修复循环
+    terminal_model_error: dict  # 模型服务故障；停止模型调用，仍编译保存已有结果。
 
     # ── 最终输出 ──
-    final_blueprint: dict  # 通过最终校验、可交付给前端的 .wild Blueprint。
+    final_blueprint: dict  # 最终保留的可编辑 .wild；是否通过校验由 validation_snapshot 单独记录。
     error: str | None  # 当前任务的终止错误；正常完成时为空。
     status: str  # "complete" | "partial" | "failed"

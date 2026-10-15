@@ -1,4 +1,4 @@
-"""统一装配；完整校验问题回到原任务，尝试耗尽后清理失败构件。"""
+"""统一装配已有分片；编译失败集中修复一次，保留可编辑草稿。"""
 from copy import deepcopy
 
 from app.agent.state import GenerationState
@@ -54,161 +54,144 @@ def _assemble_with_relations(document, state):
     return blueprint, missing, records
 
 
-def _affected_markers(state, marker_ids):
-    from app.design.markers import implementation_records
-    records = implementation_records(state)
-    affected = set(marker_ids)
-    markers = (state.get("resolved_design") or {}).get("component_markers") or []
-    while True:
-        previous = set(affected)
-        removed = {i for m in affected for i in (records.get(m) or {}).get("entity_ids", [])}
-        for marker in markers:
-            if set(marker.get("depends_on") or []) & affected:
-                affected.add(marker["id"])
-        for marker_id, record in records.items():
-            ids = set(record.get("entity_ids") or [])
-            for entities in (state.get("component_fragments") or {}).values():
-                if any(e["id"] in ids and any(v in removed for k, v in e.items()
-                       if k.startswith("parent") and isinstance(v, str)) for e in entities):
-                    affected.add(marker_id)
-        if previous == affected:
-            break
-    return affected
-
-
-def _discard(state, marker_ids, reason):
-    from app.design.markers import implementation_records
-    records = implementation_records(state)
-    affected = _affected_markers(state, marker_ids)
-    updates = {"component_fragments": deepcopy(state.get("component_fragments") or {}),
-               "component_diagnostics": deepcopy(state.get("component_diagnostics") or {})}
-    removed = {i for m in affected for i in (records.get(m) or {}).get("entity_ids", [])}
-    for task_id, diag in updates["component_diagnostics"].items():
-        for marker_id, record in (diag.get("implementations") or {}).items():
-            if marker_id in affected:
-                original_reason = record.get("reason") if record.get("status") == "abandoned" else None
-                record.update(status="abandoned", entity_ids=[], reason=original_reason or reason,
-                              dependency_failure=marker_id not in marker_ids)
-        for bucket in ("elements", "components"):
-            diag[bucket] = [i for i in diag.get(bucket, []) if i not in removed]
-        updates["component_fragments"][task_id] = [e for e in updates["component_fragments"].get(task_id, []) if e["id"] not in removed]
-    return updates
-
-
 async def compile_node(state: GenerationState) -> dict:
+    import json
     from app.design.contracts import DesignDocument
     from app.design.resolver import _stable_hash
-    from app.design.markers import implementation_records
-    from app.agent.plan.contracts import PlanDocument
     from app.agent.validation.candidate import evaluate_candidate
+    from app.agent.validation.diagnostics import blueprint_fingerprint
+    from app.services.agent_delivery import retain_generation_blueprint
 
-    plan = PlanDocument.model_validate(state["plan"])
-    document = DesignDocument.model_validate(state["design_document"])
-    blueprint, missing, compiled_records = _assemble_with_relations(document, state)
-    if missing:
-        return {"status": "failed", "error": "图纸标记未完成实现流程：" + ", ".join(missing)}
-    records = implementation_records(state)
-    brief = {"realization": document.decisions.massing.model_dump(mode="json"),
-             "implementation": {"design_hash": _stable_hash(document), "records": compiled_records}}
-    evaluation = evaluate_candidate(blueprint, design_document=document.model_dump(mode="json"),
-                                    design_brief=brief, source="compile")
-    unattributed_issues = []
-    if evaluation["errors"]:
-        message = "; ".join(str(getattr(e, "output", e)) for e in evaluation["errors"])
-        entity_ids = {i for issue in evaluation["issues"] for i in
-                      [issue.get("component_id"), issue.get("entity_id"), *(issue.get("entity_ids") or [])] if i}
-        entity_ids.discard(None)
-        failed = {m for m, r in records.items() if r.get("status") == "implemented"
-                  and (set(r.get("entity_ids") or []) & entity_ids
-                       or (not entity_ids and any(i in message for i in r.get("entity_ids", []))))}
-        failed.update(m for issue in evaluation["issues"] for m in
-                      [issue.get("marker_id"), *(issue.get("marker_ids") or [])] if m in records)
-        # 兼容旧校验器的标记消息；只按完整 ID 匹配，不把未归属错误交给主体。
-        import re
-        failed.update(m for m in records if re.search(r"(?<![\w.-])" + re.escape(m) + r"(?![\w.-])", message))
-        from app.agent.knowledge.component_names import resolve_component_name
-        missing_types = {issue["target_type"] for issue in evaluation["issues"] if issue.get("target_type")}
-        failed.update(m["id"] for m in state["resolved_design"]["component_markers"]
-                      if resolve_component_name(m["type"])["entity_type"] in missing_types and m["id"] in records)
-        if not failed:
-            unattributed_issues = evaluation["issues"]
-        updates = {"component_fragments": deepcopy(state.get("component_fragments") or {}),
-                   "component_diagnostics": deepcopy(state.get("component_diagnostics") or {})}
-        from app.agent.validation.issues import repeated_failed_candidate
-        from app.agent.plan.implementation import failure_context_fingerprint
-        marker_by_id = {m["id"]: m for m in state["resolved_design"]["component_markers"]}
-        exhausted = {m for m in failed if "assembly_revision" in records[m].get("attempted_stages", [])
-                     or repeated_failed_candidate({**records[m], "marker_id": m},
-                         context_fingerprint=failure_context_fingerprint(state, marker_by_id[m]))}
-        if exhausted:
-            updates = _discard(state, exhausted, message)
-        retry_markers = _affected_markers({**state, **updates}, failed - exhausted)
-        retry_markers = {m for m in retry_markers if (implementation_records(updates).get(m) or {}).get("status") in {"implemented", "abandoned"}}
-        retry = False
-        for item in plan.items:
-            targets = {m for m in item.target.get("marker_ids", []) if m in retry_markers}
-            if not targets:
-                continue
-            exhausted_targets = {m for m in targets if "assembly_revision" in records[m].get("attempted_stages", [])}
-            if exhausted_targets:
-                updates = _discard({**state, **updates}, exhausted_targets, "依附对象需要重新实现，当前构件已耗尽尝试：" + message)
-                targets -= _affected_markers({**state, **updates}, exhausted_targets)
-            if not targets:
-                continue
-            retry = True
-            item.params["assembly_feedback"] = message
-            item.params["retry_marker_ids"] = [i for i in item.target["marker_ids"] if i in targets]
-            target_entities = {i for m in targets for i in records[m].get("entity_ids", [])}
-            item.params["reference_entity_ids"] = sorted({i for issue in evaluation["issues"]
-                if (issue.get("component_id") or issue.get("entity_id")) in target_entities
-                for i in issue.get("related_entity_ids", [])})
-            item.status = "ready"
-            item.run.state = "idle"
-            # 重做宿主时同时移除依附结果，避免旧引用阻止新宿主通过局部检查。
-            old = updates["component_diagnostics"].get(item.id) or {}
-            prior = old.get("implementations") or {}
-            removed_ids = {i for m in targets for i in prior[m].get("entity_ids", [])}
-            old["prior_implementations"] = {m: prior[m] for m in targets}
-            old["failed_implementations"] = {m: ((old.get("failed_implementations") or {}).get(m)
-                if prior[m].get("status") == "abandoned" and (old.get("failed_implementations") or {}).get(m)
-                else {"id": m,
-                "geometry": {bucket: [deepcopy(e) for e in state["component_fragments"].get(item.id, [])
-                    if e["id"] in prior[m].get("entity_ids", []) and e["id"] in old.get(bucket, [])]
-                    for bucket in ("elements", "components")},
-                "materials": deepcopy(old.get("materials") or {}), "assets": deepcopy(old.get("assets") or {})})
-                for m in targets}
-            old["implementations"] = {m: r for m, r in prior.items() if m not in targets}
-            for bucket in ("elements", "components"):
-                old[bucket] = [i for i in old.get(bucket, []) if i not in removed_ids]
-            updates["component_diagnostics"][item.id] = old
-            updates["component_fragments"][item.id] = [e for e in updates["component_fragments"].get(item.id, []) if e["id"] not in removed_ids]
-        if retry:
-            return {**updates, "plan": plan.model_dump(mode="json"), "merged_blueprint": {},
-                    "compile_report": {"ok": False, "retry_implementation": True, "reason": message}, "error": None}
-        if updates["component_diagnostics"]:
-            state = {**state, **updates}
-            blueprint, missing, compiled_records = _assemble_with_relations(document, state)
-            brief["implementation"]["records"] = compiled_records
-            evaluation = evaluate_candidate(blueprint, design_document=document.model_dump(mode="json"),
-                                            design_brief=brief, source="compile_after_discard")
-    records = implementation_records(state)
-    actual = {e["id"] for bucket in ("elements", "components") for e in blueprint["geometry"][bucket]}
-    for item in plan.items:
-        rows = [records[m] for m in item.target.get("marker_ids", [])]
-        abandoned = sum(r["status"] == "abandoned" for r in rows)
-        item.status = "abandoned" if abandoned else "done"
-        item.run.evidence = f"实现流程结束：落实 {len(rows)-abandoned}，舍弃 {abandoned}"
-        item.params["implementation_summary"] = {"implemented": len(rows)-abandoned, "abandoned": abandoned,
-                                                 "total": len(rows), "design_complete": not abandoned}
-        item.run.artifacts = [i for m in item.target.get("marker_ids", [])
-                              for i in compiled_records[m].get("entity_ids", []) if i in actual]
-    return {**({k: state[k] for k in ("component_fragments", "component_diagnostics")}),
-            "plan": plan.model_dump(mode="json"), "merged_blueprint": blueprint, "design_brief": brief, "validation_snapshot": {},
-            "compile_report": {"abandoned_markers": [m for m, r in records.items() if r["status"] == "abandoned"], "missing_markers": missing, "elements": len(blueprint["geometry"]["elements"]),
-                               "components": len(blueprint["geometry"]["components"]),
-                               "design_complete": not missing and all(r["status"] == "implemented" for r in records.values()),
-                               "unattributed_issues": unattributed_issues,
-                               "ok": not missing and not evaluation["errors"]}, "error": None}
+    blueprint = retain_generation_blueprint(state)
+    brief = deepcopy(state.get("design_brief") or {})
+    report = {"ok": False, "missing_markers": []}
+    previous_repair = (state.get("compile_report") or {}).get("repair") or {}
+    if previous_repair.get("attempted"):
+        report["repair"] = deepcopy(previous_repair)
+    errors, evaluation, new_model_calls = [], None, 0
+    try:
+        document = DesignDocument.model_validate(state["design_document"])
+        if previous_repair.get("attempted") and state.get("merged_blueprint"):
+            blueprint = deepcopy(state["merged_blueprint"])
+        else:
+            blueprint, missing, records = _assemble_with_relations(document, state)
+            blueprint = retain_generation_blueprint({**state, "final_blueprint": {}, "merged_blueprint": blueprint}, blueprint)
+            report["missing_markers"] = missing
+            brief = {"realization": document.decisions.massing.model_dump(mode="json"),
+                     "implementation": {"design_hash": _stable_hash(document), "records": records}}
+        evaluation = evaluate_candidate(blueprint, design_document=state["design_document"],
+                                        design_brief=brief, source="compile")
+        errors = [str(getattr(error, "output", error)) for error in evaluation["errors"]]
+        if report["missing_markers"]:
+            errors.append("图纸标记未完成实现流程：" + ", ".join(report["missing_markers"]))
+    except Exception as exc:
+        errors = [f"编译已有分片失败：{exc}"]
+        # 契约或装配异常不能使已生成的原始分片消失。
+        blueprint = retain_generation_blueprint(state, blueprint)
+
+    geometry = (blueprint or {}).get("geometry")
+    has_entities = isinstance(geometry, dict) and any(
+        isinstance(geometry.get(bucket), list) and geometry[bucket] for bucket in ("elements", "components"))
+    if errors and has_entities and not state.get("terminal_model_error") and not previous_repair.get("attempted"):
+        from app.agent.prompts import build_patch_system_prompt
+        from app.agent.runtime import get_reasoning_callback
+        from app.llm.client import create_llm
+        from app.llm.invocation import invoke_llm, stream_llm
+        from app.services.agent_service import (
+            _extract_patch_artifact, _validate_scene_patch_operations, _apply_patch_to_blueprint,
+        )
+        from app.agent.validation.issues import compare_issue_sets
+
+        repair = {"attempted": True, "accepted": False, "original_blueprint": deepcopy(blueprint),
+                  "original_errors": list(errors), "model_calls": 0}
+        report["repair"] = repair
+        try:
+            from config import config
+            callback = get_reasoning_callback()
+            if callback:
+                await callback("compile:progress", "编译发现错误，正在集中修复一次；已有蓝图会保留。\n")
+            thinking = state.get("thinking_mode", True)
+            llm = create_llm(model_cfg=config.chat.model_copy(update={"max_retries": 0}),
+                             enable_thinking=thinking, streaming=bool(thinking and callback))
+            messages = [
+                {"role": "system", "content": build_patch_system_prompt("")},
+                {"role": "user", "content": (
+                    "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
+                    "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"
+                    "数值先计算，返回完整 JSON。只有这一次修复机会，不重新生成整栋建筑。\n"
+                    + json.dumps({"errors": errors, "blueprint": blueprint,
+                                  "design_document": state.get("design_document"),
+                                  "failed_implementations": {marker: row
+                                      for diag in (state.get("component_diagnostics") or {}).values()
+                                      for marker, row in (diag.get("failed_implementations") or {}).items()},
+                                  "references": list(dict.fromkeys(diag["references"]
+                                      for diag in (state.get("component_diagnostics") or {}).values()
+                                      if diag.get("references")))}, ensure_ascii=False))},
+            ]
+            repair["model_calls"] = 1
+            new_model_calls = 1
+            if thinking and callback:
+                response = await stream_llm(llm, messages,
+                    on_reasoning_delta=lambda delta: callback("compile", delta))
+            else:
+                response = await invoke_llm(llm, messages, max_retries=0)
+            patch, source = _extract_patch_artifact(response.content, response.reasoning)
+            repair.update(patch=patch, structured_source=source)
+            if patch is None:
+                raise ValueError("模型未返回可解析的局部修复；保留修复前蓝图")
+            operation_errors = _validate_scene_patch_operations(blueprint, patch)
+            if operation_errors:
+                raise ValueError("；".join(operation_errors))
+            candidate = _apply_patch_to_blueprint(blueprint, patch)
+            original_entities = {e["id"]: e for bucket in ("elements", "components")
+                                 for e in geometry.get(bucket, [])}
+            actual = {e["id"]: e for bucket in ("elements", "components")
+                      for e in candidate["geometry"].get(bucket, [])}
+            if not original_entities.keys() <= actual.keys():
+                raise ValueError("修复删除了已有实体；保留修复前蓝图")
+            candidate_brief = deepcopy(brief)
+            # 修改后的实体重新接受完整几何与设计关系校验，不能沿用旧指纹冒充通过。
+            for record in (candidate_brief.get("implementation") or {}).get("records", {}).values():
+                ids = record.get("entity_ids") or []
+                if record.get("status") == "implemented" and ids and all(i in actual for i in ids):
+                    if any(actual[i] != original_entities.get(i) for i in ids):
+                        record.setdefault("assembly_changes", []).append({"rule": "compiler.llm_repair",
+                            "source_entity_fingerprint": record.get("entity_fingerprint"),
+                            "source_entity_ids": list(ids), "operations": deepcopy(patch["operations"])})
+                        record["entity_fingerprint"] = blueprint_fingerprint([actual[i] for i in ids])
+            after = evaluate_candidate(candidate, design_document=state.get("design_document"),
+                                       design_brief=candidate_brief, source="compile_repair")
+            repair["remaining_errors"] = [str(getattr(e, "output", e)) for e in after["errors"]]
+            progress = compare_issue_sets(evaluation["issues"], after["issues"]) if evaluation else {"accepted": False}
+            before_satisfied = set(((evaluation or {}).get("fulfillment") or {}).get("satisfied_ids") or [])
+            after_satisfied = set((after.get("fulfillment") or {}).get("satisfied_ids") or [])
+            repair["accepted"] = (candidate != blueprint and before_satisfied <= after_satisfied
+                                   and (not after["errors"] or progress["accepted"]))
+            if repair["accepted"]:
+                blueprint, brief, evaluation = candidate, candidate_brief, after
+                errors = repair["remaining_errors"]
+            else:
+                repair["error"] = "修复未减少错误或损失已有设计成果，保留修复前蓝图"
+        except Exception as exc:
+            repair["error"] = f"集中修复未完成：{exc}"
+
+    records = (brief.get("implementation") or {}).get("records") or {}
+    geometry = (blueprint or {}).get("geometry")
+    geometry = geometry if isinstance(geometry, dict) else {}
+    report.update(ok=not errors, errors=errors,
+        abandoned_markers=[m for m, r in records.items() if r.get("status") == "abandoned"],
+        design_complete=bool(records) and not report["missing_markers"]
+                        and all(r.get("status") == "implemented" for r in records.values()),
+        elements=len(geometry.get("elements") or []), components=len(geometry.get("components") or []))
+    original_error = state.get("error") if state.get("status") == "failed" else None
+    error = "\n".join(filter(None, [original_error, *errors, (report.get("repair") or {}).get("error")])) or None
+    updates = {"merged_blueprint": blueprint or {}, "design_brief": brief, "validation_snapshot": {},
+               "compile_report": report, "status": "failed" if error else "complete", "error": error}
+    if state.get("plan"):
+        plan = deepcopy(state["plan"])
+        plan["llm_calls"] = plan.get("llm_calls", 0) + new_model_calls
+        updates["plan"] = plan
+    return updates
 
 
 __all__ = ["compile_node"]

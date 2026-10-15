@@ -115,9 +115,10 @@ def test_unattributed_assembly_issue_never_reopens_building_body(monkeypatch):
         return {"errors": [SimpleNamespace(output="无法定位的全局错误")],
                 "issues": [{"code": "UNKNOWN", "message": "无法定位的全局错误"}]}
     monkeypatch.setattr("app.agent.validation.candidate.evaluate_candidate", evaluation)
+    patch_services(monkeypatch, [SimpleNamespace(content="无法局部修复", reasoning="")])
     result = run(compilation.compile_node(state))
     assert result["compile_report"]["ok"] is False
     assert not result["compile_report"].get("retry_implementation")
-    assert result["compile_report"]["unattributed_issues"][0]["code"] == "UNKNOWN"
-    assert result["component_fragments"] == source_fragments
+    assert result["compile_report"]["errors"] == ["无法定位的全局错误"]
+    assert state["component_fragments"] == source_fragments
     assert all("assembly_feedback" not in i["params"] for i in result["plan"]["items"])

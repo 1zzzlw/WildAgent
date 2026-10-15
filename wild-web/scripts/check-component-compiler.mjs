@@ -109,6 +109,7 @@ try {
   assertMaterialTuningPatch(compiler)
   await assertPbrAssetIntegration(compiler)
   await assertComponentEditingHistory(compiler)
+  await assertInvalidDraftRemainsEditable(compiler)
   await assertExportUsesConciseName(compiler)
   await assertReactiveBlueprintWorkerTransfer(compiler)
   assertOpeningAnimationFrames(compiler)
@@ -923,6 +924,24 @@ async function assertGeneratedBlueprintLoadsFreshFile(compiler) {
     }
     assertEqual(sceneStore.document.blueprint.meta.name, 'HTTP 回退建筑', '最新生成文件没有加载')
     if (!sceneStore.reconstructed) throw new Error('生成文件加载后没有完成场景重建')
+
+    const failedRequest = 'req_failed_validation'
+    agentStore.startTurn(failedRequest, sessionId, '生成校验未通过的建筑')
+    const loaded = await bridge.handleBlueprintGenerated({
+      type: 'blueprint_generated', request_id: failedRequest, session_id: sessionId,
+      filename: `${sessionId}.wild`, file_url: `/api/scenes/${sessionId}.wild`, validation_passed: false,
+    })
+    assertEqual(loaded, true, '校验失败不应阻止已有建筑加载')
+    if (!sceneStore.reconstructed?.meshes.length) throw new Error('校验失败的建筑没有保留可查看的网格')
+    await bridge.handleAgentReply({
+      type: 'agent_reply', request_id: failedRequest, session_id: sessionId,
+      content: '校验未通过：缺少楼梯', validation_passed: false,
+    })
+    assertEqual(agentStore.currentTurns.find(turn => turn.request_id === failedRequest).status,
+      'error', '文件加载成功不能覆盖校验失败状态')
+    if (!agentStore.session.messages.some(message => message.content.includes('校验未通过'))) {
+      throw new Error('校验失败的建筑未显示错误信息')
+    }
   } finally {
     if (originalFetch === undefined) delete globalThis.fetch
     else globalThis.fetch = originalFetch
@@ -1343,6 +1362,38 @@ async function assertComponentEditingHistory(compiler) {
   const deleteRedo = historyStore.redo()
   if (!deleteRedo || !await sceneStore.restoreBlueprint(deleteRedo.after)) throw new Error('删除无法重做')
   assertEqual(sceneStore.document.blueprint.geometry.components.some(item => item.id === 'front_door'), false, '重做未删除依附门')
+}
+
+async function assertInvalidDraftRemainsEditable(compiler) {
+  compiler.setActivePinia(compiler.createPinia())
+  const sceneStore = compiler.useSceneStore()
+  const historyStore = compiler.useHistoryStore()
+  const source = createBlueprint()
+  source.geometry.components.push({
+    type: 'door', id: 'broken_door', parentWall: 'missing_wall',
+    from: [1, 0, 0], width: 1, height: 2, depth: 0.15,
+  })
+  await sceneStore.loadBlueprint(source)
+  if (!sceneStore.reconstructed?.meshes.length) throw new Error('错误构件导致整栋建筑没有显示')
+  if (!sceneStore.validationIssues.some(issue => issue.level === 'error')) throw new Error('草稿错误未保留')
+  const applied = await sceneStore.applyPatch({
+    type: 'scene_patch', patch_id: 'edit-invalid-draft', base_revision: sceneStore.document.revision,
+    source: 'user', mode: 'apply', requires_confirmation: false, summary: '修改有错误的草稿',
+    operations: [{ op: 'update_element', id: 'front_wall', changes: { thickness: 0.3 } }],
+  })
+  assertEqual(applied, true, '已有错误不应阻止继续编辑')
+  assertEqual(sceneStore.document.blueprint.geometry.elements.find(item => item.id === 'front_wall').thickness,
+    0.3, '有效修改被草稿错误撤销')
+  if (!JSON.parse(sceneStore.exportWild()).geometry.components.some(item => item.id === 'broken_door')) {
+    throw new Error('无法渲染的构件从可编辑蓝图中被删除')
+  }
+  const undo = historyStore.undo()
+  if (!undo || !await sceneStore.restoreBlueprint(undo.before)) throw new Error('错误草稿无法撤销修改')
+  const redo = historyStore.redo()
+  if (!redo || !await sceneStore.restoreBlueprint(redo.after)) throw new Error('错误草稿无法重做修改')
+  await sceneStore.loadBlueprint({ geometry: { elements: null, components: [] } })
+  assertEqual(JSON.parse(sceneStore.exportWild()).geometry.elements, null, '结构有误的草稿被清空或舍弃')
+  if (!sceneStore.validationIssues.some(issue => issue.level === 'error')) throw new Error('结构错误未显示')
 }
 
 async function assertExportUsesConciseName(compiler) {

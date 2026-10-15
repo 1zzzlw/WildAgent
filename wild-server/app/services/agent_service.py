@@ -1105,29 +1105,19 @@ class AgentService:
                     structured_recovery_used=recovery_used,
                 )
             modified_bp = normalize_blueprint_input(modified_bp)
-            pre_issues = validate_blueprint_schema(modified_bp)
-            if pre_issues:
-                return PatchResult(
-                    text=reply,
-                    patch=patch_data,
-                    error=(
-                        "Patch 应用后的 Blueprint 结构预检未通过: "
-                        + "; ".join(pre_issues)
-                    ),
-                    structured_source=structured_source,
-                    structured_recovery_used=recovery_used,
-                )
-            pipeline_results = run_validation_pipeline(modified_bp)
-            fatal_steps = _final_errors(pipeline_results)
-            error_summary = None
-            if fatal_steps:
-                error_summary = "校验流水线存在错误: " + "; ".join(
-                    f"Step{r.step}({r.name})" for r in fatal_steps
-                )
+            pipeline_results = []
+            try:
+                pre_issues = validate_blueprint_schema(modified_bp)
+                if pre_issues:
+                    pipeline_results.append(PipelineStepResult("patch", "validate_blueprint_schema",
+                        "; ".join(pre_issues), True, False))
+                pipeline_results.extend(run_validation_pipeline(modified_bp))
+            except Exception as exc:
+                pipeline_results.append(PipelineStepResult("patch", "validate_patch_blueprint",
+                    f"修改后草稿的校验执行失败：{exc}", True, False))
             return PatchResult(
                 text=reply,
                 patch=patch_data,
-                error=error_summary,
                 pipeline_results=pipeline_results,
                 structured_source=structured_source,
                 structured_recovery_used=recovery_used,

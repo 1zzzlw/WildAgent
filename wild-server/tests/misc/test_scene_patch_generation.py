@@ -246,7 +246,7 @@ class ScenePatchGenerationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(current, original)
         self.assertEqual(service.llm.calls, 0)
 
-    async def test_patch_node_rejects_validation_error(self):
+    async def test_patch_node_keeps_applicable_edit_and_reports_existing_validation_error(self):
         from app.agent.patch.workflow import patch_node
         from app.services.agent_service import PipelineStepResult
 
@@ -264,9 +264,11 @@ class ScenePatchGenerationTest(unittest.IsolatedAsyncioTestCase):
             result = await patch_node({
                 "user_message": "把前墙加厚", "current_blueprint": _blueprint(),
             })
-        self.assertEqual(result["status"], "failed")
-        self.assertNotIn("scene_patch", result)
-        self.assertIn("validate_collision", result["error"])
+        self.assertEqual(result["status"], "complete")
+        self.assertEqual(result["scene_patch"]["operations"][0]["id"], "wall_front")
+        self.assertIn("validate_collision", result["scene_patch"]["summary"])
+        self.assertIn("overlap", result["scene_patch"]["summary"])
+        self.assertFalse(result["patch_diag"]["validation_passed"])
 
     def test_patch_precheck_rejects_unknown_or_missing_target(self):
         issues = _validate_scene_patch_operations(_blueprint(), {

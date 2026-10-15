@@ -88,6 +88,7 @@ massing.width/depth 是所有 volumes 的总体包络控制尺寸，含附楼、
 体量起点字段名使用 x、z，不使用 x_start、z_start。
 volumes 表达需要楼层与墙宿主的空间包络；没有室内楼层的台基、山花、杆件等写在 components，按实际高度定位，不能用第 0 层或小数楼层表达它们。开敞空间与内殿围护分别说明，不把构件包围盒自动解释为一圈实墙。
 facades 的有内容数组必须与 bays 等长；没有开口或没有上层时允许写 []，程序记录为逐开间 empty 的等价格式，不添加门窗。
+facades 顶层直接写 front、back、left、right，不能再包一层 shared 或 default。
 open 表示该开间不设墙，empty 表示有实体墙但没有开口；整面开敞时写等长的 open 数组，例如 {{"bays":2,"ground_pattern":["open","open"],"upper_pattern":[]}}。[] 不表示开敞。
 共享 facades 逐面作用于所有体量（含内包体量），不同围护用 volume.facades 覆盖。文字说明不覆盖结构字段；有效布局为 open 的面没有门窗墙宿主。相接体量的共用界面一侧为 open、另一侧明确有墙时，只保留有墙侧的一份围护；内部连通门写明确实例，引用有墙侧宿主。实墙由主体实现。独立结构与装饰在 components 描述，不用同位置默认槽位重复生成。局部围护与组合示例按当前设计参考使用，案例尺寸与墙的数量不代替本次设计。
 整面围护墙若需在 components 单独描述尺寸、材料或形态，用体量 host 和 placement.face/floor 明确归属，由主体实现一次；门窗可引用该墙实例 ID，plan 会交接对应实际墙 ID。是否设计入口由当前空间用途与通行设计决定，没有门的空间不补门。

@@ -29,7 +29,7 @@ import { reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 
 function compactSceneName(name: string): string {
-  const firstClause = name.trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
+  const firstClause = String(name).trim().replace(/\s+/g, ' ').split(/[：:，,；;。]/, 1)[0]?.trim() || '未命名建筑'
   return [...firstClause].slice(0, 24).join('')
 }
 
@@ -80,7 +80,7 @@ export const useSceneStore = defineStore('scene', () => {
       blueprint: normalizedBlueprint,
       dirty: false
     }
-    validationIssues.value = validateBlueprint(normalizedBlueprint)
+    validate(normalizedBlueprint)
     return await reconstruct()
   }
 
@@ -107,28 +107,10 @@ export const useSceneStore = defineStore('scene', () => {
       ) as Blueprint
 
       // 校验
-      const issues = validateBlueprint(newBlueprint)
-      validationIssues.value = issues
-
-      const hasErrors = issues.some(i => i.level === 'error')
-      if (hasErrors) {
-        console.error('Blueprint 校验失败', issues)
-        return false
-      }
-
-      // 应用成功前，先做重建 smoke test（不 gate 提交则重建失败会导致画布变空）
-      const previousBlueprint = document.value.blueprint
+      validate(newBlueprint)
+      // 草稿已有错误也允许继续修改；重建问题保留在诊断中，不撤销用户编辑。
       document.value.blueprint = newBlueprint
-      const rebuilt = await reconstruct()
-      if (!rebuilt) {
-        // 重建失败：回滚 blueprint，不提交 patch
-        document.value.blueprint = previousBlueprint
-        await reconstruct()
-        console.error('重建 smoke test 失败，已回滚 Blueprint', newBlueprint)
-        return false
-      }
-
-      // 重建成功，正式提交
+      await reconstruct()
       document.value.revision++
       document.value.dirty = true
 
@@ -150,9 +132,7 @@ export const useSceneStore = defineStore('scene', () => {
   async function restoreBlueprint(bp: Blueprint): Promise<boolean> {
     if (!document.value) return false
     const normalizedBlueprint = normalizeBlueprintInput(deepClone(bp)) as Blueprint
-    const issues = validateBlueprint(normalizedBlueprint)
-    validationIssues.value = issues
-    if (issues.some(issue => issue.level === 'error')) return false
+    validate(normalizedBlueprint)
 
     document.value.blueprint = normalizedBlueprint
     document.value.revision++
@@ -174,7 +154,10 @@ export const useSceneStore = defineStore('scene', () => {
       return !entity.diagnostics.some(issue => issue.level === 'error')
     } catch (error) {
       console.error('重建失败', error)
-      if (requestId === reconstructionRequest) reconstructed.value = null
+      if (requestId === reconstructionRequest) {
+        reconstructed.value = null
+        validationIssues.value.push({ level: 'error', message: `场景重建失败：${String(error)}` })
+      }
       return false
     } finally {
       if (requestId === reconstructionRequest) isReconstructing.value = false
@@ -182,11 +165,14 @@ export const useSceneStore = defineStore('scene', () => {
   }
 
   // 校验当前 Blueprint，返回 ValidationIssue 列表
-  function validate(): ValidationIssue[] {
-    if (!document.value) return []
-    const issues = validateBlueprint(document.value.blueprint)
-    validationIssues.value = issues
-    return issues
+  function validate(blueprint = document.value?.blueprint): ValidationIssue[] {
+    if (!blueprint) return []
+    try {
+      validationIssues.value = validateBlueprint(blueprint)
+    } catch (error) {
+      validationIssues.value = [{ level: 'error', message: `蓝图校验执行失败：${String(error)}` }]
+    }
+    return validationIssues.value
   }
 
   function exportWild(): string {

@@ -1,7 +1,6 @@
-"""确定性编译节点入口。
+"""最终装配节点入口。
 
-流程：读取 GenerationState → 把已批准的设计图纸**确定性**编译成蓝图（零模型调用）
-→ 写回 ``skeleton_blueprint`` / ``skeleton_summary`` / ``compile_report``。
+装配已有分片，必要时集中调用模型修复一次，写回蓝图和编译诊断。
 具体用例位于 ``design_flow.compile``。
 """
 

@@ -271,6 +271,8 @@ export interface AgentReplyResponse extends AgentProtocolEnvelope {
   request_id: string
   session_id?: string
   content: string
+  /** 文件可查看与校验通过分别记录；缺省兼容普通对话与旧后端。 */
+  validation_passed?: boolean
   /** 本次回答实际引用的知识库分片，用于前端展示和追踪闭环。 */
   cited_chunk_ids?: string[]
   /** supported=有可验证引用，insufficient=证据不足，none=未使用知识库证据。 */
@@ -314,6 +316,7 @@ export interface BlueprintGeneratedResponse extends AgentProtocolEnvelope {
   session_id?: string
   filename: string
   file_url: string
+  validation_passed?: boolean
 }
 
 export interface ChatMessage {

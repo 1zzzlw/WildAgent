@@ -83,14 +83,6 @@ def _after_skeleton(state: GenerationState) -> str:
     return "__end__" if _terminal(state) or state.get("error") else "plan"
 
 
-def _after_compile(state: GenerationState) -> str:
-    if _terminal(state):
-        return "__end__"
-    if (state.get("compile_report") or {}).get("retry_implementation"):
-        return "execute"
-    return "final_validate"
-
-
 def _execution_end(state: GenerationState) -> str:
     kind = (state.get("design_document") or {}).get("decisions", {}).get("kind")
     return "compile" if kind == "architecture" else "final_validate"
@@ -98,7 +90,7 @@ def _execution_end(state: GenerationState) -> str:
 
 def _after_plan(state: GenerationState) -> str:
     if _terminal(state):
-        return "__end__"
+        return _execution_end(state)
     if state.get("design_review_status") == "pending":
         return "design_review"
     if state.get("design_review_status") == "revise":
@@ -113,13 +105,13 @@ def _after_plan(state: GenerationState) -> str:
 
 
 def _after_execute(state: GenerationState) -> str:
-    # 模型服务故障立即终止整轮，不进循环（沿用既有分类，不做重试）。
-    return "__end__" if _terminal(state) else "replanner"
+    # 故障停止模型工作，仍装配并交付已有分片。
+    return _execution_end(state) if _terminal(state) else "replanner"
 
 
 def _after_replanner(state: GenerationState) -> str:
     if _terminal(state):
-        return "__end__"
+        return _execution_end(state)
     plan = _plan_of(state)
     if plan is None:
         return _execution_end(state)
@@ -240,13 +232,13 @@ def build_generation_graph(enable_callback: bool = False, *, checkpointer=None):
     graph.add_conditional_edges("skeleton", _after_skeleton,
                                 {"plan": "plan", "__end__": END})
     # 版本失效回到审核；装配完成后使用同一候选做最终校验。
-    graph.add_conditional_edges("compile", _after_compile, {"execute": "execute", "final_validate": "final_validate", "__end__": END})
+    graph.add_edge("compile", "final_validate")
 
     graph.add_conditional_edges("plan", _after_plan,
                                 {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
                                  "design_review": "design_review", "architecture": "architecture", "__end__": END})
     graph.add_conditional_edges("execute", _after_execute,
-                                {"replanner": "replanner", "__end__": END})
+                                {"replanner": "replanner", "compile": "compile", "final_validate": "final_validate"})
     graph.add_conditional_edges("replanner", _after_replanner,
                                 {"execute": "execute", "final_validate": "final_validate", "compile": "compile",
                                  "design_review": "design_review", "architecture": "architecture", "__end__": END})

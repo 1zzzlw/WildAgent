@@ -612,18 +612,21 @@ def test_invalid_reference_is_rejected():
     assert impl.implementation_errors(blueprint)
 
 
-def test_drop_cleans_dependants_and_keeps_drawing():
-    from app.agent.design_flow.compile import _discard
+def test_failed_compile_keeps_dependants_and_drawing(monkeypatch):
+    from app.agent.design_flow.compile import compile_node
     state = empty_state()
     state["resolved_design"]["component_markers"].append({"id": "child", "depends_on": ["lattice"]})
     state["component_fragments"] = {"g": [box("p"), {"id": "c", "type": "light", "parentWall": "p"}]}
     state["component_diagnostics"] = {"g": {"elements": ["p"], "components": ["c"], "implementations": {
         "lattice": {"status": "implemented", "entity_ids": ["p"]}, "child": {"status": "implemented", "entity_ids": ["c"]}}}}
-    before = deepcopy(state["design_document"])
-    updates = _discard(state, {"lattice"}, "完整校验仍失败")
-    assert not updates["component_fragments"]["g"]
-    assert implementation_records(updates)["child"]["dependency_failure"]
-    assert state["design_document"] == before
+    state["terminal_model_error"] = {"user_message": "连接超时"}
+    before = deepcopy(state)
+    result = run(compile_node(state))
+    assert {e["id"] for bucket in ("elements", "components")
+            for e in result["merged_blueprint"]["geometry"][bucket]} == {"p", "c"}
+    assert result["status"] == "failed"
+    assert state == before
+
 
 
 def test_dependency_layers_allow_same_type_on_both_sides():
@@ -903,7 +906,7 @@ def test_assembly_feedback_reuses_references_without_repeating_lookup(monkeypatc
     assert sum(t.get("model_calls", 0) for t in trace) == 1
 
 
-def test_assembly_related_entities_are_context_and_not_additional_repair_targets(monkeypatch):
+def test_compile_failure_keeps_all_original_fragments_without_requeuing(monkeypatch):
     from app.agent.design_flow.compile import compile_node
     from app.agent.validation import candidate
     from app.agent.validation.diagnostics import blueprint_fingerprint
@@ -925,14 +928,16 @@ def test_assembly_related_entities_are_context_and_not_additional_repair_targets
     monkeypatch.setattr(candidate, "evaluate_candidate", lambda *args, **kwargs: {
         "errors": [SimpleNamespace(output="lattice_part 与 lattice2_part 的组合出现冲突")],
         "issues": [{"component_id": "lattice_part", "related_entity_ids": ["lattice2_part"]}]})
+    patch_services(monkeypatch, [SimpleNamespace(content="无可用修改", reasoning="")])
+    before = deepcopy(state)
     result = run(compile_node(state))
-    item = next(i for i in result["plan"]["items"] if "lattice" in i["target"]["marker_ids"])
-    assert item["params"]["retry_marker_ids"] == ["lattice"]
-    assert item["params"]["reference_entity_ids"] == ["lattice2_part"]
-    assert {e["id"] for e in result["component_fragments"][item["id"]]} == {"lattice2_part"}
-    failed = result["component_diagnostics"][item["id"]]["failed_implementations"]
-    assert list(failed) == ["lattice"]
-    assert failed["lattice"]["geometry"]["elements"] == [box("lattice_part")]
+    assert result["plan"]["items"] == state["plan"]["items"]
+    assert state == before
+    assert result["compile_report"]["repair"]["attempted"]
+    assert not result["compile_report"]["repair"]["accepted"]
+    assert result["compile_report"]["repair"]["original_blueprint"] == result["merged_blueprint"]
+    assert {e["id"] for e in result["merged_blueprint"]["geometry"]["elements"]} >= {"lattice_part", "lattice2_part"}
+
 
 
 def test_mutual_design_dependency_is_attempted_together():
@@ -1004,7 +1009,6 @@ def test_recorded_drawing_keeps_explicit_components_and_numeric_quotas(monkeypat
 @pytest.mark.parametrize("repaired", [True, False])
 def test_full_assembly_failure_repairs_current_fragment_once(monkeypatch, repaired):
     from app.agent.design_flow.compile import compile_node
-    from app.agent.plan.contracts import PlanDocument
     document = drawing()
     document.decisions.roof.type = "flat"
     document.decisions.components = []
@@ -1017,7 +1021,6 @@ def test_full_assembly_failure_repairs_current_fragment_once(monkeypatch, repair
     roof = {"type": "roof", "id": "roof_main", "roofType": "flat", "span": 10.4,
             "depth": 8.4, "height": 0.2, "thickness": 0.2, "position": [5, 4, 4]}
     outputs = [reply("building_body", walls + [floor]), reply("roof_main", [roof])]
-    outputs += [reply("roof_main", [{**roof, "span": 10.4, "position": [5, 3, 4]}] if repaired else [roof])]
     events = patch_services(monkeypatch, outputs)
     for item in plan.items:
         updates, _, _, _, _ = run(impl.run_marker_generate(state, item))
@@ -1025,26 +1028,25 @@ def test_full_assembly_failure_repairs_current_fragment_once(monkeypatch, repair
             state[key].update(updates[key])
         item.status = "done"
     state["plan"] = plan.model_dump(mode="json")
-    for _ in range(5):
-        result = run(compile_node(state))
-        state.update(result)
-        if result["compile_report"].get("ok"):
-            break
-        assert result["compile_report"].get("retry_implementation"), result
-        for item in PlanDocument.model_validate(state["plan"]).items:
-            if item.status != "ready":
-                continue
-            updates, _, _, _, _ = run(impl.run_marker_generate(state, item))
-            for key in updates:
-                state[key].update(updates[key])
-            item.status = "done"
-            state["plan"]["items"][int(item.id.split("_")[-1])-1] = item.model_dump(mode="json")
-    assert result["compile_report"]["ok"], result
-    record = implementation_records(state)["roof_main"]
-    assert record["attempted_stages"] == ["generate", "assembly_revision"]
-    assert "rag" in events
-    assert "web" not in events
-    assert record["status"] == ("implemented" if repaired else "abandoned")
+    patch_reply = SimpleNamespace(content=json.dumps({"summary": "修复屋面承托标高", "operations": [
+        {"op": "update_element", "id": "roof_main", "changes": {"position": [5, 3 if repaired else 4, 4]}}
+    ]}), reasoning="")
+    repair_events = patch_services(monkeypatch, [patch_reply])
+    before = deepcopy(state)
+    result = run(compile_node(state))
+    report = result["compile_report"]
+    assert report["ok"] is repaired, result
+    assert report["repair"]["accepted"] is repaired, report
+    assert repair_events == ["model"]
+    assert result["merged_blueprint"]["geometry"]["elements"], "集中修复不能清空已有建筑"
+    roof_after = next(e for e in result["merged_blueprint"]["geometry"]["elements"] if e["id"] == "roof_main")
+    assert roof_after["position"] == [5, 3 if repaired else 4, 4]
+    assert state == before
+    again = run(compile_node({**state, **result}))
+    assert repair_events == ["model"], "集中修复最多调用一次，不因再次编译重复调用"
+    assert again["merged_blueprint"] == result["merged_blueprint"]
+    assert again["plan"]["llm_calls"] == result["plan"]["llm_calls"]
+
 
 
 def test_malformed_marker_id_is_revised_instead_of_crashing(monkeypatch):
@@ -1084,7 +1086,7 @@ def test_batch_retry_preserves_other_successful_markers(monkeypatch):
 
 
 
-def test_invalid_remaining_building_is_not_exposed_as_final_file():
+def test_invalid_remaining_building_is_preserved_with_failed_validation():
     from app.agent.validation.workflow import validate_node
     state = empty_state()
     bad = box()
@@ -1094,7 +1096,21 @@ def test_invalid_remaining_building_is_not_exposed_as_final_file():
     result = run(validate_node(state))
     assert result["status"] == "failed"
     assert result["validation_error_count"] > 0
-    assert result["final_blueprint"] == {}
+    assert result["final_blueprint"] == state["merged_blueprint"]
+    assert result["validation_snapshot"]["status"] == "failed"
+
+
+def test_missing_implementation_marker_still_returns_existing_assembled_geometry(monkeypatch):
+    from app.agent.design_flow.compile import compile_node
+    state = empty_state()
+    state["plan"] = expand_design_markers(state).model_dump(mode="json")
+    state["component_fragments"] = {"body": [box()]}
+    state["component_diagnostics"] = {"body": {"elements": ["part"], "components": [],
+        "implementations": {"building_body": {"status": "implemented", "entity_ids": ["part"]}}}}
+    patch_services(monkeypatch, [SimpleNamespace(content="无可用修改", reasoning="")])
+    result = run(compile_node(state))
+    assert result["status"] == "failed" and "未完成" in result["error"]
+    assert result["merged_blueprint"]["geometry"]["elements"] == [box()]
 
 
 def test_explicit_opening_replaces_one_slot_and_preserves_remaining_slots():
@@ -1141,7 +1157,8 @@ def test_execution_and_reconciliation_finish_all_assembly_stages(monkeypatch):
     floor = {"type": "floor", "id": "floor_main", "from": [0, 0, 0], "to": [10, 0, 8], "thickness": 0.2}
     roof = {"type": "roof", "id": "roof_main", "roofType": "flat", "span": 10.4,
             "depth": 8.4, "height": 0.2, "thickness": 0.2, "position": [5, 4, 4]}
-    outputs = [reply("building_body", walls+[floor])] + [reply("roof_main", [roof]) for _ in range(2)]
+    outputs = [reply("building_body", walls+[floor]), reply("roof_main", [roof]),
+               SimpleNamespace(content="无法修复", reasoning="")]
     events = patch_services(monkeypatch, outputs)
     def merge(updates):
         for key, value in updates.items():
@@ -1161,12 +1178,13 @@ def test_execution_and_reconciliation_finish_all_assembly_stages(monkeypatch):
                 break
     else:
         raise AssertionError("建筑实现循环未按尝试次数结束")
-    assert result["compile_report"]["ok"], result
-    assert implementation_records(state)["roof_main"]["status"] == "abandoned"
+    assert not result["compile_report"]["ok"], result
+    assert implementation_records(state)["roof_main"]["status"] == "implemented"
     assert state["plan"]["llm_calls"] == 3
     roof_task = next(i for i in state["plan"]["items"] if "roof_main" in i["target"]["marker_ids"])
-    assert roof_task["status"] == "abandoned"
-    assert roof_task["run"]["artifacts"] == []
+    assert roof_task["status"] == "done"
+    assert roof_task["run"]["artifacts"] == ["roof_main"]
+    assert any(e["id"] == "roof_main" for e in result["merged_blueprint"]["geometry"]["elements"])
     assert not state["plan"]["give_up"]
     assert events == ["rag", "model", "rag", "model", "model"]
 
@@ -1198,3 +1216,82 @@ def test_malformed_component_list_returns_to_format_revision(monkeypatch, malfor
     assert result["design_review_status"] == "pending", result
     assert result["architecture_diag"]["model_calls"] == 2
     assert result["design_document"]["decisions"]["components"][0]["id"] == "lattice"
+
+
+@pytest.mark.parametrize("failure", ["invalid_json", "timeout", "removal", "partial_improvement"])
+def test_one_compile_repair_preserves_source_and_keeps_remaining_errors(monkeypatch, failure):
+    from app.agent.design_flow import compile as compiler
+    from app.agent.validation import candidate
+    import app.llm.invocation as invocation
+    state = empty_state()
+    state["plan"] = expand_design_markers(state).model_dump(mode="json")
+    blueprint = deepcopy(state["skeleton_blueprint"])
+    blueprint["geometry"]["elements"] = [box("keep")]
+    monkeypatch.setattr(compiler, "_assemble_with_relations", lambda *args: (deepcopy(blueprint), [], {}))
+    missing_stair = {"code": "missing_stair", "entity_id": None, "message": "缺少楼梯"}
+    bad_size = {"code": "size", "entity_id": "keep", "message": "尺寸不满足图纸"}
+    def evaluate(bp, **kwargs):
+        issues = [missing_stair]
+        if bp["geometry"]["elements"][0]["dimensions"][0] == 1:
+            issues.append(bad_size)
+        return {"errors": [SimpleNamespace(output=i["message"]) for i in issues],
+                "issues": issues, "fulfillment": {"satisfied_ids": ["existing"]}}
+    monkeypatch.setattr(candidate, "evaluate_candidate", evaluate)
+    patch_data = {"summary": "修复尺寸", "operations": [
+        {"op": "update_element", "id": "keep", "changes": {"dimensions": [2, 1, 1]}}]}
+    if failure == "removal":
+        patch_data["operations"] = [{"op": "remove_element", "id": "keep"}]
+    events = patch_services(monkeypatch, [SimpleNamespace(
+        content="无法解析" if failure == "invalid_json" else json.dumps(patch_data), reasoning="")])
+    if failure == "timeout":
+        async def unavailable(*args, **kwargs):
+            events.append("model")
+            raise TimeoutError("service unavailable")
+        monkeypatch.setattr(invocation, "invoke_llm", unavailable)
+    result = run(compiler.compile_node(state))
+    assert events == ["model"]
+    assert result["status"] == "failed"
+    assert result["compile_report"]["repair"]["accepted"] is (failure == "partial_improvement")
+    assert result["compile_report"]["repair"]["original_blueprint"] == blueprint
+    assert result["merged_blueprint"]["geometry"]["elements"][0]["id"] == "keep"
+    if failure == "partial_improvement":
+        assert result["merged_blueprint"]["geometry"]["elements"][0]["dimensions"][0] == 2
+        assert result["compile_report"]["errors"] == ["缺少楼梯"]
+    else:
+        assert result["merged_blueprint"] == blueprint
+
+
+def test_abandoned_body_candidate_is_compiled_when_no_accepted_entities_exist():
+    from app.agent.design_flow.compile import compile_node
+    state = empty_state()
+    state["plan"] = expand_design_markers(state).model_dump(mode="json")
+    state["component_diagnostics"] = {"body": {
+        "implementations": {"building_body": {"status": "abandoned", "entity_ids": [], "reason": "几何校验失败"}},
+        "failed_implementations": {"building_body": {"geometry": {"elements": [box("raw_body")], "components": []}}}}}
+    state["terminal_model_error"] = {"user_message": "模型超时"}
+    result = run(compile_node(state))
+    assert result["merged_blueprint"]["geometry"]["elements"] == [box("raw_body")]
+    assert not result["compile_report"].get("repair")
+    assert result["status"] == "failed"
+
+
+def test_compile_repair_streams_reasoning_through_graph_callback(monkeypatch):
+    import app.llm.invocation as invocation
+    from app.agent.runtime import bind_reasoning_callback, reset_reasoning_callback
+    deltas = []
+
+    async def emit(node, delta):
+        deltas.append((node, delta))
+
+    async def streaming(llm, messages, *, on_reasoning_delta):
+        await on_reasoning_delta("修订尺寸")
+        return await invocation.invoke_llm(llm, messages)
+
+    monkeypatch.setattr(invocation, "stream_llm", streaming)
+    token = bind_reasoning_callback(emit)
+    try:
+        test_one_compile_repair_preserves_source_and_keeps_remaining_errors(monkeypatch, "partial_improvement")
+    finally:
+        reset_reasoning_callback(token)
+    assert ("compile", "修订尺寸") in deltas
+    assert any(node == "compile:progress" for node, _ in deltas)

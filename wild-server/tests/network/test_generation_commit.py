@@ -3,14 +3,29 @@
 import json
 import tempfile
 import unittest
+import sqlite3
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from app.services.agent_delivery import commit_generation_result
 from app.utils.blueprint_parser import save_blueprint_file_as
 
 
 class AtomicSaveTest(unittest.TestCase):
+    def test_saved_file_event_is_broadcast_even_if_history_database_is_locked(self):
+        from app.services.generation_job_service import DurableEventSink
+        service = Mock()
+        service.publish_event = AsyncMock(side_effect=sqlite3.OperationalError("database is locked"))
+        service._broadcast = AsyncMock()
+        sink = DurableEventSink(service, "req_locked")
+        event = {"type": "blueprint_generated", "request_id": "req_locked", "filename": "draft.wild"}
+        coroutine = sink.send_json(event)
+        with self.assertRaises(StopIteration):
+            coroutine.send(None)
+        service._broadcast.assert_awaited_once()
+        assert service._broadcast.call_args.args[1]["filename"] == "draft.wild"
+        assert sink.failed and "database is locked" in sink.error
+
     def test_save_is_atomic_and_leaves_no_temp_file(self):
         blueprint = {"meta": {"name": "x"}, "geometry": {"elements": [], "components": []}}
         with tempfile.TemporaryDirectory() as tmp:

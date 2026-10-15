@@ -1,6 +1,7 @@
-"""Blueprint 生成结果的统一校验门禁、保存和摘要出口。"""
+"""Blueprint 生成结果的统一保存和校验报告出口。"""
 
 from dataclasses import dataclass
+from copy import deepcopy
 import datetime as _dt
 import re as _re
 
@@ -18,11 +19,10 @@ class GenerationRejectedError(RuntimeError):
 
 
 class ArtifactSaveError(RuntimeError):
-    """生成结果有效，但服务端文件保存失败。"""
+    """服务端文件保存失败。"""
 
 
-# 交付门禁的警告阈值：超过该值的 Blueprint 判定为“满屏警告”，即使没有 ❌
-# 错误也拒绝交付，要求先进入回调修复；少量警告（正常生成的常见水平）不受影响。
+# 超过此值仍记为校验错误，但不阻止保存已有结果。
 WARNING_GATE_MAX = 20
 
 
@@ -42,18 +42,21 @@ class BlueprintDelivery:
     elements_count: int
     components_count: int
     validation: ValidationSummary
-    #: 🔴 P4 设计履约报告（`app.design.fulfillment.fulfillment_summary` 的形状）。
-    #: 与 :attr:`validation` **分开**：validation 决定"能不能保存"，fulfillment 决定
-    #: "用户要的东西兑现了没有"。旧调用方不传时为 ``None``，回复文案保持原样。
     fulfillment: dict | None = None
+    validation_passed: bool = True
+    validation_errors: tuple[str, ...] = ()
 
     @property
     def reply(self) -> str:
         base = (
             f"已生成 {self.name or '建筑'}（{self.elements_count} 元素 + "
             f"{self.components_count} 组件，校验 {self.validation.passed}✓ "
-            f"{self.validation.warnings}⚠），已保存为 `{self.filename}`。"
+            f"{self.validation.warnings}⚠ {self.validation.errors}✗），已保存为 `{self.filename}`。"
         )
+        if not self.validation_passed:
+            base += "校验未通过，已保留现有结果供查看和修改。"
+        if self.validation_errors:
+            base += "\n\n校验错误：\n" + "\n".join(f"- {error}" for error in self.validation_errors)
         if not self.fulfillment or not self.fulfillment.get("total"):
             return base
         implementation = self.fulfillment.get("implementation_summary") or {}
@@ -126,6 +129,49 @@ def _safe_name_slug(name: str, max_len: int = 40) -> str:
     return _re.sub(r"_+", "_", value).strip("_")[:max_len]
 
 
+def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> dict | None:
+    """从已有产物或分片恢复可编辑草稿，不因校验结果丢弃数据。"""
+    candidates = [state.get("final_blueprint"), state.get("merged_blueprint")]
+    fragments = state.get("component_fragments") or {}
+    diagnostics = state.get("component_diagnostics") or {}
+    failed_rows = [row for diag in diagnostics.values()
+                   for row in (diag.get("failed_implementations") or {}).values()
+                   if isinstance(row, dict) and isinstance(row.get("geometry"), dict)]
+    if failed_rows or (isinstance(fragments, dict) and any(isinstance(parts, list) and parts for parts in fragments.values())):
+        draft = deepcopy(state.get("skeleton_blueprint") or {"meta": {}, "geometry": {}})
+        geometry = draft.setdefault("geometry", {})
+        for bucket in ("elements", "components"):
+            geometry[bucket] = list(geometry.get(bucket) or [])
+        for task_id, parts in fragments.items():
+            diag = diagnostics.get(task_id) or {}
+            component_ids = set(diag.get("components") or [])
+            for entity in parts if isinstance(parts, list) else []:
+                bucket = "components" if isinstance(entity, dict) and entity.get("id") in component_ids else "elements"
+                geometry[bucket].append(deepcopy(entity))
+            for resource in ("materials", "assets"):
+                for name, definition in (diag.get(resource) or {}).items():
+                    draft.setdefault(resource, {}).setdefault(name, deepcopy(definition))
+        for row in failed_rows:
+            for bucket in ("elements", "components"):
+                parts = row["geometry"].get(bucket)
+                if isinstance(parts, list):
+                    geometry[bucket].extend(deepcopy(parts))
+            for resource in ("materials", "assets"):
+                definitions = row.get(resource)
+                if isinstance(definitions, dict):
+                    for name, definition in definitions.items():
+                        draft.setdefault(resource, {}).setdefault(name, deepcopy(definition))
+        candidates.append(draft)
+    candidates.extend([fallback, state.get("skeleton_blueprint"), state.get("current_blueprint")])
+    available = [value for value in candidates if isinstance(value, dict) and value]
+    for blueprint in available:
+        geometry = blueprint.get("geometry")
+        if isinstance(geometry, dict) and any(isinstance(geometry.get(key), list) and geometry[key]
+                                              for key in ("elements", "components")):
+            return deepcopy(blueprint)
+    return deepcopy(available[0]) if available else None
+
+
 def prepare_blueprint_delivery(
     blueprint: dict,
     session_id: str,
@@ -137,42 +183,37 @@ def prepare_blueprint_delivery(
     fulfillment: dict | None = None,
     validation_snapshot: dict | None = None,
 ) -> BlueprintDelivery:
-    """只有完整通过最终校验的 Blueprint 才会写入场景目录。
-
-    🔴 ``fulfillment``（P4 设计履约）**不参与门禁**：``open`` 的设计要求仍然交付，
-    只在回复里如实展示缺口。把它并进 ``summary.errors`` 会让"合法但不完整"变成
-    "不许保存"，与 P4 的交付政策相反。
-    """
+    """保存已有实体；校验失败或证据不一致均保留为错误报告。"""
+    if not isinstance(blueprint, dict):
+        raise GenerationRejectedError("没有可保存的蓝图对象")
+    meta = blueprint.get("meta")
+    meta = meta if isinstance(meta, dict) else {}
+    summary = summarize_validation(
+        validation_results,
+        error_count=error_count,
+        warning_count=warning_count,
+    )
     if validation_snapshot is not None:
         from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
         from app.agent.validation.diagnostics import step_result_to_dict
         evidence_results = [step_result_to_dict(result) for result in validation_results]
         if (validation_snapshot.get("blueprint_fingerprint") != blueprint_fingerprint(blueprint)
                 or validation_snapshot.get("validator_version") != VALIDATOR_VERSION
-                or validation_snapshot.get("status") != "complete"
                 or validation_snapshot.get("results") != evidence_results
-                or validation_snapshot.get("error_count", 0) != 0
+                or validation_snapshot.get("error_count", 0) != summary.errors
                 or (validation_snapshot.get("design_hash") and (
-                    blueprint.get("meta", {}).get("designHash") != validation_snapshot["design_hash"]
-                    or blueprint.get("meta", {}).get("designRevision") != validation_snapshot["design_revision"]))
+                    meta.get("designHash") != validation_snapshot["design_hash"]
+                    or meta.get("designRevision") != validation_snapshot["design_revision"]))
                 or (fulfillment and fulfillment.get("blueprint_fingerprint") != blueprint_fingerprint(blueprint))):
-            raise GenerationRejectedError("校验证据与当前交付内容不一致，请重新进行完整校验")
-    summary = summarize_validation(
-        validation_results,
-        error_count=error_count,
-        warning_count=warning_count,
-    )
-    if status != "complete" or summary.errors > 0:
-        raise GenerationRejectedError(
-            f"校验结果：{summary.passed}✓ {summary.warnings}⚠ {summary.errors}✗"
-        )
-    if summary.warnings > WARNING_GATE_MAX:
-        raise GenerationRejectedError(
-            f"校验警告过多（{summary.warnings} > {WARNING_GATE_MAX}），"
-            f"生成结果仍有未解决的几何问题，已阻止保存和加载。"
-        )
+            validation_results = [*validation_results, {
+                "step": "delivery", "name": "validate_delivery_evidence",
+                "output": "校验证据与当前交付内容不一致，请重新进行完整校验",
+                "has_error": True, "has_warning": False,
+            }]
+            summary = summarize_validation(validation_results, error_count=summary.errors + 1,
+                                           warning_count=summary.warnings)
 
-    meta_name = blueprint.get("meta", {}).get("name", "") or ""
+    meta_name = str(meta.get("name") or "")
     display_name = compact_blueprint_title(meta_name)
     slug = _safe_name_slug(display_name)
     filename = f"{session_id}_{slug}.wild" if slug else f"{session_id}.wild"
@@ -183,15 +224,22 @@ def prepare_blueprint_delivery(
     except Exception as exc:
         raise ArtifactSaveError(str(exc)) from exc
 
-    geometry = blueprint.get("geometry", {})
+    geometry = blueprint.get("geometry")
+    geometry = geometry if isinstance(geometry, dict) else {}
     return BlueprintDelivery(
         filename=rel_path,
         file_url=f"/api/scenes/{rel_path}",
         name=display_name,
-        elements_count=len(geometry.get("elements", [])),
-        components_count=len(geometry.get("components", [])),
+        elements_count=len(geometry["elements"]) if isinstance(geometry.get("elements"), list) else 0,
+        components_count=len(geometry["components"]) if isinstance(geometry.get("components"), list) else 0,
         validation=summary,
         fulfillment=fulfillment,
+        validation_passed=(status == "complete" and summary.errors == 0 and summary.warnings <= WARNING_GATE_MAX
+                           and (validation_snapshot is None or validation_snapshot.get("status") == "complete")),
+        validation_errors=tuple(
+            f"{_field(result, 'name', 'unknown')}: {_field(result, 'output', '')}"
+            for result in final_validation_results(validation_results) if _field(result, "has_error", False)
+        ),
     )
 
 
@@ -214,12 +262,17 @@ def commit_generation_result(
     - 顺序契约：先原子落盘 .wild（``prepare_blueprint_delivery`` 内部保证），再让
       调用方发布 ``blueprint_generated`` / ``agent_reply`` 终端事件；落盘失败抛
       ``ArtifactSaveError``，调用方不得继续发成功事件。
-    - 校验门禁不变：``status != "complete"`` 或存在错误时抛 ``GenerationRejectedError``；
-      ``fulfillment`` 只进回复文案，不进门禁（P4）。
+    - 校验未通过也保存已有实体，失败状态和错误报告随产物返回。
     """
     logger.info(f"[{request_id}] 提交生成结果: session={session_id}")
     if validation_snapshot is None:
-        raise GenerationRejectedError("生成结果缺少完整校验快照，已阻止保存")
+        validation_results = [*validation_results, {
+            "step": "delivery", "name": "validate_delivery_evidence",
+            "output": "生成结果缺少完整校验快照，已有实体仍保留供查看",
+            "has_error": True, "has_warning": False,
+        }]
+        status = "failed"
+        error_count = (error_count or 0) + 1
     return prepare_blueprint_delivery(
         blueprint,
         session_id,

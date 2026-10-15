@@ -30,6 +30,7 @@ async def validate_node(state: GenerationState) -> dict:
         logger.error(f"[validate_node] 模型服务故障，跳过建筑校验: {error_message}")
         return {
             "terminal_model_error": terminal_model_error,
+            "final_blueprint": state.get("merged_blueprint") or {},
             "error": error_message,
             "status": "failed",
             "retry_count": state.get("retry_count", 0),
@@ -61,6 +62,12 @@ async def validate_node(state: GenerationState) -> dict:
         )
         current_fingerprint = evaluation["snapshot"]["blueprint_fingerprint"]
         pipeline_results = evaluation["results"]
+        compilation_error = state.get("error") if state.get("status") == "failed" else None
+        if compilation_error:
+            from app.services.agent_service import PipelineStepResult
+            pipeline_results = [*pipeline_results, PipelineStepResult(
+                "compile", "compile_draft", compilation_error, True, False,
+            )]
         design_errors = evaluation["snapshot"]["design_errors"]
         fulfillment = evaluation["fulfillment"]
         cache_reused = False
@@ -155,7 +162,7 @@ async def validate_node(state: GenerationState) -> dict:
             "passed_component_ids": passed_component_ids,
             "status": status,
             "error": error_summary,
-            "final_blueprint": {} if architectural and final_errors else merged_blueprint,
+            "final_blueprint": merged_blueprint,
             "retry_count": state.get("retry_count", 0),
             "max_retries": state.get("max_retries", 3),
             "repair_audit": ({"accepted": False, "stop_reason": "design_revision_required",
@@ -168,6 +175,7 @@ async def validate_node(state: GenerationState) -> dict:
         return {
             "error": f"校验流水线执行失败: {str(e)}",
             "status": "failed",
+            "final_blueprint": merged_blueprint,
         }
 
 

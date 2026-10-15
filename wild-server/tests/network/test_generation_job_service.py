@@ -76,6 +76,28 @@ class GenerationJobServiceTest(unittest.IsolatedAsyncioTestCase):
         self.services.append(service)
         return service
 
+    async def test_saved_blueprint_with_failed_validation_remains_failed_on_replay(self):
+        service = self.make_service()
+
+        async def runner(sink, payload, _resume):
+            await sink.send_json({"type": "blueprint_generated", "request_id": payload["request_id"],
+                                  "session_id": payload["session_id"], "filename": "preview.wild",
+                                  "file_url": "/api/scenes/preview.wild", "validation_passed": False})
+            await sink.send_json({"type": "agent_reply", "request_id": payload["request_id"],
+                                  "session_id": payload["session_id"], "content": "校验未通过：缺少楼梯",
+                                  "validation_passed": False})
+
+        await service.startup(runner)
+        subscriber = RecordingSubscriber()
+        await service.start_job({"request_id": "req_preview_failed", "session_id": "session_preview_failed",
+                                 "message": "生成建筑"}, subscriber)
+        await self.wait_for_status(service, "req_preview_failed", "failed")
+        job = await service.get_job("req_preview_failed")
+        assert job.status == "failed" and "缺少楼梯" in job.error
+        events = await service.events_after("req_preview_failed", 0)
+        assert [event["type"] for event in events] == ["blueprint_generated", "agent_reply"]
+        assert all(event["validation_passed"] is False for event in events)
+
     async def wait_for_status(
         self,
         service: GenerationJobService,

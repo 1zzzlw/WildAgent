@@ -18,7 +18,8 @@ from app.extensions.presence import WebSocketConnectionRegistry
 from app.services.generation_job_service import GenerationJob, GenerationJobService
 
 
-async def _run_graph_request(ws, data, outputs, reasoning_delta=None, reasoning_node="patch"):
+async def _run_graph_request(ws, data, outputs, reasoning_delta=None, reasoning_node="patch", *,
+                             stream_error=None, state_error=None):
     captured = {}
 
     class Graph:
@@ -30,8 +31,12 @@ async def _run_graph_request(ws, data, outputs, reasoning_delta=None, reasoning_
                 await get_reasoning_callback()(reasoning_node, reasoning_delta)
             for node, output in outputs.items():
                 yield {"event": "on_chain_end", "name": node, "data": {"output": output}}
+            if stream_error is not None:
+                raise stream_error
 
         async def aget_state(self, _config):
+            if state_error is not None:
+                raise state_error
             values = {}
             for output in outputs.values():
                 values.update(output)
@@ -360,7 +365,8 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
         ws.send_json = AsyncMock()
         blueprint = {
             "meta": {"version": "1.1", "type": "building", "name": "缓存回归建筑"},
-            "geometry": {"elements": []},
+            "geometry": {"elements": [{"id": "floor", "type": "floor", "from": [0, 0, 0],
+                                       "to": [4, 0, 4], "thickness": 0.2}]},
             "materials": {},
             "behaviors": {},
         }
@@ -397,4 +403,109 @@ class GeneratedBlueprintResponseTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(generated["file_url"], f"/api/scenes/{generated['filename']}")
         self.assertNotIn("blueprint", generated)
+        self.assertTrue(generated["validation_passed"])
         self.assertTrue(all(msg["protocol_version"] == "1.0" for msg in messages))
+
+    async def test_failed_validation_still_saves_and_publishes_file_without_success_state(self):
+        from app.agent.validation.diagnostics import VALIDATOR_VERSION, blueprint_fingerprint
+        blueprint = {"meta": {"version": "1.1", "type": "building", "name": "待修改建筑",
+                              "designHash": "approved", "designRevision": 1},
+                     "geometry": {"elements": [{"id": "box", "type": "primitive", "shape": "box",
+                                                "position": [0, 0, 0], "dimensions": [1, 1, 1]}]},
+                     "materials": {}}
+        error = {"step": "design", "name": "validate_design_brief", "has_error": True,
+                 "has_warning": False, "output": "缺少楼梯；" + "完整错误详情" * 40}
+        evaluation = {"snapshot": {"blueprint_fingerprint": blueprint_fingerprint(blueprint),
+            "validator_version": VALIDATOR_VERSION, "results": [error], "error_count": 1,
+            "warning_count": 0, "status": "partial"}, "fulfillment": None}
+        ws = Mock(send_json=AsyncMock())
+        with (
+            patch("app.agent.validation.candidate.evaluate_candidate", return_value=evaluation) as evaluate,
+            patch("app.services.agent_delivery.save_blueprint_file_as") as save,
+            patch("app.design.repository.design_repository.mark_compiled") as mark_compiled,
+        ):
+            await _run_graph_request(ws, {"request_id": "req_failed_preview", "session_id": "session_failed_preview",
+                "message": "生成建筑"}, {"classifier": {"intent": "generate"},
+                    "compile": {"merged_blueprint": blueprint, "design_document": {"revision": 1}},
+                    "final_validate": {"status": "failed", "validation_results": [error],
+                    "validation_error_count": 1, "validation_warning_count": 0}})
+
+        save.assert_called_once()
+        mark_compiled.assert_not_called()
+        assert evaluate.call_args.kwargs["design_document"] == {"revision": 1}
+        messages = [call.args[0] for call in ws.send_json.await_args_list]
+        generated = next(message for message in messages if message["type"] == "blueprint_generated")
+        reply = next(message for message in messages if message["type"] == "agent_reply")
+        assert generated["validation_passed"] is False and reply["validation_passed"] is False
+        assert generated["file_url"].endswith(generated["filename"])
+        assert error["output"] in reply["content"]
+        detail = next(message for message in messages if message.get("stage") == "validating")
+        assert detail["detail"] == error["output"]
+        terminal = next(message for message in messages if message.get("stage") == "finished")
+        assert terminal["status"] == "error"
+
+    async def test_validation_exception_preserves_existing_checkpoint_geometry(self):
+        blueprint = {"meta": {"name": "已有建筑"}, "geometry": {"elements": [{"id": "box"}]}}
+        ws = Mock(send_json=AsyncMock())
+        with (
+            patch("app.agent.validation.candidate.evaluate_candidate", side_effect=RuntimeError("validator unavailable")),
+            patch("app.services.agent_delivery.save_blueprint_file_as") as save,
+        ):
+            await _run_graph_request(ws, {"request_id": "req_validation_exception",
+                "session_id": "session_validation_exception", "message": "生成建筑"}, {
+                    "classifier": {"intent": "generate"}, "compile": {"merged_blueprint": blueprint},
+                    "final_validate": {"status": "failed", "error": "校验流水线执行失败"}})
+        save.assert_called_once()
+        assert save.call_args.args[0] == blueprint
+        messages = [call.args[0] for call in ws.send_json.await_args_list]
+        assert any(message["type"] == "blueprint_generated" for message in messages)
+        reply = next(message for message in messages if message["type"] == "agent_reply")
+        assert reply["validation_passed"] is False
+        assert "validator unavailable" in reply["content"]
+
+    async def test_graph_abort_and_checkpoint_lock_preserve_observed_fragment_updates(self):
+        import sqlite3
+        blueprint = {"meta": {"name": "草稿"}, "geometry": {"elements": [], "components": []}}
+        outputs = {"classifier": {"intent": "generate"}, "skeleton": {"skeleton_blueprint": blueprint},
+            "execute": {"component_fragments": {"a": [{"id": "wall_a"}]},
+                        "component_diagnostics": {"a": {"elements": ["wall_a"], "components": []}}},
+            "replanner": {"component_fragments": {"b": [{"id": "wall_b"}]},
+                          "component_diagnostics": {"b": {"elements": ["wall_b"], "components": []}}}}
+        for stream_error in (None, RuntimeError("execution interrupted")):
+            with self.subTest(stream_error=stream_error):
+                ws = Mock(send_json=AsyncMock())
+                with (
+                    patch("app.agent.validation.candidate.evaluate_candidate", side_effect=RuntimeError("draft validation failed")),
+                    patch("app.services.agent_delivery.save_blueprint_file_as") as save,
+                ):
+                    await _run_graph_request(ws, {"request_id": "req_locked", "session_id": "session_locked",
+                        "message": "继续编辑建筑"}, outputs, stream_error=stream_error,
+                        state_error=sqlite3.OperationalError("database is locked"))
+                save.assert_called_once()
+                assert [entity["id"] for entity in save.call_args.args[0]["geometry"]["elements"]] == ["wall_a", "wall_b"]
+                messages = [call.args[0] for call in ws.send_json.await_args_list]
+                assert any(message["type"] == "blueprint_generated" for message in messages)
+                reply = next(message for message in messages if message["type"] == "agent_reply")
+                assert reply["validation_passed"] is False
+                assert ("execution interrupted" if stream_error else "database is locked") in reply["content"]
+
+
+    async def test_post_plan_stream_abort_runs_compile_before_delivering_draft(self):
+        blueprint = {"meta": {"name": "中断草稿"}, "geometry": {"elements": [{"id": "wall_a"}]}}
+        ws = Mock(send_json=AsyncMock())
+        with (
+            patch("app.agent.nodes.compile_node.compile_node", new=AsyncMock(return_value={
+                "merged_blueprint": blueprint, "compile_report": {"ok": False, "errors": ["缺少楼梯"]},
+                "status": "failed", "error": "缺少楼梯"})) as compile_draft,
+            patch("app.agent.validation.candidate.evaluate_candidate", side_effect=RuntimeError("draft validation failed")),
+            patch("app.services.agent_delivery.save_blueprint_file_as") as save,
+        ):
+            await _run_graph_request(ws, {"request_id": "req_post_plan_abort", "session_id": "session_post_plan_abort",
+                "message": "生成建筑"}, {"classifier": {"intent": "generate"},
+                "plan": {"plan": {"items": []}, "design_document": {"decisions": {"kind": "architecture"}},
+                         "component_fragments": {"a": [{"id": "wall_a"}]}}},
+                stream_error=RuntimeError("execution interrupted"))
+        compile_draft.assert_awaited_once()
+        save.assert_called_once()
+        assert save.call_args.args[0] == blueprint
+        assert any(call.args[0]["type"] == "blueprint_generated" for call in ws.send_json.await_args_list)

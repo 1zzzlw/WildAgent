@@ -349,38 +349,41 @@ def test_failed_stair_keeps_its_support_and_decoration_in_the_same_revision():
     assert rejected["row"]["geometry"] == row["geometry"]
 
 
-def test_compiler_does_not_resign_tampered_source_floor():
+def test_compiler_does_not_resign_tampered_source_floor(monkeypatch):
+    from types import SimpleNamespace
+    from tests.plan.test_drawing_implementation import patch_services
     state, _ = state_with_stair()
     body_task = next(i for i in state["plan"]["items"] if i["kind"] == "building_body")
     floor = next(e for e in state["component_fragments"][body_task["id"]] if e["id"] == "floor_1")
     floor["thickness"] = 0.16
+    patch_services(monkeypatch, [SimpleNamespace(content="无法修复", reasoning="")])
     result = run(compile_node(state))
-    assert result["compile_report"]["retry_implementation"]
-    assert "实现被修改" in result["compile_report"]["reason"]
+    assert not result["compile_report"].get("retry_implementation")
+    assert any("实现被修改" in error for error in result["compile_report"]["errors"])
 
 
 @pytest.mark.parametrize("exhausted", [False, True])
-def test_missing_stair_returns_to_its_marker_and_never_rebuilds_body(exhausted):
+def test_missing_stair_keeps_body_and_does_not_repeat_plan(exhausted, monkeypatch):
+    from types import SimpleNamespace
+    from tests.plan.test_drawing_implementation import patch_services
     state, _ = state_with_stair(stair_status="abandoned", exhausted=exhausted)
     task_id = next(i["id"] for i in state["plan"]["items"] if i["kind"] == "stair")
     failed_row = {"id": "stairs", "geometry": {"elements": [{"type": "stair", "id": "wrong_flight",
         "from": [5, 0, 5], "to": [5, 3.2, 11], "width": 1.2}], "components": []}}
     state["component_diagnostics"][task_id]["failed_implementations"] = {"stairs": deepcopy(failed_row)}
     state["component_diagnostics"][task_id]["failures"] = {"stairs": "终点没有承托"}
+    patch_services(monkeypatch, [SimpleNamespace(content="无法修复", reasoning="")])
     result = run(compile_node(state))
     body_task = next(i for i in result["plan"]["items"] if i["kind"] == "building_body")
     stair_task = next(i for i in result["plan"]["items"] if i["kind"] == "stair")
     assert body_task["status"] == "done"
     assert "assembly_feedback" not in body_task["params"]
-    assert result["component_fragments"][body_task["id"]] == state["component_fragments"][body_task["id"]]
-    if exhausted:
-        assert result["compile_report"]["ok"] is False
-        assert not result["compile_report"].get("retry_implementation")
-        assert implementation_records(result)["stairs"]["reason"] == "楼梯实现失败"
-    else:
-        assert result["compile_report"]["retry_implementation"]
-        assert stair_task["params"]["retry_marker_ids"] == ["stairs"]
-        assert result["component_diagnostics"][task_id]["failed_implementations"]["stairs"] == failed_row
+    assert result["compile_report"]["ok"] is False
+    assert not result["compile_report"].get("retry_implementation")
+    assert stair_task["status"] == "abandoned"
+    assert implementation_records(state)["stairs"]["reason"] == "楼梯实现失败"
+    assert state["component_diagnostics"][task_id]["failed_implementations"]["stairs"] == failed_row
+    assert result["merged_blueprint"]["geometry"]["elements"]
 
 
 def test_local_revision_fixes_endpoint_before_assembly_and_reuses_knowledge(monkeypatch):
@@ -452,15 +455,19 @@ def test_assembly_retry_receives_last_failed_stair_geometry_and_local_reason(mon
     assert implementation_records(updates)["stairs"]["status"] == "implemented"
 
 
-def test_discarding_invalid_stair_restores_unsplit_source_floor():
+def test_failed_stair_and_floor_remain_in_draft_for_editing(monkeypatch):
+    from types import SimpleNamespace
+    from tests.plan.test_drawing_implementation import patch_services
     state, stair = state_with_stair(axis=2)
     stair["to"][2] = 10  # 开洞后没有到达平台。
     record = implementation_records(state)["stairs"]
     record.update(entity_fingerprint=blueprint_fingerprint([stair]), attempted_stages=["generate", "assembly_revision"])
+    patch_services(monkeypatch, [SimpleNamespace(content="无法修复", reasoning="")])
     result = run(compile_node(state))
     assert result["compile_report"]["ok"] is False
-    assert result["compile_report"]["abandoned_markers"] == ["stairs"]
+    assert result["compile_report"]["repair"]["attempted"]
+    assert not result["compile_report"]["repair"]["accepted"]
     floors = [e for e in result["merged_blueprint"]["geometry"]["elements"] if e["type"] == "floor"]
-    assert len(floors) == 2
-    assert not any("_opening_" in e["id"] for e in floors)
+    assert floors
+    assert stair in result["merged_blueprint"]["geometry"]["elements"]
 

@@ -57,7 +57,7 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item @click="startRename(s)">重命名</el-dropdown-item>
-                    <el-dropdown-item v-if="s.status === 'saved'" @click="$emit('delete', s.session_id)" class="danger-item">
+                    <el-dropdown-item v-if="s.status !== 'generating'" @click="$emit('delete', s.session_id)" class="danger-item">
                       删除
                     </el-dropdown-item>
                   </el-dropdown-menu>
@@ -142,7 +142,7 @@ function cancelRename() { renamingId.value = null }
 
 const canDeleteCurrent = computed(() => {
   const cur = sessions.value.find(s => s.session_id === agentStore.currentSessionId)
-  return cur?.status === 'saved' && sessions.value.length > 1
+  return Boolean(cur && cur.status !== 'generating')
 })
 
 function statusLabel(s: string) {

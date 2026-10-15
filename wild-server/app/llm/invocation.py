@@ -92,11 +92,13 @@ def collect_response(response: Any) -> LlmResult:
     return result
 
 
-async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None) -> LlmResult:
+async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Awaitable[None]] | None = None,
+                     max_retries: int = _LLM_RETRY_MAX) -> LlmResult:
     """统一非流式调用（``on_reasoning_delta`` 兼容签名，但非流式不会逐字回调）。
 
     对限流/服务端 5xx/超时等瞬态故障做有限指数退避重试；永久错误（额度、
-    鉴权、参数错误）直接抛出。重试次数通过 ``on_reasoning_delta`` 的
+    鉴权、参数错误）直接抛出。``max_retries=0`` 用于只允许一次调用的收尾修复。
+    重试次数通过 ``on_reasoning_delta`` 的
     ``_retry`` 通道由调用方诊断（兼容现有回调签名，忽略即无副作用）。
     """
     started = time.perf_counter()
@@ -104,7 +106,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
     transport_attempts = []
     last_exc: Exception | None = None
     llm_timeout = float(config.chat.timeout)
-    for attempt in range(_LLM_RETRY_MAX + 1):
+    for attempt in range(max_retries + 1):
         attempt_started = time.perf_counter()
         try:
             if llm_timeout > 0:
@@ -133,7 +135,7 @@ async def invoke_llm(llm, messages, *, on_reasoning_delta: Callable[[str], Await
             transport_attempts.append({"attempt": attempt + 1, "outcome": "failed",
                                        "error_type": type(exc).__name__, "retryable": retryable,
                                        "elapsed_ms": round((time.perf_counter() - attempt_started) * 1000)})
-            if not retryable or attempt >= _LLM_RETRY_MAX:
+            if not retryable or attempt >= max_retries:
                 record_rag_llm_call(
                     mode="invoke",
                     elapsed_ms=round((time.perf_counter() - started) * 1000),

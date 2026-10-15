@@ -209,7 +209,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { ElNotification, ElMessageBox } from 'element-plus'
+import { ElNotification, ElMessageBox, ElMessage } from 'element-plus'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js/lib/core'
 import bash from 'highlight.js/lib/languages/bash'
@@ -686,11 +686,14 @@ async function handleNewSession() {
 }
 
 async function handleDeleteSession(sessionId: string) {
-  if (agentStore.sessions.length <= 1) return
+  if (agentStore.getTurnsForSession(sessionId).some(turn => turn.status === 'running' || turn.status === 'waiting_review')) {
+    ElMessage.warning('请先结束当前任务，再删除会话')
+    return
+  }
 
   try {
     await ElMessageBox.confirm(
-      '删除后将永久移除该建筑及其蓝图文件，不可恢复。确定继续？',
+      '删除后将永久移除该会话、对话记录及蓝图文件，不可恢复。确定继续？',
       '确认删除',
       { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
     )
@@ -698,21 +701,23 @@ async function handleDeleteSession(sessionId: string) {
     return
   }
 
-  const deleted = await agentBridge.deleteSessionBlueprint(sessionId)
+  const deleted = await agentBridge.deleteSession(sessionId)
   if (!deleted) {
     agentStore.addSystemMessage('❌ 服务器删除失败，会话仍然保留')
     return
   }
+  const wasCurrentSession = sessionId === agentStore.currentSessionId
   agentStore.removeSession(sessionId)
-  // 切换到下一个会话
-  const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
-  if (bp) {
-    sceneStore.loadBlueprint(bp as any)
-  } else {
-    const doc = sceneStore.createEmptyDocument()
-    sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  if (wasCurrentSession) {
+    const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
+    if (bp) {
+      await sceneStore.loadBlueprint(bp as any)
+    } else {
+      const doc = sceneStore.createEmptyDocument()
+      await sceneStore.loadBlueprint(doc.blueprint, doc.name)
+    }
   }
-  agentStore.addSystemMessage('🗑️ 会话已删除')
+  ElMessage.success('会话已删除')
 }
 
 // ── 页面初始化：以服务器 storage/scenes/*.wild 为会话事实来源 ──

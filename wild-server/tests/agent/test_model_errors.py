@@ -72,3 +72,25 @@ def test_component_failures_are_collected_from_generator_diagnostics():
     assert len(failures) == 1
     assert failures[0]["component_type"] == "door"
     assert failures[0]["label"] == "门生成"
+
+
+def test_single_attempt_invocation_does_not_retry_transport_failure(monkeypatch):
+    from types import SimpleNamespace
+    from app.llm.invocation import invoke_llm
+    import app.llm.invocation as invocation
+    calls = []
+
+    async def unavailable(_messages):
+        calls.append("request")
+        raise TimeoutError("service unavailable")
+
+    async def immediate_wait(awaitable, **kwargs):
+        return await awaitable
+
+    monkeypatch.setattr(invocation.asyncio, "wait_for", immediate_wait)
+    monkeypatch.setattr(invocation, "prepare_rag_llm_call", lambda *args: {})
+    monkeypatch.setattr(invocation, "record_rag_llm_call", lambda **kwargs: None)
+    coroutine = invoke_llm(SimpleNamespace(ainvoke=unavailable), [], max_retries=0)
+    with pytest.raises(TimeoutError, match="service unavailable"):
+        coroutine.send(None)
+    assert calls == ["request"]

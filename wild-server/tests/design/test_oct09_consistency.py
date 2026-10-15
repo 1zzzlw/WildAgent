@@ -20,7 +20,7 @@ from app.design.resolver import build_design_document, _stable_hash
 from app.agent.plan.contracts import PlanItem
 from app.agent.plan.store import new_plan
 from app.agent.plan.reconcile import reconcile, ensure_artifact_consistency
-from app.services.agent_delivery import GenerationRejectedError, commit_generation_result
+from app.services.agent_delivery import commit_generation_result
 
 
 FIXTURE = json.loads((Path(__file__).parents[1] / "fixtures/oct09_consistency.json").read_text(encoding="utf-8"))
@@ -235,9 +235,11 @@ def test_fifteen_requirements_do_not_report_sixty_percent_overall():
 
 
 @pytest.mark.parametrize("tamper", ["blueprint", "results", "version", "missing", "design_revision"])
-def test_save_rejects_stale_or_missing_evidence(monkeypatch, tamper):
+def test_save_reports_stale_or_missing_evidence_without_discarding_entities(monkeypatch, tamper):
     from app.agent.validation.diagnostics import VALIDATOR_VERSION
-    bp = {"meta": {"designHash": "d", "designRevision": 1}, "geometry": {"elements": [], "components": []}}
+    bp = {"meta": {"designHash": "d", "designRevision": 1}, "geometry": {"elements": [
+        {"id": "box", "type": "primitive", "shape": "box", "position": [0, 0, 0], "dimensions": [1, 1, 1]}
+    ], "components": []}}
     snapshot = {"blueprint_fingerprint": blueprint_fingerprint(bp), "validator_version": VALIDATOR_VERSION,
                 "design_hash": "d", "design_revision": 1, "status": "complete", "results": [], "error_count": 0}
     if tamper == "blueprint":
@@ -252,9 +254,11 @@ def test_save_rejects_stale_or_missing_evidence(monkeypatch, tamper):
         snapshot = None
     saved = []
     monkeypatch.setattr("app.services.agent_delivery.save_blueprint_file_as", lambda *a: saved.append(a))
-    with pytest.raises(GenerationRejectedError):
-        commit_generation_result("s", "r", bp, [], status="complete", validation_snapshot=snapshot)
-    assert not saved
+    delivery = commit_generation_result("s", "r", bp, [], status="complete", validation_snapshot=snapshot)
+    assert len(saved) == 1
+    assert saved[0][0] == bp
+    assert not delivery.validation_passed and delivery.validation.errors > 0
+    assert "校验" in delivery.reply
 
 
 def test_legal_single_volume_can_pass_full_gate_and_save(monkeypatch):

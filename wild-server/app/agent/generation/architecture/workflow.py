@@ -231,7 +231,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         if not isinstance(raw.get("roof"), dict) or not raw["roof"].get("type"):
             missing.append("/roof/type")
         if missing:
-            raise ValueError("图纸缺少关键设计字段：" + "、".join(missing) + "；请补全本次建筑，不能用住宅模板填充")
+            raise ValueError("图纸缺少关键设计字段：" + "、".join(missing) + "；请按本次建筑设计补全")
         components = raw.get("components") or []
         if not isinstance(components, list) or any(
             not isinstance(item, dict) for item in components

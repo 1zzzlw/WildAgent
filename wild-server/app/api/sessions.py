@@ -79,10 +79,14 @@ def _find_blueprint_for_session(session_id: str) -> Optional[dict]:
         rel = wild_file.relative_to(SCENES_DIR).as_posix()
         try:
             data = json.loads(wild_file.read_text(encoding="utf-8"))
-            name = data.get("meta", {}).get("name", basename)
-            geometry = data.get("geometry", {})
-            elements_count = len(geometry.get("elements", []))
-            components_count = len(geometry.get("components", []))
+            if not isinstance(data, dict):
+                continue
+            meta = data.get("meta")
+            name = str(meta.get("name") or basename) if isinstance(meta, dict) else basename
+            geometry = data.get("geometry")
+            geometry = geometry if isinstance(geometry, dict) else {}
+            elements_count = len(geometry["elements"]) if isinstance(geometry.get("elements"), list) else 0
+            components_count = len(geometry["components"]) if isinstance(geometry.get("components"), list) else 0
             return {
                 "filename": rel,
                 "name": name,

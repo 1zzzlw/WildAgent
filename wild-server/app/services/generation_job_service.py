@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,10 +69,16 @@ class DurableEventSink:
         self.error: str | None = None
 
     async def send_json(self, payload: dict) -> None:
-        if payload.get("type") == "error":
+        if payload.get("type") == "error" or payload.get("validation_passed") is False:
             self.failed = True
-            self.error = str(payload.get("error") or "任务返回错误事件")
-        await self.service.publish_event(self.request_id, payload)
+            self.error = str(payload.get("error") or payload.get("content") or "校验未通过")
+        try:
+            await self.service.publish_event(self.request_id, payload)
+        except sqlite3.Error as exc:
+            self.failed = True
+            self.error = str(exc)
+            logger.error(f"[{self.request_id}] 事件记录失败，继续向客户端发送已有结果: {exc}")
+            await self.service._broadcast(self.request_id, versioned_event(payload))
 
 
 class GenerationJobService:
@@ -620,6 +627,8 @@ class GenerationJobService:
                 ),
             )
             terminal_status = _TERMINAL_EVENT_STATUS.get(payload.get("type"))
+            if terminal_status and payload.get("validation_passed") is False:
+                terminal_status = "failed"
             if terminal_status is None:
                 await db.execute(
                     """UPDATE generation_jobs
@@ -635,7 +644,7 @@ class GenerationJobService:
                     (
                         sequence,
                         terminal_status,
-                        payload.get("error") if terminal_status == "failed" else None,
+                        (payload.get("error") or payload.get("content")) if terminal_status == "failed" else None,
                         now,
                         request_id,
                     ),

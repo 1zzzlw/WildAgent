@@ -847,7 +847,8 @@ export class AgentBridge {
         evidence_status: message.evidence_status,
       },
     )
-    agentStore.completeTurn(sessionId, message.request_id, artifactSucceeded ? 'completed' : 'error')
+    agentStore.completeTurn(sessionId, message.request_id,
+      artifactSucceeded && message.validation_passed !== false ? 'completed' : 'error')
     if (sessionId === agentStore.currentSessionId) agentStore.setProcessing(false)
     await this.syncConversationState(sessionId)
     this.artifactTasks.delete(message.request_id)
@@ -870,6 +871,7 @@ export class AgentBridge {
       return false
     }
 
+    let fileLoaded = false
     try {
       // 禁用缓存，避免同名会话文件从空 Blueprint 更新后仍返回旧内容。
       const separator = fileUrl.includes('?') ? '&' : '?'
@@ -882,32 +884,36 @@ export class AgentBridge {
       }
       const blueprint = await response.json()
 
-      if (!blueprint || typeof blueprint !== 'object' || !('meta' in blueprint) || !('geometry' in blueprint)) {
-        throw new Error('响应不是有效的 Blueprint 对象')
+      if (!blueprint || typeof blueprint !== 'object' || Array.isArray(blueprint)) {
+        throw new Error('响应不是蓝图 JSON 对象')
       }
+      fileLoaded = true
 
       const typedBlueprint = blueprint as unknown as Blueprint
-      const name = typedBlueprint.meta?.name
+      const name = typeof typedBlueprint.meta?.name === 'string'
         ? `AI 生成 - ${typedBlueprint.meta.name}`
         : 'AI 生成'
 
       // 更新会话信息（含组件数和建筑类型）
       const elementsCount = (typedBlueprint.geometry?.elements?.length || 0)
       const componentsCount = (typedBlueprint.geometry?.components?.length || 0)
-      const displayName = typedBlueprint.meta?.name || '未命名建筑'
+      const displayName = typeof typedBlueprint.meta?.name === 'string' ? typedBlueprint.meta.name : '未命名建筑'
       agentStore.updateSessionInfo(targetSessionId, displayName, elementsCount + componentsCount, componentsCount)
       agentStore.setSessionSaved(targetSessionId)
+      const sessionInfo = agentStore.sessions.find(session => session.session_id === targetSessionId)
+      if (sessionInfo) sessionInfo.filename = filename
 
       // 用户在生成期间切换了会话时，不允许迟到结果覆盖当前画布。
       if (targetSessionId !== agentStore.currentSessionId) {
         agentStore.addSystemMessageForTurn(
           targetSessionId,
           message.request_id,
-          `✅ ${displayName} 已生成；切换到该会话后查看`,
+          `${message.validation_passed === false ? '⚠️' : '✅'} ${displayName} 已生成${message.validation_passed === false ? '，校验未通过' : ''}；切换到该会话后查看`,
         )
         return true
       }
 
+      agentStore.setBlueprintLoaded(filename)
       const reconstructed = await sceneStore.loadBlueprint(
         typedBlueprint, name, sceneStore.document?.revision)
       if (!reconstructed) {
@@ -915,7 +921,6 @@ export class AgentBridge {
         const reconstructionErrors = entity?.diagnostics.filter(item => item.level === 'error') || []
         if (entity?.meshes.length && reconstructionErrors.length) {
           const details = reconstructionErrors
-            .slice(0, 3)
             .map(item => item.elementId ? `${item.elementId}: ${item.message}` : item.message)
             .join('；')
           agentStore.addSystemMessageForTurn(
@@ -932,7 +937,7 @@ export class AgentBridge {
       agentStore.addSystemMessageForTurn(
         targetSessionId,
         message.request_id,
-        `✅ Blueprint 已加载（${filename}）`,
+        `${message.validation_passed === false ? '⚠️ 已加载现有建筑，校验未通过' : '✅ Blueprint 已加载'}（${filename}）`,
       )
       agentStore.setBlueprintLoaded(filename)
       return true
@@ -941,7 +946,8 @@ export class AgentBridge {
       agentStore.addSystemMessageForTurn(
         targetSessionId,
         message.request_id,
-        `❌ 加载蓝图失败: ${filename}`,
+        fileLoaded ? `⚠️ 蓝图文件已保留，可继续编辑；显示失败：${String(err)}（${filename}）`
+          : `❌ 加载蓝图失败: ${filename}`,
       )
       return false
     } finally {
@@ -1012,38 +1018,18 @@ export class AgentBridge {
     }
   }
 
-  /** 删除后端会话蓝图文件 */
-  async deleteSessionBlueprint(sessionId: string) {
+  /** 删除会话记录、设计与关联蓝图；未保存的草稿同样使用会话接口。 */
+  async deleteSession(sessionId: string) {
     try {
-      const baseUrl = this.httpBaseUrl
-      const agentStore = useAgentStore()
-
-      // 先查权威 filename：优先服务端记录的路径，避免本地缓存缺失时
-      // 回退到根目录 {sessionId}.wild 导致日期子目录文件删不掉。
-      let relPath: string | undefined = agentStore.sessions.find(s => s.session_id === sessionId)?.filename
-      if (!relPath) {
-        try {
-          const info = await fetch(`${baseUrl}/api/sessions/${sessionId}`, { cache: 'no-store' })
-          if (info.ok) {
-            const sessionInfo = await info.json()
-            relPath = sessionInfo?.filename || undefined
-          }
-        } catch {
-          // 会话信息拉取失败时继续走 scenes 删除，让后端按 session_id 精确匹配
-        }
-      }
-
-      if (relPath) {
-        const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
+      const response = await fetch(
+        `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
+        {
           method: 'DELETE',
-        })
-        return response.ok || response.status === 404
-      }
-
-      // 未保存的新会话没有服务端文件，删除客户端会话同样视为成功。
-      return true
+        },
+      )
+      return response.ok || response.status === 404
     } catch (err) {
-      console.error('[AgentBridge] 删除蓝图失败:', err)
+      console.error('[AgentBridge] 删除会话失败:', err)
       return false
     }
   }

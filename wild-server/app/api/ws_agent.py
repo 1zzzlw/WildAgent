@@ -82,6 +82,7 @@ from app.services.agent_delivery import (
     GenerationRejectedError,
     commit_generation_result,
     final_validation_results,
+    retain_generation_blueprint,
 )
 from app.services.generation_job_service import GenerationPaused, generation_job_service
 from app.extensions.presence import presence_service
@@ -141,6 +142,8 @@ async def _send_event(ws: WebSocket, payload: dict) -> None:
     """为所有后端事件附加统一协议版本。"""
     if payload.get("type") == "agent_reply":
         record_final_answer(str(payload.get("content") or ""))
+        if payload.get("validation_passed") is False:
+            record_rag_error(str(payload.get("content") or "校验未通过"))
     elif payload.get("type") == "error":
         record_rag_error(str(payload.get("error") or ""))
     await ws.send_json(versioned_event(payload))
@@ -653,7 +656,7 @@ _NODE_START_DETAILS = {
 
 async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     """持久化 LangGraph：逐节点推送 RAG/LLM/确定性进度诊断与性能汇总。"""
-    from app.agent.state import GenerationState
+    from app.agent.state import GenerationState, merge_state_mapping
 
     request_id = data.get("request_id", "")
     message = data.get("message", "")
@@ -741,11 +744,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         reset_reasoning_callback,
     )
 
-    await generation_job_service.initialize()
-    graph = get_graph(
-        enable_callback=True,
-        checkpointer=generation_job_service.checkpointer,
-    )
     component_configs = {
         config.component_type: config for config in get_implemented_components()
     }
@@ -766,18 +764,26 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     node_starts: dict[str, float] = {}  # 节点名 → perf_counter 起始点
     node_started_isos: dict[str, str] = {}  # 节点名 → UTC 起始时间
     suggested_components = []  # 存储骨架节点建议的组件列表
+    observed_state = dict(initial_state)
+    retained_blueprint = retain_generation_blueprint(observed_state)
+    execution_error = None
+    graph = None
 
     # 执行摘要始终推送；模型原始 reasoning 由 enable_thinking 控制。
     reasoning_token = bind_reasoning_callback(send_thinking_delta)
     event_stream = None
 
     try:
+        await generation_job_service.initialize()
+        graph = get_graph(enable_callback=True, checkpointer=generation_job_service.checkpointer)
         graph_input = initial_state
         if resume:
             from langgraph.types import Command
 
             snapshot = await graph.aget_state(graph_config)
             if snapshot.values:
+                observed_state.update(snapshot.values)
+                retained_blueprint = retain_generation_blueprint(observed_state, retained_blueprint)
                 marker_count = len((snapshot.values.get("resolved_design") or {}).get("component_markers") or [])
                 if marker_count:
                     graph_config["recursion_limit"] = plan_recursion_limit(marker_count, snapshot.values.get("max_retries", 3))
@@ -846,6 +852,13 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 if not isinstance(node_output, dict):
                     node_output = {}
                 node_outputs[node_name] = node_output
+                for key, value in node_output.items():
+                    observed_state[key] = (merge_state_mapping(observed_state.get(key), value)
+                                           if key in {"component_fragments", "component_diagnostics"} else value)
+                if any(key in node_output for key in (
+                        "final_blueprint", "merged_blueprint", "skeleton_blueprint", "component_fragments")):
+                    retained_blueprint = retain_generation_blueprint(observed_state, retained_blueprint)
+                final_state = dict(observed_state)
 
                 # ── 请求级节点观测：墙钟耗时 + 子耗时分解 ──
                 # 每个 request 落一条节点记录到 RAGTrace.nodes，供耗时/重试归因。
@@ -1057,11 +1070,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                     detail = f"{report.get('elements', '?')} 元素 + {report.get('components', '?')} 构件"
                     if report.get("abandoned_markers"):
                         detail += f" · 舍弃 {len(report['abandoned_markers'])} 个图纸标记"
-                    if report.get("retry_implementation"):
-                        detail = "完整装配检查发现问题，正在继续原构件的实现尝试"
-                        step_status = "running"
-                    else:
-                        step_status = "error" if report.get("ok") is False else "done"
+                    repair = report.get("repair") or {}
+                    if repair.get("attempted"):
+                        detail += " · 集中修复一次" + ("，已采用" if repair.get("accepted") else "，保留原稿")
+                    step_status = "error" if report.get("ok") is False else "done"
                     await send_step("generating", node_name, step_status, label, detail)
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
@@ -1100,10 +1112,10 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                             validation_detail = "跳过"
                         elif vr.get("has_error"):
                             validation_status = "error"
-                            validation_detail = out[:150]
+                            validation_detail = out
                         elif vr.get("has_warning"):
                             validation_status = "done"
-                            validation_detail = f"警告：{out[:150]}"
+                            validation_detail = f"警告：{out}"
                         else:
                             validation_status = "done"
                             validation_detail = "通过"
@@ -1209,32 +1221,32 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "session_id": session_id,
                         "item": item_event,
                     })
-                final_state = node_output
 
     except Exception as e:
         logger.exception(f"[{request_id}] LangGraph 异常: {e}")
-        error_text = _friendly_graph_error(e)
-        if thinking_mode:
-            await send_thinking_status("error", error_text)
-        await _send_event(ws, {
-            "type": "error",
-            "request_id": request_id,
-            "session_id": session_id,
-            "error": error_text,
-        })
-        await send_step("finished", "finished", "error", "处理失败", error_text)
-        return
+        execution_error = _friendly_graph_error(e)
+        final_state = {**observed_state, "status": "failed", "error": execution_error}
     finally:
         try:
             close = getattr(event_stream, "aclose", None)
             if close is not None:
-                await close()
+                try:
+                    await close()
+                except Exception as exc:
+                    logger.error(f"[{request_id}] 关闭执行流失败，保留已有结果: {exc}")
+                    execution_error = execution_error or str(exc)
         finally:
             reset_reasoning_callback(reasoning_token)
 
     # interrupt 是正常的人工审核暂停点。此处必须先返回等待状态，不能继续保存或加载三维。
-    snapshot = await graph.aget_state(graph_config)
-    if "design_review" in snapshot.next:
+    snapshot = None
+    if graph is not None:
+        try:
+            snapshot = await graph.aget_state(graph_config)
+        except Exception as exc:
+            logger.error(f"[{request_id}] checkpoint 读取失败，使用已收到的节点结果: {exc}")
+            execution_error = execution_error or str(exc)
+    if snapshot is not None and "design_review" in snapshot.next:
         values = snapshot.values or {}
         document = values.get("design_document") or {}
         resolved = values.get("resolved_design") or {}
@@ -1259,9 +1271,26 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         })
         raise GenerationPaused()
 
-    if not snapshot.next and snapshot.values:
+    if snapshot is not None and not snapshot.next and snapshot.values:
         # 完成时以完整 checkpoint 为准，节点局部输出不一定包含所有业务产物。
         final_state = dict(snapshot.values)
+    if execution_error:
+        final_state = {**(final_state or observed_state), "status": "failed", "error": execution_error}
+    if final_state and final_state.get("terminal_model_error"):
+        execution_error = execution_error or final_state["terminal_model_error"].get("user_message") or final_state.get("error")
+
+    if (execution_error and final_state and final_state.get("plan") and "compile" not in node_outputs
+            and (final_state.get("design_document") or {}).get("decisions", {}).get("kind") == "architecture"):
+        # 图或 checkpoint 意外中断也要走相同编译入口，避免已收到的分片直接报废。
+        try:
+            from app.agent.nodes.compile_node import compile_node
+            compiled_draft = await compile_node(final_state)
+            final_state = {**final_state, **compiled_draft, "status": "failed", "error": execution_error}
+            node_outputs["compile"] = compiled_draft
+            retained_blueprint = retain_generation_blueprint(final_state, retained_blueprint)
+            await send_debug("node", {"node": "compile", "stage": "done", **compiled_draft["compile_report"]})
+        except Exception as exc:
+            logger.error(f"[{request_id}] 中断后的编译未完成，仍保存原始分片: {exc}")
 
     if final_state is None:
         await _send_event(ws, {
@@ -1274,6 +1303,8 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         return
 
     resolved_intent = final_state.get("intent") or resolved_intent
+    if execution_error and retain_generation_blueprint(final_state, retained_blueprint) is not None:
+        resolved_intent = "generate"
     if resolved_intent not in {"generate", "edit", "chat"}:
         error_text = "意图分类未返回合法结果，已停止处理，未执行建筑生成或场景修改。"
         await _send_event(ws, {
@@ -1358,10 +1389,11 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         )
         return
 
-    # ── 生成路径：以最后一次 final_validate 输出为准 ──
-    final_state = node_outputs.get("final_validate", final_state)
-    merged_blueprint = final_state.get("final_blueprint") or final_state.get("merged_blueprint")
-    if not merged_blueprint:
+    if final_state.get("status") == "failed":
+        execution_error = execution_error or final_state.get("error")
+    # 保留完整 checkpoint；final_validate 的局部输出可能没有已有几何和设计上下文。
+    merged_blueprint = retain_generation_blueprint(final_state, retained_blueprint)
+    if merged_blueprint is None:
         upstream_failure = _generation_failure_message(node_outputs, final_state)
         error_event = {
             "type": "error",
@@ -1381,7 +1413,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             "finished", "finished", "error", "生成失败", upstream_failure,
         )
         return
-    if data.get("procedural_materials_enabled") is not True:
+    if data.get("procedural_materials_enabled") is not True and not execution_error:
         merged_blueprint = without_procedural_materials(merged_blueprint)
 
     validation_results = final_state.get("validation_results", [])
@@ -1408,6 +1440,11 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         logger.error(f"[{request_id}] 交付内容复检失败: {exc}")
         delivery_snapshot = None
         final_status = "failed"
+        validation_results = [*validation_results, {
+            "step": "delivery", "name": "validate_delivery", "output": f"交付内容复检失败: {exc}",
+            "has_error": True, "has_warning": False,
+        }]
+        validation_errors += 1
 
     active_diags = {key: value for key, value in all_diags.items() if not value.get("skipped")}
     total_rag_ms = sum(value.get("rag_ms", 0) for value in active_diags.values())
@@ -1445,8 +1482,6 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                 f"[{request_id}] 交付清单包含 {len(shortfall)} 条未完成项："
                 + "; ".join(f"{entry['label']}（{entry['status']}）" for entry in shortfall[:5])
             )
-    await send_debug("session_metrics", session_metrics)
-
     try:
         delivery = commit_generation_result(
             session_id,
@@ -1460,21 +1495,17 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
             validation_snapshot=delivery_snapshot,
         )
     except GenerationRejectedError as exc:
-        revision_required = (final_state.get("repair_audit") or {}).get("stop_reason") == "design_revision_required"
         await _send_event(ws, {
             "type": "agent_reply",
             "request_id": request_id,
             "session_id": session_id,
-            "content": (
-                ("批准设计自身存在编译阻断，请修改设计并重新审核；已停止局部修复。"
-                 if revision_required else "生成结果仍有未解决的校验错误，已阻止保存和加载。")
-                + f"{exc}。"
-            ),
+            "content": f"现有结果无法保存和展示：{exc}。",
+            "validation_passed": False,
         })
         if thinking_mode:
-            await send_thinking_status("error", "校验未完全通过")
+            await send_thinking_status("error", "现有结果无法展示")
         await send_step(
-            "finished", "finished", "error", "校验未完全通过", "未加载到场景",
+            "finished", "finished", "error", "现有结果无法展示", str(exc),
         )
         return
     except ArtifactSaveError as exc:
@@ -1489,9 +1520,13 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         await send_step("finished", "finished", "error", "保存失败", str(exc))
         return
 
+    session_metrics["status"] = "complete" if delivery.validation_passed else "failed"
+    session_metrics["validation_errors"] = delivery.validation.errors
+    await send_debug("session_metrics", session_metrics)
     design_document = final_state.get("design_document") or {}
-    design_hash = (merged_blueprint.get("meta") or {}).get("designHash")
-    if isinstance(design_document, dict) and design_hash:
+    meta = merged_blueprint.get("meta")
+    design_hash = meta.get("designHash") if isinstance(meta, dict) else None
+    if delivery.validation_passed and isinstance(design_document, dict) and design_hash:
         try:
             from app.design.repository import design_repository
 
@@ -1510,15 +1545,20 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
         "session_id": session_id,
         "filename": delivery.filename,
         "file_url": delivery.file_url,
+        "validation_passed": delivery.validation_passed,
     })
     if thinking_mode:
-        await send_thinking_status("completed", "生成与校验已完成")
-    await send_step("finished", "finished", "done", "生成完成", "Blueprint 已加载")
+        await send_thinking_status("completed" if delivery.validation_passed else "error",
+                                   "生成与校验已完成" if delivery.validation_passed else "已生成，校验未通过")
+    await send_step("finished", "finished", "done" if delivery.validation_passed else "error",
+                    "生成完成" if delivery.validation_passed else "已生成，校验未通过",
+                    "Blueprint 已保存，可查看现有结果")
     await _send_event(ws, {
         "type": "agent_reply",
         "request_id": request_id,
         "session_id": session_id,
-        "content": delivery.reply,
+        "content": (f"执行错误：{execution_error}。\n\n" if execution_error else "") + delivery.reply,
+        "validation_passed": delivery.validation_passed,
     })
 
     logger.info(

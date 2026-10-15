@@ -47,12 +47,14 @@ def _scene_summary(file_path: Path) -> dict | None:
     """从 .wild 文件提取列表卡片摘要，解析失败返回 None。"""
     try:
         data = json.loads(file_path.read_text(encoding="utf-8"))
-        name = data.get("meta", {}).get("name", file_path.stem)
-        geometry = data.get("geometry", {})
-        elements_count = (
-            len(geometry.get("elements", []))
-            + len(geometry.get("components", []))
-        )
+        if not isinstance(data, dict):
+            return None
+        meta = data.get("meta")
+        name = str(meta.get("name") or file_path.stem) if isinstance(meta, dict) else file_path.stem
+        geometry = data.get("geometry")
+        geometry = geometry if isinstance(geometry, dict) else {}
+        elements_count = sum(len(geometry[key]) for key in ("elements", "components")
+                             if isinstance(geometry.get(key), list))
         # filename 字段返回带日期目录的相对路径，前端用它拼接 GET/PUT/DELETE URL。
         rel = file_path.relative_to(SCENES_DIR).as_posix()
         return {

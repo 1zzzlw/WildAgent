@@ -917,9 +917,6 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   function removeSession(sessionId: string) {
-    // 清理 localStorage 中的消息
-    removeMessagesFromLocal(sessionId)
-    removeTurnsFromLocal(sessionId)
     const nextTurns = { ...turnsBySession.value }
     delete nextTurns[sessionId]
     turnsBySession.value = nextTurns
@@ -939,6 +936,9 @@ export const useAgentStore = defineStore('agent', () => {
         switchToSession(newId)
       }
     }
+    // 切换会话会保存上一会话消息，须在切换后清理被删除会话的缓存。
+    removeMessagesFromLocal(sessionId)
+    removeTurnsFromLocal(sessionId)
   }
 
   function resetSession() {

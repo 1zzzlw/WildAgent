@@ -10,6 +10,8 @@ import pytest
 
 from app.agent.graph import (
     MAX_NO_PROGRESS_ROUNDS,
+    _after_architecture,
+    _after_execute,
     _after_plan,
     _after_replanner,
     build_generation_graph,
@@ -185,3 +187,18 @@ def test_terminal_model_error_ends_the_run():
     from app.agent.graph import _classifier_dispatch
 
     assert _classifier_dispatch({"intent": "generate", "terminal_model_error": {"code": "x"}}) == "__end__"
+
+
+@pytest.mark.parametrize("route", [_after_plan, _after_execute, _after_replanner])
+@pytest.mark.parametrize("failure", [{"status": "failed"}, {"terminal_model_error": {"code": "timeout"}}])
+def test_failure_after_plan_still_reaches_final_assembly(route, failure):
+    state = {**failure, "design_document": {"decisions": {"kind": "architecture"}}}
+    assert route(state) == "compile"
+    assert route({**failure, "design_document": {"decisions": {"kind": "object"}}}) == "final_validate"
+    assert _after_architecture(state) == "__end__"
+
+
+def test_compile_always_goes_to_validation_without_reexecuting_plan():
+    graph = build_generation_graph().get_graph()
+    targets = {edge.target for edge in graph.edges if edge.source == "compile"}
+    assert targets == {"final_validate"}
