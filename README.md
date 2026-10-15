@@ -178,7 +178,55 @@ WILD 的可复现性指：在相同引擎版本、配置和资源下，同一份
 
 ## 界面展示
 
-> 项目开发中，此处后续补充界面截图与渲染效果对比。
+以下为 `.wild` 建筑示例在 WildAgent 3D 视口中的实际渲染效果，涵盖不同风格的住宅、庭院、古典建筑与地标造型。点击图片可查看原图，其他角度收录在下方的「更多视角」中。
+
+### 别墅与住宅
+
+| 三层现代别墅 | 三层欧式别墅 |
+| :---: | :---: |
+| [![三层现代别墅：平顶挑檐、落地窗与玻璃阳台](images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-33.png)](images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-33.png) | [![三层欧式别墅：坡屋顶、老虎窗、烟囱与入口柱廊](images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-32.png)](images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-32.png) |
+| 平顶挑檐与水平阳台，结合大面积玻璃和简洁立面。 | 坡屋顶、老虎窗与烟囱，搭配入口柱廊和阳台栏杆。 |
+
+| 新中式别墅 · 门廊与露台 | 新中式别墅 · 错落屋面 |
+| :---: | :---: |
+| [![新中式别墅：白墙深色屋面、木柱门廊与上层露台](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-26-50.png)](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-26-50.png) | [![新中式别墅：高低错落的坡屋顶、入口门廊与木栏杆](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-45.png)](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-45.png) |
+| 白墙、深色屋面与木柱门廊，上层退台形成露台。 | 中部抬高、两侧展开，以错落坡屋顶组织建筑轮廓。 |
+
+### 庭院与古典建筑
+
+| 北京四合院 | 欧式古典殿宇 |
+| :---: | :---: |
+| [![北京四合院：围合庭院、连续坡屋顶与院内廊道](images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-28.png)](images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-28.png) | [![欧式古典殿宇：周边柱廊、三角山花与台阶基座](images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-59.png)](images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-59.png) |
+| 多组房屋围合院落，展示庭院留空、屋面组合与廊道关系。 | 柱列环绕内殿，结合三角山花、双坡屋面和台阶基座。 |
+
+| 天坛祈年殿 | 西安大雁塔 |
+| :---: | :---: |
+| [![天坛祈年殿：圆形殿身、三重屋檐与环形台基栏杆](images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-33.png)](images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-33.png) | [![西安大雁塔：逐层收分的方形塔身、层间出檐与塔顶](images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-03.png)](images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-03.png) |
+| 圆形殿身与三重屋檐，结合环形台基、栏杆和入口台阶。 | 逐层收分的塔身体量，展示重复层级、层间出檐与顶部造型。 |
+
+### 地标与商业建筑
+
+| 东方明珠电视塔 | 咖啡厅 |
+| :---: | :---: |
+| [![东方明珠电视塔：球体、竖向塔身、斜撑与天线组合](images/introduce/东方明珠电视塔/wild-viewport-2026-10-13-07-24-21.png)](images/introduce/东方明珠电视塔/wild-viewport-2026-10-13-07-24-21.png) | [![咖啡厅：退台体量、室外楼梯、露台与玻璃门窗](images/introduce/咖啡厅/wild-viewport-2026-10-14-07-26-12.png)](images/introduce/咖啡厅/wild-viewport-2026-10-14-07-26-12.png) |
+| 球体、竖向塔身与斜撑组合，展示非住宅类地标造型。 | 退台体量搭配室外楼梯、露台栏杆与玻璃门窗。 |
+
+<details>
+<summary>更多视角（点击链接查看原图）</summary>
+
+| 建筑示例 | 视角一 | 视角二 |
+| --- | --- | --- |
+| 三层现代别墅 | [查看图片](images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-31.png) | [查看图片](images/introduce/别墅/三层平顶挑檐现代别墅/wild-viewport-2026-10-13-07-27-39.png) |
+| 三层欧式别墅 | [查看图片](images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-35.png) | [查看图片](images/introduce/别墅/三层欧式别墅/wild-viewport-2026-10-13-07-29-38.png) |
+| 新中式别墅 · 门廊与露台 | [查看图片](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-26-53.png) | [查看图片](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-27-02.png) |
+| 新中式别墅 · 错落屋面 | [查看图片](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-48.png) | [查看图片](images/introduce/别墅/三层新中式别墅/wild-viewport-2026-10-13-07-28-50.png) |
+| 北京四合院 | [查看图片](images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-20.png) | [查看图片](images/introduce/北京四合院/wild-viewport-2026-10-13-07-23-49.png) |
+| 欧式古典殿宇 | [查看图片](images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-24-49.png) | [查看图片](images/introduce/欧式古典殿宇/wild-viewport-2026-10-13-07-25-09.png) |
+| 天坛祈年殿 | [查看图片](images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-28.png) | [查看图片](images/introduce/天坛祈年殿/wild-viewport-2026-10-13-07-25-36.png) |
+| 西安大雁塔 | [查看图片](images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-00.png) | [查看图片](images/introduce/西安大雁塔/wild-viewport-2026-10-13-07-26-05.png) |
+| 咖啡厅 | [查看图片](images/introduce/咖啡厅/wild-viewport-2026-10-14-07-26-07.png) | [查看图片](images/introduce/咖啡厅/wild-viewport-2026-10-14-07-26-20.png) |
+
+</details>
 
 ## 启动方法
 
