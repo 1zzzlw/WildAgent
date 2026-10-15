@@ -5,7 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from app.agent.generation.architecture import design_workflow
-from app.agent.generation.architecture.profile import DETAIL_LEVEL_GUIDANCE, resolve_complexity_profile
+from app.contracts.generation_options import DETAIL_LEVEL_GUIDANCE
+from app.agent.generation.architecture.profile import resolve_complexity_profile
 from app.agent.generation.architecture.workflow import architecture_planner
 from app.agent.plan.expand import expand_design_markers
 from app.design.resolver import architecture_plan_from_document
@@ -44,12 +45,12 @@ async def test_selected_level_survives_model_output_and_reaches_plan(level, thin
 
 
 @pytest.mark.parametrize("value", [None, "", "unknown", [], {}])
-def test_invalid_or_absent_selection_defaults_to_medium(value):
-    assert resolve_complexity_profile("设计别墅", value)["level"] == "simple"
+def test_invalid_or_absent_selection_defaults_to_minimal(value):
+    assert resolve_complexity_profile(value)["level"] == "minimal"
 
 
 def test_levels_do_not_change_structural_or_opening_quotas():
-    profiles = [resolve_complexity_profile("设计别墅", level) for level in DETAIL_LEVEL_GUIDANCE]
+    profiles = [resolve_complexity_profile(level) for level in DETAIL_LEVEL_GUIDANCE]
     assert all({k: v for k, v in p.items() if k not in {"level", "reason"}} ==
                {k: v for k, v in profiles[0].items() if k not in {"level", "reason"}} for p in profiles)
     assert "家具逐件或按组合" in profiles[-1]["reason"]

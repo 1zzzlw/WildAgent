@@ -480,7 +480,7 @@ def test_simple_plan_keeps_explicitly_requested_bay_window() -> None:
         "component_quota": {
             "bay_window": {"min": 1, "max": 1},
         },
-    }, message, resolve_complexity_profile(message))
+    }, message, resolve_complexity_profile())
 
     assert plan["detail_packages"] == ["bay_window"]
     assert plan["component_quota"]["bay_window"]["min"] == 1
@@ -645,7 +645,7 @@ def test_schematic_storeys_use_templates_and_facade_slots_cover_full_height() ->
 
 def test_precision_alone_does_not_force_massing_or_accessories() -> None:
     message = "生成一座现代两层别墅"
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan({}, message, complexity)
     assert len(plan["volumes"]) == 1
     assert plan["detail_packages"] == []
@@ -654,7 +654,7 @@ def test_precision_alone_does_not_force_massing_or_accessories() -> None:
 
 def test_rich_facade_does_not_imply_setbacks() -> None:
     message = "生成一座现代两层别墅，立面丰富、有层次感"
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan({}, message, complexity)
     assert complexity["min_volumes"] == 1
     assert plan["massing"]["shape"] == "rectangle"
@@ -665,7 +665,7 @@ def test_rich_facade_does_not_imply_setbacks() -> None:
 
 def test_detailed_plan_rejects_floor_outside_volume_floor_range() -> None:
     message = "生成一座复杂的现代两层别墅"
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan({}, message, complexity)
     blueprint = build_deterministic_skeleton(plan, message)
     blueprint["geometry"]["elements"].append({
@@ -757,7 +757,7 @@ def test_stepped_building_stairs_stay_in_shared_footprint_and_connect() -> None:
                 "start_floor": 7, "end_floor": 8,
             },
         ],
-    }, message, resolve_complexity_profile(message))
+    }, message, resolve_complexity_profile())
 
     blueprint = build_deterministic_skeleton(plan, message)
     stairs = sorted(
@@ -811,7 +811,7 @@ def test_request_revision_records_changes_without_replacing_existing_volumes() -
             {"id": "right_wing", "x": 3, "z": 0, "width": 1, "depth": 9, "start_floor": 1, "end_floor": 1},
         ],
     }
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
 
     changes = []
     plan = normalize_architecture_plan(raw, message, complexity, normalization_changes=changes)
@@ -869,7 +869,7 @@ def test_u_shape_skeleton_uses_union_perimeter_and_balcony_access_slots() -> Non
         "别墅二层U形两端分别有一个宽1.5米的带栏杆的阳台，"
         "阳台突出墙体骨架，阳台后面没有墙体，直接通向室内"
     )
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan({}, message, complexity)
     blueprint = build_deterministic_skeleton(plan, message)
 
@@ -909,7 +909,7 @@ def test_u_shape_flat_roof_balconies_and_terrace_are_conformed_to_plan() -> None
         "生成一座两层U形退台新中式别墅，二层两端分别设置宽1.5米的带栏杆阳台，"
         "阳台直接通向室内，采用平屋顶"
     )
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan(
         {"roof": {"type": "flat", "overhang": 0.4}},
         message,
@@ -985,7 +985,7 @@ def test_l_shape_pitched_roof_is_split_per_volume() -> None:
         "生成一座两层L形别墅，主翼面南展开12米，副翼从东北角向北延伸形成半围合庭院，"
         "双坡屋顶覆盖各翼"
     )
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan(
         {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
     )
@@ -1042,7 +1042,7 @@ def _roof_footprint(roof: dict) -> tuple[float, float, float, float]:
 def test_single_volume_building_keeps_the_model_roof() -> None:
     """单一体量不生成槽位 —— 保持模型自己的整块屋顶，不抢走造型自由。"""
     message = "生成一座两层矩形别墅，采用双坡屋顶"
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan(
         {"roof": {"type": "gable", "overhang": 0.5}}, message, complexity,
     )
@@ -1059,7 +1059,7 @@ def test_single_volume_building_keeps_the_model_roof() -> None:
 def test_whole_building_roof_types_are_not_split_per_volume(roof_type: str) -> None:
     """穹顶 / 重檐塔 / 中式曲面是整体式造型，不按体量拆（拆开只会得到碎曲面）。"""
     message = "生成一座两层L形中式别墅，采用中式曲面屋顶"
-    complexity = resolve_complexity_profile(message)
+    complexity = resolve_complexity_profile()
     plan = normalize_architecture_plan(
         {"roof": {"type": roof_type}}, message, complexity,
     )
@@ -1378,7 +1378,7 @@ def test_normalize_keeps_carried_profile_id():
 
     assert normalize_architecture_plan(
         {"profile": "villa"}, "把门改大一点",
-        architecture_profile=detect_architecture_profile("x", profile_id="pavilion"),
+        architecture_profile=detect_architecture_profile(profile_id="pavilion"),
     )["profile"] == "pavilion"
     # 没有 id 时行为不变
     assert normalize_architecture_plan({}, "生成一个东西")["profile"] == "custom"

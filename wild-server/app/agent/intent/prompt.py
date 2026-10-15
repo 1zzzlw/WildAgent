@@ -1,9 +1,4 @@
-"""意图分类的提示词与关键词表。
-
-本模块只放**字符串常量**，不含逻辑：提示词的读者是模型，关键词表的读者是
-:mod:`.rules` 里的降级规则（模型不可用时保底，以及 RAG 检索前的高置信提示）。
-"""
-from __future__ import annotations
+"""意图分类提示词。"""
 
 CLASSIFIER_PROMPT = """你是 3D 生成需求分类器。系统能从知识库生成多种 3D 建模产物，
 **建筑只是其中最擅长的一类**，不是唯一目标。先判断意图，再判断交付对象类型。
@@ -68,7 +63,6 @@ CLASSIFIER_PROMPT = """你是 3D 生成需求分类器。系统能从知识库�
 只输出以下 JSON，不要 Markdown 或其他文字：
 {
   "intent": "generate | edit | chat",
-  "confidence": 0.0,
   "target": "本次请求面向的对象或主题",
   "target_kind": "architecture | object",
   "profile": "建筑形制短标签；认不出或不是建筑写 custom",
@@ -76,51 +70,5 @@ CLASSIFIER_PROMPT = """你是 3D 生成需求分类器。系统能从知识库�
   "reason": "一句话分类依据，不输出思维链"
 }
 
-confidence 必须为 0 到 1。EDIT 的 requires_scene 必须为 true；GENERATE 通常为 false。
+EDIT 的 requires_scene 必须为 true；GENERATE 通常为 false。
 如果信息不足或只是在询问方法，优先 CHAT，不要启动有副作用的生成或修改。"""
-
-GENERATE_KEYWORDS = [
-    "生成", "生产", "建造", "创建", "建一个", "画一个", "搭一个",
-    "设计", "做一个", "来一个", "帮我做", "新建",
-]
-
-INTENT_LABELS = {
-    "generate": "生成",
-    "edit": "修改场景",
-    "chat": "知识问答",
-}
-
-TARGET_KIND_LABELS = {
-    "architecture": "建筑方案",
-    "object": "构件物件",
-}
-
-EDIT_KEYWORDS = [
-    "修改", "改成", "改为", "调整", "加宽", "加高", "加粗", "缩小",
-    "放大", "移动", "旋转", "删除", "移除", "替换", "换成", "增加",
-    "添加", "加一", "再加", "这个", "选中", "第三根", "当前",
-    "材质", "纹理", "贴图", "质感", "粗糙度", "金属度", "法线强度",
-]
-
-META_QUESTION_MARKERS = (
-    "实现思路", "实现原理", "工作原理", "实现方式", "实现方法",
-    "实现流程", "生成流程", "设计流程", "技术方案", "节点流程",
-    "怎么实现", "如何实现", "怎么生成", "如何生成", "为什么生成",
-    "为什么会生成", "能力边界",
-)
-
-EXPLANATORY_QUESTION_MARKERS = (
-    *META_QUESTION_MARKERS,
-    "为什么", "是什么", "什么是", "怎么理解", "如何理解",
-    "介绍一下", "解释一下", "有什么特点", "有什么区别", "原理是什么",
-)
-
-__all__ = [
-    "CLASSIFIER_PROMPT",
-    "EDIT_KEYWORDS",
-    "EXPLANATORY_QUESTION_MARKERS",
-    "GENERATE_KEYWORDS",
-    "INTENT_LABELS",
-    "META_QUESTION_MARKERS",
-    "TARGET_KIND_LABELS",
-]

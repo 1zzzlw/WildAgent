@@ -10,7 +10,8 @@
     "check:compiler": "node scripts/check-component-compiler.mjs",
     "check:rendering": "node scripts/check-rendering-pipeline.mjs",
     "check:agent": "node scripts/check-agent-detail.mjs && node scripts/check-agent-stop.mjs",
-    "check:ci": "npm run check:core && npm run check:compiler && npm run check:rendering && npm run check:agent && npm run build",
+    "check:sessions": "node scripts/check-scene-sessions.mjs",
+    "check:ci": "npm run check:core && npm run check:compiler && npm run check:rendering && npm run check:agent && npm run check:sessions && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

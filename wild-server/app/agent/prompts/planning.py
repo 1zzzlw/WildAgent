@@ -56,7 +56,7 @@ def build_architecture_plan_prompt(
     import json
     from app.agent.knowledge.component_names import component_reference_prompt
     from app.agent.generation.architecture.profile import resolve_complexity_profile
-    complexity = resolve_complexity_profile("", (complexity_profile or {}).get("level", "simple"))
+    complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
     profile_id = str((profile or {}).get("id") or "custom")
     profile_hint = (f"分类器提供的形制线索：{profile_id}。仅用于核对需求与检索方向；"
                     "若与用户要求不符，以用户要求和本次设计为准。") if profile_id != "custom" else ""

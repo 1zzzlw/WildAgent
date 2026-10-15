@@ -62,9 +62,9 @@ def _fallback_plan(
     architecture_profile: dict[str, Any] | None = None,
     base_override: list[str] | None = None,
 ) -> dict[str, Any]:
-    profile = deepcopy(architecture_profile or detect_architecture_profile(user_message))
+    profile = deepcopy(architecture_profile or detect_architecture_profile())
     complexity = deepcopy(
-        complexity_profile or resolve_complexity_profile(user_message)
+        complexity_profile or resolve_complexity_profile()
     )
     default_width, default_depth, default_floors, default_floor_height = profile["default_massing"]
     requested_plan_dimensions = _requested_plan_dimensions(user_message)
@@ -412,19 +412,13 @@ def normalize_architecture_plan(
     # `source` 先取：plan 里可能已经带着上游（分类器）或上一轮判定的形制 id。
     source = raw if isinstance(raw, dict) else {}
     complexity = deepcopy(
-        complexity_profile or resolve_complexity_profile(user_message)
+        complexity_profile or resolve_complexity_profile()
     )
-    #  profile 三级取值：显式传入 > **计划里已有的 id** > 重算（缺省 custom）。
-    # 中间那一档是必需的：本函数在链上被多处**二次调用**（`compiler._compose`、
-    # `build_deterministic_skeleton` 等），它们手里只有 plan、不会
-    # 再传 `architecture_profile` —— 少了这一档就会把分类器判出的形制标签静默洗回
-    # `custom`（实测 `compiler/compile.py:1234` 与 `skeleton.py:727` 两处正是如此）。
-    # 只沿用 **id**：物理边界照旧由 `detect_architecture_profile` 给（恒为 custom 档）。
+    # 二次归一化保留既有形制标签；物理边界仍取 custom 档案。
     carried_profile_id = source.get("profile")
     profile = deepcopy(
         architecture_profile
         or detect_architecture_profile(
-            user_message,
             profile_id=carried_profile_id if isinstance(carried_profile_id, str) else None,
         )
     )

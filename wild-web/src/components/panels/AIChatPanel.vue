@@ -659,11 +659,14 @@ async function handleSessionSwitch(sessionId: string) {
     agentBridge.fetchSessionMessages(sessionId),
     agentBridge.fetchSessionTurns(sessionId),
   ])
+  if (agentStore.currentSessionId !== sessionId) return
   if (serverMessages) agentStore.mergeMessagesForSession(sessionId, serverMessages)
   if (serverTurns) agentStore.mergeTurnsForSession(sessionId, serverTurns)
   const bp = await agentBridge.loadSessionBlueprint(sessionId)
+  if (agentStore.currentSessionId !== sessionId) return
   if (bp) {
     await sceneStore.loadBlueprint(bp as any)
+    if (agentStore.currentSessionId !== sessionId) return
     const name = agentStore.sessions.find(item => item.session_id === sessionId)?.name
       || (bp as any).meta?.name
       || '未命名建筑'
@@ -731,7 +734,9 @@ async function restoreSessionsFromServer() {
     turn => turn.status === 'running' || turn.status === 'waiting_review',
   )
   if (hasActiveTask) return
+  const restoringSessionId = agentStore.currentSessionId
   const serverScenes = await agentBridge.fetchSessionList()
+  if (agentStore.currentSessionId !== restoringSessionId) return
   if (serverScenes === null) {
     // 后端暂不可用时，从 localStorage 恢复草稿会话
     restoreFromLocalDrafts()
@@ -774,9 +779,11 @@ async function restoreSessionsFromServer() {
     agentBridge.fetchSessionMessages(targetId),
     agentBridge.fetchSessionTurns(targetId),
   ])
+  if (agentStore.currentSessionId !== targetId) return
   if (serverMessages) agentStore.mergeMessagesForSession(targetId, serverMessages)
   if (serverTurns) agentStore.mergeTurnsForSession(targetId, serverTurns)
   const bp = await agentBridge.loadSessionBlueprint(targetId)
+  if (agentStore.currentSessionId !== targetId) return
   if (bp) {
     sceneStore.loadBlueprint(bp as any)
     const name = agentStore.sessions.find(item => item.session_id === targetId)?.name

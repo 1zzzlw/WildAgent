@@ -1,67 +1,12 @@
-"""
-Agent WebSocket API
-
-前端连接路径: ws://localhost:8000/ws/agent
-
-消息协议（与前端 agentBridge.ts + types/agent.ts 对齐）：
-
-前端 -> 后端:
-  {
-    "protocol_version": "1.0",
-    "type": "user_message",
-    "request_id": "req_xxx",
-    "session_id": "sess_xxx",
-    "scene_id": "scene_xxx",
-    "scene_revision": 8,
-    "message": "生成一座中式凉亭",
-    "detail_level": "minimal",
-    "scene_summary": { "elements_count": 42, "types": [...], "bbox": {...} },
-    "selection": []
-  }
-
-  心跳:
-  { "protocol_version": "1.0", "type": "ping", "timestamp": 1234567890 }
-
-后端 -> 前端:
-  所有消息均包含 "protocol_version": "1.0"。
-  agent_step:          { "type": "agent_step", "request_id": "...", "stage": "analyzing", "node": "classifier", "status": "running", "label": "意图分类", "detail": "..." }
-  thinking_delta:      { "type": "thinking_delta", "request_id": "...", "delta": "..." }
-  thinking_status:     { "type": "thinking_status", "request_id": "...", "status": "thinking|completed|unsupported|error" }
-  plan_ready:          { "type": "plan_ready", "request_id": "...", "plan": {...} }
-  plan_item_updated:   { "type": "plan_item_updated", "request_id": "...", "item": {...} }
-  design_review_required: { "type": "design_review_required", "request_id": "...", "document": {...}, "preview_url": "..." }
-  blueprint_generated: { "type": "blueprint_generated", "request_id": "...", "session_id": "...", "filename": "YYYY-MM-DD/session_xxx_name.wild", "file_url": "/api/scenes/..." }
-  agent_reply:         { "type": "agent_reply", "request_id": "...", "content": "..." }
-  error:               { "type": "error", "request_id": "...", "error": "..." }
-
-  心跳:
-  pong:           { "type": "pong", "timestamp": 1234567890 }
-  network_error:  { "type": "network_error", "error": "心跳超时，连接即将关闭", "reason": "heartbeat_timeout" }
-  presence_update:{ "type": "presence_update", "online_count": 2, "clients": [{ "masked_ip": "113.96.*.*", "region": "广东省", ... }] }
-
-心跳机制：
-- 前端每 15s 发送 ping，后端立即回复 pong
-- 后端监控（WebSocketHeartbeat）：空闲时超过 90s 未收到任何消息 → 发送 network_error → 关闭连接
-  （90s 是为了兼容浏览器后台标签页对 setInterval 的节流，浏览器通常节流到 ~60s）
-- 持久化生成任务运行期间由 GenerationJobService 动态探针豁免超时；旧直连处理仍使用 is_processing
-- user_message 改为后台任务执行（asyncio.create_task），确保接收循环不被阻塞，ping 能及时响应
-- 同一时间只允许一条 user_message 在处理中（asyncio.Lock），并发请求会收到错误提示
-- 前端收到 network_error 后通过 ElNotification 弹窗提示用户
-- 前端监听页面可见性变化（visibilitychange），页面恢复可见时立即检测连接状态并补发心跳
-"""
+"""Agent WebSocket：会话连接、持久化生成任务和事件传输。"""
 import json
 import asyncio
 import time
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from loguru import logger
 from config import config
-from app.agent.routing import (
-    INTENT_LABELS,
-    classify_intent_decision,
-    detect_target_kind,
-    has_scene_content,
-)
-from app.agent.generation.architecture import detect_architecture_profile, resolve_complexity_profile
+from app.agent.intent.target_kind import detect_target_kind
+from app.contracts.generation_options import normalize_detail_level
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.generation.material.recipes import without_procedural_materials
 from app.rag.security import (
@@ -663,7 +608,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     current_blueprint = data.get("blueprint")
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
-    detail_level = resolve_complexity_profile(message, data.get("detail_level") or "minimal")["level"]
+    detail_level = normalize_detail_level(data.get("detail_level"))
     # 思考事件始终收集，plan 条目可独立于图节点开关开启思考。
     thinking_mode = True
 
@@ -704,20 +649,12 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     # ── 初始状态 ──
     #
-    # `building_type` 只是入口的**预标签**（真正的 profile 由分类器判形制、建筑方案节点
-    # 落档，见 `intent/decision.py::_normalize_profile`），但它会写进会话元数据。所以
-    # 物件需求不能借用建筑的兜底值：`detect_architecture_profile` 在认不出形制时返回
-    # `custom`，直接套用会把"生成一个桌子"标成一栋建筑。
-    # 这里用与意图路由同一套确定性关键词先判目标类型，只有建筑需求才预打建筑标签。
+    # building_type 是会话预标签；正式目标类型和形制由 classifier 决定。
     preliminary_target = detect_target_kind(message, "generate")
     initial_state: GenerationState = {
         "request_id": request_id,
         "user_message": message,
-        "building_type": (
-            detect_architecture_profile(message)["id"]
-            if preliminary_target == "architecture"
-            else "asset"
-        ),
+        "building_type": "custom" if preliminary_target == "architecture" else "asset",
         "session_id": session_id,
         "current_blueprint": current_blueprint,
         "selection": selection,

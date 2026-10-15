@@ -468,13 +468,8 @@ async def revise_by_visibility(
     from app.agent.generation.architecture.design_workflow import draft_design_blocks
     from app.agent.generation.architecture.revision_patch import apply_design_patch
 
-    # 🔴 profile 必须**确定性重算**，不能默认 None ——
-    #    `normalize_architecture_plan` 在 profile 缺失时会把 massing 归一化掉，
-    #    于是 `apply_design_patch` 的"归一化越权"闸对**每一个**候选都触发 ⇒
-    #    修订永远不生效，而且诊断只显示"归一化越权修改 massing"，看不出是这个原因。
-    #    与 `design_flow/convergence.py:35` 同一口径。
-    effective_architecture_profile = architecture_profile or detect_architecture_profile(
-        user_message)
+    # 显式传入档案优先，否则使用默认物理边界。
+    effective_architecture_profile = architecture_profile or detect_architecture_profile()
 
     draft_blocks = draft_blocks or draft_design_blocks
     started = now()

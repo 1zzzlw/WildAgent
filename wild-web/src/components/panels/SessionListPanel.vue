@@ -1,316 +1,382 @@
 <template>
-  <div class="session-list-panel" :class="{ 'is-expanded': expanded }">
-    <!-- 紧凑标题栏（始终可见） -->
-    <div class="session-header" @click="expanded = !expanded">
-      <el-icon class="header-arrow">
-        <component :is="expanded ? 'ArrowDown' : 'ArrowRight'" />
-      </el-icon>
+  <div class="session-list-panel">
+    <button type="button" class="session-picker" aria-haspopup="dialog"
+      :aria-label="`切换会话，当前：${currentName}`" @click="openPicker">
       <span :class="['header-dot', `dot-${currentStatus}`]"></span>
-      <span class="header-name">{{ currentName }}</span>
-      <span class="header-hint">{{ sessions.length }} 个会话</span>
-      <el-button class="header-new-btn" size="small" @click.stop="$emit('new')" title="新建会话">
-        +
-      </el-button>
-    </div>
+      <span class="current-session-name" :title="currentName">{{ currentName }}</span>
+      <span class="switch-label">切换会话</span>
+      <el-icon><ArrowDown /></el-icon>
+    </button>
+    <el-button class="new-session-btn" size="small" @click="$emit('new')">
+      <el-icon><Plus /></el-icon><span>新建</span>
+    </el-button>
 
-    <!-- 展开：卡片列表 + 搜索 + 操作 -->
-    <transition name="slide-down">
-      <div v-if="expanded" class="session-body">
-        <!-- 搜索 -->
-        <div class="session-search" v-if="sessions.length > 3">
-          <el-input v-model="searchQuery" size="small" placeholder="搜索会话..." clearable />
+    <el-dialog
+      v-model="pickerVisible"
+      title="切换会话"
+      class="session-dialog"
+      width="min(680px, calc(100vw - 32px))"
+      top="12vh"
+      append-to-body
+      @opened="searchInput?.focus()"
+    >
+      <div class="session-picker-tools">
+        <el-input ref="searchInput" v-model="searchQuery" placeholder="搜索会话名称或 ID"
+          :prefix-icon="Search" clearable aria-label="搜索会话" />
+        <el-button type="primary" @click="createSession">
+          <el-icon><Plus /></el-icon><span>新建会话</span>
+        </el-button>
+      </div>
+      <div class="session-list-hint">
+        <span>{{ filteredSessions.length }} 个会话</span>
+        <span>按最近更新排序</span>
+      </div>
+      <div class="session-cards" aria-label="会话列表">
+        <div v-for="session in filteredSessions" :key="session.session_id"
+          :class="['session-card', { 'session-active': session.session_id === agentStore.currentSessionId }]">
+          <button type="button" class="session-select"
+            :aria-current="session.session_id === agentStore.currentSessionId ? 'true' : undefined"
+            @click="selectSession(session.session_id)">
+            <span :class="['header-dot', `dot-${session.status}`]"></span>
+            <span class="session-card-body">
+              <span class="session-name-row">
+                <span class="session-name" :title="session.name">{{ session.name || '新建筑' }}</span>
+                <span v-if="session.session_id === agentStore.currentSessionId" class="current-badge">当前</span>
+              </span>
+              <span class="session-meta">
+                <span>{{ statusLabel(session.status) }}</span>
+                <span v-if="session.elements_count || session.components_count">{{ session.elements_count || 0 }} 个元素</span>
+                <span>{{ formatRelativeTime(session.updated_at) }}</span>
+              </span>
+              <span class="session-id">{{ session.session_id }}</span>
+            </span>
+          </button>
+          <el-dropdown trigger="click" placement="bottom-end" popper-class="session-menu">
+            <button type="button" class="menu-trigger" :aria-label="`管理会话：${session.name || '新建筑'}`">···</button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="renameSession(session)">重命名</el-dropdown-item>
+                <el-dropdown-item v-if="session.status !== 'generating'" @click="$emit('delete', session.session_id)"
+                  class="danger-item">删除</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-
-        <!-- 卡片列表 -->
-        <div class="session-cards">
-          <div
-            v-for="s in filteredSessions"
-            :key="s.session_id"
-            :class="['session-card', { 'session-active': s.session_id === agentStore.currentSessionId }]"
-            @click="switchAndCollapse(s.session_id)"
-            @dblclick="startRename(s)"
-          >
-            <div :class="['session-status-bar', `status-${s.status}`]"></div>
-            <div class="session-card-body">
-              <div class="session-name-row">
-                <span v-if="!renamingId || renamingId !== s.session_id" class="session-name">
-                  {{ s.name || '新建筑' }}
-                </span>
-                <el-input
-                  v-else v-model="renameText" size="small" class="rename-input"
-                  @blur="confirmRename(s)" @keydown.enter="confirmRename(s)" @keydown.escape="cancelRename"
-                />
-                <span :class="['session-status-tag', `tag-${s.status}`]">
-                  {{ statusLabel(s.status) }}
-                </span>
-              </div>
-              <div class="session-meta">
-                <span v-if="s.elements_count || s.components_count">
-                  {{ s.elements_count || 0 }}元素<span v-if="s.components_count">·{{ s.components_count }}组件</span>
-                </span>
-                <span class="meta-time">{{ formatRelativeTime(s.updated_at) }}</span>
-              </div>
-            </div>
-            <div class="session-card-menu" @click.stop>
-              <el-dropdown trigger="click" placement="bottom-end">
-                <span class="menu-trigger">···</span>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item @click="startRename(s)">重命名</el-dropdown-item>
-                    <el-dropdown-item v-if="s.status !== 'generating'" @click="$emit('delete', s.session_id)" class="danger-item">
-                      删除
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </div>
-          <div v-if="filteredSessions.length === 0" class="session-empty">
-            {{ searchQuery ? '无匹配会话' : '暂无会话' }}
-          </div>
-        </div>
-
-        <!-- 删除按钮 -->
-        <div class="session-actions" v-if="canDeleteCurrent">
-          <el-button class="action-del-btn" size="small" @click="$emit('delete', agentStore.currentSessionId)">
-            删除当前会话
-          </el-button>
+        <div v-if="filteredSessions.length === 0" class="session-empty">
+          {{ searchQuery.trim() ? '没有找到匹配的会话，试试其他名称或 ID' : '暂无会话，可以新建一个会话' }}
         </div>
       </div>
-    </transition>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
-import { ArrowDown, ArrowRight } from '@element-plus/icons-vue'
+import { ref, computed } from 'vue'
+import { ElDialog, ElMessageBox, type InputInstance } from 'element-plus'
+import 'element-plus/es/components/dialog/style/css'
+import { ArrowDown, Plus, Search } from '@element-plus/icons-vue'
 import { useAgentStore, formatRelativeTime } from '../../stores/agentStore'
 import type { SessionInfo } from '../../types/agent'
 
 const agentStore = useAgentStore()
-
 const emit = defineEmits<{
   switch: [sessionId: string]
   new: []
   delete: [sessionId: string]
 }>()
 
-// ── 展开/折叠 ──
-const expanded = ref(false)
-
-function switchAndCollapse(sessionId: string) {
-  emit('switch', sessionId)
-  expanded.value = false
-}
-
-// ── 当前会话信息（标题栏用）──
+const pickerVisible = ref(false)
+const searchQuery = ref('')
+const searchInput = ref<InputInstance>()
 const currentInfo = computed(() =>
-  agentStore.sessions.find(s => s.session_id === agentStore.currentSessionId)
+  agentStore.sessions.find(session => session.session_id === agentStore.currentSessionId)
 )
 const currentName = computed(() => currentInfo.value?.name || '新建筑')
 const currentStatus = computed(() => currentInfo.value?.status || 'draft')
-const sessions = computed(() => agentStore.sessions)
-
-// ── 搜索 ──
-const searchQuery = ref('')
 const filteredSessions = computed(() => {
-  const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return sessions.value
-  return sessions.value.filter(s =>
-    s.name.toLowerCase().includes(q) || s.session_id.includes(q)
-  )
+  const query = searchQuery.value.trim().toLowerCase()
+  return agentStore.sessions
+    .filter(session => !query || session.name.toLowerCase().includes(query) || session.session_id.toLowerCase().includes(query))
+    .slice()
+    .sort((a, b) => b.updated_at - a.updated_at)
 })
 
-// ── 重命名 ──
-const renamingId = ref<string | null>(null)
-const renameText = ref('')
-
-function startRename(s: SessionInfo) {
-  renamingId.value = s.session_id
-  renameText.value = s.name || '新建筑'
-  nextTick(() => {
-    const el = document.querySelector('.rename-input input') as HTMLInputElement | null
-    el?.focus(); el?.select()
-  })
+function openPicker() {
+  searchQuery.value = ''
+  pickerVisible.value = true
 }
-function confirmRename(s: SessionInfo) {
-  const n = renameText.value.trim()
-  if (n && n !== s.name) agentStore.renameSession(s.session_id, n)
-  renamingId.value = null
+
+function selectSession(sessionId: string) {
+  emit('switch', sessionId)
+  pickerVisible.value = false
 }
-function cancelRename() { renamingId.value = null }
 
-const canDeleteCurrent = computed(() => {
-  const cur = sessions.value.find(s => s.session_id === agentStore.currentSessionId)
-  return Boolean(cur && cur.status !== 'generating')
-})
+function createSession() {
+  emit('new')
+  pickerVisible.value = false
+}
 
-function statusLabel(s: string) {
-  return { saved: '已保存', draft: '草稿', generating: '生成中' }[s] || s
+async function renameSession(session: SessionInfo) {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入新的会话名称', '重命名会话', {
+      inputValue: session.name,
+      customClass: 'session-rename-dialog',
+      inputValidator: value => Boolean(value?.trim()) || '会话名称不能为空',
+      confirmButtonText: '保存',
+      cancelButtonText: '取消',
+    })
+    const name = value.trim()
+    if (name !== session.name) agentStore.renameSession(session.session_id, name)
+  } catch {
+    // 用户取消
+  }
+}
+
+function statusLabel(status: SessionInfo['status']) {
+  return { saved: '已保存', draft: '草稿', generating: '生成中' }[status]
 }
 </script>
 
 <style scoped>
-.session-list-panel {
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  background: rgba(0,0,0,0.15);
+.session-list-panel,
+:global(.session-dialog),
+:global(.session-menu),
+:global(.session-rename-dialog) {
+  --el-color-primary: #6899d4;
+  --el-color-primary-light-9: #2b3646;
+  --el-bg-color: #252528;
+  --el-bg-color-overlay: #252528;
+  --el-fill-color-blank: #202023;
+  --el-fill-color-light: #303039;
+  --el-text-color-primary: #e4e4e7;
+  --el-text-color-regular: #c5c5cd;
+  --el-text-color-secondary: #94949e;
+  --el-text-color-placeholder: #767681;
+  --el-border-color: #42424c;
+  --el-border-color-light: #393941;
+  --el-border-color-lighter: #32323a;
+  color-scheme: dark;
 }
 
-/* ── 标题栏（始终可见，单行）── */
-.session-header {
+.session-list-panel {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.12s;
-}
-.session-header:hover { background: rgba(255,255,255,0.03); }
-
-.header-arrow {
-  font-size: 12px;
-  color: #6b6b75;
+  gap: 8px;
+  padding: 8px 10px;
   flex-shrink: 0;
-  transition: transform 0.15s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.15);
 }
-.is-expanded .header-arrow { transform: rotate(0deg); }
+
+.session-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--el-text-color-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.session-picker:hover,
+.session-card:hover {
+  border-color: rgba(104, 153, 212, 0.45);
+  background-color: rgba(104, 153, 212, 0.08);
+}
+
+.current-session-name,
+.session-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--el-text-color-primary);
+}
+
+.switch-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: #9dbce1;
+}
+
+.new-session-btn {
+  height: 32px;
+  margin: 0;
+  border-color: var(--el-border-color);
+  background: transparent;
+  color: var(--el-text-color-regular);
+}
 
 .header-dot {
-  width: 6px; height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.dot-saved  { background: #6bbf9b; }
-.dot-draft  { background: #d4b871; }
-.dot-generating { background: #6899d4; animation: pulse-dot 1.2s ease-in-out infinite; }
-@keyframes pulse-dot {
-  0%,100%{ opacity:1; } 50%{ opacity:0.3; }
+
+.dot-saved { background: #6bbf9b; }
+.dot-draft { background: #d4b871; }
+.dot-generating { background: #6899d4; }
+
+.session-picker-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
 }
 
-.header-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: #e4e4e7;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.session-picker-tools .el-button {
+  margin: 0;
 }
 
-.header-hint {
-  font-size: 10px;
-  color: #5a5a62;
-  flex-shrink: 0;
-}
-
-.header-new-btn {
-  width: 22px; height: 22px;
-  padding: 0;
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1;
-  flex-shrink: 0;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.08);
-  color: #6b6b75;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.header-new-btn:hover {
-  color: #a0a0a8;
-  border-color: rgba(255,255,255,0.15);
-}
-
-/* ── 展开区域（限制最大高度，不挤压消息区）── */
-.session-body {
-  max-height: 260px;
+.session-list-hint,
+.session-name-row,
+.session-meta {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  align-items: center;
+  gap: 10px;
 }
 
-.slide-down-enter-active, .slide-down-leave-active {
-  transition: max-height 0.2s ease, opacity 0.15s ease;
-}
-.slide-down-enter-from, .slide-down-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
-
-.session-search {
-  padding: 4px 10px 6px;
-  flex-shrink: 0;
-}
-.session-search :deep(.el-input__wrapper) {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 5px;
+.session-list-hint {
+  justify-content: space-between;
+  margin: 16px 0 10px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .session-cards {
-  flex: 1;
+  max-height: min(460px, calc(76dvh - 170px));
+  padding: 2px 4px 2px 2px;
   overflow-y: auto;
-  padding: 0 8px 4px;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .session-card {
   display: flex;
-  margin-bottom: 2px;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.04);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-right: 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.session-active {
+  border-color: var(--el-color-primary);
+  background: rgba(104, 153, 212, 0.1);
+}
+
+.session-select {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
-  transition: background 0.12s;
-  overflow: hidden;
+  font: inherit;
+  color: var(--el-text-color-primary);
 }
-.session-card:hover { background: rgba(255,255,255,0.06); }
-.session-active { background: rgba(104,153,212,0.08); border-color: rgba(104,153,212,0.2); }
 
-.session-status-bar {
-  width: 2px; flex-shrink: 0;
+.session-card-body {
+  flex: 1;
+  min-width: 0;
 }
-.status-saved  { background: #6bbf9b; }
-.status-draft  { background: #d4b871; }
-.status-generating { background: #6899d4; }
 
-.session-card-body { flex:1; padding: 6px 8px; min-width:0; }
-.session-name-row { display:flex; align-items:center; gap:5px; margin-bottom:2px; }
 .session-name {
-  font-size:12px; font-weight:500; color:#e4e4e7;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;
+  font-weight: 500;
 }
-.rename-input { flex:1; min-width:0; }
 
-.session-status-tag {
-  font-size:9px; padding:0 5px; border-radius:3px; flex-shrink:0; font-weight:500;
+.current-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--el-color-primary);
 }
-.tag-saved  { background:rgba(107,191,155,0.12); color:#6bbf9b; }
-.tag-draft  { background:rgba(212,184,113,0.12); color:#d4b871; }
-.tag-generating { background:rgba(104,153,212,0.12); color:#6899d4; }
 
-.session-meta { font-size:10px; color:#5a5a62; }
-.meta-time { color:#4a4a52; }
+.session-meta {
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 5px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--el-text-color-secondary);
+}
 
-.session-card-menu { display:flex; align-items:flex-start; padding:4px 4px 0 0; flex-shrink:0; }
+.session-id {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--el-text-color-placeholder);
+}
+
 .menu-trigger {
-  display:block; width:20px; height:20px; line-height:20px; text-align:center;
-  font-size:12px; font-weight:700; color:#5a5a62; border-radius:4px; cursor:pointer; user-select:none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  font-size: 18px;
+  cursor: pointer;
 }
-.menu-trigger:hover { color:#a0a0a8; background:rgba(255,255,255,0.05); }
-.danger-item { color:#e07060 !important; }
 
-.session-empty { text-align:center; padding:16px; font-size:11px; color:#5a5a62; }
+.menu-trigger:hover {
+  background: rgba(104, 153, 212, 0.15);
+}
 
-.session-actions {
-  display:flex; padding:6px 8px;
-  border-top:1px solid rgba(255,255,255,0.04); flex-shrink:0;
+.danger-item {
+  color: var(--el-color-danger);
 }
-.action-del-btn {
-  flex:1; height:28px; font-size:11px; color:#6b6b75;
-  background:transparent; border:1px solid rgba(255,255,255,0.06);
-  border-radius:5px; cursor:pointer;
+
+.session-empty {
+  padding: 40px 12px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
 }
-.action-del-btn:hover { color:#e07060; border-color:rgba(224,112,96,0.3); }
+
+.session-picker:focus-visible,
+.session-select:focus-visible,
+.menu-trigger:focus-visible {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: -2px;
+}
+
+@media (max-width: 420px) {
+  .switch-label {
+    display: none;
+  }
+
+  .session-picker-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .session-picker-tools .el-button {
+    justify-self: end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-picker,
+  .session-card {
+    transition: none;
+  }
+}
 </style>
