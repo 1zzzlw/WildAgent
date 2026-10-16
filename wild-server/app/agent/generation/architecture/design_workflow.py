@@ -32,7 +32,7 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
     for attempt in range(1, max_attempts + 1):
         messages = [{"role": "system", "content": prompt}, {"role": "user", "content": user_request}]
         accounting["model_calls"] = accounting.get("model_calls", 0) + 1
-        thinking = thinking_mode and attempt == 1
+        thinking = thinking_mode
         stage = "architecture.generate" if attempt == 1 else "architecture.format_revision"
         with llm_trace_scope(stage=stage, design_hash=_options.get("design_hash")):
             if thinking_mode and on_reasoning_delta:
@@ -66,6 +66,7 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
                              + "；请只返回待修字段，或返回包含完整必填字段的整张图纸")
                 else:
                     picked = {**complete_draft, **{key: raw[key] for key in repair_fields if key in raw}}
+        unchanged = bool(repair_fields and complete_draft is not None and picked == complete_draft)
         if (not issue and isinstance(raw, dict)
                 and getattr(reply, "finish_reason", None) != "length"
                 and only_blocks is None and not context
@@ -76,13 +77,15 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
                 validate({**context, **picked})
             except (ValueError, TypeError, KeyError, RuntimeError) as exc:
                 issue = str(exc)
+        if issue and unchanged:
+            issue += "；上一轮未修改冲突数据，本轮须实际修订待修字段中的坐标、尺寸或引用；不能原样返回"
         diag = {"settled": not issue, "model_calls": attempt, "attempts": attempt,
                 "token_usage": usage, "last_issue": issue, "rejected_attempts": rejected,
                 "call_id": getattr(reply, "call_id", None)}
         if not issue:
             return picked, diag
         rejected.append({"attempt": attempt, "issue": issue, "output": reply.content,
-                         "call_id": getattr(reply, "call_id", None)})
+                         "call_id": getattr(reply, "call_id", None), "unchanged": unchanged})
         if on_reasoning_delta:
             await on_reasoning_delta("architecture:progress", f"图纸格式需要修订（{attempt}/{max_attempts}）：{issue}。\n")
         next_fields = list(dict.fromkeys(
@@ -94,6 +97,8 @@ async def draft_design(*, base_prompt, user_request, thinking_mode=False,
             next_fields.extend(field for field in ("facades", "volumes")
                                if field in complete_draft and field not in next_fields)
         repair_fields = next_fields or (repair_fields if complete_draft is not None else [])
+        if "floor_layouts" in repair_fields and "components" not in repair_fields:
+            repair_fields.append("components")
         if repair_fields:
             related = ("components",) if "facades" in repair_fields else (
                 ("facades",) if "components" in repair_fields else ()

@@ -97,16 +97,28 @@ def _validation_reason(exc: Exception) -> str:
 
 
 def _material_role_conflicts(components):
+    import re
+
+    families = {
+        "wood": r"木|\b(?:wood|timber)\b", "stone": r"石|\b(?:stone|marble|granite)\b",
+        "metal": r"金属|钢|铝|\b(?:metal|steel|aluminum|aluminium)\b",
+        "concrete": r"混凝土|\bconcrete\b", "brick": r"砖|\bbrick\b",
+        "glass": r"玻璃|\bglass\b", "fabric": r"织物|布料|\b(?:fabric|cloth)\b",
+    }
     groups = {}
-    for index, item in enumerate(components):
+    for item in components:
         role, form = item.get("material_role"), item.get("form")
         material = form.get("material") if isinstance(form, dict) else None
         if isinstance(role, str) and role and isinstance(material, str) and material.strip():
-            groups.setdefault(role, {}).setdefault(material.strip().casefold(), []).append(index)
+            matches = [name for name, pattern in families.items() if re.search(pattern, material, re.I)]
+            # 只拦截能明确区分的材料类别；同类描述、未知或复合材料不靠字符串差异判为冲突。
+            if len(matches) == 1:
+                groups.setdefault(role, {}).setdefault(matches[0], set()).add(material.strip())
     errors = []
     for role, materials in groups.items():
         if len(materials) > 1:
-            errors.append(f"/components：material_role={role!r} 同时引用不同的显式材料 {list(materials)}；"
+            errors.append(f"/components：material_role={role!r} 同时引用明确不同的材料类别 {sorted(materials)}，"
+                          f"材料描述 {sorted(name for names in materials.values() for name in names)}；"
                           "同一角色只绑定一种实际材质。若这些名称指同一材质，请统一 form.material 名称；"
                           "若材料不同，分别选择已有匹配角色或省略不合适的 material_role，由构件实现独立材质。"
                           "不能仅在文字中保留木、石而仍共用一个角色")
@@ -283,8 +295,6 @@ async def architecture_planner(state: GenerationState) -> dict:
                     "或写出世界 position；不能仅凭 offset 猜测墙面和楼层"
                 )
         material_errors = _material_role_conflicts(components)
-        if material_errors:
-            raise ValueError("；".join(material_errors))
         plan = {
             "profile": profile["id"],
             **raw,
@@ -295,26 +305,33 @@ async def architecture_planner(state: GenerationState) -> dict:
                 "reason": selected["reason"],
             },
         }
-        document = build_design_document_or_error(
-            plan,
-            session_id=str(
-                state.get("session_id") or state.get("request_id") or "unknown"
-            ),
-            source_request=message,
-            building_type=profile["id"],
-            style_intent=list(state.get("style_preference") or []),
-            previous=previous,
-            revision_feedback=feedback,
-        )
-        resolved = resolve_design(document)
+        try:
+            document = build_design_document_or_error(
+                plan,
+                session_id=str(
+                    state.get("session_id") or state.get("request_id") or "unknown"
+                ),
+                source_request=message,
+                building_type=profile["id"],
+                style_intent=list(state.get("style_preference") or []),
+                previous=previous,
+                revision_feedback=feedback,
+            )
+        except DesignContractError as exc:
+            raise ValueError("；".join([*material_errors, str(exc)])) from exc
         from app.design.coordinates import (opening_coordinate_errors, stair_span_conflicts,
                                             roof_span_conflicts, component_dimension_conflicts)
+        from app.design.markers import component_markers
 
-        coordinate_errors = (component_dimension_conflicts(document.decisions.model_dump(mode="json"))
-                             + opening_coordinate_errors(resolved.component_markers)
-                             + roof_span_conflicts(resolved.component_markers)) + stair_span_conflicts(
-            document.decisions.model_dump(mode="json")
-        )
+        data = document.decisions.model_dump(mode="json")
+        coordinate_errors = (material_errors + component_dimension_conflicts(data) + stair_span_conflicts(data)
+                             + roof_span_conflicts(component_markers(document)))
+        try:
+            resolved = resolve_design(document)
+        except ValueError as exc:
+            coordinate_errors.append(str(exc))
+        else:
+            coordinate_errors.extend(opening_coordinate_errors(resolved.component_markers))
         if coordinate_errors:
             raise ValueError("；".join(coordinate_errors))
         accepted.update(document=document, resolved=resolved)

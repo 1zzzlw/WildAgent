@@ -191,9 +191,33 @@ def floor_layout_conflicts(design):
                 horizontal = (abs(a[1]-b[1]) <= 0.001 and z0+0.001 < a[1] < z1-0.001
                               and min(a[0], b[0]) <= x0+0.001 and max(a[0], b[0]) >= x1-0.001)
                 if vertical or horizontal:
+                    origin, extent, lower, upper, cut = (("x", "width", x0, x1, a[0]) if vertical else
+                                                         ("z", "depth", z0, z1, a[1]))
+                    neighbors = []
+                    for other in layout.get("rooms") or []:
+                        bounds = other.get("bounds") or {}
+                        if other is room or other.get("void") or not isinstance(bounds, dict) or not all(
+                                type(bounds.get(k)) in (int, float) and isfinite(bounds[k])
+                                for k in ("x", "z", "width", "depth")):
+                            continue
+                        left, right = max(x0, bounds["x"]), min(x1, bounds["x"]+bounds["width"])
+                        front, back = max(z0, bounds["z"]), min(z1, bounds["z"]+bounds["depth"])
+                        if right-left > 0.001 and back-front > 0.001:
+                            neighbors.append(f"{other.get('id', '?')}（{other.get('name', '未命名')}）"
+                                             f"：X=[{left:g}, {right:g}]，Z=[{front:g}, {back:g}]")
                     issues.append(f"/floor_layouts/{floor_index}/rooms/{room_index}："
-                                  f"内墙 {wall.get('id', wall_index)} 贯穿房间范围；"
-                                  "请修订房间 bounds、内墙或明确设计通行开口")
+                                  f"内墙 {wall.get('id', wall_index)}（from={a}, to={b}）贯穿"
+                                  f"第 {layout.get('floor', '?')} 层房间 {room.get('id', room_index)}"
+                                  f"（{room.get('name', '未命名')}）范围，世界 X=[{x0:g}, {x1:g}]，Z=[{z0:g}, {z1:g}]；"
+                                  f"墙段位于 {'X' if vertical else 'Z'}={a[0] if vertical else a[1]:g}，"
+                                  "在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；"
+                                  f"例如保留较大坐标边界时可写 bounds.{origin}={cut:g}、bounds.{extent}={upper-cut:g}；"
+                                  f"保留较小坐标边界时可写 bounds.{origin}={lower:g}、bounds.{extent}={cut-lower:g}。"
+                                  "仅把墙端缩短到房间另一边界仍然是贯穿。"
+                                  + ("该房间还与以下房间范围重叠，须一并核对：" + "；".join(neighbors) + "。" if neighbors else "") +
+                                  "保留房间时，修订墙段到房间边界或明确设计通行开口。"
+                                  f"核对 /floor_layouts/{floor_index}/walls/{wall_index} 与该房间 bounds，"
+                                  "不能原样返回冲突数据")
     return issues
 
 
