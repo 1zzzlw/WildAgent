@@ -56,7 +56,8 @@ def build_architecture_plan_prompt(
     import json
     from app.agent.knowledge.component_names import component_reference_prompt
     from app.agent.generation.architecture.profile import resolve_complexity_profile
-    complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
+    from app.agent.generation.material.plan import ROLE_SPECS
+    complexity = resolve_complexity_profile("", (complexity_profile or {}).get("level", "simple"))
     profile_id = str((profile or {}).get("id") or "custom")
     profile_hint = (f"分类器提供的形制线索：{profile_id}。仅用于核对需求与检索方向；"
                     "若与用户要求不符，以用户要求和本次设计为准。") if profile_id != "custom" else ""
@@ -69,6 +70,12 @@ def build_architecture_plan_prompt(
 本次用户选择的设计粒度：{complexity['reason']}
 complexity.level 使用用户选择的 {complexity['level']}。粒度指导默认设计范围，用户明确要求的构件、家具、功能与造型在任何档位都优先保留。按需增加细节，不能用重复增加门窗数量代替设计精细度，不套用固定数量或组件套餐。
 低粒度简化细部，仍保留决定建筑形制的柱廊、台基、屋面轮廓或其他特征；先设计它们的整体位置、尺度与相接标高，不仅在 concept 中命名。
+结构说明中选用的梁架、支座等实体也须写入 components，注明与柱顶、屋面等相接的标高；文字提及不等于后续任务会自动补齐。装饰繁简可以变化，已选结构的承接不能省略。
+世界定位的直梁 size.width/height/depth 表示整体 X/Y/Z 尺度；沿 X 的梁跨度写在 size.width、截面水平宽写在 size.depth；沿 Z 的梁跨度写在 size.depth、截面宽写在 size.width。form.orientation/span_direction 说明朝向，不改变这套尺寸坐标。
+材料选择写清采用的具体方案，避免用“木或混凝土”等未决选项交给后续节点。需要材质角色约束的构件写 material_role，并在 description/form 保留实际材料与配色；材质方案应落实该选择。
+material_role 使用现有角色 {', '.join(ROLE_SPECS)}；梁柱使用 structure，具体木材或金属写 description/form，不把 timber_primary 等材料名称自造为角色。
+一个 material_role 只绑定一种实际材质；不同材料或配色不能因为都是附属构件而共用 accent。可复用已有同材质角色；无法共用时省略该构件 material_role，由实现任务按 description/form 定义独立材质，不把木、石绑为同一种材料。
+使用 material_role 且填写 form.material 时，共用同一材质的构件使用同一个材料名称；不同显式材料名称不能绑定到同一个角色。
 一次只返回完整 JSON 对象，直接包含 concept、design_intent、massing、volumes、structural_grid、circulation、facades、roof、components，不再包 architecture_plan 外层。
 标准输出参数列表（尺寸与标高单位为米，示例只说明字段格式）：
 | 字段 | 类型与参数 | 格式或语义 |
@@ -95,9 +102,14 @@ open 表示该开间不设墙，empty 表示有实体墙但没有开口；整面
 roof 写 type 和设计说明，可以设计新屋型；roof.volumes 是对象数组，可为空，每项必须写 volume 字符串引用 volumes 中的体量 id，例如 [{{"volume":"main","type":"自拟屋型","overhang":0.8}}]。volume 是固定字段名，不能用 ref、id 或 volume_id 代替；数组项不能只写字符串。structural_grid 写 system、整数 x_bays、整数 z_bays。
 结构体系与平面功能同时设计；开间数不表示每个交点都必须建柱。需要独立柱时，在 components 逐根标明位置与用途，让图纸和 plan 都能显示；未标柱位不能只靠 structural_grid 暗示主体补出整片柱阵。明确设计的室内柱、外露框架和开敞柱廊保留。
 ridge_axis 是屋脊实际世界轴，不能只在 type 的文字中说明方向；共用一片屋面的内包体量在 roof.volumes 中明确 type="none"，避免按默认屋型另建重叠屋顶。
+同一片屋面只分配一个整体实现职责；若明确另设组合构件实现整片屋面，对应体量 roof.volumes.type 写 none，不再同时产生重复屋顶任务。
+若在 components 中单列整片屋面，host 必须引用负责的体量 id；不要以无宿主屋面和默认屋面同时描述同一片顶。屋面 size.width/depth 是包含出檐的最终覆盖尺寸，等于体量宽深加两倍出檐，不能把含出檐的尺寸再次用作体量尺寸。
+屋面 placement.position 是整体中心，size.height 是檐口到屋脊的高度；直接落在宿主墙顶时，中心Y=墙顶Y+size.height/2。若填写 form.ridge_height_from_wall_top，它表示屋脊相对墙顶的高差，必须满足中心Y+size.height/2=墙顶Y+该高差；不能把屋脊标高填成中心。
 components 是对象数组，每项写稳定 id、type、host、size、form、description；size 只写构件自身尺寸（width、height、depth、thickness 等），每项为有限正数。sill_height、offset、normal_offset 是位置参数，写在 placement；落地门窗的 placement.sill_height 可以为 0，不写 size.sill_height。form 是开放的造型描述对象。如填写 relation，用 target 引用目标 id。
+组合构件的 size 与 placement.position 描述所有零件的整体范围与中心；附加踏步、支脚、靠背等均计入。若这些部分另列标记，明确它们各自范围，不把主件尺寸当整组包络。
 circulation 中设计的楼梯也写成 stair 构件标记，说明位置与形态，并用 floor_connections 对象数组明确连接楼层，例如 [{{"from_floor":1,"to_floor":2}},{{"from_floor":2,"to_floor":3}}]；需要上屋面时 to_floor 写 "roof"。该数组描述楼面间的通行，不规定每层必须直跑或双跑。只连接第 1 层至第 N 层时共有 N-1 段层间高差，最高到达第 N 层楼面 floor_layouts.level，不把顶层墙顶当成额外楼面。size.height 是实际连接楼面的总高差。form.flights 是实际梯段总数，不按楼层数填写；同时填写 form.rises 和 riser_height 时，表示每跑级数与每级高度，三者乘积应等于实际连接高差。算不一致时不要编造精确踏步参数。梯段与平台要放得进楼梯占地。后续 plan 单独实现，不能只写交通说明而遗漏实际构件。
 互相承接的构件明确 relation.target 或在 form 写共同承接标高与定位基准。跨条目构件不重复归属；柱顶、檐部底/顶、屋面支承形成连续关系。用户未给尺寸时先把这些关系算一致，再写数值。
+屋面下方的梁或斜撑须将实际截面厚度计入净空；中心线终点不等于杆件外表面，不能把隐藏支承的中心线放在屋面上表面导致穿出。
 构件命名：type 使用稳定的英文 snake_case 编号；下列已有构件使用对应编号，中文名称写在 name，具体风格、位置与造型写在 description/form，不混进 type。新构件可自行取语义明确的英文 snake_case 编号和中文 name，完整描述形态，不能因名称未在目录中就放弃。
 {component_reference_prompt()}
 明确尺寸、位置、材料和依附关系，使用扩展字段保留完整设计要求。无需填写 WILD 引擎细节。
@@ -297,6 +309,9 @@ def build_material_plan_prompt(
     """
     import json as _json
     style_section = _style_preference_section(style_preference) if object_scene else ""
+    explicit_materials = [{"id": c.get("id"), "role": c["material_role"], "material": c["form"]["material"]}
+                          for c in architecture_plan.get("components", []) if c.get("material_role")
+                          and isinstance(c.get("form"), dict) and c["form"].get("material")]
     # P6-A：没有资产**不等于**不能做材质设计。合法参数材质（baseColor /
     # roughness / metallic）不依赖任何贴图就能承载设计意图，必须把这句说清楚，
     # 否则空列表会让模型以为自己无事可做，转而去编 assetId。
@@ -384,6 +399,11 @@ def build_material_plan_prompt(
 {_json.dumps(architecture_plan, ensure_ascii=False, indent=2)}
 {style_section}
 
+# 本次构件绑定的显式材质
+
+{_json.dumps(explicit_materials, ensure_ascii=False, indent=2)}
+这些绑定决定对应角色的实际材质。未绑定角色的构件使用自己的局部材质；下方示例中的颜色和金属度不代替本次材料要求。
+
 # AVAILABLE_PBR_ASSETS（唯一允许引用的纹理资产）
 
 {_json.dumps(available_assets, ensure_ascii=False, indent=2)}
@@ -408,6 +428,7 @@ def build_material_plan_prompt(
 11. {rule_11}
 12. `shaderAdjustments` 只允许 AVAILABLE_PROCEDURAL_PRESETS 声明的字段。强度只输出 `none/subtle/moderate/strong`；`mortarDepth` 只输出 `shallow/standard/deep`；`tone` 只输出 `default/light/dark/warm`；`cleanliness` 只输出 `clean/natural`。不要输出具体 uniform、GLSL、Shader 源码或未知字段。
 13. {rule_13}
+14. 逐项核对 components 的 material_role 与 description/form。每个角色的参数会应用到所有绑定构件，必须兑现它们共同的材料和颜色；概念文字写“木质”而角色参数仍取石灰色，不算落实意图。不同材料使用各自角色或独立材质，不按“都属于装饰”合并。
 
 # 输出协议
 

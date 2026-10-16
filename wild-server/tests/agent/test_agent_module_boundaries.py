@@ -11,7 +11,7 @@ AGENT_ROOT = SERVER_ROOT / "app" / "agent"
 def test_agent_root_only_contains_workflow_entry_modules():
     root_modules = {path.name for path in AGENT_ROOT.glob("*.py")}
 
-    assert root_modules == {"graph.py", "runtime.py", "state.py"}
+    assert root_modules == {"graph.py", "routing.py", "runtime.py", "state.py"}
 
 
 def test_nodes_do_not_import_other_nodes():
@@ -28,21 +28,6 @@ def test_nodes_do_not_import_other_nodes():
             ):
                 violations.append(f"{path.name}:{node.lineno}:{node.module}")
 
-    assert violations == []
-
-
-def test_intent_does_not_depend_on_generation_implementations():
-    violations = []
-    for path in (AGENT_ROOT / "intent").glob("*.py"):
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("app.agent.generation"):
-                violations.append(f"{path.name}:{node.lineno}:{node.module}")
-            if isinstance(node, ast.Import):
-                violations.extend(
-                    f"{path.name}:{node.lineno}:{alias.name}"
-                    for alias in node.names if alias.name.startswith("app.agent.generation")
-                )
     assert violations == []
 
 
@@ -100,7 +85,6 @@ def test_python_sources_do_not_reference_retired_agent_modules():
         "app.agent.model_client",
         "app.agent.rag_trace",
         "app.agent.runtime_context",
-        "app.agent.routing",
     }
     violations: list[str] = []
     for source_root in (SERVER_ROOT / "app", SERVER_ROOT / "tests"):

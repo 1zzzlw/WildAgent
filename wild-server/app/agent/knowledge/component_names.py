@@ -47,7 +47,7 @@ def _catalog_for_files(signature):
                                           "entity_type": str(meta.get("entity_type") or ""), "aliases": set(), "references": []})
             row["aliases"].update([code, *aliases])
             reference = {"file": Path(path).name, "heading": str(meta.get("heading") or ""),
-                         "status": meta["status"]}
+                         "status": meta["status"], "applies_to": str(meta.get("applies_to") or "")}
             if reference not in row["references"]:
                 row["references"].append(reference)
     matches = {}
@@ -88,6 +88,9 @@ def component_reference_prompt(kinds=None):
             continue
         sources = sorted({f"{r['file']} ({r['status']})" for r in row["references"]})
         availability = "、".join(sources) if sources else ("原生协议；无专用形态示例" if row["entity_type"] else "流程条目")
+        conditions = sorted({r.get("applies_to", "") for r in row["references"] if r.get("applies_to")})
+        if conditions:
+            availability += "；适用：" + "、".join(conditions)
         lines.append(f"- {kind}={row['label']}：{availability}")
     return "\n".join(lines)
 

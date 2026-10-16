@@ -100,18 +100,11 @@ function handleOpen() {
   input.onchange = async (e) => {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (file) {
+      const text = await file.text()
       try {
-        const blueprint = JSON.parse(await file.text())
-        if (!blueprint || typeof blueprint !== 'object' || !blueprint.meta || !blueprint.geometry) {
-          throw new Error('不是蓝图文件')
-        }
-        const sessionId = agentStore.createSession(blueprint.meta.name || file.name)
-        agentStore.switchToSession(sessionId)
-        const loading = sceneStore.loadBlueprint(blueprint, file.name)
-        if (sceneStore.document) sceneStore.document.dirty = true
+        const blueprint = JSON.parse(text)
+        sceneStore.loadBlueprint(blueprint, file.name)
         historyStore.clear()
-        await loading
-        ElMessage.success('已打开本地蓝图，点击“保存”导入服务器')
       } catch {
         ElMessage.error('文件格式错误')
       }
@@ -121,9 +114,7 @@ function handleOpen() {
 }
 
 async function handleSave() {
-  const savedDocument = sceneStore.document
-  const sessionId = agentStore.currentSessionId
-  if (!savedDocument || !sessionId) {
+  if (!sceneStore.document || !agentStore.currentSessionId) {
     ElMessage.error('当前场景没有对应的服务器会话，无法保存')
     return
   }
@@ -133,33 +124,26 @@ async function handleSave() {
     return
   }
 
-  const blueprint = savedDocument.blueprint
-  const revision = savedDocument.revision
   isSaving.value = true
-  let saved = false
-  try {
-    saved = await agentBridge.syncBlueprintToBackend(
-      blueprint as unknown as Record<string, unknown>, sessionId, revision,
-    )
-  } finally {
-    isSaving.value = false
-  }
+  const saved = await agentBridge.syncBlueprintToBackend(
+    sceneStore.document.blueprint as unknown as Record<string, unknown>,
+  )
+  isSaving.value = false
   if (!saved) {
     ElMessage.error('保存到服务器失败，本地草稿仍然保留')
     return
   }
 
+  const blueprint = sceneStore.document.blueprint
   const elementsCount = (blueprint.geometry.elements?.length || 0)
   const componentsCount = (blueprint.geometry.components?.length || 0)
   agentStore.updateSessionInfo(
-    sessionId,
-    blueprint.meta.name || savedDocument.name,
+    agentStore.currentSessionId,
+    blueprint.meta.name || sceneStore.document.name,
     elementsCount + componentsCount,
     componentsCount,
   )
-  if (sceneStore.document === savedDocument && savedDocument.revision === revision) {
-    sceneStore.markSaved()
-  }
+  sceneStore.markSaved()
   ElMessage.success('场景已保存到服务器')
 }
 

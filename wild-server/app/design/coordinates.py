@@ -300,3 +300,65 @@ def exterior_facade_intervals(volume, face, floor, volumes):
         segments = [(a, b) for left, right in segments for a, b in
                     ((left, min(right, start)), (max(left, end), right)) if b-a > 0.001]
     return segments
+
+
+def component_dimension_conflicts(design):
+    """显式方向和相对标高不能与构件自身的世界尺寸、中心矛盾。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+
+    errors = []
+    volumes = {v["id"]: v for v in design.get("volumes") or []}
+    for index, component in enumerate(design.get("components") or []):
+        family = resolve_component_name(component.get("type", ""))["entity_type"]
+        size = component.get("size") or {}
+        form = component.get("form") if isinstance(component.get("form"), dict) else {}
+        path = f"/components/{index}"
+        direction = str(form.get("span_direction") or "").strip().lower()
+        if family == "beam" and direction in {"x", "z"} and all(k in size for k in ("width", "depth")):
+            span, cross = ("width", "depth") if direction == "x" else ("depth", "width")
+            if size[span] < size[cross]-0.001:
+                errors.append(f"{path}/size：span_direction={direction}，但 {span}={size[span]:g} "
+                              f"小于 {cross}={size[cross]:g}；size.width/height/depth 是整体世界 X/Y/Z 尺度，"
+                              "方向不会旋转这套尺寸。请修订方向或对应尺寸，不能让实现节点同时满足相反约束")
+        position = (component.get("placement") or {}).get("position")
+        rise = form.get("ridge_height_from_wall_top")
+        volume = volumes.get(component.get("host"))
+        if (family != "roof" or not volume or not position or "height" not in size
+                or type(rise) not in (int, float) or not isfinite(rise)):
+            continue
+        top = floor_elevations(design)[volume["end_floor"]+1]
+        expected = top+rise-size["height"]/2
+        if abs(position[1]-expected) > 0.001:
+            errors.append(f"{path}/placement/position：屋面整体中心Y={position[1]:g}，但宿主墙顶={top:g}、"
+                          f"form.ridge_height_from_wall_top={rise:g}、size.height={size['height']:g} "
+                          f"推导中心Y={expected:g}（墙顶+屋脊高差-屋面高度/2）；"
+                          "请显式修订位置或相对高差，不能把屋脊标高当成整体中心")
+    return errors
+
+
+def roof_span_conflicts(markers):
+    """显式整片屋面的设计包围框必须覆盖其负责体量及出檐。"""
+    from app.agent.knowledge.component_names import resolve_component_name
+    errors = []
+    for marker in markers:
+        design = marker.get("design") or {}
+        volume = design.get("volume")
+        position = (design.get("placement") or {}).get("position")
+        size = design.get("size") or {}
+        if (resolve_component_name(marker["type"])["entity_type"] != "roof"
+                or not volume or not position):
+            continue
+        overhang = design.get("overhang", 0)
+        path = marker.get("design_path", "/decisions/components").removeprefix("/decisions")
+        for key, axis, origin in (("width", 0, "x"), ("depth", 2, "z")):
+            if key not in size:
+                continue
+            lower = volume[origin]-overhang
+            upper = volume[origin]+volume[key]+overhang
+            required = 2*max(position[axis]-lower, upper-position[axis])
+            if size[key] < required-0.001:
+                errors.append(f"{path}/size/{key}：整片屋面需覆盖体量和出檐，"
+                              f"世界 {'XZ'[axis//2]} 范围 [{lower:g}, {upper:g}]，"
+                              f"当前中心 {position[axis]:g}，{key} 至少为 {required:g}，实际 {size[key]:g}；"
+                              "修订 /components 的覆盖尺寸或 /volumes、/roof 中相互矛盾的设计数值，不能带着矛盾进入实现")
+    return errors

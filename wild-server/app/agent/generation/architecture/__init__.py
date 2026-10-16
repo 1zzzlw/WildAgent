@@ -13,9 +13,11 @@ from .planning import (
 )
 from .profile import (
     detect_architecture_profile,
+    is_architecture_request,
     resolve_complexity_profile,
 )
 from .skeleton import build_deterministic_skeleton, evaluate_skeleton_complexity
+from .target_kind import TargetKind, detect_target_kind
 
 __all__ = [
     "build_deterministic_skeleton",
@@ -25,8 +27,11 @@ __all__ = [
     "conform_railings_to_slots",
     "conform_roofs_to_slots",
     "detect_architecture_profile",
+    "detect_target_kind",
     "evaluate_skeleton_complexity",
+    "is_architecture_request",
     "normalize_architecture_plan",
     "resolve_complexity_profile",
     "resolve_facade_layout",
+    "TargetKind",
 ]

@@ -956,13 +956,10 @@ export class AgentBridge {
   }
 
   /** 同步当前 Blueprint 到后端（PUT 覆盖写入，日期子目录格式） */
-  async syncBlueprintToBackend(
-    blueprint: Record<string, unknown>,
-    sessionId = useAgentStore().currentSessionId,
-    revision = useSceneStore().document?.revision ?? 1,
-  ): Promise<boolean> {
+  async syncBlueprintToBackend(blueprint: Record<string, unknown>): Promise<boolean> {
     const agentStore = useAgentStore()
-    const session = agentStore.sessions.find(item => item.session_id === sessionId)
+    const sceneStore = useSceneStore()
+    const sessionId = agentStore.currentSessionId
 
     try {
       // 写入当前 revision 到 editor 元数据，重新加载会话时恢复版本连续性
@@ -970,11 +967,11 @@ export class AgentBridge {
       const editor = (payload.editor && typeof payload.editor === 'object')
         ? { ...(payload.editor as Record<string, unknown>) }
         : {}
-      editor.revision = revision
+      editor.revision = sceneStore.document?.revision ?? 1
       payload.editor = editor
 
       const baseUrl = this.httpBaseUrl
-      const relPath = session?.filename || buildSceneRelPath(sessionId, payload)
+      const relPath = buildSceneRelPath(sessionId, payload)
       const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -983,10 +980,6 @@ export class AgentBridge {
       if (!response.ok) {
         console.error('[AgentBridge] 同步蓝图失败:', response.status)
         return false
-      }
-      if (session) {
-        session.filename = relPath
-        session.status = 'saved'
       }
       return true
     } catch (err) {

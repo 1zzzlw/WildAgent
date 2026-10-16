@@ -15,7 +15,7 @@ from tests.plan.test_drawing_implementation import drawing, empty_state, patch_s
 
 
 @pytest.mark.parametrize("face", ["front", "back", "left", "right"])
-def test_open_face_has_no_wall_host_and_body_receives_only_required_opening_hosts(face):
+def test_open_face_has_no_wall_host_and_body_receives_all_closed_wall_frames(face):
     document = explicit_drawing()
     document.decisions.facades[face].ground_pattern = ["open"]
     document.decisions.components = []
@@ -25,7 +25,8 @@ def test_open_face_has_no_wall_host_and_body_receives_only_required_opening_host
     state = empty_state(document)
     body = next(m for m in projected.component_markers if m["type"] == "building_body")
     context = impl._item_context(state, {"building_body": body}, state["skeleton_blueprint"])
-    assert context["diagram_hosts"] == []
+    assert {w["id"] for w in context["diagram_hosts"]} == {
+        f"wall_main_{other}_L1" for other in ("front", "back", "left", "right") if other != face}
     assert document.model_dump(mode="json") == before
 
 
@@ -45,11 +46,13 @@ def test_open_face_rejects_physical_reference_wall_before_partial_adoption(face,
     assert accepted is None and "开敞" in rejected["error"] and wall["id"] in rejected["error"]
 
 
-def test_body_context_retains_real_opening_host_without_materializing_other_diagrams():
+def test_body_context_retains_all_wall_facts_without_materializing_diagram_geometry():
     state = empty_state(explicit_drawing())
     marker = state["resolved_design"]["component_markers"][0]
     context = impl._item_context(state, {"building_body": marker}, state["skeleton_blueprint"])
-    assert [w["id"] for w in context["diagram_hosts"]] == ["wall_main_front_L1"]
+    assert {w["id"] for w in context["diagram_hosts"]} == {
+        f"wall_main_{face}_L1" for face in ("front", "right", "back", "left")}
+    assert context["existing_blueprint"]["geometry"] == {"elements": [], "components": []}
 
 
 @pytest.mark.parametrize("face", ["front", "back", "left", "right"])

@@ -1,65 +1,53 @@
-# Agent 代码入口
+# Agent 后端目录边界
 
-`app/agent` 负责工作流编排与生成业务；共享模型调用在 `app/llm`，输入与事件协议在 `app/contracts`，设计数据在 `app/design`。
+`app/agent` 只负责 LangGraph 工作流及建筑生成领域逻辑。跨工作流复用的模型调用、RAG 和传输协议分别位于 `app/llm`、`app/rag` 和 `app/contracts`。
 
-## 先看这三个文件
+## 目录职责
 
-| 文件 | 职责 |
-|---|---|
-| [graph.py](graph.py) | 注册节点和路由，决定流程怎么走 |
-| [state.py](state.py) | 公开输入、完整 State，以及分片合并规则 |
-| [runtime.py](runtime.py) | 请求期间的回调与上下文，不写入 checkpoint |
-
-`nodes/` 只保留图节点的薄入口。找到导入目标后，进入对应业务包阅读；节点名称和 trace 名称保持一致。
-
-## 当前主流程
-
-```text
-classifier
-  ├─ chat → END
-  ├─ patch → END
-  ├─ architecture → material_plan → design_review → plan
-  └─ object_design → material_plan → design_review → skeleton → plan
-
-plan → execute ⇄ replanner → 建筑 compile / 物件合并 → final_validate
-```
-
-设计审核可以返回设计节点修订。建筑任务按已批准图纸展开，物件任务保留模型分组策略。模型服务故障或分类输出不合法时提前结束；不要把节点完成当成建筑质量验收通过。
-
-## 业务包
-
-| 包 | 负责什么 | 主要入口 |
-|---|---|---|
-| `intent/` | 意图、目标类型和形制标签的识别与解析 | [workflow.py](intent/workflow.py) |
-| `generation/architecture/` | 建筑设计与设计契约检查 | [workflow.py](generation/architecture/workflow.py) |
-| `generation/objects/` | 单个物件的设计 | [workflow.py](generation/objects/workflow.py) |
-| `generation/material/` | 材质意图与材质计划 | [workflow.py](generation/material/workflow.py) |
-| `generation/skeleton/` | 物件分支的骨架阶段 | [workflow.py](generation/skeleton/workflow.py) |
-| `generation/component/`、`generation/spatial/` | 构件生成与空间关系工具 | [component/workflow.py](generation/component/workflow.py) |
-| `design_flow/` | 设计审核与已有分片的最终装配 | [review.py](design_flow/review.py)、[compile.py](design_flow/compile.py) |
-| `plan/` | 任务展开、执行、对账与重规划 | [workflow.py](plan/workflow.py) |
-| `knowledge/` | 问答、检索上下文和受控资料研究 | [chat_workflow.py](knowledge/chat_workflow.py) |
-| `validation/`、`repair/` | 候选校验与受限修复 | [validation/workflow.py](validation/workflow.py)、[repair/workflow.py](repair/workflow.py) |
-| `compiler/` | 设计编译的底层实现，由 `app/design/compilation.py` 调用 | [compile.py](compiler/compile.py) |
-| `prompts/` | 生成与执行阶段的提示词构建器 | [planning.py](prompts/planning.py) |
-| `assets/`、`vision/` | 独立资产流程与离线视觉评价，不属于建筑主图 | [assets/graph.py](assets/graph.py)、[vision/workflow.py](vision/workflow.py) |
-
-## 共享代码放在哪里
-
-- 粒度选项与归一化：[app/contracts/generation_options.py](../contracts/generation_options.py)。
-- 意图的目标类型判断：[intent/target_kind.py](intent/target_kind.py)，不再放在建筑生成包。
-- 设计契约、图纸投影与构件关系：[app/design/](../design/)。
-- 模型创建、调用与异常协议：[app/llm/](../llm/)。
-- 文档加载与检索：[app/spec/](../spec/) 和 [app/rag/](../rag/)。
-- 持久化任务、事件分发与最终保存：[app/services/](../services/)。
-
-特定业务的 Prompt 留在所属包，如 `intent/prompt.py`。意图包不再集中转导实现，分类调用方直接导入具体模块；其他业务包仍保留实际使用的公开接口。
+- `graph.py`：创建 StateGraph、注册节点、连接边和条件路由。
+- `state.py`：声明图的公开输入与完整持久化状态。
+- `routing.py`：识别用户意图并生成路由决策。
+- `runtime.py`：保存不应写入 checkpoint 的运行时回调和上下文。
+- `nodes/`：LangGraph 的薄入口；只暴露图所需函数，不放 Prompt、解析器、校验器或修复算法。
+- `planning/`：动态任务契约、归一化与校验（`execution.py`），以及结构化要求编译、节点消费指导、
+  逐条验收和阶段进度（`requirements.py`）。
+- `generation/`：建筑方案、骨架、立面、组件、材质与空间规则。
+- `knowledge/`：知识使用策略和仅对当前请求生效的受控网络研究。
+- `validation/`：结构化问题、诊断快照和 Blueprint 约束校验。
+- `repair/`：模型选择、程序执行的白名单修复工具。
+- `prompts/`：按问答、规划、生成、研究、恢复和修复阶段拆分的提示词构建器。
+- `assets/`：独立于建筑主图的 PBR 资源工作流。
 
 ## 依赖规则
 
-1. `graph.py` 通过 `nodes/` 调用业务入口；节点之间不互相导入。
-2. 业务包不反向导入 `nodes/` 或 `graph.py`。
-3. `intent/` 不依赖具体建筑生成实现；公共输入设置不放进生成算法。
-4. State 字段、图节点名称和事件协议保持稳定，移动文件不能改变这些运行契约。
+1. `graph.py` 可以依赖 `state.py` 和 `nodes/`，节点之间不得互相导入。
+2. 节点可以调用 `planning`、`generation`、`knowledge`、`validation`、`repair`、`app.llm` 和 `app.rag`。
+3. 领域模块不得反向依赖 `nodes/` 或 `graph.py`。
+4. `state.py` 与 `planning/contracts.py` 是结构化状态边界，不依赖具体节点。
+5. API 和 Service 优先调用公开工作流入口；共享基础设施不放回 `app/agent` 根目录。
 
-从前端请求到渲染的阅读顺序见 [代码阅读路线](../../../docs/代码阅读路线.md)，详细符号位置见 [项目索引](../../../docs/项目索引.md)。
+## 计划与验收边界
+
+固定节点顺序只由 `graph.py` 决定。计划层不复制节点流程，也不负责选择下一个节点：
+
+```text
+execution_plan          本次需求要完成什么
+structured_requirements 已批准任务编译出的、节点可消费和可校验的业务约束
+acceptance_results      每条验收条件的实际值与证据；业务完成的唯一依据
+execution_progress      固定节点运行到哪里；只用于展示，不证明业务完成
+```
+
+节点运行成功只更新 `execution_progress`；动态任务是否完成由 `acceptance_results` 计算。
+无法机器判定的验收标为 `needs_review`，当前能力明确做不到的标为 `unsupported`——
+两者都**只标记不阻断**（`severity="warning"`），写进验收结果供人查看，但不会终止本轮生成。
+
+真正会让本轮失败的只剩两类：**计划对象本身不合法**（缺字段、ID 重复、引用被篡改，
+放过去下游必然崩）和 **模型服务终态错误**（没有任何东西可生成）。
+判定准则：问"是真的做不了，还是做得到但和用户措辞不一致、或者这份数据本身坏了"——
+只有后者才配终止一次生成。
+
+## 阅读顺序
+
+从 `graph.py` 看节点与边，从 `nodes/*_node.py` 找到该节点对应的用例，再进入所属领域的
+`*workflow.py` 阅读执行步骤。具体的数据解析、确定性规则和 Prompt 继续沿 import 进入同目录
+模块；因此一个工作流文件只说明“先做什么、后做什么”，不再同时充当规则仓库。

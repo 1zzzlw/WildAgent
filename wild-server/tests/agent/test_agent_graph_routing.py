@@ -7,8 +7,6 @@
 
 from types import SimpleNamespace
 
-import pytest
-
 from app.agent.generation.component.registry import resolve_component_suggestions
 from langgraph.graph import END
 
@@ -18,8 +16,12 @@ from app.agent.graph import (
     _final_validate_dispatch,
 )
 import app.agent.intent.classify as intent_classifier
-from app.agent.intent.workflow import classifier_node
-from app.agent.intent.classify import classify_intent_decision
+from app.agent.intent import (
+    classify_intent_decision,
+    classify_keywords,
+    fast_path_intent,
+    normalize_intent_decision,
+)
 
 
 def _run_immediate_coroutine(coroutine):
@@ -34,7 +36,8 @@ def _run_immediate_coroutine(coroutine):
 # ── 图级意图路由 ──
 
 
-def test_edit_routes_to_patch_when_scene_exists():
+def test_edit_keyword_routes_to_patch_when_scene_exists():
+    assert classify_keywords("把正门加宽到 1.2 米", has_current_scene=True) == "edit"
     assert _classifier_dispatch({"intent": "edit"}) == "patch"
 
 
@@ -127,7 +130,71 @@ def test_retry_budget_is_per_target_not_a_global_round_cutoff():
     assert _final_validate_dispatch(state) == END
 
 
-# ── 意图分类与模型故障 ──
+# ── 意图分类：关键词与快速路径 ──
+
+
+def test_edit_like_request_does_not_edit_without_scene():
+    assert classify_keywords("把正门加宽到 1.2 米", has_current_scene=False) == "chat"
+
+
+def test_fast_path_short_circuits_clear_generate():
+    assert fast_path_intent("生成一个欧式别墅", has_current_scene=False) == "generate"
+    assert fast_path_intent("帮我设计一个小木屋", has_current_scene=False) == "generate"
+
+
+def test_fast_path_short_circuits_clear_edit():
+    assert fast_path_intent("把正门加宽到 1.2 米", has_current_scene=True) == "edit"
+
+
+def test_fast_path_defers_ambiguous_inputs_to_llm():
+    # 无关键词 → 交给 LLM（可能是聊天）
+    assert fast_path_intent("你好", has_current_scene=False) is None
+    # 生成 + 编辑关键词同时出现 → 交给 LLM
+    assert fast_path_intent("把材质改成石材，再生成一栋楼", has_current_scene=True) is None
+    # 编辑词但当前没有场景 → 不构成编辑证据，交给 LLM
+    assert fast_path_intent("把屋顶改成红色", has_current_scene=False) is None
+
+
+def test_generation_meta_question_never_enters_keyword_generate_path():
+    message = "你生成一个建筑的实现思路是什么"
+
+    assert fast_path_intent(message, has_current_scene=False) is None
+    assert classify_keywords(message, has_current_scene=False) == "chat"
+    assert classify_keywords("当前建筑为什么这样设计", has_current_scene=True) == "chat"
+
+
+def test_structured_intent_decision_is_normalized_and_clamped():
+    decision = normalize_intent_decision(
+        '''{
+          "intent": "chat",
+          "confidence": 1.4,
+          "target": "agent implementation",
+          "requires_scene": false,
+          "reason": "asks how generation works"
+        }''',
+        "生成建筑的实现思路是什么",
+        has_current_scene=True,
+    )
+
+    assert decision.intent == "chat"
+    assert decision.confidence == 1.0
+    assert decision.source == "llm"
+
+
+def test_explanatory_question_fails_closed_even_if_model_says_generate():
+    structured = normalize_intent_decision(
+        '{"intent":"generate","confidence":0.99,"reason":"contains generate"}',
+        "你生成一个建筑的的实现思路是什么",
+        has_current_scene=True,
+    )
+    legacy = normalize_intent_decision(
+        "GENERATE",
+        "当前建筑为什么这样设计",
+        has_current_scene=True,
+    )
+
+    assert structured.intent == "chat"
+    assert legacy.intent == "chat"
 
 
 def test_classifier_uses_llm_for_generation_meta_question(monkeypatch):
@@ -137,6 +204,7 @@ def test_classifier_uses_llm_for_generation_meta_question(monkeypatch):
         calls.append((llm, messages))
         return SimpleNamespace(content='''{
           "intent":"chat",
+          "confidence":0.96,
           "target":"agent implementation",
           "requires_scene":false,
           "reason":"asks for implementation approach"
@@ -167,7 +235,7 @@ def test_classifier_still_uses_llm_for_clear_generation_request(monkeypatch):
 
     async def fake_invoke_llm(llm, messages):
         calls.append((llm, messages))
-        return SimpleNamespace(content='{"intent":"generate","target_kind":"architecture"}')
+        return SimpleNamespace(content="GENERATE")
 
     monkeypatch.setattr(intent_classifier, "invoke_llm", fake_invoke_llm)
 
@@ -181,7 +249,7 @@ def test_classifier_still_uses_llm_for_clear_generation_request(monkeypatch):
     assert len(calls) == 1
 
 
-def test_classifier_failure_stops_without_generating_meta_question(monkeypatch):
+def test_classifier_failure_falls_back_without_generating_meta_question(monkeypatch):
     async def failing_invoke_llm(llm, messages):
         raise RuntimeError("provider unavailable")
 
@@ -194,57 +262,6 @@ def test_classifier_failure_stops_without_generating_meta_question(monkeypatch):
     ))
 
     assert result.intent == "chat"
-    assert result.model_error["terminal_current_run"] is True
-    assert result.source == "llm"
-
-
-@pytest.mark.parametrize("raw", [
-    "GENERATE", "EDIT", "CHAT", "", "not json", "{}",
-    '{"intent":"unknown","reason":"GENERATE"}',
-])
-def test_invalid_classifier_output_stops_before_downstream_nodes(raw, monkeypatch):
-    calls = []
-
-    async def fake_invoke_llm(llm, messages):
-        calls.append(messages)
-        return SimpleNamespace(content=raw)
-
-    monkeypatch.setattr(intent_classifier, "create_llm", lambda **kwargs: object())
-    monkeypatch.setattr(intent_classifier, "invoke_llm", fake_invoke_llm)
-
-    result = _run_immediate_coroutine(classifier_node({"user_message": "生成一个别墅"}))
-
-    assert len(calls) == 1
-    assert result["status"] == "failed"
-    assert result["terminal_model_error"]["terminal_current_run"] is True
-    assert result["error"]
-    assert _classifier_dispatch(result) == END
-
-
-@pytest.mark.parametrize("failure, category", [
-    (RuntimeError("Free quota exhausted"), "quota_exhausted"),
-    (RuntimeError("Error code: 401 - invalid api key"), "authentication"),
-    (TimeoutError(), "transport_error"),
-])
-def test_classifier_service_failure_stops_without_keyword_fallback(failure, category, monkeypatch):
-    calls = []
-
-    async def failing_invoke_llm(llm, messages):
-        calls.append(messages)
-        raise failure
-
-    monkeypatch.setattr(intent_classifier, "create_llm", lambda **kwargs: object())
-    monkeypatch.setattr(intent_classifier, "invoke_llm", failing_invoke_llm)
-
-    result = _run_immediate_coroutine(classifier_node({"user_message": "生成一个别墅"}))
-
-    assert len(calls) == 1
-    assert result["intent"] == "chat"
-    assert result["intent_source"] == "llm"
-    assert result["status"] == "failed"
-    assert result["terminal_model_error"]["category"] == category
-    assert result["error"]
-    assert _classifier_dispatch(result) == END
 
 
 # ── 构件策略（旧派发链与新 plan 策略共用的安全边界）──

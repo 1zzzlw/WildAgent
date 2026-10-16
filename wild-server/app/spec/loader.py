@@ -23,7 +23,7 @@ import os
 import re
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -158,6 +158,7 @@ class SpecLoadResult:
 
     text: str
     hits: tuple[RetrievedSpecChunk, ...] = ()
+    error_type: str | None = None
 
     @property
     def chunk_ids(self) -> tuple[str, ...]:
@@ -1286,6 +1287,7 @@ class RAGSpecLoader(SpecLoader):
     ) -> SpecLoadResult:
         """按多个检索意图各取片段，保持协议、能力与关系覆盖。"""
         base_text = self._load_base_text() if include_base else ""
+        error_type = None
         try:
             retrieved = self.retrieve_many(queries, per_query=per_query)
             retrieved = self._apply_retrieval_gate(retrieved, purpose=purpose)
@@ -1293,8 +1295,10 @@ class RAGSpecLoader(SpecLoader):
             raise
         except Exception as exc:
             logger.warning(f"[RAG] 检索失败，已降级为基础规范上下文: {exc}")
+            error_type = type(exc).__name__
             retrieved = self._apply_retrieval_gate([], purpose=purpose)
-        return self._compose_result(base_text, retrieved, operation="load_many")
+        result = self._compose_result(base_text, retrieved, operation="load_many")
+        return replace(result, error_type=error_type)
 
     def _apply_retrieval_gate(
         self,

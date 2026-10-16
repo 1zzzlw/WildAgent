@@ -135,7 +135,8 @@ def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> di
     fragments = state.get("component_fragments") or {}
     diagnostics = state.get("component_diagnostics") or {}
     failed_rows = [row for diag in diagnostics.values()
-                   for row in (diag.get("failed_implementations") or {}).values()
+                   for key in ("partial_implementations", "failed_implementations")
+                   for row in (diag.get(key) or {}).values()
                    if isinstance(row, dict) and isinstance(row.get("geometry"), dict)]
     if failed_rows or (isinstance(fragments, dict) and any(isinstance(parts, list) and parts for parts in fragments.values())):
         draft = deepcopy(state.get("skeleton_blueprint") or {"meta": {}, "geometry": {}})
@@ -152,10 +153,18 @@ def retain_generation_blueprint(state: dict, fallback: dict | None = None) -> di
                 for name, definition in (diag.get(resource) or {}).items():
                     draft.setdefault(resource, {}).setdefault(name, deepcopy(definition))
         for row in failed_rows:
+            seen = {e.get("id") for bucket in ("elements", "components") for e in geometry[bucket]
+                    if isinstance(e, dict) and isinstance(e.get("id"), str)}
             for bucket in ("elements", "components"):
                 parts = row["geometry"].get(bucket)
                 if isinstance(parts, list):
-                    geometry[bucket].extend(deepcopy(parts))
+                    for entity in parts:
+                        entity_id = entity.get("id") if isinstance(entity, dict) else None
+                        if isinstance(entity_id, str) and entity_id in seen:
+                            continue
+                        geometry[bucket].append(deepcopy(entity))
+                        if isinstance(entity_id, str):
+                            seen.add(entity_id)
             for resource in ("materials", "assets"):
                 definitions = row.get(resource)
                 if isinstance(definitions, dict):

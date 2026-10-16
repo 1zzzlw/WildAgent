@@ -877,10 +877,11 @@ def get_roof_support_bounds(
     roof: dict | None = None,
     primitives: list[dict] | None = None,
     columns: list[dict] | None = None,
+    beams: list[dict] | None = None,
 ) -> dict:
     """返回屋顶所在标高实际承托构件的 XZ 包围盒，而不是整栋建筑首层外包框。
 
-    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶 + **柱元素（column）顶**。
+    承托候选 = 墙顶 + 水平圆柱（primitive cylinder）顶 + 柱元素顶 + 水平梁顶。
     传统建筑（祈年殿）用 primitive cylinder 表达中/上段殿身与檐盘，攒尖顶承托在
     檐盘顶上而非直接落在墙顶；圆柱只有在与屋顶水平投影有交叠时才计入承托（装饰圆柱不在屋顶下方不参与）。
 
@@ -911,6 +912,17 @@ def get_roof_support_bounds(
             float(position[2]) - float(roof_depth) / 2,
             float(position[2]) + float(roof_depth) / 2,
         )
+    for beam in beams or []:
+        a, b = beam.get("from"), beam.get("to")
+        if (not _is_finite_vector3(a) or not _is_finite_vector3(b) or beam.get("curve")
+                or abs(a[1]-b[1]) > 1e-6 or not _is_positive_number(beam.get("height"))):
+            continue
+        if roof_footprint and (max(a[0], b[0]) < roof_footprint[0] or min(a[0], b[0]) > roof_footprint[1]
+                               or max(a[2], b[2]) < roof_footprint[2] or min(a[2], b[2]) > roof_footprint[3]):
+            continue
+        top = a[1]+beam["height"]/2
+        # 仅为承托范围计算投影到梁顶，不修改实际实体及其中心线坐标。
+        wall_tops.append((top, {**beam, "from": [a[0], top, a[2]], "to": [b[0], top, b[2]]}))
     roof_cx = (roof_footprint[0] + roof_footprint[1]) / 2 if roof_footprint else None
     roof_cz = (roof_footprint[2] + roof_footprint[3]) / 2 if roof_footprint else None
     roof_half = (
@@ -1110,7 +1122,7 @@ def get_roof_support_bounds(
         }
     min_x, max_x = min(all_x), max(all_x)
     min_z, max_z = min(all_z), max(all_z)
-    support_kind = "wall" if support_walls else (
+    support_kind = ("wall" if any(w.get("type") == "wall" for w in support_walls) else "beam") if support_walls else (
         "column" if support_columns else "wall"
     )
     return {
@@ -1210,7 +1222,15 @@ def _roof_deep_void(roof: dict, elements: list[dict]) -> tuple[float, float] | N
     wall_polylines: list[tuple[list[tuple[float, float]], float]] = []
     for element in elements:
         element_type = element.get("type")
-        if element_type == "floor":
+        if (element_type == "primitive" and element.get("shape") == "box"
+                and not any(element.get("rotation", [0, 0, 0]))
+                and _is_finite_vector3(element.get("position"))
+                and _is_finite_vector3(element.get("dimensions"))):
+            w, h, d = [v*s for v, s in zip(element["dimensions"], element.get("scale", [1, 1, 1]))]
+            x, y, z = element["position"]
+            if 0 < h < min(w, d) and y+h/2 <= (_roof_base_y(roof) or 0)+0.15:
+                floor_rects.append((x-w/2, x+w/2, z-d/2, z+d/2))
+        elif element_type == "floor":
             # 圆形楼板用 center + radius 表达，from/to 只是包围盒的两个角点。
             # 直接套矩形会把圆板当成"第一象限的方块"，把圆板另一侧误判成空腔
             # （天坛：圆板 to=[18,_,18] 与 from=[0,_,0] 拼出的矩形只盖住 x/z 正半轴）。
@@ -1322,7 +1342,8 @@ def validate_roof_coverage(blueprint: dict) -> str:
         rid = r.get("id", "?")
         span = r.get("span", 0)
         depth = r.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, r, primitives, columns)
+        bounds = get_roof_support_bounds(walls, r, primitives, columns,
+                                         beams=[e for e in elements if e.get("type") == "beam"])
         last_bounds = bounds
         wall_span = bounds["span"]
         wall_depth = bounds["depth"]
@@ -1382,7 +1403,8 @@ def validate_roof_coverage(blueprint: dict) -> str:
         if roof_y is not None and isinstance(support_y, (int, float)):
             gap = float(roof_y) - float(support_y)
             if gap > 0.15:
-                support_label = "承托造型体顶" if support_is_primitive else "承托墙顶"
+                support_label = {"primitive": "承托造型体顶", "beam": "承托梁顶", "column": "承托柱顶"}.get(
+                    bounds.get("support_kind"), "承托墙顶")
                 issues.append(
                     f"❌ [{rid}] 屋顶底标高 position[1]={roof_y:.2f} 高于{support_label} {support_y:.2f}m，"
                     f"悬空 {gap:.2f}m。position[1] 必须等于其承托构件的顶标高，"
@@ -2857,6 +2879,47 @@ def validate_stacked_member_containment(blueprint: dict) -> str:
     return f"发现 {len(issues)} 处贯通墙体伸出所在层外墙轮廓：\n" + "\n".join(visible)
 
 
+def _hip_roof_beam_penetrations(elements: list[dict]) -> list[str]:
+    """按 Core 的 hip 坡面与 XYZ 梁旋转核对截面，中心线在瓦面下不等于截面不穿出。"""
+    errors = []
+    roofs = [e for e in elements if e.get("type") == "roof" and e.get("roofType") == "hip"
+             and _is_finite_vector3(e.get("position"))
+             and all(_is_positive_number(e.get(k)) for k in ("span", "depth", "height"))]
+    for beam in elements:
+        if (beam.get("type") != "beam" or beam.get("curve") or beam.get("crossSection") not in {"rect", "i-beam"}
+                or not all(_is_finite_vector3(beam.get(k)) for k in ("from", "to"))
+                or not all(_is_positive_number(beam.get(k)) for k in ("width", "height"))):
+            continue
+        a, b = beam["from"], beam["to"]
+        dx, dy, dz = [q-p for p, q in zip(a, b)]
+        length = math.hypot(dx, dy, dz)
+        if length <= 1e-9:
+            continue
+        ry = math.asin(max(-1, min(1, dx/length)))
+        rx = math.atan2(-dy, dz) if math.hypot(dy, dz) > 1e-9 else 0
+        width_axis = [math.cos(ry), math.sin(rx)*math.sin(ry), -math.cos(rx)*math.sin(ry)]
+        height_axis = [0, math.cos(rx), math.sin(rx)]
+        corners = [[p[i]+sw*beam["width"]/2*width_axis[i]+sh*beam["height"]/2*height_axis[i]
+                    for i in range(3)] for p in (a, b) for sw in (-1, 1) for sh in (-1, 1)]
+        for roof in roofs:
+            cx, base, cz = roof["position"]
+            hw, hd = roof["span"]/2, roof["depth"]/2
+            def surface(point):
+                edge = min(hw-abs(point[0]-cx), hd-abs(point[2]-cz))
+                return base+roof["height"]*edge/min(hw, hd) if edge >= 0 else None
+            end_surfaces = [surface(p) for p in (a, b)]
+            if any(y is None for y in end_surfaces) or all(p[1] > y+0.001 for p, y in zip((a, b), end_surfaces)):
+                continue  # 完全位于屋面以上的独立杆件不冒充穿瓦面。
+            above = max((p[1]-y for p in corners if (y := surface(p)) is not None), default=0)
+            if above > 0.001:
+                drop = above+0.001
+                errors.append(f"❌ [{beam['id']}] 梁截面穿出屋顶 [{roof['id']}] 外表面 {above:.3f}m；"
+                              "不能只核对中心线。保持截面及坡向整体下移时，"
+                              f"from[1] 至多 {a[1]-drop:.6f}、to[1] 至多 {b[1]-drop:.6f}；"
+                              "回核梁端承接，保持屋面尺寸与标高，不能抬屋顶掩盖穿插")
+    return errors
+
+
 @tool
 def validate_collision(blueprint: dict) -> str:
     """
@@ -2880,6 +2943,7 @@ def validate_collision(blueprint: dict) -> str:
     issues: list[str] = []
 
     # 按 type 分组
+    issues.extend(_hip_roof_beam_penetrations(elements))
     by_type: dict[str, list[dict]] = {}
     for el in elements:
         t = el.get("type", "")
@@ -2908,17 +2972,23 @@ def validate_collision(blueprint: dict) -> str:
             start_b, end_b = beam_b.get("from", []), beam_b.get("to", [])
             if any(len(point) < 3 for point in (start_a, end_a, start_b, end_b)):
                 continue
-            axis_a = "x" if abs(end_a[0] - start_a[0]) >= abs(end_a[2] - start_a[2]) else "z"
-            axis_b = "x" if abs(end_b[0] - start_b[0]) >= abs(end_b[2] - start_b[2]) else "z"
-            if axis_a != axis_b or abs(float(start_a[1]) - float(start_b[1])) > 0.15:
+            if beam_a.get("curve") or beam_b.get("curve"):
                 continue
-            cross_a = float(start_a[2] if axis_a == "x" else start_a[0])
-            cross_b = float(start_b[2] if axis_b == "x" else start_b[0])
-            if abs(cross_a - cross_b) > 0.15:
+            direction_a = [float(b)-float(a) for a, b in zip(start_a, end_a)]
+            direction_b = [float(b)-float(a) for a, b in zip(start_b, end_b)]
+            length_a, length_b = math.hypot(*direction_a), math.hypot(*direction_b)
+            if min(length_a, length_b) <= 1e-9:
                 continue
-            interval_a = sorted((float(start_a[0 if axis_a == "x" else 2]), float(end_a[0 if axis_a == "x" else 2])))
-            interval_b = sorted((float(start_b[0 if axis_b == "x" else 2]), float(end_b[0 if axis_b == "x" else 2])))
-            overlap = min(interval_a[1], interval_b[1]) - max(interval_a[0], interval_b[0])
+            axis = [v/length_a for v in direction_a]
+            parallel = abs(sum(a*b for a, b in zip(axis, direction_b)))/length_b
+            if abs(parallel-1) > 1e-9:
+                continue
+            offset = [float(b)-float(a) for a, b in zip(start_a, start_b)]
+            along = sum(a*b for a, b in zip(offset, axis))
+            if math.hypot(*(v-along*u for v, u in zip(offset, axis))) > 0.15:
+                continue
+            interval_b = sorted((along, along+sum(a*b for a, b in zip(direction_b, axis))))
+            overlap = min(length_a, interval_b[1]) - max(0, interval_b[0])
             if overlap > 0.15:
                 issues.append(
                     f"⚠️  [{beam_a.get('id','?')}] 与 [{beam_b.get('id','?')}]"
@@ -3500,7 +3570,8 @@ def fix_roof_coverage(blueprint: dict) -> str:
         rid   = r.get("id", "?")
         span  = r.get("span",  0)
         depth = r.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, r, columns=columns)
+        bounds = get_roof_support_bounds(walls, r, columns=columns,
+                                         beams=[e for e in elements if e.get("type") == "beam"])
         wall_span = bounds["span"]
         wall_depth = bounds["depth"]
         center_x = bounds["center_x"]

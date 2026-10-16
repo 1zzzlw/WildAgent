@@ -92,7 +92,26 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
                     actual = bounds[axis][1]-bounds[axis][0]
                     checked.append("size."+key)
                     if abs(actual-size[key]) > TOLERANCE:
-                        errors.append(f"图纸标记 {marker['id']} 的组合设计尺寸 {key}={size[key]:g}，实际 {actual:g}；不能只验证单个零件")
+                        position = placement.get("position")
+                        target = (f"；世界 {'XYZ'[axis]} 范围应为 "
+                                  f"[{position[axis]-size[key]/2:g}, {position[axis]+size[key]/2:g}]，"
+                                  f"实际 [{bounds[axis][0]:g}, {bounds[axis][1]:g}]；"
+                                  "零件中心±该轴尺寸/2是外边界，端部杆件厚度也要计入") if position else ""
+                        if position:
+                            for sign, edge in ((-1, 0), (1, 1)):
+                                expected = position[axis]+sign*size[key]/2
+                                if abs(bounds[axis][edge]-expected) <= TOLERANCE:
+                                    continue
+                                boundary = min(entities, key=lambda e: (
+                                    abs(e["position"][axis]+sign*e["dimensions"][axis]/2-bounds[axis][edge]),
+                                    e["dimensions"][axis]))
+                                if boundary["dimensions"][axis] > size[key]+TOLERANCE:
+                                    target += f"；[{boundary['id']}].dimensions[{axis}] 超过整组上限 {size[key]:g}，只平移不能解决"
+                                else:
+                                    target += (f"；若保持零件尺寸，[{boundary['id']}].position[{axis}] "
+                                               f"应为 {expected-sign*boundary['dimensions'][axis]/2:g}，"
+                                               f"当前 {boundary['position'][axis]:g}；其他越界零件也须回核")
+                        errors.append(f"图纸标记 {marker['id']} 的组合设计尺寸 {key}={size[key]:g}，实际 {actual:g}；不能只验证单个零件" + target)
             position = placement.get("position")
             if isinstance(position, list) and len(position) == 3:
                 checked.append("placement.position")
@@ -103,6 +122,30 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
             unverified.append("组合整体尺寸与定位需要复核，当前形态不能按未旋转 box 尺度验收")
         if set(size) - {"width", "height", "depth"}:
             unverified.append("组合的其他尺寸参数暂无实体映射")
+    elif len(entities) == 1 and family == "beam" and entities[0].get("type") == "beam":
+        beam = entities[0]
+        a, b = beam.get("from"), beam.get("to")
+        valid = (all(isinstance(p, list) and len(p) == 3 and all(type(v) in (int, float) and isfinite(v) for v in p)
+                     for p in (a, b)) and not beam.get("curve") and beam.get("crossSection") in {"rect", "i-beam"}
+                 and all(type(beam.get(k)) in (int, float) and isfinite(beam[k]) and beam[k] > 0
+                         for k in ("width", "height")))
+        if valid and abs(a[1]-b[1]) <= TOLERANCE and hypot(b[0]-a[0], b[2]-a[2]) > TOLERANCE:
+            dx, dz = abs(b[0]-a[0]), abs(b[2]-a[2])
+            length = hypot(dx, dz)
+            actual = {"width": dx+beam["width"]*dz/length, "height": beam["height"],
+                      "depth": dz+beam["width"]*dx/length}
+            for key, value in size.items():
+                if key in actual:
+                    checked.append("size."+key)
+                    if abs(actual[key]-value) > TOLERANCE:
+                        errors.append(f"图纸标记 {marker['id']} 的整体 {key}={value:g}，实际 {actual[key]:g}；"
+                                      "梁跨度由 from/to 决定，原生 width 是垂直于梁轴的截面宽，不能用跨度替代")
+            center = [(p+q)/2 for p, q in zip(a, b)]
+            if isinstance(placement.get("position"), list) and any(
+                    abs(p-q) > TOLERANCE for p, q in zip(center, placement["position"])):
+                errors.append(f"图纸标记 {marker['id']} 的梁中心期望 {placement['position']}，实际 {center}")
+        else:
+            unverified.append("曲线、倾斜或圆截面梁的整体尺寸需要复核")
     elif len(entities) == 1 and family and entities[0].get("type") == family:
         for key, value in size.items():
             field = NATIVE_SIZE_FIELDS.get((family, key), key)
@@ -126,10 +169,14 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
         if not isinstance(expected, dict):
             unverified.append("设计材质角色尚未解析为实际材质")
         else:
+            from app.agent.generation.material.plan import material_region_field
+
             definition = {"opacity": 1, **expected}
-            if not any({"opacity": 1, **materials[e["material"]]} == definition
-                       for e in entities if isinstance(e.get("material"), str)
-                       and isinstance(materials.get(e["material"]), dict)):
+            references = [e.get(material_region_field(design["material_role"], e.get("type", "")))
+                          for e in entities]
+            if not any({"opacity": 1, **materials[reference]} == definition
+                       for reference in references if isinstance(reference, str)
+                       and isinstance(materials.get(reference), dict)):
                 errors.append(f"图纸标记 {marker['id']} 未引用设计材质角色 {design['material_role']}")
             else:
                 checked.append("material_role 引用")
@@ -151,6 +198,24 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
         return row, []
     existing = list(entity_index(blueprint).values())
     incoming = [e for k in ("elements", "components") for e in geometry.get(k, []) if isinstance(e, dict)]
+    changes = []
+    interior = {h["id"]: h for h in diagram_hosts or []
+                if str(h.get("design_path", "")).startswith("/decisions/floor_layouts/")}
+    for entity in incoming:
+        host = interior.get(entity.get("id"))
+        a, b = entity.get("from"), entity.get("to")
+        if (not host or entity.get("type") != "wall" or entity.get("curve") or "height" in entity
+                or not _is_finite_vector3(a) or not _is_finite_vector3(b) or abs(a[1]-b[1]) > 1e-9):
+            continue
+        planar = (a[::2], b[::2])
+        expected = (host["from"][::2], host["to"][::2])
+        if planar != expected and planar != expected[::-1]:
+            continue
+        before = {"from": list(a), "to": list(b)}
+        a[1], b[1] = host["from"][1], host["to"][1]
+        changes.append({"rule": "compiler.interior_wall_levels", "entity_id": entity["id"],
+                        "design_path": host["design_path"], "before": before,
+                        "after": {"from": list(a), "to": list(b)}})
 
     def strings(value):
         if isinstance(value, str):
@@ -236,7 +301,7 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
              if isinstance(e, dict) and isinstance(e.get("id"), str) and counts[e["id"]] == 1
              and e["id"] not in existing_ids and wall_bounds(e)]
     walls.sort(key=lambda pair: (-(pair[1][3]-pair[1][2])*(pair[1][5]-pair[1][4]), pair[0]["id"] not in referenced))
-    changes, replacements = [], {}
+    replacements = {}
     reserved_ids = existing_ids | set(counts) | referenced
     for entity, bounds in walls:
         segments, owners = [(bounds[2], bounds[3])], []
@@ -294,14 +359,24 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
     from app.tools.spatial_tools import _roof_footprint_entries
     walls = [e for e in entity_index(blueprint).values() if e.get("type") == "wall"]
     elevation = marker["entity"]["position"][1]
+    design = marker["design"]
+    position = (design.get("placement") or {}).get("position")
+    height = (design.get("size") or {}).get("height")
+    if position and type(height) in (int, float) and height > 0:
+        # 显式构件按整体中心定位；自动屋面标记才直接使用墙顶标高。
+        elevation = position[1] - height / 2
     native_roofs = {e["id"]: e for e in entities if e.get("type") == "roof"}
-    regions = []
+    regions, projected, below = [], [], []
     for x0, x1, z0, z1, y, entity_id in _roof_footprint_entries(entities, walls):
         roof = native_roofs[entity_id]
         surface_y = y + roof["thickness"] if roof.get("roofType") == "flat" else y
+        projected.append((x0, z0, x1, z1))
         if surface_y >= elevation-TOLERANCE:
             regions.append((x0, z0, x1, z1))
-    projected, below = list(regions), []
+        else:
+            below.append(f"[{entity_id}] 原生屋面支承标高 {surface_y:.3f}m 低于图纸要求 {elevation:.3f}m；"
+                         "图纸 placement.position 是整体中心，size.height 为整体高度；"
+                         "核对图纸中心、相对墙顶高差与实际支承，不能只修改覆盖宽深")
     for entity in entities:
         if entity.get("type") == "floor" and entity.get("shape", "rect") == "rect":
             a, b = entity["from"], entity["to"]

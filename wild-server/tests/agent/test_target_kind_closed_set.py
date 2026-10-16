@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import pytest
 
-from app.agent.intent.target_kind import (
+from app.agent.generation.architecture import (
     detect_target_kind,
     is_architecture_request,
 )
-from app.agent.intent import target_kind as target_module
+from app.agent.generation.architecture import profile as profile_module
 
 
 #: 任意命名物件：**不能**因为"名字没被列举过"就被判成建筑。
@@ -69,7 +69,7 @@ def test_architecture_type_words_are_architecture(message):
     assert detect_target_kind(message, "generate") == "architecture"
 
 
-@pytest.mark.parametrize("word", target_module._ARCHITECTURE_TYPE_KEYWORDS)
+@pytest.mark.parametrize("word", profile_module._ARCHITECTURE_TYPE_KEYWORDS)
 def test_every_type_word_is_recognized_as_architecture(word):
     """闭集里的每个类型词都必须被认成建筑，路由判据不能自相矛盾。"""
 
@@ -79,17 +79,15 @@ def test_every_type_word_is_recognized_as_architecture(word):
 
 
 def test_architecture_closed_set_covers_type_words_by_construction():
-    closed = set(target_module._ARCHITECTURE_TYPE_WORDS)
-    assert set(target_module._ARCHITECTURE_TYPE_KEYWORDS) <= closed
+    closed = set(profile_module._ARCHITECTURE_TYPE_WORDS)
+    assert set(profile_module._ARCHITECTURE_TYPE_KEYWORDS) <= closed
 
 
 def test_profile_selection_is_deleted_and_custom_is_the_only_profile():
     """防回归：关键词选档已删除，档案表只剩 custom（物理边界，不做设计锚定）。"""
 
-    from app.agent.generation.architecture import profile as profile_module
-
     assert set(profile_module._ARCHITECTURE_PROFILES) == {"custom"}
-    profile = profile_module.detect_architecture_profile()
+    profile = profile_module.detect_architecture_profile("欧式古典柱廊殿宇")
     assert profile["id"] == "custom"
     # custom 不做设计锚定：shapes / base_components 必须是全集语义（宽边界）。
     assert "courtyard" in profile["shapes"]
@@ -104,12 +102,10 @@ def test_profile_label_never_narrows_physical_bounds():
     2026-09-29 删掉的"选档白名单"（把"欧式古典柱廊殿宇"锚成 12×9 两层住宅）。
     """
 
-    from app.agent.generation.architecture import profile as profile_module
-
-    baseline = profile_module.detect_architecture_profile()
+    baseline = profile_module.detect_architecture_profile("生成一个四角亭子")
     for label in ("villa", "pavilion", "tower", "ziggurat", "custom"):
         profile = profile_module.detect_architecture_profile(
-            profile_id=label,
+            "生成一个四角亭子", profile_id=label,
         )
         assert profile["id"] == label
         for key in (
@@ -118,6 +114,24 @@ def test_profile_label_never_narrows_physical_bounds():
             "default_massing", "default_roof",
         ):
             assert profile[key] == baseline[key], f"{label} 收窄了 {key}"
+
+
+def test_profile_label_is_an_open_set_not_a_code_whitelist():
+    """防回归（2026-10-08 用户决策："不要写成白名单，全部由 LLM 控制"）。
+
+    代码只负责把模型给的标签清成 slug，**不校验词表**：认不出的值原样透传，
+    只有缺失/非法才退 custom；降级路径（模型没参与判断）也不许拿用户原文里的词凑标签。
+    """
+
+    from app.agent.intent.decision import _normalize_profile, fallback_decision
+
+    assert _normalize_profile("Ziggurat") == "ziggurat"
+    assert _normalize_profile("villa 大宅") == "villa"
+    assert _normalize_profile("") == "custom"
+    assert _normalize_profile(None) == "custom"
+    assert _normalize_profile("x" * 99) == "x" * 40
+
+    assert fallback_decision("生成一个别墅", False, "模型不可用").profile == "custom"
 
 
 @pytest.mark.parametrize("intent", ["edit", "chat"])
@@ -133,7 +147,7 @@ def test_object_name_keyword_table_is_gone():
     它一回来，"没命中→建筑"的兜底就会跟着回来，而那正是"要桌子给房子"的成因。
     """
 
-    from app.agent.intent import target_kind as target_kind_module
+    from app.agent.generation.architecture import target_kind as target_kind_module
     from app.agent.intent import rules as rules_module
 
     # 判定的新家（architecture）与降级规则的新家（intent）都必须干净：

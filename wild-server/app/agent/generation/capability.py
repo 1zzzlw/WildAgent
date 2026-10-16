@@ -161,7 +161,7 @@ def _capability_from_definition(
 _COORD_SEMANTICS: dict[str, str] = {
     "wall": "from[1]=墙底世界Y，to[1]=墙顶世界Y",
     "floor": "from[1]=楼板底面世界Y（板顶= from[1]+thickness）",
-    "roof": "position[1]=承托墙顶世界Y；span始终为世界X覆盖尺寸，depth始终为世界Z覆盖尺寸，ridgeAxis只改变屋脊方向；gable的ridgeAxis=x时高度由半depth与坡角计算。eaveOutset仅用于chinese_pagoda，其他屋型用span/depth表达出檐，不能重复增加",
+    "roof": "position[1]=承托墙顶世界Y；span始终为世界X覆盖尺寸，depth始终为世界Z覆盖尺寸，ridgeAxis只改变屋脊方向；gable的ridgeAxis=x时高度由半depth与坡角计算。chinese_curved是双坡曲面，不是四坡攒尖；正方形hip的四坡汇于顶点。宝顶、梁架和坐凳须单独实现。eaveOutset仅用于chinese_pagoda，其他屋型用span/depth表达出檐，不能重复增加",
     "door": "from=[沿墙距离, 洞口底Y, 法向偏移]，from[0] 指开口左边缘",
     "window": "from=[沿墙距离, 窗台Y, 法向偏移]，from[0] 指开口左边缘",
     "balcony": "from=[沿墙距离, 阳台板顶Y, 法向偏移]，板底=from[1]-slabThickness",
@@ -169,7 +169,7 @@ _COORD_SEMANTICS: dict[str, str] = {
     "railing": "path 无parentFloor时为世界坐标折线；有parentFloor时为真实楼板顶面局部坐标，逐点Y为相对板顶高度",
     "stair": "from/to 为梯段起止点世界坐标",
     "column": "base 为柱底世界坐标，柱顶Y=base[1]+height",
-    "beam": "from/to 为梁端点世界坐标",
+    "beam": "from/to 为梁端点中心线世界坐标；width 是垂直梁轴的截面宽、height 是截面高，跨度由端点距离决定，不能把整体 X 跨度直接抄成 width",
     "primitive": "position[1]=形体中心Y",
 }
 

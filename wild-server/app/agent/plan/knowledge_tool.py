@@ -54,7 +54,7 @@ def search_knowledge_result(
     try:
         selected_filters = exact_filters or filters
         result = agent_service.spec_loader.load_many_result([SpecQuery(query, selected_filters)], per_query=per_query, include_base=False)
-        if exact_filters and not result.text.strip():
+        if exact_filters and not result.text.strip() and not getattr(result, "error_type", None):
             selected_filters = filters
             result = agent_service.spec_loader.load_many_result([SpecQuery(query, filters)], per_query=per_query, include_base=False)
         filters = selected_filters
@@ -62,6 +62,10 @@ def search_knowledge_result(
         logger.warning(f"[search_knowledge] 检索失败: {exc}")
         return {"text": "❌ 检索失败，请基于已给约束作答。", "has_shape_reference": False}
 
+    if getattr(result, "error_type", None):
+        return {"text": f"⚠️ 检索服务调用失败（{result.error_type}），未取得参考资料；"
+                        "请依据已给字段协议和批准图纸实现，并保留检索故障，不能解释为知识库没有匹配内容。",
+                "has_shape_reference": False, "chunk_ids": [], "error_type": result.error_type}
     if not result.text.strip():
         return {"text": "（知识库没有检索到内容：请勿编造字段，改用已给约束并说明缺口。）", "has_shape_reference": False}
 

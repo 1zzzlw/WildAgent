@@ -1,4 +1,14 @@
-"""任务计划的契约、状态推进与执行工具。"""
+"""动态执行计划（plan）数据层。
+
+设计依据：《动态节点设计规划》§二（plan 与 state 的核心数据契约）。
+
+分工：
+- ``contracts``：PlanItem / PlanDocument 的唯一类型定义（含计划态与执行态两个状态机）。
+- ``store``：plan 的确定性 CRUD 与状态推进（对应 Claude Code 的 ``utils/task/framework.ts``）。
+- ``expand``：把方案与骨架产物确定性展开为条目列表（不调用模型）。
+- ``reconcile``：把蓝图事实回写为条目结果，是**唯一**的交付状态写入口。
+- ``tool_registry``：条目可用的工具集（按 (op, kind) 裁剪，fail-closed 默认）。
+"""
 
 from app.agent.plan.capability import (
     CAPABILITY_GAPS,

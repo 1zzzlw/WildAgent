@@ -809,7 +809,7 @@ async def test_drawing_executes_three_items_concurrently_without_mixing_results(
     assert not state["component_fragments"]
 
 
-def test_full_assembly_delivers_valid_file_with_reported_omission(monkeypatch):
+def test_full_assembly_retains_valid_draft_but_reports_failed_markers(monkeypatch):
     from app.agent.design_flow.compile import compile_node
     from app.agent.validation.candidate import evaluate_candidate
     document = drawing()
@@ -836,7 +836,10 @@ def test_full_assembly_delivers_valid_file_with_reported_omission(monkeypatch):
     assert not evaluation["errors"], [e.output for e in evaluation["errors"]]
     from app.agent.validation.workflow import validate_node
     final = run(validate_node({**state, **result}))
-    assert final["status"] == "complete", final
+    assert final["status"] == "failed", final
+    assert result["compile_report"]["design_complete"] is False
+    assert any(r["name"] == "compile_draft" and "lattice" in r["output"]
+               for r in final["validation_results"])
     assert final["final_blueprint"] == result["merged_blueprint"]
     assert evaluation["fulfillment"]["implementation_summary"]["abandoned"] == 1
     assert any(g["target"] == "lattice" and g["actual"] == "舍弃" for g in evaluation["fulfillment"]["gaps"])

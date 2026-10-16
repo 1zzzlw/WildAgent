@@ -29,85 +29,159 @@ applies_to:
   - 景观亭
 ---
 
-# 亭与园林建筑的设计层表态
+# 亭与园林建筑的设计表达
 
-适用条件：**方案点名亭子、四角亭、凉亭、水榭、亭廊**等园林建筑时使用。它的本质是"有顶的柱廊节点"——**不是缩小版的房子**。把亭做成带四面实墙的多层体量是本形制最高频的错误。
+适用于亭子、凉亭、水榭和亭廊的开敞空间。平面、层数、屋面和材料由本次需求决定；四角亭、圆亭、多层楼阁不能共用固定体量或构件配额。
 
-## 形制判定（先于一切参数）
+## 设计与任务的交接
 
-命中以下任一特征即按本形制设计，**禁止套用通用多层体量**：
+- 开敞面在对应体量的 `facades` 中写 `open`；`empty` 表示有墙而不开洞。需要围合的面按实际设计另设围护，不能把通透亭自动封成房子。
+- `components` 逐项声明柱、梁架、台基及选用的顶饰、栏板或坐凳，写稳定 id、type、host、placement、size、form 和 description。仅写 structural_grid.system 或 concept 不会自动产生这些实体。
+- 柱中心可直接写 `placement.position`；柱高和截面写 `size`。原生柱的 `base` 是柱底中心，不能把设计中心高度当柱底。
+- 结构关系明确到柱顶、梁底/梁顶、屋面支承标高；低粒度可以简化线脚，不能把已选梁架省成屋顶直接搭在孤立柱上的另一套结构。
+- 抬高台基时，用 `floor_layouts[].level` 声明地面顶面标高；台基中心与柱底、楼板底分别计算。
+- 材料先在设计中作出明确选择：木、石、混凝土均可，但不能把“木或混凝土”作为尚未决定的方案。使用材质角色时写 `material_role`，并保留材料、颜色和表面表达。
+- 坐凳、栏板、桌凳与宝顶都是独立设计内容，需由实际构件或 primitive 组合实现。低粒度不默认增加家具；用户指定参考中的这些内容时应保留。引擎不会从“亭”或某个 roofType 自动补出整套细部。
 
-- 体量小：面宽 3~6m（柱心距），单层；
-- 围合开敞：柱承重、无墙或极少墙，视线穿透；
-- 屋顶出檐大：0.6~1.2m，檐口是造型主体；
-- 常带台基与坐凳栏杆。
+## 屋面形态与当前能力
 
-## 设计层表态（当前生成链的合法通道）
+| 设计形态 | WILD 表达与边界 |
+|---|---|
+| 四坡屋面 | 原生 `hip`；正方形 span/depth 的四坡汇于顶点，可表达简化四角攒尖。矩形时保留实际屋脊，不把它说成尖顶 |
+| 双坡曲面屋顶 | `chinese_curved` 是沿一个轴展开的双坡曲面，不能用来冒充四坡攒尖；ridgeAxis 不能把它变成四个坡面 |
+| 四坡翘角、复杂曲面 | 需要单独设计合法的组合几何，并核对四坡覆盖与转角衔接；原生 hip 不自动提供这种曲面，不能用文字声称已完成 |
+| 圆形攒尖或多层重檐 | 按圆形或各层实际形制选择组合；参照圆台锥坡等局部知识，不照搬方形屋面 |
 
-| 通道 | 表态 | 说明 |
-|---|---|---|
-| `massing.shape` | `"pavilion"` 或 `"centralized"` | 单体居中；正方形平面 `width≈depth` |
-| `massing.floors` | `1` | **恒单层**。四角亭写多层即形制错误 |
-| `massing.floor_height` | `3.2~4.5` | 亭檐下净空比住宅层高高，显挺拔 |
-| `facades`（四面） | **四面 pattern 全为 `"open"`（默认）** | 关键：`open` = 该面**开敞无墙**（骨架不再生成该面墙体）。亭是环景建筑，**默认无墙无门**。**四面全 `open` 本身就是"此面无门"的系统级表态**——主入口强制自动豁免，不需要再写别的字段，也**不需要用 door 去满足入口**：不写 `entrance_bay`、任何面都不写 `door`。仅当**用户原文点名**月洞门/影壁墙等门时才在一面留一个 `"door"`（该面保留实墙），不得自行决定 |
-| 槽位语义区分（P5-B） | `empty` = **有墙、这一格不开洞**；`open` = **开敞、这一格不设墙** | 两者语义不同，别互相替代：想表达"这一面不要墙"写 `open`，写 `empty` 会被当成实墙。**迁移兼容**：旧文档"整面 pattern 全为 `empty`"仍按开敞解释（不会因引入 `open` 被突然封墙），归一化会把这次解释记进 notes |
-| `required_components` | **只写亭子需要的**（如 `["column", "roof"]`，**不写 door**） | 辅助保险：两条等效豁免通道——①四面 pattern 全空（首选，见上行）；②设计清单显式不含 door。两条满足其一即四面干净开敞 |
-| `roof.type` | `"chinese_curved"` 或 `"hip"` | 攒尖顶走 `chinese_curved`（编译器按中式屋顶派生锥坡）；**禁 `"dome"`**（西式半球穹顶）、禁 `gable`/`flat`（别墅语汇） |
-| `roof.overhang` | `0.6~1.2` | 出檐是亭的比例核心，不许写 0 |
-| `component_quota.column` | `min=4, max=4`（四角亭） | 角柱承重；六角/八角亭按面数给 |
-| `component_quota.railing` | 可选 `min=0` | 坐凳栏杆/美人靠语义，点名才给 |
-| `volumes` | 单个完整体量 | 不拆分、不退台 |
+`roof.span` / `depth` 是世界 X/Z 的最终覆盖尺寸；除 `chinese_pagoda` 外，出檐由覆盖尺寸表达，不能再叠加无效的 eaveOutset。`position[1]` 为屋面支承标高。宝顶和檐下梁不能仅靠 roof 的名称派生。
 
-## 反模式（出现即形制错误）
+## 四坡屋面、梁与宝顶的局部表达
 
-- 多层体量、楼板重叠——亭没有"楼上"；
-- 四面实墙 + 密排门窗——那是房子，不是亭；
-- `shape: "rectangle"` + `roof: "gable"` + 25×18m——套用通用建筑档产出别墅；
-- 圆形平面上写 `roof: "dome"`（攒尖禁 dome，见圆台锥坡体系）。
+<!-- rag-meta
+entity_type: roof
+entity_name: hip_roof
+topic: composition
+primary_terms:
+  - 四坡屋顶
+  - 四角攒尖
+  - 庑殿屋顶
+synonyms:
+  - hip
+  - hip roof
+-->
 
-## 与其他形制的边界
-
-- **圆形亭/圆台基/环形栏杆** → 圆台锥坡体系（攒尖锥坡、弦线围合栏杆、折面殿身）；
-- **多层楼阁式**（有楼层、有平座） → 叠涩檐多层塔体系，不适用本文；
-- **带墙的轩/榭**（一面实墙三面开敞） → 仍按本文单层开敞形制，仅一面 facade 给槽位。
-
-## 能力边界（只标记不阻断）
-
-- 角柱的**精确柱位**（四角内退尺寸）设计层没有逐柱坐标通道：配额点名后由构件生成层按体量角部布置；需要精确控制走 ScenePatch 修改链。
-- 翘角、宝顶、坐凳靠背等细部为蓝图层技法，编译产物按引擎中式屋顶内置规则展开。
-
-## 蓝图层产物示例
-
-设计层主通道只表态 `massing.shape` / `roof.type` / `component_quota`；需要**逐柱精确控制**（四角内退、柱径柱距）时走 ScenePatch 修改链，蓝图层产物即 `column` 元素 + `roof` 元素。以下是 `geometry.elements` 数组中的组合片段，不是完整 `.wild` 文件：
+下列是局部组装片段，elements 并入 `geometry.elements`，materials 并入材质字典；不是完整 `.wild` 或建筑模板。仅截取一根梁代表其字段写法，其余梁柱由当前图纸安排，不会自动补齐。本例柱顶应接梁底 2.88，梁顶为 3.12；屋面支承 3.12、顶点 4.22，宝顶基座与球相接。所有位置、尺寸、构件数量和材料均为可替换变量。
+实施时只取当前标记负责的部分；若梁或宝顶已单列任务，屋面任务不复制这些实体。屋面下的斜梁按截面外包面留出净空，不能仅让中心线顶端贴住瓦面而使木料穿出。
 
 ```json
 {
-  "type": "column",
-  "id": "pavilion_col_01",
-  "base": [1.4, 0.45, 1.4],
-  "height": 3.6,
-  "bottomRadius": 0.12,
-  "topRadius": 0.1,
-  "style": "chinese_wooden",
-  "material": "wood"
+  "elements": [
+    {"type":"beam","id":"eave_beam","from":[-1.5,3,-1.5],"to":[1.5,3,-1.5],"crossSection":"rect","width":0.18,"height":0.24,"material":"timber"},
+    {"type":"roof","id":"hip_cover","roofType":"hip","span":3.8,"depth":3.8,"height":1.1,"thickness":0.1,"position":[0,3.12,0],"material":"tile"},
+    {"type":"primitive","id":"finial_base","shape":"cylinder","position":[0,4.27,0],"radius":0.08,"height":0.1,"material":"tile"},
+    {"type":"primitive","id":"finial_ball","shape":"sphere","position":[0,4.43,0],"radius":0.11,"material":"tile"}
+  ],
+  "components": [],
+  "materials": {
+    "timber":{"baseColor":[0.45,0.3,0.18],"roughness":0.6,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
+    "tile":{"baseColor":[0.25,0.26,0.28],"roughness":0.85,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"}
+  }
 }
 ```
+
+来源：用户提供的《方胜亭·四角庑殿亭.wild》用于分件与材料参考，以上为重新计算的局部示例。能力核对依据为 `wild-core/schema.json` 及当前屋面重建实现；原生 hip 与双坡 chinese_curved 的区别已用同引擎真实渲染核对。本文不把参考建筑的尺寸、风格、家具数量或完整清单提升为默认要求。
+
+## 宝顶的局部表达
+
+<!-- rag-meta
+entity_type: primitive
+entity_name: roof_finial
+topic: composition
+primary_terms:
+  - 宝顶
+  - 屋顶顶饰
+synonyms:
+  - finial
+-->
+
+选用宝顶时，用独立构件标记声明尺寸、位置和材质；不能只把“宝顶”写进屋顶说明。以下为 geometry.elements 中的局部片段，假定屋面尖顶为 4.22，材质 tile 已存在；圆柱基座顶为 4.32，球底也为 4.32。屋面标高、顶饰尺寸和材料变化时共同换算这两个中心，不直接沿用示例。
 
 ```json
-{
-  "type": "roof",
-  "id": "pavilion_roof",
-  "roofType": "chinese_curved",
-  "span": 3.6,
-  "depth": 3.6,
-  "height": 2.2,
-  "thickness": 0.16,
-  "eaveOutset": 0.9,
-  "tiers": 1,
-  "material": "tile"
-}
+[
+  {"type":"primitive","id":"finial_base","shape":"cylinder","position":[0,4.27,0],"radius":0.08,"height":0.1,"material":"tile"},
+  {"type":"primitive","id":"finial_ball","shape":"sphere","position":[0,4.43,0],"radius":0.11,"material":"tile"}
+]
 ```
 
-- 角柱 `base[1]` 落在台基/楼板顶（示例 0.45 为台基顶示意）；四角亭共 4 根，示例只给一根的写法。
-- `roof.span` / `depth` 对应柱心距外包络，`eaveOutset` 即设计层 `roof.overhang` 的蓝图层落点；数值仅解释字段，开间、柱径、出檐量由本次方案决定。
-- `material` 必须引用骨架 `materials` 里已存在的材质名；坐凳栏杆、宝顶等细部由构件层/引擎内置规则展开，不要在此处发明 schema 之外的字段。
+## 坐凳与靠背的局部表达
+
+<!-- rag-meta
+entity_type: primitive
+entity_name: garden_bench
+topic: composition
+primary_terms:
+  - 园林坐凳
+  - 坐凳
+  - 美人靠
+synonyms:
+  - garden bench
+-->
+
+仅在本次设计选用坐凳时使用；与四面 open 的围护语义兼容，不额外建墙。凳面、支脚、背部横条和竖条分别表达；本例为直背简化组合，不声称实现曲面美人靠。放在所选边缘并留出入口净空，数量、方向与格栅密度由图纸决定。下列局部 elements 片段只演示一张直凳，材质 timber 已存在，地面顶为 0.3，凳面顶为 0.75，背顶为 1.1；竖条仅给一根写法，按实际设计计算其余位置。
+
+```json
+[
+  {"type":"primitive","id":"bench_seat","shape":"box","position":[0,0.69,0],"dimensions":[1.8,0.12,0.4],"material":"timber"},
+  {"type":"primitive","id":"bench_leg_l","shape":"box","position":[-0.72,0.465,0],"dimensions":[0.12,0.33,0.32],"material":"timber"},
+  {"type":"primitive","id":"bench_leg_r","shape":"box","position":[0.72,0.465,0],"dimensions":[0.12,0.33,0.32],"material":"timber"},
+  {"type":"primitive","id":"bench_post_l","shape":"box","position":[-0.85,0.925,0.16],"dimensions":[0.08,0.35,0.08],"material":"timber"},
+  {"type":"primitive","id":"bench_post_r","shape":"box","position":[0.85,0.925,0.16],"dimensions":[0.08,0.35,0.08],"material":"timber"},
+  {"type":"primitive","id":"bench_back_top","shape":"box","position":[0,1.075,0.16],"dimensions":[1.8,0.05,0.08],"material":"timber"},
+  {"type":"primitive","id":"bench_back_bottom","shape":"box","position":[0,0.8,0.16],"dimensions":[1.8,0.05,0.08],"material":"timber"},
+  {"type":"primitive","id":"bench_slat","shape":"box","position":[0,0.925,0.16],"dimensions":[0.04,0.25,0.04],"material":"timber"}
+]
+```
+
+## 圆石桌的局部表达
+
+<!-- rag-meta
+entity_type: primitive
+entity_name: stone_table
+topic: composition
+primary_terms:
+  - 圆石桌
+  - 石桌
+synonyms:
+  - stone table
+-->
+
+本次图纸选择圆石桌时，可用支脚圆柱与桌面圆柱组合，石凳另列实际标记。下列 geometry.elements 片段假定地面顶为 0.3，桌腿从 0.3 到 0.95，桌面底 0.95、顶 1.05；radius 是半径，height 是圆柱高度，position 是中心，不能用 box 的 dimensions 替代。材质 stone 已存在。桌径、桌高、台面厚度、位置和凳数均由当前需求决定。
+
+```json
+[
+  {"type":"primitive","id":"table_support","shape":"cylinder","position":[0,0.625,0],"radius":0.15,"height":0.65,"material":"stone"},
+  {"type":"primitive","id":"table_surface","shape":"cylinder","position":[0,1,0],"radius":0.45,"height":0.1,"material":"stone"}
+]
+```
+
+## 石凳的局部表达
+
+<!-- rag-meta
+entity_type: primitive
+entity_name: stone_stool
+topic: composition
+primary_terms:
+  - 石凳
+  - 圆凳
+synonyms:
+  - stone stool
+-->
+
+图纸选择石凳时，用一个独立标记表达一张凳子，位置与数量按桌边通行空间安排，不把示例固定复制四份。以下为 geometry.elements 的局部片段：地面顶 0.3，凳底 0.3、顶 0.7，材质 stone 已存在；直径、高度与材料按实际设计替换。
+
+```json
+[
+  {"type":"primitive","id":"stone_stool","shape":"cylinder","position":[0,0.5,0],"radius":0.175,"height":0.4,"material":"stone"}
+]
+```
+
+以上局部组合的分件来源均为同一份用户参考文件；坐凳支脚、局部尺寸与标高是本项目为可复用示例作的重新表达，不是原文件原样复制。它们只提供选定构件的字段与连接方法，不使任意亭子自动增加家具或装饰。

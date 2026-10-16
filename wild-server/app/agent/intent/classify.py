@@ -1,5 +1,10 @@
-"""组装分类上下文、调用模型并解析结果。"""
+"""意图分类的模型调用通道：组装输入、调用模型、归一化输出。
 
+ 本模块的 ``invoke_llm`` 是**被桩件替换的调用缝**：测试通过
+``monkeypatch.setattr(app.agent.intent.classify, "invoke_llm", …)`` 或
+``patch("app.agent.intent.classify.invoke_llm")`` 注入假模型。挪动它所在的模块
+必须同批改桩件路径——桩件不生效会真连模型并挂住。
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -10,7 +15,7 @@ from app.llm.client import create_llm
 from app.llm.errors import classify_model_error
 from app.llm.invocation import invoke_llm
 
-from .decision import IntentDecision, normalize_intent_decision
+from .decision import IntentDecision, fallback_decision, normalize_intent_decision
 from .prompt import CLASSIFIER_PROMPT
 
 
@@ -45,10 +50,10 @@ def _classifier_user_content(
     """拼模型的 user 消息：场景/工作流/选中/近期对话作为判定上下文。"""
 
     history = _normalized_recent_messages(recent_messages)
-
-    history_text = (
-        "\n".join(f"- {item['role']}: {item['content']}" for item in history) or "- 无"
-    )
+    history_text = "\n".join(
+        f"- {item['role']}: {item['content']}"
+        for item in history
+    ) or "- 无"
     selected = ", ".join(str(item) for item in (selection or [])[:12]) or "无"
     return (
         f"当前是否存在可编辑场景: {'是' if has_current_scene else '否'}\n"
@@ -68,7 +73,7 @@ async def classify_intent_decision(
     workflow_state: str = "idle",
     selection: list[str] | None = None,
 ) -> IntentDecision:
-    """使用 LLM 分类；模型调用或输出失败时返回终止信息。"""
+    """始终使用 LLM 分类，并返回置信度、目标和安全降级来源。"""
 
     try:
         llm = llm or create_llm(enable_thinking=False, streaming=False)
@@ -89,21 +94,41 @@ async def classify_intent_decision(
             ],
         )
         raw = llm_result.content
-        decision = normalize_intent_decision(raw, message, has_current_scene)
     except Exception as exc:
-        logger.error(f"[classifier] 意图分类失败: {exc}")
-        model_error = classify_model_error(exc)
-        return IntentDecision(
-            intent="chat",
-            target="user_request",
-            requires_scene=False,
-            reason=model_error["user_message"],
-            source="llm",
-            model_error=model_error,
+        logger.error(f"[classifier] LLM 调用失败: {exc}")
+
+        fallback = fallback_decision(
+            message,
+            has_current_scene,
+            f"分类模型不可用: {type(exc).__name__}",
         )
 
+        # ⚠️ 这里刻意**没有**透传 fallback.target_kind，重建后回落到默认值
+        # "architecture"。当前 model_error 会让图立刻 END（``graph._classifier_dispatch``
+        # 判 ``_terminal``），该字段不被任何下游消费，所以无实际影响；但若将来允许
+        # "降级继续生成"，必须补上，否则模型故障时"生成一个桌子"会被当成建筑需求。
+        decision = IntentDecision(
+            intent=fallback.intent,
+            confidence=fallback.confidence,
+            target=fallback.target,
+            requires_scene=fallback.requires_scene,
+            reason=fallback.reason,
+            source=fallback.source,
+            model_error=classify_model_error(exc),
+        )
+
+        logger.info(
+            f"[classifier] 意图: {decision.intent}, 目标类型: {decision.target_kind}, "
+            f"confidence={decision.confidence:.2f} (raw=<fallback>)"
+        )
+
+        return decision
+
+    # 修正并解析大模型的输出
+    decision = normalize_intent_decision(raw, message, has_current_scene)
     logger.info(
         f"[classifier] 意图: {decision.intent}, 目标类型: {decision.target_kind}, "
+        f"confidence={decision.confidence:.2f}, "
         f"source={decision.source} (raw={str(raw).strip()[:300]})"
     )
     return decision

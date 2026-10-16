@@ -119,12 +119,12 @@ function _expandPlacement(
     }
     const { corners, normal } = surface;
     const [bl, br, tr, tl] = corners;
-    const uVec = [br[0]-bl[0], br[1]-bl[1], br[2]-bl[2]];
-    const vVec = [tl[0]-bl[0], tl[1]-bl[1], tl[2]-bl[2]];
-    const quadW = Math.sqrt(uVec[0]**2+uVec[1]**2+uVec[2]**2);
-    const quadH = Math.sqrt(vVec[0]**2+vVec[1]**2+vVec[2]**2);
-    const uAxis = [uVec[0]/quadW, uVec[1]/quadW, uVec[2]/quadW];
-    const vAxis = [vVec[0]/quadH, vVec[1]/quadH, vVec[2]/quadH];
+    const uVec = [br[0] - bl[0], br[1] - bl[1], br[2] - bl[2]];
+    const vVec = [tl[0] - bl[0], tl[1] - bl[1], tl[2] - bl[2]];
+    const quadW = Math.sqrt(uVec[0] ** 2 + uVec[1] ** 2 + uVec[2] ** 2);
+    const quadH = Math.sqrt(vVec[0] ** 2 + vVec[1] ** 2 + vVec[2] ** 2);
+    const uAxis = [uVec[0] / quadW, uVec[1] / quadW, uVec[2] / quadW];
+    const vAxis = [vVec[0] / quadH, vVec[1] / quadH, vVec[2] / quadH];
 
     const cols = Math.min(l.columns, Math.max(1, Math.floor((quadW + gapW) / (l.colSpacing))));
     const rows = Math.min(l.rows, Math.max(1, Math.floor((quadH + overlap) / (l.rowSpacing + overlap))));
@@ -151,33 +151,34 @@ function getSurfaceCorners(parent: GeometryElement, face: string): { corners: nu
       const surface = face === 'left' ? getGableLeftSurface(p.depth / 2, p.span / 2, p.height)
         : face === 'right' ? getGableRightSurface(p.depth / 2, p.span / 2, p.height) : null;
       if (!surface) return null;
-      return { corners: surface.corners.map(([x, y, z]) => [-z, y, x]),
-        normal: [-surface.normal[2], surface.normal[1], surface.normal[0]] };
+      return {
+        corners: surface.corners.map(([x, y, z]) => [-z, y, x]),
+        normal: [-surface.normal[2], surface.normal[1], surface.normal[0]]
+      };
     }
     const hw = p.span / 2, hd = p.depth / 2, h = p.height;
     if (face === 'left') return getGableLeftSurface(hw, hd, h);
     if (face === 'right') return getGableRightSurface(hw, hd, h);
   }
-  // TODO: 支持 floor/wall/beam 等构件的 face 查询
   return null;
 }
 
 function getGableLeftSurface(hw: number, hd: number, h: number) {
   const ridge = h, eaves = 0;
   const corners = [[-hw, eaves, hd], [-hw, eaves, -hd], [0, ridge, -hd], [0, ridge, hd]];
-  const u = [corners[1][0]-corners[0][0], corners[1][1]-corners[0][1], corners[1][2]-corners[0][2]];
-  const v = [corners[3][0]-corners[0][0], corners[3][1]-corners[0][1], corners[3][2]-corners[0][2]];
-  const n = [v[1]*u[2]-v[2]*u[1], v[2]*u[0]-v[0]*u[2], v[0]*u[1]-v[1]*u[0]];
-  const nl = Math.sqrt(n[0]**2+n[1]**2+n[2]**2);
-  return { corners, normal: [n[0]/nl, n[1]/nl, n[2]/nl] };
+  const u = [corners[1][0] - corners[0][0], corners[1][1] - corners[0][1], corners[1][2] - corners[0][2]];
+  const v = [corners[3][0] - corners[0][0], corners[3][1] - corners[0][1], corners[3][2] - corners[0][2]];
+  const n = [v[1] * u[2] - v[2] * u[1], v[2] * u[0] - v[0] * u[2], v[0] * u[1] - v[1] * u[0]];
+  const nl = Math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2);
+  return { corners, normal: [n[0] / nl, n[1] / nl, n[2] / nl] };
 }
 
 function getGableRightSurface(hw: number, hd: number, h: number) {
   const ridge = h, eaves = 0;
   const corners = [[hw, eaves, -hd], [hw, eaves, hd], [0, ridge, hd], [0, ridge, -hd]];
-  const u = [corners[1][0]-corners[0][0], corners[1][1]-corners[0][1], corners[1][2]-corners[0][2]];
-  const v = [corners[3][0]-corners[0][0], corners[3][1]-corners[0][1], corners[3][2]-corners[0][2]];
-  const n = [v[1]*u[2]-v[2]*u[1], v[2]*u[0]-v[0]*u[2], v[0]*u[1]-v[1]*u[0]];
-  const nl = Math.sqrt(n[0]**2+n[1]**2+n[2]**2);
-  return { corners, normal: [n[0]/nl, n[1]/nl, n[2]/nl] };
+  const u = [corners[1][0] - corners[0][0], corners[1][1] - corners[0][1], corners[1][2] - corners[0][2]];
+  const v = [corners[3][0] - corners[0][0], corners[3][1] - corners[0][1], corners[3][2] - corners[0][2]];
+  const n = [v[1] * u[2] - v[2] * u[1], v[2] * u[0] - v[0] * u[2], v[0] * u[1] - v[1] * u[0]];
+  const nl = Math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2);
+  return { corners, normal: [n[0] / nl, n[1] / nl, n[2] / nl] };
 }

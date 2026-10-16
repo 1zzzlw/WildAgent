@@ -1,8 +1,11 @@
-"""意图分类节点：读取请求并写回分类结果。"""
+"""意图分类节点入口。
 
+流程：读取 GenerationState → 判定意图、交付对象类型与建筑形制标签 → 写回
+``intent_*`` 字段；建筑风格由图纸节点根据用户需求确定。
+"""
 from __future__ import annotations
 
-from app.contracts.generation_options import normalize_detail_level
+from app.agent.generation.architecture import resolve_complexity_profile
 from app.utils.blueprint_query import has_scene_content
 
 from .classify import classify_intent_decision
@@ -18,8 +21,7 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
-    detail_level = normalize_detail_level(state.get("detail_level"))
-
+    detail_level = resolve_complexity_profile(state.get("user_message", ""), state.get("detail_level", "minimal"))["level"]
     result = {
         "detail_level": detail_level,
         "thinking_mode": state.get("thinking_mode") is not False,
@@ -33,13 +35,11 @@ async def classifier_node(state: dict) -> dict:
         "intent_source": decision.source,
     }
     if decision.model_error:
-        result.update(
-            {
-                "terminal_model_error": decision.model_error,
-                "error": decision.model_error["user_message"],
-                "status": "failed",
-            }
-        )
+        result.update({
+            "terminal_model_error": decision.model_error,
+            "error": decision.model_error["user_message"],
+            "status": "failed",
+        })
         return result
     return result
 

@@ -81,15 +81,36 @@ def _validation_reason(exc: Exception) -> str:
                         f"face 仅表示 front/back/left/right 四个竖向立面，实际 {item.get('input')!r}；"
                         "屋顶、檐底或天花构件用 placement.position=[x,y,z] 写世界中心坐标，朝向说明写在 form/description"
                     )
+                if path.startswith("/components/") and any(path.endswith("/placement/"+field)
+                        for field in ("offset", "sill_height", "normal_offset")):
+                    field = str(parts[-1])
+                    message = (f"{field} 必须是单个有限数字，实际 {item.get('input')!r}；"
+                               "offset 是沿墙距离，不是三维向量或 x/y/z 对象。"
+                               "世界坐标写 placement.position=[x,y,z]；已有 position 时，未使用的沿墙参数直接省略，不能填 null")
                 if path.startswith("/components/") and path.endswith("/host"):
-                    message = (
-                        f"host 应为宿主 ID 字符串或 null，实际 {item.get('input')!r}；"
-                        "无宿主可省略或写 null/空字符串；位置写 placement，不能把对象、数组或数值填入 host"
-                    )
+                    message = (f"host 应为宿主 ID 字符串或 null，实际 {item.get('input')!r}；"
+                               "无宿主可省略或写 null/空字符串；位置写 placement，不能把对象、数组或数值填入 host")
                 messages.append(f"{path}：{message}")
         if messages:
             return "；".join(dict.fromkeys(messages))
     return " ".join(str(exc).split())[:300]
+
+
+def _material_role_conflicts(components):
+    groups = {}
+    for index, item in enumerate(components):
+        role, form = item.get("material_role"), item.get("form")
+        material = form.get("material") if isinstance(form, dict) else None
+        if isinstance(role, str) and role and isinstance(material, str) and material.strip():
+            groups.setdefault(role, {}).setdefault(material.strip().casefold(), []).append(index)
+    errors = []
+    for role, materials in groups.items():
+        if len(materials) > 1:
+            errors.append(f"/components：material_role={role!r} 同时引用不同的显式材料 {list(materials)}；"
+                          "同一角色只绑定一种实际材质。若这些名称指同一材质，请统一 form.material 名称；"
+                          "若材料不同，分别选择已有匹配角色或省略不合适的 material_role，由构件实现独立材质。"
+                          "不能仅在文字中保留木、石而仍共用一个角色")
+    return errors
 
 
 def build_design_document_or_error(
@@ -170,7 +191,7 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     previous_complexity = (previous_plan or {}).get("complexity") or {}
     selected = resolve_complexity_profile(
-        state.get("detail_level") or previous_complexity.get("level", "minimal")
+        message, state.get("detail_level") or previous_complexity.get("level", "minimal")
     )
     complexity = {
         **selected,
@@ -179,6 +200,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         "reason": selected["reason"],
     }
     profile = detect_architecture_profile(
+        feedback or message,
         profile_id=(previous_plan or {}).get("profile") or state.get("intent_profile"),
     )
 
@@ -188,29 +210,16 @@ async def architecture_planner(state: GenerationState) -> dict:
 
     from app.services.agent_service import agent_service
     from app.spec.loader import SpecQuery
-
     rag_started = _time.time()
-    spec_text = await asyncio.to_thread(
-        agent_service.spec_loader.load_many,
-        [
-            SpecQuery(
-                f"{message} {feedback} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
-                {"entity_name": "architecture_design_expression"},
-            ),
-            SpecQuery(
-                f"{message} {feedback} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
-                {"entity_name": "architecture_design_expression"},
-            ),
-            SpecQuery(
-                f"{message} {profile['id']} {feedback} 建筑形制 形态表达 空间组织 构件组合",
-                {"doc_type": "component", "topic": "composition"},
-            ),
-        ],
-        per_query=2,
-        include_base=False,
-    )
-    rag_ms = int((_time.time() - rag_started) * 1000)
-
+    spec_text = await asyncio.to_thread(agent_service.spec_loader.load_many, [
+        SpecQuery(f"{message} {feedback} 建筑设计表达 体量围护 开敞 门窗宿主 平面布局",
+                  {"entity_name": "architecture_design_expression"}),
+        SpecQuery(f"{message} {feedback} 室内房间 内墙 内门 通行路径 独立柱位 平面图纸",
+                  {"entity_name": "architecture_design_expression"}),
+        SpecQuery(f"{message} {profile['id']} {feedback} 建筑形制 形态表达 空间组织 构件组合",
+                  {"doc_type": "component", "topic": "composition"})
+    ], per_query=2, include_base=False)
+    rag_ms = int((_time.time()-rag_started)*1000)
     prompt = build_architecture_plan_prompt(
         spec_text,
         profile,
@@ -224,26 +233,15 @@ async def architecture_planner(state: GenerationState) -> dict:
     # 在 draft_design 内部做了契约验证，失败时抛 DesignContractError；这里捕获它并返回可读错误。
     def validate(raw):
         massing = raw.get("massing") if isinstance(raw.get("massing"), dict) else {}
-        missing = [
-            f"/massing/{key}"
-            for key in ("shape", "width", "depth", "floors")
-            if massing.get(key) is None
-        ]
+        missing = [f"/massing/{key}" for key in ("shape", "width", "depth", "floors")
+                   if massing.get(key) is None]
         if not isinstance(raw.get("volumes"), list) or not raw["volumes"]:
             missing.append("/volumes")
         else:
             missing.extend(
                 f"/volumes/{index}/{key}"
                 for index, volume in enumerate(raw["volumes"])
-                for key in (
-                    "id",
-                    "x",
-                    "z",
-                    "width",
-                    "depth",
-                    "start_floor",
-                    "end_floor",
-                )
+                for key in ("id", "x", "z", "width", "depth", "start_floor", "end_floor")
                 if not isinstance(volume, dict) or volume.get(key) is None
             )
         facades = raw.get("facades") if isinstance(raw.get("facades"), dict) else {}
@@ -256,9 +254,7 @@ async def architecture_planner(state: GenerationState) -> dict:
         if not isinstance(raw.get("roof"), dict) or not raw["roof"].get("type"):
             missing.append("/roof/type")
         if missing:
-            raise ValueError(
-                "图纸缺少关键设计字段：" + "、".join(missing) + "；请按本次建筑设计补全"
-            )
+            raise ValueError("图纸缺少关键设计字段：" + "、".join(missing) + "；请按本次建筑设计补全")
         components = raw.get("components") or []
         if not isinstance(components, list) or any(
             not isinstance(item, dict) for item in components
@@ -286,6 +282,9 @@ async def architecture_planner(state: GenerationState) -> dict:
                     f"/components/{index}/placement：体量内门窗的沿墙定位需要 face 和 floor，"
                     "或写出世界 position；不能仅凭 offset 猜测墙面和楼层"
                 )
+        material_errors = _material_role_conflicts(components)
+        if material_errors:
+            raise ValueError("；".join(material_errors))
         plan = {
             "profile": profile["id"],
             **raw,
@@ -308,14 +307,14 @@ async def architecture_planner(state: GenerationState) -> dict:
             revision_feedback=feedback,
         )
         resolved = resolve_design(document)
-        from app.design.coordinates import (
-            opening_coordinate_errors,
-            stair_span_conflicts,
-        )
+        from app.design.coordinates import (opening_coordinate_errors, stair_span_conflicts,
+                                            roof_span_conflicts, component_dimension_conflicts)
 
-        coordinate_errors = opening_coordinate_errors(
-            resolved.component_markers
-        ) + stair_span_conflicts(document.decisions.model_dump(mode="json"))
+        coordinate_errors = (component_dimension_conflicts(document.decisions.model_dump(mode="json"))
+                             + opening_coordinate_errors(resolved.component_markers)
+                             + roof_span_conflicts(resolved.component_markers)) + stair_span_conflicts(
+            document.decisions.model_dump(mode="json")
+        )
         if coordinate_errors:
             raise ValueError("；".join(coordinate_errors))
         accepted.update(document=document, resolved=resolved)
@@ -344,8 +343,7 @@ async def architecture_planner(state: GenerationState) -> dict:
             },
         }
     diag.update(
-        rag_chars=len(spec_text),
-        rag_ms=rag_ms,
+        rag_chars=len(spec_text), rag_ms=rag_ms,
         total_ms=int((_time.time() - started) * 1000),
         profile=profile["id"],
         raw_plan=raw,

@@ -84,6 +84,10 @@ async def compile_node(state: GenerationState) -> dict:
         errors = [str(getattr(error, "output", error)) for error in evaluation["errors"]]
         if report["missing_markers"]:
             errors.append("图纸标记未完成实现流程：" + ", ".join(report["missing_markers"]))
+        abandoned = [i for i, r in (brief.get("implementation") or {}).get("records", {}).items()
+                     if r.get("status") == "abandoned"]
+        if abandoned:
+            errors.append("图纸标记实现失败：" + ", ".join(abandoned))
     except Exception as exc:
         errors = [f"编译已有分片失败：{exc}"]
         # 契约或装配异常不能使已生成的原始分片消失。
@@ -92,7 +96,13 @@ async def compile_node(state: GenerationState) -> dict:
     geometry = (blueprint or {}).get("geometry")
     has_entities = isinstance(geometry, dict) and any(
         isinstance(geometry.get(bucket), list) and geometry[bucket] for bucket in ("elements", "components"))
-    if errors and has_entities and not state.get("terminal_model_error") and not previous_repair.get("attempted"):
+    incomplete = bool(report["missing_markers"]) or any(
+        r.get("status") != "implemented" for r in (brief.get("implementation") or {}).get("records", {}).values())
+    if errors and incomplete and not state.get("terminal_model_error") and not previous_repair.get("attempted"):
+        report["repair"] = {"attempted": False, "accepted": False, "stop_reason": "implementation_incomplete",
+                            "error": "图纸尚有未实现标记，已保留通过片段与失败稿；集中修复不代替未执行的构件任务。"}
+    if (errors and has_entities and not incomplete and not state.get("terminal_model_error")
+            and not previous_repair.get("attempted")):
         from app.agent.prompts import build_patch_system_prompt
         from app.agent.runtime import get_reasoning_callback
         from app.llm.client import create_llm
@@ -113,8 +123,16 @@ async def compile_node(state: GenerationState) -> dict:
             thinking = state.get("thinking_mode", True)
             llm = create_llm(model_cfg=config.chat.model_copy(update={"max_retries": 0}),
                              enable_thinking=thinking, streaming=bool(thinking and callback))
+            from app.agent.generation.capability import load_engine_schema
+            from app.agent.plan.implementation import _output_protocol
+            schema = load_engine_schema()
+            if schema is None:
+                raise ValueError("WILD Schema 不可用，保留修复前蓝图")
+            markers = {e["id"]: {"type": e["type"]} for bucket in ("elements", "components")
+                       for e in geometry.get(bucket, [])}
+            protocol = _output_protocol(schema, markers, "", {})
             messages = [
-                {"role": "system", "content": build_patch_system_prompt("")},
+                {"role": "system", "content": build_patch_system_prompt(protocol)},
                 {"role": "user", "content": (
                     "修复本次编译错误，只返回 ScenePatch。仅修改错误相关片段，保留已有实体 ID 和正确几何；"
                     "不能通过删除实体、改变建筑形制或忽略图纸尺寸消除错误。缺失构件仅按本次图纸补充。"

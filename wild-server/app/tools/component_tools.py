@@ -321,7 +321,8 @@ def validate_roof_coverage(blueprint: dict) -> str:
         roof_id = roof.get("id", "?")
         roof_span = roof.get("span", 0)
         roof_depth = roof.get("depth", 0)
-        bounds = get_roof_support_bounds(walls, roof, columns=columns)
+        bounds = get_roof_support_bounds(walls, roof, columns=columns,
+                                         beams=[e for e in elements if e.get("type") == "beam"])
         building_width = bounds["span"]
         building_depth = bounds["depth"]
         
@@ -359,7 +360,8 @@ def fix_roof_coverage(blueprint: dict) -> str:
     fixes = []
     for roof in roofs:
         roof_id = roof.get("id", "?")
-        bounds = get_roof_support_bounds(walls, roof, columns=columns)
+        bounds = get_roof_support_bounds(walls, roof, columns=columns,
+                                         beams=[e for e in elements if e.get("type") == "beam"])
         roof["span"] = round(bounds["span"] + 1.2, 2)
         roof["depth"] = round(bounds["depth"] + 1.2, 2)
         roof["position"] = [
