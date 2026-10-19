@@ -149,6 +149,8 @@ S0 = 5 个字段
 
 ## 3. classifier：模型分类，代码补充来源和风格
 
+> 当前分类器已移除 `confidence` 和 `intent_confidence`；本节保留历史 Trace 中的字段用于对照，不作为当前输入输出契约。
+
 ### 模型的判断
 
 模型 `reasoning_content` 的核心意思是：

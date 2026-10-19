@@ -1554,8 +1554,7 @@ COMPONENT_TOOLS = {
         # （`tools["validate"](blueprint)`），传 StructuredTool 会抛
         # `'StructuredTool' object is not callable` —— 家具条目每次都被判失败，
         # 而它不影响任何建筑构件，所以一直没暴露。
-        # 这里取回底层函数保持全表同形；不变量由
-        # `tests/agent/test_component_tools_registry.py` 逐项断言。
+        # 这里取回底层函数保持全表同形。
         "validate": getattr(validate_element_required_fields, "func", validate_element_required_fields),
         "fix": getattr(fix_element_elevations, "func", fix_element_elevations),
     },

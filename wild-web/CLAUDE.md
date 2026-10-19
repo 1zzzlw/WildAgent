@@ -34,8 +34,6 @@ npm run typecheck
 
 # 前端（在 wild-web 下）
 npm run build
-npm run check:core
-npm run check:compiler
 ```
 
 Agent 与对话协议详见 [`../docs/agent/AGENT_AND_CHAT.md`](../docs/agent/AGENT_AND_CHAT.md)。

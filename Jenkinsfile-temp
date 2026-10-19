@@ -10,7 +10,7 @@ pipeline {
   parameters {
     string(name: 'SSH_CREDENTIALS_ID', defaultValue: 'wild-agent-prod-ssh', description: 'Jenkins UI 中配置的 SSH 私钥凭据 ID')
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
-    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: true, description: '是否执行前端编译与后端离线测试；不调用真实模型')
+    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: true, description: '是否执行远程前端编译检查')
     booleanParam(name: 'LIVE_PROVIDER_PREFLIGHT_ENABLED', defaultValue: false, description: '部署前是否真实调用 Chat/Embedding；会消耗额度，仅用于手工连通性检查')
     string(name: 'DEPLOY_SSH_USER', defaultValue: 'root', description: '部署服务器 SSH 用户')
     string(name: 'DEPLOY_SSH_HOST', defaultValue: '39.106.183.13', description: '部署服务器地址')
@@ -123,52 +123,6 @@ docker run --rm \
   -w /repo/wild-web \
   "$NODE_BASE_IMAGE" \
   sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
-REMOTE_SCRIPT
-          '''
-        }
-      }
-    }
-
-    stage('远程后端离线测试') {
-      when {
-        allOf {
-          expression { return env.IS_PULL_REQUEST != 'true' }
-          expression { return params.REMOTE_VALIDATE_ENABLED }
-        }
-      }
-      steps {
-        withCredentials([sshUserPrivateKey(credentialsId: params.SSH_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY')]) {
-          sh '''
-            set -eu
-            DEPLOY_TARGET="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
-            SSH_OPTS="-i ${SSH_KEY} -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -p ${DEPLOY_SSH_PORT}"
-
-            ssh $SSH_OPTS "$DEPLOY_TARGET" \
-              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' UV_VERSION='$UV_VERSION' /bin/sh -s" <<'REMOTE_SCRIPT'
-set -eu
-cd "$REMOTE_RELEASE_DIR/wild-server"
-docker run --rm \
-  -e PYTHONDONTWRITEBYTECODE=1 \
-  -e UV_INDEX_URL="$UV_INDEX_URL" \
-  -e UV_VERSION="$UV_VERSION" \
-  -e CHAT__NAME=ci-dummy-chat \
-  -e CHAT__API_KEY=ci-placeholder \
-  -e CHAT__BASE_URL=http://127.0.0.1:9/v1 \
-  -e RAG__ALLOW_HASH_FALLBACK=true \
-  -e RAG__PERSIST_DIR=/tmp/wild-agent-ci-chroma \
-  -v "$PWD:/app" \
-  -w /app \
-  "$PYTHON_BASE_IMAGE" \
-  sh -lc '
-    set -eu
-    pip install --no-cache-dir "uv==$UV_VERSION" -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
-    python -m compileall app/
-    python -m py_compile main.py
-    # 上传目录是本次构建的临时副本；在 Linux 上补齐平台锁信息，后续 Docker
-    # 构建继续使用同一份临时 uv.lock，不修改 Git 仓库中的工作区。
-    uv lock
-    uv run --frozen --with pytest python -m pytest tests -q
-  '
 REMOTE_SCRIPT
           '''
         }

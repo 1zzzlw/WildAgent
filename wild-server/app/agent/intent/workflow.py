@@ -1,8 +1,7 @@
-"""意图分类节点入口。
-
-流程：读取 GenerationState → 判定意图、交付对象类型与建筑形制标签 → 写回
-``intent_*`` 字段；建筑风格由图纸节点根据用户需求确定。
 """
+意图分类节点入口。
+"""
+
 from __future__ import annotations
 
 from app.agent.generation.architecture import resolve_complexity_profile
@@ -21,7 +20,9 @@ async def classifier_node(state: dict) -> dict:
         workflow_state=str(state.get("workflow_state") or "idle"),
         selection=state.get("selection"),
     )
-    detail_level = resolve_complexity_profile(state.get("user_message", ""), state.get("detail_level", "minimal"))["level"]
+    detail_level = resolve_complexity_profile(
+        state.get("user_message", ""), state.get("detail_level", "minimal")
+    )["level"]
     result = {
         "detail_level": detail_level,
         "thinking_mode": state.get("thinking_mode") is not False,
@@ -34,13 +35,6 @@ async def classifier_node(state: dict) -> dict:
         "intent_reason": decision.reason,
         "intent_source": decision.source,
     }
-    if decision.model_error:
-        result.update({
-            "terminal_model_error": decision.model_error,
-            "error": decision.model_error["user_message"],
-            "status": "failed",
-        })
-        return result
     return result
 
 

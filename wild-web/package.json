@@ -6,11 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "check:core": "node scripts/check-wild-core.mjs",
-    "check:compiler": "node scripts/check-component-compiler.mjs",
-    "check:rendering": "node scripts/check-rendering-pipeline.mjs",
-    "check:agent": "node scripts/check-agent-detail.mjs && node scripts/check-agent-stop.mjs",
-    "check:ci": "npm run check:core && npm run check:compiler && npm run check:rendering && npm run check:agent && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

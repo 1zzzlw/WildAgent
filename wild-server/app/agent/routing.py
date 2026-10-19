@@ -7,8 +7,6 @@
 - 交付对象类型判定（``detect_target_kind`` / ``TargetKind``）→ ``app.agent.generation.architecture``
 - 蓝图场景判空（``has_scene_content``）→ ``app.utils.blueprint_query``
 
-下一轮会删除本文件：届时同步删 ``tests/agent/test_agent_module_boundaries.py``
-根目录白名单里的 ``"routing.py"``，并把上面那些调用点改为直接导入。
 """
 from __future__ import annotations
 
@@ -22,7 +20,6 @@ from app.agent.intent import (
     IntentDecision,
     IntentName,
     classify_intent_decision,
-    classify_keywords,
     fast_path_intent,
     is_explanatory_question,
     normalize_intent_decision,
@@ -39,7 +36,6 @@ __all__ = [
     "IntentName",
     "TargetKind",
     "classify_intent_decision",
-    "classify_keywords",
     "detect_target_kind",
     "fast_path_intent",
     "has_scene_content",

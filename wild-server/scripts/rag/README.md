@@ -63,7 +63,6 @@ RAG Loader 的职责到“找出并组装知识上下文”为止；真正生成
 | `check_sync_status.py` | 运行状态 | 当前服务 Loader 和同步数量 | 分片或召回质量 |
 | `migrate_embedding_index.py` | 模型迁移 | 单条探针、离线索引审计、独立新集合构建和完整性校验 | 不自动修改 `.env` 或切换线上流量 |
 | `calibrate_retrieval_gate.py` | 门控校准 | 正负样本距离下的建议阈值和误判率 | 不能替代生产 Embedding 实跑 |
-| `check_rag_quality_gate.py` | CI 门禁 | 机器可读评测是否达到固定基线 | 不评价最终回答忠实度 |
 | `judge_rag_answer.py` | 回答质量 | Relevance、Faithfulness、引用质量辅助分 | 不能代替权限和确定性校验 |
 | `summarize_rag_traces.py` | 线上观测汇总 | 空召回、平均距离、P95、Token、成本和反馈 | 不评价单条回答是否正确 |
 
@@ -331,23 +330,12 @@ MRR 是 Mean Reciprocal Rank，即“平均倒数排名”。先计算每道题�
 建议按这个顺序读：
 
 1. `evals/rag_retrieval_cases.json`：先理解输入数据；
-2. `tests/rag/test_eval_retrieval_metrics.py`：学习函数输入、返回值和断言；
-3. `tests/rag/test_rag_semantic_chunking.py`：学习临时文件、类和 Mock；
-4. `scripts/rag/eval_retrieval.py`：学习 argparse、循环、统计和报告生成；
-5. `app/spec/loader.py`：最后再读生产分片、Chroma 同步与召回。
+2. `scripts/rag/eval_retrieval.py`：学习 argparse、循环、统计和报告生成；
+3. `app/spec/loader.py`：最后再读生产分片、Chroma 同步与召回。
 
 遇到陌生语法时，先追一个具体数据，例如一条 case 如何变成一个 `score`，不要试图一次读完整个 Loader。
 
-## 9. 单元测试
-
-```powershell
-$env:PYTHONPATH="."
-.\.venv\Scripts\python.exe -m pytest tests\rag -v
-```
-
-单元测试使用临时文件、Mock 或临时索引，不会修改正式 Chroma。详细说明见 `tests/rag/README.md`。
-
-## 9.1 生成门控校准结果
+## 9. 生成门控校准结果
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\rag\eval_retrieval.py `

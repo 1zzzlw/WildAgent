@@ -79,7 +79,7 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
 #: —— 这与 2026-09-29「未知构件类型走 `generic_component_config`」是同一条口径。
 #:
 #: **这张表是"枚举↔行为↔KB"的对账点**：加成员只改这里；
-#: `tests/components/test_shape_enum.py` 钉住三条 —— 每个成员必须归类、
+#: 每个成员必须归类、
 #: 标了 ``volumes`` 的必须真有分支、KB 里教的 `massing.shape` 取值必须是表内成员
 #: （`circle` 就是这么发现 KB 与枚举不一致的）。
 _SHAPE_ENUM: dict[str, str] = {

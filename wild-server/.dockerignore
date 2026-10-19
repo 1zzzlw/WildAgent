@@ -3,7 +3,6 @@
 __pycache__
 *.pyc
 *.pyo
-.pytest_cache
 .mypy_cache
 .ruff_cache
 # 运行时数据不进入镜像；knowledge_base 是 Agent 的只读构建输入，必须保留。

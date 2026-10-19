@@ -178,7 +178,7 @@ ObjectMaterialRoleName = Literal["wood", "metal", "glass", "stone", "fabric", "a
 #: `resolver.attach_material_plan()` 里 `DesignDocument.model_validate` 直接
 #: ValidationError（`wood/metal/stone/fabric` 四项全不认）——桩件测试全绿也照样炸，
 #: 因为端到端测试把 `material_planner` 整个替换掉了。
-#: 两张角色表的键必须落在这里：`tests/design/test_material_role_names.py` 逐键比对。
+#: 两张角色表的键必须落在这里。
 MaterialRoleName = Literal[
     "facade_primary", "structure", "floor", "frame", "door",
     "glass", "roof", "ground", "accent",

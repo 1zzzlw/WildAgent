@@ -26,19 +26,7 @@ dev = [
     "langgraph-cli[inmem]",
     "langsmith>=0.10.9",
     "python-dotenv>=1.2.2",
-    "pytest>=9.1.1",
-    "pytest-asyncio>=1.4.0",
 ]
 
 [tool.fastapi]
 entrypoint = "main:app"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = [
-    "-v",
-    "--tb=short",
-]

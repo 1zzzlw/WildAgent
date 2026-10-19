@@ -296,8 +296,6 @@ npm run dev
 ```powershell
 npm run build          # vue-tsc 类型检查 + 生产构建
 npm run preview        # 预览 dist 构建产物
-npm run check:core     # 校验 wild-core 契约与 schema
-npm run check:compiler # 校验构件编译器
 ```
 
 引擎包自身的类型检查需在 `wild-core` 下单独执行 `npm install` 与 `npm run typecheck`。

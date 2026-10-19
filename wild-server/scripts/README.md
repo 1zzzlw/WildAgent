@@ -41,7 +41,7 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 | `rag/eval_retrieval.py` | 当前 RAG 召回率评测（Hit@K、Recall@K、MRR、逐题报告） |
 | `kb/check_kb.py` | 知识库结构与检索契约校验：5 组硬编码过滤对、frontmatter、H1、代码围栏、`required_documents` 登记（退出码即结果，0 = 全绿） |
 | `kb/resync_knowledge_index.py` | 改完 `storage/knowledge_base/**` 后重建 RAG 索引，让改动重新向量化生效 |
-| `check_undefined_names.py` | 纯 AST 扫描"读取了但从未定义"的裸名（pyflakes-lite），专抓重构残留；用法：`<任意 python3> scripts/check_undefined_names.py app tests` |
+| `check_undefined_names.py` | 纯 AST 扫描"读取了但从未定义"的裸名（pyflakes-lite），专抓重构残留；用法：`<任意 python3> scripts/check_undefined_names.py app` |
 | `rag/README_INSPECT_CHUNKS.md` | `inspect_*` 系列脚本的详细使用文档 |
 | `reports/` | 分片报告与日志产物（`inspect_chunks_*.md`、`chunks_report_*.md`、`chunks_console_*.txt`） |
 
@@ -66,6 +66,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/rag/inspect_knowledge_ch
 
 ## 导入说明
 
-`scripts/` 下无 `__init__.py`，子目录作为 namespace package 被 Python 3.3+ 自动支持，可通过 `from scripts.deploy.deployment_preflight import ...` 导入（如 `tests/misc/test_deployment_preflight.py`）。
+`scripts/` 下无 `__init__.py`，子目录作为 namespace package 被 Python 3.3+ 自动支持，可通过 `from scripts.deploy.deployment_preflight import ...` 导入。
 *（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*

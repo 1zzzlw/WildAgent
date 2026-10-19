@@ -1,7 +1,6 @@
 # Python
 /__pycache__/
 *.py[cod]
-.pytest_cache/
 .venv/
 .env
 wild-server/storage/chroma/
@@ -12,14 +11,12 @@ wild-server/storage/assets/
 wild-server/storage/geoip/*.mmdb
 wild-server/.langgraph_api/
 wild-server/rag_bg_sync_*
-wild-server/.rag_bg_sync_test/
 wild-server/.probe_tmp/
 wild-web/lantu
 
 # Node
 node_modules/
 dist/
-wild-server/test_output_blueprint.json
 
 # Local browser/debug output
 .gstack/browse-*

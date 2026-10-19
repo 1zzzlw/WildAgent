@@ -621,8 +621,7 @@ def _node_label(name: str) -> str:
 
 
 
-#: 会向 ws 推送 step 事件的节点全集 = 图节点全集（见 ``tests/agent/test_plan_graph.py``
-#: 的 ``_EXPECTED_NODES``）+ 可选的 callback。图上加节点而这里不认，事件会在
+#: 会向 ws 推送 step 事件的节点全集 = 图节点全集 + 可选的 callback。图上加节点而这里不认，事件会在
 #: astream 过滤处被静默吞掉——前端管线就会"跳节点"（compile/design_review
 #: 上线时踩过：只改了生成链，忘了这张消费侧的表）。
 _OUR_NODES = {
@@ -914,18 +913,12 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
                         "edit": "修改场景",
                         "chat": "知识问答",
                     }.get(intent, intent)
-                    classifier_error = node_output.get("terminal_model_error")
                     await send_step(
                         "generating",
                         node_name,
-                        "error" if classifier_error else "done",
+                        "done",
                         label,
-                        (
-                            str(classifier_error.get("user_message") or "意图分类模型不可用")
-                            if isinstance(classifier_error, dict)
-                            else f"意图：{intent_label} · "
-                            f"{node_output.get('intent_reason', '')}"
-                        ),
+                        f"意图：{intent_label} · {node_output.get('intent_reason', '')}",
                     )
                     await send_debug("node", {
                         "node": node_name, "label": label, "stage": "done",
@@ -1224,6 +1217,33 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     except Exception as e:
         logger.exception(f"[{request_id}] LangGraph 异常: {e}")
+        if "classifier" in node_starts:
+            from app.agent.intent.decision import IntentOutputError
+            from app.llm.errors import classify_model_error
+
+            error_event = {
+                "type": "error",
+                "request_id": request_id,
+                "session_id": session_id,
+            }
+            if isinstance(e, IntentOutputError):
+                error_text = str(e)
+                error_event["code"] = "invalid_intent"
+            else:
+                model_error = classify_model_error(e)
+                error_text = model_error["user_message"]
+                error_event.update(
+                    code="model_service_error",
+                    error_category=model_error["category"],
+                    retryable=model_error["retryable"],
+                )
+            error_event["error"] = error_text
+            await send_step("generating", "classifier", "error", "意图分类", error_text)
+            await _send_event(ws, error_event)
+            if thinking_mode:
+                await send_thinking_status("error", error_text)
+            await send_step("finished", "finished", "error", "意图识别失败", error_text)
+            return
         execution_error = _friendly_graph_error(e)
         final_state = {**observed_state, "status": "failed", "error": execution_error}
     finally:

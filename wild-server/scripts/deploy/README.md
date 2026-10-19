@@ -49,10 +49,6 @@ $env:PYTHONPATH="."; uv run --no-project python scripts/deploy/deployment_prefli
 
 **如何判断失败**：默认模式只会因镜像知识库不完整而失败。`--live-providers` 模式还会因供应商配置、额度、网络或响应异常而失败。
 
-**可复用函数**：`select_smoke_response_text()` 等函数可从脚本导入，供测试与二次开发使用（见 `tests/misc/test_deployment_preflight.py`）。
-
-## 相关引用
-
-- `tests/misc/test_deployment_preflight.py` 通过 `from scripts.deploy.deployment_preflight import select_smoke_response_text` 导入测试。
+**可复用函数**：`select_smoke_response_text()` 等函数可从脚本导入，供二次开发使用。
 *（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*

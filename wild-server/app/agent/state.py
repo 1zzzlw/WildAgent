@@ -76,7 +76,7 @@ class GenerationState(TypedDict, total=False):
     intent_profile: str  # 建筑形制短标签（分类器模型自选，如 villa/pavilion）；未定或非建筑为 "custom"。
     intent_requires_scene: bool  # 当前意图是否必须依赖已有 Blueprint 场景。
     intent_reason: str  # 分类器给出的简短、可展示判断理由。
-    intent_source: str  # 分类结果来源，例如 rule、llm 或 fallback。
+    intent_source: str  # 分类结果来源；当前为 llm。
 
     # ── plan：动态执行计划──
     plan: dict  # PlanDocument：条目列表 + revision + 预算 + 有界终止计数。

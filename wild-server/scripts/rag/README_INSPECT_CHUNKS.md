@@ -73,8 +73,7 @@ $env:PYTHONPATH="."
 
 1. 先看单个刚修改的 Markdown；
 2. 用 `--show-content` 人工检查边界；
-3. 运行 `tests/rag/test_rag_semantic_chunking.py` 防止分片规则回归；
-4. 再运行 `eval_retrieval.py --temporary-index`，验证向量召回；
-5. 确认报告后才考虑同步正式索引。
+3. 再运行 `eval_retrieval.py --temporary-index`，验证向量召回；
+4. 确认报告后才考虑同步正式索引。
 
 分片“结构合法”只说明格式没有明显坏掉，不表示事实正确，也不表示 Recall@K 一定高。

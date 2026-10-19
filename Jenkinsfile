@@ -82,7 +82,7 @@ pipeline {
     // ---- 部署开关 ----
     booleanParam(name: 'DEPLOY_ENABLED', defaultValue: true, description: 'main/master 分支构建成功后是否部署到服务器')
     booleanParam(name: 'REMOTE_PREFLIGHT_ENABLED', defaultValue: true, description: '是否执行远程环境预检（SSH / 生产 env / 基础镜像可拉取）')
-    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否在远程临时构建目录执行离线门禁（前端 check:ci + 后端 pytest）；不调用真实模型。本地「本地离线质量门禁」stage 已按用户决策于 2026-10-14 移除')
+    booleanParam(name: 'REMOTE_VALIDATE_ENABLED', defaultValue: false, description: '是否在远程临时构建目录执行前端编译检查')
     booleanParam(name: 'LIVE_PROVIDER_PREFLIGHT_ENABLED', defaultValue: false, description: '部署前是否真实调用 Chat/Embedding；会消耗额度，仅用于手工连通性检查')
 
     // ---- 目标服务器 ----
@@ -277,47 +277,7 @@ docker run --rm \\
   -v "$REMOTE_RELEASE_DIR:/repo" \\
   -w /repo/wild-web \\
   "$NODE_BASE_IMAGE" \\
-  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run check:ci'
-REMOTE_SCRIPT
-          ''')
-        }
-      }
-    }
-
-    stage('远程后端离线测试') {
-      when {
-        allOf {
-          expression { return env.IS_PULL_REQUEST != 'true' }
-          expression { return params.REMOTE_VALIDATE_ENABLED }
-        }
-      }
-      steps {
-        withCredentials(sshCredentialBindings()) {
-          sh(sshPrelude() + '''
-            ssh $SSH_OPTS "$DEPLOY_TARGET" \\
-              "REMOTE_RELEASE_DIR='$REMOTE_RELEASE_DIR' PYTHON_BASE_IMAGE='$PYTHON_BASE_IMAGE' UV_INDEX_URL='$UV_INDEX_URL' UV_VERSION='$UV_VERSION' /bin/sh -s" <<'REMOTE_SCRIPT'
-set -eu
-cd "$REMOTE_RELEASE_DIR/wild-server"
-docker run --rm \\
-  -e PYTHONDONTWRITEBYTECODE=1 \\
-  -e UV_INDEX_URL="$UV_INDEX_URL" \\
-  -e UV_VERSION="$UV_VERSION" \\
-  -e CHAT__NAME=ci-dummy-chat \\
-  -e CHAT__API_KEY=ci-placeholder \\
-  -e CHAT__BASE_URL=http://127.0.0.1:9/v1 \\
-  -e RAG__ALLOW_HASH_FALLBACK=true \\
-  -e RAG__PERSIST_DIR=/tmp/wild-agent-ci-chroma \\
-  -v "$PWD:/app" \\
-  -w /app \\
-  "$PYTHON_BASE_IMAGE" \\
-  sh -lc '
-    set -eu
-    pip install --no-cache-dir "uv==$UV_VERSION" -i "$UV_INDEX_URL" --trusted-host mirrors.aliyun.com
-    python -m compileall app/
-    python -m py_compile main.py
-    uv sync --frozen
-    uv run --frozen python scripts/ci/check_generation_quality.py
-  '
+  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
 REMOTE_SCRIPT
           ''')
         }

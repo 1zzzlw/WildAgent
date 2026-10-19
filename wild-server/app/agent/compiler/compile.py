@@ -12,8 +12,7 @@
 | B 层实例化 | 门窗（含凸窗、雨篷、灯） | ``architecture.facade.conform_openings_to_slots`` / ``conform_entrance_accessories`` |
 | B 层实例化 | 阳台 / 栏杆 / 屋顶拆分 | ``conform_balconies_to_slots`` / ``conform_railings_to_slots`` / ``conform_roofs_to_slots`` |
 
-这些 ``conform_*`` 全部**接受空输入并从槽位合成**（``tests/components/test_architecture_plan.py:221``
-就是拿 ``[]`` 调的）。所以再写一遍"字段来源规则表 / 实例化循环"就是**重复实现**——
+这些 ``conform_*`` 全部**接受空输入并从槽位合成**。所以再写一遍"字段来源规则表 / 实例化循环"就是**重复实现**——
 违反本仓库"唯一规则函数"的既有纪律。
 
 本模块因此只做三件新事：
@@ -832,8 +831,7 @@ def _positive_float(value: Any, fallback: float) -> float:
 #: 引擎字段是 ``height``（roof 是元素，只有 height）。
 #:
 #:  **本表必须是引擎字段闭集的子集**：键名对、落点不存在 = 静默失效
-#: （值落进了蓝图，引擎不读、校验器也看不见）。守卫见
-#: ``tests/compiler/test_component_instances.py::test_every_form_key_lands_on_an_engine_field``。
+#: （值落进了蓝图，引擎不读、校验器也看不见）。
 #: 2026-10-08 据此删掉 ``roof.ridge_axis`` / ``roof.overhang`` —— 它们是**图纸层**
 #: ``decisions.roof`` 的词汇（``design/contracts.py::RoofDecision``，由
 #: ``_roof_overhang`` / ``normalize_roof`` 消费），不是构件实例的形态；

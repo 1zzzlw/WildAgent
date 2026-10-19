@@ -992,7 +992,7 @@ export const useAgentStore = defineStore('agent', () => {
   }
 
   // 节点名→中文标签（与后端 ws_agent._NODE_LABELS 对应；正常路径后端事件自带 label，
-  // 此表是兜底——后端加节点时两张表要同批改，见 tests/api/test_ws_step_labels.py）
+  // 此表是兜底——后端加节点时两张表要同批改。
   const _COMP_LABELS: Record<string, string> = {
     door: '门', window: '窗', roof: '屋顶',
     railing: '栏杆', canopy: '雨棚', balcony: '阳台',
