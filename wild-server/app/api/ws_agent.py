@@ -61,7 +61,7 @@ from app.agent.routing import (
     detect_target_kind,
     has_scene_content,
 )
-from app.agent.generation.architecture import detect_architecture_profile, resolve_complexity_profile
+from app.agent.generation.architecture import resolve_complexity_profile
 from app.contracts.agent_events import AGENT_PROTOCOL_VERSION, versioned_event
 from app.agent.generation.material.recipes import without_procedural_materials
 from app.rag.security import (
@@ -662,7 +662,7 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
     current_blueprint = data.get("blueprint")
     selection = data.get("selection", [])
     session_id = data.get("session_id", request_id)
-    detail_level = resolve_complexity_profile(message, data.get("detail_level") or "minimal")["level"]
+    detail_level = resolve_complexity_profile(data.get("detail_level") or "minimal")["level"]
     # 思考事件始终收集，plan 条目可独立于图节点开关开启思考。
     thinking_mode = True
 
@@ -703,20 +703,13 @@ async def _handle_with_langgraph(ws, data: dict, *, resume: bool = False):
 
     # ── 初始状态 ──
     #
-    # `building_type` 只是入口的**预标签**（真正的 profile 由分类器判形制、建筑方案节点
-    # 落档，见 `intent/decision.py::_normalize_profile`），但它会写进会话元数据。所以
-    # 物件需求不能借用建筑的兜底值：`detect_architecture_profile` 在认不出形制时返回
-    # `custom`，直接套用会把"生成一个桌子"标成一栋建筑。
-    # 这里用与意图路由同一套确定性关键词先判目标类型，只有建筑需求才预打建筑标签。
+    # building_type 是入口预标签，最终类型由分类器和建筑方案确定。
+    # 先区分建筑与物件，避免把物件需求标为建筑。
     preliminary_target = detect_target_kind(message, "generate")
     initial_state: GenerationState = {
         "request_id": request_id,
         "user_message": message,
-        "building_type": (
-            detect_architecture_profile(message)["id"]
-            if preliminary_target == "architecture"
-            else "asset"
-        ),
+        "building_type": "custom" if preliminary_target == "architecture" else "asset",
         "session_id": session_id,
         "current_blueprint": current_blueprint,
         "selection": selection,

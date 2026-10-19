@@ -1,6 +1,6 @@
 # 10 月 10 日优化：自由设计图纸，按标记尝试实现
 
-日期：2026-10-10，更新至 10 月 12 日。状态：代码已改造，保存回复的实现回放与当前引擎渲染已完成；真实模型新生成与完整服务验收尚未完成。
+日期：2026-10-10，更新至 10 月 19 日。状态：代码已改造，保存回复的实现回放与当前引擎渲染已完成；真实模型新生成与完整服务验收尚未完成。
 
 本文件按用户后续明确的目标重新整理，替代此前“先按模板编译，再补细节”的方案。历史诊断和阶段结果保留在 `执行记录`（已归档），当前实现以本文及执行记录的后续章节为准。
 
@@ -23,6 +23,24 @@ final_validate：完整通过才交付 .wild
 ```
 
 `intent`、`massing`、`structure`、`facade`、`roof`、`components` 只保留为局部修订的字段归属，不再是首次设计的六个模型任务。首次 architecture 一次输出完整方案，只有 JSON 格式或图纸自身矛盾才要求修订。
+
+首轮提示词保留任务、粒度和基础字段契约；专项定位、材质、楼梯与屋面关系统一在知识库 `architecture-design-expression.md` 维护。校验失败后按错误检索相关规则，使用明确的修订任务和 `operations` 字段补丁修改草稿副本；数组错误优先限制在对应实例，修改后重新检查完整图纸。补丁、校验结果和检索上下文保留在诊断与 trace 中，调用上限仍为首次加两次修订。
+
+四档粒度交付标准位于 `rules/design-choice/architecture-detail-levels.md`，说明交付范围、允许省略项、表达重点和完成条件，不附整栋建筑方案；完整 JSON 字段格式由现有输出契约提供。architecture 根据 State 的 `detail_level`，用 `entity_name=architecture_detail_<level>` 精确过滤对应档位并优先注入；修订时沿用同档规则。`architecture_diag.detail_rule_entity/detail_rule_hits` 分别记录请求档位和实际注入的命中 ID；空命中表示需要检查索引同步及检索，不代表已应用对应标准。
+
+2026-10-19：从 `D:/Backup/桌面/2026.10.13` 的《WILD蓝图书写流程》“建筑样式设计”和《现代简约别墅-建筑类型设计语言》的设计层章节提炼通用方法，写入 `rules/design-choice/architecture-design-process.md`。按需求与形制、体量标高、功能交通、围护开口、屋面附属、材料表达的依赖顺序，说明设计决定如何落入现有字段；另列意图落地与关系复核。不采用案例的固定层数、尺寸、配色、退台及构件套餐，不将文档中的历史引擎语义直接视为当前能力。起草和局部修订均通过 `entity_name=architecture_design_process` 检索，`architecture_diag.design_process_hits` 记录初次实际注入的分片 ID。图纸格式和首次模型调用次数不变；字段指引补充已有的逐体量立面与楼梯连接表达，并修正无开口应写 `empty`、立面数组长度必须等于 `bays` 的提示及局部示例。上述设计复核不代表已实现完整碰撞、结构或专业规范校验。
+
+本轮验证：Python 语法、四档提示词的隔离构建、8 个局部立面的真实 FacadeDecision 校验、manifest 和 CSV 结构检查通过。隔离运行现有 Markdown 标题分割与 MarkdownChunker 方法，得到 750/680 字符的两个完整方法片段，未触发长度兜底。正常分片预览与增量同步均因环境导入 asyncio 时的 `WinError 10106` 失败，正式索引未同步；未做真实语义召回、模型生成或渲染验收。
+
+2026-10-19 后续：将手工生成案例中的计算与关系核对方法收敛到现有实现入口。`design/coordinates.py::design_geometry_context` 从同一份图纸推导楼面顶、墙顶、体量世界边界及显式挑空，供 `plan/implementation.py::_item_context` 与主体楼板检查共用。主体实现收到 `levels[].voids` 和 `volume_geometry`，仍自行实现当前设计；这些边界不生成固定建筑，也不覆盖批准的尺寸、位置或材料。
+
+修复了一个已复现的落实缺口：图纸声明 40㎡ 挑空时，原 `body_floor_errors` 仍接受铺满该范围的楼板。现在矩形 floor 覆盖对应楼层的显式挑空会报错，局部采纳与最终候选验收继续复用同一检查；仅标注用途的房间、底层地面和中间休息平台不因此删除。挑空的 void 必须为布尔值且边界有效，图纸起草阶段即检查。此改动不代表已覆盖旋转、曲线楼板或任意 primitive 的空间碰撞。
+
+现有 U 形折返双跑定位辅助改为优先读取 `form.span_direction=+x/-x/+z/-z`，继续识别已有明确方向描述。占地、梯宽、平台深度与连接楼面已确定时可给出路线，不要求先编造踏步参数；提供步数或踏步高时按显式约束推导其余数值，矛盾时不覆盖。辅助只在实际楼板承接成立时返回，L 形、旋转和多层整组楼梯继续由既有实现通道处理。没有增加节点、重试或大模型调用。
+
+清理了 `_default_detail_packages` 未使用的 profile_id/complexity 参数，将视觉修订直接接到 `draft_design` 并移除 `draft_design_blocks` 纯转发包装；实现上下文只在门窗任务查找洞口宿主、只在栏杆任务查询阳台几何。离线隔离执行实际生产函数的 61 项检查通过，覆盖挑空、坐标平移与抬高、上下文传递、四个楼梯方向、已有方向描述、参数推导及拒绝冲突。框架启动与构件目录依赖被隔离，不能作为完整服务、真实模型或渲染验收。
+
+本轮代码语法、清理后的参数及引用检查、`git diff --check` 通过。知识文档检查无 error，保留原有长段 warning；正常分片预览和现有增量索引同步入口仍在导入 asyncio 时遇到 `WinError 10106`，本次知识修改尚未同步到正式索引。未运行真实模型生成、完整服务或渲染，未新增测试文件。
 
 architecture 可以描述新屋型、新构件、材料、空间布局和关系。设计字段支持扩展，构件 type/form 不按引擎类型白名单拒绝。保留的图纸检查是基本数据一致性：稳定 ID、正尺寸、楼层与体量范围、立面数组长度等；不在这里证明当前程序已经能实现设计。
 
@@ -67,6 +85,7 @@ architecture 可以描述新屋型、新构件、材料、空间布局和关系�
 | [architecture/design_workflow.py](../../wild-server/app/agent/generation/architecture/design_workflow.py) | 一次起草与格式修订 |
 | [prompts/planning.py](../../wild-server/app/agent/prompts/planning.py) | architecture 的自由设计提示词 |
 | [design/contracts.py](../../wild-server/app/design/contracts.py) | 基本设计格式与可扩展字段 |
+| [design/coordinates.py](../../wild-server/app/design/coordinates.py) | 图纸标高、世界边界、显式挑空与共享关系检查 |
 | [design/compilation.py](../../wild-server/app/design/compilation.py) / [preview.py](../../wild-server/app/design/preview.py) | 无引擎编译的图纸示意 |
 | [design/markers.py](../../wild-server/app/design/markers.py) | 标记、依赖、实体所有权及装配 |
 | [plan/expand.py](../../wild-server/app/agent/plan/expand.py) / [workflow.py](../../wild-server/app/agent/plan/workflow.py) | 按标记展开和执行任务 |

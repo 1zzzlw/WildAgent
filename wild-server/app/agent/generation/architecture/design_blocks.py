@@ -18,7 +18,7 @@ DESIGN_BLOCKS = (
 )
 
 
-def ordered_blocks(_level):
+def ordered_blocks():
     return DESIGN_BLOCKS
 
 

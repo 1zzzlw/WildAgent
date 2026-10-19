@@ -26,8 +26,8 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     """从设计尺寸绘制示意，不运行 WILD 编译器。"""
     from .resolver import _stable_hash
     from .markers import component_markers
-    from .coordinates import (representative_floor_indices, floor_elevations, floor_layout_conflicts,
-                              design_relation_checks, DesignCoordinateConflict)
+    from .coordinates import (representative_floor_indices, floor_elevations, design_geometry_context, floor_layout_conflicts,
+                              design_relation_checks, opening_coordinate_errors, DesignCoordinateConflict)
     from .relations import opening_target
     from .openings import is_open_side
     from app.agent.knowledge.component_names import resolve_component_name
@@ -38,7 +38,9 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
     layout_issues = floor_layout_conflicts(d.model_dump(mode="json"))
     if layout_issues:
         raise ValueError("；".join(layout_issues))
-    levels = [ResolvedLevel(index=i, base_y=elevations[i], top_y=elevations[i+1]) for i in indices]
+    geometry = design_geometry_context(d.model_dump(mode="json"))
+    levels = [ResolvedLevel(**{key: level[key] for key in ("index", "base_y", "top_y")})
+              for level in geometry["levels"]]
     walls, frames = [], {}
     for volume_index, v in enumerate(d.volumes):
         corners = {"front": ([v.x, v.z], [v.x+v.width, v.z]),
@@ -84,9 +86,6 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
         role = marker["design"].get("material_role")
         if role in material_ids:
             marker["material_id"] = material_ids[role]
-    relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
-    if relation_errors:
-        raise DesignCoordinateConflict(relation_errors)
     for marker in markers:
         if marker["host"] in frames:
             marker["diagram_host"] = frames[marker["host"]]
@@ -94,6 +93,12 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
             if (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
                     and marker["entity"].get("position") and size.get("width") and size.get("height")):
                 marker["entity"]["from"] = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
+    relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
+    relation_errors.extend({"code": "design_opening_conflict", "path": message.partition("：")[0],
+                            "reason": message.partition("：")[2]}
+                           for message in opening_coordinate_errors(markers))
+    if relation_errors:
+        raise DesignCoordinateConflict(relation_errors)
     warnings = ["图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"]
     for layout in d.model_dump(mode="json").get("floor_layouts") or []:
         rooms, partitions = layout.get("rooms") or [], layout.get("walls") or []

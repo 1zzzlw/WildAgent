@@ -87,6 +87,54 @@ def floor_connection_targets(design, component):
     return targets, issues
 
 
+def design_geometry_context(design):
+    """由同一图纸推导标高和空间边界，供构件实现与设计落实检查共用。"""
+    from .contracts import MassingDecision
+
+    indices = representative_floor_indices(MassingDecision.model_validate(design["massing"]))
+    elevations = floor_elevations(design)
+    volumes = {
+        v["id"]: {
+            "bounds": [v["x"], v["z"], v["x"] + v["width"], v["z"] + v["depth"]],
+            "center_xz": [v["x"] + v["width"] / 2, v["z"] + v["depth"] / 2],
+            "base_y": elevations[indices[v["start_floor"] - 1]],
+            "roof_support_y": elevations[indices[v["end_floor"] - 1] + 1],
+        }
+        for v in design.get("volumes") or []
+    }
+    levels = [
+        {"index": index, "base_y": elevations[index], "top_y": elevations[index + 1],
+         "height": elevations[index + 1] - elevations[index],
+         "volume_ids": [v["id"] for v in design.get("volumes") or []
+                        if v["start_floor"] <= slot <= v["end_floor"]], "voids": []}
+        for slot, index in enumerate(indices, 1)
+    ]
+    by_floor = {level["index"]: level for level in levels}
+    for layout_index, layout in enumerate(design.get("floor_layouts") or []):
+        for room_index, room in enumerate(layout.get("rooms") or []):
+            path = f"/floor_layouts/{layout_index}/rooms/{room_index}"
+            if "void" in room and type(room["void"]) is not bool:
+                raise ValueError(f"{path}/void：必须是 boolean，true 表示此层挑空")
+            if room.get("void") is not True:
+                continue
+            bounds = room.get("bounds") or {}
+            if (not isinstance(bounds, dict)
+                    or not all(type(bounds.get(key)) in (int, float) and isfinite(bounds[key])
+                               for key in ("x", "z", "width", "depth"))
+                    or bounds["width"] <= 0 or bounds["depth"] <= 0):
+                raise ValueError(f"{path}/bounds：挑空范围须有有限的 x/z 和正数 width/depth")
+            floor = layout.get("floor")
+            if type(floor) is not int or floor not in elevations or floor > design["massing"]["floors"]:
+                raise ValueError(f"{path}：挑空必须引用有效楼层 floor")
+            if floor in by_floor:
+                by_floor[floor]["voids"].append({
+                    "design_path": path,
+                    "bounds": [bounds["x"], bounds["z"], bounds["x"] + bounds["width"],
+                               bounds["z"] + bounds["depth"]],
+                })
+    return {"levels": levels, "volumes": volumes}
+
+
 def stair_span_conflicts(design):
     """只核对显式数值能否落在已声明的楼面之间，不推断楼梯造型。"""
     from app.agent.knowledge.component_names import resolve_component_name
@@ -124,11 +172,36 @@ def stair_span_conflicts(design):
 
 
 def design_relation_checks(design, markers, frames):
-    """设计引用与明确楼层连接；资料不完整只列待审核，不代替设计。"""
+    """核对墙体表达、设计引用与明确楼层连接，不代替设计取舍。"""
     from app.agent.knowledge.component_names import resolve_component_name
 
     ids = {v["id"] for v in design["volumes"]} | {m["id"] for m in markers} | set(frames)
     errors, reviews, stairs = [], [], []
+    facades = [frame for frame in frames.values() if frame.get("facing")]
+    for wall in frames.values():
+        if not wall.get("design_path", "").startswith("/decisions/floor_layouts/"):
+            continue
+        a, b = wall["from"], wall["to"]
+        length = hypot(b[0]-a[0], b[2]-a[2])
+        ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+        for facade in facades:
+            p, q = facade["from"], facade["to"]
+            if min(max(a[1], b[1]), max(p[1], q[1]))-max(min(a[1], b[1]), min(p[1], q[1])) <= 0.001:
+                continue
+            if max(abs(-(point[0]-a[0])*uz+(point[2]-a[2])*ux) for point in (p, q)) > 0.001:
+                continue
+            along = [(point[0]-a[0])*ux+(point[2]-a[2])*uz for point in (p, q)]
+            overlap = min(length, max(along))-max(0, min(along))
+            if overlap <= 0.001:
+                continue
+            conflict = ("该面有效 facades 为 open，却在平面墙清单中重新封墙"
+                        if facade.get("open") else "同一围护墙同时由体量立面和平面墙清单重复声明")
+            errors.append({"code": "floor_wall_facade_conflict", "path": wall["design_path"],
+                           "expected": "floor_layouts.walls 只声明独立内墙，围护统一由有效 facades 表达",
+                           "actual": {"wall_id": wall["id"], "facade_id": facade["id"], "overlap": overlap},
+                           "reason": f"平面墙 {wall['id']} 与围护宿主 {facade['id']} 共线重叠 {overlap:g}m；"
+                                     f"{conflict}。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；"
+                                     "外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复"})
     for marker in markers:
         if marker["type"] == "building_body":
             continue
@@ -139,7 +212,16 @@ def design_relation_checks(design, markers, frames):
                 errors.append({"code": "design_reference_missing", "path": f"{path}/{field}",
                                "marker_id": marker["id"], "expected": "图纸已声明的宿主或构件 ID",
                                "actual": reference, "reason": "引用目标未在本次图纸声明"})
-        if resolve_component_name(marker["type"])["entity_type"] != "stair":
+        family = resolve_component_name(marker["type"])["entity_type"]
+        if family in {"door", "window"} and marker.get("host") not in frames:
+            errors.append({"code": "design_opening_host_missing", "path": f"{path}/host",
+                           "marker_id": marker["id"], "expected": "可解析的图纸墙宿主",
+                           "actual": marker.get("host"),
+                           "reason": f"门窗 {marker['id']} 未能解析到墙面；host 必须引用已声明内墙或 "
+                                     "wall_<体量id>_<front/back/left/right>_L<楼层>，"
+                                     "也可引用体量并明确 placement.face、floor 或世界 position；"
+                                     "仅有 face、floor、offset 不能确定宿主，不交给执行节点猜测"})
+        if family != "stair":
             continue
         targets, problems = floor_connection_targets(design, component)
         marker["floor_connections"] = targets
@@ -238,9 +320,9 @@ def rectangle_uncovered_area(bounds, regions):
 
 
 def opening_coordinate_errors(markers):
-    """核对门窗范围，按实际越界方向反馈；不猜测或改写设计坐标。"""
+    """核对门窗越界及同一墙面洞口重叠，不改写设计坐标。"""
     from app.agent.knowledge.component_names import resolve_component_name
-    errors = []
+    errors, openings = [], []
     for marker in markers:
         wall = marker.get("diagram_host")
         design, spec = marker["design"], marker["entity"]
@@ -294,6 +376,27 @@ def opening_coordinate_errors(markers):
         if problems:
             errors.append(f"{marker['design_path']}/placement：{marker['id']} 的门窗范围超出宿主 {wall['id']}；"
                           + "；".join(problems) + "；只修对应方向的位置或明确调整尺寸/宿主，保留未受影响的设计")
+        if width <= 0 or height <= 0 or length <= 0.001 or wall.get("curve"):
+            continue
+        ux, uz = (b[0]-a[0])/length, (b[2]-a[2])/length
+        start = (a[0]+ux*along, a[2]+uz*along)
+        for other, origin, direction, other_width, bottom, other_height in openings:
+            if abs(ux*direction[1]-uz*direction[0]) > 0.000001:
+                continue
+            dx, dz = origin[0]-start[0], origin[1]-start[1]
+            if abs(-dx*uz+dz*ux) > 0.001:
+                continue
+            shift = dx*ux+dz*uz
+            end = shift+other_width*(ux*direction[0]+uz*direction[1])
+            overlap = min(width, max(shift, end))-max(0, min(shift, end))
+            if overlap <= 0.001 or min(y+height, bottom+other_height)-max(y, bottom) <= 0.001:
+                continue
+            errors.append(f"{marker['design_path']}/placement：{marker['id']} 与 "
+                          f"{other['design_path']} 的 {other['id']} 在同一物理墙面上的洞口重叠；"
+                          f"沿墙重叠 {overlap:g}m，当前洞口范围 [{along:g}, {along+width:g}]m、"
+                          f"Y=[{y:g}, {y+height:g}]m。显式修订位置、尺寸或组合分格，"
+                          "不能同时声明覆盖彼此的完整门窗，也不能让执行节点自行移动已批准洞口")
+        openings.append((marker, start, (ux, uz), width, y, height))
     return errors
 
 

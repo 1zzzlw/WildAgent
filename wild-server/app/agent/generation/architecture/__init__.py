@@ -12,7 +12,6 @@ from .planning import (
     normalize_architecture_plan,
 )
 from .profile import (
-    detect_architecture_profile,
     is_architecture_request,
     resolve_complexity_profile,
 )
@@ -26,7 +25,6 @@ __all__ = [
     "conform_openings_to_slots",
     "conform_railings_to_slots",
     "conform_roofs_to_slots",
-    "detect_architecture_profile",
     "detect_target_kind",
     "evaluate_skeleton_complexity",
     "is_architecture_request",

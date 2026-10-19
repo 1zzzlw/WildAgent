@@ -10,14 +10,14 @@ from .design_blocks import ordered_blocks
 
 
 def apply_design_patch(current: DesignDocument, patch: dict, *, allowed_blocks: list[str],
-                       user_message: str, complexity_profile, architecture_profile):
+                       user_message: str, complexity_profile):
     """返回候选文档及归一化、派生字段记录；不修改输入或编译候选。"""
     from .planning import normalize_architecture_plan
 
     plan = architecture_plan_from_document(current)
     patch = deepcopy(patch)
     allowed: set[str] = set()
-    for block in ordered_blocks("standard"):
+    for block in ordered_blocks():
         if block.name in allowed_blocks:
             allowed.update(f for f in block.fields if f != "design_constraints")
     if "design_constraints" in patch and patch["design_constraints"] != plan.get(
@@ -33,7 +33,6 @@ def apply_design_patch(current: DesignDocument, patch: dict, *, allowed_blocks: 
     normalization_changes: list[dict] = []
     normalized = normalize_architecture_plan(
         merged, user_message=user_message, complexity_profile=complexity_profile,
-        architecture_profile=architecture_profile,
         normalization_changes=normalization_changes, input_source="model",
     )
     # 派生字段是既有确定性结果，记录但不要求第二个模型去抄。

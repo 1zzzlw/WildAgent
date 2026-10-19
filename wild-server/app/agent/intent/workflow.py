@@ -21,7 +21,7 @@ async def classifier_node(state: dict) -> dict:
         selection=state.get("selection"),
     )
     detail_level = resolve_complexity_profile(
-        state.get("user_message", ""), state.get("detail_level", "minimal")
+        state.get("detail_level", "minimal")
     )["level"]
     result = {
         "detail_level": detail_level,

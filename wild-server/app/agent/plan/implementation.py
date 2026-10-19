@@ -332,32 +332,52 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
 
 
 def _stair_route_target(base, marker):
-    """仅在图纸明确双跑方向且已有楼板承接时，给出一组可落地的坐标。"""
+    """由明确的折返方向、占地与楼面计算路线；缺省踏步参数不阻断定位。"""
+    from math import isfinite
+
     design = marker.get("design") or {}
     form, size = design.get("form") or {}, design.get("size") or {}
     if (not isinstance(form, dict) or form.get("flights") != 2
-            or not re.search(r"U|回|折返", str(form.get("shape") or "") + str(form.get("description") or ""), re.I)):
+            or not re.search(r"(?<![A-Za-z])U(?![A-Za-z])|回形|回型|折返|平行双跑",
+                             str(form.get("shape") or "") + str(form.get("description") or ""), re.I)):
         return None
-    direction = re.search(r"第一跑[^。；]*?沿\s*([+-])\s*([XZ])", str(form.get("description") or ""), re.I)
+    direction = str(form.get("span_direction") or "").strip().lower()
+    if direction and direction not in {"+x", "-x", "+z", "-z"}:
+        return None
+    if not direction:
+        match = re.search(r"第一跑[^。；]*?沿\s*([+-])\s*([XZ])", str(form.get("description") or ""), re.I)
+        direction = match[1] + match[2].lower() if match else ""
     position = (design.get("placement") or {}).get("position")
     connections = marker.get("floor_connections") or []
-    values = [size.get("width"), size.get("depth"), form.get("flight_width"),
-              form.get("landing_depth"), form.get("tread_depth")]
+    values = [size.get("width"), size.get("depth"), form.get("flight_width"), form.get("landing_depth")]
     if (not direction or not isinstance(position, list) or len(position) != 3
-            or len(connections) != 1 or type(form.get("rises")) is not int or form["rises"] < 1
-            or not all(type(v) in (int, float) and v > 0 for v in values)
-            or not all(type(v) in (int, float) for v in position)):
+            or len(connections) != 1
+            or not all(type(v) in (int, float) and isfinite(v) and v > 0 for v in values)
+            or not all(type(v) in (int, float) and isfinite(v) for v in position)):
         return None
-    axis = 0 if direction[2].upper() == "X" else 2
+    axis = 0 if direction[1] == "x" else 2
     cross_axis = 2 if axis == 0 else 0
-    sign = 1 if direction[1] == "+" else -1
+    sign = 1 if direction[0] == "+" else -1
     length, cross = size["width" if axis == 0 else "depth"], size["depth" if axis == 0 else "width"]
-    run = form["rises"] * form["tread_depth"]
-    if run + form["landing_depth"] > length + 0.01 or 2*form["flight_width"] > cross + 0.01:
-        return None
     lower, upper = connections[0]["from_y"], connections[0]["to_y"]
     middle = (lower + upper)/2
-    if type(form.get("riser_height")) in (int, float) and abs(form["rises"]*form["riser_height"]-(middle-lower)) > 0.01:
+    rises, tread, riser = form.get("rises"), form.get("tread_depth"), form.get("riser_height")
+    if rises is not None and (type(rises) is not int or rises < 1):
+        return None
+    if riser is not None:
+        if type(riser) not in (int, float) or not isfinite(riser) or riser <= 0:
+            return None
+        if rises is None:
+            count = (middle-lower)/riser
+            if abs(count-round(count)) > 0.000001 or count < 1:
+                return None
+            rises = round(count)
+        elif abs(rises*riser-(middle-lower)) > 0.01:
+            return None
+    if tread is not None and (type(tread) not in (int, float) or not isfinite(tread) or tread <= 0 or rises is None):
+        return None
+    run = rises*tread if tread is not None else length-form["landing_depth"]
+    if run <= 0 or run + form["landing_depth"] > length + 0.01 or 2*form["flight_width"] > cross + 0.01:
         return None
     near = position[axis] - sign*length/2
     turn = near + sign*run
@@ -385,8 +405,11 @@ def _stair_route_target(base, marker):
               position[0]+size["width"]/2, position[2]+size["depth"]/2]
     bounds[0 if axis == 0 else 1] = min(turn, far)
     bounds[2 if axis == 0 else 3] = max(turn, far)
-    return {"first_flight": {"from": first_from, "to": first_to},
-            "second_flight": {"from": second_from, "to": second_to},
+    flight = {"width": form["flight_width"], "rise": round(middle-lower, 6), "run": round(run, 6)}
+    if rises is not None:
+        flight.update(stepCount=rises, stepHeight=(middle-lower)/rises, stepDepth=run/rises)
+    return {"first_flight": {**flight, "from": first_from, "to": first_to},
+            "second_flight": {**flight, "from": second_from, "to": second_to},
             "landing": {"bounds": [round(v, 6) for v in bounds], "top_y": round(middle, 6)},
             "direction_axis": axis, "direction_sign": sign}
 
@@ -394,6 +417,8 @@ def _stair_route_target(base, marker):
 def _item_context(state, markers, base, reference_entity_ids=()):
     from app.agent.knowledge.component_names import component_reference_prompt
     drawing = state["design_document"]["decisions"]
+    from app.design.coordinates import design_geometry_context
+    geometry = design_geometry_context(drawing)
     body = any(m["type"] == "building_body" for m in markers.values())
     from app.agent.knowledge.component_names import resolve_component_name
     circulation = any(resolve_component_name(m["type"])["entity_type"] == "stair" for m in markers.values())
@@ -401,12 +426,13 @@ def _item_context(state, markers, base, reference_entity_ids=()):
     from app.design.relations import opening_host, place_opening_group, opening_cell_limits
     opening_hosts = {}
     for marker in markers.values():
-        wall = opening_host(base, marker, diagram_hosts=state.get("drawing_hosts", []))
+        family = resolve_component_name(marker["type"])["entity_type"]
+        wall = opening_host(base, marker, diagram_hosts=state.get("drawing_hosts", [])) if family in {"door", "window"} else None
         size = marker["design"].get("size") or {}
         if wall and all(size.get(k) for k in ("width", "height")) and (wall["id"] != marker.get("entity", {}).get("parentWall")
-                or (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
+                or (family in {"door", "window"}
                     and marker["design"].get("host") != marker.get("entity", {}).get("parentWall"))):
-            probe = {"id": marker["id"], "type": resolve_component_name(marker["type"])["entity_type"],
+            probe = {"id": marker["id"], "type": family,
                      "parentWall": wall["id"], "from": [0, 0, 0], **size}
             placed, _ = place_opening_group(base, {"geometry": {"components": [probe]}}, marker)
             placed_components = (placed.get("geometry") or {}).get("components") or []
@@ -449,7 +475,7 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         if needed == previous:
             break
     context = {"component_references": component_reference_prompt({m["type"] for m in markers.values()}),
-        "levels": (state.get("resolved_design") or {}).get("levels", []),
+        "levels": geometry["levels"], "volume_geometry": geometry["volumes"],
         "markers": list(markers.values()), "drawing": {key: drawing.get(key) for key in
         ("concept", "design_intent", "massing", "materials")},
         "diagram_hosts": [e for e in state.get("drawing_hosts", []) if e["id"] in (body_hosts if body else needed)],
@@ -467,7 +493,8 @@ def _item_context(state, markers, base, reference_entity_ids=()):
     context["stair_route_targets"] = {m["id"]: route for m in markers.values()
                                       if (route := _stair_route_target(base, m)) is not None}
     from app.design.relations import balcony_geometry
-    footprints = balcony_geometry(base)
+    footprints = balcony_geometry(base) if any(
+        resolve_component_name(m["type"])["entity_type"] == "railing" for m in markers.values()) else {}
     context["attachment_geometry"] = {}
     for marker in markers.values():
         if resolve_component_name(marker["type"])["entity_type"] != "railing":
@@ -717,6 +744,9 @@ async def run_marker_generate(state, item):
                 "雨棚保持显式宽、深、厚；原生 supportCount 生成竖直支柱，图纸要求斜撑时用正确倾斜的实体，不以竖柱代替斜撑。")
         if "building_body" in families:
             instructions.append("主体统一实现 body_components 的结构描述，沿用实际采用的 diagram_hosts 墙ID。"
+                "levels 的 base_y 是楼面顶，top_y 是本层墙顶；volume_geometry 给出世界包络与墙顶屋面支承标高。"
+                "levels[].voids 是该层不铺楼板的显式挑空边界，按范围分片留空；普通 rooms 标签不自动开洞。"
+                "原生 floor 向上增厚，from/to[1]=楼面顶减 thickness；不把楼面顶直接当板底。"
                 "四面 open 仅免除围护墙，未另派 floor 任务的实际楼面仍由主体实现；"
                 "台基构件不等于已委派 floor。按楼面顶与板厚实现楼面，不返回空的逻辑容器。"
                 "body_components 中的整面围护墙归主体实现，按其显式尺寸、厚度、材料和形态生成一次；用 volume+face+floor 对应的墙ID承接后续门窗，不重复建墙。"
@@ -762,6 +792,7 @@ async def run_marker_generate(state, item):
             instructions.append("楼梯按 markers[].floor_connections 的 from_y/to_y 实现明确的楼面连接；"
                 "available_floor_connections 只列全楼可用楼面，不要求本标记连接全部楼层。"
                 "若 stair_route_targets 给出坐标，按其中第一跑、第二跑和平台顶面落实；"
+                "其中给出的 width、rise/run、stepCount/stepHeight/stepDepth 由同一图纸计算，已提供的数值直接沿用；"
                 "其中 landing.bounds 是世界 X/Z 边界，平台须覆盖两跑接头的完整净宽，"
                 "第二跑出口须接到现有上层楼板，不要落在楼梯洞口内部。"
                 "levels.top_y 是该层墙顶，不是下一层楼面；没有明确屋面通行时，不增建顶层到屋面的梯段。"

@@ -5,17 +5,14 @@ IMPLEMENTATION_STAGES = ("generate", "repair_1", "repair_2")
 
 
 def body_floor_errors(entities, design):
-    """主体矩形楼板不能把多体量的空缺填成整栋包围盒；只检查，不裁剪。"""
-    from .contracts import MassingDecision
-    from .coordinates import representative_floor_indices, rectangle_uncovered_area, floor_elevations
+    """主体楼板保留体量空缺与显式挑空；只检查，不修改批准设计。"""
+    from .coordinates import design_geometry_context, rectangle_uncovered_area
     from math import isfinite
     from app.tools.spatial_tools import _is_finite_vector3, _is_positive_number
     volumes = design.get("volumes") or []
     if not volumes or not design.get("massing"):
         return []
-    massing = MassingDecision.model_validate(design["massing"])
-    indices = representative_floor_indices(massing)
-    elevations = floor_elevations(design)
+    geometry = design_geometry_context(design)
     margin = max((e["thickness"] / 2 for e in entities
                   if e.get("type") == "wall" and _is_positive_number(e.get("thickness"))
                   and isfinite(e["thickness"])), default=0)
@@ -28,17 +25,27 @@ def body_floor_errors(entities, design):
                 and isfinite(floor["thickness"])):
             continue  # 格式错误交给 WILD Schema；此处只判断可计算的空间范围。
         top = a[1] + floor["thickness"]
-        regions = [(v["x"]-margin, v["z"]-margin, v["x"]+v["width"]+margin, v["z"]+v["depth"]+margin)
-                   for v in volumes if elevations[indices[v["start_floor"]-1]]-0.25 <= top
-                   <= elevations[indices[v["end_floor"]-1]+1]+0.25]
+        regions = [(v["bounds"][0]-margin, v["bounds"][1]-margin,
+                    v["bounds"][2]+margin, v["bounds"][3]+margin)
+                   for v in geometry["volumes"].values()
+                   if v["base_y"]-0.25 <= top <= v["roof_support_y"]+0.25]
         x0, x1 = sorted((a[0], b[0]))
         z0, z1 = sorted((a[2], b[2]))
         outside = rectangle_uncovered_area((x0, z0, x1, z1), regions)
         if outside > 0.001:
             errors.append(f"❌ [{floor['id']}] 主体楼板超出该标高体量并集 {outside:.3f}㎡；"
-                          f"当前板顶Y={top:g}m，图纸楼面顶标高={[elevations[i] for i in indices]}；"
+                          f"当前板顶Y={top:g}m，图纸楼面顶标高={[level['base_y'] for level in geometry['levels']]}；"
                           f"当前 X/Z 范围 [{x0:g}, {x1:g}] × [{z0:g}, {z1:g}]，允许覆盖区域 {regions}；"
                           "from/to 是世界端点，体量 x/z 是起点；按体量分片保留庭院空缺，不能改成原点居中或填满包围盒")
+        for level in geometry["levels"]:
+            if not level["voids"] or not a[1]-0.001 <= level["base_y"] <= top+0.001:
+                continue
+            covered = ((x1-x0)*(z1-z0) - rectangle_uncovered_area(
+                (x0, z0, x1, z1), [void["bounds"] for void in level["voids"]]))
+            if covered > 0.001:
+                errors.append(f"❌ [{floor['id']}] 楼板覆盖第 {level['index']} 层显式挑空 {covered:.3f}㎡；"
+                              f"核对 {[void['design_path'] for void in level['voids']]}，"
+                              "按已批准挑空边界分片布板，保留其余楼面与承接；不能把挑空仅作为房间标签")
     return errors
 
 

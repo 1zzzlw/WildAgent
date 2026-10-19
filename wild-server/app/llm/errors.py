@@ -3,6 +3,7 @@
 模型服务故障（额度、鉴权、限流、超时等）不是 Blueprint 几何错误，
 不能进入 callback 的建筑修复循环。本模块只做错误分类，不依赖具体供应商 SDK。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -52,7 +53,9 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "authentication"
         retryable = False
         user_message = "模型服务鉴权失败，请检查 API Key 和模型服务配置。"
-    elif status_code == 403 or _contains_any(lowered, ("permission denied", "forbidden")):
+    elif status_code == 403 or _contains_any(
+        lowered, ("permission denied", "forbidden")
+    ):
         category = "access_denied"
         retryable = False
         user_message = "模型服务拒绝访问，请检查模型权限、账号额度和服务配置。"
@@ -69,7 +72,9 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "model_not_found"
         retryable = False
         user_message = "未找到配置的模型，请检查模型名称、服务地址和供应商是否匹配。"
-    elif status_code == 429 or _contains_any(lowered, ("rate limit", "too many requests", "限流")):
+    elif status_code == 429 or _contains_any(
+        lowered, ("rate limit", "too many requests", "限流")
+    ):
         category = "rate_limited"
         retryable = True
         user_message = "模型服务请求过于频繁，本次生成已停止，请稍后重新生成。"
@@ -84,7 +89,17 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
         category = "provider_unavailable"
         retryable = True
         user_message = "模型服务暂时不可用，本次生成已停止，请稍后重新生成。"
-    elif _contains_any(lowered, ("timeout", "timed out", "connection error", "apiconnectionerror", "connecterror", "连接超时")):
+    elif _contains_any(
+        lowered,
+        (
+            "timeout",
+            "timed out",
+            "connection error",
+            "apiconnectionerror",
+            "connecterror",
+            "连接超时",
+        ),
+    ):
         category = "transport_error"
         retryable = True
         user_message = "连接模型服务失败，本次生成已停止，请检查网络后重新生成。"
@@ -112,7 +127,9 @@ def classify_model_error(exc: Exception) -> dict[str, Any]:
     }
 
 
-def collect_component_model_errors(component_diagnostics: object) -> list[dict[str, Any]]:
+def collect_component_model_errors(
+    component_diagnostics: object,
+) -> list[dict[str, Any]]:
     """从并行组件诊断中收集模型故障，供 merge 统一终止当前运行。"""
     if not isinstance(component_diagnostics, dict):
         return []
@@ -123,14 +140,18 @@ def collect_component_model_errors(component_diagnostics: object) -> list[dict[s
         if not str(diag_key).endswith("_gen") or not isinstance(diag, dict):
             continue
         model_error = diag.get("model_error")
-        if not isinstance(model_error, dict) or not model_error.get("terminal_current_run"):
+        if not isinstance(model_error, dict) or not model_error.get(
+            "terminal_current_run"
+        ):
             continue
         component_type = str(diag_key)[:-4]
-        failures.append({
-            **model_error,
-            "component_type": component_type,
-            "label": diag.get("label", component_type),
-        })
+        failures.append(
+            {
+                **model_error,
+                "component_type": component_type,
+                "label": diag.get("label", component_type),
+            }
+        )
     return failures
 
 
@@ -142,7 +163,9 @@ def _extract_status_code(exc: Exception, lowered_message: str) -> int | None:
         if isinstance(candidate, int):
             return candidate
 
-    match = re.search(r"(?:error code|status(?: code)?)\s*[:=]?\s*(\d{3})", lowered_message)
+    match = re.search(
+        r"(?:error code|status(?: code)?)\s*[:=]?\s*(\d{3})", lowered_message
+    )
     return int(match.group(1)) if match else None
 
 
@@ -179,12 +202,7 @@ def _is_timeout_exception(exc: Exception) -> bool:
 
 
 def model_failure_result(exc: Exception) -> dict[str, Any]:
-    """把 LLM 服务故障转成可写入 LangGraph state 的阻断结果。
-
-    方案 A：模型不可用（额度/鉴权/超时/限流等）直接阻断生成，不再静默回退到
-    确定性模板。返回的 dict 带 terminal_model_error，下游 merge/validate 节点
-    与 ws_agent 会据此发 model_service_error 事件，前端醒目提示。
-    """
+    """把 LLM 服务故障转成可写入 LangGraph state 的阻断结果。"""
     info = classify_model_error(exc)
     return {
         "terminal_model_error": dict(info),

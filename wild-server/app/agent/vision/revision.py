@@ -6,7 +6,7 @@ P7-C 的五条要求与本模块的对应关系：
    :data:`_MAX_ROUNDS` + :data:`_CALL_BUDGET` + 无进展上限，三重照抄
    ``convergence.py`` 的既有做法，不发明新口径。
 2. **走既有受控变更接口，不绕过编译器**
-   修订只经``draft_design_blocks(only_blocks=…)``，产出仍然要过
+   修订只经``draft_design(only_blocks=…)``，产出仍然要过
    ``normalize_architecture_plan`` → ``compile_document``。
    🔴 本模块**不接触 three.js、不改渲染代码、不直接改蓝图**。
 3. **能力缺失只标记不阻断**：视觉评价不通过**绝不**让生成失败。
@@ -424,7 +424,6 @@ async def revise_by_visibility(
     document: dict[str, Any],
     user_message: str,
     complexity_profile: dict[str, Any] | None = None,
-    architecture_profile: dict[str, Any] | None = None,
     thinking_mode: bool = False,
     max_rounds: int = _MAX_ROUNDS,
     call_budget: int = _CALL_BUDGET,
@@ -458,25 +457,14 @@ async def revise_by_visibility(
     from app.design.resolver import (
         architecture_plan_from_document,
     )
-    from app.agent.generation.architecture import (
-        detect_architecture_profile,
-    )
     from app.agent.generation.architecture.design_blocks import (
         block_of_design_field,
         ordered_blocks,
     )
-    from app.agent.generation.architecture.design_workflow import draft_design_blocks
+    from app.agent.generation.architecture.design_workflow import draft_design
     from app.agent.generation.architecture.revision_patch import apply_design_patch
 
-    # 🔴 profile 必须**确定性重算**，不能默认 None ——
-    #    `normalize_architecture_plan` 在 profile 缺失时会把 massing 归一化掉，
-    #    于是 `apply_design_patch` 的"归一化越权"闸对**每一个**候选都触发 ⇒
-    #    修订永远不生效，而且诊断只显示"归一化越权修改 massing"，看不出是这个原因。
-    #    与 `design_flow/convergence.py:35` 同一口径。
-    effective_architecture_profile = architecture_profile or detect_architecture_profile(
-        user_message)
-
-    draft_blocks = draft_blocks or draft_design_blocks
+    draft_blocks = draft_blocks or draft_design
     started = now()
     max_rounds = min(_MAX_ROUNDS, max(0, int(max_rounds)))
     call_budget = min(_CALL_BUDGET, max(0, int(call_budget)))
@@ -562,7 +550,7 @@ async def revise_by_visibility(
             block = block_of_design_field(str(item["target"]).strip("/").replace("/", "."))
             if block and block.name not in blocks:
                 blocks.append(block.name)
-        allowed_blocks = [b.name for b in ordered_blocks("standard") if b.name in blocks]
+        allowed_blocks = [b.name for b in ordered_blocks() if b.name in blocks]
         if not allowed_blocks:
             # 认不出的映射不猜（convergence 红线 3）：只记录，不动稿。
             run.stop_reason = "no_issues"
@@ -593,7 +581,7 @@ async def revise_by_visibility(
                              + _tasks_json(evidence, allowed_blocks, current),
                 user_request=user_message, thinking_mode=thinking_mode,
                 only_blocks=allowed_blocks, complexity_profile=complexity_profile,
-                architecture_profile=effective_architecture_profile, current_plan=context,
+                current_plan=context,
                 allow_design_changes=True, max_attempts=1,
                 on_reasoning_delta=on_reasoning_delta,
             ), timeout=max(0.01, time_budget - (now() - started)))
@@ -622,7 +610,6 @@ async def revise_by_visibility(
             candidate, normalization_changes, derived_changes = apply_design_patch(
                 current, patch, allowed_blocks=allowed_blocks, user_message=user_message,
                 complexity_profile=complexity_profile,
-                architecture_profile=effective_architecture_profile,
             )
             round_log.update(normalizationChanges=normalization_changes, derivedChanges=derived_changes)
         except Exception as exc:

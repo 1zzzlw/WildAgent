@@ -121,6 +121,8 @@ required_documents:
   - rules/conditional/component-selection.md
   - rules/conditional/pending.md
   - rules/design-choice/free-variables.md
+  - rules/design-choice/architecture-detail-levels.md
+  - rules/design-choice/architecture-design-process.md
 
 defaults:
   knowledge_revision: rules-v1
