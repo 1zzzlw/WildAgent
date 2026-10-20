@@ -1,0 +1,110 @@
+{
+  "time": "2026-10-20T08:40:46.248794+08:00",
+  "git_head": "7f43ca2881dcd1ca1e74aaba80d6266b2447530d",
+  "git_status": [
+    " M docs/10月19日优化/01-庭光别墅实际生成复盘.md",
+    " M docs/10月19日优化/README.md",
+    " M wild-server/app/agent/design_flow/compile.py",
+    " M wild-server/app/agent/generation/architecture/design_workflow.py",
+    " M wild-server/app/agent/generation/material/workflow.py",
+    " M wild-server/app/agent/plan/implementation.py",
+    " M wild-server/app/agent/prompts/planning.py",
+    " M wild-server/app/agent/validation/candidate.py",
+    " M wild-server/app/agent/validation/issues.py",
+    " M wild-server/app/agent/validation/workflow.py",
+    " M wild-server/app/design/contracts.py",
+    " M wild-server/app/design/coordinates.py",
+    " M wild-server/app/design/relations.py",
+    " M wild-server/app/utils/json_extractor.py",
+    " M wild-server/evals/rag_retrieval_cases_langsmith.csv",
+    " M wild-server/scripts/kb/resync_knowledge_index.py",
+    " M wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md",
+    " M wild-server/storage/knowledge_base/rules/design-choice/architecture-design-process.md",
+    " M wild-web/src/types/design.ts",
+    "?? docs/10月19日优化/03-实施与验证记录.md",
+    "?? docs/10月19日优化/04-WILD别墅生成规则-独立版.md",
+    "?? docs/10月19日优化/执行证据/",
+    "?? docs/10月20日优化/",
+    "?? wild-server/app/agent/generation/program.py",
+    "?? wild-server/app/design/spatial_review.py",
+    ""
+  ],
+  "preexisting_tracked_dirty_files": {
+    "docs/10月19日优化/01-庭光别墅实际生成复盘.md": {
+      "status": " M",
+      "sha256": "b08692d1126f931c6e23ec0e1d93760189861ca28687bded9a995b34defb53f5"
+    },
+    "docs/10月19日优化/README.md": {
+      "status": " M",
+      "sha256": "e88fa60e2135988f8f11e60e25301e9b1e6c18d12ee8546178594abef2ca870e"
+    },
+    "wild-server/app/agent/design_flow/compile.py": {
+      "status": " M",
+      "sha256": "038a3c30404a6b619f9d12fdd4222240ab8e511ff863dded27446793ba8ad9dd"
+    },
+    "wild-server/app/agent/generation/architecture/design_workflow.py": {
+      "status": " M",
+      "sha256": "2dacd399792b402cb93498afa80e62a656fbea6adc9082020ea3e18f4e276864"
+    },
+    "wild-server/app/agent/generation/material/workflow.py": {
+      "status": " M",
+      "sha256": "b1da20add7930b1dab01a3f2aeab69fe5606619a1ed2af388999b423668eb48b"
+    },
+    "wild-server/app/agent/plan/implementation.py": {
+      "status": " M",
+      "sha256": "d1be5bc729c92001e7dcb9bd39ff21de16149f4c3b7af46e587f5d0064bcca36"
+    },
+    "wild-server/app/agent/prompts/planning.py": {
+      "status": " M",
+      "sha256": "18476f6d33a9697ccd2db8bd56faf5342f8c33e478020a761d7340c0dc22d9a4"
+    },
+    "wild-server/app/agent/validation/candidate.py": {
+      "status": " M",
+      "sha256": "49d9c8a4b06e0e7cf46491bda6b924b21b03968b3e24394b50447fb741173d0a"
+    },
+    "wild-server/app/agent/validation/issues.py": {
+      "status": " M",
+      "sha256": "74162a14e4cbc88c9bb358fe613ca7cb112e795c7fa962ba2d74d1f3e192fff1"
+    },
+    "wild-server/app/agent/validation/workflow.py": {
+      "status": " M",
+      "sha256": "c220cc8b973fa41e373de671475cda2ebfd6ed2818d88e8d0528f709ea3cc2db"
+    },
+    "wild-server/app/design/contracts.py": {
+      "status": " M",
+      "sha256": "6e40c464592581a65ff48425eaf79fe85633c0c45c03b4f2ce8eae56105e1d64"
+    },
+    "wild-server/app/design/coordinates.py": {
+      "status": " M",
+      "sha256": "c4d704588bee03ef47b8759d9621fa282e924efd5e9e8bfa277254baa56921cd"
+    },
+    "wild-server/app/design/relations.py": {
+      "status": " M",
+      "sha256": "4d93137388ea6ad1d12ce44af05b1e77f1acfb619f937716bd83abca4ec958fe"
+    },
+    "wild-server/app/utils/json_extractor.py": {
+      "status": " M",
+      "sha256": "361c2dcfcfdf4cfe601d1de8f6a8e47038e70b117e4c79d986965c369f757ae4"
+    },
+    "wild-server/evals/rag_retrieval_cases_langsmith.csv": {
+      "status": " M",
+      "sha256": "343db304cf351b7830fe085b6dbae92d10226a7f4a6389deaf7ec7dd79506dd7"
+    },
+    "wild-server/scripts/kb/resync_knowledge_index.py": {
+      "status": " M",
+      "sha256": "5626cc1b894e1237e153509cf98a7abb040886069f4060de083c38354de31c60"
+    },
+    "wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md": {
+      "status": " M",
+      "sha256": "1767c482830b3965415effdc723cb482b72466ffaef59e18ae8bb4f04b55e6cd"
+    },
+    "wild-server/storage/knowledge_base/rules/design-choice/architecture-design-process.md": {
+      "status": " M",
+      "sha256": "dbab938b63971f054e14b8ed1bd94bc8704cbae82529dca3cf87227a56cc8234"
+    },
+    "wild-web/src/types/design.ts": {
+      "status": " M",
+      "sha256": "b6375f2151c94c0c5845fbbf43a6fb1695ad4dec5afaaf4b549a5fc5e48924fa"
+    }
+  }
+}

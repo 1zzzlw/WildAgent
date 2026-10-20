@@ -1,0 +1,14 @@
+{
+  "status": "failed",
+  "error": "TimeoutError: ",
+  "model": "qwen3.8-flash",
+  "model_invocations": 1,
+  "invocation_limit": 18,
+  "seconds": 360.06,
+  "program_executions": 0,
+  "program_errors": [],
+  "detail_level": "detailed",
+  "request": "设计一栋两层现代庭院别墅。后侧主楼与单层侧翼组织庭院，局部通高客厅、两间卧室、书房、餐厨与卫浴；双跑楼梯有平台和楼板洞口；侧翼屋顶为可到达露台，安排连接门、栏杆和轻廊架。浅墙、木材、深金属和物理玻璃，室内外有必要家具与照明，保留清楚入口通路。尺寸自行合理设计，整体简洁，不套固定模板。",
+  "review_mode": "isolated local trial; no production review node modified",
+  "stages": []
+}

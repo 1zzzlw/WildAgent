@@ -1,0 +1,70 @@
+{
+  "scope": "仅设计事实字段与 architecture 节点；后续节点不迁移",
+  "sources": [
+    {
+      "path": "wild-server/app/design/facts.py",
+      "sha256": "8b454c15a151700dbae2e7f8575f3d9db2aaea945a63bff12bdca47029de2a3f",
+      "lines": 178,
+      "existed_at_start": false,
+      "before_sha256": null
+    },
+    {
+      "path": "wild-server/app/design/resolve_facts.py",
+      "sha256": "e5381c5220e591b6c3232fad2d91758a0afe5d673171b73542ebc6a262a01f44",
+      "lines": 196,
+      "existed_at_start": false,
+      "before_sha256": null
+    },
+    {
+      "path": "wild-server/app/design/legacy_architecture.py",
+      "sha256": "6aa81e9bbc39e69432e46bf1a9d9c4e7033c838cbfd4cb236c7b59c7474c61b8",
+      "lines": 375,
+      "existed_at_start": false,
+      "before_sha256": null
+    },
+    {
+      "path": "wild-server/app/design/contracts.py",
+      "sha256": "03407100717245c6b59f2a87d9755c83ce93ad8e7770520258ba7b52435a77ce",
+      "lines": 260,
+      "existed_at_start": true,
+      "before_sha256": "d792032ef63e054ae69a248ba064aaf57a7c2ad8cb5b0fc0c53e7b8b89d4bb46"
+    },
+    {
+      "path": "wild-server/app/design/__init__.py",
+      "sha256": "4e7da1a491e2a407259c78026937c2199c1ffd60c1302ce526ce9f9a614e0d2d",
+      "lines": 26,
+      "existed_at_start": true,
+      "before_sha256": "7edbfe0a987a0c5660748d64285d0dd2e5f3c44def56491bf273bfabda64fbbc"
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/workflow.py",
+      "sha256": "96c2e44e602c8f64e607e3664f66c9e8ef9cf505b3b35eb407f5a13c6a14d87e",
+      "lines": 89,
+      "existed_at_start": true,
+      "before_sha256": "74ead0db5449b7364be94fe94e21ef625ab201ee9c40fd67111900baa4a54309"
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/design_workflow.py",
+      "sha256": "0952b96f2b8a9c71f0efc1668f6b9cabe7fad20dc0d66028ade74c0df54e4e7b",
+      "lines": 93,
+      "existed_at_start": true,
+      "before_sha256": "2dacd399792b402cb93498afa80e62a656fbea6adc9082020ea3e18f4e276864"
+    },
+    {
+      "path": "wild-server/app/agent/prompts/planning.py",
+      "sha256": "d16af778d4fac84e4ffc1bd58db52d3c5e6435d359293caf0aee147d6bb48901",
+      "lines": 421,
+      "existed_at_start": true,
+      "before_sha256": "a444ab50fa10102cc9f1b81952b648f1658115de891d1d32e8845934704b3225"
+    }
+  ],
+  "sample": "docs/10月20日优化/汀院别墅-新版设计图纸.json",
+  "historical_test_file": "wild-server/scripts/ci/test_design_facts.py",
+  "verification": "用户最新指定自行测试后，未运行测试、构建、服务、模型或渲染。仅人工阅读源码和记录文件范围。02-首轮回归.json 是此前历史结果，不作为新版节点验证。",
+  "interface": {
+    "design_document": "DesignFacts 平面 JSON，非旧 DesignDocument 外壳",
+    "resolved_design": "resolve_facts 的程序派生结果",
+    "architecture_diag": "schema/prompt/user_request/current_plan/rounds/token_usage/last_issue/total_ms"
+  },
+  "migration": "旧 contracts/repository/resolver 及 legacy_architecture 暂留给未迁移消费者。新节点不导出旧 architecture_plan，不增加兼容适配器。"
+}

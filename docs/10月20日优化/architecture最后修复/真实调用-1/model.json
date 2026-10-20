@@ -1,0 +1,8 @@
+{
+  "name": "qwen3.8-flash",
+  "provider": "auto",
+  "thinking_budget": 4096,
+  "timeout": 300.0,
+  "started_at": "2026-10-20T17:18:44.561434+08:00",
+  "scope": "architecture only"
+}

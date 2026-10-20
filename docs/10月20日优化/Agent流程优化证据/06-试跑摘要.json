@@ -1,0 +1,15 @@
+{
+  "session_id": "codex_flow_check_1792459663",
+  "elapsed_seconds": 60.094,
+  "status": "failed",
+  "error": "建筑图纸未通过检查：/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/volumes/0；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1a', 'wall_1b', 'wall_1d'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/0、/decisions/floor_layouts/0/walls/1、/decisions/floor_layouts/0/walls/2",
+  "validation_error_count": null,
+  "validation_warning_count": null,
+  "native_attempts": 0,
+  "native_marker_ids": [],
+  "native_failures": [],
+  "llm_calls": 4,
+  "diagnostic_auto_approvals": 0,
+  "next_nodes": [],
+  "candidate_saved": false
+}

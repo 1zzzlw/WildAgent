@@ -1,0 +1,379 @@
+{
+  "createdAt": "2026-10-20T00:58:27.490Z",
+  "root": "E:\\AgentProject\\WildAgent\\docs\\10月20日优化",
+  "scope": "列出本目录交付与过程文件，排除清单自身；preexisting=true 是原有文档，不属于本次创建",
+  "files": [
+    {
+      "path": "00-本次任务与证据说明.md",
+      "bytes": 2974,
+      "sha256": "10b967226d784a81e6e882c73456d5eda203c53374b73739d9cbd81ff65bd5e4",
+      "preexisting": false
+    },
+    {
+      "path": "01-汀院别墅实际生成记录.md",
+      "bytes": 13716,
+      "sha256": "311c1108f12832f1fa34ca16923829e61b40c14b4bdf739db3222177e283eabe",
+      "preexisting": false
+    },
+    {
+      "path": "02-当前Agent流程对比与简化建议.md",
+      "bytes": 15469,
+      "sha256": "95119ceb778f401aedc3c6e0c09bfaa8c861fc9def109d89a7d23633b2cf5b30",
+      "preexisting": false
+    },
+    {
+      "path": "README.md",
+      "bytes": 979,
+      "sha256": "db6b930457f2ea18826b3b0f96c21597963a795ef8db9f11ad251e85c659669a",
+      "preexisting": false
+    },
+    {
+      "path": "WILD蓝图设计语言-v2.0-庭光别墅与家具补充版.md",
+      "bytes": 375722,
+      "sha256": "a0afe44ee0481ea5e4278dcabc61a39020a02293090f73560d828f9f54e085ab",
+      "preexisting": true
+    },
+    {
+      "path": "汀院别墅-Codex.wild",
+      "bytes": 41786,
+      "sha256": "4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/00-工作区初始快照.json",
+      "bytes": 4956,
+      "sha256": "afd0552e8d3282e292f5daa7b3618b4eb50d060c830f6f58ff176f28a89760fe",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/01-设计事实-r1-复核前.json",
+      "bytes": 3582,
+      "sha256": "eea1e9f36ede403850057140a6778dc9a4c6e3247a6db109945d4f4c3a432453",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/01-设计事实-r2-路线失败.json",
+      "bytes": 3582,
+      "sha256": "7cf222528ad677287e3c8b5fe18172fa59e0bc783f8413fd0ef746d70c950aeb",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/01-设计事实.json",
+      "bytes": 3616,
+      "sha256": "0a33efb895f57ca52f61a9d9c7dfdd785d44d8aae342cb75831098f65e2dfdba",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/02-生成汀院别墅-初稿.py",
+      "bytes": 18383,
+      "sha256": "fc53dd098eb68384b38d7a86c06affb51157030a798f10e5cb969bfb226c7ecd",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/02-生成汀院别墅.py",
+      "bytes": 18373,
+      "sha256": "d01a9edcbaeff09a7e15f9feff8abb0596c9d4a8fe386c0dcf984ba830395f2b",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/03-初稿.wild",
+      "bytes": 41791,
+      "sha256": "000e65a2f8ff14ac6d39d38ff9fb69b85d4d0c06994755b7474794c1f34b3c3b",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/03-初稿生成.json",
+      "bytes": 707,
+      "sha256": "5be34c066e7bf11455d9d105ba4cdf514960a494517a40117b1044a9c57b45a2",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/04-初稿引擎检查.json",
+      "bytes": 767,
+      "sha256": "a0700fa65a9adfad7ccae94c039eb2f87fefa0ab02deb1fc898a097afbcdd3b4",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿渲染/front.png",
+      "bytes": 284356,
+      "sha256": "9453de8a11e28c368bf797ebee243f238e1279c1adbb591da45664784b963d64",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿渲染/perspective.png",
+      "bytes": 418583,
+      "sha256": "39f9e6be77d916c7ac303f93c48b0e862ed40bbc526d71d74bdf10533521e5b7",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿渲染/render_manifest.json",
+      "bytes": 2393,
+      "sha256": "47e15f6351de3c47cd3972e3fed5cedbc69ba14538829bd7f79dd06f8b2ff425",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿渲染/side.png",
+      "bytes": 249876,
+      "sha256": "8b5ef7e3c432ddd824a7d5d432bb3145f787e44a448ba02868c96002ff008f82",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿渲染/top.png",
+      "bytes": 288080,
+      "sha256": "d774dfa6c34a4c556e18d284bf84870b523627bc9de4488b9873034cbcb50b85",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/05-初稿真实渲染.json",
+      "bytes": 3188,
+      "sha256": "c14b8e3b142656ec686d12fb17a4c0f997e294170365a7f2827656255f0c108b",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/06-初稿独立检查.json",
+      "bytes": 2041,
+      "sha256": "e11c10c8742c8e0b25e991f9df1f69eb66376a36284db29cfc41de636f6300a8",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/06-初稿独立检查结果.json",
+      "bytes": 3296,
+      "sha256": "1e2c18f1dc0bb60f07d7ae1115cc31a3e276e408607709275195a482114a828c",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/06-独立检查.py",
+      "bytes": 8829,
+      "sha256": "53c71baae096809232723d67bdb17410346319b9d98be88c887b50e06a2e5868",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/07-修订后独立检查.json",
+      "bytes": 702,
+      "sha256": "4c685a93a70d8f29857bab358a83de3b13aefa23d50a6f68b66357c77dc7470d",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/07-修订后独立检查结果.json",
+      "bytes": 3053,
+      "sha256": "5d6a6253a807ced86c7221bc2741bba602c1b30af89532033f19bea899f39937",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/07-修订后生成.json",
+      "bytes": 710,
+      "sha256": "b2b0865151bebe58c9e254cd1eab5fd0852e11f2a1be141a73f5479670a3152e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/07-修订记录.json",
+      "bytes": 1522,
+      "sha256": "ab25b0b5db474a2714bad61f98d5f3ef78a0dff7eeb9c090d8374af2f492b39e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/08-剖切渲染.mjs",
+      "bytes": 1928,
+      "sha256": "406aa3e1eebee9636182aa0fdfdbead8dc8c19b85ca779fc5656edc70d22d6e7",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/08-最终引擎检查.json",
+      "bytes": 767,
+      "sha256": "111a61750cac826c4339a95d0f026a4932af46d042f6a831483d68195405d7ef",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终渲染/front.png",
+      "bytes": 285553,
+      "sha256": "66430e3cf3d04b6fc18713e4a40295273e80441aa1ec7d86ac204e6a3d57ef3e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终渲染/perspective.png",
+      "bytes": 419161,
+      "sha256": "ddc72cdc9bb9e11d4e3da2f2f250652c6980b596db4f1216c3a865fe7529e1a9",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终渲染/render_manifest.json",
+      "bytes": 2393,
+      "sha256": "7678b139d74596a8191e01105a2d4279498dd6cea0b8a33a36834f14be07e18d",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终渲染/side.png",
+      "bytes": 249876,
+      "sha256": "8b5ef7e3c432ddd824a7d5d432bb3145f787e44a448ba02868c96002ff008f82",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终渲染/top.png",
+      "bytes": 288204,
+      "sha256": "49cb9162eddb5513aa38ea77a58949562c9e9eea661f58f55b3c17608d6554a1",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/09-最终真实渲染.json",
+      "bytes": 3188,
+      "sha256": "73ce9c7da74a81ae96501c8ad229f399af52bafce4de1d2af9d165013076db1c",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/10-剖切渲染/courtyard.png",
+      "bytes": 413531,
+      "sha256": "b5e7125c1cfb0b43015e008c51fa6b4b7059ea60c573a420e3083b99402d7200",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/10-剖切渲染/render_manifest.json",
+      "bytes": 2326,
+      "sha256": "238a4ecb1677681538ba3fcf23246c77bba5fca1016d7eb3cb1e47fb4ab9f54f",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/10-剖切渲染/section-ground.png",
+      "bytes": 278189,
+      "sha256": "3794e96bb1c2ccb3588c4da37b8c9bcd0b39e76b9814e7618f05f9b38ea43f93",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/10-剖切渲染/section-upper.png",
+      "bytes": 281783,
+      "sha256": "3f3b4c26ef07f035bb52d0a495a1ad4b412ba442ae5bcf172aadd1ce19b2f665",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/10-剖切渲染.json",
+      "bytes": 3156,
+      "sha256": "b086612748e719cccf746f95e19c3b23c5f0c9f65cb034634fb5958b968f3e17",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/11-复用项目空间复核.py",
+      "bytes": 1942,
+      "sha256": "37dac7729e63f1ca5b596b0e8ee333ef59e201ee9efd90ca95b6d10c4f2682b3",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/11-项目空间复核.json",
+      "bytes": 1665,
+      "sha256": "988032d79ce314c2ea7fb876efe75a6d0506712d5b2d829618e7991d307f1ea3",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/11-项目空间复核结果-首次.json",
+      "bytes": 12926,
+      "sha256": "986a85c399cca74cd06c1e03f712d2fb373bce87eef5057e3e908eedff015724",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/11-项目空间复核结果.json",
+      "bytes": 12087,
+      "sha256": "985602e0cbf9143df4bd0bfc0540660676c832a2d29ffd4a494bdb66159ae8ca",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-可重放生成.json",
+      "bytes": 710,
+      "sha256": "6667db4e444d7186efec22268f10d9b67ab5418e7a4b5ced9b955300b65d2113",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-最终独立检查.json",
+      "bytes": 2053,
+      "sha256": "63005d3e51adce871582a7f10d61d6f2dafb63df4ae2130dbb247725eb787a74",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-最终独立检查结果.json",
+      "bytes": 3308,
+      "sha256": "14e5fea8fec5b04d9910f94dbdba0657bc228021654b945e0ba130f92ec2127e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-最终项目空间复核.json",
+      "bytes": 1683,
+      "sha256": "fbbb045dd6175c6b21c9796a400894efec7258a246fdb66f1e53fc8eee2b6da8",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-路线r2失败检查.json",
+      "bytes": 3308,
+      "sha256": "14e5fea8fec5b04d9910f94dbdba0657bc228021654b945e0ba130f92ec2127e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/12-路线r2失败项目复核.json",
+      "bytes": 12986,
+      "sha256": "9d0682f89f7c032789c13eee3bdc500ca7ca46f142d7684ca8da73e25cb79e15",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/13-最终独立检查.json",
+      "bytes": 696,
+      "sha256": "4c19d5c76cbf2a059e823600029e86b77fc53e0d76a107d918047f6e8a70af2e",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/13-最终独立检查结果.json",
+      "bytes": 3053,
+      "sha256": "70c3a8597f3e9ec3bdb5b6f08c35845275e7117a68f205400a4f11b6c9c50529",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/13-最终项目空间复核.json",
+      "bytes": 1642,
+      "sha256": "1638bf33b0964fed56646044c3254f719be5b725175a91767682b8556f2e2b31",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/14-工具调用记录.json",
+      "bytes": 41306,
+      "sha256": "5cfd4442b7bdb867cfa56aa0dbffc88925c84d75a0350fb755ef6b4e771d1425",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/14-读取输入清单.json",
+      "bytes": 8562,
+      "sha256": "af2d66141d60afcab0739dc34c3dba8bd35faa2a053642e83b2c55ffb5741e98",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/14-资料使用清单.json",
+      "bytes": 34489,
+      "sha256": "1c6cf746b80b418d196e4e298ec196efefd3e278cdb81e595e257921cb59acbe",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/15-Git最终状态.json",
+      "bytes": 1686,
+      "sha256": "1258ef128d0a41c0a3aea48631b5e8d5149d9a7faf13fb1e53da01910b5cb315",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/15-Node版本.json",
+      "bytes": 278,
+      "sha256": "532c881d0d1826b6d065f0bef75e12e76d2517b34e390648cf899cde28f85f21",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/15-交付核验.json",
+      "bytes": 3993,
+      "sha256": "5944ab063b9e97cca8f93257e765eceed5c7300b7d8ef6e9bff1715cad2adfe6",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/15-最终哈希重放.json",
+      "bytes": 713,
+      "sha256": "e10504425f2dc6716ef54593b5927cec8666c5ecced22ba39b06d75f2c654bea",
+      "preexisting": false
+    },
+    {
+      "path": "汀院别墅-过程证据/15-运行版本.json",
+      "bytes": 600,
+      "sha256": "da10873a8b09cf4d82653e27f68f73fbb0eb39c60c9fcaaa29083c3221b71e12",
+      "preexisting": false
+    }
+  ]
+}

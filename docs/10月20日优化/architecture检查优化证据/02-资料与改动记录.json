@@ -1,0 +1,128 @@
+{
+  "scope": "仅 architecture 的设计、检查、修订和必需的工具调用结果保留；不迁移后续节点",
+  "schema": "保留当前 DesignFacts 字段集合；取消隐式材质引用默认值；并非原汀院 JSON 照搬",
+  "source_files": [
+    {
+      "path": "wild-server/app/design/facts.py",
+      "before_sha256": "8b454c15a151700dbae2e7f8575f3d9db2aaea945a63bff12bdca47029de2a3f",
+      "after_sha256": "f459bd209259a6bfeef01324eee21f57b2dffbd755a1f68fc79261b8076abf0f",
+      "before_lines": 178,
+      "after_lines": 178
+    },
+    {
+      "path": "wild-server/app/design/resolve_facts.py",
+      "before_sha256": "e5381c5220e591b6c3232fad2d91758a0afe5d673171b73542ebc6a262a01f44",
+      "after_sha256": "c102df67700c805492dfc40827dff64d9daef91b8d33ed307f8a51ed7fbe3c99",
+      "before_lines": 196,
+      "after_lines": 399
+    },
+    {
+      "path": "wild-server/app/design/__init__.py",
+      "before_sha256": "78c94e3ab19d35c69fcbf6c234ac7d1c9127764824e565b52e81c09a2b26f68b",
+      "after_sha256": "430d25f3fd52d484cdbf7e25c52c4a1fb954d455cfdba8b500a114c9b9141253",
+      "before_lines": 6,
+      "after_lines": 6
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/workflow.py",
+      "before_sha256": "26b33830beffbeb414aae24b85889806b3b771dabe4e7224dad7d296ce42c4ae",
+      "after_sha256": "737f52be9610f09794111f04eff85d098166e74b8027783dc5483fdbf242faee",
+      "before_lines": 123,
+      "after_lines": 55
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/design_workflow.py",
+      "before_sha256": "0952b96f2b8a9c71f0efc1668f6b9cabe7fad20dc0d66028ade74c0df54e4e7b",
+      "after_sha256": "e9e6a45741924ee045e030f6803501a335f5845a052f05fbf3866dca116d0d81",
+      "before_lines": 93,
+      "after_lines": 249
+    },
+    {
+      "path": "wild-server/app/agent/prompts/planning.py",
+      "before_sha256": "05486180cc89b6d08b88f66535d0849fdc107089fad5d5785cf454e94c8233de",
+      "after_sha256": "a6ae8f8798650cac6ea92fe39464326ccbe5802628182f00e37d0a680c627229",
+      "before_lines": 500,
+      "after_lines": 501
+    },
+    {
+      "path": "wild-server/app/llm/invocation.py",
+      "before_sha256": "a74f031014e4f128229ef351e03700ecc1ff655b8d318c8391d15434821b7186",
+      "after_sha256": "36087f299f1298f0f4cbef6b804836a4418ac9b0439f2b8c3ddc15db74f8753e",
+      "before_lines": 259,
+      "after_lines": 271
+    }
+  ],
+  "documentation": [
+    "docs/10月20日优化/06-新版设计图纸与architecture.md",
+    "docs/10月20日优化/08-architecture流程与Studio观测.md",
+    "docs/10月20日优化/09-architecture检查工具与修订.md",
+    "wild-server/langsmith_tools/README.md"
+  ],
+  "used_local_sources": [
+    "wild-server/app/design/facts.py",
+    "wild-server/app/design/resolve_facts.py",
+    "wild-server/app/design/__init__.py",
+    "wild-server/app/agent/generation/architecture/workflow.py",
+    "wild-server/app/agent/generation/architecture/design_workflow.py",
+    "wild-server/app/agent/generation/architecture/profile.py",
+    "wild-server/app/agent/prompts/planning.py",
+    "wild-server/app/agent/state.py",
+    "wild-server/app/agent/nodes/architecture_node.py",
+    "wild-server/app/llm/invocation.py",
+    "wild-server/app/llm/client.py",
+    "wild-server/app/llm/factory.py",
+    "wild-server/app/llm/errors.py",
+    "wild-server/app/rag/trace.py",
+    "wild-server/app/utils/json_extractor.py",
+    "wild-server/.venv/Lib/site-packages/langchain_openai/chat_models/base.py",
+    "wild-server/langsmith_tools/studio_graph.py",
+    "wild-server/langsmith_tools/README.md",
+    "docs/10月20日优化/06-新版设计图纸与architecture.md",
+    "docs/10月20日优化/08-architecture流程与Studio观测.md",
+    "docs/10月20日优化/优化产物测试/01-设计图纸.json",
+    "docs/10月20日优化/优化产物测试/02-编译设计图纸.py",
+    "docs/10月20日优化/汀院别墅-过程证据/01-设计事实.json",
+    "docs/10月20日优化/汀院别墅-过程证据/02-生成汀院别墅.py",
+    ".codex/skills/building-blueprint-diagnostics/SKILL.md"
+  ],
+  "user_trace_attachments": [
+    "C:/Users/Administrator/.codex/attachments/710bd868-9437-4637-b226-91260806ff1d/已粘贴的文本.txt",
+    "C:/Users/Administrator/.codex/attachments/91480117-cd41-4968-a7f8-03bae1853a77/已粘贴的文本.txt",
+    "C:/Users/Administrator/.codex/attachments/39bba911-8841-4ba6-8ab8-134f3026facd/已粘贴的文本.txt",
+    "C:/Users/Administrator/.codex/attachments/39a05c3b-0581-4cf6-88d6-846c2f296789/已粘贴的文本.txt",
+    "C:/Users/Administrator/.codex/attachments/0725c6f3-7682-4213-b85f-0d5e4f974c30/已粘贴的文本.txt"
+  ],
+  "official_references": [
+    "https://docs.langchain.com/oss/python/langchain/tools",
+    "https://docs.langchain.com/oss/python/langchain/streaming#streaming-tool-calls"
+  ],
+  "tools_used": [
+    "PowerShell Get-Content 与 rg：读取源码、资料、调用点",
+    "git status --short、git diff：观察现有工作区与源码差异",
+    "Node REPL：读取文件、准备补丁、计算证据摘要；未运行项目代码",
+    "apply_patch：修改源码及文档",
+    "web：只查工具与流式调用的官方接口"
+  ],
+  "verification": {
+    "performed": [
+      "阅读修改前后源码与调用点，检查变更范围；证据摘要仅证明文件内容"
+    ],
+    "not_performed": [
+      "测试",
+      "语法/AST 检查",
+      "构建",
+      "服务启动",
+      "节点回放",
+      "真实模型生成",
+      "渲染"
+    ],
+    "pending": "用户在 Studio 中观察首次图纸、结构化错误、修订稿和最终图纸。当前无运行通过证据。"
+  },
+  "notes": [
+    "未添加构件 ID 或具体坐标规则，未增加节点、代码模块或模型调用轮数。",
+    "历史专用脚本中的人工 warning 不作为通用检测实现；房间/门窗及入口构件缺少显式关联的关系仍列为未覆盖。",
+    "材质引用错误不会提前终止不依赖该材质的检查；字段类型错误仍需先修到能形成 DesignFacts。",
+    "没有读取或使用三层现代别墅设计语言及其派生产物。",
+    "没有读取密钥或修改环境配置；没有清理其他未提交改动。"
+  ]
+}

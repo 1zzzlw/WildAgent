@@ -1,0 +1,176 @@
+{
+  "passed": 49,
+  "checks": [
+    "program translated -7/0.45",
+    "program deterministic -7/0.45",
+    "program translated -7/2.25",
+    "program deterministic -7/2.25",
+    "program translated 0/0.45",
+    "program deterministic 0/0.45",
+    "program translated 0/2.25",
+    "program deterministic 0/2.25",
+    "program translated 9/0.45",
+    "program deterministic 9/0.45",
+    "program translated 9/2.25",
+    "program deterministic 9/2.25",
+    "program rejects import os",
+    "program rejects open(\"x\")",
+    "program rejects ctx[\"x\"]=1",
+    "program rejects x=().__class__",
+    "program rejects while True:",
+    "program rejects x=[1]*1000000000",
+    "program rejects x=10**1000000",
+    "program rejects x=str(ctx)",
+    "program rejects x=float(\"inf\")",
+    "program rejects x=[0]*4096",
+    "path door clear 0",
+    "path furniture blocked 0",
+    "path real wall blocked 0",
+    "path door clear 1.5707963267948966",
+    "path furniture blocked 1.5707963267948966",
+    "path real wall blocked 1.5707963267948966",
+    "path door clear 3.141592653589793",
+    "path furniture blocked 3.141592653589793",
+    "path real wall blocked 3.141592653589793",
+    "path door clear -1.5707963267948966",
+    "path furniture blocked -1.5707963267948966",
+    "path real wall blocked -1.5707963267948966",
+    "context nearby wall and opening",
+    "context excludes distant wall",
+    "context preserves layout and circulation",
+    "context is read only",
+    "furniture center mapping 0",
+    "furniture wrong height rejected 0",
+    "furniture center mapping 1.5707963267948966",
+    "furniture wrong height rejected 1.5707963267948966",
+    "manual initial entry obstruction detected",
+    "manual final entry preserved",
+    "manual bookshelf observation detected",
+    "manual final bookshelf observation removed",
+    "manual wardrobe high window detected",
+    "manual final wardrobe observation removed",
+    "material failure is visible"
+  ],
+  "scope": "production imports and functions; no paid model calls",
+  "manual_draft_errors": [
+    {
+      "code": "circulation_clearance",
+      "design_path": "/decisions/circulation/paths/0",
+      "path_id": "entry",
+      "expected": {
+        "floor": 1,
+        "width": 1.2,
+        "height": 2.1
+      },
+      "actual": {
+        "blocking_entity_ids": [
+          "courtyard_bench"
+        ]
+      },
+      "entity_ids": [
+        "courtyard_bench"
+      ],
+      "status": "blocked",
+      "message": "通行路径 entry 的设计净空 1.2×2.1m 被 ['courtyard_bench'] 占用；核对实际实体与门洞，不能删除或缩窄已批准路径绕过问题"
+    }
+  ],
+  "manual_final_errors": [],
+  "manual_final_observations": [
+    {
+      "code": "furniture_opening",
+      "entity_ids": [
+        "courtyard_bench",
+        "living_courtyard_glass",
+        "living_front"
+      ],
+      "design_path": "/decisions/components",
+      "actual": {
+        "along": [
+          1.7999998579718872,
+          4.200000142028113
+        ],
+        "height": [
+          0.45,
+          1.19
+        ],
+        "normal": [
+          -1.2600004156922227,
+          -0.43999958430777664
+        ]
+      },
+      "message": "家具 courtyard_bench 与 window living_courtyard_glass 的沿墙及高度范围重叠，可能遮挡玻璃；结合用途复核，不自动移动"
+    },
+    {
+      "code": "furniture_opening",
+      "entity_ids": [
+        "living_armchair",
+        "living_west_glass",
+        "living_west"
+      ],
+      "design_path": "/decisions/components",
+      "actual": {
+        "along": [
+          2.131550711050112,
+          3.2684492889498866
+        ],
+        "height": [
+          0.45,
+          1.35
+        ],
+        "normal": [
+          -1.5535374163150892,
+          -0.44646258368491076
+        ]
+      },
+      "message": "家具 living_armchair 与 window living_west_glass 的沿墙及高度范围重叠，可能遮挡玻璃；结合用途复核，不自动移动"
+    },
+    {
+      "code": "furniture_opening",
+      "entity_ids": [
+        "study_shelf",
+        "study_east_window",
+        "wing_east"
+      ],
+      "design_path": "/decisions/components",
+      "actual": {
+        "along": [
+          2.1499992286360357,
+          4.850000771363964
+        ],
+        "height": [
+          0.45,
+          2.7
+        ],
+        "normal": [
+          0.18999504117452837,
+          0.6100049588254723
+        ]
+      },
+      "message": "家具 study_shelf 与 window study_east_window 的沿墙及高度范围重叠，可能遮挡玻璃；结合用途复核，不自动移动"
+    },
+    {
+      "code": "furniture_opening",
+      "entity_ids": [
+        "north_bed",
+        "north_bedroom_glass",
+        "upper_back"
+      ],
+      "design_path": "/decisions/components",
+      "actual": {
+        "along": [
+          1.2249924699504522,
+          2.7750075300495496
+        ],
+        "height": [
+          3.75,
+          4.63
+        ],
+        "normal": [
+          -2.4750056934402505,
+          -0.4249943065597481
+        ]
+      },
+      "message": "家具 north_bed 与 window north_bedroom_glass 的沿墙及高度范围重叠，可能遮挡玻璃；结合用途复核，不自动移动"
+    }
+  ]
+}

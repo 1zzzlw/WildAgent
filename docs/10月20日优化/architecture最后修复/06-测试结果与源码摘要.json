@@ -1,0 +1,642 @@
+{
+  "runs": [
+    {
+      "run": 1,
+      "accepted": false,
+      "model_calls": 3,
+      "total_ms": 241751,
+      "token_usage": {
+        "input": 18431,
+        "output": 10043,
+        "total": 28474
+      },
+      "error": "建筑图纸未通过检查：/routes/1/points：通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+      "rounds": [
+        {
+          "attempt": 1,
+          "tools": [
+            "calculate_stair"
+          ],
+          "issues": []
+        },
+        {
+          "attempt": 2,
+          "tools": [
+            "inspect_design"
+          ],
+          "issues": [
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/0/points"
+              ],
+              "entities": [
+                "r_g",
+                "w_int_a",
+                "w_int_c"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "w_int_a": {
+                  "needed_interval": [
+                    1.5,
+                    2.5
+                  ],
+                  "passable_intervals": [
+                    [
+                      0.5,
+                      1.7
+                    ]
+                  ],
+                  "wall_start": [
+                    6,
+                    2
+                  ],
+                  "wall_end": [
+                    6,
+                    10
+                  ],
+                  "source_path": "/walls/0",
+                  "passable_opening_ids": [
+                    "o_entry_to_living"
+                  ]
+                },
+                "w_int_c": {
+                  "needed_interval": [
+                    1,
+                    2
+                  ],
+                  "passable_intervals": [
+                    [
+                      0.5,
+                      1.9
+                    ]
+                  ],
+                  "wall_start": [
+                    6.5,
+                    5
+                  ],
+                  "wall_end": [
+                    12,
+                    5
+                  ],
+                  "source_path": "/walls/2",
+                  "passable_opening_ids": [
+                    "o_living_to_stair"
+                  ]
+                }
+              }
+            },
+            {
+              "code": "route_over_void",
+              "paths": [
+                "/routes/1/points"
+              ],
+              "entities": [
+                "r_u",
+                "stair:s_main:upper"
+              ],
+              "message": "本层平面路线穿过楼板空洞",
+              "actual": {
+                "stair:s_main:upper": {
+                  "rect": [
+                    6.6,
+                    8.8,
+                    5,
+                    8.9
+                  ],
+                  "level": "upper"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "attempt": 3,
+          "tools": [
+            "revise_design"
+          ],
+          "issues": [
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/1/points"
+              ],
+              "entities": [
+                "r_u",
+                "w_up_a"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "w_up_a": {
+                  "needed_interval": [
+                    1,
+                    2
+                  ],
+                  "passable_intervals": [
+                    [
+                      0.5,
+                      1.4
+                    ]
+                  ],
+                  "wall_start": [
+                    6,
+                    2
+                  ],
+                  "wall_end": [
+                    6,
+                    10
+                  ],
+                  "source_path": "/walls/4",
+                  "passable_opening_ids": [
+                    "o_hall_to_master"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "accepted": false,
+      "model_calls": 3,
+      "total_ms": 179687,
+      "token_usage": {
+        "input": 18217,
+        "output": 8578,
+        "total": 26795
+      },
+      "error": "建筑图纸未通过检查：/openings/1：门窗需要明确框和扇的材质角色；/openings/2：门窗需要明确框和扇的材质角色；/openings/3：门窗需要明确框和扇的材质角色；/openings/4：门窗需要明确框和扇的材质角色；/openings/5：门窗需要明确框和扇的材质角色；/openings/6：门窗需要明确框和扇的材质角色；/openings/7：门窗需要明确框和扇的材质角色；/openings/8：门窗需要明确框和扇的材质角色；/openings/9：门窗需要明确框和扇的材质角色；/openings/10：门窗需要明确框和扇的材质角色；/openings/11：门窗需要明确框和扇的材质角色；/openings/12：门窗需要明确框和扇的材质角色；/openings/13：门窗需要明确框和扇的材质角色；/openings/10,/openings/13：同一宿主上的开口重叠，需要协调两处开口；/routes/0/points：通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高；/routes/1/points：通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高；/routes/2/points：通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高；/routes/3/points：通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+      "rounds": [
+        {
+          "attempt": 1,
+          "tools": [
+            "calculate_stair"
+          ],
+          "issues": []
+        },
+        {
+          "attempt": 2,
+          "tools": [
+            "inspect_design"
+          ],
+          "issues": [
+            {
+              "code": "schema_error",
+              "paths": [
+                "/components/2/rect"
+              ],
+              "entities": [
+                "porch"
+              ],
+              "message": "边界必须满足 west<east、south<north",
+              "actual": {
+                "west": 2,
+                "east": 4.5,
+                "south": 0,
+                "north": -0.6
+              },
+              "error_type": "value_error",
+              "edit_paths": [
+                "/components/porch/rect"
+              ]
+            }
+          ]
+        },
+        {
+          "attempt": 3,
+          "tools": [
+            "revise_design"
+          ],
+          "issues": [
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/1"
+              ],
+              "entities": [
+                "win_liv_s"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_liv_s"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/2"
+              ],
+              "entities": [
+                "win_kit_s"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_kit_s"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/3"
+              ],
+              "entities": [
+                "win_liv_w"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_liv_w"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/4"
+              ],
+              "entities": [
+                "win_kit_e"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_kit_e"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/5"
+              ],
+              "entities": [
+                "win_hall_n"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_hall_n"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/6"
+              ],
+              "entities": [
+                "win_hall_e2"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_hall_e2"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/7"
+              ],
+              "entities": [
+                "win_mas_w"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_mas_w"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/8"
+              ],
+              "entities": [
+                "win_mas_s"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_mas_s"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/9"
+              ],
+              "entities": [
+                "win_b2_s"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_b2_s"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/10"
+              ],
+              "entities": [
+                "win_b2_e"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_b2_e"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/11"
+              ],
+              "entities": [
+                "win_h2_n"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_h2_n"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/12"
+              ],
+              "entities": [
+                "win_h2_e"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_h2_e"
+              ]
+            },
+            {
+              "code": "invalid_design",
+              "paths": [
+                "/openings/13"
+              ],
+              "entities": [
+                "win_bath2_e"
+              ],
+              "message": "门窗需要明确框和扇的材质角色",
+              "edit_paths": [
+                "/openings/win_bath2_e"
+              ]
+            },
+            {
+              "code": "opening_overlap",
+              "paths": [
+                "/openings/10",
+                "/openings/13"
+              ],
+              "entities": [
+                "win_b2_e",
+                "win_bath2_e"
+              ],
+              "message": "同一宿主上的开口重叠，需要协调两处开口",
+              "actual": {
+                "host": "main:right",
+                "intervals": [
+                  [
+                    1.2,
+                    2.8
+                  ],
+                  [
+                    0.7,
+                    1.5
+                  ]
+                ],
+                "overlap": 0.30000000000000004
+              },
+              "edit_paths": [
+                "/openings/win_b2_e",
+                "/openings/win_bath2_e"
+              ]
+            },
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/0/points"
+              ],
+              "entities": [
+                "route_gf",
+                "wall_g_s"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "wall_g_s": {
+                  "needed_interval": [
+                    2.26,
+                    3.26
+                  ],
+                  "passable_intervals": [
+                    [
+                      0,
+                      2.4
+                    ]
+                  ],
+                  "wall_start": [
+                    0.24,
+                    5.5
+                  ],
+                  "wall_end": [
+                    11.76,
+                    5.5
+                  ],
+                  "source_path": "/walls/0",
+                  "passable_opening_ids": [
+                    "door_stair"
+                  ]
+                }
+              },
+              "edit_paths": [
+                "/routes/route_gf/points"
+              ]
+            },
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/1/points"
+              ],
+              "entities": [
+                "route_gf_k",
+                "wall_g_s"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "wall_g_s": {
+                  "needed_interval": [
+                    6.76,
+                    7.76
+                  ],
+                  "passable_intervals": [
+                    [
+                      0,
+                      2.4
+                    ]
+                  ],
+                  "wall_start": [
+                    0.24,
+                    5.5
+                  ],
+                  "wall_end": [
+                    11.76,
+                    5.5
+                  ],
+                  "source_path": "/walls/0",
+                  "passable_opening_ids": [
+                    "door_stair"
+                  ]
+                }
+              },
+              "edit_paths": [
+                "/routes/route_gf_k/points"
+              ]
+            },
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/2/points"
+              ],
+              "entities": [
+                "route_f2",
+                "wall_f_s"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "wall_f_s": {
+                  "needed_interval": [
+                    2.26,
+                    3.26
+                  ],
+                  "passable_intervals": [
+                    [
+                      0,
+                      2.4
+                    ]
+                  ],
+                  "wall_start": [
+                    0.24,
+                    5.5
+                  ],
+                  "wall_end": [
+                    11.76,
+                    5.5
+                  ],
+                  "source_path": "/walls/4",
+                  "passable_opening_ids": [
+                    "door_stair2"
+                  ]
+                }
+              },
+              "edit_paths": [
+                "/routes/route_f2/points"
+              ]
+            },
+            {
+              "code": "route_wall_conflict",
+              "paths": [
+                "/routes/3/points"
+              ],
+              "entities": [
+                "route_f2_b2",
+                "wall_f_s",
+                "wall_f_b2"
+              ],
+              "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+              "actual": {
+                "wall_f_s": {
+                  "needed_interval": [
+                    6.76,
+                    7.76
+                  ],
+                  "passable_intervals": [
+                    [
+                      0,
+                      2.4
+                    ]
+                  ],
+                  "wall_start": [
+                    0.24,
+                    5.5
+                  ],
+                  "wall_end": [
+                    11.76,
+                    5.5
+                  ],
+                  "source_path": "/walls/4",
+                  "passable_opening_ids": [
+                    "door_stair2"
+                  ]
+                },
+                "wall_f_b2": {
+                  "needed_interval": [
+                    1,
+                    2
+                  ],
+                  "passable_intervals": [],
+                  "wall_start": [
+                    6,
+                    2
+                  ],
+                  "wall_end": [
+                    8,
+                    2
+                  ],
+                  "source_path": "/walls/7",
+                  "passable_opening_ids": []
+                }
+              },
+              "edit_paths": [
+                "/routes/route_f2_b2/points"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "offline_tests": 15,
+  "stair_parameter_subcases": 36,
+  "sources": [
+    {
+      "path": "wild-server/app/design/facts.py",
+      "before_lines": 179,
+      "after_lines": 233,
+      "sha256": "c63378117594ceca7b80d2f131c283ed17c958cf56783a4dce2fe8eba19fe060",
+      "matches_tested_snapshot": true
+    },
+    {
+      "path": "wild-server/app/design/resolve_facts.py",
+      "before_lines": 421,
+      "after_lines": 491,
+      "sha256": "e157081a2c30a51da89d7960d814155b56a57d282a23af09bf3b8e09f398d07f",
+      "matches_tested_snapshot": true
+    },
+    {
+      "path": "wild-server/app/design/__init__.py",
+      "before_lines": 7,
+      "after_lines": 7,
+      "sha256": "430d25f3fd52d484cdbf7e25c52c4a1fb954d455cfdba8b500a114c9b9141253",
+      "matches_tested_snapshot": true
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/design_workflow.py",
+      "before_lines": 283,
+      "after_lines": 210,
+      "sha256": "2835640d86738684434fe09b34b94b67de995d7b21abd3d2185eddb3ded12368",
+      "matches_tested_snapshot": true
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/workflow.py",
+      "before_lines": 56,
+      "after_lines": 56,
+      "sha256": "596302ed5944ab2518d9967452c199348c9cd684942c4a25381bbb8ab7ef2974",
+      "matches_tested_snapshot": true
+    },
+    {
+      "path": "wild-server/app/agent/prompts/planning.py",
+      "before_lines": 497,
+      "after_lines": 466,
+      "sha256": "cc1e1e410a02c7724ef3065478019ebf9b8534d8efffb26eb73e35c80371ab7d",
+      "matches_tested_snapshot": true
+    }
+  ]
+}

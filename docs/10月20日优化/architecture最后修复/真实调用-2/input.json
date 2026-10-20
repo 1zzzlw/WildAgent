@@ -1,0 +1,6 @@
+{
+  "user_message": "生成一个别墅",
+  "detail_level": "minimal",
+  "intent_profile": "villa",
+  "thinking_mode": true
+}

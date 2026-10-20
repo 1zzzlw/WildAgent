@@ -1,0 +1,83 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "9d8cb50d67602691f2c989024613433e6307810ec0750b9f11f93245e7c3ec47",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "background": 14673130,
+    "sun": {
+      "azimuthDeg": 135,
+      "elevationDeg": 42,
+      "intensity": 2.1,
+      "color": 16774370
+    },
+    "ambient": {
+      "sky": 14674421,
+      "ground": 10130828,
+      "intensity": 0.85
+    },
+    "ground": {
+      "color": 9277571,
+      "y": -0.02
+    },
+    "toneMappingExposure": 1
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "83367a25b113d0166a053ee146ca128266b1224a59873b70ed88d4c380a30d8e",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 540,
+  "materialCount": 540,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -3.3145000214576723,
+      -0.11999999731779099,
+      -4
+    ],
+    "max": [
+      19.309999995231628,
+      7.289999994635582,
+      17.055999975204468
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "..\\docs\\10月19日优化\\执行证据\\参考渲染\\front.png",
+      "bytes": 283609
+    },
+    {
+      "view": "side",
+      "file": "..\\docs\\10月19日优化\\执行证据\\参考渲染\\side.png",
+      "bytes": 267534
+    },
+    {
+      "view": "top",
+      "file": "..\\docs\\10月19日优化\\执行证据\\参考渲染\\top.png",
+      "bytes": 281469
+    },
+    {
+      "view": "perspective",
+      "file": "..\\docs\\10月19日优化\\执行证据\\参考渲染\\perspective.png",
+      "bytes": 423711
+    }
+  ],
+  "contextSha256": "58811ac89de8703b4ab41d804c4ef3ed603040b21de4210743c41b9735b7fdac"
+}

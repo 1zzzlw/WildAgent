@@ -1386,7 +1386,218 @@ synonyms: []
 
 
 
+## 项目的主要设计思路梳理
 
+**核心命题**
+
+> **大模型掌握了 wild 语言规则，可以直接生成 wild 文本，但“生成容易、生成正确很难”。**  
+> 正确路线是：**设计文档做“可编译规则源 + 参数快照 + 校验契约”，脚本做确定性展开，大模型只做语义补全，wild 是编译产物。**
+
+---
+
+**一、为什么不能让大模型直接手写 wild**
+
+wild 里大量内容是坐标、锚点、宿主关系和重复构件，正好是“人读起来累、脚本算起来稳、大模型手写容易漂”的部分。
+
+以典型 wild 为例，证据如下。
+
+**1. 同一文件混用多种锚点语义**
+
+| 类型            | 字段                                 | 锚点语义                                                 |
+| --------------- | ------------------------------------ | -------------------------------------------------------- |
+| `floor`         | `from/to + thickness`                | `from/to` 的 Y 是**板底**，板顶 = Y + thickness          |
+| `primitive` box | `position + dimensions`              | `position` 是**中心点**                                  |
+| `furniture`     | `position`                           | `position` 是**底面中心**，如 `living_sofa` 的 Y=0.45=F0 |
+| `window/door`   | `parentWall + from:[along,bottom,0]` | `along` 是**沿宿主墙局部坐标**，`bottom` 是标高          |
+| `railing`       | `path`                               | 三维点列，不是中心/底面                                  |
+| `stair`         | `from/to`                            | 起止点，踏步由 `stepCount/stepDepth/stepHeight` 展开     |
+
+例如：
+
+```json
+"parentWall": "living_front",
+"from": [0.6, 0.8, 0],
+"width": 4.8,
+"height": 5.65
+```
+
+而宿主墙是：
+
+```json
+"from": [0, 0.45, 6],
+"to": [6, 7.05, 6]
+```
+
+窗的 `along=0.6` 是相对墙起点的局部坐标，不是世界坐标 `x=0.6`。大模型直接写世界坐标，很容易把窗放到墙外或穿墙。**这正是应该由编译器根据宿主墙展开的部分。**
+
+**2. 门窗依赖宿主墙 ID，天然需要校验**
+
+每个窗/门都有 `parentWall`：
+
+- `living_courtyard_glass` → `living_front`
+- `main_entry` → `entry_front`
+- `terrace_door` → `upper_front`
+- `bathroom_door` → `bathroom_front`
+
+如果大模型改了墙 ID 或墙范围，门窗不会自动跟着走。宿主关系必须由编译规则生成，并由校验器检查“宿主存在、开口不越界、门底=楼面顶”。
+
+**3. 楼梯斜梁角度是手算结果，不该让大模型写**
+
+```json
+"id": "stair_first_stringer",
+"rotation": [-0.5485, 0, 0]
+```
+
+这个角度来自梯段坡度，应该由 `from/to + stepCount` 算出来。wild 里直接写死，说明它是“作者脚本算完的产物”，不是“设计文档直接表达的意图”。大模型手写极易错。
+
+**4. 重复构件是脚本循环的产物**
+
+典型 wild 里有大量阵列：
+
+- `entry_oak_fin_0..5`
+- `upper_oak_fin_0..5`
+- `wing_east_fin_0..6`
+- `pergola_slat_0..12`
+- `bar_stool_base_0..2` / `bar_stool_seat_0..2`
+- 多处 `canopy_0..4`、`shrub_0..9`
+
+最终产物栖光 wild 里也有：
+
+- `wood_fin_w_01..03`
+- `wood_fin_e_01..03`
+- `win_l1_w_01..03`、`win_l2_e_01..03`、`win_l3_n_01..04`
+
+这些让大模型逐条写，容易出现数量不对、间距不匀、漏项、ID 冲突。设计文档应表达“这里有几根、间距多少”，由编译器循环生成。**这正好证明“参数和坐标交给脚本”是对的。**
+
+**5. wild 里有大量设计文档没表达的细节**
+
+以典型 wild 为例：
+
+| wild 有                                                      | 典型设计文档有吗 |
+| ------------------------------------------------------------ | ---------------- |
+| 窗的 `verticalMullions/horizontalMullions/frameWidth/frameDepth` | 没有             |
+| 门的 `doorStyle/hingeSide/leafMaterial`                      | 没有             |
+| 栏杆 `postSpacing/railLevels/infillType`                     | 没有             |
+| 家具 `subtype/rotation/dimensions`                           | 没有             |
+| 灯具位置和强度                                               | 没有             |
+| 植物球体组合                                                 | 没有             |
+| PBR `baseColor/roughness/metallic/transmission`              | 只有角色名       |
+| 屋顶 `roofType/ridgeAxis/span/depth`                         | 没有             |
+| 雨棚、木鳍、格栅、栏板                                       | 没有             |
+
+所以，**设计文档不能唯一编译出 wild，缺的是“生成规则 + 默认值 + 资产库”，而不是设计意图。**
+
+---
+
+**二、最终产物自带的“编译元数据”是最硬证据**
+
+栖光庭院住宅 wild 的 `editor` 字段直接证明“规则 → 脚本 → 产物”路线成立：
+
+```json
+"editor": {
+  "revision": 1,
+  "generator": "generate_qiguang.cjs",
+  "ruleFile": "栖光庭院住宅-建筑规则.md",
+  "ruleSha256": "90f70210...",
+  "params": { ... },
+  "design": {
+    "levels": [0.45, 4.05, 7.65, 11.25],
+    "wallOutlines": [ ... ],
+    "stairWell": [0.24, 9, 2.94, 12.6],
+    "validationBoundary": "写盘断言及独立静态校验；未运行真实编译器与渲染器。"
+  }
+}
+```
+
+| 字段                  | 作用                         |
+| --------------------- | ---------------------------- |
+| `generator`           | 哪个脚本生成                 |
+| `ruleFile`            | 哪份规则/设计文档作为源      |
+| `ruleSha256`          | 规则文件指纹，可追溯、可重放 |
+| `params`              | 本次生成的全部参数快照       |
+| `design.levels`       | 设计标高边界                 |
+| `design.wallOutlines` | 设计墙轮廓                   |
+| `design.stairWell`    | 楼梯井边界                   |
+| `validationBoundary`  | 校验范围声明                 |
+
+这不是“大模型直接写 wild”，而是**规则文档 + 编译脚本 + 参数快照 + 产物元数据**。`params` 里的 `module / axisX / axisZ / storeyHeights / wallThickness / stair / windows / guard / canopy / woodFins` 就是设计文档应该长成的样子。
+
+注意 `validationBoundary` 也说明：它只做了写盘断言和静态校验，没有真实渲染校验。所以设计文档还要配独立校验器。
+
+---
+
+**三、设计文档应该承担什么**
+
+**1. 说明书：让人读懂 wild 的设计思路**
+
+设计文档应该解释：
+
+- 轴网和标高怎么定；
+- 体量怎么围合院落；
+- 楼板怎么扣洞；
+- 楼梯怎么组织；
+- 门窗怎么挂在宿主墙上；
+- 家具和材质按什么规则放置。
+
+**2. 降低大模型负担：把坐标计算交给脚本**
+
+这些应该由编译器算，不该让大模型算：
+
+- 墙段起止点和厚度；
+- 楼板扣洞后的矩形；
+- 楼梯踏步、斜梁角度、平台标高；
+- 门窗沿墙局部坐标；
+- 栏杆路径和立柱间距；
+- 重复构件的数量、间距、阵列；
+- 家具落地标高和朝向约束；
+- 材质角色到 PBR 的映射。
+
+大模型只做它擅长的：语义补全、风格选择、资产命名、把自然语言验收项转成断言。
+
+**3. 可编译：设计文档要能驱动生成 wild**
+
+“可编译”不等于“设计文档直接变 wild”，需要三层：
+
+```text
+L0 设计事实 + 约束（设计文档）
+   ↓ 编译器：确定性几何 + 规则展开
+L1 几何/构件 IR：墙、板、洞、楼梯、门窗、栏杆
+   ↓ 资产库 + 大模型语义补全
+L2 wild 场景 JSON
+   ↓ 校验器
+通过 / 补丁循环
+```
+
+设计文档里要补的编译信息：
+
+- `rect` 的坐标语义；
+- 墙的生成规则（外墙/内墙/共享界面只建一面）；
+- 门窗宿主和局部坐标规则；
+- 楼板拆分规则；
+- 楼梯生成规则；
+- 重复构件的阵列规则；
+- 材质角色到 PBR 的映射表；
+- 家具/灯具/植物资产库；
+- 默认值和确定性 ID 规则；
+- 产物元数据：`generator / ruleFile / ruleSha256 / params / design / validationBoundary`。
+
+**4. 可校验：设计文档要能转成断言**
+
+`features_to_verify` 和 `use_clearances` 是校验契约的雏形，但要从自然语言转成可执行断言。至少覆盖：
+
+- **宿主校验**：门窗 `parentWall` 是否存在；开口是否在宿主墙范围内；
+- **标高校验**：门底是否等于楼面顶；楼梯总高是否等于层高；平台标高是否等于 `half_landing`；
+- **洞口校验**：梯井是否与楼板冲突；通高客厅是否无二层楼板且有屋面；
+- **栏杆校验**：路径是否闭合；入口是否留空；高度/立柱间距是否符合参数；
+- **路线校验**：所列路线净宽/净高是否满足 `use_clearances`；
+- **材质校验**：所有 `material` 引用是否在 `materials` 中；
+- **边界声明**：`validationBoundary` 要明确“做了哪些校验、没做哪些校验”，避免把静态校验当成渲染/结构验证。
+
+---
+
+**四、一句话结论**
+
+> **设计文档不是 wild 的“文字说明书”，而是“可编译规则源 + 参数快照 + 校验契约”；脚本是编译器；wild 是编译产物，并自带 `generator / ruleFile / ruleSha256 / params / design / validationBoundary` 作为可追溯元数据；大模型只做规则补全、语义选择、断言生成，不手写坐标。**
 
 
 

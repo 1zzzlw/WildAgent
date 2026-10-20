@@ -1,0 +1,16 @@
+{
+  "session_id": "oct19-migration-trial-02",
+  "request_id": "oct19-migration-trial-02",
+  "user_message": "设计一栋两层现代庭院别墅。后侧主楼与单层侧翼组织庭院，局部通高客厅、两间卧室、书房、餐厨与卫浴；双跑楼梯有平台和楼板洞口；侧翼屋顶为可到达露台，安排连接门、栏杆和轻廊架。浅墙、木材、深金属和物理玻璃，室内外有必要家具与照明，保留清楚入口通路。尺寸自行合理设计，整体简洁，不套固定模板。",
+  "intent": "generate",
+  "intent_target_kind": "architecture",
+  "intent_profile": "villa",
+  "detail_level": "detailed",
+  "style_preference": [],
+  "thinking_mode": true,
+  "procedural_materials_enabled": false,
+  "component_fragments": {},
+  "component_diagnostics": {},
+  "status": "failed",
+  "error": "TimeoutError: "
+}

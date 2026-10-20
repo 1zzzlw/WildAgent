@@ -1,0 +1,16 @@
+{
+  "label": "11-项目空间复核",
+  "command": [
+    "E:/AgentProject/WildAgent/wild-server/.venv/Scripts/python.exe",
+    "-X",
+    "utf8",
+    "E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-过程证据\\11-复用项目空间复核.py"
+  ],
+  "cwd": "E:/AgentProject/WildAgent",
+  "startedAt": "2026-10-20T00:48:57.041Z",
+  "endedAt": "2026-10-20T00:48:57.230Z",
+  "exitCode": 0,
+  "error": null,
+  "stdout": "{\"label\": \"initial\", \"errors\": 1, \"observations\": 0, \"checks\": [{\"id\": \"courtyard_approach\", \"status\": \"blocked\", \"blockers\": [\"entry_post_1\", \"garden_bench\"]}, {\"id\": \"entry_to_living\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"entry_to_dining\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"dining_to_library\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"entry_to_stair\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"stair_to_terrace\", \"status\": \"needs_review\", \"blockers\": []}], \"unverified_entities\": 28}\r\n{\"label\": \"final\", \"errors\": 1, \"observations\": 0, \"checks\": [{\"id\": \"courtyard_approach\", \"status\": \"blocked\", \"blockers\": [\"entry_post_1\"]}, {\"id\": \"entry_to_living\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"entry_to_dining\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"dining_to_library\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"entry_to_stair\", \"status\": \"needs_review\", \"blockers\": []}, {\"id\": \"stair_to_terrace\", \"status\": \"needs_review\", \"blockers\": []}], \"unverified_entities\": 28}\r\n",
+  "stderr": ""
+}

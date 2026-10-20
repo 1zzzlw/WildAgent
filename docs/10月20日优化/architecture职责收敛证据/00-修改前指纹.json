@@ -1,0 +1,34 @@
+[
+  {
+    "path": "wild-server/app/agent/generation/architecture/workflow.py",
+    "sha256": "9e3f67aecb0fe1f22924e75bdc8d485f3c51779b9929feda40eedf353030d2b5"
+  },
+  {
+    "path": "wild-server/app/agent/generation/architecture/profile.py",
+    "sha256": "1ba6fb3238f526303519c0315d7ae0b47cc35540ce9fa80aa9ec611f8bbfc8b2"
+  },
+  {
+    "path": "wild-server/app/agent/generation/architecture/design_workflow.py",
+    "sha256": "2dacd399792b402cb93498afa80e62a656fbea6adc9082020ea3e18f4e276864"
+  },
+  {
+    "path": "wild-server/app/agent/prompts/planning.py",
+    "sha256": "e2d9bd7b818cd07ef2279b715fbd0fbb79a1000b588e0650697bfcbcd1bfd1d0"
+  },
+  {
+    "path": "wild-server/app/design/coordinates.py",
+    "sha256": "c4d704588bee03ef47b8759d9621fa282e924efd5e9e8bfa277254baa56921cd"
+  },
+  {
+    "path": "wild-server/app/design/contracts.py",
+    "sha256": "6e40c464592581a65ff48425eaf79fe85633c0c45c03b4f2ce8eae56105e1d64"
+  },
+  {
+    "path": "wild-server/app/design/resolver.py",
+    "sha256": "a33a078e188bd588b185e127762d1c4030f2f2cbbd3b5ffe2c1b148513f11c1e"
+  },
+  {
+    "path": "wild-server/app/design/markers.py",
+    "sha256": "385c28304c6abfb0af15e08bffbda2a944504520496d8d47bb7f46ec17d0460c"
+  }
+]

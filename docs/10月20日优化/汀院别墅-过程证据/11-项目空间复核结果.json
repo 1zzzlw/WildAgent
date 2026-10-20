@@ -1,0 +1,463 @@
+{
+  "adapter_scope": "仅给 review_spatial_use 提供标高和六条路线；不是完整 DesignDocument 或全图运行",
+  "function": "app.design.spatial_review.review_spatial_use",
+  "design_input": {
+    "massing": {
+      "floor_height": 3.42,
+      "floors": 2
+    },
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.36
+      },
+      {
+        "floor": 2,
+        "level": 3.78
+      }
+    ],
+    "circulation": {
+      "paths": [
+        {
+          "id": "courtyard_approach",
+          "floor": 1,
+          "points": [
+            [
+              7.5,
+              0.2
+            ],
+            [
+              11.55,
+              0.2
+            ],
+            [
+              11.55,
+              5.0
+            ],
+            [
+              10.65,
+              5.0
+            ],
+            [
+              10.65,
+              5.93
+            ],
+            [
+              7.5,
+              5.93
+            ],
+            [
+              7.5,
+              6.45
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        },
+        {
+          "id": "entry_to_living",
+          "floor": 1,
+          "points": [
+            [
+              7.5,
+              6.45
+            ],
+            [
+              7.5,
+              8.1
+            ],
+            [
+              12,
+              8.1
+            ],
+            [
+              12,
+              9.3
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        },
+        {
+          "id": "entry_to_dining",
+          "floor": 1,
+          "points": [
+            [
+              7.5,
+              8.1
+            ],
+            [
+              5.9,
+              8.1
+            ],
+            [
+              4.9,
+              8.1
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        },
+        {
+          "id": "dining_to_library",
+          "floor": 1,
+          "points": [
+            [
+              3,
+              8.1
+            ],
+            [
+              3,
+              6.6
+            ],
+            [
+              3,
+              5.3
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        },
+        {
+          "id": "entry_to_stair",
+          "floor": 1,
+          "points": [
+            [
+              7.5,
+              8.1
+            ],
+            [
+              9.05,
+              8.1
+            ],
+            [
+              9.05,
+              9.4
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        },
+        {
+          "id": "stair_to_terrace",
+          "floor": 2,
+          "points": [
+            [
+              10.55,
+              9.35
+            ],
+            [
+              10.55,
+              8.1
+            ],
+            [
+              4.3,
+              8.1
+            ],
+            [
+              4.3,
+              6.6
+            ],
+            [
+              4.3,
+              5.8
+            ]
+          ],
+          "width": 0.9,
+          "height": 2.05
+        }
+      ]
+    }
+  },
+  "runs": [
+    {
+      "label": "initial",
+      "sha256": "000e65a2f8ff14ac6d39d38ff9fb69b85d4d0c06994755b7474794c1f34b3c3b",
+      "result": {
+        "version": "spatial-use/1",
+        "errors": [
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/0",
+            "path_id": "courtyard_approach",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": [
+                "garden_bench"
+              ]
+            },
+            "entity_ids": [
+              "garden_bench"
+            ],
+            "status": "blocked",
+            "message": "通行路径 courtyard_approach 的设计净空 0.9×2.05m 被 ['garden_bench'] 占用；核对实际实体与门洞，不能删除或缩窄已批准路径绕过问题"
+          }
+        ],
+        "observations": [],
+        "checks": [
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/0",
+            "path_id": "courtyard_approach",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": [
+                "garden_bench"
+              ]
+            },
+            "entity_ids": [
+              "garden_bench"
+            ],
+            "status": "blocked"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/1",
+            "path_id": "entry_to_living",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/2",
+            "path_id": "entry_to_dining",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/3",
+            "path_id": "dining_to_library",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/4",
+            "path_id": "entry_to_stair",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/5",
+            "path_id": "stair_to_terrace",
+            "expected": {
+              "floor": 2,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          }
+        ],
+        "unverified_entity_ids": [
+          "tree_trunk_0",
+          "tree_crown_0_0",
+          "tree_crown_0_1",
+          "tree_crown_0_2",
+          "tree_trunk_1",
+          "tree_crown_1_0",
+          "tree_crown_1_1",
+          "tree_crown_1_2",
+          "tree_trunk_2",
+          "tree_crown_2_0",
+          "tree_crown_2_1",
+          "tree_crown_2_2",
+          "garden_shrub_0",
+          "garden_shrub_1",
+          "garden_shrub_2",
+          "garden_shrub_3",
+          "garden_shrub_4",
+          "garden_shrub_5",
+          "north_shrub_0",
+          "north_shrub_1",
+          "north_shrub_2",
+          "north_shrub_3",
+          "north_shrub_4",
+          "pendant_cord_0",
+          "pendant_cord_1",
+          "pendant_cord_2",
+          "pendant_cord_3",
+          "pendant_cord_4"
+        ],
+        "scope": "explicit_path_clearance_and_furniture_openings; no_mesh_or_code_certification"
+      }
+    },
+    {
+      "label": "final",
+      "sha256": "4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720",
+      "result": {
+        "version": "spatial-use/1",
+        "errors": [],
+        "observations": [],
+        "checks": [
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/0",
+            "path_id": "courtyard_approach",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/1",
+            "path_id": "entry_to_living",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/2",
+            "path_id": "entry_to_dining",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/3",
+            "path_id": "dining_to_library",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/4",
+            "path_id": "entry_to_stair",
+            "expected": {
+              "floor": 1,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          },
+          {
+            "code": "circulation_clearance",
+            "design_path": "/decisions/circulation/paths/5",
+            "path_id": "stair_to_terrace",
+            "expected": {
+              "floor": 2,
+              "width": 0.9,
+              "height": 2.05
+            },
+            "actual": {
+              "blocking_entity_ids": []
+            },
+            "entity_ids": [],
+            "status": "needs_review"
+          }
+        ],
+        "unverified_entity_ids": [
+          "tree_trunk_0",
+          "tree_crown_0_0",
+          "tree_crown_0_1",
+          "tree_crown_0_2",
+          "tree_trunk_1",
+          "tree_crown_1_0",
+          "tree_crown_1_1",
+          "tree_crown_1_2",
+          "tree_trunk_2",
+          "tree_crown_2_0",
+          "tree_crown_2_1",
+          "tree_crown_2_2",
+          "garden_shrub_0",
+          "garden_shrub_1",
+          "garden_shrub_2",
+          "garden_shrub_3",
+          "garden_shrub_4",
+          "garden_shrub_5",
+          "north_shrub_0",
+          "north_shrub_1",
+          "north_shrub_2",
+          "north_shrub_3",
+          "north_shrub_4",
+          "pendant_cord_0",
+          "pendant_cord_1",
+          "pendant_cord_2",
+          "pendant_cord_3",
+          "pendant_cord_4"
+        ],
+        "scope": "explicit_path_clearance_and_furniture_openings; no_mesh_or_code_certification"
+      }
+    }
+  ]
+}

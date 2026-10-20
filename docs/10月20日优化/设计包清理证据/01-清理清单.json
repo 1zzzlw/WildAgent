@@ -1,0 +1,163 @@
+{
+  "scope": "清理 design 包旧协议及配套实现；不迁移后续节点，不运行测试",
+  "before": [
+    {
+      "file": "base.py",
+      "action": "delete",
+      "lines": 18,
+      "sha256": "b70fec09975efa4b5fa722a6142f15e56ee2fcec5544969389798a710958e309"
+    },
+    {
+      "file": "compilation.py",
+      "action": "delete",
+      "lines": 236,
+      "sha256": "29f184724ec35dbd1913414eb7d212121a6fb30e2d2417b25788b1c22e388407"
+    },
+    {
+      "file": "completeness.py",
+      "action": "delete",
+      "lines": 220,
+      "sha256": "0bb0f336afcaef69f424b5f0d43f8b8673ec3b0ee1210de7b79765de00246d62"
+    },
+    {
+      "file": "contracts.py",
+      "action": "delete",
+      "lines": 260,
+      "sha256": "03407100717245c6b59f2a87d9755c83ce93ad8e7770520258ba7b52435a77ce"
+    },
+    {
+      "file": "coordinates.py",
+      "action": "delete",
+      "lines": 532,
+      "sha256": "a81ea444609ca2f465ff63e11f89abf0a3adbc6d852ce1aa39b09072a75de473"
+    },
+    {
+      "file": "facades.py",
+      "action": "delete",
+      "lines": 35,
+      "sha256": "88a70d4ed5b7bcd8e6bdaa3d27867b13274cdf17172ef61ceaff6de1c0b62150"
+    },
+    {
+      "file": "facts.py",
+      "action": "keep",
+      "lines": 178,
+      "sha256": "8b454c15a151700dbae2e7f8575f3d9db2aaea945a63bff12bdca47029de2a3f"
+    },
+    {
+      "file": "fulfillment.py",
+      "action": "delete",
+      "lines": 1106,
+      "sha256": "3808ca6b4c85506f67666c54cdb5bae8f9313f0f304f01ed5d9ea38695ea2f18"
+    },
+    {
+      "file": "legacy_architecture.py",
+      "action": "delete",
+      "lines": 375,
+      "sha256": "6aa81e9bbc39e69432e46bf1a9d9c4e7033c838cbfd4cb236c7b59c7474c61b8"
+    },
+    {
+      "file": "markers.py",
+      "action": "delete",
+      "lines": 303,
+      "sha256": "77d0c49ed85239668e3c63ae67135d32981c63cd93dcd6c1ae7172e7aa8b09d4"
+    },
+    {
+      "file": "materials.py",
+      "action": "delete",
+      "lines": 74,
+      "sha256": "ad10a739336fec885158daaddd67f11378ec14da356c85276e02ced5e88215fa"
+    },
+    {
+      "file": "normalization.py",
+      "action": "delete",
+      "lines": 171,
+      "sha256": "279020da2382adeed53f7adc5d93ad33d7d2f89ab8fcbb35f6a40280eb9c94ef"
+    },
+    {
+      "file": "objects.py",
+      "action": "delete",
+      "lines": 50,
+      "sha256": "36c5d6198ee56da2e15ff6ddab62e48ce763eb029b839c84fd7b86eb2d52ce10"
+    },
+    {
+      "file": "openings.py",
+      "action": "delete",
+      "lines": 133,
+      "sha256": "e5b589206447b1b925d9ad9b0c72ce105e77376f1ef1f6912991a67ba7ed645d"
+    },
+    {
+      "file": "preview.py",
+      "action": "delete",
+      "lines": 239,
+      "sha256": "8066d0fe6beb5de36d76446246d6177a952df437de639c05a97b3ae00d39a3de"
+    },
+    {
+      "file": "relations.py",
+      "action": "delete",
+      "lines": 945,
+      "sha256": "e4a6beec1c74d1e1b26834063953d37bfeaddd3639eb91e57f353d172ebed65f"
+    },
+    {
+      "file": "repository.py",
+      "action": "delete",
+      "lines": 227,
+      "sha256": "cdaf2e47824aac7a523fd9a190f430f5cc4f059b333805729c5849e169f710d7"
+    },
+    {
+      "file": "resolver.py",
+      "action": "delete",
+      "lines": 630,
+      "sha256": "a95f7be7dd26f940811aa9572d2769165fe5f307f2b2cc80350826f2dbc015e3"
+    },
+    {
+      "file": "resolve_facts.py",
+      "action": "keep",
+      "lines": 196,
+      "sha256": "e5381c5220e591b6c3232fad2d91758a0afe5d673171b73542ebc6a262a01f44"
+    },
+    {
+      "file": "review_outcome.py",
+      "action": "delete",
+      "lines": 85,
+      "sha256": "a67a327a9629f6eae163785f843c3db8ed8bd95ef5a836997e4c7ee9e40a07b0"
+    },
+    {
+      "file": "spatial_review.py",
+      "action": "delete",
+      "lines": 244,
+      "sha256": "c6e6d368e8e95cf5a821391b2e3fa20811e3950a7a1e03573e8bcc66bffa2a5c"
+    },
+    {
+      "file": "__init__.py",
+      "action": "keep",
+      "lines": 26,
+      "sha256": "4e7da1a491e2a407259c78026937c2199c1ffd60c1302ce526ce9f9a614e0d2d"
+    }
+  ],
+  "keep": [
+    "__init__.py",
+    "facts.py",
+    "resolve_facts.py"
+  ],
+  "delete": [
+    "base.py",
+    "compilation.py",
+    "completeness.py",
+    "contracts.py",
+    "coordinates.py",
+    "facades.py",
+    "fulfillment.py",
+    "legacy_architecture.py",
+    "markers.py",
+    "materials.py",
+    "normalization.py",
+    "objects.py",
+    "openings.py",
+    "preview.py",
+    "relations.py",
+    "repository.py",
+    "resolver.py",
+    "review_outcome.py",
+    "spatial_review.py"
+  ]
+}

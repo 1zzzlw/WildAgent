@@ -1,0 +1,315 @@
+{
+  "source_session": "session_1792455472462",
+  "old_design_rejected_before_execution": true,
+  "design_errors": "{\"code\": \"design_coordinate_conflict\", \"conflicts\": [{\"code\": \"design_circulation_conflict\", \"path\": \"/decisions/circulation/paths/0\", \"reason\": \"通路 main_entrance 的设计净空 1.8×2.6m 与墙/门洞 ['wall_hall_stair', 'wall_main_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/0、/decisions/components/2、/decisions/components/3、/decisions/facades/front、/decisions/floor_layouts/0/walls/4、/decisions/volumes/0\"}]}",
+  "native_markers": [
+    "kitchen_window_back",
+    "master_window_front",
+    "bedroom2_window_front",
+    "bedroom3_window_front"
+  ],
+  "status": "succeeded",
+  "model_calls": 0,
+  "needs_model_for_missing_parameters": [
+    "entrance_door",
+    "corridor_connection"
+  ],
+  "implementation_summary": {
+    "implemented": 4,
+    "abandoned": 0,
+    "total": 4,
+    "design_complete": true
+  },
+  "scope": "historical resolved marker execution replay; no design approval and no whole-building acceptance",
+  "updates": {
+    "component_fragments": {
+      "native_replay": [
+        {
+          "type": "window",
+          "id": "kitchen_window_back",
+          "frameMaterial": "metal",
+          "glassMaterial": "glass",
+          "parentWall": "wall_main_back_L1",
+          "from": [
+            0.5,
+            1.2,
+            0.0
+          ],
+          "width": 2.0,
+          "height": 1.5
+        },
+        {
+          "type": "window",
+          "id": "master_window_front",
+          "frameMaterial": "metal",
+          "glassMaterial": "glass",
+          "parentWall": "wall_main_front_L2",
+          "from": [
+            1.0,
+            4.6,
+            0.0
+          ],
+          "width": 2.0,
+          "height": 1.8
+        },
+        {
+          "type": "window",
+          "id": "bedroom2_window_front",
+          "frameMaterial": "metal",
+          "glassMaterial": "glass",
+          "parentWall": "wall_main_front_L2",
+          "from": [
+            6.0,
+            4.6,
+            0.0
+          ],
+          "width": 1.8,
+          "height": 1.8
+        },
+        {
+          "type": "window",
+          "id": "bedroom3_window_front",
+          "frameMaterial": "metal",
+          "glassMaterial": "glass",
+          "parentWall": "wall_main_front_L2",
+          "from": [
+            9.5,
+            4.6,
+            0.0
+          ],
+          "width": 1.8,
+          "height": 1.8
+        }
+      ]
+    },
+    "component_diagnostics": {
+      "native_replay": {
+        "implementations": {
+          "kitchen_window_back": {
+            "status": "implemented",
+            "entity_ids": [
+              "kitchen_window_back"
+            ],
+            "entity_fingerprint": "ddf2be0dde0095371cb23c379803a5cffd16beb460d10c955b232730a474c58c",
+            "explanation": "按已批准原生参数直接转换，未调用模型",
+            "verification": "geometry_validated",
+            "geometry_review": {
+              "status": "checked",
+              "checked": [
+                "size.width",
+                "size.height",
+                "material_role 引用"
+              ],
+              "unverified": [],
+              "errors": []
+            },
+            "source": "native",
+            "attempts": [
+              {
+                "tool": "compile_native_marker",
+                "stage": "native",
+                "marker_ids": [
+                  "kitchen_window_back"
+                ],
+                "model_calls": 0
+              }
+            ],
+            "attempted_stages": [
+              "native"
+            ]
+          },
+          "master_window_front": {
+            "status": "implemented",
+            "entity_ids": [
+              "master_window_front"
+            ],
+            "entity_fingerprint": "bdbfcfb91b841151b000a9b9f86dcdeaf7f37ff59376dae30786cb546e099c41",
+            "explanation": "按已批准原生参数直接转换，未调用模型",
+            "verification": "geometry_validated",
+            "geometry_review": {
+              "status": "checked",
+              "checked": [
+                "size.width",
+                "size.height",
+                "material_role 引用"
+              ],
+              "unverified": [],
+              "errors": []
+            },
+            "source": "native",
+            "attempts": [
+              {
+                "tool": "compile_native_marker",
+                "stage": "native",
+                "marker_ids": [
+                  "master_window_front"
+                ],
+                "model_calls": 0
+              }
+            ],
+            "attempted_stages": [
+              "native"
+            ]
+          },
+          "bedroom2_window_front": {
+            "status": "implemented",
+            "entity_ids": [
+              "bedroom2_window_front"
+            ],
+            "entity_fingerprint": "ee2fcd2dd017a6db0eee17a013d122ed8736588abd6b22437299055d84d8b456",
+            "explanation": "按已批准原生参数直接转换，未调用模型",
+            "verification": "geometry_validated",
+            "geometry_review": {
+              "status": "checked",
+              "checked": [
+                "size.width",
+                "size.height",
+                "material_role 引用"
+              ],
+              "unverified": [],
+              "errors": []
+            },
+            "source": "native",
+            "attempts": [
+              {
+                "tool": "compile_native_marker",
+                "stage": "native",
+                "marker_ids": [
+                  "bedroom2_window_front"
+                ],
+                "model_calls": 0
+              }
+            ],
+            "attempted_stages": [
+              "native"
+            ]
+          },
+          "bedroom3_window_front": {
+            "status": "implemented",
+            "entity_ids": [
+              "bedroom3_window_front"
+            ],
+            "entity_fingerprint": "75769d457df022b898758f071479d714b047b432af6418fd111f0d00c1a4ca77",
+            "explanation": "按已批准原生参数直接转换，未调用模型",
+            "verification": "geometry_validated",
+            "geometry_review": {
+              "status": "checked",
+              "checked": [
+                "size.width",
+                "size.height",
+                "material_role 引用"
+              ],
+              "unverified": [],
+              "errors": []
+            },
+            "source": "native",
+            "attempts": [
+              {
+                "tool": "compile_native_marker",
+                "stage": "native",
+                "marker_ids": [
+                  "bedroom3_window_front"
+                ],
+                "model_calls": 0
+              }
+            ],
+            "attempted_stages": [
+              "native"
+            ]
+          }
+        },
+        "trace": [
+          {
+            "tool": "compile_native_marker",
+            "stage": "native",
+            "marker_ids": [
+              "kitchen_window_back"
+            ],
+            "model_calls": 0
+          },
+          {
+            "tool": "compile_native_marker",
+            "stage": "native",
+            "marker_ids": [
+              "master_window_front"
+            ],
+            "model_calls": 0
+          },
+          {
+            "tool": "compile_native_marker",
+            "stage": "native",
+            "marker_ids": [
+              "bedroom2_window_front"
+            ],
+            "model_calls": 0
+          },
+          {
+            "tool": "compile_native_marker",
+            "stage": "native",
+            "marker_ids": [
+              "bedroom3_window_front"
+            ],
+            "model_calls": 0
+          }
+        ],
+        "references": "",
+        "partial_implementations": {},
+        "failed_implementations": {},
+        "failures": {},
+        "materials": {},
+        "assets": {},
+        "elements": [],
+        "components": [
+          "kitchen_window_back",
+          "master_window_front",
+          "bedroom2_window_front",
+          "bedroom3_window_front"
+        ],
+        "implementation_summary": {
+          "implemented": 4,
+          "abandoned": 0,
+          "total": 4,
+          "design_complete": true
+        }
+      }
+    }
+  },
+  "trace": [
+    {
+      "tool": "compile_native_marker",
+      "stage": "native",
+      "marker_ids": [
+        "kitchen_window_back"
+      ],
+      "model_calls": 0
+    },
+    {
+      "tool": "compile_native_marker",
+      "stage": "native",
+      "marker_ids": [
+        "master_window_front"
+      ],
+      "model_calls": 0
+    },
+    {
+      "tool": "compile_native_marker",
+      "stage": "native",
+      "marker_ids": [
+        "bedroom2_window_front"
+      ],
+      "model_calls": 0
+    },
+    {
+      "tool": "compile_native_marker",
+      "stage": "native",
+      "marker_ids": [
+        "bedroom3_window_front"
+      ],
+      "model_calls": 0
+    },
+    {
+      "tool": "implementation_result",
+      "model_calls": 0
+    }
+  ]
+}

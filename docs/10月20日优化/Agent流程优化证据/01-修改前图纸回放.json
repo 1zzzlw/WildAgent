@@ -1,0 +1,15 @@
+{
+  "command": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+    "-X",
+    "utf8",
+    "-c",
+    "import json;from pathlib import Path;from app.design.contracts import DesignDocument;from app.design.compilation import project_drawing;p=Path('storage/designs/session_1792455472462.design.json');d=DesignDocument.model_validate_json(p.read_text(encoding='utf-8'));r=project_drawing(d);print(json.dumps({'design_id':d.design_id,'markers':len(r.component_markers),'circulation_checked_before_execution':False},ensure_ascii=False))"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent\\wild-server",
+  "startedAt": "2026-10-20T01:13:43.491Z",
+  "endedAt": "2026-10-20T01:13:44.094Z",
+  "exitCode": 0,
+  "stdout": "{\"design_id\": \"design_session_1792455472462\", \"markers\": 34, \"circulation_checked_before_execution\": false}\r\n",
+  "stderr": ""
+}

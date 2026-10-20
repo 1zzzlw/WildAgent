@@ -1,0 +1,939 @@
+{
+  "name": "两层现代别墅",
+  "units": "m",
+  "levels": {
+    "ground": 0,
+    "level1": 3.6,
+    "roof": 6.8
+  },
+  "slab_thickness": 0.2,
+  "site": [
+    -2,
+    14,
+    -3,
+    13
+  ],
+  "volumes": [
+    {
+      "id": "main",
+      "rect": [
+        0,
+        12,
+        0,
+        10
+      ],
+      "bottom": "ground",
+      "top": "roof",
+      "wall_thickness": 0.25,
+      "material_role": "exterior_wall"
+    }
+  ],
+  "room_zones": [
+    {
+      "id": "r_living",
+      "name": "客厅",
+      "rect": [
+        0,
+        6,
+        0,
+        6
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_hall",
+      "name": "门厅",
+      "rect": [
+        6,
+        9.5,
+        0,
+        3
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_stair_area",
+      "name": "楼梯间",
+      "rect": [
+        9.5,
+        12,
+        0,
+        3
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_dining",
+      "name": "餐厅",
+      "rect": [
+        6,
+        12,
+        3,
+        6
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_kitchen",
+      "name": "厨房",
+      "rect": [
+        0,
+        6,
+        6,
+        10
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_wc",
+      "name": "卫生间",
+      "rect": [
+        6,
+        8,
+        6,
+        8
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_util",
+      "name": "家政间",
+      "rect": [
+        6,
+        8,
+        8,
+        10
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_hall1",
+      "name": "玄关过渡",
+      "rect": [
+        8,
+        9.5,
+        6,
+        10
+      ],
+      "level": "ground",
+      "volume": "main"
+    },
+    {
+      "id": "r_study",
+      "name": "书房",
+      "rect": [
+        0,
+        4,
+        5.5,
+        10
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_master",
+      "name": "主卧",
+      "rect": [
+        4,
+        9,
+        6,
+        10
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_mbath",
+      "name": "主卫",
+      "rect": [
+        9,
+        12,
+        8.5,
+        10
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_corridor",
+      "name": "走廊",
+      "rect": [
+        0,
+        12,
+        3,
+        5.5
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_bedroom2",
+      "name": "次卧",
+      "rect": [
+        0,
+        5.5,
+        0,
+        3
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_bath2",
+      "name": "公卫",
+      "rect": [
+        5.5,
+        8,
+        0,
+        3
+      ],
+      "level": "level1",
+      "volume": "main"
+    },
+    {
+      "id": "r_stair_exit",
+      "name": "楼梯出口",
+      "rect": [
+        8,
+        12,
+        0,
+        3
+      ],
+      "level": "level1",
+      "volume": "main"
+    }
+  ],
+  "voids": [],
+  "walls": [
+    {
+      "id": "w1",
+      "start": [
+        6,
+        0
+      ],
+      "end": [
+        6,
+        3
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w2",
+      "start": [
+        6,
+        3
+      ],
+      "end": [
+        12,
+        3
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w3",
+      "start": [
+        0,
+        6
+      ],
+      "end": [
+        6,
+        6
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w4",
+      "start": [
+        6,
+        6
+      ],
+      "end": [
+        6,
+        10
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w5",
+      "start": [
+        6,
+        8
+      ],
+      "end": [
+        8,
+        8
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w6",
+      "start": [
+        8,
+        6
+      ],
+      "end": [
+        8,
+        10
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w7",
+      "start": [
+        0,
+        5.5
+      ],
+      "end": [
+        12,
+        5.5
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w8",
+      "start": [
+        4,
+        5.5
+      ],
+      "end": [
+        4,
+        10
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w9",
+      "start": [
+        9,
+        5.5
+      ],
+      "end": [
+        9,
+        10
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w10",
+      "start": [
+        9,
+        8.5
+      ],
+      "end": [
+        12,
+        8.5
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w11",
+      "start": [
+        0,
+        3
+      ],
+      "end": [
+        8,
+        3
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w12",
+      "start": [
+        5.5,
+        0
+      ],
+      "end": [
+        5.5,
+        3
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w13",
+      "start": [
+        8,
+        0
+      ],
+      "end": [
+        8,
+        3
+      ],
+      "level": "level1",
+      "top": "roof",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    },
+    {
+      "id": "w14",
+      "start": [
+        9.5,
+        0
+      ],
+      "end": [
+        9.5,
+        3
+      ],
+      "level": "ground",
+      "top": "level1",
+      "thickness": 0.15,
+      "material_role": "interior_wall"
+    }
+  ],
+  "openings": [
+    {
+      "id": "o_main_entry",
+      "type": "door",
+      "host": "main",
+      "face": "front",
+      "level": "ground",
+      "offset": 6.5,
+      "sill": 0,
+      "width": 1.8,
+      "height": 2.4,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "front_door"
+    },
+    {
+      "id": "o_south_living",
+      "type": "window",
+      "host": "main",
+      "face": "front",
+      "level": "ground",
+      "offset": 0.8,
+      "sill": 0.7,
+      "width": 4.2,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_north_kitchen",
+      "type": "window",
+      "host": "main",
+      "face": "back",
+      "level": "ground",
+      "offset": 0.8,
+      "sill": 0.9,
+      "width": 4.2,
+      "height": 1.8,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_north_hall",
+      "type": "window",
+      "host": "main",
+      "face": "back",
+      "level": "ground",
+      "offset": 6.8,
+      "sill": 0.9,
+      "width": 2,
+      "height": 1.8,
+      "style": "swing",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_east_dining",
+      "type": "window",
+      "host": "main",
+      "face": "right",
+      "level": "ground",
+      "offset": 3.3,
+      "sill": 0.7,
+      "width": 2.4,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_west_living",
+      "type": "window",
+      "host": "main",
+      "face": "left",
+      "level": "ground",
+      "offset": 0.8,
+      "sill": 0.7,
+      "width": 4.2,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_west_study",
+      "type": "window",
+      "host": "main",
+      "face": "left",
+      "level": "level1",
+      "offset": 0.8,
+      "sill": 0.7,
+      "width": 3.2,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_south_bedroom2",
+      "type": "window",
+      "host": "main",
+      "face": "front",
+      "level": "level1",
+      "offset": 0.8,
+      "sill": 0.7,
+      "width": 3.8,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_south_master",
+      "type": "window",
+      "host": "main",
+      "face": "front",
+      "level": "level1",
+      "offset": 5,
+      "sill": 0.7,
+      "width": 2.8,
+      "height": 2.1,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_north_master",
+      "type": "window",
+      "host": "main",
+      "face": "back",
+      "level": "level1",
+      "offset": 4.3,
+      "sill": 0.9,
+      "width": 3.8,
+      "height": 1.8,
+      "style": "slide",
+      "frame_role": "window_frame",
+      "panel_role": "glass"
+    },
+    {
+      "id": "o_door_hall_living",
+      "type": "door",
+      "host": "w1",
+      "level": "ground",
+      "offset": 0.5,
+      "sill": 0,
+      "width": 1.2,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_hall_dining",
+      "type": "door",
+      "host": "w2",
+      "level": "ground",
+      "offset": 1.5,
+      "sill": 0,
+      "width": 1.5,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_living_kitchen",
+      "type": "door",
+      "host": "w3",
+      "level": "ground",
+      "offset": 1.5,
+      "sill": 0,
+      "width": 1.5,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_dining_hall1",
+      "type": "door",
+      "host": "w6",
+      "level": "ground",
+      "offset": 0.5,
+      "sill": 0,
+      "width": 1.2,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_wc",
+      "type": "door",
+      "host": "w5",
+      "level": "ground",
+      "offset": 0.5,
+      "sill": 0,
+      "width": 0.9,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_util",
+      "type": "door",
+      "host": "w5",
+      "level": "ground",
+      "offset": 1,
+      "sill": 0,
+      "width": 0.9,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_corridor_study",
+      "type": "door",
+      "host": "w7",
+      "level": "level1",
+      "offset": 1.2,
+      "sill": 0,
+      "width": 1.2,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_corridor_master",
+      "type": "door",
+      "host": "w7",
+      "level": "level1",
+      "offset": 5.5,
+      "sill": 0,
+      "width": 1.2,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_corridor_bedroom2",
+      "type": "door",
+      "host": "w11",
+      "level": "level1",
+      "offset": 1.2,
+      "sill": 0,
+      "width": 1.2,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_bath2",
+      "type": "door",
+      "host": "w11",
+      "level": "level1",
+      "offset": 6.2,
+      "sill": 0,
+      "width": 0.9,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    },
+    {
+      "id": "o_door_m_bath",
+      "type": "door",
+      "host": "w10",
+      "level": "level1",
+      "offset": 0.6,
+      "sill": 0,
+      "width": 1,
+      "height": 2.1,
+      "style": "swing",
+      "frame_role": "door_frame",
+      "panel_role": "interior_door"
+    }
+  ],
+  "stairs": [
+    {
+      "id": "s1",
+      "volume": "main",
+      "rect": [
+        9,
+        11.5,
+        0,
+        4.3
+      ],
+      "from_level": "ground",
+      "to_level": "level1",
+      "shape": "U",
+      "direction": "+z",
+      "flight_width": 1,
+      "landing_depth": 1.2,
+      "tread_depth": 0.28,
+      "max_riser_height": 0.18,
+      "material_role": "timber"
+    }
+  ],
+  "roofs": [
+    {
+      "id": "rf_main",
+      "volume": "main",
+      "type": "flat",
+      "overhang": [
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "rise": 0,
+      "parapet_height": 0.3,
+      "walkable": false,
+      "material_role": "roof"
+    }
+  ],
+  "components": [
+    {
+      "id": "c_canopy",
+      "recipe": "entrance_canopy",
+      "level": "ground",
+      "rect": [
+        5.5,
+        8.2,
+        -1.5,
+        0
+      ],
+      "height": 0.15,
+      "anchor": "top",
+      "elevation_offset": 3,
+      "material_roles": {
+        "structure": "steel",
+        "cladding": "glass_canopy"
+      },
+      "parameters": {
+        "span_depth": 1.5,
+        "steel_section": "100x60_rhs"
+      }
+    },
+    {
+      "id": "c_steps",
+      "recipe": "entrance_steps",
+      "level": "ground",
+      "rect": [
+        5.5,
+        8.2,
+        -0.6,
+        0
+      ],
+      "height": 0.15,
+      "anchor": "bottom",
+      "material_roles": {
+        "surface": "concrete"
+      },
+      "parameters": {
+        "rise": 0.15,
+        "tread": 0.3,
+        "count": 1
+      }
+    }
+  ],
+  "routes": [
+    {
+      "id": "rt1",
+      "level": "ground",
+      "points": [
+        [
+          7.4,
+          0
+        ],
+        [
+          7.4,
+          1.5
+        ],
+        [
+          3,
+          1.5
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "width": 1.2,
+      "height": 2.1
+    },
+    {
+      "id": "rt2",
+      "level": "ground",
+      "points": [
+        [
+          7.4,
+          0
+        ],
+        [
+          7.4,
+          1.5
+        ],
+        [
+          8.5,
+          1.5
+        ],
+        [
+          8.5,
+          4
+        ],
+        [
+          9,
+          4
+        ]
+      ],
+      "width": 1.2,
+      "height": 2.1
+    },
+    {
+      "id": "rt3",
+      "level": "level1",
+      "points": [
+        [
+          10.25,
+          4.3
+        ],
+        [
+          10.25,
+          3
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          10,
+          1.5
+        ],
+        [
+          7,
+          1.5
+        ],
+        [
+          7,
+          3
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          3,
+          5.5
+        ]
+      ],
+      "width": 1.2,
+      "height": 2.1
+    },
+    {
+      "id": "rt4",
+      "level": "level1",
+      "points": [
+        [
+          7,
+          1.5
+        ],
+        [
+          2.75,
+          1.5
+        ],
+        [
+          2.75,
+          0
+        ]
+      ],
+      "width": 1.2,
+      "height": 2.1
+    }
+  ],
+  "material_roles": {
+    "exterior_wall": "白色真石漆外墙涂料，哑光质感",
+    "roof": "深灰色 SBS 改性沥青防水卷材，上铺浅色卵石保护层",
+    "timber": "天然橡木踏步与扶手，清漆封闭",
+    "door_frame": "深灰色阳极氧化铝合金门框",
+    "interior_door": "白色实木复合门扇",
+    "front_door": "深胡桃木色实木大门",
+    "window_frame": "深灰色断桥铝合金窗框",
+    "glass": "6+12A+6中空Low-E透明玻璃",
+    "steel": "热镀锌矩形钢管，深灰色氟碳喷涂",
+    "glass_canopy": "12mm钢化夹胶透明玻璃",
+    "concrete": "C30清水混凝土，自然灰面",
+    "interior_wall": "白色乳胶漆内墙"
+  },
+  "use_clearances": {
+    "main_routes_width": 1.2,
+    "route_headroom": 2.1,
+    "upper_stair_exit_width": 1.2,
+    "bedside_minimum": 0.6
+  },
+  "features_to_verify": [
+    "U形楼梯净高是否满足1.9m以上",
+    "入口雨棚结构跨度与风荷载",
+    "二层走廊与楼梯出口衔接处净宽≥1.2m",
+    "外窗分格与遮阳设计"
+  ],
+  "scope_limits": [
+    "未标注家具与内装细部",
+    "未包含给排水与电气点位",
+    "屋面排水坡度与雨水管未表达"
+  ]
+}

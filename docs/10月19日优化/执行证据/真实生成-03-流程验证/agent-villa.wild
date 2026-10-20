@@ -1,0 +1,329 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+    "designHash": "sha256:fd94c1e6512a059b30a8c46e27e3fc7509f9668c750721cfa13c213db2bcf1a6",
+    "designRevision": 1
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "body_slab_L1",
+        "from": [
+          0.0,
+          0.15,
+          0.0
+        ],
+        "to": [
+          6.0,
+          0.15,
+          4.0
+        ],
+        "thickness": 0.15,
+        "material": "floor_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_front_L1",
+        "from": [
+          0.0,
+          0.3,
+          0.0
+        ],
+        "to": [
+          6.0,
+          3.3,
+          0.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_right_L1",
+        "from": [
+          6.0,
+          0.3,
+          0.0
+        ],
+        "to": [
+          6.0,
+          3.3,
+          4.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_back_L1",
+        "from": [
+          6.0,
+          0.3,
+          4.0
+        ],
+        "to": [
+          0.0,
+          3.3,
+          4.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_left_L1",
+        "from": [
+          0.0,
+          0.3,
+          4.0
+        ],
+        "to": [
+          0.0,
+          3.3,
+          0.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "roof",
+        "id": "roof_main_vol_flat",
+        "roofType": "flat",
+        "span": 6.6,
+        "depth": 4.6,
+        "height": 0.2,
+        "thickness": 0.2,
+        "position": [
+          3.0,
+          3.3,
+          2.0
+        ],
+        "material": "roof"
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "front_entrance_door",
+        "parentWall": "wall_main_vol_front_L1",
+        "from": [
+          0.5,
+          0.3,
+          0.0
+        ],
+        "width": 1.0,
+        "height": 2.2,
+        "frameWidth": 0.08,
+        "frameDepth": 0.2,
+        "leafDepth": 0.04,
+        "frameMaterial": "metal",
+        "leafMaterial": "wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 75
+        }
+      },
+      {
+        "type": "window",
+        "id": "front_window_right",
+        "parentWall": "wall_main_vol_front_L1",
+        "from": [
+          4.4,
+          1.2,
+          0.0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.2,
+        "glassDepth": 0.012,
+        "verticalMullions": 0,
+        "horizontalMullions": 0,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "side_window_right",
+        "parentWall": "wall_main_vol_right_L1",
+        "from": [
+          1.4,
+          1.2,
+          0.0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.2,
+        "glassDepth": 0.012,
+        "verticalMullions": 0,
+        "horizontalMullions": 0,
+        "frameMaterial": "metal",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "light",
+        "id": "ceiling_light_main",
+        "position": [
+          3.0,
+          2.7,
+          2.0
+        ],
+        "body": [
+          {
+            "shape": "cylinder",
+            "position": [
+              3.0,
+              2.95,
+              2.0
+            ],
+            "radius": 0.01,
+            "height": 0.1
+          },
+          {
+            "shape": "cylinder",
+            "position": [
+              3.0,
+              2.8,
+              2.0
+            ],
+            "radiusTop": 0.06,
+            "radiusBottom": 0.2,
+            "height": 0.2
+          },
+          {
+            "shape": "sphere",
+            "position": [
+              3.0,
+              2.75,
+              2.0
+            ],
+            "radius": 0.06,
+            "interactive": true
+          }
+        ],
+        "lightType": "point",
+        "initiallyOn": true
+      }
+    ]
+  },
+  "materials": {
+    "wall_finish": {
+      "baseColor": [
+        0.96,
+        0.96,
+        0.96
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete": {
+      "baseColor": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "roughness": 0.8,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "floor_finish": {
+      "baseColor": [
+        0.65,
+        0.65,
+        0.65
+      ],
+      "roughness": 0.7,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "metal": {
+      "baseColor": [
+        0.53,
+        0.53,
+        0.53
+      ],
+      "roughness": 0.4,
+      "metallic": 0.7,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "wood": {
+      "baseColor": [
+        0.2,
+        0.2,
+        0.2
+      ],
+      "roughness": 0.5,
+      "metallic": 0.1,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.7,
+        0.85,
+        0.95
+      ],
+      "roughness": 0.05,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "side": "double",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012,
+      "attenuationColor": [
+        0.82,
+        0.94,
+        1.0
+      ],
+      "attenuationDistance": 6.0,
+      "clearcoat": 0.08,
+      "clearcoatRoughness": 0.12
+    },
+    "roof": {
+      "baseColor": [
+        0.29,
+        0.3,
+        0.32
+      ],
+      "roughness": 0.8,
+      "metallic": 0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "ground": {
+      "baseColor": [
+        0.34,
+        0.38,
+        0.33
+      ],
+      "roughness": 0.9,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    },
+    "accent": {
+      "baseColor": [
+        0.42,
+        0.2,
+        0.09
+      ],
+      "roughness": 0.5,
+      "metallic": 0.0,
+      "albedo": 1.0,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "assets": {}
+}

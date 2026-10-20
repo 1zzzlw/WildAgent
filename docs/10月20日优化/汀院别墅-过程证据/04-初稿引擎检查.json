@@ -1,0 +1,15 @@
+{
+  "label": "04-初稿引擎检查",
+  "command": [
+    "node",
+    "scripts/validate-generated.mjs",
+    "E:/AgentProject/WildAgent/docs/10月20日优化/汀院别墅-Codex.wild"
+  ],
+  "cwd": "E:/AgentProject/WildAgent/wild-web",
+  "startedAt": "2026-10-20T00:44:34.262Z",
+  "endedAt": "2026-10-20T00:44:34.747Z",
+  "exitCode": 0,
+  "error": null,
+  "stdout": "蓝图: E:/AgentProject/WildAgent/docs/10月20日优化/汀院别墅-Codex.wild\n组件编译诊断: 0 (错误 0)\n网格数: 577\n材质参数: 577\n包围盒: min=[-2.454897153377533,-0.11999999865889549,-2.999999618530273] max=[20.859061563014983,7.560000005960465,16.80000001192093]\nfiniteBounds=true validMeshes=true\n重建诊断: 错误 0, 警告 0\n\n校验通过: 0 错误\n",
+  "stderr": ""
+}

@@ -1,0 +1,18 @@
+{
+  "label": "12-最终独立检查",
+  "command": [
+    "E:/AgentProject/WildAgent/wild-server/.venv/Scripts/python.exe",
+    "-X",
+    "utf8",
+    "E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-过程证据\\06-独立检查.py",
+    "E:/AgentProject/WildAgent/docs/10月20日优化/汀院别墅-Codex.wild",
+    "E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-过程证据\\12-最终独立检查结果.json"
+  ],
+  "cwd": "E:/AgentProject/WildAgent",
+  "startedAt": "2026-10-20T00:49:33.923Z",
+  "endedAt": "2026-10-20T00:49:34.216Z",
+  "exitCode": 1,
+  "error": "Error: Command failed: E:/AgentProject/WildAgent/wild-server/.venv/Scripts/python.exe -X utf8 E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-过程证据\\06-独立检查.py E:/AgentProject/WildAgent/docs/10月20日优化/汀院别墅-Codex.wild E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-过程证据\\12-最终独立检查结果.json\n",
+  "stdout": "{\"passed\": false, \"checks\": 12, \"failed\": [{\"name\": \"声明路线的净宽/净高/支承抽样\", \"passed\": false, \"errors\": [{\"id\": \"courtyard_approach\", \"samples\": 515, \"blocked_by\": [\"living_stone_spine\"], \"unsupported_samples\": 0}], \"routes\": [{\"id\": \"courtyard_approach\", \"samples\": 515, \"blocked_by\": [\"living_stone_spine\"], \"unsupported_samples\": 0}, {\"id\": \"entry_to_living\", \"samples\": 265, \"blocked_by\": [], \"unsupported_samples\": 0}, {\"id\": \"entry_to_dining\", \"samples\": 100, \"blocked_by\": [], \"unsupported_samples\": 0}, {\"id\": \"dining_to_library\", \"samples\": 105, \"blocked_by\": [], \"unsupported_samples\": 0}, {\"id\": \"entry_to_stair\", \"samples\": 110, \"blocked_by\": [], \"unsupported_samples\": 0}, {\"id\": \"stair_to_terrace\", \"samples\": 355, \"blocked_by\": [], \"unsupported_samples\": 0}], \"scope\": \"六条指定折线路线、直墙和名义家具/box；不含转角扫掠、任意构件、门开启扫掠及完整导航网格\"}]}\r\n",
+  "stderr": ""
+}

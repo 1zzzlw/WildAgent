@@ -1,0 +1,159 @@
+[
+  {
+    "elapsed_seconds": 1.656,
+    "update": {
+      "classifier": {
+        "detail_level": "standard",
+        "thinking_mode": false,
+        "style_preference": [],
+        "intent": "generate",
+        "intent_target": "别墅",
+        "intent_target_kind": "architecture",
+        "intent_profile": "villa",
+        "intent_requires_scene": false,
+        "intent_reason": "用户明确要求生成一个别墅，属于建筑类交付物",
+        "intent_source": "llm"
+      }
+    }
+  },
+  {
+    "elapsed_seconds": 60.078,
+    "update": {
+      "architecture": {
+        "status": "failed",
+        "error": "建筑图纸未通过检查：/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/volumes/0；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1a', 'wall_1b', 'wall_1d'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/0、/decisions/floor_layouts/0/walls/1、/decisions/floor_layouts/0/walls/2",
+        "architecture_diag": {
+          "settled": false,
+          "model_calls": 3,
+          "attempts": 3,
+          "token_usage": {
+            "input": 23400,
+            "output": 4646,
+            "total": 28046
+          },
+          "last_issue": "/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/volumes/0；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1a', 'wall_1b', 'wall_1d'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/0、/decisions/floor_layouts/0/walls/1、/decisions/floor_layouts/0/walls/2",
+          "rejected_attempts": [
+            {
+              "attempt": 1,
+              "issue": "/floor_layouts/0/walls/2：平面墙 wall_1c 与围护宿主 wall_main_west_right_L1 共线重叠 4m；该面有效 facades 为 open，却在平面墙清单中重新封墙。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复；/floor_layouts/0/walls/2：平面墙 wall_1c 与围护宿主 wall_east_wing_left_L1 共线重叠 4m；该面有效 facades 为 open，却在平面墙清单中重新封墙。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复；/floor_layouts/1/walls/2：平面墙 wall_2c 与围护宿主 wall_main_west_right_L2 共线重叠 4m；该面有效 facades 为 open，却在平面墙清单中重新封墙。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复；/floor_layouts/1/walls/2：平面墙 wall_2c 与围护宿主 wall_east_wing_left_L2 共线重叠 4m；该面有效 facades 为 open，却在平面墙清单中重新封墙。核对 /floor_layouts、/facades 与 /volumes 中的覆盖；外墙保留一个围护来源，相关门窗引用对应宿主；不要通过删掉必要宿主消除重复；/components/3/placement：window_living_double 的门窗范围超出宿主 wall_main_west_front_L1；竖向范围 [0, 5]m，宿主允许 [0, 3.5]m，墙高=3.5m；sill_height=0m 是相对本层墙底的高度，窗高=5m；当前窗高没有可用 sill_height，须显式修订窗高或宿主；保留窗底时 height 的可用范围 (0, 3.5]；只修对应方向的位置或明确调整尺寸/宿主，保留未受影响的设计；/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_east_wing_front_L1', 'wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/volumes/0、/decisions/volumes/1；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1b'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/1",
+              "output": "{\n  \"concept\": \"现代主义庭院别墅，采用 L 型体量围合出半私密前庭与后院。设计强调水平延展、大面积落地玻璃与实墙体量的对比，通过通高客厅和悬挑露台强化空间流动感。\",\n  \"design_intent\": {\n    \"goals\": [\n      \"实现室内外空间的视觉连通\",\n      \"利用 L 型布局创造有层次感的庭院体验\",\n      \"提供明确的公共（首层）与私密（二层）分区\"\n    ],\n    \"assumptions\": [\n      \"建筑位于平坦地块，南向（Front/Z-）为主要景观面\",\n      \"层高满足居住舒适度要求（首层3.6m，二层3.3m）\",\n      \"结构采用钢筋混凝土框架，允许大跨度开口\"\n    ],\n    \"selected_systems\": [\n      \"L 型双翼体量组合\",\n      \"平屋顶带女儿墙\",\n      \"通高玻璃幕墙系统\",\n      \"悬挑混凝土阳台\"\n    ],\n    \"spatial_strategy\": \"入口位于两翼夹角的内凹处，进入后通过门厅连接左侧的公共区（客餐厅）和右侧的辅助/交通区。楼梯位于右翼端部，向上通往二层的卧室区。二层设有面向庭院的悬挑露台。\",\n    \"composition\": \"非对称平衡。左翼为长向展开的实体与虚体交替，右翼较短且相对封闭以容纳服务空间和楼梯。立面通过材质对比（白色抹灰 vs 深色窗框 vs 木格栅）丰富细节。\",\n    \"material_strategy\": \"主体外墙采用白色真石漆或清水混凝土质感；门窗采用深灰色断桥铝框配 Low-E 中空玻璃；局部装饰使用竖向木格栅以增加温暖感；屋面边缘设金属压顶。\"\n  },\n  \"massing\": {\n    \"shape\": \"L-shaped modern villa\",\n    \"width\": 18.0,\n    \"depth\": 14.0,\n    \"floors\": 2,\n    \"modeled_floors\": 2,\n    \"floor_height\": 3.5\n  },\n  \"volumes\": [\n    {\n      \"id\": \"main_west\",\n      \"x\": 0,\n      \"z\": 0,\n      \"width\": 10,\n      \"depth\": 12,\n      \"start_floor\": 1,\n      \"end_floor\": 2,\n      \"facades\": {\n        \"front\": {\n          \"bays\": 3,\n          \"ground_pattern\": [\n            \"window\",\n            \"door\",\n            \"window\"\n          ],\n          \"upper_pattern\": [\n            \"window\",\n            \"empty\",\n            \"window\"\n          ]\n        },\n        \"back\": {\n          \"bays\": 3,\n          \"ground_pattern\": [\n            \"window\",\n            \"window\",\n            \"window\"\n          ],\n          \"upper_pattern\": [\n            \"window\",\n            \"window\",\n            \"window\"\n          ]\n        },\n        \"left\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"window\",\n            \"empty\"\n          ],\n          \"upper_pattern\": [\n            \"window\",\n            \"empty\"\n          ]\n        },\n        \"right\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"open\",\n            \"open\"\n          ],\n          \"upper_pattern\": [\n            \"open\",\n            \"open\"\n          ]\n        }\n      }\n    },\n    {\n      \"id\": \"east_wing\",\n      \"x\": 10,\n      \"z\": 0,\n      \"width\": 8,\n      \"depth\": 8,\n      \"start_floor\": 1,\n      \"end_floor\": 2,\n      \"facades\": {\n        \"front\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"empty\",\n            \"window\"\n          ],\n          \"upper_pattern\": [\n            \"empty\",\n            \"window\"\n          ]\n        },\n        \"back\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"window\",\n            \"empty\"\n          ],\n          \"upper_pattern\": [\n            \"window\",\n            \"empty\"\n          ]\n        },\n        \"left\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"open\",\n            \"open\"\n          ],\n          \"upper_pattern\": [\n            \"open\",\n            \"open\"\n          ]\n        },\n        \"right\": {\n          \"bays\": 2,\n          \"ground_pattern\": [\n            \"window\",\n            \"empty\"\n          ],\n          \"upper_pattern\": [\n            \"window\",\n            \"empty\"\n          ]\n        }\n      }\n    }\n  ],\n  \"structural_grid\": {\n    \"system\": \"RC Frame\",\n    \"x_bays\": 4,\n    \"z_bays\": 3\n  },\n  \"circulation\": {\n    \"vertical_strategy\": \"Single straight-run staircase located in the east wing near the back wall.\",\n    \"description\": \"主入口位于 L 型内角，穿过门厅进入西侧起居室。东侧翼包含玄关储物及楼梯间。楼梯从一层后方角落开始，直行至二层平台。\",\n    \"paths\": [\n      {\n        \"id\": \"entry_path_1\",\n        \"floor\": 1,\n        \"width\": 1.5,\n        \"height\": 2.4,\n        \"points\": [\n          [\n            10,\n            -2\n          ],\n          [\n            10,\n            2\n          ],\n          [\n            8,\n            2\n          ]\n        ]\n      },\n      {\n        \"id\": \"living_circ_1\",\n        \"floor\": 1,\n        \"width\": 1.2,\n        \"height\": 2.4,\n        \"points\": [\n          [\n            8,\n            2\n          ],\n          [\n            8,\n            8\n          ],\n          [\n            2,\n            8\n          ]\n        ]\n      }\n    ]\n  },\n  \"facades\": {\n    \"front\": {\n      \"bays\": 5,\n      \"ground_pattern\": [\n        \"window\",\n        \"window\",\n        \"door\",\n        \"empty\",\n        \"window\"\n      ],\n      \"upper_pattern\": [\n        \"window\",\n        \"window\",\n        \"empty\",\n        \"empty\",\n        \"window\"\n      ]\n    },\n    \"back\": {\n      \"bays\": 5,\n      \"ground_pattern\": [\n        \"window\",\n        \"window\",\n        \"window\",\n        \"window\",\n        \"empty\"\n      ],\n      \"upper_pattern\": [\n        \"window\",\n        \"window\",\n        \"window\",\n        \"window\",\n        \"empty\"\n      ]\n    },\n    \"left\": {\n      \"bays\": 3,\n      \"ground_pattern\": [\n        \"window\",\n        \"empty\",\n        \"window\"\n      ],\n      \"upper_pattern\": [\n        \"window\",\n        \"empty\",\n        \"window\"\n      ]\n    },\n    \"right\": {\n      \"bays\": 2,\n      \"ground_pattern\": [\n        \"window\",\n        \"empty\"\n      ],\n      \"upper_pattern\": [\n        \"window\",\n        \"empty\"\n      ]\n    }\n  },\n  \"roof\": {\n    \"type\": \"flat\",\n    \"ridge_axis\": \"x\",\n    \"overhang\": 0.6,\n    \"volumes\": [\n      {\n        \"volume\": \"main_west\",\n        \"type\": \"flat\",\n        \"overhang\": 0.6\n      },\n      {\n        \"volume\": \"east_wing\",\n        \"type\": \"flat\",\n        \"overhang\": 0.6\n      }\n    ]\n  },\n  \"components\": [\n    {\n      \"id\": \"stair_main\",\n      \"type\": \"stair\",\n      \"host\": \"east_wing\",\n      \"size\": {\n        \"width\": 1.2,\n        \"height\": 3.5,\n        \"depth\": 4.5\n      },\n      \"form\": {\n        \"direction\": \"up\",\n        \"landing\": true\n      },\n      \"description\": \"直跑楼梯，踏步宽250mm，高175mm，中间设休息平台。\",\n      \"placement\": {\n        \"face\": \"back\",\n        \"offset\": 2.0,\n        \"normal_offset\": 0.0\n      },\n      \"material_role\": \"structure\",\n      \"floor_connections\": [\n        {\n          \"from_floor\": 1,\n          \"to_floor\": 2\n        }\n      ]\n    },\n    {\n      \"id\": \"balcony_east\",\n      \"type\": \"balcony\",\n      \"host\": \"east_wing\",\n      \"size\": {\n        \"width\": 4.0,\n        \"height\": 0.2,\n        \"depth\": 1.5\n      },\n      \"description\": \"二层悬挑露台，位于东翼南侧，面向前院。\",\n      \"placement\": {\n        \"face\": \"front\",\n        \"floor\": 2,\n        \"offset\": 2.0,\n        \"normal_offset\": 0.0\n      },\n      \"material_role\": \"floor\"\n    },\n    {\n      \"id\": \"railing_balcony\",\n      \"type\": \"railing\",\n      \"host\": \"balcony_east\",\n      \"size\": {\n        \"width\": 4.0,\n        \"height\": 1.1,\n        \"depth\": 0.05\n      },\n      \"description\": \"玻璃栏板加不锈钢扶手。\",\n      \"placement\": {\n        \"face\": \"front\",\n        \"offset\": 0.0\n      },\n      \"material_role\": \"frame\"\n    },\n    {\n      \"id\": \"window_living_double\",\n      \"type\": \"double_height_window\",\n      \"host\": \"main_west\",\n      \"size\": {\n        \"width\": 3.0,\n        \"height\": 5.0,\n        \"depth\": 0.1\n      },\n      \"description\": \"起居室通高落地窗，黑色细框，双层中空玻璃。\",\n      \"placement\": {\n        \"face\": \"front\",\n        \"floor\": 1,\n        \"offset\": 1.0,\n        \"sill_height\": 0.0\n      },\n      \"material_role\": \"glass\"\n    },\n    {\n      \"id\": \"door_main_entry\",\n      \"type\": \"door\",\n      \"host\": \"main_west\",\n      \"size\": {\n        \"width\": 1.2,\n        \"height\": 2.4,\n        \"depth\": 0.1\n      },\n      \"description\": \"入户大门，实木贴皮，隐藏式把手。\",\n      \"placement\": {\n        \"face\": \"front\",\n        \"floor\": 1,\n        \"offset\": 4.5,\n        \"sill_height\": 0.0\n      },\n      \"material_role\": \"door\"\n    },\n    {\n      \"id\": \"sliding_door_back\",\n      \"type\": \"glass_sliding_door\",\n      \"host\": \"main_west\",\n      \"size\": {\n        \"width\": 4.0,\n        \"height\": 2.4,\n        \"depth\": 0.1\n      },\n      \"description\": \"后厨通向花园的大面积推拉门。\",\n      \"placement\": {\n        \"face\": \"back\",\n        \"floor\": 1,\n        \"offset\": 3.0,\n        \"sill_height\": 0.0\n      },\n      \"material_role\": \"glass\"\n    },\n    {\n      \"id\": \"parapet_main\",\n      \"type\": \"parapet\",\n      \"host\": \"main_west\",\n      \"size\": {\n        \"width\": 10.0,\n        \"height\": 0.9,\n        \"depth\": 0.2\n      },\n      \"description\": \"屋面女儿墙，白色抹灰，顶部不锈钢压顶。\",\n      \"placement\": {\n        \"face\": \"front\",\n        \"floor\": 2,\n        \"offset\": 0.0\n      },\n      \"material_role\": \"facade_primary\"\n    },\n    {\n      \"id\": \"chimney_kitchen\",\n      \"type\": \"chimney\",\n      \"host\": \"main_west\",\n      \"size\": {\n        \"width\": 0.8,\n        \"height\": 1.5,\n        \"depth\": 0.8\n      },\n      \"description\": \"厨房排烟道突出屋面的部分，深灰色金属包覆。\",\n      \"placement\": {\n        \"position\": [\n          2,\n          7.5,\n          10\n        ]\n      },\n      \"material_role\": \"accent\"\n    }\n  ],\n  \"floor_layouts\": [\n    {\n      \"floor\": 1,\n      \"level\": 0,\n      \"rooms\": [\n        {\n          \"id\": \"living_room\",\n          \"name\": \"起居室\",\n          \"bounds\": {\n            \"x\": 0,\n            \"z\": 0,\n            \"width\": 6,\n            \"depth\": 6\n          }\n        },\n        {\n          \"id\": \"dining_kitchen\",\n          \"name\": \"餐厨区\",\n          \"bounds\": {\n            \"x\": 0,\n            \"z\": 6,\n            \"width\": 6,\n            \"depth\": 6\n          }\n        },\n        {\n          \"id\": \"foyer\",\n          \"name\": \"门厅\",\n          \"bounds\": {\n            \"x\": 6,\n            \"z\": 0,\n            \"width\": 4,\n            \"depth\": 4\n          }\n        },\n        {\n          \"id\": \"stairs_area\",\n          \"name\": \"楼梯间\",\n          \"bounds\": {\n            \"x\": 10,\n            \"z\": 4,\n            \"width\": 4,\n            \"depth\": 4\n          }\n        },\n        {\n          \"id\": \"guest_wc\",\n          \"name\": \"客卫\",\n          \"bounds\": {\n            \"x\": 10,\n            \"z\": 0,\n            \"width\": 4,\n            \"depth\": 4\n          }\n        }\n      ],\n      \"walls\": [\n        {\n          \"id\": \"wall_1a\",\n          \"from\": [\n            6,\n            0\n          ],\n          \"to\": [\n            6,\n            4\n          ],\n          \"thickness\": 0.15\n        },\n        {\n          \"id\": \"wall_1b\",\n          \"from\": [\n            6,\n            4\n          ],\n          \"to\": [\n            10,\n            4\n          ],\n          \"thickness\": 0.15\n        },\n        {\n          \"id\": \"wall_1c\",\n          \"from\": [\n            10,\n            4\n          ],\n          \"to\": [\n            10,\n            8\n          ],\n          \"thickness\": 0.15\n        },\n        {\n          \"id\": \"wall_1d\",\n          \"from\": [\n            0,\n            6\n          ],\n          \"to\": [\n            6,\n            6\n          ],\n          \"thickness\": 0.15\n        }\n      ]\n    },\n    {\n      \"floor\": 2,\n      \"level\": 3.5,\n      \"rooms\": [\n        {\n          \"id\": \"master_bedroom\",\n          \"name\": \"主卧套房\",\n          \"bounds\": {\n            \"x\": 0,\n            \"z\": 0,\n            \"width\": 6,\n            \"depth\": 6\n          }\n        },\n        {\n          \"id\": \"bedroom_2\",\n          \"name\": \"次卧\",\n          \"bounds\": {\n            \"x\": 0,\n            \"z\": 6,\n            \"width\": 6,\n            \"depth\": 6\n          }\n        },\n        {\n          \"id\": \"hallway_upper\",\n          \"name\": \"上层走廊\",\n          \"bounds\": {\n            \"x\": 6,\n            \"z\": 0,\n            \"width\": 4,\n            \"depth\": 8\n          }\n        },\n        {\n          \"id\": \"study\",\n          \"name\": \"书房\",\n          \"bounds\": {\n            \"x\": 10,\n            \"z\": 0,\n            \"width\": 4,\n            \"depth\": 4\n          }\n        },\n        {\n          \"id\": \"void_stairs\",\n          \"name\": \"楼梯井\",\n          \"void\": false,\n          \"bounds\": {\n            \"x\": 10,\n            \"z\": 4,\n            \"width\": 4,\n            \"depth\": 4\n          }\n        }\n      ],\n      \"walls\": [\n        {\n          \"id\": \"wall_2a\",\n          \"from\": [\n            6,\n            0\n          ],\n          \"to\": [\n            6,\n            12\n          ],\n          \"thickness\": 0.15\n        },\n        {\n          \"id\": \"wall_2b\",\n          \"from\": [\n            0,\n            6\n          ],\n          \"to\": [\n            6,\n            6\n          ],\n          \"thickness\": 0.15\n        },\n        {\n          \"id\": \"wall_2c\",\n          \"from\": [\n            10,\n            4\n          ],\n          \"to\": [\n            10,\n            8\n          ],\n          \"thickness\": 0.15\n        }\n      ]\n    }\n  ],\n  \"envelope\": {\n    \"system\": \"External insulation + Render finish\"\n  }\n}",
+              "call_id": "e46d562c2d4249eaa8d37bb341a5b61d",
+              "unchanged": false
+            },
+            {
+              "attempt": 2,
+              "issue": "/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_1b', 'wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/floor_layouts/0/walls/1、/decisions/volumes/0；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1a', 'wall_1b', 'wall_1d'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/0、/decisions/floor_layouts/0/walls/1、/decisions/floor_layouts/0/walls/2",
+              "output": "```json\n{\n  \"operations\": [\n    {\n      \"op\": \"remove\",\n      \"path\": \"/floor_layouts/0/walls/2\"\n    },\n    {\n      \"op\": \"remove\",\n      \"path\": \"/floor_layouts/1/walls/2\"\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"/components/3/size/height\",\n      \"value\": 3.5\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"/circulation/paths/0/points\",\n      \"value\": [\n        [\n          8,\n          -2\n        ],\n        [\n          8,\n          4\n        ]\n      ]\n    },\n    {\n      \"op\": \"replace\",\n      \"path\": \"/circulation/paths/1/points\",\n      \"value\": [\n        [\n          8,\n          4\n        ],\n        [\n          4,\n          4\n        ],\n        [\n          4,\n          8\n        ],\n        [\n          2,\n          8\n        ]\n      ]\n    }\n  ]\n}\n```",
+              "call_id": "f757f01b4ce4438595243298c9b22edd",
+              "unchanged": false
+            },
+            {
+              "attempt": 3,
+              "issue": "/circulation/paths/0：通路 entry_path_1 的设计净空 1.5×2.4m 与墙/门洞 ['wall_main_west_front_L1'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/components/3、/decisions/components/4、/decisions/facades/front、/decisions/volumes/0；/circulation/paths/1：通路 living_circ_1 的设计净空 1.2×2.4m 与墙/门洞 ['wall_1a', 'wall_1b', 'wall_1d'] 冲突；协调门洞、内墙和路线后显式修订：/decisions/floor_layouts/0/walls/0、/decisions/floor_layouts/0/walls/1、/decisions/floor_layouts/0/walls/2",
+              "output": "{\"operations\":[{\"op\":\"replace\",\"path\":\"/floor_layouts/0/walls/1/from\",\"value\":[6, 4.5]},{\"op\":\"replace\",\"path\":\"/floor_layouts/0/walls/2/to\",\"value\":[5.5, 6]}]}",
+              "call_id": "20a556e28a2445c5852738d46b6a0677",
+              "unchanged": false
+            }
+          ],
+          "repairs": [
+            {
+              "attempt": 2,
+              "operations": [
+                {
+                  "op": "remove",
+                  "path": "/floor_layouts/0/walls/2"
+                },
+                {
+                  "op": "remove",
+                  "path": "/floor_layouts/1/walls/2"
+                },
+                {
+                  "op": "replace",
+                  "path": "/components/3/size/height",
+                  "value": 3.5
+                },
+                {
+                  "op": "replace",
+                  "path": "/circulation/paths/0/points",
+                  "value": [
+                    [
+                      8,
+                      -2
+                    ],
+                    [
+                      8,
+                      4
+                    ]
+                  ]
+                },
+                {
+                  "op": "replace",
+                  "path": "/circulation/paths/1/points",
+                  "value": [
+                    [
+                      8,
+                      4
+                    ],
+                    [
+                      4,
+                      4
+                    ],
+                    [
+                      4,
+                      8
+                    ],
+                    [
+                      2,
+                      8
+                    ]
+                  ]
+                }
+              ],
+              "validated": false
+            },
+            {
+              "attempt": 3,
+              "operations": [
+                {
+                  "op": "replace",
+                  "path": "/floor_layouts/0/walls/1/from",
+                  "value": [
+                    6,
+                    4.5
+                  ]
+                },
+                {
+                  "op": "replace",
+                  "path": "/floor_layouts/0/walls/2/to",
+                  "value": [
+                    5.5,
+                    6
+                  ]
+                }
+              ],
+              "validated": false
+            }
+          ],
+          "programs": [],
+          "call_id": "20a556e28a2445c5852738d46b6a0677",
+          "rag_chars": 11011,
+          "rag_ms": 1707,
+          "repair_rag_ms": 1888,
+          "repair_rag_chars": 10671,
+          "detail_level": "standard",
+          "detail_rule_entity": "architecture_detail_standard",
+          "detail_rule_hits": [
+            "wild_spec:ceab66b53e37:section:23d904beade0b484:0:6792ade17dc59750"
+          ],
+          "design_process_hits": [
+            "wild_spec:162aa6d470e2:section:e5be8801324d7d74:0:b323ace34698a11e",
+            "wild_spec:162aa6d470e2:section:1683147178251787:0:9e6d61452f02f717"
+          ],
+          "total_ms": 58427,
+          "profile": "villa",
+          "raw_plan": {}
+        }
+      }
+    }
+  }
+]

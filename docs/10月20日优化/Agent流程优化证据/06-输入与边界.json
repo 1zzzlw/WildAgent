@@ -1,0 +1,15 @@
+{
+  "input": {
+    "session_id": "codex_flow_check_1792459663",
+    "request_id": "codex_flow_check_1792459663_request",
+    "user_message": "生成一个别墅",
+    "building_type": "villa",
+    "detail_level": "standard",
+    "thinking_mode": false,
+    "procedural_materials_enabled": false
+  },
+  "timeout_seconds": 600,
+  "approval": "diagnostic auto-confirm via real interrupt, not human approval",
+  "checkpoint": "isolated InMemorySaver; production checkpoint database not used",
+  "scope": "single standard-level end-to-end trial, not aesthetic equivalence proof"
+}

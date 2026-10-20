@@ -1,0 +1,479 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "design_oct19-migration-trial-03",
+  "session_id": "oct19-migration-trial-03",
+  "revision": 1,
+  "status": "draft",
+  "created_at": "2026-10-19T11:55:12.986598Z",
+  "updated_at": "2026-10-19T11:55:19.074595Z",
+  "approved_at": null,
+  "requirements": {
+    "source_request": "流程验证：生成一栋单层现代小别墅，6×4米，平屋顶，楼面顶0.3米，层高3米。一扇入口门、两面采光窗和基础照明，其余实墙。清楚的入口，不做复杂内部分区、家具或景观。请优先用 program 从共享尺寸、标高参数计算完整设计图纸；这是低粒度流程验证，不代表极高粒度效果对照。",
+    "building_type": "villa",
+    "profile": "villa",
+    "style_intent": []
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+    "massing": {
+      "shape": "box",
+      "width": 6.0,
+      "depth": 4.0,
+      "floors": 1,
+      "modeled_floors": 1,
+      "representation_mode": "full",
+      "floor_height": 3.0,
+      "symmetry": false,
+      "tiers": null
+    },
+    "complexity": {
+      "level": "minimal",
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "reason": "低：完成建筑主体、必要的门窗、屋顶、多层建筑的楼梯和基础照明。采用简洁构造与材质表达，默认不增加装饰构件、家具或陈设。"
+    },
+    "volumes": [
+      {
+        "id": "main_vol",
+        "role": "primary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 6.0,
+        "depth": 4.0,
+        "start_floor": 1,
+        "end_floor": 1
+      }
+    ],
+    "structural_grid": {
+      "system": "none",
+      "x_bays": 1,
+      "z_bays": 1
+    },
+    "envelope": {
+      "system": "monolithic_wall",
+      "curtain_wall": null
+    },
+    "facades": {
+      "front": {
+        "bays": 3,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "door",
+          "empty",
+          "window"
+        ],
+        "upper_pattern": [
+          "empty",
+          "empty",
+          "empty"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "ridge_axis": "x",
+      "overhang": 0.3,
+      "volumes": [
+        {
+          "volume": "main_vol",
+          "type": "flat",
+          "overhang": 0.3
+        }
+      ]
+    },
+    "circulation": {
+      "vertical_strategy": "none",
+      "description": "Single level access via front door"
+    },
+    "materials": {
+      "keywords": [
+        "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+        "#F5F5F5",
+        "#4A4D52",
+        "#8C8C8C"
+      ],
+      "resolved_plan": {
+        "concept": "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+        "palette": [
+          "#F5F5F5",
+          "#4A4D52",
+          "#8C8C8C"
+        ],
+        "roles": [
+          {
+            "role": "facade_primary",
+            "materialId": "wall_finish",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.96,
+                0.96,
+                0.96
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "structure",
+            "materialId": "concrete",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.85,
+                0.85,
+                0.85
+              ],
+              "roughness": 0.8,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "floor",
+            "materialId": "floor_finish",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.65,
+                0.65,
+                0.65
+              ],
+              "roughness": 0.7,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "frame",
+            "materialId": "metal",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.53,
+                0.53,
+                0.53
+              ],
+              "roughness": 0.4,
+              "metallic": 0.7,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "door",
+            "materialId": "wood",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.2,
+                0.2,
+                0.2
+              ],
+              "roughness": 0.5,
+              "metallic": 0.1,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "glass",
+            "materialId": "glass",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.7,
+                0.85,
+                0.95
+              ],
+              "roughness": 0.05,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon",
+              "materialClass": "glass",
+              "side": "double",
+              "transmission": 0.92,
+              "ior": 1.5,
+              "thickness": 0.012,
+              "attenuationColor": [
+                0.82,
+                0.94,
+                1.0
+              ],
+              "attenuationDistance": 6.0,
+              "clearcoat": 0.08,
+              "clearcoatRoughness": 0.12
+            }
+          },
+          {
+            "role": "roof",
+            "materialId": "roof",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.29,
+                0.3,
+                0.32
+              ],
+              "roughness": 0.8,
+              "metallic": 0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "ground",
+            "materialId": "ground",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.34,
+                0.38,
+                0.33
+              ],
+              "roughness": 0.9,
+              "metallic": 0.0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "accent",
+            "materialId": "accent",
+            "assetId": null,
+            "proceduralPresetId": null,
+            "material": {
+              "baseColor": [
+                0.42,
+                0.2,
+                0.09
+              ],
+              "roughness": 0.5,
+              "metallic": 0.0,
+              "albedo": 1.0,
+              "lightingCondition": "D65_noon"
+            }
+          }
+        ],
+        "resolvedAssets": {},
+        "rejectedAssetIds": [],
+        "rejectedProceduralPresetIds": [],
+        "curtainWall": false
+      },
+      "regions": []
+    },
+    "detail_packages": [],
+    "component_quota": {},
+    "components": [
+      {
+        "type": "door",
+        "id": "front_entrance_door",
+        "relation": null,
+        "host": "main_vol",
+        "description": "Main entrance door",
+        "placement": {
+          "face": "front",
+          "floor": 1,
+          "offset": 0.5,
+          "sill_height": 0.0,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.0,
+          "height": 2.2,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "door",
+          "color": "#333333"
+        },
+        "material_role": null
+      },
+      {
+        "type": "window",
+        "id": "front_window_right",
+        "relation": null,
+        "host": "main_vol",
+        "description": "Living area window",
+        "placement": {
+          "face": "front",
+          "floor": 1,
+          "offset": 4.4,
+          "sill_height": 0.9,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.2,
+          "height": 1.5,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "glass",
+          "frame_color": "#888888"
+        },
+        "material_role": null
+      },
+      {
+        "type": "window",
+        "id": "side_window_right",
+        "relation": null,
+        "host": "main_vol",
+        "description": "Side daylighting window",
+        "placement": {
+          "face": "right",
+          "floor": 1,
+          "offset": 1.4,
+          "sill_height": 0.9,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.2,
+          "height": 1.5,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "glass",
+          "frame_color": "#888888"
+        },
+        "material_role": null
+      },
+      {
+        "type": "pendant_light",
+        "id": "ceiling_light_main",
+        "relation": null,
+        "host": null,
+        "description": "Central pendant light fixture",
+        "placement": {
+          "face": null,
+          "floor": null,
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            3.0,
+            2.7,
+            2.0
+          ]
+        },
+        "size": {
+          "width": 0.4,
+          "height": 0.6,
+          "depth": 0.4
+        },
+        "form": {
+          "material_role": "accent",
+          "emissive": true
+        },
+        "material_role": null
+      }
+    ],
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": [],
+    "design_intent": {
+      "goals": [
+        "Simple volume",
+        "Clear entry",
+        "Basic daylighting",
+        "Low-grain validation"
+      ],
+      "assumptions": [
+        "No interior partitions modeled in detail",
+        "Standard door/window sizes"
+      ],
+      "spatial_strategy": "Open plan with defined entry zone",
+      "composition": "Rectangular massing",
+      "material_strategy": "White plaster facade, dark grey roof membrane",
+      "selected_systems": [
+        "Flat roof",
+        "Masonry/Concrete walls",
+        "Pendant lighting"
+      ]
+    },
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.3,
+        "rooms": [
+          {
+            "id": "living_space",
+            "name": "Open Living Area",
+            "bounds": {
+              "x": 0.2,
+              "z": 0.2,
+              "width": 5.6,
+              "depth": 3.6
+            }
+          }
+        ],
+        "walls": []
+      }
+    ]
+  },
+  "constraints": [
+    {
+      "id": "request.source",
+      "kind": "user_hard",
+      "target": "/requirements/source_request",
+      "expression": "设计必须保持用户原始需求中明确提出的条件",
+      "source": "user_request",
+      "expected": null,
+      "check": "manual",
+      "adoption": "adopted",
+      "source_quote": "",
+      "supersedes": null
+    }
+  ],
+  "locks": [],
+  "rule_trace": []
+}

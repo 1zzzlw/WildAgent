@@ -1,0 +1,491 @@
+[
+  {
+    "file": "oct19-migration-trial-03.design.json",
+    "hash": "sha256:fd94c1e6512a059b30a8c46e27e3fc7509f9668c750721cfa13c213db2bcf1a6",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791367487757.design.json",
+    "hash": "sha256:e3bd199744e5edfe8cd1fe39dbd8e093e13cb546321a45e136b1c82cd322eaf0",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791368270047.design.json",
+    "hash": "sha256:b9606b35939a7744c70ceb31cc863de81886817dbdb95b02703d891a491c3370",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791419334028.design.json",
+    "hash": "sha256:8275a6eba3a2d1bbbb04c27bdf19b6d09bbfc1ea59dc35cfad6a7db025cf7da6",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791424320288.design.json",
+    "hash": "sha256:d8c302362576b52bb38e2e444f3b026a37a8bc7a051337f1ad4da6194a4fd177",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791428166273.design.json",
+    "hash": "sha256:01ddb1559a88392c94afd788df12a7866c9f2f384494aaf7602e8d3f3b59de3b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791442108456.design.json",
+    "hash": "sha256:1ac9b8fe51f98fab6871e4b5d0669680db304477075b1931cd3660c3d8f78a04",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791443299952.design.json",
+    "hash": "sha256:83097c4394a0ea58cf33a7241d1ee05bafaa9efcbcdcf91baf4942b62ddc323a",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791444291991.design.json",
+    "hash": "sha256:9525dceac4ba00508bc56f6062252debb2c8b8173ca0723b9fbfd6c233cfe733",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791446443735.design.json",
+    "hash": "sha256:985b5bbab3396c3f8204fef27e5756cfad2786cfcc9becb8c4a53508c747089a",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791447489899.design.json",
+    "hash": "sha256:80bc770fea6b67f3e97a167d3cd1e3f28215750760d1322bf1c0b9d511a70c8a",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791461822471.design.json",
+    "hash": "sha256:da3759975512f2cb78eb76eecdb4f45cf1beb3f1e2e20343acba5c371e05dfc2",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791503381154.design.json",
+    "hash": "sha256:a237b3e89ab43ac7c21ab921c340ed02f6389f6ea862624403ec411ddab7b6ef",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791505229514.design.json",
+    "hash": "sha256:bf99b8a6bd30add0a6e7efdab3a90c0430673ebe65f5ba87a1ada26b6931441b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791507566653.design.json",
+    "hash": "sha256:fd49901b11b5aff35d6f93e0567229b8a5549a2d3cb0c4ef0c7c0127f01d5d7c",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791508180556.design.json",
+    "hash": "sha256:893e5a172780eef4dd678c3a406188577af1f92b89a40f40a3ae4462f42e186b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791515665324.design.json",
+    "hash": "sha256:b3d16ebf6aed78e0c25be7603bdcc094b5140d9b58586452fbbd11ac578918d1",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791527958897.design.json",
+    "hash": "sha256:9eb090001c17ad28992c49d919a6fb385dfa61512f82b16acab0f08b5015d102",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791534965800.design.json",
+    "hash": "sha256:da291c9579d0acfbec93eca5db40764a14bcc08a0fe4f79ff857ad8b8b0a0f52",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791535853874.design.json",
+    "hash": "sha256:18ea2ee7c462a479bc4fc6f26573b186dccd00f7674dd7f1442dd78ec1ace21c",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791590975028.design.json",
+    "hash": "sha256:3336d822b6c8a528a554e6d1b82e5803b31ff80eaecaa6c08b3b9d6403f426b6",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791592603915.design.json",
+    "hash": "sha256:0813947348e99351df135edaba2b07a0500012c0c52a0c61b97ec627d67647de",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791624790036.design.json",
+    "hash": "sha256:0af0459bc90e072dfbf2fbba66dd483d0584e6243a4a524a2f52487731688d3e",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791630725117.design.json",
+    "hash": "sha256:ed3dda6dcc9800f67ff8daf2c4d2154290b7bc92a1b8b256076a41abacb58aec",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791641091030.design.json",
+    "hash": "sha256:f6510ed75fc72295e7749ccde5555ecf8997f2d213d8ca9bbed584149a65bb80",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791676748830.design.json",
+    "hash": "sha256:5cc473cdeb3a41b6f04b0ca25403b1ac6fe2c203d65878b6e73baba483a31a6d",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791687065274.design.json",
+    "hash": "sha256:ff1cb5b536311014fed20eb1cfe66d43360cbf3be0409abb115f91f0d6e7a1b7",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791692667190.design.json",
+    "hash": "sha256:6fa19bd2c6c16870a41885387d013c2a4544d43c3e4e29dc5071b0b2cd57fde5",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791696246304.design.json",
+    "hash": "sha256:92074f05665f86ba6cab73481c12ea732d83386a118631fdf3ff6886c091a0e0",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791703391184.design.json",
+    "hash": "sha256:8f6bac886a652532b4a263c96c527fa078e08d74552059cdcbc5158d7bf5234b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791711186553.design.json",
+    "hash": "sha256:c677571cbfc668ff01d89182948dc4cc0d63cdfac4b1ff534c273405c9446fa6",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791714919362.design.json",
+    "hash": "sha256:1d19098ae75f451eccc49bc6d77b0185a4f0042ee1cbde11f31189a41d2b0790",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791724534757.design.json",
+    "hash": "sha256:fce0bca2358a62a7b116877ac2a2bfb6e63ce6615a812807b794e383c0fb5e69",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791762330804.design.json",
+    "hash": "sha256:28eacdeca8c3323dcaf62961434a481680644c4bfcaa35d92163c34dd92eccb9",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791765442962.design.json",
+    "hash": "sha256:f13bb78112718dd1851a17947e529ec423c4efb31c32668fbe76932e7f2ca083",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791767226025.design.json",
+    "hash": "sha256:56e31bb1387d1c29ee6807b4d4894fd7a5f2c4ef1991a9a82d290d3ff7ab4a07",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791771679574.design.json",
+    "hash": "sha256:1f7d371a16b6526aabbd5be999812b00899d4ace8f543f7735932a64e16a7267",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791786585028.design.json",
+    "hash": "sha256:b12ac7b46607d583a45cd8c01f51e8887381927cbd7580460aae098617efae95",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791787510655.design.json",
+    "hash": "sha256:b9a788c411d79e8731e70ed13fa72d44e5fed737a9549d14a505b812bb963b31",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791790704455.design.json",
+    "hash": "sha256:8cbe3c130f1d6ba06dba77d1fe7905bcfa9df6ca7ab70d5919057d07b0f68440",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791796037687.design.json",
+    "hash": "sha256:0ef639b29e243a5f64a7b9334381e375350b1f89aaa5897a98932d1e497e7d6f",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791797113569.design.json",
+    "hash": "sha256:52e7c7d70c34f22431ebfb1b7d2dd64309c62e7b74603feca4fde1f576d073e8",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791848408621.design.json",
+    "hash": "sha256:a64303475a33488690ae649b1275bf0e0f84186f3dcf87fa24710360706975b2",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791850504657.design.json",
+    "hash": "sha256:5b5f3dfd4ddb96236aa936818d9b0962c39d62325974bb8d55cb569f0de40e44",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791851132831.design.json",
+    "hash": "sha256:0fb4a3e0c80bf099e3093dc41ed3dafb2c7231382aa0af79d6a29bdfe4d22cd4",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791851972201.design.json",
+    "hash": "sha256:8f74847012a6532d8b261f6e7b31d938b805aa292ad830c8cd398e23da51593a",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791854467401.design.json",
+    "hash": "sha256:7dbfba751146a80825628d4acc1dc4e1c014e30317cefaec5643b10d4886fb8c",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791858347613.design.json",
+    "hash": "sha256:09d9a244f9602acabf8b21b194c5977485e67daaeccc1cc6270bb7b8073f77a4",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791858782931.design.json",
+    "hash": "sha256:c89304c04c3d0e00663e8bc327d01cf6e8c89d58baac2d9222b0dde754f61e0c",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791858976102.design.json",
+    "hash": "sha256:105c77cae8eee6e58fc8e7b64199a43158379111b29d61e18eeb9ee3522806db",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791873535213.design.json",
+    "hash": "sha256:2e31001e4928c524dc7c8772ad0ef2077bbe4e6cf15ba89c65111f97709b9645",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791874726881.design.json",
+    "hash": "sha256:1bc2922e14832c765e0b08457637bd1b4ba4e9dc8982ba382ea90431ae72aef3",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791893744172.design.json",
+    "hash": "sha256:ab3c6923f0bdbf1ab9b34c640c2df8a3c023b4024db7d3e12289fd17d1d8c2b7",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791935102992.design.json",
+    "hash": "sha256:dfc2c750f91b105b624352e392ac320d6c8787af3c7a6abaf87c5fe75c1f1759",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791936085622.design.json",
+    "hash": "sha256:f83c873ddfec1dd3e965943c141fcb0d2643c4720aa0954658c75e6c1067e698",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791937578110.design.json",
+    "hash": "sha256:8104d9d72710febe67cd10138b2a2e005a721cab3fef46084c4621b77fb19b48",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791958377689.design.json",
+    "hash": "sha256:2e3dd84a2be046c638575d6bb081b2401a704a0264be034be05071c328a5d11e",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791960680918.design.json",
+    "hash": "sha256:9624d4c00a34768ada806a351f767fdbae23b62c2e44297e64543df443abc8cc",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791977266687.design.json",
+    "hash": "sha256:fdbd6d027b3b277c34ec84b7e188a29902636f0af7983868e34bb8a502e495c9",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791979239913.design.json",
+    "hash": "sha256:33d9bfdbe53ac2ab100c82e1bc337d20c855e790b8e7c6d85d80d563349da313",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791980727186.design.json",
+    "hash": "sha256:d7658561ef3dd46ccafb48e3d3ca102a9a69b1e7830da6d6886e95eda0a410eb",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1791982276898.design.json",
+    "hash": "sha256:7e3ea184f1f625ac4ea4bf3064a9279dea74bd5e4bdfe6f69c5676f5ab933aeb",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792023716010.design.json",
+    "hash": "sha256:28524431211d8c6c4acdfd840292d09eddd97cba658d81eaca6866e46b2e4999",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792026977076.design.json",
+    "hash": "sha256:d746ba049fa17ebcb1eeeb8580867cda667b6647ba5c48c017ba252ff8d33cd3",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792027621720.design.json",
+    "hash": "sha256:37b80d5c1e7c372d200fe7602f5e073f423e22d0268c7f6bd4619ccfcc89a98f",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792046046126.design.json",
+    "hash": "sha256:77a74b8503625d94eaf9e234939486075e22104f8e10d34d2387a91b3e55e455",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792053786180.design.json",
+    "hash": "sha256:975b431bd381faacb42f1164dea1e85e4c2bc69daf934e7019bb6ecab8817287",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792054594335.design.json",
+    "hash": "sha256:7f2e4328c162c18dff3b0913b56853310cdec9f8e53ed034bfaf6732f271ea5c",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792073111757.design.json",
+    "hash": "sha256:5c3ec0c80d5fe01917b9da87e21c77c4dcb36b9cdf7cae90632b3b7cf8fad3cd",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792073783953.design.json",
+    "hash": "sha256:578e9e42da88c5794db5c5fc7168bbec158c1d962b2782b7a72af02c2f7c089e",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792074191088.design.json",
+    "hash": "sha256:1ae369dc39ad6415b40a41590fad4b656094cdb0899ec723e9b8573881199b1d",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792076372040.design.json",
+    "hash": "sha256:e345cad8a74a1b68298a06cb18456c678c3d5d50ed26224945dbc7c228674bcc",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792109229444.design.json",
+    "hash": "sha256:534df78091a206b418e5676cdffda61d23cfd9bf929d2925e88ad18f43f4fb2e",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792109541726.design.json",
+    "hash": "sha256:c7ba941bc3db197e17f185a3aae650df6fad8d57014978df55c5c0a7226ba19f",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792116829017.design.json",
+    "hash": "sha256:ea200ead782c08f8c6cf26a43f4eb7b6f44969200d74292e5fb7a8820142efdf",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792117026095.design.json",
+    "hash": "sha256:9c50a941f07e9c1c69092ba7884b9529959220998e5d05cafb40cb22980913bf",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792149469842.design.json",
+    "hash": "sha256:2028f7882f31c19e363043a4dde7989a6acdb3f320ec6e8c5f17e3e9a9466a10",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792151093271.design.json",
+    "hash": "sha256:539e093ef8e353a9a7639cc676f800777dbdde2e604da6eba37713af95545ddf",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792367770781.design.json",
+    "hash": "sha256:4393043b0d8752efee5b96d2cf2cde1106aadc997c82d0683476daed4c9ed05b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792375805436.design.json",
+    "hash": "sha256:82249e70c3049f123bbf61534aefc457c5ba553db9ca8964d101a7c2dfaeac5d",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792376886297.design.json",
+    "hash": "sha256:76899d432dc1dd5348f0b6d11045d782aa7e6071e09dbfdf743dbe98ce3aab4b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792377885014.design.json",
+    "hash": "sha256:c3a06125f5f76f0c50aec5618cf2295f59856644f14690ddf1457cfdf6c82277",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792380185983.design.json",
+    "hash": "sha256:837667eecea14985005cb8832d642fba1d0ac12237b37df8f3f3d4fd59d19899",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792380442819.design.json",
+    "hash": "sha256:d2f3e9ff9d720c7ee8f1ec8b4d430d3a81562157bba5c222c88f70a17a8d1738",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792381046071.design.json",
+    "hash": "sha256:2332e769f7f46ac13c48dbe0c316f7a31b1a52b7c7b377b80fc5a45d7fae412b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792391546162.design.json",
+    "hash": "sha256:8568255b15b06817d6546eea5ffe7b7d99bf4000ac16aec86fc57ed20d038c1e",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792392042982.design.json",
+    "hash": "sha256:3a0d4646ec60f4391ff44edc619d07ea2f0395b5c4b574c70b4c7d54b2d0c60f",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792399158273.design.json",
+    "hash": "sha256:a14aa2d962b7f0c8c092380672923f7ebe37547472961b053b3f70cd2c0b8759",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792402718799.design.json",
+    "hash": "sha256:679f799720c790f4bf202597449b5410381e067a9d7ec67eadd605d2e6291f77",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792403024323.design.json",
+    "hash": "sha256:3a518908f8db23a2681f017382aedf428d42a153abe9463d3000960dbc9e8894",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792411962763.design.json",
+    "hash": "sha256:f48bae4706d7048cece15a036942ef76e9930bacb83d20c2f28f7e603334e85a",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792454139954.design.json",
+    "hash": "sha256:10dfda1030dc80c7209ad7cd0ef87818b8de5c473df86f7a0616e34f80ca1099",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792455002825.design.json",
+    "hash": "sha256:7779071be8070682fb2155bd85e68d6036a073b66b58cf3fdbddc34b085f6e15",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_1792455472462.design.json",
+    "hash": "sha256:3cc4a945f7a889dbeb299d861f5d4d5778b9b5f56fd808102de80d2e2e37fa2b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_cache.design.json",
+    "hash": "sha256:3863f71f4148fa6a33ad6a2dd147d52451e792b028012cabf869dc2802f5e94b",
+    "kind": "architecture"
+  },
+  {
+    "file": "session_e2e_low_villa_1791774373051.design.json",
+    "hash": "sha256:603ac1099649cf47266bd6fbd90fe43a10b73bc2f0b8abb7c127ff8acd13d893",
+    "kind": "architecture"
+  },
+  {
+    "file": "test_reference_1791805963791.design.json",
+    "error": "1 validation error for DesignDocument\ndecisions.architecture.floor_layouts\n  Input should be a valid array [type=list_type, input_value={'floor_1': {'description...ancillary_functions'}]}}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type"
+  },
+  {
+    "file": "unknown.design.json",
+    "hash": "sha256:cd6fd4f5ae675b63723abeff382cb8cdc42fdeb5377e6e9f8b74a1810d5cb195",
+    "kind": "architecture"
+  }
+]

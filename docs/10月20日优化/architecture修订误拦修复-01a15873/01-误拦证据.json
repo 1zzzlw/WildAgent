@@ -1,0 +1,3015 @@
+{
+  "trace_id": "01a15873-5945-7800-be1c-7f5a5d689cde",
+  "source": "D:/Backup/Downloads/trace-01a15873-5945-7800-be1c-7f5a5d689cde.json",
+  "user_input": {
+    "detail_level": "minimal",
+    "thinking_mode": true,
+    "user_message": "生成一个别墅"
+  },
+  "rounds": [
+    {
+      "round": 2,
+      "document": {
+        "components": [
+          {
+            "height": 1,
+            "id": "railing_west",
+            "level": "first",
+            "material_roles": {
+              "railing": "dark_metal"
+            },
+            "path": [
+              [
+                1.875,
+                4.25
+              ],
+              [
+                1.875,
+                10.75
+              ]
+            ],
+            "recipe": "railing",
+            "rotation": 0
+          },
+          {
+            "height": 1,
+            "id": "railing_north",
+            "level": "first",
+            "material_roles": {
+              "railing": "dark_metal"
+            },
+            "path": [
+              [
+                1.875,
+                10.75
+              ],
+              [
+                10.125,
+                10.75
+              ]
+            ],
+            "recipe": "railing",
+            "rotation": 0
+          }
+        ],
+        "features_to_verify": [
+          "二层走廊净宽≥1.2m满足交通要求",
+          "各卧室门朝向走廊且净宽0.9m",
+          "露台栏杆高度1.0m是否满足防护要求",
+          "L形楼梯方向与上层到达板对应关系需复核"
+        ],
+        "levels": {
+          "first": 3.3,
+          "ground": 0,
+          "second": 6.6
+        },
+        "material_roles": {
+          "dark_metal": "深灰色阳极氧化铝合金",
+          "facade_main": "白色真石漆饰面",
+          "facade_wing": "深灰色金属挂板",
+          "floor_wood": "橡木复合地板",
+          "frame_aluminum": "黑色断桥铝合金型材",
+          "glass_clear": "透明中空安全玻璃",
+          "landing_wood": "橡木饰面平台",
+          "roof_membrane": "灰色TPO防水卷材",
+          "tread_stone": "天然花岗岩踏步",
+          "wall_interior": "白色乳胶漆基层墙体"
+        },
+        "name": "现代双层别墅",
+        "openings": [
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "door_entrance",
+            "level": "ground",
+            "offset": 8.25,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_living_back",
+            "level": "ground",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_dining_back",
+            "level": "ground",
+            "offset": 7,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bath_back",
+            "level": "ground",
+            "offset": 10.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 1.2
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_living_left",
+            "level": "ground",
+            "offset": 5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_dining_right",
+            "level": "ground",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bath_right",
+            "level": "ground",
+            "offset": 4.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 1.2
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "conn_main_wing",
+            "level": "ground",
+            "offset": 1,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.2
+          },
+          {
+            "face": "right",
+            "frame_role": null,
+            "height": 2.4,
+            "host": "wing",
+            "id": "door_garage",
+            "level": "ground",
+            "offset": 2,
+            "panel_role": null,
+            "sill": 0,
+            "style": "slide",
+            "type": "door",
+            "width": 5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 1.8,
+            "host": "wing",
+            "id": "win_kitchen_back",
+            "level": "ground",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0.9,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_master_back",
+            "level": "first",
+            "offset": 1,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_study_back",
+            "level": "first",
+            "offset": 6,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_master_left",
+            "level": "first",
+            "offset": 2,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_mb_left",
+            "level": "first",
+            "offset": 6.5,
+            "panel_role": "glass_clear",
+            "sill": 1.2,
+            "style": "swing",
+            "type": "window",
+            "width": 2.5
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_mbath_right",
+            "level": "first",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed3_right",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed2_back",
+            "level": "first",
+            "offset": 9,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2.8
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed2_left",
+            "level": "first",
+            "offset": 7.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2
+          },
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "door_2f_hall",
+            "level": "first",
+            "offset": 8.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.5
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_a",
+            "id": "door_2f_master",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_b",
+            "id": "door_2f_mbath",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_c",
+            "id": "door_2f_study",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_d",
+            "id": "door_2f_bath2",
+            "level": "first",
+            "offset": 3,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_e",
+            "id": "door_2f_bed2",
+            "level": "first",
+            "offset": 3,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "opening_2f_terrace",
+            "level": "first",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 4
+          },
+          {
+            "frame_role": null,
+            "height": 2.4,
+            "host": "wall_2f_f",
+            "id": "door_1f_foyer_living",
+            "level": "ground",
+            "offset": 2,
+            "panel_role": null,
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 1.5
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_b",
+            "id": "door_1f_bath",
+            "level": "ground",
+            "offset": 0.375,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.8
+          },
+          {
+            "frame_role": null,
+            "height": 2.4,
+            "host": "wall_1f_c",
+            "id": "opening_1f_living_dining",
+            "level": "ground",
+            "offset": 1,
+            "panel_role": null,
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 2
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_d",
+            "id": "door_1f_dining_foyer",
+            "level": "ground",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_f",
+            "id": "door_1f_foyer_bath",
+            "level": "ground",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          }
+        ],
+        "room_zones": [
+          {
+            "id": "zone_foyer",
+            "level": "ground",
+            "name": "入口门厅",
+            "rect": [
+              6.5,
+              10.5,
+              0,
+              5.5
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_living",
+            "level": "ground",
+            "name": "客厅",
+            "rect": [
+              0,
+              6.5,
+              0,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_dining",
+            "level": "ground",
+            "name": "餐厅",
+            "rect": [
+              0,
+              10.5,
+              5.5,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bath_1f",
+            "level": "ground",
+            "name": "客卫",
+            "rect": [
+              10.5,
+              12,
+              5.5,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_kitchen",
+            "level": "ground",
+            "name": "厨房",
+            "rect": [
+              12,
+              19,
+              3,
+              7
+            ],
+            "volume": "wing"
+          },
+          {
+            "id": "zone_garage",
+            "level": "ground",
+            "name": "车库",
+            "rect": [
+              12,
+              19,
+              0,
+              3
+            ],
+            "volume": "wing"
+          },
+          {
+            "id": "zone_master",
+            "level": "first",
+            "name": "主卧室",
+            "rect": [
+              0,
+              6,
+              2,
+              8
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_master_bath",
+            "level": "first",
+            "name": "主卫",
+            "rect": [
+              6,
+              12,
+              2,
+              6
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_study",
+            "level": "first",
+            "name": "书房",
+            "rect": [
+              6,
+              12,
+              6,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bed3",
+            "level": "first",
+            "name": "次卧室",
+            "rect": [
+              0,
+              6,
+              8,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bath2",
+            "level": "first",
+            "name": "次卫",
+            "rect": [
+              0,
+              2,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bed2",
+            "level": "first",
+            "name": "次卧二",
+            "rect": [
+              2,
+              6,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_hall_2f",
+            "level": "first",
+            "name": "二层走廊",
+            "rect": [
+              0,
+              12,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_terr",
+            "level": "first",
+            "name": "二层露台",
+            "rect": [
+              0,
+              4,
+              7,
+              10
+            ],
+            "volume": "wing"
+          }
+        ],
+        "routes": [
+          {
+            "height": 2.2,
+            "id": "route_entrance_living",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                6.5,
+                1.5
+              ],
+              [
+                6.5,
+                2
+              ],
+              [
+                3,
+                2
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                3,
+                7
+              ]
+            ],
+            "width": 1.2
+          },
+          {
+            "height": 2.2,
+            "id": "route_entrance_kitchen",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                9.5,
+                1.5
+              ],
+              [
+                9.5,
+                5
+              ],
+              [
+                10.5,
+                5
+              ],
+              [
+                13.5,
+                5
+              ],
+              [
+                15,
+                4
+              ]
+            ],
+            "width": 1
+          },
+          {
+            "height": 2.2,
+            "id": "route_entrance_dining",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                9,
+                4.5
+              ],
+              [
+                8,
+                5
+              ],
+              [
+                5,
+                8
+              ],
+              [
+                3,
+                8
+              ]
+            ],
+            "width": 1
+          }
+        ],
+        "site": [
+          0,
+          22,
+          0,
+          12
+        ],
+        "slab_thickness": 0.25,
+        "stairs": [
+          {
+            "direction": "+x",
+            "flight_width": 1.2,
+            "from_level": "ground",
+            "id": "stair_main",
+            "landing_depth": 1.5,
+            "material_role": "tread_stone",
+            "max_riser_height": 0.18,
+            "rect": [
+              6.5,
+              10.5,
+              3.5,
+              7.7
+            ],
+            "shape": "L",
+            "steps_each": 9,
+            "to_level": "first",
+            "tread_depth": 0.28,
+            "volume": "main"
+          }
+        ],
+        "use_clearances": {
+          "bedside_minimum": 0.6,
+          "main_routes_width": 0.9,
+          "route_headroom": 2.05,
+          "upper_stair_exit_width": 1.2
+        },
+        "volumes": [
+          {
+            "bottom": "ground",
+            "id": "main",
+            "material_role": "facade_main",
+            "rect": [
+              0,
+              12,
+              0,
+              10
+            ],
+            "top": "second",
+            "wall_thickness": 0.25
+          },
+          {
+            "bottom": "ground",
+            "id": "wing",
+            "material_role": "facade_wing",
+            "rect": [
+              12,
+              19,
+              0,
+              7
+            ],
+            "top": "first",
+            "wall_thickness": 0.25
+          }
+        ],
+        "walls": [
+          {
+            "id": "wall_1f_a",
+            "level": "ground",
+            "start": [
+              6.5,
+              0
+            ],
+            "end": [
+              6.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_b",
+            "level": "ground",
+            "start": [
+              10.5,
+              5.5
+            ],
+            "end": [
+              12,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_c",
+            "level": "ground",
+            "start": [
+              0,
+              5.5
+            ],
+            "end": [
+              6.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_d",
+            "level": "ground",
+            "start": [
+              10.5,
+              0
+            ],
+            "end": [
+              10.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_e",
+            "level": "ground",
+            "start": [
+              6.5,
+              5.5
+            ],
+            "end": [
+              10.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_f",
+            "level": "ground",
+            "start": [
+              6.5,
+              5.5
+            ],
+            "end": [
+              6.5,
+              0
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_bath",
+            "level": "ground",
+            "start": [
+              10.5,
+              5.5
+            ],
+            "end": [
+              10.5,
+              10
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_a",
+            "level": "first",
+            "start": [
+              6,
+              2
+            ],
+            "end": [
+              6,
+              8
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_b",
+            "level": "first",
+            "start": [
+              6,
+              2
+            ],
+            "end": [
+              12,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_c",
+            "level": "first",
+            "start": [
+              6,
+              6
+            ],
+            "end": [
+              12,
+              6
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_d",
+            "level": "first",
+            "start": [
+              0,
+              2
+            ],
+            "end": [
+              6,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_e",
+            "level": "first",
+            "start": [
+              2,
+              0
+            ],
+            "end": [
+              2,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_f",
+            "level": "first",
+            "start": [
+              6,
+              8
+            ],
+            "end": [
+              0,
+              8
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          }
+        ],
+        "roofs": [
+          {
+            "id": "roof_main",
+            "material_role": "roof_membrane",
+            "overhang": [
+              0.4,
+              0.4,
+              0.4,
+              0.4
+            ],
+            "parapet_height": 0.4,
+            "rise": 0,
+            "type": "flat",
+            "volume": "main",
+            "walkable": true
+          },
+          {
+            "id": "roof_wing",
+            "material_role": "roof_membrane",
+            "overhang": [
+              0.3,
+              0.3,
+              0.3,
+              0.3
+            ],
+            "parapet_height": 0.4,
+            "rise": 0,
+            "type": "flat",
+            "volume": "wing",
+            "walkable": true
+          }
+        ]
+      },
+      "inspection": {
+        "valid": false,
+        "issues": [
+          {
+            "code": "outside_volume",
+            "paths": [
+              "/room_zones/13/rect"
+            ],
+            "entities": [
+              "zone_terr",
+              "wing"
+            ],
+            "message": "占地超出引用体量",
+            "actual": [
+              0,
+              4,
+              7,
+              10
+            ],
+            "expected": [
+              12,
+              19,
+              0,
+              7
+            ]
+          },
+          {
+            "code": "invalid_design",
+            "paths": [
+              "/openings/8"
+            ],
+            "entities": [
+              "door_garage"
+            ],
+            "message": "门窗需要明确框和扇的材质角色"
+          },
+          {
+            "code": "opening_outside_host",
+            "paths": [
+              "/openings/13/height"
+            ],
+            "entities": [
+              "win_mb_left",
+              "main"
+            ],
+            "message": "开口超出宿主墙高",
+            "actual": [
+              4.5,
+              6.7
+            ],
+            "expected": [
+              0,
+              6.35
+            ]
+          },
+          {
+            "code": "opening_outside_host",
+            "paths": [
+              "/openings/14/height"
+            ],
+            "entities": [
+              "win_mbath_right",
+              "main"
+            ],
+            "message": "开口超出宿主墙高",
+            "actual": [
+              4.8,
+              7
+            ],
+            "expected": [
+              0,
+              6.35
+            ]
+          },
+          {
+            "code": "opening_outside_host",
+            "paths": [
+              "/openings/23/offset"
+            ],
+            "entities": [
+              "door_2f_bed2",
+              "wall_2f_e"
+            ],
+            "message": "开口超出宿主长度；核对宿主与位置",
+            "actual": {
+              "offset": 3,
+              "width": 0.9,
+              "end": 3.9
+            },
+            "expected": {
+              "host_length": 2,
+              "max_offset": 1.1
+            }
+          },
+          {
+            "code": "opening_outside_host",
+            "paths": [
+              "/openings/25/height"
+            ],
+            "entities": [
+              "door_1f_foyer_living",
+              "wall_2f_f"
+            ],
+            "message": "开口超出宿主墙高",
+            "actual": [
+              0,
+              2.4
+            ],
+            "expected": [
+              3.3,
+              6.35
+            ]
+          },
+          {
+            "code": "opening_overlap",
+            "paths": [
+              "/openings/5",
+              "/openings/7"
+            ],
+            "entities": [
+              "win_dining_right",
+              "conn_main_wing"
+            ],
+            "message": "同一宿主上的开口重叠，需要协调两处开口",
+            "actual": {
+              "host": "main:right",
+              "intervals": [
+                [
+                  0.5,
+                  3.5
+                ],
+                [
+                  1,
+                  2.2
+                ]
+              ],
+              "overlap": 1.2000000000000002
+            }
+          },
+          {
+            "code": "opening_overlap",
+            "paths": [
+              "/openings/13",
+              "/openings/17"
+            ],
+            "entities": [
+              "win_mb_left",
+              "win_bed2_left"
+            ],
+            "message": "同一宿主上的开口重叠，需要协调两处开口",
+            "actual": {
+              "host": "main:left",
+              "intervals": [
+                [
+                  6.5,
+                  9
+                ],
+                [
+                  7.5,
+                  9.5
+                ]
+              ],
+              "overlap": 1.5
+            }
+          },
+          {
+            "code": "stair_riser",
+            "paths": [
+              "/stairs/0/steps_each"
+            ],
+            "entities": [
+              "stair_main"
+            ],
+            "message": "明确级数导致步高超限，不能放宽上限绕过",
+            "actual": 0.18333333333333332,
+            "expected": {
+              "max_riser_height": 0.18
+            }
+          },
+          {
+            "code": "stair_footprint",
+            "paths": [
+              "/stairs/0/rect"
+            ],
+            "entities": [
+              "stair_main"
+            ],
+            "message": "踏步、梯宽和平台无法放入预留区",
+            "actual": {
+              "along": 4,
+              "across": 4.2
+            },
+            "expected": {
+              "along_min": 4.0200000000000005,
+              "across_min": 4.0200000000000005
+            }
+          },
+          {
+            "code": "wall_in_stair_space",
+            "paths": [
+              "/stairs/0/rect"
+            ],
+            "entities": [
+              "stair_main",
+              "wall_1f_e"
+            ],
+            "message": "墙段穿入楼梯预留区；协调内墙、门洞和楼梯位置",
+            "actual": {
+              "stair_rect": [
+                6.5,
+                10.5,
+                3.5,
+                7.7
+              ],
+              "walls": [
+                "wall_1f_e"
+              ]
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/0/points"
+            ],
+            "entities": [
+              "route_entrance_living",
+              "wall_1f_a",
+              "wall_1f_f",
+              "wall_1f_c"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_a": {
+                "needed_interval": [
+                  1.4,
+                  2.6
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  6.5,
+                  0
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/0",
+                "passable_opening_ids": []
+              },
+              "wall_1f_f": {
+                "needed_interval": [
+                  2.9,
+                  4.1
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  6.5,
+                  5.5
+                ],
+                "wall_end": [
+                  6.5,
+                  0
+                ],
+                "source_path": "/walls/5",
+                "passable_opening_ids": []
+              },
+              "wall_1f_c": {
+                "needed_interval": [
+                  2.4,
+                  3.6
+                ],
+                "passable_intervals": [
+                  [
+                    1,
+                    3
+                  ]
+                ],
+                "wall_start": [
+                  0,
+                  5.5
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/2",
+                "passable_opening_ids": [
+                  "opening_1f_living_dining"
+                ]
+              }
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/1/points"
+            ],
+            "entities": [
+              "route_entrance_kitchen",
+              "wall_1f_d",
+              "main:right",
+              "wing:left"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_d": {
+                "needed_interval": [
+                  4.5,
+                  5.5
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  10.5,
+                  0
+                ],
+                "wall_end": [
+                  10.5,
+                  5.5
+                ],
+                "source_path": "/walls/3",
+                "passable_opening_ids": []
+              },
+              "main:right": {
+                "needed_interval": [
+                  4.5,
+                  5.5
+                ],
+                "passable_intervals": [
+                  [
+                    1,
+                    2.2
+                  ]
+                ],
+                "wall_start": [
+                  12,
+                  0
+                ],
+                "wall_end": [
+                  12,
+                  10
+                ],
+                "source_path": "/volumes/0",
+                "passable_opening_ids": [
+                  "conn_main_wing"
+                ]
+              },
+              "wing:left": {
+                "needed_interval": [
+                  1.5,
+                  2.5
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  12,
+                  7
+                ],
+                "wall_end": [
+                  12,
+                  0
+                ],
+                "source_path": "/volumes/1",
+                "passable_opening_ids": []
+              }
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/2/points"
+            ],
+            "entities": [
+              "route_entrance_dining",
+              "wall_1f_e"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_e": {
+                "needed_interval": [
+                  0.29289321881345254,
+                  1.7071067811865475
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  6.5,
+                  5.5
+                ],
+                "wall_end": [
+                  10.5,
+                  5.5
+                ],
+                "source_path": "/walls/4",
+                "passable_opening_ids": []
+              }
+            }
+          }
+        ],
+        "coverage": {
+          "checked": [
+            "字段与类型",
+            "全局 ID、楼层与材质引用",
+            "体量、房间、挑空边界与屋面选择",
+            "真实门窗宿主、边界与同墙开口重叠",
+            "梯级、梯段/平台尺寸、自动梯井与墙段穿入预留区",
+            "楼板并集扣洞；直梯/U 梯上层到达板支承",
+            "路线过墙净宽高、沿墙重叠与路线中心线穿过洞口",
+            "原实体/楼层 ID 保留；参数格式完整时复核原选净距/步高约束"
+          ],
+          "not_checked": [
+            "房间功能与风格美感、所有房间完整可达性",
+            "未明确关联的房间/门窗归属、入口台阶/门底关系",
+            "构造配方、PBR、结构或消防实现",
+            "L 形楼梯实际转向和到达板；本版只复核其参数与预留区",
+            "楼梯全程净高、防护构造、路线宽度与非墙障碍物的完整碰撞"
+          ]
+        },
+        "derived": {
+          "stairs": [
+            {
+              "id": "stair_main",
+              "rise": 3.3,
+              "flights": 2,
+              "steps_each": 9,
+              "riser_height": 0.18333333333333332,
+              "flight_run": 2.5200000000000005,
+              "landing_elevation": 1.65,
+              "to_level": "first",
+              "source_path": "stairs/0",
+              "geometry": {
+                "void_rect": [
+                  6.5,
+                  10.5,
+                  3.5,
+                  7.7
+                ]
+              }
+            }
+          ],
+          "voids": [
+            {
+              "id": "stair:stair_main:first",
+              "rect": [
+                6.5,
+                10.5,
+                3.5,
+                7.7
+              ],
+              "level": "first",
+              "volume": "main",
+              "source_path": "stairs/0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "round": 3,
+      "document": {
+        "components": [
+          {
+            "height": 1,
+            "id": "railing_west",
+            "level": "first",
+            "material_roles": {
+              "railing": "dark_metal"
+            },
+            "path": [
+              [
+                0.25,
+                7.25
+              ],
+              [
+                0.25,
+                9.75
+              ]
+            ],
+            "recipe": "railing",
+            "rotation": 0
+          },
+          {
+            "height": 1,
+            "id": "railing_north",
+            "level": "first",
+            "material_roles": {
+              "railing": "dark_metal"
+            },
+            "path": [
+              [
+                0.25,
+                9.75
+              ],
+              [
+                6.25,
+                9.75
+              ]
+            ],
+            "recipe": "railing",
+            "rotation": 0
+          }
+        ],
+        "features_to_verify": [
+          "L形楼梯实际转向与上层到达板对应关系需复核",
+          "露台栏杆高度1.0m是否满足防护要求",
+          "各卧室门朝向走廊且净宽0.9m"
+        ],
+        "levels": {
+          "first": 3.3,
+          "ground": 0,
+          "second": 6.6
+        },
+        "material_roles": {
+          "dark_metal": "深灰色阳极氧化铝合金",
+          "facade_main": "白色真石漆饰面",
+          "facade_wing": "深灰色金属挂板",
+          "frame_aluminum": "黑色断桥铝合金型材",
+          "glass_clear": "透明中空安全玻璃",
+          "panel_garage": "深灰色保温卷帘门板",
+          "roof_membrane": "灰色TPO防水卷材",
+          "tread_stone": "天然花岗岩踏步",
+          "wall_interior": "白色乳胶漆基层墙体"
+        },
+        "name": "现代双层别墅",
+        "openings": [
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "door_entrance",
+            "level": "ground",
+            "offset": 8.25,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_living_back",
+            "level": "ground",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_dining_back",
+            "level": "ground",
+            "offset": 7,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 1.2,
+            "host": "main",
+            "id": "win_bath_back",
+            "level": "ground",
+            "offset": 10.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 1.2
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_living_left",
+            "level": "ground",
+            "offset": 5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_dining_right",
+            "level": "ground",
+            "offset": 4.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 1.2,
+            "host": "main",
+            "id": "win_bath_right",
+            "level": "ground",
+            "offset": 8.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 1.2
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "conn_main_wing",
+            "level": "ground",
+            "offset": 1,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.2
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "wing",
+            "id": "door_garage",
+            "level": "ground",
+            "offset": 2,
+            "panel_role": "panel_garage",
+            "sill": 0,
+            "style": "slide",
+            "type": "door",
+            "width": 5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 1.8,
+            "host": "wing",
+            "id": "win_kitchen_back",
+            "level": "ground",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0.9,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_master_back",
+            "level": "first",
+            "offset": 1,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3.5
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_study_back",
+            "level": "first",
+            "offset": 6,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 3
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_master_left",
+            "level": "first",
+            "offset": 2,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 1.2,
+            "host": "main",
+            "id": "win_mb_left",
+            "level": "first",
+            "offset": 6.5,
+            "panel_role": "glass_clear",
+            "sill": 1.2,
+            "style": "swing",
+            "type": "window",
+            "width": 2.5
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 1.2,
+            "host": "main",
+            "id": "win_mbath_right",
+            "level": "first",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 1.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2
+          },
+          {
+            "face": "right",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed3_right",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 4
+          },
+          {
+            "face": "back",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed2_back",
+            "level": "first",
+            "offset": 9,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2.8
+          },
+          {
+            "face": "left",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "win_bed2_left",
+            "level": "first",
+            "offset": 7.5,
+            "panel_role": "glass_clear",
+            "sill": 0.5,
+            "style": "swing",
+            "type": "window",
+            "width": 2
+          },
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.4,
+            "host": "main",
+            "id": "door_2f_hall",
+            "level": "first",
+            "offset": 8.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 1.5
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_a",
+            "id": "door_2f_master",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_b",
+            "id": "door_2f_mbath",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_c",
+            "id": "door_2f_study",
+            "level": "first",
+            "offset": 3.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_d",
+            "id": "door_2f_bath2",
+            "level": "first",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_e",
+            "id": "door_2f_bed2",
+            "level": "first",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_2f_f",
+            "id": "door_2f_bed3",
+            "level": "first",
+            "offset": 3,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "face": "front",
+            "frame_role": "frame_aluminum",
+            "height": 2.2,
+            "host": "main",
+            "id": "opening_2f_terrace",
+            "level": "first",
+            "offset": 1.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 4
+          },
+          {
+            "frame_role": null,
+            "height": 2.4,
+            "host": "wall_1f_a",
+            "id": "opening_1f_foyer_living",
+            "level": "ground",
+            "offset": 1.5,
+            "panel_role": null,
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 2
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_b",
+            "id": "door_1f_bath",
+            "level": "ground",
+            "offset": 0.375,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.8
+          },
+          {
+            "frame_role": null,
+            "height": 2.4,
+            "host": "wall_1f_c",
+            "id": "opening_1f_living_dining",
+            "level": "ground",
+            "offset": 1,
+            "panel_role": null,
+            "sill": 0,
+            "style": "open",
+            "type": "opening",
+            "width": 2
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_e",
+            "id": "door_1f_dining_foyer",
+            "level": "ground",
+            "offset": 0.5,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          },
+          {
+            "frame_role": "frame_aluminum",
+            "height": 2.1,
+            "host": "wall_1f_a",
+            "id": "door_1f_foyer_bath",
+            "level": "ground",
+            "offset": 4,
+            "panel_role": "glass_clear",
+            "sill": 0,
+            "style": "swing",
+            "type": "door",
+            "width": 0.9
+          }
+        ],
+        "room_zones": [
+          {
+            "id": "zone_foyer",
+            "level": "ground",
+            "name": "入口门厅",
+            "rect": [
+              6.5,
+              10.5,
+              0,
+              5.5
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_living",
+            "level": "ground",
+            "name": "客厅",
+            "rect": [
+              0,
+              6.5,
+              0,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_dining",
+            "level": "ground",
+            "name": "餐厅",
+            "rect": [
+              0,
+              10.5,
+              5.5,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bath_1f",
+            "level": "ground",
+            "name": "客卫",
+            "rect": [
+              10.5,
+              12,
+              5.5,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_kitchen",
+            "level": "ground",
+            "name": "厨房",
+            "rect": [
+              12,
+              19,
+              3,
+              7
+            ],
+            "volume": "wing"
+          },
+          {
+            "id": "zone_garage",
+            "level": "ground",
+            "name": "车库",
+            "rect": [
+              12,
+              19,
+              0,
+              3
+            ],
+            "volume": "wing"
+          },
+          {
+            "id": "zone_master",
+            "level": "first",
+            "name": "主卧室",
+            "rect": [
+              0,
+              6,
+              2,
+              8
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_master_bath",
+            "level": "first",
+            "name": "主卫",
+            "rect": [
+              6,
+              12,
+              2,
+              6
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_study",
+            "level": "first",
+            "name": "书房",
+            "rect": [
+              6,
+              12,
+              6,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bed3",
+            "level": "first",
+            "name": "次卧室",
+            "rect": [
+              0,
+              6,
+              8,
+              10
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bath2",
+            "level": "first",
+            "name": "次卫",
+            "rect": [
+              0,
+              2,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_bed2",
+            "level": "first",
+            "name": "次卧二",
+            "rect": [
+              2,
+              6,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_hall_2f",
+            "level": "first",
+            "name": "二层走廊",
+            "rect": [
+              6.5,
+              12,
+              0,
+              2
+            ],
+            "volume": "main"
+          },
+          {
+            "id": "zone_terr",
+            "level": "first",
+            "name": "一层屋顶露台",
+            "rect": [
+              12,
+              16,
+              0,
+              7
+            ],
+            "volume": "wing"
+          }
+        ],
+        "routes": [
+          {
+            "height": 2.2,
+            "id": "route_entrance_living",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                7.5,
+                1.5
+              ],
+              [
+                5.5,
+                1.5
+              ],
+              [
+                3,
+                1.5
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                3,
+                7
+              ]
+            ],
+            "width": 1.2
+          },
+          {
+            "height": 2.2,
+            "id": "route_entrance_kitchen",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                11.25,
+                1.5
+              ],
+              [
+                11.25,
+                1.6
+              ],
+              [
+                12.6,
+                1.6
+              ],
+              [
+                15,
+                3.5
+              ]
+            ],
+            "width": 1
+          },
+          {
+            "height": 2.2,
+            "id": "route_entrance_dining",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                9,
+                4.5
+              ],
+              [
+                7,
+                5.5
+              ],
+              [
+                5.5,
+                5.5
+              ],
+              [
+                3,
+                8
+              ]
+            ],
+            "width": 1
+          },
+          {
+            "height": 2.2,
+            "id": "route_1f_bath",
+            "level": "ground",
+            "points": [
+              [
+                9,
+                1.5
+              ],
+              [
+                10.9,
+                1.5
+              ],
+              [
+                11.25,
+                3.5
+              ],
+              [
+                11.25,
+                5.5
+              ],
+              [
+                11.25,
+                7
+              ]
+            ],
+            "width": 0.9
+          }
+        ],
+        "site": [
+          0,
+          22,
+          0,
+          12
+        ],
+        "slab_thickness": 0.25,
+        "stairs": [
+          {
+            "direction": "+x",
+            "flight_width": 1.2,
+            "from_level": "ground",
+            "id": "stair_main",
+            "landing_depth": 1.2,
+            "material_role": "tread_stone",
+            "max_riser_height": 0.18,
+            "rect": [
+              6.5,
+              10.7,
+              2.5,
+              6.7
+            ],
+            "shape": "L",
+            "steps_each": 10,
+            "to_level": "first",
+            "tread_depth": 0.28,
+            "volume": "main"
+          }
+        ],
+        "use_clearances": {
+          "bedside_minimum": 0.6,
+          "main_routes_width": 0.9,
+          "route_headroom": 2.05,
+          "upper_stair_exit_width": 1.2
+        },
+        "volumes": [
+          {
+            "bottom": "ground",
+            "id": "main",
+            "material_role": "facade_main",
+            "rect": [
+              0,
+              12,
+              0,
+              10
+            ],
+            "top": "second",
+            "wall_thickness": 0.25
+          },
+          {
+            "bottom": "ground",
+            "id": "wing",
+            "material_role": "facade_wing",
+            "rect": [
+              12,
+              19,
+              0,
+              7
+            ],
+            "top": "first",
+            "wall_thickness": 0.25
+          }
+        ],
+        "walls": [
+          {
+            "id": "wall_1f_a",
+            "level": "ground",
+            "start": [
+              6.5,
+              0
+            ],
+            "end": [
+              6.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_b",
+            "level": "ground",
+            "start": [
+              10.5,
+              5.5
+            ],
+            "end": [
+              12,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_c",
+            "level": "ground",
+            "start": [
+              0,
+              5.5
+            ],
+            "end": [
+              6.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_d",
+            "level": "ground",
+            "start": [
+              10.5,
+              0
+            ],
+            "end": [
+              10.5,
+              2.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_e",
+            "level": "ground",
+            "start": [
+              6.5,
+              5.5
+            ],
+            "end": [
+              10.5,
+              5.5
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_1f_bath",
+            "level": "ground",
+            "start": [
+              10.5,
+              5.5
+            ],
+            "end": [
+              10.5,
+              10
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_a",
+            "level": "first",
+            "start": [
+              6,
+              2
+            ],
+            "end": [
+              6,
+              8
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_b",
+            "level": "first",
+            "start": [
+              6,
+              2
+            ],
+            "end": [
+              12,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_c",
+            "level": "first",
+            "start": [
+              6,
+              6
+            ],
+            "end": [
+              12,
+              6
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_d",
+            "level": "first",
+            "start": [
+              0,
+              2
+            ],
+            "end": [
+              6,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_e",
+            "level": "first",
+            "start": [
+              2,
+              0
+            ],
+            "end": [
+              2,
+              2
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          },
+          {
+            "id": "wall_2f_f",
+            "level": "first",
+            "start": [
+              6,
+              8
+            ],
+            "end": [
+              0,
+              8
+            ],
+            "material_role": "wall_interior",
+            "thickness": 0.15
+          }
+        ],
+        "roofs": [
+          {
+            "id": "roof_main",
+            "material_role": "roof_membrane",
+            "overhang": [
+              0.4,
+              0.4,
+              0.4,
+              0.4
+            ],
+            "parapet_height": 0.4,
+            "rise": 0,
+            "type": "flat",
+            "volume": "main",
+            "walkable": true
+          },
+          {
+            "id": "roof_wing",
+            "material_role": "roof_membrane",
+            "overhang": [
+              0.3,
+              0.3,
+              0.3,
+              0.3
+            ],
+            "parapet_height": 0.4,
+            "rise": 0,
+            "type": "flat",
+            "volume": "wing",
+            "walkable": true
+          }
+        ]
+      },
+      "inspection": {
+        "valid": false,
+        "issues": [
+          {
+            "code": "opening_overlap",
+            "paths": [
+              "/openings/13",
+              "/openings/17"
+            ],
+            "entities": [
+              "win_mb_left",
+              "win_bed2_left"
+            ],
+            "message": "同一宿主上的开口重叠，需要协调两处开口",
+            "actual": {
+              "host": "main:left",
+              "intervals": [
+                [
+                  6.5,
+                  9
+                ],
+                [
+                  7.5,
+                  9.5
+                ]
+              ],
+              "overlap": 1.5
+            }
+          },
+          {
+            "code": "wall_in_stair_space",
+            "paths": [
+              "/stairs/0/rect"
+            ],
+            "entities": [
+              "stair_main",
+              "wall_1f_b",
+              "wall_1f_e",
+              "wall_1f_bath"
+            ],
+            "message": "墙段穿入楼梯预留区；协调内墙、门洞和楼梯位置",
+            "actual": {
+              "stair_rect": [
+                6.5,
+                10.7,
+                2.5,
+                6.7
+              ],
+              "walls": [
+                "wall_1f_b",
+                "wall_1f_e",
+                "wall_1f_bath"
+              ]
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/0/points"
+            ],
+            "entities": [
+              "route_entrance_living",
+              "wall_1f_a",
+              "wall_1f_c"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_a": {
+                "needed_interval": [
+                  0.9,
+                  2.1
+                ],
+                "passable_intervals": [
+                  [
+                    1.5,
+                    3.5
+                  ]
+                ],
+                "wall_start": [
+                  6.5,
+                  0
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/0",
+                "passable_opening_ids": [
+                  "opening_1f_foyer_living"
+                ]
+              },
+              "wall_1f_c": {
+                "needed_interval": [
+                  2.4,
+                  3.6
+                ],
+                "passable_intervals": [
+                  [
+                    1,
+                    3
+                  ]
+                ],
+                "wall_start": [
+                  0,
+                  5.5
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/2",
+                "passable_opening_ids": [
+                  "opening_1f_living_dining"
+                ]
+              }
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/1/points"
+            ],
+            "entities": [
+              "route_entrance_kitchen",
+              "wall_1f_d",
+              "wing:left"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_d": {
+                "needed_interval": [
+                  1,
+                  2
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  10.5,
+                  0
+                ],
+                "wall_end": [
+                  10.5,
+                  2.5
+                ],
+                "source_path": "/walls/3",
+                "passable_opening_ids": []
+              },
+              "wing:left": {
+                "needed_interval": [
+                  4.9,
+                  5.9
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  12,
+                  7
+                ],
+                "wall_end": [
+                  12,
+                  0
+                ],
+                "source_path": "/volumes/1",
+                "passable_opening_ids": []
+              }
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/2/points"
+            ],
+            "entities": [
+              "route_entrance_dining",
+              "wall_1f_e",
+              "wall_1f_a",
+              "wall_1f_c"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_e": {
+                "needed_interval": [
+                  0,
+                  0.5
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  6.5,
+                  5.5
+                ],
+                "wall_end": [
+                  10.5,
+                  5.5
+                ],
+                "source_path": "/walls/4",
+                "passable_opening_ids": []
+              },
+              "wall_1f_a": {
+                "needed_interval": [
+                  5,
+                  5.5
+                ],
+                "passable_intervals": [
+                  [
+                    1.5,
+                    3.5
+                  ]
+                ],
+                "wall_start": [
+                  6.5,
+                  0
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/0",
+                "passable_opening_ids": [
+                  "opening_1f_foyer_living"
+                ]
+              },
+              "wall_1f_c": {
+                "needed_interval": [
+                  4.792893218813452,
+                  6.207106781186548
+                ],
+                "passable_intervals": [
+                  [
+                    1,
+                    3
+                  ]
+                ],
+                "wall_start": [
+                  0,
+                  5.5
+                ],
+                "wall_end": [
+                  6.5,
+                  5.5
+                ],
+                "source_path": "/walls/2",
+                "passable_opening_ids": [
+                  "opening_1f_living_dining"
+                ]
+              }
+            }
+          },
+          {
+            "code": "route_wall_conflict",
+            "paths": [
+              "/routes/3/points"
+            ],
+            "entities": [
+              "route_1f_bath",
+              "wall_1f_d",
+              "wall_1f_b"
+            ],
+            "message": "通路穿墙或沿墙线行走，现有门洞未覆盖所需净宽高",
+            "actual": {
+              "wall_1f_d": {
+                "needed_interval": [
+                  1.05,
+                  1.95
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  10.5,
+                  0
+                ],
+                "wall_end": [
+                  10.5,
+                  2.5
+                ],
+                "source_path": "/walls/3",
+                "passable_opening_ids": []
+              },
+              "wall_1f_b": {
+                "needed_interval": [
+                  0.3,
+                  1.2
+                ],
+                "passable_intervals": [],
+                "wall_start": [
+                  10.5,
+                  5.5
+                ],
+                "wall_end": [
+                  12,
+                  5.5
+                ],
+                "source_path": "/walls/1",
+                "passable_opening_ids": []
+              }
+            }
+          },
+          {
+            "code": "repair_changed_constraint",
+            "paths": [
+              "/walls"
+            ],
+            "entities": [],
+            "message": "修订不能删除或改名原实体以绕过错误",
+            "actual": [
+              "wall_1f_a",
+              "wall_1f_b",
+              "wall_1f_bath",
+              "wall_1f_c",
+              "wall_1f_d",
+              "wall_1f_e",
+              "wall_2f_a",
+              "wall_2f_b",
+              "wall_2f_c",
+              "wall_2f_d",
+              "wall_2f_e",
+              "wall_2f_f"
+            ],
+            "expected": [
+              "wall_1f_a",
+              "wall_1f_b",
+              "wall_1f_bath",
+              "wall_1f_c",
+              "wall_1f_d",
+              "wall_1f_e",
+              "wall_1f_f",
+              "wall_2f_a",
+              "wall_2f_b",
+              "wall_2f_c",
+              "wall_2f_d",
+              "wall_2f_e",
+              "wall_2f_f"
+            ]
+          },
+          {
+            "code": "repair_changed_constraint",
+            "paths": [
+              "/openings"
+            ],
+            "entities": [],
+            "message": "修订不能删除或改名原实体以绕过错误",
+            "actual": [
+              "conn_main_wing",
+              "door_1f_bath",
+              "door_1f_dining_foyer",
+              "door_1f_foyer_bath",
+              "door_2f_bath2",
+              "door_2f_bed2",
+              "door_2f_bed3",
+              "door_2f_hall",
+              "door_2f_master",
+              "door_2f_mbath",
+              "door_2f_study",
+              "door_entrance",
+              "door_garage",
+              "opening_1f_foyer_living",
+              "opening_1f_living_dining",
+              "opening_2f_terrace",
+              "win_bath_back",
+              "win_bath_right",
+              "win_bed2_back",
+              "win_bed2_left",
+              "win_bed3_right",
+              "win_dining_back",
+              "win_dining_right",
+              "win_kitchen_back",
+              "win_living_back",
+              "win_living_left",
+              "win_master_back",
+              "win_master_left",
+              "win_mb_left",
+              "win_mbath_right",
+              "win_study_back"
+            ],
+            "expected": [
+              "conn_main_wing",
+              "door_1f_bath",
+              "door_1f_dining_foyer",
+              "door_1f_foyer_bath",
+              "door_1f_foyer_living",
+              "door_2f_bath2",
+              "door_2f_bed2",
+              "door_2f_hall",
+              "door_2f_master",
+              "door_2f_mbath",
+              "door_2f_study",
+              "door_entrance",
+              "door_garage",
+              "opening_1f_living_dining",
+              "opening_2f_terrace",
+              "win_bath_back",
+              "win_bath_right",
+              "win_bed2_back",
+              "win_bed2_left",
+              "win_bed3_right",
+              "win_dining_back",
+              "win_dining_right",
+              "win_kitchen_back",
+              "win_living_back",
+              "win_living_left",
+              "win_master_back",
+              "win_master_left",
+              "win_mb_left",
+              "win_mbath_right",
+              "win_study_back"
+            ]
+          },
+          {
+            "code": "repair_changed_constraint",
+            "paths": [
+              "/stairs"
+            ],
+            "entities": [],
+            "message": "保留原先明确指定的每跑级数",
+            "actual": 10,
+            "expected": {
+              "stair_main": 9
+            }
+          }
+        ],
+        "coverage": {
+          "checked": [
+            "字段与类型",
+            "全局 ID、楼层与材质引用",
+            "体量、房间、挑空边界与屋面选择",
+            "真实门窗宿主、边界与同墙开口重叠",
+            "梯级、梯段/平台尺寸、自动梯井与墙段穿入预留区",
+            "楼板并集扣洞；直梯/U 梯上层到达板支承",
+            "路线过墙净宽高、沿墙重叠与路线中心线穿过洞口",
+            "原实体/楼层 ID 保留；参数格式完整时复核原选净距/步高约束"
+          ],
+          "not_checked": [
+            "房间功能与风格美感、所有房间完整可达性",
+            "未明确关联的房间/门窗归属、入口台阶/门底关系",
+            "构造配方、PBR、结构或消防实现",
+            "L 形楼梯实际转向和到达板；本版只复核其参数与预留区",
+            "楼梯全程净高、防护构造、路线宽度与非墙障碍物的完整碰撞"
+          ]
+        },
+        "derived": {
+          "stairs": [
+            {
+              "id": "stair_main",
+              "rise": 3.3,
+              "flights": 2,
+              "steps_each": 10,
+              "riser_height": 0.16499999999999998,
+              "flight_run": 2.8000000000000003,
+              "landing_elevation": 1.65,
+              "to_level": "first",
+              "source_path": "stairs/0",
+              "geometry": {
+                "void_rect": [
+                  6.5,
+                  10.7,
+                  2.5,
+                  6.7
+                ]
+              }
+            }
+          ],
+          "voids": [
+            {
+              "id": "stair:stair_main:first",
+              "rect": [
+                6.5,
+                10.7,
+                2.5,
+                6.7
+              ],
+              "level": "first",
+              "volume": "main",
+              "source_path": "stairs/0"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "confirmed_false_blocks": [
+    "没有用户指定级数，模型首稿的 steps_each=9 被程序锁定，修改为 10 级也拒绝",
+    "删除与同层保留墙完全重合的反向重复墙，被统一实体 ID 保护拒绝"
+  ],
+  "separate_issue": "开口替换时改了 ID；可以保留原 ID 并修改宿主和尺寸，无需取消全部实体保护。"
+}

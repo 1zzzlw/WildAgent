@@ -1,0 +1,120 @@
+{
+  "scope": "仅清理 design 包和新 architecture 导入所需的两个连带入口；不迁移后续节点",
+  "before_files": 22,
+  "after_files": 3,
+  "before_lines": 6283,
+  "after_lines": 380,
+  "deleted": [
+    {
+      "file": "base.py",
+      "reason": "旧契约基类；新字段统一使用 facts.Fact"
+    },
+    {
+      "file": "compilation.py",
+      "reason": "旧图纸到原生标记及 Blueprint 的转换"
+    },
+    {
+      "file": "completeness.py",
+      "reason": "旧约束、采用项与缺口校验"
+    },
+    {
+      "file": "contracts.py",
+      "reason": "旧需求、审核、修订和解析外壳，不属于新设计事实"
+    },
+    {
+      "file": "coordinates.py",
+      "reason": "旧 massing/volumes/form 的参数计算与检查，不用于新字段"
+    },
+    {
+      "file": "facades.py",
+      "reason": "旧共享立面与体量覆写协议"
+    },
+    {
+      "file": "fulfillment.py",
+      "reason": "旧 DesignDocument 与 Blueprint 履约检查"
+    },
+    {
+      "file": "legacy_architecture.py",
+      "reason": "旧建筑图纸字段，已由 DesignFacts 取代"
+    },
+    {
+      "file": "markers.py",
+      "reason": "旧构件标记、资源和装配记录"
+    },
+    {
+      "file": "materials.py",
+      "reason": "旧 DesignDocument 材质方案类型；新图纸只保留 material_roles 设计意图"
+    },
+    {
+      "file": "normalization.py",
+      "reason": "旧图纸归一化和变更审计"
+    },
+    {
+      "file": "objects.py",
+      "reason": "旧物件分支类型，未纳入本次新建筑设计协议"
+    },
+    {
+      "file": "openings.py",
+      "reason": "旧立面槽位 token 文法，新图纸已显式表达门窗"
+    },
+    {
+      "file": "preview.py",
+      "reason": "旧图纸与构件标记的 SVG 预览"
+    },
+    {
+      "file": "relations.py",
+      "reason": "旧实现片段与构件标记的几何关系检查"
+    },
+    {
+      "file": "repository.py",
+      "reason": "旧文档版本、补丁、文件存储管理"
+    },
+    {
+      "file": "resolver.py",
+      "reason": "旧 DesignDocument 构造、投影和解析"
+    },
+    {
+      "file": "review_outcome.py",
+      "reason": "旧图纸审核状态及审批输出"
+    },
+    {
+      "file": "spatial_review.py",
+      "reason": "旧标记和 Blueprint 的通路检查，未移植到新设计阶段"
+    }
+  ],
+  "remaining": [
+    {
+      "file": "facts.py",
+      "lines": 178,
+      "sha256": "8b454c15a151700dbae2e7f8575f3d9db2aaea945a63bff12bdca47029de2a3f"
+    },
+    {
+      "file": "resolve_facts.py",
+      "lines": 196,
+      "sha256": "e5381c5220e591b6c3232fad2d91758a0afe5d673171b73542ebc6a262a01f44"
+    },
+    {
+      "file": "__init__.py",
+      "lines": 6,
+      "sha256": "78c94e3ab19d35c69fcbf6c234ac7d1c9127764824e565b52e81c09a2b26f68b"
+    }
+  ],
+  "related_changes": [
+    {
+      "path": "wild-server/app/agent/generation/architecture/__init__.py",
+      "sha256": "824956238565f5ee617d4f7de6cd7a8fefea06dde7d8a47337815dcf7d76c4ce"
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/profile.py",
+      "sha256": "0cf7d22188bf70dea37a5464e43f39a92028040caa50f96883703e88ca22e5b3"
+    }
+  ],
+  "backup": "清理前-design.zip",
+  "tests": "未执行测试、导入运行、构建、服务启动或模型调用；仅阅读源码、列出文件和记录指纹",
+  "cache_cleanup": {
+    "path": "wild-server/app/design/__pycache__",
+    "status": "retained",
+    "reason": "递归删除缓存目录的 PowerShell 命令被执行策略拒绝；工具仅返回 blocked by policy，未提供更具体原因。没有改用其他方式重试删除。"
+  },
+  "legacy_consumers": "仍可能导入被删模块，整条旧链路未适配；本次不声称项目启动或完整流程可用"
+}

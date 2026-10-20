@@ -1,0 +1,617 @@
+{
+  "source": "01-设计图纸.json",
+  "source_sha256": "c7312c2053515c0da3ed47c068eff20f93515b84018f4aed360034ad445d31b1",
+  "target": "两层现代别墅.wild",
+  "target_sha256": "361243f156aeef3ac3f464003095d33605e4cc3d12a639d7492a8f260116655c",
+  "elements": 46,
+  "components": 24,
+  "materials": 12,
+  "element_types": {
+    "floor": 9,
+    "wall": 22,
+    "roof": 1,
+    "primitive": 11,
+    "stair": 3
+  },
+  "component_types": {
+    "door": 12,
+    "window": 9,
+    "railing": 3
+  },
+  "stairs": [
+    {
+      "id": "s1",
+      "rise": 3.6,
+      "steps_each": 10,
+      "riser_height": 0.18,
+      "flight_run": 2.8,
+      "landing_elevation": 1.8,
+      "upper_exit": [
+        11.0,
+        3.6,
+        0
+      ],
+      "slab_void": [
+        9,
+        11.5,
+        0,
+        4.3
+      ],
+      "unused_depth": 0.3
+    }
+  ],
+  "voids": [
+    {
+      "id": "s1_level1_void",
+      "level": "level1",
+      "rect": [
+        9,
+        11.5,
+        0,
+        4.3
+      ],
+      "volume": "main"
+    }
+  ],
+  "slabs": {
+    "ground": [
+      [
+        0,
+        12,
+        0,
+        10
+      ]
+    ],
+    "level1": [
+      [
+        0,
+        9,
+        0,
+        4.3
+      ],
+      [
+        11.5,
+        12,
+        0,
+        4.3
+      ],
+      [
+        0,
+        12,
+        4.3,
+        10
+      ]
+    ],
+    "roof": []
+  },
+  "openings": [
+    {
+      "id": "o_main_entry",
+      "host": "main_front_ground",
+      "interval": [
+        6.5,
+        8.3
+      ],
+      "bottom": 0,
+      "top": 2.4,
+      "world_center": [
+        7.4,
+        1.2,
+        0.0
+      ]
+    },
+    {
+      "id": "o_south_living",
+      "host": "main_front_ground",
+      "interval": [
+        0.8,
+        5.0
+      ],
+      "bottom": 0.7,
+      "top": 2.8,
+      "world_center": [
+        2.9,
+        1.75,
+        0.0
+      ]
+    },
+    {
+      "id": "o_north_kitchen",
+      "host": "main_back_ground",
+      "interval": [
+        0.8,
+        5.0
+      ],
+      "bottom": 0.9,
+      "top": 2.7,
+      "world_center": [
+        9.1,
+        1.8,
+        10.0
+      ]
+    },
+    {
+      "id": "o_north_hall",
+      "host": "main_back_ground",
+      "interval": [
+        6.8,
+        8.8
+      ],
+      "bottom": 0.9,
+      "top": 2.7,
+      "world_center": [
+        4.2,
+        1.8,
+        10.0
+      ]
+    },
+    {
+      "id": "o_east_dining",
+      "host": "main_right_ground",
+      "interval": [
+        3.3,
+        5.7
+      ],
+      "bottom": 0.7,
+      "top": 2.8,
+      "world_center": [
+        12.0,
+        1.75,
+        4.5
+      ]
+    },
+    {
+      "id": "o_west_living",
+      "host": "main_left_ground",
+      "interval": [
+        0.8,
+        5.0
+      ],
+      "bottom": 0.7,
+      "top": 2.8,
+      "world_center": [
+        0.0,
+        1.75,
+        7.1
+      ]
+    },
+    {
+      "id": "o_west_study",
+      "host": "main_left_level1",
+      "interval": [
+        0.8,
+        4.0
+      ],
+      "bottom": 4.3,
+      "top": 6.4,
+      "world_center": [
+        0.0,
+        5.35,
+        7.6
+      ]
+    },
+    {
+      "id": "o_south_bedroom2",
+      "host": "main_front_level1",
+      "interval": [
+        0.8,
+        4.6
+      ],
+      "bottom": 4.3,
+      "top": 6.4,
+      "world_center": [
+        2.7,
+        5.35,
+        0.0
+      ]
+    },
+    {
+      "id": "o_south_master",
+      "host": "main_front_level1",
+      "interval": [
+        5,
+        7.8
+      ],
+      "bottom": 4.3,
+      "top": 6.4,
+      "world_center": [
+        6.4,
+        5.35,
+        0.0
+      ]
+    },
+    {
+      "id": "o_north_master",
+      "host": "main_back_level1",
+      "interval": [
+        4.3,
+        8.1
+      ],
+      "bottom": 4.5,
+      "top": 6.3,
+      "world_center": [
+        5.8,
+        5.4,
+        10.0
+      ]
+    },
+    {
+      "id": "o_door_hall_living",
+      "host": "w1",
+      "interval": [
+        0.5,
+        1.7
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        6.0,
+        1.05,
+        1.1
+      ]
+    },
+    {
+      "id": "o_door_hall_dining",
+      "host": "w2",
+      "interval": [
+        1.5,
+        3.0
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        8.25,
+        1.05,
+        3.0
+      ]
+    },
+    {
+      "id": "o_door_living_kitchen",
+      "host": "w3",
+      "interval": [
+        1.5,
+        3.0
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        2.25,
+        1.05,
+        6.0
+      ]
+    },
+    {
+      "id": "o_door_dining_hall1",
+      "host": "w6",
+      "interval": [
+        0.5,
+        1.7
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        8.0,
+        1.05,
+        7.1
+      ]
+    },
+    {
+      "id": "o_door_wc",
+      "host": "w5",
+      "interval": [
+        0.5,
+        1.4
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        6.95,
+        1.05,
+        8.0
+      ]
+    },
+    {
+      "id": "o_door_util",
+      "host": "w5",
+      "interval": [
+        1,
+        1.9
+      ],
+      "bottom": 0,
+      "top": 2.1,
+      "world_center": [
+        7.45,
+        1.05,
+        8.0
+      ]
+    },
+    {
+      "id": "o_door_corridor_study",
+      "host": "w7",
+      "interval": [
+        1.2,
+        2.4
+      ],
+      "bottom": 3.6,
+      "top": 5.7,
+      "world_center": [
+        1.8,
+        4.65,
+        5.5
+      ]
+    },
+    {
+      "id": "o_door_corridor_master",
+      "host": "w7",
+      "interval": [
+        5.5,
+        6.7
+      ],
+      "bottom": 3.6,
+      "top": 5.7,
+      "world_center": [
+        6.1,
+        4.65,
+        5.5
+      ]
+    },
+    {
+      "id": "o_door_corridor_bedroom2",
+      "host": "w11",
+      "interval": [
+        1.2,
+        2.4
+      ],
+      "bottom": 3.6,
+      "top": 5.7,
+      "world_center": [
+        1.8,
+        4.65,
+        3.0
+      ]
+    },
+    {
+      "id": "o_door_bath2",
+      "host": "w11",
+      "interval": [
+        6.2,
+        7.1
+      ],
+      "bottom": 3.6,
+      "top": 5.7,
+      "world_center": [
+        6.65,
+        4.65,
+        3.0
+      ]
+    },
+    {
+      "id": "o_door_m_bath",
+      "host": "w10",
+      "interval": [
+        0.6,
+        1.6
+      ],
+      "bottom": 3.6,
+      "top": 5.7,
+      "world_center": [
+        10.1,
+        4.65,
+        8.5
+      ]
+    }
+  ],
+  "material_implementation": {
+    "exterior_wall": {
+      "baseColor": [
+        0.91,
+        0.9,
+        0.87
+      ],
+      "roughness": 0.88,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "interior_wall": {
+      "baseColor": [
+        0.94,
+        0.93,
+        0.9
+      ],
+      "roughness": 0.9,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "roof": {
+      "baseColor": [
+        0.22,
+        0.23,
+        0.24
+      ],
+      "roughness": 0.94,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "timber": {
+      "baseColor": [
+        0.64,
+        0.46,
+        0.27
+      ],
+      "roughness": 0.72,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "door_frame": {
+      "baseColor": [
+        0.16,
+        0.17,
+        0.18
+      ],
+      "roughness": 0.35,
+      "metallic": 0.72,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "window_frame": {
+      "baseColor": [
+        0.17,
+        0.18,
+        0.19
+      ],
+      "roughness": 0.35,
+      "metallic": 0.72,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "interior_door": {
+      "baseColor": [
+        0.88,
+        0.87,
+        0.83
+      ],
+      "roughness": 0.65,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "front_door": {
+      "baseColor": [
+        0.24,
+        0.13,
+        0.075
+      ],
+      "roughness": 0.66,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "steel": {
+      "baseColor": [
+        0.15,
+        0.17,
+        0.18
+      ],
+      "roughness": 0.4,
+      "metallic": 0.76,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete": {
+      "baseColor": [
+        0.64,
+        0.63,
+        0.6
+      ],
+      "roughness": 0.91,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.88,
+        0.94,
+        0.96
+      ],
+      "roughness": 0.07,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012,
+      "opacity": 1,
+      "side": "double"
+    },
+    "glass_canopy": {
+      "baseColor": [
+        0.88,
+        0.94,
+        0.96
+      ],
+      "roughness": 0.07,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.92,
+      "ior": 1.5,
+      "thickness": 0.012,
+      "opacity": 1,
+      "side": "double"
+    }
+  },
+  "assumptions": [
+    "场地顶面取首层标高，扣除建筑占地；未给定的楼板与场地材料采用图中 concrete",
+    "外墙中心线取体量 rect 边界；每层单独生成门窗宿主",
+    "门窗框宽 0.05m，门扇厚 0.035m，玻璃厚 0.012m；宽于 1.3m 的门使用双扇",
+    "U 形梯段靠预留区左右边界布置，中间平台从计算的梯段末端向后延伸；剩余 0.3m 不冒充上层出口",
+    "楼梯扶手高 0.95m、柱距 0.9m；对应材料说明中的扶手，不证明防护合规",
+    "雨棚按 100x60 型材、12mm玻璃及贴墙安装板表达；女儿墙厚度取 0.12m",
+    "未增加家具、功能房间、照明或景观；routes/room_zones 保留在源图和记录，不当成实体自动建墙"
+  ],
+  "source_relationship_issues": [
+    {
+      "code": "overlapping_openings",
+      "ids": [
+        "o_door_wc",
+        "o_door_util"
+      ],
+      "host": "w5",
+      "overlap": 0.4,
+      "note": "两扇门仍按源图重叠保留，参数校验通过不代表布局正确"
+    },
+    {
+      "code": "stair_room_mismatch",
+      "ids": [
+        "r_stair_area",
+        "s1"
+      ],
+      "note": "楼梯间 [9.5,12,0,3] 未包含楼梯预留区 [9,11.5,0,4.3]"
+    },
+    {
+      "code": "stair_wall_conflict",
+      "ids": [
+        "s1_first",
+        "w14",
+        "w2"
+      ],
+      "note": "w14 沿第一跑中线，w2 穿过中间平台；未移动内墙或楼梯"
+    },
+    {
+      "code": "upper_exit_not_resolved",
+      "ids": [
+        "s1",
+        "main_front_level1"
+      ],
+      "note": "U 梯上层出口回到 Z=0 外墙边，且整组预留区已扣板；原图未明确可用到达板"
+    },
+    {
+      "code": "entrance_level_conflict",
+      "ids": [
+        "c_steps",
+        "o_main_entry"
+      ],
+      "note": "台阶顶为 +0.15，门底为 0；保留原锚点，未调整地面或门底"
+    },
+    {
+      "code": "room_opening_intent_unverified",
+      "ids": [
+        "o_north_kitchen",
+        "o_door_dining_hall1"
+      ],
+      "note": "北窗按 back 正向落在 X=7..11.2，并不位于厨房 X=0..6；修改后的 dining_hall1 门位于 w6 卫生间/过渡间界面"
+    },
+    {
+      "code": "route_connectivity_unverified",
+      "note": "路线作为审阅数据保留，宽度一致不等于穿墙处均有门或二层出口可达"
+    }
+  ],
+  "validation_scope": "脚本内检查 ID、材质引用、开口宿主边界与梯级算式；未运行 Agent 测试、真实模型、渲染或完整空间验收"
+}

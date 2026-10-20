@@ -1,0 +1,121 @@
+{
+  "file": "E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\汀院别墅-Codex.wild",
+  "sha256": "4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720",
+  "elements": 180,
+  "components": 45,
+  "materials": 23,
+  "checks": [
+    {
+      "name": "JSON Schema",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "全局 ID 唯一",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "显式材料引用",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "box 正尺寸",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "门窗宿主和边界",
+      "passed": true,
+      "errors": [],
+      "count": 26
+    },
+    {
+      "name": "同墙开口不重叠",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "梯段升高/行程/端点/平台",
+      "passed": true,
+      "errors": [],
+      "step_height": 0.171,
+      "step_depth": 0.28,
+      "landing_top": 2.07
+    },
+    {
+      "name": "挑空与梯井没有二层楼板覆盖",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "挑空上方有真实屋面",
+      "passed": true,
+      "errors": []
+    },
+    {
+      "name": "露台门底与屋面板顶齐平",
+      "passed": true,
+      "errors": [],
+      "door_bottom": 3.78,
+      "terrace_top": 3.7800000000000002
+    },
+    {
+      "name": "家具名义占地四角有楼面支承",
+      "passed": true,
+      "errors": [],
+      "scope": "不包含原生家具突出名义尺寸的细部；不代表任意网格碰撞通过"
+    },
+    {
+      "name": "声明路线的净宽/净高/支承抽样",
+      "passed": true,
+      "errors": [],
+      "routes": [
+        {
+          "id": "courtyard_approach",
+          "samples": 530,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        },
+        {
+          "id": "entry_to_living",
+          "samples": 265,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        },
+        {
+          "id": "entry_to_dining",
+          "samples": 100,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        },
+        {
+          "id": "dining_to_library",
+          "samples": 105,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        },
+        {
+          "id": "entry_to_stair",
+          "samples": 110,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        },
+        {
+          "id": "stair_to_terrace",
+          "samples": 355,
+          "blocked_by": [],
+          "unsupported_samples": 0
+        }
+      ],
+      "scope": "六条指定折线路线、直墙和名义家具/box；不含转角扫掠、任意构件、门开启扫掠及完整导航网格"
+    }
+  ],
+  "passed": true,
+  "limits": [
+    "不是完整碰撞/结构/消防验收",
+    "路线抽样不是全建筑可达性证明",
+    "栏杆完整性和家具实际细部另看剖切图"
+  ]
+}

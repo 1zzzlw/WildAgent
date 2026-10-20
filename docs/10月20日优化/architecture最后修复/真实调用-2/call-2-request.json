@@ -1,0 +1,1090 @@
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是建筑设计师，设计用户要求的建筑，不编写 WILD 或程序。\n用户明确要求优先。类型：villa；风格：[]。\n本次粒度：低：明确建筑形态、各体量边界与楼层、主要功能区、入口和必要层间交通，安排基本围护、门窗、屋面、材质与照明。楼梯给出连接、方向和可用占地；采用简洁构造，未要求时省略装饰、家具和精细内装。低粒度不省略已选空间与构件的位置、用途和连通关系。\n\n设计和交接顺序：\n1. 确定使用需求、体量、各楼面标高、入口、公共/私密空间及主要交通关系。造型按功能与风格选择，不预设方盒或固定庭院模板。低粒度可合并功能区，不必展开所有小房间、家具和装饰。\n2. 多层方案先调用 calculate_stair：给起止楼面高差 rise 和选定梯形/尺度，取得程序计算的 width/depth、级数与相对出口。先预留这些空间及出口楼面，再布置周边房间和墙。工具是计算器，不选择设计位置。\n3. 调用 inspect_design 提交完整图纸。stairs.origin=[西南角X,西南角Z]，占地由程序展开；不能另填 rect、rise 或平台标高。用户未要求级数时省略 steps_each。尺寸/位置仍超出体量或碰墙时调整设计，不能降低净距或放宽步高要求。\n4. 有错误时只调用 revise_design(changes=[...])。op=set 改具体字段，append 向集合添加实体，remove 删除具体实体；path 按实体 ID 定位，例如 /openings/entry_door/offset，不能人工数实体数组序号。报告的 edit_paths 可直接使用，focus 给出相关墙、路线及可通行门洞的当前值。删除实体要在 reason 说明设计原因，不得删掉用户要求的功能。程序保存其他内容并检查整图，无需重抄整稿；不要清空或替换整个实体数组。\n本节点总共最多三次模型调用，楼梯计算也计入；计算后及时提交图纸，有错集中修改所有相关字段。\n\n图纸语义：\n- 米；X 向东、Y 向上、Z 向北。所有 rect/site 使用具名边界 {\"west\":西界,\"east\":东界,\"south\":南界,\"north\":北界}，不能写数组或起点/宽深。Point=[X,Z]。\n- levels 是楼面顶/顶部板面的世界标高；slab_thickness 是板厚。volumes.bottom/top 引用 levels，墙顶由程序减板厚。room_zones 是用途分区，不自动生成隔墙。\n- walls.start/end 是独立墙段，top 省略时止于相邻上层板底；外围护由体量推导。先决定哪些区域连通，再协调隔墙、开口和通路；不要重复安排同一面内墙。\n- openings.host 引用 volume 或 wall；volume 必须写 face，wall 不写 face。front=-Z 从西南向东，back=+Z 从东北向西，left=-X 从西北向南，right=+X 从东南向北；内墙沿 start→end。offset 到洞口近边，sill 相对该层楼面。\n- door/window 选择真实同层宿主并引用框/扇材质；纯通行洞口用 type=opening。高度未选时门/通行洞口默认 2.1、窗默认 1.5，style 按类型默认；这些是可覆盖的设计默认值，不是规范。明确尺寸不会被程序裁小。\n- 每个体量恰有一个 roofs 条目；屋顶 id 可省略，由程序生成。flat/none 的 rise=0，坡屋面 rise>0；只有 flat 可做 walkable 露台。名称可省略，程序提供通用名称。\n- 家具、防护、灯具及场地构件写 components，明确实际位置/尺寸与材料；rect/path 二选一，rotation 单位度，anchor+elevation_offset 对齐楼面。recipe 是设计意图，不保证已实现。\n- material_roles 是角色到材料描述，所有实体引用已定义角色；不在本节点填写 PBR。\n- routes 是本层实际平面通路，需通过足够宽高的门洞，避开墙和程序生成的梯井。楼梯上层路线从 derived.stairs 的实际出口开始，不在梯井里走平面路线。\n- voids 只填写非楼梯挑空，梯井与楼板由程序计算。features_to_verify/scope_limits 是待核和边界，不代替构件，也不证明检查通过。\n检查报告中的 derived 为计算结果、focus 为当前相关实体，均不写进图纸。保留用户需求与未受影响设计；工具 valid=true 只证明已覆盖的关系，不证明美感、全部可达性或构造实现。L 梯转向/到达板的完整几何仍需复核。\n"
+    },
+    {
+      "role": "user",
+      "content": "生成一个别墅\n当前工作状态（null 表示尚未提交）：\n{\"current_design\": null, \"last_check\": null, \"stair_calculations\": [{\"valid\": true, \"issues\": [], \"parameters\": {\"shape\": \"U\", \"direction\": \"+z\", \"flight_width\": 1.1, \"landing_depth\": 1.1, \"tread_depth\": 0.28, \"max_riser_height\": 0.17, \"well_gap\": 0.2, \"steps_each\": null, \"rise\": 3.2}, \"size\": {\"rise\": 3.2, \"flights\": 2, \"steps_each\": 10, \"riser_height\": 0.16, \"flight_run\": 2.8000000000000003, \"width\": 2.4000000000000004, \"depth\": 3.9000000000000004, \"along\": 3.9000000000000004, \"across\": 2.4000000000000004}, \"relative_geometry\": {\"flights\": [{\"start\": [0.55, 0.0], \"end\": [0.55, 2.8000000000000003], \"relative_rise\": [0, 1.6]}, {\"start\": [1.8500000000000003, 2.8000000000000003], \"end\": [1.8500000000000003, 0.0], \"relative_rise\": [1.6, 3.2]}], \"landing_rect\": [0.0, 2.4000000000000004, 2.8000000000000003, 3.9000000000000004], \"void_rect\": [0, 2.4000000000000004, 0, 3.9000000000000004], \"arrival_rect\": [1.2500000000000004, 2.45, -1.2, 0.0]}, \"scope\": \"仅楼梯尺度；不代表整图通过。origin 是占地西南角，出口还需要邻接楼面。\"}]}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "calculate_stair",
+        "description": "布局前计算楼梯级数、占地和相对出口。spec.rise 为起止楼面高差。",
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "spec": {
+              "additionalProperties": false,
+              "properties": {
+                "shape": {
+                  "default": "U",
+                  "enum": [
+                    "straight",
+                    "U",
+                    "L"
+                  ],
+                  "type": "string"
+                },
+                "direction": {
+                  "default": "+z",
+                  "enum": [
+                    "+x",
+                    "-x",
+                    "+z",
+                    "-z"
+                  ],
+                  "type": "string"
+                },
+                "flight_width": {
+                  "default": 1.0,
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "landing_depth": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "number"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "tread_depth": {
+                  "default": 0.28,
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "max_riser_height": {
+                  "default": 0.18,
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "well_gap": {
+                  "default": 0,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                "steps_each": {
+                  "anyOf": [
+                    {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "rise": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              },
+              "required": [
+                "rise"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "spec"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "inspect_design",
+        "description": "提交完整 DesignFacts；程序生成编号/默认值并展开楼梯，检查通过即交付。",
+        "parameters": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "design": {
+              "additionalProperties": false,
+              "description": "图纸字段总表；数值是设计选择，重复引用通过楼层和实体 ID 表达。",
+              "properties": {
+                "name": {
+                  "default": "建筑方案",
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "units": {
+                  "const": "m",
+                  "default": "m",
+                  "type": "string"
+                },
+                "levels": {
+                  "patternProperties": {
+                    "^[A-Za-z][A-Za-z0-9_-]*$": {
+                      "type": "number"
+                    }
+                  },
+                  "propertyNames": {
+                    "minLength": 1
+                  },
+                  "type": "object"
+                },
+                "slab_thickness": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                "site": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "description": "具名世界边界，避免与起点/宽深混用。",
+                      "properties": {
+                        "west": {
+                          "title": "West",
+                          "type": "number"
+                        },
+                        "east": {
+                          "title": "East",
+                          "type": "number"
+                        },
+                        "south": {
+                          "title": "South",
+                          "type": "number"
+                        },
+                        "north": {
+                          "title": "North",
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "west",
+                        "east",
+                        "south",
+                        "north"
+                      ],
+                      "title": "Rect",
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "default": null
+                },
+                "volumes": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "rect": {
+                        "additionalProperties": false,
+                        "description": "具名世界边界，避免与起点/宽深混用。",
+                        "properties": {
+                          "west": {
+                            "type": "number"
+                          },
+                          "east": {
+                            "type": "number"
+                          },
+                          "south": {
+                            "type": "number"
+                          },
+                          "north": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "west",
+                          "east",
+                          "south",
+                          "north"
+                        ],
+                        "type": "object"
+                      },
+                      "bottom": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "top": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "wall_thickness": {
+                        "default": 0.24,
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "material_role": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "rect",
+                      "bottom",
+                      "top",
+                      "material_role"
+                    ],
+                    "type": "object"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "room_zones": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "name": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "rect": {
+                        "additionalProperties": false,
+                        "description": "具名世界边界，避免与起点/宽深混用。",
+                        "properties": {
+                          "west": {
+                            "type": "number"
+                          },
+                          "east": {
+                            "type": "number"
+                          },
+                          "south": {
+                            "type": "number"
+                          },
+                          "north": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "west",
+                          "east",
+                          "south",
+                          "north"
+                        ],
+                        "type": "object"
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "volume": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "rect",
+                      "level",
+                      "volume"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "voids": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "rect": {
+                        "additionalProperties": false,
+                        "description": "具名世界边界，避免与起点/宽深混用。",
+                        "properties": {
+                          "west": {
+                            "type": "number"
+                          },
+                          "east": {
+                            "type": "number"
+                          },
+                          "south": {
+                            "type": "number"
+                          },
+                          "north": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "west",
+                          "east",
+                          "south",
+                          "north"
+                        ],
+                        "type": "object"
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "volume": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "rect",
+                      "level",
+                      "volume"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "walls": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "start": {
+                        "maxItems": 2,
+                        "minItems": 2,
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "type": "array"
+                      },
+                      "end": {
+                        "maxItems": 2,
+                        "minItems": 2,
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "type": "array"
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "top": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "thickness": {
+                        "default": 0.18,
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "material_role": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "start",
+                      "end",
+                      "level",
+                      "material_role"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "openings": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "door",
+                          "window",
+                          "opening"
+                        ],
+                        "type": "string"
+                      },
+                      "host": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "face": {
+                        "anyOf": [
+                          {
+                            "enum": [
+                              "front",
+                              "back",
+                              "left",
+                              "right"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "offset": {
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "sill": {
+                        "default": 0,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "width": {
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "height": {
+                        "anyOf": [
+                          {
+                            "exclusiveMinimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "style": {
+                        "anyOf": [
+                          {
+                            "enum": [
+                              "fixed",
+                              "swing",
+                              "slide",
+                              "open"
+                            ],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "frame_role": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "panel_role": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "divisions": {
+                        "default": [
+                          0,
+                          0
+                        ],
+                        "maxItems": 2,
+                        "minItems": 2,
+                        "prefixItems": [
+                          {
+                            "minimum": 0,
+                            "type": "integer"
+                          },
+                          {
+                            "minimum": 0,
+                            "type": "integer"
+                          }
+                        ],
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "type",
+                      "host",
+                      "level",
+                      "offset",
+                      "width"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "stairs": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "shape": {
+                        "default": "U",
+                        "enum": [
+                          "straight",
+                          "U",
+                          "L"
+                        ],
+                        "type": "string"
+                      },
+                      "direction": {
+                        "default": "+z",
+                        "enum": [
+                          "+x",
+                          "-x",
+                          "+z",
+                          "-z"
+                        ],
+                        "type": "string"
+                      },
+                      "flight_width": {
+                        "default": 1.0,
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "landing_depth": {
+                        "anyOf": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "tread_depth": {
+                        "default": 0.28,
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "max_riser_height": {
+                        "default": 0.18,
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "well_gap": {
+                        "default": 0,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "steps_each": {
+                        "anyOf": [
+                          {
+                            "minimum": 1,
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "volume": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "origin": {
+                        "maxItems": 2,
+                        "minItems": 2,
+                        "prefixItems": [
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "type": "array"
+                      },
+                      "from_level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "to_level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "material_role": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "volume",
+                      "origin",
+                      "from_level",
+                      "to_level",
+                      "material_role"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "roofs": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "volume": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "type": {
+                        "enum": [
+                          "flat",
+                          "gable",
+                          "hip",
+                          "shed",
+                          "none"
+                        ],
+                        "type": "string"
+                      },
+                      "overhang": {
+                        "default": [
+                          0,
+                          0,
+                          0,
+                          0
+                        ],
+                        "maxItems": 4,
+                        "minItems": 4,
+                        "prefixItems": [
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          },
+                          {
+                            "minimum": 0,
+                            "type": "number"
+                          }
+                        ],
+                        "type": "array"
+                      },
+                      "rise": {
+                        "default": 0,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "ridge_axis": {
+                        "default": "x",
+                        "enum": [
+                          "x",
+                          "z"
+                        ],
+                        "type": "string"
+                      },
+                      "walkable": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "parapet_height": {
+                        "default": 0,
+                        "minimum": 0,
+                        "type": "number"
+                      },
+                      "material_role": {
+                        "anyOf": [
+                          {
+                            "minLength": 1,
+                            "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "volume",
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "components": {
+                  "items": {
+                    "additionalProperties": false,
+                    "description": "按配方实现的局部构件；位置、尺寸、材料及配方参数全部留在图纸中。",
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "recipe": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "rect": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "description": "具名世界边界，避免与起点/宽深混用。",
+                            "properties": {
+                              "west": {
+                                "title": "West",
+                                "type": "number"
+                              },
+                              "east": {
+                                "title": "East",
+                                "type": "number"
+                              },
+                              "south": {
+                                "title": "South",
+                                "type": "number"
+                              },
+                              "north": {
+                                "title": "North",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "west",
+                              "east",
+                              "south",
+                              "north"
+                            ],
+                            "title": "Rect",
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      },
+                      "path": {
+                        "items": {
+                          "maxItems": 2,
+                          "minItems": 2,
+                          "prefixItems": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ],
+                          "type": "array"
+                        },
+                        "type": "array"
+                      },
+                      "height": {
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "anchor": {
+                        "default": "bottom",
+                        "enum": [
+                          "bottom",
+                          "top"
+                        ],
+                        "type": "string"
+                      },
+                      "elevation_offset": {
+                        "default": 0,
+                        "type": "number"
+                      },
+                      "rotation": {
+                        "default": 0,
+                        "type": "number"
+                      },
+                      "material_roles": {
+                        "additionalProperties": {
+                          "minLength": 1,
+                          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      "parameters": {
+                        "additionalProperties": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            }
+                          ]
+                        },
+                        "type": "object"
+                      },
+                      "repeat": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "count": {
+                                "minimum": 1,
+                                "title": "Count",
+                                "type": "integer"
+                              },
+                              "step": {
+                                "maxItems": 2,
+                                "minItems": 2,
+                                "prefixItems": [
+                                  {
+                                    "type": "number"
+                                  },
+                                  {
+                                    "type": "number"
+                                  }
+                                ],
+                                "title": "Step",
+                                "type": "array"
+                              }
+                            },
+                            "required": [
+                              "count",
+                              "step"
+                            ],
+                            "title": "Repeat",
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "default": null
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "recipe",
+                      "level",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "routes": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "level": {
+                        "minLength": 1,
+                        "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+                        "type": "string"
+                      },
+                      "points": {
+                        "items": {
+                          "maxItems": 2,
+                          "minItems": 2,
+                          "prefixItems": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ],
+                          "type": "array"
+                        },
+                        "minItems": 2,
+                        "type": "array"
+                      },
+                      "width": {
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "height": {
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "level",
+                      "points",
+                      "width",
+                      "height"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "material_roles": {
+                  "patternProperties": {
+                    "^[A-Za-z][A-Za-z0-9_-]*$": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "propertyNames": {
+                    "minLength": 1
+                  },
+                  "type": "object"
+                },
+                "use_clearances": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "main_routes_width": {
+                      "default": 0.9,
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    },
+                    "route_headroom": {
+                      "default": 2.05,
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    },
+                    "upper_stair_exit_width": {
+                      "default": 1.2,
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    },
+                    "bedside_minimum": {
+                      "default": 0.6,
+                      "minimum": 0,
+                      "type": "number"
+                    }
+                  },
+                  "type": "object"
+                },
+                "features_to_verify": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "scope_limits": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              },
+              "required": [
+                "levels",
+                "slab_thickness",
+                "volumes"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "design"
+          ]
+        }
+      }
+    }
+  ],
+  "started_at": "2026-10-20T17:25:06.371181+08:00"
+}

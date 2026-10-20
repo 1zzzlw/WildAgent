@@ -1,0 +1,34 @@
+[
+  {
+    "path": "wild-server/app/design/compilation.py",
+    "sha256": "9d81de3ed38a9b41dee414b93e6006c2094aa393017b1ec4b49a66cec71b8dbf"
+  },
+  {
+    "path": "wild-server/app/design/spatial_review.py",
+    "sha256": "b61666503827a6fa8d6dc6793dfb0c98b947f23521635bbb646ad85aa8cf47f4"
+  },
+  {
+    "path": "wild-server/app/design/relations.py",
+    "sha256": "4d93137388ea6ad1d12ce44af05b1e77f1acfb619f937716bd83abca4ec958fe"
+  },
+  {
+    "path": "wild-server/app/agent/plan/implementation.py",
+    "sha256": "d1be5bc729c92001e7dcb9bd39ff21de16149f4c3b7af46e587f5d0064bcca36"
+  },
+  {
+    "path": "wild-server/app/agent/prompts/planning.py",
+    "sha256": "18476f6d33a9697ccd2db8bd56faf5342f8c33e478020a761d7340c0dc22d9a4"
+  },
+  {
+    "path": "wild-server/app/agent/generation/material/plan.py",
+    "sha256": "7f132b34e5c91710a33892e1b36fe1c9d7a1e68ffa3e72f554f0bca7403ee332"
+  },
+  {
+    "path": "README.md",
+    "sha256": "10c7541cbecb3e8f58e72f3b9886f9ca8a3494a5992f0e7455fbdda584d01de7"
+  },
+  {
+    "path": "wild-server/app/agent/validation/candidate.py",
+    "sha256": "49d9c8a4b06e0e7cf46491bda6b924b21b03968b3e24394b50447fb741173d0a"
+  }
+]

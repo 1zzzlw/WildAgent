@@ -95,45 +95,63 @@ uv run python -m langsmith_tools.evaluate_rag --dataset wildagent-rag --top-k 6 
 
 本入口评测检索来源，不生成答案，也不把词面匹配冒充语义正确性。未来要评测 RAG 回答，可以在同一脚本中更换 target 并增加语义评判器。
 
-## 4. Studio：直接运行官方开发服务器
+## 4. Studio：architecture 调试图实验记录（已回退）
 
-入口为 [studio_graph.py](studio_graph.py)，复用项目 `build_generation_graph`，不复制节点。配置在 [langgraph.json](langgraph.json)。当前安装的 Python CLI 在 `dev` 模式下按命令执行目录解析依赖、图文件和环境文件，所以必须从 `wild-server` 目录执行以下命令；配置中的 `.` 和 `.env` 均指向该目录。
+> 2026-10-20：下述专用调试图已回退。当前 [studio_graph.py](studio_graph.py) 恢复导出 `build_generation_graph(enable_callback=True)`，使用原完整项目图，不再在 architecture 后设置本轮静态断点。下文保留作历史记录，见[代码回退记录](../../docs/10月20日优化/10-代码回退记录.md)。
+
+当前入口 [studio_graph.py](studio_graph.py) 是专门的设计调试图，直接复用现有 classifier 和 architecture 节点：
+
+```text
+START → classifier → architecture → END
+                         ↑
+                  执行完成后的静态断点
+```
+
+非建筑生成请求会在 classifier 后结束。这个入口只加载前两个业务节点，避免因后续旧节点仍引用已删除 design 模块而在启动时失败；业务完整图 app/agent/graph.py 本轮没有修改。
+
+断点配置在图编译处：
+
+```python
+graph = builder.compile(interrupt_after=["architecture"])
+```
+
+这是节点执行完成后的断点，图纸和派生数据已经写回 State。检查点由 Agent Server 管理，不手工创建正式任务 SQLite checkpointer。调试图在 architecture 后收尾，继续执行也不会进入材质、计划或编译节点。
+
+从 wild-server 目录启动：
 
 ```powershell
 uv run langgraph dev --config langsmith_tools/langgraph.json
 ```
 
-`--config` 指定非默认位置的配置文件，不会把工作目录切换到该文件所在目录。省略时 CLI 默认查找命令执行目录下的 `langgraph.json`；本项目将配置集中放在子目录，因此需要指定。
+打开终端给出的 Studio 链接，选择 wildagent 图，新建一个线程，使用 [studio-input.example.json](studio-input.example.json)。修改 user_message 和 detail_level 来比较需求及粒度。不要复用旧协议生成过图纸的线程。
 
-`--allow-blocking` 是可选开发参数，不是启动 Studio 的必需参数。如果运行原图时确实出现同步 I/O 的 `BlockingError`，可以临时使用：
+输入中的 request_id/session_id 只是业务关联信息；Studio 的线程由 Studio 管理。
 
-```powershell
-uv run langgraph dev --config langsmith_tools/langgraph.json --allow-blocking
-```
+点开 architecture 的输出或 State，重点看：
 
-它只关闭对同步阻塞操作的报错，不会修复阻塞本身，也不能解决文件路径、导入或配置错误。原图含同步检索和文件操作，可能触发该检测，但要以具体堆栈为准。
+| 字段 | 看什么 |
+| --- | --- |
+| design_document | 通过本轮字段和参数校验的图纸；布局、房间、门窗、楼梯设计是否符合需求 |
+| resolved_design | 程序计算的高差、级数、步高、平台标高、梯井、楼板分片和坐标 |
+| architecture_diag.rounds | 每轮原始回复 output、工具提交 tool_calls、结构化 inspection、错误 issue、调用 ID 和用量 |
+| architecture_diag.tool_schemas | calculate_stair / inspect_design / revise_design 的实际参数 Schema |
+| architecture_diag.last_candidate | 最近一次完整候选，包括失败稿 |
+| error | 未通过时的终止原因 |
 
-启动后使用终端显示的 Studio 链接，选择 `wildagent` 图，输入 [studio-input.example.json](studio-input.example.json)。图使用独立的 `GenerationInput` 公开输入契约，不是原页面的 WebSocket 消息格式；执行计划、诊断和生成结果等 `GenerationState` 内部字段不需要手工填写。
+第一轮可能先调用 calculate_stair。寻找 inspect_design 的 args.design 查看首次完整提交；revise_design 的 args.changes 是局部修改，rounds[i].candidate 是程序装配后的完整候选。last_inspection 包含 defaults / derived / focus 以及 coverage，详见 [当前交接说明](../../docs/10月20日优化/09-architecture检查工具与修订.md)。
 
-更换任务时修改 `user_message`、`request_id` 和 `session_id`；直接从 Studio 运行时还可填写与需求对应的 `building_type`，供计划研究阶段判断知识覆盖。测试计划模式时设置 `plan_mode=true`；省略或设为 `false` 时，生成请求会从分类节点直接进入总体方案节点。
+本入口没有 plan_mode 或人工审核分支。此前 README 中有关 plan_review/design_review 的启动与恢复说明已不适用于当前调试图。
 
-Plan Mode 会先在 `plan_review` 等待执行计划审核，之后还会在 `design_review` 等待具体建筑方案审核。遇到审核中断，在同一 Studio 线程恢复，例如：
+若现有开发服务器出现同步 I/O 的 BlockingError，才按具体堆栈考虑原来的 --allow-blocking 参数；它不能修复导入或配置错误。
 
-```json
-{"action": "confirm"}
-```
+当前协议为 design-facts/2，边界具名、楼梯占地由程序计算，需新建线程。经用户授权，已开展设计节点离线回归与真实模型测试，见 [证据记录](../../docs/10月20日优化/architecture最后修复/README.md)。测试没有覆盖浏览器断点操作及后续旧链路。
 
-需要修改当前执行计划或建筑方案时提交：
+官方行为依据：[LangGraph 静态断点与 Studio](https://docs.langchain.com/oss/python/langgraph/interrupts#debugging-with-interrupts)。
 
-```json
-{"action": "revise", "feedback": "保持两层，使用双坡屋顶"}
-```
 
-Studio 的检查点由 Agent Server 管理，不传入正式任务 SQLite checkpointer。它复用原业务配置：导入图可能初始化并同步原 RAG 索引，运行节点可能调用模型、Embedding 和工具，也会使用业务原有存储路径。请将它视为使用现有项目资源的开发运行。
+## 5. 历史验证与官方参考
 
-Studio 不接管原 WebSocket 会话，不会执行原页面的进度推送和最终 Three.js 渲染。观察原页面请求用 Tracing；可视化调试图用 Studio。
-
-## 5. 验证与官方参考
+以下是此前接入时的历史记录。当前 architecture 修复的验证结果以上一节链接的证据为准。
 
 查看脚本参数（不调用模型或 LangSmith）：
 

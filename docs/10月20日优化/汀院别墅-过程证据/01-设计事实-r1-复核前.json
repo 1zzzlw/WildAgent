@@ -1,0 +1,43 @@
+{
+  "name": "汀院别墅 · 双层折院住宅",
+  "revision": 1,
+  "units": "m",
+  "coordinate_system": "X向东，Y向上，Z向北；庭院主视面朝-Z",
+  "levels": {"ground": 0.36, "upper": 3.78, "roof_support": 7.02, "slab_thickness": 0.24, "half_landing": 2.07},
+  "axes": {"west": 0, "wing_east": 6, "east": 18, "south": 0, "main_front": 6.6, "north": 14.4, "living_west": 11.4, "bedroom_split": 4.8, "bedroom_front": 9.7},
+  "site": [-2.4, 20.4, -3, 16.8],
+  "volumes": [
+    {"id": "main", "rect": [0, 18, 6.6, 14.4], "bottom": 0.36, "wall_top": 7.02},
+    {"id": "library_wing", "rect": [0, 6, 0, 6.6], "bottom": 0.36, "wall_top": 3.54}
+  ],
+  "voids": [
+    {"id": "living_void", "rect": [11.4, 18, 6.6, 14.4], "at_slab_top": 3.78},
+    {"id": "stair_void", "rect": [8.35, 11.25, 9.4, 13.6], "at_slab_top": 3.78}
+  ],
+  "upper_slab_rectangles": [[-0.12, 8.35, 6.48, 14.52], [8.35, 11.4, 6.48, 9.4], [8.35, 11.4, 13.6, 14.52], [11.25, 11.4, 9.4, 13.6]],
+  "stair": {"x_first": 9.05, "x_second": 10.55, "z_front": 9.4, "z_back": 12.2, "width": 1.2, "steps_each": 10, "landing_rect": [8.35, 11.25, 12.2, 13.6]},
+  "room_zones": [
+    {"name": "餐厅与开放厨房", "rect": [0.12, 5.8, 6.72, 14.28], "floor_top": 0.36},
+    {"name": "入口及交通", "rect": [6.12, 8.25, 6.72, 11.0], "floor_top": 0.36},
+    {"name": "一层卫浴", "rect": [6.12, 8.25, 11.32, 14.28], "floor_top": 0.36},
+    {"name": "双跑楼梯", "rect": [8.35, 11.25, 9.4, 13.6], "floor_top": 0.36},
+    {"name": "通高客厅", "rect": [11.52, 17.88, 6.72, 14.28], "floor_top": 0.36},
+    {"name": "书房", "rect": [0.12, 5.88, 0.12, 6.48], "floor_top": 0.36},
+    {"name": "主卧", "rect": [0.12, 4.71, 9.79, 14.28], "floor_top": 3.78},
+    {"name": "次卧", "rect": [4.89, 8.26, 9.79, 14.28], "floor_top": 3.78},
+    {"name": "二层卫浴", "rect": [0.12, 2.56, 6.72, 9.58], "floor_top": 3.78},
+    {"name": "露台", "rect": [0.12, 5.88, 0.12, 6.48], "floor_top": 3.78}
+  ],
+  "use_clearances": {"main_routes_width": 0.9, "route_headroom": 2.05, "upper_stair_exit_width": 1.2, "bedside_minimum": 0.6},
+  "routes": [
+    {"id": "courtyard_approach", "points": [[7.5,0.36,0.2],[11.55,0.36,0.2],[11.55,0.36,5.55],[7.5,0.36,5.55],[7.5,0.36,6.45]], "width": 0.9},
+    {"id": "entry_to_living", "points": [[7.5,0.36,6.45],[7.5,0.36,8.1],[12,0.36,8.1],[12,0.36,9.3]], "width": 0.9},
+    {"id": "entry_to_dining", "points": [[7.5,0.36,8.1],[5.9,0.36,8.1],[4.9,0.36,8.1]], "width": 0.9},
+    {"id": "dining_to_library", "points": [[3,0.36,8.1],[3,0.36,6.6],[3,0.36,5.3]], "width": 0.9},
+    {"id": "entry_to_stair", "points": [[7.5,0.36,8.1],[9.05,0.36,8.1],[9.05,0.36,9.4]], "width": 0.9},
+    {"id": "stair_to_terrace", "points": [[10.55,3.78,9.35],[10.55,3.78,8.1],[4.3,3.78,8.1],[4.3,3.78,6.6],[4.3,3.78,5.8]], "width": 0.9}
+  ],
+  "material_roles": {"body": "chalk", "stone_spine": "travertine", "roof": "roof_graphite", "timber": "teak", "walking_stone": "sandstone", "joinery": "bronze", "glazing": "clear_glass", "water": "water_jade"},
+  "features_to_verify": ["L形实际包络与院落", "客厅无二层楼板且有屋面", "双跑/平台/梯井/到达板", "露台门底=露台板顶", "露台外缘防护与入口留空", "廊架柱顶=梁底，格栅落在梁顶", "门窗真实宿主与开口", "家具落地/朝向/门口通行", "水池不被整块庭院板盖住"],
+  "scope_limits": ["建筑概念模型；不作为结构、消防或施工证明", "净距是本次设计值，不是规范引用", "路线检查覆盖所列路线，不证明所有空间的完整可达性"]
+}

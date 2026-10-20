@@ -1,0 +1,228 @@
+{
+  "scope": "saved real provider output; no new model call",
+  "source_hash": "8ff0868a9664e92fb7639951e55586429e5d932e8ce7911b31677c9842818654",
+  "steps": 373,
+  "components": 4,
+  "contract_passed": true,
+  "readonly_input_cases": 4,
+  "local_container_building_passed": true,
+  "data": {
+    "concept": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+    "design_intent": {
+      "goals": [
+        "Simple volume",
+        "Clear entry",
+        "Basic daylighting",
+        "Low-grain validation"
+      ],
+      "assumptions": [
+        "No interior partitions modeled in detail",
+        "Standard door/window sizes"
+      ],
+      "selected_systems": [
+        "Flat roof",
+        "Masonry/Concrete walls",
+        "Pendant lighting"
+      ],
+      "spatial_strategy": "Open plan with defined entry zone",
+      "composition": "Rectangular massing",
+      "material_strategy": "White plaster facade, dark grey roof membrane"
+    },
+    "massing": {
+      "shape": "box",
+      "width": 6.0,
+      "depth": 4.0,
+      "floors": 1,
+      "modeled_floors": 1,
+      "floor_height": 3.0
+    },
+    "volumes": [
+      {
+        "id": "main_vol",
+        "x": 0,
+        "z": 0,
+        "width": 6.0,
+        "depth": 4.0,
+        "start_floor": 1,
+        "end_floor": 1,
+        "facades": {}
+      }
+    ],
+    "structural_grid": {
+      "system": "none",
+      "x_bays": 1,
+      "z_bays": 1
+    },
+    "circulation": {
+      "vertical_strategy": "none",
+      "description": "Single level access via front door",
+      "paths": []
+    },
+    "facades": {
+      "front": {
+        "bays": 3,
+        "ground_pattern": [
+          "door",
+          "empty",
+          "window"
+        ],
+        "upper_pattern": [
+          "empty",
+          "empty",
+          "empty"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "ground_pattern": [
+          "window"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "ridge_axis": "x",
+      "overhang": 0.3,
+      "volumes": [
+        {
+          "volume": "main_vol",
+          "type": "flat",
+          "overhang": 0.3
+        }
+      ]
+    },
+    "components": [
+      {
+        "id": "front_entrance_door",
+        "type": "door",
+        "host": "main_vol",
+        "size": {
+          "width": 1.0,
+          "height": 2.2,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "door",
+          "color": "#333333"
+        },
+        "description": "Main entrance door",
+        "placement": {
+          "face": "front",
+          "floor": 1,
+          "offset": 0.5,
+          "sill_height": 0,
+          "normal_offset": 0
+        }
+      },
+      {
+        "id": "front_window_right",
+        "type": "window",
+        "host": "main_vol",
+        "size": {
+          "width": 1.2,
+          "height": 1.5,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "glass",
+          "frame_color": "#888888"
+        },
+        "description": "Living area window",
+        "placement": {
+          "face": "front",
+          "floor": 1,
+          "offset": 4.4,
+          "sill_height": 0.9,
+          "normal_offset": 0
+        }
+      },
+      {
+        "id": "side_window_right",
+        "type": "window",
+        "host": "main_vol",
+        "size": {
+          "width": 1.2,
+          "height": 1.5,
+          "depth": 0.2
+        },
+        "form": {
+          "material_role": "glass",
+          "frame_color": "#888888"
+        },
+        "description": "Side daylighting window",
+        "placement": {
+          "face": "right",
+          "floor": 1,
+          "offset": 1.4,
+          "sill_height": 0.9,
+          "normal_offset": 0
+        }
+      },
+      {
+        "id": "ceiling_light_main",
+        "type": "pendant_light",
+        "host": null,
+        "size": {
+          "width": 0.4,
+          "height": 0.6,
+          "depth": 0.4
+        },
+        "form": {
+          "material_role": "accent",
+          "emissive": true
+        },
+        "description": "Central pendant light fixture",
+        "placement": {
+          "position": [
+            3.0,
+            3.0,
+            2.0
+          ]
+        }
+      }
+    ],
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.3,
+        "rooms": [
+          {
+            "id": "living_space",
+            "name": "Open Living Area",
+            "bounds": {
+              "x": 0.2,
+              "z": 0.2,
+              "width": 5.6,
+              "depth": 3.6
+            }
+          }
+        ],
+        "walls": []
+      }
+    ],
+    "envelope": {
+      "system": "monolithic_wall"
+    }
+  }
+}

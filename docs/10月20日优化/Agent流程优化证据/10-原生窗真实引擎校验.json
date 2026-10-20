@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "wild-web/scripts/validate-generated.mjs",
+    "E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\Agent流程优化证据\\07-原生窗局部回放候选.wild"
+  ],
+  "cwd": "E:/AgentProject/WildAgent",
+  "startedAt": "2026-10-20T01:30:15.828Z",
+  "endedAt": "2026-10-20T01:30:16.164Z",
+  "exitCode": 0,
+  "stdout": "蓝图: E:\\AgentProject\\WildAgent\\docs\\10月20日优化\\Agent流程优化证据\\07-原生窗局部回放候选.wild\n组件编译诊断: 0 (错误 0)\n网格数: 67\n材质参数: 67\n包围盒: min=[-0.30500006675720215,-0.18000000357627868,-0.47100019454956055] max=[16.47100019454956,7.419999998807907,10.47100019454956]\nfiniteBounds=true validMeshes=true\n重建诊断: 错误 0, 警告 0\n\n校验通过: 0 错误\n",
+  "stderr": ""
+}

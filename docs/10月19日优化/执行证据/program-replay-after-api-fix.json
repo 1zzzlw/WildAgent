@@ -1,0 +1,28 @@
+{
+  "saved_provider_outputs": [
+    {
+      "stage": "generate",
+      "result": "rejected",
+      "entities": 6
+    },
+    {
+      "stage": "repair_1",
+      "result": "accepted",
+      "entities": 6
+    },
+    {
+      "stage": "repair_2",
+      "result": "accepted",
+      "entities": 6
+    }
+  ],
+  "design_program": {
+    "thinking_modes": [
+      true,
+      false
+    ],
+    "attempts": 2,
+    "program_output": "design"
+  },
+  "scope": "saved provider replay and production functions; no new model calls"
+}

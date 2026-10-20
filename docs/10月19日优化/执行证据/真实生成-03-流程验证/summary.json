@@ -1,0 +1,92 @@
+{
+  "status": "complete",
+  "error": null,
+  "model": "qwen3.8-flash",
+  "model_invocations": 9,
+  "invocation_limit": 12,
+  "seconds": 74.91,
+  "program_executions": 0,
+  "program_errors": [],
+  "detail_level": "minimal",
+  "request": "流程验证：生成一栋单层现代小别墅，6×4米，平屋顶，楼面顶0.3米，层高3米。一扇入口门、两面采光窗和基础照明，其余实墙。清楚的入口，不做复杂内部分区、家具或景观。请优先用 program 从共享尺寸、标高参数计算完整设计图纸；这是低粒度流程验证，不代表极高粒度效果对照。",
+  "review_mode": "isolated local trial; no production review node modified",
+  "stages": [
+    {
+      "name": "architecture",
+      "elapsed_seconds": 52.11,
+      "model_calls": 3,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "material_plan",
+      "elapsed_seconds": 58.16,
+      "model_calls": 4,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "plan",
+      "elapsed_seconds": 58.25,
+      "model_calls": 4,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "execute_1",
+      "elapsed_seconds": 64.86,
+      "model_calls": 5,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "replanner_1",
+      "elapsed_seconds": 64.86,
+      "model_calls": 5,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "execute_2",
+      "elapsed_seconds": 71.36,
+      "model_calls": 8,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "replanner_2",
+      "elapsed_seconds": 71.36,
+      "model_calls": 8,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "execute_3",
+      "elapsed_seconds": 74.69,
+      "model_calls": 9,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "replanner_3",
+      "elapsed_seconds": 74.69,
+      "model_calls": 9,
+      "status": null,
+      "error": null
+    },
+    {
+      "name": "compile",
+      "elapsed_seconds": 74.81,
+      "model_calls": 9,
+      "status": "complete",
+      "error": null
+    },
+    {
+      "name": "final_validate",
+      "elapsed_seconds": 74.89,
+      "model_calls": 9,
+      "status": "complete",
+      "error": null
+    }
+  ]
+}
