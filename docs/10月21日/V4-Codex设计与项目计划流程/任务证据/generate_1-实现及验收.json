@@ -1,0 +1,529 @@
+{
+  "item": {
+    "id": "generate_1",
+    "op": "generate",
+    "kind": "building_body",
+    "label": "建筑主体",
+    "target": {
+      "marker_ids": [
+        "building_body"
+      ]
+    },
+    "params": {
+      "design_markers": true,
+      "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+      "batch_load": {
+        "marker_count": 1,
+        "marker_chars": 12848,
+        "host_count": 0,
+        "floor_count": 0,
+        "dependency_count": 0
+      },
+      "execution_mode": "serial",
+      "parallel_group": ""
+    },
+    "depends_on": [],
+    "origin": "plan",
+    "status": "ready",
+    "run": {
+      "state": "idle",
+      "attempts": 0,
+      "max_attempts": 1,
+      "artifacts": [],
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  },
+  "rows": [
+    {
+      "id": "building_body",
+      "geometry": {
+        "elements": [
+          {
+            "type": "floor",
+            "id": "slab_L1_0",
+            "from": [
+              0.0,
+              -0.22,
+              5.0
+            ],
+            "to": [
+              16.0,
+              -0.22,
+              13.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L1_1",
+            "from": [
+              0.0,
+              -0.22,
+              0.0
+            ],
+            "to": [
+              5.0,
+              -0.22,
+              5.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L1_2",
+            "from": [
+              11.0,
+              -0.22,
+              0.0
+            ],
+            "to": [
+              16.0,
+              -0.22,
+              5.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L2_0",
+            "from": [
+              0.0,
+              3.1799999999999997,
+              5.0
+            ],
+            "to": [
+              11.35,
+              3.1799999999999997,
+              13.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L2_1",
+            "from": [
+              13.95,
+              3.1799999999999997,
+              5.0
+            ],
+            "to": [
+              16.0,
+              3.1799999999999997,
+              13.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L2_2",
+            "from": [
+              11.35,
+              3.1799999999999997,
+              5.0
+            ],
+            "to": [
+              13.95,
+              3.1799999999999997,
+              8.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "floor",
+            "id": "slab_L2_3",
+            "from": [
+              11.35,
+              3.1799999999999997,
+              12.1
+            ],
+            "to": [
+              13.95,
+              3.1799999999999997,
+              13.0
+            ],
+            "thickness": 0.22,
+            "material": "floor"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_front_L1",
+            "from": [
+              0.0,
+              0.0,
+              5.0
+            ],
+            "to": [
+              16.0,
+              3.4,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_right_L1",
+            "from": [
+              16.0,
+              0.0,
+              5.0
+            ],
+            "to": [
+              16.0,
+              3.4,
+              13.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_back_L1",
+            "from": [
+              16.0,
+              0.0,
+              13.0
+            ],
+            "to": [
+              0.0,
+              3.4,
+              13.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_left_L1",
+            "from": [
+              0.0,
+              0.0,
+              13.0
+            ],
+            "to": [
+              0.0,
+              3.4,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_front_L2",
+            "from": [
+              0.0,
+              3.4,
+              5.0
+            ],
+            "to": [
+              16.0,
+              6.8,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_right_L2",
+            "from": [
+              16.0,
+              3.4,
+              5.0
+            ],
+            "to": [
+              16.0,
+              6.8,
+              13.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_back_L2",
+            "from": [
+              16.0,
+              3.4,
+              13.0
+            ],
+            "to": [
+              0.0,
+              6.8,
+              13.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_main_left_L2",
+            "from": [
+              0.0,
+              3.4,
+              13.0
+            ],
+            "to": [
+              0.0,
+              6.8,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_west_front_L1",
+            "from": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "to": [
+              5.0,
+              3.4,
+              0.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_west_right_L1",
+            "from": [
+              5.0,
+              0.0,
+              0.0
+            ],
+            "to": [
+              5.0,
+              3.4,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_west_left_L1",
+            "from": [
+              0.0,
+              0.0,
+              5.0
+            ],
+            "to": [
+              0.0,
+              3.4,
+              0.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_east_front_L1",
+            "from": [
+              11.0,
+              0.0,
+              0.0
+            ],
+            "to": [
+              16.0,
+              3.4,
+              0.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_east_right_L1",
+            "from": [
+              16.0,
+              0.0,
+              0.0
+            ],
+            "to": [
+              16.0,
+              3.4,
+              5.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "wall_east_left_L1",
+            "from": [
+              11.0,
+              0.0,
+              5.0
+            ],
+            "to": [
+              11.0,
+              3.4,
+              0.0
+            ],
+            "thickness": 0.24,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "partition_1_west",
+            "from": [
+              5,
+              0.0,
+              5
+            ],
+            "to": [
+              5,
+              3.4,
+              13
+            ],
+            "thickness": 0.16,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "partition_1_east",
+            "from": [
+              11,
+              0.0,
+              5
+            ],
+            "to": [
+              11,
+              3.4,
+              13
+            ],
+            "thickness": 0.16,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "partition_2_west",
+            "from": [
+              5,
+              3.4,
+              5
+            ],
+            "to": [
+              5,
+              6.8,
+              13
+            ],
+            "thickness": 0.16,
+            "material": "facade_primary"
+          },
+          {
+            "type": "wall",
+            "id": "partition_2_east",
+            "from": [
+              11,
+              3.4,
+              5
+            ],
+            "to": [
+              11,
+              6.8,
+              13
+            ],
+            "thickness": 0.16,
+            "material": "facade_primary"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    }
+  ],
+  "diagnostics": {
+    "implementations": {
+      "building_body": {
+        "status": "implemented",
+        "entity_ids": [
+          "slab_L1_0",
+          "slab_L1_1",
+          "slab_L1_2",
+          "slab_L2_0",
+          "slab_L2_1",
+          "slab_L2_2",
+          "slab_L2_3",
+          "wall_main_front_L1",
+          "wall_main_right_L1",
+          "wall_main_back_L1",
+          "wall_main_left_L1",
+          "wall_main_front_L2",
+          "wall_main_right_L2",
+          "wall_main_back_L2",
+          "wall_main_left_L2",
+          "wall_west_front_L1",
+          "wall_west_right_L1",
+          "wall_west_left_L1",
+          "wall_east_front_L1",
+          "wall_east_right_L1",
+          "wall_east_left_L1",
+          "partition_1_west",
+          "partition_1_east",
+          "partition_2_west",
+          "partition_2_east"
+        ],
+        "entity_fingerprint": "0b190737cbc8b6f1d54ad238fedfe3215fd6bd0435a31b0bded1c5d2af9c5d41",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 1,
+      "abandoned": 0,
+      "total": 1,
+      "design_complete": true
+    },
+    "materials": {},
+    "assets": {},
+    "elements": [
+      "slab_L1_0",
+      "slab_L1_1",
+      "slab_L1_2",
+      "slab_L2_0",
+      "slab_L2_1",
+      "slab_L2_2",
+      "slab_L2_3",
+      "wall_main_front_L1",
+      "wall_main_right_L1",
+      "wall_main_back_L1",
+      "wall_main_left_L1",
+      "wall_main_front_L2",
+      "wall_main_right_L2",
+      "wall_main_back_L2",
+      "wall_main_left_L2",
+      "wall_west_front_L1",
+      "wall_west_right_L1",
+      "wall_west_left_L1",
+      "wall_east_front_L1",
+      "wall_east_right_L1",
+      "wall_east_left_L1",
+      "partition_1_west",
+      "partition_1_east",
+      "partition_2_west",
+      "partition_2_east"
+    ],
+    "components": []
+  }
+}

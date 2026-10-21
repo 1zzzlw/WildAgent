@@ -1,0 +1,1667 @@
+{
+  "item": {
+    "id": "generate_8",
+    "op": "generate",
+    "kind": "assembly",
+    "label": "组合构件",
+    "target": {
+      "marker_ids": [
+        "trim_main",
+        "trim_west",
+        "trim_east",
+        "entry_portal",
+        "court_screen_5",
+        "court_screen_5_rails",
+        "court_screen_10",
+        "court_screen_10_rails",
+        "site",
+        "court_planters",
+        "front_garden"
+      ]
+    },
+    "params": {
+      "design_markers": true,
+      "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+      "batch_load": {
+        "marker_count": 11,
+        "marker_chars": 6202,
+        "host_count": 0,
+        "floor_count": 0,
+        "dependency_count": 1
+      },
+      "execution_mode": "serial",
+      "parallel_group": ""
+    },
+    "depends_on": [
+      "generate_1"
+    ],
+    "origin": "plan",
+    "status": "ready",
+    "run": {
+      "state": "idle",
+      "attempts": 0,
+      "max_attempts": 1,
+      "artifacts": [],
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  },
+  "rows": [
+    {
+      "id": "trim_main",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "trim_main_0",
+            "shape": "box",
+            "position": [
+              5.154999999999999,
+              0.12,
+              4.85
+            ],
+            "dimensions": [
+              0.3099999999999996,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_1",
+            "shape": "box",
+            "position": [
+              6.8999999999999995,
+              0.12,
+              4.85
+            ],
+            "dimensions": [
+              0.22000000000000064,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_2",
+            "shape": "box",
+            "position": [
+              9.100000000000001,
+              0.12,
+              4.85
+            ],
+            "dimensions": [
+              0.22000000000000064,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_3",
+            "shape": "box",
+            "position": [
+              10.845,
+              0.12,
+              4.85
+            ],
+            "dimensions": [
+              0.3099999999999987,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_4",
+            "shape": "box",
+            "position": [
+              8.0,
+              6.64,
+              4.85
+            ],
+            "dimensions": [
+              16.3,
+              0.18,
+              0.16
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_5",
+            "shape": "box",
+            "position": [
+              8.0,
+              0.12,
+              13.15
+            ],
+            "dimensions": [
+              16,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_6",
+            "shape": "box",
+            "position": [
+              8.0,
+              6.64,
+              13.15
+            ],
+            "dimensions": [
+              16.3,
+              0.18,
+              0.16
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_7",
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.12,
+              9.0
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              8
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_8",
+            "shape": "box",
+            "position": [
+              -0.15,
+              6.64,
+              9.0
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              8
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_9",
+            "shape": "box",
+            "position": [
+              16.15,
+              0.12,
+              9.0
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              8
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_main_10",
+            "shape": "box",
+            "position": [
+              16.15,
+              6.64,
+              9.0
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              8
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "trim_west",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "trim_west_0",
+            "shape": "box",
+            "position": [
+              2.5,
+              0.12,
+              -0.15
+            ],
+            "dimensions": [
+              5,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_1",
+            "shape": "box",
+            "position": [
+              2.5,
+              3.2399999999999998,
+              -0.15
+            ],
+            "dimensions": [
+              5.3,
+              0.18,
+              0.16
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_2",
+            "shape": "box",
+            "position": [
+              -0.15,
+              0.12,
+              2.5
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              5
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_3",
+            "shape": "box",
+            "position": [
+              -0.15,
+              3.2399999999999998,
+              2.5
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              5
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_4",
+            "shape": "box",
+            "position": [
+              5.15,
+              0.12,
+              0.73
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              1.46
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_5",
+            "shape": "box",
+            "position": [
+              5.15,
+              0.12,
+              4.27
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              1.46
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_west_6",
+            "shape": "box",
+            "position": [
+              5.15,
+              3.2399999999999998,
+              2.5
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              5
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "trim_east",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "trim_east_0",
+            "shape": "box",
+            "position": [
+              13.5,
+              0.12,
+              -0.15
+            ],
+            "dimensions": [
+              5,
+              0.24,
+              0.08
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_1",
+            "shape": "box",
+            "position": [
+              13.5,
+              3.2399999999999998,
+              -0.15
+            ],
+            "dimensions": [
+              5.3,
+              0.18,
+              0.16
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_2",
+            "shape": "box",
+            "position": [
+              10.85,
+              0.12,
+              4.27
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              1.46
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_3",
+            "shape": "box",
+            "position": [
+              10.85,
+              0.12,
+              0.7300000000000004
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              1.46
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_4",
+            "shape": "box",
+            "position": [
+              10.85,
+              3.2399999999999998,
+              2.5
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              5
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_5",
+            "shape": "box",
+            "position": [
+              16.15,
+              0.12,
+              2.5
+            ],
+            "dimensions": [
+              0.08,
+              0.24,
+              5
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "trim_east_6",
+            "shape": "box",
+            "position": [
+              16.15,
+              3.2399999999999998,
+              2.5
+            ],
+            "dimensions": [
+              0.16,
+              0.18,
+              5
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "entry_portal",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "entry_portal_0",
+            "shape": "box",
+            "position": [
+              6.83,
+              1.45,
+              4.79
+            ],
+            "dimensions": [
+              0.18,
+              2.9,
+              0.22
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "entry_portal_1",
+            "shape": "box",
+            "position": [
+              9.17,
+              1.45,
+              4.79
+            ],
+            "dimensions": [
+              0.18,
+              2.9,
+              0.22
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "entry_portal_2",
+            "shape": "box",
+            "position": [
+              8,
+              2.98,
+              4.66
+            ],
+            "dimensions": [
+              2.7,
+              0.2,
+              0.6
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "court_screen_5",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "court_screen_5_0",
+            "shape": "box",
+            "position": [
+              4.989999999999999,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_1",
+            "shape": "box",
+            "position": [
+              5.109999999999999,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_2",
+            "shape": "box",
+            "position": [
+              5.2299999999999995,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_3",
+            "shape": "box",
+            "position": [
+              5.35,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_4",
+            "shape": "box",
+            "position": [
+              5.47,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_5",
+            "shape": "box",
+            "position": [
+              5.59,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_6",
+            "shape": "box",
+            "position": [
+              5.71,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "court_screen_5_rails",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "court_screen_5_rails_0",
+            "shape": "box",
+            "position": [
+              5.35,
+              0.2,
+              0.55
+            ],
+            "dimensions": [
+              0.9,
+              0.12,
+              0.12
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_5_rails_1",
+            "shape": "box",
+            "position": [
+              5.35,
+              2.75,
+              0.55
+            ],
+            "dimensions": [
+              0.9,
+              0.12,
+              0.12
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "court_screen_10",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "court_screen_10_0",
+            "shape": "box",
+            "position": [
+              10.290000000000001,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_1",
+            "shape": "box",
+            "position": [
+              10.41,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_2",
+            "shape": "box",
+            "position": [
+              10.530000000000001,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_3",
+            "shape": "box",
+            "position": [
+              10.65,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_4",
+            "shape": "box",
+            "position": [
+              10.77,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_5",
+            "shape": "box",
+            "position": [
+              10.89,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_6",
+            "shape": "box",
+            "position": [
+              11.01,
+              1.45,
+              0.55
+            ],
+            "dimensions": [
+              0.045,
+              2.5,
+              0.09
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "court_screen_10_rails",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "court_screen_10_rails_0",
+            "shape": "box",
+            "position": [
+              10.65,
+              0.2,
+              0.55
+            ],
+            "dimensions": [
+              0.9,
+              0.12,
+              0.12
+            ],
+            "material": "wood"
+          },
+          {
+            "type": "primitive",
+            "id": "court_screen_10_rails_1",
+            "shape": "box",
+            "position": [
+              10.65,
+              2.75,
+              0.55
+            ],
+            "dimensions": [
+              0.9,
+              0.12,
+              0.12
+            ],
+            "material": "wood"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "site",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "site_0",
+            "shape": "box",
+            "position": [
+              8,
+              -0.33,
+              5.5
+            ],
+            "dimensions": [
+              22,
+              0.2,
+              19
+            ],
+            "material": "ground"
+          },
+          {
+            "type": "primitive",
+            "id": "site_1",
+            "shape": "box",
+            "position": [
+              8,
+              -0.11,
+              2.5
+            ],
+            "dimensions": [
+              6,
+              0.2,
+              5
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "site_2",
+            "shape": "box",
+            "position": [
+              8,
+              -0.13,
+              -1.5
+            ],
+            "dimensions": [
+              2.2,
+              0.18,
+              3
+            ],
+            "material": "stone"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "court_planters",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "court_planters_0",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.16,
+              2.55
+            ],
+            "dimensions": [
+              0.9,
+              0.32,
+              2.7
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_1",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.34,
+              2.55
+            ],
+            "dimensions": [
+              0.72,
+              0.08,
+              2.5
+            ],
+            "material": "soil"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_2",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.62,
+              1.6
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_3",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.62,
+              2.0500000000000003
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_4",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.62,
+              2.5
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_5",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.62,
+              2.95
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_6",
+            "shape": "box",
+            "position": [
+              6.0,
+              0.62,
+              3.4000000000000004
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_7",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.16,
+              2.55
+            ],
+            "dimensions": [
+              0.9,
+              0.32,
+              2.7
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_8",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.34,
+              2.55
+            ],
+            "dimensions": [
+              0.72,
+              0.08,
+              2.5
+            ],
+            "material": "soil"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_9",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.62,
+              1.6
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_10",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.62,
+              2.0500000000000003
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_11",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.62,
+              2.5
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_12",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.62,
+              2.95
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          },
+          {
+            "type": "primitive",
+            "id": "court_planters_13",
+            "shape": "box",
+            "position": [
+              10.0,
+              0.62,
+              3.4000000000000004
+            ],
+            "dimensions": [
+              0.65,
+              0.48,
+              0.38
+            ],
+            "material": "green"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "front_garden",
+      "geometry": {
+        "elements": [
+          {
+            "type": "primitive",
+            "id": "front_garden_0",
+            "shape": "box",
+            "position": [
+              2.5,
+              -0.1,
+              -1.5
+            ],
+            "dimensions": [
+              4.5,
+              0.18,
+              2.6
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_1",
+            "shape": "box",
+            "position": [
+              2.5,
+              0.005,
+              -1.5
+            ],
+            "dimensions": [
+              4.2,
+              0.03,
+              2.3
+            ],
+            "material": "water"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_2",
+            "shape": "box",
+            "position": [
+              1.4,
+              0.05,
+              -1.5
+            ],
+            "dimensions": [
+              0.65,
+              0.1,
+              0.65
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_3",
+            "shape": "box",
+            "position": [
+              2.5,
+              0.05,
+              -1.5
+            ],
+            "dimensions": [
+              0.65,
+              0.1,
+              0.65
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_4",
+            "shape": "box",
+            "position": [
+              3.6,
+              0.05,
+              -1.5
+            ],
+            "dimensions": [
+              0.65,
+              0.1,
+              0.65
+            ],
+            "material": "stone"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_5",
+            "shape": "box",
+            "position": [
+              -2,
+              0.7,
+              5.5
+            ],
+            "dimensions": [
+              0.2,
+              1.4,
+              17
+            ],
+            "material": "facade_primary"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_6",
+            "shape": "box",
+            "position": [
+              18,
+              0.7,
+              5.5
+            ],
+            "dimensions": [
+              0.2,
+              1.4,
+              17
+            ],
+            "material": "facade_primary"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_7",
+            "shape": "box",
+            "position": [
+              -2,
+              1.45,
+              5.5
+            ],
+            "dimensions": [
+              0.34,
+              0.1,
+              17.2
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "front_garden_8",
+            "shape": "box",
+            "position": [
+              18,
+              1.45,
+              5.5
+            ],
+            "dimensions": [
+              0.34,
+              0.1,
+              17.2
+            ],
+            "material": "roof"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    }
+  ],
+  "diagnostics": {
+    "implementations": {
+      "trim_main": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_main_0",
+          "trim_main_1",
+          "trim_main_2",
+          "trim_main_3",
+          "trim_main_4",
+          "trim_main_5",
+          "trim_main_6",
+          "trim_main_7",
+          "trim_main_8",
+          "trim_main_9",
+          "trim_main_10"
+        ],
+        "entity_fingerprint": "c0429c6446437b2cd2469baff2522acbed7e104aa6435922b3ca77f89a47e1d0",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "trim_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_west_0",
+          "trim_west_1",
+          "trim_west_2",
+          "trim_west_3",
+          "trim_west_4",
+          "trim_west_5",
+          "trim_west_6"
+        ],
+        "entity_fingerprint": "817baa11370564465ab1348730020cc15620eb5730744d08e24b6600b8e6c52f",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "trim_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_east_0",
+          "trim_east_1",
+          "trim_east_2",
+          "trim_east_3",
+          "trim_east_4",
+          "trim_east_5",
+          "trim_east_6"
+        ],
+        "entity_fingerprint": "3e403cd4100ddcac1dd6c2f16e78e443003ade55ee2f2e5f26efcaaf58f22baf",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "entry_portal": {
+        "status": "implemented",
+        "entity_ids": [
+          "entry_portal_0",
+          "entry_portal_1",
+          "entry_portal_2"
+        ],
+        "entity_fingerprint": "3a67ef5f879d3f11454a2de59f72e9e759c33f912b9b59e87e1ea7cd42e11599",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_5": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_5_0",
+          "court_screen_5_1",
+          "court_screen_5_2",
+          "court_screen_5_3",
+          "court_screen_5_4",
+          "court_screen_5_5",
+          "court_screen_5_6"
+        ],
+        "entity_fingerprint": "71fbac6c2f260be9fb9d136c082c64642ba1d24b79f3f0d11cc71da20aa33ad2",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [
+            "placement.position",
+            "material_bindings.material",
+            "repetition 的数量、位置与零件尺寸"
+          ],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_5_rails": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_5_rails_0",
+          "court_screen_5_rails_1"
+        ],
+        "entity_fingerprint": "4f2332e6815a98744bef32120e04d29b2876691685b1b42da8ec03795c375fa2",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_10": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_10_0",
+          "court_screen_10_1",
+          "court_screen_10_2",
+          "court_screen_10_3",
+          "court_screen_10_4",
+          "court_screen_10_5",
+          "court_screen_10_6"
+        ],
+        "entity_fingerprint": "2e6a07a6dd28bd4b56602ee0b619f8f65ffe976a2eae72018d00e8ee5a3cff62",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [
+            "placement.position",
+            "material_bindings.material",
+            "repetition 的数量、位置与零件尺寸"
+          ],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_10_rails": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_10_rails_0",
+          "court_screen_10_rails_1"
+        ],
+        "entity_fingerprint": "f7ad356205b488212f7bbf60ed7be3d9ea3452981715533d46b9b05de28a8d37",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "site": {
+        "status": "implemented",
+        "entity_ids": [
+          "site_0",
+          "site_1",
+          "site_2"
+        ],
+        "entity_fingerprint": "05e64cadd7a94a9cafd73dc29948706df99f3cefb6fb731668d11464eb18851e",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_planters": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_planters_0",
+          "court_planters_1",
+          "court_planters_2",
+          "court_planters_3",
+          "court_planters_4",
+          "court_planters_5",
+          "court_planters_6",
+          "court_planters_7",
+          "court_planters_8",
+          "court_planters_9",
+          "court_planters_10",
+          "court_planters_11",
+          "court_planters_12",
+          "court_planters_13"
+        ],
+        "entity_fingerprint": "d31cd230d972e02c369b22ee7fb9a91a713a8e00eb46907acf52ae3f4ff50b40",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "front_garden": {
+        "status": "implemented",
+        "entity_ids": [
+          "front_garden_0",
+          "front_garden_1",
+          "front_garden_2",
+          "front_garden_3",
+          "front_garden_4",
+          "front_garden_5",
+          "front_garden_6",
+          "front_garden_7",
+          "front_garden_8"
+        ],
+        "entity_fingerprint": "ae845ba5e6d994711c6d4810d567a1abbfc343764ffebbe1c414a662d85395cc",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 11,
+      "abandoned": 0,
+      "total": 11,
+      "design_complete": true
+    },
+    "materials": {},
+    "assets": {},
+    "elements": [
+      "trim_main_0",
+      "trim_main_1",
+      "trim_main_2",
+      "trim_main_3",
+      "trim_main_4",
+      "trim_main_5",
+      "trim_main_6",
+      "trim_main_7",
+      "trim_main_8",
+      "trim_main_9",
+      "trim_main_10",
+      "trim_west_0",
+      "trim_west_1",
+      "trim_west_2",
+      "trim_west_3",
+      "trim_west_4",
+      "trim_west_5",
+      "trim_west_6",
+      "trim_east_0",
+      "trim_east_1",
+      "trim_east_2",
+      "trim_east_3",
+      "trim_east_4",
+      "trim_east_5",
+      "trim_east_6",
+      "entry_portal_0",
+      "entry_portal_1",
+      "entry_portal_2",
+      "court_screen_5_0",
+      "court_screen_5_1",
+      "court_screen_5_2",
+      "court_screen_5_3",
+      "court_screen_5_4",
+      "court_screen_5_5",
+      "court_screen_5_6",
+      "court_screen_5_rails_0",
+      "court_screen_5_rails_1",
+      "court_screen_10_0",
+      "court_screen_10_1",
+      "court_screen_10_2",
+      "court_screen_10_3",
+      "court_screen_10_4",
+      "court_screen_10_5",
+      "court_screen_10_6",
+      "court_screen_10_rails_0",
+      "court_screen_10_rails_1",
+      "site_0",
+      "site_1",
+      "site_2",
+      "court_planters_0",
+      "court_planters_1",
+      "court_planters_2",
+      "court_planters_3",
+      "court_planters_4",
+      "court_planters_5",
+      "court_planters_6",
+      "court_planters_7",
+      "court_planters_8",
+      "court_planters_9",
+      "court_planters_10",
+      "court_planters_11",
+      "court_planters_12",
+      "court_planters_13",
+      "front_garden_0",
+      "front_garden_1",
+      "front_garden_2",
+      "front_garden_3",
+      "front_garden_4",
+      "front_garden_5",
+      "front_garden_6",
+      "front_garden_7",
+      "front_garden_8"
+    ],
+    "components": []
+  }
+}

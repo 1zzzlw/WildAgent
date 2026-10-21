@@ -1,0 +1,30 @@
+{
+  "schema_version": "design/1.0",
+  "revision": 2,
+  "source_sha256": "d56861651d097d51ff57d094dc5a658fa1ddb418843c0ef9c0bffd8e9b14f3d8",
+  "wild_sha256": "480f05d60517732090057e193618afe3f7bdbad725e4eaa9a732072f87daa339",
+  "source_matches_compile_report": true,
+  "wild_matches_render_manifest": true,
+  "geometry_counts": {
+    "elements": 118,
+    "components": 39
+  },
+  "floor_area_m2": {
+    "0": 178.0,
+    "3.4": 117.34
+  },
+  "building_floor_in_courtyard_m2": {
+    "0": 0.0,
+    "3.4": 0
+  },
+  "upper_slab_in_stairwell_m2": 0.0,
+  "compile_errors": [],
+  "warning_count": 0,
+  "missing_markers": [],
+  "native_compile_errors": 0,
+  "native_reconstruct_errors": 0,
+  "unmapped_materials": 0,
+  "cutaway_compile_errors": 0,
+  "cutaway_reconstruct_errors": 0,
+  "review_gaps": 9
+}

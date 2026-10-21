@@ -1,0 +1,22 @@
+{
+  "result": "failed",
+  "stage": "architecture",
+  "plan_executed": false,
+  "final_wild_created": false,
+  "stair_facts": {
+    "connection_rise": 3.9,
+    "half_rise": 1.95,
+    "rises_per_flight": 11,
+    "declared_riser_height": 0.177,
+    "declared_half_rise": 1.947,
+    "half_rise_difference_m": 0.003,
+    "riser_height_if_derived": 0.17727272727272728,
+    "required_run": 2.86,
+    "landing_depth": 1.0,
+    "required_span": 3.86,
+    "declared_span": 3.0,
+    "note": "本次实际报错止于级高；占地矛盾是根据同一原稿参数和现有公式的后续静态核对，未追加模型或新生成。"
+  },
+  "validation_order": "InteriorWallDecision类型检查 → floor_layout_conflicts早退 → design_geometry_context → riser_height检查早退 → 梯段与平台占地检查",
+  "interpretation": "旧反馈缺陷修复已通过定向回归和V2原稿回放；V3仍暴露新图纸本身不一致、独立检查分阶段早退及重复填写派生参数的问题。不能归因于尚未执行的plan。"
+}

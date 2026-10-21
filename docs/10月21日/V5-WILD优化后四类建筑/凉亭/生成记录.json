@@ -1,0 +1,293 @@
+{
+  "route": [
+    "Codex独立设计",
+    "项目DesignDocument契约",
+    "project_drawing",
+    "程序实现设计标记/realize_marker",
+    "WILD装配及Schema校验",
+    "当前 wild-core parseBlueprintWithReport / compileBlueprintComponents"
+  ],
+  "plan_node": false,
+  "model_api_calls": 0,
+  "compiler": "生成.py",
+  "source_sha256": "f9fdcd7ea1f71b2df3a428ae6c518799a0699e07c54a90363e726bb2a6b0d294",
+  "wild_sha256": "9e8db089550f37cad4a67d0374fab50d2c2fdbc12b6d0340114af078c9a9ee35",
+  "schema_errors": 0,
+  "staircase_physical_expansion": "completed",
+  "rendered": false,
+  "regression_tests_run": false,
+  "types": {
+    "floor": 1,
+    "roof": 1,
+    "column": 8,
+    "primitive": 77,
+    "beam": 10,
+    "stair": 1,
+    "railing": 3,
+    "light": 1
+  },
+  "counts": {
+    "elements": 98,
+    "components": 4
+  },
+  "marker_entities": {
+    "building_body": [
+      "floor_L1_0"
+    ],
+    "roof_pavilion": [
+      "roof_pavilion"
+    ],
+    "timber_post_-1_0": [
+      "timber_post_-1_0"
+    ],
+    "stone_shoe_-1_0": [
+      "stone_shoe_-1_0"
+    ],
+    "timber_post_-1_1": [
+      "timber_post_-1_1"
+    ],
+    "stone_shoe_-1_1": [
+      "stone_shoe_-1_1"
+    ],
+    "timber_post_-1_2": [
+      "timber_post_-1_2"
+    ],
+    "stone_shoe_-1_2": [
+      "stone_shoe_-1_2"
+    ],
+    "timber_post_-1_3": [
+      "timber_post_-1_3"
+    ],
+    "stone_shoe_-1_3": [
+      "stone_shoe_-1_3"
+    ],
+    "timber_post_1_0": [
+      "timber_post_1_0"
+    ],
+    "stone_shoe_1_0": [
+      "stone_shoe_1_0"
+    ],
+    "timber_post_1_1": [
+      "timber_post_1_1"
+    ],
+    "stone_shoe_1_1": [
+      "stone_shoe_1_1"
+    ],
+    "timber_post_1_2": [
+      "timber_post_1_2"
+    ],
+    "stone_shoe_1_2": [
+      "stone_shoe_1_2"
+    ],
+    "timber_post_1_3": [
+      "timber_post_1_3"
+    ],
+    "stone_shoe_1_3": [
+      "stone_shoe_1_3"
+    ],
+    "ring_beam_0_0": [
+      "ring_beam_0_0"
+    ],
+    "ring_beam_0_1": [
+      "ring_beam_0_1"
+    ],
+    "ring_beam_0_2": [
+      "ring_beam_0_2"
+    ],
+    "ring_beam_0_3": [
+      "ring_beam_0_3"
+    ],
+    "ring_beam_1_0": [
+      "ring_beam_1_0"
+    ],
+    "ring_beam_1_1": [
+      "ring_beam_1_1"
+    ],
+    "ring_beam_1_2": [
+      "ring_beam_1_2"
+    ],
+    "ring_beam_1_3": [
+      "ring_beam_1_3"
+    ],
+    "ridge_cross_x": [
+      "ridge_cross_x"
+    ],
+    "ridge_cross_z": [
+      "ridge_cross_z"
+    ],
+    "side_balustrade_-1": [
+      "side_balustrade_-1"
+    ],
+    "side_bench_-1": [
+      "side_bench_-1"
+    ],
+    "side_lattice_-1": [
+      "side_lattice_-1_0",
+      "side_lattice_-1_1",
+      "side_lattice_-1_2",
+      "side_lattice_-1_3",
+      "side_lattice_-1_4",
+      "side_lattice_-1_5",
+      "side_lattice_-1_6",
+      "side_lattice_-1_7",
+      "side_lattice_-1_8",
+      "side_lattice_-1_9",
+      "side_lattice_-1_10",
+      "side_lattice_-1_11",
+      "side_lattice_-1_12",
+      "side_lattice_-1_13",
+      "side_lattice_-1_14",
+      "side_lattice_-1_15",
+      "side_lattice_-1_16",
+      "side_lattice_-1_17",
+      "side_lattice_-1_18",
+      "side_lattice_-1_19"
+    ],
+    "side_balustrade_1": [
+      "side_balustrade_1"
+    ],
+    "side_bench_1": [
+      "side_bench_1"
+    ],
+    "side_lattice_1": [
+      "side_lattice_1_0",
+      "side_lattice_1_1",
+      "side_lattice_1_2",
+      "side_lattice_1_3",
+      "side_lattice_1_4",
+      "side_lattice_1_5",
+      "side_lattice_1_6",
+      "side_lattice_1_7",
+      "side_lattice_1_8",
+      "side_lattice_1_9",
+      "side_lattice_1_10",
+      "side_lattice_1_11",
+      "side_lattice_1_12",
+      "side_lattice_1_13",
+      "side_lattice_1_14",
+      "side_lattice_1_15",
+      "side_lattice_1_16",
+      "side_lattice_1_17",
+      "side_lattice_1_18",
+      "side_lattice_1_19"
+    ],
+    "rear_balustrade": [
+      "rear_balustrade"
+    ],
+    "rear_lattice": [
+      "rear_lattice_0",
+      "rear_lattice_1",
+      "rear_lattice_2",
+      "rear_lattice_3",
+      "rear_lattice_4",
+      "rear_lattice_5",
+      "rear_lattice_6",
+      "rear_lattice_7",
+      "rear_lattice_8",
+      "rear_lattice_9",
+      "rear_lattice_10",
+      "rear_lattice_11",
+      "rear_lattice_12",
+      "rear_lattice_13",
+      "rear_lattice_14",
+      "rear_lattice_15",
+      "rear_lattice_16",
+      "rear_lattice_17",
+      "rear_lattice_18",
+      "rear_lattice_19",
+      "rear_lattice_20",
+      "rear_lattice_21"
+    ],
+    "stone_dais": [
+      "stone_dais"
+    ],
+    "dais_upper": [
+      "dais_upper"
+    ],
+    "front_steps": [
+      "front_steps"
+    ],
+    "site": [
+      "site"
+    ],
+    "water_edge": [
+      "water_edge"
+    ],
+    "approach": [
+      "approach"
+    ],
+    "pendant": [
+      "pendant"
+    ]
+  },
+  "scope": "按图纸确定性编译；未调用完整LangGraph，未运行回归测试或浏览器渲染",
+  "core_component_compilation": {
+    "diagnostics": [],
+    "source_migrations": [],
+    "native_element_count": 123,
+    "mapping": {
+      "generatedElementIdsByComponentId": {
+        "side_balustrade_-1": [
+          "side_balustrade_-1__post_001",
+          "side_balustrade_-1__post_002",
+          "side_balustrade_-1__post_003",
+          "side_balustrade_-1__post_004",
+          "side_balustrade_-1__post_005",
+          "side_balustrade_-1__post_006",
+          "side_balustrade_-1__post_007",
+          "side_balustrade_-1__rail_001_001"
+        ],
+        "side_balustrade_1": [
+          "side_balustrade_1__post_001",
+          "side_balustrade_1__post_002",
+          "side_balustrade_1__post_003",
+          "side_balustrade_1__post_004",
+          "side_balustrade_1__post_005",
+          "side_balustrade_1__post_006",
+          "side_balustrade_1__post_007",
+          "side_balustrade_1__rail_001_001"
+        ],
+        "rear_balustrade": [
+          "rear_balustrade__post_001",
+          "rear_balustrade__post_002",
+          "rear_balustrade__post_003",
+          "rear_balustrade__post_004",
+          "rear_balustrade__post_005",
+          "rear_balustrade__post_006",
+          "rear_balustrade__post_007",
+          "rear_balustrade__rail_001_001"
+        ],
+        "pendant": [
+          "pendant__body_01"
+        ]
+      },
+      "componentIdByGeneratedElementId": {
+        "side_balustrade_-1__post_001": "side_balustrade_-1",
+        "side_balustrade_-1__post_002": "side_balustrade_-1",
+        "side_balustrade_-1__post_003": "side_balustrade_-1",
+        "side_balustrade_-1__post_004": "side_balustrade_-1",
+        "side_balustrade_-1__post_005": "side_balustrade_-1",
+        "side_balustrade_-1__post_006": "side_balustrade_-1",
+        "side_balustrade_-1__post_007": "side_balustrade_-1",
+        "side_balustrade_-1__rail_001_001": "side_balustrade_-1",
+        "side_balustrade_1__post_001": "side_balustrade_1",
+        "side_balustrade_1__post_002": "side_balustrade_1",
+        "side_balustrade_1__post_003": "side_balustrade_1",
+        "side_balustrade_1__post_004": "side_balustrade_1",
+        "side_balustrade_1__post_005": "side_balustrade_1",
+        "side_balustrade_1__post_006": "side_balustrade_1",
+        "side_balustrade_1__post_007": "side_balustrade_1",
+        "side_balustrade_1__rail_001_001": "side_balustrade_1",
+        "rear_balustrade__post_001": "rear_balustrade",
+        "rear_balustrade__post_002": "rear_balustrade",
+        "rear_balustrade__post_003": "rear_balustrade",
+        "rear_balustrade__post_004": "rear_balustrade",
+        "rear_balustrade__post_005": "rear_balustrade",
+        "rear_balustrade__post_006": "rear_balustrade",
+        "rear_balustrade__post_007": "rear_balustrade",
+        "rear_balustrade__rail_001_001": "rear_balustrade",
+        "pendant__body_01": "pendant"
+      }
+    }
+  }
+}

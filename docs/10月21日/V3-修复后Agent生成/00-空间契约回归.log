@@ -1,0 +1,24 @@
+test_actual_bytes_preserved_and_stale_snapshot_rejected (test_spatial_design_contracts.ActualVisualInput.test_actual_bytes_preserved_and_stale_snapshot_rejected) ... ok
+test_binding_uses_approved_definition_and_fills_native_field (test_spatial_design_contracts.SpatialDesignContracts.test_binding_uses_approved_definition_and_fills_native_field) ... ok
+test_complete_stair_void_for_four_directions (test_spatial_design_contracts.SpatialDesignContracts.test_complete_stair_void_for_four_directions) ... ok
+test_connection_checks_real_top_and_bottom (test_spatial_design_contracts.SpatialDesignContracts.test_connection_checks_real_top_and_bottom) ... ok
+test_invalid_paths (test_spatial_design_contracts.SpatialDesignContracts.test_invalid_paths) ... ok
+test_layout_survives_draft_and_plan_roundtrip (test_spatial_design_contracts.SpatialDesignContracts.test_layout_survives_draft_and_plan_roundtrip) ... ok
+test_legacy_bounds_and_false_are_preserved (test_spatial_design_contracts.SpatialDesignContracts.test_legacy_bounds_and_false_are_preserved) ... ok
+test_missing_floor_and_void_coverage_cannot_pass (test_spatial_design_contracts.SpatialDesignContracts.test_missing_floor_and_void_coverage_cannot_pass) ... ok
+test_named_material_binding_rejects_missing_definition (test_spatial_design_contracts.SpatialDesignContracts.test_named_material_binding_rejects_missing_definition) ... ok
+test_normalization_keeps_spatial_decisions (test_spatial_design_contracts.SpatialDesignContracts.test_normalization_keeps_spatial_decisions) ... ok
+test_repetition_uses_group_center_and_validates_envelope (test_spatial_design_contracts.SpatialDesignContracts.test_repetition_uses_group_center_and_validates_envelope) ... ok
+test_terrace_door_bottom_matches_actual_floor_top (test_spatial_design_contracts.SpatialDesignContracts.test_terrace_door_bottom_matches_actual_floor_top) ... ok
+test_headroom_and_y_rotated_furniture (test_spatial_design_contracts.SpatialUse.test_headroom_and_y_rotated_furniture) ... ok
+test_input_is_not_mutated (test_spatial_design_contracts.SpatialUse.test_input_is_not_mutated) ... ok
+test_instances_translate_geometry_and_unsupported_placements_need_review (test_spatial_design_contracts.SpatialUse.test_instances_translate_geometry_and_unsupported_placements_need_review) ... ok
+test_omitted_frame_width_uses_renderer_default (test_spatial_design_contracts.SpatialUse.test_omitted_frame_width_uses_renderer_default) ... ok
+test_real_door_passage_and_insufficient_clear_width (test_spatial_design_contracts.SpatialUse.test_real_door_passage_and_insufficient_clear_width) ... ok
+test_thin_column_between_previous_sampling_points (test_spatial_design_contracts.SpatialUse.test_thin_column_between_previous_sampling_points) ... ok
+test_unknown_far_shape_does_not_mark_every_route (test_spatial_design_contracts.SpatialUse.test_unknown_far_shape_does_not_mark_every_route) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 0.894s
+
+OK

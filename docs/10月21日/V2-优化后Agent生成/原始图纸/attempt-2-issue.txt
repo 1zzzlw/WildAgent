@@ -1,0 +1,1 @@
+/components/0/form：梯段数×每跑级数×踏步高=7.6m，超过首层至顶层楼面高差 3.8m；修订楼梯连接或踏步参数；/floor_layouts/1/rooms/1：内墙 wall_master_bath（from=[10.0, 4.5], to=[10.0, 7.5]）贯穿第 2 层房间 room_corridor_2f（二层走廊）范围，世界 X=[3, 11.5]，Z=[4.5, 5.5]；墙段位于 X=10，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.x=10、bounds.width=1.5；保留较小坐标边界时可写 bounds.x=3、bounds.width=7。仅把墙端缩短到房间另一边界仍然是贯穿。该房间还与以下房间范围重叠，须

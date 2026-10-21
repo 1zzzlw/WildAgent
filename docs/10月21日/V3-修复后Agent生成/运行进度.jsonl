@@ -1,0 +1,1218 @@
+{"time": "2026-10-21T01:12:48.634076+00:00", "channel": "architecture:progress", "content": "正在形成完整建筑图纸与构件标记……\n"}
+{"time": "2026-10-21T01:12:50.531341+00:00", "channel": "architecture", "content": "用户"}
+{"time": "2026-10-21T01:12:50.531341+00:00", "channel": "architecture", "content": "要求创建一栋"}
+{"time": "2026-10-21T01:12:50.566518+00:00", "channel": "architecture", "content": "可"}
+{"time": "2026-10-21T01:12:50.618533+00:00", "channel": "architecture", "content": "渲染的新中式别墅"}
+{"time": "2026-10-21T01:12:50.715331+00:00", "channel": "architecture", "content": "，需要按照当前"}
+{"time": "2026-10-21T01:12:50.729893+00:00", "channel": "architecture", "content": "项目设计图纸契约"}
+{"time": "2026-10-21T01:12:50.762679+00:00", "channel": "architecture", "content": "创建设计，"}
+{"time": "2026-10-21T01:12:50.820189+00:00", "channel": "architecture", "content": "再编译WILD"}
+{"time": "2026-10-21T01:12:50.842787+00:00", "channel": "architecture", "content": "并记录流程。"}
+{"time": "2026-10-21T01:12:50.901087+00:00", "channel": "architecture", "content": "\n\n让我按照设计"}
+{"time": "2026-10-21T01:12:50.961291+00:00", "channel": "architecture", "content": "步骤来组织："}
+{"time": "2026-10-21T01:12:50.961795+00:00", "channel": "architecture", "content": "\n\n**"}
+{"time": "2026-10-21T01:12:51.020414+00:00", "channel": "architecture", "content": "需求与形制"}
+{"time": "2026-10-21T01:12:51.020919+00:00", "channel": "architecture", "content": "：**"}
+{"time": "2026-10-21T01:12:51.050000+00:00", "channel": "architecture", "content": "\n- 新"}
+{"time": "2026-10-21T01:12:51.129492+00:00", "channel": "architecture", "content": "中式别墅\n-"}
+{"time": "2026-10-21T01:12:51.129492+00:00", "channel": "architecture", "content": " 极高"}
+{"time": "2026-10-21T01:12:51.205095+00:00", "channel": "architecture", "content": "粒度：需要室内"}
+{"time": "2026-10-21T01:12:51.205604+00:00", "channel": "architecture", "content": "功能分区、"}
+{"time": "2026-10-21T01:12:51.263325+00:00", "channel": "architecture", "content": "家具陈设、"}
+{"time": "2026-10-21T01:12:51.263325+00:00", "channel": "architecture", "content": "照明"}
+{"time": "2026-10-21T01:12:51.355317+00:00", "channel": "architecture", "content": "、入口与场地"}
+{"time": "2026-10-21T01:12:51.355821+00:00", "channel": "architecture", "content": "细节\n-"}
+{"time": "2026-10-21T01:12:51.436188+00:00", "channel": "architecture", "content": " 新中式风格"}
+{"time": "2026-10-21T01:12:51.518030+00:00", "channel": "architecture", "content": "特征：白墙"}
+{"time": "2026-10-21T01:12:51.518030+00:00", "channel": "architecture", "content": "黛"}
+{"time": "2026-10-21T01:12:51.584032+00:00", "channel": "architecture", "content": "瓦、木格栅"}
+{"time": "2026-10-21T01:12:51.584537+00:00", "channel": "architecture", "content": "、庭院"}
+{"time": "2026-10-21T01:12:51.619631+00:00", "channel": "architecture", "content": "、坡屋顶、"}
+{"time": "2026-10-21T01:12:51.708176+00:00", "channel": "architecture", "content": "檐口、对称"}
+{"time": "2026-10-21T01:12:51.766497+00:00", "channel": "architecture", "content": "或半对称布局"}
+{"time": "2026-10-21T01:12:51.767042+00:00", "channel": "architecture", "content": "\n\n"}
+{"time": "2026-10-21T01:12:51.844094+00:00", "channel": "architecture", "content": "**体量与标高"}
+{"time": "2026-10-21T01:12:51.844599+00:00", "channel": "architecture", "content": "：**\n"}
+{"time": "2026-10-21T01:12:51.910180+00:00", "channel": "architecture", "content": "- 两层别墅"}
+{"time": "2026-10-21T01:12:51.910692+00:00", "channel": "architecture", "content": "，"}
+{"time": "2026-10-21T01:12:52.008669+00:00", "channel": "architecture", "content": "带庭院\n-"}
+{"time": "2026-10-21T01:12:52.009178+00:00", "channel": "architecture", "content": " 主"}
+{"time": "2026-10-21T01:12:52.083634+00:00", "channel": "architecture", "content": "楼：东西向"}
+{"time": "2026-10-21T01:12:52.157661+00:00", "channel": "architecture", "content": "展开，形成U"}
+{"time": "2026-10-21T01:12:52.286709+00:00", "channel": "architecture", "content": "形或L形"}
+{"time": "2026-10-21T01:12:52.350937+00:00", "channel": "architecture", "content": "围合庭院\n"}
+{"time": "2026-10-21T01:12:52.351447+00:00", "channel": "architecture", "content": "- 一层"}
+{"time": "2026-10-21T01:12:52.473245+00:00", "channel": "architecture", "content": "层高3.9"}
+{"time": "2026-10-21T01:12:52.547903+00:00", "channel": "architecture", "content": "m，二层层"}
+{"time": "2026-10-21T01:12:52.614999+00:00", "channel": "architecture", "content": "高3.3"}
+{"time": "2026-10-21T01:12:52.615504+00:00", "channel": "architecture", "content": "m"}
+{"time": "2026-10-21T01:12:52.659235+00:00", "channel": "architecture", "content": "\n- 总"}
+{"time": "2026-10-21T01:12:52.726771+00:00", "channel": "architecture", "content": "宽约18"}
+{"time": "2026-10-21T01:12:52.806504+00:00", "channel": "architecture", "content": "m，总深"}
+{"time": "2026-10-21T01:12:52.808012+00:00", "channel": "architecture", "content": "约14"}
+{"time": "2026-10-21T01:12:52.868506+00:00", "channel": "architecture", "content": "m\n\n**功能"}
+{"time": "2026-10-21T01:12:53.059952+00:00", "channel": "architecture", "content": "交通：**\n-"}
+{"time": "2026-10-21T01:12:53.060459+00:00", "channel": "architecture", "content": " "}
+{"time": "2026-10-21T01:12:53.060459+00:00", "channel": "architecture", "content": "一层：门厅"}
+{"time": "2026-10-21T01:12:53.060459+00:00", "channel": "architecture", "content": "、客厅（"}
+{"time": "2026-10-21T01:12:53.112395+00:00", "channel": "architecture", "content": "通高或普通"}
+{"time": "2026-10-21T01:12:53.145560+00:00", "channel": "architecture", "content": "层高）、餐厅、"}
+{"time": "2026-10-21T01:12:53.146065+00:00", "channel": "architecture", "content": "厨房"}
+{"time": "2026-10-21T01:12:53.244246+00:00", "channel": "architecture", "content": "、老人房、"}
+{"time": "2026-10-21T01:12:53.244968+00:00", "channel": "architecture", "content": "卫生间"}
+{"time": "2026-10-21T01:12:53.351156+00:00", "channel": "architecture", "content": "、庭院\n-"}
+{"time": "2026-10-21T01:12:53.351662+00:00", "channel": "architecture", "content": " 二层"}
+{"time": "2026-10-21T01:12:53.488947+00:00", "channel": "architecture", "content": "：主卧套房（"}
+{"time": "2026-10-21T01:12:53.493178+00:00", "channel": "architecture", "content": "含衣帽间、"}
+{"time": "2026-10-21T01:12:53.535666+00:00", "channel": "architecture", "content": "卫生间）、次卧"}
+{"time": "2026-10-21T01:12:53.621972+00:00", "channel": "architecture", "content": "×2、书房"}
+{"time": "2026-10-21T01:12:53.622477+00:00", "channel": "architecture", "content": "、"}
+{"time": "2026-10-21T01:12:53.726957+00:00", "channel": "architecture", "content": "阳台\n- "}
+{"time": "2026-10-21T01:12:53.727462+00:00", "channel": "architecture", "content": "楼梯："}
+{"time": "2026-10-21T01:12:53.811712+00:00", "channel": "architecture", "content": "U形双跑"}
+{"time": "2026-10-21T01:12:53.812263+00:00", "channel": "architecture", "content": "\n\n"}
+{"time": "2026-10-21T01:12:53.850289+00:00", "channel": "architecture", "content": "**围护开口"}
+{"time": "2026-10-21T01:12:53.888991+00:00", "channel": "architecture", "content": "：**\n- "}
+{"time": "2026-10-21T01:12:53.923958+00:00", "channel": "architecture", "content": "新中式：大面积"}
+{"time": "2026-10-21T01:12:54.019965+00:00", "channel": "architecture", "content": "木格栅+玻璃"}
+{"time": "2026-10-21T01:12:54.050803+00:00", "channel": "architecture", "content": "、白墙实"}
+{"time": "2026-10-21T01:12:54.119072+00:00", "channel": "architecture", "content": "墙为主、局部"}
+{"time": "2026-10-21T01:12:54.198587+00:00", "channel": "architecture", "content": "落地窗\n-"}
+{"time": "2026-10-21T01:12:54.199092+00:00", "channel": "architecture", "content": " "}
+{"time": "2026-10-21T01:12:54.240637+00:00", "channel": "architecture", "content": "前立面：对称"}
+{"time": "2026-10-21T01:12:54.353029+00:00", "channel": "architecture", "content": "布局，中央入口"}
+{"time": "2026-10-21T01:12:54.465043+00:00", "channel": "architecture", "content": "带门斗，"}
+{"time": "2026-10-21T01:12:54.465553+00:00", "channel": "architecture", "content": "两侧实"}
+{"time": "2026-10-21T01:12:54.532666+00:00", "channel": "architecture", "content": "墙+格栅窗"}
+{"time": "2026-10-21T01:12:54.564544+00:00", "channel": "architecture", "content": "\n- 后"}
+{"time": "2026-10-21T01:12:54.628371+00:00", "channel": "architecture", "content": "立面：大面积落地"}
+{"time": "2026-10-21T01:12:54.628876+00:00", "channel": "architecture", "content": "窗面向庭院"}
+{"time": "2026-10-21T01:12:54.664368+00:00", "channel": "architecture", "content": "\n- 左右"}
+{"time": "2026-10-21T01:12:54.824087+00:00", "channel": "architecture", "content": "：较小开口\n\n"}
+{"time": "2026-10-21T01:12:54.824642+00:00", "channel": "architecture", "content": "**屋面"}
+{"time": "2026-10-21T01:12:54.856956+00:00", "channel": "architecture", "content": "附属：**\n-"}
+{"time": "2026-10-21T01:12:54.887706+00:00", "channel": "architecture", "content": " 双坡屋顶"}
+{"time": "2026-10-21T01:12:54.949632+00:00", "channel": "architecture", "content": "（新中式灰"}
+{"time": "2026-10-21T01:12:55.034594+00:00", "channel": "architecture", "content": "瓦）\n-"}
+{"time": "2026-10-21T01:12:55.035104+00:00", "channel": "architecture", "content": " 檐"}
+{"time": "2026-10-21T01:12:55.085567+00:00", "channel": "architecture", "content": "口出挑\n"}
+{"time": "2026-10-21T01:12:55.150598+00:00", "channel": "architecture", "content": "- 庭院围墙"}
+{"time": "2026-10-21T01:12:55.224515+00:00", "channel": "architecture", "content": "\n\n**材料表达"}
+{"time": "2026-10-21T01:12:55.252867+00:00", "channel": "architecture", "content": "：**\n- "}
+{"time": "2026-10-21T01:12:55.352818+00:00", "channel": "architecture", "content": "白色抹灰墙面"}
+{"time": "2026-10-21T01:12:55.353329+00:00", "channel": "architecture", "content": "\n"}
+{"time": "2026-10-21T01:12:55.430525+00:00", "channel": "architecture", "content": "- 深灰色"}
+{"time": "2026-10-21T01:12:55.431030+00:00", "channel": "architecture", "content": "木格栅\n"}
+{"time": "2026-10-21T01:12:55.494030+00:00", "channel": "architecture", "content": "- 青灰色"}
+{"time": "2026-10-21T01:12:55.494542+00:00", "channel": "architecture", "content": "瓦屋面"}
+{"time": "2026-10-21T01:12:55.537796+00:00", "channel": "architecture", "content": "\n- 深色"}
+{"time": "2026-10-21T01:12:55.606816+00:00", "channel": "architecture", "content": "木框\n-"}
+{"time": "2026-10-21T01:12:55.607326+00:00", "channel": "architecture", "content": " 石材"}
+{"time": "2026-10-21T01:12:55.704914+00:00", "channel": "architecture", "content": "台基/地面"}
+{"time": "2026-10-21T01:12:55.771352+00:00", "channel": "architecture", "content": "\n\n让我具体设计"}
+{"time": "2026-10-21T01:12:55.771352+00:00", "channel": "architecture", "content": "："}
+{"time": "2026-10-21T01:12:55.909037+00:00", "channel": "architecture", "content": "\n\n主楼体量"}
+{"time": "2026-10-21T01:12:55.909614+00:00", "channel": "architecture", "content": "：\n- "}
+{"time": "2026-10-21T01:12:55.945466+00:00", "channel": "architecture", "content": "主楼 main："}
+{"time": "2026-10-21T01:12:55.945971+00:00", "channel": "architecture", "content": "宽14"}
+{"time": "2026-10-21T01:12:56.012135+00:00", "channel": "architecture", "content": "m × 深"}
+{"time": "2026-10-21T01:12:56.012597+00:00", "channel": "architecture", "content": "10"}
+{"time": "2026-10-21T01:12:56.059408+00:00", "channel": "architecture", "content": "m，2层"}
+{"time": "2026-10-21T01:12:56.059408+00:00", "channel": "architecture", "content": "\n"}
+{"time": "2026-10-21T01:12:56.129216+00:00", "channel": "architecture", "content": "- 副楼"}
+{"time": "2026-10-21T01:12:56.129721+00:00", "channel": "architecture", "content": " wing"}
+{"time": "2026-10-21T01:12:56.254627+00:00", "channel": "architecture", "content": "：宽8m"}
+{"time": "2026-10-21T01:12:56.255167+00:00", "channel": "architecture", "content": " × 深"}
+{"time": "2026-10-21T01:12:56.285600+00:00", "channel": "architecture", "content": "6m，1"}
+{"time": "2026-10-21T01:12:56.392564+00:00", "channel": "architecture", "content": "层（车库+"}
+{"time": "2026-10-21T01:12:56.450152+00:00", "channel": "architecture", "content": "储藏）\n-"}
+{"time": "2026-10-21T01:12:56.450656+00:00", "channel": "architecture", "content": " 总体"}
+{"time": "2026-10-21T01:12:56.528895+00:00", "channel": "architecture", "content": "包络：约"}
+{"time": "2026-10-21T01:12:56.528895+00:00", "channel": "architecture", "content": "18m ×"}
+{"time": "2026-10-21T01:12:56.597622+00:00", "channel": "architecture", "content": " 14m"}
+{"time": "2026-10-21T01:12:56.597622+00:00", "channel": "architecture", "content": "\n\n实际上"}
+{"time": "2026-10-21T01:12:56.656049+00:00", "channel": "architecture", "content": "让我重新规划一个"}
+{"time": "2026-10-21T01:12:56.692715+00:00", "channel": "architecture", "content": "更合理的新中式"}
+{"time": "2026-10-21T01:12:56.692782+00:00", "channel": "architecture", "content": "布局"}
+{"time": "2026-10-21T01:12:56.761326+00:00", "channel": "architecture", "content": "：\n\n方案："}
+{"time": "2026-10-21T01:12:56.761833+00:00", "channel": "architecture", "content": "L"}
+{"time": "2026-10-21T01:12:56.822421+00:00", "channel": "architecture", "content": "形布局，围"}
+{"time": "2026-10-21T01:12:56.886922+00:00", "channel": "architecture", "content": "合一个内庭院"}
+{"time": "2026-10-21T01:12:56.886922+00:00", "channel": "architecture", "content": "\n-"}
+{"time": "2026-10-21T01:12:56.990312+00:00", "channel": "architecture", "content": " 主体 volume_main"}
+{"time": "2026-10-21T01:12:57.035216+00:00", "channel": "architecture", "content": "：宽12"}
+{"time": "2026-10-21T01:12:57.035721+00:00", "channel": "architecture", "content": "m"}
+{"time": "2026-10-21T01:12:57.071206+00:00", "channel": "architecture", "content": " × 深1"}
+{"time": "2026-10-21T01:12:57.137141+00:00", "channel": "architecture", "content": "0m，2"}
+{"time": "2026-10-21T01:12:57.137646+00:00", "channel": "architecture", "content": "层（"}
+{"time": "2026-10-21T01:12:57.230411+00:00", "channel": "architecture", "content": "居住功能）\n"}
+{"time": "2026-10-21T01:12:57.230916+00:00", "channel": "architecture", "content": "- "}
+{"time": "2026-10-21T01:12:57.333484+00:00", "channel": "architecture", "content": "侧翼 volume_w"}
+{"time": "2026-10-21T01:12:57.334079+00:00", "channel": "architecture", "content": "ing：宽"}
+{"time": "2026-10-21T01:12:57.375308+00:00", "channel": "architecture", "content": "6m × "}
+{"time": "2026-10-21T01:12:57.394806+00:00", "channel": "architecture", "content": "深8m，"}
+{"time": "2026-10-21T01:12:57.492969+00:00", "channel": "architecture", "content": "1层（车库"}
+{"time": "2026-10-21T01:12:57.492969+00:00", "channel": "architecture", "content": "+设备"}
+{"time": "2026-10-21T01:12:57.517927+00:00", "channel": "architecture", "content": "+储藏）\n"}
+{"time": "2026-10-21T01:12:57.528121+00:00", "channel": "architecture", "content": "-"}
+{"time": "2026-10-21T01:12:57.605658+00:00", "channel": "architecture", "content": " 总包络"}
+{"time": "2026-10-21T01:12:57.606163+00:00", "channel": "architecture", "content": "：宽"}
+{"time": "2026-10-21T01:12:57.616428+00:00", "channel": "architecture", "content": "18m ×"}
+{"time": "2026-10-21T01:12:57.655130+00:00", "channel": "architecture", "content": " 深10"}
+{"time": "2026-10-21T01:12:57.712880+00:00", "channel": "architecture", "content": "m（如果侧"}
+{"time": "2026-10-21T01:12:57.713140+00:00", "channel": "architecture", "content": "翼接"}
+{"time": "2026-10-21T01:12:57.788552+00:00", "channel": "architecture", "content": "在主体右侧）"}
+{"time": "2026-10-21T01:12:57.788552+00:00", "channel": "architecture", "content": "\n\n让我更"}
+{"time": "2026-10-21T01:12:57.842048+00:00", "channel": "architecture", "content": "细致地规划："}
+{"time": "2026-10-21T01:12:57.842766+00:00", "channel": "architecture", "content": "\n\n"}
+{"time": "2026-10-21T01:12:57.919283+00:00", "channel": "architecture", "content": "**平面布局（"}
+{"time": "2026-10-21T01:12:57.919988+00:00", "channel": "architecture", "content": "一层）"}
+{"time": "2026-10-21T01:12:57.936762+00:00", "channel": "architecture", "content": "：**\n- "}
+{"time": "2026-10-21T01:12:58.071221+00:00", "channel": "architecture", "content": "门厅在中央"}
+{"time": "2026-10-21T01:12:58.071733+00:00", "channel": "architecture", "content": "偏前"}
+{"time": "2026-10-21T01:12:58.105768+00:00", "channel": "architecture", "content": "\n- 客厅"}
+{"time": "2026-10-21T01:12:58.201783+00:00", "channel": "architecture", "content": "在门厅右侧"}
+{"time": "2026-10-21T01:12:58.260962+00:00", "channel": "architecture", "content": "（东侧），面积"}
+{"time": "2026-10-21T01:12:58.423721+00:00", "channel": "architecture", "content": "大，带落地"}
+{"time": "2026-10-21T01:12:58.424226+00:00", "channel": "architecture", "content": "窗\n"}
+{"time": "2026-10-21T01:12:58.458742+00:00", "channel": "architecture", "content": "- 餐厅在"}
+{"time": "2026-10-21T01:12:58.459247+00:00", "channel": "architecture", "content": "客厅"}
+{"time": "2026-10-21T01:12:58.552913+00:00", "channel": "architecture", "content": "后面\n- "}
+{"time": "2026-10-21T01:12:58.553483+00:00", "channel": "architecture", "content": "厨房"}
+{"time": "2026-10-21T01:12:58.615369+00:00", "channel": "architecture", "content": "在西北角\n"}
+{"time": "2026-10-21T01:12:58.615879+00:00", "channel": "architecture", "content": "- "}
+{"time": "2026-10-21T01:12:58.655413+00:00", "channel": "architecture", "content": "老人房在西南"}
+{"time": "2026-10-21T01:12:58.682297+00:00", "channel": "architecture", "content": "角\n- "}
+{"time": "2026-10-21T01:12:58.744207+00:00", "channel": "architecture", "content": "卫生间在走廊旁"}
+{"time": "2026-10-21T01:12:58.817092+00:00", "channel": "architecture", "content": "\n- 内"}
+{"time": "2026-10-21T01:12:58.951690+00:00", "channel": "architecture", "content": "庭院在北侧（"}
+{"time": "2026-10-21T01:12:58.952195+00:00", "channel": "architecture", "content": "或"}
+{"time": "2026-10-21T01:12:58.965329+00:00", "channel": "architecture", "content": "南侧）\n\n**"}
+{"time": "2026-10-21T01:12:58.965838+00:00", "channel": "architecture", "content": "二层"}
+{"time": "2026-10-21T01:12:59.025612+00:00", "channel": "architecture", "content": "：**\n- "}
+{"time": "2026-10-21T01:12:59.026117+00:00", "channel": "architecture", "content": "主卧"}
+{"time": "2026-10-21T01:12:59.131795+00:00", "channel": "architecture", "content": "在东侧（客厅"}
+{"time": "2026-10-21T01:12:59.197702+00:00", "channel": "architecture", "content": "上方），带衣帽"}
+{"time": "2026-10-21T01:12:59.198211+00:00", "channel": "architecture", "content": "间和"}
+{"time": "2026-10-21T01:12:59.262702+00:00", "channel": "architecture", "content": "主卫\n-"}
+{"time": "2026-10-21T01:12:59.262702+00:00", "channel": "architecture", "content": " "}
+{"time": "2026-10-21T01:12:59.338428+00:00", "channel": "architecture", "content": "次卧×2"}
+{"time": "2026-10-21T01:12:59.338932+00:00", "channel": "architecture", "content": "在西"}
+{"time": "2026-10-21T01:12:59.458073+00:00", "channel": "architecture", "content": "侧\n- "}
+{"time": "2026-10-21T01:12:59.458578+00:00", "channel": "architecture", "content": "书房在北侧\n"}
+{"time": "2026-10-21T01:12:59.458578+00:00", "channel": "architecture", "content": "- 阳台"}
+{"time": "2026-10-21T01:12:59.533410+00:00", "channel": "architecture", "content": "在南侧或庭院"}
+{"time": "2026-10-21T01:12:59.605202+00:00", "channel": "architecture", "content": "侧\n\n让我重新"}
+{"time": "2026-10-21T01:12:59.605202+00:00", "channel": "architecture", "content": "设计"}
+{"time": "2026-10-21T01:12:59.691360+00:00", "channel": "architecture", "content": "一个更清晰的新"}
+{"time": "2026-10-21T01:12:59.691865+00:00", "channel": "architecture", "content": "中式别墅"}
+{"time": "2026-10-21T01:12:59.707698+00:00", "channel": "architecture", "content": "：\n\n**总体"}
+{"time": "2026-10-21T01:12:59.746522+00:00", "channel": "architecture", "content": "方案：**\n-"}
+{"time": "2026-10-21T01:12:59.816180+00:00", "channel": "architecture", "content": " 两层主楼"}
+{"time": "2026-10-21T01:12:59.816685+00:00", "channel": "architecture", "content": " +"}
+{"time": "2026-10-21T01:12:59.933773+00:00", "channel": "architecture", "content": " 一层附楼"}
+{"time": "2026-10-21T01:12:59.934278+00:00", "channel": "architecture", "content": "，"}
+{"time": "2026-10-21T01:12:59.971257+00:00", "channel": "architecture", "content": "形成半围合"}
+{"time": "2026-10-21T01:12:59.971766+00:00", "channel": "architecture", "content": "庭院"}
+{"time": "2026-10-21T01:13:00.003824+00:00", "channel": "architecture", "content": "\n- 主"}
+{"time": "2026-10-21T01:13:00.063416+00:00", "channel": "architecture", "content": "楼：14"}
+{"time": "2026-10-21T01:13:00.063416+00:00", "channel": "architecture", "content": "m宽 ×"}
+{"time": "2026-10-21T01:13:00.114085+00:00", "channel": "architecture", "content": " 10m"}
+{"time": "2026-10-21T01:13:00.163425+00:00", "channel": "architecture", "content": "深，2层"}
+{"time": "2026-10-21T01:13:00.163930+00:00", "channel": "architecture", "content": "\n"}
+{"time": "2026-10-21T01:13:00.241438+00:00", "channel": "architecture", "content": "- 附楼"}
+{"time": "2026-10-21T01:13:00.241944+00:00", "channel": "architecture", "content": "（"}
+{"time": "2026-10-21T01:13:00.370900+00:00", "channel": "architecture", "content": "车库+储藏）"}
+{"time": "2026-10-21T01:13:00.370900+00:00", "channel": "architecture", "content": "：6"}
+{"time": "2026-10-21T01:13:00.370900+00:00", "channel": "architecture", "content": "m宽 × "}
+{"time": "2026-10-21T01:13:00.455503+00:00", "channel": "architecture", "content": "6m深，"}
+{"time": "2026-10-21T01:13:00.456012+00:00", "channel": "architecture", "content": "1"}
+{"time": "2026-10-21T01:13:00.476406+00:00", "channel": "architecture", "content": "层，接在主"}
+{"time": "2026-10-21T01:13:00.520366+00:00", "channel": "architecture", "content": "楼右侧\n-"}
+{"time": "2026-10-21T01:13:00.588378+00:00", "channel": "architecture", "content": " 总包络"}
+{"time": "2026-10-21T01:13:00.588887+00:00", "channel": "architecture", "content": "：2"}
+{"time": "2026-10-21T01:13:00.614750+00:00", "channel": "architecture", "content": "0m宽 ×"}
+{"time": "2026-10-21T01:13:00.716634+00:00", "channel": "architecture", "content": " 10m"}
+{"time": "2026-10-21T01:13:00.716634+00:00", "channel": "architecture", "content": "深（附"}
+{"time": "2026-10-21T01:13:00.792963+00:00", "channel": "architecture", "content": "楼可能缩进"}
+{"time": "2026-10-21T01:13:00.793468+00:00", "channel": "architecture", "content": "一些"}
+{"time": "2026-10-21T01:13:00.823517+00:00", "channel": "architecture", "content": "）\n\n实际上让我"}
+{"time": "2026-10-21T01:13:00.907878+00:00", "channel": "architecture", "content": "简化一下，做一个"}
+{"time": "2026-10-21T01:13:00.961001+00:00", "channel": "architecture", "content": "更经典的新中式"}
+{"time": "2026-10-21T01:13:00.961001+00:00", "channel": "architecture", "content": "：\n\n"}
+{"time": "2026-10-21T01:13:01.057726+00:00", "channel": "architecture", "content": "**体量：**\n"}
+{"time": "2026-10-21T01:13:01.057726+00:00", "channel": "architecture", "content": "- volume"}
+{"time": "2026-10-21T01:13:01.120479+00:00", "channel": "architecture", "content": "_main：14"}
+{"time": "2026-10-21T01:13:01.120985+00:00", "channel": "architecture", "content": "m ×"}
+{"time": "2026-10-21T01:13:01.157064+00:00", "channel": "architecture", "content": " 10m"}
+{"time": "2026-10-21T01:13:01.200507+00:00", "channel": "architecture", "content": "，2层（"}
+{"time": "2026-10-21T01:13:01.293095+00:00", "channel": "architecture", "content": "主体居住）\n"}
+{"time": "2026-10-21T01:13:01.293608+00:00", "channel": "architecture", "content": "- volume"}
+{"time": "2026-10-21T01:13:01.372831+00:00", "channel": "architecture", "content": "_annex：5"}
+{"time": "2026-10-21T01:13:01.408809+00:00", "channel": "architecture", "content": "m × 7"}
+{"time": "2026-10-21T01:13:01.431531+00:00", "channel": "architecture", "content": "m，1层"}
+{"time": "2026-10-21T01:13:01.505355+00:00", "channel": "architecture", "content": "（车库，接"}
+{"time": "2026-10-21T01:13:01.622667+00:00", "channel": "architecture", "content": "在东侧）\n"}
+{"time": "2026-10-21T01:13:01.645911+00:00", "channel": "architecture", "content": "- 总包"}
+{"time": "2026-10-21T01:13:01.724433+00:00", "channel": "architecture", "content": "络：约1"}
+{"time": "2026-10-21T01:13:01.724433+00:00", "channel": "architecture", "content": "9m ×"}
+{"time": "2026-10-21T01:13:01.774887+00:00", "channel": "architecture", "content": " 10m"}
+{"time": "2026-10-21T01:13:01.855695+00:00", "channel": "architecture", "content": "\n\n**层高：**"}
+{"time": "2026-10-21T01:13:01.856200+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:01.955329+00:00", "channel": "architecture", "content": "一层：3."}
+{"time": "2026-10-21T01:13:01.955329+00:00", "channel": "architecture", "content": "9m\n"}
+{"time": "2026-10-21T01:13:01.955329+00:00", "channel": "architecture", "content": "- 二层："}
+{"time": "2026-10-21T01:13:02.009138+00:00", "channel": "architecture", "content": "3.3m"}
+{"time": "2026-10-21T01:13:02.021695+00:00", "channel": "architecture", "content": "\n- 总"}
+{"time": "2026-10-21T01:13:02.110004+00:00", "channel": "architecture", "content": "高约7."}
+{"time": "2026-10-21T01:13:02.110509+00:00", "channel": "architecture", "content": "2m"}
+{"time": "2026-10-21T01:13:02.142166+00:00", "channel": "architecture", "content": " + 屋面\n\n"}
+{"time": "2026-10-21T01:13:02.265633+00:00", "channel": "architecture", "content": "**结构网格：**"}
+{"time": "2026-10-21T01:13:02.266639+00:00", "channel": "architecture", "content": "\n- x"}
+{"time": "2026-10-21T01:13:02.396545+00:00", "channel": "architecture", "content": "方向4开间"}
+{"time": "2026-10-21T01:13:02.398050+00:00", "channel": "architecture", "content": "（"}
+{"time": "2026-10-21T01:13:02.505423+00:00", "channel": "architecture", "content": "每间3."}
+{"time": "2026-10-21T01:13:02.505928+00:00", "channel": "architecture", "content": "5m）"}
+{"time": "2026-10-21T01:13:02.532108+00:00", "channel": "architecture", "content": "\n- z方向"}
+{"time": "2026-10-21T01:13:02.615332+00:00", "channel": "architecture", "content": "3开间（"}
+{"time": "2026-10-21T01:13:02.615837+00:00", "channel": "architecture", "content": "每"}
+{"time": "2026-10-21T01:13:02.649095+00:00", "channel": "architecture", "content": "间约3."}
+{"time": "2026-10-21T01:13:02.720494+00:00", "channel": "architecture", "content": "33m）"}
+{"time": "2026-10-21T01:13:02.720999+00:00", "channel": "architecture", "content": "\n\n让我"}
+{"time": "2026-10-21T01:13:02.839451+00:00", "channel": "architecture", "content": "精确设计：\n\n"}
+{"time": "2026-10-21T01:13:02.839956+00:00", "channel": "architecture", "content": "volume"}
+{"time": "2026-10-21T01:13:02.922924+00:00", "channel": "architecture", "content": "_main: x="}
+{"time": "2026-10-21T01:13:02.922924+00:00", "channel": "architecture", "content": "0, z"}
+{"time": "2026-10-21T01:13:02.956324+00:00", "channel": "architecture", "content": "=0, width"}
+{"time": "2026-10-21T01:13:03.009228+00:00", "channel": "architecture", "content": "=14,"}
+{"time": "2026-10-21T01:13:03.034889+00:00", "channel": "architecture", "content": " depth=10"}
+{"time": "2026-10-21T01:13:03.152739+00:00", "channel": "architecture", "content": "\nvolume_annex"}
+{"time": "2026-10-21T01:13:03.154048+00:00", "channel": "architecture", "content": ": x="}
+{"time": "2026-10-21T01:13:03.206988+00:00", "channel": "architecture", "content": "14, z"}
+{"time": "2026-10-21T01:13:03.268259+00:00", "channel": "architecture", "content": "=1.5"}
+{"time": "2026-10-21T01:13:03.268765+00:00", "channel": "architecture", "content": ", width"}
+{"time": "2026-10-21T01:13:03.319877+00:00", "channel": "architecture", "content": "=5, depth"}
+{"time": "2026-10-21T01:13:03.386138+00:00", "channel": "architecture", "content": "=7 (车库"}
+{"time": "2026-10-21T01:13:03.386138+00:00", "channel": "architecture", "content": "，"}
+{"time": "2026-10-21T01:13:03.483942+00:00", "channel": "architecture", "content": "偏后对齐)"}
+{"time": "2026-10-21T01:13:03.484448+00:00", "channel": "architecture", "content": "\n\n总包"}
+{"time": "2026-10-21T01:13:03.523634+00:00", "channel": "architecture", "content": "络：width="}
+{"time": "2026-10-21T01:13:03.571962+00:00", "channel": "architecture", "content": "19, depth"}
+{"time": "2026-10-21T01:13:03.591179+00:00", "channel": "architecture", "content": "=10\n\n"}
+{"time": "2026-10-21T01:13:03.689813+00:00", "channel": "architecture", "content": "**一层平面（"}
+{"time": "2026-10-21T01:13:03.690323+00:00", "channel": "architecture", "content": "volume"}
+{"time": "2026-10-21T01:13:03.758335+00:00", "channel": "architecture", "content": "_main, 1"}
+{"time": "2026-10-21T01:13:03.758839+00:00", "channel": "architecture", "content": "4×"}
+{"time": "2026-10-21T01:13:03.829616+00:00", "channel": "architecture", "content": "10）：**"}
+{"time": "2026-10-21T01:13:03.830122+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:03.897605+00:00", "channel": "architecture", "content": "入口门厅："}
+{"time": "2026-10-21T01:13:03.897605+00:00", "channel": "architecture", "content": "中央"}
+{"time": "2026-10-21T01:13:03.963552+00:00", "channel": "architecture", "content": "，x=5"}
+{"time": "2026-10-21T01:13:04.063751+00:00", "channel": "architecture", "content": ".5~8"}
+{"time": "2026-10-21T01:13:04.121838+00:00", "channel": "architecture", "content": ".5, z"}
+{"time": "2026-10-21T01:13:04.122344+00:00", "channel": "architecture", "content": "=0"}
+{"time": "2026-10-21T01:13:04.201030+00:00", "channel": "architecture", "content": "~3（宽"}
+{"time": "2026-10-21T01:13:04.252269+00:00", "channel": "architecture", "content": "3m深3"}
+{"time": "2026-10-21T01:13:04.252774+00:00", "channel": "architecture", "content": "m）\n"}
+{"time": "2026-10-21T01:13:04.329895+00:00", "channel": "architecture", "content": "- 客厅："}
+{"time": "2026-10-21T01:13:04.330400+00:00", "channel": "architecture", "content": "东侧"}
+{"time": "2026-10-21T01:13:04.353041+00:00", "channel": "architecture", "content": "，x=8"}
+{"time": "2026-10-21T01:13:04.414220+00:00", "channel": "architecture", "content": ".5~1"}
+{"time": "2026-10-21T01:13:04.447980+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:04.499857+00:00", "channel": "architecture", "content": "0~6（"}
+{"time": "2026-10-21T01:13:04.499857+00:00", "channel": "architecture", "content": "宽"}
+{"time": "2026-10-21T01:13:04.544447+00:00", "channel": "architecture", "content": "5.5m"}
+{"time": "2026-10-21T01:13:04.590861+00:00", "channel": "architecture", "content": "深6m）"}
+{"time": "2026-10-21T01:13:04.667883+00:00", "channel": "architecture", "content": "—— 带大面积"}
+{"time": "2026-10-21T01:13:04.751513+00:00", "channel": "architecture", "content": "落地窗朝南\n"}
+{"time": "2026-10-21T01:13:04.752026+00:00", "channel": "architecture", "content": "- 餐厅"}
+{"time": "2026-10-21T01:13:04.808953+00:00", "channel": "architecture", "content": "：东北，x"}
+{"time": "2026-10-21T01:13:04.809464+00:00", "channel": "architecture", "content": "=8"}
+{"time": "2026-10-21T01:13:04.847927+00:00", "channel": "architecture", "content": ".5~1"}
+{"time": "2026-10-21T01:13:04.872231+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:04.941806+00:00", "channel": "architecture", "content": "6~10"}
+{"time": "2026-10-21T01:13:04.943420+00:00", "channel": "architecture", "content": "（宽"}
+{"time": "2026-10-21T01:13:04.973253+00:00", "channel": "architecture", "content": "5.5m"}
+{"time": "2026-10-21T01:13:05.043424+00:00", "channel": "architecture", "content": "深4m）"}
+{"time": "2026-10-21T01:13:05.043424+00:00", "channel": "architecture", "content": "\n- 厨房"}
+{"time": "2026-10-21T01:13:05.108112+00:00", "channel": "architecture", "content": "：西北，x"}
+{"time": "2026-10-21T01:13:05.108695+00:00", "channel": "architecture", "content": "=0"}
+{"time": "2026-10-21T01:13:05.131322+00:00", "channel": "architecture", "content": "~5.5"}
+{"time": "2026-10-21T01:13:05.161489+00:00", "channel": "architecture", "content": ", z=6"}
+{"time": "2026-10-21T01:13:05.207678+00:00", "channel": "architecture", "content": "~10（"}
+{"time": "2026-10-21T01:13:05.228835+00:00", "channel": "architecture", "content": "宽5.5"}
+{"time": "2026-10-21T01:13:05.288479+00:00", "channel": "architecture", "content": "m深4m"}
+{"time": "2026-10-21T01:13:05.288984+00:00", "channel": "architecture", "content": "）\n-"}
+{"time": "2026-10-21T01:13:05.358785+00:00", "channel": "architecture", "content": " 老人房/"}
+{"time": "2026-10-21T01:13:05.424661+00:00", "channel": "architecture", "content": "客房：西南，"}
+{"time": "2026-10-21T01:13:05.425166+00:00", "channel": "architecture", "content": "x"}
+{"time": "2026-10-21T01:13:05.463620+00:00", "channel": "architecture", "content": "=0~4"}
+{"time": "2026-10-21T01:13:05.490371+00:00", "channel": "architecture", "content": ".5, z"}
+{"time": "2026-10-21T01:13:05.540050+00:00", "channel": "architecture", "content": "=0~5"}
+{"time": "2026-10-21T01:13:05.606809+00:00", "channel": "architecture", "content": "（宽4."}
+{"time": "2026-10-21T01:13:05.607314+00:00", "channel": "architecture", "content": "5m"}
+{"time": "2026-10-21T01:13:05.636315+00:00", "channel": "architecture", "content": "深5m）"}
+{"time": "2026-10-21T01:13:05.670268+00:00", "channel": "architecture", "content": "\n- 卫生间"}
+{"time": "2026-10-21T01:13:05.727964+00:00", "channel": "architecture", "content": "：x=4"}
+{"time": "2026-10-21T01:13:05.728824+00:00", "channel": "architecture", "content": ".5"}
+{"time": "2026-10-21T01:13:05.797684+00:00", "channel": "architecture", "content": "~5.5"}
+{"time": "2026-10-21T01:13:05.798461+00:00", "channel": "architecture", "content": ", z="}
+{"time": "2026-10-21T01:13:05.868443+00:00", "channel": "architecture", "content": "0~3（"}
+{"time": "2026-10-21T01:13:05.868953+00:00", "channel": "architecture", "content": "宽"}
+{"time": "2026-10-21T01:13:05.925705+00:00", "channel": "architecture", "content": "1m深3"}
+{"time": "2026-10-21T01:13:05.972374+00:00", "channel": "architecture", "content": "m）\n-"}
+{"time": "2026-10-21T01:13:06.058453+00:00", "channel": "architecture", "content": " 走廊/过渡"}
+{"time": "2026-10-21T01:13:06.113052+00:00", "channel": "architecture", "content": "：x=5"}
+{"time": "2026-10-21T01:13:06.113556+00:00", "channel": "architecture", "content": ".5"}
+{"time": "2026-10-21T01:13:06.143784+00:00", "channel": "architecture", "content": ", z=3"}
+{"time": "2026-10-21T01:13:06.212338+00:00", "channel": "architecture", "content": "~6 等"}
+{"time": "2026-10-21T01:13:06.212843+00:00", "channel": "architecture", "content": "\n\n让我"}
+{"time": "2026-10-21T01:13:06.341453+00:00", "channel": "architecture", "content": "重新规划，让"}
+{"time": "2026-10-21T01:13:06.386181+00:00", "channel": "architecture", "content": "布局更合理："}
+{"time": "2026-10-21T01:13:06.386686+00:00", "channel": "architecture", "content": "\n\n"}
+{"time": "2026-10-21T01:13:06.518729+00:00", "channel": "architecture", "content": "**一层（主"}
+{"time": "2026-10-21T01:13:06.519234+00:00", "channel": "architecture", "content": "楼14×"}
+{"time": "2026-10-21T01:13:06.599193+00:00", "channel": "architecture", "content": "10，front"}
+{"time": "2026-10-21T01:13:06.599193+00:00", "channel": "architecture", "content": "=z"}
+{"time": "2026-10-21T01:13:06.606065+00:00", "channel": "architecture", "content": "=0面为"}
+{"time": "2026-10-21T01:13:06.714924+00:00", "channel": "architecture", "content": "南）：**\n\n"}
+{"time": "2026-10-21T01:13:06.843717+00:00", "channel": "architecture", "content": "实际上让我重新定义"}
+{"time": "2026-10-21T01:13:06.844230+00:00", "channel": "architecture", "content": "方向"}
+{"time": "2026-10-21T01:13:06.870943+00:00", "channel": "architecture", "content": "：\n- front"}
+{"time": "2026-10-21T01:13:06.991025+00:00", "channel": "architecture", "content": " = 南面"}
+{"time": "2026-10-21T01:13:06.991025+00:00", "channel": "architecture", "content": "（入口"}
+{"time": "2026-10-21T01:13:07.054625+00:00", "channel": "architecture", "content": "面）\n-"}
+{"time": "2026-10-21T01:13:07.055130+00:00", "channel": "architecture", "content": " back"}
+{"time": "2026-10-21T01:13:07.126847+00:00", "channel": "architecture", "content": " = 北面\n"}
+{"time": "2026-10-21T01:13:07.171077+00:00", "channel": "architecture", "content": "- left = "}
+{"time": "2026-10-21T01:13:07.224744+00:00", "channel": "architecture", "content": "东面\n-"}
+{"time": "2026-10-21T01:13:07.225249+00:00", "channel": "architecture", "content": " right = "}
+{"time": "2026-10-21T01:13:07.268754+00:00", "channel": "architecture", "content": "西面\n\nvolume"}
+{"time": "2026-10-21T01:13:07.326902+00:00", "channel": "architecture", "content": "_main: x="}
+{"time": "2026-10-21T01:13:07.327412+00:00", "channel": "architecture", "content": "0"}
+{"time": "2026-10-21T01:13:07.386246+00:00", "channel": "architecture", "content": ", z=0"}
+{"time": "2026-10-21T01:13:07.413058+00:00", "channel": "architecture", "content": ", width=1"}
+{"time": "2026-10-21T01:13:07.448034+00:00", "channel": "architecture", "content": "4, depth="}
+{"time": "2026-10-21T01:13:07.471854+00:00", "channel": "architecture", "content": "10\n-"}
+{"time": "2026-10-21T01:13:07.542227+00:00", "channel": "architecture", "content": " x方向：从左"}
+{"time": "2026-10-21T01:13:07.573745+00:00", "channel": "architecture", "content": "到右（0"}
+{"time": "2026-10-21T01:13:07.639649+00:00", "channel": "architecture", "content": "到14）"}
+{"time": "2026-10-21T01:13:07.640156+00:00", "channel": "architecture", "content": "\n- z"}
+{"time": "2026-10-21T01:13:07.720572+00:00", "channel": "architecture", "content": "方向：front(z"}
+{"time": "2026-10-21T01:13:07.775412+00:00", "channel": "architecture", "content": "=0)到"}
+{"time": "2026-10-21T01:13:07.775917+00:00", "channel": "architecture", "content": "back(z"}
+{"time": "2026-10-21T01:13:07.825016+00:00", "channel": "architecture", "content": "=10)"}
+{"time": "2026-10-21T01:13:07.926781+00:00", "channel": "architecture", "content": "\n\n一层房间："}
+{"time": "2026-10-21T01:13:07.927286+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:07.951940+00:00", "channel": "architecture", "content": "门厅：x"}
+{"time": "2026-10-21T01:13:08.029663+00:00", "channel": "architecture", "content": "=5~9"}
+{"time": "2026-10-21T01:13:08.066482+00:00", "channel": "architecture", "content": ", z=0"}
+{"time": "2026-10-21T01:13:08.124984+00:00", "channel": "architecture", "content": "~3.5"}
+{"time": "2026-10-21T01:13:08.125494+00:00", "channel": "architecture", "content": "（宽"}
+{"time": "2026-10-21T01:13:08.244479+00:00", "channel": "architecture", "content": "4m，深"}
+{"time": "2026-10-21T01:13:08.244479+00:00", "channel": "architecture", "content": "3.5"}
+{"time": "2026-10-21T01:13:08.271443+00:00", "channel": "architecture", "content": "m）—— "}
+{"time": "2026-10-21T01:13:08.338344+00:00", "channel": "architecture", "content": "中央入口\n-"}
+{"time": "2026-10-21T01:13:08.338853+00:00", "channel": "architecture", "content": " 客厅"}
+{"time": "2026-10-21T01:13:08.407757+00:00", "channel": "architecture", "content": "：x=9"}
+{"time": "2026-10-21T01:13:08.438629+00:00", "channel": "architecture", "content": "~14,"}
+{"time": "2026-10-21T01:13:08.488842+00:00", "channel": "architecture", "content": " z=0~"}
+{"time": "2026-10-21T01:13:08.489347+00:00", "channel": "architecture", "content": "6"}
+{"time": "2026-10-21T01:13:08.535057+00:00", "channel": "architecture", "content": "（宽5m"}
+{"time": "2026-10-21T01:13:08.559116+00:00", "channel": "architecture", "content": "，深6m"}
+{"time": "2026-10-21T01:13:08.572884+00:00", "channel": "architecture", "content": "）—— 东南"}
+{"time": "2026-10-21T01:13:08.665761+00:00", "channel": "architecture", "content": "，带南面和"}
+{"time": "2026-10-21T01:13:08.740100+00:00", "channel": "architecture", "content": "东面大窗"}
+{"time": "2026-10-21T01:13:08.740605+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:08.812089+00:00", "channel": "architecture", "content": "餐厅：x="}
+{"time": "2026-10-21T01:13:08.812852+00:00", "channel": "architecture", "content": "9~1"}
+{"time": "2026-10-21T01:13:08.812852+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:08.849488+00:00", "channel": "architecture", "content": "6~10"}
+{"time": "2026-10-21T01:13:08.874283+00:00", "channel": "architecture", "content": "（宽5m"}
+{"time": "2026-10-21T01:13:08.910028+00:00", "channel": "architecture", "content": "，深4m"}
+{"time": "2026-10-21T01:13:08.956490+00:00", "channel": "architecture", "content": "）—— 东北"}
+{"time": "2026-10-21T01:13:08.993342+00:00", "channel": "architecture", "content": "\n- 厨房"}
+{"time": "2026-10-21T01:13:09.023435+00:00", "channel": "architecture", "content": "：x=5"}
+{"time": "2026-10-21T01:13:09.068713+00:00", "channel": "architecture", "content": "~9, z"}
+{"time": "2026-10-21T01:13:09.069218+00:00", "channel": "architecture", "content": "="}
+{"time": "2026-10-21T01:13:09.099909+00:00", "channel": "architecture", "content": "6~10"}
+{"time": "2026-10-21T01:13:09.172779+00:00", "channel": "architecture", "content": "（宽4m"}
+{"time": "2026-10-21T01:13:09.173284+00:00", "channel": "architecture", "content": "，深"}
+{"time": "2026-10-21T01:13:09.209630+00:00", "channel": "architecture", "content": "4m）——"}
+{"time": "2026-10-21T01:13:09.301495+00:00", "channel": "architecture", "content": " 北中部\n"}
+{"time": "2026-10-21T01:13:09.302113+00:00", "channel": "architecture", "content": "- 老人"}
+{"time": "2026-10-21T01:13:09.323458+00:00", "channel": "architecture", "content": "房：x="}
+{"time": "2026-10-21T01:13:09.361676+00:00", "channel": "architecture", "content": "0~5,"}
+{"time": "2026-10-21T01:13:09.406231+00:00", "channel": "architecture", "content": " z=0~"}
+{"time": "2026-10-21T01:13:09.471165+00:00", "channel": "architecture", "content": "5.5（"}
+{"time": "2026-10-21T01:13:09.471165+00:00", "channel": "architecture", "content": "宽5"}
+{"time": "2026-10-21T01:13:09.488820+00:00", "channel": "architecture", "content": "m，深5"}
+{"time": "2026-10-21T01:13:09.567636+00:00", "channel": "architecture", "content": ".5m）"}
+{"time": "2026-10-21T01:13:09.567636+00:00", "channel": "architecture", "content": "—— 西南"}
+{"time": "2026-10-21T01:13:09.659192+00:00", "channel": "architecture", "content": "，带小花园"}
+{"time": "2026-10-21T01:13:09.712881+00:00", "channel": "architecture", "content": "面\n- "}
+{"time": "2026-10-21T01:13:09.713386+00:00", "channel": "architecture", "content": "卫生间"}
+{"time": "2026-10-21T01:13:09.735302+00:00", "channel": "architecture", "content": "：x=5"}
+{"time": "2026-10-21T01:13:09.802498+00:00", "channel": "architecture", "content": "~7, z"}
+{"time": "2026-10-21T01:13:09.802634+00:00", "channel": "architecture", "content": "=3"}
+{"time": "2026-10-21T01:13:09.829636+00:00", "channel": "architecture", "content": ".5~5"}
+{"time": "2026-10-21T01:13:09.873370+00:00", "channel": "architecture", "content": ".5（宽"}
+{"time": "2026-10-21T01:13:09.929015+00:00", "channel": "architecture", "content": "2m，深"}
+{"time": "2026-10-21T01:13:09.929015+00:00", "channel": "architecture", "content": "2m）"}
+{"time": "2026-10-21T01:13:09.971879+00:00", "channel": "architecture", "content": "\n- 楼梯"}
+{"time": "2026-10-21T01:13:09.995102+00:00", "channel": "architecture", "content": "间：x="}
+{"time": "2026-10-21T01:13:10.024747+00:00", "channel": "architecture", "content": "7~9,"}
+{"time": "2026-10-21T01:13:10.069633+00:00", "channel": "architecture", "content": " z=3."}
+{"time": "2026-10-21T01:13:10.119552+00:00", "channel": "architecture", "content": "5~6."}
+{"time": "2026-10-21T01:13:10.148613+00:00", "channel": "architecture", "content": "5（宽2"}
+{"time": "2026-10-21T01:13:10.216364+00:00", "channel": "architecture", "content": "m，深3"}
+{"time": "2026-10-21T01:13:10.216969+00:00", "channel": "architecture", "content": "m）\n\n"}
+{"time": "2026-10-21T01:13:10.336379+00:00", "channel": "architecture", "content": "嗯，让我调整"}
+{"time": "2026-10-21T01:13:10.479655+00:00", "channel": "architecture", "content": "得更紧凑合理："}
+{"time": "2026-10-21T01:13:10.480161+00:00", "channel": "architecture", "content": "\n\n一层"}
+{"time": "2026-10-21T01:13:10.581838+00:00", "channel": "architecture", "content": "主楼 1"}
+{"time": "2026-10-21T01:13:10.582546+00:00", "channel": "architecture", "content": "4×1"}
+{"time": "2026-10-21T01:13:10.641706+00:00", "channel": "architecture", "content": "0：\n-"}
+{"time": "2026-10-21T01:13:10.643205+00:00", "channel": "architecture", "content": " 入口"}
+{"time": "2026-10-21T01:13:10.696239+00:00", "channel": "architecture", "content": "门厅：x"}
+{"time": "2026-10-21T01:13:10.746068+00:00", "channel": "architecture", "content": "=4.5"}
+{"time": "2026-10-21T01:13:10.746573+00:00", "channel": "architecture", "content": "~"}
+{"time": "2026-10-21T01:13:10.824718+00:00", "channel": "architecture", "content": "9.5,"}
+{"time": "2026-10-21T01:13:10.825223+00:00", "channel": "architecture", "content": " z="}
+{"time": "2026-10-21T01:13:10.904303+00:00", "channel": "architecture", "content": "0~3（"}
+{"time": "2026-10-21T01:13:10.904303+00:00", "channel": "architecture", "content": "宽"}
+{"time": "2026-10-21T01:13:11.010736+00:00", "channel": "architecture", "content": "5m深3"}
+{"time": "2026-10-21T01:13:11.010736+00:00", "channel": "architecture", "content": "m）"}
+{"time": "2026-10-21T01:13:11.010736+00:00", "channel": "architecture", "content": "\n- 客厅"}
+{"time": "2026-10-21T01:13:11.104012+00:00", "channel": "architecture", "content": "（通高或"}
+{"time": "2026-10-21T01:13:11.149989+00:00", "channel": "architecture", "content": "大空间）："}
+{"time": "2026-10-21T01:13:11.150494+00:00", "channel": "architecture", "content": "x"}
+{"time": "2026-10-21T01:13:11.229242+00:00", "channel": "architecture", "content": "=9.5"}
+{"time": "2026-10-21T01:13:11.229747+00:00", "channel": "architecture", "content": "~14"}
+{"time": "2026-10-21T01:13:11.253680+00:00", "channel": "architecture", "content": ", z=0"}
+{"time": "2026-10-21T01:13:11.323077+00:00", "channel": "architecture", "content": "~6（宽"}
+{"time": "2026-10-21T01:13:11.323584+00:00", "channel": "architecture", "content": "4"}
+{"time": "2026-10-21T01:13:11.356116+00:00", "channel": "architecture", "content": ".5m深"}
+{"time": "2026-10-21T01:13:11.408167+00:00", "channel": "architecture", "content": "6m）\n"}
+{"time": "2026-10-21T01:13:11.463442+00:00", "channel": "architecture", "content": "- 餐厅："}
+{"time": "2026-10-21T01:13:11.463954+00:00", "channel": "architecture", "content": "x=9"}
+{"time": "2026-10-21T01:13:11.510646+00:00", "channel": "architecture", "content": ".5~1"}
+{"time": "2026-10-21T01:13:11.533995+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:11.613539+00:00", "channel": "architecture", "content": "6~10"}
+{"time": "2026-10-21T01:13:11.614049+00:00", "channel": "architecture", "content": "（宽"}
+{"time": "2026-10-21T01:13:11.631834+00:00", "channel": "architecture", "content": "4.5m"}
+{"time": "2026-10-21T01:13:11.670360+00:00", "channel": "architecture", "content": "深4m）"}
+{"time": "2026-10-21T01:13:11.718474+00:00", "channel": "architecture", "content": "\n- 厨房"}
+{"time": "2026-10-21T01:13:11.741544+00:00", "channel": "architecture", "content": "：x=5"}
+{"time": "2026-10-21T01:13:11.835473+00:00", "channel": "architecture", "content": "~9.5"}
+{"time": "2026-10-21T01:13:11.835473+00:00", "channel": "architecture", "content": ", z"}
+{"time": "2026-10-21T01:13:11.924791+00:00", "channel": "architecture", "content": "=7~1"}
+{"time": "2026-10-21T01:13:11.925341+00:00", "channel": "architecture", "content": "0（"}
+{"time": "2026-10-21T01:13:11.971679+00:00", "channel": "architecture", "content": "宽4.5"}
+{"time": "2026-10-21T01:13:12.004525+00:00", "channel": "architecture", "content": "m深"}
+{"time": "2026-10-21T01:13:12.008364+00:00", "channel": "architecture", "content": "3m）\n"}
+{"time": "2026-10-21T01:13:12.093787+00:00", "channel": "architecture", "content": "- 老人房"}
+{"time": "2026-10-21T01:13:12.093787+00:00", "channel": "architecture", "content": "：x="}
+{"time": "2026-10-21T01:13:12.154550+00:00", "channel": "architecture", "content": "0~5,"}
+{"time": "2026-10-21T01:13:12.154550+00:00", "channel": "architecture", "content": " z=0"}
+{"time": "2026-10-21T01:13:12.254600+00:00", "channel": "architecture", "content": "~5.5"}
+{"time": "2026-10-21T01:13:12.254600+00:00", "channel": "architecture", "content": "（宽5"}
+{"time": "2026-10-21T01:13:12.333171+00:00", "channel": "architecture", "content": "m深5."}
+{"time": "2026-10-21T01:13:12.333676+00:00", "channel": "architecture", "content": "5m"}
+{"time": "2026-10-21T01:13:12.350871+00:00", "channel": "architecture", "content": "）\n- "}
+{"time": "2026-10-21T01:13:12.435074+00:00", "channel": "architecture", "content": "卫生间：x="}
+{"time": "2026-10-21T01:13:12.435584+00:00", "channel": "architecture", "content": "0"}
+{"time": "2026-10-21T01:13:12.513834+00:00", "channel": "architecture", "content": "~2.5"}
+{"time": "2026-10-21T01:13:12.514339+00:00", "channel": "architecture", "content": ", z"}
+{"time": "2026-10-21T01:13:12.529777+00:00", "channel": "architecture", "content": "=5.5"}
+{"time": "2026-10-21T01:13:12.637062+00:00", "channel": "architecture", "content": "~7.5"}
+{"time": "2026-10-21T01:13:12.637567+00:00", "channel": "architecture", "content": "（宽"}
+{"time": "2026-10-21T01:13:12.638097+00:00", "channel": "architecture", "content": "2.5m"}
+{"time": "2026-10-21T01:13:12.696108+00:00", "channel": "architecture", "content": "深2m）"}
+{"time": "2026-10-21T01:13:12.697619+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:12.754987+00:00", "channel": "architecture", "content": "楼梯：x="}
+{"time": "2026-10-21T01:13:12.755498+00:00", "channel": "architecture", "content": "5~"}
+{"time": "2026-10-21T01:13:12.839355+00:00", "channel": "architecture", "content": "7.5,"}
+{"time": "2026-10-21T01:13:12.839864+00:00", "channel": "architecture", "content": " z="}
+{"time": "2026-10-21T01:13:12.950464+00:00", "channel": "architecture", "content": "4~6."}
+{"time": "2026-10-21T01:13:12.950973+00:00", "channel": "architecture", "content": "5（"}
+{"time": "2026-10-21T01:13:12.965171+00:00", "channel": "architecture", "content": "宽2.5"}
+{"time": "2026-10-21T01:13:13.055959+00:00", "channel": "architecture", "content": "m深2."}
+{"time": "2026-10-21T01:13:13.056471+00:00", "channel": "architecture", "content": "5m）"}
+{"time": "2026-10-21T01:13:13.146855+00:00", "channel": "architecture", "content": "\n\n这样门厅"}
+{"time": "2026-10-21T01:13:13.146855+00:00", "channel": "architecture", "content": "在"}
+{"time": "2026-10-21T01:13:13.242436+00:00", "channel": "architecture", "content": "中央偏南，"}
+{"time": "2026-10-21T01:13:13.242436+00:00", "channel": "architecture", "content": "客厅在"}
+{"time": "2026-10-21T01:13:13.302736+00:00", "channel": "architecture", "content": "东南，餐厅在"}
+{"time": "2026-10-21T01:13:13.303242+00:00", "channel": "architecture", "content": "东北"}
+{"time": "2026-10-21T01:13:13.417626+00:00", "channel": "architecture", "content": "，厨房在北，"}
+{"time": "2026-10-21T01:13:13.417626+00:00", "channel": "architecture", "content": "老人房在"}
+{"time": "2026-10-21T01:13:13.479523+00:00", "channel": "architecture", "content": "西南。\n\n内"}
+{"time": "2026-10-21T01:13:13.592662+00:00", "channel": "architecture", "content": "墙分隔这些房间"}
+{"time": "2026-10-21T01:13:13.666453+00:00", "channel": "architecture", "content": "。\n\n二层："}
+{"time": "2026-10-21T01:13:13.688395+00:00", "channel": "architecture", "content": "\n- 主卧"}
+{"time": "2026-10-21T01:13:13.749627+00:00", "channel": "architecture", "content": "套房：x="}
+{"time": "2026-10-21T01:13:13.750133+00:00", "channel": "architecture", "content": "9"}
+{"time": "2026-10-21T01:13:13.803506+00:00", "channel": "architecture", "content": "~14,"}
+{"time": "2026-10-21T01:13:13.804011+00:00", "channel": "architecture", "content": " z=0"}
+{"time": "2026-10-21T01:13:13.871109+00:00", "channel": "architecture", "content": "~6（含"}
+{"time": "2026-10-21T01:13:13.991554+00:00", "channel": "architecture", "content": "衣帽间和主"}
+{"time": "2026-10-21T01:13:13.992059+00:00", "channel": "architecture", "content": "卫）\n"}
+{"time": "2026-10-21T01:13:13.992059+00:00", "channel": "architecture", "content": "- 次卧"}
+{"time": "2026-10-21T01:13:14.007907+00:00", "channel": "architecture", "content": "1：x="}
+{"time": "2026-10-21T01:13:14.128334+00:00", "channel": "architecture", "content": "4~9,"}
+{"time": "2026-10-21T01:13:14.128334+00:00", "channel": "architecture", "content": " z=0"}
+{"time": "2026-10-21T01:13:14.224343+00:00", "channel": "architecture", "content": "~5\n-"}
+{"time": "2026-10-21T01:13:14.224343+00:00", "channel": "architecture", "content": " 次"}
+{"time": "2026-10-21T01:13:14.269004+00:00", "channel": "architecture", "content": "卧2：x"}
+{"time": "2026-10-21T01:13:14.318233+00:00", "channel": "architecture", "content": "=0~4"}
+{"time": "2026-10-21T01:13:14.318233+00:00", "channel": "architecture", "content": ", z="}
+{"time": "2026-10-21T01:13:14.399527+00:00", "channel": "architecture", "content": "0~5\n"}
+{"time": "2026-10-21T01:13:14.400033+00:00", "channel": "architecture", "content": "- "}
+{"time": "2026-10-21T01:13:14.446522+00:00", "channel": "architecture", "content": "书房：x="}
+{"time": "2026-10-21T01:13:14.448057+00:00", "channel": "architecture", "content": "5"}
+{"time": "2026-10-21T01:13:14.525956+00:00", "channel": "architecture", "content": "~9, z"}
+{"time": "2026-10-21T01:13:14.526463+00:00", "channel": "architecture", "content": "=6"}
+{"time": "2026-10-21T01:13:14.540777+00:00", "channel": "architecture", "content": "~10\n"}
+{"time": "2026-10-21T01:13:14.606445+00:00", "channel": "architecture", "content": "- 阳台/"}
+{"time": "2026-10-21T01:13:14.638944+00:00", "channel": "architecture", "content": "走廊：x="}
+{"time": "2026-10-21T01:13:14.716217+00:00", "channel": "architecture", "content": "0~5,"}
+{"time": "2026-10-21T01:13:14.716722+00:00", "channel": "architecture", "content": " z=5"}
+{"time": "2026-10-21T01:13:14.806482+00:00", "channel": "architecture", "content": "~7\n\n让我"}
+{"time": "2026-10-21T01:13:14.807806+00:00", "channel": "architecture", "content": "更"}
+{"time": "2026-10-21T01:13:14.861732+00:00", "channel": "architecture", "content": "仔细：\n\n二层"}
+{"time": "2026-10-21T01:13:14.924649+00:00", "channel": "architecture", "content": " 14×"}
+{"time": "2026-10-21T01:13:14.924649+00:00", "channel": "architecture", "content": "1"}
+{"time": "2026-10-21T01:13:14.962210+00:00", "channel": "architecture", "content": "0：\n-"}
+{"time": "2026-10-21T01:13:14.999607+00:00", "channel": "architecture", "content": " 主卧：x"}
+{"time": "2026-10-21T01:13:15.022546+00:00", "channel": "architecture", "content": "=9~1"}
+{"time": "2026-10-21T01:13:15.052042+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:15.126267+00:00", "channel": "architecture", "content": "0~5."}
+{"time": "2026-10-21T01:13:15.126775+00:00", "channel": "architecture", "content": "5（宽"}
+{"time": "2026-10-21T01:13:15.198198+00:00", "channel": "architecture", "content": "5m深5"}
+{"time": "2026-10-21T01:13:15.198709+00:00", "channel": "architecture", "content": ".5m"}
+{"time": "2026-10-21T01:13:15.215930+00:00", "channel": "architecture", "content": "）\n- "}
+{"time": "2026-10-21T01:13:15.249641+00:00", "channel": "architecture", "content": "主卫：x"}
+{"time": "2026-10-21T01:13:15.276472+00:00", "channel": "architecture", "content": "=9~1"}
+{"time": "2026-10-21T01:13:15.319918+00:00", "channel": "architecture", "content": "2, z="}
+{"time": "2026-10-21T01:13:15.343139+00:00", "channel": "architecture", "content": "5.5~"}
+{"time": "2026-10-21T01:13:15.421297+00:00", "channel": "architecture", "content": "8（宽3"}
+{"time": "2026-10-21T01:13:15.448546+00:00", "channel": "architecture", "content": "m深2."}
+{"time": "2026-10-21T01:13:15.449051+00:00", "channel": "architecture", "content": "5m）"}
+{"time": "2026-10-21T01:13:15.471535+00:00", "channel": "architecture", "content": "\n- 衣帽"}
+{"time": "2026-10-21T01:13:15.511865+00:00", "channel": "architecture", "content": "间：x="}
+{"time": "2026-10-21T01:13:15.552906+00:00", "channel": "architecture", "content": "12~1"}
+{"time": "2026-10-21T01:13:15.577083+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:15.613715+00:00", "channel": "architecture", "content": "5.5~"}
+{"time": "2026-10-21T01:13:15.674756+00:00", "channel": "architecture", "content": "8（宽2"}
+{"time": "2026-10-21T01:13:15.675261+00:00", "channel": "architecture", "content": "m深"}
+{"time": "2026-10-21T01:13:15.711800+00:00", "channel": "architecture", "content": "2.5m"}
+{"time": "2026-10-21T01:13:15.736684+00:00", "channel": "architecture", "content": "）\n- "}
+{"time": "2026-10-21T01:13:15.758182+00:00", "channel": "architecture", "content": "次卧1："}
+{"time": "2026-10-21T01:13:15.810442+00:00", "channel": "architecture", "content": "x=4."}
+{"time": "2026-10-21T01:13:15.827597+00:00", "channel": "architecture", "content": "5~9,"}
+{"time": "2026-10-21T01:13:15.867966+00:00", "channel": "architecture", "content": " z=0~"}
+{"time": "2026-10-21T01:13:15.930757+00:00", "channel": "architecture", "content": "5（宽4"}
+{"time": "2026-10-21T01:13:15.930757+00:00", "channel": "architecture", "content": ".5m深"}
+{"time": "2026-10-21T01:13:15.951752+00:00", "channel": "architecture", "content": "5m）\n"}
+{"time": "2026-10-21T01:13:16.025142+00:00", "channel": "architecture", "content": "- 次卧"}
+{"time": "2026-10-21T01:13:16.053157+00:00", "channel": "architecture", "content": "2：x="}
+{"time": "2026-10-21T01:13:16.053157+00:00", "channel": "architecture", "content": "0~"}
+{"time": "2026-10-21T01:13:16.075378+00:00", "channel": "architecture", "content": "4.5,"}
+{"time": "2026-10-21T01:13:16.111451+00:00", "channel": "architecture", "content": " z=0~"}
+{"time": "2026-10-21T01:13:16.128900+00:00", "channel": "architecture", "content": "5（宽4"}
+{"time": "2026-10-21T01:13:16.157849+00:00", "channel": "architecture", "content": ".5m深"}
+{"time": "2026-10-21T01:13:16.190901+00:00", "channel": "architecture", "content": "5m）\n"}
+{"time": "2026-10-21T01:13:16.254404+00:00", "channel": "architecture", "content": "- 书房："}
+{"time": "2026-10-21T01:13:16.254915+00:00", "channel": "architecture", "content": "x=5"}
+{"time": "2026-10-21T01:13:16.290145+00:00", "channel": "architecture", "content": "~10,"}
+{"time": "2026-10-21T01:13:16.342298+00:00", "channel": "architecture", "content": " z=6~"}
+{"time": "2026-10-21T01:13:16.342298+00:00", "channel": "architecture", "content": "1"}
+{"time": "2026-10-21T01:13:16.396783+00:00", "channel": "architecture", "content": "0（宽5"}
+{"time": "2026-10-21T01:13:16.463312+00:00", "channel": "architecture", "content": "m深4m"}
+{"time": "2026-10-21T01:13:16.463821+00:00", "channel": "architecture", "content": "）\n-"}
+{"time": "2026-10-21T01:13:16.554197+00:00", "channel": "architecture", "content": " 卫生间（公用"}
+{"time": "2026-10-21T01:13:16.572100+00:00", "channel": "architecture", "content": "）：x="}
+{"time": "2026-10-21T01:13:16.665959+00:00", "channel": "architecture", "content": "0~2."}
+{"time": "2026-10-21T01:13:16.666465+00:00", "channel": "architecture", "content": "5, z"}
+{"time": "2026-10-21T01:13:16.695550+00:00", "channel": "architecture", "content": "=6~8"}
+{"time": "2026-10-21T01:13:16.754041+00:00", "channel": "architecture", "content": ".5（宽"}
+{"time": "2026-10-21T01:13:16.756499+00:00", "channel": "architecture", "content": "2"}
+{"time": "2026-10-21T01:13:16.809356+00:00", "channel": "architecture", "content": ".5m深"}
+{"time": "2026-10-21T01:13:16.831321+00:00", "channel": "architecture", "content": "2.5m"}
+{"time": "2026-10-21T01:13:16.854795+00:00", "channel": "architecture", "content": "）\n- "}
+{"time": "2026-10-21T01:13:16.967940+00:00", "channel": "architecture", "content": "走廊/楼梯休息"}
+{"time": "2026-10-21T01:13:17.014575+00:00", "channel": "architecture", "content": "：连接各房间"}
+{"time": "2026-10-21T01:13:17.094407+00:00", "channel": "architecture", "content": "\n\n楼梯位置："}
+{"time": "2026-10-21T01:13:17.094407+00:00", "channel": "architecture", "content": "一层"}
+{"time": "2026-10-21T01:13:17.186927+00:00", "channel": "architecture", "content": " x=5~"}
+{"time": "2026-10-21T01:13:17.187929+00:00", "channel": "architecture", "content": "7."}
+{"time": "2026-10-21T01:13:17.212289+00:00", "channel": "architecture", "content": "5, z="}
+{"time": "2026-10-21T01:13:17.276337+00:00", "channel": "architecture", "content": "4~6."}
+{"time": "2026-10-21T01:13:17.276842+00:00", "channel": "architecture", "content": "5，"}
+{"time": "2026-10-21T01:13:17.332464+00:00", "channel": "architecture", "content": "二层同一位置或"}
+{"time": "2026-10-21T01:13:17.410078+00:00", "channel": "architecture", "content": "偏移到走廊区"}
+{"time": "2026-10-21T01:13:17.468267+00:00", "channel": "architecture", "content": "。\n\n好，"}
+{"time": "2026-10-21T01:13:17.468776+00:00", "channel": "architecture", "content": "让我整理"}
+{"time": "2026-10-21T01:13:17.526047+00:00", "channel": "architecture", "content": "最终数据：\n\n"}
+{"time": "2026-10-21T01:13:17.526556+00:00", "channel": "architecture", "content": "**概念"}
+{"time": "2026-10-21T01:13:17.618052+00:00", "channel": "architecture", "content": "：**\n新中式"}
+{"time": "2026-10-21T01:13:17.618564+00:00", "channel": "architecture", "content": "别墅，"}
+{"time": "2026-10-21T01:13:17.746309+00:00", "channel": "architecture", "content": "白墙黛瓦"}
+{"time": "2026-10-21T01:13:17.746814+00:00", "channel": "architecture", "content": "，"}
+{"time": "2026-10-21T01:13:17.808179+00:00", "channel": "architecture", "content": "木格栅点缀，"}
+{"time": "2026-10-21T01:13:17.808689+00:00", "channel": "architecture", "content": "半围合"}
+{"time": "2026-10-21T01:13:17.866113+00:00", "channel": "architecture", "content": "庭院布局。L"}
+{"time": "2026-10-21T01:13:17.962951+00:00", "channel": "architecture", "content": "形体量（主"}
+{"time": "2026-10-21T01:13:17.962951+00:00", "channel": "architecture", "content": "楼+侧"}
+{"time": "2026-10-21T01:13:18.025150+00:00", "channel": "architecture", "content": "翼车库）围"}
+{"time": "2026-10-21T01:13:18.025150+00:00", "channel": "architecture", "content": "合南向"}
+{"time": "2026-10-21T01:13:18.126000+00:00", "channel": "architecture", "content": "入口庭院，室内"}
+{"time": "2026-10-21T01:13:18.229835+00:00", "channel": "architecture", "content": "通高客厅面向"}
+{"time": "2026-10-21T01:13:18.328649+00:00", "channel": "architecture", "content": "庭院，二层设"}
+{"time": "2026-10-21T01:13:18.435112+00:00", "channel": "architecture", "content": "外挑阳台。"}
+{"time": "2026-10-21T01:13:18.435618+00:00", "channel": "architecture", "content": "\n\n**"}
+{"time": "2026-10-21T01:13:18.512682+00:00", "channel": "architecture", "content": "体量：**\n-"}
+{"time": "2026-10-21T01:13:18.513195+00:00", "channel": "architecture", "content": " volume"}
+{"time": "2026-10-21T01:13:18.568589+00:00", "channel": "architecture", "content": "_main: x="}
+{"time": "2026-10-21T01:13:18.569099+00:00", "channel": "architecture", "content": "0"}
+{"time": "2026-10-21T01:13:18.603686+00:00", "channel": "architecture", "content": ", z=0"}
+{"time": "2026-10-21T01:13:18.620865+00:00", "channel": "architecture", "content": ", width=1"}
+{"time": "2026-10-21T01:13:18.650161+00:00", "channel": "architecture", "content": "4, depth="}
+{"time": "2026-10-21T01:13:18.691690+00:00", "channel": "architecture", "content": "10, "}
+{"time": "2026-10-21T01:13:18.753509+00:00", "channel": "architecture", "content": "2层\n-"}
+{"time": "2026-10-21T01:13:18.754015+00:00", "channel": "architecture", "content": " volume_annex"}
+{"time": "2026-10-21T01:13:18.838648+00:00", "channel": "architecture", "content": ": x=1"}
+{"time": "2026-10-21T01:13:18.839153+00:00", "channel": "architecture", "content": "4, z="}
+{"time": "2026-10-21T01:13:18.870836+00:00", "channel": "architecture", "content": "2, width="}
+{"time": "2026-10-21T01:13:18.919350+00:00", "channel": "architecture", "content": "5, depth="}
+{"time": "2026-10-21T01:13:18.959116+00:00", "channel": "architecture", "content": "8, 1"}
+{"time": "2026-10-21T01:13:18.959627+00:00", "channel": "architecture", "content": "层"}
+{"time": "2026-10-21T01:13:19.018795+00:00", "channel": "architecture", "content": "（车库+储藏"}
+{"time": "2026-10-21T01:13:19.019300+00:00", "channel": "architecture", "content": "）\n\n总"}
+{"time": "2026-10-21T01:13:19.035458+00:00", "channel": "architecture", "content": "包络：width"}
+{"time": "2026-10-21T01:13:19.091499+00:00", "channel": "architecture", "content": "=19,"}
+{"time": "2026-10-21T01:13:19.092004+00:00", "channel": "architecture", "content": " depth=10"}
+{"time": "2026-10-21T01:13:19.151156+00:00", "channel": "architecture", "content": "\n\n**层高：**"}
+{"time": "2026-10-21T01:13:19.151661+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:19.194085+00:00", "channel": "architecture", "content": "一层：3."}
+{"time": "2026-10-21T01:13:19.220288+00:00", "channel": "architecture", "content": "9m\n-"}
+{"time": "2026-10-21T01:13:19.303653+00:00", "channel": "architecture", "content": " 二层：3"}
+{"time": "2026-10-21T01:13:19.304158+00:00", "channel": "architecture", "content": ".3"}
+{"time": "2026-10-21T01:13:19.316280+00:00", "channel": "architecture", "content": "m\n- floor"}
+{"time": "2026-10-21T01:13:19.416879+00:00", "channel": "architecture", "content": "_height 取平均"}
+{"time": "2026-10-21T01:13:19.520511+00:00", "channel": "architecture", "content": "或分别？契约"}
+{"time": "2026-10-21T01:13:19.569025+00:00", "channel": "architecture", "content": "中 massing.floor"}
+{"time": "2026-10-21T01:13:19.613479+00:00", "channel": "architecture", "content": "_height 是统一的"}
+{"time": "2026-10-21T01:13:19.735288+00:00", "channel": "architecture", "content": "，但 volumes "}
+{"time": "2026-10-21T01:13:19.735798+00:00", "channel": "architecture", "content": "可以覆盖"}
+{"time": "2026-10-21T01:13:19.767664+00:00", "channel": "architecture", "content": "。让我用 "}
+{"time": "2026-10-21T01:13:19.818995+00:00", "channel": "architecture", "content": "3.9 "}
+{"time": "2026-10-21T01:13:19.857728+00:00", "channel": "architecture", "content": "作为 floor_height（"}
+{"time": "2026-10-21T01:13:19.971765+00:00", "channel": "architecture", "content": "一层），二层用"}
+{"time": "2026-10-21T01:13:19.971765+00:00", "channel": "architecture", "content": " volume fac"}
+{"time": "2026-10-21T01:13:20.021837+00:00", "channel": "architecture", "content": "ades 区分。"}
+{"time": "2026-10-21T01:13:20.021837+00:00", "channel": "architecture", "content": "\n\n实际上 mass"}
+{"time": "2026-10-21T01:13:20.079090+00:00", "channel": "architecture", "content": "ing.floor_height "}
+{"time": "2026-10-21T01:13:20.079601+00:00", "channel": "architecture", "content": "是一个"}
+{"time": "2026-10-21T01:13:20.149387+00:00", "channel": "architecture", "content": "参考值，各"}
+{"time": "2026-10-21T01:13:20.227582+00:00", "channel": "architecture", "content": "层可以在 floor_layout"}
+{"time": "2026-10-21T01:13:20.320439+00:00", "channel": "architecture", "content": "s.level 中"}
+{"time": "2026-10-21T01:13:20.321006+00:00", "channel": "architecture", "content": "体现"}
+{"time": "2026-10-21T01:13:20.339350+00:00", "channel": "architecture", "content": "。\n\n**结构"}
+{"time": "2026-10-21T01:13:20.361835+00:00", "channel": "architecture", "content": "：**\n- "}
+{"time": "2026-10-21T01:13:20.452162+00:00", "channel": "architecture", "content": "框架结构，x"}
+{"time": "2026-10-21T01:13:20.453210+00:00", "channel": "architecture", "content": "_b"}
+{"time": "2026-10-21T01:13:20.473150+00:00", "channel": "architecture", "content": "ays=4,"}
+{"time": "2026-10-21T01:13:20.551346+00:00", "channel": "architecture", "content": " z_bays="}
+{"time": "2026-10-21T01:13:20.551851+00:00", "channel": "architecture", "content": "3\n\n"}
+{"time": "2026-10-21T01:13:20.616209+00:00", "channel": "architecture", "content": "**构造：**\n"}
+{"time": "2026-10-21T01:13:20.616714+00:00", "channel": "architecture", "content": "- slab"}
+{"time": "2026-10-21T01:13:20.639372+00:00", "channel": "architecture", "content": "_thickness: 0"}
+{"time": "2026-10-21T01:13:20.707008+00:00", "channel": "architecture", "content": ".2\n-"}
+{"time": "2026-10-21T01:13:20.707515+00:00", "channel": "architecture", "content": " wall"}
+{"time": "2026-10-21T01:13:20.742761+00:00", "channel": "architecture", "content": "_thickness: 0"}
+{"time": "2026-10-21T01:13:20.842741+00:00", "channel": "architecture", "content": ".3（外墙"}
+{"time": "2026-10-21T01:13:20.843746+00:00", "channel": "architecture", "content": "）"}
+{"time": "2026-10-21T01:13:20.921357+00:00", "channel": "architecture", "content": "\n\n**交通：**"}
+{"time": "2026-10-21T01:13:20.921861+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:20.953711+00:00", "channel": "architecture", "content": "楼梯：U形"}
+{"time": "2026-10-21T01:13:20.974006+00:00", "channel": "architecture", "content": "双跑，位于"}
+{"time": "2026-10-21T01:13:21.089851+00:00", "channel": "architecture", "content": " x=5."}
+{"time": "2026-10-21T01:13:21.089851+00:00", "channel": "architecture", "content": "5~"}
+{"time": "2026-10-21T01:13:21.116151+00:00", "channel": "architecture", "content": "7.5,"}
+{"time": "2026-10-21T01:13:21.184914+00:00", "channel": "architecture", "content": " z=4~"}
+{"time": "2026-10-21T01:13:21.259539+00:00", "channel": "architecture", "content": "6.5 "}
+{"time": "2026-10-21T01:13:21.260044+00:00", "channel": "architecture", "content": "区域\n"}
+{"time": "2026-10-21T01:13:21.297598+00:00", "channel": "architecture", "content": "- 一层到"}
+{"time": "2026-10-21T01:13:21.363929+00:00", "channel": "architecture", "content": "二层\n\n**立面"}
+{"time": "2026-10-21T01:13:21.364435+00:00", "channel": "architecture", "content": "：**"}
+{"time": "2026-10-21T01:13:21.395432+00:00", "channel": "architecture", "content": "\n- 前"}
+{"time": "2026-10-21T01:13:21.490628+00:00", "channel": "architecture", "content": "（南，z"}
+{"time": "2026-10-21T01:13:21.490628+00:00", "channel": "architecture", "content": "=0"}
+{"time": "2026-10-21T01:13:21.521001+00:00", "channel": "architecture", "content": "面）：入口"}
+{"time": "2026-10-21T01:13:21.592931+00:00", "channel": "architecture", "content": "居中，两侧对称"}
+{"time": "2026-10-21T01:13:21.710279+00:00", "channel": "architecture", "content": "实墙+格栅"}
+{"time": "2026-10-21T01:13:21.710788+00:00", "channel": "architecture", "content": "窗"}
+{"time": "2026-10-21T01:13:21.742654+00:00", "channel": "architecture", "content": "\n- 后"}
+{"time": "2026-10-21T01:13:21.822088+00:00", "channel": "architecture", "content": "（北，z"}
+{"time": "2026-10-21T01:13:21.822088+00:00", "channel": "architecture", "content": "=10"}
+{"time": "2026-10-21T01:13:21.853417+00:00", "channel": "architecture", "content": "面）：厨房"}
+{"time": "2026-10-21T01:13:21.955579+00:00", "channel": "architecture", "content": "和餐厅有小窗"}
+{"time": "2026-10-21T01:13:21.955579+00:00", "channel": "architecture", "content": "\n"}
+{"time": "2026-10-21T01:13:22.002350+00:00", "channel": "architecture", "content": "- 左（"}
+{"time": "2026-10-21T01:13:22.002855+00:00", "channel": "architecture", "content": "东，x"}
+{"time": "2026-10-21T01:13:22.065870+00:00", "channel": "architecture", "content": "=14面"}
+{"time": "2026-10-21T01:13:22.107596+00:00", "channel": "architecture", "content": "）：客厅大面积"}
+{"time": "2026-10-21T01:13:22.174391+00:00", "channel": "architecture", "content": "落地窗\n-"}
+{"time": "2026-10-21T01:13:22.174897+00:00", "channel": "architecture", "content": " 右"}
+{"time": "2026-10-21T01:13:22.258005+00:00", "channel": "architecture", "content": "（西，x"}
+{"time": "2026-10-21T01:13:22.258005+00:00", "channel": "architecture", "content": "=0面"}
+{"time": "2026-10-21T01:13:22.291565+00:00", "channel": "architecture", "content": "）：老人房"}
+{"time": "2026-10-21T01:13:22.353675+00:00", "channel": "architecture", "content": "小窗+实"}
+{"time": "2026-10-21T01:13:22.353675+00:00", "channel": "architecture", "content": "墙\n\nvolume"}
+{"time": "2026-10-21T01:13:22.423953+00:00", "channel": "architecture", "content": "_annex：\n"}
+{"time": "2026-10-21T01:13:22.424458+00:00", "channel": "architecture", "content": "- 前"}
+{"time": "2026-10-21T01:13:22.594004+00:00", "channel": "architecture", "content": "：车库卷帘门"}
+{"time": "2026-10-21T01:13:22.595070+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:22.595070+00:00", "channel": "architecture", "content": "其他：实墙"}
+{"time": "2026-10-21T01:13:22.595070+00:00", "channel": "architecture", "content": "+"}
+{"time": "2026-10-21T01:13:22.720256+00:00", "channel": "architecture", "content": "高窗\n\n**"}
+{"time": "2026-10-21T01:13:22.727873+00:00", "channel": "architecture", "content": "屋面：**\n-"}
+{"time": "2026-10-21T01:13:22.727873+00:00", "channel": "architecture", "content": " 主"}
+{"time": "2026-10-21T01:13:22.757755+00:00", "channel": "architecture", "content": "楼：双坡"}
+{"time": "2026-10-21T01:13:22.929573+00:00", "channel": "architecture", "content": "，ridge沿x"}
+{"time": "2026-10-21T01:13:22.930079+00:00", "channel": "architecture", "content": "方向"}
+{"time": "2026-10-21T01:13:23.050010+00:00", "channel": "architecture", "content": "\n- 附"}
+{"time": "2026-10-21T01:13:23.072454+00:00", "channel": "architecture", "content": "楼：单坡"}
+{"time": "2026-10-21T01:13:23.072900+00:00", "channel": "architecture", "content": "或"}
+{"time": "2026-10-21T01:13:23.151194+00:00", "channel": "architecture", "content": "平屋顶\n\n**"}
+{"time": "2026-10-21T01:13:23.152035+00:00", "channel": "architecture", "content": "材料"}
+{"time": "2026-10-21T01:13:23.189055+00:00", "channel": "architecture", "content": "：**\n- facade"}
+{"time": "2026-10-21T01:13:23.229084+00:00", "channel": "architecture", "content": "_primary: 白色"}
+{"time": "2026-10-21T01:13:23.324351+00:00", "channel": "architecture", "content": "抹灰\n-"}
+{"time": "2026-10-21T01:13:23.324893+00:00", "channel": "architecture", "content": " structure"}
+{"time": "2026-10-21T01:13:23.351959+00:00", "channel": "architecture", "content": ": 深灰色"}
+{"time": "2026-10-21T01:13:23.476589+00:00", "channel": "architecture", "content": "\n- frame:"}
+{"time": "2026-10-21T01:13:23.476589+00:00", "channel": "architecture", "content": " 深"}
+{"time": "2026-10-21T01:13:23.603453+00:00", "channel": "architecture", "content": "棕色木（格栅"}
+{"time": "2026-10-21T01:13:23.603453+00:00", "channel": "architecture", "content": "、"}
+{"time": "2026-10-21T01:13:23.638610+00:00", "channel": "architecture", "content": "窗框）\n"}
+{"time": "2026-10-21T01:13:23.725259+00:00", "channel": "architecture", "content": "- glass: "}
+{"time": "2026-10-21T01:13:23.725765+00:00", "channel": "architecture", "content": "透明"}
+{"time": "2026-10-21T01:13:23.823256+00:00", "channel": "architecture", "content": "/半透明\n"}
+{"time": "2026-10-21T01:13:23.823761+00:00", "channel": "architecture", "content": "-"}
+{"time": "2026-10-21T01:13:23.846218+00:00", "channel": "architecture", "content": " roof: 青"}
+{"time": "2026-10-21T01:13:23.934502+00:00", "channel": "architecture", "content": "灰色瓦\n-"}
+{"time": "2026-10-21T01:13:23.935008+00:00", "channel": "architecture", "content": " ground"}
+{"time": "2026-10-21T01:13:24.052894+00:00", "channel": "architecture", "content": ": 灰色石材"}
+{"time": "2026-10-21T01:13:24.053399+00:00", "channel": "architecture", "content": "\n- accent"}
+{"time": "2026-10-21T01:13:24.110339+00:00", "channel": "architecture", "content": ": 铜色"}
+{"time": "2026-10-21T01:13:24.110848+00:00", "channel": "architecture", "content": "金属"}
+{"time": "2026-10-21T01:13:24.160152+00:00", "channel": "architecture", "content": "\n\n**构件详细"}
+{"time": "2026-10-21T01:13:24.286405+00:00", "channel": "architecture", "content": "：**\n\n1."}
+{"time": "2026-10-21T01:13:24.286405+00:00", "channel": "architecture", "content": " 门"}
+{"time": "2026-10-21T01:13:24.353558+00:00", "channel": "architecture", "content": "斗/入口："}
+{"time": "2026-10-21T01:13:24.529886+00:00", "channel": "architecture", "content": "新中式门斗"}
+{"time": "2026-10-21T01:13:24.530391+00:00", "channel": "architecture", "content": "，带"}
+{"time": "2026-10-21T01:13:24.570445+00:00", "channel": "architecture", "content": "格栅\n2."}
+{"time": "2026-10-21T01:13:24.570445+00:00", "channel": "architecture", "content": " "}
+{"time": "2026-10-21T01:13:24.621822+00:00", "channel": "architecture", "content": "木格栅屏风（"}
+{"time": "2026-10-21T01:13:24.747765+00:00", "channel": "architecture", "content": "客厅和门厅"}
+{"time": "2026-10-21T01:13:24.748275+00:00", "channel": "architecture", "content": "之间或"}
+{"time": "2026-10-21T01:13:24.842111+00:00", "channel": "architecture", "content": "外墙装饰）\n"}
+{"time": "2026-10-21T01:13:24.842638+00:00", "channel": "architecture", "content": "3."}
+{"time": "2026-10-21T01:13:24.873540+00:00", "channel": "architecture", "content": " 落地窗（"}
+{"time": "2026-10-21T01:13:24.974364+00:00", "channel": "architecture", "content": "客厅南面和东"}
+{"time": "2026-10-21T01:13:24.974869+00:00", "channel": "architecture", "content": "面）\n"}
+{"time": "2026-10-21T01:13:25.020719+00:00", "channel": "architecture", "content": "4. 庭院"}
+{"time": "2026-10-21T01:13:25.244753+00:00", "channel": "architecture", "content": "围墙+庭院门"}
+{"time": "2026-10-21T01:13:25.245258+00:00", "channel": "architecture", "content": "\n5. "}
+{"time": "2026-10-21T01:13:25.290252+00:00", "channel": "architecture", "content": "踏步台基\n"}
+{"time": "2026-10-21T01:13:25.329157+00:00", "channel": "architecture", "content": "6. 檐"}
+{"time": "2026-10-21T01:13:25.399127+00:00", "channel": "architecture", "content": "口\n7."}
+{"time": "2026-10-21T01:13:25.399127+00:00", "channel": "architecture", "content": " 二层"}
+{"time": "2026-10-21T01:13:25.501687+00:00", "channel": "architecture", "content": "栏杆（阳台）"}
+{"time": "2026-10-21T01:13:25.546577+00:00", "channel": "architecture", "content": "\n8. "}
+{"time": "2026-10-21T01:13:25.612951+00:00", "channel": "architecture", "content": "家具：沙发、"}
+{"time": "2026-10-21T01:13:25.613456+00:00", "channel": "architecture", "content": "茶几、电视"}
+{"time": "2026-10-21T01:13:25.652711+00:00", "channel": "architecture", "content": "柜、餐桌椅"}
+{"time": "2026-10-21T01:13:25.714196+00:00", "channel": "architecture", "content": "、床、床头"}
+{"time": "2026-10-21T01:13:25.810336+00:00", "channel": "architecture", "content": "柜、衣柜、"}
+{"time": "2026-10-21T01:13:25.810842+00:00", "channel": "architecture", "content": "橱柜"}
+{"time": "2026-10-21T01:13:25.889316+00:00", "channel": "architecture", "content": "、洗手盆、"}
+{"time": "2026-10-21T01:13:25.889825+00:00", "channel": "architecture", "content": "马桶、书架"}
+{"time": "2026-10-21T01:13:25.995457+00:00", "channel": "architecture", "content": "、书桌椅\n"}
+{"time": "2026-10-21T01:13:25.995963+00:00", "channel": "architecture", "content": "9"}
+{"time": "2026-10-21T01:13:26.061741+00:00", "channel": "architecture", "content": ". 灯具："}
+{"time": "2026-10-21T01:13:26.062247+00:00", "channel": "architecture", "content": "吊灯"}
+{"time": "2026-10-21T01:13:26.094916+00:00", "channel": "architecture", "content": "、落地灯、"}
+{"time": "2026-10-21T01:13:26.094916+00:00", "channel": "architecture", "content": "筒灯"}
+{"time": "2026-10-21T01:13:26.156329+00:00", "channel": "architecture", "content": "\n10."}
+{"time": "2026-10-21T01:13:26.239265+00:00", "channel": "architecture", "content": " 露台栏杆\n\n"}
+{"time": "2026-10-21T01:13:26.239770+00:00", "channel": "architecture", "content": "让我开始"}
+{"time": "2026-10-21T01:13:26.312512+00:00", "channel": "architecture", "content": "写JSON：\n\n"}
+{"time": "2026-10-21T01:13:26.312512+00:00", "channel": "architecture", "content": "关于fac"}
+{"time": "2026-10-21T01:13:26.411900+00:00", "channel": "architecture", "content": "ade patterns：\n"}
+{"time": "2026-10-21T01:13:26.412405+00:00", "channel": "architecture", "content": "- front ("}
+{"time": "2026-10-21T01:13:26.510872+00:00", "channel": "architecture", "content": "volume_main, "}
+{"time": "2026-10-21T01:13:26.565147+00:00", "channel": "architecture", "content": "南面, z"}
+{"time": "2026-10-21T01:13:26.661689+00:00", "channel": "architecture", "content": "=0): "}
+{"time": "2026-10-21T01:13:26.661689+00:00", "channel": "architecture", "content": "4 b"}
+{"time": "2026-10-21T01:13:26.744967+00:00", "channel": "architecture", "content": "ays (14"}
+{"time": "2026-10-21T01:13:26.744967+00:00", "channel": "architecture", "content": "/3."}
+{"time": "2026-10-21T01:13:26.811614+00:00", "channel": "architecture", "content": "5=4)"}
+{"time": "2026-10-21T01:13:26.811614+00:00", "channel": "architecture", "content": "\n "}
+{"time": "2026-10-21T01:13:26.907854+00:00", "channel": "architecture", "content": " - ground_pattern:"}
+{"time": "2026-10-21T01:13:26.907854+00:00", "channel": "architecture", "content": " [\"empty"}
+{"time": "2026-10-21T01:13:26.975935+00:00", "channel": "architecture", "content": "\", \"door\","}
+{"time": "2026-10-21T01:13:26.976440+00:00", "channel": "architecture", "content": " \"empty"}
+{"time": "2026-10-21T01:13:27.040229+00:00", "channel": "architecture", "content": "\", \"window\"]"}
+{"time": "2026-10-21T01:13:27.041306+00:00", "channel": "architecture", "content": " —"}
+{"time": "2026-10-21T01:13:27.075048+00:00", "channel": "architecture", "content": " 不对，让我"}
+{"time": "2026-10-21T01:13:27.172461+00:00", "channel": "architecture", "content": "重新看\n  \n "}
+{"time": "2026-10-21T01:13:27.173014+00:00", "channel": "architecture", "content": " 入口"}
+{"time": "2026-10-21T01:13:27.294908+00:00", "channel": "architecture", "content": "在中央x="}
+{"time": "2026-10-21T01:13:27.294908+00:00", "channel": "architecture", "content": "4"}
+{"time": "2026-10-21T01:13:27.306173+00:00", "channel": "architecture", "content": ".5~9"}
+{"time": "2026-10-21T01:13:27.392215+00:00", "channel": "architecture", "content": ".5区域，"}
+{"time": "2026-10-21T01:13:27.392721+00:00", "channel": "architecture", "content": "对应"}
+{"time": "2026-10-21T01:13:27.496703+00:00", "channel": "architecture", "content": "第2和第3"}
+{"time": "2026-10-21T01:13:27.497208+00:00", "channel": "architecture", "content": "开间（"}
+{"time": "2026-10-21T01:13:27.533938+00:00", "channel": "architecture", "content": "每开间3"}
+{"time": "2026-10-21T01:13:27.534444+00:00", "channel": "architecture", "content": "."}
+{"time": "2026-10-21T01:13:27.605559+00:00", "channel": "architecture", "content": "5m：0"}
+{"time": "2026-10-21T01:13:27.659124+00:00", "channel": "architecture", "content": "-3.5"}
+{"time": "2026-10-21T01:13:27.659629+00:00", "channel": "architecture", "content": ", 3"}
+{"time": "2026-10-21T01:13:27.689967+00:00", "channel": "architecture", "content": ".5-7"}
+{"time": "2026-10-21T01:13:27.721268+00:00", "channel": "architecture", "content": ", 7-"}
+{"time": "2026-10-21T01:13:27.753221+00:00", "channel": "architecture", "content": "10.5"}
+{"time": "2026-10-21T01:13:27.787937+00:00", "channel": "architecture", "content": ", 10"}
+{"time": "2026-10-21T01:13:27.822856+00:00", "channel": "architecture", "content": ".5-1"}
+{"time": "2026-10-21T01:13:27.853709+00:00", "channel": "architecture", "content": "4）\n  \n"}
+{"time": "2026-10-21T01:13:27.911247+00:00", "channel": "architecture", "content": "  入口在"}
+{"time": "2026-10-21T01:13:28.007847+00:00", "channel": "architecture", "content": "3.5~"}
+{"time": "2026-10-21T01:13:28.045920+00:00", "channel": "architecture", "content": "10.5"}
+{"time": "2026-10-21T01:13:28.046425+00:00", "channel": "architecture", "content": "范围"}
+{"time": "2026-10-21T01:13:28.105122+00:00", "channel": "architecture", "content": "，跨第2"}
+{"time": "2026-10-21T01:13:28.105122+00:00", "channel": "architecture", "content": "和第3"}
+{"time": "2026-10-21T01:13:28.160038+00:00", "channel": "architecture", "content": "开间。\n"}
+{"time": "2026-10-21T01:13:28.160038+00:00", "channel": "architecture", "content": "  \n"}
+{"time": "2026-10-21T01:13:28.226207+00:00", "channel": "architecture", "content": "  让我用"}
+{"time": "2026-10-21T01:13:28.226712+00:00", "channel": "architecture", "content": "5"}
+{"time": "2026-10-21T01:13:28.311670+00:00", "channel": "architecture", "content": "个开间："}
+{"time": "2026-10-21T01:13:28.311670+00:00", "channel": "architecture", "content": "1"}
+{"time": "2026-10-21T01:13:28.343855+00:00", "channel": "architecture", "content": "4/5 ="}
+{"time": "2026-10-21T01:13:28.343855+00:00", "channel": "architecture", "content": " 2"}
+{"time": "2026-10-21T01:13:28.380700+00:00", "channel": "architecture", "content": ".8m每"}
+{"time": "2026-10-21T01:13:28.404199+00:00", "channel": "architecture", "content": "开间\n "}
+{"time": "2026-10-21T01:13:28.515091+00:00", "channel": "architecture", "content": " x_bays="}
+{"time": "2026-10-21T01:13:28.549412+00:00", "channel": "architecture", "content": "5, z_b"}
+{"time": "2026-10-21T01:13:28.549918+00:00", "channel": "architecture", "content": "ays="}
+{"time": "2026-10-21T01:13:28.642791+00:00", "channel": "architecture", "content": "4 (10"}
+{"time": "2026-10-21T01:13:28.642791+00:00", "channel": "architecture", "content": "/2"}
+{"time": "2026-10-21T01:13:28.669037+00:00", "channel": "architecture", "content": ".5=4"}
+{"time": "2026-10-21T01:13:28.725280+00:00", "channel": "architecture", "content": ")\n  \n "}
+{"time": "2026-10-21T01:13:28.792701+00:00", "channel": "architecture", "content": " 或者简单用"}
+{"time": "2026-10-21T01:13:28.793220+00:00", "channel": "architecture", "content": "4个开"}
+{"time": "2026-10-21T01:13:28.873085+00:00", "channel": "architecture", "content": "间，入口占"}
+{"time": "2026-10-21T01:13:28.933805+00:00", "channel": "architecture", "content": "第2~3"}
+{"time": "2026-10-21T01:13:28.934310+00:00", "channel": "architecture", "content": "开间位置"}
+{"time": "2026-10-21T01:13:28.960199+00:00", "channel": "architecture", "content": "。\n\n  front"}
+{"time": "2026-10-21T01:13:29.032970+00:00", "channel": "architecture", "content": " (4 bays"}
+{"time": "2026-10-21T01:13:29.032970+00:00", "channel": "architecture", "content": "):"}
+{"time": "2026-10-21T01:13:29.094914+00:00", "channel": "architecture", "content": "\n  - ground"}
+{"time": "2026-10-21T01:13:29.095419+00:00", "channel": "architecture", "content": ": [\""}
+{"time": "2026-10-21T01:13:29.149101+00:00", "channel": "architecture", "content": "window\", \"door"}
+{"time": "2026-10-21T01:13:29.177053+00:00", "channel": "architecture", "content": "\", \"door\","}
+{"time": "2026-10-21T01:13:29.232360+00:00", "channel": "architecture", "content": " \"window\"] —"}
+{"time": "2026-10-21T01:13:29.232360+00:00", "channel": "architecture", "content": " 嗯"}
+{"time": "2026-10-21T01:13:29.329356+00:00", "channel": "architecture", "content": "，一个门就够了"}
+{"time": "2026-10-21T01:13:29.342566+00:00", "channel": "architecture", "content": "\n  \n  让我"}
+{"time": "2026-10-21T01:13:29.451324+00:00", "channel": "architecture", "content": "重新规划：用"}
+{"time": "2026-10-21T01:13:29.496688+00:00", "channel": "architecture", "content": "5开间\n"}
+{"time": "2026-10-21T01:13:29.550630+00:00", "channel": "architecture", "content": "  x_bays"}
+{"time": "2026-10-21T01:13:29.551135+00:00", "channel": "architecture", "content": "="}
+{"time": "2026-10-21T01:13:29.625557+00:00", "channel": "architecture", "content": "5 (每开"}
+{"time": "2026-10-21T01:13:29.625557+00:00", "channel": "architecture", "content": "间2"}
+{"time": "2026-10-21T01:13:29.641646+00:00", "channel": "architecture", "content": ".8m),"}
+{"time": "2026-10-21T01:13:29.669501+00:00", "channel": "architecture", "content": " z_bays="}
+{"time": "2026-10-21T01:13:29.701315+00:00", "channel": "architecture", "content": "4 (每开"}
+{"time": "2026-10-21T01:13:29.728734+00:00", "channel": "architecture", "content": "间2.5"}
+{"time": "2026-10-21T01:13:29.760057+00:00", "channel": "architecture", "content": "m)\n  \n"}
+{"time": "2026-10-21T01:13:29.792259+00:00", "channel": "architecture", "content": "  front:\n"}
+{"time": "2026-10-21T01:13:29.899703+00:00", "channel": "architecture", "content": "  - bays"}
+{"time": "2026-10-21T01:13:29.899703+00:00", "channel": "architecture", "content": ": "}
+{"time": "2026-10-21T01:13:29.918991+00:00", "channel": "architecture", "content": "5\n  -"}
+{"time": "2026-10-21T01:13:29.937154+00:00", "channel": "architecture", "content": " ground_pattern: [\""}
+{"time": "2026-10-21T01:13:30.006624+00:00", "channel": "architecture", "content": "empty\", \"window"}
+{"time": "2026-10-21T01:13:30.007129+00:00", "channel": "architecture", "content": "\","}
+{"time": "2026-10-21T01:13:30.035015+00:00", "channel": "architecture", "content": " \"door\", \""}
+{"time": "2026-10-21T01:13:30.060733+00:00", "channel": "architecture", "content": "window\", \"empty"}
+{"time": "2026-10-21T01:13:30.090222+00:00", "channel": "architecture", "content": "\"]\n  -"}
+{"time": "2026-10-21T01:13:30.117065+00:00", "channel": "architecture", "content": " upper_pattern: [\""}
+{"time": "2026-10-21T01:13:30.170420+00:00", "channel": "architecture", "content": "empty\", \"window"}
+{"time": "2026-10-21T01:13:30.200677+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:30.222060+00:00", "channel": "architecture", "content": " \"window\", \""}
+{"time": "2026-10-21T01:13:30.255067+00:00", "channel": "architecture", "content": "empty\"]\n  \n"}
+{"time": "2026-10-21T01:13:30.318624+00:00", "channel": "architecture", "content": "  back:\n"}
+{"time": "2026-10-21T01:13:30.318624+00:00", "channel": "architecture", "content": "  -"}
+{"time": "2026-10-21T01:13:30.354320+00:00", "channel": "architecture", "content": " bays: "}
+{"time": "2026-10-21T01:13:30.403376+00:00", "channel": "architecture", "content": "5\n  -"}
+{"time": "2026-10-21T01:13:30.409349+00:00", "channel": "architecture", "content": " ground_pattern: [\""}
+{"time": "2026-10-21T01:13:30.447937+00:00", "channel": "architecture", "content": "window\", \"empty"}
+{"time": "2026-10-21T01:13:30.470292+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:30.545518+00:00", "channel": "architecture", "content": " \"empty\", \""}
+{"time": "2026-10-21T01:13:30.545518+00:00", "channel": "architecture", "content": "window\"]"}
+{"time": "2026-10-21T01:13:30.614302+00:00", "channel": "architecture", "content": "\n  - upper"}
+{"time": "2026-10-21T01:13:30.614807+00:00", "channel": "architecture", "content": "_pattern: [\""}
+{"time": "2026-10-21T01:13:30.630011+00:00", "channel": "architecture", "content": "window\", \"empty"}
+{"time": "2026-10-21T01:13:30.656583+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:30.708060+00:00", "channel": "architecture", "content": " \"empty\", \""}
+{"time": "2026-10-21T01:13:30.722684+00:00", "channel": "architecture", "content": "window\"]\n  \n"}
+{"time": "2026-10-21T01:13:30.786485+00:00", "channel": "architecture", "content": "  left (东"}
+{"time": "2026-10-21T01:13:30.787486+00:00", "channel": "architecture", "content": "面,"}
+{"time": "2026-10-21T01:13:30.819964+00:00", "channel": "architecture", "content": " x=14"}
+{"time": "2026-10-21T01:13:30.907391+00:00", "channel": "architecture", "content": "面):\n "}
+{"time": "2026-10-21T01:13:30.907899+00:00", "channel": "architecture", "content": " -"}
+{"time": "2026-10-21T01:13:31.001077+00:00", "channel": "architecture", "content": " bays: "}
+{"time": "2026-10-21T01:13:31.018095+00:00", "channel": "architecture", "content": "4 (depth="}
+{"time": "2026-10-21T01:13:31.018599+00:00", "channel": "architecture", "content": "10,"}
+{"time": "2026-10-21T01:13:31.048674+00:00", "channel": "architecture", "content": " 每开间"}
+{"time": "2026-10-21T01:13:31.085481+00:00", "channel": "architecture", "content": "2.5m"}
+{"time": "2026-10-21T01:13:31.105061+00:00", "channel": "architecture", "content": ")\n  -"}
+{"time": "2026-10-21T01:13:31.129771+00:00", "channel": "architecture", "content": " ground_pattern: [\""}
+{"time": "2026-10-21T01:13:31.161982+00:00", "channel": "architecture", "content": "window\", \"window"}
+{"time": "2026-10-21T01:13:31.188024+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:31.252493+00:00", "channel": "architecture", "content": " \"empty\"] —"}
+{"time": "2026-10-21T01:13:31.311664+00:00", "channel": "architecture", "content": " 客厅大窗"}
+{"time": "2026-10-21T01:13:31.311664+00:00", "channel": "architecture", "content": "\n"}
+{"time": "2026-10-21T01:13:31.375225+00:00", "channel": "architecture", "content": "  - upper_pattern"}
+{"time": "2026-10-21T01:13:31.375225+00:00", "channel": "architecture", "content": ": [\""}
+{"time": "2026-10-21T01:13:31.408912+00:00", "channel": "architecture", "content": "window\", \"window"}
+{"time": "2026-10-21T01:13:31.435684+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:31.500977+00:00", "channel": "architecture", "content": " \"window\"]\n"}
+{"time": "2026-10-21T01:13:31.501481+00:00", "channel": "architecture", "content": "  \n  right"}
+{"time": "2026-10-21T01:13:31.556851+00:00", "channel": "architecture", "content": " (西面,"}
+{"time": "2026-10-21T01:13:31.557356+00:00", "channel": "architecture", "content": " x="}
+{"time": "2026-10-21T01:13:31.590054+00:00", "channel": "architecture", "content": "0面):\n"}
+{"time": "2026-10-21T01:13:31.635941+00:00", "channel": "architecture", "content": "  - bays"}
+{"time": "2026-10-21T01:13:31.650681+00:00", "channel": "architecture", "content": ": 4\n"}
+{"time": "2026-10-21T01:13:31.687743+00:00", "channel": "architecture", "content": "  - ground_pattern"}
+{"time": "2026-10-21T01:13:31.749938+00:00", "channel": "architecture", "content": ": [\"empty\","}
+{"time": "2026-10-21T01:13:31.750450+00:00", "channel": "architecture", "content": " \"window\","}
+{"time": "2026-10-21T01:13:31.778713+00:00", "channel": "architecture", "content": " \"empty\", \""}
+{"time": "2026-10-21T01:13:31.812001+00:00", "channel": "architecture", "content": "window\"]\n "}
+{"time": "2026-10-21T01:13:31.837037+00:00", "channel": "architecture", "content": " - upper_pattern:"}
+{"time": "2026-10-21T01:13:31.918522+00:00", "channel": "architecture", "content": " [\"empty\", \""}
+{"time": "2026-10-21T01:13:31.919027+00:00", "channel": "architecture", "content": "window\", \""}
+{"time": "2026-10-21T01:13:31.966506+00:00", "channel": "architecture", "content": "empty\", \"window"}
+{"time": "2026-10-21T01:13:31.966506+00:00", "channel": "architecture", "content": "\"]"}
+{"time": "2026-10-21T01:13:31.995612+00:00", "channel": "architecture", "content": "\n\nvolume_annex"}
+{"time": "2026-10-21T01:13:32.055769+00:00", "channel": "architecture", "content": " facades:\n"}
+{"time": "2026-10-21T01:13:32.055769+00:00", "channel": "architecture", "content": " "}
+{"time": "2026-10-21T01:13:32.093002+00:00", "channel": "architecture", "content": " - front: b"}
+{"time": "2026-10-21T01:13:32.150072+00:00", "channel": "architecture", "content": "ays=2 ("}
+{"time": "2026-10-21T01:13:32.214417+00:00", "channel": "architecture", "content": "5m/2"}
+{"time": "2026-10-21T01:13:32.214922+00:00", "channel": "architecture", "content": ".5"}
+{"time": "2026-10-21T01:13:32.326090+00:00", "channel": "architecture", "content": "=2), ground"}
+{"time": "2026-10-21T01:13:32.326599+00:00", "channel": "architecture", "content": ":"}
+{"time": "2026-10-21T01:13:32.356797+00:00", "channel": "architecture", "content": " [\"door\", \""}
+{"time": "2026-10-21T01:13:32.357813+00:00", "channel": "architecture", "content": "empty"}
+{"time": "2026-10-21T01:13:32.432720+00:00", "channel": "architecture", "content": "\"], upper: "}
+{"time": "2026-10-21T01:13:32.520268+00:00", "channel": "architecture", "content": "不适用（1层"}
+{"time": "2026-10-21T01:13:32.520774+00:00", "channel": "architecture", "content": "）"}
+{"time": "2026-10-21T01:13:32.555095+00:00", "channel": "architecture", "content": "\n  - back"}
+{"time": "2026-10-21T01:13:32.629790+00:00", "channel": "architecture", "content": ": bays="}
+{"time": "2026-10-21T01:13:32.630354+00:00", "channel": "architecture", "content": "2,"}
+{"time": "2026-10-21T01:13:32.653853+00:00", "channel": "architecture", "content": " ground: [\"empty"}
+{"time": "2026-10-21T01:13:32.686753+00:00", "channel": "architecture", "content": "\", \"empty\"]"}
+{"time": "2026-10-21T01:13:32.718595+00:00", "channel": "architecture", "content": "\n  - left"}
+{"time": "2026-10-21T01:13:32.794729+00:00", "channel": "architecture", "content": ": bays="}
+{"time": "2026-10-21T01:13:32.794729+00:00", "channel": "architecture", "content": "3"}
+{"time": "2026-10-21T01:13:32.841588+00:00", "channel": "architecture", "content": " (8m/"}
+{"time": "2026-10-21T01:13:32.842093+00:00", "channel": "architecture", "content": "2"}
+{"time": "2026-10-21T01:13:32.926806+00:00", "channel": "architecture", "content": ".67≈"}
+{"time": "2026-10-21T01:13:32.927379+00:00", "channel": "architecture", "content": "3"}
+{"time": "2026-10-21T01:13:33.021358+00:00", "channel": "architecture", "content": "), 嗯不对"}
+{"time": "2026-10-21T01:13:33.059532+00:00", "channel": "architecture", "content": "\n  \n  volume_ann"}
+{"time": "2026-10-21T01:13:33.060037+00:00", "channel": "architecture", "content": "ex: x"}
+{"time": "2026-10-21T01:13:33.120601+00:00", "channel": "architecture", "content": "=14,"}
+{"time": "2026-10-21T01:13:33.190301+00:00", "channel": "architecture", "content": " z=2,"}
+{"time": "2026-10-21T01:13:33.190807+00:00", "channel": "architecture", "content": " width=5"}
+{"time": "2026-10-21T01:13:33.225264+00:00", "channel": "architecture", "content": ", depth=8"}
+{"time": "2026-10-21T01:13:33.269255+00:00", "channel": "architecture", "content": "\n  - front"}
+{"time": "2026-10-21T01:13:33.269760+00:00", "channel": "architecture", "content": " ("}
+{"time": "2026-10-21T01:13:33.323412+00:00", "channel": "architecture", "content": "z=2面"}
+{"time": "2026-10-21T01:13:33.323917+00:00", "channel": "architecture", "content": "): 面向"}
+{"time": "2026-10-21T01:13:33.419045+00:00", "channel": "architecture", "content": "庭院\n  -"}
+{"time": "2026-10-21T01:13:33.419554+00:00", "channel": "architecture", "content": " back"}
+{"time": "2026-10-21T01:13:33.455317+00:00", "channel": "architecture", "content": " (z=1"}
+{"time": "2026-10-21T01:13:33.472963+00:00", "channel": "architecture", "content": "0面): "}
+{"time": "2026-10-21T01:13:33.510095+00:00", "channel": "architecture", "content": "面向北\n "}
+{"time": "2026-10-21T01:13:33.531823+00:00", "channel": "architecture", "content": " - left (x"}
+{"time": "2026-10-21T01:13:33.624382+00:00", "channel": "architecture", "content": "=19面"}
+{"time": "2026-10-21T01:13:33.624887+00:00", "channel": "architecture", "content": "): 东"}
+{"time": "2026-10-21T01:13:33.658885+00:00", "channel": "architecture", "content": "端\n  -"}
+{"time": "2026-10-21T01:13:33.663775+00:00", "channel": "architecture", "content": " right"}
+{"time": "2026-10-21T01:13:33.736354+00:00", "channel": "architecture", "content": " (x=1"}
+{"time": "2026-10-21T01:13:33.737001+00:00", "channel": "architecture", "content": "4面):"}
+{"time": "2026-10-21T01:13:33.754784+00:00", "channel": "architecture", "content": " 与主楼"}
+{"time": "2026-10-21T01:13:33.817928+00:00", "channel": "architecture", "content": "相接，内部面"}
+{"time": "2026-10-21T01:13:33.818433+00:00", "channel": "architecture", "content": "\n\n"}
+{"time": "2026-10-21T01:13:33.869148+00:00", "channel": "architecture", "content": "  让我简化"}
+{"time": "2026-10-21T01:13:33.869652+00:00", "channel": "architecture", "content": "：\n "}
+{"time": "2026-10-21T01:13:33.998305+00:00", "channel": "architecture", "content": " annex front: b"}
+{"time": "2026-10-21T01:13:33.998810+00:00", "channel": "architecture", "content": "ays"}
+{"time": "2026-10-21T01:13:33.998810+00:00", "channel": "architecture", "content": "=2, ground"}
+{"time": "2026-10-21T01:13:34.088031+00:00", "channel": "architecture", "content": ": [\"door\","}
+{"time": "2026-10-21T01:13:34.088542+00:00", "channel": "architecture", "content": " \"window"}
+{"time": "2026-10-21T01:13:34.107042+00:00", "channel": "architecture", "content": "\"] (车库门"}
+{"time": "2026-10-21T01:13:34.210855+00:00", "channel": "architecture", "content": "+侧门)"}
+{"time": "2026-10-21T01:13:34.211359+00:00", "channel": "architecture", "content": "\n  annex"}
+{"time": "2026-10-21T01:13:34.232428+00:00", "channel": "architecture", "content": " back: bays"}
+{"time": "2026-10-21T01:13:34.309579+00:00", "channel": "architecture", "content": "=2, ground"}
+{"time": "2026-10-21T01:13:34.310084+00:00", "channel": "architecture", "content": ": [\"empty"}
+{"time": "2026-10-21T01:13:34.336982+00:00", "channel": "architecture", "content": "\", \"empty\"]"}
+{"time": "2026-10-21T01:13:34.390682+00:00", "channel": "architecture", "content": "\n  annex left"}
+{"time": "2026-10-21T01:13:34.391187+00:00", "channel": "architecture", "content": ": bays"}
+{"time": "2026-10-21T01:13:34.462213+00:00", "channel": "architecture", "content": "=3, ground"}
+{"time": "2026-10-21T01:13:34.462718+00:00", "channel": "architecture", "content": ": [\"empty"}
+{"time": "2026-10-21T01:13:34.491348+00:00", "channel": "architecture", "content": "\", \"window\","}
+{"time": "2026-10-21T01:13:34.527972+00:00", "channel": "architecture", "content": " \"empty\"]\n"}
+{"time": "2026-10-21T01:13:34.552071+00:00", "channel": "architecture", "content": "  annex right:"}
+{"time": "2026-10-21T01:13:34.613224+00:00", "channel": "architecture", "content": " 与主楼"}
+{"time": "2026-10-21T01:13:34.613733+00:00", "channel": "architecture", "content": "相接"}
+{"time": "2026-10-21T01:13:34.704966+00:00", "channel": "architecture", "content": "，设为 internal\n\n"}
+{"time": "2026-10-21T01:13:34.804814+00:00", "channel": "architecture", "content": "实际上facade的"}
+{"time": "2026-10-21T01:13:34.922074+00:00", "channel": "architecture", "content": "right是x最小"}
+{"time": "2026-10-21T01:13:35.014859+00:00", "channel": "architecture", "content": "面，left是"}
+{"time": "2026-10-21T01:13:35.015363+00:00", "channel": "architecture", "content": "x最大面"}
+{"time": "2026-10-21T01:13:35.057801+00:00", "channel": "architecture", "content": "。\n\n让我重新"}
+{"time": "2026-10-21T01:13:35.058335+00:00", "channel": "architecture", "content": "确认：\n"}
+{"time": "2026-10-21T01:13:35.086809+00:00", "channel": "architecture", "content": "- front = "}
+{"time": "2026-10-21T01:13:35.116776+00:00", "channel": "architecture", "content": "最小Z面 ("}
+{"time": "2026-10-21T01:13:35.215872+00:00", "channel": "architecture", "content": "南)\n-"}
+{"time": "2026-10-21T01:13:35.216377+00:00", "channel": "architecture", "content": " back ="}
+{"time": "2026-10-21T01:13:35.261300+00:00", "channel": "architecture", "content": " 最大Z面"}
+{"time": "2026-10-21T01:13:35.286363+00:00", "channel": "architecture", "content": " (北)  \n"}
+{"time": "2026-10-21T01:13:35.321690+00:00", "channel": "architecture", "content": "- left = "}
+{"time": "2026-10-21T01:13:35.402014+00:00", "channel": "architecture", "content": "最大X面 ("}
+{"time": "2026-10-21T01:13:35.402014+00:00", "channel": "architecture", "content": "东)"}
+{"time": "2026-10-21T01:13:35.410059+00:00", "channel": "architecture", "content": "\n- right ="}
+{"time": "2026-10-21T01:13:35.448943+00:00", "channel": "architecture", "content": " 最小X面"}
+{"time": "2026-10-21T01:13:35.509718+00:00", "channel": "architecture", "content": " (西)\n\n"}
+{"time": "2026-10-21T01:13:35.614471+00:00", "channel": "architecture", "content": "所以 volume_main:"}
+{"time": "2026-10-21T01:13:35.614976+00:00", "channel": "architecture", "content": "\n- front"}
+{"time": "2026-10-21T01:13:35.689906+00:00", "channel": "architecture", "content": " (南, z"}
+{"time": "2026-10-21T01:13:35.690412+00:00", "channel": "architecture", "content": "=0):"}
+{"time": "2026-10-21T01:13:35.714167+00:00", "channel": "architecture", "content": " 入口面\n"}
+{"time": "2026-10-21T01:13:35.790415+00:00", "channel": "architecture", "content": "- back (北"}
+{"time": "2026-10-21T01:13:35.790415+00:00", "channel": "architecture", "content": ","}
+{"time": "2026-10-21T01:13:35.818621+00:00", "channel": "architecture", "content": " z=10"}
+{"time": "2026-10-21T01:13:35.895136+00:00", "channel": "architecture", "content": "): 厨房餐厅"}
+{"time": "2026-10-21T01:13:35.931645+00:00", "channel": "architecture", "content": "面\n- left"}
+{"time": "2026-10-21T01:13:35.994548+00:00", "channel": "architecture", "content": " (东, x"}
+{"time": "2026-10-21T01:13:35.995052+00:00", "channel": "architecture", "content": "=14"}
+{"time": "2026-10-21T01:13:36.019489+00:00", "channel": "architecture", "content": "): 客厅面"}
+{"time": "2026-10-21T01:13:36.034231+00:00", "channel": "architecture", "content": "\n- right ("}
+{"time": "2026-10-21T01:13:36.118266+00:00", "channel": "architecture", "content": "西, x="}
+{"time": "2026-10-21T01:13:36.118771+00:00", "channel": "architecture", "content": "0):"}
+{"time": "2026-10-21T01:13:36.133194+00:00", "channel": "architecture", "content": " 老人房面"}
+{"time": "2026-10-21T01:13:36.158093+00:00", "channel": "architecture", "content": "\n\nvolume_annex"}
+{"time": "2026-10-21T01:13:36.228519+00:00", "channel": "architecture", "content": " (x=1"}
+{"time": "2026-10-21T01:13:36.229024+00:00", "channel": "architecture", "content": "4, z"}
+{"time": "2026-10-21T01:13:36.297696+00:00", "channel": "architecture", "content": "=2, w"}
+{"time": "2026-10-21T01:13:36.318203+00:00", "channel": "architecture", "content": "=5, d"}
+{"time": "2026-10-21T01:13:36.351269+00:00", "channel": "architecture", "content": "=8):\n"}
+{"time": "2026-10-21T01:13:36.439833+00:00", "channel": "architecture", "content": "- front (南"}
+{"time": "2026-10-21T01:13:36.463157+00:00", "channel": "architecture", "content": ", z=2"}
+{"time": "2026-10-21T01:13:36.546442+00:00", "channel": "architecture", "content": "): 车库门"}
+{"time": "2026-10-21T01:13:36.628527+00:00", "channel": "architecture", "content": "朝前院\n"}
+{"time": "2026-10-21T01:13:36.629031+00:00", "channel": "architecture", "content": "- back ("}
+{"time": "2026-10-21T01:13:36.676908+00:00", "channel": "architecture", "content": "北, z="}
+{"time": "2026-10-21T01:13:36.706871+00:00", "channel": "architecture", "content": "10): "}
+{"time": "2026-10-21T01:13:36.723635+00:00", "channel": "architecture", "content": "实墙\n-"}
+{"time": "2026-10-21T01:13:36.814270+00:00", "channel": "architecture", "content": " left (东,"}
+{"time": "2026-10-21T01:13:36.814777+00:00", "channel": "architecture", "content": " x=1"}
+{"time": "2026-10-21T01:13:36.844594+00:00", "channel": "architecture", "content": "9): 侧"}
+{"time": "2026-10-21T01:13:36.864212+00:00", "channel": "architecture", "content": "墙\n- right"}
+{"time": "2026-10-21T01:13:36.930594+00:00", "channel": "architecture", "content": " (西, x"}
+{"time": "2026-10-21T01:13:36.931099+00:00", "channel": "architecture", "content": "=14):"}
+{"time": "2026-10-21T01:13:37.051012+00:00", "channel": "architecture", "content": " 与主楼"}
+{"time": "2026-10-21T01:13:37.051517+00:00", "channel": "architecture", "content": "相接，内部\n\n"}
+{"time": "2026-10-21T01:13:37.071089+00:00", "channel": "architecture", "content": "好，让我设计"}
+{"time": "2026-10-21T01:13:37.210386+00:00", "channel": "architecture", "content": "更精确：\n\n"}
+{"time": "2026-10-21T01:13:37.210891+00:00", "channel": "architecture", "content": "**楼梯"}
+{"time": "2026-10-21T01:13:37.272768+00:00", "channel": "architecture", "content": "设计：**\nU"}
+{"time": "2026-10-21T01:13:37.273278+00:00", "channel": "architecture", "content": "形"}
+{"time": "2026-10-21T01:13:37.314890+00:00", "channel": "architecture", "content": "双跑，位于"}
+{"time": "2026-10-21T01:13:37.416345+00:00", "channel": "architecture", "content": "一层 x=5"}
+{"time": "2026-10-21T01:13:37.446835+00:00", "channel": "architecture", "content": ".5~7"}
+{"time": "2026-10-21T01:13:37.447344+00:00", "channel": "architecture", "content": ".5,"}
+{"time": "2026-10-21T01:13:37.521993+00:00", "channel": "architecture", "content": " z=4~"}
+{"time": "2026-10-21T01:13:37.565799+00:00", "channel": "architecture", "content": "6.5\n"}
+{"time": "2026-10-21T01:13:37.616719+00:00", "channel": "architecture", "content": "- 占地:"}
+{"time": "2026-10-21T01:13:37.617223+00:00", "channel": "architecture", "content": " width=2m"}
+{"time": "2026-10-21T01:13:37.691067+00:00", "channel": "architecture", "content": ", depth=2"}
+{"time": "2026-10-21T01:13:37.728883+00:00", "channel": "architecture", "content": ".5m\n"}
+{"time": "2026-10-21T01:13:37.781402+00:00", "channel": "architecture", "content": "- 但U"}
+{"time": "2026-10-21T01:13:37.876682+00:00", "channel": "architecture", "content": "形需要更大的平台"}
+{"time": "2026-10-21T01:13:38.050111+00:00", "channel": "architecture", "content": "... \n\nU形"}
+{"time": "2026-10-21T01:13:38.050111+00:00", "channel": "architecture", "content": "楼梯"}
+{"time": "2026-10-21T01:13:38.050111+00:00", "channel": "architecture", "content": "：\n- "}
+{"time": "2026-10-21T01:13:38.051115+00:00", "channel": "architecture", "content": "两跑"}
+{"time": "2026-10-21T01:13:38.157654+00:00", "channel": "architecture", "content": "宽0.9"}
+{"time": "2026-10-21T01:13:38.157654+00:00", "channel": "architecture", "content": "m，"}
+{"time": "2026-10-21T01:13:38.244752+00:00", "channel": "architecture", "content": "中间梯井0"}
+{"time": "2026-10-21T01:13:38.245257+00:00", "channel": "architecture", "content": ".2"}
+{"time": "2026-10-21T01:13:38.289714+00:00", "channel": "architecture", "content": "m，总宽"}
+{"time": "2026-10-21T01:13:38.290219+00:00", "channel": "architecture", "content": "约"}
+{"time": "2026-10-21T01:13:38.320137+00:00", "channel": "architecture", "content": "2.0m"}
+{"time": "2026-10-21T01:13:38.351340+00:00", "channel": "architecture", "content": "\n- 每"}
+{"time": "2026-10-21T01:13:38.394823+00:00", "channel": "architecture", "content": "跑长：1"}
+{"time": "2026-10-21T01:13:38.558819+00:00", "channel": "architecture", "content": "3级 × "}
+{"time": "2026-10-21T01:13:38.559324+00:00", "channel": "architecture", "content": "0.2"}
+{"time": "2026-10-21T01:13:38.618290+00:00", "channel": "architecture", "content": "8m踏步深"}
+{"time": "2026-10-21T01:13:38.652380+00:00", "channel": "architecture", "content": " = 3."}
+{"time": "2026-10-21T01:13:38.665758+00:00", "channel": "architecture", "content": "64m..."}
+{"time": "2026-10-21T01:13:38.773905+00:00", "channel": "architecture", "content": " 太大了\n-"}
+{"time": "2026-10-21T01:13:38.774410+00:00", "channel": "architecture", "content": " 或者"}
+{"time": "2026-10-21T01:13:38.850107+00:00", "channel": "architecture", "content": "用12级"}
+{"time": "2026-10-21T01:13:38.850611+00:00", "channel": "architecture", "content": "，"}
+{"time": "2026-10-21T01:13:38.968782+00:00", "channel": "architecture", "content": "每级踏深"}
+{"time": "2026-10-21T01:13:38.992757+00:00", "channel": "architecture", "content": "0.25"}
+{"time": "2026-10-21T01:13:39.071303+00:00", "channel": "architecture", "content": "m：跑长"}
+{"time": "2026-10-21T01:13:39.071809+00:00", "channel": "architecture", "content": "3."}
+{"time": "2026-10-21T01:13:39.132522+00:00", "channel": "architecture", "content": "0m\n-"}
+{"time": "2026-10-21T01:13:39.156512+00:00", "channel": "architecture", "content": " 休息平台深"}
+{"time": "2026-10-21T01:13:39.233803+00:00", "channel": "architecture", "content": "1.2m"}
+{"time": "2026-10-21T01:13:39.234310+00:00", "channel": "architecture", "content": "\n- "}
+{"time": "2026-10-21T01:13:39.313568+00:00", "channel": "architecture", "content": "总深：3"}
+{"time": "2026-10-21T01:13:39.358732+00:00", "channel": "architecture", "content": ".0 + "}
+{"time": "2026-10-21T01:13:39.416178+00:00", "channel": "architecture", "content": "1.2 ="}
+{"time": "2026-10-21T01:13:39.440905+00:00", "channel": "architecture", "content": " 4.2"}
+{"time": "2026-10-21T01:13:39.533100+00:00", "channel": "architecture", "content": "m... 还是"}
+{"time": "2026-10-21T01:13:39.533619+00:00", "channel": "architecture", "content": "太大\n\n让我重新"}
+{"time": "2026-10-21T01:13:39.666829+00:00", "channel": "architecture", "content": "设计：层高3"}
+{"time": "2026-10-21T01:13:39.676900+00:00", "channel": "architecture", "content": ".9m，"}
+{"time": "2026-10-21T01:13:39.819656+00:00", "channel": "architecture", "content": "用20级"}
+{"time": "2026-10-21T01:13:39.819656+00:00", "channel": "architecture", "content": "踏步，"}
+{"time": "2026-10-21T01:13:39.929651+00:00", "channel": "architecture", "content": "每级高1"}
+{"time": "2026-10-21T01:13:39.930156+00:00", "channel": "architecture", "content": "9"}
+{"time": "2026-10-21T01:13:39.982566+00:00", "channel": "architecture", "content": "5mm\n-"}
+{"time": "2026-10-21T01:13:39.983102+00:00", "channel": "architecture", "content": " 每跑1"}
+{"time": "2026-10-21T01:13:40.031493+00:00", "channel": "architecture", "content": "0级\n-"}
+{"time": "2026-10-21T01:13:40.031998+00:00", "channel": "architecture", "content": " 踏"}
+{"time": "2026-10-21T01:13:40.097940+00:00", "channel": "architecture", "content": "深0.2"}
+{"time": "2026-10-21T01:13:40.097940+00:00", "channel": "architecture", "content": "6m"}
+{"time": "2026-10-21T01:13:40.123782+00:00", "channel": "architecture", "content": "\n- 跑"}
+{"time": "2026-10-21T01:13:40.201314+00:00", "channel": "architecture", "content": "长 = 1"}
+{"time": "2026-10-21T01:13:40.201824+00:00", "channel": "architecture", "content": "0 ×"}
+{"time": "2026-10-21T01:13:40.229851+00:00", "channel": "architecture", "content": " 0.2"}
+{"time": "2026-10-21T01:13:40.289299+00:00", "channel": "architecture", "content": "6 = 2"}
+{"time": "2026-10-21T01:13:40.342723+00:00", "channel": "architecture", "content": ".6m\n"}
+{"time": "2026-10-21T01:13:40.346212+00:00", "channel": "architecture", "content": "- "}
+{"time": "2026-10-21T01:16:01.246269+00:00", "channel": "architecture:progress", "content": "图纸需要修订（1/3）：/floor_layouts/1/walls/5：内墙 from/to 不能相同。\n"}
+{"time": "2026-10-21T01:16:04.197036+00:00", "channel": "architecture:progress", "content": "图纸需要修订（2/3）：/floor_layouts/1/rooms/6：内墙 wall_corridor_2f_n（from=[0, 6.5], to=[9.5, 6.5]）贯穿第 2 层房间 common_bath_2f（公用卫生间）范围，世界 X=[0, 2.5]，Z=[6, 8]；墙段位于 Z=6.5，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.z=6.5、bounds.depth=1.5；保留较小坐标边界时可写 bounds.z=6、bounds.depth=0.5。仅把墙端缩短到房间另一边界仍然是贯穿。该房间还与以下房间范围重叠，须一并核对：corridor_2f（走廊）：X=[0, 2.5]，Z=[6, 6.5]。保留房间时，修订墙段到房间边界或明确设计通行开口。核对 /floor_layouts/1/walls/6 与该房间 bounds，不能原样返回冲突数据；/floor_layouts/1/rooms/8：内墙 wall_bed2_s_2f（from=[4.5, 5], to=[9.5, 5]）贯穿第 2 层房间 stair_landing_2f（楼梯休息平台）范围，世界 X=[4.5, 7.1]，Z=[3.5, 6.5]；墙段位于 Z=5，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.z=5、bounds.depth=1.5；保留较小坐标边界时可写 bounds.z=3.5、bounds.depth=1.5。仅把墙端缩短到房间另一边界仍然是贯穿。该房间还与以下房间范围重叠，须一并核对：bedroom_2（次卧1）：X=[4.5, 7.1]，Z=[3.5, 5]；corridor_2f（走廊）：X=[4.5, 7.1]，Z=[5, 6.5]。保留房间时，修订墙段到房间边界或明确设计通行开口。核对 /floor_layouts/1/walls/9 与该房间 bounds，不能原样返回冲突数据。\n"}
+{"time": "2026-10-21T01:16:07.552395+00:00", "channel": "architecture:progress", "content": "图纸需要修订（3/3）：/components/0/form：stair_1 每跑 rises×riser_height 与实际半层高差 1.95 不符。\n"}

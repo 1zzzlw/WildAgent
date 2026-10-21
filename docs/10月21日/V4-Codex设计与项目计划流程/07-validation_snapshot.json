@@ -1,0 +1,1381 @@
+{
+  "blueprint_fingerprint": "14547478e13f183e33da17ede874c00daf8aa3d1757378b2107702b2fe4fa264",
+  "validator_version": "1.1",
+  "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+  "design_revision": 1,
+  "design_brief_fingerprint": "b4b2318ab18d78ad52d17e7ebfe83070af47b5fe07022b8303659a188ccde13e",
+  "status": "complete",
+  "results": [
+    {
+      "step": 1,
+      "name": "validate_blueprint_structure",
+      "output": "✅ 结构完整（118 个构件，类型: {'wall', 'primitive', 'stair', 'roof', 'floor'}）",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 2,
+      "name": "validate_element_required_fields",
+      "output": "✅ 所有 118 个基础构件和 39 个组合构件的必填字段完整（基础类型: {'wall', 'primitive', 'stair', 'roof', 'floor'}，组合类型: {'door', 'railing', 'window'}）",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 3,
+      "name": "validate_reference_integrity",
+      "output": "✅ 引用完整性通过。（118 个基础构件，39 个组合构件，0 个模板，0 个实例）",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 4,
+      "name": "validate_opening_coords",
+      "output": "✅ 所有 opening 的 from 字段格式正确。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "4b",
+      "name": "validate_opening_fit",
+      "output": "✅ 所有 35 个 opening/门窗组件均在 parentWall 范围内。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 5,
+      "name": "validate_wall_junctions",
+      "output": "✅ 所有墙体端点都有相邻连接，墙体闭合良好。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 6,
+      "name": "validate_stair_alignment",
+      "output": "✅ 楼梯端点与参考高度对齐。参考高度: [-0.2m, -0.0m, -0.0m, 0.0m, 0.0m, 0.1m, 0.2m, 0.3m, 0.3m, 0.4m, 0.9m, 1.4m, 1.5m, 1.7m, 2.7m, 2.8m, 2.9m, 3.1m, 3.3m, 3.4m, 3.5m, 4.5m, 6.7m, 6.8m, 6.9m, 8.5m]",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 7,
+      "name": "validate_roof_coverage",
+      "output": "✅ 屋顶尺寸合理。（承托墙宽度=5.5, 进深=5.5）",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "7b",
+      "name": "validate_element_dimensions",
+      "output": "✅ 所有 157 个构件尺寸合理。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "7c",
+      "name": "validate_model_quality",
+      "output": "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "7d",
+      "name": "validate_stacked_member_containment",
+      "output": "✅ 贯通墙体均收进其跨越的每一层外墙轮廓（检查 2 层）。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "7e",
+      "name": "validate_roof_top_coverage",
+      "output": "✅ 所有 18 面墙的顶部均被屋顶 / 楼板 / 上层墙覆盖。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": 9,
+      "name": "validate_collision",
+      "output": "✅ 碰撞检测通过，共检查 10 个构件，未发现空间冲突。",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "10.1",
+      "name": "validate_door_placement",
+      "output": "✅ 门位置校验通过 (9 个门)",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "10.2",
+      "name": "validate_primitive_placement",
+      "output": "✅ 所有 118 个基础构件和 39 个组合构件的必填字段完整（基础类型: {'wall', 'primitive', 'stair', 'roof', 'floor'}，组合类型: {'door', 'railing', 'window'}）",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "10.3",
+      "name": "validate_railing_placement",
+      "output": "✅ 栏杆校验通过 (4 个栏杆)",
+      "has_error": false,
+      "has_warning": false
+    },
+    {
+      "step": "10.4",
+      "name": "validate_window_placement",
+      "output": "✅ 窗位置校验通过 (26 个窗)",
+      "has_error": false,
+      "has_warning": false
+    }
+  ],
+  "design_errors": [],
+  "issues": [],
+  "fulfillment": {
+    "version": "entity-fulfillment/1",
+    "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+    "total": 14,
+    "satisfied": 1,
+    "open": 0,
+    "needs_review": 13,
+    "unsupported": 0,
+    "superseded": 0,
+    "satisfied_ratio": 1.0,
+    "decided": 1,
+    "decidable_coverage": 0.071,
+    "satisfied_ids": [
+      "path.entry_route"
+    ],
+    "geometry_blocking": false,
+    "gaps": [
+      {
+        "id": "path.stair_approach",
+        "target": "stair_approach",
+        "status": "needs_review",
+        "expected": {
+          "width": 0.8,
+          "height": 2.1
+        },
+        "actual": {
+          "id": "stair_approach",
+          "floor": 1,
+          "width": 0.8,
+          "height": 2.1,
+          "status": "needs_review",
+          "blocking_entity_ids": [],
+          "unverified_entity_ids": [
+            "main_stair_first_flight"
+          ]
+        },
+        "evidence": "declared horizontal segment prisms and nominal furniture occupancy; no full navigation, support or door-swing proof"
+      },
+      {
+        "id": "path.upper_exit",
+        "target": "upper_exit",
+        "status": "needs_review",
+        "expected": {
+          "width": 0.8,
+          "height": 2.1
+        },
+        "actual": {
+          "id": "upper_exit",
+          "floor": 2,
+          "width": 0.8,
+          "height": 2.1,
+          "status": "needs_review",
+          "blocking_entity_ids": [],
+          "unverified_entity_ids": [
+            "main_stair_second_flight"
+          ]
+        },
+        "evidence": "declared horizontal segment prisms and nominal furniture occupancy; no full navigation, support or door-swing proof"
+      },
+      {
+        "id": "review.trim_main",
+        "target": "trim_main",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.trim_west",
+        "target": "trim_west",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.trim_east",
+        "target": "trim_east",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.entry_portal",
+        "target": "entry_portal",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.court_screen_5",
+        "target": "court_screen_5",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [
+          "placement.position",
+          "material_bindings.material",
+          "repetition 的数量、位置与零件尺寸"
+        ],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.court_screen_5_rails",
+        "target": "court_screen_5_rails",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.court_screen_10",
+        "target": "court_screen_10",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [
+          "placement.position",
+          "material_bindings.material",
+          "repetition 的数量、位置与零件尺寸"
+        ],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.court_screen_10_rails",
+        "target": "court_screen_10_rails",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.site",
+        "target": "site",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.court_planters",
+        "target": "court_planters",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      },
+      {
+        "id": "review.front_garden",
+        "target": "front_garden",
+        "status": "needs_review",
+        "expected": "图纸关系与组合表达",
+        "actual": [],
+        "evidence": "造型与构造描述需要渲染复核"
+      }
+    ],
+    "implementations": {
+      "building_body": {
+        "status": "implemented",
+        "entity_ids": [
+          "slab_L1_0",
+          "slab_L1_1",
+          "slab_L1_2",
+          "slab_L2_0",
+          "slab_L2_1",
+          "slab_L2_2",
+          "slab_L2_3",
+          "wall_main_front_L1",
+          "wall_main_right_L1",
+          "wall_main_back_L1",
+          "wall_main_left_L1",
+          "wall_main_front_L2",
+          "wall_main_right_L2",
+          "wall_main_back_L2",
+          "wall_main_left_L2",
+          "wall_west_front_L1",
+          "wall_west_right_L1",
+          "wall_west_left_L1",
+          "wall_east_front_L1",
+          "wall_east_right_L1",
+          "wall_east_left_L1",
+          "partition_1_west",
+          "partition_1_east",
+          "partition_2_west",
+          "partition_2_east"
+        ],
+        "entity_fingerprint": "0b190737cbc8b6f1d54ad238fedfe3215fd6bd0435a31b0bded1c5d2af9c5d41",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "elder_link": {
+        "status": "implemented",
+        "entity_ids": [
+          "elder_link"
+        ],
+        "entity_fingerprint": "24bbf7108a96eda9f771f5cd205efb3986839a242955b783ad1c3b6b3b3a8355",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "entry": {
+        "status": "implemented",
+        "entity_ids": [
+          "entry"
+        ],
+        "entity_fingerprint": "8b32bb1a9a18f6358ba973ceb929379d0fbb46366772c1abdd89fa6de443fc80",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "tea_link": {
+        "status": "implemented",
+        "entity_ids": [
+          "tea_link"
+        ],
+        "entity_fingerprint": "18f0de377ead9845244a469b3c9ebc7fe4722c856d95c1133d9646c090efc4f4",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "west_court": {
+        "status": "implemented",
+        "entity_ids": [
+          "west_court"
+        ],
+        "entity_fingerprint": "d464df9fb4eb4e93b11e73738996a75b0f1f5e457723b884b5c62de1d4fb95df",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "east_court": {
+        "status": "implemented",
+        "entity_ids": [
+          "east_court"
+        ],
+        "entity_fingerprint": "e9fdf45b1c0db02467a08859c10077159d90585f77e2416ba616425a17833381",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_1_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_1_west"
+        ],
+        "entity_fingerprint": "45cb668479962c44038c07fcd0b925bedc8b459423bd80328ceffb5e0249aee7",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_1_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_1_east"
+        ],
+        "entity_fingerprint": "0cf75d27bbcb71714c76314327384ae9667fe1ec8ae1c03eb7544213208d383f",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_2_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_2_west"
+        ],
+        "entity_fingerprint": "158757a170269d87032dafb4dd69dee368d5a73176ba0c51f6f4d555ba34efda",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_2_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_2_east"
+        ],
+        "entity_fingerprint": "f3121b2f8c7d20f6a8c85010e3d38e150cf18c1d696718241a1d0e529c1cff33",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "hall_glass_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "hall_glass_0"
+        ],
+        "entity_fingerprint": "31b2d8eef43cc149e902e806307b9641ba8682bd3c1976450e41ee067cd76a26",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "hall_glass_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "hall_glass_1"
+        ],
+        "entity_fingerprint": "bb26aad724dd7747e94d2138c32a4d1d18b8722266f7c91975c2dd9436c201f0",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_1_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_1_0"
+        ],
+        "entity_fingerprint": "08fc10e4c42a5a1ea24de364a4f02f1f53fdbc2af97b038347e59dc0b550b6b3",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_1_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_1_1"
+        ],
+        "entity_fingerprint": "9047b4bdae4c3fe80790b24032e8567dce4487b315400b4f493f2b5d560b07db",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_1_2": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_1_2"
+        ],
+        "entity_fingerprint": "bbb6b97532e06befe043574c0cc4e96aff49b4fcae8cef9130e01947e33a2ec1",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_1_3": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_1_3"
+        ],
+        "entity_fingerprint": "21b97030a14034fd975c3f5711fde42fa7a754fb8b4654c262f46511c36efa36",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_1_left_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_1_left_0"
+        ],
+        "entity_fingerprint": "938ed519cc5fd9fe06a1ee4771123cc17334edcf6ac93ff00d9539c3b886f685",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_1_left_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_1_left_1"
+        ],
+        "entity_fingerprint": "77051ec4550229d979070e3a7379278c6b4c6507fc5883b8bc093d3ec60a8243",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_1_right_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_1_right_0"
+        ],
+        "entity_fingerprint": "edf9497faf8d1114b805abcb551b7dda2e69d3284cafa781068e1de160bb387b",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_1_right_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_1_right_1"
+        ],
+        "entity_fingerprint": "b96d33ef2af0765138a3034601cff65ce4001e1042b8f41d8f769b6ab45f957b",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "upper_south_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "upper_south_0"
+        ],
+        "entity_fingerprint": "44fd325d4d025ff8fff8c301681978178d171274bcb27e18d8b44eb35253ca93",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "upper_south_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "upper_south_1"
+        ],
+        "entity_fingerprint": "e67afdfb7f7fd5633bc35731c081f65ea0fc13cb832d25779b3c57fe7e8d2ce4",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "upper_south_2": {
+        "status": "implemented",
+        "entity_ids": [
+          "upper_south_2"
+        ],
+        "entity_fingerprint": "acf14cac69da30b8326506eb618b74a010fe62448c34647e1e468acdf17bafb9",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "upper_south_3": {
+        "status": "implemented",
+        "entity_ids": [
+          "upper_south_3"
+        ],
+        "entity_fingerprint": "917db3d15138ea9dd94fbd7d2ed64a67c3b8bf6285ec43202c305b57778bbf60",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_2_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_2_0"
+        ],
+        "entity_fingerprint": "4e4daaef980bc2477eab64eef083d9cf0ca71988837a4bd9007fcc164531cbec",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_2_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_2_1"
+        ],
+        "entity_fingerprint": "28101c091ccb3407206504b07096fd6d6faab59941fcb0a047db4ef971002014",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_2_2": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_2_2"
+        ],
+        "entity_fingerprint": "41ce060adcaed5fa18e2094d3253b0d7743fef22b76aec830d3269df0eefa9a3",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "north_2_3": {
+        "status": "implemented",
+        "entity_ids": [
+          "north_2_3"
+        ],
+        "entity_fingerprint": "b19953aa1e888f9eedd431ffa4dbd09160822760a870970eb13f1c8e0883df89",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_2_left_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_2_left_0"
+        ],
+        "entity_fingerprint": "cb42305676b238338f1d675a5dd5e1509f93d15d85c4b237eade0cc7510cc751",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_2_left_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_2_left_1"
+        ],
+        "entity_fingerprint": "876dd0c2755ca1b4540a5178a3e18891f11830dcc07471f66bacca34d2fa842d",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_2_right_0": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_2_right_0"
+        ],
+        "entity_fingerprint": "f9bb3c4397cd883feb2c7687853cab2e7affedd677ca04738ffd9962bca70a64",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "side_2_right_1": {
+        "status": "implemented",
+        "entity_ids": [
+          "side_2_right_1"
+        ],
+        "entity_fingerprint": "da0cb159ab4acdd87bd3ea23b1091d2df87be61ccbc6827fa2a9ea62e2790574",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "west_south": {
+        "status": "implemented",
+        "entity_ids": [
+          "west_south"
+        ],
+        "entity_fingerprint": "a5ea1f43f468072b4cf733e3803d669bca507ebbade425a9ccb95ca779b265e5",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "west_outer": {
+        "status": "implemented",
+        "entity_ids": [
+          "west_outer"
+        ],
+        "entity_fingerprint": "e8a46598eb02f8363d253005a69589ef479d828c4b014522ad8a0445ddbef93e",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "east_south": {
+        "status": "implemented",
+        "entity_ids": [
+          "east_south"
+        ],
+        "entity_fingerprint": "00e469b0e6e33d872aecd1404a0e4384485ce52685de7167d3065f9c016ef6ee",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "east_outer": {
+        "status": "implemented",
+        "entity_ids": [
+          "east_outer"
+        ],
+        "entity_fingerprint": "67badfacf0e0ce9083e24845ddc5bb14748edfa5808cc524d7b1bfcd63eacac8",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "main_stair": {
+        "status": "implemented",
+        "entity_ids": [
+          "main_stair_first_flight",
+          "main_stair_second_flight",
+          "main_stair_landing"
+        ],
+        "entity_fingerprint": "cac61f8696901c7e383849774d153de4d6f9ac2810ee02f3ebda416cdd222e42",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "roof_main": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_main",
+          "roof_main_ridge",
+          "roof_main_fascia_0",
+          "roof_main_fascia_1",
+          "roof_main_fascia_2",
+          "roof_main_fascia_3"
+        ],
+        "entity_fingerprint": "f48634c866d22de741e6c455f210e834e7ad7f2fb987a89eaeb26f7c40979b64",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "roof_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_west",
+          "roof_west_ridge",
+          "roof_west_fascia_0",
+          "roof_west_fascia_1",
+          "roof_west_fascia_2",
+          "roof_west_fascia_3"
+        ],
+        "entity_fingerprint": "16c984d07805b0ab0a228aaf1eec3e99d9b63776e4dad48e0afbcf77b0774900",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "roof_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_east",
+          "roof_east_ridge",
+          "roof_east_fascia_0",
+          "roof_east_fascia_1",
+          "roof_east_fascia_2",
+          "roof_east_fascia_3"
+        ],
+        "entity_fingerprint": "8189dc2dd674d0942ff87c1fbf97fb50450d3332b39b4dcbe1c330113cd4b5aa",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "trim_main": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_main_0",
+          "trim_main_1",
+          "trim_main_2",
+          "trim_main_3",
+          "trim_main_4",
+          "trim_main_5",
+          "trim_main_6",
+          "trim_main_7",
+          "trim_main_8",
+          "trim_main_9",
+          "trim_main_10"
+        ],
+        "entity_fingerprint": "c0429c6446437b2cd2469baff2522acbed7e104aa6435922b3ca77f89a47e1d0",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "trim_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_west_0",
+          "trim_west_1",
+          "trim_west_2",
+          "trim_west_3",
+          "trim_west_4",
+          "trim_west_5",
+          "trim_west_6"
+        ],
+        "entity_fingerprint": "817baa11370564465ab1348730020cc15620eb5730744d08e24b6600b8e6c52f",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "trim_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "trim_east_0",
+          "trim_east_1",
+          "trim_east_2",
+          "trim_east_3",
+          "trim_east_4",
+          "trim_east_5",
+          "trim_east_6"
+        ],
+        "entity_fingerprint": "3e403cd4100ddcac1dd6c2f16e78e443003ade55ee2f2e5f26efcaaf58f22baf",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "entry_portal": {
+        "status": "implemented",
+        "entity_ids": [
+          "entry_portal_0",
+          "entry_portal_1",
+          "entry_portal_2"
+        ],
+        "entity_fingerprint": "3a67ef5f879d3f11454a2de59f72e9e759c33f912b9b59e87e1ea7cd42e11599",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_5": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_5_0",
+          "court_screen_5_1",
+          "court_screen_5_2",
+          "court_screen_5_3",
+          "court_screen_5_4",
+          "court_screen_5_5",
+          "court_screen_5_6"
+        ],
+        "entity_fingerprint": "71fbac6c2f260be9fb9d136c082c64642ba1d24b79f3f0d11cc71da20aa33ad2",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [
+            "placement.position",
+            "material_bindings.material",
+            "repetition 的数量、位置与零件尺寸"
+          ],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_5_rails": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_5_rails_0",
+          "court_screen_5_rails_1"
+        ],
+        "entity_fingerprint": "4f2332e6815a98744bef32120e04d29b2876691685b1b42da8ec03795c375fa2",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_10": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_10_0",
+          "court_screen_10_1",
+          "court_screen_10_2",
+          "court_screen_10_3",
+          "court_screen_10_4",
+          "court_screen_10_5",
+          "court_screen_10_6"
+        ],
+        "entity_fingerprint": "2e6a07a6dd28bd4b56602ee0b619f8f65ffe976a2eae72018d00e8ee5a3cff62",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [
+            "placement.position",
+            "material_bindings.material",
+            "repetition 的数量、位置与零件尺寸"
+          ],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_screen_10_rails": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_screen_10_rails_0",
+          "court_screen_10_rails_1"
+        ],
+        "entity_fingerprint": "f7ad356205b488212f7bbf60ed7be3d9ea3452981715533d46b9b05de28a8d37",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "site": {
+        "status": "implemented",
+        "entity_ids": [
+          "site_0",
+          "site_1",
+          "site_2"
+        ],
+        "entity_fingerprint": "05e64cadd7a94a9cafd73dc29948706df99f3cefb6fb731668d11464eb18851e",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "court_planters": {
+        "status": "implemented",
+        "entity_ids": [
+          "court_planters_0",
+          "court_planters_1",
+          "court_planters_2",
+          "court_planters_3",
+          "court_planters_4",
+          "court_planters_5",
+          "court_planters_6",
+          "court_planters_7",
+          "court_planters_8",
+          "court_planters_9",
+          "court_planters_10",
+          "court_planters_11",
+          "court_planters_12",
+          "court_planters_13"
+        ],
+        "entity_fingerprint": "d31cd230d972e02c369b22ee7fb9a91a713a8e00eb46907acf52ae3f4ff50b40",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "front_garden": {
+        "status": "implemented",
+        "entity_ids": [
+          "front_garden_0",
+          "front_garden_1",
+          "front_garden_2",
+          "front_garden_3",
+          "front_garden_4",
+          "front_garden_5",
+          "front_garden_6",
+          "front_garden_7",
+          "front_garden_8"
+        ],
+        "entity_fingerprint": "ae845ba5e6d994711c6d4810d567a1abbfc343764ffebbe1c414a662d85395cc",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "needs_review",
+        "geometry_review": {
+          "status": "needs_review",
+          "checked": [],
+          "unverified": [
+            "造型与构造描述需要渲染复核"
+          ],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "stair_guard": {
+        "status": "implemented",
+        "entity_ids": [
+          "stair_guard_0",
+          "stair_guard_1",
+          "stair_guard_2",
+          "stair_guard_3"
+        ],
+        "entity_fingerprint": "e26a563d5151df9f08aca1cb443b2e8c5520c14930e283f88dbbbaa52ca516f4",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 52,
+      "abandoned": 0,
+      "design_complete": true,
+      "relationships_verified": false,
+      "needs_review": 11,
+      "path_clearance": {
+        "satisfied": 1,
+        "open": 0,
+        "needs_review": 2
+      },
+      "verification": "geometry_checked_with_reported_review_gaps; rendering_requires_review"
+    },
+    "blueprint_fingerprint": "14547478e13f183e33da17ede874c00daf8aa3d1757378b2107702b2fe4fa264"
+  },
+  "spatial_review": null,
+  "error_count": 0,
+  "warning_count": 0,
+  "elapsed_ms": 1112,
+  "source": "final_validate"
+}

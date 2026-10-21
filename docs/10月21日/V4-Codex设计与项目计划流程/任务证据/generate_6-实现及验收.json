@@ -1,0 +1,141 @@
+{
+  "item": {
+    "id": "generate_6",
+    "op": "generate",
+    "kind": "stair",
+    "label": "楼梯",
+    "target": {
+      "marker_ids": [
+        "main_stair"
+      ]
+    },
+    "params": {
+      "design_markers": true,
+      "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+      "batch_load": {
+        "marker_count": 1,
+        "marker_chars": 739,
+        "host_count": 0,
+        "floor_count": 0,
+        "dependency_count": 1
+      },
+      "execution_mode": "parallel",
+      "parallel_group": "drawing"
+    },
+    "depends_on": [
+      "generate_1"
+    ],
+    "origin": "plan",
+    "status": "ready",
+    "run": {
+      "state": "idle",
+      "attempts": 0,
+      "max_attempts": 1,
+      "artifacts": [],
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  },
+  "rows": [
+    {
+      "id": "main_stair",
+      "geometry": {
+        "elements": [
+          {
+            "type": "stair",
+            "id": "main_stair_first_flight",
+            "from": [
+              11.95,
+              0.0,
+              8.0
+            ],
+            "to": [
+              11.95,
+              1.7,
+              10.9
+            ],
+            "width": 1.2,
+            "stepCount": 10,
+            "stepDepth": 0.29,
+            "stepHeight": 0.16999999999999998,
+            "material": "structure"
+          },
+          {
+            "type": "stair",
+            "id": "main_stair_second_flight",
+            "from": [
+              13.35,
+              1.7,
+              10.9
+            ],
+            "to": [
+              13.35,
+              3.4,
+              8.0
+            ],
+            "width": 1.2,
+            "stepCount": 10,
+            "stepDepth": 0.29,
+            "stepHeight": 0.16999999999999998,
+            "material": "structure"
+          },
+          {
+            "type": "floor",
+            "id": "main_stair_landing",
+            "from": [
+              11.35,
+              1.52,
+              10.9
+            ],
+            "to": [
+              13.95,
+              1.52,
+              12.1
+            ],
+            "thickness": 0.18,
+            "material": "structure"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    }
+  ],
+  "diagnostics": {
+    "implementations": {
+      "main_stair": {
+        "status": "implemented",
+        "entity_ids": [
+          "main_stair_first_flight",
+          "main_stair_second_flight",
+          "main_stair_landing"
+        ],
+        "entity_fingerprint": "cac61f8696901c7e383849774d153de4d6f9ac2810ee02f3ebda416cdd222e42",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 1,
+      "abandoned": 0,
+      "total": 1,
+      "design_complete": true
+    },
+    "materials": {},
+    "assets": {},
+    "elements": [
+      "main_stair_first_flight",
+      "main_stair_second_flight",
+      "main_stair_landing"
+    ],
+    "components": []
+  }
+}

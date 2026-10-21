@@ -1,0 +1,1845 @@
+{
+  "meta": {
+    "version": "1.0",
+    "type": "building",
+    "name": "听雨亭",
+    "author": "Codex",
+    "style": "八柱通透木构，双层重檐、檐下格栅、石台与水边坐凳"
+  },
+  "materials": {
+    "facade_primary": {
+      "baseColor": [
+        0.77,
+        0.72,
+        0.61
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "structure": {
+      "baseColor": [
+        0.32,
+        0.16,
+        0.08
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "floor": {
+      "baseColor": [
+        0.67,
+        0.65,
+        0.6
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "frame": {
+      "baseColor": [
+        0.13,
+        0.14,
+        0.14
+      ],
+      "roughness": 0.35,
+      "metallic": 0.65,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "door": {
+      "baseColor": [
+        0.34,
+        0.17,
+        0.075
+      ],
+      "roughness": 0.57,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.37,
+        0.58,
+        0.66
+      ],
+      "roughness": 0.14,
+      "metallic": 0.18,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "opacity": 0.36
+    },
+    "roof": {
+      "baseColor": [
+        0.18,
+        0.22,
+        0.21
+      ],
+      "roughness": 0.68,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "ground": {
+      "baseColor": [
+        0.34,
+        0.38,
+        0.3
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "accent": {
+      "baseColor": [
+        0.6,
+        0.54,
+        0.42
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "wood": {
+      "baseColor": [
+        0.34,
+        0.17,
+        0.075
+      ],
+      "roughness": 0.58,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "greenery": {
+      "baseColor": [
+        0.18,
+        0.29,
+        0.15
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "water": {
+      "baseColor": [
+        0.15,
+        0.34,
+        0.37
+      ],
+      "roughness": 0.1,
+      "metallic": 0.25,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "opacity": 0.78
+    },
+    "paving": {
+      "baseColor": [
+        0.48,
+        0.47,
+        0.43
+      ],
+      "roughness": 0.75,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    }
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "floor_L1_0",
+        "from": [
+          -3.5,
+          0.38,
+          -3.5
+        ],
+        "to": [
+          3.5,
+          0.38,
+          3.5
+        ],
+        "thickness": 0.22,
+        "material": "floor"
+      },
+      {
+        "tierHeight": 1.3,
+        "shrinkFactor": 0.64,
+        "tiers": 2,
+        "eaveOutset": 0.45,
+        "id": "roof_pavilion",
+        "type": "roof",
+        "roofType": "chinese_pagoda",
+        "span": 9.0,
+        "depth": 9.0,
+        "position": [
+          0.0,
+          3.8000000000000003,
+          0.0
+        ],
+        "height": 2.4,
+        "thickness": 0.16,
+        "ridgeAxis": "x",
+        "material": "roof"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_-1_0",
+        "base": [
+          -3.15,
+          0.6,
+          -3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_-1_0",
+        "shape": "box",
+        "position": [
+          -3.15,
+          0.72,
+          -3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_-1_1",
+        "base": [
+          -1.65,
+          0.6,
+          -3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_-1_1",
+        "shape": "box",
+        "position": [
+          -1.65,
+          0.72,
+          -3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_-1_2",
+        "base": [
+          1.65,
+          0.6,
+          -3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_-1_2",
+        "shape": "box",
+        "position": [
+          1.65,
+          0.72,
+          -3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_-1_3",
+        "base": [
+          3.15,
+          0.6,
+          -3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_-1_3",
+        "shape": "box",
+        "position": [
+          3.15,
+          0.72,
+          -3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_1_0",
+        "base": [
+          -3.15,
+          0.6,
+          3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_1_0",
+        "shape": "box",
+        "position": [
+          -3.15,
+          0.72,
+          3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_1_1",
+        "base": [
+          -1.65,
+          0.6,
+          3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_1_1",
+        "shape": "box",
+        "position": [
+          -1.65,
+          0.72,
+          3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_1_2",
+        "base": [
+          1.65,
+          0.6,
+          3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_1_2",
+        "shape": "box",
+        "position": [
+          1.65,
+          0.72,
+          3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "column",
+        "id": "timber_post_1_3",
+        "base": [
+          3.15,
+          0.6,
+          3.15
+        ],
+        "height": 3.1999999999999997,
+        "bottomRadius": 0.16,
+        "topRadius": 0.1408,
+        "style": "chinese_wooden",
+        "flutes": 0,
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_shoe_1_3",
+        "shape": "box",
+        "position": [
+          3.15,
+          0.72,
+          3.15
+        ],
+        "dimensions": [
+          0.5,
+          0.24,
+          0.5
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_0_0",
+        "from": [
+          -3.25,
+          3.35,
+          -3.25
+        ],
+        "to": [
+          3.25,
+          3.35,
+          -3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_0_1",
+        "from": [
+          3.25,
+          3.35,
+          -3.25
+        ],
+        "to": [
+          3.25,
+          3.35,
+          3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_0_2",
+        "from": [
+          3.25,
+          3.35,
+          3.25
+        ],
+        "to": [
+          -3.25,
+          3.35,
+          3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_0_3",
+        "from": [
+          -3.25,
+          3.35,
+          3.25
+        ],
+        "to": [
+          -3.25,
+          3.35,
+          -3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_1_0",
+        "from": [
+          -3.25,
+          3.68,
+          -3.25
+        ],
+        "to": [
+          3.25,
+          3.68,
+          -3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_1_1",
+        "from": [
+          3.25,
+          3.68,
+          -3.25
+        ],
+        "to": [
+          3.25,
+          3.68,
+          3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_1_2",
+        "from": [
+          3.25,
+          3.68,
+          3.25
+        ],
+        "to": [
+          -3.25,
+          3.68,
+          3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ring_beam_1_3",
+        "from": [
+          -3.25,
+          3.68,
+          3.25
+        ],
+        "to": [
+          -3.25,
+          3.68,
+          -3.25
+        ],
+        "width": 0.24,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ridge_cross_x",
+        "from": [
+          -3.2,
+          3.7,
+          0
+        ],
+        "to": [
+          3.2,
+          3.7,
+          0
+        ],
+        "width": 0.18,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "beam",
+        "id": "ridge_cross_z",
+        "from": [
+          0,
+          3.7,
+          -3.2
+        ],
+        "to": [
+          0,
+          3.7,
+          3.2
+        ],
+        "width": 0.18,
+        "height": 0.24,
+        "crossSection": "rect",
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_bench_-1",
+        "shape": "box",
+        "position": [
+          -2.8,
+          1.08,
+          0.5
+        ],
+        "dimensions": [
+          0.45,
+          0.16,
+          4.7
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_0",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -2.755
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_1",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -2.465
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_2",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -2.175
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_3",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -1.8849999999999998
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_4",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -1.595
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_5",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -1.305
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_6",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -1.015
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_7",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -0.725
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_8",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -0.43499999999999994
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_9",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          -0.145
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_10",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          0.145
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_11",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          0.43499999999999994
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_12",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          0.725
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_13",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          1.015
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_14",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          1.305
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_15",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          1.595
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_16",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          1.8849999999999998
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_17",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          2.175
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_18",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          2.465
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_-1_19",
+        "shape": "box",
+        "position": [
+          -3.22,
+          3.05,
+          2.755
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_bench_1",
+        "shape": "box",
+        "position": [
+          2.8,
+          1.08,
+          0.5
+        ],
+        "dimensions": [
+          0.45,
+          0.16,
+          4.7
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_0",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -2.755
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_1",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -2.465
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_2",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -2.175
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_3",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -1.8849999999999998
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_4",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -1.595
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_5",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -1.305
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_6",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -1.015
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_7",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -0.725
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_8",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -0.43499999999999994
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_9",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          -0.145
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_10",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          0.145
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_11",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          0.43499999999999994
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_12",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          0.725
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_13",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          1.015
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_14",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          1.305
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_15",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          1.595
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_16",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          1.8849999999999998
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_17",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          2.175
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_18",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          2.465
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "side_lattice_1_19",
+        "shape": "box",
+        "position": [
+          3.22,
+          3.05,
+          2.755
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_0",
+        "shape": "box",
+        "position": [
+          -2.9400000000000004,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_1",
+        "shape": "box",
+        "position": [
+          -2.66,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_2",
+        "shape": "box",
+        "position": [
+          -2.3800000000000003,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_3",
+        "shape": "box",
+        "position": [
+          -2.1,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_4",
+        "shape": "box",
+        "position": [
+          -1.8200000000000003,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_5",
+        "shape": "box",
+        "position": [
+          -1.54,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_6",
+        "shape": "box",
+        "position": [
+          -1.2600000000000002,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_7",
+        "shape": "box",
+        "position": [
+          -0.9800000000000001,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_8",
+        "shape": "box",
+        "position": [
+          -0.7000000000000001,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_9",
+        "shape": "box",
+        "position": [
+          -0.42000000000000004,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_10",
+        "shape": "box",
+        "position": [
+          -0.14,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_11",
+        "shape": "box",
+        "position": [
+          0.14,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_12",
+        "shape": "box",
+        "position": [
+          0.42000000000000004,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_13",
+        "shape": "box",
+        "position": [
+          0.7000000000000001,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_14",
+        "shape": "box",
+        "position": [
+          0.9800000000000001,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_15",
+        "shape": "box",
+        "position": [
+          1.2600000000000002,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_16",
+        "shape": "box",
+        "position": [
+          1.54,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_17",
+        "shape": "box",
+        "position": [
+          1.8200000000000003,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_18",
+        "shape": "box",
+        "position": [
+          2.1,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_19",
+        "shape": "box",
+        "position": [
+          2.3800000000000003,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_20",
+        "shape": "box",
+        "position": [
+          2.66,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "rear_lattice_21",
+        "shape": "box",
+        "position": [
+          2.9400000000000004,
+          3.05,
+          3.22
+        ],
+        "dimensions": [
+          0.07,
+          0.58,
+          0.07
+        ],
+        "material": "wood"
+      },
+      {
+        "type": "primitive",
+        "id": "stone_dais",
+        "shape": "box",
+        "position": [
+          0,
+          0.22,
+          0
+        ],
+        "dimensions": [
+          8.2,
+          0.44,
+          8.2
+        ],
+        "material": "accent"
+      },
+      {
+        "type": "primitive",
+        "id": "dais_upper",
+        "shape": "box",
+        "position": [
+          0,
+          0.48,
+          0
+        ],
+        "dimensions": [
+          7.7,
+          0.16,
+          7.7
+        ],
+        "material": "floor"
+      },
+      {
+        "type": "stair",
+        "id": "front_steps",
+        "from": [
+          0,
+          0,
+          -5.8
+        ],
+        "to": [
+          0,
+          0.6,
+          -3.85
+        ],
+        "width": 3.0,
+        "stepCount": 4,
+        "material": "floor"
+      },
+      {
+        "type": "primitive",
+        "id": "site",
+        "shape": "box",
+        "position": [
+          0,
+          -0.17,
+          0
+        ],
+        "dimensions": [
+          19.0,
+          0.3,
+          19.0
+        ],
+        "material": "ground"
+      },
+      {
+        "type": "primitive",
+        "id": "water_edge",
+        "shape": "box",
+        "position": [
+          0,
+          -0.005,
+          6.2
+        ],
+        "dimensions": [
+          15.0,
+          0.05,
+          3.8
+        ],
+        "material": "water"
+      },
+      {
+        "type": "primitive",
+        "id": "approach",
+        "shape": "box",
+        "position": [
+          0,
+          -0.01,
+          -6.5
+        ],
+        "dimensions": [
+          2.8,
+          0.08,
+          5.3
+        ],
+        "material": "paving"
+      }
+    ],
+    "components": [
+      {
+        "type": "railing",
+        "id": "side_balustrade_-1",
+        "path": [
+          [
+            -3.2,
+            0.6,
+            -2.7
+          ],
+          [
+            -3.2,
+            0.6,
+            3.2
+          ]
+        ],
+        "height": 1.05,
+        "postSpacing": 1.15,
+        "postRadius": 0.026,
+        "railRadius": 0.025,
+        "railLevels": [
+          1
+        ],
+        "material": "frame"
+      },
+      {
+        "type": "railing",
+        "id": "side_balustrade_1",
+        "path": [
+          [
+            3.2,
+            0.6,
+            -2.7
+          ],
+          [
+            3.2,
+            0.6,
+            3.2
+          ]
+        ],
+        "height": 1.05,
+        "postSpacing": 1.15,
+        "postRadius": 0.026,
+        "railRadius": 0.025,
+        "railLevels": [
+          1
+        ],
+        "material": "frame"
+      },
+      {
+        "type": "railing",
+        "id": "rear_balustrade",
+        "path": [
+          [
+            -3.2,
+            0.6,
+            3.2
+          ],
+          [
+            3.2,
+            0.6,
+            3.2
+          ]
+        ],
+        "height": 1.05,
+        "postSpacing": 1.15,
+        "postRadius": 0.026,
+        "railRadius": 0.025,
+        "railLevels": [
+          1
+        ],
+        "material": "frame"
+      },
+      {
+        "type": "light",
+        "id": "pendant",
+        "body": [
+          {
+            "shape": "cylinder",
+            "radius": 0.28,
+            "height": 0.45
+          }
+        ],
+        "color": [
+          1,
+          0.77,
+          0.42
+        ],
+        "initiallyOn": true,
+        "lowIntensity": 0.5,
+        "highIntensity": 1.3,
+        "distance": 8,
+        "position": [
+          0,
+          2.65,
+          0
+        ],
+        "material": "accent"
+      }
+    ]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "54d66a4e5d039877a6a1e951702c5e420a174f13c06ef54d2203d71684dee748",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "background": 14673130,
+    "sun": {
+      "azimuthDeg": 135,
+      "elevationDeg": 42,
+      "intensity": 2.1,
+      "color": 16774370
+    },
+    "ambient": {
+      "sky": 14674421,
+      "ground": 10130828,
+      "intensity": 0.85
+    },
+    "ground": {
+      "color": 9277571,
+      "y": -0.02
+    },
+    "toneMappingExposure": 1
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "83367a25b113d0166a053ee146ca128266b1224a59873b70ed88d4c380a30d8e",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 400,
+  "materialCount": 400,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -3,
+      -0.43000000149011613,
+      -4
+    ],
+    "max": [
+      19,
+      6.8000000476837155,
+      15
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "..\\docs\\10月21日\\07-剖切渲染\\front.png",
+      "bytes": 230011
+    },
+    {
+      "view": "side",
+      "file": "..\\docs\\10月21日\\07-剖切渲染\\side.png",
+      "bytes": 193172
+    },
+    {
+      "view": "top",
+      "file": "..\\docs\\10月21日\\07-剖切渲染\\top.png",
+      "bytes": 230657
+    },
+    {
+      "view": "perspective",
+      "file": "..\\docs\\10月21日\\07-剖切渲染\\perspective.png",
+      "bytes": 328238
+    }
+  ],
+  "contextSha256": "58811ac89de8703b4ab41d804c4ef3ed603040b21de4210743c41b9735b7fdac"
+}

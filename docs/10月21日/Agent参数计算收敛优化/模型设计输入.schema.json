@@ -1,0 +1,1240 @@
+{
+  "$defs": {
+    "ArchitectureIntent": {
+      "additionalProperties": true,
+      "properties": {
+        "goals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "spatial_strategy": {
+          "type": "string"
+        },
+        "composition": {
+          "type": "string"
+        },
+        "material_strategy": {
+          "type": "string"
+        },
+        "selected_systems": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CirculationDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "vertical_strategy": {
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "$ref": "#/$defs/CirculationPath"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "CirculationPath": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "floor": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "points": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "minItems": 2,
+          "type": "array"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        }
+      },
+      "required": [
+        "id",
+        "floor",
+        "points",
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "ComponentConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "own_face": {
+          "enum": [
+            "left",
+            "right",
+            "bottom",
+            "top",
+            "front",
+            "back"
+          ],
+          "type": "string"
+        },
+        "target_face": {
+          "enum": [
+            "left",
+            "right",
+            "bottom",
+            "top",
+            "front",
+            "back"
+          ],
+          "type": "string"
+        },
+        "offset": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "target",
+        "own_face",
+        "target_face"
+      ],
+      "type": "object"
+    },
+    "ComponentInstance": {
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "relation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SupportRelation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor_connections": {
+          "items": {
+            "$ref": "#/$defs/FloorConnection"
+          },
+          "type": "array"
+        },
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/ComponentConnection"
+          },
+          "type": "array"
+        },
+        "repetition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComponentRepetition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "host": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "placement": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComponentPlacement"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "additionalProperties": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "form": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "material_role": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "material_bindings": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "ComponentPlacement": {
+      "additionalProperties": true,
+      "properties": {
+        "face": {
+          "anyOf": [
+            {
+              "enum": [
+                "front",
+                "back",
+                "left",
+                "right"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "floor": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "offset": {
+          "type": "number"
+        },
+        "sill_height": {
+          "type": "number"
+        },
+        "normal_offset": {
+          "type": "number"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plan_position": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ComponentRepetition": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "axis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ],
+          "type": "string"
+        },
+        "spacing": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        },
+        "member_size": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "gt": 0
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": [
+        "count",
+        "axis",
+        "spacing",
+        "member_size"
+      ],
+      "type": "object"
+    },
+    "ConstructionDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "slab_thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        },
+        "wall_thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        }
+      },
+      "type": "object"
+    },
+    "CurtainWallDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "grid_strategy": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "DesignMaterial": {
+      "additionalProperties": true,
+      "properties": {
+        "baseColor": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "ge": 0,
+            "le": 1
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "roughness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "le": 1
+        },
+        "metallic": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "le": 1
+        },
+        "albedo": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "le": 1
+        },
+        "lightingCondition": {
+          "const": "D65_noon",
+          "type": "string"
+        }
+      },
+      "required": [
+        "baseColor",
+        "roughness"
+      ],
+      "type": "object"
+    },
+    "EnvelopeDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "system": {
+          "type": "string"
+        },
+        "curtain_wall": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CurtainWallDecision"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "FacadeDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "bays": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "entrance_bay": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ground_pattern": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "upper_pattern": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "ground_pattern",
+        "upper_pattern"
+      ],
+      "type": "object"
+    },
+    "FloorConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "from_floor": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "to_floor": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "const": "roof",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "required": [
+        "from_floor",
+        "to_floor"
+      ],
+      "type": "object"
+    },
+    "FloorLayoutDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "floor": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rooms": {
+          "items": {
+            "$ref": "#/$defs/RoomDecision"
+          },
+          "type": "array"
+        },
+        "walls": {
+          "items": {
+            "$ref": "#/$defs/InteriorWallDecision"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "floor"
+      ],
+      "type": "object"
+    },
+    "InteriorWallDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "from": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "to": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "thickness"
+      ],
+      "type": "object"
+    },
+    "LegacyRoomBounds": {
+      "additionalProperties": false,
+      "properties": {
+        "x_start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "x_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "z_start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "z_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "required": [
+        "x_start",
+        "x_end",
+        "z_start",
+        "z_end"
+      ],
+      "type": "object"
+    },
+    "MassingDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "shape": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "depth": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "floors": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "modeled_floors": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "representation_mode": {
+          "enum": [
+            "full",
+            "schematic"
+          ],
+          "type": "string"
+        },
+        "floor_height": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "symmetry": {
+          "type": "boolean"
+        },
+        "tiers": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/MassingTierDecision"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "shape",
+        "floors",
+        "floor_height"
+      ],
+      "type": "object"
+    },
+    "MassingTierDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "floors": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "width_ratio": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "depth_ratio": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "floors",
+        "width_ratio"
+      ],
+      "type": "object"
+    },
+    "MaterialIntent": {
+      "additionalProperties": true,
+      "properties": {
+        "keywords": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/$defs/MaterialRegion"
+          },
+          "maxItems": 20,
+          "type": "array"
+        },
+        "definitions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DesignMaterial"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "MaterialRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "maxLength": 60,
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 60,
+          "minLength": 1,
+          "type": "string"
+        },
+        "note": {
+          "maxLength": 200,
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "type"
+      ],
+      "type": "object"
+    },
+    "RoofDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "ridge_axis": {
+          "enum": [
+            "x",
+            "z"
+          ],
+          "type": "string"
+        },
+        "overhang": {
+          "maximum": 2,
+          "minimum": 0,
+          "type": "number"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "thickness": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "volumes": {
+          "items": {
+            "$ref": "#/$defs/RoofVolumeOverride"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "RoofVolumeOverride": {
+      "additionalProperties": true,
+      "properties": {
+        "volume": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "overhang": {
+          "anyOf": [
+            {
+              "maximum": 2,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "volume"
+      ],
+      "type": "object"
+    },
+    "RoomBounds": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "z": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        },
+        "depth": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0
+        }
+      },
+      "required": [
+        "x",
+        "z",
+        "width",
+        "depth"
+      ],
+      "type": "object"
+    },
+    "RoomDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoomBounds"
+            },
+            {
+              "$ref": "#/$defs/LegacyRoomBounds"
+            }
+          ]
+        },
+        "void": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "bounds"
+      ],
+      "type": "object"
+    },
+    "StructuralGridDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "system": {
+          "type": "string"
+        },
+        "x_bays": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "z_bays": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "system",
+        "x_bays",
+        "z_bays"
+      ],
+      "type": "object"
+    },
+    "SupportRelation": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "target": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "along_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "depth_ratio": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "type": "object"
+    },
+    "VolumeDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_\\-]+$",
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "x": {
+          "type": "number"
+        },
+        "z": {
+          "type": "number"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "depth": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "start_floor": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "end_floor": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "facades": {
+          "additionalProperties": {
+            "$ref": "#/$defs/FacadeDecision"
+          },
+          "propertyNames": {
+            "enum": [
+              "front",
+              "back",
+              "left",
+              "right"
+            ]
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "x",
+        "z",
+        "width",
+        "depth",
+        "start_floor",
+        "end_floor"
+      ],
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "properties": {
+    "concept": {
+      "type": "string"
+    },
+    "massing": {
+      "$ref": "#/$defs/MassingDecision"
+    },
+    "volumes": {
+      "items": {
+        "$ref": "#/$defs/VolumeDecision"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "structural_grid": {
+      "$ref": "#/$defs/StructuralGridDecision"
+    },
+    "envelope": {
+      "$ref": "#/$defs/EnvelopeDecision"
+    },
+    "facades": {
+      "additionalProperties": {
+        "$ref": "#/$defs/FacadeDecision"
+      },
+      "propertyNames": {
+        "enum": [
+          "front",
+          "back",
+          "left",
+          "right"
+        ]
+      },
+      "type": "object"
+    },
+    "roof": {
+      "$ref": "#/$defs/RoofDecision"
+    },
+    "circulation": {
+      "$ref": "#/$defs/CirculationDecision"
+    },
+    "floor_layouts": {
+      "items": {
+        "$ref": "#/$defs/FloorLayoutDecision"
+      },
+      "type": "array"
+    },
+    "construction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConstructionDecision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "materials": {
+      "$ref": "#/$defs/MaterialIntent"
+    },
+    "components": {
+      "items": {
+        "$ref": "#/$defs/ComponentInstance"
+      },
+      "type": "array"
+    },
+    "design_intent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ArchitectureIntent"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "massing",
+    "volumes",
+    "structural_grid",
+    "envelope",
+    "facades",
+    "roof"
+  ],
+  "type": "object"
+}

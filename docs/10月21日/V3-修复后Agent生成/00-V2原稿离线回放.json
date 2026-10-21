@@ -1,0 +1,16 @@
+{
+  "invalid_outer": {
+    "expected_rejection": true,
+    "error": "JSON 格式错误：第 756 行，第 30 列，Expecting ',' delimiter；附近：t\": {         \"position\": [7.5, 4.2+1.2, 7.3]       },       \"material"
+  },
+  "room_conflicts": {
+    "error": "/floor_layouts/1/rooms/1：内墙 wall_master_bath（from=[10.0, 4.5], to=[10.0, 7.5]）贯穿第 2 层房间 room_corridor_2f（二层走廊）范围，世界 X=[3, 11.5]，Z=[4.5, 5.5]；墙段位于 X=10，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.x=10、bounds.width=1.5；保留较小坐标边界时可写 bounds.x=3、bounds.width=7。仅把墙端缩短到房间另一边界仍然是贯穿。该房间还与以下房间范围重叠，须一并核对：room_master_bath（主卫）：X=[10, 11.5]，Z=[4.5, 5.5]。保留房间时，修订墙段到房间边界或明确设计通行开口。核对 /floor_layouts/1/walls/0 与该房间 bounds，不能原样返回冲突数据；/floor_layouts/1/rooms/3：内墙 wall_corridor_master（from=[6.0, 5.5], to=[15.0, 5.5]）贯穿第 2 层房间 room_master_bath（主卫）范围，世界 X=[10, 12.5]，Z=[4.5, 7.5]；墙段位于 Z=5.5，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.z=5.5、bounds.depth=2；保留较小坐标边界时可写 bounds.z=4.5、bounds.depth=1。仅把墙端缩短到房间另一边界仍然是贯穿。该房间还与以下房间范围重叠，须一并核对：room_corridor_2f（二层走廊）：X=[10, 11.5]，Z=[4.5, 5.5]。保留房间时，修订墙段到房间边界或明确设计通行开口。核对 /floor_layouts/1/walls/2 与该房间 bounds，不能原样返回冲突数据",
+    "contains_corridor": true,
+    "contains_bathroom": true,
+    "repair_paths": [
+      "/floor_layouts/1",
+      "/components"
+    ]
+  },
+  "new_model_calls": 0
+}

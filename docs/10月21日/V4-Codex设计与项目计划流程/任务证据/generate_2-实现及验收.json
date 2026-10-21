@@ -1,0 +1,550 @@
+{
+  "item": {
+    "id": "generate_2",
+    "op": "generate",
+    "kind": "door",
+    "label": "门",
+    "target": {
+      "marker_ids": [
+        "elder_link",
+        "entry",
+        "tea_link",
+        "west_court",
+        "east_court",
+        "inside_1_west",
+        "inside_1_east",
+        "inside_2_west",
+        "inside_2_east"
+      ]
+    },
+    "params": {
+      "design_markers": true,
+      "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+      "batch_load": {
+        "marker_count": 9,
+        "marker_chars": 6952,
+        "host_count": 7,
+        "floor_count": 0,
+        "dependency_count": 1
+      },
+      "execution_mode": "parallel",
+      "parallel_group": "drawing"
+    },
+    "depends_on": [
+      "generate_1"
+    ],
+    "origin": "plan",
+    "status": "ready",
+    "run": {
+      "state": "idle",
+      "attempts": 0,
+      "max_attempts": 1,
+      "artifacts": [],
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  },
+  "rows": [
+    {
+      "id": "elder_link",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "elder_link",
+            "parentWall": "wall_main_front_L1",
+            "from": [
+              1.8,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "entry",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "entry",
+            "parentWall": "wall_main_front_L1",
+            "from": [
+              7.05,
+              0.0,
+              0.0
+            ],
+            "width": 1.9,
+            "height": 2.6,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "double",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "tea_link",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "tea_link",
+            "parentWall": "wall_main_front_L1",
+            "from": [
+              13.1,
+              0.0,
+              0.0
+            ],
+            "width": 1.1,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "west_court",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "west_court",
+            "parentWall": "wall_west_right_L1",
+            "from": [
+              1.5,
+              0.0,
+              0.0
+            ],
+            "width": 2.0,
+            "height": 2.5,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "glass",
+            "openingStyle": "rectangular",
+            "doorStyle": "double",
+            "leafRows": 1
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "east_court",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "east_court",
+            "parentWall": "wall_east_left_L1",
+            "from": [
+              1.5,
+              0.0,
+              0.0
+            ],
+            "width": 2.0,
+            "height": 2.5,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "glass",
+            "openingStyle": "rectangular",
+            "doorStyle": "double",
+            "leafRows": 1
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "inside_1_west",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "inside_1_west",
+            "parentWall": "partition_1_west",
+            "from": [
+              1.05,
+              0.0,
+              0.0
+            ],
+            "width": 1.0,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "inside_1_east",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "inside_1_east",
+            "parentWall": "partition_1_east",
+            "from": [
+              1.05,
+              0.0,
+              0.0
+            ],
+            "width": 1.0,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "inside_2_west",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "inside_2_west",
+            "parentWall": "partition_2_west",
+            "from": [
+              1.05,
+              3.4,
+              0.0
+            ],
+            "width": 1.0,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "inside_2_east",
+      "geometry": {
+        "elements": [],
+        "components": [
+          {
+            "type": "door",
+            "id": "inside_2_east",
+            "parentWall": "partition_2_east",
+            "from": [
+              1.05,
+              3.4,
+              0.0
+            ],
+            "width": 1.0,
+            "height": 2.25,
+            "frameWidth": 0.055,
+            "frameDepth": 0.24,
+            "frameMaterial": "frame",
+            "interaction": {
+              "mode": "swing",
+              "hingeSide": "left"
+            },
+            "leafDepth": 0.045,
+            "leafMaterial": "door",
+            "openingStyle": "rectangular",
+            "doorStyle": "single",
+            "leafRows": 2
+          }
+        ]
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    }
+  ],
+  "diagnostics": {
+    "implementations": {
+      "elder_link": {
+        "status": "implemented",
+        "entity_ids": [
+          "elder_link"
+        ],
+        "entity_fingerprint": "24bbf7108a96eda9f771f5cd205efb3986839a242955b783ad1c3b6b3b3a8355",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "entry": {
+        "status": "implemented",
+        "entity_ids": [
+          "entry"
+        ],
+        "entity_fingerprint": "8b32bb1a9a18f6358ba973ceb929379d0fbb46366772c1abdd89fa6de443fc80",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "tea_link": {
+        "status": "implemented",
+        "entity_ids": [
+          "tea_link"
+        ],
+        "entity_fingerprint": "18f0de377ead9845244a469b3c9ebc7fe4722c856d95c1133d9646c090efc4f4",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "west_court": {
+        "status": "implemented",
+        "entity_ids": [
+          "west_court"
+        ],
+        "entity_fingerprint": "d464df9fb4eb4e93b11e73738996a75b0f1f5e457723b884b5c62de1d4fb95df",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "east_court": {
+        "status": "implemented",
+        "entity_ids": [
+          "east_court"
+        ],
+        "entity_fingerprint": "e9fdf45b1c0db02467a08859c10077159d90585f77e2416ba616425a17833381",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_1_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_1_west"
+        ],
+        "entity_fingerprint": "45cb668479962c44038c07fcd0b925bedc8b459423bd80328ceffb5e0249aee7",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_1_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_1_east"
+        ],
+        "entity_fingerprint": "0cf75d27bbcb71714c76314327384ae9667fe1ec8ae1c03eb7544213208d383f",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_2_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_2_west"
+        ],
+        "entity_fingerprint": "158757a170269d87032dafb4dd69dee368d5a73176ba0c51f6f4d555ba34efda",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "inside_2_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "inside_2_east"
+        ],
+        "entity_fingerprint": "f3121b2f8c7d20f6a8c85010e3d38e150cf18c1d696718241a1d0e529c1cff33",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [
+            "size.width",
+            "size.height"
+          ],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 9,
+      "abandoned": 0,
+      "total": 9,
+      "design_complete": true
+    },
+    "materials": {},
+    "assets": {},
+    "elements": [],
+    "components": [
+      "elder_link",
+      "entry",
+      "tea_link",
+      "west_court",
+      "east_court",
+      "inside_1_west",
+      "inside_1_east",
+      "inside_2_west",
+      "inside_2_east"
+    ]
+  }
+}

@@ -1,0 +1,2591 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "新中式别墅_v5",
+  "session_id": "codex_v5_20261021",
+  "revision": 1,
+  "status": "compiled",
+  "created_at": "2026-10-21T06:47:21.278172Z",
+  "updated_at": "2026-10-21T06:47:21.278172Z",
+  "requirements": {
+    "source_request": "独立设计并生成新中式别墅 WILD：云汀合院",
+    "building_type": "新中式别墅",
+    "profile": "custom",
+    "style_intent": [
+      "南低北高的围合庭院，白墙黛瓦、木格栅、深檐与镜水"
+    ]
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "南低北高的围合庭院，白墙黛瓦、木格栅、深檐与镜水",
+    "massing": {
+      "shape": "custom",
+      "width": 18.0,
+      "depth": 18.2,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "floor_height": 3.35,
+      "symmetry": false
+    },
+    "complexity": {
+      "level": "detailed",
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "reason": "以构造层次和材质表达区分建筑，不以门窗数量定义精细度"
+    },
+    "volumes": [
+      {
+        "id": "north",
+        "role": "primary",
+        "x": -9.0,
+        "z": 6.0,
+        "width": 18.0,
+        "depth": 6.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "west",
+        "role": "primary",
+        "x": -9.0,
+        "z": -4.0,
+        "width": 4.5,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 1
+      },
+      {
+        "id": "east",
+        "role": "primary",
+        "x": 4.5,
+        "z": -4.0,
+        "width": 4.5,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 1
+      },
+      {
+        "id": "gate",
+        "role": "primary",
+        "x": -2.2,
+        "z": -6.2,
+        "width": 4.4,
+        "depth": 2.2,
+        "start_floor": 1,
+        "end_floor": 1,
+        "facades": {
+          "front": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "back": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "left": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "right": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          }
+        }
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 4,
+      "z_bays": 3
+    },
+    "envelope": {
+      "system": "solid_wall"
+    },
+    "facades": {
+      "front": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      }
+    },
+    "roof": {
+      "type": "chinese_curved",
+      "ridge_axis": "x",
+      "overhang": 0.68,
+      "height": 1.25,
+      "thickness": 0.16,
+      "volumes": [
+        {
+          "volume": "west",
+          "type": "gable",
+          "ridge_axis": "z",
+          "height": 1.0
+        },
+        {
+          "volume": "east",
+          "type": "gable",
+          "ridge_axis": "z",
+          "height": 1.0
+        },
+        {
+          "volume": "gate",
+          "height": 0.8,
+          "eaveCurveHeight": 0.22
+        }
+      ],
+      "eaveCurveHeight": 0.28
+    },
+    "circulation": {
+      "vertical_strategy": "stair"
+    },
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.45
+      },
+      {
+        "floor": 2,
+        "level": 3.8000000000000003
+      }
+    ],
+    "construction": {
+      "slab_thickness": 0.22,
+      "wall_thickness": 0.26
+    },
+    "materials": {
+      "keywords": [],
+      "resolved_plan": {
+        "concept": "南低北高的围合庭院，白墙黛瓦、木格栅、深檐与镜水",
+        "palette": [],
+        "roles": [
+          {
+            "role": "facade_primary",
+            "materialId": "facade_primary",
+            "material": {
+              "baseColor": [
+                0.91,
+                0.89,
+                0.83
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "structure",
+            "materialId": "structure",
+            "material": {
+              "baseColor": [
+                0.34,
+                0.3,
+                0.25
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "floor",
+            "materialId": "floor",
+            "material": {
+              "baseColor": [
+                0.67,
+                0.65,
+                0.6
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "frame",
+            "materialId": "frame",
+            "material": {
+              "baseColor": [
+                0.13,
+                0.14,
+                0.14
+              ],
+              "roughness": 0.35,
+              "metallic": 0.65,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "door",
+            "materialId": "door",
+            "material": {
+              "baseColor": [
+                0.29,
+                0.17,
+                0.095
+              ],
+              "roughness": 0.57,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "glass",
+            "materialId": "glass",
+            "material": {
+              "baseColor": [
+                0.37,
+                0.58,
+                0.66
+              ],
+              "roughness": 0.14,
+              "metallic": 0.18,
+              "albedo": 1,
+              "lightingCondition": "D65_noon",
+              "opacity": 0.36
+            }
+          },
+          {
+            "role": "roof",
+            "materialId": "roof",
+            "material": {
+              "baseColor": [
+                0.16,
+                0.18,
+                0.17
+              ],
+              "roughness": 0.68,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "ground",
+            "materialId": "ground",
+            "material": {
+              "baseColor": [
+                0.34,
+                0.38,
+                0.3
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "accent",
+            "materialId": "accent",
+            "material": {
+              "baseColor": [
+                0.32,
+                0.3,
+                0.26
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          }
+        ],
+        "resolvedAssets": {},
+        "rejectedAssetIds": [],
+        "rejectedProceduralPresetIds": [],
+        "curtainWall": false
+      },
+      "regions": [],
+      "definitions": {
+        "facade_primary": {
+          "baseColor": [
+            0.91,
+            0.89,
+            0.83
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "structure": {
+          "baseColor": [
+            0.34,
+            0.3,
+            0.25
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "floor": {
+          "baseColor": [
+            0.67,
+            0.65,
+            0.6
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "frame": {
+          "baseColor": [
+            0.13,
+            0.14,
+            0.14
+          ],
+          "roughness": 0.35,
+          "metallic": 0.65,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "door": {
+          "baseColor": [
+            0.29,
+            0.17,
+            0.095
+          ],
+          "roughness": 0.57,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "glass": {
+          "baseColor": [
+            0.37,
+            0.58,
+            0.66
+          ],
+          "roughness": 0.14,
+          "metallic": 0.18,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "opacity": 0.36
+        },
+        "roof": {
+          "baseColor": [
+            0.16,
+            0.18,
+            0.17
+          ],
+          "roughness": 0.68,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "ground": {
+          "baseColor": [
+            0.34,
+            0.38,
+            0.3
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "accent": {
+          "baseColor": [
+            0.32,
+            0.3,
+            0.26
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.29,
+            0.17,
+            0.095
+          ],
+          "roughness": 0.58,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "greenery": {
+          "baseColor": [
+            0.18,
+            0.29,
+            0.15
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "water": {
+          "baseColor": [
+            0.15,
+            0.34,
+            0.37
+          ],
+          "roughness": 0.1,
+          "metallic": 0.25,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "opacity": 0.78
+        },
+        "paving": {
+          "baseColor": [
+            0.48,
+            0.47,
+            0.43
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    },
+    "detail_packages": [
+      "结构层次",
+      "檐口与收边",
+      "入口与场地",
+      "立面构造"
+    ],
+    "component_quota": {},
+    "components": [
+      {
+        "type": "window",
+        "id": "window_north_front_1_1",
+        "host": "wall_north_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 4.675000000000001,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "door",
+        "id": "door_north_front_1_2",
+        "host": "wall_north_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 7.9,
+          "sill_height": 0.0,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 2.2,
+          "height": 2.8
+        },
+        "form": {
+          "openingStyle": "rectangular",
+          "doorStyle": "double",
+          "frameWidth": 0.09,
+          "frameDepth": 0.24,
+          "leafDepth": 0.065,
+          "frameMaterial": "frame",
+          "leafMaterial": "door"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_1_3",
+        "host": "wall_north_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 11.875,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_1_0",
+        "host": "wall_north_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.0750000000000002,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_1_1",
+        "host": "wall_north_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 4.675000000000001,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_1_2",
+        "host": "wall_north_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 8.275,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_1_3",
+        "host": "wall_north_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 11.875,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_1_4",
+        "host": "wall_north_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 15.475,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_left_1_0",
+        "host": "wall_north_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_left_1_1",
+        "host": "wall_north_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 3.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_right_1_0",
+        "host": "wall_north_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_right_1_1",
+        "host": "wall_north_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 3.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_2_0",
+        "host": "wall_north_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.0750000000000002,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_2_1",
+        "host": "wall_north_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 4.675000000000001,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_2_2",
+        "host": "wall_north_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 8.275,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_2_3",
+        "host": "wall_north_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 11.875,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_front_2_4",
+        "host": "wall_north_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 15.475,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_2_0",
+        "host": "wall_north_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.0750000000000002,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_2_1",
+        "host": "wall_north_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 4.675000000000001,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_2_2",
+        "host": "wall_north_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 8.275,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_2_3",
+        "host": "wall_north_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 11.875,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_back_2_4",
+        "host": "wall_north_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 15.475,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_left_2_0",
+        "host": "wall_north_left_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.775,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_left_2_1",
+        "host": "wall_north_left_L2",
+        "description": "",
+        "placement": {
+          "offset": 3.775,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_right_2_0",
+        "host": "wall_north_right_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.775,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_north_right_2_1",
+        "host": "wall_north_right_L2",
+        "description": "",
+        "placement": {
+          "offset": 3.775,
+          "sill_height": 0.5000000000000004,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_stone_base_0",
+        "host": "",
+        "description": "north stone base 0",
+        "size": {},
+        "form": {
+          "from": [
+            -9,
+            0.68,
+            6
+          ],
+          "to": [
+            9,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_stone_base_1",
+        "host": "",
+        "description": "north stone base 1",
+        "size": {},
+        "form": {
+          "from": [
+            9,
+            0.68,
+            6
+          ],
+          "to": [
+            9,
+            0.68,
+            12
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_stone_base_2",
+        "host": "",
+        "description": "north stone base 2",
+        "size": {},
+        "form": {
+          "from": [
+            9,
+            0.68,
+            12
+          ],
+          "to": [
+            -9,
+            0.68,
+            12
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_stone_base_3",
+        "host": "",
+        "description": "north stone base 3",
+        "size": {},
+        "form": {
+          "from": [
+            -9,
+            0.68,
+            12
+          ],
+          "to": [
+            -9,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_timber_fascia_0",
+        "host": "",
+        "description": "north timber fascia 0",
+        "size": {},
+        "form": {
+          "from": [
+            -9.2,
+            6.970000000000001,
+            5.8
+          ],
+          "to": [
+            9.2,
+            6.970000000000001,
+            5.8
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_timber_fascia_1",
+        "host": "",
+        "description": "north timber fascia 1",
+        "size": {},
+        "form": {
+          "from": [
+            9.2,
+            6.970000000000001,
+            5.8
+          ],
+          "to": [
+            9.2,
+            6.970000000000001,
+            12.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_timber_fascia_2",
+        "host": "",
+        "description": "north timber fascia 2",
+        "size": {},
+        "form": {
+          "from": [
+            9.2,
+            6.970000000000001,
+            12.2
+          ],
+          "to": [
+            -9.2,
+            6.970000000000001,
+            12.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "north_timber_fascia_3",
+        "host": "",
+        "description": "north timber fascia 3",
+        "size": {},
+        "form": {
+          "from": [
+            -9.2,
+            6.970000000000001,
+            12.2
+          ],
+          "to": [
+            -9.2,
+            6.970000000000001,
+            5.8
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_1_0",
+        "host": "wall_west_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.4,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_1_1",
+        "host": "wall_west_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.65,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_1_0",
+        "host": "wall_west_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_1_1",
+        "host": "wall_west_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_right_1_0",
+        "host": "wall_west_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_right_1_1",
+        "host": "wall_west_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_stone_base_0",
+        "host": "",
+        "description": "west stone base 0",
+        "size": {},
+        "form": {
+          "from": [
+            -9,
+            0.68,
+            -4
+          ],
+          "to": [
+            -4.5,
+            0.68,
+            -4
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_stone_base_1",
+        "host": "",
+        "description": "west stone base 1",
+        "size": {},
+        "form": {
+          "from": [
+            -4.5,
+            0.68,
+            -4
+          ],
+          "to": [
+            -4.5,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_stone_base_2",
+        "host": "",
+        "description": "west stone base 2",
+        "size": {},
+        "form": {
+          "from": [
+            -4.5,
+            0.68,
+            6
+          ],
+          "to": [
+            -9,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_stone_base_3",
+        "host": "",
+        "description": "west stone base 3",
+        "size": {},
+        "form": {
+          "from": [
+            -9,
+            0.68,
+            6
+          ],
+          "to": [
+            -9,
+            0.68,
+            -4
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_timber_fascia_0",
+        "host": "",
+        "description": "west timber fascia 0",
+        "size": {},
+        "form": {
+          "from": [
+            -9.2,
+            3.62,
+            -4.2
+          ],
+          "to": [
+            -4.3,
+            3.62,
+            -4.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_timber_fascia_1",
+        "host": "",
+        "description": "west timber fascia 1",
+        "size": {},
+        "form": {
+          "from": [
+            -4.3,
+            3.62,
+            -4.2
+          ],
+          "to": [
+            -4.3,
+            3.62,
+            6.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_timber_fascia_2",
+        "host": "",
+        "description": "west timber fascia 2",
+        "size": {},
+        "form": {
+          "from": [
+            -4.3,
+            3.62,
+            6.2
+          ],
+          "to": [
+            -9.2,
+            3.62,
+            6.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_timber_fascia_3",
+        "host": "",
+        "description": "west timber fascia 3",
+        "size": {},
+        "form": {
+          "from": [
+            -9.2,
+            3.62,
+            6.2
+          ],
+          "to": [
+            -9.2,
+            3.62,
+            -4.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_1_0",
+        "host": "wall_east_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.4,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_1_1",
+        "host": "wall_east_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.65,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_left_1_0",
+        "host": "wall_east_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_left_1_1",
+        "host": "wall_east_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_1_0",
+        "host": "wall_east_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_1_1",
+        "host": "wall_east_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.775,
+          "sill_height": 0.49999999999999994,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.45,
+          "height": 2.25
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 0,
+          "horizontalMullions": 0,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_stone_base_0",
+        "host": "",
+        "description": "east stone base 0",
+        "size": {},
+        "form": {
+          "from": [
+            4.5,
+            0.68,
+            -4
+          ],
+          "to": [
+            9.0,
+            0.68,
+            -4
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_stone_base_1",
+        "host": "",
+        "description": "east stone base 1",
+        "size": {},
+        "form": {
+          "from": [
+            9.0,
+            0.68,
+            -4
+          ],
+          "to": [
+            9.0,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_stone_base_2",
+        "host": "",
+        "description": "east stone base 2",
+        "size": {},
+        "form": {
+          "from": [
+            9.0,
+            0.68,
+            6
+          ],
+          "to": [
+            4.5,
+            0.68,
+            6
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_stone_base_3",
+        "host": "",
+        "description": "east stone base 3",
+        "size": {},
+        "form": {
+          "from": [
+            4.5,
+            0.68,
+            6
+          ],
+          "to": [
+            4.5,
+            0.68,
+            -4
+          ],
+          "width": 0.26,
+          "height": 0.42,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_timber_fascia_0",
+        "host": "",
+        "description": "east timber fascia 0",
+        "size": {},
+        "form": {
+          "from": [
+            4.3,
+            3.62,
+            -4.2
+          ],
+          "to": [
+            9.2,
+            3.62,
+            -4.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_timber_fascia_1",
+        "host": "",
+        "description": "east timber fascia 1",
+        "size": {},
+        "form": {
+          "from": [
+            9.2,
+            3.62,
+            -4.2
+          ],
+          "to": [
+            9.2,
+            3.62,
+            6.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_timber_fascia_2",
+        "host": "",
+        "description": "east timber fascia 2",
+        "size": {},
+        "form": {
+          "from": [
+            9.2,
+            3.62,
+            6.2
+          ],
+          "to": [
+            4.3,
+            3.62,
+            6.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_timber_fascia_3",
+        "host": "",
+        "description": "east timber fascia 3",
+        "size": {},
+        "form": {
+          "from": [
+            4.3,
+            3.62,
+            6.2
+          ],
+          "to": [
+            4.3,
+            3.62,
+            -4.2
+          ],
+          "width": 0.25,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "west_courtyard_screen",
+        "repetition": {
+          "count": 16,
+          "axis": "z",
+          "spacing": 0.32,
+          "member_size": [
+            0.09,
+            2.65,
+            0.09
+          ]
+        },
+        "host": "",
+        "description": "west courtyard screen",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.38,
+            2.0,
+            0.3
+          ]
+        },
+        "size": {
+          "width": 0.09,
+          "height": 2.65,
+          "depth": 4.89
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "west_screen_top",
+        "host": "",
+        "description": "west screen top",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.38,
+            3.34,
+            0.3
+          ]
+        },
+        "size": {
+          "width": 0.17,
+          "height": 0.16,
+          "depth": 5.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "east_courtyard_screen",
+        "repetition": {
+          "count": 16,
+          "axis": "z",
+          "spacing": 0.32,
+          "member_size": [
+            0.09,
+            2.65,
+            0.09
+          ]
+        },
+        "host": "",
+        "description": "east courtyard screen",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.38,
+            2.0,
+            0.3
+          ]
+        },
+        "size": {
+          "width": 0.09,
+          "height": 2.65,
+          "depth": 4.89
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "east_screen_top",
+        "host": "",
+        "description": "east screen top",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.38,
+            3.34,
+            0.3
+          ]
+        },
+        "size": {
+          "width": 0.17,
+          "height": 0.16,
+          "depth": 5.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "stair",
+        "id": "north_stair",
+        "floor_connections": [
+          {
+            "from_floor": 1,
+            "to_floor": 2
+          }
+        ],
+        "host": "",
+        "description": "north stair",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "plan_position": [
+            -5.8,
+            8.65
+          ]
+        },
+        "size": {
+          "width": 4.8,
+          "height": 3.35,
+          "depth": 2.9
+        },
+        "form": {
+          "shape": "U",
+          "flights": 2,
+          "span_direction": "+x",
+          "flight_width": 1.25,
+          "landing_depth": 1.25,
+          "max_riser_height": 0.18,
+          "landing_thickness": 0.22
+        },
+        "material_bindings": {
+          "material": "structure"
+        }
+      },
+      {
+        "type": "column",
+        "id": "gate_post_-1p9",
+        "host": "",
+        "description": "gate post -1.9",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -1.9,
+            2.125,
+            -5.85
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            -1.9,
+            0.45,
+            -5.85
+          ],
+          "height": 3.3499999999999996,
+          "bottomRadius": 0.13,
+          "topRadius": 0.1144,
+          "style": "chinese_wooden",
+          "flutes": 0
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "column",
+        "id": "gate_rear_-1p9",
+        "host": "",
+        "description": "gate rear -1.9",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -1.9,
+            2.125,
+            -4.25
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            -1.9,
+            0.45,
+            -4.25
+          ],
+          "height": 3.3499999999999996,
+          "bottomRadius": 0.13,
+          "topRadius": 0.1144,
+          "style": "chinese_wooden",
+          "flutes": 0
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "column",
+        "id": "gate_post_1p9",
+        "host": "",
+        "description": "gate post 1.9",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            1.9,
+            2.125,
+            -5.85
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            1.9,
+            0.45,
+            -5.85
+          ],
+          "height": 3.3499999999999996,
+          "bottomRadius": 0.13,
+          "topRadius": 0.1144,
+          "style": "chinese_wooden",
+          "flutes": 0
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "column",
+        "id": "gate_rear_1p9",
+        "host": "",
+        "description": "gate rear 1.9",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            1.9,
+            2.125,
+            -4.25
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            1.9,
+            0.45,
+            -4.25
+          ],
+          "height": 3.3499999999999996,
+          "bottomRadius": 0.13,
+          "topRadius": 0.1144,
+          "style": "chinese_wooden",
+          "flutes": 0
+        },
+        "material_bindings": {
+          "material": "wood"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "site",
+        "host": "",
+        "description": "site",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            -0.17,
+            3
+          ]
+        },
+        "size": {
+          "width": 27.0,
+          "height": 0.28,
+          "depth": 29.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "ground"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "courtyard_stone",
+        "host": "",
+        "description": "courtyard stone",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            0.23,
+            1
+          ]
+        },
+        "size": {
+          "width": 8.8,
+          "height": 0.18,
+          "depth": 9.5
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "paving"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "reflecting_pool_rim",
+        "host": "",
+        "description": "reflecting pool rim",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -2.0,
+            0.37,
+            1.2
+          ]
+        },
+        "size": {
+          "width": 3.4,
+          "height": 0.22,
+          "depth": 5.6
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "reflecting_pool",
+        "host": "",
+        "description": "reflecting pool",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -2.0,
+            0.49,
+            1.2
+          ]
+        },
+        "size": {
+          "width": 3.05,
+          "height": 0.05,
+          "depth": 5.25
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "water"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "stepping_stones",
+        "repetition": {
+          "count": 7,
+          "axis": "z",
+          "spacing": 1.15,
+          "member_size": [
+            1.1,
+            0.16,
+            0.65
+          ]
+        },
+        "host": "",
+        "description": "stepping stones",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.4,
+            0.45,
+            0.4
+          ]
+        },
+        "size": {
+          "width": 1.1,
+          "height": 0.16,
+          "depth": 7.55
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "floor"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "east_garden",
+        "host": "",
+        "description": "east garden",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            3.1,
+            0.4,
+            1.7
+          ]
+        },
+        "size": {
+          "width": 1.5,
+          "height": 0.24,
+          "depth": 5.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "greenery"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "entrance_walk",
+        "host": "",
+        "description": "entrance walk",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            0.2,
+            -7.1
+          ]
+        },
+        "size": {
+          "width": 2.6,
+          "height": 0.32,
+          "depth": 4.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "floor"
+        }
+      },
+      {
+        "type": "stair",
+        "id": "gate_steps",
+        "host": "",
+        "description": "gate steps",
+        "size": {},
+        "form": {
+          "from": [
+            0,
+            0,
+            -9.1
+          ],
+          "to": [
+            0,
+            0.45,
+            -7.1
+          ],
+          "width": 2.6,
+          "stepCount": 3
+        },
+        "material_bindings": {
+          "material": "floor"
+        }
+      }
+    ],
+    "balcony_access_count": 0,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": []
+  },
+  "constraints": [],
+  "locks": [],
+  "rule_trace": []
+}

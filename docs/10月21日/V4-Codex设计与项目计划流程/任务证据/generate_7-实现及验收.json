@@ -1,0 +1,457 @@
+{
+  "item": {
+    "id": "generate_7",
+    "op": "generate",
+    "kind": "roof",
+    "label": "屋顶",
+    "target": {
+      "marker_ids": [
+        "roof_main",
+        "roof_west",
+        "roof_east"
+      ]
+    },
+    "params": {
+      "design_markers": true,
+      "design_hash": "sha256:7a71aff8ad612487c16e62c73c39cdb40daab4c6e9ed3e25e4e74d8a5338f483",
+      "batch_load": {
+        "marker_count": 3,
+        "marker_chars": 2013,
+        "host_count": 3,
+        "floor_count": 0,
+        "dependency_count": 1
+      },
+      "execution_mode": "parallel",
+      "parallel_group": "drawing"
+    },
+    "depends_on": [
+      "generate_1"
+    ],
+    "origin": "plan",
+    "status": "ready",
+    "run": {
+      "state": "idle",
+      "attempts": 0,
+      "max_attempts": 1,
+      "artifacts": [],
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  },
+  "rows": [
+    {
+      "id": "roof_main",
+      "geometry": {
+        "elements": [
+          {
+            "type": "roof",
+            "id": "roof_main",
+            "roofType": "hip",
+            "ridgeAxis": "x",
+            "span": 17.0,
+            "depth": 9.0,
+            "height": 1.55,
+            "thickness": 0.16,
+            "position": [
+              8.0,
+              6.8,
+              9.0
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_main_ridge",
+            "shape": "box",
+            "position": [
+              8.0,
+              8.41,
+              9.0
+            ],
+            "dimensions": [
+              8.0,
+              0.12,
+              0.14
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_main_fascia_0",
+            "shape": "box",
+            "position": [
+              8.0,
+              6.8,
+              4.5
+            ],
+            "dimensions": [
+              17.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_main_fascia_1",
+            "shape": "box",
+            "position": [
+              8.0,
+              6.8,
+              13.5
+            ],
+            "dimensions": [
+              17.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_main_fascia_2",
+            "shape": "box",
+            "position": [
+              -0.5,
+              6.8,
+              9.0
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              9.0
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_main_fascia_3",
+            "shape": "box",
+            "position": [
+              16.5,
+              6.8,
+              9.0
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              9.0
+            ],
+            "material": "roof"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "roof_west",
+      "geometry": {
+        "elements": [
+          {
+            "type": "roof",
+            "id": "roof_west",
+            "roofType": "hip",
+            "ridgeAxis": "z",
+            "span": 6.0,
+            "depth": 6.0,
+            "height": 1.0,
+            "thickness": 0.16,
+            "position": [
+              2.5,
+              3.4,
+              2.5
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_west_ridge",
+            "shape": "box",
+            "position": [
+              2.5,
+              4.46,
+              2.5
+            ],
+            "dimensions": [
+              0.14,
+              0.12,
+              0.3
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_west_fascia_0",
+            "shape": "box",
+            "position": [
+              2.5,
+              3.4,
+              -0.5
+            ],
+            "dimensions": [
+              6.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_west_fascia_1",
+            "shape": "box",
+            "position": [
+              2.5,
+              3.4,
+              5.5
+            ],
+            "dimensions": [
+              6.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_west_fascia_2",
+            "shape": "box",
+            "position": [
+              -0.5,
+              3.4,
+              2.5
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              6.0
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_west_fascia_3",
+            "shape": "box",
+            "position": [
+              5.5,
+              3.4,
+              2.5
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              6.0
+            ],
+            "material": "roof"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    },
+    {
+      "id": "roof_east",
+      "geometry": {
+        "elements": [
+          {
+            "type": "roof",
+            "id": "roof_east",
+            "roofType": "hip",
+            "ridgeAxis": "z",
+            "span": 6.0,
+            "depth": 6.0,
+            "height": 1.0,
+            "thickness": 0.16,
+            "position": [
+              13.5,
+              3.4,
+              2.5
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_east_ridge",
+            "shape": "box",
+            "position": [
+              13.5,
+              4.46,
+              2.5
+            ],
+            "dimensions": [
+              0.14,
+              0.12,
+              0.3
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_east_fascia_0",
+            "shape": "box",
+            "position": [
+              13.5,
+              3.4,
+              -0.5
+            ],
+            "dimensions": [
+              6.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_east_fascia_1",
+            "shape": "box",
+            "position": [
+              13.5,
+              3.4,
+              5.5
+            ],
+            "dimensions": [
+              6.0,
+              0.16,
+              0.12
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_east_fascia_2",
+            "shape": "box",
+            "position": [
+              10.5,
+              3.4,
+              2.5
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              6.0
+            ],
+            "material": "roof"
+          },
+          {
+            "type": "primitive",
+            "id": "roof_east_fascia_3",
+            "shape": "box",
+            "position": [
+              16.5,
+              3.4,
+              2.5
+            ],
+            "dimensions": [
+              0.12,
+              0.16,
+              6.0
+            ],
+            "material": "roof"
+          }
+        ],
+        "components": []
+      },
+      "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+      "materials": {}
+    }
+  ],
+  "diagnostics": {
+    "implementations": {
+      "roof_main": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_main",
+          "roof_main_ridge",
+          "roof_main_fascia_0",
+          "roof_main_fascia_1",
+          "roof_main_fascia_2",
+          "roof_main_fascia_3"
+        ],
+        "entity_fingerprint": "f48634c866d22de741e6c455f210e834e7ad7f2fb987a89eaeb26f7c40979b64",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "roof_west": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_west",
+          "roof_west_ridge",
+          "roof_west_fascia_0",
+          "roof_west_fascia_1",
+          "roof_west_fascia_2",
+          "roof_west_fascia_3"
+        ],
+        "entity_fingerprint": "16c984d07805b0ab0a228aaf1eec3e99d9b63776e4dad48e0afbcf77b0774900",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      },
+      "roof_east": {
+        "status": "implemented",
+        "entity_ids": [
+          "roof_east",
+          "roof_east_ridge",
+          "roof_east_fascia_0",
+          "roof_east_fascia_1",
+          "roof_east_fascia_2",
+          "roof_east_fascia_3"
+        ],
+        "entity_fingerprint": "8189dc2dd674d0942ff87c1fbf97fb50450d3332b39b4dcbe1c330113cd4b5aa",
+        "explanation": "Codex 按当前设计输入离线落实；未调用外部模型",
+        "verification": "geometry_validated",
+        "geometry_review": {
+          "status": "checked",
+          "checked": [],
+          "unverified": [],
+          "errors": []
+        },
+        "author": "Codex"
+      }
+    },
+    "implementation_summary": {
+      "implemented": 3,
+      "abandoned": 0,
+      "total": 3,
+      "design_complete": true
+    },
+    "materials": {},
+    "assets": {},
+    "elements": [
+      "roof_main",
+      "roof_main_ridge",
+      "roof_main_fascia_0",
+      "roof_main_fascia_1",
+      "roof_main_fascia_2",
+      "roof_main_fascia_3",
+      "roof_west",
+      "roof_west_ridge",
+      "roof_west_fascia_0",
+      "roof_west_fascia_1",
+      "roof_west_fascia_2",
+      "roof_west_fascia_3",
+      "roof_east",
+      "roof_east_ridge",
+      "roof_east_fascia_0",
+      "roof_east_fascia_1",
+      "roof_east_fascia_2",
+      "roof_east_fascia_3"
+    ],
+    "components": []
+  }
+}

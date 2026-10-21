@@ -1,0 +1,1499 @@
+```json
+{
+  "concept": "云栖院——新中式两层别墅，以现代语汇演绎传统合院意境。主体两层灰瓦坡屋顶搭配白墙深灰木格栅，客厅通高面向南庭，侧翼单层作为车库与茶室形成L形围合，庭院前院与侧院交织。",
+  "design_intent": {
+    "goals": [
+      "新中式风格现代演绎，融合坡屋顶、格栅、通高空间",
+      "完成极高粒度室内功能分区、家具陈设与照明设计",
+      "庭院与建筑形成L形围合，营造合院氛围"
+    ],
+    "assumptions": [
+      "宅基地面宽约22m、进深约20m，建筑退界后主体占地15×11m",
+      "南向庭院为主要采光面，客厅通高面向庭院",
+      "侧翼为车库兼茶室，与主楼通过连廊联系"
+    ],
+    "selected_systems": [
+      "U形双跑楼梯连接一至二层",
+      "通高客厅（void）",
+      "四坡屋顶主体+单坡屋顶侧翼",
+      "大面积落地窗面向庭院，格栅窗用于东西向",
+      "室内家具逐件布置，含客厅、餐厅、厨房、卧室、卫浴、书房",
+      "庭院入口、场地照明、景观矮墙"
+    ],
+    "spatial_strategy": "主体两层L形布局，客厅通高占据南侧核心，公共区（客厅、餐厅、门厅）集中在南半部，私密区（卧室、书房）集中在北半部与二层。侧翼单层位于北侧，车库朝南开敞，茶室与主楼内部连通。",
+    "composition": "主楼居中偏右，侧翼在北侧形成L形围合，庭院从东南角展开。立面采用三段式：白墙基座、木格栅中段、深灰瓦顶檐口。",
+    "material_strategy": "外墙白色仿石涂料为基调，搭配深灰色（#3A3A3A）铝木格栅窗套与门框，屋面采用青灰陶瓦（#5A6068），基座与勒脚用暖灰色石材（#B8A99A），室内木地板与白墙为主。"
+  },
+  "massing": {
+    "shape": "L形",
+    "width": 15,
+    "depth": 17,
+    "floors": 2,
+    "modeled_floors": 2,
+    "floor_height": 4.2
+  },
+  "volumes": [
+    {
+      "id": "volume_main",
+      "x": 0,
+      "z": 0,
+      "width": 15,
+      "depth": 11,
+      "start_floor": 1,
+      "end_floor": 2,
+      "facades": {
+        "front": {
+          "bays": 4,
+          "ground_pattern": ["window", "door", "window", "window"],
+          "upper_pattern": ["window", "empty", "window", "window"]
+        },
+        "back": {
+          "bays": 4,
+          "ground_pattern": ["empty", "window", "empty", "window"],
+          "upper_pattern": ["window", "empty", "window", "empty"]
+        },
+        "left": {
+          "bays": 3,
+          "ground_pattern": ["window", "window", "window"],
+          "upper_pattern": ["window", "window", "empty"]
+        },
+        "right": {
+          "bays": 3,
+          "ground_pattern": ["window", "empty", "window"],
+          "upper_pattern": ["window", "window", "window"]
+        }
+      }
+    },
+    {
+      "id": "volume_wing",
+      "x": 0,
+      "z": 11,
+      "width": 7,
+      "depth": 6,
+      "start_floor": 1,
+      "end_floor": 1,
+      "facades": {
+        "back": {
+          "bays": 2,
+          "ground_pattern": ["open", "window"],
+          "upper_pattern": ["empty", "empty"]
+        },
+        "left": {
+          "bays": 2,
+          "ground_pattern": ["window", "empty"],
+          "upper_pattern": ["empty", "empty"]
+        },
+        "right": {
+          "bays": 2,
+          "ground_pattern": ["empty", "window"],
+          "upper_pattern": ["empty", "empty"]
+        }
+      }
+    }
+  ],
+  "structural_grid": {
+    "system": "框架结构",
+    "x_bays": 3,
+    "z_bays": 3
+  },
+  "construction": {
+    "slab_thickness": 0.2,
+    "wall_thickness": 0.25
+  },
+  "circulation": {
+    "vertical_strategy": "U形双跑楼梯",
+    "description": "入口从南面经门厅进入，楼梯位于东北角连通一二层。主要水平通路从门厅贯穿至客厅和餐厅。",
+    "paths": [
+      {
+        "id": "path_main_entrance",
+        "floor": 1,
+        "points": [[6, 0.5], [6, 3]],
+        "width": 1.5,
+        "height": 2.4
+      },
+      {
+        "id": "path_living_dining",
+        "floor": 1,
+        "points": [[7, 4], [11, 8]],
+        "width": 2.0,
+        "height": 2.4
+      },
+      {
+        "id": "path_corridor_2F",
+        "floor": 2,
+        "points": [[12, 2], [5, 6]],
+        "width": 1.2,
+        "height": 2.1
+      }
+    ]
+  },
+  "facades": {
+    "front": {
+      "bays": 4,
+      "ground_pattern": ["window", "door", "window", "window"],
+      "upper_pattern": ["window", "empty", "window", "window"]
+    },
+    "back": {
+      "bays": 4,
+      "ground_pattern": ["empty", "window", "empty", "window"],
+      "upper_pattern": ["window", "empty", "window", "empty"]
+    },
+    "left": {
+      "bays": 3,
+      "ground_pattern": ["window", "window", "window"],
+      "upper_pattern": ["window", "window", "empty"]
+    },
+    "right": {
+      "bays": 3,
+      "ground_pattern": ["window", "empty", "window"],
+      "upper_pattern": ["window", "window", "window"]
+    }
+  },
+  "roof": {
+    "type": "四坡屋顶",
+    "ridge_axis": "x",
+    "overhang": 0.8,
+    "volumes": [
+      {
+        "volume": "volume_main",
+        "type": "四坡屋顶",
+        "overhang": 0.8
+      },
+      {
+        "volume": "volume_wing",
+        "type": "单坡屋顶",
+        "overhang": 0.6
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "stair_u",
+      "type": "stair",
+      "size": {
+        "width": 3.2,
+        "height": 4.5,
+        "depth": 4.8
+      },
+      "form": {
+        "shape": "U",
+        "flights": 2,
+        "span_direction": "+x",
+        "flight_width": 1.3,
+        "landing_depth": 1.3,
+        "rises": 24,
+        "riser_height": 0.1875,
+        "tread_depth": 0.28
+      },
+      "description": "U形双跑楼梯，深灰色金属扶手，木质踏步，白色栏板",
+      "placement": {
+        "position": [12.5, 2.25, 9.4]
+      },
+      "floor_connections": [
+        {
+          "from_floor": 1,
+          "to_floor": 2
+        }
+      ],
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "door_entrance_main",
+      "type": "chinese_lattice_door",
+      "host": "wall_volume_main_front_L1",
+      "size": {
+        "width": 2.2,
+        "height": 3.0
+      },
+      "form": {
+        "lattice_pattern": "回纹",
+        "panels": 4
+      },
+      "description": "新中式主入口隔扇门，深色木框回纹棂格，双开，高3米",
+      "placement": {
+        "face": "front",
+        "floor": 1,
+        "offset": 5.5,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_living_floor",
+      "type": "floor_window",
+      "host": "wall_volume_main_front_L1",
+      "size": {
+        "width": 3.5,
+        "height": 3.8
+      },
+      "description": "客厅南面落地窗，通高窗，面向庭院，深灰金属框",
+      "placement": {
+        "face": "front",
+        "floor": 1,
+        "offset": 0.8,
+        "sill_height": 0.1
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "window_living_east",
+      "type": "floor_window",
+      "host": "wall_volume_main_right_L1",
+      "size": {
+        "width": 3.0,
+        "height": 3.8
+      },
+      "description": "客厅东面落地窗",
+      "placement": {
+        "face": "right",
+        "floor": 1,
+        "offset": 1.5,
+        "sill_height": 0.1
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "window_grille_west_1F",
+      "type": "chinese_lattice_window",
+      "host": "wall_volume_main_left_L1",
+      "size": {
+        "width": 2.0,
+        "height": 2.2
+      },
+      "form": {
+        "lattice_pattern": "套方纹"
+      },
+      "description": "西面格栅窗，套方纹棂格，深木色",
+      "placement": {
+        "face": "left",
+        "floor": 1,
+        "offset": 1.5,
+        "sill_height": 0.9
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_grille_west_2F_a",
+      "type": "chinese_lattice_window",
+      "host": "wall_volume_main_left_L2",
+      "size": {
+        "width": 1.5,
+        "height": 1.8
+      },
+      "form": {
+        "lattice_pattern": "回纹"
+      },
+      "description": "二层西面格栅窗A（主卧），回纹棂格",
+      "placement": {
+        "face": "left",
+        "floor": 2,
+        "offset": 1.0,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_grille_west_2F_b",
+      "type": "chinese_lattice_window",
+      "host": "wall_volume_main_left_L2",
+      "size": {
+        "width": 1.5,
+        "height": 1.8
+      },
+      "form": {
+        "lattice_pattern": "回纹"
+      },
+      "description": "二层西面格栅窗B（次卧），回纹棂格",
+      "placement": {
+        "face": "left",
+        "floor": 2,
+        "offset": 5.5,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_grille_east_2F_a",
+      "type": "chinese_lattice_window",
+      "host": "wall_volume_main_right_L2",
+      "size": {
+        "width": 1.5,
+        "height": 1.8
+      },
+      "form": {
+        "lattice_pattern": "回纹"
+      },
+      "description": "二层东面格栅窗A（主卧），回纹棂格",
+      "placement": {
+        "face": "right",
+        "floor": 2,
+        "offset": 1.0,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_grille_east_2F_b",
+      "type": "chinese_lattice_window",
+      "host": "wall_volume_main_right_L2",
+      "size": {
+        "width": 1.5,
+        "height": 1.8
+      },
+      "form": {
+        "lattice_pattern": "回纹"
+      },
+      "description": "二层东面格栅窗B（次卧），回纹棂格",
+      "placement": {
+        "face": "right",
+        "floor": 2,
+        "offset": 5.0,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "window_balcony_2F",
+      "type": "combination_window",
+      "host": "wall_volume_main_front_L2",
+      "size": {
+        "width": 3.0,
+        "height": 2.1
+      },
+      "form": {
+        "panels": 3,
+        "center_operable": true
+      },
+      "description": "二层走廊南面组合窗，可开启，深灰铝框",
+      "placement": {
+        "face": "front",
+        "floor": 2,
+        "offset": 8.0,
+        "sill_height": 0.5
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "window_master_south",
+      "type": "window",
+      "host": "wall_volume_main_back_L2",
+      "size": {
+        "width": 2.4,
+        "height": 1.8
+      },
+      "description": "主卧北面采光窗，现代固定窗",
+      "placement": {
+        "face": "back",
+        "floor": 2,
+        "offset": 2.0,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "window_second_south",
+      "type": "window",
+      "host": "wall_volume_main_back_L2",
+      "size": {
+        "width": 2.4,
+        "height": 1.8
+      },
+      "description": "次卧北面采光窗",
+      "placement": {
+        "face": "back",
+        "floor": 2,
+        "offset": 8.0,
+        "sill_height": 0.8
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "window_dining_front",
+      "type": "floor_window",
+      "host": "wall_volume_main_front_L1",
+      "size": {
+        "width": 3.5,
+        "height": 3.5
+      },
+      "description": "餐厅东面落地窗",
+      "placement": {
+        "face": "right",
+        "floor": 1,
+        "offset": 6.0,
+        "sill_height": 0.1
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "door_kitchen_rear",
+      "type": "side_door",
+      "host": "wall_volume_main_back_L1",
+      "size": {
+        "width": 1.2,
+        "height": 2.4
+      },
+      "description": "厨房后门，通往北侧后院",
+      "placement": {
+        "face": "back",
+        "floor": 1,
+        "offset": 11.0,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "leafMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "canopy_entrance",
+      "type": "canopy",
+      "size": {
+        "width": 3.5,
+        "height": 0.25,
+        "depth": 2.0
+      },
+      "description": "主入口雨棚，深色钢木格栅顶，悬挑于门上方",
+      "placement": {
+        "face": "front",
+        "floor": 1,
+        "offset": 5.0,
+        "normal_offset": 2.5,
+        "sill_height": 3.2
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "balcony_second",
+      "type": "balcony",
+      "size": {
+        "width": 3.5,
+        "height": 0.15,
+        "depth": 1.8
+      },
+      "description": "二层南向小阳台，位于主卧窗旁，深色金属栏杆",
+      "placement": {
+        "face": "front",
+        "floor": 2,
+        "offset": 3.5,
+        "normal_offset": -0.9,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "balcony_railing",
+      "type": "railing",
+      "host": "balcony_second",
+      "size": {
+        "width": 3.5,
+        "height": 1.1,
+        "depth": 0.05
+      },
+      "description": "阳台栏杆，竖向深灰铁艺",
+      "form": {
+        "style": "vertical_bars",
+        "spacing": 0.12
+      },
+      "placement": {
+        "face": "front",
+        "floor": 2,
+        "offset": 3.5,
+        "normal_offset": 0,
+        "sill_height": 0.15
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "cornice_main",
+      "type": "decorative_cornice",
+      "size": {
+        "width": 16.6,
+        "height": 0.4,
+        "depth": 12.6
+      },
+      "description": "主楼檐口，深色金属收边，新中式简洁线脚",
+      "placement": {
+        "position": [7.5, 4.5, 5.5],
+        "face": "front"
+      },
+      "material_bindings": {
+        "material": "dark_metal"
+      },
+      "connections": [
+        {
+          "target": "volume_main",
+          "own_face": "bottom",
+          "target_face": "top",
+          "offset": 0
+        }
+      ]
+    },
+    {
+      "id": "garden_wall_south",
+      "type": "landscape_low_wall",
+      "size": {
+        "width": 12,
+        "height": 1.2,
+        "depth": 0.25
+      },
+      "description": "南侧庭院矮墙，灰色石材，顶部设线性灯槽",
+      "placement": {
+        "position": [8, 0.6, -2.5]
+      },
+      "material_bindings": {
+        "material": "stone_base"
+      }
+    },
+    {
+      "id": "garden_gate",
+      "type": "garden_gate",
+      "size": {
+        "width": 4.0,
+        "height": 2.8,
+        "depth": 0.15
+      },
+      "description": "庭院入口门，新中式格栅门扇，两侧石柱",
+      "placement": {
+        "position": [4, 1.4, -2.5]
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "stepped_plinth",
+      "type": "stepped_plinth",
+      "size": {
+        "width": 15.5,
+        "height": 0.45,
+        "depth": 11.5
+      },
+      "description": "台基，三层台阶，灰褐色石材，入口处设无障碍坡道",
+      "placement": {
+        "position": [7.5, -0.225, 5.5]
+      },
+      "material_bindings": {
+        "material": "stone_base"
+      }
+    },
+    {
+      "id": "sofa_living",
+      "type": "sofa",
+      "size": {
+        "width": 2.8,
+        "height": 0.75,
+        "depth": 0.95
+      },
+      "description": "客厅L形三人沙发，深灰布艺坐垫，实木扶手",
+      "placement": {
+        "position": [5.5, 0.375, 3.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "coffee_table_living",
+      "type": "coffee_table",
+      "size": {
+        "width": 1.2,
+        "height": 0.45,
+        "depth": 0.6
+      },
+      "description": "客厅茶几，胡桃木面+黑色金属腿",
+      "placement": {
+        "position": [5.5, 0.225, 4.3]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "tv_cabinet_living",
+      "type": "tv_cabinet",
+      "size": {
+        "width": 2.4,
+        "height": 0.55,
+        "depth": 0.45
+      },
+      "description": "客厅电视柜，低矮悬浮式，白色烤漆+木纹抽屉",
+      "placement": {
+        "position": [5.5, 0.275, 5.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "dining_table",
+      "type": "dining_table_chairs",
+      "size": {
+        "width": 2.4,
+        "height": 0.78,
+        "depth": 1.2
+      },
+      "form": {
+        "chairs": 6,
+        "arrangement": "rectangular"
+      },
+      "description": "餐桌六椅组合，实木餐桌+布艺餐椅",
+      "placement": {
+        "position": [12.0, 0.39, 3.0]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "kitchen_cabinet",
+      "type": "kitchen_cabinet",
+      "size": {
+        "width": 4.0,
+        "height": 0.9,
+        "depth": 0.6
+      },
+      "form": {
+        "style": "L",
+        "upper_cabinets": true,
+        "upper_height": 0.7
+      },
+      "description": "厨房L形橱柜，白色哑光面板+深灰石英台面，上层吊柜",
+      "placement": {
+        "position": [12.0, 0.45, 8.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "bed_master",
+      "type": "bed",
+      "size": {
+        "width": 2.0,
+        "height": 0.5,
+        "depth": 2.1
+      },
+      "description": "主卧大床，新中式实木床架+灰色床品，床头背板通高软包",
+      "placement": {
+        "position": [5.0, 4.75, 9.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "nightstand_master_left",
+      "type": "nightstand",
+      "size": {
+        "width": 0.5,
+        "height": 0.55,
+        "depth": 0.4
+      },
+      "description": "主卧左床头柜，实木+抽屉",
+      "placement": {
+        "position": [3.5, 4.775, 9.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "nightstand_master_right",
+      "type": "nightstand",
+      "size": {
+        "width": 0.5,
+        "height": 0.55,
+        "depth": 0.4
+      },
+      "description": "主卧右床头柜",
+      "placement": {
+        "position": [6.5, 4.775, 9.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "wardrobe_master",
+      "type": "wardrobe",
+      "size": {
+        "width": 2.5,
+        "height": 2.4,
+        "depth": 0.6
+      },
+      "description": "主卧衣柜，嵌入墙面，白色门板+木色边框",
+      "placement": {
+        "position": [7.5, 4.2+1.2, 7.3]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "bed_second",
+      "type": "bed",
+      "size": {
+        "width": 1.5,
+        "height": 0.48,
+        "depth": 2.0
+      },
+      "description": "次卧床，1.5m实木双人床",
+      "placement": {
+        "position": [11.0, 4.74, 9.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "desk_second",
+      "type": "desk_chair",
+      "size": {
+        "width": 1.4,
+        "height": 0.75,
+        "depth": 0.65
+      },
+      "form": {
+        "chair": true
+      },
+      "description": "次卧书桌+转椅组合",
+      "placement": {
+        "position": [13.0, 4.375, 7.0]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "bed_study",
+      "type": "bed",
+      "size": {
+        "width": 1.5,
+        "height": 0.48,
+        "depth": 2.0
+      },
+      "description": "书房兼客卧的单人床",
+      "placement": {
+        "position": [2.0, 4.74, 6.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "bookshelf_study",
+      "type": "bookshelf",
+      "size": {
+        "width": 2.0,
+        "height": 2.2,
+        "depth": 0.35
+      },
+      "form": {
+        "shelves": 5
+      },
+      "description": "书房落地书架，五层实木格架",
+      "placement": {
+        "position": [3.5, 4.2+1.1, 4.8]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "toilet_master_bath",
+      "type": "toilet",
+      "size": {
+        "width": 0.4,
+        "height": 0.75,
+        "depth": 0.7
+      },
+      "description": "主卧卫生间壁挂式马桶",
+      "placement": {
+        "position": [10.5, 4.2+0.375, 10.3]
+      },
+      "material_bindings": {
+        "material": "white_ceramic"
+      }
+    },
+    {
+      "id": "washbasin_master_bath",
+      "type": "washbasin",
+      "size": {
+        "width": 0.9,
+        "height": 0.15,
+        "depth": 0.5
+      },
+      "description": "主卧卫生间洗手台，岩板台面+实木柜体",
+      "placement": {
+        "position": [9.0, 4.2+0.8, 10.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "toilet_guest_bath",
+      "type": "toilet",
+      "size": {
+        "width": 0.4,
+        "height": 0.75,
+        "depth": 0.7
+      },
+      "description": "公共卫生间马桶",
+      "placement": {
+        "position": [11.5, 0.375, 9.5]
+      },
+      "material_bindings": {
+        "material": "white_ceramic"
+      }
+    },
+    {
+      "id": "washbasin_guest_bath",
+      "type": "washbasin",
+      "size": {
+        "width": 0.8,
+        "height": 0.15,
+        "depth": 0.5
+      },
+      "description": "公共卫生间洗手盆",
+      "placement": {
+        "position": [12.5, 0.8, 9.5]
+      },
+      "material_bindings": {
+        "material": "white_ceramic"
+      }
+    },
+    {
+      "id": "pendant_living",
+      "type": "pendant_light",
+      "size": {
+        "width": 0.6,
+        "height": 0.4,
+        "depth": 0.6
+      },
+      "description": "客厅通高空间大型吊灯，新中式灯笼造型，竹编灯罩暖光",
+      "placement": {
+        "position": [5.5, 3.5, 4.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "pendant_dining",
+      "type": "pendant_light",
+      "size": {
+        "width": 0.5,
+        "height": 0.35,
+        "depth": 0.5
+      },
+      "description": "餐厅吊灯，三盏组合，黑色金属锥形罩",
+      "placement": {
+        "position": [12.0, 3.8, 3.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "downlight_bedroom_master",
+      "type": "downlight",
+      "size": {
+        "width": 0.12,
+        "height": 0.08,
+        "depth": 0.12
+      },
+      "description": "主卧筒灯组",
+      "form": {
+        "count": 6,
+        "pattern": "grid"
+      },
+      "placement": {
+        "position": [5.0, 4.2+3.5, 9.5]
+      },
+      "repetition": {
+        "count": 6,
+        "axis": "x",
+        "spacing": 1.0,
+        "member_size": [0.12, 0.08, 0.12]
+      },
+      "material_bindings": {
+        "frameMaterial": "white_ceramic"
+      }
+    },
+    {
+      "id": "floor_lamp_living",
+      "type": "floor_lamp",
+      "size": {
+        "width": 0.35,
+        "height": 1.6,
+        "depth": 0.35
+      },
+      "description": "客厅落地灯，新中式纸罩灯",
+      "placement": {
+        "position": [3.5, 0.8, 3.5]
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_wood"
+      }
+    },
+    {
+      "id": "linear_light_garden",
+      "type": "linear_light",
+      "size": {
+        "width": 12.0,
+        "height": 0.05,
+        "depth": 0.05
+      },
+      "description": "庭院矮墙顶部线性洗墙灯",
+      "placement": {
+        "position": [8, 1.2, -2.5]
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "partition_living_kitchen",
+      "type": "wall",
+      "size": {
+        "width": 0.15,
+        "height": 4.5,
+        "depth": 4.0
+      },
+      "description": "厨房与客厅之间的隔断墙（部分玻璃上部通透）",
+      "placement": {
+        "position": [10.0, 2.25, 6.0]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "partition_bath_1F",
+      "type": "wall",
+      "size": {
+        "width": 0.15,
+        "height": 3.0,
+        "depth": 3.5
+      },
+      "description": "一层公共卫生间隔墙",
+      "placement": {
+        "position": [11.0, 1.5, 8.25]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "partition_master_2F",
+      "type": "wall",
+      "size": {
+        "width": 0.15,
+        "height": 3.6,
+        "depth": 4.5
+      },
+      "description": "主卧与走廊隔墙",
+      "placement": {
+        "position": [8.0, 4.2+1.8, 8.75]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "partition_second_2F",
+      "type": "wall",
+      "size": {
+        "width": 0.15,
+        "height": 3.6,
+        "depth": 3.5
+      },
+      "description": "次卧与走廊隔墙",
+      "placement": {
+        "position": [9.0, 4.2+1.8, 9.25]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "partition_masterbath_2F",
+      "type": "wall",
+      "size": {
+        "width": 3.0,
+        "height": 3.0,
+        "depth": 0.15
+      },
+      "description": "主卧卫生间隔墙",
+      "placement": {
+        "position": [9.0, 4.2+1.5, 10.0]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "door_master_2F",
+      "type": "door",
+      "host": "partition_master_2F",
+      "size": {
+        "width": 0.9,
+        "height": 2.1
+      },
+      "description": "主卧房门，新中式木纹门扇",
+      "placement": {
+        "offset": 1.0,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "leafMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "door_second_2F",
+      "type": "door",
+      "host": "partition_second_2F",
+      "size": {
+        "width": 0.9,
+        "height": 2.1
+      },
+      "description": "次卧房门",
+      "placement": {
+        "offset": 1.5,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "leafMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "door_study_2F",
+      "type": "door",
+      "host": "partition_master_2F",
+      "size": {
+        "width": 0.85,
+        "height": 2.1
+      },
+      "description": "书房门，通往主卧区域走廊",
+      "placement": {
+        "offset": 3.5,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "leafMaterial": "light_wood"
+      }
+    },
+    {
+      "id": "door_wing_garage",
+      "type": "sectional_garage_door",
+      "host": "wall_volume_wing_back_L1",
+      "size": {
+        "width": 5.0,
+        "height": 2.8
+      },
+      "description": "车库卷帘门，深灰色铝板分段式",
+      "placement": {
+        "face": "back",
+        "floor": 1,
+        "offset": 0.8,
+        "sill_height": 0
+      },
+      "material_bindings": {
+        "frameMaterial": "dark_metal"
+      }
+    },
+    {
+      "id": "eave_soffit_main",
+      "type": "eave_soffit",
+      "size": {
+        "width": 16.6,
+        "height": 0.3,
+        "depth": 12.6
+      },
+      "description": "主楼屋檐下悬，木色铝板条吊顶",
+      "placement": {
+        "position": [7.5, 4.35, 5.5]
+      },
+      "material_bindings": {
+        "material": "light_wood"
+      }
+    },
+    {
+      "id": "parapet_wing",
+      "type": "parapet",
+      "size": {
+        "width": 7.0,
+        "height": 0.6,
+        "depth": 0.2
+      },
+      "description": "侧翼屋顶女儿墙压顶，灰瓦",
+      "placement": {
+        "face": "back",
+        "floor": 1,
+        "offset": 0,
+        "sill_height": 4.0
+      },
+      "material_bindings": {
+        "material": "roof_tile"
+      }
+    },
+    {
+      "id": "corridor_2F",
+      "type": "wall",
+      "size": {
+        "width": 15.0,
+        "height": 0.15,
+        "depth": 3.0
+      },
+      "description": "二层走廊区域南隔墙",
+      "placement": {
+        "position": [7.5, 4.2+1.8, 7.5]
+      },
+      "material_bindings": {
+        "material": "white_wall"
+      }
+    },
+    {
+      "id": "sofa_secondary_living",
+      "type": "sofa",
+      "size": {
+        "width": 1.6,
+        "height": 0.75,
+        "depth": 0.85
+      },
+      "description": "客厅双人沙发，与主沙发相对，深灰色布艺",
+      "placement": {
+        "position": [8.5, 0.375, 4.0]
+      },
+      "material_bindings": {
+        "frameMaterial": "light_wood"
+      }
+    }
+  ],
+  "floor_layouts": [
+    {
+      "floor": 1,
+      "level": 0.0,
+      "rooms": [
+        {
+          "id": "room_entry",
+          "name": "门厅玄关",
+          "bounds": {
+            "x": 4.5,
+            "z": 0.2,
+            "width": 4.0,
+            "depth": 2.5
+          }
+        },
+        {
+          "id": "room_living",
+          "name": "客厅（通高）",
+          "void": true,
+          "bounds": {
+            "x": 1.0,
+            "z": 2.7,
+            "width": 9.0,
+            "depth": 6.3
+          }
+        },
+        {
+          "id": "room_dining",
+          "name": "餐厅",
+          "bounds": {
+            "x": 10.0,
+            "z": 0.5,
+            "width": 5.0,
+            "depth": 5.0
+          }
+        },
+        {
+          "id": "room_kitchen",
+          "name": "厨房",
+          "bounds": {
+            "x": 10.0,
+            "z": 5.5,
+            "width": 5.0,
+            "depth": 5.5
+          }
+        },
+        {
+          "id": "room_bath_1f",
+          "name": "公共卫生间",
+          "bounds": {
+            "x": 10.5,
+            "z": 8.0,
+            "width": 2.5,
+            "depth": 3.0
+          }
+        },
+        {
+          "id": "room_stair_1f",
+          "name": "楼梯间",
+          "bounds": {
+            "x": 11.0,
+            "z": 7.0,
+            "width": 3.5,
+            "depth": 3.5
+          }
+        },
+        {
+          "id": "room_garage",
+          "name": "车库",
+          "bounds": {
+            "x": 0.5,
+            "z": 11.5,
+            "width": 5.5,
+            "depth": 5.0
+          }
+        },
+        {
+          "id": "room_tea",
+          "name": "茶室",
+          "bounds": {
+            "x": 6.0,
+            "z": 11.5,
+            "width": 1.0,
+            "depth": 5.0
+          }
+        }
+      ],
+      "walls": [
+        {
+          "id": "wall_kitchen_partition",
+          "from": [10, 5.5],
+          "to": [10, 0.5],
+          "thickness": 0.15
+        },
+        {
+          "id": "wall_entry_living",
+          "from": [4.5, 2.7],
+          "to": [8.5, 2.7],
+          "thickness": 0.15
+        },
+        {
+          "id": "wall_bath_1f",
+          "from": [10.5, 8.0],
+          "to": [13.0, 8.0],
+          "thickness": 0.15
+        }
+      ]
+    },
+    {
+      "floor": 2,
+      "level": 4.5,
+      "rooms": [
+        {
+          "id": "room_living_void",
+          "name": "客厅通高（挑空）",
+          "void": true,
+          "bounds": {
+            "x": 1.0,
+            "z": 2.7,
+            "width": 9.0,
+            "depth": 6.3
+          }
+        },
+        {
+          "id": "room_master",
+          "name": "主卧",
+          "bounds": {
+            "x": 1.5,
+            "z": 7.0,
+            "width": 6.5,
+            "depth": 3.5
+          }
+        },
+        {
+          "id": "room_master_bath",
+          "name": "主卧卫生间",
+          "bounds": {
+            "x": 8.0,
+            "z": 8.5,
+            "width": 3.0,
+            "depth": 2.5
+          }
+        },
+        {
+          "id": "room_second",
+          "name": "次卧",
+          "bounds": {
+            "x": 9.0,
+            "z": 7.0,
+            "width": 4.5,
+            "depth": 1.5
+          }
+        },
+        {
+          "id": "room_study",
+          "name": "书房",
+          "bounds": {
+            "x": 1.0,
+            "z": 0.5,
+            "width": 3.5,
+            "depth": 3.5
+          }
+        },
+        {
+          "id": "room_corridor_2f",
+          "name": "二层走廊",
+          "bounds": {
+            "x": 1.0,
+            "z": 4.0,
+            "width": 13.5,
+            "depth": 3.0
+          }
+        }
+      ],
+      "walls": [
+        {
+          "id": "wall_master_corr",
+          "from": [1.5, 7.0],
+          "to": [8.0, 7.0],
+          "thickness": 0.15
+        },
+        {
+          "id": "wall_second_corr",
+          "from": [9.0, 7.0],
+          "to": [13.5, 7.0],
+          "thickness": 0.15
+        },
+        {
+          "id": "wall_masterbath",
+          "from": [8.0, 7.0],
+          "to": [8.0, 11.0],
+          "thickness": 0.15
+        }
+      ]
+    }
+  ],
+  "envelope": {
+    "system": "外墙外保温体系"
+  },
+  "materials": {
+    "keywords": [
+      "白墙仿石涂料",
+      "深灰金属格栅",
+      "青灰陶瓦",
+      "暖灰石材基座",
+      "浅色实木家具",
+      "胡桃木色窗套"
+    ],
+    "regions": [
+      {
+        "role": "facade_primary",
+        "type": "volume_wall",
+        "note": "主体外墙白色涂料"
+      },
+      {
+        "role": "structure",
+        "type": "column_beam",
+        "note": "框架结构灰白色混凝土"
+      },
+      {
+        "role": "floor",
+        "type": "floor",
+        "note": "室内浅色橡木地板"
+      },
+      {
+        "role": "frame",
+        "type": "window_frame",
+        "note": "门窗深灰色铝合金框"
+      },
+      {
+        "role": "door",
+        "type": "door_panel",
+        "note": "室内门浅木色门扇"
+      },
+      {
+        "role": "glass",
+        "type": "glazing",
+        "note": "Low-E中空玻璃"
+      },
+      {
+        "role": "roof",
+        "type": "roof_surface",
+        "note": "青灰色陶土瓦"
+      },
+      {
+        "role": "ground",
+        "type": "plinth_wall",
+        "note": "基座与矮墙暖灰石材"
+      },
+      {
+        "role": "accent",
+        "type": "lattice_grille",
+        "note": "格栅、门扇、家具用深色胡桃木"
+      }
+    ],
+    "definitions": {
+      "white_wall": {
+        "baseColor": [0.92, 0.91, 0.88],
+        "roughness": 0.7,
+        "metallic": 0.0
+      },
+      "dark_metal": {
+        "baseColor": [0.22, 0.22, 0.23],
+        "roughness": 0.4,
+        "metallic": 0.7
+      },
+      "dark_wood": {
+        "baseColor": [0.25, 0.18, 0.12],
+        "roughness": 0.65,
+        "metallic": 0.0
+      },
+      "light_wood": {
+        "baseColor": [0.65, 0.50, 0.35],
+        "roughness": 0.6,
+        "metallic": 0.0
+      },
+      "stone_base": {
+        "baseColor": [0.72, 0.66, 0.60],
+        "roughness": 0.75,
+        "metallic": 0.0
+      },
+      "roof_tile": {
+        "baseColor": [0.35, 0.38, 0.41],
+        "roughness": 0.65,
+        "metallic": 0.0
+      },
+      "white_ceramic": {
+        "baseColor": [0.95, 0.95, 0.93],
+        "roughness": 0.3,
+        "metallic": 0.0
+      }
+    }
+  }
+}
+```

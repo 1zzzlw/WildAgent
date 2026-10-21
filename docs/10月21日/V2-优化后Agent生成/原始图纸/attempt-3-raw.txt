@@ -1,0 +1,1 @@
+{"operations":[{"op":"replace","path":"/components/0/form/rises","value":10},{"op":"replace","path":"/components/0/form/riser_height","value":0.19},{"op":"replace","path":"/floor_layouts/1/rooms/1/bounds/width","value":7.0},{"op":"replace","path":"/floor_layouts/1/rooms/0/bounds/depth","value":2.0}]}

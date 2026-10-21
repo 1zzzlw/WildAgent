@@ -1,0 +1,1 @@
+{"operations":[{"op":"replace","path":"/floor_layouts/1/rooms/6/bounds/z","value":6.5},{"op":"replace","path":"/floor_layouts/1/rooms/6/bounds/depth","value":1.5},{"op":"replace","path":"/floor_layouts/1/rooms/8/bounds/z","value":5.0},{"op":"replace","path":"/floor_layouts/1/rooms/8/bounds/depth","value":1.5}]}

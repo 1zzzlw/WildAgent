@@ -1,0 +1,13 @@
+{
+  "started_at": "2026-10-21T01:12:43.219851+00:00",
+  "session_id": "villa_v3_20261021_091243",
+  "request_id": "villa_v3_20261021_091243",
+  "user_message": "创建一栋可渲染的新中式别墅，先按当前项目设计图纸契约创建设计，再编译WILD并记录流程。",
+  "building_type": "villa",
+  "detail_level": "detailed",
+  "thinking_mode": true,
+  "current_blueprint": null,
+  "workflow_state": "idle",
+  "comparison_note": "沿用V1自然语言需求与detailed档位；V1为人工设计实现，V2为修复前失败记录，V3由修复后的真实项目Agent完成。",
+  "review_policy": "用户授权本次端到端对比生成；脚本在项目审核中断处确认继续，保留原图纸，不表示人工看图通过。"
+}

@@ -45,6 +45,17 @@
           "title": "Concept",
           "type": "string"
         },
+        "construction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ConstructionDecision"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "design_intent": {
           "anyOf": [
             {
@@ -87,6 +98,13 @@
           },
           "title": "Facades",
           "type": "object"
+        },
+        "floor_layouts": {
+          "items": {
+            "$ref": "#/$defs/FloorLayoutDecision"
+          },
+          "title": "Floor Layouts",
+          "type": "array"
         },
         "kind": {
           "const": "architecture",
@@ -188,6 +206,13 @@
     "CirculationDecision": {
       "additionalProperties": true,
       "properties": {
+        "paths": {
+          "items": {
+            "$ref": "#/$defs/CirculationPath"
+          },
+          "title": "Paths",
+          "type": "array"
+        },
         "vertical_strategy": {
           "default": "stair",
           "title": "Vertical Strategy",
@@ -195,6 +220,74 @@
         }
       },
       "title": "CirculationDecision",
+      "type": "object"
+    },
+    "CirculationPath": {
+      "additionalProperties": false,
+      "properties": {
+        "floor": {
+          "minimum": 1,
+          "title": "Floor",
+          "type": "integer"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Height"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "minItems": 2,
+          "title": "Points",
+          "type": "array"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Width"
+        }
+      },
+      "required": [
+        "id",
+        "floor",
+        "points",
+        "width",
+        "height"
+      ],
+      "title": "CirculationPath",
       "type": "object"
     },
     "ComplexityDecision": {
@@ -260,14 +353,287 @@
       "title": "ComplexityDecision",
       "type": "object"
     },
+    "ComponentConnection": {
+      "additionalProperties": false,
+      "description": "边界对齐；offset 为 own_face 坐标减 target_face 坐标。",
+      "properties": {
+        "offset": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "default": 0,
+          "title": "Offset"
+        },
+        "own_face": {
+          "enum": [
+            "left",
+            "right",
+            "bottom",
+            "top",
+            "front",
+            "back"
+          ],
+          "title": "Own Face",
+          "type": "string"
+        },
+        "target": {
+          "minLength": 1,
+          "title": "Target",
+          "type": "string"
+        },
+        "target_face": {
+          "enum": [
+            "left",
+            "right",
+            "bottom",
+            "top",
+            "front",
+            "back"
+          ],
+          "title": "Target Face",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "own_face",
+        "target_face"
+      ],
+      "title": "ComponentConnection",
+      "type": "object"
+    },
     "ComponentInstance": {
       "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "placement": {
+                "properties": {
+                  "plan_position": {
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "plan_position"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "placement"
+            ]
+          },
+          "then": {
+            "properties": {
+              "floor_connections": {
+                "maxItems": 1,
+                "minItems": 1
+              },
+              "form": {
+                "additionalProperties": true,
+                "description": "plan_position 对应的可计算设计输入；其余楼梯仍保留开放形态。",
+                "properties": {
+                  "flight_width": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "单跑宽度（米）",
+                    "gt": 0,
+                    "title": "Flight Width"
+                  },
+                  "flights": {
+                    "const": 2,
+                    "default": 2,
+                    "description": "U形双跑固定为2，可省略，由程序补齐",
+                    "title": "Flights",
+                    "type": "integer"
+                  },
+                  "landing_depth": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "description": "沿第一跑行进方向的平台深度（米）",
+                    "gt": 0,
+                    "title": "Landing Depth"
+                  },
+                  "landing_thickness": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "gt": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Landing Thickness"
+                  },
+                  "max_riser_height": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "gt": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Max Riser Height"
+                  },
+                  "riser_height": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "gt": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Riser Height"
+                  },
+                  "rises": {
+                    "anyOf": [
+                      {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Rises"
+                  },
+                  "shape": {
+                    "const": "U",
+                    "title": "Shape",
+                    "type": "string"
+                  },
+                  "span_direction": {
+                    "description": "第一跑上行的世界坐标方向",
+                    "enum": [
+                      "+x",
+                      "-x",
+                      "+z",
+                      "-z"
+                    ],
+                    "title": "Span Direction",
+                    "type": "string"
+                  },
+                  "tread_depth": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ],
+                        "gt": 0
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "title": "Tread Depth"
+                  }
+                },
+                "required": [
+                  "shape",
+                  "span_direction",
+                  "flight_width",
+                  "landing_depth"
+                ],
+                "title": "PlanStairForm",
+                "type": "object"
+              },
+              "size": {
+                "properties": {
+                  "depth": {
+                    "description": "整组世界Z方向占地（米）"
+                  },
+                  "width": {
+                    "description": "整组世界X方向占地（米）"
+                  }
+                },
+                "required": [
+                  "width",
+                  "depth"
+                ]
+              }
+            },
+            "required": [
+              "form",
+              "size",
+              "floor_connections"
+            ]
+          }
+        }
+      ],
       "description": "保留实例设计及扩展参数，由 plan 实现形态与依附关系。",
       "properties": {
+        "connections": {
+          "items": {
+            "$ref": "#/$defs/ComponentConnection"
+          },
+          "title": "Connections",
+          "type": "array"
+        },
         "description": {
           "default": "",
           "title": "Description",
           "type": "string"
+        },
+        "floor_connections": {
+          "items": {
+            "$ref": "#/$defs/FloorConnection"
+          },
+          "title": "Floor Connections",
+          "type": "array"
         },
         "form": {
           "additionalProperties": true,
@@ -301,6 +667,16 @@
           "default": null,
           "title": "Id"
         },
+        "material_bindings": {
+          "additionalProperties": false,
+          "patternProperties": {
+            "^(?:material|.*Material)$": {
+              "type": "string"
+            }
+          },
+          "title": "Material Bindings",
+          "type": "object"
+        },
         "material_role": {
           "anyOf": [
             {
@@ -328,6 +704,17 @@
           "anyOf": [
             {
               "$ref": "#/$defs/SupportRelation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "repetition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComponentRepetition"
             },
             {
               "type": "null"
@@ -489,6 +876,55 @@
           "title": "Offset",
           "type": "number"
         },
+        "plan_position": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "单连接U形双跑楼梯整组平面中心 [X,Z]；竖向位置由 floor_connections 计算",
+          "title": "Plan Position"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
         "sill_height": {
           "default": 0,
           "title": "Sill Height",
@@ -496,6 +932,96 @@
         }
       },
       "title": "ComponentPlacement",
+      "type": "object"
+    },
+    "ComponentRepetition": {
+      "additionalProperties": false,
+      "description": "等距直线排列的矩形零件；spacing 为相邻中心距，position 为整组中心。",
+      "properties": {
+        "axis": {
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "count": {
+          "minimum": 1,
+          "title": "Count",
+          "type": "integer"
+        },
+        "member_size": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "gt": 0
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Member Size",
+          "type": "array"
+        },
+        "spacing": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Spacing"
+        }
+      },
+      "required": [
+        "count",
+        "axis",
+        "spacing",
+        "member_size"
+      ],
+      "title": "ComponentRepetition",
+      "type": "object"
+    },
+    "ConstructionDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "slab_thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "default": 0.2,
+          "gt": 0,
+          "title": "Slab Thickness"
+        },
+        "wall_thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "default": 0.24,
+          "gt": 0,
+          "title": "Wall Thickness"
+        }
+      },
+      "title": "ConstructionDecision",
       "type": "object"
     },
     "CurtainWallDecision": {
@@ -602,6 +1128,83 @@
       "title": "DesignConstraint",
       "type": "object"
     },
+    "DesignMaterial": {
+      "additionalProperties": true,
+      "description": "本次已决定的 WILD 参数材质；扩展贴图与透射字段仍由引擎 Schema 验收。",
+      "properties": {
+        "albedo": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "default": 1,
+          "ge": 0,
+          "le": 1,
+          "title": "Albedo"
+        },
+        "baseColor": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "ge": 0,
+            "le": 1
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Basecolor",
+          "type": "array"
+        },
+        "lightingCondition": {
+          "const": "D65_noon",
+          "default": "D65_noon",
+          "title": "Lightingcondition",
+          "type": "string"
+        },
+        "metallic": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "default": 0,
+          "ge": 0,
+          "le": 1,
+          "title": "Metallic"
+        },
+        "roughness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "ge": 0,
+          "le": 1,
+          "title": "Roughness"
+        }
+      },
+      "required": [
+        "baseColor",
+        "roughness"
+      ],
+      "title": "DesignMaterial",
+      "type": "object"
+    },
     "DesignRequirements": {
       "additionalProperties": false,
       "properties": {
@@ -705,6 +1308,199 @@
         "upper_pattern"
       ],
       "title": "FacadeDecision",
+      "type": "object"
+    },
+    "FloorConnection": {
+      "additionalProperties": false,
+      "properties": {
+        "from_floor": {
+          "minimum": 1,
+          "title": "From Floor",
+          "type": "integer"
+        },
+        "to_floor": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "const": "roof",
+              "type": "string"
+            }
+          ],
+          "title": "To Floor"
+        }
+      },
+      "required": [
+        "from_floor",
+        "to_floor"
+      ],
+      "title": "FloorConnection",
+      "type": "object"
+    },
+    "FloorLayoutDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "floor": {
+          "minimum": 1,
+          "title": "Floor",
+          "type": "integer"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Level"
+        },
+        "rooms": {
+          "items": {
+            "$ref": "#/$defs/RoomDecision"
+          },
+          "title": "Rooms",
+          "type": "array"
+        },
+        "walls": {
+          "items": {
+            "$ref": "#/$defs/InteriorWallDecision"
+          },
+          "title": "Walls",
+          "type": "array"
+        }
+      },
+      "required": [
+        "floor"
+      ],
+      "title": "FloorLayoutDecision",
+      "type": "object"
+    },
+    "InteriorWallDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "from": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "From",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "thickness": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Thickness"
+        },
+        "to": {
+          "items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "To",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "from",
+        "to",
+        "thickness"
+      ],
+      "title": "InteriorWallDecision",
+      "type": "object"
+    },
+    "LegacyRoomBounds": {
+      "additionalProperties": false,
+      "description": "旧存档保留原字段；新图纸使用 x/z/width/depth。",
+      "properties": {
+        "x_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "X End"
+        },
+        "x_start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "X Start"
+        },
+        "z_end": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Z End"
+        },
+        "z_start": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Z Start"
+        }
+      },
+      "required": [
+        "x_start",
+        "x_end",
+        "z_start",
+        "z_end"
+      ],
+      "title": "LegacyRoomBounds",
       "type": "object"
     },
     "MassingDecision": {
@@ -814,6 +1610,13 @@
     "MaterialIntent": {
       "additionalProperties": true,
       "properties": {
+        "definitions": {
+          "additionalProperties": {
+            "$ref": "#/$defs/DesignMaterial"
+          },
+          "title": "Definitions",
+          "type": "object"
+        },
         "keywords": {
           "items": {
             "type": "string"
@@ -846,7 +1649,7 @@
     },
     "MaterialRegion": {
       "additionalProperties": false,
-      "description": "区域/构件级材质绑定（P5-C）。\n\n🔴 **只做最小表达**：一条绑定 = \"**这一类实体**用这个材质角色\"。\n``type`` 是**目标实体类型**（构件类 ``balcony`` / ``railing`` / ``canopy``…，\n或元素类 ``wall`` / ``floor`` / ``roof`` / ``column``），``role`` 是材质方案里\n的角色名。落点因此是\"按类型换引用\"，不是\"按区域函数/坐标刷\"——\n后者是渲染器的事，不是设计决策。\n\n角色名**不校验**是什么闭集：材质方案（:class:`ResolvedMaterialPlan`）才是闭集，\n引用不存在的角色由编译器记缺陷（只标记不阻断，材质分区写错不该让墙消失）。",
+      "description": "区域/构件级材质绑定（P5-C）。\n\n **只做最小表达**：一条绑定 = \"**这一类实体**用这个材质角色\"。\n``type`` 是**目标实体类型**（构件类 ``balcony`` / ``railing`` / ``canopy``…，\n或元素类 ``wall`` / ``floor`` / ``roof`` / ``column``），``role`` 是材质方案里\n的角色名。落点因此是\"按类型换引用\"，不是\"按区域函数/坐标刷\"——\n后者是渲染器的事，不是设计决策。\n\n角色名**不校验**是什么闭集：材质方案（:class:`ResolvedMaterialPlan`）才是闭集，\n引用不存在的角色由编译器记缺陷（只标记不阻断，材质分区写错不该让墙消失）。",
       "properties": {
         "note": {
           "default": "",
@@ -1049,8 +1852,22 @@
       "additionalProperties": true,
       "description": "整体屋面意图与逐体量覆盖。",
       "properties": {
+        "height": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Height"
+        },
         "overhang": {
           "default": 0,
+          "maximum": 2,
           "minimum": 0,
           "title": "Overhang",
           "type": "number"
@@ -1063,6 +1880,19 @@
           ],
           "title": "Ridge Axis",
           "type": "string"
+        },
+        "thickness": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thickness"
         },
         "type": {
           "title": "Type",
@@ -1089,6 +1919,7 @@
         "overhang": {
           "anyOf": [
             {
+              "maximum": 2,
               "minimum": 0,
               "type": "number"
             },
@@ -1121,6 +1952,115 @@
         "volume"
       ],
       "title": "RoofVolumeOverride",
+      "type": "object"
+    },
+    "RoomBounds": {
+      "additionalProperties": false,
+      "properties": {
+        "depth": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Depth"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "gt": 0,
+          "title": "Width"
+        },
+        "x": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "X"
+        },
+        "z": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Z"
+        }
+      },
+      "required": [
+        "x",
+        "z",
+        "width",
+        "depth"
+      ],
+      "title": "RoomBounds",
+      "type": "object"
+    },
+    "RoomDecision": {
+      "additionalProperties": true,
+      "properties": {
+        "bounds": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoomBounds"
+            },
+            {
+              "$ref": "#/$defs/LegacyRoomBounds"
+            }
+          ],
+          "title": "Bounds"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "name": {
+          "default": "",
+          "title": "Name",
+          "type": "string"
+        },
+        "void": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Void"
+        }
+      },
+      "required": [
+        "bounds"
+      ],
+      "title": "RoomDecision",
       "type": "object"
     },
     "RuleTrace": {

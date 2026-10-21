@@ -1,0 +1,1227 @@
+{
+  "wild-server/app/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lines": 0,
+    "bytes": 0
+  },
+  "wild-server/app/agent/assets/__init__.py": {
+    "sha256": "b3e965e2431e888e43728e1b693d08be031606929c1999119f0ad384ba702123",
+    "lines": 6,
+    "bytes": 119
+  },
+  "wild-server/app/agent/assets/graph.py": {
+    "sha256": "4f9a9aeaa725f846d1eb4a49e2bcdfbf4cd61a99779ea9042254cb731a6f57f7",
+    "lines": 205,
+    "bytes": 7896
+  },
+  "wild-server/app/agent/compiler/__init__.py": {
+    "sha256": "25a9ff5db00f00fb96538416f8e1d442969bb2dfe81c66c014d9ce26881e15fd",
+    "lines": 27,
+    "bytes": 649
+  },
+  "wild-server/app/agent/compiler/compile.py": {
+    "sha256": "78089a2c28d83a9127ea45fc7531ba68eee8b6a9f77dde58273b0c09492cdbf7",
+    "lines": 2334,
+    "bytes": 112074
+  },
+  "wild-server/app/agent/compiler/diagnostics.py": {
+    "sha256": "8f54c90dca3855fe8ecb00ea24ba64eda65a93fcea852a671ba2274c18627efb",
+    "lines": 158,
+    "bytes": 7828
+  },
+  "wild-server/app/agent/compiler/pipeline_defects.py": {
+    "sha256": "de53cf9557ad9214e1ef63055cc4f02dc183f8e27b448945a83b655b1a862ae7",
+    "lines": 26,
+    "bytes": 989
+  },
+  "wild-server/app/agent/design_flow/__init__.py": {
+    "sha256": "53d3e8072cb149352810c94b6facfc66caf2204d3f182480750bc939b9bcf0ff",
+    "lines": 1,
+    "bytes": 95
+  },
+  "wild-server/app/agent/design_flow/compile.py": {
+    "sha256": "03c210aa36d5a1a12f76ea208e7d01d264addbd9d602642b14f07a2a209b603a",
+    "lines": 215,
+    "bytes": 14301
+  },
+  "wild-server/app/agent/design_flow/review.py": {
+    "sha256": "1b7f606dc4f9231f777c92690944c6067d75ed0f16ab0c8a9be3550ab0fb6ebd",
+    "lines": 110,
+    "bytes": 4642
+  },
+  "wild-server/app/agent/generation/__init__.py": {
+    "sha256": "73f371fcc62bfe2b3940c28565f59c11f7e5701a06a12f71a5a23adaaae913c2",
+    "lines": 2,
+    "bytes": 46
+  },
+  "wild-server/app/agent/generation/architecture/__init__.py": {
+    "sha256": "4d7653b53c621bbb71fb6672f3afb942a5414d0eb62446af59e6067f70064c25",
+    "lines": 35,
+    "bytes": 1025
+  },
+  "wild-server/app/agent/generation/architecture/design_blocks.py": {
+    "sha256": "7164975ef4ca8d454b01915d58721fcbe9b3c80af1d8172d926c06c097abd114",
+    "lines": 30,
+    "bytes": 980
+  },
+  "wild-server/app/agent/generation/architecture/design_workflow.py": {
+    "sha256": "2f42ac6dd9125b23f27b6de4fb2ea0469c1f697e615890d066e7505b535782d8",
+    "lines": 328,
+    "bytes": 13745
+  },
+  "wild-server/app/agent/generation/architecture/facade.py": {
+    "sha256": "ab75b5c8142a777bc0f7079dc5e4acb15d70ff28dd3d43c117eba11e45bef9b2",
+    "lines": 1616,
+    "bytes": 65306
+  },
+  "wild-server/app/agent/generation/architecture/planning.py": {
+    "sha256": "61a5a711af485e993942302d56187eb7b5ea2ee53f703cdde133190b345a13d9",
+    "lines": 488,
+    "bytes": 25500
+  },
+  "wild-server/app/agent/generation/architecture/profile.py": {
+    "sha256": "59b36d99aec1cf16a6cd9d24d808d37b01ba1379a506a6c4c7b8da33b43da1a8",
+    "lines": 729,
+    "bytes": 27913
+  },
+  "wild-server/app/agent/generation/architecture/recipes.py": {
+    "sha256": "bea342e517cf827fa776d8ba9cfb2c3d10c26d5911e25ccf3281b5032c5cd0eb",
+    "lines": 118,
+    "bytes": 4040
+  },
+  "wild-server/app/agent/generation/architecture/revision_patch.py": {
+    "sha256": "865bf1d19c27b8941125312eb1bbb92e8312cd564877a5909843807c7c2659d7",
+    "lines": 63,
+    "bytes": 3501
+  },
+  "wild-server/app/agent/generation/architecture/skeleton.py": {
+    "sha256": "657c29c88b730848fef44bb8b6033560a97871f68163e5d043767058310811c1",
+    "lines": 1163,
+    "bytes": 52812
+  },
+  "wild-server/app/agent/generation/architecture/target_kind.py": {
+    "sha256": "7308016404ff590da87e25b35d38428f4af064d876ccae3ca377867f035105c1",
+    "lines": 38,
+    "bytes": 1733
+  },
+  "wild-server/app/agent/generation/architecture/workflow.py": {
+    "sha256": "e9a1621c2aa5c489a54844ee66b642153d6170eacaee6e88bceadb8ff4dbd4ee",
+    "lines": 499,
+    "bytes": 21401
+  },
+  "wild-server/app/agent/generation/assembly/__init__.py": {
+    "sha256": "6d3398b6740b99be42a4efffdb45b9a5b48d452cec2e5d23d7559aa1da6f8da8",
+    "lines": 9,
+    "bytes": 362
+  },
+  "wild-server/app/agent/generation/assembly/merge.py": {
+    "sha256": "268f469bf8ecb1ad8610a3a94790b34247e0915cee393994c2b1b365168fcaf2",
+    "lines": 309,
+    "bytes": 12837
+  },
+  "wild-server/app/agent/generation/assembly/workflow.py": {
+    "sha256": "4af504b24811d482ec7a471c48fb01271674db9b7b97ae9bf127d01047aa22dd",
+    "lines": 607,
+    "bytes": 27777
+  },
+  "wild-server/app/agent/generation/capability.py": {
+    "sha256": "d016ea39208dad79bf17e1db1e085d8f1704b43b87dcec111ee10ef5738d5eaa",
+    "lines": 360,
+    "bytes": 16005
+  },
+  "wild-server/app/agent/generation/component/__init__.py": {
+    "sha256": "8c40cce5ad5a3de9fb424574e06de3afc7bc48f19358dd4b5af8f5982e80c649",
+    "lines": 29,
+    "bytes": 970
+  },
+  "wild-server/app/agent/generation/component/processing.py": {
+    "sha256": "a79c93f79d3c5bac35fe14a7e148dce8ce7e7fd8d8f72a60a64c6ab36c599edf",
+    "lines": 127,
+    "bytes": 4731
+  },
+  "wild-server/app/agent/generation/component/registry.py": {
+    "sha256": "99595c068ec587dfe4d03e378843c6e5781edb32e9cb7ddb0ec48072c695d1ea",
+    "lines": 623,
+    "bytes": 34370
+  },
+  "wild-server/app/agent/generation/component/workflow.py": {
+    "sha256": "402ce209cef7638897765c28eb1b71cf2087c345176223dc9d32239d673594ba",
+    "lines": 449,
+    "bytes": 20953
+  },
+  "wild-server/app/agent/generation/material/__init__.py": {
+    "sha256": "420a1067bba287d0a77420336d9679d83899593291ebf3a272c2f64c99062ec8",
+    "lines": 33,
+    "bytes": 934
+  },
+  "wild-server/app/agent/generation/material/plan.py": {
+    "sha256": "c1f65a777d2e8c171fc7e9fe6816b94bb5287920a265f78c62cdc2c06dda14f7",
+    "lines": 801,
+    "bytes": 30205
+  },
+  "wild-server/app/agent/generation/material/recipes.py": {
+    "sha256": "183b1bbf6cd48c155d7b4896aa794825d22d243d0a77f448523b68bed3789ff5",
+    "lines": 273,
+    "bytes": 11061
+  },
+  "wild-server/app/agent/generation/material/workflow.py": {
+    "sha256": "cf16ea78541de51aaa122fe761a04414382661d799c0497da6b8a66d92d4db4d",
+    "lines": 209,
+    "bytes": 10263
+  },
+  "wild-server/app/agent/generation/objects/__init__.py": {
+    "sha256": "8e745574799b9ca51975e7823b841ffe91eaabb8620c7ad4b45c597de3074087",
+    "lines": 39,
+    "bytes": 1430
+  },
+  "wild-server/app/agent/generation/objects/planning.py": {
+    "sha256": "bd35a3e7a49c35e7551c23286ae6809ac6d056d8b2e0bd100d5339bc16262eb7",
+    "lines": 777,
+    "bytes": 32948
+  },
+  "wild-server/app/agent/generation/objects/skeleton.py": {
+    "sha256": "990696645b58498b8f14ddfe7957dd068940ec9412c0bba3129592f28d50488b",
+    "lines": 169,
+    "bytes": 6948
+  },
+  "wild-server/app/agent/generation/objects/subtypes.py": {
+    "sha256": "d69d05d85b559a48efffe6aebcfcbcb7007ef58d4c2eb44123c15beaf0e509dc",
+    "lines": 264,
+    "bytes": 11868
+  },
+  "wild-server/app/agent/generation/objects/workflow.py": {
+    "sha256": "87be7d240342bdc9f66191072ba6e3652c7ee775afdc7cf3b5e516ae9041b629",
+    "lines": 196,
+    "bytes": 8040
+  },
+  "wild-server/app/agent/generation/skeleton/__init__.py": {
+    "sha256": "73ca595e903cac7f9b7462cca77d8577c522835d879902ec472778f9caa0ff5e",
+    "lines": 9,
+    "bytes": 284
+  },
+  "wild-server/app/agent/generation/skeleton/output.py": {
+    "sha256": "accada0cfb687fb93e63ad4a94857acc5af1907acb004b3901acc33ca947d5d6",
+    "lines": 167,
+    "bytes": 7298
+  },
+  "wild-server/app/agent/generation/skeleton/workflow.py": {
+    "sha256": "be0c832a8c2dd9b0e624749962426e025a023ac6dabd96958f7b98dc60fab288",
+    "lines": 551,
+    "bytes": 24270
+  },
+  "wild-server/app/agent/generation/spatial/__init__.py": {
+    "sha256": "fd3c467885df86e42b5718f690687dda3fe0ab0fe9522d53801cf8bd71ea55bc",
+    "lines": 27,
+    "bytes": 754
+  },
+  "wild-server/app/agent/generation/spatial/geometry.py": {
+    "sha256": "1325d2d87f3085e0a195de05fd2b6d38dd5965066bf64e4e5bda8866cf34e44e",
+    "lines": 173,
+    "bytes": 7209
+  },
+  "wild-server/app/agent/generation/spatial/invariants.py": {
+    "sha256": "a6ab5f9eb8e187c89080128308099bf11763c30bd054a93f5f6dfd4539c04347",
+    "lines": 59,
+    "bytes": 2183
+  },
+  "wild-server/app/agent/generation/spatial/stair_openings.py": {
+    "sha256": "00c2000f5e10731e7de909b05c413a43e1726f025ccc9ef71be95d78264cc583",
+    "lines": 121,
+    "bytes": 5439
+  },
+  "wild-server/app/agent/generation/styles.py": {
+    "sha256": "6b14bc8fdc3315ecba3104f55bf1cfec23930426cbead9cde0a8d5a277635cda",
+    "lines": 176,
+    "bytes": 7836
+  },
+  "wild-server/app/agent/graph.py": {
+    "sha256": "df432c1ba96871380a1a74dc2d651e865638767a1d80428fd9ccf2e80f98e62e",
+    "lines": 282,
+    "bytes": 11912
+  },
+  "wild-server/app/agent/intent/__init__.py": {
+    "sha256": "082fa7d2a20ef9b2a33e04ccae3bf3c23048706aa555921253c5da51340d272f",
+    "lines": 38,
+    "bytes": 1203
+  },
+  "wild-server/app/agent/intent/classify.py": {
+    "sha256": "af71e186d78409c36f6901bba3835c2787302ac0d5b185c1fe6954a2a137becb",
+    "lines": 104,
+    "bytes": 3515
+  },
+  "wild-server/app/agent/intent/decision.py": {
+    "sha256": "7242bd64898827e7938f6c421c37e00dd57fff1d7a25053ed28c5bd33bb176c1",
+    "lines": 124,
+    "bytes": 4502
+  },
+  "wild-server/app/agent/intent/prompt.py": {
+    "sha256": "2b4ff87f768500a6254e47749d906545111fd93a322ab1fb27fcbd305d8c5b9f",
+    "lines": 184,
+    "bytes": 6294
+  },
+  "wild-server/app/agent/intent/rules.py": {
+    "sha256": "a75a820686e570969585d03233484e59887471ff34072b688f6f35362ee788d1",
+    "lines": 34,
+    "bytes": 1324
+  },
+  "wild-server/app/agent/intent/workflow.py": {
+    "sha256": "b72d7ab4051d21b3243adba8e0ddb7206a924f7cd50a998257aa634101c4a744",
+    "lines": 41,
+    "bytes": 1380
+  },
+  "wild-server/app/agent/knowledge/__init__.py": {
+    "sha256": "3073b11cb541e583adb308cb9f92a5d970070a677f54f046442d78e100da6d7a",
+    "lines": 2,
+    "bytes": 59
+  },
+  "wild-server/app/agent/knowledge/chat_workflow.py": {
+    "sha256": "3fb790f67ea353e118603b6c3b3b2e6a57ef2d5a0b65a4f9c4afea84d644c542",
+    "lines": 124,
+    "bytes": 4023
+  },
+  "wild-server/app/agent/knowledge/component_names.py": {
+    "sha256": "81ecd07c6eaa0b14effa20ae694834eda509efef2b6e9f9fe8ec54d45cc87767",
+    "lines": 105,
+    "bytes": 6167
+  },
+  "wild-server/app/agent/knowledge/policy.py": {
+    "sha256": "ad1b53e5a4dcc49def8382b827f62b92366be2b05c7753d49eaa9c6219b2569c",
+    "lines": 85,
+    "bytes": 3765
+  },
+  "wild-server/app/agent/knowledge/web/__init__.py": {
+    "sha256": "47ff6084c61fc9232a233aa9f861b55198014cc6d9426b20d9283738255192e9",
+    "lines": 24,
+    "bytes": 877
+  },
+  "wild-server/app/agent/knowledge/web/knowledge_claims.py": {
+    "sha256": "819204d11e8d49b111f621b88470ba82caab8b137f89ee40b174e49639e53b64",
+    "lines": 147,
+    "bytes": 6896
+  },
+  "wild-server/app/agent/knowledge/web/staging.py": {
+    "sha256": "9b153d28fd3e93acbc0211a4c5964f01d9ffef2db5b95c4ed24fc7bb25010697",
+    "lines": 109,
+    "bytes": 3646
+  },
+  "wild-server/app/agent/nodes/__init__.py": {
+    "sha256": "3c0efe8e5906826f44f9925a059aec3e5f5b5af589fab051cfa323d17fb1f289",
+    "lines": 1,
+    "bytes": 89
+  },
+  "wild-server/app/agent/nodes/architecture_node.py": {
+    "sha256": "c81b3ceaf811d6435b77f892550018fabc3fef19df007c2c2cb2fbaee1d575ee",
+    "lines": 9,
+    "bytes": 319
+  },
+  "wild-server/app/agent/nodes/callback_node.py": {
+    "sha256": "25d21d1dc4a9c6bbd3843fcb31c08992a0b914aab85fb62d2e413cb3ca52a797",
+    "lines": 8,
+    "bytes": 247
+  },
+  "wild-server/app/agent/nodes/chat_node.py": {
+    "sha256": "e73eb6bd0bef0fd3e6ed2adb23bda61eeef0d07e38ee4965809f74d553a08b09",
+    "lines": 5,
+    "bytes": 164
+  },
+  "wild-server/app/agent/nodes/classifier_node.py": {
+    "sha256": "f1b459303417adc8cb6b4011b1f19c39188e146269702488ca3d617aff80a46d",
+    "lines": 10,
+    "bytes": 360
+  },
+  "wild-server/app/agent/nodes/compile_node.py": {
+    "sha256": "6edb55ac18abce6403d44798d9d19c96063686fc2dd03adda8a75fd97adc2303",
+    "lines": 9,
+    "bytes": 269
+  },
+  "wild-server/app/agent/nodes/design_review_node.py": {
+    "sha256": "e270ee20f476b062c09c997a60b1299f0d2930161caaaa1badde40cf9deb2319",
+    "lines": 11,
+    "bytes": 502
+  },
+  "wild-server/app/agent/nodes/execute_node.py": {
+    "sha256": "1dd00efb1e6a5892d2da18a7d6e13acc297288ab9ceb547c73ecca61687ee901",
+    "lines": 9,
+    "bytes": 345
+  },
+  "wild-server/app/agent/nodes/material_plan_node.py": {
+    "sha256": "94ea8ca5fca671d51c6eeee3fa0746431e45932d56b69b15c3b8f69d3b481b87",
+    "lines": 5,
+    "bytes": 191
+  },
+  "wild-server/app/agent/nodes/object_design_node.py": {
+    "sha256": "3bd08d50deb8ecc1f06b09080ab105048562cfb7addadca8aa8fef55741687d5",
+    "lines": 9,
+    "bytes": 299
+  },
+  "wild-server/app/agent/nodes/patch_node.py": {
+    "sha256": "6db08a313e125801789db3c97c305793f8b33ad1f6def85aa46e3cfef0ee90b1",
+    "lines": 10,
+    "bytes": 395
+  },
+  "wild-server/app/agent/nodes/plan_node.py": {
+    "sha256": "abd1da785c8e24756bbaf2b3a65dfb3dceb28c90dc9c50b502a50cc18465d1f6",
+    "lines": 8,
+    "bytes": 250
+  },
+  "wild-server/app/agent/nodes/replanner_node.py": {
+    "sha256": "3f5fa0d56c4c1e5604957f6ac5b35864fa7ab4baba7ce8f47bb8c4cec6b69656",
+    "lines": 9,
+    "bytes": 315
+  },
+  "wild-server/app/agent/nodes/skeleton_node.py": {
+    "sha256": "3a3711bbb866f9aa74480f411f9de5076b84705c48b9da1ab87c5fb161f18040",
+    "lines": 8,
+    "bytes": 261
+  },
+  "wild-server/app/agent/nodes/validate_node.py": {
+    "sha256": "07b9a07a18805792d8f2786d005ee61ba49c514bdaf1d51d7d3ac8490a4aeccf",
+    "lines": 5,
+    "bytes": 131
+  },
+  "wild-server/app/agent/patch/__init__.py": {
+    "sha256": "a044a7490c8ec0ba7ca98922adb460f692af26918b75d11c57245bb1c19a6ecc",
+    "lines": 4,
+    "bytes": 148
+  },
+  "wild-server/app/agent/patch/workflow.py": {
+    "sha256": "e446fc19c9dbe29c9f90d258c0e2cfd0755168b81ad542b92a1b1738dee64d76",
+    "lines": 107,
+    "bytes": 4000
+  },
+  "wild-server/app/agent/plan/__init__.py": {
+    "sha256": "c80d9fecde0d5a6b72aa0fa3d6c260b306484628e1fb2b7d77232191bbd05363",
+    "lines": 111,
+    "bytes": 2945
+  },
+  "wild-server/app/agent/plan/capability.py": {
+    "sha256": "e7d26b64399d922799bf62296a8aecbdf1053264bbf40cd865e927bc57cad062",
+    "lines": 199,
+    "bytes": 8975
+  },
+  "wild-server/app/agent/plan/contracts.py": {
+    "sha256": "615d48ca0a0b107445af807fe3e8672c0ce7eb99002a13cd82a11c24c8117a62",
+    "lines": 215,
+    "bytes": 8535
+  },
+  "wild-server/app/agent/plan/expand.py": {
+    "sha256": "3b9db59a5e5ba09028a89ab35ce55eb2e84811f424ca189e4eea3b3e83052f28",
+    "lines": 585,
+    "bytes": 27685
+  },
+  "wild-server/app/agent/plan/handlers.py": {
+    "sha256": "21946efeca77bbfebd686c0772934f0f74dbf2d6916e7977a623afdbadb32ce5",
+    "lines": 381,
+    "bytes": 18477
+  },
+  "wild-server/app/agent/plan/implementation.py": {
+    "sha256": "42fa74f8b0e5a52b061aa12871e175e96ac5b44ff9282089686a74ada148ae8c",
+    "lines": 1015,
+    "bytes": 75031
+  },
+  "wild-server/app/agent/plan/knowledge_tool.py": {
+    "sha256": "4b94509ec628a43f3b7558acb00df599c4273f9f7db95403f9caf0c9fedbdfdd",
+    "lines": 122,
+    "bytes": 5800
+  },
+  "wild-server/app/agent/plan/reconcile.py": {
+    "sha256": "847146ee4098a422ed670f0fe3024d72dcb15e5ba7fe21866181bce241e338df",
+    "lines": 311,
+    "bytes": 14472
+  },
+  "wild-server/app/agent/plan/replan.py": {
+    "sha256": "324ce3c68958c2aa23a908b2073daf6ab82e326b91ea6e6db6d3c883c46f76c6",
+    "lines": 585,
+    "bytes": 23056
+  },
+  "wild-server/app/agent/plan/slot_utils.py": {
+    "sha256": "f90e51dd1b2ef80e2d293a8431e09dd405ed7c24f36019466c02ad60f8b5b418",
+    "lines": 79,
+    "bytes": 2979
+  },
+  "wild-server/app/agent/plan/slots.py": {
+    "sha256": "308ea7dbcda4be8c50a32ce07c9a4d45b37ff5546f95365739c6ad236ce82d7f",
+    "lines": 10,
+    "bytes": 302
+  },
+  "wild-server/app/agent/plan/store.py": {
+    "sha256": "cf082cf811a5e342cceca4778e1c1d8138140ccbba64f865beba126b10150f17",
+    "lines": 307,
+    "bytes": 10914
+  },
+  "wild-server/app/agent/plan/strategy.py": {
+    "sha256": "f8095cf64bb428bdb55dd30ef5251b5768e7feb4a298a8019ce2a331b06cc587",
+    "lines": 345,
+    "bytes": 14132
+  },
+  "wild-server/app/agent/plan/tool_loop.py": {
+    "sha256": "5f89ca5156701f050d951ba3d9a1da701d7d26650a50a5085946ca9e76d45190",
+    "lines": 304,
+    "bytes": 13622
+  },
+  "wild-server/app/agent/plan/tool_registry.py": {
+    "sha256": "64c72833066eeb401109ced4c25823102dcf7191c24055fd01eecb3d71762b3e",
+    "lines": 202,
+    "bytes": 8882
+  },
+  "wild-server/app/agent/plan/workflow.py": {
+    "sha256": "394dc92804af7099a4ed5f28cf00fbd10b02588983538a79e6d9b0500b9a99ec",
+    "lines": 492,
+    "bytes": 21988
+  },
+  "wild-server/app/agent/prompts/__init__.py": {
+    "sha256": "a743267270d57771c7cda4b32e2e4667bc3d62e9f6f592860a523177409f172e",
+    "lines": 39,
+    "bytes": 1364
+  },
+  "wild-server/app/agent/prompts/chat.py": {
+    "sha256": "69c8867166988e6bcd1f8ab0d23ea3bd97a0bd49c9c1df8d6673165341fe5d3e",
+    "lines": 25,
+    "bytes": 1486
+  },
+  "wild-server/app/agent/prompts/common.py": {
+    "sha256": "e3d52024c612c3b4629c8fb0516822d7db3f11b6546536ffb0d8e3aa0af4ef86",
+    "lines": 77,
+    "bytes": 3326
+  },
+  "wild-server/app/agent/prompts/generation.py": {
+    "sha256": "0de47e5205b5259c5f80c2f2fc657eb62beb2ad4f3d767ab905f6e80253b73b8",
+    "lines": 500,
+    "bytes": 24798
+  },
+  "wild-server/app/agent/prompts/plan.py": {
+    "sha256": "664cf7e69913d9c07b27b4e80f32a97df18d16ac87c15fcc7dee01e1fdcf4f39",
+    "lines": 237,
+    "bytes": 11607
+  },
+  "wild-server/app/agent/prompts/planning.py": {
+    "sha256": "9f7a195e5bc1d1ce90d2ac3c7ab306481215c5520927c76e5f6bf165121956fe",
+    "lines": 452,
+    "bytes": 30775
+  },
+  "wild-server/app/agent/prompts/recovery.py": {
+    "sha256": "2dc94cd214a2f67271f194762c19aaa973e594400fd528abf03612668f09a558",
+    "lines": 73,
+    "bytes": 2474
+  },
+  "wild-server/app/agent/prompts/repair.py": {
+    "sha256": "9f7a803f03b185ebf8dbea1e88ba289ca52321a00f54a492d0b642420bb7e235",
+    "lines": 125,
+    "bytes": 5062
+  },
+  "wild-server/app/agent/repair/__init__.py": {
+    "sha256": "9782cf2cf5b84379886bfc511182f89d1e1477922964d3787b63064e43edc4b7",
+    "lines": 2,
+    "bytes": 39
+  },
+  "wild-server/app/agent/repair/state_updates.py": {
+    "sha256": "63ce9a00e72ab1d627bc03293e36c4896d88256e9f3bfe96447c9105ab693477",
+    "lines": 113,
+    "bytes": 4759
+  },
+  "wild-server/app/agent/repair/tools.py": {
+    "sha256": "08aad1949ae695b44506a885a724cca7326c0615ca80b2f01e1bf18abea9065d",
+    "lines": 326,
+    "bytes": 12930
+  },
+  "wild-server/app/agent/repair/workflow.py": {
+    "sha256": "36f96fff564dcb2aca4006e1c399f4edb05453a2077c6cabac9c239aa18ad9e9",
+    "lines": 351,
+    "bytes": 15622
+  },
+  "wild-server/app/agent/routing.py": {
+    "sha256": "3bf94f69e4c54957536e2ccc93c928f9593ac50ed55e37c101269eafbce41d6e",
+    "lines": 44,
+    "bytes": 1377
+  },
+  "wild-server/app/agent/runtime.py": {
+    "sha256": "3b4248234988c0ec7ea43395d7a5008b0870e9ac8a561b76ae0ecb933aed8fa6",
+    "lines": 113,
+    "bytes": 4804
+  },
+  "wild-server/app/agent/state.py": {
+    "sha256": "582c0b32e2fd7414abb11b968c847f7f81beda4deb54b718c46d162d1045bdad",
+    "lines": 145,
+    "bytes": 9693
+  },
+  "wild-server/app/agent/validation/__init__.py": {
+    "sha256": "dacabf4b683a56207fc141a7472c02123bc7df13031ca99c952fbe651b9e101a",
+    "lines": 1,
+    "bytes": 63
+  },
+  "wild-server/app/agent/validation/candidate.py": {
+    "sha256": "c55543f96c2e920ce8027190cfbc59db858feab2d15719a275dc721094523cae",
+    "lines": 194,
+    "bytes": 14143
+  },
+  "wild-server/app/agent/validation/component_trace.py": {
+    "sha256": "9af1befc34076cde3b06b86199fc38acb89c1c5648662b6b5c59cbccc2a8b72c",
+    "lines": 164,
+    "bytes": 6082
+  },
+  "wild-server/app/agent/validation/design_constraints.py": {
+    "sha256": "b9b8efb20162a2aab6d278467b3334a8c8d862803f1ebcc13f41eac19af07ec8",
+    "lines": 207,
+    "bytes": 10164
+  },
+  "wild-server/app/agent/validation/diagnostics.py": {
+    "sha256": "3dffaab95553216bfcbc359807281f9bd579a15df5679c56476dda8e742e2b4b",
+    "lines": 115,
+    "bytes": 4356
+  },
+  "wild-server/app/agent/validation/issues.py": {
+    "sha256": "66e080b8db4512ab976103f5495e0e12d898afdeffd09b36f3e8829d631b7fa8",
+    "lines": 243,
+    "bytes": 11414
+  },
+  "wild-server/app/agent/validation/reasoning.py": {
+    "sha256": "2ddc96516e1f2e9172ad60690dd3f20996bd6502bdc7e994d9685b11dfdfd793",
+    "lines": 257,
+    "bytes": 8231
+  },
+  "wild-server/app/agent/validation/structure.py": {
+    "sha256": "5d7d120112d44cabb3a813fef54e738ea70ccdf8a46db12512cd6157362284e1",
+    "lines": 301,
+    "bytes": 9926
+  },
+  "wild-server/app/agent/validation/tool.py": {
+    "sha256": "cec9f5bf6a934a2bb35c02ae83e8ecf5ff069e161ac32a70a99e0dc5d1c5ea2b",
+    "lines": 262,
+    "bytes": 9124
+  },
+  "wild-server/app/agent/validation/workflow.py": {
+    "sha256": "4ca78bed88df6de0441cd093fae74d0d3756b5a849a01bca8abfa82c711302d7",
+    "lines": 183,
+    "bytes": 8148
+  },
+  "wild-server/app/agent/vision/benchmark.py": {
+    "sha256": "a41281ac34f4c69cd76924bbab038a95470b4ccd661acac69d0d2707c80ac36c",
+    "lines": 438,
+    "bytes": 17213
+  },
+  "wild-server/app/agent/vision/evaluation.py": {
+    "sha256": "4a99e4b8ee77b0f8de807392dcd43b844ae16e4f43fdd1c550074ec46fddf66f",
+    "lines": 627,
+    "bytes": 26926
+  },
+  "wild-server/app/agent/vision/report.py": {
+    "sha256": "9424290378f42a952093a1b0ddbfa7bb561d037a617d1218a29f4ec10d07bbcb",
+    "lines": 84,
+    "bytes": 4416
+  },
+  "wild-server/app/agent/vision/revision.py": {
+    "sha256": "62c0251ef1fe3d000626dca2dc1c805060f876b14b089e5e87c32dd42a9efd1c",
+    "lines": 817,
+    "bytes": 37692
+  },
+  "wild-server/app/agent/vision/workflow.py": {
+    "sha256": "21f2af63cf3de1e26f55df1f739f0a7eecefa9bdbf56578e313143f008c52ff6",
+    "lines": 102,
+    "bytes": 5656
+  },
+  "wild-server/app/api/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lines": 0,
+    "bytes": 0
+  },
+  "wild-server/app/api/assets.py": {
+    "sha256": "661c7753c60335221b7ceb4f569bdbf20d93f538c4f8b6b91a46bfa8ac6909c8",
+    "lines": 145,
+    "bytes": 5508
+  },
+  "wild-server/app/api/config_api.py": {
+    "sha256": "5c153fc4ce25a53689c37319b1a8d71fa2e3126cd300cfa5ed7de4681f98b3bf",
+    "lines": 245,
+    "bytes": 9092
+  },
+  "wild-server/app/api/designs.py": {
+    "sha256": "6dc12d9620f93f2dae8bd06087390fa09ed23c2fa0c898bb6403d5b783fb4370",
+    "lines": 94,
+    "bytes": 3739
+  },
+  "wild-server/app/api/rag_observability.py": {
+    "sha256": "9edd77f84ddcde5a6d1a60e89ccc911d230c20088b7ca29b0b8e961bb8c6fd3d",
+    "lines": 42,
+    "bytes": 1331
+  },
+  "wild-server/app/api/scenes.py": {
+    "sha256": "45a49ffedd2fee2849140d0e1a38785bd6dac817f92a1401d77f4d912ebfd5cf",
+    "lines": 200,
+    "bytes": 7941
+  },
+  "wild-server/app/api/sessions.py": {
+    "sha256": "f857db40bbef503648461023f20cf441dd07633025d9203ed06f4df7ca9669f0",
+    "lines": 403,
+    "bytes": 15950
+  },
+  "wild-server/app/api/ws_agent.py": {
+    "sha256": "197ebd3b07a0471b03d4dd576a4e6fc2422119de7da4a22ef4363bc91e4723f9",
+    "lines": 1949,
+    "bytes": 81459
+  },
+  "wild-server/app/contracts/__init__.py": {
+    "sha256": "5bf68780e5c13714566179cc12bcb324e098cbe2f62fbe6c631ea4ce4a4d62fe",
+    "lines": 2,
+    "bytes": 57
+  },
+  "wild-server/app/contracts/agent_events.py": {
+    "sha256": "cccf09cd4a5ad524b0b3570b9e8d7f7b375742239cb73ff8474b57d22760478d",
+    "lines": 9,
+    "bytes": 317
+  },
+  "wild-server/app/design/__init__.py": {
+    "sha256": "7edbfe0a987a0c5660748d64285d0dd2e5f3c44def56491bf273bfabda64fbbc",
+    "lines": 21,
+    "bytes": 549
+  },
+  "wild-server/app/design/compilation.py": {
+    "sha256": "e8cae1c1fdf034e9955f47fa2fbb656431a8c6f1a283f3fcbefc96da20dee3d5",
+    "lines": 132,
+    "bytes": 8479
+  },
+  "wild-server/app/design/completeness.py": {
+    "sha256": "1a9d009abb5029f602c014bb62be558a960b6dff3dcd2c2dc8567c1ea030c0bf",
+    "lines": 220,
+    "bytes": 12927
+  },
+  "wild-server/app/design/contracts.py": {
+    "sha256": "36152999b4b312a7731c5552a3ee4a7c1766d7bef518819b65b1378aaf1911ca",
+    "lines": 889,
+    "bytes": 36914
+  },
+  "wild-server/app/design/coordinates.py": {
+    "sha256": "20b5a17c210c98f9e8dee2b7520ff4064b5969a4759f9150c91da044c1ac4f4d",
+    "lines": 674,
+    "bytes": 42420
+  },
+  "wild-server/app/design/fulfillment.py": {
+    "sha256": "008d42df4eeb56610903d8fa89cedb7c61d98823f313c7457f7a4eeb77e9d361",
+    "lines": 1106,
+    "bytes": 46635
+  },
+  "wild-server/app/design/markers.py": {
+    "sha256": "0194b4929e72809a6586f818f61e9db935ec5ad21aa102496861be058c56e8fa",
+    "lines": 321,
+    "bytes": 21262
+  },
+  "wild-server/app/design/normalization.py": {
+    "sha256": "279020da2382adeed53f7adc5d93ad33d7d2f89ab8fcbb35f6a40280eb9c94ef",
+    "lines": 171,
+    "bytes": 10386
+  },
+  "wild-server/app/design/openings.py": {
+    "sha256": "e5b589206447b1b925d9ad9b0c72ce105e77376f1ef1f6912991a67ba7ed645d",
+    "lines": 133,
+    "bytes": 6007
+  },
+  "wild-server/app/design/preview.py": {
+    "sha256": "c6f8dbd5afaea05951bba22c84c9753f0690c52e16db5954ec42323bbc10cb9f",
+    "lines": 248,
+    "bytes": 16148
+  },
+  "wild-server/app/design/relations.py": {
+    "sha256": "d79e480a79ca24b93eb0f6bfb9df865316d268af38233c029356f40d3ca6e61d",
+    "lines": 1072,
+    "bytes": 65537
+  },
+  "wild-server/app/design/repository.py": {
+    "sha256": "cdaf2e47824aac7a523fd9a190f430f5cc4f059b333805729c5849e169f710d7",
+    "lines": 227,
+    "bytes": 10519
+  },
+  "wild-server/app/design/resolver.py": {
+    "sha256": "c585f3b1316043708f746629733db37d038cbabd369c3384195ae9419fa36751",
+    "lines": 601,
+    "bytes": 28379
+  },
+  "wild-server/app/design/review_outcome.py": {
+    "sha256": "a58519c4e3c56a79c604930ed6dae6ef7ae85e73f9ee7419d3a1d75403894a3b",
+    "lines": 85,
+    "bytes": 2898
+  },
+  "wild-server/app/design/spatial_review.py": {
+    "sha256": "a2fe2593a599aeb388a27a1907ddf7f94f01ef1d3c7d326bb28a728d802e456d",
+    "lines": 160,
+    "bytes": 8239
+  },
+  "wild-server/app/extensions/__init__.py": {
+    "sha256": "ea0ef6f96ed8635c266331710e1e06ae87f1cdd26affea7bb1342487b1775734",
+    "lines": 1,
+    "bytes": 40
+  },
+  "wild-server/app/extensions/presence/__init__.py": {
+    "sha256": "fa1aef095859cb45db3ebcf55b8e1807ccf2ac447069a3df6f86b14d30eb9c39",
+    "lines": 5,
+    "bytes": 184
+  },
+  "wild-server/app/extensions/presence/geoip.py": {
+    "sha256": "713e7a3c63b3a85d159934939a3eb6f849453e208da71cea573f7f55edd2fa8a",
+    "lines": 148,
+    "bytes": 4807
+  },
+  "wild-server/app/extensions/presence/service.py": {
+    "sha256": "71751a69df06a4492b1b523122f963ad83a90286798bf0a757633978ffc67711",
+    "lines": 130,
+    "bytes": 4029
+  },
+  "wild-server/app/llm/__init__.py": {
+    "sha256": "04ee980e43a82a5ae72f61f87c2d400cf708ce20842c099fc543bdd6eb7f6de3",
+    "lines": 2,
+    "bytes": 68
+  },
+  "wild-server/app/llm/client.py": {
+    "sha256": "d078cc7ea8b523d25357ab0ae02e435b76dbf1672bc1bfdd5201aa7b38076af1",
+    "lines": 130,
+    "bytes": 5184
+  },
+  "wild-server/app/llm/creator.py": {
+    "sha256": "6f6a1a4735755937b758a5b5ff85c0031324c8fd1dff7848ce66068344bd5487",
+    "lines": 76,
+    "bytes": 3224
+  },
+  "wild-server/app/llm/errors.py": {
+    "sha256": "a03425e9dc9ba80de6ab7f4ef3f1dd37171bbf33303743e5cf462804a59a1f12",
+    "lines": 211,
+    "bytes": 7722
+  },
+  "wild-server/app/llm/factory.py": {
+    "sha256": "4d73e448d665befb33030e1ef670ba504520437b37a98a4b8a05ee9b7b65eee8",
+    "lines": 26,
+    "bytes": 944
+  },
+  "wild-server/app/llm/invocation.py": {
+    "sha256": "83df8c83b61963a580e1f3407c23d27ac46ab7db6359efe3813f7fee422a8d98",
+    "lines": 259,
+    "bytes": 11509
+  },
+  "wild-server/app/llm/providers.py": {
+    "sha256": "aab5e889d2127bbec42145521ea852a88e253eab18eb7030673a6f40c8ccace2",
+    "lines": 30,
+    "bytes": 1396
+  },
+  "wild-server/app/llm/reasoning.py": {
+    "sha256": "b0d46d00c1fde77312dc58dd1ad611e15f4ea1f0ec2ac7da3126db684c53080f",
+    "lines": 63,
+    "bytes": 2282
+  },
+  "wild-server/app/llm/recovery.py": {
+    "sha256": "b88938ff96d0cc951e451efce21f12356aad84fbe762ccfd3cb44d633fc31ce7",
+    "lines": 68,
+    "bytes": 2507
+  },
+  "wild-server/app/rag/__init__.py": {
+    "sha256": "befb904f9e8b05063d710e659f3fdedfb16d3b40b59f3a1f05fc36f8c93c299e",
+    "lines": 1,
+    "bytes": 64
+  },
+  "wild-server/app/rag/calibration.py": {
+    "sha256": "663697c0e9434f2ba1cde4217b465b6adb9855aab04bed590127cd97b2a174f6",
+    "lines": 65,
+    "bytes": 2657
+  },
+  "wild-server/app/rag/citations.py": {
+    "sha256": "d09fc8813dd8c3b27f99345a99bedd073f61961b2bb67bf52ba326a6309d9672",
+    "lines": 51,
+    "bytes": 1653
+  },
+  "wild-server/app/rag/gate.py": {
+    "sha256": "01bc6d40353ee9875ef861c76aa0d4672af368094fbf6523d247df21e347ec8c",
+    "lines": 75,
+    "bytes": 2289
+  },
+  "wild-server/app/rag/hybrid_retriever.py": {
+    "sha256": "450ac27a39120fc17be17b8d9aeb1bcc0fbfb60f102249ab81e54eaaea902f31",
+    "lines": 265,
+    "bytes": 8834
+  },
+  "wild-server/app/rag/quality.py": {
+    "sha256": "0683793f4668298dbf987325a7c23f07d841aee30d3b03566bb010dbfda8dac0",
+    "lines": 64,
+    "bytes": 1881
+  },
+  "wild-server/app/rag/query_rewriter.py": {
+    "sha256": "d3703905de1e026f8e7b7edb7ac81c92a2f33bdea1e4ac37bfe010899a6372ee",
+    "lines": 249,
+    "bytes": 8376
+  },
+  "wild-server/app/rag/reporting.py": {
+    "sha256": "a376a032727816a197a8532d172dc440e3cbd763b8a6832f831cfc1abb4105f9",
+    "lines": 123,
+    "bytes": 4413
+  },
+  "wild-server/app/rag/security.py": {
+    "sha256": "abae7a0a25e74abc4bc22585cc3555f661a623a43cb3fb8a4c9fe4b9fd4b667e",
+    "lines": 178,
+    "bytes": 6093
+  },
+  "wild-server/app/rag/trace.py": {
+    "sha256": "b3fc1a471f2f172d8535c386fa5a12e66d45249ea907f9d04c40d9aaf18a6b90",
+    "lines": 678,
+    "bytes": 27739
+  },
+  "wild-server/app/services/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lines": 0,
+    "bytes": 0
+  },
+  "wild-server/app/services/agent_delivery.py": {
+    "sha256": "b5d8bf275fb9cbf80d39f9cb612f26250aab71e4e9b62123a12e0d4068a2ea39",
+    "lines": 294,
+    "bytes": 13392
+  },
+  "wild-server/app/services/agent_service.py": {
+    "sha256": "83d323f81f24e095777bb008f4174aee6d223a5469381c08b474d789ef1fff13",
+    "lines": 1133,
+    "bytes": 51840
+  },
+  "wild-server/app/services/asset_storage.py": {
+    "sha256": "9fd196ea172a8ea6b8048c97943245201eb5c7aebaaa867d5cc9b4f7cf96d5c2",
+    "lines": 402,
+    "bytes": 16957
+  },
+  "wild-server/app/services/generation_job_service.py": {
+    "sha256": "08faa7cc4f7b996e00b5390f56d5563539a4c49be40603347f0c2c96658f3fb6",
+    "lines": 699,
+    "bytes": 29303
+  },
+  "wild-server/app/services/session_service.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lines": 0,
+    "bytes": 0
+  },
+  "wild-server/app/spec/__init__.py": {
+    "sha256": "bda58d110967ddcce380a3a3c7b87cf02ddf5f5d2bc8673eefe21b0f659585b0",
+    "lines": 9,
+    "bytes": 386
+  },
+  "wild-server/app/spec/loader.py": {
+    "sha256": "69701b7214b4e1223ad50476117c670a00def59c4e2ee7f15dae7da66f6b8ac5",
+    "lines": 2310,
+    "bytes": 102767
+  },
+  "wild-server/app/spec/query_planner.py": {
+    "sha256": "155be0c60709dae1b9459c0997ff4c9986f789e59a870fb3bcab9ab03bf4579f",
+    "lines": 215,
+    "bytes": 9070
+  },
+  "wild-server/app/tools/__init__.py": {
+    "sha256": "0bd9c8c34da70e052b9754cdb3326c3d2999022748da5a1e58a54a94616cbb09",
+    "lines": 27,
+    "bytes": 841
+  },
+  "wild-server/app/tools/component_tools.py": {
+    "sha256": "77b5eb9b1d90b3e0b1707191e6b16935714311359b2a500f8cd151eb806fdbf4",
+    "lines": 1591,
+    "bytes": 66802
+  },
+  "wild-server/app/tools/spatial_tools.py": {
+    "sha256": "7b360af63da10eeed3eab4e15fd939ad7247862b36714bbf16a9221b6b8df361",
+    "lines": 4960,
+    "bytes": 204592
+  },
+  "wild-server/app/utils/__init__.py": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lines": 0,
+    "bytes": 0
+  },
+  "wild-server/app/utils/blueprint_normalizer.py": {
+    "sha256": "ce3d2df831ff1e6bebfd45e883539a25fdcc167eefc5e0225dac75c5eeaae51e",
+    "lines": 666,
+    "bytes": 24859
+  },
+  "wild-server/app/utils/blueprint_parser.py": {
+    "sha256": "86f73e472426204fafa0795b05cb5946e94c6d4e502cd1b7ea1db4e898aed2f4",
+    "lines": 1039,
+    "bytes": 48156
+  },
+  "wild-server/app/utils/blueprint_query.py": {
+    "sha256": "aeadc4db86350b10c3d4905fac41ea187603961ddb390fd5296d61ae992de8ed",
+    "lines": 32,
+    "bytes": 1397
+  },
+  "wild-server/app/utils/fragment_merger.py": {
+    "sha256": "a021d11591d4e1496c046d4c3e90efe198d7a307b835d7c322df581b0717c887",
+    "lines": 180,
+    "bytes": 7069
+  },
+  "wild-server/app/utils/json_extractor.py": {
+    "sha256": "ea8309894a15ea2668151e1dfc9d41000898da96d5b3f950a6e0f8360d06b501",
+    "lines": 134,
+    "bytes": 5964
+  },
+  "wild-server/app/utils/rotation.py": {
+    "sha256": "9fb016ba17c87c217ea63b599a4b8206e15c6bc918e5c5a46f9c9139d432c54e",
+    "lines": 102,
+    "bytes": 4409
+  },
+  "wild-server/app/utils/runtime_env.py": {
+    "sha256": "e2e4792c181af83c8d2acd9291ea83f6e055109be75e7b298c4254b60a1960c1",
+    "lines": 132,
+    "bytes": 4935
+  },
+  "wild-server/app/utils/ws_heartbeat.py": {
+    "sha256": "25c2738eae6d8f3c3960709fd9a7aa71bfcd84d8c292e597611d23b292e72033",
+    "lines": 150,
+    "bytes": 6289
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md": {
+    "sha256": "67a2a2d04a15d0443d43b441d8789e13dfc3468a8f7a275e0bae197508c08512",
+    "lines": 152,
+    "bytes": 20643
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/balcony-equipment-examples.md": {
+    "sha256": "3fc10b3ed1857e71a3e75ffffaefc11e927004adcf13b2ae4cd40fddde7dfdf3",
+    "lines": 173,
+    "bytes": 11318
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/capability-boundaries.md": {
+    "sha256": "9b1f766b1205b84ce6b0d07c427b3facda20c68d7a00c6842192764983f572f0",
+    "lines": 563,
+    "bytes": 22168
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/chinese-lattice-openings.md": {
+    "sha256": "4a214eba62448dad9ee6bcf07a8ec6389d4d40d88a8aac74aa135cca2bb0d325",
+    "lines": 169,
+    "bytes": 7757
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/column.md": {
+    "sha256": "10ce2e3edc5ca9a9fe16dc72c608b639a5aa4bfbdaf013017c425931a9e772b5",
+    "lines": 101,
+    "bytes": 4254
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/component-catalog.md": {
+    "sha256": "5f4fd5c5fb51b15ee54331cfed89acf4b9a806a7a5b4ee6475903a3172bc4b26",
+    "lines": 115,
+    "bytes": 8990
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/composite-components-second-batch.md": {
+    "sha256": "0bf65368d899a5765ef88cd0e40c716a444bfa2172ce5c3a50a8ca4f9950576d",
+    "lines": 249,
+    "bytes": 8258
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/cone-roof-system.md": {
+    "sha256": "b830814135d9baaef37477055f0ca41d88d3dd7be6086e75309a1434fa9aa288",
+    "lines": 149,
+    "bytes": 6374
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/dual-pitch-two-slope.md": {
+    "sha256": "b3dbb6de9f0274f77ecb40588cce2076aee48e07de34104753febb14b9ebd3ab",
+    "lines": 32,
+    "bytes": 2881
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/elevator.md": {
+    "sha256": "890a4b78197a4b4bdaacfda8a31a40d673fcdad5a7e8cdd4cc1c65dbb1654091",
+    "lines": 131,
+    "bytes": 8933
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/entrance-door-examples.md": {
+    "sha256": "d9e1f1a6bb5c2393ba556506e53c1052f4689e84fb33cf421bcb6aa603bd68e3",
+    "lines": 235,
+    "bytes": 16212
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/envelope-detail-examples.md": {
+    "sha256": "415937fd0a49e180bf2cc95c57e467dbeae07545cd0793fade6b3b8079ada951",
+    "lines": 168,
+    "bytes": 8017
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/furniture-layout-examples.md": {
+    "sha256": "ef3b6010f0548933442ff960871c8ee4814cd50d21931d0f82454a63f61507b2",
+    "lines": 288,
+    "bytes": 14841
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/furniture.md": {
+    "sha256": "842e3cf157c1ea4aca63f43f21e32cc48c7602fa01defa7c5e8d8fc6dfb844e3",
+    "lines": 183,
+    "bytes": 8156
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/glass-curtain-wall-assembly.md": {
+    "sha256": "86a3fc391bb4b4cb947a9a19caeb5c63ae386fa882e519894c0efc74cff64173",
+    "lines": 307,
+    "bytes": 11516
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/glazing-detail-examples.md": {
+    "sha256": "840196d4db480ec2737c5bc5bdf18b5701c581fc873365508b37666334b5b65f",
+    "lines": 245,
+    "bytes": 14190
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/kitchen-sanitary-examples.md": {
+    "sha256": "71b6f356dcb2540bef780d09f15d28c6f6735a21092df2fa3220170514605a96",
+    "lines": 124,
+    "bytes": 9022
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/light.md": {
+    "sha256": "5b721954356161fbc32fc816c9ba8a099fa310c4592944653f7e0d161c5eb9eb",
+    "lines": 258,
+    "bytes": 11426
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/massing-composition-rules.md": {
+    "sha256": "9e3baf5b8fe7e8d374242c80468896abecc269c47d1e5482ffda148b5f4a781c",
+    "lines": 38,
+    "bytes": 3394
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/massing-layers.md": {
+    "sha256": "c092bb5bc499c41fef393ecaeb9d173797a0bdcf532f2fce029f68363e0f3de7",
+    "lines": 33,
+    "bytes": 2073
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/pavilion-garden-structure.md": {
+    "sha256": "3a50b1e43b467db0a602a49b16ea41368c7f141f88e86e9a561ac7e151a2bfdc",
+    "lines": 187,
+    "bytes": 9537
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/roof-facade-detail-examples.md": {
+    "sha256": "7bbdda1d123c058514be4a7ccb1e61ee40532bc5400b3730df41cbe205889c9e",
+    "lines": 301,
+    "bytes": 18272
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/shaft-opening-five-panel.md": {
+    "sha256": "7cfd60414bc7a8017ea926286c55f9c9d885a136aea95998653a7da117ea1a17",
+    "lines": 69,
+    "bytes": 2992
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/sofa.md": {
+    "sha256": "e28420e3c10d8baa2c417277dc2aecbb0c002f2756d099a2ab0bbd2a77b282d6",
+    "lines": 112,
+    "bytes": 5082
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/spherical-shell-massing.md": {
+    "sha256": "dfa4029b10115b8b5e3268b0f9aff944b622e346a1124e6adee476682bbdfdef",
+    "lines": 72,
+    "bytes": 3701
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/stair.md": {
+    "sha256": "33f2251fe3a42c0e05d728bec1c5046c2eec78616d2d51090efc0cd244820b96",
+    "lines": 75,
+    "bytes": 4493
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/tangent-arc-colonnade.md": {
+    "sha256": "117b5e282167386f2021731f18c376b4f819643a00f42d921c589e09a218c419",
+    "lines": 173,
+    "bytes": 25459
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/tiered-eaves-pagoda.md": {
+    "sha256": "849c40cd519ecf5502d5d7c31c2a5ad64bf24417b5c0a1c364d0b3e2cfd292a4",
+    "lines": 76,
+    "bytes": 4376
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/ventilation-detail-examples.md": {
+    "sha256": "d61357667020abb6ab412a1f78d22fe9d77abd4fb32b7fc1ec583816de4f949e",
+    "lines": 102,
+    "bytes": 7383
+  },
+  "wild-server/storage/knowledge_base/knowledge/components/window-variants.md": {
+    "sha256": "0b542f1489a4d87c5b48085205935aad104574116b2406dea5b1a5d83e79c665",
+    "lines": 191,
+    "bytes": 8384
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/behavior-instructions.md": {
+    "sha256": "5f78d6e7bcf090b5095c3231d521dda2ac5a67badc131cb6b16cf1e70392f032",
+    "lines": 260,
+    "bytes": 8965
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/blueprint-skeleton.md": {
+    "sha256": "0e75eebe1c2f917da1686699df4c9f11fd35394a77479b5c62d8588141d23d99",
+    "lines": 89,
+    "bytes": 3414
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/component-parameters.md": {
+    "sha256": "a4f35a93fc22290de12c6be731af71cb18a1aca9dc1619d2144fec9ba657efb8",
+    "lines": 739,
+    "bytes": 27502
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/generation-redlines.md": {
+    "sha256": "40f9a27082e79e4d29fa6f4805e9599ced142f5f95ee8d1ee940ff71ee0d3f1d",
+    "lines": 52,
+    "bytes": 2708
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/material-parameters.md": {
+    "sha256": "f2cc380ab3a019c9b1ec7af8e2ed28f47ebdc1bc4fbcb5ce1c816c073b4e87e4",
+    "lines": 353,
+    "bytes": 13925
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/placements.md": {
+    "sha256": "925c82c5faeffe9853e548a50a249ad9afb9c8e03f5227b5ca344ae2fc44bed3",
+    "lines": 95,
+    "bytes": 3781
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/scale-notation.md": {
+    "sha256": "0f7b3ebdb6c22e18cbaa734baec4779a3a181bf6e269df24c80e5482aa9f0c08",
+    "lines": 55,
+    "bytes": 2688
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/scene-patch-protocol.md": {
+    "sha256": "3a8acc457ec8b0f1e8c44ebb19fe3aa3dbd0c3c5118072faee986470e9b033ac",
+    "lines": 486,
+    "bytes": 9755
+  },
+  "wild-server/storage/knowledge_base/knowledge/protocol/templates-and-instances.md": {
+    "sha256": "c6d5cb0032f44fc6d1530e34abb9f6196a9d7672368efea2ac1595117b649769",
+    "lines": 51,
+    "bytes": 1101
+  },
+  "wild-server/storage/knowledge_base/README.md": {
+    "sha256": "266990a5755a07aca62f53f58b4da1fd0f833fb6b1ecf1c7eef465f2d8266b68",
+    "lines": 231,
+    "bytes": 18303
+  },
+  "wild-server/storage/knowledge_base/rules/conditional/component-selection.md": {
+    "sha256": "0e4f264fa174aa37f020f7024fb961bcb8b0121ccdee7ee72294b8357d86b8b4",
+    "lines": 36,
+    "bytes": 1561
+  },
+  "wild-server/storage/knowledge_base/rules/conditional/pending.md": {
+    "sha256": "7488e00860895cb193fca6850d9520fffdd6faaf3723dcbf6471a2a356c30f67",
+    "lines": 41,
+    "bytes": 1660
+  },
+  "wild-server/storage/knowledge_base/rules/design-choice/architecture-design-process.md": {
+    "sha256": "020f4e0bd2411191e96583a039337cd7d7c075d8da5695c2b1a51f3bd2c1dc39",
+    "lines": 36,
+    "bytes": 4382
+  },
+  "wild-server/storage/knowledge_base/rules/design-choice/architecture-detail-levels.md": {
+    "sha256": "e04fb8f0e8a73da29db99147f8bd4a248bf69d9b616dae62dd15171176f7f5a8",
+    "lines": 84,
+    "bytes": 4724
+  },
+  "wild-server/storage/knowledge_base/rules/design-choice/free-variables.md": {
+    "sha256": "79599164f35ba23adf1e5399f2564877748469d0e4ca0335777aadbece34a1fc",
+    "lines": 44,
+    "bytes": 1303
+  },
+  "wild-server/storage/knowledge_base/rules/implementation/assembly-relations.md": {
+    "sha256": "8958df33cc3662aaef474e258d5218a8baaa2775000401ab00887c007aa81eb6",
+    "lines": 291,
+    "bytes": 7095
+  },
+  "wild-server/storage/knowledge_base/rules/implementation/door-window-depth.md": {
+    "sha256": "da90bad616f2ada63373008f947628f610812cc9553bfb086239bfda63e0750c",
+    "lines": 31,
+    "bytes": 1111
+  },
+  "wild-server/storage/knowledge_base/rules/implementation/validation-rules.md": {
+    "sha256": "c56939ea343a6ef634c7158a90b3a1426570cc0d90477e463f9cb65b4bed2a8e",
+    "lines": 576,
+    "bytes": 17996
+  },
+  "wild-server/scripts/ci/test_design_revision_feedback.py": {
+    "sha256": "0c407f4142a9225d82d438f50743f4e2366942ea100614fcd81509d0bdcaf6f6",
+    "lines": 119,
+    "bytes": 6933
+  },
+  "wild-server/scripts/ci/test_spatial_design_contracts.py": {
+    "sha256": "ad1e1187c84050bc3a2bf380843358a14bbba8a9b80f3253d1497ca1be7b87ea",
+    "lines": 263,
+    "bytes": 15786
+  },
+  "wild-web/src/types/design.ts": {
+    "sha256": "bacaf688ebefee107b40acf025be2d6d591b67690c73c1669e9cca5010f76a7d",
+    "lines": 329,
+    "bytes": 10758
+  },
+  "docs/9月9日优化/design-document.schema.json": {
+    "sha256": "efafbb69e46ac9eb540047d004e6d77690a21758e98f0db3c92cdbdaa10d0459",
+    "lines": 2135,
+    "bytes": 53029
+  }
+}

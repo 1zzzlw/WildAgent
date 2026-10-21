@@ -1,0 +1,217 @@
+{
+  "recorded_at": "2026-10-21T13:30:45.407760+08:00",
+  "baseline": "本轮开始时的修改前.zip；按LF比较，排除换行风格与已有脏工作区影响",
+  "files": [
+    {
+      "path": "wild-server/app/design/contracts.py",
+      "before": 889,
+      "after": 936,
+      "added": 47,
+      "deleted": 0,
+      "sha256": "48f471f0055192e7f230930a752f8076e1a5a341221b56f86cac04078bbba781"
+    },
+    {
+      "path": "wild-server/app/design/normalization.py",
+      "before": 171,
+      "after": 202,
+      "added": 31,
+      "deleted": 0,
+      "sha256": "0c893b61f44afe100c93dfa53fb459cf57f1150835238254dd5e3773d134dd21"
+    },
+    {
+      "path": "wild-server/app/design/resolver.py",
+      "before": 601,
+      "after": 607,
+      "added": 8,
+      "deleted": 2,
+      "sha256": "e971d520493b5c15114c9c5c514d814f828167bf303d7aafd35bb7a05af02182"
+    },
+    {
+      "path": "wild-server/app/design/coordinates.py",
+      "before": 674,
+      "after": 664,
+      "added": 33,
+      "deleted": 43,
+      "sha256": "739d63a787eeff242eae223ffc64b89d2ff8495fa0d65fe559c3c186f4c2a2b1"
+    },
+    {
+      "path": "wild-server/app/design/compilation.py",
+      "before": 132,
+      "after": 138,
+      "added": 9,
+      "deleted": 3,
+      "sha256": "4e2296a84ce00aded0fa481f9589acbdbdcf01ad7330e59e5aa171dbddbc7a68"
+    },
+    {
+      "path": "wild-server/app/design/relations.py",
+      "before": 1072,
+      "after": 1092,
+      "added": 20,
+      "deleted": 0,
+      "sha256": "de05977d605cc1f5422099057db664d4955d6ee979843242270e69753397e634"
+    },
+    {
+      "path": "wild-server/app/design/realization.py",
+      "before": 0,
+      "after": 111,
+      "added": 111,
+      "deleted": 0,
+      "sha256": "b37ba4027d6207754866db3964746d517d3450f5ea16e8c2909cf85ca21b0537"
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/planning.py",
+      "before": 488,
+      "after": 487,
+      "added": 4,
+      "deleted": 5,
+      "sha256": "d12f2a6a9d8aae2180cfa093b6f39d8979769c9d311b4fda58b845f96e0ebbe2"
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/workflow.py",
+      "before": 499,
+      "after": 315,
+      "added": 19,
+      "deleted": 203,
+      "sha256": "1d996c6881d19b5716e5f9bcdbe378eb10f9a923d7f52083cacfed3a8a39f54e",
+      "string_constant_chars_before": 3236,
+      "string_constant_chars_after": 1636
+    },
+    {
+      "path": "wild-server/app/agent/generation/architecture/design_workflow.py",
+      "before": 328,
+      "after": 309,
+      "added": 12,
+      "deleted": 31,
+      "sha256": "1173fa07dbba8c9a39d4766b5f586c7e8fd59a27daaaef916ee39bfdbecb34b7",
+      "string_constant_chars_before": 1421,
+      "string_constant_chars_after": 1277
+    },
+    {
+      "path": "wild-server/app/agent/prompts/planning.py",
+      "before": 452,
+      "after": 385,
+      "added": 14,
+      "deleted": 81,
+      "sha256": "3e78466b6685eb272ce9228f6653a70df6e091fd578fb0619ff4f19d98f19d60",
+      "string_constant_chars_before": 13163,
+      "string_constant_chars_after": 9050
+    },
+    {
+      "path": "wild-server/app/agent/plan/implementation.py",
+      "before": 1015,
+      "after": 960,
+      "added": 69,
+      "deleted": 124,
+      "sha256": "c0e2b83a21c2f19e601983336516c14bf12eb91c1454e1cf73e44041d8f906db",
+      "string_constant_chars_before": 13783,
+      "string_constant_chars_after": 9188
+    },
+    {
+      "path": "wild-server/app/agent/generation/capability.py",
+      "before": 360,
+      "after": 358,
+      "added": 5,
+      "deleted": 7,
+      "sha256": "3a5ca95943f251f4c74585c31d0ac91b1cedb1fc4bd06395a58cc000d2699672"
+    },
+    {
+      "path": "wild-server/app/agent/validation/diagnostics.py",
+      "before": 115,
+      "after": 115,
+      "added": 1,
+      "deleted": 1,
+      "sha256": "0ed73716329b8c64a55be63cc3ef2edaaa6239292ca63a2890c16b93995e6e16"
+    },
+    {
+      "path": "wild-server/scripts/ci/test_design_revision_feedback.py",
+      "before": 119,
+      "after": 119,
+      "added": 2,
+      "deleted": 2,
+      "sha256": "bbd0d7ed2132769ad04f93c10b52cc51d025a081f11c7b9b326b41f9b3b0d61b"
+    },
+    {
+      "path": "wild-server/scripts/ci/test_design_parameter_realization.py",
+      "before": 0,
+      "after": 174,
+      "added": 174,
+      "deleted": 0,
+      "sha256": "fc71e3f723c3f3f69194202453d4032b3b42429658e2c34dd3d5f9e4aa3134b3"
+    },
+    {
+      "path": "wild-web/src/types/design.ts",
+      "before": 329,
+      "after": 331,
+      "added": 3,
+      "deleted": 1,
+      "sha256": "e3f563ac426e2827195ce73ec0c3a937401cd5b55f40b05437ac1ab3a0dbefaa"
+    },
+    {
+      "path": "wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md",
+      "before": 152,
+      "after": 65,
+      "added": 26,
+      "deleted": 113,
+      "sha256": "1c295801f4dfcdd163da754233b04c14fcc46ed3700c5d63aaf16a3a3e10b36d"
+    },
+    {
+      "path": "wild-server/storage/knowledge_base/rules/design-choice/architecture-design-process.md",
+      "before": 36,
+      "after": 36,
+      "added": 3,
+      "deleted": 3,
+      "sha256": "0bff524b64d729e4df32f678a7bd02ea839d54d1377f9e06b10e29fc32d9dc4f"
+    },
+    {
+      "path": "docs/9月9日优化/design-document.schema.json",
+      "before": 2135,
+      "after": 2186,
+      "added": 51,
+      "deleted": 0,
+      "sha256": "f8ae695bdd0819ac9223794d59411010aadddcc39d853664b61f1b4e6e404599"
+    }
+  ],
+  "source_summary": {
+    "source_added": 386,
+    "source_deleted": 501,
+    "source_before": 7125,
+    "source_after": 7010,
+    "net_deleted": 115
+  },
+  "checks": {
+    "python_ast_files": [
+      "wild-server/app/design/contracts.py",
+      "wild-server/app/design/normalization.py",
+      "wild-server/app/design/resolver.py",
+      "wild-server/app/design/coordinates.py",
+      "wild-server/app/design/compilation.py",
+      "wild-server/app/design/relations.py",
+      "wild-server/app/design/realization.py",
+      "wild-server/app/agent/generation/architecture/planning.py",
+      "wild-server/app/agent/generation/architecture/workflow.py",
+      "wild-server/app/agent/generation/architecture/design_workflow.py",
+      "wild-server/app/agent/prompts/planning.py",
+      "wild-server/app/agent/plan/implementation.py",
+      "wild-server/app/agent/generation/capability.py",
+      "wild-server/app/agent/validation/diagnostics.py",
+      "wild-server/scripts/ci/test_design_revision_feedback.py",
+      "wild-server/scripts/ci/test_design_parameter_realization.py"
+    ],
+    "json_files": [
+      "docs/9月9日优化/design-document.schema.json"
+    ],
+    "local_links_missing": [],
+    "new_trailing_whitespace": [],
+    "test_status": "not_run",
+    "git_diff_check": "passed; targeted tracked files"
+  },
+  "not_run": [
+    "unit tests",
+    "build",
+    "model generation",
+    "embedding/index sync",
+    "service startup",
+    "render"
+  ],
+  "note": "Schema导出只生成契约文档；字符串统计是源码字面量，不等于运行时提示token或成功率"
+}

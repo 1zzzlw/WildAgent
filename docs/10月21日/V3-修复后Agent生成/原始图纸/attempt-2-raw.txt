@@ -1,0 +1,14 @@
+```json
+{
+  "operations": [
+    {
+      "op": "replace",
+      "path": "/floor_layouts/1/walls/5/to",
+      "value": [
+        9.5,
+        6.5
+      ]
+    }
+  ]
+}
+```

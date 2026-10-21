@@ -1,0 +1,13 @@
+{
+  "design_revision_feedback": {
+    "tests": 7,
+    "passed": 7,
+    "exit_code": 0
+  },
+  "spatial_design_contracts": {
+    "tests": 19,
+    "passed": 19,
+    "exit_code": 0
+  },
+  "scope": "两组定向回归，不代表整条生成链或视觉验收通过"
+}

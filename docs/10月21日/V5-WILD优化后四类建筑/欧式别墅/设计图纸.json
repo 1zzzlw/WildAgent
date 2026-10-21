@@ -1,0 +1,5618 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "欧式别墅_v5",
+  "session_id": "codex_v5_20261021",
+  "revision": 1,
+  "status": "compiled",
+  "created_at": "2026-10-21T06:47:18.161678Z",
+  "updated_at": "2026-10-21T06:47:18.161678Z",
+  "requirements": {
+    "source_request": "独立设计并生成欧式别墅 WILD：橡庭庄园",
+    "building_type": "欧式别墅",
+    "profile": "custom",
+    "style_intent": [
+      "法式古典比例、轴线柱廊、暖石线脚、深灰四坡屋面与前庭"
+    ]
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "法式古典比例、轴线柱廊、暖石线脚、深灰四坡屋面与前庭",
+    "massing": {
+      "shape": "custom",
+      "width": 21.0,
+      "depth": 15.2,
+      "floors": 2,
+      "modeled_floors": 2,
+      "representation_mode": "full",
+      "floor_height": 3.7,
+      "symmetry": false
+    },
+    "complexity": {
+      "level": "detailed",
+      "min_volumes": 1,
+      "min_detail_packages": 0,
+      "target_structural_elements": 10,
+      "grid_bays": [
+        2,
+        2
+      ],
+      "reason": "以构造层次和材质表达区分建筑，不以门窗数量定义精细度"
+    },
+    "volumes": [
+      {
+        "id": "main",
+        "role": "primary",
+        "x": -6.0,
+        "z": -4.0,
+        "width": 12.0,
+        "depth": 12.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "west",
+        "role": "primary",
+        "x": -10.5,
+        "z": -3.0,
+        "width": 4.5,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "east",
+        "role": "primary",
+        "x": 6.0,
+        "z": -3.0,
+        "width": 4.5,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 2
+      },
+      {
+        "id": "portico",
+        "role": "primary",
+        "x": -3.2,
+        "z": -7.2,
+        "width": 6.4,
+        "depth": 3.2,
+        "start_floor": 1,
+        "end_floor": 1,
+        "facades": {
+          "front": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "back": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "left": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          },
+          "right": {
+            "bays": 1,
+            "ground_pattern": [
+              "open"
+            ],
+            "upper_pattern": [
+              "open"
+            ]
+          }
+        }
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 4,
+      "z_bays": 3
+    },
+    "envelope": {
+      "system": "solid_wall"
+    },
+    "facades": {
+      "front": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      }
+    },
+    "roof": {
+      "type": "hip",
+      "ridge_axis": "x",
+      "overhang": 0.55,
+      "height": 2.0,
+      "thickness": 0.18,
+      "volumes": [
+        {
+          "volume": "portico",
+          "type": "gable",
+          "overhang": 0.4,
+          "height": 1.4,
+          "ridge_axis": "z"
+        }
+      ]
+    },
+    "circulation": {
+      "vertical_strategy": "stair"
+    },
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.6
+      },
+      {
+        "floor": 2,
+        "level": 4.3
+      }
+    ],
+    "construction": {
+      "slab_thickness": 0.22,
+      "wall_thickness": 0.26
+    },
+    "materials": {
+      "keywords": [],
+      "resolved_plan": {
+        "concept": "法式古典比例、轴线柱廊、暖石线脚、深灰四坡屋面与前庭",
+        "palette": [],
+        "roles": [
+          {
+            "role": "facade_primary",
+            "materialId": "facade_primary",
+            "material": {
+              "baseColor": [
+                0.87,
+                0.82,
+                0.71
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "structure",
+            "materialId": "structure",
+            "material": {
+              "baseColor": [
+                0.78,
+                0.73,
+                0.63
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "floor",
+            "materialId": "floor",
+            "material": {
+              "baseColor": [
+                0.67,
+                0.65,
+                0.6
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "frame",
+            "materialId": "frame",
+            "material": {
+              "baseColor": [
+                0.13,
+                0.14,
+                0.14
+              ],
+              "roughness": 0.35,
+              "metallic": 0.65,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "door",
+            "materialId": "door",
+            "material": {
+              "baseColor": [
+                0.24,
+                0.14,
+                0.075
+              ],
+              "roughness": 0.57,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "glass",
+            "materialId": "glass",
+            "material": {
+              "baseColor": [
+                0.37,
+                0.58,
+                0.66
+              ],
+              "roughness": 0.14,
+              "metallic": 0.18,
+              "albedo": 1,
+              "lightingCondition": "D65_noon",
+              "opacity": 0.36
+            }
+          },
+          {
+            "role": "roof",
+            "materialId": "roof",
+            "material": {
+              "baseColor": [
+                0.16,
+                0.18,
+                0.21
+              ],
+              "roughness": 0.68,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "ground",
+            "materialId": "ground",
+            "material": {
+              "baseColor": [
+                0.34,
+                0.38,
+                0.3
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          },
+          {
+            "role": "accent",
+            "materialId": "accent",
+            "material": {
+              "baseColor": [
+                0.96,
+                0.91,
+                0.8
+              ],
+              "roughness": 0.75,
+              "metallic": 0,
+              "albedo": 1,
+              "lightingCondition": "D65_noon"
+            }
+          }
+        ],
+        "resolvedAssets": {},
+        "rejectedAssetIds": [],
+        "rejectedProceduralPresetIds": [],
+        "curtainWall": false
+      },
+      "regions": [],
+      "definitions": {
+        "facade_primary": {
+          "baseColor": [
+            0.87,
+            0.82,
+            0.71
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "structure": {
+          "baseColor": [
+            0.78,
+            0.73,
+            0.63
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "floor": {
+          "baseColor": [
+            0.67,
+            0.65,
+            0.6
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "frame": {
+          "baseColor": [
+            0.13,
+            0.14,
+            0.14
+          ],
+          "roughness": 0.35,
+          "metallic": 0.65,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "door": {
+          "baseColor": [
+            0.24,
+            0.14,
+            0.075
+          ],
+          "roughness": 0.57,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "glass": {
+          "baseColor": [
+            0.37,
+            0.58,
+            0.66
+          ],
+          "roughness": 0.14,
+          "metallic": 0.18,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "opacity": 0.36
+        },
+        "roof": {
+          "baseColor": [
+            0.16,
+            0.18,
+            0.21
+          ],
+          "roughness": 0.68,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "ground": {
+          "baseColor": [
+            0.34,
+            0.38,
+            0.3
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "accent": {
+          "baseColor": [
+            0.96,
+            0.91,
+            0.8
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "wood": {
+          "baseColor": [
+            0.24,
+            0.14,
+            0.075
+          ],
+          "roughness": 0.58,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "greenery": {
+          "baseColor": [
+            0.18,
+            0.29,
+            0.15
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        },
+        "water": {
+          "baseColor": [
+            0.15,
+            0.34,
+            0.37
+          ],
+          "roughness": 0.1,
+          "metallic": 0.25,
+          "albedo": 1,
+          "lightingCondition": "D65_noon",
+          "opacity": 0.78
+        },
+        "paving": {
+          "baseColor": [
+            0.48,
+            0.47,
+            0.43
+          ],
+          "roughness": 0.75,
+          "metallic": 0,
+          "albedo": 1,
+          "lightingCondition": "D65_noon"
+        }
+      }
+    },
+    "detail_packages": [
+      "结构层次",
+      "檐口与收边",
+      "入口与场地",
+      "立面构造"
+    ],
+    "component_quota": {},
+    "components": [
+      {
+        "type": "window",
+        "id": "window_main_front_1_0",
+        "host": "wall_main_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.375,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_1_0_sill",
+        "host": "",
+        "description": "window main front 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            1.2999999999999998,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_1_0_head",
+        "host": "",
+        "description": "window main front 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            3.55,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_front_1_2",
+        "host": "wall_main_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 9.375,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_1_2_sill",
+        "host": "",
+        "description": "window main front 1 2 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            1.2999999999999998,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_1_2_head",
+        "host": "",
+        "description": "window main front 1 2 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            3.55,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_1_0",
+        "host": "wall_main_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.375,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_0_sill",
+        "host": "",
+        "description": "window main back 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            1.2999999999999998,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_0_head",
+        "host": "",
+        "description": "window main back 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            3.55,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_1_1",
+        "host": "wall_main_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 5.375,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_1_sill",
+        "host": "",
+        "description": "window main back 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            1.2999999999999998,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_1_head",
+        "host": "",
+        "description": "window main back 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            3.55,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_1_2",
+        "host": "wall_main_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 9.375,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_2_sill",
+        "host": "",
+        "description": "window main back 1 2 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            1.2999999999999998,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_1_2_head",
+        "host": "",
+        "description": "window main back 1 2 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            3.55,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_front_2_0",
+        "host": "wall_main_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_0_sill",
+        "host": "",
+        "description": "window main front 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            5.0,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_0_head",
+        "host": "",
+        "description": "window main front 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            7.249999999999999,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_front_2_1",
+        "host": "wall_main_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 5.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_1_sill",
+        "host": "",
+        "description": "window main front 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            5.0,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_1_head",
+        "host": "",
+        "description": "window main front 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            7.249999999999999,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_front_2_2",
+        "host": "wall_main_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 9.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_2_sill",
+        "host": "",
+        "description": "window main front 2 2 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            5.0,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_front_2_2_head",
+        "host": "",
+        "description": "window main front 2 2 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            7.249999999999999,
+            -4.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_2_0",
+        "host": "wall_main_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_0_sill",
+        "host": "",
+        "description": "window main back 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            5.0,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_0_head",
+        "host": "",
+        "description": "window main back 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.0,
+            7.249999999999999,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_2_1",
+        "host": "wall_main_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 5.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_1_sill",
+        "host": "",
+        "description": "window main back 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            5.0,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_1_head",
+        "host": "",
+        "description": "window main back 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.0,
+            7.249999999999999,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_main_back_2_2",
+        "host": "wall_main_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 9.375,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_2_sill",
+        "host": "",
+        "description": "window main back 2 2 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            5.0,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_main_back_2_2_head",
+        "host": "",
+        "description": "window main back 2 2 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.0,
+            7.249999999999999,
+            8.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_0_0",
+        "host": "",
+        "description": "main moulding 0 0",
+        "size": {},
+        "form": {
+          "from": [
+            -6.16,
+            0.72,
+            -4.16
+          ],
+          "to": [
+            6.16,
+            0.72,
+            -4.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_0_1",
+        "host": "",
+        "description": "main moulding 0 1",
+        "size": {},
+        "form": {
+          "from": [
+            6.16,
+            0.72,
+            -4.16
+          ],
+          "to": [
+            6.16,
+            0.72,
+            8.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_0_2",
+        "host": "",
+        "description": "main moulding 0 2",
+        "size": {},
+        "form": {
+          "from": [
+            6.16,
+            0.72,
+            8.16
+          ],
+          "to": [
+            -6.16,
+            0.72,
+            8.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_0_3",
+        "host": "",
+        "description": "main moulding 0 3",
+        "size": {},
+        "form": {
+          "from": [
+            -6.16,
+            0.72,
+            8.16
+          ],
+          "to": [
+            -6.16,
+            0.72,
+            -4.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_1_0",
+        "host": "",
+        "description": "main moulding 1 0",
+        "size": {},
+        "form": {
+          "from": [
+            -6.2,
+            4.25,
+            -4.2
+          ],
+          "to": [
+            6.2,
+            4.25,
+            -4.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_1_1",
+        "host": "",
+        "description": "main moulding 1 1",
+        "size": {},
+        "form": {
+          "from": [
+            6.2,
+            4.25,
+            -4.2
+          ],
+          "to": [
+            6.2,
+            4.25,
+            8.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_1_2",
+        "host": "",
+        "description": "main moulding 1 2",
+        "size": {},
+        "form": {
+          "from": [
+            6.2,
+            4.25,
+            8.2
+          ],
+          "to": [
+            -6.2,
+            4.25,
+            8.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_1_3",
+        "host": "",
+        "description": "main moulding 1 3",
+        "size": {},
+        "form": {
+          "from": [
+            -6.2,
+            4.25,
+            8.2
+          ],
+          "to": [
+            -6.2,
+            4.25,
+            -4.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_2_0",
+        "host": "",
+        "description": "main moulding 2 0",
+        "size": {},
+        "form": {
+          "from": [
+            -6.27,
+            7.72,
+            -4.27
+          ],
+          "to": [
+            6.27,
+            7.72,
+            -4.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_2_1",
+        "host": "",
+        "description": "main moulding 2 1",
+        "size": {},
+        "form": {
+          "from": [
+            6.27,
+            7.72,
+            -4.27
+          ],
+          "to": [
+            6.27,
+            7.72,
+            8.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_2_2",
+        "host": "",
+        "description": "main moulding 2 2",
+        "size": {},
+        "form": {
+          "from": [
+            6.27,
+            7.72,
+            8.27
+          ],
+          "to": [
+            -6.27,
+            7.72,
+            8.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_2_3",
+        "host": "",
+        "description": "main moulding 2 3",
+        "size": {},
+        "form": {
+          "from": [
+            -6.27,
+            7.72,
+            8.27
+          ],
+          "to": [
+            -6.27,
+            7.72,
+            -4.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_3_0",
+        "host": "",
+        "description": "main moulding 3 0",
+        "size": {},
+        "form": {
+          "from": [
+            -6.38,
+            7.96,
+            -4.38
+          ],
+          "to": [
+            6.38,
+            7.96,
+            -4.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_3_1",
+        "host": "",
+        "description": "main moulding 3 1",
+        "size": {},
+        "form": {
+          "from": [
+            6.38,
+            7.96,
+            -4.38
+          ],
+          "to": [
+            6.38,
+            7.96,
+            8.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_3_2",
+        "host": "",
+        "description": "main moulding 3 2",
+        "size": {},
+        "form": {
+          "from": [
+            6.38,
+            7.96,
+            8.38
+          ],
+          "to": [
+            -6.38,
+            7.96,
+            8.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "main_moulding_3_3",
+        "host": "",
+        "description": "main moulding 3 3",
+        "size": {},
+        "form": {
+          "from": [
+            -6.38,
+            7.96,
+            8.38
+          ],
+          "to": [
+            -6.38,
+            7.96,
+            -4.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-6_-4",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -6 -4",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -6,
+            4.12,
+            -4
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-6_8",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -6 8",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -6,
+            4.12,
+            8
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_6_-4",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 6 -4",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            6,
+            4.12,
+            -4
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_6_8",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 6 8",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            6,
+            4.12,
+            8
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_1_0",
+        "host": "wall_west_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_1_0_sill",
+        "host": "",
+        "description": "window west front 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            1.2999999999999998,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_1_0_head",
+        "host": "",
+        "description": "window west front 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            3.55,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_1_1",
+        "host": "wall_west_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_1_1_sill",
+        "host": "",
+        "description": "window west front 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            1.2999999999999998,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_1_1_head",
+        "host": "",
+        "description": "window west front 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            3.55,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_back_1_0",
+        "host": "wall_west_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_1_0_sill",
+        "host": "",
+        "description": "window west back 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            1.2999999999999998,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_1_0_head",
+        "host": "",
+        "description": "window west back 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            3.55,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_back_1_1",
+        "host": "wall_west_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_1_1_sill",
+        "host": "",
+        "description": "window west back 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            1.2999999999999998,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_1_1_head",
+        "host": "",
+        "description": "window west back 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            3.55,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_1_0",
+        "host": "wall_west_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.875,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_1_0_sill",
+        "host": "",
+        "description": "window west left 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            1.2999999999999998,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_1_0_head",
+        "host": "",
+        "description": "window west left 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            3.55,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_1_1",
+        "host": "wall_west_left_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.875,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_1_1_sill",
+        "host": "",
+        "description": "window west left 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            1.2999999999999998,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_1_1_head",
+        "host": "",
+        "description": "window west left 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            3.55,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_2_0",
+        "host": "wall_west_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_2_0_sill",
+        "host": "",
+        "description": "window west front 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            5.0,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_2_0_head",
+        "host": "",
+        "description": "window west front 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            7.249999999999999,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_front_2_1",
+        "host": "wall_west_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_2_1_sill",
+        "host": "",
+        "description": "window west front 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            5.0,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_front_2_1_head",
+        "host": "",
+        "description": "window west front 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            7.249999999999999,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_back_2_0",
+        "host": "wall_west_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_2_0_sill",
+        "host": "",
+        "description": "window west back 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            5.0,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_2_0_head",
+        "host": "",
+        "description": "window west back 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.125,
+            7.249999999999999,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_back_2_1",
+        "host": "wall_west_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_2_1_sill",
+        "host": "",
+        "description": "window west back 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            5.0,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_back_2_1_head",
+        "host": "",
+        "description": "window west back 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -9.375,
+            7.249999999999999,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_2_0",
+        "host": "wall_west_left_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.875,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_2_0_sill",
+        "host": "",
+        "description": "window west left 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            5.0,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_2_0_head",
+        "host": "",
+        "description": "window west left 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            7.249999999999999,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_west_left_2_1",
+        "host": "wall_west_left_L2",
+        "description": "",
+        "placement": {
+          "offset": 6.875,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_2_1_sill",
+        "host": "",
+        "description": "window west left 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            5.0,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_west_left_2_1_head",
+        "host": "",
+        "description": "window west left 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.68,
+            7.249999999999999,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_0_0",
+        "host": "",
+        "description": "west moulding 0 0",
+        "size": {},
+        "form": {
+          "from": [
+            -10.66,
+            0.72,
+            -3.16
+          ],
+          "to": [
+            -5.84,
+            0.72,
+            -3.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_0_1",
+        "host": "",
+        "description": "west moulding 0 1",
+        "size": {},
+        "form": {
+          "from": [
+            -5.84,
+            0.72,
+            -3.16
+          ],
+          "to": [
+            -5.84,
+            0.72,
+            7.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_0_2",
+        "host": "",
+        "description": "west moulding 0 2",
+        "size": {},
+        "form": {
+          "from": [
+            -5.84,
+            0.72,
+            7.16
+          ],
+          "to": [
+            -10.66,
+            0.72,
+            7.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_0_3",
+        "host": "",
+        "description": "west moulding 0 3",
+        "size": {},
+        "form": {
+          "from": [
+            -10.66,
+            0.72,
+            7.16
+          ],
+          "to": [
+            -10.66,
+            0.72,
+            -3.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_1_0",
+        "host": "",
+        "description": "west moulding 1 0",
+        "size": {},
+        "form": {
+          "from": [
+            -10.7,
+            4.25,
+            -3.2
+          ],
+          "to": [
+            -5.8,
+            4.25,
+            -3.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_1_1",
+        "host": "",
+        "description": "west moulding 1 1",
+        "size": {},
+        "form": {
+          "from": [
+            -5.8,
+            4.25,
+            -3.2
+          ],
+          "to": [
+            -5.8,
+            4.25,
+            7.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_1_2",
+        "host": "",
+        "description": "west moulding 1 2",
+        "size": {},
+        "form": {
+          "from": [
+            -5.8,
+            4.25,
+            7.2
+          ],
+          "to": [
+            -10.7,
+            4.25,
+            7.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_1_3",
+        "host": "",
+        "description": "west moulding 1 3",
+        "size": {},
+        "form": {
+          "from": [
+            -10.7,
+            4.25,
+            7.2
+          ],
+          "to": [
+            -10.7,
+            4.25,
+            -3.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_2_0",
+        "host": "",
+        "description": "west moulding 2 0",
+        "size": {},
+        "form": {
+          "from": [
+            -10.77,
+            7.72,
+            -3.27
+          ],
+          "to": [
+            -5.73,
+            7.72,
+            -3.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_2_1",
+        "host": "",
+        "description": "west moulding 2 1",
+        "size": {},
+        "form": {
+          "from": [
+            -5.73,
+            7.72,
+            -3.27
+          ],
+          "to": [
+            -5.73,
+            7.72,
+            7.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_2_2",
+        "host": "",
+        "description": "west moulding 2 2",
+        "size": {},
+        "form": {
+          "from": [
+            -5.73,
+            7.72,
+            7.27
+          ],
+          "to": [
+            -10.77,
+            7.72,
+            7.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_2_3",
+        "host": "",
+        "description": "west moulding 2 3",
+        "size": {},
+        "form": {
+          "from": [
+            -10.77,
+            7.72,
+            7.27
+          ],
+          "to": [
+            -10.77,
+            7.72,
+            -3.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_3_0",
+        "host": "",
+        "description": "west moulding 3 0",
+        "size": {},
+        "form": {
+          "from": [
+            -10.88,
+            7.96,
+            -3.38
+          ],
+          "to": [
+            -5.62,
+            7.96,
+            -3.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_3_1",
+        "host": "",
+        "description": "west moulding 3 1",
+        "size": {},
+        "form": {
+          "from": [
+            -5.62,
+            7.96,
+            -3.38
+          ],
+          "to": [
+            -5.62,
+            7.96,
+            7.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_3_2",
+        "host": "",
+        "description": "west moulding 3 2",
+        "size": {},
+        "form": {
+          "from": [
+            -5.62,
+            7.96,
+            7.38
+          ],
+          "to": [
+            -10.88,
+            7.96,
+            7.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "west_moulding_3_3",
+        "host": "",
+        "description": "west moulding 3 3",
+        "size": {},
+        "form": {
+          "from": [
+            -10.88,
+            7.96,
+            7.38
+          ],
+          "to": [
+            -10.88,
+            7.96,
+            -3.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-10p5_-3",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -10.5 -3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.5,
+            4.12,
+            -3
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-10p5_7",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -10.5 7",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -10.5,
+            4.12,
+            7
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-6p0_-3",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -6.0 -3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -6.0,
+            4.12,
+            -3
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_-6p0_7",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin -6.0 7",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -6.0,
+            4.12,
+            7
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_1_0",
+        "host": "wall_east_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_1_0_sill",
+        "host": "",
+        "description": "window east front 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            1.2999999999999998,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_1_0_head",
+        "host": "",
+        "description": "window east front 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            3.55,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_1_1",
+        "host": "wall_east_front_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_1_1_sill",
+        "host": "",
+        "description": "window east front 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            1.2999999999999998,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_1_1_head",
+        "host": "",
+        "description": "window east front 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            3.55,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_back_1_0",
+        "host": "wall_east_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_1_0_sill",
+        "host": "",
+        "description": "window east back 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            1.2999999999999998,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_1_0_head",
+        "host": "",
+        "description": "window east back 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            3.55,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_back_1_1",
+        "host": "wall_east_back_L1",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_1_1_sill",
+        "host": "",
+        "description": "window east back 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            1.2999999999999998,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_1_1_head",
+        "host": "",
+        "description": "window east back 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            3.55,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_1_0",
+        "host": "wall_east_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 1.875,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_1_0_sill",
+        "host": "",
+        "description": "window east right 1 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            1.2999999999999998,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_1_0_head",
+        "host": "",
+        "description": "window east right 1 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            3.55,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_1_1",
+        "host": "wall_east_right_L1",
+        "description": "",
+        "placement": {
+          "offset": 6.875,
+          "sill_height": 0.7999999999999999,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_1_1_sill",
+        "host": "",
+        "description": "window east right 1 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            1.2999999999999998,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_1_1_head",
+        "host": "",
+        "description": "window east right 1 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            3.55,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_2_0",
+        "host": "wall_east_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_2_0_sill",
+        "host": "",
+        "description": "window east front 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            5.0,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_2_0_head",
+        "host": "",
+        "description": "window east front 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            7.249999999999999,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_front_2_1",
+        "host": "wall_east_front_L2",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_2_1_sill",
+        "host": "",
+        "description": "window east front 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            5.0,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_front_2_1_head",
+        "host": "",
+        "description": "window east front 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            7.249999999999999,
+            -3.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_back_2_0",
+        "host": "wall_east_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 0.5,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_2_0_sill",
+        "host": "",
+        "description": "window east back 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            5.0,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_2_0_head",
+        "host": "",
+        "description": "window east back 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            9.375,
+            7.249999999999999,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_back_2_1",
+        "host": "wall_east_back_L2",
+        "description": "",
+        "placement": {
+          "offset": 2.75,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_2_1_sill",
+        "host": "",
+        "description": "window east back 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            5.0,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.16,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_back_2_1_head",
+        "host": "",
+        "description": "window east back 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.125,
+            7.249999999999999,
+            7.18
+          ]
+        },
+        "size": {
+          "width": 1.63,
+          "height": 0.18,
+          "depth": 0.24
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_2_0",
+        "host": "wall_east_right_L2",
+        "description": "",
+        "placement": {
+          "offset": 1.875,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_2_0_sill",
+        "host": "",
+        "description": "window east right 2 0 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            5.0,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_2_0_head",
+        "host": "",
+        "description": "window east right 2 0 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            7.249999999999999,
+            -0.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "window",
+        "id": "window_east_right_2_1",
+        "host": "wall_east_right_L2",
+        "description": "",
+        "placement": {
+          "offset": 6.875,
+          "sill_height": 0.7999999999999998,
+          "normal_offset": 0.0
+        },
+        "size": {
+          "width": 1.25,
+          "height": 2.05
+        },
+        "form": {
+          "frameWidth": 0.065,
+          "frameDepth": 0.16,
+          "glassDepth": 0.022,
+          "verticalMullions": 1,
+          "horizontalMullions": 1,
+          "mullionWidth": 0.035,
+          "frameMaterial": "frame",
+          "glassMaterial": "glass"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_2_1_sill",
+        "host": "",
+        "description": "window east right 2 1 sill",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            5.0,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.16,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "window_east_right_2_1_head",
+        "host": "",
+        "description": "window east right 2 1 head",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.68,
+            7.249999999999999,
+            4.5
+          ]
+        },
+        "size": {
+          "width": 0.24,
+          "height": 0.18,
+          "depth": 1.63
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_0_0",
+        "host": "",
+        "description": "east moulding 0 0",
+        "size": {},
+        "form": {
+          "from": [
+            5.84,
+            0.72,
+            -3.16
+          ],
+          "to": [
+            10.66,
+            0.72,
+            -3.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_0_1",
+        "host": "",
+        "description": "east moulding 0 1",
+        "size": {},
+        "form": {
+          "from": [
+            10.66,
+            0.72,
+            -3.16
+          ],
+          "to": [
+            10.66,
+            0.72,
+            7.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_0_2",
+        "host": "",
+        "description": "east moulding 0 2",
+        "size": {},
+        "form": {
+          "from": [
+            10.66,
+            0.72,
+            7.16
+          ],
+          "to": [
+            5.84,
+            0.72,
+            7.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_0_3",
+        "host": "",
+        "description": "east moulding 0 3",
+        "size": {},
+        "form": {
+          "from": [
+            5.84,
+            0.72,
+            7.16
+          ],
+          "to": [
+            5.84,
+            0.72,
+            -3.16
+          ],
+          "width": 0.22,
+          "height": 0.3,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_1_0",
+        "host": "",
+        "description": "east moulding 1 0",
+        "size": {},
+        "form": {
+          "from": [
+            5.8,
+            4.25,
+            -3.2
+          ],
+          "to": [
+            10.7,
+            4.25,
+            -3.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_1_1",
+        "host": "",
+        "description": "east moulding 1 1",
+        "size": {},
+        "form": {
+          "from": [
+            10.7,
+            4.25,
+            -3.2
+          ],
+          "to": [
+            10.7,
+            4.25,
+            7.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_1_2",
+        "host": "",
+        "description": "east moulding 1 2",
+        "size": {},
+        "form": {
+          "from": [
+            10.7,
+            4.25,
+            7.2
+          ],
+          "to": [
+            5.8,
+            4.25,
+            7.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_1_3",
+        "host": "",
+        "description": "east moulding 1 3",
+        "size": {},
+        "form": {
+          "from": [
+            5.8,
+            4.25,
+            7.2
+          ],
+          "to": [
+            5.8,
+            4.25,
+            -3.2
+          ],
+          "width": 0.22,
+          "height": 0.22,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_2_0",
+        "host": "",
+        "description": "east moulding 2 0",
+        "size": {},
+        "form": {
+          "from": [
+            5.73,
+            7.72,
+            -3.27
+          ],
+          "to": [
+            10.77,
+            7.72,
+            -3.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_2_1",
+        "host": "",
+        "description": "east moulding 2 1",
+        "size": {},
+        "form": {
+          "from": [
+            10.77,
+            7.72,
+            -3.27
+          ],
+          "to": [
+            10.77,
+            7.72,
+            7.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_2_2",
+        "host": "",
+        "description": "east moulding 2 2",
+        "size": {},
+        "form": {
+          "from": [
+            10.77,
+            7.72,
+            7.27
+          ],
+          "to": [
+            5.73,
+            7.72,
+            7.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_2_3",
+        "host": "",
+        "description": "east moulding 2 3",
+        "size": {},
+        "form": {
+          "from": [
+            5.73,
+            7.72,
+            7.27
+          ],
+          "to": [
+            5.73,
+            7.72,
+            -3.27
+          ],
+          "width": 0.22,
+          "height": 0.26,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_3_0",
+        "host": "",
+        "description": "east moulding 3 0",
+        "size": {},
+        "form": {
+          "from": [
+            5.62,
+            7.96,
+            -3.38
+          ],
+          "to": [
+            10.88,
+            7.96,
+            -3.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_3_1",
+        "host": "",
+        "description": "east moulding 3 1",
+        "size": {},
+        "form": {
+          "from": [
+            10.88,
+            7.96,
+            -3.38
+          ],
+          "to": [
+            10.88,
+            7.96,
+            7.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_3_2",
+        "host": "",
+        "description": "east moulding 3 2",
+        "size": {},
+        "form": {
+          "from": [
+            10.88,
+            7.96,
+            7.38
+          ],
+          "to": [
+            5.62,
+            7.96,
+            7.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "east_moulding_3_3",
+        "host": "",
+        "description": "east moulding 3 3",
+        "size": {},
+        "form": {
+          "from": [
+            5.62,
+            7.96,
+            7.38
+          ],
+          "to": [
+            5.62,
+            7.96,
+            -3.38
+          ],
+          "width": 0.22,
+          "height": 0.16,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_6_-3",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 6 -3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            6,
+            4.12,
+            -3
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_6_7",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 6 7",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            6,
+            4.12,
+            7
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_10p5_-3",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 10.5 -3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.5,
+            4.12,
+            -3
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "quoin_10p5_7",
+        "repetition": {
+          "count": 20,
+          "axis": "y",
+          "spacing": 0.35,
+          "member_size": [
+            0.48,
+            0.3,
+            0.48
+          ]
+        },
+        "host": "",
+        "description": "quoin 10.5 7",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            10.5,
+            4.12,
+            7
+          ]
+        },
+        "size": {
+          "width": 0.48,
+          "height": 6.949999999999999,
+          "depth": 0.48
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "column",
+        "id": "ionic_0",
+        "host": "",
+        "description": "ionic 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -2.65,
+            2.4099999999999997,
+            -6.65
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            -2.65,
+            0.6,
+            -6.65
+          ],
+          "height": 3.6199999999999997,
+          "bottomRadius": 0.22,
+          "topRadius": 0.1936,
+          "style": "ionic",
+          "flutes": 16
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "column_plinth_0",
+        "host": "",
+        "description": "column plinth 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -2.65,
+            0.73,
+            -6.65
+          ]
+        },
+        "size": {
+          "width": 0.62,
+          "height": 0.26,
+          "depth": 0.62
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "column",
+        "id": "ionic_1",
+        "host": "",
+        "description": "ionic 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -0.9,
+            2.4099999999999997,
+            -6.65
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            -0.9,
+            0.6,
+            -6.65
+          ],
+          "height": 3.6199999999999997,
+          "bottomRadius": 0.22,
+          "topRadius": 0.1936,
+          "style": "ionic",
+          "flutes": 16
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "column_plinth_1",
+        "host": "",
+        "description": "column plinth 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -0.9,
+            0.73,
+            -6.65
+          ]
+        },
+        "size": {
+          "width": 0.62,
+          "height": 0.26,
+          "depth": 0.62
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "column",
+        "id": "ionic_2",
+        "host": "",
+        "description": "ionic 2",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.9,
+            2.4099999999999997,
+            -6.65
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            0.9,
+            0.6,
+            -6.65
+          ],
+          "height": 3.6199999999999997,
+          "bottomRadius": 0.22,
+          "topRadius": 0.1936,
+          "style": "ionic",
+          "flutes": 16
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "column_plinth_2",
+        "host": "",
+        "description": "column plinth 2",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0.9,
+            0.73,
+            -6.65
+          ]
+        },
+        "size": {
+          "width": 0.62,
+          "height": 0.26,
+          "depth": 0.62
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "column",
+        "id": "ionic_3",
+        "host": "",
+        "description": "ionic 3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            2.65,
+            2.4099999999999997,
+            -6.65
+          ]
+        },
+        "size": {},
+        "form": {
+          "base": [
+            2.65,
+            0.6,
+            -6.65
+          ],
+          "height": 3.6199999999999997,
+          "bottomRadius": 0.22,
+          "topRadius": 0.1936,
+          "style": "ionic",
+          "flutes": 16
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "column_plinth_3",
+        "host": "",
+        "description": "column plinth 3",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            2.65,
+            0.73,
+            -6.65
+          ]
+        },
+        "size": {
+          "width": 0.62,
+          "height": 0.26,
+          "depth": 0.62
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "portico_entablature_0",
+        "host": "",
+        "description": "portico entablature 0",
+        "size": {},
+        "form": {
+          "from": [
+            -3.25,
+            4.18,
+            -7.1
+          ],
+          "to": [
+            3.25,
+            4.18,
+            -7.1
+          ],
+          "width": 0.38,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "portico_entablature_1",
+        "host": "",
+        "description": "portico entablature 1",
+        "size": {},
+        "form": {
+          "from": [
+            3.25,
+            4.18,
+            -7.1
+          ],
+          "to": [
+            3.25,
+            4.18,
+            -4.05
+          ],
+          "width": 0.38,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "portico_entablature_2",
+        "host": "",
+        "description": "portico entablature 2",
+        "size": {},
+        "form": {
+          "from": [
+            3.25,
+            4.18,
+            -4.05
+          ],
+          "to": [
+            -3.25,
+            4.18,
+            -4.05
+          ],
+          "width": 0.38,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "beam",
+        "id": "portico_entablature_3",
+        "host": "",
+        "description": "portico entablature 3",
+        "size": {},
+        "form": {
+          "from": [
+            -3.25,
+            4.18,
+            -4.05
+          ],
+          "to": [
+            -3.25,
+            4.18,
+            -7.1
+          ],
+          "width": 0.38,
+          "height": 0.28,
+          "crossSection": "rect"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "stair",
+        "id": "entry_steps",
+        "host": "",
+        "description": "entry steps",
+        "size": {},
+        "form": {
+          "from": [
+            0,
+            0,
+            -9.4
+          ],
+          "to": [
+            0,
+            0.6,
+            -7.2
+          ],
+          "width": 5.5,
+          "stepCount": 4
+        },
+        "material_bindings": {
+          "material": "floor"
+        }
+      },
+      {
+        "type": "stair",
+        "id": "hall_stair",
+        "floor_connections": [
+          {
+            "from_floor": 1,
+            "to_floor": 2
+          }
+        ],
+        "host": "",
+        "description": "hall stair",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "plan_position": [
+            -2.3,
+            4.6
+          ]
+        },
+        "size": {
+          "width": 2.9,
+          "height": 3.7,
+          "depth": 5.1
+        },
+        "form": {
+          "shape": "U",
+          "flights": 2,
+          "span_direction": "+z",
+          "flight_width": 1.25,
+          "landing_depth": 1.25,
+          "max_riser_height": 0.18,
+          "landing_thickness": 0.22
+        },
+        "material_bindings": {
+          "material": "structure"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "chimney_shaft_0",
+        "host": "",
+        "description": "chimney shaft 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.6,
+            9.15,
+            5.8
+          ]
+        },
+        "size": {
+          "width": 0.68,
+          "height": 2.0,
+          "depth": 0.78
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "facade_primary"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "chimney_cap_0",
+        "host": "",
+        "description": "chimney cap 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -4.6,
+            10.15,
+            5.8
+          ]
+        },
+        "size": {
+          "width": 0.92,
+          "height": 0.18,
+          "depth": 1.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "chimney_shaft_1",
+        "host": "",
+        "description": "chimney shaft 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.6,
+            9.15,
+            5.8
+          ]
+        },
+        "size": {
+          "width": 0.68,
+          "height": 2.0,
+          "depth": 0.78
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "facade_primary"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "chimney_cap_1",
+        "host": "",
+        "description": "chimney cap 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            4.6,
+            10.15,
+            5.8
+          ]
+        },
+        "size": {
+          "width": 0.92,
+          "height": 0.18,
+          "depth": 1.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "estate_ground",
+        "host": "",
+        "description": "estate ground",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            -0.18,
+            0
+          ]
+        },
+        "size": {
+          "width": 31.0,
+          "height": 0.3,
+          "depth": 30.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "ground"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "front_court",
+        "host": "",
+        "description": "front court",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            -0.015,
+            -10.0
+          ]
+        },
+        "size": {
+          "width": 18.0,
+          "height": 0.06,
+          "depth": 6.6
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "paving"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "axial_walk",
+        "host": "",
+        "description": "axial walk",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            0,
+            0.03,
+            -12
+          ]
+        },
+        "size": {
+          "width": 4.0,
+          "height": 0.12,
+          "depth": 7.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "floor"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "parterre_border_0",
+        "host": "",
+        "description": "parterre border 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.4,
+            0.18,
+            -10
+          ]
+        },
+        "size": {
+          "width": 4.2,
+          "height": 0.35,
+          "depth": 4.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "parterre_0",
+        "host": "",
+        "description": "parterre 0",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            -7.4,
+            0.4,
+            -10
+          ]
+        },
+        "size": {
+          "width": 3.8,
+          "height": 0.28,
+          "depth": 3.6
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "greenery"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "parterre_border_1",
+        "host": "",
+        "description": "parterre border 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.4,
+            0.18,
+            -10
+          ]
+        },
+        "size": {
+          "width": 4.2,
+          "height": 0.35,
+          "depth": 4.0
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "accent"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "parterre_1",
+        "host": "",
+        "description": "parterre 1",
+        "placement": {
+          "offset": 0.0,
+          "sill_height": 0.0,
+          "normal_offset": 0.0,
+          "position": [
+            7.4,
+            0.4,
+            -10
+          ]
+        },
+        "size": {
+          "width": 3.8,
+          "height": 0.28,
+          "depth": 3.6
+        },
+        "form": {
+          "shape": "box"
+        },
+        "material_bindings": {
+          "material": "greenery"
+        }
+      }
+    ],
+    "balcony_access_count": 0,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": []
+  },
+  "constraints": [],
+  "locks": [],
+  "rule_trace": []
+}

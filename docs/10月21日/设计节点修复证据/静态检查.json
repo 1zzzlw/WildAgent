@@ -1,0 +1,16 @@
+{
+  "python_syntax": "parsed_without_importing_project",
+  "files": [
+    "wild-server/app/utils/json_extractor.py",
+    "wild-server/app/agent/generation/architecture/design_workflow.py",
+    "wild-server/app/agent/generation/architecture/workflow.py",
+    "wild-server/app/agent/prompts/planning.py",
+    "wild-server/app/design/coordinates.py",
+    "wild-server/app/design/compilation.py",
+    "wild-server/scripts/ci/test_design_revision_feedback.py",
+    "docs/10月21日/V2-优化后Agent生成/00-运行完整Agent.py"
+  ],
+  "runtime_tests_executed": false,
+  "generation_restarted": false,
+  "rendering_executed": false
+}

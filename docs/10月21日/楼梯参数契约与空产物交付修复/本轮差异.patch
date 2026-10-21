@@ -1,0 +1,612 @@
+--- a/wild-server/app/design/contracts.py
++++ b/wild-server/app/design/contracts.py
+@@ -443,7 +443,7 @@
+     ) = Field(default=None, exclude_if=lambda value: value is None)
+     plan_position: PlanPoint | None = Field(
+         default=None, exclude_if=lambda value: value is None,
+-        description="楼梯整组平面中心 [X,Z]；竖向位置由 floor_connections 计算",
++        description="单连接U形双跑楼梯整组平面中心 [X,Z]；竖向位置由 floor_connections 计算",
+     )
+ 
+ 
+@@ -485,11 +485,48 @@
+     ]
+ 
+ 
++class PlanStairForm(ContractModel):
++    """plan_position 对应的可计算设计输入；其余楼梯仍保留开放形态。"""
++
++    model_config = ConfigDict(extra="allow", allow_inf_nan=False)
++    shape: Literal["U"]
++    flights: Literal[2] = Field(default=2, description="U形双跑固定为2，可省略，由程序补齐")
++    span_direction: Literal["+x", "-x", "+z", "-z"] = Field(
++        description="第一跑上行的世界坐标方向"
++    )
++    flight_width: Annotated[FiniteNumber, Field(gt=0, description="单跑宽度（米）")]
++    landing_depth: Annotated[FiniteNumber, Field(gt=0, description="沿第一跑行进方向的平台深度（米）")]
++    rises: Annotated[int, Field(ge=1, strict=True)] | None = None
++    max_riser_height: Annotated[FiniteNumber, Field(gt=0)] | None = None
++    riser_height: Annotated[FiniteNumber, Field(gt=0)] | None = None
++    tread_depth: Annotated[FiniteNumber, Field(gt=0)] | None = None
++    landing_thickness: Annotated[FiniteNumber, Field(gt=0)] | None = None
++
++
++def _component_parameter_schema(schema: dict) -> None:
++    # 条件协议与运行时共用 PlanStairForm，不在提示词另维护字段表。
++    schema["allOf"] = [{
++        "if": {"required": ["placement"], "properties": {"placement": {
++            "type": "object", "required": ["plan_position"],
++            "properties": {"plan_position": {"type": "array"}},
++        }}},
++        "then": {"required": ["form", "size", "floor_connections"], "properties": {
++            "form": PlanStairForm.model_json_schema(),
++            "size": {"required": ["width", "depth"], "properties": {
++                "width": {"description": "整组世界X方向占地（米）"},
++                "depth": {"description": "整组世界Z方向占地（米）"},
++            }},
++            "floor_connections": {"minItems": 1, "maxItems": 1},
++        }},
++    }]
++
++
+ class ComponentInstance(ContractModel):
+     """保留实例设计及扩展参数，由 plan 实现形态与依附关系。"""
+ 
+     model_config = ConfigDict(
+-        extra="allow", validate_assignment=True, allow_inf_nan=False
++        extra="allow", validate_assignment=True, allow_inf_nan=False,
++        json_schema_extra=_component_parameter_schema,
+     )
+     type: str = Field(min_length=1)
+     id: str | None = Field(default=None, min_length=1, pattern=r"^[A-Za-z0-9_-]+$")
+@@ -515,20 +552,22 @@
+         Annotated[float, Field(gt=0, allow_inf_nan=False)],
+     ] = Field(default_factory=dict)
+     #: 开放的设计形式描述，plan 负责转换成 WILD。
+-    form: dict[str, Any] = Field(default_factory=dict)
++    form: dict[str, Any] = Field(default_factory=dict, validate_default=True)
+     #: 材质角色名
+     material_role: str | None = None
+-    material_bindings: dict[str, str] = Field(
+-        default_factory=dict, exclude_if=lambda value: not value
+-    )
+-
+-    @field_validator("material_bindings")
++    material_bindings: dict[
++        Annotated[str, Field(pattern=r"^(?:material|.*Material)$")], str
++    ] = Field(
++        default_factory=dict, exclude_if=lambda value: not value,
++        json_schema_extra={"additionalProperties": False},
++    )
++
++    @field_validator("form")
+     @classmethod
+-    def material_fields(cls, value):
+-        if any(not (key == "material" or key.endswith("Material")) for key in value):
+-            raise ValueError(
+-                "material_bindings 的键须为 material 或 WILD 的 *Material 字段"
+-            )
++    def parameterized_form(cls, value, info):
++        placement = info.data.get("placement")
++        if placement is not None and placement.plan_position is not None:
++            return PlanStairForm.model_validate(value).model_dump(mode="json", exclude_none=True)
+         return value
+ 
+     @field_validator("form", mode="before")
+@@ -902,12 +941,14 @@
+     warnings: list[str] = Field(default_factory=list)
+ 
+ 
+-def architecture_input_schema() -> dict:
++def architecture_input_schema(*, fields: set[str] | None = None) -> dict:
+     """从保存契约投影模型输入协议，移除程序状态和派生清单。"""
+     import re
+     schema = ArchitectureDecisions.model_json_schema()
+     roots = {"concept", "design_intent", "massing", "volumes", "structural_grid", "construction",
+              "circulation", "facades", "roof", "components", "floor_layouts", "envelope", "materials"}
++    if fields is not None:
++        roots &= fields
+     schema["properties"] = {k:v for k,v in schema["properties"].items() if k in roots}
+     schema["required"] = [k for k in schema.get("required", []) if k in roots]
+     definitions = schema.get("$defs", {})
+@@ -931,6 +972,6 @@
+             return [compact(v) for v in value]
+         if not isinstance(value, dict):
+             return value
+-        # 注释、默认值由保存契约保留；模型输入只需类型、字段、引用和数值边界。
+-        return {k:compact(v) for k,v in value.items() if k not in {"title", "description", "default", "examples"}}
++        # 坐标及字段语义也是输入协议；只删除展示信息和缺省值。
++        return {k:compact(v) for k,v in value.items() if k not in {"title", "default", "examples"}}
+     return compact(schema)
+--- a/wild-server/app/design/coordinates.py
++++ b/wild-server/app/design/coordinates.py
+@@ -175,7 +175,11 @@
+             if (component.get("placement") or {}).get("plan_position") is not None:
+                 stair_errors.append(f"/components/{component_index}/placement/plan_position：此字段仅用于楼梯")
+             continue
+-        targets, _ = floor_connection_targets(design, component)
++        targets, connection_issues = floor_connection_targets(design, component)
++        if connection_issues:
++            stair_errors.extend(f"/components/{component_index}{issue['path']}：{issue['reason']}"
++                                for issue in connection_issues)
++            continue
+         marker = {"id": component.get("id", "stair"), "design": component, "floor_connections": targets,
+                   "design_path": f"/{'components' if 'components' in design else 'delegated_components'}/{component_index}"}
+         try:
+@@ -183,8 +187,6 @@
+         except ValueError as exc:
+             stair_errors.append(str(exc))
+             continue
+-        if route is None and (component.get("placement") or {}).get("plan_position") is not None:
+-            stair_errors.append(f"/components/{component_index}/placement/plan_position：需要完整的单连接U形双跑参数")
+         if route:
+             stair_routes[marker["id"]] = route
+             void = route["void"]
+@@ -566,6 +568,26 @@
+     design = marker.get("design") or {}
+     path = (marker.get("design_path") or "/components").removeprefix("/decisions")
+     form, size = design.get("form") or {}, design.get("size") or {}
++    plan_position = (design.get("placement") or {}).get("plan_position")
++    connections = marker.get("floor_connections") or []
++    if plan_position is not None:
++        from pydantic import ValidationError
++        from .contracts import PlanStairForm
++
++        try:
++            form = PlanStairForm.model_validate(form).model_dump(mode="json", exclude_none=True)
++        except ValidationError as exc:
++            raise ValueError("；".join(
++                f"{path}/form/{'/'.join(str(p) for p in error['loc'])}：{error['msg']}"
++                for error in exc.errors()
++            )) from exc
++        missing = [f"{path}/size/{key}：需要有限正数的世界占地尺寸"
++                   for key in ("width", "depth")
++                   if type(size.get(key)) not in (int, float) or not isfinite(size[key]) or size[key] <= 0]
++        if len(connections) != 1:
++            missing.append(f"{path}/floor_connections：plan_position 需要且仅支持一组有效楼层连接，实际 {len(connections)} 组")
++        if missing:
++            raise ValueError("；".join(missing))
+     if (not isinstance(form, dict) or form.get("flights") != 2
+             or not re.search(r"(?<![A-Za-z])U(?![A-Za-z])|回形|回型|折返|平行双跑",
+                              str(form.get("shape") or "") + str(form.get("description") or ""), re.I)):
+@@ -577,8 +599,6 @@
+         match = re.search(r"第一跑[^。；]*?沿\s*([+-])\s*([XZ])", str(form.get("description") or ""), re.I)
+         direction = match[1] + match[2].lower() if match else ""
+     position = (design.get("placement") or {}).get("position")
+-    connections = marker.get("floor_connections") or []
+-    plan_position = (design.get("placement") or {}).get("plan_position")
+     if plan_position is not None and len(connections) == 1:
+         computed = [plan_position[0], (connections[0]["from_y"]+connections[0]["to_y"])/2, plan_position[1]]
+         if position is not None and any(abs(a-b) > 0.001 for a,b in zip(position, computed)):
+--- a/wild-server/app/services/agent_delivery.py
++++ b/wild-server/app/services/agent_delivery.py
+@@ -178,7 +178,7 @@
+         if isinstance(geometry, dict) and any(isinstance(geometry.get(key), list) and geometry[key]
+                                               for key in ("elements", "components")):
+             return deepcopy(blueprint)
+-    return deepcopy(available[0]) if available else None
++    return None
+ 
+ 
+ def prepare_blueprint_delivery(
+@@ -195,6 +195,12 @@
+     """保存已有实体；校验失败或证据不一致均保留为错误报告。"""
+     if not isinstance(blueprint, dict):
+         raise GenerationRejectedError("没有可保存的蓝图对象")
++    geometry = blueprint.get("geometry")
++    if not isinstance(geometry, dict) or not any(
++        isinstance(geometry.get(key), list) and geometry[key]
++        for key in ("elements", "components")
++    ):
++        raise GenerationRejectedError("没有生成建筑实体，空白蓝图不能作为生成结果保存")
+     meta = blueprint.get("meta")
+     meta = meta if isinstance(meta, dict) else {}
+     summary = summarize_validation(
+@@ -233,8 +239,6 @@
+     except Exception as exc:
+         raise ArtifactSaveError(str(exc)) from exc
+ 
+-    geometry = blueprint.get("geometry")
+-    geometry = geometry if isinstance(geometry, dict) else {}
+     return BlueprintDelivery(
+         filename=rel_path,
+         file_url=f"/api/scenes/{rel_path}",
+--- a/wild-server/app/agent/generation/architecture/design_workflow.py
++++ b/wild-server/app/agent/generation/architecture/design_workflow.py
+@@ -269,6 +269,7 @@
+                 repair_paths = _repair_paths(issue, draft, fields)
+         if repair_paths:
+             from app.design.completeness import value_at
++            from app.design.contracts import architecture_input_schema
+ 
+             reference = {
+                 key: draft[key]
+@@ -290,6 +291,9 @@
+                 "path 使用图纸根 JSON Pointer；程序应用补丁并重新检查。"
+                 "\n允许修改的范围："
+                 + json.dumps(repair_paths, ensure_ascii=False)
++                + "\n相关字段 Schema："
++                + json.dumps(architecture_input_schema(fields={path.split('/')[1] for path in repair_paths}),
++                             ensure_ascii=False, separators=(',', ':'))
+                 + "\n图纸校验错误："
+                 + validation_issue
+                 + ("\n上一补丁未通过：" + issue if not checked else "")
+--- a/wild-server/scripts/ci/test_design_parameter_realization.py
++++ b/wild-server/scripts/ci/test_design_parameter_realization.py
+@@ -5,9 +5,12 @@
+ import unittest
+ from unittest.mock import AsyncMock, patch
+ 
++from jsonschema import Draft202012Validator
++from pydantic import ValidationError
++
+ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+ 
+-from app.design.contracts import architecture_input_schema
++from app.design.contracts import ComponentInstance, architecture_input_schema
+ from app.design.compilation import project_drawing
+ from app.design.coordinates import design_geometry_context
+ from app.design.realization import realize_marker
+@@ -103,6 +106,61 @@
+         self.assertNotIn("width",schema["$defs"]["MassingDecision"]["required"])
+         self.assertGreater(schema["$defs"]["MassingDecision"]["properties"]["width"]["exclusiveMinimum"],-1)
+         self.assertIn("plan_position",schema["$defs"]["ComponentPlacement"]["properties"])
++
++    def test_plan_stair_exposes_missing_form_fields_and_invalid_material_keys_together(self):
++        raw=deepcopy(drawing()["components"][0])
++        raw["form"]={"layout":"U","directions":2}
++        raw["material_bindings"]={"structure":"concrete"}
++        with self.assertRaises(ValidationError) as caught:
++            ComponentInstance.model_validate(raw)
++        paths={tuple(error["loc"]) for error in caught.exception.errors()}
++        for field in ("shape","span_direction","flight_width","landing_depth"):
++            self.assertIn(("form",field),paths)
++        self.assertIn(("material_bindings","structure","[key]"),paths)
++
++    def test_u_shape_does_not_require_redundant_flight_count(self):
++        raw=drawing(); raw["components"][0]["form"].pop("flights")
++        doc=document(raw)
++        self.assertEqual(2,doc.decisions.components[0].form["flights"])
++        self.assertIn("stair",project_drawing(doc).geometry_context["stair_routes"])
++        raw["components"][0]["form"]["flights"]=3
++        with self.assertRaises(ValueError): document(raw)
++
++    def test_plan_stair_input_schema_and_runtime_agree_on_missing_fields(self):
++        schema=architecture_input_schema(fields={"components"})
++        validator=Draft202012Validator(schema)
++        raw=deepcopy(drawing()["components"][0])
++        self.assertEqual([],list(validator.iter_errors({"components":[raw]})))
++        for mutation in ("form","footprint","connections"):
++            with self.subTest(mutation=mutation):
++                component=deepcopy(raw)
++                if mutation=="form": component["form"]={"layout":"U","directions":2}
++                elif mutation=="footprint": component["size"].pop("depth")
++                else: component["floor_connections"].append({"from_floor":1,"to_floor":2})
++                self.assertTrue(list(validator.iter_errors({"components":[component]})))
++                with self.assertRaises(ValueError): project_drawing(document({**drawing(),"components":[component]}))
++
++    def test_optional_plan_position_does_not_restrict_other_component_forms(self):
++        schema=architecture_input_schema(fields={"components"})
++        for placement in (None,{"position":[1,2,3]},{"plan_position":None,"position":[1,2,3]}):
++            component={"id":"custom","type":"custom","placement":placement,"form":{"profile":"curved"}}
++            self.assertEqual([],list(Draft202012Validator(schema).iter_errors({"components":[component]})))
++            self.assertEqual({"profile":"curved"},ComponentInstance.model_validate(component).form)
++
++    def test_plan_stair_missing_footprint_and_connections_have_actionable_paths(self):
++        raw=drawing(); raw["components"][0]["size"].pop("depth")
++        raw["components"][0]["floor_connections"]=[]
++        with self.assertRaises(ValueError) as caught: design_geometry_context(raw)
++        self.assertIn("/components/0/size/depth",str(caught.exception))
++        self.assertIn("/components/0/floor_connections",str(caught.exception))
++
++    def test_model_schema_enforces_material_binding_keys(self):
++        validator=Draft202012Validator(architecture_input_schema(fields={"components"}))
++        for valid in (True,False):
++            component={"id":"opening","type":"window",
++                       "material_bindings":{"frameMaterial":"wood","glassMaterial":"glass"}
++                       if valid else {"frame":"wood","panel":"glass"}}
++            self.assertEqual(valid,validator.is_valid({"components":[component]}))
+ 
+ 
+ class ProgramImplementation(unittest.IsolatedAsyncioTestCase):
+--- a/wild-server/scripts/ci/test_design_revision_feedback.py
++++ b/wild-server/scripts/ci/test_design_revision_feedback.py
+@@ -93,6 +93,11 @@
+         self.assertEqual(1.75,result["components"][3]["placement"]["position"][1])
+         prompt=invoke.call_args_list[2].args[1][0]["content"]
+         self.assertIn('允许修改的范围：["/components/3"]',prompt)
++        schema=json.loads(prompt.split("\n相关字段 Schema：",1)[1].split("\n图纸校验错误：",1)[0])
++        self.assertEqual({"components"},set(schema["properties"]))
++        form=schema["$defs"]["ComponentInstance"]["allOf"][0]["then"]["properties"]["form"]
++        self.assertIn("span_direction",form["required"])
++        self.assertEqual(["+x","-x","+z","-z"],form["properties"]["span_direction"]["enum"])
+         self.assertEqual([True,True,True],[call.kwargs["enable_thinking"] for call in create.call_args_list])
+ 
+     async def test_unlocated_new_error_does_not_reuse_old_scope(self):
+--- a/wild-server/scripts/ci/test_agent_delivery.py
++++ b/wild-server/scripts/ci/test_agent_delivery.py
+@@ -0,0 +1,47 @@
++"""生成交付边界回归；按用户要求本轮不执行。"""
++from copy import deepcopy
++from pathlib import Path
++import sys
++import unittest
++from unittest.mock import patch
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++from app.services.agent_delivery import (
++    GenerationRejectedError,
++    prepare_blueprint_delivery,
++    retain_generation_blueprint,
++)
++
++
++class GenerationDelivery(unittest.TestCase):
++    def test_empty_placeholder_is_not_a_generation_artifact(self):
++        empty={"meta":{"name":"未命名建筑"},"geometry":{"elements":[],"components":[]}}
++        state={"status":"failed","current_blueprint":empty,"final_blueprint":deepcopy(empty)}
++        self.assertIsNone(retain_generation_blueprint(state,deepcopy(empty)))
++        with patch("app.services.agent_delivery.save_blueprint_file_as") as save:
++            with self.assertRaises(GenerationRejectedError):
++                prepare_blueprint_delivery(empty,"session",[],status="failed")
++        save.assert_not_called()
++
++    def test_failed_generation_keeps_existing_entities_and_failed_fragments(self):
++        wall={"id":"wall","type":"wall","from":[0,0,0],"to":[4,3,0],"thickness":0.2}
++        component={"id":"window","type":"window","parentWall":"wall","from":[1,1,0],"width":1,"height":1}
++        state={"status":"failed","component_fragments":{"body":[wall]},
++               "component_diagnostics":{"opening":{"failed_implementations":{"window":{
++                   "geometry":{"components":[component]},"materials":{"glass":{"opacity":0.2}}
++               }}}}}
++        before=deepcopy(state)
++        result=retain_generation_blueprint(state)
++        self.assertEqual([wall],result["geometry"]["elements"])
++        self.assertEqual([component],result["geometry"]["components"])
++        self.assertEqual(before,state)
++        with patch("app.services.agent_delivery.save_blueprint_file_as") as save:
++            delivery=prepare_blueprint_delivery(result,"session",[],status="failed")
++        save.assert_called_once()
++        self.assertFalse(delivery.validation_passed)
++        self.assertEqual((1,1),(delivery.elements_count,delivery.components_count))
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- a/docs/9月9日优化/design-document.schema.json
++++ b/docs/9月9日优化/design-document.schema.json
+@@ -409,6 +409,211 @@
+     },
+     "ComponentInstance": {
+       "additionalProperties": true,
++      "allOf": [
++        {
++          "if": {
++            "properties": {
++              "placement": {
++                "properties": {
++                  "plan_position": {
++                    "type": "array"
++                  }
++                },
++                "required": [
++                  "plan_position"
++                ],
++                "type": "object"
++              }
++            },
++            "required": [
++              "placement"
++            ]
++          },
++          "then": {
++            "properties": {
++              "floor_connections": {
++                "maxItems": 1,
++                "minItems": 1
++              },
++              "form": {
++                "additionalProperties": true,
++                "description": "plan_position 对应的可计算设计输入；其余楼梯仍保留开放形态。",
++                "properties": {
++                  "flight_width": {
++                    "anyOf": [
++                      {
++                        "type": "integer"
++                      },
++                      {
++                        "type": "number"
++                      }
++                    ],
++                    "description": "单跑宽度（米）",
++                    "gt": 0,
++                    "title": "Flight Width"
++                  },
++                  "flights": {
++                    "const": 2,
++                    "default": 2,
++                    "description": "U形双跑固定为2，可省略，由程序补齐",
++                    "title": "Flights",
++                    "type": "integer"
++                  },
++                  "landing_depth": {
++                    "anyOf": [
++                      {
++                        "type": "integer"
++                      },
++                      {
++                        "type": "number"
++                      }
++                    ],
++                    "description": "沿第一跑行进方向的平台深度（米）",
++                    "gt": 0,
++                    "title": "Landing Depth"
++                  },
++                  "landing_thickness": {
++                    "anyOf": [
++                      {
++                        "anyOf": [
++                          {
++                            "type": "integer"
++                          },
++                          {
++                            "type": "number"
++                          }
++                        ],
++                        "gt": 0
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ],
++                    "default": null,
++                    "title": "Landing Thickness"
++                  },
++                  "max_riser_height": {
++                    "anyOf": [
++                      {
++                        "anyOf": [
++                          {
++                            "type": "integer"
++                          },
++                          {
++                            "type": "number"
++                          }
++                        ],
++                        "gt": 0
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ],
++                    "default": null,
++                    "title": "Max Riser Height"
++                  },
++                  "riser_height": {
++                    "anyOf": [
++                      {
++                        "anyOf": [
++                          {
++                            "type": "integer"
++                          },
++                          {
++                            "type": "number"
++                          }
++                        ],
++                        "gt": 0
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ],
++                    "default": null,
++                    "title": "Riser Height"
++                  },
++                  "rises": {
++                    "anyOf": [
++                      {
++                        "minimum": 1,
++                        "type": "integer"
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ],
++                    "default": null,
++                    "title": "Rises"
++                  },
++                  "shape": {
++                    "const": "U",
++                    "title": "Shape",
++                    "type": "string"
++                  },
++                  "span_direction": {
++                    "description": "第一跑上行的世界坐标方向",
++                    "enum": [
++                      "+x",
++                      "-x",
++                      "+z",
++                      "-z"
++                    ],
++                    "title": "Span Direction",
++                    "type": "string"
++                  },
++                  "tread_depth": {
++                    "anyOf": [
++                      {
++                        "anyOf": [
++                          {
++                            "type": "integer"
++                          },
++                          {
++                            "type": "number"
++                          }
++                        ],
++                        "gt": 0
++                      },
++                      {
++                        "type": "null"
++                      }
++                    ],
++                    "default": null,
++                    "title": "Tread Depth"
++                  }
++                },
++                "required": [
++                  "shape",
++                  "span_direction",
++                  "flight_width",
++                  "landing_depth"
++                ],
++                "title": "PlanStairForm",
++                "type": "object"
++              },
++              "size": {
++                "properties": {
++                  "depth": {
++                    "description": "整组世界Z方向占地（米）"
++                  },
++                  "width": {
++                    "description": "整组世界X方向占地（米）"
++                  }
++                },
++                "required": [
++                  "width",
++                  "depth"
++                ]
++              }
++            },
++            "required": [
++              "form",
++              "size",
++              "floor_connections"
++            ]
++          }
++        }
++      ],
+       "description": "保留实例设计及扩展参数，由 plan 实现形态与依附关系。",
+       "properties": {
+         "connections": {
+@@ -463,8 +668,11 @@
+           "title": "Id"
+         },
+         "material_bindings": {
+-          "additionalProperties": {
+-            "type": "string"
++          "additionalProperties": false,
++          "patternProperties": {
++            "^(?:material|.*Material)$": {
++              "type": "string"
++            }
+           },
+           "title": "Material Bindings",
+           "type": "object"
+@@ -690,7 +898,7 @@
+             }
+           ],
+           "default": null,
+-          "description": "楼梯整组平面中心 [X,Z]；竖向位置由 floor_connections 计算",
++          "description": "单连接U形双跑楼梯整组平面中心 [X,Z]；竖向位置由 floor_connections 计算",
+           "title": "Plan Position"
+         },
+         "position": {

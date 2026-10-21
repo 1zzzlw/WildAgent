@@ -1,0 +1,4189 @@
+{
+  "route": [
+    "Codex独立设计",
+    "项目DesignDocument契约",
+    "project_drawing",
+    "程序实现设计标记/realize_marker",
+    "WILD装配及Schema校验",
+    "当前 wild-core parseBlueprintWithReport / compileBlueprintComponents"
+  ],
+  "plan_node": false,
+  "model_api_calls": 0,
+  "compiler": "生成.py",
+  "source_sha256": "5742e541a199907e0196c240cdb3f9e8e90519b8393986938a6ac83a76e1300c",
+  "wild_sha256": "7448fb4cc2ae7a6f6a93e52ad0f288b95b28d5c012709f1663e075f598fc24b3",
+  "schema_errors": 0,
+  "staircase_physical_expansion": "completed",
+  "rendered": false,
+  "regression_tests_run": false,
+  "types": {
+    "wall": 48,
+    "floor": 81,
+    "roof": 1,
+    "beam": 52,
+    "primitive": 71,
+    "column": 2,
+    "window": 217,
+    "door": 1,
+    "staircase": 11,
+    "railing": 2,
+    "elevator": 1
+  },
+  "counts": {
+    "elements": 255,
+    "components": 232
+  },
+  "marker_entities": {
+    "building_body": [
+      "wall_podium_front_L1",
+      "wall_podium_right_L1",
+      "wall_podium_back_L1",
+      "wall_podium_left_L1",
+      "wall_podium_front_L2",
+      "wall_podium_right_L2",
+      "wall_podium_back_L2",
+      "wall_podium_left_L2",
+      "wall_tower_front_L3",
+      "wall_tower_right_L3",
+      "wall_tower_back_L3",
+      "wall_tower_left_L3",
+      "wall_tower_front_L4",
+      "wall_tower_right_L4",
+      "wall_tower_back_L4",
+      "wall_tower_left_L4",
+      "wall_tower_front_L5",
+      "wall_tower_right_L5",
+      "wall_tower_back_L5",
+      "wall_tower_left_L5",
+      "wall_tower_front_L6",
+      "wall_tower_right_L6",
+      "wall_tower_back_L6",
+      "wall_tower_left_L6",
+      "wall_tower_front_L7",
+      "wall_tower_right_L7",
+      "wall_tower_back_L7",
+      "wall_tower_left_L7",
+      "wall_tower_front_L8",
+      "wall_tower_right_L8",
+      "wall_tower_back_L8",
+      "wall_tower_left_L8",
+      "wall_tower_front_L9",
+      "wall_tower_right_L9",
+      "wall_tower_back_L9",
+      "wall_tower_left_L9",
+      "wall_crown_front_L10",
+      "wall_crown_right_L10",
+      "wall_crown_back_L10",
+      "wall_crown_left_L10",
+      "wall_crown_front_L11",
+      "wall_crown_right_L11",
+      "wall_crown_back_L11",
+      "wall_crown_left_L11",
+      "wall_crown_front_L12",
+      "wall_crown_right_L12",
+      "wall_crown_back_L12",
+      "wall_crown_left_L12",
+      "floor_L1_0",
+      "floor_L1_1",
+      "floor_L1_2",
+      "floor_L1_3",
+      "floor_L2_0",
+      "floor_L2_1",
+      "floor_L2_2",
+      "floor_L2_3",
+      "floor_L2_4",
+      "floor_L2_5",
+      "floor_L2_6",
+      "floor_L3_0",
+      "floor_L3_1",
+      "floor_L3_2",
+      "floor_L3_3",
+      "floor_L3_4",
+      "floor_L3_5",
+      "floor_L3_6",
+      "floor_L4_0",
+      "floor_L4_1",
+      "floor_L4_2",
+      "floor_L4_3",
+      "floor_L4_4",
+      "floor_L4_5",
+      "floor_L4_6",
+      "floor_L5_0",
+      "floor_L5_1",
+      "floor_L5_2",
+      "floor_L5_3",
+      "floor_L5_4",
+      "floor_L5_5",
+      "floor_L5_6",
+      "floor_L6_0",
+      "floor_L6_1",
+      "floor_L6_2",
+      "floor_L6_3",
+      "floor_L6_4",
+      "floor_L6_5",
+      "floor_L6_6",
+      "floor_L7_0",
+      "floor_L7_1",
+      "floor_L7_2",
+      "floor_L7_3",
+      "floor_L7_4",
+      "floor_L7_5",
+      "floor_L7_6",
+      "floor_L8_0",
+      "floor_L8_1",
+      "floor_L8_2",
+      "floor_L8_3",
+      "floor_L8_4",
+      "floor_L8_5",
+      "floor_L8_6",
+      "floor_L9_0",
+      "floor_L9_1",
+      "floor_L9_2",
+      "floor_L9_3",
+      "floor_L9_4",
+      "floor_L9_5",
+      "floor_L9_6",
+      "floor_L10_0",
+      "floor_L10_1",
+      "floor_L10_2",
+      "floor_L10_3",
+      "floor_L10_4",
+      "floor_L10_5",
+      "floor_L10_6",
+      "floor_L11_0",
+      "floor_L11_1",
+      "floor_L11_2",
+      "floor_L11_3",
+      "floor_L11_4",
+      "floor_L11_5",
+      "floor_L11_6",
+      "floor_L12_0",
+      "floor_L12_1",
+      "floor_L12_2",
+      "floor_L12_3",
+      "floor_L12_4",
+      "floor_L12_5",
+      "floor_L12_6"
+    ],
+    "roof_crown": [
+      "roof_crown"
+    ],
+    "window_podium_front_1_1": [
+      "window_podium_front_1_1"
+    ],
+    "window_podium_front_1_2": [
+      "window_podium_front_1_2"
+    ],
+    "window_podium_front_1_3": [
+      "window_podium_front_1_3"
+    ],
+    "window_podium_front_1_4": [
+      "window_podium_front_1_4"
+    ],
+    "door_podium_front_1_5": [
+      "door_podium_front_1_5"
+    ],
+    "window_podium_front_1_6": [
+      "window_podium_front_1_6"
+    ],
+    "window_podium_front_1_7": [
+      "window_podium_front_1_7"
+    ],
+    "window_podium_front_1_8": [
+      "window_podium_front_1_8"
+    ],
+    "window_podium_front_1_9": [
+      "window_podium_front_1_9"
+    ],
+    "window_podium_back_1_1": [
+      "window_podium_back_1_1"
+    ],
+    "window_podium_back_1_2": [
+      "window_podium_back_1_2"
+    ],
+    "window_podium_back_1_3": [
+      "window_podium_back_1_3"
+    ],
+    "window_podium_back_1_4": [
+      "window_podium_back_1_4"
+    ],
+    "window_podium_back_1_5": [
+      "window_podium_back_1_5"
+    ],
+    "window_podium_back_1_6": [
+      "window_podium_back_1_6"
+    ],
+    "window_podium_back_1_7": [
+      "window_podium_back_1_7"
+    ],
+    "window_podium_back_1_8": [
+      "window_podium_back_1_8"
+    ],
+    "window_podium_back_1_9": [
+      "window_podium_back_1_9"
+    ],
+    "window_podium_left_1_1": [
+      "window_podium_left_1_1"
+    ],
+    "window_podium_left_1_2": [
+      "window_podium_left_1_2"
+    ],
+    "window_podium_left_1_3": [
+      "window_podium_left_1_3"
+    ],
+    "window_podium_left_1_4": [
+      "window_podium_left_1_4"
+    ],
+    "window_podium_left_1_5": [
+      "window_podium_left_1_5"
+    ],
+    "window_podium_right_1_1": [
+      "window_podium_right_1_1"
+    ],
+    "window_podium_right_1_2": [
+      "window_podium_right_1_2"
+    ],
+    "window_podium_right_1_3": [
+      "window_podium_right_1_3"
+    ],
+    "window_podium_right_1_4": [
+      "window_podium_right_1_4"
+    ],
+    "window_podium_right_1_5": [
+      "window_podium_right_1_5"
+    ],
+    "slab_edge_1_0": [
+      "slab_edge_1_0"
+    ],
+    "slab_edge_1_1": [
+      "slab_edge_1_1"
+    ],
+    "slab_edge_1_2": [
+      "slab_edge_1_2"
+    ],
+    "slab_edge_1_3": [
+      "slab_edge_1_3"
+    ],
+    "window_podium_front_2_1": [
+      "window_podium_front_2_1"
+    ],
+    "window_podium_front_2_2": [
+      "window_podium_front_2_2"
+    ],
+    "window_podium_front_2_3": [
+      "window_podium_front_2_3"
+    ],
+    "window_podium_front_2_4": [
+      "window_podium_front_2_4"
+    ],
+    "window_podium_front_2_5": [
+      "window_podium_front_2_5"
+    ],
+    "window_podium_front_2_6": [
+      "window_podium_front_2_6"
+    ],
+    "window_podium_front_2_7": [
+      "window_podium_front_2_7"
+    ],
+    "window_podium_front_2_8": [
+      "window_podium_front_2_8"
+    ],
+    "window_podium_front_2_9": [
+      "window_podium_front_2_9"
+    ],
+    "window_podium_back_2_1": [
+      "window_podium_back_2_1"
+    ],
+    "window_podium_back_2_2": [
+      "window_podium_back_2_2"
+    ],
+    "window_podium_back_2_3": [
+      "window_podium_back_2_3"
+    ],
+    "window_podium_back_2_4": [
+      "window_podium_back_2_4"
+    ],
+    "window_podium_back_2_5": [
+      "window_podium_back_2_5"
+    ],
+    "window_podium_back_2_6": [
+      "window_podium_back_2_6"
+    ],
+    "window_podium_back_2_7": [
+      "window_podium_back_2_7"
+    ],
+    "window_podium_back_2_8": [
+      "window_podium_back_2_8"
+    ],
+    "window_podium_back_2_9": [
+      "window_podium_back_2_9"
+    ],
+    "window_podium_left_2_1": [
+      "window_podium_left_2_1"
+    ],
+    "window_podium_left_2_2": [
+      "window_podium_left_2_2"
+    ],
+    "window_podium_left_2_3": [
+      "window_podium_left_2_3"
+    ],
+    "window_podium_left_2_4": [
+      "window_podium_left_2_4"
+    ],
+    "window_podium_left_2_5": [
+      "window_podium_left_2_5"
+    ],
+    "window_podium_right_2_1": [
+      "window_podium_right_2_1"
+    ],
+    "window_podium_right_2_2": [
+      "window_podium_right_2_2"
+    ],
+    "window_podium_right_2_3": [
+      "window_podium_right_2_3"
+    ],
+    "window_podium_right_2_4": [
+      "window_podium_right_2_4"
+    ],
+    "window_podium_right_2_5": [
+      "window_podium_right_2_5"
+    ],
+    "slab_edge_2_0": [
+      "slab_edge_2_0"
+    ],
+    "slab_edge_2_1": [
+      "slab_edge_2_1"
+    ],
+    "slab_edge_2_2": [
+      "slab_edge_2_2"
+    ],
+    "slab_edge_2_3": [
+      "slab_edge_2_3"
+    ],
+    "podium_front_fins": [
+      "podium_front_fins_0",
+      "podium_front_fins_1",
+      "podium_front_fins_2",
+      "podium_front_fins_3",
+      "podium_front_fins_4",
+      "podium_front_fins_5",
+      "podium_front_fins_6",
+      "podium_front_fins_7",
+      "podium_front_fins_8",
+      "podium_front_fins_9",
+      "podium_front_fins_10",
+      "podium_front_fins_11"
+    ],
+    "podium_back_fins": [
+      "podium_back_fins_0",
+      "podium_back_fins_1",
+      "podium_back_fins_2",
+      "podium_back_fins_3",
+      "podium_back_fins_4",
+      "podium_back_fins_5",
+      "podium_back_fins_6",
+      "podium_back_fins_7",
+      "podium_back_fins_8",
+      "podium_back_fins_9",
+      "podium_back_fins_10",
+      "podium_back_fins_11"
+    ],
+    "window_tower_front_3_1": [
+      "window_tower_front_3_1"
+    ],
+    "window_tower_front_3_2": [
+      "window_tower_front_3_2"
+    ],
+    "window_tower_front_3_3": [
+      "window_tower_front_3_3"
+    ],
+    "window_tower_front_3_4": [
+      "window_tower_front_3_4"
+    ],
+    "window_tower_front_3_5": [
+      "window_tower_front_3_5"
+    ],
+    "window_tower_front_3_6": [
+      "window_tower_front_3_6"
+    ],
+    "window_tower_back_3_1": [
+      "window_tower_back_3_1"
+    ],
+    "window_tower_back_3_2": [
+      "window_tower_back_3_2"
+    ],
+    "window_tower_back_3_3": [
+      "window_tower_back_3_3"
+    ],
+    "window_tower_back_3_4": [
+      "window_tower_back_3_4"
+    ],
+    "window_tower_back_3_5": [
+      "window_tower_back_3_5"
+    ],
+    "window_tower_back_3_6": [
+      "window_tower_back_3_6"
+    ],
+    "window_tower_left_3_1": [
+      "window_tower_left_3_1"
+    ],
+    "window_tower_left_3_2": [
+      "window_tower_left_3_2"
+    ],
+    "window_tower_left_3_3": [
+      "window_tower_left_3_3"
+    ],
+    "window_tower_right_3_1": [
+      "window_tower_right_3_1"
+    ],
+    "window_tower_right_3_2": [
+      "window_tower_right_3_2"
+    ],
+    "window_tower_right_3_3": [
+      "window_tower_right_3_3"
+    ],
+    "slab_edge_3_0": [
+      "slab_edge_3_0"
+    ],
+    "slab_edge_3_1": [
+      "slab_edge_3_1"
+    ],
+    "slab_edge_3_2": [
+      "slab_edge_3_2"
+    ],
+    "slab_edge_3_3": [
+      "slab_edge_3_3"
+    ],
+    "window_tower_front_4_1": [
+      "window_tower_front_4_1"
+    ],
+    "window_tower_front_4_2": [
+      "window_tower_front_4_2"
+    ],
+    "window_tower_front_4_3": [
+      "window_tower_front_4_3"
+    ],
+    "window_tower_front_4_4": [
+      "window_tower_front_4_4"
+    ],
+    "window_tower_front_4_5": [
+      "window_tower_front_4_5"
+    ],
+    "window_tower_front_4_6": [
+      "window_tower_front_4_6"
+    ],
+    "window_tower_back_4_1": [
+      "window_tower_back_4_1"
+    ],
+    "window_tower_back_4_2": [
+      "window_tower_back_4_2"
+    ],
+    "window_tower_back_4_3": [
+      "window_tower_back_4_3"
+    ],
+    "window_tower_back_4_4": [
+      "window_tower_back_4_4"
+    ],
+    "window_tower_back_4_5": [
+      "window_tower_back_4_5"
+    ],
+    "window_tower_back_4_6": [
+      "window_tower_back_4_6"
+    ],
+    "window_tower_left_4_1": [
+      "window_tower_left_4_1"
+    ],
+    "window_tower_left_4_2": [
+      "window_tower_left_4_2"
+    ],
+    "window_tower_left_4_3": [
+      "window_tower_left_4_3"
+    ],
+    "window_tower_right_4_1": [
+      "window_tower_right_4_1"
+    ],
+    "window_tower_right_4_2": [
+      "window_tower_right_4_2"
+    ],
+    "window_tower_right_4_3": [
+      "window_tower_right_4_3"
+    ],
+    "slab_edge_4_0": [
+      "slab_edge_4_0"
+    ],
+    "slab_edge_4_1": [
+      "slab_edge_4_1"
+    ],
+    "slab_edge_4_2": [
+      "slab_edge_4_2"
+    ],
+    "slab_edge_4_3": [
+      "slab_edge_4_3"
+    ],
+    "window_tower_front_5_1": [
+      "window_tower_front_5_1"
+    ],
+    "window_tower_front_5_2": [
+      "window_tower_front_5_2"
+    ],
+    "window_tower_front_5_3": [
+      "window_tower_front_5_3"
+    ],
+    "window_tower_front_5_4": [
+      "window_tower_front_5_4"
+    ],
+    "window_tower_front_5_5": [
+      "window_tower_front_5_5"
+    ],
+    "window_tower_front_5_6": [
+      "window_tower_front_5_6"
+    ],
+    "window_tower_back_5_1": [
+      "window_tower_back_5_1"
+    ],
+    "window_tower_back_5_2": [
+      "window_tower_back_5_2"
+    ],
+    "window_tower_back_5_3": [
+      "window_tower_back_5_3"
+    ],
+    "window_tower_back_5_4": [
+      "window_tower_back_5_4"
+    ],
+    "window_tower_back_5_5": [
+      "window_tower_back_5_5"
+    ],
+    "window_tower_back_5_6": [
+      "window_tower_back_5_6"
+    ],
+    "window_tower_left_5_1": [
+      "window_tower_left_5_1"
+    ],
+    "window_tower_left_5_2": [
+      "window_tower_left_5_2"
+    ],
+    "window_tower_left_5_3": [
+      "window_tower_left_5_3"
+    ],
+    "window_tower_right_5_1": [
+      "window_tower_right_5_1"
+    ],
+    "window_tower_right_5_2": [
+      "window_tower_right_5_2"
+    ],
+    "window_tower_right_5_3": [
+      "window_tower_right_5_3"
+    ],
+    "slab_edge_5_0": [
+      "slab_edge_5_0"
+    ],
+    "slab_edge_5_1": [
+      "slab_edge_5_1"
+    ],
+    "slab_edge_5_2": [
+      "slab_edge_5_2"
+    ],
+    "slab_edge_5_3": [
+      "slab_edge_5_3"
+    ],
+    "window_tower_front_6_1": [
+      "window_tower_front_6_1"
+    ],
+    "window_tower_front_6_2": [
+      "window_tower_front_6_2"
+    ],
+    "window_tower_front_6_3": [
+      "window_tower_front_6_3"
+    ],
+    "window_tower_front_6_4": [
+      "window_tower_front_6_4"
+    ],
+    "window_tower_front_6_5": [
+      "window_tower_front_6_5"
+    ],
+    "window_tower_front_6_6": [
+      "window_tower_front_6_6"
+    ],
+    "window_tower_back_6_1": [
+      "window_tower_back_6_1"
+    ],
+    "window_tower_back_6_2": [
+      "window_tower_back_6_2"
+    ],
+    "window_tower_back_6_3": [
+      "window_tower_back_6_3"
+    ],
+    "window_tower_back_6_4": [
+      "window_tower_back_6_4"
+    ],
+    "window_tower_back_6_5": [
+      "window_tower_back_6_5"
+    ],
+    "window_tower_back_6_6": [
+      "window_tower_back_6_6"
+    ],
+    "window_tower_left_6_1": [
+      "window_tower_left_6_1"
+    ],
+    "window_tower_left_6_2": [
+      "window_tower_left_6_2"
+    ],
+    "window_tower_left_6_3": [
+      "window_tower_left_6_3"
+    ],
+    "window_tower_right_6_1": [
+      "window_tower_right_6_1"
+    ],
+    "window_tower_right_6_2": [
+      "window_tower_right_6_2"
+    ],
+    "window_tower_right_6_3": [
+      "window_tower_right_6_3"
+    ],
+    "slab_edge_6_0": [
+      "slab_edge_6_0"
+    ],
+    "slab_edge_6_1": [
+      "slab_edge_6_1"
+    ],
+    "slab_edge_6_2": [
+      "slab_edge_6_2"
+    ],
+    "slab_edge_6_3": [
+      "slab_edge_6_3"
+    ],
+    "window_tower_front_7_1": [
+      "window_tower_front_7_1"
+    ],
+    "window_tower_front_7_2": [
+      "window_tower_front_7_2"
+    ],
+    "window_tower_front_7_3": [
+      "window_tower_front_7_3"
+    ],
+    "window_tower_front_7_4": [
+      "window_tower_front_7_4"
+    ],
+    "window_tower_front_7_5": [
+      "window_tower_front_7_5"
+    ],
+    "window_tower_front_7_6": [
+      "window_tower_front_7_6"
+    ],
+    "window_tower_back_7_1": [
+      "window_tower_back_7_1"
+    ],
+    "window_tower_back_7_2": [
+      "window_tower_back_7_2"
+    ],
+    "window_tower_back_7_3": [
+      "window_tower_back_7_3"
+    ],
+    "window_tower_back_7_4": [
+      "window_tower_back_7_4"
+    ],
+    "window_tower_back_7_5": [
+      "window_tower_back_7_5"
+    ],
+    "window_tower_back_7_6": [
+      "window_tower_back_7_6"
+    ],
+    "window_tower_left_7_1": [
+      "window_tower_left_7_1"
+    ],
+    "window_tower_left_7_2": [
+      "window_tower_left_7_2"
+    ],
+    "window_tower_left_7_3": [
+      "window_tower_left_7_3"
+    ],
+    "window_tower_right_7_1": [
+      "window_tower_right_7_1"
+    ],
+    "window_tower_right_7_2": [
+      "window_tower_right_7_2"
+    ],
+    "window_tower_right_7_3": [
+      "window_tower_right_7_3"
+    ],
+    "slab_edge_7_0": [
+      "slab_edge_7_0"
+    ],
+    "slab_edge_7_1": [
+      "slab_edge_7_1"
+    ],
+    "slab_edge_7_2": [
+      "slab_edge_7_2"
+    ],
+    "slab_edge_7_3": [
+      "slab_edge_7_3"
+    ],
+    "window_tower_front_8_1": [
+      "window_tower_front_8_1"
+    ],
+    "window_tower_front_8_2": [
+      "window_tower_front_8_2"
+    ],
+    "window_tower_front_8_3": [
+      "window_tower_front_8_3"
+    ],
+    "window_tower_front_8_4": [
+      "window_tower_front_8_4"
+    ],
+    "window_tower_front_8_5": [
+      "window_tower_front_8_5"
+    ],
+    "window_tower_front_8_6": [
+      "window_tower_front_8_6"
+    ],
+    "window_tower_back_8_1": [
+      "window_tower_back_8_1"
+    ],
+    "window_tower_back_8_2": [
+      "window_tower_back_8_2"
+    ],
+    "window_tower_back_8_3": [
+      "window_tower_back_8_3"
+    ],
+    "window_tower_back_8_4": [
+      "window_tower_back_8_4"
+    ],
+    "window_tower_back_8_5": [
+      "window_tower_back_8_5"
+    ],
+    "window_tower_back_8_6": [
+      "window_tower_back_8_6"
+    ],
+    "window_tower_left_8_1": [
+      "window_tower_left_8_1"
+    ],
+    "window_tower_left_8_2": [
+      "window_tower_left_8_2"
+    ],
+    "window_tower_left_8_3": [
+      "window_tower_left_8_3"
+    ],
+    "window_tower_right_8_1": [
+      "window_tower_right_8_1"
+    ],
+    "window_tower_right_8_2": [
+      "window_tower_right_8_2"
+    ],
+    "window_tower_right_8_3": [
+      "window_tower_right_8_3"
+    ],
+    "slab_edge_8_0": [
+      "slab_edge_8_0"
+    ],
+    "slab_edge_8_1": [
+      "slab_edge_8_1"
+    ],
+    "slab_edge_8_2": [
+      "slab_edge_8_2"
+    ],
+    "slab_edge_8_3": [
+      "slab_edge_8_3"
+    ],
+    "window_tower_front_9_1": [
+      "window_tower_front_9_1"
+    ],
+    "window_tower_front_9_2": [
+      "window_tower_front_9_2"
+    ],
+    "window_tower_front_9_3": [
+      "window_tower_front_9_3"
+    ],
+    "window_tower_front_9_4": [
+      "window_tower_front_9_4"
+    ],
+    "window_tower_front_9_5": [
+      "window_tower_front_9_5"
+    ],
+    "window_tower_front_9_6": [
+      "window_tower_front_9_6"
+    ],
+    "window_tower_back_9_1": [
+      "window_tower_back_9_1"
+    ],
+    "window_tower_back_9_2": [
+      "window_tower_back_9_2"
+    ],
+    "window_tower_back_9_3": [
+      "window_tower_back_9_3"
+    ],
+    "window_tower_back_9_4": [
+      "window_tower_back_9_4"
+    ],
+    "window_tower_back_9_5": [
+      "window_tower_back_9_5"
+    ],
+    "window_tower_back_9_6": [
+      "window_tower_back_9_6"
+    ],
+    "window_tower_left_9_1": [
+      "window_tower_left_9_1"
+    ],
+    "window_tower_left_9_2": [
+      "window_tower_left_9_2"
+    ],
+    "window_tower_left_9_3": [
+      "window_tower_left_9_3"
+    ],
+    "window_tower_right_9_1": [
+      "window_tower_right_9_1"
+    ],
+    "window_tower_right_9_2": [
+      "window_tower_right_9_2"
+    ],
+    "window_tower_right_9_3": [
+      "window_tower_right_9_3"
+    ],
+    "slab_edge_9_0": [
+      "slab_edge_9_0"
+    ],
+    "slab_edge_9_1": [
+      "slab_edge_9_1"
+    ],
+    "slab_edge_9_2": [
+      "slab_edge_9_2"
+    ],
+    "slab_edge_9_3": [
+      "slab_edge_9_3"
+    ],
+    "tower_front_fins": [
+      "tower_front_fins_0",
+      "tower_front_fins_1",
+      "tower_front_fins_2",
+      "tower_front_fins_3",
+      "tower_front_fins_4",
+      "tower_front_fins_5",
+      "tower_front_fins_6",
+      "tower_front_fins_7",
+      "tower_front_fins_8"
+    ],
+    "tower_back_fins": [
+      "tower_back_fins_0",
+      "tower_back_fins_1",
+      "tower_back_fins_2",
+      "tower_back_fins_3",
+      "tower_back_fins_4",
+      "tower_back_fins_5",
+      "tower_back_fins_6",
+      "tower_back_fins_7",
+      "tower_back_fins_8"
+    ],
+    "window_crown_front_10_1": [
+      "window_crown_front_10_1"
+    ],
+    "window_crown_front_10_2": [
+      "window_crown_front_10_2"
+    ],
+    "window_crown_front_10_3": [
+      "window_crown_front_10_3"
+    ],
+    "window_crown_front_10_4": [
+      "window_crown_front_10_4"
+    ],
+    "window_crown_back_10_1": [
+      "window_crown_back_10_1"
+    ],
+    "window_crown_back_10_2": [
+      "window_crown_back_10_2"
+    ],
+    "window_crown_back_10_3": [
+      "window_crown_back_10_3"
+    ],
+    "window_crown_back_10_4": [
+      "window_crown_back_10_4"
+    ],
+    "window_crown_left_10_1": [
+      "window_crown_left_10_1"
+    ],
+    "window_crown_left_10_2": [
+      "window_crown_left_10_2"
+    ],
+    "window_crown_right_10_1": [
+      "window_crown_right_10_1"
+    ],
+    "window_crown_right_10_2": [
+      "window_crown_right_10_2"
+    ],
+    "slab_edge_10_0": [
+      "slab_edge_10_0"
+    ],
+    "slab_edge_10_1": [
+      "slab_edge_10_1"
+    ],
+    "slab_edge_10_2": [
+      "slab_edge_10_2"
+    ],
+    "slab_edge_10_3": [
+      "slab_edge_10_3"
+    ],
+    "window_crown_front_11_1": [
+      "window_crown_front_11_1"
+    ],
+    "window_crown_front_11_2": [
+      "window_crown_front_11_2"
+    ],
+    "window_crown_front_11_3": [
+      "window_crown_front_11_3"
+    ],
+    "window_crown_front_11_4": [
+      "window_crown_front_11_4"
+    ],
+    "window_crown_back_11_1": [
+      "window_crown_back_11_1"
+    ],
+    "window_crown_back_11_2": [
+      "window_crown_back_11_2"
+    ],
+    "window_crown_back_11_3": [
+      "window_crown_back_11_3"
+    ],
+    "window_crown_back_11_4": [
+      "window_crown_back_11_4"
+    ],
+    "window_crown_left_11_1": [
+      "window_crown_left_11_1"
+    ],
+    "window_crown_left_11_2": [
+      "window_crown_left_11_2"
+    ],
+    "window_crown_right_11_1": [
+      "window_crown_right_11_1"
+    ],
+    "window_crown_right_11_2": [
+      "window_crown_right_11_2"
+    ],
+    "slab_edge_11_0": [
+      "slab_edge_11_0"
+    ],
+    "slab_edge_11_1": [
+      "slab_edge_11_1"
+    ],
+    "slab_edge_11_2": [
+      "slab_edge_11_2"
+    ],
+    "slab_edge_11_3": [
+      "slab_edge_11_3"
+    ],
+    "window_crown_front_12_1": [
+      "window_crown_front_12_1"
+    ],
+    "window_crown_front_12_2": [
+      "window_crown_front_12_2"
+    ],
+    "window_crown_front_12_3": [
+      "window_crown_front_12_3"
+    ],
+    "window_crown_front_12_4": [
+      "window_crown_front_12_4"
+    ],
+    "window_crown_back_12_1": [
+      "window_crown_back_12_1"
+    ],
+    "window_crown_back_12_2": [
+      "window_crown_back_12_2"
+    ],
+    "window_crown_back_12_3": [
+      "window_crown_back_12_3"
+    ],
+    "window_crown_back_12_4": [
+      "window_crown_back_12_4"
+    ],
+    "window_crown_left_12_1": [
+      "window_crown_left_12_1"
+    ],
+    "window_crown_left_12_2": [
+      "window_crown_left_12_2"
+    ],
+    "window_crown_right_12_1": [
+      "window_crown_right_12_1"
+    ],
+    "window_crown_right_12_2": [
+      "window_crown_right_12_2"
+    ],
+    "slab_edge_12_0": [
+      "slab_edge_12_0"
+    ],
+    "slab_edge_12_1": [
+      "slab_edge_12_1"
+    ],
+    "slab_edge_12_2": [
+      "slab_edge_12_2"
+    ],
+    "slab_edge_12_3": [
+      "slab_edge_12_3"
+    ],
+    "crown_front_fins": [
+      "crown_front_fins_0",
+      "crown_front_fins_1",
+      "crown_front_fins_2",
+      "crown_front_fins_3",
+      "crown_front_fins_4",
+      "crown_front_fins_5",
+      "crown_front_fins_6"
+    ],
+    "crown_back_fins": [
+      "crown_back_fins_0",
+      "crown_back_fins_1",
+      "crown_back_fins_2",
+      "crown_back_fins_3",
+      "crown_back_fins_4",
+      "crown_back_fins_5",
+      "crown_back_fins_6"
+    ],
+    "core_stair_1": [
+      "core_stair_1"
+    ],
+    "core_stair_2": [
+      "core_stair_2"
+    ],
+    "core_stair_3": [
+      "core_stair_3"
+    ],
+    "core_stair_4": [
+      "core_stair_4"
+    ],
+    "core_stair_5": [
+      "core_stair_5"
+    ],
+    "core_stair_6": [
+      "core_stair_6"
+    ],
+    "core_stair_7": [
+      "core_stair_7"
+    ],
+    "core_stair_8": [
+      "core_stair_8"
+    ],
+    "core_stair_9": [
+      "core_stair_9"
+    ],
+    "core_stair_10": [
+      "core_stair_10"
+    ],
+    "core_stair_11": [
+      "core_stair_11"
+    ],
+    "podium_terrace_0": [
+      "podium_terrace_0"
+    ],
+    "podium_terrace_1": [
+      "podium_terrace_1"
+    ],
+    "podium_terrace_2": [
+      "podium_terrace_2"
+    ],
+    "podium_terrace_3": [
+      "podium_terrace_3"
+    ],
+    "podium_terrace_rail": [
+      "podium_terrace_rail"
+    ],
+    "tower_terrace_0": [
+      "tower_terrace_0"
+    ],
+    "tower_terrace_1": [
+      "tower_terrace_1"
+    ],
+    "tower_terrace_2": [
+      "tower_terrace_2"
+    ],
+    "tower_terrace_3": [
+      "tower_terrace_3"
+    ],
+    "tower_terrace_rail": [
+      "tower_terrace_rail"
+    ],
+    "passenger_lift": [
+      "passenger_lift"
+    ],
+    "entry_canopy": [
+      "entry_canopy"
+    ],
+    "canopy_post_-4p2": [
+      "canopy_post_-4p2"
+    ],
+    "canopy_post_4p2": [
+      "canopy_post_4p2"
+    ],
+    "forecourt": [
+      "forecourt"
+    ],
+    "entry_approach": [
+      "entry_approach"
+    ],
+    "planter_0": [
+      "planter_0"
+    ],
+    "planting_0": [
+      "planting_0"
+    ],
+    "planter_1": [
+      "planter_1"
+    ],
+    "planting_1": [
+      "planting_1"
+    ],
+    "roof_parapet_0": [
+      "roof_parapet_0"
+    ],
+    "roof_parapet_1": [
+      "roof_parapet_1"
+    ],
+    "roof_parapet_2": [
+      "roof_parapet_2"
+    ],
+    "roof_parapet_3": [
+      "roof_parapet_3"
+    ]
+  },
+  "scope": "按图纸确定性编译；未调用完整LangGraph，未运行回归测试或浏览器渲染",
+  "core_component_compilation": {
+    "diagnostics": [],
+    "source_migrations": [],
+    "native_element_count": 1540,
+    "mapping": {
+      "generatedElementIdsByComponentId": {
+        "window_podium_front_1_1": [
+          "window_podium_front_1_1__opening",
+          "window_podium_front_1_1__frame_left",
+          "window_podium_front_1_1__frame_right",
+          "window_podium_front_1_1__frame_bottom",
+          "window_podium_front_1_1__frame_top"
+        ],
+        "window_podium_front_1_2": [
+          "window_podium_front_1_2__opening",
+          "window_podium_front_1_2__frame_left",
+          "window_podium_front_1_2__frame_right",
+          "window_podium_front_1_2__frame_bottom",
+          "window_podium_front_1_2__frame_top"
+        ],
+        "window_podium_front_1_3": [
+          "window_podium_front_1_3__opening",
+          "window_podium_front_1_3__frame_left",
+          "window_podium_front_1_3__frame_right",
+          "window_podium_front_1_3__frame_bottom",
+          "window_podium_front_1_3__frame_top"
+        ],
+        "window_podium_front_1_4": [
+          "window_podium_front_1_4__opening",
+          "window_podium_front_1_4__frame_left",
+          "window_podium_front_1_4__frame_right",
+          "window_podium_front_1_4__frame_bottom",
+          "window_podium_front_1_4__frame_top"
+        ],
+        "door_podium_front_1_5": [
+          "door_podium_front_1_5__opening",
+          "door_podium_front_1_5__frame_left_outer",
+          "door_podium_front_1_5__frame_right_outer",
+          "door_podium_front_1_5__frame_top_left",
+          "door_podium_front_1_5__frame_top_right"
+        ],
+        "window_podium_front_1_6": [
+          "window_podium_front_1_6__opening",
+          "window_podium_front_1_6__frame_left",
+          "window_podium_front_1_6__frame_right",
+          "window_podium_front_1_6__frame_bottom",
+          "window_podium_front_1_6__frame_top"
+        ],
+        "window_podium_front_1_7": [
+          "window_podium_front_1_7__opening",
+          "window_podium_front_1_7__frame_left",
+          "window_podium_front_1_7__frame_right",
+          "window_podium_front_1_7__frame_bottom",
+          "window_podium_front_1_7__frame_top"
+        ],
+        "window_podium_front_1_8": [
+          "window_podium_front_1_8__opening",
+          "window_podium_front_1_8__frame_left",
+          "window_podium_front_1_8__frame_right",
+          "window_podium_front_1_8__frame_bottom",
+          "window_podium_front_1_8__frame_top"
+        ],
+        "window_podium_front_1_9": [
+          "window_podium_front_1_9__opening",
+          "window_podium_front_1_9__frame_left",
+          "window_podium_front_1_9__frame_right",
+          "window_podium_front_1_9__frame_bottom",
+          "window_podium_front_1_9__frame_top"
+        ],
+        "window_podium_back_1_1": [
+          "window_podium_back_1_1__opening",
+          "window_podium_back_1_1__frame_left",
+          "window_podium_back_1_1__frame_right",
+          "window_podium_back_1_1__frame_bottom",
+          "window_podium_back_1_1__frame_top"
+        ],
+        "window_podium_back_1_2": [
+          "window_podium_back_1_2__opening",
+          "window_podium_back_1_2__frame_left",
+          "window_podium_back_1_2__frame_right",
+          "window_podium_back_1_2__frame_bottom",
+          "window_podium_back_1_2__frame_top"
+        ],
+        "window_podium_back_1_3": [
+          "window_podium_back_1_3__opening",
+          "window_podium_back_1_3__frame_left",
+          "window_podium_back_1_3__frame_right",
+          "window_podium_back_1_3__frame_bottom",
+          "window_podium_back_1_3__frame_top"
+        ],
+        "window_podium_back_1_4": [
+          "window_podium_back_1_4__opening",
+          "window_podium_back_1_4__frame_left",
+          "window_podium_back_1_4__frame_right",
+          "window_podium_back_1_4__frame_bottom",
+          "window_podium_back_1_4__frame_top"
+        ],
+        "window_podium_back_1_5": [
+          "window_podium_back_1_5__opening",
+          "window_podium_back_1_5__frame_left",
+          "window_podium_back_1_5__frame_right",
+          "window_podium_back_1_5__frame_bottom",
+          "window_podium_back_1_5__frame_top"
+        ],
+        "window_podium_back_1_6": [
+          "window_podium_back_1_6__opening",
+          "window_podium_back_1_6__frame_left",
+          "window_podium_back_1_6__frame_right",
+          "window_podium_back_1_6__frame_bottom",
+          "window_podium_back_1_6__frame_top"
+        ],
+        "window_podium_back_1_7": [
+          "window_podium_back_1_7__opening",
+          "window_podium_back_1_7__frame_left",
+          "window_podium_back_1_7__frame_right",
+          "window_podium_back_1_7__frame_bottom",
+          "window_podium_back_1_7__frame_top"
+        ],
+        "window_podium_back_1_8": [
+          "window_podium_back_1_8__opening",
+          "window_podium_back_1_8__frame_left",
+          "window_podium_back_1_8__frame_right",
+          "window_podium_back_1_8__frame_bottom",
+          "window_podium_back_1_8__frame_top"
+        ],
+        "window_podium_back_1_9": [
+          "window_podium_back_1_9__opening",
+          "window_podium_back_1_9__frame_left",
+          "window_podium_back_1_9__frame_right",
+          "window_podium_back_1_9__frame_bottom",
+          "window_podium_back_1_9__frame_top"
+        ],
+        "window_podium_left_1_1": [
+          "window_podium_left_1_1__opening",
+          "window_podium_left_1_1__frame_left",
+          "window_podium_left_1_1__frame_right",
+          "window_podium_left_1_1__frame_bottom",
+          "window_podium_left_1_1__frame_top"
+        ],
+        "window_podium_left_1_2": [
+          "window_podium_left_1_2__opening",
+          "window_podium_left_1_2__frame_left",
+          "window_podium_left_1_2__frame_right",
+          "window_podium_left_1_2__frame_bottom",
+          "window_podium_left_1_2__frame_top"
+        ],
+        "window_podium_left_1_3": [
+          "window_podium_left_1_3__opening",
+          "window_podium_left_1_3__frame_left",
+          "window_podium_left_1_3__frame_right",
+          "window_podium_left_1_3__frame_bottom",
+          "window_podium_left_1_3__frame_top"
+        ],
+        "window_podium_left_1_4": [
+          "window_podium_left_1_4__opening",
+          "window_podium_left_1_4__frame_left",
+          "window_podium_left_1_4__frame_right",
+          "window_podium_left_1_4__frame_bottom",
+          "window_podium_left_1_4__frame_top"
+        ],
+        "window_podium_left_1_5": [
+          "window_podium_left_1_5__opening",
+          "window_podium_left_1_5__frame_left",
+          "window_podium_left_1_5__frame_right",
+          "window_podium_left_1_5__frame_bottom",
+          "window_podium_left_1_5__frame_top"
+        ],
+        "window_podium_right_1_1": [
+          "window_podium_right_1_1__opening",
+          "window_podium_right_1_1__frame_left",
+          "window_podium_right_1_1__frame_right",
+          "window_podium_right_1_1__frame_bottom",
+          "window_podium_right_1_1__frame_top"
+        ],
+        "window_podium_right_1_2": [
+          "window_podium_right_1_2__opening",
+          "window_podium_right_1_2__frame_left",
+          "window_podium_right_1_2__frame_right",
+          "window_podium_right_1_2__frame_bottom",
+          "window_podium_right_1_2__frame_top"
+        ],
+        "window_podium_right_1_3": [
+          "window_podium_right_1_3__opening",
+          "window_podium_right_1_3__frame_left",
+          "window_podium_right_1_3__frame_right",
+          "window_podium_right_1_3__frame_bottom",
+          "window_podium_right_1_3__frame_top"
+        ],
+        "window_podium_right_1_4": [
+          "window_podium_right_1_4__opening",
+          "window_podium_right_1_4__frame_left",
+          "window_podium_right_1_4__frame_right",
+          "window_podium_right_1_4__frame_bottom",
+          "window_podium_right_1_4__frame_top"
+        ],
+        "window_podium_right_1_5": [
+          "window_podium_right_1_5__opening",
+          "window_podium_right_1_5__frame_left",
+          "window_podium_right_1_5__frame_right",
+          "window_podium_right_1_5__frame_bottom",
+          "window_podium_right_1_5__frame_top"
+        ],
+        "window_podium_front_2_1": [
+          "window_podium_front_2_1__opening",
+          "window_podium_front_2_1__frame_left",
+          "window_podium_front_2_1__frame_right",
+          "window_podium_front_2_1__frame_bottom",
+          "window_podium_front_2_1__frame_top"
+        ],
+        "window_podium_front_2_2": [
+          "window_podium_front_2_2__opening",
+          "window_podium_front_2_2__frame_left",
+          "window_podium_front_2_2__frame_right",
+          "window_podium_front_2_2__frame_bottom",
+          "window_podium_front_2_2__frame_top"
+        ],
+        "window_podium_front_2_3": [
+          "window_podium_front_2_3__opening",
+          "window_podium_front_2_3__frame_left",
+          "window_podium_front_2_3__frame_right",
+          "window_podium_front_2_3__frame_bottom",
+          "window_podium_front_2_3__frame_top"
+        ],
+        "window_podium_front_2_4": [
+          "window_podium_front_2_4__opening",
+          "window_podium_front_2_4__frame_left",
+          "window_podium_front_2_4__frame_right",
+          "window_podium_front_2_4__frame_bottom",
+          "window_podium_front_2_4__frame_top"
+        ],
+        "window_podium_front_2_5": [
+          "window_podium_front_2_5__opening",
+          "window_podium_front_2_5__frame_left",
+          "window_podium_front_2_5__frame_right",
+          "window_podium_front_2_5__frame_bottom",
+          "window_podium_front_2_5__frame_top"
+        ],
+        "window_podium_front_2_6": [
+          "window_podium_front_2_6__opening",
+          "window_podium_front_2_6__frame_left",
+          "window_podium_front_2_6__frame_right",
+          "window_podium_front_2_6__frame_bottom",
+          "window_podium_front_2_6__frame_top"
+        ],
+        "window_podium_front_2_7": [
+          "window_podium_front_2_7__opening",
+          "window_podium_front_2_7__frame_left",
+          "window_podium_front_2_7__frame_right",
+          "window_podium_front_2_7__frame_bottom",
+          "window_podium_front_2_7__frame_top"
+        ],
+        "window_podium_front_2_8": [
+          "window_podium_front_2_8__opening",
+          "window_podium_front_2_8__frame_left",
+          "window_podium_front_2_8__frame_right",
+          "window_podium_front_2_8__frame_bottom",
+          "window_podium_front_2_8__frame_top"
+        ],
+        "window_podium_front_2_9": [
+          "window_podium_front_2_9__opening",
+          "window_podium_front_2_9__frame_left",
+          "window_podium_front_2_9__frame_right",
+          "window_podium_front_2_9__frame_bottom",
+          "window_podium_front_2_9__frame_top"
+        ],
+        "window_podium_back_2_1": [
+          "window_podium_back_2_1__opening",
+          "window_podium_back_2_1__frame_left",
+          "window_podium_back_2_1__frame_right",
+          "window_podium_back_2_1__frame_bottom",
+          "window_podium_back_2_1__frame_top"
+        ],
+        "window_podium_back_2_2": [
+          "window_podium_back_2_2__opening",
+          "window_podium_back_2_2__frame_left",
+          "window_podium_back_2_2__frame_right",
+          "window_podium_back_2_2__frame_bottom",
+          "window_podium_back_2_2__frame_top"
+        ],
+        "window_podium_back_2_3": [
+          "window_podium_back_2_3__opening",
+          "window_podium_back_2_3__frame_left",
+          "window_podium_back_2_3__frame_right",
+          "window_podium_back_2_3__frame_bottom",
+          "window_podium_back_2_3__frame_top"
+        ],
+        "window_podium_back_2_4": [
+          "window_podium_back_2_4__opening",
+          "window_podium_back_2_4__frame_left",
+          "window_podium_back_2_4__frame_right",
+          "window_podium_back_2_4__frame_bottom",
+          "window_podium_back_2_4__frame_top"
+        ],
+        "window_podium_back_2_5": [
+          "window_podium_back_2_5__opening",
+          "window_podium_back_2_5__frame_left",
+          "window_podium_back_2_5__frame_right",
+          "window_podium_back_2_5__frame_bottom",
+          "window_podium_back_2_5__frame_top"
+        ],
+        "window_podium_back_2_6": [
+          "window_podium_back_2_6__opening",
+          "window_podium_back_2_6__frame_left",
+          "window_podium_back_2_6__frame_right",
+          "window_podium_back_2_6__frame_bottom",
+          "window_podium_back_2_6__frame_top"
+        ],
+        "window_podium_back_2_7": [
+          "window_podium_back_2_7__opening",
+          "window_podium_back_2_7__frame_left",
+          "window_podium_back_2_7__frame_right",
+          "window_podium_back_2_7__frame_bottom",
+          "window_podium_back_2_7__frame_top"
+        ],
+        "window_podium_back_2_8": [
+          "window_podium_back_2_8__opening",
+          "window_podium_back_2_8__frame_left",
+          "window_podium_back_2_8__frame_right",
+          "window_podium_back_2_8__frame_bottom",
+          "window_podium_back_2_8__frame_top"
+        ],
+        "window_podium_back_2_9": [
+          "window_podium_back_2_9__opening",
+          "window_podium_back_2_9__frame_left",
+          "window_podium_back_2_9__frame_right",
+          "window_podium_back_2_9__frame_bottom",
+          "window_podium_back_2_9__frame_top"
+        ],
+        "window_podium_left_2_1": [
+          "window_podium_left_2_1__opening",
+          "window_podium_left_2_1__frame_left",
+          "window_podium_left_2_1__frame_right",
+          "window_podium_left_2_1__frame_bottom",
+          "window_podium_left_2_1__frame_top"
+        ],
+        "window_podium_left_2_2": [
+          "window_podium_left_2_2__opening",
+          "window_podium_left_2_2__frame_left",
+          "window_podium_left_2_2__frame_right",
+          "window_podium_left_2_2__frame_bottom",
+          "window_podium_left_2_2__frame_top"
+        ],
+        "window_podium_left_2_3": [
+          "window_podium_left_2_3__opening",
+          "window_podium_left_2_3__frame_left",
+          "window_podium_left_2_3__frame_right",
+          "window_podium_left_2_3__frame_bottom",
+          "window_podium_left_2_3__frame_top"
+        ],
+        "window_podium_left_2_4": [
+          "window_podium_left_2_4__opening",
+          "window_podium_left_2_4__frame_left",
+          "window_podium_left_2_4__frame_right",
+          "window_podium_left_2_4__frame_bottom",
+          "window_podium_left_2_4__frame_top"
+        ],
+        "window_podium_left_2_5": [
+          "window_podium_left_2_5__opening",
+          "window_podium_left_2_5__frame_left",
+          "window_podium_left_2_5__frame_right",
+          "window_podium_left_2_5__frame_bottom",
+          "window_podium_left_2_5__frame_top"
+        ],
+        "window_podium_right_2_1": [
+          "window_podium_right_2_1__opening",
+          "window_podium_right_2_1__frame_left",
+          "window_podium_right_2_1__frame_right",
+          "window_podium_right_2_1__frame_bottom",
+          "window_podium_right_2_1__frame_top"
+        ],
+        "window_podium_right_2_2": [
+          "window_podium_right_2_2__opening",
+          "window_podium_right_2_2__frame_left",
+          "window_podium_right_2_2__frame_right",
+          "window_podium_right_2_2__frame_bottom",
+          "window_podium_right_2_2__frame_top"
+        ],
+        "window_podium_right_2_3": [
+          "window_podium_right_2_3__opening",
+          "window_podium_right_2_3__frame_left",
+          "window_podium_right_2_3__frame_right",
+          "window_podium_right_2_3__frame_bottom",
+          "window_podium_right_2_3__frame_top"
+        ],
+        "window_podium_right_2_4": [
+          "window_podium_right_2_4__opening",
+          "window_podium_right_2_4__frame_left",
+          "window_podium_right_2_4__frame_right",
+          "window_podium_right_2_4__frame_bottom",
+          "window_podium_right_2_4__frame_top"
+        ],
+        "window_podium_right_2_5": [
+          "window_podium_right_2_5__opening",
+          "window_podium_right_2_5__frame_left",
+          "window_podium_right_2_5__frame_right",
+          "window_podium_right_2_5__frame_bottom",
+          "window_podium_right_2_5__frame_top"
+        ],
+        "window_tower_front_3_1": [
+          "window_tower_front_3_1__opening",
+          "window_tower_front_3_1__frame_left",
+          "window_tower_front_3_1__frame_right",
+          "window_tower_front_3_1__frame_bottom",
+          "window_tower_front_3_1__frame_top"
+        ],
+        "window_tower_front_3_2": [
+          "window_tower_front_3_2__opening",
+          "window_tower_front_3_2__frame_left",
+          "window_tower_front_3_2__frame_right",
+          "window_tower_front_3_2__frame_bottom",
+          "window_tower_front_3_2__frame_top"
+        ],
+        "window_tower_front_3_3": [
+          "window_tower_front_3_3__opening",
+          "window_tower_front_3_3__frame_left",
+          "window_tower_front_3_3__frame_right",
+          "window_tower_front_3_3__frame_bottom",
+          "window_tower_front_3_3__frame_top"
+        ],
+        "window_tower_front_3_4": [
+          "window_tower_front_3_4__opening",
+          "window_tower_front_3_4__frame_left",
+          "window_tower_front_3_4__frame_right",
+          "window_tower_front_3_4__frame_bottom",
+          "window_tower_front_3_4__frame_top"
+        ],
+        "window_tower_front_3_5": [
+          "window_tower_front_3_5__opening",
+          "window_tower_front_3_5__frame_left",
+          "window_tower_front_3_5__frame_right",
+          "window_tower_front_3_5__frame_bottom",
+          "window_tower_front_3_5__frame_top"
+        ],
+        "window_tower_front_3_6": [
+          "window_tower_front_3_6__opening",
+          "window_tower_front_3_6__frame_left",
+          "window_tower_front_3_6__frame_right",
+          "window_tower_front_3_6__frame_bottom",
+          "window_tower_front_3_6__frame_top"
+        ],
+        "window_tower_back_3_1": [
+          "window_tower_back_3_1__opening",
+          "window_tower_back_3_1__frame_left",
+          "window_tower_back_3_1__frame_right",
+          "window_tower_back_3_1__frame_bottom",
+          "window_tower_back_3_1__frame_top"
+        ],
+        "window_tower_back_3_2": [
+          "window_tower_back_3_2__opening",
+          "window_tower_back_3_2__frame_left",
+          "window_tower_back_3_2__frame_right",
+          "window_tower_back_3_2__frame_bottom",
+          "window_tower_back_3_2__frame_top"
+        ],
+        "window_tower_back_3_3": [
+          "window_tower_back_3_3__opening",
+          "window_tower_back_3_3__frame_left",
+          "window_tower_back_3_3__frame_right",
+          "window_tower_back_3_3__frame_bottom",
+          "window_tower_back_3_3__frame_top"
+        ],
+        "window_tower_back_3_4": [
+          "window_tower_back_3_4__opening",
+          "window_tower_back_3_4__frame_left",
+          "window_tower_back_3_4__frame_right",
+          "window_tower_back_3_4__frame_bottom",
+          "window_tower_back_3_4__frame_top"
+        ],
+        "window_tower_back_3_5": [
+          "window_tower_back_3_5__opening",
+          "window_tower_back_3_5__frame_left",
+          "window_tower_back_3_5__frame_right",
+          "window_tower_back_3_5__frame_bottom",
+          "window_tower_back_3_5__frame_top"
+        ],
+        "window_tower_back_3_6": [
+          "window_tower_back_3_6__opening",
+          "window_tower_back_3_6__frame_left",
+          "window_tower_back_3_6__frame_right",
+          "window_tower_back_3_6__frame_bottom",
+          "window_tower_back_3_6__frame_top"
+        ],
+        "window_tower_left_3_1": [
+          "window_tower_left_3_1__opening",
+          "window_tower_left_3_1__frame_left",
+          "window_tower_left_3_1__frame_right",
+          "window_tower_left_3_1__frame_bottom",
+          "window_tower_left_3_1__frame_top"
+        ],
+        "window_tower_left_3_2": [
+          "window_tower_left_3_2__opening",
+          "window_tower_left_3_2__frame_left",
+          "window_tower_left_3_2__frame_right",
+          "window_tower_left_3_2__frame_bottom",
+          "window_tower_left_3_2__frame_top"
+        ],
+        "window_tower_left_3_3": [
+          "window_tower_left_3_3__opening",
+          "window_tower_left_3_3__frame_left",
+          "window_tower_left_3_3__frame_right",
+          "window_tower_left_3_3__frame_bottom",
+          "window_tower_left_3_3__frame_top"
+        ],
+        "window_tower_right_3_1": [
+          "window_tower_right_3_1__opening",
+          "window_tower_right_3_1__frame_left",
+          "window_tower_right_3_1__frame_right",
+          "window_tower_right_3_1__frame_bottom",
+          "window_tower_right_3_1__frame_top"
+        ],
+        "window_tower_right_3_2": [
+          "window_tower_right_3_2__opening",
+          "window_tower_right_3_2__frame_left",
+          "window_tower_right_3_2__frame_right",
+          "window_tower_right_3_2__frame_bottom",
+          "window_tower_right_3_2__frame_top"
+        ],
+        "window_tower_right_3_3": [
+          "window_tower_right_3_3__opening",
+          "window_tower_right_3_3__frame_left",
+          "window_tower_right_3_3__frame_right",
+          "window_tower_right_3_3__frame_bottom",
+          "window_tower_right_3_3__frame_top"
+        ],
+        "window_tower_front_4_1": [
+          "window_tower_front_4_1__opening",
+          "window_tower_front_4_1__frame_left",
+          "window_tower_front_4_1__frame_right",
+          "window_tower_front_4_1__frame_bottom",
+          "window_tower_front_4_1__frame_top"
+        ],
+        "window_tower_front_4_2": [
+          "window_tower_front_4_2__opening",
+          "window_tower_front_4_2__frame_left",
+          "window_tower_front_4_2__frame_right",
+          "window_tower_front_4_2__frame_bottom",
+          "window_tower_front_4_2__frame_top"
+        ],
+        "window_tower_front_4_3": [
+          "window_tower_front_4_3__opening",
+          "window_tower_front_4_3__frame_left",
+          "window_tower_front_4_3__frame_right",
+          "window_tower_front_4_3__frame_bottom",
+          "window_tower_front_4_3__frame_top"
+        ],
+        "window_tower_front_4_4": [
+          "window_tower_front_4_4__opening",
+          "window_tower_front_4_4__frame_left",
+          "window_tower_front_4_4__frame_right",
+          "window_tower_front_4_4__frame_bottom",
+          "window_tower_front_4_4__frame_top"
+        ],
+        "window_tower_front_4_5": [
+          "window_tower_front_4_5__opening",
+          "window_tower_front_4_5__frame_left",
+          "window_tower_front_4_5__frame_right",
+          "window_tower_front_4_5__frame_bottom",
+          "window_tower_front_4_5__frame_top"
+        ],
+        "window_tower_front_4_6": [
+          "window_tower_front_4_6__opening",
+          "window_tower_front_4_6__frame_left",
+          "window_tower_front_4_6__frame_right",
+          "window_tower_front_4_6__frame_bottom",
+          "window_tower_front_4_6__frame_top"
+        ],
+        "window_tower_back_4_1": [
+          "window_tower_back_4_1__opening",
+          "window_tower_back_4_1__frame_left",
+          "window_tower_back_4_1__frame_right",
+          "window_tower_back_4_1__frame_bottom",
+          "window_tower_back_4_1__frame_top"
+        ],
+        "window_tower_back_4_2": [
+          "window_tower_back_4_2__opening",
+          "window_tower_back_4_2__frame_left",
+          "window_tower_back_4_2__frame_right",
+          "window_tower_back_4_2__frame_bottom",
+          "window_tower_back_4_2__frame_top"
+        ],
+        "window_tower_back_4_3": [
+          "window_tower_back_4_3__opening",
+          "window_tower_back_4_3__frame_left",
+          "window_tower_back_4_3__frame_right",
+          "window_tower_back_4_3__frame_bottom",
+          "window_tower_back_4_3__frame_top"
+        ],
+        "window_tower_back_4_4": [
+          "window_tower_back_4_4__opening",
+          "window_tower_back_4_4__frame_left",
+          "window_tower_back_4_4__frame_right",
+          "window_tower_back_4_4__frame_bottom",
+          "window_tower_back_4_4__frame_top"
+        ],
+        "window_tower_back_4_5": [
+          "window_tower_back_4_5__opening",
+          "window_tower_back_4_5__frame_left",
+          "window_tower_back_4_5__frame_right",
+          "window_tower_back_4_5__frame_bottom",
+          "window_tower_back_4_5__frame_top"
+        ],
+        "window_tower_back_4_6": [
+          "window_tower_back_4_6__opening",
+          "window_tower_back_4_6__frame_left",
+          "window_tower_back_4_6__frame_right",
+          "window_tower_back_4_6__frame_bottom",
+          "window_tower_back_4_6__frame_top"
+        ],
+        "window_tower_left_4_1": [
+          "window_tower_left_4_1__opening",
+          "window_tower_left_4_1__frame_left",
+          "window_tower_left_4_1__frame_right",
+          "window_tower_left_4_1__frame_bottom",
+          "window_tower_left_4_1__frame_top"
+        ],
+        "window_tower_left_4_2": [
+          "window_tower_left_4_2__opening",
+          "window_tower_left_4_2__frame_left",
+          "window_tower_left_4_2__frame_right",
+          "window_tower_left_4_2__frame_bottom",
+          "window_tower_left_4_2__frame_top"
+        ],
+        "window_tower_left_4_3": [
+          "window_tower_left_4_3__opening",
+          "window_tower_left_4_3__frame_left",
+          "window_tower_left_4_3__frame_right",
+          "window_tower_left_4_3__frame_bottom",
+          "window_tower_left_4_3__frame_top"
+        ],
+        "window_tower_right_4_1": [
+          "window_tower_right_4_1__opening",
+          "window_tower_right_4_1__frame_left",
+          "window_tower_right_4_1__frame_right",
+          "window_tower_right_4_1__frame_bottom",
+          "window_tower_right_4_1__frame_top"
+        ],
+        "window_tower_right_4_2": [
+          "window_tower_right_4_2__opening",
+          "window_tower_right_4_2__frame_left",
+          "window_tower_right_4_2__frame_right",
+          "window_tower_right_4_2__frame_bottom",
+          "window_tower_right_4_2__frame_top"
+        ],
+        "window_tower_right_4_3": [
+          "window_tower_right_4_3__opening",
+          "window_tower_right_4_3__frame_left",
+          "window_tower_right_4_3__frame_right",
+          "window_tower_right_4_3__frame_bottom",
+          "window_tower_right_4_3__frame_top"
+        ],
+        "window_tower_front_5_1": [
+          "window_tower_front_5_1__opening",
+          "window_tower_front_5_1__frame_left",
+          "window_tower_front_5_1__frame_right",
+          "window_tower_front_5_1__frame_bottom",
+          "window_tower_front_5_1__frame_top"
+        ],
+        "window_tower_front_5_2": [
+          "window_tower_front_5_2__opening",
+          "window_tower_front_5_2__frame_left",
+          "window_tower_front_5_2__frame_right",
+          "window_tower_front_5_2__frame_bottom",
+          "window_tower_front_5_2__frame_top"
+        ],
+        "window_tower_front_5_3": [
+          "window_tower_front_5_3__opening",
+          "window_tower_front_5_3__frame_left",
+          "window_tower_front_5_3__frame_right",
+          "window_tower_front_5_3__frame_bottom",
+          "window_tower_front_5_3__frame_top"
+        ],
+        "window_tower_front_5_4": [
+          "window_tower_front_5_4__opening",
+          "window_tower_front_5_4__frame_left",
+          "window_tower_front_5_4__frame_right",
+          "window_tower_front_5_4__frame_bottom",
+          "window_tower_front_5_4__frame_top"
+        ],
+        "window_tower_front_5_5": [
+          "window_tower_front_5_5__opening",
+          "window_tower_front_5_5__frame_left",
+          "window_tower_front_5_5__frame_right",
+          "window_tower_front_5_5__frame_bottom",
+          "window_tower_front_5_5__frame_top"
+        ],
+        "window_tower_front_5_6": [
+          "window_tower_front_5_6__opening",
+          "window_tower_front_5_6__frame_left",
+          "window_tower_front_5_6__frame_right",
+          "window_tower_front_5_6__frame_bottom",
+          "window_tower_front_5_6__frame_top"
+        ],
+        "window_tower_back_5_1": [
+          "window_tower_back_5_1__opening",
+          "window_tower_back_5_1__frame_left",
+          "window_tower_back_5_1__frame_right",
+          "window_tower_back_5_1__frame_bottom",
+          "window_tower_back_5_1__frame_top"
+        ],
+        "window_tower_back_5_2": [
+          "window_tower_back_5_2__opening",
+          "window_tower_back_5_2__frame_left",
+          "window_tower_back_5_2__frame_right",
+          "window_tower_back_5_2__frame_bottom",
+          "window_tower_back_5_2__frame_top"
+        ],
+        "window_tower_back_5_3": [
+          "window_tower_back_5_3__opening",
+          "window_tower_back_5_3__frame_left",
+          "window_tower_back_5_3__frame_right",
+          "window_tower_back_5_3__frame_bottom",
+          "window_tower_back_5_3__frame_top"
+        ],
+        "window_tower_back_5_4": [
+          "window_tower_back_5_4__opening",
+          "window_tower_back_5_4__frame_left",
+          "window_tower_back_5_4__frame_right",
+          "window_tower_back_5_4__frame_bottom",
+          "window_tower_back_5_4__frame_top"
+        ],
+        "window_tower_back_5_5": [
+          "window_tower_back_5_5__opening",
+          "window_tower_back_5_5__frame_left",
+          "window_tower_back_5_5__frame_right",
+          "window_tower_back_5_5__frame_bottom",
+          "window_tower_back_5_5__frame_top"
+        ],
+        "window_tower_back_5_6": [
+          "window_tower_back_5_6__opening",
+          "window_tower_back_5_6__frame_left",
+          "window_tower_back_5_6__frame_right",
+          "window_tower_back_5_6__frame_bottom",
+          "window_tower_back_5_6__frame_top"
+        ],
+        "window_tower_left_5_1": [
+          "window_tower_left_5_1__opening",
+          "window_tower_left_5_1__frame_left",
+          "window_tower_left_5_1__frame_right",
+          "window_tower_left_5_1__frame_bottom",
+          "window_tower_left_5_1__frame_top"
+        ],
+        "window_tower_left_5_2": [
+          "window_tower_left_5_2__opening",
+          "window_tower_left_5_2__frame_left",
+          "window_tower_left_5_2__frame_right",
+          "window_tower_left_5_2__frame_bottom",
+          "window_tower_left_5_2__frame_top"
+        ],
+        "window_tower_left_5_3": [
+          "window_tower_left_5_3__opening",
+          "window_tower_left_5_3__frame_left",
+          "window_tower_left_5_3__frame_right",
+          "window_tower_left_5_3__frame_bottom",
+          "window_tower_left_5_3__frame_top"
+        ],
+        "window_tower_right_5_1": [
+          "window_tower_right_5_1__opening",
+          "window_tower_right_5_1__frame_left",
+          "window_tower_right_5_1__frame_right",
+          "window_tower_right_5_1__frame_bottom",
+          "window_tower_right_5_1__frame_top"
+        ],
+        "window_tower_right_5_2": [
+          "window_tower_right_5_2__opening",
+          "window_tower_right_5_2__frame_left",
+          "window_tower_right_5_2__frame_right",
+          "window_tower_right_5_2__frame_bottom",
+          "window_tower_right_5_2__frame_top"
+        ],
+        "window_tower_right_5_3": [
+          "window_tower_right_5_3__opening",
+          "window_tower_right_5_3__frame_left",
+          "window_tower_right_5_3__frame_right",
+          "window_tower_right_5_3__frame_bottom",
+          "window_tower_right_5_3__frame_top"
+        ],
+        "window_tower_front_6_1": [
+          "window_tower_front_6_1__opening",
+          "window_tower_front_6_1__frame_left",
+          "window_tower_front_6_1__frame_right",
+          "window_tower_front_6_1__frame_bottom",
+          "window_tower_front_6_1__frame_top"
+        ],
+        "window_tower_front_6_2": [
+          "window_tower_front_6_2__opening",
+          "window_tower_front_6_2__frame_left",
+          "window_tower_front_6_2__frame_right",
+          "window_tower_front_6_2__frame_bottom",
+          "window_tower_front_6_2__frame_top"
+        ],
+        "window_tower_front_6_3": [
+          "window_tower_front_6_3__opening",
+          "window_tower_front_6_3__frame_left",
+          "window_tower_front_6_3__frame_right",
+          "window_tower_front_6_3__frame_bottom",
+          "window_tower_front_6_3__frame_top"
+        ],
+        "window_tower_front_6_4": [
+          "window_tower_front_6_4__opening",
+          "window_tower_front_6_4__frame_left",
+          "window_tower_front_6_4__frame_right",
+          "window_tower_front_6_4__frame_bottom",
+          "window_tower_front_6_4__frame_top"
+        ],
+        "window_tower_front_6_5": [
+          "window_tower_front_6_5__opening",
+          "window_tower_front_6_5__frame_left",
+          "window_tower_front_6_5__frame_right",
+          "window_tower_front_6_5__frame_bottom",
+          "window_tower_front_6_5__frame_top"
+        ],
+        "window_tower_front_6_6": [
+          "window_tower_front_6_6__opening",
+          "window_tower_front_6_6__frame_left",
+          "window_tower_front_6_6__frame_right",
+          "window_tower_front_6_6__frame_bottom",
+          "window_tower_front_6_6__frame_top"
+        ],
+        "window_tower_back_6_1": [
+          "window_tower_back_6_1__opening",
+          "window_tower_back_6_1__frame_left",
+          "window_tower_back_6_1__frame_right",
+          "window_tower_back_6_1__frame_bottom",
+          "window_tower_back_6_1__frame_top"
+        ],
+        "window_tower_back_6_2": [
+          "window_tower_back_6_2__opening",
+          "window_tower_back_6_2__frame_left",
+          "window_tower_back_6_2__frame_right",
+          "window_tower_back_6_2__frame_bottom",
+          "window_tower_back_6_2__frame_top"
+        ],
+        "window_tower_back_6_3": [
+          "window_tower_back_6_3__opening",
+          "window_tower_back_6_3__frame_left",
+          "window_tower_back_6_3__frame_right",
+          "window_tower_back_6_3__frame_bottom",
+          "window_tower_back_6_3__frame_top"
+        ],
+        "window_tower_back_6_4": [
+          "window_tower_back_6_4__opening",
+          "window_tower_back_6_4__frame_left",
+          "window_tower_back_6_4__frame_right",
+          "window_tower_back_6_4__frame_bottom",
+          "window_tower_back_6_4__frame_top"
+        ],
+        "window_tower_back_6_5": [
+          "window_tower_back_6_5__opening",
+          "window_tower_back_6_5__frame_left",
+          "window_tower_back_6_5__frame_right",
+          "window_tower_back_6_5__frame_bottom",
+          "window_tower_back_6_5__frame_top"
+        ],
+        "window_tower_back_6_6": [
+          "window_tower_back_6_6__opening",
+          "window_tower_back_6_6__frame_left",
+          "window_tower_back_6_6__frame_right",
+          "window_tower_back_6_6__frame_bottom",
+          "window_tower_back_6_6__frame_top"
+        ],
+        "window_tower_left_6_1": [
+          "window_tower_left_6_1__opening",
+          "window_tower_left_6_1__frame_left",
+          "window_tower_left_6_1__frame_right",
+          "window_tower_left_6_1__frame_bottom",
+          "window_tower_left_6_1__frame_top"
+        ],
+        "window_tower_left_6_2": [
+          "window_tower_left_6_2__opening",
+          "window_tower_left_6_2__frame_left",
+          "window_tower_left_6_2__frame_right",
+          "window_tower_left_6_2__frame_bottom",
+          "window_tower_left_6_2__frame_top"
+        ],
+        "window_tower_left_6_3": [
+          "window_tower_left_6_3__opening",
+          "window_tower_left_6_3__frame_left",
+          "window_tower_left_6_3__frame_right",
+          "window_tower_left_6_3__frame_bottom",
+          "window_tower_left_6_3__frame_top"
+        ],
+        "window_tower_right_6_1": [
+          "window_tower_right_6_1__opening",
+          "window_tower_right_6_1__frame_left",
+          "window_tower_right_6_1__frame_right",
+          "window_tower_right_6_1__frame_bottom",
+          "window_tower_right_6_1__frame_top"
+        ],
+        "window_tower_right_6_2": [
+          "window_tower_right_6_2__opening",
+          "window_tower_right_6_2__frame_left",
+          "window_tower_right_6_2__frame_right",
+          "window_tower_right_6_2__frame_bottom",
+          "window_tower_right_6_2__frame_top"
+        ],
+        "window_tower_right_6_3": [
+          "window_tower_right_6_3__opening",
+          "window_tower_right_6_3__frame_left",
+          "window_tower_right_6_3__frame_right",
+          "window_tower_right_6_3__frame_bottom",
+          "window_tower_right_6_3__frame_top"
+        ],
+        "window_tower_front_7_1": [
+          "window_tower_front_7_1__opening",
+          "window_tower_front_7_1__frame_left",
+          "window_tower_front_7_1__frame_right",
+          "window_tower_front_7_1__frame_bottom",
+          "window_tower_front_7_1__frame_top"
+        ],
+        "window_tower_front_7_2": [
+          "window_tower_front_7_2__opening",
+          "window_tower_front_7_2__frame_left",
+          "window_tower_front_7_2__frame_right",
+          "window_tower_front_7_2__frame_bottom",
+          "window_tower_front_7_2__frame_top"
+        ],
+        "window_tower_front_7_3": [
+          "window_tower_front_7_3__opening",
+          "window_tower_front_7_3__frame_left",
+          "window_tower_front_7_3__frame_right",
+          "window_tower_front_7_3__frame_bottom",
+          "window_tower_front_7_3__frame_top"
+        ],
+        "window_tower_front_7_4": [
+          "window_tower_front_7_4__opening",
+          "window_tower_front_7_4__frame_left",
+          "window_tower_front_7_4__frame_right",
+          "window_tower_front_7_4__frame_bottom",
+          "window_tower_front_7_4__frame_top"
+        ],
+        "window_tower_front_7_5": [
+          "window_tower_front_7_5__opening",
+          "window_tower_front_7_5__frame_left",
+          "window_tower_front_7_5__frame_right",
+          "window_tower_front_7_5__frame_bottom",
+          "window_tower_front_7_5__frame_top"
+        ],
+        "window_tower_front_7_6": [
+          "window_tower_front_7_6__opening",
+          "window_tower_front_7_6__frame_left",
+          "window_tower_front_7_6__frame_right",
+          "window_tower_front_7_6__frame_bottom",
+          "window_tower_front_7_6__frame_top"
+        ],
+        "window_tower_back_7_1": [
+          "window_tower_back_7_1__opening",
+          "window_tower_back_7_1__frame_left",
+          "window_tower_back_7_1__frame_right",
+          "window_tower_back_7_1__frame_bottom",
+          "window_tower_back_7_1__frame_top"
+        ],
+        "window_tower_back_7_2": [
+          "window_tower_back_7_2__opening",
+          "window_tower_back_7_2__frame_left",
+          "window_tower_back_7_2__frame_right",
+          "window_tower_back_7_2__frame_bottom",
+          "window_tower_back_7_2__frame_top"
+        ],
+        "window_tower_back_7_3": [
+          "window_tower_back_7_3__opening",
+          "window_tower_back_7_3__frame_left",
+          "window_tower_back_7_3__frame_right",
+          "window_tower_back_7_3__frame_bottom",
+          "window_tower_back_7_3__frame_top"
+        ],
+        "window_tower_back_7_4": [
+          "window_tower_back_7_4__opening",
+          "window_tower_back_7_4__frame_left",
+          "window_tower_back_7_4__frame_right",
+          "window_tower_back_7_4__frame_bottom",
+          "window_tower_back_7_4__frame_top"
+        ],
+        "window_tower_back_7_5": [
+          "window_tower_back_7_5__opening",
+          "window_tower_back_7_5__frame_left",
+          "window_tower_back_7_5__frame_right",
+          "window_tower_back_7_5__frame_bottom",
+          "window_tower_back_7_5__frame_top"
+        ],
+        "window_tower_back_7_6": [
+          "window_tower_back_7_6__opening",
+          "window_tower_back_7_6__frame_left",
+          "window_tower_back_7_6__frame_right",
+          "window_tower_back_7_6__frame_bottom",
+          "window_tower_back_7_6__frame_top"
+        ],
+        "window_tower_left_7_1": [
+          "window_tower_left_7_1__opening",
+          "window_tower_left_7_1__frame_left",
+          "window_tower_left_7_1__frame_right",
+          "window_tower_left_7_1__frame_bottom",
+          "window_tower_left_7_1__frame_top"
+        ],
+        "window_tower_left_7_2": [
+          "window_tower_left_7_2__opening",
+          "window_tower_left_7_2__frame_left",
+          "window_tower_left_7_2__frame_right",
+          "window_tower_left_7_2__frame_bottom",
+          "window_tower_left_7_2__frame_top"
+        ],
+        "window_tower_left_7_3": [
+          "window_tower_left_7_3__opening",
+          "window_tower_left_7_3__frame_left",
+          "window_tower_left_7_3__frame_right",
+          "window_tower_left_7_3__frame_bottom",
+          "window_tower_left_7_3__frame_top"
+        ],
+        "window_tower_right_7_1": [
+          "window_tower_right_7_1__opening",
+          "window_tower_right_7_1__frame_left",
+          "window_tower_right_7_1__frame_right",
+          "window_tower_right_7_1__frame_bottom",
+          "window_tower_right_7_1__frame_top"
+        ],
+        "window_tower_right_7_2": [
+          "window_tower_right_7_2__opening",
+          "window_tower_right_7_2__frame_left",
+          "window_tower_right_7_2__frame_right",
+          "window_tower_right_7_2__frame_bottom",
+          "window_tower_right_7_2__frame_top"
+        ],
+        "window_tower_right_7_3": [
+          "window_tower_right_7_3__opening",
+          "window_tower_right_7_3__frame_left",
+          "window_tower_right_7_3__frame_right",
+          "window_tower_right_7_3__frame_bottom",
+          "window_tower_right_7_3__frame_top"
+        ],
+        "window_tower_front_8_1": [
+          "window_tower_front_8_1__opening",
+          "window_tower_front_8_1__frame_left",
+          "window_tower_front_8_1__frame_right",
+          "window_tower_front_8_1__frame_bottom",
+          "window_tower_front_8_1__frame_top"
+        ],
+        "window_tower_front_8_2": [
+          "window_tower_front_8_2__opening",
+          "window_tower_front_8_2__frame_left",
+          "window_tower_front_8_2__frame_right",
+          "window_tower_front_8_2__frame_bottom",
+          "window_tower_front_8_2__frame_top"
+        ],
+        "window_tower_front_8_3": [
+          "window_tower_front_8_3__opening",
+          "window_tower_front_8_3__frame_left",
+          "window_tower_front_8_3__frame_right",
+          "window_tower_front_8_3__frame_bottom",
+          "window_tower_front_8_3__frame_top"
+        ],
+        "window_tower_front_8_4": [
+          "window_tower_front_8_4__opening",
+          "window_tower_front_8_4__frame_left",
+          "window_tower_front_8_4__frame_right",
+          "window_tower_front_8_4__frame_bottom",
+          "window_tower_front_8_4__frame_top"
+        ],
+        "window_tower_front_8_5": [
+          "window_tower_front_8_5__opening",
+          "window_tower_front_8_5__frame_left",
+          "window_tower_front_8_5__frame_right",
+          "window_tower_front_8_5__frame_bottom",
+          "window_tower_front_8_5__frame_top"
+        ],
+        "window_tower_front_8_6": [
+          "window_tower_front_8_6__opening",
+          "window_tower_front_8_6__frame_left",
+          "window_tower_front_8_6__frame_right",
+          "window_tower_front_8_6__frame_bottom",
+          "window_tower_front_8_6__frame_top"
+        ],
+        "window_tower_back_8_1": [
+          "window_tower_back_8_1__opening",
+          "window_tower_back_8_1__frame_left",
+          "window_tower_back_8_1__frame_right",
+          "window_tower_back_8_1__frame_bottom",
+          "window_tower_back_8_1__frame_top"
+        ],
+        "window_tower_back_8_2": [
+          "window_tower_back_8_2__opening",
+          "window_tower_back_8_2__frame_left",
+          "window_tower_back_8_2__frame_right",
+          "window_tower_back_8_2__frame_bottom",
+          "window_tower_back_8_2__frame_top"
+        ],
+        "window_tower_back_8_3": [
+          "window_tower_back_8_3__opening",
+          "window_tower_back_8_3__frame_left",
+          "window_tower_back_8_3__frame_right",
+          "window_tower_back_8_3__frame_bottom",
+          "window_tower_back_8_3__frame_top"
+        ],
+        "window_tower_back_8_4": [
+          "window_tower_back_8_4__opening",
+          "window_tower_back_8_4__frame_left",
+          "window_tower_back_8_4__frame_right",
+          "window_tower_back_8_4__frame_bottom",
+          "window_tower_back_8_4__frame_top"
+        ],
+        "window_tower_back_8_5": [
+          "window_tower_back_8_5__opening",
+          "window_tower_back_8_5__frame_left",
+          "window_tower_back_8_5__frame_right",
+          "window_tower_back_8_5__frame_bottom",
+          "window_tower_back_8_5__frame_top"
+        ],
+        "window_tower_back_8_6": [
+          "window_tower_back_8_6__opening",
+          "window_tower_back_8_6__frame_left",
+          "window_tower_back_8_6__frame_right",
+          "window_tower_back_8_6__frame_bottom",
+          "window_tower_back_8_6__frame_top"
+        ],
+        "window_tower_left_8_1": [
+          "window_tower_left_8_1__opening",
+          "window_tower_left_8_1__frame_left",
+          "window_tower_left_8_1__frame_right",
+          "window_tower_left_8_1__frame_bottom",
+          "window_tower_left_8_1__frame_top"
+        ],
+        "window_tower_left_8_2": [
+          "window_tower_left_8_2__opening",
+          "window_tower_left_8_2__frame_left",
+          "window_tower_left_8_2__frame_right",
+          "window_tower_left_8_2__frame_bottom",
+          "window_tower_left_8_2__frame_top"
+        ],
+        "window_tower_left_8_3": [
+          "window_tower_left_8_3__opening",
+          "window_tower_left_8_3__frame_left",
+          "window_tower_left_8_3__frame_right",
+          "window_tower_left_8_3__frame_bottom",
+          "window_tower_left_8_3__frame_top"
+        ],
+        "window_tower_right_8_1": [
+          "window_tower_right_8_1__opening",
+          "window_tower_right_8_1__frame_left",
+          "window_tower_right_8_1__frame_right",
+          "window_tower_right_8_1__frame_bottom",
+          "window_tower_right_8_1__frame_top"
+        ],
+        "window_tower_right_8_2": [
+          "window_tower_right_8_2__opening",
+          "window_tower_right_8_2__frame_left",
+          "window_tower_right_8_2__frame_right",
+          "window_tower_right_8_2__frame_bottom",
+          "window_tower_right_8_2__frame_top"
+        ],
+        "window_tower_right_8_3": [
+          "window_tower_right_8_3__opening",
+          "window_tower_right_8_3__frame_left",
+          "window_tower_right_8_3__frame_right",
+          "window_tower_right_8_3__frame_bottom",
+          "window_tower_right_8_3__frame_top"
+        ],
+        "window_tower_front_9_1": [
+          "window_tower_front_9_1__opening",
+          "window_tower_front_9_1__frame_left",
+          "window_tower_front_9_1__frame_right",
+          "window_tower_front_9_1__frame_bottom",
+          "window_tower_front_9_1__frame_top"
+        ],
+        "window_tower_front_9_2": [
+          "window_tower_front_9_2__opening",
+          "window_tower_front_9_2__frame_left",
+          "window_tower_front_9_2__frame_right",
+          "window_tower_front_9_2__frame_bottom",
+          "window_tower_front_9_2__frame_top"
+        ],
+        "window_tower_front_9_3": [
+          "window_tower_front_9_3__opening",
+          "window_tower_front_9_3__frame_left",
+          "window_tower_front_9_3__frame_right",
+          "window_tower_front_9_3__frame_bottom",
+          "window_tower_front_9_3__frame_top"
+        ],
+        "window_tower_front_9_4": [
+          "window_tower_front_9_4__opening",
+          "window_tower_front_9_4__frame_left",
+          "window_tower_front_9_4__frame_right",
+          "window_tower_front_9_4__frame_bottom",
+          "window_tower_front_9_4__frame_top"
+        ],
+        "window_tower_front_9_5": [
+          "window_tower_front_9_5__opening",
+          "window_tower_front_9_5__frame_left",
+          "window_tower_front_9_5__frame_right",
+          "window_tower_front_9_5__frame_bottom",
+          "window_tower_front_9_5__frame_top"
+        ],
+        "window_tower_front_9_6": [
+          "window_tower_front_9_6__opening",
+          "window_tower_front_9_6__frame_left",
+          "window_tower_front_9_6__frame_right",
+          "window_tower_front_9_6__frame_bottom",
+          "window_tower_front_9_6__frame_top"
+        ],
+        "window_tower_back_9_1": [
+          "window_tower_back_9_1__opening",
+          "window_tower_back_9_1__frame_left",
+          "window_tower_back_9_1__frame_right",
+          "window_tower_back_9_1__frame_bottom",
+          "window_tower_back_9_1__frame_top"
+        ],
+        "window_tower_back_9_2": [
+          "window_tower_back_9_2__opening",
+          "window_tower_back_9_2__frame_left",
+          "window_tower_back_9_2__frame_right",
+          "window_tower_back_9_2__frame_bottom",
+          "window_tower_back_9_2__frame_top"
+        ],
+        "window_tower_back_9_3": [
+          "window_tower_back_9_3__opening",
+          "window_tower_back_9_3__frame_left",
+          "window_tower_back_9_3__frame_right",
+          "window_tower_back_9_3__frame_bottom",
+          "window_tower_back_9_3__frame_top"
+        ],
+        "window_tower_back_9_4": [
+          "window_tower_back_9_4__opening",
+          "window_tower_back_9_4__frame_left",
+          "window_tower_back_9_4__frame_right",
+          "window_tower_back_9_4__frame_bottom",
+          "window_tower_back_9_4__frame_top"
+        ],
+        "window_tower_back_9_5": [
+          "window_tower_back_9_5__opening",
+          "window_tower_back_9_5__frame_left",
+          "window_tower_back_9_5__frame_right",
+          "window_tower_back_9_5__frame_bottom",
+          "window_tower_back_9_5__frame_top"
+        ],
+        "window_tower_back_9_6": [
+          "window_tower_back_9_6__opening",
+          "window_tower_back_9_6__frame_left",
+          "window_tower_back_9_6__frame_right",
+          "window_tower_back_9_6__frame_bottom",
+          "window_tower_back_9_6__frame_top"
+        ],
+        "window_tower_left_9_1": [
+          "window_tower_left_9_1__opening",
+          "window_tower_left_9_1__frame_left",
+          "window_tower_left_9_1__frame_right",
+          "window_tower_left_9_1__frame_bottom",
+          "window_tower_left_9_1__frame_top"
+        ],
+        "window_tower_left_9_2": [
+          "window_tower_left_9_2__opening",
+          "window_tower_left_9_2__frame_left",
+          "window_tower_left_9_2__frame_right",
+          "window_tower_left_9_2__frame_bottom",
+          "window_tower_left_9_2__frame_top"
+        ],
+        "window_tower_left_9_3": [
+          "window_tower_left_9_3__opening",
+          "window_tower_left_9_3__frame_left",
+          "window_tower_left_9_3__frame_right",
+          "window_tower_left_9_3__frame_bottom",
+          "window_tower_left_9_3__frame_top"
+        ],
+        "window_tower_right_9_1": [
+          "window_tower_right_9_1__opening",
+          "window_tower_right_9_1__frame_left",
+          "window_tower_right_9_1__frame_right",
+          "window_tower_right_9_1__frame_bottom",
+          "window_tower_right_9_1__frame_top"
+        ],
+        "window_tower_right_9_2": [
+          "window_tower_right_9_2__opening",
+          "window_tower_right_9_2__frame_left",
+          "window_tower_right_9_2__frame_right",
+          "window_tower_right_9_2__frame_bottom",
+          "window_tower_right_9_2__frame_top"
+        ],
+        "window_tower_right_9_3": [
+          "window_tower_right_9_3__opening",
+          "window_tower_right_9_3__frame_left",
+          "window_tower_right_9_3__frame_right",
+          "window_tower_right_9_3__frame_bottom",
+          "window_tower_right_9_3__frame_top"
+        ],
+        "window_crown_front_10_1": [
+          "window_crown_front_10_1__opening",
+          "window_crown_front_10_1__frame_left",
+          "window_crown_front_10_1__frame_right",
+          "window_crown_front_10_1__frame_bottom",
+          "window_crown_front_10_1__frame_top"
+        ],
+        "window_crown_front_10_2": [
+          "window_crown_front_10_2__opening",
+          "window_crown_front_10_2__frame_left",
+          "window_crown_front_10_2__frame_right",
+          "window_crown_front_10_2__frame_bottom",
+          "window_crown_front_10_2__frame_top"
+        ],
+        "window_crown_front_10_3": [
+          "window_crown_front_10_3__opening",
+          "window_crown_front_10_3__frame_left",
+          "window_crown_front_10_3__frame_right",
+          "window_crown_front_10_3__frame_bottom",
+          "window_crown_front_10_3__frame_top"
+        ],
+        "window_crown_front_10_4": [
+          "window_crown_front_10_4__opening",
+          "window_crown_front_10_4__frame_left",
+          "window_crown_front_10_4__frame_right",
+          "window_crown_front_10_4__frame_bottom",
+          "window_crown_front_10_4__frame_top"
+        ],
+        "window_crown_back_10_1": [
+          "window_crown_back_10_1__opening",
+          "window_crown_back_10_1__frame_left",
+          "window_crown_back_10_1__frame_right",
+          "window_crown_back_10_1__frame_bottom",
+          "window_crown_back_10_1__frame_top"
+        ],
+        "window_crown_back_10_2": [
+          "window_crown_back_10_2__opening",
+          "window_crown_back_10_2__frame_left",
+          "window_crown_back_10_2__frame_right",
+          "window_crown_back_10_2__frame_bottom",
+          "window_crown_back_10_2__frame_top"
+        ],
+        "window_crown_back_10_3": [
+          "window_crown_back_10_3__opening",
+          "window_crown_back_10_3__frame_left",
+          "window_crown_back_10_3__frame_right",
+          "window_crown_back_10_3__frame_bottom",
+          "window_crown_back_10_3__frame_top"
+        ],
+        "window_crown_back_10_4": [
+          "window_crown_back_10_4__opening",
+          "window_crown_back_10_4__frame_left",
+          "window_crown_back_10_4__frame_right",
+          "window_crown_back_10_4__frame_bottom",
+          "window_crown_back_10_4__frame_top"
+        ],
+        "window_crown_left_10_1": [
+          "window_crown_left_10_1__opening",
+          "window_crown_left_10_1__frame_left",
+          "window_crown_left_10_1__frame_right",
+          "window_crown_left_10_1__frame_bottom",
+          "window_crown_left_10_1__frame_top"
+        ],
+        "window_crown_left_10_2": [
+          "window_crown_left_10_2__opening",
+          "window_crown_left_10_2__frame_left",
+          "window_crown_left_10_2__frame_right",
+          "window_crown_left_10_2__frame_bottom",
+          "window_crown_left_10_2__frame_top"
+        ],
+        "window_crown_right_10_1": [
+          "window_crown_right_10_1__opening",
+          "window_crown_right_10_1__frame_left",
+          "window_crown_right_10_1__frame_right",
+          "window_crown_right_10_1__frame_bottom",
+          "window_crown_right_10_1__frame_top"
+        ],
+        "window_crown_right_10_2": [
+          "window_crown_right_10_2__opening",
+          "window_crown_right_10_2__frame_left",
+          "window_crown_right_10_2__frame_right",
+          "window_crown_right_10_2__frame_bottom",
+          "window_crown_right_10_2__frame_top"
+        ],
+        "window_crown_front_11_1": [
+          "window_crown_front_11_1__opening",
+          "window_crown_front_11_1__frame_left",
+          "window_crown_front_11_1__frame_right",
+          "window_crown_front_11_1__frame_bottom",
+          "window_crown_front_11_1__frame_top"
+        ],
+        "window_crown_front_11_2": [
+          "window_crown_front_11_2__opening",
+          "window_crown_front_11_2__frame_left",
+          "window_crown_front_11_2__frame_right",
+          "window_crown_front_11_2__frame_bottom",
+          "window_crown_front_11_2__frame_top"
+        ],
+        "window_crown_front_11_3": [
+          "window_crown_front_11_3__opening",
+          "window_crown_front_11_3__frame_left",
+          "window_crown_front_11_3__frame_right",
+          "window_crown_front_11_3__frame_bottom",
+          "window_crown_front_11_3__frame_top"
+        ],
+        "window_crown_front_11_4": [
+          "window_crown_front_11_4__opening",
+          "window_crown_front_11_4__frame_left",
+          "window_crown_front_11_4__frame_right",
+          "window_crown_front_11_4__frame_bottom",
+          "window_crown_front_11_4__frame_top"
+        ],
+        "window_crown_back_11_1": [
+          "window_crown_back_11_1__opening",
+          "window_crown_back_11_1__frame_left",
+          "window_crown_back_11_1__frame_right",
+          "window_crown_back_11_1__frame_bottom",
+          "window_crown_back_11_1__frame_top"
+        ],
+        "window_crown_back_11_2": [
+          "window_crown_back_11_2__opening",
+          "window_crown_back_11_2__frame_left",
+          "window_crown_back_11_2__frame_right",
+          "window_crown_back_11_2__frame_bottom",
+          "window_crown_back_11_2__frame_top"
+        ],
+        "window_crown_back_11_3": [
+          "window_crown_back_11_3__opening",
+          "window_crown_back_11_3__frame_left",
+          "window_crown_back_11_3__frame_right",
+          "window_crown_back_11_3__frame_bottom",
+          "window_crown_back_11_3__frame_top"
+        ],
+        "window_crown_back_11_4": [
+          "window_crown_back_11_4__opening",
+          "window_crown_back_11_4__frame_left",
+          "window_crown_back_11_4__frame_right",
+          "window_crown_back_11_4__frame_bottom",
+          "window_crown_back_11_4__frame_top"
+        ],
+        "window_crown_left_11_1": [
+          "window_crown_left_11_1__opening",
+          "window_crown_left_11_1__frame_left",
+          "window_crown_left_11_1__frame_right",
+          "window_crown_left_11_1__frame_bottom",
+          "window_crown_left_11_1__frame_top"
+        ],
+        "window_crown_left_11_2": [
+          "window_crown_left_11_2__opening",
+          "window_crown_left_11_2__frame_left",
+          "window_crown_left_11_2__frame_right",
+          "window_crown_left_11_2__frame_bottom",
+          "window_crown_left_11_2__frame_top"
+        ],
+        "window_crown_right_11_1": [
+          "window_crown_right_11_1__opening",
+          "window_crown_right_11_1__frame_left",
+          "window_crown_right_11_1__frame_right",
+          "window_crown_right_11_1__frame_bottom",
+          "window_crown_right_11_1__frame_top"
+        ],
+        "window_crown_right_11_2": [
+          "window_crown_right_11_2__opening",
+          "window_crown_right_11_2__frame_left",
+          "window_crown_right_11_2__frame_right",
+          "window_crown_right_11_2__frame_bottom",
+          "window_crown_right_11_2__frame_top"
+        ],
+        "window_crown_front_12_1": [
+          "window_crown_front_12_1__opening",
+          "window_crown_front_12_1__frame_left",
+          "window_crown_front_12_1__frame_right",
+          "window_crown_front_12_1__frame_bottom",
+          "window_crown_front_12_1__frame_top"
+        ],
+        "window_crown_front_12_2": [
+          "window_crown_front_12_2__opening",
+          "window_crown_front_12_2__frame_left",
+          "window_crown_front_12_2__frame_right",
+          "window_crown_front_12_2__frame_bottom",
+          "window_crown_front_12_2__frame_top"
+        ],
+        "window_crown_front_12_3": [
+          "window_crown_front_12_3__opening",
+          "window_crown_front_12_3__frame_left",
+          "window_crown_front_12_3__frame_right",
+          "window_crown_front_12_3__frame_bottom",
+          "window_crown_front_12_3__frame_top"
+        ],
+        "window_crown_front_12_4": [
+          "window_crown_front_12_4__opening",
+          "window_crown_front_12_4__frame_left",
+          "window_crown_front_12_4__frame_right",
+          "window_crown_front_12_4__frame_bottom",
+          "window_crown_front_12_4__frame_top"
+        ],
+        "window_crown_back_12_1": [
+          "window_crown_back_12_1__opening",
+          "window_crown_back_12_1__frame_left",
+          "window_crown_back_12_1__frame_right",
+          "window_crown_back_12_1__frame_bottom",
+          "window_crown_back_12_1__frame_top"
+        ],
+        "window_crown_back_12_2": [
+          "window_crown_back_12_2__opening",
+          "window_crown_back_12_2__frame_left",
+          "window_crown_back_12_2__frame_right",
+          "window_crown_back_12_2__frame_bottom",
+          "window_crown_back_12_2__frame_top"
+        ],
+        "window_crown_back_12_3": [
+          "window_crown_back_12_3__opening",
+          "window_crown_back_12_3__frame_left",
+          "window_crown_back_12_3__frame_right",
+          "window_crown_back_12_3__frame_bottom",
+          "window_crown_back_12_3__frame_top"
+        ],
+        "window_crown_back_12_4": [
+          "window_crown_back_12_4__opening",
+          "window_crown_back_12_4__frame_left",
+          "window_crown_back_12_4__frame_right",
+          "window_crown_back_12_4__frame_bottom",
+          "window_crown_back_12_4__frame_top"
+        ],
+        "window_crown_left_12_1": [
+          "window_crown_left_12_1__opening",
+          "window_crown_left_12_1__frame_left",
+          "window_crown_left_12_1__frame_right",
+          "window_crown_left_12_1__frame_bottom",
+          "window_crown_left_12_1__frame_top"
+        ],
+        "window_crown_left_12_2": [
+          "window_crown_left_12_2__opening",
+          "window_crown_left_12_2__frame_left",
+          "window_crown_left_12_2__frame_right",
+          "window_crown_left_12_2__frame_bottom",
+          "window_crown_left_12_2__frame_top"
+        ],
+        "window_crown_right_12_1": [
+          "window_crown_right_12_1__opening",
+          "window_crown_right_12_1__frame_left",
+          "window_crown_right_12_1__frame_right",
+          "window_crown_right_12_1__frame_bottom",
+          "window_crown_right_12_1__frame_top"
+        ],
+        "window_crown_right_12_2": [
+          "window_crown_right_12_2__opening",
+          "window_crown_right_12_2__frame_left",
+          "window_crown_right_12_2__frame_right",
+          "window_crown_right_12_2__frame_bottom",
+          "window_crown_right_12_2__frame_top"
+        ],
+        "core_stair_1": [
+          "core_stair_1_first_flight",
+          "core_stair_1_second_flight",
+          "core_stair_1_landing"
+        ],
+        "core_stair_2": [
+          "core_stair_2_first_flight",
+          "core_stair_2_second_flight",
+          "core_stair_2_landing"
+        ],
+        "core_stair_3": [
+          "core_stair_3_first_flight",
+          "core_stair_3_second_flight",
+          "core_stair_3_landing"
+        ],
+        "core_stair_4": [
+          "core_stair_4_first_flight",
+          "core_stair_4_second_flight",
+          "core_stair_4_landing"
+        ],
+        "core_stair_5": [
+          "core_stair_5_first_flight",
+          "core_stair_5_second_flight",
+          "core_stair_5_landing"
+        ],
+        "core_stair_6": [
+          "core_stair_6_first_flight",
+          "core_stair_6_second_flight",
+          "core_stair_6_landing"
+        ],
+        "core_stair_7": [
+          "core_stair_7_first_flight",
+          "core_stair_7_second_flight",
+          "core_stair_7_landing"
+        ],
+        "core_stair_8": [
+          "core_stair_8_first_flight",
+          "core_stair_8_second_flight",
+          "core_stair_8_landing"
+        ],
+        "core_stair_9": [
+          "core_stair_9_first_flight",
+          "core_stair_9_second_flight",
+          "core_stair_9_landing"
+        ],
+        "core_stair_10": [
+          "core_stair_10_first_flight",
+          "core_stair_10_second_flight",
+          "core_stair_10_landing"
+        ],
+        "core_stair_11": [
+          "core_stair_11_first_flight",
+          "core_stair_11_second_flight",
+          "core_stair_11_landing"
+        ],
+        "podium_terrace_rail": [
+          "podium_terrace_rail__post_001",
+          "podium_terrace_rail__post_002",
+          "podium_terrace_rail__post_003",
+          "podium_terrace_rail__post_004",
+          "podium_terrace_rail__post_005",
+          "podium_terrace_rail__post_006",
+          "podium_terrace_rail__post_007",
+          "podium_terrace_rail__post_008",
+          "podium_terrace_rail__post_009",
+          "podium_terrace_rail__post_010",
+          "podium_terrace_rail__post_011",
+          "podium_terrace_rail__post_012",
+          "podium_terrace_rail__post_013",
+          "podium_terrace_rail__post_014",
+          "podium_terrace_rail__post_015",
+          "podium_terrace_rail__post_016",
+          "podium_terrace_rail__post_017",
+          "podium_terrace_rail__post_018",
+          "podium_terrace_rail__post_019",
+          "podium_terrace_rail__post_020",
+          "podium_terrace_rail__post_021",
+          "podium_terrace_rail__post_022",
+          "podium_terrace_rail__post_023",
+          "podium_terrace_rail__post_024",
+          "podium_terrace_rail__post_025",
+          "podium_terrace_rail__post_026",
+          "podium_terrace_rail__post_027",
+          "podium_terrace_rail__post_028",
+          "podium_terrace_rail__post_029",
+          "podium_terrace_rail__post_030",
+          "podium_terrace_rail__post_031",
+          "podium_terrace_rail__post_032",
+          "podium_terrace_rail__post_033",
+          "podium_terrace_rail__post_034",
+          "podium_terrace_rail__post_035",
+          "podium_terrace_rail__post_036",
+          "podium_terrace_rail__post_037",
+          "podium_terrace_rail__post_038",
+          "podium_terrace_rail__post_039",
+          "podium_terrace_rail__post_040",
+          "podium_terrace_rail__post_041",
+          "podium_terrace_rail__post_042",
+          "podium_terrace_rail__post_043",
+          "podium_terrace_rail__post_044",
+          "podium_terrace_rail__post_045",
+          "podium_terrace_rail__post_046",
+          "podium_terrace_rail__post_047",
+          "podium_terrace_rail__post_048",
+          "podium_terrace_rail__post_049",
+          "podium_terrace_rail__post_050",
+          "podium_terrace_rail__post_051",
+          "podium_terrace_rail__post_052",
+          "podium_terrace_rail__post_053",
+          "podium_terrace_rail__post_054",
+          "podium_terrace_rail__post_055",
+          "podium_terrace_rail__post_056",
+          "podium_terrace_rail__post_057",
+          "podium_terrace_rail__post_058",
+          "podium_terrace_rail__post_059",
+          "podium_terrace_rail__post_060",
+          "podium_terrace_rail__post_061",
+          "podium_terrace_rail__post_062",
+          "podium_terrace_rail__post_063",
+          "podium_terrace_rail__post_064",
+          "podium_terrace_rail__post_065",
+          "podium_terrace_rail__post_066",
+          "podium_terrace_rail__post_067",
+          "podium_terrace_rail__post_068",
+          "podium_terrace_rail__post_069",
+          "podium_terrace_rail__post_070",
+          "podium_terrace_rail__post_071",
+          "podium_terrace_rail__post_072",
+          "podium_terrace_rail__post_073",
+          "podium_terrace_rail__post_074",
+          "podium_terrace_rail__post_075",
+          "podium_terrace_rail__post_076",
+          "podium_terrace_rail__post_077",
+          "podium_terrace_rail__post_078",
+          "podium_terrace_rail__post_079",
+          "podium_terrace_rail__post_080",
+          "podium_terrace_rail__post_081",
+          "podium_terrace_rail__post_082",
+          "podium_terrace_rail__post_083",
+          "podium_terrace_rail__rail_001_001",
+          "podium_terrace_rail__rail_001_002",
+          "podium_terrace_rail__rail_001_003",
+          "podium_terrace_rail__rail_001_004",
+          "podium_terrace_rail__infill_001",
+          "podium_terrace_rail__infill_002",
+          "podium_terrace_rail__infill_003",
+          "podium_terrace_rail__infill_004"
+        ],
+        "tower_terrace_rail": [
+          "tower_terrace_rail__post_001",
+          "tower_terrace_rail__post_002",
+          "tower_terrace_rail__post_003",
+          "tower_terrace_rail__post_004",
+          "tower_terrace_rail__post_005",
+          "tower_terrace_rail__post_006",
+          "tower_terrace_rail__post_007",
+          "tower_terrace_rail__post_008",
+          "tower_terrace_rail__post_009",
+          "tower_terrace_rail__post_010",
+          "tower_terrace_rail__post_011",
+          "tower_terrace_rail__post_012",
+          "tower_terrace_rail__post_013",
+          "tower_terrace_rail__post_014",
+          "tower_terrace_rail__post_015",
+          "tower_terrace_rail__post_016",
+          "tower_terrace_rail__post_017",
+          "tower_terrace_rail__post_018",
+          "tower_terrace_rail__post_019",
+          "tower_terrace_rail__post_020",
+          "tower_terrace_rail__post_021",
+          "tower_terrace_rail__post_022",
+          "tower_terrace_rail__post_023",
+          "tower_terrace_rail__post_024",
+          "tower_terrace_rail__post_025",
+          "tower_terrace_rail__post_026",
+          "tower_terrace_rail__post_027",
+          "tower_terrace_rail__post_028",
+          "tower_terrace_rail__post_029",
+          "tower_terrace_rail__post_030",
+          "tower_terrace_rail__post_031",
+          "tower_terrace_rail__post_032",
+          "tower_terrace_rail__post_033",
+          "tower_terrace_rail__post_034",
+          "tower_terrace_rail__post_035",
+          "tower_terrace_rail__post_036",
+          "tower_terrace_rail__post_037",
+          "tower_terrace_rail__post_038",
+          "tower_terrace_rail__post_039",
+          "tower_terrace_rail__post_040",
+          "tower_terrace_rail__post_041",
+          "tower_terrace_rail__post_042",
+          "tower_terrace_rail__post_043",
+          "tower_terrace_rail__post_044",
+          "tower_terrace_rail__post_045",
+          "tower_terrace_rail__post_046",
+          "tower_terrace_rail__post_047",
+          "tower_terrace_rail__post_048",
+          "tower_terrace_rail__post_049",
+          "tower_terrace_rail__post_050",
+          "tower_terrace_rail__post_051",
+          "tower_terrace_rail__post_052",
+          "tower_terrace_rail__post_053",
+          "tower_terrace_rail__post_054",
+          "tower_terrace_rail__post_055",
+          "tower_terrace_rail__post_056",
+          "tower_terrace_rail__post_057",
+          "tower_terrace_rail__post_058",
+          "tower_terrace_rail__post_059",
+          "tower_terrace_rail__rail_001_001",
+          "tower_terrace_rail__rail_001_002",
+          "tower_terrace_rail__rail_001_003",
+          "tower_terrace_rail__rail_001_004",
+          "tower_terrace_rail__infill_001",
+          "tower_terrace_rail__infill_002",
+          "tower_terrace_rail__infill_003",
+          "tower_terrace_rail__infill_004"
+        ],
+        "passenger_lift": [
+          "passenger_lift__cab",
+          "passenger_lift__rail_l",
+          "passenger_lift__rail_r",
+          "passenger_lift__call_button"
+        ]
+      },
+      "componentIdByGeneratedElementId": {
+        "window_podium_front_1_1__opening": "window_podium_front_1_1",
+        "window_podium_front_1_1__frame_left": "window_podium_front_1_1",
+        "window_podium_front_1_1__frame_right": "window_podium_front_1_1",
+        "window_podium_front_1_1__frame_bottom": "window_podium_front_1_1",
+        "window_podium_front_1_1__frame_top": "window_podium_front_1_1",
+        "window_podium_front_1_2__opening": "window_podium_front_1_2",
+        "window_podium_front_1_2__frame_left": "window_podium_front_1_2",
+        "window_podium_front_1_2__frame_right": "window_podium_front_1_2",
+        "window_podium_front_1_2__frame_bottom": "window_podium_front_1_2",
+        "window_podium_front_1_2__frame_top": "window_podium_front_1_2",
+        "window_podium_front_1_3__opening": "window_podium_front_1_3",
+        "window_podium_front_1_3__frame_left": "window_podium_front_1_3",
+        "window_podium_front_1_3__frame_right": "window_podium_front_1_3",
+        "window_podium_front_1_3__frame_bottom": "window_podium_front_1_3",
+        "window_podium_front_1_3__frame_top": "window_podium_front_1_3",
+        "window_podium_front_1_4__opening": "window_podium_front_1_4",
+        "window_podium_front_1_4__frame_left": "window_podium_front_1_4",
+        "window_podium_front_1_4__frame_right": "window_podium_front_1_4",
+        "window_podium_front_1_4__frame_bottom": "window_podium_front_1_4",
+        "window_podium_front_1_4__frame_top": "window_podium_front_1_4",
+        "door_podium_front_1_5__opening": "door_podium_front_1_5",
+        "door_podium_front_1_5__frame_left_outer": "door_podium_front_1_5",
+        "door_podium_front_1_5__frame_right_outer": "door_podium_front_1_5",
+        "door_podium_front_1_5__frame_top_left": "door_podium_front_1_5",
+        "door_podium_front_1_5__frame_top_right": "door_podium_front_1_5",
+        "window_podium_front_1_6__opening": "window_podium_front_1_6",
+        "window_podium_front_1_6__frame_left": "window_podium_front_1_6",
+        "window_podium_front_1_6__frame_right": "window_podium_front_1_6",
+        "window_podium_front_1_6__frame_bottom": "window_podium_front_1_6",
+        "window_podium_front_1_6__frame_top": "window_podium_front_1_6",
+        "window_podium_front_1_7__opening": "window_podium_front_1_7",
+        "window_podium_front_1_7__frame_left": "window_podium_front_1_7",
+        "window_podium_front_1_7__frame_right": "window_podium_front_1_7",
+        "window_podium_front_1_7__frame_bottom": "window_podium_front_1_7",
+        "window_podium_front_1_7__frame_top": "window_podium_front_1_7",
+        "window_podium_front_1_8__opening": "window_podium_front_1_8",
+        "window_podium_front_1_8__frame_left": "window_podium_front_1_8",
+        "window_podium_front_1_8__frame_right": "window_podium_front_1_8",
+        "window_podium_front_1_8__frame_bottom": "window_podium_front_1_8",
+        "window_podium_front_1_8__frame_top": "window_podium_front_1_8",
+        "window_podium_front_1_9__opening": "window_podium_front_1_9",
+        "window_podium_front_1_9__frame_left": "window_podium_front_1_9",
+        "window_podium_front_1_9__frame_right": "window_podium_front_1_9",
+        "window_podium_front_1_9__frame_bottom": "window_podium_front_1_9",
+        "window_podium_front_1_9__frame_top": "window_podium_front_1_9",
+        "window_podium_back_1_1__opening": "window_podium_back_1_1",
+        "window_podium_back_1_1__frame_left": "window_podium_back_1_1",
+        "window_podium_back_1_1__frame_right": "window_podium_back_1_1",
+        "window_podium_back_1_1__frame_bottom": "window_podium_back_1_1",
+        "window_podium_back_1_1__frame_top": "window_podium_back_1_1",
+        "window_podium_back_1_2__opening": "window_podium_back_1_2",
+        "window_podium_back_1_2__frame_left": "window_podium_back_1_2",
+        "window_podium_back_1_2__frame_right": "window_podium_back_1_2",
+        "window_podium_back_1_2__frame_bottom": "window_podium_back_1_2",
+        "window_podium_back_1_2__frame_top": "window_podium_back_1_2",
+        "window_podium_back_1_3__opening": "window_podium_back_1_3",
+        "window_podium_back_1_3__frame_left": "window_podium_back_1_3",
+        "window_podium_back_1_3__frame_right": "window_podium_back_1_3",
+        "window_podium_back_1_3__frame_bottom": "window_podium_back_1_3",
+        "window_podium_back_1_3__frame_top": "window_podium_back_1_3",
+        "window_podium_back_1_4__opening": "window_podium_back_1_4",
+        "window_podium_back_1_4__frame_left": "window_podium_back_1_4",
+        "window_podium_back_1_4__frame_right": "window_podium_back_1_4",
+        "window_podium_back_1_4__frame_bottom": "window_podium_back_1_4",
+        "window_podium_back_1_4__frame_top": "window_podium_back_1_4",
+        "window_podium_back_1_5__opening": "window_podium_back_1_5",
+        "window_podium_back_1_5__frame_left": "window_podium_back_1_5",
+        "window_podium_back_1_5__frame_right": "window_podium_back_1_5",
+        "window_podium_back_1_5__frame_bottom": "window_podium_back_1_5",
+        "window_podium_back_1_5__frame_top": "window_podium_back_1_5",
+        "window_podium_back_1_6__opening": "window_podium_back_1_6",
+        "window_podium_back_1_6__frame_left": "window_podium_back_1_6",
+        "window_podium_back_1_6__frame_right": "window_podium_back_1_6",
+        "window_podium_back_1_6__frame_bottom": "window_podium_back_1_6",
+        "window_podium_back_1_6__frame_top": "window_podium_back_1_6",
+        "window_podium_back_1_7__opening": "window_podium_back_1_7",
+        "window_podium_back_1_7__frame_left": "window_podium_back_1_7",
+        "window_podium_back_1_7__frame_right": "window_podium_back_1_7",
+        "window_podium_back_1_7__frame_bottom": "window_podium_back_1_7",
+        "window_podium_back_1_7__frame_top": "window_podium_back_1_7",
+        "window_podium_back_1_8__opening": "window_podium_back_1_8",
+        "window_podium_back_1_8__frame_left": "window_podium_back_1_8",
+        "window_podium_back_1_8__frame_right": "window_podium_back_1_8",
+        "window_podium_back_1_8__frame_bottom": "window_podium_back_1_8",
+        "window_podium_back_1_8__frame_top": "window_podium_back_1_8",
+        "window_podium_back_1_9__opening": "window_podium_back_1_9",
+        "window_podium_back_1_9__frame_left": "window_podium_back_1_9",
+        "window_podium_back_1_9__frame_right": "window_podium_back_1_9",
+        "window_podium_back_1_9__frame_bottom": "window_podium_back_1_9",
+        "window_podium_back_1_9__frame_top": "window_podium_back_1_9",
+        "window_podium_left_1_1__opening": "window_podium_left_1_1",
+        "window_podium_left_1_1__frame_left": "window_podium_left_1_1",
+        "window_podium_left_1_1__frame_right": "window_podium_left_1_1",
+        "window_podium_left_1_1__frame_bottom": "window_podium_left_1_1",
+        "window_podium_left_1_1__frame_top": "window_podium_left_1_1",
+        "window_podium_left_1_2__opening": "window_podium_left_1_2",
+        "window_podium_left_1_2__frame_left": "window_podium_left_1_2",
+        "window_podium_left_1_2__frame_right": "window_podium_left_1_2",
+        "window_podium_left_1_2__frame_bottom": "window_podium_left_1_2",
+        "window_podium_left_1_2__frame_top": "window_podium_left_1_2",
+        "window_podium_left_1_3__opening": "window_podium_left_1_3",
+        "window_podium_left_1_3__frame_left": "window_podium_left_1_3",
+        "window_podium_left_1_3__frame_right": "window_podium_left_1_3",
+        "window_podium_left_1_3__frame_bottom": "window_podium_left_1_3",
+        "window_podium_left_1_3__frame_top": "window_podium_left_1_3",
+        "window_podium_left_1_4__opening": "window_podium_left_1_4",
+        "window_podium_left_1_4__frame_left": "window_podium_left_1_4",
+        "window_podium_left_1_4__frame_right": "window_podium_left_1_4",
+        "window_podium_left_1_4__frame_bottom": "window_podium_left_1_4",
+        "window_podium_left_1_4__frame_top": "window_podium_left_1_4",
+        "window_podium_left_1_5__opening": "window_podium_left_1_5",
+        "window_podium_left_1_5__frame_left": "window_podium_left_1_5",
+        "window_podium_left_1_5__frame_right": "window_podium_left_1_5",
+        "window_podium_left_1_5__frame_bottom": "window_podium_left_1_5",
+        "window_podium_left_1_5__frame_top": "window_podium_left_1_5",
+        "window_podium_right_1_1__opening": "window_podium_right_1_1",
+        "window_podium_right_1_1__frame_left": "window_podium_right_1_1",
+        "window_podium_right_1_1__frame_right": "window_podium_right_1_1",
+        "window_podium_right_1_1__frame_bottom": "window_podium_right_1_1",
+        "window_podium_right_1_1__frame_top": "window_podium_right_1_1",
+        "window_podium_right_1_2__opening": "window_podium_right_1_2",
+        "window_podium_right_1_2__frame_left": "window_podium_right_1_2",
+        "window_podium_right_1_2__frame_right": "window_podium_right_1_2",
+        "window_podium_right_1_2__frame_bottom": "window_podium_right_1_2",
+        "window_podium_right_1_2__frame_top": "window_podium_right_1_2",
+        "window_podium_right_1_3__opening": "window_podium_right_1_3",
+        "window_podium_right_1_3__frame_left": "window_podium_right_1_3",
+        "window_podium_right_1_3__frame_right": "window_podium_right_1_3",
+        "window_podium_right_1_3__frame_bottom": "window_podium_right_1_3",
+        "window_podium_right_1_3__frame_top": "window_podium_right_1_3",
+        "window_podium_right_1_4__opening": "window_podium_right_1_4",
+        "window_podium_right_1_4__frame_left": "window_podium_right_1_4",
+        "window_podium_right_1_4__frame_right": "window_podium_right_1_4",
+        "window_podium_right_1_4__frame_bottom": "window_podium_right_1_4",
+        "window_podium_right_1_4__frame_top": "window_podium_right_1_4",
+        "window_podium_right_1_5__opening": "window_podium_right_1_5",
+        "window_podium_right_1_5__frame_left": "window_podium_right_1_5",
+        "window_podium_right_1_5__frame_right": "window_podium_right_1_5",
+        "window_podium_right_1_5__frame_bottom": "window_podium_right_1_5",
+        "window_podium_right_1_5__frame_top": "window_podium_right_1_5",
+        "window_podium_front_2_1__opening": "window_podium_front_2_1",
+        "window_podium_front_2_1__frame_left": "window_podium_front_2_1",
+        "window_podium_front_2_1__frame_right": "window_podium_front_2_1",
+        "window_podium_front_2_1__frame_bottom": "window_podium_front_2_1",
+        "window_podium_front_2_1__frame_top": "window_podium_front_2_1",
+        "window_podium_front_2_2__opening": "window_podium_front_2_2",
+        "window_podium_front_2_2__frame_left": "window_podium_front_2_2",
+        "window_podium_front_2_2__frame_right": "window_podium_front_2_2",
+        "window_podium_front_2_2__frame_bottom": "window_podium_front_2_2",
+        "window_podium_front_2_2__frame_top": "window_podium_front_2_2",
+        "window_podium_front_2_3__opening": "window_podium_front_2_3",
+        "window_podium_front_2_3__frame_left": "window_podium_front_2_3",
+        "window_podium_front_2_3__frame_right": "window_podium_front_2_3",
+        "window_podium_front_2_3__frame_bottom": "window_podium_front_2_3",
+        "window_podium_front_2_3__frame_top": "window_podium_front_2_3",
+        "window_podium_front_2_4__opening": "window_podium_front_2_4",
+        "window_podium_front_2_4__frame_left": "window_podium_front_2_4",
+        "window_podium_front_2_4__frame_right": "window_podium_front_2_4",
+        "window_podium_front_2_4__frame_bottom": "window_podium_front_2_4",
+        "window_podium_front_2_4__frame_top": "window_podium_front_2_4",
+        "window_podium_front_2_5__opening": "window_podium_front_2_5",
+        "window_podium_front_2_5__frame_left": "window_podium_front_2_5",
+        "window_podium_front_2_5__frame_right": "window_podium_front_2_5",
+        "window_podium_front_2_5__frame_bottom": "window_podium_front_2_5",
+        "window_podium_front_2_5__frame_top": "window_podium_front_2_5",
+        "window_podium_front_2_6__opening": "window_podium_front_2_6",
+        "window_podium_front_2_6__frame_left": "window_podium_front_2_6",
+        "window_podium_front_2_6__frame_right": "window_podium_front_2_6",
+        "window_podium_front_2_6__frame_bottom": "window_podium_front_2_6",
+        "window_podium_front_2_6__frame_top": "window_podium_front_2_6",
+        "window_podium_front_2_7__opening": "window_podium_front_2_7",
+        "window_podium_front_2_7__frame_left": "window_podium_front_2_7",
+        "window_podium_front_2_7__frame_right": "window_podium_front_2_7",
+        "window_podium_front_2_7__frame_bottom": "window_podium_front_2_7",
+        "window_podium_front_2_7__frame_top": "window_podium_front_2_7",
+        "window_podium_front_2_8__opening": "window_podium_front_2_8",
+        "window_podium_front_2_8__frame_left": "window_podium_front_2_8",
+        "window_podium_front_2_8__frame_right": "window_podium_front_2_8",
+        "window_podium_front_2_8__frame_bottom": "window_podium_front_2_8",
+        "window_podium_front_2_8__frame_top": "window_podium_front_2_8",
+        "window_podium_front_2_9__opening": "window_podium_front_2_9",
+        "window_podium_front_2_9__frame_left": "window_podium_front_2_9",
+        "window_podium_front_2_9__frame_right": "window_podium_front_2_9",
+        "window_podium_front_2_9__frame_bottom": "window_podium_front_2_9",
+        "window_podium_front_2_9__frame_top": "window_podium_front_2_9",
+        "window_podium_back_2_1__opening": "window_podium_back_2_1",
+        "window_podium_back_2_1__frame_left": "window_podium_back_2_1",
+        "window_podium_back_2_1__frame_right": "window_podium_back_2_1",
+        "window_podium_back_2_1__frame_bottom": "window_podium_back_2_1",
+        "window_podium_back_2_1__frame_top": "window_podium_back_2_1",
+        "window_podium_back_2_2__opening": "window_podium_back_2_2",
+        "window_podium_back_2_2__frame_left": "window_podium_back_2_2",
+        "window_podium_back_2_2__frame_right": "window_podium_back_2_2",
+        "window_podium_back_2_2__frame_bottom": "window_podium_back_2_2",
+        "window_podium_back_2_2__frame_top": "window_podium_back_2_2",
+        "window_podium_back_2_3__opening": "window_podium_back_2_3",
+        "window_podium_back_2_3__frame_left": "window_podium_back_2_3",
+        "window_podium_back_2_3__frame_right": "window_podium_back_2_3",
+        "window_podium_back_2_3__frame_bottom": "window_podium_back_2_3",
+        "window_podium_back_2_3__frame_top": "window_podium_back_2_3",
+        "window_podium_back_2_4__opening": "window_podium_back_2_4",
+        "window_podium_back_2_4__frame_left": "window_podium_back_2_4",
+        "window_podium_back_2_4__frame_right": "window_podium_back_2_4",
+        "window_podium_back_2_4__frame_bottom": "window_podium_back_2_4",
+        "window_podium_back_2_4__frame_top": "window_podium_back_2_4",
+        "window_podium_back_2_5__opening": "window_podium_back_2_5",
+        "window_podium_back_2_5__frame_left": "window_podium_back_2_5",
+        "window_podium_back_2_5__frame_right": "window_podium_back_2_5",
+        "window_podium_back_2_5__frame_bottom": "window_podium_back_2_5",
+        "window_podium_back_2_5__frame_top": "window_podium_back_2_5",
+        "window_podium_back_2_6__opening": "window_podium_back_2_6",
+        "window_podium_back_2_6__frame_left": "window_podium_back_2_6",
+        "window_podium_back_2_6__frame_right": "window_podium_back_2_6",
+        "window_podium_back_2_6__frame_bottom": "window_podium_back_2_6",
+        "window_podium_back_2_6__frame_top": "window_podium_back_2_6",
+        "window_podium_back_2_7__opening": "window_podium_back_2_7",
+        "window_podium_back_2_7__frame_left": "window_podium_back_2_7",
+        "window_podium_back_2_7__frame_right": "window_podium_back_2_7",
+        "window_podium_back_2_7__frame_bottom": "window_podium_back_2_7",
+        "window_podium_back_2_7__frame_top": "window_podium_back_2_7",
+        "window_podium_back_2_8__opening": "window_podium_back_2_8",
+        "window_podium_back_2_8__frame_left": "window_podium_back_2_8",
+        "window_podium_back_2_8__frame_right": "window_podium_back_2_8",
+        "window_podium_back_2_8__frame_bottom": "window_podium_back_2_8",
+        "window_podium_back_2_8__frame_top": "window_podium_back_2_8",
+        "window_podium_back_2_9__opening": "window_podium_back_2_9",
+        "window_podium_back_2_9__frame_left": "window_podium_back_2_9",
+        "window_podium_back_2_9__frame_right": "window_podium_back_2_9",
+        "window_podium_back_2_9__frame_bottom": "window_podium_back_2_9",
+        "window_podium_back_2_9__frame_top": "window_podium_back_2_9",
+        "window_podium_left_2_1__opening": "window_podium_left_2_1",
+        "window_podium_left_2_1__frame_left": "window_podium_left_2_1",
+        "window_podium_left_2_1__frame_right": "window_podium_left_2_1",
+        "window_podium_left_2_1__frame_bottom": "window_podium_left_2_1",
+        "window_podium_left_2_1__frame_top": "window_podium_left_2_1",
+        "window_podium_left_2_2__opening": "window_podium_left_2_2",
+        "window_podium_left_2_2__frame_left": "window_podium_left_2_2",
+        "window_podium_left_2_2__frame_right": "window_podium_left_2_2",
+        "window_podium_left_2_2__frame_bottom": "window_podium_left_2_2",
+        "window_podium_left_2_2__frame_top": "window_podium_left_2_2",
+        "window_podium_left_2_3__opening": "window_podium_left_2_3",
+        "window_podium_left_2_3__frame_left": "window_podium_left_2_3",
+        "window_podium_left_2_3__frame_right": "window_podium_left_2_3",
+        "window_podium_left_2_3__frame_bottom": "window_podium_left_2_3",
+        "window_podium_left_2_3__frame_top": "window_podium_left_2_3",
+        "window_podium_left_2_4__opening": "window_podium_left_2_4",
+        "window_podium_left_2_4__frame_left": "window_podium_left_2_4",
+        "window_podium_left_2_4__frame_right": "window_podium_left_2_4",
+        "window_podium_left_2_4__frame_bottom": "window_podium_left_2_4",
+        "window_podium_left_2_4__frame_top": "window_podium_left_2_4",
+        "window_podium_left_2_5__opening": "window_podium_left_2_5",
+        "window_podium_left_2_5__frame_left": "window_podium_left_2_5",
+        "window_podium_left_2_5__frame_right": "window_podium_left_2_5",
+        "window_podium_left_2_5__frame_bottom": "window_podium_left_2_5",
+        "window_podium_left_2_5__frame_top": "window_podium_left_2_5",
+        "window_podium_right_2_1__opening": "window_podium_right_2_1",
+        "window_podium_right_2_1__frame_left": "window_podium_right_2_1",
+        "window_podium_right_2_1__frame_right": "window_podium_right_2_1",
+        "window_podium_right_2_1__frame_bottom": "window_podium_right_2_1",
+        "window_podium_right_2_1__frame_top": "window_podium_right_2_1",
+        "window_podium_right_2_2__opening": "window_podium_right_2_2",
+        "window_podium_right_2_2__frame_left": "window_podium_right_2_2",
+        "window_podium_right_2_2__frame_right": "window_podium_right_2_2",
+        "window_podium_right_2_2__frame_bottom": "window_podium_right_2_2",
+        "window_podium_right_2_2__frame_top": "window_podium_right_2_2",
+        "window_podium_right_2_3__opening": "window_podium_right_2_3",
+        "window_podium_right_2_3__frame_left": "window_podium_right_2_3",
+        "window_podium_right_2_3__frame_right": "window_podium_right_2_3",
+        "window_podium_right_2_3__frame_bottom": "window_podium_right_2_3",
+        "window_podium_right_2_3__frame_top": "window_podium_right_2_3",
+        "window_podium_right_2_4__opening": "window_podium_right_2_4",
+        "window_podium_right_2_4__frame_left": "window_podium_right_2_4",
+        "window_podium_right_2_4__frame_right": "window_podium_right_2_4",
+        "window_podium_right_2_4__frame_bottom": "window_podium_right_2_4",
+        "window_podium_right_2_4__frame_top": "window_podium_right_2_4",
+        "window_podium_right_2_5__opening": "window_podium_right_2_5",
+        "window_podium_right_2_5__frame_left": "window_podium_right_2_5",
+        "window_podium_right_2_5__frame_right": "window_podium_right_2_5",
+        "window_podium_right_2_5__frame_bottom": "window_podium_right_2_5",
+        "window_podium_right_2_5__frame_top": "window_podium_right_2_5",
+        "window_tower_front_3_1__opening": "window_tower_front_3_1",
+        "window_tower_front_3_1__frame_left": "window_tower_front_3_1",
+        "window_tower_front_3_1__frame_right": "window_tower_front_3_1",
+        "window_tower_front_3_1__frame_bottom": "window_tower_front_3_1",
+        "window_tower_front_3_1__frame_top": "window_tower_front_3_1",
+        "window_tower_front_3_2__opening": "window_tower_front_3_2",
+        "window_tower_front_3_2__frame_left": "window_tower_front_3_2",
+        "window_tower_front_3_2__frame_right": "window_tower_front_3_2",
+        "window_tower_front_3_2__frame_bottom": "window_tower_front_3_2",
+        "window_tower_front_3_2__frame_top": "window_tower_front_3_2",
+        "window_tower_front_3_3__opening": "window_tower_front_3_3",
+        "window_tower_front_3_3__frame_left": "window_tower_front_3_3",
+        "window_tower_front_3_3__frame_right": "window_tower_front_3_3",
+        "window_tower_front_3_3__frame_bottom": "window_tower_front_3_3",
+        "window_tower_front_3_3__frame_top": "window_tower_front_3_3",
+        "window_tower_front_3_4__opening": "window_tower_front_3_4",
+        "window_tower_front_3_4__frame_left": "window_tower_front_3_4",
+        "window_tower_front_3_4__frame_right": "window_tower_front_3_4",
+        "window_tower_front_3_4__frame_bottom": "window_tower_front_3_4",
+        "window_tower_front_3_4__frame_top": "window_tower_front_3_4",
+        "window_tower_front_3_5__opening": "window_tower_front_3_5",
+        "window_tower_front_3_5__frame_left": "window_tower_front_3_5",
+        "window_tower_front_3_5__frame_right": "window_tower_front_3_5",
+        "window_tower_front_3_5__frame_bottom": "window_tower_front_3_5",
+        "window_tower_front_3_5__frame_top": "window_tower_front_3_5",
+        "window_tower_front_3_6__opening": "window_tower_front_3_6",
+        "window_tower_front_3_6__frame_left": "window_tower_front_3_6",
+        "window_tower_front_3_6__frame_right": "window_tower_front_3_6",
+        "window_tower_front_3_6__frame_bottom": "window_tower_front_3_6",
+        "window_tower_front_3_6__frame_top": "window_tower_front_3_6",
+        "window_tower_back_3_1__opening": "window_tower_back_3_1",
+        "window_tower_back_3_1__frame_left": "window_tower_back_3_1",
+        "window_tower_back_3_1__frame_right": "window_tower_back_3_1",
+        "window_tower_back_3_1__frame_bottom": "window_tower_back_3_1",
+        "window_tower_back_3_1__frame_top": "window_tower_back_3_1",
+        "window_tower_back_3_2__opening": "window_tower_back_3_2",
+        "window_tower_back_3_2__frame_left": "window_tower_back_3_2",
+        "window_tower_back_3_2__frame_right": "window_tower_back_3_2",
+        "window_tower_back_3_2__frame_bottom": "window_tower_back_3_2",
+        "window_tower_back_3_2__frame_top": "window_tower_back_3_2",
+        "window_tower_back_3_3__opening": "window_tower_back_3_3",
+        "window_tower_back_3_3__frame_left": "window_tower_back_3_3",
+        "window_tower_back_3_3__frame_right": "window_tower_back_3_3",
+        "window_tower_back_3_3__frame_bottom": "window_tower_back_3_3",
+        "window_tower_back_3_3__frame_top": "window_tower_back_3_3",
+        "window_tower_back_3_4__opening": "window_tower_back_3_4",
+        "window_tower_back_3_4__frame_left": "window_tower_back_3_4",
+        "window_tower_back_3_4__frame_right": "window_tower_back_3_4",
+        "window_tower_back_3_4__frame_bottom": "window_tower_back_3_4",
+        "window_tower_back_3_4__frame_top": "window_tower_back_3_4",
+        "window_tower_back_3_5__opening": "window_tower_back_3_5",
+        "window_tower_back_3_5__frame_left": "window_tower_back_3_5",
+        "window_tower_back_3_5__frame_right": "window_tower_back_3_5",
+        "window_tower_back_3_5__frame_bottom": "window_tower_back_3_5",
+        "window_tower_back_3_5__frame_top": "window_tower_back_3_5",
+        "window_tower_back_3_6__opening": "window_tower_back_3_6",
+        "window_tower_back_3_6__frame_left": "window_tower_back_3_6",
+        "window_tower_back_3_6__frame_right": "window_tower_back_3_6",
+        "window_tower_back_3_6__frame_bottom": "window_tower_back_3_6",
+        "window_tower_back_3_6__frame_top": "window_tower_back_3_6",
+        "window_tower_left_3_1__opening": "window_tower_left_3_1",
+        "window_tower_left_3_1__frame_left": "window_tower_left_3_1",
+        "window_tower_left_3_1__frame_right": "window_tower_left_3_1",
+        "window_tower_left_3_1__frame_bottom": "window_tower_left_3_1",
+        "window_tower_left_3_1__frame_top": "window_tower_left_3_1",
+        "window_tower_left_3_2__opening": "window_tower_left_3_2",
+        "window_tower_left_3_2__frame_left": "window_tower_left_3_2",
+        "window_tower_left_3_2__frame_right": "window_tower_left_3_2",
+        "window_tower_left_3_2__frame_bottom": "window_tower_left_3_2",
+        "window_tower_left_3_2__frame_top": "window_tower_left_3_2",
+        "window_tower_left_3_3__opening": "window_tower_left_3_3",
+        "window_tower_left_3_3__frame_left": "window_tower_left_3_3",
+        "window_tower_left_3_3__frame_right": "window_tower_left_3_3",
+        "window_tower_left_3_3__frame_bottom": "window_tower_left_3_3",
+        "window_tower_left_3_3__frame_top": "window_tower_left_3_3",
+        "window_tower_right_3_1__opening": "window_tower_right_3_1",
+        "window_tower_right_3_1__frame_left": "window_tower_right_3_1",
+        "window_tower_right_3_1__frame_right": "window_tower_right_3_1",
+        "window_tower_right_3_1__frame_bottom": "window_tower_right_3_1",
+        "window_tower_right_3_1__frame_top": "window_tower_right_3_1",
+        "window_tower_right_3_2__opening": "window_tower_right_3_2",
+        "window_tower_right_3_2__frame_left": "window_tower_right_3_2",
+        "window_tower_right_3_2__frame_right": "window_tower_right_3_2",
+        "window_tower_right_3_2__frame_bottom": "window_tower_right_3_2",
+        "window_tower_right_3_2__frame_top": "window_tower_right_3_2",
+        "window_tower_right_3_3__opening": "window_tower_right_3_3",
+        "window_tower_right_3_3__frame_left": "window_tower_right_3_3",
+        "window_tower_right_3_3__frame_right": "window_tower_right_3_3",
+        "window_tower_right_3_3__frame_bottom": "window_tower_right_3_3",
+        "window_tower_right_3_3__frame_top": "window_tower_right_3_3",
+        "window_tower_front_4_1__opening": "window_tower_front_4_1",
+        "window_tower_front_4_1__frame_left": "window_tower_front_4_1",
+        "window_tower_front_4_1__frame_right": "window_tower_front_4_1",
+        "window_tower_front_4_1__frame_bottom": "window_tower_front_4_1",
+        "window_tower_front_4_1__frame_top": "window_tower_front_4_1",
+        "window_tower_front_4_2__opening": "window_tower_front_4_2",
+        "window_tower_front_4_2__frame_left": "window_tower_front_4_2",
+        "window_tower_front_4_2__frame_right": "window_tower_front_4_2",
+        "window_tower_front_4_2__frame_bottom": "window_tower_front_4_2",
+        "window_tower_front_4_2__frame_top": "window_tower_front_4_2",
+        "window_tower_front_4_3__opening": "window_tower_front_4_3",
+        "window_tower_front_4_3__frame_left": "window_tower_front_4_3",
+        "window_tower_front_4_3__frame_right": "window_tower_front_4_3",
+        "window_tower_front_4_3__frame_bottom": "window_tower_front_4_3",
+        "window_tower_front_4_3__frame_top": "window_tower_front_4_3",
+        "window_tower_front_4_4__opening": "window_tower_front_4_4",
+        "window_tower_front_4_4__frame_left": "window_tower_front_4_4",
+        "window_tower_front_4_4__frame_right": "window_tower_front_4_4",
+        "window_tower_front_4_4__frame_bottom": "window_tower_front_4_4",
+        "window_tower_front_4_4__frame_top": "window_tower_front_4_4",
+        "window_tower_front_4_5__opening": "window_tower_front_4_5",
+        "window_tower_front_4_5__frame_left": "window_tower_front_4_5",
+        "window_tower_front_4_5__frame_right": "window_tower_front_4_5",
+        "window_tower_front_4_5__frame_bottom": "window_tower_front_4_5",
+        "window_tower_front_4_5__frame_top": "window_tower_front_4_5",
+        "window_tower_front_4_6__opening": "window_tower_front_4_6",
+        "window_tower_front_4_6__frame_left": "window_tower_front_4_6",
+        "window_tower_front_4_6__frame_right": "window_tower_front_4_6",
+        "window_tower_front_4_6__frame_bottom": "window_tower_front_4_6",
+        "window_tower_front_4_6__frame_top": "window_tower_front_4_6",
+        "window_tower_back_4_1__opening": "window_tower_back_4_1",
+        "window_tower_back_4_1__frame_left": "window_tower_back_4_1",
+        "window_tower_back_4_1__frame_right": "window_tower_back_4_1",
+        "window_tower_back_4_1__frame_bottom": "window_tower_back_4_1",
+        "window_tower_back_4_1__frame_top": "window_tower_back_4_1",
+        "window_tower_back_4_2__opening": "window_tower_back_4_2",
+        "window_tower_back_4_2__frame_left": "window_tower_back_4_2",
+        "window_tower_back_4_2__frame_right": "window_tower_back_4_2",
+        "window_tower_back_4_2__frame_bottom": "window_tower_back_4_2",
+        "window_tower_back_4_2__frame_top": "window_tower_back_4_2",
+        "window_tower_back_4_3__opening": "window_tower_back_4_3",
+        "window_tower_back_4_3__frame_left": "window_tower_back_4_3",
+        "window_tower_back_4_3__frame_right": "window_tower_back_4_3",
+        "window_tower_back_4_3__frame_bottom": "window_tower_back_4_3",
+        "window_tower_back_4_3__frame_top": "window_tower_back_4_3",
+        "window_tower_back_4_4__opening": "window_tower_back_4_4",
+        "window_tower_back_4_4__frame_left": "window_tower_back_4_4",
+        "window_tower_back_4_4__frame_right": "window_tower_back_4_4",
+        "window_tower_back_4_4__frame_bottom": "window_tower_back_4_4",
+        "window_tower_back_4_4__frame_top": "window_tower_back_4_4",
+        "window_tower_back_4_5__opening": "window_tower_back_4_5",
+        "window_tower_back_4_5__frame_left": "window_tower_back_4_5",
+        "window_tower_back_4_5__frame_right": "window_tower_back_4_5",
+        "window_tower_back_4_5__frame_bottom": "window_tower_back_4_5",
+        "window_tower_back_4_5__frame_top": "window_tower_back_4_5",
+        "window_tower_back_4_6__opening": "window_tower_back_4_6",
+        "window_tower_back_4_6__frame_left": "window_tower_back_4_6",
+        "window_tower_back_4_6__frame_right": "window_tower_back_4_6",
+        "window_tower_back_4_6__frame_bottom": "window_tower_back_4_6",
+        "window_tower_back_4_6__frame_top": "window_tower_back_4_6",
+        "window_tower_left_4_1__opening": "window_tower_left_4_1",
+        "window_tower_left_4_1__frame_left": "window_tower_left_4_1",
+        "window_tower_left_4_1__frame_right": "window_tower_left_4_1",
+        "window_tower_left_4_1__frame_bottom": "window_tower_left_4_1",
+        "window_tower_left_4_1__frame_top": "window_tower_left_4_1",
+        "window_tower_left_4_2__opening": "window_tower_left_4_2",
+        "window_tower_left_4_2__frame_left": "window_tower_left_4_2",
+        "window_tower_left_4_2__frame_right": "window_tower_left_4_2",
+        "window_tower_left_4_2__frame_bottom": "window_tower_left_4_2",
+        "window_tower_left_4_2__frame_top": "window_tower_left_4_2",
+        "window_tower_left_4_3__opening": "window_tower_left_4_3",
+        "window_tower_left_4_3__frame_left": "window_tower_left_4_3",
+        "window_tower_left_4_3__frame_right": "window_tower_left_4_3",
+        "window_tower_left_4_3__frame_bottom": "window_tower_left_4_3",
+        "window_tower_left_4_3__frame_top": "window_tower_left_4_3",
+        "window_tower_right_4_1__opening": "window_tower_right_4_1",
+        "window_tower_right_4_1__frame_left": "window_tower_right_4_1",
+        "window_tower_right_4_1__frame_right": "window_tower_right_4_1",
+        "window_tower_right_4_1__frame_bottom": "window_tower_right_4_1",
+        "window_tower_right_4_1__frame_top": "window_tower_right_4_1",
+        "window_tower_right_4_2__opening": "window_tower_right_4_2",
+        "window_tower_right_4_2__frame_left": "window_tower_right_4_2",
+        "window_tower_right_4_2__frame_right": "window_tower_right_4_2",
+        "window_tower_right_4_2__frame_bottom": "window_tower_right_4_2",
+        "window_tower_right_4_2__frame_top": "window_tower_right_4_2",
+        "window_tower_right_4_3__opening": "window_tower_right_4_3",
+        "window_tower_right_4_3__frame_left": "window_tower_right_4_3",
+        "window_tower_right_4_3__frame_right": "window_tower_right_4_3",
+        "window_tower_right_4_3__frame_bottom": "window_tower_right_4_3",
+        "window_tower_right_4_3__frame_top": "window_tower_right_4_3",
+        "window_tower_front_5_1__opening": "window_tower_front_5_1",
+        "window_tower_front_5_1__frame_left": "window_tower_front_5_1",
+        "window_tower_front_5_1__frame_right": "window_tower_front_5_1",
+        "window_tower_front_5_1__frame_bottom": "window_tower_front_5_1",
+        "window_tower_front_5_1__frame_top": "window_tower_front_5_1",
+        "window_tower_front_5_2__opening": "window_tower_front_5_2",
+        "window_tower_front_5_2__frame_left": "window_tower_front_5_2",
+        "window_tower_front_5_2__frame_right": "window_tower_front_5_2",
+        "window_tower_front_5_2__frame_bottom": "window_tower_front_5_2",
+        "window_tower_front_5_2__frame_top": "window_tower_front_5_2",
+        "window_tower_front_5_3__opening": "window_tower_front_5_3",
+        "window_tower_front_5_3__frame_left": "window_tower_front_5_3",
+        "window_tower_front_5_3__frame_right": "window_tower_front_5_3",
+        "window_tower_front_5_3__frame_bottom": "window_tower_front_5_3",
+        "window_tower_front_5_3__frame_top": "window_tower_front_5_3",
+        "window_tower_front_5_4__opening": "window_tower_front_5_4",
+        "window_tower_front_5_4__frame_left": "window_tower_front_5_4",
+        "window_tower_front_5_4__frame_right": "window_tower_front_5_4",
+        "window_tower_front_5_4__frame_bottom": "window_tower_front_5_4",
+        "window_tower_front_5_4__frame_top": "window_tower_front_5_4",
+        "window_tower_front_5_5__opening": "window_tower_front_5_5",
+        "window_tower_front_5_5__frame_left": "window_tower_front_5_5",
+        "window_tower_front_5_5__frame_right": "window_tower_front_5_5",
+        "window_tower_front_5_5__frame_bottom": "window_tower_front_5_5",
+        "window_tower_front_5_5__frame_top": "window_tower_front_5_5",
+        "window_tower_front_5_6__opening": "window_tower_front_5_6",
+        "window_tower_front_5_6__frame_left": "window_tower_front_5_6",
+        "window_tower_front_5_6__frame_right": "window_tower_front_5_6",
+        "window_tower_front_5_6__frame_bottom": "window_tower_front_5_6",
+        "window_tower_front_5_6__frame_top": "window_tower_front_5_6",
+        "window_tower_back_5_1__opening": "window_tower_back_5_1",
+        "window_tower_back_5_1__frame_left": "window_tower_back_5_1",
+        "window_tower_back_5_1__frame_right": "window_tower_back_5_1",
+        "window_tower_back_5_1__frame_bottom": "window_tower_back_5_1",
+        "window_tower_back_5_1__frame_top": "window_tower_back_5_1",
+        "window_tower_back_5_2__opening": "window_tower_back_5_2",
+        "window_tower_back_5_2__frame_left": "window_tower_back_5_2",
+        "window_tower_back_5_2__frame_right": "window_tower_back_5_2",
+        "window_tower_back_5_2__frame_bottom": "window_tower_back_5_2",
+        "window_tower_back_5_2__frame_top": "window_tower_back_5_2",
+        "window_tower_back_5_3__opening": "window_tower_back_5_3",
+        "window_tower_back_5_3__frame_left": "window_tower_back_5_3",
+        "window_tower_back_5_3__frame_right": "window_tower_back_5_3",
+        "window_tower_back_5_3__frame_bottom": "window_tower_back_5_3",
+        "window_tower_back_5_3__frame_top": "window_tower_back_5_3",
+        "window_tower_back_5_4__opening": "window_tower_back_5_4",
+        "window_tower_back_5_4__frame_left": "window_tower_back_5_4",
+        "window_tower_back_5_4__frame_right": "window_tower_back_5_4",
+        "window_tower_back_5_4__frame_bottom": "window_tower_back_5_4",
+        "window_tower_back_5_4__frame_top": "window_tower_back_5_4",
+        "window_tower_back_5_5__opening": "window_tower_back_5_5",
+        "window_tower_back_5_5__frame_left": "window_tower_back_5_5",
+        "window_tower_back_5_5__frame_right": "window_tower_back_5_5",
+        "window_tower_back_5_5__frame_bottom": "window_tower_back_5_5",
+        "window_tower_back_5_5__frame_top": "window_tower_back_5_5",
+        "window_tower_back_5_6__opening": "window_tower_back_5_6",
+        "window_tower_back_5_6__frame_left": "window_tower_back_5_6",
+        "window_tower_back_5_6__frame_right": "window_tower_back_5_6",
+        "window_tower_back_5_6__frame_bottom": "window_tower_back_5_6",
+        "window_tower_back_5_6__frame_top": "window_tower_back_5_6",
+        "window_tower_left_5_1__opening": "window_tower_left_5_1",
+        "window_tower_left_5_1__frame_left": "window_tower_left_5_1",
+        "window_tower_left_5_1__frame_right": "window_tower_left_5_1",
+        "window_tower_left_5_1__frame_bottom": "window_tower_left_5_1",
+        "window_tower_left_5_1__frame_top": "window_tower_left_5_1",
+        "window_tower_left_5_2__opening": "window_tower_left_5_2",
+        "window_tower_left_5_2__frame_left": "window_tower_left_5_2",
+        "window_tower_left_5_2__frame_right": "window_tower_left_5_2",
+        "window_tower_left_5_2__frame_bottom": "window_tower_left_5_2",
+        "window_tower_left_5_2__frame_top": "window_tower_left_5_2",
+        "window_tower_left_5_3__opening": "window_tower_left_5_3",
+        "window_tower_left_5_3__frame_left": "window_tower_left_5_3",
+        "window_tower_left_5_3__frame_right": "window_tower_left_5_3",
+        "window_tower_left_5_3__frame_bottom": "window_tower_left_5_3",
+        "window_tower_left_5_3__frame_top": "window_tower_left_5_3",
+        "window_tower_right_5_1__opening": "window_tower_right_5_1",
+        "window_tower_right_5_1__frame_left": "window_tower_right_5_1",
+        "window_tower_right_5_1__frame_right": "window_tower_right_5_1",
+        "window_tower_right_5_1__frame_bottom": "window_tower_right_5_1",
+        "window_tower_right_5_1__frame_top": "window_tower_right_5_1",
+        "window_tower_right_5_2__opening": "window_tower_right_5_2",
+        "window_tower_right_5_2__frame_left": "window_tower_right_5_2",
+        "window_tower_right_5_2__frame_right": "window_tower_right_5_2",
+        "window_tower_right_5_2__frame_bottom": "window_tower_right_5_2",
+        "window_tower_right_5_2__frame_top": "window_tower_right_5_2",
+        "window_tower_right_5_3__opening": "window_tower_right_5_3",
+        "window_tower_right_5_3__frame_left": "window_tower_right_5_3",
+        "window_tower_right_5_3__frame_right": "window_tower_right_5_3",
+        "window_tower_right_5_3__frame_bottom": "window_tower_right_5_3",
+        "window_tower_right_5_3__frame_top": "window_tower_right_5_3",
+        "window_tower_front_6_1__opening": "window_tower_front_6_1",
+        "window_tower_front_6_1__frame_left": "window_tower_front_6_1",
+        "window_tower_front_6_1__frame_right": "window_tower_front_6_1",
+        "window_tower_front_6_1__frame_bottom": "window_tower_front_6_1",
+        "window_tower_front_6_1__frame_top": "window_tower_front_6_1",
+        "window_tower_front_6_2__opening": "window_tower_front_6_2",
+        "window_tower_front_6_2__frame_left": "window_tower_front_6_2",
+        "window_tower_front_6_2__frame_right": "window_tower_front_6_2",
+        "window_tower_front_6_2__frame_bottom": "window_tower_front_6_2",
+        "window_tower_front_6_2__frame_top": "window_tower_front_6_2",
+        "window_tower_front_6_3__opening": "window_tower_front_6_3",
+        "window_tower_front_6_3__frame_left": "window_tower_front_6_3",
+        "window_tower_front_6_3__frame_right": "window_tower_front_6_3",
+        "window_tower_front_6_3__frame_bottom": "window_tower_front_6_3",
+        "window_tower_front_6_3__frame_top": "window_tower_front_6_3",
+        "window_tower_front_6_4__opening": "window_tower_front_6_4",
+        "window_tower_front_6_4__frame_left": "window_tower_front_6_4",
+        "window_tower_front_6_4__frame_right": "window_tower_front_6_4",
+        "window_tower_front_6_4__frame_bottom": "window_tower_front_6_4",
+        "window_tower_front_6_4__frame_top": "window_tower_front_6_4",
+        "window_tower_front_6_5__opening": "window_tower_front_6_5",
+        "window_tower_front_6_5__frame_left": "window_tower_front_6_5",
+        "window_tower_front_6_5__frame_right": "window_tower_front_6_5",
+        "window_tower_front_6_5__frame_bottom": "window_tower_front_6_5",
+        "window_tower_front_6_5__frame_top": "window_tower_front_6_5",
+        "window_tower_front_6_6__opening": "window_tower_front_6_6",
+        "window_tower_front_6_6__frame_left": "window_tower_front_6_6",
+        "window_tower_front_6_6__frame_right": "window_tower_front_6_6",
+        "window_tower_front_6_6__frame_bottom": "window_tower_front_6_6",
+        "window_tower_front_6_6__frame_top": "window_tower_front_6_6",
+        "window_tower_back_6_1__opening": "window_tower_back_6_1",
+        "window_tower_back_6_1__frame_left": "window_tower_back_6_1",
+        "window_tower_back_6_1__frame_right": "window_tower_back_6_1",
+        "window_tower_back_6_1__frame_bottom": "window_tower_back_6_1",
+        "window_tower_back_6_1__frame_top": "window_tower_back_6_1",
+        "window_tower_back_6_2__opening": "window_tower_back_6_2",
+        "window_tower_back_6_2__frame_left": "window_tower_back_6_2",
+        "window_tower_back_6_2__frame_right": "window_tower_back_6_2",
+        "window_tower_back_6_2__frame_bottom": "window_tower_back_6_2",
+        "window_tower_back_6_2__frame_top": "window_tower_back_6_2",
+        "window_tower_back_6_3__opening": "window_tower_back_6_3",
+        "window_tower_back_6_3__frame_left": "window_tower_back_6_3",
+        "window_tower_back_6_3__frame_right": "window_tower_back_6_3",
+        "window_tower_back_6_3__frame_bottom": "window_tower_back_6_3",
+        "window_tower_back_6_3__frame_top": "window_tower_back_6_3",
+        "window_tower_back_6_4__opening": "window_tower_back_6_4",
+        "window_tower_back_6_4__frame_left": "window_tower_back_6_4",
+        "window_tower_back_6_4__frame_right": "window_tower_back_6_4",
+        "window_tower_back_6_4__frame_bottom": "window_tower_back_6_4",
+        "window_tower_back_6_4__frame_top": "window_tower_back_6_4",
+        "window_tower_back_6_5__opening": "window_tower_back_6_5",
+        "window_tower_back_6_5__frame_left": "window_tower_back_6_5",
+        "window_tower_back_6_5__frame_right": "window_tower_back_6_5",
+        "window_tower_back_6_5__frame_bottom": "window_tower_back_6_5",
+        "window_tower_back_6_5__frame_top": "window_tower_back_6_5",
+        "window_tower_back_6_6__opening": "window_tower_back_6_6",
+        "window_tower_back_6_6__frame_left": "window_tower_back_6_6",
+        "window_tower_back_6_6__frame_right": "window_tower_back_6_6",
+        "window_tower_back_6_6__frame_bottom": "window_tower_back_6_6",
+        "window_tower_back_6_6__frame_top": "window_tower_back_6_6",
+        "window_tower_left_6_1__opening": "window_tower_left_6_1",
+        "window_tower_left_6_1__frame_left": "window_tower_left_6_1",
+        "window_tower_left_6_1__frame_right": "window_tower_left_6_1",
+        "window_tower_left_6_1__frame_bottom": "window_tower_left_6_1",
+        "window_tower_left_6_1__frame_top": "window_tower_left_6_1",
+        "window_tower_left_6_2__opening": "window_tower_left_6_2",
+        "window_tower_left_6_2__frame_left": "window_tower_left_6_2",
+        "window_tower_left_6_2__frame_right": "window_tower_left_6_2",
+        "window_tower_left_6_2__frame_bottom": "window_tower_left_6_2",
+        "window_tower_left_6_2__frame_top": "window_tower_left_6_2",
+        "window_tower_left_6_3__opening": "window_tower_left_6_3",
+        "window_tower_left_6_3__frame_left": "window_tower_left_6_3",
+        "window_tower_left_6_3__frame_right": "window_tower_left_6_3",
+        "window_tower_left_6_3__frame_bottom": "window_tower_left_6_3",
+        "window_tower_left_6_3__frame_top": "window_tower_left_6_3",
+        "window_tower_right_6_1__opening": "window_tower_right_6_1",
+        "window_tower_right_6_1__frame_left": "window_tower_right_6_1",
+        "window_tower_right_6_1__frame_right": "window_tower_right_6_1",
+        "window_tower_right_6_1__frame_bottom": "window_tower_right_6_1",
+        "window_tower_right_6_1__frame_top": "window_tower_right_6_1",
+        "window_tower_right_6_2__opening": "window_tower_right_6_2",
+        "window_tower_right_6_2__frame_left": "window_tower_right_6_2",
+        "window_tower_right_6_2__frame_right": "window_tower_right_6_2",
+        "window_tower_right_6_2__frame_bottom": "window_tower_right_6_2",
+        "window_tower_right_6_2__frame_top": "window_tower_right_6_2",
+        "window_tower_right_6_3__opening": "window_tower_right_6_3",
+        "window_tower_right_6_3__frame_left": "window_tower_right_6_3",
+        "window_tower_right_6_3__frame_right": "window_tower_right_6_3",
+        "window_tower_right_6_3__frame_bottom": "window_tower_right_6_3",
+        "window_tower_right_6_3__frame_top": "window_tower_right_6_3",
+        "window_tower_front_7_1__opening": "window_tower_front_7_1",
+        "window_tower_front_7_1__frame_left": "window_tower_front_7_1",
+        "window_tower_front_7_1__frame_right": "window_tower_front_7_1",
+        "window_tower_front_7_1__frame_bottom": "window_tower_front_7_1",
+        "window_tower_front_7_1__frame_top": "window_tower_front_7_1",
+        "window_tower_front_7_2__opening": "window_tower_front_7_2",
+        "window_tower_front_7_2__frame_left": "window_tower_front_7_2",
+        "window_tower_front_7_2__frame_right": "window_tower_front_7_2",
+        "window_tower_front_7_2__frame_bottom": "window_tower_front_7_2",
+        "window_tower_front_7_2__frame_top": "window_tower_front_7_2",
+        "window_tower_front_7_3__opening": "window_tower_front_7_3",
+        "window_tower_front_7_3__frame_left": "window_tower_front_7_3",
+        "window_tower_front_7_3__frame_right": "window_tower_front_7_3",
+        "window_tower_front_7_3__frame_bottom": "window_tower_front_7_3",
+        "window_tower_front_7_3__frame_top": "window_tower_front_7_3",
+        "window_tower_front_7_4__opening": "window_tower_front_7_4",
+        "window_tower_front_7_4__frame_left": "window_tower_front_7_4",
+        "window_tower_front_7_4__frame_right": "window_tower_front_7_4",
+        "window_tower_front_7_4__frame_bottom": "window_tower_front_7_4",
+        "window_tower_front_7_4__frame_top": "window_tower_front_7_4",
+        "window_tower_front_7_5__opening": "window_tower_front_7_5",
+        "window_tower_front_7_5__frame_left": "window_tower_front_7_5",
+        "window_tower_front_7_5__frame_right": "window_tower_front_7_5",
+        "window_tower_front_7_5__frame_bottom": "window_tower_front_7_5",
+        "window_tower_front_7_5__frame_top": "window_tower_front_7_5",
+        "window_tower_front_7_6__opening": "window_tower_front_7_6",
+        "window_tower_front_7_6__frame_left": "window_tower_front_7_6",
+        "window_tower_front_7_6__frame_right": "window_tower_front_7_6",
+        "window_tower_front_7_6__frame_bottom": "window_tower_front_7_6",
+        "window_tower_front_7_6__frame_top": "window_tower_front_7_6",
+        "window_tower_back_7_1__opening": "window_tower_back_7_1",
+        "window_tower_back_7_1__frame_left": "window_tower_back_7_1",
+        "window_tower_back_7_1__frame_right": "window_tower_back_7_1",
+        "window_tower_back_7_1__frame_bottom": "window_tower_back_7_1",
+        "window_tower_back_7_1__frame_top": "window_tower_back_7_1",
+        "window_tower_back_7_2__opening": "window_tower_back_7_2",
+        "window_tower_back_7_2__frame_left": "window_tower_back_7_2",
+        "window_tower_back_7_2__frame_right": "window_tower_back_7_2",
+        "window_tower_back_7_2__frame_bottom": "window_tower_back_7_2",
+        "window_tower_back_7_2__frame_top": "window_tower_back_7_2",
+        "window_tower_back_7_3__opening": "window_tower_back_7_3",
+        "window_tower_back_7_3__frame_left": "window_tower_back_7_3",
+        "window_tower_back_7_3__frame_right": "window_tower_back_7_3",
+        "window_tower_back_7_3__frame_bottom": "window_tower_back_7_3",
+        "window_tower_back_7_3__frame_top": "window_tower_back_7_3",
+        "window_tower_back_7_4__opening": "window_tower_back_7_4",
+        "window_tower_back_7_4__frame_left": "window_tower_back_7_4",
+        "window_tower_back_7_4__frame_right": "window_tower_back_7_4",
+        "window_tower_back_7_4__frame_bottom": "window_tower_back_7_4",
+        "window_tower_back_7_4__frame_top": "window_tower_back_7_4",
+        "window_tower_back_7_5__opening": "window_tower_back_7_5",
+        "window_tower_back_7_5__frame_left": "window_tower_back_7_5",
+        "window_tower_back_7_5__frame_right": "window_tower_back_7_5",
+        "window_tower_back_7_5__frame_bottom": "window_tower_back_7_5",
+        "window_tower_back_7_5__frame_top": "window_tower_back_7_5",
+        "window_tower_back_7_6__opening": "window_tower_back_7_6",
+        "window_tower_back_7_6__frame_left": "window_tower_back_7_6",
+        "window_tower_back_7_6__frame_right": "window_tower_back_7_6",
+        "window_tower_back_7_6__frame_bottom": "window_tower_back_7_6",
+        "window_tower_back_7_6__frame_top": "window_tower_back_7_6",
+        "window_tower_left_7_1__opening": "window_tower_left_7_1",
+        "window_tower_left_7_1__frame_left": "window_tower_left_7_1",
+        "window_tower_left_7_1__frame_right": "window_tower_left_7_1",
+        "window_tower_left_7_1__frame_bottom": "window_tower_left_7_1",
+        "window_tower_left_7_1__frame_top": "window_tower_left_7_1",
+        "window_tower_left_7_2__opening": "window_tower_left_7_2",
+        "window_tower_left_7_2__frame_left": "window_tower_left_7_2",
+        "window_tower_left_7_2__frame_right": "window_tower_left_7_2",
+        "window_tower_left_7_2__frame_bottom": "window_tower_left_7_2",
+        "window_tower_left_7_2__frame_top": "window_tower_left_7_2",
+        "window_tower_left_7_3__opening": "window_tower_left_7_3",
+        "window_tower_left_7_3__frame_left": "window_tower_left_7_3",
+        "window_tower_left_7_3__frame_right": "window_tower_left_7_3",
+        "window_tower_left_7_3__frame_bottom": "window_tower_left_7_3",
+        "window_tower_left_7_3__frame_top": "window_tower_left_7_3",
+        "window_tower_right_7_1__opening": "window_tower_right_7_1",
+        "window_tower_right_7_1__frame_left": "window_tower_right_7_1",
+        "window_tower_right_7_1__frame_right": "window_tower_right_7_1",
+        "window_tower_right_7_1__frame_bottom": "window_tower_right_7_1",
+        "window_tower_right_7_1__frame_top": "window_tower_right_7_1",
+        "window_tower_right_7_2__opening": "window_tower_right_7_2",
+        "window_tower_right_7_2__frame_left": "window_tower_right_7_2",
+        "window_tower_right_7_2__frame_right": "window_tower_right_7_2",
+        "window_tower_right_7_2__frame_bottom": "window_tower_right_7_2",
+        "window_tower_right_7_2__frame_top": "window_tower_right_7_2",
+        "window_tower_right_7_3__opening": "window_tower_right_7_3",
+        "window_tower_right_7_3__frame_left": "window_tower_right_7_3",
+        "window_tower_right_7_3__frame_right": "window_tower_right_7_3",
+        "window_tower_right_7_3__frame_bottom": "window_tower_right_7_3",
+        "window_tower_right_7_3__frame_top": "window_tower_right_7_3",
+        "window_tower_front_8_1__opening": "window_tower_front_8_1",
+        "window_tower_front_8_1__frame_left": "window_tower_front_8_1",
+        "window_tower_front_8_1__frame_right": "window_tower_front_8_1",
+        "window_tower_front_8_1__frame_bottom": "window_tower_front_8_1",
+        "window_tower_front_8_1__frame_top": "window_tower_front_8_1",
+        "window_tower_front_8_2__opening": "window_tower_front_8_2",
+        "window_tower_front_8_2__frame_left": "window_tower_front_8_2",
+        "window_tower_front_8_2__frame_right": "window_tower_front_8_2",
+        "window_tower_front_8_2__frame_bottom": "window_tower_front_8_2",
+        "window_tower_front_8_2__frame_top": "window_tower_front_8_2",
+        "window_tower_front_8_3__opening": "window_tower_front_8_3",
+        "window_tower_front_8_3__frame_left": "window_tower_front_8_3",
+        "window_tower_front_8_3__frame_right": "window_tower_front_8_3",
+        "window_tower_front_8_3__frame_bottom": "window_tower_front_8_3",
+        "window_tower_front_8_3__frame_top": "window_tower_front_8_3",
+        "window_tower_front_8_4__opening": "window_tower_front_8_4",
+        "window_tower_front_8_4__frame_left": "window_tower_front_8_4",
+        "window_tower_front_8_4__frame_right": "window_tower_front_8_4",
+        "window_tower_front_8_4__frame_bottom": "window_tower_front_8_4",
+        "window_tower_front_8_4__frame_top": "window_tower_front_8_4",
+        "window_tower_front_8_5__opening": "window_tower_front_8_5",
+        "window_tower_front_8_5__frame_left": "window_tower_front_8_5",
+        "window_tower_front_8_5__frame_right": "window_tower_front_8_5",
+        "window_tower_front_8_5__frame_bottom": "window_tower_front_8_5",
+        "window_tower_front_8_5__frame_top": "window_tower_front_8_5",
+        "window_tower_front_8_6__opening": "window_tower_front_8_6",
+        "window_tower_front_8_6__frame_left": "window_tower_front_8_6",
+        "window_tower_front_8_6__frame_right": "window_tower_front_8_6",
+        "window_tower_front_8_6__frame_bottom": "window_tower_front_8_6",
+        "window_tower_front_8_6__frame_top": "window_tower_front_8_6",
+        "window_tower_back_8_1__opening": "window_tower_back_8_1",
+        "window_tower_back_8_1__frame_left": "window_tower_back_8_1",
+        "window_tower_back_8_1__frame_right": "window_tower_back_8_1",
+        "window_tower_back_8_1__frame_bottom": "window_tower_back_8_1",
+        "window_tower_back_8_1__frame_top": "window_tower_back_8_1",
+        "window_tower_back_8_2__opening": "window_tower_back_8_2",
+        "window_tower_back_8_2__frame_left": "window_tower_back_8_2",
+        "window_tower_back_8_2__frame_right": "window_tower_back_8_2",
+        "window_tower_back_8_2__frame_bottom": "window_tower_back_8_2",
+        "window_tower_back_8_2__frame_top": "window_tower_back_8_2",
+        "window_tower_back_8_3__opening": "window_tower_back_8_3",
+        "window_tower_back_8_3__frame_left": "window_tower_back_8_3",
+        "window_tower_back_8_3__frame_right": "window_tower_back_8_3",
+        "window_tower_back_8_3__frame_bottom": "window_tower_back_8_3",
+        "window_tower_back_8_3__frame_top": "window_tower_back_8_3",
+        "window_tower_back_8_4__opening": "window_tower_back_8_4",
+        "window_tower_back_8_4__frame_left": "window_tower_back_8_4",
+        "window_tower_back_8_4__frame_right": "window_tower_back_8_4",
+        "window_tower_back_8_4__frame_bottom": "window_tower_back_8_4",
+        "window_tower_back_8_4__frame_top": "window_tower_back_8_4",
+        "window_tower_back_8_5__opening": "window_tower_back_8_5",
+        "window_tower_back_8_5__frame_left": "window_tower_back_8_5",
+        "window_tower_back_8_5__frame_right": "window_tower_back_8_5",
+        "window_tower_back_8_5__frame_bottom": "window_tower_back_8_5",
+        "window_tower_back_8_5__frame_top": "window_tower_back_8_5",
+        "window_tower_back_8_6__opening": "window_tower_back_8_6",
+        "window_tower_back_8_6__frame_left": "window_tower_back_8_6",
+        "window_tower_back_8_6__frame_right": "window_tower_back_8_6",
+        "window_tower_back_8_6__frame_bottom": "window_tower_back_8_6",
+        "window_tower_back_8_6__frame_top": "window_tower_back_8_6",
+        "window_tower_left_8_1__opening": "window_tower_left_8_1",
+        "window_tower_left_8_1__frame_left": "window_tower_left_8_1",
+        "window_tower_left_8_1__frame_right": "window_tower_left_8_1",
+        "window_tower_left_8_1__frame_bottom": "window_tower_left_8_1",
+        "window_tower_left_8_1__frame_top": "window_tower_left_8_1",
+        "window_tower_left_8_2__opening": "window_tower_left_8_2",
+        "window_tower_left_8_2__frame_left": "window_tower_left_8_2",
+        "window_tower_left_8_2__frame_right": "window_tower_left_8_2",
+        "window_tower_left_8_2__frame_bottom": "window_tower_left_8_2",
+        "window_tower_left_8_2__frame_top": "window_tower_left_8_2",
+        "window_tower_left_8_3__opening": "window_tower_left_8_3",
+        "window_tower_left_8_3__frame_left": "window_tower_left_8_3",
+        "window_tower_left_8_3__frame_right": "window_tower_left_8_3",
+        "window_tower_left_8_3__frame_bottom": "window_tower_left_8_3",
+        "window_tower_left_8_3__frame_top": "window_tower_left_8_3",
+        "window_tower_right_8_1__opening": "window_tower_right_8_1",
+        "window_tower_right_8_1__frame_left": "window_tower_right_8_1",
+        "window_tower_right_8_1__frame_right": "window_tower_right_8_1",
+        "window_tower_right_8_1__frame_bottom": "window_tower_right_8_1",
+        "window_tower_right_8_1__frame_top": "window_tower_right_8_1",
+        "window_tower_right_8_2__opening": "window_tower_right_8_2",
+        "window_tower_right_8_2__frame_left": "window_tower_right_8_2",
+        "window_tower_right_8_2__frame_right": "window_tower_right_8_2",
+        "window_tower_right_8_2__frame_bottom": "window_tower_right_8_2",
+        "window_tower_right_8_2__frame_top": "window_tower_right_8_2",
+        "window_tower_right_8_3__opening": "window_tower_right_8_3",
+        "window_tower_right_8_3__frame_left": "window_tower_right_8_3",
+        "window_tower_right_8_3__frame_right": "window_tower_right_8_3",
+        "window_tower_right_8_3__frame_bottom": "window_tower_right_8_3",
+        "window_tower_right_8_3__frame_top": "window_tower_right_8_3",
+        "window_tower_front_9_1__opening": "window_tower_front_9_1",
+        "window_tower_front_9_1__frame_left": "window_tower_front_9_1",
+        "window_tower_front_9_1__frame_right": "window_tower_front_9_1",
+        "window_tower_front_9_1__frame_bottom": "window_tower_front_9_1",
+        "window_tower_front_9_1__frame_top": "window_tower_front_9_1",
+        "window_tower_front_9_2__opening": "window_tower_front_9_2",
+        "window_tower_front_9_2__frame_left": "window_tower_front_9_2",
+        "window_tower_front_9_2__frame_right": "window_tower_front_9_2",
+        "window_tower_front_9_2__frame_bottom": "window_tower_front_9_2",
+        "window_tower_front_9_2__frame_top": "window_tower_front_9_2",
+        "window_tower_front_9_3__opening": "window_tower_front_9_3",
+        "window_tower_front_9_3__frame_left": "window_tower_front_9_3",
+        "window_tower_front_9_3__frame_right": "window_tower_front_9_3",
+        "window_tower_front_9_3__frame_bottom": "window_tower_front_9_3",
+        "window_tower_front_9_3__frame_top": "window_tower_front_9_3",
+        "window_tower_front_9_4__opening": "window_tower_front_9_4",
+        "window_tower_front_9_4__frame_left": "window_tower_front_9_4",
+        "window_tower_front_9_4__frame_right": "window_tower_front_9_4",
+        "window_tower_front_9_4__frame_bottom": "window_tower_front_9_4",
+        "window_tower_front_9_4__frame_top": "window_tower_front_9_4",
+        "window_tower_front_9_5__opening": "window_tower_front_9_5",
+        "window_tower_front_9_5__frame_left": "window_tower_front_9_5",
+        "window_tower_front_9_5__frame_right": "window_tower_front_9_5",
+        "window_tower_front_9_5__frame_bottom": "window_tower_front_9_5",
+        "window_tower_front_9_5__frame_top": "window_tower_front_9_5",
+        "window_tower_front_9_6__opening": "window_tower_front_9_6",
+        "window_tower_front_9_6__frame_left": "window_tower_front_9_6",
+        "window_tower_front_9_6__frame_right": "window_tower_front_9_6",
+        "window_tower_front_9_6__frame_bottom": "window_tower_front_9_6",
+        "window_tower_front_9_6__frame_top": "window_tower_front_9_6",
+        "window_tower_back_9_1__opening": "window_tower_back_9_1",
+        "window_tower_back_9_1__frame_left": "window_tower_back_9_1",
+        "window_tower_back_9_1__frame_right": "window_tower_back_9_1",
+        "window_tower_back_9_1__frame_bottom": "window_tower_back_9_1",
+        "window_tower_back_9_1__frame_top": "window_tower_back_9_1",
+        "window_tower_back_9_2__opening": "window_tower_back_9_2",
+        "window_tower_back_9_2__frame_left": "window_tower_back_9_2",
+        "window_tower_back_9_2__frame_right": "window_tower_back_9_2",
+        "window_tower_back_9_2__frame_bottom": "window_tower_back_9_2",
+        "window_tower_back_9_2__frame_top": "window_tower_back_9_2",
+        "window_tower_back_9_3__opening": "window_tower_back_9_3",
+        "window_tower_back_9_3__frame_left": "window_tower_back_9_3",
+        "window_tower_back_9_3__frame_right": "window_tower_back_9_3",
+        "window_tower_back_9_3__frame_bottom": "window_tower_back_9_3",
+        "window_tower_back_9_3__frame_top": "window_tower_back_9_3",
+        "window_tower_back_9_4__opening": "window_tower_back_9_4",
+        "window_tower_back_9_4__frame_left": "window_tower_back_9_4",
+        "window_tower_back_9_4__frame_right": "window_tower_back_9_4",
+        "window_tower_back_9_4__frame_bottom": "window_tower_back_9_4",
+        "window_tower_back_9_4__frame_top": "window_tower_back_9_4",
+        "window_tower_back_9_5__opening": "window_tower_back_9_5",
+        "window_tower_back_9_5__frame_left": "window_tower_back_9_5",
+        "window_tower_back_9_5__frame_right": "window_tower_back_9_5",
+        "window_tower_back_9_5__frame_bottom": "window_tower_back_9_5",
+        "window_tower_back_9_5__frame_top": "window_tower_back_9_5",
+        "window_tower_back_9_6__opening": "window_tower_back_9_6",
+        "window_tower_back_9_6__frame_left": "window_tower_back_9_6",
+        "window_tower_back_9_6__frame_right": "window_tower_back_9_6",
+        "window_tower_back_9_6__frame_bottom": "window_tower_back_9_6",
+        "window_tower_back_9_6__frame_top": "window_tower_back_9_6",
+        "window_tower_left_9_1__opening": "window_tower_left_9_1",
+        "window_tower_left_9_1__frame_left": "window_tower_left_9_1",
+        "window_tower_left_9_1__frame_right": "window_tower_left_9_1",
+        "window_tower_left_9_1__frame_bottom": "window_tower_left_9_1",
+        "window_tower_left_9_1__frame_top": "window_tower_left_9_1",
+        "window_tower_left_9_2__opening": "window_tower_left_9_2",
+        "window_tower_left_9_2__frame_left": "window_tower_left_9_2",
+        "window_tower_left_9_2__frame_right": "window_tower_left_9_2",
+        "window_tower_left_9_2__frame_bottom": "window_tower_left_9_2",
+        "window_tower_left_9_2__frame_top": "window_tower_left_9_2",
+        "window_tower_left_9_3__opening": "window_tower_left_9_3",
+        "window_tower_left_9_3__frame_left": "window_tower_left_9_3",
+        "window_tower_left_9_3__frame_right": "window_tower_left_9_3",
+        "window_tower_left_9_3__frame_bottom": "window_tower_left_9_3",
+        "window_tower_left_9_3__frame_top": "window_tower_left_9_3",
+        "window_tower_right_9_1__opening": "window_tower_right_9_1",
+        "window_tower_right_9_1__frame_left": "window_tower_right_9_1",
+        "window_tower_right_9_1__frame_right": "window_tower_right_9_1",
+        "window_tower_right_9_1__frame_bottom": "window_tower_right_9_1",
+        "window_tower_right_9_1__frame_top": "window_tower_right_9_1",
+        "window_tower_right_9_2__opening": "window_tower_right_9_2",
+        "window_tower_right_9_2__frame_left": "window_tower_right_9_2",
+        "window_tower_right_9_2__frame_right": "window_tower_right_9_2",
+        "window_tower_right_9_2__frame_bottom": "window_tower_right_9_2",
+        "window_tower_right_9_2__frame_top": "window_tower_right_9_2",
+        "window_tower_right_9_3__opening": "window_tower_right_9_3",
+        "window_tower_right_9_3__frame_left": "window_tower_right_9_3",
+        "window_tower_right_9_3__frame_right": "window_tower_right_9_3",
+        "window_tower_right_9_3__frame_bottom": "window_tower_right_9_3",
+        "window_tower_right_9_3__frame_top": "window_tower_right_9_3",
+        "window_crown_front_10_1__opening": "window_crown_front_10_1",
+        "window_crown_front_10_1__frame_left": "window_crown_front_10_1",
+        "window_crown_front_10_1__frame_right": "window_crown_front_10_1",
+        "window_crown_front_10_1__frame_bottom": "window_crown_front_10_1",
+        "window_crown_front_10_1__frame_top": "window_crown_front_10_1",
+        "window_crown_front_10_2__opening": "window_crown_front_10_2",
+        "window_crown_front_10_2__frame_left": "window_crown_front_10_2",
+        "window_crown_front_10_2__frame_right": "window_crown_front_10_2",
+        "window_crown_front_10_2__frame_bottom": "window_crown_front_10_2",
+        "window_crown_front_10_2__frame_top": "window_crown_front_10_2",
+        "window_crown_front_10_3__opening": "window_crown_front_10_3",
+        "window_crown_front_10_3__frame_left": "window_crown_front_10_3",
+        "window_crown_front_10_3__frame_right": "window_crown_front_10_3",
+        "window_crown_front_10_3__frame_bottom": "window_crown_front_10_3",
+        "window_crown_front_10_3__frame_top": "window_crown_front_10_3",
+        "window_crown_front_10_4__opening": "window_crown_front_10_4",
+        "window_crown_front_10_4__frame_left": "window_crown_front_10_4",
+        "window_crown_front_10_4__frame_right": "window_crown_front_10_4",
+        "window_crown_front_10_4__frame_bottom": "window_crown_front_10_4",
+        "window_crown_front_10_4__frame_top": "window_crown_front_10_4",
+        "window_crown_back_10_1__opening": "window_crown_back_10_1",
+        "window_crown_back_10_1__frame_left": "window_crown_back_10_1",
+        "window_crown_back_10_1__frame_right": "window_crown_back_10_1",
+        "window_crown_back_10_1__frame_bottom": "window_crown_back_10_1",
+        "window_crown_back_10_1__frame_top": "window_crown_back_10_1",
+        "window_crown_back_10_2__opening": "window_crown_back_10_2",
+        "window_crown_back_10_2__frame_left": "window_crown_back_10_2",
+        "window_crown_back_10_2__frame_right": "window_crown_back_10_2",
+        "window_crown_back_10_2__frame_bottom": "window_crown_back_10_2",
+        "window_crown_back_10_2__frame_top": "window_crown_back_10_2",
+        "window_crown_back_10_3__opening": "window_crown_back_10_3",
+        "window_crown_back_10_3__frame_left": "window_crown_back_10_3",
+        "window_crown_back_10_3__frame_right": "window_crown_back_10_3",
+        "window_crown_back_10_3__frame_bottom": "window_crown_back_10_3",
+        "window_crown_back_10_3__frame_top": "window_crown_back_10_3",
+        "window_crown_back_10_4__opening": "window_crown_back_10_4",
+        "window_crown_back_10_4__frame_left": "window_crown_back_10_4",
+        "window_crown_back_10_4__frame_right": "window_crown_back_10_4",
+        "window_crown_back_10_4__frame_bottom": "window_crown_back_10_4",
+        "window_crown_back_10_4__frame_top": "window_crown_back_10_4",
+        "window_crown_left_10_1__opening": "window_crown_left_10_1",
+        "window_crown_left_10_1__frame_left": "window_crown_left_10_1",
+        "window_crown_left_10_1__frame_right": "window_crown_left_10_1",
+        "window_crown_left_10_1__frame_bottom": "window_crown_left_10_1",
+        "window_crown_left_10_1__frame_top": "window_crown_left_10_1",
+        "window_crown_left_10_2__opening": "window_crown_left_10_2",
+        "window_crown_left_10_2__frame_left": "window_crown_left_10_2",
+        "window_crown_left_10_2__frame_right": "window_crown_left_10_2",
+        "window_crown_left_10_2__frame_bottom": "window_crown_left_10_2",
+        "window_crown_left_10_2__frame_top": "window_crown_left_10_2",
+        "window_crown_right_10_1__opening": "window_crown_right_10_1",
+        "window_crown_right_10_1__frame_left": "window_crown_right_10_1",
+        "window_crown_right_10_1__frame_right": "window_crown_right_10_1",
+        "window_crown_right_10_1__frame_bottom": "window_crown_right_10_1",
+        "window_crown_right_10_1__frame_top": "window_crown_right_10_1",
+        "window_crown_right_10_2__opening": "window_crown_right_10_2",
+        "window_crown_right_10_2__frame_left": "window_crown_right_10_2",
+        "window_crown_right_10_2__frame_right": "window_crown_right_10_2",
+        "window_crown_right_10_2__frame_bottom": "window_crown_right_10_2",
+        "window_crown_right_10_2__frame_top": "window_crown_right_10_2",
+        "window_crown_front_11_1__opening": "window_crown_front_11_1",
+        "window_crown_front_11_1__frame_left": "window_crown_front_11_1",
+        "window_crown_front_11_1__frame_right": "window_crown_front_11_1",
+        "window_crown_front_11_1__frame_bottom": "window_crown_front_11_1",
+        "window_crown_front_11_1__frame_top": "window_crown_front_11_1",
+        "window_crown_front_11_2__opening": "window_crown_front_11_2",
+        "window_crown_front_11_2__frame_left": "window_crown_front_11_2",
+        "window_crown_front_11_2__frame_right": "window_crown_front_11_2",
+        "window_crown_front_11_2__frame_bottom": "window_crown_front_11_2",
+        "window_crown_front_11_2__frame_top": "window_crown_front_11_2",
+        "window_crown_front_11_3__opening": "window_crown_front_11_3",
+        "window_crown_front_11_3__frame_left": "window_crown_front_11_3",
+        "window_crown_front_11_3__frame_right": "window_crown_front_11_3",
+        "window_crown_front_11_3__frame_bottom": "window_crown_front_11_3",
+        "window_crown_front_11_3__frame_top": "window_crown_front_11_3",
+        "window_crown_front_11_4__opening": "window_crown_front_11_4",
+        "window_crown_front_11_4__frame_left": "window_crown_front_11_4",
+        "window_crown_front_11_4__frame_right": "window_crown_front_11_4",
+        "window_crown_front_11_4__frame_bottom": "window_crown_front_11_4",
+        "window_crown_front_11_4__frame_top": "window_crown_front_11_4",
+        "window_crown_back_11_1__opening": "window_crown_back_11_1",
+        "window_crown_back_11_1__frame_left": "window_crown_back_11_1",
+        "window_crown_back_11_1__frame_right": "window_crown_back_11_1",
+        "window_crown_back_11_1__frame_bottom": "window_crown_back_11_1",
+        "window_crown_back_11_1__frame_top": "window_crown_back_11_1",
+        "window_crown_back_11_2__opening": "window_crown_back_11_2",
+        "window_crown_back_11_2__frame_left": "window_crown_back_11_2",
+        "window_crown_back_11_2__frame_right": "window_crown_back_11_2",
+        "window_crown_back_11_2__frame_bottom": "window_crown_back_11_2",
+        "window_crown_back_11_2__frame_top": "window_crown_back_11_2",
+        "window_crown_back_11_3__opening": "window_crown_back_11_3",
+        "window_crown_back_11_3__frame_left": "window_crown_back_11_3",
+        "window_crown_back_11_3__frame_right": "window_crown_back_11_3",
+        "window_crown_back_11_3__frame_bottom": "window_crown_back_11_3",
+        "window_crown_back_11_3__frame_top": "window_crown_back_11_3",
+        "window_crown_back_11_4__opening": "window_crown_back_11_4",
+        "window_crown_back_11_4__frame_left": "window_crown_back_11_4",
+        "window_crown_back_11_4__frame_right": "window_crown_back_11_4",
+        "window_crown_back_11_4__frame_bottom": "window_crown_back_11_4",
+        "window_crown_back_11_4__frame_top": "window_crown_back_11_4",
+        "window_crown_left_11_1__opening": "window_crown_left_11_1",
+        "window_crown_left_11_1__frame_left": "window_crown_left_11_1",
+        "window_crown_left_11_1__frame_right": "window_crown_left_11_1",
+        "window_crown_left_11_1__frame_bottom": "window_crown_left_11_1",
+        "window_crown_left_11_1__frame_top": "window_crown_left_11_1",
+        "window_crown_left_11_2__opening": "window_crown_left_11_2",
+        "window_crown_left_11_2__frame_left": "window_crown_left_11_2",
+        "window_crown_left_11_2__frame_right": "window_crown_left_11_2",
+        "window_crown_left_11_2__frame_bottom": "window_crown_left_11_2",
+        "window_crown_left_11_2__frame_top": "window_crown_left_11_2",
+        "window_crown_right_11_1__opening": "window_crown_right_11_1",
+        "window_crown_right_11_1__frame_left": "window_crown_right_11_1",
+        "window_crown_right_11_1__frame_right": "window_crown_right_11_1",
+        "window_crown_right_11_1__frame_bottom": "window_crown_right_11_1",
+        "window_crown_right_11_1__frame_top": "window_crown_right_11_1",
+        "window_crown_right_11_2__opening": "window_crown_right_11_2",
+        "window_crown_right_11_2__frame_left": "window_crown_right_11_2",
+        "window_crown_right_11_2__frame_right": "window_crown_right_11_2",
+        "window_crown_right_11_2__frame_bottom": "window_crown_right_11_2",
+        "window_crown_right_11_2__frame_top": "window_crown_right_11_2",
+        "window_crown_front_12_1__opening": "window_crown_front_12_1",
+        "window_crown_front_12_1__frame_left": "window_crown_front_12_1",
+        "window_crown_front_12_1__frame_right": "window_crown_front_12_1",
+        "window_crown_front_12_1__frame_bottom": "window_crown_front_12_1",
+        "window_crown_front_12_1__frame_top": "window_crown_front_12_1",
+        "window_crown_front_12_2__opening": "window_crown_front_12_2",
+        "window_crown_front_12_2__frame_left": "window_crown_front_12_2",
+        "window_crown_front_12_2__frame_right": "window_crown_front_12_2",
+        "window_crown_front_12_2__frame_bottom": "window_crown_front_12_2",
+        "window_crown_front_12_2__frame_top": "window_crown_front_12_2",
+        "window_crown_front_12_3__opening": "window_crown_front_12_3",
+        "window_crown_front_12_3__frame_left": "window_crown_front_12_3",
+        "window_crown_front_12_3__frame_right": "window_crown_front_12_3",
+        "window_crown_front_12_3__frame_bottom": "window_crown_front_12_3",
+        "window_crown_front_12_3__frame_top": "window_crown_front_12_3",
+        "window_crown_front_12_4__opening": "window_crown_front_12_4",
+        "window_crown_front_12_4__frame_left": "window_crown_front_12_4",
+        "window_crown_front_12_4__frame_right": "window_crown_front_12_4",
+        "window_crown_front_12_4__frame_bottom": "window_crown_front_12_4",
+        "window_crown_front_12_4__frame_top": "window_crown_front_12_4",
+        "window_crown_back_12_1__opening": "window_crown_back_12_1",
+        "window_crown_back_12_1__frame_left": "window_crown_back_12_1",
+        "window_crown_back_12_1__frame_right": "window_crown_back_12_1",
+        "window_crown_back_12_1__frame_bottom": "window_crown_back_12_1",
+        "window_crown_back_12_1__frame_top": "window_crown_back_12_1",
+        "window_crown_back_12_2__opening": "window_crown_back_12_2",
+        "window_crown_back_12_2__frame_left": "window_crown_back_12_2",
+        "window_crown_back_12_2__frame_right": "window_crown_back_12_2",
+        "window_crown_back_12_2__frame_bottom": "window_crown_back_12_2",
+        "window_crown_back_12_2__frame_top": "window_crown_back_12_2",
+        "window_crown_back_12_3__opening": "window_crown_back_12_3",
+        "window_crown_back_12_3__frame_left": "window_crown_back_12_3",
+        "window_crown_back_12_3__frame_right": "window_crown_back_12_3",
+        "window_crown_back_12_3__frame_bottom": "window_crown_back_12_3",
+        "window_crown_back_12_3__frame_top": "window_crown_back_12_3",
+        "window_crown_back_12_4__opening": "window_crown_back_12_4",
+        "window_crown_back_12_4__frame_left": "window_crown_back_12_4",
+        "window_crown_back_12_4__frame_right": "window_crown_back_12_4",
+        "window_crown_back_12_4__frame_bottom": "window_crown_back_12_4",
+        "window_crown_back_12_4__frame_top": "window_crown_back_12_4",
+        "window_crown_left_12_1__opening": "window_crown_left_12_1",
+        "window_crown_left_12_1__frame_left": "window_crown_left_12_1",
+        "window_crown_left_12_1__frame_right": "window_crown_left_12_1",
+        "window_crown_left_12_1__frame_bottom": "window_crown_left_12_1",
+        "window_crown_left_12_1__frame_top": "window_crown_left_12_1",
+        "window_crown_left_12_2__opening": "window_crown_left_12_2",
+        "window_crown_left_12_2__frame_left": "window_crown_left_12_2",
+        "window_crown_left_12_2__frame_right": "window_crown_left_12_2",
+        "window_crown_left_12_2__frame_bottom": "window_crown_left_12_2",
+        "window_crown_left_12_2__frame_top": "window_crown_left_12_2",
+        "window_crown_right_12_1__opening": "window_crown_right_12_1",
+        "window_crown_right_12_1__frame_left": "window_crown_right_12_1",
+        "window_crown_right_12_1__frame_right": "window_crown_right_12_1",
+        "window_crown_right_12_1__frame_bottom": "window_crown_right_12_1",
+        "window_crown_right_12_1__frame_top": "window_crown_right_12_1",
+        "window_crown_right_12_2__opening": "window_crown_right_12_2",
+        "window_crown_right_12_2__frame_left": "window_crown_right_12_2",
+        "window_crown_right_12_2__frame_right": "window_crown_right_12_2",
+        "window_crown_right_12_2__frame_bottom": "window_crown_right_12_2",
+        "window_crown_right_12_2__frame_top": "window_crown_right_12_2",
+        "core_stair_1_first_flight": "core_stair_1",
+        "core_stair_1_second_flight": "core_stair_1",
+        "core_stair_1_landing": "core_stair_1",
+        "core_stair_2_first_flight": "core_stair_2",
+        "core_stair_2_second_flight": "core_stair_2",
+        "core_stair_2_landing": "core_stair_2",
+        "core_stair_3_first_flight": "core_stair_3",
+        "core_stair_3_second_flight": "core_stair_3",
+        "core_stair_3_landing": "core_stair_3",
+        "core_stair_4_first_flight": "core_stair_4",
+        "core_stair_4_second_flight": "core_stair_4",
+        "core_stair_4_landing": "core_stair_4",
+        "core_stair_5_first_flight": "core_stair_5",
+        "core_stair_5_second_flight": "core_stair_5",
+        "core_stair_5_landing": "core_stair_5",
+        "core_stair_6_first_flight": "core_stair_6",
+        "core_stair_6_second_flight": "core_stair_6",
+        "core_stair_6_landing": "core_stair_6",
+        "core_stair_7_first_flight": "core_stair_7",
+        "core_stair_7_second_flight": "core_stair_7",
+        "core_stair_7_landing": "core_stair_7",
+        "core_stair_8_first_flight": "core_stair_8",
+        "core_stair_8_second_flight": "core_stair_8",
+        "core_stair_8_landing": "core_stair_8",
+        "core_stair_9_first_flight": "core_stair_9",
+        "core_stair_9_second_flight": "core_stair_9",
+        "core_stair_9_landing": "core_stair_9",
+        "core_stair_10_first_flight": "core_stair_10",
+        "core_stair_10_second_flight": "core_stair_10",
+        "core_stair_10_landing": "core_stair_10",
+        "core_stair_11_first_flight": "core_stair_11",
+        "core_stair_11_second_flight": "core_stair_11",
+        "core_stair_11_landing": "core_stair_11",
+        "podium_terrace_rail__post_001": "podium_terrace_rail",
+        "podium_terrace_rail__post_002": "podium_terrace_rail",
+        "podium_terrace_rail__post_003": "podium_terrace_rail",
+        "podium_terrace_rail__post_004": "podium_terrace_rail",
+        "podium_terrace_rail__post_005": "podium_terrace_rail",
+        "podium_terrace_rail__post_006": "podium_terrace_rail",
+        "podium_terrace_rail__post_007": "podium_terrace_rail",
+        "podium_terrace_rail__post_008": "podium_terrace_rail",
+        "podium_terrace_rail__post_009": "podium_terrace_rail",
+        "podium_terrace_rail__post_010": "podium_terrace_rail",
+        "podium_terrace_rail__post_011": "podium_terrace_rail",
+        "podium_terrace_rail__post_012": "podium_terrace_rail",
+        "podium_terrace_rail__post_013": "podium_terrace_rail",
+        "podium_terrace_rail__post_014": "podium_terrace_rail",
+        "podium_terrace_rail__post_015": "podium_terrace_rail",
+        "podium_terrace_rail__post_016": "podium_terrace_rail",
+        "podium_terrace_rail__post_017": "podium_terrace_rail",
+        "podium_terrace_rail__post_018": "podium_terrace_rail",
+        "podium_terrace_rail__post_019": "podium_terrace_rail",
+        "podium_terrace_rail__post_020": "podium_terrace_rail",
+        "podium_terrace_rail__post_021": "podium_terrace_rail",
+        "podium_terrace_rail__post_022": "podium_terrace_rail",
+        "podium_terrace_rail__post_023": "podium_terrace_rail",
+        "podium_terrace_rail__post_024": "podium_terrace_rail",
+        "podium_terrace_rail__post_025": "podium_terrace_rail",
+        "podium_terrace_rail__post_026": "podium_terrace_rail",
+        "podium_terrace_rail__post_027": "podium_terrace_rail",
+        "podium_terrace_rail__post_028": "podium_terrace_rail",
+        "podium_terrace_rail__post_029": "podium_terrace_rail",
+        "podium_terrace_rail__post_030": "podium_terrace_rail",
+        "podium_terrace_rail__post_031": "podium_terrace_rail",
+        "podium_terrace_rail__post_032": "podium_terrace_rail",
+        "podium_terrace_rail__post_033": "podium_terrace_rail",
+        "podium_terrace_rail__post_034": "podium_terrace_rail",
+        "podium_terrace_rail__post_035": "podium_terrace_rail",
+        "podium_terrace_rail__post_036": "podium_terrace_rail",
+        "podium_terrace_rail__post_037": "podium_terrace_rail",
+        "podium_terrace_rail__post_038": "podium_terrace_rail",
+        "podium_terrace_rail__post_039": "podium_terrace_rail",
+        "podium_terrace_rail__post_040": "podium_terrace_rail",
+        "podium_terrace_rail__post_041": "podium_terrace_rail",
+        "podium_terrace_rail__post_042": "podium_terrace_rail",
+        "podium_terrace_rail__post_043": "podium_terrace_rail",
+        "podium_terrace_rail__post_044": "podium_terrace_rail",
+        "podium_terrace_rail__post_045": "podium_terrace_rail",
+        "podium_terrace_rail__post_046": "podium_terrace_rail",
+        "podium_terrace_rail__post_047": "podium_terrace_rail",
+        "podium_terrace_rail__post_048": "podium_terrace_rail",
+        "podium_terrace_rail__post_049": "podium_terrace_rail",
+        "podium_terrace_rail__post_050": "podium_terrace_rail",
+        "podium_terrace_rail__post_051": "podium_terrace_rail",
+        "podium_terrace_rail__post_052": "podium_terrace_rail",
+        "podium_terrace_rail__post_053": "podium_terrace_rail",
+        "podium_terrace_rail__post_054": "podium_terrace_rail",
+        "podium_terrace_rail__post_055": "podium_terrace_rail",
+        "podium_terrace_rail__post_056": "podium_terrace_rail",
+        "podium_terrace_rail__post_057": "podium_terrace_rail",
+        "podium_terrace_rail__post_058": "podium_terrace_rail",
+        "podium_terrace_rail__post_059": "podium_terrace_rail",
+        "podium_terrace_rail__post_060": "podium_terrace_rail",
+        "podium_terrace_rail__post_061": "podium_terrace_rail",
+        "podium_terrace_rail__post_062": "podium_terrace_rail",
+        "podium_terrace_rail__post_063": "podium_terrace_rail",
+        "podium_terrace_rail__post_064": "podium_terrace_rail",
+        "podium_terrace_rail__post_065": "podium_terrace_rail",
+        "podium_terrace_rail__post_066": "podium_terrace_rail",
+        "podium_terrace_rail__post_067": "podium_terrace_rail",
+        "podium_terrace_rail__post_068": "podium_terrace_rail",
+        "podium_terrace_rail__post_069": "podium_terrace_rail",
+        "podium_terrace_rail__post_070": "podium_terrace_rail",
+        "podium_terrace_rail__post_071": "podium_terrace_rail",
+        "podium_terrace_rail__post_072": "podium_terrace_rail",
+        "podium_terrace_rail__post_073": "podium_terrace_rail",
+        "podium_terrace_rail__post_074": "podium_terrace_rail",
+        "podium_terrace_rail__post_075": "podium_terrace_rail",
+        "podium_terrace_rail__post_076": "podium_terrace_rail",
+        "podium_terrace_rail__post_077": "podium_terrace_rail",
+        "podium_terrace_rail__post_078": "podium_terrace_rail",
+        "podium_terrace_rail__post_079": "podium_terrace_rail",
+        "podium_terrace_rail__post_080": "podium_terrace_rail",
+        "podium_terrace_rail__post_081": "podium_terrace_rail",
+        "podium_terrace_rail__post_082": "podium_terrace_rail",
+        "podium_terrace_rail__post_083": "podium_terrace_rail",
+        "podium_terrace_rail__rail_001_001": "podium_terrace_rail",
+        "podium_terrace_rail__rail_001_002": "podium_terrace_rail",
+        "podium_terrace_rail__rail_001_003": "podium_terrace_rail",
+        "podium_terrace_rail__rail_001_004": "podium_terrace_rail",
+        "podium_terrace_rail__infill_001": "podium_terrace_rail",
+        "podium_terrace_rail__infill_002": "podium_terrace_rail",
+        "podium_terrace_rail__infill_003": "podium_terrace_rail",
+        "podium_terrace_rail__infill_004": "podium_terrace_rail",
+        "tower_terrace_rail__post_001": "tower_terrace_rail",
+        "tower_terrace_rail__post_002": "tower_terrace_rail",
+        "tower_terrace_rail__post_003": "tower_terrace_rail",
+        "tower_terrace_rail__post_004": "tower_terrace_rail",
+        "tower_terrace_rail__post_005": "tower_terrace_rail",
+        "tower_terrace_rail__post_006": "tower_terrace_rail",
+        "tower_terrace_rail__post_007": "tower_terrace_rail",
+        "tower_terrace_rail__post_008": "tower_terrace_rail",
+        "tower_terrace_rail__post_009": "tower_terrace_rail",
+        "tower_terrace_rail__post_010": "tower_terrace_rail",
+        "tower_terrace_rail__post_011": "tower_terrace_rail",
+        "tower_terrace_rail__post_012": "tower_terrace_rail",
+        "tower_terrace_rail__post_013": "tower_terrace_rail",
+        "tower_terrace_rail__post_014": "tower_terrace_rail",
+        "tower_terrace_rail__post_015": "tower_terrace_rail",
+        "tower_terrace_rail__post_016": "tower_terrace_rail",
+        "tower_terrace_rail__post_017": "tower_terrace_rail",
+        "tower_terrace_rail__post_018": "tower_terrace_rail",
+        "tower_terrace_rail__post_019": "tower_terrace_rail",
+        "tower_terrace_rail__post_020": "tower_terrace_rail",
+        "tower_terrace_rail__post_021": "tower_terrace_rail",
+        "tower_terrace_rail__post_022": "tower_terrace_rail",
+        "tower_terrace_rail__post_023": "tower_terrace_rail",
+        "tower_terrace_rail__post_024": "tower_terrace_rail",
+        "tower_terrace_rail__post_025": "tower_terrace_rail",
+        "tower_terrace_rail__post_026": "tower_terrace_rail",
+        "tower_terrace_rail__post_027": "tower_terrace_rail",
+        "tower_terrace_rail__post_028": "tower_terrace_rail",
+        "tower_terrace_rail__post_029": "tower_terrace_rail",
+        "tower_terrace_rail__post_030": "tower_terrace_rail",
+        "tower_terrace_rail__post_031": "tower_terrace_rail",
+        "tower_terrace_rail__post_032": "tower_terrace_rail",
+        "tower_terrace_rail__post_033": "tower_terrace_rail",
+        "tower_terrace_rail__post_034": "tower_terrace_rail",
+        "tower_terrace_rail__post_035": "tower_terrace_rail",
+        "tower_terrace_rail__post_036": "tower_terrace_rail",
+        "tower_terrace_rail__post_037": "tower_terrace_rail",
+        "tower_terrace_rail__post_038": "tower_terrace_rail",
+        "tower_terrace_rail__post_039": "tower_terrace_rail",
+        "tower_terrace_rail__post_040": "tower_terrace_rail",
+        "tower_terrace_rail__post_041": "tower_terrace_rail",
+        "tower_terrace_rail__post_042": "tower_terrace_rail",
+        "tower_terrace_rail__post_043": "tower_terrace_rail",
+        "tower_terrace_rail__post_044": "tower_terrace_rail",
+        "tower_terrace_rail__post_045": "tower_terrace_rail",
+        "tower_terrace_rail__post_046": "tower_terrace_rail",
+        "tower_terrace_rail__post_047": "tower_terrace_rail",
+        "tower_terrace_rail__post_048": "tower_terrace_rail",
+        "tower_terrace_rail__post_049": "tower_terrace_rail",
+        "tower_terrace_rail__post_050": "tower_terrace_rail",
+        "tower_terrace_rail__post_051": "tower_terrace_rail",
+        "tower_terrace_rail__post_052": "tower_terrace_rail",
+        "tower_terrace_rail__post_053": "tower_terrace_rail",
+        "tower_terrace_rail__post_054": "tower_terrace_rail",
+        "tower_terrace_rail__post_055": "tower_terrace_rail",
+        "tower_terrace_rail__post_056": "tower_terrace_rail",
+        "tower_terrace_rail__post_057": "tower_terrace_rail",
+        "tower_terrace_rail__post_058": "tower_terrace_rail",
+        "tower_terrace_rail__post_059": "tower_terrace_rail",
+        "tower_terrace_rail__rail_001_001": "tower_terrace_rail",
+        "tower_terrace_rail__rail_001_002": "tower_terrace_rail",
+        "tower_terrace_rail__rail_001_003": "tower_terrace_rail",
+        "tower_terrace_rail__rail_001_004": "tower_terrace_rail",
+        "tower_terrace_rail__infill_001": "tower_terrace_rail",
+        "tower_terrace_rail__infill_002": "tower_terrace_rail",
+        "tower_terrace_rail__infill_003": "tower_terrace_rail",
+        "tower_terrace_rail__infill_004": "tower_terrace_rail",
+        "passenger_lift__cab": "passenger_lift",
+        "passenger_lift__rail_l": "passenger_lift",
+        "passenger_lift__rail_r": "passenger_lift",
+        "passenger_lift__call_button": "passenger_lift"
+      }
+    }
+  }
+}

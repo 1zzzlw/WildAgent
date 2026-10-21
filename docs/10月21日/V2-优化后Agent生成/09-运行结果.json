@@ -1,0 +1,10 @@
+{
+  "finished_at": "2026-10-21T00:57:47.622170+00:00",
+  "status": "failed",
+  "error": "建筑图纸未通过检查：/floor_layouts/1/rooms/3：内墙 wall_corridor_master（from=[6.0, 5.5], to=[15.0, 5.5]）贯穿第 2 层房间 room_master_bath（主卫）范围，世界 X=[10, 12.5]，Z=[4.5, 7.5]；墙段位于 Z=5.5，在房间内部跨越整个范围。保留墙时，房间 bounds 应在墙的一侧；例如保留较大坐标边界时可写 bounds.z=5.5、bounds.depth=2；保留较小坐标边界时可写 bounds.z=4.5、bounds.depth=1。仅把墙端缩短到房间另一边界仍然是贯穿。保留房间时，修订墙段到",
+  "terminal_model_error": null,
+  "has_final_blueprint": false,
+  "plan_node_executed": false,
+  "validation_error_count": null,
+  "validation_warning_count": null
+}

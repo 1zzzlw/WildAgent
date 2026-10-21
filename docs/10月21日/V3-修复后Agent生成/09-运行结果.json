@@ -1,0 +1,10 @@
+{
+  "finished_at": "2026-10-21T01:16:07.565906+00:00",
+  "status": "failed",
+  "error": "建筑图纸未通过检查：/components/0/form：stair_1 每跑 rises×riser_height 与实际半层高差 1.95 不符",
+  "terminal_model_error": null,
+  "has_final_blueprint": false,
+  "plan_node_executed": false,
+  "validation_error_count": null,
+  "validation_warning_count": null
+}

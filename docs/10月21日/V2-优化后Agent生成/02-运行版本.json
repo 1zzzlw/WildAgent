@@ -1,0 +1,22 @@
+{
+  "server_instance_id": "9a7c8804271041e9a006dea48d0e36c3",
+  "captured_at": "2026-10-21T00:48:36.540+00:00",
+  "snapshot_kind": "process_first_trace_source_files",
+  "git_revision": "47ce15681dae4f8373bcb17e959a023e3d25721e",
+  "git_dirty": true,
+  "source_sha256": "802387b031ccc16e315a19108d8f49f6d7a3420fc961714a30351d4d7ca2bd97",
+  "prompt_sha256": "b56a2092803f61ac9aaa0caca8712026edd6daf1ef003512588288b6882b86c0",
+  "schema_sha256": "8ed0594e78826264998e58e4c297152bdbdee53a2f7c0f6d4779122ceb005159",
+  "source_file_count": 196,
+  "python_version": "3.12.13",
+  "knowledge_sha256": "a468388dee7a1862bd8893176a671e7e527fbfc2118b45cc49522cf6f9a93265",
+  "knowledge_file_count": 49,
+  "knowledge_snapshot_kind": "execution_source_files",
+  "model": "qwen3.8-flash",
+  "provider": "auto",
+  "thinking_budget": 4096,
+  "rag_enabled": true,
+  "rag_auto_sync": true,
+  "embedding_model": "qwen3.7-text-embedding",
+  "loader": "RAGSpecLoader"
+}
