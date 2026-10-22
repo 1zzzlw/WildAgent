@@ -63,6 +63,7 @@ export interface MeshData {
   interaction?: InteractiveElementBehavior;
   /** 编辑器可将同一组合构件的网格作为整体拖动。 */
   draggable?: boolean;
+  label?: import('../../types').TextLabel;
 }
 
 /** 引擎输出的材质参数 */

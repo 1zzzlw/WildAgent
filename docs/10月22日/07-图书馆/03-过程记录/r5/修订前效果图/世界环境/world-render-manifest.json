@@ -1,0 +1,60 @@
+{
+  "input": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\07-图书馆\\知序图书馆.wild",
+  "inputSha256": "a8e7638a9278902fae7381c8c4fe8b740df8409ca13736380392b16aaf498e0b",
+  "renderer": "production renderEntity + materialAdapter + WorldEnvironmentMapRuntime + waterSurfaceMaterial",
+  "settings": {
+    "width": 1440,
+    "height": 1080,
+    "shadows": "PCFSoft 2048",
+    "timePresets": [
+      "day",
+      "night"
+    ],
+    "water": {
+      "transparency": 1,
+      "waveStrength": 0.65,
+      "time": 2.4
+    }
+  },
+  "shots": [
+    "day.png",
+    "night.png",
+    "sign.png"
+  ],
+  "boundingBox": {
+    "min": [
+      -16,
+      -0.19999999940395358,
+      -16
+    ],
+    "max": [
+      16,
+      9.792499998807907,
+      16
+    ]
+  },
+  "meshCount": 1459,
+  "labels": 2,
+  "lightSources": 10,
+  "diagnostics": [
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+      "elementType": "roof"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "opening: 墙体洞口及门窗覆盖几何",
+      "elementType": "opening"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "beam: 矩形、圆形与工字梁",
+      "elementType": "beam"
+    }
+  ],
+  "runtimeErrors": []
+}

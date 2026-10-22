@@ -1,0 +1,14 @@
+{
+  "command": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\00-公共脚本\\编译图片复建.py",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\01-需求与设计\\DesignDocument.json",
+    "--check"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T20:00:47.444778+08:00",
+  "ended_at": "2026-10-22T20:00:47.715187+08:00",
+  "exit_code": 0,
+  "stdout": "{\"replay_identical\": true, \"sha256\": \"5927ae318d22e264a6ce86cec0ae50a37eb87e25f3f174cc3c91aa836c125978\"}\n",
+  "stderr": ""
+}

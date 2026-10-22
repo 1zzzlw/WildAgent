@@ -167,6 +167,7 @@ export class WorldEnvironmentMapRuntime {
   private environmentScene: THREE.Scene | null = null
   private environmentSky: Sky | null = null
   private environmentSunSprite: THREE.Sprite | null = null
+  private environmentGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> | null = null
   private target: THREE.WebGLRenderTarget | null = null
   private lastRebuildTime = 0
   private lastSignature = ''
@@ -176,6 +177,7 @@ export class WorldEnvironmentMapRuntime {
     atmosphere: WorldAtmosphereAppearance
     sunDirection: THREE.Vector3
     isNight: boolean
+    groundColor: number
   } | null = null
 
   constructor(
@@ -198,6 +200,11 @@ export class WorldEnvironmentMapRuntime {
     this.environmentSunSprite.scale.setScalar(ENVIRONMENT_SUN_SCALE)
     this.environmentSunSprite.name = 'EnvironmentSun'
     this.environmentScene.add(this.environmentSunSprite)
+    // 下半球反射真实地面色，避免玻璃和水面向下也反射一整片天空。
+    this.environmentGround = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshBasicMaterial())
+    this.environmentGround.rotation.x = -Math.PI / 2
+    this.environmentGround.position.y = -1
+    this.environmentScene.add(this.environmentGround)
   }
 
   /** 当前生效的环境贴图；没有则为 null（调用方可据此判断 IBL 是否可用）。 */
@@ -219,12 +226,14 @@ export class WorldEnvironmentMapRuntime {
     atmosphere: WorldAtmosphereAppearance,
     sunDirection: THREE.Vector3,
     isNight: boolean,
+    groundColor = preset.groundColor,
   ): boolean {
     if (!this.pmrem || !this.environmentScene || !this.environmentSky) return false
 
     syncSkyPreset(this.environmentSky, preset, atmosphere, sunDirection)
     this.environmentScene.background = new THREE.Color(preset.background)
       .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
+    this.environmentGround?.material.color.setHex(groundColor)
     if (this.environmentSunSprite) {
       // 沿太阳方向放置亮点（距离远于 PMREM 半径），夜晚隐藏避免月光串色。
       this.environmentSunSprite.position.copy(sunDirection).multiplyScalar(ENVIRONMENT_SUN_DISTANCE)
@@ -257,10 +266,11 @@ export class WorldEnvironmentMapRuntime {
     sunDirection: THREE.Vector3,
     isNight: boolean,
     force = false,
+    groundColor = preset.groundColor,
   ): void {
-    const signature = buildEnvironmentSignature(preset, atmosphere, isNight)
+    const signature = buildEnvironmentSignature(preset, atmosphere, isNight) + '|' + groundColor
     if (!force && signature === this.lastSignature && this.pending === null) return
-    this.pending = { preset, atmosphere, sunDirection: sunDirection.clone(), isNight }
+    this.pending = { preset, atmosphere, sunDirection: sunDirection.clone(), isNight, groundColor }
     const elapsed = performance.now() - this.lastRebuildTime
     if (force || elapsed >= this.throttleMs) {
       this.flush()
@@ -282,8 +292,8 @@ export class WorldEnvironmentMapRuntime {
     if (!pending) return
     // 签名与时间戳都按"落地时"的参数记，避免把被合并掉的中间态当成已应用状态。
     this.lastRebuildTime = performance.now()
-    this.lastSignature = buildEnvironmentSignature(pending.preset, pending.atmosphere, pending.isNight)
-    if (this.rebuild(pending.preset, pending.atmosphere, pending.sunDirection, pending.isNight)) {
+    this.lastSignature = buildEnvironmentSignature(pending.preset, pending.atmosphere, pending.isNight) + '|' + pending.groundColor
+    if (this.rebuild(pending.preset, pending.atmosphere, pending.sunDirection, pending.isNight, pending.groundColor)) {
       this.onRebuilt?.()
     }
   }
@@ -302,6 +312,9 @@ export class WorldEnvironmentMapRuntime {
     this.environmentSky?.geometry.dispose()
     this.environmentSky?.material.dispose()
     this.environmentSky = null
+    this.environmentGround?.geometry.dispose()
+    this.environmentGround?.material.dispose()
+    this.environmentGround = null
     const sprite = this.environmentSunSprite
     if (sprite) {
       const material = sprite.material as THREE.SpriteMaterial

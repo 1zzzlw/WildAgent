@@ -1,0 +1,13 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/00-公共脚本/核对命名建筑.py",
+    "docs/10月22日/10-超市/邻里优选超市.wild"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:28:02.735787+08:00",
+  "ended_at": "2026-10-22T19:28:03.259826+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"wild_sha256\": \"af60695c1a40ea5c6a7ae7fe25bf61a6bc23b9d1ae7ef6db19934a2be21f8641\",\n  \"design_sha256\": \"d4ae8634ecc21e52836288ae4eceea1d16fe5f4d2fb3366ab3c899c9461ede4e\",\n  \"name\": \"邻里优选超市\",\n  \"site_size_m\": [\n    16,\n    16\n  ],\n  \"size_scope\": \"完整地块（含入口、庭院），单位米\",\n  \"main_sign\": \"邻里优选超市\",\n  \"real_lights\": 5,\n  \"project_error_steps\": [],\n  \"project_warning_steps\": [],\n  \"reconstruction_warnings\": [],\n  \"traffic\": [],\n  \"pool\": null,\n  \"roof_supports\": [\n    {\n      \"roof\": \"roof_0_0\",\n      \"base_y\": 4.4,\n      \"contacts_at_same_height\": [\n        \"market_front\",\n        \"market_right\",\n        \"market_back\",\n        \"market_left\",\n        \"backroom_front\",\n        \"backroom_side\"\n      ],\n      \"check\": \"declared rectangular footprints and top elevations\"\n    }\n  ],\n  \"baseline_context\": \"3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3\",\n  \"render_hashes_match\": true,\n  \"runtime_errors\": [],\n  \"limits\": [\n    \"剖切是查看副本，保留构件坐标不变；不把去顶后的屋面缺失警告当成完整建筑结论。\",\n    \"净空复核检查水平板与楼梯踏步采样；不是建筑结构承载、安全或规范认证。\",\n    \"审美质量依据真实渲染查看，最终仍由用户评价。\"\n  ]\n}\n",
+  "stderr": ""
+}

@@ -1,0 +1,30 @@
+{
+  "revision": 5,
+  "design_sha256": "41dc82db0daaca0a86e6e779a90b534befad1cb272ba73c006e0e0792a555be8",
+  "wild_sha256": "7ce250ff7a3f0ee5aa60bd16d5ac39b14cd0c523d8110414053aac7d42a7aa7a",
+  "elements": 1616,
+  "components": 23,
+  "materials": 28,
+  "recipe": "forest",
+  "geometry_evidence": {
+    "stair_hole": [
+      -4.665,
+      4,
+      -2.485,
+      7.26
+    ],
+    "exterior_arrival": [
+      -9.45,
+      3.4400000000000004,
+      5.16
+    ],
+    "levels": [
+      0.24,
+      3.4400000000000004,
+      6.640000000000001
+    ],
+    "roof_base": 9.690000000000001
+  },
+  "lights": 9,
+  "method": "User image -> DesignDocument -> deterministic assembly -> WILD; no Agent/model API"
+}

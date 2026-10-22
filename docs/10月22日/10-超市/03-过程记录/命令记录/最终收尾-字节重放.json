@@ -1,0 +1,14 @@
+{
+  "command": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\00-公共脚本\\编译命名建筑.py",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\10-超市\\01-需求与设计\\DesignDocument.json",
+    "--check"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:26:01.246004+08:00",
+  "ended_at": "2026-10-22T19:26:01.458789+08:00",
+  "exit_code": 0,
+  "stdout": "{\"replay_identical\": true, \"sha256\": \"af60695c1a40ea5c6a7ae7fe25bf61a6bc23b9d1ae7ef6db19934a2be21f8641\"}\n",
+  "stderr": ""
+}

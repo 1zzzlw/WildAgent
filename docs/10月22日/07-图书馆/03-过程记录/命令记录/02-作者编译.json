@@ -1,0 +1,13 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/00-公共脚本/编译命名建筑.py",
+    "docs/10月22日/07-图书馆/01-需求与设计/DesignDocument.json"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:04:07.069074+08:00",
+  "ended_at": "2026-10-22T19:04:07.232619+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"design_sha256\": \"543f307f0178ea09a1ddaa7e9a044b474dc1d23007e464cd1d80cadc4b7bf0e8\",\n  \"wild_sha256\": \"40ac54fbe502b92b56e84cc9b8c0ee42d7dc2a8aa05286f40ee913a85036985f\",\n  \"compiler\": \"docs\\\\10月22日\\\\00-公共脚本\\\\编译命名建筑.py\",\n  \"elements\": 1128,\n  \"components\": 34,\n  \"signs\": [\n    {\n      \"id\": \"building_name\",\n      \"text\": \"知序图书馆\"\n    },\n    {\n      \"id\": \"sub_name\",\n      \"text\": \"阅见世界 · READ & DISCOVER\"\n    }\n  ],\n  \"real_lights\": 10,\n  \"method\": \"DesignDocument -> deterministic author assembly -> WILD (not LangGraph)\"\n}\n",
+  "stderr": ""
+}

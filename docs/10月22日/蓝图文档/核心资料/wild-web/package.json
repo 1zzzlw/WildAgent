@@ -1,0 +1,13 @@
+{
+  "name": "wild-blueprint-portable-checks",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "原项目Core与必要渲染模块的离线资料快照；不含完整编辑器和后端",
+  "engines": {"node": ">=22.12.0"},
+  "dependencies": {
+    "three": "0.160.1",
+    "vite": "8.1.4",
+    "wild-core": "file:../wild-core"
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "deliveries": [
+    {
+      "name": "林庭石光馆",
+      "file": "11-图片复建-石光庭院/林庭石光馆.wild",
+      "sha256": "f98051a950c120ac53ded6b0f3badacae170d82f7268d8e1a4bf835756ac11cb",
+      "design_sha256": "374f7e25a941c1feec72c315d822457b568529249f2d3ea4f3498f0788483f00",
+      "elements": 1526,
+      "components": 26,
+      "site_size": [
+        32,
+        32
+      ],
+      "project_error_steps": [],
+      "project_warning_steps": [],
+      "renderer_warnings": [],
+      "geometry_evidence": {
+        "front_row_1": [
+          "front_0_0",
+          "entry",
+          "front_0_2",
+          "front_0_3"
+        ],
+        "front_row_2": [
+          "front_1_0",
+          "front_1_1",
+          "front_1_2",
+          "front_1_3"
+        ],
+        "two_tall_east_windows": [
+          "east_upper0",
+          "east_upper1"
+        ],
+        "left_glass_terrace": [
+          "wing_terrace_pane0_0",
+          "wing_terrace_pane0_1",
+          "wing_terrace_pane0_2",
+          "wing_terrace_pane0_3",
+          "wing_terrace_pane0_4",
+          "wing_terrace_pane1_0",
+          "wing_terrace_pane1_1",
+          "wing_terrace_pane1_2",
+          "wing_terrace_pane1_3",
+          "wing_terrace_pane1_4",
+          "wing_terrace_pane1_5",
+          "wing_terrace_pane2_0",
+          "wing_terrace_pane2_1",
+          "wing_terrace_pane2_2",
+          "wing_terrace_pane2_3",
+          "wing_terrace_pane2_4"
+        ],
+        "six_wide_steps": [
+          "entry_step0",
+          "entry_step1",
+          "entry_step2",
+          "entry_step3",
+          "entry_step4",
+          "entry_step5"
+        ],
+        "four_skylight_panes": [
+          "skylight_glass_front",
+          "skylight_glass_back",
+          "skylight_glass_left",
+          "skylight_glass_right"
+        ],
+        "roof_opening_headers": 4
+      },
+      "cuts": 2,
+      "runtime_errors": []
+    },
+    {
+      "name": "Forest Cafe",
+      "file": "12-图片复建-ForestCafe/Forest Cafe.wild",
+      "sha256": "7ce250ff7a3f0ee5aa60bd16d5ac39b14cd0c523d8110414053aac7d42a7aa7a",
+      "design_sha256": "41dc82db0daaca0a86e6e779a90b534befad1cb272ba73c006e0e0792a555be8",
+      "elements": 1616,
+      "components": 23,
+      "site_size": [
+        16.000000023841856,
+        16.00000023841858
+      ],
+      "project_error_steps": [],
+      "project_warning_steps": [
+        "validate_wall_junctions",
+        "validate_roof_top_coverage"
+      ],
+      "renderer_warnings": [
+        {
+          "level": "warning",
+          "code": "RECONSTRUCTION_ROOF_COVERAGE",
+          "message": "屋顶并集（2 块）未完全覆盖结构墙范围：X 低侧缺 1.68m",
+          "category": "core_geometry",
+          "repairLayer": "core",
+          "expectedBounds": {
+            "min": [
+              -10.380000001490115,
+              0.03999990463256875,
+              -0.14000005722045916
+            ],
+            "max": [
+              0.14000005245208746,
+              9.689999976158143,
+              7.740000057220459
+            ]
+          },
+          "actualBounds": {
+            "min": [
+              -8.704999971389771,
+              8.05500000745058,
+              -0.20500011444091815
+            ],
+            "max": [
+              0.2050000572204591,
+              9.909999998807908,
+              7.805000114440918
+            ]
+          }
+        }
+      ],
+      "geometry_evidence": {
+        "three_occupied_floors": true,
+        "english_sign": "Forest\nCafe\nCafe",
+        "exterior_stair_steps": 18,
+        "landing_depth": 2.4399999999999995,
+        "arrival_door_z": [
+          6.15,
+          7.25
+        ],
+        "terrace_furniture_inside_slab": true,
+        "vines": 9,
+        "dark_roof_louver_layers": 6,
+        "outside_parapet_joint": {
+          "cheek_end_z": 5.161,
+          "wall_start_z": 5.16,
+          "overlap_m": 0.0009999999999994458,
+          "height_above_landing_m": 0.9000000000000004,
+          "intent": "露天楼梯防护矮墙，顶部不需要建筑屋顶"
+        }
+      },
+      "cuts": 3,
+      "runtime_errors": []
+    }
+  ],
+  "author_script_sha256": {
+    "完成图片复建.py": "d12f14a79aadbc1250306a754dca7e0de6b988d65181fcb39967769509c31101",
+    "整理图片复建记录.py": "50411c8ea5362528dd9e2b6ab4dcf1c11002e06e0f36eae95d1484db7bff72db",
+    "核对图片复建.py": "a6f3e5b091ce9fff73916f3e4138fa3161f9e1e232272180a54aa0a44f081e12",
+    "渲染图片剖切.py": "a9164a5f25ffb181db7ebe190d3a468248727a96c6be16aaa75a781df956d623",
+    "渲染图片复建.mjs": "0b6bda2d3e79021bcced16be1632c151a70a959351e00d6cbacc4ef2df457a99",
+    "编写图片复建设计.py": "d49b3fdf75ed46f1a8bce6a5d7e4c25ee11063b7dd0798e3386ccf0a20b2ef5d",
+    "编译图片复建.py": "3a20811829957287fe3b278af39b4a40ef9b789610cd1be8ce3e6d6d08df0047"
+  }
+}

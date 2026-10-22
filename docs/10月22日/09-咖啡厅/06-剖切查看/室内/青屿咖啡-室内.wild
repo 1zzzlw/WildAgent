@@ -1,0 +1,4564 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "青屿咖啡",
+    "author": "Codex",
+    "style": "暖砖、橄榄绿金属与原木的街角咖啡厅",
+    "description": "不对称入口与通透转角窗，连续檐廊下设置外摆，室内吧台和长椅保持清楚的点单通道。 地块16×16米，招牌文字与真实灯源保存在WILD。"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "site",
+        "from": [
+          -8.0,
+          -0.2,
+          -8.0
+        ],
+        "to": [
+          8.0,
+          -0.2,
+          8.0
+        ],
+        "thickness": 0.22,
+        "material": "limestone"
+      },
+      {
+        "type": "floor",
+        "id": "lawn-7.0",
+        "from": [
+          -7.7,
+          0.015,
+          -7.4
+        ],
+        "to": [
+          -6.3,
+          0.015,
+          7.4
+        ],
+        "thickness": 0.04,
+        "material": "grass"
+      },
+      {
+        "type": "floor",
+        "id": "lawn7.0",
+        "from": [
+          6.3,
+          0.015,
+          -7.4
+        ],
+        "to": [
+          7.7,
+          0.015,
+          7.4
+        ],
+        "thickness": 0.04,
+        "material": "grass"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint1",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          -6.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint2",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          -4.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint3",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          -2.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint4",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          0.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint5",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          2.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint6",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          4.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "pave_joint7",
+        "shape": "box",
+        "position": [
+          0,
+          0.025,
+          6.0
+        ],
+        "dimensions": [
+          13,
+          0.008,
+          0.018
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "floor",
+        "id": "entry_step0",
+        "from": [
+          -3,
+          0.0,
+          -4.5
+        ],
+        "to": [
+          3,
+          0.0,
+          -2.6500000000000004
+        ],
+        "thickness": 0.13,
+        "material": "limestone"
+      },
+      {
+        "type": "floor",
+        "id": "entry_step1",
+        "from": [
+          -3,
+          0.135,
+          -4.0
+        ],
+        "to": [
+          3,
+          0.135,
+          -2.6500000000000004
+        ],
+        "thickness": 0.13,
+        "material": "limestone"
+      },
+      {
+        "type": "floor",
+        "id": "entry_step2",
+        "from": [
+          -3,
+          0.27,
+          -3.5
+        ],
+        "to": [
+          3,
+          0.27,
+          -2.6500000000000004
+        ],
+        "thickness": 0.13,
+        "material": "limestone"
+      },
+      {
+        "type": "floor",
+        "id": "ground_0_0",
+        "from": [
+          -5.8,
+          0.2,
+          -2.7
+        ],
+        "to": [
+          5.8,
+          0.2,
+          5.5
+        ],
+        "thickness": 0.2,
+        "material": "oak"
+      },
+      {
+        "type": "wall",
+        "id": "shop_front",
+        "from": [
+          -5.8,
+          0.4,
+          -2.7
+        ],
+        "to": [
+          5.8,
+          4.2,
+          -2.7
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "shop_right",
+        "from": [
+          5.8,
+          0.4,
+          -2.7
+        ],
+        "to": [
+          5.8,
+          4.2,
+          5.5
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "shop_back",
+        "from": [
+          5.8,
+          0.4,
+          5.5
+        ],
+        "to": [
+          -5.8,
+          4.2,
+          5.5
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "shop_left",
+        "from": [
+          -5.8,
+          0.4,
+          5.5
+        ],
+        "to": [
+          -5.8,
+          4.2,
+          -2.7
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_slab",
+        "shape": "box",
+        "position": [
+          0,
+          3.3,
+          -4.0
+        ],
+        "dimensions": [
+          12.3,
+          0.2,
+          2.9
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_fascia",
+        "shape": "box",
+        "position": [
+          0,
+          3.335,
+          -5.45
+        ],
+        "dimensions": [
+          12.3,
+          0.27,
+          0.1
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_post0",
+        "shape": "box",
+        "position": [
+          -5.7,
+          1.8499999999999999,
+          -5.1000000000000005
+        ],
+        "dimensions": [
+          0.13,
+          2.9,
+          0.13
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_post1",
+        "shape": "box",
+        "position": [
+          5.7,
+          1.8499999999999999,
+          -5.1000000000000005
+        ],
+        "dimensions": [
+          0.13,
+          2.9,
+          0.13
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit0",
+        "shape": "box",
+        "position": [
+          -5.550000000000001,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit1",
+        "shape": "box",
+        "position": [
+          -4.3500000000000005,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit2",
+        "shape": "box",
+        "position": [
+          -3.150000000000001,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit3",
+        "shape": "box",
+        "position": [
+          -1.950000000000001,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit4",
+        "shape": "box",
+        "position": [
+          -0.7500000000000009,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit5",
+        "shape": "box",
+        "position": [
+          0.4499999999999993,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit6",
+        "shape": "box",
+        "position": [
+          1.6499999999999986,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit7",
+        "shape": "box",
+        "position": [
+          2.8499999999999996,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit8",
+        "shape": "box",
+        "position": [
+          4.049999999999999,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_roof_soffit9",
+        "shape": "box",
+        "position": [
+          5.249999999999998,
+          3.1849999999999996,
+          -4.0
+        ],
+        "dimensions": [
+          0.065,
+          0.04,
+          2.8
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "building_name",
+        "shape": "box",
+        "position": [
+          0,
+          3.6,
+          -5.56
+        ],
+        "dimensions": [
+          5.1,
+          0.72,
+          0.14
+        ],
+        "material": "green",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ],
+        "label": {
+          "text": "青屿咖啡",
+          "color": [
+            0.96,
+            0.86,
+            0.62
+          ],
+          "fontFamily": "sans-serif"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "building_name_l",
+        "shape": "box",
+        "position": [
+          -2.51,
+          3.6,
+          -5.638
+        ],
+        "dimensions": [
+          0.025,
+          0.6599999999999999,
+          0.025
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "building_name_r",
+        "shape": "box",
+        "position": [
+          2.51,
+          3.6,
+          -5.638
+        ],
+        "dimensions": [
+          0.025,
+          0.6599999999999999,
+          0.025
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_0_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_0_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_0_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_0_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_1_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_1_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_1_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_1_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_2_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_2_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_2_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_2_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_3_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_3_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_3_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_3_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_4_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_4_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_4_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_4_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_5_0",
+        "shape": "box",
+        "position": [
+          -5.52,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_5_1",
+        "shape": "box",
+        "position": [
+          -5.595,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_5_2",
+        "shape": "box",
+        "position": [
+          -5.67,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_-1_5_3",
+        "shape": "box",
+        "position": [
+          -5.744999999999999,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_0_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_0_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_0_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_0_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          0.56,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_1_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_1_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_1_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_1_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          0.78,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_2_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_2_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_2_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_2_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          1.0,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_3_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_3_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_3_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_3_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          1.2200000000000002,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_4_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_4_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_4_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_4_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          1.44,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_5_0",
+        "shape": "box",
+        "position": [
+          5.52,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_5_1",
+        "shape": "box",
+        "position": [
+          5.595,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_5_2",
+        "shape": "box",
+        "position": [
+          5.67,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "brick_1_5_3",
+        "shape": "box",
+        "position": [
+          5.744999999999999,
+          1.6600000000000001,
+          -2.835
+        ],
+        "dimensions": [
+          0.067,
+          0.19,
+          0.027
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit0",
+        "shape": "box",
+        "position": [
+          -2.4,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit1",
+        "shape": "box",
+        "position": [
+          -1.5,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit2",
+        "shape": "box",
+        "position": [
+          -0.5999999999999999,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit3",
+        "shape": "box",
+        "position": [
+          0.30000000000000027,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit4",
+        "shape": "box",
+        "position": [
+          1.2000000000000002,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit5",
+        "shape": "box",
+        "position": [
+          2.1,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_unit6",
+        "shape": "box",
+        "position": [
+          3.0000000000000004,
+          0.89,
+          3.4
+        ],
+        "dimensions": [
+          0.87,
+          0.98,
+          0.8
+        ],
+        "material": "green"
+      },
+      {
+        "type": "primitive",
+        "id": "bar_counter",
+        "shape": "box",
+        "position": [
+          0.3,
+          1.4100000000000001,
+          3.4
+        ],
+        "dimensions": [
+          6.35,
+          0.08,
+          0.94
+        ],
+        "material": "limestone"
+      },
+      {
+        "type": "primitive",
+        "id": "espresso_machine",
+        "shape": "box",
+        "position": [
+          -0.5,
+          1.75,
+          3.5
+        ],
+        "dimensions": [
+          1.1,
+          0.6,
+          0.62
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "espresso_panel",
+        "shape": "box",
+        "position": [
+          -0.5,
+          1.8199999999999998,
+          3.17
+        ],
+        "dimensions": [
+          0.88,
+          0.35,
+          0.025
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "coffee_group0",
+        "shape": "box",
+        "position": [
+          -0.8,
+          1.58,
+          3.12
+        ],
+        "dimensions": [
+          0.09,
+          0.2,
+          0.13
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "coffee_spout0",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -0.8,
+            1.58,
+            3.06
+          ],
+          [
+            -0.8,
+            1.5,
+            2.99
+          ]
+        ],
+        "radius": 0.018,
+        "segments": 8,
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "coffee_group1",
+        "shape": "box",
+        "position": [
+          -0.20000000000000007,
+          1.58,
+          3.12
+        ],
+        "dimensions": [
+          0.09,
+          0.2,
+          0.13
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "coffee_spout1",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -0.20000000000000007,
+            1.58,
+            3.06
+          ],
+          [
+            -0.20000000000000007,
+            1.5,
+            2.99
+          ]
+        ],
+        "radius": 0.018,
+        "segments": 8,
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "pastry_case",
+        "shape": "box",
+        "position": [
+          2.1,
+          1.6800000000000002,
+          3.4
+        ],
+        "dimensions": [
+          1.5,
+          0.46,
+          0.7
+        ],
+        "material": "glass"
+      },
+      {
+        "type": "primitive",
+        "id": "pastry0",
+        "shape": "sphere",
+        "position": [
+          1.55,
+          1.5,
+          3.3
+        ],
+        "radius": 0.1,
+        "material": "clay",
+        "scale": [
+          1,
+          0.5,
+          0.7
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "pastry1",
+        "shape": "sphere",
+        "position": [
+          1.82,
+          1.5,
+          3.3
+        ],
+        "radius": 0.1,
+        "material": "clay",
+        "scale": [
+          1,
+          0.5,
+          0.7
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "pastry2",
+        "shape": "sphere",
+        "position": [
+          2.09,
+          1.5,
+          3.3
+        ],
+        "radius": 0.1,
+        "material": "clay",
+        "scale": [
+          1,
+          0.5,
+          0.7
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "pastry3",
+        "shape": "sphere",
+        "position": [
+          2.3600000000000003,
+          1.5,
+          3.3
+        ],
+        "radius": 0.1,
+        "material": "clay",
+        "scale": [
+          1,
+          0.5,
+          0.7
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "pastry4",
+        "shape": "sphere",
+        "position": [
+          2.63,
+          1.5,
+          3.3
+        ],
+        "radius": 0.1,
+        "material": "clay",
+        "scale": [
+          1,
+          0.5,
+          0.7
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "cup0",
+        "shape": "cylinder",
+        "position": [
+          -2.1,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "cup1",
+        "shape": "cylinder",
+        "position": [
+          -1.9000000000000001,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "cup2",
+        "shape": "cylinder",
+        "position": [
+          -1.7000000000000002,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "cup3",
+        "shape": "cylinder",
+        "position": [
+          -1.5,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "cup4",
+        "shape": "cylinder",
+        "position": [
+          -1.3,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "cup5",
+        "shape": "cylinder",
+        "position": [
+          -1.1,
+          1.52,
+          3.3
+        ],
+        "radius": 0.055,
+        "height": 0.14,
+        "segments": 16,
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_top",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1050000000000002,
+          -0.5
+        ],
+        "dimensions": [
+          1.2,
+          0.07,
+          0.65
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -4.279999999999999,
+          0.735,
+          -0.7050000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -4.279999999999999,
+          0.735,
+          -0.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.32,
+          0.735,
+          -0.7050000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.32,
+          0.735,
+          -0.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          -3.8,
+          0.8600000000000001,
+          -1.305
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_back",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1800000000000002,
+          -1.535
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          -1.4949999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          -1.115
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          -1.4949999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          -1.115
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          -3.8,
+          0.8600000000000001,
+          0.30499999999999994
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_back",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1800000000000002,
+          0.5349999999999999
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          0.11499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          0.49499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          0.11499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          0.49499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table0_book",
+        "shape": "box",
+        "position": [
+          -3.5799999999999996,
+          1.1800000000000002,
+          -0.5
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_top",
+        "shape": "box",
+        "position": [
+          3.7,
+          1.1050000000000002,
+          -0.5
+        ],
+        "dimensions": [
+          1.2,
+          0.07,
+          0.65
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.22,
+          0.735,
+          -0.7050000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.22,
+          0.735,
+          -0.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          4.18,
+          0.735,
+          -0.7050000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_leg_1_1",
+        "shape": "box",
+        "position": [
+          4.18,
+          0.735,
+          -0.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          3.7,
+          0.8600000000000001,
+          -1.305
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_back",
+        "shape": "box",
+        "position": [
+          3.7,
+          1.1800000000000002,
+          -1.535
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.5100000000000002,
+          0.62,
+          -1.4949999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.5100000000000002,
+          0.62,
+          -1.115
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          3.89,
+          0.62,
+          -1.4949999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          3.89,
+          0.62,
+          -1.115
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          3.7,
+          0.8600000000000001,
+          0.30499999999999994
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_back",
+        "shape": "box",
+        "position": [
+          3.7,
+          1.1800000000000002,
+          0.5349999999999999
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.5100000000000002,
+          0.62,
+          0.11499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.5100000000000002,
+          0.62,
+          0.49499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          3.89,
+          0.62,
+          0.11499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          3.89,
+          0.62,
+          0.49499999999999994
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table1_book",
+        "shape": "box",
+        "position": [
+          3.9200000000000004,
+          1.1800000000000002,
+          -0.5
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_top",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1050000000000002,
+          1.6
+        ],
+        "dimensions": [
+          1.2,
+          0.07,
+          0.65
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -4.279999999999999,
+          0.735,
+          1.395
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -4.279999999999999,
+          0.735,
+          1.8050000000000002
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.32,
+          0.735,
+          1.395
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.32,
+          0.735,
+          1.8050000000000002
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          -3.8,
+          0.8600000000000001,
+          0.7950000000000002
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_back",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1800000000000002,
+          0.5650000000000002
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          0.6050000000000002
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          0.9850000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          0.6050000000000002
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          0.9850000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          -3.8,
+          0.8600000000000001,
+          2.4050000000000002
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_back",
+        "shape": "box",
+        "position": [
+          -3.8,
+          1.1800000000000002,
+          2.6350000000000002
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          2.2150000000000003
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.9899999999999998,
+          0.62,
+          2.595
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          2.2150000000000003
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.61,
+          0.62,
+          2.595
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "inside_table2_book",
+        "shape": "box",
+        "position": [
+          -3.5799999999999996,
+          1.1800000000000002,
+          1.6
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "window_bench_seat",
+        "shape": "box",
+        "position": [
+          -5.28,
+          0.8200000000000001,
+          1.0
+        ],
+        "dimensions": [
+          0.52,
+          0.14,
+          2.6
+        ],
+        "material": "sage_fabric"
+      },
+      {
+        "type": "primitive",
+        "id": "window_bench_base",
+        "shape": "box",
+        "position": [
+          -5.28,
+          0.5900000000000001,
+          1.0
+        ],
+        "dimensions": [
+          0.46,
+          0.38,
+          2.5
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "window_bench_back",
+        "shape": "box",
+        "position": [
+          -5.53,
+          1.15,
+          1.0
+        ],
+        "dimensions": [
+          0.09,
+          0.75,
+          2.6
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_top",
+        "shape": "box",
+        "position": [
+          -3.6,
+          0.8049999999999999,
+          -5.5
+        ],
+        "dimensions": [
+          1.2,
+          0.07,
+          0.65
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -4.08,
+          0.43499999999999994,
+          -5.705
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -4.08,
+          0.43499999999999994,
+          -5.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.12,
+          0.43499999999999994,
+          -5.705
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.12,
+          0.43499999999999994,
+          -5.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          -3.6,
+          0.56,
+          -6.305
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_back",
+        "shape": "box",
+        "position": [
+          -3.6,
+          0.88,
+          -6.535
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.79,
+          0.32,
+          -6.495
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.79,
+          0.32,
+          -6.114999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.41,
+          0.32,
+          -6.495
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.41,
+          0.32,
+          -6.114999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          -3.6,
+          0.56,
+          -4.695
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_back",
+        "shape": "box",
+        "position": [
+          -3.6,
+          0.88,
+          -4.465
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          -3.79,
+          0.32,
+          -4.885000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          -3.79,
+          0.32,
+          -4.505
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          -3.41,
+          0.32,
+          -4.885000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          -3.41,
+          0.32,
+          -4.505
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table0_book",
+        "shape": "box",
+        "position": [
+          -3.38,
+          0.88,
+          -5.5
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_top",
+        "shape": "box",
+        "position": [
+          3.6,
+          0.8049999999999999,
+          -5.5
+        ],
+        "dimensions": [
+          1.2,
+          0.07,
+          0.65
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.12,
+          0.43499999999999994,
+          -5.705
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.12,
+          0.43499999999999994,
+          -5.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          4.08,
+          0.43499999999999994,
+          -5.705
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_leg_1_1",
+        "shape": "box",
+        "position": [
+          4.08,
+          0.43499999999999994,
+          -5.295
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          3.6,
+          0.56,
+          -6.305
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_back",
+        "shape": "box",
+        "position": [
+          3.6,
+          0.88,
+          -6.535
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.41,
+          0.32,
+          -6.495
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.41,
+          0.32,
+          -6.114999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          3.79,
+          0.32,
+          -6.495
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          3.79,
+          0.32,
+          -6.114999999999999
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          3.6,
+          0.56,
+          -4.695
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_back",
+        "shape": "box",
+        "position": [
+          3.6,
+          0.88,
+          -4.465
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.41,
+          0.32,
+          -4.885000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.41,
+          0.32,
+          -4.505
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          3.79,
+          0.32,
+          -4.885000000000001
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          3.79,
+          0.32,
+          -4.505
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "outside_table1_book",
+        "shape": "box",
+        "position": [
+          3.8200000000000003,
+          0.88,
+          -5.5
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "wall",
+        "id": "wc_partition",
+        "from": [
+          3.5,
+          0.4,
+          2.2
+        ],
+        "to": [
+          5.8,
+          4.2,
+          2.2
+        ],
+        "thickness": 0.14,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "wc_side",
+        "from": [
+          3.5,
+          0.4,
+          2.2
+        ],
+        "to": [
+          3.5,
+          4.2,
+          5.5
+        ],
+        "thickness": 0.14,
+        "material": "plaster"
+      },
+      {
+        "type": "primitive",
+        "id": "wc",
+        "shape": "box",
+        "position": [
+          4.8,
+          0.7,
+          4.6
+        ],
+        "dimensions": [
+          0.45,
+          0.6,
+          0.65
+        ],
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "menu",
+        "shape": "box",
+        "position": [
+          -5.0,
+          1.55,
+          -6.5
+        ],
+        "dimensions": [
+          1.1,
+          1.3,
+          0.14
+        ],
+        "material": "dark_wood",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ],
+        "label": {
+          "text": "COFFEE\n烘焙 · 手冲",
+          "color": [
+            0.96,
+            0.86,
+            0.62
+          ],
+          "fontFamily": "sans-serif"
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "menu_l",
+        "shape": "box",
+        "position": [
+          -5.51,
+          1.55,
+          -6.578
+        ],
+        "dimensions": [
+          0.025,
+          1.24,
+          0.025
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "menu_r",
+        "shape": "box",
+        "position": [
+          -4.49,
+          1.55,
+          -6.578
+        ],
+        "dimensions": [
+          0.025,
+          1.24,
+          0.025
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "menu_leg-0.42",
+        "shape": "box",
+        "position": [
+          -5.42,
+          0.5,
+          -6.45
+        ],
+        "dimensions": [
+          0.06,
+          1,
+          0.12
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "menu_leg0.42",
+        "shape": "box",
+        "position": [
+          -4.58,
+          0.5,
+          -6.45
+        ],
+        "dimensions": [
+          0.06,
+          1,
+          0.12
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "plants0_body",
+        "shape": "box",
+        "position": [
+          -6.8,
+          0.305,
+          -5.3
+        ],
+        "dimensions": [
+          1.2,
+          0.45,
+          1.2
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "plants0_soil",
+        "shape": "box",
+        "position": [
+          -6.8,
+          0.536,
+          -5.3
+        ],
+        "dimensions": [
+          1.08,
+          0.024,
+          1.08
+        ],
+        "material": "soil"
+      },
+      {
+        "type": "primitive",
+        "id": "plants0_plant0",
+        "shape": "sphere",
+        "position": [
+          -7.256,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants0_plant1",
+        "shape": "sphere",
+        "position": [
+          -6.800000000000001,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants0_plant2",
+        "shape": "sphere",
+        "position": [
+          -6.344,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants1_body",
+        "shape": "box",
+        "position": [
+          6.8,
+          0.305,
+          -5.3
+        ],
+        "dimensions": [
+          1.2,
+          0.45,
+          1.2
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "plants1_soil",
+        "shape": "box",
+        "position": [
+          6.8,
+          0.536,
+          -5.3
+        ],
+        "dimensions": [
+          1.08,
+          0.024,
+          1.08
+        ],
+        "material": "soil"
+      },
+      {
+        "type": "primitive",
+        "id": "plants1_plant0",
+        "shape": "sphere",
+        "position": [
+          6.343999999999999,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants1_plant1",
+        "shape": "sphere",
+        "position": [
+          6.799999999999999,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants1_plant2",
+        "shape": "sphere",
+        "position": [
+          7.255999999999999,
+          0.75,
+          -5.3
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants2_body",
+        "shape": "box",
+        "position": [
+          6.7,
+          0.305,
+          5.9
+        ],
+        "dimensions": [
+          1.2,
+          0.45,
+          1.2
+        ],
+        "material": "concrete"
+      },
+      {
+        "type": "primitive",
+        "id": "plants2_soil",
+        "shape": "box",
+        "position": [
+          6.7,
+          0.536,
+          5.9
+        ],
+        "dimensions": [
+          1.08,
+          0.024,
+          1.08
+        ],
+        "material": "soil"
+      },
+      {
+        "type": "primitive",
+        "id": "plants2_plant0",
+        "shape": "sphere",
+        "position": [
+          6.244,
+          0.75,
+          5.9
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants2_plant1",
+        "shape": "sphere",
+        "position": [
+          6.699999999999999,
+          0.75,
+          5.9
+        ],
+        "radius": 0.29,
+        "material": "leaf",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "plants2_plant2",
+        "shape": "sphere",
+        "position": [
+          7.156,
+          0.75,
+          5.9
+        ],
+        "radius": 0.29,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.8,
+          0.9
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_trunk",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -6.5,
+            0.1,
+            5.5
+          ],
+          [
+            -6.3895,
+            1.4600000000000002,
+            5.5
+          ],
+          [
+            -6.585,
+            2.3525,
+            5.585
+          ]
+        ],
+        "radius": 0.0765,
+        "segments": 8,
+        "material": "bark"
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_branch_0",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -6.432,
+            1.4600000000000002,
+            5.5
+          ],
+          [
+            -7.0525,
+            1.8,
+            5.5425
+          ]
+        ],
+        "radius": 0.029750000000000002,
+        "segments": 8,
+        "material": "bark"
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_leaf_0",
+        "shape": "sphere",
+        "position": [
+          -7.0525,
+          1.8,
+          5.5425
+        ],
+        "radius": 0.697,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.56,
+          1
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_branch_1",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -6.432,
+            1.4600000000000002,
+            5.5
+          ],
+          [
+            -5.9475,
+            2.0549999999999997,
+            5.585
+          ]
+        ],
+        "radius": 0.029750000000000002,
+        "segments": 8,
+        "material": "bark"
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_leaf_1",
+        "shape": "sphere",
+        "position": [
+          -5.9475,
+          2.0549999999999997,
+          5.585
+        ],
+        "radius": 0.731,
+        "material": "leaf",
+        "scale": [
+          1,
+          0.56,
+          1
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_branch_2",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -6.432,
+            1.4600000000000002,
+            5.5
+          ],
+          [
+            -6.653,
+            2.565,
+            5.245
+          ]
+        ],
+        "radius": 0.029750000000000002,
+        "segments": 8,
+        "material": "bark"
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_leaf_2",
+        "shape": "sphere",
+        "position": [
+          -6.653,
+          2.565,
+          5.245
+        ],
+        "radius": 0.663,
+        "material": "leaf_light",
+        "scale": [
+          1,
+          0.56,
+          1
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_branch_3",
+        "shape": "profile_sweep",
+        "path": [
+          [
+            -6.432,
+            1.4600000000000002,
+            5.5
+          ],
+          [
+            -6.33,
+            2.7775,
+            5.755
+          ]
+        ],
+        "radius": 0.029750000000000002,
+        "segments": 8,
+        "material": "bark"
+      },
+      {
+        "type": "primitive",
+        "id": "street_tree_leaf_3",
+        "shape": "sphere",
+        "position": [
+          -6.33,
+          2.7775,
+          5.755
+        ],
+        "radius": 0.5780000000000001,
+        "material": "leaf",
+        "scale": [
+          1,
+          0.56,
+          1
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "pendant0_back",
+        "shape": "box",
+        "position": [
+          -4,
+          2.8,
+          0.9400000000000001
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "pendant0_glow",
+        "shape": "box",
+        "position": [
+          -4,
+          2.8,
+          0.9
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 16,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "pendant1_back",
+        "shape": "box",
+        "position": [
+          0,
+          2.8,
+          0.9400000000000001
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "pendant1_glow",
+        "shape": "box",
+        "position": [
+          0,
+          2.8,
+          0.9
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 16,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "pendant2_back",
+        "shape": "box",
+        "position": [
+          4,
+          2.8,
+          0.9400000000000001
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "pendant2_glow",
+        "shape": "box",
+        "position": [
+          4,
+          2.8,
+          0.9
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 16,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_light0_back",
+        "shape": "box",
+        "position": [
+          -5.4,
+          2.7,
+          -3.66
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_light0_glow",
+        "shape": "box",
+        "position": [
+          -5.4,
+          2.7,
+          -3.7
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 3,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_light1_back",
+        "shape": "box",
+        "position": [
+          5.4,
+          2.7,
+          -3.66
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_light1_glow",
+        "shape": "box",
+        "position": [
+          5.4,
+          2.7,
+          -3.7
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 3,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      }
+    ],
+    "components": [
+      {
+        "type": "door",
+        "id": "entry",
+        "parentWall": "shop_front",
+        "from": [
+          4.8,
+          0.4,
+          0
+        ],
+        "width": 1.5,
+        "height": 2.65,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "window",
+        "id": "front_showcase",
+        "parentWall": "shop_front",
+        "from": [
+          0.5,
+          0.65,
+          0
+        ],
+        "width": 3.8,
+        "height": 2.65,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 2,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "front_seating",
+        "parentWall": "shop_front",
+        "from": [
+          7,
+          0.65,
+          0
+        ],
+        "width": 4.1,
+        "height": 2.65,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 2,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "left_glass",
+        "parentWall": "shop_left",
+        "from": [
+          0.6,
+          0.9,
+          0
+        ],
+        "width": 5.3,
+        "height": 2.4,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 3,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "right_glass",
+        "parentWall": "shop_right",
+        "from": [
+          0.6,
+          0.9,
+          0
+        ],
+        "width": 5.3,
+        "height": 2.4,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 3,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "rear_exit",
+        "parentWall": "shop_back",
+        "from": [
+          9.5,
+          0.4,
+          0
+        ],
+        "width": 1,
+        "height": 2.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "door",
+        "id": "wc_entry",
+        "parentWall": "wc_partition",
+        "from": [
+          0.7,
+          0.4,
+          0
+        ],
+        "width": 0.9,
+        "height": 2.4,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "walnut",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      }
+    ]
+  },
+  "materials": {
+    "limestone": {
+      "baseColor": [
+        0.72,
+        0.69,
+        0.6
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "plaster": {
+      "baseColor": [
+        0.86,
+        0.84,
+        0.77
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete": {
+      "baseColor": [
+        0.51,
+        0.53,
+        0.51
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "dark_wood": {
+      "baseColor": [
+        0.09,
+        0.12,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0.15,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "walnut": {
+      "baseColor": [
+        0.33,
+        0.2,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "oak": {
+      "baseColor": [
+        0.57,
+        0.39,
+        0.22
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "bronze": {
+      "baseColor": [
+        0.27,
+        0.23,
+        0.16
+      ],
+      "roughness": 0.84,
+      "metallic": 0.6,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "clay": {
+      "baseColor": [
+        0.53,
+        0.25,
+        0.16
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "green": {
+      "baseColor": [
+        0.12,
+        0.25,
+        0.2
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "linen": {
+      "baseColor": [
+        0.85,
+        0.79,
+        0.64
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "sage_fabric": {
+      "baseColor": [
+        0.34,
+        0.43,
+        0.32
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "soil": {
+      "baseColor": [
+        0.15,
+        0.11,
+        0.07
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "grass": {
+      "baseColor": [
+        0.28,
+        0.37,
+        0.22
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "leaf": {
+      "baseColor": [
+        0.17,
+        0.28,
+        0.14
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "leaf_light": {
+      "baseColor": [
+        0.33,
+        0.42,
+        0.21
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "bark": {
+      "baseColor": [
+        0.24,
+        0.16,
+        0.1
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "black": {
+      "baseColor": [
+        0.025,
+        0.035,
+        0.034
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "porcelain": {
+      "baseColor": [
+        0.89,
+        0.87,
+        0.79
+      ],
+      "roughness": 0.38,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "red": {
+      "baseColor": [
+        0.61,
+        0.17,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "yellow": {
+      "baseColor": [
+        0.83,
+        0.6,
+        0.18
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "blue": {
+      "baseColor": [
+        0.17,
+        0.32,
+        0.4
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "tile": {
+      "baseColor": [
+        0.55,
+        0.61,
+        0.58
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.86,
+        0.93,
+        0.92
+      ],
+      "roughness": 0.08,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.84,
+      "ior": 1.5,
+      "thickness": 0.014,
+      "side": "double"
+    },
+    "water": {
+      "baseColor": [
+        0.23,
+        0.56,
+        0.52
+      ],
+      "roughness": 0.055,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.95,
+      "ior": 1.333,
+      "thickness": 0.35,
+      "attenuationDistance": 4,
+      "side": "front"
+    },
+    "warm_glow": {
+      "baseColor": [
+        1,
+        0.78,
+        0.44
+      ],
+      "roughness": 0.35,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "emissive": [
+        1,
+        0.63,
+        0.25
+      ],
+      "emissiveIntensity": 1.5
+    }
+  },
+  "assets": {}
+}

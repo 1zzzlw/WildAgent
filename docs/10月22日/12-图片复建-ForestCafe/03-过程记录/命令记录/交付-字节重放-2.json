@@ -1,0 +1,14 @@
+{
+  "command": [
+    "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\00-公共脚本\\编译图片复建.py",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\12-图片复建-ForestCafe\\01-需求与设计\\DesignDocument.json",
+    "--check"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T20:03:25.896071+08:00",
+  "ended_at": "2026-10-22T20:03:26.174829+08:00",
+  "exit_code": 0,
+  "stdout": "{\"replay_identical\": true, \"sha256\": \"8a3f9678c97dac2a5cca9566179d1c50cbd592f87d078ef3143fbf08a3ae28b9\"}\n",
+  "stderr": ""
+}

@@ -1,0 +1,133 @@
+{
+  "input": "docs\\10月22日\\04-凉亭\\听雨水榭-凉亭.wild",
+  "sha256": "164f8428ca97f5d91399b638cf6debf189c90e3e0ac92d3eb2be4fbbc90513e4",
+  "auto_fix": false,
+  "schema_errors": [],
+  "pipeline": [
+    {
+      "step": 1,
+      "name": "validate_blueprint_structure",
+      "output": "✅ 结构完整（676 个构件，类型: {'floor', 'roof', 'primitive', 'column', 'beam'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 2,
+      "name": "validate_element_required_fields",
+      "output": "✅ 所有 676 个基础构件和 2 个组合构件的必填字段完整（基础类型: {'floor', 'roof', 'primitive', 'column', 'beam'}，组合类型: {'light'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 3,
+      "name": "validate_reference_integrity",
+      "output": "✅ 引用完整性通过。（676 个基础构件，2 个组合构件，0 个模板，0 个实例）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 4,
+      "name": "validate_opening_coords",
+      "output": "✅ 没有 opening/门窗组件，跳过检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "4b",
+      "name": "validate_opening_fit",
+      "output": "✅ 没有 opening/门窗组件，跳过检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 5,
+      "name": "validate_wall_junctions",
+      "output": "✅ 少于 2 面墙，跳过连接检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 6,
+      "name": "validate_stair_alignment",
+      "output": "✅ 没有 stair 构件，跳过检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 7,
+      "name": "validate_roof_coverage",
+      "output": "❌ [main_roof] 屋顶底标高 position[1]=4.05 高于承托柱顶 3.56m，悬空 0.49m。position[1] 必须等于其承托构件的顶标高，不要额外加上楼板厚度或层高。",
+      "has_error": true,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7b",
+      "name": "validate_element_dimensions",
+      "output": "✅ 所有 678 个构件尺寸合理。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7c",
+      "name": "validate_model_quality",
+      "output": "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7d",
+      "name": "validate_stacked_member_containment",
+      "output": "✅ 无法定义逐层外墙轮廓（单层结构墙不足 3 面），跳过贯通墙体收进检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7e",
+      "name": "validate_roof_top_coverage",
+      "output": "✅ 没有结构性墙构件，跳过检查。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 9,
+      "name": "validate_collision",
+      "output": "✅ 碰撞检测通过，共检查 18 个构件，未发现空间冲突。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.1",
+      "name": "validate_light_placement",
+      "output": "✅ 灯具校验通过 (2 个灯具)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.2",
+      "name": "validate_primitive_placement",
+      "output": "✅ 所有 676 个基础构件和 2 个组合构件的必填字段完整（基础类型: {'floor', 'roof', 'primitive', 'column', 'beam'}，组合类型: {'light'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    }
+  ],
+  "pipeline_error_steps": [
+    "validate_roof_coverage"
+  ],
+  "pipeline_warning_steps": [],
+  "source_unchanged": true
+}

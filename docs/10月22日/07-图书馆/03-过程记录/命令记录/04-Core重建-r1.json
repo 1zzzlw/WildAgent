@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "wild-web/scripts/validate-generated.mjs",
+    "docs/10月22日/07-图书馆/知序图书馆.wild"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:04:14.111401+08:00",
+  "ended_at": "2026-10-22T19:04:14.777421+08:00",
+  "exit_code": 0,
+  "stdout": "蓝图: docs/10月22日/07-图书馆/知序图书馆.wild\n组件编译诊断: 0 (错误 0)\n网格数: 1427\n材质参数: 1427\n包围盒: min=[-16,-0.19999999940395358,-16] max=[16,8.909999999403954,16]\nfiniteBounds=true validMeshes=true\n重建诊断: 错误 0, 警告 0\n\n校验通过: 0 错误\n",
+  "stderr": ""
+}

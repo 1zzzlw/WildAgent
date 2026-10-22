@@ -1,0 +1,26 @@
+{
+  "revision": 3,
+  "design_sha256": "8ec2bca1227ee09e9c9a708db5bfa41563fbc9df07d3bb8cf75f27975e0cfd15",
+  "wild_sha256": "6c8c4a39689a482d2346a08d5cc1af8d6bf324bd145c2e690c8a4d03077ec3e2",
+  "elements": 1249,
+  "components": 26,
+  "materials": 26,
+  "recipe": "stone",
+  "geometry_evidence": {
+    "stair_hole": [
+      -2.105,
+      5.6,
+      0.27500000000000013,
+      9.76
+    ],
+    "skylight_hole": [
+      1.8,
+      2.5,
+      5.8,
+      6.1
+    ],
+    "roof_base": 8.3
+  },
+  "lights": 7,
+  "method": "User image -> DesignDocument -> deterministic assembly -> WILD; no Agent/model API"
+}

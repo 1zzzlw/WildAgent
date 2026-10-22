@@ -59,6 +59,16 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const showGrid = ref(true)
   const waterAnimated = ref(true)
   try { waterAnimated.value = localStorage.getItem('wild_water_animated') !== 'false' } catch { /* 默认动态水面。 */ }
+  const waterPreferences = { transparency: 1, waveStrength: 0.65 }
+  try {
+    const saved = JSON.parse(localStorage.getItem('wild_water_appearance_v1') || '{}')
+    for (const key of ['transparency', 'waveStrength'] as const) {
+      if (typeof saved[key] === 'number' && Number.isFinite(saved[key])) waterPreferences[key] = Math.max(0, Math.min(1, saved[key]))
+    }
+  } catch { /* 使用默认水面外观。 */ }
+  const waterTransparency = ref(waterPreferences.transparency)
+  const waterWaveStrength = ref(waterPreferences.waveStrength)
+  const sceneDimensions = ref({ width: 0, depth: 0, gridSize: 16, gridStep: 1 })
   /** 相机自动旋转（OrbitControls.autoRotate）。 */
   const autoRotate = ref(false)
   /** 自动旋转速度（OrbitControls.autoRotateSpeed，2.0 = 30 秒一圈）。 */
@@ -94,6 +104,9 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     showEdges,
     showGrid,
     waterAnimated,
+    waterTransparency,
+    waterWaveStrength,
+    sceneDimensions,
     autoRotate,
     autoRotateSpeed,
     resetViewNonce,

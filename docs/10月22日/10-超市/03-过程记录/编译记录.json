@@ -1,0 +1,31 @@
+{
+  "design_sha256": "d4ae8634ecc21e52836288ae4eceea1d16fe5f4d2fb3366ab3c899c9461ede4e",
+  "wild_sha256": "af60695c1a40ea5c6a7ae7fe25bf61a6bc23b9d1ae7ef6db19934a2be21f8641",
+  "compiler": "docs\\10月22日\\00-公共脚本\\编译命名建筑.py",
+  "elements": 574,
+  "components": 7,
+  "signs": [
+    {
+      "id": "building_name",
+      "text": "邻里优选超市"
+    },
+    {
+      "id": "fresh_sign",
+      "text": "每日鲜选 · FRESH MARKET"
+    },
+    {
+      "id": "aisle_name0",
+      "text": "粮油 · 食品"
+    },
+    {
+      "id": "aisle_name1",
+      "text": "零食 · 饮料"
+    },
+    {
+      "id": "aisle_name2",
+      "text": "日用 · 清洁"
+    }
+  ],
+  "real_lights": 5,
+  "method": "DesignDocument -> deterministic author assembly -> WILD (not LangGraph)"
+}

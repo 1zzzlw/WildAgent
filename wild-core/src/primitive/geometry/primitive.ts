@@ -1,6 +1,7 @@
 import type { MeshData, PrimitiveParams, Vec3 } from '../types';
 import { createBoxGeometry } from './wall';
 import { generatePlanarUVs, indexTriList } from './mesh-helper';
+import type { LightElementBehavior, LightSourceDef } from '../../../types';
 
 type Vec2 = [number, number];
 
@@ -12,6 +13,11 @@ interface GeometryBuffers {
 }
 
 export function buildPrimitive(params: PrimitiveParams): MeshData[] {
+  if (params.label && (params.shape !== 'box' || typeof params.label.text !== 'string'
+    || !params.label.text.trim() || params.label.text.length > 256)) {
+    throw new Error('primitive.label 需要 box 外形和 1～256 字符的非空文字');
+  }
+  const interaction = params.lightSource ? resolveLightSource(params.lightSource) : undefined;
   const materialRef = params.material || 'default';
   const transform = {
     position: params.position || [0, 0, 0] as Vec3,
@@ -41,7 +47,30 @@ export function buildPrimitive(params: PrimitiveParams): MeshData[] {
     ...buffers,
     transform,
     materialRef,
+    label: params.label,
+    interaction,
   }];
+}
+
+function resolveLightSource(source: LightSourceDef): LightElementBehavior {
+  const intensity = source.intensity ?? 25;
+  const distance = source.distance ?? 8;
+  const angle = source.angle ?? 45;
+  if (!Number.isFinite(intensity) || intensity < 0) throw new Error('lightSource.intensity 必须为非负有限数');
+  assertPositive(distance, 'lightSource.distance');
+  assertPositive(angle, 'lightSource.angle');
+  if (angle > 90) throw new Error('lightSource.angle 不能超过 90 度');
+  if (source.lightType && !['point', 'spot'].includes(source.lightType)) throw new Error('lightSource.lightType 必须为 point 或 spot');
+  for (const [key, vector] of Object.entries({ color: source.color, offset: source.offset, direction: source.direction })) {
+    if (vector && (vector.length !== 3 || !vector.every(Number.isFinite))) throw new Error(`lightSource.${key} 必须为三维有限数向量`);
+  }
+  if (source.color?.some(value => value < 0 || value > 1)) throw new Error('lightSource.color 必须在 0～1 之间');
+  if (source.direction && Math.hypot(...source.direction) === 0) throw new Error('lightSource.direction 不能为零向量');
+  return {
+    kind: 'light', lightType: source.lightType ?? 'point', color: source.color ?? [1, 0.82, 0.58],
+    lowIntensity: intensity, highIntensity: intensity * 3, distance, angle,
+    initiallyOn: source.initiallyOn ?? true, offset: source.offset, direction: source.direction,
+  };
 }
 
 function buildBox(params: PrimitiveParams): GeometryBuffers {

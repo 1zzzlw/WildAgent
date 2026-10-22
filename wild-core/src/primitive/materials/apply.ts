@@ -5,6 +5,7 @@ import type {
   PBRTextureSetAsset,
 } from '../types';
 import { createRenderMaterialDescriptor } from '../../materials/descriptor';
+import { isWaterMaterial } from '../../materials/water';
 
 /** 烘焙效果层到基础材质参数 */
 function bakeEffects(
@@ -104,36 +105,37 @@ export function applyMaterials(
           `WILD 材质 "${mesh.materialRef}" 的 baseColor 非法，已使用默认颜色`,
         );
       }
-      mat = normalizeMaterial(source);
+      mat = normalizeMaterial(source, mesh.materialRef);
       normalizedMaterials.set(mesh.materialRef, mat);
     }
     return bakeEffects(mat, assets, mesh.materialRef);
   });
 }
 
-function normalizeMaterial(value: MaterialDef | undefined): MaterialDef {
+function normalizeMaterial(value: MaterialDef | undefined, name: string): MaterialDef {
   const fallback = defaultMaterial();
   if (!value || typeof value !== 'object') return fallback;
   const baseColor = normalizeColor(value.baseColor, fallback.baseColor);
+  const isWater = isWaterMaterial(value, name);
 
   return {
     ...fallback,
     ...value,
     baseColor,
-    roughness: normalizeUnit(value.roughness, fallback.roughness),
+    roughness: normalizeUnit(value.roughness, isWater ? 0.06 : fallback.roughness),
     metallic: normalizeUnit(value.metallic, fallback.metallic),
     albedo: normalizeUnit(value.albedo, fallback.albedo),
     emissive: value.emissive
       ? normalizeColor(value.emissive, [0, 0, 0])
       : undefined,
     opacity: normalizeUnit(value.opacity, 1),
-    transmission: normalizeUnit(value.transmission, 0),
+    transmission: normalizeUnit(value.transmission, isWater ? 0.96 : 0),
     clearcoat: normalizeUnit(value.clearcoat, 0),
     clearcoatRoughness: normalizeUnit(value.clearcoatRoughness, 0),
     sheen: normalizeUnit(value.sheen, 0),
-    ior: normalizeRange(value.ior, 1, 2.333, 1.5),
-    thickness: normalizeNonNegative(value.thickness, 0),
-    attenuationDistance: normalizePositive(value.attenuationDistance),
+    ior: normalizeRange(value.ior, 1, 2.333, isWater ? 1.333 : 1.5),
+    thickness: normalizeNonNegative(value.thickness, isWater ? 0.3 : 0),
+    attenuationDistance: normalizePositive(value.attenuationDistance) ?? (isWater ? 4 : undefined),
     attenuationColor: value.attenuationColor
       ? normalizeColor(value.attenuationColor, [1, 1, 1])
       : undefined,

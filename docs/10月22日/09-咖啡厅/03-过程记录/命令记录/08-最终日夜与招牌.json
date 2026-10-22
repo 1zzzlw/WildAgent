@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "docs/10月22日/00-公共脚本/渲染命名建筑.mjs",
+    "docs/10月22日/09-咖啡厅/青屿咖啡.wild",
+    "docs/10月22日/09-咖啡厅/05-效果图/世界环境"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:17:31.571754+08:00",
+  "ended_at": "2026-10-22T19:17:35.890892+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"input\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\09-咖啡厅\\\\青屿咖啡.wild\",\n  \"inputSha256\": \"510d73948cfb1c1ff0f1107116327209345bff3f820411ecd0155cd563b54c18\",\n  \"renderer\": \"production renderEntity + materialAdapter + WorldEnvironmentMapRuntime + waterSurfaceMaterial\",\n  \"settings\": {\n    \"width\": 1440,\n    \"height\": 1080,\n    \"shadows\": \"PCFSoft 2048\",\n    \"timePresets\": [\n      \"day\",\n      \"night\"\n    ],\n    \"water\": {\n      \"transparency\": 1,\n      \"waveStrength\": 0.65,\n      \"time\": 2.4\n    }\n  },\n  \"shots\": [\n    \"day.png\",\n    \"night.png\",\n    \"sign.png\"\n  ],\n  \"boundingBox\": {\n    \"min\": [\n      -8,\n      -0.19999999940395358,\n      -8\n    ],\n    \"max\": [\n      8,\n      4.419999998807907,\n      8\n    ]\n  },\n  \"meshCount\": 293,\n  \"labels\": 2,\n  \"lightSources\": 5,\n  \"diagnostics\": [\n    {\n      \"level\": \"info\",\n      \"code\": \"PARTIAL_CAPABILITY\",\n      \"message\": \"roof: 基础屋顶、中式曲面与重檐屋顶\",\n      \"elementType\": \"roof\"\n    },\n    {\n      \"level\": \"info\",\n      \"code\": \"PARTIAL_CAPABILITY\",\n      \"message\": \"opening: 墙体洞口及门窗覆盖几何\",\n      \"elementType\": \"opening\"\n    }\n  ],\n  \"runtimeErrors\": []\n}\n",
+  "stderr": ""
+}

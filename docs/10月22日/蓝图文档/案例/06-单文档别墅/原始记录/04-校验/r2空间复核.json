@@ -1,0 +1,92 @@
+{
+  "source_sha256": "4755c6f2850522a71727b23d7e64e25cce13ca557c66130ebb2f64cab5ac465c",
+  "revision": "r2",
+  "passed": true,
+  "upper_slab_parts": 6,
+  "upper_slab_area": 131.4776,
+  "expected_area": 131.4776,
+  "hole_clear": true,
+  "slab_parts_do_not_overlap": true,
+  "stair_count": 4,
+  "tread_headroom_samples": 72,
+  "headroom_checked_across_tread_width": true,
+  "front_platform_net_depth": 1.62,
+  "opening_count": 31,
+  "opening_ranges_and_overlap_passed": true,
+  "floor_route_points": {
+    "二层到达转向并出梯间": [
+      [
+        2.85,
+        6.6
+      ],
+      [
+        3.3,
+        5.92
+      ],
+      [
+        4.12,
+        5.92
+      ],
+      [
+        5.2,
+        5.92
+      ]
+    ],
+    "二层到主卧及露台门内": [
+      [
+        5.2,
+        5.92
+      ],
+      [
+        5.7,
+        5.0
+      ],
+      [
+        6.65,
+        5.0
+      ],
+      [
+        8.5,
+        4.0
+      ],
+      [
+        8.5,
+        3.3
+      ]
+    ],
+    "二层到次卧": [
+      [
+        5.2,
+        5.92
+      ],
+      [
+        5.2,
+        8.86
+      ],
+      [
+        6.7,
+        8.86
+      ],
+      [
+        8.2,
+        8.86
+      ]
+    ],
+    "二层到卫生间": [
+      [
+        5.2,
+        5.92
+      ],
+      [
+        5.25,
+        9.3
+      ],
+      [
+        5.25,
+        9.55
+      ]
+    ]
+  },
+  "terrace_end_returns_present": true,
+  "limitation": "离散点和轴对齐板关系复核，不是完整人员导航或施工审查。墙门关系另由后端检查和实际剖切看图。"
+}

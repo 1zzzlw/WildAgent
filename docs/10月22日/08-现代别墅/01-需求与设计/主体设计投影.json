@@ -1,0 +1,2490 @@
+{
+  "schema_version": "resolved-design/1.0",
+  "design_id": "named-villa-20261022",
+  "design_revision": 1,
+  "design_hash": "sha256:118ce10ba357b55a296b015c4a19f471e0cd74331045fc016d5d80215a4b4c7e",
+  "resolver_version": "drawing-projection/1",
+  "component_markers": [
+    {
+      "id": "building_body",
+      "type": "building_body",
+      "host": "",
+      "depends_on": [],
+      "design": {
+        "kind": "architecture",
+        "concept": "首层横向起居体量向泳池开放，上层向北退台；西侧完整双跑楼梯，东侧长露台连接卧室。",
+        "massing": {
+          "shape": "terraced",
+          "width": 20.0,
+          "depth": 14.0,
+          "floors": 2,
+          "modeled_floors": 2,
+          "representation_mode": "full",
+          "floor_height": 3.6,
+          "symmetry": false,
+          "tiers": null
+        },
+        "complexity": {
+          "level": "detailed",
+          "min_volumes": 2,
+          "min_detail_packages": 7,
+          "target_structural_elements": 180,
+          "grid_bays": [
+            4,
+            4
+          ],
+          "reason": "以层次、收边、家具与真实灯光体现精细度"
+        },
+        "volumes": [
+          {
+            "id": "main",
+            "role": "primary",
+            "x": -10.0,
+            "z": -3.0,
+            "width": 20.0,
+            "depth": 14.0,
+            "start_floor": 1,
+            "end_floor": 1
+          },
+          {
+            "id": "upper",
+            "role": "primary",
+            "x": -10.0,
+            "z": 1.0,
+            "width": 18.0,
+            "depth": 10.0,
+            "start_floor": 2,
+            "end_floor": 2
+          }
+        ],
+        "structural_grid": {
+          "system": "frame",
+          "x_bays": 4,
+          "z_bays": 4
+        },
+        "envelope": {
+          "system": "solid_wall",
+          "curtain_wall": null
+        },
+        "facades": {
+          "front": {
+            "bays": 4,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window",
+              "window",
+              "door",
+              "window"
+            ],
+            "upper_pattern": [
+              "window",
+              "window",
+              "window",
+              "window"
+            ]
+          },
+          "back": {
+            "bays": 4,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window",
+              "window",
+              "door",
+              "window"
+            ],
+            "upper_pattern": [
+              "window",
+              "window",
+              "window",
+              "window"
+            ]
+          },
+          "left": {
+            "bays": 4,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window",
+              "window",
+              "door",
+              "window"
+            ],
+            "upper_pattern": [
+              "window",
+              "window",
+              "window",
+              "window"
+            ]
+          },
+          "right": {
+            "bays": 4,
+            "entrance_bay": null,
+            "ground_pattern": [
+              "window",
+              "window",
+              "door",
+              "window"
+            ],
+            "upper_pattern": [
+              "window",
+              "window",
+              "window",
+              "window"
+            ]
+          }
+        },
+        "circulation": {
+          "vertical_strategy": "stair"
+        },
+        "materials": {
+          "keywords": [],
+          "resolved_plan": null,
+          "regions": []
+        },
+        "detail_packages": [
+          "上下体量退台",
+          "薄檐与金属滴水边",
+          "木格栅与露台玻璃栏杆",
+          "透明泳池与浅色池底",
+          "室内家具",
+          "可保存中文招牌",
+          "真实灯光"
+        ],
+        "balcony_access_count": 0,
+        "balcony_width": null,
+        "unsupported_component_types": [],
+        "design_rationale": [
+          "客厅与餐厅",
+          "厨房与客用卫生间",
+          "主卧及次卧",
+          "楼上浴室",
+          "双跑楼梯",
+          "南向泳池与露台"
+        ],
+        "design_intent": null,
+        "floor_layouts": [
+          {
+            "floor": 1,
+            "level": 0.4,
+            "rooms": [],
+            "walls": []
+          },
+          {
+            "floor": 2,
+            "level": 4.0,
+            "rooms": [],
+            "walls": []
+          }
+        ],
+        "authoring": {
+          "kind": "villa",
+          "folder": "08-现代别墅",
+          "name": "澄屿现代别墅",
+          "size": 32,
+          "floors": 2,
+          "height": 3.6,
+          "bounds": [
+            -10,
+            -3,
+            10,
+            11
+          ],
+          "style": "白石、清水混凝土与暖木的退台住宅",
+          "concept": "首层横向起居体量向泳池开放，上层向北退台；西侧完整双跑楼梯，东侧长露台连接卧室。",
+          "rooms": [
+            "客厅与餐厅",
+            "厨房与客用卫生间",
+            "主卧及次卧",
+            "楼上浴室",
+            "双跑楼梯",
+            "南向泳池与露台"
+          ],
+          "packages": [
+            "上下体量退台",
+            "薄檐与金属滴水边",
+            "木格栅与露台玻璃栏杆",
+            "透明泳池与浅色池底",
+            "室内家具",
+            "可保存中文招牌",
+            "真实灯光"
+          ],
+          "sign_text": "澄屿现代别墅",
+          "size_scope": "完整地块（含入口、庭院），单位米",
+          "notes": "详细构件由本目录确定性作者编译器装配；设计投影仅核对主壳，不冒充完整Agent编译。"
+        },
+        "delegated_components": [],
+        "body_components": [],
+        "opening_layout": [
+          {
+            "id": "window_main_front_L1_1",
+            "type": "window",
+            "host": "wall_main_front_L1",
+            "entity": {
+              "parentWall": "wall_main_front_L1",
+              "centerAlong": 2.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_front_L1_2",
+            "type": "window",
+            "host": "wall_main_front_L1",
+            "entity": {
+              "parentWall": "wall_main_front_L1",
+              "centerAlong": 7.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "door_main_front_L1_3",
+            "type": "door",
+            "host": "wall_main_front_L1",
+            "entity": {
+              "parentWall": "wall_main_front_L1",
+              "centerAlong": 12.5,
+              "bottomY": 0.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_front_L1_4",
+            "type": "window",
+            "host": "wall_main_front_L1",
+            "entity": {
+              "parentWall": "wall_main_front_L1",
+              "centerAlong": 17.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_back_L1_1",
+            "type": "window",
+            "host": "wall_main_back_L1",
+            "entity": {
+              "parentWall": "wall_main_back_L1",
+              "centerAlong": 2.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_back_L1_2",
+            "type": "window",
+            "host": "wall_main_back_L1",
+            "entity": {
+              "parentWall": "wall_main_back_L1",
+              "centerAlong": 7.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "door_main_back_L1_3",
+            "type": "door",
+            "host": "wall_main_back_L1",
+            "entity": {
+              "parentWall": "wall_main_back_L1",
+              "centerAlong": 12.5,
+              "bottomY": 0.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_back_L1_4",
+            "type": "window",
+            "host": "wall_main_back_L1",
+            "entity": {
+              "parentWall": "wall_main_back_L1",
+              "centerAlong": 17.5,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_left_L1_1",
+            "type": "window",
+            "host": "wall_main_left_L1",
+            "entity": {
+              "parentWall": "wall_main_left_L1",
+              "centerAlong": 1.75,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_left_L1_2",
+            "type": "window",
+            "host": "wall_main_left_L1",
+            "entity": {
+              "parentWall": "wall_main_left_L1",
+              "centerAlong": 5.25,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "door_main_left_L1_3",
+            "type": "door",
+            "host": "wall_main_left_L1",
+            "entity": {
+              "parentWall": "wall_main_left_L1",
+              "centerAlong": 8.75,
+              "bottomY": 0.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_left_L1_4",
+            "type": "window",
+            "host": "wall_main_left_L1",
+            "entity": {
+              "parentWall": "wall_main_left_L1",
+              "centerAlong": 12.25,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_right_L1_1",
+            "type": "window",
+            "host": "wall_main_right_L1",
+            "entity": {
+              "parentWall": "wall_main_right_L1",
+              "centerAlong": 1.75,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_right_L1_2",
+            "type": "window",
+            "host": "wall_main_right_L1",
+            "entity": {
+              "parentWall": "wall_main_right_L1",
+              "centerAlong": 5.25,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "door_main_right_L1_3",
+            "type": "door",
+            "host": "wall_main_right_L1",
+            "entity": {
+              "parentWall": "wall_main_right_L1",
+              "centerAlong": 8.75,
+              "bottomY": 0.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_main_right_L1_4",
+            "type": "window",
+            "host": "wall_main_right_L1",
+            "entity": {
+              "parentWall": "wall_main_right_L1",
+              "centerAlong": 12.25,
+              "bottomY": 1.4
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_front_L2_1",
+            "type": "window",
+            "host": "wall_upper_front_L2",
+            "entity": {
+              "parentWall": "wall_upper_front_L2",
+              "centerAlong": 2.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_front_L2_2",
+            "type": "window",
+            "host": "wall_upper_front_L2",
+            "entity": {
+              "parentWall": "wall_upper_front_L2",
+              "centerAlong": 6.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_front_L2_3",
+            "type": "window",
+            "host": "wall_upper_front_L2",
+            "entity": {
+              "parentWall": "wall_upper_front_L2",
+              "centerAlong": 11.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_front_L2_4",
+            "type": "window",
+            "host": "wall_upper_front_L2",
+            "entity": {
+              "parentWall": "wall_upper_front_L2",
+              "centerAlong": 15.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_back_L2_1",
+            "type": "window",
+            "host": "wall_upper_back_L2",
+            "entity": {
+              "parentWall": "wall_upper_back_L2",
+              "centerAlong": 2.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_back_L2_2",
+            "type": "window",
+            "host": "wall_upper_back_L2",
+            "entity": {
+              "parentWall": "wall_upper_back_L2",
+              "centerAlong": 6.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_back_L2_3",
+            "type": "window",
+            "host": "wall_upper_back_L2",
+            "entity": {
+              "parentWall": "wall_upper_back_L2",
+              "centerAlong": 11.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_back_L2_4",
+            "type": "window",
+            "host": "wall_upper_back_L2",
+            "entity": {
+              "parentWall": "wall_upper_back_L2",
+              "centerAlong": 15.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_left_L2_1",
+            "type": "window",
+            "host": "wall_upper_left_L2",
+            "entity": {
+              "parentWall": "wall_upper_left_L2",
+              "centerAlong": 1.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_left_L2_2",
+            "type": "window",
+            "host": "wall_upper_left_L2",
+            "entity": {
+              "parentWall": "wall_upper_left_L2",
+              "centerAlong": 3.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_left_L2_3",
+            "type": "window",
+            "host": "wall_upper_left_L2",
+            "entity": {
+              "parentWall": "wall_upper_left_L2",
+              "centerAlong": 6.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_left_L2_4",
+            "type": "window",
+            "host": "wall_upper_left_L2",
+            "entity": {
+              "parentWall": "wall_upper_left_L2",
+              "centerAlong": 8.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_right_L2_1",
+            "type": "window",
+            "host": "wall_upper_right_L2",
+            "entity": {
+              "parentWall": "wall_upper_right_L2",
+              "centerAlong": 1.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_right_L2_2",
+            "type": "window",
+            "host": "wall_upper_right_L2",
+            "entity": {
+              "parentWall": "wall_upper_right_L2",
+              "centerAlong": 3.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_right_L2_3",
+            "type": "window",
+            "host": "wall_upper_right_L2",
+            "entity": {
+              "parentWall": "wall_upper_right_L2",
+              "centerAlong": 6.25,
+              "bottomY": 5.0
+            },
+            "size": {}
+          },
+          {
+            "id": "window_upper_right_L2_4",
+            "type": "window",
+            "host": "wall_upper_right_L2",
+            "entity": {
+              "parentWall": "wall_upper_right_L2",
+              "centerAlong": 8.75,
+              "bottomY": 5.0
+            },
+            "size": {}
+          }
+        ]
+      },
+      "entity": {}
+    },
+    {
+      "id": "circulation_stair",
+      "type": "stair",
+      "host": "",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/circulation",
+      "entity": {},
+      "design": {
+        "type": "stair",
+        "circulation": {
+          "vertical_strategy": "stair"
+        },
+        "massing": {
+          "shape": "terraced",
+          "width": 20.0,
+          "depth": 14.0,
+          "floors": 2,
+          "modeled_floors": 2,
+          "representation_mode": "full",
+          "floor_height": 3.6,
+          "symmetry": false,
+          "tiers": null
+        }
+      },
+      "floor_connections": []
+    },
+    {
+      "id": "window_main_front_L1_1",
+      "type": "window",
+      "host": "wall_main_front_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_main_front_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_front_L1",
+        "centerAlong": 2.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_front_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_front_L1_2",
+      "type": "window",
+      "host": "wall_main_front_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_main_front_L1",
+        "floor": 1,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_front_L1",
+        "centerAlong": 7.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_front_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "door_main_front_L1_3",
+      "type": "door",
+      "host": "wall_main_front_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "door",
+        "host": "wall_main_front_L1",
+        "floor": 1,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_front_L1",
+        "centerAlong": 12.5,
+        "bottomY": 0.4
+      },
+      "diagram_host": {
+        "id": "wall_main_front_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_front_L1_4",
+      "type": "window",
+      "host": "wall_main_front_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_main_front_L1",
+        "floor": 1,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_front_L1",
+        "centerAlong": 17.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_front_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_back_L1_1",
+      "type": "window",
+      "host": "wall_main_back_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_main_back_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_back_L1",
+        "centerAlong": 2.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_back_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_back_L1_2",
+      "type": "window",
+      "host": "wall_main_back_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_main_back_L1",
+        "floor": 1,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_back_L1",
+        "centerAlong": 7.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_back_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "door_main_back_L1_3",
+      "type": "door",
+      "host": "wall_main_back_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "door",
+        "host": "wall_main_back_L1",
+        "floor": 1,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_back_L1",
+        "centerAlong": 12.5,
+        "bottomY": 0.4
+      },
+      "diagram_host": {
+        "id": "wall_main_back_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_back_L1_4",
+      "type": "window",
+      "host": "wall_main_back_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_main_back_L1",
+        "floor": 1,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_back_L1",
+        "centerAlong": 17.5,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_back_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_left_L1_1",
+      "type": "window",
+      "host": "wall_main_left_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_main_left_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_left_L1",
+        "centerAlong": 1.75,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_left_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_left_L1_2",
+      "type": "window",
+      "host": "wall_main_left_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_main_left_L1",
+        "floor": 1,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_left_L1",
+        "centerAlong": 5.25,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_left_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "door_main_left_L1_3",
+      "type": "door",
+      "host": "wall_main_left_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "door",
+        "host": "wall_main_left_L1",
+        "floor": 1,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_left_L1",
+        "centerAlong": 8.75,
+        "bottomY": 0.4
+      },
+      "diagram_host": {
+        "id": "wall_main_left_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_left_L1_4",
+      "type": "window",
+      "host": "wall_main_left_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_main_left_L1",
+        "floor": 1,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_left_L1",
+        "centerAlong": 12.25,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_left_L1",
+        "type": "wall",
+        "from": [
+          -10.0,
+          0.4,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          4.0,
+          -3.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_right_L1_1",
+      "type": "window",
+      "host": "wall_main_right_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_main_right_L1",
+        "floor": 1,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_right_L1",
+        "centerAlong": 1.75,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_right_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_right_L1_2",
+      "type": "window",
+      "host": "wall_main_right_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_main_right_L1",
+        "floor": 1,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_right_L1",
+        "centerAlong": 5.25,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_right_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "door_main_right_L1_3",
+      "type": "door",
+      "host": "wall_main_right_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "door",
+        "host": "wall_main_right_L1",
+        "floor": 1,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_right_L1",
+        "centerAlong": 8.75,
+        "bottomY": 0.4
+      },
+      "diagram_host": {
+        "id": "wall_main_right_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "window_main_right_L1_4",
+      "type": "window",
+      "host": "wall_main_right_L1",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_main_right_L1",
+        "floor": 1,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 1,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_main_right_L1",
+        "centerAlong": 12.25,
+        "bottomY": 1.4
+      },
+      "diagram_host": {
+        "id": "wall_main_right_L1",
+        "type": "wall",
+        "from": [
+          10.0,
+          0.4,
+          -3.0
+        ],
+        "to": [
+          10.0,
+          4.0,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/0"
+      }
+    },
+    {
+      "id": "roof_main",
+      "type": "roof",
+      "host": "main",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/roof",
+      "design": {
+        "type": "flat",
+        "ridge_axis": "x",
+        "overhang": 0.35,
+        "volumes": [],
+        "volume": {
+          "id": "main",
+          "role": "primary",
+          "x": -10.0,
+          "z": -3.0,
+          "width": 20.0,
+          "depth": 14.0,
+          "start_floor": 1,
+          "end_floor": 1
+        }
+      },
+      "entity": {
+        "position": [
+          0.0,
+          4.0,
+          4.0
+        ]
+      }
+    },
+    {
+      "id": "window_upper_front_L2_1",
+      "type": "window",
+      "host": "wall_upper_front_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_front_L2",
+        "floor": 2,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_front_L2",
+        "centerAlong": 2.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_front_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          1.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_front_L2_2",
+      "type": "window",
+      "host": "wall_upper_front_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_front_L2",
+        "floor": 2,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_front_L2",
+        "centerAlong": 6.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_front_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          1.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_front_L2_3",
+      "type": "window",
+      "host": "wall_upper_front_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_front_L2",
+        "floor": 2,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_front_L2",
+        "centerAlong": 11.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_front_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          1.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_front_L2_4",
+      "type": "window",
+      "host": "wall_upper_front_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/front",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_front_L2",
+        "floor": 2,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_front_L2",
+        "centerAlong": 15.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_front_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          1.0
+        ],
+        "facing": "front",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_back_L2_1",
+      "type": "window",
+      "host": "wall_upper_back_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_back_L2",
+        "floor": 2,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_back_L2",
+        "centerAlong": 2.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_back_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_back_L2_2",
+      "type": "window",
+      "host": "wall_upper_back_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_back_L2",
+        "floor": 2,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_back_L2",
+        "centerAlong": 6.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_back_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_back_L2_3",
+      "type": "window",
+      "host": "wall_upper_back_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_back_L2",
+        "floor": 2,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_back_L2",
+        "centerAlong": 11.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_back_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_back_L2_4",
+      "type": "window",
+      "host": "wall_upper_back_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/back",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_back_L2",
+        "floor": 2,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_back_L2",
+        "centerAlong": 15.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_back_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          11.0
+        ],
+        "facing": "back",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_left_L2_1",
+      "type": "window",
+      "host": "wall_upper_left_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_left_L2",
+        "floor": 2,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_left_L2",
+        "centerAlong": 1.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_left_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          1.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_left_L2_2",
+      "type": "window",
+      "host": "wall_upper_left_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_left_L2",
+        "floor": 2,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_left_L2",
+        "centerAlong": 3.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_left_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          1.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_left_L2_3",
+      "type": "window",
+      "host": "wall_upper_left_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_left_L2",
+        "floor": 2,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_left_L2",
+        "centerAlong": 6.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_left_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          1.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_left_L2_4",
+      "type": "window",
+      "host": "wall_upper_left_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/left",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_left_L2",
+        "floor": 2,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_left_L2",
+        "centerAlong": 8.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_left_L2",
+        "type": "wall",
+        "from": [
+          -10.0,
+          4.0,
+          11.0
+        ],
+        "to": [
+          -10.0,
+          7.6,
+          1.0
+        ],
+        "facing": "left",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_right_L2_1",
+      "type": "window",
+      "host": "wall_upper_right_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_right_L2",
+        "floor": 2,
+        "bay": 1,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_right_L2",
+        "centerAlong": 1.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_right_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_right_L2_2",
+      "type": "window",
+      "host": "wall_upper_right_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_right_L2",
+        "floor": 2,
+        "bay": 2,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_right_L2",
+        "centerAlong": 3.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_right_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_right_L2_3",
+      "type": "window",
+      "host": "wall_upper_right_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_right_L2",
+        "floor": 2,
+        "bay": 3,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_right_L2",
+        "centerAlong": 6.25,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_right_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "window_upper_right_L2_4",
+      "type": "window",
+      "host": "wall_upper_right_L2",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/facades/right",
+      "design": {
+        "type": "window",
+        "host": "wall_upper_right_L2",
+        "floor": 2,
+        "bay": 4,
+        "bays": 4,
+        "semantic_floor": 2,
+        "form": "",
+        "facade": {
+          "bays": 4,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window",
+            "window",
+            "door",
+            "window"
+          ],
+          "upper_pattern": [
+            "window",
+            "window",
+            "window",
+            "window"
+          ]
+        }
+      },
+      "entity": {
+        "parentWall": "wall_upper_right_L2",
+        "centerAlong": 8.75,
+        "bottomY": 5.0
+      },
+      "diagram_host": {
+        "id": "wall_upper_right_L2",
+        "type": "wall",
+        "from": [
+          8.0,
+          4.0,
+          1.0
+        ],
+        "to": [
+          8.0,
+          7.6,
+          11.0
+        ],
+        "facing": "right",
+        "design_path": "/decisions/volumes/1"
+      }
+    },
+    {
+      "id": "roof_upper",
+      "type": "roof",
+      "host": "upper",
+      "depends_on": [
+        "building_body"
+      ],
+      "design_path": "/decisions/roof",
+      "design": {
+        "type": "flat",
+        "ridge_axis": "x",
+        "overhang": 0.35,
+        "volumes": [],
+        "volume": {
+          "id": "upper",
+          "role": "primary",
+          "x": -10.0,
+          "z": 1.0,
+          "width": 18.0,
+          "depth": 10.0,
+          "start_floor": 2,
+          "end_floor": 2
+        }
+      },
+      "entity": {
+        "position": [
+          -1.0,
+          7.6,
+          6.0
+        ]
+      }
+    }
+  ],
+  "design_gaps": [
+    {
+      "id": "relation.0",
+      "constraint_id": "design.relationship",
+      "layer": "design",
+      "status": "needs_review",
+      "design_hash": "sha256:118ce10ba357b55a296b015c4a19f471e0cd74331045fc016d5d80215a4b4c7e",
+      "target": "circulation_stair",
+      "expected": "/decisions/circulation/floor_connections",
+      "actual": null,
+      "evidence": "楼梯连接楼层未结构化，须核对实际到达楼面；不据文字猜测连接"
+    }
+  ],
+  "compile_blockers": [],
+  "bounds": {
+    "width": 20.0,
+    "depth": 14.0,
+    "height": 7.199999999999999
+  },
+  "levels": [
+    {
+      "index": 1,
+      "base_y": 0.4,
+      "top_y": 4.0
+    },
+    {
+      "index": 2,
+      "base_y": 4.0,
+      "top_y": 7.6
+    }
+  ],
+  "volumes": [
+    {
+      "id": "main",
+      "role": "primary",
+      "x": -10.0,
+      "z": -3.0,
+      "width": 20.0,
+      "depth": 14.0,
+      "start_floor": 1,
+      "end_floor": 1
+    },
+    {
+      "id": "upper",
+      "role": "primary",
+      "x": -10.0,
+      "z": 1.0,
+      "width": 18.0,
+      "depth": 10.0,
+      "start_floor": 2,
+      "end_floor": 2
+    }
+  ],
+  "facade_slots": [],
+  "component_quantities": {
+    "building_body": 1,
+    "stair": 1,
+    "window": 28,
+    "door": 4,
+    "roof": 2
+  },
+  "warnings": [
+    "图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"
+  ]
+}

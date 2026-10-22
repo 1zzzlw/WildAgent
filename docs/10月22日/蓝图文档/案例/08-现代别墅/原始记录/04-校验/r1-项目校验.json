@@ -1,0 +1,149 @@
+{
+  "input": "docs\\10月22日\\08-现代别墅\\澄屿现代别墅.wild",
+  "sha256": "a44d028d9cc44ff9752bd5e1df1eefde1762032f0b08c51c10eca45fb6e1706c",
+  "auto_fix": false,
+  "schema_errors": [],
+  "pipeline": [
+    {
+      "step": 1,
+      "name": "validate_blueprint_structure",
+      "output": "✅ 结构完整（268 个构件，类型: {'primitive', 'roof', 'wall', 'stair', 'floor'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 2,
+      "name": "validate_element_required_fields",
+      "output": "✅ 所有 268 个基础构件和 28 个组合构件的必填字段完整（基础类型: {'primitive', 'roof', 'wall', 'stair', 'floor'}，组合类型: {'door', 'window', 'railing'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 3,
+      "name": "validate_reference_integrity",
+      "output": "✅ 引用完整性通过。（268 个基础构件，28 个组合构件，0 个模板，0 个实例）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 4,
+      "name": "validate_opening_coords",
+      "output": "✅ 所有 opening 的 from 字段格式正确。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "4b",
+      "name": "validate_opening_fit",
+      "output": "✅ 所有 23 个 opening/门窗组件均在 parentWall 范围内。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 5,
+      "name": "validate_wall_junctions",
+      "output": "⚠️  发现 1 个孤立端点（可能造成缝隙）：\n  - ground_wc.from (-5.30, 7.80)\n\n建议：确保相邻墙体端点坐标精确一致。",
+      "has_error": false,
+      "has_warning": true,
+      "issues": null
+    },
+    {
+      "step": 6,
+      "name": "validate_stair_alignment",
+      "output": "✅ 楼梯端点与参考高度对齐。参考高度: [-0.1m, 0.0m, 0.0m, 0.0m, 0.0m, 0.1m, 0.1m, 0.2m, 0.3m, 0.3m, 0.3m, 0.4m, 0.4m, 0.5m, 0.5m, 0.6m, 0.7m, 0.8m, 0.8m, 0.9m, 0.9m, 1.0m, 1.1m, 1.1m, 1.1m, 1.2m, 1.3m, 1.4m, 1.4m, 1.4m, 1.4m, 1.4m, 1.4m, 1.6m, 1.7m, 2.2m, 2.4m, 3.0m, 3.3m, 3.3m, 3.4m, 3.4m, 3.5m, 3.5m, 3.9m, 4.0m, 4.1m, 4.4m, 4.5m, 4.6m, 4.6m, 4.6m, 4.6m, 4.7m, 4.8m, 4.9m, 5.2m, 6.9m, 7.0m, 7.1m, 7.5m, 7.6m, 7.6m, 7.7m]",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 7,
+      "name": "validate_roof_coverage",
+      "output": "✅ 屋顶尺寸合理。（承托墙宽度=18.0, 进深=10.0）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7b",
+      "name": "validate_element_dimensions",
+      "output": "✅ 所有 296 个构件尺寸合理。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7c",
+      "name": "validate_model_quality",
+      "output": "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7d",
+      "name": "validate_stacked_member_containment",
+      "output": "✅ 贯通墙体均收进其跨越的每一层外墙轮廓（检查 2 层）。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7e",
+      "name": "validate_roof_top_coverage",
+      "output": "✅ 所有 11 面墙的顶部均被屋顶 / 楼板 / 上层墙覆盖。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 9,
+      "name": "validate_collision",
+      "output": "✅ 碰撞检测通过，共检查 18 个构件，未发现空间冲突。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.1",
+      "name": "validate_door_placement",
+      "output": "✅ 门位置校验通过 (5 个门)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.2",
+      "name": "validate_primitive_placement",
+      "output": "✅ 所有 268 个基础构件和 28 个组合构件的必填字段完整（基础类型: {'primitive', 'roof', 'wall', 'stair', 'floor'}，组合类型: {'door', 'window', 'railing'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.3",
+      "name": "validate_railing_placement",
+      "output": "✅ 栏杆校验通过 (5 个栏杆)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.4",
+      "name": "validate_window_placement",
+      "output": "✅ 窗位置校验通过 (18 个窗)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    }
+  ],
+  "pipeline_error_steps": [],
+  "pipeline_warning_steps": [
+    "validate_wall_junctions"
+  ],
+  "source_unchanged": true
+}

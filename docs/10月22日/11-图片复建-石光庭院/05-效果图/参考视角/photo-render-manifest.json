@@ -1,0 +1,67 @@
+{
+  "input": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\林庭石光馆.wild",
+  "inputSha256": "f98051a950c120ac53ded6b0f3badacae170d82f7268d8e1a4bf835756ac11cb",
+  "designSha256": "374f7e25a941c1feec72c315d822457b568529249f2d3ea4f3498f0788483f00",
+  "renderer": "production Core + renderEntity + materialAdapter + Sky + WorldEnvironmentMapRuntime",
+  "settings": {
+    "width": 1600,
+    "height": 1120,
+    "camera": {
+      "position": [
+        -24,
+        15.7,
+        -24
+      ],
+      "target": [
+        -0.5,
+        3.6,
+        1
+      ],
+      "fov": 39
+    },
+    "shadows": "4096 PCFSoft",
+    "lighting": "repository TIME_PRESETS",
+    "postprocessed": false
+  },
+  "shots": [
+    "reference-day.png",
+    "reference-night.png",
+    "facade-detail.png"
+  ],
+  "boundingBox": {
+    "min": [
+      -16,
+      -0.1850000014901161,
+      -12
+    ],
+    "max": [
+      16,
+      10.367549442826338,
+      20
+    ]
+  },
+  "meshCount": 1712,
+  "diagnostics": [
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+      "elementType": "roof"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "beam: 矩形、圆形与工字梁",
+      "elementType": "beam"
+    },
+    {
+      "level": "info",
+      "code": "PARTIAL_CAPABILITY",
+      "message": "opening: 墙体洞口及门窗覆盖几何",
+      "elementType": "opening"
+    }
+  ],
+  "labels": 1,
+  "lightSources": 7,
+  "runtimeErrors": []
+}

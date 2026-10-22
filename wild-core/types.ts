@@ -217,6 +217,27 @@ export interface LightElementBehavior {
   distance: number;
   angle: number;
   initiallyOn: boolean;
+  /** 相对于发光网格包围盒中心的局部偏移；聚光灯方向同为局部坐标。 */
+  offset?: Vec3;
+  direction?: Vec3;
+}
+
+/** 自定义几何的真实光源；emissive 仍只控制表面亮度。 */
+export interface LightSourceDef {
+  lightType?: 'point' | 'spot';
+  color?: Color;
+  intensity?: number;
+  distance?: number;
+  angle?: number;
+  initiallyOn?: boolean;
+  offset?: Vec3;
+  direction?: Vec3;
+}
+
+export interface TextLabel {
+  text: string;
+  color?: Color;
+  fontFamily?: 'sans-serif' | 'serif';
 }
 
 export interface DoorComponent {
@@ -569,6 +590,10 @@ export interface PrimitiveParams {
   rotation?: Vec3;
   scale?: Vec3;
   material?: string;
+  /** 招牌印字，贴在 box 的局部 +Z 面；随构件移动、旋转。 */
+  label?: TextLabel;
+  /** 给任意 primitive 外形绑定真实光源，无需使用预设灯具。 */
+  lightSource?: LightSourceDef;
 
   /** box: [宽, 高, 深] */
   dimensions?: Vec3;

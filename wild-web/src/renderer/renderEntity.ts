@@ -18,6 +18,7 @@ import type { ReconstructedEntity, MeshData } from '../types/scene'
 import type { ElevatorElementBehavior, LightElementBehavior } from 'wild-core/types'
 import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
+import { createTextLabel } from './textLabel'
 
 const MAX_VERTICES = 50000
 const typedArrayHashCache = new WeakMap<Float32Array | Uint32Array, number>()
@@ -113,6 +114,11 @@ function createMeshFromMeshData(
 
   // 7. 设置名称（用于调试和选择）
   mesh.name = meshData.elementId || 'unnamed'
+  if (meshData.label && geometry.boundingBox) {
+    const label = createTextLabel(meshData.label, geometry.boundingBox, materialCache)
+    label.userData.elementId = meshData.elementId
+    mesh.add(label)
+  }
 
   return mesh
 }
@@ -306,8 +312,11 @@ function initializeLightInteraction(
   light.name = `${mesh.name || mesh.userData.elementId}:LightSource`
   light.userData.fixtureLight = true
   light.castShadow = false
+  mesh.geometry.computeBoundingBox()
+  mesh.geometry.boundingBox?.getCenter(light.position)
+  if (interaction.offset) light.position.add(new THREE.Vector3(...interaction.offset))
   if (light instanceof THREE.SpotLight) {
-    light.target.position.set(0, -1, 0)
+    light.target.position.copy(light.position).add(new THREE.Vector3(...(interaction.direction ?? [0, -1, 0])).normalize())
     mesh.add(light.target)
   }
   mesh.add(light)
@@ -431,7 +440,7 @@ function populateSceneGroup(
   const buckets = new Map<string, Array<{ meshData: MeshData; materialIndex: number }>>()
 
   entity.meshes.forEach((meshData, materialIndex) => {
-    const canInstance = !meshData.interactive && meshData.geometry.length / 3 <= MAX_VERTICES
+    const canInstance = !meshData.interactive && !meshData.label && meshData.geometry.length / 3 <= MAX_VERTICES
     const key = canInstance
       ? meshSignature(meshData, entity.materialParams[materialIndex])
       : `single:${materialIndex}`

@@ -1,0 +1,241 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "named-market-20261022",
+  "session_id": "codex-offline-named-buildings",
+  "revision": 1,
+  "status": "draft",
+  "created_at": "2026-10-22T11:17:46.919856Z",
+  "updated_at": "2026-10-22T11:17:46.919856Z",
+  "approved_at": null,
+  "requirements": {
+    "source_request": "创建16×16米地块的邻里优选超市，招牌写入WILD。",
+    "building_type": "market",
+    "profile": "detailed",
+    "style_intent": [
+      "浅色砖、森林绿檐口与暖木生鲜陈列的社区超市"
+    ]
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "全宽入口遮棚和醒目招牌，室内三列货架、收银台、生鲜与冷藏柜围绕畅通的主通道布置。",
+    "massing": {
+      "shape": "rectangular",
+      "width": 13.0,
+      "depth": 10.0,
+      "floors": 1,
+      "modeled_floors": 1,
+      "representation_mode": "full",
+      "floor_height": 4.0,
+      "symmetry": false,
+      "tiers": null
+    },
+    "complexity": {
+      "level": "detailed",
+      "min_volumes": 1,
+      "min_detail_packages": 7,
+      "target_structural_elements": 180,
+      "grid_bays": [
+        4,
+        4
+      ],
+      "reason": "以层次、收边、家具与真实灯光体现精细度"
+    },
+    "volumes": [
+      {
+        "id": "main",
+        "role": "primary",
+        "x": -6.5,
+        "z": -3.5,
+        "width": 13.0,
+        "depth": 10.0,
+        "start_floor": 1,
+        "end_floor": 1
+      }
+    ],
+    "structural_grid": {
+      "system": "frame",
+      "x_bays": 4,
+      "z_bays": 4
+    },
+    "envelope": {
+      "system": "solid_wall",
+      "curtain_wall": null
+    },
+    "facades": {
+      "front": {
+        "bays": 4,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window",
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "back": {
+        "bays": 4,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window",
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "left": {
+        "bays": 4,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window",
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window",
+          "window"
+        ]
+      },
+      "right": {
+        "bays": 4,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "window",
+          "window",
+          "door",
+          "window"
+        ],
+        "upper_pattern": [
+          "window",
+          "window",
+          "window",
+          "window"
+        ]
+      }
+    },
+    "roof": {
+      "type": "flat",
+      "ridge_axis": "x",
+      "overhang": 0.35,
+      "volumes": []
+    },
+    "circulation": {
+      "vertical_strategy": "stair"
+    },
+    "materials": {
+      "keywords": [],
+      "resolved_plan": null,
+      "regions": []
+    },
+    "detail_packages": [
+      "檐口与有支撑遮棚",
+      "连续橱窗",
+      "商品分区陈列",
+      "收银设备",
+      "门外绿化与推车",
+      "可保存中文招牌",
+      "真实灯光"
+    ],
+    "component_quota": {},
+    "components": [],
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": [
+      "顾客入口",
+      "收银与打包",
+      "三列商品货架",
+      "生鲜台",
+      "冷藏陈列",
+      "后场及卸货门"
+    ],
+    "design_intent": null,
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.4,
+        "rooms": [],
+        "walls": []
+      }
+    ],
+    "authoring": {
+      "kind": "market",
+      "folder": "10-超市",
+      "name": "邻里优选超市",
+      "size": 16,
+      "floors": 1,
+      "height": 4.0,
+      "bounds": [
+        -6.5,
+        -3.5,
+        6.5,
+        6.5
+      ],
+      "style": "浅色砖、森林绿檐口与暖木生鲜陈列的社区超市",
+      "concept": "全宽入口遮棚和醒目招牌，室内三列货架、收银台、生鲜与冷藏柜围绕畅通的主通道布置。",
+      "rooms": [
+        "顾客入口",
+        "收银与打包",
+        "三列商品货架",
+        "生鲜台",
+        "冷藏陈列",
+        "后场及卸货门"
+      ],
+      "packages": [
+        "檐口与有支撑遮棚",
+        "连续橱窗",
+        "商品分区陈列",
+        "收银设备",
+        "门外绿化与推车",
+        "可保存中文招牌",
+        "真实灯光"
+      ],
+      "sign_text": "邻里优选超市",
+      "size_scope": "完整地块（含入口、庭院），单位米",
+      "notes": "详细构件由本目录确定性作者编译器装配；设计投影仅核对主壳，不冒充完整Agent编译。"
+    }
+  },
+  "constraints": [
+    {
+      "id": "site",
+      "kind": "user_hard",
+      "target": "scene.boundingBox",
+      "expression": "X和Z尺寸均等于地块尺寸",
+      "source": "",
+      "expected": 16,
+      "check": "equals",
+      "adoption": "adopted",
+      "source_quote": "",
+      "supersedes": null
+    },
+    {
+      "id": "sign",
+      "kind": "user_hard",
+      "target": "primitive.label.text",
+      "expression": "真实中文招牌等于建筑名称",
+      "source": "",
+      "expected": "邻里优选超市",
+      "check": "equals",
+      "adoption": "adopted",
+      "source_quote": "",
+      "supersedes": null
+    }
+  ],
+  "locks": [],
+  "rule_trace": []
+}

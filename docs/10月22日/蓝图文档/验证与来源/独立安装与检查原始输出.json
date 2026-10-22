@@ -1,0 +1,78 @@
+{
+  "temporary_directory": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+  "all_commands_passed": true,
+  "byte_replay_equal": true,
+  "commands": [
+    {
+      "command": [
+        "E:\\nodejs\\npm.cmd",
+        "ci",
+        "--prefix",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\核心资料\\wild-web",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+      "started_at": "2026-10-22T12:39:47.203112+00:00",
+      "ended_at": "2026-10-22T12:39:49.272451+00:00",
+      "exit_code": 0,
+      "stdout": "\nadded 17 packages in 2s\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\工具\\检查WILD.py",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\示例\\听风茶室.wild"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+      "started_at": "2026-10-22T12:39:49.272451+00:00",
+      "ended_at": "2026-10-22T12:39:49.446805+00:00",
+      "exit_code": 0,
+      "stdout": "{\n  \"ok\": true,\n  \"reports\": [\n    {\n      \"file\": \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\wild-blueprint-v3-lock-kjz2bm5q\\\\示例\\\\听风茶室.wild\",\n      \"sha256\": \"79f1703d3de71200b2b79ca9d8fa391f4b4fe3b2a681f2516b6f6d279b4fa1d0\",\n      \"errors\": [],\n      \"warnings\": [],\n      \"scope\": \"原始Schema、ID/材质/宿主引用、直墙开口界限、显式楼梯尺寸链；未证明空间可用或画面质量\"\n    }\n  ]\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\工具\\核对资料包.py",
+        "--report",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\验证与来源\\独立目录自检.json"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+      "started_at": "2026-10-22T12:39:49.447306+00:00",
+      "ended_at": "2026-10-22T12:39:58.826323+00:00",
+      "exit_code": 0,
+      "stdout": "{\"ok\": true, \"counts\": {\"markdown_files\": 10, \"json_blocks\": 4, \"local_links\": 87, \"source_snapshots\": 79, \"cases\": 12}, \"errors\": [], \"report\": \"C:\\\\Users\\\\ADMINI~1\\\\AppData\\\\Local\\\\Temp\\\\wild-blueprint-v3-lock-kjz2bm5q\\\\验证与来源\\\\独立目录自检.json\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "E:\\nodejs\\node.EXE",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\核心资料\\wild-web\\scripts\\validate-generated.mjs",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\示例\\听风茶室.wild"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+      "started_at": "2026-10-22T12:39:58.826323+00:00",
+      "ended_at": "2026-10-22T12:39:59.192675+00:00",
+      "exit_code": 0,
+      "stdout": "蓝图: C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\示例\\听风茶室.wild\n组件编译诊断: 0 (错误 0)\n网格数: 76\n材质参数: 76\n包围盒: min=[-6,-0.12000000357627869,-5] max=[6,3.4799999991059303,5]\nfiniteBounds=true validMeshes=true\n重建诊断: 错误 0, 警告 0\n\n校验通过: 0 错误\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "E:\\AgentProject\\WildAgent\\wild-server\\.venv\\Scripts\\python.exe",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\示例\\展开最小茶室.py",
+        "--output",
+        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\重放.wild"
+      ],
+      "cwd": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q",
+      "started_at": "2026-10-22T12:39:59.192675+00:00",
+      "ended_at": "2026-10-22T12:39:59.257334+00:00",
+      "exit_code": 0,
+      "stdout": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\wild-blueprint-v3-lock-kjz2bm5q\\重放.wild\n",
+      "stderr": ""
+    }
+  ]
+}

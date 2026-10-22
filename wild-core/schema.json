@@ -1705,6 +1705,30 @@
         }
       }
     },
+    "textLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
+        "color": { "$ref": "#/$defs/color" },
+        "fontFamily": { "enum": ["sans-serif", "serif"] }
+      }
+    },
+    "lightSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "lightType": { "enum": ["point", "spot"] },
+        "color": { "$ref": "#/$defs/color" },
+        "intensity": { "type": "number", "minimum": 0 },
+        "distance": { "type": "number", "exclusiveMinimum": 0 },
+        "angle": { "type": "number", "exclusiveMinimum": 0, "maximum": 90 },
+        "initiallyOn": { "type": "boolean", "default": true },
+        "offset": { "$ref": "#/$defs/vec3" },
+        "direction": { "$ref": "#/$defs/vec3", "not": { "const": [0, 0, 0] } }
+      }
+    },
     "primitive": {
       "type": "object",
       "required": [
@@ -1790,8 +1814,17 @@
         "closedProfile": {
           "type": "boolean",
           "default": true
+        },
+        "label": {
+          "$ref": "#/$defs/textLabel"
+        },
+        "lightSource": {
+          "$ref": "#/$defs/lightSource"
         }
       },
+      "allOf": [
+        { "if": { "required": ["label"] }, "then": { "properties": { "shape": { "const": "box" } } } }
+      ],
       "oneOf": [
         {
           "required": [

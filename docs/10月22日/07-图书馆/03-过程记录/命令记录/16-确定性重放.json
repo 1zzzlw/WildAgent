@@ -1,0 +1,14 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/00-公共脚本/编译命名建筑.py",
+    "docs/10月22日/07-图书馆/01-需求与设计/DesignDocument.json",
+    "--check"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:22:26.378657+08:00",
+  "ended_at": "2026-10-22T19:22:26.575475+08:00",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"E:\\AgentProject\\WildAgent\\docs\\10月22日\\00-公共脚本\\编译命名建筑.py\", line 433, in <module>\n    assert target.read_bytes()==serialized,'作者编译重放与正式文件不同'\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: 作者编译重放与正式文件不同\n"
+}

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "wild-web/scripts/render-baseline.mjs",
+    "docs/10月20日优化/汀院别墅-Codex.wild",
+    "docs/10月22日/00-质量参考/本次命名建筑对照/汀院"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:25:02.708627+08:00",
+  "ended_at": "2026-10-22T19:25:06.806660+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"background\": 14673130,\n    \"sun\": {\n      \"azimuthDeg\": 135,\n      \"elevationDeg\": 42,\n      \"intensity\": 2.1,\n      \"color\": 16774370\n    },\n    \"ambient\": {\n      \"sky\": 14674421,\n      \"ground\": 10130828,\n      \"intensity\": 0.85\n    },\n    \"ground\": {\n      \"color\": 9277571,\n      \"y\": -0.02\n    },\n    \"toneMappingExposure\": 1\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"bbf4787436032f3eeeb06f6549038cb3a088cbb227ee9337b5bd7a720a7c041c\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 574,\n  \"materialCount\": 574,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -2.454897153377533,\n      -0.11999999865889549,\n      -2.999999618530273\n    ],\n    \"max\": [\n      20.859061563014983,\n      7.560000005960465,\n      16.80000001192093\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月22日\\\\00-质量参考\\\\本次命名建筑对照\\\\汀院\\\\front.png\",\n      \"bytes\": 289123\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月22日\\\\00-质量参考\\\\本次命名建筑对照\\\\汀院\\\\side.png\",\n      \"bytes\": 249901\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月22日\\\\00-质量参考\\\\本次命名建筑对照\\\\汀院\\\\top.png\",\n      \"bytes\": 295300\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月22日\\\\00-质量参考\\\\本次命名建筑对照\\\\汀院\\\\perspective.png\",\n      \"bytes\": 422451\n    }\n  ],\n  \"contextSha256\": \"3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3\"\n}\n",
+  "stderr": ""
+}

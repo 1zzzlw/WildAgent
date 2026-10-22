@@ -1,0 +1,13 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/00-公共脚本/编译图片复建.py",
+    "docs/10月22日/11-图片复建-石光庭院/01-需求与设计/DesignDocument.json"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:48:59.386302+08:00",
+  "ended_at": "2026-10-22T19:48:59.682158+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"revision\": 3,\n  \"design_sha256\": \"8ec2bca1227ee09e9c9a708db5bfa41563fbc9df07d3bb8cf75f27975e0cfd15\",\n  \"wild_sha256\": \"6c8c4a39689a482d2346a08d5cc1af8d6bf324bd145c2e690c8a4d03077ec3e2\",\n  \"elements\": 1249,\n  \"components\": 26,\n  \"materials\": 26,\n  \"recipe\": \"stone\",\n  \"geometry_evidence\": {\n    \"stair_hole\": [\n      -2.105,\n      5.6,\n      0.27500000000000013,\n      9.76\n    ],\n    \"skylight_hole\": [\n      1.8,\n      2.5,\n      5.8,\n      6.1\n    ],\n    \"roof_base\": 8.3\n  },\n  \"lights\": 7,\n  \"method\": \"User image -> DesignDocument -> deterministic assembly -> WILD; no Agent/model API\"\n}\n",
+  "stderr": ""
+}

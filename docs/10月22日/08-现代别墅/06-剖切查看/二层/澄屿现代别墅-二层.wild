@@ -1,0 +1,2251 @@
+{
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "澄屿现代别墅",
+    "author": "Codex",
+    "style": "白石、清水混凝土与暖木的退台住宅",
+    "description": "首层横向起居体量向泳池开放，上层向北退台；西侧完整双跑楼梯，东侧长露台连接卧室。 地块32×32米，招牌文字与真实灯源保存在WILD。"
+  },
+  "geometry": {
+    "elements": [
+      {
+        "type": "floor",
+        "id": "upper_0_0",
+        "from": [
+          -10,
+          3.76,
+          1
+        ],
+        "to": [
+          -8.88,
+          3.76,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "oak"
+      },
+      {
+        "type": "floor",
+        "id": "upper_1_0",
+        "from": [
+          -8.88,
+          3.76,
+          1
+        ],
+        "to": [
+          -5.84,
+          3.76,
+          3.86
+        ],
+        "thickness": 0.24,
+        "material": "oak"
+      },
+      {
+        "type": "floor",
+        "id": "upper_1_1",
+        "from": [
+          -8.88,
+          3.76,
+          9.19
+        ],
+        "to": [
+          -5.84,
+          3.76,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "oak"
+      },
+      {
+        "type": "floor",
+        "id": "upper_2_0",
+        "from": [
+          -5.84,
+          3.76,
+          1
+        ],
+        "to": [
+          8,
+          3.76,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "oak"
+      },
+      {
+        "type": "floor",
+        "id": "terrace_0_0",
+        "from": [
+          -10,
+          3.76,
+          -3
+        ],
+        "to": [
+          10,
+          3.76,
+          1
+        ],
+        "thickness": 0.24,
+        "material": "limestone"
+      },
+      {
+        "type": "floor",
+        "id": "side_terrace_0_0",
+        "from": [
+          8,
+          3.76,
+          1
+        ],
+        "to": [
+          10,
+          3.76,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "limestone"
+      },
+      {
+        "type": "wall",
+        "id": "L2_front",
+        "from": [
+          -10,
+          4.0,
+          1
+        ],
+        "to": [
+          8,
+          7.6,
+          1
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "L2_right",
+        "from": [
+          8,
+          4.0,
+          1
+        ],
+        "to": [
+          8,
+          7.6,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "L2_back",
+        "from": [
+          8,
+          4.0,
+          11
+        ],
+        "to": [
+          -10,
+          7.6,
+          11
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "L2_left",
+        "from": [
+          -10,
+          4.0,
+          11
+        ],
+        "to": [
+          -10,
+          7.6,
+          1
+        ],
+        "thickness": 0.24,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "upper_partition",
+        "from": [
+          -4,
+          4.0,
+          1
+        ],
+        "to": [
+          -4,
+          7.6000000000000005,
+          11
+        ],
+        "thickness": 0.14,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "bath_partition",
+        "from": [
+          -4,
+          4.0,
+          7
+        ],
+        "to": [
+          8,
+          7.6000000000000005,
+          7
+        ],
+        "thickness": 0.14,
+        "material": "plaster"
+      },
+      {
+        "type": "wall",
+        "id": "bath_side",
+        "from": [
+          2,
+          4.0,
+          7
+        ],
+        "to": [
+          2,
+          7.6000000000000005,
+          11
+        ],
+        "thickness": 0.14,
+        "material": "plaster"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_base",
+        "shape": "box",
+        "position": [
+          3,
+          4.2,
+          4.2
+        ],
+        "dimensions": [
+          2.1,
+          0.4,
+          2.25
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_mattress",
+        "shape": "box",
+        "position": [
+          3,
+          4.47,
+          4.2
+        ],
+        "dimensions": [
+          2.0300000000000002,
+          0.18,
+          2.16
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_duvet",
+        "shape": "box",
+        "position": [
+          3,
+          4.58,
+          3.95
+        ],
+        "dimensions": [
+          2.0500000000000003,
+          0.08,
+          1.6
+        ],
+        "material": "sage_fabric"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_runner",
+        "shape": "box",
+        "position": [
+          3,
+          4.63,
+          3.5500000000000003
+        ],
+        "dimensions": [
+          2.1,
+          0.035,
+          0.52
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_head",
+        "shape": "box",
+        "position": [
+          3,
+          4.66,
+          5.35
+        ],
+        "dimensions": [
+          2.3000000000000003,
+          1.1,
+          0.12
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_pillow_0",
+        "shape": "box",
+        "position": [
+          2.51,
+          4.61,
+          4.92
+        ],
+        "dimensions": [
+          0.75,
+          0.13,
+          0.42
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_nightstand_0",
+        "shape": "box",
+        "position": [
+          1.5499999999999998,
+          4.27,
+          4.93
+        ],
+        "dimensions": [
+          0.58,
+          0.54,
+          0.55
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_pillow_1",
+        "shape": "box",
+        "position": [
+          3.49,
+          4.61,
+          4.92
+        ],
+        "dimensions": [
+          0.75,
+          0.13,
+          0.42
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "master_bed_nightstand_1",
+        "shape": "box",
+        "position": [
+          4.45,
+          4.27,
+          4.93
+        ],
+        "dimensions": [
+          0.58,
+          0.54,
+          0.55
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_base",
+        "shape": "box",
+        "position": [
+          -1.5,
+          4.2,
+          9
+        ],
+        "dimensions": [
+          1.7,
+          0.4,
+          2.25
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_mattress",
+        "shape": "box",
+        "position": [
+          -1.5,
+          4.47,
+          9
+        ],
+        "dimensions": [
+          1.63,
+          0.18,
+          2.16
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_duvet",
+        "shape": "box",
+        "position": [
+          -1.5,
+          4.58,
+          8.75
+        ],
+        "dimensions": [
+          1.65,
+          0.08,
+          1.6
+        ],
+        "material": "sage_fabric"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_runner",
+        "shape": "box",
+        "position": [
+          -1.5,
+          4.63,
+          8.35
+        ],
+        "dimensions": [
+          1.7,
+          0.035,
+          0.52
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_head",
+        "shape": "box",
+        "position": [
+          -1.5,
+          4.66,
+          10.15
+        ],
+        "dimensions": [
+          1.9,
+          1.1,
+          0.12
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_pillow_0",
+        "shape": "box",
+        "position": [
+          -1.99,
+          4.61,
+          9.72
+        ],
+        "dimensions": [
+          0.75,
+          0.13,
+          0.42
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_nightstand_0",
+        "shape": "box",
+        "position": [
+          -2.75,
+          4.27,
+          9.73
+        ],
+        "dimensions": [
+          0.58,
+          0.54,
+          0.55
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_pillow_1",
+        "shape": "box",
+        "position": [
+          -1.01,
+          4.61,
+          9.72
+        ],
+        "dimensions": [
+          0.75,
+          0.13,
+          0.42
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "guest_bed_nightstand_1",
+        "shape": "box",
+        "position": [
+          -0.25,
+          4.27,
+          9.73
+        ],
+        "dimensions": [
+          0.58,
+          0.54,
+          0.55
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "bathtub",
+        "shape": "box",
+        "position": [
+          5,
+          4.28,
+          9
+        ],
+        "dimensions": [
+          2.4,
+          0.56,
+          1.15
+        ],
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "bath_inner",
+        "shape": "box",
+        "position": [
+          5,
+          4.5649999999999995,
+          9
+        ],
+        "dimensions": [
+          2.06,
+          0.025,
+          0.82
+        ],
+        "material": "tile"
+      },
+      {
+        "type": "primitive",
+        "id": "vanity",
+        "shape": "box",
+        "position": [
+          3.4,
+          4.42,
+          10.5
+        ],
+        "dimensions": [
+          2.2,
+          0.84,
+          0.65
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "basin",
+        "shape": "box",
+        "position": [
+          3.4,
+          4.88,
+          10.5
+        ],
+        "dimensions": [
+          0.6,
+          0.12,
+          0.45
+        ],
+        "material": "porcelain"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen0",
+        "shape": "box",
+        "position": [
+          -9.75,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen1",
+        "shape": "box",
+        "position": [
+          -9.57,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen2",
+        "shape": "box",
+        "position": [
+          -9.39,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen3",
+        "shape": "box",
+        "position": [
+          -9.21,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen4",
+        "shape": "box",
+        "position": [
+          -9.03,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen5",
+        "shape": "box",
+        "position": [
+          -8.85,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen6",
+        "shape": "box",
+        "position": [
+          -8.67,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen7",
+        "shape": "box",
+        "position": [
+          -8.49,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen8",
+        "shape": "box",
+        "position": [
+          -8.31,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen9",
+        "shape": "box",
+        "position": [
+          -8.13,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen10",
+        "shape": "box",
+        "position": [
+          -7.95,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen11",
+        "shape": "box",
+        "position": [
+          -7.77,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen12",
+        "shape": "box",
+        "position": [
+          -7.59,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen13",
+        "shape": "box",
+        "position": [
+          -7.41,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "wood_screen14",
+        "shape": "box",
+        "position": [
+          -7.23,
+          5.6,
+          0.83
+        ],
+        "dimensions": [
+          0.07,
+          3.0,
+          0.18
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_post0",
+        "shape": "box",
+        "position": [
+          1.8,
+          5.35,
+          -2.5
+        ],
+        "dimensions": [
+          0.1,
+          2.7,
+          0.1
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_post1",
+        "shape": "box",
+        "position": [
+          7,
+          5.35,
+          -2.5
+        ],
+        "dimensions": [
+          0.1,
+          2.7,
+          0.1
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_post2",
+        "shape": "box",
+        "position": [
+          1.8,
+          5.35,
+          0.4
+        ],
+        "dimensions": [
+          0.1,
+          2.7,
+          0.1
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_post3",
+        "shape": "box",
+        "position": [
+          7,
+          5.35,
+          0.4
+        ],
+        "dimensions": [
+          0.1,
+          2.7,
+          0.1
+        ],
+        "material": "bronze"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_beam0",
+        "shape": "box",
+        "position": [
+          4.4,
+          6.7,
+          -2.5
+        ],
+        "dimensions": [
+          5.4,
+          0.15,
+          0.12
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_beam1",
+        "shape": "box",
+        "position": [
+          4.4,
+          6.7,
+          0.4
+        ],
+        "dimensions": [
+          5.4,
+          0.15,
+          0.12
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat0",
+        "shape": "box",
+        "position": [
+          1.8,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat1",
+        "shape": "box",
+        "position": [
+          2.2,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat2",
+        "shape": "box",
+        "position": [
+          2.6,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat3",
+        "shape": "box",
+        "position": [
+          3.0,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat4",
+        "shape": "box",
+        "position": [
+          3.4000000000000004,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat5",
+        "shape": "box",
+        "position": [
+          3.8,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat6",
+        "shape": "box",
+        "position": [
+          4.2,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat7",
+        "shape": "box",
+        "position": [
+          4.6000000000000005,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat8",
+        "shape": "box",
+        "position": [
+          5.0,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat9",
+        "shape": "box",
+        "position": [
+          5.4,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat10",
+        "shape": "box",
+        "position": [
+          5.8,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat11",
+        "shape": "box",
+        "position": [
+          6.2,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat12",
+        "shape": "box",
+        "position": [
+          6.6000000000000005,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "pergola_slat13",
+        "shape": "box",
+        "position": [
+          7.0,
+          6.83,
+          -1.05
+        ],
+        "dimensions": [
+          0.1,
+          0.12,
+          3.2
+        ],
+        "material": "oak"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_top",
+        "shape": "box",
+        "position": [
+          4.4,
+          4.705,
+          -1.1
+        ],
+        "dimensions": [
+          1.6,
+          0.07,
+          0.7
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          3.72,
+          4.335,
+          -1.33
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_leg_-1_1",
+        "shape": "box",
+        "position": [
+          3.72,
+          4.335,
+          -0.8700000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_leg_1_-1",
+        "shape": "box",
+        "position": [
+          5.08,
+          4.335,
+          -1.33
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_leg_1_1",
+        "shape": "box",
+        "position": [
+          5.08,
+          4.335,
+          -0.8700000000000001
+        ],
+        "dimensions": [
+          0.065,
+          0.6699999999999999,
+          0.065
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_seat",
+        "shape": "box",
+        "position": [
+          4.4,
+          4.46,
+          -1.9300000000000002
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_back",
+        "shape": "box",
+        "position": [
+          4.4,
+          4.78,
+          -2.16
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          3.141592653589793,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          4.21,
+          4.22,
+          -2.12
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_leg_-1_1",
+        "shape": "box",
+        "position": [
+          4.21,
+          4.22,
+          -1.7400000000000002
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_leg_1_-1",
+        "shape": "box",
+        "position": [
+          4.590000000000001,
+          4.22,
+          -2.12
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_0_leg_1_1",
+        "shape": "box",
+        "position": [
+          4.590000000000001,
+          4.22,
+          -1.7400000000000002
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_seat",
+        "shape": "box",
+        "position": [
+          4.4,
+          4.46,
+          -0.27000000000000013
+        ],
+        "dimensions": [
+          0.5,
+          0.1,
+          0.5
+        ],
+        "material": "linen"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_back",
+        "shape": "box",
+        "position": [
+          4.4,
+          4.78,
+          -0.04000000000000012
+        ],
+        "dimensions": [
+          0.5,
+          0.5,
+          0.065
+        ],
+        "material": "walnut",
+        "rotation": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_leg_-1_-1",
+        "shape": "box",
+        "position": [
+          4.21,
+          4.22,
+          -0.46000000000000013
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_leg_-1_1",
+        "shape": "box",
+        "position": [
+          4.21,
+          4.22,
+          -0.08000000000000013
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_leg_1_-1",
+        "shape": "box",
+        "position": [
+          4.590000000000001,
+          4.22,
+          -0.46000000000000013
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_chair0_1_leg_1_1",
+        "shape": "box",
+        "position": [
+          4.590000000000001,
+          4.22,
+          -0.08000000000000013
+        ],
+        "dimensions": [
+          0.045,
+          0.44,
+          0.045
+        ],
+        "material": "walnut"
+      },
+      {
+        "type": "primitive",
+        "id": "terrace_table_book",
+        "shape": "box",
+        "position": [
+          4.62,
+          4.78,
+          -1.1
+        ],
+        "dimensions": [
+          0.35,
+          0.035,
+          0.26
+        ],
+        "material": "clay"
+      },
+      {
+        "type": "primitive",
+        "id": "room_light2_back",
+        "shape": "box",
+        "position": [
+          -2,
+          6.8,
+          4.04
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "room_light2_glow",
+        "shape": "box",
+        "position": [
+          -2,
+          6.8,
+          4
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 18,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "room_light3_back",
+        "shape": "box",
+        "position": [
+          3,
+          6.8,
+          5.04
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "room_light3_glow",
+        "shape": "box",
+        "position": [
+          3,
+          6.8,
+          5
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 18,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      },
+      {
+        "type": "primitive",
+        "id": "room_light4_back",
+        "shape": "box",
+        "position": [
+          -1.5,
+          6.8,
+          9.04
+        ],
+        "dimensions": [
+          0.24,
+          0.38,
+          0.09
+        ],
+        "material": "dark_wood"
+      },
+      {
+        "type": "primitive",
+        "id": "room_light4_glow",
+        "shape": "box",
+        "position": [
+          -1.5,
+          6.8,
+          9
+        ],
+        "dimensions": [
+          0.16,
+          0.26,
+          0.16
+        ],
+        "material": "warm_glow",
+        "lightSource": {
+          "lightType": "point",
+          "color": [
+            1,
+            0.79,
+            0.51
+          ],
+          "intensity": 18,
+          "distance": 5,
+          "initiallyOn": true,
+          "offset": [
+            0,
+            -0.12,
+            -0.11
+          ]
+        }
+      }
+    ],
+    "components": [
+      {
+        "type": "window",
+        "id": "bedroom_front0",
+        "parentWall": "L2_front",
+        "from": [
+          0.8,
+          4.25,
+          0
+        ],
+        "width": 4.8,
+        "height": 2.6,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 2,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "bedroom_front2",
+        "parentWall": "L2_front",
+        "from": [
+          12.200000000000001,
+          4.25,
+          0
+        ],
+        "width": 4.8,
+        "height": 2.6,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 2,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "terrace_door",
+        "parentWall": "L2_front",
+        "from": [
+          6.7,
+          4.0,
+          0
+        ],
+        "width": 1.4,
+        "height": 2.65,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "glass",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "window",
+        "id": "bedroom_front1",
+        "parentWall": "L2_front",
+        "from": [
+          8.5,
+          4.25,
+          0
+        ],
+        "width": 2.8,
+        "height": 2.6,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_left0",
+        "parentWall": "L2_left",
+        "from": [
+          0.8,
+          4.8,
+          0
+        ],
+        "width": 3.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_left1",
+        "parentWall": "L2_left",
+        "from": [
+          5.8,
+          4.8,
+          0
+        ],
+        "width": 3.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_right0",
+        "parentWall": "L2_right",
+        "from": [
+          0.8,
+          4.8,
+          0
+        ],
+        "width": 3.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_right1",
+        "parentWall": "L2_right",
+        "from": [
+          5.8,
+          4.8,
+          0
+        ],
+        "width": 3.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_back0",
+        "parentWall": "L2_back",
+        "from": [
+          0.8,
+          4.8,
+          0
+        ],
+        "width": 7.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "window",
+        "id": "L2_back1",
+        "parentWall": "L2_back",
+        "from": [
+          9.8,
+          4.8,
+          0
+        ],
+        "width": 7.4,
+        "height": 2,
+        "frameWidth": 0.055,
+        "frameDepth": 0.25,
+        "glassDepth": 0.014,
+        "verticalMullions": 1,
+        "horizontalMullions": 0,
+        "mullionWidth": 0.025,
+        "frameMaterial": "dark_wood",
+        "glassMaterial": "glass"
+      },
+      {
+        "type": "railing",
+        "id": "house_void_guard",
+        "path": [
+          [
+            -8.88,
+            4.0,
+            3.86
+          ],
+          [
+            -8.88,
+            4.0,
+            9.19
+          ],
+          [
+            -5.84,
+            4.0,
+            9.19
+          ],
+          [
+            -5.84,
+            4.0,
+            3.86
+          ]
+        ],
+        "height": 1.05,
+        "postSpacing": 0.95,
+        "postRadius": 0.018,
+        "railRadius": 0.022,
+        "railLevels": [
+          0.12,
+          1
+        ],
+        "material": "bronze",
+        "infillType": "glass",
+        "infillThickness": 0.014,
+        "infillTopRatio": 0.94,
+        "infillMaterial": "glass"
+      },
+      {
+        "type": "door",
+        "id": "bedroom_access",
+        "parentWall": "upper_partition",
+        "from": [
+          1.1,
+          4.0,
+          0
+        ],
+        "width": 1.0,
+        "height": 2.4,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "walnut",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "door",
+        "id": "bath_access",
+        "parentWall": "bath_partition",
+        "from": [
+          9.2,
+          4.0,
+          0
+        ],
+        "width": 1,
+        "height": 2.4,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "walnut",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "door",
+        "id": "guest_room_access",
+        "parentWall": "bath_partition",
+        "from": [
+          0.5,
+          4.0,
+          0
+        ],
+        "width": 1,
+        "height": 2.4,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "walnut",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "door",
+        "id": "guest_access",
+        "parentWall": "bath_side",
+        "from": [
+          1,
+          4.0,
+          0
+        ],
+        "width": 1,
+        "height": 2.4,
+        "frameWidth": 0.06,
+        "frameDepth": 0.26,
+        "leafDepth": 0.045,
+        "doorStyle": "single",
+        "frameMaterial": "dark_wood",
+        "leafMaterial": "walnut",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90,
+          "initiallyOpen": false
+        }
+      },
+      {
+        "type": "railing",
+        "id": "front_balcony",
+        "path": [
+          [
+            -10,
+            4.0,
+            -3
+          ],
+          [
+            10,
+            4.0,
+            -3
+          ],
+          [
+            10,
+            4.0,
+            11
+          ],
+          [
+            8,
+            4.0,
+            11
+          ]
+        ],
+        "height": 1.08,
+        "postSpacing": 0.95,
+        "postRadius": 0.018,
+        "railRadius": 0.022,
+        "railLevels": [
+          0.12,
+          1
+        ],
+        "material": "bronze",
+        "infillType": "glass",
+        "infillThickness": 0.014,
+        "infillTopRatio": 0.94,
+        "infillMaterial": "glass"
+      }
+    ]
+  },
+  "materials": {
+    "limestone": {
+      "baseColor": [
+        0.72,
+        0.69,
+        0.6
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "plaster": {
+      "baseColor": [
+        0.86,
+        0.84,
+        0.77
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "concrete": {
+      "baseColor": [
+        0.51,
+        0.53,
+        0.51
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "dark_wood": {
+      "baseColor": [
+        0.09,
+        0.12,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0.15,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "walnut": {
+      "baseColor": [
+        0.33,
+        0.2,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "oak": {
+      "baseColor": [
+        0.57,
+        0.39,
+        0.22
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "bronze": {
+      "baseColor": [
+        0.27,
+        0.23,
+        0.16
+      ],
+      "roughness": 0.84,
+      "metallic": 0.6,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "clay": {
+      "baseColor": [
+        0.53,
+        0.25,
+        0.16
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "green": {
+      "baseColor": [
+        0.12,
+        0.25,
+        0.2
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "linen": {
+      "baseColor": [
+        0.85,
+        0.79,
+        0.64
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "sage_fabric": {
+      "baseColor": [
+        0.34,
+        0.43,
+        0.32
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "soil": {
+      "baseColor": [
+        0.15,
+        0.11,
+        0.07
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "grass": {
+      "baseColor": [
+        0.28,
+        0.37,
+        0.22
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "leaf": {
+      "baseColor": [
+        0.17,
+        0.28,
+        0.14
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "leaf_light": {
+      "baseColor": [
+        0.33,
+        0.42,
+        0.21
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "bark": {
+      "baseColor": [
+        0.24,
+        0.16,
+        0.1
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "black": {
+      "baseColor": [
+        0.025,
+        0.035,
+        0.034
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "porcelain": {
+      "baseColor": [
+        0.89,
+        0.87,
+        0.79
+      ],
+      "roughness": 0.38,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "red": {
+      "baseColor": [
+        0.61,
+        0.17,
+        0.11
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "yellow": {
+      "baseColor": [
+        0.83,
+        0.6,
+        0.18
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "blue": {
+      "baseColor": [
+        0.17,
+        0.32,
+        0.4
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "tile": {
+      "baseColor": [
+        0.55,
+        0.61,
+        0.58
+      ],
+      "roughness": 0.84,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon"
+    },
+    "glass": {
+      "baseColor": [
+        0.86,
+        0.93,
+        0.92
+      ],
+      "roughness": 0.08,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.84,
+      "ior": 1.5,
+      "thickness": 0.014,
+      "side": "double"
+    },
+    "water": {
+      "baseColor": [
+        0.23,
+        0.56,
+        0.52
+      ],
+      "roughness": 0.055,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "materialClass": "glass",
+      "transmission": 0.95,
+      "ior": 1.333,
+      "thickness": 0.35,
+      "attenuationDistance": 4,
+      "side": "front"
+    },
+    "warm_glow": {
+      "baseColor": [
+        1,
+        0.78,
+        0.44
+      ],
+      "roughness": 0.35,
+      "metallic": 0,
+      "albedo": 1,
+      "lightingCondition": "D65_noon",
+      "emissive": [
+        1,
+        0.63,
+        0.25
+      ],
+      "emissiveIntensity": 1.5
+    }
+  },
+  "assets": {}
+}

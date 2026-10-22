@@ -1,0 +1,258 @@
+{
+  "input": "docs\\10月22日\\01-新中式别墅\\听澜合院-新中式别墅.wild",
+  "sha256": "a699d62df0fe37308d7c98886cc142cb479e46bc36d3583d49fdd9c6289fe178",
+  "auto_fix": false,
+  "schema_errors": [
+    {
+      "path": [
+        "geometry",
+        "components",
+        0
+      ],
+      "message": "{'type': 'door', 'id': 'living_to_tea', 'parentWall': 'main_front_g', 'from': [1.8, 0.5, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        3
+      ],
+      "message": "{'type': 'door', 'id': 'main_entry', 'parentWall': 'main_front_g', 'from': [10.7, 0.5, 0], 'width': 2.6, 'height': 2.8, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'double', 'frameMaterial': 'dark_wood', 'leafMaterial': 'glass', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        4
+      ],
+      "message": "{'type': 'door', 'id': 'dining_to_study', 'parentWall': 'main_front_g', 'from': [16.7, 0.5, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        9
+      ],
+      "message": "{'type': 'door', 'id': 'upper_gallery_access', 'parentWall': 'main_front_u', 'from': [10.8, 4.05, 0], 'width': 2.0, 'height': 2.7, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'double', 'frameMaterial': 'dark_wood', 'leafMaterial': 'glass', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        32
+      ],
+      "message": "{'type': 'door', 'id': 'tea_court_door', 'parentWall': 'tea_east', 'from': [5.4, 0.5, 0], 'width': 1.5, 'height': 2.7, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'glass', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        35
+      ],
+      "message": "{'type': 'door', 'id': 'study_court_door', 'parentWall': 'study_west', 'from': [3.65, 0.5, 0], 'width': 1.1, 'height': 2.6, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'glass', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        38
+      ],
+      "message": "{'type': 'door', 'id': 'room_l_g', 'parentWall': 'partition_l_g', 'from': [1.1, 0.5, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        39
+      ],
+      "message": "{'type': 'door', 'id': 'room_r_g', 'parentWall': 'partition_r_g', 'from': [1.1, 0.5, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        40
+      ],
+      "message": "{'type': 'door', 'id': 'room_l_u', 'parentWall': 'partition_l_u', 'from': [1.1, 4.05, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        41
+      ],
+      "message": "{'type': 'door', 'id': 'room_r_u', 'parentWall': 'partition_r_u', 'from': [1.1, 4.05, 0], 'width': 1.1, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        42
+      ],
+      "message": "{'type': 'door', 'id': 'kitchen_door', 'parentWall': 'kitchen_partition', 'from': [0.6, 0.5, 0], 'width': 1.0, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "components",
+        43
+      ],
+      "message": "{'type': 'door', 'id': 'upper_bath_door', 'parentWall': 'upper_bath_front', 'from': [0.65, 4.05, 0], 'width': 0.9, 'height': 2.45, 'frameWidth': 0.06, 'frameDepth': 0.26, 'leafDepth': 0.045, 'doorStyle': 'single', 'frameMaterial': 'dark_wood', 'leafMaterial': 'walnut', 'interaction': {'enabled': True, 'motion': 'swing', 'hingeSide': 'left', 'openAngle': 90, 'initiallyOpen': False}} is not valid under any of the given schemas"
+    }
+  ],
+  "pipeline": [
+    {
+      "step": 1,
+      "name": "validate_blueprint_structure",
+      "output": "✅ 结构完整（1165 个构件，类型: {'primitive', 'floor', 'wall', 'roof', 'stair'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 2,
+      "name": "validate_element_required_fields",
+      "output": "✅ 所有 1165 个基础构件和 62 个组合构件的必填字段完整（基础类型: {'primitive', 'floor', 'wall', 'roof', 'stair'}，组合类型: {'window', 'door', 'railing', 'light'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 3,
+      "name": "validate_reference_integrity",
+      "output": "✅ 引用完整性通过。（1165 个基础构件，62 个组合构件，0 个模板，0 个实例）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 4,
+      "name": "validate_opening_coords",
+      "output": "✅ 所有 opening 的 from 字段格式正确。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "4b",
+      "name": "validate_opening_fit",
+      "output": "✅ 所有 43 个 opening/门窗组件均在 parentWall 范围内。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 5,
+      "name": "validate_wall_junctions",
+      "output": "⚠️  发现 1 个孤立端点（可能造成缝隙）：\n  - upper_bath_front.to (10.00, 13.30)\n\n建议：确保相邻墙体端点坐标精确一致。",
+      "has_error": false,
+      "has_warning": true,
+      "issues": null
+    },
+    {
+      "step": 6,
+      "name": "validate_stair_alignment",
+      "output": "❌ [stair_flight_2] 楼梯 stair_flight_2 终点不在 4.05m 楼板或平台范围内；端点=[12.15, 4.05, 11.2]，净宽=1.2m，承托范围=[[5.285, 7.555, 5.615, 7.885], [9.635000000000002, 7.555, 9.965, 7.885], [14.385000000000002, 7.555, 14.715, 7.885], [-0.6749999999999998, 0.16499999999999965, 5.875, 0.28499999999999964], [-0.7349999999999999, 0.22499999999999964, -0.6149999999999998, 9.775], [-0.6749999999999998, 9.715, 5.875, 9.835], [5.815, 0.22499999999999964, 5.935, 9.775], [14.124999999999998, 2.665, 20.674999999999997, 2.785], [14.064999999999998, 2.725, 14.184999999999999, 9.775], [14.124999999999998, 9.715, 20.674999999999997, 9.835], [20.615, 2.725, 20.734999999999996, 9.775], [5.2, 7.635000000000001, 14.8, 7.825], [-0.09999999999999964, 8.785, 20.1, 8.934999999999999], [-0.09999999999999964, 16.065, 20.1, 16.215], [-0.1, 8.95, 10.0, 16.1], [12.8, 8.95, 20.1, 16.1], [10.0, 8.95, 12.8, 11.1], [10.0, 15.2, 12.8, 16.1], [5.15, 7.5, 14.85, 8.95]]；已有承托标高 [0.08, 0.089, 0.11, 0.15, 0.16, 0.185, 0.29, 0.36, 0.395, 0.5, 0.507, 0.51, 0.515, 0.53, 0.566, 0.631, 0.68, 0.697, 0.735, 0.762, 0.8, 0.828, 0.83, 0.86, 0.894, 0.93, 0.94, 0.959, 0.975, 0.98, 1.01, 1.025, 1.03, 1.04, 1.059, 1.075, 1.091, 1.1, 1.11, 1.13, 1.156, 1.17, 1.18, 1.222, 1.24, 1.288, 1.353, 1.36, 1.4, 1.41, 1.419, 1.425, 1.43, 1.455, 1.46, 1.484, 1.495, 1.53, 1.55, 1.58, 1.616, 1.681, 1.747, 1.78, 1.812, 1.875, 1.878, 1.944, 2.009, 2.03, 2.075, 2.141, 2.206, 2.272, 2.275, 2.325, 2.338, 2.38, 2.403, 2.425, 2.469, 2.48, 2.5, 2.534, 2.6, 2.666, 2.731, 2.775, 2.797, 2.862, 2.928, 2.994, 2.995, 3.05, 3.059, 3.065, 3.095, 3.12, 3.125, 3.15, 3.165, 3.191, 3.195, 3.25, 3.256, 3.295, 3.305, 3.322, 3.375, 3.387, 3.453, 3.519, 3.584, 3.65, 3.66, 3.72, 3.79, 3.8, 3.865, 3.87, 4.03, 4.05, 4.45, 4.49, 4.56, 4.59, 4.61, 4.67, 4.697, 4.72, 4.725, 4.79, 4.98, 4.99, 5.08, 5.152, 5.26, 5.41, 6.25, 6.395, 7.075, 7.33, 7.37, 7.485]m。若该标高缺少承托面，返回 floor 或 primitive.box 平台实体，顶面覆盖端点完整梯宽，不能只移动 X/Z；若已有平台，则核对标高和覆盖范围；explanation 中描述平台不能代替实体",
+      "has_error": true,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 7,
+      "name": "validate_roof_coverage",
+      "output": "❌ [main_roof] 屋顶底标高 position[1]=7.50 高于承托墙顶 7.35m，悬空 0.15m。position[1] 必须等于其承托构件的顶标高，不要额外加上楼板厚度或层高。",
+      "has_error": true,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7b",
+      "name": "validate_element_dimensions",
+      "output": "✅ 所有 1227 个构件尺寸合理。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7c",
+      "name": "validate_model_quality",
+      "output": "✅ 模型质量检查通过：无重复墙体、重叠柱或共面骨架表面。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7d",
+      "name": "validate_stacked_member_containment",
+      "output": "✅ 贯通墙体均收进其跨越的每一层外墙轮廓（检查 2 层）。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7e",
+      "name": "validate_roof_top_coverage",
+      "output": "✅ 所有 21 面墙的顶部均被屋顶 / 楼板 / 上层墙覆盖。",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 9,
+      "name": "validate_collision",
+      "output": "发现 10 处空间冲突：\n⚠️  [foundation_0] 与 [foundation_1]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [foundation_0] 与 [foundation_2]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_0] 与 [ground_1]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_0] 与 [ground_2]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_0] 与 [court_paving_1]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_1] 与 [court_paving_0]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_1] 与 [court_paving_1]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_1] 与 [court_paving_2]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_2] 与 [court_paving_1]（均为 floor）存在重叠/穿插，请检查坐标\n⚠️  [ground_2] 与 [court_paving_3]（均为 floor）存在重叠/穿插，请检查坐标",
+      "has_error": false,
+      "has_warning": true,
+      "issues": null
+    },
+    {
+      "step": "10.1",
+      "name": "validate_door_placement",
+      "output": "✅ 门位置校验通过 (12 个门)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.2",
+      "name": "validate_light_placement",
+      "output": "✅ 灯具校验通过 (12 个灯具)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.3",
+      "name": "validate_primitive_placement",
+      "output": "✅ 所有 1165 个基础构件和 62 个组合构件的必填字段完整（基础类型: {'primitive', 'floor', 'wall', 'roof', 'stair'}，组合类型: {'window', 'door', 'railing', 'light'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.4",
+      "name": "validate_railing_placement",
+      "output": "✅ 栏杆校验通过 (7 个栏杆)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "10.5",
+      "name": "validate_window_placement",
+      "output": "✅ 窗位置校验通过 (31 个窗)",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    }
+  ],
+  "pipeline_error_steps": [
+    "validate_stair_alignment",
+    "validate_roof_coverage"
+  ],
+  "pipeline_warning_steps": [
+    "validate_wall_junctions",
+    "validate_collision"
+  ],
+  "source_unchanged": true
+}

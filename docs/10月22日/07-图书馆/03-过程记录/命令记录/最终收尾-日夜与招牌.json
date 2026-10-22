@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\00-公共脚本\\渲染命名建筑.mjs",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\07-图书馆\\知序图书馆.wild",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\07-图书馆\\05-效果图\\世界环境"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:24:47.686082+08:00",
+  "ended_at": "2026-10-22T19:24:54.734697+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"input\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\07-图书馆\\\\知序图书馆.wild\",\n  \"inputSha256\": \"dcfbc5552fabf86c32963e2f1aaa9a28ccfabf42ae574b0e76b7b6ff547e370d\",\n  \"renderer\": \"production renderEntity + materialAdapter + WorldEnvironmentMapRuntime + waterSurfaceMaterial\",\n  \"settings\": {\n    \"width\": 1440,\n    \"height\": 1080,\n    \"shadows\": \"PCFSoft 2048\",\n    \"timePresets\": [\n      \"day\",\n      \"night\"\n    ],\n    \"water\": {\n      \"transparency\": 1,\n      \"waveStrength\": 0.65,\n      \"time\": 2.4\n    }\n  },\n  \"shots\": [\n    \"day.png\",\n    \"night.png\",\n    \"sign.png\"\n  ],\n  \"boundingBox\": {\n    \"min\": [\n      -16,\n      -0.19999999940395358,\n      -16\n    ],\n    \"max\": [\n      16,\n      9.792499998807907,\n      16\n    ]\n  },\n  \"meshCount\": 1478,\n  \"labels\": 2,\n  \"lightSources\": 10,\n  \"diagnostics\": [\n    {\n      \"level\": \"info\",\n      \"code\": \"PARTIAL_CAPABILITY\",\n      \"message\": \"roof: 基础屋顶、中式曲面与重檐屋顶\",\n      \"elementType\": \"roof\"\n    },\n    {\n      \"level\": \"info\",\n      \"code\": \"PARTIAL_CAPABILITY\",\n      \"message\": \"opening: 墙体洞口及门窗覆盖几何\",\n      \"elementType\": \"opening\"\n    },\n    {\n      \"level\": \"info\",\n      \"code\": \"PARTIAL_CAPABILITY\",\n      \"message\": \"beam: 矩形、圆形与工字梁\",\n      \"elementType\": \"beam\"\n    }\n  ],\n  \"runtimeErrors\": []\n}\n",
+  "stderr": ""
+}

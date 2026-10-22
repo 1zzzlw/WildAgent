@@ -76,7 +76,7 @@ import {
 } from '../../renderer/worldEffectRuntime'
 import { WorldCloudLayer } from '../../renderer/worldCloudLayer'
 import { applyGroundWeatherMaterial } from '../../renderer/groundWeatherMaterial'
-import { setWaterSurfaceTime, setWaterSurfaceAnimated } from '../../renderer/waterSurfaceMaterial'
+import { setWaterSurfaceTime, setWaterSurfaceAnimated, setWaterSurfaceAppearance } from '../../renderer/waterSurfaceMaterial'
 import {
   createCelestialBody,
   syncSkyPreset,
@@ -299,6 +299,11 @@ watch(() => renderPanel.waterAnimated, enabled => {
   try { localStorage.setItem('wild_water_animated', String(enabled)) } catch { /* 内存开关仍然有效。 */ }
   markNeedsRender()
 }, { immediate: true })
+watch([() => renderPanel.waterTransparency, () => renderPanel.waterWaveStrength], ([transparency, waveStrength]) => {
+  setWaterSurfaceAppearance(transparency, waveStrength)
+  try { localStorage.setItem('wild_water_appearance_v1', JSON.stringify({ transparency, waveStrength })) } catch { /* 内存设置仍然有效。 */ }
+  markNeedsRender()
+}, { immediate: true })
 watch([timeOfDay, environmentPresetId, qualityLevel, cameraPresetId, viewMode], () => {
   renderPanel.presets = { time: timeOfDay.value, environment: environmentPresetId.value,
     quality: qualityLevel.value, camera: cameraPresetId.value, view: viewMode.value }
@@ -496,12 +501,7 @@ function initThreeJS() {
   rebuildBuiltInEnvironment()
   applyEnvironmentAppearance()
   
-  // 创建GridHelper并保持引用，确保不会被误删除
-  // 添加到场景根层级，不是sceneGroup
-  gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x333333)
-  gridHelper.name = 'GridHelper'
-  gridHelper.position.y = 0  // 确保在地面
-  scene.add(gridHelper)
+  updateGroundGrid()
   worldRuntime = new WorldRuntime('editor-world')
   worldRuntime.loadChunk('editor-active')
   const activeInstance = worldRuntime.ensureInstance({
@@ -620,6 +620,7 @@ function resetSceneBounds() {
   environmentGroundY = 0
   sceneBoundsCenter.set(0, 0, 0)
   sceneBoundsSize.set(8, 4, 8)
+  updateGroundGrid()
   // 清掉足迹居中归一化留下的平移，避免空场景/下次加载时继承上一次的偏移。
   if (sceneGroup) sceneGroup.position.set(0, 0, 0)
   if (shadowGround) shadowGround.position.y = -0.002
@@ -709,6 +710,7 @@ function updateScene() {
     sceneBoundsSize.copy(size)
     hasSceneBounds = true
     environmentGroundY = bbox.min[1]
+    updateGroundGrid(size.x, size.z)
 
     updateLightingToBounds(center, size)
     if (shadowGround) shadowGround.position.y = bbox.min[1] - 0.002
@@ -1355,7 +1357,7 @@ function scheduleEnvironmentRebuild(
   atmosphere: WorldAtmosphereAppearance,
   force: boolean,
 ): void {
-  environmentRuntime?.schedule(preset, atmosphere, sunDirection, timeOfDay.value === 'night', force)
+  environmentRuntime?.schedule(preset, atmosphere, sunDirection, timeOfDay.value === 'night', force, environmentColor('groundColor').getHex())
 }
 
 function createGroundTexture(): THREE.CanvasTexture {
@@ -1541,6 +1543,26 @@ function markNeedsRender() {
 }
 
 // ── 渲染控制面板：执行端（状态在 renderPanelStore，UI 在 RenderControlPanel）──
+
+/** 网格覆盖场景并留出边距；大场景减少细分，避免网格线数量无限增长。 */
+function updateGroundGrid(width = 0, depth = 0) {
+  if (!scene) return
+  const gridSize = 2 ** Math.ceil(Math.log2(Math.max(16, width + 4, depth + 4)))
+  const divisions = Math.min(gridSize, 128)
+  if (!gridHelper || renderPanel.sceneDimensions.gridSize !== gridSize) {
+    if (gridHelper) {
+      scene.remove(gridHelper)
+      gridHelper.geometry.dispose()
+      const materials = Array.isArray(gridHelper.material) ? gridHelper.material : [gridHelper.material]
+      materials.forEach(material => material.dispose())
+    }
+    gridHelper = new THREE.GridHelper(gridSize, divisions, 0x444444, 0x333333)
+    gridHelper.name = 'GridHelper'
+    scene.add(gridHelper)
+  }
+  renderPanel.sceneDimensions = { width, depth, gridSize, gridStep: gridSize / divisions }
+  ensureGridVisible()
+}
 
 let lastStatsPublishAt = 0
 const STATS_PUBLISH_INTERVAL_MS = 500

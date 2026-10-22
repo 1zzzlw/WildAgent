@@ -112,8 +112,9 @@ export function createMaterialFromParams(
   textureFactory: TextureFactory = createTexture,
   materialName: string = 'material',
 ): PBRMaterial {
+  const isWater = isWaterMaterial(params, materialName)
   // 只要是玻璃 / 清漆 / 布料材质，或者开启了透光、清漆涂层、sheen 光泽，就启用 PBR 物理材质；其他简单材质（普通哑光金属、基础漫反射等）就不走这个材质管线。
-  const usePhysicalMaterial = params.materialClass === 'glass'
+  const usePhysicalMaterial = isWater || params.materialClass === 'glass'
     || params.materialClass === 'clearcoat'
     || params.materialClass === 'fabric'
     || (params.transmission ?? 0) > 0
@@ -148,17 +149,17 @@ export function createMaterialFromParams(
   // 3. 透明度（只有明确半透明时才开启，避免影响深度排序）
   if (material instanceof THREE.MeshPhysicalMaterial) {
     const isGlass = params.materialClass === 'glass'
-    material.transmission = params.transmission ?? (isGlass ? 0.92 : 0)
-    material.ior = params.ior ?? (isGlass ? 1.5 : 1.5)
-    material.thickness = params.thickness ?? (isGlass ? 0.012 : 0)
-    material.attenuationDistance = params.attenuationDistance ?? (isGlass ? 6 : Infinity)
-    if (params.attenuationColor || isGlass) {
+    material.transmission = params.transmission ?? (isWater ? 0.96 : isGlass ? 0.92 : 0)
+    material.ior = params.ior ?? (isWater ? 1.333 : 1.5)
+    material.thickness = params.thickness ?? (isWater ? 0.3 : isGlass ? 0.012 : 0)
+    material.attenuationDistance = params.attenuationDistance ?? (isWater ? 4 : isGlass ? 6 : Infinity)
+    if (params.attenuationColor || isGlass || isWater) {
       material.attenuationColor = new THREE.Color().setRGB(
-        ...(params.attenuationColor ?? [0.82, 0.94, 1]),
+        ...(params.attenuationColor ?? (isWater ? params.baseColor : [0.82, 0.94, 1])),
         THREE.SRGBColorSpace,
       )
     }
-    material.clearcoat = params.clearcoat ?? (isGlass ? 0.08 : 0)
+    material.clearcoat = params.clearcoat ?? (isGlass && !isWater ? 0.08 : 0)
     material.clearcoatRoughness = params.clearcoatRoughness ?? 0.12
     material.sheen = params.sheen ?? (params.materialClass === 'fabric' ? 0.35 : 0)
     if (params.sheenColor) {
@@ -222,11 +223,12 @@ export function createMaterialFromParams(
 
   // 7. core 只输出实现 ID 和参数，实际 Shader 通过 renderer 注册表选择。
   applyRegisteredSurfaceMaterial(material, materialName, params)
-  if (isWaterMaterial(params, materialName)) applyWaterSurfaceMaterial(material)
+  if (isWater) applyWaterSurfaceMaterial(material)
 
   // 8. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
   // 只有已经验证为封闭实体的材质才通过 side: 'front' 显式开启背面剔除。
-  material.side = params.side === 'front' ? THREE.FrontSide : THREE.DoubleSide
+  // 水体只计算外表面透射，避免 r160 把背面再次画进透射缓冲而重复叠加水色。
+  material.side = isWater || params.side === 'front' ? THREE.FrontSide : THREE.DoubleSide
 
   return material
 }

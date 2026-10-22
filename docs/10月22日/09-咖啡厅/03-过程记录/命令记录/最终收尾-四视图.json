@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "E:\\AgentProject\\WildAgent\\wild-web\\scripts\\render-baseline.mjs",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\09-咖啡厅\\青屿咖啡.wild",
+    "E:\\AgentProject\\WildAgent\\docs\\10月22日\\09-咖啡厅\\05-效果图"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T19:25:30.379629+08:00",
+  "ended_at": "2026-10-22T19:25:33.863696+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"3e61aaa8f2ea092b33ba086c1fd6760104947b3fb4ca751b90574b1bbb0194d4\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"background\": 14673130,\n    \"sun\": {\n      \"azimuthDeg\": 135,\n      \"elevationDeg\": 42,\n      \"intensity\": 2.1,\n      \"color\": 16774370\n    },\n    \"ambient\": {\n      \"sky\": 14674421,\n      \"ground\": 10130828,\n      \"intensity\": 0.85\n    },\n    \"ground\": {\n      \"color\": 9277571,\n      \"y\": -0.02\n    },\n    \"toneMappingExposure\": 1\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"bbf4787436032f3eeeb06f6549038cb3a088cbb227ee9337b5bd7a720a7c041c\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 296,\n  \"materialCount\": 296,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -8,\n      -0.19999999940395358,\n      -8\n    ],\n    \"max\": [\n      8,\n      4.419999998807907,\n      8\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\09-咖啡厅\\\\05-效果图\\\\front.png\",\n      \"bytes\": 272685\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\09-咖啡厅\\\\05-效果图\\\\side.png\",\n      \"bytes\": 273580\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\09-咖啡厅\\\\05-效果图\\\\top.png\",\n      \"bytes\": 294686\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"E:\\\\AgentProject\\\\WildAgent\\\\docs\\\\10月22日\\\\09-咖啡厅\\\\05-效果图\\\\perspective.png\",\n      \"bytes\": 409945\n    }\n  ],\n  \"contextSha256\": \"3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3\"\n}\n",
+  "stderr": ""
+}

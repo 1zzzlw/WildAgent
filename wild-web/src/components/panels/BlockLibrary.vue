@@ -60,6 +60,13 @@ interface ComponentBlock {
 
 const basicBlocks: BlockTemplate[] = [
   {
+    type: 'primitive',
+    label: '招牌',
+    icon: '文',
+    description: '创建建筑招牌',
+    defaults: { type: 'primitive', shape: 'box', position: [0, 2, 0], dimensions: [3, 0.7, 0.12], material: 'default', label: { text: '建筑名称' } }
+  },
+  {
     type: 'wall',
     label: '墙体',
     icon: '▭',
@@ -117,6 +124,7 @@ async function handleAddBlock(block: BlockTemplate) {
     id: generateId(block.type),
     ...block.defaults
   } as GeometryElement
+  if (block.defaults.label) element.label = { ...(block.defaults.label as { text: string }), text: sceneStore.document.name }
 
   const patch = createPatch(
     sceneStore.document.revision,

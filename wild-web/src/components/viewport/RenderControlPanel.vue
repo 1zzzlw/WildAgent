@@ -20,6 +20,14 @@
       <div class="rc-section">
         <div class="rc-section-title">渲染信息</div>
         <div class="rc-stats">
+          <div class="rc-stat rc-stat-wide">
+            <span class="rc-stat-label">场景占地</span>
+            <span class="rc-stat-value" aria-label="场景占地尺寸">{{ footprintLabel }}</span>
+          </div>
+          <div class="rc-stat rc-stat-wide">
+            <span class="rc-stat-label">地面网格</span>
+            <span class="rc-stat-value" aria-label="地面网格尺寸">{{ gridLabel }}</span>
+          </div>
           <div class="rc-stat">
             <span class="rc-stat-label">帧率</span>
             <span class="rc-stat-value" :class="fpsTier">{{ store.stats.fps }} FPS</span>
@@ -70,6 +78,16 @@
           <input v-model="store.waterAnimated" type="checkbox" aria-label="水面动态" />
           <span class="rc-switch" aria-hidden="true"></span>
         </label>
+        <label class="rc-slider-row">
+          <span class="rc-slider-label">水面透明度</span>
+          <input v-model.number="store.waterTransparency" aria-label="水面透明度" type="range" min="0" max="1" step="0.05" class="rc-slider" />
+          <span class="rc-slider-value">{{ Math.round(store.waterTransparency * 100) }}%</span>
+        </label>
+        <label class="rc-slider-row">
+          <span class="rc-slider-label">波纹强度</span>
+          <input v-model.number="store.waterWaveStrength" aria-label="波纹强度" type="range" min="0" max="1" step="0.05" class="rc-slider" />
+          <span class="rc-slider-value">{{ Math.round(store.waterWaveStrength * 100) }}%</span>
+        </label>
         <div v-if="store.autoRotate" class="rc-slider-row">
           <span class="rc-slider-label">速度</span>
           <input v-model.number="store.autoRotateSpeed" type="range" min="0.2" max="4" step="0.2" class="rc-slider" />
@@ -114,6 +132,15 @@ const resolutionLabel = computed(() => {
   const { renderWidth, renderHeight, pixelRatio } = store.stats
   if (!renderWidth || !renderHeight) return '—'
   return `${renderWidth}×${renderHeight} @${pixelRatio.toFixed(2)}x`
+})
+
+const footprintLabel = computed(() => {
+  const { width, depth } = store.sceneDimensions
+  return width || depth ? `${Number(width.toFixed(2))}×${Number(depth.toFixed(2))} m` : '—'
+})
+const gridLabel = computed(() => {
+  const { gridSize, gridStep } = store.sceneDimensions
+  return `${gridSize}×${gridSize} m · ${gridStep} m/格`
 })
 
 function formatCount(value: number): string {

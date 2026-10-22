@@ -1,0 +1,19 @@
+{
+  "design_sha256": "78cc2afed47157c49dacfcd4156cbc5b48fb68a7ba5c2aa904db15d55979165e",
+  "wild_sha256": "3e61aaa8f2ea092b33ba086c1fd6760104947b3fb4ca751b90574b1bbb0194d4",
+  "compiler": "docs\\10月22日\\00-公共脚本\\编译命名建筑.py",
+  "elements": 253,
+  "components": 7,
+  "signs": [
+    {
+      "id": "building_name",
+      "text": "青屿咖啡"
+    },
+    {
+      "id": "menu",
+      "text": "COFFEE\n烘焙 · 手冲"
+    }
+  ],
+  "real_lights": 5,
+  "method": "DesignDocument -> deterministic author assembly -> WILD (not LangGraph)"
+}

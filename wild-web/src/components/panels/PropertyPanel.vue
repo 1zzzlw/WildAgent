@@ -523,6 +523,35 @@
           </div>
         </template>
 
+        <div class="property-section" v-if="selectedPrimitive?.shape === 'box'">
+          <div class="section-title">招牌文字</div>
+          <div class="property-row">
+            <label>文字</label>
+            <el-input :model-value="selectedPrimitive.label?.text || ''" aria-label="招牌文字" maxlength="256"
+              placeholder="输入建筑名称；清空移除文字" @change="changeLabelText" />
+          </div>
+          <div class="interaction-hint">文字位于构件正面，随构件移动、旋转，并保存在 WILD 文件中。</div>
+        </div>
+        <div class="property-section" v-if="selectedPrimitive">
+          <div class="section-title">真实光源</div>
+          <div class="property-row">
+            <label>照亮周围</label>
+            <el-switch :model-value="!!selectedPrimitive.lightSource" aria-label="照亮周围" @change="togglePrimitiveLight" />
+          </div>
+          <template v-if="selectedPrimitive.lightSource">
+            <div class="property-row">
+              <label>灯光强度</label>
+              <el-input-number :model-value="selectedPrimitive.lightSource.intensity ?? 25" :min="0" :step="5"
+                aria-label="自定义灯光强度" @change="(value: number | undefined) => changePrimitiveLight('intensity', value)" />
+            </div>
+            <div class="property-row">
+              <label>照射距离</label>
+              <el-input-number :model-value="selectedPrimitive.lightSource.distance ?? 8" :min="0.1" :step="0.5"
+                @change="(value: number | undefined) => changePrimitiveLight('distance', value)" />
+            </div>
+          </template>
+          <div class="interaction-hint">可给任意自制灯罩或灯泡绑定光源；右键切换关灯、弱光与强光。</div>
+        </div>
         <div class="property-section" v-if="selectedElement?.type === 'column'">
           <div class="section-title">柱子参数</div>
           <div class="property-row">
@@ -603,6 +632,7 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { createPatch, createGeometryRemovalOperations } from '../../wild/scenePatch'
 import { createGeometryRotationOperations } from '../../wild/componentDrag'
+import type { PrimitiveParams } from 'wild-core/types'
 
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
@@ -691,6 +721,7 @@ const selectedElement = computed(() => {
 })
 
 const selectedItem = computed(() => selectedComponent.value || selectedElement.value)
+const selectedPrimitive = computed(() => selectedElement.value?.type === 'primitive' ? selectedElement.value as unknown as PrimitiveParams : null)
 const hasWallAttachment = computed(() => (
   selectedComponent.value?.type === 'door'
   || selectedComponent.value?.type === 'window'
@@ -799,6 +830,20 @@ function handleFurniturePatch(changes: Record<string, unknown>, summary: string)
     summary,
   )
   sceneStore.applyPatch(patch)
+}
+
+function changeLabelText(text: string) {
+  const label = text.trim() ? { ...selectedPrimitive.value?.label, text: text.trim() } : undefined
+  handleFurniturePatch({ label }, '修改招牌文字')
+}
+
+function togglePrimitiveLight(enabled: string | number | boolean) {
+  handleFurniturePatch({ lightSource: enabled ? { intensity: 25, distance: 8, initiallyOn: true } : undefined }, '修改自定义光源')
+}
+
+function changePrimitiveLight(key: 'intensity' | 'distance', value: number | undefined) {
+  if (value === undefined || !Number.isFinite(value)) return
+  handleFurniturePatch({ lightSource: { ...selectedPrimitive.value?.lightSource, [key]: value } }, '修改自定义光源')
 }
 
 function handleFurnitureSubtype(value: string) {

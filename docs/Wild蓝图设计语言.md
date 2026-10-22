@@ -1,6 +1,6 @@
 # WILD 蓝图设计语言 · 单文档直接生成版
 
-版本：1.2 · 输出的 WILD 统一为 `1.1`（与本文件版本号无关） · 核对日期：2026-10-22 · 目标产物：可以直接导入 WildAgent 的完整 `.wild` JSON。
+版本：1.3 · 输出的 WILD 统一为 `1.1`（与本文件版本号无关） · 核对日期：2026-10-22 · 目标产物：可以直接导入 WildAgent 的完整 `.wild` JSON。1.3 新增建筑招牌 `label` 与自制灯具真实光源 `lightSource`，字段见第 5.6.1～5.6.2 节。
 
 ## 给使用者
 
@@ -491,6 +491,26 @@ profile_sweep 至少两个不重合的连续路径点；封闭截面至少 3 点
 
 **能力边界：当前 profile_sweep 不自动生成两端端盖，不应宣称一个闭合截面就产生了完全封闭的实体。** 要求封闭、确定厚度的体块优先使用 box/cylinder；不要将它当作万能三角墙、挖洞或异形实体工具。
 
+#### 5.6.1 建筑招牌与中文文字
+
+招牌使用 `primitive.box`，在 `label.text` 中直接保存建筑名称。文字绘制在盒子的**局部 +Z 正面**，随构件平移、旋转、缩放；通过 rotation 调整朝向。无需外部图片或字体文件，不要用大量小杆件拼字。
+
+```json
+{"type":"primitive","id":"entrance_sign","shape":"box","position":[4,2.8,0.16],"dimensions":[3.2,0.7,0.12],"material":"wood","label":{"text":"栖光别墅","color":[0.9,0.77,0.47],"fontFamily":"serif"}}
+```
+
+`label` 仅支持 box；text 为 1～256 字符，允许 `\n` 换行，自动按牌面适配字号。可选 color 为 RGB 0～1，fontFamily 为 `serif/sans-serif`。文字默认金色，背景保留盒子的材质。牌面要贴在入口墙面外侧，保持正面露出并避开门窗；不要把文字面埋进墙里。雨棚、挑檐和柱子也可能遮字，宜把招牌放在雨棚前缘，或保留完整的上下净空，并用街道视角复核。不同机器使用本地中文字体，字形可能略有差别。
+
+#### 5.6.2 自制灯具的真实光源
+
+任意 primitive 都可通过 `lightSource` 绑定真实点光源或聚光灯，灯杆、灯壳、灯罩继续使用普通几何，不受预设灯型限制。只给实际发光面添加 lightSource，避免每个零件都创建光源。
+
+```json
+{"type":"primitive","id":"garden_lamp_emitter","shape":"box","position":[2,1.4,3],"dimensions":[0.12,0.28,0.12],"material":"lamp_glass","lightSource":{"lightType":"point","color":[1,0.82,0.58],"intensity":25,"distance":8,"initiallyOn":true}}
+```
+
+可选字段：`lightType=point/spot`、color、intensity（非负，默认 25）、distance（米，默认 8）、angle（聚光锥角，0～90 度，不含 0）、initiallyOn（默认 true）、offset、direction。光源位于发光几何的包围盒中心；offset 是相对该中心的局部偏移，direction 是聚光方向的局部非零向量，默认 `[0,-1,0]`。位置与方向随构件旋转、移动。右键循环关闭、弱光、强光，强光为 intensity 的 3 倍。`emissive` 只让表面看起来亮，不能替代 lightSource；完整的多段灯具也可继续使用第 6.5 节的 light.body。
+
 ### 5.7 家具 furniture
 
 必填：`type/id/subtype/position/dimensions`；可选 `rotation/style/material`。
@@ -595,7 +615,7 @@ light 必填 `type/id/position`；可选：
 - fixtureType = `bulb/table_lamp`；lightType = `point/spot`；color 为 [0～1,0～1,0～1]。
 - intensity、distance 为正数，highIntensity 不小于 lowIntensity；聚光角 angle 是大于 0、至多 90 的度数。
 - 位置是灯具的光源/预设锚点；吊灯要留出灯座到天花的空间，台灯要实际落到桌面。先用简单 bulb；自定义 body 由无 type/id 的 primitive 几何字段组成，仅一段标记 `interactive=true`。body 内 box/sphere/cylinder 的 position 是**世界坐标**，省略时继承灯具 position，不能填写相对灯具的偏移；profile_sweep 的 path 也用世界坐标，position 省略或置零。
-- 颜色的 emissive 可让灯罩看起来亮；实际向场景照明使用 light 组件。不要给家具或普通球体增加自造 light 字段。
+- 颜色的 emissive 可让灯罩看起来亮；实际照明使用 light 组件，或给 primitive 的发光面添加第 5.6.2 节的 lightSource。不要添加自造的 light 字段，也不要仅凭发光材质猜测真实光源。
 
 elevator 必填：
 

@@ -10,7 +10,7 @@
 
 import type { Blueprint, EmbeddedImageData, TextureImageData } from './blueprint'
 import type { ComponentCompilationMapping } from 'wild-core/compiler'
-import type { InteractiveElementBehavior } from 'wild-core/types'
+import type { InteractiveElementBehavior, TextLabel } from 'wild-core/types'
 import type { RenderMaterialDescriptor } from 'wild-core/materials'
 
 export interface SceneDocument {
@@ -89,6 +89,7 @@ export interface MeshData {
   interactive?: boolean
   interaction?: InteractiveElementBehavior
   draggable?: boolean
+  label?: TextLabel
 }
 
 /**

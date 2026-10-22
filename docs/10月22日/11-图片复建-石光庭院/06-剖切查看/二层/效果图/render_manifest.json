@@ -1,0 +1,83 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "40fc9a7817378f7316e51ffc6e01c7277ed94d5fbbbc6632bfd3b5492e73f925",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "background": 14673130,
+    "sun": {
+      "azimuthDeg": 135,
+      "elevationDeg": 42,
+      "intensity": 2.1,
+      "color": 16774370
+    },
+    "ambient": {
+      "sky": 14674421,
+      "ground": 10130828,
+      "intensity": 0.85
+    },
+    "ground": {
+      "color": 9277571,
+      "y": -0.02
+    },
+    "toneMappingExposure": 1
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "bbf4787436032f3eeeb06f6549038cb3a088cbb227ee9337b5bd7a720a7c041c",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 218,
+  "materialCount": 218,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -10.3,
+      4.13999999821186,
+      -3.1290000915527343
+    ],
+    "max": [
+      9.828999948501586,
+      8.400000000596048,
+      10.340000000596046
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\06-剖切查看\\二层\\效果图\\front.png",
+      "bytes": 214405
+    },
+    {
+      "view": "side",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\06-剖切查看\\二层\\效果图\\side.png",
+      "bytes": 233218
+    },
+    {
+      "view": "top",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\06-剖切查看\\二层\\效果图\\top.png",
+      "bytes": 253319
+    },
+    {
+      "view": "perspective",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\11-图片复建-石光庭院\\06-剖切查看\\二层\\效果图\\perspective.png",
+      "bytes": 334736
+    }
+  ],
+  "contextSha256": "3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3"
+}

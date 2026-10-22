@@ -1,0 +1,110 @@
+{
+  "source_sha256": "a8902f5c4321449a958fad39fabb8680c95cbc4b2ab849a3dd04fd3be0b3b333",
+  "slab_checks": [
+    {
+      "level": 2,
+      "floor_top": 4.2,
+      "slab_parts": 7,
+      "floor_area": 400.784,
+      "expected_area": 400.78399999999993,
+      "both_voids_clear": true,
+      "no_duplicate_area": true
+    },
+    {
+      "level": 3,
+      "floor_top": 8.1,
+      "slab_parts": 7,
+      "floor_area": 400.784,
+      "expected_area": 400.78399999999993,
+      "both_voids_clear": true,
+      "no_duplicate_area": true
+    },
+    {
+      "level": 4,
+      "floor_top": 12.0,
+      "slab_parts": 7,
+      "floor_area": 400.784,
+      "expected_area": 400.78399999999993,
+      "both_voids_clear": true,
+      "no_duplicate_area": true
+    },
+    {
+      "level": 5,
+      "floor_top": 15.9,
+      "slab_parts": 7,
+      "floor_area": 400.784,
+      "expected_area": 400.78399999999993,
+      "both_voids_clear": true,
+      "no_duplicate_area": true
+    },
+    {
+      "level": 6,
+      "floor_top": 19.8,
+      "slab_parts": 7,
+      "floor_area": 400.784,
+      "expected_area": 400.78399999999993,
+      "both_voids_clear": true,
+      "no_duplicate_area": true
+    }
+  ],
+  "stair_connections": [
+    {
+      "from_level": 1,
+      "to_level": 2,
+      "flights": 2,
+      "steps_per_flight": 13,
+      "intermediate_landing": 2.25,
+      "arrival": 4.2,
+      "arrival_meets_slab_edge": true,
+      "front_landing_depth": 1.5
+    },
+    {
+      "from_level": 2,
+      "to_level": 3,
+      "flights": 2,
+      "steps_per_flight": 13,
+      "intermediate_landing": 6.15,
+      "arrival": 8.1,
+      "arrival_meets_slab_edge": true,
+      "front_landing_depth": 1.5
+    },
+    {
+      "from_level": 3,
+      "to_level": 4,
+      "flights": 2,
+      "steps_per_flight": 13,
+      "intermediate_landing": 10.049999999999999,
+      "arrival": 12.0,
+      "arrival_meets_slab_edge": true,
+      "front_landing_depth": 1.5
+    },
+    {
+      "from_level": 4,
+      "to_level": 5,
+      "flights": 2,
+      "steps_per_flight": 13,
+      "intermediate_landing": 13.95,
+      "arrival": 15.9,
+      "arrival_meets_slab_edge": true,
+      "front_landing_depth": 1.5
+    },
+    {
+      "from_level": 5,
+      "to_level": 6,
+      "flights": 2,
+      "steps_per_flight": 13,
+      "intermediate_landing": 17.85,
+      "arrival": 19.8,
+      "arrival_meets_slab_edge": true,
+      "front_landing_depth": 1.5
+    }
+  ],
+  "tread_headroom_sample_points": 130,
+  "all_checked_treads_have_2m_slab_headroom": true,
+  "cab_fits_actual_slab_void": true,
+  "elevator_stops_match_all_six_floors": true,
+  "shaft_walls_and_landing_doors_exist_on_all_floors": true,
+  "terrace_west_return_present": true,
+  "passed": true,
+  "boundary": "按交付几何检查表达模型，不是结构、消防、无障碍或完整电梯设备认证。"
+}

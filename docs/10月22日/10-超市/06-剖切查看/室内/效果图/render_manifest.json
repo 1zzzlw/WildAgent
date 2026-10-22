@@ -1,0 +1,83 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "4a59c679f7a014b29570d92008028d840b15e29330c63d7665f80e3ad4f7c1c8",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "background": 14673130,
+    "sun": {
+      "azimuthDeg": 135,
+      "elevationDeg": 42,
+      "intensity": 2.1,
+      "color": 16774370
+    },
+    "ambient": {
+      "sky": 14674421,
+      "ground": 10130828,
+      "intensity": 0.85
+    },
+    "ground": {
+      "color": 9277571,
+      "y": -0.02
+    },
+    "toneMappingExposure": 1
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "bbf4787436032f3eeeb06f6549038cb3a088cbb227ee9337b5bd7a720a7c041c",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 608,
+  "materialCount": 608,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -8,
+      -0.19999999940395358,
+      -8
+    ],
+    "max": [
+      8,
+      4.4,
+      8
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\10-超市\\06-剖切查看\\室内\\效果图\\front.png",
+      "bytes": 301851
+    },
+    {
+      "view": "side",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\10-超市\\06-剖切查看\\室内\\效果图\\side.png",
+      "bytes": 285497
+    },
+    {
+      "view": "top",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\10-超市\\06-剖切查看\\室内\\效果图\\top.png",
+      "bytes": 324355
+    },
+    {
+      "view": "perspective",
+      "file": "E:\\AgentProject\\WildAgent\\docs\\10月22日\\10-超市\\06-剖切查看\\室内\\效果图\\perspective.png",
+      "bytes": 451996
+    }
+  ],
+  "contextSha256": "3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3"
+}

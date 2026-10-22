@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh"><meta charset="utf-8"><title>招牌与自定义灯光回归</title>
+<style>body{margin:0;background:#111723}canvas{display:block}</style>
+<script type="module">
+import * as THREE from 'three';
+import { reconstructWildEntity, parseWildBlueprint } from '/src/renderer/wildCoreAdapter.ts';
+import { createSceneGroupFromEntity, toggleLightInteraction } from '/src/renderer/renderEntity.ts';
+const blueprint = await fetch('/scripts/fixtures/render-details.json').then(r=>r.json());
+window.blueprint = parseWildBlueprint(JSON.stringify(blueprint));
+window.entity = await reconstructWildEntity(window.blueprint);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x101827);
+const group = createSceneGroupFromEntity(window.entity); scene.add(group);
+const hemi = new THREE.HemisphereLight(0xa9bdde,0x24201a,0.08);scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xd0dcff,0.08);sun.position.set(3,8,5);scene.add(sun);
+const camera = new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.1,100);
+camera.position.set(5,4,8);camera.lookAt(0,1.2,0);
+const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.4;document.body.append(renderer.domElement);
+window.scene=scene;window.group=group;window.renderer=renderer;
+window.camera=camera;window.reconstruct=reconstructWildEntity;window.parse=parseWildBlueprint;window.createGroup=createSceneGroupFromEntity;
+window.lamps=[];group.traverse(o=>{if(o.userData.interaction?.kind==='light')window.lamps.push(o)});
+window.frame=()=>renderer.render(scene,camera);
+window.toggleAll=()=>window.lamps.forEach(o=>toggleLightInteraction(o,window.frame));
+window.day=enabled=>{hemi.intensity=enabled?1.8:0.08;sun.intensity=enabled?3:0.08;renderer.toneMappingExposure=enabled?0.8:1.4;scene.background.setHex(enabled?0xb9c9d8:0x101827);window.frame()};
+window.readPixels=()=>{const c=document.createElement('canvas');c.width=renderer.domElement.width;c.height=renderer.domElement.height;const ctx=c.getContext('2d');ctx.drawImage(renderer.domElement,0,0);return ctx.getImageData(0,0,c.width,c.height).data};
+window.frame();window.ready=true;
+</script></html>
