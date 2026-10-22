@@ -105,6 +105,8 @@ export interface OpeningInteractionSpec {
 /** 编译器写入基础元素、Core 透传给 renderer 的内部交互描述。 */
 export interface OpeningElementBehavior {
   kind: 'opening';
+  /** 同一扇的玻璃/边框或双开门的两扇同步开合，仅在运行时使用。 */
+  groupId?: string;
   mode: 'swing' | 'slide' | 'lift';
   pivot: Vec3;
   closedPosition: Vec3;
@@ -389,6 +391,7 @@ export interface WallParams {
   curve?: CurveSegment | CurveSegment[];
   /** 内部使用：开孔信息（由resolver填充） */
   _cutouts?: Array<{
+    style?: OpeningParams['style'];
     localX: number;
     localY: number;
     localW: number;
@@ -478,6 +481,10 @@ export interface OpeningParams {
   material?: string;
   /** 仅供组合编译器和 renderer 使用，不属于可手写的 WILD opening 字段。 */
   _interaction?: InteractiveElementBehavior;
+  _leafInset?: number;
+  _cutoutOnly?: boolean;
+  _skipWallCutout?: boolean;
+  _leafInteractions?: OpeningElementBehavior[];
   /** 仅供 door 编译器使用；把门板细节合并进同一可交互网格。 */
   _doorLeafDetail?: {
     rows: number;

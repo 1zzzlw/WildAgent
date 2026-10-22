@@ -1,245 +1,63 @@
 <template>
-  <div class="top-bar">
-    <div class="toolbar-section">
-      <el-button class="toolbar-btn" size="small" @click="handleNew" title="新建场景">
-        <span>新建</span>
-      </el-button>
-      <el-button class="toolbar-btn" size="small" @click="handleOpen" title="打开场景">
-        <span>打开</span>
-      </el-button>
-      <el-button class="toolbar-btn save-btn" type="primary" size="small" @click="handleSave"
-        :loading="isSaving" :disabled="!sceneStore.document?.dirty || isSaving" title="保存到服务器">
-        <span>{{ isSaving ? '保存中' : '保存' }}</span>
-      </el-button>
-      <el-button class="toolbar-btn" size="small" @click="handleExport" title="导出 .wild 文件">
-        <span>导出</span>
-      </el-button>
-    </div>
-
-    <div class="toolbar-section">
-      <el-button class="toolbar-btn" size="small" @click="handleUndo" :disabled="!historyStore.canUndo" title="撤销">
-        <span>撤销</span>
-      </el-button>
-      <el-button class="toolbar-btn" size="small" @click="handleRedo" :disabled="!historyStore.canRedo" title="重做">
-        <span>重做</span>
-      </el-button>
-    </div>
-
-    <div class="toolbar-section">
-      <el-button class="toolbar-btn" size="small" @click="handleValidate" title="运行校验">
-        <span>校验</span>
-      </el-button>
-    </div>
-
-    <div class="toolbar-section">
-      <el-button class="toolbar-btn" size="small" @click="handleToggleAIPanel" title="切换 AI 对话面板">
-        <span>{{ uiStore.aiPanelVisible ? '隐藏 AI' : '显示 AI' }}</span>
-      </el-button>
-      <el-button class="toolbar-btn" size="small" @click="openConfig" title="LLM 配置">
-        <span>配置</span>
-      </el-button>
-    </div>
-
-    <div class="scene-info">
-      <span v-if="sceneStore.document">
-        {{ sceneStore.document.name }}
-        <span v-if="sceneStore.document.dirty" class="dirty-indicator">*</span>
+  <header class="editor-header">
+    <button class="brand" type="button" aria-label="打开工作台工具" @click="ui.openPanel('tools')"><span>W</span> WildAgent <small>STUDIO</small></button>
+    <nav class="file-toolbar" aria-label="文件操作">
+      <button aria-label="新建场景" title="新建场景" :disabled="busy" @click="workspace.newScene()"><el-icon><DocumentAdd /></el-icon><span>新建</span></button>
+      <button aria-label="打开 WILD" title="打开 WILD，导入后自动保存到服务器" :disabled="busy" @click="fileInput?.click()"><el-icon><FolderOpened /></el-icon><span>打开</span></button>
+      <button class="save-button" aria-label="保存到服务器" title="保存到服务器 · Ctrl+S" :disabled="!scene.document || busy" @click="workspace.saveScene()"><el-icon><Upload /></el-icon><span>{{ workspace.isSaving ? '保存中' : '保存' }}</span></button>
+      <button aria-label="导出 WILD" title="导出 WILD" :disabled="!scene.document" @click="exportFile"><el-icon><Download /></el-icon><span>导出</span></button>
+      <i class="toolbar-divider"></i>
+      <button aria-label="撤销" title="撤销 · Ctrl+Z" :disabled="!history.canUndo || busy" @click="restore(false)"><el-icon><RefreshLeft /></el-icon></button>
+      <button aria-label="重做" title="重做 · Ctrl+Shift+Z" :disabled="!history.canRedo || busy" @click="restore(true)"><el-icon><RefreshRight /></el-icon></button>
+    </nav>
+    <input ref="fileInput" class="file-input" type="file" accept=".wild,.json" aria-label="导入 WILD 文件" @change="importFile" />
+    <div class="document-title" :title="scene.document?.name">
+      <span>{{ scene.document?.name || '建筑工作台' }}</span>
+      <span :class="['save-state', { dirty: scene.document?.dirty }]" role="status">
+        {{ workspace.isSaving ? '正在保存…' : scene.document?.dirty ? '未保存' : scene.document?.savedAt ? '已保存到服务器' : '本地预览' }}
       </span>
     </div>
-
     <OnlinePresence />
-
-    <LLMConfigDialog :visible="configVisible" @update:visible="configVisible = $event" />
-  </div>
+  </header>
 </template>
-
 <script setup lang="ts">
-import { ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { agentBridge } from '../../agent/agentBridge'
-import { useAgentStore } from '../../stores/agentStore'
-import { useSceneStore } from '../../stores/sceneStore'
+import { computed, ref } from 'vue'
+import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
+import { useSceneStore } from '../../stores/sceneStore'
 import { useUIStore } from '../../stores/uiStore'
+import { useWorkspaceStore } from '../../stores/workspaceStore'
 import OnlinePresence from '../../extensions/presence/OnlinePresence.vue'
-import { defineAsyncComponent } from 'vue'
-
-const LLMConfigDialog = defineAsyncComponent(() => import('./LLMConfigDialog.vue'))
-
-const sceneStore = useSceneStore()
-const historyStore = useHistoryStore()
-const uiStore = useUIStore()
-const agentStore = useAgentStore()
-const isSaving = ref(false)
-const configVisible = ref(false)
-
-function openConfig() {
-  configVisible.value = true
+const scene = useSceneStore()
+const ui = useUIStore()
+const workspace = useWorkspaceStore()
+const history = useHistoryStore()
+const fileInput = ref<HTMLInputElement>()
+const busy = computed(() => workspace.isSaving || workspace.isImporting)
+async function importFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  if (input.files?.[0]) await workspace.importFile(input.files[0])
+  input.value = ''
 }
-
-async function handleNew() {
-  try {
-    await ElMessageBox.confirm('创建新场景将清空当前内容，是否继续？', '确认操作', {
-      confirmButtonText: '继续',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
-    const doc = sceneStore.createEmptyDocument()
-    sceneStore.loadBlueprint(doc.blueprint, doc.name)
-    historyStore.clear()
-  } catch {
-    // 用户取消
-  }
+function exportFile() {
+  const url = URL.createObjectURL(new Blob([scene.exportWild()], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = (scene.document?.name || 'scene') + '.wild'
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-
-function handleOpen() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.wild,.json'
-  input.onchange = async (e) => {
-    const file = (e.target as HTMLInputElement).files?.[0]
-    if (file) {
-      const text = await file.text()
-      try {
-        const blueprint = JSON.parse(text)
-        sceneStore.loadBlueprint(blueprint, file.name)
-        historyStore.clear()
-      } catch {
-        ElMessage.error('文件格式错误')
-      }
-    }
-  }
-  input.click()
-}
-
-async function handleSave() {
-  if (!sceneStore.document || !agentStore.currentSessionId) {
-    ElMessage.error('当前场景没有对应的服务器会话，无法保存')
-    return
-  }
-  const issues = sceneStore.validate()
-  if (issues.some(issue => issue.level === 'error')) {
-    ElMessage.error('场景校验存在错误，请修复后再保存')
-    return
-  }
-
-  isSaving.value = true
-  const saved = await agentBridge.syncBlueprintToBackend(
-    sceneStore.document.blueprint as unknown as Record<string, unknown>,
-  )
-  isSaving.value = false
-  if (!saved) {
-    ElMessage.error('保存到服务器失败，本地草稿仍然保留')
-    return
-  }
-
-  const blueprint = sceneStore.document.blueprint
-  const elementsCount = (blueprint.geometry.elements?.length || 0)
-  const componentsCount = (blueprint.geometry.components?.length || 0)
-  agentStore.updateSessionInfo(
-    agentStore.currentSessionId,
-    blueprint.meta.name || sceneStore.document.name,
-    elementsCount + componentsCount,
-    componentsCount,
-  )
-  sceneStore.markSaved()
-  ElMessage.success('场景已保存到服务器')
-}
-
-function handleExport() {
-  const content = sceneStore.exportWild()
-  const blob = new Blob([content], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${sceneStore.document?.name || 'scene'}.wild`
-  a.click()
-  URL.revokeObjectURL(url)
-  ElMessage.success('已导出当前草稿，服务端文件未修改')
-}
-
-async function handleUndo() {
-  const entry = historyStore.undo()
-  if (entry) {
-    await sceneStore.restoreBlueprint(entry.before)
-  }
-}
-
-async function handleRedo() {
-  const entry = historyStore.redo()
-  if (entry) {
-    await sceneStore.restoreBlueprint(entry.after)
-  }
-}
-
-function handleValidate() {
-  sceneStore.validate()
-}
-
-function handleToggleAIPanel() {
-  uiStore.toggleAIPanel()
+async function restore(redo: boolean) {
+  const entry = redo ? history.redo() : history.undo()
+  if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
 }
 </script>
-
 <style scoped>
-.top-bar {
-  height: 48px;
-  background: #2d2d30;
-  border-bottom: 1px solid #3e3e42;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  gap: 16px;
-}
-
-.toolbar-section {
-  display: flex;
-  gap: 4px;
-}
-
-.toolbar-btn {
-  height: 32px;
-  padding: 0 12px;
-  background: transparent;
-  border: 1px solid #3e3e42;
-  color: #cccccc;
-  cursor: pointer;
-  font-size: 13px;
-  border-radius: 3px;
-  transition: all 0.15s;
-}
-
-.toolbar-btn:hover:not(:disabled) {
-  background: #3e3e42;
-  border-color: #4e4e52;
-}
-
-.save-btn:not(:disabled) {
-  border-color: #168bc2;
-  background: #137fac;
-  color: #ffffff;
-}
-
-.save-btn:hover:not(:disabled) {
-  border-color: #35bfe8;
-  background: #1593c7;
-}
-
-.toolbar-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.scene-info {
-  margin-left: auto;
-  font-size: 13px;
-  color: #cccccc;
-}
-
-.dirty-indicator {
-  color: #f48771;
-  margin-left: 4px;
-}
-
+.editor-header{height:50px;display:flex;align-items:center;gap:24px;padding:0 18px 0 12px;border-bottom:1px solid var(--studio-border);background:var(--studio-surface);flex-shrink:0;min-width:0}
+.brand{display:flex;align-items:center;gap:9px;background:none;border:0;color:#f1f4f7;font-size:15px;font-weight:650;cursor:pointer;white-space:nowrap}.brand>span{display:grid;place-items:center;width:28px;height:28px;border:1px solid #a6c3b54a;border-radius:8px;background:#a6c3b518;color:var(--studio-accent);font-family:Georgia,serif;font-size:21px}.brand small{font-size:9px;letter-spacing:2px;color:#77858e;font-weight:500}
+.document-title{display:flex;gap:12px;align-items:center;flex:1;min-width:0;font-size:12px;color:#d5dde1}.document-title>span:first-child{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.save-state{font-size:10px;white-space:nowrap;color:#8fb7a1}.save-state.dirty{color:#dbb57c}
+.file-toolbar{display:flex;align-items:center;gap:3px;flex-shrink:0}.file-toolbar button{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid transparent;border-radius:7px;background:transparent;color:#b7c6ce;cursor:pointer;font-size:11px;white-space:nowrap}.file-toolbar button:hover:not(:disabled){background:#ffffff0c;color:#edf5f0}.file-toolbar button:disabled{opacity:.3;cursor:not-allowed}.file-toolbar .save-button{color:#b6d7c3;background:#a6c3b513;border-color:#a6c3b527}.toolbar-divider{height:18px;width:1px;background:var(--studio-border);margin:0 5px}.file-input{display:none}
+@media(max-width:1000px){.brand small{display:none}.editor-header{gap:12px}.save-state{display:none}}
+@media(max-width:620px){.brand{font-size:0!important;gap:0}.file-toolbar button>span{display:none}.file-toolbar button{padding:8px}.document-title{font-size:11px}.editor-header{padding:0 8px;gap:8px}}
+@media(max-width:700px){.editor-header{gap:10px;padding:0 10px}.brand small,.save-state{display:none}.brand{font-size:12px}}
 </style>

@@ -1,0 +1,15 @@
+{
+  "label": "14-最终外观渲染",
+  "command": [
+    "node",
+    "wild-web\\scripts\\render-baseline.mjs",
+    "docs\\10月22日\\01-新中式别墅\\听澜合院-新中式别墅.wild",
+    "docs\\10月22日\\01-新中式别墅\\05-效果图"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T08:01:54.322124+08:00",
+  "ended_at": "2026-10-22T08:01:58.829674+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a7cd9603298dc099d2bde2e55cfbb340ef117b605cb61d732e381dad6fe047a3\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"background\": 14673130,\n    \"sun\": {\n      \"azimuthDeg\": 135,\n      \"elevationDeg\": 42,\n      \"intensity\": 2.1,\n      \"color\": 16774370\n    },\n    \"ambient\": {\n      \"sky\": 14674421,\n      \"ground\": 10130828,\n      \"intensity\": 0.85\n    },\n    \"ground\": {\n      \"color\": 9277571,\n      \"y\": -0.02\n    },\n    \"toneMappingExposure\": 1\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"468107919beec6baa468474c16ce623dbc749fda7a7c7c0f48700ae0a00adc41\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 1534,\n  \"materialCount\": 1534,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -3.269999992847443,\n      -0.1349999874830246,\n      -4.199999999999999\n    ],\n    \"max\": [\n      23.536500022411346,\n      9.215839385986328,\n      18.80000002384186\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月22日\\\\01-新中式别墅\\\\05-效果图\\\\front.png\",\n      \"bytes\": 328903\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月22日\\\\01-新中式别墅\\\\05-效果图\\\\side.png\",\n      \"bytes\": 290189\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月22日\\\\01-新中式别墅\\\\05-效果图\\\\top.png\",\n      \"bytes\": 326657\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月22日\\\\01-新中式别墅\\\\05-效果图\\\\perspective.png\",\n      \"bytes\": 479641\n    }\n  ],\n  \"contextSha256\": \"0e986aa28d964a2c42b0ed9d6fa9cf13e0b555d194dce9e3c9ece2bfbac44126\"\n}\n",
+  "stderr": ""
+}

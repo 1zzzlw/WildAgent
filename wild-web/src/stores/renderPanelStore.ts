@@ -9,6 +9,14 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { CameraPresetId, EnvironmentPresetId, QualityLevel, TimeOfDay, ViewMode } from '../renderer/defaultWorldLook'
+
+export type RenderPresetRequest =
+  | { type: 'camera'; value: CameraPresetId }
+  | { type: 'environment'; value: EnvironmentPresetId }
+  | { type: 'quality'; value: QualityLevel }
+  | { type: 'time'; value: TimeOfDay }
+  | { type: 'view'; value: ViewMode }
 
 export interface RenderStats {
   /** 平滑后的实时帧率（由渲染循环写入）。 */
@@ -49,6 +57,8 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const showEdges = ref(false)
   /** 网格地面（编辑器模式下的 gridHelper；展示模式恒隐藏）。 */
   const showGrid = ref(true)
+  const waterAnimated = ref(true)
+  try { waterAnimated.value = localStorage.getItem('wild_water_animated') !== 'false' } catch { /* 默认动态水面。 */ }
   /** 相机自动旋转（OrbitControls.autoRotate）。 */
   const autoRotate = ref(false)
   /** 自动旋转速度（OrbitControls.autoRotateSpeed，2.0 = 30 秒一圈）。 */
@@ -59,6 +69,14 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const resetViewNonce = ref(0)
   /** 递增一次 = 请求把当前画布保存为 PNG 截图。 */
   const screenshotNonce = ref(0)
+  const frameSelectionNonce = ref(0)
+  const presetRequest = ref<RenderPresetRequest | null>(null)
+  const presets = ref({ camera: 'corner', environment: 'minimal', quality: 'medium', time: 'day', view: 'editor' })
+  const sectionEnabled = ref(false)
+  const sectionHeight = ref(3.5)
+
+  function requestFrameSelection() { frameSelectionNonce.value += 1 }
+  function requestPreset(request: RenderPresetRequest) { presetRequest.value = { ...request } }
 
   // ── 渲染统计（视口渲染循环写入，面板只读）──
   const stats = ref<RenderStats>(emptyStats())
@@ -75,10 +93,18 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     collapsed,
     showEdges,
     showGrid,
+    waterAnimated,
     autoRotate,
     autoRotateSpeed,
     resetViewNonce,
     screenshotNonce,
+    frameSelectionNonce,
+    presetRequest,
+    presets,
+    sectionEnabled,
+    sectionHeight,
+    requestFrameSelection,
+    requestPreset,
     stats,
     requestResetView,
     requestScreenshot,

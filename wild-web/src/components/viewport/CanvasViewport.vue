@@ -18,58 +18,19 @@
           重建中...
         </div>
       </div>
-      <div class="viewport-toolbar">
-        <button
-          type="button"
-          class="viewport-action"
-          :title="`切换到${nextTimePreset.label}`"
-          :aria-label="`当前${activeTimePreset.label}，切换到${nextTimePreset.label}`"
-          @click="cycleTimeOfDay"
-        >
-          <span aria-hidden="true">{{ activeTimePreset.icon }}</span>
-          <span>{{ activeTimePreset.label }}</span>
-        </button>
-        <button
-          type="button"
-          class="viewport-action"
-          :title="`切换场景，当前为${activeEnvironmentPreset.label}`"
-          :aria-label="`当前${activeEnvironmentPreset.label}场景，切换到下一个场景`"
-          @click="cycleEnvironmentPreset"
-        >
-          <span aria-hidden="true">{{ activeEnvironmentPreset.icon }}</span>
-          <span>{{ activeEnvironmentPreset.label }}</span>
-        </button>
-        <button type="button" class="viewport-action" @click="cycleCameraPreset">
-          <span aria-hidden="true">📷</span>
-          <span>{{ activeCameraPreset.label }}</span>
-        </button>
-        <button type="button" class="viewport-action" @click="cycleQuality">
-          <span aria-hidden="true">◆</span>
-          <span>{{ activeQualityPreset.label }}</span>
-        </button>
-        <button
-          type="button"
-          :class="['viewport-action', { active: viewMode === 'presentation' }]"
-          @click="toggleViewMode"
-        >
-          <span aria-hidden="true">{{ viewMode === 'presentation' ? '▣' : '▢' }}</span>
-          <span>{{ viewMode === 'presentation' ? '展示' : '编辑' }}</span>
-        </button>
-      </div>
-      <RenderControlPanel />
+
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorldPackageStore } from '../../stores/worldPackageStore'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
-import RenderControlPanel from './RenderControlPanel.vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
@@ -115,6 +76,7 @@ import {
 } from '../../renderer/worldEffectRuntime'
 import { WorldCloudLayer } from '../../renderer/worldCloudLayer'
 import { applyGroundWeatherMaterial } from '../../renderer/groundWeatherMaterial'
+import { setWaterSurfaceTime, setWaterSurfaceAnimated } from '../../renderer/waterSurfaceMaterial'
 import {
   createCelestialBody,
   syncSkyPreset,
@@ -123,13 +85,9 @@ import {
 import { WorldLightingRig } from '../../renderer/lightingRuntime'
 import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
 import {
-  CAMERA_ORDER,
   CAMERA_PRESETS,
-  ENVIRONMENT_ORDER,
   ENVIRONMENT_PRESETS,
-  QUALITY_ORDER,
   QUALITY_PRESETS,
-  TIME_ORDER,
   TIME_PRESETS,
   type CameraPresetId,
   type EnvironmentPresetId,
@@ -160,15 +118,7 @@ const viewMode = ref<ViewMode>('editor')
 const qualityLevel = ref<QualityLevel>('medium')
 const cameraPresetId = ref<CameraPresetId>('corner')
 const environmentPresetId = ref<EnvironmentPresetId>('minimal')
-const activeTimePreset = computed(() => TIME_PRESETS[timeOfDay.value])
-const activeQualityPreset = computed(() => QUALITY_PRESETS[qualityLevel.value])
-const activeCameraPreset = computed(() => CAMERA_PRESETS[cameraPresetId.value])
-const activeEnvironmentPreset = computed(() => ENVIRONMENT_PRESETS[environmentPresetId.value])
 const fps = ref(0)
-const nextTimePreset = computed(() => {
-  const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
-  return TIME_PRESETS[TIME_ORDER[nextIndex]]
-})
 
 let renderer: THREE.WebGLRenderer | null = null
 let scene: THREE.Scene
@@ -179,6 +129,7 @@ let animationFrameId: number | null = null
 let renderLoopActive = false
 let resizeObserver: ResizeObserver | null = null
 let sceneGroup: THREE.Group | null = null
+const sectionPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 3.5)
 let materialCache: MaterialCache | null = null
 let worldRuntime: WorldRuntime | null = null
 let gridHelper: THREE.GridHelper | null = null
@@ -227,6 +178,7 @@ let environmentGroundY = 0
 let hasSceneBounds = false
 let hasFramedScene = false
 let needsRender = true
+let hasWaterSurface = false
 let pointerDownPosition: { x: number; y: number } | null = null
 let selectionHelpers: THREE.Box3Helper[] = []
 let dragAnchor: THREE.Object3D | null = null
@@ -256,6 +208,7 @@ let trailingShadowDirtyTimer: ReturnType<typeof setTimeout> | null = null
 const SHADOW_DECAL_LUMA_RATIO = 0.162
 
 onMounted(() => {
+  document.addEventListener('visibilitychange', markNeedsRender)
   unsubscribeWorldLook = worldLookRuntime.subscribe(() => {
     // WILD 光影 profile 切换是离散动作，环境贴图必须立即重建。
     applyTimePreset(true)
@@ -284,6 +237,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('visibilitychange', markNeedsRender)
   unsubscribeWorldLook?.()
   unsubscribeWorldLook = null
   unsubscribeWorldEnvironment?.()
@@ -331,6 +285,70 @@ watch(() => renderPanel.showGrid, () => {
 })
 watch(() => renderPanel.resetViewNonce, () => resetViewToPreset())
 watch(() => renderPanel.screenshotNonce, () => takeScreenshot())
+watch(() => renderPanel.frameSelectionNonce, frameSelection)
+watch([() => renderPanel.sectionEnabled, () => renderPanel.sectionHeight], applySection)
+watch(() => renderPanel.waterAnimated, enabled => {
+  setWaterSurfaceAnimated(enabled)
+  try { localStorage.setItem('wild_water_animated', String(enabled)) } catch { /* 内存开关仍然有效。 */ }
+  markNeedsRender()
+}, { immediate: true })
+watch([timeOfDay, environmentPresetId, qualityLevel, cameraPresetId, viewMode], () => {
+  renderPanel.presets = { time: timeOfDay.value, environment: environmentPresetId.value,
+    quality: qualityLevel.value, camera: cameraPresetId.value, view: viewMode.value }
+}, { immediate: true })
+watch(() => renderPanel.presetRequest, request => {
+  if (!request) return
+  switch (request.type) {
+    case 'camera':
+      cameraPresetId.value = request.value
+      resetViewToPreset()
+      break
+    case 'environment':
+      environmentPresetId.value = request.value
+      rebuildBuiltInEnvironment()
+      applyTimePreset(true)
+      break
+    case 'quality':
+      qualityLevel.value = request.value
+      applyQualityPreset()
+      break
+    case 'time':
+      updateWorldEnvironmentState({ timeOfDay: request.value === 'day' ? 12 : request.value === 'sunset' ? 18 : 0 })
+      break
+    case 'view':
+      viewMode.value = request.value
+      applyViewMode()
+      break
+  }
+})
+
+function frameSelection() {
+  if (!selectionStore.hasSelection || !sceneGroup) { resetViewToPreset(); return }
+  sceneGroup.updateMatrixWorld(true)
+  const bounds = collectElementBounds(translationRenderedIds(selectionStore.selectedIds))
+  if (!bounds.isEmpty()) {
+    frameCameraToBounds(bounds.getCenter(new THREE.Vector3()), bounds.getSize(new THREE.Vector3()))
+    markNeedsRender()
+  }
+}
+
+function applySection() {
+  if (!sceneGroup || !renderer) return
+  renderer.localClippingEnabled = true
+  sectionPlane.constant = Number.isFinite(renderPanel.sectionHeight) ? renderPanel.sectionHeight : 3.5
+  const enabled = renderPanel.sectionEnabled
+  sceneGroup.traverse(object => {
+    if (!(object instanceof THREE.Mesh)) return
+    const materials = Array.isArray(object.material) ? object.material : [object.material]
+    for (const material of materials) {
+      if (Boolean(material.clippingPlanes?.length) !== enabled) material.needsUpdate = true
+      material.clippingPlanes = enabled ? [sectionPlane] : null
+      material.clipShadows = enabled
+    }
+  })
+  markShadowsDirty()
+  markNeedsRender()
+}
 
 function initThreeJS() {
   if (!canvasRef.value || !containerRef.value) return
@@ -343,6 +361,8 @@ function initThreeJS() {
     powerPreference: 'high-performance',
   })
   renderer.shadowMap.enabled = true
+  // 合成器会多次 render；统一在每个视口帧重置，统计整条渲染链而非最后一张全屏三角形。
+  renderer.info.autoReset = false
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
   // 静态场景 + 轨道相机：阴影只依赖灯光与物体，不依赖相机视角。
   // 关闭每帧自动重算，仅在内容/灯光变化时按需刷新，消除拖动视角时的阴影重渲开销。
@@ -521,14 +541,16 @@ function scheduleRenderFrame() {
 
 function renderFrame() {
   animationFrameId = null
-  if (!renderLoopActive) return
+  if (!renderLoopActive || document.hidden) return
   const delta = weatherClock.getDelta()
   const controlsAnimating = controls?.update() ?? false
   const effects = getWorldEffectState()
-  const effectsAnimating = effects.clouds || effects.ripples
+  const waterAnimating = hasWaterSurface && renderPanel.waterAnimated
+  const effectsAnimating = effects.clouds || effects.ripples || waterAnimating
   if (effectsAnimating) {
     effectClock += Math.min(0.05, Math.max(0, delta))
     setWorldEffectTime(effectClock)
+    if (waterAnimating) setWaterSurfaceTime(effectClock)
     needsRender = true
   }
   const weatherAnimating = weatherVisuals?.tick(delta) ?? false
@@ -554,6 +576,7 @@ function renderFrame() {
     handleResize()
   }
   if (needsRender && renderer && scene && camera) {
+    renderer.info.reset()
     if (composer) composer.render()
     else renderer.render(scene, camera)
     needsRender = false
@@ -593,6 +616,7 @@ function resetSceneBounds() {
 
 function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
+  hasWaterSurface = false
 
   const entity = sceneStore.reconstructed
   if (!entity) {
@@ -616,6 +640,9 @@ function updateScene() {
   }
 
   worldRuntime?.updateInstance('editor:active-blueprint', entity)
+  sceneGroup.traverse(object => {
+    if (object instanceof THREE.Mesh && (Array.isArray(object.material) ? object.material : [object.material]).some(material => material.userData.wildWaterSurface)) hasWaterSurface = true
+  })
   markShadowsDirty()
 
   // 空场景（0 个构件）：重置相机到初始位置，防止上次的 camera 位置导致 grid 不可见
@@ -685,6 +712,7 @@ function updateScene() {
   ensureGridVisible()
   applyViewMode()
   applyEdgeMode()
+  applySection()
   markNeedsRender()
 }
 
@@ -740,7 +768,7 @@ function handlePointerUp(event: PointerEvent) {
       ? 'add'
       : 'replace'
   selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, selectableId, mode))
-  uiStore.setRightActivePanel('properties')
+  uiStore.openPanel('properties')
 }
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
@@ -1008,13 +1036,6 @@ function handleTransformMouseUp() {
   })
 }
 
-function cycleEnvironmentPreset() {
-  const nextIndex = (ENVIRONMENT_ORDER.indexOf(environmentPresetId.value) + 1) % ENVIRONMENT_ORDER.length
-  environmentPresetId.value = ENVIRONMENT_ORDER[nextIndex]
-  rebuildBuiltInEnvironment()
-  // 环境档切换是离散动作：地面色/雾色/太阳方位角都变了，必须立即重建环境贴图。
-  applyTimePreset(true)
-}
 
 function environmentColor(kind: 'groundColor' | 'fogColor') {
   const environmentColorValue = ENVIRONMENT_PRESETS[environmentPresetId.value][kind]
@@ -1187,16 +1208,6 @@ function rebuildBuiltInEnvironment() {
   markNeedsRender()
 }
 
-function cycleTimeOfDay() {
-  const nextIndex = (TIME_ORDER.indexOf(timeOfDay.value) + 1) % TIME_ORDER.length
-  const next = TIME_ORDER[nextIndex]
-  // 只写世界环境状态：订阅回调里的 syncTimePresetFromWorldEnvironment() 会检测到时段变化，
-  // 并把这次变更当作【离散切换】处理（force = true），环境贴图随即立即重建。
-  // 这里不要抢先改 timeOfDay.value —— 否则 sync 会认为"没变化"，退化成 120ms 的节流路径。
-  updateWorldEnvironmentState({
-    timeOfDay: next === 'day' ? 12 : next === 'sunset' ? 18 : 0,
-  })
-}
 
 /** 依据世界环境的 timeOfDay 同步时段预设；返回是否发生了时段切换（离散切换需强制重建环境贴图）。 */
 function syncTimePresetFromWorldEnvironment(): boolean {
@@ -1365,10 +1376,6 @@ function updateCelestialBodies(center = lightingCenter, extent = lightingExtent)
   )
 }
 
-function toggleViewMode() {
-  viewMode.value = viewMode.value === 'editor' ? 'presentation' : 'editor'
-  applyViewMode()
-}
 
 function applyGroundVisibility() {
   if (!presentationGround) return
@@ -1424,11 +1431,6 @@ function applyViewMode() {
   markNeedsRender()
 }
 
-function cycleQuality() {
-  const nextIndex = (QUALITY_ORDER.indexOf(qualityLevel.value) + 1) % QUALITY_ORDER.length
-  qualityLevel.value = QUALITY_ORDER[nextIndex]
-  applyQualityPreset()
-}
 
 function applyQualityPreset() {
   if (!renderer) return
@@ -1452,11 +1454,6 @@ function applyQualityPreset() {
   handleResize()
 }
 
-function cycleCameraPreset() {
-  const nextIndex = (CAMERA_ORDER.indexOf(cameraPresetId.value) + 1) % CAMERA_ORDER.length
-  cameraPresetId.value = CAMERA_ORDER[nextIndex]
-  if (hasSceneBounds) frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
-}
 
 function updateLightingToBounds(center: THREE.Vector3, size: THREE.Vector3) {
   if (!lightingRig) return

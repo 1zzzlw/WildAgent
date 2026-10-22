@@ -127,6 +127,7 @@ export class AgentBridge {
   private artifactTasks = new Map<string, Promise<boolean>>()
   /** 同一会话的 Turn 快照必须串行提交，避免旧的 running 覆盖新的 completed。 */
   private turnSyncQueues = new Map<string, Promise<boolean>>()
+  private messageSyncQueues = new Map<string, Promise<boolean>>()
 
 
   constructor(url?: string) {
@@ -956,10 +957,14 @@ export class AgentBridge {
   }
 
   /** 同步当前 Blueprint 到后端（PUT 覆盖写入，日期子目录格式） */
-  async syncBlueprintToBackend(blueprint: Record<string, unknown>): Promise<boolean> {
+  async syncBlueprintToBackend(
+    blueprint: Record<string, unknown>,
+    target?: { sessionId: string; revision: number },
+  ): Promise<boolean> {
     const agentStore = useAgentStore()
     const sceneStore = useSceneStore()
-    const sessionId = agentStore.currentSessionId
+    const sessionId = target?.sessionId || agentStore.currentSessionId
+    if (!sessionId) return false
 
     try {
       // 写入当前 revision 到 editor 元数据，重新加载会话时恢复版本连续性
@@ -967,11 +972,12 @@ export class AgentBridge {
       const editor = (payload.editor && typeof payload.editor === 'object')
         ? { ...(payload.editor as Record<string, unknown>) }
         : {}
-      editor.revision = sceneStore.document?.revision ?? 1
+      editor.revision = target?.revision ?? sceneStore.document?.revision ?? 1
       payload.editor = editor
 
       const baseUrl = this.httpBaseUrl
-      const relPath = buildSceneRelPath(sessionId, payload)
+      const session = agentStore.sessions.find(item => item.session_id === sessionId)
+      const relPath = session?.filename || buildSceneRelPath(sessionId, payload)
       const response = await fetch(`${baseUrl}/api/scenes/${relPath}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -981,6 +987,7 @@ export class AgentBridge {
         console.error('[AgentBridge] 同步蓝图失败:', response.status)
         return false
       }
+      if (session) session.filename = relPath
       return true
     } catch (err) {
       console.error('[AgentBridge] 同步蓝图异常:', err)
@@ -1019,18 +1026,23 @@ export class AgentBridge {
   }
 
   /** 删除会话记录、设计与关联蓝图；未保存的草稿同样使用会话接口。 */
-  async deleteSession(sessionId: string) {
+  async deleteSession(sessionId: string): Promise<{ ok: boolean; error?: string }> {
     try {
+      // 完成已有持久化请求后再删除，避免迟到的 Turn 写入重新创建会话。
+      await Promise.all([this.turnSyncQueues.get(sessionId), this.messageSyncQueues.get(sessionId)])
       const response = await fetch(
         `${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
         {
           method: 'DELETE',
         },
       )
-      return response.ok || response.status === 404
+      if (response.ok || response.status === 404) return { ok: true }
+      const body = await response.json().catch(() => ({}))
+      return { ok: false, error: typeof body.detail === 'string'
+        ? body.detail : '删除失败，请稍后重试' }
     } catch (err) {
       console.error('[AgentBridge] 删除会话失败:', err)
-      return false
+      return { ok: false, error: '无法连接服务器，会话仍然保留' }
     }
   }
 
@@ -1123,17 +1135,22 @@ export class AgentBridge {
 
   /** 同步消息到后端 */
   async syncMessagesToServer(sessionId: string, messages: Array<{ id: string; role: string; content: string; timestamp: number }>): Promise<boolean> {
-    try {
-      const baseUrl = this.httpBaseUrl
-      const response = await fetch(`${baseUrl}/api/sessions/${sessionId}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(messages),
-      })
-      return response.ok
-    } catch (err) {
-      console.error('[AgentBridge] 同步消息失败:', err)
-      return false
+    const body = JSON.stringify(messages)
+    const previous = this.messageSyncQueues.get(sessionId) || Promise.resolve(true)
+    const current = previous.catch(() => false).then(async () => {
+      try {
+        const response = await fetch(`${this.httpBaseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+        })
+        return response.ok
+      } catch (err) {
+        console.error('[AgentBridge] 同步消息失败:', err)
+        return false
+      }
+    })
+    this.messageSyncQueues.set(sessionId, current)
+    try { return await current } finally {
+      if (this.messageSyncQueues.get(sessionId) === current) this.messageSyncQueues.delete(sessionId)
     }
   }
 

@@ -22,6 +22,7 @@ import type { RenderMaterialDescriptor } from 'wild-core/materials'
 import { recordTextureLoad } from './textureLoadMonitor'
 import { applyRegisteredSurfaceMaterial } from './materialFeatures'
 import { worldMaterialRuntime } from './worldMaterialRuntime'
+import { applyWaterSurfaceMaterial, isWaterMaterial } from './waterSurfaceMaterial'
 
 let textureAnisotropy = 4
 let requestMaterialRender: () => void = () => { }
@@ -221,6 +222,7 @@ export function createMaterialFromParams(
 
   // 7. core 只输出实现 ID 和参数，实际 Shader 通过 renderer 注册表选择。
   applyRegisteredSurfaceMaterial(material, materialName, params)
+  if (isWaterMaterial(params, materialName)) applyWaterSurfaceMaterial(material)
 
   // 8. 兼容既有开放网格与历史构件中不一致的面绕序，默认双面渲染。
   // 只有已经验证为封闭实体的材质才通过 side: 'front' 显式开启背面剔除。
@@ -268,7 +270,7 @@ export class MaterialCache {
     params: MaterialParams,
     hasVertexColors: boolean
   ): PBRMaterial {
-    const key = `${hasVertexColors ? 'vertex-color' : 'uniform-color'}:${materialSignature(params)}`
+    const key = `${hasVertexColors ? 'vertex-color' : 'uniform-color'}:${isWaterMaterial(params, materialName) ? 'water:' : ''}${materialSignature(params)}`
     const target = this.pendingKeys || this.heldKeys
     const alreadyHeld = this.heldKeys.has(key) || this.pendingKeys?.has(key) === true
     if (!alreadyHeld) {

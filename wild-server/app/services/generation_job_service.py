@@ -431,6 +431,24 @@ class GenerationJobService:
             row = await cursor.fetchone()
         return self._row_to_job(row)
 
+    async def delete_session_jobs(self, session_id: str) -> None:
+        """以持久化任务为准判断占用；检查通过才删除已结束任务和事件。"""
+        await self.initialize()
+        async with aiosqlite.connect(self.database_path) as db:
+            await db.execute("BEGIN IMMEDIATE")
+            cursor = await db.execute(
+                "SELECT request_id FROM generation_jobs WHERE session_id = ? "
+                "AND status IN ('running', 'waiting_review') LIMIT 1", (session_id,),
+            )
+            if await cursor.fetchone():
+                raise ValueError("该会话仍有生成或待审核任务，请先停止任务再删除")
+            await db.execute(
+                "DELETE FROM generation_events WHERE request_id IN "
+                "(SELECT request_id FROM generation_jobs WHERE session_id = ?)", (session_id,),
+            )
+            await db.execute("DELETE FROM generation_jobs WHERE session_id = ?", (session_id,))
+            await db.commit()
+
     async def list_running_jobs(self) -> list[GenerationJob]:
         async with aiosqlite.connect(self.database_path) as db:
             cursor = await db.execute(

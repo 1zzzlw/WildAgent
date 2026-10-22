@@ -56,7 +56,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item @click="renameSession(session)">重命名</el-dropdown-item>
-                <el-dropdown-item v-if="session.status !== 'generating'" @click="$emit('delete', session.session_id)"
+                <el-dropdown-item @click="$emit('delete', session.session_id)"
                   class="danger-item">删除</el-dropdown-item>
               </el-dropdown-menu>
             </template>

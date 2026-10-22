@@ -443,11 +443,12 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       // 弧形墙体：from[0] 是开口左边缘的弧长，切孔和覆盖面使用中心弧长
       const centerAlong = opening.from[0] + opening.width / 2;
       if (!wall._cutouts) wall._cutouts = [];
-      wall._cutouts.push({
+      if (!opening._skipWallCutout) wall._cutouts.push({
         localX: centerAlong,
         localY: opening.from[1] - wallFrom[1],
         localW: opening.width,
         localH: opening.height,
+        style: opening.style,
       });
 
       // 弧形墙体：从弧参数计算门的准确世界位置
@@ -484,11 +485,12 @@ function resolveOpenings(elements: GeometryElement[], index: SpatialIndex): void
       const localY = opening.from[1] - wallFrom[1]; // 开口底部相对墙底高度
 
       if (!wall._cutouts) wall._cutouts = [];
-      wall._cutouts.push({
+      if (!opening._skipWallCutout) wall._cutouts.push({
         localX: localX,
         localY: localY,
         localW: opening.width,
         localH: opening.height,
+        style: opening.style,
       });
 
       // 2. 计算开口实体的世界位置

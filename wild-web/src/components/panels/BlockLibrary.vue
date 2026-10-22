@@ -128,7 +128,7 @@ async function handleAddBlock(block: BlockTemplate) {
 
   if (await sceneStore.applyPatch(patch)) {
     selectionStore.select(element.id)
-    uiStore.setRightActivePanel('properties')
+    uiStore.openPanel('properties')
   } else {
     ElMessage.error('构件添加失败，请查看场景校验结果')
   }
@@ -152,7 +152,7 @@ async function handleAddComponent(
   )
   if (await sceneStore.applyPatch(patch)) {
     selectionStore.select(component.id)
-    uiStore.setRightActivePanel('properties')
+    uiStore.openPanel('properties')
   } else {
     ElMessage.error('构件添加失败，请查看场景校验结果')
   }

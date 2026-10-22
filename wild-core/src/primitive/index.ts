@@ -256,6 +256,7 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
   const reportedCapabilityTypes = new Set<string>();
 
   for (const el of elements) {
+    if (el.type === 'opening' && el._cutoutOnly) continue;
     let meshes: MeshData[];
     const registration = getElementBuilder((el as any).type);
     if (!registration) {
@@ -309,8 +310,8 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
 
     for (const m of meshes) {
       m.elementId = el.id;
-      if (isInteractive) m.interactive = true;
-      if (interaction) m.interaction = interaction;
+      if (isInteractive || m.interaction) m.interactive = true;
+      if (interaction && !m.interaction) m.interaction = interaction;
       if (isDraggable) m.draggable = true;
       if (!m.uvs) m.uvs = generatePlanarUVs(m.geometry);
       applyInstanceTransform(m, el);

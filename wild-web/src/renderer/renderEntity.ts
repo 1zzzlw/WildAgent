@@ -131,6 +131,18 @@ export function toggleOpeningInteraction(
     ?? opening.userData.interactionOpen
     ?? false
   const targetOpen = !currentTarget
+  const groupId = opening.userData.interaction.groupId
+  const members: THREE.Mesh[] = []
+  if (groupId && opening.parent) opening.parent.traverse(child => {
+    if (child instanceof THREE.Mesh && child.userData.interaction?.kind === 'opening' && child.userData.interaction.groupId === groupId) members.push(child)
+  })
+  if (!members.length) members.push(opening)
+  for (const member of members) animateOpening(member, targetOpen, requestRender)
+
+  return true
+}
+
+function animateOpening(opening: THREE.Mesh, targetOpen: boolean, requestRender: () => void): void {
   const token = (opening.userData.interactionAnimationToken || 0) + 1
   opening.userData.interactionAnimationToken = token
   opening.userData.interactionTargetOpen = targetOpen
@@ -154,7 +166,6 @@ export function toggleOpeningInteraction(
   }
   requestRender()
   requestAnimationFrame(tick)
-  return true
 }
 
 /** 根据运行时交互类型分派右键操作。 */

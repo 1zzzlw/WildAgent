@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>门窗渲染回归</title><style>body{margin:0;background:#dce2e4;font:14px sans-serif}#caption{position:fixed;top:20px;left:24px;color:#243e42;background:#ffffffb0;padding:12px 18px;border-radius:12px}canvas{display:block}</style><div id="caption">单扇拱门 · 双开拱门 · 双轨推拉窗 · 升降窗</div><script type="module">
+import * as THREE from 'three';
+import { compileBlueprintComponents } from '/@fs/E:/AgentProject/WildAgent/wild-core/src/compiler/index.ts';
+import { reconstructEntity } from '/@fs/E:/AgentProject/WildAgent/wild-core/src/primitive/index.ts';
+import { createSceneGroupFromEntity, toggleOpeningInteraction } from '/src/renderer/renderEntity.ts';
+const elements=[{type:'wall',id:'wall',from:[0,0,0],to:[15,4.3,0],thickness:.24,material:'wall'},{type:'floor',id:'floor',from:[-1,-.12,-2],to:[16,-.12,2],thickness:.2,material:'stone'}];
+const base={parentWall:'wall',frameWidth:.08,frameMaterial:'frame',leafMaterial:'wood',glassMaterial:'glass',interaction:{mode:'swing',openAngle:85}};
+const components=[{...base,type:'door',id:'single',from:[.7,0,0],width:1.5,height:3.3,openingStyle:'arched'},{...base,type:'door',id:'double',from:[3.3,0,0],width:2.7,height:3.6,openingStyle:'arched',doorStyle:'double'},{...base,type:'window',id:'slide',from:[7.1,1.1,0],width:3,height:2,frameDepth:.24,horizontalMullions:1,interaction:{mode:'slide',openDistance:99}},{...base,type:'window',id:'lift',from:[11.1,1.1,0],width:2.8,height:2,frameDepth:.24,interaction:{mode:'lift',openDistance:99}}];
+const bp={meta:{version:'1.1',type:'building',name:'门窗动画回归'},geometry:{elements,components},materials:{wall:{baseColor:[.82,.8,.74],roughness:.85},stone:{baseColor:[.48,.52,.5],roughness:.9},frame:{baseColor:[.18,.24,.23],metallic:.35,roughness:.45},wood:{baseColor:[.37,.22,.12],roughness:.6},glass:{baseColor:[.45,.7,.75],opacity:.45,roughness:.12}}};
+const compiled=compileBlueprintComponents(bp);const entity=await reconstructEntity(compiled.blueprint);window.diagnostics=[...compiled.diagnostics,...entity.diagnostics];
+const scene=new THREE.Scene();scene.background=new THREE.Color('#dce2e4');const group=createSceneGroupFromEntity(entity);scene.add(group);scene.add(new THREE.HemisphereLight(0xffffff,0x657678,2));const sun=new THREE.DirectionalLight(0xffedd5,3);sun.position.set(0,8,-10);scene.add(sun);
+const camera=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,.1,100);camera.position.set(8.5,5.2,-20);camera.lookAt(7.5,1.5,0);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1;document.body.append(renderer.domElement);
+const render=()=>renderer.render(scene,camera);render();
+window.openAll=()=>{for(const id of ['single__opening','double__opening','slide__sash_left','lift__sash_bottom']){const mesh=group.children.find(m=>m.name===id);if(!mesh)throw Error('missing '+id);toggleOpeningInteraction(mesh,render)}return true};
+window.state=()=>group.children.filter(m=>m.userData.interaction).map(m=>({name:m.name,open:m.userData.interactionOpen,progress:m.userData.interactionProgress}));
+window.ready=true;
+</script></html>

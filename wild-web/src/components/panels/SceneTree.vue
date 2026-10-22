@@ -75,7 +75,7 @@ function handleSelect(id: string, event: MouseEvent) {
       ? 'add'
       : 'replace'
   selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, id, mode))
-  uiStore.setRightActivePanel('properties')
+  uiStore.openPanel('properties')
 }
 </script>
 

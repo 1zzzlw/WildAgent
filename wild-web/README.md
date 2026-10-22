@@ -2,6 +2,8 @@
 
 基于 Vue 3 + Vite + TypeScript + Three.js 的 AI 辅助参数化 3D 建筑编辑器。
 
+顶部提供新建、打开、保存、导出与撤销重做；打开 `.wild` 后创建独立会话并自动保存到服务器，Ctrl+S 覆盖该会话的同一文件。左侧面板可切换、收缩和调整宽度。视口浮动圆形按钮展开透明的子圆形图标，支持机位、环境、时段、质量、展示、渲染开关及剖切；渲染按钮显示最近帧率。门窗通过右键开合；水材质支持动态水纹，可在渲染工具中关闭。
+
 ## 项目结构
 
 ```
@@ -29,7 +31,7 @@ src/
 ├── agent/                     # Agent 通信层
 │   ├── agentBridge.ts        # WebSocket 桥接
 │   └── protocol.ts           # 协议工具函数
-├── renderer/                  # 3D 渲染适配层（待实现）
+├── renderer/                  # 3D 渲染适配层
 │   ├── wildCoreAdapter.ts    # wild-core 适配器
 │   ├── renderEntity.ts       # 渲染实体转换
 │   ├── meshDataToGeometry.ts # MeshData -> Three.js
@@ -39,10 +41,10 @@ src/
 │   ├── layout/               # 布局组件
 │   │   ├── EditorTopBar.vue  # 顶部工具栏
 │   │   ├── LeftPanel.vue     # 左侧面板容器
-│   │   ├── RightPanel.vue    # 右侧面板容器
-│   │   └── AIWorkspace.vue   # AI 底部/侧栏/专注三态工作区
+│   │   └── EditorTools.vue   # 工作台偏好和快捷键
 │   ├── viewport/             # 视口组件
-│   │   └── CanvasViewport.vue # Three.js 渲染视口
+│   │   ├── CanvasViewport.vue # Three.js 渲染视口
+│   │   └── ViewportToolDock.vue # 透明圆形工具与展开的子圆形按钮
 │   └── panels/               # 功能面板
 │       ├── SceneTree.vue     # 场景结构树
 │       ├── BlockLibrary.vue  # 构件库
@@ -66,7 +68,7 @@ src/
 - **selectionStore**: 选中的构件、hover 状态
 - **historyStore**: 撤销/重做历史
 - **agentStore**: AI 对话消息、WebSocket 连接状态、待确认的 patch
-- **uiStore**: 面板显示状态、AI 工作区模式与本地布局偏好
+- **uiStore**: 左侧面板、宽度、全屏、动画与声音偏好
 
 ### ScenePatch 协议
 

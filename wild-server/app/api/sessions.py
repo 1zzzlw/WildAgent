@@ -227,6 +227,14 @@ async def update_session(session_id: str, request: Request):
 @router.delete("/{session_id}")
 async def delete_session(session_id: str):
     """删除会话及其关联蓝图文件"""
+    from app.services.generation_job_service import generation_job_service
+
+    # 页面打开或历史 Turn 残留不代表占用，真实生成/审核任务才阻止删除。
+    _session_path(session_id)
+    try:
+        await generation_job_service.delete_session_jobs(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     # 删除 meta 文件
     meta_path = _session_path(session_id)
     if meta_path.exists():

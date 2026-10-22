@@ -1,0 +1,15 @@
+{
+  "label": "03-r1真实渲染",
+  "command": [
+    "node",
+    "wild-web\\scripts\\render-baseline.mjs",
+    "docs\\10月22日\\01-新中式别墅\\听澜合院-新中式别墅.wild",
+    "docs\\10月22日\\01-新中式别墅\\03-过程记录\\r1\\效果图"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T07:59:25.824350+08:00",
+  "ended_at": "2026-10-22T07:59:25.906043+08:00",
+  "exit_code": 134,
+  "stdout": "",
+  "stderr": "\n  #  管理员:C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.7.0_x64__8wekyb3d8bbwe\\pwsh.exe[20748]: class std::shared_ptr<class node::InitializationResultImpl> __cdecl node::InitializeOncePerProcessInternal(const class std::vector<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> >,class std::allocator<class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > > > &,enum node::ProcessInitializationFlags::Flags) at c:\\ws\\src\\node.cc:1266\n  #  Assertion failed: ncrypto::CSPRNG(nullptr, 0)\n\n----- Native stack trace -----\n\n 1: 00007FF7A2A31477 node::SetCppgcReference+18247\n 2: 00007FF7A298F791 v8::base::CPU::num_virtual_address_bits+92465\n 3: 00007FF7A29DA731 node::InitializeOncePerProcess+2881\n 4: 00007FF7A29DC6CB node::Start+3739\n 5: 00007FF7A29DB84E node::Start+30\n 6: 00007FF7A273B01C AES_cbc_encrypt+151564\n 7: 00007FF7A42F566C inflateValidate+40748\n 8: 00007FFB251D259D BaseThreadInitThunk+29\n 9: 00007FFB25B8AFB8 RtlUserThreadStart+40\n"
+}

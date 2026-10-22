@@ -1,0 +1,2482 @@
+{
+  "source": "docs\\10月22日\\01-新中式别墅\\听澜合院-新中式别墅.wild",
+  "source_sha256": "a7cd9603298dc099d2bde2e55cfbb340ef117b605cb61d732e381dad6fe047a3",
+  "copy_sha256": "60df24a7aaf226d8cdb6de8ddbef135c1b38d1d1b6d621529b06ab622524710b",
+  "removed": [
+    {
+      "id": "main_roof",
+      "layer": "roof"
+    },
+    {
+      "id": "main_roof_tile_z_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_24_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_24_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_25_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_25_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_26_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_26_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_27_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_27_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_28_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_28_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_29_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_29_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_30_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_30_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_31_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_31_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_32_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_32_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_33_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_33_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_34_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_34_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_35_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_35_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_36_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_36_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_37_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_37_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_38_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_38_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_39_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_39_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_40_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_40_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_41_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_41_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_42_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_42_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_43_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_43_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_44_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_44_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_45_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_45_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_46_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_46_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_47_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_47_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_48_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_48_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_49_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_49_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_50_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_50_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_51_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_51_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_52_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_52_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_53_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_53_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_54_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_54_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_55_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_55_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_56_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_56_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_57_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_57_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_58_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_58_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_59_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_59_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_60_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_60_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_61_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_61_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_62_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_62_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_63_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_63_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_64_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_64_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_65_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_65_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_66_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_66_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_67_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_67_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_68_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_68_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_69_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_69_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_70_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_70_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_71_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_71_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_72_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_72_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_73_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_73_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_74_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_74_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_75_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_75_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_76_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_76_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_77_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_z_77_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_24_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_24_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_25_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_25_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_26_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_26_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_27_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_27_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_28_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_28_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_29_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_29_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_30_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_30_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_31_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_31_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_32_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_32_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_33_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_33_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_34_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_x_34_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_4",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_5",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_6",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_7",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_8",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_9",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_10",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_tile_course_11",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_ridge",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_hip_cap_0",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_hip_cap_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_hip_cap_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_hip_cap_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_fascia_z_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_fascia_x_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_fascia_z_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_roof_fascia_x_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof",
+      "layer": "roof"
+    },
+    {
+      "id": "tea_roof_tile_z_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_z_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_24_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_24_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_25_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_25_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_26_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_26_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_27_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_27_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_28_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_28_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_29_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_29_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_30_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_30_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_31_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_31_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_32_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_32_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_33_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_33_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_34_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_x_34_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_4",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_5",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_6",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_tile_course_7",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_ridge",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_hip_cap_0",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_hip_cap_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_hip_cap_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_hip_cap_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_fascia_z_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_fascia_x_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_fascia_z_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "tea_roof_fascia_x_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof",
+      "layer": "roof"
+    },
+    {
+      "id": "study_roof_tile_z_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_z_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_0_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_0_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_1_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_1_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_2_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_2_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_3_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_3_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_4_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_4_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_5_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_5_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_6_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_6_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_7_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_7_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_8_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_8_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_9_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_9_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_10_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_10_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_11_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_11_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_12_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_12_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_13_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_13_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_14_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_14_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_15_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_15_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_16_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_16_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_17_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_17_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_18_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_18_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_19_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_19_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_20_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_20_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_21_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_21_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_22_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_22_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_23_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_23_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_24_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_24_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_25_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_x_25_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_4",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_5",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_6",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_tile_course_7",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_ridge",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_hip_cap_0",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_hip_cap_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_hip_cap_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_hip_cap_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_fascia_z_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_fascia_x_-1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_fascia_z_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "study_roof_fascia_x_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_0",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_1",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_2",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_3",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_4",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_5",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_6",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_7",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_8",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_9",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_10",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_11",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_12",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_13",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_14",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_15",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "main_soffit_rafter_16",
+      "layer": "roof_detail"
+    },
+    {
+      "id": "moon_wall_0_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_0_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_1_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_1_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_2_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_2_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_3_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_3_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_4_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_4_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_5_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_5_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_6_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_6_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_7_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_7_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_8_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_8_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_9_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_9_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_10_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_10_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_11_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_11_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_12_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_12_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_13_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_13_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_14_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_14_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_15_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_15_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_16_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_16_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_17_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_17_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_18_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_18_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_19_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_19_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_20_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_20_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_21_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_21_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_22_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_22_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_23_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_23_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_24_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_24_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_25_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_25_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_26_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_26_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_27_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_27_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_28_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_28_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_29_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_29_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_30_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_30_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_31_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_31_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_32_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_32_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_33_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_33_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_34_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_34_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_35_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_35_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_36_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_36_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_37_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_37_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_38_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_38_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_39_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_39_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_40_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_40_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_41_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_41_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_42_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_42_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_43_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_43_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_44_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_44_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_45_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_45_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_46_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_46_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_47_-1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_wall_47_1",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_gate_stone_ring",
+      "layer": "gate"
+    },
+    {
+      "id": "moon_gate_coping",
+      "layer": "gate"
+    },
+    {
+      "id": "court_screen_left",
+      "layer": "gate"
+    },
+    {
+      "id": "court_screen_left_cap",
+      "layer": "gate"
+    },
+    {
+      "id": "court_screen_right",
+      "layer": "gate"
+    },
+    {
+      "id": "court_screen_right_cap",
+      "layer": "gate"
+    }
+  ],
+  "kept_elements": 547,
+  "kept_components": 62,
+  "kept_geometry_unchanged": true
+}

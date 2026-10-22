@@ -1,0 +1,93 @@
+{
+  "input": "docs\\10月22日\\01-新中式别墅\\听澜合院-新中式别墅.wild",
+  "sha256": "f0aaaacec8b695c1ee84cb58c9bb419baa9708cd4dbd886f87228b34ddc29da1",
+  "auto_fix": false,
+  "schema_errors": [],
+  "pipeline": [
+    {
+      "step": 1,
+      "name": "validate_blueprint_structure",
+      "output": "✅ 结构完整（1165 个构件，类型: {'wall', 'primitive', 'floor', 'roof', 'stair'}）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 2,
+      "name": "validate_element_required_fields",
+      "output": "❌ [living_to_tea] (component=door) 缺少必填字段 'interaction'\n❌ [main_entry] (component=door) 缺少必填字段 'interaction'\n❌ [dining_to_study] (component=door) 缺少必填字段 'interaction'\n❌ [upper_gallery_access] (component=door) 缺少必填字段 'interaction'\n❌ [tea_court_door] (component=door) 缺少必填字段 'interaction'\n❌ [study_court_door] (component=door) 缺少必填字段 'interaction'\n❌ [room_l_g] (component=door) 缺少必填字段 'interaction'\n❌ [room_r_g] (component=door) 缺少必填字段 'interaction'\n❌ [room_l_u] (component=door) 缺少必填字段 'interaction'\n❌ [room_r_u] (component=door) 缺少必填字段 'interaction'\n❌ [kitchen_door] (component=door) 缺少必填字段 'interaction'\n❌ [upper_bath_door] (component=door) 缺少必填字段 'interaction'",
+      "has_error": true,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 3,
+      "name": "validate_reference_integrity",
+      "output": "✅ 引用完整性通过。（1165 个基础构件，62 个组合构件，0 个模板，0 个实例）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 4,
+      "name": "validate_opening_coords",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "4b",
+      "name": "validate_opening_fit",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 5,
+      "name": "validate_wall_junctions",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 6,
+      "name": "validate_stair_alignment",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 7,
+      "name": "validate_roof_coverage",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": "7b",
+      "name": "validate_element_dimensions",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    },
+    {
+      "step": 9,
+      "name": "validate_collision",
+      "output": "⏭️  跳过（Step 2 必填字段校验未通过）",
+      "has_error": false,
+      "has_warning": false,
+      "issues": null
+    }
+  ],
+  "pipeline_error_steps": [
+    "validate_element_required_fields"
+  ],
+  "pipeline_warning_steps": [],
+  "source_unchanged": true
+}

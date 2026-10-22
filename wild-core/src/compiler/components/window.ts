@@ -39,7 +39,6 @@ export function compileWindow(
   for (let index = 0; index < verticalMullions; index++) {
     verticalMullionRatios.add((index + 1) / (verticalMullions + 1))
   }
-  if (component.interaction) verticalMullionRatios.add(0.5)
   const ratios = [0, ...[...verticalMullionRatios].sort((a, b) => a - b), 1]
   const verticalSpacing = Math.min(...ratios.slice(1).map((r, i) => (r - ratios[i]) * clearWidth))
   if (verticalMullionRatios.size || horizontalMullions) {
@@ -63,33 +62,7 @@ export function compileWindow(
   )
 
   const sashes: OpeningParams[] = []
-  if (component.interaction) {
-    // 左右窗扇各自持有交互，右键命中哪一扇就只开合哪一扇。
-    const sashWidth = component.width / 2
-    const leftSash = createSash(`${component.id}__sash_left`, along, sashWidth)
-    const rightSash = createSash(`${component.id}__sash_right`, along + sashWidth, sashWidth)
-    leftSash._interaction = createOpeningInteraction(
-      { ...component.interaction, hingeSide: 'left' },
-      frame,
-      along,
-      bottomY,
-      normalOffset,
-      sashWidth,
-      component.height,
-    )
-    rightSash._interaction = createOpeningInteraction(
-      { ...component.interaction, hingeSide: 'right' },
-      frame,
-      along + sashWidth,
-      bottomY,
-      normalOffset,
-      sashWidth,
-      component.height,
-    )
-    sashes.push(leftSash, rightSash)
-  } else {
-    sashes.push(createSash(`${component.id}__opening`, along, component.width))
-  }
+  if (!component.interaction) sashes.push(createSash(`${component.id}__opening`, along, component.width))
 
   const elements: GeometryElement[] = [
     ...sashes,
@@ -123,6 +96,11 @@ export function compileWindow(
     ),
   ]
 
+  if (component.interaction) {
+    elements.push(...compileMovingSashes(component, frame, frameWidth, frameDepth, glassDepth, mullionWidth))
+    return elements
+  }
+
   for (const [index, ratio] of [...verticalMullionRatios].sort((a, b) => a - b).entries()) {
     const localAlong = along + frameWidth + clearWidth * ratio
     elements.push(createBox(
@@ -151,4 +129,51 @@ export function compileWindow(
 
 function padIndex(index: number): string {
   return String(index + 1).padStart(3, '0')
+}
+
+/** 整个洞口裁墙，窗扇在净空内沿独立轨道移动；玻璃、窗框和窗棂共享交互。 */
+function compileMovingSashes(
+  component: WindowComponent,
+  frame: ReturnType<typeof resolveStraightWallFrame>,
+  border: number, depth: number, glassDepth: number, mullion: number,
+): GeometryElement[] {
+  const interaction = component.interaction!
+  const [along, bottom, offset] = component.from
+  const width = component.width - border * 2
+  const height = component.height - border * 2
+  const stacked = interaction.mode === 'lift'
+  const tracked = interaction.mode !== 'swing'
+  const sashDepth = tracked ? depth * 0.42 : depth * 0.7
+  if (tracked && glassDepth > sashDepth) throw new Error('glassDepth 过大，无法在 frameDepth 内容纳两条独立窗扇轨道')
+  const sashWidth = stacked ? width : width / 2
+  const sashHeight = stacked ? height / 2 : height
+  const sashBorder = Math.min(Math.max(border * 0.65, 0.012), 0.035, sashWidth * 0.15, sashHeight * 0.15)
+  const cutout: OpeningParams = { type: 'opening', id: `${component.id}__cutout`, parentWall: component.parentWall, from: [...component.from], width: component.width, height: component.height, style: 'rectangular', _cutoutOnly: true }
+  const elements: GeometryElement[] = [cutout]
+  for (let index = 0; index < 2; index++) {
+    const id = `${component.id}__sash_${stacked ? (index ? 'top' : 'bottom') : (index ? 'right' : 'left')}`
+    const x = along + border + (stacked ? 0 : index * sashWidth)
+    const y = bottom + border + (stacked ? index * sashHeight : 0)
+    const z = offset + (tracked ? (index ? 1 : -1) * depth * 0.25 : 0)
+    const behavior = createOpeningInteraction({ ...interaction, hingeSide: index ? 'right' : 'left' }, frame, x, y, z, sashWidth, sashHeight)!
+    behavior.groupId = id
+    if (tracked) {
+      const limit = stacked ? height - sashHeight : width - sashWidth
+      const travel = Math.max(0, Math.min(interaction.openDistance ?? limit, limit)) * (index ? -1 : 1)
+      const direction = frame.directionAt(x + sashWidth / 2)
+      behavior.openOffset = stacked ? [0, travel, 0] : [direction[0] * travel, 0, direction[2] * travel]
+    }
+    elements.push(withMaterial<OpeningParams>({ type: 'opening', id, parentWall: component.parentWall, from: [x, y, z], width: sashWidth, height: sashHeight, depth: glassDepth, style: 'rectangular', _interaction: behavior, _skipWallCutout: true }, component.glassMaterial))
+    const bar = (suffix: string, cx: number, cy: number, w: number, h: number) => {
+      const box = createBox(`${id}__${suffix}`, frame.pointAt(cx, cy, z), [w, h, sashDepth], frame.rotationAt(cx), component.frameMaterial)
+      elements.push(Object.assign(box, { _interaction: behavior }))
+    }
+    bar('left', x + sashBorder / 2, y + sashHeight / 2, sashBorder, sashHeight)
+    bar('right', x + sashWidth - sashBorder / 2, y + sashHeight / 2, sashBorder, sashHeight)
+    bar('bottom', x + sashWidth / 2, y + sashBorder / 2, sashWidth - 2 * sashBorder, sashBorder)
+    bar('top', x + sashWidth / 2, y + sashHeight - sashBorder / 2, sashWidth - 2 * sashBorder, sashBorder)
+    for (let i = 0; i < (component.verticalMullions ?? 0); i++) bar(`vertical_${i}`, x + sashWidth * (i + 1) / ((component.verticalMullions ?? 0) + 1), y + sashHeight / 2, mullion, sashHeight - 2 * sashBorder)
+    for (let i = 0; i < (component.horizontalMullions ?? 0); i++) bar(`horizontal_${i}`, x + sashWidth / 2, y + sashHeight * (i + 1) / ((component.horizontalMullions ?? 0) + 1), sashWidth - 2 * sashBorder, mullion)
+  }
+  return elements
 }

@@ -1,0 +1,15 @@
+{
+  "label": "01-r1生成",
+  "command": [
+    "wild-server\\.venv\\Scripts\\python.exe",
+    "docs\\10月22日\\02-欧式别墅\\02-生成脚本\\生成玫庭庄园.py",
+    "--revision",
+    "r1"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T08:07:31.751819+08:00",
+  "ended_at": "2026-10-22T08:07:31.808630+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"revision\": \"r1\",\n  \"file\": \"玫庭庄园-欧式别墅.wild\",\n  \"sha256\": \"637c327c88b39bc1cd438b82070561f6c44f7d0785c91016f95aa9b0663ef29a\",\n  \"bytes\": 249439,\n  \"elements\": 1287,\n  \"components\": 62,\n  \"materials\": 25,\n  \"layers\": {\n    \"site\": 12,\n    \"foundation\": 3,\n    \"floor_ground\": 3,\n    \"floor_upper\": 5,\n    \"wall_ground\": 11,\n    \"components\": 62,\n    \"wall_upper\": 8,\n    \"facade\": 238,\n    \"facade_upper\": 297,\n    \"structure\": 5,\n    \"roof\": 5,\n    \"roof_detail\": 299,\n    \"stair\": 3,\n    \"furniture\": 221,\n    \"landscape\": 143,\n    \"lighting\": 34\n  },\n  \"element_types\": {\n    \"floor\": 27,\n    \"wall\": 31,\n    \"primitive\": 1220,\n    \"column\": 2,\n    \"roof\": 5,\n    \"stair\": 2\n  },\n  \"author\": \"当前对话 Codex\",\n  \"method\": \"确定性脚本；本日公共原语作者工具\",\n  \"model_calls\": 0,\n  \"application_source_modified\": false\n}\n",
+  "stderr": ""
+}

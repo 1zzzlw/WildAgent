@@ -1,7 +1,7 @@
 <template>
-  <div class="render-control-root">
+  <div :class="['render-control-root', { embedded }]">
     <!-- 收起态：一个小圆钮，悬浮在工具栏下方，几乎不占画布空间 -->
-    <button v-if="store.collapsed" type="button" class="rc-fab" :class="fpsTier"
+    <button v-if="store.collapsed && !embedded" type="button" class="rc-fab" :class="fpsTier"
       :title="`展开渲染面板（FPS ${store.stats.fps}）`" aria-label="展开渲染面板" @click="store.collapsed = false">
       <span class="rc-fab-icon" aria-hidden="true">⚙</span>
       <span class="rc-fab-fps">{{ store.stats.fps }}</span>
@@ -11,7 +11,7 @@
     <section v-else class="rc-panel" role="region" aria-label="渲染控制面板">
       <header class="rc-header">
         <span class="rc-title">渲染面板</span>
-        <button type="button" class="rc-collapse" title="收起面板" aria-label="收起渲染面板" @click="store.collapsed = true">
+        <button v-if="!embedded" type="button" class="rc-collapse" title="收起面板" aria-label="收起渲染面板" @click="store.collapsed = true">
           <span aria-hidden="true">−</span>
         </button>
       </header>
@@ -65,6 +65,11 @@
           <input v-model="store.autoRotate" type="checkbox" />
           <span class="rc-switch" aria-hidden="true"></span>
         </label>
+        <label class="rc-toggle">
+          <span>水面动态</span>
+          <input v-model="store.waterAnimated" type="checkbox" aria-label="水面动态" />
+          <span class="rc-switch" aria-hidden="true"></span>
+        </label>
         <div v-if="store.autoRotate" class="rc-slider-row">
           <span class="rc-slider-label">速度</span>
           <input v-model.number="store.autoRotateSpeed" type="range" min="0.2" max="4" step="0.2" class="rc-slider" />
@@ -99,6 +104,7 @@ import { useRenderPanelStore } from '../../stores/renderPanelStore'
  * CanvasViewport 里（保持"面板无 three 依赖"的边界）。
  */
 const store = useRenderPanelStore()
+defineProps<{ embedded?: boolean }>()
 
 const fpsTier = computed(() =>
   store.stats.fps >= 50 ? 'good' : store.stats.fps >= 30 ? 'ok' : 'bad',
@@ -118,6 +124,8 @@ function formatCount(value: number): string {
 </script>
 
 <style scoped>
+.render-control-root.embedded { position: static; width: 100%; margin-top: 16px; align-items: stretch; }
+.embedded .rc-panel { width: 100%; background: #ffffff03; box-shadow: none; border-color: #ffffff12; }
 .render-control-root {
   position: absolute;
   top: 56px;

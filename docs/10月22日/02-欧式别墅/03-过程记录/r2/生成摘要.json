@@ -1,0 +1,39 @@
+{
+  "revision": "r2",
+  "file": "玫庭庄园-欧式别墅.wild",
+  "sha256": "773bdd857354d9b64a7d9d7388d90e5eef3818b7e4c085942fb5052ae3afbcba",
+  "bytes": 249038,
+  "elements": 1286,
+  "components": 62,
+  "materials": 25,
+  "layers": {
+    "site": 11,
+    "foundation": 3,
+    "floor_ground": 3,
+    "floor_upper": 5,
+    "wall_ground": 11,
+    "components": 62,
+    "wall_upper": 8,
+    "facade": 238,
+    "facade_upper": 297,
+    "structure": 5,
+    "roof": 5,
+    "roof_detail": 299,
+    "stair": 3,
+    "furniture": 221,
+    "landscape": 143,
+    "lighting": 34
+  },
+  "element_types": {
+    "floor": 26,
+    "wall": 31,
+    "primitive": 1220,
+    "column": 2,
+    "roof": 5,
+    "stair": 2
+  },
+  "author": "当前对话 Codex",
+  "method": "确定性脚本；本日公共原语作者工具",
+  "model_calls": 0,
+  "application_source_modified": false
+}

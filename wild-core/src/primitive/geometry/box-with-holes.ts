@@ -10,11 +10,14 @@
  */
 
 import { indexTriList } from './mesh-helper';
+import { buildOpeningContour } from './openingContour';
+import type { OpeningParams } from '../types';
 
 interface Cutout {
   localX: number;   // 沿墙位置（0 = 墙起点）
   localY: number;   // 底部高度（0 = 地面）
   localW: number;   // 宽度
+  style?: OpeningParams['style'];
   localH: number;   // 高度
 }
 
@@ -144,6 +147,21 @@ export function boxWithHoles(length: number, height: number, thickness: number, 
     const cy1 = rightYBounds[yi], cy2 = rightYBounds[yi + 1];
     if (holes.some(h => h.x2 >= hl && h.y1 < cy2 && h.y2 > cy1)) continue;
     quad(hl, cy1, ht, hl, cy1, -ht, hl, cy2, -ht, hl, cy2, ht);
+  }
+
+  // 矩形分区之上补齐拱顶两侧的墙体，并生成与门扇同轮廓的拱腹。
+  for (const cutout of cutouts) {
+    if (cutout.style !== 'arched' && cutout.style !== 'gothic') continue;
+    const contour = buildOpeningContour(cutout.style, cutout.localW / 2, cutout.localH / 2, cutout.localW, cutout.localH);
+    const cx = cutout.localX - hl, cy = cutout.localY + cutout.localH / 2 - hh, top = cutout.localY + cutout.localH - hh;
+    for (let i = 2; i < contour.length - 1; i++) {
+      const a = contour[i], b = contour[i + 1];
+      if (Math.abs(a[0] - b[0]) < 1e-9) continue;
+      const ax = cx + a[0], bx = cx + b[0], ay = cy + a[1], by = cy + b[1];
+      quad(bx,by,ht, ax,ay,ht, ax,top,ht, bx,top,ht);
+      quad(ax,ay,-ht, bx,by,-ht, bx,top,-ht, ax,top,-ht);
+      quad(ax,ay,-ht, bx,by,-ht, bx,by,ht, ax,ay,ht);
+    }
   }
 
   return indexTriList(new Float32Array(verts));

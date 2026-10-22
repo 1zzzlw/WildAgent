@@ -1,179 +1,41 @@
-import type {
-  DoorComponent,
-  GeometryElement,
-  OpeningParams,
-} from '../../../types'
+import type { DoorComponent, GeometryElement, OpeningParams } from '../../../types'
 import type { ComponentCompileContext } from '../types'
-import {
-  assertFrameDimensions,
-  assertWallDepthAlignment,
-  createBox,
-  createOpeningInteraction,
-  resolveStraightWallFrame,
-  withMaterial,
-} from './attachedToWall'
+import { assertFrameDimensions, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveStraightWallFrame, withMaterial } from './attachedToWall'
+import { buildOpeningContour } from '../../primitive/geometry/openingContour'
 
-/** 将门展开为一个墙洞覆盖面与门框 primitive。
- *
- * 支持参数：
- * - openingStyle: "rectangular"（默认）或 "arched"（拱形门洞）
- * - doorStyle: "single"（默认，单扇）或 "double"（双开：一个宽洞口+四段框，无中框）
- * - leafRows: 门扇横向分节行数（1~8），缺省按门洞哈希取 2 或 3；车库门帘片用 4~6
- */
-export function compileDoor(
-  component: DoorComponent,
-  context: ComponentCompileContext,
-): GeometryElement[] {
+/** 一个完整洞口，按轮廓生成门框；双开门的两扇共享操作、各绕自己的外侧铰链。 */
+export function compileDoor(component: DoorComponent, context: ComponentCompileContext): GeometryElement[] {
   const frame = resolveStraightWallFrame(component, context)
-  const openingStyle = component.openingStyle ?? 'rectangular'
-  const doorStyle = component.doorStyle ?? 'single'
-
-  if (doorStyle === 'double') {
-    return compileDoubleDoor(component, frame, openingStyle)
+  const border = component.frameWidth ?? 0.08
+  const frameDepth = component.frameDepth ?? frame.wall.thickness
+  const leafDepth = component.leafDepth ?? Math.min(0.04, frameDepth)
+  assertFrameDimensions(component, border, frameDepth)
+  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
+  const [along, bottom, offset] = component.from
+  const style = component.openingStyle ?? 'rectangular'
+  const double = component.doorStyle === 'double' && (!component.interaction || component.interaction.mode === 'swing')
+  const width = component.width - border * 2
+  const height = component.height - border
+  const opening = withMaterial<OpeningParams>({ type: 'opening', id: `${component.id}__opening`, parentWall: component.parentWall, from: [...component.from], width: component.width, height: component.height, depth: leafDepth, style, _leafInset: border, _doorLeafDetail: createDoorLeafDetail(component, double) }, component.leafMaterial)
+  if (double && component.interaction) {
+    opening._leafInteractions = [0, 1].map(index => ({ ...createOpeningInteraction({ ...component.interaction!, hingeSide: index ? 'right' : 'left' }, frame, along + border + index * width / 2, bottom, offset, width / 2, height)!, groupId: component.id }))
+  } else {
+    opening._interaction = createOpeningInteraction(component.interaction, frame, along + border, bottom, offset, width, height)
   }
-  return compileSingleDoor(component, frame, openingStyle)
-}
-
-/** 单扇门：1 个 opening + 3 段门框（左/右/顶）。 */
-function compileSingleDoor(
-  component: DoorComponent,
-  frame: ReturnType<typeof resolveStraightWallFrame>,
-  openingStyle: 'rectangular' | 'arched',
-): GeometryElement[] {
-  const frameWidth = component.frameWidth ?? 0.08
-  const frameDepth = component.frameDepth ?? frame.wall.thickness
-  const leafDepth = component.leafDepth ?? Math.min(0.04, frameDepth)
-  assertFrameDimensions(component, frameWidth, frameDepth)
-  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
-
-  const [along, bottomY, normalOffset] = component.from
-  const opening = withMaterial<OpeningParams>({
-    type: 'opening',
-    id: `${component.id}__opening`,
-    parentWall: component.parentWall,
-    from: [...component.from],
-    width: component.width,
-    height: component.height,
-    depth: leafDepth,
-    style: openingStyle,
-    _doorLeafDetail: createDoorLeafDetail(component, false),
-  }, component.leafMaterial)
-  opening._interaction = createOpeningInteraction(
-    component.interaction,
-    frame,
-    along,
-    bottomY,
-    normalOffset,
-    component.width,
-    component.height,
-  )
-
-  return [
-    opening,
-    createBox(
-      `${component.id}__frame_left`,
-      frame.pointAt(along + frameWidth / 2, bottomY + component.height / 2, normalOffset),
-      [frameWidth, component.height, frameDepth],
-      frame.rotationAt(along + frameWidth / 2),
-      component.frameMaterial,
-    ),
-    createBox(
-      `${component.id}__frame_right`,
-      frame.pointAt(along + component.width - frameWidth / 2, bottomY + component.height / 2, normalOffset),
-      [frameWidth, component.height, frameDepth],
-      frame.rotationAt(along + component.width - frameWidth / 2),
-      component.frameMaterial,
-    ),
-    createBox(
-      `${component.id}__frame_top`,
-      frame.pointAt(along + component.width / 2, bottomY + component.height - frameWidth / 2, normalOffset),
-      [component.width - frameWidth * 2, frameWidth, frameDepth],
-      frame.rotationAt(along + component.width / 2),
-      component.frameMaterial,
-    ),
-  ]
-}
-
-/** 双开门：1 个宽 opening + 4 段门框（左外/右外/左扇顶/右扇顶），无双扇之间的中竖框。 */
-function compileDoubleDoor(
-  component: DoorComponent,
-  frame: ReturnType<typeof resolveStraightWallFrame>,
-  openingStyle: 'rectangular' | 'arched',
-): GeometryElement[] {
-  const frameWidth = component.frameWidth ?? 0.08
-  const frameDepth = component.frameDepth ?? frame.wall.thickness
-  const leafDepth = component.leafDepth ?? Math.min(0.04, frameDepth)
-  // 双开门的内侧框可设为 0（两扇之间无缝），但仍需验证外侧框尺寸
-  const halfWidth = component.width / 2
-  assertFrameDimensions(component, frameWidth, frameDepth)
-  assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
-
-  const [along, bottomY, normalOffset] = component.from
-  const opening = withMaterial<OpeningParams>({
-    type: 'opening',
-    id: `${component.id}__opening`,
-    parentWall: component.parentWall,
-    from: [...component.from],
-    width: component.width,
-    height: component.height,
-    depth: leafDepth,
-    style: openingStyle,
-    _doorLeafDetail: createDoorLeafDetail(component, true),
-  }, component.leafMaterial)
-
-  // 双开门：左扇铰链在左，右扇铰链在右
-  opening._interaction = createOpeningInteraction(
-    component.interaction,
-    frame,
-    along,
-    bottomY,
-    normalOffset,
-    component.width,
-    component.height,
-  )
-
   const elements: GeometryElement[] = [opening]
-
-  // 左侧外框（仅在 frameWidth > 0 时生成）
-  if (frameWidth > 0) {
-    elements.push(createBox(
-      `${component.id}__frame_left_outer`,
-      frame.pointAt(along + frameWidth / 2, bottomY + component.height / 2, normalOffset),
-      [frameWidth, component.height, frameDepth],
-      frame.rotationAt(along + frameWidth / 2),
-      component.frameMaterial,
-    ))
+  if (!border) return elements
+  const contour = buildOpeningContour(style, component.width / 2, component.height / 2, component.width, component.height)
+  // 轮廓逆时针排列，跳过门槛，框向洞口内侧收进半个框宽。
+  for (let i = 1; i < contour.length; i++) {
+    const a = contour[i], b = contour[(i + 1) % contour.length]
+    const dx = b[0] - a[0], dy = b[1] - a[1], length = Math.hypot(dx,dy)
+    if (length < 1e-9) continue
+    const x = (a[0] + b[0]) / 2 - dy / length * border / 2
+    const y = (a[1] + b[1]) / 2 + dx / length * border / 2
+    const box = createBox(`${component.id}__frame_${i}`, frame.pointAt(along + component.width / 2 + x, bottom + component.height / 2 + y, offset), [length + border * 0.15, border, frameDepth], frame.rotationAt(along + component.width / 2 + x), component.frameMaterial)
+    box.rotation = [0, frame.rotationAt(along + component.width / 2 + x), Math.atan2(dy,dx)]
+    elements.push(box)
   }
-
-  // 右侧外框（仅在 frameWidth > 0 时生成）
-  if (frameWidth > 0) {
-    elements.push(createBox(
-      `${component.id}__frame_right_outer`,
-      frame.pointAt(along + component.width - frameWidth / 2, bottomY + component.height / 2, normalOffset),
-      [frameWidth, component.height, frameDepth],
-      frame.rotationAt(along + component.width - frameWidth / 2),
-      component.frameMaterial,
-    ))
-  }
-
-  // 左扇顶框
-  elements.push(createBox(
-    `${component.id}__frame_top_left`,
-    frame.pointAt(along + halfWidth / 2, bottomY + component.height - frameWidth / 2, normalOffset),
-    [halfWidth - frameWidth, frameWidth, frameDepth],
-    frame.rotationAt(along + halfWidth / 2),
-    component.frameMaterial,
-  ))
-
-  // 右扇顶框
-  elements.push(createBox(
-    `${component.id}__frame_top_right`,
-    frame.pointAt(along + halfWidth + halfWidth / 2, bottomY + component.height - frameWidth / 2, normalOffset),
-    [halfWidth - frameWidth, frameWidth, frameDepth],
-    frame.rotationAt(along + halfWidth + halfWidth / 2),
-    component.frameMaterial,
-  ))
-
   return elements
 }
 

@@ -226,6 +226,9 @@ import {
 } from '@element-plus/icons-vue'
 import { useAgentStore } from '../../stores/agentStore'
 import { useSceneStore } from '../../stores/sceneStore'
+import { useHistoryStore } from '../../stores/historyStore'
+import { useSelectionStore } from '../../stores/selectionStore'
+import { useWorkspaceStore } from '../../stores/workspaceStore'
 import { agentBridge } from '../../agent/agentBridge'
 import SessionListPanel from './SessionListPanel.vue'
 import AgentExecutionPanel from './AgentExecutionPanel.vue'
@@ -266,6 +269,9 @@ function renderMarkdown(content: string): string {
 
 const agentStore = useAgentStore()
 const sceneStore = useSceneStore()
+const historyStore = useHistoryStore()
+const selectionStore = useSelectionStore()
+const workspaceStore = useWorkspaceStore()
 const inputText = ref('')
 const messagesRef = ref<HTMLElement | null>(null)
 const timelineRef = ref<HTMLElement | null>(null)
@@ -652,8 +658,12 @@ async function handleRagFeedback(message: ChatMessage, rating: 'up' | 'down') {
 
 // ── 会话切换 ──
 async function handleSessionSwitch(sessionId: string) {
+  if (workspaceStore.isImporting || workspaceStore.isSaving) return
   if (sessionId === agentStore.currentSessionId) return
+  if (sceneStore.document?.dirty && !await workspaceStore.saveScene()) return
   resumeAutoScroll()
+  historyStore.clear()
+  selectionStore.clearSelection()
   agentStore.switchToSession(sessionId)
   const [serverMessages, serverTurns] = await Promise.all([
     agentBridge.fetchSessionMessages(sessionId),
@@ -667,6 +677,7 @@ async function handleSessionSwitch(sessionId: string) {
   if (bp) {
     await sceneStore.loadBlueprint(bp as any)
     if (agentStore.currentSessionId !== sessionId) return
+    if (!sceneStore.document?.dirty) sceneStore.markSaved()
     const name = agentStore.sessions.find(item => item.session_id === sessionId)?.name
       || (bp as any).meta?.name
       || '未命名建筑'
@@ -681,19 +692,12 @@ async function handleSessionSwitch(sessionId: string) {
 }
 
 async function handleNewSession() {
+  if (workspaceStore.isImporting || workspaceStore.isSaving) return
   resumeAutoScroll()
-  const newId = agentStore.createSession()
-  agentStore.switchToSession(newId)
-  const doc = sceneStore.createEmptyDocument()
-  await sceneStore.loadBlueprint(doc.blueprint, doc.name)
+  await workspaceStore.newScene()
 }
 
 async function handleDeleteSession(sessionId: string) {
-  if (agentStore.getTurnsForSession(sessionId).some(turn => turn.status === 'running' || turn.status === 'waiting_review')) {
-    ElMessage.warning('请先结束当前任务，再删除会话')
-    return
-  }
-
   try {
     await ElMessageBox.confirm(
       '删除后将永久移除该会话、对话记录及蓝图文件，不可恢复。确定继续？',
@@ -705,16 +709,19 @@ async function handleDeleteSession(sessionId: string) {
   }
 
   const deleted = await agentBridge.deleteSession(sessionId)
-  if (!deleted) {
-    agentStore.addSystemMessage('❌ 服务器删除失败，会话仍然保留')
+  if (!deleted.ok) {
+    ElMessage.error(deleted.error || '服务器删除失败，会话仍然保留')
     return
   }
   const wasCurrentSession = sessionId === agentStore.currentSessionId
   agentStore.removeSession(sessionId)
   if (wasCurrentSession) {
+    historyStore.clear()
+    selectionStore.clearSelection()
     const bp = await agentBridge.loadSessionBlueprint(agentStore.currentSessionId)
     if (bp) {
       await sceneStore.loadBlueprint(bp as any)
+      if (!sceneStore.document?.dirty) sceneStore.markSaved()
     } else {
       const doc = sceneStore.createEmptyDocument()
       await sceneStore.loadBlueprint(doc.blueprint, doc.name)
@@ -785,7 +792,9 @@ async function restoreSessionsFromServer() {
   const bp = await agentBridge.loadSessionBlueprint(targetId)
   if (agentStore.currentSessionId !== targetId) return
   if (bp) {
-    sceneStore.loadBlueprint(bp as any)
+    await sceneStore.loadBlueprint(bp as any)
+    if (agentStore.currentSessionId !== targetId) return
+    if (!sceneStore.document?.dirty) sceneStore.markSaved()
     const name = agentStore.sessions.find(item => item.session_id === targetId)?.name
       || (bp as any).meta?.name
       || '未命名建筑'

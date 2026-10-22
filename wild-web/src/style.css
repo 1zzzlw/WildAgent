@@ -4,6 +4,42 @@
   box-sizing: border-box;
 }
 
+:root {
+  --studio-bg: #111820;
+  --studio-surface: #1b242d;
+  --studio-rail: #151e27;
+  --studio-border: #ffffff0e;
+  --studio-text: #c7d4dc;
+  --studio-accent: #a6c3b5;
+  --el-color-primary: #8eafa0;
+  --el-bg-color: #1b242d;
+  --el-bg-color-overlay: #222e38;
+  --el-fill-color-blank: #18222c;
+  --el-fill-color-light: #283641;
+  --el-text-color-primary: #e0e7ed;
+  --el-text-color-regular: #bdcbd4;
+  --el-text-color-secondary: #8fa2ae;
+  --el-border-color: #3b4a56;
+  --el-border-color-light: #2f3e49;
+  --el-border-color-lighter: #283640;
+  color-scheme: dark;
+}
+
+button:focus-visible, select:focus-visible, input:focus-visible, [role="separator"]:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 2px;
+}
+
+.reduce-motion *, .reduce-motion *::before, .reduce-motion *::after {
+  animation-delay: 0ms !important;
+  animation-duration: .01ms !important;
+  transition-duration: .01ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-delay: 0ms !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
 html,
 body {
   width: 100%;
