@@ -1,0 +1,14 @@
+{
+  "command": [
+    "node",
+    "wild-web/scripts/render-baseline.mjs",
+    "docs/10月22日/05-写字楼/云序中心-写字楼.wild",
+    "docs/10月22日/05-写字楼/05-效果图"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T09:43:45.486346+08:00",
+  "ended_at": "2026-10-22T09:43:49.145748+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a8902f5c4321449a958fad39fabb8680c95cbc4b2ab849a3dd04fd3be0b3b333\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"background\": 14673130,\n    \"sun\": {\n      \"azimuthDeg\": 135,\n      \"elevationDeg\": 42,\n      \"intensity\": 2.1,\n      \"color\": 16774370\n    },\n    \"ambient\": {\n      \"sky\": 14674421,\n      \"ground\": 10130828,\n      \"intensity\": 0.85\n    },\n    \"ground\": {\n      \"color\": 9277571,\n      \"y\": -0.02\n    },\n    \"toneMappingExposure\": 1\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"8beb450b713a720d867b4b20083b6c07529f18fd99564fdaef8cb14b1c8cc9ea\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 2531,\n  \"materialCount\": 2531,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -16.5,\n      -0.06999999865889549,\n      -13.5\n    ],\n    \"max\": [\n      16.5,\n      25.212500000447037,\n      12.5\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月22日\\\\05-写字楼\\\\05-效果图\\\\front.png\",\n      \"bytes\": 396013\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月22日\\\\05-写字楼\\\\05-效果图\\\\side.png\",\n      \"bytes\": 327161\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月22日\\\\05-写字楼\\\\05-效果图\\\\top.png\",\n      \"bytes\": 218148\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月22日\\\\05-写字楼\\\\05-效果图\\\\perspective.png\",\n      \"bytes\": 497528\n    }\n  ],\n  \"contextSha256\": \"8dc580390192171269aa754fbac2924a52d11d49e9d290fe47b1c2fcc577e5cf\"\n}\n",
+  "stderr": ""
+}

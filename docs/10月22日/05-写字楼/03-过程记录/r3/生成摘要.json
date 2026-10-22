@@ -1,0 +1,16 @@
+{
+  "revision": "r3",
+  "sha256": "2269267f0ce9a8435580a7bc40e90da7b63868b6ba8cfc3aeb51202a33241ec6",
+  "bytes": 164655,
+  "elements": 811,
+  "components": 135,
+  "materials": 22,
+  "floor_heights": [
+    0.3,
+    4.2,
+    8.1,
+    12.0,
+    15.9,
+    19.8
+  ]
+}

@@ -180,7 +180,9 @@ let hasFramedScene = false
 let needsRender = true
 let hasWaterSurface = false
 let pointerDownPosition: { x: number; y: number } | null = null
+let lastPointerSelectionId: string | null = null
 let selectionHelpers: THREE.Box3Helper[] = []
+let componentTransformEnabled = false
 let dragAnchor: THREE.Object3D | null = null
 let dragStartPosition: THREE.Vector3 | null = null
 let dragSelectedIds: string[] = []
@@ -231,7 +233,9 @@ onMounted(() => {
     applyGroundVisibility()
     markNeedsRender()
   })
+  syncTimePresetFromWorldEnvironment()
   initThreeJS()
+  applyTimePreset(true)
   void worldPackageStore.initialize().then(() => worldPackageStore.restorePreferredLook())
   startRenderLoop()
 })
@@ -254,11 +258,14 @@ watch(() => sceneStore.reconstructed, () => {
 })
 watch(() => sceneStore.document?.id, () => {
   hasFramedScene = false
+  componentTransformEnabled = false
+  clearComponentTransformControl()
 })
 watch(() => [...selectionStore.selectedIds], () => {
+  componentTransformEnabled = false
   syncSelectionHighlights()
   syncComponentTransformControl()
-})
+}, { flush: 'sync' })
 watch([
   () => sceneStore.document?.revision,
   () => worldPackageStore.activeProfileId,
@@ -312,9 +319,17 @@ watch(() => renderPanel.presetRequest, request => {
       qualityLevel.value = request.value
       applyQualityPreset()
       break
-    case 'time':
-      updateWorldEnvironmentState({ timeOfDay: request.value === 'day' ? 12 : request.value === 'sunset' ? 18 : 0 })
+    case 'time': {
+      const hour = request.value === 'day' ? 12 : request.value === 'sunset' ? 18 : 0
+      if (getWorldEnvironmentState().timeOfDay === hour) {
+        // 同一小时不会广播环境变更；主动重选仍要把实际灯光与时段对齐。
+        syncTimePresetFromWorldEnvironment()
+        applyTimePreset(true)
+      } else {
+        updateWorldEnvironmentState({ timeOfDay: hour })
+      }
       break
+    }
     case 'view':
       viewMode.value = request.value
       applyViewMode()
@@ -413,6 +428,8 @@ function initThreeJS() {
 
   renderer.domElement.addEventListener('pointerdown', handlePointerDown)
   renderer.domElement.addEventListener('pointerup', handlePointerUp)
+  renderer.domElement.addEventListener('pointercancel', handlePointerCancel)
+  renderer.domElement.addEventListener('dblclick', handleDoubleClick)
   renderer.domElement.addEventListener('contextmenu', handleContextMenu)
 
   sky = new Sky()
@@ -717,6 +734,7 @@ function updateScene() {
 }
 
 function handlePointerDown(event: PointerEvent) {
+  lastPointerSelectionId = null
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   // 线框模式下建筑本体隐藏，选中/拖拽没有目标；同展示模式一起早退。
   // 选择只响应主按键。右键由 contextmenu 独占，不能先改变选中高亮。
@@ -768,7 +786,24 @@ function handlePointerUp(event: PointerEvent) {
       ? 'add'
       : 'replace'
   selectionStore.setSelection(selectionAfterClick(selectionStore.selectedIds, selectableId, mode))
-  uiStore.openPanel('properties')
+  lastPointerSelectionId = selectableId
+  // 收起侧栏或全屏时保持画布位置，避免双击第二下因视口缩放而落空。
+  if (uiStore.panelOpen && !uiStore.viewportFocused) uiStore.openPanel('properties')
+}
+
+function handlePointerCancel() {
+  pointerDownPosition = null
+  lastPointerSelectionId = null
+}
+
+/** 双击命中的构件启用移动轴；Shift 双击保留多选，Ctrl/Meta 切换选择不启用。 */
+function handleDoubleClick(event: MouseEvent) {
+  if (viewMode.value === 'presentation' || renderPanel.showEdges
+    || event.button !== 0 || event.ctrlKey || event.metaKey
+    || !lastPointerSelectionId
+    || !selectionStore.selectedIds.includes(lastPointerSelectionId)) return
+  componentTransformEnabled = true
+  syncComponentTransformControl()
 }
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
@@ -826,6 +861,7 @@ function syncSelectionHighlights() {
   clearSelectionHelpers()
   if (
     viewMode.value === 'presentation'
+    || renderPanel.showEdges
     || !scene
     || !sceneGroup
     || !sceneStore.reconstructed
@@ -898,6 +934,8 @@ function syncComponentTransformControl() {
   clearComponentTransformControl()
   if (
     viewMode.value === 'presentation'
+    || renderPanel.showEdges
+    || !componentTransformEnabled
     || !scene
     || !sceneGroup
     || !transformControls
@@ -1421,6 +1459,7 @@ function applyViewMode() {
   if (builtInEnvironment) builtInEnvironment.visible = scenic
   if (transformControls) transformControls.visible = !presenting
   if (presenting) {
+    componentTransformEnabled = false
     clearSelectionHelpers()
     clearComponentTransformControl()
   } else {
@@ -1604,6 +1643,7 @@ function applyEdgeMode() {
   // applyViewMode / applyGroundVisibility / ensureGridVisible /
   // updateCelestialBodies / cloudLayer.setVisible。
   if (edgesOnly) {
+    componentTransformEnabled = false
     if (shadowGround) shadowGround.visible = false
     if (presentationGround) presentationGround.visible = false
     if (gridHelper) gridHelper.visible = false
@@ -1679,6 +1719,8 @@ function cleanup() {
   window.removeEventListener('resize', handleResize)
   renderer?.domElement.removeEventListener('pointerdown', handlePointerDown)
   renderer?.domElement.removeEventListener('pointerup', handlePointerUp)
+  renderer?.domElement.removeEventListener('pointercancel', handlePointerCancel)
+  renderer?.domElement.removeEventListener('dblclick', handleDoubleClick)
   renderer?.domElement.removeEventListener('contextmenu', handleContextMenu)
   clearSelectionHelpers()
   clearComponentTransformControl()

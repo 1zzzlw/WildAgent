@@ -1,0 +1,14 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/06-单文档别墅/02-生成脚本/生成栖光别墅.py",
+    "--revision",
+    "重放核验"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T11:48:38.909716+08:00",
+  "ended_at": "2026-10-22T11:48:38.975183+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"revision\": \"重放核验\",\n  \"sha256\": \"4755c6f2850522a71727b23d7e64e25cce13ca557c66130ebb2f64cab5ac465c\",\n  \"bytes\": 72703,\n  \"elements\": 372,\n  \"components\": 41,\n  \"materials\": 24,\n  \"layers\": {\n    \"site\": 17,\n    \"floor\": 3,\n    \"entry\": 4,\n    \"walls_l1\": 12,\n    \"components_l1\": 17,\n    \"facade_l1\": 87,\n    \"stairs\": 6,\n    \"floor_l2\": 6,\n    \"walls_l2\": 10,\n    \"components_l2\": 16,\n    \"facade_l2\": 47,\n    \"roof\": 1,\n    \"roof_detail\": 16,\n    \"terrace\": 34,\n    \"furniture_l2\": 37,\n    \"landscape\": 48,\n    \"furniture_l1\": 45,\n    \"lighting_l1\": 6,\n    \"lighting_l2\": 1\n  },\n  \"author_source\": \"docs\\\\Wild蓝图设计语言.md\",\n  \"rule_sha256\": \"b8ea0e85fae422871546a37381bad254ebb884ab859b9d553f16e322b0adf324\",\n  \"rule_version\": \"1.2\",\n  \"other_building_sources_used\": false\n}\n",
+  "stderr": ""
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "node",
+    "wild-web/scripts/validate-generated.mjs",
+    "docs/10月22日/04-凉亭/听雨水榭-凉亭.wild"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T09:28:00.004426+08:00",
+  "ended_at": "2026-10-22T09:28:00.336492+08:00",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "file:///C:/Users/ADMINI%7E1/AppData/Local/Temp/wild-validate-AiHN7B/wild-validate.mjs?t=1792632480269:180\n\t\tthrow new Error(`Invalid blueprint: schema validation failed: ${summary}${remaining}`);\n\t\t      ^\n\nError: Invalid blueprint: schema validation failed: $.geometry.elements[114] 必须且只能匹配一种结构（$.geometry.elements[114].bottomRadius 为必填字段；$.geometry.elements[114].shape 为必填字段）; $.geometry.elements[133] 必须且只能匹配一种结构（$.geometry.elements[133].bottomRadius 为必填字段；$.geometry.elements[133].shape 为必填字段）; $.geometry.elements[152] 必须且只能匹配一种结构（$.geometry.elements[152].bottomRadius 为必填字段；$.geometry.elements[152].shape 为必填字段）; $.geometry.elements[171] 必须且只能匹配一种结构（$.geometry.elements[171].bottomRadius 为必填字段；$.geometry.elements[171].shape 为必填字段）; $.geometry.elements[190] 必须且只能匹配一种结构（$.geometry.elements[190].bottomRadius 为必填字段；$.geometry.elements[190].shape 为必填字段）; 另有 1 个错误\n    at Module.parseBlueprint (file:///C:/Users/ADMINI%7E1/AppData/Local/Temp/wild-validate-AiHN7B/wild-validate.mjs?t=1792632480269:180:9)\n    at file:///E:/AgentProject/WildAgent/wild-web/scripts/validate-generated.mjs:50:26\n\nNode.js v22.21.1\n"
+}

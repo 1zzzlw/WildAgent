@@ -1,0 +1,24 @@
+{
+  "source_sha256": "4755c6f2850522a71727b23d7e64e25cce13ca557c66130ebb2f64cab5ac465c",
+  "copy_sha256": "f53478e7077904d622c25cc5f9a979b76cd3471841bcca93c1a212f1fc369434",
+  "removed_ids": [
+    "main_roof",
+    "parapet_s",
+    "coping_s",
+    "parapet_n",
+    "coping_n",
+    "parapet_w",
+    "coping_w",
+    "parapet_e",
+    "coping_e",
+    "roof_fascia_s",
+    "roof_soffit_s",
+    "roof_fascia_n",
+    "roof_soffit_n",
+    "roof_fascia_w",
+    "roof_soffit_w",
+    "roof_fascia_e",
+    "roof_soffit_e"
+  ],
+  "kept_geometry_unchanged": true
+}

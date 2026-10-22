@@ -1,0 +1,13 @@
+{
+  "command": [
+    "wild-server/.venv/Scripts/python.exe",
+    "docs/10月22日/05-写字楼/02-生成脚本/生成云序中心.py",
+    "r1"
+  ],
+  "cwd": "E:\\AgentProject\\WildAgent",
+  "started_at": "2026-10-22T09:38:05.932736+08:00",
+  "ended_at": "2026-10-22T09:38:05.995615+08:00",
+  "exit_code": 0,
+  "stdout": "{\n  \"revision\": \"r1\",\n  \"sha256\": \"9a47588afb56ec6ad1390a0f7ab46fec80c70caca1cf7d4753c798d2afb8e4f9\",\n  \"bytes\": 163539,\n  \"elements\": 812,\n  \"components\": 135,\n  \"materials\": 22,\n  \"floor_heights\": [\n    0.3,\n    4.2,\n    8.1,\n    12.0,\n    15.9,\n    19.8\n  ]\n}\n",
+  "stderr": ""
+}

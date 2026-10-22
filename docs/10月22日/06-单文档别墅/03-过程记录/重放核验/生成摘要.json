@@ -1,0 +1,33 @@
+{
+  "revision": "重放核验",
+  "sha256": "4755c6f2850522a71727b23d7e64e25cce13ca557c66130ebb2f64cab5ac465c",
+  "bytes": 72703,
+  "elements": 372,
+  "components": 41,
+  "materials": 24,
+  "layers": {
+    "site": 17,
+    "floor": 3,
+    "entry": 4,
+    "walls_l1": 12,
+    "components_l1": 17,
+    "facade_l1": 87,
+    "stairs": 6,
+    "floor_l2": 6,
+    "walls_l2": 10,
+    "components_l2": 16,
+    "facade_l2": 47,
+    "roof": 1,
+    "roof_detail": 16,
+    "terrace": 34,
+    "furniture_l2": 37,
+    "landscape": 48,
+    "furniture_l1": 45,
+    "lighting_l1": 6,
+    "lighting_l2": 1
+  },
+  "author_source": "docs\\Wild蓝图设计语言.md",
+  "rule_sha256": "b8ea0e85fae422871546a37381bad254ebb884ab859b9d553f16e322b0adf324",
+  "rule_version": "1.2",
+  "other_building_sources_used": false
+}
