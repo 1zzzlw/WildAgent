@@ -106,6 +106,8 @@ import {
 } from '../../wild/componentSelection'
 import { createGeometryTranslationOperations, getGeometryTranslationIds } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
+import { CharacterRoamingRuntime } from '../../extensions/characterRoaming/CharacterRoamingRuntime'
+import { useCharacterRoamingStore } from '../../extensions/characterRoaming/store'
 
 const containerRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
@@ -114,6 +116,9 @@ const selectionStore = useSelectionStore()
 const uiStore = useUIStore()
 const worldPackageStore = useWorldPackageStore()
 const renderPanel = useRenderPanelStore()
+const roaming = useCharacterRoamingStore()
+let characterRoaming: CharacterRoamingRuntime | null = null
+let roamingControlState: { orbitEnabled: boolean; transformEnabled: boolean } | null = null
 
 const timeOfDay = ref<TimeOfDay>('day')
 const viewMode = ref<ViewMode>('editor')
@@ -263,6 +268,7 @@ watch(() => sceneStore.reconstructed, () => {
   updateScene()
 })
 watch(() => sceneStore.document?.id, () => {
+  roaming.stop()
   hasFramedScene = false
   componentTransformEnabled = false
   clearComponentTransformControl()
@@ -278,6 +284,62 @@ watch([
   () => worldPackageStore.materialPackages.map(item => item.manifest.packageId).join('|'),
   () => JSON.stringify(worldPackageStore.environment),
 ], persistEditorWorldState)
+
+watch(() => roaming.active, enabled => {
+  if (enabled) startCharacterRoaming()
+  else stopCharacterRoaming()
+}, { flush: 'sync' })
+watch(() => roaming.view, view => characterRoaming?.setView(view))
+watch(() => roaming.captureNonce, () => characterRoaming?.capturePointer(), { flush: 'sync' })
+
+function startCharacterRoaming() {
+  if (!renderer || !camera || !controls || !sceneGroup || transformControls?.dragging) {
+    roaming.stop()
+    return
+  }
+  componentTransformEnabled = false
+  pointerDownPosition = null
+  lastPointerSelectionId = null
+  roamingControlState = { orbitEnabled: controls.enabled, transformEnabled: transformControls?.enabled ?? true }
+  clearComponentTransformControl()
+  clearSelectionHelpers()
+  controls.enabled = false
+  if (transformControls) transformControls.enabled = false
+  applyEdgeMode()
+  applySection()
+  try {
+    characterRoaming = new CharacterRoamingRuntime({
+      scene, worldRoot: sceneGroup, camera, canvas: renderer.domElement,
+      groundY: environmentGroundY, view: roaming.view,
+      interact: object => toggleRuntimeInteraction(object, markShadowsDirty),
+      onLockChange: locked => { roaming.locked = locked; markShadowsDirty() },
+      onViewChange: view => { roaming.view = view; markShadowsDirty() },
+      onTargetChange: label => { roaming.interactionLabel = label },
+      onMessage: message => { roaming.message = message },
+      requestRender: markNeedsRender,
+    })
+    characterRoaming.capturePointer()
+    markShadowsDirty()
+  } catch (error) {
+    console.error('启动人物漫游失败', error)
+    roaming.stop()
+    ElMessage.error('人物漫游启动失败，请检查场景后重试')
+  }
+}
+
+function stopCharacterRoaming() {
+  if (!characterRoaming && !roamingControlState) return
+  characterRoaming?.dispose()
+  characterRoaming = null
+  if (controls && roamingControlState) controls.enabled = roamingControlState.orbitEnabled
+  if (transformControls && roamingControlState) transformControls.enabled = roamingControlState.transformEnabled
+  roamingControlState = null
+  if (!scene) return
+  applyEdgeMode()
+  applySection()
+  syncSelectionHighlights()
+  markShadowsDirty()
+}
 
 // ── 渲染控制面板：状态 → 视口动作的唯一接线处 ──
 watch(() => renderPanel.showEdges, () => {
@@ -339,6 +401,7 @@ watch(() => renderPanel.presetRequest, request => {
 })
 
 function frameSelection() {
+  if (roaming.active) return
   if (!selectionStore.hasSelection || !sceneGroup) { resetViewToPreset(); return }
   sceneGroup.updateMatrixWorld(true)
   const bounds = collectElementBounds(translationRenderedIds(selectionStore.selectedIds))
@@ -352,7 +415,7 @@ function applySection() {
   if (!sceneGroup || !renderer) return
   renderer.localClippingEnabled = true
   sectionPlane.constant = Number.isFinite(renderPanel.sectionHeight) ? renderPanel.sectionHeight : 3.5
-  const enabled = renderPanel.sectionEnabled
+  const enabled = renderPanel.sectionEnabled && !roaming.active
   sceneGroup.traverse(object => {
     if (!(object instanceof THREE.Mesh)) return
     const materials = Array.isArray(object.material) ? object.material : [object.material]
@@ -549,7 +612,16 @@ function renderFrame() {
   animationFrameId = null
   if (!renderLoopActive || document.hidden) return
   const delta = weatherClock.getDelta()
-  const controlsAnimating = controls?.update() ?? false
+  const characterAnimating = characterRoaming?.tick(delta) ?? false
+  const controlsAnimating = !roaming.active && (controls?.update() ?? false)
+  if (characterAnimating) {
+    needsRender = true
+    const now = performance.now()
+    if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS) {
+      lastShadowDirtyTime = now
+      markShadowsDirty()
+    }
+  }
   const effects = getWorldEffectState()
   const waterAnimating = hasWaterSurface
   const effectsAnimating = effects.clouds || effects.ripples || waterAnimating
@@ -562,7 +634,7 @@ function renderFrame() {
   const weatherAnimating = weatherVisuals?.tick(delta) ?? false
   if (weatherAnimating || controlsAnimating) needsRender = true
   // 自动旋转：相机每帧都在动，保持渲染循环不进入休眠。
-  if (renderPanel.autoRotate) needsRender = true
+  if (renderPanel.autoRotate && !roaming.active) needsRender = true
   // 按需渲染休眠后的第一帧包含较长空闲时间，不能拿它计算实时 FPS。
   if (continuousFrame && delta > 0.0005) {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
@@ -596,7 +668,7 @@ function renderFrame() {
     needsRender = false
     publishRenderStats()
   }
-  continuousFrame = controlsAnimating || weatherAnimating || effectsAnimating || needsRender
+  continuousFrame = characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
   if (continuousFrame) {
     scheduleRenderFrame()
   }
@@ -632,6 +704,8 @@ function resetSceneBounds() {
 
 function updateScene() {
   if (!scene || !sceneGroup || !materialCache) return
+  // 几何重建/切换会话后不能保留借用旧网格的碰撞索引。
+  roaming.stop()
   hasWaterSurface = false
 
   const entity = sceneStore.reconstructed
@@ -738,6 +812,7 @@ function updateScene() {
 }
 
 function handlePointerDown(event: PointerEvent) {
+  if (roaming.active) return
   lastPointerSelectionId = null
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   // 线框模式下建筑本体隐藏，选中/拖拽没有目标；同展示模式一起早退。
@@ -750,6 +825,7 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (suppressSelectionClick) {
     suppressSelectionClick = false
@@ -802,6 +878,7 @@ function handlePointerCancel() {
 
 /** 双击命中的构件启用移动轴；Shift 双击保留多选，Ctrl/Meta 切换选择不启用。 */
 function handleDoubleClick(event: MouseEvent) {
+  if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges
     || event.button !== 0 || event.ctrlKey || event.metaKey
     || !lastPointerSelectionId
@@ -812,6 +889,7 @@ function handleDoubleClick(event: MouseEvent) {
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
 function handleContextMenu(event: MouseEvent) {
+  if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (!renderer || !camera || !sceneGroup) return
   const rect = renderer.domElement.getBoundingClientRect()
@@ -864,7 +942,8 @@ function getIntersectionElementId(intersection: THREE.Intersection): string | nu
 function syncSelectionHighlights() {
   clearSelectionHelpers()
   if (
-    viewMode.value === 'presentation'
+    roaming.active
+    || viewMode.value === 'presentation'
     || renderPanel.showEdges
     || !scene
     || !sceneGroup
@@ -937,7 +1016,8 @@ function clearSelectionHelpers() {
 function syncComponentTransformControl() {
   clearComponentTransformControl()
   if (
-    viewMode.value === 'presentation'
+    roaming.active
+    || viewMode.value === 'presentation'
     || renderPanel.showEdges
     || !componentTransformEnabled
     || !scene
@@ -1429,7 +1509,7 @@ function applyViewMode() {
   if (shadowGround) shadowGround.visible = true
   applyGroundVisibility()
   if (builtInEnvironment) builtInEnvironment.visible = scenic
-  if (transformControls) transformControls.visible = !presenting
+  if (transformControls) transformControls.visible = !presenting && !roaming.active
   if (presenting) {
     componentTransformEnabled = false
     clearSelectionHelpers()
@@ -1479,6 +1559,7 @@ function updateLightingToBounds(center: THREE.Vector3, size: THREE.Vector3) {
 }
 
 function frameCameraToBounds(center: THREE.Vector3, size: THREE.Vector3) {
+  if (roaming.active) return
   if (!camera || !controls) return
   const verticalFov = THREE.MathUtils.degToRad(camera.fov)
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect)
@@ -1625,7 +1706,7 @@ function rebuildEdges() {
  * （不会被 sceneGroup 连带隐藏），所以线框模式下要显式清掉，恢复时再同步回来。
  */
 function applyEdgeMode() {
-  const edgesOnly = renderPanel.showEdges
+  const edgesOnly = renderPanel.showEdges && !roaming.active
   if (sceneGroup) sceneGroup.visible = !edgesOnly
   //  线框模式只留建筑线条（用户反馈二轮 2026-09-29）：只藏 sceneGroup 不够——
   // 阴影承接面、展示地面、GridHelper、日月天体、云层、内置环境都挂在 scene 根上，
@@ -1654,6 +1735,7 @@ function applyEdgeMode() {
 }
 
 function resetViewToPreset() {
+  if (roaming.active) return
   if (hasSceneBounds) {
     frameCameraToBounds(sceneBoundsCenter, sceneBoundsSize)
     return
@@ -1701,6 +1783,8 @@ function markShadowsDirty() {
 }
 
 function cleanup() {
+  roaming.stop()
+  stopCharacterRoaming()
   fixtureLighting.dispose()
   waterReflection?.dispose()
   waterReflection = null

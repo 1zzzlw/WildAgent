@@ -6,7 +6,8 @@
       <LeftPanel v-show="!ui.viewportFocused" />
       <main ref="viewportRef" class="viewport-container" aria-label="建筑渲染视口">
         <CanvasViewport />
-        <ViewportToolDock />
+        <ViewportToolDock v-show="!roaming.active" />
+        <CharacterRoamingPanel />
         <button class="viewport-expand" type="button" :aria-label="ui.viewportFocused ? '退出渲染全屏' : '渲染界面全屏'"
           :title="ui.viewportFocused ? '退出全屏 · Esc' : '渲染界面全屏 · Shift+F'" @click="ui.viewportFocused = !ui.viewportFocused">
           <el-icon><FullScreen /></el-icon><span>{{ ui.viewportFocused ? '退出全屏' : '全屏' }}</span>
@@ -31,12 +32,15 @@ import EditorTopBar from './components/layout/EditorTopBar.vue'
 import LeftPanel from './components/layout/LeftPanel.vue'
 import CanvasViewport from './components/viewport/CanvasViewport.vue'
 import ViewportToolDock from './components/viewport/ViewportToolDock.vue'
+import CharacterRoamingPanel from './extensions/characterRoaming/CharacterRoamingPanel.vue'
+import { useCharacterRoamingStore } from './extensions/characterRoaming/store'
 const ui = useUIStore()
 const scene = useSceneStore()
 const history = useHistoryStore()
 const workspace = useWorkspaceStore()
 const render = useRenderPanelStore()
 const presence = usePresenceStore()
+const roaming = useCharacterRoamingStore()
 const editorReady = ref(false)
 const viewportRef = ref<HTMLElement>()
 let nativeFullscreen = false
@@ -64,6 +68,7 @@ async function handleKeydown(event: KeyboardEvent) {
   const typing = target.matches('input,textarea,select') || target.isContentEditable
   const modifier = event.ctrlKey || event.metaKey
   if (modifier && event.key.toLowerCase() === 's') { event.preventDefault(); if (!workspace.isImporting) await workspace.saveScene(); return }
+  if (roaming.active && roaming.locked) return
   if (event.key === 'Escape') { ui.viewportFocused = false; return }
   if (typing) return
   if (modifier && event.key.toLowerCase() === 'b') { event.preventDefault(); ui.panelOpen = !ui.panelOpen; return }
