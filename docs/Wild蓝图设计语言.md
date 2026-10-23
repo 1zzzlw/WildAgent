@@ -657,6 +657,8 @@ lightingCondition: 固定 "D65_noon"
 
 `materialClass` = `standard/glass/clearcoat/fabric`；`opacity/transmission/clearcoat/clearcoatRoughness/sheen` 为 0～1；`ior` 通常在 1～2.333；`thickness`、`attenuationDistance` 为米；`attenuationColor/sheenColor/emissive` 为 0～1 RGB；`emissiveIntensity` 非负；`side` = `front/double`。
 
+新增无贴图表面参数：`surfacePattern:"quartz"`配合`surfaceFamily:"mineral"`表达石英石细粒和抛光高光；`surfacePattern:"planks"`配合`surfaceFamily:"wood"`表达错缝木板。它们位于材质顶层，不是procedural.type，也不携带图片。石英石用metallic=0、roughness约0.22～0.3、clearcoat约0.2；木板roughness约0.5。当前图案按世界米制投影，木板0.18×1.2米，未开放方向/尺寸；有真实贴图或砖procedural则走原专用通路。本轮未构建/渲染，待用户验证。玻璃材质槽应引用玻璃，不能用水或实心材料替代。
+
 ```json
 {
   "plaster":{"baseColor":[0.86,0.84,0.79],"roughness":0.85,"metallic":0,"albedo":1,"lightingCondition":"D65_noon"},
@@ -671,7 +673,7 @@ lightingCondition: 固定 "D65_noon"
 - 建筑玻璃用 glass 与 transmission 表达透射，不靠很低的 opacity 假装通透。透射与 alpha 透明是不同通路，普通玻璃无需同时设置低 opacity。
 - 水使用可识别的水材质及约 1.333 的折射率；水池由池底、四周池壁/压顶和水面分别表达。水面放在池壁内，不把整块实心水体盖到花园地面上。
 - 动态水纹、阴影质量、天气、相机与全局光影是查看器的显示能力，不是在 WILD 内随意增加 `waterAnimation`、`sun`、`camera` 就会生效。
-- 精细画质增加主水平水位的建筑场景反射，反射开关在渲染面板；低档/其他水位使用环境反射。水先有真实池底、池壁和未被板盖住的开口，再用transmission、attenuationColor/attenuationDistance调透射吸收。水材质不宜高金属度或叠多层。
+- 查看器固定启用动态水面，透明度倍率1、波纹强度0.65；均衡/精细档自动提供主水平水位的建筑场景反射，低档/自适应降档/其他水位使用环境反射，渲染面板不再提供水面开关/滑块。水先有真实池底、池壁和未被板盖住的开口，再用transmission、attenuationColor/attenuationDistance调透射吸收。水材质不宜高金属度或叠多层。
 - 局部实时灯按画质/相机分配，流畅/均衡/精细上限为4/8/12，精细档最多两个重点灯投影；灯具发光外观保留。非重点灯不能保证遮墙，光源offset不能埋进独立实心灯罩。emissive仍不替代真实光源。
 - 墙、楼板和box的平面纹理使用逐面米制UV，uvScale=[2,2]对应每米两次重复；球、圆柱等采用专用展开，需要单独看尺度。真实纹理资源按Schema提供，不伪造URL/hash，不用纹理掩盖缺失构造。
 - 材料只影响分配给它的实体。给 meta 写“白墙灰瓦”，不会自动把既有墙或屋顶改色。

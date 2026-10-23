@@ -85,26 +85,6 @@
           <input v-model="store.autoRotate" type="checkbox" />
           <span class="rc-switch" aria-hidden="true"></span>
         </label>
-        <label class="rc-toggle">
-          <span>水面动态</span>
-          <input v-model="store.waterAnimated" type="checkbox" aria-label="水面动态" />
-          <span class="rc-switch" aria-hidden="true"></span>
-        </label>
-        <label class="rc-slider-row">
-          <span class="rc-slider-label">水面透明度</span>
-          <input v-model.number="store.waterTransparency" aria-label="水面透明度" type="range" min="0" max="1" step="0.05" class="rc-slider" />
-          <span class="rc-slider-value">{{ Math.round(store.waterTransparency * 100) }}%</span>
-        </label>
-        <label class="rc-toggle" title="精细画质下反射建筑与周围场景；其他画质使用环境反射">
-          <span>水面场景反射 · 精细</span>
-          <input v-model="store.waterReflections" type="checkbox" aria-label="水面场景反射" />
-          <span class="rc-switch" aria-hidden="true"></span>
-        </label>
-        <label class="rc-slider-row">
-          <span class="rc-slider-label">波纹强度</span>
-          <input v-model.number="store.waterWaveStrength" aria-label="波纹强度" type="range" min="0" max="1" step="0.05" class="rc-slider" />
-          <span class="rc-slider-value">{{ Math.round(store.waterWaveStrength * 100) }}%</span>
-        </label>
         <div v-if="store.autoRotate" class="rc-slider-row">
           <span class="rc-slider-label">速度</span>
           <input v-model.number="store.autoRotateSpeed" type="range" min="0.2" max="4" step="0.2" class="rc-slider" />

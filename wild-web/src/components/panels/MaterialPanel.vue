@@ -2,6 +2,14 @@
   <div class="material-workspace">
     <div class="material-tabs"><button type="button" :class="{ active: tab === 'scene' }" @click="tab = 'scene'">场景材质</button><button type="button" :class="{ active: tab === 'library' }" @click="tab = 'library'">材质与素材库</button></div>
     <section v-show="tab === 'scene'" class="scene-materials">
+      <details class="builtin-materials" open>
+        <summary>内置材质</summary>
+        <div class="swatch-grid"><button v-for="preset in SURFACE_MATERIAL_PRESETS" :key="preset.id" type="button"
+          class="swatch" :title="preset.description" :disabled="!scene.document || scene.isReconstructing" @click="addPreset(preset)">
+          <i :style="{ background: colorHex(preset.material.baseColor) }"></i><span>{{ preset.name }}</span>
+        </button></div>
+        <p class="material-hint">点击加入场景；有选中构件时同时应用到匹配的部位。</p>
+      </details>
       <input v-model="query" type="search" placeholder="搜索场景材质" aria-label="搜索场景材质" />
       <div class="swatch-grid"><button v-for="[name,material] in materials" :key="name" type="button" :class="['swatch', { selected: active === name }]" :title="name" @click="active = name"><i :style="{ background: colorHex(material.baseColor) }"></i><span>{{ name }}</span></button></div>
       <p v-if="!materials.length" class="material-hint">当前没有匹配的场景材质，导入建筑或从素材库添加。</p>
@@ -24,6 +32,7 @@ import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
 import { createPatch } from '../../wild/scenePatch'
 import { createSelectedMaterialBindings } from '../../wild/materialBindings'
+import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
 import type { MaterialDef } from '../../types/blueprint'
 import PBRAssetPanel from './PBRAssetPanel.vue'
 const scene = useSceneStore()
@@ -33,6 +42,18 @@ const query = ref('')
 const active = ref('')
 const materials = computed(() => Object.entries(scene.document?.blueprint.materials || {}).filter(([name]) => name.toLowerCase().includes(query.value.toLowerCase())))
 const selected = computed(() => scene.document?.blueprint.materials?.[active.value])
+async function addPreset(preset: typeof SURFACE_MATERIAL_PRESETS[number]) {
+  if (!scene.document || scene.isReconstructing) return
+  let name = preset.id
+  let suffix = 2
+  while (scene.document.blueprint.materials?.[name]
+    && JSON.stringify(scene.document.blueprint.materials[name]) !== JSON.stringify(preset.material)) name = `${preset.id}_${suffix++}`
+  const material = JSON.parse(JSON.stringify(preset.material)) as MaterialDef
+  const blueprint = scene.document.blueprint
+  const bindings = createSelectedMaterialBindings(blueprint, selection.selectedIds, name, material)
+  if (await scene.applyPatch(createPatch(scene.document.revision,
+    [{ op: 'upsert_material', name, material }, ...bindings], 'user', false, '添加' + preset.name))) active.value = name
+}
 watch(() => scene.document?.id, () => { active.value = Object.keys(scene.document?.blueprint.materials || {})[0] || '' }, { immediate: true })
 function colorHex(value: unknown) {
   const rgb = Array.isArray(value) ? value : [.5, .5, .5]

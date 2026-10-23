@@ -245,12 +245,13 @@ function setFile(key: FileKey, event: Event): void {
   else delete optionalFiles[key]
 }
 
-function selectedBindings(materialName: string): SceneOperation[] {
+function selectedBindings(materialName: string, material?: MaterialDef): SceneOperation[] {
   if (!sceneStore.document) return []
   return createSelectedMaterialBindings(
     sceneStore.document.blueprint,
     selectionStore.selectedIds,
     materialName,
+    material,
   )
 }
 
@@ -280,7 +281,8 @@ async function registerAndApply(): Promise<void> {
     },
   })
   if (!result) return
-  const bindings = selectedBindings(form.materialName.trim())
+  const definition = result.patch.operations.find(op => op.op === 'upsert_material' && op.name === form.materialName.trim())
+  const bindings = selectedBindings(form.materialName.trim(), definition?.op === 'upsert_material' ? definition.material : undefined)
   result.patch.operations.push(...bindings)
   const applied = await sceneStore.applyPatch(result.patch)
   messageType.value = applied ? 'success' : 'error'
@@ -294,12 +296,6 @@ async function registerAndApply(): Promise<void> {
 async function applyExistingAsset(asset: PBRTextureSetAsset): Promise<void> {
   if (!sceneStore.document) return
   const materialName = asset.assetId
-  const bindings = selectedBindings(materialName)
-  if (bindings.length === 0) {
-    messageType.value = 'error'
-    message.value = '请先在视口或场景树中选择要应用素材的构件'
-    return
-  }
   const defaults = asset.defaults || {}
   const material: MaterialDef = {
     baseColor: defaults.baseColorTint ?? [1, 1, 1],
@@ -310,6 +306,12 @@ async function applyExistingAsset(asset: PBRTextureSetAsset): Promise<void> {
     textureSet: asset.assetId,
     normalScale: defaults.normalScale ?? 1,
     uvScale: defaults.uvScale ?? [1, 1],
+  }
+  const bindings = selectedBindings(materialName, material)
+  if (bindings.length === 0) {
+    messageType.value = 'error'
+    message.value = '请先选择与该材质匹配的构件'
+    return
   }
   const patch = createPatch(sceneStore.document.revision, [
     { op: 'upsert_asset', asset_id: asset.assetId, asset },

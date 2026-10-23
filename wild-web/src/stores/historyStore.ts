@@ -31,6 +31,7 @@ export interface HistoryEntry {
   after: Blueprint
   patch: ScenePatch
   timestamp: number
+  group?: string
 }
 
 export const useHistoryStore = defineStore('history', () => {
@@ -41,6 +42,11 @@ export const useHistoryStore = defineStore('history', () => {
   const canRedo = computed(() => currentIndex.value < entries.value.length - 1)
 
   function push(entry: HistoryEntry) {
+    const previous = entries.value[currentIndex.value]
+    if (entry.group && previous?.group === entry.group && currentIndex.value === entries.value.length - 1) {
+      entries.value[currentIndex.value] = { ...entry, before: previous.before }
+      return
+    }
     // 清除当前位置之后的历史
     if (currentIndex.value < entries.value.length - 1) {
       entries.value = entries.value.slice(0, currentIndex.value + 1)

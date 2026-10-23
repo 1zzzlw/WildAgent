@@ -276,16 +276,6 @@ function toggleEffect(id: WorldEffectId, value: string | number | boolean): void
 
 async function applyMaterialPackage(manifest: WildMaterialPackageManifest): Promise<void> {
   if (!sceneStore.document) return
-  const bindings = createSelectedMaterialBindings(
-    sceneStore.document.blueprint,
-    selectionStore.selectedIds,
-    manifest.materialId,
-  )
-  if (!bindings.length) {
-    messageType.value = 'error'
-    message.value = '请先选择需要应用材质包的构件。'
-    return
-  }
   try {
     const asset = manifestToBlueprintAsset(manifest)
     const defaults = manifest.defaults || {}
@@ -301,6 +291,14 @@ async function applyMaterialPackage(manifest: WildMaterialPackageManifest): Prom
       surfaceFamily: manifest.family,
       environmentResponse: manifest.environmentResponse,
       requiredFeatures: manifest.requiredFeatures,
+    }
+    const bindings = createSelectedMaterialBindings(
+      sceneStore.document.blueprint, selectionStore.selectedIds, manifest.materialId, material,
+    )
+    if (!bindings.length) {
+      messageType.value = 'error'
+      message.value = '请先选择与该材质包匹配的构件。'
+      return
     }
     const patch = createPatch(sceneStore.document.revision, [
       { op: 'upsert_asset', asset_id: asset.assetId, asset },

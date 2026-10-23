@@ -238,7 +238,7 @@ async function saveAndApply(): Promise<void> {
   const material = buildMaterial()
   const operations = [
     { op: 'upsert_material' as const, name: form.materialName, material },
-    ...createSelectedMaterialBindings(document.blueprint, selectionStore.selectedIds, form.materialName),
+    ...createSelectedMaterialBindings(document.blueprint, selectionStore.selectedIds, form.materialName, material),
   ]
   try {
     const patch = createPatch(

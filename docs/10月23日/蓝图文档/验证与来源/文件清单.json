@@ -29,13 +29,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 5018,
-      "sha256": "8c0ea713385d5d8b49a33d175c5db6186c735154301508050f63018995067bcd"
+      "bytes": 5282,
+      "sha256": "a7324e6fe22e45bb69b65f3c022c6f24cb053780bc913f261aae0f9b62152f6f"
     },
     {
       "path": "WILD蓝图设计语言-v3.0.md",
-      "bytes": 58945,
-      "sha256": "6952189785bae4a35871287766ca6bda27de1bf538b3da50cecc049ddca44ee5"
+      "bytes": 60019,
+      "sha256": "ca8c4ac1767382b3aa65767121baf6788ab343bc205ac307945add01c937f315"
     },
     {
       "path": "参考资料/用户提供-WILD蓝图设计语言-v2.0.md.txt",
@@ -84,8 +84,8 @@
     },
     {
       "path": "核心资料/wild-core/schema.json",
-      "bytes": 58545,
-      "sha256": "015098741fbebce4f08a85b2ed2786dfb02effdd28f79131e8e24e03f3c11854"
+      "bytes": 58760,
+      "sha256": "2ba98bea068746b657eb5fe07f510632ced93f43e3c13ba7c643f876113464b0"
     },
     {
       "path": "核心资料/wild-core/src/compiler/componentCache.ts",
@@ -94,8 +94,8 @@
     },
     {
       "path": "核心资料/wild-core/src/compiler/componentMaterials.ts",
-      "bytes": 4369,
-      "sha256": "54b7484938aee24236b551412ae70fd3c20a428f833efa1cbf9c556187d998fd"
+      "bytes": 4480,
+      "sha256": "d431457a1afdba89c3c208fc83d147a911ae492d5158512b82779ffee6d5e599"
     },
     {
       "path": "核心资料/wild-core/src/compiler/componentRegistry.ts",
@@ -189,13 +189,13 @@
     },
     {
       "path": "核心资料/wild-core/src/materials/contracts.ts",
-      "bytes": 3431,
-      "sha256": "77cf797a3787663f8c7ebc48e14c376bed06a011929548a880820879fd7d8737"
+      "bytes": 3463,
+      "sha256": "63b7590579997f6e77429ef84f6cd24fdd1eb5e3ddf197eefca1fe20020ef113"
     },
     {
       "path": "核心资料/wild-core/src/materials/descriptor.ts",
-      "bytes": 4618,
-      "sha256": "24d895b46f93bb7bfb4a2b8eff6029e16f19054d0d8a34a3a75d8f83d44f2c7a"
+      "bytes": 4761,
+      "sha256": "a3c6131d995d32621d8303a89e6699e6cbda5baf3a07e32367d880a070460184"
     },
     {
       "path": "核心资料/wild-core/src/materials/index.ts",
@@ -364,8 +364,8 @@
     },
     {
       "path": "核心资料/wild-core/types.ts",
-      "bytes": 27810,
-      "sha256": "2660711f2cdcbaf82f16707473921a48d6825d6325073ef15d4f0ac5fb41c754"
+      "bytes": 27851,
+      "sha256": "0a7642e6cc824b3c38e8c90bce4e9ea6c44010a3c2bcdca96ec40384b42100c3"
     },
     {
       "path": "核心资料/wild-server/app/design/compilation.py",
@@ -424,8 +424,8 @@
     },
     {
       "path": "核心资料/wild-web/src/renderer/materialFeatures/defaultSurfaceMaterial.ts",
-      "bytes": 20491,
-      "sha256": "c16e5361df7cce2c01bb2088e92f04d67b4f7849666fb74885fb6dfa63283afd"
+      "bytes": 22535,
+      "sha256": "59038aae35ffd47c1b2b59741589871f826c7632b67e19adb34886b6bc215cec"
     },
     {
       "path": "核心资料/wild-web/src/renderer/materialFeatures/index.ts",
@@ -529,8 +529,8 @@
     },
     {
       "path": "核心资料/wild-web/src/types/blueprint.ts",
-      "bytes": 4893,
-      "sha256": "a0a66794d8123a54c9c8f282aecbf71d5c59f259f69908a40d3e6bb1fe195408"
+      "bytes": 4933,
+      "sha256": "ed1efd4ba21f558d74f27a1a5e5d7a07f96336d6203c5e5a4168d118080b5249"
     },
     {
       "path": "核心资料/wild-web/src/types/scene.ts",
@@ -1289,8 +1289,8 @@
     },
     {
       "path": "验证与来源/核心源码来源.json",
-      "bytes": 23582,
-      "sha256": "a3ccaa0dbef68cb07ef67a9584980b057c54d506ac17e7d11dd4503e7d85cdaf"
+      "bytes": 23695,
+      "sha256": "97a9ff8632aa3392fe4eb783ce2ab88e2471ed69cfd45ac044970d2171b3f830"
     },
     {
       "path": "验证与来源/渲染修订资料包自检.json",

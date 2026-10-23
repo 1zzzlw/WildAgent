@@ -2112,6 +2112,11 @@
         "lightingCondition"
       ],
       "properties": {
+        "surfacePattern": {
+          "type": "string",
+          "enum": ["quartz", "planks"],
+          "description": "无贴图程序表面：石英石或木板；配合矿物或木材表面族"
+        },
         "baseColor": {
           "$ref": "#/$defs/color"
         },

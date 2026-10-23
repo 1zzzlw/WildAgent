@@ -758,6 +758,7 @@ export interface MaterialDef {
   procedural?: ProceduralMaterial;
   /** renderer 无关的表面语义；未填写时由 core 按通用规则推断。 */
   surfaceFamily?: SurfaceFamily;
+  surfacePattern?: 'quartz' | 'planks';
   /** 材质对世界天气的物理响应参数，不包含 Shader 源码。 */
   environmentResponse?: MaterialEnvironmentResponse;
   requiredFeatures?: string[];

@@ -71,12 +71,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { ElDialog, ElMessageBox, type InputInstance } from 'element-plus'
 import 'element-plus/es/components/dialog/style/css'
 import { ArrowDown, Plus, Search } from '@element-plus/icons-vue'
 import { useAgentStore, formatRelativeTime } from '../../stores/agentStore'
 import type { SessionInfo } from '../../types/agent'
+import { useUIStore } from '../../stores/uiStore'
 
 const agentStore = useAgentStore()
 const emit = defineEmits<{
@@ -85,9 +86,11 @@ const emit = defineEmits<{
   delete: [sessionId: string]
 }>()
 
-const pickerVisible = ref(false)
+const ui = useUIStore()
+const pickerVisible = computed({ get: () => ui.sessionPickerVisible, set: value => { ui.sessionPickerVisible = value } })
 const searchQuery = ref('')
 const searchInput = ref<InputInstance>()
+watch(pickerVisible, visible => { if (visible) searchQuery.value = '' })
 const currentInfo = computed(() =>
   agentStore.sessions.find(session => session.session_id === agentStore.currentSessionId)
 )

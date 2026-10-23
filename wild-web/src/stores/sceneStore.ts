@@ -90,7 +90,7 @@ export const useSceneStore = defineStore('scene', () => {
     return await reconstruct()
   }
 
-  async function applyPatch(patch: ScenePatch): Promise<boolean> {
+  async function applyPatch(patch: ScenePatch, historyGroup?: string): Promise<boolean> {
     if (!document.value) {
       console.error('无场景文档，无法应用 patch')
       return false
@@ -117,7 +117,6 @@ export const useSceneStore = defineStore('scene', () => {
       // 草稿已有错误也允许继续修改；重建问题保留在诊断中，不撤销用户编辑。
       document.value.blueprint = newBlueprint
       reconcileSelection()
-      await reconstruct()
       document.value.revision++
       document.value.dirty = true
 
@@ -127,7 +126,9 @@ export const useSceneStore = defineStore('scene', () => {
         after: deepClone(newBlueprint),
         patch,
         timestamp: Date.now(),
+        group: historyGroup,
       })
+      await reconstruct()
       return true
     } catch (error) {
       console.error('应用 patch 失败', error)

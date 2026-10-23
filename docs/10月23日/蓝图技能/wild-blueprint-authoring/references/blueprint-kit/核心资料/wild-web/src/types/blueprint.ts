@@ -98,6 +98,7 @@ export interface MaterialDef {
   emissiveIntensity?: number
   procedural?: ProceduralMaterial
   surfaceFamily?: SurfaceFamily
+  surfacePattern?: 'quartz' | 'planks'
   environmentResponse?: MaterialEnvironmentResponse
   requiredFeatures?: string[]
   [key: string]: unknown

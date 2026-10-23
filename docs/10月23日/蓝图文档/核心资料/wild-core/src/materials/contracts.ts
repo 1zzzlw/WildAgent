@@ -31,6 +31,7 @@ export interface MaterialEnvironmentResponse {
 /** core 输出给 renderer 的稳定材质中间表示，不包含任何 GPU 代码。 */
 export interface RenderMaterialDescriptor {
   family: SurfaceFamily
+  pattern?: 'quartz' | 'planks'
   source: SurfaceSourceKind
   implementation: string
   implementationVersion: number

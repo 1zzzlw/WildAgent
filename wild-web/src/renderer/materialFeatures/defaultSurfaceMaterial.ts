@@ -6,7 +6,7 @@ import {
   getWorldRenderingUniforms,
 } from '../worldEnvironmentRuntime'
 
-const SHADER_VERSION = 'default-surface-v1'
+const SHADER_VERSION = 'default-surface-v2'
 
 interface MutableShader {
   uniforms: Record<string, { value: unknown }>
@@ -17,6 +17,7 @@ interface MutableShader {
 interface DefaultSurfaceParams {
   family: SurfaceFamily
   familyCode: number
+  patternCode: number
   seed: number
   scale: number
   colorVariation: number
@@ -106,6 +107,7 @@ export function installDefaultSurfaceShader(
   const rendering = getWorldRenderingUniforms()
   Object.assign(shader.uniforms, {
     wildSurfaceFamily: { value: params.familyCode },
+    wildSurfacePattern: { value: params.patternCode },
     wildSurfaceSeed: { value: params.seed },
     wildSurfaceScale: { value: params.scale },
     wildSurfaceColorVariation: { value: params.colorVariation },
@@ -169,6 +171,7 @@ varying vec2 vWildDefaultSurfaceUv;
 varying vec3 vWildDefaultWorldNormal;
 varying vec3 vWildDefaultWorldPosition;
 uniform int wildSurfaceFamily;
+uniform int wildSurfacePattern;
 uniform float wildSurfaceSeed;
 uniform float wildSurfaceScale;
 uniform float wildSurfaceColorVariation;
@@ -246,6 +249,29 @@ vec2 wildSurfacePlaster(vec2 metric, float seed) {
     wildValueNoise(metric * vec2(0.32, 2.6) + vec2(seed * 0.0079, seed * 0.0023)) - 0.5,
     wildFbm(metric * 0.55 + vec2(seed * 0.0031, seed * 0.0053)) - 0.5
   );
+}
+
+// Only these explicit patterns use the extra sampling; existing materials keep their appearance.
+vec2 wildQuartzSurface(vec2 metric, float seed) {
+  float fade = 1.0 - smoothstep(0.5, 1.5, max(fwidth(metric.x), fwidth(metric.y)) * 180.0);
+  float grain = wildValueNoise(metric * 180.0 + seed * 0.0013);
+  float flecks = smoothstep(0.64, 0.9, grain) * fade;
+  float cloud = wildValueNoise(metric * 1.4 + seed * 0.0031) - 0.5;
+  return vec2(cloud * 0.24 + (flecks - 0.08) * 0.65, (grain - 0.5) * fade);
+}
+
+vec2 wildPlankSurface(vec2 metric, float seed) {
+  vec2 grid = metric / vec2(0.18, 1.2);
+  grid.y += mod(floor(grid.x), 3.0) / 3.0;
+  vec2 cell = floor(grid);
+  vec2 edge = min(fract(grid), 1.0 - fract(grid)) * vec2(0.18, 1.2);
+  float px = max(fwidth(metric.x), fwidth(metric.y));
+  float seam = (1.0 - smoothstep(0.0008, 0.0025, min(edge.x, edge.y)))
+    * (1.0 - smoothstep(0.008, 0.03, px));
+  float board = wildHash21(cell + seed * 0.0017) - 0.5;
+  float grain = sin(metric.x * 460.0 + wildValueNoise(metric * vec2(4.0, 0.8)) * 14.0)
+    * (1.0 - smoothstep(0.003, 0.012, px));
+  return vec2(board * 0.65 + grain * 0.12 - seam * 1.5, grain * 0.08 - seam);
 }`,
     )
     .replace(
@@ -261,12 +287,18 @@ float wildDefaultPattern = 0.0;
 float wildSurfaceReliefUnit = 0.0;
 // 抹面特征只在 mineral 分支里赋值；这里先给初值是为了让它在外层 if 之外也可读。
 vec2 wildPlaster = vec2(0.0);
+vec2 wildSpecialSurface = vec2(0.0);
 if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildWorldDust) > 0.0) {
   vec2 wildDefaultUv = vWildDefaultSurfaceUv * wildSurfaceScale;
   wildDefaultNoise = wildFbm(wildDefaultUv + vec2(wildSurfaceSeed * 0.0017));
   wildDefaultDetail = wildFbm(wildDefaultUv * 3.1 + vec2(wildSurfaceSeed * 0.0041));
   wildDefaultPattern = (wildDefaultNoise - 0.5) * 0.72 + (wildDefaultDetail - 0.5) * 0.28;
-  if (wildSurfaceFamily == 2) {
+  if (wildSurfacePattern > 0) {
+    vec2 metric = wildSurfaceMetricUv(vWildDefaultWorldPosition, normalize(vWildDefaultWorldNormal));
+    wildSpecialSurface = wildSurfacePattern == 1
+      ? wildQuartzSurface(metric, wildSurfaceSeed) : wildPlankSurface(metric, wildSurfaceSeed);
+    wildDefaultPattern = wildSpecialSurface.x;
+  } else if (wildSurfaceFamily == 2) {
     float wildWoodWave = sin(
       wildDefaultUv.y * 7.0 + wildFbm(vec2(wildDefaultUv.x * 0.18, wildDefaultUv.y * 0.7)) * 5.0
     );
@@ -309,7 +341,9 @@ if (wildDefaultSurfaceAmount > 0.0 || wildWeatherAmount * (wildWorldSnow + wildW
       + wildSurfaceGrain(
           wildSurfaceMetric, wildSurfaceGrainFrequency * 3.2, wildSurfaceSeed + 91.0
         ) * 0.45 * wildSurfaceFineFade;
-    if (wildSurfaceFamily == ${MASONRY_FAMILY_CODE}) {
+    if (wildSurfacePattern > 0) {
+      wildSurfaceReliefUnit = wildSpecialSurface.y;
+    } else if (wildSurfaceFamily == ${MASONRY_FAMILY_CODE}) {
       // 砖缝/瓦垄为主体，另叠一层细粒与一层已算好的 fbm，避免块面过于"塑料平整"。
       wildSurfaceReliefUnit = wildSurfaceCourse(
         wildSurfaceMetric, wildSurfaceCourseCells, wildSurfaceSeed
@@ -422,15 +456,17 @@ function createDefaultSurfaceParams(
           ? { scale: 8.5, color: 0.045, roughness: 0.065 }
           : { scale: 3.5, color: 0.04, roughness: 0.05 }
   const relief = RELIEF_PRESETS[family]
+  const patternCode = descriptor.pattern === 'quartz' ? 1 : descriptor.pattern === 'planks' ? 2 : 0
   return {
     family,
     familyCode: FAMILY_CODE[family],
+    patternCode,
     seed: hashString(materialSeed) % 65521,
     scale: base.scale,
-    colorVariation: base.color,
-    roughnessVariation: base.roughness,
-    relief: relief.relief,
-    reliefRoughness: relief.reliefRoughness,
+    colorVariation: patternCode === 1 ? 0.12 : patternCode === 2 ? 0.3 : base.color,
+    roughnessVariation: patternCode === 1 ? 0.04 : patternCode === 2 ? 0.08 : base.roughness,
+    relief: patternCode === 1 ? 0.0004 : patternCode === 2 ? 0.0015 : relief.relief,
+    reliefRoughness: patternCode ? 0.04 : relief.reliefRoughness,
     courseCells: relief.courseCells,
     grainFrequency: relief.grainFrequency,
     wetnessAbsorption: descriptor.environmentResponse.wetness?.absorption ?? 0,

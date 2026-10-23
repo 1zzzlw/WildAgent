@@ -300,16 +300,6 @@ watch(() => renderPanel.resetViewNonce, () => resetViewToPreset())
 watch(() => renderPanel.screenshotNonce, () => takeScreenshot())
 watch(() => renderPanel.frameSelectionNonce, frameSelection)
 watch([() => renderPanel.sectionEnabled, () => renderPanel.sectionHeight], applySection)
-watch(() => renderPanel.waterAnimated, enabled => {
-  setWaterSurfaceAnimated(enabled)
-  try { localStorage.setItem('wild_water_animated', String(enabled)) } catch { /* 内存开关仍然有效。 */ }
-  markNeedsRender()
-}, { immediate: true })
-watch([() => renderPanel.waterTransparency, () => renderPanel.waterWaveStrength], ([transparency, waveStrength]) => {
-  setWaterSurfaceAppearance(transparency, waveStrength)
-  try { localStorage.setItem('wild_water_appearance_v1', JSON.stringify({ transparency, waveStrength })) } catch { /* 内存设置仍然有效。 */ }
-  markNeedsRender()
-}, { immediate: true })
 watch([timeOfDay, environmentPresetId, qualityLevel, cameraPresetId, viewMode], () => {
   renderPanel.presets = { time: timeOfDay.value, environment: environmentPresetId.value,
     quality: qualityLevel.value, camera: cameraPresetId.value, view: viewMode.value }
@@ -346,11 +336,6 @@ watch(() => renderPanel.presetRequest, request => {
       applyViewMode()
       break
   }
-})
-watch(() => renderPanel.waterReflections, enabled => {
-  if (waterReflection) waterReflection.enabled = enabled && qualityLevel.value === 'high' && !adaptiveQualityApplied
-  try { localStorage.setItem('wild_water_reflections', String(enabled)) } catch { /* 当前设置仍生效。 */ }
-  markNeedsRender()
 })
 
 function frameSelection() {
@@ -396,6 +381,8 @@ function initThreeJS() {
   configureKtx2Rendering(renderer)
 
   scene = new THREE.Scene()
+  setWaterSurfaceAnimated(true)
+  setWaterSurfaceAppearance(1, 0.65)
   waterReflection = new WaterReflectionRuntime(renderer, scene)
   scene.background = new THREE.Color(0xb9c9d8)
   worldLookRuntime.setActivationContext({ renderer, scene })
@@ -564,7 +551,7 @@ function renderFrame() {
   const delta = weatherClock.getDelta()
   const controlsAnimating = controls?.update() ?? false
   const effects = getWorldEffectState()
-  const waterAnimating = hasWaterSurface && renderPanel.waterAnimated
+  const waterAnimating = hasWaterSurface
   const effectsAnimating = effects.clouds || effects.ripples || waterAnimating
   if (effectsAnimating) {
     effectClock += Math.min(0.05, Math.max(0, delta))
@@ -1466,7 +1453,7 @@ function applyQualityPreset() {
     weatherQuality: worldLookRuntime.getActiveProfile().quality?.weatherTier || qualityLevel.value,
   })
   if (postProcessing) applyWorldRenderQuality(renderer, postProcessing, lightingRig, qualityLevel.value, timeOfDay.value, window.devicePixelRatio || 1)
-  if (waterReflection) waterReflection.enabled = renderPanel.waterReflections && qualityLevel.value === 'high'
+  if (waterReflection) waterReflection.enabled = qualityLevel.value !== 'low'
   markShadowsDirty()
   configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
   handleResize()

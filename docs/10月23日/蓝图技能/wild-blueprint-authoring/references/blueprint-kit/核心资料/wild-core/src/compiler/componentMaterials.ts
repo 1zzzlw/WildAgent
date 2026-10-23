@@ -62,6 +62,7 @@ export function applyComponentMaterialDefaults(
         break
       case 'railing':
         fallback(component, 'material', COMPONENT_MATERIAL.metal)
+        if (component.infillType === 'glass') fallback(component, 'infillMaterial', COMPONENT_MATERIAL.glass)
         break
       case 'canopy':
         fallback(component, 'material', COMPONENT_MATERIAL.concrete)

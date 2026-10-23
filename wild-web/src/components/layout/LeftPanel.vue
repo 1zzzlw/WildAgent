@@ -11,6 +11,7 @@
         </button>
       </div>
       <div class="rail-footer">
+        <button type="button" class="rail-button" aria-label="模型配置" title="模型配置" @click="ui.modelConfigVisible = true"><el-icon><Cpu /></el-icon><span>模型</span></button>
         <button type="button" class="rail-button" aria-label="快捷键帮助" title="快捷键帮助 · ?" @click="ui.shortcutsVisible = true"><el-icon><QuestionFilled /></el-icon><span>帮助</span></button>
         <button type="button" class="rail-button" :aria-label="ui.panelOpen ? '收起左侧面板' : '展开左侧面板'" title="收起 / 展开 · Ctrl+B" @click="ui.panelOpen = !ui.panelOpen"><el-icon><Fold v-if="ui.panelOpen" /><Expand v-else /></el-icon></button>
       </div>
@@ -20,7 +21,6 @@
         <button type="button" class="dock-close" aria-label="收起当前面板" @click="ui.panelOpen = false">×</button>
       </header>
       <div class="dock-content">
-        <EditorTools v-show="ui.activePanel === 'tools'" />
         <SceneTree v-show="ui.activePanel === 'sceneTree'" />
         <BlockLibrary v-show="ui.activePanel === 'blockLibrary'" />
         <PropertyPanel v-show="ui.activePanel === 'properties'" />
@@ -34,11 +34,12 @@
         :aria-valuenow="ui.panelWidth" :aria-valuemin="300" :aria-valuemax="760" @pointerdown="startResize"
         @keydown.left.prevent="ui.setPanelWidth(ui.panelWidth-20)" @keydown.right.prevent="ui.setPanelWidth(ui.panelWidth+20)"></button>
     </section>
+    <EditorTools />
   </aside>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount } from 'vue'
-import { Operation, Share, Box, Setting, CircleCheck, Brush, Sunny, ChatDotRound, Fold, Expand, QuestionFilled } from '@element-plus/icons-vue'
+import { Cpu, Share, Box, Setting, CircleCheck, Brush, Sunny, ChatDotRound, Fold, Expand, QuestionFilled } from '@element-plus/icons-vue'
 import { useUIStore, type PanelType } from '../../stores/uiStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -54,7 +55,6 @@ const ui = useUIStore()
 const scene = useSceneStore()
 const selection = useSelectionStore()
 const panels = [
-  { id: 'tools' as PanelType, label: '工作台设置', short: '设置', icon: Operation },
   { id: 'sceneTree' as PanelType, label: '场景树', short: '场景', icon: Share },
   { id: 'blockLibrary' as PanelType, label: '构件库', short: '构件', icon: Box },
   { id: 'properties' as PanelType, label: '属性', short: '属性', icon: Setting },

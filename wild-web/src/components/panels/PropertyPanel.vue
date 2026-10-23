@@ -92,7 +92,7 @@
               <label>边框材质</label>
               <el-select :model-value="componentString('frameMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('frameMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('frameMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -114,7 +114,7 @@
               <label>门扇材质</label>
               <el-select :model-value="componentString('leafMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('leafMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('leafMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -140,7 +140,7 @@
               <label>玻璃材质</label>
               <el-select :model-value="componentString('glassMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('glassMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('glassMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -260,7 +260,7 @@
               <label>{{ materialField.label }}</label>
               <el-select :model-value="componentString(materialField.key)" placeholder="未指定"
                 @change="(value: string) => handleComponentChange(materialField.key, value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames(materialField.key)" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -277,14 +277,14 @@
               <label>楼板材质</label>
               <el-select :model-value="componentString('material')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('material', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('material')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
             <div class="property-row">
               <label>栏杆材质</label>
               <el-select :model-value="componentString('railingMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('railingMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('railingMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -300,7 +300,7 @@
               <label>玻璃材质</label>
               <el-select :model-value="componentString('glassMaterial')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('glassMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('glassMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -347,7 +347,7 @@
               <label>{{ materialField.label }}</label>
               <el-select :model-value="componentString(materialField.key)" placeholder="未指定"
                 @change="(value: string) => handleComponentChange(materialField.key, value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames(materialField.key)" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -365,7 +365,7 @@
               <label>材质</label>
               <el-select :model-value="componentString('material')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('material', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('material')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
             <div class="section-title section-title-row">
@@ -429,7 +429,7 @@
               <label>{{ materialField.label }}</label>
               <el-select :model-value="componentString(materialField.key)" placeholder="未指定"
                 @change="(value: string) => handleComponentChange(materialField.key, value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames(materialField.key)" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -454,7 +454,7 @@
               <label>材质</label>
               <el-select :model-value="componentString('material')" placeholder="未指定"
                 @change="(value: string) => handleComponentChange('material', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('material')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
             <div class="property-row">
@@ -481,10 +481,10 @@
             </div>
             <div v-if="componentString('infillType')" class="property-row">
               <label>栏板材质</label>
-              <el-select :model-value="componentString('infillMaterial')" placeholder="继承构件材质" clearable
+              <el-select :model-value="componentString('infillMaterial')" :placeholder="componentString('infillType') === 'glass' ? '默认玻璃' : '继承构件材质'" clearable
                 @clear="clearComponentField('infillMaterial')"
                 @change="(value: string) => handleComponentChange('infillMaterial', value)">
-                <el-option v-for="name in materialNames" :key="name" :label="name" :value="name" />
+                <el-option v-for="name in componentMaterialNames('infillMaterial')" :key="name" :label="materialDisplayName(name)" :value="name" />
               </el-select>
             </div>
           </div>
@@ -529,7 +529,8 @@
           <div class="property-row">
             <label>文字</label>
             <el-input :model-value="selectedPrimitive.label?.text || ''" aria-label="招牌文字" maxlength="256"
-              placeholder="输入建筑名称；清空移除文字" @change="changeLabelText" />
+              placeholder="输入建筑名称；清空移除文字" @focus="beginLabelEdit" @blur="labelEditGroup = undefined"
+              @input="changeLabelText" />
           </div>
           <div class="interaction-hint">文字位于构件正面，随构件移动、旋转，并保存在 WILD 文件中。</div>
         </div>
@@ -629,6 +630,8 @@
 <script setup lang="ts">
 import { getComponentCompiler } from 'wild-core/compiler'
 import { getGeometryReferences } from 'wild-core/relationships'
+import { acceptsComponentMaterial } from '../../wild/materialCompatibility'
+import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
@@ -636,6 +639,7 @@ import { useSelectionStore } from '../../stores/selectionStore'
 import { createPatch, createGeometryRemovalOperations } from '../../wild/scenePatch'
 import { createGeometryRotationOperations } from '../../wild/componentDrag'
 import type { PrimitiveParams } from 'wild-core/types'
+import type { SceneOperation } from '../../types/scenePatch'
 
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
@@ -747,7 +751,18 @@ const floors = computed(() => (
 const roofs = computed(() => (
   sceneStore.document?.blueprint.geometry.elements.filter(element => element.type === 'roof') || []
 ))
-const materialNames = computed(() => Object.keys(sceneStore.document?.blueprint.materials || {}))
+function componentMaterialNames(field: string) {
+  const component = selectedComponent.value
+  const materials = { ...Object.fromEntries(SURFACE_MATERIAL_PRESETS.map(p => [p.id, p.material])),
+    ...sceneStore.document?.blueprint.materials }
+  return Object.entries(materials)
+    .filter(([name, material]) => !component || acceptsComponentMaterial(component, field, name, material))
+    .map(([name]) => name)
+}
+function materialDisplayName(name: string) {
+  return sceneStore.document?.blueprint.materials?.[name]
+    ? name : SURFACE_MATERIAL_PRESETS.find(p => p.id === name)?.name || name
+}
 const railLevels = computed(() => (
   selectedComponent.value?.type === 'railing'
     ? selectedComponent.value.railLevels || [1]
@@ -835,9 +850,18 @@ function handleFurniturePatch(changes: Record<string, unknown>, summary: string)
   sceneStore.applyPatch(patch)
 }
 
+let labelEditGroup: string | undefined
+let labelEditSequence = 0
+function beginLabelEdit() {
+  labelEditGroup = `label:${sceneStore.document?.id}:${selectedPrimitive.value?.id}:${++labelEditSequence}`
+}
 function changeLabelText(text: string) {
-  const label = text.trim() ? { ...selectedPrimitive.value?.label, text: text.trim() } : undefined
-  handleFurniturePatch({ label }, '修改招牌文字')
+  if (!selectedPrimitive.value || !sceneStore.document) return
+  if (!labelEditGroup) beginLabelEdit()
+  const label = text.trim() ? { ...selectedPrimitive.value.label, text } : undefined
+  const patch = createPatch(sceneStore.document.revision,
+    [{ op: 'update_element', id: selectedPrimitive.value.id, changes: { label } }], 'user', false, '修改招牌文字')
+  void sceneStore.applyPatch(patch, labelEditGroup)
 }
 
 function togglePrimitiveLight(enabled: string | number | boolean) {
@@ -900,11 +924,11 @@ function componentVectorValue(key: string, index: number): number {
   return Array.isArray(value) && typeof value[index] === 'number' ? value[index] : 0
 }
 
-async function applyComponentChanges(changes: Record<string, unknown>, summary: string) {
+async function applyComponentChanges(changes: Record<string, unknown>, summary: string, prefix: SceneOperation[] = []) {
   if (!selectedComponent.value || !sceneStore.document) return
   const patch = createPatch(
     sceneStore.document.revision,
-    [{ op: 'update_component', id: selectedComponent.value.id, changes }],
+    [...prefix, { op: 'update_component', id: selectedComponent.value.id, changes }],
     'user',
     false,
     summary,
@@ -914,7 +938,25 @@ async function applyComponentChanges(changes: Record<string, unknown>, summary: 
 
 function handleComponentChange(key: string, value: unknown) {
   if (value === undefined || value === null || value === '') return
-  void applyComponentChanges({ [key]: value }, `修改${selectedComponent.value?.id}.${key}`)
+  const prefix: SceneOperation[] = []
+  if (typeof value === 'string' && (key === 'material' || key.endsWith('Material'))) {
+    const existing = sceneStore.document?.blueprint.materials?.[value]
+    const material = existing || SURFACE_MATERIAL_PRESETS.find(p => p.id === value)?.material
+    if (!material || !selectedComponent.value || !acceptsComponentMaterial(selectedComponent.value, key, value, material)) {
+      ElMessage.warning('请选择与该部位匹配的材质')
+      return
+    }
+    if (!existing) prefix.push({ op: 'upsert_material', name: value, material: JSON.parse(JSON.stringify(material)) })
+  }
+  const changes: Record<string, unknown> = { [key]: value }
+  if (key === 'infillType' && selectedComponent.value?.type === 'railing') {
+    const name = selectedComponent.value.infillMaterial
+    const material = name && sceneStore.document?.blueprint.materials?.[name]
+    if (name && material && !acceptsComponentMaterial({ ...selectedComponent.value, infillType: value } as typeof selectedComponent.value, 'infillMaterial', name, material)) {
+      changes.infillMaterial = undefined
+    }
+  }
+  void applyComponentChanges(changes, `修改${selectedComponent.value?.id}.${key}`, prefix)
 }
 
 function clearComponentField(key: string) {

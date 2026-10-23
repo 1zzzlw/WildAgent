@@ -27,7 +27,7 @@
           <div v-if="active === 'render'" class="orbit-menu" role="group" aria-label="渲染快捷工具">
             <button v-for="(action,index) in renderActions" :key="action.id" class="circle-tool satellite" :class="{ chosen: action.selected }"
               :style="position(index,renderActions.length,104)" :aria-label="action.label" :data-label="action.label" :aria-pressed="action.selected"
-              @click="action.run()"><svg v-if="action.id === 'water'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6c3-4 6 4 9 0s6 4 9 0M3 12c3-4 6 4 9 0s6 4 9 0M3 18c3-4 6 4 9 0s6 4 9 0" /></svg><el-icon v-else><component :is="action.icon" /></el-icon></button>
+              @click="action.run()"><el-icon><component :is="action.icon" /></el-icon></button>
           </div>
         </Transition>
       </div>
@@ -42,7 +42,7 @@
           </div>
         </Transition>
       </div>
-      <div class="tool-orbit"><button class="circle-tool root-tool" aria-label="聚焦选中构件" data-label="聚焦选中 · F" @click="render.requestFrameSelection()"><el-icon><Aim /></el-icon></button></div>
+      <div class="tool-orbit"><button class="circle-tool root-tool" :aria-label="'切换视角：'+cameraLabel" :data-label="'切换视角 · 当前'+cameraLabel" @click="render.requestNextCamera()"><el-icon><Aim /></el-icon></button></div>
     </nav>
     <Transition name="stats-panel">
       <section v-if="showStats && active === 'render'" class="render-details" aria-label="渲染信息与设置">
@@ -80,13 +80,13 @@ const choiceSets = {
   view: [{ value: 'editor', label: '编辑', icon: Edit }, { value: 'presentation', label: '展示', icon: View }],
 }
 const choices = computed(() => branch.value ? choiceSets[branch.value] : [])
+const cameraLabel = computed(() => CAMERA_PRESETS[render.presets.camera as keyof typeof CAMERA_PRESETS]?.label || '')
 const fpsTier = computed(() => render.stats.fps >= 50 ? 'good' : render.stats.fps >= 30 ? 'ok' : 'bad')
 const renderActions = computed(() => [
   { id: 'stats', label: '渲染信息', icon: InfoFilled, selected: showStats.value, run: () => { showStats.value = !showStats.value } },
   { id: 'edges', label: '建筑线条', icon: View, selected: render.showEdges, run: () => { render.showEdges = !render.showEdges } },
   { id: 'grid', label: '网格地面', icon: Grid, selected: render.showGrid, run: () => { render.showGrid = !render.showGrid } },
   { id: 'rotate', label: '自动旋转', icon: Refresh, selected: render.autoRotate, run: () => { render.autoRotate = !render.autoRotate } },
-  { id: 'water', label: '水面动态', icon: View, selected: render.waterAnimated, run: () => { render.waterAnimated = !render.waterAnimated } },
   { id: 'reset', label: '重置视角', icon: RefreshLeft, selected: false, run: () => render.requestResetView() },
   { id: 'screenshot', label: '保存截图', icon: Download, selected: false, run: () => render.requestScreenshot() },
 ])

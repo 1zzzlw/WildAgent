@@ -1,6 +1,6 @@
 <template>
   <header class="editor-header">
-    <button class="brand" type="button" aria-label="打开工作台工具" @click="ui.openPanel('tools')"><span>W</span> WildAgent
+    <button class="brand" type="button" aria-label="打开场景树" @click="ui.openPanel('sceneTree')"><span>W</span> WildAgent
       <small>STUDIO</small></button>
     <nav class="file-toolbar" aria-label="文件操作">
       <button aria-label="新建场景" title="新建场景" :disabled="busy" @click="workspace.newScene()"><el-icon>
@@ -24,6 +24,10 @@
         @click="restore(true)"><el-icon>
           <RefreshRight />
         </el-icon></button>
+      <i class="toolbar-divider"></i>
+      <button aria-label="切换会话" title="搜索、切换和管理会话" :disabled="busy" @click="ui.sessionPickerVisible = true">
+        <el-icon><Switch /></el-icon><span>切换会话</span>
+      </button>
     </nav>
     <input ref="fileInput" class="file-input" type="file" accept=".wild,.json" aria-label="导入 WILD 文件"
       @change="importFile" />
@@ -39,7 +43,7 @@
 </template>
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight } from '@element-plus/icons-vue'
+import { DocumentAdd, FolderOpened, Upload, Download, RefreshLeft, RefreshRight, Switch } from '@element-plus/icons-vue'
 import { useHistoryStore } from '../../stores/historyStore'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useUIStore } from '../../stores/uiStore'

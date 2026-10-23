@@ -74,7 +74,7 @@ async function handleKeydown(event: KeyboardEvent) {
     if (entry) await scene.restoreBlueprint(redo ? entry.after : entry.before)
     return
   }
-  if (event.altKey && /^[1-8]$/.test(event.key)) { event.preventDefault(); ui.openPanel(PANEL_IDS[Number(event.key)-1]!); return }
+  if (event.altKey && /^[1-7]$/.test(event.key)) { event.preventDefault(); ui.openPanel(PANEL_IDS[Number(event.key)-1]!); return }
   if (!modifier && event.key.toLowerCase() === 'f') {
     event.preventDefault()
     if (event.shiftKey) ui.viewportFocused = !ui.viewportFocused

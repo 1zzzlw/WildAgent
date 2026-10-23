@@ -17,8 +17,8 @@
     {
       "source": "wild-core/schema.json",
       "packed": "核心资料/wild-core/schema.json",
-      "bytes": 58545,
-      "sha256": "015098741fbebce4f08a85b2ed2786dfb02effdd28f79131e8e24e03f3c11854"
+      "bytes": 58760,
+      "sha256": "2ba98bea068746b657eb5fe07f510632ced93f43e3c13ba7c643f876113464b0"
     },
     {
       "source": "wild-core/src/compiler/componentCache.ts",
@@ -29,8 +29,8 @@
     {
       "source": "wild-core/src/compiler/componentMaterials.ts",
       "packed": "核心资料/wild-core/src/compiler/componentMaterials.ts",
-      "bytes": 4369,
-      "sha256": "54b7484938aee24236b551412ae70fd3c20a428f833efa1cbf9c556187d998fd"
+      "bytes": 4480,
+      "sha256": "d431457a1afdba89c3c208fc83d147a911ae492d5158512b82779ffee6d5e599"
     },
     {
       "source": "wild-core/src/compiler/componentRegistry.ts",
@@ -143,14 +143,14 @@
     {
       "source": "wild-core/src/materials/contracts.ts",
       "packed": "核心资料/wild-core/src/materials/contracts.ts",
-      "bytes": 3431,
-      "sha256": "77cf797a3787663f8c7ebc48e14c376bed06a011929548a880820879fd7d8737"
+      "bytes": 3463,
+      "sha256": "63b7590579997f6e77429ef84f6cd24fdd1eb5e3ddf197eefca1fe20020ef113"
     },
     {
       "source": "wild-core/src/materials/descriptor.ts",
       "packed": "核心资料/wild-core/src/materials/descriptor.ts",
-      "bytes": 4618,
-      "sha256": "24d895b46f93bb7bfb4a2b8eff6029e16f19054d0d8a34a3a75d8f83d44f2c7a"
+      "bytes": 4761,
+      "sha256": "a3c6131d995d32621d8303a89e6699e6cbda5baf3a07e32367d880a070460184"
     },
     {
       "source": "wild-core/src/materials/index.ts",
@@ -353,8 +353,8 @@
     {
       "source": "wild-core/types.ts",
       "packed": "核心资料/wild-core/types.ts",
-      "bytes": 27810,
-      "sha256": "2660711f2cdcbaf82f16707473921a48d6825d6325073ef15d4f0ac5fb41c754"
+      "bytes": 27851,
+      "sha256": "0a7642e6cc824b3c38e8c90bce4e9ea6c44010a3c2bcdca96ec40384b42100c3"
     },
     {
       "source": "wild-server/app/design/compilation.py",
@@ -413,8 +413,8 @@
     {
       "source": "wild-web/src/renderer/materialFeatures/defaultSurfaceMaterial.ts",
       "packed": "核心资料/wild-web/src/renderer/materialFeatures/defaultSurfaceMaterial.ts",
-      "bytes": 20491,
-      "sha256": "c16e5361df7cce2c01bb2088e92f04d67b4f7849666fb74885fb6dfa63283afd"
+      "bytes": 22535,
+      "sha256": "59038aae35ffd47c1b2b59741589871f826c7632b67e19adb34886b6bc215cec"
     },
     {
       "source": "wild-web/src/renderer/materialFeatures/index.ts",
@@ -539,8 +539,8 @@
     {
       "source": "wild-web/src/types/blueprint.ts",
       "packed": "核心资料/wild-web/src/types/blueprint.ts",
-      "bytes": 4893,
-      "sha256": "a0a66794d8123a54c9c8f282aecbf71d5c59f259f69908a40d3e6bb1fe195408"
+      "bytes": 4933,
+      "sha256": "ed1efd4ba21f558d74f27a1a5e5d7a07f96336d6203c5e5a4168d118080b5249"
     },
     {
       "source": "wild-web/src/types/scene.ts",
@@ -548,5 +548,6 @@
       "bytes": 4557,
       "sha256": "e8464100a74820667555180a2d0321788ce6a8d6bb96f880c0b3521dc0d0f27b"
     }
-  ]
+  ],
+  "latest_revision": "2026-10-23 界面/参数材质修订；用户保留测试，本轮未执行运行检查"
 }

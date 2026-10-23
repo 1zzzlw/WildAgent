@@ -37,5 +37,26 @@
     "model_assets": "不采用GLB/GLTF；以参数化几何和紧凑复用增强表达",
     "runtime_retested": false,
     "previous_runtime_evidence": "以上portable_core及application_results为前一轮执行结果；本轮仅核对文档、资料包和技能结构"
+  },
+  "current_revision": {
+    "date": "2026-10-23",
+    "scope": "界面与参数材质",
+    "tests_run": false,
+    "build_run": false,
+    "render_run": false,
+    "language_sha256": "ca8c4ac1767382b3aa65767121baf6788ab343bc205ac307945add01c937f315",
+    "archives": [
+      {
+        "path": "docs/10月23日/蓝图文档/蓝图创作包-v3.0.zip",
+        "sha256": "9e2ae673d7a32ef9476bed34da524d0701afa3c35f228b27d1619242c0e97633",
+        "files": 264
+      },
+      {
+        "path": "docs/10月23日/蓝图技能/wild-blueprint-authoring.zip",
+        "sha256": "43da55c4537a53c6b3b3b8fcf32ebb4885ee225ccef305eba02b52c78c59046c",
+        "files": 270
+      }
+    ],
+    "note": "当前文件与归档已更新；旧ok/runtime/hash字段仅代表之前各轮，新增实现待用户验收"
   }
 }

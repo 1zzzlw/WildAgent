@@ -9,7 +9,7 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { CameraPresetId, EnvironmentPresetId, QualityLevel, TimeOfDay, ViewMode } from '../renderer/defaultWorldLook'
+import { CAMERA_ORDER, type CameraPresetId, type EnvironmentPresetId, type QualityLevel, type TimeOfDay, type ViewMode } from '../renderer/defaultWorldLook'
 
 export type RenderPresetRequest =
   | { type: 'camera'; value: CameraPresetId }
@@ -68,19 +68,6 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const showEdges = ref(false)
   /** 网格地面（编辑器模式下的 gridHelper；展示模式恒隐藏）。 */
   const showGrid = ref(true)
-  const waterAnimated = ref(true)
-  const waterReflections = ref(true)
-  try { waterReflections.value = localStorage.getItem('wild_water_reflections') !== 'false' } catch { /* 默认启用精细档反射。 */ }
-  try { waterAnimated.value = localStorage.getItem('wild_water_animated') !== 'false' } catch { /* 默认动态水面。 */ }
-  const waterPreferences = { transparency: 1, waveStrength: 0.65 }
-  try {
-    const saved = JSON.parse(localStorage.getItem('wild_water_appearance_v1') || '{}')
-    for (const key of ['transparency', 'waveStrength'] as const) {
-      if (typeof saved[key] === 'number' && Number.isFinite(saved[key])) waterPreferences[key] = Math.max(0, Math.min(1, saved[key]))
-    }
-  } catch { /* 使用默认水面外观。 */ }
-  const waterTransparency = ref(waterPreferences.transparency)
-  const waterWaveStrength = ref(waterPreferences.waveStrength)
   const sceneDimensions = ref({ width: 0, depth: 0, gridSize: 16, gridStep: 1 })
   /** 相机自动旋转（OrbitControls.autoRotate）。 */
   const autoRotate = ref(false)
@@ -98,6 +85,12 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   const sectionEnabled = ref(false)
   const sectionHeight = ref(3.5)
 
+  function requestNextCamera() {
+    const index = CAMERA_ORDER.indexOf(presets.value.camera as CameraPresetId)
+    const value = CAMERA_ORDER[(index + 1) % CAMERA_ORDER.length]!
+    presets.value.camera = value
+    requestPreset({ type: 'camera', value })
+  }
   function requestFrameSelection() { frameSelectionNonce.value += 1 }
   function requestPreset(request: RenderPresetRequest) { presetRequest.value = { ...request } }
 
@@ -116,10 +109,6 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     collapsed,
     showEdges,
     showGrid,
-    waterAnimated,
-    waterReflections,
-    waterTransparency,
-    waterWaveStrength,
     sceneDimensions,
     autoRotate,
     autoRotateSpeed,
@@ -131,6 +120,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     sectionEnabled,
     sectionHeight,
     requestFrameSelection,
+    requestNextCamera,
     requestPreset,
     stats,
     requestResetView,
