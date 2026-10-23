@@ -1,0 +1,190 @@
+{
+  "date": "2026-10-23",
+  "cases": [
+    {
+      "name": "澜庭雅墅",
+      "bytes": 133180,
+      "sha256": "4bddfb380be17ab4b4e3ac51a074ae7e1b27a42776fd39bc5ede9f1a592a7fd4",
+      "elements": 582,
+      "components": 34,
+      "materials": 22,
+      "manifests": [
+        {
+          "path": "05-效果图/参考近景/render_manifest.json",
+          "inputSha256": "4bddfb380be17ab4b4e3ac51a074ae7e1b27a42776fd39bc5ede9f1a592a7fd4",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1057,
+          "time": "day",
+          "views": [
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/白天/render_manifest.json",
+          "inputSha256": "4bddfb380be17ab4b4e3ac51a074ae7e1b27a42776fd39bc5ede9f1a592a7fd4",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1057,
+          "time": "day",
+          "views": [
+            "front",
+            "side",
+            "top",
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/黄昏/render_manifest.json",
+          "inputSha256": "4bddfb380be17ab4b4e3ac51a074ae7e1b27a42776fd39bc5ede9f1a592a7fd4",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1057,
+          "time": "sunset",
+          "views": [
+            "perspective"
+          ]
+        }
+      ],
+      "scope": "真实出图过程的原始Schema解析、组件编译、网格重建与材质映射；最终文件hash与出图输入一致",
+      "reviewed_views": [
+        "白天主要正面/透视",
+        "参考近景",
+        "黄昏近景"
+      ],
+      "not_performed": [
+        "前端测试/构建",
+        "完整后端/新模型生成",
+        "全碰撞/通达性/工程验收",
+        "多模型盲测"
+      ]
+    },
+    {
+      "name": "晴岚露台居",
+      "bytes": 104975,
+      "sha256": "a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0",
+      "elements": 477,
+      "components": 28,
+      "materials": 22,
+      "manifests": [
+        {
+          "path": "05-效果图/参考近景/render_manifest.json",
+          "inputSha256": "a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 847,
+          "time": "day",
+          "views": [
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/白天/render_manifest.json",
+          "inputSha256": "a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 847,
+          "time": "day",
+          "views": [
+            "front",
+            "side",
+            "top",
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/黄昏/render_manifest.json",
+          "inputSha256": "a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 847,
+          "time": "sunset",
+          "views": [
+            "perspective"
+          ]
+        }
+      ],
+      "scope": "真实出图过程的原始Schema解析、组件编译、网格重建与材质映射；最终文件hash与出图输入一致",
+      "reviewed_views": [
+        "白天主要正面/透视",
+        "参考近景",
+        "黄昏近景"
+      ],
+      "not_performed": [
+        "前端测试/构建",
+        "完整后端/新模型生成",
+        "全碰撞/通达性/工程验收",
+        "多模型盲测"
+      ]
+    },
+    {
+      "name": "听澜小院",
+      "bytes": 273501,
+      "sha256": "dee3f9cddf729eab236f3fef41a6ff295e2e0e7cf6cb9353f6be5e7f26a5fa39",
+      "elements": 899,
+      "components": 38,
+      "materials": 22,
+      "manifests": [
+        {
+          "path": "05-效果图/参考近景/render_manifest.json",
+          "inputSha256": "dee3f9cddf729eab236f3fef41a6ff295e2e0e7cf6cb9353f6be5e7f26a5fa39",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1415,
+          "time": "day",
+          "views": [
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/白天/render_manifest.json",
+          "inputSha256": "dee3f9cddf729eab236f3fef41a6ff295e2e0e7cf6cb9353f6be5e7f26a5fa39",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1415,
+          "time": "day",
+          "views": [
+            "front",
+            "side",
+            "top",
+            "perspective"
+          ]
+        },
+        {
+          "path": "05-效果图/黄昏/render_manifest.json",
+          "inputSha256": "dee3f9cddf729eab236f3fef41a6ff295e2e0e7cf6cb9353f6be5e7f26a5fa39",
+          "compileErrors": 0,
+          "reconstructErrors": 0,
+          "unmappedMaterials": 0,
+          "meshCount": 1415,
+          "time": "sunset",
+          "views": [
+            "perspective"
+          ]
+        }
+      ],
+      "scope": "真实出图过程的原始Schema解析、组件编译、网格重建与材质映射；最终文件hash与出图输入一致",
+      "reviewed_views": [
+        "白天主要正面/透视",
+        "参考近景",
+        "黄昏近景"
+      ],
+      "not_performed": [
+        "前端测试/构建",
+        "完整后端/新模型生成",
+        "全碰撞/通达性/工程验收",
+        "多模型盲测"
+      ]
+    }
+  ],
+  "method": "先设计输入，再Python标准库作者展开，现有Core与Three/Chromium出图后看图修订；无GLB/图片网格资产，无Agent/RAG/模型API",
+  "software_tests_run": false
+}

@@ -30,3 +30,8 @@ dist/
 .workbuddy/
 .gstack/
 docs-dev/
+deliveries/
+.freebuff/
+.playwright-mcp/
+.pytest_cache/
+.ruff_cache/

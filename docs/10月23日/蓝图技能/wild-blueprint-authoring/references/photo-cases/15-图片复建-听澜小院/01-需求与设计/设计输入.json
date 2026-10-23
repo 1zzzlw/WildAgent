@@ -1,0 +1,57 @@
+{
+  "format": "wild-author-plan/1",
+  "name": "听澜小院",
+  "reference": {
+    "source": "用户本轮附图，按上传顺序对应第3张",
+    "observed": [
+      "白墙灰瓦、木色窗框和回纹栏杆",
+      "后部两层主屋、左侧低层露台和亭子",
+      "前部低墙、带瓦顶双扇院门、围合庭院",
+      "叠层曲面屋顶/脊饰、廊柱、桌椅、盆景与花带；保持可使用的中庭"
+    ],
+    "inferred": "除第一图可读平面尺寸外，其余尺寸、背立面、室内和楼梯为按比例推定补全；不是测绘复原",
+    "orientation": "观察者左侧露台/车库映射到最终正面图左侧；源坐标镜像变换，文字保持可读，不用负缩放"
+  },
+  "site": {
+    "width": 22,
+    "depth": 28,
+    "note": "不含南侧2米道路；与作者实际场地范围一致"
+  },
+  "massing": {
+    "width": 15,
+    "depth": 18,
+    "floors": 2,
+    "floor_height": 3.35,
+    "ground_finish": 0.45,
+    "upper_finish": 3.8
+  },
+  "parameters": {
+    "kind": "courtyard",
+    "rear_front": 6,
+    "rear_back": 14,
+    "roof_eave": 7.15,
+    "roof_rise": 1.65,
+    "court": [
+      -6,
+      -2.8,
+      6,
+      6
+    ],
+    "gate_z": -3.6,
+    "mirror_x_for_image": true
+  },
+  "spatial_program": [
+    "一层主屋客餐厨/客卧、侧部服务空间与通行廊",
+    "二层卧室/书房与露台，独立楼梯连通",
+    "前庭院门—庭院—门廊—主屋入口连续可走"
+  ],
+  "construction": [
+    "原生墙/楼板/组件开洞，家具与景观由参数原语生成",
+    "屋面瓦垄和横缝从实际屋面高程派生；檐口/封边/柱础分别表达",
+    "楼梯显式步数与尺寸链，上层地板真实留孔；无GLB/图片/内嵌网格",
+    "招牌名称写入label.text；灯具包含真实lightSource"
+  ],
+  "delivery": "UTF-8紧凑WILD；作者脚本可重放；过程与效果图另存",
+  "validation_boundary": "前端软件测试由用户执行；本批仅按建筑交付执行编译/出图与看图修订，分别记录",
+  "revision": 2
+}

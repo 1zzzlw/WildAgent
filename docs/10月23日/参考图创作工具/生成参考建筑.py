@@ -39,6 +39,7 @@ class Author:
         ]:
             self.materials[name] = dict(baseColor=color,roughness=rough,metallic=metal,albedo=1,lightingCondition='D65_noon')
         self.materials['glass'] = dict(baseColor=[.86,.94,.97],roughness=.07,metallic=0,albedo=1,lightingCondition='D65_noon',materialClass='glass',surfaceFamily='glass',transmission=.92,ior=1.5,thickness=.012)
+        self.materials['frosted'] = {**self.materials['glass'],'roughness':.42,'transmission':.84}
         self.materials['oak'].update(surfaceFamily='wood',surfacePattern='planks',clearcoat=.12,clearcoatRoughness=.32)
         self.materials['quartz'] = dict(baseColor=[.88,.86,.80],roughness=.24,metallic=0,albedo=1,lightingCondition='D65_noon',surfaceFamily='mineral',surfacePattern='quartz',materialClass='clearcoat',clearcoat=.2,clearcoatRoughness=.18)
         self.materials['glow'] = dict(baseColor=[1,.81,.48],roughness=.45,metallic=0,albedo=1,lightingCondition='D65_noon',emissive=[1,.61,.22],emissiveIntensity=1.7)
@@ -135,6 +136,17 @@ class Author:
     def shrub(self,x,z,r=.6,mat='leaf',y=.15):
         self.sphere(x,y+r*.65,z,r,mat,[1,.78,1])
 
+    def palm(self,x,y,z):
+        self.cyl(x,y+.18,z,.27,.36,'pot',.33)
+        for k in range(11):
+            angle=2*PI*k/11; reach=.65+.13*(k%3)
+            end=[x+math.cos(angle)*reach,y+.7+(.1*(k%2)),z+math.sin(angle)*reach]
+            self.rod([x,y+.4,z],end,.025,'leaf')
+            self.box(end[0],end[1],end[2],.17,.025,.64,'leaf_light',rotation=[.3,PI/2-angle,.1])
+
+    def ceiling_light(self,x,y,z):
+        self.box(x,y,z,.55,.07,.55,'glow',lightSource=dict(intensity=22,distance=5,initiallyOn=True,offset=[0,-.12,0],color=[1,.83,.57]))
+
     def bed(self,x1,z1,x2,z2,flowers=False):
         self.box((x1+x2)/2,.12,(z1+z2)/2,x2-x1,.24,z2-z1,'stone')
         self.box((x1+x2)/2,.26,(z1+z2)/2,x2-x1-.14,.05,z2-z1-.14,'soil')
@@ -175,6 +187,18 @@ class Author:
         self.box(x-.7,y+.95,z,.5,.025,.4,'dark')
         self.box(x,y+1.9,z,w,.65,.38,'wood')
 
+    def bathroom(self,x,y,z):
+        self.box(x-.7,y+.42,z,.7,.84,.5,'wood')
+        self.box(x-.7,y+.86,z,.74,.06,.54,'quartz')
+        self.cyl(x-.7,y+.93,z,.21,.1,'trim')
+        self.box(x-.7,y+1.5,z+.28,.66,.65,.035,'glass')
+        self.cyl(x+.5,y+.18,z,.2,.36,'trim')
+        self.sphere(x+.5,y+.4,z-.08,.27,'trim',[.9,.3,1.25])
+        self.box(x+.5,y+.57,z+.2,.4,.55,.15,'trim')
+        self.box(x,y+.02,z+1,.95,.04,.9,'stone')
+        self.box(x+.47,y+1,z+1,.02,1.9,.9,'frosted')
+        self.rod([x,y+1.1,z+1.4],[x,y+2.1,z+1.4],.014,'metal')
+
     def stairs(self,x,z,lower,upper):
         # U stair: two 1.1m flights, central landing, top return; true slab opening recorded below.
         half=(upper-lower)/2; n=10; run=2.8
@@ -202,8 +226,9 @@ class Author:
                 if abs(z-cz)>max(0,(d-w)/2): continue
                 self.sweep([[cx+sign*(w/2-t*w/2),top(cx+sign*(w/2-t*w/2),z)+.01,z] for t in (0,.25,.5,.75,1)],.017)
         # Horizontal courses on all four roof faces.
-        for k in range(1,7):
-            inset=r*k/7
+        courses=max(3,round(r/.3))
+        for k in range(1,courses):
+            inset=r*k/courses
             x1,x2=cx-w/2+inset,cx+w/2-inset;z1,z2=cz-d/2+inset,cz+d/2-inset
             self.sweep([[x1,top(x1,z1)+.006,z1],[x2,top(x2,z1)+.006,z1],[x2,top(x2,z2)+.006,z2],[x1,top(x1,z2)+.006,z2],[x1,top(x1,z1)+.006,z1]],.012,'roof')
         for ax,az in [(-1,-1),(1,-1),(-1,1),(1,1)]:
@@ -252,6 +277,29 @@ class Author:
         for z in (-8,-6,-4,-2): self.box(0,.006,z,21.6,.008,.015,'stone')
 
     def output(self):
+        if self.plan['parameters'].get('mirror_x_for_image'):
+            # Reflect design coordinates, not renderer scale: text remains readable and source data stays editable.
+            for row in self.e:
+                if row['type']=='floor' and 'to' in row:
+                    x1,x2=row['from'][0],row['to'][0]
+                    row['from'][0],row['to'][0]=-x2,-x1
+                else:
+                    for field in ('from','to','position','base','origin'):
+                        if field in row: row[field][0]*=-1
+                if 'path' in row:
+                    for point in row['path']: point[0]*=-1
+                if 'profile' in row:
+                    for point in row['profile']: point[0]*=-1
+                if 'polygon' in row:
+                    for point in row['polygon']: point[0]*=-1
+                    for hole in row.get('holes',[]):
+                        for point in hole: point[0]*=-1
+                if 'rotation' in row:
+                    row['rotation'][1]*=-1; row['rotation'][2]*=-1
+            for row in self.c:
+                if 'parentWall' in row: row['from'][2]*=-1
+                elif 'path' in row:
+                    for point in row['path']: point[0]*=-1
         return clean(dict(meta=dict(version='1.1',type='building',name=self.plan['name'],author='Codex',style=self.plan['parameters']['kind']),
                           geometry=dict(elements=self.e,components=self.c),materials=self.materials))
 
@@ -281,6 +329,10 @@ def classical(a):
         for x in (-3.25,3.25):
             wall=a.wall(p+'_partition_'+str(int(x*100)).replace('-','n'),x,4,x,12.85,y,3.15,th=.14)
             a.opening(wall,x,6,y,1,2.15,True)
+        for z in (4,7.5): a.wall(p+'_bath_'+str(z).replace('.','_'),3.25,z,6.62,z,y,3.15,th=.14)
+        a.bathroom(4.9,y,5.1)
+        a.wall(p+'_west_rooms',-6.62,7.2,-3.25,7.2,y,3.15,th=.14)
+        a.opening(p+'_west_rooms',-4.2,7.2,y,1,2.15,True)
     a.floor_with_stair('upper_floor',-6.75,0,6.75,13,u,3.95,8.1)
     a.slab('terrace',-4.6,-.65,4.6,2.6,u,.24)
     # Porch columns, carved bases and capitals are separate construction layers.
@@ -292,7 +344,8 @@ def classical(a):
     # A shallow arch soffit follows the reference without placing a solid wall behind it.
     xs=[-3.65+i*7.3/32 for i in range(33)]
     arch=[[x,3.23+.24*(1-(x/3.65)**2),-.23] for x in xs]
-    a.sweep(arch,.06,'trim')
+    profile=[[-3.65,3.5],[3.65,3.5]]+[[x,y] for x,y,_ in reversed(arch)]
+    a.add('primitive',shape='profile_sweep',position=[0,0,0],path=[[0,0,-.38],[0,0,-.1]],profile=profile,closedProfile=True,caps=True,material='trim')
     a.rail([[-4.4,u,-.48],[4.4,u,-.48],[4.4,u,2.35]])
     a.rail([[-4.4,u,-.48],[-4.4,u,2.35]])
     for x in (-4.4,4.4):
@@ -303,6 +356,10 @@ def classical(a):
         for z in (.08,12.9):
             a.box(x,3.85,z,.32,6.8,.3)
             for y in (3.5,6.9,7.03): a.box(x,y,z,.47,.12,.46)
+    for y,t,projection in [(6.99,.1,.12),(7.1,.12,.24),(7.24,.1,.38)]:
+        for x1,x2,z in [(-6.8,-3.7,0),(-3.8,3.8,2.6),(3.7,6.8,0),(-6.8,6.8,13)]:
+            a.box((x1+x2)/2,y,z,x2-x1,t,projection,'trim')
+        for x in (-6.75,6.75): a.box(x,y,6.5,projection,t,13.2,'trim')
     a.hip('roof_main',0,7.7,14.35,11.5,7.35,1.9)
     for x in (-5.13,5.13): a.hip('roof_front_'+str(x),x,.95,4.1,3.4,7.35,1.05)
     a.steps(0,-2.35,6.7)
@@ -312,6 +369,10 @@ def classical(a):
     for x,z in [(-4.8,4.5),(-4.8,10),(0,10.5)]: a.bedroom(x,u,z)
     a.lounge(.1,u,6)
     for x in (-2.8,2.8): a.pot(x,u,.2,.8)
+    for x in (-2.8,2.8): a.furniture('chair',x,f,1.25,.66,.75,.98,'wood')
+    for x in (-3.7,3.7): a.palm(x,f,-.75)
+    for y in (3.35,6.75):
+        for x,z in [(-5,3),(0,5.5),(5,3)]: a.ceiling_light(x,y,z)
     for x in (-8.3,8.3): a.bed(x-.8,-3,x+.8,10,True)
     for x in (-4.7,4.7): a.bed(x-1,-4.5,x+1,-2)
     a.sign(2.65,1.6,2.39,a.plan['name'])
@@ -330,6 +391,10 @@ def terrace(a):
         for x in (-4.7,0,4.7): a.opening(p+'_back',x,11,y+.85,1.8,1.8)
         wall=a.wall(p+'_divide',-.9,4,-.9,10.8,y,3.12,th=.14)
         a.opening(wall,-.9,6,y,1,2.2,True)
+        a.wall(p+'_bath_front',-.8,8,3,8,y,3.12,th=.14)
+        a.opening(p+'_bath_front',1.3,8,y,1,2.15,True)
+        a.wall(p+'_bath_side',3,8,3,10.8,y,3.12,th=.14)
+        a.bathroom(1,y,9)
     a.floor_with_stair('upper_floor',-7,1,7,11,u,3.8,6.8)
     a.slab('terrace_front',-7.1,-1.1,7.1,1.1,u,.25)
     a.slab('terrace_garage',-7.1,-3.2,-1.1,-1.1,u,.25)
@@ -344,7 +409,7 @@ def terrace(a):
     a.box(5.4,9.32,8.1,.61,.12,.72,'metal')
     a.stairs(3.8,6.8,f,u)
     a.lounge(3,f,4.7);a.kitchen(-4.8,f,10.35,3.6);a.dining(-4.8,f,7.4)
-    a.bedroom(-4.6,u,7.5);a.bedroom(.2,u,7.9)
+    a.bedroom(-4.6,u,7.5);a.bedroom(.2,u,4.9)
     a.furniture('table',4.7,u,3.7,1.6,.7,.75,'wood');a.furniture('chair',4.7,u,4.6,.5,.6,.9,'fabric')
     a.furniture('table',-4.6,u,-1.75,1.6,.8,.73,'oak')
     for z in (-2.6,-.7):
@@ -352,6 +417,8 @@ def terrace(a):
     for x in (-6.2,6): a.pot(x,u,-.6,.75,True)
     for x in (-6.4,-2.45,2.4,6.4):
         a.lamp(x,2.65,.8);a.lamp(x,5.9,.8)
+    for y in (3.35,6.7):
+        for x,z in [(-4.7,4),(0,4),(4.7,4)]: a.ceiling_light(x,y,z)
     a.steps(1.5,-2.0,4.1)
     a.bed(7.6,-6,9.6,11,True)
     a.bed(-9.6,-3,-7.8,10,True)
@@ -359,9 +426,19 @@ def terrace(a):
     a.shrub(6,-5.5,.95);a.shrub(4.5,-6.6,.55)
     for z in range(-6,12,2): a.box(8,.3,z,1.25,.1,1.25,'stone')
     # Small procedural car as scale cue; it is not a downloaded model.
-    a.box(-2,.61,-5.8,1.8,.5,3.7,'stone')
-    a.box(-2,1.07,-5.5,1.55,.43,1.9,'glass')
-    a.box(-2,1.32,-5.5,1.55,.08,1.9,'metal')
+    a.add('primitive',shape='profile_sweep',position=[0,0,0],path=[[-2,.2,-7.65],[-2,.2,-3.95]],
+          profile=[[-.78,0],[.78,0],[.9,.12],[.9,.38],[.74,.56],[-.74,.56],[-.9,.38],[-.9,.12]],closedProfile=True,caps=True,material='stone')
+    a.box(-2,1.03,-5.5,1.48,.48,1.65,'glass')
+    a.box(-2,1.3,-5.5,1.44,.08,1.6,'stone')
+    a.box(-2,.92,-6.45,1.43,.48,.045,'glass',rotation=[-.45,0,0])
+    a.box(-2,.92,-4.56,1.43,.48,.045,'glass',rotation=[.45,0,0])
+    for x in (-2.76,-1.24):
+        a.rod([x,.8,-6.35],[x,1.28,-6.16],.035,'metal')
+        a.rod([x,.8,-4.65],[x,1.28,-4.79],.035,'metal')
+        a.box(x,.98,-5.5,.04,.52,.04,'metal')
+    for x in (-2.58,-1.42): a.box(x,.64,-7.67,.32,.09,.035,'glow')
+    for x in (-2.92,-1.08):
+        a.box(x,.85,-6.25,.17,.12,.24,'metal')
     for x in (-2.92,-1.08):
         for z in (-6.9,-4.7): a.cyl(x,.4,z,.32,.17,'dark')['rotation']=[0,0,PI/2]
     a.sign(.5,1.6,.8,a.plan['name'])
@@ -387,6 +464,12 @@ def courtyard(a):
     a.shell('side',-7,-1.4,-2.5,6,f,3.12)
     a.opening('side_right',-2.5,2,f,1.6,2.35,True,style='wood')
     a.opening('side_front',-4.75,-1.4,f+.7,1.7,1.8,style='wood')
+    a.wall('side_bath',-6.85,.8,-2.6,.8,f,3.12,th=.14)
+    a.opening('side_bath',-3.5,.8,f,.9,2.15,True,style='wood')
+    a.bathroom(-5.5,f,-.35)
+    a.wall('upper_bath',2.65,8.2,6.85,8.2,u,3.12,th=.14)
+    a.opening('upper_bath',3.3,8.2,u,.9,2.15,True,style='wood')
+    a.bathroom(4.7,u,6.8)
     a.slab('side_terrace',-7.2,-1.6,-2.3,6,u,.22)
     a.rail([[-7.05,u,5.8],[-7.05,u,-1.45],[-2.45,u,-1.45],[-2.45,u,3.8]],wood=True)
     # Pavilion at the back of the side terrace leaves the front seating open.
@@ -433,6 +516,8 @@ def courtyard(a):
     a.bed(8,-3,9.4,14,True);a.bed(-9.3,-2,-8,13,True)
     for x in (-2,2): a.lamp(x,2.0,-3.85)
     for x in (-5,5): a.lamp(x,5.95,5.8)
+    for y in (3.3,6.7):
+        for x in (-4.5,0,4.5): a.ceiling_light(x,y,9)
     a.sign(0,2.72,-4.18,a.plan['name'])
 
 

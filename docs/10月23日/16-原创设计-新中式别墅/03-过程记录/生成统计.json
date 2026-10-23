@@ -1,0 +1,11 @@
+{
+  "name": "砚溪别院",
+  "wild": "砚溪别院.wild",
+  "bytes": 176826,
+  "sha256": "cd36e665f5c64a19d7fb95e31c902f715b6d095f708204c3aa31dac9024ab26e",
+  "elements": 1069,
+  "components": 40,
+  "materials": 35,
+  "method": "手工设计事实 → Python 标准库确定性几何展开 → 自足 WILD；未调用模型 API/RAG/外部资产",
+  "validation": "本统计仅为写出结果；编译、项目校验与真实出图另记"
+}

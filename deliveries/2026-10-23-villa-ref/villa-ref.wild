@@ -51,7 +51,7 @@
     "to": [
      10.45,
      -0.05,
-     0.0
+     -0.12
     ],
     "thickness": 0.5,
     "material": "stone"
@@ -131,7 +131,7 @@
     "to": [
      10.5,
      3.55,
-     0.0
+     -0.12
     ],
     "thickness": 0.2,
     "material": "stone"
@@ -1478,7 +1478,7 @@
     ],
     "span": 15.0,
     "depth": 10.2,
-    "height": 1.92,
+    "height": 2.05,
     "thickness": 0.2,
     "material": "roof_dark"
    },
@@ -1493,7 +1493,7 @@
     ],
     "span": 15.0,
     "depth": 9.6,
-    "height": 2.38,
+    "height": 2.28,
     "thickness": 0.2,
     "material": "roof_dark"
    },
@@ -1503,13 +1503,13 @@
     "shape": "box",
     "position": [
      6.75,
-     6.77,
-     -0.24
+     6.75,
+     -0.3
     ],
     "dimensions": [
-     13.94,
-     0.26,
-     0.4
+     14.7,
+     0.3,
+     0.6
     ],
     "material": "trim"
    },
@@ -1519,13 +1519,13 @@
     "shape": "box",
     "position": [
      6.75,
-     6.77,
-     15.24
+     6.75,
+     15.3
     ],
     "dimensions": [
-     13.94,
-     0.26,
-     0.4
+     14.7,
+     0.3,
+     0.6
     ],
     "material": "trim"
    },
@@ -1534,14 +1534,14 @@
     "id": "cornice_west",
     "shape": "box",
     "position": [
-     -0.24,
-     6.77,
+     -0.3,
+     6.75,
      7.5
     ],
     "dimensions": [
-     0.4,
-     0.26,
-     15.4
+     0.6,
+     0.3,
+     15.0
     ],
     "material": "trim"
    },
@@ -1550,14 +1550,14 @@
     "id": "cornice_east",
     "shape": "box",
     "position": [
-     13.74,
-     6.77,
+     13.8,
+     6.75,
      7.5
     ],
     "dimensions": [
-     0.4,
-     0.26,
-     15.4
+     0.6,
+     0.3,
+     15.0
     ],
     "material": "trim"
    },
@@ -1624,6 +1624,25 @@
      15.24
     ],
     "material": "trim"
+   },
+   {
+    "type": "stair",
+    "id": "back_steps",
+    "from": [
+     6.45,
+     0.0,
+     16.2
+    ],
+    "to": [
+     6.45,
+     0.45,
+     15.12
+    ],
+    "width": 1.8,
+    "stepCount": 3,
+    "stepHeight": 0.15,
+    "stepDepth": 0.36,
+    "material": "stone_step"
    },
    {
     "type": "primitive",
@@ -2215,9 +2234,9 @@
      -6.2
     ],
     "dimensions": [
-     0.34,
+     0.46,
      2.6,
-     0.34
+     0.46
     ],
     "material": "trim"
    },
@@ -2231,9 +2250,9 @@
      -6.2
     ],
     "dimensions": [
-     0.34,
+     0.46,
      2.6,
-     0.34
+     0.46
     ],
     "material": "trim"
    },
@@ -2247,9 +2266,9 @@
      -6.2
     ],
     "dimensions": [
-     0.44,
-     0.12,
-     0.44
+     0.58,
+     0.14,
+     0.58
     ],
     "material": "trim"
    },
@@ -2263,9 +2282,9 @@
      -6.2
     ],
     "dimensions": [
-     0.44,
-     0.12,
-     0.44
+     0.58,
+     0.14,
+     0.58
     ],
     "material": "trim"
    },
@@ -2274,14 +2293,14 @@
     "id": "gwall_arch_00",
     "shape": "box",
     "position": [
-     -2.4107,
-     1.4494,
+     -2.4008,
+     1.4509,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2295,14 +2314,14 @@
     "id": "gwall_arch_01",
     "shape": "box",
     "position": [
-     -2.4949,
-     1.7362,
+     -2.4858,
+     1.7403,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2316,14 +2335,14 @@
     "id": "gwall_arch_02",
     "shape": "box",
     "position": [
-     -2.6565,
-     1.9876,
+     -2.6489,
+     1.9942,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2337,14 +2356,14 @@
     "id": "gwall_arch_03",
     "shape": "box",
     "position": [
-     -2.8823,
-     2.1833,
+     -2.8769,
+     2.1917,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2358,14 +2377,14 @@
     "id": "gwall_arch_04",
     "shape": "box",
     "position": [
-     -3.1542,
-     2.3075,
+     -3.1514,
+     2.3171,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2380,13 +2399,13 @@
     "shape": "box",
     "position": [
      -3.45,
-     2.35,
+     2.36,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2400,14 +2419,14 @@
     "id": "gwall_arch_06",
     "shape": "box",
     "position": [
-     -3.7458,
-     2.3075,
+     -3.7486,
+     2.3171,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2421,14 +2440,14 @@
     "id": "gwall_arch_07",
     "shape": "box",
     "position": [
-     -4.0177,
-     2.1833,
+     -4.0231,
+     2.1917,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2442,14 +2461,14 @@
     "id": "gwall_arch_08",
     "shape": "box",
     "position": [
-     -4.2435,
-     1.9876,
+     -4.2511,
+     1.9942,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2463,14 +2482,14 @@
     "id": "gwall_arch_09",
     "shape": "box",
     "position": [
-     -4.4051,
-     1.7362,
+     -4.4142,
+     1.7403,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2484,14 +2503,14 @@
     "id": "gwall_arch_10",
     "shape": "box",
     "position": [
-     -4.4893,
-     1.4494,
+     -4.4992,
+     1.4509,
      -6.2
     ],
     "dimensions": [
-     0.3029,
-     0.3,
-     0.32
+     0.3057,
+     0.38,
+     0.44
     ],
     "material": "trim",
     "rotation": [
@@ -2577,11 +2596,11 @@
     "id": "shrub_f5",
     "shape": "sphere",
     "position": [
-     5.3,
-     0.66,
-     -5.6
+     3.9,
+     0.56,
+     -6.1
     ],
-    "radius": 0.66,
+    "radius": 0.56,
     "segments": 14,
     "heightSegments": 9,
     "material": "leaf"
@@ -2591,11 +2610,11 @@
     "id": "shrub_f6",
     "shape": "sphere",
     "position": [
-     8.1,
-     0.6,
-     -5.7
+     9.6,
+     0.58,
+     -6.2
     ],
-    "radius": 0.6,
+    "radius": 0.58,
     "segments": 14,
     "heightSegments": 9,
     "material": "leaf_lite"
@@ -3953,6 +3972,112 @@
      0.8
     ],
     "material": "linen"
+   },
+   {
+    "type": "furniture",
+    "id": "fam_sofa",
+    "subtype": "sofa",
+    "position": [
+     7.5,
+     3.75,
+     2.3
+    ],
+    "dimensions": {
+     "width": 2.2,
+     "depth": 0.9,
+     "height": 0.8
+    },
+    "material": "fabric"
+   },
+   {
+    "type": "furniture",
+    "id": "fam_ctable",
+    "subtype": "table",
+    "position": [
+     7.5,
+     3.75,
+     3.5
+    ],
+    "dimensions": {
+     "width": 1.1,
+     "depth": 0.62,
+     "height": 0.42
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "fam_shelf",
+    "subtype": "bookshelf",
+    "position": [
+     9.3,
+     3.75,
+     4.6
+    ],
+    "dimensions": {
+     "width": 0.4,
+     "depth": 1.8,
+     "height": 1.9
+    },
+    "material": "wood",
+    "rotation": [
+     0.0,
+     -1.570796,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "fam_lamp",
+    "subtype": "lamp",
+    "position": [
+     8.9,
+     3.75,
+     2.4
+    ],
+    "dimensions": {
+     "width": 0.36,
+     "depth": 0.36,
+     "height": 1.55
+    },
+    "material": "linen"
+   },
+   {
+    "type": "furniture",
+    "id": "hall_console",
+    "subtype": "table",
+    "position": [
+     9.78,
+     0.45,
+     2.4
+    ],
+    "dimensions": {
+     "width": 0.42,
+     "depth": 1.3,
+     "height": 0.8
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "hall_bench",
+    "subtype": "chair",
+    "position": [
+     10.1,
+     0.45,
+     4.6
+    ],
+    "dimensions": {
+     "width": 0.5,
+     "depth": 0.52,
+     "height": 0.86
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -1.570796,
+     0.0
+    ]
    }
   ],
   "components": [
@@ -4134,52 +4259,52 @@
    },
    {
     "type": "window",
+    "id": "win_f1_e0",
+    "parentWall": "wall_f1_east",
+    "from": [
+     2.475,
+     1.35,
+     0
+    ],
+    "width": 1.45,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_w0",
+    "parentWall": "wall_f1_west",
+    "from": [
+     11.075,
+     1.35,
+     0
+    ],
+    "width": 1.45,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
     "id": "win_f1_e1",
     "parentWall": "wall_f1_east",
     "from": [
-     3.45,
+     4.475,
      1.35,
      0
     ],
-    "width": 1.5,
-    "height": 1.7,
-    "frameWidth": 0.055,
-    "frameDepth": 0.24,
-    "glassDepth": 0.012,
-    "verticalMullions": 1,
-    "mullionWidth": 0.03,
-    "frameMaterial": "frame_dark",
-    "glassMaterial": "glass"
-   },
-   {
-    "type": "window",
-    "id": "win_f1_e2",
-    "parentWall": "wall_f1_east",
-    "from": [
-     8.85,
-     1.35,
-     0
-    ],
-    "width": 1.5,
-    "height": 1.7,
-    "frameWidth": 0.055,
-    "frameDepth": 0.24,
-    "glassDepth": 0.012,
-    "verticalMullions": 1,
-    "mullionWidth": 0.03,
-    "frameMaterial": "frame_dark",
-    "glassMaterial": "glass"
-   },
-   {
-    "type": "window",
-    "id": "win_f1_e3",
-    "parentWall": "wall_f1_east",
-    "from": [
-     12.6,
-     1.35,
-     0
-    ],
-    "width": 1.2,
+    "width": 1.45,
     "height": 1.7,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4194,11 +4319,30 @@
     "id": "win_f1_w1",
     "parentWall": "wall_f1_west",
     "from": [
-     9.65,
+     9.075,
      1.35,
      0
     ],
-    "width": 1.5,
+    "width": 1.45,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_e2",
+    "parentWall": "wall_f1_east",
+    "from": [
+     9.875,
+     1.35,
+     0
+    ],
+    "width": 1.45,
     "height": 1.7,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4213,11 +4357,49 @@
     "id": "win_f1_w2",
     "parentWall": "wall_f1_west",
     "from": [
-     6.05,
+     3.675,
      1.35,
      0
     ],
-    "width": 1.5,
+    "width": 1.45,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_e3",
+    "parentWall": "wall_f1_east",
+    "from": [
+     12.675,
+     1.35,
+     0
+    ],
+    "width": 1.45,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_w3",
+    "parentWall": "wall_f1_west",
+    "from": [
+     0.875,
+     1.35,
+     0
+    ],
+    "width": 1.45,
     "height": 1.7,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4390,68 +4572,11 @@
     "id": "win_f2_e0",
     "parentWall": "wall_f2_east",
     "from": [
-     2.45,
+     2.475,
      4.6,
      0
     ],
-    "width": 1.3,
-    "height": 1.85,
-    "frameWidth": 0.055,
-    "frameDepth": 0.24,
-    "glassDepth": 0.012,
-    "verticalMullions": 1,
-    "mullionWidth": 0.03,
-    "frameMaterial": "frame_dark",
-    "glassMaterial": "glass"
-   },
-   {
-    "type": "window",
-    "id": "win_f2_e1",
-    "parentWall": "wall_f2_east",
-    "from": [
-     5.95,
-     4.6,
-     0
-    ],
-    "width": 1.3,
-    "height": 1.85,
-    "frameWidth": 0.055,
-    "frameDepth": 0.24,
-    "glassDepth": 0.012,
-    "verticalMullions": 1,
-    "mullionWidth": 0.03,
-    "frameMaterial": "frame_dark",
-    "glassMaterial": "glass"
-   },
-   {
-    "type": "window",
-    "id": "win_f2_e2",
-    "parentWall": "wall_f2_east",
-    "from": [
-     9.65,
-     4.6,
-     0
-    ],
-    "width": 1.3,
-    "height": 1.85,
-    "frameWidth": 0.055,
-    "frameDepth": 0.24,
-    "glassDepth": 0.012,
-    "verticalMullions": 1,
-    "mullionWidth": 0.03,
-    "frameMaterial": "frame_dark",
-    "glassMaterial": "glass"
-   },
-   {
-    "type": "window",
-    "id": "win_f2_e3",
-    "parentWall": "wall_f2_east",
-    "from": [
-     12.65,
-     4.6,
-     0
-    ],
-    "width": 1.3,
+    "width": 1.45,
     "height": 1.85,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4466,11 +4591,30 @@
     "id": "win_f2_w0",
     "parentWall": "wall_f2_west",
     "from": [
-     11.95,
+     11.075,
      4.6,
      0
     ],
-    "width": 1.3,
+    "width": 1.45,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e1",
+    "parentWall": "wall_f2_east",
+    "from": [
+     4.475,
+     4.6,
+     0
+    ],
+    "width": 1.45,
     "height": 1.85,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4485,11 +4629,30 @@
     "id": "win_f2_w1",
     "parentWall": "wall_f2_west",
     "from": [
-     8.75,
+     9.075,
      4.6,
      0
     ],
-    "width": 1.3,
+    "width": 1.45,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e2",
+    "parentWall": "wall_f2_east",
+    "from": [
+     9.875,
+     4.6,
+     0
+    ],
+    "width": 1.45,
     "height": 1.85,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4504,11 +4667,30 @@
     "id": "win_f2_w2",
     "parentWall": "wall_f2_west",
     "from": [
-     5.05,
+     3.675,
      4.6,
      0
     ],
-    "width": 1.3,
+    "width": 1.45,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e3",
+    "parentWall": "wall_f2_east",
+    "from": [
+     12.675,
+     4.6,
+     0
+    ],
+    "width": 1.45,
     "height": 1.85,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4523,11 +4705,11 @@
     "id": "win_f2_w3",
     "parentWall": "wall_f2_west",
     "from": [
-     1.45,
+     0.875,
      4.6,
      0
     ],
-    "width": 1.3,
+    "width": 1.45,
     "height": 1.85,
     "frameWidth": 0.055,
     "frameDepth": 0.24,
@@ -4542,7 +4724,7 @@
     "id": "win_f2_b0",
     "parentWall": "wall_f2_back",
     "from": [
-     10.125,
+     9.625,
      4.6,
      0
     ],
@@ -4580,7 +4762,7 @@
     "id": "win_f2_b2",
     "parentWall": "wall_f2_back",
     "from": [
-     1.825,
+     2.925,
      4.6,
      0
     ],

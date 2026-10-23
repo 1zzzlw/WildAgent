@@ -219,14 +219,14 @@ slab("site", -6.0, 19.5, -12.0, 21.0, SITE_TOP - 0.12, 0.12, "paving")
 
 # ── 2. 楼板 ─────────────────────────────────────────────
 slab("floor_f1", X0 - 0.12, X1 + 0.12, Z0 - 0.12, Z1 + 0.12, SITE_TOP - 0.05, F1 - SITE_TOP + 0.05, "stone")
-slab("porch_slab", P_X0, P_X1, P_Z0, P_Z1, SITE_TOP - 0.05, F1 - SITE_TOP + 0.05, "stone")
+slab("porch_slab", P_X0, P_X1, P_Z0, Z0 - T_EXT / 2, SITE_TOP - 0.05, F1 - SITE_TOP + 0.05, "stone")
 # 二层板：绕楼梯井 (X 10.55~13.35, Z 9.9~14.2) 拆四片
 slab("floor_f2_a", X0 - 0.12, ST_X0, Z0 - 0.12, Z1 + 0.12, SLAB2_BOT, T2, "stone")
 slab("floor_f2_b", ST_X0, X1 + 0.12, Z0 - 0.12, ST_Z0, SLAB2_BOT, T2, "stone")
 slab("floor_f2_c", ST_X0, X1 + 0.12, ST_Z1, Z1 + 0.12, SLAB2_BOT, T2, "stone")
 slab("floor_f2_d", ST_X1, X1 + 0.12, ST_Z0, ST_Z1, SLAB2_BOT, T2, "stone")
 # 露台板（门廊顶）
-slab("terrace_slab", P_X0 - 0.05, P_X1 + 0.05, P_Z0 - 0.05, P_Z1, SLAB2_BOT, T2, "stone")
+slab("terrace_slab", P_X0 - 0.05, P_X1 + 0.05, P_Z0 - 0.05, Z0 - T_EXT / 2, SLAB2_BOT, T2, "stone")
 # 楼梯平台
 slab("stair_land", ST_X0, ST_X1, 12.70, ST_Z1, LAND_TOP - 0.20, 0.20, "stone")
 
@@ -357,8 +357,8 @@ for tag, x0, x1 in (("l", 0.85, 2.75), ("r", 10.75, 12.65)):
 span = (X1 - X0) + EAVE_OV * 2
 cx_roof = (X0 + X1) / 2
 # 前后两片四坡屋面搭接：脊线平行于正立面，接缝处形成天沟（参考图的两段屋面）
-ROOF_FRONT_D, ROOF_FRONT_H = 10.20, 1.92
-ROOF_REAR_D, ROOF_REAR_H = 9.60, 2.38
+ROOF_FRONT_D, ROOF_FRONT_H = 10.20, 2.05
+ROOF_REAR_D, ROOF_REAR_H = 9.60, 2.28
 rf_cz = (Z0 - EAVE_OV_FRONT + (Z0 - EAVE_OV_FRONT) + ROOF_FRONT_D) / 2
 rr_cz = (Z1 + EAVE_OV - ROOF_REAR_D) + ROOF_REAR_D / 2
 add({"type": "roof", "id": "roof_front", "roofType": "hip",
@@ -371,18 +371,25 @@ add({"type": "roof", "id": "roof_rear", "roofType": "hip",
      "thickness": r(ROOF_T), "material": "roof_dark"})
 ROOF_RIDGE_TOP = WALL_TOP2 + max(ROOF_FRONT_H, ROOF_REAR_H)
 
-# 檐口（白）：绕外墙外皮一周
-CE_Y0, CE_Y1 = WALL_TOP2 - 0.26, WALL_TOP2
-box("cornice_front", cx_roof, (CE_Y0 + CE_Y1) / 2, Z0 - 0.24, (X1 - X0) + 0.44, CE_Y1 - CE_Y0, 0.40, "trim")
-box("cornice_back", cx_roof, (CE_Y0 + CE_Y1) / 2, Z1 + 0.24, (X1 - X0) + 0.44, CE_Y1 - CE_Y0, 0.40, "trim")
-box("cornice_west", X0 - 0.24, (CE_Y0 + CE_Y1) / 2, (Z0 + Z1) / 2, 0.40, CE_Y1 - CE_Y0, (Z1 - Z0) + 0.40, "trim")
-box("cornice_east", X1 + 0.24, (CE_Y0 + CE_Y1) / 2, (Z0 + Z1) / 2, 0.40, CE_Y1 - CE_Y0, (Z1 - Z0) + 0.40, "trim")
+# 檐口（白）：深挑檐下的平顶檐板，从墙外皮一直挑到接近屋面檐口
+CE_Y0, CE_Y1 = WALL_TOP2 - 0.30, WALL_TOP2
+CE_OUT = 0.60                      # 檐板挑出深度（自墙轴线起算）
+box("cornice_front", cx_roof, (CE_Y0 + CE_Y1) / 2, Z0 - CE_OUT / 2,
+    (X1 - X0) + CE_OUT * 2, CE_Y1 - CE_Y0, CE_OUT, "trim")
+box("cornice_back", cx_roof, (CE_Y0 + CE_Y1) / 2, Z1 + CE_OUT / 2,
+    (X1 - X0) + CE_OUT * 2, CE_Y1 - CE_Y0, CE_OUT, "trim")
+box("cornice_west", X0 - CE_OUT / 2, (CE_Y0 + CE_Y1) / 2, (Z0 + Z1) / 2,
+    CE_OUT, CE_Y1 - CE_Y0, (Z1 - Z0), "trim")
+box("cornice_east", X1 + CE_OUT / 2, (CE_Y0 + CE_Y1) / 2, (Z0 + Z1) / 2,
+    CE_OUT, CE_Y1 - CE_Y0, (Z1 - Z0), "trim")
 # 二层楼板腰线
 BD_Y0, BD_Y1 = SLAB2_BOT + 0.02, F2
 box("band_front", cx_roof, (BD_Y0 + BD_Y1) / 2, Z0 - 0.15, (X1 - X0) + 0.28, BD_Y1 - BD_Y0, 0.24, "trim")
 box("band_back", cx_roof, (BD_Y0 + BD_Y1) / 2, Z1 + 0.15, (X1 - X0) + 0.28, BD_Y1 - BD_Y0, 0.24, "trim")
 box("band_west", X0 - 0.15, (BD_Y0 + BD_Y1) / 2, (Z0 + Z1) / 2, 0.24, BD_Y1 - BD_Y0, (Z1 - Z0) + 0.24, "trim")
 box("band_east", X1 + 0.15, (BD_Y0 + BD_Y1) / 2, (Z0 + Z1) / 2, 0.24, BD_Y1 - BD_Y0, (Z1 - Z0) + 0.24, "trim")
+# 后门三级台阶（下到场地）
+stair("back_steps", 6.45, 16.20, Z1 + T_EXT / 2, SITE_TOP, F1, 1.80, 3)
 # 勒脚
 box("plinth_front", cx_roof, F1 / 2, Z0 - 0.14, (X1 - X0) + 0.28, F1, 0.22, "stone")
 box("plinth_west", X0 - 0.14, F1 / 2, (Z0 + Z1) / 2, 0.22, F1, (Z1 - Z0) + 0.24, "stone")
@@ -396,12 +403,11 @@ win_on(w_f1_front, "win_entry_l", 5.15, 0.85, F1, 2.60, mullions=0)
 win_on(w_f1_front, "win_entry_r", 8.35, 0.85, F1, 2.60, mullions=0)
 win_on(w_f1_front, "win_f1_l", 1.55, 1.70, F1 + 0.85, 1.75, mullions=2)
 win_on(w_f1_front, "win_f1_r", 11.95, 1.70, F1 + 0.85, 1.75, mullions=2)
-# 一层东 / 西 / 背
-win_on(w_f1_east, "win_f1_e1", 4.20, 1.50, F1 + 0.90, 1.70, mullions=1)
-win_on(w_f1_east, "win_f1_e2", 9.60, 1.50, F1 + 0.90, 1.70, mullions=1)
-win_on(w_f1_east, "win_f1_e3", 13.20, 1.20, F1 + 0.90, 1.70, mullions=1)
-win_on(w_f1_west, "win_f1_w1", 4.60, 1.50, F1 + 0.90, 1.70, mullions=1)
-win_on(w_f1_west, "win_f1_w2", 8.20, 1.50, F1 + 0.90, 1.70, mullions=1)
+# 一层东 / 西 / 背：两侧共用四条窗轴，上下层严格对位
+SIDE_AXES = (3.20, 5.20, 10.60, 13.40)
+for i, wz in enumerate(SIDE_AXES):
+    win_on(w_f1_east, "win_f1_e%d" % i, wz, 1.45, F1 + 0.90, 1.70, mullions=1)
+    win_on(w_f1_west, "win_f1_w%d" % i, wz, 1.45, F1 + 0.90, 1.70, mullions=1)
 win_on(w_f1_back, "win_f1_b1", 3.10, 1.60, F1 + 0.90, 1.70, mullions=2)
 win_on(w_f1_back, "win_f1_b2", 9.80, 1.60, F1 + 0.90, 1.70, mullions=2)
 door_on(w_f1_back, "door_back", 6.45, 1.00, F1, 2.10, leaf="wood")
@@ -411,11 +417,10 @@ for i, wx in enumerate((4.45, 6.75, 9.05)):
 win_on(w_f2_front, "win_f2_l", 1.55, 1.40, F2 + 0.85, 1.85, mullions=1)
 win_on(w_f2_front, "win_f2_r", 11.95, 1.40, F2 + 0.85, 1.85, mullions=1)
 # 二层侧 / 背
-for i, wz in enumerate((3.10, 6.60, 10.30, 13.30)):
-    win_on(w_f2_east, "win_f2_e%d" % i, wz, 1.30, F2 + 0.85, 1.85, mullions=1)
-for i, wz in enumerate((2.40, 5.60, 9.30, 12.90)):
-    win_on(w_f2_west, "win_f2_w%d" % i, wz, 1.30, F2 + 0.85, 1.85, mullions=1)
-for i, wx in enumerate((2.60, 6.75, 10.90)):
+for i, wz in enumerate(SIDE_AXES):
+    win_on(w_f2_east, "win_f2_e%d" % i, wz, 1.45, F2 + 0.85, 1.85, mullions=1)
+    win_on(w_f2_west, "win_f2_w%d" % i, wz, 1.45, F2 + 0.85, 1.85, mullions=1)
+for i, wx in enumerate((3.10, 6.75, 9.80)):
     win_on(w_f2_back, "win_f2_b%d" % i, wx, 1.55, F2 + 0.85, 1.85, mullions=1)
 
 # 室内门
@@ -461,11 +466,11 @@ sconce("sconce_west", X0 - 0.17, 2.30, 7.10)
 
 # ── 13. 左侧拱券花园墙 ─────────────────────────────────
 GW_Z = -6.20
-box("gwall_l", -4.55, 1.30, GW_Z, 0.34, 2.60, 0.34, "trim")
-box("gwall_r", -2.35, 1.30, GW_Z, 0.34, 2.60, 0.34, "trim")
-box("gwall_cap_l", -4.55, 2.68, GW_Z, 0.44, 0.12, 0.44, "trim")
-box("gwall_cap_r", -2.35, 2.68, GW_Z, 0.44, 0.12, 0.44, "trim")
-arch_band("gwall_arch", -3.45, 1.30, GW_Z, 0.90, 0.30, 0.32, 0.0, math.pi, 11, "trim")
+box("gwall_l", -4.55, 1.30, GW_Z, 0.46, 2.60, 0.46, "trim")
+box("gwall_r", -2.35, 1.30, GW_Z, 0.46, 2.60, 0.46, "trim")
+box("gwall_cap_l", -4.55, 2.68, GW_Z, 0.58, 0.14, 0.58, "trim")
+box("gwall_cap_r", -2.35, 2.68, GW_Z, 0.58, 0.14, 0.58, "trim")
+arch_band("gwall_arch", -3.45, 1.30, GW_Z, 0.87, 0.38, 0.44, 0.0, math.pi, 11, "trim")
 box("gwall_key", -3.45, 2.30, GW_Z, 0.20, 0.26, 0.36, "trim")
 
 # ── 14. 景观：绿篱 + 球状灌木 + 观赏草 ─────────────────
@@ -473,8 +478,8 @@ sph("shrub_f1", 2.30, 0.62, -5.10, 0.62, "leaf")
 sph("shrub_f2", 1.70, 0.50, -6.10, 0.50, "leaf_lite")
 sph("shrub_f3", 11.30, 0.55, -5.00, 0.55, "leaf")
 sph("shrub_f4", 12.10, 0.44, -6.00, 0.44, "leaf_lite")
-sph("shrub_f5", 5.30, 0.66, -5.60, 0.66, "leaf")
-sph("shrub_f6", 8.10, 0.60, -5.70, 0.60, "leaf_lite")
+sph("shrub_f5", 3.90, 0.56, -6.10, 0.56, "leaf")
+sph("shrub_f6", 9.60, 0.58, -6.20, 0.58, "leaf_lite")
 sph("shrub_f7", -2.10, 0.52, -4.60, 0.52, "leaf")
 sph("shrub_f8", 15.40, 0.58, -4.40, 0.58, "leaf_lite")
 sph("shrub_f9", 15.90, 0.46, -2.60, 0.46, "leaf")
@@ -572,6 +577,16 @@ furn("shelf_g2", "bookshelf", 0.42, 3.20, 0.36, 2.00, 2.00, y=F2, mat="wood")
 box("fc_bath2_v", 10.10, F2 + 0.42, 1.10, 1.10, 0.84, 0.50, "stone")
 cyl("fc_bath2_wc", 13.10, F2 + 0.20, 1.10, 0.20, 0.40, "linen", seg=14)
 box("fc_bath2_tub", 12.10, F2 + 0.28, 4.90, 1.60, 0.56, 0.80, "linen")
+
+
+# 二层前部房间（家庭起居）
+furn("fam_sofa", "sofa", 7.50, 2.30, 2.20, 0.90, 0.80, y=F2, rot=0.0, mat="fabric")
+furn("fam_ctable", "table", 7.50, 3.50, 1.10, 0.62, 0.42, y=F2, mat="wood")
+furn("fam_shelf", "bookshelf", 9.30, 4.60, 0.40, 1.80, 1.90, y=F2, rot=-math.pi / 2, mat="wood")
+furn("fam_lamp", "lamp", 8.90, 2.40, 0.36, 0.36, 1.55, y=F2, mat="linen")
+# 一层门厅
+furn("hall_console", "table", 9.78, 2.40, 0.42, 1.30, 0.80, y=F1, mat="wood")
+furn("hall_bench", "chair", 10.10, 4.60, 0.50, 0.52, 0.86, y=F1, rot=-math.pi / 2, mat="fabric")
 
 # ── 16. 断言 ───────────────────────────────────────────
 assert abs((F1 + STEP_N * STEP_H * 2) - F2) < 1e-9, "楼梯总升高不等于层高"

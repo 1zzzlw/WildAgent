@@ -1,0 +1,235 @@
+[
+  {
+    "stage": "设计输入展开",
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "docs/10月23日/参考图创作工具/生成参考建筑.py",
+      "--case",
+      "14"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T02:57:52.729771+00:00",
+    "finished_at": "2026-10-23T02:57:52.799532+00:00",
+    "exit_code": 0,
+    "stdout": "{\"name\": \"晴岚露台居\", \"design_sha256\": \"9d174b8e9d4050380d798ff3b9dcb4530920e7f585efc345464351d3f083a70c\", \"wild_sha256\": \"ff7fc3933d5c876a462efc08e1ddb1f3120862c29cebaa0043a9c51e7d08a76b\", \"bytes\": 96453, \"elements\": 427, \"components\": 26, \"materials\": 21, \"method\": \"手工设计事实 → Python标准库确定性几何展开 → 自足WILD；没有调用LangGraph/RAG/模型API/外部模型资产\", \"validation\": \"本报告仅为写出统计；不代表编译或视觉通过\"}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "首轮白天四视图",
+    "command": [
+      "node",
+      "wild-web/scripts/render-baseline.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/白天",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T02:57:52.850233+00:00",
+    "finished_at": "2026-10-23T02:58:02.751248+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"ff7fc3933d5c876a462efc08e1ddb1f3120862c29cebaa0043a9c51e7d08a76b\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 789,\n  \"materialCount\": 789,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\front.png\",\n      \"bytes\": 514655\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\side.png\",\n      \"bytes\": 547244\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\top.png\",\n      \"bytes\": 392030\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\perspective.png\",\n      \"bytes\": 577470\n    }\n  ],\n  \"contextSha256\": \"7f264c432eb61b38009ded735c99e8425ea2e31a57f9305ae5a2ea9c1e30f717\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "白天近景",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/参考近景",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T02:58:02.814449+00:00",
+    "finished_at": "2026-10-23T02:58:11.248661+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"ff7fc3933d5c876a462efc08e1ddb1f3120862c29cebaa0043a9c51e7d08a76b\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"7c1c299bd7fc541a8faaa8b9d1d25f453ec426afc6416d4d247fde231aea6e5c\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 789,\n  \"materialCount\": 789,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\参考近景\\\\perspective.png\",\n      \"bytes\": 1615202\n    }\n  ],\n  \"contextSha256\": \"fba62a899e81bf00732852409bc5b41bcc46a5fbcdbcf681b602067f12b5e738\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "室内灯与尺度车辆深化",
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "docs/10月23日/参考图创作工具/生成参考建筑.py",
+      "--case",
+      "14"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:00:34.022964+00:00",
+    "finished_at": "2026-10-23T03:00:34.083172+00:00",
+    "exit_code": 0,
+    "stdout": "{\"name\": \"晴岚露台居\", \"design_sha256\": \"9d174b8e9d4050380d798ff3b9dcb4530920e7f585efc345464351d3f083a70c\", \"wild_sha256\": \"0fb72e4978078101ec363d138ffceaec8b524f696ee4af659bea736126cd5c83\", \"bytes\": 99769, \"elements\": 445, \"components\": 26, \"materials\": 21, \"method\": \"手工设计事实 → Python标准库确定性几何展开 → 自足WILD；没有调用LangGraph/RAG/模型API/外部模型资产\", \"validation\": \"本报告仅为写出统计；不代表编译或视觉通过\"}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终白天四视图",
+    "command": [
+      "node",
+      "wild-web/scripts/render-baseline.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/白天",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:00:34.126590+00:00",
+    "finished_at": "2026-10-23T03:00:44.497676+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"0fb72e4978078101ec363d138ffceaec8b524f696ee4af659bea736126cd5c83\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 807,\n  \"materialCount\": 807,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\front.png\",\n      \"bytes\": 516610\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\side.png\",\n      \"bytes\": 553398\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\top.png\",\n      \"bytes\": 392775\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\perspective.png\",\n      \"bytes\": 577716\n    }\n  ],\n  \"contextSha256\": \"7f264c432eb61b38009ded735c99e8425ea2e31a57f9305ae5a2ea9c1e30f717\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终白天近景",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/参考近景",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:00:44.547953+00:00",
+    "finished_at": "2026-10-23T03:00:53.613881+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"0fb72e4978078101ec363d138ffceaec8b524f696ee4af659bea736126cd5c83\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"f589b6b3800b0bbbd1266cee4e975972ceb280fe86cdf4e0e8a23273757581fb\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 807,\n  \"materialCount\": 807,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\参考近景\\\\perspective.png\",\n      \"bytes\": 1585999\n    }\n  ],\n  \"contextSha256\": \"88cde5abbd2756597e1c850cad101ae934ad0b24ed27bf3664ab0f5ebd9361ef\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终黄昏近景",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/黄昏",
+      "--presentation",
+      "--quality=high",
+      "--time=sunset"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:00:53.663165+00:00",
+    "finished_at": "2026-10-23T03:01:03.826842+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"0fb72e4978078101ec363d138ffceaec8b524f696ee4af659bea736126cd5c83\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"sunset\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 1.0973600000000001,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 16687741,\n      \"hemisphereGroundColor\": 3549759,\n      \"hemisphereIntensity\": 0.34401780000000004,\n      \"keyColor\": 16681548,\n      \"keyIntensity\": 1.6980600000000001\n    },\n    \"sunDirection\": [\n      -0.9013429381507146,\n      0.10452846326765346,\n      -0.42030311468360515\n    ],\n    \"ground\": {\n      \"color\": 7105123,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"f589b6b3800b0bbbd1266cee4e975972ceb280fe86cdf4e0e8a23273757581fb\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 807,\n  \"materialCount\": 807,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\黄昏\\\\perspective.png\",\n      \"bytes\": 1720918\n    }\n  ],\n  \"contextSha256\": \"355c5c4fdb6bae77cdb86f10caaa6bd5d86c458e17b75fee33d3323c51e127aa\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "左右朝向与空间深化",
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "docs/10月23日/参考图创作工具/生成参考建筑.py",
+      "--case",
+      "14"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:10:58.807636+00:00",
+    "finished_at": "2026-10-23T03:10:58.858579+00:00",
+    "exit_code": 0,
+    "stdout": "{\"name\": \"晴岚露台居\", \"design_sha256\": \"1d06d5bfb8dfc445ead684547dce808cec320732db2de98fb228a0daf9079709\", \"wild_sha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\", \"bytes\": 104975, \"elements\": 477, \"components\": 28, \"materials\": 22, \"method\": \"手工设计事实 → Python标准库确定性几何展开 → 自足WILD；没有调用LangGraph/RAG/模型API/外部模型资产\", \"validation\": \"本报告仅为写出统计；不代表编译或视觉通过\"}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终四视图",
+    "command": [
+      "node",
+      "wild-web/scripts/render-baseline.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/白天",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:10:58.895716+00:00",
+    "finished_at": "2026-10-23T03:11:06.704924+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1280,\n    \"height\": 960,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"front\",\n    \"side\",\n    \"top\",\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 847,\n  \"materialCount\": 847,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"front\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\front.png\",\n      \"bytes\": 516602\n    },\n    {\n      \"view\": \"side\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\side.png\",\n      \"bytes\": 565470\n    },\n    {\n      \"view\": \"top\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\top.png\",\n      \"bytes\": 393389\n    },\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\白天\\\\perspective.png\",\n      \"bytes\": 593592\n    }\n  ],\n  \"contextSha256\": \"7f264c432eb61b38009ded735c99e8425ea2e31a57f9305ae5a2ea9c1e30f717\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终白天参考近景",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/参考近景",
+      "--presentation",
+      "--quality=high",
+      "--time=day"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:11:06.754047+00:00",
+    "finished_at": "2026-10-23T03:11:16.227970+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"f589b6b3800b0bbbd1266cee4e975972ceb280fe86cdf4e0e8a23273757581fb\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 847,\n  \"materialCount\": 847,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\参考近景\\\\perspective.png\",\n      \"bytes\": 1533174\n    }\n  ],\n  \"contextSha256\": \"88cde5abbd2756597e1c850cad101ae934ad0b24ed27bf3664ab0f5ebd9361ef\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "最终黄昏参考近景",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/黄昏",
+      "--presentation",
+      "--quality=high",
+      "--time=sunset"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:11:16.294390+00:00",
+    "finished_at": "2026-10-23T03:11:27.956887+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"sunset\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 1.0973600000000001,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 16687741,\n      \"hemisphereGroundColor\": 3549759,\n      \"hemisphereIntensity\": 0.34401780000000004,\n      \"keyColor\": 16681548,\n      \"keyIntensity\": 1.6980600000000001\n    },\n    \"sunDirection\": [\n      -0.9013429381507146,\n      0.10452846326765346,\n      -0.42030311468360515\n    ],\n    \"ground\": {\n      \"color\": 7105123,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"f589b6b3800b0bbbd1266cee4e975972ceb280fe86cdf4e0e8a23273757581fb\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 847,\n  \"materialCount\": 847,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\黄昏\\\\perspective.png\",\n      \"bytes\": 1672037\n    }\n  ],\n  \"contextSha256\": \"355c5c4fdb6bae77cdb86f10caaa6bd5d86c458e17b75fee33d3323c51e127aa\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "露台参考俯角白天",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/参考近景",
+      "--presentation",
+      "--quality=high",
+      "--time=day",
+      "--polar=62"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:15:11.645187+00:00",
+    "finished_at": "2026-10-23T03:15:20.867013+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"day\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 0.29928,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 14478846,\n      \"hemisphereGroundColor\": 6772036,\n      \"hemisphereIntensity\": 0.6156108000000001,\n      \"keyColor\": 16707797,\n      \"keyIntensity\": 11.009400000000001\n    },\n    \"sunDirection\": [\n      0.5254827454987588,\n      0.6691306063588582,\n      -0.5254827454987588\n    ],\n    \"ground\": {\n      \"color\": 7699314,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"515b56a78796ee9a025ca559a486b8ec0ba001408e1223fba0d34e0b4b10b859\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 847,\n  \"materialCount\": 847,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\参考近景\\\\perspective.png\",\n      \"bytes\": 1579770\n    }\n  ],\n  \"contextSha256\": \"c9ebbfa09f7084391b9bd1ad991097381adb10456c3a33fbfddfb17ecc54b6ca\"\n}\n",
+    "stderr": ""
+  },
+  {
+    "stage": "露台参考俯角黄昏",
+    "command": [
+      "node",
+      "docs/10月23日/参考图创作工具/近景出图.mjs",
+      "docs/10月23日/14-图片复建-晴岚露台居/晴岚露台居.wild",
+      "docs/10月23日/14-图片复建-晴岚露台居/05-效果图/黄昏",
+      "--presentation",
+      "--quality=high",
+      "--time=sunset",
+      "--polar=62"
+    ],
+    "cwd": "E:\\AgentProject\\WildAgent",
+    "started_at": "2026-10-23T03:15:20.928539+00:00",
+    "finished_at": "2026-10-23T03:15:31.091628+00:00",
+    "exit_code": 0,
+    "stdout": "{\n  \"baselineVersion\": \"p7a.1\",\n  \"inputSha256\": \"a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0\",\n  \"renderer\": \"wild-web/createSceneGroupFromEntity\",\n  \"settings\": {\n    \"width\": 1600,\n    \"height\": 1200,\n    \"pipeline\": \"editor-presentation-v1\",\n    \"time\": \"sunset\",\n    \"quality\": \"high\",\n    \"environment\": \"minimal\",\n    \"toneMappingExposure\": 1.0973600000000001,\n    \"lighting\": {\n      \"hemisphereSkyColor\": 16687741,\n      \"hemisphereGroundColor\": 3549759,\n      \"hemisphereIntensity\": 0.34401780000000004,\n      \"keyColor\": 16681548,\n      \"keyIntensity\": 1.6980600000000001\n    },\n    \"sunDirection\": [\n      -0.9013429381507146,\n      0.10452846326765346,\n      -0.42030311468360515\n    ],\n    \"ground\": {\n      \"color\": 7105123,\n      \"y\": -0.2200000035762787\n    },\n    \"ambientOcclusion\": \"gtao\"\n  },\n  \"views\": [\n    \"perspective\"\n  ],\n  \"chromium\": \"C:\\\\Users\\\\Administrator\\\\AppData\\\\Local\\\\ms-playwright\\\\chromium-1243\\\\chrome-win64\\\\chrome.exe\",\n  \"browserVersion\": {\n    \"protocolVersion\": \"1.3\",\n    \"product\": \"Chrome/153.0.8010.12\",\n    \"revision\": \"@971a7443b0c9b0a9b2860529b33331b76077ec62\",\n    \"userAgent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36\",\n    \"jsVersion\": \"15.3.76.4\"\n  },\n  \"sourceDigest\": \"515b56a78796ee9a025ca559a486b8ec0ba001408e1223fba0d34e0b4b10b859\",\n  \"glRenderer\": \"WebKit WebGL\",\n  \"glVendor\": \"WebKit\",\n  \"meshCount\": 847,\n  \"materialCount\": 847,\n  \"unmappedMaterials\": 0,\n  \"boundingBox\": {\n    \"min\": [\n      -11,\n      -0.2000000035762787,\n      -11\n    ],\n    \"max\": [\n      11,\n      9.379999998658896,\n      17\n    ]\n  },\n  \"compileErrors\": 0,\n  \"reconstructErrors\": 0,\n  \"shots\": [\n    {\n      \"view\": \"perspective\",\n      \"file\": \"docs\\\\10月23日\\\\14-图片复建-晴岚露台居\\\\05-效果图\\\\黄昏\\\\perspective.png\",\n      \"bytes\": 1655322\n    }\n  ],\n  \"contextSha256\": \"66fadc951cfffa2a2b4e6e22f9410a4c0369379780a456adbb580a21b6f3bf4f\"\n}\n",
+    "stderr": ""
+  }
+]

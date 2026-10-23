@@ -1,6 +1,6 @@
 {
   "baselineVersion": "p7a.1",
-  "inputSha256": "d7192337dd5fe48e2ae82f8d57e76b5a3ab26fa1ea7e7d38550c2c7730379fc3",
+  "inputSha256": "4bddfb380be17ab4b4e3ac51a074ae7e1b27a42776fd39bc5ede9f1a592a7fd4",
   "renderer": "wild-web/createSceneGroupFromEntity",
   "settings": {
     "width": 1280,
@@ -45,8 +45,8 @@
   "sourceDigest": "97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9",
   "glRenderer": "WebKit WebGL",
   "glVendor": "WebKit",
-  "meshCount": 923,
-  "materialCount": 923,
+  "meshCount": 1057,
+  "materialCount": 1057,
   "unmappedMaterials": 0,
   "boundingBox": {
     "min": [
@@ -66,22 +66,22 @@
     {
       "view": "front",
       "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\front.png",
-      "bytes": 516787
+      "bytes": 522818
     },
     {
       "view": "side",
       "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\side.png",
-      "bytes": 551454
+      "bytes": 555711
     },
     {
       "view": "top",
       "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\top.png",
-      "bytes": 390043
+      "bytes": 396037
     },
     {
       "view": "perspective",
       "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\perspective.png",
-      "bytes": 579990
+      "bytes": 585307
     }
   ],
   "contextSha256": "7f264c432eb61b38009ded735c99e8425ea2e31a57f9305ae5a2ea9c1e30f717"

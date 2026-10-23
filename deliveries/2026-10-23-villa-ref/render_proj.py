@@ -30,7 +30,7 @@ VIEWS = {
     "rear":    dict(eye=[6.75, 4.6, 38], target=[6.75, 4.2, 8.0], up=[0, 1, 0], fov=28),
     "persp":   dict(eye=[26, 9.0, -22], target=[6.75, 4.2, 3.0], up=[0, 1, 0], fov=32),
     "porch":   dict(eye=[6.75, 1.75, -13.5], target=[6.75, 2.35, -1.0], up=[0, 1, 0], fov=42),
-    "stair":   dict(eye=[11.9, 9.5, 9.0], target=[11.95, 1.6, 12.2], up=[0, 1, 0], fov=55),
+    "stair":   dict(eye=[11.95, 14, 12.05], target=[11.95, 0, 12.05], up=[0, 0, 1], fov=48, cut=3.90),
     "top":     dict(eye=[6.755, 40, 7.5], target=[6.75, 0, 7.5], up=[0, 0, 1], fov=35),
     # 剖切检查用（只在投影时隐藏高处三角形，不改动 .wild）
     "plan_f1": dict(eye=[6.755, 34, 7.5], target=[6.75, 0, 7.5], up=[0, 0, 1], fov=35, cut=3.50),
@@ -47,8 +47,8 @@ def render(spec, path):
     tgt = np.array(spec["target"], float)
     up = np.array(spec["up"], float)
     fwd = normalize(tgt - eye)
-    right = normalize(np.cross(fwd, up))
-    upv = np.cross(right, fwd)
+    right = normalize(np.cross(up, fwd))
+    upv = np.cross(fwd, right)
     f = 1.0 / math.tan(math.radians(spec["fov"]) / 2)
     w, h = W * SS, H * SS
     aspect = w / h

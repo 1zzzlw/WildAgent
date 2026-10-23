@@ -1,0 +1,81 @@
+{
+  "name": "砚溪别院",
+  "meta": {
+    "version": "1.1",
+    "type": "building",
+    "name": "砚溪别院",
+    "author": "Claude Code · 原创设计",
+    "style": "新中式 · 东宅西亭 · 水院廊桥",
+    "seed": 20261023
+  },
+  "elements": 1069,
+  "components": 40,
+  "materials": 35,
+  "element_types": {
+    "floor": 23,
+    "primitive": 1002,
+    "column": 5,
+    "wall": 32,
+    "stair": 2,
+    "roof": 3,
+    "opening": 2
+  },
+  "component_types": {
+    "railing": 5,
+    "door": 15,
+    "window": 20
+  },
+  "materials_names": [
+    "bamboo",
+    "bark",
+    "bronze",
+    "glass",
+    "glow",
+    "glow_soft",
+    "grass",
+    "gravel",
+    "leaf_dark",
+    "leaf_light",
+    "linen",
+    "maple",
+    "metal_dark",
+    "moss",
+    "oak",
+    "orange",
+    "paper",
+    "paving",
+    "plaster",
+    "plaster_cool",
+    "pool_bottom",
+    "porcelain",
+    "quartz",
+    "roof_edge",
+    "roof_ridge",
+    "roof_tile",
+    "roof_tile_alt",
+    "rug",
+    "soil",
+    "stone",
+    "stone_dark",
+    "stone_light",
+    "water",
+    "wood",
+    "wood_dark"
+  ],
+  "labels": [
+    "听松",
+    "砚溪别院",
+    "砚溪",
+    "澄怀"
+  ],
+  "light_sources": 19,
+  "roofs": [
+    "main_roof",
+    "tea_roof",
+    "gate_roof"
+  ],
+  "stairs": [
+    "stair_a",
+    "stair_b"
+  ]
+}

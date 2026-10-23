@@ -2,8 +2,8 @@
   "ok": true,
   "reports": [
     {
-      "file": "E:\\AgentProject\\WildAgent\\deliveries\\2026-10-23-villa-ref\\villa-ref.wild",
-      "sha256": "fed579668e6f9b9f50f9fda0fb7a7b4232e704cdff86fa00cfc3721fd0a38218",
+      "file": "villa-ref.wild",
+      "sha256": "f2ed20da97a428439df7c3d03c01bb10ec5149527f90d1e76dbaeb8d45977ca6",
       "errors": [],
       "warnings": [],
       "scope": "原始Schema、ID/材质/宿主引用、直墙开口界限、显式楼梯尺寸链；未证明空间可用或画面质量"

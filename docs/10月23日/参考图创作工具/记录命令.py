@@ -25,6 +25,7 @@ record=dict(stage=args.stage,command=command,cwd=str(Path.cwd()),started_at=star
 records=json.loads(out.read_text(encoding='utf-8')) if out.exists() else []
 records.append(record)
 out.write_text(json.dumps(records,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
-print(result.stdout[-8000:])
+print(json.dumps(dict(stage=args.stage,exit_code=result.returncode,record=str(out)),ensure_ascii=False))
+if result.returncode: print(result.stdout[-2000:])
 if result.stderr: print(result.stderr[-5000:],file=sys.stderr)
 raise SystemExit(result.returncode)

@@ -1,0 +1,70 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "a0849f9279afb99584ac2d16399040cfb436dbc271b2634e456f4aeb729305d0",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1600,
+    "height": 1200,
+    "pipeline": "editor-presentation-v1",
+    "time": "sunset",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 1.0973600000000001,
+    "lighting": {
+      "hemisphereSkyColor": 16687741,
+      "hemisphereGroundColor": 3549759,
+      "hemisphereIntensity": 0.34401780000000004,
+      "keyColor": 16681548,
+      "keyIntensity": 1.6980600000000001
+    },
+    "sunDirection": [
+      -0.9013429381507146,
+      0.10452846326765346,
+      -0.42030311468360515
+    ],
+    "ground": {
+      "color": 7105123,
+      "y": -0.2200000035762787
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "515b56a78796ee9a025ca559a486b8ec0ba001408e1223fba0d34e0b4b10b859",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 847,
+  "materialCount": 847,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -11,
+      -0.2000000035762787,
+      -11
+    ],
+    "max": [
+      11,
+      9.379999998658896,
+      17
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "perspective",
+      "file": "docs\\10月23日\\14-图片复建-晴岚露台居\\05-效果图\\黄昏\\perspective.png",
+      "bytes": 1655322
+    }
+  ],
+  "contextSha256": "66fadc951cfffa2a2b4e6e22f9410a4c0369379780a456adbb580a21b6f3bf4f"
+}
