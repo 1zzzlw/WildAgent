@@ -1,0 +1,88 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "d7192337dd5fe48e2ae82f8d57e76b5a3ab26fa1ea7e7d38550c2c7730379fc3",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "pipeline": "editor-presentation-v1",
+    "time": "day",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 0.29928,
+    "lighting": {
+      "hemisphereSkyColor": 14478846,
+      "hemisphereGroundColor": 6772036,
+      "hemisphereIntensity": 0.6156108000000001,
+      "keyColor": 16707797,
+      "keyIntensity": 11.009400000000001
+    },
+    "sunDirection": [
+      0.5254827454987588,
+      0.6691306063588582,
+      -0.5254827454987588
+    ],
+    "ground": {
+      "color": 7699314,
+      "y": -0.2200000035762787
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 923,
+  "materialCount": 923,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -11,
+      -0.2000000035762787,
+      -11
+    ],
+    "max": [
+      11,
+      9.361291885375977,
+      17
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\front.png",
+      "bytes": 516787
+    },
+    {
+      "view": "side",
+      "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\side.png",
+      "bytes": 551454
+    },
+    {
+      "view": "top",
+      "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\top.png",
+      "bytes": 390043
+    },
+    {
+      "view": "perspective",
+      "file": "docs\\10月23日\\13-图片复建-澜庭雅墅\\05-效果图\\白天\\perspective.png",
+      "bytes": 579990
+    }
+  ],
+  "contextSha256": "7f264c432eb61b38009ded735c99e8425ea2e31a57f9305ae5a2ea9c1e30f717"
+}

@@ -1,0 +1,4976 @@
+{
+ "meta": {
+  "version": "1.1",
+  "type": "building",
+  "name": "两层奶油白别墅 · 参考图复原",
+  "author": "wild-blueprint-authoring",
+  "style": "现代欧式"
+ },
+ "geometry": {
+  "elements": [
+   {
+    "type": "floor",
+    "id": "site",
+    "from": [
+     -6.0,
+     -0.12,
+     -12.0
+    ],
+    "to": [
+     19.5,
+     -0.12,
+     21.0
+    ],
+    "thickness": 0.12,
+    "material": "paving"
+   },
+   {
+    "type": "floor",
+    "id": "floor_f1",
+    "from": [
+     -0.12,
+     -0.05,
+     -0.12
+    ],
+    "to": [
+     13.62,
+     -0.05,
+     15.12
+    ],
+    "thickness": 0.5,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "porch_slab",
+    "from": [
+     3.05,
+     -0.05,
+     -3.0
+    ],
+    "to": [
+     10.45,
+     -0.05,
+     0.0
+    ],
+    "thickness": 0.5,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "floor_f2_a",
+    "from": [
+     -0.12,
+     3.55,
+     -0.12
+    ],
+    "to": [
+     10.55,
+     3.55,
+     15.12
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "floor_f2_b",
+    "from": [
+     10.55,
+     3.55,
+     -0.12
+    ],
+    "to": [
+     13.62,
+     3.55,
+     9.9
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "floor_f2_c",
+    "from": [
+     10.55,
+     3.55,
+     14.2
+    ],
+    "to": [
+     13.62,
+     3.55,
+     15.12
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "floor_f2_d",
+    "from": [
+     13.35,
+     3.55,
+     9.9
+    ],
+    "to": [
+     13.62,
+     3.55,
+     14.2
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "terrace_slab",
+    "from": [
+     3.0,
+     3.55,
+     -3.05
+    ],
+    "to": [
+     10.5,
+     3.55,
+     0.0
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "floor",
+    "id": "stair_land",
+    "from": [
+     10.55,
+     1.9,
+     12.7
+    ],
+    "to": [
+     13.35,
+     1.9,
+     14.2
+    ],
+    "thickness": 0.2,
+    "material": "stone"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_front",
+    "from": [
+     0.0,
+     0.45,
+     0.0
+    ],
+    "to": [
+     13.5,
+     3.55,
+     0.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_east",
+    "from": [
+     13.5,
+     0.45,
+     0.0
+    ],
+    "to": [
+     13.5,
+     3.55,
+     15.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_back",
+    "from": [
+     13.5,
+     0.45,
+     15.0
+    ],
+    "to": [
+     0.0,
+     3.55,
+     15.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_west",
+    "from": [
+     0.0,
+     0.45,
+     15.0
+    ],
+    "to": [
+     0.0,
+     3.55,
+     0.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_front",
+    "from": [
+     0.0,
+     3.75,
+     0.0
+    ],
+    "to": [
+     13.5,
+     6.9,
+     0.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_east",
+    "from": [
+     13.5,
+     3.75,
+     0.0
+    ],
+    "to": [
+     13.5,
+     6.9,
+     15.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_back",
+    "from": [
+     13.5,
+     3.75,
+     15.0
+    ],
+    "to": [
+     0.0,
+     6.9,
+     15.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_west",
+    "from": [
+     0.0,
+     3.75,
+     15.0
+    ],
+    "to": [
+     0.0,
+     6.9,
+     0.0
+    ],
+    "thickness": 0.24,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_kit_e_a",
+    "from": [
+     4.2,
+     0.45,
+     9.6
+    ],
+    "to": [
+     4.2,
+     3.55,
+     11.4
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_kit_e_b",
+    "from": [
+     4.2,
+     0.45,
+     12.4
+    ],
+    "to": [
+     4.2,
+     3.55,
+     15.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_din_e_a",
+    "from": [
+     9.0,
+     0.45,
+     9.6
+    ],
+    "to": [
+     9.0,
+     3.55,
+     11.2
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_din_e_b",
+    "from": [
+     9.0,
+     0.45,
+     12.1
+    ],
+    "to": [
+     9.0,
+     3.55,
+     15.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_mid_a",
+    "from": [
+     0.0,
+     0.45,
+     9.6
+    ],
+    "to": [
+     2.9,
+     3.55,
+     9.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_mid_b",
+    "from": [
+     4.4,
+     0.45,
+     9.6
+    ],
+    "to": [
+     7.1,
+     3.55,
+     9.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_mid_c",
+    "from": [
+     8.6,
+     0.45,
+     9.6
+    ],
+    "to": [
+     9.0,
+     3.55,
+     9.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bed_e_a",
+    "from": [
+     4.2,
+     0.45,
+     2.6
+    ],
+    "to": [
+     4.2,
+     3.55,
+     5.1
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bed_e_b",
+    "from": [
+     4.2,
+     0.45,
+     6.1
+    ],
+    "to": [
+     4.2,
+     3.55,
+     9.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bed_s",
+    "from": [
+     0.0,
+     0.45,
+     2.6
+    ],
+    "to": [
+     4.2,
+     3.55,
+     2.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bath_e",
+    "from": [
+     2.2,
+     0.45,
+     0.12
+    ],
+    "to": [
+     2.2,
+     3.55,
+     2.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bath_n",
+    "from": [
+     2.2,
+     0.45,
+     2.6
+    ],
+    "to": [
+     4.2,
+     3.55,
+     2.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_svc_s",
+    "from": [
+     9.0,
+     0.45,
+     9.6
+    ],
+    "to": [
+     11.4,
+     3.55,
+     9.6
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_svc_e",
+    "from": [
+     11.4,
+     0.45,
+     9.6
+    ],
+    "to": [
+     11.4,
+     3.55,
+     15.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_wc_s",
+    "from": [
+     9.0,
+     0.45,
+     12.4
+    ],
+    "to": [
+     11.4,
+     3.55,
+     12.4
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_hall_e",
+    "from": [
+     10.55,
+     0.45,
+     0.12
+    ],
+    "to": [
+     10.55,
+     3.55,
+     6.2
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_st_w",
+    "from": [
+     10.55,
+     0.45,
+     9.6
+    ],
+    "to": [
+     10.55,
+     3.55,
+     12.9
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m1",
+    "from": [
+     5.4,
+     3.75,
+     8.4
+    ],
+    "to": [
+     5.4,
+     6.9,
+     15.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m2",
+    "from": [
+     0.0,
+     3.75,
+     8.4
+    ],
+    "to": [
+     5.4,
+     6.9,
+     8.4
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m3",
+    "from": [
+     0.0,
+     3.75,
+     6.0
+    ],
+    "to": [
+     2.6,
+     6.9,
+     6.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m4",
+    "from": [
+     2.6,
+     3.75,
+     6.0
+    ],
+    "to": [
+     2.6,
+     6.9,
+     8.4
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m5",
+    "from": [
+     5.4,
+     3.75,
+     6.0
+    ],
+    "to": [
+     9.6,
+     6.9,
+     6.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m6",
+    "from": [
+     9.6,
+     3.75,
+     0.12
+    ],
+    "to": [
+     9.6,
+     6.9,
+     6.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m7",
+    "from": [
+     5.4,
+     3.75,
+     0.12
+    ],
+    "to": [
+     5.4,
+     6.9,
+     6.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m8",
+    "from": [
+     5.4,
+     3.75,
+     9.9
+    ],
+    "to": [
+     9.6,
+     6.9,
+     9.9
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m9",
+    "from": [
+     9.6,
+     3.75,
+     9.9
+    ],
+    "to": [
+     9.6,
+     6.9,
+     15.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m10",
+    "from": [
+     10.55,
+     3.75,
+     9.9
+    ],
+    "to": [
+     10.55,
+     6.9,
+     14.2
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "stair",
+    "id": "stair_run_a",
+    "from": [
+     11.15,
+     0.45,
+     9.9
+    ],
+    "to": [
+     11.15,
+     2.1,
+     12.7
+    ],
+    "width": 1.15,
+    "stepCount": 10,
+    "stepHeight": 0.165,
+    "stepDepth": 0.28,
+    "material": "stone_step"
+   },
+   {
+    "type": "stair",
+    "id": "stair_run_b",
+    "from": [
+     12.55,
+     2.1,
+     12.7
+    ],
+    "to": [
+     12.55,
+     3.75,
+     9.9
+    ],
+    "width": 1.15,
+    "stepCount": 10,
+    "stepHeight": 0.165,
+    "stepDepth": 0.28,
+    "material": "stone_step"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_11.15_0",
+    "shape": "box",
+    "position": [
+     11.65,
+     1.065,
+     10.18
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_11.15_1",
+    "shape": "box",
+    "position": [
+     11.65,
+     1.395,
+     10.74
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_11.15_2",
+    "shape": "box",
+    "position": [
+     11.65,
+     1.725,
+     11.3
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_11.15_3",
+    "shape": "box",
+    "position": [
+     11.65,
+     2.055,
+     11.86
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_11.15_4",
+    "shape": "box",
+    "position": [
+     11.65,
+     2.385,
+     12.42
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_rail_11.15",
+    "shape": "box",
+    "position": [
+     11.65,
+     2.195,
+     11.3
+    ],
+    "dimensions": [
+     0.06,
+     0.06,
+     3.35
+    ],
+    "material": "metal",
+    "rotation": [
+     -0.5325,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_12.55_0",
+    "shape": "box",
+    "position": [
+     13.05,
+     2.715,
+     12.42
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_12.55_1",
+    "shape": "box",
+    "position": [
+     13.05,
+     3.045,
+     11.86
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_12.55_2",
+    "shape": "box",
+    "position": [
+     13.05,
+     3.375,
+     11.3
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_12.55_3",
+    "shape": "box",
+    "position": [
+     13.05,
+     3.705,
+     10.74
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_post_12.55_4",
+    "shape": "box",
+    "position": [
+     13.05,
+     4.035,
+     10.18
+    ],
+    "dimensions": [
+     0.035,
+     0.9,
+     0.035
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "stair_rail_12.55",
+    "shape": "box",
+    "position": [
+     13.05,
+     3.845,
+     11.3
+    ],
+    "dimensions": [
+     0.06,
+     0.06,
+     3.35
+    ],
+    "material": "metal",
+    "rotation": [
+     -0.5325,
+     0.0,
+     0.0
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "stair_land_rail",
+    "shape": "box",
+    "position": [
+     11.95,
+     2.6,
+     14.14
+    ],
+    "dimensions": [
+     2.8,
+     0.06,
+     0.06
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     2.0,
+     -2.695
+    ],
+    "dimensions": [
+     0.55,
+     3.1,
+     0.55
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_base_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     0.55,
+     -2.695
+    ],
+    "dimensions": [
+     0.71,
+     0.2,
+     0.71
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_cap_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     3.46,
+     -2.695
+    ],
+    "dimensions": [
+     0.71,
+     0.18,
+     0.71
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_abacus_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     3.32,
+     -2.695
+    ],
+    "dimensions": [
+     0.81,
+     0.1,
+     0.81
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pilaster_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     2.0,
+     -0.06
+    ],
+    "dimensions": [
+     0.61,
+     3.1,
+     0.12
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     2.0,
+     -2.695
+    ],
+    "dimensions": [
+     0.55,
+     3.1,
+     0.55
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_base_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     0.55,
+     -2.695
+    ],
+    "dimensions": [
+     0.71,
+     0.2,
+     0.71
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_cap_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     3.46,
+     -2.695
+    ],
+    "dimensions": [
+     0.71,
+     0.18,
+     0.71
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pier_abacus_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     3.32,
+     -2.695
+    ],
+    "dimensions": [
+     0.81,
+     0.1,
+     0.81
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "pilaster_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     2.0,
+     -0.06
+    ],
+    "dimensions": [
+     0.61,
+     3.1,
+     0.12
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "porch_beam",
+    "shape": "box",
+    "position": [
+     6.75,
+     3.39,
+     -2.695
+    ],
+    "dimensions": [
+     7.4,
+     0.32,
+     0.5
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "terrace_fascia_f",
+    "shape": "box",
+    "position": [
+     6.75,
+     3.65,
+     -3.09
+    ],
+    "dimensions": [
+     7.64,
+     0.3,
+     0.16
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "terrace_fascia_l",
+    "shape": "box",
+    "position": [
+     2.96,
+     3.65,
+     -1.5
+    ],
+    "dimensions": [
+     0.16,
+     0.3,
+     3.0
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "terrace_fascia_r",
+    "shape": "box",
+    "position": [
+     10.54,
+     3.65,
+     -1.5
+    ],
+    "dimensions": [
+     0.16,
+     0.3,
+     3.0
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_pier_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     4.37,
+     -2.94
+    ],
+    "dimensions": [
+     0.46,
+     1.24,
+     0.46
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_pier_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     4.37,
+     -2.94
+    ],
+    "dimensions": [
+     0.46,
+     1.24,
+     0.46
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_cap_l",
+    "shape": "box",
+    "position": [
+     3.375,
+     5.05,
+     -2.94
+    ],
+    "dimensions": [
+     0.58,
+     0.12,
+     0.58
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_cap_r",
+    "shape": "box",
+    "position": [
+     10.125,
+     5.05,
+     -2.94
+    ],
+    "dimensions": [
+     0.58,
+     0.12,
+     0.58
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "stair",
+    "id": "entry_steps",
+    "from": [
+     6.75,
+     0.0,
+     -4.05
+    ],
+    "to": [
+     6.75,
+     0.45,
+     -3.0
+    ],
+    "width": 6.8,
+    "stepCount": 3,
+    "stepHeight": 0.15,
+    "stepDepth": 0.35,
+    "material": "stone_step"
+   },
+   {
+    "type": "primitive",
+    "id": "step_cheek_l",
+    "shape": "box",
+    "position": [
+     3.22,
+     0.26,
+     -3.525
+    ],
+    "dimensions": [
+     0.26,
+     0.52,
+     1.05
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "step_cheek_r",
+    "shape": "box",
+    "position": [
+     10.28,
+     0.26,
+     -3.525
+    ],
+    "dimensions": [
+     0.26,
+     0.52,
+     1.05
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_l_w",
+    "shape": "box",
+    "position": [
+     0.85,
+     0.21,
+     -3.55
+    ],
+    "dimensions": [
+     0.16,
+     0.42,
+     1.9
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_l_e",
+    "shape": "box",
+    "position": [
+     2.75,
+     0.21,
+     -3.55
+    ],
+    "dimensions": [
+     0.16,
+     0.42,
+     1.9
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_l_n",
+    "shape": "box",
+    "position": [
+     1.8,
+     0.21,
+     -4.45
+    ],
+    "dimensions": [
+     1.9,
+     0.42,
+     0.16
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_l_s",
+    "shape": "box",
+    "position": [
+     1.8,
+     0.21,
+     -2.65
+    ],
+    "dimensions": [
+     1.9,
+     0.42,
+     0.16
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_l_soil",
+    "shape": "box",
+    "position": [
+     1.8,
+     0.36,
+     -3.55
+    ],
+    "dimensions": [
+     1.6,
+     0.18,
+     1.64
+    ],
+    "material": "soil"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_r_w",
+    "shape": "box",
+    "position": [
+     10.75,
+     0.21,
+     -3.55
+    ],
+    "dimensions": [
+     0.16,
+     0.42,
+     1.9
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_r_e",
+    "shape": "box",
+    "position": [
+     12.65,
+     0.21,
+     -3.55
+    ],
+    "dimensions": [
+     0.16,
+     0.42,
+     1.9
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_r_n",
+    "shape": "box",
+    "position": [
+     11.7,
+     0.21,
+     -4.45
+    ],
+    "dimensions": [
+     1.9,
+     0.42,
+     0.16
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_r_s",
+    "shape": "box",
+    "position": [
+     11.7,
+     0.21,
+     -2.65
+    ],
+    "dimensions": [
+     1.9,
+     0.42,
+     0.16
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "planter_r_soil",
+    "shape": "box",
+    "position": [
+     11.7,
+     0.36,
+     -3.55
+    ],
+    "dimensions": [
+     1.6,
+     0.18,
+     1.64
+    ],
+    "material": "soil"
+   },
+   {
+    "type": "roof",
+    "id": "roof_front",
+    "roofType": "hip",
+    "position": [
+     6.75,
+     6.9,
+     4.05
+    ],
+    "span": 15.0,
+    "depth": 10.2,
+    "height": 1.92,
+    "thickness": 0.2,
+    "material": "roof_dark"
+   },
+   {
+    "type": "roof",
+    "id": "roof_rear",
+    "roofType": "hip",
+    "position": [
+     6.75,
+     6.9,
+     10.95
+    ],
+    "span": 15.0,
+    "depth": 9.6,
+    "height": 2.38,
+    "thickness": 0.2,
+    "material": "roof_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "cornice_front",
+    "shape": "box",
+    "position": [
+     6.75,
+     6.77,
+     -0.24
+    ],
+    "dimensions": [
+     13.94,
+     0.26,
+     0.4
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "cornice_back",
+    "shape": "box",
+    "position": [
+     6.75,
+     6.77,
+     15.24
+    ],
+    "dimensions": [
+     13.94,
+     0.26,
+     0.4
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "cornice_west",
+    "shape": "box",
+    "position": [
+     -0.24,
+     6.77,
+     7.5
+    ],
+    "dimensions": [
+     0.4,
+     0.26,
+     15.4
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "cornice_east",
+    "shape": "box",
+    "position": [
+     13.74,
+     6.77,
+     7.5
+    ],
+    "dimensions": [
+     0.4,
+     0.26,
+     15.4
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "band_front",
+    "shape": "box",
+    "position": [
+     6.75,
+     3.66,
+     -0.15
+    ],
+    "dimensions": [
+     13.78,
+     0.18,
+     0.24
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "band_back",
+    "shape": "box",
+    "position": [
+     6.75,
+     3.66,
+     15.15
+    ],
+    "dimensions": [
+     13.78,
+     0.18,
+     0.24
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "band_west",
+    "shape": "box",
+    "position": [
+     -0.15,
+     3.66,
+     7.5
+    ],
+    "dimensions": [
+     0.24,
+     0.18,
+     15.24
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "band_east",
+    "shape": "box",
+    "position": [
+     13.65,
+     3.66,
+     7.5
+    ],
+    "dimensions": [
+     0.24,
+     0.18,
+     15.24
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "plinth_front",
+    "shape": "box",
+    "position": [
+     6.75,
+     0.225,
+     -0.14
+    ],
+    "dimensions": [
+     13.78,
+     0.45,
+     0.22
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "plinth_west",
+    "shape": "box",
+    "position": [
+     -0.14,
+     0.225,
+     7.5
+    ],
+    "dimensions": [
+     0.22,
+     0.45,
+     15.24
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "plinth_east",
+    "shape": "box",
+    "position": [
+     13.64,
+     0.225,
+     7.5
+    ],
+    "dimensions": [
+     0.22,
+     0.45,
+     15.24
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bed_door_jamb",
+    "from": [
+     4.2,
+     0.45,
+     5.1
+    ],
+    "to": [
+     4.2,
+     3.55,
+     6.1
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_bath_jamb",
+    "from": [
+     2.2,
+     0.45,
+     1.4
+    ],
+    "to": [
+     4.2,
+     3.55,
+     1.4
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_wc_jamb",
+    "from": [
+     9.0,
+     0.45,
+     13.7
+    ],
+    "to": [
+     11.4,
+     3.55,
+     13.7
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f1_lau_jamb",
+    "from": [
+     9.0,
+     0.45,
+     11.0
+    ],
+    "to": [
+     11.4,
+     3.55,
+     11.0
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m1_jamb",
+    "from": [
+     5.4,
+     3.75,
+     9.1
+    ],
+    "to": [
+     5.4,
+     6.9,
+     10.2
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m8_jamb",
+    "from": [
+     7.3,
+     3.75,
+     9.9
+    ],
+    "to": [
+     8.5,
+     6.9,
+     9.9
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "wall",
+    "id": "wall_f2_m6_jamb",
+    "from": [
+     9.6,
+     3.75,
+     3.2
+    ],
+    "to": [
+     9.6,
+     6.9,
+     4.2
+    ],
+    "thickness": 0.12,
+    "material": "stucco"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_l_body",
+    "shape": "box",
+    "position": [
+     3.695,
+     2.28,
+     -2.695
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_l_glow_u",
+    "shape": "box",
+    "position": [
+     3.695,
+     2.47,
+     -2.695
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_l_glow_d",
+    "shape": "box",
+    "position": [
+     3.695,
+     2.09,
+     -2.695
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_r_body",
+    "shape": "box",
+    "position": [
+     9.805,
+     2.28,
+     -2.695
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_r_glow_u",
+    "shape": "box",
+    "position": [
+     9.805,
+     2.47,
+     -2.695
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_pier_r_glow_d",
+    "shape": "box",
+    "position": [
+     9.805,
+     2.09,
+     -2.695
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_l_body",
+    "shape": "box",
+    "position": [
+     4.55,
+     2.4,
+     -0.16
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_l_glow_u",
+    "shape": "box",
+    "position": [
+     4.55,
+     2.59,
+     -0.16
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_l_glow_d",
+    "shape": "box",
+    "position": [
+     4.55,
+     2.21,
+     -0.16
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_r_body",
+    "shape": "box",
+    "position": [
+     8.95,
+     2.4,
+     -0.16
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_r_glow_u",
+    "shape": "box",
+    "position": [
+     8.95,
+     2.59,
+     -0.16
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_door_r_glow_d",
+    "shape": "box",
+    "position": [
+     8.95,
+     2.21,
+     -0.16
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_east_body",
+    "shape": "box",
+    "position": [
+     13.67,
+     2.3,
+     7.1
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_east_glow_u",
+    "shape": "box",
+    "position": [
+     13.67,
+     2.49,
+     7.1
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_east_glow_d",
+    "shape": "box",
+    "position": [
+     13.67,
+     2.11,
+     7.1
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_west_body",
+    "shape": "box",
+    "position": [
+     -0.17,
+     2.3,
+     7.1
+    ],
+    "dimensions": [
+     0.11,
+     0.3,
+     0.11
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_west_glow_u",
+    "shape": "box",
+    "position": [
+     -0.17,
+     2.49,
+     7.1
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 5.0,
+     "distance": 4.0,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "sconce_west_glow_d",
+    "shape": "box",
+    "position": [
+     -0.17,
+     2.11,
+     7.1
+    ],
+    "dimensions": [
+     0.09,
+     0.03,
+     0.09
+    ],
+    "material": "glow",
+    "lightSource": {
+     "lightType": "point",
+     "color": [
+      1.0,
+      0.8,
+      0.52
+     ],
+     "intensity": 4.0,
+     "distance": 3.5,
+     "initiallyOn": true
+    }
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_l",
+    "shape": "box",
+    "position": [
+     -4.55,
+     1.3,
+     -6.2
+    ],
+    "dimensions": [
+     0.34,
+     2.6,
+     0.34
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_r",
+    "shape": "box",
+    "position": [
+     -2.35,
+     1.3,
+     -6.2
+    ],
+    "dimensions": [
+     0.34,
+     2.6,
+     0.34
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_cap_l",
+    "shape": "box",
+    "position": [
+     -4.55,
+     2.68,
+     -6.2
+    ],
+    "dimensions": [
+     0.44,
+     0.12,
+     0.44
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_cap_r",
+    "shape": "box",
+    "position": [
+     -2.35,
+     2.68,
+     -6.2
+    ],
+    "dimensions": [
+     0.44,
+     0.12,
+     0.44
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_00",
+    "shape": "box",
+    "position": [
+     -2.4107,
+     1.4494,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     1.7136
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_01",
+    "shape": "box",
+    "position": [
+     -2.4949,
+     1.7362,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     1.9992
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_02",
+    "shape": "box",
+    "position": [
+     -2.6565,
+     1.9876,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     2.2848
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_03",
+    "shape": "box",
+    "position": [
+     -2.8823,
+     2.1833,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     2.5704
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_04",
+    "shape": "box",
+    "position": [
+     -3.1542,
+     2.3075,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     2.856
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_05",
+    "shape": "box",
+    "position": [
+     -3.45,
+     2.35,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     3.1416
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_06",
+    "shape": "box",
+    "position": [
+     -3.7458,
+     2.3075,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     3.4272
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_07",
+    "shape": "box",
+    "position": [
+     -4.0177,
+     2.1833,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     3.7128
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_08",
+    "shape": "box",
+    "position": [
+     -4.2435,
+     1.9876,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     3.9984
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_09",
+    "shape": "box",
+    "position": [
+     -4.4051,
+     1.7362,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     4.284
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_arch_10",
+    "shape": "box",
+    "position": [
+     -4.4893,
+     1.4494,
+     -6.2
+    ],
+    "dimensions": [
+     0.3029,
+     0.3,
+     0.32
+    ],
+    "material": "trim",
+    "rotation": [
+     0.0,
+     0.0,
+     4.5696
+    ]
+   },
+   {
+    "type": "primitive",
+    "id": "gwall_key",
+    "shape": "box",
+    "position": [
+     -3.45,
+     2.3,
+     -6.2
+    ],
+    "dimensions": [
+     0.2,
+     0.26,
+     0.36
+    ],
+    "material": "trim"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f1",
+    "shape": "sphere",
+    "position": [
+     2.3,
+     0.62,
+     -5.1
+    ],
+    "radius": 0.62,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f2",
+    "shape": "sphere",
+    "position": [
+     1.7,
+     0.5,
+     -6.1
+    ],
+    "radius": 0.5,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f3",
+    "shape": "sphere",
+    "position": [
+     11.3,
+     0.55,
+     -5.0
+    ],
+    "radius": 0.55,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f4",
+    "shape": "sphere",
+    "position": [
+     12.1,
+     0.44,
+     -6.0
+    ],
+    "radius": 0.44,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f5",
+    "shape": "sphere",
+    "position": [
+     5.3,
+     0.66,
+     -5.6
+    ],
+    "radius": 0.66,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f6",
+    "shape": "sphere",
+    "position": [
+     8.1,
+     0.6,
+     -5.7
+    ],
+    "radius": 0.6,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f7",
+    "shape": "sphere",
+    "position": [
+     -2.1,
+     0.52,
+     -4.6
+    ],
+    "radius": 0.52,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f8",
+    "shape": "sphere",
+    "position": [
+     15.4,
+     0.58,
+     -4.4
+    ],
+    "radius": 0.58,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_f9",
+    "shape": "sphere",
+    "position": [
+     15.9,
+     0.46,
+     -2.6
+    ],
+    "radius": 0.46,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_w1",
+    "shape": "sphere",
+    "position": [
+     -2.6,
+     0.55,
+     2.4
+    ],
+    "radius": 0.55,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_w2",
+    "shape": "sphere",
+    "position": [
+     -2.2,
+     0.42,
+     4.2
+    ],
+    "radius": 0.42,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_e1",
+    "shape": "sphere",
+    "position": [
+     15.6,
+     0.52,
+     3.4
+    ],
+    "radius": 0.52,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_e2",
+    "shape": "sphere",
+    "position": [
+     15.2,
+     0.4,
+     5.2
+    ],
+    "radius": 0.4,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_0",
+    "shape": "sphere",
+    "position": [
+     -1.6,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_1",
+    "shape": "sphere",
+    "position": [
+     -0.55,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_2",
+    "shape": "sphere",
+    "position": [
+     0.5,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_3",
+    "shape": "sphere",
+    "position": [
+     1.55,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_4",
+    "shape": "sphere",
+    "position": [
+     2.6,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_5",
+    "shape": "sphere",
+    "position": [
+     3.65,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "shrub_row_6",
+    "shape": "sphere",
+    "position": [
+     4.7,
+     0.34,
+     -8.4
+    ],
+    "radius": 0.34,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf_lite"
+   },
+   {
+    "type": "primitive",
+    "id": "grass_0",
+    "shape": "cylinder",
+    "position": [
+     2.95,
+     0.55,
+     -4.9
+    ],
+    "radius": 0.1,
+    "height": 1.1,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "grass_1",
+    "shape": "cylinder",
+    "position": [
+     2.55,
+     0.475,
+     -3.95
+    ],
+    "radius": 0.1,
+    "height": 0.95,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "grass_2",
+    "shape": "cylinder",
+    "position": [
+     10.95,
+     0.525,
+     -4.85
+    ],
+    "radius": 0.1,
+    "height": 1.05,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "grass_3",
+    "shape": "cylinder",
+    "position": [
+     11.35,
+     0.45,
+     -3.9
+    ],
+    "radius": 0.1,
+    "height": 0.9,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "grass_4",
+    "shape": "cylinder",
+    "position": [
+     -2.75,
+     0.425,
+     6.1
+    ],
+    "radius": 0.1,
+    "height": 0.85,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "grass_5",
+    "shape": "cylinder",
+    "position": [
+     15.3,
+     0.4,
+     8.2
+    ],
+    "radius": 0.1,
+    "height": 0.8,
+    "segments": 6,
+    "material": "leaf",
+    "radiusTop": 0.03
+   },
+   {
+    "type": "primitive",
+    "id": "pot_l",
+    "shape": "cylinder",
+    "position": [
+     3.8,
+     0.67,
+     -2.35
+    ],
+    "radius": 0.24,
+    "height": 0.44,
+    "segments": 12,
+    "material": "stone",
+    "radiusTop": 0.28
+   },
+   {
+    "type": "primitive",
+    "id": "pot_plant_l",
+    "shape": "sphere",
+    "position": [
+     3.8,
+     1.23,
+     -2.35
+    ],
+    "radius": 0.4,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "pot_r",
+    "shape": "cylinder",
+    "position": [
+     9.7,
+     0.67,
+     -2.35
+    ],
+    "radius": 0.24,
+    "height": 0.44,
+    "segments": 12,
+    "material": "stone",
+    "radiusTop": 0.28
+   },
+   {
+    "type": "primitive",
+    "id": "pot_plant_r",
+    "shape": "sphere",
+    "position": [
+     9.7,
+     1.23,
+     -2.35
+    ],
+    "radius": 0.4,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_planter_l",
+    "shape": "box",
+    "position": [
+     3.975,
+     3.99,
+     -2.42
+    ],
+    "dimensions": [
+     0.78,
+     0.42,
+     0.42
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_plant_l",
+    "shape": "sphere",
+    "position": [
+     3.975,
+     4.37,
+     -2.42
+    ],
+    "radius": 0.3,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_planter_r",
+    "shape": "box",
+    "position": [
+     9.525,
+     3.99,
+     -2.42
+    ],
+    "dimensions": [
+     0.78,
+     0.42,
+     0.42
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "tp_plant_r",
+    "shape": "sphere",
+    "position": [
+     9.525,
+     4.37,
+     -2.42
+    ],
+    "radius": 0.3,
+    "segments": 14,
+    "heightSegments": 9,
+    "material": "leaf"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_counter_s",
+    "shape": "box",
+    "position": [
+     2.1,
+     0.9,
+     14.62
+    ],
+    "dimensions": [
+     4.0,
+     0.9,
+     0.6
+    ],
+    "material": "wood_pale"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_top_s",
+    "shape": "box",
+    "position": [
+     2.1,
+     1.38,
+     14.62
+    ],
+    "dimensions": [
+     4.1,
+     0.06,
+     0.66
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_counter_w",
+    "shape": "box",
+    "position": [
+     0.42,
+     0.9,
+     12.1
+    ],
+    "dimensions": [
+     0.6,
+     0.9,
+     4.6
+    ],
+    "material": "wood_pale"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_top_w",
+    "shape": "box",
+    "position": [
+     0.42,
+     1.38,
+     12.1
+    ],
+    "dimensions": [
+     0.66,
+     0.06,
+     4.7
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_up_s",
+    "shape": "box",
+    "position": [
+     2.1,
+     2.5,
+     14.72
+    ],
+    "dimensions": [
+     4.0,
+     0.7,
+     0.34
+    ],
+    "material": "wood_pale"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_up_w",
+    "shape": "box",
+    "position": [
+     0.3,
+     2.5,
+     12.1
+    ],
+    "dimensions": [
+     0.34,
+     0.7,
+     4.6
+    ],
+    "material": "wood_pale"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_island",
+    "shape": "box",
+    "position": [
+     2.6,
+     0.89,
+     11.3
+    ],
+    "dimensions": [
+     1.8,
+     0.88,
+     0.95
+    ],
+    "material": "wood_pale"
+   },
+   {
+    "type": "primitive",
+    "id": "kit_island_top",
+    "shape": "box",
+    "position": [
+     2.6,
+     1.37,
+     11.3
+    ],
+    "dimensions": [
+     1.92,
+     0.06,
+     1.05
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "din_table_top",
+    "shape": "cylinder",
+    "position": [
+     6.7,
+     1.19,
+     12.1
+    ],
+    "radius": 0.85,
+    "height": 0.06,
+    "segments": 28,
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "din_table_col",
+    "shape": "cylinder",
+    "position": [
+     6.7,
+     0.82,
+     12.1
+    ],
+    "radius": 0.13,
+    "height": 0.74,
+    "segments": 14,
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "din_table_base",
+    "shape": "cylinder",
+    "position": [
+     6.7,
+     0.48,
+     12.1
+    ],
+    "radius": 0.42,
+    "height": 0.06,
+    "segments": 20,
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_0",
+    "subtype": "chair",
+    "position": [
+     7.92,
+     0.45,
+     12.1
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     1.570796,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_1",
+    "subtype": "chair",
+    "position": [
+     7.5627,
+     0.45,
+     12.9627
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     0.785398,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_2",
+    "subtype": "chair",
+    "position": [
+     6.7,
+     0.45,
+     13.32
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric"
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_3",
+    "subtype": "chair",
+    "position": [
+     5.8373,
+     0.45,
+     12.9627
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -0.785398,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_4",
+    "subtype": "chair",
+    "position": [
+     5.48,
+     0.45,
+     12.1
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -1.570796,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_5",
+    "subtype": "chair",
+    "position": [
+     5.8373,
+     0.45,
+     11.2373
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -2.356194,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_6",
+    "subtype": "chair",
+    "position": [
+     6.7,
+     0.45,
+     10.88
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -3.141593,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "din_chair_7",
+    "subtype": "chair",
+    "position": [
+     7.5627,
+     0.45,
+     11.2373
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -3.926991,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "liv_sofa_main",
+    "subtype": "sofa",
+    "position": [
+     6.7,
+     0.45,
+     3.1
+    ],
+    "dimensions": {
+     "width": 2.6,
+     "depth": 0.92,
+     "height": 0.82
+    },
+    "material": "fabric"
+   },
+   {
+    "type": "furniture",
+    "id": "liv_sofa_l",
+    "subtype": "sofa",
+    "position": [
+     5.2,
+     0.45,
+     4.55
+    ],
+    "dimensions": {
+     "width": 0.92,
+     "depth": 1.9,
+     "height": 0.82
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     1.570796,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "liv_sofa_r",
+    "subtype": "sofa",
+    "position": [
+     8.45,
+     0.45,
+     4.55
+    ],
+    "dimensions": {
+     "width": 0.92,
+     "depth": 1.9,
+     "height": 0.82
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     -1.570796,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "liv_ctable",
+    "subtype": "table",
+    "position": [
+     6.7,
+     0.45,
+     4.7
+    ],
+    "dimensions": {
+     "width": 1.3,
+     "depth": 0.72,
+     "height": 0.44
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "liv_tv",
+    "subtype": "tv_cabinet",
+    "position": [
+     6.7,
+     0.45,
+     8.9
+    ],
+    "dimensions": {
+     "width": 2.2,
+     "depth": 0.44,
+     "height": 0.5
+    },
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "liv_tv_panel",
+    "shape": "box",
+    "position": [
+     6.7,
+     1.61,
+     8.92
+    ],
+    "dimensions": [
+     1.6,
+     0.92,
+     0.06
+    ],
+    "material": "frame_dark"
+   },
+   {
+    "type": "primitive",
+    "id": "liv_rug",
+    "shape": "box",
+    "position": [
+     6.7,
+     0.46,
+     4.2
+    ],
+    "dimensions": [
+     3.2,
+     0.02,
+     2.4
+    ],
+    "material": "linen"
+   },
+   {
+    "type": "furniture",
+    "id": "bed_f1",
+    "subtype": "bed",
+    "position": [
+     2.1,
+     0.45,
+     8.5
+    ],
+    "dimensions": {
+     "width": 1.8,
+     "depth": 2.05,
+     "height": 0.55
+    },
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "bed_f1_head",
+    "shape": "box",
+    "position": [
+     2.1,
+     1.07,
+     9.54
+    ],
+    "dimensions": [
+     1.9,
+     1.24,
+     0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ns_f1_l",
+    "subtype": "nightstand",
+    "position": [
+     0.92,
+     0.45,
+     9.4
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.4,
+     "height": 0.52
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ns_f1_r",
+    "subtype": "nightstand",
+    "position": [
+     3.28,
+     0.45,
+     9.4
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.4,
+     "height": 0.52
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ward_f1",
+    "subtype": "wardrobe",
+    "position": [
+     3.82,
+     0.45,
+     6.2
+    ],
+    "dimensions": {
+     "width": 0.62,
+     "depth": 1.8,
+     "height": 2.2
+    },
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath1_pan",
+    "shape": "box",
+    "position": [
+     0.85,
+     0.65,
+     1.05
+    ],
+    "dimensions": [
+     1.1,
+     0.4,
+     0.9
+    ],
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath1_v",
+    "shape": "box",
+    "position": [
+     1.8,
+     0.87,
+     2.2
+    ],
+    "dimensions": [
+     0.9,
+     0.84,
+     0.48
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath1_wc",
+    "shape": "cylinder",
+    "position": [
+     1.85,
+     0.65,
+     0.72
+    ],
+    "radius": 0.2,
+    "height": 0.4,
+    "segments": 14,
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_wc1",
+    "shape": "cylinder",
+    "position": [
+     10.9,
+     0.65,
+     14.3
+    ],
+    "radius": 0.2,
+    "height": 0.4,
+    "segments": 14,
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_wc1_v",
+    "shape": "box",
+    "position": [
+     9.6,
+     0.87,
+     14.3
+    ],
+    "dimensions": [
+     0.9,
+     0.84,
+     0.48
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_lau_washer",
+    "shape": "box",
+    "position": [
+     9.55,
+     0.89,
+     10.2
+    ],
+    "dimensions": [
+     0.62,
+     0.88,
+     0.62
+    ],
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_lau_dryer",
+    "shape": "box",
+    "position": [
+     9.55,
+     0.89,
+     11.0
+    ],
+    "dimensions": [
+     0.62,
+     0.88,
+     0.62
+    ],
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_lau_bench",
+    "shape": "box",
+    "position": [
+     10.7,
+     0.9,
+     9.9
+    ],
+    "dimensions": [
+     1.3,
+     0.9,
+     0.55
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "furniture",
+    "id": "bed_m",
+    "subtype": "bed",
+    "position": [
+     2.6,
+     3.75,
+     13.6
+    ],
+    "dimensions": {
+     "width": 1.9,
+     "depth": 2.1,
+     "height": 0.58
+    },
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "bed_m_head",
+    "shape": "box",
+    "position": [
+     2.6,
+     4.41,
+     14.66
+    ],
+    "dimensions": [
+     2.0,
+     1.32,
+     0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ns_m_l",
+    "subtype": "nightstand",
+    "position": [
+     1.3,
+     3.75,
+     14.5
+    ],
+    "dimensions": {
+     "width": 0.5,
+     "depth": 0.42,
+     "height": 0.54
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ns_m_r",
+    "subtype": "nightstand",
+    "position": [
+     3.9,
+     3.75,
+     14.5
+    ],
+    "dimensions": {
+     "width": 0.5,
+     "depth": 0.42,
+     "height": 0.54
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ward_m",
+    "subtype": "wardrobe",
+    "position": [
+     4.92,
+     3.75,
+     10.6
+    ],
+    "dimensions": {
+     "width": 0.62,
+     "depth": 2.2,
+     "height": 2.2
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "bench_m",
+    "subtype": "table",
+    "position": [
+     2.6,
+     3.75,
+     9.55
+    ],
+    "dimensions": {
+     "width": 1.3,
+     "depth": 0.45,
+     "height": 0.46
+    },
+    "material": "fabric"
+   },
+   {
+    "type": "furniture",
+    "id": "bed_g1",
+    "subtype": "bed",
+    "position": [
+     7.5,
+     3.75,
+     13.8
+    ],
+    "dimensions": {
+     "width": 1.6,
+     "depth": 2.0,
+     "height": 0.56
+    },
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "bed_g1_head",
+    "shape": "box",
+    "position": [
+     7.5,
+     4.37,
+     14.86
+    ],
+    "dimensions": [
+     1.7,
+     1.24,
+     0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ns_g1",
+    "subtype": "nightstand",
+    "position": [
+     6.4,
+     3.75,
+     14.7
+    ],
+    "dimensions": {
+     "width": 0.46,
+     "depth": 0.4,
+     "height": 0.52
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "ward_g1",
+    "subtype": "wardrobe",
+    "position": [
+     8.95,
+     3.75,
+     11.2
+    ],
+    "dimensions": {
+     "width": 0.6,
+     "depth": 1.6,
+     "height": 2.1
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "bed_g2",
+    "subtype": "bed",
+    "position": [
+     2.55,
+     3.75,
+     1.2
+    ],
+    "dimensions": {
+     "width": 1.5,
+     "depth": 1.95,
+     "height": 0.54
+    },
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "bed_g2_head",
+    "shape": "box",
+    "position": [
+     2.55,
+     4.35,
+     0.18
+    ],
+    "dimensions": [
+     1.6,
+     1.2,
+     0.1
+    ],
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "desk_g2",
+    "subtype": "table",
+    "position": [
+     4.55,
+     3.75,
+     4.2
+    ],
+    "dimensions": {
+     "width": 1.1,
+     "depth": 0.6,
+     "height": 0.76
+    },
+    "material": "wood"
+   },
+   {
+    "type": "furniture",
+    "id": "chair_g2",
+    "subtype": "chair",
+    "position": [
+     4.55,
+     3.75,
+     4.95
+    ],
+    "dimensions": {
+     "width": 0.48,
+     "depth": 0.5,
+     "height": 0.88
+    },
+    "material": "fabric",
+    "rotation": [
+     0.0,
+     3.141593,
+     0.0
+    ]
+   },
+   {
+    "type": "furniture",
+    "id": "shelf_g2",
+    "subtype": "bookshelf",
+    "position": [
+     0.42,
+     3.75,
+     3.2
+    ],
+    "dimensions": {
+     "width": 0.36,
+     "depth": 2.0,
+     "height": 2.0
+    },
+    "material": "wood"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath2_v",
+    "shape": "box",
+    "position": [
+     10.1,
+     4.17,
+     1.1
+    ],
+    "dimensions": [
+     1.1,
+     0.84,
+     0.5
+    ],
+    "material": "stone"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath2_wc",
+    "shape": "cylinder",
+    "position": [
+     13.1,
+     3.95,
+     1.1
+    ],
+    "radius": 0.2,
+    "height": 0.4,
+    "segments": 14,
+    "material": "linen"
+   },
+   {
+    "type": "primitive",
+    "id": "fc_bath2_tub",
+    "shape": "box",
+    "position": [
+     12.1,
+     4.03,
+     4.9
+    ],
+    "dimensions": [
+     1.6,
+     0.56,
+     0.8
+    ],
+    "material": "linen"
+   }
+  ],
+  "components": [
+   {
+    "type": "railing",
+    "id": "rail_terrace_front",
+    "path": [
+     [
+      3.605,
+      3.75,
+      -2.94
+     ],
+     [
+      9.895,
+      3.75,
+      -2.94
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.115,
+    "postRadius": 0.011,
+    "railRadius": 0.017,
+    "railLevels": [
+     0.08,
+     0.97
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "railing",
+    "id": "rail_terrace_left",
+    "path": [
+     [
+      3.375,
+      3.75,
+      -3.17
+     ],
+     [
+      3.375,
+      3.75,
+      -0.12
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.115,
+    "postRadius": 0.011,
+    "railRadius": 0.017,
+    "railLevels": [
+     0.08,
+     0.97
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "railing",
+    "id": "rail_terrace_right",
+    "path": [
+     [
+      10.125,
+      3.75,
+      -3.17
+     ],
+     [
+      10.125,
+      3.75,
+      -0.12
+     ]
+    ],
+    "height": 1.05,
+    "postSpacing": 0.115,
+    "postRadius": 0.011,
+    "railRadius": 0.017,
+    "railLevels": [
+     0.08,
+     0.97
+    ],
+    "material": "metal"
+   },
+   {
+    "type": "door",
+    "id": "door_entry",
+    "parentWall": "wall_f1_front",
+    "from": [
+     5.65,
+     0.45,
+     0
+    ],
+    "width": 2.2,
+    "height": 2.8,
+    "frameWidth": 0.065,
+    "frameDepth": 0.24,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "glass",
+    "openingStyle": "arched",
+    "doorStyle": "double",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "window",
+    "id": "win_entry_l",
+    "parentWall": "wall_f1_front",
+    "from": [
+     4.725,
+     0.45,
+     0
+    ],
+    "width": 0.85,
+    "height": 2.6,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 0,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_entry_r",
+    "parentWall": "wall_f1_front",
+    "from": [
+     7.925,
+     0.45,
+     0
+    ],
+    "width": 0.85,
+    "height": 2.6,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 0,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_l",
+    "parentWall": "wall_f1_front",
+    "from": [
+     0.7,
+     1.3,
+     0
+    ],
+    "width": 1.7,
+    "height": 1.75,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_r",
+    "parentWall": "wall_f1_front",
+    "from": [
+     11.1,
+     1.3,
+     0
+    ],
+    "width": 1.7,
+    "height": 1.75,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_e1",
+    "parentWall": "wall_f1_east",
+    "from": [
+     3.45,
+     1.35,
+     0
+    ],
+    "width": 1.5,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_e2",
+    "parentWall": "wall_f1_east",
+    "from": [
+     8.85,
+     1.35,
+     0
+    ],
+    "width": 1.5,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_e3",
+    "parentWall": "wall_f1_east",
+    "from": [
+     12.6,
+     1.35,
+     0
+    ],
+    "width": 1.2,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_w1",
+    "parentWall": "wall_f1_west",
+    "from": [
+     9.65,
+     1.35,
+     0
+    ],
+    "width": 1.5,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_w2",
+    "parentWall": "wall_f1_west",
+    "from": [
+     6.05,
+     1.35,
+     0
+    ],
+    "width": 1.5,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_b1",
+    "parentWall": "wall_f1_back",
+    "from": [
+     9.6,
+     1.35,
+     0
+    ],
+    "width": 1.6,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f1_b2",
+    "parentWall": "wall_f1_back",
+    "from": [
+     2.9,
+     1.35,
+     0
+    ],
+    "width": 1.6,
+    "height": 1.7,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "door",
+    "id": "door_back",
+    "parentWall": "wall_f1_back",
+    "from": [
+     6.55,
+     0.45,
+     0
+    ],
+    "width": 1.0,
+    "height": 2.1,
+    "frameWidth": 0.065,
+    "frameDepth": 0.24,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "window",
+    "id": "win_f2_glz_0",
+    "parentWall": "wall_f2_front",
+    "from": [
+     3.425,
+     3.87,
+     0
+    ],
+    "width": 2.05,
+    "height": 2.55,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_glz_1",
+    "parentWall": "wall_f2_front",
+    "from": [
+     5.725,
+     3.87,
+     0
+    ],
+    "width": 2.05,
+    "height": 2.55,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_glz_2",
+    "parentWall": "wall_f2_front",
+    "from": [
+     8.025,
+     3.87,
+     0
+    ],
+    "width": 2.05,
+    "height": 2.55,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 2,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_l",
+    "parentWall": "wall_f2_front",
+    "from": [
+     0.85,
+     4.6,
+     0
+    ],
+    "width": 1.4,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_r",
+    "parentWall": "wall_f2_front",
+    "from": [
+     11.25,
+     4.6,
+     0
+    ],
+    "width": 1.4,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e0",
+    "parentWall": "wall_f2_east",
+    "from": [
+     2.45,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e1",
+    "parentWall": "wall_f2_east",
+    "from": [
+     5.95,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e2",
+    "parentWall": "wall_f2_east",
+    "from": [
+     9.65,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_e3",
+    "parentWall": "wall_f2_east",
+    "from": [
+     12.65,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_w0",
+    "parentWall": "wall_f2_west",
+    "from": [
+     11.95,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_w1",
+    "parentWall": "wall_f2_west",
+    "from": [
+     8.75,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_w2",
+    "parentWall": "wall_f2_west",
+    "from": [
+     5.05,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_w3",
+    "parentWall": "wall_f2_west",
+    "from": [
+     1.45,
+     4.6,
+     0
+    ],
+    "width": 1.3,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_b0",
+    "parentWall": "wall_f2_back",
+    "from": [
+     10.125,
+     4.6,
+     0
+    ],
+    "width": 1.55,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_b1",
+    "parentWall": "wall_f2_back",
+    "from": [
+     5.975,
+     4.6,
+     0
+    ],
+    "width": 1.55,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "window",
+    "id": "win_f2_b2",
+    "parentWall": "wall_f2_back",
+    "from": [
+     1.825,
+     4.6,
+     0
+    ],
+    "width": 1.55,
+    "height": 1.85,
+    "frameWidth": 0.055,
+    "frameDepth": 0.24,
+    "glassDepth": 0.012,
+    "verticalMullions": 1,
+    "mullionWidth": 0.03,
+    "frameMaterial": "frame_dark",
+    "glassMaterial": "glass"
+   },
+   {
+    "type": "door",
+    "id": "door_bed1",
+    "parentWall": "wall_f1_bed_door_jamb",
+    "from": [
+     0.0,
+     0.45,
+     0
+    ],
+    "width": 1.0,
+    "height": 2.05,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_bath1",
+    "parentWall": "wall_f1_bath_jamb",
+    "from": [
+     0.5,
+     0.45,
+     0
+    ],
+    "width": 0.8,
+    "height": 2.05,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_wc1",
+    "parentWall": "wall_f1_wc_jamb",
+    "from": [
+     0.5,
+     0.45,
+     0
+    ],
+    "width": 0.8,
+    "height": 2.05,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_lau1",
+    "parentWall": "wall_f1_lau_jamb",
+    "from": [
+     0.4,
+     0.45,
+     0
+    ],
+    "width": 0.8,
+    "height": 2.05,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_master",
+    "parentWall": "wall_f2_m1_jamb",
+    "from": [
+     0.05,
+     3.75,
+     0
+    ],
+    "width": 1.0,
+    "height": 2.1,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_guest",
+    "parentWall": "wall_f2_m8_jamb",
+    "from": [
+     0.15,
+     3.75,
+     0
+    ],
+    "width": 0.9,
+    "height": 2.1,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   },
+   {
+    "type": "door",
+    "id": "door_bath2",
+    "parentWall": "wall_f2_m6_jamb",
+    "from": [
+     0.1,
+     3.75,
+     0
+    ],
+    "width": 0.8,
+    "height": 2.05,
+    "frameWidth": 0.065,
+    "frameDepth": 0.12,
+    "leafDepth": 0.045,
+    "frameMaterial": "frame_dark",
+    "leafMaterial": "wood",
+    "openingStyle": "rectangular",
+    "doorStyle": "single",
+    "interaction": {
+     "mode": "swing",
+     "hingeSide": "left",
+     "openAngle": 90,
+     "initiallyOpen": false
+    }
+   }
+  ]
+ },
+ "materials": {
+  "stucco": {
+   "baseColor": [
+    0.87,
+    0.85,
+    0.792
+   ],
+   "roughness": 0.86,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "trim": {
+   "baseColor": [
+    0.938,
+    0.93,
+    0.898
+   ],
+   "roughness": 0.78,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "roof_dark": {
+   "baseColor": [
+    0.108,
+    0.118,
+    0.128
+   ],
+   "roughness": 0.58,
+   "metallic": 0.18,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "frame_dark": {
+   "baseColor": [
+    0.075,
+    0.083,
+    0.09
+   ],
+   "roughness": 0.36,
+   "metallic": 0.55,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "metal": {
+   "baseColor": [
+    0.055,
+    0.058,
+    0.062
+   ],
+   "roughness": 0.42,
+   "metallic": 0.78,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "paving": {
+   "baseColor": [
+    0.64,
+    0.638,
+    0.615
+   ],
+   "roughness": 0.92,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "stone": {
+   "baseColor": [
+    0.72,
+    0.712,
+    0.68
+   ],
+   "roughness": 0.88,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "stone_step": {
+   "baseColor": [
+    0.69,
+    0.68,
+    0.652
+   ],
+   "roughness": 0.85,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "wood": {
+   "baseColor": [
+    0.33,
+    0.22,
+    0.132
+   ],
+   "roughness": 0.6,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "wood_pale": {
+   "baseColor": [
+    0.47,
+    0.36,
+    0.24
+   ],
+   "roughness": 0.62,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "linen": {
+   "baseColor": [
+    0.87,
+    0.858,
+    0.828
+   ],
+   "roughness": 0.95,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "fabric": {
+   "baseColor": [
+    0.36,
+    0.375,
+    0.372
+   ],
+   "roughness": 0.96,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "soil": {
+   "baseColor": [
+    0.225,
+    0.18,
+    0.132
+   ],
+   "roughness": 0.98,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "leaf": {
+   "baseColor": [
+    0.145,
+    0.275,
+    0.128
+   ],
+   "roughness": 0.9,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "leaf_lite": {
+   "baseColor": [
+    0.235,
+    0.36,
+    0.17
+   ],
+   "roughness": 0.88,
+   "metallic": 0.0,
+   "albedo": 1,
+   "lightingCondition": "D65_noon"
+  },
+  "glow": {
+   "baseColor": [
+    1.0,
+    0.9,
+    0.68
+   ],
+   "roughness": 0.45,
+   "metallic": 0.0,
+   "albedo": 1,
+   "emissive": [
+    1.0,
+    0.72,
+    0.34
+   ],
+   "emissiveIntensity": 1.6,
+   "lightingCondition": "D65_noon"
+  },
+  "glass": {
+   "baseColor": [
+    0.88,
+    0.925,
+    0.94
+   ],
+   "roughness": 0.06,
+   "metallic": 0.0,
+   "albedo": 1,
+   "materialClass": "glass",
+   "transmission": 0.9,
+   "ior": 1.5,
+   "thickness": 0.012,
+   "lightingCondition": "D65_noon"
+  }
+ },
+ "editor": {
+  "revision": 1
+ }
+}

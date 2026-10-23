@@ -11,7 +11,8 @@ WORKDIR /app
 # 必须先把它 COPY 到 /app 的父目录（/wild-core），否则 npm ci 解析不到。
 COPY wild-web/package.json wild-web/package-lock.json ./
 COPY wild-core/ /wild-core/
-RUN npm ci --registry=${NPM_REGISTRY}
+RUN npm ci --prefix /wild-core --registry=${NPM_REGISTRY} \
+    && npm ci --registry=${NPM_REGISTRY}
 
 COPY wild-web/ ./
 RUN npm run build

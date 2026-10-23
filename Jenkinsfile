@@ -277,7 +277,7 @@ docker run --rm \\
   -v "$REMOTE_RELEASE_DIR:/repo" \\
   -w /repo/wild-web \\
   "$NODE_BASE_IMAGE" \\
-  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci && npm run build'
+  sh -lc 'npm config set registry "$NPM_REGISTRY" && npm ci --prefix ../wild-core && npm ci && npm run build'
 REMOTE_SCRIPT
           ''')
         }

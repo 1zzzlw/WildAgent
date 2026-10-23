@@ -1,0 +1,11 @@
+{
+  "name": "澜庭雅墅",
+  "design_sha256": "ea65a53b89faaa00b168cc14338ed8695530cfd7147316fd6ebaeb64d4174e12",
+  "wild_sha256": "d7192337dd5fe48e2ae82f8d57e76b5a3ab26fa1ea7e7d38550c2c7730379fc3",
+  "bytes": 113336,
+  "elements": 466,
+  "components": 32,
+  "materials": 21,
+  "method": "手工设计事实 → Python标准库确定性几何展开 → 自足WILD；没有调用LangGraph/RAG/模型API/外部模型资产",
+  "validation": "本报告仅为写出统计；不代表编译或视觉通过"
+}
