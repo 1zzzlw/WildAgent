@@ -67,10 +67,12 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     isImporting.value = true
     try {
       const blueprint = JSON.parse(await file.text()) as Blueprint
+      // 检查文件结构，确保包含 meta 和 geometry
       if (!blueprint || !blueprint.meta || !blueprint.geometry) throw new Error('文件缺少 meta 或 geometry')
       if (!await newScene()) return false
       const scene = useSceneStore()
       const sessionId = useAgentStore().currentSessionId
+      // 渲染蓝图文件
       const loading = scene.loadBlueprint(blueprint, file.name)
       const imported = scene.document
       if (imported) imported.dirty = true

@@ -1,7 +1,7 @@
 {
   "source": "docs/10月23日/蓝图文档",
   "date": "2026-10-23",
-  "policy": "保留原案例；更新渲染与几何规则及源码；排除压缩包/依赖/缓存",
+  "policy": "保留原案例与Core；同步关系规则及小文件/无GLB约束；排除压缩包/依赖/缓存",
   "files": [
     {
       "source": ".gitignore",
@@ -31,12 +31,12 @@
     {
       "source": "README.md",
       "packed": "references/blueprint-kit/README.md",
-      "sha256": "2c9b1ccd4988c108af90487624709587ddd34d15fddd81f8eec4f2f71a604068"
+      "sha256": "8c0ea713385d5d8b49a33d175c5db6186c735154301508050f63018995067bcd"
     },
     {
       "source": "WILD蓝图设计语言-v3.0.md",
       "packed": "references/blueprint-kit/WILD蓝图设计语言-v3.0.md",
-      "sha256": "02bb1dc8892d36262a7f9b4da92022b59dd3ae890b6501961eee65e4fbe334b8"
+      "sha256": "6952189785bae4a35871287766ca6bda27de1bf538b3da50cecc049ddca44ee5"
     },
     {
       "source": "参考资料/用户提供-WILD蓝图设计语言-v2.0.md.txt",
@@ -81,7 +81,7 @@
     {
       "source": "核心资料/wild-core/package.json",
       "packed": "references/blueprint-kit/核心资料/wild-core/package.json",
-      "sha256": "80ed7a124c4ebc6ead79671322193be92bc9d65f2ae0e7d83c947716e33e9d9f"
+      "sha256": "6cad55f7dfd7ee4f0526c5660f8c2cf1d0a8dcb07707d2bcb2d33b9c1d680ec7"
     },
     {
       "source": "核心资料/wild-core/schema.json",
@@ -91,7 +91,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/componentCache.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/componentCache.ts",
-      "sha256": "51170c7b7714ff7e30616a076a528d9bc0077a1e719ca2423b1e6d83e36133c3"
+      "sha256": "7afc0757dadeafd9ab324e74962961410ebc8b88af4fb7538895371b4014f7ee"
     },
     {
       "source": "核心资料/wild-core/src/compiler/componentMaterials.ts",
@@ -101,7 +101,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/componentRegistry.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/componentRegistry.ts",
-      "sha256": "e4670e55b2f0b79f6b8dee4b67750e7142a080efec18ff40fffc163182988c2f"
+      "sha256": "32db0a1283b5cec2a9627fbf73bc87a6da433d5cce460b0a333f6168e3571c13"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToPath.ts",
@@ -111,12 +111,12 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToSurface.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/attachedToSurface.ts",
-      "sha256": "90dda0f509e42bd028004174a5fe873bd636c346bfa32d9dbd09037161064b1f"
+      "sha256": "2cb4b205f18321decdded8b2ae3b48ed00ad81a1517a3ad6192247d03d61f940"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToWall.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/attachedToWall.ts",
-      "sha256": "8bde67fb16311b24ea5835ed649b604f431131fb56b5a59c6a1a1287968a8116"
+      "sha256": "f2698f4229e1f44616f166f27992893cc90601e03ac90b0f17ca1c0235786d35"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/balcony.ts",
@@ -176,7 +176,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/index.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/index.ts",
-      "sha256": "2f010032def66b46c94e228abfa57119dfd3911133b65fa18fa5c6fc204a8b08"
+      "sha256": "a981ce9456bf09eabc6127b1e42886af90ffec7daa515344f931fd926adf3d86"
     },
     {
       "source": "核心资料/wild-core/src/compiler/types.ts",
@@ -186,7 +186,7 @@
     {
       "source": "核心资料/wild-core/src/index.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/index.ts",
-      "sha256": "c1ead389db4e4353d175bfd3caa320ad8ec99f884a58fd6de67253cd2f781aa8"
+      "sha256": "3e842765bd0ed571abd1dfe367894830c4e438025fd9a1925b27fa250d3b06d7"
     },
     {
       "source": "核心资料/wild-core/src/materials/contracts.ts",
@@ -342,6 +342,11 @@
       "source": "核心资料/wild-core/src/primitive/types.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/primitive/types.ts",
       "sha256": "ce1386d61ac63b428f8a10ab6eced0ca2e6ef061a6c35c826dcd9fa83f06a009"
+    },
+    {
+      "source": "核心资料/wild-core/src/relationships.ts",
+      "packed": "references/blueprint-kit/核心资料/wild-core/src/relationships.ts",
+      "sha256": "3202a9f64b649e003e58de4c7ffa910e1d5c952ed4b02ec222c4a527594c2e5a"
     },
     {
       "source": "核心资料/wild-core/src/world/contracts.ts",
@@ -1246,7 +1251,7 @@
     {
       "source": "验证与来源/README.md",
       "packed": "references/blueprint-kit/验证与来源/README.md",
-      "sha256": "1ce94f8d2dbb69ce6f40094c6cacca23ee953fa26c0789f4ad167a280b4c5645"
+      "sha256": "fcee03370878464103a50a26847897b8515d3262f4a5db0f6812d9e33c926a31"
     },
     {
       "source": "验证与来源/v2参考来源.json",
@@ -1269,6 +1274,11 @@
       "sha256": "82ab4d68eda6fda8ee8605fd8a4bd655db6a0f3a363235d1b775689009ad4268"
     },
     {
+      "source": "验证与来源/关系修订资料包自检.json",
+      "packed": "references/blueprint-kit/验证与来源/关系修订资料包自检.json",
+      "sha256": "ff0b4d4465939663c7051cb9e31c26673fa80945b4d514830952bcd62796c00c"
+    },
+    {
       "source": "验证与来源/十二例来源索引.json",
       "packed": "references/blueprint-kit/验证与来源/十二例来源索引.json",
       "sha256": "2d1f89e4e81f1ffa40764e12c57d5ca34d04f19f1f2f813274725c588dce9988"
@@ -1281,12 +1291,12 @@
     {
       "source": "验证与来源/文件清单.json",
       "packed": "references/blueprint-kit/验证与来源/文件清单.json",
-      "sha256": "2dded907a92890961b98f9edcc6ad4d888adf7b1ed5a87e81267cb5df5255fe0"
+      "sha256": "0dc730ad0565814a4cfe93d3bff0efcdf36463eaa2a358b6e616239fbda5dbc2"
     },
     {
       "source": "验证与来源/核心源码来源.json",
       "packed": "references/blueprint-kit/验证与来源/核心源码来源.json",
-      "sha256": "03205a1d914618955e4bec18a24068f05e1a5e22bae0280d099102c7ec7c7b5b"
+      "sha256": "a3ccaa0dbef68cb07ef67a9584980b057c54d506ac17e7d11dd4503e7d85cdaf"
     },
     {
       "source": "验证与来源/渲染修订资料包自检.json",

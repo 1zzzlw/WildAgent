@@ -1,5 +1,7 @@
 import type { ComponentSpec, GeometryElement } from '../../types'
 import type { ComponentCompileContext, ComponentCompiler } from './types'
+import { getGeometryReferences } from '../relationships'
+import { getComponentCompiler } from './componentRegistry'
 
 const MAX_CACHE_ENTRIES = 256
 const cache = new Map<string, GeometryElement[]>()
@@ -54,16 +56,16 @@ function createCacheKey(
   context: ComponentCompileContext,
 ): string {
   const record = component as unknown as Record<string, unknown>
-  const dependencyIds = [record.parentWall, record.parentFloor, record.parentRoof]
-    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+  const dependencyIds = getGeometryReferences(component).map(ref => ref.targetId)
   const dependencies = context.elements.filter(element => dependencyIds.includes(element.id))
   const parentRoof = typeof record.parentRoof === 'string'
-    ? context.elements.find(element => element.id === record.parentRoof && element.type === 'roof')
+    ? context.elements.find((element): element is Extract<GeometryElement, { type: 'roof' }> => element.id === record.parentRoof && element.type === 'roof')
     : undefined
-  if (parentRoof && !('position' in parentRoof) && context.elements.some(element => element.type === 'wall')) {
+  const contextDependencies = getComponentCompiler(component.type)?.contextDependencies || []
+  if (contextDependencies.includes('walls') || (parentRoof && !parentRoof.position)) {
     dependencies.push(...context.elements.filter(element => element.type === 'wall'))
   }
-  const componentDependencies = component.type === 'cornice'
+  const componentDependencies = contextDependencies.includes('canopiesAndBalconies')
     ? context.components.filter(item => item.type === 'balcony' || item.type === 'canopy')
     : []
   return stableSerialize({ component, dependencies, componentDependencies })

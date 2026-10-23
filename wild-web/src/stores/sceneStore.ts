@@ -16,7 +16,7 @@
  * 这是整个编辑器最核心的 Store，所有场景修改都通过这里。
  */
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { SceneDocument, ReconstructedEntity } from '../types/scene'
 import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch, ValidationIssue } from '../types/scenePatch'
@@ -25,6 +25,8 @@ import { validateBlueprint } from '../wild/sceneValidator'
 import { normalizeBlueprintInput } from 'wild-core/primitive'
 import { deepClone } from '../utils/common'
 import { useHistoryStore } from './historyStore'
+import { useSelectionStore } from './selectionStore'
+import { buildGeometryRelationIndex } from 'wild-core/relationships'
 import { reconstructScene } from '../renderer/reconstructionClient'
 import { clearTextureLoadRecords } from '../renderer/textureLoadMonitor'
 
@@ -40,6 +42,8 @@ export const useSceneStore = defineStore('scene', () => {
   const validationIssues = ref<ValidationIssue[]>([])
   const isReconstructing = ref(false)
   let reconstructionRequest = 0
+  const relationIndex = computed(() => buildGeometryRelationIndex(document.value?.blueprint.geometry || {}))
+  function reconcileSelection() { useSelectionStore().retainSelection(new Set(relationIndex.value.items.keys())) }
 
   // 创建一个新的空场景文档，用来初始化和新建
   function createEmptyDocument(): SceneDocument {
@@ -81,6 +85,8 @@ export const useSceneStore = defineStore('scene', () => {
       dirty: false
     }
     validate(normalizedBlueprint)
+    useSelectionStore().clearSelection()
+    useSelectionStore().setHovered(null)
     return await reconstruct()
   }
 
@@ -110,6 +116,7 @@ export const useSceneStore = defineStore('scene', () => {
       validate(newBlueprint)
       // 草稿已有错误也允许继续修改；重建问题保留在诊断中，不撤销用户编辑。
       document.value.blueprint = newBlueprint
+      reconcileSelection()
       await reconstruct()
       document.value.revision++
       document.value.dirty = true
@@ -135,6 +142,7 @@ export const useSceneStore = defineStore('scene', () => {
     validate(normalizedBlueprint)
 
     document.value.blueprint = normalizedBlueprint
+    reconcileSelection()
     document.value.revision++
     document.value.dirty = true
     await reconstruct()
@@ -189,6 +197,7 @@ export const useSceneStore = defineStore('scene', () => {
 
   return {
     document,
+    relationIndex,
     reconstructed,
     validationIssues,
     isReconstructing,

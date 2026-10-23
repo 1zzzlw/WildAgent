@@ -22,6 +22,7 @@
 import type { Blueprint } from '../types/blueprint'
 import type { ValidationIssue } from '../types/scenePatch'
 import { compileBlueprintComponents } from 'wild-core/compiler'
+import { validateGeometryRelations } from 'wild-core/relationships'
 
 export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
   const issues: ValidationIssue[] = []
@@ -190,19 +191,7 @@ export function validateBlueprint(blueprint: Blueprint): ValidationIssue[] {
     })
   }
 
-  // 校验 opening.parentWall
-  for (const element of blueprint.geometry.elements || []) {
-    if (element.type === 'opening') {
-      const parentWall = (element as any).parentWall
-      if (parentWall && !elementIds.has(parentWall)) {
-        issues.push({
-          level: 'error',
-          message: `opening ${element.id} 的 parentWall 不存在: ${parentWall}`,
-          elementId: element.id
-        })
-      }
-    }
-  }
+  issues.push(...validateGeometryRelations(blueprint.geometry).map(issue => ({ ...issue, level: 'error' as const })))
 
   for (const component of blueprint.geometry.components || []) {
     const materialFields = [

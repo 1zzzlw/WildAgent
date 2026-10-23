@@ -2,8 +2,12 @@ import type {
   ComponentSpec,
   GeometryElement,
   Vec3,
+  WallParams,
+  CurveSegment,
 } from 'wild-core/types'
 import { resolveSpatialRelations } from 'wild-core/primitive'
+import { getComponentCompiler, translateWallCoordinates, translateRoofAttachmentPoints } from 'wild-core/compiler'
+import { buildGeometryRelationIndex, collectGeometryDependents, getGeometryReferences } from 'wild-core/relationships'
 import type { Blueprint } from '../types/blueprint'
 import type { SceneOperation } from '../types/scenePatch'
 
@@ -13,26 +17,35 @@ export function createComponentTranslationChanges(
   delta: Vec3,
   elements: readonly unknown[],
 ): Record<string, unknown> {
-  if (
-    component.type === 'door'
-    || component.type === 'window'
-    || component.type === 'canopy'
-    || component.type === 'balcony'
-    || component.type === 'bay_window'
-    || component.type === 'opening'
-  ) {
-    return { from: translateWallAttachment(component.from, component.parentWall, delta, elements) }
+  const editing = getComponentCompiler(component.type)?.editing
+  const reference = getGeometryReferences(component)[0]
+  if (reference?.coordinates === 'wall' && 'from' in component) {
+    const host = elements.find(item => isRecord(item) && item.id === reference.targetId) as WallParams | undefined
+    if (component.type === 'opening' && host?.curve
+      && (Array.isArray(host.curve) ? host.curve : [host.curve]).some(curve => curve.type !== 'line')) {
+      throw new Error('原生曲墙开口暂不支持直接拖动；请编辑沿墙参数或移动宿主墙')
+    }
+    return { from: translateWallAttachment(component.from, reference.targetId, delta, elements) }
   }
-  if (component.type === 'railing' || component.type === 'cornice') {
-    return { path: component.path.map(point => add(point, delta)) }
+  if (reference?.field === 'parentRoof') {
+    const item = component as { path?: Vec3[]; position?: Vec3 }
+    const points = item.path || [item.position || [0, 0, 0]]
+    const translated = translateRoofAttachmentPoints(reference.targetId, points, delta, { elements: elements as GeometryElement[], components: [] })
+    return item.path ? { path: translated } : { position: translated[0] }
   }
-  if (['ramp', 'wall', 'floor', 'beam', 'stair'].includes(component.type)) {
+  if (editing?.translation === 'path' && 'path' in component) {
+    return { path: component.path!.map(point => add(point, delta)) }
+  }
+  if (editing?.translation === 'fromTo' || ['wall', 'floor', 'beam', 'stair'].includes(component.type)) {
     const item = component as GeometryElement & { from: Vec3; to?: Vec3 }
-    return { from: add(item.from, delta), ...(item.to ? { to: add(item.to, delta) } : {}) }
+    const curve = component.type === 'wall' ? component.curve : undefined
+    return { from: add(item.from, delta), ...(item.to ? { to: add(item.to, delta) } : {}),
+      ...(curve ? { curve: translateWallCurve(curve, delta) } : {}),
+    }
   }
   if (component.type === 'column') return { base: add(component.base, delta) }
   if (component.type === 'dense_brick') return { origin: add(component.origin, delta) }
-  if (component.type === 'light' && component.body) {
+  if (editing?.translation === 'lightBody' && component.type === 'light' && component.body) {
     return { position: add(component.position, delta), body: component.body.map(part => ({
       ...part,
       ...(part.position ? { position: add(part.position, delta) } : {}),
@@ -58,20 +71,31 @@ export function createGeometryTranslationOperations(
   const elements = blueprint.geometry.elements as unknown as GeometryElement[]
   const componentIds = new Set(components.map(item => item.id))
   const items = new Map<string, ComponentSpec | GeometryElement>([...elements, ...components].map(item => [item.id, item]))
-  const movable = selectedIds.filter(id => items.has(id)
-    && (!componentIds.has(id) || (items.get(id) as ComponentSpec).draggable !== false))
-  const walls = new Set(movable.filter(id => items.get(id)?.type === 'wall'))
-  const affected = new Set(movable)
-  for (const item of items.values()) {
-    if ('parentWall' in item && walls.has(item.parentWall)) affected.add(item.id)
-  }
-  return [...affected].map(id => {
+  const affected = getGeometryTranslationIds(blueprint, selectedIds)
+  return [...affected].filter(id => items.has(id)).flatMap(id => {
     const item = items.get(id)!
-    const changes = 'parentWall' in item && walls.has(item.parentWall)
+    const inherited = getGeometryReferences(item).find(ref => affected.has(ref.targetId))
+    if (inherited?.coordinates === 'surface' || inherited?.field === 'parentFloor') return []
+    const changes = inherited?.coordinates === 'wall' && 'from' in item
       ? { from: [item.from[0], item.from[1] + delta[1], item.from[2]] }
-      : createComponentTranslationChanges(item, delta, elements)
-    return { op: componentIds.has(id) ? 'update_component' : 'update_element', id, changes }
+      : createComponentTranslationChanges(item, inherited?.field === 'parentRoof' ? [0, 0, 0] : delta, elements)
+    return [{ op: componentIds.has(id) ? 'update_component' as const : 'update_element' as const, id, changes }]
   })
+}
+
+/** Preview and commit share the same transitive affected set, even for unchanged local fields. */
+export function getGeometryTranslationIds(blueprint: Blueprint, selectedIds: readonly string[]): Set<string> {
+  const index = buildGeometryRelationIndex(blueprint.geometry)
+  const movable = selectedIds.filter(id => {
+    const item = index.items.get(id)
+    return item && (item as { draggable?: boolean }).draggable !== false
+  })
+  return collectGeometryDependents(index, movable)
+}
+
+function translateWallCurve(curve: NonNullable<WallParams['curve']>, delta: Vec3): NonNullable<WallParams['curve']> {
+  const translate = (part: CurveSegment) => 'center' in part ? { ...part, center: add(part.center, delta) } : part
+  return Array.isArray(curve) ? curve.map(translate) : translate(curve)
 }
 
 /** 绕构件自身中心水平旋转 90°，只改写 WILD 实际支持的朝向字段。 */
@@ -85,6 +109,10 @@ export function createGeometryRotationOperations(
   const element = blueprint.geometry.elements.find(item => item.id === id) as GeometryElement | undefined
   const item = component || element
   if (!item || (component && component.draggable === false)) return []
+  const relations = buildGeometryRelationIndex(blueprint.geometry)
+  const attached = collectGeometryDependents(relations, [id])
+  if (attached.size > 1 && (item.type === 'floor' || item.type === 'roof')) return []
+  if ([...attached].some(child => (relations.references.get(child) || []).some(ref => attached.has(ref.targetId) && ref.coordinates === 'world'))) return []
   let changes: Record<string, unknown>
   if (item.type === 'primitive' || item.type === 'furniture') {
     const current = item.rotation || [0, 0, 0]
@@ -143,18 +171,7 @@ function translateWallAttachment(
     || !isVec3(wall.from)
     || !isVec3(wall.to)
   ) return [from[0], from[1] + delta[1], from[2]]
-  const dx = wall.to[0] - wall.from[0]
-  const dz = wall.to[2] - wall.from[2]
-  const length = Math.hypot(dx, dz) || 1
-  const directionX = dx / length
-  const directionZ = dz / length
-  const normalX = -directionZ
-  const normalZ = directionX
-  return [
-    from[0] + delta[0] * directionX + delta[2] * directionZ,
-    from[1] + delta[1],
-    from[2] + delta[0] * normalX + delta[2] * normalZ,
-  ]
+  return translateWallCoordinates(wall as unknown as WallParams, from, delta)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

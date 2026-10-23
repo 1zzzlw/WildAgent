@@ -232,6 +232,12 @@ wild-server\.venv\Scripts\python.exe docs\<日期>\00-公共脚本\运行建筑�
 - 输出严格 JSON：双引号、无注释、无尾逗号、无 NaN/Infinity、无算式。数字直接写计算结果，通常保留 3～4 位小数即可。
 - 修改已有文件时保持未改构件的 ID，`editor.revision` 加 1；扩大、移动或改变宿主后重新计算依附构件。
 
+源组件ID是编辑对象，编译产生的开洞、框、玻璃等ID由引擎管理。parentWall/parentFloor/parentRoof分别表达附墙混合坐标、楼板顶面局部坐标、屋面局部坐标；宿主与附件一起移动不得重复加位移。attachment.parent和排布onSurface.parent也参与引用检查/级联删除。编辑分组不等于几何宿主，不额外复制parentId/children。
+
+项目以极小文件表达精细建筑为核心约束，不引入GLB/GLTF模型资产，也不在JSON内嵌网格/base64。优先用参数化构件、轮廓/路径、材料复用和有设计价值的细部；未来紧凑装配、实例和运动须实现后再写入，不能自行省略必填字段或发明repeat/spin语法。
+
+assets仍是PBR纹理集。多边形楼板自身可绘制，但parentFloor附件当前仅支持矩形/圆形；带附件楼板/屋顶整体旋转、原生曲墙opening直接拖动限制入口，不假装已经支持完整变换协议。
+
 ## 3. 坐标、标高与尺寸：必须统一的语义
 
 ### 3.1 世界坐标

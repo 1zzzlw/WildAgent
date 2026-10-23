@@ -104,7 +104,7 @@ import {
   selectionAfterClick,
   type SelectionMode,
 } from '../../wild/componentSelection'
-import { createGeometryTranslationOperations } from '../../wild/componentDrag'
+import { createGeometryTranslationOperations, getGeometryTranslationIds } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
 
 const containerRef = ref<HTMLDivElement>()
@@ -982,9 +982,8 @@ function clearComponentTransformControl() {
 
 function translationRenderedIds(ids: readonly string[]): Set<string> {
   if (!sceneStore.document || !sceneStore.reconstructed) return new Set()
-  const operations = createGeometryTranslationOperations(sceneStore.document.blueprint, ids, [0, 0, 0])
-  return new Set(operations.flatMap(op => 'id' in op
-    ? getRenderedElementIds(op.id, sceneStore.reconstructed!.componentMapping) : []))
+  return new Set([...getGeometryTranslationIds(sceneStore.document.blueprint, ids)]
+    .flatMap(id => getRenderedElementIds(id, sceneStore.reconstructed!.componentMapping)))
 }
 
 function handleTransformMouseDown() {
@@ -1069,11 +1068,14 @@ function handleTransformMouseUp() {
     markShadowsDirty()
     return
   }
-  const operations = createGeometryTranslationOperations(
-    sceneStore.document.blueprint,
-    dragSelectedIds,
-    [delta.x, delta.y, delta.z],
-  )
+  let operations: ReturnType<typeof createGeometryTranslationOperations>
+  try {
+    operations = createGeometryTranslationOperations(sceneStore.document.blueprint, dragSelectedIds, [delta.x, delta.y, delta.z])
+  } catch (error) {
+    updateScene()
+    ElMessage.warning(error instanceof Error ? error.message : '该构件的依附坐标暂不支持移动')
+    return
+  }
   if (!operations.length) return
   const patch = createPatch(
     sceneStore.document.revision,

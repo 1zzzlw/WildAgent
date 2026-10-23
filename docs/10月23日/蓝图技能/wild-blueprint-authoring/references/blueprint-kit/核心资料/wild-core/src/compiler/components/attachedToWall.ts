@@ -105,12 +105,8 @@ export function resolveStraightWallFrame(
       'parentWall',
     )
   }
-  const path = sampleWallPath(wall)
-  const cumulative = cumulativeLengths(path)
-  const length = cumulative[cumulative.length - 1]
-  if (length < 1e-6) {
-    throw new ComponentCompileError(`父墙 "${wall.id}" 的水平长度为 0`, 'parentWall')
-  }
+  const frame = createWallCoordinateFrame(wall, component.from[0] + component.width / 2)
+  const length = frame.length
 
   const alongStart = component.from[0]
   if (alongStart < 0 || alongStart + component.width > length + 1e-6) {
@@ -133,6 +129,15 @@ export function resolveStraightWallFrame(
     )
   }
 
+  return frame
+}
+
+/** Shared host frame for compilation and authoring; stored Y remains world Y. */
+export function createWallCoordinateFrame(wall: WallParams, referenceAlong = 0): StraightWallFrame {
+  const path = sampleWallPath(wall)
+  const cumulative = cumulativeLengths(path)
+  const length = cumulative[cumulative.length - 1]
+  if (length < 1e-6) throw new ComponentCompileError(`父墙 "${wall.id}" 的水平长度为 0`, 'parentWall')
   const frameAt = (along: number) => interpolatePathFrame(path, cumulative, along)
   const rotationAt = (along: number) => {
     const direction = frameAt(along).direction
@@ -142,7 +147,7 @@ export function resolveStraightWallFrame(
   return {
     wall,
     length,
-    rotationY: rotationAt(alongStart + component.width / 2),
+    rotationY: rotationAt(referenceAlong),
     pointAt(along, worldY, normalOffset) {
       const { point, normal } = frameAt(along)
       return [
@@ -159,6 +164,34 @@ export function resolveStraightWallFrame(
     },
     rotationAt,
   }
+}
+
+/** Project a world-space gizmo translation back into the existing mixed coordinates. */
+export function translateWallCoordinates(wall: WallParams, from: Vec3, delta: Vec3): Vec3 {
+  const frame = createWallCoordinateFrame(wall, from[0])
+  if (!wall.curve || (Array.isArray(wall.curve) ? wall.curve : [wall.curve]).every(curve => curve.type === 'line')) {
+    const direction = frame.directionAt(from[0]), normal = frame.normalAt(from[0])
+    return [from[0] + delta[0] * direction[0] + delta[2] * direction[2], from[1] + delta[1], from[2] + delta[0] * normal[0] + delta[2] * normal[2]]
+  }
+  const point = frame.pointAt(from[0], from[1], from[2])
+  const target = [point[0] + delta[0], from[1] + delta[1], point[2] + delta[2]]
+  const path = sampleWallPath(wall), cumulative = cumulativeLengths(path)
+  let bestDistance = Infinity, result: Vec3 = [...from]
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i], length = cumulative[i] - cumulative[i - 1]
+    if (length < 1e-9) continue
+    const dx = (b[0] - a[0]) / length, dz = (b[2] - a[2]) / length
+    let along = (target[0] - a[0]) * dx + (target[2] - a[2]) * dz
+    if (i > 1) along = Math.max(0, along)
+    if (i < path.length - 1) along = Math.min(length, along)
+    const rx = target[0] - a[0] - dx * along, rz = target[2] - a[2] - dz * along
+    const distance = rx * rx + rz * rz
+    if (distance < bestDistance) {
+      bestDistance = distance
+      result = [cumulative[i - 1] + along, target[1], -dz * rx + dx * rz]
+    }
+  }
+  return result
 }
 
 export function createBox(

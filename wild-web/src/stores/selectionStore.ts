@@ -51,6 +51,13 @@ export const useSelectionStore = defineStore('selection', () => {
     selectedIds.value = [...new Set(ids)]
   }
 
+  /** Recompilation preserves source IDs; deleted IDs must not leave ghost selections. */
+  function retainSelection(validIds: ReadonlySet<string>) {
+    const next = selectedIds.value.filter(id => validIds.has(id))
+    if (next.length !== selectedIds.value.length) selectedIds.value = next
+    if (hoveredId.value && !validIds.has(hoveredId.value)) hoveredId.value = null
+  }
+
   function toggleSelection(id: string) {
     if (selectedIds.value.includes(id)) {
       deselect(id)
@@ -81,6 +88,7 @@ export const useSelectionStore = defineStore('selection', () => {
     deselect,
     clearSelection,
     setSelection,
+    retainSelection,
     toggleSelection,
     setHovered,
     isSelected,

@@ -1,0 +1,41 @@
+{
+  "ok": true,
+  "date": "2026-10-23",
+  "source": "docs/10月23日/蓝图文档",
+  "source_files": 264,
+  "skill_files": 270,
+  "source_snapshots": 91,
+  "links_checked": 109,
+  "installed_matches_package": true,
+  "skill_structure_valid": true,
+  "portable_core": {
+    "meshes": 76,
+    "errors": 0,
+    "finiteBounds": true,
+    "validMeshes": true
+  },
+  "portable_render_reexecuted": false,
+  "backend_source_changes": false,
+  "application_results": "deliveries/component-relations",
+  "language_sha256": "6952189785bae4a35871287766ca6bda27de1bf538b3da50cecc049ddca44ee5",
+  "archives": [
+    {
+      "path": "docs/10月23日/蓝图文档/蓝图创作包-v3.0.zip",
+      "sha256": "7ce360155ec6a07273d665ec433c87f4ec1ce7b9ecffa5b2884f9c0ee573ab24",
+      "files": 264
+    },
+    {
+      "path": "docs/10月23日/蓝图技能/wild-blueprint-authoring.zip",
+      "sha256": "343da5075138f05f2e8174c3662845261ce8a53f329ef237db500fa333952f15",
+      "files": 270
+    }
+  ],
+  "boundary": "本轮项目外仅复跑更新后的Core，未重新安装依赖或重做十二例渲染；真实编辑交互和渲染检查使用项目应用，已有独立渲染报告保留历史状态",
+  "lightweight_policy_revision": {
+    "date": "2026-10-23",
+    "docs_only": true,
+    "model_assets": "不采用GLB/GLTF；以参数化几何和紧凑复用增强表达",
+    "runtime_retested": false,
+    "previous_runtime_evidence": "以上portable_core及application_results为前一轮执行结果；本轮仅核对文档、资料包和技能结构"
+  }
+}

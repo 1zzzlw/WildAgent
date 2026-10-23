@@ -3,7 +3,7 @@
     <div class="panel-header">
       <span>属性面板</span>
       <el-button v-if="selectedItem" size="small" plain :disabled="!rotationOperations.length || sceneStore.isReconstructing"
-        title="仅支持单选有朝向的构件；门窗等依附构件请旋转宿主墙体" @click="rotateSelectedItem">
+        title="支持单选有朝向的构件；门窗请旋转直线宿主墙。带附件的楼板/屋顶及世界坐标附件暂不支持整体旋转" @click="rotateSelectedItem">
         旋转 90°
       </el-button>
       <el-button v-if="removalOperations.length" size="small" type="danger" plain
@@ -35,12 +35,13 @@
             <div class="property-row behavior-row">
               <div>
                 <label>允许拖动</label>
-                <div class="behavior-description">开启后显示三轴移动控件</div>
+                <div class="behavior-description">开启后可双击进入移动</div>
               </div>
               <el-switch :model-value="selectedComponent.draggable !== false" inline-prompt
                 active-text="开" inactive-text="关" @change="handleDraggableEnabled" />
             </div>
-            <div class="interaction-hint">选中构件后拖动三轴控件移动；移动墙时附属门窗跟随，修改支持撤销重做。</div>
+            <div class="interaction-hint">单击高亮，双击显示移动控件；移动宿主时附件跟随，修改支持撤销重做。</div>
+            <div v-if="coordinateHint" class="interaction-hint">{{ coordinateHint }}</div>
           </div>
 
           <div v-if="hasWallAttachment" class="property-section">
@@ -55,8 +56,8 @@
             <div class="property-row vector-property">
               <label>位置</label>
               <div class="vector-inputs">
-                <div v-for="(axis, index) in axes" :key="axis" class="axis-input">
-                  <span class="axis-label">{{ axis }}</span>
+                <div v-for="(axis, index) in wallAxes" :key="axis" class="axis-input">
+                  <span class="axis-label wall-axis-label">{{ axis }}</span>
                   <el-input-number :model-value="componentVectorValue('from', index)" :step="0.1"
                     :controls="false" :aria-label="`位置 ${axis}`"
                     @change="(value: number | undefined) => handleComponentVectorChange('from', index, value)" />
@@ -626,6 +627,8 @@
 </template>
 
 <script setup lang="ts">
+import { getComponentCompiler } from 'wild-core/compiler'
+import { getGeometryReferences } from 'wild-core/relationships'
 import { computed, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
@@ -656,6 +659,7 @@ async function rotateSelectedItem() {
   if (!await sceneStore.applyPatch(patch)) ElMessage.error('旋转未能应用，请查看场景校验结果')
 }
 const axes = ['X', 'Y', 'Z'] as const
+const wallAxes = ['沿墙', '世界Y', '法向'] as const
 const railingNumberFields = [
   { key: 'height', label: '高度', step: 0.1, defaultValue: 1.1 },
   { key: 'postSpacing', label: '立杆间距', step: 0.1, defaultValue: 1.2 },
@@ -722,19 +726,18 @@ const selectedElement = computed(() => {
 
 const selectedItem = computed(() => selectedComponent.value || selectedElement.value)
 const selectedPrimitive = computed(() => selectedElement.value?.type === 'primitive' ? selectedElement.value as unknown as PrimitiveParams : null)
-const hasWallAttachment = computed(() => (
-  selectedComponent.value?.type === 'door'
-  || selectedComponent.value?.type === 'window'
-  || selectedComponent.value?.type === 'canopy'
-  || selectedComponent.value?.type === 'balcony'
-  || selectedComponent.value?.type === 'bay_window'
-))
-const hasOpeningHeight = computed(() => (
-  selectedComponent.value?.type === 'door'
-  || selectedComponent.value?.type === 'window'
-  || selectedComponent.value?.type === 'bay_window'
-))
-const hasFrame = computed(() => hasOpeningHeight.value)
+const editing = computed(() => selectedComponent.value ? getComponentCompiler(selectedComponent.value.type)?.editing : undefined)
+const hasWallAttachment = computed(() => editing.value?.translation === 'wallFrom')
+const hasOpeningHeight = computed(() => hasWallAttachment.value && editing.value?.parameters.includes('height'))
+const hasFrame = computed(() => editing.value?.parameters.includes('frameWidth'))
+const coordinateHint = computed(() => {
+  const ref = selectedComponent.value && getGeometryReferences(selectedComponent.value)[0]
+  if (!ref) return ''
+  if (ref.field === 'parentWall') return '位置依次为沿墙距离、底部世界高度、墙面法向偏移（米）。'
+  if (ref.field === 'parentFloor') return '坐标相对父楼板顶面原点；移动父楼板会带动本构件。'
+  if (ref.field === 'parentRoof') return '坐标相对父屋顶中心与屋面高度；移动屋顶会带动本构件。'
+  return ''
+})
 const walls = computed(() => (
   sceneStore.document?.blueprint.geometry.elements.filter(element => element.type === 'wall') || []
 ))
@@ -1082,6 +1085,7 @@ async function removeSelectedItems() {
 </script>
 
 <style scoped>
+.wall-axis-label { width: auto; min-width: 3em; }
 .property-panel {
   height: 100%;
   display: flex;

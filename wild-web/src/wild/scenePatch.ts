@@ -20,6 +20,7 @@ import type { Blueprint } from '../types/blueprint'
 import type { ScenePatch, SceneOperation, RemoveElementOperation, RemoveComponentOperation } from '../types/scenePatch'
 import type { PhysicsData } from 'wild-core/types'
 import { deepClone } from '../utils/common'
+import { buildGeometryRelationIndex, collectGeometryDependents } from 'wild-core/relationships'
 
 export function createGeometryRemovalOperations(
   blueprint: Blueprint,
@@ -36,35 +37,13 @@ export function createGeometryRemovalOperations(
 
 /** 删除宿主及依附构件，并清理随之失效的排布、物理约束和编辑分组。 */
 function removeGeometry(blueprint: Blueprint, id: string) {
-  const idsToRemove = new Set([id])
-  const items = [...blueprint.geometry.elements, ...(blueprint.geometry.components || [])]
-  let foundNew = true
-  while (foundNew) {
-    foundNew = false
-    for (const item of items) {
-      if (idsToRemove.has(item.id)) continue
-      const record = item as unknown as Record<string, unknown>
-      const attachment = record.attachment as { parent?: string } | undefined
-      const parents = [record.parentWall, record.parentFloor, record.parentRoof, attachment?.parent]
-      if (parents.some(parent => typeof parent === 'string' && idsToRemove.has(parent))) {
-        idsToRemove.add(item.id)
-        foundNew = true
-      }
-    }
-  }
+  const idsToRemove = collectGeometryDependents(buildGeometryRelationIndex(blueprint.geometry), [id])
   blueprint.geometry.elements = blueprint.geometry.elements.filter(item => !idsToRemove.has(item.id))
   if (blueprint.geometry.components) {
     blueprint.geometry.components = blueprint.geometry.components.filter(item => !idsToRemove.has(item.id))
   }
   if (blueprint.geometry.placements) {
-    blueprint.geometry.placements = blueprint.geometry.placements.filter(placement => {
-      const parent = (placement.onSurface as { parent?: string } | undefined)?.parent
-      if (parent && idsToRemove.has(parent)) {
-        idsToRemove.add(placement.id)
-        return false
-      }
-      return true
-    })
+    blueprint.geometry.placements = blueprint.geometry.placements.filter(placement => !idsToRemove.has(placement.id))
   }
   const physics = blueprint.behaviors?.physics as PhysicsData | undefined
   if (physics?.constraints) {

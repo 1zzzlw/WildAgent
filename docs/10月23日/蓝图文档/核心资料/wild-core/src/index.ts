@@ -26,3 +26,4 @@ export * from './materials/index'
 
 // ── 世界（多体量场景）契约 ────────────────────────────────────────────
 export * from './world/index'
+export * from './relationships'

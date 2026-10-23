@@ -122,6 +122,9 @@ export type {
   ComponentCompilationMapping,
   ComponentCompiler,
 } from './types'
+export { createWallCoordinateFrame, translateWallCoordinates } from './components/attachedToWall'
+export { translateRoofAttachmentPoints } from './components/attachedToSurface'
+export type { ComponentCompilerRegistration } from './componentRegistry'
 
 function createEmptyMapping(): import('./types').ComponentCompilationMapping {
   return {

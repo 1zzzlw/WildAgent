@@ -102,6 +102,16 @@ export function attachPointsToRoof(
   })
 }
 
+/** World gizmo motion -> roof-local coordinates, including the roof's slope. */
+export function translateRoofAttachmentPoints(parentRoof: string, points: Vec3[], delta: Vec3, context: ComponentCompileContext): Vec3[] {
+  const roof = findElement<RoofParams>(parentRoof, 'roof', context)
+  const origin = roof.position ?? inferRoofOrigin(context)
+  return attachPointsToRoof(parentRoof, points, context).map(world => {
+    const x = world[0] + delta[0] - origin[0], z = world[2] + delta[2] - origin[2]
+    return [x, world[1] + delta[1] - origin[1] - roofSurfaceHeight(roof, x, z), z]
+  })
+}
+
 /** 与 Core 的基础屋顶自动定位保持一致，供编译阶段的屋面依附先行使用。 */
 function inferRoofOrigin(context: ComponentCompileContext): Vec3 {
   const walls = context.elements.filter(element => element.type === 'wall') as Array<{

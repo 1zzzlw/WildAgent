@@ -13,6 +13,7 @@
     "./materials": "./src/materials/index.ts",
     "./world": "./src/world/index.ts",
     "./compiler": "./src/compiler/index.ts",
+    "./relationships": "./src/relationships.ts",
     "./schema.json": "./schema.json"
   },
   "files": [

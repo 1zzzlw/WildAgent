@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "tested": [
+    "move/multiselect/delete wall",
+    "move/multiselect/delete floor",
+    "move/multiselect/delete roof",
+    "sloped roof world motion",
+    "legacy roof coordinates",
+    "straight and signed arc projections",
+    "attachment/placement closure",
+    "missing/wrong/cyclic hosts",
+    "cache invalidation and wall envelope",
+    "capability descriptors"
+  ]
+}
