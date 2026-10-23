@@ -17,8 +17,8 @@
     {
       "source": "wild-core/schema.json",
       "packed": "核心资料/wild-core/schema.json",
-      "bytes": 58760,
-      "sha256": "2ba98bea068746b657eb5fe07f510632ced93f43e3c13ba7c643f876113464b0"
+      "bytes": 59013,
+      "sha256": "35220c067d84254434f4760fca175dfcc4c5ddf32151304112c3176d330ce631"
     },
     {
       "source": "wild-core/src/compiler/componentCache.ts",
@@ -35,8 +35,8 @@
     {
       "source": "wild-core/src/compiler/componentRegistry.ts",
       "packed": "核心资料/wild-core/src/compiler/componentRegistry.ts",
-      "bytes": 6690,
-      "sha256": "32db0a1283b5cec2a9627fbf73bc87a6da433d5cce460b0a333f6168e3571c13"
+      "bytes": 6767,
+      "sha256": "fd9a75fc48f84ca12d8761a7a435c33d2eb601d7a2f135608243506484b1cb2a"
     },
     {
       "source": "wild-core/src/compiler/components/attachedToPath.ts",
@@ -53,8 +53,8 @@
     {
       "source": "wild-core/src/compiler/components/attachedToWall.ts",
       "packed": "核心资料/wild-core/src/compiler/components/attachedToWall.ts",
-      "bytes": 16934,
-      "sha256": "f2698f4229e1f44616f166f27992893cc90601e03ac90b0f17ca1c0235786d35"
+      "bytes": 17445,
+      "sha256": "99634e2d4101f3b0f60d561e8ba9ed6982c9b70adf6957adef34d229bb6a738a"
     },
     {
       "source": "wild-core/src/compiler/components/balcony.ts",
@@ -65,8 +65,8 @@
     {
       "source": "wild-core/src/compiler/components/bayWindow.ts",
       "packed": "核心资料/wild-core/src/compiler/components/bayWindow.ts",
-      "bytes": 2744,
-      "sha256": "100d1b00ced569c732f50af76dcdadb9b55b50ad3c9635e6324cf0ff020b254e"
+      "bytes": 4638,
+      "sha256": "d65ac8b59dbec0e4982cdbc7347792c778ba7b1544be9c7452a70c7d0da7d7cf"
     },
     {
       "source": "wild-core/src/compiler/components/canopy.ts",
@@ -89,8 +89,8 @@
     {
       "source": "wild-core/src/compiler/components/door.ts",
       "packed": "核心资料/wild-core/src/compiler/components/door.ts",
-      "bytes": 4027,
-      "sha256": "5b1bfd2203a7e06b583cc645b5bc2bede1ae8944097fcc814f5868fa29108d17"
+      "bytes": 4192,
+      "sha256": "d8459da49116b5dd4d84d7420cd4fa6716acce50ff04f049941cef9651b581eb"
     },
     {
       "source": "wild-core/src/compiler/components/elevator.ts",
@@ -119,14 +119,14 @@
     {
       "source": "wild-core/src/compiler/components/window.ts",
       "packed": "核心资料/wild-core/src/compiler/components/window.ts",
-      "bytes": 9006,
-      "sha256": "42b82b416b7fb6090e5d6aa92d56a15a8ccd63e8b8e6195678c6e42755cf3cea"
+      "bytes": 9245,
+      "sha256": "848a29770d17c772034c03ad88dd2300c622fa835354db598325928b5d9d1b7c"
     },
     {
       "source": "wild-core/src/compiler/index.ts",
       "packed": "核心资料/wild-core/src/compiler/index.ts",
-      "bytes": 5136,
-      "sha256": "a981ce9456bf09eabc6127b1e42886af90ffec7daa515344f931fd926adf3d86"
+      "bytes": 5167,
+      "sha256": "5d12fde98f699a2bce8999a8c84a135c852953c818b40872d75db1d14247a894"
     },
     {
       "source": "wild-core/src/compiler/types.ts",
@@ -353,8 +353,8 @@
     {
       "source": "wild-core/types.ts",
       "packed": "核心资料/wild-core/types.ts",
-      "bytes": 27851,
-      "sha256": "0a7642e6cc824b3c38e8c90bce4e9ea6c44010a3c2bcdca96ec40384b42100c3"
+      "bytes": 28123,
+      "sha256": "2468ef65459cb8e8b970f9c7dd2ef3a01a51e7072d30a05e5c91bed68ffa81d9"
     },
     {
       "source": "wild-server/app/design/compilation.py",
@@ -549,5 +549,12 @@
       "sha256": "e8464100a74820667555180a2d0321788ce6a8d6bb96f880c0b3521dc0d0f27b"
     }
   ],
-  "latest_revision": "2026-10-23 界面/参数材质修订；用户保留测试，本轮未执行运行检查"
+  "latest_revision": "2026-10-23 界面/参数材质修订；用户保留测试，本轮未执行运行检查",
+  "latest_update": {
+    "updated_at": "2026-10-23T15:17:44+08:00",
+    "scope": "语义门窗默认可交互及false关闭方式；凸窗正面活动窗扇",
+    "software_tests_run": false,
+    "build_run": false,
+    "render_run": false
+  }
 }

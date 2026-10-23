@@ -300,6 +300,12 @@
         }
       ]
     },
+    "openingInteractionSetting": {
+      "oneOf": [
+        { "const": false },
+        { "$ref": "#/$defs/openingInteractionSpec" }
+      ]
+    },
     "openingInteractionSpec": {
       "type": "object",
       "additionalProperties": false,
@@ -390,7 +396,7 @@
           "type": "string"
         },
         "interaction": {
-          "$ref": "#/$defs/openingInteractionSpec"
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "openingStyle": {
           "enum": [
@@ -484,7 +490,7 @@
           "type": "string"
         },
         "interaction": {
-          "$ref": "#/$defs/openingInteractionSpec"
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "draggable": {
           "type": "boolean"
@@ -823,6 +829,9 @@
         },
         "glassMaterial": {
           "type": "string"
+        },
+        "interaction": {
+          "$ref": "#/$defs/openingInteractionSetting"
         },
         "draggable": {
           "type": "boolean"

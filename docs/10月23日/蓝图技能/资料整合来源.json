@@ -1,7 +1,7 @@
 {
   "source": "docs/10月23日/蓝图文档",
   "date": "2026-10-23",
-  "policy": "同步轻量参数材质；用户保留测试，新实现未构建/渲染；保留历史证据与案例",
+  "policy": "同步默认交互语义、Core源码与来源清单；未运行测试、构建或渲染；案例和旧报告保留历史边界",
   "files": [
     {
       "source": ".gitignore",
@@ -36,7 +36,7 @@
     {
       "source": "WILD蓝图设计语言-v3.0.md",
       "packed": "references/blueprint-kit/WILD蓝图设计语言-v3.0.md",
-      "sha256": "ca8c4ac1767382b3aa65767121baf6788ab343bc205ac307945add01c937f315"
+      "sha256": "b3fdb7cfd74d603f8092d76b5e73b6c7265b60d185e6a27a0fe6ad0fb001deb4"
     },
     {
       "source": "参考资料/用户提供-WILD蓝图设计语言-v2.0.md.txt",
@@ -86,7 +86,7 @@
     {
       "source": "核心资料/wild-core/schema.json",
       "packed": "references/blueprint-kit/核心资料/wild-core/schema.json",
-      "sha256": "2ba98bea068746b657eb5fe07f510632ced93f43e3c13ba7c643f876113464b0"
+      "sha256": "35220c067d84254434f4760fca175dfcc4c5ddf32151304112c3176d330ce631"
     },
     {
       "source": "核心资料/wild-core/src/compiler/componentCache.ts",
@@ -101,7 +101,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/componentRegistry.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/componentRegistry.ts",
-      "sha256": "32db0a1283b5cec2a9627fbf73bc87a6da433d5cce460b0a333f6168e3571c13"
+      "sha256": "fd9a75fc48f84ca12d8761a7a435c33d2eb601d7a2f135608243506484b1cb2a"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToPath.ts",
@@ -116,7 +116,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/attachedToWall.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/attachedToWall.ts",
-      "sha256": "f2698f4229e1f44616f166f27992893cc90601e03ac90b0f17ca1c0235786d35"
+      "sha256": "99634e2d4101f3b0f60d561e8ba9ed6982c9b70adf6957adef34d229bb6a738a"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/balcony.ts",
@@ -126,7 +126,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/bayWindow.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/bayWindow.ts",
-      "sha256": "100d1b00ced569c732f50af76dcdadb9b55b50ad3c9635e6324cf0ff020b254e"
+      "sha256": "d65ac8b59dbec0e4982cdbc7347792c778ba7b1544be9c7452a70c7d0da7d7cf"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/canopy.ts",
@@ -146,7 +146,7 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/door.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/door.ts",
-      "sha256": "5b1bfd2203a7e06b583cc645b5bc2bede1ae8944097fcc814f5868fa29108d17"
+      "sha256": "d8459da49116b5dd4d84d7420cd4fa6716acce50ff04f049941cef9651b581eb"
     },
     {
       "source": "核心资料/wild-core/src/compiler/components/elevator.ts",
@@ -171,12 +171,12 @@
     {
       "source": "核心资料/wild-core/src/compiler/components/window.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/components/window.ts",
-      "sha256": "42b82b416b7fb6090e5d6aa92d56a15a8ccd63e8b8e6195678c6e42755cf3cea"
+      "sha256": "848a29770d17c772034c03ad88dd2300c622fa835354db598325928b5d9d1b7c"
     },
     {
       "source": "核心资料/wild-core/src/compiler/index.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/src/compiler/index.ts",
-      "sha256": "a981ce9456bf09eabc6127b1e42886af90ffec7daa515344f931fd926adf3d86"
+      "sha256": "5d12fde98f699a2bce8999a8c84a135c852953c818b40872d75db1d14247a894"
     },
     {
       "source": "核心资料/wild-core/src/compiler/types.ts",
@@ -366,7 +366,7 @@
     {
       "source": "核心资料/wild-core/types.ts",
       "packed": "references/blueprint-kit/核心资料/wild-core/types.ts",
-      "sha256": "0a7642e6cc824b3c38e8c90bce4e9ea6c44010a3c2bcdca96ec40384b42100c3"
+      "sha256": "2468ef65459cb8e8b970f9c7dd2ef3a01a51e7072d30a05e5c91bed68ffa81d9"
     },
     {
       "source": "核心资料/wild-server/app/design/compilation.py",
@@ -1291,12 +1291,12 @@
     {
       "source": "验证与来源/文件清单.json",
       "packed": "references/blueprint-kit/验证与来源/文件清单.json",
-      "sha256": "ce905c5be2439c0ad2464e98faa4614cf28cc940f06768f7f2caa7874d621a39"
+      "sha256": "8410cd4a391fe0aecd054003da5dfdf411cc47a452a7a87292997676cd9d86fa"
     },
     {
       "source": "验证与来源/核心源码来源.json",
       "packed": "references/blueprint-kit/验证与来源/核心源码来源.json",
-      "sha256": "97a9ff8632aa3392fe4eb783ce2ab88e2471ed69cfd45ac044970d2171b3f830"
+      "sha256": "2d211aa443656fa916595b7c61502a3905f9cca2bb17bab18a6d5eaa74f1dcdd"
     },
     {
       "source": "验证与来源/渲染修订资料包自检.json",

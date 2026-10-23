@@ -122,7 +122,7 @@ export type {
   ComponentCompilationMapping,
   ComponentCompiler,
 } from './types'
-export { createWallCoordinateFrame, translateWallCoordinates } from './components/attachedToWall'
+export { createWallCoordinateFrame, translateWallCoordinates, resolveOpeningInteractionSpec } from './components/attachedToWall'
 export { translateRoofAttachmentPoints } from './components/attachedToSurface'
 export type { ComponentCompilerRegistration } from './componentRegistry'
 

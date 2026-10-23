@@ -213,6 +213,17 @@ export function createBox(
   return box
 }
 
+/** 编译器与属性面板共用缺省语义，不把默认值写回用户文档。 */
+export function resolveOpeningInteractionSpec(
+  type: 'door' | 'window' | 'bay_window',
+  interaction: OpeningInteractionSpec | false | undefined,
+): OpeningInteractionSpec | undefined {
+  if (interaction === false) return undefined
+  return interaction ?? (type === 'bay_window'
+    ? { mode: 'slide', initiallyOpen: false }
+    : { mode: 'swing', hingeSide: 'left', openAngle: 90, initiallyOpen: false })
+}
+
 export function createOpeningInteraction(
   interaction: OpeningInteractionSpec | undefined,
   frame: StraightWallFrame,

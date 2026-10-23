@@ -145,7 +145,7 @@
             </div>
           </div>
 
-          <div v-if="selectedComponent.type === 'door' || selectedComponent.type === 'window'"
+          <div v-if="selectedComponent.type === 'door' || selectedComponent.type === 'window' || selectedComponent.type === 'bay_window'"
             class="property-section behavior-card">
             <div class="section-title">右键开合</div>
             <div class="property-row behavior-row">
@@ -191,7 +191,7 @@
                   active-text="开" inactive-text="关"
                   @change="(value: boolean) => handleInteractionChange('initiallyOpen', value)" />
               </div>
-              <div class="interaction-hint">{{ selectedComponent.type === 'window'
+              <div class="interaction-hint">{{ selectedComponent.type !== 'door'
                 ? '右键命中左窗扇就开左侧，命中右窗扇就开右侧；两扇可分别打开。'
                 : '视口中左键选择，右键命中门扇执行开合。' }}</div>
             </template>
@@ -628,7 +628,7 @@
 </template>
 
 <script setup lang="ts">
-import { getComponentCompiler } from 'wild-core/compiler'
+import { getComponentCompiler, resolveOpeningInteractionSpec } from 'wild-core/compiler'
 import { getGeometryReferences } from 'wild-core/relationships'
 import { acceptsComponentMaterial } from '../../wild/materialCompatibility'
 import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
@@ -769,8 +769,8 @@ const railLevels = computed(() => (
     : []
 ))
 const componentInteraction = computed(() => {
-  if (selectedComponent.value?.type === 'door' || selectedComponent.value?.type === 'window') {
-    return selectedComponent.value.interaction || null
+  if (selectedComponent.value?.type === 'door' || selectedComponent.value?.type === 'window' || selectedComponent.value?.type === 'bay_window') {
+    return resolveOpeningInteractionSpec(selectedComponent.value.type, selectedComponent.value.interaction) || null
   }
   return null
 })
@@ -983,8 +983,10 @@ function handleComponentVectorChange(key: string, index: number, value: number |
 }
 
 function handleInteractionEnabled(enabled: boolean) {
+  const component = selectedComponent.value
+  if (!component || !['door', 'window', 'bay_window'].includes(component.type)) return
   void applyComponentChanges(
-    { interaction: enabled ? { mode: 'swing', hingeSide: 'left', openAngle: 90 } : undefined },
+    { interaction: enabled ? undefined : false },
     `${enabled ? '启用' : '关闭'}${selectedComponent.value?.id}右键开合`,
   )
 }

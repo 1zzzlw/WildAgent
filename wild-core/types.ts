@@ -254,7 +254,8 @@ export interface DoorComponent {
   leafDepth?: number;
   frameMaterial?: string;
   leafMaterial?: string;
-  interaction?: OpeningInteractionSpec;
+  /** 省略时默认平开；false 表示固定门。 */
+  interaction?: OpeningInteractionSpec | false;
   /** 洞口形状，默认 "rectangular"。设为 "arched" 可生成拱形门洞。 */
   openingStyle?: 'rectangular' | 'arched';
   /** 门扇布局，默认 "single"。"double" 生成双开布局（两个洞口+四段框）。 */
@@ -284,7 +285,8 @@ export interface WindowComponent {
   mullionWidth?: number;
   frameMaterial?: string;
   glassMaterial?: string;
-  interaction?: OpeningInteractionSpec;
+  /** 省略时默认双扇平开；false 表示固定窗。 */
+  interaction?: OpeningInteractionSpec | false;
 }
 
 export interface RailingComponent {
@@ -372,6 +374,8 @@ export interface BayWindowComponent {
   frameDepth?: number;
   frameMaterial?: string;
   glassMaterial?: string;
+  /** 正面窗扇默认双轨推拉，侧玻璃固定；false 关闭交互。 */
+  interaction?: OpeningInteractionSpec | false;
 }
 
 export interface CorniceComponent {

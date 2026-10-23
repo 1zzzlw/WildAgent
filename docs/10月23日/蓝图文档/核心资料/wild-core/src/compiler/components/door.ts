@@ -1,6 +1,6 @@
-import type { DoorComponent, GeometryElement, OpeningParams } from '../../../types'
+import type { DoorComponent, GeometryElement, OpeningInteractionSpec, OpeningParams } from '../../../types'
 import type { ComponentCompileContext } from '../types'
-import { assertFrameDimensions, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveStraightWallFrame, withMaterial } from './attachedToWall'
+import { assertFrameDimensions, assertWallDepthAlignment, createBox, createOpeningInteraction, resolveOpeningInteractionSpec, resolveStraightWallFrame, withMaterial } from './attachedToWall'
 import { buildOpeningContour } from '../../primitive/geometry/openingContour'
 
 /** 一个完整洞口，按轮廓生成门框；双开门的两扇共享操作、各绕自己的外侧铰链。 */
@@ -13,14 +13,15 @@ export function compileDoor(component: DoorComponent, context: ComponentCompileC
   assertWallDepthAlignment(component, frame.wall.thickness, frameDepth, leafDepth, 'leafDepth')
   const [along, bottom, offset] = component.from
   const style = component.openingStyle ?? 'rectangular'
-  const double = component.doorStyle === 'double' && (!component.interaction || component.interaction.mode === 'swing')
+  const interaction = resolveOpeningInteractionSpec('door', component.interaction)
+  const double = component.doorStyle === 'double' && (!interaction || interaction.mode === 'swing')
   const width = component.width - border * 2
   const height = component.height - border
-  const opening = withMaterial<OpeningParams>({ type: 'opening', id: `${component.id}__opening`, parentWall: component.parentWall, from: [...component.from], width: component.width, height: component.height, depth: leafDepth, style, _leafInset: border, _doorLeafDetail: createDoorLeafDetail(component, double) }, component.leafMaterial)
-  if (double && component.interaction) {
-    opening._leafInteractions = [0, 1].map(index => ({ ...createOpeningInteraction({ ...component.interaction!, hingeSide: index ? 'right' : 'left' }, frame, along + border + index * width / 2, bottom, offset, width / 2, height)!, groupId: component.id }))
+  const opening = withMaterial<OpeningParams>({ type: 'opening', id: `${component.id}__opening`, parentWall: component.parentWall, from: [...component.from], width: component.width, height: component.height, depth: leafDepth, style, _leafInset: border, _doorLeafDetail: createDoorLeafDetail(component, double, interaction) }, component.leafMaterial)
+  if (double && interaction) {
+    opening._leafInteractions = [0, 1].map(index => ({ ...createOpeningInteraction({ ...interaction, hingeSide: index ? 'right' : 'left' }, frame, along + border + index * width / 2, bottom, offset, width / 2, height)!, groupId: component.id }))
   } else {
-    opening._interaction = createOpeningInteraction(component.interaction, frame, along + border, bottom, offset, width, height)
+    opening._interaction = createOpeningInteraction(interaction, frame, along + border, bottom, offset, width, height)
   }
   const elements: GeometryElement[] = [opening]
   if (!border) return elements
@@ -42,6 +43,7 @@ export function compileDoor(component: DoorComponent, context: ComponentCompileC
 function createDoorLeafDetail(
   component: DoorComponent,
   doubleDoor: boolean,
+  interaction: OpeningInteractionSpec | undefined,
 ): NonNullable<OpeningParams['_doorLeafDetail']> {
   let hash = 2166136261
   const variationKey = [
@@ -62,7 +64,7 @@ function createDoorLeafDetail(
   return {
     rows,
     columns: doubleDoor ? 2 : 1,
-    hingeSide: component.interaction?.hingeSide ?? (Math.abs(hash) % 3 === 0 ? 'right' : 'left'),
+    hingeSide: interaction ? interaction.hingeSide ?? 'left' : (Math.abs(hash) % 3 === 0 ? 'right' : 'left'),
     doubleDoor,
   }
 }

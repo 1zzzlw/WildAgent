@@ -40,23 +40,47 @@
   },
   "current_revision": {
     "date": "2026-10-23",
-    "scope": "界面与参数材质",
+    "scope": "门窗默认交互：门平开、普通窗双扇平开、凸窗正面双轨推拉；interaction:false固定",
     "tests_run": false,
     "build_run": false,
     "render_run": false,
-    "language_sha256": "ca8c4ac1767382b3aa65767121baf6788ab343bc205ac307945add01c937f315",
+    "backend_changed": false,
+    "language_sha256": "b3fdb7cfd74d603f8092d76b5e73b6c7265b60d185e6a27a0fe6ad0fb001deb4",
     "archives": [
       {
         "path": "docs/10月23日/蓝图文档/蓝图创作包-v3.0.zip",
-        "sha256": "9e2ae673d7a32ef9476bed34da524d0701afa3c35f228b27d1619242c0e97633",
+        "sha256": "053b91549aa25c4f251afe208db8fa71e068749aa4e3d8988aa83184a6a83802",
         "files": 264
       },
       {
         "path": "docs/10月23日/蓝图技能/wild-blueprint-authoring.zip",
-        "sha256": "43da55c4537a53c6b3b3b8fcf32ebb4885ee225ccef305eba02b52c78c59046c",
-        "files": 270
+        "sha256": "446f6d23c10187e7e7298db9f75cd0fa9b19657c165a12959459ef734a6c35f2",
+        "files": 338
       }
     ],
-    "note": "当前文件与归档已更新；旧ok/runtime/hash字段仅代表之前各轮，新增实现待用户验收"
-  }
+    "note": "本轮只同步源码与文档；旧运行和实图记录不证明新默认及凸窗动画已经验收"
+  },
+  "revision_history": [
+    {
+      "date": "2026-10-23",
+      "scope": "界面与参数材质",
+      "tests_run": false,
+      "build_run": false,
+      "render_run": false,
+      "language_sha256": "ca8c4ac1767382b3aa65767121baf6788ab343bc205ac307945add01c937f315",
+      "archives": [
+        {
+          "path": "docs/10月23日/蓝图文档/蓝图创作包-v3.0.zip",
+          "sha256": "9e2ae673d7a32ef9476bed34da524d0701afa3c35f228b27d1619242c0e97633",
+          "files": 264
+        },
+        {
+          "path": "docs/10月23日/蓝图技能/wild-blueprint-authoring.zip",
+          "sha256": "43da55c4537a53c6b3b3b8fcf32ebb4885ee225ccef305eba02b52c78c59046c",
+          "files": 270
+        }
+      ],
+      "note": "当前文件与归档已更新；旧ok/runtime/hash字段仅代表之前各轮，新增实现待用户验收"
+    }
+  ]
 }

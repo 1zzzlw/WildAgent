@@ -1,6 +1,7 @@
 import type {
   GeometryElement,
   OpeningParams,
+  OpeningInteractionSpec,
   WindowComponent,
 } from '../../../types'
 import type { ComponentCompileContext } from '../types'
@@ -10,6 +11,7 @@ import {
   assertNonNegativeInteger,
   createBox,
   createOpeningInteraction,
+  resolveOpeningInteractionSpec,
   resolveStraightWallFrame,
   withMaterial,
 } from './attachedToWall'
@@ -20,9 +22,11 @@ export function compileWindow(
   context: ComponentCompileContext,
 ): GeometryElement[] {
   const frame = resolveStraightWallFrame(component, context)
+  const interaction = resolveOpeningInteractionSpec(component.type, component.interaction)
   const frameWidth = component.frameWidth ?? 0.06
   const frameDepth = component.frameDepth ?? frame.wall.thickness
-  const glassDepth = component.glassDepth ?? Math.min(0.012, frameDepth)
+  const glassLimit = interaction && interaction.mode !== 'swing' ? frameDepth * 0.42 : frameDepth
+  const glassDepth = component.glassDepth ?? Math.min(0.012, glassLimit)
   const verticalMullions = component.verticalMullions ?? 0
   const horizontalMullions = component.horizontalMullions ?? 0
   const mullionWidth = component.mullionWidth ?? Math.min(frameWidth, 0.02)
@@ -62,7 +66,7 @@ export function compileWindow(
   )
 
   const sashes: OpeningParams[] = []
-  if (!component.interaction) sashes.push(createSash(`${component.id}__opening`, along, component.width))
+  if (!interaction) sashes.push(createSash(`${component.id}__opening`, along, component.width))
 
   const elements: GeometryElement[] = [
     ...sashes,
@@ -96,8 +100,8 @@ export function compileWindow(
     ),
   ]
 
-  if (component.interaction) {
-    elements.push(...compileMovingSashes(component, frame, frameWidth, frameDepth, glassDepth, mullionWidth))
+  if (interaction) {
+    elements.push(...compileMovingSashes(component, interaction, frame, frameWidth, frameDepth, glassDepth, mullionWidth))
     return elements
   }
 
@@ -134,10 +138,10 @@ function padIndex(index: number): string {
 /** 整个洞口裁墙，窗扇在净空内沿独立轨道移动；玻璃、窗框和窗棂共享交互。 */
 function compileMovingSashes(
   component: WindowComponent,
+  interaction: OpeningInteractionSpec,
   frame: ReturnType<typeof resolveStraightWallFrame>,
   border: number, depth: number, glassDepth: number, mullion: number,
 ): GeometryElement[] {
-  const interaction = component.interaction!
   const [along, bottom, offset] = component.from
   const width = component.width - border * 2
   const height = component.height - border * 2

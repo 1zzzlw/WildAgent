@@ -287,7 +287,9 @@ subtype 仅：`table/chair/sofa/bookshelf/bed/wardrobe/nightstand/tv_cabinet/lam
 - window 可选：`frameWidth/frameDepth/glassDepth/verticalMullions/horizontalMullions/mullionWidth/frameMaterial/glassMaterial`。窗棂数量非负整数；不要为了“细致”把玻璃全塞满。
 - 框宽必须给中间留正净空；frameDepth 与墙厚、leafDepth/glassDepth 匹配。无意偏离墙中心线的法向偏移可能让玻璃在墙内；普通洞口偏移先用0。
 - 可选 `interaction:{mode:"swing"|"slide"|"lift",hingeSide:"left"|"right",openAngle:90,openDistance:数值,initiallyOpen:false}`；只填相关字段。双开/拱形门由组件生成，不手写内部 `_interaction`。
-- 普通门建议显式 interaction；静态窗可以省略。推拉扇和轨道由当前组件实现，不用额外平移同一片玻璃假装动画。lift 是受墙顶净空约束的刚体升降，不等于真实卷帘折叠仿真。
+- 当前Core/前端省略interaction时默认可开合：door为左铰链90°平开，window为双扇平开，初始关闭；双开/拱形门保留相应形状与双扇联动。bay_window正面窗扇默认推拉，侧玻璃固定。普通窗默认平开，以兼容已有薄窗框；推拉/升降按需显式配置。已有配置对象优先，固定门窗显式写 `"interaction":false`，不通过删除字段来关闭。旧文件重新打开会采用新默认，无需改写源文件。
+- 推拉扇和轨道由当前组件实现，不用额外平移同一片玻璃假装动画。lift是受墙顶净空约束的刚体升降，不等于真实卷帘折叠仿真。原生opening及普通原语拼出的装饰门窗不自动添加交互；需要开合时使用语义门窗组件。
+- 后端本轮未改，其门检查仍可能要求显式interaction对象；经旧后端时保持原配置对象，不把新增false方式视为全链已兼容。属性面板与编译器共用默认解析，人物漫游复用现有开合。新增默认及凸窗动画未运行测试/构建/渲染，实际交互待用户验收。
 
 父墙水平端点 A/B，`u=(B−A)/L`，二维法向 `n=[−u.z,u.x]`。令 from=[s,b,o]、开口宽w高h：
 

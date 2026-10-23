@@ -2,14 +2,15 @@
   "name": "wild-blueprint-authoring",
   "source": "E:\\AgentProject\\WildAgent\\docs\\10月23日\\蓝图技能\\wild-blueprint-authoring",
   "installed": "C:\\Users\\Administrator\\.codex\\skills\\wild-blueprint-authoring",
-  "updated_at": "2026-10-23T11:57:44+08:00",
+  "updated_at": "2026-10-23T15:17:44+08:00",
   "files_checked": 338,
   "byte_identical": true,
-  "scope": "核对本次分发文件与安装副本指纹；保留既有额外文件，不执行技能或建筑测试",
+  "scope": "仅核对分发文件与本机安装副本指纹；保留既有额外文件",
   "archive": "wild-blueprint-authoring.zip",
-  "archive_sha256": "f2a423e4a8a1a23206c3f8c305ad9b24ff78331a65b55e12abe1ceab3d58a2df",
+  "archive_sha256": "446f6d23c10187e7e7298db9f75cd0fa9b19657c165a12959459ef734a6c35f2",
   "software_tests_run": false,
+  "build_run": false,
   "new_generation_or_render_run": false,
   "model_evaluation_run": false,
-  "case_quality": "needs_refinement"
+  "case_quality": "13—15例仍为needs_refinement"
 }

@@ -60,13 +60,13 @@ function registerBuiltins(): void {
   registerComponentCompiler({
     type: 'door',
     editing: { translation: 'wallFrom', host: 'parentWall', hostRequired: true, parameters: ['width', 'height', 'frameWidth', 'frameDepth', 'leafDepth'] },
-    description: '将静态门编译为墙体 opening 与门框 primitive',
+    description: '将门编译为墙洞、门框和默认可平开的门扇；interaction:false 固定',
     compile: (component, context) => compileDoor(component as Extract<ComponentSpec, { type: 'door' }>, context),
   })
   registerComponentCompiler({
     type: 'window',
     editing: { translation: 'wallFrom', host: 'parentWall', hostRequired: true, parameters: ['width', 'height', 'frameWidth', 'frameDepth', 'verticalMullions', 'horizontalMullions'] },
-    description: '将静态窗编译为墙体 opening、窗框与窗棂 primitive',
+    description: '将窗编译为墙洞、窗框和默认可平开的双扇窗；interaction:false 固定',
     compile: (component, context) => compileWindow(component as Extract<ComponentSpec, { type: 'window' }>, context),
   })
   registerComponentCompiler({
@@ -98,7 +98,7 @@ function registerBuiltins(): void {
   registerComponentCompiler({
     type: 'bay_window',
     editing: { translation: 'wallFrom', host: 'parentWall', hostRequired: true, parameters: ['width', 'height', 'frameWidth', 'frameDepth', 'projectionDepth'] },
-    description: '将凸窗编译为墙洞、窗框和投影窗体',
+    description: '将凸窗编译为墙洞、投影窗体和默认可推拉的正面窗扇',
     compile: (component, context) => compileBayWindow(component as Extract<ComponentSpec, { type: 'bay_window' }>, context),
   })
   registerComponentCompiler({
