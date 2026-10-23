@@ -30,7 +30,7 @@ GATE_X0, GATE_X1 = 5.0, 9.0
 GATE_Z0, GATE_Z1 = -10.0, -8.6
 GATE_TOP = 3.20
 POOL_X0, POOL_X1 = -0.6, 1.9
-POOL_Z0, POOL_Z1 = 0.2, 8.4
+POOL_Z0, POOL_Z1 = -6.0, 8.4
 POOL_BOTTOM = -0.55
 WATER_Y = -0.08
 
@@ -80,14 +80,14 @@ MATERIALS = {
     "metal_dark": mat([0.075, 0.085, 0.088], 0.38, 0.66),
     "glass": mat([0.86, 0.93, 0.94], 0.07, materialClass="glass", surfaceFamily="glass",
                  transmission=0.92, ior=1.5, thickness=0.012),
-    "water": mat([0.10, 0.20, 0.19], 0.08, materialClass="glass", surfaceFamily="glass",
-                 transmission=0.94, ior=1.333, thickness=0.02,
-                 attenuationColor=[0.55, 0.75, 0.70], attenuationDistance=2.8),
-    "pool_bottom": mat([0.22, 0.24, 0.21], 0.92),
+    "water": mat([0.20, 0.34, 0.33], 0.12, materialClass="glass", surfaceFamily="glass",
+                 transmission=0.90, ior=1.333, thickness=0.02,
+                 attenuationColor=[0.62, 0.82, 0.78], attenuationDistance=5.5),
+    "pool_bottom": mat([0.48, 0.50, 0.45], 0.88),
     "grass": mat([0.20, 0.30, 0.10], 0.95),
     "leaf_dark": mat([0.09, 0.20, 0.07], 0.86),
     "leaf_light": mat([0.24, 0.36, 0.12], 0.88),
-    "maple": mat([0.52, 0.17, 0.09], 0.86),
+    "maple": mat([0.40, 0.15, 0.10], 0.90),
     "bamboo": mat([0.16, 0.30, 0.10], 0.88),
     "bark": mat([0.19, 0.13, 0.08], 0.90),
     "linen": mat([0.70, 0.66, 0.56], 0.93, materialClass="fabric",
@@ -102,6 +102,8 @@ MATERIALS = {
     "paper": mat([0.92, 0.86, 0.70], 0.90, emissive=[0.55, 0.42, 0.22], emissiveIntensity=0.35),
     "moss": mat([0.18, 0.26, 0.10], 0.97),
     "orange": mat([0.75, 0.28, 0.08], 0.65),
+    "flower": mat([0.82, 0.58, 0.60], 0.88),
+    "flower_white": mat([0.92, 0.90, 0.84], 0.90),
 }
 
 
@@ -298,6 +300,49 @@ class Author:
     def plaque(self, x, y, z, text, width=2.0, height=0.40, rotation=(0, PI, 0)):
         self.box(x, y, z, width, height, 0.08, "wood_dark", rotation=list(rotation),
                  label={"text": text, "color": [0.95, 0.82, 0.50], "fontFamily": "serif"})
+
+    def pot(self, x, z, base=0.0, scale=0.8, leaf="leaf_dark"):
+        self.cyl(x, base + 0.18 * scale, z, 0.24 * scale, 0.36 * scale, "stone_dark",
+                 top=0.28 * scale, segments=16)
+        self.cyl(x, base + 0.37 * scale, z, 0.25 * scale, 0.04 * scale, "soil", segments=16)
+        self.sphere(x, base + 0.66 * scale, z, 0.30 * scale, leaf, scale=[1.0, 0.9, 1.0])
+        self.sphere(x + 0.15 * scale, base + 0.82 * scale, z, 0.20 * scale, leaf)
+        self.sphere(x - 0.12 * scale, base + 0.76 * scale, z + 0.10 * scale, 0.18 * scale, leaf)
+
+    def lattice(self, cx, y, cz, width, height, axis="z", depth=0.05):
+        m = "wood_dark"
+        if axis == "z":
+            self.box(cx, y + height / 2, cz, width, 0.06, depth, m)
+            self.box(cx, y - height / 2, cz, width, 0.06, depth, m)
+            self.box(cx - width / 2, y, cz, 0.06, height, depth, m)
+            self.box(cx + width / 2, y, cz, 0.06, height, depth, m)
+            for i in range(3):
+                x = cx - width / 2 + width * (i + 1) / 4
+                self.box(x, y, cz, 0.035, height - 0.06, 0.04, m)
+            for j in range(2):
+                yy = y - height / 2 + height * (j + 1) / 3
+                self.box(cx, yy, cz, width - 0.06, 0.035, 0.04, m)
+        else:
+            self.box(cx, y + height / 2, cz, depth, 0.06, width, m)
+            self.box(cx, y - height / 2, cz, depth, 0.06, width, m)
+            self.box(cx, y, cz - width / 2, depth, height, 0.06, m)
+            self.box(cx, y, cz + width / 2, depth, height, 0.06, m)
+            for i in range(3):
+                z = cz - width / 2 + width * (i + 1) / 4
+                self.box(cx, y, z, 0.04, height - 0.06, 0.035, m)
+            for j in range(2):
+                yy = y - height / 2 + height * (j + 1) / 3
+                self.box(cx, yy, cz, 0.04, 0.035, width - 0.06, m)
+
+    def bench(self, x, z, w=1.8, d=0.45, h=0.45, base=0.0, material="wood"):
+        self.box(x, base + h, z, w, 0.10, d, material)
+        for sx in (-1, 1):
+            self.box(x + sx * (w / 2 - 0.18), base + h / 2, z, 0.12, h, d - 0.08, "stone_dark")
+
+    def shrub(self, x, z, r=0.35, leaf="flower", base=0.0):
+        self.sphere(x, base + r * 0.7, z, r, leaf, scale=[1.0, 0.7, 1.0])
+        self.sphere(x + r * 0.5, base + r * 0.5, z + r * 0.2, r * 0.65,
+                    "leaf_light", scale=[1.0, 0.6, 1.0])
 
     def roof(self, ident, cx, cz, eave, span, depth, height, thickness, axis):
         self.add({
@@ -520,6 +565,14 @@ def build_site(a):
     ):
         a.box((x0 + x1) / 2, 0.05, (z0 + z1) / 2, x1 - x0, 0.10, z1 - z0, "stone_light")
 
+    for x, z in ((0.20, 1.20), (0.60, 4.50), (0.20, 7.20)):
+        a.box(x, -0.24, z, 0.16, 0.08, 0.16, "glow_soft",
+              light_source={"lightType": "point", "color": [1.0, 0.80, 0.55],
+                            "intensity": 3, "distance": 3, "initiallyOn": True})
+    for x in (-0.40, 0.10, 0.60, 1.10, 1.60):
+        a.box(x, 0.035, -3.60, 0.42, 0.07, 0.58, "stone_light")
+    a.bench(-1.15, -4.50, w=0.45, d=1.80, h=0.45, base=0.0, material="stone_light")
+
     a.floor("pave_w", 4.80, -8.60, 6.30, -2.30, 0.03, 0.03, "paving")
     a.floor("pave_e", 8.10, -8.60, 12.00, -2.30, 0.03, 0.03, "paving")
     a.floor("entry_path", 6.30, -8.60, 8.10, -2.30, 0.06, 0.03, "stone_light")
@@ -528,6 +581,10 @@ def build_site(a):
     a.floor("lawn_e", 15.00, -8.50, 17.50, 12.00, 0.04, 0.04, "grass")
     a.floor("lawn_n", -2.00, 10.50, 14.00, 13.50, 0.04, 0.04, "grass")
     a.floor("gravel", -4.00, -8.40, -2.40, -4.00, 0.03, 0.03, "gravel")
+    for x in (9.00, 10.20, 11.40):
+        a.box(x, 0.034, -5.45, 0.018, 0.006, 6.10, "stone_dark")
+    for z in (-7.50, -6.30, -5.10, -3.90):
+        a.box(8.40, 0.034, z, 7.00, 0.006, 0.018, "stone_dark")
     for z in (-7.6, -6.4, -5.2, -4.0, -2.8):
         a.box(7.2, 0.062, z, 1.70, 0.006, 0.018, "stone_dark")
 
@@ -561,9 +618,33 @@ def build_site(a):
     a.box(7.20, 3.43, -3.20, 3.00, 0.06, 1.10, "wood_dark")
     a.box(7.20, 3.53, -3.05, 3.40, 0.16, 2.10, "roof_tile")
     a.box(7.20, 3.64, -3.05, 3.50, 0.04, 2.20, "roof_edge")
+    for z in (-3.80, -3.50, -3.20, -2.90, -2.60):
+        a.box(7.20, 3.625, z, 3.30, 0.02, 0.05, "roof_tile_alt")
     for i in range(7):
         x = 5.90 + i * 0.44
         a.box(x, 3.40, -3.05, 0.06, 0.10, 1.90, "wood_dark")
+
+    # 南侧三柱檐廊
+    a.box(11.55, 0.15, -2.90, 5.90, 0.30, 1.80, "stone_light")
+    for x in (9.60, 11.80, 14.00):
+        a.column(x, -3.50, 0.30, 3.30, radius=0.12)
+    a.box(11.55, 3.38, -3.50, 5.90, 0.16, 0.18, "wood_dark")
+    a.box(11.55, 3.34, -2.95, 6.00, 0.06, 1.90, "wood")
+    for i in range(15):
+        x = 8.85 + i * 0.40
+        a.box(x, 3.40, -2.95, 0.06, 0.10, 1.85, "wood_dark")
+    a.box(11.55, 3.54, -2.95, 6.10, 0.16, 2.10, "roof_tile")
+    a.box(11.55, 3.63, -3.95, 6.20, 0.05, 0.10, "roof_edge")
+    a.box(11.55, 3.63, -1.95, 6.20, 0.05, 0.10, "roof_edge")
+    for z in (-3.60, -3.20, -2.80, -2.40, -2.00):
+        a.box(11.55, 3.64, z, 6.00, 0.02, 0.05, "roof_tile_alt")
+    a.bench(13.20, -2.55, w=1.80, d=0.45, h=0.42, base=0.30, material="wood")
+    for x in (9.80, 13.40):
+        a.box(x, 2.95, -2.20, 0.18, 0.08, 0.10, "glow_soft",
+              light_source={"lightType": "point", "color": [1.0, 0.76, 0.46],
+                            "intensity": 4, "distance": 4, "initiallyOn": True})
+    a.pot(9.20, -2.55, base=0.30, scale=0.75)
+    a.pot(14.20, -2.55, base=0.30, scale=0.75)
 
 
 def build_tea(a):
@@ -575,6 +656,9 @@ def build_tea(a):
     a.wall("tea_store_s", -5.80, 7.30, TEA_X0, 7.30, F1, TEA_TOP, 0.12)
     a.door("tea_store_w", -5.80, 8.45, F1, 0.80, 2.05, out=(0, 0), leaf="wood")
     a.door("tea_e", TEA_X1, 4.20, F1, 1.00, 2.30, out=(1, 0), leaf="glass", double=False)
+    a.box(-1.33, 2.30, 5.00, 0.06, 0.16, 0.10, "glow_soft",
+          light_source={"lightType": "point", "color": [1.0, 0.76, 0.46],
+                        "intensity": 3, "distance": 3, "initiallyOn": True})
     a.window("tea_e", TEA_X1, 6.35, 0.90, 1.60, 1.80, out=(1, 0), vm=2, hm=1, slats=4)
     a.window("tea_e", TEA_X1, 8.35, 0.90, 1.10, 1.80, out=(1, 0), vm=1, hm=1, slats=3)
     a.window("tea_s", -4.50, TEA_Z0, 0.90, 3.00, 1.80, out=(0, -1), vm=4, hm=1, slats=8)
@@ -594,6 +678,8 @@ def build_tea(a):
 
     a.roof("tea_roof", (TEA_X0 + TEA_X1) / 2, (TEA_Z0 + TEA_Z1) / 2,
            TEA_TOP, 7.2, 8.7, 1.05, 0.16, "z")
+    for z in (1.40, 10.10):
+        a.box(-4.50, 4.72, z, 0.22, 0.10, 0.22, "roof_ridge", rotation=[0, 0, -0.35])
 
     a.table(-4.50, 5.50, w=1.90, d=0.85, h=0.42, material="wood")
     for x, z in ((-5.15, 5.05), (-5.15, 5.95), (-3.85, 5.05), (-3.85, 5.95)):
@@ -608,6 +694,20 @@ def build_tea(a):
     a.plaque(-1.35, 2.85, 4.20, "听松", width=1.10, height=0.32,
              rotation=(0, PI / 2, 0))
     a.pendant(-4.50, 5.50, TEA_TOP - 0.10, drop=0.65, intensity=9, distance=5)
+
+    # 茶室南侧木格棚与茶座
+    for x in (-6.80, -2.80):
+        a.column(x, 0.90, 0.0, 3.15, radius=0.12)
+    a.box(-4.80, 3.12, 0.90, 4.20, 0.16, 0.18, "wood_dark")
+    for i in range(8):
+        z = 0.48 + i * 0.17
+        a.box(-4.80, 3.02, z, 4.20, 0.06, 0.10, "wood")
+    a.box(-4.80, 0.48, 1.10, 1.60, 0.10, 0.50, "wood")
+    for x in (-5.30, -4.30):
+        a.box(x, 0.24, 1.10, 0.12, 0.48, 0.45, "stone")
+    a.bench(-6.60, 1.10, w=0.45, d=1.40, h=0.45, base=0.0, material="stone_light")
+    a.pot(-7.15, 0.50, base=0.0, scale=0.65, leaf="maple")
+    a.pot(-2.45, 0.50, base=0.0, scale=0.65, leaf="leaf_light")
 
 
 def build_main(a):
@@ -656,9 +756,9 @@ def build_main(a):
     a.door("main_w1", MAIN_X0, 4.20, F1, 1.10, 2.20, out=(-1, 0), leaf="glass", double=False)
     a.window("main_w1", MAIN_X0, 1.00, 1.00, 1.40, 1.60, out=(-1, 0), vm=2, hm=1, slats=3)
 
-    a.window("main_s2", 3.90, MAIN_Z0, 4.60, 1.60, 1.60, out=(0, -1), vm=2, hm=1, slats=3)
-    a.window("main_s2", 7.50, MAIN_Z0, 4.40, 2.00, 1.80, out=(0, -1), vm=3, hm=1, slats=5)
-    a.window("main_s2", 12.35, MAIN_Z0, 3.70, 3.80, 3.00, out=(0, -1), vm=5, hm=2, slats=0)
+    a.window("main_s2", 4.30, MAIN_Z0, 4.60, 1.60, 1.60, out=(0, -1), vm=2, hm=1, slats=3)
+    a.window("main_s2", 7.20, MAIN_Z0, 4.40, 2.00, 1.80, out=(0, -1), vm=3, hm=1, slats=5)
+    a.window("main_s2", 12.00, MAIN_Z0, 3.70, 3.80, 3.00, out=(0, -1), vm=5, hm=2, slats=0)
     a.window("main_e2", MAIN_X1, 5.00, 4.60, 2.20, 1.80, out=(1, 0), vm=3, hm=1, slats=6)
     a.window("main_e2", MAIN_X1, 8.60, 5.20, 1.20, 1.20, out=(1, 0), vm=2, hm=0, slats=0)
     a.window("main_n2", 13.60, MAIN_Z1, 4.60, 1.20, 1.60, out=(0, 1), vm=2, hm=0, slats=0)
@@ -688,6 +788,30 @@ def build_main(a):
 
     a.roof("main_roof", (MAIN_X0 + MAIN_X1) / 2, (MAIN_Z0 + MAIN_Z1) / 2,
            MAIN_TOP2, 13.4, 13.4, 1.90, 0.18, "x")
+
+    # 山墙通风窗、檐下斗拱与石基分缝
+    for gx, bar_x in ((1.74, 1.62), (15.26, 15.38)):
+        a.cyl(gx, 7.30, 4.00, 0.42, 0.12, "stone_dark", segments=24,
+              rotation=[0, 0, PI / 2])
+        for y in (7.10, 7.30, 7.50):
+            a.box(bar_x, y, 4.00, 0.06, 0.05, 0.62, "wood_dark")
+    a.lattice(2.30, 5.50, 3.40, 2.20, 1.60, axis="x")
+    a.lattice(14.70, 5.50, 3.00, 2.00, 1.60, axis="x")
+    for x in (1.80, 15.20):
+        a.box(x, 8.92, 4.00, 0.22, 0.10, 0.22, "roof_ridge", rotation=[0, 0, 0.35])
+    for i in range(9):
+        x = 2.90 + i * 1.35
+        a.box(x, 6.55, -2.55, 0.14, 0.34, 0.14, "wood_dark")
+        a.box(x, 6.72, -2.35, 0.14, 0.12, 0.55, "wood_dark")
+    for i in range(7):
+        z = -1.00 + i * 1.50
+        a.box(15.05, 6.55, z, 0.14, 0.34, 0.14, "wood_dark")
+        a.box(14.85, 6.72, z, 0.55, 0.12, 0.14, "wood_dark")
+    for y in (0.18, 0.42):
+        a.box(8.50, y, -2.17, 12.04, 0.02, 0.04, "stone_dark")
+        a.box(14.67, y, 4.00, 0.04, 0.02, 12.04, "stone_dark")
+        a.box(8.50, y, 10.17, 12.04, 0.02, 0.04, "stone_dark")
+        a.box(2.33, y, 4.00, 0.04, 0.02, 12.04, "stone_dark")
 
     for x1, z1, x2, z2 in ((MAIN_X0, MAIN_Z0, MAIN_X1, MAIN_Z0),
                            (MAIN_X1, MAIN_Z0, MAIN_X1, MAIN_Z1),
@@ -780,13 +904,28 @@ def build_gate(a):
         a.box(7.00, 2.55, z, 2.50, 0.18, 0.30, "stone")
     for z in (GATE_Z0 - 0.03, GATE_Z1 + 0.03):
         a.box(7.00, 0.15, z, 2.50, 0.12, 0.34, "stone_light")
-    a.plaque(7.00, 2.96, GATE_Z0 - 0.17, "砚溪别院", width=2.10, height=0.42)
+    a.plaque(7.00, 2.90, GATE_Z0 - 0.17, "砚溪别院", width=2.60, height=0.52)
+    a.box(7.00, 3.17, GATE_Z0 - 0.20, 2.80, 0.04, 0.08, "glow_soft",
+          light_source={"lightType": "point", "color": [1.0, 0.84, 0.60],
+                        "intensity": 4, "distance": 3, "initiallyOn": True})
+    for x in (5.40, 8.60):
+        a.box(x, 2.20, GATE_Z0 - 0.16, 0.12, 0.18, 0.06, "glow_soft",
+              light_source={"lightType": "point", "color": [1.0, 0.76, 0.46],
+                            "intensity": 3, "distance": 3, "initiallyOn": True})
     a.box(6.036, 1.30, -9.493, 1.05, 2.30, 0.06, "wood_dark", rotation=[0, -1.309, 0])
     a.box(7.964, 1.30, -9.493, 1.05, 2.30, 0.06, "wood_dark", rotation=[0, -1.833, 0])
     for x in (6.00, 6.10, 7.90, 8.00):
         for y in (0.85, 1.35, 1.85):
             a.sphere(x, y, -9.50, 0.035, "bronze", segments=10, height_segments=6)
+
+    for x in (5.55, 8.45):
+        a.cyl(x, 0.42, -9.35, 0.22, 0.55, "stone_light", segments=20)
+        a.cyl(x, 0.70, -9.35, 0.26, 0.08, "stone", segments=20)
+    a.pot(4.55, -8.85, base=0.0, scale=0.75, leaf="leaf_dark")
+    a.pot(9.45, -8.85, base=0.0, scale=0.75, leaf="leaf_dark")
     a.roof("gate_roof", 7.00, -9.30, GATE_TOP, 4.80, 2.60, 0.85, 0.14, "x")
+    for x in (4.60, 9.40):
+        a.box(x, 4.12, -9.30, 0.18, 0.08, 0.18, "roof_ridge", rotation=[0, 0, 0.35])
     a.lantern(5.35, 2.35, GATE_Z0 + 0.60, intensity=4, distance=4)
     a.lantern(8.65, 2.35, GATE_Z0 + 0.60, intensity=4, distance=4)
     for x0, x1, z0, z1 in ((GATE_X0, GATE_X1, GATE_Z0 - 0.02, GATE_Z0 + 0.10),
@@ -794,7 +933,7 @@ def build_gate(a):
         a.box((x0 + x1) / 2, 0.40, (z0 + z1) / 2, x1 - x0 + 0.06, 0.50, 0.30, "stone")
     for x in (GATE_X0, GATE_X1):
         a.box(x, 0.40, (GATE_Z0 + GATE_Z1) / 2, 0.30, 0.50, GATE_Z1 - GATE_Z0, "stone")
-    a.plaque(7.00, 3.10, MAIN_Z0 - 0.15, "砚溪", width=1.60, height=0.30,
+    a.plaque(7.00, 3.12, MAIN_Z0 - 0.15, "砚溪", width=2.00, height=0.38,
              rotation=(0, PI, 0))
 
 
@@ -809,34 +948,43 @@ def build_landscape(a):
     for index, (x1, z1, x2, z2) in enumerate(walls):
         length = math.hypot(x2 - x1, z2 - z1)
         cx, cz = (x1 + x2) / 2, (z1 + z2) / 2
+        front = abs(z1 - SITE_Z0) < 1e-6 and abs(z2 - SITE_Z0) < 1e-6
+        height = 1.70 if front else 2.05
+        center = 0.15 + height / 2
+        top = 0.15 + height
         if abs(x2 - x1) > abs(z2 - z1):
-            a.box(cx, 1.175, cz, length, 2.05, 0.24, "plaster")
+            a.box(cx, center, cz, length, height, 0.24, "plaster")
             a.box(cx, 0.325, cz, length + 0.04, 0.65, 0.32, "stone")
-            a.box(cx, 2.26, cz, length + 0.10, 0.12, 0.34, "roof_tile_alt")
-            a.box(cx, 2.34, cz, length + 0.16, 0.05, 0.38, "roof_ridge")
+            a.box(cx, top + 0.06, cz, length + 0.10, 0.12, 0.34, "roof_tile_alt")
+            a.box(cx, top + 0.14, cz, length + 0.16, 0.05, 0.38, "roof_ridge")
         else:
-            a.box(cx, 1.175, cz, 0.24, 2.05, length, "plaster")
+            a.box(cx, center, cz, 0.24, height, length, "plaster")
             a.box(cx, 0.325, cz, 0.32, 0.65, length + 0.04, "stone")
-            a.box(cx, 2.26, cz, 0.34, 0.12, length + 0.10, "roof_tile_alt")
-            a.box(cx, 2.34, cz, 0.38, 0.05, length + 0.16, "roof_ridge")
+            a.box(cx, top + 0.06, cz, 0.34, 0.12, length + 0.10, "roof_tile_alt")
+            a.box(cx, top + 0.14, cz, 0.38, 0.05, length + 0.16, "roof_ridge")
         steps = max(2, int(length / 4.0))
         for i in range(1, steps):
             t = i / steps
             x = x1 + (x2 - x1) * t
             z = z1 + (z2 - z1) * t
             if abs(x2 - x1) > abs(z2 - z1):
-                a.box(x, 1.18, z, 0.36, 2.10, 0.36, "stone")
+                a.box(x, center, z, 0.36, height, 0.36, "stone")
             else:
-                a.box(x, 1.18, z, 0.36, 2.10, 0.36, "stone")
+                a.box(x, center, z, 0.36, height, 0.36, "stone")
 
-    a.box(-0.10, 0.30, -6.22, 5.00, 0.60, 0.40, "stone")
-    a.box(-0.10, 1.45, -6.22, 4.90, 1.70, 0.34, "plaster")
-    a.box(-0.10, 2.34, -6.22, 5.10, 0.12, 0.42, "roof_tile_alt")
-    a.box(-0.10, 2.42, -6.22, 5.18, 0.05, 0.46, "roof_ridge")
-    a.box(-0.10, 1.50, -6.42, 1.90, 1.10, 0.06, "stone_dark")
-    a.cyl(-0.10, 1.50, -6.46, 0.42, 0.04, "bronze", segments=24,
+    for x in (-8.50, -3.50, 11.50, 16.00):
+        a.lattice(x, 1.15, -9.83, 1.30, 0.90, axis="z")
+    for z in (-4.00, 2.00, 7.50):
+        a.lattice(17.83, 1.35, z, 1.35, 1.10, axis="x")
+
+    a.box(-7.00, 0.30, -7.00, 4.80, 0.60, 0.40, "stone")
+    a.box(-7.00, 1.45, -7.00, 4.70, 1.70, 0.34, "plaster")
+    a.box(-7.00, 2.34, -7.00, 4.90, 0.12, 0.42, "roof_tile_alt")
+    a.box(-7.00, 2.42, -7.00, 4.98, 0.05, 0.46, "roof_ridge")
+    a.box(-7.00, 1.50, -7.20, 1.80, 1.10, 0.06, "stone_dark")
+    a.cyl(-7.00, 1.50, -7.24, 0.40, 0.04, "bronze", segments=24,
           rotation=[PI / 2, 0, 0])
-    a.plaque(-0.10, 2.02, -6.42, "澄怀", width=1.20, height=0.28)
+    a.plaque(-7.00, 2.02, -7.20, "澄怀", width=1.15, height=0.28)
 
     def tree(x, z, h, leaf, trunk_r=0.14):
         a.cyl(x, h * 0.28, z, trunk_r, h * 0.56, "bark", top=trunk_r * 0.7, segments=12)
@@ -850,6 +998,22 @@ def build_landscape(a):
     tree(12.30, -5.30, 2.60, "maple")
     tree(4.20, 12.40, 3.00, "leaf_dark")
     tree(11.00, 12.20, 2.50, "maple")
+
+    tree(13.80, -7.20, 2.80, "leaf_dark")
+    tree(-4.80, -3.20, 2.40, "leaf_light")
+    for i in range(7):
+        x = 17.10 - (i % 2) * 0.20
+        z = -2.20 + i * 1.45
+        h = 2.4 + (i % 3) * 0.3
+        a.cyl(x, h / 2, z, 0.034, h, "bamboo", segments=8)
+        for j in range(2):
+            a.sphere(x + 0.12, h * (0.6 + j * 0.2), z + 0.05, 0.32,
+                     "leaf_light", scale=[1.0, 0.55, 0.8], segments=8, height_segments=6)
+    for x in (-10.5, -8.5, -6.5, 2.0, 10.5, 12.5, 15.0):
+        a.shrub(x, -9.20, r=0.38, leaf="flower" if x % 2 else "flower_white")
+    for x in (-1.10, 2.15):
+        for z in (0.8, 2.6, 4.4, 6.2, 8.0):
+            a.shrub(x, z, r=0.18, leaf="leaf_light")
 
     for x, z, r, sy in ((-2.20, -7.20, 0.55, 0.75), (-1.30, -7.00, 0.42, 0.65),
                         (-2.70, -6.60, 0.35, 0.60), (-0.50, -7.30, 0.30, 0.55)):
@@ -871,6 +1035,13 @@ def build_landscape(a):
                     (1.20, 7.20, 0.25), (-0.10, 4.80, 0.22)):
         a.cyl(x, WATER_Y + 0.03, z, r, 0.02, "leaf_light", segments=20)
     for x, z in ((0.55, 2.80), (0.95, 5.20), (0.35, 6.90)):
+        a.sphere(x, WATER_Y - 0.10, z, 0.10, "orange",
+                 scale=[1.7, 0.55, 0.75], segments=10, height_segments=6)
+        a.sphere(x + 0.14, WATER_Y - 0.10, z, 0.035, "orange", segments=8, height_segments=5)
+
+    for x, z, r in ((-0.10, -4.60, 0.26), (0.80, -2.00, 0.22), (-0.30, 0.40, 0.24)):
+        a.cyl(x, WATER_Y + 0.03, z, r, 0.02, "leaf_light", segments=20)
+    for x, z in ((0.55, -3.20), (1.10, 1.20)):
         a.sphere(x, WATER_Y - 0.10, z, 0.10, "orange",
                  scale=[1.7, 0.55, 0.75], segments=10, height_segments=6)
         a.sphere(x + 0.14, WATER_Y - 0.10, z, 0.035, "orange", segments=8, height_segments=5)

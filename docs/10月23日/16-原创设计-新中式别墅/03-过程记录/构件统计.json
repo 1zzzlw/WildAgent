@@ -8,13 +8,13 @@
     "style": "新中式 · 东宅西亭 · 水院廊桥",
     "seed": 20261023
   },
-  "elements": 1069,
+  "elements": 1397,
   "components": 40,
-  "materials": 35,
+  "materials": 37,
   "element_types": {
     "floor": 23,
-    "primitive": 1002,
-    "column": 5,
+    "primitive": 1325,
+    "column": 10,
     "wall": 32,
     "stair": 2,
     "roof": 3,
@@ -29,6 +29,8 @@
     "bamboo",
     "bark",
     "bronze",
+    "flower",
+    "flower_white",
     "glass",
     "glow",
     "glow_soft",
@@ -68,7 +70,7 @@
     "砚溪",
     "澄怀"
   ],
-  "light_sources": 19,
+  "light_sources": 28,
   "roofs": [
     "main_roof",
     "tea_roof",

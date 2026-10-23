@@ -1,6 +1,6 @@
 {
   "baselineVersion": "p7a.1",
-  "inputSha256": "cd36e665f5c64a19d7fb95e31c902f715b6d095f708204c3aa31dac9024ab26e",
+  "inputSha256": "0f31f0d4342167c7fbb91a54f1f4fee341641a897e6ba8b9d8d4925cbd36c97b",
   "renderer": "wild-web/createSceneGroupFromEntity",
   "settings": {
     "width": 1280,
@@ -45,8 +45,8 @@
   "sourceDigest": "97e6a3e04a0cf59df6e0fc402c3bfca9f3a44212e8f400509281a4b057a7c6e9",
   "glRenderer": "WebKit WebGL",
   "glVendor": "WebKit",
-  "meshCount": 1378,
-  "materialCount": 1378,
+  "meshCount": 1716,
+  "materialCount": 1716,
   "unmappedMaterials": 0,
   "boundingBox": {
     "min": [
@@ -66,22 +66,22 @@
     {
       "view": "front",
       "file": "docs\\10月23日\\16-原创设计-新中式别墅\\05-效果图\\白天\\front.png",
-      "bytes": 532050
+      "bytes": 540984
     },
     {
       "view": "side",
       "file": "docs\\10月23日\\16-原创设计-新中式别墅\\05-效果图\\白天\\side.png",
-      "bytes": 559381
+      "bytes": 566216
     },
     {
       "view": "top",
       "file": "docs\\10月23日\\16-原创设计-新中式别墅\\05-效果图\\白天\\top.png",
-      "bytes": 412762
+      "bytes": 422573
     },
     {
       "view": "perspective",
       "file": "docs\\10月23日\\16-原创设计-新中式别墅\\05-效果图\\白天\\perspective.png",
-      "bytes": 576332
+      "bytes": 595244
     }
   ],
   "contextSha256": "5889f29c44901282d8eda2e86bc8da1c83e6d43e6ef6d89a8bd94716da7b13a4"
