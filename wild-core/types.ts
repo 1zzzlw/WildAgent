@@ -429,8 +429,12 @@ export interface FloorParams {
   to?: Vec3;
   thickness: number;
   material?: string;
-  /** "rect"（默认）或 "circle" */
-  shape?: 'rect' | 'circle';
+  /** rect（默认）、circle 或 polygon。from 始终为板底标高。 */
+  shape?: 'rect' | 'circle' | 'polygon';
+  /** polygon: 相对 from 的局部 [x,z] 外轮廓，至少三个点。 */
+  polygon?: Array<[number, number]>;
+  /** polygon: 不相交且完全位于外轮廓内的孔洞。 */
+  holes?: Array<Array<[number, number]>>;
   /** 圆形半径，shape="circle" 时必需 */
   radius?: number;
   /** 圆形分段数，默认 32 */
@@ -610,6 +614,8 @@ export interface PrimitiveParams {
   profile?: Array<[number, number]>;
   path?: Vec3[];
   closedProfile?: boolean;
+  /** 闭合截面扫掠的首尾端盖。默认 false，兼容既有开放扫掠。 */
+  caps?: boolean;
   /** 仅供组合编译器和 renderer 使用。 */
   _interaction?: InteractiveElementBehavior;
 }

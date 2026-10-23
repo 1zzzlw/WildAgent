@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { launchEditorBrowser } from './editor-browser.mjs'
+
+const output = resolve('../deliveries/render-upgrade/regression')
+await mkdir(output, { recursive: true })
+const browser = await launchEditorBrowser((process.env.EDITOR_URL || 'http://127.0.0.1:5178') + '/scripts/render-upgrade-preview.html')
+try {
+  const p = browser.page
+  await p.wait('window.ready')
+  assert.deepEqual(await p.evaluate('window.diagnostics.filter(d=>d.level==="error")'), [])
+  const high = await p.evaluate("window.frame('high',true)")
+  assert.equal(high.activeLights, 12)
+  assert.equal(high.shadowLights, 2)
+  assert.equal(high.reflection, true)
+  await p.screenshot(output + '/01-精细水面反射.png')
+  await p.evaluate('(window.reflectedPixels=window.readPixels(),true)')
+  await p.evaluate('(window.setReflectionBuilding(false),window.frame("high",true),true)')
+  const buildingReflectionChanged = await p.evaluate(`(()=>{const a=window.reflectedPixels,b=window.readPixels();let n=0;for(let z=-1.5;z<1.6;z+=.1)for(let x=-2.5;x<2.6;x+=.1){const p=window.waterPixel(x,z),i=(p.y*960+p.x)*4;if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>2)n++;}return n})()`)
+  assert.ok(buildingReflectionChanged > 20, '建筑可见性必须反映到水面: ' + buildingReflectionChanged)
+  await p.evaluate('(window.setReflectionBuilding(true),window.frame("high",true),window.reflectedPixels=window.readPixels(),true)')
+  const low = await p.evaluate("window.frame('low',false)")
+  assert.equal(low.activeLights, 4)
+  assert.equal(low.shadowLights, 0)
+  assert.equal(low.reflection, false)
+  const medium = await p.evaluate("window.frame('medium',true)")
+  assert.equal(medium.activeLights, 8)
+  assert.equal(medium.reflection, false)
+  await p.evaluate("window.frame('high',true)")
+  await p.evaluate('(window.reflectedPixels=window.readPixels(),true)')
+  await p.evaluate("window.frame('high',false)")
+  const changedPixels = await p.evaluate(`(()=>{const a=window.reflectedPixels,b=window.readPixels();let count=0;for(let z=-1.5;z<1.6;z+=.1)for(let x=-2.5;x<2.6;x+=.1){const p=window.waterPixel(x,z);const i=(p.y*960+p.x)*4;if(Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]))>2)count++;}return count})()`)
+  assert.ok(changedPixels > 30, '反射开关必须改变水面内部的真实像素: ' + changedPixels)
+  await p.screenshot(output + '/02-关闭场景反射.png')
+  await p.evaluate('window.setCamera(-6,3,-3)')
+  const moved = await p.evaluate("window.frame('high',true)")
+  assert.notDeepEqual(moved.selected, high.selected, '相机移动必须重新选择局部光源')
+  // 关闭某一灯源后不能被照明预算重新打开；外观与实时灯分别管理。
+  const off = await p.evaluate(`(()=>{const light=window.group.children.flatMap(m=>m.children).find(n=>n.userData.fixtureLight&&n.visible);light.userData.requestedIntensity=0;light.intensity=0;window.frame('high',false);return {visible:light.visible,intensity:light.intensity}})()`)
+  assert.equal(off.visible, false)
+  assert.equal(off.intensity, 0)
+  await p.evaluate('window.setCamera(0,-1,6)')
+  assert.equal((await p.evaluate("window.frame('high',true)")).reflection, false, '水位以下不得使用过期的反射图')
+  await p.evaluate('window.setCamera(5,4,8)')
+  const final = await p.evaluate("window.frame('high',true)")
+  assert.ok(final.programs.every(program => program.runnable !== false))
+  const shadowProbe = await p.evaluate('window.runShadowProbe()')
+  assert.ok(shadowProbe.unshadowed.reduce((a,b)=>a+b,0) > shadowProbe.shadowed.reduce((a,b)=>a+b,0) + 60, '墙背面必须被重点灯的阴影遮挡: ' + JSON.stringify(shadowProbe))
+  assert.deepEqual(p.errors, [])
+  const result = { status: 'PASS', high, medium, low, changedWaterSamples: changedPixels, buildingReflectionChanged, shadowProbe, cameraReselection: true, switchedOffLampRespected: true, shaderErrors: p.errors }
+  await writeFile(output + '/渲染回归.json', JSON.stringify(result, null, 2))
+  console.log(JSON.stringify(result, null, 2))
+} finally { await browser.close() }

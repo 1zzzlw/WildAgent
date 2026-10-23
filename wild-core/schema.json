@@ -1188,13 +1188,31 @@
         "shape": {
           "enum": [
             "rect",
-            "circle"
+            "circle",
+            "polygon"
           ],
           "default": "rect"
         },
         "radius": {
           "type": "number",
           "exclusiveMinimum": 0
+        },
+        "polygon": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/$defs/vec2"
+          }
+        },
+        "holes": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "$ref": "#/$defs/vec2"
+            }
+          }
         },
         "segments": {
           "type": "integer",
@@ -1212,6 +1230,12 @@
               "enum": [
                 "rect"
               ]
+            },
+            "polygon": {
+              "maxItems": 0
+            },
+            "holes": {
+              "maxItems": 0
             }
           }
         },
@@ -1222,6 +1246,23 @@
           "properties": {
             "shape": {
               "const": "circle"
+            },
+            "polygon": {
+              "maxItems": 0
+            },
+            "holes": {
+              "maxItems": 0
+            }
+          }
+        },
+        {
+          "required": [
+            "shape",
+            "polygon"
+          ],
+          "properties": {
+            "shape": {
+              "const": "polygon"
             }
           }
         }
@@ -1708,25 +1749,70 @@
     "textLabel": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text"],
+      "required": [
+        "text"
+      ],
       "properties": {
-        "text": { "type": "string", "minLength": 1, "maxLength": 256, "pattern": "\\S" },
-        "color": { "$ref": "#/$defs/color" },
-        "fontFamily": { "enum": ["sans-serif", "serif"] }
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "\\S"
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "fontFamily": {
+          "enum": [
+            "sans-serif",
+            "serif"
+          ]
+        }
       }
     },
     "lightSource": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "lightType": { "enum": ["point", "spot"] },
-        "color": { "$ref": "#/$defs/color" },
-        "intensity": { "type": "number", "minimum": 0 },
-        "distance": { "type": "number", "exclusiveMinimum": 0 },
-        "angle": { "type": "number", "exclusiveMinimum": 0, "maximum": 90 },
-        "initiallyOn": { "type": "boolean", "default": true },
-        "offset": { "$ref": "#/$defs/vec3" },
-        "direction": { "$ref": "#/$defs/vec3", "not": { "const": [0, 0, 0] } }
+        "lightType": {
+          "enum": [
+            "point",
+            "spot"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/color"
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0
+        },
+        "distance": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "angle": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 90
+        },
+        "initiallyOn": {
+          "type": "boolean",
+          "default": true
+        },
+        "offset": {
+          "$ref": "#/$defs/vec3"
+        },
+        "direction": {
+          "$ref": "#/$defs/vec3",
+          "not": {
+            "const": [
+              0,
+              0,
+              0
+            ]
+          }
+        }
       }
     },
     "primitive": {
@@ -1820,10 +1906,28 @@
         },
         "lightSource": {
           "$ref": "#/$defs/lightSource"
+        },
+        "caps": {
+          "type": "boolean",
+          "default": false,
+          "description": "闭合截面扫掠首尾端盖；默认不封端"
         }
       },
       "allOf": [
-        { "if": { "required": ["label"] }, "then": { "properties": { "shape": { "const": "box" } } } }
+        {
+          "if": {
+            "required": [
+              "label"
+            ]
+          },
+          "then": {
+            "properties": {
+              "shape": {
+                "const": "box"
+              }
+            }
+          }
+        }
       ],
       "oneOf": [
         {
@@ -2477,6 +2581,11 @@
         "interactive": {
           "type": "boolean",
           "description": "该段是否承载灯光交互（右键点灯的唯一命中体）。省略时默认最后一段；多段标 true 只认第一段。"
+        },
+        "caps": {
+          "type": "boolean",
+          "default": false,
+          "description": "闭合截面扫掠首尾端盖；默认不封端"
         }
       },
       "oneOf": [
@@ -2534,6 +2643,14 @@
           }
         }
       ]
+    },
+    "vec2": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
     }
   }
 }

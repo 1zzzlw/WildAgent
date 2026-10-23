@@ -36,7 +36,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js'
 import { Sky } from 'three/examples/jsm/objects/Sky.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import {
@@ -84,6 +83,9 @@ import {
 } from '../../renderer/environmentRuntime'
 import { WorldLightingRig } from '../../renderer/lightingRuntime'
 import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
+import { applyWorldRenderQuality, configureWorldRenderer, resolveWorldIllumination, resolveWorldEnvironmentColor } from '../../renderer/worldRenderSettings'
+import { FixtureLightingRuntime } from '../../renderer/fixtureLightingRuntime'
+import { WaterReflectionRuntime } from '../../renderer/waterReflectionRuntime'
 import {
   CAMERA_PRESETS,
   ENVIRONMENT_PRESETS,
@@ -146,9 +148,13 @@ let shadowGround: THREE.Mesh<THREE.PlaneGeometry, THREE.ShadowMaterial> | null =
 let presentationGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial> | null = null
 let builtInEnvironment: THREE.Group | null = null
 let postProcessing: WorldPostProcessingRuntime | null = null
-// 以下四个只是 postProcessing 的别名；真正的构造/尺寸/采样数/释放都在引擎运行时里。
+const fixtureLighting = new FixtureLightingRuntime()
+let waterReflection: WaterReflectionRuntime | null = null
+let renderSubmitMs = 0
+let slowFrameSeconds = 0
+let continuousFrame = false
+// 后期资源的构造/尺寸/采样数/释放由引擎运行时持有。
 let composer: EffectComposer | null = null
-let ssaoPass: SSAOPass | null = null
 let bloomPass: UnrealBloomPass | null = null
 let fxaaPass: ShaderPass | null = null
 // 合成链路 MSAA 采样数：默认 4x；帧率降级时减半——像素比已经降了，几何锯齿不该完全失守。
@@ -341,6 +347,11 @@ watch(() => renderPanel.presetRequest, request => {
       break
   }
 })
+watch(() => renderPanel.waterReflections, enabled => {
+  if (waterReflection) waterReflection.enabled = enabled && qualityLevel.value === 'high' && !adaptiveQualityApplied
+  try { localStorage.setItem('wild_water_reflections', String(enabled)) } catch { /* 当前设置仍生效。 */ }
+  markNeedsRender()
+})
 
 function frameSelection() {
   if (!selectionStore.hasSelection || !sceneGroup) { resetViewToPreset(); return }
@@ -376,24 +387,16 @@ function initThreeJS() {
   renderer = new THREE.WebGLRenderer({
     canvas: canvasRef.value,
     // 恒定 false：主光栅化走 EffectComposer 的离屏 RT，canvas 默认帧缓冲只用来贴最终一张全屏四边形，
-    // 这里的 MSAA 既无效又白占显存。几何抗锯齿改在合成离线 RT 上做（见 applySceneMsaa）。
+    // 这里的 MSAA 既无效又白占显存。几何抗锯齿改在合成离屏 RT 上做。
     antialias: false,
     powerPreference: 'high-performance',
   })
-  renderer.shadowMap.enabled = true
-  // 合成器会多次 render；统一在每个视口帧重置，统计整条渲染链而非最后一张全屏三角形。
-  renderer.info.autoReset = false
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
-  // 静态场景 + 轨道相机：阴影只依赖灯光与物体，不依赖相机视角。
-  // 关闭每帧自动重算，仅在内容/灯光变化时按需刷新，消除拖动视角时的阴影重渲开销。
-  renderer.shadowMap.autoUpdate = false
-  renderer.outputColorSpace = THREE.SRGBColorSpace
-  renderer.toneMapping = THREE.ACESFilmicToneMapping
-  renderer.toneMappingExposure = 1.05
+  configureWorldRenderer(renderer)
   configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
   configureKtx2Rendering(renderer)
 
   scene = new THREE.Scene()
+  waterReflection = new WaterReflectionRuntime(renderer, scene)
   scene.background = new THREE.Color(0xb9c9d8)
   worldLookRuntime.setActivationContext({ renderer, scene })
 
@@ -407,7 +410,6 @@ function initThreeJS() {
     msaaSamples: DEFAULT_MSAA_SAMPLES,
   })
   composer = postProcessing.composer
-  ssaoPass = postProcessing.ssao
   bloomPass = postProcessing.bloom
   fxaaPass = postProcessing.fxaa
 
@@ -575,31 +577,40 @@ function renderFrame() {
   // 自动旋转：相机每帧都在动，保持渲染循环不进入休眠。
   if (renderPanel.autoRotate) needsRender = true
   // 按需渲染休眠后的第一帧包含较长空闲时间，不能拿它计算实时 FPS。
-  if (delta > 0.0005 && delta < 0.25) {
+  if (continuousFrame && delta > 0.0005) {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
     fps.value = Math.round(fpsSmoothed)
   }
   // 帧率自适应降级：持续低于 30fps 时关 SSAO/Bloom 并降像素比，保交互流畅。
   // 只在低档降一次，避免反复切换；手动切换质量档会重置标记。
-  if (!adaptiveQualityApplied && fpsSmoothed < 30 && fpsSmoothed > 0) {
+  if (continuousFrame && delta > 0.0005) {
+    slowFrameSeconds = fpsSmoothed < 30 ? slowFrameSeconds + Math.min(delta, 1) : 0
+  }
+  if (!adaptiveQualityApplied && slowFrameSeconds > 2) {
     adaptiveQualityApplied = true
     const ratio = renderer?.getPixelRatio() ?? 1
     if (ratio > 1) renderer?.setPixelRatio(Math.max(1, ratio * 0.66))
     postProcessing?.setPixelRatio(renderer?.getPixelRatio() ?? 1)
-    if (ssaoPass) ssaoPass.enabled = false
+    postProcessing?.setAmbientOcclusion('off')
+    if (waterReflection) waterReflection.enabled = false
     if (bloomPass) bloomPass.enabled = false
     if (fxaaPass) fxaaPass.enabled = true
     postProcessing?.setMsaaSamples(DEGRADED_MSAA_SAMPLES)
     handleResize()
   }
   if (needsRender && renderer && scene && camera) {
+    const renderStarted = performance.now()
     renderer.info.reset()
+    if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) markShadowsDirty()
+    waterReflection?.update(camera)
     if (composer) composer.render()
     else renderer.render(scene, camera)
+    renderSubmitMs = performance.now() - renderStarted
     needsRender = false
     publishRenderStats()
   }
-  if (controlsAnimating || weatherAnimating || effectsAnimating || needsRender) {
+  continuousFrame = controlsAnimating || weatherAnimating || effectsAnimating || needsRender
+  if (continuousFrame) {
     scheduleRenderFrame()
   }
 }
@@ -638,6 +649,8 @@ function updateScene() {
 
   const entity = sceneStore.reconstructed
   if (!entity) {
+    fixtureLighting.setRoot(null)
+    waterReflection?.setRoot(null)
     // 清空蓝图实例，但保留场景灯光、地面和 GridHelper。
     clearSceneObjectResources(sceneGroup)
     materialCache.clear()
@@ -658,6 +671,8 @@ function updateScene() {
   }
 
   worldRuntime?.updateInstance('editor:active-blueprint', entity)
+  fixtureLighting.setRoot(sceneGroup)
+  waterReflection?.setRoot(sceneGroup)
   sceneGroup.traverse(object => {
     if (object instanceof THREE.Mesh && (Array.isArray(object.material) ? object.material : [object.material]).some(material => material.userData.wildWaterSurface)) hasWaterSurface = true
   })
@@ -1078,17 +1093,7 @@ function handleTransformMouseUp() {
 
 
 function environmentColor(kind: 'groundColor' | 'fogColor') {
-  const environmentColorValue = ENVIRONMENT_PRESETS[environmentPresetId.value][kind]
-  const timeColorValue = TIME_PRESETS[timeOfDay.value][kind]
-  const timeBlend = timeOfDay.value === 'night' ? 0.76 : timeOfDay.value === 'sunset' ? 0.42 : 0.08
-  const atmosphere = deriveWorldAtmosphere(
-    getWorldEnvironmentState(),
-    getWorldRenderingState().weatherEnabled,
-  )
-  const weatherColor = kind === 'groundColor' ? atmosphere.groundTint : atmosphere.fogColor
-  return new THREE.Color(environmentColorValue)
-    .lerp(new THREE.Color(timeColorValue), timeBlend)
-    .lerp(new THREE.Color(weatherColor), atmosphere.tintStrength)
+  return resolveWorldEnvironmentColor(kind, timeOfDay.value, environmentPresetId.value)
 }
 
 function applyEnvironmentAppearance() {
@@ -1267,19 +1272,13 @@ function applyTimePreset(forceEnvironment = false) {
   const preset = TIME_PRESETS[timeOfDay.value]
   const environmentPreset = ENVIRONMENT_PRESETS[environmentPresetId.value]
   const worldLook = worldLookRuntime.getActiveProfile().appearance
-  const directLightScale = worldLook?.directLightScale ?? 1
-  const ambientLightScale = worldLook?.ambientLightScale ?? 1
-  const exposureScale = worldLook?.exposureScale ?? 1
   const shadowOpacityScale = worldLook?.shadowOpacity ?? 1
   const worldEnvironment = getWorldEnvironmentState()
   const weatherEnabled = getWorldRenderingState().weatherEnabled
-  const atmosphere = deriveWorldAtmosphere(worldEnvironment, weatherEnabled)
+  const illumination = resolveWorldIllumination(timeOfDay.value, environmentPresetId.value)
+  const atmosphere = illumination.atmosphere
 
-  sunDirection.setFromSphericalCoords(
-    1,
-    THREE.MathUtils.degToRad(preset.sunPhi),
-    THREE.MathUtils.degToRad(preset.sunTheta + environmentPreset.sunAzimuthOffset),
-  )
+  sunDirection.copy(illumination.sunDirection)
   // 主光方向：夜晚 sunPhi = 108° 使太阳落到地平线之下，此时主光取月亮方向（= −sunDirection），
   // 与 moonBody 一致；否则主光会被放到地面之下面朝上打光，整晚没有有效方向光。
   // 天空 uniform、太阳/月亮实体、环境贴图太阳亮点继续用 sunDirection，不受影响。
@@ -1289,34 +1288,16 @@ function applyTimePreset(forceEnvironment = false) {
   sky.visible = preset.skyVisible
   syncSkyPreset(sky, preset, atmosphere, sunDirection)
 
-  scene.background = new THREE.Color(preset.background)
-    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength)
+  scene.background = illumination.background
   // 环境贴图（PMREM）重建很贵：一遍立方图 6 面渲染 + 卷积 + 纹理创建/销毁。
   // 天气滑杆是连续 @input，一个拖动动作会打出上百个事件 ⇒ 必须去重 + 节流。
   scheduleEnvironmentRebuild(preset, atmosphere, forceEnvironment)
-  renderer.toneMappingExposure = preset.exposure
-    * environmentPreset.exposureScale
-    * exposureScale
-    * atmosphere.exposureScale
-
-  hemisphereLight.color.setHex(preset.hemisphereSkyColor)
-    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength * 0.38)
-  hemisphereLight.groundColor.setHex(preset.hemisphereGroundColor)
-    .lerp(new THREE.Color(atmosphere.groundTint), atmosphere.tintStrength * 0.38)
-  hemisphereLight.intensity = preset.hemisphereIntensity
-    * environmentPreset.ambientLightScale
-    * ambientLightScale
-    * atmosphere.ambientLightScale
-  directionalLight.color.setHex(preset.directionalColor)
-    .lerp(new THREE.Color(atmosphere.backgroundTint), atmosphere.tintStrength * 0.22)
-  directionalLight.intensity = preset.directionalIntensity
-    * environmentPreset.directLightScale
-    * directLightScale
-    * atmosphere.directLightScale
+  renderer.toneMappingExposure = illumination.exposure
+  lightingRig?.applyAppearance(illumination.lighting)
   weatherVisuals?.setEnvironment(worldEnvironment, weatherEnabled)
   applyEnvironmentAppearance()
   if (bloomPass) {
-    bloomPass.enabled = QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
+    bloomPass.enabled = !adaptiveQualityApplied && QUALITY_PRESETS[qualityLevel.value].bloom && timeOfDay.value === 'night'
   }
   if (shadowGround) {
     const timeShadowScale = timeOfDay.value === 'night' ? 0.36 : timeOfDay.value === 'sunset' ? 0.88 : 1
@@ -1477,20 +1458,14 @@ function applyQualityPreset() {
   if (!renderer) return
   // 手动切档会重置自适应降级标记，允许回到更高质量档。
   adaptiveQualityApplied = false
-  const preset = QUALITY_PRESETS[qualityLevel.value]
+  slowFrameSeconds = 0
   updateWorldRenderingState({
     surfaceQuality: qualityLevel.value,
     weatherQuality: worldLookRuntime.getActiveProfile().quality?.weatherTier || qualityLevel.value,
   })
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, preset.pixelRatio)
-  renderer.setPixelRatio(pixelRatio)
-  postProcessing?.setPixelRatio(pixelRatio)
-  if (lightingRig) {
-    lightingRig.setShadowMapSize(preset.shadowMapSize, renderer.capabilities.maxTextureSize)
-    markShadowsDirty()
-  }
-  if (ssaoPass) ssaoPass.enabled = preset.ssao
-  if (bloomPass) bloomPass.enabled = preset.bloom && timeOfDay.value === 'night'
+  if (postProcessing) applyWorldRenderQuality(renderer, postProcessing, lightingRig, qualityLevel.value, timeOfDay.value, window.devicePixelRatio || 1)
+  if (waterReflection) waterReflection.enabled = renderPanel.waterReflections && qualityLevel.value === 'high'
+  markShadowsDirty()
   configureMaterialRendering(renderer.capabilities.getMaxAnisotropy(), markNeedsRender)
   handleResize()
 }
@@ -1585,6 +1560,11 @@ function publishRenderStats() {
     renderWidth: Math.round(bufferWidth / pixelRatio),
     renderHeight: Math.round(bufferHeight / pixelRatio),
     pixelRatio,
+    renderSubmitMs,
+    activeLights: fixtureLighting.activeCount,
+    shadowLights: fixtureLighting.shadowCount,
+    waterReflection: waterReflection?.active ?? false,
+    qualityFallback: adaptiveQualityApplied,
   }
 }
 
@@ -1700,6 +1680,9 @@ function resetViewToPreset() {
 function takeScreenshot() {
   if (!renderer || !scene || !camera) return
   // preserveDrawingBuffer=false：合成器当场再渲一帧，否则 toDataURL 读到空缓冲。
+  renderer.info.reset()
+  if (fixtureLighting.update(camera, adaptiveQualityApplied ? 'low' : qualityLevel.value)) markShadowsDirty()
+  waterReflection?.update(camera)
   if (composer) composer.render()
   else renderer.render(scene, camera)
   publishRenderStats()
@@ -1729,6 +1712,9 @@ function markShadowsDirty() {
 }
 
 function cleanup() {
+  fixtureLighting.dispose()
+  waterReflection?.dispose()
+  waterReflection = null
   renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
   animationFrameId = null

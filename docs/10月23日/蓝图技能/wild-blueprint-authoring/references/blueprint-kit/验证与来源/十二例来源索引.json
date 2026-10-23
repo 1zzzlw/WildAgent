@@ -1,0 +1,695 @@
+{
+  "scope": "11栋当日作品与1栋质量参照；不含剖切副本与前端优化目录",
+  "count": 12,
+  "samples": [
+    {
+      "name": "汀院别墅 · 双层折院住宅",
+      "source": "docs/10月20日优化/汀院别墅-Codex.wild",
+      "packed": "案例/00-汀院质量参考/汀院别墅-Codex.wild",
+      "preview": {
+        "source": "docs/10月22日/00-质量参考/本次命名建筑对照/汀院/perspective.png",
+        "packed": "案例/00-汀院质量参考/已有实图.png",
+        "sha256": "51c12e2114a701d14b42418e0c4b3b8d471f3a25ee91d8b8c04d5a003b9ec03e"
+      },
+      "sha256": "4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720",
+      "bytes": 41786,
+      "elements": 180,
+      "components": 45,
+      "materials": 23,
+      "evidence": [
+        {
+          "source": "docs/10月20日优化/README.md",
+          "packed": "案例/00-汀院质量参考/原始记录/README.md.txt",
+          "sha256": "e724e0a596245f3de883822b553c77e5f742bd26cf077acdbd47bbb90379fd4c"
+        },
+        {
+          "source": "docs/10月22日/00-质量参考/本次命名建筑对照/汀院/render_manifest.json",
+          "packed": "案例/00-汀院质量参考/原始记录/质量参照清单/render_manifest.json",
+          "sha256": "5e73f054d0fa6d9dc0721544d58fbd534974586c0932149c56282f0809985351"
+        }
+      ]
+    },
+    {
+      "name": "听澜合院 · 新中式别墅",
+      "source": "docs/10月22日/01-新中式别墅/听澜合院-新中式别墅.wild",
+      "packed": "案例/01-新中式别墅/听澜合院-新中式别墅.wild",
+      "preview": {
+        "source": "docs/10月22日/01-新中式别墅/05-效果图/perspective.png",
+        "packed": "案例/01-新中式别墅/已有实图.png",
+        "sha256": "eda9cfd1a5dd7197646ae323ef1197260dc7cef8d893848a4d2bcb33d7d0c57c"
+      },
+      "sha256": "a7cd9603298dc099d2bde2e55cfbb340ef117b605cb61d732e381dad6fe047a3",
+      "bytes": 215927,
+      "elements": 1165,
+      "components": 62,
+      "materials": 26,
+      "evidence": [
+        {
+          "source": "docs/10月22日/01-新中式别墅/01-需求与设计/设计说明.md",
+          "packed": "案例/01-新中式别墅/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "2fa14e863881eea975208befcb99d12551f8072b611d179511ffe2b93b407e2b"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/03-过程记录/流程日志.md",
+          "packed": "案例/01-新中式别墅/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "02956e106e1d5555a6dddd6e45adc375c0c23920efe1109f52c60356cd8869c6"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/04-校验/r1项目校验.json",
+          "packed": "案例/01-新中式别墅/原始记录/04-校验/r1项目校验.json",
+          "sha256": "6444e5639fb49374a12247060a6c1e80112add839380966f79e36809e807539e"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/04-校验/r2项目校验.json",
+          "packed": "案例/01-新中式别墅/原始记录/04-校验/r2项目校验.json",
+          "sha256": "4011ea40d3604ae44973a99b35e26001239b6ffc5a99910656ee145c03a1a24c"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/04-校验/最终项目校验.json",
+          "packed": "案例/01-新中式别墅/原始记录/04-校验/最终项目校验.json",
+          "sha256": "28968ad0273e7278cfc6a567b0f012208edeb5adbecd3ef7a7e5ac4c958c0747"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/05-效果图/render_manifest.json",
+          "packed": "案例/01-新中式别墅/原始记录/05-效果图/render_manifest.json",
+          "sha256": "3164781080006b936212223255030c5ec89b2df1f356b9b8609f6bd8d1e40ac5"
+        },
+        {
+          "source": "docs/10月22日/01-新中式别墅/README.md",
+          "packed": "案例/01-新中式别墅/原始记录/README.md.txt",
+          "sha256": "2deaeac8be1fc781bac1f7af22a56ed8765e9147b21f50b75e9ddb534d4e2a4c"
+        }
+      ]
+    },
+    {
+      "name": "玫庭庄园 · 欧式别墅",
+      "source": "docs/10月22日/02-欧式别墅/玫庭庄园-欧式别墅.wild",
+      "packed": "案例/02-欧式别墅/玫庭庄园-欧式别墅.wild",
+      "preview": {
+        "source": "docs/10月22日/02-欧式别墅/05-效果图/perspective.png",
+        "packed": "案例/02-欧式别墅/已有实图.png",
+        "sha256": "0739794f3d7f640b9ece9052666ba3d02874900efce22831f469efae48cfaf48"
+      },
+      "sha256": "773bdd857354d9b64a7d9d7388d90e5eef3818b7e4c085942fb5052ae3afbcba",
+      "bytes": 249038,
+      "elements": 1286,
+      "components": 62,
+      "materials": 25,
+      "evidence": [
+        {
+          "source": "docs/10月22日/02-欧式别墅/01-需求与设计/设计说明.md",
+          "packed": "案例/02-欧式别墅/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "f1c2c39e20957f716fe73656388efc3e6b8f6aee9199427274501edcf117db12"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/03-过程记录/流程日志.md",
+          "packed": "案例/02-欧式别墅/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "8fdd6e306be820e57c415d5a796ef145026360703b996644da4d28fba2bdcdb1"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/04-校验/r1项目校验.json",
+          "packed": "案例/02-欧式别墅/原始记录/04-校验/r1项目校验.json",
+          "sha256": "16a756e10c7e327548f28108e262c57e958b17544111e2893b2e680e0ece368a"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/04-校验/屋面承托逐组复核.json",
+          "packed": "案例/02-欧式别墅/原始记录/04-校验/屋面承托逐组复核.json",
+          "sha256": "ec3f368efbf53fc068694a2d303e5b177e4d0a461736d6625cfb049feadd7a9e"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/04-校验/最终项目校验-含屋面误判.json",
+          "packed": "案例/02-欧式别墅/原始记录/04-校验/最终项目校验-含屋面误判.json",
+          "sha256": "6b228ea59f7914ccc9e42c43676d206cad7bb64cbaff75061d2d5b91d20f3f34"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/05-效果图/render_manifest.json",
+          "packed": "案例/02-欧式别墅/原始记录/05-效果图/render_manifest.json",
+          "sha256": "3d72ec2d65f168b4c44d563a7316bfb7c043af310b2b4585fa53355eea16e31b"
+        },
+        {
+          "source": "docs/10月22日/02-欧式别墅/README.md",
+          "packed": "案例/02-欧式别墅/原始记录/README.md.txt",
+          "sha256": "14c2a5b3c93aef4bc8af08f3f3ffb9574191a7b2adb60ec156a72727f3868548"
+        }
+      ]
+    },
+    {
+      "name": "听雨水榭 · 临水木构凉亭",
+      "source": "docs/10月22日/04-凉亭/听雨水榭-凉亭.wild",
+      "packed": "案例/04-凉亭/听雨水榭-凉亭.wild",
+      "preview": {
+        "source": "docs/10月22日/04-凉亭/05-效果图/perspective.png",
+        "packed": "案例/04-凉亭/已有实图.png",
+        "sha256": "d3b7dd2e1d8c73caa373a2abb8c882f0f7276221036ef417fc6f209b4b5c3fed"
+      },
+      "sha256": "164f8428ca97f5d91399b638cf6debf189c90e3e0ac92d3eb2be4fbbc90513e4",
+      "bytes": 120601,
+      "elements": 676,
+      "components": 2,
+      "materials": 20,
+      "evidence": [
+        {
+          "source": "docs/10月22日/04-凉亭/01-需求与设计/设计说明.md",
+          "packed": "案例/04-凉亭/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "821d643cc18f860459e6703caa92c238bd2daef07d87595ad2ed290a60ac2b40"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/03-过程记录/流程日志.md",
+          "packed": "案例/04-凉亭/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "4deff47b7a6375a4841e6249bade3f2b612ade1c4822c7aff60fec5f2233864d"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/04-校验/r1项目校验.json",
+          "packed": "案例/04-凉亭/原始记录/04-校验/r1项目校验.json",
+          "sha256": "91834a21963ace08ac72ecb108f35738c1d304158914a76f774cb06eb4441ee1"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/04-校验/r2项目校验.json",
+          "packed": "案例/04-凉亭/原始记录/04-校验/r2项目校验.json",
+          "sha256": "fcc729b1756ef3156d160d6114f4bd088bd22f43deac7542039f0ea339f35801"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/04-校验/实际坡面与木构承托复核.json",
+          "packed": "案例/04-凉亭/原始记录/04-校验/实际坡面与木构承托复核.json",
+          "sha256": "3393f8b6d030052208e5caf755add396b57c8026ab8a69c4a058847b2d90aa91"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/04-校验/最终项目校验.json",
+          "packed": "案例/04-凉亭/原始记录/04-校验/最终项目校验.json",
+          "sha256": "03b01809afc135e62a3570dfd9fa5c6d9b6e4f8c34bdae8fb0655fb31fd81c80"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/05-效果图/render_manifest.json",
+          "packed": "案例/04-凉亭/原始记录/05-效果图/render_manifest.json",
+          "sha256": "9152bb85fe75d82dd3ad9746b7f7b04ca744e7c74ecbe8f6729a8cdfc761e38c"
+        },
+        {
+          "source": "docs/10月22日/04-凉亭/README.md",
+          "packed": "案例/04-凉亭/原始记录/README.md.txt",
+          "sha256": "3116f4846b56d6c50d29779c2227bed86629cf7280e85ddfcf5842fea03ae5d2"
+        }
+      ]
+    },
+    {
+      "name": "云序中心 · 六层退台写字楼",
+      "source": "docs/10月22日/05-写字楼/云序中心-写字楼.wild",
+      "packed": "案例/05-写字楼/云序中心-写字楼.wild",
+      "preview": {
+        "source": "docs/10月22日/05-写字楼/05-效果图/perspective.png",
+        "packed": "案例/05-写字楼/已有实图.png",
+        "sha256": "c7600da75dc97b1b708416f930a3f13d1e4d4bee6be09d018de347617e03ac8e"
+      },
+      "sha256": "a8902f5c4321449a958fad39fabb8680c95cbc4b2ab849a3dd04fd3be0b3b333",
+      "bytes": 164697,
+      "elements": 811,
+      "components": 135,
+      "materials": 22,
+      "evidence": [
+        {
+          "source": "docs/10月22日/05-写字楼/01-需求与设计/设计说明.md",
+          "packed": "案例/05-写字楼/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "9d7a2ac052b7f8cab4fe30ce10234ab5acbe2bc5abea7daf9134fddd8533375a"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/03-过程记录/流程日志.md",
+          "packed": "案例/05-写字楼/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "bcc394d0ece0f840b640922d91b4d454411a1db5cfb87839f4932323cb6760d1"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/04-校验/r1项目校验.json",
+          "packed": "案例/05-写字楼/原始记录/04-校验/r1项目校验.json",
+          "sha256": "fa1d2e377afeb406833170f361850c2c86528016e1908c4da8a8fe30f5ebd2d6"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/04-校验/最终项目校验.json",
+          "packed": "案例/05-写字楼/原始记录/04-校验/最终项目校验.json",
+          "sha256": "27ceea69937ed2d3b7caa945db1cc2b057a5e47459192be9c04019b06a96c3d8"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/04-校验/楼板开口与交通复核.json",
+          "packed": "案例/05-写字楼/原始记录/04-校验/楼板开口与交通复核.json",
+          "sha256": "d5f925c1cb4cfcf267b369c8049fd54ae7a2bcb9d97057ea4578d760e25dc754"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/05-效果图/render_manifest.json",
+          "packed": "案例/05-写字楼/原始记录/05-效果图/render_manifest.json",
+          "sha256": "5aec68ce2bf19c0b4c99ff18816d04d6c66a8e1c950aa7c0da688212717f462d"
+        },
+        {
+          "source": "docs/10月22日/05-写字楼/README.md",
+          "packed": "案例/05-写字楼/原始记录/README.md.txt",
+          "sha256": "fbed22084e9f6d1a5558dd4577efd59381effb77ed8650fb520eca6ccd09881b"
+        }
+      ]
+    },
+    {
+      "name": "栖光别墅 · 叠院露台住宅",
+      "source": "docs/10月22日/06-单文档别墅/栖光别墅-单文档生成.wild",
+      "packed": "案例/06-单文档别墅/栖光别墅-单文档生成.wild",
+      "preview": {
+        "source": "docs/10月22日/06-单文档别墅/05-效果图/perspective.png",
+        "packed": "案例/06-单文档别墅/已有实图.png",
+        "sha256": "fce3025d3d7fd41c3f64d0772542c8536469f3d375a549df2b35d6e4d79c0310"
+      },
+      "sha256": "4755c6f2850522a71727b23d7e64e25cce13ca557c66130ebb2f64cab5ac465c",
+      "bytes": 72703,
+      "elements": 372,
+      "components": 41,
+      "materials": 24,
+      "evidence": [
+        {
+          "source": "docs/10月22日/06-单文档别墅/01-需求与设计/设计说明.md",
+          "packed": "案例/06-单文档别墅/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "ff262ea3e671c24aa998d99d2c0efd092eb2faa6da78fc74dd77fae435f05555"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/03-过程记录/流程日志.md",
+          "packed": "案例/06-单文档别墅/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "2ca913f06234d7bb2bcb9cc933b087a7e4bfb404ef9c405265a69126de24de45"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/r1项目校验.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/r1项目校验.json",
+          "sha256": "098e55af2005f8454fd43f35e3067d9d2601905efc695c47330f44b2f3dbc210"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/r2二层副本校验.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/r2二层副本校验.json",
+          "sha256": "18acbfd3cc5b3fe65c82c5603196f31e6df09fc4ffab63a768c1c3a35f7bb30c"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/r2空间复核.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/r2空间复核.json",
+          "sha256": "9d0ff618063698d12e4d85f805ecb1b4d42bd9d4f52baec3c452e29bbf3e3302"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/r2项目校验.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/r2项目校验.json",
+          "sha256": "4ce54fb74f4a924d4eb9e25e2078fa17773a9274b855743588547c2a985b0b65"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/r2首层副本校验.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/r2首层副本校验.json",
+          "sha256": "5516a0859d1dc595c58606bfb44a14af6ea97c79c79fba199aced1adbefaeed3"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/04-校验/交付核对.json",
+          "packed": "案例/06-单文档别墅/原始记录/04-校验/交付核对.json",
+          "sha256": "55b50a04380d1ec21f3889eadfef2b5f2708808290f89c60a8bbb0ed8333001f"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/05-效果图/render_manifest.json",
+          "packed": "案例/06-单文档别墅/原始记录/05-效果图/render_manifest.json",
+          "sha256": "77603e163dde2709636fa78e040962947cd3968cb8641e82aac17f1f40b72483"
+        },
+        {
+          "source": "docs/10月22日/06-单文档别墅/README.md",
+          "packed": "案例/06-单文档别墅/原始记录/README.md.txt",
+          "sha256": "bc58dd7c319fc3f08b58a6b967b15b269d70caf9df7a0030b060090a4c76d778"
+        }
+      ]
+    },
+    {
+      "name": "知序图书馆",
+      "source": "docs/10月22日/07-图书馆/知序图书馆.wild",
+      "packed": "案例/07-图书馆/知序图书馆.wild",
+      "preview": {
+        "source": "docs/10月22日/07-图书馆/05-效果图/世界环境/day.png",
+        "packed": "案例/07-图书馆/已有实图.png",
+        "sha256": "4373eaad7834cdaddf6620b5ac390a25dc5d8925d5625853e7e80bf8891d6167"
+      },
+      "sha256": "dcfbc5552fabf86c32963e2f1aaa9a28ccfabf42ae574b0e76b7b6ff547e370d",
+      "bytes": 427997,
+      "elements": 1175,
+      "components": 34,
+      "materials": 25,
+      "evidence": [
+        {
+          "source": "docs/10月22日/07-图书馆/01-需求与设计/DesignDocument.json",
+          "packed": "案例/07-图书馆/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "543f307f0178ea09a1ddaa7e9a044b474dc1d23007e464cd1d80cadc4b7bf0e8"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/01-需求与设计/设计说明.md",
+          "packed": "案例/07-图书馆/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "c2f876ac7aa3719c8ceb19fbe65c6a64f54d5465260c511d2354a3c2632ad307"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/03-过程记录/流程日志.md",
+          "packed": "案例/07-图书馆/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "3ad41559b73e1dc6c3cdb98e7349e0f0d11f0d8686cae661c5ad487c2899c900"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/04-校验/r1-项目校验.json",
+          "packed": "案例/07-图书馆/原始记录/04-校验/r1-项目校验.json",
+          "sha256": "5065ee10651c1755e28a56ddce714f46146d39eee4e68b86e70eb12992704e22"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/04-校验/r2-项目校验.json",
+          "packed": "案例/07-图书馆/原始记录/04-校验/r2-项目校验.json",
+          "sha256": "7b103c615fa61c35d28ecc761ebad87d08f9884cb1514fa86a633e0557fba17c"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/04-校验/交付关系核对.json",
+          "packed": "案例/07-图书馆/原始记录/04-校验/交付关系核对.json",
+          "sha256": "9a16a098e7c0a769bec929a1c56019d764967d91b23929e9a462ad792a47e757"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/04-校验/最终项目校验.json",
+          "packed": "案例/07-图书馆/原始记录/04-校验/最终项目校验.json",
+          "sha256": "d64b1d33a25a4444eb96145f029285737b590f30b71d6717dcdada614ae17275"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/05-效果图/render_manifest.json",
+          "packed": "案例/07-图书馆/原始记录/05-效果图/render_manifest.json",
+          "sha256": "b339997c51b4675e6f5fe1bf037bc19230691561ff7688e43660cd0c50c656ce"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/05-效果图/世界环境/world-render-manifest.json",
+          "packed": "案例/07-图书馆/原始记录/05-效果图/世界环境/world-render-manifest.json",
+          "sha256": "4f54564d8f77c004f34933d025853640bcf0b950d337762c40d981f0c533c8c4"
+        },
+        {
+          "source": "docs/10月22日/07-图书馆/README.md",
+          "packed": "案例/07-图书馆/原始记录/README.md.txt",
+          "sha256": "d1634432874d0f45b79fcbb836742c14cbe4180658ff7cfc13db2ad588e614ab"
+        }
+      ]
+    },
+    {
+      "name": "澄屿现代别墅",
+      "source": "docs/10月22日/08-现代别墅/澄屿现代别墅.wild",
+      "packed": "案例/08-现代别墅/澄屿现代别墅.wild",
+      "preview": {
+        "source": "docs/10月22日/08-现代别墅/05-效果图/世界环境/day.png",
+        "packed": "案例/08-现代别墅/已有实图.png",
+        "sha256": "7cad2ef81dec1d13008ff0d1180963b790f4140ace8edd5791fe69c4a60fd52a"
+      },
+      "sha256": "53a6b126700fddc8b61ad417a11553e939b7a15390a2c49541486292429aef3b",
+      "bytes": 134282,
+      "elements": 336,
+      "components": 30,
+      "materials": 25,
+      "evidence": [
+        {
+          "source": "docs/10月22日/08-现代别墅/01-需求与设计/DesignDocument.json",
+          "packed": "案例/08-现代别墅/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "d72671d01dc5fd544053f1a4f030c8f01c8f21b76b78161cfd3b697724f50923"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/01-需求与设计/设计说明.md",
+          "packed": "案例/08-现代别墅/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "5a0832fa71563438d7895dc2a35a4197fc9d4e61e717b49e0bc6a3d9a606af30"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/03-过程记录/流程日志.md",
+          "packed": "案例/08-现代别墅/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "889b702f39ba596c841ebf75376a01aa74e5bf512beef13c4c557828c6f41017"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/04-校验/r1-项目校验.json",
+          "packed": "案例/08-现代别墅/原始记录/04-校验/r1-项目校验.json",
+          "sha256": "71bfe677f844b8f92f054a090ee045b6d584507463db681e14b92c86852a3ff4"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/04-校验/交付关系核对.json",
+          "packed": "案例/08-现代别墅/原始记录/04-校验/交付关系核对.json",
+          "sha256": "b205776ab3cff23c5d8b3fdb8c3efedf1c20d104e1549b949121b7ce7ee1e730"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/04-校验/最终项目校验.json",
+          "packed": "案例/08-现代别墅/原始记录/04-校验/最终项目校验.json",
+          "sha256": "5d9430a03d5f4f06e9755757702307cfb77892da83828e9c837e6ac712a74712"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/05-效果图/render_manifest.json",
+          "packed": "案例/08-现代别墅/原始记录/05-效果图/render_manifest.json",
+          "sha256": "582feea8db585f8bf4f3e107153b63dec307d55db3af605d931cbbf7ce1cb627"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/05-效果图/世界环境/world-render-manifest.json",
+          "packed": "案例/08-现代别墅/原始记录/05-效果图/世界环境/world-render-manifest.json",
+          "sha256": "53372afc973305c59e5e7cbd2b1955c586c30d728464a3501cdec44fedc8c807"
+        },
+        {
+          "source": "docs/10月22日/08-现代别墅/README.md",
+          "packed": "案例/08-现代别墅/原始记录/README.md.txt",
+          "sha256": "4aa52ce422aae8a37fb7a9e4172a1797c56fbfedab8199ca2a8a4645296fdd83"
+        }
+      ]
+    },
+    {
+      "name": "青屿咖啡",
+      "source": "docs/10月22日/09-咖啡厅/青屿咖啡.wild",
+      "packed": "案例/09-咖啡厅/青屿咖啡.wild",
+      "preview": {
+        "source": "docs/10月22日/09-咖啡厅/05-效果图/世界环境/day.png",
+        "packed": "案例/09-咖啡厅/已有实图.png",
+        "sha256": "bfaed35f9f38a5e7c3fa21d0b83d6cc8c3ad17eb39c2803bd7efbe29961b693c"
+      },
+      "sha256": "3e61aaa8f2ea092b33ba086c1fd6760104947b3fb4ca751b90574b1bbb0194d4",
+      "bytes": 95911,
+      "elements": 253,
+      "components": 7,
+      "materials": 25,
+      "evidence": [
+        {
+          "source": "docs/10月22日/09-咖啡厅/01-需求与设计/DesignDocument.json",
+          "packed": "案例/09-咖啡厅/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "78cc2afed47157c49dacfcd4156cbc5b48fb68a7ba5c2aa904db15d55979165e"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/01-需求与设计/设计说明.md",
+          "packed": "案例/09-咖啡厅/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "37416673a9b7918286eda19afa2dce2ac656379ceb0ab0878f9bada0a47376f2"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/03-过程记录/流程日志.md",
+          "packed": "案例/09-咖啡厅/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "c948e5e9f159d135884c1b92d9ece1b7597563c7d2d3cd4a31629c7d1a2d78d6"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/04-校验/交付关系核对.json",
+          "packed": "案例/09-咖啡厅/原始记录/04-校验/交付关系核对.json",
+          "sha256": "b818418f5e592cd3ec4073a4a62a6a6dccb1cec302e96dc53ab2885471d9898c"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/04-校验/最终项目校验.json",
+          "packed": "案例/09-咖啡厅/原始记录/04-校验/最终项目校验.json",
+          "sha256": "0b3556d23552aaf45eb0c0ef4989ded107d36e3df7a20653d48fcd149a3c898c"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/05-效果图/render_manifest.json",
+          "packed": "案例/09-咖啡厅/原始记录/05-效果图/render_manifest.json",
+          "sha256": "e013da8dedafdcbd5272979d875337b4107dc2f1b249e9798a53cb4582909611"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/05-效果图/世界环境/world-render-manifest.json",
+          "packed": "案例/09-咖啡厅/原始记录/05-效果图/世界环境/world-render-manifest.json",
+          "sha256": "9817b94ca334e9cf6ce223b0f5e76f2cd51443776331ca35d20674234fa6571e"
+        },
+        {
+          "source": "docs/10月22日/09-咖啡厅/README.md",
+          "packed": "案例/09-咖啡厅/原始记录/README.md.txt",
+          "sha256": "e500900820dad344b1bd2b6da751062422a4581db74f4089c8f467f16a245c46"
+        }
+      ]
+    },
+    {
+      "name": "邻里优选超市",
+      "source": "docs/10月22日/10-超市/邻里优选超市.wild",
+      "packed": "案例/10-超市/邻里优选超市.wild",
+      "preview": {
+        "source": "docs/10月22日/10-超市/05-效果图/世界环境/day.png",
+        "packed": "案例/10-超市/已有实图.png",
+        "sha256": "95e1813832ef7a150c9d53eeb83bf5fc07d839e750d4a3a951d1dab063c3f9dc"
+      },
+      "sha256": "af60695c1a40ea5c6a7ae7fe25bf61a6bc23b9d1ae7ef6db19934a2be21f8641",
+      "bytes": 205218,
+      "elements": 574,
+      "components": 7,
+      "materials": 25,
+      "evidence": [
+        {
+          "source": "docs/10月22日/10-超市/01-需求与设计/DesignDocument.json",
+          "packed": "案例/10-超市/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "d4ae8634ecc21e52836288ae4eceea1d16fe5f4d2fb3366ab3c899c9461ede4e"
+        },
+        {
+          "source": "docs/10月22日/10-超市/01-需求与设计/设计说明.md",
+          "packed": "案例/10-超市/原始记录/01-需求与设计/设计说明.md.txt",
+          "sha256": "e748b404198b87031842f841fd7821925b898172ab800dcd168bee831fff123e"
+        },
+        {
+          "source": "docs/10月22日/10-超市/03-过程记录/流程日志.md",
+          "packed": "案例/10-超市/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "01b83e5446d078d4e4d2315358d7e1418b0ac7c9e595cc7a549d306382d6fd87"
+        },
+        {
+          "source": "docs/10月22日/10-超市/04-校验/交付关系核对.json",
+          "packed": "案例/10-超市/原始记录/04-校验/交付关系核对.json",
+          "sha256": "32a74425618c0fa3d405da9d02e3aa7638a2072e6ddaadfeac8ecca7e4deb656"
+        },
+        {
+          "source": "docs/10月22日/10-超市/04-校验/最终项目校验.json",
+          "packed": "案例/10-超市/原始记录/04-校验/最终项目校验.json",
+          "sha256": "384b4518b1d28319440d306f9d64f2265a60486dd28881b9f71c271902e6f7bd"
+        },
+        {
+          "source": "docs/10月22日/10-超市/05-效果图/render_manifest.json",
+          "packed": "案例/10-超市/原始记录/05-效果图/render_manifest.json",
+          "sha256": "78d15f0b57ebe004388cd74caf1d51f66d87b193389b1d8c652e445e27312bb4"
+        },
+        {
+          "source": "docs/10月22日/10-超市/05-效果图/世界环境/world-render-manifest.json",
+          "packed": "案例/10-超市/原始记录/05-效果图/世界环境/world-render-manifest.json",
+          "sha256": "20853dfe417be7c80c68b29f544e8827536b00a9283e5027b8feb462f843e0d4"
+        },
+        {
+          "source": "docs/10月22日/10-超市/README.md",
+          "packed": "案例/10-超市/原始记录/README.md.txt",
+          "sha256": "9ee24ef5ea6b95ee1d455f4bd6417e7baf1909a25cc08b9b1ed33159b226675e"
+        }
+      ]
+    },
+    {
+      "name": "林庭石光馆",
+      "source": "docs/10月22日/11-图片复建-石光庭院/林庭石光馆.wild",
+      "packed": "案例/11-图片复建-石光庭院/林庭石光馆.wild",
+      "preview": {
+        "source": "docs/10月22日/11-图片复建-石光庭院/05-效果图/参考视角/reference-day.png",
+        "packed": "案例/11-图片复建-石光庭院/已有实图.png",
+        "sha256": "cba0376a801d34680448c3f2afb2b6af6a9772dbb193dc3d386e37fa8ade7da2"
+      },
+      "sha256": "f98051a950c120ac53ded6b0f3badacae170d82f7268d8e1a4bf835756ac11cb",
+      "bytes": 798806,
+      "elements": 1526,
+      "components": 26,
+      "materials": 28,
+      "evidence": [
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/01-需求与设计/DesignDocument.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "374f7e25a941c1feec72c315d822457b568529249f2d3ea4f3498f0788483f00"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/01-需求与设计/图片拆解与设计.md",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/01-需求与设计/图片拆解与设计.md.txt",
+          "sha256": "b0c5ac0d63ccd5511c255ce2d893180ef6ab4be48bba6c5bc476c0e085a2651e"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/03-过程记录/流程日志.md",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "cfd4f06890d02850a7b06d90b1ebe227747ea8c68759e050fd4ca0361429e40d"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/04-校验/r1项目校验.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/04-校验/r1项目校验.json",
+          "sha256": "7170f9e3c8b45c5116caea58a8efe6f1f7d5349d4c76e77dbeb3a2a0743a4aa6"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/04-校验/r2项目校验.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/04-校验/r2项目校验.json",
+          "sha256": "65738556537127a5383e6c5b336a23421e2299cffa70cfb1893b1e5f90812812"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/04-校验/r3项目校验.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/04-校验/r3项目校验.json",
+          "sha256": "ce4758b208451a0adde74ca501e852e6f332101a823a11f4b321687e76bf7470"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/04-校验/最终项目校验.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/04-校验/最终项目校验.json",
+          "sha256": "83105552c982a2f18b32e6b771aac28ba4e68293c4e67f46b0429e7e7dedf3b3"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/04-校验/设计落实与交通复核.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/04-校验/设计落实与交通复核.json",
+          "sha256": "83b7c5f1e12aef4d476398646bafc8e42a933d28a57b9df6f8d4ead2d732e5ff"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/05-效果图/render_manifest.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/05-效果图/render_manifest.json",
+          "sha256": "cd57add8b2855e8556e25d0e3169ad46315afe870236c91ab94a6d8d35c90ade"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/05-效果图/参考视角/photo-render-manifest.json",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/05-效果图/参考视角/photo-render-manifest.json",
+          "sha256": "726a3fd18b0e08cc8d3d352d3c2d830e69b1b1ccb833b0f7a29f0471b1a7eb9e"
+        },
+        {
+          "source": "docs/10月22日/11-图片复建-石光庭院/README.md",
+          "packed": "案例/11-图片复建-石光庭院/原始记录/README.md.txt",
+          "sha256": "5979b1df07d74741372a806475dbfb3fba520e420d6a070f91cff27ab68b1a0e"
+        }
+      ]
+    },
+    {
+      "name": "Forest Cafe",
+      "source": "docs/10月22日/12-图片复建-ForestCafe/Forest Cafe.wild",
+      "packed": "案例/12-图片复建-ForestCafe/Forest Cafe.wild",
+      "preview": {
+        "source": "docs/10月22日/12-图片复建-ForestCafe/05-效果图/参考视角/reference-day.png",
+        "packed": "案例/12-图片复建-ForestCafe/已有实图.png",
+        "sha256": "16bc7894b337644dc41238dda6af8d7c3766162ee9ca80136e1ff915f18d8f7c"
+      },
+      "sha256": "7ce250ff7a3f0ee5aa60bd16d5ac39b14cd0c523d8110414053aac7d42a7aa7a",
+      "bytes": 853743,
+      "elements": 1616,
+      "components": 23,
+      "materials": 28,
+      "evidence": [
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/01-需求与设计/DesignDocument.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/01-需求与设计/DesignDocument.json",
+          "sha256": "41dc82db0daaca0a86e6e779a90b534befad1cb272ba73c006e0e0792a555be8"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/01-需求与设计/图片拆解与设计.md",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/01-需求与设计/图片拆解与设计.md.txt",
+          "sha256": "6a46b3018b5f1e9d21a4c89e05c5f9c8725b36312325612ed180f228be0b8621"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/03-过程记录/流程日志.md",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/03-过程记录/流程日志.md.txt",
+          "sha256": "eb03fab142c932c466dacb0cd9ebc4b82c6834ec5abf37931bce591e4a86fbbc"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/04-校验/r1项目校验.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/04-校验/r1项目校验.json",
+          "sha256": "54b3492011b45e52eb7fb5fcd56cdf5d898d734720e7010dd96f3c5afc820410"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/04-校验/r2项目校验.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/04-校验/r2项目校验.json",
+          "sha256": "a0d132dd41c3f31dbce0618a9c036fe14011c079bdfbf4bfd85f996958d86ab6"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/04-校验/最终项目校验.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/04-校验/最终项目校验.json",
+          "sha256": "1b838aa5fde73ec0bd8ad36b4f2846bdc134ae54b6e8bdd8851254a05bf7a60b"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/04-校验/设计落实与交通复核.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/04-校验/设计落实与交通复核.json",
+          "sha256": "1c68b31d0ba81a2cb6a10abc9290c632147b0cc5ff7fd050e85814bd5d71cda4"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/05-效果图/render_manifest.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/05-效果图/render_manifest.json",
+          "sha256": "fc8ec365b578887fb9d8b39ddf68e378f5fe4fe693b30b690751f37a5776cc0d"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/05-效果图/参考视角/photo-render-manifest.json",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/05-效果图/参考视角/photo-render-manifest.json",
+          "sha256": "ea83644b44317c5fb2d9c4d577e53d12826e28785012dc00b61976ce660a0349"
+        },
+        {
+          "source": "docs/10月22日/12-图片复建-ForestCafe/README.md",
+          "packed": "案例/12-图片复建-ForestCafe/原始记录/README.md.txt",
+          "sha256": "e84d56fc9463accd18a2fe47a4795682ebf2b0144cedc0c440bde7e6b9694949"
+        }
+      ]
+    }
+  ]
+}

@@ -52,6 +52,18 @@
             <span class="rc-stat-label">分辨率</span>
             <span class="rc-stat-value">{{ resolutionLabel }}</span>
           </div>
+          <div class="rc-stat rc-stat-wide">
+            <span class="rc-stat-label">渲染提交</span>
+            <span class="rc-stat-value">{{ store.stats.renderSubmitMs.toFixed(1) }} ms</span>
+          </div>
+          <div class="rc-stat rc-stat-wide">
+            <span class="rc-stat-label">局部照明 / 投影</span>
+            <span class="rc-stat-value">{{ store.stats.activeLights }} / {{ store.stats.shadowLights }}</span>
+          </div>
+          <div class="rc-stat rc-stat-wide">
+            <span class="rc-stat-label">当前效果</span>
+            <span class="rc-stat-value">{{ store.stats.qualityFallback ? '已自动降档' : store.presets.quality === 'high' ? '精细 · GTAO' : store.presets.quality === 'medium' ? '均衡 · SSAO' : '流畅' }}</span>
+          </div>
         </div>
       </div>
 
@@ -82,6 +94,11 @@
           <span class="rc-slider-label">水面透明度</span>
           <input v-model.number="store.waterTransparency" aria-label="水面透明度" type="range" min="0" max="1" step="0.05" class="rc-slider" />
           <span class="rc-slider-value">{{ Math.round(store.waterTransparency * 100) }}%</span>
+        </label>
+        <label class="rc-toggle" title="精细画质下反射建筑与周围场景；其他画质使用环境反射">
+          <span>水面场景反射 · 精细</span>
+          <input v-model="store.waterReflections" type="checkbox" aria-label="水面场景反射" />
+          <span class="rc-switch" aria-hidden="true"></span>
         </label>
         <label class="rc-slider-row">
           <span class="rc-slider-label">波纹强度</span>

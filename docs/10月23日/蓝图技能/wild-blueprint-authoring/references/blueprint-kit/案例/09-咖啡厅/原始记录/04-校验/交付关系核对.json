@@ -1,0 +1,60 @@
+{
+  "wild_sha256": "3e61aaa8f2ea092b33ba086c1fd6760104947b3fb4ca751b90574b1bbb0194d4",
+  "design_sha256": "78cc2afed47157c49dacfcd4156cbc5b48fb68a7ba5c2aa904db15d55979165e",
+  "name": "青屿咖啡",
+  "site_size_m": [
+    16,
+    16
+  ],
+  "size_scope": "完整地块（含入口、庭院），单位米",
+  "main_sign": "青屿咖啡",
+  "real_lights": 5,
+  "project_error_steps": [],
+  "project_warning_steps": [],
+  "reconstruction_warnings": [],
+  "traffic": [],
+  "pool": null,
+  "roof_supports": [
+    {
+      "roof": "roof_0_0",
+      "base_y": 4.2,
+      "contacts_at_same_height": [
+        "shop_front",
+        "shop_right",
+        "shop_back",
+        "shop_left",
+        "wc_partition",
+        "wc_side"
+      ],
+      "check": "declared rectangular footprints and top elevations"
+    }
+  ],
+  "cuts": [
+    {
+      "path": "06-剖切查看\\室内\\青屿咖啡-室内.wild",
+      "source_sha256": "3e61aaa8f2ea092b33ba086c1fd6760104947b3fb4ca751b90574b1bbb0194d4",
+      "sha256": "785a1cab5edbbbb824c5b098fad40f35d6546c59f46069b403776783a44c2274",
+      "removed_ids": [
+        "cafe_corniceb",
+        "cafe_corniceb_edge",
+        "cafe_cornicef",
+        "cafe_cornicef_edge",
+        "cafe_cornicel",
+        "cafe_cornicel_edge",
+        "cafe_cornicer",
+        "cafe_cornicer_edge",
+        "roof_0_0"
+      ],
+      "retained_elements_unchanged": true,
+      "schema_errors": 0
+    }
+  ],
+  "baseline_context": "3ed7cc756b30c0b17dac69a50cf54be0229433a13b8d46e84810ea6cb017b1c3",
+  "render_hashes_match": true,
+  "runtime_errors": [],
+  "limits": [
+    "剖切是查看副本，保留构件坐标不变；不把去顶后的屋面缺失警告当成完整建筑结论。",
+    "净空复核检查水平板与楼梯踏步采样；不是建筑结构承载、安全或规范认证。",
+    "审美质量依据真实渲染查看，最终仍由用户评价。"
+  ]
+}

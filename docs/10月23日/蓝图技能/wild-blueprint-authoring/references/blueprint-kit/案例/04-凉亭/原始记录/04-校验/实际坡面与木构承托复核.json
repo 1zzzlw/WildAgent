@@ -1,0 +1,57 @@
+{
+  "source_sha256": "164f8428ca97f5d91399b638cf6debf189c90e3e0ac92d3eb2be4fbbc90513e4",
+  "support_chain_connected": true,
+  "actual_hip_surface_checks": [
+    {
+      "member": "purlin_x_-1",
+      "x": -3.4,
+      "z": -2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    },
+    {
+      "member": "purlin_x_-1",
+      "x": 0,
+      "z": -2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    },
+    {
+      "member": "purlin_x_-1",
+      "x": 3.4,
+      "z": -2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    },
+    {
+      "member": "purlin_x_1",
+      "x": -3.4,
+      "z": 2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    },
+    {
+      "member": "purlin_x_1",
+      "x": 0,
+      "z": 2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    },
+    {
+      "member": "purlin_x_1",
+      "x": 3.4,
+      "z": 2.5,
+      "roof_underside": 4.539999999999999,
+      "timber_top": 4.54,
+      "gap": -8.881784197001252e-16
+    }
+  ],
+  "actual_surface_contact_passed": true,
+  "pipeline_passed": false,
+  "limitation": "全图屋面检查按屋顶 position.y 与单个最近柱/梁顶比较；不能表达柱-斗拱-短柱-檩条-坡面承托链。保留原始报错，不回写或降低屋顶。"
+}

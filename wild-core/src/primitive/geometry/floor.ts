@@ -1,11 +1,15 @@
 import type { FloorParams, MeshData } from '../types';
-import { indexTriList } from './mesh-helper';
+import { generateArchitecturalSurfaceAttributes, indexTriList } from './mesh-helper';
+import { triangulatePolygon } from './polygon';
 import { createBoxGeometry } from './wall';
 import { subdivideBoxShared } from './face-surface';
 
 export function buildFloor(params: FloorParams): MeshData[] {
   const { from, to, thickness, material } = params;
   const shape = (params as any).shape;
+
+  if (shape === 'polygon') return buildPolygonFloor(params, params.polygon || [], params.holes);
+  if (params.polygon?.length || params.holes?.length) throw new Error('floor polygon/holes requires shape="polygon"');
 
   // 圆形地板
   if (shape === 'circle') {
@@ -43,7 +47,7 @@ export function buildFloor(params: FloorParams): MeshData[] {
   const midX = (from[0] + to[0]) / 2;
   const midZ = (from[2] + to[2]) / 2;
   return [{
-    geometry, indices: new Uint32Array(indices),
+    geometry, indices: new Uint32Array(indices), ...generateArchitecturalSurfaceAttributes(geometry),
     transform: { position: [midX, isSolid ? from[1] + effectiveThick/2 : from[1], midZ], rotation: [0,0,0], scale: [1,1,1] },
     materialRef: material || 'default'
   }];
@@ -51,54 +55,39 @@ export function buildFloor(params: FloorParams): MeshData[] {
 
 /** 圆形地板：生成 segments 边形近似  */
 function buildCircularFloor(params: FloorParams): MeshData[] {
-  const { from, thickness, material } = params;
-  const p = params as any;
-  const radius = p.radius;
-  const seg = p.segments || 32;
-  const effectiveThick = thickness || 0;
-  const isSolid = effectiveThick > 0.01;
-  const cx = from[0], cz = from[2];
-  const centerY = from[1] + effectiveThick / 2; // 地板向下延伸
-  const yBot = from[1];
+  const radius = params.radius ?? 0;
+  if (!Number.isFinite(radius) || radius <= 0) throw new Error('floor.radius must be positive');
+  const seg = Math.max(3, Math.min(256, Math.round(params.segments || 32)));
+  return buildPolygonFloor(params, Array.from({ length: seg }, (_, i) => {
+    const angle = i / seg * Math.PI * 2;
+    return [Math.cos(angle) * radius, Math.sin(angle) * radius];
+  }));
+}
+
+function buildPolygonFloor(params: FloorParams, polygon: Array<[number, number]>, holes: Array<Array<[number, number]>> = []): MeshData[] {
+  const { rings, points, triangles } = triangulatePolygon(polygon, holes);
+  const thickness = params.thickness || 0;
+  if (!Number.isFinite(thickness) || thickness < 0) throw new Error('floor.thickness must be non-negative');
   const verts: number[] = [];
-  const idx: number[] = [];
-
-  // 顶面扇形
-  for (let i = 0; i < seg; i++) {
-    const a1 = (i / seg) * Math.PI * 2;
-    const a2 = ((i + 1) / seg) * Math.PI * 2;
-    const x1 = cx + radius * Math.cos(a1), z1 = cz + radius * Math.sin(a1);
-    const x2 = cx + radius * Math.cos(a2), z2 = cz + radius * Math.sin(a2);
-    verts.push(cx, isSolid ? centerY : from[1], cz, x1, isSolid ? centerY : from[1], z1, x2, isSolid ? centerY : from[1], z2);
+  const push = (p: [number, number], y: number) => verts.push(p[0], y, p[1]);
+  for (let i = 0; i < triangles.length; i += 3) {
+    const a = points[triangles[i]], b = points[triangles[i + 1]], c = points[triangles[i + 2]];
+    push(a, thickness); push(c, thickness); push(b, thickness);
+    if (thickness > 0) { push(a, 0); push(b, 0); push(c, 0); }
   }
-
-  if (isSolid) {
-    // 底面扇形
-    const botStart = verts.length / 3;
-    for (let i = 0; i < seg; i++) {
-      const a1 = (i / seg) * Math.PI * 2;
-      const a2 = ((i + 1) / seg) * Math.PI * 2;
-      const x1 = cx + radius * Math.cos(a1), z1 = cz + radius * Math.sin(a1);
-      const x2 = cx + radius * Math.cos(a2), z2 = cz + radius * Math.sin(a2);
-      verts.push(cx, yBot, cz, x2, yBot, z2, x1, yBot, z1);
-    }
-    // 侧壁
-    const sideStart = verts.length / 3;
-    for (let i = 0; i < seg; i++) {
-      const a1 = (i / seg) * Math.PI * 2;
-      const a2 = ((i + 1) / seg) * Math.PI * 2;
-      const x1=cx+radius*Math.cos(a1), z1=cz+radius*Math.sin(a1);
-      const x2=cx+radius*Math.cos(a2), z2=cz+radius*Math.sin(a2);
-      verts.push(x1, centerY, z1, x2, centerY, z2, x2, yBot, z2);
-      verts.push(x1, centerY, z1, x2, yBot, z2, x1, yBot, z1);
+  if (thickness > 0) {
+    for (const ring of rings) for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length];
+      push(a, 0); push(a, thickness); push(b, thickness);
+      push(a, 0); push(b, thickness); push(b, 0);
     }
   }
-
-  for (let i = 0; i < verts.length / 3; i++) idx.push(i);
+  const geometry = new Float32Array(verts);
   return [{
-    geometry: new Float32Array(verts), indices: new Uint32Array(idx),
-    transform: { position: [0,0,0], rotation: [0,0,0], scale: [1,1,1] },
-    materialRef: material || 'default'
+    geometry, indices: Uint32Array.from({ length: verts.length / 3 }, (_, i) => i),
+    ...generateArchitecturalSurfaceAttributes(geometry),
+    transform: { position: [...params.from], rotation: [0,0,0], scale: [1,1,1] },
+    materialRef: params.material || 'default'
   }];
 }
 

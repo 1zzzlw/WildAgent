@@ -3,6 +3,15 @@ import { getWorldEnvironmentUniforms } from './worldEnvironmentRuntime'
 export { isWaterMaterial } from 'wild-core/materials'
 
 const uniforms = { time: { value: 0 }, enabled: { value: 1 }, transparency: { value: 1 }, waveStrength: { value: 0.65 } }
+export function getWaterReflectionUniforms(material: THREE.Material) {
+  return material.userData.waterReflectionUniforms ??= {
+    map: { value: null as THREE.Texture | null },
+    matrix: { value: new THREE.Matrix4() },
+    strength: { value: 0 },
+    height: { value: 0 },
+    texel: { value: new THREE.Vector2(1 / 512, 1 / 512) },
+  }
+}
 export function setWaterSurfaceTime(seconds: number): void { if (uniforms.enabled.value > 0) uniforms.time.value = seconds }
 export function setWaterSurfaceAnimated(enabled: boolean): void { uniforms.enabled.value = enabled ? 1 : 0 }
 export function setWaterSurfaceAppearance(transparency: number, waveStrength: number): void {
@@ -15,7 +24,8 @@ export function applyWaterSurfaceMaterial(material: THREE.MeshStandardMaterial):
   const previous = material.onBeforeCompile
   const cacheKey = material.customProgramCacheKey()
   material.userData.wildWaterSurface = true
-  material.customProgramCacheKey = () => cacheKey + ':water-surface-v2'
+  const reflection = getWaterReflectionUniforms(material)
+  material.customProgramCacheKey = () => cacheKey + ':water-surface-v3'
   material.onBeforeCompile = (shader, renderer) => {
     previous.call(material, shader, renderer)
     shader.uniforms.wildWaterTime = uniforms.time
@@ -23,6 +33,11 @@ export function applyWaterSurfaceMaterial(material: THREE.MeshStandardMaterial):
     shader.uniforms.wildWaterTransparency = uniforms.transparency
     shader.uniforms.wildWaterWaveStrength = uniforms.waveStrength
     shader.uniforms.wildWaterWind = getWorldEnvironmentUniforms().wind
+    shader.uniforms.wildWaterReflection = reflection.map
+    shader.uniforms.wildWaterReflectionMatrix = reflection.matrix
+    shader.uniforms.wildWaterReflectionStrength = reflection.strength
+    shader.uniforms.wildWaterReflectionHeight = reflection.height
+    shader.uniforms.wildWaterReflectionTexel = reflection.texel
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>
 varying vec3 vWildWaterPosition;
 varying float vWildWaterUp;`)
@@ -40,7 +55,12 @@ varying float vWildWaterUp;
 uniform float wildWaterTime;
 uniform float wildWaterTransparency;
 uniform float wildWaterWaveStrength;
-uniform float wildWaterWind;`)
+uniform float wildWaterWind;
+uniform sampler2D wildWaterReflection;
+uniform mat4 wildWaterReflectionMatrix;
+uniform float wildWaterReflectionStrength;
+uniform float wildWaterReflectionHeight;
+uniform vec2 wildWaterReflectionTexel;`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
 float wildWaterMask = smoothstep(0.8, 0.98, vWildWaterUp);
 vec2 wildWaterP = vWildWaterPosition.xz;
@@ -64,6 +84,23 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), 0.15 * wildWaterTransparency
         'material.transmission = transmission;',
         'material.transmission = transmission * wildWaterTransparency;',
       ))
+      .replace('#include <opaque_fragment>', `
+if (wildWaterReflectionStrength > 0.0 && wildWaterMask > 0.0 && abs(vWildWaterPosition.y - wildWaterReflectionHeight) < 0.025) {
+  vec4 reflectionPosition = wildWaterReflectionMatrix * vec4(vWildWaterPosition, 1.0);
+  vec2 reflectionUv = reflectionPosition.xy / max(reflectionPosition.w, 0.0001);
+  reflectionUv += wildWaterGradient * 0.025;
+  if (reflectionPosition.w > 0.0 && all(greaterThan(reflectionUv, vec2(0.0))) && all(lessThan(reflectionUv, vec2(1.0)))) {
+    vec2 blur = wildWaterReflectionTexel * (1.0 + roughnessFactor * 8.0);
+    vec3 reflectionColor = texture2D(wildWaterReflection, reflectionUv).rgb * 0.4;
+    reflectionColor += texture2D(wildWaterReflection, reflectionUv + vec2(blur.x, 0.0)).rgb * 0.15;
+    reflectionColor += texture2D(wildWaterReflection, reflectionUv - vec2(blur.x, 0.0)).rgb * 0.15;
+    reflectionColor += texture2D(wildWaterReflection, reflectionUv + vec2(0.0, blur.y)).rgb * 0.15;
+    reflectionColor += texture2D(wildWaterReflection, reflectionUv - vec2(0.0, blur.y)).rgb * 0.15;
+    float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 5.0);
+    outgoingLight = mix(outgoingLight, reflectionColor, wildWaterReflectionStrength * wildWaterMask * fresnel * (1.0 - roughnessFactor));
+  }
+}
+#include <opaque_fragment>`)
   }
   material.needsUpdate = true
 }

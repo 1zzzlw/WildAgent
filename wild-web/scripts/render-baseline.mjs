@@ -13,6 +13,8 @@
  * 输出尺寸使用 ``RENDER_SETTINGS``，比较证据绑定源码与配置摘要。
  *
  * 用法：node scripts/render-baseline.mjs <blueprint.json> <输出目录> [chrome路径]
+ * 展示出图追加 --presentation [--time=day|sunset|night] [--quality=low|medium|high]。
+ * 默认仍为固定几何回归基线；展示模式共享编辑器的环境、光照和后期策略。
  */
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -36,6 +38,7 @@ async function sourceDigest(directories) {
   }
   for (const directory of directories) await walk(directory)
   hash.update(await readFile(join(coreRoot, 'schema.json')))
+  hash.update(await readFile(fileURLToPath(import.meta.url)))
   return hash.digest('hex')
 }
 
@@ -79,6 +82,14 @@ export { compileBlueprintComponents } from 'wildsrc:compiler';
 export * as THREE from 'three';
 export { createSceneGroupFromEntity } from '/src/renderer/renderEntity.ts';
 export { configureKtx2Rendering, configureMaterialRendering } from '/src/renderer/materialAdapter.ts';
+export { Sky } from 'three/examples/jsm/objects/Sky.js';
+export { WorldEnvironmentMapRuntime, syncSkyPreset } from '/src/renderer/environmentRuntime.ts';
+export { WorldLightingRig } from '/src/renderer/lightingRuntime.ts';
+export { WorldPostProcessingRuntime } from '/src/renderer/postProcessingRuntime.ts';
+export { configureWorldRenderer, applyWorldRenderQuality, resolveWorldIllumination } from '/src/renderer/worldRenderSettings.ts';
+export { FixtureLightingRuntime } from '/src/renderer/fixtureLightingRuntime.ts';
+export { WaterReflectionRuntime } from '/src/renderer/waterReflectionRuntime.ts';
+export { updateWorldEnvironmentState, updateWorldRenderingState } from '/src/renderer/worldEnvironmentRuntime.ts';
 `
   const server = await createServer({
     root,
@@ -193,7 +204,11 @@ class CdpSession {
 async function main() {
   const blueprintPath = process.argv[2]
   const outDir = process.argv[3] || join(root, '..', 'wild-server', '.workbuddy', 'diag', 'p7_baseline')
-  const chromePath = process.argv[4] || process.env.CHROMIUM_PATH || DEFAULT_CHROMIUM
+  const chromePath = (process.argv[4]?.startsWith('--') ? null : process.argv[4]) || process.env.CHROMIUM_PATH || DEFAULT_CHROMIUM
+  const presentation = process.argv.includes('--presentation')
+  const time = process.argv.find(arg => arg.startsWith('--time='))?.split('=')[1] || 'day'
+  const quality = process.argv.find(arg => arg.startsWith('--quality='))?.split('=')[1] || 'high'
+  if (!['day', 'sunset', 'night'].includes(time) || !['low', 'medium', 'high'].includes(quality)) throw new Error('无效时段或画质')
   if (!blueprintPath) {
     console.error('用法: node scripts/render-baseline.mjs <blueprint.json> <输出目录> [chrome路径]')
     return 2
@@ -246,7 +261,10 @@ async function main() {
     await loaded
     const result = await page.evaluate(`(async () => {
       const { THREE, parseBlueprint, compileBlueprintComponents, reconstructEntity,
-              createSceneGroupFromEntity, configureKtx2Rendering, configureMaterialRendering }
+              createSceneGroupFromEntity, configureKtx2Rendering, configureMaterialRendering,
+              Sky, WorldEnvironmentMapRuntime, syncSkyPreset, WorldLightingRig, WorldPostProcessingRuntime,
+              configureWorldRenderer, applyWorldRenderQuality, resolveWorldIllumination,
+              FixtureLightingRuntime, WaterReflectionRuntime, updateWorldEnvironmentState, updateWorldRenderingState }
         = await import(${JSON.stringify(origin + '@id/__x00__virtual:wild-render')});
       const blueprint = parseBlueprint(${JSON.stringify(rawBlueprint)});
       const compilation = compileBlueprintComponents(blueprint);
@@ -295,9 +313,10 @@ async function main() {
         Math.cos(el) * Math.sin(az) * 200, Math.sin(el) * 200, Math.cos(el) * Math.cos(az) * 200,
       );
       scene.add(sun);
-      scene.add(new THREE.HemisphereLight(
+      const ambient = new THREE.HemisphereLight(
         settings.ambient.sky, settings.ambient.ground, settings.ambient.intensity,
-      ));
+      );
+      scene.add(ambient);
 
       renderer.setSize(settings.width, settings.height, false);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -313,6 +332,41 @@ async function main() {
       );
       const sphere = box.getBoundingSphere(new THREE.Sphere());
       const radius = Math.max(1, sphere.radius);
+      let post, reflection, fixtures, effectiveSettings = settings;
+      if (${JSON.stringify(presentation)}) {
+        updateWorldEnvironmentState({ timeOfDay: ({day:12,sunset:18,night:0})[${JSON.stringify(time)}] });
+        updateWorldRenderingState({ surfaceQuality: ${JSON.stringify(quality)}, weatherQuality: ${JSON.stringify(quality)} });
+        scene.remove(sun, ambient);
+        configureWorldRenderer(renderer);
+        const look = resolveWorldIllumination(${JSON.stringify(time)}, 'minimal');
+        scene.background = look.background;
+        renderer.toneMappingExposure = look.exposure;
+        const sky = new Sky(); sky.scale.setScalar(450); sky.visible = look.preset.skyVisible;
+        syncSkyPreset(sky, look.preset, look.atmosphere, look.sunDirection); scene.add(sky);
+        const lighting = new WorldLightingRig(scene);
+        lighting.applyAppearance(look.lighting);
+        post = new WorldPostProcessingRuntime(renderer, scene, camera);
+        applyWorldRenderQuality(renderer, post, lighting, ${JSON.stringify(quality)}, ${JSON.stringify(time)});
+        post.setSize(settings.width, settings.height);
+        lighting.fitToBounds(sphere.center, box.getSize(new THREE.Vector3()), look.keyDirection);
+        renderer.shadowMap.needsUpdate = true;
+        const environment = new WorldEnvironmentMapRuntime(renderer, scene);
+        environment.rebuild(look.preset, look.atmosphere, look.sunDirection, ${JSON.stringify(time)} === 'night', look.groundColor.getHex());
+        ground.material.color.copy(look.groundColor);
+        // 地面放到模型下界之下，避免挡住下沉池、地下层或基座。
+        ground.position.y = box.min.y - 0.02;
+        fixtures = new FixtureLightingRuntime(); fixtures.setRoot(group);
+        reflection = new WaterReflectionRuntime(renderer, scene); reflection.setRoot(group);
+        reflection.enabled = ${JSON.stringify(quality)} === 'high';
+        effectiveSettings = {
+          width: settings.width, height: settings.height, pipeline: 'editor-presentation-v1',
+          time: ${JSON.stringify(time)}, quality: ${JSON.stringify(quality)}, environment: 'minimal',
+          toneMappingExposure: renderer.toneMappingExposure,
+          lighting: look.lighting, sunDirection: look.sunDirection.toArray(),
+          ground: { color: ground.material.color.getHex(), y: ground.position.y },
+          ambientOcclusion: ${JSON.stringify(quality)} === 'high' ? 'gtao' : ${JSON.stringify(quality)} === 'medium' ? 'ssao' : 'off',
+        };
+      }
 
       const shots = [];
       for (const view of views) {
@@ -328,7 +382,13 @@ async function main() {
           sphere.center.z + distance * Math.sin(polar) * Math.cos(azimuth),
         );
         camera.lookAt(sphere.center);
-        renderer.render(scene, camera);
+        camera.updateMatrixWorld();
+        renderer.info.reset();
+        if (fixtures?.update(camera, ${JSON.stringify(quality)})) renderer.shadowMap.needsUpdate = true;
+        reflection?.update(camera);
+        if (post) post.render(); else renderer.render(scene, camera);
+        const badPrograms = renderer.info.programs.filter(program => program.diagnostics?.runnable === false);
+        if (badPrograms.length) throw new Error('Shader 编译失败');
         shots.push({ name: view.name, dataUrl: canvas.toDataURL('image/png') });
       }
       const gl = renderer.getContext();
@@ -342,6 +402,7 @@ async function main() {
         unmappedMaterials: unmapped,
         glVendor: gl.getParameter(gl.VENDOR),
         glRenderer: gl.getParameter(gl.RENDERER),
+        settings: effectiveSettings,
       };
     })()`, true)
 
@@ -356,7 +417,7 @@ async function main() {
       baselineVersion: BASELINE_VERSION,
       inputSha256: createHash('sha256').update(rawBlueprint).digest('hex'),
       renderer: 'wild-web/createSceneGroupFromEntity',
-      settings: RENDER_SETTINGS,
+      settings: result.settings,
       views: VIEWS.map((view) => view.name),
       chromium: chromePath,
       browserVersion,

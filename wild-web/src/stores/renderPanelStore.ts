@@ -33,6 +33,12 @@ export interface RenderStats {
   renderWidth: number
   renderHeight: number
   pixelRatio: number
+  /** CPU 提交整条渲染链所用时间，不冒充 GPU 执行时间。 */
+  renderSubmitMs: number
+  activeLights: number
+  shadowLights: number
+  waterReflection: boolean
+  qualityFallback: boolean
 }
 
 function emptyStats(): RenderStats {
@@ -45,6 +51,11 @@ function emptyStats(): RenderStats {
     renderWidth: 0,
     renderHeight: 0,
     pixelRatio: 1,
+    renderSubmitMs: 0,
+    activeLights: 0,
+    shadowLights: 0,
+    waterReflection: false,
+    qualityFallback: false,
   }
 }
 
@@ -58,6 +69,8 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
   /** 网格地面（编辑器模式下的 gridHelper；展示模式恒隐藏）。 */
   const showGrid = ref(true)
   const waterAnimated = ref(true)
+  const waterReflections = ref(true)
+  try { waterReflections.value = localStorage.getItem('wild_water_reflections') !== 'false' } catch { /* 默认启用精细档反射。 */ }
   try { waterAnimated.value = localStorage.getItem('wild_water_animated') !== 'false' } catch { /* 默认动态水面。 */ }
   const waterPreferences = { transparency: 1, waveStrength: 0.65 }
   try {
@@ -104,6 +117,7 @@ export const useRenderPanelStore = defineStore('renderPanel', () => {
     showEdges,
     showGrid,
     waterAnimated,
+    waterReflections,
     waterTransparency,
     waterWaveStrength,
     sceneDimensions,

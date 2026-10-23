@@ -312,6 +312,8 @@ function initializeLightInteraction(
   light.name = `${mesh.name || mesh.userData.elementId}:LightSource`
   light.userData.fixtureLight = true
   light.castShadow = false
+  // 发光面本身不遮住自己的光；灯罩/墙体仍由各自的网格投影。
+  mesh.castShadow = false
   mesh.geometry.computeBoundingBox()
   mesh.geometry.boundingBox?.getCenter(light.position)
   if (interaction.offset) light.position.add(new THREE.Vector3(...interaction.offset))
@@ -333,12 +335,16 @@ function lightIntensityAt(interaction: LightElementBehavior, level: number): num
 }
 
 function currentLightIntensity(mesh: THREE.Mesh): number {
-  return findFixtureLight(mesh)?.intensity || 0
+  const light = findFixtureLight(mesh)
+  return light?.userData.requestedIntensity ?? light?.intensity ?? 0
 }
 
 function setLightIntensity(mesh: THREE.Mesh, intensity: number): void {
   const light = findFixtureLight(mesh)
-  if (light) light.intensity = Math.max(0, intensity)
+  if (light) {
+    light.intensity = Math.max(0, intensity)
+    light.userData.requestedIntensity = light.intensity
+  }
   const interaction = mesh.userData.interaction as LightElementBehavior
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
   for (const material of materials) {

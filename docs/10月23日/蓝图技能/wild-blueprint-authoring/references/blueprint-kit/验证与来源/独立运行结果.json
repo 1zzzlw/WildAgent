@@ -1,0 +1,51 @@
+{
+  "environment": {
+    "os": "Windows",
+    "node": "22.21.1",
+    "python": "3.12.13",
+    "vite": "8.1.4",
+    "three": "0.160.1",
+    "jsonschema": "4.26.0"
+  },
+  "isolated_directory": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\wild-blueprint-v3-f994cb72a72f43d291090cc439bb16aa",
+  "source_scope": "仅复制核心资料、工具、教学例；未复制原项目node_modules或后端环境",
+  "install": {
+    "command": "npm install --ignore-scripts --no-audit --no-fund",
+    "cwd": "核心资料/wild-web",
+    "exit_code": 0,
+    "packages_added": 17
+  },
+  "core": {
+    "command": "node 核心资料/wild-web/scripts/validate-generated.mjs 示例/听风茶室.wild",
+    "exit_code": 0,
+    "compile_diagnostics": 0,
+    "reconstruct_errors": 0,
+    "reconstruct_warnings": 0,
+    "meshes": 76,
+    "materials": 76,
+    "finite_bounds": true,
+    "finite_meshes": true
+  },
+  "rendering": {
+    "command": "node 核心资料/wild-web/scripts/render-baseline.mjs 示例/听风茶室.wild 实图",
+    "exit_code": 0,
+    "input_sha256": "79f1703d3de71200b2b79ca9d8fa391f4b4fe3b2a681f2516b6f6d279b4fa1d0",
+    "source_digest": "4e1bf48ee445f9cebd8a316ab4c063fbc206e32b302c62cb5ed92f1de534f83e",
+    "context_sha256": "a82eee22106d801f465a1dbd0adb426e49698241d39d65efea29f21e1933a059",
+    "meshes": 76,
+    "compile_errors": 0,
+    "reconstruct_errors": 0,
+    "unmapped_materials": 0,
+    "shots": [
+      "front",
+      "side",
+      "top",
+      "perspective"
+    ]
+  },
+  "viewed_images": [
+    "front.png",
+    "perspective.png"
+  ],
+  "boundary": "实际工具返回的结果摘要；不是完整stdout/stderr存档。未执行完整后端、夜景与逐帧门窗交互。"
+}

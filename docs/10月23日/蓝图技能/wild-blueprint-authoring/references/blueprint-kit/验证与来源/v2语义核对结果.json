@@ -1,0 +1,87 @@
+{
+  "review_date": "2026-10-23",
+  "ok": true,
+  "tests": [
+    {
+      "name": "floor_Y为板底并向上加厚",
+      "actual": [
+        1.999999998509884,
+        2.200000001490116
+      ],
+      "passed": true
+    },
+    {
+      "name": "楼梯末级远边到to而非少半步",
+      "actual": {
+        "farEdgeZ": 2,
+        "topY": 1
+      },
+      "passed": true
+    },
+    {
+      "name": "合法column可生成有限网格",
+      "actual": {
+        "meshCount": 1,
+        "finite": true
+      },
+      "passed": true
+    },
+    {
+      "name": "转角延伸不要求作者补半墙厚",
+      "actual": {
+        "openingWorld": [
+          1.5,
+          0,
+          0
+        ],
+        "extensions": {
+          "start": 0.12,
+          "end": 0.12
+        }
+      },
+      "passed": true
+    },
+    {
+      "name": "闭合四边截面扫掠只有8侧三角无端盖",
+      "actual": {
+        "triangles": 8
+      },
+      "passed": true
+    },
+    {
+      "name": "拱形洞实际进入墙体几何",
+      "actual": {
+        "rectVertices": 138,
+        "archedVertices": 462
+      },
+      "passed": true
+    }
+  ],
+  "sources": [
+    {
+      "source": "wild-core/src/primitive/geometry/floor.ts",
+      "sha256": "93999f728a907b7f6d77248f0491c5e4ba3c6eb165485432e4b29691e6d0f8c7"
+    },
+    {
+      "source": "wild-core/src/primitive/geometry/stair.ts",
+      "sha256": "a2b35976dc4ec2e1e496c586d4d66681efdc49e6aeeaa4c613830a046e4e1b9d"
+    },
+    {
+      "source": "wild-core/src/primitive/geometry/column.ts",
+      "sha256": "bdfc36c2027b0cbe8081a0d600e96dc9c7b5d0f4d595a951b5c03e722fb3fddb"
+    },
+    {
+      "source": "wild-core/src/primitive/geometry/primitive.ts",
+      "sha256": "90ed55104f86b22102eab3bfcb34e2b4c3f0a36b3b4c4384585f84f528ff5140"
+    },
+    {
+      "source": "wild-core/src/primitive/resolver.ts",
+      "sha256": "99321ab1b67bbb3beb8f11bf91758cf802968619b71c643f0d26bd922221afe2"
+    },
+    {
+      "source": "wild-core/src/primitive/geometry/box-with-holes.ts",
+      "sha256": "1ae3d2fa38001f389a49897b772f4961d8499e2705e03f15a700ad26e486a712"
+    }
+  ],
+  "boundary": "直接执行当前Core的有限语义核对；未跑完整后端、真实渲染、全模型碰撞或审美验收"
+}

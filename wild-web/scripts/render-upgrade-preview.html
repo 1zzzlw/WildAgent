@@ -1,0 +1,58 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>WILD 渲染回归场景</title>
+<style>body{margin:0;background:#bac6cb;font:14px sans-serif}canvas{display:block}p{position:fixed;top:8px;left:20px;padding:10px 16px;border-radius:12px;background:#ffffffc9;color:#294348}</style>
+<p>共享展示管线 · 水面反射 / 局部灯预算 / GTAO</p><script type="module">
+import * as THREE from 'three';
+import { reconstructEntity } from '/@fs/E:/AgentProject/WildAgent/wild-core/src/primitive/index.ts';
+import { createSceneGroupFromEntity } from '/src/renderer/renderEntity.ts';
+import { WorldLightingRig } from '/src/renderer/lightingRuntime.ts';
+import { WorldEnvironmentMapRuntime } from '/src/renderer/environmentRuntime.ts';
+import { WorldPostProcessingRuntime } from '/src/renderer/postProcessingRuntime.ts';
+import { FixtureLightingRuntime } from '/src/renderer/fixtureLightingRuntime.ts';
+import { WaterReflectionRuntime } from '/src/renderer/waterReflectionRuntime.ts';
+import { configureWorldRenderer, applyWorldRenderQuality, resolveWorldIllumination } from '/src/renderer/worldRenderSettings.ts';
+import { setWaterSurfaceTime } from '/src/renderer/waterSurfaceMaterial.ts';
+const elements = [
+ {type:'floor',id:'pool-bottom',from:[-3,-.8,-2],to:[3,-.8,2],thickness:.1,material:'tile'},
+ {type:'floor',id:'pool-water',from:[-3,-.05,-2],to:[3,-.05,2],thickness:.05,material:'water'},
+ {type:'floor',id:'ground-with-hole',shape:'polygon',from:[-8,-.9,-7],thickness:.1,polygon:[[0,0],[16,0],[16,14],[0,14]],holes:[[[5,5],[11,5],[11,9],[5,9]]],material:'stone'},
+ {type:'primitive',id:'reflection-building',shape:'box',position:[-.8,1.5,-3.3],dimensions:[2,3,.5],material:'terracotta'},
+ {type:'primitive',id:'reflective-beam',shape:'box',position:[1.6,2,-3.3],dimensions:[1.5,.25,1],material:'stone'},
+ {type:'primitive',id:'occluder',shape:'box',position:[4,1.3,-1],dimensions:[.25,3,4],material:'stone'},
+];
+for(let i=0;i<16;i++)elements.push({type:'primitive',id:'fixture-'+i,shape:'box',position:[-6+i*.8,.6,-4.5],dimensions:[.12,.12,.12],material:'lamp',lightSource:{lightType:'point',intensity:12,distance:4,offset:[0,.1,0]}});
+const bp={meta:{version:'1.1',type:'building',name:'渲染验证'},geometry:{elements},materials:{
+ stone:{baseColor:[.72,.68,.59],roughness:.85},tile:{baseColor:[.32,.53,.52],roughness:.6},
+ water:{baseColor:[.18,.48,.44],materialClass:'glass',transmission:.96,ior:1.333,roughness:.06,thickness:.7,attenuationColor:[.45,.79,.72],attenuationDistance:4},
+ terracotta:{baseColor:[.9,.23,.09],roughness:.8},lamp:{baseColor:[1,.85,.6],roughness:.4,emissive:[1,.7,.35]}}};
+const entity=await reconstructEntity(bp);const scene=new THREE.Scene();const group=createSceneGroupFromEntity(entity);scene.add(group);
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});configureWorldRenderer(renderer);renderer.setSize(960,720);document.body.append(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(45,960/720,.05,150);camera.position.set(5,4,8);camera.lookAt(0,0,-1);
+const lighting=new WorldLightingRig(scene);const environment=new WorldEnvironmentMapRuntime(renderer,scene);const post=new WorldPostProcessingRuntime(renderer,scene,camera);
+const fixtures=new FixtureLightingRuntime();fixtures.setRoot(group);const reflection=new WaterReflectionRuntime(renderer,scene);reflection.setRoot(group);
+const look=resolveWorldIllumination('day','minimal');scene.background=look.background;renderer.toneMappingExposure=look.exposure;lighting.applyAppearance(look.lighting);lighting.fitToBounds(new THREE.Vector3(0,1,0),new THREE.Vector3(16,4,14),look.keyDirection);environment.rebuild(look.preset,look.atmosphere,look.sunDirection,false);
+let currentQuality;window.frame=(quality='high',reflect=true,seconds=0)=>{
+ if(currentQuality!==quality){applyWorldRenderQuality(renderer,post,lighting,quality,'day');post.setSize(960,720);currentQuality=quality;}
+ setWaterSurfaceTime(seconds);camera.updateMatrixWorld();renderer.info.reset();if(fixtures.update(camera,quality))renderer.shadowMap.needsUpdate=true;reflection.enabled=reflect&&quality==='high';reflection.update(camera);post.render();
+ return {activeLights:fixtures.activeCount,shadowLights:fixtures.shadowCount,reflection:reflection.active,drawCalls:renderer.info.render.calls,programs:renderer.info.programs.map(p=>({runnable:p.diagnostics?.runnable})),selected:group.children.flatMap(mesh=>mesh.children.filter(child=>child.userData.fixtureLight&&child.visible).map(light=>light.name))};
+};
+window.readPixels=()=>{const gl=renderer.getContext();const pixels=new Uint8Array(960*720*4);gl.readPixels(0,0,960,720,gl.RGBA,gl.UNSIGNED_BYTE,pixels);return pixels};
+window.setCamera=(x,y,z)=>{camera.position.set(x,y,z);camera.lookAt(0,0,-1)};
+window.setReflectionBuilding=visible=>{group.children.find(mesh=>mesh.userData.elementId==='reflection-building').visible=visible};
+window.runShadowProbe=async()=>{
+ const probe=await reconstructEntity({meta:{version:'1.1',type:'building',name:'局部灯遮挡验证'},geometry:{elements:[
+  {type:'floor',id:'receiver',from:[-4,0,-4],to:[4,0,4],thickness:.1,material:'white'},
+  {type:'primitive',id:'wall',shape:'box',position:[0,1.6,0],dimensions:[.2,3,5],material:'white'},
+  {type:'primitive',id:'bulb',shape:'box',position:[1.5,1.6,0],dimensions:[.1,.1,.1],material:'white',lightSource:{intensity:50,distance:10,color:[1,1,1]}}
+ ]},materials:{white:{baseColor:[.8,.8,.8],roughness:.8}}});
+ const isolated=new THREE.Scene();isolated.background=new THREE.Color('#111');const root=createSceneGroupFromEntity(probe);isolated.add(root);
+ const eye=new THREE.PerspectiveCamera(45,960/720,.05,100);eye.position.set(-5,6,8);eye.lookAt(0,0,0);eye.updateMatrixWorld();
+ const budget=new FixtureLightingRuntime();budget.setRoot(root);budget.update(eye,'high');renderer.shadowMap.needsUpdate=true;renderer.render(isolated,eye);
+ const point=new THREE.Vector3(-1.5,.105,0).project(eye);const index=(Math.round((point.y*.5+.5)*720)*960+Math.round((point.x*.5+.5)*960))*4;
+ const shadowed=Array.from(window.readPixels().slice(index,index+3));
+ root.traverse(object=>{if(object.userData.fixtureLight)object.castShadow=false});renderer.shadowMap.needsUpdate=true;renderer.render(isolated,eye);
+ const unshadowed=Array.from(window.readPixels().slice(index,index+3));budget.dispose();return {shadowed,unshadowed};
+};
+window.waterPixel=(x,z)=>{const p=new THREE.Vector3(x,0,z).project(camera);return {x:Math.round((p.x*.5+.5)*960),y:Math.round((p.y*.5+.5)*720)}};
+window.scene=scene;window.group=group;window.camera=camera;window.reflection=reflection;window.fixtures=fixtures;window.post=post;
+window.diagnostics=entity.diagnostics;window.frame();window.ready=true;
+</script></html>

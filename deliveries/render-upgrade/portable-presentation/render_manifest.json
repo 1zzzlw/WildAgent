@@ -1,0 +1,88 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "c8a7c0c861939892c091253018472b3433b95a80c88de6fe50ec12d2ccdc7318",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "pipeline": "editor-presentation-v1",
+    "time": "day",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 0.29928,
+    "lighting": {
+      "hemisphereSkyColor": 14478846,
+      "hemisphereGroundColor": 6772036,
+      "hemisphereIntensity": 0.6156108000000001,
+      "keyColor": 16707797,
+      "keyIntensity": 11.009400000000001
+    },
+    "sunDirection": [
+      0.5254827454987588,
+      0.6691306063588582,
+      -0.5254827454987588
+    ],
+    "ground": {
+      "color": 7699314,
+      "y": -0.8200000007450581
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "761a7dec7d4200a268b97c54e5ec3f9e381e432432d3f869a5555d5aadafbc32",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 5,
+  "materialCount": 5,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -5,
+      -0.8000000007450581,
+      -4
+    ],
+    "max": [
+      5,
+      1.300000001490116,
+      4
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "deliveries\\render-upgrade\\portable-presentation\\front.png",
+      "bytes": 355858
+    },
+    {
+      "view": "side",
+      "file": "deliveries\\render-upgrade\\portable-presentation\\side.png",
+      "bytes": 385526
+    },
+    {
+      "view": "top",
+      "file": "deliveries\\render-upgrade\\portable-presentation\\top.png",
+      "bytes": 389771
+    },
+    {
+      "view": "perspective",
+      "file": "deliveries\\render-upgrade\\portable-presentation\\perspective.png",
+      "bytes": 423941
+    }
+  ],
+  "contextSha256": "1ec4fd8c811bc0db349bf04fa8d80e3f87cb48f28293e56d95200d6a634ad23a"
+}

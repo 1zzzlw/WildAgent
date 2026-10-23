@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "geometry": [
+    "polygon hole winding false",
+    "polygon hole winding true",
+    "concave slab, invalid polygons, circular slab height, capped sweeps"
+  ],
+  "legacy": [
+    {
+      "file": "汀院别墅-Codex.wild",
+      "meshes": 574
+    },
+    {
+      "file": "听澜合院-新中式别墅.wild",
+      "meshes": 1534
+    },
+    {
+      "file": "玫庭庄园-欧式别墅.wild",
+      "meshes": 1760
+    },
+    {
+      "file": "听雨水榭-凉亭.wild",
+      "meshes": 694
+    },
+    {
+      "file": "云序中心-写字楼.wild",
+      "meshes": 2531
+    },
+    {
+      "file": "栖光别墅-单文档生成.wild",
+      "meshes": 780
+    },
+    {
+      "file": "知序图书馆.wild",
+      "meshes": 1478
+    },
+    {
+      "file": "澄屿现代别墅.wild",
+      "meshes": 608
+    },
+    {
+      "file": "青屿咖啡.wild",
+      "meshes": 296
+    },
+    {
+      "file": "邻里优选超市.wild",
+      "meshes": 618
+    },
+    {
+      "file": "林庭石光馆.wild",
+      "meshes": 1712
+    },
+    {
+      "file": "Forest Cafe.wild",
+      "meshes": 1806
+    }
+  ]
+}

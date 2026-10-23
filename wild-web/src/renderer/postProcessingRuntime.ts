@@ -1,7 +1,7 @@
 /**
- * 后期合成运行时（引擎侧）：EffectComposer 链路 + SSAO（接触阴影）+ Bloom + FXAA。
+ * 后期合成运行时：SSAO / 带降噪的 GTAO、Bloom、输出色彩与抗锯齿。
  *
- * 为什么放到引擎里：AO 是"建筑与地面、柱脚、楼板下缘是否贴在一起"的唯一来源。
+ * AO 补充柱脚、檐下等接触区域的遮蔽，不能替代实体几何、投影和真实间接光。
  * 它原先只活在 `CanvasViewport.vue`，于是别的渲染方（`lantu/viewer`、离线出图）
  * 要么完全没有接触阴影，要么自己写一套 —— 两条链路的观感差异就不再代表引擎能力。
  *
@@ -13,10 +13,12 @@ import * as THREE from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { SSAOPass } from 'three/examples/jsm/postprocessing/SSAOPass.js'
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js'
+import type { Pass } from 'three/examples/jsm/postprocessing/Pass.js'
 
 /** SSAO 内部 RT 的分辨率比例。0.5 ⇒ normal/ssao/blur 三个 RT 的面积降到 1/4。 */
 const SSAO_RESOLUTION_SCALE = 0.5
@@ -44,6 +46,7 @@ export class WorldPostProcessingRuntime {
   readonly fxaa: ShaderPass
   private readonly renderer: THREE.WebGLRenderer
   private appliedMsaaSamples = -1
+  private gtao: GTAOPass | null = null
 
   constructor(
     renderer: THREE.WebGLRenderer,
@@ -68,6 +71,7 @@ export class WorldPostProcessingRuntime {
     this.ssao.minDistance = options.minDistance ?? 0.002
     this.ssao.maxDistance = options.maxDistance ?? 0.3
     this.scaleSsao(this.ssao)
+    this.excludeTransparentOccluders(this.ssao, scene)
     this.composer.addPass(this.ssao)
 
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.2, 0.35, 1.05)
@@ -112,7 +116,24 @@ export class WorldPostProcessingRuntime {
   }
 
   setSsaoEnabled(enabled: boolean): void {
-    this.ssao.enabled = enabled
+    this.setAmbientOcclusion(enabled ? 'ssao' : 'off')
+  }
+
+  /** 精细档用带深度/法线引导降噪的 GTAO；低档不分配这组缓冲。 */
+  setAmbientOcclusion(mode: 'off' | 'ssao' | 'gtao'): void {
+    this.ssao.enabled = mode === 'ssao'
+    if (mode === 'gtao' && !this.gtao) {
+      const pass = new GTAOPass(this.ssao.scene, this.ssao.camera)
+      pass.updateGtaoMaterial({ radius: 0.45, thickness: 0.15, distanceFallOff: 1, samples: 16, screenSpaceRadius: false })
+      pass.updatePdMaterial({ radius: 4, depthPhi: 2, normalPhi: 4 })
+      pass.blendIntensity = 0.75
+      this.excludeTransparentOccluders(pass, this.ssao.scene)
+      const setSize = pass.setSize.bind(pass)
+      pass.setSize = (width, height) => setSize(Math.max(1, Math.round(width * 0.75)), Math.max(1, Math.round(height * 0.75)))
+      this.gtao = pass
+      this.composer.insertPass(pass, 2)
+    }
+    if (this.gtao) this.gtao.enabled = mode === 'gtao'
   }
 
   setBloomEnabled(enabled: boolean): void {
@@ -129,6 +150,13 @@ export class WorldPostProcessingRuntime {
 
   dispose(): void {
     this.ssao.dispose()
+    if (this.gtao) {
+      // r160 的 dispose 遗漏这两个材质和自建 depthTexture。
+      this.gtao.gtaoMaterial.dispose()
+      this.gtao.blendMaterial.dispose()
+      this.gtao.depthTexture.dispose()
+      this.gtao.dispose()
+    }
     this.bloom.dispose()
     this.fxaa.material.dispose()
     this.composer.dispose()
@@ -158,5 +186,22 @@ export class WorldPostProcessingRuntime {
         Math.max(1, Math.round(width * SSAO_RESOLUTION_SCALE)),
         Math.max(1, Math.round(height * SSAO_RESOLUTION_SCALE)),
       )
+  }
+
+  /** 玻璃/水不应在法线深度缓冲里变成实心挡板，产生整片黑色遮蔽。 */
+  private excludeTransparentOccluders(pass: Pass, scene: THREE.Scene): void {
+    const render = pass.render.bind(pass)
+    pass.render = (...args) => {
+      const hidden: THREE.Object3D[] = []
+      scene.traverse(object => {
+        if (!(object instanceof THREE.Mesh) || !object.visible) return
+        const materials = Array.isArray(object.material) ? object.material : [object.material]
+        if (materials.every(material => material.transparent || (material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0))) {
+          hidden.push(object)
+          object.visible = false
+        }
+      })
+      try { render(...args) } finally { hidden.forEach(object => { object.visible = true }) }
+    }
   }
 }

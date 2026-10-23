@@ -1,6 +1,6 @@
 # WILD 蓝图设计语言 · 单文档直接生成版
 
-版本：1.3 · 输出的 WILD 统一为 `1.1`（与本文件版本号无关） · 核对日期：2026-10-22 · 目标产物：可以直接导入 WildAgent 的完整 `.wild` JSON。1.3 新增建筑招牌 `label` 与自制灯具真实光源 `lightSource`，字段见第 5.6.1～5.6.2 节。
+版本：1.4 · 输出的 WILD 统一为 `1.1`（与本文件版本号无关） · 核对日期：2026-10-23 · 目标产物：可以直接导入 WildAgent 的完整 `.wild` JSON。保留招牌label和真实光源lightSource，新增前端/Core多边形楼板孔洞及显式扫掠端盖。后端设计/校验链本次未修改，需要经旧后端处理时仍用矩形拆板与旧字段。
 
 ## 给使用者
 
@@ -358,7 +358,7 @@ F[i+1] = F[i] + H[i]
 - `curve` 可表达曲线，但首次独立生成以直线墙为主。可用单段圆弧 `{"type":"arc","center":[cx,0,cz],"sweep":90,"segments":24}`；sweep 是度数。带门窗的曲墙优先采用已经理解弧长定位的单段圆弧，不能把直线距离直接当弧长。
 - 多段复杂曲线、椭圆和悬链线不属于本文的门窗稳妥通路，不能据“存在 curve 字段”推断所有宿主组合都可用。
 
-### 5.2 矩形楼板 floor
+### 5.2 楼板 floor：矩形、圆形和带孔多边形
 
 必填：`type/id/from/thickness`；本文矩形写法同时要求 `to`；可选：`material`。from/to 的 X/Z 是对角点，Y 相同。
 
@@ -368,7 +368,15 @@ F[i+1] = F[i] + H[i]
 
 示例板顶为 3.50。需要屋内地板、露台或平台时分别确定范围；范围相接的板片可以共享边，但不要重叠铺板。
 
-**楼梯口和挑空采用矩形拆板**，见第 8.2 节。不要在 floor 上发明 `holes`、`voids`、`openingId`，也不要把一块完整板穿过楼梯后声称已经有洞。
+**楼梯口和挑空可以使用多边形真实孔洞**，旧引擎/后端兼容写法仍见第8.2节拆板。圆形用shape="circle"、radius、segments，不填to；圆形和多边形的板顶同样为from.y+thickness。
+
+多边形使用shape="polygon"、polygon外轮廓和可选holes；轮廓点均为相对from的局部[x,z]米制坐标，至少三个点。允许简单凹轮廓，禁止自交；孔必须完全在外轮廓内，不能相交、相切或嵌套。顺逆时针均可，不必重复首点。
+
+```json
+{"type":"floor","id":"slab_with_void","shape":"polygon","from":[0,3.3,0],"thickness":0.2,"polygon":[[0,0],[10,0],[10,8],[0,8]],"holes":[[[3,2],[6,2],[6,6],[3,6]]],"material":"stone"}
+```
+
+此例板顶3.5m，洞贯穿板厚并包含洞壁，不自动生成楼梯/护栏。饰面、地板、天花必须同步避孔；不能叠放完整板补盖洞口。voids/openingId仍不是楼板字段。
 
 ### 5.3 柱 column 与梁 beam
 
@@ -473,7 +481,7 @@ stepDepth = D / N
 | box | dimensions=[宽,高,深] | 三项均为正数；按 X/Y/Z 排列 |
 | sphere | radius；可选 segments/heightSegments | 半径为正数，位置在球心 |
 | cylinder | height；radius 或 radiusBottom/radiusTop；可选 segments | 沿局部 Y；上下半径为正数，按中心放置 |
-| profile_sweep | profile=[[u,v],...]，path=[[x,y,z],...]；closedProfile | 截面沿路径扫掠；省略 profile 时可用 radius、segments 定义圆截面；不是任意多边形布尔运算 |
+| profile_sweep | profile=[[u,v],...]，path=[[x,y,z],...]；closedProfile、caps | 截面沿路径扫掠；省略profile时可用radius、segments；不是任意多边形布尔运算 |
 
 rotation 是 `[rx,ry,rz]` 欧拉角，**单位弧度**。常用值：90°≈1.570796、180°≈3.141593。scale 默认 [1,1,1]，直接生成优先通过实际尺寸控制形体。
 
@@ -489,7 +497,7 @@ profile_sweep 至少两个不重合的连续路径点；封闭截面至少 3 点
 
 水平直线路径的截面 v 通常向上，u 的横向随路径方向变化。例如路径朝 +Z 时 u 朝 +X，路径朝 +X 时 u 朝 −Z。旋转扫掠实体前，注意 position/rotation 作用于整个局部 path；不要把世界路径与第二次世界平移叠加。
 
-**能力边界：当前 profile_sweep 不自动生成两端端盖，不应宣称一个闭合截面就产生了完全封闭的实体。** 要求封闭、确定厚度的体块优先使用 box/cylinder；不要将它当作万能三角墙、挖洞或异形实体工具。
+**端盖必须显式要求**：默认caps=false，保持既有开放端面；closedProfile=true且caps=true时生成首尾端盖，支持简单凹截面，拒绝自交/退化截面。closedProfile=false不能要求caps。端盖不负责修复急转路径或大截面造成的自相交，也不代表已做实体布尔挖洞。需要走未更新的旧引擎/后端时继续使用旧字段。
 
 #### 5.6.1 建筑招牌与中文文字
 
@@ -657,6 +665,9 @@ lightingCondition: 固定 "D65_noon"
 - 建筑玻璃用 glass 与 transmission 表达透射，不靠很低的 opacity 假装通透。透射与 alpha 透明是不同通路，普通玻璃无需同时设置低 opacity。
 - 水使用可识别的水材质及约 1.333 的折射率；水池由池底、四周池壁/压顶和水面分别表达。水面放在池壁内，不把整块实心水体盖到花园地面上。
 - 动态水纹、阴影质量、天气、相机与全局光影是查看器的显示能力，不是在 WILD 内随意增加 `waterAnimation`、`sun`、`camera` 就会生效。
+- 精细画质增加主水平水位的建筑场景反射，反射开关在渲染面板；低档/其他水位使用环境反射。水先有真实池底、池壁和未被板盖住的开口，再用transmission、attenuationColor/attenuationDistance调透射吸收。水材质不宜高金属度或叠多层。
+- 局部实时灯按画质/相机分配，流畅/均衡/精细上限为4/8/12，精细档最多两个重点灯投影；灯具发光外观保留。非重点灯不能保证遮墙，光源offset不能埋进独立实心灯罩。emissive仍不替代真实光源。
+- 墙、楼板和box的平面纹理使用逐面米制UV，uvScale=[2,2]对应每米两次重复；球、圆柱等采用专用展开，需要单独看尺度。真实纹理资源按Schema提供，不伪造URL/hash，不用纹理掩盖缺失构造。
 - 材料只影响分配给它的实体。给 meta 写“白墙灰瓦”，不会自动把既有墙或屋顶改色。
 - 默认不引用远程贴图，不填空的 base64，不捏造文件路径。砖、木、石可先用颜色、粗糙度、真实分缝和必要基础几何表达。
 - 可选的已实现程序化纹理只有 `procedural.type="brick"`；不要发明 procedural wood/marble/water 枚举。砖参数包括 brickSize=[砖宽,砖高]、mortarWidth、mortarDepth、bond=running/stack、seed、secondaryColor、colorVariation、roughnessVariation、edgeWear 及 weathering。

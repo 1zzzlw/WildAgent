@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
+import { launchEditorBrowser } from './editor-browser.mjs'
+
+const browser = await launchEditorBrowser(process.env.EDITOR_URL || 'http://127.0.0.1:5178/')
+const p = browser.page
+const viewport = code => p.evaluate(`(()=>{const s=document.querySelector('.canvas-viewport').__vueParentComponent.setupState;${code}})()`)
+try {
+  await p.wait('!!document.querySelector(".enter-button")')
+  await p.evaluate(`(()=>{const input=document.querySelector('input[aria-label="访客名称"]');input.value='渲染回归';input.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+  await p.click('.enter-button')
+  await p.wait('!!document.querySelector(".canvas-viewport canvas")')
+  await p.upload('input[type=file]', resolve('scripts/fixtures/render-upgrade.json'))
+  await p.wait('document.querySelector(".save-state")?.textContent.includes("已保存")', 60000)
+  await p.wait('document.querySelector(".canvas-viewport").__vueParentComponent.setupState.sceneStore.reconstructed?.meshes.length > 0')
+  assert.equal(await viewport('return s.sceneStore.reconstructed.diagnostics.filter(d=>d.level==="error").length;'), 0)
+  const stored = await p.evaluate(`fetch('/api/editor-smoke-storage').then(r=>r.json()).then(rows=>Object.values(rows).find(bp=>bp.meta.name==='渲染与几何扩展回归'))`)
+  assert.ok(stored.geometry.elements.find(e => e.id === 'slab').holes.length === 1, '原始JSON保存必须保留polygon/holes')
+  assert.equal(stored.geometry.elements.find(e => e.id === 'capped-rail').caps, true)
+  await p.click('button[aria-label="视口"]')
+  await p.click('button[aria-label="渲染质量"]')
+  await p.click('button[aria-label="渲染质量：精细"]')
+  await viewport('s.renderPanel.waterAnimated=false;s.markNeedsRender();return true;')
+  await p.wait('document.querySelector(".canvas-viewport").__vueParentComponent.setupState.waterReflection.active')
+  assert.equal(await viewport('return s.postProcessing.ssao.enabled;'), false)
+  assert.equal(await viewport('return s.postProcessing.composer.passes.some(p=>p.constructor.name==="GTAOPass"&&p.enabled);'), true)
+  await p.click('button[aria-label="渲染面板"]')
+  await p.click('button[aria-label="渲染信息"]')
+  await p.wait('!!document.querySelector("input[aria-label=水面场景反射]")')
+  await p.click('label:has(input[aria-label="水面场景反射"])')
+  await p.wait('!document.querySelector(".canvas-viewport").__vueParentComponent.setupState.waterReflection.active')
+  await p.click('label:has(input[aria-label="水面场景反射"])')
+  await p.wait('document.querySelector(".canvas-viewport").__vueParentComponent.setupState.waterReflection.active')
+  await viewport('s.markNeedsRender();return true;')
+  const stats = await viewport('s.lastStatsPublishAt=0;s.publishRenderStats();return {...s.renderPanel.stats};')
+  assert.ok(stats.activeLights === 1 && stats.shadowLights === 1 && stats.drawCalls > 1 && stats.renderSubmitMs > 0)
+  assert.equal(stats.waterReflection, true)
+  await p.screenshot(resolve('../deliveries/render-upgrade/regression/03-编辑器渲染面板.png'))
+  assert.deepEqual(p.errors, [])
+  console.log(JSON.stringify({ status: 'PASS', importedAndPersistedExtensionFields: true, highQualityGtao: true, reflectionControl: true, stats, errors: p.errors }, null, 2))
+} finally { await browser.close() }

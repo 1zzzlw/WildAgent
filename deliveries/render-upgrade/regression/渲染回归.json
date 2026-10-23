@@ -1,0 +1,143 @@
+{
+  "status": "PASS",
+  "high": {
+    "activeLights": 12,
+    "shadowLights": 2,
+    "reflection": true,
+    "drawCalls": 87,
+    "programs": [
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "runnable": true
+      }
+    ],
+    "selected": [
+      "fixture-4:LightSource",
+      "fixture-5:LightSource",
+      "fixture-6:LightSource",
+      "fixture-7:LightSource",
+      "fixture-8:LightSource",
+      "fixture-9:LightSource",
+      "fixture-10:LightSource",
+      "fixture-11:LightSource",
+      "fixture-12:LightSource",
+      "fixture-13:LightSource",
+      "fixture-14:LightSource",
+      "fixture-15:LightSource"
+    ]
+  },
+  "medium": {
+    "activeLights": 8,
+    "shadowLights": 0,
+    "reflection": false,
+    "drawCalls": 67,
+    "programs": [
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "runnable": true
+      },
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {}
+    ],
+    "selected": [
+      "fixture-8:LightSource",
+      "fixture-9:LightSource",
+      "fixture-10:LightSource",
+      "fixture-11:LightSource",
+      "fixture-12:LightSource",
+      "fixture-13:LightSource",
+      "fixture-14:LightSource",
+      "fixture-15:LightSource"
+    ]
+  },
+  "low": {
+    "activeLights": 4,
+    "shadowLights": 0,
+    "reflection": false,
+    "drawCalls": 43,
+    "programs": [
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {},
+      {
+        "runnable": true
+      },
+      {},
+      {},
+      {}
+    ],
+    "selected": [
+      "fixture-12:LightSource",
+      "fixture-13:LightSource",
+      "fixture-14:LightSource",
+      "fixture-15:LightSource"
+    ]
+  },
+  "changedWaterSamples": 1581,
+  "buildingReflectionChanged": 507,
+  "shadowProbe": {
+    "shadowed": [
+      0,
+      0,
+      0
+    ],
+    "unshadowed": [
+      126,
+      126,
+      126
+    ]
+  },
+  "cameraReselection": true,
+  "switchedOffLampRespected": true,
+  "shaderErrors": []
+}

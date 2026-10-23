@@ -1,6 +1,7 @@
 import type { MeshData, PrimitiveParams, Vec3 } from '../types';
 import { createBoxGeometry } from './wall';
-import { generatePlanarUVs, indexTriList } from './mesh-helper';
+import { generateArchitecturalSurfaceAttributes, indexTriList } from './mesh-helper';
+import { triangulatePolygon } from './polygon';
 import type { LightElementBehavior, LightSourceDef } from '../../../types';
 
 type Vec2 = [number, number];
@@ -13,6 +14,7 @@ interface GeometryBuffers {
 }
 
 export function buildPrimitive(params: PrimitiveParams): MeshData[] {
+  if (params.caps && params.shape !== 'profile_sweep') throw new Error('primitive.caps only applies to profile_sweep');
   if (params.label && (params.shape !== 'box' || typeof params.label.text !== 'string'
     || !params.label.text.trim() || params.label.text.length > 256)) {
     throw new Error('primitive.label 需要 box 外形和 1～256 字符的非空文字');
@@ -88,7 +90,7 @@ function buildBox(params: PrimitiveParams): GeometryBuffers {
   return {
     geometry: indexed.geometry,
     indices: new Uint32Array(indexed.indices),
-    uvs: generatePlanarUVs(indexed.geometry),
+    ...generateArchitecturalSurfaceAttributes(indexed.geometry),
   };
 }
 
@@ -206,10 +208,14 @@ function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
     }
   }
 
-  const profile = params.profile?.length
+  let profile = params.profile?.length
     ? params.profile
     : createCircularProfile(params.radius ?? 0.05, clampInteger(params.segments ?? 12, 3, 64));
   const closed = params.closedProfile !== false;
+  if (params.caps && !closed) throw new Error('profile_sweep caps requires closedProfile=true');
+  const capped = params.caps ? triangulatePolygon(profile) : undefined;
+  // Side construction expects a clockwise profile. Preserve legacy uncapped sweeps.
+  if (capped) profile = [...capped.rings[0]].reverse();
   if (profile.length < (closed ? 3 : 2)) {
     throw new Error(`profile_sweep requires at least ${closed ? 3 : 2} profile points`);
   }
@@ -264,6 +270,17 @@ function buildProfileSweep(params: PrimitiveParams): GeometryBuffers {
       const d = sweptPoint(pi, next);
       pushTriangle(a, b, c, [pathU0, profileV0], [pathU1, profileV0], [pathU1, profileV1]);
       pushTriangle(a, c, d, [pathU0, profileV0], [pathU1, profileV1], [pathU0, profileV1]);
+    }
+  }
+
+  if (capped) {
+    const end = path.length - 1;
+    const cap = triangulatePolygon(profile);
+    for (let i = 0; i < cap.triangles.length; i += 3) {
+      const ids = cap.triangles.slice(i, i + 3).map(index => profile.findIndex(p => p[0] === cap.points[index][0] && p[1] === cap.points[index][1]));
+      const [a, b, c] = ids;
+      pushTriangle(sweptPoint(0, a), sweptPoint(0, c), sweptPoint(0, b), profile[a], profile[c], profile[b]);
+      pushTriangle(sweptPoint(end, a), sweptPoint(end, b), sweptPoint(end, c), profile[a], profile[b], profile[c]);
     }
   }
 
