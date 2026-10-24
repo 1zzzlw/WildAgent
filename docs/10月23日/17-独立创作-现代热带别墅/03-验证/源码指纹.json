@@ -1,0 +1,46 @@
+[
+  {
+    "file": "wild-core/schema.json",
+    "sha256": "35220c067d84254434f4760fca175dfcc4c5ddf32151304112c3176d330ce631"
+  },
+  {
+    "file": "wild-core/types.ts",
+    "sha256": "2468ef65459cb8e8b970f9c7dd2ef3a01a51e7072d30a05e5c91bed68ffa81d9"
+  },
+  {
+    "file": "wild-core/src/primitive/parser.ts",
+    "sha256": "08a984cf556767921ffade694a2cb309d92e1f9855c1d5666da128667c0baf17"
+  },
+  {
+    "file": "wild-core/src/primitive/geometry/floor.ts",
+    "sha256": "5ce2e7bb894124cf55c8aea166be2cb42a0c98569811624de5bcfcda16be76b2"
+  },
+  {
+    "file": "wild-core/src/primitive/geometry/roof.ts",
+    "sha256": "5c7d0a142e189e5ec6e874bd54368d274c15a1ca520442e16f302ebbe5388e58"
+  },
+  {
+    "file": "wild-core/src/compiler/index.ts",
+    "sha256": "5d12fde98f699a2bce8999a8c84a135c852953c818b40872d75db1d14247a894"
+  },
+  {
+    "file": "wild-core/src/compiler/components/door.ts",
+    "sha256": "d8459da49116b5dd4d84d7420cd4fa6716acce50ff04f049941cef9651b581eb"
+  },
+  {
+    "file": "wild-core/src/compiler/components/window.ts",
+    "sha256": "848a29770d17c772034c03ad88dd2300c622fa835354db598325928b5d9d1b7c"
+  },
+  {
+    "file": "wild-web/scripts/validate-generated.mjs",
+    "sha256": "990aa64cf45530f6582753379f9eab51624cdb1cbca53b4c47d87477b4658fff"
+  },
+  {
+    "file": "wild-web/scripts/render-baseline.mjs",
+    "sha256": "e8d3313185f3c88addfa9071df8b973383705fa286665d702c060340339df033"
+  },
+  {
+    "file": "wild-server/app/design/contracts.py",
+    "sha256": "5358dd784b1399ac6346f2d1865ed7ec30510e57f5c2ac0396c86041a006f796"
+  }
+]

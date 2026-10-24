@@ -17,6 +17,7 @@ description: "根据建筑需求、参考图片或已有WILD，原创设计并�
 | 需要理解丰富建筑的设计取舍/细部方法 | [创作复盘](references/blueprint-kit/01-创作方法与样本复盘.md)；只选相关案例 |
 | 某字段、坐标、组件或引擎能力不确定 | [核心资料导航](references/blueprint-kit/核心资料/README.md)、其中Schema/类型/实现；有原项目时核对当前源码与快照差异 |
 | 要执行检查、真实渲染或接入原项目 | [运行与验证](references/runtime.md) |
+| Schema通过后仍有空间/地块问题，或要参考独立创作后的实测经验 | [独立创作验证复盘](references/independent-authoring.md)，按故障类型阅读，不复用该例布局 |
 | 用户要求参考成品或比较某构造 | [十二例索引](references/blueprint-kit/案例/README.md)，按需读一两例，不把全套案例加载为默认模板 |
 | 图片复建的尺寸推定、坡顶瓦垄、浅拱、露台及失败复盘 | [图片复建复盘](references/photo-reconstruction.md)；本轮三例待深化，不作为质量标杆 |
 | 把实际创作经验或其他Agent的测试反馈整理进技能 | [经验整理与迭代](references/experience-loop.md)，仅维护技能时读取 |
@@ -55,6 +56,7 @@ description: "根据建筑需求、参考图片或已有WILD，原创设计并�
 - `label`只用于box的局部+Z面，字在WILD里且检查遮挡；`emissive`不等于照亮周围，真实光源用lightSource或light；水先有场地开口/池底/池壁再谈透明度和波纹。
 - 石英石/木板使用材质顶层surfacePattern=quartz/planks与surfaceFamily=mineral/wood，不写procedural wood或虚假纹理；新增表面与水面固定显示策略见主语言§6/§7.3。本轮用户保留测试，新增代码与快照未作构建或视觉验收，后续创作不得沿用旧报告宣称已通过。
 - 原始Schema、引用/尺寸检查、Core重建、完整后端、真渲染/看图和审美分别报告。AABB交叠不等于实体碰撞；现有案例的局部复核/旧图不证明新稿已通过。
+- 检查成品实际包络时计入檐口、家具和植物叶冠；检查房间通路时计入净门宽及门后的固定设施。宿主合法、门洞存在或网格有限都不能证明地块边界和转入通行成立，具体复核见[独立创作验证复盘](references/independent-authoring.md)。
 
 这些是高风险速查；参数与完整边界以主语言和实际引擎为准。
 

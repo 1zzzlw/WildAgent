@@ -1,0 +1,710 @@
+{
+  "schema_version": "design/1.0",
+  "design_id": "palm-court-161231",
+  "session_id": "independent-20261023",
+  "revision": 1,
+  "status": "draft",
+  "created_at": "2026-10-23T04:00:00Z",
+  "updated_at": "2026-10-23T04:00:00Z",
+  "approved_at": null,
+  "requirements": {
+    "source_request": "随机一种别墅；不用创建蓝图skill完成可渲染WILD，完成后更新项目skill，记录全部流程。",
+    "building_type": "villa",
+    "profile": "custom",
+    "style_intent": [
+      "现代热带别墅"
+    ]
+  },
+  "decisions": {
+    "kind": "architecture",
+    "concept": "棕影水院：低矮双翼、深檐与中央泳池的热带庭院住宅",
+    "massing": {
+      "shape": "U",
+      "width": 22.0,
+      "depth": 12.0,
+      "floors": 1,
+      "modeled_floors": 1,
+      "representation_mode": "full",
+      "floor_height": 3.32,
+      "symmetry": false,
+      "tiers": null
+    },
+    "complexity": {
+      "level": "detailed",
+      "min_volumes": 3,
+      "min_detail_packages": 4,
+      "target_structural_elements": 30,
+      "grid_bays": [
+        3,
+        3
+      ],
+      "reason": "用围庭、阴影层次、门窗收口和可用空间体现精细度"
+    },
+    "volumes": [
+      {
+        "id": "west",
+        "role": "客餐厨",
+        "x": -11.0,
+        "z": -5.0,
+        "width": 6.0,
+        "depth": 12.0,
+        "start_floor": 1,
+        "end_floor": 1
+      },
+      {
+        "id": "east",
+        "role": "两卧卫浴书桌区",
+        "x": 5.0,
+        "z": -5.0,
+        "width": 6.0,
+        "depth": 12.0,
+        "start_floor": 1,
+        "end_floor": 1
+      },
+      {
+        "id": "hall",
+        "role": "横向门厅连接体",
+        "x": -5.0,
+        "z": 3.0,
+        "width": 10.0,
+        "depth": 4.0,
+        "start_floor": 1,
+        "end_floor": 1
+      }
+    ],
+    "structural_grid": {
+      "system": "墙体与檐下柱组合",
+      "x_bays": 3,
+      "z_bays": 3
+    },
+    "envelope": {
+      "system": "solid_wall",
+      "curtain_wall": null
+    },
+    "facades": {
+      "front": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "back": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "left": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      },
+      "right": {
+        "bays": 1,
+        "entrance_bay": null,
+        "ground_pattern": [
+          "empty"
+        ],
+        "upper_pattern": [
+          "empty"
+        ]
+      }
+    },
+    "roof": {
+      "type": "hip",
+      "ridge_axis": "z",
+      "overhang": 1.0,
+      "volumes": [
+        {
+          "volume": "hall",
+          "type": "flat",
+          "overhang": 1.0
+        }
+      ]
+    },
+    "circulation": {
+      "vertical_strategy": "single_level",
+      "route": "前庭台阶→泳池西侧通路→中央门厅→客餐厨或卧室走廊"
+    },
+    "materials": {
+      "keywords": [
+        "暖白灰泥",
+        "深色金属坡顶",
+        "柚木",
+        "浅色石材",
+        "青蓝池水"
+      ],
+      "resolved_plan": null,
+      "regions": []
+    },
+    "detail_packages": [
+      "连续檐底及封边",
+      "入口格栅",
+      "池壁池底及石材压边",
+      "家具与照明"
+    ],
+    "component_quota": {},
+    "components": [],
+    "balcony_access_count": 0,
+    "balcony_width": null,
+    "required_components": [],
+    "unsupported_component_types": [],
+    "design_rationale": [
+      "共用界面不重复建墙，三体量室内在后厅连通",
+      "东侧走廊净宽1.4m，卧室分别设门",
+      "坡顶下设完整天花与檐底，不声明可用阁楼"
+    ],
+    "design_intent": {
+      "goals": [
+        "可直接渲染",
+        "完整两卧住宅",
+        "深遮阴与围庭"
+      ],
+      "assumptions": [
+        "单层",
+        "28×22米地块",
+        "入口朝负Z"
+      ],
+      "spatial_strategy": "西公共、东私密、北连通、南围庭",
+      "composition": "两座四坡顶翼楼加低平顶横厅",
+      "material_strategy": "灰泥主墙、木檐底、石材基座、深色框与屋面",
+      "selected_systems": [
+        "wall",
+        "floor",
+        "hip roof",
+        "door/window"
+      ]
+    },
+    "authoring": {
+      "name": "棕影水院-现代热带别墅",
+      "seed": 161231,
+      "site": [
+        -14,
+        -10,
+        14,
+        12
+      ],
+      "ffl": 0.18,
+      "wall_top": 3.5,
+      "roof_eave": 3.75,
+      "roof_thickness": 0.18,
+      "roof_rise": 1.5,
+      "courtyard": [
+        -5,
+        -5,
+        5,
+        3
+      ],
+      "pool": [
+        -2,
+        -3,
+        2,
+        1
+      ],
+      "pool_bottom": -1.12,
+      "water_level": 0.04,
+      "rooms": [
+        {
+          "id": "living",
+          "name": "起居",
+          "bounds": [
+            -10.88,
+            -4.88,
+            -5.12,
+            0.1
+          ]
+        },
+        {
+          "id": "dining",
+          "name": "餐厅",
+          "bounds": [
+            -10.88,
+            0.1,
+            -5.12,
+            3.4
+          ]
+        },
+        {
+          "id": "kitchen",
+          "name": "开放厨房",
+          "bounds": [
+            -10.88,
+            3.4,
+            -5.12,
+            6.88
+          ]
+        },
+        {
+          "id": "hall",
+          "name": "门厅及连接通道",
+          "bounds": [
+            -5,
+            3.12,
+            5,
+            6.88
+          ]
+        },
+        {
+          "id": "corridor",
+          "name": "卧室走廊",
+          "bounds": [
+            5.12,
+            -4.88,
+            6.52,
+            3.6
+          ]
+        },
+        {
+          "id": "master",
+          "name": "主卧",
+          "bounds": [
+            6.68,
+            -4.88,
+            10.88,
+            -0.68
+          ]
+        },
+        {
+          "id": "guest",
+          "name": "客卧",
+          "bounds": [
+            6.68,
+            -0.52,
+            10.88,
+            3.52
+          ]
+        },
+        {
+          "id": "study",
+          "name": "书桌区",
+          "bounds": [
+            5,
+            3.68,
+            8.72,
+            6.88
+          ]
+        },
+        {
+          "id": "bath",
+          "name": "卫浴",
+          "bounds": [
+            8.88,
+            3.68,
+            10.88,
+            6.88
+          ]
+        }
+      ],
+      "walls": [
+        {
+          "id": "west_front",
+          "a": [
+            -11,
+            -5
+          ],
+          "b": [
+            -5,
+            -5
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "west_outer",
+          "a": [
+            -11,
+            7
+          ],
+          "b": [
+            -11,
+            -5
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "west_back",
+          "a": [
+            -5,
+            7
+          ],
+          "b": [
+            -11,
+            7
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "west_court",
+          "a": [
+            -5,
+            -5
+          ],
+          "b": [
+            -5,
+            3
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "east_front",
+          "a": [
+            5,
+            -5
+          ],
+          "b": [
+            11,
+            -5
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "east_outer",
+          "a": [
+            11,
+            -5
+          ],
+          "b": [
+            11,
+            7
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "east_back",
+          "a": [
+            11,
+            7
+          ],
+          "b": [
+            5,
+            7
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "east_court",
+          "a": [
+            5,
+            3
+          ],
+          "b": [
+            5,
+            -5
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "hall_back",
+          "a": [
+            5,
+            7
+          ],
+          "b": [
+            -5,
+            7
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "hall_court",
+          "a": [
+            -5,
+            3
+          ],
+          "b": [
+            5,
+            3
+          ],
+          "material": "plaster",
+          "thickness": 0.24
+        },
+        {
+          "id": "bedroom_corridor",
+          "a": [
+            6.6,
+            -5
+          ],
+          "b": [
+            6.6,
+            3.6
+          ],
+          "material": "plaster",
+          "thickness": 0.16
+        },
+        {
+          "id": "bedrooms_divider",
+          "a": [
+            6.6,
+            -0.6
+          ],
+          "b": [
+            11,
+            -0.6
+          ],
+          "material": "plaster",
+          "thickness": 0.16
+        },
+        {
+          "id": "bedrooms_back",
+          "a": [
+            6.6,
+            3.6
+          ],
+          "b": [
+            11,
+            3.6
+          ],
+          "material": "plaster",
+          "thickness": 0.16
+        },
+        {
+          "id": "bathroom_side",
+          "a": [
+            8.8,
+            3.6
+          ],
+          "b": [
+            8.8,
+            7
+          ],
+          "material": "plaster",
+          "thickness": 0.16
+        }
+      ],
+      "openings": [
+        [
+          "living_front",
+          "window",
+          "west_front",
+          0.8,
+          4.4,
+          0.45,
+          2.35,
+          "glass"
+        ],
+        [
+          "living_outer",
+          "window",
+          "west_outer",
+          7.0,
+          3.8,
+          0.8,
+          1.8,
+          "glass"
+        ],
+        [
+          "kitchen_outer",
+          "window",
+          "west_outer",
+          0.7,
+          3.3,
+          1.15,
+          1.45,
+          "glass"
+        ],
+        [
+          "kitchen_back",
+          "window",
+          "west_back",
+          1.0,
+          4.0,
+          1.15,
+          1.45,
+          "glass"
+        ],
+        [
+          "living_court",
+          "door",
+          "west_court",
+          0.65,
+          3.0,
+          0,
+          2.65,
+          "glass"
+        ],
+        [
+          "dining_court",
+          "window",
+          "west_court",
+          4.8,
+          2.5,
+          0.45,
+          2.2,
+          "glass"
+        ],
+        [
+          "master_front",
+          "window",
+          "east_front",
+          2.2,
+          3.0,
+          0.75,
+          1.9,
+          "glass"
+        ],
+        [
+          "master_outer",
+          "window",
+          "east_outer",
+          0.9,
+          2.8,
+          0.85,
+          1.8,
+          "glass"
+        ],
+        [
+          "guest_outer",
+          "window",
+          "east_outer",
+          5.2,
+          2.8,
+          0.85,
+          1.8,
+          "glass"
+        ],
+        [
+          "bath_outer",
+          "window",
+          "east_outer",
+          9.4,
+          1.6,
+          1.7,
+          0.75,
+          "frosted"
+        ],
+        [
+          "study_back",
+          "window",
+          "east_back",
+          2.7,
+          2.5,
+          0.8,
+          1.85,
+          "glass"
+        ],
+        [
+          "corridor_court",
+          "window",
+          "east_court",
+          0.7,
+          3.0,
+          0.65,
+          2.0,
+          "glass"
+        ],
+        [
+          "corridor_entry",
+          "door",
+          "east_court",
+          5.5,
+          1.25,
+          0,
+          2.5,
+          "glass"
+        ],
+        [
+          "main_entry",
+          "door",
+          "hall_court",
+          3.8,
+          2.4,
+          0,
+          2.65,
+          "wood"
+        ],
+        [
+          "hall_left",
+          "window",
+          "hall_court",
+          0.8,
+          2.2,
+          0.55,
+          2.1,
+          "glass"
+        ],
+        [
+          "hall_right",
+          "window",
+          "hall_court",
+          7.0,
+          2.2,
+          0.55,
+          2.1,
+          "glass"
+        ],
+        [
+          "hall_back_window",
+          "window",
+          "hall_back",
+          2.0,
+          6.0,
+          0.65,
+          2.0,
+          "glass"
+        ],
+        [
+          "master_door",
+          "door",
+          "bedroom_corridor",
+          2.8,
+          0.95,
+          0,
+          2.25,
+          "wood"
+        ],
+        [
+          "guest_door",
+          "door",
+          "bedroom_corridor",
+          6.9,
+          0.95,
+          0,
+          2.25,
+          "wood"
+        ],
+        [
+          "bath_door",
+          "door",
+          "bathroom_side",
+          0.4,
+          0.9,
+          0,
+          2.25,
+          "wood"
+        ]
+      ]
+    },
+    "floor_layouts": [
+      {
+        "floor": 1,
+        "level": 0.18,
+        "rooms": [],
+        "walls": []
+      }
+    ]
+  },
+  "constraints": [],
+  "locks": [],
+  "rule_trace": []
+}

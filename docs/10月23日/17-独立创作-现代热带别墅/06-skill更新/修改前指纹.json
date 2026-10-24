@@ -1,0 +1,18 @@
+{
+  "files": [
+    {
+      "file": "wild-blueprint-authoring/SKILL.md",
+      "sha256": "0576629b40d3fa657eac3375e95474c914ca379b1d894189ce694d77bf636f36"
+    },
+    {
+      "file": "wild-blueprint-authoring/references/runtime.md",
+      "sha256": "4578958368ac7e12858d3d14b6d7de5d4dfff03e80546802ae2bd35ab0b727dc"
+    },
+    {
+      "file": "交付说明.md",
+      "sha256": "eb8dabd1fa9406a9fc30fc6d1850d605e525fc043022d8dec5cac486af03bb6b"
+    }
+  ],
+  "archive_sha256": "446f6d23c10187e7e7298db9f75cd0fa9b19657c165a12959459ef734a6c35f2",
+  "phase": "建筑通过检查并查看真实图之后，首次读取和修改skill"
+}

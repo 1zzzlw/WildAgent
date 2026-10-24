@@ -1,0 +1,145 @@
+{
+  "ok": true,
+  "input_sha256": "c12b3bc4bcb8d0865743082f03ccc983a434daf6ec426632aa567db131b24735",
+  "deterministic_replay": true,
+  "design_sha256": "00809f50aa1c5ae26c03f67295276e44d46a7a8b3ae1a37d33db40e6ba486c61",
+  "static_and_routes": true,
+  "renders": [
+    {
+      "directory": "04-效果图/日景",
+      "input_sha256": "c12b3bc4bcb8d0865743082f03ccc983a434daf6ec426632aa567db131b24735",
+      "source_digest": "c70c0a95d8f32cc1f509ebf2673feefbcda13f6a386b92b3495e1216620b5c43",
+      "mesh_count": 575,
+      "browser": "Chrome/153.0.8010.12",
+      "images": [
+        {
+          "file": "04-效果图\\日景\\front.png",
+          "bytes": 450661,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "df7faaf4347c4e7d77ec19d7df489bb8a8adc4a0f6f8c0f36c3ce9591e3c7000"
+        },
+        {
+          "file": "04-效果图\\日景\\side.png",
+          "bytes": 483923,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "3b15bd4f1ca10ed6ab5daac6ae3da858a538e31377b405d762a8e79d24267d26"
+        },
+        {
+          "file": "04-效果图\\日景\\top.png",
+          "bytes": 369364,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "301b67710af4d80ae74e909a3f8d735b0084bf1f379bfb6bfeccaa40a401e5f2"
+        },
+        {
+          "file": "04-效果图\\日景\\perspective.png",
+          "bytes": 479022,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "632fcba2d6443a4c97e1cf957b79185a5f79392d8186c04272876e259ac37515"
+        }
+      ]
+    },
+    {
+      "directory": "04-效果图/夜景",
+      "input_sha256": "c12b3bc4bcb8d0865743082f03ccc983a434daf6ec426632aa567db131b24735",
+      "source_digest": "c70c0a95d8f32cc1f509ebf2673feefbcda13f6a386b92b3495e1216620b5c43",
+      "mesh_count": 575,
+      "browser": "Chrome/153.0.8010.12",
+      "images": [
+        {
+          "file": "04-效果图\\夜景\\front.png",
+          "bytes": 294450,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "4bf61a3742e91ca863d022832d54d56a7d215ce394a44ca02939e8eb7f71e8a1"
+        },
+        {
+          "file": "04-效果图\\夜景\\side.png",
+          "bytes": 248899,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "bdfe5de53c7c6af29236b676bf99b0f526715f9a45e88166d262627b2a429a40"
+        },
+        {
+          "file": "04-效果图\\夜景\\top.png",
+          "bytes": 222017,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "901c960fd82a762df4e17315888bef953656a945c3deee727b7421cd96a3dd58"
+        },
+        {
+          "file": "04-效果图\\夜景\\perspective.png",
+          "bytes": 383442,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "0d3ddf57b90893229dddf04f1518fd95229e1d26af1c2d4e73ce825d022a2404"
+        }
+      ]
+    },
+    {
+      "directory": "05-剖切/效果图",
+      "input_sha256": "6481512c9f28cffaa032b99d209bc6af61766411581f943b5734b1ae9e4f68e5",
+      "source_digest": "c70c0a95d8f32cc1f509ebf2673feefbcda13f6a386b92b3495e1216620b5c43",
+      "mesh_count": 480,
+      "browser": "Chrome/153.0.8010.12",
+      "images": [
+        {
+          "file": "05-剖切\\效果图\\front.png",
+          "bytes": 387194,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "02d5d2b4d923c3aace7f55e01407d568347f36e469afc4126c3999495510229b"
+        },
+        {
+          "file": "05-剖切\\效果图\\side.png",
+          "bytes": 430437,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "11f77b4eda4e030ad0cecb94df0319765c7d71aff79bf2f0cad14953296eada3"
+        },
+        {
+          "file": "05-剖切\\效果图\\top.png",
+          "bytes": 383439,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "ac0198984d36a0472a6fe17802e97740b2d6a92ccdf6d1d4281dc5dd63763689"
+        },
+        {
+          "file": "05-剖切\\效果图\\perspective.png",
+          "bytes": 460065,
+          "size": [
+            1280,
+            960
+          ],
+          "sha256": "c69e30f8790b377fb7cf90eed2902a40d61b69d32614c8eb5efe2fa99258cc51"
+        }
+      ]
+    }
+  ],
+  "scope": "当前项目Core与浏览器显示；不是全编辑器、后端Agent或独立模型盲测"
+}

@@ -1,0 +1,5 @@
+{
+  "ok": true,
+  "contract": "app.design.contracts.DesignDocument",
+  "note": "Pydantic契约通过；详细平面在decisions.authoring中，由本案例展开器消费；未运行后端Agent编译。"
+}

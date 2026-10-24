@@ -1,0 +1,10 @@
+建筑已完成后，第一次执行系统 skill-creator 的 quick_validate.py。
+命令：python C:/Users/Administrator/.codex/skills/.system/skill-creator/scripts/quick_validate.py docs/10月23日/蓝图技能/wild-blueprint-authoring
+关键原始输出：
+  content = skill_md.read_text()
+  UnicodeDecodeError: 'gbk' codec can't decode byte 0x80 in position 65: illegal multibyte sequence
+
+原因：验证器未指定read_text编码，系统Python默认GBK，目标SKILL.md为UTF-8。
+处置：用同一个验证器加python -X utf8，结果Skill is valid!；未改验证器或全局编码。
+首次验证作为组合shell命令的一部分，单独退出码未持久化；外层shell的0来自后续读取manifest的Python命令，不能将其视为skill验证通过。
+最终独立调用的起止时间、退出码0与原始输出保存在验收命令.json。

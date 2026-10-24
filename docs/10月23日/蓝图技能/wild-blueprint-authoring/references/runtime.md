@@ -24,6 +24,8 @@ node "scripts/render_preview.mjs" "交付目录/建筑.wild" "交付目录/四�
 
 Windows若Node子进程因缺少SystemRoot/WINDIR而触发加密初始化错误，恢复为本机真实Windows目录后再执行；不要调整建筑参数。Python读写/命令记录用UTF-8，控制台编码问题与生成失败分别归因。
 
+确认是该环境缺失时，PowerShell可对当前进程设置`$env:SystemRoot=[Environment]::GetFolderPath('Windows')`及`$env:WINDIR=$env:SystemRoot`后重试。不要永久改用户环境，也不要对其他Node错误套用此修复。
+
 ## 每个工具证明什么
 
 | 工具 | 执行范围 | 不覆盖 |
@@ -39,6 +41,16 @@ Core会兼容归一部分输入，因此原始Schema检查仍有价值。必须�
 先核对当前Schema/类型/编译入口与快照是否一致。优先使用项目当前只读校验与真实显示入口，避免拿过时快照解释已变更功能。正式DesignDocument、Agent和后端完整关系检查只能在原项目具备相应运行环境时使用；本技能只携带相关契约参考，不能独立运行整个后端。
 
 项目代码修复不是创作任务的默认操作。若缺陷明确来自引擎且用户授权修复，沿现有共享入口处理通用根因；单栋作者文件的错误应先修作者设计/参数。不能改校验器来让当前建筑通过。
+
+`DesignDocument.model_validate`只证明设计契约成立。若专用作者脚本消费`decisions`中的扩展布局，要记录实际消费者及设计hash；不能声称后端通用编译器也支持该字段，或把Pydantic通过写成Agent已运行。
+
+## 原始字段与空间复核
+
+先查原始Schema，再进Core，避免兼容归一掩盖错误。当前`primitive.shape=cylinder`的半径写法是`radius`与`radiusTop`+`radiusBottom`二选一；同时写两组违反`oneOf`。`primitive.label`仅有`text/color/fontFamily`，不要推测`fontSize`等显示字段。
+
+空间复核按本稿风险选取：实际重建包络与完整地块比较；泳池/中庭检查所有覆盖层的孔；通行从可达入口到功能空间，计入门框净宽和家具/柜体/固定玻璃。近似网格检查须写明步长、身体半径、门按开启还是关闭处理，以及未覆盖的开门扫掠/人体碰撞。一次案例的0.2m采样不是通用精度要求，更不是建筑规范。
+
+具体失败证据与修订前提见[独立创作验证复盘](independent-authoring.md)。这些检查补充Schema/Core，不将所有作品强制改成该例的平面或设施。
 
 ## 记录与修订
 

@@ -1,0 +1,44 @@
+{
+  "errors": [
+    {
+      "path": [
+        "geometry",
+        "elements",
+        85
+      ],
+      "message": "{'type': 'primitive', 'id': 'entry_name', 'shape': 'box', 'position': [-2.5, 0.95, -6.74], 'dimensions': [0.92, 0.34, 0.04], 'material': 'frame', 'label': {'text': '棕影水院', 'color': [0.92, 0.83, 0.64], 'fontSize': 0.17}, 'rotation': [0, 3.141593, 0]} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "elements",
+        134
+      ],
+      "message": "{'type': 'primitive', 'id': 'palm_trunk_0', 'shape': 'cylinder', 'position': [-12.6, 2.4, -7.3], 'radius': 0.16, 'radiusTop': 0.11, 'radiusBottom': 0.16, 'height': 4.8, 'segments': 12, 'material': 'wood'} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "elements",
+        146
+      ],
+      "message": "{'type': 'primitive', 'id': 'palm_trunk_1', 'shape': 'cylinder', 'position': [11.8, 2.75, -7.5], 'radius': 0.16, 'radiusTop': 0.11, 'radiusBottom': 0.16, 'height': 5.5, 'segments': 12, 'material': 'wood'} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "elements",
+        158
+      ],
+      "message": "{'type': 'primitive', 'id': 'palm_trunk_2', 'shape': 'cylinder', 'position': [-12.7, 2.1, 8.8], 'radius': 0.16, 'radiusTop': 0.11, 'radiusBottom': 0.16, 'height': 4.2, 'segments': 12, 'material': 'wood'} is not valid under any of the given schemas"
+    },
+    {
+      "path": [
+        "geometry",
+        "elements",
+        170
+      ],
+      "message": "{'type': 'primitive', 'id': 'palm_trunk_3', 'shape': 'cylinder', 'position': [12.3, 2.35, 8.8], 'radius': 0.16, 'radiusTop': 0.11, 'radiusBottom': 0.16, 'height': 4.7, 'segments': 12, 'material': 'wood'} is not valid under any of the given schemas"
+    }
+  ]
+}
