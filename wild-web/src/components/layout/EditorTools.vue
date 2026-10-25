@@ -14,7 +14,7 @@ import 'element-plus/es/components/dialog/style/css'
 import { useUIStore } from '../../stores/uiStore'
 const LLMConfigDialog = defineAsyncComponent(() => import('./LLMConfigDialog.vue'))
 const ui = useUIStore()
-const shortcuts = [['Ctrl / ⌘ + S', '保存到服务器'], ['Ctrl / ⌘ + Z', '撤销'], ['Ctrl / ⌘ + Shift + Z / Y', '重做'], ['Ctrl / ⌘ + B', '收起或展开左侧面板'], ['Alt + 1–7', '切换左侧功能'], ['F', '聚焦选中，无选中时查看全景'], ['Shift + F', '渲染界面全屏'], ['Esc', '退出全屏'], ['Ctrl + 单击', '多选构件'], ['右键单击门窗', '操作支持交互的门窗']]
+const shortcuts = [['Ctrl / ⌘ + S', '保存到服务器'], ['Ctrl / ⌘ + Z', '撤销'], ['Ctrl / ⌘ + Shift + Z / Y', '重做'], ['Ctrl / ⌘ + B', '收起或展开左侧面板'], ['Alt + 1–7', '切换左侧功能'], ['F', '聚焦选中，无选中时查看全景'], ['Shift + F', '渲染界面全屏'], ['Esc', '取消构件放置 / 退出全屏'], ['Ctrl + 单击', '多选构件'], ['右键单击门窗', '操作支持交互的门窗']]
 </script>
 <style scoped>
 .tool-hint{font-size:10px;line-height:1.8;color:#83959f;margin-top:10px}.shortcut-list{display:grid;grid-template-columns:auto 1fr;gap:14px;font-size:12px}.shortcut-list dt{font-family:monospace;color:#a6c3b5}.shortcut-list dd{color:#aabac5}

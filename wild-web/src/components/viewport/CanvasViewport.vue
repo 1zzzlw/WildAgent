@@ -3,6 +3,9 @@
     <!-- 展示3D视图的区域 -->
     <canvas ref="canvasRef"></canvas>
     <div class="viewport-overlay">
+      <div v-if="placement.request" class="placement-hint" role="status">
+        正在放置：{{ placement.request.label }} · {{ placementMessage }}
+      </div>
       <div v-if="viewMode === 'editor'" class="stats">
         <div v-if="sceneStore.document">
           基础: {{ sceneStore.document.blueprint.geometry.elements?.length || 0 }} ·
@@ -28,6 +31,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
+import { useBlockPlacementStore } from '../../stores/blockPlacementStore'
 import { useUIStore } from '../../stores/uiStore'
 import { useWorldPackageStore } from '../../stores/worldPackageStore'
 import { useRenderPanelStore } from '../../stores/renderPanelStore'
@@ -106,6 +110,8 @@ import {
 } from '../../wild/componentSelection'
 import { createGeometryTranslationOperations, getGeometryTranslationIds } from '../../wild/componentDrag'
 import { createPatch } from '../../wild/scenePatch'
+import { createBlockPlacement, type BlockPlacementDraft } from '../../wild/blockPlacement'
+import { BlockPlacementPreview } from '../../renderer/blockPlacementPreview'
 import { CharacterRoamingRuntime } from '../../extensions/characterRoaming/CharacterRoamingRuntime'
 import { useCharacterRoamingStore } from '../../extensions/characterRoaming/store'
 
@@ -113,6 +119,14 @@ const containerRef = ref<HTMLDivElement>()
 const canvasRef = ref<HTMLCanvasElement>()
 const sceneStore = useSceneStore()
 const selectionStore = useSelectionStore()
+const placement = useBlockPlacementStore()
+const placementMessage = ref('移动鼠标预览，单击放置；Esc 或右键取消')
+let placementPreview: BlockPlacementPreview | null = null
+let placementDraft: BlockPlacementDraft | null = null
+let placementPointer: { clientX: number; clientY: number } | null = null
+let placementUpdate = 0
+let placementCommitting = false
+let keepPlacementView = false
 const uiStore = useUIStore()
 const worldPackageStore = useWorldPackageStore()
 const renderPanel = useRenderPanelStore()
@@ -268,6 +282,7 @@ watch(() => sceneStore.reconstructed, () => {
   updateScene()
 })
 watch(() => sceneStore.document?.id, () => {
+  placement.cancel()
   roaming.stop()
   hasFramedScene = false
   componentTransformEnabled = false
@@ -278,6 +293,31 @@ watch(() => [...selectionStore.selectedIds], () => {
   syncSelectionHighlights()
   syncComponentTransformControl()
 }, { flush: 'sync' })
+watch(() => placement.request, request => {
+  placementUpdate++
+  placementDraft = null
+  placementPreview?.clear()
+  pointerDownPosition = null
+  if (request) {
+    roaming.stop()
+    viewMode.value = 'editor'
+    renderPanel.showEdges = false
+    applyViewMode()
+    componentTransformEnabled = false
+    clearComponentTransformControl()
+    if (controls) controls.autoRotate = false
+    placementMessage.value = '移动鼠标预览，单击放置；Esc 或右键取消'
+    refreshPlacement()
+  } else if (controls) {
+    controls.autoRotate = renderPanel.autoRotate
+  }
+  markNeedsRender()
+}, { flush: 'sync' })
+watch(() => sceneStore.document?.revision, () => {
+  if (placementCommitting) return
+  placementPreview?.clear()
+  refreshPlacement()
+})
 watch([
   () => sceneStore.document?.revision,
   () => worldPackageStore.activeProfileId,
@@ -293,6 +333,7 @@ watch(() => roaming.view, view => characterRoaming?.setView(view))
 watch(() => roaming.captureNonce, () => characterRoaming?.capturePointer(), { flush: 'sync' })
 
 function startCharacterRoaming() {
+  placement.cancel()
   if (!renderer || !camera || !controls || !sceneGroup || transformControls?.dragging) {
     roaming.stop()
     return
@@ -343,12 +384,13 @@ function stopCharacterRoaming() {
 
 // ── 渲染控制面板：状态 → 视口动作的唯一接线处 ──
 watch(() => renderPanel.showEdges, () => {
+  if (renderPanel.showEdges) placement.cancel()
   applyEdgeMode()
   markNeedsRender()
 })
 watch(() => renderPanel.autoRotate, enabled => {
   if (!controls) return
-  controls.autoRotate = enabled
+  controls.autoRotate = enabled && !placement.request
   markNeedsRender()
 })
 watch(() => renderPanel.autoRotateSpeed, speed => {
@@ -394,6 +436,7 @@ watch(() => renderPanel.presetRequest, request => {
       break
     }
     case 'view':
+      if (request.value === 'presentation') placement.cancel()
       viewMode.value = request.value
       applyViewMode()
       break
@@ -565,6 +608,12 @@ function initThreeJS() {
   sceneGroup = activeInstance.root
   materialCache = activeInstance.materialScope
   scene.add(worldRuntime.root)
+  placementPreview = new BlockPlacementPreview(scene, markNeedsRender)
+  renderer.domElement.addEventListener('pointermove', handlePlacementPointerMove)
+  renderer.domElement.addEventListener('pointerleave', handlePlacementPointerLeave)
+  renderer.domElement.addEventListener('pointerdown', handlePlacementPointerDown, true)
+  window.addEventListener('keydown', handlePlacementKeydown, true)
+  controls.addEventListener('change', refreshPlacement)
   
   if (typeof ResizeObserver !== 'undefined' && containerRef.value) {
     resizeObserver = new ResizeObserver(() => handleResize())
@@ -776,7 +825,16 @@ function updateScene() {
     // 这里只做【显示层归一化】：把预览实例整体平移，让"足迹中心落在原点"。
     // 不碰文档坐标：拖拽改的是对象局部 position，保存读的是文档，两者都不受影响。
     // Y 不平移，以保持建筑与自身地面的关系（gridHelper.y = bbox.min[1]）。
-    if (sceneGroup) sceneGroup.position.set(-center.x, 0, -center.z)
+    if (sceneGroup) {
+      const previousPosition = sceneGroup.position.clone()
+      sceneGroup.position.set(-center.x, 0, -center.z)
+      if (keepPlacementView && hasFramedScene && camera && controls) {
+        const shift = sceneGroup.position.clone().sub(previousPosition)
+        camera.position.add(shift)
+        controls.target.add(shift)
+        controls.update()
+      }
+    }
     // 归一化后模型在世界空间里就落在原点上，所以后续所有"以中心为参照"的逻辑
     // （方向光与阴影相机、内置环境、网格与地面）统一改用归一化后的中心。
     center.x = 0
@@ -808,7 +866,105 @@ function updateScene() {
   applyViewMode()
   applyEdgeMode()
   applySection()
+  keepPlacementView = false
+  refreshPlacement()
   markNeedsRender()
+}
+
+function handlePlacementPointerMove(event: PointerEvent) {
+  placementPointer = { clientX: event.clientX, clientY: event.clientY }
+  refreshPlacement()
+}
+
+function handlePlacementPointerLeave() {
+  placementPointer = null
+  placementDraft = null
+  placementUpdate++
+  placementPreview?.hide()
+}
+
+function handlePlacementPointerDown(event: PointerEvent) {
+  if (!placement.request) return
+  // 在OrbitControls收到事件前接管放置点击，避免点击预览时相机同时拖动。
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  pointerDownPosition = event.button === 0 ? { x: event.clientX, y: event.clientY } : null
+}
+
+function handlePlacementKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !placement.request) return
+  event.preventDefault()
+  event.stopImmediatePropagation()
+  placement.cancel()
+}
+
+function refreshPlacement() {
+  if (!placement.request || !placementPointer || !sceneStore.document || !camera || !renderer || !sceneGroup || !placementPreview || placementCommitting) return
+  const update = ++placementUpdate
+  placementDraft = null
+  const rect = renderer.domElement.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) return
+  pointer.set((placementPointer.clientX - rect.left) / rect.width * 2 - 1, -(placementPointer.clientY - rect.top) / rect.height * 2 + 1)
+  raycaster.setFromCamera(pointer, camera)
+  sceneGroup.updateMatrixWorld(true)
+  const hit = raycaster.intersectObjects(sceneGroup.children, true).find(intersection => (
+    getIntersectionElementId(intersection)
+    && (!renderPanel.sectionEnabled || intersection.point.y <= sectionPlane.constant)
+  ))
+  const blueprint = sceneStore.document.blueprint
+  const elementId = hit ? getIntersectionElementId(hit) : null
+  const sourceId = elementId && sceneStore.reconstructed?.componentMapping
+    ? resolveSelectableId(elementId, sceneStore.reconstructed.componentMapping) : elementId
+  const source = blueprint.geometry.elements.find(item => item.id === sourceId)
+    || blueprint.geometry.components?.find(item => item.id === sourceId)
+  const hostId = source?.type === 'wall' || source?.type === 'roof' ? source.id
+    : source && 'parentWall' in source ? source.parentWall as string
+      : source && 'parentRoof' in source ? source.parentRoof as string : undefined
+  const point = hit?.point.clone() || raycaster.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -environmentGroundY), new THREE.Vector3())
+  if (!point) {
+    placementPreview.hide()
+    placementMessage.value = '请将鼠标移到地面或模型表面'
+    return
+  }
+  sceneGroup.worldToLocal(point)
+  try {
+    const draft = createBlockPlacement(placement.request, blueprint, [point.x, point.y, point.z], hostId)
+    void placementPreview.update(blueprint, draft, sceneGroup).then(() => {
+      if (update !== placementUpdate || !placementPreview?.root.visible) return
+      placementDraft = draft
+      placementMessage.value = '单击放置；Esc 或右键取消'
+    }).catch(error => {
+      if (update !== placementUpdate) return
+      placementPreview?.clear()
+      placementMessage.value = error instanceof Error ? error.message : '无法在此处放置'
+    })
+  } catch (error) {
+    placementPreview.hide()
+    placementMessage.value = error instanceof Error ? error.message : '无法在此处放置'
+  }
+}
+
+async function commitPlacement() {
+  if (!placementDraft || !placement.request || !sceneStore.document || sceneStore.isReconstructing || placementCommitting) return
+  const draft = placementDraft
+  const request = placement.request
+  placementCommitting = true
+  keepPlacementView = true
+  hasFramedScene = true
+  placementPreview?.hide()
+  try {
+    if (await sceneStore.applyPatch(createPatch(sceneStore.document.revision, [draft.operation], 'user', false, `添加${request.label}`))) {
+      const item = draft.operation.op === 'add_element' ? draft.operation.element : draft.operation.component
+      placement.cancel()
+      selectionStore.select(item.id)
+    } else {
+      ElMessage.error('构件添加失败，请重试')
+    }
+  } finally {
+    placementCommitting = false
+    keepPlacementView = false
+    if (placement.request) refreshPlacement()
+  }
 }
 
 function handlePointerDown(event: PointerEvent) {
@@ -825,6 +981,12 @@ function handlePointerDown(event: PointerEvent) {
 }
 
 function handlePointerUp(event: PointerEvent) {
+  if (placement.request) {
+    const start = pointerDownPosition
+    pointerDownPosition = null
+    if (event.button === 0 && start && Math.hypot(event.clientX - start.x, event.clientY - start.y) <= 5) void commitPlacement()
+    return
+  }
   if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (suppressSelectionClick) {
@@ -878,6 +1040,7 @@ function handlePointerCancel() {
 
 /** 双击命中的构件启用移动轴；Shift 双击保留多选，Ctrl/Meta 切换选择不启用。 */
 function handleDoubleClick(event: MouseEvent) {
+  if (placement.request) return
   if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges
     || event.button !== 0 || event.ctrlKey || event.metaKey
@@ -889,6 +1052,11 @@ function handleDoubleClick(event: MouseEvent) {
 
 /** 左键保留给选中高亮；右键命中窗扇、门扇或灯泡时执行对应交互。 */
 function handleContextMenu(event: MouseEvent) {
+  if (placement.request) {
+    event.preventDefault()
+    placement.cancel()
+    return
+  }
   if (roaming.active) return
   if (viewMode.value === 'presentation' || renderPanel.showEdges) return
   if (!renderer || !camera || !sceneGroup) return
@@ -1783,6 +1951,15 @@ function markShadowsDirty() {
 }
 
 function cleanup() {
+  placement.cancel()
+  placementUpdate++
+  placementPreview?.dispose()
+  placementPreview = null
+  window.removeEventListener('keydown', handlePlacementKeydown, true)
+  renderer?.domElement.removeEventListener('pointermove', handlePlacementPointerMove)
+  renderer?.domElement.removeEventListener('pointerleave', handlePlacementPointerLeave)
+  renderer?.domElement.removeEventListener('pointerdown', handlePlacementPointerDown, true)
+  controls?.removeEventListener('change', refreshPlacement)
   roaming.stop()
   stopCharacterRoaming()
   fixtureLighting.dispose()
@@ -1886,6 +2063,21 @@ canvas {
   font-size: 12px;
   color: #cccccc;
   font-family: monospace;
+}
+
+.placement-hint {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border: 1px solid #35d7ff66;
+  border-radius: 8px;
+  background: #142630eb;
+  color: #b9efff;
+  font-size: 13px;
+  text-align: center;
 }
 
 .stats>div {
