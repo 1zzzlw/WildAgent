@@ -1,0 +1,4255 @@
+{
+  "design_document": {
+    "schema_version": "design/1.0",
+    "design_id": "design_oct19-migration-trial-03",
+    "session_id": "oct19-migration-trial-03",
+    "revision": 1,
+    "status": "draft",
+    "created_at": "2026-10-19T11:55:12.986598Z",
+    "updated_at": "2026-10-19T11:55:19.074595Z",
+    "approved_at": null,
+    "requirements": {
+      "source_request": "流程验证：生成一栋单层现代小别墅，6×4米，平屋顶，楼面顶0.3米，层高3米。一扇入口门、两面采光窗和基础照明，其余实墙。清楚的入口，不做复杂内部分区、家具或景观。请优先用 program 从共享尺寸、标高参数计算完整设计图纸；这是低粒度流程验证，不代表极高粒度效果对照。",
+      "building_type": "villa",
+      "profile": "villa",
+      "style_intent": []
+    },
+    "decisions": {
+      "kind": "architecture",
+      "concept": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+      "massing": {
+        "shape": "box",
+        "width": 6.0,
+        "depth": 4.0,
+        "floors": 1,
+        "modeled_floors": 1,
+        "representation_mode": "full",
+        "floor_height": 3.0,
+        "symmetry": false,
+        "tiers": null
+      },
+      "complexity": {
+        "level": "minimal",
+        "min_volumes": 1,
+        "min_detail_packages": 0,
+        "target_structural_elements": 10,
+        "grid_bays": [
+          2,
+          2
+        ],
+        "reason": "低：完成建筑主体、必要的门窗、屋顶、多层建筑的楼梯和基础照明。采用简洁构造与材质表达，默认不增加装饰构件、家具或陈设。"
+      },
+      "volumes": [
+        {
+          "id": "main_vol",
+          "role": "primary",
+          "x": 0.0,
+          "z": 0.0,
+          "width": 6.0,
+          "depth": 4.0,
+          "start_floor": 1,
+          "end_floor": 1
+        }
+      ],
+      "structural_grid": {
+        "system": "none",
+        "x_bays": 1,
+        "z_bays": 1
+      },
+      "envelope": {
+        "system": "monolithic_wall",
+        "curtain_wall": null
+      },
+      "facades": {
+        "front": {
+          "bays": 3,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "door",
+            "empty",
+            "window"
+          ],
+          "upper_pattern": [
+            "empty",
+            "empty",
+            "empty"
+          ]
+        },
+        "back": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "empty"
+          ],
+          "upper_pattern": [
+            "empty"
+          ]
+        },
+        "left": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "empty"
+          ],
+          "upper_pattern": [
+            "empty"
+          ]
+        },
+        "right": {
+          "bays": 1,
+          "entrance_bay": null,
+          "ground_pattern": [
+            "window"
+          ],
+          "upper_pattern": [
+            "empty"
+          ]
+        }
+      },
+      "roof": {
+        "type": "flat",
+        "ridge_axis": "x",
+        "overhang": 0.3,
+        "volumes": [
+          {
+            "volume": "main_vol",
+            "type": "flat",
+            "overhang": 0.3
+          }
+        ]
+      },
+      "circulation": {
+        "vertical_strategy": "none",
+        "description": "Single level access via front door"
+      },
+      "materials": {
+        "keywords": [
+          "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+          "#F5F5F5",
+          "#4A4D52",
+          "#8C8C8C"
+        ],
+        "resolved_plan": {
+          "concept": "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+          "palette": [
+            "#F5F5F5",
+            "#4A4D52",
+            "#8C8C8C"
+          ],
+          "roles": [
+            {
+              "role": "facade_primary",
+              "materialId": "wall_finish",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.96,
+                  0.96,
+                  0.96
+                ],
+                "roughness": 0.75,
+                "metallic": 0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "structure",
+              "materialId": "concrete",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.85,
+                  0.85,
+                  0.85
+                ],
+                "roughness": 0.8,
+                "metallic": 0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "floor",
+              "materialId": "floor_finish",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.65,
+                  0.65,
+                  0.65
+                ],
+                "roughness": 0.7,
+                "metallic": 0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "frame",
+              "materialId": "metal",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.53,
+                  0.53,
+                  0.53
+                ],
+                "roughness": 0.4,
+                "metallic": 0.7,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "door",
+              "materialId": "wood",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.2,
+                  0.2,
+                  0.2
+                ],
+                "roughness": 0.5,
+                "metallic": 0.1,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "glass",
+              "materialId": "glass",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.7,
+                  0.85,
+                  0.95
+                ],
+                "roughness": 0.05,
+                "metallic": 0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon",
+                "materialClass": "glass",
+                "side": "double",
+                "transmission": 0.92,
+                "ior": 1.5,
+                "thickness": 0.012,
+                "attenuationColor": [
+                  0.82,
+                  0.94,
+                  1.0
+                ],
+                "attenuationDistance": 6.0,
+                "clearcoat": 0.08,
+                "clearcoatRoughness": 0.12
+              }
+            },
+            {
+              "role": "roof",
+              "materialId": "roof",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.29,
+                  0.3,
+                  0.32
+                ],
+                "roughness": 0.8,
+                "metallic": 0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "ground",
+              "materialId": "ground",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.34,
+                  0.38,
+                  0.33
+                ],
+                "roughness": 0.9,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            },
+            {
+              "role": "accent",
+              "materialId": "accent",
+              "assetId": null,
+              "proceduralPresetId": null,
+              "material": {
+                "baseColor": [
+                  0.42,
+                  0.2,
+                  0.09
+                ],
+                "roughness": 0.5,
+                "metallic": 0.0,
+                "albedo": 1.0,
+                "lightingCondition": "D65_noon"
+              }
+            }
+          ],
+          "resolvedAssets": {},
+          "rejectedAssetIds": [],
+          "rejectedProceduralPresetIds": [],
+          "curtainWall": false
+        },
+        "regions": []
+      },
+      "detail_packages": [],
+      "component_quota": {},
+      "components": [
+        {
+          "type": "door",
+          "id": "front_entrance_door",
+          "relation": null,
+          "host": "main_vol",
+          "description": "Main entrance door",
+          "placement": {
+            "face": "front",
+            "floor": 1,
+            "offset": 0.5,
+            "sill_height": 0.0,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.0,
+            "height": 2.2,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "door",
+            "color": "#333333",
+            "construction": {
+              "system": "entrance",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "leafDepth": 0.04,
+              "leafMaterial": "door",
+              "interaction": {
+                "mode": "swing",
+                "hingeSide": "left",
+                "openAngle": 90
+              },
+              "canopy": {
+                "width": 2.0,
+                "depth": 1.4,
+                "thickness": 0.18,
+                "clearance": 0.35,
+                "material": "structure",
+                "soffit": {
+                  "thickness": 0.06,
+                  "embed": 0.015,
+                  "material": "accent"
+                },
+                "posts": {
+                  "width": 0.12,
+                  "baseY": 0,
+                  "material": "accent"
+                }
+              }
+            }
+          },
+          "material_role": null
+        },
+        {
+          "type": "window",
+          "id": "front_window_right",
+          "relation": null,
+          "host": "main_vol",
+          "description": "Living area window",
+          "placement": {
+            "face": "front",
+            "floor": 1,
+            "offset": 4.4,
+            "sill_height": 0.9,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.2,
+            "height": 1.5,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "glass",
+            "frame_color": "#888888",
+            "construction": {
+              "system": "framed_opening",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "glassDepth": 0.02,
+              "glassMaterial": "glass",
+              "verticalMullions": 2,
+              "horizontalMullions": 1,
+              "mullionWidth": 0.035
+            }
+          },
+          "material_role": null
+        },
+        {
+          "type": "window",
+          "id": "side_window_right",
+          "relation": null,
+          "host": "main_vol",
+          "description": "Side daylighting window",
+          "placement": {
+            "face": "right",
+            "floor": 1,
+            "offset": 1.4,
+            "sill_height": 0.9,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.2,
+            "height": 1.5,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "glass",
+            "frame_color": "#888888",
+            "construction": {
+              "system": "framed_opening",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "glassDepth": 0.02,
+              "glassMaterial": "glass",
+              "verticalMullions": 2,
+              "horizontalMullions": 1,
+              "mullionWidth": 0.035
+            }
+          },
+          "material_role": null
+        },
+        {
+          "type": "pendant_light",
+          "id": "ceiling_light_main",
+          "relation": null,
+          "host": null,
+          "description": "Central pendant light fixture",
+          "placement": {
+            "face": null,
+            "floor": null,
+            "offset": 0.0,
+            "sill_height": 0.0,
+            "normal_offset": 0.0,
+            "position": [
+              3.0,
+              2.7,
+              2.0
+            ]
+          },
+          "size": {
+            "width": 0.4,
+            "height": 0.6,
+            "depth": 0.4
+          },
+          "form": {
+            "material_role": "accent",
+            "emissive": true
+          },
+          "material_role": null
+        },
+        {
+          "type": "cornice",
+          "id": "front_band",
+          "relation": null,
+          "host": "main_vol",
+          "description": "",
+          "placement": {
+            "face": null,
+            "floor": null,
+            "offset": 0.0,
+            "sill_height": 0.0,
+            "normal_offset": 0.0,
+            "position": [
+              3,
+              3.15,
+              -0.25
+            ]
+          },
+          "size": {
+            "width": 6.0,
+            "height": 0.28,
+            "depth": 0.32
+          },
+          "form": {
+            "construction": {
+              "system": "layered_band",
+              "axis": "x",
+              "layers": [
+                {
+                  "fraction": 0.25,
+                  "depth_ratio": 0.65,
+                  "material": "facade_primary"
+                },
+                {
+                  "fraction": 0.5,
+                  "depth_ratio": 0.8,
+                  "material": "accent"
+                },
+                {
+                  "fraction": 0.25,
+                  "depth_ratio": 1,
+                  "material": "structure"
+                }
+              ]
+            }
+          },
+          "material_role": null
+        }
+      ],
+      "balcony_access_count": 0,
+      "balcony_width": null,
+      "required_components": [],
+      "unsupported_component_types": [],
+      "design_rationale": [],
+      "design_intent": {
+        "goals": [
+          "Simple volume",
+          "Clear entry",
+          "Basic daylighting",
+          "Low-grain validation"
+        ],
+        "assumptions": [
+          "No interior partitions modeled in detail",
+          "Standard door/window sizes"
+        ],
+        "spatial_strategy": "Open plan with defined entry zone",
+        "composition": "Rectangular massing",
+        "material_strategy": "White plaster facade, dark grey roof membrane",
+        "selected_systems": [
+          "Flat roof",
+          "Masonry/Concrete walls",
+          "Pendant lighting"
+        ]
+      },
+      "floor_layouts": [
+        {
+          "floor": 1,
+          "level": 0.3,
+          "rooms": [
+            {
+              "id": "living_space",
+              "name": "Open Living Area",
+              "bounds": {
+                "x": 0.2,
+                "z": 0.2,
+                "width": 5.6,
+                "depth": 3.6
+              }
+            }
+          ],
+          "walls": []
+        }
+      ]
+    },
+    "constraints": [
+      {
+        "id": "request.source",
+        "kind": "user_hard",
+        "target": "/requirements/source_request",
+        "expression": "设计必须保持用户原始需求中明确提出的条件",
+        "source": "user_request",
+        "expected": null,
+        "check": "manual",
+        "adoption": "adopted",
+        "source_quote": "",
+        "supersedes": null
+      }
+    ],
+    "locks": [],
+    "rule_trace": []
+  },
+  "resolved_design": {
+    "schema_version": "resolved-design/1.0",
+    "design_id": "design_oct19-migration-trial-03",
+    "design_revision": 1,
+    "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+    "resolver_version": "drawing-projection/1",
+    "component_markers": [
+      {
+        "id": "building_body",
+        "type": "building_body",
+        "host": "",
+        "depends_on": [],
+        "design": {
+          "kind": "architecture",
+          "concept": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+          "massing": {
+            "shape": "box",
+            "width": 6.0,
+            "depth": 4.0,
+            "floors": 1,
+            "modeled_floors": 1,
+            "representation_mode": "full",
+            "floor_height": 3.0,
+            "symmetry": false,
+            "tiers": null
+          },
+          "complexity": {
+            "level": "minimal",
+            "min_volumes": 1,
+            "min_detail_packages": 0,
+            "target_structural_elements": 10,
+            "grid_bays": [
+              2,
+              2
+            ],
+            "reason": "低：完成建筑主体、必要的门窗、屋顶、多层建筑的楼梯和基础照明。采用简洁构造与材质表达，默认不增加装饰构件、家具或陈设。"
+          },
+          "volumes": [
+            {
+              "id": "main_vol",
+              "role": "primary",
+              "x": 0.0,
+              "z": 0.0,
+              "width": 6.0,
+              "depth": 4.0,
+              "start_floor": 1,
+              "end_floor": 1
+            }
+          ],
+          "structural_grid": {
+            "system": "none",
+            "x_bays": 1,
+            "z_bays": 1
+          },
+          "envelope": {
+            "system": "monolithic_wall",
+            "curtain_wall": null
+          },
+          "facades": {
+            "front": {
+              "bays": 3,
+              "entrance_bay": null,
+              "ground_pattern": [
+                "door",
+                "empty",
+                "window"
+              ],
+              "upper_pattern": [
+                "empty",
+                "empty",
+                "empty"
+              ]
+            },
+            "back": {
+              "bays": 1,
+              "entrance_bay": null,
+              "ground_pattern": [
+                "empty"
+              ],
+              "upper_pattern": [
+                "empty"
+              ]
+            },
+            "left": {
+              "bays": 1,
+              "entrance_bay": null,
+              "ground_pattern": [
+                "empty"
+              ],
+              "upper_pattern": [
+                "empty"
+              ]
+            },
+            "right": {
+              "bays": 1,
+              "entrance_bay": null,
+              "ground_pattern": [
+                "window"
+              ],
+              "upper_pattern": [
+                "empty"
+              ]
+            }
+          },
+          "circulation": {
+            "vertical_strategy": "none",
+            "description": "Single level access via front door"
+          },
+          "materials": {
+            "keywords": [
+              "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+              "#F5F5F5",
+              "#4A4D52",
+              "#8C8C8C"
+            ],
+            "resolved_plan": {
+              "concept": "Minimalist modern villa with clean white plaster volumes, dark grey flat roof, and precise metallic accents.",
+              "palette": [
+                "#F5F5F5",
+                "#4A4D52",
+                "#8C8C8C"
+              ],
+              "roles": [
+                {
+                  "role": "facade_primary",
+                  "materialId": "wall_finish",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.96,
+                      0.96,
+                      0.96
+                    ],
+                    "roughness": 0.75,
+                    "metallic": 0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "structure",
+                  "materialId": "concrete",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.85,
+                      0.85,
+                      0.85
+                    ],
+                    "roughness": 0.8,
+                    "metallic": 0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "floor",
+                  "materialId": "floor_finish",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.65,
+                      0.65,
+                      0.65
+                    ],
+                    "roughness": 0.7,
+                    "metallic": 0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "frame",
+                  "materialId": "metal",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.53,
+                      0.53,
+                      0.53
+                    ],
+                    "roughness": 0.4,
+                    "metallic": 0.7,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "door",
+                  "materialId": "wood",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.2,
+                      0.2,
+                      0.2
+                    ],
+                    "roughness": 0.5,
+                    "metallic": 0.1,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "glass",
+                  "materialId": "glass",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.7,
+                      0.85,
+                      0.95
+                    ],
+                    "roughness": 0.05,
+                    "metallic": 0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon",
+                    "materialClass": "glass",
+                    "side": "double",
+                    "transmission": 0.92,
+                    "ior": 1.5,
+                    "thickness": 0.012,
+                    "attenuationColor": [
+                      0.82,
+                      0.94,
+                      1.0
+                    ],
+                    "attenuationDistance": 6.0,
+                    "clearcoat": 0.08,
+                    "clearcoatRoughness": 0.12
+                  }
+                },
+                {
+                  "role": "roof",
+                  "materialId": "roof",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.29,
+                      0.3,
+                      0.32
+                    ],
+                    "roughness": 0.8,
+                    "metallic": 0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "ground",
+                  "materialId": "ground",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.34,
+                      0.38,
+                      0.33
+                    ],
+                    "roughness": 0.9,
+                    "metallic": 0.0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                },
+                {
+                  "role": "accent",
+                  "materialId": "accent",
+                  "assetId": null,
+                  "proceduralPresetId": null,
+                  "material": {
+                    "baseColor": [
+                      0.42,
+                      0.2,
+                      0.09
+                    ],
+                    "roughness": 0.5,
+                    "metallic": 0.0,
+                    "albedo": 1.0,
+                    "lightingCondition": "D65_noon"
+                  }
+                }
+              ],
+              "resolvedAssets": {},
+              "rejectedAssetIds": [],
+              "rejectedProceduralPresetIds": [],
+              "curtainWall": false
+            },
+            "regions": []
+          },
+          "detail_packages": [],
+          "balcony_access_count": 0,
+          "balcony_width": null,
+          "unsupported_component_types": [],
+          "design_rationale": [],
+          "design_intent": {
+            "goals": [
+              "Simple volume",
+              "Clear entry",
+              "Basic daylighting",
+              "Low-grain validation"
+            ],
+            "assumptions": [
+              "No interior partitions modeled in detail",
+              "Standard door/window sizes"
+            ],
+            "spatial_strategy": "Open plan with defined entry zone",
+            "composition": "Rectangular massing",
+            "material_strategy": "White plaster facade, dark grey roof membrane",
+            "selected_systems": [
+              "Flat roof",
+              "Masonry/Concrete walls",
+              "Pendant lighting"
+            ]
+          },
+          "floor_layouts": [
+            {
+              "floor": 1,
+              "level": 0.3,
+              "rooms": [
+                {
+                  "id": "living_space",
+                  "name": "Open Living Area",
+                  "bounds": {
+                    "x": 0.2,
+                    "z": 0.2,
+                    "width": 5.6,
+                    "depth": 3.6
+                  }
+                }
+              ],
+              "walls": []
+            }
+          ],
+          "delegated_components": [],
+          "body_components": [],
+          "opening_layout": [
+            {
+              "id": "front_entrance_door",
+              "type": "door",
+              "host": "wall_main_vol_front_L1",
+              "entity": {
+                "parentWall": "wall_main_vol_front_L1",
+                "from": [
+                  0.5,
+                  0.3,
+                  0.0
+                ]
+              },
+              "size": {
+                "width": 1.0,
+                "height": 2.2,
+                "depth": 0.2
+              }
+            },
+            {
+              "id": "front_window_right",
+              "type": "window",
+              "host": "wall_main_vol_front_L1",
+              "entity": {
+                "parentWall": "wall_main_vol_front_L1",
+                "from": [
+                  4.4,
+                  1.2,
+                  0.0
+                ]
+              },
+              "size": {
+                "width": 1.2,
+                "height": 1.5,
+                "depth": 0.2
+              }
+            },
+            {
+              "id": "side_window_right",
+              "type": "window",
+              "host": "wall_main_vol_right_L1",
+              "entity": {
+                "parentWall": "wall_main_vol_right_L1",
+                "from": [
+                  1.4,
+                  1.2,
+                  0.0
+                ]
+              },
+              "size": {
+                "width": 1.2,
+                "height": 1.5,
+                "depth": 0.2
+              }
+            }
+          ]
+        },
+        "entity": {}
+      },
+      {
+        "id": "roof_main_vol",
+        "type": "roof",
+        "host": "main_vol",
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/roof",
+        "design": {
+          "type": "flat",
+          "ridge_axis": "x",
+          "overhang": 0.3,
+          "volumes": [
+            {
+              "volume": "main_vol",
+              "type": "flat",
+              "overhang": 0.3
+            }
+          ],
+          "volume": {
+            "id": "main_vol",
+            "role": "primary",
+            "x": 0.0,
+            "z": 0.0,
+            "width": 6.0,
+            "depth": 4.0,
+            "start_floor": 1,
+            "end_floor": 1
+          }
+        },
+        "entity": {
+          "position": [
+            3.0,
+            3.3,
+            2.0
+          ]
+        }
+      },
+      {
+        "id": "front_entrance_door",
+        "type": "door",
+        "host": "wall_main_vol_front_L1",
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/components/0",
+        "design": {
+          "type": "door",
+          "id": "front_entrance_door",
+          "host": "main_vol",
+          "description": "Main entrance door",
+          "placement": {
+            "face": "front",
+            "floor": 1,
+            "offset": 0.5,
+            "sill_height": 0.0,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.0,
+            "height": 2.2,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "door",
+            "color": "#333333",
+            "construction": {
+              "system": "entrance",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "leafDepth": 0.04,
+              "leafMaterial": "door",
+              "interaction": {
+                "mode": "swing",
+                "hingeSide": "left",
+                "openAngle": 90
+              },
+              "canopy": {
+                "width": 2.0,
+                "depth": 1.4,
+                "thickness": 0.18,
+                "clearance": 0.35,
+                "material": "structure",
+                "soffit": {
+                  "thickness": 0.06,
+                  "embed": 0.015,
+                  "material": "accent"
+                },
+                "posts": {
+                  "width": 0.12,
+                  "baseY": 0,
+                  "material": "accent"
+                }
+              }
+            }
+          }
+        },
+        "entity": {
+          "parentWall": "wall_main_vol_front_L1",
+          "from": [
+            0.5,
+            0.3,
+            0.0
+          ]
+        },
+        "construction_materials": {
+          "facade_primary": "wall_finish",
+          "structure": "concrete",
+          "floor": "floor_finish",
+          "frame": "metal",
+          "door": "wood",
+          "glass": "glass",
+          "roof": "roof",
+          "ground": "ground",
+          "accent": "accent"
+        },
+        "diagram_host": {
+          "id": "wall_main_vol_front_L1",
+          "type": "wall",
+          "from": [
+            0.0,
+            0.3,
+            0.0
+          ],
+          "to": [
+            6.0,
+            3.3,
+            0.0
+          ],
+          "facing": "front",
+          "design_path": "/decisions/volumes/0"
+        }
+      },
+      {
+        "id": "front_window_right",
+        "type": "window",
+        "host": "wall_main_vol_front_L1",
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/components/1",
+        "design": {
+          "type": "window",
+          "id": "front_window_right",
+          "host": "main_vol",
+          "description": "Living area window",
+          "placement": {
+            "face": "front",
+            "floor": 1,
+            "offset": 4.4,
+            "sill_height": 0.9,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.2,
+            "height": 1.5,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "glass",
+            "frame_color": "#888888",
+            "construction": {
+              "system": "framed_opening",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "glassDepth": 0.02,
+              "glassMaterial": "glass",
+              "verticalMullions": 2,
+              "horizontalMullions": 1,
+              "mullionWidth": 0.035
+            }
+          }
+        },
+        "entity": {
+          "parentWall": "wall_main_vol_front_L1",
+          "from": [
+            4.4,
+            1.2,
+            0.0
+          ]
+        },
+        "construction_materials": {
+          "facade_primary": "wall_finish",
+          "structure": "concrete",
+          "floor": "floor_finish",
+          "frame": "metal",
+          "door": "wood",
+          "glass": "glass",
+          "roof": "roof",
+          "ground": "ground",
+          "accent": "accent"
+        },
+        "diagram_host": {
+          "id": "wall_main_vol_front_L1",
+          "type": "wall",
+          "from": [
+            0.0,
+            0.3,
+            0.0
+          ],
+          "to": [
+            6.0,
+            3.3,
+            0.0
+          ],
+          "facing": "front",
+          "design_path": "/decisions/volumes/0"
+        }
+      },
+      {
+        "id": "side_window_right",
+        "type": "window",
+        "host": "wall_main_vol_right_L1",
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/components/2",
+        "design": {
+          "type": "window",
+          "id": "side_window_right",
+          "host": "main_vol",
+          "description": "Side daylighting window",
+          "placement": {
+            "face": "right",
+            "floor": 1,
+            "offset": 1.4,
+            "sill_height": 0.9,
+            "normal_offset": 0.0
+          },
+          "size": {
+            "width": 1.2,
+            "height": 1.5,
+            "depth": 0.2
+          },
+          "form": {
+            "material_role": "glass",
+            "frame_color": "#888888",
+            "construction": {
+              "system": "framed_opening",
+              "frameWidth": 0.06,
+              "frameDepth": 0.14,
+              "frameMaterial": "frame",
+              "surround": {
+                "width": 0.08,
+                "depth": 0.06,
+                "embed": 0.015,
+                "material": "facade_primary"
+              },
+              "glassDepth": 0.02,
+              "glassMaterial": "glass",
+              "verticalMullions": 2,
+              "horizontalMullions": 1,
+              "mullionWidth": 0.035
+            }
+          }
+        },
+        "entity": {
+          "parentWall": "wall_main_vol_right_L1",
+          "from": [
+            1.4,
+            1.2,
+            0.0
+          ]
+        },
+        "construction_materials": {
+          "facade_primary": "wall_finish",
+          "structure": "concrete",
+          "floor": "floor_finish",
+          "frame": "metal",
+          "door": "wood",
+          "glass": "glass",
+          "roof": "roof",
+          "ground": "ground",
+          "accent": "accent"
+        },
+        "diagram_host": {
+          "id": "wall_main_vol_right_L1",
+          "type": "wall",
+          "from": [
+            6.0,
+            0.3,
+            0.0
+          ],
+          "to": [
+            6.0,
+            3.3,
+            4.0
+          ],
+          "facing": "right",
+          "design_path": "/decisions/volumes/0"
+        }
+      },
+      {
+        "id": "ceiling_light_main",
+        "type": "pendant_light",
+        "host": null,
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/components/3",
+        "design": {
+          "type": "pendant_light",
+          "id": "ceiling_light_main",
+          "description": "Central pendant light fixture",
+          "placement": {
+            "offset": 0.0,
+            "sill_height": 0.0,
+            "normal_offset": 0.0,
+            "position": [
+              3.0,
+              2.7,
+              2.0
+            ]
+          },
+          "size": {
+            "width": 0.4,
+            "height": 0.6,
+            "depth": 0.4
+          },
+          "form": {
+            "material_role": "accent",
+            "emissive": true
+          },
+          "host": null
+        },
+        "entity": {
+          "parentWall": null,
+          "position": [
+            3.0,
+            2.7,
+            2.0
+          ]
+        }
+      },
+      {
+        "id": "front_band",
+        "type": "cornice",
+        "host": "main_vol",
+        "depends_on": [
+          "building_body"
+        ],
+        "design_path": "/decisions/components/4",
+        "design": {
+          "type": "cornice",
+          "id": "front_band",
+          "host": "main_vol",
+          "description": "",
+          "placement": {
+            "offset": 0.0,
+            "sill_height": 0.0,
+            "normal_offset": 0.0,
+            "position": [
+              3,
+              3.15,
+              -0.25
+            ]
+          },
+          "size": {
+            "width": 6.0,
+            "height": 0.28,
+            "depth": 0.32
+          },
+          "form": {
+            "construction": {
+              "system": "layered_band",
+              "axis": "x",
+              "layers": [
+                {
+                  "fraction": 0.25,
+                  "depth_ratio": 0.65,
+                  "material": "facade_primary"
+                },
+                {
+                  "fraction": 0.5,
+                  "depth_ratio": 0.8,
+                  "material": "accent"
+                },
+                {
+                  "fraction": 0.25,
+                  "depth_ratio": 1,
+                  "material": "structure"
+                }
+              ]
+            }
+          }
+        },
+        "entity": {
+          "parentWall": "main_vol",
+          "position": [
+            3,
+            3.15,
+            -0.25
+          ]
+        },
+        "construction_materials": {
+          "facade_primary": "wall_finish",
+          "structure": "concrete",
+          "floor": "floor_finish",
+          "frame": "metal",
+          "door": "wood",
+          "glass": "glass",
+          "roof": "roof",
+          "ground": "ground",
+          "accent": "accent"
+        }
+      }
+    ],
+    "design_gaps": [],
+    "compile_blockers": [],
+    "bounds": {
+      "width": 6.0,
+      "depth": 4.0,
+      "height": 3.0
+    },
+    "levels": [
+      {
+        "index": 1,
+        "base_y": 0.3,
+        "top_y": 3.3
+      }
+    ],
+    "volumes": [
+      {
+        "id": "main_vol",
+        "role": "primary",
+        "x": 0.0,
+        "z": 0.0,
+        "width": 6.0,
+        "depth": 4.0,
+        "start_floor": 1,
+        "end_floor": 1
+      }
+    ],
+    "facade_slots": [],
+    "component_quantities": {
+      "building_body": 1,
+      "roof": 1,
+      "door": 1,
+      "window": 2,
+      "pendant_light": 1,
+      "cornice": 1
+    },
+    "warnings": [
+      "图纸为设计示意；构件形态由 plan 尝试实现，未定位标记列于图纸清单。"
+    ]
+  },
+  "component_fragments": {
+    "generate_1": [
+      {
+        "type": "floor",
+        "id": "body_slab_L1",
+        "from": [
+          0.0,
+          0.15,
+          0.0
+        ],
+        "to": [
+          6.0,
+          0.15,
+          4.0
+        ],
+        "thickness": 0.15,
+        "material": "floor_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_front_L1",
+        "from": [
+          0.0,
+          0.3,
+          0.0
+        ],
+        "to": [
+          6.0,
+          3.3,
+          0.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_right_L1",
+        "from": [
+          6.0,
+          0.3,
+          0.0
+        ],
+        "to": [
+          6.0,
+          3.3,
+          4.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_back_L1",
+        "from": [
+          6.0,
+          0.3,
+          4.0
+        ],
+        "to": [
+          0.0,
+          3.3,
+          4.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      },
+      {
+        "type": "wall",
+        "id": "wall_main_vol_left_L1",
+        "from": [
+          0.0,
+          0.3,
+          4.0
+        ],
+        "to": [
+          0.0,
+          3.3,
+          0.0
+        ],
+        "thickness": 0.2,
+        "material": "wall_finish"
+      }
+    ],
+    "generate_2": [
+      {
+        "type": "roof",
+        "id": "roof_main_vol_flat",
+        "roofType": "flat",
+        "span": 6.6,
+        "depth": 4.6,
+        "height": 0.2,
+        "thickness": 0.2,
+        "position": [
+          3.0,
+          3.3,
+          2.0
+        ],
+        "material": "roof",
+        "ridgeAxis": "x"
+      }
+    ],
+    "generate_3": [
+      {
+        "id": "front_entrance_door_surround_left",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          0.46,
+          1.4,
+          -0.115
+        ],
+        "dimensions": [
+          0.08,
+          2.2,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_entrance_door_surround_right",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          1.54,
+          1.4,
+          -0.115
+        ],
+        "dimensions": [
+          0.08,
+          2.2,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_entrance_door_surround_top",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          1.0,
+          2.54,
+          -0.115
+        ],
+        "dimensions": [
+          1.16,
+          0.08,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_entrance_door_soffit",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          1.0,
+          2.82,
+          -0.7925
+        ],
+        "dimensions": [
+          2.0,
+          0.06,
+          1.415
+        ],
+        "material": "accent"
+      },
+      {
+        "id": "front_entrance_door_post_left",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          0.06,
+          1.395,
+          -1.44
+        ],
+        "dimensions": [
+          0.12,
+          2.79,
+          0.12
+        ],
+        "material": "accent"
+      },
+      {
+        "id": "front_entrance_door_post_right",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          1.94,
+          1.395,
+          -1.44
+        ],
+        "dimensions": [
+          0.12,
+          2.79,
+          0.12
+        ],
+        "material": "accent"
+      },
+      {
+        "id": "front_entrance_door_opening",
+        "type": "door",
+        "parentWall": "wall_main_vol_front_L1",
+        "from": [
+          0.5,
+          0.3,
+          0.0
+        ],
+        "width": 1.0,
+        "height": 2.2,
+        "frameWidth": 0.06,
+        "frameDepth": 0.14,
+        "frameMaterial": "metal",
+        "leafDepth": 0.04,
+        "leafMaterial": "wood",
+        "interaction": {
+          "mode": "swing",
+          "hingeSide": "left",
+          "openAngle": 90
+        }
+      },
+      {
+        "id": "front_entrance_door_canopy",
+        "type": "canopy",
+        "parentWall": "wall_main_vol_front_L1",
+        "from": [
+          0.0,
+          2.94,
+          0.0
+        ],
+        "width": 2.0,
+        "depth": 1.4,
+        "thickness": 0.18,
+        "supportCount": 0,
+        "material": "concrete"
+      }
+    ],
+    "generate_4": [
+      {
+        "id": "front_window_right_surround_left",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          4.36,
+          1.95,
+          -0.115
+        ],
+        "dimensions": [
+          0.08,
+          1.5,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_window_right_surround_right",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          5.64,
+          1.95,
+          -0.115
+        ],
+        "dimensions": [
+          0.08,
+          1.5,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_window_right_surround_top",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          5.0,
+          2.74,
+          -0.115
+        ],
+        "dimensions": [
+          1.36,
+          0.08,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_window_right_surround_bottom",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          5.0,
+          1.16,
+          -0.115
+        ],
+        "dimensions": [
+          1.36,
+          0.08,
+          0.06
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_window_right_opening",
+        "type": "window",
+        "parentWall": "wall_main_vol_front_L1",
+        "from": [
+          4.4,
+          1.2,
+          0.0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.14,
+        "frameMaterial": "metal",
+        "glassDepth": 0.02,
+        "glassMaterial": "glass",
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "mullionWidth": 0.035
+      },
+      {
+        "id": "side_window_right_surround_left",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          6.115,
+          1.95,
+          1.36
+        ],
+        "dimensions": [
+          0.06,
+          1.5,
+          0.08
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "side_window_right_surround_right",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          6.115,
+          1.95,
+          2.64
+        ],
+        "dimensions": [
+          0.06,
+          1.5,
+          0.08
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "side_window_right_surround_top",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          6.115,
+          2.74,
+          2.0
+        ],
+        "dimensions": [
+          0.06,
+          0.08,
+          1.36
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "side_window_right_surround_bottom",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          6.115,
+          1.16,
+          2.0
+        ],
+        "dimensions": [
+          0.06,
+          0.08,
+          1.36
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "side_window_right_opening",
+        "type": "window",
+        "parentWall": "wall_main_vol_right_L1",
+        "from": [
+          1.4,
+          1.2,
+          0.0
+        ],
+        "width": 1.2,
+        "height": 1.5,
+        "frameWidth": 0.06,
+        "frameDepth": 0.14,
+        "frameMaterial": "metal",
+        "glassDepth": 0.02,
+        "glassMaterial": "glass",
+        "verticalMullions": 2,
+        "horizontalMullions": 1,
+        "mullionWidth": 0.035
+      }
+    ],
+    "generate_5": [
+      {
+        "type": "light",
+        "id": "ceiling_light_main",
+        "position": [
+          3.0,
+          2.7,
+          2.0
+        ],
+        "body": [
+          {
+            "shape": "cylinder",
+            "position": [
+              3.0,
+              2.95,
+              2.0
+            ],
+            "radius": 0.01,
+            "height": 0.1
+          },
+          {
+            "shape": "cylinder",
+            "position": [
+              3.0,
+              2.8,
+              2.0
+            ],
+            "radiusTop": 0.06,
+            "radiusBottom": 0.2,
+            "height": 0.2
+          },
+          {
+            "shape": "sphere",
+            "position": [
+              3.0,
+              2.75,
+              2.0
+            ],
+            "radius": 0.06,
+            "interactive": true
+          }
+        ],
+        "lightType": "point",
+        "initiallyOn": true
+      }
+    ],
+    "generate_6": [
+      {
+        "id": "front_band_layer_0",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          3,
+          3.045,
+          -0.25
+        ],
+        "dimensions": [
+          6.0,
+          0.07,
+          0.208
+        ],
+        "material": "wall_finish"
+      },
+      {
+        "id": "front_band_layer_1",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          3,
+          3.15,
+          -0.25
+        ],
+        "dimensions": [
+          6.0,
+          0.14,
+          0.256
+        ],
+        "material": "accent"
+      },
+      {
+        "id": "front_band_layer_2",
+        "type": "primitive",
+        "shape": "box",
+        "position": [
+          3,
+          3.255,
+          -0.25
+        ],
+        "dimensions": [
+          6.0,
+          0.07,
+          0.32
+        ],
+        "material": "concrete"
+      }
+    ]
+  },
+  "component_diagnostics": {
+    "generate_1": {
+      "implementations": {
+        "building_body": {
+          "status": "implemented",
+          "entity_ids": [
+            "body_slab_L1",
+            "wall_main_vol_front_L1",
+            "wall_main_vol_right_L1",
+            "wall_main_vol_back_L1",
+            "wall_main_vol_left_L1"
+          ],
+          "entity_fingerprint": "157b1d9b4fbe61a734e67e892dd5df6e87514c8608392f42ad1bb678fd7bae08",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "search_knowledge",
+              "query": "building_body 建筑主体 building_body  构造 形态 JSON 示例\n已选方案系统：Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.、flat、none、none、Flat roof、Masonry/Concrete walls、Pendant lighting",
+              "result": "offline fixture",
+              "ok": true,
+              "error_type": null,
+              "has_shape_reference": true,
+              "injected_chunk_ids": [],
+              "web_required": false,
+              "web_reason": "已有构件参考、原生形态或图纸几何信息"
+            },
+            {
+              "tool": "generate_wild",
+              "stage": "generate",
+              "model_calls": 1,
+              "call_id": "fixture",
+              "enable_thinking": false,
+              "token_usage": null,
+              "finish_reason": "stop",
+              "output": "{\"implementations\": [{\"id\": \"building_body\", \"geometry\": {\"elements\": [{\"type\": \"floor\", \"id\": \"body_slab_L1\", \"from\": [0.0, 0.15, 0.0], \"to\": [6.0, 0.15, 4.0], \"thickness\": 0.15, \"material\": \"floor_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_front_L1\", \"from\": [0.0, 0.3, 0.0], \"to\": [6.0, 3.3, 0.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_right_L1\", \"from\": [6.0, 0.3, 0.0], \"to\": [6.0, 3.3, 4.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_back_L1\", \"from\": [6.0, 0.3, 4.0], \"to\": [0.0, 3.3, 4.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_left_L1\", \"from\": [0.0, 0.3, 4.0], \"to\": [0.0, 3.3, 0.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}], \"components\": []}, \"materials\": {}, \"assets\": {}}]}",
+              "marker_ids": [
+                "building_body"
+              ],
+              "errors": {},
+              "outside_item_entity_ids": []
+            }
+          ],
+          "attempted_stages": [
+            "generate"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "search_knowledge",
+          "query": "building_body 建筑主体 building_body  构造 形态 JSON 示例\n已选方案系统：Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.、flat、none、none、Flat roof、Masonry/Concrete walls、Pendant lighting",
+          "result": "offline fixture",
+          "ok": true,
+          "error_type": null,
+          "has_shape_reference": true,
+          "injected_chunk_ids": [],
+          "web_required": false,
+          "web_reason": "已有构件参考、原生形态或图纸几何信息"
+        },
+        {
+          "tool": "generate_wild",
+          "stage": "generate",
+          "model_calls": 1,
+          "call_id": "fixture",
+          "enable_thinking": false,
+          "token_usage": null,
+          "finish_reason": "stop",
+          "output": "{\"implementations\": [{\"id\": \"building_body\", \"geometry\": {\"elements\": [{\"type\": \"floor\", \"id\": \"body_slab_L1\", \"from\": [0.0, 0.15, 0.0], \"to\": [6.0, 0.15, 4.0], \"thickness\": 0.15, \"material\": \"floor_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_front_L1\", \"from\": [0.0, 0.3, 0.0], \"to\": [6.0, 3.3, 0.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_right_L1\", \"from\": [6.0, 0.3, 0.0], \"to\": [6.0, 3.3, 4.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_back_L1\", \"from\": [6.0, 0.3, 4.0], \"to\": [0.0, 3.3, 4.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}, {\"type\": \"wall\", \"id\": \"wall_main_vol_left_L1\", \"from\": [0.0, 0.3, 4.0], \"to\": [0.0, 3.3, 0.0], \"thickness\": 0.2, \"material\": \"wall_finish\"}], \"components\": []}, \"materials\": {}, \"assets\": {}}]}",
+          "marker_ids": [
+            "building_body"
+          ],
+          "errors": {},
+          "outside_item_entity_ids": []
+        }
+      ],
+      "references": "offline fixture",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [
+        "body_slab_L1",
+        "wall_main_vol_front_L1",
+        "wall_main_vol_right_L1",
+        "wall_main_vol_back_L1",
+        "wall_main_vol_left_L1"
+      ],
+      "components": [],
+      "implementation_summary": {
+        "implemented": 1,
+        "abandoned": 0,
+        "total": 1,
+        "design_complete": true
+      }
+    },
+    "generate_2": {
+      "implementations": {
+        "roof_main_vol": {
+          "status": "implemented",
+          "entity_ids": [
+            "roof_main_vol_flat"
+          ],
+          "entity_fingerprint": "a488e08d299ad6a66bc24273288eeb7cc5f7f52631ab374892846de9125024c3",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "search_knowledge",
+              "query": "flat roof 屋顶 roof  构造 形态 JSON 示例",
+              "result": "offline fixture",
+              "ok": true,
+              "error_type": null,
+              "has_shape_reference": true,
+              "injected_chunk_ids": [],
+              "web_required": false,
+              "web_reason": "已有构件参考、原生形态或图纸几何信息"
+            },
+            {
+              "tool": "generate_wild",
+              "stage": "generate",
+              "model_calls": 1,
+              "call_id": "fixture",
+              "enable_thinking": false,
+              "token_usage": null,
+              "finish_reason": "stop",
+              "output": "{\"implementations\": [{\"id\": \"roof_main_vol\", \"geometry\": {\"elements\": [{\"type\": \"roof\", \"id\": \"roof_main_vol_flat\", \"roofType\": \"flat\", \"span\": 6.6, \"depth\": 4.6, \"height\": 0.2, \"thickness\": 0.2, \"position\": [3.0, 3.3, 2.0], \"material\": \"roof\"}], \"components\": []}, \"materials\": {}, \"assets\": {}}]}",
+              "marker_ids": [
+                "roof_main_vol"
+              ],
+              "errors": {},
+              "construction": {
+                "roof_main_vol": {
+                  "source": {
+                    "id": "roof_main_vol",
+                    "geometry": {
+                      "elements": [
+                        {
+                          "type": "roof",
+                          "id": "roof_main_vol_flat",
+                          "roofType": "flat",
+                          "span": 6.6,
+                          "depth": 4.6,
+                          "height": 0.2,
+                          "thickness": 0.2,
+                          "position": [
+                            3.0,
+                            3.3,
+                            2.0
+                          ],
+                          "material": "roof"
+                        }
+                      ],
+                      "components": []
+                    },
+                    "materials": {},
+                    "assets": {}
+                  },
+                  "construction_version": "construction/2",
+                  "completed_fields": [
+                    {
+                      "entity_id": "roof_main_vol_flat",
+                      "field": "ridgeAxis",
+                      "value": "x"
+                    }
+                  ],
+                  "format_changes": [],
+                  "placement_changes": [],
+                  "input_hash": "5bf6cc4bffbb8ac062a21462d5d73727493766cfe5356f2122a31f2dfb436500",
+                  "output_hash": "1a0973583d1028cff2b0ec0a703ffef67b6ae3b1ec8a11286688d69281d0801d"
+                }
+              }
+            }
+          ],
+          "attempted_stages": [
+            "generate"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "search_knowledge",
+          "query": "flat roof 屋顶 roof  构造 形态 JSON 示例",
+          "result": "offline fixture",
+          "ok": true,
+          "error_type": null,
+          "has_shape_reference": true,
+          "injected_chunk_ids": [],
+          "web_required": false,
+          "web_reason": "已有构件参考、原生形态或图纸几何信息"
+        },
+        {
+          "tool": "generate_wild",
+          "stage": "generate",
+          "model_calls": 1,
+          "call_id": "fixture",
+          "enable_thinking": false,
+          "token_usage": null,
+          "finish_reason": "stop",
+          "output": "{\"implementations\": [{\"id\": \"roof_main_vol\", \"geometry\": {\"elements\": [{\"type\": \"roof\", \"id\": \"roof_main_vol_flat\", \"roofType\": \"flat\", \"span\": 6.6, \"depth\": 4.6, \"height\": 0.2, \"thickness\": 0.2, \"position\": [3.0, 3.3, 2.0], \"material\": \"roof\"}], \"components\": []}, \"materials\": {}, \"assets\": {}}]}",
+          "marker_ids": [
+            "roof_main_vol"
+          ],
+          "errors": {},
+          "construction": {
+            "roof_main_vol": {
+              "source": {
+                "id": "roof_main_vol",
+                "geometry": {
+                  "elements": [
+                    {
+                      "type": "roof",
+                      "id": "roof_main_vol_flat",
+                      "roofType": "flat",
+                      "span": 6.6,
+                      "depth": 4.6,
+                      "height": 0.2,
+                      "thickness": 0.2,
+                      "position": [
+                        3.0,
+                        3.3,
+                        2.0
+                      ],
+                      "material": "roof"
+                    }
+                  ],
+                  "components": []
+                },
+                "materials": {},
+                "assets": {}
+              },
+              "construction_version": "construction/2",
+              "completed_fields": [
+                {
+                  "entity_id": "roof_main_vol_flat",
+                  "field": "ridgeAxis",
+                  "value": "x"
+                }
+              ],
+              "format_changes": [],
+              "placement_changes": [],
+              "input_hash": "5bf6cc4bffbb8ac062a21462d5d73727493766cfe5356f2122a31f2dfb436500",
+              "output_hash": "1a0973583d1028cff2b0ec0a703ffef67b6ae3b1ec8a11286688d69281d0801d"
+            }
+          }
+        }
+      ],
+      "references": "offline fixture",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [
+        "roof_main_vol_flat"
+      ],
+      "components": [],
+      "implementation_summary": {
+        "implemented": 1,
+        "abandoned": 0,
+        "total": 1,
+        "design_complete": true
+      }
+    },
+    "generate_3": {
+      "implementations": {
+        "front_entrance_door": {
+          "status": "implemented",
+          "entity_ids": [
+            "front_entrance_door_surround_left",
+            "front_entrance_door_surround_right",
+            "front_entrance_door_surround_top",
+            "front_entrance_door_soffit",
+            "front_entrance_door_post_left",
+            "front_entrance_door_post_right",
+            "front_entrance_door_opening",
+            "front_entrance_door_canopy"
+          ],
+          "entity_fingerprint": "2beb70f4450f503b7082dc25ea8efbcfa4cdaba52622f07787d3f0c8d429c720",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [
+              "construction.entrance"
+            ],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "construct_system",
+              "stage": "construction",
+              "model_calls": 0,
+              "version": "construction-systems/1",
+              "marker_ids": [
+                "front_entrance_door"
+              ],
+              "source": {
+                "type": "door",
+                "id": "front_entrance_door",
+                "host": "main_vol",
+                "description": "Main entrance door",
+                "placement": {
+                  "face": "front",
+                  "floor": 1,
+                  "offset": 0.5,
+                  "sill_height": 0.0,
+                  "normal_offset": 0.0
+                },
+                "size": {
+                  "width": 1.0,
+                  "height": 2.2,
+                  "depth": 0.2
+                },
+                "form": {
+                  "material_role": "door",
+                  "color": "#333333",
+                  "construction": {
+                    "system": "entrance",
+                    "frameWidth": 0.06,
+                    "frameDepth": 0.14,
+                    "frameMaterial": "frame",
+                    "surround": {
+                      "width": 0.08,
+                      "depth": 0.06,
+                      "embed": 0.015,
+                      "material": "facade_primary"
+                    },
+                    "leafDepth": 0.04,
+                    "leafMaterial": "door",
+                    "interaction": {
+                      "mode": "swing",
+                      "hingeSide": "left",
+                      "openAngle": 90
+                    },
+                    "canopy": {
+                      "width": 2.0,
+                      "depth": 1.4,
+                      "thickness": 0.18,
+                      "clearance": 0.35,
+                      "material": "structure",
+                      "soffit": {
+                        "thickness": 0.06,
+                        "embed": 0.015,
+                        "material": "accent"
+                      },
+                      "posts": {
+                        "width": 0.12,
+                        "baseY": 0,
+                        "material": "accent"
+                      }
+                    }
+                  }
+                }
+              },
+              "errors": {},
+              "output": {
+                "id": "front_entrance_door",
+                "geometry": {
+                  "elements": [
+                    {
+                      "id": "front_entrance_door_surround_left",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        0.46,
+                        1.4,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        0.08,
+                        2.2,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_entrance_door_surround_right",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        1.54,
+                        1.4,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        0.08,
+                        2.2,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_entrance_door_surround_top",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        1.0,
+                        2.54,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        1.16,
+                        0.08,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_entrance_door_soffit",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        1.0,
+                        2.82,
+                        -0.7925
+                      ],
+                      "dimensions": [
+                        2.0,
+                        0.06,
+                        1.415
+                      ],
+                      "material": "accent"
+                    },
+                    {
+                      "id": "front_entrance_door_post_left",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        0.06,
+                        1.395,
+                        -1.44
+                      ],
+                      "dimensions": [
+                        0.12,
+                        2.79,
+                        0.12
+                      ],
+                      "material": "accent"
+                    },
+                    {
+                      "id": "front_entrance_door_post_right",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        1.94,
+                        1.395,
+                        -1.44
+                      ],
+                      "dimensions": [
+                        0.12,
+                        2.79,
+                        0.12
+                      ],
+                      "material": "accent"
+                    }
+                  ],
+                  "components": [
+                    {
+                      "id": "front_entrance_door_opening",
+                      "type": "door",
+                      "parentWall": "wall_main_vol_front_L1",
+                      "from": [
+                        0.5,
+                        0.3,
+                        0.0
+                      ],
+                      "width": 1.0,
+                      "height": 2.2,
+                      "frameWidth": 0.06,
+                      "frameDepth": 0.14,
+                      "frameMaterial": "metal",
+                      "leafDepth": 0.04,
+                      "leafMaterial": "wood",
+                      "interaction": {
+                        "mode": "swing",
+                        "hingeSide": "left",
+                        "openAngle": 90
+                      }
+                    },
+                    {
+                      "id": "front_entrance_door_canopy",
+                      "type": "canopy",
+                      "parentWall": "wall_main_vol_front_L1",
+                      "from": [
+                        0.0,
+                        2.94,
+                        0.0
+                      ],
+                      "width": 2.0,
+                      "depth": 1.4,
+                      "thickness": 0.18,
+                      "supportCount": 0,
+                      "material": "concrete"
+                    }
+                  ]
+                },
+                "materials": {},
+                "assets": {}
+              }
+            }
+          ],
+          "attempted_stages": [
+            "construction"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "construct_system",
+          "stage": "construction",
+          "model_calls": 0,
+          "version": "construction-systems/1",
+          "marker_ids": [
+            "front_entrance_door"
+          ],
+          "source": {
+            "type": "door",
+            "id": "front_entrance_door",
+            "host": "main_vol",
+            "description": "Main entrance door",
+            "placement": {
+              "face": "front",
+              "floor": 1,
+              "offset": 0.5,
+              "sill_height": 0.0,
+              "normal_offset": 0.0
+            },
+            "size": {
+              "width": 1.0,
+              "height": 2.2,
+              "depth": 0.2
+            },
+            "form": {
+              "material_role": "door",
+              "color": "#333333",
+              "construction": {
+                "system": "entrance",
+                "frameWidth": 0.06,
+                "frameDepth": 0.14,
+                "frameMaterial": "frame",
+                "surround": {
+                  "width": 0.08,
+                  "depth": 0.06,
+                  "embed": 0.015,
+                  "material": "facade_primary"
+                },
+                "leafDepth": 0.04,
+                "leafMaterial": "door",
+                "interaction": {
+                  "mode": "swing",
+                  "hingeSide": "left",
+                  "openAngle": 90
+                },
+                "canopy": {
+                  "width": 2.0,
+                  "depth": 1.4,
+                  "thickness": 0.18,
+                  "clearance": 0.35,
+                  "material": "structure",
+                  "soffit": {
+                    "thickness": 0.06,
+                    "embed": 0.015,
+                    "material": "accent"
+                  },
+                  "posts": {
+                    "width": 0.12,
+                    "baseY": 0,
+                    "material": "accent"
+                  }
+                }
+              }
+            }
+          },
+          "errors": {},
+          "output": {
+            "id": "front_entrance_door",
+            "geometry": {
+              "elements": [
+                {
+                  "id": "front_entrance_door_surround_left",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    0.46,
+                    1.4,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    0.08,
+                    2.2,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_entrance_door_surround_right",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    1.54,
+                    1.4,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    0.08,
+                    2.2,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_entrance_door_surround_top",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    1.0,
+                    2.54,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    1.16,
+                    0.08,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_entrance_door_soffit",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    1.0,
+                    2.82,
+                    -0.7925
+                  ],
+                  "dimensions": [
+                    2.0,
+                    0.06,
+                    1.415
+                  ],
+                  "material": "accent"
+                },
+                {
+                  "id": "front_entrance_door_post_left",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    0.06,
+                    1.395,
+                    -1.44
+                  ],
+                  "dimensions": [
+                    0.12,
+                    2.79,
+                    0.12
+                  ],
+                  "material": "accent"
+                },
+                {
+                  "id": "front_entrance_door_post_right",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    1.94,
+                    1.395,
+                    -1.44
+                  ],
+                  "dimensions": [
+                    0.12,
+                    2.79,
+                    0.12
+                  ],
+                  "material": "accent"
+                }
+              ],
+              "components": [
+                {
+                  "id": "front_entrance_door_opening",
+                  "type": "door",
+                  "parentWall": "wall_main_vol_front_L1",
+                  "from": [
+                    0.5,
+                    0.3,
+                    0.0
+                  ],
+                  "width": 1.0,
+                  "height": 2.2,
+                  "frameWidth": 0.06,
+                  "frameDepth": 0.14,
+                  "frameMaterial": "metal",
+                  "leafDepth": 0.04,
+                  "leafMaterial": "wood",
+                  "interaction": {
+                    "mode": "swing",
+                    "hingeSide": "left",
+                    "openAngle": 90
+                  }
+                },
+                {
+                  "id": "front_entrance_door_canopy",
+                  "type": "canopy",
+                  "parentWall": "wall_main_vol_front_L1",
+                  "from": [
+                    0.0,
+                    2.94,
+                    0.0
+                  ],
+                  "width": 2.0,
+                  "depth": 1.4,
+                  "thickness": 0.18,
+                  "supportCount": 0,
+                  "material": "concrete"
+                }
+              ]
+            },
+            "materials": {},
+            "assets": {}
+          }
+        }
+      ],
+      "references": "",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [
+        "front_entrance_door_surround_left",
+        "front_entrance_door_surround_right",
+        "front_entrance_door_surround_top",
+        "front_entrance_door_soffit",
+        "front_entrance_door_post_left",
+        "front_entrance_door_post_right"
+      ],
+      "components": [
+        "front_entrance_door_opening",
+        "front_entrance_door_canopy"
+      ],
+      "implementation_summary": {
+        "implemented": 1,
+        "abandoned": 0,
+        "total": 1,
+        "design_complete": true
+      }
+    },
+    "generate_4": {
+      "implementations": {
+        "front_window_right": {
+          "status": "implemented",
+          "entity_ids": [
+            "front_window_right_surround_left",
+            "front_window_right_surround_right",
+            "front_window_right_surround_top",
+            "front_window_right_surround_bottom",
+            "front_window_right_opening"
+          ],
+          "entity_fingerprint": "03eb31b7a2a18c8e6c93c40b2f27a75b45fa1d1ff7558754a539f30438349ca2",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [
+              "construction.framed_opening"
+            ],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "construct_system",
+              "stage": "construction",
+              "model_calls": 0,
+              "version": "construction-systems/1",
+              "marker_ids": [
+                "front_window_right"
+              ],
+              "source": {
+                "type": "window",
+                "id": "front_window_right",
+                "host": "main_vol",
+                "description": "Living area window",
+                "placement": {
+                  "face": "front",
+                  "floor": 1,
+                  "offset": 4.4,
+                  "sill_height": 0.9,
+                  "normal_offset": 0.0
+                },
+                "size": {
+                  "width": 1.2,
+                  "height": 1.5,
+                  "depth": 0.2
+                },
+                "form": {
+                  "material_role": "glass",
+                  "frame_color": "#888888",
+                  "construction": {
+                    "system": "framed_opening",
+                    "frameWidth": 0.06,
+                    "frameDepth": 0.14,
+                    "frameMaterial": "frame",
+                    "surround": {
+                      "width": 0.08,
+                      "depth": 0.06,
+                      "embed": 0.015,
+                      "material": "facade_primary"
+                    },
+                    "glassDepth": 0.02,
+                    "glassMaterial": "glass",
+                    "verticalMullions": 2,
+                    "horizontalMullions": 1,
+                    "mullionWidth": 0.035
+                  }
+                }
+              },
+              "errors": {},
+              "output": {
+                "id": "front_window_right",
+                "geometry": {
+                  "elements": [
+                    {
+                      "id": "front_window_right_surround_left",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        4.36,
+                        1.95,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        0.08,
+                        1.5,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_window_right_surround_right",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        5.64,
+                        1.95,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        0.08,
+                        1.5,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_window_right_surround_top",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        5.0,
+                        2.74,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        1.36,
+                        0.08,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_window_right_surround_bottom",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        5.0,
+                        1.16,
+                        -0.115
+                      ],
+                      "dimensions": [
+                        1.36,
+                        0.08,
+                        0.06
+                      ],
+                      "material": "wall_finish"
+                    }
+                  ],
+                  "components": [
+                    {
+                      "id": "front_window_right_opening",
+                      "type": "window",
+                      "parentWall": "wall_main_vol_front_L1",
+                      "from": [
+                        4.4,
+                        1.2,
+                        0.0
+                      ],
+                      "width": 1.2,
+                      "height": 1.5,
+                      "frameWidth": 0.06,
+                      "frameDepth": 0.14,
+                      "frameMaterial": "metal",
+                      "glassDepth": 0.02,
+                      "glassMaterial": "glass",
+                      "verticalMullions": 2,
+                      "horizontalMullions": 1,
+                      "mullionWidth": 0.035
+                    }
+                  ]
+                },
+                "materials": {},
+                "assets": {}
+              }
+            }
+          ],
+          "attempted_stages": [
+            "construction"
+          ]
+        },
+        "side_window_right": {
+          "status": "implemented",
+          "entity_ids": [
+            "side_window_right_surround_left",
+            "side_window_right_surround_right",
+            "side_window_right_surround_top",
+            "side_window_right_surround_bottom",
+            "side_window_right_opening"
+          ],
+          "entity_fingerprint": "8a6183c598aee1321e23e7747fd3ee4543e031fe51b8c0dff9549c74f7748fbe",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [
+              "construction.framed_opening"
+            ],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "construct_system",
+              "stage": "construction",
+              "model_calls": 0,
+              "version": "construction-systems/1",
+              "marker_ids": [
+                "side_window_right"
+              ],
+              "source": {
+                "type": "window",
+                "id": "side_window_right",
+                "host": "main_vol",
+                "description": "Side daylighting window",
+                "placement": {
+                  "face": "right",
+                  "floor": 1,
+                  "offset": 1.4,
+                  "sill_height": 0.9,
+                  "normal_offset": 0.0
+                },
+                "size": {
+                  "width": 1.2,
+                  "height": 1.5,
+                  "depth": 0.2
+                },
+                "form": {
+                  "material_role": "glass",
+                  "frame_color": "#888888",
+                  "construction": {
+                    "system": "framed_opening",
+                    "frameWidth": 0.06,
+                    "frameDepth": 0.14,
+                    "frameMaterial": "frame",
+                    "surround": {
+                      "width": 0.08,
+                      "depth": 0.06,
+                      "embed": 0.015,
+                      "material": "facade_primary"
+                    },
+                    "glassDepth": 0.02,
+                    "glassMaterial": "glass",
+                    "verticalMullions": 2,
+                    "horizontalMullions": 1,
+                    "mullionWidth": 0.035
+                  }
+                }
+              },
+              "errors": {},
+              "output": {
+                "id": "side_window_right",
+                "geometry": {
+                  "elements": [
+                    {
+                      "id": "side_window_right_surround_left",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        6.115,
+                        1.95,
+                        1.36
+                      ],
+                      "dimensions": [
+                        0.06,
+                        1.5,
+                        0.08
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "side_window_right_surround_right",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        6.115,
+                        1.95,
+                        2.64
+                      ],
+                      "dimensions": [
+                        0.06,
+                        1.5,
+                        0.08
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "side_window_right_surround_top",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        6.115,
+                        2.74,
+                        2.0
+                      ],
+                      "dimensions": [
+                        0.06,
+                        0.08,
+                        1.36
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "side_window_right_surround_bottom",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        6.115,
+                        1.16,
+                        2.0
+                      ],
+                      "dimensions": [
+                        0.06,
+                        0.08,
+                        1.36
+                      ],
+                      "material": "wall_finish"
+                    }
+                  ],
+                  "components": [
+                    {
+                      "id": "side_window_right_opening",
+                      "type": "window",
+                      "parentWall": "wall_main_vol_right_L1",
+                      "from": [
+                        1.4,
+                        1.2,
+                        0.0
+                      ],
+                      "width": 1.2,
+                      "height": 1.5,
+                      "frameWidth": 0.06,
+                      "frameDepth": 0.14,
+                      "frameMaterial": "metal",
+                      "glassDepth": 0.02,
+                      "glassMaterial": "glass",
+                      "verticalMullions": 2,
+                      "horizontalMullions": 1,
+                      "mullionWidth": 0.035
+                    }
+                  ]
+                },
+                "materials": {},
+                "assets": {}
+              }
+            }
+          ],
+          "attempted_stages": [
+            "construction"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "construct_system",
+          "stage": "construction",
+          "model_calls": 0,
+          "version": "construction-systems/1",
+          "marker_ids": [
+            "front_window_right"
+          ],
+          "source": {
+            "type": "window",
+            "id": "front_window_right",
+            "host": "main_vol",
+            "description": "Living area window",
+            "placement": {
+              "face": "front",
+              "floor": 1,
+              "offset": 4.4,
+              "sill_height": 0.9,
+              "normal_offset": 0.0
+            },
+            "size": {
+              "width": 1.2,
+              "height": 1.5,
+              "depth": 0.2
+            },
+            "form": {
+              "material_role": "glass",
+              "frame_color": "#888888",
+              "construction": {
+                "system": "framed_opening",
+                "frameWidth": 0.06,
+                "frameDepth": 0.14,
+                "frameMaterial": "frame",
+                "surround": {
+                  "width": 0.08,
+                  "depth": 0.06,
+                  "embed": 0.015,
+                  "material": "facade_primary"
+                },
+                "glassDepth": 0.02,
+                "glassMaterial": "glass",
+                "verticalMullions": 2,
+                "horizontalMullions": 1,
+                "mullionWidth": 0.035
+              }
+            }
+          },
+          "errors": {},
+          "output": {
+            "id": "front_window_right",
+            "geometry": {
+              "elements": [
+                {
+                  "id": "front_window_right_surround_left",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    4.36,
+                    1.95,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    0.08,
+                    1.5,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_window_right_surround_right",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    5.64,
+                    1.95,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    0.08,
+                    1.5,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_window_right_surround_top",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    5.0,
+                    2.74,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    1.36,
+                    0.08,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_window_right_surround_bottom",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    5.0,
+                    1.16,
+                    -0.115
+                  ],
+                  "dimensions": [
+                    1.36,
+                    0.08,
+                    0.06
+                  ],
+                  "material": "wall_finish"
+                }
+              ],
+              "components": [
+                {
+                  "id": "front_window_right_opening",
+                  "type": "window",
+                  "parentWall": "wall_main_vol_front_L1",
+                  "from": [
+                    4.4,
+                    1.2,
+                    0.0
+                  ],
+                  "width": 1.2,
+                  "height": 1.5,
+                  "frameWidth": 0.06,
+                  "frameDepth": 0.14,
+                  "frameMaterial": "metal",
+                  "glassDepth": 0.02,
+                  "glassMaterial": "glass",
+                  "verticalMullions": 2,
+                  "horizontalMullions": 1,
+                  "mullionWidth": 0.035
+                }
+              ]
+            },
+            "materials": {},
+            "assets": {}
+          }
+        },
+        {
+          "tool": "construct_system",
+          "stage": "construction",
+          "model_calls": 0,
+          "version": "construction-systems/1",
+          "marker_ids": [
+            "side_window_right"
+          ],
+          "source": {
+            "type": "window",
+            "id": "side_window_right",
+            "host": "main_vol",
+            "description": "Side daylighting window",
+            "placement": {
+              "face": "right",
+              "floor": 1,
+              "offset": 1.4,
+              "sill_height": 0.9,
+              "normal_offset": 0.0
+            },
+            "size": {
+              "width": 1.2,
+              "height": 1.5,
+              "depth": 0.2
+            },
+            "form": {
+              "material_role": "glass",
+              "frame_color": "#888888",
+              "construction": {
+                "system": "framed_opening",
+                "frameWidth": 0.06,
+                "frameDepth": 0.14,
+                "frameMaterial": "frame",
+                "surround": {
+                  "width": 0.08,
+                  "depth": 0.06,
+                  "embed": 0.015,
+                  "material": "facade_primary"
+                },
+                "glassDepth": 0.02,
+                "glassMaterial": "glass",
+                "verticalMullions": 2,
+                "horizontalMullions": 1,
+                "mullionWidth": 0.035
+              }
+            }
+          },
+          "errors": {},
+          "output": {
+            "id": "side_window_right",
+            "geometry": {
+              "elements": [
+                {
+                  "id": "side_window_right_surround_left",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    6.115,
+                    1.95,
+                    1.36
+                  ],
+                  "dimensions": [
+                    0.06,
+                    1.5,
+                    0.08
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "side_window_right_surround_right",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    6.115,
+                    1.95,
+                    2.64
+                  ],
+                  "dimensions": [
+                    0.06,
+                    1.5,
+                    0.08
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "side_window_right_surround_top",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    6.115,
+                    2.74,
+                    2.0
+                  ],
+                  "dimensions": [
+                    0.06,
+                    0.08,
+                    1.36
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "side_window_right_surround_bottom",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    6.115,
+                    1.16,
+                    2.0
+                  ],
+                  "dimensions": [
+                    0.06,
+                    0.08,
+                    1.36
+                  ],
+                  "material": "wall_finish"
+                }
+              ],
+              "components": [
+                {
+                  "id": "side_window_right_opening",
+                  "type": "window",
+                  "parentWall": "wall_main_vol_right_L1",
+                  "from": [
+                    1.4,
+                    1.2,
+                    0.0
+                  ],
+                  "width": 1.2,
+                  "height": 1.5,
+                  "frameWidth": 0.06,
+                  "frameDepth": 0.14,
+                  "frameMaterial": "metal",
+                  "glassDepth": 0.02,
+                  "glassMaterial": "glass",
+                  "verticalMullions": 2,
+                  "horizontalMullions": 1,
+                  "mullionWidth": 0.035
+                }
+              ]
+            },
+            "materials": {},
+            "assets": {}
+          }
+        }
+      ],
+      "references": "",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [
+        "front_window_right_surround_left",
+        "front_window_right_surround_right",
+        "front_window_right_surround_top",
+        "front_window_right_surround_bottom",
+        "side_window_right_surround_left",
+        "side_window_right_surround_right",
+        "side_window_right_surround_top",
+        "side_window_right_surround_bottom"
+      ],
+      "components": [
+        "front_window_right_opening",
+        "side_window_right_opening"
+      ],
+      "implementation_summary": {
+        "implemented": 2,
+        "abandoned": 0,
+        "total": 2,
+        "design_complete": true
+      }
+    },
+    "generate_5": {
+      "implementations": {
+        "ceiling_light_main": {
+          "status": "implemented",
+          "entity_ids": [
+            "ceiling_light_main"
+          ],
+          "entity_fingerprint": "501da06c3d498e38dd67e4b3326e74759a3853bfa08e03b1ea39798e2f692622",
+          "explanation": "",
+          "verification": "needs_review",
+          "geometry_review": {
+            "status": "needs_review",
+            "checked": [],
+            "unverified": [
+              "size.width 未建立原生字段映射",
+              "size.height 未建立原生字段映射",
+              "size.depth 未建立原生字段映射",
+              "造型与构造描述需要渲染复核"
+            ],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "search_knowledge",
+              "query": "light 灯具 pendant_light Central pendant light fixture  构造 形态 JSON 示例",
+              "result": "offline fixture",
+              "ok": true,
+              "error_type": null,
+              "has_shape_reference": true,
+              "injected_chunk_ids": [],
+              "web_required": false,
+              "web_reason": "已有构件参考、原生形态或图纸几何信息"
+            },
+            {
+              "tool": "generate_wild",
+              "stage": "generate",
+              "model_calls": 1,
+              "call_id": "fixture",
+              "enable_thinking": false,
+              "token_usage": null,
+              "finish_reason": "stop",
+              "output": "{\"implementations\": [{\"id\": \"ceiling_light_main\", \"geometry\": {\"elements\": [], \"components\": [{\"type\": \"light\", \"id\": \"ceiling_light_main\", \"position\": [3.0, 2.7, 2.0], \"body\": [{\"shape\": \"cylinder\", \"position\": [3.0, 2.95, 2.0], \"radius\": 0.01, \"height\": 0.1}, {\"shape\": \"cylinder\", \"position\": [3.0, 2.8, 2.0], \"radiusTop\": 0.06, \"radiusBottom\": 0.2, \"height\": 0.2}, {\"shape\": \"sphere\", \"position\": [3.0, 2.75, 2.0], \"radius\": 0.06, \"interactive\": true}], \"lightType\": \"point\", \"initiallyOn\": true}]}, \"materials\": {}, \"assets\": {}}]}",
+              "marker_ids": [
+                "ceiling_light_main"
+              ],
+              "errors": {}
+            }
+          ],
+          "attempted_stages": [
+            "generate"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "search_knowledge",
+          "query": "light 灯具 pendant_light Central pendant light fixture  构造 形态 JSON 示例",
+          "result": "offline fixture",
+          "ok": true,
+          "error_type": null,
+          "has_shape_reference": true,
+          "injected_chunk_ids": [],
+          "web_required": false,
+          "web_reason": "已有构件参考、原生形态或图纸几何信息"
+        },
+        {
+          "tool": "generate_wild",
+          "stage": "generate",
+          "model_calls": 1,
+          "call_id": "fixture",
+          "enable_thinking": false,
+          "token_usage": null,
+          "finish_reason": "stop",
+          "output": "{\"implementations\": [{\"id\": \"ceiling_light_main\", \"geometry\": {\"elements\": [], \"components\": [{\"type\": \"light\", \"id\": \"ceiling_light_main\", \"position\": [3.0, 2.7, 2.0], \"body\": [{\"shape\": \"cylinder\", \"position\": [3.0, 2.95, 2.0], \"radius\": 0.01, \"height\": 0.1}, {\"shape\": \"cylinder\", \"position\": [3.0, 2.8, 2.0], \"radiusTop\": 0.06, \"radiusBottom\": 0.2, \"height\": 0.2}, {\"shape\": \"sphere\", \"position\": [3.0, 2.75, 2.0], \"radius\": 0.06, \"interactive\": true}], \"lightType\": \"point\", \"initiallyOn\": true}]}, \"materials\": {}, \"assets\": {}}]}",
+          "marker_ids": [
+            "ceiling_light_main"
+          ],
+          "errors": {}
+        }
+      ],
+      "references": "offline fixture",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [],
+      "components": [
+        "ceiling_light_main"
+      ],
+      "implementation_summary": {
+        "implemented": 1,
+        "abandoned": 0,
+        "total": 1,
+        "design_complete": true
+      }
+    },
+    "generate_6": {
+      "implementations": {
+        "front_band": {
+          "status": "implemented",
+          "entity_ids": [
+            "front_band_layer_0",
+            "front_band_layer_1",
+            "front_band_layer_2"
+          ],
+          "entity_fingerprint": "ff41a85e143b5ab2d77fcef558a4496517e464d91e8a9671c1427379f0145a5e",
+          "explanation": "",
+          "verification": "geometry_validated",
+          "geometry_review": {
+            "status": "checked",
+            "checked": [
+              "construction.layered_band"
+            ],
+            "unverified": [],
+            "errors": []
+          },
+          "attempts": [
+            {
+              "tool": "construct_system",
+              "stage": "construction",
+              "model_calls": 0,
+              "version": "construction-systems/1",
+              "marker_ids": [
+                "front_band"
+              ],
+              "source": {
+                "type": "cornice",
+                "id": "front_band",
+                "host": "main_vol",
+                "description": "",
+                "placement": {
+                  "offset": 0.0,
+                  "sill_height": 0.0,
+                  "normal_offset": 0.0,
+                  "position": [
+                    3,
+                    3.15,
+                    -0.25
+                  ]
+                },
+                "size": {
+                  "width": 6.0,
+                  "height": 0.28,
+                  "depth": 0.32
+                },
+                "form": {
+                  "construction": {
+                    "system": "layered_band",
+                    "axis": "x",
+                    "layers": [
+                      {
+                        "fraction": 0.25,
+                        "depth_ratio": 0.65,
+                        "material": "facade_primary"
+                      },
+                      {
+                        "fraction": 0.5,
+                        "depth_ratio": 0.8,
+                        "material": "accent"
+                      },
+                      {
+                        "fraction": 0.25,
+                        "depth_ratio": 1,
+                        "material": "structure"
+                      }
+                    ]
+                  }
+                }
+              },
+              "errors": {},
+              "output": {
+                "id": "front_band",
+                "geometry": {
+                  "elements": [
+                    {
+                      "id": "front_band_layer_0",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        3,
+                        3.045,
+                        -0.25
+                      ],
+                      "dimensions": [
+                        6.0,
+                        0.07,
+                        0.208
+                      ],
+                      "material": "wall_finish"
+                    },
+                    {
+                      "id": "front_band_layer_1",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        3,
+                        3.15,
+                        -0.25
+                      ],
+                      "dimensions": [
+                        6.0,
+                        0.14,
+                        0.256
+                      ],
+                      "material": "accent"
+                    },
+                    {
+                      "id": "front_band_layer_2",
+                      "type": "primitive",
+                      "shape": "box",
+                      "position": [
+                        3,
+                        3.255,
+                        -0.25
+                      ],
+                      "dimensions": [
+                        6.0,
+                        0.07,
+                        0.32
+                      ],
+                      "material": "concrete"
+                    }
+                  ],
+                  "components": []
+                },
+                "materials": {},
+                "assets": {}
+              }
+            }
+          ],
+          "attempted_stages": [
+            "construction"
+          ]
+        }
+      },
+      "trace": [
+        {
+          "tool": "construct_system",
+          "stage": "construction",
+          "model_calls": 0,
+          "version": "construction-systems/1",
+          "marker_ids": [
+            "front_band"
+          ],
+          "source": {
+            "type": "cornice",
+            "id": "front_band",
+            "host": "main_vol",
+            "description": "",
+            "placement": {
+              "offset": 0.0,
+              "sill_height": 0.0,
+              "normal_offset": 0.0,
+              "position": [
+                3,
+                3.15,
+                -0.25
+              ]
+            },
+            "size": {
+              "width": 6.0,
+              "height": 0.28,
+              "depth": 0.32
+            },
+            "form": {
+              "construction": {
+                "system": "layered_band",
+                "axis": "x",
+                "layers": [
+                  {
+                    "fraction": 0.25,
+                    "depth_ratio": 0.65,
+                    "material": "facade_primary"
+                  },
+                  {
+                    "fraction": 0.5,
+                    "depth_ratio": 0.8,
+                    "material": "accent"
+                  },
+                  {
+                    "fraction": 0.25,
+                    "depth_ratio": 1,
+                    "material": "structure"
+                  }
+                ]
+              }
+            }
+          },
+          "errors": {},
+          "output": {
+            "id": "front_band",
+            "geometry": {
+              "elements": [
+                {
+                  "id": "front_band_layer_0",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    3,
+                    3.045,
+                    -0.25
+                  ],
+                  "dimensions": [
+                    6.0,
+                    0.07,
+                    0.208
+                  ],
+                  "material": "wall_finish"
+                },
+                {
+                  "id": "front_band_layer_1",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    3,
+                    3.15,
+                    -0.25
+                  ],
+                  "dimensions": [
+                    6.0,
+                    0.14,
+                    0.256
+                  ],
+                  "material": "accent"
+                },
+                {
+                  "id": "front_band_layer_2",
+                  "type": "primitive",
+                  "shape": "box",
+                  "position": [
+                    3,
+                    3.255,
+                    -0.25
+                  ],
+                  "dimensions": [
+                    6.0,
+                    0.07,
+                    0.32
+                  ],
+                  "material": "concrete"
+                }
+              ],
+              "components": []
+            },
+            "materials": {},
+            "assets": {}
+          }
+        }
+      ],
+      "references": "",
+      "partial_implementations": {},
+      "failed_implementations": {},
+      "failures": {},
+      "materials": {},
+      "assets": {},
+      "elements": [
+        "front_band_layer_0",
+        "front_band_layer_1",
+        "front_band_layer_2"
+      ],
+      "components": [],
+      "implementation_summary": {
+        "implemented": 1,
+        "abandoned": 0,
+        "total": 1,
+        "design_complete": true
+      }
+    }
+  },
+  "thinking_mode": false,
+  "session_id": "construction-offline",
+  "user_message": "离线构造装配回归",
+  "plan": {
+    "schema_version": "plan/1.0",
+    "revision": 1,
+    "detail_level": "minimal",
+    "budget": {
+      "iterations": 30,
+      "llm_calls": 28,
+      "max_items": 6
+    },
+    "items": [
+      {
+        "id": "generate_1",
+        "op": "generate",
+        "kind": "building_body",
+        "label": "建筑主体",
+        "target": {
+          "marker_ids": [
+            "building_body"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 1,
+            "marker_chars": 5104,
+            "host_count": 0,
+            "floor_count": 0,
+            "dependency_count": 0
+          },
+          "execution_mode": "serial",
+          "parallel_group": ""
+        },
+        "depends_on": [],
+        "origin": "plan",
+        "status": "ready",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      },
+      {
+        "id": "generate_2",
+        "op": "generate",
+        "kind": "roof",
+        "label": "屋顶",
+        "target": {
+          "marker_ids": [
+            "roof_main_vol"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 1,
+            "marker_chars": 389,
+            "host_count": 1,
+            "floor_count": 0,
+            "dependency_count": 1
+          },
+          "execution_mode": "parallel",
+          "parallel_group": "drawing"
+        },
+        "depends_on": [
+          "generate_1"
+        ],
+        "origin": "plan",
+        "status": "blocked",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      },
+      {
+        "id": "generate_3",
+        "op": "generate",
+        "kind": "door",
+        "label": "门",
+        "target": {
+          "marker_ids": [
+            "front_entrance_door"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 1,
+            "marker_chars": 1352,
+            "host_count": 1,
+            "floor_count": 1,
+            "dependency_count": 1
+          },
+          "execution_mode": "parallel",
+          "parallel_group": "drawing"
+        },
+        "depends_on": [
+          "generate_1"
+        ],
+        "origin": "plan",
+        "status": "blocked",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      },
+      {
+        "id": "generate_4",
+        "op": "generate",
+        "kind": "window",
+        "label": "窗",
+        "target": {
+          "marker_ids": [
+            "front_window_right",
+            "side_window_right"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 2,
+            "marker_chars": 2328,
+            "host_count": 2,
+            "floor_count": 1,
+            "dependency_count": 1
+          },
+          "execution_mode": "parallel",
+          "parallel_group": "drawing"
+        },
+        "depends_on": [
+          "generate_1"
+        ],
+        "origin": "plan",
+        "status": "blocked",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      },
+      {
+        "id": "generate_5",
+        "op": "generate",
+        "kind": "light",
+        "label": "灯具",
+        "target": {
+          "marker_ids": [
+            "ceiling_light_main"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 1,
+            "marker_chars": 493,
+            "host_count": 0,
+            "floor_count": 0,
+            "dependency_count": 1
+          },
+          "execution_mode": "parallel",
+          "parallel_group": "drawing"
+        },
+        "depends_on": [
+          "generate_1"
+        ],
+        "origin": "plan",
+        "status": "blocked",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      },
+      {
+        "id": "generate_6",
+        "op": "generate",
+        "kind": "cornice",
+        "label": "檐口",
+        "target": {
+          "marker_ids": [
+            "front_band"
+          ]
+        },
+        "params": {
+          "design_markers": true,
+          "design_hash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+          "batch_load": {
+            "marker_count": 1,
+            "marker_chars": 857,
+            "host_count": 1,
+            "floor_count": 0,
+            "dependency_count": 1
+          },
+          "execution_mode": "parallel",
+          "parallel_group": "drawing"
+        },
+        "depends_on": [
+          "generate_1"
+        ],
+        "origin": "plan",
+        "status": "blocked",
+        "run": {
+          "state": "idle",
+          "attempts": 0,
+          "max_attempts": 1,
+          "artifacts": [],
+          "evidence": "",
+          "elapsed_ms": null
+        }
+      }
+    ],
+    "history": [],
+    "iterations": 0,
+    "no_progress_rounds": 0,
+    "last_progress_signature": "",
+    "give_up": false,
+    "llm_calls": 0
+  },
+  "plan_events": [
+    {
+      "item_id": "generate_1",
+      "label": "建筑主体",
+      "op": "generate",
+      "kind": "building_body",
+      "status": "ready",
+      "evidence": "",
+      "elapsed_ms": null
+    },
+    {
+      "item_id": "generate_2",
+      "label": "屋顶",
+      "op": "generate",
+      "kind": "roof",
+      "status": "blocked",
+      "evidence": "",
+      "elapsed_ms": null
+    },
+    {
+      "item_id": "generate_3",
+      "label": "门",
+      "op": "generate",
+      "kind": "door",
+      "status": "blocked",
+      "evidence": "",
+      "elapsed_ms": null
+    },
+    {
+      "item_id": "generate_4",
+      "label": "窗",
+      "op": "generate",
+      "kind": "window",
+      "status": "blocked",
+      "evidence": "",
+      "elapsed_ms": null
+    },
+    {
+      "item_id": "generate_5",
+      "label": "灯具",
+      "op": "generate",
+      "kind": "light",
+      "status": "blocked",
+      "evidence": "",
+      "elapsed_ms": null
+    },
+    {
+      "item_id": "generate_6",
+      "label": "檐口",
+      "op": "generate",
+      "kind": "cornice",
+      "status": "blocked",
+      "evidence": "",
+      "elapsed_ms": null
+    }
+  ],
+  "drawing_hosts": [
+    {
+      "id": "wall_main_vol_front_L1",
+      "type": "wall",
+      "from": [
+        0.0,
+        0.3,
+        0.0
+      ],
+      "to": [
+        6.0,
+        3.3,
+        0.0
+      ],
+      "facing": "front",
+      "design_path": "/decisions/volumes/0"
+    },
+    {
+      "id": "wall_main_vol_right_L1",
+      "type": "wall",
+      "from": [
+        6.0,
+        0.3,
+        0.0
+      ],
+      "to": [
+        6.0,
+        3.3,
+        4.0
+      ],
+      "facing": "right",
+      "design_path": "/decisions/volumes/0"
+    },
+    {
+      "id": "wall_main_vol_back_L1",
+      "type": "wall",
+      "from": [
+        6.0,
+        0.3,
+        4.0
+      ],
+      "to": [
+        0.0,
+        3.3,
+        4.0
+      ],
+      "facing": "back",
+      "design_path": "/decisions/volumes/0"
+    },
+    {
+      "id": "wall_main_vol_left_L1",
+      "type": "wall",
+      "from": [
+        0.0,
+        0.3,
+        4.0
+      ],
+      "to": [
+        0.0,
+        3.3,
+        0.0
+      ],
+      "facing": "left",
+      "design_path": "/decisions/volumes/0"
+    }
+  ],
+  "skeleton_blueprint": {
+    "meta": {
+      "version": "1.0",
+      "type": "building",
+      "name": "Single-story modern villa, 6x4m footprint, flat roof, clear entrance and minimal fenestration.",
+      "designHash": "sha256:2f255f130cc6de292df64a1275800d3326a3f9a710f7f46db6fd75d33304357b",
+      "designRevision": 1
+    },
+    "geometry": {
+      "elements": [],
+      "components": []
+    },
+    "materials": {
+      "wall_finish": {
+        "baseColor": [
+          0.96,
+          0.96,
+          0.96
+        ],
+        "roughness": 0.75,
+        "metallic": 0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "concrete": {
+        "baseColor": [
+          0.85,
+          0.85,
+          0.85
+        ],
+        "roughness": 0.8,
+        "metallic": 0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "floor_finish": {
+        "baseColor": [
+          0.65,
+          0.65,
+          0.65
+        ],
+        "roughness": 0.7,
+        "metallic": 0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "metal": {
+        "baseColor": [
+          0.53,
+          0.53,
+          0.53
+        ],
+        "roughness": 0.4,
+        "metallic": 0.7,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "wood": {
+        "baseColor": [
+          0.2,
+          0.2,
+          0.2
+        ],
+        "roughness": 0.5,
+        "metallic": 0.1,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "glass": {
+        "baseColor": [
+          0.7,
+          0.85,
+          0.95
+        ],
+        "roughness": 0.05,
+        "metallic": 0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon",
+        "materialClass": "glass",
+        "side": "double",
+        "transmission": 0.92,
+        "ior": 1.5,
+        "thickness": 0.012,
+        "attenuationColor": [
+          0.82,
+          0.94,
+          1.0
+        ],
+        "attenuationDistance": 6.0,
+        "clearcoat": 0.08,
+        "clearcoatRoughness": 0.12
+      },
+      "roof": {
+        "baseColor": [
+          0.29,
+          0.3,
+          0.32
+        ],
+        "roughness": 0.8,
+        "metallic": 0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "ground": {
+        "baseColor": [
+          0.34,
+          0.38,
+          0.33
+        ],
+        "roughness": 0.9,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      },
+      "accent": {
+        "baseColor": [
+          0.42,
+          0.2,
+          0.09
+        ],
+        "roughness": 0.5,
+        "metallic": 0.0,
+        "albedo": 1.0,
+        "lightingCondition": "D65_noon"
+      }
+    },
+    "assets": {}
+  },
+  "design_brief": {},
+  "merged_blueprint": {},
+  "current_item_id": null,
+  "plan_diag": {
+    "source": "drawing_implementation",
+    "model_calls": 0,
+    "marker_count": 7,
+    "total_ms": 136
+  }
+}

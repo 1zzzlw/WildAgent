@@ -11,6 +11,18 @@ def entity_index(blueprint: dict) -> dict:
             for e in geometry.get(bucket, []) if isinstance(e, dict) and e.get("id")}
 
 
+def furniture_target(marker, entity):
+    """设计中心转为原生家具底部锚点；倾斜家具不套用竖直高度换算。"""
+    design = marker.get("design") or {}
+    size, position = design.get("size") or {}, (design.get("placement") or {}).get("position")
+    fields = {"dimensions": {k: size[k] for k in ("width", "height", "depth") if k in size}}
+    rotation = entity.get("rotation", [0, 0, 0])
+    if (isinstance(position, list) and len(position) == 3 and "height" in size
+            and isinstance(rotation, list) and len(rotation) == 3 and rotation[0] == rotation[2] == 0):
+        fields["position"] = [position[0], position[1]-size["height"]/2, position[2]]
+    return fields
+
+
 def delegated_geometry_errors(entities: list[dict], marker: dict, markers) -> list[str]:
     """平屋面与另派女儿墙的有限归属检查，不把屋面以下支承误作女儿墙。"""
     from app.agent.knowledge.component_names import resolve_component_name
@@ -68,13 +80,16 @@ def stair_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> 
 def component_geometry_review(blueprint: dict, entities: list[dict], marker: dict) -> dict:
     """精确核对可映射的组合尺寸；旋转/曲面/未知形式列待审核。"""
     from app.agent.knowledge.component_names import resolve_component_name
+    from .construction_systems import construction_spec, construction_review
+    if construction_spec(marker.get("design") or {}) is not None:
+        return construction_review(blueprint, entities, marker)
 
     design = marker.get("design") or {}
     size, placement = design.get("size") or {}, design.get("placement") or {}
     form = design.get("form") if isinstance(design.get("form"), dict) else {"description": design.get("form")}
     family = resolve_component_name(marker["type"])["entity_type"]
     checked, unverified, errors = [], [], []
-    if (len(entities) > 1 or family in {"", "primitive"}) and size and family not in {"door", "window", "roof", "railing", "stair"}:
+    if (len(entities) > 1 or family in {"", "primitive", "component"}) and size and family not in {"door", "window", "roof", "railing", "stair"}:
         boxes = (bool(entities) and not placement.get("face") and not design.get("relation")
                  and not any(form.get(k) for k in ("orientation", "rotation", "rotation_y"))
                  and all(e.get("type") == "primitive" and e.get("shape") == "box"
@@ -122,6 +137,21 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
             unverified.append("组合整体尺寸与定位需要复核，当前形态不能按未旋转 box 尺度验收")
         if set(size) - {"width", "height", "depth"}:
             unverified.append("组合的其他尺寸参数暂无实体映射")
+    elif len(entities) == 1 and family == "furniture" and entities[0].get("type") == "furniture":
+        entity = entities[0]
+        target = furniture_target(marker, entity)
+        for key, value in target["dimensions"].items():
+            actual = (entity.get("dimensions") or {}).get(key)
+            checked.append("size."+key)
+            if type(actual) not in (int, float) or abs(actual-value) > TOLERANCE:
+                errors.append(f"图纸标记 {marker['id']}：/dimensions/{key} 应为 {value}，实际 {actual}")
+        if "position" in target:
+            checked.append("placement.position")
+            actual = entity.get("position", [0, 0, 0])
+            if any(abs(a-b) > TOLERANCE for a, b in zip(actual, target["position"])):
+                errors.append(f"图纸标记 {marker['id']}：/position 应为底部锚点 {target['position']}，实际 {actual}；图纸位置是中心")
+        elif placement.get("position"):
+            unverified.append("倾斜或缺少高度的家具需复核中心到底部锚点的转换")
     elif len(entities) == 1 and family == "beam" and entities[0].get("type") == "beam":
         beam = entities[0]
         a, b = beam.get("from"), beam.get("to")
@@ -162,6 +192,8 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
         unverified.append("造型与构造描述需要渲染复核")
     if family == "stair" and not marker.get("floor_connections"):
         unverified.append("楼梯未声明具体楼面连接")
+    if family == "roof" and any(e.get("type") == "primitive" for e in entities):
+        unverified.append("自定义屋面与支承封闭的整体关系仍需复核；覆盖检查不证明多实体接合")
     material_id = marker.get("material_id")
     if design.get("material_role"):
         materials = blueprint.get("materials") or {}
@@ -172,8 +204,19 @@ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dic
             from app.agent.generation.material.plan import material_region_field
 
             definition = {"opacity": 1, **expected}
-            references = [e.get(material_region_field(design["material_role"], e.get("type", "")))
-                          for e in entities]
+            references = []
+            for entity in entities:
+                if entity.get("type") == "light":
+                    # 与 light.ts 一致：显式 body 覆盖预设；只有缺少子部件材质才继承。
+                    if entity.get("body"):
+                        references.extend(part.get("material", entity.get("material", entity.get("shadeMaterial")))
+                                          for part in entity["body"])
+                    else:
+                        references.extend(entity.get(k, entity.get("material")) for k in ("material", "baseMaterial"))
+                        if entity.get("fixtureType") == "table_lamp":
+                            references.append(entity.get("shadeMaterial", entity.get("material")))
+                else:
+                    references.append(entity.get(material_region_field(design["material_role"], entity.get("type", ""))))
             if not any({"opacity": 1, **materials[reference]} == definition
                        for reference in references if isinstance(reference, str)
                        and isinstance(materials.get(reference), dict)):
@@ -349,6 +392,50 @@ def coalesce_body_walls(blueprint, row, markers, *, diagram_hosts=None):
     return row, changes
 
 
+def roof_box_surface(entity):
+    """单轴倾斜 box 的上表面平面，供安装与验收共用。"""
+    if entity.get("type") != "primitive" or entity.get("shape") != "box":
+        return None
+    dimensions, scale = entity.get("dimensions"), entity.get("scale", [1, 1, 1])
+    position, rotation = entity.get("position", [0, 0, 0]), entity.get("rotation", [0, 0, 0])
+    if not all(isinstance(v, list) and len(v) == 3 and all(type(n) in (int, float) and isfinite(n) for n in v)
+               for v in (dimensions, scale, position, rotation)):
+        return None
+    rx, ry, rz = rotation
+    w, h, d = [v*s for v, s in zip(dimensions, scale)]
+    if ry or (rx and rz) or cos(rx)*cos(rz) <= 0 or min(w, h, d) <= 0:
+        return None
+    x, y, z = position
+    x, y, z = x-h/2*sin(rz), y+h/2*cos(rx)*cos(rz), z+h/2*sin(rx)
+    return {"bounds": (x-w/2*cos(rz), z-d/2*cos(rx), x+w/2*cos(rz), z+d/2*cos(rx)),
+            "center": (x, y, z), "slope": (tan(rz), -tan(rx)),
+            "vertical_thickness": h/(cos(rx)*cos(rz))}
+
+
+def place_roof_surface(row, marker):
+    """只有自动单坡整板的投影尺寸吻合时，按批准覆盖范围求唯一安装平移。"""
+    design = marker.get("design") or {}
+    volume = design.get("volume")
+    if (not isinstance(volume, dict) or design.get("roof_type", design.get("type")) != "shed"
+            or design.get("size") or (design.get("placement") or {}).get("position")):
+        return []
+    entities = [e for bucket in ("elements", "components") for e in row.get("geometry", {}).get(bucket, [])]
+    if len(entities) != 1 or not (surface := roof_box_surface(entities[0])):
+        return []
+    a, b, c, d = surface["bounds"]
+    overhang = design.get("overhang", 0)
+    if abs(c-a-volume["width"]-2*overhang) > TOLERANCE or abs(d-b-volume["depth"]-2*overhang) > TOLERANCE:
+        return []
+    dx, dz = volume["x"]+volume["width"]/2-(a+c)/2, volume["z"]+volume["depth"]/2-(b+d)/2
+    if max(abs(dx), abs(dz)) <= TOLERANCE:
+        return []
+    entity = entities[0]
+    before = list(entity.get("position", [0, 0, 0]))
+    entity["position"] = [before[0]+dx, before[1], before[2]+dz]
+    return [{"rule": "compiler.roof_surface_placement", "entity_id": entity.get("id"),
+             "field": "position", "before": before, "after": list(entity["position"])}]
+
+
 def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> list[str]:
     """核对矩形体量屋面的投影并集；封檐条不能替代整片屋面。"""
     volume = marker.get("design", {}).get("volume")
@@ -366,7 +453,7 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
         # 显式构件按整体中心定位；自动屋面标记才直接使用墙顶标高。
         elevation = position[1] - height / 2
     native_roofs = {e["id"]: e for e in entities if e.get("type") == "roof"}
-    regions, projected, below = [], [], []
+    regions, projected, below, support_gaps = [], [], [], []
     for x0, x1, z0, z1, y, entity_id in _roof_footprint_entries(entities, walls):
         roof = native_roofs[entity_id]
         surface_y = y + roof["thickness"] if roof.get("roofType") == "flat" else y
@@ -384,24 +471,20 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
                 regions.append((min(a[0], b[0]), min(a[2], b[2]), max(a[0], b[0]), max(a[2], b[2])))
                 projected.append(regions[-1])
         elif entity.get("type") == "primitive" and entity.get("shape") == "box":
-            rx, ry, rz = entity.get("rotation", [0, 0, 0])
-            # 单轴倾斜的 box 上表面仍投影为矩形，不用整个包围盒冒充屋面。
-            if ry or (rx and rz) or cos(rx)*cos(rz) <= 0:
+            surface = roof_box_surface(entity)
+            if surface is None:
                 continue
-            w, h, d = [v*s for v, s in zip(entity["dimensions"], entity.get("scale", [1, 1, 1]))]
-            if min(w, h, d) <= 0:
-                continue
-            x, y, z = entity.get("position", [0, 0, 0])
-            x -= h/2*sin(rz)
-            z += h/2*sin(rx)
-            bounds = (x-w/2*cos(rz), z-d/2*cos(rx), x+w/2*cos(rz), z+d/2*cos(rx))
+            bounds = surface["bounds"]
+            x, surface_y, z = surface["center"]
+            sx, sz = surface["slope"]
+            y = entity.get("position", [0, 0, 0])[1]
             a, b, c, e = bounds
             a, b = max(a, volume["x"]), max(b, volume["z"])
             c, e = min(c, volume["x"]+volume["width"]), min(e, volume["z"]+volume["depth"])
             # 外挑屋檐允许继续降坡；标高校验只针对体量内的承托区域。
-            lowest = (y+h/2*cos(rx)*cos(rz)+min((a-x)*tan(rz), (c-x)*tan(rz))
-                      -max((b-z)*tan(rx), (e-z)*tan(rx))) if a <= c and b <= e else (
-                          y+h/2*cos(rx)*cos(rz)-abs(d/2*sin(rx))-abs(w/2*sin(rz)))
+            if a > c or b > e:
+                a, b, c, e = bounds
+            lowest = surface_y+min((a-x)*sx, (c-x)*sx)+min((b-z)*sz, (e-z)*sz)
             projected.append(bounds)
             if lowest >= elevation-TOLERANCE:
                 regions.append(bounds)
@@ -409,6 +492,39 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
                 below.append(f"[{entity['id']}] 体量内屋面最低标高 {lowest:.3f}m 低于承托标高 {elevation:.3f}m；"
                              f"/position/1 当前 {y:.3f}，保持尺寸和坡角时中心Y至少为 {y+elevation-lowest:.3f}m；"
                              "同时落实斜屋面与墙顶的封闭支承，不能只抬高屋面留下缝隙")
+            # 裸坡板覆盖了平面，仍可能整边悬在封闭外墙上方；只核对可精确求解的直墙。
+            # 多实体支承的形态仍列待复核，不能把它们的包围盒当作已封闭的证明。
+            if len(entities) == 1 and (sx or sz):
+                for wall in walls:
+                    if wall.get("curve"):
+                        continue
+                    start, end = wall["from"], wall["to"]
+                    top = max(start[1], end[1])
+                    if abs(top-elevation) > TOLERANCE:
+                        continue
+                    for along, normal, origin, extent, edge, cross_extent in (
+                            (0, 2, volume["x"], volume["width"], volume["z"], volume["depth"]),
+                            (2, 0, volume["z"], volume["depth"], volume["x"], volume["width"])):
+                        if abs(start[normal]-end[normal]) > TOLERANCE or min(
+                                abs(start[normal]-edge), abs(start[normal]-edge-cross_extent)) > TOLERANCE:
+                            continue
+                        lo, hi = max(min(start[along], end[along]), origin), min(max(start[along], end[along]), origin+extent)
+                        if hi-lo <= TOLERANCE:
+                            continue
+                        points = [[v, start[2]] if along == 0 else [start[0], v] for v in (lo, hi)]
+                        undersides = [surface_y+(px-x)*sx+(pz-z)*sz-surface["vertical_thickness"] for px, pz in points]
+                        gap = max(undersides)-top
+                        # 附楼共用高楼外墙时，上层连续墙已经填满该侧，不能按一层墙顶误报。
+                        continued = any(not other.get("curve")
+                            and all(abs(p[normal]-start[normal]) <= TOLERANCE for p in (other["from"], other["to"]))
+                            and min(other["from"][along], other["to"][along]) <= lo+TOLERANCE
+                            and max(other["from"][along], other["to"][along]) >= hi-TOLERANCE
+                            and min(other["from"][1], other["to"][1]) <= top+TOLERANCE
+                            and max(other["from"][1], other["to"][1]) >= max(undersides)-TOLERANCE
+                            for other in walls)
+                        if gap > TOLERANCE and not continued:
+                            support_gaps.append(f"[{wall['id']}] 墙顶 {top:.3f}m，XZ 端点 {points} 对应屋面底 "
+                                                f"{[round(v, 3) for v in undersides]}m，最大空隙 {gap:.3f}m")
     overhang = marker["design"].get("overhang", 0)
     target = (volume["x"]-overhang, volume["z"]-overhang,
               volume["x"]+volume["width"]+overhang, volume["z"]+volume["depth"]+overhang)
@@ -420,6 +536,9 @@ def roof_design_errors(blueprint: dict, entities: list[dict], marker: dict) -> l
         coverage = ("平面投影已覆盖体量及出檐" if projected_missing <= TOLERANCE else
                     f"平面投影还缺少 {projected_missing:.3f}㎡，核对倾斜后上表面的 X/Z 中心与投影宽深")
         return [f"❌ [{entities[0]['id']}] 图纸标记 {marker['id']}：{coverage}；" + "；".join(below)]
+    if missing <= TOLERANCE and support_gaps:
+        return [f"❌ [{entities[0]['id']}] 图纸标记 {marker['id']}：单片坡屋面缺少墙顶封闭支承；"
+                + "；".join(support_gaps[:4]) + "；保留批准坡向、范围和墙体，补充实际支承/封闭构件；只抬高或平移屋面不能解决"]
     return ([f"❌ [{entities[0]['id']}] 图纸标记 {marker['id']}：屋面未覆盖负责体量及出檐，"
              f"缺少 {missing:.3f}㎡；目标 X/Z 范围 {target}，已有上表面投影 {regions[:6]}；"
              "核对倾斜后的投影尺寸及中心，保持连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box"]

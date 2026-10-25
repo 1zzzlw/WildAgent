@@ -1,0 +1,15 @@
+2026-10-24 23:24:31.986 | INFO     | app.services.agent_service:_create_spec_loader:921 - RAGSpecLoader: 已启用 Chroma, persist_dir=E:\AgentProject\WildAgent\wild-server\storage\chroma, collection=wild_knowledge_base
+2026-10-24 23:24:31.986 | INFO     | app.services.agent_service:_create_spec_loader:926 - RAG 索引同步: total=0, updated=0, deleted=0（自动同步已关闭）
+2026-10-24 23:24:31.986 | INFO     | app.services.agent_service:__init__:880 - AgentService 初始化完成
+2026-10-24 23:24:33.141 | ERROR    | app.utils.json_extractor:_log_miss:133 - JSON 对象提取失败（文本里没有完整可解析的对象）: ```json
+{
+  "parameters": {
+    "wall_h": 3.6,
+    "floor_level": 0.15,
+    "roof_overhang": 0.8,
+    "frame_w": 0.06,
+    "glass_d": 0.02,
+    "sill_std": 0.9,
+    "sill_low": 0.4,
+    "door_h": 2.4,
+{"ok": true, "checks": 126}

@@ -8,7 +8,7 @@ import asyncio
 from pydantic import ValidationError
 
 from app.agent.generation.architecture import resolve_complexity_profile
-from app.agent.generation.architecture.design_workflow import draft_design
+from app.agent.generation.architecture.design_workflow import draft_design, refine_construction
 from app.agent.state import GenerationState
 from app.agent.prompts import build_architecture_plan_prompt
 from app.agent.runtime import get_reasoning_callback
@@ -431,6 +431,15 @@ async def architecture_planner(state: GenerationState) -> dict:
             load_repair_rules=load_repair_rules,
             call_accounting=accounting,
         )
+        if raw and complexity["level"] in {"standard", "detailed"}:
+            raw, refinement = await refine_construction(raw, user_request=message,
+                diagram_hosts=accepted["resolved"].projection_elements, validate=validate, call_accounting=accounting)
+            diag["construction_refinement"] = refinement
+            diag["model_calls"] += refinement["model_calls"]
+            from app.llm.invocation import merge_token_usage
+            diag["token_usage"] = merge_token_usage(diag.get("token_usage"), refinement.get("token_usage"))
+            if refinement["status"] in {"partial", "rejected"}:
+                accepted["resolved"].warnings.append("部分构造深化未采用，相关标记保留原设计："+refinement["error"])
     except DesignContractError as exc:
         return {"status": "failed", "error": str(exc)}
     except Exception as exc:

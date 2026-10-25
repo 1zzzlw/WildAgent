@@ -1,0 +1,88 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "a1b3cd09c019888e8bce655981510cb7755c6526de61ccc49f7f79d7f8228a43",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "pipeline": "editor-presentation-v1",
+    "time": "day",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 0.29928,
+    "lighting": {
+      "hemisphereSkyColor": 14478846,
+      "hemisphereGroundColor": 6772036,
+      "hemisphereIntensity": 0.6156108000000001,
+      "keyColor": 16707797,
+      "keyIntensity": 11.009400000000001
+    },
+    "sunDirection": [
+      0.5254827454987588,
+      0.6691306063588582,
+      -0.5254827454987588
+    ],
+    "ground": {
+      "color": 7699314,
+      "y": 0.12999999701976775
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "c70c0a95d8f32cc1f509ebf2673feefbcda13f6a386b92b3495e1216620b5c43",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 72,
+  "materialCount": 72,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -0.4549999237060547,
+      0.14999999701976774,
+      -1.4999999986588954
+    ],
+    "max": [
+      6.454999923706055,
+      3.519999998807907,
+      4.454999923706055
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "docs\\10月24日\\构造深化与确定性实现\\render-offline\\front.png",
+      "bytes": 555000
+    },
+    {
+      "view": "side",
+      "file": "docs\\10月24日\\构造深化与确定性实现\\render-offline\\side.png",
+      "bytes": 514705
+    },
+    {
+      "view": "top",
+      "file": "docs\\10月24日\\构造深化与确定性实现\\render-offline\\top.png",
+      "bytes": 442404
+    },
+    {
+      "view": "perspective",
+      "file": "docs\\10月24日\\构造深化与确定性实现\\render-offline\\perspective.png",
+      "bytes": 590482
+    }
+  ],
+  "contextSha256": "b50c5656962dd6b0cc65e6b14ab0abcadfb85bd78739e5ff0d3d0a20ef31c120"
+}

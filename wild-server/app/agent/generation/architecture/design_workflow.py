@@ -8,7 +8,82 @@ from app.llm.client import create_llm
 from app.llm.invocation import invoke_llm, stream_llm, merge_token_usage
 from app.rag.trace import llm_trace_scope
 from app.utils.json_extractor import extract_json_object
+from app.design.parametric import expand_parameters, PARAMETRIC_PROTOCOL
 from .design_blocks import ordered_blocks
+
+
+async def refine_construction(draft, *, user_request, diagram_hosts, validate, call_accounting=None):
+    """审核前一次构造深化；只补 form.construction，失败保留原设计并报告。"""
+    from app.design.construction_systems import construction_spec, SYSTEM_PROTOCOL
+    targets = [c for c in draft.get("components", []) if c.get("type") in {"door", "window", "cornice"}
+               and construction_spec(c) is None and all((c.get("size") or {}).get(k) for k in ("width", "height"))]
+    if not targets:
+        return draft, {"status": "not_needed", "model_calls": 0}
+    target_ids = {c["id"] for c in targets}
+    prompt = ("深化已经形成的建筑设计，只决定当前标记的构造层次、框/扇/分格、材料分工及入口遮蔽。"
+              "体量、房间、洞口位置与尺寸、原有 form 意图保持不变，不添加/删除构件，不重复已有雨棚和支柱。"
+              "先理解整体设计，再为适用部位选择完整构造；不适用、已充分表达或需要改变布局时，construction 写 null 并说明原因。"
+              "只返回 JSON {\"details\":[{\"ids\":[\"标记ID\"],\"construction\":{...},\"reason\":\"设计理由\"}]}。"
+              "相同构造可在 ids 中列出多个标记；每个 targets ID 恰好出现一次。"
+              "按真实墙范围确定门窗套和入口顶板，不能越墙边/墙顶；保留特殊门形、侧亮窗等描述，系统无法表达时不要硬套。"
+              + SYSTEM_PROTOCOL + PARAMETRIC_PROTOCOL)
+    diag = {"status": "rejected", "model_calls": 1, "target_ids": sorted(target_ids)}
+    if call_accounting is not None:
+        call_accounting["model_calls"] += 1
+    try:
+        with llm_trace_scope(stage="architecture_construction"):
+            reply = await invoke_llm(create_llm(enable_thinking=False, streaming=False), [
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": json.dumps({"request": user_request, "current_design": draft,
+                    "targets": sorted(target_ids), "diagram_hosts": diagram_hosts}, ensure_ascii=False)}])
+        diag.update(call_id=getattr(reply, "call_id", None), output=reply.content, token_usage=reply.token_usage)
+        if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
+            raise ValueError("构造深化输出未完整返回")
+        raw = extract_json_object(reply.content or "", outer_only=True, raise_on_error=True)
+        raw, expansion = expand_parameters(raw, facts={"current_design": draft})
+        if expansion:
+            diag["parameter_expansion"] = expansion
+        if set(raw) != {"details"} or not isinstance(raw["details"], list):
+            raise ValueError("构造深化仅接受 details 数组")
+        seen = set()
+        for detail in raw["details"]:
+            if (not isinstance(detail, dict) or set(detail) != {"ids", "construction", "reason"}
+                    or not isinstance(detail["ids"], list) or not detail["ids"]
+                    or not isinstance(detail["reason"], str) or not detail["reason"].strip()):
+                raise ValueError("每项深化须包含 ids、construction 和非空 reason")
+            for mid in detail["ids"]:
+                if not isinstance(mid, str) or mid not in target_ids or mid in seen:
+                    raise ValueError("构造深化标记越界或重复")
+                seen.add(mid)
+        if seen != target_ids:
+            raise ValueError("构造深化遗漏了目标标记")
+        candidate, decisions, rejected = deepcopy(draft), [], []
+        for detail in raw["details"]:
+            selected, error = detail["construction"] is not None, None
+            if selected:
+                proposed = deepcopy(candidate)
+                for component in proposed["components"]:
+                    if component["id"] in detail["ids"]:
+                        form = component.get("form") or {}
+                        form = {"description": form} if isinstance(form, str) else form
+                        component["form"] = {**form, "construction": deepcopy(detail["construction"])}
+                try:
+                    validate(proposed)
+                    candidate = proposed
+                except (ValueError, TypeError, KeyError, RuntimeError) as exc:
+                    selected, error = False, str(exc)
+                    rejected.append({"ids": detail["ids"], "error": error})
+            decisions.extend({"id": mid, "selected": selected, "reason": detail["reason"], **({"error": error} if error else {})}
+                             for mid in detail["ids"])
+        status = "partial" if rejected and any(d["selected"] for d in decisions) else "rejected" if rejected else "accepted"
+        diag.update(status=status, decisions=decisions, rejected=rejected)
+        if rejected:
+            diag["error"] = "；".join(f"{','.join(r['ids'])}：{r['error']}" for r in rejected)
+        return candidate, diag
+    except Exception as exc:
+        # 深化是可选步骤；服务异常也保留已经验证的图纸，取消信号仍向上传播。
+        diag.update(error=str(exc), error_type=type(exc).__name__)
+        return draft, diag
 
 
 def _repair_paths(issue, draft, fields):
@@ -136,7 +211,7 @@ async def draft_design(
     # rejected：记录未通过的轮次、错误和模型原始输出
     # repairs：记录成功应用到候选图纸上的补丁，以及之后是否通过校验
     # usage：累计模型用量
-    rejected, repairs, usage = [], [], None
+    rejected, repairs, expansions, usage = [], [], [], None
     # draft：保存后续可以修订的图纸草稿
     # repair_paths：本轮允许修改的具体路径
     # rules：检索到的修订规则
@@ -168,7 +243,8 @@ async def draft_design(
         )
         # 给首次生成和后续修订设置不同的追踪名称，方便查看 trace。
         with llm_trace_scope(stage=stage, design_hash=_options.get("design_hash")):
-            if thinking_mode and on_reasoning_delta:
+            use_thinking = thinking_mode and attempt == 1
+            if use_thinking and on_reasoning_delta:
 
                 async def emit(delta):
                     await on_reasoning_delta("architecture", delta)
@@ -181,27 +257,18 @@ async def draft_design(
             else:
                 # 直接调用模型，因为没有思考模式，不需要流式输出
                 reply = await invoke_llm(
-                    create_llm(enable_thinking=thinking_mode, streaming=False), messages
+                    create_llm(enable_thinking=use_thinking, streaming=False), messages
                 )
 
         usage = merge_token_usage(usage, reply.token_usage)
 
-        required_key = (
-            "massing"
-            if not repair_paths and only_blocks is None and not context
-            else None
-        )
-        raw = extract_json_object(reply.content or "", required_key=required_key)
-        if (
-            raw is None
-            and required_key == "massing"
-            and getattr(reply, "finish_reason", None) != "length"
-        ):
-            raw = extract_json_object(reply.content or "")
-        issue = "图纸必须是完整 JSON 对象" if not isinstance(raw, dict) else ""
-
-        if getattr(reply, "finish_reason", None) == "length":
-            issue = "模型输出达到长度上限，图纸或补丁未完整返回"
+        raw, issue = None, ""
+        try:
+            if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
+                raise ValueError("模型输出达到长度上限，图纸或补丁未完整返回")
+            raw = extract_json_object(reply.content or "", outer_only=True, raise_on_error=True)
+        except ValueError as exc:
+            issue = str(exc)
 
         # 准备返回给调用方的数据
         # 准备接受校验的候选图纸
@@ -210,6 +277,11 @@ async def draft_design(
 
         if not issue:
             try:
+                source = deepcopy(raw)
+                raw, expansion = expand_parameters(raw, facts={"current_design": draft or context})
+                picked = raw
+                if expansion:
+                    expansions.append({"attempt": attempt, "source": source, **expansion})
                 if repair_paths:
                     candidate = _apply_repair(draft, raw, repair_paths)
                     picked = (
@@ -256,6 +328,7 @@ async def draft_design(
             "last_issue": issue,
             "rejected_attempts": rejected,
             "repairs": repairs,
+            "parameter_expansions": expansions,
             "call_id": getattr(reply, "call_id", None),
         }
         if not issue:
@@ -302,6 +375,8 @@ async def draft_design(
                 "path 是相对图纸根的 JSON Pointer；remove 不写 value；数组下标保持当前稿编号。"
                 "优先修改具体属性，不能返回完整 components 数组或重新生成整张图纸。"
                 "程序会在副本上应用补丁并重新检查完整图纸。"
+                + PARAMETRIC_PROTOCOL
+                + "\nfacts.current_design 是当前已展开图纸；补丁路径仍指向展开后的实例。"
                 "\n允许修改的范围："
                 + json.dumps(repair_paths, ensure_ascii=False)
                 + "\n图纸校验错误："
@@ -318,6 +393,6 @@ async def draft_design(
                 + "\n本轮修复未完成或缺少关键字段的图纸，返回完整 JSON，保留已有设计。错误："
                 + issue
                 + "\n上一稿："
-                + json.dumps(draft or picked, ensure_ascii=False)
+                + json.dumps(draft if draft is not None else picked or {"unparsed_output": reply.content}, ensure_ascii=False)
             )
     return {}, diag

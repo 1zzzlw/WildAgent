@@ -1,0 +1,729 @@
+diff --git a/wild-server/app/agent/generation/architecture/design_workflow.py b/wild-server/app/agent/generation/architecture/design_workflow.py
+index b23e95f..9449ff9 100644
+--- a/wild-server/app/agent/generation/architecture/design_workflow.py
++++ b/wild-server/app/agent/generation/architecture/design_workflow.py
+@@ -8,9 +8,84 @@ from app.llm.client import create_llm
+ from app.llm.invocation import invoke_llm, stream_llm, merge_token_usage
+ from app.rag.trace import llm_trace_scope
+ from app.utils.json_extractor import extract_json_object
++from app.design.parametric import expand_parameters, PARAMETRIC_PROTOCOL
+ from .design_blocks import ordered_blocks
+ 
+ 
++async def refine_construction(draft, *, user_request, diagram_hosts, validate, call_accounting=None):
++    """审核前一次构造深化；只补 form.construction，失败保留原设计并报告。"""
++    from app.design.construction_systems import construction_spec, SYSTEM_PROTOCOL
++    targets = [c for c in draft.get("components", []) if c.get("type") in {"door", "window", "cornice"}
++               and construction_spec(c) is None and all((c.get("size") or {}).get(k) for k in ("width", "height"))]
++    if not targets:
++        return draft, {"status": "not_needed", "model_calls": 0}
++    target_ids = {c["id"] for c in targets}
++    prompt = ("深化已经形成的建筑设计，只决定当前标记的构造层次、框/扇/分格、材料分工及入口遮蔽。"
++              "体量、房间、洞口位置与尺寸、原有 form 意图保持不变，不添加/删除构件，不重复已有雨棚和支柱。"
++              "先理解整体设计，再为适用部位选择完整构造；不适用、已充分表达或需要改变布局时，construction 写 null 并说明原因。"
++              "只返回 JSON {\"details\":[{\"ids\":[\"标记ID\"],\"construction\":{...},\"reason\":\"设计理由\"}]}。"
++              "相同构造可在 ids 中列出多个标记；每个 targets ID 恰好出现一次。"
++              "按真实墙范围确定门窗套和入口顶板，不能越墙边/墙顶；保留特殊门形、侧亮窗等描述，系统无法表达时不要硬套。"
++              + SYSTEM_PROTOCOL + PARAMETRIC_PROTOCOL)
++    diag = {"status": "rejected", "model_calls": 1, "target_ids": sorted(target_ids)}
++    if call_accounting is not None:
++        call_accounting["model_calls"] += 1
++    try:
++        with llm_trace_scope(stage="architecture_construction"):
++            reply = await invoke_llm(create_llm(enable_thinking=False, streaming=False), [
++                {"role": "system", "content": prompt},
++                {"role": "user", "content": json.dumps({"request": user_request, "current_design": draft,
++                    "targets": sorted(target_ids), "diagram_hosts": diagram_hosts}, ensure_ascii=False)}])
++        diag.update(call_id=getattr(reply, "call_id", None), output=reply.content, token_usage=reply.token_usage)
++        if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
++            raise ValueError("构造深化输出未完整返回")
++        raw = extract_json_object(reply.content or "", outer_only=True, raise_on_error=True)
++        raw, expansion = expand_parameters(raw, facts={"current_design": draft})
++        if expansion:
++            diag["parameter_expansion"] = expansion
++        if set(raw) != {"details"} or not isinstance(raw["details"], list):
++            raise ValueError("构造深化仅接受 details 数组")
++        seen = set()
++        for detail in raw["details"]:
++            if (not isinstance(detail, dict) or set(detail) != {"ids", "construction", "reason"}
++                    or not isinstance(detail["ids"], list) or not detail["ids"]
++                    or not isinstance(detail["reason"], str) or not detail["reason"].strip()):
++                raise ValueError("每项深化须包含 ids、construction 和非空 reason")
++            for mid in detail["ids"]:
++                if not isinstance(mid, str) or mid not in target_ids or mid in seen:
++                    raise ValueError("构造深化标记越界或重复")
++                seen.add(mid)
++        if seen != target_ids:
++            raise ValueError("构造深化遗漏了目标标记")
++        candidate, decisions, rejected = deepcopy(draft), [], []
++        for detail in raw["details"]:
++            selected, error = detail["construction"] is not None, None
++            if selected:
++                proposed = deepcopy(candidate)
++                for component in proposed["components"]:
++                    if component["id"] in detail["ids"]:
++                        form = component.get("form") or {}
++                        form = {"description": form} if isinstance(form, str) else form
++                        component["form"] = {**form, "construction": deepcopy(detail["construction"])}
++                try:
++                    validate(proposed)
++                    candidate = proposed
++                except (ValueError, TypeError, KeyError, RuntimeError) as exc:
++                    selected, error = False, str(exc)
++                    rejected.append({"ids": detail["ids"], "error": error})
++            decisions.extend({"id": mid, "selected": selected, "reason": detail["reason"], **({"error": error} if error else {})}
++                             for mid in detail["ids"])
++        status = "partial" if rejected and any(d["selected"] for d in decisions) else "rejected" if rejected else "accepted"
++        diag.update(status=status, decisions=decisions, rejected=rejected)
++        if rejected:
++            diag["error"] = "；".join(f"{','.join(r['ids'])}：{r['error']}" for r in rejected)
++        return candidate, diag
++    except Exception as exc:
++        # 深化是可选步骤；服务异常也保留已经验证的图纸，取消信号仍向上传播。
++        diag.update(error=str(exc), error_type=type(exc).__name__)
++        return draft, diag
++
++
+ def _repair_paths(issue, draft, fields):
+     paths = []
+     for path in re.findall(r"/(?:[A-Za-z0-9_~.-]+/)*[A-Za-z0-9_~.-]+", issue):
+@@ -136,7 +211,7 @@ async def draft_design(
+     # rejected：记录未通过的轮次、错误和模型原始输出
+     # repairs：记录成功应用到候选图纸上的补丁，以及之后是否通过校验
+     # usage：累计模型用量
+-    rejected, repairs, usage = [], [], None
++    rejected, repairs, expansions, usage = [], [], [], None
+     # draft：保存后续可以修订的图纸草稿
+     # repair_paths：本轮允许修改的具体路径
+     # rules：检索到的修订规则
+@@ -168,7 +243,8 @@ async def draft_design(
+         )
+         # 给首次生成和后续修订设置不同的追踪名称，方便查看 trace。
+         with llm_trace_scope(stage=stage, design_hash=_options.get("design_hash")):
+-            if thinking_mode and on_reasoning_delta:
++            use_thinking = thinking_mode and attempt == 1
++            if use_thinking and on_reasoning_delta:
+ 
+                 async def emit(delta):
+                     await on_reasoning_delta("architecture", delta)
+@@ -181,27 +257,18 @@ async def draft_design(
+             else:
+                 # 直接调用模型，因为没有思考模式，不需要流式输出
+                 reply = await invoke_llm(
+-                    create_llm(enable_thinking=thinking_mode, streaming=False), messages
++                    create_llm(enable_thinking=use_thinking, streaming=False), messages
+                 )
+ 
+         usage = merge_token_usage(usage, reply.token_usage)
+ 
+-        required_key = (
+-            "massing"
+-            if not repair_paths and only_blocks is None and not context
+-            else None
+-        )
+-        raw = extract_json_object(reply.content or "", required_key=required_key)
+-        if (
+-            raw is None
+-            and required_key == "massing"
+-            and getattr(reply, "finish_reason", None) != "length"
+-        ):
+-            raw = extract_json_object(reply.content or "")
+-        issue = "图纸必须是完整 JSON 对象" if not isinstance(raw, dict) else ""
+-
+-        if getattr(reply, "finish_reason", None) == "length":
+-            issue = "模型输出达到长度上限，图纸或补丁未完整返回"
++        raw, issue = None, ""
++        try:
++            if getattr(reply, "finish_reason", None) in {"length", "max_tokens"}:
++                raise ValueError("模型输出达到长度上限，图纸或补丁未完整返回")
++            raw = extract_json_object(reply.content or "", outer_only=True, raise_on_error=True)
++        except ValueError as exc:
++            issue = str(exc)
+ 
+         # 准备返回给调用方的数据
+         # 准备接受校验的候选图纸
+@@ -210,6 +277,11 @@ async def draft_design(
+ 
+         if not issue:
+             try:
++                source = deepcopy(raw)
++                raw, expansion = expand_parameters(raw, facts={"current_design": draft or context})
++                picked = raw
++                if expansion:
++                    expansions.append({"attempt": attempt, "source": source, **expansion})
+                 if repair_paths:
+                     candidate = _apply_repair(draft, raw, repair_paths)
+                     picked = (
+@@ -256,6 +328,7 @@ async def draft_design(
+             "last_issue": issue,
+             "rejected_attempts": rejected,
+             "repairs": repairs,
++            "parameter_expansions": expansions,
+             "call_id": getattr(reply, "call_id", None),
+         }
+         if not issue:
+@@ -302,6 +375,8 @@ async def draft_design(
+                 "path 是相对图纸根的 JSON Pointer；remove 不写 value；数组下标保持当前稿编号。"
+                 "优先修改具体属性，不能返回完整 components 数组或重新生成整张图纸。"
+                 "程序会在副本上应用补丁并重新检查完整图纸。"
++                + PARAMETRIC_PROTOCOL
++                + "\nfacts.current_design 是当前已展开图纸；补丁路径仍指向展开后的实例。"
+                 "\n允许修改的范围："
+                 + json.dumps(repair_paths, ensure_ascii=False)
+                 + "\n图纸校验错误："
+@@ -318,6 +393,6 @@ async def draft_design(
+                 + "\n本轮修复未完成或缺少关键字段的图纸，返回完整 JSON，保留已有设计。错误："
+                 + issue
+                 + "\n上一稿："
+-                + json.dumps(draft or picked, ensure_ascii=False)
++                + json.dumps(draft if draft is not None else picked or {"unparsed_output": reply.content}, ensure_ascii=False)
+             )
+     return {}, diag
+diff --git a/wild-server/app/agent/generation/architecture/workflow.py b/wild-server/app/agent/generation/architecture/workflow.py
+index 749a3cc..d06cd10 100644
+--- a/wild-server/app/agent/generation/architecture/workflow.py
++++ b/wild-server/app/agent/generation/architecture/workflow.py
+@@ -8,7 +8,7 @@ import asyncio
+ from pydantic import ValidationError
+ 
+ from app.agent.generation.architecture import resolve_complexity_profile
+-from app.agent.generation.architecture.design_workflow import draft_design
++from app.agent.generation.architecture.design_workflow import draft_design, refine_construction
+ from app.agent.state import GenerationState
+ from app.agent.prompts import build_architecture_plan_prompt
+ from app.agent.runtime import get_reasoning_callback
+@@ -431,6 +431,15 @@ async def architecture_planner(state: GenerationState) -> dict:
+             load_repair_rules=load_repair_rules,
+             call_accounting=accounting,
+         )
++        if raw and complexity["level"] in {"standard", "detailed"}:
++            raw, refinement = await refine_construction(raw, user_request=message,
++                diagram_hosts=accepted["resolved"].projection_elements, validate=validate, call_accounting=accounting)
++            diag["construction_refinement"] = refinement
++            diag["model_calls"] += refinement["model_calls"]
++            from app.llm.invocation import merge_token_usage
++            diag["token_usage"] = merge_token_usage(diag.get("token_usage"), refinement.get("token_usage"))
++            if refinement["status"] in {"partial", "rejected"}:
++                accepted["resolved"].warnings.append("部分构造深化未采用，相关标记保留原设计："+refinement["error"])
+     except DesignContractError as exc:
+         return {"status": "failed", "error": str(exc)}
+     except Exception as exc:
+diff --git a/wild-server/app/agent/generation/spatial/geometry.py b/wild-server/app/agent/generation/spatial/geometry.py
+index b181da6..74d7a5d 100644
+--- a/wild-server/app/agent/generation/spatial/geometry.py
++++ b/wild-server/app/agent/generation/spatial/geometry.py
+@@ -17,6 +17,24 @@ Point = tuple[float, float]
+ CONSTRUCTION_GRID = 0.1
+ 
+ 
++def subtract_rectangles(bounds, cuts, *, epsilon=0.001):
++    """矩形差集，返回互不重叠的 X/Z 矩形；供挑空和楼梯开口共用。"""
++    rectangles = [tuple(bounds)]
++    for cx0, cz0, cx1, cz1 in cuts:
++        remaining = []
++        for x0, z0, x1, z1 in rectangles:
++            a, b, c, d = max(x0, cx0), max(z0, cz0), min(x1, cx1), min(z1, cz1)
++            if c-a <= epsilon or d-b <= epsilon:
++                remaining.append((x0, z0, x1, z1))
++                continue
++            remaining.extend(r for r in (
++                (x0, z0, a, z1), (c, z0, x1, z1),
++                (a, z0, c, b), (a, d, c, z1),
++            ) if r[2]-r[0] > epsilon and r[3]-r[1] > epsilon)
++        rectangles = remaining
++    return rectangles
++
++
+ def snap_to_grid(value: float, step: float = CONSTRUCTION_GRID) -> float:
+     """把数值吸附到构造网格（round 到 step 的整数倍）。"""
+     return round(round(float(value) / step) * step, 6)
+diff --git a/wild-server/app/agent/generation/spatial/stair_openings.py b/wild-server/app/agent/generation/spatial/stair_openings.py
+index 7831cc9..20f3470 100644
+--- a/wild-server/app/agent/generation/spatial/stair_openings.py
++++ b/wild-server/app/agent/generation/spatial/stair_openings.py
+@@ -5,6 +5,7 @@
+ """
+ 
+ from copy import deepcopy
++from .geometry import subtract_rectangles
+ 
+ 
+ EPS = 0.001
+@@ -86,19 +87,7 @@ def cut_stair_openings(blueprint: dict) -> list[str]:
+     used_ids = {element.get("id") for element, _ in _members(blueprint)}
+     changed = []
+     for floor, instance, bounds, cuts in blocked:
+-        rectangles = [bounds]
+-        for _, (cx0, cz0, cx1, cz1) in cuts:
+-            remaining = []
+-            for x0, z0, x1, z1 in rectangles:
+-                a, b, c, d = max(x0, cx0), max(z0, cz0), min(x1, cx1), min(z1, cz1)
+-                if c - a <= EPS or d - b <= EPS:
+-                    remaining.append((x0, z0, x1, z1))
+-                    continue
+-                remaining.extend(r for r in (
+-                    (x0, z0, a, z1), (c, z0, x1, z1),
+-                    (a, z0, c, b), (a, d, c, z1),
+-                ) if r[2] - r[0] > EPS and r[3] - r[1] > EPS)
+-            rectangles = remaining
++        rectangles = subtract_rectangles(bounds, [cut for _, cut in cuts], epsilon=EPS)
+         pieces = []
+         for index, (x0, z0, x1, z1) in enumerate(rectangles):
+             piece = deepcopy(floor)
+diff --git a/wild-server/app/agent/plan/implementation.py b/wild-server/app/agent/plan/implementation.py
+index 0d39977..ef72fa6 100644
+--- a/wild-server/app/agent/plan/implementation.py
++++ b/wild-server/app/agent/plan/implementation.py
+@@ -6,6 +6,8 @@ from xml.etree import ElementTree
+ 
+ from app.design.markers import IMPLEMENTATION_STAGES, implementation_records, marker_results, merge_marker_resources
+ from app.design.relations import NATIVE_SIZE_FIELDS as _SIZE_FIELDS
++from app.agent.plan.construction import CONSTRUCTION_PROTOCOL, expand_implementation
++from app.design.construction_systems import VERSION as SYSTEM_VERSION, construction_spec, construct_system
+ 
+ _BODY_TYPES = frozenset({"wall", "floor", "column", "beam", "stair", "primitive"})
+ 
+@@ -24,7 +26,7 @@ def _material_definition(value):
+     return {"opacity": 1, **value} if isinstance(value, dict) else value
+ 
+ 
+-def _bind_materials(base, row, marker):
++def _bind_materials(base, row, marker, material_roles=None):
+     """相同定义复用；局部同名材质按内容分配 ID，并发合并不互相改色。"""
+     from hashlib import sha256
+     row = deepcopy(row)
+@@ -44,11 +46,19 @@ def _bind_materials(base, row, marker):
+         bindings[name] = target
+         adopted[target] = value
+ 
++    # 已批准角色到实际材质 ID 的唯一映射，不让模型重新猜 ID；显式定义/现有 ID 优先。
++    for role, target in (material_roles or {}).items():
++        if role not in definitions and role not in existing and target in existing:
++            bindings[role] = target
++    used_bindings = {}
++
+     def bind(value):
+         if isinstance(value, dict):
+             for key, child in value.items():
+                 if (key == "material" or key.endswith("Material")) and isinstance(child, str):
+                     value[key] = bindings.get(child, child)
++                    if value[key] != child:
++                        used_bindings[child] = value[key]
+                 else:
+                     bind(child)
+         elif isinstance(value, list):
+@@ -57,7 +67,7 @@ def _bind_materials(base, row, marker):
+ 
+     bind(row.get("geometry"))
+     row["materials"] = adopted
+-    return row, {k: v for k, v in bindings.items() if k != v}
++    return row, used_bindings
+ 
+ 
+ def web_reference_query(item, markers):
+@@ -288,6 +298,8 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
+         error = str(exc)
+     if recheck_retained:
+         return base, None, {"row": row, "error": error}, None
++    if construction_spec(marker.get("design") or {}) is not None:
++        return base, None, {"row": row, "error": error}, None
+     family = resolve_component_name(marker["type"])["entity_type"]
+     if family in {"roof", "stair", "canopy"} or (family == "railing" and marker.get("host")) or (
+             marker.get("entity", {}).get("parentWall") and family in {"door", "window"}):
+@@ -482,6 +494,8 @@ def _item_context(state, markers, base, reference_entity_ids=()):
+         "existing_blueprint": {**base, "geometry": {bucket: [e for e in base["geometry"][bucket] if e["id"] in needed]
+                                                     for bucket in ("elements", "components")}}}
+     context["opening_hosts"] = opening_hosts
++    context["material_roles"] = {role["role"]: role["materialId"]
++        for role in ((drawing.get("materials") or {}).get("resolved_plan") or {}).get("roles", [])}
+     context["opening_cell_limits"] = {m["id"]: limits for m in markers.values()
+                                       if (limits := opening_cell_limits(m)) is not None}
+     from app.design.relations import canopy_mount_target
+@@ -542,7 +556,7 @@ def _item_context(state, markers, base, reference_entity_ids=()):
+ 
+ 
+ def _output_protocol(schema, markers, references, failed_rows):
+-    from app.agent.generation.capability import capability_surface, capability_brief
++    from app.agent.generation.capability import capability_surface
+     from app.agent.knowledge.component_names import resolve_component_name
+     capabilities = capability_surface()
+     body = any(m["type"] == "building_body" for m in markers.values())
+@@ -563,7 +577,8 @@ def _output_protocol(schema, markers, references, failed_rows):
+         protocol["$defs"][name] = definition
+         pending.extend(re.findall(r'"\$ref"\s*:\s*"#/\$defs/([^"/]+)"', json.dumps(definition)))
+     return ("可组合的原生类型：" + ", ".join(f"{k}:{c['target']}" for k, c in capabilities.items())
+-            + "\n" + "\n".join(capability_brief(k, full=True) for k in sorted(kinds) if k in capabilities)
++            + "\n" + "\n".join(f"{k}：{capabilities[k]['coord_semantics']}；{capabilities[k]['host_rule']}"
++                                   for k in sorted(kinds) if k in capabilities)
+             + "\n当前输出字段协议：" + json.dumps(protocol, ensure_ascii=False, separators=(",", ":")))
+ 
+ 
+@@ -650,7 +665,32 @@ async def run_marker_generate(state, item):
+     if schema is None:
+         return {"status": "failed", "error": "WILD Schema 不可用"}, "aborted", [], "WILD Schema 不可用", trace
+     callback = get_reasoning_callback()
+-    if not references:
++    system_ids = {i for i, m in pending.items() if construction_spec(m["design"]) is not None}
++    for marker_id in sorted(system_ids):
++        marker = pending[marker_id]
++        attempt = {"tool": "construct_system", "stage": "construction", "model_calls": 0,
++                   "version": SYSTEM_VERSION, "marker_ids": [marker_id], "source": deepcopy(marker["design"]), "errors": {}}
++        trace.append(attempt)
++        try:
++            row = construct_system(marker, base)
++            attempt["output"] = deepcopy(row)
++            candidate, accepted, rejected, record = _accept_fragment(base, row, marker,
++                dependent_markers=markers.values(), diagram_hosts=state.get("drawing_hosts", []))
++            if rejected:
++                raise ValueError(rejected["error"])
++            entities = [e for values in accepted["geometry"].values() for e in values]
++            base = candidate
++            records[marker_id] = record
++            fragments.extend(entities)
++            for key in buckets:
++                buckets[key].extend(e["id"] for e in row["geometry"][key])
++            pending.pop(marker_id)
++            failures.pop(marker_id, None)
++        except (ValueError, TypeError, KeyError) as exc:
++            failures[marker_id] = "已批准构造无法落实，须修订设计参数或宿主："+str(exc)
++            attempt["errors"][marker_id] = failures[marker_id]
++            attempt["stop_reason"] = "construction_design_conflict"
++    if pending.keys()-system_ids and not references:
+         if callback:
+             await callback("execute:progress", f"{item.label}：先查询知识库。\n")
+         descriptions = list(dict.fromkeys(str(value or "").strip() for m in pending.values()
+@@ -724,7 +764,7 @@ async def run_marker_generate(state, item):
+         if not pending:
+             break
+         eligible = {i: pending[i] for i in batch_ids if i in pending
+-                    and i not in stopped and stage not in completed_stages[i]}
++                    and i not in stopped and i not in system_ids and stage not in completed_stages[i]}
+         if not eligible:
+             continue
+         if sum(t.get("model_calls", 0) for t in trace) >= call_limit:
+@@ -744,27 +784,13 @@ async def run_marker_generate(state, item):
+                 "雨棚保持显式宽、深、厚；原生 supportCount 生成竖直支柱，图纸要求斜撑时用正确倾斜的实体，不以竖柱代替斜撑。")
+         if "building_body" in families:
+             instructions.append("主体统一实现 body_components 的结构描述，沿用实际采用的 diagram_hosts 墙ID。"
+-                "levels 的 base_y 是楼面顶，top_y 是本层墙顶；volume_geometry 给出世界包络与墙顶屋面支承标高。"
+-                "levels[].voids 是该层不铺楼板的显式挑空边界，按范围分片留空；普通 rooms 标签不自动开洞。"
+-                "原生 floor 向上增厚，from/to[1]=楼面顶减 thickness；不把楼面顶直接当板底。"
+-                "四面 open 仅免除围护墙，未另派 floor 任务的实际楼面仍由主体实现；"
+-                "台基构件不等于已委派 floor。按楼面顶与板厚实现楼面，不返回空的逻辑容器。"
+-                "body_components 中的整面围护墙归主体实现，按其显式尺寸、厚度、材料和形态生成一次；用 volume+face+floor 对应的墙ID承接后续门窗，不重复建墙。"
+-                "墙的 from/to 包含墙底与墙顶 Y，沿用完整三维宿主坐标；不能只保留 X/Z 或把两端 Y 都写成同一标高。"
+-                "diagram_hosts 列后续门窗需要的墙宿主；其中 ID 若在 delegated_markers 另列为墙体任务，主体只参考其位置，不重复生成。其他围护按各体量实际空间用途与 facades 实现。"
+-                "facades 的 open 表示该体量此面不建墙，empty 表示有墙无开口；相接体量的同一界面若另一侧明确有墙，保留一份该侧围护，不重复建墙，也不删除它。薄 wall 仍是实体，不能生成所谓定位参考墙。"
+-                "每个体量逐面采用 volume.facades 覆盖后的有效布局；floor_layouts.walls 是实际内墙，未委派的按世界 X/Z 端点、厚度和本层标高实现并沿用内墙 id，已在 delegated_markers 单列的由对应墙体任务实现。rooms 仅标注用途，不自动建隔墙。"
+-                "相邻体量交界只生成一份物理墙，不能逐体量叠加四面墙。"
+-                "delegated_markers/components 由其他任务实现，主体留出位置和承托，不占用其实体ID。"
+-                "不能换用任意ID重复搭建其他任务的屋面、山花或装饰几何；只有 body_components 明确要求的主体构造才在本条目实现。"
+-                "opening_layout 是后续门窗的安装位置；保留能覆盖这些位置的完整墙宿主，原生门窗会自动裁墙。"
+-                "不要手工按门窗洞口拆墙，再把原宿主ID留给其中一小段；多体量楼板保留庭院、退台及楼梯通道。"
+-                "volumes 的 x/z 是世界起点，楼板范围为 [x,x+width]×[z,z+depth]；墙与板共用这套世界坐标，不能重新以原点居中。"
+-                "levels.base_y 是每层楼面顶标高；原生 floor 的 from 和 to 均为完整世界三维端点 [X,Y,Z]，不能把 to 写成平面 [X,Z]；两端 Y 应为楼面顶减板厚，不能把墙底标高直接当板底。"
+-                "primitive box 是实心体，不能当成整栋空心围护或不可见参考体量。"
+-                "按 opening_layout 给门窗留出净空；未指定轴网坐标时，按洞口间的墙垛组织梁柱，不能让柱穿过门窗。"
+-                "structural_grid 是结构组织说明，不把 x_bays/z_bays 扩成柱阵；有明确房间平面时，主体不生成独立柱，图纸 components 标明的柱位由对应 plan 实现。"
+-                "梁柱与填充墙核对墙法线方向的实际截面和进退，避免重合表面，不删掉图纸要求的外露框架。")
++                "直墙和矩形楼面优先声明 walls/slabs，坐标、板底与挑空交给程序计算，材料和厚度由图纸决定。"
++                "diagram_hosts 已采用逐体量的有效立面与内墙；delegated_markers 中另派的墙不再生成。"
++                "相邻同构造墙由装配去重；保留完整门窗宿主，门窗组件负责开洞，不手拆洞口墙。"
++                "open 仅免除围护；未另派 floor 任务的楼面仍需实现，台基不代替楼板。"
++                "特殊形体用 geometry 按图纸实现，体量包络不能代替曲面外形，box 不能代替空心围护。"
++                "图纸标明的独立梁柱、屋面与装饰由对应任务实现；不按轴网凭空增加柱阵。"
++                "rooms 只是用途标签；已声明的内墙、显式挑空与楼梯通道必须落实。")
+         if families & {"door", "window"}:
+             instructions.append("用 door/window 或 opening 开真实洞口，按整个洞口组保持设计宽高，组内分扇不重叠。"
+                 "opening_cell_limits 是自动立面标记的可用开间；整组洞口不得超出该沿墙范围和 max_height，不能占用相邻标记的位置。"
+@@ -817,17 +843,17 @@ async def run_marker_generate(state, item):
+                   "failed_implementations 是未采用的错误稿，可以修改其坐标、尺寸与方向以落实图纸，不能原样返回已指出的错误。"
+                   "只修这些失败片段，保留待修ID；accepted_entity_ids 才是不可改名重建的已采用实体。"
+                   "diagram_hosts 的墙ID必须逐字沿用，共用墙采用 opening_hosts 的实际ID；其他新实体以标记ID为前缀，不覆盖已采用实体。"
+-                  "复用已有材质时只引用 ID，无需重复定义；新材质由程序绑定独立 ID。"
++                  "复用已有材质时引用 ID 或 material_roles 中的已批准角色，程序解析角色引用；新材质由程序绑定独立 ID。"
+                   "物理玻璃以 transmission 和 ior 表达透明，opacity 为 1 或省略。返回 JSON："
+                   '{"implementations":[{"id":"图纸标记ID","geometry":{"elements":[],"components":[]},'
+                   '"materials":{},"assets":{}}]}。'
+                   "explanation 可省略；如填写，只写一句实施说明，不写推理过程。"
+                   "elements/components 必须是数组，没有构件时写 []；materials/assets 是对象。"
+-                  "所有数值先计算再写入 JSON，不能在坐标中填写加减乘除算式。"
++                  "涉及计算或重复项时声明 parameters，使用程序表达式展开，不手算或逐项抄写坐标。"
+                   "组合的 size 和 placement.position 约束整组外包框；零件中心±尺寸/2均须落在对应边界内，"
+                   "assembly_bounds 已计算世界最小/最大坐标，直接据此定位边缘零件；"
+                   "顶端横条和端柱的半厚也计入，不把设计顶标高写成端部零件中心。"
+-                  "\nWILD输出协议：" + protocol)
++                  "\n构造声明协议：" + CONSTRUCTION_PROTOCOL + "\n展开后 WILD 输出协议：" + protocol)
+         context = _item_context(state, eligible, base, item.params.get("reference_entity_ids", []))
+         context.update(validation_feedback={i: failures[i] for i in eligible}, reference_data=references,
+                        failed_implementations={i: failed_rows[i] for i in eligible if i in failed_rows},
+@@ -839,7 +865,7 @@ async def run_marker_generate(state, item):
+             messages = [{"role": "system", "content": prompt},
+                         {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]
+             level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
+-            thinking = stage == "generate" and level != "minimal"
++            thinking = state.get("thinking_mode") is not False and stage == "generate" and level != "minimal"
+             from app.rag.trace import llm_trace_scope
+             from app.agent.plan.expand import _batch_load
+             chunk_ids = next((t.get("injected_chunk_ids", []) for t in reversed(trace)
+@@ -889,12 +915,12 @@ async def run_marker_generate(state, item):
+                 await callback("execute:progress", f"{item.label}：输出达到长度上限，拆为 {len(halves[0])} 和 {len(halves[1])} 个标记继续实现。\n")
+             continue
+         try:
+-            payload = extract_json_object(reply.content or "", required_key="implementations", raise_on_error=True)
++            payload = extract_json_object(reply.content or "", required_key="implementations", raise_on_error=True, outer_only=True)
+         except ValueError as exc:
+             payload = {}
+             feedback = ("模型输出达到长度上限；保留全部设计要求，精简重复字段和说明，返回完整 JSON"
+                         if attempt["finish_reason"] in {"length", "max_tokens"}
+-                        else str(exc) + "；数值先计算，只返回完整 JSON")
++                        else str(exc) + "；只返回完整 JSON，算式写成 parameters 模式的字符串表达式")
+             failures.update({i: feedback for i in eligible})
+         rows = payload.get("implementations")
+         if not payload:
+@@ -913,6 +939,10 @@ async def run_marker_generate(state, item):
+                     if marker_id not in returned:
+                         raise ValueError("缺少该标记的实现")
+                     row = deepcopy(returned[marker_id])
++                    submitted = deepcopy(row)
++                    row, construction = expand_implementation(row, marker, context)
++                    if construction:
++                        attempt.setdefault("construction", {})[marker_id] = {"source": submitted, **construction}
+                     if isinstance(row.get("geometry"), dict):
+                         for bucket in ("elements", "components"):
+                             if row["geometry"].get(bucket) == {}:
+@@ -946,7 +976,7 @@ async def run_marker_generate(state, item):
+                     row, placement_changes = place_opening_group(base, row, marker)
+                     if placement_changes:
+                         attempt.setdefault("placement_changes", {})[marker_id] = placement_changes
+-                    row, bindings = _bind_materials(base, row, marker)
++                    row, bindings = _bind_materials(base, row, marker, context["material_roles"])
+                     submitted = deepcopy(row)
+                     if bindings:
+                         attempt.setdefault("material_bindings", {})[marker_id] = bindings
+@@ -998,7 +1028,7 @@ async def run_marker_generate(state, item):
+                         record["assembly_changes"] = assembly_changes
+                     adopted_bindings = {k: v for t in trace
+                         for k, v in t.get("material_bindings", {}).get(marker_id, {}).items()
+-                        if v in accumulated["materials"]}
++                        if v in accumulated["materials"] or v in base["materials"]}
+                     if adopted_bindings:
+                         record["material_bindings"] = adopted_bindings
+                     fragments.extend(entities)
+@@ -1011,6 +1041,8 @@ async def run_marker_generate(state, item):
+                     failures.pop(marker_id, None)
+                 except (ValueError, TypeError, KeyError) as exc:
+                     failures[marker_id] = str(exc)
++                    if isinstance(submitted, dict) and any(k in submitted for k in ("parameters", "walls", "slabs")):
++                        failed_rows[marker_id] = submitted
+                     owned = [e["id"] for bucket in ("elements", "components")
+                              for e in parts.get(marker_id, {}).get("geometry", {}).get(bucket, [])]
+                     failed_candidate = _failed_candidate(submitted, parts.get(marker_id, {}).get("geometry"), str(exc),
+@@ -1031,6 +1063,8 @@ async def run_marker_generate(state, item):
+         if marker_id in stopped:
+             records[marker_id]["stop_reason"] = "repeated_failed_candidate"
+             records[marker_id]["marker_id"] = marker_id
++        if marker_id in system_ids:
++            records[marker_id]["stop_reason"] = "construction_design_conflict"
+     for marker_id in target_ids:
+         if marker_id not in records:
+             continue
+diff --git a/wild-server/app/agent/prompts/planning.py b/wild-server/app/agent/prompts/planning.py
+index d6f7e0b..6611996 100644
+--- a/wild-server/app/agent/prompts/planning.py
++++ b/wild-server/app/agent/prompts/planning.py
+@@ -57,6 +57,7 @@ def build_architecture_plan_prompt(
+     from app.agent.knowledge.component_names import component_reference_prompt
+     from app.agent.generation.architecture.profile import resolve_complexity_profile
+     from app.agent.generation.material.plan import ROLE_SPECS
++    from app.design.parametric import PARAMETRIC_PROTOCOL
+     complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
+     current = json.dumps({k: v for k, v in current_plan.items()
+                           if k not in {"component_quota", "required_components"}}, ensure_ascii=False) if current_plan else "无"
+@@ -91,7 +92,7 @@ def build_architecture_plan_prompt(
+         "envelope": {"system": "string"},
+     }
+     return f"""
+-你负责绘制完整建筑设计图纸，发挥建筑知识和审美；后续 plan 拆分任务，execute 研究并实现构件。
++你负责体量、空间关系、构造层次、材料构图和设计取舍；程序负责参数计算、重复展开和已确定关系的几何落实。
+ 本次建筑类型线索：{profile_id}。建筑设计以用户需求为准。
+ 按“需求与形制 → 体量与标高 → 功能交通 → 围护开口 → 屋面附属 → 材料表达”组织本次设计，结合参考中的设计步骤与关系复核，把决定落实到对应字段。
+ design_intent 简述实际采用的设计选择；庭院、通高、幕墙等已选特征需要对应的空间或构件数据，不能只在文字中命名。
+@@ -99,10 +100,15 @@ design_intent 简述实际采用的设计选择；庭院、通高、幕墙等已
+ 用户明确要求优先于默认粒度。需要独立实现的结构、交通及形制构件须写入 components，明确位置、尺寸与连接关系；不能只在概念中提及。
+ 材料与配色写在 description/form。material_role 可选，使用现有角色 {', '.join(ROLE_SPECS)}；同一角色绑定同一种材质，不同材质使用不同角色或独立材质。
+ 
+-只返回一个完整设计 JSON 对象。以下 JSON 是字段结构与类型说明，不是设计取值；number/integer 必须替换为实际数值，string 替换为设计内容。floor_layouts、envelope、volume.facades 可选，floor_connections 仅用于楼梯；数组展示单项结构，没有构件时 components 用 []；尺寸与标高单位为米：
++只返回一个完整设计 JSON 对象。可在根声明 parameters，共享尺寸和标高用参数表达，重复构件用 $repeat；程序展开后才校验和审核，批准图纸只保存实际数值。
++以下 JSON 是展开后的字段结构与类型说明，不是设计取值；string 替换为设计内容。floor_layouts、envelope、volume.facades 可选，floor_connections 仅用于楼梯；数组展示单项结构，没有构件时 components 用 []；尺寸与标高单位为米：
+ ```json
+ {json.dumps(output_fields, ensure_ascii=False, indent=2)}
+ ```
++{PARAMETRIC_PROTOCOL}
++设计阶段 facts.current_design 仅在修订已有图纸时可用；首次设计将共享尺寸声明在 parameters，不引用尚未生成的字段。
++本轮先确定完整体量、空间、开口和各构件的尺寸与形式。入口遮蔽、檐口层次和窗分格的意图写入 form/description。
++标准和详细粒度会在审核前执行一次受限构造深化，负责适用部位的细部参数；本轮不必编写 form.construction。保留必要留白，不按数量堆构件。
+ 
+ 基础字段约定：
+ - massing.width/depth 包含所有 volumes 的总体包络；主楼尺寸写在对应 volume。完整建模时 modeled_floors=floors，楼层是从 1 开始的整数；台基、杆件等无楼层的实体写 components。
+diff --git a/wild-server/app/agent/validation/candidate.py b/wild-server/app/agent/validation/candidate.py
+index 6a7b4a8..fb9894a 100644
+--- a/wild-server/app/agent/validation/candidate.py
++++ b/wild-server/app/agent/validation/candidate.py
+@@ -109,6 +109,9 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
+                         geometry_reviews[marker["id"]] = review
+                         append("design_component_geometry", review["errors"], marker=marker, entity_ids=ids)
+                 elif record.get("status") == "abandoned":
++                    if record.get("stop_reason") == "construction_design_conflict":
++                        append("design_construction_conflict", [f"{marker['id']}：{record.get('reason') or '已批准构造未能落实'}"], marker=marker)
++                        continue
+                     attempts = record.get("attempts") or []
+                     stages = {t.get("stage") for t in attempts}
+                     lookup = next((t for t in attempts if t.get("tool") == "search_knowledge"), None)
+diff --git a/wild-server/app/agent/validation/diagnostics.py b/wild-server/app/agent/validation/diagnostics.py
+index 96f68da..4c9d440 100644
+--- a/wild-server/app/agent/validation/diagnostics.py
++++ b/wild-server/app/agent/validation/diagnostics.py
+@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
+ from typing import Any
+ 
+ # 未上线期间固定首版；有效性仍按产物、图纸和实际校验结果核对。
+-VALIDATOR_VERSION = "1.0"
++VALIDATOR_VERSION = "1.2"
+ 
+ 
+ def blueprint_fingerprint(blueprint: dict | None) -> str:
+diff --git a/wild-server/app/agent/validation/issues.py b/wild-server/app/agent/validation/issues.py
+index 7af6845..01bef02 100644
+--- a/wild-server/app/agent/validation/issues.py
++++ b/wild-server/app/agent/validation/issues.py
+@@ -42,6 +42,7 @@ _ISSUE_CLASSIFICATION = {
+     "validate_design_brief": ("model_instruction", "prompt"),
+     "design_stair_connection": ("level_continuity", "prompt"),
+     "design_component_geometry": ("model_instruction", "prompt"),
++    "design_construction_conflict": ("host_relation", "design_revision"),
+     "approved_design_mutation": ("model_instruction", "design_revision"),
+     "approved_design_invalid": ("coverage_geometry", "design_revision"),
+ }
+diff --git a/wild-server/app/design/compilation.py b/wild-server/app/design/compilation.py
+index 759830b..b102843 100644
+--- a/wild-server/app/design/compilation.py
++++ b/wild-server/app/design/compilation.py
+@@ -29,6 +29,7 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
+     from .coordinates import (representative_floor_indices, floor_elevations, design_geometry_context, floor_layout_conflicts,
+                               design_relation_checks, opening_coordinate_errors, DesignCoordinateConflict)
+     from .relations import opening_target
++    from .construction_systems import construction_spec, check_opening_bounds
+     from .openings import is_open_side
+     from app.agent.knowledge.component_names import resolve_component_name
+ 
+@@ -86,6 +87,8 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
+         role = marker["design"].get("material_role")
+         if role in material_ids:
+             marker["material_id"] = material_ids[role]
++        if construction_spec(marker["design"]) is not None:
++            marker["construction_materials"] = material_ids
+     for marker in markers:
+         if marker["host"] in frames:
+             marker["diagram_host"] = frames[marker["host"]]
+@@ -93,6 +96,15 @@ def project_drawing(document: DesignDocument) -> ResolvedDesign:
+             if (resolve_component_name(marker["type"])["entity_type"] in {"door", "window"}
+                     and marker["entity"].get("position") and size.get("width") and size.get("height")):
+                 marker["entity"]["from"] = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
++            spec = construction_spec(marker["design"])
++            if spec is not None and spec["system"] in {"entrance", "framed_opening"}:
++                origin = opening_target(marker, marker["diagram_host"], size["width"], size["height"])
++                if origin is None:
++                    raise ValueError(f"{marker['design_path']}/placement：可执行构造缺少门窗定位")
++                try:
++                    check_opening_bounds(spec, {"type": marker["type"], "from": origin, **size}, marker["diagram_host"])
++                except ValueError as exc:
++                    raise ValueError(f"{marker['design_path']}/form/construction：{exc}") from exc
+     relation_errors, relation_reviews = design_relation_checks(d.model_dump(mode="json"), markers, frames)
+     relation_errors.extend({"code": "design_opening_conflict", "path": message.partition("：")[0],
+                             "reason": message.partition("：")[2]}
+diff --git a/wild-server/app/design/contracts.py b/wild-server/app/design/contracts.py
+index 4361c5b..4516613 100644
+--- a/wild-server/app/design/contracts.py
++++ b/wild-server/app/design/contracts.py
+@@ -293,6 +293,12 @@ class ComponentInstance(ContractModel):
+     def descriptive_form(cls, value):
+         return {"description": value} if isinstance(value, str) else value
+ 
++    @model_validator(mode="after")
++    def construction_contract(self):
++        from .construction_systems import validate_construction
++        validate_construction(self.model_dump(mode="json", exclude_none=True))
++        return self
++
+ 
+ class ArchitectureIntent(ContractModel):
+     """审核前的整体设计方向；不冒充已编译几何或专业规范结论。"""
+diff --git a/wild-server/app/design/relations.py b/wild-server/app/design/relations.py
+index 89cd1f2..09cb0b2 100644
+--- a/wild-server/app/design/relations.py
++++ b/wild-server/app/design/relations.py
+@@ -68,13 +68,16 @@ def stair_design_errors(blueprint: dict, entities: list[dict], marker: dict) ->
+ def component_geometry_review(blueprint: dict, entities: list[dict], marker: dict) -> dict:
+     """精确核对可映射的组合尺寸；旋转/曲面/未知形式列待审核。"""
+     from app.agent.knowledge.component_names import resolve_component_name
++    from .construction_systems import construction_spec, construction_review
++    if construction_spec(marker.get("design") or {}) is not None:
++        return construction_review(blueprint, entities, marker)
+ 
+     design = marker.get("design") or {}
+     size, placement = design.get("size") or {}, design.get("placement") or {}
+     form = design.get("form") if isinstance(design.get("form"), dict) else {"description": design.get("form")}
+     family = resolve_component_name(marker["type"])["entity_type"]
+     checked, unverified, errors = [], [], []
+-    if (len(entities) > 1 or family in {"", "primitive"}) and size and family not in {"door", "window", "roof", "railing", "stair"}:
++    if (len(entities) > 1 or family in {"", "primitive", "component"}) and size and family not in {"door", "window", "roof", "railing", "stair"}:
+         boxes = (bool(entities) and not placement.get("face") and not design.get("relation")
+                  and not any(form.get(k) for k in ("orientation", "rotation", "rotation_y"))
+                  and all(e.get("type") == "primitive" and e.get("shape") == "box"
+diff --git a/wild-server/app/utils/json_extractor.py b/wild-server/app/utils/json_extractor.py
+index f6757f8..7c1ba4f 100644
+--- a/wild-server/app/utils/json_extractor.py
++++ b/wild-server/app/utils/json_extractor.py
+@@ -38,14 +38,25 @@ def extract_json_array(text: str) -> list:
+     return value
+ 
+ 
+-def extract_json_object(text: str, *, required_key: str | None = None, raise_on_error: bool = False) -> dict | None:
++def extract_json_object(text: str, *, required_key: str | None = None, raise_on_error: bool = False,
++                        outer_only: bool = False) -> dict | None:
+     """从 LLM 回复中提取 JSON 对象。
+ 
+     跳过空对象 ``{}``：对本模块的调用方（设计块字段、材质方案、物件方案、plan
+     策略…）空 dict 从来不是有效载荷，继续往后扫才找得到真正的那个。
+     """
+-    value = _first_json_value(text, "{", lambda item: isinstance(item, dict) and bool(item)
+-                              and (required_key is None or required_key in item))
++    accept = lambda item: isinstance(item, dict) and bool(item) and (required_key is None or required_key in item)
++    if outer_only:
++        # 设计/构造声明是完整事务：外层损坏时不能把内部参数或某个构件当成整份回复。
++        source = _extract_from_code_block(text)
++        start = source.find("{")
++        try:
++            parsed, _ = json.JSONDecoder().raw_decode(source, start) if start >= 0 else (None, 0)
++            value = parsed if accept(parsed) else None
++        except ValueError:
++            value = None
++    else:
++        value = _first_json_value(text, "{", accept)
+     if value is None:
+         _log_miss("对象", text)
+         if raise_on_error:
+diff --git a/wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md b/wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md
+index aab5c05..27538a2 100644
+--- a/wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md
++++ b/wild-server/storage/knowledge_base/knowledge/components/architecture-design-expression.md
+@@ -67,7 +67,7 @@ volumes 的矩形范围可以描述空间包络，不等于实际建筑必须是
+ 
+ ## 参数计算与完整设计数据
+ 
+-architecture 可返回完整设计 JSON，或用 program 计算完整图纸数据。程序沿用同一套体量起点、尺寸及楼面标高变量，再生成 volumes、floor_layouts、components 等字段；不由程序决定新的建筑主题。执行器与语法以当前生成工具说明为准，不在知识库复制工具接口。
++architecture 返回完整设计 JSON，可声明 parameters，用受限表达式共享体量尺寸和楼面标高，用重复声明展开构件；具体语法以当前生成工具说明为准。程序只计算已选关系，不决定新的建筑主题，不接收任意 Python program。
+ 
+ 程序只是 Agent 的输入表达，不是 WILD 文件字段；执行结果继续接受同一图纸契约、关系检查与审核，设计文档仍保存展开后的数据。失败不套默认建筑、不删除设计特征。首次成功即停止，格式修订关闭深度思考；得到完整草稿后，在原次数内提交 operations 局部补丁。
+ 

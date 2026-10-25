@@ -1,0 +1,25 @@
+{
+  "model": "qwen3.8-flash",
+  "source": "E:\\AgentProject\\WildAgent\\docs\\10月24日\\Agent参数化执行\\parametric_smoke_20261024_092741\\state.json",
+  "scope": "原始真实深化回复的离线回放；未新增模型调用",
+  "replay_source": "E:\\AgentProject\\WildAgent\\docs\\10月24日\\构造深化与确定性实现\\refinement_smoke_20261024_191923\\refinement.json",
+  "status": "complete",
+  "error": null,
+  "design_complete": true,
+  "selected": [
+    "cornice_long",
+    "window_courtyard_living",
+    "window_bedroom"
+  ],
+  "rejected": [
+    {
+      "ids": [
+        "entrance_door_main"
+      ],
+      "error": "1 validation error for DesignDocument\ndecisions.architecture.components.0\n  Value error, form.construction 字段错误：缺少 ['frameMaterial']；未定义 ['canopy'] [type=value_error, input_value={'type': 'door', 'id': 'e..., 'material_role': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+    }
+  ],
+  "construction_executions": 3,
+  "model_calls": 0,
+  "seconds": 2.344
+}

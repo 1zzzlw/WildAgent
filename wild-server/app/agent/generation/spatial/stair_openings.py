@@ -5,6 +5,7 @@
 """
 
 from copy import deepcopy
+from .geometry import subtract_rectangles
 
 
 EPS = 0.001
@@ -86,19 +87,7 @@ def cut_stair_openings(blueprint: dict) -> list[str]:
     used_ids = {element.get("id") for element, _ in _members(blueprint)}
     changed = []
     for floor, instance, bounds, cuts in blocked:
-        rectangles = [bounds]
-        for _, (cx0, cz0, cx1, cz1) in cuts:
-            remaining = []
-            for x0, z0, x1, z1 in rectangles:
-                a, b, c, d = max(x0, cx0), max(z0, cz0), min(x1, cx1), min(z1, cz1)
-                if c - a <= EPS or d - b <= EPS:
-                    remaining.append((x0, z0, x1, z1))
-                    continue
-                remaining.extend(r for r in (
-                    (x0, z0, a, z1), (c, z0, x1, z1),
-                    (a, z0, c, b), (a, d, c, z1),
-                ) if r[2] - r[0] > EPS and r[3] - r[1] > EPS)
-            rectangles = remaining
+        rectangles = subtract_rectangles(bounds, [cut for _, cut in cuts], epsilon=EPS)
         pieces = []
         for index, (x0, z0, x1, z1) in enumerate(rectangles):
             piece = deepcopy(floor)

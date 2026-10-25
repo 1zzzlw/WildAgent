@@ -1,0 +1,145 @@
+{
+  "new_model_calls": 0,
+  "source_session": "session_1792838578836",
+  "refinement_status": "partial",
+  "construction_geometry": [
+    {
+      "id": "window_living_rear_f2",
+      "passed": true,
+      "entity_ids": [
+        "window_living_rear_f2_opening"
+      ]
+    },
+    {
+      "id": "window_dining_left",
+      "passed": true,
+      "entity_ids": [
+        "window_dining_left_opening"
+      ]
+    },
+    {
+      "id": "window_kitchen_left",
+      "passed": true,
+      "entity_ids": [
+        "window_kitchen_left_opening"
+      ]
+    },
+    {
+      "id": "window_study_front",
+      "passed": true,
+      "entity_ids": [
+        "window_study_front_opening"
+      ]
+    },
+    {
+      "id": "window_bedroom2_front",
+      "passed": true,
+      "entity_ids": [
+        "window_bedroom2_front_opening"
+      ]
+    },
+    {
+      "id": "window_bedroom3_front",
+      "passed": true,
+      "entity_ids": [
+        "window_bedroom3_front_opening"
+      ]
+    },
+    {
+      "id": "window_master_rear",
+      "passed": true,
+      "entity_ids": [
+        "window_master_rear_opening"
+      ]
+    },
+    {
+      "id": "window_garage_front",
+      "passed": true,
+      "entity_ids": [
+        "window_garage_front_opening"
+      ]
+    },
+    {
+      "id": "door_garage_internal",
+      "passed": true,
+      "entity_ids": [
+        "door_garage_internal_opening"
+      ]
+    },
+    {
+      "id": "cornice_main",
+      "passed": true,
+      "entity_ids": [
+        "cornice_main_layer_0",
+        "cornice_main_layer_1",
+        "cornice_main_layer_2"
+      ]
+    }
+  ],
+  "roof_placement": {
+    "version": "parametric/1",
+    "input_hash": "7b3f56f8bda872c422f5c82e262a634c53687eb42d4e0465465b4d1a128254d7",
+    "facts_hash": "91ff40b1fac0697cff906607b9bb8856a55d347c0b933865fd1668fb89611624",
+    "output_hash": "408c17bc011f351914afc0221dd0d71e9b97af2cc263f7df22950d1e43b3fd50",
+    "expressions": 7,
+    "repeated_items": 0,
+    "expanded_values": 104,
+    "construction_version": "construction/2",
+    "completed_fields": [],
+    "format_changes": [],
+    "placement_changes": [
+      {
+        "rule": "compiler.roof_surface_placement",
+        "entity_id": "roof_garage_wing_shed_panel",
+        "field": "position",
+        "before": [
+          3.5,
+          4.702957400058723,
+          3.0
+        ],
+        "after": [
+          3.4844708572938488,
+          4.702957400058723,
+          3.0
+        ]
+      }
+    ]
+  },
+  "roof_acceptance": {
+    "passed": false,
+    "error": "❌ [roof_garage_wing_shed_panel] 图纸标记 roof_garage_wing：单片坡屋面缺少墙顶封闭支承；[wall_garage_wing_front_L1] 墙顶 3.600m，XZ 端点 [[0.0, 0.0], [7.0, 0.0]] 对应屋面底 [5.575, 3.699]m，最大空隙 1.975m；[wall_garage_wing_left_L1] 墙顶 3.600m，XZ 端点 [[0.0, 0.0], [0.0, 6.0]] 对应屋面底 [5.575, 5.575]m，最大空隙 1.975m；保留批准坡向、范围和墙体，补充实际支承/封闭构件；只抬高或平移屋面不能解决"
+  },
+  "sofa_completion": {
+    "version": "parametric/1",
+    "input_hash": "5389e8a18c64f1ba5a48babdd42c0a95c891701e37fd0809f79693f9353140a4",
+    "facts_hash": "6cc19127cfb724594563c15ce77400beab49ffdb6de15dd7952e5d356864f36f",
+    "output_hash": "43a7d10a667c60098b721a7e57c578ce5c992061b7533d138151d011abcf698c",
+    "expressions": 0,
+    "repeated_items": 0,
+    "expanded_values": 43,
+    "construction_version": "construction/2",
+    "completed_fields": [
+      {
+        "entity_id": "sofa_living",
+        "field": "dimensions",
+        "value": {
+          "width": 2.8,
+          "height": 0.85,
+          "depth": 1.0
+        }
+      },
+      {
+        "entity_id": "sofa_living",
+        "field": "position",
+        "value": [
+          15,
+          0.0,
+          8
+        ]
+      }
+    ],
+    "format_changes": [],
+    "placement_changes": []
+  },
+  "scope": "Saved responses plus a missing-fields furniture fixture; partial building, not an end-to-end model generation."
+}

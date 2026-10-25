@@ -42,6 +42,7 @@ _ISSUE_CLASSIFICATION = {
     "validate_design_brief": ("model_instruction", "prompt"),
     "design_stair_connection": ("level_continuity", "prompt"),
     "design_component_geometry": ("model_instruction", "prompt"),
+    "design_construction_conflict": ("host_relation", "design_revision"),
     "approved_design_mutation": ("model_instruction", "design_revision"),
     "approved_design_invalid": ("coverage_geometry", "design_revision"),
 }

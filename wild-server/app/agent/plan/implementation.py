@@ -6,6 +6,8 @@ from xml.etree import ElementTree
 
 from app.design.markers import IMPLEMENTATION_STAGES, implementation_records, marker_results, merge_marker_resources
 from app.design.relations import NATIVE_SIZE_FIELDS as _SIZE_FIELDS
+from app.agent.plan.construction import CONSTRUCTION_PROTOCOL, expand_implementation, implementation_entities
+from app.design.construction_systems import VERSION as SYSTEM_VERSION, construction_spec, construct_system
 
 _BODY_TYPES = frozenset({"wall", "floor", "column", "beam", "stair", "primitive"})
 
@@ -24,7 +26,7 @@ def _material_definition(value):
     return {"opacity": 1, **value} if isinstance(value, dict) else value
 
 
-def _bind_materials(base, row, marker):
+def _bind_materials(base, row, marker, material_roles=None):
     """相同定义复用；局部同名材质按内容分配 ID，并发合并不互相改色。"""
     from hashlib import sha256
     row = deepcopy(row)
@@ -44,11 +46,19 @@ def _bind_materials(base, row, marker):
         bindings[name] = target
         adopted[target] = value
 
+    # 已批准角色到实际材质 ID 的唯一映射，不让模型重新猜 ID；显式定义/现有 ID 优先。
+    for role, target in (material_roles or {}).items():
+        if role not in definitions and role not in existing and target in existing:
+            bindings[role] = target
+    used_bindings = {}
+
     def bind(value):
         if isinstance(value, dict):
             for key, child in value.items():
                 if (key == "material" or key.endswith("Material")) and isinstance(child, str):
                     value[key] = bindings.get(child, child)
+                    if value[key] != child:
+                        used_bindings[child] = value[key]
                 else:
                     bind(child)
         elif isinstance(value, list):
@@ -57,7 +67,7 @@ def _bind_materials(base, row, marker):
 
     bind(row.get("geometry"))
     row["materials"] = adopted
-    return row, {k: v for k, v in bindings.items() if k != v}
+    return row, used_bindings
 
 
 def web_reference_query(item, markers):
@@ -122,15 +132,8 @@ def implementation_errors(blueprint):
 def _accept_group(base, row, marker, *, check_size=True):
     from app.agent.validation.diagnostics import blueprint_fingerprint
     geometry = row.get("geometry")
-    if not isinstance(geometry, dict):
-        raise ValueError("/geometry 必须是对象")
-    for bucket in ("elements", "components"):
-        if not isinstance(geometry.get(bucket, []), list):
-            raise ValueError(f"/geometry/{bucket} 必须是数组，没有构件时返回 []；实际类型 {type(geometry[bucket]).__name__}")
-    if set(geometry) - {"elements", "components"}:
-        raise ValueError("构件片段只返回 elements/components；组合形态直接用多个实体表达")
-    entities = [*geometry.get("elements", []), *geometry.get("components", [])]
-    if not entities or any(not isinstance(e, dict) or not e.get("id") for e in entities):
+    entities = implementation_entities(geometry)
+    if not entities:
         message = "没有生成有效实体；请尝试原生构件或 primitive 组合"
         if marker["type"] == "building_body" and not entities:
             message += ("；开敞仅表示不建墙，未另派 floor 任务的楼面仍由主体实现。"
@@ -287,6 +290,8 @@ def _accept_fragment(base, row, marker, retained_geometry=None, *, dependent_mar
     except (ValueError, TypeError, KeyError) as exc:
         error = str(exc)
     if recheck_retained:
+        return base, None, {"row": row, "error": error}, None
+    if construction_spec(marker.get("design") or {}) is not None:
         return base, None, {"row": row, "error": error}, None
     family = resolve_component_name(marker["type"])["entity_type"]
     if family in {"roof", "stair", "canopy"} or (family == "railing" and marker.get("host")) or (
@@ -482,6 +487,8 @@ def _item_context(state, markers, base, reference_entity_ids=()):
         "existing_blueprint": {**base, "geometry": {bucket: [e for e in base["geometry"][bucket] if e["id"] in needed]
                                                     for bucket in ("elements", "components")}}}
     context["opening_hosts"] = opening_hosts
+    context["material_roles"] = {role["role"]: role["materialId"]
+        for role in ((drawing.get("materials") or {}).get("resolved_plan") or {}).get("roles", [])}
     context["opening_cell_limits"] = {m["id"]: limits for m in markers.values()
                                       if (limits := opening_cell_limits(m)) is not None}
     from app.design.relations import canopy_mount_target
@@ -542,7 +549,7 @@ def _item_context(state, markers, base, reference_entity_ids=()):
 
 
 def _output_protocol(schema, markers, references, failed_rows):
-    from app.agent.generation.capability import capability_surface, capability_brief
+    from app.agent.generation.capability import capability_surface
     from app.agent.knowledge.component_names import resolve_component_name
     capabilities = capability_surface()
     body = any(m["type"] == "building_body" for m in markers.values())
@@ -563,7 +570,8 @@ def _output_protocol(schema, markers, references, failed_rows):
         protocol["$defs"][name] = definition
         pending.extend(re.findall(r'"\$ref"\s*:\s*"#/\$defs/([^"/]+)"', json.dumps(definition)))
     return ("可组合的原生类型：" + ", ".join(f"{k}:{c['target']}" for k, c in capabilities.items())
-            + "\n" + "\n".join(capability_brief(k, full=True) for k in sorted(kinds) if k in capabilities)
+            + "\n" + "\n".join(f"{k}：{capabilities[k]['coord_semantics']}；{capabilities[k]['host_rule']}"
+                                   for k in sorted(kinds) if k in capabilities)
             + "\n当前输出字段协议：" + json.dumps(protocol, ensure_ascii=False, separators=(",", ":")))
 
 
@@ -650,7 +658,32 @@ async def run_marker_generate(state, item):
     if schema is None:
         return {"status": "failed", "error": "WILD Schema 不可用"}, "aborted", [], "WILD Schema 不可用", trace
     callback = get_reasoning_callback()
-    if not references:
+    system_ids = {i for i, m in pending.items() if construction_spec(m["design"]) is not None}
+    for marker_id in sorted(system_ids):
+        marker = pending[marker_id]
+        attempt = {"tool": "construct_system", "stage": "construction", "model_calls": 0,
+                   "version": SYSTEM_VERSION, "marker_ids": [marker_id], "source": deepcopy(marker["design"]), "errors": {}}
+        trace.append(attempt)
+        try:
+            row = construct_system(marker, base)
+            attempt["output"] = deepcopy(row)
+            candidate, accepted, rejected, record = _accept_fragment(base, row, marker,
+                dependent_markers=markers.values(), diagram_hosts=state.get("drawing_hosts", []))
+            if rejected:
+                raise ValueError(rejected["error"])
+            entities = [e for values in accepted["geometry"].values() for e in values]
+            base = candidate
+            records[marker_id] = record
+            fragments.extend(entities)
+            for key in buckets:
+                buckets[key].extend(e["id"] for e in row["geometry"][key])
+            pending.pop(marker_id)
+            failures.pop(marker_id, None)
+        except (ValueError, TypeError, KeyError) as exc:
+            failures[marker_id] = "已批准构造无法落实，须修订设计参数或宿主："+str(exc)
+            attempt["errors"][marker_id] = failures[marker_id]
+            attempt["stop_reason"] = "construction_design_conflict"
+    if pending.keys()-system_ids and not references:
         if callback:
             await callback("execute:progress", f"{item.label}：先查询知识库。\n")
         descriptions = list(dict.fromkeys(str(value or "").strip() for m in pending.values()
@@ -724,7 +757,7 @@ async def run_marker_generate(state, item):
         if not pending:
             break
         eligible = {i: pending[i] for i in batch_ids if i in pending
-                    and i not in stopped and stage not in completed_stages[i]}
+                    and i not in stopped and i not in system_ids and stage not in completed_stages[i]}
         if not eligible:
             continue
         if sum(t.get("model_calls", 0) for t in trace) >= call_limit:
@@ -744,27 +777,13 @@ async def run_marker_generate(state, item):
                 "雨棚保持显式宽、深、厚；原生 supportCount 生成竖直支柱，图纸要求斜撑时用正确倾斜的实体，不以竖柱代替斜撑。")
         if "building_body" in families:
             instructions.append("主体统一实现 body_components 的结构描述，沿用实际采用的 diagram_hosts 墙ID。"
-                "levels 的 base_y 是楼面顶，top_y 是本层墙顶；volume_geometry 给出世界包络与墙顶屋面支承标高。"
-                "levels[].voids 是该层不铺楼板的显式挑空边界，按范围分片留空；普通 rooms 标签不自动开洞。"
-                "原生 floor 向上增厚，from/to[1]=楼面顶减 thickness；不把楼面顶直接当板底。"
-                "四面 open 仅免除围护墙，未另派 floor 任务的实际楼面仍由主体实现；"
-                "台基构件不等于已委派 floor。按楼面顶与板厚实现楼面，不返回空的逻辑容器。"
-                "body_components 中的整面围护墙归主体实现，按其显式尺寸、厚度、材料和形态生成一次；用 volume+face+floor 对应的墙ID承接后续门窗，不重复建墙。"
-                "墙的 from/to 包含墙底与墙顶 Y，沿用完整三维宿主坐标；不能只保留 X/Z 或把两端 Y 都写成同一标高。"
-                "diagram_hosts 列后续门窗需要的墙宿主；其中 ID 若在 delegated_markers 另列为墙体任务，主体只参考其位置，不重复生成。其他围护按各体量实际空间用途与 facades 实现。"
-                "facades 的 open 表示该体量此面不建墙，empty 表示有墙无开口；相接体量的同一界面若另一侧明确有墙，保留一份该侧围护，不重复建墙，也不删除它。薄 wall 仍是实体，不能生成所谓定位参考墙。"
-                "每个体量逐面采用 volume.facades 覆盖后的有效布局；floor_layouts.walls 是实际内墙，未委派的按世界 X/Z 端点、厚度和本层标高实现并沿用内墙 id，已在 delegated_markers 单列的由对应墙体任务实现。rooms 仅标注用途，不自动建隔墙。"
-                "相邻体量交界只生成一份物理墙，不能逐体量叠加四面墙。"
-                "delegated_markers/components 由其他任务实现，主体留出位置和承托，不占用其实体ID。"
-                "不能换用任意ID重复搭建其他任务的屋面、山花或装饰几何；只有 body_components 明确要求的主体构造才在本条目实现。"
-                "opening_layout 是后续门窗的安装位置；保留能覆盖这些位置的完整墙宿主，原生门窗会自动裁墙。"
-                "不要手工按门窗洞口拆墙，再把原宿主ID留给其中一小段；多体量楼板保留庭院、退台及楼梯通道。"
-                "volumes 的 x/z 是世界起点，楼板范围为 [x,x+width]×[z,z+depth]；墙与板共用这套世界坐标，不能重新以原点居中。"
-                "levels.base_y 是每层楼面顶标高；原生 floor 的 from 和 to 均为完整世界三维端点 [X,Y,Z]，不能把 to 写成平面 [X,Z]；两端 Y 应为楼面顶减板厚，不能把墙底标高直接当板底。"
-                "primitive box 是实心体，不能当成整栋空心围护或不可见参考体量。"
-                "按 opening_layout 给门窗留出净空；未指定轴网坐标时，按洞口间的墙垛组织梁柱，不能让柱穿过门窗。"
-                "structural_grid 是结构组织说明，不把 x_bays/z_bays 扩成柱阵；有明确房间平面时，主体不生成独立柱，图纸 components 标明的柱位由对应 plan 实现。"
-                "梁柱与填充墙核对墙法线方向的实际截面和进退，避免重合表面，不删掉图纸要求的外露框架。")
+                "直墙和矩形楼面优先声明 walls/slabs，坐标、板底与挑空交给程序计算，材料和厚度由图纸决定。"
+                "diagram_hosts 已采用逐体量的有效立面与内墙；delegated_markers 中另派的墙不再生成。"
+                "相邻同构造墙由装配去重；保留完整门窗宿主，门窗组件负责开洞，不手拆洞口墙。"
+                "open 仅免除围护；未另派 floor 任务的楼面仍需实现，台基不代替楼板。"
+                "特殊形体用 geometry 按图纸实现，体量包络不能代替曲面外形，box 不能代替空心围护。"
+                "图纸标明的独立梁柱、屋面与装饰由对应任务实现；不按轴网凭空增加柱阵。"
+                "rooms 只是用途标签；已声明的内墙、显式挑空与楼梯通道必须落实。")
         if families & {"door", "window"}:
             instructions.append("用 door/window 或 opening 开真实洞口，按整个洞口组保持设计宽高，组内分扇不重叠。"
                 "opening_cell_limits 是自动立面标记的可用开间；整组洞口不得超出该沿墙范围和 max_height，不能占用相邻标记的位置。"
@@ -817,17 +836,17 @@ async def run_marker_generate(state, item):
                   "failed_implementations 是未采用的错误稿，可以修改其坐标、尺寸与方向以落实图纸，不能原样返回已指出的错误。"
                   "只修这些失败片段，保留待修ID；accepted_entity_ids 才是不可改名重建的已采用实体。"
                   "diagram_hosts 的墙ID必须逐字沿用，共用墙采用 opening_hosts 的实际ID；其他新实体以标记ID为前缀，不覆盖已采用实体。"
-                  "复用已有材质时只引用 ID，无需重复定义；新材质由程序绑定独立 ID。"
+                  "复用已有材质时引用 ID 或 material_roles 中的已批准角色，程序解析角色引用；新材质由程序绑定独立 ID。"
                   "物理玻璃以 transmission 和 ior 表达透明，opacity 为 1 或省略。返回 JSON："
                   '{"implementations":[{"id":"图纸标记ID","geometry":{"elements":[],"components":[]},'
                   '"materials":{},"assets":{}}]}。'
                   "explanation 可省略；如填写，只写一句实施说明，不写推理过程。"
                   "elements/components 必须是数组，没有构件时写 []；materials/assets 是对象。"
-                  "所有数值先计算再写入 JSON，不能在坐标中填写加减乘除算式。"
+                  "涉及计算或重复项时声明 parameters，使用程序表达式展开，不手算或逐项抄写坐标。"
                   "组合的 size 和 placement.position 约束整组外包框；零件中心±尺寸/2均须落在对应边界内，"
                   "assembly_bounds 已计算世界最小/最大坐标，直接据此定位边缘零件；"
                   "顶端横条和端柱的半厚也计入，不把设计顶标高写成端部零件中心。"
-                  "\nWILD输出协议：" + protocol)
+                  "\n构造声明协议：" + CONSTRUCTION_PROTOCOL + "\n展开后 WILD 输出协议：" + protocol)
         context = _item_context(state, eligible, base, item.params.get("reference_entity_ids", []))
         context.update(validation_feedback={i: failures[i] for i in eligible}, reference_data=references,
                        failed_implementations={i: failed_rows[i] for i in eligible if i in failed_rows},
@@ -839,7 +858,7 @@ async def run_marker_generate(state, item):
             messages = [{"role": "system", "content": prompt},
                         {"role": "user", "content": json.dumps(context, ensure_ascii=False)}]
             level = state.get("design_document", {}).get("decisions", {}).get("complexity", {}).get("level", "simple")
-            thinking = stage == "generate" and level != "minimal"
+            thinking = state.get("thinking_mode") is not False and stage == "generate" and level != "minimal"
             from app.rag.trace import llm_trace_scope
             from app.agent.plan.expand import _batch_load
             chunk_ids = next((t.get("injected_chunk_ids", []) for t in reversed(trace)
@@ -889,12 +908,12 @@ async def run_marker_generate(state, item):
                 await callback("execute:progress", f"{item.label}：输出达到长度上限，拆为 {len(halves[0])} 和 {len(halves[1])} 个标记继续实现。\n")
             continue
         try:
-            payload = extract_json_object(reply.content or "", required_key="implementations", raise_on_error=True)
+            payload = extract_json_object(reply.content or "", required_key="implementations", raise_on_error=True, outer_only=True)
         except ValueError as exc:
             payload = {}
             feedback = ("模型输出达到长度上限；保留全部设计要求，精简重复字段和说明，返回完整 JSON"
                         if attempt["finish_reason"] in {"length", "max_tokens"}
-                        else str(exc) + "；数值先计算，只返回完整 JSON")
+                        else str(exc) + "；只返回完整 JSON，算式写成 parameters 模式的字符串表达式")
             failures.update({i: feedback for i in eligible})
         rows = payload.get("implementations")
         if not payload:
@@ -913,12 +932,10 @@ async def run_marker_generate(state, item):
                     if marker_id not in returned:
                         raise ValueError("缺少该标记的实现")
                     row = deepcopy(returned[marker_id])
-                    if isinstance(row.get("geometry"), dict):
-                        for bucket in ("elements", "components"):
-                            if row["geometry"].get(bucket) == {}:
-                                row["geometry"][bucket] = []
-                                attempt.setdefault("format_changes", []).append({
-                                    "path": f"/implementations/{marker_id}/geometry/{bucket}", "before": {}, "after": []})
+                    submitted = deepcopy(row)
+                    row, construction = expand_implementation(row, marker, context)
+                    if construction:
+                        attempt.setdefault("construction", {})[marker_id] = {"source": submitted, **construction}
                     if marker["type"] == "building_body" and isinstance(row.get("geometry"), dict):
                         geometry = row["geometry"]
                         if all(isinstance(geometry.get(k, []), list) for k in ("elements", "components")):
@@ -946,7 +963,7 @@ async def run_marker_generate(state, item):
                     row, placement_changes = place_opening_group(base, row, marker)
                     if placement_changes:
                         attempt.setdefault("placement_changes", {})[marker_id] = placement_changes
-                    row, bindings = _bind_materials(base, row, marker)
+                    row, bindings = _bind_materials(base, row, marker, context["material_roles"])
                     submitted = deepcopy(row)
                     if bindings:
                         attempt.setdefault("material_bindings", {})[marker_id] = bindings
@@ -998,7 +1015,7 @@ async def run_marker_generate(state, item):
                         record["assembly_changes"] = assembly_changes
                     adopted_bindings = {k: v for t in trace
                         for k, v in t.get("material_bindings", {}).get(marker_id, {}).items()
-                        if v in accumulated["materials"]}
+                        if v in accumulated["materials"] or v in base["materials"]}
                     if adopted_bindings:
                         record["material_bindings"] = adopted_bindings
                     fragments.extend(entities)
@@ -1011,6 +1028,8 @@ async def run_marker_generate(state, item):
                     failures.pop(marker_id, None)
                 except (ValueError, TypeError, KeyError) as exc:
                     failures[marker_id] = str(exc)
+                    if isinstance(submitted, dict) and any(k in submitted for k in ("parameters", "walls", "slabs")):
+                        failed_rows[marker_id] = submitted
                     owned = [e["id"] for bucket in ("elements", "components")
                              for e in parts.get(marker_id, {}).get("geometry", {}).get(bucket, [])]
                     failed_candidate = _failed_candidate(submitted, parts.get(marker_id, {}).get("geometry"), str(exc),
@@ -1031,6 +1050,8 @@ async def run_marker_generate(state, item):
         if marker_id in stopped:
             records[marker_id]["stop_reason"] = "repeated_failed_candidate"
             records[marker_id]["marker_id"] = marker_id
+        if marker_id in system_ids:
+            records[marker_id]["stop_reason"] = "construction_design_conflict"
     for marker_id in target_ids:
         if marker_id not in records:
             continue

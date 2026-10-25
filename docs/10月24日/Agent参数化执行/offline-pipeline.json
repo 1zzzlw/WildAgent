@@ -1,0 +1,87 @@
+{
+  "model_replies": "fixtures",
+  "paid_calls": 0,
+  "compile_report": {
+    "ok": true,
+    "missing_markers": [],
+    "errors": [],
+    "abandoned_markers": [],
+    "design_complete": true,
+    "elements": 6,
+    "components": 4
+  },
+  "construction": {
+    "source": {
+      "id": "building_body",
+      "parameters": {
+        "t": 0.15
+      },
+      "walls": [
+        {
+          "$repeat": {
+            "items": "=facts.diagram_hosts",
+            "var": "wall",
+            "value": {
+              "host": "=wall.id",
+              "thickness": 0.2,
+              "material": "wall_finish"
+            }
+          }
+        }
+      ],
+      "slabs": [
+        {
+          "$repeat": {
+            "items": "=facts.levels",
+            "var": "level",
+            "values": [
+              {
+                "$repeat": {
+                  "items": "=level.volume_ids",
+                  "var": "volume",
+                  "value": {
+                    "id": "body_slab_${volume}_${level.index}",
+                    "volume": "=volume",
+                    "floor": "=level.index",
+                    "thickness": "=t",
+                    "material": "floor_finish"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "version": "parametric/1",
+    "input_hash": "ab1d42e9b28fa8a7fbaebd8f9fc2558fbf3157357201264fbfa6027d38063228",
+    "facts_hash": "74681a8455bd0489efd02903750232aa16e51b9a930e89fa68cd1fbaaa210605",
+    "output_hash": "73915bdd5a286402bf99c7e3e4abb30f076d8932311796e00b1f8ba4b0bf2d27",
+    "expressions": 10,
+    "repeated_items": 6,
+    "expanded_values": 128,
+    "construction_version": "construction/2",
+    "constructed": [
+      {
+        "path": "/walls/0",
+        "entity_id": "wall_main_vol_front_L1"
+      },
+      {
+        "path": "/walls/1",
+        "entity_id": "wall_main_vol_right_L1"
+      },
+      {
+        "path": "/walls/2",
+        "entity_id": "wall_main_vol_back_L1"
+      },
+      {
+        "path": "/walls/3",
+        "entity_id": "wall_main_vol_left_L1"
+      },
+      {
+        "path": "/slabs/0",
+        "entity_id": "body_slab_main_vol_1"
+      }
+    ]
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "baselineVersion": "p7a.1",
+  "inputSha256": "72596d03e90429da4cfe4bfe02384dfbdc1eff2b6335ea895256cfc67bd42462",
+  "renderer": "wild-web/createSceneGroupFromEntity",
+  "settings": {
+    "width": 1280,
+    "height": 960,
+    "pipeline": "editor-presentation-v1",
+    "time": "day",
+    "quality": "high",
+    "environment": "minimal",
+    "toneMappingExposure": 0.29928,
+    "lighting": {
+      "hemisphereSkyColor": 14478846,
+      "hemisphereGroundColor": 6772036,
+      "hemisphereIntensity": 0.6156108000000001,
+      "keyColor": 16707797,
+      "keyIntensity": 11.009400000000001
+    },
+    "sunDirection": [
+      0.5254827454987588,
+      0.6691306063588582,
+      -0.5254827454987588
+    ],
+    "ground": {
+      "color": 7699314,
+      "y": -0.22000000149011611
+    },
+    "ambientOcclusion": "gtao"
+  },
+  "views": [
+    "front",
+    "side",
+    "top",
+    "perspective"
+  ],
+  "chromium": "C:\\Users\\Administrator\\AppData\\Local\\ms-playwright\\chromium-1243\\chrome-win64\\chrome.exe",
+  "browserVersion": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/153.0.8010.12",
+    "revision": "@971a7443b0c9b0a9b2860529b33331b76077ec62",
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+    "jsVersion": "15.3.76.4"
+  },
+  "sourceDigest": "c70c0a95d8f32cc1f509ebf2673feefbcda13f6a386b92b3495e1216620b5c43",
+  "glRenderer": "WebKit WebGL",
+  "glVendor": "WebKit",
+  "meshCount": 119,
+  "materialCount": 119,
+  "unmappedMaterials": 0,
+  "boundingBox": {
+    "min": [
+      -0.7181999683380127,
+      -0.20000000149011612,
+      -0.7181997299194336
+    ],
+    "max": [
+      14.718199729919434,
+      5.829401016235352,
+      12.718199968338013
+    ]
+  },
+  "compileErrors": 0,
+  "reconstructErrors": 0,
+  "shots": [
+    {
+      "view": "front",
+      "file": "docs\\10月24日\\Agent参数化执行\\native_smoke_20261024_141757\\render\\front.png",
+      "bytes": 409487
+    },
+    {
+      "view": "side",
+      "file": "docs\\10月24日\\Agent参数化执行\\native_smoke_20261024_141757\\render\\side.png",
+      "bytes": 532271
+    },
+    {
+      "view": "top",
+      "file": "docs\\10月24日\\Agent参数化执行\\native_smoke_20261024_141757\\render\\top.png",
+      "bytes": 294591
+    },
+    {
+      "view": "perspective",
+      "file": "docs\\10月24日\\Agent参数化执行\\native_smoke_20261024_141757\\render\\perspective.png",
+      "bytes": 442023
+    }
+  ],
+  "contextSha256": "a064449868a98535fdcae437d0ed8bb47190c2f7e1eceb97317a9faa77f96e4f"
+}

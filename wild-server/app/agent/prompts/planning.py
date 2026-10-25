@@ -57,6 +57,7 @@ def build_architecture_plan_prompt(
     from app.agent.knowledge.component_names import component_reference_prompt
     from app.agent.generation.architecture.profile import resolve_complexity_profile
     from app.agent.generation.material.plan import ROLE_SPECS
+    from app.design.parametric import PARAMETRIC_PROTOCOL
     complexity = resolve_complexity_profile((complexity_profile or {}).get("level", "simple"))
     current = json.dumps({k: v for k, v in current_plan.items()
                           if k not in {"component_quota", "required_components"}}, ensure_ascii=False) if current_plan else "无"
@@ -91,7 +92,7 @@ def build_architecture_plan_prompt(
         "envelope": {"system": "string"},
     }
     return f"""
-你负责绘制完整建筑设计图纸，发挥建筑知识和审美；后续 plan 拆分任务，execute 研究并实现构件。
+你负责体量、空间关系、构造层次、材料构图和设计取舍；程序负责参数计算、重复展开和已确定关系的几何落实。
 本次建筑类型线索：{profile_id}。建筑设计以用户需求为准。
 按“需求与形制 → 体量与标高 → 功能交通 → 围护开口 → 屋面附属 → 材料表达”组织本次设计，结合参考中的设计步骤与关系复核，把决定落实到对应字段。
 design_intent 简述实际采用的设计选择；庭院、通高、幕墙等已选特征需要对应的空间或构件数据，不能只在文字中命名。
@@ -99,10 +100,15 @@ design_intent 简述实际采用的设计选择；庭院、通高、幕墙等已
 用户明确要求优先于默认粒度。需要独立实现的结构、交通及形制构件须写入 components，明确位置、尺寸与连接关系；不能只在概念中提及。
 材料与配色写在 description/form。material_role 可选，使用现有角色 {', '.join(ROLE_SPECS)}；同一角色绑定同一种材质，不同材质使用不同角色或独立材质。
 
-只返回一个完整设计 JSON 对象。以下 JSON 是字段结构与类型说明，不是设计取值；number/integer 必须替换为实际数值，string 替换为设计内容。floor_layouts、envelope、volume.facades 可选，floor_connections 仅用于楼梯；数组展示单项结构，没有构件时 components 用 []；尺寸与标高单位为米：
+只返回一个完整设计 JSON 对象。可在根声明 parameters，共享尺寸和标高用参数表达，重复构件用 $repeat；程序展开后才校验和审核，批准图纸只保存实际数值。
+以下 JSON 是展开后的字段结构与类型说明，不是设计取值；string 替换为设计内容。floor_layouts、envelope、volume.facades 可选，floor_connections 仅用于楼梯；数组展示单项结构，没有构件时 components 用 []；尺寸与标高单位为米：
 ```json
 {json.dumps(output_fields, ensure_ascii=False, indent=2)}
 ```
+{PARAMETRIC_PROTOCOL}
+设计阶段 facts.current_design 仅在修订已有图纸时可用；首次设计将共享尺寸声明在 parameters，不引用尚未生成的字段。
+本轮先确定完整体量、空间、开口和各构件的尺寸与形式。入口遮蔽、檐口层次和窗分格的意图写入 form/description。
+标准和详细粒度会在审核前执行一次受限构造深化，负责适用部位的细部参数；本轮不必编写 form.construction。保留必要留白，不按数量堆构件。
 
 基础字段约定：
 - massing.width/depth 包含所有 volumes 的总体包络；主楼尺寸写在对应 volume。完整建模时 modeled_floors=floors，楼层是从 1 开始的整数；台基、杆件等无楼层的实体写 components。

@@ -1,0 +1,20 @@
+{
+  "model": "qwen3.8-flash",
+  "request": "设计并生成一栋单层现代庭院小别墅。两个矩形翼体组成L形围院，总范围控制在14×12米内。\n体量、开间和材料构图要有秩序，客厅、卧室与入口关系清楚。浅色墙面配深灰框和木色檐底。\n重点深化入口遮蔽、檐口层次与窗的框扇分格：给出有设计理由的尺寸、层次和材料分工，\n让这些细节成为可落实的构造，保持墙顶、屋面、洞口之间的真实关系。需要的构件显式列出，不能重复委派。\n围院保留空地，不增加道路、车辆、家具或复杂植栽。采用当前构造协议能表达的形式；不适用处保持原创自定义形态。\n图纸重复尺寸可用parameters，主体直墙和矩形楼板可用walls/slabs声明。",
+  "status": "failed",
+  "error": "建筑图纸未通过检查：图纸缺少关键设计字段：/facades/front/bays、/facades/front/ground_pattern、/facades/front/upper_pattern、/facades/back/bays、/facades/back/ground_pattern、/facades/back/upper_pattern、/facades/left/bays、/facades/left/ground_pattern、/facades/left/upper_pattern、/facades/right/bays、/facades/right/ground_pattern、/facades/right/upper_pattern；请按本次建筑设计补全",
+  "model_calls": 3,
+  "call_limit": 18,
+  "seconds": 154.39,
+  "steps": [
+    {
+      "stage": "architecture",
+      "seconds": 154.39,
+      "status": "failed",
+      "error": "建筑图纸未通过检查：图纸缺少关键设计字段：/facades/front/bays、/facades/front/ground_pattern、/facades/front/upper_pattern、/facades/back/bays、/facades/back/ground_pattern、/facades/back/upper_pattern、/facades/left/bays、/facades/left/ground_pattern、/facades/left/upper_pattern、/facades/right/bays、/facades/right/ground_pattern、/facades/right/upper_pattern；请按本次建筑设计补全",
+      "model_calls": 3
+    }
+  ],
+  "review": "仅隔离本地验证会话确认图纸；未改变生产审核流程",
+  "rendered": false
+}

@@ -1,0 +1,182 @@
+{
+  "geometry_errors": [],
+  "reviews": [
+    {
+      "marker_id": "building_body",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "window_wing_long_back_L1_2",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "window_wing_long_back_L1_3",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "window_wing_long_left_L1_2",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "roof_wing_long",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "window_wing_short_front_L1_2",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "roof_wing_short",
+      "status": "checked",
+      "checked": [],
+      "unverified": [],
+      "errors": []
+    },
+    {
+      "marker_id": "entrance_door_main",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height"
+      ],
+      "unverified": [
+        "size.depth 未建立原生字段映射"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "lattice_screen_0",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height",
+        "size.depth",
+        "placement.position"
+      ],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "lattice_screen_1",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height",
+        "size.depth",
+        "placement.position"
+      ],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "lattice_screen_2",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height",
+        "size.depth",
+        "placement.position"
+      ],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "lattice_screen_3",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height",
+        "size.depth",
+        "placement.position"
+      ],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "lattice_screen_4",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height",
+        "size.depth",
+        "placement.position"
+      ],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "window_courtyard_living",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height"
+      ],
+      "unverified": [
+        "size.depth 未建立原生字段映射"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "window_bedroom",
+      "status": "needs_review",
+      "checked": [
+        "size.width",
+        "size.height"
+      ],
+      "unverified": [
+        "size.depth 未建立原生字段映射"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "cornice_long",
+      "status": "needs_review",
+      "checked": [],
+      "unverified": [
+        "size.width 未建立原生字段映射",
+        "size.height 未建立原生字段映射",
+        "size.depth 未建立原生字段映射",
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    },
+    {
+      "marker_id": "plinth_ground",
+      "status": "needs_review",
+      "checked": [],
+      "unverified": [
+        "造型与构造描述需要渲染复核"
+      ],
+      "errors": []
+    }
+  ],
+  "candidate_errors": []
+}

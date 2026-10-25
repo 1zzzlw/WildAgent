@@ -1,0 +1,408 @@
+test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) ... 
+  test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_cabinet_base') ... FAIL
+  test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_cabinet_wall') ... FAIL
+  test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_island') ... FAIL
+test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) ... 
+  test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_entrance') ... ERROR
+  test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_living') ... ERROR
+  test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_kitchen') ... ERROR
+  test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_bedroom_master') ... ERROR
+test_actual_sofa_drift_rejected (__main__.ExecutionContractTests.test_actual_sofa_drift_rejected) ... FAIL
+test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) ... 
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=0) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=0.7) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=-1.2) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=0) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=0.7) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=-1.2) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=0) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=0.7) ... ERROR
+  test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=-1.2) ... ERROR
+test_known_buckets_are_normalized_without_dropping_entities (__main__.ExecutionContractTests.test_known_buckets_are_normalized_without_dropping_entities) ... FAIL
+test_misplaced_output_is_not_reported_empty (__main__.ExecutionContractTests.test_misplaced_output_is_not_reported_empty) ... FAIL
+test_numeric_array_repeat_is_still_valid (__main__.ExecutionContractTests.test_numeric_array_repeat_is_still_valid) ... ok
+test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) ... 
+  test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=facts.wall.from[0]') ... FAIL
+  test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=i == 0 ? -1 : 1') ... FAIL
+  test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=facts.marker.size.width') ... FAIL
+test_recorded_roof_projection_alignment (__main__.ExecutionContractTests.test_recorded_roof_projection_alignment) ... ERROR
+test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) ... 
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=-0.38, width=7) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=-0.38, width=9) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=0.21, width=7) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=0.21, width=9) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=-0.38, width=7) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=-0.38, width=9) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=0.21, width=7) ... ERROR
+  test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=0.21, width=9) ... ERROR
+
+======================================================================
+ERROR: test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_entrance')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 53, in test_actual_light_materials_and_wrong_material
+    _accept_group(context["existing_blueprint"], expanded, marker)
+  File "E:\AgentProject\WildAgent\wild-server\app\agent\plan\implementation.py", line 212, in _accept_group
+    raise ValueError("；".join(errors[:12]))
+ValueError: 图纸标记 light_entrance 未引用设计材质角色 accent
+
+======================================================================
+ERROR: test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_living')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 53, in test_actual_light_materials_and_wrong_material
+    _accept_group(context["existing_blueprint"], expanded, marker)
+  File "E:\AgentProject\WildAgent\wild-server\app\agent\plan\implementation.py", line 212, in _accept_group
+    raise ValueError("；".join(errors[:12]))
+ValueError: 图纸标记 light_living 未引用设计材质角色 accent
+
+======================================================================
+ERROR: test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_kitchen')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 53, in test_actual_light_materials_and_wrong_material
+    _accept_group(context["existing_blueprint"], expanded, marker)
+  File "E:\AgentProject\WildAgent\wild-server\app\agent\plan\implementation.py", line 212, in _accept_group
+    raise ValueError("；".join(errors[:12]))
+ValueError: 图纸标记 light_kitchen 未引用设计材质角色 accent
+
+======================================================================
+ERROR: test_actual_light_materials_and_wrong_material (__main__.ExecutionContractTests.test_actual_light_materials_and_wrong_material) (id='light_bedroom_master')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 53, in test_actual_light_materials_and_wrong_material
+    _accept_group(context["existing_blueprint"], expanded, marker)
+  File "E:\AgentProject\WildAgent\wild-server\app\agent\plan\implementation.py", line 212, in _accept_group
+    raise ValueError("；".join(errors[:12]))
+ValueError: 图纸标记 light_bedroom_master 未引用设计材质角色 accent
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=0.7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(15, 0.425, 8), angle=-1.2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=0.7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(-8, 4.5, 21), angle=-1.2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=0)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=0.7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_furniture_completion_and_dimensions (__main__.ExecutionContractTests.test_furniture_completion_and_dimensions) (position=(32, 7.3, -4), angle=-1.2)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 89, in test_furniture_completion_and_dimensions
+    self.assertEqual(actual["position"], [x, y-height/2, z])
+                     ~~~~~~^^^^^^^^^^^^
+KeyError: 'position'
+
+======================================================================
+ERROR: test_recorded_roof_projection_alignment (__main__.ExecutionContractTests.test_recorded_roof_projection_alignment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 144, in test_recorded_roof_projection_alignment
+    _accept_group(context["existing_blueprint"], expanded, marker)
+  File "E:\AgentProject\WildAgent\wild-server\app\agent\plan\implementation.py", line 212, in _accept_group
+    raise ValueError("；".join(errors[:12]))
+ValueError: ❌ [roof_garage_wing_shed_panel] 图纸标记 roof_garage_wing：屋面未覆盖负责体量及出檐，缺少 0.099㎡；目标 X/Z 范围 (-0.4, -0.4, 7.4, 6.4)，已有上表面投影 [(-0.38447085729384867, -0.3999999999999999, 7.415529142706151, 6.4)]；核对倾斜后的投影尺寸及中心，保持连续屋面，不能只返回封檐条；当前可核对 roof、矩形 floor 和单轴倾斜 box
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=-0.38, width=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=-0.38, width=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=0.21, width=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=0, angle=0.21, width=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=-0.38, width=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=-0.38, width=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=0.21, width=7)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+ERROR: test_roof_axes_sizes_and_conflicts (__main__.ExecutionContractTests.test_roof_axes_sizes_and_conflicts) (axis=2, angle=0.21, width=9)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 168, in test_roof_axes_sizes_and_conflicts
+    self.assertTrue(evidence["placement_changes"])
+                    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'placement_changes'
+
+======================================================================
+FAIL: test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_cabinet_base')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 103, in test_actual_kitchen_shape_feedback
+    with self.assertRaisesRegex(ValueError, r"/geometry/elements/\d+.*values"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_cabinet_wall')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 103, in test_actual_kitchen_shape_feedback
+    with self.assertRaisesRegex(ValueError, r"/geometry/elements/\d+.*values"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_actual_kitchen_shape_feedback (__main__.ExecutionContractTests.test_actual_kitchen_shape_feedback) (id='kitchen_island')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 103, in test_actual_kitchen_shape_feedback
+    with self.assertRaisesRegex(ValueError, r"/geometry/elements/\d+.*values"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_actual_sofa_drift_rejected (__main__.ExecutionContractTests.test_actual_sofa_drift_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 65, in test_actual_sofa_drift_rejected
+    with self.assertRaisesRegex(ValueError, "position|位置|中心"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_known_buckets_are_normalized_without_dropping_entities (__main__.ExecutionContractTests.test_known_buckets_are_normalized_without_dropping_entities)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 130, in test_known_buckets_are_normalized_without_dropping_entities
+    self.assertEqual(len(expanded["geometry"]["elements"]), 1)
+AssertionError: 0 != 1
+
+======================================================================
+FAIL: test_misplaced_output_is_not_reported_empty (__main__.ExecutionContractTests.test_misplaced_output_is_not_reported_empty)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 137, in test_misplaced_output_is_not_reported_empty
+    with self.assertRaisesRegex(ValueError, "/entities.*geometry"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=facts.wall.from[0]')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 119, in walk
+    tree = ast.parse(expression, mode="eval")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<unknown>", line 1
+    facts.wall.from[0]
+               ^^^^
+SyntaxError: invalid syntax
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 172, in walk
+    return {key: walk(child, scope, f"{path}/{key}", depth+1) for key, child in value.items()}
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 175, in walk
+    raise ValueError(f"{path or '/'}：{exc}") from exc
+ValueError: /x：invalid syntax (<unknown>, line 1)
+
+The above exception was the direct cause of the following exception:
+
+ValueError: /：/x：invalid syntax (<unknown>, line 1)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 116, in test_parameter_feedback_and_safe_contract
+    with self.assertRaisesRegex(ValueError, expected):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "\["from"\]" does not match "/：/x：invalid syntax (<unknown>, line 1)"
+
+======================================================================
+FAIL: test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=i == 0 ? -1 : 1')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 119, in walk
+    tree = ast.parse(expression, mode="eval")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Administrator\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\ast.py", line 52, in parse
+    return compile(source, filename, mode, flags,
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<unknown>", line 1
+    i == 0 ? -1 : 1
+           ^
+SyntaxError: invalid syntax
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 172, in walk
+    return {key: walk(child, scope, f"{path}/{key}", depth+1) for key, child in value.items()}
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 175, in walk
+    raise ValueError(f"{path or '/'}：{exc}") from exc
+ValueError: /x：invalid syntax (<unknown>, line 1)
+
+The above exception was the direct cause of the following exception:
+
+ValueError: /：/x：invalid syntax (<unknown>, line 1)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 116, in test_parameter_feedback_and_safe_contract
+    with self.assertRaisesRegex(ValueError, expected):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "items" does not match "/：/x：invalid syntax (<unknown>, line 1)"
+
+======================================================================
+FAIL: test_parameter_feedback_and_safe_contract (__main__.ExecutionContractTests.test_parameter_feedback_and_safe_contract) (expression='=facts.marker.size.width')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 123, in walk
+    return literal(evaluate(tree.body, scope))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 75, in evaluate
+    container = evaluate(node.value, scope)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 79, in evaluate
+    raise ValueError(f"事实或参数没有字段 {key}")
+ValueError: 事实或参数没有字段 size
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 172, in walk
+    return {key: walk(child, scope, f"{path}/{key}", depth+1) for key, child in value.items()}
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\AgentProject\WildAgent\wild-server\app\design\parametric.py", line 175, in walk
+    raise ValueError(f"{path or '/'}：{exc}") from exc
+ValueError: /x：事实或参数没有字段 size
+
+The above exception was the direct cause of the following exception:
+
+ValueError: /：/x：事实或参数没有字段 size
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "E:\AgentProject\WildAgent\docs\10月24日\执行契约修复\verify.py", line 116, in test_parameter_feedback_and_safe_contract
+    with self.assertRaisesRegex(ValueError, expected):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: "design.size" does not match "/：/x：事实或参数没有字段 size"
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.459s
+
+FAILED (failures=9, errors=22)

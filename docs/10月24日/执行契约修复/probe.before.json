@@ -1,0 +1,218 @@
+{
+  "new_model_calls": 0,
+  "light_material_check": [
+    {
+      "id": "light_entrance",
+      "material_id": "accent",
+      "nested_body_materials": [
+        "accent"
+      ],
+      "actual_acceptance": {
+        "passed": false,
+        "error": "图纸标记 light_entrance 未引用设计材质角色 accent"
+      },
+      "isolating_material_check_only": {
+        "passed": true
+      }
+    },
+    {
+      "id": "light_living",
+      "material_id": "accent",
+      "nested_body_materials": [
+        "accent"
+      ],
+      "actual_acceptance": {
+        "passed": false,
+        "error": "图纸标记 light_living 未引用设计材质角色 accent"
+      },
+      "isolating_material_check_only": {
+        "passed": true
+      }
+    },
+    {
+      "id": "light_kitchen",
+      "material_id": "accent",
+      "nested_body_materials": [
+        "accent"
+      ],
+      "actual_acceptance": {
+        "passed": false,
+        "error": "图纸标记 light_kitchen 未引用设计材质角色 accent"
+      },
+      "isolating_material_check_only": {
+        "passed": true
+      }
+    },
+    {
+      "id": "light_bedroom_master",
+      "material_id": "accent",
+      "nested_body_materials": [
+        "accent"
+      ],
+      "actual_acceptance": {
+        "passed": false,
+        "error": "图纸标记 light_bedroom_master 未引用设计材质角色 accent"
+      },
+      "isolating_material_check_only": {
+        "passed": true
+      }
+    }
+  ],
+  "repeat_shape_error": [
+    {
+      "id": "kitchen_cabinet_base",
+      "expanded_element_types": [
+        "dict",
+        "dict",
+        "dict",
+        "list",
+        "list",
+        "list"
+      ],
+      "reported_error": "没有生成有效实体；请尝试原生构件或 primitive 组合"
+    },
+    {
+      "id": "kitchen_cabinet_wall",
+      "expanded_element_types": [
+        "dict",
+        "list",
+        "list",
+        "list"
+      ],
+      "reported_error": "没有生成有效实体；请尝试原生构件或 primitive 组合"
+    },
+    {
+      "id": "kitchen_island",
+      "expanded_element_types": [
+        "dict",
+        "dict",
+        "dict",
+        "list",
+        "list"
+      ],
+      "reported_error": "没有生成有效实体；请尝试原生构件或 primitive 组合"
+    }
+  ],
+  "sofa_placement_check": {
+    "approved_position": [
+      15,
+      0.425,
+      8
+    ],
+    "actual_position": [
+      0.0,
+      0,
+      8
+    ],
+    "actual_acceptance": {
+      "passed": true
+    },
+    "recorded_review": {
+      "status": "needs_review",
+      "checked": [],
+      "unverified": [
+        "size.width 未建立原生字段映射",
+        "size.height 未建立原生字段映射",
+        "size.depth 未建立原生字段映射"
+      ],
+      "errors": []
+    },
+    "note": "X drift is 15m; Y uses different center/base anchors and is not compared directly."
+  },
+  "keyword_property": {
+    "=facts.wall.from[0]": {
+      "passed": false,
+      "error": "/：/x：invalid syntax (<unknown>, line 1)"
+    },
+    "=facts.wall[\"from\"][0]": {
+      "passed": true
+    }
+  },
+  "current_refinement_replay": {
+    "status": "partial",
+    "model_calls": 1,
+    "target_ids": [
+      "cornice_main",
+      "door_garage_internal",
+      "entrance_main",
+      "window_bedroom2_front",
+      "window_bedroom3_front",
+      "window_dining_left",
+      "window_garage_front",
+      "window_kitchen_left",
+      "window_living_rear_f2",
+      "window_master_rear",
+      "window_study_front"
+    ],
+    "call_id": "cfac67a7bfda4362af3cb14d6f9efd7d",
+    "decisions": [
+      {
+        "id": "cornice_main",
+        "selected": true,
+        "reason": "主楼檐口采用三层叠涩设计，白色抹灰（facade_primary）作为基座层，木色格栅（accent）作为视觉过渡层，深灰色金属/混凝土（structure）作为最外挑的压顶线脚。这种层次既呼应了立面材质策略（石材-白墙-木格栅），又通过进深的递进强化了屋顶边缘的阴影和立体感，符合现代别墅简洁有力的线条要求。"
+      },
+      {
+        "id": "entrance_main",
+        "selected": false,
+        "reason": "深化主入口构造。门扇使用‘accent’材质（对应概念中的木格栅/胡桃木色），体现温暖质感；门框为深色金属‘frame’以形成对比。雨棚系统完整集成：顶板为结构材质，底面衬板为木色‘accent’以延续入口序列的材质语言，两侧立柱同样为木色，支撑起明确的入口灰空间。所有尺寸均基于原洞口和墙体关系设定，确保不越界且逻辑自洽。",
+        "error": "1 validation error for DesignDocument\ndecisions.architecture.components.1\n  Value error, form.construction 字段错误：缺少 []；未定义 ['canopy'] [type=value_error, input_value={'type': 'door', 'id': 'e..., 'material_role': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+      },
+      {
+        "id": "door_garage_internal",
+        "selected": true,
+        "reason": "车库连通门位于室内与半室外过渡区，强调功能性和耐用性。门扇选用‘structure’材质（暗示钢质或厚重木门），颜色较深，与周围墙体区分。无侧亮窗或复杂装饰，保持简洁，符合内部服务通道的定位。"
+      },
+      {
+        "id": "window_living_rear_f2",
+        "selected": true,
+        "reason": "客厅二层固定窗需与一层落地窗在视觉上连续，构成通高玻璃幕墙效果。因此沿用相同的窄边框（0.05m）和三分格竖向布局（2根竖梃），不设横梃，最大化通透感并强化垂直线条，呼应‘通高客厅’的空间核心意图。"
+      },
+      {
+        "id": "window_dining_left",
+        "selected": true,
+        "reason": "餐厅窗户采用经典的田字格分割（1竖1横），比例协调，既满足采光需求又提供适度的私密遮挡，符合餐厅温馨、稳定的氛围。深色铝框与白色墙面形成清晰轮廓。"
+      },
+      {
+        "id": "window_kitchen_left",
+        "selected": true,
+        "reason": "厨房高窗主要服务于操作台面上方的采光和通风。单根竖梃将窗分为左右两扇，便于一侧开启通风，另一侧固定。位置较高，避免油烟直接附着于可开启部分，同时保持立面整洁。"
+      },
+      {
+        "id": "window_study_front",
+        "selected": true,
+        "reason": "书房窗户采用四等分网格，提供均匀柔和的自然光，利于阅读和工作。横向分割降低了视线高度上的压迫感，使窗外景观更具层次感，符合书房静谧、专注的功能定位。"
+      },
+      {
+        "id": "window_bedroom2_front",
+        "selected": true,
+        "reason": "两间次卧正面窗户规格一致，均采用四分格设计。这种标准化的开窗方式有助于维持二层立面的秩序感和对称美。横向中梃提供了安装窗帘杆的便利位置，同时也增强了结构的稳定性。"
+      },
+      {
+        "id": "window_bedroom3_front",
+        "selected": true,
+        "reason": "两间次卧正面窗户规格一致，均采用四分格设计。这种标准化的开窗方式有助于维持二层立面的秩序感和对称美。横向中梃提供了安装窗帘杆的便利位置，同时也增强了结构的稳定性。"
+      },
+      {
+        "id": "window_master_rear",
+        "selected": true,
+        "reason": "主卧背面观景窗宽度较大（3.0m），采用六宫格布局（2竖1横）。竖向多分格增加了立面的精致度，横向分割则保证了下方视野的开阔性，同时上方小格可作为固定气窗或纯装饰，平衡了大面积玻璃带来的空旷感。"
+      },
+      {
+        "id": "window_garage_front",
+        "selected": true,
+        "reason": "车库小窗位于高处，仅用于采光和通风。简单的二分格设计足够满足功能需求，且不破坏车库门的整体封闭感。较小的深度适应车库墙体的可能厚度变化或保温层设置。"
+      }
+    ],
+    "rejected": [
+      {
+        "ids": [
+          "entrance_main"
+        ],
+        "error": "1 validation error for DesignDocument\ndecisions.architecture.components.1\n  Value error, form.construction 字段错误：缺少 []；未定义 ['canopy'] [type=value_error, input_value={'type': 'door', 'id': 'e..., 'material_role': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+      }
+    ],
+    "error": "entrance_main：1 validation error for DesignDocument\ndecisions.architecture.components.1\n  Value error, form.construction 字段错误：缺少 []；未定义 ['canopy'] [type=value_error, input_value={'type': 'door', 'id': 'e..., 'material_role': None}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+  },
+  "runtime_refinement_host_count": 0,
+  "current_drawing_host_count": 22
+}

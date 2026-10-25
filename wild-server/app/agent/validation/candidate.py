@@ -109,6 +109,9 @@ def evaluate_candidate(blueprint: dict, *, design_document=None, design_brief=No
                         geometry_reviews[marker["id"]] = review
                         append("design_component_geometry", review["errors"], marker=marker, entity_ids=ids)
                 elif record.get("status") == "abandoned":
+                    if record.get("stop_reason") == "construction_design_conflict":
+                        append("design_construction_conflict", [f"{marker['id']}：{record.get('reason') or '已批准构造未能落实'}"], marker=marker)
+                        continue
                     attempts = record.get("attempts") or []
                     stages = {t.get("stage") for t in attempts}
                     lookup = next((t for t in attempts if t.get("tool") == "search_knowledge"), None)

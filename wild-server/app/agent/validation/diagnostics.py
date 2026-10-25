@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 # 未上线期间固定首版；有效性仍按产物、图纸和实际校验结果核对。
-VALIDATOR_VERSION = "1.0"
+VALIDATOR_VERSION = "1.2"
 
 
 def blueprint_fingerprint(blueprint: dict | None) -> str:

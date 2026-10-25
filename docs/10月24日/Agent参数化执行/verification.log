@@ -1,0 +1,5 @@
+2026-10-24 19:20:07.495 | ERROR    | app.utils.json_extractor:_log_miss:133 - JSON 对象提取失败（文本里没有完整可解析的对象）: {"parameters":{},"x":4.2+1.2}
+2026-10-24 19:20:08.187 | INFO     | app.services.agent_service:_create_spec_loader:921 - RAGSpecLoader: 已启用 Chroma, persist_dir=E:\AgentProject\WildAgent\wild-server\storage\chroma, collection=wild_knowledge_base
+2026-10-24 19:20:08.188 | INFO     | app.services.agent_service:_create_spec_loader:926 - RAG 索引同步: total=0, updated=0, deleted=0（自动同步已关闭）
+2026-10-24 19:20:08.188 | INFO     | app.services.agent_service:__init__:880 - AgentService 初始化完成
+{"ok": true, "checks": 135, "model_calls": 0}
