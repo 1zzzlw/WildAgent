@@ -7,7 +7,7 @@
 import type { Blueprint, ReconstructedEntity, AABB, MeshData, MaterialParams, EngineDiagnostic, Vec3 } from './types';
 import { expandTemplates, expandPlacements } from './expander';
 import { resolveSpatialRelations } from './resolver';
-import { generatePlanarUVs } from './geometry/mesh-helper';
+import { generateArchitecturalSurfaceAttributes, generatePlanarUVs, scaleMetricUVs } from './geometry/mesh-helper';
 import { applyMaterials } from './materials/apply';
 import { getElementBuilder } from './registry';
 import { normalizeBlueprintInput } from './parser';
@@ -280,8 +280,13 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
       reportedCapabilityTypes.add(registration.type);
     }
 
+    const material = bp.materials?.[(el as any).material || 'default'];
+    // 仅尺寸型表面使用米制 UV；旧图片材质的重复次数保持原有含义。
+    const metricUVs = material?.procedural?.type === 'brick'
+      || Boolean(material?.surfacePattern)
+      || Boolean(material?.textureSet && bp.assets?.[material.textureSet]?.realWorldSizeMeters);
     try {
-      meshes = registration.build(el);
+      meshes = registration.build(el, metricUVs);
     } catch (buildError) {
       diagnostics.push({
         level: 'error',
@@ -313,8 +318,26 @@ export async function reconstructEntity(bp: Blueprint): Promise<ReconstructedEnt
       if (isInteractive || m.interaction) m.interactive = true;
       if (interaction && !m.interaction) m.interaction = interaction;
       if (isDraggable) m.draggable = true;
+      if (!m.uvs && metricUVs) {
+        // 无专用 UV 的实体逐面展开；共享顶点不能同时保存转角两侧的纹理坐标。
+        if (m.indices) {
+          const indices = m.indices;
+          for (const field of ['geometry', 'normals', 'vertexColors'] as const) {
+            const source = m[field];
+            if (!source) continue;
+            const expanded = new Float32Array(indices.length * 3);
+            indices.forEach((index, i) => expanded.set(source.subarray(index * 3, index * 3 + 3), i * 3));
+            m[field] = expanded;
+          }
+          m.indices = Uint32Array.from({ length: indices.length }, (_, i) => i);
+        }
+        const attributes = generateArchitecturalSurfaceAttributes(m.geometry);
+        m.uvs = attributes.uvs;
+        m.normals ??= attributes.normals;
+      }
       if (!m.uvs) m.uvs = generatePlanarUVs(m.geometry);
       applyInstanceTransform(m, el);
+      if (metricUVs) scaleMetricUVs(m);
     }
 
     rawEntries.push({ elId: el.id, meshes });

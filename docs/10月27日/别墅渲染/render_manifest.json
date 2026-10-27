@@ -1,0 +1,426 @@
+{
+  "status": "PASS",
+  "inputSha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb",
+  "rendererSourceSha256": "aad0a15f7cce4ff537c921d478f9e8d3c4b0c74db5fd1b97c550974bcbc8c0f3",
+  "resolution": [
+    1280,
+    960
+  ],
+  "quality": "high",
+  "views": [
+    {
+      "name": "01-水庭日景",
+      "time": "day",
+      "camera": [
+        18,
+        11,
+        21
+      ],
+      "target": [
+        0,
+        2,
+        2
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "02-西南立面",
+      "time": "day",
+      "camera": [
+        -20,
+        10,
+        22
+      ],
+      "target": [
+        -1,
+        2,
+        1
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "03-北侧立面",
+      "time": "day",
+      "camera": [
+        17,
+        10,
+        -22
+      ],
+      "target": [
+        0,
+        2,
+        -2
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "04-俯视全景",
+      "time": "day",
+      "camera": [
+        14,
+        27,
+        22
+      ],
+      "target": [
+        0,
+        0,
+        1
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "05-水庭夜景",
+      "time": "night",
+      "camera": [
+        17,
+        9,
+        21
+      ],
+      "target": [
+        0,
+        2,
+        2
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "06-起居室内",
+      "time": "day",
+      "camera": [
+        -0.8,
+        1.95,
+        -0.8
+      ],
+      "target": [
+        5.2,
+        1.3,
+        -3.8
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "07-起居室夜景",
+      "time": "night",
+      "camera": [
+        -0.8,
+        1.95,
+        -0.8
+      ],
+      "target": [
+        5.2,
+        1.3,
+        -3.8
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "08-二层卧室",
+      "time": "day",
+      "camera": [
+        -3.05,
+        5.25,
+        6.35
+      ],
+      "target": [
+        -5.7,
+        4.5,
+        3.4
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    },
+    {
+      "name": "09-木作洞石近景",
+      "time": "day",
+      "camera": [
+        -0.1,
+        5.1,
+        4.1
+      ],
+      "target": [
+        -2.5,
+        5,
+        0.8
+      ],
+      "diagnostics": [
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "roof: 基础屋顶、中式曲面与重檐屋顶",
+          "elementType": "roof"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "beam: 矩形、圆形与工字梁",
+          "elementType": "beam"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "furniture: 基础参数化家具",
+          "elementType": "furniture"
+        },
+        {
+          "level": "info",
+          "code": "PARTIAL_CAPABILITY",
+          "message": "opening: 墙体洞口及门窗覆盖几何",
+          "elementType": "opening"
+        }
+      ],
+      "meshes": 545,
+      "materials": 545,
+      "activeLights": 8,
+      "shadowLights": 8
+    }
+  ],
+  "interaction": {
+    "hallButtonRealClick": true,
+    "carFloorButtonRealClick": true,
+    "arrivedAtFloor": 1
+  },
+  "hiddenObjects": [],
+  "shaderErrors": [],
+  "visual_review": {
+    "complete": false,
+    "assistant_review": "completed",
+    "user_review": "pending",
+    "reviewedInputSha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb",
+    "findings": [
+      "已检查 10 张引擎截图：外景、夜景、室内、材料细节与电梯",
+      "没有隐藏建筑墙体或屋顶用于取景",
+      "基础家具和植物仍存在参数化形体简化，实时玻璃不是离线透射焦散"
+    ]
+  }
+}

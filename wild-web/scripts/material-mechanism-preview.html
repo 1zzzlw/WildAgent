@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh"><meta charset="utf-8"><title>WILD 材质与动态组件验证</title>
+<style>body{margin:0;background:#202a35;color:#dae5e9;font:14px sans-serif}#gallery{display:grid;grid-template-columns:repeat(5,240px);gap:8px;padding:16px}figure{margin:0;background:#2c3744;border-radius:8px;overflow:hidden}figure img{width:240px;height:160px;object-fit:cover}figcaption{padding:10px}canvas{display:block}</style><div id="gallery"></div>
+<script type="module">
+import * as THREE from 'three';
+import { Sky } from 'three/examples/jsm/objects/Sky.js';
+import { reconstructWildEntity } from '/src/renderer/wildCoreAdapter.ts';
+import { createSceneGroupFromEntity, clearSceneObjectResources, toggleRuntimeInteraction } from '/src/renderer/renderEntity.ts';
+import { tickMechanisms, isMechanismControl } from '/src/renderer/mechanismRuntime.ts';
+import { getMaterialThumbnails } from '/src/renderer/materialThumbnails.ts';
+import { SURFACE_MATERIAL_PRESETS } from '/src/wild/surfaceMaterialPresets.ts';
+import { WorldLightingRig } from '/src/renderer/lightingRuntime.ts';
+import { WorldEnvironmentMapRuntime, syncSkyPreset } from '/src/renderer/environmentRuntime.ts';
+import { WorldPostProcessingRuntime } from '/src/renderer/postProcessingRuntime.ts';
+import { FixtureLightingRuntime } from '/src/renderer/fixtureLightingRuntime.ts';
+import { WaterReflectionRuntime } from '/src/renderer/waterReflectionRuntime.ts';
+import { configureWorldRenderer, applyWorldRenderQuality, resolveWorldIllumination } from '/src/renderer/worldRenderSettings.ts';
+import { updateWorldRenderingState } from '/src/renderer/worldEnvironmentRuntime.ts';
+window.THREE=THREE;
+const renderer = new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});configureWorldRenderer(renderer);renderer.setSize(1280,960);
+document.body.append(renderer.domElement);const scene=new THREE.Scene(), camera=new THREE.PerspectiveCamera(45,1280/960,.03,1000);
+const sky=new Sky();sky.scale.setScalar(450);sky.visible=false;scene.add(sky);
+const lighting=new WorldLightingRig(scene), environment=new WorldEnvironmentMapRuntime(renderer,scene),post=new WorldPostProcessingRuntime(renderer,scene,camera),fixtures=new FixtureLightingRuntime(),reflection=new WaterReflectionRuntime(renderer,scene);
+post.setSize(1280,960);let group=null, quality='high';
+const pixels=()=>{const gl=renderer.getContext(),data=new Uint8Array(1280*960*4);gl.readPixels(0,0,1280,960,gl.RGBA,gl.UNSIGNED_BYTE,data);return data};
+window.draw=()=>{if(fixtures.update(camera,quality))renderer.shadowMap.needsUpdate=true;reflection.enabled=quality==='high';reflection.update(camera);post.render();};
+window.viewBlueprint=async(bp,settings={})=>{
+ document.querySelector('#gallery').style.display='none'; if(group){scene.remove(group);fixtures.setRoot(null);reflection.setRoot(null);clearSceneObjectResources(group)}
+ const entity=await reconstructWildEntity(bp);group=createSceneGroupFromEntity(entity);scene.add(group);fixtures.setRoot(group);reflection.setRoot(group);
+ for(const id of settings.hide||[]){const mesh=group.getObjectByName(id);if(mesh)mesh.visible=false}
+ const look=resolveWorldIllumination(settings.time||'day','minimal');scene.background=look.background;renderer.toneMappingExposure=look.exposure;
+ lighting.applyAppearance(look.lighting);const b=new THREE.Box3().setFromObject(group),size=b.getSize(new THREE.Vector3()),center=b.getCenter(new THREE.Vector3());
+ lighting.fitToBounds(center,size,look.keyDirection);sky.visible=look.preset.skyVisible;syncSkyPreset(sky,look.preset,look.atmosphere,look.sunDirection);environment.rebuild(look.preset,look.atmosphere,look.sunDirection,settings.time==='night',look.groundColor.getHex());
+ quality=settings.quality||'high';applyWorldRenderQuality(renderer,post,lighting,quality,settings.time||'day');
+ camera.position.fromArray(settings.camera||[18,12,22]);camera.lookAt(...(settings.target||[0,2,0]));camera.updateMatrixWorld();window.group=group;window.entity=entity;window.draw();
+ return {diagnostics:entity.diagnostics,meshes:entity.meshes.length,materials:entity.materialParams.length,activeLights:fixtures.activeCount,shadowLights:fixtures.shadowCount};
+};
+window.advance=seconds=>{for(let i=0;i<Math.ceil(seconds/.05);i++)tickMechanisms(group,.05);renderer.shadowMap.needsUpdate=true;window.draw();return true};
+window.controlPoint=id=>{const mesh=group.getObjectByName(id),p=mesh.getWorldPosition(new THREE.Vector3()).project(camera);return {x:(p.x*.5+.5)*1280,y:(-.5*p.y+.5)*960}};
+renderer.domElement.addEventListener('click',event=>{const r=renderer.domElement.getBoundingClientRect(),ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((event.clientX-r.left)/r.width*2-1,-(event.clientY-r.top)/r.height*2+1),camera);const hit=ray.intersectObjects(group.children,true).find(h=>h.object.userData.elementId)?.object;const target=hit?.userData.interaction?hit:hit?.parent;if(target&&isMechanismControl(target))toggleRuntimeInteraction(target,()=>{});window.draw()});
+window.materialProbe=async()=>{
+ const previews=await getMaterialThumbnails();const result=[];
+ const isolated=new THREE.Scene();isolated.background=new THREE.Color('#252b32');isolated.add(new THREE.HemisphereLight(0xffffff,0x444444,1.4));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(1,2,3);isolated.add(key);isolated.environment=scene.environment;
+ const eye=new THREE.PerspectiveCamera(36,1280/960,.01,10);eye.position.set(.55,.35,1.4);eye.lookAt(0,0,0);
+ for(const p of SURFACE_MATERIAL_PRESETS){
+  const e=await reconstructWildEntity({meta:{version:'1.1',type:'asset',name:p.name},geometry:{elements:[{type:'primitive',id:'tile',shape:'box',dimensions:[.65,.65,.1],material:p.id}]},materials:{[p.id]:p.material}}),g=createSceneGroupFromEntity(e);isolated.add(g);
+  updateWorldRenderingState({surfaceEnabled:true});renderer.render(isolated,eye);const on=pixels();updateWorldRenderingState({surfaceEnabled:false});renderer.render(isolated,eye);const off=pixels();let changed=0;for(let i=0;i<on.length;i+=4)if(Math.max(Math.abs(on[i]-off[i]),Math.abs(on[i+1]-off[i+1]),Math.abs(on[i+2]-off[i+2]))>1)changed++;
+  const m=g.children[0].material;result.push({id:p.id,pattern:p.material.surfacePattern,changedPixels:changed,physical:m.isMeshPhysicalMaterial||false,transmission:m.transmission||0,anisotropy:m.anisotropy||0,sheen:m.sheen||0});isolated.remove(g);clearSceneObjectResources(g);
+  const figure=document.createElement('figure');figure.innerHTML='<img src="'+previews[p.id]+'"><figcaption>'+p.name+'</figcaption>';document.querySelector('#gallery').append(figure);
+ }
+ updateWorldRenderingState({surfaceEnabled:true});document.querySelector('#gallery').style.display='grid';renderer.domElement.style.display='none';return result;
+};
+window.occlusionProbe=async()=>{
+ renderer.domElement.style.display='block';const result=[];
+ for(const tier of ['low','medium','high'])for(const glass of [false,true]){
+  const e=await reconstructWildEntity({meta:{version:'1.1',type:'building',name:'遮挡'},geometry:{elements:[
+   {type:'floor',id:'receiver',from:[-4,0,-4],to:[4,0,4],thickness:.1,material:'white'},
+   {type:'primitive',id:'wall',shape:'box',position:[0,1.6,0],dimensions:[.24,3,5],material:glass?'glass':'white'},
+   {type:'primitive',id:'second_lamp',shape:'sphere',position:[1.5,1.6,0],radius:.05,material:'white',lightSource:{intensity:50,distance:10,color:[1,1,1]}},
+   {type:'primitive',id:'priority_lamp',shape:'sphere',position:[-2,4,4],radius:.05,material:'white',lightSource:{intensity:100,distance:1,color:[1,1,1]}}
+  ]},materials:{white:{baseColor:[.8,.8,.8],roughness:.8,metallic:0,albedo:1,lightingCondition:'D65_noon'},glass:SURFACE_MATERIAL_PRESETS.find(p=>p.id==='glass_clear').material}});
+  const isolated=new THREE.Scene(),g=createSceneGroupFromEntity(e);isolated.add(g);const budget=new FixtureLightingRuntime();budget.setRoot(g);const eye=new THREE.PerspectiveCamera(45,1280/960,.05,100);eye.position.set(-5,6,8);eye.lookAt(0,0,0);eye.updateMatrixWorld();budget.update(eye,tier);renderer.shadowMap.needsUpdate=true;renderer.render(isolated,eye);
+  const point=new THREE.Vector3(-1.5,.105,0).project(eye),index=(Math.round((point.y*.5+.5)*960)*1280+Math.round((point.x*.5+.5)*1280))*4;result.push({quality:tier,glass,rgb:Array.from(pixels().slice(index,index+3)),active:budget.activeCount,shadows:budget.shadowCount,wallCasts:g.getObjectByName('wall').castShadow});budget.dispose();clearSceneObjectResources(g);
+ }
+ return result;
+};
+window.renderer=renderer;window.scene=scene;window.camera=camera;window.ready=true;
+</script></html>

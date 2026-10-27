@@ -8,6 +8,7 @@
 import type {
   MaterialEnvironmentResponse,
   SurfaceFamily,
+  SurfacePattern,
 } from './src/materials/contracts';
 
 // ========== 基础向量与颜色 ==========
@@ -76,6 +77,7 @@ export type ComponentSpec = (
   | ChimneyComponent
   | LightComponent
   | ElevatorComponent
+  | FanComponent
 ) & {
   /** 编辑器中是否允许通过三轴控件拖动；关闭时只允许属性面板编辑。 */
   draggable?: boolean;
@@ -116,30 +118,38 @@ export interface OpeningElementBehavior {
   initiallyOpen: boolean;
 }
 
-/**
- * 电梯行为：右键/点击按钮时轿厢在井道内逐层停靠。
- *
- * 轿厢是刚体盒，沿世界 +Y 在 [0, travelHeight] 间平移；`floorHeight` 是
- * 单层层高，停靠位置恒为 floorHeight 的整数倍（1 层=0、2 层=floorHeight、…），
- * 停在门洞正下方。层数只取井道实际跨越的层数（编译器写入），前端不猜。
- */
+/** 编译器生成的电梯部件行为；运动状态不持久化。 */
 export interface ElevatorElementBehavior {
   kind: 'elevator';
+  groupId: string;
+  role: 'cab' | 'cabDoor' | 'landingDoor' | 'hallButton' | 'carButton';
+  floor?: number;
+  action?: 'call' | 'open' | 'close';
+  doorOffset?: Vec3;
+  /** 固定在可动轿厢上的照明，仍由局部灯光预算管理。 */
+  light?: LightElementBehavior;
   floorHeight: number;
   floorCount: number;
   /** 当前停靠楼层（0 基，0 = 底层）。静态蓝图只保存初始楼层。 */
   initialFloor: number;
 }
 
-export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior | ElevatorElementBehavior;
+export interface RotorElementBehavior {
+  kind: 'rotor';
+  groupId: string;
+  role: 'rotor' | 'control';
+  pivot: Vec3;
+  rpm: number;
+  initiallyOn: boolean;
+}
+
+export type InteractiveElementBehavior = OpeningElementBehavior | LightElementBehavior | ElevatorElementBehavior | RotorElementBehavior;
 
 /**
  * 电梯组件：井道内的可动轿厢。
  *
- * 写在 geometry.components 里，编译为：对重导轨（primitive.box）+ 轿厢
- * （primitive.box，携带 kind:'elevator' 交互行为）+ 两个呼叫按钮
- * （primitive.cylinder，各自携带 kind:'elevator' 行为，点击呼梯）。
- * 井道围合仍由 wall_core_* 表达，本组件不生成井壁。
+ * 编译为开放轿厢、对开门、各层呼梯和轿内选层按钮。入口朝世界 +Z。
+ * 井道围合和上层楼板井洞由蓝图表达；landingWalls 可指定各层入口墙以自动开洞。
  */
 export interface ElevatorComponent {
   type: 'elevator';
@@ -156,6 +166,24 @@ export interface ElevatorComponent {
   initialFloor?: number;
   material?: string;
   /** 门框/导轨金属件材质。 */
+  frameMaterial?: string;
+  doorMaterial?: string;
+  floorMaterial?: string;
+  landingWalls?: string[];
+}
+
+/** 吊扇：position 为电机中心，控制器位于独立的可达位置。 */
+export interface FanComponent {
+  type: 'fan';
+  id: string;
+  position: Vec3;
+  radius?: number;
+  bladeCount?: number;
+  drop?: number;
+  rpm?: number;
+  initiallyOn?: boolean;
+  controlPosition: Vec3;
+  material?: string;
   frameMaterial?: string;
 }
 
@@ -756,13 +784,15 @@ export interface MaterialDef {
   attenuationDistance?: number;
   clearcoat?: number;
   clearcoatRoughness?: number;
+  anisotropy?: number;
+  anisotropyRotation?: number;
   sheen?: number;
   sheenColor?: Color;
   emissiveIntensity?: number;
   procedural?: ProceduralMaterial;
   /** renderer 无关的表面语义；未填写时由 core 按通用规则推断。 */
   surfaceFamily?: SurfaceFamily;
-  surfacePattern?: 'quartz' | 'planks';
+  surfacePattern?: SurfacePattern;
   /** 材质对世界天气的物理响应参数，不包含 Shader 源码。 */
   environmentResponse?: MaterialEnvironmentResponse;
   requiredFeatures?: string[];

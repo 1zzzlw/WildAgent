@@ -124,6 +124,8 @@ export interface MaterialParams {
   attenuationDistance?: number
   clearcoat?: number
   clearcoatRoughness?: number
+  anisotropy?: number
+  anisotropyRotation?: number
   sheen?: number
   sheenColor?: [number, number, number]
   emissiveIntensity?: number

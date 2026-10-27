@@ -8,6 +8,7 @@ import re
 from typing import Any
 
 from .recipes import infer_brick_preset, resolve_brick_preset
+from .surfaces import DEFAULT_SURFACE_BY_ROLE, resolve_surface
 
 
 #: P6-A：用户提了材质/配色要求的**词面信号**。
@@ -340,6 +341,9 @@ def resolve_material_plan(
     )
     for role, fallback in specs.items():
         requested = requested_by_role.get(role, {})
+        # 已归一化的计划在复用时参数位于 material；顶层意图优先。
+        stored_material = requested.get("material")
+        requested = {**(stored_material if isinstance(stored_material, dict) else {}), **requested}
         asset_id = requested.get("assetId")
         asset = by_id.get(asset_id) if isinstance(asset_id, str) else None
         classification = (asset or {}).get("classification") or {}
@@ -366,18 +370,23 @@ def resolve_material_plan(
             if recipe is None:
                 rejected_procedural_preset_ids.append(str(preset_id))
 
+        surface_id = requested.get("surfacePresetId", DEFAULT_SURFACE_BY_ROLE.get(role))
+        procedural = None
+        if role == "facade_primary" and procedural_materials_enabled:
+            procedural = recipe.get("procedural") if recipe else _safe_procedural_brick(requested.get("procedural"))
+        surface = resolve_surface(surface_id, role) if not asset and not procedural else None
         defaults = (asset or {}).get("defaults") or {}
-        material_class = str(classification.get("materialClass") or "other")
+        material_class = str(classification.get("materialClass") or (surface or {}).get("surfaceFamily") or "other")
         base_color = _safe_color(
-            defaults.get("baseColorTint") if asset else recipe.get("baseColor") if recipe else requested.get("baseColor"),
+            defaults.get("baseColorTint") if asset else recipe.get("baseColor") if recipe else requested.get("baseColor", (surface or {}).get("baseColor")),
             [1.0, 1.0, 1.0] if asset else fallback["baseColor"],
         )
         roughness = _unit(
-            defaults.get("roughness") if asset else recipe.get("roughness") if recipe else requested.get("roughness"),
+            defaults.get("roughness") if asset else recipe.get("roughness") if recipe else requested.get("roughness", (surface or {}).get("roughness")),
             fallback["roughness"],
         )
         metallic = _unit(
-            defaults.get("metallic") if asset else requested.get("metallic"),
+            defaults.get("metallic") if asset else requested.get("metallic", (surface or {}).get("metallic")),
             fallback["metallic"],
         )
         if material_class == "metal" or role in _METALLIC_ROLES:
@@ -385,7 +394,7 @@ def resolve_material_plan(
         else:
             metallic = min(0.15, metallic)
 
-        material = {
+        material = {**(surface or {}),
             "baseColor": base_color,
             "roughness": roughness,
             "metallic": metallic,
@@ -399,11 +408,9 @@ def resolve_material_plan(
                 "uvScale": _positive_pair(defaults.get("uvScale"), [1, 1]),
             })
             resolved_assets[str(asset_id)] = deepcopy(asset)
-        elif role == "facade_primary" and procedural_materials_enabled:
-            procedural = recipe.get("procedural") if recipe else _safe_procedural_brick(requested.get("procedural"))
-            if procedural:
-                material["procedural"] = procedural
-        if role == "glass":
+        elif procedural:
+            material["procedural"] = procedural
+        if role == "glass" and not surface:
             material.update({
                 "materialClass": "glass",
                 "side": "double",
@@ -420,6 +427,7 @@ def resolve_material_plan(
             "materialId": fallback["materialId"],
             "assetId": asset_id,
             "proceduralPresetId": recipe.get("presetId") if recipe else None,
+            "surfacePresetId": surface_id if surface else None,
             "material": material,
         })
 

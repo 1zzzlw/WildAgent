@@ -63,6 +63,8 @@ function createDefaultComponent(
   fixtureType: 'bulb' | 'table_lamp' | undefined,
   host: GeometryElement | undefined,
 ): ComponentSpec {
+  if (type === 'fan') return { type, id: 'placement', position: [0, 2.6, 0], controlPosition: [0.9, 1.1, 0], radius: 0.65, bladeCount: 4, drop: 0.25, rpm: 180 }
+  if (type === 'elevator') return { type, id: 'placement', position: [0, 0, 0], dimensions: { width: 1.8, depth: 1.8, height: 2.5 }, floorHeight: 3.3, floorCount: 2 }
   if (type === 'light') {
     if (fixtureType === 'table_lamp') {
       return {

@@ -44,6 +44,7 @@ export function createComponentTranslationChanges(
     }
   }
   if (component.type === 'column') return { base: add(component.base, delta) }
+  if (component.type === 'fan') return { position: add(component.position, delta), controlPosition: add(component.controlPosition, delta) }
   if (component.type === 'dense_brick') return { origin: add(component.origin, delta) }
   if (editing?.translation === 'lightBody' && component.type === 'light' && component.body) {
     return { position: add(component.position, delta), body: component.body.map(part => ({

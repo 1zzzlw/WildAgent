@@ -50,6 +50,7 @@ _DETAIL_COMPONENT_QUOTAS: dict[str, dict[str, Any]] = {
     # `planning.py` 在点名电梯时会把 `vertical_strategy` 强制升到 `core_and_stair`；
     # 单层建筑没有垂直交通需求（KB《电梯》能力边界），点名也会在配额之前被剔除。
     "elevator": {"min": 1, "max": 2, "note": "与核心筒井道配套；单层建筑不生成"},
+    "fan": {"min": 1, "max": 4, "note": "按房间净高放置吊扇，开关位于可达墙面"},
     # 柱是引擎原生元素（注册表 2026-09-29 起可派发）。与家具同族："点名才生成"——
     # 门廊柱/围廊柱/景观柱按设计点名进入配额，普通建筑不会被默认塞柱子。
     "column": {
@@ -352,6 +353,7 @@ def _default_detail_packages(
         # 电梯的点名词：同样与 COMPONENT_REGISTRY["elevator"].need_keywords 对齐。
         # 此前两处词表都没有 elevator，用户点名电梯时规划阶段不会有任何配额。
         "elevator": ("电梯", "升降梯", "垂直交通", "观光梯", "载货梯"),
+        "fan": ("风扇", "吊扇"),
         # 柱的点名词：围廊/门廊/景观柱按点名进入配额（引擎原生元素，2026-09-29 起可派发）。
         "column": ("柱廊", "廊柱", "罗马柱", "柱子", "石柱"),
     }

@@ -27,7 +27,7 @@ def parse_components_from_reply(reply_text: str) -> list[str]:
     """从 LLM 回复中解析 `_components: door, window, roof` 行"""
     import re
     valid_types = {"door", "window", "roof", "railing", "canopy",
-                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney", "stair"}
+                   "balcony", "light", "ramp", "bay_window", "cornice", "chimney", "stair", "elevator", "fan"}
 
     for match in re.finditer(r'_components:\s*(.+)', reply_text):
         raw = match.group(1).strip()

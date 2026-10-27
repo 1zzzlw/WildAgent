@@ -1,0 +1,236 @@
+{
+  "date": "2026-10-27",
+  "sourceDigest": "be28c529c6441276a3ea1e57cc868b22473759b9c50e11195ceabbdcd4d637ce",
+  "new_model_calls": 0,
+  "checks": {
+    "core_typecheck": "PASS",
+    "web_build": "PASS",
+    "geometry_regression": {
+      "status": "PASS",
+      "legacy_blueprints": 12
+    },
+    "opening_interactions": {
+      "status": "PASS",
+      "combinations": 48,
+      "incremental_reuse": true,
+      "interactive_state_retained": true,
+      "resources_released": true
+    },
+    "asset_identity": {
+      "status": "PASS",
+      "pytest_passed": 1
+    },
+    "viewport": {
+      "status": "PASS",
+      "import_and_persistence": true,
+      "adaptive_quality_restored": true,
+      "gtao_and_reflection_restored": true,
+      "page_errors": []
+    },
+    "diff_check": "PASS"
+  },
+  "gpu": {
+    "status": "PASS",
+    "high": {
+      "activeLights": 12,
+      "shadowLights": 2,
+      "reflection": true,
+      "drawCalls": 87,
+      "programs": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "runnable": true
+        }
+      ],
+      "selected": [
+        "fixture-4:LightSource",
+        "fixture-5:LightSource",
+        "fixture-6:LightSource",
+        "fixture-7:LightSource",
+        "fixture-8:LightSource",
+        "fixture-9:LightSource",
+        "fixture-10:LightSource",
+        "fixture-11:LightSource",
+        "fixture-12:LightSource",
+        "fixture-13:LightSource",
+        "fixture-14:LightSource",
+        "fixture-15:LightSource"
+      ]
+    },
+    "medium": {
+      "activeLights": 8,
+      "shadowLights": 0,
+      "reflection": false,
+      "drawCalls": 67,
+      "programs": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "runnable": true
+        },
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {}
+      ],
+      "selected": [
+        "fixture-8:LightSource",
+        "fixture-9:LightSource",
+        "fixture-10:LightSource",
+        "fixture-11:LightSource",
+        "fixture-12:LightSource",
+        "fixture-13:LightSource",
+        "fixture-14:LightSource",
+        "fixture-15:LightSource"
+      ]
+    },
+    "low": {
+      "activeLights": 4,
+      "shadowLights": 0,
+      "reflection": false,
+      "drawCalls": 43,
+      "programs": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "runnable": true
+        },
+        {},
+        {},
+        {}
+      ],
+      "selected": [
+        "fixture-12:LightSource",
+        "fixture-13:LightSource",
+        "fixture-14:LightSource",
+        "fixture-15:LightSource"
+      ]
+    },
+    "changedWaterSamples": 1581,
+    "buildingReflectionChanged": 507,
+    "shadowProbe": {
+      "shadowed": [
+        0,
+        0,
+        0
+      ],
+      "unshadowed": [
+        139,
+        139,
+        139
+      ]
+    },
+    "surfaceProbe": {
+      "uvIndependentChangedPixels": 0,
+      "brickWorldNormalPixels": [
+        [
+          127,
+          127,
+          255
+        ],
+        [
+          127,
+          127,
+          255
+        ]
+      ]
+    },
+    "cameraReselection": true,
+    "switchedOffLampRespected": true,
+    "shaderErrors": []
+  },
+  "buildings": [
+    {
+      "name": "汀院别墅",
+      "inputSha256": "4afbe0bb3802f232b68328e265da4d284e8dc232f7b34039aa4e238e2b91f720",
+      "sourceDigest": "be28c529c6441276a3ea1e57cc868b22473759b9c50e11195ceabbdcd4d637ce",
+      "meshCount": 752,
+      "compileErrors": 0,
+      "reconstructErrors": 0,
+      "unmappedMaterials": 0,
+      "views": [
+        "front",
+        "side",
+        "top",
+        "perspective"
+      ],
+      "pipeline": "editor-presentation-v1",
+      "quality": "high",
+      "ambientOcclusion": "gtao"
+    },
+    {
+      "name": "云序中心",
+      "inputSha256": "a8902f5c4321449a958fad39fabb8680c95cbc4b2ab849a3dd04fd3be0b3b333",
+      "sourceDigest": "be28c529c6441276a3ea1e57cc868b22473759b9c50e11195ceabbdcd4d637ce",
+      "meshCount": 3477,
+      "compileErrors": 0,
+      "reconstructErrors": 0,
+      "unmappedMaterials": 0,
+      "views": [
+        "front",
+        "side",
+        "top",
+        "perspective"
+      ],
+      "pipeline": "editor-presentation-v1",
+      "quality": "high",
+      "ambientOcclusion": "gtao"
+    }
+  ],
+  "visual_review": {
+    "rendered": true,
+    "assistant_reviewed": true,
+    "human_review_complete": false,
+    "complete": false
+  },
+  "performance_benchmark": false,
+  "test_services_stopped": true
+}

@@ -89,6 +89,7 @@ import { WorldLightingRig } from '../../renderer/lightingRuntime'
 import { WorldPostProcessingRuntime } from '../../renderer/postProcessingRuntime'
 import { applyWorldRenderQuality, configureWorldRenderer, resolveWorldIllumination, resolveWorldEnvironmentColor } from '../../renderer/worldRenderSettings'
 import { FixtureLightingRuntime } from '../../renderer/fixtureLightingRuntime'
+import { isMechanismControl, tickMechanisms } from '../../renderer/mechanismRuntime'
 import { WaterReflectionRuntime } from '../../renderer/waterReflectionRuntime'
 import {
   CAMERA_PRESETS,
@@ -171,6 +172,7 @@ const fixtureLighting = new FixtureLightingRuntime()
 let waterReflection: WaterReflectionRuntime | null = null
 let renderSubmitMs = 0
 let slowFrameSeconds = 0
+let qualityRestoreTimer: ReturnType<typeof setTimeout> | null = null
 let continuousFrame = false
 // 后期资源的构造/尺寸/采样数/释放由引擎运行时持有。
 let composer: EffectComposer | null = null
@@ -661,9 +663,10 @@ function renderFrame() {
   animationFrameId = null
   if (!renderLoopActive || document.hidden) return
   const delta = weatherClock.getDelta()
+  const mechanismAnimating = tickMechanisms(sceneGroup, delta)
   const characterAnimating = characterRoaming?.tick(delta) ?? false
   const controlsAnimating = !roaming.active && (controls?.update() ?? false)
-  if (characterAnimating) {
+  if (characterAnimating || mechanismAnimating) {
     needsRender = true
     const now = performance.now()
     if (now - lastShadowDirtyTime >= SHADOW_DIRTY_THROTTLE_MS) {
@@ -689,12 +692,17 @@ function renderFrame() {
     fpsSmoothed = fpsSmoothed * 0.9 + (1 / delta) * 0.1
     fps.value = Math.round(fpsSmoothed)
   }
-  // 帧率自适应降级：持续低于 30fps 时关 SSAO/Bloom 并降像素比，保交互流畅。
-  // 只在低档降一次，避免反复切换；手动切换质量档会重置标记。
+  // 降级只服务于正在进行的交互，静止画面恢复用户选择的质量。
+  const interacting = characterAnimating || controlsAnimating || transformControls?.dragging
+    || (renderPanel.autoRotate && !roaming.active)
   if (continuousFrame && delta > 0.0005) {
     slowFrameSeconds = fpsSmoothed < 30 ? slowFrameSeconds + Math.min(delta, 1) : 0
   }
-  if (!adaptiveQualityApplied && slowFrameSeconds > 2) {
+  if (interacting && qualityRestoreTimer !== null) {
+    clearTimeout(qualityRestoreTimer)
+    qualityRestoreTimer = null
+  }
+  if (interacting && !adaptiveQualityApplied && slowFrameSeconds > 2) {
     adaptiveQualityApplied = true
     const ratio = renderer?.getPixelRatio() ?? 1
     if (ratio > 1) renderer?.setPixelRatio(Math.max(1, ratio * 0.66))
@@ -705,6 +713,12 @@ function renderFrame() {
     if (fxaaPass) fxaaPass.enabled = true
     postProcessing?.setMsaaSamples(DEGRADED_MSAA_SAMPLES)
     handleResize()
+  }
+  if (!interacting && adaptiveQualityApplied && qualityRestoreTimer === null) {
+    qualityRestoreTimer = setTimeout(() => {
+      qualityRestoreTimer = null
+      applyQualityPreset()
+    }, 600)
   }
   if (needsRender && renderer && scene && camera) {
     const renderStarted = performance.now()
@@ -717,7 +731,7 @@ function renderFrame() {
     needsRender = false
     publishRenderStats()
   }
-  continuousFrame = characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
+  continuousFrame = mechanismAnimating || characterAnimating || controlsAnimating || weatherAnimating || effectsAnimating || needsRender
   if (continuousFrame) {
     scheduleRenderFrame()
   }
@@ -970,8 +984,8 @@ async function commitPlacement() {
 function handlePointerDown(event: PointerEvent) {
   if (roaming.active) return
   lastPointerSelectionId = null
-  if (viewMode.value === 'presentation' || renderPanel.showEdges) return
-  // 线框模式下建筑本体隐藏，选中/拖拽没有目标；同展示模式一起早退。
+  if (renderPanel.showEdges) return
+  // 线框模式下建筑本体隐藏；展示模式仍允许设备按钮接收点击。
   // 选择只响应主按键。右键由 contextmenu 独占，不能先改变选中高亮。
   if (event.button !== 0) {
     pointerDownPosition = null
@@ -988,7 +1002,7 @@ function handlePointerUp(event: PointerEvent) {
     return
   }
   if (roaming.active) return
-  if (viewMode.value === 'presentation' || renderPanel.showEdges) return
+  if (renderPanel.showEdges) return
   if (suppressSelectionClick) {
     suppressSelectionClick = false
     pointerDownPosition = null
@@ -1014,6 +1028,9 @@ function handlePointerUp(event: PointerEvent) {
 
   const hit = raycaster.intersectObjects(sceneGroup.children, true)
     .find(intersection => Boolean(getIntersectionElementId(intersection)))
+  const control = hit?.object.userData.interaction ? hit.object : hit?.object.parent
+  if (control && isMechanismControl(control) && toggleRuntimeInteraction(control, markShadowsDirty)) return
+  if (viewMode.value === 'presentation') return
   const elementId = hit ? getIntersectionElementId(hit) : null
   if (!elementId) {
     selectionStore.clearSelection()
@@ -1065,9 +1082,8 @@ function handleContextMenu(event: MouseEvent) {
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
   raycaster.setFromCamera(pointer, camera)
   const intersections = raycaster.intersectObjects(sceneGroup.children, true)
-  let interactionObject = intersections
-    .find(intersection => intersection.object.userData.interaction)
-    ?.object
+  const firstEntity = intersections.find(intersection => Boolean(getIntersectionElementId(intersection)))?.object
+  let interactionObject = firstEntity?.userData.interaction ? firstEntity : firstEntity?.parent?.userData.interaction ? firstEntity.parent : undefined
 
   // 灯座与灯泡属于同一组件；右键命中灯座时转发给灯泡。窗户不做这种
   // 转发，确保点击左/右窗扇时只开合实际命中的那一扇。
@@ -1094,7 +1110,7 @@ function handleContextMenu(event: MouseEvent) {
     }
   }
 
-  if (interactionObject && toggleRuntimeInteraction(interactionObject, markNeedsRender)) {
+  if (interactionObject && toggleRuntimeInteraction(interactionObject, markShadowsDirty)) {
     event.preventDefault()
   }
 }
@@ -1693,6 +1709,8 @@ function applyViewMode() {
 
 function applyQualityPreset() {
   if (!renderer) return
+  if (qualityRestoreTimer !== null) clearTimeout(qualityRestoreTimer)
+  qualityRestoreTimer = null
   // 手动切档会重置自适应降级标记，允许回到更高质量档。
   adaptiveQualityApplied = false
   slowFrameSeconds = 0
@@ -1968,6 +1986,8 @@ function cleanup() {
   renderLoopActive = false
   if (animationFrameId !== null) cancelAnimationFrame(animationFrameId)
   animationFrameId = null
+  if (qualityRestoreTimer !== null) clearTimeout(qualityRestoreTimer)
+  qualityRestoreTimer = null
   if (trailingShadowDirtyTimer !== null) {
     clearTimeout(trailingShadowDirtyTimer)
     trailingShadowDirtyTimer = null

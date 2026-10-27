@@ -198,6 +198,7 @@ export class CharacterRoamingRuntime {
   tick(delta: number): boolean {
     if (this.disposed || !this.locked) return false
     const elapsed = THREE.MathUtils.clamp(delta, 0, 0.05)
+    if (this.grounded && this.velocity.y <= 0) this.world.carryPlatform(this.body)
     this.world.syncMoving()
     const steps = Math.max(1, Math.ceil(elapsed / (1 / 120)))
     for (let i = 0; i < steps; i++) this.move(elapsed / steps)
@@ -208,7 +209,8 @@ export class CharacterRoamingRuntime {
       this.targetClock = 0
       const target = this.interactionTarget()
       const kind = target?.userData.interaction?.kind
-      this.setTargetLabel(kind === 'opening' ? '右键 · 开关门窗' : kind === 'light' ? '右键 · 切换灯光' : kind === 'elevator' ? '右键 · 呼叫电梯' : '')
+      const b = target?.userData.interaction
+      this.setTargetLabel(kind === 'opening' ? '右键 · 开关门窗' : kind === 'light' ? '右键 · 切换灯光' : kind === 'elevator' && b.role.endsWith('Button') ? '右键 · 电梯按钮' : kind === 'rotor' && b.role === 'control' ? '右键 · 风扇调速' : '')
     }
     return true
   }
@@ -239,7 +241,8 @@ export class CharacterRoamingRuntime {
   }
 
   private tryStep(before: Capsule, movement: THREE.Vector3, delta: number): void {
-    const candidate = before.clone().translate(new THREE.Vector3(0, STEP_HEIGHT, 0))
+    const candidate = before.clone()
+    candidate.translate(new THREE.Vector3(0, STEP_HEIGHT, 0))
     const expected = candidate.start.clone().add(new THREE.Vector3(movement.x, 0, movement.z))
     // 先检查抬高过程的头部空间，再检查水平通路。
     const emptyVelocity = new THREE.Vector3()

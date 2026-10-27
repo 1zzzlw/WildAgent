@@ -15,13 +15,15 @@
 
 import * as THREE from 'three'
 import type { ReconstructedEntity, MeshData } from '../types/scene'
-import type { ElevatorElementBehavior, LightElementBehavior } from 'wild-core/types'
+import type { LightElementBehavior } from 'wild-core/types'
 import { MaterialCache } from './materialAdapter'
 import { meshDataToGeometry } from './meshDataToGeometry'
 import { createTextLabel } from './textLabel'
+import { interactMechanism, isMechanismControl, syncMechanisms } from './mechanismRuntime'
 
 const MAX_VERTICES = 50000
 const typedArrayHashCache = new WeakMap<Float32Array | Uint32Array, number>()
+const renderKeys = new WeakMap<THREE.Object3D, string>()
 
 /**
  * 将 wild-core 的 MeshData 转换为 Three.js Mesh
@@ -69,7 +71,7 @@ function createMeshFromMeshData(
   let material = matParams
     ? materialCache.getOrCreate(meshData.materialRef, matParams, hasVertexColors)
     : new THREE.MeshStandardMaterial({ color: 0x808080 }) // 默认灰色
-  if (meshData.interaction?.kind === 'light') {
+  if (meshData.interaction?.kind === 'light' || meshData.interaction?.kind === 'elevator' && meshData.interaction.light || isMechanismControl({ userData: { interaction: meshData.interaction } })) {
     material = material.clone()
     ownsMaterial = true
   }
@@ -103,12 +105,10 @@ function createMeshFromMeshData(
       mesh.userData.interactionOpen = false
       if (meshData.interaction.initiallyOpen) setOpeningInteractionProgress(mesh, 1)
     } else if (meshData.interaction.kind === 'light') {
-      //  必须按 kind 显式分派，不能写 `else`：`InteractiveElementBehavior` 是
-      // `opening | light | elevator` 的联合，`else` 会把电梯行为也交给灯光初始化
-      // （读 undefined 的 lightType/color）—— 且 TS 会直接报 TS2345 卡住构建。
-      // 电梯无需初始化：编译器已按 `initialFloor` 摆好轿厢与导轨，运行时楼层状态
-      // 由 `callElevator` 惰性建立（`elevatorFloor ?? interaction.initialFloor ?? 0`）。
+      // 按 kind 分派；电梯与转子在场景成员建立后统一初始化。
       initializeLightInteraction(mesh, meshData.interaction)
+    } else if (meshData.interaction.kind === 'elevator' && meshData.interaction.light) {
+      initializeLightInteraction(mesh, meshData.interaction.light)
     }
   }
 
@@ -186,72 +186,13 @@ export function toggleRuntimeInteraction(
   if (object.userData.interaction?.kind === 'light') {
     return toggleLightInteraction(object, requestRender)
   }
-  if (object.userData.interaction?.kind === 'elevator') {
-    return callElevator(object, requestRender)
-  }
+  if (isMechanismControl(object)) return interactMechanism(object, requestRender)
   return false
 }
 
-/**
- * 呼梯：点击轿厢或呼梯按钮，轿厢到下一楼层（顶层后回到 0 层循环）。
- *
- * 轿厢与按钮的 `interaction` 携带同一份 `ElevatorElementBehavior`（同 id 前缀），
- * 但运行时楼层状态只挂在**轿厢网格**的 userData 上：按钮点击时先把指令转发给
- * 同组件的轿厢网格（`mesh.name` 即 elementId，约定为 `<componentId>__cab`），
- * 再走同一套楼层推进逻辑，保证从任意入口点击都只有一个状态源。
- */
-export function callElevator(
-  object: THREE.Object3D,
-  requestRender: () => void = () => { },
-): boolean {
-  if (!(object instanceof THREE.Mesh)) return false
-  const interaction = object.userData.interaction as ElevatorElementBehavior
-  if (interaction?.kind !== 'elevator') return false
-
-  const cab = object.name.endsWith('__cab') ? object : findElevatorCab(object)
-  if (!cab) return false
-
-  const currentFloor = cab.userData.elevatorFloor ?? interaction.initialFloor ?? 0
-  const nextFloor = (currentFloor + 1) % interaction.floorCount
-  const closedY = cab.position.y - currentFloor * interaction.floorHeight
-  const fromY = cab.position.y
-  const toY = closedY + nextFloor * interaction.floorHeight
-  const token = (cab.userData.elevatorAnimationToken || 0) + 1
-  cab.userData.elevatorAnimationToken = token
-  cab.userData.elevatorTargetFloor = nextFloor
-  const startedAt = performance.now()
-  // 每层行程约 1.2s；单层距离缩放时长，楼层越高越久但不拖沓。
-  const duration = 400 + 500 * Math.abs(nextFloor - currentFloor)
-
-  const tick = (now: number) => {
-    if (cab.userData.elevatorAnimationToken !== token) return
-    const linear = Math.min(1, (now - startedAt) / duration)
-    const eased = linear * linear * (3 - 2 * linear)
-    cab.position.y = fromY + (toY - fromY) * eased
-    requestRender()
-    if (linear < 1) requestAnimationFrame(tick)
-    else {
-      cab.position.y = toY
-      cab.userData.elevatorFloor = nextFloor
-      cab.userData.elevatorTargetFloor = nextFloor
-    }
-  }
-  requestRender()
-  requestAnimationFrame(tick)
-  return true
-}
-
-/** 在场景中找到与按钮同组件的轿厢网格（`<componentId>__cab`）。 */
-function findElevatorCab(button: THREE.Mesh): THREE.Mesh | null {
-  const componentId = button.name.replace(/__[^_]+$/, '')
-  let cab: THREE.Mesh | null = null
-  button.parent?.traverse(child => {
-    if (cab || !(child instanceof THREE.Mesh)) return
-    if (child.name === `${componentId}__cab` && child.userData.interaction?.kind === 'elevator') {
-      cab = child
-    }
-  })
-  return cab
+/** 电梯仅通过自己的按钮交互。 */
+export function callElevator(object: THREE.Object3D, requestRender: () => void = () => {}): boolean {
+  return object.userData.interaction?.kind === 'elevator' && interactMechanism(object, requestRender)
 }
 
 /** 右键让灯具按“关闭 → 弱光 → 强光 → 关闭”循环，并平滑过渡亮度。 */
@@ -298,6 +239,7 @@ function initializeLightInteraction(
   mesh: THREE.Mesh,
   interaction: LightElementBehavior,
 ): void {
+  mesh.userData.lightDefinition = interaction
   const color = new THREE.Color().setRGB(...interaction.color)
   const light = interaction.lightType === 'spot'
     ? new THREE.SpotLight(
@@ -345,7 +287,7 @@ function setLightIntensity(mesh: THREE.Mesh, intensity: number): void {
     light.intensity = Math.max(0, intensity)
     light.userData.requestedIntensity = light.intensity
   }
-  const interaction = mesh.userData.interaction as LightElementBehavior
+  const interaction = mesh.userData.lightDefinition as LightElementBehavior
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
   for (const material of materials) {
     if (!(material instanceof THREE.MeshStandardMaterial)) continue
@@ -409,6 +351,20 @@ function createInstancedMesh(
     ? materialCache.getOrCreate(first.meshData.materialRef, params, !!first.meshData.vertexColors)
     : new THREE.MeshStandardMaterial({ color: 0x808080 })
   const instanced = new THREE.InstancedMesh(geometry, material, entries.length)
+  updateInstanceMatrices(instanced, entries)
+  instanced.castShadow = !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
+  instanced.receiveShadow = true
+  instanced.name = `Instanced:${first.meshData.materialRef}`
+  instanced.userData.instanceElementIds = entries.map(entry => entry.meshData.elementId)
+  instanced.userData.materialRef = first.meshData.materialRef
+  instanced.userData.ownsMaterial = !params
+  return instanced
+}
+
+function updateInstanceMatrices(
+  instanced: THREE.InstancedMesh,
+  entries: Array<{ meshData: MeshData }>,
+): void {
   const matrix = new THREE.Matrix4()
   const position = new THREE.Vector3()
   const quaternion = new THREE.Quaternion()
@@ -429,13 +385,8 @@ function createInstancedMesh(
     instanced.setMatrixAt(index, matrix)
   })
   instanced.instanceMatrix.needsUpdate = true
-  instanced.castShadow = !(material instanceof THREE.MeshPhysicalMaterial && material.transmission > 0)
-  instanced.receiveShadow = true
-  instanced.name = `Instanced:${first.meshData.materialRef}`
-  instanced.userData.instanceElementIds = entries.map(entry => entry.meshData.elementId)
-  instanced.userData.materialRef = first.meshData.materialRef
-  instanced.userData.ownsMaterial = !params
-  return instanced
+  instanced.computeBoundingSphere()
+  instanced.computeBoundingBox()
 }
 
 function populateSceneGroup(
@@ -444,11 +395,33 @@ function populateSceneGroup(
   materialCache: MaterialCache,
 ): void {
   const buckets = new Map<string, Array<{ meshData: MeshData; materialIndex: number }>>()
+  const previous = new Map<string, THREE.Object3D[]>()
+  const oldChildren = [...group.children]
+  const retained = new Set<THREE.Object3D>()
+  for (const object of oldChildren) {
+    const key = renderKeys.get(object)
+    if (!key) continue
+    const candidates = previous.get(key) || []
+    candidates.push(object)
+    previous.set(key, candidates)
+  }
+  const retain = (key: string, create: () => THREE.Mesh, reuse = true): THREE.Mesh => {
+    const object = (reuse && previous.get(key)?.shift() as THREE.Mesh | undefined) || create()
+    renderKeys.set(object, key)
+    retained.add(object)
+    if (object.parent !== group) group.add(object)
+    return object
+  }
+  const materialKeys: string[] = []
 
   entity.meshes.forEach((meshData, materialIndex) => {
+    const params = entity.materialParams[materialIndex]
+    materialKeys[materialIndex] = params
+      ? materialCache.getOrCreate(meshData.materialRef, params, !!meshData.vertexColors).uuid
+      : 'default'
     const canInstance = !meshData.interactive && !meshData.label && meshData.geometry.length / 3 <= MAX_VERTICES
     const key = canInstance
-      ? meshSignature(meshData, entity.materialParams[materialIndex])
+      ? `${meshSignature(meshData)}:${materialKeys[materialIndex]}`
       : `single:${materialIndex}`
     const bucket = buckets.get(key) || []
     bucket.push({ meshData, materialIndex })
@@ -458,7 +431,10 @@ function populateSceneGroup(
   for (const entries of buckets.values()) {
     if (entries.length >= 3 && !entries[0].meshData.interactive) {
       try {
-        group.add(createInstancedMesh(entries, materialCache, entity.materialParams))
+        const key = `instances:${meshSignature(entries[0].meshData)}:${materialKeys[entries[0].materialIndex]}:${JSON.stringify(entries.map(entry => entry.meshData.elementId))}`
+        const existing = previous.get(key)?.length
+        const mesh = retain(key, () => createInstancedMesh(entries, materialCache, entity.materialParams)) as THREE.InstancedMesh
+        if (existing) updateInstanceMatrices(mesh, entries)
         continue
       } catch (error) {
         console.warn('创建 InstancedMesh 失败，回退为普通 Mesh', error)
@@ -466,20 +442,35 @@ function populateSceneGroup(
     }
     for (const entry of entries) {
       try {
-        group.add(createMeshFromMeshData(
-          entry.meshData,
+        const data = entry.meshData
+        const key = `mesh:${data.elementId}:${meshSignature(data)}:${materialKeys[entry.materialIndex]}:${JSON.stringify([
+          data.interaction, data.label, data.interactive, data.draggable,
+          data.interactive ? data.transform : null,
+        ])}`
+        const mesh = retain(key, () => createMeshFromMeshData(
+          data,
           materialCache,
           entity.materialParams,
           entry.materialIndex,
-        ))
+        ), !data.label)
+        if (!data.interactive && !mesh.userData.isError) {
+          mesh.position.fromArray(data.transform.position)
+          mesh.rotation.fromArray(data.transform.rotation)
+          mesh.scale.fromArray(data.transform.scale)
+        }
       } catch (error) {
         console.error('创建 mesh 失败', entry.meshData, error)
       }
     }
   }
+  for (const object of oldChildren) {
+    if (retained.has(object)) continue
+    group.remove(object)
+    clearSceneObjectResources(object)
+  }
 }
 
-function meshSignature(meshData: MeshData, params: any): string {
+function meshSignature(meshData: MeshData): string {
   return [
     meshData.materialRef,
     meshData.geometry.length,
@@ -490,12 +481,6 @@ function meshSignature(meshData: MeshData, params: any): string {
     meshData.normals ? hashTypedArray(meshData.normals) : 0,
     meshData.uvs ? hashTypedArray(meshData.uvs) : 0,
     meshData.vertexColors ? hashTypedArray(meshData.vertexColors) : 0,
-    JSON.stringify([
-      params?.baseColor,
-      params?.roughness,
-      params?.metallic,
-      params?.opacity,
-    ]),
   ].join(':')
 }
 
@@ -522,6 +507,7 @@ export function clearSceneObjectResources(root: THREE.Object3D): void {
   root.traverse(object => {
     if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.InstancedMesh)) return
     geometries.add(object.geometry)
+    if (object instanceof THREE.InstancedMesh) object.dispose()
     if (!object.userData.ownsMaterial) return
     const owned = Array.isArray(object.material) ? object.material : [object.material]
     owned.forEach(material => materials.add(material))
@@ -529,6 +515,7 @@ export function clearSceneObjectResources(root: THREE.Object3D): void {
   root.clear()
   geometries.forEach(geometry => geometry.dispose())
   materials.forEach(material => material.dispose())
+  if (root.userData.ownsMaterialScope) root.userData.materialScope?.clear()
 }
 
 /**
@@ -547,9 +534,11 @@ export function createSceneGroupFromEntity(
 
   const cache = materialCache || new MaterialCache()
   group.userData.materialScope = cache
+  group.userData.ownsMaterialScope = !materialCache
   cache.beginUpdate()
   try {
     populateSceneGroup(group, entity, cache)
+    syncMechanisms(group)
   } finally {
     cache.endUpdate()
   }
@@ -567,7 +556,7 @@ export function createSceneGroupFromEntity(
 /**
  * 更新现有场景组
  * 
- * 清空旧对象并添加新对象
+ * 保留未变化的几何、材质和交互状态，只替换变化的网格或实例桶。
  * 
  * @param group - 要更新的 THREE.Group
  * @param entity - 新的 ReconstructedEntity
@@ -578,11 +567,10 @@ export function updateSceneGroup(
   entity: ReconstructedEntity,
   materialCache: MaterialCache
 ): void {
-  clearSceneObjectResources(group)
-
   materialCache.beginUpdate()
   try {
     populateSceneGroup(group, entity, materialCache)
+    syncMechanisms(group)
   } finally {
     materialCache.endUpdate()
   }

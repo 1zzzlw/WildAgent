@@ -14,12 +14,14 @@
     "./world": "./src/world/index.ts",
     "./compiler": "./src/compiler/index.ts",
     "./relationships": "./src/relationships.ts",
-    "./schema.json": "./schema.json"
+    "./schema.json": "./schema.json",
+    "./material-presets.json": "./material-presets.json"
   },
   "files": [
     "src",
     "types.ts",
-    "schema.json"
+    "schema.json",
+    "material-presets.json"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json"

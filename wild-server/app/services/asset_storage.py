@@ -195,6 +195,7 @@ class LocalAssetStorage:
             "metallic": metallic,
             "normalScale": normal_scale,
             "uvScale": resolved_uv_scale,
+            "realWorldSizeMeters": real_size,
         }, sort_keys=True, separators=(",", ":")))
 
         content_hash = hashlib.sha256("\n".join(identity_parts).encode("utf-8")).hexdigest()

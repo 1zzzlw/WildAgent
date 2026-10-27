@@ -164,10 +164,11 @@ async def material_planner(state: GenerationState) -> dict:
         procedural_selected = [
             item for item in plan["roles"] if item.get("proceduralPresetId")
         ]
+        surface_selected = [item for item in plan["roles"] if item.get("surfacePresetId")]
         await callback(
             "material_plan",
             f"材质方案已确定：{plan['concept']}；匹配 {len(selected)} 个 PBR 资产，"
-            f"启用 {len(procedural_selected)} 个程序化配方。\n",
+            f"启用 {len(procedural_selected)} 个砖材配方、{len(surface_selected)} 个内置表面配方。\n",
         )
     return {
         # 材质方案本体
@@ -192,6 +193,7 @@ async def material_planner(state: GenerationState) -> dict:
             "selected_procedural_count": sum(
                 1 for item in plan["roles"] if item.get("proceduralPresetId")
             ),
+            "selected_surface_count": sum(1 for item in plan["roles"] if item.get("surfacePresetId")),
             "procedural_materials_enabled": procedural_materials_enabled,
             "rejected_asset_ids": plan["rejectedAssetIds"],
             "rejected_procedural_preset_ids": plan["rejectedProceduralPresetIds"],

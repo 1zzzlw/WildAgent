@@ -17,7 +17,8 @@ export interface ElementBuilderRegistration {
   type: string;
   status: EngineCapability['status'];
   description: string;
-  build: (element: any) => MeshData[];
+  /** 尺寸型材质请求米制 UV；省略时保留旧图片材质的展开方式。 */
+  build: (element: any, metricUVs?: boolean) => MeshData[];
 }
 
 const builders = new Map<string, ElementBuilderRegistration>();

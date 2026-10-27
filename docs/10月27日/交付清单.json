@@ -1,0 +1,137 @@
+{
+  "date": "2026-10-27",
+  "inputSha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb",
+  "rendererSourceSha256": "aad0a15f7cce4ff537c921d478f9e8d3c4b0c74db5fd1b97c550974bcbc8c0f3",
+  "artifacts": [
+    {
+      "path": "别墅设计事实.md",
+      "bytes": 2072,
+      "sha256": "4b22d031315052c3c7c0b70d0fa9c7b39e39e7219a9ef5681cd98f364ebc839d"
+    },
+    {
+      "path": "别墅渲染/01-水庭日景.png",
+      "bytes": 746154,
+      "sha256": "81d3ba9bcd7736a858e6fa1d47cae0961357934f42d763485799d0a88db4c8ba"
+    },
+    {
+      "path": "别墅渲染/02-西南立面.png",
+      "bytes": 595151,
+      "sha256": "2327c81b7d1f579bc5e5e50f0ce62bceb85b87a26aff9e9382f5d7ed37447fe3"
+    },
+    {
+      "path": "别墅渲染/03-北侧立面.png",
+      "bytes": 438877,
+      "sha256": "b9037cb9143c2fcf2f031d71698dee1c2b28591ea332a243cdc10da99e50bd6b"
+    },
+    {
+      "path": "别墅渲染/04-俯视全景.png",
+      "bytes": 729680,
+      "sha256": "b9ec0e8be43aea94aed78bc8ce21689f25b9d011304122cbe79bff87458eeaaa"
+    },
+    {
+      "path": "别墅渲染/05-水庭夜景.png",
+      "bytes": 486450,
+      "sha256": "698b9786aae6f6823f534820bf5c177502663e18dcf507bbb03c7b5b64422ffb"
+    },
+    {
+      "path": "别墅渲染/06-起居室内.png",
+      "bytes": 507324,
+      "sha256": "eb0e3ae04829567c1cde71303fe1ef0edd51be5acce7d2ef83bd2ee041f4bc28"
+    },
+    {
+      "path": "别墅渲染/07-起居室夜景.png",
+      "bytes": 481827,
+      "sha256": "6364e7f1d29d382d47a4edcee94342390789df6db3acab40b5459a0ae39bb0c6"
+    },
+    {
+      "path": "别墅渲染/08-二层卧室.png",
+      "bytes": 610668,
+      "sha256": "6bebd25811ac6cbfad6696870245253d675d47a629d860ee90f988bd40af641b"
+    },
+    {
+      "path": "别墅渲染/09-木作洞石近景.png",
+      "bytes": 411465,
+      "sha256": "5ff3efcfc1405e1f2390885fe4591c3e0b39f5a30896b52b85144b809d178386"
+    },
+    {
+      "path": "别墅渲染/10-电梯开门与按钮.png",
+      "bytes": 736072,
+      "sha256": "6e701165bdcd0ba8e8cae4c89204238eaa81a955657d83200e7c52192849efc1"
+    },
+    {
+      "path": "别墅渲染/render_manifest.json",
+      "bytes": 10491,
+      "sha256": "c41b6b7d653fee71e4ea7be804260ae397e848106be6a114c95983ea2a9de279"
+    },
+    {
+      "path": "岚石光庭-交互材质别墅.wild",
+      "bytes": 49802,
+      "sha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb"
+    },
+    {
+      "path": "生成岚石光庭.mjs",
+      "bytes": 12969,
+      "sha256": "8deacb24d72217cdfb32012775aa16f1dba0f1db82e6011e491708303f661023"
+    },
+    {
+      "path": "实施与验收记录.md",
+      "bytes": 11084,
+      "sha256": "2c6901f3fa0314b8b37c7ce4ccb07ea549cfa05beaf21a74dffc41156c2a60d2"
+    },
+    {
+      "path": "使用与复现.md",
+      "bytes": 3211,
+      "sha256": "b55ee9490347fc465ab16ae86dbf9ee4392ed074c7d42a239cf02639aad99086"
+    },
+    {
+      "path": "验证/编辑器-电梯按钮与开门.png",
+      "bytes": 269754,
+      "sha256": "71534b363503ecdefec4ce104366ef26208dfd29053b0470749491464de0b910"
+    },
+    {
+      "path": "验证/编辑器-风扇参数面板.png",
+      "bytes": 258509,
+      "sha256": "322b081b8663a1c2df6ebd5584a82ac4d2beaedd290d0406672cd3ed840a7407"
+    },
+    {
+      "path": "验证/别墅静态与Core验收.json",
+      "bytes": 1317,
+      "sha256": "1903af0463104a50f1c894d44ad114d11ece30200ca0cd3011492abb0e606852"
+    },
+    {
+      "path": "验证/材质库-真实管线预览.png",
+      "bytes": 206870,
+      "sha256": "93a3c621f092927efb1e3f829068da8577c8538819574a36bdc601523b4b9b00"
+    },
+    {
+      "path": "验证/材质与遮光GPU回归.json",
+      "bytes": 3937,
+      "sha256": "b9bbc4d03a9e4b267e592e14290719dac6d13f0e355d3da883744b775a196992"
+    },
+    {
+      "path": "验证/动态组件回归.json",
+      "bytes": 627,
+      "sha256": "9703344532fffbdb233cd51af7db40169c8dee86b9d1d0988f99b0b82d7a7ec2"
+    },
+    {
+      "path": "验证/检查汇总.json",
+      "bytes": 2016,
+      "sha256": "201a2d184b9882d7918622282adfead0655231096d434a82ea60114c2e4ad489"
+    },
+    {
+      "path": "验证/人物电梯物理验收.json",
+      "bytes": 464,
+      "sha256": "82fa1b25bbcc21e3ddcb745a6e540eb48683b2f20ade84600b1351a232615d41"
+    },
+    {
+      "path": "验证/完整编辑器验收.json",
+      "bytes": 541,
+      "sha256": "511d046f427c615e2a2e2395594f461fff4c4e23e559e9967b599c80dfc00ba2"
+    }
+  ],
+  "visual_review": {
+    "complete": false,
+    "assistant_review": "completed",
+    "user_review": "pending"
+  }
+}

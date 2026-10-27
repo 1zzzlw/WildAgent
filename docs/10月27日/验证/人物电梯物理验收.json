@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "inputSha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb",
+  "upper": 3.7220000007450578,
+  "lower": 0.322000011920929,
+  "exited": {
+    "feet": 3.7220000119209287,
+    "z": -1.4654971165107744
+  },
+  "maxFloorDrift": 0.002000011920928968,
+  "scope": "Chromium 内真实 CharacterRoamingRuntime 固定时间步、真实建筑碰撞与楼板井洞；测试注入锁定态及移动键，未冒充人工键鼠游玩"
+}

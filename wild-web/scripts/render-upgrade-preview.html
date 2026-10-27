@@ -11,6 +11,8 @@ import { FixtureLightingRuntime } from '/src/renderer/fixtureLightingRuntime.ts'
 import { WaterReflectionRuntime } from '/src/renderer/waterReflectionRuntime.ts';
 import { configureWorldRenderer, applyWorldRenderQuality, resolveWorldIllumination } from '/src/renderer/worldRenderSettings.ts';
 import { setWaterSurfaceTime } from '/src/renderer/waterSurfaceMaterial.ts';
+import { createMaterialFromParams } from '/src/renderer/materialAdapter.ts';
+import { applyProceduralMaterial } from '/src/renderer/proceduralMaterials/index.ts';
 const elements = [
  {type:'floor',id:'pool-bottom',from:[-3,-.8,-2],to:[3,-.8,2],thickness:.1,material:'tile'},
  {type:'floor',id:'pool-water',from:[-3,-.05,-2],to:[3,-.05,2],thickness:.05,material:'water'},
@@ -53,6 +55,22 @@ window.runShadowProbe=async()=>{
  const unshadowed=Array.from(window.readPixels().slice(index,index+3));budget.dispose();return {shadowed,unshadowed};
 };
 window.waterPixel=(x,z)=>{const p=new THREE.Vector3(x,0,z).project(camera);return {x:Math.round((p.x*.5+.5)*960),y:Math.round((p.y*.5+.5)*720)}};
+window.runSurfaceProbe=async()=>{
+ const isolated=new THREE.Scene();isolated.background=new THREE.Color('#222');isolated.add(new THREE.HemisphereLight(0xffffff,0xffffff,1));
+ const eye=new THREE.PerspectiveCamera(45,960/720,.1,50);eye.position.set(0,0,4);eye.lookAt(0,0,0);
+ const params=(await reconstructEntity({meta:{version:'1.1',type:'asset',name:'材质坐标'},geometry:{elements:[{type:'primitive',id:'wood',shape:'box',dimensions:[2,2,.1],material:'wood'}]},materials:{wood:{baseColor:[.55,.3,.12],roughness:.7,surfaceFamily:'wood'}}})).materialParams[0];
+ const material=createMaterialFromParams(params,false,undefined,'wood');const geometry=new THREE.PlaneGeometry(2,2);const mesh=new THREE.Mesh(geometry,material);isolated.add(mesh);
+ renderer.render(isolated,eye);const first=window.readPixels();
+ const uv=geometry.getAttribute('uv');for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*7,uv.getY(i)*3);uv.needsUpdate=true;
+ renderer.render(isolated,eye);const second=window.readPixels();let changed=0;
+ for(let i=0;i<first.length;i+=4)if(Math.max(Math.abs(first[i]-second[i]),Math.abs(first[i+1]-second[i+1]),Math.abs(first[i+2]-second[i+2]))>1)changed++;
+ // 输出真实砖 Shader 的世界法线，检验相机变化不改变表面方向判断。
+ const brick=new THREE.MeshStandardMaterial();applyProceduralMaterial(brick,{type:'brick'},[.5,.2,.1]);const install=brick.onBeforeCompile;
+ brick.onBeforeCompile=shader=>{install(shader);shader.fragmentShader=shader.fragmentShader.replace('#include <dithering_fragment>','#include <dithering_fragment>\ngl_FragColor = vec4(normalize(vWildBrickWorldNormal)*0.5+0.5,1.0);')};
+ brick.customProgramCacheKey=()=> 'brick-world-normal-probe';mesh.material=brick;
+ const pixels=[];for(const angle of [0,Math.PI/3]){eye.position.set(0,-Math.sin(angle)*4,Math.cos(angle)*4);eye.lookAt(0,0,0);renderer.render(isolated,eye);pixels.push(Array.from(window.readPixels().slice((360*960+480)*4,(360*960+480)*4+3)));}
+ geometry.dispose();material.dispose();brick.dispose();window.frame();return {uvIndependentChangedPixels:changed,brickWorldNormalPixels:pixels};
+};
 window.scene=scene;window.group=group;window.camera=camera;window.reflection=reflection;window.fixtures=fixtures;window.post=post;
 window.diagnostics=entity.diagnostics;window.frame();window.ready=true;
 </script></html>

@@ -2,9 +2,10 @@ import * as THREE from 'three'
 import type { QualityLevel } from './defaultWorldLook'
 
 type Fixture = THREE.PointLight | THREE.SpotLight
-const BUDGET = { low: 4, medium: 8, high: 12 }
+const BUDGET = { low: 2, medium: 4, high: 8 }
+const SHADOW_SIZE = { low: 256, medium: 512, high: 1024 }
 
-/** 灯具始终保留发光外观，实时照明按视角选取；仅精细档两个重点灯投影。 */
+/** 每个活跃实时灯都参与遮挡；通过灯数和分辨率控制成本，不能用穿墙光补亮。 */
 export class FixtureLightingRuntime {
   private fixtures: Fixture[] = []
   private selected = new Set<Fixture>()
@@ -43,28 +44,33 @@ export class FixtureLightingRuntime {
         return { light, score }
       }).sort((a, b) => b.score - a.score)
     const selected = new Set(candidates.slice(0, BUDGET[quality]).map(entry => entry.light))
-    const shadowed = new Set(quality === 'high' ? candidates.slice(0, 2).map(entry => entry.light) : [])
     let shadowsDirty = false
     for (const light of this.fixtures) {
       light.visible = selected.has(light)
-      const castShadow = shadowed.has(light)
+      const castShadow = selected.has(light)
       if (light.castShadow !== castShadow) {
         light.castShadow = castShadow
         shadowsDirty = true
         if (!castShadow) { light.shadow.map?.dispose(); light.shadow.map = null }
       }
       if (castShadow) {
-        light.shadow.mapSize.set(512, 512)
+        const size = SHADOW_SIZE[quality]
+        if (light.shadow.mapSize.x !== size) {
+          light.shadow.map?.dispose()
+          light.shadow.map = null
+          light.shadow.mapSize.set(size, size)
+          shadowsDirty = true
+        }
         light.shadow.camera.near = 0.05
         light.shadow.camera.far = Math.max(0.1, light.distance || 12)
         light.shadow.camera.updateProjectionMatrix()
         light.shadow.bias = -0.0002
-        light.shadow.normalBias = 0.025
+        light.shadow.normalBias = 0.002
       }
     }
     this.selected = selected
     this.activeCount = selected.size
-    this.shadowCount = shadowed.size
+    this.shadowCount = selected.size
     return shadowsDirty
   }
 

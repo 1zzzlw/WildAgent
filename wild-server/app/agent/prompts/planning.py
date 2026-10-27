@@ -308,6 +308,8 @@ def build_material_plan_prompt(
     只会让模型编出一个不存在的建筑语境。
     """
     import json as _json
+    from app.agent.generation.material.surfaces import surface_catalog
+    builtin_surfaces = surface_catalog()
     style_section = _style_preference_section(style_preference) if object_scene else ""
     explicit_materials = [{"id": c.get("id"), "role": c["material_role"], "material": c["form"]["material"]}
                           for c in architecture_plan.get("components", []) if c.get("material_role")
@@ -317,9 +319,9 @@ def build_material_plan_prompt(
     # 否则空列表会让模型以为自己无事可做，转而去编 assetId。
     _no_asset_note = (
         "\n> **本机当前没有任何可用的 PBR 纹理资产**（上面的列表是空的）。\n"
-        "> 这**不影响**你做材质设计：`assetId` 一律填 `null`，改用 `baseColor` /\n"
-        "> `roughness` / `metallic` 直接表达材质——颜色、粗糙度、金属度都是**参数**，\n"
-        "> 不需要贴图。用户的配色要求此时完全靠这些参数落地。\n"
+        "> 这**不影响**材质设计：`assetId` 填 `null`，优先选择下方适配的 `surfacePresetId`；\n"
+        "> 内置配方已有木纹、石材、织物、金属与玻璃的完整表面参数，无需图片。\n"
+        "> 再用 `baseColor` / `roughness` / `metallic` 表达本次配色和表面状态。\n"
         "> 严禁编造 assetId 或任何纹理文件名。\n"
         if not available_assets
         else ""
@@ -412,6 +414,11 @@ def build_material_plan_prompt(
 # AVAILABLE_PROCEDURAL_PRESETS（唯一允许选择的程序化配方）
 
 {_json.dumps(procedural_presets or [], ensure_ascii=False, indent=2)}
+
+# AVAILABLE_SURFACE_PRESETS（材质面板同源的内置表面，无需图片）
+
+{_json.dumps(builtin_surfaces, ensure_ascii=False, indent=2)}
+可用 `surfacePresetId` 精确选择其中一个符合 recommendedRoles 的配方，系统会保留其木纹、石纹、织物、金属拉丝或玻璃物理参数。它与 assetId、proceduralPresetId 互斥。颜色和粗糙度可以按本次设计调整。优先用适配的表面配方承载材质类别；没有适配项时再使用普通参数材质。不得编造 ID。
 
 # 强制规则
 

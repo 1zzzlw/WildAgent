@@ -26,19 +26,21 @@ export class RoamingCollisionWorld {
       if (!object.userData.materialRef && !object.userData.instanceElementIds) return
       const materials = Array.isArray(object.material) ? object.material : [object.material]
       if (materials.some(material => material.userData.wildWaterSurface)) return
+      // 扇叶是头顶视觉转子，不建立过时的静态碰撞网格；电机与吊杆仍阻挡。
+      if (object.userData.interaction?.kind === 'rotor' && object.userData.interaction.role === 'rotor') return
       this.meshes.push(object)
       this.bounds.expandByObject(object)
       if (object.userData.interaction?.kind === 'opening' || object.userData.interaction?.kind === 'elevator') {
         const tree = new Octree()
         this.addMesh(tree, object)
-        if (tree.triangles.length) tree.build()
+        this.buildTree(tree)
         this.moving.push({ mesh: object, matrix: object.matrixWorld.clone(), tree })
         this.trees.push(tree)
       } else {
         this.addMesh(this.fixed, object)
       }
     })
-    if (this.fixed.triangles.length) this.fixed.build()
+    this.buildTree(this.fixed)
   }
 
   private addMesh(tree: Octree, mesh: THREE.Mesh): void {
@@ -66,6 +68,14 @@ export class RoamingCollisionWorld {
     }
   }
 
+  private buildTree(tree: Octree): void {
+    if (!tree.triangles.length) return
+    // Octree 只给最小边留余量；移动后的最大平面可能因分割舍入被所有子盒排除。
+    // 将三角形留在外包盒内部，避免薄地板重建后间歇性丢失承重面。
+    tree.bounds.expandByScalar(0.00001)
+    tree.build()
+  }
+
   /** 门窗动画只更新发生变换的活动碰撞体，不重新编译整个建筑。 */
   syncMoving(): void {
     for (const item of this.moving) {
@@ -74,7 +84,25 @@ export class RoamingCollisionWorld {
       item.matrix.copy(item.mesh.matrixWorld)
       item.tree.clear()
       this.addMesh(item.tree, item.mesh)
-      if (item.tree.triangles.length) item.tree.build()
+      this.buildTree(item.tree)
+    }
+  }
+
+  /** 用上一帧的平台平面确认支撑，再携带乘客；上行与下行都无需靠碰撞挤推。 */
+  carryPlatform(capsule: Capsule): void {
+    const feet = capsule.start.y - capsule.radius
+    for (const item of this.moving) {
+      if (item.mesh.name !== item.mesh.userData.interaction?.groupId + '__cab') continue
+      item.mesh.geometry.computeBoundingBox()
+      const previous = item.mesh.geometry.boundingBox!.clone().applyMatrix4(item.matrix)
+      if (Math.abs(feet - previous.max.y) > 0.08
+        || capsule.start.x < previous.min.x || capsule.start.x > previous.max.x
+        || capsule.start.z < previous.min.z || capsule.start.z > previous.max.z) continue
+      item.mesh.updateWorldMatrix(true, false)
+      const before = new THREE.Vector3().setFromMatrixPosition(item.matrix)
+      const after = new THREE.Vector3().setFromMatrixPosition(item.mesh.matrixWorld)
+      capsule.translate(after.sub(before))
+      return
     }
   }
 

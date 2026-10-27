@@ -6,7 +6,7 @@
         <summary>内置材质</summary>
         <div class="swatch-grid"><button v-for="preset in SURFACE_MATERIAL_PRESETS" :key="preset.id" type="button"
           class="swatch" :title="preset.description" :disabled="!scene.document || scene.isReconstructing" @click="addPreset(preset)">
-          <i :style="{ background: colorHex(preset.material.baseColor) }"></i><span>{{ preset.name }}</span>
+          <i :style="{ backgroundColor: colorHex(preset.material.baseColor), backgroundImage: previews[preset.id] ? `url(${previews[preset.id]})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center', height: '64px' }"></i><span>{{ preset.name }}</span>
         </button></div>
         <p class="material-hint">点击加入场景；有选中构件时同时应用到匹配的部位。</p>
       </details>
@@ -26,7 +26,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useSceneStore } from '../../stores/sceneStore'
 import { useSelectionStore } from '../../stores/selectionStore'
@@ -35,6 +35,9 @@ import { createSelectedMaterialBindings } from '../../wild/materialBindings'
 import { SURFACE_MATERIAL_PRESETS } from '../../wild/surfaceMaterialPresets'
 import type { MaterialDef } from '../../types/blueprint'
 import PBRAssetPanel from './PBRAssetPanel.vue'
+import { getMaterialThumbnails } from '../../renderer/materialThumbnails'
+const previews = ref<Record<string, string>>({})
+onMounted(() => { void getMaterialThumbnails().then(value => { previews.value = value }).catch(error => console.warn('材质预览生成失败', error)) })
 const scene = useSceneStore()
 const selection = useSelectionStore()
 const tab = ref('scene')

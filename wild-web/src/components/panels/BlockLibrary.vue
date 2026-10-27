@@ -111,6 +111,8 @@ const componentBlocks: readonly ComponentBlock[] = [
   { type: 'chimney', label: '烟囱', icon: '▥', description: '创建参数化薄壁烟囱' },
   { type: 'light', fixtureType: 'bulb', label: '灯泡', icon: '💡', description: '创建可拖动、可右键调光的裸灯泡' },
   { type: 'light', fixtureType: 'table_lamp', label: '台灯', icon: '♟', description: '创建带灯座、灯杆和灯罩的发光台灯' },
+  { type: 'fan', label: '吊扇', icon: '✣', description: '创建带独立调速开关的吊扇' },
+  { type: 'elevator', label: '电梯', icon: '↕', description: '创建轿厢、层门与楼层按钮；放入井道并为上层楼板留洞' },
 ]
 
 function handleAddBlock(block: BlockTemplate) {

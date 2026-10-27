@@ -158,8 +158,10 @@ _COMPONENT_RULES: dict[str, str] = {
         "height 必须小于 floorHeight（编译器会自动压缩到 floorHeight-0.15 以内）\n"
         "- floorHeight 与建筑层高一致（如 3.3），floorCount 是井道跨越的层数（含底层）\n"
         "- 井道围合由 wall_core_* 墙体表达（若骨架已有核心筒则复用），本组件不生成井壁；"
-        "编译后产出: primitive.box（轿厢，可交互）+ primitive.box×2（导轨）+ primitive.cylinder（呼梯按钮，可交互）\n"
-        "- 右键点击轿厢或按钮可呼梯到下一楼层（顶层后循环回 0 层）\n"
+        "入口朝世界 +Z；编译器生成开放轿厢、对开层门、各层呼梯按钮与轿内选层/开关门按钮。\n"
+        "- 入口墙可用 landingWalls 逐层指定，墙沿 X 轴且位于 position.z+depth/2+0.08；自动开洞。"
+        "上层楼板必须为井道留洞，不能用实心楼板穿过轿厢行程。\n"
+        "- 点击楼层按钮到对应层，先关门再行驶，停稳后开门；轿厢本体不触发楼层循环。\n"
         "- 只在多层建筑（≥2 层）且用户提到电梯/升降/垂直交通时生成；单层建筑不要生成"
     ),
     "light": (
@@ -373,10 +375,19 @@ COMPONENT_REGISTRY: dict[str, ComponentConfig] = {
         rag_extra_queries=["elevator shaft cabin call button interactive"],
         is_list=True,
         required_fields=["type", "id", "position", "dimensions", "floorHeight", "floorCount"],
-        optional_fields=["initialFloor", "material", "frameMaterial"],
+        optional_fields=["initialFloor", "material", "frameMaterial", "doorMaterial", "floorMaterial", "landingWalls"],
         skip_keywords=["不要电梯", "没有电梯", "不需要电梯"],
         need_keywords=["电梯", "升降梯", "垂直交通", "观光梯", "载货梯"],
         extra_rules=_COMPONENT_RULES["elevator"],
+        priority=4,
+    ),
+    "fan": ComponentConfig(
+        component_type="fan", label="吊扇", entity_type="fan", is_list=True,
+        rag_extra_queries=["吊扇 开关 动态家具"],
+        required_fields=["type", "id", "position", "controlPosition"],
+        optional_fields=["radius", "bladeCount", "drop", "rpm", "initiallyOn", "material", "frameMaterial"],
+        skip_keywords=["不要风扇", "不要吊扇"], need_keywords=["风扇", "吊扇"],
+        extra_rules="position 为电机中心；controlPosition 为可达墙面开关。上方 drop 是吊杆长度，叶片3–8片，rpm≤600。点击开关循环关闭/低速/高速，运行状态不保存。",
         priority=4,
     ),
     # ── P4: 特殊场景 ──

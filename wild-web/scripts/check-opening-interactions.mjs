@@ -6,8 +6,8 @@ let cases=0;
 try {
  const {compileBlueprintComponents}=await vite.ssrLoadModule('../wild-core/src/compiler/index.ts');
  const {reconstructEntity}=await vite.ssrLoadModule('../wild-core/src/primitive/index.ts');
- const {createSceneGroupFromEntity,toggleOpeningInteraction}=await vite.ssrLoadModule('/src/renderer/renderEntity.ts');
- const {MaterialCache}=await vite.ssrLoadModule('/src/renderer/materialAdapter.ts');
+ const {createSceneGroupFromEntity,toggleOpeningInteraction,toggleRuntimeInteraction,updateSceneGroup,clearSceneObjectResources}=await vite.ssrLoadModule('/src/renderer/renderEntity.ts');
+ const {MaterialCache,getGlobalMaterialResourceStats}=await vite.ssrLoadModule('/src/renderer/materialAdapter.ts');
  const events=[];let now=0;globalThis.requestAnimationFrame=cb=>{events.push(cb);return events.length};
  const flush=()=>{for(let i=0;events.length&&i<50;i++){now=performance.now()+1000+i*1000;events.splice(0).forEach(cb=>cb(now));}assert.equal(events.length,0)};
  for(const angle of [0,Math.PI/2,-Math.PI/2,Math.PI]) for(const mode of ['swing','slide','lift']) for(const width of [1.2,2.4,4]) {
@@ -55,5 +55,38 @@ try {
   if(!initiallyOpen) meshes.forEach(m=>assert.ok(m.position.distanceTo(new THREE.Vector3(...m.userData.interaction.closedPosition))<1e-8));
   cases++;
  }
- console.log(JSON.stringify({passed:cases,assertions:'推拉/升降全行程包围、独立轨道、窗框窗棂联动、双扇铰链、四朝向、初始打开、关闭复位'}));
+ const bp={meta:{version:'1.1',type:'building',name:'增量重建'},geometry:{elements:[
+  {type:'wall',id:'wall',from:[0,0,0],to:[6,4,0],thickness:.24},
+  ...[0,1,2].map(i=>({type:'primitive',id:'box'+i,shape:'box',dimensions:[.4,.5,.6],position:[i,0,3]})),
+  {type:'primitive',id:'lamp',shape:'sphere',radius:.15,position:[0,3,2],lightSource:{intensity:10}},
+ ],components:[{type:'door',id:'door',parentWall:'wall',from:[1,0,0],width:1.2,height:2.4}]},materials:{}};
+ const build=async()=>reconstructEntity(compileBlueprintComponents(bp).blueprint);
+ const cache=new MaterialCache(), statsBefore=getGlobalMaterialResourceStats();
+ const group=createSceneGroupFromEntity(await build(),cache);
+ const batch=group.children.find(o=>o.isInstancedMesh&&o.userData.instanceElementIds.includes('box0'));
+ const door=group.children.find(o=>o.userData.interaction?.kind==='opening');
+ const lamp=group.children.find(o=>o.userData.interaction?.kind==='light');
+ assert.ok(batch&&door&&lamp);
+ toggleOpeningInteraction(door);flush();toggleRuntimeInteraction(lamp);
+ const lightLevel=lamp.userData.lightLevel, doorGeometry=door.geometry, batchGeometry=batch.geometry;
+ let disposed=0;batchGeometry.addEventListener('dispose',()=>disposed++);
+ bp.geometry.elements.find(e=>e.id==='box0').position=[20,0,3];
+ updateSceneGroup(group,await build(),cache);
+ assert.ok(group.children.includes(batch)&&group.children.includes(door)&&group.children.includes(lamp));
+ assert.equal(door.geometry,doorGeometry);assert.equal(batch.geometry,batchGeometry);assert.equal(disposed,0);
+ assert.equal(door.userData.interactionProgress,1,'修改其它构件不得关闭已打开的门');
+ assert.equal(lamp.userData.lightLevel,lightLevel,'修改其它构件不得重置灯具开关');
+ const matrix=new THREE.Matrix4();batch.getMatrixAt(0,matrix);assert.equal(matrix.elements[12],20);
+ assert.ok(batch.boundingBox.max.x>20,'实例位置更新后必须更新剔除边界');
+ const stableStats=getGlobalMaterialResourceStats();
+ for(let i=0;i<3;i++) updateSceneGroup(group,await build(),cache);
+ assert.deepEqual(getGlobalMaterialResourceStats(),stableStats,'重复重建不得增加共享资源引用');
+ bp.geometry.elements=bp.geometry.elements.filter(e=>e.id!=='box2');
+ updateSceneGroup(group,await build(),cache);
+ assert.equal(disposed,1,'退出实例桶时必须释放旧几何');assert.ok(!group.children.includes(batch));
+ assert.ok(group.children.some(o=>o.userData.elementId==='box0'));
+ assert.equal(door.userData.interactionProgress,1);
+ clearSceneObjectResources(group);cache.clear();
+ assert.deepEqual(getGlobalMaterialResourceStats(),statsBefore,'释放场景后必须归还共享资源');
+ console.log(JSON.stringify({passed:cases,incrementalSceneUpdates:true,assertions:'推拉/升降全行程、双扇铰链、网格复用、实例移动与包围盒、交互状态保留、资源释放'}));
 } finally {await vite.close()}

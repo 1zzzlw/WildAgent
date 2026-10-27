@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-27",
+  "inputSha256": "9d64343e8220fa49891c078398ae1afd7e763e36aecaf5866d1356494a9696bb",
+  "checks": [
+    {
+      "command": "wild-core: tsc --noEmit -p tsconfig.json",
+      "exitCode": 0
+    },
+    {
+      "command": "wild-web: npm run build",
+      "exitCode": 0,
+      "notes": [
+        "现有 chunk size 提示"
+      ]
+    },
+    {
+      "command": "wild-web: node scripts/geometry-regression.mjs",
+      "exitCode": 0,
+      "legacyBuildings": 12,
+      "fixtureDirectory": "docs/蓝图文档/案例"
+    },
+    {
+      "command": "wild-web: node scripts/check-opening-interactions.mjs",
+      "exitCode": 0,
+      "openingGroups": 48
+    },
+    {
+      "command": "wild-web: node scripts/check-mechanisms.mjs",
+      "exitCode": 0,
+      "evidence": "验证/动态组件回归.json"
+    },
+    {
+      "command": "wild-web: node scripts/material-mechanism-smoke.mjs",
+      "exitCode": 0,
+      "evidence": "验证/材质与遮光GPU回归.json"
+    },
+    {
+      "command": "wild-web: node scripts/viewport-mechanism-smoke.mjs",
+      "exitCode": 0,
+      "evidence": "验证/完整编辑器验收.json"
+    },
+    {
+      "command": "wild-web: node scripts/ride-physics-smoke.mjs",
+      "exitCode": 0,
+      "evidence": "验证/人物电梯物理验收.json"
+    },
+    {
+      "command": "wild-web: node scripts/validate-showcase-villa.mjs",
+      "exitCode": 0,
+      "evidence": "验证/别墅静态与Core验收.json"
+    },
+    {
+      "command": "wild-web: node scripts/render-showcase-villa.mjs",
+      "exitCode": 0,
+      "evidence": "别墅渲染/render_manifest.json"
+    },
+    {
+      "command": "wild-server: pytest test_surface_presets.py test_dynamic_components.py test_asset_storage.py",
+      "exitCode": 0,
+      "passed": 8
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "modelCalls": 0,
+  "scope": "本轮源码、Core、独立临时后端和真实 Chromium 验收；不声明模型生成成功率或用户验收完成"
+}
